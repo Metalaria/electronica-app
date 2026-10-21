@@ -113,6 +113,10 @@ test('un control deslizante cambia el circuito y vuelve a simular', async ({ pag
 test('una netlist con XSPICE explica que no se puede simular', async ({ page }) => {
   await abrir(page, 'cap29/fig-29.4-glitch');
   await expect(page.getByText('No se puede simular en la aplicación')).toBeVisible();
+  // the analog equivalent opens and runs: two 6 ns glitches
+  await page.getByRole('link', { name: 'Abrir la versión analógica' }).click();
+  await expect(page).toHaveURL(/fig-29\.4-glitch_analogica/);
+  await expect(page.getByText('ancho1').first()).toBeVisible({ timeout: 60_000 });
 });
 
 test('los errores de ngspice se explican en español', async ({ page }) => {

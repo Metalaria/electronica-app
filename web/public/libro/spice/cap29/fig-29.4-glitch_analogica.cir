@@ -1,0 +1,46 @@
+* Figura 29.4 (sección 29.3, «El problema que no aparece en la tabla: los glitches»), versión analógica
+* sin XSPICE de fig-29.4-glitch.cir, para simuladores sin puertas digitales XSPICE (como el ngspice de la
+* aplicación complementaria).
+* Una XOR con la señal A en una entrada y la misma señal retrasada por dos inversores (B) en la otra.
+* En estática Y = A xor A = 0; en dinámica, mientras A ha cambiado y B todavía no, las entradas
+* difieren y la salida da un pulso en cada flanco.
+* Retardos de la figura: 3 ns por inversor (B va 6 ns detrás de A) y 2 ns la XOR.
+* Comprueba: dos pulsos de 6 ns (el retardo de los dos inversores), que empiezan 2 ns después de
+* cada flanco de A (22 ns y 72 ns), y salida a 0 fuera de ellos.
+* Ejecutar: ngspice -b fig-29.4-glitch_analogica.cir
+* --- Biblioteca lógica analógica (sin XSPICE): 0 V = 0 lógico, 5 V = 1 lógico, umbral 2,5 V ---
+* lv(x): nivel lógico (0 a 1) de una tensión, con una transición muy estrecha alrededor de 2,5 V
+.func lv(x) {0.5*(1+tanh(40*(x-2.5)))}
+* DEL: retardo td. El nodo r se acerca al nivel de la entrada a 5 V/(2*td), así que la salida cambia
+* td después de que la entrada cruce 2,5 V (retardo inercial: un pulso de menos de 2*td se filtra)
+.subckt DEL x y PARAMS: td=10n
+Br 0 r I = 1p*2.5/td*tanh((5*lv(v(x)) - v(r))/0.05)
+Cr r 0 1p
+Rr r 0 1T
+By y 0 V = 5*lv(v(r))
+.ends
+.subckt INV i0 y PARAMS: td=1n
+B1 n 0 V = 5*(1 - lv(v(i0)))
+Xd n y DEL td={td}
+.ends
+.subckt XOR2 i0 i1 y PARAMS: td=1n
+B1 n 0 V = 5*(lv(v(i0)) + lv(v(i1)) - 2*lv(v(i0))*lv(v(i1)))
+Xd n y DEL td={td}
+.ends
+VA a 0 PWL(0 0 20n 0 20.01n 5 70n 5 70.01n 0 100n 0)
+Xinv1 a n1 INV td=3n
+Xinv2 n1 b INV td=3n
+Xxor a b y XOR2 td=2n
+* uic: the gates start at 0 V and settle in the first 6 ns, long before the first edge of A
+.tran 0.01n 100n 0 0.02n uic
+.control
+  run
+  meas tran ancho1 trig v(y) val=2.5 rise=1 targ v(y) val=2.5 fall=1
+  meas tran ancho2 trig v(y) val=2.5 rise=2 targ v(y) val=2.5 fall=2
+  meas tran inicio1 when v(y)=2.5 rise=1
+  meas tran inicio2 when v(y)=2.5 rise=2
+  meas tran retardo_b trig v(a) val=2.5 rise=1 targ v(b) val=2.5 rise=1
+  meas tran y_entre max v(y) from=35n to=65n
+  echo "Esperado: ancho1 = ancho2 = 6 ns; inicio1 = 22 ns, inicio2 = 72 ns; retardo_b = 6 ns; y_entre = 0"
+.endc
+.end

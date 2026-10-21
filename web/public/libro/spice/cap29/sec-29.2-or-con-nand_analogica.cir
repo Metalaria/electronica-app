@@ -1,0 +1,50 @@
+* Sección 29.2 («En el banco»), versión analógica sin XSPICE de sec-29.2-or-con-nand.cir, para
+* simuladores sin puertas digitales XSPICE (como el ngspice de la aplicación complementaria).
+* Una OR montada con tres NAND de un 74HC00: dos como inversores (entradas unidas) y una tercera que hace
+* la NAND de las entradas negadas. Por De Morgan, NAND(A', B') = A + B. Retardo de 8 ns por puerta.
+* Las puertas son fuentes de comportamiento (biblioteca de abajo) con el umbral en 2,5 V.
+* A y B recorren las combinaciones 00, 01, 10, 11, un microsegundo cada una.
+* Comprueba la tabla de verdad: Y = 0, 1, 1, 1, igual que la OR de referencia, y el retardo de dos
+* puertas (16 ns) de B a Y.
+* Ejecutar: ngspice -b sec-29.2-or-con-nand_analogica.cir
+* --- Biblioteca lógica analógica (sin XSPICE): 0 V = 0 lógico, 5 V = 1 lógico, umbral 2,5 V ---
+* lv(x): nivel lógico (0 a 1) de una tensión, con una transición muy estrecha alrededor de 2,5 V
+.func lv(x) {0.5*(1+tanh(40*(x-2.5)))}
+* DEL: retardo td. El nodo r se acerca al nivel de la entrada a 5 V/(2*td), así que la salida cambia
+* td después de que la entrada cruce 2,5 V (retardo inercial: un pulso de menos de 2*td se filtra)
+.subckt DEL x y PARAMS: td=10n
+Br 0 r I = 1p*2.5/td*tanh((5*lv(v(x)) - v(r))/0.05)
+Cr r 0 1p
+Rr r 0 1T
+By y 0 V = 5*lv(v(r))
+.ends
+.subckt NAND2 i0 i1 y PARAMS: td=1n
+B1 n 0 V = 5*(1 - lv(v(i0))*lv(v(i1)))
+Xd n y DEL td={td}
+.ends
+.subckt OR2 i0 i1 y PARAMS: td=1n
+B1 n 0 V = 5*(lv(v(i0)) + lv(v(i1)) - lv(v(i0))*lv(v(i1)))
+Xd n y DEL td={td}
+.ends
+VA a 0 PWL(0 0 1.999u 0 2u 5 4u 5)
+VB b 0 PWL(0 0 0.999u 0 1u 5 1.999u 5 2u 0 2.999u 0 3u 5 4u 5)
+* NAND 1 and 2: inverters
+Xn1 a a na NAND2 td=8n
+Xn2 b b nb NAND2 td=8n
+* NAND 3: NAND of the inverted inputs
+Xn3 na nb y NAND2 td=8n
+* reference OR
+Xor a b yor OR2 td=8n
+* uic: the gates start at 0 V and settle in the first 16 ns (no operating point needed)
+.tran 1n 4u 0 0.1n uic
+.control
+  run
+  echo "Filas AB = 00, 01, 10, 11 (instantes 0,5 / 1,5 / 2,5 / 3,5 us). Esperado Y = 0, 5, 5, 5 V."
+  foreach tt 0.5u 1.5u 2.5u 3.5u
+    meas tran y_$tt find v(y) at=$tt
+    meas tran or_$tt find v(yor) at=$tt
+  end
+  meas tran retardo_b_y trig v(b) val=2.5 rise=1 targ v(y) val=2.5 rise=1 td=0.9u
+  echo "retardo_b_y: dos puertas, esperado 16 ns"
+.endc
+.end

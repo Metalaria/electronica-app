@@ -38,6 +38,8 @@ export interface NetlistSpice {
     errores?: string[];
     pesada?: boolean;
     nota?: string;
+    /** Id of an equivalent netlist the app can simulate (analog version of an XSPICE one). */
+    alternativa?: string;
   };
 }
 

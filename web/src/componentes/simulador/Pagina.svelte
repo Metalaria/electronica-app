@@ -3,7 +3,7 @@
   // free-form circuit («nuevo»). The netlist is editable; sliders rewrite it and re-run after a short pause.
   import { onDestroy, onMount, untrack } from 'svelte';
   import type { NetlistSpice } from '../../simulador/tipos';
-  import { cargarIndiceSpice, cargarNetlist, rotuloRef } from '../../simulador/datos.svelte';
+  import { cargarIndiceSpice, cargarNetlist, rotuloRef, rutaSimulacion } from '../../simulador/datos.svelte';
   import { motor, detener, precalentarMotor, simularTexto, SimulacionCancelada } from '../../simulador/cliente.svelte';
   import type { Simulacion } from '../../simulador/motor/simular.ts';
   import { aplicarParametro, listarParametros } from '../../simulador/motor/netlist.ts';
@@ -272,6 +272,9 @@ C1 out 0 100n
       <div class="aviso">
         <strong>No se puede simular en la aplicación.</strong>
         {n.motor.nota}
+        {#if n.motor.alternativa}
+          <a class="boton" href={rutaSimulacion(n.motor.alternativa)}>Abrir la versión analógica</a>
+        {/if}
       </div>
     {:else if n?.motor.pesada}
       <div class="aviso">

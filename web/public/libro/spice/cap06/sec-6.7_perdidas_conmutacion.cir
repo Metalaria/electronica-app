@@ -11,14 +11,17 @@
 * --- resistiva: rampa de 0 a 0,5 A en 1 us (encendido en t = 10 us) ---
 VCC vcc 0 12
 RL vcc c 24
-BI c 0 I = 0.5*min(max((time-10u)/1u,0),1) * (v(c) > 0.2 ? 1 : 0)
+* the ramp stops at 0.5 A, where v(c) = 12 - 24*0.5 = 0 V, so no limit is needed (a hard
+* «v(c) > 0.2 ? 1 : 0» switch here stopped the transient with «timestep too small»)
+BI c 0 I = 0.5*min(max((time-10u)/1u,0),1)
 * --- inductiva fijada (corriente de carga constante 0,5 A, diodo ideal a 12 V) ---
 * primero la tension pasa de 0 a 12 V con 0,5 A (0,5 us), luego la corriente cae (0,5 us)
 BV2 c2 0 V = 12*min(max((time-10u)/0.5u,0),1)
 BI2 0 c2 I = 0.5*(1 - min(max((time-10.5u)/0.5u,0),1))
 .control
 tran 1n 15u
-let pr = v(c)*0.5*min(max((time-10u)/1u,0),1)
+* actual transistor current, through the load resistor
+let pr = v(c)*(v(vcc) - v(c))/24
 let pi = v(c2)*abs(i(BV2))
 meas tran er integ pr from=10u to=12u
 meas tran ei integ pi from=10u to=12u

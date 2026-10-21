@@ -495,6 +495,13 @@ def main():
     for nid, n in netlists.items():
         v = (val or {}).get(nid)
         n['motor'] = resumen_motor(v if val is not None else None, n.pop('xspice'))
+        # XSPICE netlists have an analog equivalent (<name>_analogica.cir) that the app's engine can run
+        alt = nid + '_analogica'
+        if n['motor']['estado'] == 'no-disponible' and alt in netlists:
+            n['motor']['alternativa'] = alt
+            n['motor']['nota'] = ('Usa dispositivos XSPICE (puertas digitales y puentes ADC/DAC), que el ngspice '
+                                  'de la aplicación no incluye. Hay una versión analógica equivalente, con las '
+                                  'mismas medidas, que sí se simula aquí.')
         if v is not None and 'parametros' in v:
             py = [(p['id'], p['valor']) for p in n['parametros']]
             ts = [(p['id'], p['valor']) for p in v['parametros']]

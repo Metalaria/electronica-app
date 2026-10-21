@@ -1,0 +1,70 @@
+* Sección 29.7 («Contadores asíncronos») y figura 29.11, versión analógica sin XSPICE de
+* sec-29.7-contador-asincrono.cir, para simuladores sin biestables XSPICE (como el ngspice de la
+* aplicación complementaria).
+* Contador asíncrono (de rizado) de 8 etapas con 10 ns de retardo por biestable. Cada biestable T (T = 1)
+* se dispara con la salida negada del anterior, es decir, con el flanco de bajada de su Q: es un contador
+* ascendente. Reloj de 200 ns de periodo.
+* Para no simular 127 ciclos, el contador arranca en la cuenta 127 (0111 1111, condiciones iniciales
+* .ic) y el primer flanco de subida del reloj, a 100 ns, es el flanco 128 de la versión digital.
+* Comprueba, en ese flanco (de 0111 1111 a 1000 0000):
+*   - el bit 0 cambia 10 ns después del flanco y el bit 7, 80 ns después: 70 ns entre ambos;
+*   - durante esos 70 ns la salida recorre 126, 124, 120, 112, 96, 64 y 0 antes de llegar a 128,
+*     de modo que un decodificador de la cuenta 0 (una NOR de 8 entradas) da un pulso falso de
+*     10 ns, entre la caída del bit 6 (70 ns) y la subida del bit 7 (80 ns).
+* Ejecutar: ngspice -b sec-29.7-contador-asincrono_analogica.cir
+* --- Biblioteca lógica analógica (sin XSPICE): 0 V = 0 lógico, 5 V = 1 lógico, umbral 2,5 V ---
+* lv(x): nivel lógico (0 a 1) de una tensión, con una transición muy estrecha alrededor de 2,5 V
+.func lv(x) {0.5*(1+tanh(40*(x-2.5)))}
+* DEL: retardo td. El nodo r se acerca al nivel de la entrada a 5 V/(2*td), así que la salida cambia
+* td después de que la entrada cruce 2,5 V (retardo inercial: un pulso de menos de 2*td se filtra)
+.subckt DEL x y PARAMS: td=10n
+Br 0 r I = 1p*2.5/td*tanh((5*lv(v(x)) - v(r))/0.05)
+Cr r 0 1p
+Rr r 0 1T
+By y 0 V = 5*lv(v(r))
+.ends
+* TFF: biestable T por flanco de subida con retardo reloj-salida td. Maestro transparente con el reloj
+* bajo (sigue a D = T xor S), esclavo transparente con el reloj alto (copia al maestro)
+.subckt TFF t clk q nq PARAMS: td=10n
+Bm 0 m I = 1m*(1-lv(v(clk)))*(5*(lv(v(t)) + lv(v(s)) - 2*lv(v(t))*lv(v(s))) - v(m))
+Cm m 0 10f
+Rm m 0 1T
+Bs 0 s I = 1m*lv(v(clk))*(v(m) - v(s))
+Cs s 0 10f
+Rs s 0 1T
+Xq s q DEL td={td}
+Bn sn 0 V = 5 - v(s)
+Xn sn nq DEL td={td}
+.ends
+.subckt NOR8 i0 i1 i2 i3 i4 i5 i6 i7 y
+B1 y 0 V = 5*((1-lv(v(i0)))*(1-lv(v(i1)))*(1-lv(v(i2)))*(1-lv(v(i3)))*(1-lv(v(i4)))*(1-lv(v(i5)))*(1-lv(v(i6)))*(1-lv(v(i7))))
+.ends
+VCLK clk 0 PULSE(0 5 100n 0.01n 0.01n 99.99n 200n)
+VONE hi 0 DC 5
+X0 hi clk q0 nq0 TFF td=10n
+X1 hi nq0 q1 nq1 TFF td=10n
+X2 hi nq1 q2 nq2 TFF td=10n
+X3 hi nq2 q3 nq3 TFF td=10n
+X4 hi nq3 q4 nq4 TFF td=10n
+X5 hi nq4 q5 nq5 TFF td=10n
+X6 hi nq5 q6 nq6 TFF td=10n
+X7 hi nq6 q7 nq7 TFF td=10n
+* decoder of count 0
+Xdec q0 q1 q2 q3 q4 q5 q6 q7 cero NOR8
+* start at count 127: the internal state node s of each flip-flop
+.ic v(x0.s)=5 v(x1.s)=5 v(x2.s)=5 v(x3.s)=5 v(x4.s)=5 v(x5.s)=5 v(x6.s)=5 v(x7.s)=0
+.tran 0.01n 300n 0 0.05n
+.control
+  run
+  meas tran t_b0 when v(q0)=2.5 fall=1
+  meas tran t_b6 when v(q6)=2.5 fall=1
+  meas tran t_b7 when v(q7)=2.5 rise=1
+  let r_b0 = (t_b0 - 100n) * 1e9
+  let r_b7 = (t_b7 - 100n) * 1e9
+  let b7_b0 = (t_b7 - t_b0) * 1e9
+  echo "Retardo del bit 0 y del bit 7 respecto al flanco 128, y entre ambos (ns); esperado 10, 80 y 70:"
+  print r_b0 r_b7 b7_b0
+  meas tran pulso_cero trig v(cero) val=2.5 rise=1 targ v(cero) val=2.5 fall=1
+  echo "pulso_cero: pulso falso del decodificador de la cuenta 0, esperado 10 ns"
+.endc
+.end

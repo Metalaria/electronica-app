@@ -1,0 +1,88 @@
+* Problema 29.C (sección 29.11), versión analógica sin XSPICE de prob-29.C-decodificador.cir, para
+* simuladores sin biestables y puertas XSPICE (como el ngspice de la aplicación complementaria).
+* Contador binario síncrono de 4 bits que ataca un decodificador de la cuenta 8 (1000). Los cuatro
+* biestables comparten el reloj (20 ns de periodo, primer flanco a 10 ns), pero sus retardos
+* reloj-salida difieren, con un desalineo total de 1,5 ns:
+*   contador A: bits 0, 1, 2 y 3 con 5,0 / 5,5 / 6,0 / 6,5 ns;
+*   contador B: bits 0, 1 y 2 con 5,0 ns y bit 3 con 6,5 ns.
+* Biestables T (T0 = 1, T1 = Q0, T2 = Q0·Q1, T3 = Q0·Q1·Q2); el decodificador es una AND de Q3 y las
+* negadas de Q2, Q1 y Q0, sin retardo apreciable.
+* Comprueba:
+*   - en la transición 0111 -> 1000 no hay pulso falso: la salida sube una vez y se queda;
+*   - contador A: pulsos falsos de 0,5 ns en 1001 -> 1010, 1011 -> 1100 y 1111 -> 0000;
+*   - contador B: un único pulso falso de 1,5 ns (el desalineo completo) en 1111 -> 0000, y ninguno
+*     entre la cuenta 8 y ese paso por cero (b_max_entre por debajo de 2,5 V: cuando dos bits cambian
+*     a la vez, la AND analógica deja como mucho un pequeño escalón, no un pulso lógico).
+*   El pulso verdadero (cuenta 8) dura un periodo, unos 18,5 ns.
+* Ejecutar: ngspice -b prob-29.C-decodificador_analogica.cir
+* --- Biblioteca lógica analógica (sin XSPICE): 0 V = 0 lógico, 5 V = 1 lógico, umbral 2,5 V ---
+* lv(x): nivel lógico (0 a 1) de una tensión, con una transición muy estrecha alrededor de 2,5 V
+.func lv(x) {0.5*(1+tanh(40*(x-2.5)))}
+* DEL: retardo td. El nodo r se acerca al nivel de la entrada a 5 V/(2*td), así que la salida cambia
+* td después de que la entrada cruce 2,5 V (retardo inercial: un pulso de menos de 2*td se filtra)
+.subckt DEL x y PARAMS: td=10n
+Br 0 r I = 1p*2.5/td*tanh((5*lv(v(x)) - v(r))/0.05)
+Cr r 0 1p
+Rr r 0 1T
+By y 0 V = 5*lv(v(r))
+.ends
+* TFF: biestable T por flanco de subida con retardo reloj-salida td. Maestro transparente con el reloj
+* bajo (sigue a D = T xor S), esclavo transparente con el reloj alto (copia al maestro)
+.subckt TFF t clk q nq PARAMS: td=10n
+Bm 0 m I = 1m*(1-lv(v(clk)))*(5*(lv(v(t)) + lv(v(s)) - 2*lv(v(t))*lv(v(s))) - v(m))
+Cm m 0 10f
+Rm m 0 1T
+Bs 0 s I = 1m*lv(v(clk))*(v(m) - v(s))
+Cs s 0 10f
+Rs s 0 1T
+Xq s q DEL td={td}
+Bn sn 0 V = 5 - v(s)
+Xn sn nq DEL td={td}
+.ends
+.subckt AND2 i0 i1 y PARAMS: td=1n
+B1 n 0 V = 5*(lv(v(i0))*lv(v(i1)))
+Xd n y DEL td={td}
+.ends
+.subckt AND3 i0 i1 i2 y PARAMS: td=1n
+B1 n 0 V = 5*(lv(v(i0))*lv(v(i1))*lv(v(i2)))
+Xd n y DEL td={td}
+.ends
+.subckt DEC8 i0 i1 i2 i3 y
+B1 y 0 V = 5*(lv(v(i0))*(1-lv(v(i1)))*(1-lv(v(i2)))*(1-lv(v(i3))))
+.ends
+VCLK clk 0 PULSE(0 5 10n 0.01n 0.01n 9.99n 20n)
+VONE hi 0 DC 5
+* counter A
+XA0 hi clk a0 na0 TFF td=5.0n
+XA1 a0 clk a1 na1 TFF td=5.5n
+XAt2 a0 a1 ta2 AND2 td=0.5n
+XA2 ta2 clk a2 na2 TFF td=6.0n
+XAt3 a0 a1 a2 ta3 AND3 td=0.5n
+XA3 ta3 clk a3 na3 TFF td=6.5n
+XAdec a3 a2 a1 a0 deca DEC8
+* counter B
+XB0 hi clk b0 nb0 TFF td=5.0n
+XB1 b0 clk b1 nb1 TFF td=5.0n
+XBt2 b0 b1 tb2 AND2 td=0.5n
+XB2 tb2 clk b2 nb2 TFF td=5.0n
+XBt3 b0 b1 b2 tb3 AND3 td=0.5n
+XB3 tb3 clk b3 nb3 TFF td=6.5n
+XBdec b3 b2 b1 b0 decb DEC8
+.tran 0.01n 340n 0 0.02n
+.control
+  run
+  echo "Flancos: el 8 (0111 -> 1000) a 150 ns, el 10 a 190 ns, el 12 a 230 ns, el 16 (1111 -> 0000) a 310 ns."
+  echo "Contador A: anchos de los pulsos 1 a 4 del decodificador (esperado 18,5 ns y tres de 0,5 ns)"
+  meas tran a_ancho1 trig v(deca) val=2.5 rise=1 targ v(deca) val=2.5 fall=1
+  meas tran a_ancho2 trig v(deca) val=2.5 rise=2 targ v(deca) val=2.5 fall=2
+  meas tran a_ancho3 trig v(deca) val=2.5 rise=3 targ v(deca) val=2.5 fall=3
+  meas tran a_ancho4 trig v(deca) val=2.5 rise=4 targ v(deca) val=2.5 fall=4
+  echo "Contador B: anchos de los pulsos 1 y 2 (esperado 18,5 ns y 1,5 ns) y máximo entre ambos (< 2,5 V)"
+  meas tran b_ancho1 trig v(decb) val=2.5 rise=1 targ v(decb) val=2.5 fall=1
+  meas tran b_ancho2 trig v(decb) val=2.5 rise=2 targ v(decb) val=2.5 fall=2
+  meas tran b_max_entre max v(decb) from=180n to=314n
+  echo "Transición 0111 -> 1000: la salida A no debe valer 1 antes de que suba el bit 3 (156,5 ns)"
+  meas tran a_subida1 when v(deca)=2.5 rise=1
+  meas tran a_max_antes max v(deca) from=150n to=156.4n
+.endc
+.end

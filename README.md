@@ -195,11 +195,13 @@ tiene licencia BSD), que se ejecuta en un *Web Worker*: la interfaz no se bloque
 simulación se puede detener. Se descarga solo al abrir el simulador (5,8 MB; el arranque del lector no
 cambia). Límites:
 
-- **4 netlists no se pueden simular** en la aplicación (capítulo 28 del libro impreso, carpeta `cap29`): usan
-  puertas digitales y puentes ADC/DAC de XSPICE, que ningún ngspice para WebAssembly de npm incluye. La
-  página lo explica y muestra la netlist; con ngspice instalado: `ngspice -b fichero.cir`.
-- **Unas 20 son pesadas** (más de 8 s en un ordenador; la más lenta, `cap00/derivadas_c_l`, guarda 12
-  millones de puntos y tarda más de 3 minutos): no se ejecutan solas al abrirlas, y la página avisa.
+- **Puertas digitales (XSPICE).** Las 4 netlists del capítulo 28 del libro impreso (carpeta `cap29`) usan
+  puertas, biestables y puentes ADC/DAC de XSPICE, que ningún ngspice para WebAssembly de npm incluye. Cada
+  una tiene en el material complementario una versión analógica equivalente (`…_analogica.cir`: puertas
+  como fuentes de comportamiento con umbral de 2,5 V, retardos exactos y biestables maestro-esclavo) que da
+  las mismas medidas y sí se simula aquí; la página de la original enlaza con ella.
+- Solo 2 netlists dan errores, y a propósito: los ejemplos de errores de la figura 42.6.
+- **Unas 9 son pesadas** (más de 8 s en un ordenador): no se ejecutan solas al abrirlas, y la página avisa.
 - La aplicación usa el resolvedor SPARSE de ngspice, que da los mismos números que ngspice nativo; si un
   transitorio no converge («Timestep too small») repite la simulación con KLU y lo indica.
 - `plot`, `quit` y similares del bloque `.control` se ignoran (la aplicación dibuja las gráficas).
