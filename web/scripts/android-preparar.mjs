@@ -136,19 +136,28 @@ if (gradle.includes(MARKER)) {
     `${indent}signingConfigs {`,
     `${i2}create("release") {`,
     `${i3}val keystorePropertiesFile = rootProject.file("keystore.properties")`,
-    `${i3}val keystoreProperties = java.util.Properties()`,
+    `${i3}val keystoreProperties = Properties()`,
     `${i3}if (keystorePropertiesFile.exists()) {`,
-    `${i3}${unit}keystorePropertiesFile.inputStream().use { keystoreProperties.load(it) }`,
+    `${i3}${unit}FileInputStream(keystorePropertiesFile).use { stream -> keystoreProperties.load(stream) }`,
     `${i3}}`,
     `${i3}keyAlias = keystoreProperties.getProperty("keyAlias")`,
     `${i3}keyPassword = keystoreProperties.getProperty("keyPassword")`,
     `${i3}storePassword = keystoreProperties.getProperty("storePassword")`,
-    `${i3}keystoreProperties.getProperty("storeFile")?.let { storeFile = file(it) }`,
+    `${i3}val storeFilePath: String? = keystoreProperties.getProperty("storeFile")`,
+    `${i3}if (storeFilePath != null) {`,
+    `${i3}${unit}storeFile = file(storeFilePath)`,
+    `${i3}}`,
     `${i2}}`,
     `${indent}}`,
     '',
   ].join(eol);
   gradle = gradle.slice(0, buildTypes[0].index) + block + gradle.slice(buildTypes[0].index);
+
+  // Inside `android { }` the name `java` resolves to the Android `java` extension, so fully qualified
+  // `java.util.Properties` does not compile there: import the classes at the top of the script instead.
+  const imports = ['import java.io.FileInputStream', 'import java.util.Properties']
+    .filter((imp) => !new RegExp(`^${imp.replace(/\./g, '\\.')}\\s*$`, 'm').test(gradle));
+  if (imports.length) gradle = imports.join(eol) + eol + gradle;
 
   const release = [...gradle.matchAll(/^([ \t]*)getByName\(\s*"release"\s*\)\s*\{[ \t]*\r?\n/gm)];
   if (release.length !== 1) {
