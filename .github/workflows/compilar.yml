@@ -185,7 +185,9 @@ jobs:
           fi
           # The executable must contain both architectures, and carry the ad-hoc signature.
           lipo -info "${app[0]}"/Contents/MacOS/*
-          lipo -verify_arch arm64 x86_64 "${app[0]}"/Contents/MacOS/*
+          for bin in "${app[0]}"/Contents/MacOS/*; do
+            lipo "$bin" -verify_arch arm64 x86_64
+          done
           codesign -dv "${app[0]}" 2>&1 || echo "::warning::La app no tiene firma ad hoc."
           mkdir -p salida
           cp "${dmg[0]}" "salida/Electronica-${VERSION}-macos-universal.dmg"
@@ -274,8 +276,23 @@ jobs:
           workspaces: src-tauri -> target
           cache-on-failure: true
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
+      # The ubuntu runners ship the Android SDK (ANDROID_HOME) with recent command-line tools and NDKs;
+      # android-actions/setup-android@v3 breaks with cmdline-tools 16 («Failed to find package 'tools'»).
+      - name: Use the preinstalled Android SDK
+        run: |
+          sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
+          tools="$(ls -d "$sdk"/cmdline-tools/*/bin 2>/dev/null | sort -V | tail -n 1)"
+          if [ -x "$sdk/cmdline-tools/latest/bin/sdkmanager" ]; then tools="$sdk/cmdline-tools/latest/bin"; fi
+          if [ -z "$tools" ] || [ ! -x "$tools/sdkmanager" ]; then
+            echo "::error::No se encuentra sdkmanager en $sdk/cmdline-tools"
+            ls -la "$sdk" || true
+            exit 1
+          fi
+          echo "ANDROID_HOME=$sdk" >> "$GITHUB_ENV"
+          echo "ANDROID_SDK_ROOT=$sdk" >> "$GITHUB_ENV"
+          echo "$tools" >> "$GITHUB_PATH"
+          echo "$sdk/platform-tools" >> "$GITHUB_PATH"
+          "$tools/sdkmanager" --version
 
       - name: Install the NDK
         run: |
