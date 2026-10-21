@@ -9,7 +9,7 @@ chapter reaches the app by regenerating.
 app/
   contenido/            Python pipeline: v3 sources -> web/public/libro/   (run: python3 contenido/generar.py)
   web/                  Svelte + TypeScript + Vite app
-    public/libro/       GENERATED content (git-ignored): JSON, SVG, images
+    public/libro/       GENERATED content (versioned: CI cannot regenerate it): JSON, SVG, images
     src/
   src-tauri/            Tauri 2 shell (Rust)
   ESQUEMA.md            this file: the contract between pipeline and app

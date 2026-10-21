@@ -1,0 +1,417 @@
+# Builds the installers of the reader:
+#   - Windows: NSIS .exe and .msi            -> artifact Electronica-Windows
+#   - macOS:   universal .dmg (arm64 + x64)  -> artifact Electronica-macOS
+#   - Android: signed release .apk           -> artifact Electronica-Android
+# On a tag vX.Y.Z the version is taken from the tag and the installers are also attached to a
+# GitHub Release. The generated book content (web/public/libro/) is versioned in the repository
+# because it cannot be regenerated here (it needs the book sources, fonts and photos).
+name: Compilar
+
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+    # Documentation and the content generator do not change the installers (path filters are
+    # not evaluated for tag pushes, so tags always build).
+    paths-ignore:
+      - '**.md'
+      - 'contenido/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  # A newer push to main supersedes the running build; tag builds are never cancelled.
+  cancel-in-progress: ${{ github.ref_type != 'tag' }}
+
+env:
+  NODE_VERSION: '22'
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: '0'
+
+defaults:
+  run:
+    # bash everywhere (Git Bash on Windows), with -e and -o pipefail.
+    shell: bash
+
+jobs:
+  windows:
+    name: Windows (.exe y .msi)
+    runs-on: windows-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Check the book content is in the repository
+        run: |
+          if [ ! -f web/public/libro/indice.json ]; then
+            echo "::error::Falta web/public/libro/ (contenido generado). Genéralo en local con contenido/generar.py y súbelo al repositorio."
+            exit 1
+          fi
+          echo "Contenido: $(find web/public/libro -type f | wc -l) ficheros"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Set up Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          cache-on-failure: true
+
+      - name: Version
+        id: version
+        run: node web/scripts/version-ci.mjs
+
+      - name: Install npm dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Build installers
+        working-directory: web
+        run: |
+          rm -rf ../src-tauri/target/release/bundle
+          # Bundling downloads NSIS and WiX; retry once on a transient failure (Rust is cached).
+          for attempt in 1 2; do
+            if npm run tauri -- build --bundles nsis,msi --ci; then exit 0; fi
+            echo "::warning::Intento $attempt fallido; se reintenta."
+            sleep 15
+          done
+          exit 1
+
+      - name: Collect installers
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          shopt -s nullglob
+          bundle=src-tauri/target/release/bundle
+          exe=("$bundle"/nsis/*-setup.exe)
+          msi=("$bundle"/msi/*.msi)
+          if [ ${#exe[@]} -ne 1 ] || [ ${#msi[@]} -ne 1 ]; then
+            echo "::error::Se esperaba un .exe y un .msi en $bundle"
+            find "$bundle" -maxdepth 2
+            exit 1
+          fi
+          mkdir -p salida
+          cp "${exe[0]}" "salida/Electronica-${VERSION}-windows-x64-setup.exe"
+          cp "${msi[0]}" "salida/Electronica-${VERSION}-windows-x64.msi"
+          (cd salida && sums="$(sha256sum -- *)" && printf '%s\n' "$sums" | tee SHA256SUMS-windows.txt)
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: Electronica-Windows
+          path: salida/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+  macos:
+    name: macOS (.dmg universal)
+    runs-on: macos-latest
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Check the book content is in the repository
+        run: |
+          if [ ! -f web/public/libro/indice.json ]; then
+            echo "::error::Falta web/public/libro/ (contenido generado). Genéralo en local con contenido/generar.py y súbelo al repositorio."
+            exit 1
+          fi
+          echo "Contenido: $(find web/public/libro -type f | wc -l) ficheros"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Set up Rust (Apple Silicon and Intel targets)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          cache-on-failure: true
+
+      - name: Version
+        id: version
+        run: node web/scripts/version-ci.mjs
+
+      - name: Install npm dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Build universal app and dmg
+        working-directory: web
+        run: |
+          rm -rf ../src-tauri/target/universal-apple-darwin/release/bundle
+          # hdiutil sometimes fails with "Resource busy" on hosted runners; retry (Rust is cached).
+          for attempt in 1 2 3; do
+            if npm run tauri -- build --target universal-apple-darwin --bundles app,dmg --ci; then exit 0; fi
+            echo "::warning::Intento $attempt fallido; se reintenta."
+            sleep 20
+          done
+          exit 1
+
+      - name: Collect installer
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          shopt -s nullglob
+          bundle=src-tauri/target/universal-apple-darwin/release/bundle
+          dmg=("$bundle"/dmg/*.dmg)
+          app=("$bundle"/macos/*.app)
+          if [ ${#dmg[@]} -ne 1 ] || [ ${#app[@]} -ne 1 ]; then
+            echo "::error::Se esperaba un .dmg y un .app en $bundle"
+            find "$bundle" -maxdepth 2
+            exit 1
+          fi
+          # The executable must contain both architectures, and carry the ad-hoc signature.
+          lipo -info "${app[0]}"/Contents/MacOS/*
+          lipo -verify_arch arm64 x86_64 "${app[0]}"/Contents/MacOS/*
+          codesign -dv "${app[0]}" 2>&1 || echo "::warning::La app no tiene firma ad hoc."
+          mkdir -p salida
+          cp "${dmg[0]}" "salida/Electronica-${VERSION}-macos-universal.dmg"
+          (cd salida && sums="$(shasum -a 256 -- *)" && printf '%s\n' "$sums" | tee SHA256SUMS-macos.txt)
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: Electronica-macOS
+          path: salida/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+  android:
+    name: Android (.apk firmado)
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    env:
+      # NDK used by Rust to link the native library (the default NDK of the current Android Gradle plugin).
+      NDK_VERSION: 28.2.13676358
+    steps:
+      - name: Check the signing secrets
+        env:
+          ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          missing=0
+          for name in ANDROID_KEYSTORE_B64 ANDROID_KEYSTORE_PASSWORD ANDROID_KEY_ALIAS ANDROID_KEY_PASSWORD; do
+            if [ -z "${!name}" ]; then
+              echo "::error::Falta el secreto $name (Settings > Secrets and variables > Actions)."
+              missing=1
+            fi
+          done
+          exit $missing
+
+      - name: Checkout
+        uses: actions/checkout@v5
+
+      - name: Check the book content is in the repository
+        run: |
+          if [ ! -f web/public/libro/indice.json ]; then
+            echo "::error::Falta web/public/libro/ (contenido generado). Genéralo en local con contenido/generar.py y súbelo al repositorio."
+            exit 1
+          fi
+          echo "Contenido: $(find web/public/libro -type f | wc -l) ficheros"
+
+      - name: Set up Java 17
+        uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Decode and check the keystore
+        env:
+          ANDROID_KEYSTORE_B64: ${{ secrets.ANDROID_KEYSTORE_B64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          keystore="$RUNNER_TEMP/electronica-release.jks"
+          # Tolerate line breaks or spaces pasted into the secret.
+          printf '%s' "$ANDROID_KEYSTORE_B64" | tr -d ' \r\n\t' | base64 --decode > "$keystore"
+          if ! keytool -list -keystore "$keystore" -storepass "$ANDROID_KEYSTORE_PASSWORD" -alias "$ANDROID_KEY_ALIAS" > /dev/null; then
+            echo "::error::El almacén de claves no se abre con ANDROID_KEYSTORE_PASSWORD o no contiene el alias ANDROID_KEY_ALIAS."
+            exit 1
+          fi
+          echo "ANDROID_KEYSTORE_FILE=$keystore" >> "$GITHUB_ENV"
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: npm
+          cache-dependency-path: web/package-lock.json
+
+      - name: Set up Rust (Android targets)
+        uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+
+      - name: Cache Rust build
+        uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: src-tauri -> target
+          cache-on-failure: true
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install the NDK
+        run: |
+          sdk="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          echo "SDK: $sdk"
+          set +o pipefail
+          yes | sdkmanager --licenses > /dev/null
+          set -o pipefail
+          sdkmanager --install "ndk;${NDK_VERSION}" > /dev/null || echo "::warning::No se pudo instalar ndk;${NDK_VERSION}; se usará el NDK más reciente instalado."
+          ndk="$sdk/ndk/${NDK_VERSION}"
+          if [ ! -f "$ndk/source.properties" ]; then
+            ndk="$(find "$sdk/ndk" -mindepth 1 -maxdepth 1 -type d 2>/dev/null | sort -V | tail -n 1)"
+          fi
+          if [ -z "$ndk" ] || [ ! -f "$ndk/source.properties" ]; then
+            echo "::error::No hay ningún NDK en $sdk/ndk"
+            exit 1
+          fi
+          echo "NDK_HOME=$ndk" >> "$GITHUB_ENV"
+          grep Pkg.Revision "$ndk/source.properties"
+
+      - name: Version
+        id: version
+        run: node web/scripts/version-ci.mjs
+
+      - name: Install npm dependencies
+        working-directory: web
+        run: npm ci
+
+      - name: Generate the Android project
+        working-directory: web
+        run: |
+          if [ -d ../src-tauri/gen/android ]; then
+            echo "src-tauri/gen/android ya existe; no se regenera."
+          else
+            npm run tauri -- android init --ci
+          fi
+          chmod +x ../src-tauri/gen/android/gradlew
+
+      - name: Install the compile SDK platform
+        run: |
+          # Gradle can download it by itself; installing it here only makes that step predictable.
+          level="$(sed -nE 's/^[[:space:]]*compileSdk[[:space:]]*=[[:space:]]*([0-9]+).*/\1/p' src-tauri/gen/android/app/build.gradle.kts | head -n 1)"
+          if [ -n "$level" ]; then
+            sdkmanager --install "platforms;android-${level}" > /dev/null || echo "::warning::No se pudo instalar platforms;android-${level}; Gradle lo intentará."
+          fi
+
+      - name: Icons and release signing
+        working-directory: web
+        env:
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: npm run android:preparar
+
+      - name: Build APK (arm64-v8a + armeabi-v7a)
+        working-directory: web
+        run: |
+          # Gradle downloads its distribution and dependencies; retry once on a transient failure.
+          for attempt in 1 2; do
+            if npm run tauri -- android build --apk --target aarch64 armv7 --ci; then exit 0; fi
+            echo "::warning::Intento $attempt fallido; se reintenta."
+            sleep 15
+          done
+          exit 1
+
+      - name: Check signature and collect APK
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          sdk="${ANDROID_HOME:-$ANDROID_SDK_ROOT}"
+          outputs=src-tauri/gen/android/app/build/outputs/apk
+          mapfile -t apks < <(find "$outputs" -type f -name '*.apk' -path '*release*' | sort)
+          printf 'APK: %s\n' "${apks[@]}"
+          if [ ${#apks[@]} -ne 1 ] || [[ "${apks[0]}" == *unsigned* ]]; then
+            echo "::error::Se esperaba un único APK release firmado en $outputs"
+            exit 1
+          fi
+          apk="${apks[0]}"
+          apksigner="$(find "$sdk/build-tools" -name apksigner -type f 2>/dev/null | sort -V | tail -n 1)"
+          if [ -n "$apksigner" ]; then
+            "$apksigner" verify --verbose --print-certs "$apk"
+          else
+            echo "::warning::No se encontró apksigner; no se comprueba la firma."
+          fi
+          unzip -l "$apk" | grep -E 'lib/(arm64-v8a|armeabi-v7a)/'
+          mkdir -p salida
+          cp "$apk" "salida/Electronica-${VERSION}-android.apk"
+          (cd salida && sums="$(sha256sum -- *)" && printf '%s\n' "$sums" | tee SHA256SUMS-android.txt)
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v5
+        with:
+          name: Electronica-Android
+          path: salida/
+          if-no-files-found: error
+          retention-days: 14
+          compression-level: 0
+
+      - name: Remove the decoded keystore
+        if: always()
+        run: rm -f "$RUNNER_TEMP/electronica-release.jks" src-tauri/gen/android/keystore.properties
+
+  publicar:
+    name: Publicar en Releases
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [windows, macos, android]
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+    steps:
+      - name: Download the installers
+        uses: actions/download-artifact@v5
+        with:
+          pattern: Electronica-*
+          path: salida
+          merge-multiple: true
+
+      - name: Checksums
+        run: |
+          cd salida
+          rm -f SHA256SUMS-*.txt
+          sums="$(sha256sum -- *)"
+          printf '%s\n' "$sums" | tee SHA256SUMS.txt
+
+      - name: Create the release
+        uses: softprops/action-gh-release@v2
+        with:
+          name: Electrónica Práctica Avanzada ${{ github.ref_name }}
+          body: |
+            Instaladores de uso privado (sin firma de código en Windows y macOS).
+            - Windows: Electronica-*-windows-x64-setup.exe (o el .msi).
+            - macOS: Electronica-*-macos-universal.dmg (Apple Silicon e Intel).
+            - Android: Electronica-*-android.apk (firmado con la clave propia).
+            Sumas SHA-256 en SHA256SUMS.txt.
+          files: salida/*
+          fail_on_unmatched_files: true
+          draft: false
+          prerelease: false
