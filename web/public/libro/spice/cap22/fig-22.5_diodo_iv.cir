@@ -1,0 +1,34 @@
+* Capitulo 22, seccion 22.3 (Practica 3), figuras 22.5 y 22.6: curva I-V de un diodo
+* Fuente ajustable 0-5 V, R = 1 k y diodo de silicio. Dos modelos:
+*   DID: diodo ideal con n = 1 ajustado a 0,57 V a 1 mA (la tabla de la seccion): 59,5 mV por
+*        decada, 0,45 / 0,51 / 0,57 / 0,63 / 0,69 V a 10 uA ... 100 mA;
+*   D1N4148: modelo habitual del 1N4148 (IS = 2,52 nA, N = 1,752, RS = 0,568 ohm): unos
+*        104 mV por decada, que es lo que mide de verdad la practica (n entre 1 y 2).
+* Comprueba tambien el punto final del barrido (5 V): 4,4 mA a 0,61 V con el diodo ideal, y que
+* con 1 k y 5 V no se pasa de unos 4,4 mA (para 10 y 100 mA hay que bajar R).
+* Ejecutar: ngspice -b fig-22.5_diodo_iv.cir
+.model DID D(IS=2.32e-13 N=1)
+.model D1N4148 D(IS=2.52n RS=0.568 N=1.752 CJO=4p M=0.4 TT=20n BV=100 IBV=100u)
+* barrido de corriente directa para leer V_F por decadas
+I1 0 a1 DC 1m
+D1 a1 0 DID
+I2 0 a2 DC 1m
+D2 a2 0 D1N4148
+* montaje de la figura: fuente de 5 V, 1 k, diodo ideal
+V3 s3 0 DC 5
+R3 s3 a3 1k
+D3 a3 0 DID
+.control
+op
+echo "Punto final del barrido (5 V, 1 k, diodo ideal): V_D y I (mA)"
+print v(a3) (v(s3)-v(a3))/1k*1000
+echo "V_F por decadas: ideal n=1 y 1N4148"
+foreach ii 10u 100u 1m 10m 100m
+  alter I1 dc = $ii
+  alter I2 dc = $ii
+  op
+  echo "I = $ii"
+  print v(a1) v(a2)
+end
+.endc
+.end

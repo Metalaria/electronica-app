@@ -1,0 +1,68 @@
+* Capitulo 52, seccion «El front-end, bloque a bloque» (sec-new-52-frontend): cadena de banda base de un canal.
+* Amplificador de instrumentacion de dos operacionales (Ra = 4,99 k, Rb = RG = 499 ohm: G = 1 + Ra/Rb + 2Ra/RG = 31)
+* seguido de un Sallen-Key de ganancia unidad (R = 3,92 k, C = 2,2 nF y 1 nF: f0 = 27,4 kHz, Q = 0,74) y de la
+* salida acoplada en alterna a una entrada de linea de 10 kohm.
+* El operacional (OPA1678) es un macromodelo de un polo: A0 = 120 dB, GBW = 16 MHz, Rout = 20 ohm. Su ruido de
+* tension (4,5 nV/raiz(Hz)) se representa con una resistencia de 1,22 kohm en serie con cada entrada no inversora,
+* que tiene ese mismo ruido termico a 300 K y no altera nada mas (por ella no circula corriente).
+* Comprueba lo que dice el texto:
+*   - ganancia de unas 31 veces (29,8 dB) en la banda de audio;
+*   - la banda base cae 3 dB hacia 27,8 kHz (2 dB hacia 24,7 kHz); sumada a la caida del detector
+*     (detector_cuadratura.cir: unos -1,9 dB a 24 kHz) da los unos 3,5 dB del borde de +-24 kHz;
+*   - la fuga del oscilador local (7 MHz) llega a la tarjeta muy atenuada;
+*   - ruido referido a la entrada diferencial (para la figura de ruido del texto): unos 8,9 nV/raiz(Hz).
+* Ejecutar: ngspice -b banda_base.cir
+.options temp=27 tnom=27
+.subckt opamp inp inn out
+Ren inp inq 1.22k
+E1 a 0 inq inn 1
+R1 a b 1k
+C1 b 0 {1/(6.2832*1k*16)}
+E2 c 0 b 0 1e6
+Ro c out 20
+.ends
+VREF vref 0 2.5
+* entrada diferencial en torno a la polarizacion de 2,5 V de los condensadores de muestreo
+VCM cm 0 DC 2.5
+VDP xp cm DC 0 AC 0.5
+VDN xn cm DC 0 AC -0.5
+* amplificador de instrumentacion de dos AO
+XA xn n1 v1 opamp
+R23 n1 vref 4.99k
+R24 n1 v1 499
+R25 v1 n2 499
+R26 n2 ina 4.99k
+R27 n1 n2 499
+C35 n2 ina 220p
+C48 n1 vref 220p
+XB xp n2 ina opamp
+* Sallen-Key paso bajo de ganancia unidad
+R33 ina s1 3.92k
+R34 s1 s2 3.92k
+C42 s1 bb 2.2n
+C43 s2 0 1n
+XC s2 bb bb opamp
+* salida acoplada en alterna a la tarjeta de sonido (10 kohm)
+R35 bb bbr 100
+C44 bbr out 10u
+R36 out 0 100k
+RIN out 0 10k
+.control
+ac dec 200 1 10meg
+let g = db(v(out))
+meas ac g_1k   find g at=1e3
+meas ac g_10k  find g at=10e3
+meas ac g_20k  find g at=20e3
+meas ac g_24k  find g at=24e3
+meas ac g_48k  find g at=48e3
+meas ac g_7M   find g at=7e6
+let g3 = g_1k - 3
+meas ac f_3dB when g=g3 fall=1
+let g2 = g_1k - 2
+meas ac f_2dB when g=g2 fall=1
+* input-referred noise density of the differential amplifier (output INA, input source VDP), 1 kHz and 10 kHz
+noise v(ina) VDP dec 1 1k 10k
+setplot noise1
+print frequency inoise_spectrum
+.endc
+.end

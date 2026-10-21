@@ -1,0 +1,61 @@
+* Problema 29.C (sección 29.11): contador binario síncrono de 4 bits que ataca un decodificador de la
+* cuenta 8 (1000). Los cuatro biestables comparten el reloj (20 ns de periodo, primer flanco a 10 ns),
+* pero sus retardos reloj-salida difieren, con un desalineo total de 1,5 ns:
+*   contador A: bits 0, 1, 2 y 3 con 5,0 / 5,5 / 6,0 / 6,5 ns;
+*   contador B: bits 0, 1 y 2 con 5,0 ns y bit 3 con 6,5 ns.
+* Biestables T XSPICE (T0 = 1, T1 = Q0, T2 = Q0·Q1, T3 = Q0·Q1·Q2); el decodificador es una AND
+* de Q3 y las negadas de Q2, Q1 y Q0, sin retardo apreciable.
+* Comprueba:
+*   - en la transición 0111 -> 1000 no hay pulso falso: la salida sube una vez y se queda;
+*   - contador A: pulsos falsos de 0,5 ns en 1001 -> 1010, 1011 -> 1100 y 1111 -> 0000;
+*   - contador B: un único pulso falso de 1,5 ns (el desalineo completo) en 1111 -> 0000.
+*   El pulso verdadero (cuenta 8) dura un periodo, unos 18,5 ns. La medida b_inicio3 termina con
+*   «out of interval»: es el resultado esperado, porque el contador B no da un tercer pulso.
+* Ejecutar: ngspice -b prob-29.C-decodificador.cir
+VCLK clk 0 PULSE(0 5 10n 0.01n 0.01n 9.99n 20n)
+VONE one 0 DC 5
+.model toDig adc_bridge(in_low=2.4 in_high=2.6 rise_delay=1p fall_delay=1p)
+.model toAna dac_bridge(out_low=0 out_high=5 t_rise=0.01n t_fall=0.01n)
+.model and_t d_and(rise_delay=0.5n fall_delay=0.5n)
+.model and_dec d_and(rise_delay=1p fall_delay=1p)
+.model t50 d_tff(clk_delay=5.0n ic=0 rise_delay=1p fall_delay=1p)
+.model t55 d_tff(clk_delay=5.5n ic=0 rise_delay=1p fall_delay=1p)
+.model t60 d_tff(clk_delay=6.0n ic=0 rise_delay=1p fall_delay=1p)
+.model t65 d_tff(clk_delay=6.5n ic=0 rise_delay=1p fall_delay=1p)
+Aad [clk one] [clkd hi] toDig
+* counter A
+AA0 hi clkd NULL NULL a0 na0 t50
+AA1 a0 clkd NULL NULL a1 na1 t55
+AAt2 [a0 a1] ta2 and_t
+AA2 ta2 clkd NULL NULL a2 na2 t60
+AAt3 [a0 a1 a2] ta3 and_t
+AA3 ta3 clkd NULL NULL a3 na3 t65
+AAdec [a3 na2 na1 na0] ya and_dec
+* counter B
+AB0 hi clkd NULL NULL b0 nb0 t50
+AB1 b0 clkd NULL NULL b1 nb1 t50
+ABt2 [b0 b1] tb2 and_t
+AB2 tb2 clkd NULL NULL b2 nb2 t50
+ABt3 [b0 b1 b2] tb3 and_t
+AB3 tb3 clkd NULL NULL b3 nb3 t65
+ABdec [b3 nb2 nb1 nb0] yb and_dec
+Ada [ya yb a3] [deca decb qa3] toAna
+.tran 0.01n 340n
+.control
+  run
+  echo "Flancos: el 8 (0111 -> 1000) a 150 ns, el 10 a 190 ns, el 12 a 230 ns, el 16 (1111 -> 0000) a 310 ns."
+  echo "Contador A: anchos de los pulsos 1 a 4 del decodificador (esperado 18,5 ns y tres de 0,5 ns)"
+  meas tran a_ancho1 trig v(deca) val=2.5 rise=1 targ v(deca) val=2.5 fall=1
+  meas tran a_ancho2 trig v(deca) val=2.5 rise=2 targ v(deca) val=2.5 fall=2
+  meas tran a_ancho3 trig v(deca) val=2.5 rise=3 targ v(deca) val=2.5 fall=3
+  meas tran a_ancho4 trig v(deca) val=2.5 rise=4 targ v(deca) val=2.5 fall=4
+  echo "Contador B: anchos de los pulsos 1 y 2 (esperado 18,5 ns y 1,5 ns; no debe haber un tercero)"
+  meas tran b_ancho1 trig v(decb) val=2.5 rise=1 targ v(decb) val=2.5 fall=1
+  meas tran b_ancho2 trig v(decb) val=2.5 rise=2 targ v(decb) val=2.5 fall=2
+  * no third pulse: ngspice reports "out of interval" for this measurement, which is the expected result
+  meas tran b_inicio3 when v(decb)=2.5 rise=3
+  echo "Transición 0111 -> 1000: la salida A no debe valer 1 antes de que suba el bit 3 (156,5 ns)"
+  meas tran a_subida1 when v(deca)=2.5 rise=1
+  meas tran a_max_antes max v(deca) from=150n to=156.4n
+.endc
+.end

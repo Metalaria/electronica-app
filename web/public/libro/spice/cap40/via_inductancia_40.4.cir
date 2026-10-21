@@ -1,0 +1,30 @@
+* Seccion 40.4 (Vias), «La inductancia, que es lo que mas pesa».
+* Una via pasante en placa de 1,6 mm se modela como una inductancia de 1,3 nH (fórmula clásica, taladro de 0,3 mm).
+* Comprueba las cifras del texto:
+*   - reactancia a 100 MHz: 0,82 ohm;
+*   - flanco de 2 ns con 20 mA: 13 mV;
+*   - ocho salidas conmutando a la vez (160 mA en 2 ns): 104 mV;
+*   - dos vias de desacoplo en serie: 2,6 nH (reactancia doble a 100 MHz, 1,63 ohm).
+* Ejecutar:  ngspice -b via_inductancia_40.4.cir
+* Resultado: 13,0 mV; 104 mV; 0,817 ohm; 1,634 ohm. Coincide con el texto.
+*
+* --- una salida: rampa de 20 mA en 2 ns por la via
+I1 0 n1 PWL(0 0 1n 0 3n 20m 10n 20m) AC 1
+L1 n1 0 1.3n
+* --- ocho salidas en paralelo por la misma via
+I8 0 n8 PWL(0 0 1n 0 3n 160m 10n 160m)
+L8 n8 0 1.3n
+* --- dos vias en serie (bucle de desacoplo), excitacion solo en AC
+I2 0 n2 DC 0 AC 1
+La n2 m2 1.3n
+Lb m2 0 1.3n
+.control
+tran 1p 10n
+meas tran v1 max v(n1)
+meas tran v8 max v(n8)
+ac lin 3 90meg 110meg
+meas ac z1 find vm(n1) at=100meg
+meas ac z2 find vm(n2) at=100meg
+echo "Texto: 18 mV, 144 mV, 1,13 ohm; dos vias 2,26 ohm"
+.endc
+.end

@@ -1,0 +1,46 @@
+* Problema 8.C y sección 8.8: multiplexor analógico delante de un ADC de 12 bits.
+*   a) Error estático: Ron = 100 Ohm frente a una entrada de 1 MOhm (0,01 %) y de 100 kOhm (0,1 %,
+*      4 LSB de 12 bits).
+*   b) Error dinámico: al conmutar de 0 V a fondo de escala (5 V), los 30 pF del muestreador se
+*      cargan a través de Ron. Tiempo hasta quedar a menos de 1 LSB (5 V / 4096 = 1,22 mV) del valor
+*      final: libro 25 ns con 100 Ohm (tau = 3 ns), 75 ns con 300 Ohm (tau = 9 ns) y unos 25 us si
+*      la fuente tiene 100 kOhm (tau = 3 us). El multiplexor es un interruptor ideal (SW) con
+*      Ron = 100 / 300 Ohm.
+* Ejecutar: ngspice -b prob-8.C.cir
+.model MUX100 SW (RON=100 ROFF=1e12 VT=2.5 VH=0)
+.model MUX300 SW (RON=300 ROFF=1e12 VT=2.5 VH=0)
+* ---- a) static error
+VA sa 0 DC 5
+SA1 sa ma ctla 0 MUX100
+RIN1 ma 0 1Meg
+VB sb 0 DC 5
+SB1 sb mb ctla 0 MUX100
+RIN2 mb 0 100k
+VCTLA ctla 0 DC 5
+* ---- b) channel switching at t = 10 ns: source 5 V, sampler 30 pF initially at 0 V
+VCTL ctl 0 PULSE(0 5 10n 1p 1p 1 2)
+VS1 s1 0 DC 5
+S1 s1 c1 ctl 0 MUX100
+C1 c1 0 30p IC=0
+VS2 s2 0 DC 5
+S2 s2 c2 ctl 0 MUX300
+C2 c2 0 30p IC=0
+VS3 s3 0 DC 5
+RS3 s3 s3b 100k
+S3 s3b c3 ctl 0 MUX100
+C3 c3 0 30p IC=0
+.control
+  op
+  echo "a) error estático (%) con 1 MOhm y con 100 kOhm, y en LSB de 12 bits:"
+  print 100*(5 - v(ma))/5 100*(5 - v(mb))/5 (5 - v(mb))/(5/4096)
+  tran 0.05n 200n uic
+  meas tran t100 when v(c1)=4.99878 rise=1
+  meas tran t300 when v(c2)=4.99878 rise=1
+  echo "b) tiempo de establecimiento a 1 LSB (ns), Ron = 100 y 300 Ohm [libro 25 y 75 ns]:"
+  print (t100 - 10n)*1e9 (t300 - 10n)*1e9
+  tran 10n 40u uic
+  meas tran t100k when v(c3)=4.99878 rise=1
+  echo "   con 100 kOhm de fuente (us) [libro unos 25 us]:"
+  print (t100k - 10n)*1e6
+.endc
+.end

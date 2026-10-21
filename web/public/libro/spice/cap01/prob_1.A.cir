@@ -1,0 +1,57 @@
+* Problema 1.A (sección 1.12): referencia de 3,3 V con un divisor desde 12 V.
+* R1 = 4,7 k, R2 = 1,8 k: 3,3231 V en vacío, 1,85 mA, Rth = 1,302 k.
+* Con la entrada de 47 k: 3,2335 V (-2,69 %, 90 mV menos). Con 10 k: 2,940 V (-11,5 %).
+* Peor caso sin seguidor (tolerancia 1 % y deriva no apareada de 100 ppm/°C en 30 °C, ambas en contra):
+* 3,174 V (-3,8 % respecto a 3,300 V). Con seguidor de tensión (operacional con ganancia 1e5 y un polo
+* en 10 Hz, modelado con una fuente controlada) el error de carga desaparece.
+* Ejecutar: ngspice -b prob_1.A.cir
+.param d=3e-3
+* vacío
+V0 a0 0 DC 12
+R10 a0 o0 4.7k
+R20 o0 0 1.8k
+* carga de 47 k
+V1 a1 0 DC 12
+R11 a1 o1 4.7k
+R21 o1 0 1.8k
+RL1 o1 0 47k
+* carga de 10 k
+V2 a2 0 DC 12
+R12 a2 o2 4.7k
+R22 o2 0 1.8k
+RL2 o2 0 10k
+* peor caso bajo: R1 +1 % y deriva +0,3 %, R2 -1 % y deriva -0,3 %, con 47 k
+V3 a3 0 DC 12
+R13 a3 o3 {4.7k*1.01*(1+d)}
+R23 o3 0 {1.8k*0.99*(1-d)}
+RL3 o3 0 47k
+* peor caso alto
+V4 a4 0 DC 12
+R14 a4 o4 {4.7k*0.99*(1-d)}
+R24 o4 0 {1.8k*1.01*(1+d)}
+RL4 o4 0 47k
+* con seguidor: operacional ideal salvo ganancia finita y un polo (E con red RC interna)
+V5 a5 0 DC 12
+R15 a5 o5 4.7k
+R25 o5 0 1.8k
+EOA x 0 o5 s 1e5
+RP x y 1k
+CP y 0 {1/(2*3.14159265*10*1k)}
+EBUF s 0 y 0 1
+RL5 s 0 47k
+.control
+op
+let i0 = (12-v(o0))/4.7k
+let rth = 4.7k*1.8k/6.5k
+print v(o0) i0 rth
+let e47 = 100*(v(o1)/v(o0)-1)
+let dv47 = 1000*(v(o0)-v(o1))
+let e10 = 100*(v(o2)/v(o0)-1)
+print v(o1) e47 dv47 v(o2) e10
+let elo = 100*(v(o3)/3.3-1)
+let ehi = 100*(v(o4)/3.3-1)
+print v(o3) elo v(o4) ehi
+let eseg = 100*(v(s)/v(o0)-1)
+print v(s) eseg
+.endc
+.end

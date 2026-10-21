@@ -1,0 +1,38 @@
+* Seccion 30.7 (Del circuito al algoritmo): el filtro RC paso bajo y su traduccion
+* a ecuacion en diferencias y[n] = a*x[n] + (1-a)*y[n-1], con a = dt/(RC + dt).
+* El libro da: RC = 1 ms, muestreo a 10 kHz (dt = 0,1 ms) -> a = 0,0909.
+* Circuito analogico: R = 1 kohm, C = 1 uF (RC = 1 ms), escalon de 1 V en t = 0.
+* Se comprueba:
+*   - .tran: respuesta al escalon del RC (63,2 % en t = RC = 1 ms) frente a la
+*     ecuacion en diferencias calculada en el bloque .control, muestra a muestra.
+*   - .ac: frecuencia de corte fc = 1/(2*pi*RC) = 159 Hz del RC analogico.
+* Ejecutar:  ngspice -b rc_digital_1ms.cir
+V1 in 0 PWL(0 0 1n 1) AC 1
+R1 in out 1k
+C1 out 0 1u IC=0
+.control
+tran 1u 5m uic
+meas tran v_rc FIND v(out) AT=1m
+meas tran v_rc3 FIND v(out) AT=3m
+ac dec 200 1 100k
+meas ac fc WHEN vdb(out)=-3.0103
+* ecuacion en diferencias del libro, 50 muestras a 10 kHz (5 ms)
+let dt = 1e-4
+let rc = 1e-3
+let a = dt/(rc+dt)
+print a
+let y = 0
+let n = 0
+while n < 50
+  let n = n + 1
+  let y = a*1 + (1-a)*y
+  if n = 10
+    print y
+  end
+  if n = 30
+    print y
+  end
+end
+quit
+.endc
+.end

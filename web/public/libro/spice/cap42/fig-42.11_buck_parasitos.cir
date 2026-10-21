@@ -1,0 +1,47 @@
+* cap42, seccion 42.8 «El caso del bucle critico» y figura 42.11
+* Reductor de 12 V a 5 V (500 kHz, ciclo 0,42, flancos de 2 ns) con y sin 20 nH en el
+* bucle condensador de entrada - interruptor - diodo. La capacidad del nodo de
+* conmutacion es 500 pF (diodo + interruptor + pista), como en la figura.
+* El interruptor es un SW de 20 mohm; el diodo, un Schottky sencillo (D con RS). La carga
+* es de 1 A (5 ohm) tras 10 uH y 100 uF. Para no simular milisegundos de arranque, la
+* bobina y el condensador de salida parten de su regimen (0,97 A y 4,85 V, con uic) y se
+* mide entre 20 y 22,5 us.
+* Lo que comprueba (ngspice 42):
+*   - sin la inductancia del bucle (Lloop = 1 pH) el nodo sube limpio: maximo 11,8 V;
+*   - con 20 nH aparece el pico y el timbre: periodo 19,9 ns, 50,3 MHz, igual que
+*     1/(2*pi*sqrt(20n*500p)) = 50,3 MHz, la frecuencia que marca la figura.
+* El pico depende del amortiguamiento del bucle, que la figura supone (zeta = 0,15 al
+* encender, pico de unos 20 V); aqui lo fija Rloop. Con Rloop = 0,3 ohm (ESR del
+* condensador + pistas + interruptor) el bucle esta poco amortiguado y el pico llega a
+* 23,0 V, casi 2 x 12 V. Con Rloop = 1,9 ohm (zeta = 0,15) da 18,8 V, el orden de la figura.
+* Nota: el diodo fija el nodo en -0,4 V al apagar; el valle de unos -5 V que dibuja la
+* figura exige inductancia tambien en el camino del diodo, que este netlist no incluye.
+* Ejecutar: ngspice -b fig-42.11_buck_parasitos.cir  (unos segundos)
+Vin vin 0 DC 12
+Cin vin 0 10u
+Rloop vin a 0.3
+Lloop a b 20n
+S1 b sw ctl 0 SWM
+.model SWM SW(RON=20m ROFF=10Meg VT=2.5 VH=0)
+Vctl ctl 0 PULSE(0 5 0 2n 2n 838n 2u)
+D1 0 sw DSCH
+.model DSCH D(IS=1e-6 RS=20m N=1.05 CJO=1p)
+Csw sw 0 500p
+Lo sw o 10u IC=0.97
+Co o 0 100u IC=4.85
+Rload o 0 5
+.control
+tran 0.05n 22.5u 20u 0.05n uic
+meas tran vpico MAX v(sw)
+meas tran vvalle MIN v(sw)
+* ringing period after the rising edge at t = 20 us: time between the first two maxima
+meas tran t1 WHEN v(sw)=12 RISE=1 from=20u
+meas tran t2 WHEN v(sw)=12 RISE=2 from=20u
+let periodo_ns = (t2 - t1)*1e9
+let f_mhz = 1000/periodo_ns
+print periodo_ns f_mhz
+alter lloop = 1p
+tran 0.05n 22.5u 20u 0.05n uic
+meas tran vpico_sin MAX v(sw)
+.endc
+.end

@@ -1,0 +1,105 @@
+* fig-6.14 y fig-43.8 / seccion 43.5: efecto Miller frente al cascodo
+* Parte A, modelo del libro (solo C_mu = 4 pF, sin r_pi ni C_pi, fuente de 1 k):
+*   emisor comun de la etapa de ejemplo (gm = 51,2 mS, RC = 3,3 k, |Av| = 169):
+*       C_mu*(1+169) = 680 pF -> 1/(2*pi*1k*680p) = 234 kHz
+*   cascodo: Q1 ve ~ 1/gm de carga (ganancia ~ -1), C_mu se duplica -> 8 pF -> ~ 20 MHz
+*   etapa de ganancia 100 (figura 43.8): 404 pF; 39,4 kHz con fuente de 10 k, 394 kHz con 1 k;
+*       cascodo con fuente de 10 k: 8 pF -> 1,99 MHz
+*   Los transistores se modelan como fuentes de corriente controladas (hibrido en pi
+*   con r_pi infinita) para reproducir exactamente la estimacion del texto.
+* Parte B, la misma etapa con un transistor completo (polarizacion de la seccion 43.3,
+*   C_mu = 4 pF constante, C_je = 4,5 pF y TF = 300 ps como un 2N3904, que dan C_pi ~ 20 pF):
+*   emisor comun real: ~ 330 kHz (la entrada de la etapa, 2,2 k, queda en paralelo con la fuente)
+*   cascodo real: unos pocos MHz, limitado por C_pi de Q1 y por C_mu de Q2 en la salida
+* Ejecutar:  ngspice -b fig-6.14_miller_cascodo.cir
+.param gm = 51.2m
+VS in 0 dc 0 ac 1
+* ---------------- Parte A ----------------
+* A1) emisor comun, Rs = 1 k
+RSa in ba 1k
+CMa ba ca 4p
+GQa ca 0 ba 0 {gm}
+RCa ca 0 3.3k
+* A2) cascodo, Rs = 1 k: Q1 entrega gm*vb al emisor de Q2 (entrada 1/gm, ganancia de corriente 1)
+RSb in bb 1k
+CMb bb xb 4p
+GQb xb 0 bb 0 {gm}
+VSEb xb yb 0
+REb yb 0 {1/gm}
+FQb 0 cb VSEb 1
+RCb cb 0 3.3k
+* A3) etapa de ganancia 100 (gm*RC = 100), fuente de 10 k y de 1 k; cascodo con fuente de 10 k
+RSc in bc 10k
+CMc bc cc 4p
+GQc cc 0 bc 0 {gm}
+RCc cc 0 {100/gm}
+RSd in bd 1k
+CMd bd cd 4p
+GQd cd 0 bd 0 {gm}
+RCd cd 0 {100/gm}
+RSe in be 10k
+CMe be xe 4p
+GQe xe 0 be 0 {gm}
+VSEe xe ye 0
+REe ye 0 {1/gm}
+FQe 0 ce VSEe 1
+RCe ce 0 {100/gm}
+* ---------------- Parte B ----------------
+.model QB NPN(IS=2.3e-15 BF=150 VAF=100 RB=10 CJC=4p MJC=0 VJC=100 CJE=4.5p MJE=0.26 VJE=0.75 TF=300p)
+VCC vcc 0 12
+* B1) emisor comun, divisor 47 k / 10 k, RC = 3,3 k, RE = 1 k puenteada, fuente de 1 k
+RSf in sf 1k
+CIf sf bf 1000u
+R1f vcc bf 47k
+R2f bf 0 10k
+RCf vcc cf 3.3k
+REf ef 0 1k
+CEf ef 0 1000u
+Q1f cf bf ef QB
+* B2) cascodo: misma Q1, Q2 con la base a 5 V (masa para la senal) y RC = 3,3 k
+RSg in sg 1k
+CIg sg bg 1000u
+R1g vcc bg 47k
+R2g bg 0 10k
+REg eg 0 1k
+CEg eg 0 1000u
+Q1g xg bg eg QB
+VB2 b2g 0 5
+Q2g cg b2g xg QB
+RCg vcc cg 3.3k
+.control
+ac dec 200 1k 1G
+let a1 = mag(v(ca))
+let a2 = mag(v(cb))
+let a3 = mag(v(cc))
+let a4 = mag(v(cd))
+let a5 = mag(v(ce))
+let a6 = mag(v(cf))
+let a7 = mag(v(cg))
+meas ac g1 find a1 at=1k
+meas ac g2 find a2 at=1k
+meas ac g6 find a6 at=1k
+meas ac g7 find a7 at=1k
+let l1 = g1/sqrt(2)
+let l2 = g2/sqrt(2)
+let l6 = g6/sqrt(2)
+let l7 = g7/sqrt(2)
+meas ac f1 when a1=l1 fall=1
+meas ac f2 when a2=l2 fall=1
+meas ac f3 when a3=70.71 fall=1
+meas ac f4 when a4=70.71 fall=1
+meas ac f5 when a5=70.71 fall=1
+meas ac f6 when a6=l6 fall=1
+meas ac f7 when a7=l7 fall=1
+echo "Parte A: ganancia EC y cascodo a 1 kHz (libro 169):"
+print g1 g2
+echo "Parte A: corte EC (libro 234 kHz) y cascodo (libro ~20 MHz):"
+print f1 f2
+echo "Figura 43.8: ganancia 100 con 10 k (39,4 kHz), con 1 k (394 kHz), cascodo con 10 k (1,99 MHz):"
+print f3 f4 f5
+echo "Parte B: ganancia EC y cascodo reales a 1 kHz:"
+print g6 g7
+echo "Parte B: corte EC real y cascodo real:"
+print f6 f7
+.endc
+.end

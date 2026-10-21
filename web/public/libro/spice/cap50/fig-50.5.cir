@@ -1,0 +1,92 @@
+* Figura 50.5 (sección 50.4, esquema de la fuente 0-30 V / 0-3 A) y cálculos de la sección 50.9.
+* Secundario: la continua bruta se modela como una fuente de continua (su valor de valle o el de vacío,
+* según el caso). Q1 TIP142 = Darlington (dos NPN con las resistencias internas de 8 kOhm y 120 Ohm).
+* Referencia TL431 = 2,5 V ideales. P1 da 0-2,5 V a la entrada + de A_V; divisor R1 = 22 k, R2 = 2 k
+* (Vout = 12 x V(P1)). Shunt R_S = 0,05 Ohm en la rama alta; el amplificador de sensado (ganancia 16,7,
+* valor no indicado en la figura) da 2,5 V con 3 A; P2 da la consigna a A_I. D1 y D2 (1N4148) forman
+* el OR: cada amplificador solo puede restar corriente de la base. R_B = 1 kOhm (valor no indicado en la
+* figura). Los operacionales son macromodelos de ganancia 1e5 con salida limitada a sus carriles
+* (+45 V / -5 V: la figura no dibuja su alimentación, y con la base a 32 V no puede ser menor).
+* Comprueba:
+*   a) Vout = 12 x V(P1): 5,00 V con 0,417 V y 30,0 V con 2,5 V (carga ligera, 100 Ohm).
+*   b) Límite de corriente: con P2 a 2,5 V, al bajar la carga la fuente pasa de CV a CC en 3,0 A.
+*   c) Sección 50.9: con la entrada en su valle de red baja (33,3 V con el secundario de 30 V) la fuente
+*      da 30 V a 3 A; con el valle del secundario de 24 V (29,2 V a red nominal) no llega a 30 V.
+*   d) Sección 50.9: disipación de Q1 a 5 V y 3 A con 43 V de entrada (unos 114 W) y en cortocircuito
+*      con la entrada en vacío y red alta, 48 V (144 W, cota pesimista del libro).
+* Ejecutar: ngspice -b fig-50.5.cir
+.model QD1 NPN(Is=1e-13 Bf=80 Vaf=100 Ikf=0.5 Rb=10 Rc=0.5)
+.model QD2 NPN(Is=1e-11 Bf=40 Vaf=100 Ikf=8 Rb=1 Re=0.02 Rc=0.05)
+.model D1N4148 D(Is=2.52n Rs=0.568 N=1.752 Cjo=4p Bv=100)
+
+* op-amp: gain 1e5, output clamped to the rails, 20 Ohm output resistance
+.subckt OPA inp inn out vp vn
+B1 n1 0 V = (V(vp)+V(vn))/2 + (V(vp)-V(vn)-1)/2*tanh(1e5*V(inp,inn)/((V(vp)-V(vn)-1)/2))
+RO n1 out 20
+.ends
+
+.subckt TIP142 c b e
+Q1 c b m QD1
+Q2 c m e QD2
+R1 b m 8k
+R2 m e 120
+.ends
+
+VRAW raw 0 DC 33.3
+VP pos 0 DC 45
+VN neg 0 DC -5
+VREF ref 0 DC 2.5
+* P1 and P2 wipers
+VP1 p1 0 DC 2.5
+VP2 p2 0 DC 2.5
+RB raw base 1k
+XQ1 raw base e TIP142
+RS e out 0.05
+* sense amplifier across R_S: 2.5 V at 3 A
+ESNS isns 0 e out 16.6667
+XAV p1 fb av pos neg OPA
+XAI p2 isns ai pos neg OPA
+D1 base av D1N4148
+D2 base ai D1N4148
+R1 out fb 22k
+R2 fb 0 2k
+D3 0 out D1N4148
+RL out 0 100
+
+.control
+  echo "a) Vout = 12 x V(P1) (100 Ohm de carga)"
+  alter VP1 dc = 0.41667
+  op
+  print v(out)
+  alter VP1 dc = 2.5
+  op
+  print v(out)
+  echo "b) barrido de la carga con 30 V de consigna y limite de 3 A"
+  foreach r 100 20 12 10 9 5 1 0.1
+    alter RL resistance = $r
+    op
+    echo "RL = $r Ohm:"
+    print v(out) v(out)/$r
+  end
+  echo "c) 30 V a 3 A (RL = 10 Ohm, limite de 3,3 A) segun la entrada"
+  alter VP2 dc = 2.75
+  alter RL resistance = 10
+  foreach vr 33.3 29.2 25.8
+    alter VRAW dc = $vr
+    op
+    echo "Entrada $vr V:"
+    print v(out)
+  end
+  echo "d) disipacion de Q1 (W)"
+  alter VP2 dc = 2.5
+  alter VRAW dc = 43
+  alter VP1 dc = 0.41667
+  alter RL resistance = 1.6667
+  op
+  print v(out) v(out)/1.6667 (v(raw)-v(e))*v(out)/1.6667
+  alter VRAW dc = 48
+  alter RL resistance = 0.001
+  op
+  print v(out)/0.001 (v(raw)-v(e))*v(out)/0.001
+.endc
+.end

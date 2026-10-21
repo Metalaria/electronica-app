@@ -1,0 +1,37 @@
+* Capitulo 45, figura 45.7 (seccion 45.4): optoacoplador con los valores del dibujo
+* Lado A: pulso logico de 5 V -> R1 = 330 ohm -> LED (unos 1,2 V) -> masa A: I_F = 11,5 mA.
+* Lado B: 3,3 V -> R2 = 4,7 kohm -> colector del fototransistor (salida) -> emisor -> masa B.
+* Las dos masas no se unen: el lado B se refiere a su masa con una resistencia de 1 Gohm solo para
+* que el simulador tenga referencia (representa la barrera de aislamiento).
+* Modelo: el LED es un diodo con N = 2 ajustado a 1,2 V con 11,5 mA; la luz se modela con una fuente
+* de corriente controlada (F) que inyecta en la base del fototransistor CTR/beta veces I_F, con
+* CTR = 50 % (minimo tipico de un PC817/4N35) y beta = 100 del modelo del transistor.
+* Resultados esperados: I_F de unos 11,5 mA con la entrada alta; la salida cae casi a 0 V (saturado:
+* el colector solo puede tomar 3,3 V / 4,7 kohm = 0,7 mA, muy por debajo de CTR x I_F = 5,7 mA) y
+* vuelve a 3,3 V con el LED apagado: pulso invertido, como dibuja la figura.
+* Ejecutar: ngspice -b fig-45.7_optoacoplador.cir
+.model LEDIR D(IS=9.687e-13 N=2)
+.model QPH NPN(IS=1e-14 BF=100 VAF=100 CJC=8p CJE=10p TF=0.5n TR=10n)
+
+VIN in 0 PULSE(0 5 10u 100n 100n 100u 200u)
+R1 in a 330
+VSENSE a a2 DC 0
+D1 a2 0 LEDIR
+* light coupling: base photocurrent = (CTR/beta) * I_F
+F1 gb b VSENSE 0.005
+RISO gb 0 1G
+
+VCC vcc gb DC 3.3
+R2 vcc out 4.7k
+Q1 out b gb QPH
+
+.tran 0.1u 300u
+.control
+run
+let vo = v(out)-v(gb)
+meas tran if_on find i(VSENSE) at=50u
+meas tran vout_on find vo at=50u
+meas tran vout_off find vo at=150u
+meas tran if_off find i(VSENSE) at=150u
+.endc
+.end

@@ -1,0 +1,98 @@
+* fig-43.6 y fig-43.11 / secciones 43.3 y 43.4: las tres configuraciones basicas
+* Etapa de ejemplo del capitulo 6 que usa la seccion 43.3: VCC = 12 V, divisor 47 k / 10 k,
+* RC = 3,3 k, RE = 1 k, beta = 150 (IC = 1,324 mA, gm = 51,2 mS, re = 19,5 ohm).
+* Numeros del libro que se comprueban (.op y .ac a 1 kHz, condensadores de 1000 uF):
+*   punto de trabajo                     IC = 1,324 mA
+*   emisor comun con CE                  Av = -169; Zin = 47k || 10k || beta*re = 2,16 kohm
+*                                        Zout ~ RC || ro (VA = 100 V, ro ~ 75 kohm) ~ 3,3 kohm
+*   emisor comun sin CE (seccion 43.4)   Av = -RC/(re+RE) = -3,24; Zin ~ 7,8 kohm
+*   colector comun                       Av = RE/(re+RE) = 0,981; Zin en la base ~ 153 kohm,
+*                                        con el divisor ~ 7,8 kohm; Zout con fuente de 1 k ~ 26 ohm
+*   base comun                           Av = +169; Zin ~ re = 19,5 ohm (en paralelo con RE)
+* Ejecutar:  ngspice -b fig-43.6_configuraciones.cir
+.model QA NPN(IS=2.3e-15 BF=150 VAF=1e6)
+.model QE NPN(IS=2.3e-15 BF=150 VAF=100)
+VCC vcc 0 12
+VS in 0 dc 0 ac 1
+* --- 1) emisor comun con CE ---
+R1a vcc b1 47k
+R2a b1 0 10k
+RCa vcc c1 3.3k
+REa e1 0 1k
+CEa e1 0 1000u
+Vm1 in m1 0
+Cia m1 b1 1000u
+Q1 c1 b1 e1 QA
+* --- 2) emisor comun con CE y VA = 100 V: Zout por inyeccion de 1 A ac en el colector ---
+R1b vcc b2 47k
+R2b b2 0 10k
+RCb vcc c2 3.3k
+REb e2 0 1k
+CEb e2 0 1000u
+Cib b2 0 1000u
+IZb 0 c2 dc 0 ac 1
+Q2 c2 b2 e2 QE
+* --- 3) emisor comun sin CE ---
+R1c vcc b3 47k
+R2c b3 0 10k
+RCc vcc c3 3.3k
+REc e3 0 1k
+Vm3 in m3 0
+Cic m3 b3 1000u
+Q3 c3 b3 e3 QA
+* --- 4) colector comun (seguidor), excitado sin fuente: ganancia y Zin ---
+R1d vcc b4 47k
+R2d b4 0 10k
+REd e4 0 1k
+Vm4 in m4 0
+Cid m4 b4 1000u
+Q4 vcc b4 e4 QA
+* --- 5) base comun ---
+R1e vcc b5 47k
+R2e b5 0 10k
+RCe vcc c5 3.3k
+REe e5 0 1k
+CBe b5 0 1000u
+Vm5 in m5 0
+Cie m5 e5 1000u
+Q5 c5 b5 e5 QA
+* --- 6) seguidor con fuente de 1 k a masa: Zout por inyeccion de 1 A ac en el emisor ---
+R1h vcc b8 47k
+R2h b8 0 10k
+REh e8 0 1k
+RSh s8 0 1k
+Cih s8 b8 1000u
+Cout e8 x8 1000u
+IZ 0 x8 dc 0 ac 1
+* camino de continua para el nodo de medida (no altera la Zout de ~25 ohm)
+Rx8 x8 0 1G
+Q8 vcc b8 e8 QA
+.control
+op
+let ic = (12-v(c1))/3.3k
+echo "IC (libro 1,324 mA):"
+print ic
+ac lin 1 1k 1k
+let av1 = mag(v(c1))
+let av3 = mag(v(c3))
+let av4 = mag(v(e4))
+let av5 = mag(v(c5))
+let zin1 = 1/mag(i(vm1))
+let zin3 = 1/mag(i(vm3))
+let zin4 = 1/mag(i(vm4))
+let ib4 = mag(i(vm4)) - mag(v(b4))/47k - mag(v(b4))/10k
+let zb4 = mag(v(b4))/ib4
+let zin5 = 1/mag(i(vm5))
+let zout2 = mag(v(c2))
+let zout8 = mag(v(x8))
+echo "EC con CE: |Av| (169), Zin (2,16 k), Zout con VA = 100 V (~3,3 k):"
+print av1 zin1 zout2
+echo "EC sin CE: |Av| (3,24), Zin (7,8 k):"
+print av3 zin3
+echo "Seguidor: Av (0,981), Zin en la base (153 k), Zin total (7,8 k), Zout con fuente 1 k (26 ohm):"
+print av4 zb4 zin4 zout8
+echo "Base comun: Av (+169), fase (0 rad), Zin (19,5 ohm || 1 k):"
+let ph5 = ph(v(c5))
+print av5 ph5 zin5
+.endc
+.end

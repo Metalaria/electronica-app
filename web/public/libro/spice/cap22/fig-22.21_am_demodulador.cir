@@ -1,0 +1,49 @@
+* Capitulo 22, seccion 22.12 (Practica 12), figura 22.21: AM y su demodulador de diodo
+* Portadora de 100 kHz modulada al 50 % por 1 kHz: v = 2 (1 + 0,5 cos(2 pi 1k t)) cos(2 pi 100k t).
+* Comprueba:
+*   - A_max = 3 V, A_min = 1 V, m = (3 - 1)/(3 + 1) = 0,5;
+*   - con .four sobre la portadora: bandas laterales a 99 y 101 kHz con m/2 = 0,25 de la
+*     portadora (-12 dB) (se evalua con la fundamental de 1 kHz: armonicos 99, 100 y 101;
+*     interesa la columna Norm. Mag, la relacion 0,25 entre lineas);
+*   - demodulador de diodo (1N4148) con RC: R = 10 k y C = 10 nF (tau = 100 us, entre los 10 us
+*     de la portadora y el 1 ms de la moduladora) recupera el tono de 1 kHz; con C = 1 nF queda
+*     rizado de portadora y con C = 100 nF aparece el corte diagonal (la salida no sigue la bajada).
+* Ejecutar: ngspice -b fig-22.21_am_demodulador.cir
+.model D1N4148 D(IS=2.52n RS=0.568 N=1.752 CJO=4p M=0.4 TT=20n BV=100 IBV=100u)
+BAM am 0 V = 2*(1+0.5*cos(2*pi*1k*time))*cos(2*pi*100k*time)
+RAM am 0 1MEG
+D1 am o1 D1N4148
+R1 o1 0 10k
+C1 o1 0 10n
+D2 am o2 D1N4148
+R2 o2 0 10k
+C2 o2 0 1n
+D3 am o3 D1N4148
+R3 o3 0 10k
+C3 o3 0 100n
+.tran 20n 6m 2m 20n
+.options nofreeze
+.control
+run
+meas tran amax max v(am)
+let m = (amax - 1)/(amax + 1)
+print m
+set nfreqs=102
+fourier 1k v(am)
+meas tran o1max max v(o1) from=3m to=6m
+meas tran o1min min v(o1) from=3m to=6m
+meas tran o3max max v(o3) from=3m to=6m
+meas tran o3min min v(o3) from=3m to=6m
+let ampl_ok = (o1max-o1min)/2
+let ampl_diag = (o3max-o3min)/2
+print ampl_ok ampl_diag
+* rizado de portadora con C = 1 nF: variacion pico a pico en un ciclo de portadora cerca del maximo
+meas tran o2a max v(o2) from=4.95m to=5.05m
+meas tran o2b min v(o2) from=4.95m to=5.05m
+meas tran o1a max v(o1) from=4.95m to=5.05m
+meas tran o1b min v(o1) from=4.95m to=5.05m
+let riz_1n = o2a - o2b
+let riz_10n = o1a - o1b
+print riz_1n riz_10n
+.endc
+.end

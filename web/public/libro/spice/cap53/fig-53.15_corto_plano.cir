@@ -1,0 +1,53 @@
+* Figura 53.15 y seccion 53.9 (Localizar un cortocircuito sin desoldar), ejercicio 53.1.
+* El camino de cobre entre el punto de inyeccion y el corto se modela como una tira de 12
+* cuadros de 0,491 mohm (35 um) o de 0,2457 mohm (70 um) en serie; la fuente en modo CC inyecta
+* la corriente y el corto la devuelve a masa. El Brymen en REL mide respecto al punto de inyeccion.
+* El texto da: 9,8 uV por cuadro con 20 mA, 49,1 uV con 100 mA y 245,7 uV con 500 mA;
+* ejercicio 53.1: 24,6 uV por cuadro y unos 295 uV en 12 cuadros con 50 mA, y la mitad
+* (unos 147 uV) con 70 um.
+* Ejecutar:  ngspice -b fig-53.15_corto_plano.cir
+.param rsq35 = {1.72e-8/35e-6}
+.param rsq70 = {1.72e-8/70e-6}
+.subckt tira12 a b rsq=1
+R1 a n1 {rsq}
+R2 n1 n2 {rsq}
+R3 n2 n3 {rsq}
+R4 n3 n4 {rsq}
+R5 n4 n5 {rsq}
+R6 n5 n6 {rsq}
+R7 n6 n7 {rsq}
+R8 n7 n8 {rsq}
+R9 n8 n9 {rsq}
+R10 n9 n10 {rsq}
+R11 n10 n11 {rsq}
+R12 n11 b {rsq}
+.ends
+* corriente inyectada (fuente de corriente ideal, modo CC), corto franco a masa al final
+I20  0 a20  DC 20m
+X20  a20 k20 tira12 rsq={rsq35}
+Rk20 k20 0 1u
+I50  0 a50  DC 50m
+X50  a50 k50 tira12 rsq={rsq35}
+Rk50 k50 0 1u
+I50b 0 a50b DC 50m
+X50b a50b k50b tira12 rsq={rsq70}
+Rk50b k50b 0 1u
+I100 0 a100 DC 100m
+X100 a100 k100 tira12 rsq={rsq35}
+Rk100 k100 0 1u
+I500 0 a500 DC 500m
+X500 a500 k500 tira12 rsq={rsq35}
+Rk500 k500 0 1u
+.control
+op
+* lectura en REL respecto al punto de inyeccion, un cuadro mas alla
+let uv_cuadro_20m  = 1e6*(v(a20)-v(x20.n1))
+let uv_cuadro_50m  = 1e6*(v(a50)-v(x50.n1))
+let uv_cuadro_100m = 1e6*(v(a100)-v(x100.n1))
+let uv_cuadro_500m = 1e6*(v(a500)-v(x500.n1))
+let uv_12_50m_35um = 1e6*(v(a50)-v(k50))
+let uv_12_50m_70um = 1e6*(v(a50b)-v(k50b))
+print uv_cuadro_20m uv_cuadro_50m uv_cuadro_100m uv_cuadro_500m
+print uv_12_50m_35um uv_12_50m_70um
+.endc
+.end

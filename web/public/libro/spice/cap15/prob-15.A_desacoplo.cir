@@ -1,0 +1,58 @@
+* Capitulo 15, problema 15.A (hasta que frecuencia sirve el desacoplo) y tabla de la
+* seccion 15.7 (impedancia del condensador frente a la del bucle), figura 15.10.
+* Cada rama se excita con una fuente de corriente AC de 1 A: la tension del nodo es la
+* impedancia en ohmios. Condensadores ideales (sin ESR ni ESL propias) para comparar con el
+* calculo del texto; una ESR de 1 mohm evita la impedancia nula en la resonancia.
+* Comprueba:
+*   - problema 15.A (100 nF + 15 nH de hilos): X_C = 1,592 / 0,159 / 0,016 ohm y
+*     X_L = 0,094 / 0,942 / 9,425 ohm a 1 / 10 / 100 MHz; resonancia serie a 4,11 MHz;
+*   - seccion 15.7: a 10 MHz, 100 nF -> 159 mohm y bucle de 10 nH -> 628 mohm (unas cuatro
+*     veces mas); con el bucle, |Z| total de 100 nF y de 10 uF: cambiar a 10 uF no mejora nada
+*     a 10 MHz (de hecho empeora algo, porque ya no compensa parte de la inductancia).
+* Ejecutar: ngspice -b prob-15.A_desacoplo.cir
+
+* problema 15.A
+IC1 0 nc1 AC 1
+C1 nc1 0 100n
+IL1 0 nl1 AC 1
+L1 nl1 0 15n
+IS1 0 ns1 AC 1
+RS1 ns1 m1 1m
+LS1 m1 m2 15n
+CS1 m2 0 100n
+
+* seccion 15.7: bucle de 10 nH con 100 nF y con 10 uF
+IL2 0 nl2 AC 1
+L2 nl2 0 10n
+IS2 0 ns2 AC 1
+RS2 ns2 k1 1m
+LS2 k1 k2 10n
+CS2 k2 0 100n
+IS3 0 ns3 AC 1
+RS3 ns3 j1 1m
+LS3 j1 j2 10n
+CS3 j2 0 10u
+
+.control
+ac dec 200 100k 1g
+let zc = abs(v(nc1))
+let zl = abs(v(nl1))
+let zs = abs(v(ns1))
+meas ac xc_1m find zc at=1meg
+meas ac xc_10m find zc at=10meg
+meas ac xc_100m find zc at=100meg
+meas ac xl_1m find zl at=1meg
+meas ac xl_10m find zl at=10meg
+meas ac xl_100m find zl at=100meg
+meas ac zmin min zs
+meas ac f_res when zc=zl
+meas ac zs_100m find zs at=100meg
+echo "seccion 15.7, a 10 MHz:"
+let zl10 = abs(v(nl2))
+let z100n = abs(v(ns2))
+let z10u = abs(v(ns3))
+meas ac xl10n_10m find zl10 at=10meg
+meas ac z100n_bucle_10m find z100n at=10meg
+meas ac z10u_bucle_10m find z10u at=10meg
+.endc
+.end

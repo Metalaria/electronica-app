@@ -1,0 +1,36 @@
+* Capitulo 22, seccion 22.4 (Practica 4), figura 22.9: puente con condensador
+* Mismo secundario (9 V eficaces, 0,5 ohm), puente de 1N4007, 1 000 uF, 108 ohm (~100 mA).
+* Comprueba: tension tras el puente ~11 V (12,7 - 1,4 con caida constante), rizado a 100 Hz
+* aproximadamente la mitad que en media onda (formula: 1,0 V frente a 2,0 V), pico de corriente
+* menor que en media onda y media de 50 mA por diodo.
+* Secundario flotante (RF de 1 MEG a masa); negativo del puente a masa.
+* Ejecutar: ngspice -b fig-22.9_puente.cir
+.model D1N4007 D(IS=7.02767n RS=0.0341512 N=1.80803 EG=1.05743 XTI=5 BV=1000 IBV=5e-08
++ CJO=1e-11 VJ=0.7 M=0.5 FC=0.5 TT=1e-07)
+VS s b SIN(0 12.728 50)
+RS s x 0.5
+VM x a DC 0
+D1 a p D1N4007
+D2 b p D1N4007
+D3 0 a D1N4007
+D4 0 b D1N4007
+RF b 0 1MEG
+C1 p 0 1000u
+RL p 0 108
+.tran 10u 0.5 0 10u
+.control
+run
+meas tran vmax max v(p) from=0.40 to=0.50
+meas tran vmin min v(p) from=0.40 to=0.50
+let rizado = vmax - vmin
+print rizado
+meas tran vmed avg v(p) from=0.40 to=0.50
+let icarga = vmed/108
+print icarga
+meas tran ipico max i(VM) from=0.40 to=0.50
+let iabs = abs(i(VM))
+meas tran imed_sec avg iabs from=0.40 to=0.50
+let imed_diodo = imed_sec/2
+print imed_diodo
+.endc
+.end

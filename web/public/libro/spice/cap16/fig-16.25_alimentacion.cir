@@ -1,0 +1,58 @@
+* Figura 16.25 (esquema simplificado), figura 16.26 (esquema original) y secciones 16.6, 16.8.6 y
+* 16.11.2: reparto de la alimentación del FM7303 y polarización del buffer BG1 (9018).
+* Del esquema V3.0r7: CZ1 12 V -> K4 -> raíl de 12 V (IC2, IC3 por R12 75 Ohm, IC5);
+*   R13 220 Ohm -> raíl de 8 V del decodificador IC4 (C33 0,01 µF, C34 100 µF);
+*   IC7 78L06 -> 6 V -> L3 100 µH -> 5,9 V (IC1 TA7358AP, buffer BG1, entrada del AMS1117);
+*   IC6 AMS1117-3.3 -> D3 1N60P (germanio) -> unos 3,1 V para el módulo SC3610D.
+* Modelos y supuestos: reguladores como fuentes ideales (el AMS1117 copia en su entrada la corriente de
+* salida más 5 mA de reposo); L3 con 6 Ohm de resistencia de hilo (supuesto, del orden
+* de una bobina axial de 100 µH); IC1 como 6 mA (la hoja de
+* datos del TA7358AP da 5,2 mA típicos a 3 V); módulo de display como 3 mA (supuesto); IC4 + LED de
+* estéreo como 18 mA, la corriente que hace caer 4 V en R13 (12 V - 8 V = 220 Ohm x 18 mA); D3 con un
+* modelo genérico de germanio. BG1 con un modelo NPN tipo 2N3904 (BF = 100).
+* Comprueba: 5,9 V en IC1 (unos 16 mA por L3 dan los 0,1 V de caída del esquema), unos 3,05 V en el
+* display (3,3 V menos 0,2-0,3 V del 1N60P; 3,1 V con 1 mA), 8,0 V en IC4, y el punto de trabajo del
+* seguidor de emisor BG1: Ie de unos 2,1 mA, emisor a unos 0,7 V, colector a 5,84 V (tras R1).
+* Ejecutar: ngspice -b fig-16.25_alimentacion.cir
+.model GE1N60 D (IS=2u N=1.2 RS=5 CJO=1p BV=40)
+.model Q9018 NPN (IS=1e-14 BF=100 VAF=100 CJE=1p CJC=0.8p TF=0.3n)
+V12 v12 0 DC 12
+* 8 V rail for IC4 through R13
+R13 v12 v8 220
+C34 v8 0 100u
+I_IC4 v8 0 DC 18m
+* 78L06 and L3
+V78 v6 0 DC 6
+LL3 v6 l3m 100u
+RL3 l3m v59 6
+C12 v59 0 100u
+I_IC1 v59 0 DC 6m
+* oscillator buffer BG1 (R1 30 Ohm feed, R2 220k collector-base bias, R3 330 Ohm emitter)
+R1 v59 vc1 30
+C10 vc1 0 0.01u
+R2 vc1 vb1 220k
+Q1 vc1 vb1 ve1 Q9018
+R3 ve1 0 330
+* AMS1117-3.3: ideal 3.3 V output; input current = output current + 5 mA
+V33 v33 0 DC 3.3
+F_ams v59 0 V33 -1
+I_ams_q v59 0 DC 5m
+D3 v33 vdisp GE1N60
+C32 vdisp 0 0.01u
+I_disp vdisp 0 DC 3m
+.control
+  op
+  echo "Raíles (V): 8 V de IC4, 5,9 V de IC1, display tras D3; buffer BG1: colector, base, emisor"
+  print v(v8) v(v59) v(vdisp) v(vc1) v(vb1) v(ve1)
+  let ic_bg1 = v(ve1)/330
+  echo "Corriente de emisor de BG1 (A):"
+  print ic_bg1
+  echo "Caída en D3 (V):"
+  print v(v33)-v(vdisp)
+  * display current sweep: how the 1N60P drop changes with the module current
+  dc I_disp 1m 20m 1m
+  meas dc vdisp_1mA find v(vdisp) at=1m
+  meas dc vdisp_5mA find v(vdisp) at=5m
+  meas dc vdisp_20mA find v(vdisp) at=20m
+.endc
+.end

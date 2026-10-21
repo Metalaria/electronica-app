@@ -1,0 +1,36 @@
+* seccion 6.7 (La disipacion, en los tres estados) y problema 6.C
+* Carga de 24 ohm a 12 V (500 mA). El transistor se modela como una fuente de corriente
+* controlada que recorre los flancos en t_conm = 1 us, para aislar la energia del flanco:
+*   - carga resistiva: la corriente sube en rampa y la tension baja a la vez -> V*I*t/6
+*     por flanco (libro: la tercera parte de la cota V*I*t/2)
+*   - carga inductiva fijada por diodo: la tension sube entera con la corriente constante
+*     y despues cae la corriente -> V*I*t/2 por flanco (cota pesimista del libro)
+* Con P = V*I*t*f (dos flancos de V*I*t/2): 1 kHz -> 6 mW, 20 kHz -> 120 mW, 100 kHz -> 600 mW.
+* Conduccion: 0,2 V x 0,5 A = 100 mW (calculo directo, no se simula aqui).
+* Ejecutar:  ngspice -b sec-6.7_perdidas_conmutacion.cir
+* --- resistiva: rampa de 0 a 0,5 A en 1 us (encendido en t = 10 us) ---
+VCC vcc 0 12
+RL vcc c 24
+BI c 0 I = 0.5*min(max((time-10u)/1u,0),1) * (v(c) > 0.2 ? 1 : 0)
+* --- inductiva fijada (corriente de carga constante 0,5 A, diodo ideal a 12 V) ---
+* primero la tension pasa de 0 a 12 V con 0,5 A (0,5 us), luego la corriente cae (0,5 us)
+BV2 c2 0 V = 12*min(max((time-10u)/0.5u,0),1)
+BI2 0 c2 I = 0.5*(1 - min(max((time-10.5u)/0.5u,0),1))
+.control
+tran 1n 15u
+let pr = v(c)*0.5*min(max((time-10u)/1u,0),1)
+let pi = v(c2)*abs(i(BV2))
+meas tran er integ pr from=10u to=12u
+meas tran ei integ pi from=10u to=12u
+let vit = 12*0.5*1u
+let fr = er/vit
+let fi = ei/vit
+echo "Energia por flanco / (V*I*t): resistiva (1/6 = 0,1667) e inductiva (1/2):"
+print er ei fr fi
+let p1k = 2*ei*1k
+let p20k = 2*ei*20k
+let p100k = 2*ei*100k
+echo "Perdidas con dos flancos inductivos a 1, 20 y 100 kHz (libro 6, 120 y 600 mW):"
+print p1k p20k p100k
+.endc
+.end

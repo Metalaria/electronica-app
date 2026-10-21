@@ -1,0 +1,57 @@
+* Capítulo 49, sección 49.2 (presupuesto por fases) y figura 48.2: perfil de corriente de la
+* estación a pilas a 3,3 V, integrado para obtener la carga por ciclo, la corriente media y la
+* energía de un envío. Cifras del libro:
+*   reposo 10 uA; medir 25 mA durante 0,4 s; conectar y transmitir 150 mA de media durante 3 s;
+*   ciclo de 300 s.
+* Dos casos:
+*   A) envío en cada medida: 463 000 uA s por ciclo, 1,54 mA de media, 13 500 mAh al año;
+*   B) envío cada hora (12 medidas y un envío): 50 500 uA s por ciclo de 5 min, 0,17 mA de media,
+*      unos 1 500 mAh al año (dos años con 3 000 mAh).
+* Además, la energía de un envío a 3,3 V: 0,15 A x 3 s x 3,3 V = 1,49 J (unos 1,5 J, la cifra que
+* usa la sección 39.4).
+* La carga se modela como una fuente de corriente (PWL) que la batería VB entrega; las medidas
+* integran i(VB) y la potencia.
+* Ejecutar: ngspice -b sec-49.2_presupuesto_ciclo.cir
+
+VB bat 0 DC 3.3
+* case A: one 300 s cycle: measure 0.4 s at 25 mA, then transmit 3 s at 150 mA, then sleep
+IA bat 0 PWL(0 10u 1 10u 1.001 25m 1.401 25m 1.402 150m 4.402 150m 4.403 10u 302 10u)
+* case B: one hour: 12 measurements, the first followed by the transmission
+VB2 bat2 0 DC 3.3
+IB bat2 0 PWL(0 10u
++ 1 10u 1.001 25m 1.401 25m 1.402 150m 4.402 150m 4.403 10u
++ 301 10u 301.001 25m 301.401 25m 301.402 10u
++ 601 10u 601.001 25m 601.401 25m 601.402 10u
++ 901 10u 901.001 25m 901.401 25m 901.402 10u
++ 1201 10u 1201.001 25m 1201.401 25m 1201.402 10u
++ 1501 10u 1501.001 25m 1501.401 25m 1501.402 10u
++ 1801 10u 1801.001 25m 1801.401 25m 1801.402 10u
++ 2101 10u 2101.001 25m 2101.401 25m 2101.402 10u
++ 2401 10u 2401.001 25m 2401.401 25m 2401.402 10u
++ 2701 10u 2701.001 25m 2701.401 25m 2701.402 10u
++ 3001 10u 3001.001 25m 3001.401 25m 3001.402 10u
++ 3301 10u 3301.001 25m 3301.401 25m 3301.402 10u
++ 3602 10u)
+.options noacct
+
+.control
+set noaskquit
+tran 1m 3601
+* case A: one 300 s cycle, from 0.5 s to 300.5 s
+meas tran qA_As INTEG i(VB) FROM=0.5 TO=300.5
+let qA_uAs = -qA_As*1e6
+let iA_mA = -qA_As/300*1e3
+let yearA_mAh = -qA_As*105120/3.6
+print qA_uAs iA_mA yearA_mAh
+meas tran etx_J INTEG i(VB) FROM=1.4015 TO=4.4025
+let etx = -etx_J*3.3
+print etx
+* case B, one hour = 12 cycles
+meas tran qB_As INTEG i(VB2) FROM=0.5 TO=3600.5
+let qB_uAs_cycle = -qB_As/12*1e6
+let iB_mA = -qB_As/3600*1e3
+let yearB_mAh = -qB_As/12*105120/3.6
+let years3000 = 3000/(iB_mA*8766)
+print qB_uAs_cycle iB_mA yearB_mAh years3000
+.endc
+.end

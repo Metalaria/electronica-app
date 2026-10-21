@@ -1,0 +1,39 @@
+* Figura 28.6 (valores de la sección 33.2) y ejercicio 28.3: convertidor reductor (buck).
+* Vin = 12 V, interruptor ideal (SW, 10 mOhm cerrado) a fs = 300 kHz, diodo de libre circulación
+* con el cátodo en el nodo de conmutación y el ánodo a masa (Schottky), L = 47 uH,
+* C = 100 uF con ESR de 50 mOhm, carga de 2,5 Ohm (2 A).
+* Comprueba:
+*   - con D = 0,417: Vout ~ D*Vin = 5 V (algo menos por la caída del diodo durante 1 - D);
+*     rizado de corriente en la bobina dI = (Vin - Vout)*D/(L*fs) = 207 mA; rizado de salida
+*     ~ dI*ESR = 10 mV (la parte capacitiva, dI/(8*C*fs), es menos de 1 mV);
+*   - con D = 0,4 (ejercicio 28.3): Vout ~ 0,4*12 = 4,8 V, menos la misma caída del diodo.
+* Ejecutar: ngspice -b fig-28.6_buck.cir
+.model SWM SW (VT=0.5 VH=0 RON=10m ROFF=10Meg)
+.model DSCH D (IS=10u N=1.05 RS=20m CJO=100p BV=40)
+.param DUTY=0.417 FSW=300k
+VIN vin 0 DC 12
+VG g 0 PULSE(0 1 0 1n 1n {DUTY/FSW-2n} {1/FSW})
+S1 vin sw g 0 SWM
+DF 0 sw DSCH
+L1 sw il 47u
+VIL il out DC 0
+C1 out esr 100u
+RESR esr 0 50m
+RL out 0 2.5
+.control
+  foreach dd 0.417 0.4
+    alterparam DUTY = $dd
+    reset
+    tran 20n 3m 0
+    meas tran vout avg v(out) from=2.5m to=3m
+    meas tran ilmax max i(VIL) from=2.9m to=3m
+    meas tran ilmin min i(VIL) from=2.9m to=3m
+    meas tran vomax max v(out) from=2.9m to=3m
+    meas tran vomin min v(out) from=2.9m to=3m
+    let di = ilmax - ilmin
+    let dv = vomax - vomin
+    echo "D = $dd: Vout media (V), rizado de corriente en L (A), rizado de salida (V):"
+    print vout di dv
+  end
+.endc
+.end

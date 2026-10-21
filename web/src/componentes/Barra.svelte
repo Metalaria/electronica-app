@@ -14,6 +14,8 @@
     if (ruta.vista === 'inicio') return 'Inicio';
     if (ruta.vista === 'glosario') return 'Glosario';
     if (ruta.vista === 'marcadores') return 'Marcadores y notas';
+    if (ruta.vista === 'simulador') return 'Simulador';
+    if (ruta.vista === 'componentes') return 'Componentes animados';
     return info ? (info.titulo.split(' — ')[0] ?? info.titulo) : '';
   });
   const rotulo = $derived(info && ruta.vista === 'parte' ? rotuloParte(ruta.parte) : '');

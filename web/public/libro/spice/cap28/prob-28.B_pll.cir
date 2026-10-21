@@ -1,0 +1,36 @@
+* Problema 28.B: tiempo de enganche de un PLL según su ancho de banda (modelo lineal de fase).
+* Lazo de tipo 2 y segundo orden (bomba de carga con filtro R-C serie y VCO integrador),
+* normalizado: H(s) = (2*zeta*wn*s + wn^2)/(s^2 + 2*zeta*wn*s + wn^2), con zeta = 0,707.
+* Las «tensiones» son fases (o frecuencias): e = entrada - salida; la bomba de carga inyecta
+* K*e en R + 1/(sC) con C = 1 F, y el VCO integra esa tensión (G en un condensador de 1 F).
+* Con C = 1: wn^2 = K y 2*zeta*wn = K*R.
+* El ancho de banda a -3 dB de este H es 2,06*wn; se elige wn para que valga 100 kHz y 20 kHz.
+* Comprueba: asentamiento al 5 % de un salto de frecuencia en unos 1,4/BW, es decir, unos 14 us con
+* 100 kHz y unos 70 us con 20 kHz (los números de la tabla del problema).
+* Ejecutar: ngspice -b prob-28.B_pll.cir
+.param BW=100k ZETA=0.707
+.param WN={2*3.14159265359*BW/2.058}
+.param K={WN*WN} RR={2*ZETA/WN}
+VIN in 0 DC 0 PULSE(0 1 0 1p 1p 1 2) AC 1
+EERR e 0 in out 1
+GCP 0 f e 0 {K}
+RF f f1 {RR}
+CF f1 0 1
+GVCO 0 out f 0 1
+CVCO out 0 1
+.control
+  foreach bwv 100k 20k
+    alterparam BW = $bwv
+    reset
+    ac dec 200 1k 10Meg
+    meas ac f3db when vdb(out)=-3.0103 fall=1
+    set bwm = "$&f3db"
+    tran 10n 400u 0 uic
+    let err = abs(v(out) - 1)
+    meas tran tset when err=0.05 fall=last
+    set tsm = "$&tset"
+    echo "BW pedido $bwv: BW medido $bwm Hz; tiempo de enganche al 5 %: $tsm s"
+
+  end
+.endc
+.end

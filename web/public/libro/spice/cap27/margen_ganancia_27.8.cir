@@ -1,0 +1,37 @@
+* Seccion 27.8, tabla «Por que la ganancia baja es el caso dificil».
+* Operacional de ganancia 1e5 con dos polos, en 10 Hz y en 1 MHz. Se calcula la ganancia de lazo
+* T = A(f) * beta para beta = 1/100, 1/11 y 1 (ganancias 100, 11 y seguidor), con el lazo abierto:
+* la entrada de prueba de 1 V AC va al operacional y la salida se multiplica por beta (fuentes E).
+* Se mide la frecuencia donde |T| = 1 (0 dB), la fase alli y el margen de fase = 180 + fase.
+* Ejecutar:  ngspice -b margen_ganancia_27.8.cir
+* Resultado (ngspice-42): G=100: 10,0 kHz, margen 89,5 grados; G=11: 90,5 kHz, 84,8 grados;
+* seguidor: 786 kHz, 51,8 grados (el cruce exacto cae antes de 1 MHz porque el segundo polo ya
+* resta ganancia; con la aproximacion asintotica saldrian 1 MHz y 45 grados).
+.subckt opamp2 inp inn out params: A0=1e5 F1=10 F2=1e6
+G1 0 n1 inp inn 1m
+R1 n1 0 {A0*1k}
+C1 n1 0 {1/(2*3.14159265*F1*A0*1k)}
+E2 n2 0 n1 0 1
+R2 n2 n3 1k
+C2 n3 0 {1/(2*3.14159265*F2*1k)}
+E3 out 0 n3 0 1
+.ends
+Vt t 0 AC 1
+X1 t 0 a opamp2
+E100 t100 0 a 0 0.01
+E11 t11 0 a 0 {1/11}
+E1 t1 0 a 0 1
+.control
+ac dec 400 1 100meg
+meas ac fc100 when vdb(t100)=0
+meas ac ph100 find vp(t100) at=fc100
+meas ac fc11 when vdb(t11)=0
+meas ac ph11 find vp(t11) at=fc11
+meas ac fc1 when vdb(t1)=0
+meas ac ph1 find vp(t1) at=fc1
+let pm100 = 180 + ph100*180/pi
+let pm11 = 180 + ph11*180/pi
+let pm1 = 180 + ph1*180/pi
+print pm100 pm11 pm1
+.endc
+.end

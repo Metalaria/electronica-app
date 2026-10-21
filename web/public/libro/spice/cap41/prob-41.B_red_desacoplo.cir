@@ -1,0 +1,57 @@
+* Problema 41.B (Por que el desacoplo lleva varios valores) y seccion 41.6 (antirresonancias)
+* Cada condensador es un RLC serie: C, inductancia parasita (encapsulado + camino) y ESR.
+*   100 uF electrolitico: 5 nH, 0,1 ohm   -> resonancia serie 0,23 MHz
+*   1 uF ceramico:        1,5 nH, 10 mohm -> 4,11 MHz
+*   100 nF ceramico:      1,2 nH, 20 mohm -> 14,5 MHz
+*   1 nF ceramico:        0,8 nH, 20 mohm -> 178 MHz
+* Se inyecta 1 A de alterna en cada red: la tension del nodo es la impedancia en ohm.
+*   Z1: 100 nF solo.
+*   Z2: 100 nF + 1 nF: antirresonancia paralelo en 113 MHz (pico de unos 17 ohm).
+*   Z4: red completa de cuatro valores: antirresonancia en unos 135 MHz (casi 9 ohm);
+*       a 100 MHz, 0,55 ohm.
+*   Z3: la misma red sin el 1 nF: 0,37 ohm a 100 MHz, sin pico.
+*   ZQ: 100 uF + 1 uF + cuatro 100 nF iguales con vias propias: 0,15 ohm a 100 MHz.
+* Ejecutar:  ngspice -b prob-41.B_red_desacoplo.cir
+.subckt CAP a C=1 L=1 R=1
+C1 a m {C}
+L1 m n {L}
+R1 n 0 {R}
+.ends
+* Z1
+I1 0 z1 DC 0 AC 1
+X11 z1 CAP C=100n L=1.2n R=20m
+* Z2
+I2 0 z2 DC 0 AC 1
+X21 z2 CAP C=100n L=1.2n R=20m
+X22 z2 CAP C=1n L=0.8n R=20m
+* Z4
+I4 0 z4 DC 0 AC 1
+X41 z4 CAP C=100u L=5n R=0.1
+X42 z4 CAP C=1u L=1.5n R=10m
+X43 z4 CAP C=100n L=1.2n R=20m
+X44 z4 CAP C=1n L=0.8n R=20m
+* Z3
+I3 0 z3 DC 0 AC 1
+X31 z3 CAP C=100u L=5n R=0.1
+X32 z3 CAP C=1u L=1.5n R=10m
+X33 z3 CAP C=100n L=1.2n R=20m
+* ZQ
+IQ 0 zq DC 0 AC 1
+XQ1 zq CAP C=100u L=5n R=0.1
+XQ2 zq CAP C=1u L=1.5n R=10m
+XQ3 zq CAP C=100n L=1.2n R=20m
+XQ4 zq CAP C=100n L=1.2n R=20m
+XQ5 zq CAP C=100n L=1.2n R=20m
+XQ6 zq CAP C=100n L=1.2n R=20m
+.ac dec 2000 10k 1G
+.control
+run
+meas ac pico_z2 MAX vm(z2) from=50meg to=500meg
+meas ac pico_z4 MAX vm(z4) from=50meg to=500meg
+meas ac z1_100M FIND vm(z1) AT=100meg
+meas ac z2_100M FIND vm(z2) AT=100meg
+meas ac z4_100M FIND vm(z4) AT=100meg
+meas ac z3_100M FIND vm(z3) AT=100meg
+meas ac zq_100M FIND vm(zq) AT=100meg
+.endc
+.end

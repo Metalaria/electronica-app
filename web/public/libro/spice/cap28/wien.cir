@@ -1,0 +1,57 @@
+* Sección 28.1, sección 28.4 y problema 28.A (ejercicio 28.2): oscilador de puente de Wien
+* con R = 10 kOhm y C = 10 nF.
+* Parte 1 (.ac): la red de Wien sola (R-C serie seguida de R||C a masa), excitada con 1 V.
+*   Comprueba f0 = 1/(2*pi*R*C) = 1592 Hz, atenuación 1/3 (0,333) y desfase nulo en f0.
+* Parte 2 (.tran): el oscilador completo. Amplificador no inversor con un operacional
+*   macro-modelo (VCVS de ganancia 1e5 con un polo a 10 Hz, GBW 1 MHz, salida limitada a +-12 V).
+*   Ganancia de pequeña señal 1 + Rf/R1 = 1 + 20,5k/10k = 3,05 (el valor del problema 28.A);
+*   dos diodos 1N4148 en antiparalelo con 10 kOhm en serie con parte de Rf la reducen al crecer
+*   la amplitud (control de amplitud «con diodos» de la sección 28.4). Mide la frecuencia
+*   real y la amplitud estabilizada; la oscilación arranca sola desde una pequeña condición
+*   inicial, que hace de ruido.
+* Ejecutar: ngspice -b wien.cir
+.model D1N4148 D (IS=2.52n RS=0.568 N=1.752 CJO=4p M=0.4 TT=20n BV=100)
+.param R=10k C=10n
+
+* ---------- red de Wien sola ----------
+VIN in 0 DC 0 AC 1
+RS1 in a {R}
+CS1 a b {C}
+RP1 b 0 {R}
+CP1 b 0 {C}
+
+* ---------- oscilador ----------
+* red de realimentación positiva: salida -> R serie C -> nodo p -> R||C a masa
+R2 out x {R}
+C2 x p {C} IC=0
+R3 p 0 {R}
+C3 p 0 {C} IC=0.01
+* realimentación negativa: R1 a masa, Rf = 15k + (5,5k || (10k + diodos))
+R1 n 0 10k
+RF1 out m 15k
+RF2 m n 5.5k
+RD m d 10k
+DA d n D1N4148
+DB n d D1N4148
+* operacional: VCVS con polo dominante y salida limitada
+EOP o1 0 p n 1e5
+RPOL o1 o2 1k
+CPOL o2 0 15.9u
+BLIM out 0 V = max(-12, min(12, v(o2)))
+
+.control
+  ac dec 2000 100 100k
+  meas ac fpk when vp(b)=0
+  meas ac att find vm(b) at=1591.5
+  meas ac fase find vp(b) at=1591.5
+  echo "Red de Wien: desfase nulo en (Hz), atenuación y fase (rad) en 1591,5 Hz:"
+  print fpk att fase
+  tran 2u 300m 0 uic
+  meas tran t1 when v(out)=0 rise=200
+  meas tran t2 when v(out)=0 rise=300
+  let fosc = 100/(t2-t1)
+  meas tran vpk max v(out) from=250m to=300m
+  echo "Oscilador: frecuencia (Hz) y amplitud de pico estabilizada (V):"
+  print fosc vpk
+.endc
+.end

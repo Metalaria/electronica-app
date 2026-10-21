@@ -1,0 +1,38 @@
+* Problema 33.A (sección 33.17): reductor de 24 V a 12 V, 3 A, 300 kHz, L = 22 uH.
+* Dos circuitos idénticos salvo el condensador de salida:
+*   A) 100 uF con ESR de 20 mohm;   B) 220 uF con ESR de 10 mohm.
+* Comprueba: dI = (24-12)*0,5/(22u*300k) = 909 mA (30 % de 3 A); Ipico = 3,45 A;
+* rizado capacitivo dI/(8*C*f) = 3,79 / 1,72 mV y por ESR dI*ESR = 18,2 / 9,1 mV.
+* La tabla del texto suma las dos contribuciones (21,97 y 10,81 mV), que es una cota superior: los dos
+* términos no alcanzan el máximo a la vez, y el pico a pico simulado sale algo menor.
+* Interruptores ideales (reductor síncrono). Ejecutar: ngspice -b prob-33.A_buck_24a12.cir
+.param fs=300k T={1/fs} D=0.5
+VIN  in 0 DC 24
+VG1  g1 0 PULSE(0 1 0 1n 1n {D*T-1n} {T})
+VG2  g2 0 PULSE(1 0 0 1n 1n {D*T-1n} {T})
+* --- A
+SA1  in swa g1 0 SWI
+SA2  swa 0  g2 0 SWI
+LA   swa outa 22u IC=3
+REA  outa ca 20m
+CA   ca 0 100u IC=12
+RLA  outa 0 4
+* --- B
+SB1  in swb g1 0 SWI
+SB2  swb 0  g2 0 SWI
+LB   swb outb 22u IC=3
+REB  outb cb 10m
+CB   cb 0 220u IC=12
+RLB  outb 0 4
+.model SWI SW(Ron=1m Roff=1e7 Vt=0.5 Vh=0)
+.tran 2n 12m 11.9m 4n uic
+.control
+run
+meas tran vout_a AVG v(outa) from=11.9m to=12m
+meas tran il_pp PP i(LA) from=11.9m to=12m
+meas tran il_max MAX i(LA) from=11.9m to=12m
+meas tran rizado_a PP v(outa) from=11.9m to=12m
+meas tran rizado_b PP v(outb) from=11.9m to=12m
+echo "Texto: dI = 909 mA, Ipico = 3,45 A; rizado <= 21,97 mV (100 uF / 20 mohm) y <= 10,81 mV (220 uF / 10 mohm)"
+.endc
+.end

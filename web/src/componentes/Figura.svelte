@@ -3,6 +3,8 @@
   import { prepararHtml, textoPlano, url } from '../lib/datos';
   import { abrirFigura } from '../lib/acciones';
   import Icono from './Icono.svelte';
+  import BotonSimular from './BotonSimular.svelte';
+  import VerAnimacion from './animaciones/VerAnimacion.svelte';
 
   let { bloque, indice }: { bloque: BFigura; indice?: number } = $props();
 
@@ -38,6 +40,7 @@
       {#if bloque.credito}<span class="credito">{@html prepararHtml(bloque.credito)}</span>{/if}
     </figcaption>
   {/if}
+  {#if bloque.label}<div class="figura-simular"><BotonSimular label={bloque.label} /> <VerAnimacion label={bloque.label} /></div>{/if}
 </figure>
 
 <style>

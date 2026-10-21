@@ -33,6 +33,8 @@ import convertir                     # noqa: E402
 import ecuaciones                    # noqa: E402
 import figuras                       # noqa: E402
 import validar                       # noqa: E402
+import datos_figuras                 # noqa: E402
+import spice                         # noqa: E402
 
 ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII']
 
@@ -193,6 +195,9 @@ def main():
             for v in o:
                 fill_ec(v)
 
+    # figure data for the interactive layer (ESQUEMA.md, «Datos de figuras»)
+    datos_figuras.aplicar(V3, OUT, [b for _, b, _ in parts.values()], libro.problems)
+
     # write the parts
     if os.path.isdir(os.path.join(OUT, 'partes')):
         shutil.rmtree(os.path.join(OUT, 'partes'))
@@ -239,6 +244,8 @@ def main():
     # validation and summary
     ok = validar.run(OUT, LIB, [f for f, _ in order], indice, refs, libro, nums, ec_stats, fig_stats,
                      busqueda, glosario, time.time() - t0)
+    ok = datos_figuras.validar(OUT) and ok
+    ok = spice.main() == 0 and ok    # netlists for the simulator: spice/, spice.json (cached validation)
     if check_figs:
         validar.check_figures(figs, OUT)
     sys.exit(0 if ok else 1)

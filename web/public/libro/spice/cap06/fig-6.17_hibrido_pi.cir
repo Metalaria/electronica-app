@@ -1,0 +1,38 @@
+* fig-6.17 / secciones 6.8, 6.9 y 6.11 (modelo hibrido en pi, ganancia intrinseca, carga activa)
+* Modelo lineal de pequena senal en el punto Q del ejemplo (IC = 1,324 mA, beta = 150,
+* VA = 100 V, VT = 25,85 mV): gm = 51,2 mS, rpi = 2,93 k, ro = 75,5 k.
+* Se comprueban (analisis .ac a 1 kHz, todo lineal):
+*   carga RC = 3,3 k sin ro        -> Av = -169
+*   carga RC = 3,3 k con ro        -> Av = -162 (ro resta un 4,2 %)
+*   carga activa (ro2 = 75,5 k)    -> Av = gm*(ro1||ro2) ~ -1930 (seccion 6.11)
+*   sin carga (solo ro)            -> Av = gm*ro = VA/VT ~ -3868 (ganancia intrinseca)
+* Ejecutar:  ngspice -b fig-6.17_hibrido_pi.cir
+VS b 0 dc 0 ac 1
+Rpi b 0 2.93k
+* etapa 1: RC sin ro
+G1 c1 0 b 0 51.2m
+RC1 c1 0 3.3k
+* etapa 2: RC con ro
+G2 c2 0 b 0 51.2m
+RC2 c2 0 3.3k
+ro2 c2 0 75.5k
+* etapa 3: carga activa (ro del transistor y ro del espejo)
+G3 c3 0 b 0 51.2m
+ro3a c3 0 75.5k
+ro3b c3 0 75.5k
+* etapa 4: solo ro (techo)
+G4 c4 0 b 0 51.2m
+ro4 c4 0 75.5k
+.control
+ac lin 1 1k 1k
+let a1 = -real(v(c1))
+let a2 = -real(v(c2))
+let a3 = -real(v(c3))
+let a4 = -real(v(c4))
+let perdida = (1-a2/a1)*100
+echo "|Av|: RC (169), RC||ro (162), carga activa (~1930), techo gm*ro (3868):"
+print a1 a2 a3 a4
+echo "Perdida por ro en % (libro 4,2 %):"
+print perdida
+.endc
+.end

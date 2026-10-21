@@ -1,0 +1,45 @@
+* Capítulo 12, sección 12.3 (condiciones de medida) y problema 12.A: el mismo MOSFET de
+* 20 mOhm de catálogo (VGS = 10 V, 25 °C) conduciendo 5 A con distintas tensiones de puerta.
+* Cada MOSFET se modela como un interruptor SW cerrado (puerta excitada) cuya RON es la
+* RDS(on) real en esas condiciones; la carga es una fuente de corriente de 5 A.
+* Comprueba:
+*   - tabla del problema 12.A (25 °C): 20 / 36 / 70 mOhm -> 0,500 / 0,900 / 1,750 W,
+*     y el cociente 3,5 entre 3,3 V y 10 V de puerta;
+*   - sección 12.3: 36 mOhm a 4,5 V pasan a unos 54-55 mOhm a 100 °C de unión (x1,5,
+*     coeficiente de 0,6 %/°C de la sección 7.4) -> 1,35 W;
+*   - "En el banco" del problema: 70 mOhm a 3,3 V pasan a unos 105 mOhm en caliente -> 2,6 W.
+* Ejecutar: ngspice -b prob-12.A.cir   (imprime VDS y la potencia de cada caso)
+.model SW10 SW(VT=1 VH=0 RON=20m  ROFF=1G)
+.model SW45 SW(VT=1 VH=0 RON=36m  ROFF=1G)
+.model SW33 SW(VT=1 VH=0 RON=70m  ROFF=1G)
+.model SW45C SW(VT=1 VH=0 RON=54m  ROFF=1G)
+.model SW33C SW(VT=1 VH=0 RON=105m ROFF=1G)
+* gate drive (control voltage above VT = switch closed)
+VG g 0 DC 5
+* 5 A drain current into each switch
+I1 0 d1 DC 5
+S1 d1 0 g 0 SW10
+I2 0 d2 DC 5
+S2 d2 0 g 0 SW45
+I3 0 d3 DC 5
+S3 d3 0 g 0 SW33
+I4 0 d4 DC 5
+S4 d4 0 g 0 SW45C
+I5 0 d5 DC 5
+S5 d5 0 g 0 SW33C
+.control
+op
+let p1 = v(d1)*5
+let p2 = v(d2)*5
+let p3 = v(d3)*5
+let p4 = v(d4)*5
+let p5 = v(d5)*5
+let k = v(d3)/v(d1)
+echo "VGS = 10 V,  25 C : VDS =" $&v(d1) "V  P =" $&p1 "W"
+echo "VGS = 4,5 V, 25 C : VDS =" $&v(d2) "V  P =" $&p2 "W"
+echo "VGS = 3,3 V, 25 C : VDS =" $&v(d3) "V  P =" $&p3 "W"
+echo "VGS = 4,5 V, 100 C: VDS =" $&v(d4) "V  P =" $&p4 "W"
+echo "VGS = 3,3 V, 100 C: VDS =" $&v(d5) "V  P =" $&p5 "W"
+echo "cociente 3,3 V / 10 V =" $&k
+.endc
+.end

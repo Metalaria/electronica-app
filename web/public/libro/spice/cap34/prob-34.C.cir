@@ -1,0 +1,33 @@
+* Problema 34.C (La entrada del convertidor no es infinita): adquisicion de un ADC SAR
+* con condensador de muestreo de 20 pF cargado a traves de la impedancia de fuente.
+* Peor caso: salto de fondo de escala (condensador descargado, entrada a 1 V).
+* El asentamiento a medio LSB exige ln(2^(N+1)) constantes de tiempo:
+*   12 bits -> 9,01 tau ; 16 bits -> 11,78 tau.
+* El libro (tras la revision) da, con tau = R*20 pF:
+*   1 kohm   (tau = 20 ns):  0,18 us (12 bits)  0,24 us (16 bits)
+*   10 kohm  (tau = 200 ns): 1,80 us (12 bits)  2,36 us (16 bits)
+*   100 kohm (tau = 2 us):   23,6 us (16 bits)
+* Se miden con .meas los instantes en que el error cae por debajo de 1/2 LSB
+* (umbral 1 - 2^-(N+1)) para las tres impedancias, en un mismo .tran.
+* Ejecutar:  ngspice -b prob-34.C.cir
+V1 in 0 PWL(0 0 1p 1)
+* tres ramas independientes, una por impedancia de fuente
+R1 in c1 1k
+C1 c1 0 20p IC=0
+R2 in c2 10k
+C2 c2 0 20p IC=0
+R3 in c3 100k
+C3 c3 0 20p IC=0
+.control
+tran 1n 40u uic
+let h12 = 1 - 2^(-13)
+let h16 = 1 - 2^(-17)
+meas tran t12_1k  WHEN v(c1)=0.99987793 RISE=1
+meas tran t16_1k  WHEN v(c1)=0.99999237 RISE=1
+meas tran t12_10k WHEN v(c2)=0.99987793 RISE=1
+meas tran t16_10k WHEN v(c2)=0.99999237 RISE=1
+meas tran t16_100k WHEN v(c3)=0.99999237 RISE=1
+print h12 h16
+.endc
+.options reltol=1e-6 abstol=1e-15 vntol=1e-9
+.end

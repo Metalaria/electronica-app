@@ -1,0 +1,31 @@
+* Ejercicio 39.3: de 9 V a 3,3 V con 200 mA de carga (16,5 Ohm), con un LDO y con un conmutado
+* del 90 %. LDO: fuente controlada que fija 3,3 V a la salida y toma de la entrada la misma corriente
+* que entrega (sin corriente de reposo). Conmutado: modelo de potencia, toma de la entrada
+* Psal / (0,9 * 9 V).
+* Comprueba: LDO 1,8 W de entrada, 0,66 W de salida, 1,14 W disipados (rendimiento 37 %);
+* conmutado 0,733 W de entrada y 0,073 W de pérdidas, unas 16 veces menos.
+* Ejecutar: ngspice -b ej-39.3_ldo_conmutado.cir
+VIN in 0 DC 9
+* --- LDO
+Vsense in ldo_in DC 0
+Eldo ldo_out 0 VOL='3.3'
+Rload1 ldo_out 0 16.5
+Bldo ldo_in 0 I='-i(Eldo)'
+* --- conmutado al 90 %
+Vsense2 in sw_in DC 0
+Esw sw_out 0 VOL='3.3'
+Rload2 sw_out 0 16.5
+Bsw sw_in 0 I='v(sw_out)*(-i(Esw))/(0.9*v(sw_in))'
+.control
+  op
+  let pin_ldo = 9*i(Vsense)
+  let pout = v(ldo_out)^2/16.5
+  let pin_sw = 9*i(Vsense2)
+  echo "LDO: Pent, Psal, Pdisipada (W; 1,8 / 0,66 / 1,14) y rendimiento (0,37):"
+  print pin_ldo pout pin_ldo-pout pout/pin_ldo
+  echo "Conmutado: Pent y pérdidas (W; 0,733 / 0,073):"
+  print pin_sw pin_sw-pout
+  echo "Relación de pérdidas LDO / conmutado (unas 16):"
+  print (pin_ldo-pout)/(pin_sw-pout)
+.endc
+.end

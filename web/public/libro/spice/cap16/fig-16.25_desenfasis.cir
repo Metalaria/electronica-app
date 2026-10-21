@@ -1,0 +1,57 @@
+* Figura 16.25 (esquema simplificado) y figura 16.26 (esquema original del kit), secciones 16.4, 16.8.4
+* y 16.20: red de desénfasis y filtro de salida del decodificador estéreo, un canal (L4, el otro es igual).
+* Valores del esquema V3.0r7: C40 4,7 µF; C42 4700 pF; L4 40 mH en paralelo con C43 1000 pF; C44 6800 pF;
+* R23 2,2 kOhm; C45 6800 pF; R24 2,2 kOhm hacia el jack CZ3 y R27 47 kOhm hacia el volumen W4 (A5k-20k,
+* se toma 20 kOhm). La salida del TA7343AP lleva R21 = 3,3 kOhm a masa; su impedancia de salida no
+* figura en los datos disponibles, así que se prueban tres valores de fuente: 100 Ohm, 1 kOhm y 3,3 kOhm.
+* Qué comprueba: la red no «separa los canales» (eso ya lo hizo el decodificador): es un paso bajo que
+* recorta los agudos (desénfasis aproximado) y elimina los restos del piloto de 19 kHz y de la
+* subportadora de 38 kHz, con una trampa L4||C43 en 1/(2*pi*sqrt(L4*C43)) = 25,2 kHz.
+* Resultados (dB relativos a 1 kHz, en la salida hacia CZ3): 19 kHz entre -27 y -28,5 dB; 38 kHz entre
+* -34 y -41 dB; trampa en 25,1 kHz por debajo de -75 dB; a 10 kHz, de -4 a -6 dB. Con fuente de 100 Ohm
+* aparece un pico de +8 dB hacia 6,8 kHz (L4 con C44 resuena en 9,7 kHz, poco amortiguada); con 1 kOhm
+* queda en +2,4 dB y con 3,3 kOhm desaparece. No es una curva de desénfasis exacta de 50 us (que da
+* -10,4 dB a 10 kHz): es un paso bajo que la aproxima y, sobre todo, limpia los restos de 19 y 38 kHz.
+* Ejecutar: ngspice -b fig-16.25_desenfasis.cir
+.param rs=100
+V1 in 0 AC 1
+Rs in a {rs}
+C40 a b 4.7u
+R21 a 0 3.3k
+C42 b 0 4700p
+L4 b c 40m
+C43 b c 1000p
+C44 c 0 6800p
+R23 c d 2.2k
+C45 d 0 6800p
+R24 d e 2.2k
+R27 e f 47k
+RW4 f 0 20k
+.control
+  foreach r 100 1000 3300
+    alterparam rs = $r
+    reset
+    echo "---- impedancia de fuente (Ohm): $r"
+    ac dec 400 100 100k
+    let rel = vdb(e) - vdb(e)[0]
+    meas ac ref1k find vdb(e) at=1k
+    meas ac g3k18 find vdb(e) at=3.18k
+    meas ac g10k find vdb(e) at=10k
+    meas ac g15k find vdb(e) at=15k
+    meas ac g19k find vdb(e) at=19k
+    meas ac g38k find vdb(e) at=38k
+    meas ac trampa min vdb(e) from=20k to=30k
+    meas ac pico max vdb(e) from=1k to=15k
+    let a3k18 = g3k18 - ref1k
+    let a10k = g10k - ref1k
+    let a15k = g15k - ref1k
+    let a19k = g19k - ref1k
+    let a38k = g38k - ref1k
+    let atrap = trampa - ref1k
+    let apico = pico - ref1k
+    echo "relativo a 1 kHz (dB): 3,18 kHz, 10 kHz, 15 kHz, 19 kHz, 38 kHz, trampa, pico 1-15 kHz"
+    print a3k18 a10k a15k a19k a38k atrap apico
+  end
+  echo "Referencia: un desénfasis ideal de 50 us da -3,0 dB a 3,18 kHz, -10,4 dB a 10 kHz y -13,6 dB a 15 kHz."
+.endc
+.end

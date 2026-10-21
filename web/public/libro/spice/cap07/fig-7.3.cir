@@ -1,0 +1,40 @@
+* fig-7.3 (sección 7.2, ejercicio 7.1, problema 7.C): MOSFET de canal N con la ley cuadrática
+* del libro, k = 0,5 A/V2 y Vth = 2 V (modelo de nivel 1: KP·W/L = k, sin modulación de canal).
+* Comprueba: 250 mA con VGS = 3 V; 2,25 A con VGS = 5 V (ej. 7.1); 6,25 A con 7 V (figura);
+* frontera óhmica/saturación en VDS = VGS - Vth = 1 V; RDS(on) ~ 1/(k·Vov) = 250 mOhm con VGS = 10 V;
+* gm = k·Vov = sqrt(2·k·ID) = 0,5 S con VGS = 3 V.
+* Ejecutar: ngspice -b fig-7.3.cir
+.model NSQ NMOS (LEVEL=1 VTO=2 KP=0.5 LAMBDA=0)
+VDS d 0 DC 10
+VGS g 0 DC 3
+M1 d g 0 0 NSQ W=1 L=1
+.control
+  * saturation currents for several gate voltages
+  foreach vg 3 5 7
+    alter VGS dc = $vg
+    op
+    let id = -i(VDS)
+    echo "VGS = $vg V, VDS = 10 V -> ID (A) ="
+    print id
+  end
+  * gm at VGS = 3 V: derivative of ID along a gate sweep
+  dc VGS 2.9 3.1 0.001
+  let gmv = deriv(-i(VDS))
+  meas dc gm_3v find gmv at=3
+  * ohmic region: VGS = 10 V, VDS = 10 mV
+  alter VGS dc = 10
+  alter VDS dc = 0.01
+  op
+  let ron = 0.01 / (-i(VDS))
+  echo "RDS(on) con VGS = 10 V (ohm) ="
+  print ron
+  * output curve at VGS = 3 V: boundary at VDS = 1 V
+  alter VGS dc = 3
+  dc VDS 0 3.1 0.01
+  let idd = -i(VDS)
+  meas dc id_05 find idd at=0.5
+  meas dc id_1 find idd at=1
+  meas dc id_2 find idd at=2
+  meas dc id_3 find idd at=3
+.endc
+.end

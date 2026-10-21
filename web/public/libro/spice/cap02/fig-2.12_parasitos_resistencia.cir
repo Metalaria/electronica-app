@@ -1,0 +1,36 @@
+* fig-2.12 / seccion 2.10 (Parasitos y comportamiento en frecuencia)
+* Modelo de tres elementos: (R + L serie) en paralelo con C, con L = 10 nH y C = 0,3 pF.
+* Cada resistencia se excita con 1 A de alterna, asi v(nodo) es directamente |Z| en ohmios.
+* El libro (texto y figura) dice:
+*   1 ohm: la inductancia manda desde R/(2*pi*L) = 16 MHz (alli |Z| = sqrt(2)*R = 1,41 ohm).
+*   100 ohm: la inductancia desde 1,6 GHz; 1 kohm: la capacidad desde 1/(2*pi*R*C) = 530 MHz
+*   (alli |Z| = R/sqrt(2) = 707 ohm); 1 Mohm: la capacidad desde 0,53 MHz (|Z| = 707 kohm).
+*   Autorresonancia de L y C: 2,9 GHz.
+* Nota: a 530 MHz la de 1 kohm da algo mas de 707 ohm porque la inductancia ya contribuye un poco.
+* Ejecutar:  ngspice -b fig-2.12_parasitos_resistencia.cir
+.subckt rreal a b r=1k
+Rr a m {r}
+Ls m b 10n
+Cp a b 0.3p
+.ends
+I1 0 n1 DC 0 AC 1
+X1 n1 0 rreal r=1
+I2 0 n2 DC 0 AC 1
+X2 n2 0 rreal r=1k
+I3 0 n3 DC 0 AC 1
+X3 n3 0 rreal r=1Meg
+I4 0 n4 DC 0 AC 1
+X4 n4 0 rreal r=100
+* .save all evita que ngspice intente guardar 'vm' como vector en modo batch
+.save all
+.ac dec 200 10k 10G
+* |Z| en las frecuencias de esquina del libro
+.meas ac z1_16MHz find vm(n1) at=15.915e6
+.meas ac z1k_530MHz find vm(n2) at=530.5e6
+.meas ac z1M_053MHz find vm(n3) at=0.5305e6
+.meas ac z1k_100kHz find vm(n2) at=100k
+* frecuencia a la que |Z| de 1 Mohm cae a R/sqrt(2)
+.meas ac f_1M_3dB when vm(n3)=707.1k fall=1
+* autorresonancia: maximo de |Z| de la de 1 ohm (resonancia paralelo L-C); el valor 'at' es su frecuencia
+.meas ac zmax_1ohm max vm(n1)
+.end

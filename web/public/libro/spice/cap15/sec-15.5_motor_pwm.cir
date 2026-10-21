@@ -1,0 +1,107 @@
+* Capitulo 15, seccion 15.5 (Proyecto 4: control de motor DC con PWM), figura 15.8.
+* Interruptor de lado bajo: MOSFET de nivel logico (NMOS de nivel 1 con V_th = 1,5 V y
+* KP ajustado para R_DS(on) = 22 mohm con 5 V de puerta), su diodo interno (fuente ->
+* drenador; el modelo de nivel 1 ya incluye ademas su union drenador-sustrato, que hace el
+* mismo papel) y 500 pF de C_oss; motor entre +12 V
+* y el drenador como R = 2 ohm, L = 1 mH y una fuerza contraelectromotriz (fuente de tension);
+* diodo Schottky de rueda libre en paralelo con el motor (anodo al drenador). PWM a 20 kHz y
+* 50 % de ciclo de trabajo (la ventana de 16-25 kHz del texto). La fuente tiene 0,1 ohm de
+* resistencia interna y un electrolitico de 100 uF junto a la etapa, para que se vea si el
+* motor le devuelve energia.
+* Valores del motor supuestos (el texto no da numeros): solo sirven para ilustrar.
+* Comprueba:
+*   - (a) con diodo de rueda libre y FCEM de 4 V (0,89 A medios): V_DS en conduccion de 20 mV
+*     (I x R_DS(on), «decenas de milivoltios») y, al apagar, el drenador queda sujeto a 12,3 V
+*     (alimentacion + caida del Schottky); el diodo lleva la mitad de la corriente media;
+*   - (b) sin diodo de rueda libre: el pico inductivo al apagar sube a unos 290 V (solo lo
+*     limita la C_oss), lo que destruiria el transistor (seccion 4.5);
+*   - (c) motor arrastrado desde fuera con una FCEM de 15 V, mayor que la alimentacion: la
+*     corriente se invierte (-1,22 A) y vuelve a la fuente a traves del MOSFET, por el canal
+*     en conduccion y por su DIODO INTERNO en corte (drenador a -0,84 V); el diodo de rueda
+*     libre queda polarizado en inverso y no conduce. Es la correccion del texto, que decia
+*     que la energia entraba «por el diodo de rueda libre».
+*   - (d) bajar de golpe el ciclo de trabajo con la FCEM por debajo de la alimentacion no
+*     devuelve energia en esta etapa de un cuadrante: la corriente del motor se hace
+*     discontinua pero no se invierte (solo unos mA de oscilacion con las capacidades) y la
+*     corriente media de la fuente sigue saliendo de ella; para frenar regenerando hace falta
+*     un puente.
+* Ejecutar: ngspice -b sec-15.5_motor_pwm.cir
+.model NLL NMOS(LEVEL=1 VTO=1.5 KP=13)
+.model DBODY D(IS=1e-12 N=1.3 RS=0.01 TT=50n CJO=0)
+.model DSCH D(IS=1e-5 N=1.05 RS=0.03 CJO=100p)
+VG g 0 PULSE(0 5 0 20n 20n 24.96u 50u)
+
+.subckt ETAPA vcc d g params: emfv=4
+* motor: de vcc al drenador
+RM vcc m1 2
+LM m1 m2 1m
+VEMF m2 m3 DC {emfv}
+VIM m3 d DC 0
+* MOSFET: interruptor, diodo interno y capacidad de salida
+VMOS d dm DC 0
+M1 dm g 0 0 NLL
+DB 0 dm DBODY
+COSS dm 0 500p
+.ends
+
+* (a) con rueda libre, FCEM 4 V
+VCCA va 0 DC 12
+RSA va vcca 0.1
+CBA vcca 0 100u
+XA vcca da g ETAPA emfv=4
+DFA da vcca DSCH
+
+* (b) sin rueda libre, FCEM 4 V
+VCCB vb 0 DC 12
+RSB vb vccb 0.1
+CBB vccb 0 100u
+XB vccb db g ETAPA emfv=4
+
+* (c) motor arrastrado: FCEM 15 V > 12 V, con rueda libre
+VCCC vc 0 DC 12
+RSC vc vccc 0.1
+CBC vccc 0 100u
+XC vccc dc g ETAPA emfv=15
+VIF dc dfc DC 0
+DFC dfc vccc DSCH
+
+* (d) frenada brusca: el motor gira con FCEM de 10 V y el ciclo baja de golpe al 10 %
+VG2 g2 0 PULSE(0 5 0 20n 20n 4.96u 50u)
+VCCD vd 0 DC 12
+RSD vd vccd 0.1
+CBD vccd 0 100u
+XD vccd dd g2 ETAPA emfv=10
+DFD dd vccd DSCH
+
+.save all @dfa[id] @dfc[id] i(v.xa.vim) i(v.xc.vim) i(v.xc.vmos) i(vccc) i(v.xd.vim) i(vccd)
+.options reltol=1e-3 rshunt=1e9 gmin=1e-10
+.tran 20n 4m 3m 20n
+.control
+run
+echo "(a) con diodo de rueda libre"
+meas tran imotor_a avg i(v.xa.vim) from=3m to=4m
+meas tran vds_on_a find v(da) at=3.0125m
+meas tran ia_on find i(v.xa.vim) at=3.0125m
+meas tran vds_pico_a max v(da) from=3m to=4m
+meas tran idf_a avg @dfa[id] from=3m to=4m
+echo "(b) sin diodo de rueda libre"
+meas tran vds_pico_b max v(db) from=3m to=4m
+echo "(c) motor arrastrado con FCEM de 15 V"
+meas tran imotor_c avg i(v.xc.vim) from=3m to=4m
+meas tran idf_c avg @dfc[id] from=3m to=4m
+* corriente por el MOSFET (canal + diodo interno) en conduccion y en corte; positiva = de
+* drenador a fuente, negativa = en inverso (de fuente a drenador)
+meas tran imos_on_c find i(v.xc.vmos) at=3.0125m
+meas tran imos_off_c find i(v.xc.vmos) at=3.0375m
+meas tran idf_off_c find @dfc[id] at=3.0375m
+meas tran vd_off_c find v(dc) at=3.0375m
+* corriente media que sale de la fuente (negativa: el motor le devuelve energia)
+let ifuente_c = -i(vccc)
+meas tran ifuente_med_c avg ifuente_c from=3m to=4m
+echo "(d) ciclo reducido al 10 % con FCEM de 10 V < 12 V"
+meas tran imotor_min_d min i(v.xd.vim) from=3m to=4m
+meas tran imotor_med_d avg i(v.xd.vim) from=3m to=4m
+* i(vccd) negativa = la fuente entrega corriente
+meas tran ifuente_med_d avg i(vccd) from=3m to=4m
+.endc
+.end

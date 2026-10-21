@@ -1,0 +1,127 @@
+* Capitulo 5, seccion 5.6 (Circuitos rectificadores), figuras 5.14 y 5.15, ejercicios 5.5 y 5.6
+* Puente de cuatro diodos con condensador, secundario de 12 V eficaces (16,97 V de pico),
+* 50 Hz, carga de corriente constante 0,5 A, fuente ideal (sin resistencia de devanado).
+* Diodos «de 0,7 V»: modelo exponencial con I_S = 7 pA y n = 1, que cae 0,70 V a 4 A y entre
+* 0,68 y 0,72 V en todo el pulso de recarga, es decir, el modelo de caida constante del texto.
+* Comprueba:
+*   - 15,57 V tras el puente; rizado ~1 V con 5 000 uF (C = I/(f_rizado * dV), 100 Hz);
+*   - recarga en algo mas de 1 ms (unos 20 grados de cada 180), corriente media durante la
+*     conduccion ~4,4-4,5 A y pico de 8-9 A al empezar a conducir;
+*   - con 4 700 uF (figuras 5.14 y 5.15) el rizado es ~1,06 V;
+*   - corriente eficaz por el secundario y por cada diodo (datos para el problema 5.B);
+*   - ejercicio 5.5: 12 V de pico -> 10,6 V tras el puente.
+* Se repite con un modelo realista de 1N4007 (IS = 7 nA, N = 1,81, RS = 34 mohm) para ver
+* cuanto bajan la tension y el pico cuando la caida no es constante.
+* El secundario es flotante (como en un transformador) y el negativo del puente es la masa.
+* La carga sube en rampa durante los primeros 100 ms para evitar el arranque brusco; se mide
+* en regimen permanente entre 0,52 y 0,62 s.
+* Ejecutar: ngspice -b sec-5.6_puente_condensador.cir
+.model D07 D(IS=7e-12 N=1 RS=1m CJO=10p)
+.model D1N4007 D(IS=7.02767n RS=0.0341512 N=1.80803 EG=1.05743 XTI=5 BV=1000 IBV=5e-08
++ CJO=1e-11 VJ=0.7 M=0.5 FC=0.5 TT=1e-07)
+.subckt PUENTE ac1 ac2 pos neg
+D1 ac1 pos D07
+D2 ac2 pos D07
+D3 neg ac1 D07
+D4 neg ac2 D07
+.ends
+.subckt PUENTER ac1 ac2 pos neg
+D1 ac1 pos D1N4007
+D2 ac2 pos D1N4007
+D3 neg ac1 D1N4007
+D4 neg ac2 D1N4007
+.ends
+
+* (a) 5 000 uF, caida constante
+VS1 s1 b1 SIN(0 16.9706 50)
+VM1 s1 a1 DC 0
+XB1 a1 b1 p1 0 PUENTE
+RF1 b1 0 1MEG
+C1 p1 0 5000u
+IL1 p1 0 PWL(0 0 0.1 0.5)
+
+* (b) 4 700 uF, caida constante (figuras 5.14 y 5.15)
+VS2 s2 b2 SIN(0 16.9706 50)
+VM2 s2 a2 DC 0
+XB2 a2 b2 p2 0 PUENTE
+RF2 b2 0 1MEG
+C2 p2 0 4700u
+IL2 p2 0 PWL(0 0 0.1 0.5)
+
+* (c) 5 000 uF con 1N4007 realista
+VS3 s3 b3 SIN(0 16.9706 50)
+VM3 s3 a3 DC 0
+XB3 a3 b3 p3 0 PUENTER
+RF3 b3 0 1MEG
+C3 p3 0 5000u
+IL3 p3 0 PWL(0 0 0.1 0.5)
+
+* (e) problema 5.B: 4 700 uF y resistencia de devanado de 0,4 ohm (transformador real pequeno)
+VS5 s5 b5 SIN(0 16.9706 50)
+RW5 s5 a5 0.4
+XB5 a5 b5 p5 0 PUENTE
+RF5 b5 0 1MEG
+C5 p5 0 4700u
+IL5 p5 0 PWL(0 0 0.1 0.5)
+
+* (d) ejercicio 5.5: 12 V de pico, carga resistiva (unos 1 A) sin condensador
+VS4 s4 b4 SIN(0 12 50)
+RF4 b4 0 1MEG
+XB4 s4 b4 p4 0 PUENTE
+RL4 p4 0 10
+
+.save all @d.xb1.d1[id] @d.xb2.d1[id] @d.xb5.d1[id]
+.tran 5u 0.62 0 5u
+.control
+run
+let vo1 = v(p1)
+let vo2 = v(p2)
+let vo3 = v(p3)
+let vo4 = v(p4)
+let is1 = abs(i(VM1))
+let is3 = abs(i(VM3))
+let id1 = @d.xb1.d1[id]
+meas tran vmax1 max vo1 from=0.52 to=0.62
+meas tran vmin1 min vo1 from=0.52 to=0.62
+let rizado1 = vmax1 - vmin1
+print rizado1
+meas tran ipico1 max is1 from=0.52 to=0.62
+meas tran ieff_sec1 rms is1 from=0.52 to=0.62
+meas tran ieff_diodo1 rms id1 from=0.52 to=0.62
+meas tran imed_diodo1 avg id1 from=0.52 to=0.62
+* duracion de un pulso de recarga: con un diodo exponencial el pulso tiene colas largas de
+* poca corriente, asi que se mide entre los cruces de 0,25 A (la mitad de la carga)
+meas tran tcond1 trig is1 val=0.25 td=0.52 rise=1 targ is1 val=0.25 td=0.52 fall=1
+let imed_cond1 = 0.5*10m/tcond1
+let angulo1 = tcond1/10m*180
+print imed_cond1 angulo1
+meas tran vmax2 max vo2 from=0.52 to=0.62
+meas tran vmin2 min vo2 from=0.52 to=0.62
+let rizado2 = vmax2 - vmin2
+print rizado2
+meas tran ipico2 max i(VM2) from=0.52 to=0.62
+meas tran vmax3 max vo3 from=0.52 to=0.62
+meas tran vmin3 min vo3 from=0.52 to=0.62
+meas tran ipico3 max is3 from=0.52 to=0.62
+meas tran ieff_sec3 rms is3 from=0.52 to=0.62
+meas tran vmax4 max vo4 from=0.52 to=0.62
+* factor de potencia en el secundario: P media / (V eficaz * I eficaz)
+let pin1 = v(s1,b1)*i(VM1)
+meas tran p1avg avg pin1 from=0.52 to=0.62
+let fp1 = p1avg/(12*ieff_sec1)
+print fp1
+let is2 = abs(i(VM2))
+meas tran ieff_sec2 rms is2 from=0.52 to=0.62
+meas tran ieff_diodo2 rms @d.xb2.d1[id] from=0.52 to=0.62
+let is5 = abs(i(VS5))
+meas tran vmax5 max v(p5) from=0.52 to=0.62
+meas tran vmin5 min v(p5) from=0.52 to=0.62
+meas tran ipico5 max is5 from=0.52 to=0.62
+meas tran ieff_sec5 rms is5 from=0.52 to=0.62
+meas tran ieff_diodo5 rms @d.xb5.d1[id] from=0.52 to=0.62
+let pin5 = v(s5,b5)*i(VS5)*(-1)
+meas tran p5avg avg pin5 from=0.52 to=0.62
+let fp5 = p5avg/(12*ieff_sec5)
+print fp5
+.endc
+.end

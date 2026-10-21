@@ -95,6 +95,8 @@
     <a href="#/" aria-current={ruta.vista === 'inicio' ? 'page' : undefined}><Icono nombre="inicio" /> Inicio</a>
     <button type="button" onclick={abrirBuscador}><Icono nombre="buscar" /> Buscar <kbd>Ctrl K</kbd></button>
     <a href="#/glosario" aria-current={ruta.vista === 'glosario' ? 'page' : undefined}><Icono nombre="glosario" /> Glosario</a>
+    <a href="#/simulador" aria-current={ruta.vista === 'simulador' ? 'page' : undefined}><Icono nombre="simulador" /> Simulador</a>
+    <a href="#/componentes" aria-current={ruta.vista === 'componentes' ? 'page' : undefined}><Icono nombre="componentes" /> Componentes animados</a>
     <a href="#/marcadores" aria-current={ruta.vista === 'marcadores' ? 'page' : undefined}>
       <Icono nombre="marcador" /> Marcadores y notas
       {#if totalPersonal}<span class="cuenta">{totalPersonal}</span>{/if}

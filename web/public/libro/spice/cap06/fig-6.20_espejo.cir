@@ -1,0 +1,67 @@
+* fig-6.20 / seccion 6.11 (espejos de corriente) y problema 6.B
+* Espejo simple de ~1 mA. La salida se fija a la misma VCE que la referencia
+* (0,7 V aprox., fuente VO = 0,7 V) y VAF muy alta, para aislar cada error.
+* Se comprueba:
+*   - error de corriente de base 2/(beta+2): 1,32 % (beta 150), 3,85 % (beta 50)
+*   - con transistor auxiliar de base: ~2/beta^2 = 0,009 % (beta 150)
+*   - desapareamiento de 5 mV: +21 %; 1 mV: +3,9 %; 1 C (2 mV): +8 %
+*   - degeneracion con 200 mV en RE (200 ohm): 5 mV -> ~2,2 %; con 100 mV (100 ohm): ~4 %
+* Ejecutar:  ngspice -b fig-6.20_espejo.cir
+* Iref = (12 - VBE)/11,3 k ~ 1 mA (con RE, (12 - VBE - IRE)/R).
+VCC vcc 0 12
+.subckt espejo vcc params: bf=150 dv=0 re=0.001 rr=11.3k
+.model QM NPN(IS=1e-14 BF={bf} VAF=1e6)
+RR vcc c1 {rr}
+Q1 c1 c1 e1 QM
+RE1 e1 0 {re}
+VD b2 c1 {dv}
+Q2 o b2 e2 QM
+RE2 e2 0 {re}
+VO o 0 0.7
+.ends
+* espejo con transistor auxiliar (beta helper): Q3 alimenta las bases
+.subckt espejo3 vcc params: bf=150
+.model QM NPN(IS=1e-14 BF={bf} VAF=1e6)
+RR vcc c1 10.6k
+Q1 c1 b 0 QM
+Q2 o b 0 QM
+Q3 vcc c1 b QM
+RB b 0 1e9
+VO o 0 1.4
+.ends
+X150 vcc espejo bf=150
+X50  vcc espejo bf=50
+XH   vcc espejo3 bf=150
+X1m  vcc espejo dv=0.001
+X5m  vcc espejo dv=0.005
+X2m  vcc espejo dv=0.002
+X0d  vcc espejo dv=0 re=200 rr=11.1k
+X5d  vcc espejo dv=0.005 re=200 rr=11.1k
+X0e  vcc espejo dv=0 re=100 rr=11.2k
+X5e  vcc espejo dv=0.005 re=100 rr=11.2k
+.control
+op
+let ir150 = (12-v(x150.c1))/11.3k
+let io150 = -i(v.x150.vo)
+let ir50 = (12-v(x50.c1))/11.3k
+let io50 = -i(v.x50.vo)
+let irh = (12-v(xh.c1))/10.6k
+let ioh = -i(v.xh.vo)
+let e150 = (1-io150/ir150)*100
+let e50 = (1-io50/ir50)*100
+let eh = (1-ioh/irh)*100
+echo "Error por corriente de base (%): beta 150 (1,32), beta 50 (3,85), con auxiliar (0,009):"
+print ir150 e150 e50 eh
+let ib = -i(v.x150.vo)
+let m1 = (-i(v.x1m.vo)/ib-1)*100
+let m2 = (-i(v.x2m.vo)/ib-1)*100
+let m5 = (-i(v.x5m.vo)/ib-1)*100
+echo "Desapareamiento 1 mV (3,9 %), 2 mV = 1 C (8 %), 5 mV (21 %):"
+print m1 m2 m5
+let d200 = (i(v.x5d.vo)/i(v.x0d.vo)-1)*100
+let d100 = (i(v.x5e.vo)/i(v.x0e.vo)-1)*100
+let ure = v(x0d.e1)
+echo "5 mV con 200 mV de degeneracion (libro 2,2 %) y con 100 mV (problema 6.B corregido: ~4 %):"
+print ure d200 d100
+.endc
+.end

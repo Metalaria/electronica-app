@@ -1,0 +1,31 @@
+* fig-17.4 (sección 17.2, «El reset automático»): DTR del conversor USB-serie -> 100 nF -> RESET
+* del ATmega328P, con la resistencia de 10 kOhm a +5 V. Se añade el diodo de RESET a +5 V que lleva la
+* placa UNO R3 (no dibujado en la figura): limita el pico por encima de 5 V cuando DTR vuelve a alto,
+* porque el pin RESET no tiene diodo de protección a VCC.
+* DTR baja de 5 V a 0 V en t = 1 ms (al abrir el puerto) y vuelve a 5 V en t = 20 ms.
+* Comprueba: RESET cae a ~0 V y se recupera con tau = 10 kOhm · 100 nF = 1 ms. El umbral del pin
+* RESET está entre 0,2·VCC y 0,9·VCC según la hoja de datos; en el peor caso (1 V) el pulso dura
+* tau·ln(5/4) = 0,22 ms, y con 4,5 V, tau·ln 10 = 2,3 ms: en ambos casos muy por encima de los 2,5 us
+* de pulso mínimo que pide el reset. Al volver DTR a alto, el diodo deja el pico en ~6,1 V
+* (sin él, RESET subiría hasta ~10 V).
+* Ejecutar: ngspice -b fig-17.4.cir
+.model D1N4148 D (IS=2.52n RS=0.568 N=1.752 CJO=4p M=0.4 TT=20n BV=100 IBV=100u)
+V5 vcc 0 DC 5
+VDTR dtr 0 PWL(0 5 1m 5 1.001m 0 20m 0 20.001m 5 30m 5)
+C1 dtr rst 100n
+R1 rst vcc 10k
+D1 rst vcc D1N4148
+.control
+  tran 1u 30m
+  meas tran vmin min v(rst) from=0.9m to=5m
+  * time below the minimum (1 V) and maximum (4.5 V) RESET thresholds
+  meas tran tdown when v(rst)=1 fall=1
+  meas tran tup when v(rst)=1 rise=1
+  let tlow1 = tup - tdown
+  meas tran tdown9 when v(rst)=4.5 fall=1
+  meas tran tup9 when v(rst)=4.5 rise=1
+  let tlow9 = tup9 - tdown9
+  print tlow1 tlow9
+  meas tran vpeak max v(rst) from=19m to=30m
+.endc
+.end

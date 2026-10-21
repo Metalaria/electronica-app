@@ -1,0 +1,41 @@
+* Figura 35.5 y sección 35.3: puente de Wheatstone con galgas de 350 Ohm, GF = 2, excitado con 5 V.
+* Tres puentes independientes con la misma excitación, a 1000 microdeformaciones (dR/R = GF*eps = 0,002):
+*   - cuarto de puente: una galga activa (R + dR), las otras tres fijas  -> unos 2,5 mV (exacto 2,4975 mV);
+*   - medio puente: dos galgas en oposición en el mismo divisor (R + dR arriba, R - dR abajo) -> 5 mV;
+*   - puente completo, como en la figura (R + dR y R - dR cruzadas en los dos divisores) -> 10 mV.
+* Comprueba además el consumo del puente sin deformar: 14,3 mA y 71 mW en total, 7,1 mA y 17,9 mW
+* en cada galga (no 70 mW por rama).
+* Ejecutar: ngspice -b fig-35.5_puente.cir
+.param R=350 GF=2 eps=1000u
+.param dR={R*GF*eps}
+VEXC exc 0 DC 5
+* cuarto de puente
+RQ1 exc qa {R+dR}
+RQ2 qa 0 {R}
+RQ3 exc qb {R}
+RQ4 qb 0 {R}
+* medio puente (divisor izquierdo activo; el derecho, fijo)
+RH1 exc ha {R+dR}
+RH2 ha 0 {R-dR}
+RH3 exc hb {R}
+RH4 hb 0 {R}
+* puente completo, como en la figura 35.5
+RF1 exc fl {R+dR}
+RF2 fl 0 {R-dR}
+RF3 exc fr {R-dR}
+RF4 fr 0 {R+dR}
+* puente sin deformar, con medidor de corriente
+VEXC0 exc0 0 DC 5
+RZ1 x0 za {R}
+RZ2 za 0 {R}
+RZ3 x0 zb {R}
+RZ4 zb 0 {R}
+VIZ exc0 x0 DC 0
+.control
+  op
+  echo "Salida a 1000 microdeformaciones (mV): cuarto, medio, completo (2,5 / 5 / 10):"
+  print (v(qb)-v(qa))*1000 (v(hb)-v(ha))*1000 (v(fr)-v(fl))*1000
+  echo "Puente sin deformar: corriente total (mA), potencia total (mW), corriente y potencia por galga:"
+  print abs(i(VIZ))*1000 abs(i(VIZ))*5000 (v(x0)-v(za))/350*1000 (v(x0)-v(za))^2/350*1000
+.endc
+.end

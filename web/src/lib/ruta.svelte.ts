@@ -5,12 +5,15 @@
 //          #/<parte>/<ancla>     a part, scrolled to the element whose id is <ancla>
 //          #/glosario[/<ancla>]  the glossary view (the «glosario» part)
 //          #/marcadores          bookmarks and notes
+//          #/simulador[/<id>]    the circuit simulator: index, a netlist of the book (cap42/fig-42.5_filtro_rc)
+//                                or «nuevo» (free-form circuit)
+//          #/componentes[/<id>]  the component animations: gallery, or one animation
 //
 // Each history entry remembers its scroll position (history.state.y), so «Atrás» (the button,
 // the browser or the Android back button) returns exactly where the reader was. Overlays
 // (drawer, search, figure viewer) push their own entry so the back button closes them.
 
-export type Vista = 'inicio' | 'parte' | 'glosario' | 'marcadores';
+export type Vista = 'inicio' | 'parte' | 'glosario' | 'marcadores' | 'simulador' | 'componentes';
 
 export interface AnclaLectura {
   /** Index of the top-level block at the top of the screen. */
@@ -34,6 +37,8 @@ export const ruta = $state({
   vista: 'inicio' as Vista,
   parte: '',
   ancla: '',
+  /** Simulator page: '' (index), 'nuevo' or a netlist id. */
+  sim: '',
   /** Increments on every navigation, so the same route can be visited again. */
   n: 0,
   /** Scroll to restore (back/forward), or null to go to the anchor / last position. */
@@ -59,6 +64,15 @@ function leer(): void {
     ruta.vista = 'marcadores';
     ruta.parte = '';
     ruta.ancla = '';
+  } else if (a === 'simulador') {
+    ruta.vista = 'simulador';
+    ruta.parte = '';
+    ruta.ancla = '';
+    ruta.sim = b;
+  } else if (a === 'componentes') {
+    ruta.vista = 'componentes';
+    ruta.parte = '';
+    ruta.ancla = b;
   } else if (a === 'glosario') {
     ruta.vista = 'glosario';
     ruta.parte = 'glosario';

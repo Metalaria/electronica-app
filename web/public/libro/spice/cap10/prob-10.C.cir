@@ -1,0 +1,40 @@
+* Problema 10.C: arranque suave de una fuente con 4700 uF a 24 V, resistencia de arranque y relé
+* que la puentea a los 300 ms (modelado como interruptor).
+* Comprueba: E = 1/2·C·V² = 1,35 J; con 10 ohm, tau = 47 ms, 5·tau = 235 ms y 2,4 A de pico;
+* con 22 ohm, tau = 103 ms, 5·tau = 517 ms y 1,1 A; al cerrar el relé a los 300 ms con 10 ohm
+* el condensador ya está cargado (faltan ~40 mV) y el contacto apenas ve 4 A; con 22 ohm faltan
+* ~1,3 V y el contacto cierra con un pico de ~130 A limitado solo por sus 10 mohm (el «detalle que
+* hay que anticipar» del problema: con 22 ohm el retardo tendría que ser mayor de 517 ms).
+* Ejecutar: ngspice -b prob-10.C.cir
+.param r=10
+VIN in 0 PWL(0 0 1u 24)
+RLIM in c {r}
+* relay contact across the start-up resistor (10 mohm contact + wiring), closes at 300 ms
+VREL k 0 PWL(0 0 300m 0 300.1m 1)
+SREL in c k 0 SWR
+.model SWR SW (VT=0.5 VH=0.1 RON=10m ROFF=1e9)
+C1 c 0 4700u IC=0
+.tran 20u 800m 0 100u UIC
+.control
+  foreach rv 10 22
+    alterparam r = $rv
+    reset
+    tran 20u 800m 0 100u UIC
+    echo "------ R = $rv ohm"
+    let ir = (v(in) - v(c)) / $rv
+    meas tran ipico_R MAX ir from=0 to=299m
+    meas tran tau WHEN v(c)=15.171 RISE=1
+    * 5 tau (99,3 %); with 22 ohm the relay closes first, so this reads ~300 ms
+    meas tran t5tau WHEN v(c)=23.838 RISE=1
+    let dv = v(in) - v(c)
+    meas tran falta_al_cerrar FIND dv AT=299.9m
+    let irel = (v(in) - v(c)) / 0.01
+    meas tran ipico_rele MAX irel from=300m to=310m
+    let er = integ(ir * ir * $rv)
+    meas tran energia_R FIND er AT=299.9m
+  end
+  let e = 0.5 * 4700u * 24 * 24
+  echo "Energía almacenada (J):"
+  print e
+.endc
+.end

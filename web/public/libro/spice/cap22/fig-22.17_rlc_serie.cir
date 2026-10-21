@@ -1,0 +1,34 @@
+* Capitulo 22, seccion 22.9 (Practica 9), figuras 22.17 y 22.18: resonancia RLC serie
+* L = 10 mH, C = 100 nF, R = 100 ohm (y 1 k, 33 ohm), 1 V aplicado; V_R es proporcional a I.
+* Comprueba: f0 = 5 033 Hz (independiente de R), Z0 = 316 ohm, Q = 3,16, BW = f0/Q = 1 592 Hz
+* (puntos de -3 dB en 4,30 y 5,89 kHz), desfase cero en f0, y sobretension V_C = V_L = Q*V
+* (3,16 V con 1 V aplicado); con R = 1 k, Q = 0,32 y f0 igual; con 33 ohm, Q = 9,6.
+* Ejecutar: ngspice -b fig-22.17_rlc_serie.cir
+.param rr=100
+V1 in 0 AC 1
+L1 in n1 10m
+C1 n1 n2 100n
+R1 n2 0 {rr}
+.ac dec 2000 1k 20k
+.control
+foreach r 100 1000 33
+  alterparam rr = $r
+  reset
+  run
+  echo "R = $r ohm"
+  let vr = mag(v(n2))
+  meas ac vmax max vr
+  meas ac f0 when vp(n2)=0
+  let lim = vmax/sqrt(2)
+  meas ac f1 when vr=lim rise=1
+  meas ac f2 when vr=lim fall=1
+  let bw = f2 - f1
+  let q = f0/bw
+  print bw q
+  let vc = mag(v(n1,n2))
+  meas ac vc_f0 find vc at=5032.9
+  let vl = mag(v(in,n1))
+  meas ac vl_f0 find vl at=5032.9
+end
+.endc
+.end

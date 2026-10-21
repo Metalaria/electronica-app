@@ -1,0 +1,46 @@
+* fig-8.10 (sección 8.7): referencia bandgap (célula de Brokaw) con dos NPN de áreas 8 y 1.
+* Q1 (área 8) lleva R2 en el emisor; el amplificador de error (VCVS de ganancia 1e5) iguala las
+* corrientes de colector, con lo que I = VT·ln8/R2 (PTAT) y Vout = VBE2 + 2·(R1/R2)·VT·ln8.
+* El modelo usa EG = 1,206 eV (la extrapolación de VBE a 0 K para el silicio) y XTI = 3.
+* Se barre R1 para encontrar la pendiente nula a 25 °C (R1 = 28 kOhm con R2 = 5 kOhm) y, con ese
+* valor, se barre la temperatura de -40 a 125 °C.
+* Comprueba:
+*   - V_BE baja unos 2 mV/°C (sección 5.3, figura 8.10);
+*   - la suma compensada sale en torno a 1,2 V, por ENCIMA de 1,206 V (1,25 a 1,26 V con XTI = 3):
+*     el 1,205 V es el límite a 0 K, no la tensión de salida (corrección de la sección 8.7);
+*   - la curvatura residual: unos pocos mV entre -40 y 125 °C (el inserto de la figura).
+* Ejecutar: ngspice -b fig-8.10.cir
+.model QBG NPN (IS=1e-16 BF=200 EG=1.206 XTI=3)
+.param r1v = 28k
+VCC vcc 0 DC 5
+RC1 vcc c1 10k
+RC2 vcc c2 10k
+Q1 c1 vo e1 QBG 8
+Q2 c2 vo e QBG 1
+R2 e1 e 5k
+R1 e 0 {r1v}
+EAMP vo 0 c2 c1 1e5
+.control
+  * slope at 25 C for several R1 values (central difference 20/30 C)
+  foreach rv 24k 26k 28k 30k 32k
+    alter R1 resistance = $rv
+    dc temp 20 30 10
+    meas dc va find v(vo) at=20
+    meas dc vb find v(vo) at=30
+    echo "R1 = $rv: pendiente a 25 °C (uV/°C) ="
+    print (vb - va)/10*1e6
+  end
+  alter R1 resistance = 28k
+  dc temp -40 125 5
+  meas dc vref25 find v(vo) at=25
+  meas dc vrefmax max v(vo)
+  meas dc vrefmin min v(vo)
+  let vbe2 = v(vo) - v(e)
+  meas dc vbe_m40 find vbe2 at=-40
+  meas dc vbe_125 find vbe2 at=125
+  echo "Vout a 25 °C (V), y excursión de -40 a 125 °C (mV):"
+  print vref25 (vrefmax - vrefmin)*1e3
+  echo "Deriva media de VBE2 (mV/°C):"
+  print (vbe_125 - vbe_m40)/165*1e3
+.endc
+.end

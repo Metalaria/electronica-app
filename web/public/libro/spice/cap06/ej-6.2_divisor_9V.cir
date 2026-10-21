@@ -1,0 +1,33 @@
+* Ejercicio 6.2: polarizacion por divisor con VCC = 9 V, R1 = 22 k, R2 = 4,7 k,
+* RE = 470 ohm, RC = 2,2 k.
+* Solucion del libro (aproximacion IB ~ 0, VBE = 0,7 V): VB = 1,58 V, VE = 0,88 V,
+* IC = 1,88 mA, VCE = 3,98 V. Aqui se resuelve con beta = 100 y beta = 300 para ver
+* cuanto se aparta la aproximacion cuando la corriente de base no es despreciable
+* (RTh = 3,9 k frente a (beta+1)*RE = 47 k con beta = 100).
+* Ejecutar:  ngspice -b ej-6.2_divisor_9V.cir
+VCC vcc 0 9
+.subckt et vcc params: bf=100
+.model QX NPN(IS=2.3e-15 BF={bf} VAF=1e6)
+R1 vcc b 22k
+R2 b 0 4.7k
+RC vcc c 2.2k
+RE e 0 470
+Q1 c b e QX
+.ends
+X100 vcc et bf=100
+X300 vcc et bf=300
+X1e6 vcc et bf=1e6
+.control
+op
+let ic100 = (9-v(x100.c))/2.2k
+let ic300 = (9-v(x300.c))/2.2k
+let icinf = (9-v(x1e6.c))/2.2k
+let vce100 = v(x100.c)-v(x100.e)
+let vce300 = v(x300.c)-v(x300.e)
+let vceinf = v(x1e6.c)-v(x1e6.e)
+echo "beta muy alta (equivale a la aproximacion del libro: 1,88 mA, 3,98 V):"
+print v(x1e6.b) v(x1e6.e) icinf vceinf
+echo "beta = 300 y beta = 100:"
+print ic300 vce300 ic100 vce100
+.endc
+.end

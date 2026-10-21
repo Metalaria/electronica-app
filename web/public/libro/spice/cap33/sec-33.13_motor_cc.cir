@@ -1,0 +1,33 @@
+* Sección 33.13: motor de corriente continua, V = E + I*R, E = k*w, T = k*I, con V = 24 V, R = 0,5 ohm,
+* k = 0,05 V*s/rad.
+* Modelo electromecánico: la velocidad angular w es la tensión del nodo w (1 V = 1 rad/s); la inercia J es
+* un condensador de J faradios; el par motor k*I es una corriente que entra en el nodo y el par de carga
+* una corriente que sale.
+* Comprueba la tabla del texto: en vacío 4584 rpm; con 0,100 N*m (2 A) 4393 rpm; con 0,250 N*m (5 A)
+* 4106 rpm; y la corriente de arranque V/R = 48 A con el rotor parado (aquí algo menos por la inductancia).
+* Valores no dados por el libro (típicos): L = 50 uH, J = 1e-4 kg*m^2, sin rozamiento.
+* Ejecutar: ngspice -b sec-33.13_motor_cc.cir
+VA   a 0 DC 24
+VSEN a b DC 0
+RA   b c 0.5
+LA   c d 50u
+* fuerza contraelectromotriz E = k*w
+BE   d 0 V = 0.05*v(w)
+* mecánica: J dw/dt = k*I - T_carga
+BT   0 w I = 0.05*i(VSEN)
+CJ   w 0 1e-4
+* par de carga: 0 hasta 0,3 s; 0,100 N*m de 0,3 a 0,6 s; 0,250 N*m desde 0,6 s
+IT   w 0 PWL(0 0 0.3 0 0.3001 0.1 0.6 0.1 0.6001 0.25)
+.tran 10u 0.9 0 10u uic
+.control
+run
+let rpm = v(w)*60/(2*pi)
+meas tran i_arranque MAX i(VSEN) from=0 to=5m
+meas tran rpm_vacio FIND rpm AT=0.299
+meas tran rpm_2A FIND rpm AT=0.599
+meas tran i_2A FIND i(VSEN) AT=0.599
+meas tran rpm_5A FIND rpm AT=0.899
+meas tran i_5A FIND i(VSEN) AT=0.899
+echo "Texto: 4584 rpm (0 A), 4393 rpm (2 A, 0,100 N*m), 4106 rpm (5 A, 0,250 N*m); arranque 48 A"
+.endc
+.end

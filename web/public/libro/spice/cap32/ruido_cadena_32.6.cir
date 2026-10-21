@@ -1,0 +1,44 @@
+* Seccion 32.6, "Un presupuesto completo, con numeros": cadena de dos etapas.
+* Sensor de 600 ohm; etapa 1 de ganancia 100 con en = 3 nV/rtHz e in = 1 pA/rtHz;
+* etapa 2 de ganancia 10 con en = 10 nV/rtHz; banda de 20 kHz (tratada como ideal,
+* como en el texto); T = 290 K, la del calculo de 4,0 nV/rtHz para 1 kohm.
+* Etapas ideales (VCVS sin ruido); los ruidos del amplificador se modelan con resistencias
+* aisladas normalizadas a 1 nV/rtHz y fuentes controladas.
+* Texto: termico de Rs 3,10; total 4,36 nV/rtHz referido a la entrada (la etapa 2 no cuenta);
+*   616 uV a la salida; SNR con 10 mV de senal: 84 dB; con en1 = 1 nV/rtHz: 3,31 nV/rtHz (2,4 dB).
+* Ejecutar:  ngspice -b ruido_cadena_32.6.cir
+* Resultado (ngspice-42): 4,357 nV/rtHz, 616,2 uV, 84,2 dB; con en1 = 1 nV: 3,314 nV/rtHz (2,38 dB).
+.options temp=17
+.param kb=1.380649e-23 tk=290.15
+.param rnorm={1e-18/(4*kb*tk)}
+.param en1=3
+Rn1 n1 0 {rnorm}
+Rn2 n2 0 {rnorm}
+Rn3 n3 0 {rnorm}
+Vsig vs 0 DC 0 AC 1
+Rs vs a 600
+Een1 b a n1 0 {en1}
+Gin1 0 a n2 0 1e-3
+* etapa 1 (entrada de impedancia infinita)
+E1 o1 0 b 0 100
+* etapa 2 con su ruido de tension en serie
+Een2 c o1 n3 0 10
+E2 out 0 c 0 10
+.control
+noise v(out) vsig lin 2 1k 1.001k
+setplot noise1
+let ein = inoise_spectrum[0]*1e9
+let vout_rms = onoise_spectrum[0]*sqrt(20k)
+let snr_db = 20*log10(10m/(inoise_spectrum[0]*sqrt(20k)))
+echo "caso 1: en1 = 3 nV/rtHz"
+print ein vout_rms snr_db
+alterparam en1=1
+reset
+noise v(out) vsig lin 2 1k 1.001k
+setplot noise3
+let ein1 = inoise_spectrum[0]*1e9
+let mejora_db = 20*log10(noise1.inoise_spectrum[0]/inoise_spectrum[0])
+echo "caso 2: en1 = 1 nV/rtHz"
+print ein1 mejora_db
+.endc
+.end

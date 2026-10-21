@@ -1,0 +1,42 @@
+* fig-43.3 y fig-43.4 / seccion 43.2: punto de trabajo y su dependencia de beta
+* Parte 1 (figura 43.3): recta de carga con VCC = 10 V, RC = 2 k, beta = 200 e IB = 12,5 uA
+*   -> Q en VCE = 5 V, IC = 2,5 mA (colector a media alimentacion).
+* Parte 2 (figura 43.4 y texto de 43.2): las tres polarizaciones con VCC = 12 V y RC = 3,3 k,
+*   dimensionadas para 1,32 mA con beta = 150, y beta barrida de 50 a 300 (el margen que usa
+*   el capitulo 6 y, tras la revision, tambien la seccion 43.2):
+*   a) corriente de base fija, RB = 1,28 M a 12 V          -> IC proporcional a beta: 0,44 a 2,64 mA (x6)
+*   b) realimentacion de colector, RB = 780 k al colector  -> 0,60 a 1,91 mA (x3,2): mejora, no basta
+*   c) divisor 47 k / 10 k con RE = 1 k (seccion 6.5)      -> IC de 1,186 a 1,363 mA (15 %)
+* Ejecutar:  ngspice -b fig-43.4_polarizacion_beta.cir
+.model QF NPN(IS=2.3e-15 BF=200 VAF=1e6)
+.model QV NPN(IS=2.3e-15 BF=150 VAF=1e6)
+* --- parte 1 ---
+V10 v10 0 10
+IB1 0 b1 12.5u
+RC1 v10 c1 2k
+Q1 c1 b1 0 QF
+* --- parte 2 ---
+VCC vcc 0 12
+RBa vcc ba 1.28Meg
+RCa vcc ca 3.3k
+Qa ca ba 0 QV
+RBb cb bb 780k
+RCb vcc cb 3.3k
+Qb cb bb 0 QV
+R1c vcc bc 47k
+R2c bc 0 10k
+RCc vcc cc 3.3k
+REc ec 0 1k
+Qc cc bc ec QV
+.control
+op
+echo "Figura 43.3: VCE (5 V) e IC (2,5 mA):"
+print v(c1) @q1[ic]
+foreach b 50 100 150 300
+  altermod QV BF=$b
+  op
+  echo "beta = $b : IC base fija, IC realimentacion de colector, IC divisor + RE"
+  print @qa[ic] @qb[ic] @qc[ic]
+end
+.endc
+.end

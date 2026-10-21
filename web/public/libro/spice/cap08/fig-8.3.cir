@@ -1,0 +1,106 @@
+* fig-8.3 (sección 8.2): las configuraciones básicas del operacional con un macromodelo
+* (ganancia en lazo abierto A = 1e5, polo dominante a 10 Hz -> GBW = 1 MHz, salida limitada a ±14 V).
+* Comprueba:
+*   - inversor 10 kOhm / 100 kOhm: ganancia -10 (error por A finita 0,011 %); con 1 kOhm / 1 MOhm
+*     (ganancia 1000) el error sube a 0,99 %.
+*   - no inversor 10 kOhm / 100 kOhm: ganancia 11; seguidor: ganancia 1.
+*   - sumador (R1 = R2 = Rf = 10 kOhm, V1 = 1 V, V2 = 0,5 V): -1,5 V.
+*   - ejemplo de la sección 8.2: no inversor R1 = 1 kOhm, R2 = 9,1 kOhm, 100 mV -> 1,01 V.
+*   - ejercicio 8.1: inversor 2,2 kOhm / 11 kOhm -> -5; ejercicio 8.2: 1 kOhm / 47 kOhm, 50 mV -> 2,4 V.
+*   - integrador 1 kOhm / 100 nF: un escalón de 1 V da una rampa de -10 V por milisegundo.
+*   - comparador sin realimentación: la salida va al extremo (±14 V).
+*   - sección 8.1, «En el banco»: diferencial de ganancia 1 con resistencias desapareadas un 0,1 %
+*     en el peor caso; 1 V de modo común da unos 2 mV de salida (CMRR del montaje ~ 54 dB).
+* Ejecutar: ngspice -b fig-8.3.cir
+.subckt opamp inp inn out
+E1 a 0 inp inn 1e5
+R1 a b 1k
+C1 b 0 15.915u
+B1 out 0 V = max(min(v(b), 14), -14)
+.ends
+* ---- inverter, gain -10
+VI1 i1 0 DC 0.1
+R11 i1 n1 10k
+R21 n1 o1 100k
+XU1 0 n1 o1 opamp
+* ---- inverter, gain -1000
+VI2 i2 0 DC 1m
+R12 i2 n2 1k
+R22 n2 o2 1Meg
+XU2 0 n2 o2 opamp
+* ---- non-inverting, gain 11
+VI3 i3 0 DC 0.1
+R13 n3 0 10k
+R23 n3 o3 100k
+XU3 i3 n3 o3 opamp
+* ---- follower
+VI4 i4 0 DC 0.1
+XU4 i4 o4 o4 opamp
+* ---- summing amplifier
+VA5 a5 0 DC 1
+VB5 b5 0 DC 0.5
+RA5 a5 n5 10k
+RB5 b5 n5 10k
+RF5 n5 o5 10k
+XU5 0 n5 o5 opamp
+* ---- example 8.2: non-inverting 1k / 9.1k, 100 mV
+VI6 i6 0 DC 0.1
+R16 n6 0 1k
+R26 n6 o6 9.1k
+XU6 i6 n6 o6 opamp
+* ---- exercise 8.1: inverter 2.2k / 11k
+VI7 i7 0 DC 0.1
+R17 i7 n7 2.2k
+R27 n7 o7 11k
+XU7 0 n7 o7 opamp
+* ---- exercise 8.2: non-inverting 1k / 47k, 50 mV
+VI8 i8 0 DC 0.05
+R18 n8 0 1k
+R28 n8 o8 47k
+XU8 i8 n8 o8 opamp
+* ---- comparator: +0.2 V on +, 0 V on -
+VI9 i9 0 DC 0.2
+XU9 i9 0 o9 opamp
+* ---- difference amplifier, gain 1, worst-case 0.1 % mismatch, 1 V common mode
+VCM cm 0 DC 1
+RD1 cm nd 10.01k
+RD2 nd od 9.99k
+RD3 cm pd 9.99k
+RD4 pd 0 10.01k
+XU10 pd nd od opamp
+* ---- integrator 1k / 100 nF, 1 V step at t = 0.1 ms
+VI11 i11 0 PULSE(0 1 0.1m 1n 1n 10 20)
+R111 i11 n11 1k
+C111 n11 o11 100n
+XU11 0 n11 o11 opamp
+.control
+  op
+  echo "Ganancia inversor 10k/100k (ideal -10):"
+  print v(o1)/v(i1)
+  echo "Error relativo (%) por A finita, ganancia 10:"
+  print 100*(1 - (v(o1)/v(i1))/(-10))
+  echo "Error relativo (%) por A finita, ganancia 1000:"
+  print 100*(1 - (v(o2)/v(i2))/(-1000))
+  echo "Ganancia no inversor 10k/100k (ideal 11) y seguidor (ideal 1):"
+  print v(o3)/v(i3) v(o4)/v(i4)
+  echo "Sumador, -10k*(1/10k + 0,5/10k) = -1,5 V:"
+  print v(o5)
+  echo "Ejemplo 8.2, 100 mV con ganancia 10,1 -> 1,01 V:"
+  print v(o6)
+  echo "Ejercicio 8.1 (ganancia -5) y ejercicio 8.2 (50 mV x 48 = 2,4 V):"
+  print v(o7)/v(i7) v(o8)
+  echo "Comparador en lazo abierto (debe ir a +14 V):"
+  print v(o9)
+  echo "Diferencial con 0,1 % de desapareamiento, salida con 1 V de modo común (V):"
+  print v(od)
+  let cmrr_db = 20*log10(1/abs(v(od)))
+  echo "CMRR del montaje (dB):"
+  print cmrr_db
+  tran 1u 1m
+  meas tran vint_05 find v(o11) at=0.6m
+  meas tran vint_02 find v(o11) at=0.2m
+  let slope = (vint_05 - vint_02)/0.4
+  echo "Pendiente del integrador (V/ms; libro: -10 V/ms):"
+  print slope
+.endc
+.end

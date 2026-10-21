@@ -1,0 +1,37 @@
+* fig-10.10 (sección 10.6): apagado de un MOSFET con carga inductiva sujeta a un bus de 400 V,
+* con y sin snubber RC. Corriente de carga 10 A (bobina de carga grande: fuente de corriente),
+* Coss = 250 pF, inductancia parásita del lazo 100 nH (el valor del ejemplo de la sección) con
+* 200 ohm de pérdidas en paralelo (Q = 10), diodo de sujeción hacia el bus.
+* Snubber con la regla de la sección: R = sqrt(L/Coss) = 20 ohm, C = 4·Coss = 1 nF.
+* Comprueba: sin snubber, sobreoscilación de pico del orden de I0·Z0 = 200 V sobre el bus (amortiguada
+* por Q = 10) a f0 = 1/(2·pi·sqrt(L·Coss)) = 32 MHz; con el snubber el pico baja y la oscilación desaparece.
+* Ejecutar: ngspice -b fig-10.10.cir
+.param rs=20 cs=1n usesn=0
+VBUS bus 0 DC 400
+ILOAD 0 d DC 10
+* MOSFET channel: switch that opens at t = 1 ns
+VG g 0 PWL(0 1 1n 1 1.2n 0)
+S1 d 0 g 0 SWCH
+.model SWCH SW (VT=0.5 VH=0.05 RON=10m ROFF=1e9)
+COSS d 0 250p
+DCL d m DFAST
+.model DFAST D (IS=1e-12 N=1 RS=1m CJO=0 TT=0)
+LST m bus 100n
+RP m bus 200
+* snubber (disabled with a huge resistor when usesn = 0)
+RSN d x {usesn ? rs : 1e9}
+CSN x 0 {cs}
+.tran 0.05n 300n 0 0.05n
+.control
+  foreach sn 0 1
+    alterparam usesn = $sn
+    reset
+    tran 0.05n 300n 0 0.05n
+    echo "------ snubber activo = $sn"
+    meas tran vpico MAX v(d) from=1n to=300n
+    let sobre = vpico - 400
+    print sobre
+    meas tran vfinal AVG v(d) from=250n to=300n
+  end
+.endc
+.end

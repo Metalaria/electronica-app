@@ -1,0 +1,36 @@
+* Capitulo 22, seccion 22.11 (Practica 11), figura 22.20: tiempo de subida y ancho de banda
+* Sistemas de primer orden (RC con R = 1 k) ajustados a los tiempos de subida de la figura:
+* 3,5 ns (BNC directo, 100 MHz), 4,5 ns (sonda x10, 78 MHz) y 35 ns (sonda en x1, 10 MHz),
+* y una cascada de dos etapas separadas por un buffer ideal (senal de 4,5 ns por un
+* instrumento de 3,5 ns). Comprueba:
+*   - t_r = 2,2 tau y BW = 0,35/t_r (f_-3dB medida en .ac);
+*   - t_medido = sqrt(t_senal^2 + t_instr^2) = 5,7 ns es exacta para respuestas gaussianas;
+*     con dos polos reales de primer orden sale algo mas, 6,1 ns (un 8 % por encima).
+* Ejecutar: ngspice -b sec-22.11_tiempo_subida.cir
+VIN in 0 PULSE(0 1 1n 1p 1p 1u 2u) AC 1
+R1 in a 1k
+C1 a 0 {3.5n/2.1972/1k}
+R2 in b 1k
+C2 b 0 {4.5n/2.1972/1k}
+R3 in c 1k
+C3 c 0 {35n/2.1972/1k}
+R4 in d 1k
+C4 d 0 {4.5n/2.1972/1k}
+E4 e 0 d 0 1
+R5 e f 1k
+C5 f 0 {3.5n/2.1972/1k}
+.control
+tran 10p 200n
+foreach n a b c f
+  meas tran t10 when v($n)=0.1 rise=1
+  meas tran t90 when v($n)=0.9 rise=1
+  let tr_ns = (t90-t10)*1e9
+  echo "nodo $n"
+  print tr_ns
+end
+ac dec 200 1MEG 1G
+meas ac fa when vdb(a)=-3.0103
+meas ac fb when vdb(b)=-3.0103
+meas ac fc when vdb(c)=-3.0103
+.endc
+.end

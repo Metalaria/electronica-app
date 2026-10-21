@@ -16,6 +16,8 @@ export default defineConfig({
     watch: { ignored: ['**/src-tauri/**'] },
   },
   envPrefix: ['VITE_', 'TAURI_ENV_'],
+  // The simulator's worker is an ES module (it imports the ngspice factory); loaded only on demand.
+  worker: { format: 'es' },
   build: {
     target: ['es2021', 'chrome105', 'safari15'],
     chunkSizeWarningLimit: 900,

@@ -1,0 +1,24 @@
+* Sección 36.9 y figura 36.11 (derecha): el circuito de entrada del FM rechaza la imagen, no separa emisoras.
+* Tanque LC paralelo sintonizado a 100 MHz con un Q modesto de 20 («unas decenas»), excitado desde
+* 50 Ohm y cargado con 50 Ohm, con transformación ideal de las resistencias (fuente de corriente
+* sobre la resistencia de carga del tanque, RP = Q * w0 * L).
+* Comprueba: a 121,4 MHz (imagen, 100 + 2*10,7) la atenuación es de unos 18 dB, mientras que una
+* emisora a 200 kHz (100,2 MHz) apenas pierde unas centésimas de dB: el Q de 500 que haría falta
+* para separar emisoras (100 MHz / 200 kHz) no lo da este circuito; lo da la FI.
+* Ejecutar: ngspice -b circuito_entrada_imagen.cir
+.param f0=100Meg L1=100n Q=20
+.param C1={1/((2*3.14159265*f0)^2*L1)} RP={Q*2*3.14159265*f0*L1}
+IIN 0 t DC 0 AC 1
+LT t 0 {L1}
+CT t 0 {C1}
+RPT t 0 {RP}
+.control
+  ac lin 20001 80Meg 130Meg
+  let vdb = db(v(t))
+  meas ac A_100M find vdb at=100Meg
+  meas ac A_100M2 find vdb at=100.2Meg
+  meas ac A_imagen find vdb at=121.4Meg
+  echo "Atenuación respecto al centro (dB): emisora a 200 kHz y frecuencia imagen 121,4 MHz"
+  print A_100M2-A_100M A_imagen-A_100M
+.endc
+.end

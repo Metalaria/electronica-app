@@ -1,0 +1,42 @@
+* Problema 2.B (seccion 2.13): shunt de 5 mohm para 10 A, y medida a cuatro hilos (seccion 2.12)
+* El libro dice:
+*   Rsh = 50 mV / 10 A = 5 mohm; P = 10^2 * 0,005 = 0,5 W.
+*   Con Rth = 50 C/W el shunt se calienta 25 C: error 1,00 % con TCR 400 ppm/C y 0,125 % con 50 ppm/C;
+*   con Rth = 20 C/W (plano de cobre) se calienta 10 C y el error es 0,050 % con 50 ppm/C.
+*   Seccion 2.12: con 1 A inyectado, una resistencia de 5 mohm da 5 mV (medida a cuatro hilos),
+*   y la medida a dos hilos suma la resistencia de puntas y contactos.
+* El calentamiento se impone con el parametro de instancia dtemp (incremento sobre la temperatura del circuito).
+* Ejecutar:  ngspice -b prob-2.B_shunt.cir
+* --- shunt frio, 10 A ---
+I1 0 s1 DC 10
+Rsh1 s1 0 5m
+* --- TCR 400 ppm/C, +25 C ---
+I2 0 s2 DC 10
+Rsh2 s2 0 5m tc1=400e-6 dtemp=25
+* --- TCR 50 ppm/C, +25 C ---
+I3 0 s3 DC 10
+Rsh3 s3 0 5m tc1=50e-6 dtemp=25
+* --- TCR 50 ppm/C, +10 C (plano de cobre) ---
+I4 0 s4 DC 10
+Rsh4 s4 0 5m tc1=50e-6 dtemp=10
+* --- medida de 5 mohm con 1 A: hilos de corriente con 0,1 ohm cada uno (puntas y contactos) ---
+* La fuente inyecta por los hilos de corriente; el voltimetro de dos hilos mide en los bornes de la fuente,
+* el de cuatro hilos mide sobre el propio componente (por sus hilos no circula corriente).
+I5 0 f1 DC 1
+Rpunta1 f1 x1 0.1
+Rx x1 x2 5m
+Rpunta2 x2 0 0.1
+.control
+op
+let vsh = 1000*v(s1)
+let p = v(s1)*10
+let e400 = 100*(v(s2)/v(s1) - 1)
+let e50 = 100*(v(s3)/v(s1) - 1)
+let e50cu = 100*(v(s4)/v(s1) - 1)
+print vsh p
+print e400 e50 e50cu
+let v4hilos_mV = 1000*(v(x1) - v(x2))
+let v2hilos_mV = 1000*v(f1)
+print v4hilos_mV v2hilos_mV
+.endc
+.end

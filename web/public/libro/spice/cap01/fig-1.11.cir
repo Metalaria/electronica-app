@@ -1,0 +1,32 @@
+* fig-1.11 (sección 1.10): fuente real con resistencia interna.
+* Pila de 9 V con 5 ohm internos: con 45 ohm, 180 mA y 8,1 V en bornes; con 5 ohm, 4,5 V;
+* en cortocircuito 1,8 A; potencia máxima 4,05 W con carga de 5 ohm; regulación 100*(9-8,1)/8,1 = 11,1 %.
+* Medida de Rint con dos lecturas: (9 - 8,1)/0,18 = 5 ohm. Con 500 ohm, 8,91 V.
+* Raíl de 5 V compartido por un microcontrolador (20 mA) y un motor de 1,5 A: con Rint = 0,5 ohm cae a
+* 4,24 V (por debajo de un umbral de reset de 4,3 V); con 0,05 ohm, a 4,92 V.
+* Ejecutar: ngspice -b fig-1.11.cir
+VP p 0 DC 9
+RI p o 5
+RL o 0 45
+VR1 r1 0 DC 5
+RR1 r1 m1 0.5
+IU1 m1 0 DC 20m
+IM1 m1 0 DC 1.5
+VR2 r2 0 DC 5
+RR2 r2 m2 0.05
+IU2 m2 0 DC 20m
+IM2 m2 0 DC 1.5
+.control
+op
+let i45 = v(o)/45
+let reg = 100*(9-v(o))/v(o)
+let rint = (9-v(o))/i45
+print v(o) i45 reg rint v(m1) v(m2)
+dc RL 0.01 1000 0.01
+let pl = -v(o)*i(VP)
+meas dc pmax MAX pl
+meas dc v5 FIND v(o) AT=5
+meas dc v500 FIND v(o) AT=500
+meas dc icc FIND i(VP) AT=0.01
+.endc
+.end

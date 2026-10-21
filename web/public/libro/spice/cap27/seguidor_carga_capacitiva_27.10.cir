@@ -1,0 +1,56 @@
+* Seccion 27.10 (y figuras 27.16 y 27.17): seguidor con carga capacitiva y resistencia de aislamiento.
+* Operacional: A0 = 1e5, GBW = 10 MHz, resistencia de salida en lazo abierto Ro = 50 ohm.
+* Parte A (texto de 27.10): con CL = 1 nF el polo Ro*CL cae en 3,18 MHz; se mide la ganancia de lazo
+*   del seguidor (lazo abierto: 1 V AC a la entrada no inversora, inversora a masa; T = V(carga)).
+*   Sin segundo polo interno, para aislar el efecto de la carga.
+* Parte B (el montaje «En el banco»): seguidor con CL = 10 nF y escalon de 100 mV, sin compensar y
+*   con Riso = 22 ohm (realimentacion tomada antes de Riso, se mira la tension en la carga). Aqui el
+*   operacional lleva ademas un segundo polo en 40 MHz, como el modelo de las figuras 27.16 y 27.17.
+* Parte C: error de continua del divisor Riso = 22 ohm con una carga de 1 kohm (el texto: 2,2 %).
+* Ejecutar:  ngspice -b seguidor_carga_capacitiva_27.10.cir
+* Resultado (ngspice-42): A) polo 3,18 MHz, cruce 5,21 MHz, margen 31 grados (el polo roba unos 59
+*   grados, no «casi 90»); B) sobreimpulso 81 % sin compensar (timbre de varios ciclos) y ninguno
+*   (0 %) en la carga con 22 ohm, como en la figura 27.17; C) error 2,15 %.
+.subckt opro inp inn out params: A0=1e5 GBW=10e6 F2=1e15 RO=50
+G1 0 n1 inp inn 1m
+R1 n1 0 {A0*1k}
+C1 n1 0 {A0/(2*3.14159265*GBW*A0*1k)}
+E2 n2 0 n1 0 1
+R2 n2 n3 1k
+C2 n3 0 {1/(2*3.14159265*F2*1k)}
+E3 n4 0 n3 0 1
+Ro n4 out {RO}
+.ends
+* --- A: ganancia de lazo con 1 nF
+Vt t 0 AC 1
+XA t 0 oa opro
+CLa oa 0 1n
+* --- B: transitorio con 10 nF
+Vs s 0 PULSE(0 0.1 1u 1n 1n 20u 40u)
+XB1 s ob1 ob1 opro F2=40e6
+CLb1 ob1 0 10n
+XB2 s pb2 pb2 opro F2=40e6
+Riso pb2 ob2 22
+CLb2 ob2 0 10n
+* --- C: divisor en continua
+Vd d 0 DC 1
+XC d pc pc opro F2=40e6
+Risoc pc oc 22
+RLc oc 0 1k
+.control
+ac dec 400 1k 1g
+meas ac fc when vdb(oa)=0
+meas ac ph find vp(oa) at=fc
+let pm = 180 + ph*180/pi
+print pm
+tran 1n 10u
+meas tran pk1 max v(ob1) from=1u to=6u
+meas tran pk2 max v(ob2) from=1u to=6u
+let os1 = (pk1-0.1)/0.1*100
+let os2 = (pk2-0.1)/0.1*100
+print os1 os2
+op
+let err = (1-v(oc))*100
+print err
+.endc
+.end

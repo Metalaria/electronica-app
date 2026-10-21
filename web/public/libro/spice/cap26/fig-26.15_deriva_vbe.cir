@@ -1,0 +1,39 @@
+* Capitulo 26, seccion 26.8 (La ganancia del transistor) y figura 26.15
+* Efecto de la deriva de V_BE (-2 mV/C) sobre I_C al calentar 30 C:
+*   - con V_BE fija (fuente ideal en la base, sin R_E): libro "casi por diez"; la figura da x10,2 con
+*     exp(2 mV*30/V_T) y V_T fija en 25,85 mV. SPICE da x8,6, porque V_T tambien sube con la
+*     temperatura (28,4 mV a 57 C) y la exponencial crece algo menos;
+*   - con resistencia de emisor y V_E = 1,405 V (base a tension fija): +4,3 % ("unos pocos por ciento").
+* EG = 1,206 y XTI = 3 dan una deriva de V_BE de unos -2,1 mV/C a 1,4 mA (la del libro);
+* XTB = 0 deja beta fija para aislar el efecto de V_BE.
+* Ejecutar:  ngspice -b fig-26.15_deriva_vbe.cir
+.options TNOM=26.85
+.model QT NPN(IS=1.41e-14 BF=150 VAF=1e9 EG=1.206 XTI=3 XTB=0)
+VCC vcc 0 12
+* Caso 1: V_BE fija, elegida para I_C ~ 1,4 mA a 26,85 C
+VBE1 b1 0 0.6544
+RC1 vcc c1 1k
+Q1 c1 b1 0 QT
+* Caso 2: base a tension fija y R_E = 1 k (V_E = 1,405 V a 26,85 C)
+VB2 b2 0 2.0594
+RC2 vcc c2 1k
+Q2 c2 b2 e2 QT
+RE2 e2 0 1k
+.control
+set temp=26.85
+op
+let ic1a = @q1[ic]
+let ic2a = @q2[ic]
+let vbea = v(b2)-v(e2)
+print ic1a ic2a v(e2) vbea
+set temp=56.85
+op
+let ic1b = @q1[ic]
+let ic2b = @q2[ic]
+let vbeb = v(b2)-v(e2)
+let r1 = ic1b/op1.ic1a
+let pct2 = 100*(ic2b/op1.ic2a-1)
+let dvbe = 1000*(vbeb-op1.vbea)/30
+print r1 pct2 dvbe
+.endc
+.end

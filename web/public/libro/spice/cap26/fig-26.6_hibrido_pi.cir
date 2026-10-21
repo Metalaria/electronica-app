@@ -1,0 +1,35 @@
+* Capitulo 26, seccion 26.4 (De la exponencial al modelo de pequena senal) y figura 26.6
+* Modelo hibrido en pi del BJT: comprueba la tabla de la seccion con V_T = 25,85 mV (300 K):
+*   I_C = 1 mA  -> g_m = 38,7 mS,  r_pi (beta = 100) = 2585 ohm
+*   I_C = 10 mA -> g_m = 386,8 mS, r_pi (beta = 100) = 259 ohm
+* y la consecuencia de diseno A_v = -g_m*R_C = -I_C*R_C/V_T = -96,7 (unos 97) con 2,5 V de caida
+* en R_C, igual para las dos corrientes (R_C = 2,5 k a 1 mA y 250 ohm a 10 mA).
+* La base se excita con una fuente de corriente (I_B = I_C/beta, BF ideal sin efecto Early),
+* asi que v(c)/v(b) en alterna es exactamente -g_m*R_C y v(b)/i_b es r_pi.
+* Ejecutar:  ngspice -b fig-26.6_hibrido_pi.cir
+.options TNOM=26.85 TEMP=26.85
+.model QI NPN(IS=1e-15 BF=100 NF=1 VAF=1e9 IKF=0 RB=0 RE=0 RC=0)
+VCC vcc 0 5
+* Etapa a 1 mA
+IB1 0 b1 DC 10u AC 1u
+RC1 vcc c1 2.5k
+Q1 c1 b1 0 QI
+* Etapa a 10 mA
+IB2 0 b2 DC 100u AC 1u
+RC2 vcc c2 250
+Q2 c2 b2 0 QI
+.control
+op
+print @q1[ic] @q1[gm] @q1[gpi] v(c1)
+print @q2[ic] @q2[gm] @q2[gpi] v(c2)
+let rpi1 = 1/@q1[gpi]
+let rpi2 = 1/@q2[gpi]
+print rpi1 rpi2
+ac lin 1 1k 1k
+let av1 = real(v(c1)/v(b1))
+let av2 = real(v(c2)/v(b2))
+let zin1 = real(v(b1)/1u)
+let zin2 = real(v(b2)/1u)
+print av1 av2 zin1 zin2
+.endc
+.end

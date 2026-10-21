@@ -1,0 +1,35 @@
+* Seccion 27.5, deduccion «El operacional real, con numeros»: slew rate y ancho de banda de gran senal.
+* Seguidor con un operacional de GBW = 1 MHz, A0 = 1e5 y slew rate de 0,5 V/us: la etapa de entrada
+* es una transconductancia que se satura en +-0,5 mA y carga 1 nF (0,5 mA / 1 nF = 0,5 V/us).
+* f_max = SR / (2 pi Vp): 8,0 kHz con 10 V de pico y 79,6 kHz con 1 V de pico.
+* Se excita con 10 V de pico a 8 kHz (limite) y a 20 kHz, y con 1 V de pico a 50 kHz (por debajo
+* de su limite de 79,6 kHz); se mide la pendiente maxima de la salida y su amplitud.
+* Ejecutar:  ngspice -b slew_rate_27.5.cir
+* Resultado (ngspice-42): a 8 kHz la salida llega a 10,0 V de pico con 0,496 V/us, justo en el
+*   limite; a 20 kHz la pendiente se clava en 0,50 V/us y la salida se queda en 6,2 V de pico,
+*   triangular; con 1 V a 50 kHz sigue a la entrada (0,31 V/us, sin limitar).
+.subckt opsr inp inn out
+B1 0 n1 I = 0.5m*tanh(6.283m*(V(inp)-V(inn))/0.5m)
+R1 n1 0 15.915meg
+C1 n1 0 1n
+E1 out 0 n1 0 1
+.ends
+Va a 0 SIN(0 10 8k)
+Vb b 0 SIN(0 10 20k)
+Vc c 0 SIN(0 1 50k)
+XA a oa oa opsr
+XB b ob ob opsr
+XC c oc oc opsr
+.control
+tran 10n 1m
+let sa = deriv(v(oa))/1e6
+let sb = deriv(v(ob))/1e6
+let sc = deriv(v(oc))/1e6
+meas tran srA max sa from=0.5m to=1m
+meas tran srB max sb from=0.5m to=1m
+meas tran srC max sc from=0.5m to=1m
+meas tran pkA max v(oa) from=0.5m to=1m
+meas tran pkB max v(ob) from=0.5m to=1m
+meas tran pkC max v(oc) from=0.5m to=1m
+.endc
+.end

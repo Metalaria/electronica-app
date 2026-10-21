@@ -1,0 +1,45 @@
+* Secciones 28.1 y 28.4: red de un oscilador de desplazamiento de fase, tres células RC iguales
+* (C serie, R a masa: versión paso alto), R = 10 kOhm, C = 10 nF, excitada con 1 V.
+* Comprueba:
+*   - red en escalera SIN separadores (las células se cargan entre sí): el desfase total llega a
+*     180° en f = 1/(2*pi*sqrt(6)*R*C) = 650 Hz, donde la atenuación es exactamente 1/29
+*     (ganancia necesaria 29); y que en esa frecuencia las tres células NO aportan 60° cada una;
+*   - la misma red con seguidores ideales entre células: cada una aporta 60° (f = 919 Hz,
+*     1/(2*pi*RC*tan 30°)) y la atenuación es (1/2)^3 = 1/8 (ganancia necesaria 8).
+* Ejecutar: ngspice -b desfase.cir
+.param R=10k C=10n
+VIN in 0 DC 0 AC 1
+* escalera sin separadores
+C1 in a {C}
+R1 a 0 {R}
+C2 a b {C}
+R2 b 0 {R}
+C3 b c {C}
+R3 c 0 {R}
+* con separadores (VCVS de ganancia 1)
+C4 in a2 {C}
+R4 a2 0 {R}
+E1 a2b 0 a2 0 1
+C5 a2b b2 {C}
+R5 b2 0 {R}
+E2 b2b 0 b2 0 1
+C6 b2b c2 {C}
+R6 c2 0 {R}
+.control
+  ac dec 5000 10 100k
+  * 180° <=> parte imaginaria nula con parte real negativa (se evita el salto de +-180° de la fase)
+  let im1 = imag(v(c))
+  let im2 = imag(v(c2))
+  meas ac f180 when im1=0 cross=1
+  meas ac att find vm(c) when im1=0 cross=1
+  meas ac pha find vp(a) when im1=0 cross=1
+  meas ac phb find vp(b) when im1=0 cross=1
+  echo "Escalera sin separadores: f(180°) (Hz), atenuación (1/29 = 0,0345) y fase acumulada en a y b (rad; 60° = 1,047, 120° = 2,094):"
+  print f180 att pha phb
+  meas ac f180b when im2=0 cross=1
+  meas ac attb find vm(c2) when im2=0 cross=1
+  meas ac pha2 find vp(a2) when im2=0 cross=1
+  echo "Con separadores: f(180°) (Hz), atenuación (1/8) y fase de la primera célula (rad, 60° = 1,047):"
+  print f180b attb pha2
+.endc
+.end

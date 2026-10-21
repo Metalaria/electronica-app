@@ -1,0 +1,60 @@
+* Capitulo 45, seccion 45.2, tabla «La resistencia en serie y su limite» y figura 45.3
+* LED blanco de potencia de 3,1 V y 350 mA alimentado con resistencia desde 12 V, 5 V y 3,3 V.
+* R se dimensiona para 350 mA con V_f = 3,1 V; despues se cambia V_f en +-0,3 V y se mide la
+* variacion de corriente. Tambien se comprueba la potencia del ejemplo de 12 V.
+* El LED se modela por su caida constante: una fuente de V_f en serie con un diodo casi ideal
+* (N = 0,001, caida de 0,5 mV) que solo impone el sentido de conduccion.
+* Resultados esperados:
+*   - variacion de I: +-3,4 % (12 V), +-16 % (5 V), +-150 % (3,3 V; con V_f = 3,4 V el LED se
+*     apaga, con 2,8 V la corriente llega a 875 mA);
+*   - 12 V: P_LED = 1,09 W, P_R = 3,12 W, 74 % de la energia en la resistencia.
+* Ejecutar: ngspice -b sec-45.2_tabla_resistencia_350mA.cir
+.model DID D(IS=1e-9 N=0.001)
+.param r12={8.9/0.35} r5={1.9/0.35} r33={0.2/0.35}
+
+V12 s12 0 DC 12
+V5 s5 0 DC 5
+V33 s33 0 DC 3.3
+R12 s12 a12 {r12}
+R5 s5 a5 {r5}
+R33 s33 a33 {r33}
+D12 a12 k12 DID
+D5 a5 k5 DID
+D33 a33 k33 DID
+VF12 k12 0 DC 3.1
+VF5 k5 0 DC 3.1
+VF33 k33 0 DC 3.1
+
+.control
+let rr12 = 8.9/0.35
+let rr5 = 1.9/0.35
+let rr33 = 0.2/0.35
+op
+let in12 = (v(s12)-v(a12))/rr12
+let in5 = (v(s5)-v(a5))/rr5
+let in33 = (v(s33)-v(a33))/rr33
+let p_led = 3.1*in12
+let p_r = (v(s12)-v(a12))*in12
+let frac_r = p_r/(12*in12)
+print in12 in5 in33 p_led p_r frac_r
+alter VF12 dc = 2.8
+alter VF5 dc = 2.8
+alter VF33 dc = 2.8
+op
+let ihi12 = (v(s12)-v(a12))/rr12
+let ihi5 = (v(s5)-v(a5))/rr5
+let ihi33 = (v(s33)-v(a33))/rr33
+alter VF12 dc = 3.4
+alter VF5 dc = 3.4
+alter VF33 dc = 3.4
+op
+let ilo12 = (v(s12)-v(a12))/rr12
+let ilo5 = (v(s5)-v(a5))/rr5
+let ilo33 = (v(s33)-v(a33))/rr33
+print op2.ihi12 ilo12 op2.ihi5 ilo5 op2.ihi33 ilo33
+let var12 = 100*(op2.ihi12-op1.in12)/op1.in12
+let var5 = 100*(op2.ihi5-op1.in5)/op1.in5
+let var33 = 100*(op2.ihi33-op1.in33)/op1.in33
+print var12 var5 var33
+.endc
+.end

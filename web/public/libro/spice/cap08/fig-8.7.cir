@@ -1,0 +1,79 @@
+* fig-8.7 (sección 8.5): NE555 en astable y monoestable, con un modelo de comportamiento.
+* El par de comparadores (umbrales 1/3 y 2/3 de Vcc) más el biestable equivale a un interruptor
+* con histéresis: el transistor de descarga (SW, 1 Ohm) se cierra cuando el condensador llega a
+* 2/3·Vcc y se abre cuando baja a 1/3·Vcc (VT = Vcc/2, VH = Vcc/6). Vcc = 9 V, como en la figura.
+* Comprueba:
+*   a) Ra = 1 kOhm, Rb = 10 kOhm, C = 100 nF: t_alto 0,762 ms, t_bajo 0,693 ms, 687 Hz, 52,4 %.
+*   b) Ra = 10 kOhm, Rb = 47 kOhm, C = 100 nF (deducción de la sección 8.5): 138,7 Hz, 54,8 %.
+*   c) ejercicio 8.5: Ra = 1 kOhm, Rb = 6,8 kOhm, C = 100 nF -> 986 Hz con la fórmula de 1,44
+*      y 988 Hz con el valor exacto 1/ln2 = 1,4427 (el modelo da el exacto).
+*   d) monoestable, R = 100 kOhm, C = 10 uF: el pulso dura 1,1·R·C = 1,1 s (el disparo se modela
+*      como el arranque del transitorio con el condensador descargado).
+*   e) la frecuencia no depende de Vcc: el caso a) repetido con Vcc = 5 V.
+* La salida (pin 3) está alta mientras el condensador se carga, es decir, mientras el
+* interruptor de descarga está abierto: se mide en el nudo de descarga (pin 7), que cae a 0 V
+* cuando la salida está baja.
+* Ejecutar: ngspice -b fig-8.7.cir
+.model DIS9 SW (RON=1 ROFF=1e9 VT=4.5 VH=1.5)
+.model DIS5 SW (RON=1 ROFF=1e9 VT=2.5 VH=0.8333)
+VCC vcc 0 DC 9
+* ---- a) 1k / 10k / 100n
+RAa vcc da 1k
+RBa da ca 10k
+Ca ca 0 100n
+Sa da 0 ca 0 DIS9
+* ---- b) 10k / 47k / 100n
+RAb vcc db 10k
+RBb db cb 47k
+Cb cb 0 100n
+Sb db 0 cb 0 DIS9
+* ---- c) 1k / 6.8k / 100n
+RAc vcc dc 1k
+RBc dc cc 6.8k
+Cc cc 0 100n
+Sc dc 0 cc 0 DIS9
+* ---- d) monostable 100k / 10u: charges from 0 V until 2/3 Vcc = 6 V
+RM vcc cm 100k
+CM cm 0 10u IC=0
+* ---- e) case a) at Vcc = 5 V
+VCC5 vcc5 0 DC 5
+RAe vcc5 de 1k
+RBe de ce 10k
+Ce ce 0 100n
+Se de 0 ce 0 DIS5
+.control
+  tran 0.1u 6m uic
+  * a) output low while the discharge switch is on (node da near 0 V); skip the first cycle
+  meas tran ta_f1 when v(da)=0.5 fall=2
+  meas tran ta_r1 when v(da)=0.5 rise=2
+  meas tran ta_f2 when v(da)=0.5 fall=3
+  let tla = ta_r1 - ta_f1
+  let tha = ta_f2 - ta_r1
+  let fa = 1/(ta_f2 - ta_f1)
+  let da = 100*tha/(ta_f2 - ta_f1)
+  echo "a) t_alto (ms), t_bajo (ms), f (Hz), ciclo (%) [libro 0,762 / 0,693 / 687 / 52]:"
+  print tha*1e3 tla*1e3 fa da
+  meas tran tc1 when v(dc)=0.5 fall=2
+  meas tran tc2 when v(dc)=0.5 fall=3
+  let fc = 1/(tc2 - tc1)
+  echo "c) ejercicio 8.5, f (Hz) [986 Hz con 1,44; 988 Hz exacto con 1/ln2]:"
+  print fc
+  meas tran te1 when v(de)=0.5 fall=2
+  meas tran te2 when v(de)=0.5 fall=3
+  let fe = 1/(te2 - te1)
+  echo "e) caso a) con Vcc = 5 V, f (Hz) [igual que con 9 V]:"
+  print fe
+  tran 1u 40m uic
+  meas tran tb_f1 when v(db)=0.5 fall=2
+  meas tran tb_r1 when v(db)=0.5 rise=2
+  meas tran tb_f2 when v(db)=0.5 fall=3
+  let fb = 1/(tb_f2 - tb_f1)
+  let db = 100*(tb_f2 - tb_r1)/(tb_f2 - tb_f1)
+  echo "b) f (Hz), ciclo (%) [libro 138,7 Hz y 54,8 %]:"
+  print fb db
+  tran 1m 2 uic
+  meas tran tmono when v(cm)=6 rise=1
+  echo "d) monoestable, duración del pulso (s) [libro 1,1 s]:"
+  print tmono
+.endc
+.end

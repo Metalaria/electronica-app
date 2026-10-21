@@ -1,0 +1,43 @@
+* Sección 33.11 (fig-33.12): pérdidas del diodo de rueda libre frente al rectificador síncrono.
+* Dos reductores idénticos de 12,5 V con D = 0,4 (5 V de salida) y 10 A de carga (fuente de corriente,
+* para que la corriente sea la misma en los dos casos), a 300 kHz con L = 10 uH:
+*   A) rueda libre con un Schottky de VF = 0,40 V a 10 A;
+*   B) rueda libre con un MOSFET síncrono de RDS(on) = 5 mohm, en oposición al principal.
+* Comprueba: P(diodo) = VF*I*(1-D) = 0,4*10*0,6 = 2,4 W; P(síncrono) = I^2*R*(1-D) = 0,3 W; ocho veces
+* menos. El cruce VF*I = I^2*R está en 0,4/0,005 = 80 A.
+* Modelo del Schottky ajustado para VF = 0,40 V a 10 A (IS = 13 uA, N = 1, RS = 5 mohm).
+* Ejecutar: ngspice -b sec-33.11_rect_sincrono.cir
+.param fs=300k T={1/fs} D=0.4
+VG1  g1 0 PULSE(0 1 0 1n 1n {D*T-1n} {T})
+VG2  g2 0 PULSE(1 0 0 1n 1n {D*T-1n} {T})
+* --- A: diodo
+VINA ina 0 DC 12.5
+S1A  ina swa g1 0 SWI
+VDA  0 dk DC 0
+DA   dk swa DSCH
+LA   swa outa 10u IC=10
+CA   outa 0 100u IC=4.76
+IA   outa 0 DC 10
+* --- B: síncrono
+VINB inb 0 DC 12.5
+S1B  inb swb g1 0 SWI
+VSB  swb sk DC 0
+S2B  sk 0 g2 0 SWS
+LB   swb outb 10u IC=10
+CB   outb 0 100u IC=5
+IB   outb 0 DC 10
+.model SWI SW(Ron=1m Roff=1e7 Vt=0.5 Vh=0)
+.model SWS SW(Ron=5m Roff=1e7 Vt=0.5 Vh=0)
+.model DSCH D(IS=13u N=1 RS=5m CJO=1n)
+.tran 2n 400u 300u 2n uic
+.control
+run
+let pd = -i(VDA)*v(swa)
+let ps = i(VSB)*v(swb)
+meas tran p_diodo AVG pd from=300u to=400u
+meas tran p_sincrono AVG ps from=300u to=400u
+let ratio = p_diodo/p_sincrono
+print ratio
+echo "Texto: 2,4 W con el diodo, 0,3 W con el síncrono: ocho veces menos"
+.endc
+.end

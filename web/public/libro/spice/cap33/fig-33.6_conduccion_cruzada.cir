@@ -1,0 +1,36 @@
+* fig-33.6 (sección 33.5): una rama de medio puente y la conducción cruzada.
+* Dos circuitos idénticos (bus de 48 V, interruptores de 20 mohm, 20 nH de inductancia parásita del
+* bucle, carga de 10 ohm al punto medio). En el primero las señales de puerta se solapan 50 ns en cada
+* transición; en el segundo hay 100 ns de tiempo muerto.
+* Comprueba: con solape, la corriente del bus llega a decenas o cientos de amperios en cada transición
+* (limitada solo por la inductancia parásita y las resistencias); con tiempo muerto, el pico se queda
+* en la corriente de la carga (unos 4,8 A).
+* Valores no dados por el libro (típicos). Ejecutar: ngspice -b fig-33.6_conduccion_cruzada.cir
+.param T=10u
+* --- rama A: solape de 50 ns (alto encendido de 0 a 5,05 us; bajo encendido de 5 us a 10,05 us)
+VBA  ba 0 DC 48
+LPA  ba ta 20n
+VGHA gha 0 PULSE(0 1 0 1n 1n 5.05u {T})
+VGLA gla 0 PULSE(0 1 5u 1n 1n 5.05u {T})
+SHA  ta ma gha 0 SWI
+SLA  ma 0  gla 0 SWI
+RLA  ma 0 10
+* --- rama B: tiempo muerto de 100 ns (alto de 0 a 4,9 us; bajo de 5 us a 9,9 us)
+VBB  bb 0 DC 48
+LPB  bb tb 20n
+VGHB ghb 0 PULSE(0 1 0 1n 1n 4.9u {T})
+VGLB glb 0 PULSE(0 1 5u 1n 1n 4.9u {T})
+SHB  tb mb ghb 0 SWI
+SLB  mb 0  glb 0 SWI
+RLB  mb 0 10
+.model SWI SW(Ron=20m Roff=1e7 Vt=0.5 Vh=0)
+.tran 0.2n 30u 10u 0.2n
+.control
+run
+let ibus_a = -i(VBA)
+let ibus_b = -i(VBB)
+meas tran pico_con_solape MAX ibus_a from=10u to=30u
+meas tran pico_con_tmuerto MAX ibus_b from=10u to=30u
+echo "Texto: el solape cortocircuita la alimentación (cientos de A en un puente real); el tiempo muerto lo evita"
+.endc
+.end

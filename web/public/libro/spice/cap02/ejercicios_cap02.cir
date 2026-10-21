@@ -1,0 +1,63 @@
+* Ejercicios del capitulo 2 con circuito (ej-2.4, ej-2.6, ej-2.7, ej-2.8, ej-2.9) y el ejemplo de la
+* seccion 2.8 (resistencia de 10 Mohm a 250 V). Todo en un .op.
+* El libro dice:
+*   ej-2.4: divisor 12 V con R1 = 2,2 k y R2 = 1,5 k -> 4,86 V (error -2,7 %); con 1 kohm de carga -> 2,57 V.
+*           Par alternativo 4,7 k / 3,3 k -> 4,95 V; con la carga -> 1,68 V.
+*   ej-2.6: LED de 2 V a 15 mA desde 5 V: R = 200 ohm, se elige 220 ohm -> 13,6 mA y 41 mW en la resistencia.
+*           (El LED se modela con un diodo ajustado para dar 2,0 V a unos 14 mA: IS = 2,4e-19 A, N = 2.)
+*   ej-2.7: 220 ohm con 30 mA -> 0,198 W.
+*   ej-2.8: divisor 10 k / 10 k a 10 V cargado con 10 k -> 3,33 V (frente a 5 V en vacio).
+*   ej-2.9: 15 k // 15 k = 7,5 kohm; 6,8 k + 680 = 7,48 kohm.
+*   Seccion 2.8: 10 Mohm con 250 V disipa 6,25 mW (el libro redondea a 6 mW).
+* Ejecutar:  ngspice -b ejercicios_cap02.cir
+* --- ej-2.4 ---
+V12 v12 0 DC 12
+R1a v12 a 2.2k
+R2a a 0 1.5k
+R1b v12 b 2.2k
+R2b b 0 1.5k
+RLb b 0 1k
+R1c v12 c 4.7k
+R2c c 0 3.3k
+R1d v12 d 4.7k
+R2d d 0 3.3k
+RLd d 0 1k
+* --- ej-2.6 ---
+.model LEDR D(IS=2.4e-19 N=2 RS=0.5)
+V5 v5 0 DC 5
+Rled v5 k 220
+Dled k 0 LEDR
+* --- ej-2.7: fuente de corriente de 30 mA sobre 220 ohm ---
+I30 0 p 30m
+R220 p 0 220
+* --- ej-2.8 ---
+V10 v10 0 DC 10
+R1e v10 e 10k
+R2e e 0 10k
+RLe e 0 10k
+* --- ej-2.9: se miden las combinaciones con 1 A, v = R ---
+I9a 0 q 1
+R15a q 0 15k
+R15b q 0 15k
+I9b 0 r 1
+R68 r s 6.8k
+R680 s 0 680
+* --- seccion 2.8: 10 Mohm a 250 V ---
+V250 hv 0 DC 250
+R10M hv 0 10Meg
+.control
+op
+let err24 = 100*(v(a)/5 - 1)
+print v(a) err24 v(b) v(c) v(d)
+let iled_mA = 1000*i(V5)*(-1)
+let vled = v(k)
+let pr_mW = 1000*(v(v5)-v(k))*(v(v5)-v(k))/220
+print iled_mA vled pr_mW
+let p27 = v(p)*30m
+print p27
+print v(e)
+print v(q) v(r)
+let p10M_mW = 1000*250*250/10e6
+print p10M_mW
+.endc
+.end

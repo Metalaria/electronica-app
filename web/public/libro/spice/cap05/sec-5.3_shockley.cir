@@ -1,0 +1,54 @@
+* Capitulo 5, seccion 5.3 (La ecuacion de Shockley y la curva caracteristica)
+* Comprueba las tablas de la seccion con un diodo ideal I_S = 1 pA, n = 1, a 300 K:
+*   - corriente a 0,40 / 0,50 / 0,60 / 0,65 / 0,70 V (5,24 uA, 251 uA, 12,0 mA, 83 mA, 575 mA);
+*   - tension a 1 uA / 1 mA / 10 mA / 100 mA (0,357 / 0,536 / 0,595 / 0,655 V);
+*   - resistencia dinamica r_d = V_T/I (25,9 kohm ... 0,26 ohm), por derivacion numerica;
+*   - coeficiente termico a corriente constante, dV/dT = (V - V_g0 - 3 V_T)/T con
+*     V_g0 = 1,206 V (EG) y XTI = 3: -2,28 mV/K a 0,6 V (12 mA) y -1,95 mV/K a 0,7 V (575 mA).
+*   - ejercicio 5.2: 0,6 V -> 12 mA.
+* Ejecutar: ngspice -b sec-5.3_shockley.cir
+.options TNOM=26.85 TEMP=26.85
+.model DSH D(IS=1e-12 N=1 RS=0 EG=1.206 XTI=3 CJO=0)
+
+* Barrido en tension
+V1 a 0 DC 0
+D1 a 0 DSH
+
+* Fuente de corriente para la lectura inversa V(I) (diodo independiente)
+I2 0 b DC 1m
+D2 b 0 DSH
+
+.control
+dc V1 0.3 0.75 0.0005
+let id = -i(V1)
+meas dc I040 find id at=0.40
+meas dc I050 find id at=0.50
+meas dc I060 find id at=0.60
+meas dc I065 find id at=0.65
+meas dc I070 find id at=0.70
+let ratio = I070/I050
+print ratio
+dc I2 1e-7 0.2 1e-7
+meas dc V1u  find v(b) at=1e-6
+meas dc V1m  find v(b) at=1e-3
+meas dc V10m find v(b) at=1e-2
+meas dc V100m find v(b) at=1e-1
+let dv100 = V100m - V1m
+print dv100
+let rd = deriv(v(b))
+meas dc rd1m   find rd at=1e-3
+meas dc rd10m  find rd at=1e-2
+meas dc rd100m find rd at=1e-1
+* coeficiente termico a corriente constante (12,0 mA -> 0,60 V; 575 mA -> 0,70 V)
+alter I2 dc = 12.0104m
+dc temp 21.85 31.85 0.5
+let tc = deriv(v(b))
+meas dc V_12mA find v(b) at=26.85
+meas dc TC_060 find tc at=26.85
+alter I2 dc = 574.758m
+dc temp 21.85 31.85 0.5
+let tc = deriv(v(b))
+meas dc V_575mA find v(b) at=26.85
+meas dc TC_070 find tc at=26.85
+.endc
+.end

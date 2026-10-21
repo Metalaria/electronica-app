@@ -30,6 +30,8 @@
   import AArrowUp from '@lucide/svelte/icons/a-arrow-up';
   import AArrowDown from '@lucide/svelte/icons/a-arrow-down';
   import Library from '@lucide/svelte/icons/library';
+  import Activity from '@lucide/svelte/icons/activity';
+  import Atom from '@lucide/svelte/icons/atom';
 
   const ICONOS = {
     menu: Menu,
@@ -64,6 +66,8 @@
     'letra-mas': AArrowUp,
     'letra-menos': AArrowDown,
     tomos: Library,
+    simulador: Activity,
+    componentes: Atom,
   } as const;
 
   export type NombreIcono = keyof typeof ICONOS;

@@ -1,0 +1,54 @@
+* Problema 3.B (seccion 3.11): condensador de filtro de una fuente lineal
+* Transformador de 12 V eficaces (16,97 V de pico) a 50 Hz, puente con 1,4 V de caida
+* total (dos diodos en conduccion), regulador modelado como carga de corriente constante
+* de 500 mA. Como en el libro, el puente se modela como |v| - 1,4 V seguido de un diodo
+* casi ideal, y el transformador no tiene resistencia serie.
+* Valores del libro (calculo autoconsistente):
+*   C        rizado    t_cond     I_pico   I_rms
+*   2200 uF  1,911 V   1,593 ms   5,67 A   1,39 A
+*   4700 uF  0,945 V   1,115 ms   8,39 A   1,68 A   (V_p = 15,57 V, V_min = 14,63 V)
+*   10000 uF 0,461 V   0,777 ms   12,32 A  2,03 A
+*   (la formula simple I*T/2/C da 1,064 V con 4700 uF)
+* Resultado de SPICE: rizado 1,909 / 0,945 / 0,461 V (coincide); I_pico 5,85 / 8,54 /
+* 12,09 A e I_rms 1,41 / 1,71 / 2,05 A, a un 1-3 % del calculo analitico (el diodo de
+* SPICE no es una conmutacion perfecta); t_cond medido con i > 10 mA, 1,17 ms.
+* Las medidas se hacen en el semiperiodo 400-410 ms, ya en regimen permanente.
+* El diodo casi ideal cae unos 20 mV en el pico de corriente, por eso V_max sale unos
+* 15,55 V en lugar de 15,57 V. Los condensadores arrancan cargados a 15 V (UIC).
+* Ejecutar:  ngspice -b prob-3.B_filtro_fuente_lineal.cir
+VS s 0 SIN(0 16.9706 50)
+BR r 0 V = abs(v(s)) - 1.4
+.model DID D(IS=1e-9 N=0.02 RS=1m)
+D1 r d1 DID
+VA1 d1 c1 0
+C1 c1 0 2200u IC=15
+I1 c1 0 DC 0.5
+D2 r d2 DID
+VA2 d2 c2 0
+C2 c2 0 4700u IC=15
+I2 c2 0 DC 0.5
+D3 r d3 DID
+VA3 d3 c3 0
+C3 c3 0 10000u IC=15
+I3 c3 0 DC 0.5
+.tran 2u 0.41 0 2u UIC
+.control
+run
+meas tran vmax_4700 MAX v(c2) FROM=0.400 TO=0.410
+meas tran vmin_4700 MIN v(c2) FROM=0.400 TO=0.410
+let rizado_4700 = vmax_4700 - vmin_4700
+meas tran tcond_4700 WHEN i(VA2)=0.01 RISE=LAST
+meas tran tfin_4700 WHEN i(VA2)=0.01 FALL=LAST
+let tcond_ms = (tfin_4700 - tcond_4700)*1000
+meas tran rizado_2200 PP v(c1) FROM=0.400 TO=0.410
+meas tran rizado_10000 PP v(c3) FROM=0.400 TO=0.410
+meas tran ipico_4700 MAX i(VA2) FROM=0.400 TO=0.410
+meas tran ipico_2200 MAX i(VA1) FROM=0.400 TO=0.410
+meas tran ipico_10000 MAX i(VA3) FROM=0.400 TO=0.410
+meas tran irms_2200 RMS i(VA1) FROM=0.400 TO=0.410
+meas tran irms_4700 RMS i(VA2) FROM=0.400 TO=0.410
+meas tran irms_10000 RMS i(VA3) FROM=0.400 TO=0.410
+meas tran q_4700 INTEG i(VA2) FROM=0.400 TO=0.410
+print rizado_4700 tcond_ms
+.endc
+.end

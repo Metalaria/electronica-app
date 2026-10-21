@@ -1,0 +1,44 @@
+* fig-7.7 (sección 7.5, «Lineal frente a conmutado»): carga resistiva de 12 V / 2 A (6 Ohm)
+* alimentada a media potencia (12 W) de dos formas:
+*   1) regulador lineal: MOSFET en seguidor con un amplificador de error (VCVS de ganancia 1e5)
+*      que fija 8,485 V = sqrt(12 W · 6 Ohm) en la carga. El libro da 1,41 A, 3,5 V de caída,
+*      5 W en el transistor y rendimiento del 71 %; con la carga a 6 V (25 % de 24 W), 6 W.
+*   2) PWM al 50 % a 1 kHz con un interruptor de 20 mOhm: 12 W en la carga y 40 mW de
+*      conducción en el interruptor.
+* Ejecutar: ngspice -b fig-7.7.cir
+.param vref = 8.4853
+.model NPWR NMOS (LEVEL=1 VTO=2 KP=0.5)
+.model SWM SW (RON=0.02 ROFF=1e7 VT=2.5 VH=0.1)
+* ---- 1) linear regulator
+V1 a 0 DC 12
+VS1 a d1 0
+M1 d1 g1 o1 o1 NPWR W=1 L=1
+RL1 o1 0 6
+VR r1 0 DC {vref}
+E1 g1 0 r1 o1 1e5
+* ---- 2) PWM switch (low side)
+V2 b 0 DC 12
+RL2 b d2 6
+S2 d2 0 c2 0 SWM
+VC c2 0 PULSE(0 5 0 10n 10n 0.5m 1m)
+.control
+  op
+  let iload = i(VS1)
+  let vdrop = v(d1) - v(o1)
+  let pt = vdrop * iload
+  let pl = v(o1) * iload
+  let eff = pl / (12 * iload)
+  echo "Lineal a media potencia: I (A), caida (V), P transistor (W), P carga (W), rendimiento"
+  print iload vdrop pt pl eff
+  alter VR dc = 6
+  op
+  let pt25 = (v(d1) - v(o1)) * i(VS1)
+  echo "Lineal con la carga a 6 V (25 % de 24 W): P transistor (W)"
+  print pt25
+  tran 0.2u 3m
+  let psw = v(d2) * (v(b) - v(d2)) / 6
+  meas tran psw_avg avg psw from=2m to=3m
+  let pload = (v(b) - v(d2)) * (v(b) - v(d2)) / 6
+  meas tran pload_avg avg pload from=2m to=3m
+.endc
+.end

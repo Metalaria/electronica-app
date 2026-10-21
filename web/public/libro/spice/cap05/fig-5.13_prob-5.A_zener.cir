@@ -1,0 +1,93 @@
+* Capitulo 5: figura 5.13 (regulador Zener basico), problema 5.A y ejercicios 5.3 y 5.8
+* Regulador Zener de 5,6 V con resistencia serie R_s y carga de corriente constante.
+* Se ensayan las cuatro esquinas (V_in minima/maxima, carga maxima/nula):
+*   Problema 5.A (V_in = 9...15 V, I_L = 0...20 mA, I_Z(min) = 5 mA):
+*     - Zener de 250 mW (I_Z(max) = 45 mA): ninguna R_s cumple; con 136 ohm (limite de
+*       regulacion) el Zener disipa mas de 250 mW en vacio a 15 V, y con 211 ohm (limite de
+*       disipacion) quedan menos de 5 mA a 9 V con plena carga.
+*     - Opcion A, Zener de 1 W y R_s = 120 ohm: I_Z = 78,3 mA y 0,44 W en vacio a 15 V,
+*       0,74 W en la resistencia; 8,33 mA para el Zener a 9 V con 20 mA de carga.
+*     - Opcion B, V_in = 10...12 V y R_s = 150 ohm con el Zener de 250 mW.
+*     - Opcion C: con r_z = 10 ohm la salida se mueve unos 0,7 V entre las dos esquinas.
+*   Ejercicio 5.3: 12 V, 5,1 V, 20 mA, R_s = 270 ohm -> I_Z ~ 5,6 mA, 0,176 W en R_s.
+*   Ejercicio 5.8: 12 V, 5,1 V, 20 mA, R_s = 220 ohm -> I_Z ~ 11,4 mA, 0,216 W en R_s.
+* Modelos: DZ56 es un Zener casi ideal (5,6 V, r_z ~ 0); DZ56R tiene RS = 10 ohm (r_z = 10 ohm).
+* Ejecutar: ngspice -b fig-5.13_prob-5.A_zener.cir
+.model DZ56  D(IS=1e-14 N=1 BV=5.6 IBV=1m NBV=0.02 RS=0)
+.model DZ56R D(IS=1e-14 N=1 BV=5.6 IBV=1m NBV=0.02 RS=10)
+.model DZ51  D(IS=1e-14 N=1 BV=5.1 IBV=1m NBV=0.02 RS=0)
+
+* Circuito de la figura 5.13: Vin - Rs - nodo de salida - Zener a masa, carga I_L
+VIN in 0 DC 9
+RS in out 120
+DZ 0 out DZ56
+IL out 0 DC 20m
+
+* Mismo circuito con r_z = 10 ohm (opcion C): copia en la esquina baja (9 V, 20 mA)
+* y copia en la esquina alta (15 V, sin carga)
+VINC inc 0 DC 9
+RSC inc outc 120
+DZC 0 outc DZ56R
+ILC outc 0 DC 20m
+VIND ind 0 DC 15
+RSD ind outd 120
+DZD 0 outd DZ56R
+
+* Ejercicios 5.3 y 5.8 (12 V, Zener 5,1 V, 20 mA)
+V12 v12 0 DC 12
+R53 v12 o53 270
+D53 0 o53 DZ51
+I53 o53 0 DC 20m
+R58 v12 o58 220
+D58 0 o58 DZ51
+I58 o58 0 DC 20m
+
+.control
+echo "--- Problema 5.A, opcion A: Rs = 120 ohm ---"
+* esquina baja: 9 V con 20 mA
+op
+let iz_lo = -i(VIN) - 20m
+print v(out) iz_lo
+* esquina alta: 15 V sin carga
+alter VIN dc = 15
+alter IL dc = 0
+op
+let iz_hi = -i(VIN)
+let pz_hi = iz_hi*v(out)
+let prs_hi = (v(in)-v(out))^2/120
+print v(out) iz_hi pz_hi prs_hi
+echo "--- Zener de 250 mW: Rs = 136 ohm (limite de regulacion) y 211 ohm (limite de disipacion) ---"
+alter RS = 136
+op
+let pz_136 = -i(VIN)*v(out)
+print pz_136
+alter RS = 211
+alter VIN dc = 9
+alter IL dc = 20m
+op
+let iz_211 = -i(VIN) - 20m
+print iz_211 v(out)
+echo "--- Opcion B: Rs = 150 ohm, 10...12 V ---"
+alter RS = 150
+alter VIN dc = 10
+op
+let iz_b_lo = -i(VIN) - 20m
+print iz_b_lo
+alter VIN dc = 12
+alter IL dc = 0
+op
+let pz_b_hi = -i(VIN)*v(out)
+print pz_b_hi
+echo "--- Opcion C: r_z = 10 ohm, Rs = 120 ohm ---"
+let izc_lo = (v(inc)-v(outc))/120 - 20m
+let izc_hi = (v(ind)-v(outd))/120
+let dvc = v(outd) - v(outc)
+print izc_lo izc_hi v(outc) v(outd) dvc
+echo "--- Ejercicios 5.3 (270 ohm) y 5.8 (220 ohm) ---"
+let iz53 = (v(v12)-v(o53))/270 - 20m
+let pr53 = (v(v12)-v(o53))^2/270
+let iz58 = (v(v12)-v(o58))/220 - 20m
+let pr58 = (v(v12)-v(o58))^2/220
+print iz53 pr53 iz58 pr58
+.endc
+.end

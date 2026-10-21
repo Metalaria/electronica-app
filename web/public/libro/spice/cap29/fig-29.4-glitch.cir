@@ -1,0 +1,31 @@
+* Figura 29.4 (sección 29.3, «En el banco» y «El problema que no aparece en la tabla: los glitches»):
+* una XOR con la señal A en una entrada y la misma señal retrasada por dos inversores (B) en la otra.
+* En estática Y = A xor A = 0; en dinámica, mientras A ha cambiado y B todavía no, las entradas
+* difieren y la salida da un pulso en cada flanco.
+* Retardos de la figura: 3 ns por inversor (B va 6 ns detrás de A) y 2 ns la XOR.
+* Puertas digitales XSPICE con puentes ADC/DAC (0/5 V).
+* Comprueba: dos pulsos de 6 ns (el retardo de los dos inversores), que empiezan 2 ns después de
+* cada flanco de A (20 ns y 70 ns), y salida a 0 fuera de ellos.
+* Ejecutar: ngspice -b fig-29.4-glitch.cir
+VA a 0 PWL(0 0 20n 0 20.01n 5 70n 5 70.01n 0 100n 0)
+.model toDig adc_bridge(in_low=2.4 in_high=2.6 rise_delay=1p fall_delay=1p)
+.model toAna dac_bridge(out_low=0 out_high=5 t_rise=0.05n t_fall=0.05n)
+.model inv3 d_inverter(rise_delay=3n fall_delay=3n)
+.model xor2 d_xor(rise_delay=2n fall_delay=2n)
+Aad [a] [ad] toDig
+Ainv1 ad n1 inv3
+Ainv2 n1 bd inv3
+Axor [ad bd] yd xor2
+Ada [bd yd] [b y] toAna
+.tran 0.01n 100n
+.control
+  run
+  meas tran ancho1 trig v(y) val=2.5 rise=1 targ v(y) val=2.5 fall=1
+  meas tran ancho2 trig v(y) val=2.5 rise=2 targ v(y) val=2.5 fall=2
+  meas tran inicio1 when v(y)=2.5 rise=1
+  meas tran inicio2 when v(y)=2.5 rise=2
+  meas tran retardo_b trig v(a) val=2.5 rise=1 targ v(b) val=2.5 rise=1
+  meas tran y_entre max v(y) from=35n to=65n
+  echo "Esperado: ancho1 = ancho2 = 6 ns; inicio1 = 22 ns, inicio2 = 72 ns; retardo_b = 6 ns; y_entre = 0"
+.endc
+.end

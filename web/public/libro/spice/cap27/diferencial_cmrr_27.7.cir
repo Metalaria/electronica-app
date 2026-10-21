@@ -1,0 +1,47 @@
+* Seccion 27.7, «El diferencial de un solo operacional y sus dos defectos».
+* Diferencial de cuatro resistencias de 10 kohm (ganancia unidad) con operacional casi ideal
+* (A0 = 1e7). Peor caso con resistencias del 1 %: R1 y R4 a +1 %, R2 y R3 a -1 %.
+* Se aplica 1 V de modo comun (las dos entradas unidas) y se mide la salida; CMRR = Gd/Gcm.
+* El texto da unos 34 dB; con 0,005 % harian falta para 80 dB. Tambien se comprueba el error de
+* 2,5 V de modo comun con 90 dB (79 uV) y 60 dB (2,5 mV) referido a la entrada (fuente E ideal).
+* Ejecutar:  ngspice -b diferencial_cmrr_27.7.cir
+* Resultado (ngspice-42): CMRR 34,1 dB con el 1 %; 80,0 dB con el 0,005 %; 79,1 uV y 2,5 mV.
+.subckt opamp inp inn out
+E1 out 0 inp inn 1e7
+.ends
+.param e1=0.01 e2=0.00005
+Vcm c 0 DC 1
+Vd d 0 DC 1
+* --- tolerancia 1 %: modo comun
+X1 p1 n1 o1 opamp
+R11 c n1 {10k*(1+e1)}
+R12 n1 o1 {10k*(1-e1)}
+R13 c p1 {10k*(1-e1)}
+R14 p1 0 {10k*(1+e1)}
+* --- tolerancia 1 %: diferencial (1 V en la entrada no inversora, la otra a masa)
+X2 p2 n2 o2 opamp
+R21 0 n2 {10k*(1+e1)}
+R22 n2 o2 {10k*(1-e1)}
+R23 d p2 {10k*(1-e1)}
+R24 p2 0 {10k*(1+e1)}
+* --- tolerancia 0,005 %
+X3 p3 n3 o3 opamp
+R31 c n3 {10k*(1+e2)}
+R32 n3 o3 {10k*(1-e2)}
+R33 c p3 {10k*(1-e2)}
+R34 p3 0 {10k*(1+e2)}
+X4 p4 n4 o4 opamp
+R41 0 n4 {10k*(1+e2)}
+R42 n4 o4 {10k*(1-e2)}
+R43 d p4 {10k*(1-e2)}
+R44 p4 0 {10k*(1+e2)}
+* --- error referido a la entrada de 2,5 V de modo comun: Vcm / 10^(CMRR/20)
+Ecm90 e90 0 VALUE={2.5/pow(10,90/20)}
+Ecm60 e60 0 VALUE={2.5/pow(10,60/20)}
+.control
+op
+let cmrr1 = 20*log10(abs(v(o2)/v(o1)))
+let cmrr2 = 20*log10(abs(v(o4)/v(o3)))
+print cmrr1 cmrr2 v(e90) v(e60)
+.endc
+.end

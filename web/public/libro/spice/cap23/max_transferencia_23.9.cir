@@ -1,0 +1,33 @@
+* Sección 23.9, Ec. 5 y figura 23.10: máxima transferencia de potencia.
+* Caso 1 (comprobación numérica y tabla): V_th = 10 V, R_th = 50 ohm; barrido de R_L.
+*   Comprueba: máximo 0,5 W en 50 ohm; 0,4444 W en 25 y 100 ohm (88,9 %); 0,1653 W en 500 ohm;
+*   rendimientos 33 %, 50 %, 67 % y 91 %.
+* Caso 2 (figura 23.10): V_Th = 9 V, R_Th = 3 ohm: máximo 6,75 W en 3 ohm.
+* Ejecutar: ngspice -b max_transferencia_23.9.cir
+V1 s1 0 DC 10
+R1 s1 o1 50
+RL1 o1 m1 50
+VM1 m1 0 DC 0
+V2 s2 0 DC 9
+R2 s2 o2 3
+RL2 o2 0 3
+.control
+foreach r 25 50 100 500
+  alter RL1 = $r
+  op
+  let p = v(o1)^2/$r
+  let eta = 100*v(o1)/10
+  echo "R_L = $r ohm"
+  print p eta
+end
+op
+let p2 = v(o2)^2/3
+print p2
+* barrido fino de R_L entre 40 y 60 ohm para localizar el máximo del caso 1
+alter RL1 = 50
+dc RL1 40 60 0.01
+let pl = v(o1)*i(VM1)
+meas dc pmax MAX pl
+meas dc rbest WHEN pl=pmax
+.endc
+.end

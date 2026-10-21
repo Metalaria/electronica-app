@@ -1,0 +1,105 @@
+* Capitulo 15, seccion 15.2 (Proyecto 1: fuente de alimentacion simetrica +-12 V), figura 15.5.
+* Transformador de 15-0-15 V eficaces (21,21 V de pico por mitad), toma media a masa, puente de
+* cuatro diodos que da las dos ramas (cada rama conduce por UN diodo en cada semiciclo),
+* 2 200 uF por rama y 0,5 A por rama. Cada 7812/7912 con su carga se modela como un sumidero de
+* corriente constante de 0,5 A (un regulador lineal toma por la entrada la misma corriente que
+* entrega), de modo que la potencia que disipa es (V_entrada - 12 V) x 0,5 A.
+* Diodos «de 0,7 V» (modelo exponencial con IS = 7 pA, N = 1, como en cap05), y una variante
+* con 1N4007 realista para ver cuanto baja la tension cuando la caida no es constante.
+* Comprueba:
+*   - pico tras el diodo: 21,2 - 0,7 = 20,5 V (simulado 20,56 V);
+*   - rizado: la formula I/(f C) del texto da 2,27 V y es una cota superior (supone que el
+*     condensador se descarga los 10 ms enteros); la simulacion da 1,92 V y un minimo de 18,6 V
+*     frente a los 18,2 V del texto: el calculo del texto queda del lado seguro;
+*   - margen sobre los 14 V que necesita el 7812: 4,6 V (texto 4,2 V); con la red al -10 %,
+*     2,5 V (sigue habiendo margen);
+*   - disipacion del regulador: 4,28 W con la tension de pico (cota del texto, 4,3 W) y
+*     3,8 W con la tension media real (19,65 V);
+*   - rendimiento de rectificador + reguladores (sin el transformador): 59 % (texto: 55-60 %);
+*   - variante 12-0-12: minimo de 14,4 V (texto, con la formula, 14,0 V): en el limite del
+*     7812 y sin margen para una bajada de la red.
+* Con 1N4007 realista el pico baja a 20,3 V y el minimo a 18,4 V.
+* Fuente ideal (sin resistencia de devanado); la carga sube en rampa los primeros 100 ms y se
+* mide en regimen permanente entre 0,52 y 0,62 s.
+* Ejecutar: ngspice -b sec-15.2_fuente_simetrica.cir
+.model D07 D(IS=7e-12 N=1 RS=1m CJO=10p)
+.model D1N4007 D(IS=7.02767n RS=0.0341512 N=1.80803 EG=1.05743 XTI=5 BV=1000 IBV=5e-08
++ CJO=1e-11 VJ=0.7 M=0.5 FC=0.5 TT=1e-07)
+* (a) 15-0-15 V, diodos de 0,7 V
+VA1 a1 0 SIN(0 21.2132 50)
+VB1 0 b1 SIN(0 21.2132 50)
+XA a1 b1 p1 n1 SIMETRICA_D07
+
+* (b) 15-0-15 V, 1N4007 realista
+VA2 a2 0 SIN(0 21.2132 50)
+VB2 0 b2 SIN(0 21.2132 50)
+XB a2 b2 p2 n2 SIMETRICA_4007
+
+* (c) 15-0-15 V con la red al -10 % (19,09 V de pico), diodos de 0,7 V
+VA3 a3 0 SIN(0 19.0919 50)
+VB3 0 b3 SIN(0 19.0919 50)
+XC a3 b3 p3 n3 SIMETRICA_D07
+
+* (d) 12-0-12 V (16,97 V de pico), diodos de 0,7 V
+VA4 a4 0 SIN(0 16.9706 50)
+VB4 0 b4 SIN(0 16.9706 50)
+XD a4 b4 p4 n4 SIMETRICA_D07
+
+* ta, tb: extremos del secundario; la toma media es la masa (nodo 0).
+* IP e IN: sumideros de 0,5 A que representan regulador + carga en cada rama.
+.subckt SIMETRICA_D07 ta tb pos neg
+D1 ta pos D07
+D2 tb pos D07
+D3 neg ta D07
+D4 neg tb D07
+CP pos 0 2200u
+CN 0 neg 2200u
+IP pos 0 PWL(0 0 0.1 0.5)
+IN 0 neg PWL(0 0 0.1 0.5)
+.ends
+.subckt SIMETRICA_4007 ta tb pos neg
+D1 ta pos D1N4007
+D2 tb pos D1N4007
+D3 neg ta D1N4007
+D4 neg tb D1N4007
+CP pos 0 2200u
+CN 0 neg 2200u
+IP pos 0 PWL(0 0 0.1 0.5)
+IN 0 neg PWL(0 0 0.1 0.5)
+.ends
+
+.tran 5u 0.62 0 5u
+.control
+run
+echo "(a) 15-0-15, diodos de 0,7 V: rama positiva y negativa"
+meas tran vmax_p1 max v(p1) from=0.52 to=0.62
+meas tran vmin_p1 min v(p1) from=0.52 to=0.62
+meas tran vavg_p1 avg v(p1) from=0.52 to=0.62
+meas tran vmax_n1 min v(n1) from=0.52 to=0.62
+meas tran vmin_n1 max v(n1) from=0.52 to=0.62
+let rizado_p1 = vmax_p1 - vmin_p1
+let margen_p1 = vmin_p1 - 14
+* disipacion del 7812: cota con la tension de pico (texto) y valor real con la media
+let preg_pico = (vmax_p1 - 12)*0.5
+let preg_med = (vavg_p1 - 12)*0.5
+print rizado_p1 margen_p1 preg_pico preg_med
+* potencia entregada por las dos mitades del secundario (ambas ramas)
+let pin1 = -(v(a1)*i(VA1) + (-v(b1))*i(VB1))
+meas tran pin1avg avg pin1 from=0.52 to=0.62
+let rend1 = 2*12*0.5/pin1avg
+echo "rendimiento rectificador + reguladores (sin transformador):"
+print pin1avg rend1
+echo "(b) 15-0-15 con 1N4007 realista"
+meas tran vmax_p2 max v(p2) from=0.52 to=0.62
+meas tran vmin_p2 min v(p2) from=0.52 to=0.62
+meas tran vavg_p2 avg v(p2) from=0.52 to=0.62
+echo "(c) red al -10 %"
+meas tran vmax_p3 max v(p3) from=0.52 to=0.62
+meas tran vmin_p3 min v(p3) from=0.52 to=0.62
+let margen_p3 = vmin_p3 - 14
+print margen_p3
+echo "(d) 12-0-12"
+meas tran vmax_p4 max v(p4) from=0.52 to=0.62
+meas tran vmin_p4 min v(p4) from=0.52 to=0.62
+.endc
+.end

@@ -1,0 +1,57 @@
+* Figura 27.12 (amplificador de instrumentacion de tres operacionales) con los valores del
+* problema 27.A (acondicionador de la celula de carga).
+* R = 25 kohm interna, RG = 110 ohm (E24), diferencial de salida con cuatro R2 = 10 kohm, REF a masa.
+* Operacionales: A0 = 1e5, polo en 10 Hz (GBW = 1 MHz). Entradas: 2,505 V y 2,495 V
+* (10 mV de fondo de escala sobre 2,5 V de modo comun). Tras el amplificador, filtro RC 15 kohm + 1 uF.
+* Comprueba: ganancia ideal 1 + 50k/110 = 455,5 (4,555 V) y real 453,5 (4,535 V, error 0,45 %);
+* offset de 50 uV en la entrada de U1 -> 22,8 mV a la salida; ancho de banda GBW/G = 2,2 kHz;
+* polo del filtro 10,6 Hz.
+* Ejecutar:  ngspice -b fig-27.12_prob-27.A.cir
+* Cableado exactamente como en la figura: V_in+ entra en U1, cuya salida va a la entrada inversora
+* de U3, asi que la salida sale con signo negativo (V_out = -G*(V_in+ - V_in-)); las etiquetas de la
+* figura estan intercambiadas (vease el informe de revision).
+* Resultado (ngspice-42): |V_out| = 4,5347 V (ganancia 453,5, error 0,455 %); con A0 = 1e10: 4,5555 V;
+* offset 22,7 mV (22,8 mV con la ganancia ideal); f-3dB del amplificador 2,2 kHz; filtro 10,6 Hz.
+.subckt opamp inp inn out params: A0=1e5 GBW=1e6
+G1 0 n1 inp inn 1m
+R1 n1 0 {A0*1k}
+C1 n1 0 {1m/(2*3.14159265*GBW)}
+E1 out 0 n1 0 1
+.ends
+.subckt inamp inp inm out ref params: A0=1e5 VOS=0
+Vos inp ip {VOS}
+XU1 ip p1 o1 opamp A0={A0} GBW={A0*10}
+XU2 inm p2 o2 opamp A0={A0} GBW={A0*10}
+Ra o1 p1 25k
+Rb o2 p2 25k
+RG p1 p2 110
+XU3 q m out opamp A0={A0} GBW={A0*10}
+R21 o1 m 10k
+R22 m out 10k
+R23 o2 q 10k
+R24 q ref 10k
+.ends
+Vcm cm 0 DC 2.5
+Vdp inp cm DC 5m AC 0.5
+Vdm cm inm DC 5m AC 0.5
+* amplificador con A0 = 1e5
+XA inp inm outa 0 inamp
+Rflt outa f 15k
+Cflt f 0 1u
+* el mismo con operacionales casi ideales
+XB inp inm outb 0 inamp A0=1e10
+* entradas en cortocircuito al modo comun y 50 uV de offset
+XC cm cm outc 0 inamp VOS=50u
+.control
+op
+print v(outa) v(outb) v(outc)
+let g = v(outa)/10m
+let err = (1-v(outa)/v(outb))*100
+print g err
+ac dec 200 0.1 1meg
+let na = vdb(outa)-vdb(outa)[0]
+let nf = vdb(f)-vdb(f)[0]
+meas ac bw_amp when na=-3.0103
+meas ac fc_filtro when nf=-3.0103
+.endc
+.end

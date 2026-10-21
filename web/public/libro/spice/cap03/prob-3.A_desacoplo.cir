@@ -1,0 +1,40 @@
+* Problema 3.A (seccion 3.11): red de desacoplo, hasta donde llega un condensador
+* 100 nF 0603 con 0,8 nH de inductancia total de montaje y 20 mohm de ESR, excitado con
+* 1 A de alterna (la tension del nodo es |Z| en ohmios). Valores del libro:
+*   resonancia serie 17,8 MHz con |Z|min = ESR = 20 mohm
+*   |Z| = 1587 mohm a 1 MHz, 111 mohm a 10 MHz, 220 mohm a 50 MHz, 487 mohm a 100 MHz
+* Variantes que comprueban el apartado "Que anadir":
+*   z1n: 100 nF en paralelo con 1 nF, ambos con la misma conexion (0,8 nH, 20 mohm):
+*        el 1 nF resuena a 178 MHz, pero entre las dos resonancias hay una antirresonancia
+*        en 126 MHz (pico de casi 10 ohm) y a 100 MHz el conjunto da 0,88 ohm, PEOR que el
+*        100 nF solo.
+*   z2x: dos 100 nF iguales en paralelo, cada uno con sus vias: L/2, sin antirresonancia,
+*        0,24 ohm a 100 MHz (la mitad).
+* Ejecutar:  ngspice -b prob-3.A_desacoplo.cir
+.subckt creal n c=100n l=0.8n r=20m
+R1 n x {r}
+L1 x y {l}
+C1 y 0 {c}
+.ends
+I1 0 z1 DC 0 AC 1
+X1 z1 creal
+I2 0 z1n DC 0 AC 1
+X2a z1n creal
+X2b z1n creal c=1n
+I3 0 z2x DC 0 AC 1
+X3a z2x creal
+X3b z2x creal
+.ac dec 4000 100k 1G
+.control
+run
+meas ac zmin MIN vm(z1) FROM=1meg TO=100meg
+meas ac z_1MHz FIND vm(z1) AT=1meg
+meas ac z_10MHz FIND vm(z1) AT=10meg
+meas ac z_50MHz FIND vm(z1) AT=50meg
+meas ac z_100MHz FIND vm(z1) AT=100meg
+meas ac z1n_100MHz FIND vm(z1n) AT=100meg
+meas ac z1n_pico MAX vm(z1n) FROM=50meg TO=170meg
+meas ac z1n_min_alto MIN vm(z1n) FROM=150meg TO=300meg
+meas ac z2x_100MHz FIND vm(z2x) AT=100meg
+.endc
+.end

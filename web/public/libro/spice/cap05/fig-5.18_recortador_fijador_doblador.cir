@@ -1,0 +1,76 @@
+* Capitulo 5, secciones 5.9 y 5.10, figura 5.18 y problema 5.C
+* Recortador, fijador y doblador sobre la misma senoide de 8 V de pico, 1 kHz (figura 5.18):
+*   (1) Zener de 5,1 V en serie con un diodo: recorta en +5,8 V y deja pasar el semiciclo
+*       negativo (el diodo serie bloquea la conduccion directa del Zener);
+*   (1b) lo mismo con un segundo diodo en antiparalelo: anade el recorte en -0,7 V
+*       (es el caso que dibuja la figura: +5,8 V / -0,7 V);
+*   (2) fijador (condensador serie, diodo a masa con el anodo en el nodo): picos positivos en
+*       +0,7 V, minimos en -15,3 V;
+*   (3) doblador de Greinacher (fijador + detector de pico): 2*8 - 1,4 = 14,6 V;
+*   (4) doblador con 12 V eficaces, 50 Hz (seccion 5.10): 2*16,97 - 1,4 = 32,5 V.
+* Problema 5.C: dos Zener de 5,6 V en antiserie con 1 kohm y senoide de 10 V de pico:
+*   recorte en +-6,3 V, 3,7 mA por los Zener; con 200 pF de capacidad de union el paso bajo
+*   parasito corta en 796 kHz (analisis .ac con los diodos en bloqueo, senal pequena).
+* Diodos: 1N4148 (modelo habitual); Zener: modelo D con BV e IS = 1e-14 (caida directa ~0,7 V
+* a unos mA). Las caidas reales a pocos mA son 0,6-0,7 V, de ahi decimas de diferencia.
+* Ejecutar: ngspice -b fig-5.18_recortador_fijador_doblador.cir
+.model D1N4148 D(IS=2.52n RS=0.568 N=1.752 CJO=4p M=0.4 TT=20n BV=100 IBV=100u)
+.model DZ51 D(IS=1e-14 N=1 BV=5.1 IBV=5m NBV=1 RS=1)
+.model DZ56 D(IS=1e-14 N=1 BV=5.6 IBV=5m NBV=1 RS=1)
+.model DZ56C D(IS=1e-14 N=1 BV=5.6 IBV=5m NBV=1 RS=1 CJO=400p VJ=0.75 M=0.33)
+
+VIN in 0 SIN(0 8 1k) AC 0
+* (1) Zener + diodo en serie
+R1 in c1 1k
+DZ1 x1 c1 DZ51
+D1 x1 0 D1N4148
+* (1b) con diodo en antiparalelo
+R1B in c1b 1k
+DZ1B x1b c1b DZ51
+D1B x1b 0 D1N4148
+D1C 0 c1b D1N4148
+* (2) fijador
+C2 in c2 10u
+D2 c2 0 D1N4148
+R2 c2 0 100k
+* (3) doblador (Greinacher)
+C3 in c3 10u
+D3A 0 c3 D1N4148
+D3B c3 o3 D1N4148
+C3B o3 0 10u
+R3 o3 0 100k
+* (4) doblador con 12 V eficaces a 50 Hz
+V4 in4 0 SIN(0 16.9706 50)
+C4 in4 c4 100u
+D4A 0 c4 D1N4148
+D4B c4 o4 D1N4148
+C4B o4 0 100u
+R4 o4 0 100k
+* Problema 5.C: dos Zener de 5,6 V en antiserie
+V5 in5 0 SIN(0 10 1k) AC 1
+R5 in5 c5 1k
+DZ5A x5 c5 DZ56C
+DZ5B x5 0 DZ56C
+
+.control
+tran 2u 60m
+meas tran clip1_max max v(c1) from=50m to=60m
+meas tran clip1_min min v(c1) from=50m to=60m
+meas tran clip1b_max max v(c1b) from=50m to=60m
+meas tran clip1b_min min v(c1b) from=50m to=60m
+meas tran fij_max max v(c2) from=50m to=60m
+meas tran fij_min min v(c2) from=50m to=60m
+meas tran dobl_8V avg v(o3) from=50m to=60m
+meas tran p5c_max max v(c5) from=50m to=60m
+meas tran p5c_min min v(c5) from=50m to=60m
+let iz5 = (v(in5)-v(c5))/1k
+meas tran p5c_imax max iz5 from=50m to=60m
+tran 20u 1.5
+meas tran dobl_12Vef avg v(o4) from=1.4 to=1.5
+* paso bajo parasito del problema 5.C: punto de trabajo en reposo (0 V), Zener en bloqueo,
+* capacidad de cada union ~400 pF en serie = 200 pF
+alter V5 dc = 0
+ac dec 50 1k 100Meg
+meas ac f3db when vdb(c5)=-3.0103
+.endc
+.end

@@ -1,0 +1,40 @@
+* Sección 9.8 (solución 1, divisor resistivo) y problema 9.C: bajar una salida de 5 V a 3,3 V con un
+* divisor; la entrada del receptor más la pista suman 15 pF (problema 9.C) o 20 pF (sección 9.8).
+* Comprueba:
+*   - problema 9.C: 1 k / 2 k -> 3,33 V, 1,67 mA, tau = 10 ns, f(-3 dB) = 15,9 MHz;
+*     10 k / 20 k -> 3,33 V, 0,167 mA, tau = 100 ns, f(-3 dB) = 1,59 MHz;
+*   - sección 9.8: 10 kOhm vistos desde la entrada (15 k / 30 k) con 20 pF -> tau = 200 ns;
+*     y, como contraste, 10 k / 20 k con 20 pF -> solo 133 ns (resistencia de Thevenin 6,67 k).
+* tau se mide como el tiempo hasta el 63,2 % del valor final tras un escalón.
+* Ejecutar: ngspice -b prob-9.C-divisor.cir
+Vs s 0 DC 5 AC 1 PULSE(0 5 0 1p 1p 10u 20u)
+R1a s a 1k
+R2a a 0 2k
+Ca a 0 15p
+R1b s b 10k
+R2b b 0 20k
+Cb b 0 15p
+R1c s c 15k
+R2c c 0 30k
+Cc c 0 20p
+R1d s d 10k
+R2d d 0 20k
+Cd d 0 20p
+.control
+  op
+  print v(a) v(b) v(c)
+  let i_1k2k_mA = (v(s) - v(a)) / 1k * 1000
+  let i_10k20k_mA = (v(s) - v(b)) / 10k * 1000
+  print i_1k2k_mA i_10k20k_mA
+  tran 0.1n 3u
+  meas tran tau_1k2k   when v(a)=2.1069 rise=1
+  meas tran tau_10k20k when v(b)=2.1069 rise=1
+  meas tran tau_15k30k_20p when v(c)=2.1069 rise=1
+  meas tran tau_10k20k_20p when v(d)=2.1069 rise=1
+  ac dec 200 10k 1g
+  let ga = vdb(a) - vdb(a)[0]
+  let gb = vdb(b) - vdb(b)[0]
+  meas ac f3db_1k2k   when ga=-3.0103 fall=1
+  meas ac f3db_10k20k when gb=-3.0103 fall=1
+.endc
+.end

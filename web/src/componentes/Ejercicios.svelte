@@ -2,6 +2,7 @@
   import type { BEjercicios } from '../lib/tipos';
   import Bloques from './Bloques.svelte';
   import Icono from './Icono.svelte';
+  import BotonSimular from './BotonSimular.svelte';
 
   let { bloque, parte, indice }: { bloque: BEjercicios; parte: string; indice?: number } = $props();
 
@@ -26,6 +27,7 @@
     <div class="ejercicio" id={it.label || undefined}>
       <div class="bloques">
         <span class="ejercicio-num">Ejercicio {it.num}.</span>
+        {#if it.label}<span class="ej-simular"><BotonSimular label={it.label} compacto /></span>{/if}
         <Bloques bloques={it.bloques} {parte} />
       </div>
       {#if it.solucion?.length}

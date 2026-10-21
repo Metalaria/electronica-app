@@ -1,0 +1,51 @@
+* Seccion 2.3 (Ruido termico) y seccion 2.14 (densidades de ruido termico y de disparo)
+* Analisis .noise del ruido termico de una resistencia sola, excitada por una fuente de corriente
+* (que en SPICE no tiene ruido), a 27 C (300 K), la temperatura que usa el libro.
+* El libro dice:
+*   1 kohm en 20 kHz: 0,58 uV eficaces; 1 Mohm en 20 kHz: 18,2 uV; 1 kohm en 1 MHz: 4,07 uV.
+*   Densidades: 1 kohm 4,07 nV/rtHz, 10 kohm 12,87 nV/rtHz, 1 Mohm 128,7 nV/rtHz.
+*   En el banco: 1 Mohm con ganancia 1000 da unos 18 mV de ruido en 20 kHz.
+*   Ruido de disparo de 1 mA en un diodo: 17,9 pA/rtHz, que sobre 1 kohm son 17,9 nV/rtHz
+*   (4,4 veces el ruido termico de esa resistencia).
+* El ancho de banda se integra de 1 Hz a 20 kHz (o 1 MHz), con espectro plano: practicamente 20 kHz (1 MHz).
+* Ejecutar:  ngspice -b ruido_johnson.cir
+.options temp=27
+I1 0 n1 DC 0 AC 1
+R1 n1 0 1k
+I2 0 n2 DC 0 AC 1
+R2 n2 0 10k
+I3 0 n3 DC 0 AC 1
+R3 n3 0 1Meg
+* diodo polarizado a 1 mA por una fuente de corriente ideal; su ruido de disparo (corriente)
+* se convierte en tension sobre la resistencia dinamica; se lee la densidad de corriente directamente
+.model DSIG D(IS=2.52n N=1.752 RS=0.568)
+I4 0 n4 DC 1m AC 1
+D4 n4 0 DSIG
+.control
+noise v(n1) I1 lin 2 1 20k
+let vrms_1k_20k_uV = 1e6*onoise_total
+print vrms_1k_20k_uV
+noise v(n3) I3 lin 2 1 20k
+let vrms_1M_20k_uV = 1e6*onoise_total
+let salida_g1000_mV = 1e3*1000*onoise_total
+print vrms_1M_20k_uV salida_g1000_mV
+noise v(n1) I1 lin 2 1 1Meg
+let vrms_1k_1M_uV = 1e6*onoise_total
+print vrms_1k_1M_uV
+* densidades: se integra sobre 1 Hz de banda (1000 a 1001 Hz), asi el total coincide con la densidad
+noise v(n1) I1 lin 2 1000 1001
+let dens_1k_nV = 1e9*onoise_total
+print dens_1k_nV
+noise v(n2) I2 lin 2 1000 1001
+let dens_10k_nV = 1e9*onoise_total
+print dens_10k_nV
+noise v(n3) I3 lin 2 1000 1001
+let dens_1M_nV = 1e9*onoise_total
+print dens_1M_nV
+* diodo a 1 mA: el ruido referido a la entrada (la fuente de corriente) es la corriente de ruido del diodo
+noise v(n4) I4 lin 2 1000 1001
+let i_shot_pA = 1e12*inoise_total
+let teorico_pA = 1e12*sqrt(2*1.602177e-19*1e-3)
+print i_shot_pA teorico_pA
+.endc
+.end

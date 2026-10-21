@@ -1,0 +1,69 @@
+* Ejercicios del capitulo 27 (y configuraciones de la figura 27.8: no inversor, transimpedancia,
+* integrador y comparador con histeresis).
+* Operacional: VCVS de ganancia 1e5 con polo en 10 Hz (GBW = 1 MHz) salvo donde se indica.
+*  27.1 y 27.2: no inversor R1 = 1 kohm a masa, R2 = 47 kohm  -> G = 48, BW = 20,8 kHz.
+*  27.3: no inversor de ganancia 100 (99 k / 1 k) con 3 mV de offset en la entrada -> 300 mV.
+*  27.4: transimpedancia Rf = 1 Mohm, 200 nA -> -0,2 V.
+*  27.5: integrador R = 100 kohm, C = 100 nF, escalon de 1 V -> -10 V a los 0,1 s (100 V/s).
+*  27.6: comparador inversor con histeresis, salida 0-5 V, 100 kohm de la salida a la entrada no
+*        inversora y 10 kohm de esa entrada a la referencia (2,5 V); la senal entra por la inversora.
+*        Anchura 5 x 10/110 = 0,45 V.
+*  27.8: 2 V de modo comun con CMRR de 100 dB -> 20 uV referidos a la entrada (fuente E).
+* Ejecutar:  ngspice -b ejercicios_27.cir
+* Resultado (ngspice-42): G = 47,98, BW 20,8 kHz; 300 mV; -0,2000 V; -10,0 V a 0,100 s;
+*   umbrales 2,727 V y 2,273 V (0,454 V); 20 uV.
+.subckt opamp inp inn out params: A0=1e5 GBW=1e6
+G1 0 n1 inp inn 1m
+R1 n1 0 {A0*1k}
+C1 n1 0 {1m/(2*3.14159265*GBW)}
+E1 out 0 n1 0 1
+.ends
+.subckt comp p n out
+B1 o1 0 V = 2.5 + 2.5*tanh(1e5*(V(p)-V(n)))
+R1 o1 out 1
+C1 out 0 10n
+.ends
+* 27.1 / 27.2
+V1 i1 0 DC 10m AC 1
+X1 i1 f1 o1 opamp
+R11 f1 0 1k
+R12 o1 f1 47k
+* 27.3 (entrada a masa, offset en serie con la entrada no inversora)
+Vos3 p3 0 DC 3m
+X3 p3 f3 o3 opamp
+R31 f3 0 1k
+R32 o3 f3 99k
+* 27.4 (la fotocorriente entra en el nodo inversor)
+I4 0 n4 DC 200n
+X4 0 n4 o4 opamp
+R4 o4 n4 1meg
+* 27.5 (integrador; operacional casi ideal para que no se note su ganancia finita en 0,1 s)
+V5 i5 0 PULSE(0 1 0 1u 1u 1 2)
+X5 0 n5 o5 opamp A0=1e9 GBW=1e6
+R5 i5 n5 100k
+C5 o5 n5 100n
+* 27.6
+Vref6 r6 0 DC 2.5
+Vin6 i6 0 PWL(0 2 10m 3 20m 2)
+X6 p6 i6 o6 comp
+R61 o6 p6 100k
+R62 p6 r6 10k
+* 27.8
+E8 e8 0 VALUE={2/pow(10,100/20)}
+.ic v(o6)=5
+.control
+op
+print v(o1)/v(i1) v(o3) v(o4) v(e8)
+ac dec 200 1 10meg
+let n1 = vdb(o1)-vdb(o1)[0]
+meas ac bw when n1=-3.0103
+tran 100u 0.15 uic
+meas tran v5 find v(o5) at=0.1
+meas tran t10 when v(o5)=-10
+tran 1u 20m uic
+meas tran tl6 find v(i6) when v(o6)=2.5 fall=1
+meas tran th6 find v(i6) when v(o6)=2.5 rise=1
+let w6 = tl6-th6
+print w6
+.endc
+.end

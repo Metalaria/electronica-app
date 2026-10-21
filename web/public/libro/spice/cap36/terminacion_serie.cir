@@ -1,0 +1,30 @@
+* Sección 36.2, «Las tres formas de terminar una línea digital»: terminación serie en el origen.
+* Driver CMOS de 0 a 3,3 V con 15 Ohm de impedancia de salida, resistencia serie de 50 - 15 = 35 Ohm,
+* pista de 50 Ohm con 1 ns de retardo y receptor de alta impedancia (2 pF) en el extremo.
+* Comprueba: la onda sale con la mitad de amplitud (1,65 V en el origen durante la ida y vuelta),
+* llega al extremo abierto, se duplica (3,3 V: amplitud completa en el receptor) y al volver al
+* origen es absorbida sin nueva reflexión. Sin la resistencia serie, el extremo sobreoscila.
+* No hay corriente en régimen permanente (consumo nulo con la línea cargada).
+* Ejecutar: ngspice -b terminacion_serie.cir
+VDR d 0 PULSE(0 3.3 1n 200p 200p 40n 80n)
+RO d s1 15
+RTS s1 o1 35
+T1 o1 0 e1 0 Z0=50 TD=1n
+CR1 e1 0 2p
+* sin terminación, para comparar
+VDR2 d2 0 PULSE(0 3.3 1n 200p 200p 40n 80n)
+RO2 d2 o2 15
+T2 o2 0 e2 0 Z0=50 TD=1n
+CR2 e2 0 2p
+.control
+  tran 5p 20n
+  meas tran Vorigen_mitad find v(o1) at=2.2n
+  meas tran Vreceptor find v(e1) at=6n
+  meas tran Vorigen_final find v(o1) at=10n
+  meas tran Vmax_receptor_serie max v(e1) from=1n to=20n
+  meas tran Vmax_receptor_sin max v(e2) from=1n to=20n
+  meas tran Ireg find i(VDR) at=19n
+  echo "Esperado: 1,65 V en el origen durante 2 ns; 3,3 V en el receptor; 3,3 V en el origen al final;"
+  echo "sin terminación serie el receptor sobrepasa ampliamente 3,3 V; corriente final nula"
+.endc
+.end

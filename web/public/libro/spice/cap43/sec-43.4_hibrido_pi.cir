@@ -1,0 +1,45 @@
+* Seccion 43.4 (modelo hibrido en pi) y ejercicio 43.3
+* Emisor comun polarizado a IC = 1 mA, beta = 200, emisor a masa, carga RC = 4,7 kohm.
+* La base se excita con una fuente de continua mas la senal; IS se ajusta para que IC = 1 mA.
+* Numeros del libro que se comprueban (.ac a 1 kHz):
+*   gm = IC/VT = 38,6 mS (VT = 25,9 mV)         -> Av = -gm*RC = -181
+*   r_pi = beta/gm ~ 5,2 kohm
+*   ro = VA/IC = 100 kohm con VA = 100 V          (transistor QE, con efecto Early)
+*   techo con 5 V de caida en RC (RC = 5 k):     |Av| = 5/0,0259 = 193
+* Ejecutar:  ngspice -b sec-43.4_hibrido_pi.cir
+.param vbe = 0.65
+.param is0 = {1e-3/exp(vbe/0.025865)}
+.model QA NPN(IS={is0} BF=200 VAF=1e6)
+.model QE NPN(IS={is0} BF=200 VAF=100)
+VCC vcc 0 12
+VB b 0 dc {vbe} ac 1m
+* 1) RC = 4,7 k, sin Early
+RC1 vcc c1 4.7k
+Q1 c1 b 0 QA
+* 2) RC = 5 k (5 V de caida), sin Early
+RC2 vcc c2 5k
+Q2 c2 b 0 QA
+* 3) resistencia de salida con Early: colector a 7 V fijos y 1 V ac de prueba
+VC3 c3 0 dc 7 ac 1
+Q3 c3 b3 0 QE
+VB3 b3 0 dc {vbe}
+.control
+op
+let ic1 = @q1[ic]
+let ic3 = @q3[ic]
+echo "IC de la etapa (libro 1 mA) e IC del transistor con Early a VCE = 7 V:"
+print ic1 ic3
+ac lin 1 1k 1k
+let gm = mag(i(vcc))
+let av1 = mag(v(c1))/1m
+let av2 = mag(v(c2))/1m
+let rpi = 1m/mag(i(vb))*2
+let ro = 1/mag(i(vc3))
+echo "|Av| con 4,7 k (libro 181) y con 5 k (techo 193):"
+print av1 av2
+echo "r_pi (libro ~5,2 k; la fuente VB alimenta las dos bases, de ahi el factor 2):"
+print rpi
+echo "ro con VA = 100 V (libro VA/IC = 100 k; aqui IC sube a 1,064 mA por el propio Early):"
+print ro
+.endc
+.end

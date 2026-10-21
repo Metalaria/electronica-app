@@ -5,6 +5,8 @@
   import { prepararHtml, textoPlano } from '../lib/datos';
   import { usuario, alternarMarcador, guardarNota, LARGO_NOTA } from '../lib/usuario.svelte';
   import Icono from './Icono.svelte';
+  import BotonSimular from './BotonSimular.svelte';
+  import VerAnimacion from './animaciones/VerAnimacion.svelte';
 
   let { bloque, parte, indice }: { bloque: BH2; parte: string; indice?: number } = $props();
 
@@ -47,6 +49,8 @@
     </h2>
     {#if label}
       <div class="herramientas">
+        <BotonSimular {label} compacto />
+        <VerAnimacion {label} compacto />
         <button
           class="boton-icono"
           aria-pressed={!!nota || editando}

@@ -1,0 +1,36 @@
+* Sección 35.2: Pt100 (100 Ohm a 0 °C, 0,385 Ohm/°C) excitada con 1 mA, a 0 °C y a 1 °C.
+* Comprueba:
+*   - sensibilidad de 385 µV/°C;
+*   - conexión a dos hilos con 0,5 Ohm por hilo (1 Ohm de cable en total): el cable añade 1 mV, que se
+*     lee como 2,6 °C de error;
+*   - conexión a cuatro hilos (tensión medida por un par sin corriente): el cable desaparece.
+* Ejecutar: ngspice -b rtd_hilos.cir
+.param Rc=0.5
+* a 0 °C, dos hilos
+I0 0 a0 DC 1m
+RC1 a0 s0 {Rc}
+RT0 s0 r0 100
+RC2 r0 0 {Rc}
+* a 1 °C, dos hilos
+I1 0 a1 DC 1m
+RC3 a1 s1 {Rc}
+RT1 s1 r1 100.385
+RC4 r1 0 {Rc}
+* a 0 °C, cuatro hilos: los hilos de sensado (entrada de 1 GOhm) no llevan corriente apreciable
+I2 0 a2 DC 1m
+RC5 a2 s2 {Rc}
+RT2 s2 r2 100
+RC6 r2 0 {Rc}
+RS1 s2 m1 {Rc}
+RS2 r2 m2 {Rc}
+RIN m1 m2 1G
+.control
+  op
+  echo "Sensibilidad (µV/°C, 385):"
+  print (v(s1)-v(r1)-v(s0)+v(r0))*1e6
+  echo "Dos hilos a 0 °C: tensión leída (mV) y error equivalente (°C, unos 2,6):"
+  print v(a0)*1000 (v(a0)-0.1)/385e-6
+  echo "Cuatro hilos a 0 °C: tensión leída (mV, 100) y error (°C):"
+  print (v(m1)-v(m2))*1000 (v(m1)-v(m2)-0.1)/385e-6
+.endc
+.end

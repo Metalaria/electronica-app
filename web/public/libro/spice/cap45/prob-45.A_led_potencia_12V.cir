@@ -1,0 +1,42 @@
+* Capitulo 45, problema 45.A «Un LED de potencia con resistencia es un calefactor»
+* LED de potencia de 3,2 V y 700 mA alimentado desde 12 V con R = 12,6 ohm (8,8 V / 0,7 A), y el
+* mismo LED desde 4 V con R = 1,14 ohm (0,8 V / 0,7 A). La deriva termica se simula bajando V_f
+* 60 mV (2 mV/grado x 30 grados).
+* El LED se modela por su caida constante (fuente de V_f en serie con un diodo casi ideal, N = 0,001).
+* Resultados esperados:
+*   - 12 V: P_R = 6,16 W, P_LED = 2,24 W, consumo total 8,40 W, rendimiento 26,7 %;
+*   - deriva de -60 mV: +4,8 mA (+0,7 %) desde 12 V y +52 mA (+7,5 %) desde 4 V.
+* Ejecutar: ngspice -b prob-45.A_led_potencia_12V.cir
+.model DID D(IS=1e-9 N=0.001)
+
+V12 s12 0 DC 12
+R12 s12 a12 {8.8/0.7}
+D12 a12 k12 DID
+VF12 k12 0 DC 3.2
+
+V4 s4 0 DC 4
+R4 s4 a4 {0.8/0.7}
+D4 a4 k4 DID
+VF4 k4 0 DC 3.2
+
+.control
+let r12 = 8.8/0.7
+let r4 = 0.8/0.7
+op
+let i12 = (v(s12)-v(a12))/r12
+let i4 = (v(s4)-v(a4))/r4
+let p_r = (v(s12)-v(a12))*i12
+let p_led = 3.2*i12
+let p_tot = 12*i12
+let rend = 100*p_led/p_tot
+print r12 r4 i12 i4 p_r p_led p_tot rend
+alter VF12 dc = 3.14
+alter VF4 dc = 3.14
+op
+let di12 = (v(s12)-v(a12))/const.r12 - op1.i12
+let di4 = (v(s4)-v(a4))/const.r4 - op1.i4
+let pc12 = 100*di12/op1.i12
+let pc4 = 100*di4/op1.i4
+print di12 pc12 di4 pc4
+.endc
+.end

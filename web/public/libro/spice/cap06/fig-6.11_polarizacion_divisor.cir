@@ -1,0 +1,67 @@
+* fig-6.11 / seccion 6.5 (El divisor con emisor, analizado) y problema 6.A
+* Polarizacion por divisor con resistencia de emisor: VCC = 12 V, R1 = 47 k, R2 = 10 k,
+* RE = 1 k, RC = 3,3 k. Se resuelve el punto de trabajo para beta = 50, 100, 150 y 300
+* (cuatro copias del circuito, beta como parametro del subcircuito) y se compara con la tabla del libro:
+*   beta  IB       IC        VE       VCE
+*   50    23,7 uA  1,186 mA  1,210 V  6,90 V
+*   100   12,9 uA  1,286 mA  1,299 V  6,47 V
+*   150    8,8 uA  1,324 mA  1,332 V  6,31 V
+*   300    4,5 uA  1,363 mA  1,368 V  6,14 V
+* (el libro calcula VCE con IC ~ IE, VCE = VCC - IC*(RC+RE); SPICE da 0,01-0,02 V menos).
+* Despues repite el caso beta = 150 a 57 C (30 C mas) para la deriva termica del
+* problema 6.A (libro: +4,3 % de IC). El modelo de SPICE deriva unos -1,6 mV/C, no -2,
+* asi que se anade una quinta copia con 60 mV en serie con la base, que es exactamente
+* la deriva de -2 mV/C x 30 C que supone el libro.
+* Ejecutar:  ngspice -b fig-6.11_polarizacion_divisor.cir
+* IS elegida para VBE ~ 0,70 V a 1,3 mA; XTB = 0 deja beta fija con la temperatura,
+* para aislar el efecto de VBE como en el libro.
+VCC vcc 0 12
+.subckt etapa vcc params: bf=150 dv=0
+.model QX NPN(IS=2.3e-15 BF={bf} VAF=1e6 XTB=0)
+R1 vcc b 47k
+R2 b 0 10k
+RC vcc c 3.3k
+RE e 0 1k
+Vdv bi b {dv}
+Q1 c bi e QX
+.ends
+X50 vcc etapa bf=50
+X100 vcc etapa bf=100
+X150 vcc etapa bf=150
+X300 vcc etapa bf=300
+XT vcc etapa bf=150 dv=0.06
+.control
+op
+echo "beta  IC(mA)  VE(V)  VCE(V)  VBE(V)"
+let ic50  = (12-v(x50.c))/3.3k
+let ic100 = (12-v(x100.c))/3.3k
+let ic150 = (12-v(x150.c))/3.3k
+let ic300 = (12-v(x300.c))/3.3k
+let vce50 = v(x50.c)-v(x50.e)
+let vce100 = v(x100.c)-v(x100.e)
+let vce150 = v(x150.c)-v(x150.e)
+let vce300 = v(x300.c)-v(x300.e)
+let vbe150 = v(x150.b)-v(x150.e)
+print ic50 v(x50.e) vce50
+print ic100 v(x100.e) vce100
+print ic150 v(x150.e) vce150 vbe150
+print ic300 v(x300.e) vce300
+let var = (ic300/ic50-1)*100
+echo "Variacion de IC de beta 50 a 300 (libro 14,9 %, ~15 %):"
+print var
+let icT = (12-v(xt.c))/3.3k
+let derivaT = (icT/ic150-1)*100
+echo "Con 60 mV de deriva de VBE (libro +4,3 %):"
+print derivaT
+let ic150frio = ic150
+let vbefrio = vbe150
+set temp = 57
+op
+let ic150cal = (12-v(x150.c))/3.3k
+let vbecal = v(x150.b)-v(x150.e)
+let dvbe = (vbecal - op1.vbefrio)*1000
+let deriva = (ic150cal/op1.ic150frio - 1)*100
+echo "A 57 C: deriva de VBE (mV, libro ~ -60 mV) y aumento de IC (%, libro +4,3 %):"
+print dvbe deriva
+.endc
+.end

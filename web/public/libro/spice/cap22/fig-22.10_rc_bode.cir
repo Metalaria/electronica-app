@@ -1,0 +1,38 @@
+* Capitulo 22, seccion 22.5 (Practica 5), figuras 22.10 y 22.11: Bode de un RC
+* R = 1,6 k, C = 100 nF. Salida en C (paso bajo) y, en una copia con R y C intercambiados,
+* salida en R (paso alto). Comprueba:
+*   - corte a -3 dB en 995 Hz, con -45 grados (paso bajo) y +45 grados (paso alto);
+*   - a 100 Hz, una decada antes del corte: ganancia -0,04 dB y fase ya -5,7 grados;
+*   - de 2 kHz a 20 kHz (ultimo punto del barrido) la salida cae unos 19 dB, y de 10 a 100 kHz
+*     casi exactamente 20 dB (la asintota de -20 dB/decada);
+*   - la suma de las dos salidas es la entrada a cualquier frecuencia (|suma| = 1).
+* Ejecutar: ngspice -b fig-22.10_rc_bode.cir
+V1 in 0 AC 1
+R1 in lp 1.6k
+C1 lp 0 100n
+C2 in x 100n
+R2 x 0 1.6k
+.ac dec 200 10 100k
+.control
+run
+let glp = db(v(lp))
+let ghp = db(v(x))
+meas ac fc when glp=-3.0103
+meas ac fch when ghp=-3.0103
+meas ac ph_fc find vp(lp) at=994.7
+meas ac g100 find glp at=100
+meas ac ph100 find vp(lp) at=100
+meas ac g2k find glp at=2000
+meas ac g20k find glp at=20000
+meas ac g10k find glp at=10000
+meas ac g100k find glp at=100000
+let ph_deg = ph_fc*180/pi
+let ph100_deg = ph100*180/pi
+let caida_2k_20k = g2k - g20k
+let caida_10k_100k = g10k - g100k
+print ph_deg ph100_deg caida_2k_20k caida_10k_100k
+let suma = mag(v(lp) + v(x))
+meas ac smin min suma
+meas ac smax max suma
+.endc
+.end

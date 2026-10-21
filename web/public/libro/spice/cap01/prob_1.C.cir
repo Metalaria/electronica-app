@@ -1,0 +1,46 @@
+* Problema 1.C (sección 1.12): carga de 100 ohm y 10 W con resistencias de 100 ohm / 2 W.
+* (a) Matriz nominal 4 x 4 (4 en serie por 4 ramas): Req = 100 ohm; a 31,62 V entrega 10 W y 316 mA,
+*     79,06 mA por rama y 0,625 W por resistencia.
+* (b) Tolerancia del 5 %. Como las ramas están todas a la misma tensión, cada una es independiente, así
+*     que una sola matriz contiene los cuatro escenarios de la tabla, uno por rama:
+*     rama 1 nominal (0,625 W), rama 2 con una -5 % (0,641 W), rama 3 toda -5 % (0,658 W),
+*     rama 4 con una +5 % y tres -5 % (0,690 W en la de +5 %, el peor caso).
+* Ejecutar: ngspice -b prob_1.C.cir
+.param vt={sqrt(1000)}
+.subckt rama a b r1=100 r2=100 r3=100 r4=100
+R1 a n1 {r1}
+R2 n1 n2 {r2}
+R3 n2 n3 {r3}
+R4 n3 b {r4}
+.ends
+* (a) matriz nominal
+VA  a 0 DC {vt}
+XA1 a 0 rama
+XA2 a 0 rama
+XA3 a 0 rama
+XA4 a 0 rama
+* (b) escenarios de tolerancia, cada rama con su amperímetro
+VB  b 0 DC {vt}
+VI1 b b1 DC 0
+XB1 b1 0 rama
+VI2 b b2 DC 0
+XB2 b2 0 rama r1=95
+VI3 b b3 DC 0
+XB3 b3 0 rama r1=95 r2=95 r3=95 r4=95
+VI4 b b4 DC 0
+XB4 b4 0 rama r1=105 r2=95 r3=95 r4=95
+.control
+op
+let itot = -i(VA)
+let req = v(a)/itot
+let ptot = v(a)*itot
+let irama = itot/4
+let pres = irama^2*100
+print v(a) itot req ptot irama pres
+let p1 = i(VI1)^2*100
+let p2 = i(VI2)^2*100
+let p3 = i(VI3)^2*95
+let p4 = i(VI4)^2*105
+print i(VI1) p1 i(VI2) p2 i(VI3) p3 i(VI4) p4
+.endc
+.end

@@ -1,0 +1,43 @@
+* sec-51.7 (y fig-51.1, fig-51.13): potencia entregada y disipacion frente al nivel de salida
+* Etapa de salida de las figuras 51.6/51.10 a +-35 V sobre 8 ohm, RE = 0,22 ohm, con drivers
+* ideales: las bases se excitan con fuentes de tension (entrada +- 0,642 V, 50 mA de reposo con
+* estos modelos) y limitadas a +-34 V, que es hasta donde llega en la practica el driver
+* alimentado desde los mismos raíles.
+* Senoide de 1 kHz de amplitud creciente; para cada una se mide la potencia media en la carga y
+* la disipada por el transistor NPN (la del PNP es igual por simetria) y por cada RE.
+* Comprueba (seccion 51.7):
+*   - potencia maxima antes de recorte (P = (V - Vsat)^2 / 2R, ~64 W con unos 3 V de perdida);
+*   - disipacion maxima por transistor V^2/(pi^2 R) = 15,5 W, con Vp ~ 2V/pi = 22,3 V (64 %);
+*   - a 50 W (28,3 V de pico) la disipacion es menor que en el maximo.
+* Resultado (ngspice): salida maxima 32,2 V de pico (2,85 V de perdida) -> 64-67 W al recorte;
+*   disipacion maxima del NPN 15,1 W con 21,5 V de pico a la salida (61 % de 35 V), 14,1 W a
+*   27,3 V de pico (46,5 W) y 1,75 W en reposo (50 mA x 35 V); cada RE disipa menos de 1 W.
+* Ejecutar:  ngspice -b sec-51.7_potencia_disipacion.cir
+.model QPN NPN(IS=1e-12 BF=80 IKF=3 VAF=100 RB=1 RE=0.02 RC=0.05)
+.model QPP PNP(IS=1e-12 BF=60 IKF=3 VAF=100 RB=1 RE=0.02 RC=0.05)
+VCC vcc 0 35
+VEE vee 0 -35
+VIN in 0 dc 0 sin(0 10 1k)
+BBN a 0 V = min(V(in) + 0.642, 34)
+BBP b 0 V = max(V(in) - 0.642, -34)
+Q1 vcc a e1 QPN
+RE1 e1 out 0.22
+Q2 vee b e2 QPP
+RE2 e2 out 0.22
+RL out 0 8
+.control
+foreach vp 5 10 15 20 22.3 25 28.3 31 34
+  alter @VIN[sin] = [ 0 $vp 1k ]
+  tran 2u 4m 2m
+  let pl = v(out)*v(out)/8
+  let pq1 = (35 - v(e1))*(v(e1)-v(out))/0.22
+  let pre = (v(e1)-v(out))*(v(e1)-v(out))/0.22
+  meas tran p_carga avg pl from=2m to=4m
+  meas tran p_q1 avg pq1 from=2m to=4m
+  meas tran p_re1 avg pre from=2m to=4m
+  meas tran vout_pico max v(out) from=2m to=4m
+  echo "== entrada $vp V de pico"
+  print p_carga p_q1 p_re1 vout_pico
+end
+.endc
+.end

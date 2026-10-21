@@ -1,0 +1,63 @@
+* Problema 2.C (seccion 2.13): elegir un par E24 para una ganancia de 10 dB (amplificador inversor, |G| = Rf/Ri)
+* Operacional como macromodelo: VCVS de ganancia 1e5 con un polo a 10 Hz (producto ganancia-ancho de banda 1 MHz).
+* El libro dice:
+*   Rf = 16 k, Ri = 5,1 k -> |G| = 3,1373, 9,931 dB, error -0,79 % respecto a 3,1623 (10 dB).
+*   Rf = 5,1 k, Ri = 1,6 k -> 3,1875, 10,069 dB, +0,80 %.
+*   Afinando solo Rf al valor E96 16,2 k -> +0,45 %; cambiando Ri a 5,11 k -> -0,99 %.
+*   Peor caso con resistencias del 1 % (Rf -1 %, Ri +1 %): entre -0,25 dB y +0,10 dB del objetivo.
+* Se mide a 1 kHz, en plena banda plana.
+* Ejecutar:  ngspice -b prob-2.C_ganancia_e24.cir
+.subckt opamp inp inn out
+* etapa de ganancia con polo dominante: 1e5 / (1 + s/(2*pi*10 Hz))
+Egain n1 0 inp inn 1e5
+Rp n1 n2 1k
+Cp n2 0 15.915u
+Eout out 0 n2 0 1
+.ends
+Vin in 0 DC 0 AC 1
+* par principal 16k / 5,1k
+Ri1 in m1 5.1k
+Rf1 m1 o1 16k
+X1 0 m1 o1 opamp
+* par alternativo 5,1k / 1,6k
+Ri2 in m2 1.6k
+Rf2 m2 o2 5.1k
+X2 0 m2 o2 opamp
+* afinado con E96: Rf = 16,2k
+Ri3 in m3 5.1k
+Rf3 m3 o3 16.2k
+X3 0 m3 o3 opamp
+* afinado con E96: Ri = 5,11k
+Ri4 in m4 5.11k
+Rf4 m4 o4 16k
+X4 0 m4 o4 opamp
+* peor caso a la baja: Rf -1 %, Ri +1 %
+Ri5 in m5 5.151k
+Rf5 m5 o5 15.84k
+X5 0 m5 o5 opamp
+* peor caso al alza: Rf +1 %, Ri -1 %
+Ri6 in m6 5.049k
+Rf6 m6 o6 16.16k
+X6 0 m6 o6 opamp
+.ac lin 1 1k 1k
+.control
+run
+let g0 = sqrt(10)
+let g1 = mag(v(o1))
+let g2 = mag(v(o2))
+let g3 = mag(v(o3))
+let g4 = mag(v(o4))
+let db1 = 20*log10(g1)
+let db2 = 20*log10(g2)
+let e1 = 100*(g1/g0 - 1)
+let e2 = 100*(g2/g0 - 1)
+let e3 = 100*(g3/g0 - 1)
+let e4 = 100*(g4/g0 - 1)
+let dbmin = 20*log10(mag(v(o5))/g0)
+let dbmax = 20*log10(mag(v(o6))/g0)
+print g1 db1 e1
+print g2 db2 e2
+print e3 e4
+print dbmin dbmax
+.endc
+.end

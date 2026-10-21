@@ -1,0 +1,44 @@
+* Ejercicios 33.1, 33.2 y 33.3 (capítulo 33), con convertidores de interruptores ideales.
+*  ej-33.1: reductor de 24 V a 5 V -> D = 5/24 = 0,208.
+*  ej-33.2: elevador con Vin = 5 V y D = 0,6 -> Vout = 5/0,4 = 12,5 V.
+*  ej-33.3: reductor de 12 V a 5 V, 500 kHz, L = 10 uH -> dI = 7*0,417*2u/10u = 0,58 A.
+* Cargas, condensadores e inductancias no dadas por los enunciados: valores típicos.
+* Ejecutar: ngspice -b ejercicios.cir
+.model SWI SW(Ron=1m Roff=1e8 Vt=0.5 Vh=0)
+* ---- ej-33.1: 200 kHz, 47 uH, 100 uF, 5 ohm
+VI1  i1 0 DC 24
+VG11 g11 0 PULSE(0 1 0 1n 1n {5/24*5u-1n} 5u)
+VG12 g12 0 PULSE(1 0 0 1n 1n {5/24*5u-1n} 5u)
+S11  i1 s1 g11 0 SWI
+S12  s1 0  g12 0 SWI
+L1   s1 o1 47u IC=1
+C1   o1 0 100u IC=5
+R1   o1 0 5
+* ---- ej-33.2: 200 kHz, 47 uH, 100 uF, 12,5 ohm (1 A); arranque en el mínimo de la rampa de corriente
+VI2  i2 0 DC 5
+VG21 g21 0 PULSE(0 1 0 1n 1n {0.6*5u-1n} 5u)
+VG22 g22 0 PULSE(1 0 0 1n 1n {0.6*5u-1n} 5u)
+L2   i2 s2 47u IC={2.5-5*0.6*5u/47u/2}
+S21  s2 0  g21 0 SWI
+S22  s2 o2 g22 0 SWI
+C2   o2 0 100u IC=12.5
+R2   o2 0 12.5
+* ---- ej-33.3: 500 kHz, 10 uH, 100 uF, 2,5 ohm
+VI3  i3 0 DC 12
+VG31 g31 0 PULSE(0 1 0 1n 1n {5/12*2u-1n} 2u)
+VG32 g32 0 PULSE(1 0 0 1n 1n {5/12*2u-1n} 2u)
+S31  i3 s3 g31 0 SWI
+S32  s3 0  g32 0 SWI
+L3   s3 o3 10u IC=2
+C3   o3 0 100u IC=5
+R3   o3 0 2.5
+.tran 2n 10m 9.9m 4n uic
+.control
+run
+meas tran vout_ej1 AVG v(o1) from=9.9m to=10m
+meas tran vout_ej2 AVG v(o2) from=9.9m to=10m
+meas tran di_ej3 PP i(L3) from=9.9m to=10m
+meas tran vout_ej3 AVG v(o3) from=9.9m to=10m
+echo "Soluciones: 5 V con D = 0,208; 12,5 V; dI = 0,58 A"
+.endc
+.end

@@ -1,0 +1,51 @@
+* Capitulo 5, seccion 5.3 («Un ejemplo de diseno completo») y ejercicio 5.1
+* LED rojo de 2,0 V a 20 mA desde 5 V con R = 150 ohm, y efecto de la tolerancia de V_f
+* (1,8 / 2,0 / 2,2 V) con 5 V y con 2,5 V de alimentacion (R = 25 ohm).
+* El LED se modela, como en el texto, por su caida constante: una fuente de V_f en serie con
+* un diodo casi ideal (N = 0,01, caida despreciable) que solo impone el sentido de conduccion.
+* Resultados esperados: 21,3 / 20,0 / 18,7 mA con 5 V; 28 / 20 / 12 mA con 2,5 V;
+* 60 mW en la resistencia de 150 ohm.
+* Ejercicio 5.1: LED azul 3,2 V desde 12 V con 470 ohm -> 18,7 mA y 0,165 W en la resistencia.
+* Ejecutar: ngspice -b sec-5.3_led_150ohm.cir
+.model DID D(IS=1e-12 N=0.01)
+.subckt LED a k vf=2
+D1 a x DID
+VF x k DC {vf}
+.ends
+
+V5 v5 0 DC 5
+R1 v5 a1 150
+X1 a1 0 LED vf=1.8
+R2 v5 a2 150
+X2 a2 0 LED vf=2.0
+R3 v5 a3 150
+X3 a3 0 LED vf=2.2
+
+V25 v25 0 DC 2.5
+R4 v25 a4 25
+X4 a4 0 LED vf=1.8
+R5 v25 a5 25
+X5 a5 0 LED vf=2.0
+R6 v25 a6 25
+X6 a6 0 LED vf=2.2
+
+V12 v12 0 DC 12
+R7 v12 a7 470
+X7 a7 0 LED vf=3.2
+
+.control
+op
+let i5_18 = (v(v5)-v(a1))/150
+let i5_20 = (v(v5)-v(a2))/150
+let i5_22 = (v(v5)-v(a3))/150
+let p150 = (v(v5)-v(a2))^2/150
+let i25_18 = (v(v25)-v(a4))/25
+let i25_20 = (v(v25)-v(a5))/25
+let i25_22 = (v(v25)-v(a6))/25
+let iblue = (v(v12)-v(a7))/470
+let pblue = (v(v12)-v(a7))^2/470
+print i5_18 i5_20 i5_22 p150
+print i25_18 i25_20 i25_22
+print iblue pblue
+.endc
+.end

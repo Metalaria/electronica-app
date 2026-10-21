@@ -1,0 +1,36 @@
+* Sección 9.6 («El precio: el flanco de subida», tabla de pull-ups) y figura 9.7: línea de drenador
+* abierto a 3,3 V con 100 pF de capacidad y tres pull-ups (10 kOhm, 4,7 kOhm y 1 kOhm).
+* El transistor de drenador abierto es un interruptor que suelta la línea en t = 1 us.
+* Comprueba: corriente con la línea en bajo 0,33 / 0,70 / 3,3 mA y tiempo de subida del 10 al 90 %
+* 2,2 / 1,0 / 0,22 us (2,2·R·C).
+* Ejecutar: ngspice -b fig-9.7-pullup.cir
+V33 vdd 0 DC 3.3
+Vg g 0 PWL(0 1 1u 1 1.001u 0)
+.model OD SW(VT=0.5 VH=0.1 RON=1 ROFF=1e12)
+* line 1: 10 k
+Rp1 vdd l1 10k
+C1 l1 0 100p
+S1 l1 0 g 0 OD
+* line 2: 4.7 k
+Rp2 vdd l2 4.7k
+C2 l2 0 100p
+S2 l2 0 g 0 OD
+* line 3: 1 k
+Rp3 vdd l3 1k
+C3 l3 0 100p
+S3 l3 0 g 0 OD
+.tran 2n 15u
+.control
+  run
+  * current of each pull-up while the line is held low, from Ohm's law on the resistor
+  let ib1 = (3.3 - v(l1)) / 10k * 1000
+  let ib2 = (3.3 - v(l2)) / 4.7k * 1000
+  let ib3 = (3.3 - v(l3)) / 1k * 1000
+  meas tran i_10k_mA find ib1 at=0.5u
+  meas tran i_4k7_mA find ib2 at=0.5u
+  meas tran i_1k_mA find ib3 at=0.5u
+  meas tran tr_10k trig v(l1) val=0.33 rise=1 targ v(l1) val=2.97 rise=1
+  meas tran tr_4k7 trig v(l2) val=0.33 rise=1 targ v(l2) val=2.97 rise=1
+  meas tran tr_1k  trig v(l3) val=0.33 rise=1 targ v(l3) val=2.97 rise=1
+.endc
+.end

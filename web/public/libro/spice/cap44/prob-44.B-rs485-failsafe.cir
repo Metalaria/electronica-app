@@ -1,0 +1,32 @@
+* Problema 44.B (sección 44.13): polarización a prueba de fallo de un bus RS-485 de 100 m.
+* Con ningún transmisor activo, el bus es: 5 V -> R pull-up -> A -> (120 || 120 Ohm) -> B -> R pull-down
+* -> masa. Se resuelven dos casos: el valor calculado (720 Ohm a cada lado) y el comercial (680 Ohm).
+* Se omite la resistencia de entrada de los receptores (12 kOhm o más por unidad de carga), que apenas
+* cambia el resultado. También se mide la resistencia entre A y B con el bus sin alimentar (60 Ohm).
+* Comprueba: V(A) - V(B) = 200 mV con 720 Ohm y 211 mV con 680 Ohm; R(A-B) = 60 Ohm.
+* Ejecutar: ngspice -b prob-44.B-rs485-failsafe.cir
+VCC vcc 0 5
+* case 1: calculated bias resistors
+RPU1 vcc a1 720
+RT1a a1 b1 120
+RT1b a1 b1 120
+RPD1 b1 0 720
+* case 2: commercial bias resistors
+RPU2 vcc a2 680
+RT2a a2 b2 120
+RT2b a2 b2 120
+RPD2 b2 0 680
+* unpowered bus: ohmmeter as a 1 mA test current between A and B
+IT 0 a3 1m
+RT3a a3 0 120
+RT3b a3 0 120
+.control
+  op
+  echo "VAB con 720 Ohm (debe ser 0,200 V) y con 680 Ohm (debe ser 0,211 V):"
+  print v(a1)-v(b1) v(a2)-v(b2)
+  echo "Corriente de polarización con 720 Ohm (debe ser 3,33 mA):"
+  print (v(vcc)-v(a1))/720
+  echo "Resistencia A-B sin alimentar, en ohmios (debe ser 60):"
+  print v(a3)/1m
+.endc
+.end

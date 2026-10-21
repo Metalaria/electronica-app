@@ -1,0 +1,79 @@
+* Capitulo 15, seccion 15.4 (Proyecto 3: indicador de nivel con LM3914), figura 15.7.
+* Arquitectura flash del LM3914: cadena de diez resistencias iguales de 1 kohm entre RLO = 0 V
+* y RHI = 1,25 V (la referencia interna), diez comparadores (fuentes B con tanh, ganancia alta)
+* y un buffer de entrada ideal. Las salidas son sumideros de corriente constante de 10 mA que
+* solo conducen cuando su comparador ha conmutado (modo barra); cada uno alimenta un LED rojo
+* (caida de unos 2 V a 10 mA) desde V_LED = 6 V, es decir, unos 4 V de exceso por salida.
+* Comprueba:
+*   - los umbrales caen en k x 125 mV (k = 1...10): un comparador por nivel, todos en paralelo;
+*   - en modo barra con los diez LED encendidos, el chip disipa en sus salidas 10 x 10 mA x 4 V
+*     = 0,40 W (texto: 400 mW; la simulacion da 0,41 W porque el LED modelado cae 1,86 V y
+*     el exceso es de 4,14 V); en modo punto (un LED) la decima parte, unos 40 mW;
+*   - corriente de LED con 1 kohm de REF OUT a masa: unas 10 veces (1,25 V/1 kohm + 0,125 mA
+*     de la cadena), unos 12-14 mA (texto: unos 12 mA; la hoja de datos da unos 12,5 mA).
+* Ejecutar: ngspice -b sec-15.4_lm3914_flash.cir
+.model DLED D(IS=1e-18 N=1.9 RS=5)
+VRHI rhi 0 DC 1.25
+R1 rhi t9 1k
+R2 t9 t8 1k
+R3 t8 t7 1k
+R4 t7 t6 1k
+R5 t6 t5 1k
+R6 t5 t4 1k
+R7 t4 t3 1k
+R8 t3 t2 1k
+R9 t2 t1 1k
+R10 t1 0 1k
+* t1 ... t9 y rhi son los umbrales 1 ... 10
+VIN vin 0 DC 0
+EBUF buf 0 vin 0 1
+B1 c1 0 V = 0.5 + 0.5*tanh(2000*(v(buf)-v(t1)))
+B2 c2 0 V = 0.5 + 0.5*tanh(2000*(v(buf)-v(t2)))
+B3 c3 0 V = 0.5 + 0.5*tanh(2000*(v(buf)-v(t3)))
+B4 c4 0 V = 0.5 + 0.5*tanh(2000*(v(buf)-v(t4)))
+B5 c5 0 V = 0.5 + 0.5*tanh(2000*(v(buf)-v(t5)))
+B6 c6 0 V = 0.5 + 0.5*tanh(2000*(v(buf)-v(t6)))
+B7 c7 0 V = 0.5 + 0.5*tanh(2000*(v(buf)-v(t7)))
+B8 c8 0 V = 0.5 + 0.5*tanh(2000*(v(buf)-v(t8)))
+B9 c9 0 V = 0.5 + 0.5*tanh(2000*(v(buf)-v(t9)))
+B10 c10 0 V = 0.5 + 0.5*tanh(2000*(v(buf)-v(rhi)))
+* etapa de LED (modo barra): sumidero de 10 mA mandado por el comparador
+VLED vled 0 DC 6
+.subckt SALIDA c vled k
+D1 vled k DLED
+G1 k 0 VALUE = {10m*v(c)}
+.ends
+X1 c1 vled k1 SALIDA
+X2 c2 vled k2 SALIDA
+X3 c3 vled k3 SALIDA
+X4 c4 vled k4 SALIDA
+X5 c5 vled k5 SALIDA
+X6 c6 vled k6 SALIDA
+X7 c7 vled k7 SALIDA
+X8 c8 vled k8 SALIDA
+X9 c9 vled k9 SALIDA
+X10 c10 vled k10 SALIDA
+
+.control
+dc VIN 0 1.4 0.5m
+meas dc u1 when v(c1)=0.5
+meas dc u2 when v(c2)=0.5
+meas dc u3 when v(c3)=0.5
+meas dc u4 when v(c4)=0.5
+meas dc u5 when v(c5)=0.5
+meas dc u6 when v(c6)=0.5
+meas dc u7 when v(c7)=0.5
+meas dc u8 when v(c8)=0.5
+meas dc u9 when v(c9)=0.5
+meas dc u10 when v(c10)=0.5
+* disipacion en las salidas con la entrada a 1,39 V (diez LED en barra)
+let pchip = 10m*(v(k1)+v(k2)+v(k3)+v(k4)+v(k5)+v(k6)+v(k7)+v(k8)+v(k9)+v(k10))
+meas dc p_barra find pchip at=1.39
+meas dc vk_salida find v(k10) at=1.39
+let p_punto = p_barra/10
+print p_punto
+let iled_1k = 10*(1.25/1k + 1.25/10k)
+echo "corriente de LED estimada con 1 kohm de REF OUT a masa (A):"
+print iled_1k
+.endc
+.end

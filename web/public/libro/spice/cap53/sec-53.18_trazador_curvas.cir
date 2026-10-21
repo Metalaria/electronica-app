@@ -1,0 +1,35 @@
+* Seccion 53.18 y figuras 53.27 / 53.28 (Un trazador de curvas con lo que tienes).
+* Secundario de 6 V eficaces a 50 Hz (8,49 V de pico) en serie con 1 kohm y el componente.
+* X = tension en el componente, Y = caida en la resistencia (proporcional a la corriente).
+* Se comprueba: corriente de pico de unos miliamperios (unos 7,8 mA en directa con un diodo,
+* 8,5 mA con un cortocircuito), y la diferencia entre un diodo sano y uno con fugas (el mismo
+* diodo con 2,2 kohm en paralelo): en inversa el sano no conduce y el de fugas deja pasar
+* corriente proporcional a la tension (pendiente apreciable en la traza).
+* Ejecutar:  ngspice -b sec-53.18_trazador_curvas.cir
+*   (en modo interactivo, "plot v(r1,x1) vs v(x1)" dibuja la traza XY)
+.model D1N4148 D(IS=2.52n RS=0.568 N=1.752 CJO=4p M=0.4 TT=20n BV=100 IBV=100u)
+VT t 0 SIN(0 8.485 50)
+* diodo sano
+R1 t x1 1k
+DS x1 0 D1N4148
+* diodo con fugas
+R2 t x2 1k
+DF x2 0 D1N4148
+RF x2 0 2.2k
+* cortocircuito (recta vertical) y resistencia de 2,2 kohm (recta de pendiente 1/R)
+R3 t x3 1k
+RC x3 0 1m
+R4 t x4 1k
+RR x4 0 2.2k
+.control
+tran 20u 60m
+let i_sano = (v(t)-v(x1))/1k
+let i_fuga = (v(t)-v(x2))/1k
+let i_corto = (v(t)-v(x3))/1k
+meas tran ipk_sano max i_sano from=20m to=60m
+meas tran vf_sano max v(x1) from=20m to=60m
+meas tran irev_sano min i_sano from=20m to=60m
+meas tran irev_fuga min i_fuga from=20m to=60m
+meas tran ipk_corto max i_corto from=20m to=60m
+.endc
+.end

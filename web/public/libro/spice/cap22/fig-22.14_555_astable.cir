@@ -1,0 +1,40 @@
+* Capitulo 22, seccion 22.7 (Practica 7), figuras 22.14 y 22.15: 555 astable
+* R_A = 10 k, R_B = 47 k, C = 1 uF, V_CC = 9 V (y 5 y 12 V para ver que f no cambia).
+* Modelo de comportamiento del 555: el transistor de descarga es un interruptor S1 (patilla 7
+* a masa) gobernado por la tension del condensador con histeresis entre 1/3 y 2/3 de V_CC
+* (VT = V_CC/2, VH = V_CC/6): se cierra al llegar a 2/3 V_CC y se abre al bajar de 1/3 V_CC.
+* La salida (patilla 3) es alta mientras S1 esta abierto.
+* Comprueba: t_alto = 39,5 ms, t_bajo = 32,6 ms, T = 72,1 ms, f = 13,9 Hz, ciclo del 55 %,
+* y que con 5 y 12 V el periodo es el mismo.
+* Ejecutar: ngspice -b fig-22.14_555_astable.cir
+.param vcc=9
+.model SW555 SW(VT={vcc/2} VH={vcc/6} RON=10 ROFF=1G)
+VCC vcc 0 DC {vcc}
+RA vcc dis 10k
+RB dis thr 47k
+C1 thr 0 1u IC={vcc/3}
+S1 dis 0 thr 0 SW555
+BOUT out 0 V = v(dis) > {vcc/30} ? {vcc} : 0
+ROUT out 0 1MEG
+.tran 20u 1 0 20u UIC
+.control
+foreach vs 9 5 12
+  alterparam vcc = $vs
+  reset
+  run
+  echo "V_CC = $vs V"
+  let half = $vs/2
+  meas tran tr1 when v(out)=half rise=3
+  meas tran tf1 when v(out)=half fall=4
+  meas tran tr2 when v(out)=half rise=4
+  let thigh = tf1 - tr1
+  let tper = tr2 - tr1
+  let tlow = tper - thigh
+  let frec = 1/tper
+  let ciclo = thigh/tper*100
+  print thigh tlow tper frec ciclo
+  meas tran vcmax max v(thr) from=0.3 to=1
+  meas tran vcmin min v(thr) from=0.3 to=1
+end
+.endc
+.end

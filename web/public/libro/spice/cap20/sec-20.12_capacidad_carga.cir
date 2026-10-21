@@ -1,0 +1,50 @@
+* seccion 20.12 (La capacidad de carga) y seccion 20.4 (En el banco)
+* Cristal de 16 MHz (modelo de Butterworth-Van Dyke: R1 = 25 ohm, C1 = 15 fF, L1 para
+* resonancia serie en 16 MHz, C0 = 5 pF) cargado con la capacidad que le presentan los dos
+* condensadores del oscilador de Pierce en serie mas 4 pF de parasitas:
+*   CL = C1*C2/(C1+C2) + 4 pF
+* La frecuencia de trabajo en modo paralelo es la de resonancia serie del conjunto
+* cristal + CL: se busca el cruce por cero de la fase de su impedancia.
+* Casos: 28 pF + 28 pF (CL = 18 pF, el valor del libro), 22 pF (CL = 15 pF),
+* 33 pF (CL = 20,5 pF) y 28 pF con una sonda x10 de 10 pF en un lado (28 || 38 -> 20,1 pF).
+* Comprueba: C1 = C2 = 28 pF para CL = 18 pF; condensadores pequenos -> frecuencia alta;
+* grandes -> baja; desplazamientos de decenas de ppm, tambien con la sonda x10.
+* Ejecutar:  ngspice -b sec-20.12_capacidad_carga.cir
+.param fs=16e6
+.param cm=15f
+.param lm={1/((2*3.14159265358979*fs)**2*cm)}
+.subckt xtal a b
+Rm a m1 25
+Lm m1 m2 {lm}
+Cm m2 b {cm}
+C0 a b 5p
+.ends
+* una copia por caso; fuente de corriente de 1 A: v(n) = impedancia
+I1 0 n1 dc 0 ac 1
+X1 n1 k1 xtal
+CL1 k1 0 18p
+I2 0 n2 dc 0 ac 1
+X2 n2 k2 xtal
+CL2 k2 0 15p
+I3 0 n3 dc 0 ac 1
+X3 n3 k3 xtal
+CL3 k3 0 20.5p
+I4 0 n4 dc 0 ac 1
+X4 n4 k4 xtal
+CL4 k4 0 {28p*38p/(28p+38p)+4p}
+.control
+ac lin 60001 16.000e6 16.012e6
+meas ac f18 when vp(n1)=0 cross=1
+meas ac f15 when vp(n2)=0 cross=1
+meas ac f205 when vp(n3)=0 cross=1
+meas ac fsonda when vp(n4)=0 cross=1
+let ppm22 = (f15 - f18)/f18*1e6
+let ppm33 = (f205 - f18)/f18*1e6
+let ppmsonda = (fsonda - f18)/f18*1e6
+let s22 = ppm22*86400e-6
+let s33 = ppm33*86400e-6
+print ppm22 ppm33 ppmsonda s22 s33
+echo "Analitico: f = fs*(1 + C1/(2*(C0+CL))): CL=18 pF -> +326 ppm sobre fs"
+echo "Libro: 28 pF para CL = 18 pF; 22/33 pF desplazan decenas de ppm (+ / -); sonda x10, decenas de ppm"
+.endc
+.end

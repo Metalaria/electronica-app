@@ -1,0 +1,61 @@
+* Capítulo 49, figuras 49.8 y 49.10 y sección 49.6: una línea del bus I2C de la estación
+* (SDA o SCL) con su pull-up R1 = 4,7 kOhm a 3,3 V. El transistor de drenador abierto del
+* maestro se modela como un interruptor SW (Ron = 20 Ohm) que tira de la línea a masa.
+* Comprueba:
+*   - la corriente por línea en nivel bajo: 3,3 V / 4,7 kOhm = 0,7 mA (sección 49.6);
+*   - el tiempo de subida 30-70 % (0,8473 R C) con 50 pF (tres o cuatro sensores en pista,
+*     unos 200 ns, válido a 100 y a 400 kHz), con 250 pF (límite a 100 kHz: 1000 ns)
+*     y con 75 pF (límite a 400 kHz: 300 ns);
+*   - el caso de los pull-ups de los módulos en paralelo (4,7 k || 10 k || 4,7 k || 4,7 k,
+*     unos 1,35 kOhm): 2,4 mA por línea, dentro de los 3 mA de la norma.
+* Ejecutar: ngspice -b fig-49.10_bus_i2c.cir
+
+.param rpu=4.7k cbus=50p
+VDD vdd 0 DC 3.3
+* driver: gate signal, low half period 5 us (100 kHz)
+VG g 0 PULSE(0 1 1u 1n 1n 5u 10u)
+S1 line 0 g 0 swod
+.model swod SW(Vt=0.5 Vh=0.05 Ron=20 Roff=1e9)
+RPU vdd line {rpu}
+CBUS line 0 {cbus}
+.options noacct
+
+.control
+set noaskquit
+* --- 50 pF, 4.7 k
+tran 2n 20u
+meas tran ilow FIND i(VDD) AT=4u
+meas tran t30 WHEN v(line)=0.99 RISE=1 FROM=6u
+meas tran t70 WHEN v(line)=2.31 RISE=1 FROM=6u
+let tr50 = t70 - t30
+print tr50
+let ipu = 3.3/4.7k
+print ipu
+* --- 250 pF
+alterparam cbus=250p
+reset
+tran 2n 20u
+meas tran t30 WHEN v(line)=0.99 RISE=1 FROM=6u
+meas tran t70 WHEN v(line)=2.31 RISE=1 FROM=6u
+let tr250 = t70 - t30
+print tr250
+* --- 75 pF
+alterparam cbus=75p
+reset
+tran 2n 20u
+meas tran t30 WHEN v(line)=0.99 RISE=1 FROM=6u
+meas tran t70 WHEN v(line)=2.31 RISE=1 FROM=6u
+let tr75 = t70 - t30
+print tr75
+* --- module pull-ups in parallel, 50 pF
+alterparam cbus=50p
+alterparam rpu=1.354k
+reset
+tran 2n 20u
+meas tran ilow_mod FIND i(VDD) AT=4u
+meas tran t30 WHEN v(line)=0.99 RISE=1 FROM=6u
+meas tran t70 WHEN v(line)=2.31 RISE=1 FROM=6u
+let trmod = t70 - t30
+print trmod
+.endc
+.end

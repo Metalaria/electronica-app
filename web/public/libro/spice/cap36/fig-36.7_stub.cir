@@ -1,0 +1,24 @@
+* Sección 36.6 y figura 36.7 (izquierda): stub en abierto de lambda/4 como elimina-banda.
+* Línea de 50 Ohm entre generador y carga de 50 Ohm, con un stub de 50 Ohm abierto, de un cuarto de
+* onda a 2,4 GHz, conectado en paralelo a mitad de camino. En microstrip sobre FR4 (eps_eff = 3,3)
+* ese cuarto de onda mide 3e8/(2,4e9 * 1,82)/4 = 17,2 mm; aquí la línea se define por su longitud
+* eléctrica (NL = 0,25 a F = 2,4 GHz), que es lo que importa.
+* Comprueba: a 2,4 GHz el stub presenta un cortocircuito en la unión y S21 cae en picado; a la mitad
+* de frecuencia (1,2 GHz), el stub es lambda/8 y la transmisión apenas se resiente.
+* Ejecutar: ngspice -b fig-36.7_stub.cir
+VS g 0 DC 0 AC 2
+RS g in 50
+T1 in 0 j 0 Z0=50 F=2.4G NL=0.1
+TST j 0 so 0 Z0=50 F=2.4G NL=0.25
+RSO so 0 1G
+T2 j 0 out 0 Z0=50 F=2.4G NL=0.1
+RL out 0 50
+.control
+  ac lin 2001 0.5G 4.3G
+  let s21db = db(v(out))
+  meas ac S21_2G4 find s21db at=2.4G
+  meas ac S21_1G2 find s21db at=1.2G
+  meas ac fnotch min_at s21db from=1.5G to=3.5G
+  echo "S21 (dB) a 2,4 GHz: muy negativo (corto ideal); a 1,2 GHz: unos -1 dB; mínimo en 2,4 GHz"
+.endc
+.end

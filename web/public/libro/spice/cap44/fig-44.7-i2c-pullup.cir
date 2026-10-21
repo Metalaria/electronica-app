@@ -1,0 +1,51 @@
+* Figura 44.7 y secciones 44.4, 44.11 y problema 44.A: flanco de subida de una línea I2C en drenador
+* abierto. Cada rama es un pull-up a 3,3 V con la capacidad del bus; la línea parte de 0 V (el
+* transistor de salida acaba de soltarla en t = 0) y se carga a través de la resistencia.
+* Comprueba:
+*  - 10 kOhm con 200 pF: tau = 2 us, inservible a 400 kHz (medio bit = 1,25 us).
+*  - t_r (30 % -> 70 % de VDD) = 0,8473 R C, y que las R máximas de la tabla de la sección 44.11
+*    (5901 Ohm / 200 pF, 1770 Ohm / 200 pF, 885 Ohm / 400 pF) dan justo 1000 ns y 300 ns.
+*  - Problema 44.A: 4,7 kOhm cumple con 50 pF (t_r < 300 ns) y no con 130 pF; 1,5 kOhm con 130 pF sí.
+*  - Límite inferior: con 967 Ohm (3,3 V) y 3 mA absorbidos, la línea baja justo a 0,4 V (.op aparte).
+* Ejecutar: ngspice -b fig-44.7-i2c-pullup.cir
+VDD vdd 0 3.3
+R1 vdd n1 10k
+C1 n1 0 200p IC=0
+R2 vdd n2 4.7k
+C2 n2 0 200p IC=0
+R3 vdd n3 1.5k
+C3 n3 0 200p IC=0
+R4 vdd n4 5901
+C4 n4 0 200p IC=0
+R5 vdd n5 1770
+C5 n5 0 200p IC=0
+R6 vdd n6 885
+C6 n6 0 400p IC=0
+R7 vdd n7 4.7k
+C7 n7 0 50p IC=0
+R8 vdd n8 4.7k
+C8 n8 0 130p IC=0
+R9 vdd n9 1.5k
+C9 n9 0 130p IC=0
+* low-level check: pull-up of R_min with the device sinking the specified 3 mA
+R10 vdd n10 967
+I10 n10 0 3m
+.tran 1n 12u uic
+.control
+  run
+  echo "t_r = tiempo de 0,99 V (30 %) a 2,31 V (70 %); t_VIH = tiempo hasta 2,31 V desde la liberación"
+  meas tran tr_10k_200p   trig v(n1) val=0.99 rise=1 targ v(n1) val=2.31 rise=1
+  meas tran tvih_10k_200p when v(n1)=2.31
+  meas tran tvih_4k7_200p when v(n2)=2.31
+  meas tran tvih_1k5_200p when v(n3)=2.31
+  meas tran tr_5901_200p  trig v(n4) val=0.99 rise=1 targ v(n4) val=2.31 rise=1
+  meas tran tr_1770_200p  trig v(n5) val=0.99 rise=1 targ v(n5) val=2.31 rise=1
+  meas tran tr_885_400p   trig v(n6) val=0.99 rise=1 targ v(n6) val=2.31 rise=1
+  meas tran tr_4k7_50p    trig v(n7) val=0.99 rise=1 targ v(n7) val=2.31 rise=1
+  meas tran tr_4k7_130p   trig v(n8) val=0.99 rise=1 targ v(n8) val=2.31 rise=1
+  meas tran tr_1k5_130p   trig v(n9) val=0.99 rise=1 targ v(n9) val=2.31 rise=1
+  op
+  echo "Nivel bajo con 967 Ohm y 3 mA absorbidos (debe ser 0,4 V):"
+  print v(n10)
+.endc
+.end

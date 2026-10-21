@@ -1,0 +1,57 @@
+* Problema 27.C: termostato con comparador de histeresis (no inversor, realimentacion positiva).
+* Sensor -> R1 -> entrada no inversora; R2 de la salida a esa entrada; Vref = 2,5 V en la inversora.
+* Comparador rail-to-rail de 0 a 5 V: fuente B con tanh de pendiente alta y un polo de 10 ns.
+* La entrada es una rampa lenta 2,0 -> 3,0 -> 2,0 V; se miden las tensiones de entrada en las que la
+* salida cruza 2,5 V al subir y al bajar.
+*   Caso 1: R1 = 3,9 kohm, R2 = 100 kohm (diseno).              Texto: 2,598 V y 2,403 V, 195 mV.
+*   Caso 2: el mismo con 1 kohm de resistencia de fuente.         Texto: 2,622 V y 2,377 V, 245 mV.
+*   Caso 3: resistencias por 25 (R1 = 97,5 kohm, R2 = 2,5 Mohm) y 100 nA de corriente de entrada
+*           saliendo de la entrada no inversora: los umbrales suben I_B*R1 = 9,75 mV.
+*   Caso 4: valores de diseno con 100 nA: los umbrales suben solo I_B*R1 = 0,39 mV.
+* Ejecutar:  ngspice -b comparador_histeresis_prob-27.C.cir
+* Resultado (ngspice-42): caso 1: 2,5974 / 2,4026 V (194,8 mV); caso 2: 2,6224 / 2,3776 V (244,8 mV);
+*   caso 3: 2,6071 / 2,4123 V (+9,7 mV, la ventana no cambia); caso 4: 2,5978 / 2,4029 V (+0,4 mV).
+*   (La ganancia finita del modelo del comparador resta unas decimas de milivoltio.)
+.subckt comp p n out
+B1 o1 0 V = 2.5 + 2.5*tanh(1e5*(V(p)-V(n)))
+R1 o1 out 1
+C1 out 0 10n
+.ends
+Vref ref 0 DC 2.5
+Vin in 0 PWL(0 2.0 10m 3.0 20m 2.0)
+* caso 1
+X1 p1 ref o1 comp
+R11 in p1 3.9k
+R12 o1 p1 100k
+* caso 2
+X2 p2 ref o2 comp
+Rs2 in s2 1k
+R21 s2 p2 3.9k
+R22 o2 p2 100k
+* caso 3
+X3 p3 ref o3 comp
+R31 in p3 97.5k
+R32 o3 p3 2.5meg
+Ib3 p3 0 DC 100n
+* caso 4
+X4 p4 ref o4 comp
+R41 in p4 3.9k
+R42 o4 p4 100k
+Ib4 p4 0 DC 100n
+.ic v(o1)=0 v(o2)=0 v(o3)=0 v(o4)=0
+.control
+tran 1u 20m uic
+meas tran th1 find v(in) when v(o1)=2.5 rise=1
+meas tran tl1 find v(in) when v(o1)=2.5 fall=1
+meas tran th2 find v(in) when v(o2)=2.5 rise=1
+meas tran tl2 find v(in) when v(o2)=2.5 fall=1
+meas tran th3 find v(in) when v(o3)=2.5 rise=1
+meas tran tl3 find v(in) when v(o3)=2.5 fall=1
+meas tran th4 find v(in) when v(o4)=2.5 rise=1
+meas tran tl4 find v(in) when v(o4)=2.5 fall=1
+let w1 = th1-tl1
+let w2 = th2-tl2
+let w3 = th3-tl3
+print w1 w2 w3
+.endc
+.end

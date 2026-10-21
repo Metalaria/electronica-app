@@ -1,0 +1,39 @@
+* Secciones 50.3 y 50.7: disipación del elemento de paso de un regulador lineal, P = (Vin - Vout) x I.
+* Regulador: NPN de paso de beta muy alta (Darlington ideal) gobernado por un amplificador de error de
+* ganancia 1e5 que iguala la salida a la consigna.
+*   a) 50.3: 30 V de entrada, 3 V a 3 A -> 81 W; con prerregulador (6 V de entrada, 3 V de margen) 9 W.
+*   b) 50.7: 26 V, 5 V a 2 A -> 42 W (rendimiento 19 %); con 3 V de margen (8 V de entrada) 6 W.
+*   c) 50.7: 26 V con la salida en cortocircuito limitada a 3 A -> 78 W.
+* Ejecutar: ngspice -b disipacion.cir
+.model NPASS NPN(Is=1e-12 Bf=1e5)
+.subckt REG in out vset
+Q1 in b out NPASS
+E1 b 0 vset out 1e5
+.ends
+V1 i1 0 DC 30
+V1S 1s 0 DC 3
+X1 i1 o1 1s REG
+R1 o1 0 1
+V2 i2 0 DC 6
+X2 i2 o2 1s REG
+R2 o2 0 1
+V3 i3 0 DC 26
+V3S 3s 0 DC 5
+X3 i3 o3 3s REG
+R3 o3 0 2.5
+V4 i4 0 DC 8
+X4 i4 o4 3s REG
+R4 o4 0 2.5
+* c) short circuit: the regulator is held at 3 A by setting the output to 3 A x 1 mOhm
+V5 i5 0 DC 26
+V5S 5s 0 DC 3m
+X5 i5 o5 5s REG
+R5 o5 0 1m
+.control
+  op
+  echo "P (W): a) 81 y 9; b) 42 y 6, rendimiento; c) 78"
+  print (v(i1)-v(o1))*v(o1)/1 (v(i2)-v(o2))*v(o2)/1
+  print (v(i3)-v(o3))*v(o3)/2.5 (v(i4)-v(o4))*v(o4)/2.5 (v(o3)*v(o3)/2.5)/(v(i3)*v(o3)/2.5)
+  print (v(i5)-v(o5))*v(o5)/1m
+.endc
+.end

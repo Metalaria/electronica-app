@@ -1,0 +1,48 @@
+* Problema 28.C y figura 28.11: fuente lineal de 12 V y 1 A.
+* Secundario de 15 V eficaces (21,2 V de pico) a 50 Hz, puente de cuatro diodos, condensador de
+* 4700 uF y el regulador modelado como un sumidero de corriente constante de 1 A (que es como
+* lo ve el condensador). Resistencia del bobinado: RW (0 Ohm = caso ideal del libro; 0,5 Ohm = un
+* transformador real pequeño). Diodos de puente modelados para dar unos 0,7 V por diodo a 1 A
+* (1,4 V los dos que conducen).
+* Comprueba, a red nominal y con red mínima (-10 %, 207 V):
+*   - pico en el condensador 21,2 - 1,4 = 19,8 V (no «19,8 V de pico» en el secundario);
+*   - rizado I*t/C = 1 A * 10 ms / 4700 uF = 2,1 V (algo menos en la simulación, porque la
+*     descarga no dura todo el semiperiodo, problema 3.B);
+*   - valle del rizado con red mínima por encima de 14,5 V (lo que pide el regulador);
+*   - tensión media en el condensador y disipación del regulador (Vmedia - 12 V)*1 A: unos 7 W;
+*   - corriente eficaz en el secundario: unos 3,4 A en el caso ideal (RW = 0), bastante menos
+*     con la resistencia del bobinado.
+* Ejecutar: ngspice -b prob-28.C_fuente.cir
+.model DPTE D (IS=1n N=1.5 RS=0.02 BV=400)
+.param VRMS=15 RW=0
+* secundario flotante entre a y b; el negativo del puente es la masa
+VS a b SIN(0 {VRMS*1.41421356} 50)
+RFL b 0 10Meg
+RWD a a1 {RW}
+VAM a1 a2 DC 0
+D1 a2 p DPTE
+D2 b p DPTE
+D3 0 a2 DPTE
+D4 0 b DPTE
+C1 p 0 4700u
+IREG p 0 DC 1
+.control
+  foreach rw 0 0.5
+    foreach vr 15 13.5
+      alterparam RW = $rw
+      alterparam VRMS = $vr
+      reset
+      tran 20u 1.5 0 uic
+      meas tran vmax max v(p) from=1.3 to=1.5
+      meas tran vmin min v(p) from=1.3 to=1.5
+      meas tran vavg avg v(p) from=1.3 to=1.5
+      meas tran irms rms i(VAM) from=1.3 to=1.5
+      meas tran ipk max i(VAM) from=1.3 to=1.5
+      let rizado = vmax - vmin
+      let preg = (vavg - 12)*1
+      echo "RW = $rw Ohm, secundario $vr V eficaces: pico, valle, rizado, media (V), P regulador (W), I eficaz y pico del secundario (A):"
+      print vmax vmin rizado vavg preg irms ipk
+    end
+  end
+.endc
+.end

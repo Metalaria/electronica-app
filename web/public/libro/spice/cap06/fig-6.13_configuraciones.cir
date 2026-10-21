@@ -1,0 +1,126 @@
+* fig-6.13 / secciones 6.5, 6.6 y 6.8 (configuraciones amplificadoras)
+* Las tres configuraciones con la polarizacion del ejemplo: VCC = 12 V, R1 = 47 k,
+* R2 = 10 k, RC = 3,3 k, RE = 1 k, beta = 150 (IC = 1,324 mA, gm = 51,2 mS, re = 19,5 ohm).
+* Valores del libro que se comprueban (analisis .ac a 1 kHz, condensadores de 1000 uF):
+*   EC con CE:           Av = -169 (sin efecto Early); -162 con VA = 100 V (seccion 6.8)
+*   EC sin CE:           Av = -RC/(re+RE) = -3,24
+*   EC, Zin              ~ 2,2 kohm (beta*re en paralelo con el divisor)
+*   Colector comun:      Av (emisor/base) = RE/(re+RE) = 0,981; Zout con fuente de 1 k ~ 26 ohm
+*   Base comun:          Av = +169; Zin ~ re = 19,5 ohm (en paralelo con RE)
+*   Miller (EC con CE):  Cmu = 4 pF -> 680 pF; con fuente de 1 k el libro estima 234 kHz
+*                        (estimacion que ignora la resistencia de entrada de la etapa y Cpi)
+*   Polo de CE = 100 uF con fuente ideal: CE ve RE || re ~ 19 ohm -> ~83 Hz
+*                        (la edicion revisada corrige la estimacion previa de 21 Hz)
+* Ejecutar:  ngspice -b fig-6.13_configuraciones.cir
+.model QA NPN(IS=2.3e-15 BF=150 VAF=1e6)
+.model QE NPN(IS=2.3e-15 BF=150 VAF=100)
+.model QM NPN(IS=2.3e-15 BF=150 VAF=1e6 CJC=4p MJC=1e-6 VJC=100)
+VCC vcc 0 12
+VS in 0 dc 0 ac 1
+* --- 1) emisor comun con CE (sin Early) ---
+R1a vcc b1 47k
+R2a b1 0 10k
+RCa vcc c1 3.3k
+REa e1 0 1k
+CEa e1 0 1000u
+Vm1 in m1 0
+Cia m1 b1 1000u
+Q1 c1 b1 e1 QA
+* --- 2) emisor comun con CE y VA = 100 V ---
+R1b vcc b2 47k
+R2b b2 0 10k
+RCb vcc c2 3.3k
+REb e2 0 1k
+CEb e2 0 1000u
+Cib in b2 1000u
+Q2 c2 b2 e2 QE
+* --- 3) emisor comun sin CE ---
+R1c vcc b3 47k
+R2c b3 0 10k
+RCc vcc c3 3.3k
+REc e3 0 1k
+Cic in b3 1000u
+Q3 c3 b3 e3 QA
+* --- 4) colector comun (seguidor), fuente de 1 k ---
+R1d vcc b4 47k
+R2d b4 0 10k
+REd e4 0 1k
+RSd in s4 1k
+Cid s4 b4 1000u
+Q4 vcc b4 e4 QA
+* --- 5) base comun ---
+R1e vcc b5 47k
+R2e b5 0 10k
+RCe vcc c5 3.3k
+REe e5 0 1k
+CBe b5 0 1000u
+Vm5 in m5 0
+Cie m5 e5 1000u
+Q5 c5 b5 e5 QA
+* --- 6) emisor comun con Cmu = 4 pF y fuente de 1 k (efecto Miller) ---
+R1f vcc b6 47k
+R2f b6 0 10k
+RCf vcc c6 3.3k
+REf e6 0 1k
+CEf e6 0 1000u
+RSf in s6 1k
+Cif s6 b6 1000u
+Q6 c6 b6 e6 QM
+* --- 7) emisor comun con CE = 100 uF (polo de baja frecuencia), fuente ideal ---
+R1g vcc b7 47k
+R2g b7 0 10k
+RCg vcc c7 3.3k
+REg e7 0 1k
+CEg e7 0 100u
+Cig in b7 1000u
+Q7 c7 b7 e7 QA
+* --- 8) seguidor para medir Zout: misma etapa, fuente de 1 k a masa y 1 A ac en el emisor ---
+R1h vcc b8 47k
+R2h b8 0 10k
+REh e8 0 1k
+RSh s8 0 1k
+Cih s8 b8 1000u
+Cout e8 x8 1000u
+IZ 0 x8 dc 0 ac 1
+Q8 vcc b8 e8 QA
+.control
+op
+let ic = (12-v(c1))/3.3k
+let gm = ic/0.025852
+echo "IC (libro 1,324 mA) y gm (libro 51,2 mS):"
+print ic gm
+ac dec 50 1 100Meg
+meas ac av1 find vm(c1) at=1k
+meas ac av2 find vm(c2) at=1k
+meas ac av3 find vm(c3) at=1k
+meas ac ve4 find vm(e4) at=1k
+meas ac vb4 find vm(b4) at=1k
+let av4 = ve4/vb4
+meas ac av5 find vm(c5) at=1k
+meas ac ph1 find vp(c1) at=1k
+meas ac ph5 find vp(c5) at=1k
+let zi1 = 1/mag(vm1#branch)
+meas ac zin1 find zi1 at=1k
+let zi5 = 1/mag(vm5#branch)
+meas ac zin5 find zi5 at=1k
+meas ac zout4 find vm(x8) at=1k
+meas ac a6 find vm(c6) at=1k
+let lim6 = a6/sqrt(2)
+meas ac f6 when vm(c6)=lim6 fall=1
+meas ac a7 find vm(c7) at=10k
+let lim7 = a7/sqrt(2)
+meas ac f7 when vm(c7)=lim7 rise=1
+echo "|Av| EC con CE (169), con Early (162), sin CE (3,24), seguidor (0,981), base comun (169):"
+print av1 av2 av3 av4 av5
+echo "Fases EC y BC en radianes (EC = +-pi, BC = 0):"
+print ph1 ph5
+echo "Zin EC (libro ~2,2 k) y Zin BC (libro ~19,5 ohm, en paralelo con RE):"
+print zin1 zin5
+echo "Zout del seguidor con fuente de 1 k (libro ~26 ohm):"
+print zout4
+echo "Corte superior del EC con Cmu = 4 pF y fuente de 1 k (estimacion del libro 234 kHz):"
+print f6
+echo "Corte inferior con CE = 100 uF y fuente ideal (libro corregido: ~82 Hz):"
+print f7
+.endc
+.end

@@ -1,0 +1,48 @@
+* Figura 25.9 (seccion 25.5): limite de alta frecuencia del Sallen-Key frente a la realimentacion multiple.
+* Ambos paso bajo de segundo orden, ganancia unidad, f0 ~ 10,7 kHz, Q ~ 0,74:
+*   Sallen-Key: R1 = R2 = 10k, C1 = 2,2 nF (a la salida), C2 = 1 nF (a masa).
+*   MFB: R1 = R2 = R3 = 10k, C1 = 3,3 nF (a masa), C2 = 680 pF (de la salida a la entrada -).
+* Operacional real simplificado: ganancia 1e5, polo dominante a 10 Hz (GBW = 1 MHz), Ro = 100 ohm.
+* Se comprueba lo que dice el texto: por encima del GBW el Sallen-Key deja de atenuar (suelo cerca de
+* 20 log(Ro/R1) = -40 dB) mientras la MFB sigue cayendo; con operacional ideal ambos caerian a -40 dB/dec.
+* Ejecutar:  ngspice -b fig-25.9.cir
+* Resultado (ngspice-42): -3 dB a 11,2 kHz (SK) y 10,9 kHz (MFB); a 100 kHz ambos en -39 dB;
+* el SK toca fondo en -50,8 dB hacia 250 kHz y vuelve a subir a -40,2 dB a 10 MHz; la MFB llega a -100 dB.
+.subckt opreal inp inn out
+Eamp n1 0 inp inn 1e5
+Rp n1 n2 1k
+Cp n2 0 15.915u
+Ebuf n3 0 n2 0 1
+Ro n3 out 100
+.ends
+Vin in 0 DC 0 AC 1
+* --- Sallen-Key
+R1s in as 10k
+R2s as bs 10k
+C2s bs 0 1n
+C1s as osk 2.2n
+Xsk bs osk osk opreal
+* --- MFB (inversora)
+R1m in am 10k
+R2m am omf 10k
+R3m am nm 10k
+C1m am 0 3.3n
+C2m nm omf 680p
+Xmf 0 nm omf opreal
+.control
+ac dec 100 100 20meg
+let gdb_omf = db(v(omf))
+let fase_omf = 180/pi*cph(v(omf))
+let gdb_osk = db(v(osk))
+let fase_osk = 180/pi*cph(v(osk))
+meas ac sk_1k FIND gdb_osk AT=1k
+meas ac mfb_1k FIND gdb_omf AT=1k
+meas ac sk_f3 WHEN gdb_osk=-3.0103 FALL=1
+meas ac mfb_f3 WHEN gdb_omf=-3.0103 FALL=1
+meas ac sk_100k FIND gdb_osk AT=100k
+meas ac mfb_100k FIND gdb_omf AT=100k
+meas ac sk_min MIN gdb_osk FROM=100k TO=10meg
+meas ac sk_10M FIND gdb_osk AT=10meg
+meas ac mfb_10M FIND gdb_omf AT=10meg
+.endc
+.end

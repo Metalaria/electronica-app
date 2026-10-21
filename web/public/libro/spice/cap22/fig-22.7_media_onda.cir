@@ -1,0 +1,45 @@
+* Capitulo 22, seccion 22.4 (Practica 4), figuras 22.7 y 22.8: rectificador de media onda
+* Secundario de 9 V eficaces (12,73 V de pico), 50 Hz, con 0,5 ohm de resistencia serie
+* (devanado), diodo 1N4007, carga de 110 ohm (unos 100 mA).
+*   (a) sin condensador: valor medio que marcaria el multimetro (texto: unos 3,7 V; 4,0 V
+*       seria V_pico/pi sin descontar el diodo);
+*   (b) con 1 000 uF: tension de pico (~12 V), rizado (formula I/(f*C) = 2,0 V; el real sale
+*       algo menor porque la descarga no dura el periodo entero), pico de corriente del diodo
+*       (del orden de 1 A o mas) y angulo de conduccion (unas pocas decenas de grados).
+* Se mide en regimen permanente entre 0,40 y 0,50 s.
+* Ejecutar: ngspice -b fig-22.7_media_onda.cir
+.model D1N4007 D(IS=7.02767n RS=0.0341512 N=1.80803 EG=1.05743 XTI=5 BV=1000 IBV=5e-08
++ CJO=1e-11 VJ=0.7 M=0.5 FC=0.5 TT=1e-07)
+* (a) sin condensador
+VSa sa 0 SIN(0 12.728 50)
+RSa sa xa 0.5
+Da xa oa D1N4007
+RLa oa 0 110
+* (b) con 1 000 uF
+VSb sb 0 SIN(0 12.728 50)
+RSb sb xb 0.5
+VMb xb yb DC 0
+Db yb ob D1N4007
+Cb ob 0 1000u
+RLb ob 0 110
+.tran 10u 0.5 0 10u
+.control
+run
+meas tran vmed_sinC avg v(oa) from=0.40 to=0.50
+meas tran vmax_C max v(ob) from=0.40 to=0.50
+meas tran vmin_C min v(ob) from=0.40 to=0.50
+let rizado = vmax_C - vmin_C
+print rizado
+meas tran ivmed avg v(ob) from=0.40 to=0.50
+let icarga = ivmed/110
+print icarga
+meas tran ipico max i(VMb) from=0.40 to=0.50
+* duracion de la conduccion (corriente > 1 mA) en un ciclo
+meas tran ton when i(VMb)=1m rise=21
+meas tran toff when i(VMb)=1m fall=21
+let angulo = (toff-ton)*50*360
+print angulo
+let vdiodo = v(yb) - v(ob)
+meas tran vd_max max vdiodo from=0.40 to=0.50
+.endc
+.end

@@ -1,0 +1,40 @@
+* Sección 10.4, «Protección de las entradas del circuito»: dos diodos hacia los raíles y una
+* resistencia en serie. Una entrada de 3,3 V recibe por error 24 V a través de 4,7 kohm.
+* Comprueba: R >= (24 - 3,3 - 0,6)/5 mA = 4,0 kohm; con 4,7 kohm la corriente inyectada queda
+* en unos 4,3 mA (el libro usa 0,6 V para el diodo; un 1N4148 a 4 mA cae algo más, ~0,65 V).
+* Segundo caso: el raíl de 3,3 V lo da un regulador que no absorbe corriente (modelado con un diodo
+* en serie, con la fuente subida 0,6 V para que en reposo el raíl quede en 3,3 V) y el circuito
+* consume poco (10 kohm, 0,33 mA): la corriente inyectada sube el raíl por encima de 3,3 V
+* (a unos 16 V en este caso extremo), el efecto que señala la sección (y la sección 9.8).
+* Ejecutar: ngspice -b sec-10.4-entrada.cir
+.model D1N4148 D (IS=2.52n RS=0.568 N=1.752 CJO=4p M=0.4 TT=20n BV=100 IBV=100u)
+* ---- case 1: stiff 3.3 V rail
+VFAULT1 f1 0 DC 24
+RS1 f1 pin1 4.7k
+DUP1 pin1 vdd1 D1N4148
+DDN1 0 pin1 D1N4148
+VDD1 vdd1 0 DC 3.3
+* ---- case 2: rail from a regulator that can only source current, light load
+VFAULT2 f2 0 DC 24
+RS2 f2 pin2 4.7k
+DUP2 pin2 vdd2 D1N4148
+DDN2 0 pin2 D1N4148
+VREG reg 0 DC 3.88
+DREG reg vdd2 D1N4148
+RLOAD vdd2 0 10k
+.control
+  op
+  let iiny = (v(f1) - v(pin1)) / 4.7k
+  echo "Caso 1 (raíl rígido): corriente inyectada (A), tensión del pin (V):"
+  print iiny v(pin1)
+  let rmin = (24 - 3.3 - 0.6) / 5m
+  echo "Resistencia mínima para 5 mA (ohm):"
+  print rmin
+  echo "Caso 2 (regulador que no absorbe, consumo de 0,33 mA): tensión del raíl (V) con la falta:"
+  print v(vdd2)
+  alter VFAULT2 dc = 0
+  op
+  echo "Caso 2 sin la falta (entrada a 0 V): tensión del raíl (V):"
+  print v(vdd2)
+.endc
+.end

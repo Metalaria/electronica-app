@@ -1,0 +1,34 @@
+* prob-17.A (sección 17.12) y figura 17.9 (izquierda): establecimiento del condensador de muestreo
+* del ADC del ATmega328P y error por corriente de fuga.
+* Modelo de la hoja de datos (Analog Input Circuitry): C_S/H = 14 pF cargado a través de la impedancia
+* de la fuente R_s más la resistencia interna del multiplexor y del interruptor, entre 1 y 100 kOhm
+* (se toma el peor caso, 100 kOhm). Tiempo de adquisición: 1,5 ciclos de reloj del ADC a 125 kHz
+* (16 MHz / 128) = 12 us. Peor caso: salto de fondo de escala (el canal anterior estaba a 0 V).
+* Comprueba: 0,21 / 0,42 / 14 LSB de error con R_s = 1 k / 10 k / 100 k (con R_int = 100 kOhm);
+* 0,19 LSB con 100 kOhm si se olvida la resistencia interna (R_int = 0);
+* fuga de 1 uA (máximo de la hoja de datos): 10 mV (2,0 LSB) con 10 kOhm y 100 mV (20,5 LSB) con 100 kOhm.
+* Ejecutar: ngspice -b prob-17.A.cir
+VIN in 0 DC 5
+RS in a 1k
+RINT a c 100k
+CSH c 0 14p IC=0
+.control
+  set lsb = 0.0048828125
+  echo "--- settling error after 12 us, R_int = 100 kOhm ---"
+  foreach r 1k 10k 100k
+    alter RS = $r
+    tran 10n 12u uic
+    meas tran vc find v(c) at=12u
+    let err = (5 - vc) / $lsb
+    echo "R_s = $r ->  error (LSB) ="
+    print err
+  end
+  echo "--- same with R_int = 0 (source resistance only) ---"
+  alter RINT = 1m
+  alter RS = 100k
+  tran 10n 12u uic
+  meas tran vc0 find v(c) at=12u
+  let err0 = (5 - vc0) / $lsb
+  print err0
+.endc
+.end

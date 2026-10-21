@@ -1,0 +1,45 @@
+* fig-3.12 y seccion 3.9 (Asociacion, derating de tension y equilibrado)
+* Dos electroliticos de 470 uF / 200 V en serie sobre 400 V. La fuga de cada uno se
+* modela como una resistencia en paralelo: 15 Mohm y 10 Mohm (a 200 V, 13 y 20 uA, unas
+* fugas que difieren un 50 %, la dispersion normal entre unidades del mismo lote).
+*   Banco A, sin resistencias de equilibrado: el reparto lo fijan las fugas, 60/40,
+*     240 V / 160 V; el de arriba supera sus 200 V.
+*   Banco B, con 100 kohm en paralelo con cada condensador: 2 mA por el divisor, unas cien
+*     veces la fuga; reparto practicamente 200 V / 200 V (200,3 V arriba, 199,7 V abajo) y 0,4 W en
+*     cada resistencia.
+* Despues (.tran) se desconecta la fuente del banco B en t = 1 s: la tension de cada
+* condensador cae con tau = 100 kohm * 470 uF = 47 s; a los cuatro minutos (241 s) queda
+* poco mas de 1 V en cada uno.
+* Ejecutar:  ngspice -b fig-3.12_equilibrado_serie.cir
+VA a 0 DC 400
+CA1 a ma 470u
+RfA1 a ma 15meg
+CA2 ma 0 470u
+RfA2 ma 0 10meg
+VB vb 0 DC 400
+VCTL ctl 0 PWL(0 0 0.999 0 1 1)
+* interruptor cerrado mientras ctl < 0,5 V: la fuente se desconecta en t = 1 s
+S1 vb b ctl 0 SWOFF
+.model SWOFF SW(VT=0.5 VH=0.01 RON=1e12 ROFF=1m)
+CB1 b mb 470u IC=200
+RfB1 b mb 15meg
+RB1 b mb 100k
+CB2 mb 0 470u IC=200
+RfB2 mb 0 10meg
+RB2 mb 0 100k
+.control
+op
+let vA_arriba = v(a)-v(ma)
+let vA_abajo = v(ma)
+let vB_arriba = v(b)-v(mb)
+let vB_abajo = v(mb)
+let iB_divisor = (v(b)-v(mb))/100k
+let pB_resistencia = (v(b)-v(mb))^2/100k
+print vA_arriba vA_abajo vB_arriba vB_abajo iB_divisor pB_resistencia
+tran 0.1 300 UIC
+let varriba = v(b)-v(mb)
+meas tran vb_arriba_48s FIND varriba AT=48
+meas tran vb_arriba_241s FIND varriba AT=241
+meas tran vb_abajo_241s FIND v(mb) AT=241
+.endc
+.end

@@ -1,0 +1,40 @@
+* fig-3.1, fig-3.4 y ejemplo de la seccion 3.2 (Comportamiento dinamico: carga y descarga)
+* Condensador de 100 uF cargado a traves de 10 kohm desde 9 V (tau = R*C = 1 s).
+* El conmutador de dos posiciones se modela con dos interruptores SW: posicion 1
+* (fuente de 9 V) de 0 a 5 s, posicion 2 (a masa, descarga por la misma R) de 5 a 10 s.
+* Valores del libro:
+*   carga:    vC(1 s) = 5,69 V; vC(2 s) = 7,78 V; vC(3 s) = 8,55 V; vC(5 s) = 8,94 V
+*             iC(0+) = 0,9 mA (cortocircuito en t = 0), iC -> 0 (circuito abierto)
+*   descarga: iC(5 s+) = -0,894 mA (la corriente se invierte), vC(6 s) = 8,94*e^-1 = 3,29 V
+* Tambien comprueba el ejercicio 3.2 (470 uF, 2,2 kohm, 12 V): tau = 1,034 s,
+* v(1 s) = 7,44 V y 99 % a los 4,76 s.
+* Ejecutar:  ngspice -b fig-3.1_carga_descarga_rc.cir
+V1 fuente 0 DC 9
+VCTL ctl 0 PWL(0 0 4.999999 0 5 1)
+* S1 cerrado (posicion 1) mientras ctl < 0,5 V; S2 cerrado (posicion 2) despues
+S1 fuente com ctl 0 SWINV
+S2 com 0 ctl 0 SWDIR
+.model SWDIR SW(VT=0.5 VH=0.01 RON=1m ROFF=1e12)
+.model SWINV SW(VT=0.5 VH=0.01 RON=1e12 ROFF=1m)
+R1 com nc 10k
+* amperimetro de 0 V para leer iC
+VAM nc ncap 0
+C1 ncap 0 100u IC=0
+* ejercicio 3.2
+V2 f2 0 DC 12
+R2 f2 n2 2.2k
+C2 n2 0 470u IC=0
+.tran 1m 10 UIC
+.control
+run
+meas tran vc1 FIND v(nc) AT=1
+meas tran vc2 FIND v(nc) AT=2
+meas tran vc3 FIND v(nc) AT=3
+meas tran vc5 FIND v(nc) AT=4.999
+meas tran ic0 FIND i(VAM) AT=1e-3
+meas tran icdesc FIND i(VAM) AT=5.002
+meas tran vc6 FIND v(nc) AT=6
+meas tran ej32_v1s FIND v(n2) AT=1
+meas tran ej32_t99 WHEN v(n2)=11.88 RISE=1
+.endc
+.end

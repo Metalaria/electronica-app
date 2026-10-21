@@ -1,0 +1,42 @@
+* fig-47.4 (sección 47.2): efecto del ancho de banda del instrumento sobre un flanco.
+* Cada instrumento se modela como un paso bajo de un polo (tr = 0,35/BW = 2,2·tau).
+* Flancos de entrada lineales con 10-90 % de 1 ns y de 5 ns (rampas de 1,25 ns y 6,25 ns de 0 a 100 %).
+* Comprueba:
+*  - flanco de 1 ns con un instrumento de 20 MHz: se mide unos 17,5 ns;
+*  - flanco de 5 ns con 200 MHz: se mide unos 5,3 ns (+6 %), la regla de «tres veces más rápido»;
+*  - sonda de 60 MHz en un osciloscopio de 200 MHz: ancho de banda del conjunto algo menor de 60 MHz
+*    (unos 57 MHz sumando tiempos de subida en cuadratura, que es lo que dice el texto; con dos polos
+*    reales el -3 dB exacto sale 55,5 MHz).
+* Nota: con una rampa lineal de entrada el flanco de 5 ns sale 5,2 ns; la suma en cuadratura (5,3 ns)
+* es exacta solo para formas gaussianas, y por eso el texto la presenta como aproximación.
+* Ejecutar: ngspice -b fig-47.4.cir
+.param t20=7.957747e-9 t200=7.957747e-10 t60=2.652582e-9
+* 1 ns edge through 20 MHz
+VA a 0 PWL(0 0 10n 0 11.25n 1)
+RA a ao 1k
+CA ao 0 {t20/1k}
+* 5 ns edge through 200 MHz
+VB b 0 PWL(0 0 10n 0 16.25n 1)
+RB b bo 1k
+CB bo 0 {t200/1k}
+* AC: 60 MHz probe buffered into a 200 MHz scope
+VC c 0 DC 0 AC 1
+RC1 c c1 1k
+CC1 c1 0 {t60/1k}
+EBUF c2 0 c1 0 1
+RC2 c2 c3 1k
+CC2 c3 0 {t200/1k}
+.control
+  tran 0.01n 200n
+  meas tran a10 WHEN v(ao)=0.1 RISE=1
+  meas tran a90 WHEN v(ao)=0.9 RISE=1
+  let tr_20MHz = a90 - a10
+  print tr_20MHz
+  meas tran b10 WHEN v(bo)=0.1 RISE=1
+  meas tran b90 WHEN v(bo)=0.9 RISE=1
+  let tr_200MHz = b90 - b10
+  print tr_200MHz
+  ac dec 400 1Meg 1G
+  meas ac fsis WHEN vdb(c3)=-3.0103
+.endc
+.end

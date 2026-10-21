@@ -1,0 +1,58 @@
+* fig-6.16 / seccion 6.7 (El BJT como interruptor) y ejercicio 6.3
+* Interruptor bipolar completo de la figura: pin de 5 V, RB = 860 ohm, RBE = 10 k,
+* resistencia de sensado RS = 0,47 ohm, rele de 12 V / 100 mA (modelado como 120 ohm en
+* serie con 100 mH) y diodo de rueda libre 1N4148. beta = 100 (el beta minimo de la tabla).
+* Se comprueba:
+*   - IB ~ 5 mA (factor de saturacion forzada k = 5) y VCE de saturacion < 0,3 V
+*   - pico de tension en el colector al apagar: con diodo ~ 12,7 V; sin diodo, cientos de V
+*     (copia sin diodo, recortada solo por un modelo de ruptura no incluido: el pico
+*     simulado muestra por que el diodo es imprescindible)
+*   - ejercicio 6.3: rele de 60 mA (200 ohm) con RB = 1 k: IB = 4,3 mA, satura
+* Ejecutar:  ngspice -b fig-6.16_interruptor.cir
+.model QS NPN(IS=1e-14 BF=100 BR=4 VAF=100 RB=5 RC=0.5 CJE=10p CJC=5p TF=0.5n TR=50n)
+.model D1N4148 D(IS=2.52n RS=0.568 N=1.752 CJO=4p M=0.4 TT=20n BV=100 IBV=100u)
+VCC vcc 0 12
+VPIN pin 0 PULSE(0 5 0.1m 1u 1u 6m 20m)
+* --- interruptor completo de la figura ---
+RB pin b 860
+RBE b e 10k
+Q1 c b e QS
+RS e 0 0.47
+LR vcc x 100m
+RR x c 120
+D1 c vcc D1N4148
+* --- misma etapa sin diodo de rueda libre ---
+RB2 pin b2 860
+RBE2 b2 e2 10k
+Q2 c2 b2 e2 QS
+RS2 e2 0 0.47
+LR2 vcc x2 100m
+RR2 x2 c2 120
+* --- ejercicio 6.3: rele de 60 mA, RB = 1 k ---
+RB3 pin b3 1k
+Q3 c3 b3 0 QS
+LR3 vcc x3 100m
+RR3 x3 c3 200
+D3 c3 vcc D1N4148
+.control
+tran 0.5u 9m
+let ibv = (v(pin)-v(b))/860
+let icv = (v(x)-v(c))/120
+let vcev = v(c)-v(e)
+let ib3v = (v(pin)-v(b3))/1k
+meas tran ib find ibv at=6m
+meas tran ic find icv at=6m
+meas tran vce find vcev at=6m
+meas tran vsens find v(e) at=6m
+meas tran vpico max v(c) from=6.1m to=8m
+meas tran vpico2 max v(c2) from=6.1m to=8m
+meas tran ib3 find ib3v at=6m
+meas tran vce3 find v(c3) at=6m
+echo "Rele 100 mA: IB (libro 5 mA), IC (~100 mA), VCE sat, caida en RS:"
+print ib ic vce vsens
+echo "Pico de colector al apagar: con diodo (~12,7 V) y sin diodo:"
+print vpico vpico2
+echo "Ejercicio 6.3 (RB = 1 k, rele 60 mA): IB (4,3 mA) y VCE:"
+print ib3 vce3
+.endc
+.end

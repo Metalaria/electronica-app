@@ -1,0 +1,44 @@
+* Problema 4.B (Elegir el transformador de una fuente lineal) / figura 4.12
+* El transformador 1000:110 se modela por su equivalente de Thevenin en el secundario:
+* 25,3 V eficaces en vacio (230/9,091) en serie con R_eq = 0,9 ohm (cobre referido al secundario;
+* la dispersion se desprecia, valor no dado en el libro).
+*   A) carga resistiva nominal (50 VA a 23,4 V = 2,13 A, 10,98 ohm): libro, 23,4 V (regulacion 8 %)
+*      y perdidas de cobre de 4,1 W.
+*   B) puente de 4 x 1N4007 con 4700 uF (valor supuesto) y 30 ohm de carga (~1 A de continua):
+*      libro, unos 30 V de continua para el regulador y corriente eficaz de secundario de
+*      1,6 a 2 veces la continua (aqui ~1,9: unos 1,9 A y 44 VA, dentro de los 50 VA).
+* Ejecutar:  ngspice -b prob-4.B_fuente_lineal.cir
+.model D1N4007 D(IS=7.02767n RS=0.0341512 N=1.80803 EG=1.05743 XTI=5 BV=1000 IBV=5e-08 CJO=1e-11 VJ=0.7 M=0.5 FC=0.5 TT=1e-07)
+* A) carga resistiva
+VA a 0 SIN(0 {25.3*sqrt(2)} 50)
+RQA a b 0.9
+RLA b 0 10.98
+* B) rectificador en puente con condensador
+VB p 0 SIN(0 {25.3*sqrt(2)} 50)
+RQB p x 0.9
+D1 x pos D1N4007
+D2 n pos D1N4007
+D3 neg x D1N4007
+D4 neg n D1N4007
+VN n 0 0
+CF pos neg 4700u
+RLB pos neg 30
+.control
+tran 20u 2s 1.6s
+meas tran vA rms v(b)
+let ia = v(b)/10.98
+meas tran iA rms ia
+let vdc = v(pos)-v(neg)
+meas tran vdcB avg vdc
+meas tran vminB min vdc
+meas tran vmaxB max vdc
+let idc = vdc/30
+meas tran idcB avg idc
+meas tran isecB rms i(VB)
+let factor = isecB/idcB
+let vab = isecB*25.3
+let pcuA = 0.9*iA*iA
+print pcuA factor vab
+echo "Libro: A) 23,4 V, 2,13 A, 4,1 W; B) ~29-30 V de continua, Isec ~ 1,9 x Idc"
+.endc
+.end

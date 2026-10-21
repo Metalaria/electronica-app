@@ -1,0 +1,71 @@
+* Capitulo 52, seccion «El front-end, bloque a bloque» (sec-new-52-frontend): detector de muestreo en
+* cuadratura (Tayloe) doblemente equilibrado, con el oscilador local a 7,000 MHz.
+* Transformador trifilar (8 espiras sobre FT37-43, 22 uH por devanado) con toma central a 2,5 V; conmutador
+* doble 4:1 (SN74CBT3253, Ron = 5 ohm) que cierra cada cuarto de periodo sobre uno de cuatro condensadores de
+* muestreo de 22 nF; I = V(X0) - V(X180), Q = V(X90) - V(X270). Antena: generador de 50 ohm con 2 mV de pico
+* de f.e.m. (1 mV sobre entrada adaptada, -50 dBm).
+* Comprueba lo que dice el texto:
+*   - I y Q salen con la misma amplitud y desfasadas 90 grados, y el signo del desfase se invierte cuando la
+*     senal pasa de estar 10 kHz por encima del oscilador a estar 10 kHz por debajo (eso separa senal e imagen);
+*   - ganancia de conversion de unos +11 dB respecto a la tension en la entrada adaptada;
+*   - la respuesta del detector cae poco (menos de 2 dB) a 24 kHz, el borde de la banda de 48 kHz.
+* Ejecutar: ngspice -b detector_cuadratura.cir   (unos minutos: tres transitorios de 200 us con paso de 2 ns)
+.param flo=7e6 tlo={1/flo}
+VRF src 0 SIN(0 2m 7.01e6)
+RS src rf 50
+LP rf 0 22u
+LSA mixa ct 22u
+LSB ct mixb 22u
+K1 LP LSA 0.995
+K2 LP LSB 0.995
+K3 LSA LSB 0.995
+VB ct 0 2.5
+* cuatro fases del 25 %, como las del contador Johnson (74LVC74) a f_OL
+VP0 p0 0 PULSE(0 1 0          1n 1n {tlo/4-2n} {tlo})
+VP1 p1 0 PULSE(0 1 {tlo/4}    1n 1n {tlo/4-2n} {tlo})
+VP2 p2 0 PULSE(0 1 {tlo/2}    1n 1n {tlo/4-2n} {tlo})
+VP3 p3 0 PULSE(0 1 {3*tlo/4}  1n 1n {tlo/4-2n} {tlo})
+.model sw1 SW(VT=0.5 VH=0.05 RON=5 ROFF=1e9)
+* mitad 1 (fase directa)
+S1 mixa x0   p0 0 sw1
+S2 mixa x90  p1 0 sw1
+S3 mixa x180 p2 0 sw1
+S4 mixa x270 p3 0 sw1
+* mitad 2 (fase invertida): suma su muestra de 180 grados a la de 0 grados de la mitad 1, etc.
+S5 mixb x180 p0 0 sw1
+S6 mixb x270 p1 0 sw1
+S7 mixb x0   p2 0 sw1
+S8 mixb x90  p3 0 sw1
+C20 x0   0 22n IC=2.5
+C21 x90  0 22n IC=2.5
+C22 x180 0 22n IC=2.5
+C23 x270 0 22n IC=2.5
+BI i 0 V=v(x0)-v(x180)
+BQ q 0 V=v(x90)-v(x270)
+* identical RC low-pass filters (fc = 80 kHz) remove the 7 MHz switching ripple so that the zero crossings
+* used to measure the I-Q phase are clean; both channels get the same delay, so the difference is unchanged
+RFI i if 2k
+CFI if 0 1n
+RFQ q qf 2k
+CFQ qf 0 1n
+.control
+set noaskquit
+foreach df 10e3 -10e3 24e3
+  let frf = 7e6 + $df
+  alter @VRF[sin] = [ 0 2m $&frf ]
+  tran 2n 200u 60u 2n uic
+  meas tran imax MAX v(i) from=80u to=200u
+  meas tran imin MIN v(i) from=80u to=200u
+  meas tran qmax MAX v(q) from=80u to=200u
+  meas tran qmin MIN v(q) from=80u to=200u
+  meas tran ti WHEN v(if)=0 RISE=1 from=100u
+  meas tran tq WHEN v(qf)=0 RISE=1 from=100u
+  let ai = (imax-imin)/2
+  let aq = (qmax-qmin)/2
+  let gc_db = 20*log10(ai/1m)
+  let desf = 360*(tq-ti)*abs($df)
+  let desf = desf + 360*(desf lt 0)
+  echo "RESULTADO df=$df Hz  I=$&ai V  Q=$&aq V  Gc=$&gc_db dB  retraso de Q respecto a I = $&desf grados (90: Q retrasada; 270: Q adelantada 90)"
+end
+.endc
+.end

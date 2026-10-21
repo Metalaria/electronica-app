@@ -1,0 +1,32 @@
+* Problema 44.C (sección 44.13): SPI a 20 MHz por un cable de 2 m (5 ns/m, 10 ns por sentido).
+* El maestro envía SCLK por una línea de 2 m adaptada (100 Ohm en origen y en destino); el esclavo,
+* idealizado sin retardo propio, devuelve por MISO una copia del reloj recibido por otra línea igual.
+* Se mide cuándo ve el maestro la respuesta respecto a su propio flanco de reloj.
+* Comprueba: retardo de ida 10 ns (20 % del periodo de 50 ns) y retardo de ida y vuelta 20 ns
+* (40 % del periodo), que es el margen que se come la línea de retorno.
+* Ejecutar: ngspice -b prob-44.C-spi-cable.cir
+* master clock: 20 MHz, 3.3 V, 1 ns edges
+VCLK clk 0 PULSE(0 3.3 5n 1n 1n 24n 50n)
+RS1 clk s1 100
+T1 s1 0 sl 0 Z0=100 TD=10n
+RL1 sl 0 100
+* slave: ideal buffer that restores the halved amplitude and drives MISO
+BSL ms 0 V = 2*v(sl)
+RS2 ms s2 100
+T2 s2 0 mr 0 Z0=100 TD=10n
+RL2 mr 0 100
+.tran 0.05n 120n
+.control
+  run
+  echo "Instantes de cruce del 50 % (1,65 V en origen, 0,825 V tras cada adaptación):"
+  meas tran t_master when v(clk)=1.65 rise=1
+  meas tran t_slave  when v(sl)=0.825 rise=1
+  meas tran t_back   when v(mr)=0.825 rise=1
+  let ida = t_slave - t_master
+  let vuelta = t_back - t_master
+  echo "Retardo de ida (debe ser 10 ns) e ida y vuelta (debe ser 20 ns), en segundos:"
+  print ida vuelta
+  echo "Fracción del periodo de 50 ns (0,2 y 0,4):"
+  print ida/50n vuelta/50n
+.endc
+.end

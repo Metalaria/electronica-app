@@ -1,0 +1,51 @@
+* Problema 4.C (Extinguir la energia de una bobina)
+* Rele de potencia alimentado a 12 V: bobina de 10 mH y 6 ohm, 2 A. Energia 1/2*L*I^2 = 20 mJ.
+* Se abre el interruptor en t = 1 ms y se compara:
+*   B) diodo de libre circulacion (1N4007)
+*   Z) diodo + Zener de 30 V
+* Libro (con 0,7 V de diodo): diodo solo, corriente a cero en 4,8 ms, 1,9 mJ en el diodo y
+* 18,1 mJ en el devanado; diodo + Zener, 0,55 ms, 16,0 mJ en diodo y Zener, 4,0 mJ en el devanado.
+* Sin diodo, con 100 ohm de fuga equivalente, el pico seria I*R = 200 V (rama A).
+* Ejecutar:  ngspice -b prob-4.C_extincion.cir
+.model D1N4007 D(IS=7.02767n RS=0.0341512 N=1.80803 EG=1.05743 XTI=5 BV=1000 IBV=5e-08 CJO=1e-11 VJ=0.7 M=0.5 FC=0.5 TT=1e-07)
+.model SWM SW(VT=0.5 VH=0.1 RON=0.01 ROFF=1e9)
+.model DZ30 D(IS=1e-14 BV=30 IBV=1m RS=0.05)
+VCC vcc 0 12
+VG g 0 PWL(0 1 1m 1 1.0001m 0)
+* A) sin diodo, fuga de 100 ohm
+LA vcc la 10m IC=2
+RA la ca 6
+SA ca 0 g 0 SWM
+RFA ca 0 100
+* B) diodo solo
+LB vcc lb 10m IC=2
+RB lb cb 6
+SB cb 0 g 0 SWM
+DB cb vcc D1N4007
+* Z) diodo + Zener de 30 V
+LZ vcc lz 10m IC=2
+RZ lz cz 6
+SZ cz 0 g 0 SWM
+DZ cz xz D1N4007
+DZZ vcc xz DZ30
+.ic v(ca)=0 v(cb)=0 v(cz)=0
+.control
+tran 0.1u 8m uic
+meas tran vpicoA max v(ca) from=1m to=1.2m
+meas tran tB when i(LB)=1m fall=1
+meas tran tZ when i(LZ)=1m fall=1
+let tBc = tB - 1m
+let tZc = tZ - 1m
+print tBc tZc
+let pdB = (v(cb)-v(vcc))*i(LB)
+let prB = 6*i(LB)*i(LB)
+let pdZ = (v(cz)-v(vcc))*i(LZ)
+let prZ = 6*i(LZ)*i(LZ)
+meas tran eDiodo integ pdB from=1m to=8m
+meas tran eDevB integ prB from=1m to=8m
+meas tran eZener integ pdZ from=1m to=8m
+meas tran eDevZ integ prZ from=1m to=8m
+meas tran vZ find v(cz) at=1.1m
+echo "Libro: sin diodo 200 V; diodo 4,8 ms, 1,9 + 18,1 mJ; Zener 0,55 ms, 16,0 + 4,0 mJ; colector 12 + 30,7 V"
+.endc
+.end

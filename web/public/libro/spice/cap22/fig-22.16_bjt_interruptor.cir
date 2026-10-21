@@ -1,0 +1,53 @@
+* Capitulo 22, seccion 22.8 (Practica 8), figura 22.16: el BJT como interruptor
+* NPN 2N3904, R_B = 10 k, LED rojo con 330 ohm hacia +V_CC, emisor a masa.
+* Comprueba:
+*   (a) V_CC = 5 V, base a 0 V: corte, LED apagado; el voltimetro de 10 MEG lee unos 3,5 V,
+*       no 5 V: con su corriente minuscula (~0,35 uA) el LED rojo aun cae casi 1,5 V;
+*   (b) V_CC = 5 V, base a 5 V: I_B = 0,43 mA, I_C ~ 8,5 mA, V_CE ~ 0,1-0,2 V (saturacion);
+*   (c) V_CC = 9 V con el generador del 2C53T (3 V como maximo) y R_B = 10 k: I_B = 0,23 mA
+*       para unos 20 mA de colector, beta forzada ~ 90: saturacion justa;
+*   (d) lo mismo con R_B = 4,7 k: I_B = 0,49 mA y saturacion holgada;
+*   (e) R_B = 1 MEG: el transistor no satura y V_CE queda en un valor intermedio (activa).
+* Ejecutar: ngspice -b fig-22.16_bjt_interruptor.cir
+.model Q2N3904 NPN(IS=6.734f XTI=3 EG=1.11 VAF=74.03 BF=416.4 NE=1.259 ISE=6.734f
++ IKF=66.78m XTB=1.5 BR=.7371 NC=2 ISC=0 IKR=0 RC=1 CJC=3.638p MJC=.3085 VJC=.75 FC=.5
++ CJE=4.493p MJE=.2593 VJE=.75 TR=239.5n TF=301.2p ITF=.4 VTF=4 XTF=2 RB=10)
+.model LEDR D(IS=1e-20 N=1.8 RS=5)
+.subckt ETAPA vcc ctl c rb=10k
+RB ctl b {rb}
+Q1 c b 0 Q2N3904
+DL a c LEDR
+RL vcc a 330
+.ends
+VA va 0 DC 5
+VCA ca 0 DC 0
+XA va ca kA ETAPA rb=10k
+* voltimetro de 10 MEG midiendo V_CE en corte
+RMA kA 0 10MEG
+VB vb 0 DC 5
+VCB cb 0 DC 5
+XB vb cb kB ETAPA rb=10k
+VC vc 0 DC 9
+VCC cc 0 DC 3
+XC vc cc kC ETAPA rb=10k
+VD vd 0 DC 9
+VCD cd 0 DC 3
+XD vd cd kD ETAPA rb=4.7k
+VE ve 0 DC 5
+VCE ce 0 DC 5
+XE ve ce kE ETAPA rb=1MEG
+.control
+op
+echo "V_CE (V): (a) corte, (b) saturacion 5 V, (c) 9 V con 3 V y 10 k, (d) 4,7 k, (e) 1 MEG"
+print v(kA) v(kB) v(kC) v(kD) v(kE)
+echo "I_B (mA) de (b), (c), (d)"
+print -i(VCB)*1000
+print -i(VCC)*1000
+print -i(VCD)*1000
+echo "I_C + I_B (mA, corriente de la fuente de colector) de (b), (c), (d), (e)"
+print -i(VB)*1000
+print -i(VC)*1000
+print -i(VD)*1000
+print -i(VE)*1000
+.endc
+.end

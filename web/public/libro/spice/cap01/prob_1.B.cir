@@ -1,0 +1,36 @@
+* Problema 1.B (sección 1.12): sección del cable de alimentación.
+* Equipo de 5 A a 12 V a 8 m de la fuente (16 m de cobre entre ida y vuelta), rho = 1,72e-8 ohm·m,
+* alfa = 0,00393 /°C referido a 20 °C. El equipo se modela como un sumidero de 5 A.
+* Comprueba (a 20 °C): 2,5 mm2 -> 110,1 mohm, 0,550 V (4,59 %), 2,75 W; 4 mm2 -> 68,8 mohm, 0,344 V
+* (2,87 %), 1,72 W; 6 mm2 -> 45,9 mohm, 0,229 V (1,91 %), 1,15 W.
+* A 60 °C: 4 mm2 -> 0,398 V (3,3 %, fuera del 3 %); 6 mm2 -> 0,265 V (2,2 %).
+* Ejecutar: ngspice -b prob_1.B.cir
+.options TNOM=20
+.param rho=1.72e-8 len=16
+V1 a 0 DC 12
+RC25 a b {rho*len/2.5e-6} tc1=0.00393
+I25  b 0 DC 5
+V2 c 0 DC 12
+RC4  c d {rho*len/4e-6} tc1=0.00393
+I4   d 0 DC 5
+V3 e 0 DC 12
+RC6  e f {rho*len/6e-6} tc1=0.00393
+I6   f 0 DC 5
+.control
+foreach t 20 60
+  option temp=$t
+  op
+  echo "Temperatura del cable: $t °C"
+  let c25 = 12-v(b)
+  let c4 = 12-v(d)
+  let c6 = 12-v(f)
+  let p25 = 100*c25/12
+  let p4 = 100*c4/12
+  let p6 = 100*c6/12
+  let w25 = 5*c25
+  let w4 = 5*c4
+  let w6 = 5*c6
+  print c25 p25 w25 c4 p4 w4 c6 p6 w6
+end
+.endc
+.end

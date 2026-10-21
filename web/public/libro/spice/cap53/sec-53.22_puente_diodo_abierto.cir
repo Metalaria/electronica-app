@@ -1,0 +1,37 @@
+* Seccion 53.22 (Fuentes lineales: el rizado dice que diodo falla).
+* Secundario de 12 V eficaces a 50 Hz, puente de 1N4007, 2200 uF y carga de 24 ohm.
+* Dos copias: puente sano y puente con un diodo abierto (D4 sustituido por 1 Gohm).
+* El texto da: con el puente sano el rizado es a 100 Hz; con un diodo abierto aparece a 50 Hz
+* (solo se rectifica medio ciclo) y es mayor, y la salida baja.
+* El analisis de Fourier sobre la salida (fundamental 50 Hz) separa las dos componentes.
+* Ejecutar:  ngspice -b sec-53.22_puente_diodo_abierto.cir
+.model D1N4007 D(IS=7.02767n RS=0.0341512 N=1.80803 EG=1.05743 XTI=5 BV=1000 IBV=5e-08
++ CJO=1e-11 VJ=0.7 M=0.5 FC=0.5 TT=1e-07)
+* --- puente sano ---
+VA a1 b1 SIN(0 16.97 50)
+RSA a1 a 0.5
+D1 a p D1N4007
+D2 b1 p D1N4007
+D3 0 a D1N4007
+D4 0 b1 D1N4007
+C1 p 0 2200u
+RL1 p 0 24
+* --- puente con D8 abierto ---
+VB a2 b2 SIN(0 16.97 50)
+RSB a2 c 0.5
+D5 c q D1N4007
+D6 b2 q D1N4007
+D7 0 c D1N4007
+RD8 0 b2 1G
+C2 q 0 2200u
+RL2 q 0 24
+.control
+tran 20u 1.2
+meas tran vmed_sano avg v(p) from=1.0 to=1.2
+meas tran vpp_sano pp v(p) from=1.0 to=1.2
+meas tran vmed_abierto avg v(q) from=1.0 to=1.2
+meas tran vpp_abierto pp v(q) from=1.0 to=1.2
+linearize
+fourier 50 v(p) v(q)
+.endc
+.end

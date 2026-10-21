@@ -1,0 +1,63 @@
+* Problema 27.B: amplificador de transimpedancia para un fotodiodo.
+* Rf = 200 kohm; capacidad en la entrada inversora Cin = 50 pF (union) + 5 pF (operacional);
+* operacional de un polo con A0 = 1e5 y GBW = 10 MHz (resistencias internas sin ruido).
+* Parte A: ganancia de lazo con el lazo abierto (copia de la red de realimentacion excitada desde
+*   la salida del operacional): cruce y margen de fase sin Cf y con Cf = 2,2 pF.
+* Parte B: respuesta en lazo cerrado con Cf = 2,2 pF: transimpedancia en continua (2 V con 10 uA),
+*   frecuencia de -3 dB y respuesta a un escalon de 10 uA (tiempo de subida 10-90 % y sobreimpulso).
+* Parte C: ruido termico de Rf integrado a la salida (.noise de 1 Hz a 100 MHz, 27 grados C).
+* Ejecutar:  ngspice -b transimpedancia_prob-27.B.cir
+* Resultado (ngspice-42): sin Cf, cruce 380 kHz y margen 2,2 grados; con 2,2 pF, cruce 481 kHz y
+*   margen 54,7 grados (la regla de colocar el polo en el cruce se plantea para 45 grados; el calculo
+*   exacto da algo mas). En lazo cerrado: 2,000 V; f-3dB 459 kHz; subida 0,73 us; sobreimpulso 14 %
+*   (que con la tabla de 27.10 corresponde a unos 54 grados); ruido 42,6 uV rms. El libro estima
+*   362 kHz y 0,97 us con el polo Rf*Cf solo (cota conservadora) y 43 uV.
+.subckt opamp inp inn out params: A0=1e5 GBW=10e6
+G1 0 n1 inp inn 1m
+R1 n1 0 {A0*1k} noisy=0
+C1 n1 0 {1m/(2*3.14159265*GBW)}
+E1 out 0 n1 0 1
+.ends
+* --- A: ganancia de lazo. El operacional ve en su entrada inversora la tension de la red
+*     Rf || Cf con Cin a masa, excitada por la fuente de prueba; T = -V(salida del operacional).
+Vt t 0 AC 1
+Rfa t na 200k noisy=0
+Cina na 0 55p
+XA0 0 na oa0 opamp
+Rfb t nb 200k noisy=0
+Cfb t nb 2.2p
+Cinb nb 0 55p
+XA1 0 nb oa1 opamp
+* --- B y C: lazo cerrado con Cf = 2,2 pF; el fotodiodo es una fuente de corriente
+Ipd inv 0 DC 10u AC 1 PULSE(0 10u 1u 1n 1n 20u 40u)
+Cin inv 0 55p
+Rf out inv 200k
+Cf out inv 2.2p
+XB 0 inv out opamp
+.control
+ac dec 400 1k 100meg
+let t0 = -v(oa0)
+let t1 = -v(oa1)
+meas ac fc0 when vdb(t0)=0
+meas ac ph0 find vp(t0) at=fc0
+meas ac fc1 when vdb(t1)=0
+meas ac ph1 find vp(t1) at=fc1
+let pm0 = 180 + ph0*180/pi
+let pm1 = 180 + ph1*180/pi
+print pm0 pm1
+let zn = vdb(out)-vdb(out)[0]
+meas ac bw when zn=-3.0103
+op
+print v(out)
+tran 2n 10u
+meas tran t10 when v(out)=0.2 rise=1
+meas tran t90 when v(out)=1.8 rise=1
+meas tran pk max v(out) from=1u to=10u
+let tsub = t90-t10
+let os = (pk-2)/2*100
+print tsub os
+noise v(out) Ipd dec 100 1 100meg
+setplot noise2
+print onoise_total
+.endc
+.end

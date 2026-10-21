@@ -1,0 +1,33 @@
+* cap42, seccion 42.2 «El error de elegir mal» y figura 42.3 (panel inferior)
+* Amplificador no inversor de ganancia 10 (Rf = 9k, Rg = 1k) con alimentacion de +-12 V,
+* excitado con 2 V de pico a 1 kHz. El operacional es un macromodelo sencillo:
+* transconductancia de 1 S sobre 100 k || 159 nF (ganancia 1e5, polo en 10 Hz,
+* GBW = 1 MHz), salida limitada a +-11 V con dos diodos casi ideales (N = 0,01) y un
+* seguidor ideal. El .ac (pequena senal, AC 2) predice 20 V de pico en la salida; el
+* .tran con la misma amplitud recorta en +-11 V. Es la regla del libro: si la amplitud
+* importa, transitorio.
+* ngspice 42: .ac 19,997 V de pico; .tran maximo +11,01 V y minimo -11,01 V.
+* Ejecutar: ngspice -b fig-42.3_ac_frente_a_tran.cir
+Vin in 0 DC 0 AC 2 SIN(0 2 1k)
+* operational amplifier macromodel
+Gop 0 b in inn 1
+Rop b 0 100k
+Cop b 0 159n
+Dhi b phi DCL
+Vhi phi 0 DC 11
+Dlo plo b DCL
+Vlo plo 0 DC -11
+.model DCL D(IS=1e-14 N=0.01)
+Eout out 0 b 0 1
+* feedback network: gain 1 + 9k/1k = 10
+Rf out inn 9k
+Rg inn 0 1k
+Rl out 0 10k
+.control
+ac lin 1 1k 1k
+print mag(v(out))
+tran 1u 3m
+meas tran vmax MAX v(out) from=1m to=3m
+meas tran vmin MIN v(out) from=1m to=3m
+.endc
+.end

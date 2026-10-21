@@ -1,0 +1,46 @@
+* Figura 28.5 y sección 28.3: las dos resonancias de un cristal (modelo de Butterworth-Van Dyke).
+* Cristal AT de 10 MHz con los valores de la figura: R1 = 10 Ohm, C1 = 10 fF, L1 = 25,33 mH
+* (fs = 10 MHz), C0 = 5 pF. Se mide |Z| con una fuente de corriente de 1 A en alterna.
+* Comprueba:
+*   - resonancia serie fs = 10 MHz con |Z| mínima = R1 (10 Ohm; las decenas de ohmios típicas
+*     de un cristal de megahercios, no «unos pocos ohmios»);
+*   - antirresonancia fp ~ fs*(1 + C1/(2*C0)): 10 kHz por encima (una milésima de fs), es decir,
+*     decenas de kilohercios en un cristal de megahercios, no «unos kilohercios»;
+*   - Q = 1/(2*pi*fs*C1*R1) = 1,6e5;
+*   - el mismo cristal con una capacidad de carga de 12 pF en serie resuena en
+*     fs*(1 + C1/(2*(C0+CL))): unas 290 ppm por encima de fs (y su resistencia
+*     efectiva sube a R1*(1 + C0/CL)^2 = 20 Ohm). Esa es la diferencia entre usar un
+*     cristal especificado para carga de 12 pF en un circuito serie o en uno paralelo.
+* Ejecutar: ngspice -b fig-28.5_cristal.cir
+.param R1=10 C1=10f C0=5p FS=10Meg CL=12p
+.param L1={1/((2*3.14159265359*FS)**2*C1)}
+* cristal solo
+I1 0 x AC 1
+RX1 x x1 {R1}
+LX1 x1 x2 {L1}
+CX1 x2 0 {C1}
+CX0 x 0 {C0}
+* cristal con CL en serie (oscilador «paralelo» visto desde el cristal)
+I2 0 y AC 1
+CLS y y0 {CL}
+RY1 y0 y1 {R1}
+LY1 y1 y2 {L1}
+CY1 y2 0 {C1}
+CY0 y0 0 {C0}
+.control
+  ac lin 400001 9.995Meg 10.025Meg
+  meas ac zmin min vm(x)
+  meas ac fs min_at vm(x)
+  meas ac zmax max vm(x)
+  meas ac fp max_at vm(x)
+  meas ac zl min vm(y)
+  meas ac fl min_at vm(y)
+  let dfp = fp - fs
+  let ppm_l = (fl - fs)/fs*1e6
+  let q = 1/(2*pi*fs*1e-14*10)
+  echo "fs (Hz), |Z|min (Ohm), fp (Hz), fp - fs (Hz), |Z|max (Ohm), Q:"
+  print fs zmin fp dfp zmax q
+  echo "Con CL = 12 pF en serie: frecuencia (Hz), desplazamiento sobre fs (ppm) y resistencia efectiva (Ohm):"
+  print fl ppm_l zl
+.endc
+.end

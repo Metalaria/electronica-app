@@ -1,0 +1,34 @@
+* Sección 1.6 (Ec. 13) y ejercicio 1.5: valor eficaz de tres formas de onda de 1 V de pico, y
+* lo que leería un multímetro promediador (media del valor rectificado x 1,1107).
+* Comprueba: senoide 0,7071; cuadrada 1,0000; triangular 0,5774. Usar 0,707 con la cuadrada da
+* un -29 % respecto al valor verdadero. El promediador lee 0,7071 (senoide, bien), 1,1107 (cuadrada,
+* +11 %) y 0,5554 (triangular, -3,8 %). Senoide de 17 V de pico sobre 100 ohm: 12,02 V eficaces y
+* 1,445 W de potencia media. Red de 230 V eficaces: 325,3 V de pico.
+* Ejecutar: ngspice -b rms_1.6.cir
+.param f=50 T={1/f}
+VSIN s 0 SIN(0 1 50)
+VSQ  q 0 PULSE(-1 1 0 1n 1n {T/2-1n} {T})
+VTRI t 0 PWL(0 -1 10m 1 20m -1) r=0
+V17  w 0 SIN(0 17 50)
+R17  w 0 100
+V230 r 0 SIN(0 {230*sqrt(2)} 50)
+BRS  rs 0 V=abs(v(s))
+BRQ  rq 0 V=abs(v(q))
+BRT  rt 0 V=abs(v(t))
+.tran 1u 100m 0 1u
+.meas tran rms_sen RMS v(s) FROM=20m TO=100m
+.meas tran rms_cua RMS v(q) FROM=20m TO=100m
+.meas tran rms_tri RMS v(t) FROM=20m TO=100m
+.meas tran err_cua PARAM='100*(0.707-rms_cua)/rms_cua'
+.meas tran prom_sen AVG v(rs) FROM=20m TO=100m
+.meas tran prom_cua AVG v(rq) FROM=20m TO=100m
+.meas tran prom_tri AVG v(rt) FROM=20m TO=100m
+.meas tran lee_sen PARAM='1.1107*prom_sen'
+.meas tran lee_cua PARAM='1.1107*prom_cua'
+.meas tran lee_tri PARAM='1.1107*prom_tri'
+.meas tran errp_cua PARAM='100*(lee_cua/rms_cua-1)'
+.meas tran errp_tri PARAM='100*(lee_tri/rms_tri-1)'
+.meas tran rms_17 RMS v(w) FROM=20m TO=100m
+.meas tran p_17 AVG par('v(w)*v(w)/100') FROM=20m TO=100m
+.meas tran pico_230 MAX v(r)
+.end

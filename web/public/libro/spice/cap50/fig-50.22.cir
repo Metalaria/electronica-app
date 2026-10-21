@@ -1,0 +1,125 @@
+* Figura 50.22 (secciones 50.14 y 50.15): núcleo de regulación de la fuente 0-30 V / 0-5 A.
+* V_pre sigue a la salida con 3 V de margen (fuente controlada). Cable de 2 m de 1 mm2 hasta la carga:
+* 34,4 mOhm por hilo (sección 50.14, punto 5). Sensado remoto S+/S- en la carga. Shunt de 0,01 Ohm en
+* el retorno, con la masa en estrella en su extremo de masa. Operacionales: ganancia 1e5, salida
+* limitada a sus carriles (+42 V / -5 V). TIP35C: hFE de unos 35 a 5 A (hoja: 25 mín. a 1,5 A, 10-15
+* mín. a 15 A). Cada caso es un circuito completo e independiente.
+*   1) Tal como la figura: R_drv = 470 Ohm desde V_pre y un solo TIP35C, divisor 110 k / 10 k entre S+
+*      y S-. Carga de 6 Ohm (30 V, 5 A). La excitación solo da unos 4 mA de base: la salida se queda
+*      en unos 0,1-0,2 A y la tensión se hunde.
+*   2) Excitación corregida (BD139 + TIP35C en Darlington, fuente de 7 mA desde V_raw = 45 V) pero con
+*      el divisor de la figura: la caída del hilo negativo y del shunt (0,22 V) aparece multiplicada
+*      por 12 y la carga recibe unos 27,3 V en lugar de 30 V.
+*   3) Corregido del todo: amplificador diferencial S+ - S- con R1 = R3 = 120 k y R2 = R4 = 10 k
+*      (ganancia 1/12): 30,00 V en la carga a 5 A. Q1 disipa 3 V x 5 A = 15 W.
+*   4) El caso 3 con la consigna de corriente a 5 A y carga de 1 Ohm: modo CC, 5,00 A.
+*   5) El caso 3 con el hilo S+ abierto: las resistencias de 100 Ohm entre cada borne de fuerza y su
+*      sensado mantienen la salida (unos 30 V en los bornes) en lugar de dispararla.
+* Ejecutar: ngspice -b fig-50.22.cir
+.model TIP35C NPN(Is=5e-12 Bf=60 Vaf=100 Ikf=6 Rb=1 Re=0.02 Rc=0.05)
+.model BD139 NPN(Is=1e-13 Bf=120 Vaf=100 Ikf=1 Rb=5 Rc=0.3)
+.model D1N4148 D(Is=2.52n Rs=0.568 N=1.752 Cjo=4p Bv=100)
+
+.subckt OPA inp inn out vp vn
+B1 n1 0 V = (V(vp)+V(vn))/2 + (V(vp)-V(vn)-0.4)/2*tanh(1e5*V(inp,inn)/((V(vp)-V(vn)-0.4)/2))
+RO n1 out 30
+.ends
+
+* power stage + load + wires; ports: base node, +OUT, -OUT, S+ (at load), S- (at load)
+.subckt CARGA outp outn sp sm rl=6
+RW1 outp lp 34.4m
+RL lp ln {rl}
+RW2 ln outn 34.4m
+RSP lp sp 1m
+RSM ln sm 1m
+.ends
+
+VP pos 0 DC 42
+VN neg 0 DC -5
+VREF ref 0 DC 2.5
+
+* ---------------- case 1: as drawn (R_drv 470 Ohm, single TIP35C, divider S+/S-)
+B1PRE pre1 0 V = V(o1p) + 3
+RDRV1 pre1 b1 470
+Q1A pre1 b1 o1p TIP35C
+X1L o1p o1n s1p s1m CARGA rl=6
+RSH1 o1n 0 0.01
+R11 s1p fb1 110k
+R21 fb1 s1m 10k
+XA11 ref fb1 a11 pos neg OPA
+VIS1 is1 0 DC 0.055
+XA21 is1 o1n a21 pos neg OPA
+D11 b1 a11 D1N4148
+D21 b1 a21 D1N4148
+
+* ---------------- case 2: Darlington drive, divider of the figure
+B2PRE pre2 0 V = V(o2p) + 3
+I2 raw2 b2 7m
+VRAW2 raw2 0 DC 45
+Q2D pre2 b2 m2 BD139
+Q2A pre2 m2 o2p TIP35C
+X2L o2p o2n s2p s2m CARGA rl=6
+RSH2 o2n 0 0.01
+R12 s2p fb2 110k
+R22 fb2 s2m 10k
+XA12 ref fb2 a12 pos neg OPA
+VIS2 is2 0 DC 0.055
+XA22 is2 o2n a22 pos neg OPA
+D12 b2 a12 D1N4148
+D22 b2 a22 D1N4148
+
+* ---------------- case 3: Darlington drive + difference amplifier (R1 = R3 = 120k, R2 = R4 = 10k)
+.subckt NUCLEO s_p s_m outp outn iset rl=6 ra=1m rb=1m
+B3PRE pre 0 V = V(outp) + 3
+I3 raw b 7m
+VRAW raw 0 DC 45
+Q3D pre b m BD139
+Q3A pre m outp TIP35C
+* load, wires and sense taps
+RW1 outp lp 34.4m
+RL lp ln {rl}
+RW2 ln outn 34.4m
+RSP lp s_p {ra}
+RSM ln s_m {rb}
+* 100 Ohm safety resistors between each force terminal and its sense input
+RSF1 outp s_p 100
+RSF2 outn s_m 100
+RSH outn 0 0.01
+* difference amplifier U: out = (S+ - S-) x 10k/120k
+R1 s_m dn 120k
+R2 dn da 10k
+R3 s_p dp 120k
+R4 dp 0 10k
+XU dp dn da vp vn OPA
+VPX vp 0 DC 42
+VNX vn 0 DC -5
+VR ref 0 DC 2.5
+XA1 ref da a1 vp vn OPA
+XA2 iset outn a2 vp vn OPA
+D1 b a1 D1N4148
+D2 b a2 D1N4148
+.ends
+VIS3 is3 0 DC 0.055
+X3 s3p s3m o3p o3n is3 NUCLEO rl=6
+* case 4: CC mode, set point 5 A (50 mV across 0.01 Ohm), 1 Ohm load
+VIS4 is4 0 DC 0.050
+X4 s4p s4m o4p o4n is4 NUCLEO rl=1
+* case 5: S+ wire open (1 GOhm)
+VIS5 is5 0 DC 0.055
+X5 s5p s5m o5p o5n is5 NUCLEO rl=6 ra=1G
+
+.control
+  op
+  echo "1) figura tal cual: tension e intensidad en la carga, corriente de base"
+  print v(x1l.lp,x1l.ln) v(x1l.lp,x1l.ln)/6 i(vp)
+  print (v(pre1)-v(b1))/470
+  echo "2) Darlington, divisor de la figura: tension en la carga (V), V(S-) respecto a masa"
+  print v(x2l.lp,x2l.ln) v(s2m)
+  echo "3) Darlington + amplificador diferencial: tension en la carga, corriente, disipacion de Q1"
+  print v(x3.lp,x3.ln) v(x3.lp,x3.ln)/6 v(x3.pre,o3p)*v(x3.lp,x3.ln)/6
+  echo "4) modo CC, consigna 5 A, carga de 1 Ohm: corriente"
+  print v(x4.lp,x4.ln)/1
+  echo "5) hilo S+ abierto: tension en bornes y en la carga"
+  print v(o5p,o5n) v(x5.lp,x5.ln)
+.endc
+.end

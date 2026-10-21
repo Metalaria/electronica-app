@@ -1,0 +1,31 @@
+* Sección 39.8 y figura 39.16: pin CC de USB-C. La fuente sube cada pin CC con Rp a 5 V
+* (56 kOhm = corriente USB por defecto, 22 kOhm = 1,5 A, 10 kOhm = 3 A) y el consumidor lo baja con
+* Rd = 5,1 kOhm. El cable lleva un solo hilo CC: el otro par queda abierto (orientación).
+* Comprueba: tensión en el pin CC del consumidor, unos 0,42 / 0,94 / 1,69 V, dentro de las ventanas
+* de la norma (0,2-0,66 V, 0,66-1,23 V, 1,23-2,04 V); el pin CC sin hilo de la fuente queda en 5 V
+* (no ve consumidor); y sin las Rd la fuente ve 5 V en sus dos CC y no detecta nada.
+* Ejecutar: ngspice -b fig-39.16_usbc_cc.cir
+VBUS v5 0 DC 5
+* --- tres fuentes, cada una con su consumidor de 5,1 kOhm en CC1 (CC2 sin hilo)
+Rp_def  v5 cc1a 56k
+Rd_a    cc1a 0 5.1k
+Rp_15   v5 cc1b 22k
+Rd_b    cc1b 0 5.1k
+Rp_30   v5 cc1c 10k
+Rd_c    cc1c 0 5.1k
+* CC2 de la fuente de 3 A: Rp sin nada al otro lado (el cable no tiene ese hilo)
+Rp_30b  v5 cc2c 10k
+Rabierto cc2c 0 1e12
+* --- placa propia sin resistencias Rd: solo la impedancia de una entrada (1 GOhm)
+Rp_sin  v5 cc1d 10k
+Rnada   cc1d 0 1e9
+.control
+  op
+  echo "CC con Rp de 56k / 22k / 10k sobre Rd = 5,1k (V; unos 0,42 / 0,94 / 1,69):"
+  print v(cc1a) v(cc1b) v(cc1c)
+  echo "CC2 sin hilo (V; 5, la fuente no ve consumidor):"
+  print v(cc2c)
+  echo "Placa sin Rd (V; casi 5, la fuente no detecta nada y no entrega VBUS):"
+  print v(cc1d)
+.endc
+.end

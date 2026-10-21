@@ -1,0 +1,41 @@
+* Sección 9.7 («Fan-out» y «La corriente de conmutación») y problema 9.B: una salida CMOS modelada
+* como fuente ideal de 5 V con su resistencia de salida (50 o 200 Ohm) cargando la capacidad de las
+* entradas (5 pF cada una) más la pista (15 pF).
+* Comprueba:
+*   - problema 9.B: tiempo de subida 10-90 % = 2,2·R·C con 1, 5 y 10 entradas (20, 40, 65 pF):
+*     2,2 / 4,4 / 7,2 ns con 50 Ohm y 8,8 / 17,6 / 28,6 ns con 200 Ohm;
+*   - sección 9.7: 20 entradas (100 pF) con 50 Ohm -> 11 ns;
+*   - sección 9.7: potencia C·V^2·f con 100 pF, 5 V y 10 MHz -> 25 mW (media que entrega la fuente).
+* Ejecutar: ngspice -b prob-9.B-fanout.cir
+Vin in 0 PULSE(0 5 1n 10p 10p 49.98n 100n)
+Ra1 in a1 50
+Ca1 a1 0 20p
+Ra5 in a5 50
+Ca5 a5 0 40p
+Ra10 in a10 50
+Ca10 a10 0 65p
+Rb1 in b1 200
+Cb1 b1 0 20p
+Rb5 in b5 200
+Cb5 b5 0 40p
+Rb10 in b10 200
+Cb10 b10 0 65p
+* section 9.7: 20 inputs = 100 pF behind 50 Ohm, with its own 10 MHz source to measure C V^2 f
+Vp p 0 PULSE(0 5 1n 10p 10p 49.98n 100n)
+Rc p c 50
+Cc c 0 100p
+.tran 10p 1.001u
+.control
+  run
+  meas tran tr_50_1  trig v(a1)  val=0.5 rise=1 targ v(a1)  val=4.5 rise=1
+  meas tran tr_50_5  trig v(a5)  val=0.5 rise=1 targ v(a5)  val=4.5 rise=1
+  meas tran tr_50_10 trig v(a10) val=0.5 rise=1 targ v(a10) val=4.5 rise=1
+  meas tran tr_200_1  trig v(b1)  val=0.5 rise=1 targ v(b1)  val=4.5 rise=1
+  meas tran tr_200_5  trig v(b5)  val=0.5 rise=1 targ v(b5)  val=4.5 rise=1
+  meas tran tr_200_10 trig v(b10) val=0.5 rise=1 targ v(b10) val=4.5 rise=1
+  meas tran tr_100pF trig v(c) val=0.5 rise=1 targ v(c) val=4.5 rise=1
+  * average power delivered by the source over 10 full periods (1 ns to 1.001 us)
+  let pinst = -v(p) * i(Vp)
+  meas tran p_media avg pinst from=1n to=1.001u
+.endc
+.end

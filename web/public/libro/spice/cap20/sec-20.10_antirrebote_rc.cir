@@ -1,0 +1,30 @@
+* seccion 20.10 (Los rebotes: antirrebote por hardware con RC y Schmitt) y fig-20.16
+* Contacto con pull-up que cierra a masa en t = 3 ms y rebota durante unos 4 ms (como en
+* la figura 20.16), seguido del filtro del libro: 10 kohm y 1 uF (tau = 10 ms) y de un
+* disparador de Schmitt inversor de 5 V (umbrales 3,3 V y 1,7 V, modelado con un
+* interruptor con histeresis y pull-up de salida).
+* Comprueba: tau = 10 ms; durante los rebotes la entrada del Schmitt no baja del umbral de
+* 1,7 V (vminreb ~ 3,7 V), de modo que no conmuta; la salida cambia una sola vez, unos 11 ms despues del primer contacto
+* (tau*ln(5/1,7) = 10,8 ms mas lo que retrasan los rebotes); el contacto directo produce
+* decenas de transiciones.
+* Ejecutar:  ngspice -b sec-20.10_antirrebote_rc.cir
+.model SCHM SW(VT=2.5 VH=0.8 RON=10 ROFF=1e9)
+* contacto: 5 V abierto, 0 V cerrado; rebotes de 0,1 a 0,6 ms entre 3 y 7 ms
+VK k 0 PWL(0 5 3m 5 3.01m 0 3.2m 0 3.21m 5 3.5m 5 3.51m 0 3.8m 0 3.81m 5 4.0m 5 4.01m 0
++ 4.4m 0 4.41m 5 4.55m 5 4.56m 0 5.0m 0 5.01m 5 5.1m 5 5.11m 0 5.7m 0 5.71m 5 5.78m 5
++ 5.79m 0 6.5m 0 6.51m 5 6.55m 5 6.56m 0)
+R1 k rc 10k
+C1 rc 0 1u IC=5
+VDD vdd 0 5
+RO vdd out 10k
+S1 out 0 rc 0 SCHM
+.control
+tran 10u 40m uic
+meas tran t1 when v(out)=2.5 rise=1
+let tsalida = t1 - 3m
+print tsalida
+meas tran vminreb min v(rc) from=3m to=7m
+meas tran nseg when v(out)=2.5 rise=2
+echo "Libro: tau = 10 ms; una sola transicion limpia (la 2.a medida debe fallar)"
+.endc
+.end

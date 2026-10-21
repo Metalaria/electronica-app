@@ -1,0 +1,37 @@
+* Problema 4.A (La bobina de un convertidor) / seccion 4.10
+* Reductor sincrono ideal de 12 V a 5 V, 1,5 A, 100 kHz, con la bobina elegida de 100 uH.
+* Interruptores ideales (SW) complementarios con D = 5/12 = 0,4167; carga 5 V / 1,5 A = 3,333 ohm.
+* Libro: rizado de corriente 292 mA (19 % de la carga) e I_pico = 1,646 A; con el minimo de
+* 64,8 uH el rizado seria 0,45 A (30 %).
+* Ejecutar:  ngspice -b prob-4.A_buck.cir
+.model SWM SW(VT=0.5 VH=0.01 RON=1m ROFF=1e9)
+VIN vin 0 12
+* control: alto durante D*T = 4,1667 us de cada periodo de 10 us
+VG g 0 PULSE(0 1 0 1n 1n 4.1657u 10u)
+VGN gn 0 PULSE(1 0 0 1n 1n 4.1657u 10u)
+S1 vin sw g 0 SWM
+S2 sw 0 gn 0 SWM
+L1 sw out 100u
+C1 out 0 100u
+RL out 0 3.3333
+* misma etapa con 64,8 uH
+S3 vin sw2 g 0 SWM
+S4 sw2 0 gn 0 SWM
+L2 sw2 out2 64.8u
+C2 out2 0 100u
+RL2 out2 0 3.3333
+.control
+tran 10n 6m 5.9m
+meas tran imax max i(L1)
+meas tran imin min i(L1)
+meas tran imed avg i(L1)
+meas tran vout avg v(out)
+let rizado = imax - imin
+print rizado
+meas tran imax2 max i(L2)
+meas tran imin2 min i(L2)
+let rizado2 = imax2 - imin2
+print rizado2
+echo "Libro: rizado 0,292 A, pico 1,646 A con 100 uH; 0,45 A con 64,8 uH"
+.endc
+.end

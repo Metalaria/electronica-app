@@ -1,0 +1,27 @@
+* Sección 39.6 («Balanceo pasivo y activo, con números»): equilibrado pasivo de una celda a 4 V
+* descargándola a 100 mA por una resistencia de 40 Ohm (MOSFET de equilibrado como interruptor SW).
+* La celda se modela como un condensador equivalente: 100 mAh repartidos en 0,1 V de variación
+* alrededor de 4 V (C = 0,1 Ah * 3600 / 0,1 V = 3600 F), de modo que retirar 100 mAh lleva la
+* tensión de 4,05 a 3,95 V.
+* Comprueba: 100 mA y 0,4 W por celda, una hora para retirar 100 mAh, y 4,8 W con doce celdas.
+* Ejecutar: ngspice -b equilibrado_pasivo.cir
+Ccel cel 0 3600 IC=4.05
+Vs cel s0 DC 0
+S1 s0 n1 ctl 0 SWEQ
+Rbal n1 0 40
+Vctl ctl 0 DC 1
+.model SWEQ SW(Ron=0.01 Roff=1e9 Vt=0.5 Vh=0.1)
+.tran 10 3600 0 10 uic
+.control
+  run
+  meas tran i0 find i(Vs) at=1
+  meas tran v_fin find v(cel) at=3600
+  meas tran q_as integ i(Vs) from=0 to=3600
+  echo "Corriente inicial (A, unos 0,1), tensión tras una hora (V, unos 3,95):"
+  print i0 v_fin
+  echo "Carga retirada en una hora (mAh, unos 100):"
+  print q_as/3.6
+  echo "Potencia en la resistencia por celda a 4 V (W; 0,4) y con doce celdas (W; 4,8):"
+  print 4*4/40 12*4*4/40
+.endc
+.end

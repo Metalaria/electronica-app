@@ -1,0 +1,66 @@
+* fig-43.9 y fig-43.10 / seccion 43.6: par diferencial y CMRR segun la fuente de cola
+* Par NPN con 1 mA por transistor (2 mA de cola), RC = 5 k a +12 V, salida unica en el
+* colector de Q2. Tres colas distintas:
+*   a) resistencia de 5,6 k a -12 V                 R_EE = 5,6 k  -> CMRR ~ gm*R_EE ~ 47 dB
+*   b) fuente de 2 mA con 50 k en paralelo          (espejo simple, ro = VA/I) -> ~ 66 dB
+*   c) fuente de 2 mA con 5 M en paralelo           (espejo cascodo)          -> ~ 106 dB
+* (figura 43.10: CMRR ~ gm*R_EE con gm = 38,6 mS). El texto afirma que al sustituir la fuente
+* de corriente por una resistencia el CMRR cae drasticamente: aqui se ve cuanto.
+* Ejecutar:  ngspice -b fig-43.10_par_diferencial.cir
+.model QA NPN(IS=2.3e-15 BF=200 VAF=1e6)
+VCC vcc 0 12
+VEE vee 0 -12
+VD d 0 dc 0 ac 1
+VC cm 0 dc 0 ac 1
+* --- a) cola resistiva: diferencial (entrada en Q1, Q2 a masa) y modo comun ---
+RC1a vcc c1a 5k
+RC2a vcc c2a 5k
+Q1a c1a d ta QA
+Q2a c2a 0 ta QA
+REEa ta vee 5.6k
+RC1b vcc c1b 5k
+RC2b vcc c2b 5k
+Q1b c1b cm tb QA
+Q2b c2b cm tb QA
+REEb tb vee 5.6k
+* --- b) fuente de 2 mA con 50 k ---
+RC1c vcc c1c 5k
+RC2c vcc c2c 5k
+Q1c c1c d tc QA
+Q2c c2c 0 tc QA
+IEc tc vee 2m
+ROc tc vee 50k
+RC1d vcc c1d 5k
+RC2d vcc c2d 5k
+Q1d c1d cm td QA
+Q2d c2d cm td QA
+IEd td vee 2m
+ROd td vee 50k
+* --- c) fuente de 2 mA con 5 M ---
+RC1e vcc c1e 5k
+RC2e vcc c2e 5k
+Q1e c1e d te QA
+Q2e c2e 0 te QA
+IEe te vee 2m
+ROe te vee 5Meg
+RC1f vcc c1f 5k
+RC2f vcc c2f 5k
+Q1f c1f cm tf QA
+Q2f c2f cm tf QA
+IEf tf vee 2m
+ROf tf vee 5Meg
+.control
+op
+echo "Corriente de colector de Q2 en cada caso (1 mA nominal):"
+print @q2a[ic] @q2c[ic] @q2e[ic]
+ac lin 1 1k 1k
+let cmrr_a = db(mag(v(c2a))/mag(v(c2b)))
+let cmrr_b = db(mag(v(c2c))/mag(v(c2d)))
+let cmrr_c = db(mag(v(c2e))/mag(v(c2f)))
+let ad = mag(v(c2a))
+echo "Ganancia diferencial con salida unica (gm*RC/2 ~ 96):"
+print ad
+echo "CMRR en dB: resistencia 5,6 k (47), espejo simple 50 k (66), cascodo 5 M (106):"
+print cmrr_a cmrr_b cmrr_c
+.endc
+.end

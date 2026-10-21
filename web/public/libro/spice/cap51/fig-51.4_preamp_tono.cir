@@ -1,0 +1,70 @@
+* fig-51.4 / seccion 51.3: volumen logaritmico, preamplificador no inversor y tono Baxandall
+* Circuito de la figura 51.4: potenciometro de volumen de 10 k (aqui al maximo), A1 no inversor
+* con Rf = Rg = 10 k (G = 1 + Rf/Rg = 2, 6 dB) y etapa Baxandall con A2 inversor:
+*   graves: R1 10 k - P1 100 k lin (22 nF en paralelo con cada mitad) - R2 10 k, cursor por R3 10 k
+*   agudos: C3 2,2 nF - P2 100 k lin - C4 2,2 nF, cursor directo a la entrada inversora de A2
+* Operacionales: VCVS de ganancia 1e5 con un polo a 10 Hz (GBW 1 MHz).
+* Tres copias del tono: mandos centrados, ambos al extremo de realce y ambos al de corte.
+* Comprueba: respuesta plana con los mandos al centro (0 dB del tono, +6 dB del conjunto con A1),
+* realce y corte simetricos, y el inversor (fase de 180 grados en el centro de la banda).
+* Resultado (ngspice): A1 = 6,02 dB; tono centrado 0,00 dB a 20 Hz y 1 kHz, -0,01 dB a 20 kHz;
+*   fase 180 grados (la etapa Baxandall invierte); graves +20,3 / -20,4 dB a 20 Hz; agudos
+*   +17,3 / -16,2 dB a 20 kHz.
+* Ejecutar:  ngspice -b fig-51.4_preamp_tono.cir
+.subckt opamp inp inn out
+E1 n1 0 inp inn 1e5
+Rp n1 n2 1k
+Cp n2 0 15.9u
+E2 out 0 n2 0 1
+.ends
+* tono Baxandall; k = posicion del cursor medida desde el extremo de entrada (0..1)
+.subckt baxa vin vout params: kb=0.5 kt=0.5
+R1 vin a 10k
+RP1a a w {max(kb,1e-4)*100k}
+RP1b w b {max(1-kb,1e-4)*100k}
+C1 a w 22n
+C2 w b 22n
+R2 b vout 10k
+R3 w inv 10k
+C3 vin t1 2.2n
+RP2a t1 tw {max(kt,1e-4)*100k}
+RP2b tw t2 {max(1-kt,1e-4)*100k}
+C4 t2 vout 2.2n
+Rtw tw inv 1m
+XA2 0 inv vout opamp
+.ends
+VIN in 0 dc 0 ac 1
+* volumen 10 k logaritmico, cursor arriba (volumen maximo)
+RVa in vol 1m
+RVb vol 0 10k
+* A1: no inversor, Rf = Rg = 10 k
+XA1 vol fb pre opamp
+Rf pre fb 10k
+Rg fb 0 10k
+Xc pre oc baxa kb=0.5 kt=0.5
+Xr pre or baxa kb=0 kt=0
+Xk pre ok baxa kb=1 kt=1
+.ac dec 50 10 100k
+.control
+run
+meas ac gpre_1k  find vdb(pre) at=1k
+meas ac gc_20    find vdb(oc) at=20
+meas ac gc_1k    find vdb(oc) at=1k
+meas ac gc_20k   find vdb(oc) at=20k
+meas ac fase_1k  find vp(oc) at=1k
+meas ac gr_20    find vdb(or) at=20
+meas ac gr_20k   find vdb(or) at=20k
+meas ac gk_20    find vdb(ok) at=20
+meas ac gk_20k   find vdb(ok) at=20k
+let tono_c20 = gc_20 - gpre_1k
+let tono_c1k = gc_1k - gpre_1k
+let tono_c20k = gc_20k - gpre_1k
+let realce_graves = gr_20 - gc_20
+let realce_agudos = gr_20k - gc_20k
+let corte_graves = gk_20 - gc_20
+let corte_agudos = gk_20k - gc_20k
+let fase_grados = fase_1k*180/pi
+print gpre_1k tono_c20 tono_c1k tono_c20k fase_grados
+print realce_graves corte_graves realce_agudos corte_agudos
+.endc
+.end

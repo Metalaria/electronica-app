@@ -1,0 +1,59 @@
+* fig-8.4 (sección 8.3): disparador de Schmitt inversor. Señal en la entrada inversora,
+* realimentación positiva de la salida a la entrada + por R2 = 100 kOhm, R1 = 10 kOhm de esa
+* entrada a masa, salida de ±12 V (comparador ideal de ganancia 1e5 con saturación).
+* Libro: umbrales ±Vsat·R1/(R1 + R2) = ±1,09 V, ventana de 2,18 V; una senoide lenta de 3 V de
+* pico con ruido de 1 V pico a pico superpuesto no produce disparos falsos (una sola transición
+* en cada sentido por periodo), mientras que el comparador simple (umbral 0 V) conmuta varias veces.
+* La senoide empieza en -3 V (fase -90°) para que el estado inicial esté definido.
+* Ejecutar: ngspice -b fig-8.4.cir
+.param vsat = 12
+* ---- slow triangle to read the thresholds: -3 V -> +3 V -> -3 V in 2 s
+VT tri 0 PWL(0 -3 1 3 2 -3)
+R1A pa 0 10k
+R2A pa oa 100k
+BA oa 0 V = max(min(1e5*(v(pa) - v(tri)), {vsat}), -{vsat})
+* ---- slow sine (3 V peak, 0,25 Hz) plus 1 V pp noise-like ripple (two incommensurate tones)
+VS sn 0 SIN(0 3 0.25 0 0 -90)
+VN1 nz sn SIN(0 0.3 37)
+VN2 sig nz SIN(0 0.2 53)
+* Schmitt trigger
+R1B pb 0 10k
+R2B pb ob 100k
+BB obr 0 V = max(min(1e5*(v(pb) - v(sig)), {vsat}), -{vsat})
+* finite output speed (1 us), as in a real comparator; avoids an algebraic loop
+RO obr ob 1k
+CO ob 0 1n
+* plain comparator, threshold 0 V
+BC ocr 0 V = max(min(1e5*(0 - v(sig)), {vsat}), -{vsat})
+ROC ocr oc 1k
+COC oc 0 1n
+.control
+  tran 0.2m 2
+  meas tran vth_alta find v(tri) when v(oa)=0 fall=1
+  meas tran vth_baja find v(tri) when v(oa)=0 rise=1
+  echo "Umbrales del Schmitt (libro: +1,09 V y -1,09 V):"
+  print vth_alta vth_baja
+  tran 0.1m 4
+  meas tran pp_senal_total pp v(sig) from=0 to=4
+  echo "Conmutaciones en un periodo de 4 s:"
+  let ns = 0
+  let nc = 0
+  let vb = v(ob)
+  let vc = v(oc)
+  let n = length(vb)
+  let i = 1
+  while i < n
+    if vb[i]*vb[i-1] < 0
+      let ns = ns + 1
+    end
+    if vc[i]*vc[i-1] < 0
+      let nc = nc + 1
+    end
+    let i = i + 1
+  end
+  echo "Schmitt (debe ser 2):"
+  print ns
+  echo "Comparador simple (más de 2 = disparos falsos):"
+  print nc
+.endc
+.end

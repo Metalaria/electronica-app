@@ -1,0 +1,43 @@
+* Capitulo 31, seccion 31.3 (sec-31.3), sintonia de Ziegler-Nichols en lazo abierto.
+* Ejemplo del texto: planta de primer orden con retardo, K = 1, T = 10 s, L = 2 s.
+* La tabla da Kp = 1,2*T/L = 6, Ti = 2*L = 4 s, Td = 0,5*L = 1 s.
+* Se cierra el lazo con ese PID (derivada sobre la medida, filtrada con N = 10, Tf = Td/N)
+* y se mide la sobreoscilacion ante un escalon unitario de consigna.
+* El texto afirma que la respuesta se pasa mas de un 60 %.
+* Analogo electrico (1 V = 1 unidad de senal, 1 F y 1 ohm para fijar constantes de tiempo):
+*   xi : integral, C = 1 F cargado con Ki*e      (Ki = Kp/Ti = 1,5 1/s)
+*   yf : y filtrada por un paso bajo de constante Tf; la derivada filtrada es (y - yf)/Tf
+*   T1 : linea sin perdidas adaptada que hace de retardo puro L = 2 s
+*   y  : planta T dy/dt = K*ud - y
+* Ejecutar: ngspice -b zn_lazo_abierto.cir
+
+.param Kp=6 Ti=4 Td=1 N=10 K=1 T=10 L=2
+.param Tf={Td/N}
+
+* consigna: escalon unitario en t = 0
+Vsp sp 0 PWL(0 0 1m 1)
+
+* integral
+Bi 0 xi I = Kp/Ti*(V(sp) - V(y))
+Ci xi 0 1 IC=0
+
+* paso bajo de la medida para la derivada filtrada
+Bf 0 yf I = (V(y) - V(yf))/Tf
+Cf yf 0 1 IC=0
+
+* salida del controlador: P sobre el error, I, D sobre la medida (signo cambiado)
+Bu u 0 V = Kp*(V(sp) - V(y)) + V(xi) - Kp*Td*(V(y) - V(yf))/Tf
+
+* retardo puro L con linea adaptada
+T1 u 0 ud 0 Z0=50 TD={L}
+Rl ud 0 50
+
+* planta de primer orden
+Bp 0 y I = (K*V(ud) - V(y))/T
+Cp y 0 1 IC=0
+
+.tran 5m 80 UIC
+.meas tran ymax MAX V(y)
+.meas tran sobreosc PARAM='100*(ymax - 1)'
+.meas tran yfinal FIND V(y) AT=80
+.end

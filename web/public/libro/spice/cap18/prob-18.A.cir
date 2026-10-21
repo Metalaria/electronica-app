@@ -1,0 +1,50 @@
+* Capítulo 18, problema 18.A: excitar el LED de un optoacoplador desde un GPIO de 3,3 V.
+* El LED (VF ~ 1,2 V a 20 mA) se modela con un diodo ajustado; el fototransistor, como una
+* fuente de corriente controlada por la corriente del LED con la CTR efectiva (F).
+* Comprueba:
+*   - CTR efectiva 25 % (50 % mínimo degradado a la mitad), R = 105 ohm:
+*     IF ~ 20 mA (supera los 16 mA por pin) e IC ~ 5 mA;
+*   - optoacoplador de alta CTR (300 % mínimo, 150 % efectiva): con R = 630 ohm,
+*     IF ~ 3,3 mA e IC ~ 5 mA, dentro del límite del pin;
+*   - solución con transistor (BJT tipo 2N3904): el GPIO solo da la corriente de base
+*     (< 1 mA) y los 20 mA del LED salen del raíl de 5 V.
+* Ejecutar: ngspice -b prob-18.A.cir
+* LED model fitted so that VF = 1.2 V at 20 mA (IR LED of an optocoupler)
+.model DLED D(IS=8e-15 N=1.6 RS=1)
+.model Q2N3904 NPN(IS=6.734f XTI=3 EG=1.11 VAF=74.03 BF=416.4 NE=1.259 ISE=6.734f
++ IKF=66.78m XTB=1.5 BR=.7371 NC=2 ISC=0 IKR=0 RC=1 CJC=3.638p MJC=.3085 VJC=.75 FC=.5
++ CJE=4.493p MJE=.2593 VJE=.75 TR=239.5n TF=301.2p ITF=.4 VTF=4 XTF=2 RB=10)
+* --- case 1: direct drive, CTR 25 %
+VG1 g1 0 DC 3.3
+R1 g1 a1 105
+D1 a1 k1 DLED
+VS1 k1 0 DC 0
+F1 c1 0 VS1 0.25
+VCC1 vc1 0 DC 5
+RC1 vc1 c1 100
+* --- case 2: high-CTR part, CTR 150 % effective
+VG2 g2 0 DC 3.3
+R2 g2 a2 630
+D2 a2 k2 DLED
+VS2 k2 0 DC 0
+F2 c2 0 VS2 1.5
+VCC2 vc2 0 DC 5
+RC2 vc2 c2 100
+* --- case 3: transistor driver, LED from 5 V, 20 mA target
+VG3 g3 0 DC 3.3
+RB3 g3 b3 4.7k
+Q3 kq b3 0 Q2N3904
+V53 v53 0 DC 5
+R3 v53 a3 180
+D3 a3 kd3 DLED
+VS3 kd3 kq DC 0
+.control
+op
+echo "Caso 1 (CTR 25 %, 105 ohm): VF, IF (mA), IC (mA)"
+print v(a1)-v(k1) i(VS1)*1000 i(VS1)*0.25*1000
+echo "Caso 2 (CTR 150 %, 630 ohm): IF (mA), IC (mA)"
+print i(VS2)*1000 i(VS2)*1.5*1000
+echo "Caso 3 (transistor): corriente del GPIO (mA) y del LED (mA)"
+print -i(VG3)*1000 i(VS3)*1000
+.endc
+.end

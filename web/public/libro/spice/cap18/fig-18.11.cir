@@ -1,0 +1,53 @@
+* Capítulo 18, sección 18.7, figura 18.11 (izquierda): una señal de 5 V aplicada a un GPIO
+* de 3,3 V. El diodo de protección superior conduce del pin al raíl de 3,3 V y, si el raíl
+* consume poco, la corriente inyectada lo sube por encima de su valor nominal.
+* Modelo: el regulador del raíl solo entrega corriente (fuente ideal de 3,3 V tras un diodo
+* ideal, no puede absorber); la carga del raíl es una resistencia RL que se barre; la salida
+* de 5 V externa tiene 50 ohm de impedancia (salida CMOS típica). Diodos de protección con
+* modelo de diodo de silicio pequeño (parámetros tipo 1N4148).
+* Comprueba:
+*   - con el raíl muy poco cargado (RL = 10 k, 0,33 mA) la tensión del raíl sube por encima de
+*     3,3 V (el texto: «lo sube por encima de su valor nominal»);
+*     Resultado: raíl a ~4,4 V con solo ~0,44 mA inyectados;
+*   - con el raíl muy cargado (RL = 10 ohm) el raíl se queda en 3,3 V y la corriente inyectada
+*     por el pin, limitada solo por los 50 ohm de la salida externa, llega a ~20 mA, por encima
+*     de los 16 mA admisibles (el diodo de protección no está pensado para conducirla);
+*   - con una resistencia serie de 10 k en el pin la corriente inyectada baja a ~0,12 mA.
+* Ejecutar: ngspice -b fig-18.11.cir
+.model DCL D(IS=2.52n N=1.752 RS=0.568 BV=100 IBV=100u CJO=4p TT=20n)
+.model DID D(IS=1e-14 N=0.01)
+.param rl=10k
+* external 5 V output with 50 ohm output resistance
+V5 s 0 DC 5
+RO s pin 50
+* clamp diodes: pin -> rail, ground -> pin
+DUP pin rail DCL
+DDN 0 pin DCL
+* 3.3 V regulator that can only source current
+VREG reg 0 DC 3.3
+DREG reg rail DID
+RL rail 0 {rl}
+* same circuit with 10 k series resistor on the pin
+V5B sb 0 DC 5
+RSB sb pinb 10k
+DUPB pinb railb DCL
+DDNB 0 pinb DCL
+VREGB regb 0 DC 3.3
+DREGB regb railb DID
+RLB railb 0 100
+.control
+op
+echo "RL = 10 k: raíl y corriente inyectada"
+let iinj_mA = -i(V5)*1000
+print v(rail) v(pin) iinj_mA
+alterparam rl=10
+reset
+op
+echo "RL = 10 ohm: raíl y corriente inyectada"
+let iinj_mA = -i(V5)*1000
+print v(rail) v(pin) iinj_mA
+echo "Con 10 k en serie y el raíl cargado con 100 ohm:"
+let iinjb_mA = -i(V5B)*1000
+print v(railb) v(pinb) iinjb_mA
+.endc
+.end

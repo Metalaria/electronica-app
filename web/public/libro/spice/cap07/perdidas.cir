@@ -1,0 +1,56 @@
+* Sección 7.8 (comprobación numérica, fig-7.11 y fig-7.10) y problema 7.A: pérdidas de conducción
+* y de conmutación de un MOSFET que conmuta una carga inductiva enclavada (corriente constante I
+* y tensión V). Cada transición dura t/2 (tr = tf) y se reparte como en la conmutación dura real:
+* al encender sube primero la corriente a tensión plena y luego cae la tensión a corriente plena
+* (y al revés al apagar), de modo que cada transición disipa ½·V·I·t_transición. En conducción,
+* VDS = I·RDS(on). Las formas de onda las generan fuentes de comportamiento (celda conceptual).
+* Comprueba:
+*   - sección 7.8: 5 A, 24 V, 20 mOhm, D = 0,5, tr+tf = 50 ns -> 0,310 / 0,550 / 1,750 W a
+*     20 / 100 / 500 kHz (0,250 W de conducción) y cruce a 83,3 kHz;
+*   - problema 7.A: 8 A, 24 V, D = 0,5; A (8 mOhm, 60 ns): 0,37 / 0,83 / 3,14 W;
+*     B (25 mOhm, 15 ns): 0,83 / 0,94 / 1,52 W; A y B empatan hacia 126 kHz;
+*   - fig-7.10 / sección 7.8: 24 V, 8 A, meseta de 200 ns (driver de 0,1 A y Qgd = 20 nC) a 100 kHz:
+*     ½·V·I·t·f = 1,92 W solo en el encendido. La celda XM1 tiene encendido y apagado de 200 ns
+*     cada uno y RDS(on) = 0, así que debe dar 3,84 W: 1,92 W por transición, «otro tanto en el apagado».
+* Ejecutar: ngspice -b perdidas.cir   (imprime la potencia media de cada celda en W)
+.subckt CELDA p params: II=1 VV=1 R=0 D=0.5 TS=10n F=1k
+.param q = {TS/4}
+B_t  tm 0 V = time - floor(time*F)/F
+B_id id 0 V = (v(tm) < q) ? II*v(tm)/q : (v(tm) < D/F + q) ? II : (v(tm) < D/F + 2*q) ? II*(1 - (v(tm) - D/F - q)/q) : 0
+B_vd vd 0 V = (v(tm) < q) ? VV : (v(tm) < 2*q) ? VV*(1 - (v(tm) - q)/q) + II*R*(v(tm) - q)/q : (v(tm) < D/F) ? II*R : (v(tm) < D/F + q) ? II*R + (VV - II*R)*(v(tm) - D/F)/q : VV
+B_p  p 0 V = v(vd) * v(id)
+.ends
+* section 7.8 example
+X81 p81 CELDA params: II=5 VV=24 R=0.02 D=0.5 TS=50n F=20k
+X82 p82 CELDA params: II=5 VV=24 R=0.02 D=0.5 TS=50n F=100k
+X83 p83 CELDA params: II=5 VV=24 R=0.02 D=0.5 TS=50n F=500k
+X8X p8x CELDA params: II=5 VV=24 R=0.02 D=0.5 TS=50n F=83.333k
+* problem 7.A, transistor A
+XA1 pa1 CELDA params: II=8 VV=24 R=0.008 D=0.5 TS=60n F=20k
+XA2 pa2 CELDA params: II=8 VV=24 R=0.008 D=0.5 TS=60n F=100k
+XA3 pa3 CELDA params: II=8 VV=24 R=0.008 D=0.5 TS=60n F=500k
+XA4 pa4 CELDA params: II=8 VV=24 R=0.008 D=0.5 TS=60n F=125.9k
+* problem 7.A, transistor B
+XB1 pb1 CELDA params: II=8 VV=24 R=0.025 D=0.5 TS=15n F=20k
+XB2 pb2 CELDA params: II=8 VV=24 R=0.025 D=0.5 TS=15n F=100k
+XB3 pb3 CELDA params: II=8 VV=24 R=0.025 D=0.5 TS=15n F=500k
+XB4 pb4 CELDA params: II=8 VV=24 R=0.025 D=0.5 TS=15n F=125.9k
+* fig-7.10: 200 ns turn-on and 200 ns turn-off, 100 kHz, no conduction loss (R = 0)
+XM1 pm1 CELDA params: II=8 VV=24 R=0 D=0.5 TS=400n F=100k
+.control
+  tran 0.5n 100u
+  meas tran s78_20k   avg v(p81) from=50u to=100u
+  meas tran s78_100k  avg v(p82) from=50u to=100u
+  meas tran s78_500k  avg v(p83) from=50u to=100u
+  meas tran s78_cruce avg v(p8x) from=40u to=100u
+  meas tran a_20k     avg v(pa1) from=50u to=100u
+  meas tran a_100k    avg v(pa2) from=50u to=100u
+  meas tran a_500k    avg v(pa3) from=50u to=100u
+  meas tran a_126k    avg v(pa4) from=20.65u to=100u
+  meas tran b_20k     avg v(pb1) from=50u to=100u
+  meas tran b_100k    avg v(pb2) from=50u to=100u
+  meas tran b_500k    avg v(pb3) from=50u to=100u
+  meas tran b_126k    avg v(pb4) from=20.65u to=100u
+  meas tran miller_on avg v(pm1) from=50u to=100u
+.endc
+.end

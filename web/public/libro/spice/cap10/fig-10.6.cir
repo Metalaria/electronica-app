@@ -1,0 +1,49 @@
+* fig-10.6 (sección 10.4, figura w_104): protección escalonada y por qué la impedancia intermedia es
+* imprescindible. Ilustrativo: los valores no salen del texto, que no da números para este circuito.
+* Generador de onda combinada aproximado: 2 kV en circuito abierto (frente ~1,2 us, cola ~50 us) con
+* 2 ohm de impedancia interna (1 kA en cortocircuito).
+* Escalón 1: varistor de 275 V eficaces (V a 1 mA = 430 V, alfa = 25), modelo I = 1 mA·(V/430)^25.
+* Escalón 2: TVS de 400 V de ruptura con 0,1 ohm de resistencia dinámica (modelo de diodo con BV).
+* Entre ambos, prácticamente nada (1 nH) o una bobina de 20 uH o 100 uH (impedancia intermedia).
+* Comprueba lo que afirma la sección: sin la impedancia, el TVS (que recorta más bajo) se lleva toda
+* la corriente (~750 A) y la energía (~14 J, muy por encima de lo que aguanta un TVS de 1,5 kW), y el
+* varistor no llega a actuar (12 mA); con ella, la caída en la bobina eleva la tensión del varistor hasta
+* que conduce (~600 A) y el varistor toma la energía gruesa. La inductancia debe ser suficiente para la
+* duración del transitorio: con esta cola de ~50 us, 20 uH aún dejan 10,5 J en el TVS (5,4 J en el
+* varistor) y 100 uH los bajan a 6,4 J (10,3 J en el varistor).
+* Ejecutar: ngspice -b fig-10.6.cir
+.param lmid=20u
+* surge generator: double exponential, open-circuit peak about 2 kV
+VSURGE s 0 EXP(0 2000 0 0.4u 1.5u 68u)
+RGEN s a 2
+* stage 1: metal-oxide varistor (symmetric power law)
+VIMOV a am DC 0
+BMOV am 0 I = 1m * sgn(V(am)) * pwr(abs(V(am)) / 430, 25)
+* intermediate impedance
+LMID a b {lmid}
+* stage 2: TVS
+VITVS b bt DC 0
+DTVS 0 bt DTVS400
+.model DTVS400 D (IS=1e-12 N=1 RS=0.1 BV=400 IBV=1m CJO=1n)
+* protected circuit: light load
+RLOAD b 0 1k
+.tran 10n 200u 0 10n
+.control
+  foreach lv 1n 20u 100u
+    alterparam lmid = $lv
+    reset
+    tran 10n 200u 0 10n
+    echo "------ impedancia intermedia L = $lv H"
+    let imov = i(vimov)
+    let itvs = i(vitvs)
+    meas tran imov_pico MAX imov
+    meas tran itvs_pico MAX itvs
+    meas tran va_pico MAX v(a)
+    meas tran vb_pico MAX v(b)
+    let emov = integ(v(a) * imov)
+    let etvs = integ(v(b) * itvs)
+    meas tran e_mov_J FIND emov AT=199u
+    meas tran e_tvs_J FIND etvs AT=199u
+  end
+.endc
+.end

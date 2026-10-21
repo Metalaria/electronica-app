@@ -1,0 +1,37 @@
+* Figura 40.10 (seccion 40.6) y ejercicio 40.2: impedancia del mismo condensador de
+* desacoplo de 100 nF (ESR = 20 mohm, ejemplo de la seccion 3.5) con tres montajes:
+*   via junto a la almohadilla (0,8 nH), pista corta + via (2 nH), a dos centimetros (10 nH).
+* Comprueba:
+*   - autorresonancia con 0,8 nH: 17,8 MHz (dato que usa la figura);
+*   - el montaje lejano resuena mucho antes (5 MHz) y por encima es una bobina:
+*     a 100 MHz, |Z| ~ 6,3 ohm frente a ~0,5 ohm con la via junto a la almohadilla.
+* Se excita cada rama con 1 A de AC: la tension del nodo es |Z| en ohmios.
+* Ejecutar:  ngspice -b desacoplo_fig-40.10.cir
+* Resultado: 17,79 / 11,25 / 5,03 MHz; 0,487 / 1,241 / 6,267 ohm a 100 MHz.
+*
+.subckt cdesac a l=1n
+C1 a x 100n
+R1 x y 20m
+L1 y 0 {l}
+.ends
+Ia 0 na DC 0 AC 1
+Xa na cdesac l=0.8n
+Ib 0 nb DC 0 AC 1
+Xb nb cdesac l=2n
+Ic 0 nc DC 0 AC 1
+Xc nc cdesac l=10n
+* resistencias de 1 Gohm solo para que el punto de trabajo en continua este definido
+Rga na 0 1g
+Rgb nb 0 1g
+Rgc nc 0 1g
+.control
+ac dec 400 100k 1g
+meas ac fa when vp(na)=0 cross=1
+meas ac fb when vp(nb)=0 cross=1
+meas ac fc when vp(nc)=0 cross=1
+meas ac za100 find vm(na) at=100meg
+meas ac zb100 find vm(nb) at=100meg
+meas ac zc100 find vm(nc) at=100meg
+echo "Esperado: 17,8 / 11,3 / 5,0 MHz; |Z|(100 MHz) = 0,49 / 1,24 / 6,27 ohm"
+.endc
+.end

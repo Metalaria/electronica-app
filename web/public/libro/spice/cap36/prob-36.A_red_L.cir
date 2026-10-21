@@ -1,0 +1,77 @@
+* Problema 36.A y sección 36.5: red en L que adapta una antena de 10 Ohm a un transmisor de 50 Ohm
+* a 100 MHz (C en paralelo en el lado de 50 Ohm, L en serie en el lado de 10 Ohm).
+* Q = sqrt(50/10 - 1) = 2  ->  L = 20 Ohm / w0 = 31,8 nH ;  C = 1/(w0 * 25 Ohm) = 63,7 pF.
+* Se montan cuatro redes independientes, cada una con su generador de 50 Ohm (1 V de fuerza
+* electromotriz, potencia disponible 1/(8*50) = 2,5 mW):
+*   A: 50 -> 10 Ohm, Q = 2 ;  B: 50 -> 5 Ohm, Q = 3 ;  C: 50 -> 1 Ohm, Q = 7 ;
+*   D: 50 -> 22,4 -> 10 Ohm en dos etapas (Q = 1,11 en cada una).
+* Comprueba: Zin = 50 Ohm a 100 MHz; la banda donde la pérdida por desadaptación no pasa de 1 dB
+* (VSWR de unos 2,5-2,7) se aproxima a f0/Q, que es la regla del texto; la banda a -3 dB es del
+* orden del doble; y la red en dos etapas es mucho más ancha que la de una.
+* Resultado de referencia: Zin(100 MHz) = 50 + j0 Ohm; banda con pérdida <= 1 dB: 59,6 / 36,4 / 14,7 MHz
+* para Q = 2 / 3 / 7 (la regla f0/Q da 50 / 33,3 / 14,3 MHz); a -3 dB: 76 MHz (Q = 3) y 29 MHz (Q = 7);
+* dos etapas 50 -> 22,4 -> 10 Ohm: 122 MHz con pérdida <= 1 dB, el doble que la red A.
+* Ejecutar: ngspice -b prob-36.A_red_L.cir
+.param f0=100Meg w0={2*3.14159265*f0}
+* --- A: 50 -> 10 Ohm
+VA ga 0 DC 0 AC 1
+RSA ga a1 50
+CA a1 0 {2/(50*w0)}
+LA a1 a2 {2*10/w0}
+RLA a2 0 10
+* --- B: 50 -> 5 Ohm
+VB gb 0 DC 0 AC 1
+RSB gb b1 50
+CB b1 0 {3/(50*w0)}
+LB b1 b2 {3*5/w0}
+RLB b2 0 5
+* --- C: 50 -> 1 Ohm
+VC gc 0 DC 0 AC 1
+RSC gc c1 50
+CC c1 0 {7/(50*w0)}
+LC c1 c2 {7*1/w0}
+RLC c2 0 1
+* --- D: dos etapas 50 -> sqrt(500) -> 10 Ohm
+.param Rm={sqrt(500)} Q1={sqrt(50/sqrt(500)-1)} Q2={sqrt(sqrt(500)/10-1)}
+VD gd 0 DC 0 AC 1
+RSD gd d1 50
+CD1 d1 0 {Q1/(50*w0)}
+LD1 d1 d2 {Q1*Rm/w0}
+CD2 d2 0 {Q2/(Rm*w0)}
+LD2 d2 d3 {Q2*10/w0}
+RLD d3 0 10
+.control
+  echo "Valores de la red A (L en nH, C en pF): 31,8 nH y 63,7 pF"
+  print @LA[inductance]*1e9 @CA[capacitance]*1e12
+  ac lin 40001 1Meg 300Meg
+  * potencia en la carga (amplitud de pico: |V|^2/2R) relativa a la disponible (2,5 mW)
+  let pa = (mag(v(a2))^2/(2*10))/2.5e-3
+  let pb = (mag(v(b2))^2/(2*5))/2.5e-3
+  let pc = (mag(v(c2))^2/(2*1))/2.5e-3
+  let pd = (mag(v(d3))^2/(2*10))/2.5e-3
+  let zina = v(a1)/((v(ga)-v(a1))/50)
+  let rza = real(zina)
+  let iza = imag(zina)
+  meas ac ReZin_A_100M find rza at=100Meg
+  meas ac ImZin_A_100M find iza at=100Meg
+  meas ac Pc_A_100M find pa at=100Meg
+  * banda con pérdida por desadaptación <= 1 dB (p >= 0,794)
+  meas ac B_lo when pb=0.7943 rise=1
+  meas ac B_hi when pb=0.7943 fall=1
+  meas ac C_lo when pc=0.7943 rise=1
+  meas ac C_hi when pc=0.7943 fall=1
+  meas ac A_hi when pa=0.7943 fall=1
+  meas ac A_lo when pa=0.7943 rise=1
+  * banda a -3 dB
+  meas ac C3_lo when pc=0.5 rise=1
+  meas ac C3_hi when pc=0.5 fall=1
+  meas ac B3_lo when pb=0.5 rise=1
+  meas ac B3_hi when pb=0.5 fall=1
+  meas ac D_lo when pd=0.7943 rise=1
+  meas ac D_hi when pd=0.7943 fall=1
+  echo "Anchos de banda (MHz) con pérdida <= 1 dB: A (Q=2), B (Q=3), C (Q=7), D (dos etapas)"
+  print (A_hi-A_lo)/1e6 (B_hi-B_lo)/1e6 (C_hi-C_lo)/1e6 (D_hi-D_lo)/1e6
+  echo "Anchos de banda (MHz) a -3 dB: B (Q=3), C (Q=7)"
+  print (B3_hi-B3_lo)/1e6 (C3_hi-C3_lo)/1e6
+.endc
+.end

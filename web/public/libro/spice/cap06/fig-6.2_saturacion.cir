@@ -1,0 +1,35 @@
+* fig-6.2 / seccion 6.2 (Saturacion: el interruptor cerrado)
+* Ejemplo numerico de la seccion: VCC = 12 V, RC = 1 k, resistencia de base desde 5 V,
+* beta = 100. Con RB = 100 k el transistor queda en activa (IB = 43 uA, IC = 4,3 mA,
+* VCE = 7,7 V); con RB = 10 k satura (beta*IB pediria 43 mA, el circuito admite ~11,8 mA,
+* factor de saturacion forzada ~3,6).
+* Se montan los dos casos a la vez con dos copias del circuito.
+* Ejecutar:  ngspice -b fig-6.2_saturacion.cir
+* Modelo: NPN tipo 2N3904 simplificado con BF = 100 e IS ajustada para VBE ~ 0,7 V.
+.model QN NPN(IS=1e-14 BF=100 BR=4 VAF=1e6 RB=10 RC=1 CJE=4p CJC=4p)
+VCC vcc 0 12
+VIN vin 0 5
+* caso A: RB = 100 k
+RBA vin ba 100k
+RCA vcc ca 1k
+QA ca ba 0 QN
+* caso B: RB = 10 k
+RBB vin bb 10k
+RCB vcc cb 1k
+QB cb bb 0 QN
+.control
+op
+let ibA = (v(vin)-v(ba))/100k
+let icA = (v(vcc)-v(ca))/1k
+let ibB = (v(vin)-v(bb))/10k
+let icB = (v(vcc)-v(cb))/1k
+echo "Caso A (RB = 100 k): libro IB = 43 uA, IC = 4,3 mA, VCE = 7,7 V"
+print ibA icA v(ca) v(ba)
+echo "Caso B (RB = 10 k): libro IB = 430 uA, IC ~ 11,8 mA, VCE ~ 0,2 V, VBC > 0"
+print ibB icB v(cb) v(bb)
+let vbcB = v(bb)-v(cb)
+let ksat = 100*ibB/icB
+echo "VBC en el caso B (positiva = saturado) y factor de saturacion forzada (libro 3,6):"
+print vbcB ksat
+.endc
+.end

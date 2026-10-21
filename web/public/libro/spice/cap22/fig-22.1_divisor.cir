@@ -1,0 +1,55 @@
+* Capitulo 22, seccion 22.1 (Practica 1), figuras 22.1 y 22.2: divisor de tension
+* 9 V, R1 = 10 k, R2 = 4,7 k. Comprueba:
+*   - V_out = 2,88 V, I = 0,61 mA, potencias 3,7 mW (R1) y 1,8 mW (R2);
+*   - con R1 = R2 = 1 MEG y un multimetro de 10 MEG en paralelo con R2, la lectura cae al
+*     95,2 % de la teorica (4,29 V en lugar de 4,5 V); con 10 k, al 99,95 %;
+*   - impedancia de Thevenin R1 || R2 = 3,2 k (fuente de prueba de 1 mA en la salida);
+*   - un LED rojo con 330 ohm en la salida hunde la tension: el divisor no alimenta nada.
+* Ejecutar: ngspice -b fig-22.1_divisor.cir
+.model LEDR D(IS=1e-20 N=1.8 RS=5)
+
+* (a) divisor nominal
+V1 a 0 DC 9
+R1 a out 10k
+R2 out 0 4.7k
+
+* (b) R1 = R2 = 1 MEG medido con un multimetro de 10 MEG
+V2 b 0 DC 9
+R1b b outb 1MEG
+R2b outb 0 1MEG
+RMb outb 0 10MEG
+
+* (c) R1 = R2 = 10 k medido con el mismo multimetro
+V3 c 0 DC 9
+R1c c outc 10k
+R2c outc 0 10k
+RMc outc 0 10MEG
+
+* (d) Thevenin: fuente de corriente de prueba de 1 mA sacada de la salida (con V = 0)
+V4 d 0 DC 0
+R1d d outd 10k
+R2d outd 0 4.7k
+Itest outd 0 DC 1m
+
+* (e) carga: LED rojo con 330 ohm en la salida del divisor
+V5 e 0 DC 9
+R1e e oute 10k
+R2e oute 0 4.7k
+RLe oute led 330
+DLe led 0 LEDR
+
+.control
+op
+echo "(a) Vout = $&v(out) V   I(mA) ="
+print -i(V1)*1000
+print (v(a)-v(out))^2/10k*1000 v(out)^2/4.7k*1000
+echo "(b) 1 MEG con multimetro: relacion medida/teorica"
+print v(outb)/4.5
+echo "(c) 10 k con multimetro: relacion medida/teorica"
+print v(outc)/4.5
+echo "(d) Thevenin (ohm) = -V/1mA"
+print -v(outd)/1m
+echo "(e) salida con LED y 330 ohm (V) y corriente del LED (mA)"
+print v(oute) (v(oute)-v(led))/330*1000
+.endc
+.end

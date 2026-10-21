@@ -1,0 +1,59 @@
+* fig-33.4 (flyback) y sección 33.15 / fig-33.16: el flyback del ejemplo, con la entrada mínima (100 V),
+* Lp = 556 uH, Np/Ns = 44/6, D = 0,45 y 65 kHz, en modo discontinuo, con snubber RCD.
+* Comprueba: corriente de pico del primario 100*0,45/(556u*65k) = 1,24 A; energía por ciclo 427 uJ
+* (27,8 W a 65 kHz, que cubre los 28 W de entrada del diseño); la corriente del secundario llega a cero
+* antes del ciclo siguiente (modo discontinuo); tensión de drenador en la meseta = Vin + n*(Vout + VD),
+* unos 100 + 7,33*13 = 195 V.
+* Sin lazo, la salida se fija donde la carga consume la energía entregada: con 6 ohm (12 V / 2 A),
+* unos 12-13 V, porque el modelo no tiene las pérdidas del 85 % de rendimiento supuesto en el diseño.
+* Acoplamiento K = 0,995: dispersión (1-K^2)*Lp = 5,6 uH, el 1 % de Lp (sección 33.15).
+* Valores no dados por el libro (típicos): Cout = 470 uF, snubber 4,7 nF / 22 kohm, diodo rápido genérico.
+* Ejecutar: ngspice -b sec-33.15_flyback.cir
+.param fs=65k T={1/fs} D=0.45
+VIN  in 0 DC 100
+VG   g 0 PULSE(0 1 0 5n 5n {D*T-5n} {T})
+VSP  in p1 DC 0
+LP   p1 dr 556u
+LS   0 sx {556u*(6/44)**2}
+KPS  LP LS 0.995
+S1   dr 0 g 0 SWI
+* capacidad de salida del MOSFET (típica), necesaria para que el timbre de la dispersión sea físico
+CDS  dr 0 100p
+* snubber RCD: el diodo lleva el pico al condensador, la resistencia lo disipa hacia la entrada
+DSN  dr cl DFAST
+CSN  cl in 4.7n
+RSN  cl in 22k
+* secundario: el punto de LS está en tierra, así que sx es negativo mientras el interruptor conduce
+* (diodo en inversa) y positivo cuando corta (el diodo conduce y descarga el núcleo en la salida)
+VSS  sx a DC 0
+DO   a out DFAST
+.model DFAST D(IS=1n N=1.5 RS=20m TT=10n CJO=50p BV=600)
+COUT out 0 470u IC=12.5
+RL   out 0 6
+.model SWI SW(Ron=50m Roff=1e8 Vt=0.5 Vh=0)
+.options method=gear
+.tran 10n 6m 5.9m 10n uic
+.control
+run
+* corriente del primario justo antes del apagado (el MAX incluye el pico de descarga de CDS al encender)
+meas tran ip_pico FIND i(VSP) AT=5.914600m
+meas tran vout_med AVG v(out) from=5.907692m to=6m
+* ventana alineada con el ciclo 384 (t0 = 5,9077 ms)
+meas tran vdr_meseta FIND v(dr) AT=5.91692m
+let pinst = 100*i(VSP)
+meas tran pin AVG pinst from=5.907692m to=6m
+let pout = vout_med*vout_med/6
+print pout
+meas tran is_al_97 FIND i(VSS) AT=5.92262m
+let psnub = (v(cl)-v(in))*(v(cl)-v(in))/22k
+meas tran p_snubber AVG psnub from=5.907692m to=6m
+let vclamp = v(cl)-v(in)
+meas tran vclamp_med AVG vclamp from=5.907692m to=6m
+* comprobación de la fórmula del texto: P = 1/2*Ldisp*Ipico^2*f * Vclamp/(Vclamp - Vreflejada)
+let ldisp = (1-0.995*0.995)*556u
+let pformula = 0.5*ldisp*ip_pico*ip_pico*65k*vclamp_med/(vclamp_med-(44/6)*(vout_med+0.8))
+print ldisp pformula
+echo "Texto: Ipico = 1,24 A (aquí ~1,27 A: se suma la corriente de la oscilación de DCM con CDS al encender);"
+echo "E = 427 uJ (27,8 W); DCM: i del secundario = 0 antes del ciclo siguiente; meseta de drenador ~195 V"
+.endc
+.end

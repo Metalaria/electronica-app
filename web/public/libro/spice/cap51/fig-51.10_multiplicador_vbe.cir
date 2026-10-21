@@ -1,0 +1,83 @@
+* fig-51.10 y fig-51.9 / seccion 51.5: multiplicador de VBE, ajuste del bias y compensacion termica
+* Etapa de la figura 51.6 (+-35 V, RE = 0,22 ohm, 8 ohm, fuente de 10 mA, driver Q3 y
+* realimentacion global con amplificador de error ideal) con la polarizacion de la figura 51.10:
+* Qb (NPN de media potencia) con R1 (ajuste) de colector a base y R2 = 1 k de base a emisor,
+*   Vbias = VBE (1 + R1/R2).
+* Segunda copia, identica salvo que la polarizacion es una fuente fija con la tension que da el
+* multiplicador a 27 grados (lo que haria una referencia que no esta sobre el disipador).
+* Comprueba:
+*   1) barrido de R1: Vbias y corriente de reposo; con R1 ~ 850 ohm (Vbias ~ 1,28 V, dos VBE) la
+*      corriente de reposo es 50 mA y la caida en cada RE es 11 mV (seccion 51.5);
+*   2) barrido de temperatura de 27 a 87 grados con todos los transistores a la misma temperatura
+*      (multiplicador atornillado al disipador): con el multiplicador la corriente apenas cambia;
+*      con la fuente fija sube varias veces (el paso hacia el embalamiento de la figura 51.9).
+*   3) dVBE/dT del transistor del multiplicador (~ -2 mV/grado).
+* Modelos genericos (IS = 1e-12, beta 80/60): los valores de R1 dependen de ellos; lo que no
+* depende es que el ajuste se haga midiendo los 11 mV en RE.
+* Resultado (ngspice): R1 = 856 ohm -> Vbias = 1,284 V, Iq = 50,0 mA (11,0 mV en RE); de 27 a
+*   87 grados Iq pasa de 50 a 65 mA con el multiplicador y de 50 a 280 mA con la fuente fija;
+*   dVBE/dT = -1,8 mV/grado.
+* Ejecutar:  ngspice -b fig-51.10_multiplicador_vbe.cir
+.model QPN NPN(IS=1e-12 BF=80 IKF=3 VAF=100 RB=1 RE=0.02 RC=0.05)
+.model QPP PNP(IS=1e-12 BF=60 IKF=3 VAF=100 RB=1 RE=0.02 RC=0.05)
+.model QVAS NPN(IS=1e-13 BF=120 VAF=100)
+.model QBIAS NPN(IS=1e-13 BF=100 VAF=100)
+.param r1val=1k
+VCC vcc 0 35
+VEE vee 0 -35
+VIN in 0 dc 0
+* --- con multiplicador de VBE ---
+I1 vcc a 10m
+R1 a bq {r1val}
+R2 bq b 1k
+QB a bq b QBIAS
+Q1 vcc a e1 QPN
+RE1 e1 out 0.22
+Q2 vee b e2 QPP
+RE2 e2 out 0.22
+RL out 0 8
+Q3 b b3 vee QVAS
+RB3 err b3 10k
+BERR err 0 V = -34.0 + 300*(V(out)-V(in))
+* --- con polarizacion fija (fuera del disipador) ---
+I1x vcc ax 10m
+VFIX ax bx 1.3
+Q1x vcc ax e1x QPN
+RE1x e1x outx 0.22
+Q2x vee bx e2x QPP
+RE2x e2x outx 0.22
+RLx outx 0 8
+Q3x bx b3x vee QVAS
+RB3x errx b3x 10k
+BERRx errx 0 V = -34.0 + 300*(V(outx)-V(in))
+* --- transistor aislado para medir dVBE/dT a 10 mA ---
+IT 0 ct 10m
+QT ct ct 0 QBIAS
+.control
+echo "--- 1) barrido de R1 (R2 = 1 k)"
+foreach r 700 800 850 900 1000
+  alterparam r1val = $r
+  reset
+  op
+  let vb = v(a)-v(b)
+  let iq = (v(e1)-v(out))/0.22
+  let vre_mV = (v(e1)-v(out))*1000
+  echo "R1 = $r ohm"
+  print vb iq vre_mV
+end
+* valor que da ~50 mA con estos modelos
+alterparam r1val = 856
+reset
+op
+let vb = v(a)-v(b)
+let iq = (v(e1)-v(out))/0.22
+print vb iq
+echo "--- 2) temperatura: Iq con multiplicador (e1) y con polarizacion fija (e1x)"
+alter VFIX dc = $&vb
+dc temp 27 87 10
+let iq_mult = (v(e1)-v(out))/0.22
+let iq_fija = (v(e1x)-v(outx))/0.22
+let vbe_t = v(ct)
+print iq_mult iq_fija vbe_t
+.endc
+.end

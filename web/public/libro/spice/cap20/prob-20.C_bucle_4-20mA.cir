@@ -1,0 +1,43 @@
+* Problema 20.C (seccion 20.14): por que la industria mide en miliamperios
+* Sensor a 50 m: 100 m de cable de 1 mm2 de ida y vuelta (2 x 0,86 ohm = 1,72 ohm con
+* rho = 0,0172 ohm*mm2/m). Fuente de 24 V, transmisor 4-20 mA (fuente de corriente) y
+* resistencia de lectura de 250 ohm (y 100 ohm para comparar).
+* Tambien la transmision en tension: 5 V sobre una entrada de 100 kohm, con 1 V de
+* diferencia entre las masas de los dos extremos.
+* Libro: 1,00-5,00 V con 250 ohm, 0,40-2,00 V con 100 ohm; 34 mV en el cable a 20 mA;
+* quedan unos 19 V para el transmisor; en tension, la caida del cable es despreciable pero
+* la diferencia de masas entra entera en la medida.
+* Ejecutar:  ngspice -b prob-20.C_bucle_4-20mA.cir
+.param itx=20m
+VS vs 0 24
+RW1 vs t1 0.86
+ITX t1 t2 {itx}
+RW2 t2 r 0.86
+RL r 0 250
+* copia con 100 ohm
+VS2 vs2 0 24
+RW3 vs2 u1 0.86
+ITX2 u1 u2 {itx}
+RW4 u2 s 0.86
+RL2 s 0 100
+* transmision en tension con diferencia de masas de 1 V
+VSEN sen gs 5
+VGND gs 0 1
+RW5 sen ein 0.86
+RIN ein gin 100k
+RW6 gin 0 0.86
+.control
+foreach ii 4m 20m
+  alterparam itx = $ii
+  reset
+  op
+  echo "I = $ii"
+  let vcable = (v(vs) - v(t1)) + (v(t2) - v(r))
+  let vtransmisor = v(t1) - v(t2)
+  print v(r) v(s) vcable vtransmisor
+end
+let errtension = v(ein) - v(gin) - 5
+print errtension
+echo "Libro: 1-5 V / 0,4-2 V; 34 mV de cable; 19 V para el transmisor; error de 1 V en tension"
+.endc
+.end

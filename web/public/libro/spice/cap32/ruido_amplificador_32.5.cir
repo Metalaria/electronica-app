@@ -1,0 +1,62 @@
+* Seccion 32.5, "El calculo, con un ejemplo completo": presupuesto de ruido de un no inversor.
+* Fuente de 10 kohm, R1 = 1 kohm a masa, R2 = 100 kohm de realimentacion (ganancia 101),
+* operacional con en = 10 nV/rtHz e in = 0,5 pA/rtHz, banda de 10 kHz (filtro de un polo:
+* banda de ruido 1,57 x 10 kHz = 15 708 Hz), T = 290 K.
+* El operacional es una VCVS de ganancia 1e5 (sin ruido); su en y su in se modelan con una
+* resistencia aislada cuyo ruido termico vale 1 nV/rtHz, copiada con fuentes controladas
+* (E para la tension en serie con la entrada, G para las corrientes de entrada).
+* Texto: total 17,3 nV/rtHz referido a la entrada; 2,2 uV eficaces a la entrada, 219 uV a la
+*   salida. Con Rs = 1 kohm: 11,5 nV/rtHz. Con un operacional de 3 nV/rtHz: 14,5 nV/rtHz.
+* Ejecutar:  ngspice -b ruido_amplificador_32.5.cir
+* Resultado (ngspice-42): 17,36 nV/rtHz (ganancia 100,9 por la A finita), 2,18 uV, 220 uV;
+*   Rs = 1 kohm: 11,51 nV/rtHz; en = 3 nV/rtHz: 14,50 nV/rtHz.
+*   (Incluye el ruido de corriente de la entrada inversora sobre R1||R2, 0,5 nV/rtHz, que el
+*   texto desprecia, y usa los 12,66 nV/rtHz exactos de 10 kohm en lugar de 12,6: el total sube
+*   a 17,36, dentro del redondeo de los 17,3 del texto.)
+.options temp=17
+.param kb=1.380649e-23 tk=290.15
+.param rnorm={1e-18/(4*kb*tk)}
+.param en=10 inoise=0.5 rs=10k
+* generadores normalizados de 1 nV/rtHz
+Rn1 n1 0 {rnorm}
+Rn2 n2 0 {rnorm}
+Rn3 n3 0 {rnorm}
+Vsig vs 0 DC 0 AC 1
+Rs vs a {rs}
+* ruido de tension en serie con la entrada no inversora
+Een inp a n1 0 {en}
+* ruido de corriente en cada entrada (pA/rtHz por nV/rtHz -> 1e-3 S)
+Gip 0 a n2 0 {inoise*1e-3}
+Gin 0 inn n3 0 {inoise*1e-3}
+R1 inn 0 1k
+R2 out inn 100k
+Eop out 0 inp inn 1e5
+.control
+* caso 1: el ejemplo del texto
+noise v(out) vsig lin 2 1k 1.001k
+setplot noise1
+let ein = inoise_spectrum[0]*1e9
+let ganancia = onoise_spectrum[0]/inoise_spectrum[0]
+let vin_rms = inoise_spectrum[0]*sqrt(1.5707963*10k)
+let vout_rms = vin_rms*ganancia
+echo "caso 1: ejemplo (Rs = 10 kohm, en = 10 nV/rtHz)"
+print ein ganancia vin_rms vout_rms
+* caso 2: fuente de 1 kohm
+alterparam rs=1k
+reset
+noise v(out) vsig lin 2 1k 1.001k
+setplot noise3
+let ein = inoise_spectrum[0]*1e9
+echo "caso 2: Rs = 1 kohm"
+print ein
+* caso 3: operacional de 3 nV/rtHz con la fuente de 10 kohm
+alterparam rs=10k
+alterparam en=3
+reset
+noise v(out) vsig lin 2 1k 1.001k
+setplot noise5
+let ein = inoise_spectrum[0]*1e9
+echo "caso 3: en = 3 nV/rtHz"
+print ein
+.endc
+.end

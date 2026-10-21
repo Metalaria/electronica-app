@@ -1,0 +1,61 @@
+* Capítulo 49, sección 49.7 y figura 49.13: cadena de acondicionamiento de un micrófono de
+* electret. Valores del libro: polarización con 2,2 kOhm desde 3,3 V, sensibilidad de
+* -44 dB re 1 V/Pa (6,3 mV/Pa), ganancia de 40 dB (x100) y referencia a media alimentación
+* (1,65 V). Valores elegidos aquí (el libro no los da): JFET del electret como fuente de
+* corriente de 0,3 mA, acoplo de 0,47 uF sobre 100 kOhm de entrada (corte inferior ~3,4 Hz),
+* amplificador no inversor con Rf = 99 kOhm y Rg = 1 kOhm acoplada por 47 uF a la referencia
+* (operacional: VCVS de ganancia 1e5 con un polo a 10 Hz) y antialiasing de 1 kOhm y 22 nF.
+* La presión sonora entra como una tensión p (1 V = 1 Pa). La salida en pascales del JFET se
+* modela como la corriente que, sobre los 2,2 kOhm, da 6,3 mV/Pa: 6,31 mV / 2,2 kOhm = 2,87 uA/Pa.
+* Comprueba:
+*   - .op: reposo del electret (3,3 - 0,3 mA x 2,2 k = 2,64 V) y salida centrada en 1,65 V;
+*   - .ac: 6,3 mV/Pa sobre la resistencia de polarización (6,2 mV/Pa con la carga de los
+*     100 kOhm siguientes), 40 dB de ganancia en la banda y corte del antialiasing a 7,2 kHz;
+*   - .tran: tono de 1 kHz a 0,02 Pa (60 dB SPL, conversación a un metro): 0,126 mV eficaces
+*     en el electret (35 mV de pico a pico a la salida, 12,4 mV eficaces), sobre 1,65 V.
+* Ejecutar: ngspice -b sec-49.7_electret.cir
+
+VDD vdd 0 DC 3.3
+* sound pressure in Pa as a voltage
+VP p 0 DC 0 AC 1 SIN(0 0.0283 1k)
+* electret JFET: DC bias current plus signal current 2.87 uA/Pa (sinks current from mic node)
+IJ mic 0 DC 0.3m
+GJ mic 0 p 0 2.868u
+RB vdd mic 2.2k
+* coupling and input bias to the half-supply reference
+CC mic in 0.47u
+RIN in ref 100k
+* half-supply reference: divider with decoupling
+RR1 vdd ref 100k
+RR2 ref 0 100k
+CR ref 0 10u
+* non-inverting amplifier, gain 1 + 99k/1k = 100 (40 dB) for AC; unity for DC around ref
+EOP oa 0 in inv 1e5
+ROP oa opout 1k
+COP opout 0 15.9u
+EBUF amp 0 opout 0 1
+RF amp inv 99k
+RG inv rgc 1k
+CG rgc ref 47u
+* anti-aliasing low-pass before the ADC pin
+RAA amp adc 1k
+CAA adc 0 22n
+.options noacct
+
+.control
+set noaskquit
+op
+print v(mic) v(ref) v(adc)
+ac dec 50 1 100k
+meas ac sens_mic FIND vm(mic) AT=1k
+meas ac gain_db FIND vdb(amp) AT=1k
+let gain_amp = vdb(amp) - vdb(mic)
+meas ac g40 FIND gain_amp AT=1k
+let aa = vdb(adc) - vdb(amp)
+meas ac f3db WHEN aa=-3 FALL=1
+tran 5u 200m
+meas tran vmic_pp PP v(mic) FROM=150m TO=200m
+meas tran vadc_avg AVG v(adc) FROM=150m TO=200m
+meas tran vadc_pp PP v(adc) FROM=150m TO=200m
+.endc
+.end

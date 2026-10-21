@@ -1,0 +1,45 @@
+* fig-8.12 y fig-8.11 (secciones 8.8 y 8.9): los errores de un muestreo y retención.
+* Interruptor de 100 Ohm (SW), condensador de retención, seguidor ideal (VCVS de ganancia 1).
+* La inyección de carga se modela como un pulso de corriente de 10 pC (10 mA durante 1 ns) que
+* entra en el condensador justo al abrir el interruptor; la fuga (interruptor + seguidor), como
+* una fuente de 1 nA que descarga el condensador.
+* Comprueba (valores del libro):
+*   - tiempo de adquisición a 12 bits con 100 Ohm y 1 nF: 8,3·tau = 830 ns (escalón de 0 a 5 V,
+*     hasta quedar a menos de 1 LSB = 1,22 mV);
+*   - pedestal: 10 pC sobre 1 nF = 10 mV; sobre 100 pF = 100 mV (figura 8.11);
+*   - caída en retención (droop): 1 nA sobre 1 nF = 1 mV por milisegundo.
+* Ejecutar: ngspice -b fig-8.12.cir
+.model SH SW (RON=100 ROFF=1e15 VT=2.5 VH=0)
+* control: sample from 0 to 5 us, then hold
+VCTL ctl 0 PWL(0 5 5u 5 5.001u 0)
+VIN in 0 DC 5
+* ---- 1 nF hold capacitor
+S1 in h1 ctl 0 SH
+CH1 h1 0 1n IC=0
+IQ1 0 h1 PULSE(0 10m 5.001u 0.1n 0.1n 0.9n 1)
+ILK1 h1 0 PULSE(0 1n 5.001u 1n 1n 1 2)
+E1 o1 0 h1 0 1
+* ---- 100 pF hold capacitor (same charge, no leakage)
+S2 in h2 ctl 0 SH
+CH2 h2 0 100p IC=0
+IQ2 0 h2 PULSE(0 10m 5.001u 0.1n 0.1n 0.9n 1)
+E2 o2 0 h2 0 1
+.control
+  tran 0.5n 6u uic
+  meas tran tacq when v(o1)=4.99878 rise=1
+  echo "Tiempo de adquisición a 12 bits, 100 Ohm y 1 nF (ns) [libro 830 ns]:"
+  print tacq*1e9
+  meas tran vh1_antes find v(o1) at=4.99u
+  meas tran vh1_despues find v(o1) at=5.05u
+  meas tran vh2_antes find v(o2) at=4.99u
+  meas tran vh2_despues find v(o2) at=5.05u
+  echo "Pedestal (mV) con 1 nF y con 100 pF [libro 10 y 100 mV]:"
+  print (vh1_despues - vh1_antes)*1e3 (vh2_despues - vh2_antes)*1e3
+  tran 1u 2.1m uic
+  meas tran vd0 find v(o1) at=0.1m
+  meas tran vd1 find v(o1) at=1.1m
+  meas tran vd2 find v(o1) at=2.1m
+  echo "Caída en retención con 1 nA sobre 1 nF (mV/ms) [libro 1 mV/ms]:"
+  print (vd0 - vd1)*1e3 (vd1 - vd2)*1e3
+.endc
+.end

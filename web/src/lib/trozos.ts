@@ -15,6 +15,8 @@ export interface Trozo {
   /** Label of the section the chunk belongs to (for the scroll spy). */
   seccion: string | null;
   estimado: number;
+  /** Labels (DOM ids) of the blocks inside the chunk, nested ones included. */
+  etiquetas: Set<string>;
 }
 
 const MAX_BLOQUES = 30;
@@ -60,6 +62,52 @@ function estimar(b: Bloque, ancho: number, tam: number): number {
   }
 }
 
+function etiquetar(b: Bloque, out: Set<string>): void {
+  if (b.label) out.add(b.label);
+  if ('bloques' in b && Array.isArray(b.bloques)) for (const x of b.bloques) etiquetar(x, out);
+  if (b.t === 'ejercicios') {
+    for (const it of b.items) {
+      if (it.label) out.add(it.label);
+      for (const x of it.bloques) etiquetar(x, out);
+      for (const x of it.solucion ?? []) etiquetar(x, out);
+    }
+  }
+}
+
+/** Width of the reading column for a text size (the same rule the reader's layout follows). */
+export function anchoColumna(tam: number, movil: boolean): number {
+  const lateral = movil ? 0 : 308;
+  return Math.max(260, Math.min(40 * tam, window.innerWidth - lateral - 64));
+}
+
+const cache = new Map<Bloque[], { clave: string; trozos: Trozo[] }>();
+
+/** trocear() remembered per part and layout, so the prefetcher can do the work before the jump. */
+export function trozosDe(bloques: Bloque[], ancho: number, tam: number): Trozo[] {
+  const clave = `${Math.round(ancho)}|${tam}`;
+  const c = cache.get(bloques);
+  if (c?.clave === clave) return c.trozos;
+  const trozos = trocear(bloques, ancho, tam);
+  cache.set(bloques, { clave, trozos });
+  return trozos;
+}
+
+/** Index of the chunk that holds a block index or a label (null if none). */
+export function trozoDe(trozos: Trozo[], que: { b?: number; ids?: string[] }): number | null {
+  if (que.b != null) {
+    let k = 0;
+    for (let i = 0; i < trozos.length; i++) if (trozos[i]!.inicio <= que.b) k = i;
+    return k;
+  }
+  if (que.ids) {
+    for (const id of que.ids) {
+      const k = trozos.findIndex((t) => t.etiquetas.has(id));
+      if (k >= 0) return k;
+    }
+  }
+  return null;
+}
+
 export function trocear(bloques: Bloque[], ancho: number, tam: number): Trozo[] {
   const trozos: Trozo[] = [];
   let seccion: string | null = null;
@@ -67,11 +115,12 @@ export function trocear(bloques: Bloque[], ancho: number, tam: number): Trozo[] 
   bloques.forEach((b, i) => {
     if (b.t === 'h2') seccion = b.label ?? null;
     if (!actual || b.t === 'h2' || actual.bloques.length >= MAX_BLOQUES) {
-      actual = { inicio: i, bloques: [], seccion, estimado: 0 };
+      actual = { inicio: i, bloques: [], seccion, estimado: 0, etiquetas: new Set() };
       trozos.push(actual);
     }
     actual.bloques.push(b);
     actual.estimado += estimar(b, ancho, tam);
+    etiquetar(b, actual.etiquetas);
   });
   for (const t of trozos) t.estimado = Math.round(t.estimado);
   return trozos;

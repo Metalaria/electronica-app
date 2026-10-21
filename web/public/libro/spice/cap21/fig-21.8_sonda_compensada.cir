@@ -1,0 +1,43 @@
+* fig-21.8 / seccion 21.5 (Calibracion de la sonda): la sonda x10 como divisor compensado.
+* Punta: R1 = 9 Mohm || C1. Entrada del osciloscopio: R2 = 1 Mohm || C2, con C2 = 100 pF
+* (cable + entrada + trimmer, el mismo valor que usa el guion de la figura 21.6).
+* Compensada cuando R1*C1 = R2*C2  ->  C1 = 11,1 pF. Se comparan tres sondas a la vez con la
+* misma cuadrada de 1 kHz (0 a 1 V): C1 = 8 pF (subcompensada), 11,11 pF (compensada) y
+* 14 pF (sobrecompensada). Se mide la salida 1 us despues del flanco de subida y al final del
+* semiciclo: en la compensada las dos valen 0,100 V (meseta plana); en la subcompensada el
+* nivel empieza bajo y sube (esquina redondeada); en la sobrecompensada empieza alto y decae.
+* Tambien: capacidad vista desde la punta (C1 en serie con C2) y la respuesta en alterna.
+* Ejecutar:  ngspice -b fig-21.8_sonda_compensada.cir
+VIN in 0 PULSE(0 1 0 1n 1n 0.5m 1m) AC 1
+* subcompensada
+R1a in oa 9Meg
+C1a in oa 8p
+R2a oa 0 1Meg
+C2a oa 0 100p
+* compensada
+R1b in ob 9Meg
+C1b in ob 11.111p
+R2b ob 0 1Meg
+C2b ob 0 100p
+* sobrecompensada
+R1c in oc 9Meg
+C1c in oc 14p
+R2c oc 0 1Meg
+C2c oc 0 100p
+.control
+tran 0.2u 5m
+meas tran sub_ini  find v(oa) at=4.001m
+meas tran sub_fin  find v(oa) at=4.499m
+meas tran ok_ini   find v(ob) at=4.001m
+meas tran ok_fin   find v(ob) at=4.499m
+meas tran sob_ini  find v(oc) at=4.001m
+meas tran sob_fin  find v(oc) at=4.499m
+ac dec 10 10 100Meg
+meas ac ok_10Hz   find vdb(ob) at=10
+meas ac ok_10MHz  find vdb(ob) at=10Meg
+meas ac sub_10MHz find vdb(oa) at=10Meg
+meas ac sob_10MHz find vdb(oc) at=10Meg
+let cpunta = 11.111e-12*100e-12/(11.111e-12+100e-12)
+print cpunta
+.endc
+.end

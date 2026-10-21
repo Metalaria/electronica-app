@@ -1,0 +1,55 @@
+* fig-41.4, fig-41.5 y seccion 41.3 (Reflexiones y terminacion); problema 41.A
+* Linea sin perdidas de Z0 = 50 ohm y tiempo de vuelo td = 1 ns (unos 16 cm de FR4),
+* excitada con un escalon de 3,3 V (subida 0,25 ns) y cargada con la entrada CMOS (1 pF).
+*   A: driver de 10 ohm, sin terminar. Timbre de periodo 4*td = 4 ns; sobreimpulso
+*      cercano a 2*VDD y primer valle por debajo de VIH = 2,0 V (doble disparo).
+*   B: driver de 10 ohm + 40 ohm serie = Z0. En el origen, media amplitud durante 2*td;
+*      en el receptor, un solo flanco limpio a 3,3 V.
+*   C: problema 41.A, driver de 20 ohm + 30 ohm serie (Rs = Z0 - Rsalida).
+*   D: problema 41.A, terminacion paralelo de 50 ohm a masa (driver ideal): 218 mW en alto.
+*   E: problema 41.A, Thevenin 100 ohm / 100 ohm (driver ideal): 109 mW en alto y en bajo.
+* Ejecutar:  ngspice -b fig-41.5_reflexiones_terminacion.cir
+VS s 0 PWL(0 0 0.5n 0 0.75n 3.3)
+* A: sin terminar
+RA s a1 10
+TA a1 0 a2 0 Z0=50 TD=1n
+CA a2 0 1p
+* B: serie 10 + 40 = 50 ohm
+RB s b1 50
+TB b1 0 b2 0 Z0=50 TD=1n
+CB b2 0 1p
+* C: serie 20 + 30 = 50 ohm
+RC s c1 50
+TC c1 0 c2 0 Z0=50 TD=1n
+CC c2 0 1p
+* D y E: consumo estatico con el driver ideal fijado en alto o en bajo
+VH h 0 DC 3.3
+RD h 0 50
+VDD vdd 0 DC 3.3
+VLH lh 0 DC 3.3
+RE1 vdd lh 100
+RE2 lh 0 100
+VLL ll 0 DC 0
+RE3 vdd ll 100
+RE4 ll 0 100
+.tran 2p 20n
+.control
+run
+meas tran pico_A MAX v(a2) from=0 to=20n
+meas tran t_up1 WHEN v(a2)=3.3 RISE=1
+meas tran t_up2 WHEN v(a2)=3.3 RISE=2
+let periodo = t_up2 - t_up1
+print periodo
+meas tran valle_A MIN v(a2) from=3n to=6n
+meas tran pico_B MAX v(b2) from=0 to=20n
+meas tran origen_B FIND v(b1) AT=2n
+meas tran final_B FIND v(b2) AT=15n
+meas tran pico_C MAX v(c2) from=0 to=20n
+op
+print -i(VH)*3.3
+print v(lh)*v(lh)/100 + 0
+print (3.3-v(ll))*(3.3-v(ll))/100
+print 32*0.5*3.3*3.3/50
+print 32*3.3*3.3/100
+.endc
+.end

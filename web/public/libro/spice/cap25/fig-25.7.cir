@@ -1,0 +1,36 @@
+* Figura 25.7 (seccion 25.5): filtro activo paso bajo Sallen-Key de ganancia unidad.
+* Vin -> R1 (10k) -> nodo A -> R2 (10k) -> nodo B = entrada +; C2 = 10 nF de B a masa;
+* C1 = 22 nF de A a la salida (realimentacion positiva que crea el Q); entrada - unida a la salida.
+* La figura da f_c = 1/(2*pi*sqrt(R1 R2 C1 C2)) = 1,07 kHz y Q = 0,74 (casi Butterworth).
+* Operacional: VCVS de ganancia 1e5 con un polo a 10 Hz (GBW = 1 MHz) y 100 ohm de salida.
+* Se mide: ganancia en continua, frecuencia donde la fase vale -90 grados (= f0 de la formula),
+* frecuencia de -3 dB, pico de la respuesta y pendiente entre 3 kHz y 30 kHz (-40 dB/dec; mas arriba
+* el GBW finito empieza a frenar la caida, que es el efecto de la figura 25.9).
+* Fase en grados con cph (fase continua). Ejecutar:  ngspice -b fig-25.7.cir
+* Resultado (ngspice-42): 0,00 dB en continua; fase -90 grados a 1,071 kHz (= f_c de la figura);
+* -3 dB a 1,123 kHz; pico de +0,04 dB (Q = 0,74 apenas pasa de 0,707); -39,9 dB/dec entre 3 y 30 kHz.
+Vin in 0 DC 0 AC 1
+R1 in a 10k
+R2 a b 10k
+C2 b 0 10n
+C1 a out 22n
+* operacional (entrada + = b, entrada - = out)
+Eamp n1 0 b out 1e5
+Rp n1 n2 1k
+Cp n2 0 15.915u
+Ebuf n3 0 n2 0 1
+Ro n3 out 100
+.control
+ac dec 200 10 1meg
+let gdb_out = db(v(out))
+let fase_out = 180/pi*cph(v(out))
+meas ac g_dc FIND gdb_out AT=10
+meas ac f_90 WHEN fase_out=-90
+meas ac f_3db WHEN gdb_out=-3.0103 FALL=1
+meas ac pico MAX gdb_out FROM=10 TO=5k
+meas ac g3k FIND gdb_out AT=3k
+meas ac g30k FIND gdb_out AT=30k
+let pendiente = g30k-g3k
+echo "pendiente = $&pendiente"
+.endc
+.end

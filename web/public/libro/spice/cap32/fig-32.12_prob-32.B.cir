@@ -1,0 +1,108 @@
+* Figura 32.12 (filtro de red, seccion 32.11) y problema 32.B (corriente de fuga de los condensadores Y).
+* Esquema de la figura: R de descarga y CX entre L y N, choke de modo comun (dos devanados
+* acoplados, K = 0,999), segundo CX y dos CY de cada linea a tierra. La figura no da valores;
+* se usan unos tipicos: Rd = 470 kohm, CX = 100 nF, choke 10 mH por devanado, CY = 2,2 nF.
+* Parte A (problema 32.B): 230 V / 50 Hz entre fase y tierra sobre CY total = 1,0 / 2,2 / 4,7 nF.
+*   Texto: 72,3 / 159,0 / 339,6 uA. CY maximo para 3,5 mA: 48,4 nF; para 100 uA: 1,4 nF.
+* Parte B (secciones 32.9 y 32.11): atenuacion a 1 MHz entre una fuente de ruido y una LISN de
+*   50 ohm por linea, en modo diferencial y en modo comun, con y sin cada componente.
+*   Comprueba el texto: los CX no actuan sobre el modo comun; con los CY limitados a 2,2 nF el
+*   modo comun casi no se atenua sin el choke ("el choke es imprescindible", seccion 32.9).
+*   Nota: la inductancia de fuga del choke (2 x 0,1 % x 10 mH = 20 uH) si filtra el modo
+*   diferencial; por eso a veces bastan los CX sin bobinas diferenciales aparte.
+* Ejecutar:  ngspice -b fig-32.12_prob-32.B.cir
+* Resultado (ngspice-42): A: 72,26 / 158,96 / 339,6 uA; 48,44 nF y 1,384 nF.
+*   B: diferencial -67,8 dB (sin choke, solo CX: -36,0 dB); comun -63,7 dB, igual sin los CX
+*   (-63,7 dB) y apenas -0,5 dB sin el choke.
+*
+* --- Parte A: fuga a 50 Hz
+Vred l 0 SIN(0 325.27 50) AC 230
+Cy1 l 0 1n
+Cy2 l2 0 2.2n
+Vm2 l l2 DC 0
+Cy3 l3 0 4.7n
+Vm3 l l3 DC 0
+*
+* --- Parte B: filtro completo (lado red = LISN 50 ohm por linea; lado equipo = fuente de ruido)
+* modo diferencial: fuente entre las dos lineas del lado equipo
+.subckt filtro rl rn el en pe cx=100n cy=2.2n lk=10m
+Rd rl rn 470k
+Cx1 rl rn {cx}
+L1 rl el {lk}
+L2 rn en {lk}
+K1 L1 L2 0.999
+Cx2 el en {cx}
+Cy1 el pe {cy}
+Cy2 en pe {cy}
+.ends
+* DM: LISN de 50 ohm en cada linea hacia tierra; fuente diferencial de 1 V con 100 ohm
+X1 rl1 rn1 el1 en1 0 filtro
+Rl1 rl1 0 50
+Rn1 rn1 0 50
+Vdm a1 0 DC 0 AC 1
+Rdm1 a1 el1 50
+Rdm2 en1 0 50
+* DM sin filtro (referencia): la misma fuente directamente sobre la LISN
+Vdm0 a0 0 DC 0 AC 1
+Rd01 a0 rl0 50
+Rl0 rl0 0 50
+* CM: fuente de 1 V con 25 ohm que empuja las dos lineas a la vez respecto a tierra
+X2 rl2 rn2 el2 en2 0 filtro
+Rl2 rl2 0 50
+Rn2 rn2 0 50
+Vcm b2 0 DC 0 AC 1
+Rcm b2 c2 25
+Vc1 c2 el2 DC 0
+Vc2 c2 en2 DC 0
+* CM sin CX (CX = 1 pF): el modo comun no cambia
+X3 rl3 rn3 el3 en3 0 filtro cx=1p
+Rl3 rl3 0 50
+Rn3 rn3 0 50
+Vcm3 b3 0 DC 0 AC 1
+Rcm3 b3 c3 25
+Vd1 c3 el3 DC 0
+Vd2 c3 en3 DC 0
+* CM sin choke (lk = 1 nH): solo los CY
+X4 rl4 rn4 el4 en4 0 filtro lk=1n
+Rl4 rl4 0 50
+Rn4 rn4 0 50
+Vcm4 b4 0 DC 0 AC 1
+Rcm4 b4 c4 25
+Ve1 c4 el4 DC 0
+Ve2 c4 en4 DC 0
+* DM sin choke (lk = 1 nH): solo los CX
+X5 rl5 rn5 el5 en5 0 filtro lk=1n
+Rl5 rl5 0 50
+Rn5 rn5 0 50
+Vdm5 a5 0 DC 0 AC 1
+Rdm51 a5 el5 50
+Rdm52 en5 0 50
+* CM sin filtro (referencia)
+Vcm0 b0 0 DC 0 AC 1
+Rc0 b0 c0 25
+Rl00 c0 0 50
+Rn00 c0 0 50
+.control
+ac lin 1 50 50
+let i1 = abs(i(vred))
+let i22 = abs(i(vm2))
+let i47 = abs(i(vm3))
+let i1n = abs(i(vred)) - i22 - i47
+print i1n i22 i47
+let cmax1 = 3.5m/(2*pi*50*230)
+let cmax2 = 100u/(2*pi*50*230)
+print cmax1 cmax2
+ac lin 1 1meg 1meg
+let dm_ref = abs(v(rl0))
+let dm = abs(v(rl1)-v(rn1))
+let cm_ref = abs(v(c0))
+let cm = abs(v(rl2)+v(rn2))/2
+let cm_sincx = abs(v(rl3)+v(rn3))/2
+let at_dm = 20*log10(dm/dm_ref)
+let at_cm = 20*log10(cm/cm_ref)
+let at_cm_sincx = 20*log10(cm_sincx/cm_ref)
+let at_cm_sinchoke = 20*log10(abs(v(rl4)+v(rn4))/2/cm_ref)
+let at_dm_sinchoke = 20*log10(abs(v(rl5)-v(rn5))/dm_ref)
+print at_dm at_dm_sinchoke at_cm at_cm_sincx at_cm_sinchoke
+.endc
+.end

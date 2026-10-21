@@ -1,0 +1,43 @@
+* fig-20.2 / seccion 20.2 (Optoacopladores: el dimensionado y la comprobacion de saturacion)
+* Ejemplo con valores concretos (la seccion da la regla, no los numeros): entrada de 5 V con
+* R = 680 ohm sobre el LED (I_F ~ 5,6 mA, dentro de los 5-10 mA recomendados); salida con
+* resistencia de colector a 3,3 V. LED infrarrojo de ~1,2 V. El fototransistor es un NPN cuya corriente de base la
+* fija una fuente controlada: I_B = CTR * I_F / BF, de modo que en zona activa I_C = CTR * I_F.
+* Se comparan el CTR tipico (100 %) y el de diseno de final de vida (la mitad del minimo de
+* hoja, 50 % / 2 = 25 %), con dos resistencias de colector:
+*   4,7 kohm: necesita ~0,66 mA para saturar; con 25 % hay ~1,4 mA -> satura siempre;
+*   1 kohm:   necesita ~3,1 mA; con el CTR tipico satura, con el de final de vida NO:
+*             es el circuito que «funciona en el banco y falla en campo» de la seccion.
+* Ejecutar:  ngspice -b fig-20.2_optoacoplador.cir
+.model DLED D(IS=1.6e-15 N=1.6 RS=2)
+.model QPH NPN(IS=1e-14 BF=200 VAF=100)
+.param ctr1=1.0 ctr2=0.25
+VIN in 0 5
+* LED de entrada (se mide su corriente con VS)
+R1 in a 680
+VS a a2 0
+D1 a2 0 DLED
+VOUT vo 0 3.3
+* CTR 100 %, Rc 4,7k
+F1 0 b1 VS {ctr1/200}
+Q1 c1 b1 0 QPH
+RC1 vo c1 4.7k
+* CTR 25 %, Rc 4,7k
+F2 0 b2 VS {ctr2/200}
+Q2 c2 b2 0 QPH
+RC2 vo c2 4.7k
+* CTR 100 %, Rc 1k
+F3 0 b3 VS {ctr1/200}
+Q3 c3 b3 0 QPH
+RC3 vo c3 1k
+* CTR 25 %, Rc 1k
+F4 0 b4 VS {ctr2/200}
+Q4 c4 b4 0 QPH
+RC4 vo c4 1k
+.control
+op
+print i(VS) v(a2)
+print v(c1) v(c2) v(c3) v(c4)
+echo "Esperado: I_F ~ 5,6 mA; salida en saturacion (< 0,4 V) salvo Rc = 1k con CTR 25 % (~1,9 V: nivel indefinido)"
+.endc
+.end

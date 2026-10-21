@@ -68,6 +68,7 @@
     <div class="acciones">
       <button class="boton" onclick={abrirBuscador}><Icono nombre="buscar" tam={17} /> Buscar</button>
       <a class="boton" href="#/glosario"><Icono nombre="glosario" tam={17} /> Glosario</a>
+      <a class="boton" href="#/componentes"><Icono nombre="componentes" tam={17} /> Componentes animados</a>
       <a class="boton" href="#/marcadores"
         ><Icono nombre="marcador" tam={17} /> Marcadores y notas{#if totalPersonal}<span class="cuenta">{totalPersonal}</span>{/if}</a
       >

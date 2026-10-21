@@ -1,0 +1,66 @@
+* Capitulo 15, seccion 15.3 (Proyecto 2: amplificador de audio con LM386), figura 15.6.
+* Modelo de comportamiento de la red de ganancia del LM386 (valores del esquema interno de la
+* hoja de datos): par diferencial con 150 ohm + 1,35 kohm entre emisores (la patilla 8 es la
+* union de ambas resistencias y la patilla 1 el emisor del lado realimentado) y 15 kohm de la
+* salida a ese emisor. Los dos transistores de entrada se modelan como seguidores ideales
+* (fuente de tension controlada) cuya corriente es la corriente de colector; el espejo de
+* corriente y la etapa de salida, como una transresistencia alta (B) con un polo a 100 kHz,
+* conectada de forma que la realimentacion sea negativa. Solo pequena senal (sin polarizacion).
+* Ganancia ideal: Av = 2 x 15k / (150 + 1350) = 20 (26 dB); con un condensador entre 1 y 8 que
+* cortocircuita la de 1,35 kohm, Av = 2 x 15k / 150 = 200 (46 dB).
+* Comprueba:
+*   - ganancia 20 (26 dB) por defecto y 200 (46 dB) con 10 uF entre las patillas 1 y 8, medidas
+*     a 1 kHz: el factor diez exacto sale del cociente (150 + 1350)/150;
+*   - con el condensador la ganancia de 200 solo se alcanza por encima de unos cientos de
+*     hercios (cero a 11,8 Hz y polo a 118 Hz: 10 uF con 1,35 k y con 1,35 k || 150);
+*   - transitorio a 1 kHz con 10 mV de pico de entrada: 0,2 V y 2 V de pico a la salida;
+*   - la potencia que el texto atribuye a 6 V pico a pico sobre 8 ohm: 3^2/(2 x 8) = 0,56 W.
+* Ejecutar: ngspice -b sec-15.3_lm386_ganancia.cir
+
+.subckt LM386G in out p1 p8
+* p1: emisor del lado realimentado (patilla 1); p8: union 150/1350 (patilla 8)
+* seguidor de la entrada no inversora y del lado de la entrada a masa
+EF1 a1 0 in 0 1
+VS1 e1 a1 DC 0
+EF2 a2 0 0 0 1
+VS2 p1 a2 DC 0
+R150 e1 p8 150
+R1350 p8 p1 1350
+RF15K out p1 15k
+* espejo + etapa de salida: transresistencia de 10 Mohm, polo a 100 kHz, salida en tension
+BT x 0 V = 1e7*(i(VS1) - i(VS2))
+RP x y 1k
+CP y 0 1.59n
+EO out 0 y 0 1
+.ends
+
+* (a) sin condensador: ganancia 20
+VIN1 in1 0 DC 0 AC 1 SIN(0 10m 1k)
+XA in1 outa p1a p8a LM386G
+
+* (b) 10 uF entre las patillas 1 y 8: ganancia 200
+VIN2 in2 0 DC 0 AC 1 SIN(0 10m 1k)
+XB in2 outb p1b p8b LM386G
+C18 p1b p8b 10u
+
+.control
+ac dec 50 1 1meg
+let ga = abs(v(outa))
+let gb = abs(v(outb))
+let gadb = db(v(outa))
+let gbdb = db(v(outb))
+meas ac g20_1k find ga at=1k
+meas ac g200_1k find gb at=1k
+meas ac g20_1k_db find gadb at=1k
+meas ac g200_1k_db find gbdb at=1k
+meas ac g200_100 find gb at=100
+meas ac g200_20 find gb at=20
+meas ac g200_10k find gb at=10k
+tran 2u 4m 0 2u
+meas tran vpa max v(outa) from=2m to=4m
+meas tran vpb max v(outb) from=2m to=4m
+let p8ohm = 3^2/(2*8)
+echo "potencia con 6 V pico a pico sobre 8 ohm (W):"
+print p8ohm
+.endc
+.end

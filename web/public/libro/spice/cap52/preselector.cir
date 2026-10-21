@@ -1,0 +1,53 @@
+* Capitulo 52, seccion «El front-end, bloque a bloque» (sec-new-52-frontend): preselector de entrada.
+* Filtro paso bajo eliptico de 5.o orden (ceros en ~10,9 y ~16,5 MHz) seguido de un paso alto eliptico de
+* 5.o orden (ceros en ~1,16 y ~1,75 MHz), entre 50 ohm, con los valores de la placa de complementos/kicad/sdr.
+* Bobinas sobre toroide T37-2 con Q = 100 a 5 MHz (resistencia serie); condensadores C0G ideales.
+* Comprueba lo que dice el texto:
+*   - perdida de insercion por debajo de 1 dB en toda la banda de 3,5 a 7,5 MHz;
+*   - onda media (550 kHz y 1,6 MHz) atenuada mas de 50 dB;
+*   - respuestas al tercer armonico del oscilador local (10,5 a 22,5 MHz) atenuadas mas de 40 dB.
+* Ejecutar: ngspice -b preselector.cir
+.param q=100 f0=5e6
+* generador de 50 ohm: 2 V de f.e.m. dan 1 V sobre carga adaptada, asi que 20log(v(out)) es S21
+VS in 0 AC 2
+RS in a 50
+* paso bajo: C en paralelo, (L || C) en serie, C en paralelo, (L || C) en serie, C en paralelo
+C10 a 0 680p
+L1 a l1r 1.024u
+RL1 l1r b {6.2832*f0*1.024u/q}
+C11 a b 91p
+C12 b 0 910p
+L2 b l2r 0.784u
+RL2 l2r c {6.2832*f0*0.784u/q}
+C13 b c 270p
+C14 c 0 510p
+* paso alto: C en serie, (L + C) a masa, C en serie, (L + C) a masa, C en serie
+C15 c d 1.2n
+L3 d l3r 2.304u
+RL3 l3r t1 {6.2832*f0*2.304u/q}
+C16 t1 0 3.6n
+C17 d e 560p
+L4 e l4r 2.304u
+RL4 l4r t2 {6.2832*f0*2.304u/q}
+C18 t2 0 8.2n
+C19 e out 820p
+RL out 0 50
+.control
+ac dec 400 300k 100meg
+let s21 = db(v(out))
+meas ac s21_550k find s21 at=0.55e6
+meas ac s21_1M6  find s21 at=1.6e6
+meas ac s21_3M5  find s21 at=3.5e6
+meas ac s21_5M   find s21 at=5e6
+meas ac s21_7M   find s21 at=7e6
+meas ac s21_7M5  find s21 at=7.5e6
+meas ac s21_10M5 find s21 at=10.5e6
+meas ac s21_15M  find s21 at=15e6
+meas ac s21_22M5 find s21 at=22.5e6
+meas ac s21_90M  find s21 at=90e6
+* worst-case loss inside the band and worst rejection over the 3rd-harmonic range
+meas ac perdida_max_banda min s21 from=3.5e6 to=7.5e6
+meas ac rechazo_min_3arm max s21 from=10.5e6 to=22.5e6
+meas ac rechazo_min_om   max s21 from=0.5e6 to=1.7e6
+.endc
+.end

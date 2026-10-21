@@ -1,0 +1,28 @@
+* fig-33.2 (sección 33.2): reductor síncrono ideal de 12 V a 5 V, L = 47 uH, fs = 300 kHz,
+* condensador de salida de 100 uF con ESR de 50 mohm, carga de 2 A (2,5 ohm).
+* Comprueba: D = 0,417 da Vout = 5 V; rizado de corriente de la bobina dI = 207 mA (el 10 % de 2 A);
+* rizado de salida de unos 10 mV, dominado por la ESR (10,3 mV) frente a 0,9 mV de la capacidad.
+* Interruptores ideales (SW) gobernados en oposición; se arranca con las condiciones iniciales del
+* régimen permanente (uic) para no simular el transitorio de arranque.
+* Ejecutar: ngspice -b fig-33.2_buck_12a5.cir
+.param fs=300k T={1/fs} D={5/12}
+VIN  in 0 DC 12
+VG1  g1 0 PULSE(0 1 0 1n 1n {D*T-1n} {T})
+VG2  g2 0 PULSE(1 0 0 1n 1n {D*T-1n} {T})
+S1   in sw g1 0 SWI
+S2   sw 0  g2 0 SWI
+L1   sw out 47u IC=2
+RESR out c 50m
+C1   c 0 100u IC=5
+RL   out 0 2.5
+.model SWI SW(Ron=1m Roff=1e7 Vt=0.5 Vh=0)
+.tran 5n 3m 2.9m 5n uic
+.control
+run
+meas tran vout_med AVG v(out) from=2.9m to=3m
+meas tran il_pp PP i(L1) from=2.9m to=3m
+meas tran il_med AVG i(L1) from=2.9m to=3m
+meas tran vout_pp PP v(out) from=2.9m to=3m
+echo "Texto: Vout = 5 V, dI = 207 mA, rizado ~10 mV (ESR) + 0,9 mV (capacidad)"
+.endc
+.end

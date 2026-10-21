@@ -1,0 +1,35 @@
+* Seccion 43.11 (ampliacion: clase D), filtro de salida LC
+* Puente completo (BTL) con L = 22 uH y C = 0,68 uF en cada rama y altavoz de 8 ohm entre
+* las dos salidas. Cada mitad ve 4 ohm a masa virtual: Q = 4*sqrt(C/L) = 0,70 (Butterworth).
+* Numeros del libro que se comprueban:
+*   frecuencia de corte 1/(2*pi*sqrt(LC)) = 41,1 kHz (-3 dB, sin pico)
+*   la respuesta depende de la carga: con el altavoz desconectado aparece la resonancia
+* Ejecutar:  ngspice -b sec-43.11_filtro_claseD.cir
+* --- puente con 8 ohm ---
+VA a 0 dc 0 ac 0.5
+VB b 0 dc 0 ac -0.5
+L1 a oa 22u
+C1 oa 0 0.68u
+L2 b ob 22u
+C2 ob 0 0.68u
+RL oa ob 8
+* --- mismo filtro sin carga (solo una rama, 1 Gohm) ---
+VC c 0 dc 0 ac 1
+L3 c oc 22u
+C3 oc 0 0.68u
+R3 oc 0 1G
+.control
+ac dec 400 1k 1Meg
+let h = mag(v(oa)-v(ob))
+let h3 = mag(v(oc))
+meas ac h1k find h at=1k
+meas ac f3db when h=0.7071 fall=1
+meas ac hmax max h
+meas ac f0 when vp(oc)=-1.5708 fall=1
+echo "Ganancia a 1 kHz (1), maximo (1 si no hay pico) y corte -3 dB (libro 41,1 kHz):"
+print h1k hmax f3db
+echo "Sin carga: resonancia (41,1 kHz) con pico muy alto:"
+meas ac h3max max h3
+print f0 h3max
+.endc
+.end

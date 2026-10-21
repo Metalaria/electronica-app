@@ -1,0 +1,38 @@
+* seccion 6.10 (El caso de los transistores en paralelo)
+* Dos transistores de potencia en paralelo con 10 A de emisor en total (5 A cada uno si
+* fueran iguales). Uno esta 25 C mas caliente, lo que equivale a una VBE 50 mV menor
+* (-2 mV/C); se modela con una fuente de 50 mV en serie con su base.
+*   - sin resistencias de emisor: el caliente acapara casi toda la corriente
+*   - con 0,22 ohm por emisor: la diferencia entre las dos corrientes es de solo
+*     ~0,23 A (50 mV / 0,22 ohm): unos 5,1 A frente a 4,9 A
+* Las bases van a masa y una fuente de 10 A fija la corriente total de emisor.
+* Ejecutar:  ngspice -b sec-6.10_paralelo.cir
+* Modelo de potencia simplificado: IS grande, beta 50, sin resistencias parasitas.
+.model QP NPN(IS=1e-11 BF=50 VAF=1e6)
+VC c 0 10
+VN neg 0 -10
+* --- sin RE: emisores unidos ---
+QA c 0 e1 QP
+VD1 bh1 0 0.05
+QB c bh1 e1 QP
+I1 e1 neg 10
+* --- con RE = 0,22 ohm por emisor ---
+QC c 0 ea QP
+REa ea e2 0.22
+VD2 bh2 0 0.05
+QD c bh2 eb QP
+REb eb e2 0.22
+I2 e2 neg 10
+.control
+op
+let ifrio1 = @qa[ie]
+let icaliente1 = @qb[ie]
+let ifrio2 = @qc[ie]
+let icaliente2 = @qd[ie]
+echo "Corriente de emisor sin RE: frio, caliente (A):"
+print ifrio1 icaliente1
+echo "Con 0,22 ohm: frio, caliente (A) y diferencia entre ambas (libro ~0,23 A):"
+let dif = abs(icaliente2) - abs(ifrio2)
+print ifrio2 icaliente2 dif
+.endc
+.end

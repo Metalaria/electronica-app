@@ -1,0 +1,24 @@
+* Problema 10.A: irrupción en la entrada de un equipo de 12 V con 470 uF de condensador de entrada.
+* Casos: sin limitador (0,1 ohm de cables y ESR), NTC fría de 5 ohm y de 10 ohm.
+* Comprueba: sin limitar, 120 A de pico con tau = 47 us; con la NTC, 2,40 A y 1,20 A de pico;
+* la energía disipada en el limitador es 1/2·C·V² = 33,8 mJ en todos los casos (no depende de R).
+* Ejecutar: ngspice -b prob-10.A.cir
+.param r=0.1
+VIN in 0 PWL(0 0 0.1u 12)
+RLIM in c {r}
+C1 c 0 470u IC=0
+.tran 0.1u 50m 0 1u UIC
+.control
+  foreach rv 0.1 5 10
+    alterparam r = $rv
+    reset
+    tran 0.1u 50m 0 1u UIC
+    echo "------ R = $rv ohm"
+    let i = (v(in) - v(c)) / $rv
+    meas tran ipico MAX i
+    meas tran tau WHEN v(c)=7.585 RISE=1
+    let er = integ(i * i * $rv)
+    meas tran energia_J FIND er AT=49m
+  end
+.endc
+.end

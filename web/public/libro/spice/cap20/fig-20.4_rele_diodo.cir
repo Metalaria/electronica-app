@@ -1,0 +1,46 @@
+* fig-20.4 y fig-20.5 / seccion 20.3 (Reles: las dos protecciones imprescindibles)
+* Rele de 12 V gobernado desde un pin de 5 V: R_B = 2,2 kohm, NPN tipo 2N3904, bobina
+* modelada como L = 0,4 H en serie con 400 ohm (30 mA), con 1 nF de capacidad parasita y
+* 25 kohm de perdidas del nucleo en paralelo (los valores del guion de la figura 20.5).
+* El pin pasa a 0 en t = 2 ms. Dos copias del circuito:
+*   A) sin diodo: la tension de colector sube a cientos de voltios (el modelo del
+*      transistor no tiene ruptura: en la realidad la ruptura colector-emisor, 40 V en un
+*      2N3904, es la que lo destruye);
+*   B) con diodo de rueda libre 1N4148: el colector queda en 12 V + ~0,7 V mientras
+*      la corriente decae (unos 2,9 ms con 0,7 V: tau*ln((I0 + Vd/R)/(Vd/R))).
+* Comprueba: corriente de bobina ~30 mA con el transistor saturado; pico sin diodo de
+* varios cientos de voltios (figura 20.5); 12,7 V con diodo.
+* Ejecutar:  ngspice -b fig-20.4_rele_diodo.cir
+.model Q2N3904 NPN(IS=6.734f XTI=3 EG=1.11 VAF=74.03 BF=416.4 NE=1.259 ISE=6.734f IKF=66.78m
++ XTB=1.5 BR=.7371 NC=2 ISC=0 IKR=0 RC=1 CJC=3.638p MJC=.3085 VJC=.75 FC=.5 CJE=4.493p
++ MJE=.2593 VJE=.75 TR=239.5n TF=301.2p ITF=.4 VTF=4 XTF=2 RB=10)
+.model D1N4148 D(IS=2.52n RS=0.568 N=1.752 CJO=4p M=0.4 TT=20n BV=100 IBV=100u)
+VCC vcc 0 12
+VPIN pin 0 PWL(0 5 2m 5 2.001m 0)
+* A) sin diodo
+RBA pin ba 2.2k
+QA ca ba 0 Q2N3904
+LA vcc la 0.4
+RLA la ca 400
+CPA vcc ca 1n
+RPA vcc ca 25k
+* B) con diodo de rueda libre
+RBB pin bb 2.2k
+QB cb bb 0 Q2N3904
+LB vcc lb 0.4
+RLB lb cb 400
+CPB vcc cb 1n
+RPB vcc cb 25k
+DB cb vcc D1N4148
+.control
+tran 0.2u 8m
+meas tran icoil find i(LA) at=1.9m
+meas tran vcesat find v(ca) at=1.9m
+meas tran vpicoA max v(ca) from=2m to=3m
+meas tran vB find v(cb) at=3m
+meas tran tB when i(LB)=0.1m fall=1
+let tdecay = tB - 2m
+print tdecay
+echo "Libro/figura 20.5: 30 mA; pico sin diodo de cientos de V; con diodo 12,7 V durante ~2,9 ms"
+.endc
+.end

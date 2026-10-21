@@ -1,0 +1,52 @@
+* Problema 7.C (sección 7.11): fuente de corriente con un MOSFET de k = 0,5 A/V2 y Vth entre
+* 1,5 y 2,5 V. Tres montajes, cada uno con los tres valores de Vth:
+*   a) lazo abierto, VGS = 3 V, sin resistencia de fuente: 562,5 / 250 / 62,5 mA (factor 9);
+*   b) RS = 1 Ohm con la puerta a 3 V: 338 / 172 / 50 mA (factor 6,7; 1 Ohm < 1/gm = 2 Ohm);
+*   c) RS = 4 Ohm con la puerta a 4 V (250 mA típicos): 335 / 250 / 169 mA (factor 2).
+* El drenador va a 12 V a través de un amperímetro (fuente de 0 V) para medir ID en saturación.
+* Ejecutar: ngspice -b prob-7.C.cir
+.model NLO NMOS (LEVEL=1 VTO=1.5 KP=0.5)
+.model NTY NMOS (LEVEL=1 VTO=2.0 KP=0.5)
+.model NHI NMOS (LEVEL=1 VTO=2.5 KP=0.5)
+VDD vdd 0 DC 12
+VG3 g3 0 DC 3
+VG4 g4 0 DC 4
+* a) open loop
+VAL vdd dal 0
+MAL dal g3 0 0 NLO W=1 L=1
+VAT vdd dat 0
+MAT dat g3 0 0 NTY W=1 L=1
+VAH vdd dah 0
+MAH dah g3 0 0 NHI W=1 L=1
+* b) RS = 1 ohm, gate at 3 V
+VBL vdd dbl 0
+MBL dbl g3 sbl sbl NLO W=1 L=1
+RBL sbl 0 1
+VBT vdd dbt 0
+MBT dbt g3 sbt sbt NTY W=1 L=1
+RBT sbt 0 1
+VBH vdd dbh 0
+MBH dbh g3 sbh sbh NHI W=1 L=1
+RBH sbh 0 1
+* c) RS = 4 ohm, gate at 4 V
+VCL vdd dcl 0
+MCL dcl g4 scl scl NLO W=1 L=1
+RCL scl 0 4
+VCT vdd dct 0
+MCT dct g4 sct sct NTY W=1 L=1
+RCT sct 0 4
+VCH vdd dch 0
+MCH dch g4 sch sch NHI W=1 L=1
+RCH sch 0 4
+.control
+  op
+  echo "a) lazo abierto, VGS = 3 V: ID (mA) con Vth = 1,5 / 2 / 2,5 V"
+  print i(VAL)*1000 i(VAT)*1000 i(VAH)*1000
+  echo "b) RS = 1 ohm, VG = 3 V: ID (mA)"
+  print i(VBL)*1000 i(VBT)*1000 i(VBH)*1000
+  echo "c) RS = 4 ohm, VG = 4 V: ID (mA)"
+  print i(VCL)*1000 i(VCT)*1000 i(VCH)*1000
+  echo "Factores max/min a), b), c):"
+  print i(VAL)/i(VAH) i(VBL)/i(VBH) i(VCL)/i(VCH)
+.endc
+.end

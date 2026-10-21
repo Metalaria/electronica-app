@@ -1,0 +1,45 @@
+* fig-33.4 (forward) y tabla de la sección 33.5: forward con bobinado de desmagnetización 1:1.
+* Comprueba: el interruptor soporta 2 x Vin mientras el núcleo se desmagnetiza; la corriente magnetizante
+* vuelve a cero antes del ciclo siguiente porque D < 0,5; la salida es n*D*Vin menos la caída del diodo
+* (como un reductor alimentado con la tensión del secundario).
+* Valores no dados por el libro (típicos): Vin = 48 V, D = 0,45, 100 kHz, Lm = 1 mH, Np:Nr:Ns = 1:1:0,25,
+* bobina de salida de 22 uH, 220 uF, carga de 1 ohm.
+* Ejecutar: ngspice -b fig-33.4_forward.cir
+.param fs=100k T={1/fs} D=0.45
+VIN  in 0 DC 48
+VG   g 0 PULSE(0 1 0 5n 5n {D*T-5n} {T})
+VSP  in p1 DC 0
+* primario (punto en p1): +Vin mientras conduce el interruptor
+LP   p1 dr 1m
+* bobinado de desmagnetización (punto en tierra): con el interruptor abierto conduce DR hacia la entrada
+* y fija la tensión del primario en -Vin, es decir, el drenador en 2*Vin
+LR   0 r 1m
+DR   r in DFAST
+* secundario (punto en s)
+LS   s 0 {1m*0.25*0.25}
+K1   LP LR 0.999
+K2   LP LS 0.999
+K3   LR LS 0.999
+S1   dr 0 g 0 SWI
+CDS  dr 0 100p
+D1   s x DFAST
+D2   0 x DFAST
+LO   x out 22u IC=4.6
+CO   out 0 220u IC=4.6
+RL   out 0 1
+.model DFAST D(IS=1n N=1.5 RS=10m TT=10n CJO=50p BV=600)
+.model SWI SW(Ron=20m Roff=1e8 Vt=0.5 Vh=0)
+.options method=gear
+.tran 5n 3m 2.9m 5n uic
+.control
+run
+* ventana alineada con el ciclo 290
+let vdr = v(dr)
+meas tran vdr_desmag FIND v(dr) AT=2.9055m
+meas tran vout_med AVG v(out) from=2.9m to=3m
+let imag = i(VSP)
+meas tran ip_al_final FIND i(VSP) AT=2.9095m
+echo "Texto: el interruptor soporta 2 x Vin = 96 V; la corriente del primario vuelve a cero (D < 0,5)"
+echo "Vout esperada: 0,25*0,45*48 = 5,4 V menos la caída del diodo (~0,9 V con 4,4 A) -> ~4,5 V"
+.endc
+.end

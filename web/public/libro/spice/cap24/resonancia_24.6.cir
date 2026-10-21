@@ -1,0 +1,39 @@
+* Sección 24.6 (deducción «Resonancia y factor de calidad»): RLC serie con R = 50 ohm, L = 10 mH, C = 100 nF.
+* Comprueba: f0 = 5032,9 Hz; puntos de -3 dB en 4650,7 y 5446,5 Hz; BW = 795,8 Hz = f0/Q (Q = 6,32);
+* y en el tiempo, con zeta = 0,079, el sobreimpulso ante un escalón es del 78 %.
+* También el ejemplo de onda media: 100 uH, 100 pF y 10 ohm -> f0 = 1,59 MHz, Q = 100, BW = 15,9 kHz,
+* y una emisora adyacente a 9 kHz solo cae unos 3,6 dB.
+* Ejecutar: ngspice -b resonancia_24.6.cir
+V1 in 0 AC 1 PWL(0 0 1n 1)
+R1 in a 50
+L1 a b 10m
+C1 b 0 100n IC=0
+V2 m 0 AC 1
+R2 m n 10
+L2 n p 100u
+C2 p 0 100p
+.control
+ac lin 20001 4000 6000
+let i = mag(i(V1))
+meas ac imax MAX i
+meas ac f0 WHEN vp(b)=-1.5707963 CROSS=1
+let idb = db(i/0.02)
+meas ac f1 WHEN idb=-3.0103 RISE=1
+meas ac f2 WHEN idb=-3.0103 FALL=1
+let bw = f2 - f1
+print bw
+ac lin 20001 1.55e6 1.63e6
+let im = mag(i(V2))/0.1
+meas ac fm1 WHEN im=0.70710678 RISE=1
+meas ac fm2 WHEN im=0.70710678 FALL=1
+let bwm = fm2 - fm1
+print bwm
+ac lin 1 1.600549e6 1.600549e6
+let adj = db(mag(i(V2))/0.1)
+print adj
+tran 0.1u 3m uic
+meas tran pico MAX v(b)
+let sobre = 100*(pico-1)
+print sobre
+.endc
+.end

@@ -1,0 +1,90 @@
+* fig-10.9 (sección 10.5), deducción «Gestión térmica», problema 10.B y ejercicios 10.3 y 10.6:
+* la analogía térmica resuelta como circuito. Corriente = potencia (W), tensión = temperatura (°C),
+* resistencia = resistencia térmica (°C/W); la fuente de tensión fija la temperatura ambiente.
+* Comprueba:
+*   TO-220 con 5 W, 40 °C, Rjc 2, Rcs 0,5 (pasta), Rsa 8: unión 92,5, cápsula 82,5, disipador 80 °C;
+*   sin pasta (Rcs 1,5): 97,5 °C; sin disipador (Rja 62): 350 °C; 1 W sin disipador: 102 °C;
+*   deducción: 15 W, Rjc 1, Rcs 0,5, Rsa 2,5: 100 °C; con Rsa 5,83 y 3,17 la unión llega a 150 y 110 °C;
+*   problema 10.B: 7 W, Rjc 3, Rsa 5: 99,5 °C (pasta), 106,5 °C (sin pasta), 124 °C (mica sin pasta, 4 °C/W);
+*   ejercicio 10.3: 10 W, 1,5 + 0,3 + 2, 35 °C: 73 °C; ejercicio 10.6: 4 W, 2,5 + 12,5, 40 °C: 100 °C.
+* Ejecutar: ngspice -b fig-10.9.cir
+.param p=5 rjc=2 rcs=0.5 rsa=8 tamb=40
+IP 0 j DC {p}
+RJC j c {rjc}
+RCS c s {rcs}
+RSA s a {rsa}
+VAMB a 0 DC {tamb}
+.control
+  op
+  echo "TO-220, 5 W, pasta y disipador de 8 °C/W: Tj, Tc, Ts (°C)"
+  print v(j) v(c) v(s)
+  alterparam rcs = 1.5
+  reset
+  op
+  echo "Sin pasta (Rcs = 1,5): Tj (°C)"
+  print v(j)
+  * no heatsink: the whole junction-to-ambient path is 62 °C/W
+  alterparam rjc = 62
+  alterparam rcs = 1e-6
+  alterparam rsa = 1e-6
+  reset
+  op
+  echo "Sin disipador (Rja = 62): Tj (°C) con 5 W"
+  print v(j)
+  alterparam p = 1
+  reset
+  op
+  echo "Sin disipador, 1 W: Tj (°C)"
+  print v(j)
+  * worked check of the derivation
+  alterparam p = 15
+  alterparam rjc = 1
+  alterparam rcs = 0.5
+  alterparam rsa = 2.5
+  reset
+  op
+  echo "Deducción, 15 W, Rsa 2,5: Tj (°C)"
+  print v(j)
+  alterparam rsa = 5.8333
+  reset
+  op
+  echo "Rsa = 5,83 °C/W: Tj (°C), debe ser 150"
+  print v(j)
+  alterparam rsa = 3.1667
+  reset
+  op
+  echo "Rsa = 3,17 °C/W: Tj (°C), debe ser 110"
+  print v(j)
+  * problem 10.B
+  alterparam p = 7
+  alterparam rjc = 3
+  alterparam rsa = 5
+  foreach r 0.5 1.5 4
+    alterparam rcs = $r
+    reset
+    op
+    echo "Problema 10.B, Rcs = $r: Tj (°C)"
+    print v(j)
+  end
+  * exercise 10.3
+  alterparam p = 10
+  alterparam rjc = 1.5
+  alterparam rcs = 0.3
+  alterparam rsa = 2
+  alterparam tamb = 35
+  reset
+  op
+  echo "Ejercicio 10.3: Tj (°C)"
+  print v(j)
+  * exercise 10.6
+  alterparam p = 4
+  alterparam rjc = 2.5
+  alterparam rcs = 1e-6
+  alterparam rsa = 12.5
+  alterparam tamb = 40
+  reset
+  op
+  echo "Ejercicio 10.6, disipador de 12,5 °C/W: Tj (°C)"
+  print v(j)
+.endc
+.end

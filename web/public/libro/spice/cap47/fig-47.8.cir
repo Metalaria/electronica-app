@@ -1,0 +1,45 @@
+* fig-47.8 (sección 47.5): impedancia térmica transitoria y el ejemplo del pulso de 200 W.
+* Z_th(j-c) del MOSFET como red de Foster de cuatro celdas (los mismos valores que dibuja la figura:
+* tau = 30 us, 0,6 ms, 8 ms y 80 ms; R = 0,0587, 0,12, 0,35 y 0,4713 °C/W, total R_th(j-c) = 1 °C/W).
+* Analogía térmica: tensión = temperatura (°C), corriente = potencia (W).
+* Parte 1: escalón de 1 W -> la tensión a los 100 us es Z_th(100 us); el texto usa 0,08 °C/W.
+* Parte 2: tren de pulsos de 200 W, 100 us, ciclo de trabajo 1 % (periodo 10 ms), con la cápsula
+* unida al ambiente (40 °C) por Rcs + Rsa = 2,5 °C/W y una masa térmica grande (disipador).
+* Las condiciones iniciales se ponen en el régimen medio (2 W) para llegar antes al régimen periódico.
+* Z_th a 100 ms (0,86 °C/W) muestra cómo la curva se acerca a R_th(j-c) = 1 °C/W en pulsos largos.
+* Comprueba: temperatura de pico de la unión unos 62-63 °C (el texto da 40 + 7 + 16 = 63 °C, un
+* método algo conservador: el cálculo exacto con la red da unos 62,2-62,4 °C), frente a 240 °C con el
+* modelo estacionario.
+* Ejecutar: ngspice -b fig-47.8.cir
+* --- part 1: 1 W step into the Foster network
+IPS 0 n0 PWL(0 0 1n 1)
+R1 n0 n1 0.058737
+C1 n0 n1 {30e-6/0.058737}
+R2 n1 n2 0.12
+C2 n1 n2 {0.6e-3/0.12}
+R3 n2 n3 0.35
+C3 n2 n3 {8e-3/0.35}
+R4 n3 0 0.471263
+C4 n3 0 {80e-3/0.471263}
+* --- part 2: pulse train, junction j, case c
+IPP 0 j PULSE(0 200 1m 0.1u 0.1u 99.8u 10m)
+RQ1 j k1 0.058737
+CD1 j k1 {30e-6/0.058737}
+RQ2 k1 k2 0.12
+CD2 k1 k2 {0.6e-3/0.12}
+RQ3 k2 k3 0.35
+CD3 k2 k3 {8e-3/0.35}
+RQ4 k3 c 0.471263
+CD4 k3 c {80e-3/0.471263}
+RCA c a 2.5
+CHS c 0 20
+VTA a 0 DC 40
+.ic v(j)=47 v(k1)=46.882526 v(k2)=46.642526 v(k3)=45.942526 v(c)=45 v(a)=40
+.control
+  tran 0.5u 101m 0 1u uic
+  meas tran zth100u FIND v(n0) AT=100u
+  meas tran zth100m FIND v(n0) AT=100m
+  meas tran tjpico MAX v(j) from=91m to=101m
+  meas tran tcmedia AVG v(c) from=91m to=101m
+.endc
+.end

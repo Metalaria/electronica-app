@@ -15,7 +15,8 @@
     tomoDe,
   } from '../lib/datos';
   import { colorBloque } from '../lib/color';
-  import { trocear } from '../lib/trozos';
+  import { anchoColumna, trozoDe, trozosDe } from '../lib/trozos';
+  import { alInactivo, precargar, refsCitadas } from '../lib/precarga';
   import Bloques from './Bloques.svelte';
   import Icono from './Icono.svelte';
 
@@ -48,13 +49,101 @@
   // ------------------------------------------------------------------ chunks
 
   // Chunks are computed once per part (estimates use the size at load time; real sizes win later).
+  // The prefetcher may already have computed them in idle time (same cache).
   const trozos = $derived.by(() => {
     if (!datos) return [];
     const tam = untrack(() => usuario.prefs.tam);
-    const lateral = untrack(() => app.movil) ? 0 : 308;
-    const ancho = Math.max(260, Math.min(40 * tam, window.innerWidth - lateral - 64));
-    return trocear(datos.bloques, ancho, tam);
+    return trozosDe(datos.bloques, anchoColumna(tam, untrack(() => app.movil)), tam);
   });
+
+  // ------------------------------------------------------------------ progressive rendering
+  //
+  // Rendering a whole chapter at once costs seconds on a slow phone (and every inline equation it creates
+  // loads and restyles the page). The chunk the reader is going to see is rendered first, with its
+  // neighbours; the others follow in idle time, nearest first. A chunk not rendered yet keeps its estimated
+  // height, and chunks off screen are skipped by `content-visibility`, so filling them does not move the page.
+
+  let listos = $state<boolean[]>([]);
+  let cancelarRelleno: (() => void) | null = null;
+
+  /** Chunk that the current route will show. */
+  function trozoObjetivo(): number {
+    if (ruta.vista !== 'parte' || ruta.parte !== parte) return 0;
+    if (ruta.pos) return trozoDe(trozos, { b: ruta.pos.b }) ?? 0;
+    if (ruta.y != null) {
+      let y = 0;
+      for (let k = 0; k < trozos.length; k++) {
+        y += trozos[k]!.estimado;
+        if (y > ruta.y) return k;
+      }
+      return Math.max(0, trozos.length - 1);
+    }
+    if (ruta.ancla) return trozoDe(trozos, { ids: candidatosDeRef(ruta.ancla) }) ?? 0;
+    const g = usuario.posiciones[parte];
+    return g && g.b > 0 ? (trozoDe(trozos, { b: g.b }) ?? 0) : 0;
+  }
+
+  /** Renders chunk k now (its neighbours follow in idle time); resolves when it is in the DOM. */
+  async function asegurar(k: number): Promise<void> {
+    if (k < 0 || k >= trozos.length || listos[k]) return;
+    listos[k] = true;
+    await tick();
+  }
+
+  /** Index of the chunk on screen (or the target while nothing is laid out yet). */
+  function trozoVisible(): number {
+    const t = trozoActual(barra + 8);
+    const k = t ? elTrozos().indexOf(t) : -1;
+    return k >= 0 ? k : trozoObjetivo();
+  }
+
+  function rellenar() {
+    cancelarRelleno?.();
+    cancelarRelleno = alInactivo(async (quedan) => {
+      cancelarRelleno = null;
+      const centro = trozoVisible();
+      let n = 0;
+      // Nearest pending chunks first; several per slice while there is idle time left.
+      for (let d = 0; d < trozos.length && quedan() > 3; d++) {
+        for (const k of [centro + d, centro - d]) {
+          if (k >= 0 && k < trozos.length && !listos[k]) {
+            listos[k] = true;
+            n++;
+          }
+        }
+        if (n >= 2) break;
+      }
+      if (n) await tick();
+      if (listos.length && listos.some((x) => !x)) rellenar();
+    }, 300);
+  }
+
+  $effect(() => {
+    const ts = trozos;
+    untrack(() => {
+      const k = ts.length ? trozoObjetivo() : 0;
+      listos = ts.map((_, i) => i === k);
+      if (ts.length) rellenar();
+    });
+    return () => {
+      cancelarRelleno?.();
+      cancelarRelleno = null;
+    };
+  });
+
+  // ------------------------------------------------------------------ prefetch
+
+  let ultimaPrecarga = '';
+
+  /** Prepares the parts referenced around the reading position (and the next part) for an instant jump. */
+  function programarPrecarga() {
+    const k = trozoVisible();
+    const clave = `${k}`;
+    if (clave === ultimaPrecarga) return;
+    ultimaPrecarga = clave;
+    const bloques = [...(trozos[k]?.bloques ?? []), ...(trozos[k + 1]?.bloques ?? [])];
+    precargar(refsCitadas(bloques), siguiente ?? null, parte, usuario.prefs.tam, app.movil);
+  }
 
   // ------------------------------------------------------------------ geometry helpers
 
@@ -142,10 +231,12 @@
     return null;
   }
 
-  function posicionar() {
+  async function posicionar() {
     if (!cuerpo) return;
     soltar();
     medirBarra();
+    await asegurar(trozoObjetivo());
+    if (!cuerpo) return;
     if (ruta.pos) {
       const el = bloque(ruta.pos.b);
       if (el) return irA(el, ruta.pos.off);
@@ -204,6 +295,7 @@
     }
 
     const ahora = performance.now();
+    if (listos.length) programarPrecarga();
     if (ahora - ultimoGuardado > 700) {
       ultimoGuardado = ahora;
       const a = anclaActual();
@@ -233,11 +325,13 @@
     if (href === location.hash) {
       // Same route: no new history entry, just go there again.
       ev.preventDefault();
-      const el = buscarDestino(ruta.ancla);
-      if (el) {
-        irA(el);
-        destacar(el);
-      }
+      void asegurar(trozoObjetivo()).then(() => {
+        const el = buscarDestino(ruta.ancla);
+        if (el) {
+          irA(el);
+          destacar(el);
+        }
+      });
       return;
     }
     const s = app.seccion?.parte === parte ? app.seccion : null;
@@ -326,10 +420,12 @@
     void ruta.n;
     untrack(() => {
       if (ruta.vista !== 'parte' || ruta.parte !== parte) return;
-      tick().then(() => {
-        posicionar();
-        actualizar();
-      });
+      tick()
+        .then(posicionar)
+        .then(() => {
+          actualizar();
+          programarPrecarga();
+        });
     });
   });
 
@@ -397,9 +493,16 @@
   {:else}
     <!-- svelte-ignore a11y_click_events_have_key_events, a11y_no_static_element_interactions -->
     <div class="cuerpo texto-libro" bind:this={cuerpo} onclick={clic}>
-      {#each trozos as t (t.inicio)}
-        <div class="trozo" data-seccion={t.seccion ?? undefined} style:contain-intrinsic-size={`auto ${t.estimado}px`}>
-          <Bloques bloques={t.bloques} {parte} raiz desde={t.inicio} />
+      {#each trozos as t, k (t.inicio)}
+        <div
+          class="trozo"
+          data-seccion={t.seccion ?? undefined}
+          style:contain-intrinsic-size={`auto ${t.estimado}px`}
+          style:min-height={listos[k] ? undefined : `${t.estimado}px`}
+        >
+          {#if listos[k]}
+            <Bloques bloques={t.bloques} {parte} raiz desde={t.inicio} />
+          {/if}
         </div>
       {/each}
     </div>

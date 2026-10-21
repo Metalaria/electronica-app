@@ -1,0 +1,34 @@
+* Figura 9.4 (sección 9.3, «Universalidad»): NOT, AND y OR construidas solo con NAND de dos entradas.
+* Cada NAND es una fuente de comportamiento ideal (0/5 V, umbral 2,5 V). A y B recorren las cuatro
+* combinaciones 00, 01, 10, 11 (un intervalo de 1 us cada una).
+* Comprueba: NOT = NAND con las entradas unidas; AND = NAND + NAND-inversor; OR = NAND de las entradas
+* negadas, que por De Morgan es A + B (y la tabla del ejercicio 9.2: (A'·B')' = A + B).
+* Ejecutar: ngspice -b fig-9.4-nand.cir
+.func nand(x,y) {5*(1 - (u(x-2.5)*u(y-2.5)))}
+VA a 0 PWL(0 0 1.999u 0 2u 5 4u 5)
+VB b 0 PWL(0 0 0.999u 0 1u 5 1.999u 5 2u 0 2.999u 0 3u 5 4u 5)
+* NOT: both inputs tied
+Bnot nota 0 V = nand(v(a), v(a))
+* AND: NAND then NAND-inverter
+Bn1 n1 0 V = nand(v(a), v(b))
+Band yand 0 V = nand(v(n1), v(n1))
+* OR: invert each input with a NAND, then NAND the results
+Bia ia 0 V = nand(v(a), v(a))
+Bib ib 0 V = nand(v(b), v(b))
+Bor yor 0 V = nand(v(ia), v(ib))
+* reference XOR from the sum of products of section 9.1, A'B + AB'
+Bxor yxor 0 V = 5*((1-u(v(a)-2.5))*u(v(b)-2.5) + u(v(a)-2.5)*(1-u(v(b)-2.5)))
+.tran 10n 4u
+.control
+  run
+  echo "Filas AB = 00, 01, 10, 11 (instantes 0,5 / 1,5 / 2,5 / 3,5 us). 5 = 1 lógico, 0 = 0 lógico."
+  foreach tt 0.5u 1.5u 2.5u 3.5u
+    meas tran a_$tt find v(a) at=$tt
+    meas tran b_$tt find v(b) at=$tt
+    meas tran not_$tt find v(nota) at=$tt
+    meas tran and_$tt find v(yand) at=$tt
+    meas tran or_$tt find v(yor) at=$tt
+    meas tran xor_$tt find v(yxor) at=$tt
+  end
+.endc
+.end

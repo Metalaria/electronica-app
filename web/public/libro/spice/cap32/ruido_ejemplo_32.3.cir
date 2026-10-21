@@ -1,0 +1,42 @@
+* Seccion 32.3: "Un calculo completo, como ejemplo" y "El ancho de banda equivalente de ruido".
+* (1) Fuente de 1 kohm, operacional de 5 nV/rtHz y 1 pA/rtHz, ganancia 100 (no inversor ideal:
+*     VCVS de ganancia 100, sin resistencias de realimentacion, como en el texto), T = 300 K.
+*     Texto: 6,5 nV/rtHz; en 10 kHz con banda de ruido 1,57 x: 0,81 uV a la entrada, 81 uV a la salida.
+* (2) Banda de ruido de un filtro RC de un polo: R = 1 kohm, C = 15,92 nF (fc = 10 kHz). El ruido
+*     integrado a la salida debe ser sqrt(kT/C) = densidad x sqrt(1,57 fc), no densidad x sqrt(fc).
+* Ejecutar:  ngspice -b ruido_ejemplo_32.3.cir
+* Resultado (ngspice-42): (1) 6,53 nV/rtHz, 0,818 uV, 81,8 uV.
+*   (2) integrado de 1 Hz a 1 GHz: 0,510 uV = 4,07 nV x sqrt(15 708 Hz) (0,510 uV); con sqrt(fc)
+*   saldria 0,407 uV, un 20 % menos.
+.options temp=27
+.param kb=1.380649e-23 tk=300.15
+.param rnorm={1e-18/(4*kb*tk)}
+Rn1 n1 0 {rnorm}
+Rn2 n2 0 {rnorm}
+Vsig vs 0 DC 0 AC 1
+Rs vs a 1k
+Een b a n1 0 5
+Gin 0 a n2 0 1e-3
+E1 out 0 b 0 100
+* filtro RC independiente para la banda de ruido
+Vz z 0 DC 0 AC 1
+Rf z f 1k
+Cf f 0 15.915n
+.control
+noise v(out) vsig lin 2 1k 1.001k
+setplot noise1
+let ein = inoise_spectrum[0]*1e9
+let vin_rms = ein*1e-9*sqrt(1.5707963*10k)
+let vout_rms = vin_rms*100
+print ein vin_rms vout_rms
+noise v(f) vz dec 50 1 1g
+setplot noise4
+print onoise_total
+setplot noise3
+let dens = onoise_spectrum[0]
+print dens
+let con_157 = dens*sqrt(1.5707963*10k)
+let con_fc = dens*sqrt(10k)
+print con_157 con_fc
+.endc
+.end

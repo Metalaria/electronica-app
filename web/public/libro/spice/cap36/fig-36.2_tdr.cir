@@ -1,0 +1,33 @@
+* Sección 36.2 y figura 36.2 (izquierda): reflectometría en el dominio del tiempo (TDR).
+* Generador de escalón de 1 V con 50 Ohm de salida, línea de 50 Ohm sin pérdidas con 2 ns de retardo
+* (ida y vuelta 4 ns), y cuatro terminaciones: adaptada (50 Ohm), abierta, en corto y 75 Ohm.
+* En el origen se ve primero el escalón incidente de 0,5 V y, tras la ida y vuelta, 0,5*(1 + Gamma):
+*   adaptada 0,5 V ; abierta 1,0 V (Gamma = +1, duplica) ; corto 0 V (Gamma = -1, anula) ;
+*   75 Ohm sobre 50: Gamma = 25/125 = +0,2 -> 0,6 V (se refleja el 4 % de la potencia, VSWR 1,5).
+* Ejecutar: ngspice -b fig-36.2_tdr.cir
+VS g 0 PULSE(0 1 1n 50p 50p 100n 200n)
+RSM g om 50
+TM om 0 em 0 Z0=50 TD=2n
+RLM em 0 50
+RSO g oo 50
+TO oo 0 eo 0 Z0=50 TD=2n
+RLO eo 0 1G
+RSC g oc 50
+TC oc 0 ec 0 Z0=50 TD=2n
+RLC ec 0 1m
+RS7 g o7 50
+T7 o7 0 e7 0 Z0=50 TD=2n
+RL7 e7 0 75
+.control
+  tran 10p 12n
+  meas tran inc  find v(om) at=3n
+  meas tran Vadapt find v(om) at=8n
+  meas tran Vabierta find v(oo) at=8n
+  meas tran Vcorto find v(oc) at=8n
+  meas tran V75 find v(o7) at=8n
+  meas tran Vextremo_abierto find v(eo) at=8n
+  meas tran t_refl when v(oo)=0.75 rise=1
+  echo "Escalón incidente 0,5 V; tras la ida y vuelta: 0,5 / 1,0 / 0 / 0,6 V; en el extremo abierto, 1,0 V"
+  echo "La reflexión llega a 1 ns + 4 ns = 5 ns (instante de cruce de 0,75 V en la línea abierta)"
+.endc
+.end

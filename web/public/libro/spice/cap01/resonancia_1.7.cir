@@ -1,0 +1,61 @@
+* Sección 1.7 (Ec. 14): resonancia.
+* (a) Tanque serie de 100 uH y 100 pF con 10 ohm de pérdidas: f0 = 1,592 MHz, Z0 = sqrt(L/C) = 1000 ohm,
+*     Q = 100, ancho de banda f0/Q = 15,9 kHz; en resonancia la tensión en C es Q veces la aplicada.
+* (b) 1 mH y 1 uF: f0 = 5,03 kHz.
+* (c) Malla serie de 10 mH y 100 nF: mínimo de |Z| en 5032,9 Hz.
+* (d) Paralelo de C = 100 nF con L = 10 mH y rL = 50 ohm en serie con la bobina: máximo de |Z| en
+*     5032,2 Hz y factor de potencia unidad (fase nula) en 4969,6 Hz.
+* (e) El mismo tanque con rL = 500 ohm: no hay máximo de |Z| (decrece desde 500 ohm en continua).
+* Ejecutar: ngspice -b resonancia_1.7.cir
+* (a) fuente de 1 V en serie con R, L y C
+VA  a1 0 AC 1
+RA  a1 a2 10
+LA  a2 a3 100u
+CA  a3 0 100p
+* (b)
+VB  b1 0 AC 1
+RB  b1 b2 1
+LB  b2 b3 1m
+CB  b3 0 1u
+* (c) malla serie con 1 ohm de sonda de corriente
+VC  c1 0 AC 1
+RC  c1 c2 1
+LC  c2 c3 10m
+CC  c3 0 100n
+* (d) tanque paralelo excitado con 1 A: v(d1) = Z
+ID  0 d1 AC 1
+CD  d1 0 100n
+RLD d1 d2 50
+LD  d2 0 10m
+* (e) rL = 500 ohm
+IE  0 e1 AC 1
+CE  e1 0 100n
+RLE e1 e2 500
+LE  e2 0 10m
+.control
+ac lin 200001 1.50Meg 1.68Meg
+let ia = mag(i(VA))
+meas ac f0a MAX_AT ia
+meas ac imax MAX ia
+let q = mag(v(a3))
+meas ac vc_res MAX q
+let ib3 = imax/sqrt(2)
+meas ac flo WHEN ia=ib3 RISE=1
+meas ac fhi WHEN ia=ib3 FALL=1
+let bw = fhi-flo
+print bw
+ac lin 100001 4.5k 5.5k
+let ib = mag(i(VB))
+meas ac f0b MAX_AT ib
+let ic = mag(i(VC))
+meas ac f0c MAX_AT ic
+let zd = mag(v(d1))
+meas ac fzmax MAX_AT zd
+let ph = ph(v(d1))
+meas ac fpf WHEN ph=0
+ac dec 2000 10 1Meg
+let ze = mag(v(e1))
+meas ac fzmax_e MAX_AT ze
+meas ac zmax_e MAX ze
+.endc
+.end

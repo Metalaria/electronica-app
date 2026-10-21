@@ -1,0 +1,614 @@
+<script lang="ts">
+  // One simulation: a netlist of the book (with its description, sliders and link back to the text) or a
+  // free-form circuit («nuevo»). The netlist is editable; sliders rewrite it and re-run after a short pause.
+  import { onDestroy, onMount, untrack } from 'svelte';
+  import type { NetlistSpice } from '../../simulador/tipos';
+  import { cargarIndiceSpice, cargarNetlist, rotuloRef } from '../../simulador/datos.svelte';
+  import { motor, detener, precalentarMotor, simularTexto, SimulacionCancelada } from '../../simulador/cliente.svelte';
+  import type { Simulacion } from '../../simulador/motor/simular.ts';
+  import { aplicarParametro, listarParametros } from '../../simulador/motor/netlist.ts';
+  import { rutaDeRef, rotuloParte } from '../../lib/datos';
+  import { formatoSI } from '../grafica';
+  import Editor from './Editor.svelte';
+  import Parametros from './Parametros.svelte';
+  import Resultados from './Resultados.svelte';
+  import Icono from '../Icono.svelte';
+
+  let { id }: { id: string } = $props();
+
+  const libre = $derived(id === 'nuevo');
+  const CLAVE_LIBRE = 'epa:circuito';
+  const EJEMPLO = `* Filtro RC paso bajo (ejemplo)
+* La primera línea es siempre el título.
+V1 in 0 DC 0 AC 1 PULSE(0 5 0 1u 1u 0.5m 1m)
+R1 in out 1k
+C1 out 0 100n
+.control
+  ac dec 50 10 1meg
+  meas ac fc WHEN vdb(out)=-3
+  tran 5u 3m
+  meas tran vmax MAX v(out)
+.endc
+.end
+`;
+
+  let n = $state<NetlistSpice | null>(null);
+  let original = $state('');
+  let texto = $state('');
+  let cargando = $state(true);
+  let errorCarga = $state('');
+  let resultado = $state<Simulacion | null>(null);
+  let referencia = $state<Simulacion | null>(null);
+  let errorSim = $state('');
+  let ahora = $state(0);
+  let rangos = $state<Record<string, { min: number; max: number; original: number }>>({});
+  let verDescripcion = $state(false);
+  let verSalida = $state(false);
+
+  const parametros = $derived(listarParametros(texto));
+  const modificada = $derived(!libre && texto !== original);
+  const ejecutando = $derived(motor.fase !== 'inactivo');
+
+  // New parameters (typed in the editor) get a range around their first value.
+  $effect(() => {
+    const ps = parametros;
+    untrack(() => {
+      for (const p of ps) if (!rangos[p.id]) rangos[p.id] = { min: p.min, max: p.max, original: p.valor };
+    });
+  });
+
+  async function cargar() {
+    cargando = true;
+    errorCarga = '';
+    resultado = null;
+    referencia = null;
+    errorSim = '';
+    try {
+      if (libre) {
+        n = null;
+        let guardado = '';
+        try {
+          guardado = localStorage.getItem(CLAVE_LIBRE) ?? '';
+        } catch {
+          /* private mode: start empty */
+        }
+        texto = original = guardado;
+        rangos = {};
+      } else {
+        const indice = await cargarIndiceSpice();
+        const x = indice?.netlists[id];
+        if (!x) throw new Error('No existe esa netlist.');
+        n = x;
+        const t = await cargarNetlist(x);
+        original = texto = t;
+        rangos = Object.fromEntries(x.parametros.map((p) => [p.id, { min: p.min, max: p.max, original: p.valor }]));
+        // Run at once, except what this engine cannot do or would take long.
+        if (x.motor.estado !== 'no-disponible' && !x.motor.pesada) void simular();
+      }
+    } catch (e) {
+      errorCarga = e instanceof Error ? e.message : String(e);
+    } finally {
+      cargando = false;
+    }
+  }
+
+  $effect(() => {
+    void id;
+    untrack(cargar);
+  });
+
+  async function simular() {
+    if (!texto.trim()) {
+      errorSim = 'La netlist está vacía.';
+      return;
+    }
+    errorSim = '';
+    try {
+      const r = await simularTexto(texto);
+      resultado = r;
+    } catch (e) {
+      if (e instanceof SimulacionCancelada) return;
+      errorSim = e instanceof Error ? e.message : String(e);
+    }
+  }
+
+  let pausa: ReturnType<typeof setTimeout> | null = null;
+  function programar(ms = 280) {
+    if (pausa) clearTimeout(pausa);
+    pausa = setTimeout(() => {
+      pausa = null;
+      void simular();
+    }, ms);
+  }
+
+  function cambiarParametro(pid: string, valor: number) {
+    texto = aplicarParametro(texto, pid, valor);
+    programar();
+  }
+
+  // The free-form circuit is kept on this device.
+  let guardarLibre: ReturnType<typeof setTimeout> | null = null;
+  $effect(() => {
+    const t = texto;
+    if (!libre || cargando) return;
+    if (guardarLibre) clearTimeout(guardarLibre);
+    guardarLibre = setTimeout(() => {
+      try {
+        localStorage.setItem(CLAVE_LIBRE, t);
+      } catch {
+        /* storage unavailable */
+      }
+    }, 600);
+  });
+
+  // Elapsed time while running.
+  let reloj: ReturnType<typeof setInterval> | null = null;
+  $effect(() => {
+    if (motor.fase === 'simulando' && !reloj) {
+      reloj = setInterval(() => (ahora = performance.now()), 200);
+    } else if (motor.fase !== 'simulando' && reloj) {
+      clearInterval(reloj);
+      reloj = null;
+    }
+  });
+
+  onMount(precalentarMotor);
+  onDestroy(() => {
+    if (pausa) clearTimeout(pausa);
+    if (reloj) clearInterval(reloj);
+    if (motor.fase === 'simulando') detener();
+  });
+
+  const lineaError = $derived.by(() => {
+    for (const e of resultado?.salida.errores ?? []) {
+      const m = /error on line (\d+)/i.exec(e);
+      if (m) return Number(m[1]);
+    }
+    return null;
+  });
+
+  const estado = $derived.by(() => {
+    switch (motor.fase) {
+      case 'descargando':
+        return `Cargando el simulador${motor.descarga != null ? ` · ${Math.round(motor.descarga * 100)} %` : '…'}`;
+      case 'preparando':
+        return 'Preparando ngspice…';
+      case 'simulando': {
+        const s = Math.max(0, (ahora - motor.inicio) / 1000);
+        return `Simulando… ${s.toFixed(1).replace('.', ',')} s${motor.analisis > 1 ? ` · análisis ${motor.analisis}` : ''}`;
+      }
+      default:
+        if (!resultado) return '';
+        return `Simulado en ${formatoSI(resultado.ejecucion.ms / 1000, 's', 2)}${resultado.conKlu ? ' (repetido con el resolvedor KLU)' : ''}`;
+    }
+  });
+
+  const ultimaLinea = $derived(motor.fase === 'simulando' ? (motor.lineas.filter((l) => l.trim()).at(-1) ?? '') : '');
+  const salidaTexto = $derived(ejecutando && motor.fase === 'simulando' ? motor.lineas.join('\n') : (resultado?.salida.texto ?? ''));
+  const capitulo = $derived(n ? rotuloParte(n.parte) : '');
+</script>
+
+<div class="pagina">
+  <nav class="migas" aria-label="Ruta">
+    <a href="#/simulador">Simulador</a>
+    {#if n}<span aria-hidden="true">›</span> <span>{capitulo}</span>{/if}
+  </nav>
+
+  {#if errorCarga}
+    <div class="aviso error">
+      <p>{errorCarga}</p>
+      <a class="boton" href="#/simulador">Volver al simulador</a>
+    </div>
+  {:else}
+    <header class="cab">
+      <h1>
+        {#if libre}Nuevo circuito{:else if n}
+          {#if n.ref}<span class="ref">{rotuloRef(n.ref)}</span>{/if}
+          {n.titulo || n.nombre}
+        {/if}
+      </h1>
+      {#if n}
+        <div class="meta">
+          <code class="fichero">{n.nombre}.cir</code>
+          {#each n.analisis as a (a)}<span class="etq">.{a}</span>{/each}
+          {#if n.control}<span class="etq">.control</span>{/if}
+          {#each n.refs as r (r)}
+            {#if rutaDeRef(r)}<a class="libro" href={rutaDeRef(r)}><Icono nombre="libro" tam={15} /> {rotuloRef(r)}</a>{/if}
+          {/each}
+        </div>
+      {/if}
+    </header>
+
+    {#if n?.motor.estado === 'no-disponible'}
+      <div class="aviso">
+        <strong>No se puede simular en la aplicación.</strong>
+        {n.motor.nota}
+      </div>
+    {:else if n?.motor.pesada}
+      <div class="aviso">
+        <strong>Simulación pesada.</strong>
+        {#if n.motor.ms}Tarda unos {Math.round(n.motor.ms / 1000)} s en un ordenador{:else}Tarda varios minutos y necesita mucha
+          memoria{/if}; en un teléfono puede tardar bastante más. No se ejecuta sola: pulse «Simular» cuando quiera.
+      </div>
+    {/if}
+
+    <div class="rejilla">
+      <div class="izq">
+        {#if n?.descripcion}
+          <section class="descripcion" class:abierta={verDescripcion}>
+            <pre>{n.descripcion}</pre>
+            {#if n.descripcion.split('\n').length > 5}
+              <button class="enlace" onclick={() => (verDescripcion = !verDescripcion)}>{verDescripcion ? 'Ver menos' : 'Ver toda la descripción'}</button>
+            {/if}
+          </section>
+        {:else if libre}
+          <section class="descripcion abierta">
+            <p>
+              Escriba una netlist de ngspice (la primera línea es el título) o empiece con un ejemplo. Se admiten
+              análisis <code>.op</code>, <code>.dc</code>, <code>.ac</code>, <code>.tran</code> y <code>.noise</code>,
+              medidas <code>.meas</code> y bloques <code>.control</code>; no hay dispositivos digitales XSPICE. El circuito
+              se guarda en este dispositivo.
+            </p>
+            {#if !texto.trim()}<button class="boton" onclick={() => (texto = EJEMPLO)}>Insertar un ejemplo</button>{/if}
+          </section>
+        {/if}
+
+        {#if !cargando}
+          <Parametros {parametros} {rangos} alCambiar={cambiarParametro} />
+        {/if}
+
+        <section class="netlist" aria-label="Netlist">
+          <div class="netlist-cab">
+            <h3>Netlist</h3>
+            {#if modificada}
+              <button class="enlace" onclick={() => { texto = original; programar(0); }}>Restaurar la del libro</button>
+            {/if}
+          </div>
+          <Editor bind:texto alEjecutar={simular} marcada={lineaError} placeholder={'* Título del circuito\nV1 in 0 DC 5\nR1 in out 1k\nR2 out 0 2k\n.op\n.end'} />
+        </section>
+      </div>
+
+      <div class="der">
+        <div class="mando" role="toolbar" aria-label="Simulación">
+          {#if ejecutando && motor.fase === 'simulando'}
+            <button class="boton" onclick={detener}><span class="cuadro" aria-hidden="true"></span> Detener</button>
+          {:else}
+            <button class="boton primario" onclick={simular} disabled={cargando || motor.fase === 'descargando'}>
+              <span class="triangulo" aria-hidden="true"></span> Simular
+            </button>
+          {/if}
+          {#if resultado && !referencia}
+            <button class="boton" onclick={() => (referencia = resultado)} title="Dibujar el resultado actual como referencia tenue para comparar">Fijar referencia</button>
+          {:else if referencia}
+            <button class="boton" onclick={() => (referencia = null)}>Quitar referencia</button>
+          {/if}
+          <span class="estado" aria-live="polite">
+            {#if ejecutando}<span class="punto" aria-hidden="true"></span>{/if}{estado}
+          </span>
+        </div>
+        {#if ultimaLinea}<div class="ultima"><code>{ultimaLinea}</code></div>{/if}
+
+        {#if errorSim}
+          <div class="aviso error" role="alert">{errorSim}</div>
+        {/if}
+        {#if resultado?.ejecucion.fallo}
+          <div class="aviso error" role="alert">{resultado.ejecucion.fallo}</div>
+        {/if}
+        {#if resultado?.salida.errores.length}
+          <div class="aviso error" role="alert">
+            <strong>ngspice ha dado errores.</strong>
+            {#each resultado.salida.explicaciones as e, k (k)}<p>{e}</p>{/each}
+            <ul class="lineas">
+              {#each resultado.salida.errores.slice(0, 5) as e, k (k)}<li><code>{e}</code></li>{/each}
+            </ul>
+          </div>
+        {/if}
+        {#if resultado?.anulados.length}
+          <p class="nota">
+            No se han ejecutado: {resultado.anulados.map((a) => a.split(/\s/)[0]).join(', ')} (la aplicación dibuja las gráficas
+            ella misma).
+          </p>
+        {/if}
+        {#if referencia}<p class="nota">La referencia fijada se dibuja con trazo discontinuo y tenue.</p>{/if}
+
+        {#if resultado}
+          <div class="resultado" class:viejo={ejecutando}>
+            <Resultados {resultado} {referencia} />
+          </div>
+        {:else if !ejecutando && !errorSim && !cargando}
+          <p class="nota vacio">Pulse «Simular» (o Ctrl + Intro en la netlist) para ver los resultados.</p>
+        {/if}
+
+        {#if salidaTexto}
+          <details class="salida" bind:open={verSalida}>
+            <summary>Salida de ngspice</summary>
+            <pre>{salidaTexto}</pre>
+          </details>
+        {/if}
+      </div>
+    </div>
+  {/if}
+</div>
+
+<style>
+  .pagina {
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 14px 20px 60px;
+    font-family: var(--sans);
+  }
+  .migas {
+    display: flex;
+    gap: 6px;
+    align-items: baseline;
+    font-size: 13.5px;
+    color: var(--tinta-suave);
+  }
+  .migas a {
+    color: var(--acento);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .cab h1 {
+    margin: 6px 0 6px;
+    font-size: clamp(22px, 3vw, 28px);
+    line-height: 1.2;
+    color: var(--titulos);
+  }
+  .ref {
+    display: block;
+    font-size: 14px;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    color: var(--acento);
+    font-weight: 700;
+  }
+  .meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+    align-items: center;
+    font-size: 13px;
+  }
+  .fichero {
+    font-family: var(--mono);
+    color: var(--tinta-suave);
+  }
+  .etq {
+    padding: 1px 7px;
+    border-radius: 6px;
+    background: var(--superficie-2);
+    color: var(--tinta-suave);
+    font-family: var(--mono);
+    font-size: 12px;
+  }
+  .libro {
+    display: inline-flex;
+    gap: 4px;
+    align-items: center;
+    padding: 3px 10px;
+    border: 1px solid var(--acento-borde);
+    border-radius: 999px;
+    color: var(--acento);
+    text-decoration: none;
+    font-weight: 600;
+  }
+  .libro:hover {
+    background: var(--acento-tinte);
+  }
+  .rejilla {
+    display: grid;
+    gap: 22px;
+    margin-top: 16px;
+  }
+  .izq,
+  .der {
+    display: grid;
+    gap: 18px;
+    align-content: start;
+    min-width: 0;
+  }
+  @media (min-width: 1340px) {
+    .rejilla {
+      grid-template-columns: minmax(320px, 400px) minmax(0, 1fr);
+    }
+  }
+  /* Phones and tablets: results before the netlist. */
+  @media (max-width: 1339px) {
+    .rejilla {
+      display: flex;
+      flex-direction: column;
+    }
+    .izq,
+    .der {
+      display: contents;
+    }
+    .descripcion {
+      order: 1;
+    }
+    .mando {
+      order: 2;
+    }
+    .ultima {
+      order: 3;
+    }
+    .rejilla :global(.parametros) {
+      order: 4;
+    }
+    .der > :not(.mando):not(.ultima):not(.salida) {
+      order: 5;
+    }
+    .netlist {
+      order: 6;
+    }
+    .salida {
+      order: 7;
+    }
+  }
+  .descripcion {
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: var(--superficie);
+    border: 1px solid var(--linea-suave);
+  }
+  .descripcion pre {
+    margin: 0;
+    white-space: pre-wrap;
+    font-family: var(--sans);
+    font-size: 14.5px;
+    line-height: 1.5;
+    color: var(--tinta);
+    max-height: 7.6em;
+    overflow: hidden;
+    -webkit-mask-image: linear-gradient(#000 70%, transparent);
+    mask-image: linear-gradient(#000 70%, transparent);
+  }
+  .descripcion.abierta pre {
+    max-height: none;
+    -webkit-mask-image: none;
+    mask-image: none;
+  }
+  .descripcion p {
+    margin: 0 0 10px;
+    font-size: 14.5px;
+    line-height: 1.5;
+  }
+  .enlace {
+    padding: 4px 0;
+    border: 0;
+    background: none;
+    color: var(--acento);
+    font-weight: 600;
+    font-size: 13.5px;
+  }
+  .netlist-cab {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+  }
+  .netlist h3 {
+    margin: 0 0 6px;
+    font-size: 15px;
+    color: var(--titulos);
+  }
+  .mando {
+    position: sticky;
+    top: calc(var(--alto-barra) + env(safe-area-inset-top));
+    z-index: 5;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 0;
+    background: var(--fondo);
+  }
+  .boton.primario:disabled {
+    opacity: 0.6;
+  }
+  .triangulo {
+    width: 0;
+    height: 0;
+    border-left: 9px solid currentColor;
+    border-top: 6px solid transparent;
+    border-bottom: 6px solid transparent;
+  }
+  .cuadro {
+    width: 10px;
+    height: 10px;
+    background: currentColor;
+    border-radius: 2px;
+  }
+  .estado {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 13.5px;
+    color: var(--tinta-suave);
+    font-variant-numeric: tabular-nums;
+  }
+  .punto {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+    background: var(--acento);
+    animation: latido 1s ease-in-out infinite;
+  }
+  @keyframes latido {
+    50% {
+      opacity: 0.25;
+      transform: scale(0.7);
+    }
+  }
+  .ultima {
+    margin-top: -10px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 12px;
+    color: var(--tinta-tenue);
+  }
+  .aviso {
+    padding: 10px 14px;
+    border-radius: 10px;
+    border: 1px solid color-mix(in srgb, var(--c-importante) 45%, transparent);
+    background: color-mix(in srgb, var(--c-importante) 9%, var(--superficie));
+    font-size: 14px;
+    line-height: 1.45;
+  }
+  .aviso.error {
+    border-color: color-mix(in srgb, var(--c-precaucion) 45%, transparent);
+    background: color-mix(in srgb, var(--c-precaucion) 8%, var(--superficie));
+  }
+  .aviso p {
+    margin: 4px 0;
+  }
+  .lineas {
+    margin: 6px 0 0;
+    padding-left: 18px;
+    font-size: 12.5px;
+  }
+  .lineas code {
+    font-family: var(--mono);
+    word-break: break-word;
+  }
+  .nota {
+    margin: 0;
+    font-size: 13.5px;
+    color: var(--tinta-suave);
+  }
+  .nota.vacio {
+    padding: 30px 0;
+    text-align: center;
+  }
+  .resultado {
+    transition: opacity 0.2s;
+    min-width: 0;
+  }
+  .resultado.viejo {
+    opacity: 0.6;
+  }
+  .salida summary {
+    cursor: pointer;
+    font-weight: 600;
+    font-size: 14px;
+    color: var(--tinta-suave);
+    padding: 6px 0;
+  }
+  .salida pre {
+    max-height: 420px;
+    overflow: auto;
+    margin: 6px 0 0;
+    padding: 10px 12px;
+    border-radius: 10px;
+    background: var(--codigo-fondo);
+    font-family: var(--mono);
+    font-size: 12.5px;
+    line-height: 1.45;
+    white-space: pre;
+  }
+  @media (max-width: 599px) {
+    .pagina {
+      padding: 10px 14px 60px;
+    }
+  }
+</style>

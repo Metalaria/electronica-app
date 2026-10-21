@@ -1,0 +1,26 @@
+* Sección 36.11, «El acoplamiento que no destruye la medida»: sonda casera de baja capacidad.
+* Resistencia de 1 kOhm en serie con la punta, conectada por coaxial a un instrumento con entrada de
+* 50 Ohm (osciloscopio en 50 Ohm, analizador de espectro o SDR). Se incluye una capacidad parásita de
+* 0,2 pF en paralelo con la resistencia y 0,5 pF de la punta a masa.
+* Comprueba: atenúa (1000 + 50)/50 = 21 veces (unos 26 dB) de forma plana hasta cientos de MHz, y la
+* carga que ve el nodo es de 1,05 kOhm con menos de 1 pF, frente a los 10-20 pF de una sonda x10.
+* Con un instrumento de 1 MOhm la misma resistencia no atenuaría: la sonda solo funciona sobre 50 Ohm.
+* Ejecutar: ngspice -b sonda_1k.cir
+VN n 0 DC 0 AC 1
+RSER n p 1k
+CPAR n p 0.2p
+CPT n 0 0.5p
+T1 p 0 i 0 Z0=50 TD=5n
+RIN i 0 50
+.control
+  ac dec 50 1Meg 1G
+  let gi = mag(v(i))
+  let zn = mag(v(n)/(-i(VN)))
+  meas ac Aten_10M find gi at=10Meg
+  meas ac Aten_100M find gi at=100Meg
+  meas ac Aten_500M find gi at=500Meg
+  meas ac Zcarga_10M find zn at=10Meg
+  meas ac Zcarga_100M find zn at=100Meg
+  echo "Ganancia esperada 1/21 = 0,0476 (-26,4 dB); carga del nodo unos 1,05 kOhm a 10 MHz"
+.endc
+.end

@@ -1,0 +1,56 @@
+* Problema 7.B y sección 7.8 (carga de puerta): la puerta como condensador equivalente
+* C = Qg / Vg (no reproduce la meseta de Miller; sirve para comprobar los órdenes de magnitud).
+*   a) Qg = 60 nC a 10 V -> C = 6 nF; driver de 10 V con 2 Ohm internos y Rg = 4,7 / 10 / 22 Ohm.
+*      Libro: Ipico = 1,49 / 0,83 / 0,42 A y t = Qg/Ipico = 40 / 72 / 144 ns. Ese cociente es la
+*      constante de tiempo RC: se mide el instante en que la puerta llega al 63,2 % (6,32 V).
+*   b) Consumo del driver Qg·Vg·f: 60 mW a 100 kHz y 300 mW a 500 kHz (fuente de 10 V, Rg = 10 Ohm).
+*   c) Qg = 30 nC (3 nF a 10 V) cargada a corriente constante: 300 ns con 100 mA, 30 ns con 1 A.
+*   d) Reactancia de 3 nF a 1 MHz: 53 Ohm (sección 7.7).
+* Ejecutar: ngspice -b prob-7.B.cir
+* ---- a) three gate resistors, ideal 10 V step through 2 ohm driver resistance
+VDRV drv 0 PULSE(0 10 0 1p 1p 1 2)
+RA drv ga 6.7
+CA ga 0 6n
+RB drv gb 12
+CB gb 0 6n
+RC drv gc 24
+CC gc 0 6n
+* ---- b) 100 kHz and 500 kHz gate drive, Rg = 10 ohm + 2 ohm
+V100 p100 0 PULSE(0 10 0 1p 1p 5u 10u)
+R100 p100 g100 12
+C100 g100 0 6n
+V500 p500 0 PULSE(0 10 0 1p 1p 1u 2u)
+R500 p500 g500 12
+C500 g500 0 6n
+* ---- c) constant-current charge of a 3 nF gate (30 nC at 10 V)
+I01 0 gd PULSE(0 0.1 0 1p 1p 1 2)
+CD gd 0 3n
+I1 0 ge PULSE(0 1 0 1p 1p 1 2)
+CE ge 0 3n
+* ---- d) 3 nF reactance at 1 MHz
+VAC ac1 0 AC 1
+CF ac1 0 3n
+.control
+  tran 0.1n 400n
+  let ia = (v(drv) - v(ga)) / 6.7
+  let ib = (v(drv) - v(gb)) / 12
+  let ic = (v(drv) - v(gc)) / 24
+  meas tran ipico_47 max ia
+  meas tran ipico_10 max ib
+  meas tran ipico_22 max ic
+  meas tran t_47 when v(ga)=6.321 rise=1
+  meas tran t_10 when v(gb)=6.321 rise=1
+  meas tran t_22 when v(gc)=6.321 rise=1
+  meas tran t_100mA when v(gd)=10 rise=1
+  meas tran t_1A when v(ge)=10 rise=1
+  tran 2n 60u
+  let p1 = -v(p100) * i(V100)
+  let p5 = -v(p500) * i(V500)
+  meas tran pdrv_100k avg p1 from=40u to=60u
+  meas tran pdrv_500k avg p5 from=40u to=60u
+  ac lin 1 1meg 1meg
+  let xc = mag(1 / i(VAC))
+  echo "|Z| de 3 nF a 1 MHz (ohm):"
+  print xc
+.endc
+.end

@@ -1,0 +1,47 @@
+* fig-10.11 (sección 10.7): protección de polaridad inversa, 12 V y carga de 12 ohm (1 A).
+* Tres circuitos independientes: diodo de silicio en serie (1N4007), Schottky en serie (1N5819) y
+* MOSFET de canal P como diodo ideal (puerta a masa por 10 kohm, R_DS(on) ~ 30 mohm con VGS = -12 V,
+* diodo de cuerpo incluido).
+* Comprueba: caída y pérdida a 1 A: el texto da 0,7 V / 0,7 W para el silicio (un 1N4007 real cae
+* unos 0,9 V), 0,3-0,4 V para el Schottky y 30 mW para el MOSFET; con la polaridad invertida la carga
+* no recibe tensión en ninguno de los tres.
+* Ejecutar: ngspice -b fig-10.11.cir
+.model 1N4007 D (IS=7.03n RS=0.034 N=1.81 EG=1.05 XTI=5 BV=1000 IBV=50n CJO=10p TT=100n)
+.model 1N5819 D (IS=31.7u RS=0.051 N=1.373 CJO=110p M=0.35 BV=40 IBV=1m)
+* P-channel level-1 model: RDS(on) = 1/(KP·(|VGS| - |VTO|)) = 1/(3.33·10) = 30 mohm
+.model PSW PMOS (LEVEL=1 VTO=-2 KP=3.333 LAMBDA=0)
+.model DBODY D (IS=1n N=1.5 RS=10m)
+* ---- series silicon diode
+VA a 0 DC 12
+DA a la 1N4007
+RLA la 0 12
+* ---- series Schottky
+VB b 0 DC 12
+DB b lb 1N5819
+RLB lb 0 12
+* ---- P-MOSFET ideal diode: drain to the input, source to the load, gate to ground
+VC c 0 DC 12
+MP lc g c lc PSW W=1 L=1
+DBD c lc DBODY
+RG g 0 10k
+RLC lc 0 12
+.control
+  op
+  echo "Polaridad correcta. Caídas (V): silicio, Schottky, MOSFET"
+  let dva = v(a) - v(la)
+  let dvb = v(b) - v(lb)
+  let dvc = v(c) - v(lc)
+  print dva dvb dvc
+  echo "Pérdidas (W): silicio, Schottky, MOSFET"
+  let pa = dva * v(la) / 12
+  let pb = dvb * v(lb) / 12
+  let pc = dvc * v(lc) / 12
+  print pa pb pc
+  alter VA dc = -12
+  alter VB dc = -12
+  alter VC dc = -12
+  op
+  echo "Polaridad invertida. Tensión en la carga (V): silicio, Schottky, MOSFET"
+  print v(la) v(lb) v(lc)
+.endc
+.end

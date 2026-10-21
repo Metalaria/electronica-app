@@ -1,0 +1,40 @@
+* cap42, seccion 42.5 y figura 42.7: Monte Carlo de un regulador ajustable
+* Vout = Vref (1 + R2/R1), Vref = 1,25 V +-4 %, R1 = 240 ohm y R2 = 720 ohm +-5 %,
+* todas con distribucion uniforme. Especificacion: 5 V +-5 % (4,75 a 5,25 V).
+* El regulador se modela como lo que hace: una fuente controlada que pone OUT a 1,25 V
+* por encima de ADJ (Ereg en serie con Vref), sin corriente por ADJ (despreciable aqui). Cada iteracion cambia los tres valores con sunif() y resuelve
+* el punto de trabajo; al final imprime media, desviacion tipica y rendimiento.
+* La figura (5000 muestras con numpy) da rendimiento 80 %, media 5,00 V, sigma 191 mV.
+* ngspice 42 (semilla 42): media 5,008 V, sigma 192 mV, rendimiento 79,1 %; con dos
+* millones de muestras el rendimiento converge a 79,7 %.
+* Ejecutar: ngspice -b fig-42.7_montecarlo_regulador.cir  (unos segundos)
+Ereg mid 0 adj 0 1
+Vref out mid DC 1.25
+R1 out adj 240
+R2 adj 0 720
+Rl out 0 1k
+.control
+set n = 5000
+let vo = vector($n)
+let k = 0
+setseed 42
+repeat $n
+  let vr = 1.25*(1 + 0.04*sunif(0))
+  let r1v = 240*(1 + 0.05*sunif(0))
+  let r2v = 720*(1 + 0.05*sunif(0))
+  alter vref dc = vr
+  alter r1 = r1v
+  alter r2 = r2v
+  op
+  let vo[k] = v(out)
+  destroy
+  let k = k + 1
+end
+let media = mean(vo)
+let sigma = sqrt(mean((vo - media)^2))
+let dentro = (vo ge 4.75) and (vo le 5.25)
+let rendimiento = 100*mean(dentro)
+print media sigma rendimiento
+print minimum(vo) maximum(vo)
+.endc
+.end

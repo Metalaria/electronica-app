@@ -1,0 +1,75 @@
+* Sección 8.4, figura 8.6, problema 8.A y ejercicios 8.3 y 8.4: reguladores lineales.
+*   a) Regulador lineal 12 V -> 5 V, 1 A (carga de 5 Ohm): transistor de paso NPN gobernado por un
+*      amplificador de error (VCVS de ganancia 1e5) que compara la salida con 5 V.
+*      Libro: 7 W en el elemento de paso, rendimiento 41,7 %, corriente de entrada = de salida.
+*      (El conmutado al 90 % del mismo apartado, 463 mA de entrada y 0,56 W, es aritmética de
+*      conservación de energía: Pin = 5 W / 0,9; se imprime al final como referencia.)
+*   b) Ejercicio 8.3: 7812 con 18 V de entrada y 300 mA: 1,8 W disipados.
+*   c) Ejercicio 8.4: LM317 (1,25 V entre OUT y ADJ), R1 = 240 Ohm, R2 = 1,5 kOhm: 9,06 V; con la
+*      corriente de ajuste de 50 uA, 9,14 V (el error que la sección 8.4 manda tener en cuenta).
+*   d) Problema 8.A, analogía térmica (1 V = 1 °C, 1 A = 1 W): 7 W por Rjc = 3, Rcs = 0,5 y el
+*      radiador. Con Rsa = 10,79 °C/W y 25 °C de ambiente la unión llega a 125 °C; con 6,5 °C/W y
+*      40 °C, a 110 °C.
+*   e) Ejercicio 8.3, sin disipador (unos 60 °C/W unión-ambiente): 1,8 W suben la unión 108 °C.
+* Ejecutar: ngspice -b reguladores.cir
+* pass transistor with very high beta (Darlington-like) so that the input current equals Ic
+.model NPASS NPN (IS=1e-12 BF=1e5)
+* ---- a) 12 V -> 5 V, 1 A
+VIN1 in1 0 DC 12
+VM1 in1 c1 0
+Q1 c1 b1 o1 NPASS
+EERR b1 0 ref1 o1 1e5
+VREF1 ref1 0 DC 5
+RL1 o1 0 5
+* ---- b) 7812, 18 V in, 300 mA (40 Ohm load)
+VIN2 in2 0 DC 18
+VM2 in2 c2 0
+Q2 c2 b2 o2 NPASS
+EERR2 b2 0 ref2 o2 1e5
+VREF2 ref2 0 DC 12
+RL2 o2 0 40
+* ---- c) LM317: output held 1.25 V above ADJ, with and without the 50 uA adjust current
+B3 o3 0 V = v(adj3) + 1.25
+R13 o3 adj3 240
+R23 adj3 0 1.5k
+IADJ3 0 adj3 DC 0
+RL3 o3 0 1k
+B4 o4 0 V = v(adj4) + 1.25
+R14 o4 adj4 240
+R24 adj4 0 1.5k
+IADJ4 0 adj4 DC 50u
+RL4 o4 0 1k
+* ---- d) thermal chain of problem 8.A (two cases) and e) exercise 8.3 without heatsink
+IPA 0 ja DC 7
+RJCA ja ca 3
+RCSA ca sa 0.5
+RSAA sa amba 10.786
+VAMBA amba 0 DC 25
+IPB 0 jb DC 7
+RJCB jb cb 3
+RCSB cb sb 0.5
+RSAB sb ambb 6.5
+VAMBB ambb 0 DC 40
+IPE 0 je DC 1.8
+RJAE je ambe 60
+VAMBE ambe 0 DC 25
+.control
+  op
+  let pin1 = 12*i(VM1)
+  let pout1 = v(o1)*v(o1)/5
+  let ppass1 = (12 - v(o1))*i(VM1)
+  echo "a) Vout (V), Iin (A), Iout (A), P en el paso (W), rendimiento (%):"
+  print v(o1) i(VM1) v(o1)/5 ppass1 100*pout1/pin1
+  echo "   conmutado al 90 %: Iin (mA) y pérdidas (W):"
+  print 1000*(5/0.9)/12 5/0.9 - 5
+  let ppass2 = (18 - v(o2))*i(VM2)
+  echo "b) 7812: Vout (V), I (mA), P disipada (W):"
+  print v(o2) 1000*i(VM2) ppass2
+  echo "c) LM317 sin y con Iadj = 50 uA (V):"
+  print v(o3) v(o4)
+  echo "d) Tj (°C) con Rsa = 10,79 / 25 °C y con Rsa = 6,5 / 40 °C:"
+  print v(ja) v(jb)
+  echo "e) Tj (°C) del 7812 sin disipador, 25 °C de ambiente:"
+  print v(je)
+.endc
+.end

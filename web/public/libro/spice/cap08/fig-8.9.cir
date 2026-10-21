@@ -1,0 +1,73 @@
+* fig-8.9 (sección 8.6, ejercicios 8.7 y 8.8): los dos límites de velocidad de un operacional
+* tipo 741, con un macromodelo de dos etapas: transconductancia de entrada limitada en corriente
+* (15 uA) sobre el condensador de compensación de 30 pF -> slew rate = 15 uA / 30 pF = 0,5 V/us;
+* gm = 188,5 uS -> GBW = gm / (2·pi·C) = 1 MHz; ganancia en continua 1e5. Salida a ±15 V.
+* Comprueba:
+*   a) GBW: ancho de banda a -3 dB con ganancia 100, 10 y 1 (libro: 10 kHz, 100 kHz, 1 MHz;
+*      ejercicio 8.8: 1 MHz / 100 = 10 kHz).
+*   b) slew rate medido con un escalón de 10 V en un seguidor (pendiente máxima 0,5 V/us).
+*   c) senoide de 10 V de pico en un seguidor: f_max = SR / (2·pi·Vp) = 7,96 kHz (ejercicio 8.7).
+*      A 5 kHz la salida sigue a la entrada (distorsión baja); a 20 kHz se convierte en un
+*      triángulo de pendiente 0,5 V/us y amplitud menor.
+* Ejecutar: ngspice -b fig-8.9.cir
+.subckt op741 inp inn out
+.param imax = 15u gm = 188.5u
+B1 0 n1 I = {imax}*tanh({gm}*(v(inp) - v(inn))/{imax})
+CC n1 0 30p
+RC n1 0 530.5Meg
+B2 out 0 V = max(min(v(n1), 15), -15)
+.ends
+* ---- a) non-inverting stages, AC
+VAC ina 0 DC 0 AC 1
+XA1 ina f1 o1 op741
+R1A f1 0 1k
+R2A o1 f1 99k
+XA2 ina f2 o2 op741
+R1B f2 0 1k
+R2B o2 f2 9k
+XA3 ina o3 o3 op741
+* ---- b) follower with a 10 V step
+VST st 0 PULSE(-5 5 1u 1n 1n 50u 100u)
+XB st ob ob op741
+* ---- c) followers with 10 V peak sines at 5 kHz and 20 kHz
+VS5 s5 0 SIN(0 10 5k)
+XC5 s5 o5 o5 op741
+VS20 s20 0 SIN(0 10 20k)
+XC20 s20 o20 o20 op741
+.control
+  ac dec 50 10 10Meg
+  let g1 = abs(v(o1))
+  let g2 = abs(v(o2))
+  let g3 = abs(v(o3))
+  meas ac bw_g100 when g1=70.71 fall=1
+  meas ac bw_g10 when g2=7.071 fall=1
+  meas ac bw_g1 when g3=0.7071 fall=1
+  echo "a) BW con ganancia 100 / 10 / 1 (Hz):"
+  print bw_g100 bw_g10 bw_g1
+  tran 10n 40u
+  let dvb = deriv(v(ob))
+  meas tran sr_max max dvb from=1.5u to=30u
+  meas tran t10 when v(ob)=-4 rise=1
+  meas tran t90 when v(ob)=4 rise=1
+  let sr_1090 = 8/(t90 - t10)
+  echo "b) slew rate medido (V/us):"
+  print sr_max/1e6
+  echo "   pendiente media entre el 10 y el 90 % del escalón (V/us):"
+  print sr_1090/1e6
+  tran 20n 600u
+  let d5 = deriv(v(o5))
+  let d20 = deriv(v(o20))
+  meas tran slope5 max d5 from=400u to=600u
+  meas tran slope20 max d20 from=400u to=600u
+  meas tran pp20 pp v(o20) from=400u to=600u
+  echo "c) pendiente máxima a 5 kHz (V/us; pide 2·pi·5k·10 = 0,31) y a 20 kHz (limitada a 0,5):"
+  print slope5/1e6 slope20/1e6
+  echo "   amplitud pico a pico a 20 kHz (V; la entrada tiene 20 V pp):"
+  print pp20
+  let fmax = 0.5e6/(2*pi*10)
+  echo "   f_max = SR/(2·pi·Vp) (Hz):"
+  print fmax
+  fourier 5k v(o5)
+  fourier 20k v(o20)
+.endc
+.end

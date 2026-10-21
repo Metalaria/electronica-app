@@ -1,0 +1,33 @@
+* Capitulo 31, Problema 31.B (prob-31.B): por que hace falta el termino integral.
+* Analogo electrico de la planta termica de primer orden con control solo proporcional:
+*   tension del nodo  = incremento de temperatura (1 V = 1 grado C)
+*   corriente         = potencia del calefactor (1 A = 1 W)
+*   Rth = 0,8 grados C/W (ganancia estatica), Cth = tau/Rth = 120 s / 0,8 = 150 J/grado C
+* El controlador P es una fuente de corriente comportamental I = Kp*(consigna - T),
+* con la consigna normalizada a 1 (asi el error final sale directamente en tanto por uno).
+* Se simulan a la vez dos lazos identicos, con Kp = 5 W/grado C y Kp = 20 W/grado C.
+* El libro da un error permanente 1/(1 + Kp*K) = 20,0 % y 5,9 %.
+* Ejecutar: ngspice -b prob31B_control_p.cir
+
+.param Rth=0.8 Cth=150 sp=1
+
+* lazo con Kp = 5
+B1 0 t5 I = 5*(sp - V(t5))
+R1 t5 0 {Rth}
+C1 t5 0 {Cth} IC=0
+
+* lazo con Kp = 20
+B2 0 t20 I = 20*(sp - V(t20))
+R2 t20 0 {Rth}
+C2 t20 0 {Cth} IC=0
+
+.tran 0.5 600 UIC
+.meas tran T5  FIND V(t5)  AT=600
+.meas tran T20 FIND V(t20) AT=600
+.meas tran err5  PARAM='1 - T5'
+.meas tran err20 PARAM='1 - T20'
+* constante de tiempo en lazo cerrado: tau/(1+Kp*K) = 24 s y 7,06 s
+* (instante en que se alcanza el 63,2 % del valor final: 0,632*0,8 y 0,632*0,9412)
+.meas tran tau5  WHEN V(t5)=0.5056  RISE=1
+.meas tran tau20 WHEN V(t20)=0.594824 RISE=1
+.end

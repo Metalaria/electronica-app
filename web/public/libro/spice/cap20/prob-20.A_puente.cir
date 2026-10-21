@@ -1,0 +1,51 @@
+* Problema 20.A (seccion 20.14): la no linealidad del puente de Wheatstone
+* Puente de cuatro brazos de R = 1 kohm; el sensor es el brazo inferior de la rama A y
+* vale R*(1 + x). Cuatro montajes, para x = 0,1 %, 1 % y 5 %:
+*   VQ: excitacion por tension de 1 V, una rama activa (el caso del problema);
+*   IQ: excitacion por corriente de 1 mA (misma tension media), una rama activa;
+*   ID: excitacion por corriente, dos ramas activas en diagonal que varian en el mismo
+*       sentido (inferior de A y superior de B);
+*   VD: la misma diagonal con excitacion por tension (sigue siendo no lineal).
+* Error = aproximacion lineal / salida exacta - 1.
+* Libro: VQ 0,000250 / 0,002488 / 0,012195 V y error +0,05 / +0,50 / +2,50 % (= x/2);
+* IQ reduce el error a la mitad (x/4); ID es exactamente lineal (error 0).
+* Ejecutar:  ngspice -b prob-20.A_puente.cir
+.param x=0.001
+VX vx 0 1
+RA1 vx a 1k
+RA2 a 0 {1k*(1+x)}
+RB1 vx b 1k
+RB2 b 0 1k
+IX 0 ix 1m
+RIA1 ix ia 1k
+RIA2 ia 0 {1k*(1+x)}
+RIB1 ix ib 1k
+RIB2 ib 0 1k
+ID 0 id 1m
+RDA1 id da 1k
+RDA2 da 0 {1k*(1+x)}
+RDB1 id db {1k*(1+x)}
+RDB2 db 0 1k
+VD vd 0 1
+RVA1 vd va 1k
+RVA2 va 0 {1k*(1+x)}
+RVB1 vd vb {1k*(1+x)}
+RVB2 vb 0 1k
+.control
+foreach xx 0.001 0.01 0.05
+  alterparam x = $xx
+  reset
+  op
+  let vq = v(a) - v(b)
+  let errq = ($xx/4/vq - 1)*100
+  let iq = v(ia) - v(ib)
+  let ei = (1m*1k*$xx/4/iq - 1)*100
+  let idd = v(da) - v(db)
+  let ed = (1m*1k*$xx/2/idd - 1)*100
+  let vdd = v(va) - v(vb)
+  let ev = ($xx/2/vdd - 1)*100
+  echo "x = $xx"
+  print vq errq iq ei idd ed vdd ev
+end
+.endc
+.end

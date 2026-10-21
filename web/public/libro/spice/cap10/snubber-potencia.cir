@@ -1,0 +1,31 @@
+* Sección 10.6, los dos números del texto:
+* (1) V = L·di/dt: 10 A cortados en 50 ns sobre 100 nH de inductancia parásita dan 20 V.
+* (2) Disipación de un snubber RC: P = C·V²·f. Con 1 nF, conmutando 400 V a 100 kHz, 16 W en la
+*     resistencia (la mitad al cargar el condensador y la otra mitad al descargarlo), sea cual sea R,
+*     siempre que el flanco sea mucho más rápido que R·C (20 ns). Con flancos de 10 ns la cifra baja
+*     a unos 13,7 W: P = C·V²·f es el valor de conmutación dura, el peor caso.
+* Ejecutar: ngspice -b snubber-potencia.cir
+* ---- (1) inductive spike: current ramp 10 A -> 0 in 50 ns through 100 nH
+IL 0 a PWL(0 10 100n 10 150n 0 300n 0)
+LPAR a 0 100n
+* ---- (2) RC snubber driven by the switched node: 0-400 V square wave, 100 kHz, 0.2 ns edges
+VSW sw 0 PULSE(0 400 0 0.2n 0.2n 4.9998u 10u)
+RSN sw x 20
+CSN x 0 1n
+.tran 0.1n 60u 0 0.1n
+.control
+  tran 0.1n 60u 0 0.1n
+  meas tran vl_pico MIN v(a) from=100n to=150n
+  echo "Pico de L·di/dt (V), debe ser -20 V (signo según el sentido de la rampa):"
+  print vl_pico
+  let pr = (v(sw) - v(x)) * (v(sw) - v(x)) / 20
+  meas tran p_snubber AVG pr from=40u to=60u
+  echo "Potencia media en la resistencia del snubber (W), debe ser C·V²·f = 16 W"
+  print p_snubber
+  alter @VSW[pulse] = [ 0 400 0 10n 10n 4.99u 10u ]
+  tran 0.1n 60u 0 0.1n
+  let pr2 = (v(sw) - v(x)) * (v(sw) - v(x)) / 20
+  echo "Con flancos de 10 ns (W):"
+  meas tran p_flanco10ns AVG pr2 from=40u to=60u
+.endc
+.end

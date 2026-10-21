@@ -1,0 +1,41 @@
+* Figura 9.6 (sección 9.5, «El rebote de los pulsadores»): antirrebote con filtro RC y disparador
+* de Schmitt. Pulsador a 5 V en el nodo A, pull-down de 100 kOhm, R = 10 kOhm y C = 1 uF (tau = 10 ms).
+* El contacto cierra a los 5 ms y rebota durante unos 4 ms (los mismos intervalos que la figura).
+* El disparador de Schmitt es un interruptor con histéresis (umbrales 2,9 V y 1,8 V) que tira de
+* la salida a masa contra un pull-up de 10 kOhm: es un inversor Schmitt como el 74HC14.
+* Comprueba: tau = R·C = 10 ms (con el contacto cerrado fijo, vC llega al 63,2 % de 5 V a los 10 ms
+* desde el cierre) y que la salida conmuta UNA sola vez pese a los rebotes (hacia los 15 ms).
+* Ejecutar: ngspice -b fig-9.6-antirrebote.cir
+.param R=10k C=1u
+V5 vdd 0 DC 5
+* bouncing contact: closed in [5,5.4] [5.9,6.3] [6.8,7.4] [8.0,8.6] ms and from 9 ms on
+Vctl ctl 0 PWL(0 0 4.999m 0 5m 1 5.399m 1 5.4m 0 5.899m 0 5.9m 1 6.299m 1 6.3m 0
++ 6.799m 0 6.8m 1 7.399m 1 7.4m 0 7.999m 0 8m 1 8.599m 1 8.6m 0 8.999m 0 9m 1 40m 1)
+S1 vdd a ctl 0 PUL
+.model PUL SW(VT=0.5 VH=0.1 RON=0.01 ROFF=1e12)
+Rpd a 0 100k
+R1 a vc {R}
+C1 vc 0 {C} IC=0
+* Schmitt inverter: switch with hysteresis, thresholds VT+-VH = 1.8 V and VT+VH = 2.9 V
+S2 out 0 vc 0 SCH
+.model SCH SW(VT=2.35 VH=0.55 RON=1 ROFF=1e12)
+Rout vdd out 10k
+* reference RC with the contact closed for good at 5 ms (to measure tau alone)
+Vstep s 0 PWL(0 0 4.999m 0 5m 5)
+Rref s vref {R}
+Cref vref 0 {C} IC=0
+.tran 10u 40m 0 10u UIC
+.control
+  run
+  meas tran tau_ms when v(vref)=3.1606 rise=1
+  let t_rc = (tau_ms - 5m) * 1000
+  echo "tau medida desde el cierre (ms), esperado 10:"
+  print t_rc
+  meas tran t_sal when v(out)=2.5 fall=1
+  * the output starts high (vC = 0) and must never come back up: no second edge
+  meas tran vout_min_antes min v(out) from=0 to=15m
+  meas tran vout_max_despues max v(out) from=16m to=40m
+  echo "t_sal = único flanco; vout_min_antes ~ 5 V (no conmuta durante los rebotes), vout_max_despues ~ 0 V"
+  meas tran vc_max max v(vc) from=0 to=9m
+.endc
+.end

@@ -1,0 +1,71 @@
+* Sección 33.16 (fig-33.18): compensación del lazo de un reductor en modo tensión.
+* Planta: L = 100 uH (DCR 50 mohm), C = 470 uF con ESR de 30 mohm, carga de 2,5 ohm, ganancia del
+* modulador Vin/Vrampa = 12/1,2 = 10 (los tres últimos valores no los da el libro; son los de la figura).
+* Comprueba:
+*  1) f_LC = 1/(2*pi*sqrt(LC)) = 734 Hz y f_ESR = 1/(2*pi*ESR*C) = 11,3 kHz;
+*  2) red de tipo II del ejemplo (R1 = 10k, R2 = 40k, C1 = 13 nF, C2 = 360 pF): cero en 300 Hz, polo en
+*     11 kHz y ganancia de 12 dB (x4) en la zona plana;
+*  3) red de tipo III con la receta del texto (ceros en 367 y 734 Hz, polos en 11,3 y 50 kHz, cruce en
+*     8 kHz): margen de fase de unos 75 grados.
+* Valores de la red de tipo III (calculados para R1 = 10 kohm):
+*   C1 + C2 = 1/(K*R1) con K la ganancia del integrador que pone el cruce en 8 kHz -> 39,34 nF;
+*   C2/(C1+C2) = fz1/fp1 -> C2 = 1,279 nF, C1 = 38,06 nF; R2 = 1/(2*pi*367*C1) = 11,39 kohm;
+*   R3 = R1/(fp2/fz2 - 1) = 149 ohm; C3 = 1/(2*pi*50k*R3) = 21,4 nF.
+* Amplificador de error: macromodelo de ganancia 1e5 con un polo en 100 Hz (producto GBW = 10 MHz).
+* Lazo abierto en el punto del ciclo de trabajo: T = -v(cout)/v(d). Margen de fase = 180 + fase(T).
+* Ejecutar: ngspice -b sec-33.16_compensacion.cir
+* ---------------------------------------------------------------- planta
+VD   d 0 DC 0 AC 1
+EMOD sw 0 d 0 10
+LF   sw l1 100u
+RDCR l1 out 50m
+RESR out c1 30m
+CF   c1 0 470u
+RL   out 0 2.5
+* ---------------------------------------------------------------- red de tipo III
+R1   out n 10k
+R3   out n3 149
+C3   n3 n 21.36n
+R2   n f2 11.39k
+C1T  f2 cout 38.06n
+C2T  n cout 1.279n
+EOP  x 0 0 n 1e5
+RPO  x xp 1k
+CPO  xp 0 1.5915u
+EBUF cout 0 xp 0 1
+* ---------------------------------------------------------------- red de tipo II aislada (ejemplo del texto)
+VT2  i2 0 DC 0 AC 1
+R1B  i2 n2 10k
+R2B  n2 f2b 40k
+C1B  f2b o2 13n
+C2B  n2 o2 360p
+EOP2 x2 0 0 n2 1e5
+RPO2 x2 xp2 1k
+CPO2 xp2 0 1.5915u
+EBU2 o2 0 xp2 0 1
+.ac dec 200 10 1meg
+.control
+set units=degrees
+run
+let planta = v(out)/v(d)
+let t = -v(cout)/v(d)
+let g2 = -v(o2)/v(i2)
+meas ac f_lc MAX vm(out) from=100 to=5k
+let ph_pl = vp(out)
+meas ac f_fase_m90 WHEN ph_pl=-90 FALL=1
+let dbt = vdb(t)
+let pht = vp(t)
+meas ac f_cruce WHEN dbt=0 FALL=LAST
+meas ac fase_t FIND pht AT=8k
+let dbg2 = vdb(g2)
+let phg2 = vp(g2)
+meas ac g2_db_8k FIND dbg2 AT=8k
+meas ac g2_fase_max MAX phg2 from=100 to=100k
+meas ac g2_db_2k FIND dbg2 AT=2k
+* cero y polo: donde la fase pasa por -45 grados (-90 del integrador +45), subiendo y bajando
+meas ac f_cero_tipo2 WHEN phg2=-45 RISE=1
+meas ac f_polo_tipo2 WHEN phg2=-45 FALL=1
+echo "Texto: f_LC = 734 Hz; tipo II: 12 dB en la zona plana; tipo III: cruce en 8 kHz y margen de ~75 grados"
+echo "Margen de fase = 180 + fase_t (fase_t es la fase de T en grados; ngspice la da entre -180 y 180)"
+.endc
+.end

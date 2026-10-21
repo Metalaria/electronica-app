@@ -1,0 +1,78 @@
+* fig-51.6 y fig-51.9 / secciones 51.4 y 51.5: etapa de salida clase AB con par complementario
+* Circuito de la figura 51.6: Q1 (NPN) y Q2 (PNP) seguidores de emisor a +-35 V, RE = 0,22 ohm
+* cada uno, altavoz de 8 ohm; polarizacion con dos diodos (1N4148) alimentados por una fuente de
+* corriente de 10 mA desde +35 V; el driver Q3 absorbe esa corriente hacia -35 V. La
+* realimentacion global (linea discontinua de la figura) se modela con un amplificador de error
+* ideal (ganancia 300 con un polo dominante a 300 Hz; entra por la inversora porque Q3 invierte) que excita la base de Q3 a traves de 10 k;
+* 100 pF en el nudo de alta impedancia representan las capacidades parasitas.
+* Transistores de potencia: modelos genericos (IS = 1e-12, beta 80/60 con caida a alta corriente,
+* IKF = 3 A). Son aproximados: la corriente de reposo con diodos depende del apareamiento entre
+* diodos y transistores, que es justo lo que el multiplicador de VBE (figura 51.10) permite ajustar.
+* Comprueba:
+*   1) .op: tension entre bases (dos caidas, ~1,2-1,4 V) y corriente de reposo;
+*   2) .tran con 2 V y 0,2 V de pico a 1 kHz, clase AB (con diodos) frente a clase B (diodos en
+*      corto): THD de la salida; aun con realimentacion, la clase B distorsiona mas, y
+*      proporcionalmente mas a bajo nivel (figuras 51.8 y 51.9);
+*   3) .tran con 25 V de pico: sin drivers, 10 mA de base solo dan para ~0,6 A de pico en la rama
+*      positiva (~5 V sobre 8 ohm): por eso la seccion 51.4 pide Darlington o Sziklai.
+* Resultado (ngspice): Vbias = 1,375 V con dos 1N4148 a 10 mA; Iq = 130 mA con estos modelos;
+*   THD a 2 V de pico: 0,0055 % (AB) frente a 0,016 % (B); a 0,2 V de pico: 0,0005 % (AB)
+*   frente a 0,082 % (B); con 25 V de pico la salida solo sube a +6,8 V (baja a -25 V).
+* Ejecutar:  ngspice -b fig-51.6_etapa_ab.cir
+.model QPN NPN(IS=1e-12 BF=80 IKF=3 VAF=100 RB=1 RE=0.02 RC=0.05)
+.model QPP PNP(IS=1e-12 BF=60 IKF=3 VAF=100 RB=1 RE=0.02 RC=0.05)
+.model QVAS NPN(IS=1e-13 BF=120 VAF=100)
+.model D1N4148 D(IS=2.52n RS=0.568 N=1.752 BV=100 IBV=100u)
+VCC vcc 0 35
+VEE vee 0 -35
+VIN in 0 dc 0 sin(0 2 1k)
+* --- clase AB (con los dos diodos) ---
+I1 vcc a 10m
+D1 a m D1N4148
+D2 m b D1N4148
+Q1 vcc a e1 QPN
+RE1 e1 out 0.22
+Q2 vee b e2 QPP
+RE2 e2 out 0.22
+RL out 0 8
+Q3 b b3 vee QVAS
+RB3 err b3 10k
+BE0 e0 0 V = 300*(V(out)-V(in))
+RP0 e0 ef 1k
+CP0 ef 0 530n
+BERR err 0 V = -34.0 + V(ef)
+CB b 0 100p
+* --- clase B (bases unidas, sin polarizacion) ---
+I1x vcc ax 10m
+VSH ax bx 0
+Q1x vcc ax e1x QPN
+RE1x e1x outx 0.22
+Q2x vee bx e2x QPP
+RE2x e2x outx 0.22
+RLx outx 0 8
+Q3x bx b3x vee QVAS
+RB3x errx b3x 10k
+BE0x e0x 0 V = 300*(V(outx)-V(in))
+RP0x e0x efx 1k
+CP0x efx 0 530n
+BERRx errx 0 V = -34.0 + V(efx)
+CBx bx 0 100p
+.control
+op
+let vbias = v(a)-v(b)
+let iq_ab = (v(e1)-v(out))/0.22
+let iq_b = (v(e1x)-v(outx))/0.22
+print vbias iq_ab iq_b v(out) v(outx)
+tran 1u 3m 1m
+echo "--- 2 V de pico: THD clase AB (out) y clase B (outx)"
+fourier 1k v(out) v(outx)
+alter @VIN[sin] = [ 0 0.2 1k ]
+tran 0.5u 3m 1m
+echo "--- 0,2 V de pico: THD clase AB (out) y clase B (outx)"
+fourier 1k v(out) v(outx)
+alter @VIN[sin] = [ 0 25 1k ]
+tran 1u 3m 1m
+meas tran vmax max v(out) from=1m to=3m
+meas tran vmin min v(out) from=1m to=3m
+.endc
+.end

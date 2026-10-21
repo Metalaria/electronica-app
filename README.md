@@ -5,8 +5,8 @@ Es una sola aplicación web (Svelte 5 + TypeScript + Vite) empaquetada con Tauri
 genera a partir de las fuentes Typst del libro, de modo que una corrección en un capítulo llega a la
 aplicación con solo regenerar y volver a compilar.
 
-Esta es la fase 1 (el lector). Las fases siguientes (simulador, ejercicios, modelos 3D, editor de
-esquemas) están descritas en `ESQUEMA.md`.
+Incluye la fase 1 (el lector) y la fase 2 (el simulador de circuitos, con las 309 netlists del libro). Las
+fases siguientes (ejercicios, modelos 3D, editor de esquemas) están descritas en `ESQUEMA.md`.
 
 ## Qué hace
 
@@ -38,6 +38,13 @@ esquemas) están descritas en `ESQUEMA.md`.
 - **Diseño adaptable**: en el teléfono, una columna y el índice en un cajón lateral; en tableta y
   ordenador, índice fijo y texto. Rutas con almohadilla (`#/cap05/sec-5.3`), que funcionan sin servidor
   dentro de Tauri.
+- **Saltos rápidos entre capítulos**: al seguir una referencia se dibuja primero el tramo de destino y el
+  resto del capítulo después, en los ratos libres; mientras se lee, la aplicación prepara en segundo plano
+  los capítulos a los que remite la sección en pantalla y el siguiente.
+- **Simulador de circuitos** (sección siguiente): botón «Simular» junto a cada figura, sección, problema o
+  ejercicio que tiene netlist.
+- **Componentes animados**: 39 animaciones interactivas de cómo funciona cada componente por dentro, enlazadas
+  con sus secciones y figuras (botón «Ver animación» en el libro; ver más abajo).
 
 ### Atajos de teclado
 
@@ -48,6 +55,83 @@ esquemas) están descritas en `ESQUEMA.md`.
 | `Esc` | Cerrar la búsqueda, el visor de figuras o el panel «Aa» |
 | `+` `-` `0` | Acercar, alejar y ajustar en el visor de figuras |
 | `Ctrl Intro` | Guardar la nota que se está escribiendo |
+
+## Simulador de circuitos
+
+«Simulador» en la barra lateral (`#/simulador`) abre el catálogo de las 309 netlists de ngspice que
+comprueban los circuitos y los números del libro, por capítulos, con búsqueda (sin tildes) y filtro por tipo
+de análisis. Cada figura, sección, problema o ejercicio que tiene netlist muestra en el lector un botón
+«Simular»; el botón Atrás vuelve al punto exacto de la lectura.
+
+La página de cada netlist tiene:
+
+- la **descripción** (el comentario de cabecera de la netlist: qué comprueba y qué valores da el libro) y
+  enlaces a las figuras y secciones del libro;
+- **parámetros** con controles deslizantes para los valores de resistencias, condensadores, bobinas,
+  fuentes (continua, amplitud y frecuencia de `SIN`, nivel y periodo de `PULSE`), ganancias de fuentes
+  controladas y `.param`: escala logarítmica de ×0,1 a ×10 del valor del libro, con valores E12 opcionales
+  para R, C y L, y un campo para escribir el valor exacto (`4,7k`, `100n`, `2,2 MΩ`). Al moverlos se
+  reescribe la netlist y se vuelve a simular al soltar (unos 0,3 s de espera); las curvas pasan suavemente al
+  nuevo resultado. «Fijar referencia» deja el resultado actual como trazo tenue para comparar;
+- la **netlist** editable (números de línea; `Ctrl Intro` simula; la línea de un error queda marcada) y
+  «Restaurar la del libro»;
+- los **resultados**: gráficas de cada análisis (transitorio, alterna con magnitud en dB y fase, barrido de
+  continua, ruido en escala logarítmica), con elección de vectores y, si el bloque `.control` repite un
+  análisis (bucles con `alter`), la opción de superponerlos; las **medidas** (`.meas` y `print`) agrupadas
+  bajo los `echo` de la netlist; el **punto de trabajo** (una columna por cada `op`); los errores de
+  ngspice con una explicación en español; y la **salida de ngspice** completa, plegada.
+
+Las gráficas son interactivas: cruz con los valores de todas las curvas (con prefijos SI y coma decimal),
+dos cursores A y B como en un osciloscopio (Δx, Δy y 1/Δx), leyenda para ocultar curvas, ejes lineales o
+logarítmicos, tabla de datos, y zoom:
+
+| Gesto | Acción |
+|---|---|
+| Arrastrar (ratón) | Ampliar el recuadro |
+| `Mayús` + arrastrar, botón central | Desplazar |
+| Rueda (con la gráfica activa, o con `Ctrl`) | Ampliar en horizontal; con `Mayús`, en vertical |
+| Deslizar un dedo | Leer valores |
+| Pellizcar, dos dedos | Ampliar y desplazar |
+| Doble clic, doble toque, `0`, `Esc` | Volver a ver todo |
+| `←` `→`, `+` `-`, `C` | Leer valores, ampliar, cursores (con la gráfica activa) |
+
+«Nuevo circuito» (`#/simulador/nuevo`) abre el mismo simulador con una netlist vacía (o un ejemplo); se
+guarda en el propio dispositivo (`localStorage`, clave `epa:circuito`).
+
+El motor es ngspice 45.2 compilado a WebAssembly (paquete npm `eecircuit-engine` 1.8.0, licencia MIT; ngspice
+tiene licencia BSD), que se ejecuta en un *Web Worker*: la interfaz no se bloquea, se ve el progreso y una
+simulación se puede detener. Se descarga solo al abrir el simulador (5,8 MB; el arranque del lector no
+cambia). Límites:
+
+- **4 netlists no se pueden simular** en la aplicación (capítulo 28 del libro impreso, carpeta `cap29`): usan
+  puertas digitales y puentes ADC/DAC de XSPICE, que ningún ngspice para WebAssembly de npm incluye. La
+  página lo explica y muestra la netlist; con ngspice instalado: `ngspice -b fichero.cir`.
+- **Unas 20 son pesadas** (más de 8 s en un ordenador; la más lenta, `cap00/derivadas_c_l`, guarda 12
+  millones de puntos y tarda más de 3 minutos): no se ejecutan solas al abrirlas, y la página avisa.
+- La aplicación usa el resolvedor SPARSE de ngspice, que da los mismos números que ngspice nativo; si un
+  transitorio no converge («Timestep too small») repite la simulación con KLU y lo indica.
+- `plot`, `quit` y similares del bloque `.control` se ignoran (la aplicación dibuja las gráficas).
+
+## Componentes animados
+
+«Componentes animados» en la barra lateral (`#/componentes`) abre una galería de 39 animaciones agrupadas
+por familias (resistencias, condensadores, bobinas y transformadores, diodos, BJT, MOSFET, potencia y
+protección, especiales y sensores), con búsqueda sin tildes por nombre, concepto o número de sección. Cada
+una (`#/componentes/<id>`) tiene la animación (canvas, nítida a cualquier tamaño y con los colores del tema),
+controles con su valor y unidad, reproducción/pausa y velocidad, una gráfica en vivo, dos o tres frases que
+explican lo que se ve con los números del momento y las ecuaciones del libro, y los enlaces «En el libro» a
+las secciones y figuras que trata. En el libro, esas secciones y figuras llevan el botón «Ver animación».
+Convenciones: electrones azules (puntos), huecos rojos (anillos), iones fijos como cuadrados con su signo,
+corriente convencional en ámbar y flujo de electrones en azul discontinuo; cada escena lleva su leyenda.
+
+- Física con los números del libro (Shockley, barrera y zona de agotamiento, Ebers-Moll simplificado con
+  Early, MOSFET de ley cuadrática con λ, cargas RC/RL, modelos de NTC/PTC/LDR, MLCC con polarización, etc.).
+- Las animaciones avanzan con el tiempo real, no por fotograma (igual a 60 o a 144 Hz), solo corren mientras
+  se ven (se paran fuera de pantalla, con la ventana oculta y con «reducir movimiento») y cada escena se
+  descarga al abrirla.
+- Pruebas (con la aplicación servida, p. ej. `npx vite preview`): `node tests/animaciones.mjs` mide el
+  intervalo entre fotogramas de todas las escenas con la CPU ×4 (`--perfil movil|mac|tableta|tableta-vertical`);
+  `node tests/animaciones-hz.mjs` comprueba que nada avanza por fotograma (144 Hz simulados).
 
 ## Dónde se guardan los datos personales
 
@@ -82,6 +166,23 @@ formato está descrito en `ESQUEMA.md`. Esa carpeta **se versiona** (unos 112 MB
 Actions no pueden regenerarla, porque hacen falta las fuentes del libro, las tipografías y las fotos, que
 están en otra máquina.
 
+Al final, `generar.py` llama a `contenido/spice.py`, que también se puede ejecutar solo (más rápido, si
+solo han cambiado las netlists):
+
+```sh
+python3 contenido/spice.py
+```
+
+Copia las netlists de `complementos/spice/` a `web/public/libro/spice/` y escribe `spice.json` (índice:
+capítulo, figura o sección que comprueba cada netlist, descripción, parámetros, estado en el motor) y
+`spice-refs.json` (lo que necesita el lector para sus botones «Simular»). Después **ejecuta cada netlist en
+el mismo ngspice WebAssembly que usa la aplicación**, con Node (`web/scripts/validar-spice.mjs`), y resume
+cuáles fallan y por qué. Los resultados se guardan en `contenido/.cache/spice-validacion.json` por contenido,
+así que la siguiente vez solo se simulan las netlists que han cambiado (la primera vez tarda unos 10 minutos
+con dos núcleos). Opciones: `--nativo` compara además cada medida con el `ngspice -b` instalado en el
+sistema; `--revalidar` ignora la caché; `--sin-validar` no simula nada. Necesita `npm install` hecho en
+`web/`.
+
 Si `web/public/libro/` no existe, la aplicación muestra un **contenido de muestra** (un capítulo con todos
 los tipos de bloque, un glosario breve, referencias y búsqueda) que está en `web/src/lib/muestra/`.
 Añadiendo `?muestra` a la dirección en el navegador (`http://localhost:1420/?muestra#/cap05`) se fuerza la
@@ -101,6 +202,30 @@ Comprobaciones:
 ```sh
 npm run check          # svelte-check (TypeScript estricto), debe acabar con 0 errores y 0 avisos
 npm run build          # compila la web en web/dist
+```
+
+`dev`, `build` y `check` extraen antes el motor de simulación de `node_modules/eecircuit-engine`
+(`web/scripts/ngspice.mjs`): escriben `web/src/simulador/motor/ngspice.js` y `web/public/ngspice/ngspice.wasm`,
+que no se versionan.
+
+Pruebas de extremo a extremo con Playwright (compilan la web, la sirven en el puerto 4173 y abren Chromium;
+en esta máquina el navegador ya está instalado en `/opt/pw-browsers`):
+
+```sh
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers npm test
+```
+
+Simulan once netlists de todos los tipos de análisis y comparan sus medidas con los valores que da el libro,
+prueban los controles deslizantes, la gráfica (lectura, cursores, zoom), los errores, el aviso de XSPICE y el
+enlace desde el lector, y dejan capturas de teléfono y de ordenador, en tema claro y oscuro, en
+`web/tests/capturas/` (no se versionan). En otro equipo, `npx playwright install chromium` descarga el
+navegador.
+
+Medida de un salto entre capítulos en un «teléfono lento» (CPU ×6, pantalla de 412 × 915), con la web ya
+servida (`npx vite preview --port 4173`):
+
+```sh
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node tests/rendimiento.mjs
 ```
 
 `npm run tauri …` ejecuta la CLI de Tauri mediante `web/scripts/tauri.mjs`, que le indica dónde está
@@ -657,6 +782,9 @@ app/
     scripts/tauri.mjs        lanza la CLI de Tauri con src-tauri/ como proyecto nativo
     scripts/android-preparar.mjs  iconos y firma del proyecto Android generado (npm run android:preparar)
     scripts/version-ci.mjs   en GitHub Actions, toma la versión de la etiqueta vX.Y.Z
+    scripts/ngspice.mjs      extrae ngspice (WebAssembly) de eecircuit-engine (antes de dev, build y check)
+    scripts/validar-spice.mjs  ejecuta todas las netlists en el motor con Node (lo llama contenido/spice.py)
+    playwright.config.ts, tests/  pruebas de extremo a extremo (npm test) y medida de rendimiento
     public/
       icono.png
       libro/                 CONTENIDO GENERADO (se versiona; ver «Actualizar el contenido del libro»)
@@ -680,6 +808,12 @@ app/
         Glosario.svelte      glosario con letras y filtro
         Busqueda.svelte      búsqueda (MiniSearch)
         Marcadores.svelte    marcadores y notas
+        BotonSimular.svelte  «Simular» junto a figuras, secciones, problemas y ejercicios
+        animaciones/         componentes animados: catálogo (enlaces al libro), galería, página, escenas/
+                             (una por animación, se cargan al abrirla), nucleo/ (física, dibujo), ui/
+        grafica/             gráfica interactiva reutilizable (canvas): API en ESQUEMA.md
+        simulador/           vistas del simulador: Simulador (rutas), Indice, Pagina, Parametros,
+                             Resultados, Editor (se cargan solo al abrir el simulador)
         Insignia.svelte, Icono.svelte
       lib/
         tipos.ts             tipos del contenido (ESQUEMA.md)
@@ -689,9 +823,11 @@ app/
         almacen.ts           Tauri plugin-store o localStorage
         buscador.ts          índice de búsqueda y fragmentos
         trozos.ts            división de un capítulo en tramos para dibujar solo lo visible
+        precarga.ts          preparación en segundo plano de los capítulos a los que se puede saltar
         color.ts             acentos de cada bloque temático en cada tema
         acciones.ts          capas (cajón, búsqueda, visor) ligadas al botón Atrás
         muestra/             contenido de muestra que sigue ESQUEMA.md
+      simulador/             motor (ngspice en WebAssembly), worker, cliente, netlists: ver ESQUEMA.md
   src-tauri/                 envoltorio nativo (Tauri 2, Rust)
     tauri.conf.json          nombre, identificador, ventana, CSP, instaladores
     capabilities/default.json  permisos: solo el almacén de datos
@@ -721,3 +857,16 @@ app/
 - **Icono**: original, una resistencia estilizada con bandas de los colores de los bloques sobre el azul
   marino del libro (`1A3A5C`). Para cambiarlo, editar `src-tauri/icons/fuente/icono.svg`, exportarlo a
   PNG de 1024 px y ejecutar `npm run tauri -- icon ../src-tauri/icons/fuente/icono.png` desde `web/`.
+- **Saltos entre capítulos**: un capítulo largo tardaba segundos en un teléfono porque se creaba entero de
+  golpe (y cada ecuación en línea que se cargaba obligaba a recalcular estilos). Ahora el lector dibuja
+  primero el tramo de destino y rellena los demás en los ratos libres, empezando por los más cercanos; un
+  tramo aún vacío conserva su altura estimada, así que la página no se mueve. Mientras se lee, se cargan y
+  preparan (JSON, tramos y HTML de la sección de destino) los capítulos a los que remite la sección en
+  pantalla y el siguiente. Medido con `tests/rendimiento.mjs` (CPU ×6, 412 × 915, mediana del momento en que
+  el destino queda colocado): de 3,7 / 5,6 / 7,2 s a 0,43 / 0,53 / 0,85 s en los tres saltos de prueba.
+- **Simulador**: cada simulación usa una instancia nueva de ngspice (unos 40 ms desde el módulo ya
+  compilado), sin estado heredado de la anterior; una simulación nueva sustituye a la que esté en curso
+  (útil con los controles deslizantes). La CSP de Tauri permite compilar WebAssembly (`'wasm-unsafe-eval'`).
+- **Tamaño**: el simulador añade el motor (5,8 MB, unos 2 MB comprimido), las netlists y su índice (1,5 MB)
+  y unos 130 kB de código, que solo se cargan al abrir el simulador. Medido en Linux: el `.deb` pasa de
+  43,4 a 45,4 MB y el ejecutable de 45,7 a 47,8 MB (Tauri guarda los recursos comprimidos con Brotli).

@@ -1,0 +1,46 @@
+* Sección 28.5 y figura 28.8: multivibrador astable de dos transistores (el intermitente de dos
+* LED, aquí sin los LED). R_B = 47 kOhm, C = 10 uF, R_C = 1 kOhm, Vcc = 9 V, NPN tipo 2N3904.
+* Comprueba:
+*   - semiperiodo t = 0,693*R_B*C = 0,33 s y frecuencia de unos 1,5 Hz;
+*   - la excursión negativa de la base: casi -Vcc (unos -8 V con 9 V; la figura dibuja -8,2 V),
+*     muy por debajo de la tensión inversa base-emisor que admite el transistor (VEBO = 6 V en el
+*     2N3904). El modelo no incluye la ruptura B-E (BVBE), para ver la forma ideal que dibuja la figura;
+*   - el flanco de subida del colector, lento (tau = R_C*C = 10 ms), frente al de bajada, abrupto.
+* Se fuerza el arranque con una condición inicial asimétrica.
+* Ejecutar: ngspice -b fig-28.8_astable.cir
+.model Q2N3904 NPN (IS=6.734f XTI=3 EG=1.11 VAF=74.03 BF=416.4 NE=1.259 ISE=6.734f IKF=66.78m
++ XTB=1.5 BR=.7371 NC=2 ISC=0 IKR=0 RC=1 CJC=3.638p MJC=.3085 VJC=.75 FC=.5 CJE=4.493p
++ MJE=.2593 VJE=.75 TR=239.5n TF=301.2p ITF=.4 VTF=4 XTF=2 RB=10)
+VCC vcc 0 DC 9
+RC1 vcc c1 1k
+RC2 vcc c2 1k
+RB1 vcc b1 47k
+RB2 vcc b2 47k
+CA c1 b2 10u
+CB c2 b1 10u
+Q1 c1 b1 0 Q2N3904
+Q2 c2 b2 0 Q2N3904
+.ic v(b1)=0.7 v(b2)=-2 v(c1)=0.2 v(c2)=9
+.control
+  tran 0.5m 4 0 uic
+  meas tran t1 when v(c1)=4.5 fall=3
+  meas tran t2 when v(c1)=4.5 fall=5
+  let periodo = (t2-t1)/2
+  let frec = 1/periodo
+  meas tran tlo when v(c1)=4.5 fall=4
+  meas tran thi when v(c1)=4.5 rise=5
+  let semi = thi - tlo
+  meas tran vbmin min v(b1) from=1 to=4
+  echo "Periodo (s), frecuencia (Hz), semiperiodo con Q1 conduciendo (s), mínimo de la base (V):"
+  print periodo frec semi vbmin
+  * edges of the collector of Q1: 10-90 % rise and fall times
+  meas tran tr1 when v(c1)=1.08 rise=4
+  meas tran tr2 when v(c1)=7.32 rise=4
+  meas tran tf1 when v(c1)=7.32 fall=5
+  meas tran tf2 when v(c1)=1.08 fall=5
+  let tsubida = tr2 - tr1
+  let tbajada = tf2 - tf1
+  echo "Colector de Q1: tiempo de subida y de bajada 10-90 % (s; la bajada es más corta que el paso de 0,5 ms):"
+  print tsubida tbajada
+.endc
+.end

@@ -1,0 +1,32 @@
+* fig-20.1 y fig-10.2 (sección 10.1): control por ángulo de fase de un TRIAC con carga resistiva.
+* Red de 230 V eficaces (325 V de pico), 50 Hz; carga de 52,9 ohm (1 kW a plena onda).
+* El TRIAC se modela como un interruptor ideal que se cierra con un retardo alfa tras cada paso
+* por cero y se abre en el siguiente (con carga resistiva la corriente se anula justo ahí).
+* Comprueba: alfa = 3 ms equivale a 54 grados (figura 20.1); la tensión eficaz y la potencia relativa
+* frente a la fórmula P/Pmax = 1 - a/pi + sin(2a)/(2 pi): 0,971 (30 grados), 0,851 (54), 0,500 (90),
+* 0,196 (120); y el contenido de armónicos impares que dibuja la figura 10.2 (análisis de Fourier).
+* Ejecutar: ngspice -b fig-20.1.cir
+.param td=3m
+VRED red 0 SIN(0 325.27 50)
+* gate pulse: closes at td after each zero crossing, opens just before the next one
+VCTL ctl 0 PULSE(0 1 {td} 1u 1u {10m-td-3u} 10m)
+S1 red load ctl 0 SWT
+.model SWT SW (VT=0.5 VH=0.1 RON=1m ROFF=1e9)
+RL load 0 52.9
+.tran 5u 60m 0 5u
+.control
+  foreach t 1.6667m 3m 5m 6.6667m
+    alterparam td = $t
+    reset
+    tran 5u 60m 0 5u
+    echo "------ retardo de disparo td = $t s"
+    meas tran vrms RMS v(load) from=20m to=60m
+    let ang = $t / 10m * 180
+    print ang
+    let prel = vrms * vrms / (230 * 230)
+    echo "potencia relativa a plena onda:"
+    print prel
+    fourier 50 v(load)
+  end
+.endc
+.end

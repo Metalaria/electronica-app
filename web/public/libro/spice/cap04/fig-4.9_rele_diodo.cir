@@ -1,0 +1,59 @@
+* fig-4.9 y fig-4.10 / seccion 4.5 (Cargas inductivas y el diodo de proteccion)
+* Rele de 12 V: bobina de 100 mH y 120 ohm (0,1 A), conmutada en el lado bajo por un
+* interruptor (SW) que hace de transistor y se abre en t = 1 ms. Cuatro copias del circuito:
+*   A) sin diodo: la tension solo la limita la ruptura del transistor (Zener de 250 V);
+*   B) diodo de libre circulacion 1N4007;
+*   C) diodo + 120 ohm;
+*   D) diodo + Zener de 24 V.
+* Figuras: pico 12,7 V / 24,7 V / 36,7 V y corriente a cero en 2,4 ms / 1,5 ms / 0,33 ms
+* (calculados con 0,7 V de diodo; con el 1N4007 real los tiempos difieren en unas centesimas de ms).
+* Sin diodo: cientos de voltios durante unos 40 us.
+* Ejecutar:  ngspice -b fig-4.9_rele_diodo.cir
+.model D1N4007 D(IS=7.02767n RS=0.0341512 N=1.80803 EG=1.05743 XTI=5 BV=1000 IBV=5e-08 CJO=1e-11 VJ=0.7 M=0.5 FC=0.5 TT=1e-07)
+.model SWM SW(VT=0.5 VH=0.1 RON=0.01 ROFF=1e9)
+.model DBR D(IS=1e-14 BV=250 IBV=1m RS=0.5)
+.model DZ24 D(IS=1e-14 BV=24 IBV=1m RS=0.2)
+VCC vcc 0 12
+VG g 0 PWL(0 1 1m 1 1.0001m 0)
+* A) sin diodo
+LA vcc la 100m IC=0.1
+RA la ca 120
+SA ca 0 g 0 SWM
+DA 0 ca DBR
+* B) diodo solo
+LB vcc lb 100m IC=0.1
+RB lb cb 120
+SB cb 0 g 0 SWM
+DB cb vcc D1N4007
+* C) diodo + 120 ohm
+LC vcc lc 100m IC=0.1
+RC lc cc 120
+SC cc 0 g 0 SWM
+DC cc xc D1N4007
+RXC xc vcc 120
+* D) diodo + Zener 24 V (Zener en inversa respecto al flujo de corriente de la bobina)
+LD vcc ld 100m IC=0.1
+RD ld cd 120
+SD cd 0 g 0 SWM
+DD cd xd D1N4007
+DZD vcc xd DZ24
+.ic v(ca)=0 v(cb)=0 v(cc)=0 v(cd)=0
+.control
+tran 0.2u 5m uic
+meas tran vpicoA max v(ca) from=1m to=1.5m
+meas tran tA when i(LA)=1m fall=1
+let tAc = tA - 1m
+print tAc
+meas tran vB find v(cb) at=1.5m
+meas tran tB when i(LB)=0.1m fall=1
+let tBc = tB - 1m
+meas tran vpicoC max v(cc) from=1m to=1.2m
+meas tran tC when i(LC)=0.1m fall=1
+let tCc = tC - 1m
+meas tran vD find v(cd) at=1.05m
+meas tran tD when i(LD)=0.1m fall=1
+let tDc = tD - 1m
+print tBc tCc tDc
+echo "Libro: sin diodo cientos de V (~250 V, ~40 us); diodo 12,7 V, 2,4 ms; +120 ohm 24,7 V, 1,5 ms; +Zener 24 V 36,7 V, 0,33 ms"
+.endc
+.end

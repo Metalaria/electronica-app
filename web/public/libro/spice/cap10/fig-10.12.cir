@@ -1,0 +1,40 @@
+* fig-10.12 y fig-10.13 (sección 10.8): corriente de irrupción al cargar 470 uF desde 325 V
+* (la red de 230 V conectada en su pico, tratada como un escalón).
+* Casos: sin limitador (1 ohm de cables, puente y ESR), NTC fría de 10 ohm, resistencia de 22 ohm,
+* y arranque suave activo (MOSFET que fija 5 A hasta cargar el condensador).
+* Comprueba: picos de 325 A, 32,5 A y 14,8 A; tau = RC = 0,47, 4,7 y 10,3 ms; la energía disipada
+* en el limitador es siempre 1/2·C·V² = 24,8 J, independiente de R; la I²t del pulso, V²·C/(2R);
+* con el arranque activo la carga dura C·V/I = 30,6 ms y la energía sigue siendo 24,8 J.
+* Ejecutar: ngspice -b fig-10.12.cir
+.param r=1
+VIN in 0 PWL(0 0 1u 325)
+RLIM in c {r}
+C1 c 0 470u IC=0
+* ---- active soft start: constant 5 A until the capacitor is charged
+VIN2 in2 0 PWL(0 0 1u 325)
+BSS in2 c2 I = min(5, max(0, (V(in2) - V(c2)) / 0.05))
+C2 c2 0 470u IC=0
+.tran 2u 80m 0 10u UIC
+.control
+  foreach rv 1 10 22
+    alterparam r = $rv
+    reset
+    tran 2u 120m 0 10u UIC
+    echo "------ R = $rv ohm"
+    let i = (v(in) - v(c)) / $rv
+    meas tran ipico MAX i
+    meas tran t63 WHEN v(c)=205.4 RISE=1
+    let pr = i * i * $rv
+    let er = integ(pr)
+    meas tran energia FIND er AT=119m
+    let i2 = i * i
+    let i2t = integ(i2)
+    meas tran i2t_A2s FIND i2t AT=119m
+  end
+  echo "------ arranque suave activo, 5 A"
+  let ps = (v(in2) - v(c2)) * 5
+  meas tran tcarga WHEN v(c2)=324 RISE=1
+  let es = integ((v(in2) - v(c2)) * min(5, max(0, (v(in2) - v(c2)) / 0.05)))
+  meas tran energia_ss FIND es AT=119m
+.endc
+.end

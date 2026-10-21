@@ -1,0 +1,38 @@
+* Figura 27.7 (amplificador inversor y no inversor) y seccion 27.2 (la ecuacion fundamental).
+* Operacional: VCVS de ganancia A0 = 1e5 con un polo en 10 Hz (GBW = 1 MHz), entradas sin corriente.
+* No inversor: Rf = 10 kohm, Rg = 1 kohm (beta = 1/11). Inversor: Rf = 10 kohm, Rin = 1 kohm.
+* Comprueba: A_f = 10,9988 con A = 1e5 y 10,9879 con A = 1e4 (seccion 27.2), inversor -9,9989,
+* ancho de banda en lazo cerrado GBW/11 = 91 kHz (seccion 27.2, beneficio 5).
+* Ejecutar:  ngspice -b fig-27.7.cir
+* Resultado (ngspice-42): 10,9988; 10,9879; -9,9989; f-3dB 90,9 kHz y 90,9 kHz.
+.param GBW=1e6
+.subckt opamp inp inn out params: A0=1e5 GBW=1e6
+G1 0 n1 inp inn 1m
+R1 n1 0 {A0*1k} noisy=0
+C1 n1 0 {1m/(2*3.14159265*GBW)}
+E1 out 0 n1 0 1
+.ends
+* entrada comun: 1 mV en continua y 1 V en alterna
+Vin in 0 DC 1m AC 1
+* no inversor con A = 1e5
+X1 in fn1 o1 opamp A0=1e5 GBW={GBW}
+Rf1 o1 fn1 10k
+Rg1 fn1 0 1k
+* no inversor con A = 1e4 (mismo polo dominante, GBW diez veces menor)
+X2 in fn2 o2 opamp A0=1e4 GBW={GBW/10}
+Rf2 o2 fn2 10k
+Rg2 fn2 0 1k
+* inversor con A = 1e5
+X3 0 fn3 o3 opamp A0=1e5 GBW={GBW}
+Rin3 in fn3 1k
+Rf3 o3 fn3 10k
+.control
+op
+print v(o1)/v(in) v(o2)/v(in) v(o3)/v(in)
+ac dec 100 1 10meg
+let n1 = vdb(o1)-vdb(o1)[0]
+let n3 = vdb(o3)-vdb(o3)[0]
+meas ac f1 when n1=-3.0103
+meas ac f3 when n3=-3.0103
+.endc
+.end

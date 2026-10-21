@@ -1,0 +1,41 @@
+* fig-10.16 (sección 10.10, «En el banco»; sección 4.5): pico de desconexión de la bobina de un relé
+* de 12 V (0,2 H, 400 ohm, 30 mA) gobernada por un interruptor en el lado bajo que se abre en t = 0,
+* con y sin diodo de rueda libre (1N4148) en paralelo con la bobina.
+* La capacidad del nodo del interruptor (2,2 nF con el cableado) resuena con la bobina; las pérdidas
+* del núcleo a esa frecuencia se modelan con 6 kohm en paralelo; el diodo de cuerpo del interruptor
+* recorta las excursiones negativas.
+* Comprueba: sin diodo, un pico de unos 130 V sobre una alimentación de 12 V («decenas o cientos de
+* voltios»); con el diodo, el nodo queda en 12 V + VF (~12,7 V) y la corriente se extingue con
+* tau = L/R = 0,5 ms.
+* Ejecutar: ngspice -b fig-10.16.cir
+.param usediode=0
+.model D1N4148 D (IS=2.52n RS=0.568 N=1.752 CJO=4p M=0.4 TT=20n BV=100 IBV=100u)
+.model DBODY D (IS=10n N=1.8)
+VCC vcc 0 DC 12
+* coil: inductance in series with its winding resistance, core losses in parallel
+LCOIL vcc m 0.2 IC=30m
+RCU m sw 400
+RP vcc sw 6k
+CN sw 0 2.2n
+* low-side switch, opens at t = 0
+VG g 0 PWL(0 1 1u 1 1.01u 0)
+S1 sw 0 g 0 SWL
+.model SWL SW (VT=0.5 VH=0.05 RON=1m ROFF=1e9)
+DB 0 sw DBODY
+* free-wheeling diode across the coil (removed with a series 1 Gohm when usediode = 0)
+DFW sw k D1N4148
+RFW k vcc {usediode ? 1m : 1e9}
+.tran 0.2u 3m 0 0.2u UIC
+.control
+  foreach dd 0 1
+    alterparam usediode = $dd
+    reset
+    tran 0.2u 3m 0 0.2u UIC
+    echo "------ diodo de rueda libre = $dd"
+    meas tran vpico MAX v(sw) from=1u to=3m
+    meas tran vmin MIN v(sw) from=2u to=3m
+    let il = i(LCOIL)
+    meas tran t_tau WHEN il=11.04m FALL=1
+  end
+.endc
+.end

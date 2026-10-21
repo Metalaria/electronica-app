@@ -1,0 +1,58 @@
+* Figura 16.25 (esquema simplificado) y figura 16.26 (original), secciones 16.3.3, 16.8.3, 16.11.5 y 16.20:
+* lazo del AFC del FM7303.
+* Del esquema V3.0r7: K1 elige qué tensión llega al varicap D1 (FV1043): en ON, la salida del detector
+* (TP3, 4,6 V con el audio superpuesto); en OFF, la del cursor de W1 (20 kOhm entre 6 V y masa), que es
+* TP1. Camino: R5 470 kOhm -> C15 0,47 µF a masa -> R4 100 kOhm -> C14 0,01 µF a masa -> cátodo de D1.
+* El varicap se modela como diodo con capacidad de unión (polarizado en inverso, corriente despreciable).
+* Comprueba: (1) W1 da 4,6 V en TP1 con el cursor al 76,7 % de su recorrido; (2) en continua el varicap
+* recibe la tensión del detector sin pérdida (los 4,6 V del libro); (3) el filtro R5-C15 (0,22 s) y
+* R4-C14 (1 ms) quita el audio de la tensión de control: a 1 kHz la atenuación es de unos 79 dB, así que
+* el audio no modula el oscilador; (4) al pasar K1 de OFF a ON con W1 mal ajustado (4,0 V frente a 4,6 V),
+* la tensión del varicap recorre el 90 % del salto en unos 0,35 s (t90 = 0,84 s, con K1 pulsado en
+* t = 0,5 s): es el desplazamiento de frecuencia que se ve al pulsar K1 cuando TP1 y TP3 no coinciden.
+* Ejecutar: ngspice -b fig-16.25_afc.cir
+.model FV1043 D (IS=1e-14 CJO=30p VJ=0.7 M=0.5 BV=30)
+* detector output: 4.6 V DC plus 100 mV of audio (AC source for the .ac analysis)
+VDET det 0 DC 4.6 AC 0.1 SIN(4.6 0.1 1k)
+* W1 as a divider from the 6 V rail: wiper at 76.7 % (upper part 4.66k, lower part 15.34k)
+V6 v6 0 DC 6
+RW1a v6 tp1 4.66k
+RW1b tp1 0 15.34k
+* Copy A, K1 fixed in ON (detector straight to R5): used for .op and .ac
+R5a det n15a 470k
+C15a n15a 0 0.47u
+R4a n15a vara 100k
+C14a vara 0 0.01u
+D1a 0 vara FV1043
+* Copy B, K1 as two complementary voltage-controlled switches (ctrl > 0.5 V = ON): used for .tran.
+* W1 misadjusted to 4.0 V (instead of 4.6 V) through a separate source; K1 goes ON at t = 0.5 s.
+.model SWK SW (RON=1 ROFF=1e12 VT=0.5 VH=0.01)
+VK ctrl 0 DC 0 PULSE(0 1 0.5 1u 1u 10 20)
+B_inv ctrln 0 V = 1 - V(ctrl)
+VMIS tp1x 0 DC 4.0
+S_on  det  k1 ctrl 0 SWK
+S_off tp1x k1 ctrln 0 SWK
+R5 k1 n15 470k
+C15 n15 0 0.47u
+R4 n15 var 100k
+C14 var 0 0.01u
+D1 0 var FV1043
+.control
+  op
+  echo "TP1 (cursor de W1) y tensión del varicap con K1 en ON (V):"
+  print v(tp1) v(vara)
+  ac dec 50 0.01 10k
+  meas ac a_1Hz find vdb(vara) at=1
+  meas ac a_100Hz find vdb(vara) at=100
+  meas ac a_1kHz find vdb(vara) at=1k
+  echo "Atenuación del audio hasta el varicap (dB relativos a la entrada; la fuente AC es de 0,1 V = -20 dB):"
+  let att1hz = a_1Hz - (-20)
+  let att100hz = a_100Hz - (-20)
+  let att1k = a_1kHz - (-20)
+  print att1hz att100hz att1k
+  tran 1m 3 0 1m
+  meas tran v_off find v(var) at=0.49
+  meas tran t90 when v(var)=4.54 rise=1
+  echo "K1 pasa de OFF (4,0 V) a ON (4,6 V) en t = 0,5 s; t90 es cuando el varicap llega a 4,54 V."
+.endc
+.end

@@ -1,0 +1,40 @@
+* Seccion 40.3 (caida de tension en una pista) y problema 40.B (vias en paralelo).
+* Pista de cobre de 35 um, 0,5 mm x 50 mm = 100 cuadros x 0,491 mohm = 49,1 mohm.
+*   Texto: 49 mV con 1 A y 147 mV con 3 A (4,5 % de 3,3 V; 0,6 % de 24 V).
+*   Con el retorno por otra pista igual, la caida total se duplica (seccion 40.3).
+* Via de 0,3 mm con 25 um de metalizado y 1,6 mm de longitud:
+*   seccion = pi x 0,3 x 0,025 = 0,0236 mm2; R = 1,72e-8 x 1,6e-3 / 2,36e-8 = 1,17 mohm.
+*   Cinco en paralelo: 0,23 mohm; con 5 A, 1,2 mV (texto corregido).
+* Ejecutar:  ngspice -b pista_y_vias_40.3_prob-40.B.cir
+* Resultado: 49,1 mV; 147,3 mV (4,46 %); ida+retorno 294,6 mV; vias 1,168 mV.
+*
+.param rsq=0.491m nsq=100 rvia=1.168m
+* --- pista de ida con 1 A y con 3 A (fuente de 3,3 V, carga como fuente de corriente)
+V1 a1 0 3.3
+Rp1 a1 b1 {rsq*nsq}
+I1 b1 0 1
+V3 a3 0 3.3
+Rp3 a3 b3 {rsq*nsq}
+I3 b3 0 3
+* --- ida y retorno por pistas iguales, 3 A
+Vr ar 0 3.3
+Rida ar br {rsq*nsq}
+Ir br cr 3
+Rret cr 0 {rsq*nsq}
+* --- cinco vias en paralelo con 5 A
+Iv 0 v1 5
+Rv1 v1 0 {rvia}
+Rv2 v1 0 {rvia}
+Rv3 v1 0 {rvia}
+Rv4 v1 0 {rvia}
+Rv5 v1 0 {rvia}
+.control
+op
+let caida1 = v(a1)-v(b1)
+let caida3 = v(a3)-v(b3)
+let pct33 = 100*caida3/3.3
+let caidaret = v(ar)-v(br)+v(cr)
+print caida1 caida3 pct33 caidaret v(v1)
+echo "Texto: 49 mV, 147 mV (4,5 %); ida+retorno 295 mV; vias 1,17 mV"
+.endc
+.end

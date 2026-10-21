@@ -1,0 +1,31 @@
+* Seccion 34.2 y 34.7, figura 34.9: lectura del ADC del Arduino (ATmega328P) segun la
+* impedancia de la fuente. Condensador de muestreo de 14 pF, tiempo de adquisicion de
+* 1,5 ciclos de 125 kHz = 12 us, 10 bits. Peor caso: condensador descargado al empezar
+* (canal anterior a 0 V). Entrada continua de 1 V.
+* Lo que comprueba:
+*   - la fraccion leida tras 12 us para 10 k, 100 k, 112 k y 1 Mohm;
+*   - que el error llega a 1/2 LSB de 10 bits (2^-11 = 0,049 %) hacia 112 kohm,
+*     muy por encima de los 10 kohm de la hoja de datos (que es un limite conservador).
+* Ejecutar:  ngspice -b fig-34.9.cir
+V1 in 0 PWL(0 0 1p 1)
+Ra in a 10k
+Ca a 0 14p IC=0
+Rb in b 100k
+Cb b 0 14p IC=0
+Rc in c 112.4k
+Cc c 0 14p IC=0
+Rd in d 1Meg
+Cd d 0 14p IC=0
+.control
+tran 10n 12u uic
+meas tran lect_10k  FIND v(a) AT=12u
+meas tran lect_100k FIND v(b) AT=12u
+meas tran lect_112k FIND v(c) AT=12u
+meas tran lect_1M   FIND v(d) AT=12u
+let medio_lsb = 2^(-11)
+let err_100k_lsb = (1 - lect_100k)*1024
+let err_112k_lsb = (1 - lect_112k)*1024
+print medio_lsb err_100k_lsb err_112k_lsb
+.endc
+.options reltol=1e-6 abstol=1e-15 vntol=1e-9
+.end

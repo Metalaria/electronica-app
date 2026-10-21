@@ -4,6 +4,7 @@
   import { ruta, iniciarRuta } from './lib/ruta.svelte';
   import { usuario, cargarUsuario, volcar } from './lib/usuario.svelte';
   import { iniciar } from './lib/datos';
+  import { cargarRefsSpice } from './simulador/datos.svelte';
   import { acentos, type TemaEfectivo } from './lib/color';
   import { abrirBuscador, cerrarLateral } from './lib/acciones';
   import Lateral from './componentes/Lateral.svelte';
@@ -91,6 +92,10 @@
         app.refs = datos.refs;
         app.modo = datos.modo;
         app.cargado = true;
+        // The map of «Simular» buttons, once the reader is up and idle.
+        const pedir = () => void cargarRefsSpice();
+        if ('requestIdleCallback' in window) window.requestIdleCallback(pedir, { timeout: 3000 });
+        else setTimeout(pedir, 1200);
       })
       .catch((e: unknown) => {
         app.error = e instanceof Error ? e.message : String(e);
@@ -127,6 +132,24 @@
         <Glosario />
       {:else if ruta.vista === 'marcadores'}
         <Marcadores />
+      {:else if ruta.vista === 'simulador'}
+        <!-- Loaded on demand: the reader's start-up does not include the simulator. -->
+        {#await import('./componentes/simulador/Simulador.svelte')}
+          <div class="cargando" aria-live="polite"><span class="punto"></span> Abriendo el simulador…</div>
+        {:then m}
+          <m.default />
+        {:catch e}
+          <div class="aviso"><h1>No se pudo abrir el simulador</h1><p>{String(e)}</p></div>
+        {/await}
+      {:else if ruta.vista === 'componentes'}
+        <!-- Component animations, also loaded on demand. -->
+        {#await import('./componentes/Componentes.svelte')}
+          <div class="cargando" aria-live="polite"><span class="punto"></span> Abriendo las animaciones…</div>
+        {:then m}
+          <m.default />
+        {:catch e}
+          <div class="aviso"><h1>No se pudieron abrir las animaciones</h1><p>{String(e)}</p></div>
+        {/await}
       {:else}
         {#key ruta.parte}
           <Lector parte={ruta.parte} />

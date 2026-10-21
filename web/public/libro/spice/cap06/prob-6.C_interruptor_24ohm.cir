@@ -1,0 +1,36 @@
+* Problema 6.C (El transistor como interruptor) y tabla de la seccion 6.7 (motor de 500 mA)
+* Carga de 24 ohm a 12 V (500 mA) gobernada desde un pin de 5 V.
+* Modelo de media potencia con beta = 100 a baja corriente que cae a corriente alta
+* (IKF = 0,3 A), como advierte la seccion 6.7.
+*   - con 20 mA de base (lo maximo del pin, RB = 215 ohm): este ejemplar llega a saturar,
+*     pero con muy poco margen (VCE ~ 0,19 V, IC/IB ~ 25); un ejemplar de beta minimo a
+*     0,5 A o un pin que entregue algo menos lo sacan de saturacion: por eso el libro
+*     descarta excitarlo directamente desde el pin
+*   - con 50 mA de base (beta forzada de 10, RB = 86 ohm): satura con VCE ~ 0,1-0,2 V
+*   - conduccion: VCE(sat) x 0,5 A ~ 100 mW (libro, con 0,2 V)
+* Ejecutar:  ngspice -b prob-6.C_interruptor_24ohm.cir
+.model QP NPN(IS=1e-13 BF=100 IKF=0.3 VAF=100 RC=0.1 RB=2)
+VCC vcc 0 12
+VPIN pin 0 5
+* --- 20 mA de base ---
+RB1 pin b1 215
+RL1 vcc c1 24
+Q1 c1 b1 0 QP
+* --- 50 mA de base ---
+RB2 pin b2 86
+RL2 vcc c2 24
+Q2 c2 b2 0 QP
+.control
+op
+let ib1 = (5-v(b1))/215
+let ic1 = (12-v(c1))/24
+let ib2 = (5-v(b2))/86
+let ic2 = (12-v(c2))/24
+let p2 = v(c2)*ic2
+let bef1 = ic1/ib1
+echo "IB = 20 mA: IB, IC, VCE, beta efectiva:"
+print ib1 ic1 v(c1) bef1
+echo "IB = 50 mA: IB, IC, VCE, potencia en el transistor (libro ~100 mW):"
+print ib2 ic2 v(c2) p2
+.endc
+.end
