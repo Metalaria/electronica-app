@@ -77,7 +77,7 @@
   {:else if b.t === 'glosario'}
     <dl {id} data-b={db} class="glosario-bloque">
       {#each b.entradas as e, k (k)}
-        <dt>{@html prepararHtml(e.termino)}</dt>
+        <dt>{@html prepararHtml(e.termino_html || e.termino)}</dt>
         <dd>{@html prepararHtml(e.html)}</dd>
       {/each}
     </dl>

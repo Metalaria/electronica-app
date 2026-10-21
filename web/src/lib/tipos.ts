@@ -108,7 +108,10 @@ export interface BEjercicios extends ConLabel { t: 'ejercicios'; items: Ejercici
 export interface EntradaGlosario {
   /** DOM id given by the pipeline (e.g. «glos-1-wire»); derived from the term when absent. */
   id?: string;
+  /** Plain text of the term. */
   termino: Html;
+  /** The term with markup (subscripts…), when it has any. */
+  termino_html?: Html | null;
   html: Html;
   ver: string[];
 }
@@ -120,6 +123,8 @@ export type Bloque =
 
 export interface Parte {
   id: string;
+  tipo?: string;
+  tomo?: string | null;
   titulo: string;
   num?: string | null;
   label?: string | null;

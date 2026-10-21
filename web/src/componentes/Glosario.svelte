@@ -192,7 +192,7 @@
         <dl>
           {#each g.entradas as e (e.id)}
             <div class="entrada" id={e.id}>
-              <dt>{@html prepararHtml(e.termino)}</dt>
+              <dt>{@html prepararHtml(e.termino_html || e.termino)}</dt>
               <dd>
                 {@html prepararHtml(e.html)}
                 {#if e.ver.length}
