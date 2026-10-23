@@ -3,20 +3,26 @@
 </script>
 
 <script lang="ts">
-  // A live calculator for one catalogued formula (or for the several formulas of one equation of the book):
-  // choose the variable to compute, type the others with their units, read the result, see how it depends
-  // on each input, and go to the book's section. Used inline in the reader (popover / bottom sheet) and on
-  // the «Calculadoras» page.
+  // A live calculator for one catalogued formula (or for the several formulas of one equation of the book).
+  // Visual: the circuit or curve of the formula with every quantity on it. Intuitive: sliders, tap a quantity
+  // (in the formula or the drawing) to solve for it, «¿Qué pasa si…?». Explanatory: «Paso a paso» with units
+  // and «Qué significa» from the book. Used inline in the reader (popover / bottom sheet) and on the
+  // «Calculadoras» page.
   import { untrack } from 'svelte';
   import type { Formula } from './tipos';
   import type { Entorno } from './expresion';
   import { calcular, objetivosPosibles, entradas, valoresPorDefecto, fueraDeRango, barrido, variable } from './motor';
   import { formatoValor, unidadGrafica } from './unidades';
+  import { normalizable, type Serie } from './eseries';
   import { calc, alternarFavorita, cargarFavoritos, rutaCalculadora } from './datos.svelte';
   import CampoValor from './CampoValor.svelte';
+  import FormulaViva from './FormulaViva.svelte';
+  import PasoAPaso from './PasoAPaso.svelte';
+  import QuePasa from './QuePasa.svelte';
+  import Significa from './Significa.svelte';
   import Icono from '../Icono.svelte';
   import { Grafica } from '../grafica';
-  import { url, urlCss, rutaDeRef, prepararHtml } from '../../lib/datos';
+  import { rutaDeRef, prepararHtml } from '../../lib/datos';
 
   let {
     formulas,
@@ -33,6 +39,9 @@
   let objetivo = $state('');
   let valores = $state<Entorno>({});
   let previo: number | undefined;
+  /** The input the reader moved last: the horizontal axis of the generic plot. */
+  let movida = $state('');
+  let serie = $state<Serie>('libre');
 
   function abrir(i: number) {
     const ant = formulas[idx];
@@ -43,6 +52,7 @@
     objetivo = m?.objetivo ?? f.resultado;
     valores = m ? { ...m.valores } : valoresPorDefecto(f);
     previo = undefined;
+    movida = '';
   }
 
   $effect.pre(() => {
@@ -58,9 +68,27 @@
   });
   const vObjetivo = $derived(variable(f, objetivo));
   const posibles = $derived(objetivosPosibles(f));
+  const conResultado = $derived({ ...valores, [objetivo]: resultado.valor });
+
+  // The drawing, «¿Qué pasa si…?» and the sensitivity plot follow the values at most once per frame, so a
+  // slider drag never queues work (144 Hz input on the tablet).
+  let lentos = $state<Entorno>({});
+  let ultimo: Entorno = {};
+  let marco = 0;
+  $effect(() => {
+    ultimo = conResultado;
+    if (!marco) {
+      marco = requestAnimationFrame(() => {
+        marco = 0;
+        lentos = ultimo;
+      });
+    }
+  });
+  $effect(() => () => cancelAnimationFrame(marco));
+  const lentosListos = $derived(Object.keys(lentos).length ? lentos : conResultado);
 
   function elegirObjetivo(id: string) {
-    if (id === objetivo) return;
+    if (id === objetivo || !posibles.includes(id)) return;
     if (Number.isFinite(resultado.valor)) valores[objetivo] = resultado.valor;
     objetivo = id;
     previo = valores[id];
@@ -74,16 +102,24 @@
     previo = undefined;
   }
 
+  function probar(id: string, x: number) {
+    valores[id] = x;
+    movida = id;
+  }
+
+  const hayNormalizables = $derived(entradas(f, objetivo).some((v) => normalizable(v.unidad)));
+
+  // ---------------------------------------------------------------- sections
+  type Seccion = 'pasos' | 'quepasa' | 'significa' | 'grafica';
+  let seccion = $state<Seccion>('pasos');
+  const verGrafica = $derived(modo === 'pagina' || seccion === 'grafica');
+
   // ---------------------------------------------------------------- sensitivity plot
   let xVar = $state('');
   const candidatosX = $derived(entradas(f, objetivo).filter((v) => !v.entero));
   $effect.pre(() => {
     const ids = candidatosX.map((v) => v.id);
     if (!ids.includes(untrack(() => xVar))) xVar = ids[0] ?? '';
-  });
-  let verGrafica = $state(false);
-  $effect.pre(() => {
-    if (modo === 'pagina') verGrafica = true;
   });
 
   function textoPlano(html: string): string {
@@ -94,7 +130,8 @@
     if (!verGrafica || !xVar || !vObjetivo) return null;
     const vx = variable(f, xVar);
     if (!vx) return null;
-    const b = barrido(f, objetivo, xVar, { ...valores, [objetivo]: resultado.valor });
+    const vals = lentosListos;
+    const b = barrido(f, objetivo, xVar, vals);
     let ymin = Infinity;
     let ymax = -Infinity;
     for (const y of b.y) {
@@ -103,7 +140,7 @@
         ymax = Math.max(ymax, y);
       }
     }
-    const actual = valores[xVar] ?? NaN;
+    const actual = vals[xVar] ?? NaN;
     const series = [{ name: textoPlano(vObjetivo.sim), unit: unidadGrafica(vObjetivo.unidad), x: b.x, y: b.y }];
     if (Number.isFinite(actual) && Number.isFinite(ymin) && ymax > ymin) {
       series.push({
@@ -130,11 +167,6 @@
     };
   });
 
-  const ecEstilo = $derived.by(() => {
-    const src = url(f.svg);
-    const PT = 10.5 / 1.12;
-    return `width:${(f.w / PT).toFixed(3)}em;height:${(f.h / PT).toFixed(3)}em;-webkit-mask-image:${urlCss(src)};mask-image:${urlCss(src)}`;
-  });
 
   const favorita = $derived(calc.favoritos.includes(f.id));
   const enlaceLibro = $derived(rutaDeRef(f.sub ?? f.seccion.label) ?? rutaDeRef(f.seccion.label));
@@ -145,6 +177,13 @@
     if (e === 'no-despejable') return 'Esta variable no se puede despejar.';
     return 'No se puede calcular con estos valores.';
   }
+
+  const SECCIONES: [Seccion, string][] = [
+    ['pasos', 'Paso a paso'],
+    ['quepasa', '¿Qué pasa si…?'],
+    ['significa', 'Qué significa'],
+    ['grafica', 'Ver cómo depende'],
+  ];
 </script>
 
 <div class="calculadora" class:pagina={modo === 'pagina'} data-formula={f.id}>
@@ -174,98 +213,145 @@
     </div>
   </header>
 
-  <div class="ecuacion" class:junto={modo === 'emergente'} role="img" aria-label={f.fuente}><span class="ec-img" style={ecEstilo}></span></div>
-
-  <div class="objetivo" role="radiogroup" aria-label="Variable que se calcula">
-    <span class="rotulo">Calcular</span>
-    {#each posibles as id (id)}
-      {@const v = variable(f, id)}
-      {#if v}
-        <button role="radio" aria-checked={id === objetivo} class:activo={id === objetivo} title={v.nombre} onclick={() => elegirObjetivo(id)}>
-          {@html v.sim}
-        </button>
-      {/if}
-    {/each}
-  </div>
-
-  <div class="campos">
-    {#each entradas(f, objetivo) as v (f.id + v.id)}
-      <CampoValor {v} bind:valor={() => valores[v.id] ?? NaN, (x) => (valores[v.id] = x)} {idBase} />
-    {/each}
-  </div>
-
-  {#if vObjetivo}
-    <output class="resultado" class:error={!Number.isFinite(resultado.valor)} for={entradas(f, objetivo).map((v) => `${idBase}-${v.id}`).join(' ')} aria-live="polite">
-      <span class="sim">{@html vObjetivo.sim}</span>
-      <span class="igual">=</span>
-      <span class="valor">{Number.isFinite(resultado.valor) ? formatoValor(resultado.valor, vObjetivo.unidad, 4) : '—'}</span>
-      <span class="nombre">{vObjetivo.nombre}</span>
-    </output>
-    {#if !Number.isFinite(resultado.valor)}
-      <p class="nota-calc">{descripcionError(resultado.error)}</p>
-    {:else}
-      {#if resultado.numerico}
-        <p class="nota-calc">Despejado numéricamente{resultado.raices > 1 ? `: hay ${resultado.raices} soluciones en el intervalo; se muestra la más cercana al valor anterior` : ''}.</p>
-      {/if}
-      {#if fueraDeRango(vObjetivo, resultado.valor)}
-        <p class="nota-calc aviso">El resultado queda fuera de lo habitual en el libro ({formatoValor(vObjetivo.min, vObjetivo.unidad, 3, true)} a {formatoValor(vObjetivo.max, vObjetivo.unidad, 3, true)}).</p>
-      {/if}
-    {/if}
-  {/if}
-
-  {#if f.nota}<p class="nota-libro">{@html prepararHtml(f.nota)}</p>{/if}
-
-  {#if f.ejemplo}
-    {@const e = f.ejemplo}
-    {@const vr = variable(f, f.resultado)}
-    <div class="ejemplo">
-      <div class="ejemplo-txt">
-        <strong>Ejemplo del libro</strong>{#if e.origen}<span class="origen"> ({e.origen})</span>{/if}:
-        {#each f.vars.filter((v) => v.id !== f.resultado) as v, i (v.id)}{i ? ', ' : ''}<span class="par">{@html v.sim} = {formatoValor(e.valores[v.id] ?? NaN, v.unidad, 4, true)}</span>{/each}
-        {#if vr}→ <span class="par">{@html vr.sim} = {formatoValor(e.libro, vr.unidad, 4, true)}</span>{/if}
-        <span class="ok" title="El generador comprueba que la fórmula reproduce el resultado del libro">✓ comprobado</span>
-        {#if e.errata}<span class="errata">{e.errata}</span>{/if}
-      </div>
-      <button class="secundario" onclick={valoresDelLibro}><Icono nombre="restablecer" tam={15} /> Valores del libro</button>
+  <div class="cuerpo-calc">
+    <div class="visual">
+      {#await import('./ilustraciones/Ilustracion.svelte')}
+        <div class="ilus-espera" aria-hidden="true"></div>
+      {:then m}
+        <m.default {f} {objetivo} valores={lentosListos} {posibles} onelegir={elegirObjetivo} xResp={movida} />
+      {/await}
     </div>
-  {/if}
 
-  {#if candidatosX.length}
-    <div class="sensibilidad">
-      {#if modo === 'emergente'}
-        <button class="secundario" aria-expanded={verGrafica} onclick={() => (verGrafica = !verGrafica)}>
-          <Icono nombre="simulador" tam={15} /> {verGrafica ? 'Ocultar la gráfica' : 'Ver cómo depende'}
-        </button>
-      {:else}
-        <h2>Sensibilidad</h2>
-      {/if}
-      {#if verGrafica}
-        <div class="eje-x">
-          {#if vObjetivo}<span aria-hidden="true">{@html vObjetivo.sim} frente a</span>{/if}
-          <select bind:value={xVar} aria-label="Variable del eje horizontal de la gráfica">
-            {#each candidatosX as v (v.id)}
-              <option value={v.id}>{textoPlano(v.sim)} — {v.nombre}</option>
-            {/each}
-          </select>
-        </div>
-        {#if grafica}
-          <div class="grafica">
-            <Grafica series={grafica.series} xAxis={grafica.xAxis} yAxis={grafica.yAxis} height={modo === 'pagina' ? 280 : 210} animate={false} help={false}
-              ariaLabel="Resultado frente a la variable elegida, en el intervalo habitual del libro" />
-          </div>
+    <div class="control">
+      <div class="ecuacion">
+        <FormulaViva {f} {objetivo} {posibles} onelegir={elegirObjetivo} />
+        <p class="pista-toque">Toca una magnitud de la fórmula o del dibujo para calcularla.</p>
+      </div>
+
+      <div class="objetivo" role="radiogroup" aria-label="Variable que se calcula">
+        <span class="rotulo">Calcular</span>
+        {#each posibles as id (id)}
+          {@const v = variable(f, id)}
+          {#if v}
+            <button role="radio" aria-checked={id === objetivo} class:activo={id === objetivo} title={v.nombre} onclick={() => elegirObjetivo(id)}>
+              {@html v.sim}
+            </button>
+          {/if}
+        {/each}
+      </div>
+
+      {#if vObjetivo}
+        <output class="resultado" class:error={!Number.isFinite(resultado.valor)} for={entradas(f, objetivo).map((v) => `${idBase}-${v.id}`).join(' ')} aria-live="polite">
+          <span class="sim">{@html vObjetivo.sim}</span>
+          <span class="igual">=</span>
+          <span class="valor">{Number.isFinite(resultado.valor) ? formatoValor(resultado.valor, vObjetivo.unidad, 4) : '—'}</span>
+          <span class="nombre">{vObjetivo.nombre}</span>
+        </output>
+        {#if !Number.isFinite(resultado.valor)}
+          <p class="nota-calc">{descripcionError(resultado.error)}</p>
+        {:else}
+          {#if resultado.numerico}
+            <p class="nota-calc">Despejado numéricamente{resultado.raices > 1 ? `: hay ${resultado.raices} soluciones en el intervalo; se muestra la más cercana al valor anterior` : ''}.</p>
+          {/if}
+          {#if fueraDeRango(vObjetivo, resultado.valor)}
+            <p class="nota-calc aviso">El resultado queda fuera de lo habitual en el libro ({formatoValor(vObjetivo.min, vObjetivo.unidad, 3, true)} a {formatoValor(vObjetivo.max, vObjetivo.unidad, 3, true)}): revisa los datos y sus prefijos.</p>
+          {/if}
         {/if}
       {/if}
+
+      {#if hayNormalizables}
+        <div class="series" role="group" aria-label="Valores normalizados de los deslizadores">
+          <span class="rotulo-serie">Deslizadores de R, C y L</span>
+          {#each ['libre', 'E12', 'E24'] as const as s (s)}
+            <button aria-pressed={serie === s} class:activo={serie === s} onclick={() => (serie = s)}>{s === 'libre' ? 'Continuo' : s}</button>
+          {/each}
+        </div>
+      {/if}
+
+      <div class="campos">
+        {#each entradas(f, objetivo) as v (f.id + v.id)}
+          <CampoValor {v} bind:valor={() => valores[v.id] ?? NaN, (x) => (valores[v.id] = x)} {idBase} {serie}
+            libro={f.ejemplo ? (f.ejemplo.valores[v.id] ?? (v.id === f.resultado ? f.ejemplo.resultado : undefined)) : undefined}
+            onmover={(id) => (movida = id)} />
+        {/each}
+      </div>
+
+      {#if f.ejemplo}
+        {@const e = f.ejemplo}
+        {@const vr = variable(f, f.resultado)}
+        <div class="ejemplo">
+          <div class="ejemplo-txt">
+            <strong>Ejemplo del libro</strong>{#if e.origen}{' '}<span class="origen">({e.origen})</span>{/if}:
+            {#each f.vars.filter((v) => v.id !== f.resultado) as v, i (v.id)}{i ? ', ' : ''}<span class="par">{@html v.sim} = {formatoValor(e.valores[v.id] ?? NaN, v.unidad, 4, true)}</span>{/each}
+            {#if vr}→ <span class="par">{@html vr.sim} = {formatoValor(e.libro, vr.unidad, 4, true)}</span>{/if}
+            <span class="ok" title="El generador comprueba que la fórmula reproduce el resultado del libro">✓ comprobado</span>
+            {#if e.errata}<span class="errata">{e.errata}</span>{/if}
+          </div>
+          <button class="secundario" onclick={valoresDelLibro}><Icono nombre="restablecer" tam={15} /> Valores del libro</button>
+        </div>
+      {/if}
+    </div>
+  </div>
+
+  {#if modo === 'emergente'}
+    <div class="selector" role="group" aria-label="Explicaciones">
+      {#each SECCIONES as [id, nombre] (id)}
+        {#if id !== 'grafica' || candidatosX.length}
+          <button aria-pressed={seccion === id} class:activo={seccion === id} onclick={() => (seccion = id)}>{nombre}</button>
+        {/if}
+      {/each}
     </div>
   {/if}
+
+  {#if modo === 'pagina' || seccion === 'significa'}
+    <section class="bloque-calc">
+      {#if modo === 'pagina'}<h2>Qué significa</h2>{/if}
+      <Significa {f} />
+    </section>
+  {/if}
+  {#if modo === 'pagina' || seccion === 'pasos'}
+    <section class="bloque-calc">
+      {#if modo === 'pagina'}<h2>Paso a paso</h2>{/if}
+      <PasoAPaso {f} {objetivo} {valores} resultado={resultado.valor} />
+    </section>
+  {/if}
+  {#if modo === 'pagina' || seccion === 'quepasa'}
+    <section class="bloque-calc">
+      {#if modo === 'pagina'}<h2>¿Qué pasa si…?</h2>{/if}
+      <QuePasa {f} {objetivo} valores={lentosListos} onprobar={probar} />
+    </section>
+  {/if}
+  {#if verGrafica && candidatosX.length}
+    <section class="bloque-calc sensibilidad">
+      {#if modo === 'pagina'}<h2>Cómo depende de cada dato</h2>{/if}
+      <div class="eje-x">
+        {#if vObjetivo}<span aria-hidden="true">{@html vObjetivo.sim} frente a</span>{/if}
+        <select bind:value={xVar} aria-label="Variable del eje horizontal de la gráfica">
+          {#each candidatosX as v (v.id)}
+            <option value={v.id}>{textoPlano(v.sim)} — {v.nombre}</option>
+          {/each}
+        </select>
+      </div>
+      {#if grafica}
+        <div class="grafica">
+          <Grafica series={grafica.series} xAxis={grafica.xAxis} yAxis={grafica.yAxis} height={modo === 'pagina' ? 280 : 210} animate={false} help={false}
+            ariaLabel="Resultado frente a la variable elegida, en el intervalo habitual del libro" />
+        </div>
+      {/if}
+    </section>
+  {/if}
+  {#if f.nota && modo === 'emergente' && seccion !== 'significa' && !f.explicacion}<p class="nota-libro">{@html prepararHtml(f.nota)}</p>{/if}
 </div>
 
 <style>
   .calculadora {
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
     font-family: var(--sans);
     color: var(--tinta);
+    container-type: inline-size;
+    container-name: calculadora;
   }
   .pestanas {
     display: flex;
@@ -273,7 +359,7 @@
     gap: 6px;
   }
   .pestanas button {
-    min-height: 36px;
+    min-height: 40px;
     padding: 4px 12px;
     border: 1px solid var(--linea);
     border-radius: 999px;
@@ -349,27 +435,49 @@
   .icono.activo {
     color: var(--c-tarjeta);
   }
+  /* ---------------------------------------------------------------- body: drawing | controls */
+  .cuerpo-calc {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    gap: 14px;
+  }
+  @container calculadora (min-width: 660px) {
+    .cuerpo-calc {
+      grid-template-columns: minmax(0, 1fr) minmax(0, 1.08fr);
+      align-items: start;
+      gap: 20px;
+    }
+    .visual {
+      position: sticky;
+      top: calc(var(--alto-barra) + 12px);
+    }
+  }
+  .visual {
+    min-width: 0;
+    padding: 10px;
+    border: 1px solid var(--linea-suave);
+    border-radius: 12px;
+    background: var(--superficie);
+  }
+  .ilus-espera {
+    aspect-ratio: 16 / 10;
+  }
+  .control {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    min-width: 0;
+  }
   .ecuacion {
-    overflow-x: auto;
-    padding: 6px 0 2px;
-    font-size: 19px;
+    border-radius: 10px;
+    background: var(--superficie-2);
+  }
+  .pista-toque {
+    margin: 0;
+    padding: 0 10px 8px;
+    color: var(--tinta-tenue);
+    font-size: 12.5px;
     text-align: center;
-  }
-  /* Under the book's own equation the copy is redundant, except in the phone sheet that covers it. */
-  :global(.emergente:not(.hoja)) .ecuacion.junto {
-    display: none;
-  }
-  .pagina .ecuacion {
-    font-size: 23px;
-  }
-  .ec-img {
-    display: inline-block;
-    vertical-align: middle;
-    background: currentColor;
-    -webkit-mask-repeat: no-repeat;
-    mask-repeat: no-repeat;
-    -webkit-mask-size: 100% 100%;
-    mask-size: 100% 100%;
   }
   .objetivo {
     display: flex;
@@ -380,14 +488,14 @@
   .rotulo {
     margin-right: 4px;
     color: var(--tinta-suave);
-    font-size: 13.5px;
+    font-size: 13px;
     font-weight: 600;
     text-transform: uppercase;
     letter-spacing: 0.04em;
   }
   .objetivo button {
     min-width: 44px;
-    min-height: 40px;
+    min-height: 44px;
     padding: 2px 10px;
     border: 1px solid var(--linea);
     border-radius: 9px;
@@ -411,6 +519,52 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
+    container-type: inline-size;
+    container-name: campos;
+  }
+  .series {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+  }
+  .rotulo-serie {
+    margin-right: 2px;
+    color: var(--tinta-suave);
+    font-size: 13px;
+  }
+  .series button,
+  .selector button {
+    min-height: 44px;
+    padding: 0 14px;
+    border: 1px solid var(--linea);
+    border-radius: 999px;
+    background: var(--superficie);
+    color: var(--tinta-suave);
+    font: inherit;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  .series button {
+    min-height: 36px;
+    padding: 0 12px;
+    font-size: 13px;
+  }
+  /* The visible pill is 36 px; the touch target reaches 44 px. */
+  .series button {
+    position: relative;
+  }
+  .series button::after {
+    content: '';
+    position: absolute;
+    inset: -4px 0;
+  }
+  .series button.activo,
+  .selector button.activo {
+    border-color: var(--acento);
+    background: var(--acento-tinte);
+    color: var(--acento);
+    font-weight: 600;
   }
   .resultado {
     display: flex;
@@ -424,7 +578,7 @@
   }
   .resultado .sim {
     font-family: var(--serif);
-    font-size: 21px;
+    font-size: 22px;
     font-style: italic;
   }
   .resultado .sim :global(sub) {
@@ -436,7 +590,7 @@
     color: var(--tinta-suave);
   }
   .resultado .valor {
-    font-size: 24px;
+    font-size: 26px;
     font-weight: 700;
     color: var(--acento);
     font-variant-numeric: tabular-nums;
@@ -501,8 +655,8 @@
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    min-height: 40px;
-    padding: 0 12px;
+    min-height: 44px;
+    padding: 0 14px;
     border: 1px solid var(--acento-borde);
     border-radius: 999px;
     background: var(--superficie);
@@ -515,19 +669,34 @@
   .secundario:hover {
     background: var(--acento-tinte);
   }
+  /* ---------------------------------------------------------------- explanations */
+  .selector {
+    display: flex;
+    gap: 6px;
+    overflow-x: auto;
+    padding: 2px 0 4px;
+    border-top: 1px solid var(--linea-suave);
+    padding-top: 12px;
+    scrollbar-width: none;
+  }
+  .selector button {
+    flex: none;
+  }
+  .bloque-calc h2 {
+    margin: 10px 0 8px;
+    padding-top: 12px;
+    border-top: 1px solid var(--linea-suave);
+    color: var(--titulos);
+    font-size: 18px;
+  }
   .sensibilidad {
     display: flex;
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
     gap: 8px;
   }
   .grafica {
-    align-self: stretch;
-  }
-  .sensibilidad h2 {
-    margin: 8px 0 0;
-    color: var(--titulos);
-    font-size: 18px;
+    min-width: 0;
   }
   .eje-x {
     display: flex;
@@ -541,7 +710,7 @@
     font-size: 0.75em;
   }
   select {
-    min-height: 40px;
+    min-height: 44px;
     max-width: 100%;
     padding: 0 8px;
     border: 1px solid var(--linea);
@@ -551,7 +720,7 @@
     font: inherit;
     font-size: 14px;
   }
-  .grafica {
-    min-width: 0;
+  .pagina .ecuacion :global(.formula-viva) {
+    font-size: 26px;
   }
 </style>

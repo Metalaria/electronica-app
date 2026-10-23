@@ -389,6 +389,9 @@ def main():
             if out['id'] not in por_svg[o['svg']]:
                 por_svg[o['svg']].append(out['id'])
     formulas.sort(key=lambda x: x.pop('_pos'))   # book order
+    # families, illustrations, explanations from the book and links (formulas_enriquecer.py)
+    from formulas_enriquecer import enriquecer
+    familias = enriquecer(formulas, refs, indice, OUT, problemas)
     # the same equation elsewhere in the book has the same SVG (named by its source), so it gets the button too
     # cards: the formulas of every card, in order
     tarjetas = []
@@ -408,7 +411,12 @@ def main():
     erratas = [(x['id'], x['seccion']['num'], x['ejemplo']['errata']) for x in formulas
                if 'ejemplo' in x and 'errata' in x['ejemplo']]
     doc = {'version': 1, 'total': len(formulas), 'con_ejemplo': con_ejemplo, 'formulas': formulas,
-           'tarjetas': tarjetas}
+           'tarjetas': tarjetas, 'familias': familias,
+           'cobertura': {'esquema': sum(1 for x in formulas if 'esquema' in x.get('figura', {})),
+                         'grafico': sum(1 for x in formulas if x.get('figura', {}).get('grafico', {}).get('p') not in (None, 'respuesta')),
+                         'explicacion': sum(1 for x in formulas if 'explicacion' in x),
+                         'ejercicios': sum(1 for x in formulas if 'ejercicios' in x),
+                         'simulador': sum(1 for x in formulas if 'simulador' in x)}}
     with open(os.path.join(OUT, 'formulas.json'), 'w', encoding='utf-8') as fh:
         json.dump(doc, fh, ensure_ascii=False, separators=(',', ':'))
     with open(os.path.join(OUT, 'formulas-ec.json'), 'w', encoding='utf-8') as fh:
@@ -420,6 +428,9 @@ def main():
     simb = sum(1 for x in formulas for v in x['despejes'].values() if v)
     num = sum(1 for x in formulas for v in x['despejes'].values() if v is None)
     print(f'formulas: despejes simbólicos {simb}, numéricos {num}')
+    cob = doc['cobertura']
+    print(f'formulas: {len(familias)} familias; con esquema {cob["esquema"]}, con gráfico propio {cob["grafico"]}, '
+          f'con explicación del libro {cob["explicacion"]}, con ejercicios {cob["ejercicios"]}, con simulación {cob["simulador"]}')
     for i, s, e in erratas:
         print(f'formulas: errata del libro en {s} ({i}): {e}')
     for p in problemas:

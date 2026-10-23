@@ -15,6 +15,9 @@
   let consulta = $state('');
   let soloFavoritas = $state(false);
   let capitulo = $state('');
+  let familia = $state('');
+  // The thumbnails of the families (drawing code) load with the page, not with the reader.
+  const miniaturas = import('./ilustraciones/Miniatura.svelte');
 
   onMount(() => {
     void cargarFavoritos();
@@ -51,6 +54,7 @@
     return catalogo.formulas.filter((f) => {
       if (soloFavoritas && !calc.favoritos.includes(f.id)) return false;
       if (capitulo && f.parte !== capitulo) return false;
+      if (familia && f.familia !== familia) return false;
       const t = indiceBusqueda.get(f.id) ?? '';
       return palabras.every((p) => t.includes(p));
     });
@@ -86,11 +90,23 @@
     return `width:${(f.w / PT).toFixed(3)}em;height:${(f.h / PT).toFixed(3)}em;-webkit-mask-image:${urlCss(src)};mask-image:${urlCss(src)}`;
   }
 
+  /** Families with their representative formula (the one drawn by the family's thumbnail template). */
+  const familias = $derived.by(() => {
+    if (!catalogo?.familias) return [];
+    return catalogo.familias.map((fam) => {
+      const de = catalogo!.formulas.filter((f) => f.familia === fam.id);
+      const rep =
+        de.find((f) => (fam.miniatura.tipo === 'esq' ? f.figura?.esquema?.p : f.figura?.grafico?.p) === fam.miniatura.p) ?? de[0];
+      return { ...fam, rep };
+    });
+  });
+  const familiaElegida = $derived(familias.find((x) => x.id === familia));
+
   // Formulas of the same section, under a calculator.
   const vecinas = $derived(elegida && catalogo ? catalogo.formulas.filter((f) => f.seccion.label === elegida.seccion.label && f.id !== elegida.id) : []);
 </script>
 
-<div class="pagina-calc" class:movil={app.movil}>
+<div class="pagina-calc" class:movil={app.movil} class:ancha={!!ruta.ancla}>
   {#if fallo}
     <div class="aviso"><h1>Calculadoras</h1><p>El catálogo de fórmulas no está generado (<code>python3 contenido/formulas.py</code>).</p></div>
   {:else if !catalogo}
@@ -119,7 +135,8 @@
       <h1>Calculadoras</h1>
       <p class="intro">
         {catalogo.total} fórmulas del libro listas para calcular, {catalogo.con_ejemplo} de ellas comprobadas con el ejemplo del propio libro.
-        Cualquier variable se puede despejar; los valores se escriben con prefijos (4k7, 100n, 2,2 µ).
+        Cada una con su circuito o su curva, controles deslizantes, la cuenta paso a paso y lo que dice el libro de ella.
+        Elige una familia o busca por nombre, símbolo o capítulo.
       </p>
     </header>
     <div class="controles">
@@ -135,6 +152,31 @@
         <span aria-hidden="true">{soloFavoritas ? '★' : '☆'}</span> Favoritas ({calc.favoritos.length})
       </button>
     </div>
+    <section class="familias" aria-label="Familias de fórmulas">
+      <div class="rejilla-familias">
+        {#each familias as fam (fam.id)}
+          <button class="familia" class:activa={familia === fam.id} aria-pressed={familia === fam.id}
+            onclick={() => (familia = familia === fam.id ? '' : fam.id)}>
+            <span class="mini">
+              {#if fam.rep}
+                {#await miniaturas then m}<m.default f={fam.rep} tipo={fam.miniatura.tipo} />{/await}
+              {/if}
+            </span>
+            <span class="fam-texto">
+              <span class="fam-nombre">{fam.nombre}</span>
+              <span class="fam-resumen">{fam.resumen}</span>
+            </span>
+            <span class="fam-total">{fam.total}</span>
+          </button>
+        {/each}
+      </div>
+    </section>
+    {#if familiaElegida}
+      <p class="filtro-familia">
+        Familia: <strong>{familiaElegida.nombre}</strong>
+        <button class="quitar" onclick={() => (familia = '')}>Ver todas</button>
+      </p>
+    {/if}
     <p class="cuenta" aria-live="polite">{lista.length === catalogo.total ? `${lista.length} fórmulas` : `${lista.length} de ${catalogo.total} fórmulas`}</p>
     {#if !lista.length}
       <p class="espera">{soloFavoritas && !calc.favoritos.length ? 'Aún no hay favoritas: marca la estrella de una calculadora.' : 'Ninguna fórmula coincide.'}</p>
@@ -163,11 +205,14 @@
 
 <style>
   .pagina-calc {
-    max-width: 52rem;
+    max-width: 60rem;
     margin: 0 auto;
     padding: 24px 24px 64px;
     font-family: var(--sans);
     color: var(--tinta);
+  }
+  .ancha {
+    max-width: 76rem;
   }
   .movil {
     padding: 16px 16px 56px;
@@ -241,6 +286,116 @@
     border-color: var(--c-tarjeta);
     color: var(--c-tarjeta-texto);
     background: color-mix(in srgb, var(--c-tarjeta) 12%, var(--superficie));
+  }
+  .familias {
+    margin: 18px 0 4px;
+  }
+  .rejilla-familias {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(min(100%, 228px), 1fr));
+    gap: 10px;
+  }
+  .familia {
+    display: grid;
+    grid-template-columns: 92px minmax(0, 1fr) auto;
+    align-items: center;
+    gap: 10px;
+    min-height: 88px;
+    padding: 8px 10px 8px 8px;
+    border: 1px solid var(--linea);
+    border-radius: 12px;
+    background: var(--superficie);
+    color: var(--tinta);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+    transition: border-color 0.12s, background 0.12s;
+  }
+  .familia:hover {
+    border-color: var(--acento-borde);
+    background: var(--hover);
+  }
+  .familia.activa {
+    border-color: var(--acento);
+    background: var(--acento-tinte);
+    box-shadow: 0 0 0 1px var(--acento);
+  }
+  .mini {
+    display: block;
+    width: 92px;
+    height: 72px;
+    overflow: hidden;
+    border-radius: 8px;
+    background: var(--superficie-2);
+    padding: 4px;
+  }
+  .mini :global(svg) {
+    width: 100%;
+    height: 64px;
+    max-height: 64px;
+  }
+  .fam-texto {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  .fam-nombre {
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.25;
+    color: var(--titulos);
+  }
+  .fam-resumen {
+    color: var(--tinta-suave);
+    font-size: 12.5px;
+    line-height: 1.3;
+  }
+  .fam-total {
+    align-self: start;
+    min-width: 2em;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: var(--superficie-2);
+    color: var(--tinta-suave);
+    font-size: 12.5px;
+    font-variant-numeric: tabular-nums;
+    text-align: center;
+  }
+  .filtro-familia {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 12px 0 0;
+    color: var(--tinta-suave);
+  }
+  .quitar {
+    min-height: 40px;
+    padding: 0 12px;
+    border: 1px solid var(--acento-borde);
+    border-radius: 999px;
+    background: var(--superficie);
+    color: var(--acento);
+    font: inherit;
+    font-size: 14px;
+    cursor: pointer;
+  }
+  /* Phones: the families scroll sideways so the list stays close. */
+  @media (max-width: 640px) {
+    .rejilla-familias {
+      display: flex;
+      overflow-x: auto;
+      scroll-snap-type: x mandatory;
+      padding-bottom: 6px;
+      margin: 0 -16px;
+      padding-left: 16px;
+      padding-right: 16px;
+      scrollbar-width: none;
+    }
+    .familia {
+      flex: 0 0 236px;
+      scroll-snap-align: start;
+    }
   }
   .cuenta {
     margin: 10px 0 0;

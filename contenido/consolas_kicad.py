@@ -451,6 +451,10 @@ def connectivity(sheets):
         for j, sym in enumerate(sh.symbols):
             for k, p in enumerate(sym['pins']):
                 node = ('p', si, j, k)
+                if p['type'] == 'no_connect':
+                    # electrical type «no_connect»: KiCad never joins these pins to a net, even when a wire
+                    # is drawn over them (Game Boy U4 IR3R40N NC pins lie on the ground wire)
+                    continue
                 add_point(key((p['x'], p['y'])), node)
                 pin_nodes.append(node)
                 if sym['power'] and p['type'] == 'power_in':

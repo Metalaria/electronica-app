@@ -2,6 +2,7 @@
 // scenario's signals.
 
 import type { Escenario, Nivel } from './modelo';
+import type { IdMaquina } from '../datos';
 
 export interface Actividad {
   /** Signal id of the scenario. */
@@ -73,13 +74,27 @@ export interface Decodificacion {
 }
 
 export interface Maquina {
-  id: 'nes' | 'neogeo';
+  id: IdMaquina;
   diagrama: Diagrama;
+  /** Second diagram drawn instead of the board one (Game Boy: inside the SoC), lit by the same scenarios. */
+  interior?: { titulo: string; nota: string; diagrama: Diagrama };
+  /** Address shown in the decoder when the tab opens (hex digits). */
+  dirInicial?: string;
+  /** Short note under the decoder (bank registers, mapper…). */
+  notaDecodificador?: string;
   escenarios: { id: string; titulo: string; crear: (op: Opciones) => Escenario }[];
-  decodificar: (dir: number, escritura: boolean) => Decodificacion;
+  decodificar: (dir: number, escritura: boolean, espacio?: string) => Decodificacion;
+  /**
+   * Machine-wide variants (Mega Drive: PAL / NTSC clocks); the first is the default. Every scenario gets the chosen
+   * id as `op.norma`, and `diagramaDe` redraws the board diagram with its figures.
+   */
+  variantes?: { id: string; titulo: string; nota: string }[];
+  diagramaDe?: (variante: string) => Diagrama;
   /** Address digits (4 for the 6502, 6 for the 68000). */
   digitos: number;
-  ejemplos: { dir: number; escritura: boolean; texto: string }[];
+  /** Address spaces the decoder offers (Z80 memory / I/O ports, 68000 / Z80…); the first is the default. */
+  espacios?: { id: string; titulo: string; digitos: number }[];
+  ejemplos: { dir: number; escritura: boolean; texto: string; espacio?: string }[];
   /** Options shown by some scenarios. */
   opciones: OpcionDef[];
 }
@@ -91,7 +106,7 @@ export interface OpcionDef {
   valores: { v: string; texto: string }[];
 }
 
-export type Opciones = Record<string, string> & { dir?: string; escritura?: string };
+export type Opciones = Record<string, string> & { dir?: string; escritura?: string; espacio?: string; norma?: string };
 
 export function activo(e: Escenario | null, muestra: { bits: Record<string, Nivel>; buses: Record<string, string | null> }, a: Actividad): boolean {
   if (!e) return false;

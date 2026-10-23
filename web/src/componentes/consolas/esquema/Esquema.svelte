@@ -189,6 +189,9 @@
   const hotspotNombre = $derived(fotoDe ? datos.hotspots.find((h) => h.id === fotoDe)?.nombre : undefined);
   const bloqueDe = $derived(fotoDe ? datos.hotspots.find((h) => h.id === fotoDe)?.bloque : undefined);
   const grupoRedes = $derived(redSel?.g ? datos.redes.filter((r) => r.g === redSel.g) : []);
+  // photos that can show this net's copper (Game Boy traces) or this part's footprint (Mega Drive PCB)
+  const conPista = $derived(redSel ? (datos.fotos ?? []).some((f) => f.trazas_redes?.includes(redSel.n)) : false);
+  const conPosicion = $derived(comp && !fotoDe ? [datos.foto, ...(datos.fotos ?? [])].some((f) => !!f.posiciones?.[comp]) : false);
 </script>
 
 <div class="esquema">
@@ -278,6 +281,11 @@
             {/each}
           </div>
         {/if}
+        {#if conPista}
+          <div class="acciones">
+            <button type="button" class="accion" onclick={() => irA('foto', { tipo: 'red', id: redSel.n })}>Ver sus pistas en la placa</button>
+          </div>
+        {/if}
         <p class="sub">{redSel.nodos.length} pines conectados:</p>
         <ul class="nodos">
           {#each redSel.nodos as n (n[0] + '.' + n[1])}
@@ -309,6 +317,10 @@
           <div class="acciones">
             {#if fotoDe}<button type="button" class="accion" onclick={() => irA('foto', { tipo: 'foto', id: fotoDe })}>Ver en la foto{hotspotNombre ? `: ${hotspotNombre}` : ''}</button>{/if}
             {#if bloqueDe}<button type="button" class="accion" onclick={() => irA('arquitectura', { tipo: 'bloque', id: bloqueDe })}>Ver en la arquitectura</button>{/if}
+          </div>
+        {:else if conPosicion}
+          <div class="acciones">
+            <button type="button" class="accion" onclick={() => irA('foto', { tipo: 'componente', id: comp })}>Ver dónde está en la foto</button>
           </div>
         {:else}
           <p class="detalle">No tiene punto en la foto.</p>

@@ -1,9 +1,9 @@
 // Shared state of the «Consolas» views and their routes:
 //   #/consolas/<maquina>/<pestana>[/<seleccion>]
-//   maquina: nes | neogeo; pestana: foto | arquitectura | esquema | fuentes
+//   maquina: nes | neogeo | sms | megadrive | gb | gbc; pestana: foto | arquitectura | esquema | fuentes
 //   seleccion: a component reference («U6»), «red:<net name>» or «bloque:<id>» (URI-encoded)
 
-import type { IdMaquina } from './datos';
+import { IDS_MAQUINA, type IdMaquina } from './datos';
 
 export type Pestana = 'foto' | 'arquitectura' | 'esquema' | 'fuentes';
 
@@ -21,7 +21,7 @@ export const PESTANAS: { id: Pestana; titulo: string }[] = [
 
 export function leerAncla(ancla: string): { maquina: IdMaquina; pestana: Pestana; sel: Seleccion | null } {
   const [m = '', p = '', ...resto] = ancla.split('/');
-  const maquina: IdMaquina = m === 'neogeo' ? 'neogeo' : 'nes';
+  const maquina: IdMaquina = IDS_MAQUINA.find((x) => x === m) ?? 'nes';
   const pestana: Pestana = (['foto', 'arquitectura', 'esquema', 'fuentes'] as const).find((x) => x === p) ?? 'foto';
   const s = resto.join('/');
   let sel: Seleccion | null = null;

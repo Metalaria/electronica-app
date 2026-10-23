@@ -603,8 +603,10 @@ slider, subcircuit interior, «Nuevo circuito») and the screenshots.
 
 ## Consoles (`web/src/componentes/consolas/`, data in `web/public/consolas/`)
 
-Three linked views of the two mainboards photographed in printed chapter 36 (figures 36.16 and 36.22): the NES
-NES-CPU-07 and the first Neo Geo AES board (NEO-AES). Route `#/consolas/<nes|neogeo>/<foto|arquitectura|esquema|fuentes>[/<sel>]`
+Three linked views of six mainboards: the two photographed in printed chapter 36 (figures 36.16 and 36.22), the NES
+NES-CPU-07 and the first Neo Geo AES board (NEO-AES), plus the Master System II (171-5922A), Mega Drive (model 1
+VA6), Game Boy (DMG-CPU-05/06 + DMG-LCD-06) and Game Boy Color (CGB-CPU-04). `IDS_MAQUINA` in `datos.ts` lists them.
+Route `#/consolas/<nes|neogeo|sms|megadrive|gb|gbc>/<foto|arquitectura|esquema|fuentes>[/<sel>]`
 (`Vista` includes `'consolas'`); `<sel>` is a schematic reference (`U6`), `red:<net>`, `bloque:<id>` or `foto:<id>`,
 URI-encoded. Selections made inside a tab only replace the URL; the cross links («Ver en el esquema»…) push it.
 The reader shows «Explorar la placa» under both photos (`VerConsola.svelte`, labels `fig-37.16`/`fig-37.22`).
@@ -618,7 +620,30 @@ nets through the pins), `consolas_svg.py` (SVG → compact layers), `consolas_da
 names, chip equivalences, sources). The build fails if a geometric group holds pins of two nets, a netlist net has no
 geometry, or a `.kicad_sch` wire is not a wire of the SVG (currently 0 / 0 / 0 on both machines).
 
-**Files** (≈ 1,24 MB in all):
+The four newer machines (entries of `MAQUINAS` in `consolas.py`, hotspots and texts in `consolas_datos2.py`):
+- `sms`: `sms/sms2/transcripcion.py` is a hand transcription of Sega's 171-5922A service-manual sheets (components,
+  pins with number, name and net; `DUDAS` lists uncertain readings, shown in «Fuentes»).
+  `tools/sms2_kicad.py <transcripcion.py> <kicad7 dir>` writes a label-style KiCad 7 project (root + `hoja1..3`,
+  checks pin counts and single-pin nets), then kicad-cli exports netlist/SVG/PDF as for the other machines.
+- `megadrive`: stonedDiscord's KiCad. The photo field `pcb` {huellas, mm, px, escala} projects every footprint onto
+  the photo (`posiciones`), so a component without a hotspot gets a cross marker (`.marcador`). The main PAL VA6.8
+  photo is taken at an angle: `pcb.ajuste` names `megadrive/pcb/VA6.8_ajuste.json` (homography H plus a quadratic
+  correction C fitted to 18 control points, which it also stores) instead of scale + offset. Hotspot ids are unique
+  across a machine's photos (the US VA6 ones carry `u-`).
+- `gb`: Gekkio's DMG-CPU-06 plus the DMG-LCD-06 board (`placas_extra`: references prefixed `LCD-`, nets
+  `/DMG-LCD-06/...`); pins of type `no_connect` are skipped in connectivity. Gekkio's trace SVG becomes
+  `gb/trazas-<foto>.json` {redes: {net: [path d]}} (`consolas_fotos.trazas`), lazy-loaded by `cargarTrazas()`.
+- `gbc`: no KiCad source is published, so `tools/pdf2kicadnet.py` rebuilds nets and geometry from Natalie the
+  Nerd's KiCad 9 PDF (wire popups «Net =», «Reference =» popups, pin numbers/names by plot colour, hierarchy
+  via Dest links) into `gbc/cgb04/CGB_CPU04.{nets,geom}.json`; `consolas_pdf.py` turns the PDF drawing into CSG1
+  layers. `comparar_cgb` checks it against opengbc (written into `equivalencias`).
+
+New optional fields of `<maquina>.json`: `fotos` [{id, titulo, src, ancho, alto, credito, revision, nota, hotspots,
+posiciones {ref: [x, y]}, posiciones_nota, trazas (file), trazas_redes [net names]}] (extra photos; the main one stays
+in `foto`/`hotspots`, and `foto` accepts the same optional fields), `revisiones` [{vista, revision, fuente}], `equivalencias_cabecera` (column titles), `citas`
+(legend of the citation keys), `notas` [{ref, pin?, texto}].
+
+**Files** (≈ 4,9 MB in all for the six machines; each is fetched only when opened):
 - `<maquina>.json`: `foto` {src, ancho, alto, figura}; `hotspots` [{id, nombre, pieza (marking read on the photo),
   esquema [refs], bloque (diagram block), cajas [[x0,y0,x1,y1]] in photo pixels, confianza `marca|posicion`, buses
   [group keys], funcion}]; `grupos` {key: Spanish name}; `hojas` [{id, nombre, ruta, archivo, ancho, alto (mm), padre}];
@@ -645,8 +670,12 @@ geometry, or a `.kicad_sch` wire is not a wire of the SVG (currently 0 / 0 / 0 o
 `esquema/` (`dibujo.ts` decodes CSG1 into one Path2D per layer and 8 × 8 tile, culls tiles, skips text under
 ~2,6 px; `capa.ts` hit tests and draws the highlighted net; `Lienzo.svelte` pan/zoom on demand without an
 animation loop, exposes `__epaEsquema` and `__epaEsquemaVista` for tests), `arquitectura/` (`modelo.ts`: scenarios
-as signal transition lists in real seconds, sampled by binary search; `nes.ts`, `neogeo.ts`: diagram, address
-decoder, scenarios with the documented timings; `dibujo.ts` draws the diagram in the shared `Escena`;
+as signal transition lists in real seconds, sampled by binary search; `nes.ts`, `neogeo.ts`, `sms.ts`,
+`megadrive.ts`, `gb.ts`, `gbc.ts`: diagram, address decoder, scenarios with the documented timings, loaded lazily by
+`maquinas.ts`; `z80.ts` holds the Z80 machine cycles shared by the SMS and the Mega Drive. A `Maquina` may add
+`interior` (second diagram layer, the GB «Dentro del SoC»), `espacios` (address spaces for the decoder: memory/I/O,
+68000/Z80), `notaDecodificador` and `variantes` + `diagramaDe` (machine-wide variant passed to every scenario as
+`op.norma` and shown as a toggle «Norma de vídeo»: the Mega Drive's PAL default and NTSC clocks); `dibujo.ts` draws the diagram in the shared `Escena`;
 `Analizador.svelte` is the logic-analyser view). Tests: `tests/consolas.spec.ts`.
 
 ## Instruments and test bench (`web/src/componentes/instrumentos/`)
@@ -807,6 +836,27 @@ si no, numérico acotado, el mismo algoritmo que la aplicación).
     "nota": "html", "claves": "palabras de búsqueda" } ] }
 ```
 Los valores van en la `unidad` de cada variable (SI sin prefijo; `%`, `dB`, `°C`, `h`… tal cual; `sim` es HTML).
+
+**Dibujo, familias y «Qué significa»** (`formulas_enriquecer.py`, llamado por `formulas.py` tras ordenar). Cada fórmula
+recibe además:
+```json
+"familia": "filtros",                                  // una de las 18 de formulas_visual.FAMILIAS
+"figura": { "esquema": { "p": "filtro-rc", "s": { "R": "R", "C": "C", "fc": "f_c" } },   // plantilla y huecos
+            "grafico": { "p": "bode", "s": { "fc": "f_c" } } },  // siempre hay gráfico: «respuesta» si no hay propio
+"explicacion": { "ref": "sec-3.6", "ref_num": "3.6",
+                 "partes": [ { "k": "significa|aplica|valores|error", "html": "… «cita literal» …" } ] },
+"ejercicios": ["ej-3.4"],                                // de la misma parte que usan los símbolos (máx. 4)
+"simulador": [ { "k": "cap03/fig-3.9_filtros_rc", "t": "Filtros RC" } ]   // netlists de la sección (máx. 3)
+```
+y el documento, `"familias": [ { "id", "nombre", "resumen", "miniatura": { "tipo": "esq|graf", "p" }, "total" } ]` y
+`"cobertura": { "esquema", "grafico", "explicacion", "ejercicios", "simulador" }` (número de fórmulas). Fuentes:
+`formulas_visual.py` (`FAMILIAS`; los roles de cada plantilla de esquema, `ESQUEMAS`, y de cada tipo de gráfico,
+`GRAFICOS`; `VISUAL[id] = V(familia, esq=(plantilla, {rol: variable o expresión o «#texto»}), graf=(tipo, {…}))`) y
+`formulas_texto.py` (`X(id, ref=None, significa=…, aplica=…, valores=…, error=…)`: 2–4 frases por fórmula con el
+texto del libro; `ref` cuando la explicación está en otra sección que la ecuación, p. ej. un resumen). El generador
+falla si una plantilla o un rol no existen, si una variable de un hueco no es de la fórmula, si el HTML usa algo más
+que `sub sup em strong br`, si una parte no cita el libro o si una cita «…» (de 12 caracteres o más; «[…]» une
+trozos) no está, normalizada como en `repaso.py`, en el texto de la sección `ref`.
 `formulas-ec.json` es `{ "<svg de una ecuación>": ["id", …] }` para cada ecuación con «Calcular» (la misma fuente da
 el mismo SVG, así que una fórmula repetida en otro capítulo también lleva el botón).
 
@@ -819,8 +869,29 @@ unidad; una variable que calcula otra fórmula de la tarjeta puede enlazarse a e
 solo combina variables que usa el resto de la tarjeta). `Calculadoras.svelte`: ruta `#/calculadoras[/<id>]` (`Vista`
 incluye `'calculadoras'`). `expresion.ts` (analizador, cierres, `resolverNumerico` = el del generador), `motor.ts`
 (cálculo de cualquier variable, barridos, tarjetas), `unidades.ts` (lectura de «4k7», «2,2 µ»; formato con prefijo SI
-y U+202F), `datos.svelte.ts` (JSON diferido, favoritas en la clave `calc-favoritos` del almacén). Pruebas:
-`tests/calculadoras.spec.ts`.
+y U+202F), `datos.svelte.ts` (JSON diferido, favoritas en la clave `calc-favoritos` del almacén).
+
+`Calculadora.svelte` reparte en dos columnas (consulta de contenedor ≥ 660 px; una en el teléfono) el dibujo y los
+controles: `FormulaViva.svelte` (la ecuación con cada variable pulsable: `button[data-var]`, toca para despejarla),
+la incógnita, el resultado, «Continuo/E12/E24» (`eseries.ts`) y los campos `CampoValor.svelte` (deslizador
+logarítmico o lineal con la marca del valor del libro, campo de texto y selector de prefijo: un número sin prefijo
+toma el del selector; aviso «Fuera de lo habitual en el libro» explicado). Los valores que leen el dibujo y las
+explicaciones se agrupan por fotograma (`requestAnimationFrame`). En el panel emergente, botones de alternancia; en
+la página, todo apilado: `PasoAPaso.svelte` (`mates.ts`: árbol de presentación de la expresión, sustitución con
+prefijos, reducciones intermedias con la unidad simplificada por `dimensiones.ts` —base V, A, s, m, K— y resultado),
+`QuePasa.svelte` (`quepasa.ts`: elasticidad d ln y/d ln x en ×1,01, ×2 y ×4; si coincide con ±¼…±4 se escribe la ley
+«y ∝ 1/x» y «doblar x divide y entre 2»; si no, el cambio en % o en unidades lineales; «Probar» aplica el cambio),
+`Significa.svelte` (partes de `explicacion`, enlaces a la sección, animaciones de `enlacesDe`, simulador y
+ejercicios) y la gráfica de sensibilidad. `mates.css`: estilo matemático común. `ilustraciones/` se carga aparte
+(`import()` diferido): `geometria.ts` (lenguaje de esquemas en rejilla de 10 unidades: hilos, bipolos, operacional,
+transistores, cajas, cotas, barras horizontales, etiquetas por rol; `compilar` → primitivas), `esquemas.ts` (54
+plantillas), `huecos.ts` (rol → valor; símbolos HTML → `tspan`), `Esquema.svelte` (cuerpos y etiquetas pulsables
+con `role="button"` «Calcular …», resultado resaltado), `graficos.ts` (26 tipos de escena en coordenadas de datos:
+carga, Bode, resonancia, decibelios, diodo, 555, histéresis, espectro…; `ROLES_G`), `contexto.ts`, `Grafico.svelte`
+(SVG 320 × 188 con marcas y anclas que no se salen), `Ilustracion.svelte` (esquema + gráfico; sin gráfico propio,
+«respuesta»: el resultado frente a la última entrada movida, ×30 alrededor del valor) y `Miniatura.svelte` (la
+galería de familias de `Calculadoras.svelte`). Pruebas: `tests/calculadoras.spec.ts`; capturas de todas las
+plantillas: `tests/calculadoras-capturas.mjs`.
 
 ## Repaso: tarjetas del glosario y tests (`web/src/componentes/repaso/`, datos en `web/public/libro/repaso/`)
 

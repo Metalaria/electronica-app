@@ -12,28 +12,39 @@
   import { Reloj } from '../../animaciones/nucleo/reloj.svelte';
   import type { Vista } from '../../animaciones/nucleo/dibujo';
   import type { EventoPuntero } from '../../animaciones/ui/Escena.svelte';
-  import { NES } from './nes';
-  import { NEOGEO } from './neogeo';
   import { dibujarDiagrama, bloqueEn } from './dibujo';
   import { factor, hex, muestrear, tiempo, type Escenario } from './modelo';
-  import type { Decodificacion, Opciones } from './diagrama';
+  import type { Decodificacion, Maquina, Opciones } from './diagrama';
   import Analizador from './Analizador.svelte';
   import type { DatosMaquina } from '../datos';
   import type { Seleccion } from '../estado.svelte';
 
   let {
     datos,
+    maquina,
     sel,
     seleccionar,
     irA,
   }: {
     datos: DatosMaquina;
+    maquina: Maquina;
     sel: Seleccion | null;
     seleccionar: (s: Seleccion | null) => void;
     irA: (pestana: 'foto' | 'esquema', s: Seleccion) => void;
   } = $props();
 
-  const maquina = $derived(datos.id === 'nes' ? NES : NEOGEO);
+  // Board diagram or, where the machine has one, the inside of its SoC (same scenarios, same signals).
+  let capa = $state<'placa' | 'interior'>('placa');
+  // Machine-wide variant (Mega Drive: PAL or NTSC clocks), passed to every scenario as op.norma.
+  let variante = $state('');
+  const varianteSel = $derived(maquina.variantes?.find((v) => v.id === variante) ?? maquina.variantes?.[0] ?? null);
+  const diagrama = $derived(
+    capa === 'interior' && maquina.interior
+      ? maquina.interior.diagrama
+      : varianteSel && maquina.diagramaDe
+        ? maquina.diagramaDe(varianteSel.id)
+        : maquina.diagrama,
+  );
   let escenarioId = $state('bus');
   let opciones: Opciones = $state({});
   let ts = $state(0);
@@ -44,7 +55,7 @@
 
   const escenario: Escenario = $derived.by(() => {
     const def = maquina.escenarios.find((s) => s.id === escenarioId) ?? maquina.escenarios[0]!;
-    return def.crear({ ...opciones });
+    return def.crear(varianteSel ? { ...opciones, norma: varianteSel.id } : { ...opciones });
   });
   let ids: string[] = $state([]);
   let escenarioPrevio: Escenario | null = null;
@@ -66,7 +77,7 @@
     if (sel.tipo === 'bloque') return sel.id;
     if (sel.tipo === 'foto') return datos.hotspots.find((h) => h.id === sel.id)?.bloque ?? null;
     if (sel.tipo === 'componente') {
-      const b = maquina.diagrama.bloques.find((x) => x.esquema?.includes(sel.id));
+      const b = diagrama.bloques.find((x) => x.esquema?.includes(sel.id));
       return b?.id ?? datos.hotspots.find((h) => h.esquema.includes(sel.id))?.bloque ?? null;
     }
     return null;
@@ -76,10 +87,13 @@
 
   let dirTexto = $state('');
   let escritura = $state(false);
+  let espacio = $state('');
+  const digitos = $derived(maquina.espacios?.find((e) => e.id === espacio)?.digitos ?? maquina.digitos);
   let deco: Decodificacion | null = $state(null);
   $effect(() => {
     // default address per machine
-    dirTexto = maquina.id === 'nes' ? '2002' : '320000';
+    dirTexto = maquina.dirInicial ?? (maquina.id === 'nes' ? '2002' : '320000');
+    espacio = maquina.espacios?.[0]?.id ?? '';
     deco = null;
   });
 
@@ -87,17 +101,18 @@
     const limpio = dirTexto.replace(/^\$|^0x/i, '').trim();
     const n = parseInt(limpio, 16);
     if (!/^[0-9a-f]+$/i.test(limpio) || Number.isNaN(n)) return;
-    const max = maquina.digitos === 4 ? 0xffff : 0xffffff;
+    const max = 16 ** digitos - 1;
     const dir = Math.min(max, n);
-    dirTexto = dir.toString(16).toUpperCase().padStart(maquina.digitos, '0');
-    deco = maquina.decodificar(dir, escritura);
-    opciones = { ...opciones, dir: dirTexto, escritura: escritura ? '1' : '0' };
+    dirTexto = dir.toString(16).toUpperCase().padStart(digitos, '0');
+    deco = maquina.decodificar(dir, escritura, espacio || undefined);
+    opciones = { ...opciones, dir: dirTexto, escritura: escritura ? '1' : '0', espacio };
     escenarioId = 'decodificar';
     reloj.play = true;
   }
 
-  function ejemplo(dir: number, w: boolean): void {
-    dirTexto = dir.toString(16).toUpperCase().padStart(maquina.digitos, '0');
+  function ejemplo(dir: number, w: boolean, esp?: string): void {
+    if (esp !== undefined) espacio = esp;
+    dirTexto = dir.toString(16).toUpperCase().padStart(maquina.espacios?.find((e) => e.id === espacio)?.digitos ?? maquina.digitos, '0');
     escritura = w;
     decodificar();
   }
@@ -124,16 +139,16 @@
   // ------------------------------------------------------------------ drawing and pointer
 
   function dibujar(v: Vista): void {
-    dibujarDiagrama(v, maquina.diagrama, escenario, muestra, elegido, deco && escenarioId === 'decodificar' ? deco.bloque : null, reloj.play);
+    dibujarDiagrama(v, diagrama, escenario, muestra, elegido, deco && escenarioId === 'decodificar' ? deco.bloque : null, reloj.play);
   }
 
   function puntero(e: EventoPuntero): boolean | void {
     if (e.tipo !== 'abajo') return;
-    const b = bloqueEn(maquina.diagrama, e.x, e.y);
+    const b = bloqueEn(diagrama, e.x, e.y);
     seleccionar(b ? { tipo: 'bloque', id: b.id } : null);
   }
 
-  const bloque = $derived(elegido ? maquina.diagrama.bloques.find((b) => b.id === elegido) ?? null : null);
+  const bloque = $derived(elegido ? diagrama.bloques.find((b) => b.id === elegido) ?? null : null);
   const opcionesVisibles = $derived(maquina.opciones.filter((o) => o.escenarios.includes(escenarioId)));
   const nombresPista = $derived(escenario.pistas.map((p) => ({ id: p.id, nombre: p.nombre, ayuda: p.ayuda })));
 
@@ -152,10 +167,25 @@
 
   <div class="rejilla">
     <div class="principal">
+      {#if maquina.interior}
+        <div class="capas" role="group" aria-label="Capa del diagrama">
+          <button type="button" aria-pressed={capa === 'placa'} class:activo={capa === 'placa'} onclick={() => (capa = 'placa')}>Placa</button>
+          <button type="button" aria-pressed={capa === 'interior'} class:activo={capa === 'interior'} onclick={() => (capa = 'interior')}>{maquina.interior.titulo}</button>
+        </div>
+        {#if capa === 'interior'}<p class="nota-capa">{maquina.interior.nota}</p>{/if}
+      {/if}
+      {#if maquina.variantes && varianteSel}
+        <div class="capas" role="group" aria-label="Norma de vídeo">
+          {#each maquina.variantes as v (v.id)}
+            <button type="button" aria-pressed={v.id === varianteSel.id} class:activo={v.id === varianteSel.id} onclick={() => (variante = v.id)}>{v.titulo}</button>
+          {/each}
+        </div>
+        <p class="nota-capa" data-norma={varianteSel.id}>{varianteSel.nota}</p>
+      {/if}
       <p class="desliza">Desliza el diagrama a los lados para verlo entero.</p>
       <div class="desplazable">
         <div class="diagrama">
-          <Escena {dibujar} {paso} {reloj} dims={() => [maquina.diagrama.ancho, maquina.diagrama.alto]} etiqueta={`Diagrama de bloques de la ${datos.titulo}`} {puntero} />
+          <Escena {dibujar} {paso} {reloj} dims={() => [diagrama.ancho, diagrama.alto]} etiqueta={`Diagrama de bloques de la ${datos.titulo}`} {puntero} />
         </div>
       </div>
 
@@ -243,8 +273,13 @@
         >
           <label class="dir">
             <span>$</span>
-            <input type="text" inputmode="text" autocomplete="off" spellcheck="false" maxlength={maquina.digitos} bind:value={dirTexto} aria-label="Dirección en hexadecimal" />
+            <input type="text" inputmode="text" autocomplete="off" spellcheck="false" maxlength={digitos} bind:value={dirTexto} aria-label="Dirección en hexadecimal" />
           </label>
+          {#if maquina.espacios}
+            <select bind:value={espacio} aria-label="Espacio de direcciones">
+              {#each maquina.espacios as e (e.id)}<option value={e.id}>{e.titulo}</option>{/each}
+            </select>
+          {/if}
           <select bind:value={escritura} aria-label="Lectura o escritura">
             <option value={false}>Lectura</option>
             <option value={true}>Escritura</option>
@@ -252,14 +287,15 @@
           <button type="submit" class="accion">Decodificar</button>
         </form>
         <div class="ejemplos">
-          {#each maquina.ejemplos as x (x.dir + String(x.escritura))}
-            <button type="button" onclick={() => ejemplo(x.dir, x.escritura)}>{hex(x.dir, maquina.digitos)} <small>{x.texto}</small></button>
+          {#each maquina.ejemplos as x (x.dir + String(x.escritura) + (x.espacio ?? ''))}
+            <button type="button" onclick={() => ejemplo(x.dir, x.escritura, x.espacio)}>{hex(x.dir, maquina.espacios?.find((e) => e.id === x.espacio)?.digitos ?? maquina.digitos)} <small>{x.texto}</small></button>
           {/each}
         </div>
+        {#if maquina.notaDecodificador}<p class="nota-deco">{maquina.notaDecodificador}</p>{/if}
         {#if deco}
           <div class="resultado" data-seleccion={deco.seleccion ?? ''}>
-            <p class="zona">{hex(deco.direccion, maquina.digitos)} ({deco.escritura ? 'escritura' : 'lectura'}): <strong>{deco.zona}</strong></p>
-            <p class="sel">Selección activa: <strong>{deco.seleccion ?? 'ninguna'}</strong>{#if deco.espejo && deco.espejo !== hex(deco.direccion, maquina.digitos)} · equivale a {deco.espejo}{/if}</p>
+            <p class="zona">{hex(deco.direccion, digitos)} ({deco.escritura ? 'escritura' : 'lectura'}): <strong>{deco.zona}</strong></p>
+            <p class="sel">Selección activa: <strong>{deco.seleccion ?? 'ninguna'}</strong>{#if deco.espejo && deco.espejo !== hex(deco.direccion, digitos)} · equivale a {deco.espejo}{/if}</p>
             <p>{deco.texto}</p>
             <table>
               <tbody>
@@ -335,6 +371,37 @@
     display: grid;
     gap: 10px;
     min-width: 0;
+  }
+  .capas {
+    display: inline-flex;
+    gap: 4px;
+    padding: 3px;
+    border-radius: 12px;
+    background: var(--superficie-2);
+    justify-self: start;
+  }
+  .capas button {
+    min-height: 36px;
+    padding: 3px 14px;
+    border: 0;
+    border-radius: 9px;
+    background: transparent;
+    color: var(--tinta-suave);
+    font: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+  .capas button.activo {
+    background: var(--superficie);
+    box-shadow: var(--sombra);
+    color: var(--acento);
+  }
+  .nota-capa,
+  .nota-deco {
+    margin: 0;
+    color: var(--tinta-suave);
+    font-size: 13.5px;
   }
   .desliza {
     display: none;
@@ -573,6 +640,7 @@
     .escenarios button,
     .senales button,
     .ejemplos button,
+    .capas button,
     .accion,
     select,
     input[type='text'] {

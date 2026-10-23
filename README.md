@@ -54,8 +54,8 @@ fases siguientes (ejercicios, modelos 3D, editor de esquemas) están descritas e
   los capítulos a los que remite la sección en pantalla y el siguiente.
 - **Simulador de circuitos** (sección siguiente): botón «Simular» junto a cada figura, sección, problema o
   ejercicio que tiene netlist.
-- **Consolas**: las placas base de la NES y de la Neo Geo AES con foto interactiva, arquitectura animada y
-  esquema real con redes interactivas (ver más abajo).
+- **Consolas**: las placas base de la NES, la Neo Geo AES, la Master System II, la Mega Drive, la Game Boy y la
+  Game Boy Color con foto interactiva, arquitectura animada y esquema real con redes interactivas (ver más abajo).
 - **Componentes animados**: 39 animaciones interactivas de cómo funciona cada componente por dentro, enlazadas
   con sus secciones y figuras (botón «Ver animación» en el libro; ver más abajo).
 - **Conceptos animados**: 34 animaciones interactivas de la teoría (fasores, Fourier, aliasing, realimentación,
@@ -69,9 +69,9 @@ fases siguientes (ejercicios, modelos 3D, editor de esquemas) están descritas e
 - **Aprender con el libro**: ejercicios y problemas que corrigen la respuesta (prefijos, unidades, coma
   decimal), con pistas progresivas y repaso de los fallados; deducciones paso a paso; progreso de lectura por
   sección, capítulo y tomo (ver más abajo).
-- **Calculadoras**: 351 fórmulas del libro listas para calcular cualquiera de sus variables, con unidades y
-  prefijos, gráfica de sensibilidad y enlace a su sección; botón «Calcular» junto a cada ecuación catalogada y
-  tarjetas de fórmulas vivas (ver más abajo).
+- **Calculadoras**: 351 fórmulas del libro listas para calcular cualquiera de sus variables, con un dibujo que
+  se mueve con los valores, deslizadores, cuenta paso a paso, «¿Qué pasa si…?» y lo que dice el libro de cada
+  una; botón «Calcular» junto a cada ecuación catalogada y tarjetas de fórmulas vivas (ver más abajo).
 - **Repaso**: tarjetas de los 910 términos del glosario con repetición espaciada y 1028 preguntas de test de
   todos los capítulos y apéndices, cada una con la cita del libro de la que sale (ver más abajo).
 
@@ -261,6 +261,33 @@ pestañas enlazadas entre sí:
   («MV4 h.4», «AES h.1», «NG Hw-10»…). Las fichas de la foto de la Neo Geo indican qué se ha comprobado con
   esos documentos. Los documentos de SNK no van dentro de la aplicación; las imágenes de las hojas citadas están
   en `/home/claude/consolas/neogeo/referencias/`.
+
+**Las otras cuatro consolas** usan las mismas pestañas:
+
+- **Master System II** (placa 171-5922A, PAL): fotos de la placa montada (IC BD M4Jr. PAL, 1992) y de la placa sin
+  componentes, de ConsoleMods (CC BY). El esquema es el del manual de servicio de Sega (abril de 1991),
+  transcrito a mano y redibujado en tres hojas con etiquetas en cada pin; las lecturas dudosas del escaneo están
+  en «Fuentes», y la tabla compara los pines con el SMS1 de slowcoder (Z80, RAM y cartucho coinciden del todo; en
+  el VDP, 43 de 64). La arquitectura anima los ciclos del Z80 (3,55 MHz), el decodificador de memoria y de puertos
+  de E/S (se elige el espacio), el paginador, la escritura en la VRAM por el bus multiplexado, la interrupción de
+  línea, el cuadro con INT y pausa, y los relojes.
+- **Mega Drive** (modelo 1 VA6.8 PAL, «IC BD M5 PAL» de 1993, y una VA6 NTSC de EE. UU. como segunda foto):
+  fotos de ConsoleMods con las huellas del KiCad de stonedDiscord llevadas a cada una (cualquier componente del
+  esquema se marca con una cruz; la foto PAL, hecha en ángulo, con una homografía ajustada). Los cables añadidos de
+  la placa PAL se señalan como modificación. Arquitectura con un selector «PAL · 50 Hz / NTSC · 60 Hz» (PAL por
+  defecto, como la placa): ciclos del 68000 (7,60 o 7,67 MHz), decodificador del 68000 y del Z80, BUSREQ/BUSACK, la
+  ventana del Z80 sobre el 68000 con su registro de banco, DMA del VDP, cuadro de 313 o 262 líneas con sus
+  interrupciones y relojes desde los 53,203424 o 53,693175 MHz. «Fuentes» añade las
+  diferencias con el modelo 2 sacadas de su manual de servicio.
+- **Game Boy** (DMG-CPU-05/06 y la placa de la pantalla DMG-LCD-06): foto de gbhwdb, el escaneo de Gekkio con
+  las pistas de cobre (se elige un bus o una red y se ve en rojo sobre las dos caras) y las dos caras de la
+  placa de la pantalla. Esquemas de Gekkio (CC BY 4.0). Arquitectura con dos capas, «Placa» y «Dentro del SoC»
+  (bloques de msinger): ciclos de máquina a 4,194304 MHz, el MBC1, una línea de la PPU con sus modos, el cuadro
+  con VBlank y STAT, el DMA de OAM y los relojes, con citas de GBCTR y Pan Docs.
+- **Game Boy Color** (CGB-CPU-04): fotos de gbhwdb y el esquema de la placa original redibujado por Natalie the
+  Nerd (CC BY-NC-SA 4.0), reconstruido a partir de su PDF y comprobado con la recreación opengbc (los 118 pines
+  conectados de la CPU coinciden). Arquitectura: doble velocidad (KEY1), bancos de VRAM y WRAM, HDMA por línea y
+  general, la PPU y las paletas.
 
 Los datos se generan con `python3 contenido/consolas.py` (también desde `generar.py`) a partir de la carpeta
 de investigación `/home/claude/consolas`; si falta, se conservan los de `web/public/consolas/`.
@@ -489,7 +516,25 @@ toque fuera o deslizando el asa. Si una ecuación reúne varias fórmulas, unas 
 - **Tarjetas de fórmulas vivas**: las 23 tarjetas con fórmulas catalogadas tienen «Calcular con la tarjeta»: cada
   magnitud se escribe una vez y todas las fórmulas de la tarjeta se recalculan. Si una magnitud la calcula otra
   fórmula de la tarjeta (τ = R·C para la curva de carga), «Calcularla con…» la enlaza.
-- **Página «Calculadoras»** (carril de iconos, `#/calculadoras`): todas por capítulos, búsqueda sin tildes por
+- **El dibujo**: cada fórmula se ve dónde vive. 153 llevan un esquema (divisor, RC, RLC, puente, operacionales,
+  transistores, 555, reguladores, conmutadas, líneas, antenas, disipador…) con cada magnitud escrita sobre su
+  componente y el resultado resaltado; 92, una curva propia (carga RC con τ y el 63 %, Bode con −3 dB, resonancia con
+  su ancho de banda, decibelios, diodo, rizado, PWM, 555, histéresis, espectro de una FI, amortiguamiento, suma en
+  cuadratura…), y las demás, el resultado frente a la última magnitud que se ha movido. Todo se redibuja mientras se
+  arrastra.
+- **Intuitiva**: un deslizador por dato (logarítmico cuando abarca décadas, con una marca en el valor del libro y,
+  para R, C y L, «E12/E24» para quedarse en valores comerciales), el campo de texto y un selector de prefijo (un
+  número sin prefijo toma el del selector). La incógnita se elige tocando la letra en la fórmula o la etiqueta en el
+  dibujo. Un valor fuera de lo habitual se explica («unas 1000 veces mayor que lo más alto que usa el libro; ¿sobra o
+  falta un prefijo?»).
+- **Explicativa**: «Paso a paso» (la fórmula, los valores con sus prefijos, las cuentas intermedias con la unidad
+  simplificada —2π·10 kΩ·100 nF = 6,283 ms— y el resultado); «¿Qué pasa si…?» (flechas ↑/↓ y la proporcionalidad
+  sacada de la expresión: «f<sub>c</sub> ∝ 1/R: doblar R divide f<sub>c</sub> entre 2», con «Probar»); «Qué
+  significa» (2–4 frases de las 351 fórmulas con el texto del libro, cuándo vale, valores típicos y el error
+  frecuente, con enlaces a la sección, la animación, el circuito del simulador y los ejercicios que la usan).
+- **Página «Calculadoras»** (carril de iconos, `#/calculadoras`): una galería de 18 familias con su miniatura
+  (leyes básicas, redes, transitorios, alterna, resonancia, filtros, decibelios, diodos, BJT, MOSFET, operacionales,
+  osciladores, fuentes, magnetismo, ruido, digital, RF, térmica), todas por capítulos, búsqueda sin tildes por
   nombre, símbolo, palabra clave, sección o «cap 33», filtro por capítulo y **favoritas** (la estrella; se guardan
   como los marcadores). `#/calculadoras/<id>` abre una a página completa, con la gráfica y las demás fórmulas de su
   sección.
@@ -500,8 +545,13 @@ propio (sin `eval`), variables con su nombre en el libro, unidad, intervalo habi
 publicarse, cada fórmula tiene que encontrar su ecuación en el libro, reproducir el ejemplo (tolerancia del
 redondeo del libro), y cada despeje tiene que volver al valor de partida; si el libro cambia, el generador lo dice.
 La aplicación solo descarga el mapa pequeño de botones (`formulas-ec.json`, unos 20 kB) al leer, y el catálogo
-completo (`formulas.json`) al abrir una calculadora. Pruebas: `tests/calculadoras.spec.ts` (capturas en
-`tests/capturas/calculadoras-*.png`).
+completo (`formulas.json`) al abrir una calculadora; los dibujos, en un módulo aparte que se pide al abrirla.
+Familias, dibujos y huecos están en `contenido/formulas_visual.py` y las explicaciones en `contenido/formulas_texto.py`;
+el generador comprueba que cada frase entre «» está literalmente en la sección citada (como las preguntas del
+repaso). Pruebas: `tests/calculadoras.spec.ts` (capturas en `tests/capturas/calculadoras-*.png`; las de antes del
+rediseño, en `tests/capturas/calculadoras-antes/`). `node tests/calculadoras-capturas.mjs` fotografía una fórmula por
+plantilla y por tipo de gráfico en el teléfono, el portátil y la tableta, claro y oscuro, con una hoja de contactos
+por pantalla (`tests/capturas/calculadoras/`).
 
 ## Repaso: tarjetas y tests
 

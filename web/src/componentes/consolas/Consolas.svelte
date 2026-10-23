@@ -1,10 +1,11 @@
 <script lang="ts">
-  // «Consolas» view: NES and Neo Geo AES mainboards in three linked views (photo, architecture, schematic)
-  // plus sources. Route: #/consolas/<maquina>/<pestana>[/<seleccion>] (see estado.svelte.ts).
+  // «Consolas» view: six mainboards (NES, Neo Geo AES, Master System II, Mega Drive, Game Boy, Game Boy Color)
+  // in three linked views (photo, architecture, schematic) plus sources. Route: #/consolas/<maquina>/<pestana>[/<seleccion>] (see estado.svelte.ts).
   import { untrack } from 'svelte';
   import { ruta } from '../../lib/ruta.svelte';
   import { cargarMaquina, type DatosMaquina, type IdMaquina } from './datos';
   import { enlace, leerAncla, PESTANAS, type Pestana, type Seleccion } from './estado.svelte';
+  import { cargarArquitectura } from './arquitectura/maquinas';
   import Foto from './Foto.svelte';
   import Fuentes from './Fuentes.svelte';
 
@@ -52,6 +53,10 @@
   const MAQUINAS: { id: IdMaquina; titulo: string; placa: string }[] = [
     { id: 'nes', titulo: 'NES', placa: 'NES-CPU-07 · 1987' },
     { id: 'neogeo', titulo: 'Neo Geo AES', placa: 'NEO-AES · 1990' },
+    { id: 'sms', titulo: 'Master System II', placa: '171-5922A · 1990' },
+    { id: 'megadrive', titulo: 'Mega Drive', placa: 'Modelo 1 VA6.8 PAL · 1993' },
+    { id: 'gb', titulo: 'Game Boy', placa: 'DMG-CPU-05/06 · 1989' },
+    { id: 'gbc', titulo: 'Game Boy Color', placa: 'CGB-CPU-04 · 1999' },
   ];
 </script>
 
@@ -61,7 +66,7 @@
   <header>
     <div class="titulo">
       <h1>Consolas</h1>
-      <p>Las placas base de las figuras 36.16 y 36.22: foto interactiva, arquitectura animada y esquema real.</p>
+      <p>Las placas base de las figuras 36.16 y 36.22 y otras cuatro consolas: foto interactiva, arquitectura animada y esquema real.</p>
     </div>
     <nav class="maquinas" aria-label="Consola">
       {#each MAQUINAS as m (m.id)}
@@ -85,8 +90,10 @@
   {:else if actual.pestana === 'foto'}
     <Foto {datos} {sel} {seleccionar} {irA} />
   {:else if actual.pestana === 'arquitectura'}
-    {#await import('./arquitectura/Arquitectura.svelte') then m}
-      {#key datos.id}<m.default {datos} {sel} {seleccionar} {irA} />{/key}
+    {#await Promise.all([import('./arquitectura/Arquitectura.svelte'), cargarArquitectura(datos.id)])}
+      <div class="cargando">Cargando…</div>
+    {:then [m, maquina]}
+      {#key datos.id}<m.default {datos} {maquina} {sel} {seleccionar} {irA} />{/key}
     {/await}
   {:else if actual.pestana === 'esquema'}
     {#await import('./esquema/Esquema.svelte') then m}
@@ -122,15 +129,18 @@
     color: var(--tinta-suave);
   }
   .maquinas {
-    display: inline-flex;
+    display: grid;
+    grid-template-columns: repeat(6, minmax(0, 1fr));
     gap: 6px;
+    width: 100%;
     padding: 4px;
     border-radius: 14px;
     background: var(--superficie-2);
   }
   .maquinas a {
     display: grid;
-    min-width: 128px;
+    align-content: center;
+    min-width: 0;
     min-height: 44px;
     padding: 5px 14px;
     border-radius: 10px;
@@ -138,9 +148,17 @@
     text-decoration: none;
     line-height: 1.2;
   }
+  .maquinas a strong {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
   .maquinas a small {
+    overflow: hidden;
     color: var(--tinta-suave);
     font-size: 12px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
   .maquinas a[aria-current='page'] {
     background: var(--superficie);
@@ -181,11 +199,15 @@
       font-size: 24px;
     }
     .maquinas {
-      width: 100%;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
     }
     .maquinas a {
-      flex: 1;
-      min-width: 0;
+      padding: 5px 10px;
+    }
+  }
+  @media (min-width: 600px) and (max-width: 1099px) {
+    .maquinas {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
     }
   }
 </style>

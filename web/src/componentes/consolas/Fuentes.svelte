@@ -1,8 +1,9 @@
 <script lang="ts">
   // «Fuentes» tab: credits, licences and how the data were obtained and checked.
-  import type { DatosMaquina } from './datos';
+  import { htmlKicad, type DatosMaquina } from './datos';
 
   let { datos }: { datos: DatosMaquina } = $props();
+  const cabecera = $derived(datos.equivalencias_cabecera ?? ['Placa de la foto (1.ª generación)', 'Esquema NEO-AES3-5', 'Señales', 'Qué cambia', 'Fuente']);
 </script>
 
 <div class="fuentes">
@@ -20,19 +21,37 @@
     </ul>
   </section>
 
+  {#if datos.revisiones?.length}
+    <section>
+      <h3>Qué revisión muestra cada vista</h3>
+      <div class="tabla">
+        <table class="revisiones">
+          <thead><tr><th>Vista</th><th>Placa o revisión</th><th>Fuente</th></tr></thead>
+          <tbody>
+            {#each datos.revisiones as r (r.vista)}<tr><td><strong>{r.vista}</strong></td><td>{r.revision}</td><td class="cita">{r.fuente}</td></tr>{/each}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  {/if}
+
   <section>
     <h3>Sobre el esquema</h3>
     <p>{datos.aviso}</p>
     {#if datos.equivalencias.length}
-      <p class="leyenda">
-        Citas: <strong>MV4 h.N</strong>, hoja N de los esquemas de la MVS MV4 (1.ª generación, como la placa de la foto);
-        <strong>AES h.N</strong>, hoja N de los esquemas «NEOGEO-2» de SNK (AES de 2.ª generación, misma numeración
-        U1–U39 que Board-Folk); <strong>MV4F h.N</strong>, MVS MV4F (2.ª generación); <strong>NG Hw-N</strong>, página
-        «Hardware-N» de la especificación de SNK. Los documentos no se incluyen en la aplicación.
-      </p>
+      {#if datos.citas}
+        <p class="leyenda">{datos.citas}</p>
+      {:else}
+        <p class="leyenda">
+          Citas: <strong>MV4 h.N</strong>, hoja N de los esquemas de la MVS MV4 (1.ª generación, como la placa de la foto);
+          <strong>AES h.N</strong>, hoja N de los esquemas «NEOGEO-2» de SNK (AES de 2.ª generación, misma numeración
+          U1–U39 que Board-Folk); <strong>MV4F h.N</strong>, MVS MV4F (2.ª generación); <strong>NG Hw-N</strong>, página
+          «Hardware-N» de la especificación de SNK. Los documentos no se incluyen en la aplicación.
+        </p>
+      {/if}
       <div class="tabla">
         <table>
-          <thead><tr><th>Placa de la foto (1.ª generación)</th><th>Esquema NEO-AES3-5</th><th>Señales</th><th>Qué cambia</th><th>Fuente</th></tr></thead>
+          <thead><tr>{#each cabecera as c (c)}<th>{c}</th>{/each}</tr></thead>
           <tbody>
             {#each datos.equivalencias as e (e.foto + e.esquema)}
               <tr><td>{e.foto}</td><td>{e.esquema}</td><td>{e.senales ?? ''}</td><td>{e.cambios ?? e.nota ?? ''}</td><td class="cita">{e.fuente ?? ''}</td></tr>
@@ -43,13 +62,28 @@
     {/if}
   </section>
 
+  {#if datos.notas?.length}
+    <section>
+      <h3>{datos.id === 'sms' ? 'Lecturas dudosas o deducidas de la transcripción' : 'Notas de la reconstrucción'}</h3>
+      <ul class="notas">
+        {#each datos.notas as n, i (i)}
+          <li><strong>{n.ref}{n.pin && n.pin !== '?' ? `.${n.pin}` : ''}</strong>: {@html htmlKicad(n.texto)}</li>
+        {/each}
+      </ul>
+    </section>
+  {/if}
+
   <section>
     <h3>Cómo se han obtenido los datos</h3>
     <ul>
-      <li>Las hojas se dibujan con la geometría exacta que exporta KiCad (kicad-cli 7, a partir de copias del proyecto convertidas al formato de KiCad 7 sin cambiar el contenido), reducida a polilíneas de 0,01 mm.</li>
-      <li>Las redes se calculan a partir de los ficheros .kicad_sch (cables, uniones, etiquetas, símbolos de alimentación, etiquetas jerárquicas y pines de cada símbolo) y se comprueban contra el netlist que exporta KiCad: ningún grupo de cables mezcla dos redes, todas las redes del netlist aparecen y cada cable coincide con un trazo del dibujo.</li>
+      {#if datos.id === 'sms'}<li>El esquema del Master System II no existe en KiCad: se ha transcrito a mano de las tres hojas escaneadas del manual de Sega (componentes, valores, números y nombres de pin, conexiones por cable y por nombre de bus) y se ha generado un KiCad limpio con una etiqueta de red en cada pin. La transcripción comprueba que cada chip tiene todas sus patillas (Z80 40, VDP 64, 315-5237 48, memorias 28, CXA1145 24, ranura 50) y que ninguna red tiene un solo pin.</li>{/if}
+      {#if datos.id === 'gbc'}<li>El esquema de la CGB-CPU-04 solo se publica como PDF: el dibujo es el del PDF y las redes salen de sus trazos (cables verdes, puntos de unión, patillas de cada símbolo) unidas por los nombres que KiCad guarda en las ventanas emergentes de cada cable y de cada símbolo. Se ha comprobado con la recreación opengbc (tabla de arriba).</li>{/if}
+      {#if datos.id === 'megadrive'}<li>Las huellas de la PCB de stonedDiscord se han llevado a las dos fotos, así que cualquier componente del esquema se puede señalar aunque no tenga recuadro. En la VA6 de EE. UU., hecha de frente, basta una escala (5,32 px/mm) y un desplazamiento. La VA6.8 PAL está fotografiada en ángulo: se ha ajustado una homografía con una corrección cuadrática a 18 puntos (taladros de montaje y patas de los chips), con un error de unos 10 px que llega a 20 en el borde izquierdo.</li>{/if}
+      {#if datos.id === 'gb'}<li>Las pistas resaltadas sobre el escaneo son el dibujo por redes de Gekkio (un trazo relleno por red, en la cuadrícula del escaneo), reducido a la resolución de la foto.</li>{/if}
+      {#if datos.id !== 'gbc'}<li>Las hojas se dibujan con la geometría exacta que exporta KiCad (kicad-cli 7, a partir de copias del proyecto convertidas al formato de KiCad 7 sin cambiar el contenido), reducida a polilíneas de 0,01 mm.</li>
+      <li>Las redes se calculan a partir de los ficheros .kicad_sch (cables, uniones, etiquetas, símbolos de alimentación, etiquetas jerárquicas y pines de cada símbolo) y se comprueban contra el netlist que exporta KiCad: ningún grupo de cables mezcla dos redes, todas las redes del netlist aparecen y cada cable coincide con un trazo del dibujo.</li>{/if}
       <li>Los puntos de la foto se han colocado mirando la foto a resolución completa; cada ficha dice si la marca del chip se lee o si la pieza se identifica por su posición.</li>
-      <li>Los patillajes de neogeodev/SVGPinout (sin licencia) solo se han consultado; no se incluyen en la aplicación.</li>
+      {#if datos.id === 'neogeo'}<li>Los patillajes de neogeodev/SVGPinout (sin licencia) solo se han consultado; no se incluyen en la aplicación.</li>{/if}
       {#if datos.id === 'neogeo'}<li>Los chips de 1.ª generación (LSPC-A0, PRO-B0, PRO-C0) y su lógica TTL se han comprobado con los esquemas de la MV4; el mapa de memoria, los registros, las interrupciones y el protocolo de sonido, con la especificación de SNK. Las fichas de la foto dicen qué está comprobado y dónde. Esos documentos tienen copyright de SNK: se citan por hoja y página, sin copiarlos.</li>{/if}
     </ul>
   </section>
@@ -58,6 +92,8 @@
 <style>
   .fuentes {
     display: grid;
+    /* minmax(0, …): the wide tables scroll inside .tabla instead of widening the page */
+    grid-template-columns: minmax(0, 1fr);
     gap: 16px;
     max-width: 76em;
   }
@@ -109,6 +145,27 @@
   }
   th {
     color: var(--tinta-suave);
+  }
+  .notas {
+    margin: 0;
+    padding-left: 1.2em;
+    display: grid;
+    gap: 4px;
+  }
+  .notas :global(.sobre) {
+    text-decoration: overline;
+  }
+  table.revisiones {
+    min-width: 520px;
+  }
+  table.revisiones th:nth-child(1) {
+    width: 16%;
+  }
+  table.revisiones th:nth-child(2) {
+    width: 56%;
+  }
+  table.revisiones th:nth-child(3) {
+    width: 28%;
   }
   .leyenda {
     color: var(--tinta-suave);

@@ -136,6 +136,62 @@ test('tarjetas vivas: las variables compartidas recalculan todas las fórmulas',
   await expect(vinculo.locator('input')).toBeChecked();
 });
 
+test('calculadora visual: deslizador, tocar para despejar, paso a paso y «qué pasa si»', async ({ page }) => {
+  await page.goto('/#/calculadoras/fc-rc');
+  const calc = page.locator('.calculadora');
+  const valor = calc.locator('.resultado .valor');
+  await expect(valor).toHaveText(/159,2\sHz/, { timeout: 30_000 });
+  // The drawing is loaded lazily and carries the values on the parts.
+  const dibujo = calc.locator('.visual .esquema-calc');
+  await expect(dibujo).toContainText(/159,2\sHz/);
+  await expect(dibujo).toContainText(/10\skΩ/);
+
+  // Dragging the slider of R updates the field, the result and the drawing.
+  const deslizador = calc.getByRole('slider', { name: 'Deslizador de Resistencia' });
+  const caja = (await deslizador.boundingBox())!;
+  const y = caja.y + caja.height / 2;
+  await page.mouse.move(caja.x + caja.width * 0.5, y);
+  await page.mouse.down();
+  for (let i = 1; i <= 8; i++) await page.mouse.move(caja.x + caja.width * (0.5 + i * 0.04), y);
+  await page.mouse.up();
+  await expect(calc.getByRole('textbox', { name: /Resistencia/ })).not.toHaveValue('10');
+  await expect(valor).not.toHaveText(/159,2\sHz/);
+  const nuevo = (await valor.textContent())!.trim();
+  await expect(dibujo).toContainText(nuevo);
+
+  // «Valores del libro» goes back; tapping C in the formula solves for C, tapping R in the drawing for R.
+  await calc.getByRole('button', { name: 'Valores del libro' }).click();
+  await expect(valor).toHaveText(/159,2\sHz/);
+  await calc.locator('.ecuacion [data-var="C"]').click();
+  await expect(calc.getByRole('radio', { name: 'C', exact: true })).toBeChecked();
+  await expect(valor).toHaveText(/100,0\snF/);
+  await dibujo.getByRole('button', { name: 'Calcular Resistencia' }).click();
+  await expect(calc.getByRole('radio', { name: 'R', exact: true })).toBeChecked();
+  await expect(valor).toHaveText(/10,00\skΩ/);
+  await calc.locator('.ecuacion [data-var="f_c"]').click();
+  await expect(valor).toHaveText(/159,2\sHz/);
+
+  // Step by step: the formula, the values with their prefixes, the time constant and the result.
+  const pasos = calc.locator('.paso-a-paso');
+  await expect(pasos).toContainText(/10\skΩ/);
+  await expect(pasos).toContainText(/100\snF/);
+  await expect(pasos).toContainText(/6,283\sms/);
+  await expect(pasos.locator('.paso').last()).toContainText(/159,2\sHz/);
+
+  // «¿Qué pasa si…?»: f_c falls as 1/R; trying it doubles R and halves the result.
+  const efectoR = calc.locator('.que-pasa li', { has: page.getByRole('button', { name: 'Probar: doblar R' }) });
+  await expect(efectoR).toHaveClass(/baja/);
+  await expect(efectoR.locator('.flecha')).toHaveText('↓');
+  await expect(efectoR.locator('.ley')).toContainText('∝');
+  await expect(efectoR).toContainText(/79,58\sHz/);
+  await efectoR.getByRole('button', { name: 'Probar: doblar R' }).click();
+  await expect(calc.getByRole('textbox', { name: /Resistencia/ })).toHaveValue('20');
+  await expect(valor).toHaveText(/79,58\sHz/);
+
+  // «Qué significa» quotes the book and links to the section.
+  await expect(calc.locator('.significa').first()).toContainText('«');
+});
+
 for (const [tam, vista] of [
   ['movil', { width: 390, height: 844 }],
   ['escritorio', { width: 1280, height: 800 }],
