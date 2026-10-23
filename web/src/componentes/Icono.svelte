@@ -32,6 +32,9 @@
   import Library from '@lucide/svelte/icons/library';
   import Activity from '@lucide/svelte/icons/activity';
   import Atom from '@lucide/svelte/icons/atom';
+  import Gauge from '@lucide/svelte/icons/gauge';
+  import Gamepad2 from '@lucide/svelte/icons/gamepad-2';
+  import Radio from '@lucide/svelte/icons/radio';
 
   const ICONOS = {
     menu: Menu,
@@ -68,6 +71,9 @@
     tomos: Library,
     simulador: Activity,
     componentes: Atom,
+    instrumentos: Gauge,
+    consolas: Gamepad2,
+    radio: Radio,
   } as const;
 
   export type NombreIcono = keyof typeof ICONOS;

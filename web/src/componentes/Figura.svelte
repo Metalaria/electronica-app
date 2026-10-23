@@ -5,6 +5,10 @@
   import Icono from './Icono.svelte';
   import BotonSimular from './BotonSimular.svelte';
   import VerAnimacion from './animaciones/VerAnimacion.svelte';
+  import VerConsola from './consolas/VerConsola.svelte';
+  import VerKit from './fm7303/VerKit.svelte';
+  import FiguraViva from './figuras-vivas/FiguraViva.svelte';
+  import { datosVivos } from './figuras-vivas';
 
   let { bloque, indice }: { bloque: BFigura; indice?: number } = $props();
 
@@ -15,12 +19,18 @@
     (bloque.num ? `Figura ${bloque.num}: ` : '') + (textoPlano(bloque.pie) || 'figura'),
   );
 
+  // Plots and schematics with figure data get the live layer (figuras-vivas/).
+  const viva = $derived(vectorial ? datosVivos(bloque) : null);
+
   function abrir() {
     abrirFigura({ src, num: bloque.num, pie: bloque.pie, credito: bloque.credito, alt });
   }
 </script>
 
 <figure class="figura" id={bloque.label || undefined} data-b={indice}>
+  {#if viva}
+    <FiguraViva {src} {alt} num={bloque.num} pie={bloque.pie} credito={bloque.credito} ruta={viva.ruta} vista={viva.vista} tipo={viva.tipo} {ancho} abrirVisor={abrir} />
+  {:else}
   <button
     type="button"
     class="figura-placa"
@@ -33,6 +43,7 @@
     <img {src} {alt} decoding="async" draggable="false" />
     <span class="lupa" aria-hidden="true"><Icono nombre="zoom-mas" tam={17} /></span>
   </button>
+  {/if}
   {#if bloque.pie || bloque.num}
     <figcaption class="pie">
       {#if bloque.num}<span class="rot">Figura {bloque.num} —</span>{/if}
@@ -40,7 +51,7 @@
       {#if bloque.credito}<span class="credito">{@html prepararHtml(bloque.credito)}</span>{/if}
     </figcaption>
   {/if}
-  {#if bloque.label}<div class="figura-simular"><BotonSimular label={bloque.label} /> <VerAnimacion label={bloque.label} /></div>{/if}
+  {#if bloque.label}<div class="figura-simular"><BotonSimular label={bloque.label} /> <VerAnimacion label={bloque.label} /> <VerConsola label={bloque.label} /> <VerKit label={bloque.label} /></div>{/if}
 </figure>
 
 <style>

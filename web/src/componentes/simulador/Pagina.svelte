@@ -13,6 +13,9 @@
   import Parametros from './Parametros.svelte';
   import Resultados from './Resultados.svelte';
   import Icono from '../Icono.svelte';
+  import CircuitoVivo from '../figuras-vivas/circuito/CircuitoVivo.svelte';
+  import EsquemaAuto from '../esquema-auto/EsquemaAuto.svelte';
+  import Interiores from '../esquema-auto/Interiores.svelte';
 
   let { id }: { id: string } = $props();
 
@@ -153,6 +156,21 @@ C1 out 0 100n
   });
 
   onMount(precalentarMotor);
+
+  // A part chosen on a schematic (esquema-auto, or any drawing that announces «epa:elegir-componente»)
+  // brings up its slider.
+  let enfoque = $state<{ nombre: string; vez: number } | null>(null);
+  function elegirComponente(nombre: string) {
+    enfoque = { nombre: nombre.toLowerCase(), vez: (enfoque?.vez ?? 0) + 1 };
+  }
+  onMount(() => {
+    const oir = (ev: Event) => {
+      const n = (ev as CustomEvent<{ nombre?: string }>).detail?.nombre;
+      if (n) elegirComponente(n);
+    };
+    window.addEventListener('epa:elegir-componente', oir);
+    return () => window.removeEventListener('epa:elegir-componente', oir);
+  });
   onDestroy(() => {
     if (pausa) clearTimeout(pausa);
     if (reloj) clearInterval(reloj);
@@ -232,6 +250,15 @@ C1 out 0 100n
       </div>
     {/if}
 
+    <!-- The circuit itself, drawn and alive (figuras-vivas/circuito), before the netlist and the results. -->
+    {#if !cargando && n?.motor.estado !== 'no-disponible'}
+      <CircuitoVivo {texto} refs={n?.refs ?? []} {resultado} pesada={!!n?.motor.pesada} />
+      <Interiores {texto} />
+    {:else if !cargando}
+      <!-- Not simulable here (XSPICE): the circuit is still drawn (esquema-auto). -->
+      <EsquemaAuto {texto} />
+    {/if}
+
     <div class="rejilla">
       <div class="izq">
         {#if n?.descripcion}
@@ -254,7 +281,7 @@ C1 out 0 100n
         {/if}
 
         {#if !cargando}
-          <Parametros {parametros} {rangos} alCambiar={cambiarParametro} />
+          <Parametros {parametros} {rangos} alCambiar={cambiarParametro} {enfoque} />
         {/if}
 
         <section class="netlist" aria-label="Netlist">

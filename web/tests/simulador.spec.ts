@@ -129,6 +129,8 @@ test('nuevo circuito: ejemplo, simulación y gráfica interactiva', async ({ pag
   await expect(page.locator('.estado')).toContainText('Simulado en');
   await page.getByRole('tab', { name: /Transitorio/ }).click();
   const zona = page.locator('.resultados .zona').first();
+  // The live circuit is drawn above the results: bring the plot into view before using the mouse on it.
+  await zona.scrollIntoViewIfNeeded();
   const caja = (await zona.boundingBox())!;
   await page.mouse.move(caja.x + caja.width * 0.5, caja.y + caja.height * 0.5);
   await expect(page.locator('.lectura')).toContainText('ms');

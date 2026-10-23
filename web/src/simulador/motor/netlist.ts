@@ -70,6 +70,8 @@ interface Estructura {
   /** Lines inside .control blocks (trimmed text). */
   control: string[];
   hayControl: boolean;
+  /** `.subckt` header lines (tokens from «.subckt»), with the .subckt they are nested in. */
+  cabeceras: (LineaLogica & { subckt: string | null })[];
 }
 
 /** Splits the text into logical lines (joining «+» continuations) and tokens with their offsets. */
@@ -85,6 +87,7 @@ function estructura(texto: string): Estructura {
   let enControl = false;
   let hayControl = false;
   const pila: string[] = [];
+  const cabeceras: Estructura['cabeceras'] = [];
   let actual: (LineaLogica & { subckt: string | null }) | null = null;
 
   // The first line is always the title.
@@ -123,8 +126,10 @@ function estructura(texto: string): Estructura {
     }
     const primero = tokens[0]?.texto.toLowerCase() ?? '';
     if (primero === '.subckt') {
+      // The header is kept apart (not in `lineas`); «+» continuations extend it.
+      actual = { linea: i, tokens, subckt: pila[pila.length - 1] ?? null };
+      cabeceras.push(actual);
       pila.push((tokens[1]?.texto ?? '?').toLowerCase());
-      actual = null;
       continue;
     }
     if (primero === '.ends') {
@@ -135,7 +140,35 @@ function estructura(texto: string): Estructura {
     actual = { linea: i, tokens, subckt: pila[pila.length - 1] ?? null };
     lineas.push(actual);
   }
-  return { lineas, control, hayControl };
+  return { lineas, control, hayControl, cabeceras };
+}
+
+/** One logical line of a netlist (continuations joined), for readers of the circuit structure. */
+export interface LineaNetlist {
+  /** 0-based physical line where it starts. */
+  linea: number;
+  /** Innermost .subckt it belongs to (lower case), or null. */
+  subckt: string | null;
+  /** Tokens as written (separators «( ) , =» dropped, «=» kept as a token). */
+  tokens: string[];
+  /** The logical line as written, from its first token to its last (continuations included). */
+  texto: string;
+}
+
+/**
+ * Structure of a netlist for drawing it (esquema-auto): element and dot lines outside .control and the
+ * `.subckt` headers. Same tokenizer and comment rules as the parameter reader.
+ */
+export function lineasNetlist(texto: string): { lineas: LineaNetlist[]; subckts: LineaNetlist[] } {
+  const t = texto.replace(/\r\n?/g, '\n');
+  const e = estructura(t);
+  const conv = (l: LineaLogica & { subckt: string | null }): LineaNetlist => ({
+    linea: l.linea,
+    subckt: l.subckt,
+    tokens: l.tokens.map((k) => k.texto),
+    texto: l.tokens.length ? t.slice(l.tokens[0]!.ini, l.tokens[l.tokens.length - 1]!.fin) : '',
+  });
+  return { lineas: e.lineas.map(conv), subckts: e.cabeceras.map(conv) };
 }
 
 // ------------------------------------------------------------------ analyses

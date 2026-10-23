@@ -10,14 +10,32 @@
     /** Original value and slider range of each parameter id (from spice.json or first detection). */
     rangos: Record<string, { min: number; max: number; original: number }>;
     alCambiar: (id: string, valor: number) => void;
+    /** Element (lower-case name) whose sliders are brought into view and highlighted (schematic clicks). */
+    enfoque?: { nombre: string; vez: number } | null;
   }
-  let { parametros, rangos, alCambiar }: Props = $props();
+  let { parametros, rangos, alCambiar, enfoque = null }: Props = $props();
 
   let e12 = $state(true);
   let todos = $state(false);
   const VISIBLES = 10;
   const mostrados = $derived(todos ? parametros : parametros.slice(0, VISIBLES));
   const PASOS = 1000;
+
+  // A part chosen on the schematic: show all sliders if needed, scroll to its first one and focus it.
+  let lista: HTMLUListElement | undefined = $state();
+  $effect(() => {
+    const f = enfoque;
+    if (!f) return;
+    const i = parametros.findIndex((p) => p.elemento.toLowerCase() === f.nombre && !p.subckt);
+    if (i < 0) return;
+    if (i >= VISIBLES) todos = true;
+    requestAnimationFrame(() => {
+      const li = lista?.querySelector<HTMLElement>(`li[data-elemento="${CSS.escape(f.nombre)}"]`);
+      if (!li) return;
+      li.scrollIntoView({ block: 'center', behavior: 'smooth' });
+      li.querySelector<HTMLInputElement>('input.deslizador')?.focus({ preventScroll: true });
+    });
+  });
 
   const CAMPO: Record<string, string> = {
     valor: '',
@@ -96,12 +114,12 @@
     <p class="vacio">Esta netlist no tiene valores que se puedan variar con un control deslizante (los que cambia el
       bloque <code>.control</code> con <code>alter</code> no se ofrecen). Puede editar la netlist directamente.</p>
   {:else}
-    <ul>
+    <ul bind:this={lista}>
       {#each mostrados as p (p.id)}
         {@const r = rango(p)}
         {@const s = serie(p)}
         {@const cambiado = Math.abs(p.valor - r.original) > Math.abs(r.original) * 1e-9}
-        <li>
+        <li data-elemento={p.subckt ? undefined : p.elemento.toLowerCase()} class:enfocado={!p.subckt && enfoque?.nombre === p.elemento.toLowerCase()}>
           <div class="fila">
             <span class="nombre" title={p.subckt ? `Dentro del subcircuito ${p.subckt}` : undefined}
               >{etiqueta(p)}{#if p.subckt}<small> ({p.subckt})</small>{/if}</span
@@ -185,6 +203,11 @@
     display: flex;
     align-items: center;
     gap: 6px;
+  }
+  li.enfocado {
+    background: var(--acento-tinte);
+    border-radius: 8px;
+    box-shadow: 0 0 0 2px var(--acento-borde);
   }
   .nombre {
     flex: 1;

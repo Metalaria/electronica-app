@@ -43,8 +43,15 @@ fases siguientes (ejercicios, modelos 3D, editor de esquemas) están descritas e
   los capítulos a los que remite la sección en pantalla y el siguiente.
 - **Simulador de circuitos** (sección siguiente): botón «Simular» junto a cada figura, sección, problema o
   ejercicio que tiene netlist.
+- **Consolas**: las placas base de la NES y de la Neo Geo AES con foto interactiva, arquitectura animada y
+  esquema real con redes interactivas (ver más abajo).
 - **Componentes animados**: 39 animaciones interactivas de cómo funciona cada componente por dentro, enlazadas
   con sus secciones y figuras (botón «Ver animación» en el libro; ver más abajo).
+- **Instrumentos**: el Brymen BM869s y el FNIRSI 2C53T en virtual, en un banco de pruebas con cualquier circuito
+  del simulador y las doce prácticas del capítulo 21 guiadas (botón «Practicar» en el libro; ver más abajo).
+- **Kit FM7303**: el receptor de FM del capítulo 15, completo y vivo: esquema con todos sus componentes, tensiones
+  simuladas frente al mapa del libro, multímetro, recorrido de la señal y osciloscopio en TP1–TP4, alineación
+  guiada y averías (botón «Kit FM7303» en el libro; ver más abajo).
 
 ### Atajos de teclado
 
@@ -98,6 +105,29 @@ logarítmicos, tabla de datos, y zoom:
 «Nuevo circuito» (`#/simulador/nuevo`) abre el mismo simulador con una netlist vacía (o un ejemplo); se
 guarda en el propio dispositivo (`localStorage`, clave `epa:circuito`).
 
+### El circuito, dibujado
+
+Encima de la netlist se ve siempre el **circuito**. Si el libro tiene una figura con ese esquema, es la figura
+del libro; si no (la mayoría: unas 230 de las 313 netlists, además de «Nuevo circuito» y de cualquier netlist
+que se edite), la aplicación **dibuja el esquema a partir de la netlist**, con el estilo de las figuras del
+libro: resistencias rectangulares, bobinas de espiras, fuentes y transistores con círculo, masas de tres
+rayas, alimentaciones (V<sub>CC</sub>, V<sub>DD</sub>, V<sub>EE</sub>…) como símbolos de carril, puntos de
+unión, cada componente con su nombre y su valor (`R₁ 10 kΩ`, `C₁ 100 nF`, `V₁ ∿ 1 V · 1 kHz`). La señal va de
+izquierda a derecha, las fuentes quedan a la izquierda y de pie, las masas abajo, y los nombres de los nodos
+(los de `v(out)`, `v(b)`… de las gráficas) aparecen en pequeño junto a sus cables. Los amplificadores
+operacionales de subcircuito se dibujan como triángulos, los puentes de diodos como el rombo clásico, las
+bobinas acopladas (`K`) como transformador, las puertas lógicas como cajas IEC (&, ≥1, =1, 1) y los demás
+subcircuitos como cajas con el nombre de cada patilla; «Ver el interior de …» dibuja por dentro cualquier
+subcircuito de la netlist. Si una netlist trae varios circuitos independientes (variantes de un mismo
+ejemplo), se dibujan uno junto a otro.
+
+Sobre el dibujo se ven las tensiones y corrientes de la última simulación (colores de los nodos y puntos
+que se mueven por los cables). Al cambiar un valor con su control deslizante el dibujo no se mueve; al
+añadir o quitar componentes en la netlist se vuelve a dibujar a los pocos instantes. Las netlists que no se
+pueden simular aquí (XSPICE) también se dibujan, con zoom: botones + y −, `Ctrl` + rueda o pellizco,
+arrastrar para desplazar cuando está ampliado, `0` para ajustar. **Pulsar un componente** del dibujo lleva a
+su control deslizante (lo muestra resaltado).
+
 El motor es ngspice 45.2 compilado a WebAssembly (paquete npm `eecircuit-engine` 1.8.0, licencia MIT; ngspice
 tiene licencia BSD), que se ejecuta en un *Web Worker*: la interfaz no se bloquea, se ve el progreso y una
 simulación se puede detener. Se descarga solo al abrir el simulador (5,8 MB; el arranque del lector no
@@ -132,6 +162,194 @@ corriente convencional en ámbar y flujo de electrones en azul discontinuo; cada
 - Pruebas (con la aplicación servida, p. ej. `npx vite preview`): `node tests/animaciones.mjs` mide el
   intervalo entre fotogramas de todas las escenas con la CPU ×4 (`--perfil movil|mac|tableta|tableta-vertical`);
   `node tests/animaciones-hz.mjs` comprueba que nada avanza por fotograma (144 Hz simulados).
+
+## Consolas
+
+«Consolas» en la barra lateral (`#/consolas`), o el botón «Explorar la placa» bajo las fotos de las figuras
+36.16 y 36.22, abre las placas base de la NES (NES-CPU-07) y de la primera Neo Geo AES (NEO-AES) en cuatro
+pestañas enlazadas entre sí:
+
+- **Foto**: la foto del libro con un recuadro en cada chip, conector, cristal o regulador identificado (26 en la
+  NES, 29 en la Neo Geo). Al tocarlo se ve qué es, la marca que lleva, su función y por qué buses pasa, con
+  botones para saltar a su símbolo en el esquema o a su bloque en la arquitectura. Los recuadros continuos son
+  piezas cuya marca se lee en la foto; los discontinuos, piezas identificadas por su posición. Con los botones
+  de lupa se amplía la foto.
+- **Arquitectura**: diagrama de bloques animado. Cada escenario reproduce con los tiempos reales (indicados en
+  «Fidelidad de la temporización») los ciclos de bus de la CPU, la decodificación de direcciones, las lecturas
+  de la PPU con ALE y el espejado de la CIRAM, el NMI del vblank (NES), y en la Neo Geo los ciclos del 68000, el
+  diálogo 68000 ↔ Z80, la línea de sprites y capa fija, el cuadro con sus interrupciones y los relojes. Se
+  reproduce, se pausa, se avanza paso a paso o se arrastra la barra de tiempo; la pantalla dice cuánto se ha
+  ralentizado (p. ej. «1 : 4,5 · 10⁶»). En «Decodificar una dirección» se escribe una dirección en hexadecimal y
+  se ve qué selección de chip baja. Debajo, un analizador lógico con las señales elegidas, sincronizado con la
+  animación (rueda o pellizco para ampliar, arrastrar para mover el instante).
+- **Esquema**: las hojas reales de KiCad (NES-CPU-11 de OpenTendo; las 13 hojas de la recreación NEO-AES3-5 de
+  Board-Folk). Al pasar el ratón o tocar un hilo, un pin o una etiqueta se resalta toda la red, en esa hoja y
+  en las demás, con la lista de chips y pines conectados y su grupo de buses. Se busca por nombre de red,
+  referencia o chip; se desplaza arrastrando y se amplía con la rueda, el pellizco, doble clic o `+` `−` `0`.
+- **Fuentes**: créditos y licencias (OpenTendo, TAPR OHL 1.0; Board-Folk, dominio público según su README),
+  qué diferencia hay entre la placa de la foto y la del esquema, y la tabla de equivalencias de chips de la
+  Neo Geo.
+
+Los datos se generan con `python3 contenido/consolas.py` (también desde `generar.py`) a partir de la carpeta
+de investigación `/home/claude/consolas`; si falta, se conservan los de `web/public/consolas/`.
+
+## Figuras vivas
+
+Las figuras del libro con datos (431 gráficas y 91 esquemas) se pueden leer y tocar sin salir del texto; el
+dibujo es exactamente el del libro y lo interactivo va encima. Una fila discreta sobre la figura indica qué
+ofrece («Lectura de valores», «Circuito vivo», «Conexiones») y tiene «A|B» y «Abrir en grande».
+
+- **Gráficas**: al pasar el puntero (o el dedo) aparece una cruz que se pega a la curva más cercana y un
+  cuadro con el valor de todas las curvas en ese punto, con sus unidades y prefijos (coma decimal). Un clic o
+  un toque deja la lectura fijada; otro toque en el mismo sitio la suelta. «A|B» pone dos cursores que se
+  arrastran, con una tabla de A, B y B − A (y 1/Δ si el eje es de tiempo). Cada gráfica de una figura con
+  varias es independiente. Los bocetos sin números no tienen lectura.
+- **Esquemas vivos** (25 figuras, 31 dibujos con la simulación de ngspice que guarda el libro): puntos que
+  recorren los cables y los componentes en el sentido de la corriente convencional (ámbar) o de los electrones
+  (azul), más deprisa cuanta más corriente (escala logarítmica) y quietos si no la hay; cables coloreados por
+  su tensión (azul negativo, gris 0 V, rojo positivo) con leyenda. Al pasar o tocar un cable o un nodo se ve
+  su tensión y su corriente; en un componente, su tensión, corriente y potencia, y (al tocarlo) los enlaces
+  a su animación y a su sección. Con fuentes alternas o cuadradas se reproduce el transitorio de dos periodos
+  (reproducir/pausa y una barra de tiempo) y, al elegir un nodo o una rama, una gráfica de su tensión y su
+  corriente. «Valores» cambia resistencias, condensadores, bobinas y fuentes (×0,1 a ×10, E12) y vuelve a
+  simular en el momento; «Valores del libro» lo deshace.
+- **Esquemas sin simulación** (66 figuras): al pasar o tocar un cable se resalta su red y los terminales que
+  une, y se explica por qué no se simula (faltan valores, componentes que el simulador no modela, sin fuentes).
+- **Abrir en grande**: la figura a pantalla completa con zoom (rueda, pellizco, botones, doble toque) junto a
+  sus controles; en las gráficas, la pestaña «Datos» las redibuja con la gráfica del simulador (zoom de
+  recuadro, cursores, tabla).
+- **En el simulador**, cada netlist muestra su **circuito** encima de los resultados: el de la figura del libro
+  cuando su esquema coincide con la netlist, o uno dibujado automáticamente a partir de ella. Lleva las mismas
+  corrientes, tensiones y fichas, calculadas con la propia netlist después de cada simulación, también al
+  mover sus controles deslizantes. Tocar un componente lleva a su control deslizante; los circuitos grandes se amplían
+  con los botones de lupa (44 px), `Ctrl` + rueda o pellizco, se desplazan arrastrando, y «Abrir en grande»
+  los muestra a pantalla completa.
+- Rendimiento: los datos de una figura se descargan solo cuando se acerca a la pantalla y nada se anima fuera
+  de ella, con la ventana oculta o con «reducir movimiento» (entonces empieza en pausa). Medido con
+  `node tests/figuras-vivas.mjs` (CPU ×4): 60 fps en los perfiles «mac» y «tableta», con menos de 1,5 ms de
+  trabajo por fotograma.
+
+## Instrumentos
+
+«Instrumentos» en la barra lateral (`#/instrumentos`) abre un **banco de pruebas** con los dos instrumentos del
+libro dibujados (no son fotos), midiendo circuitos que simula el mismo ngspice del simulador. El circuito se ve
+dibujado: en las prácticas, la figura del libro (o un esquema propio cuando la figura no lo tiene); en el banco
+libre, el esquema automático de la netlist. Se elige una punta (roja o negra de cada multímetro, sondas CH1 y CH2,
+pinza de masa) y se toca un nodo del dibujo o de la lista; para medir corriente, el multímetro se pone **en serie**
+con un terminal de cualquier componente. Cada cambio (una punta, un valor, una función, la base de tiempos, el
+generador) vuelve a simular en unos milisegundos.
+
+Los instrumentos **forman parte del circuito**, como en el banco real: el voltímetro son 10 MΩ ‖ 60 pF (en el
+rango de mV la impedancia cae por encima de unos 3 V), el amperímetro es la derivación de su borne (BM869s:
+0,15 mV/µA, 3,3 mV/mA, 45 mV/A; 2C53T: 10 Ω en mA), el óhmetro aplica su tensión de prueba, la sonda ×10 son
+10 MΩ ‖ 20 pF y la ×1, 1 MΩ ‖ 100 pF, y las dos pinzas de masa del osciloscopio son el mismo punto. Con la punta
+roja en un borne de corriente y el multímetro en paralelo con una fuente, el fusible se funde.
+
+**Brymen BM869s.** Selector de 11 posiciones (tocar o arrastrar; flechas con el selector activo): OFF, VFD V∿,
+V∿, V⎓, mV⎓, mV∿, T1 T2, ⊣⊢/diodo, Ω/continuidad/nS, A mA, µA; SELECT recorre las funciones de cada posición
+(pantalla doble: V⎓ y V∿, AC+DC, Hz, dBm, ciclo de trabajo, 4–20 mA); RANGE (manual; mantenido, automático;
+referencia de dBm y T1/T2/T1−T2), Δ (relativo; mantenido, 500 000 cuentas en continua), HOLD, CREST (picos de
+1 ms) y REC (máximo, mínimo, media); pulsación larga = mantener un segundo (o `Mayús Intro`). Pantalla principal de
+50 000 cuentas, secundaria y barra analógica de 41 segmentos; zumbador de continuidad (por debajo de unos 94 Ω) y
+aviso BeepJack con Web Audio. Lo que muestra no es el valor exacto: cada rango tiene un error fijo dentro de su
+especificación ± (% + dígitos) (por bandas de frecuencia en alterna), ruido en el último dígito, el autorrango del
+instrumento, valor eficaz verdadero con su ancho de banda (filtro VFD aparte) y la incertidumbre según el manual
+debajo del instrumento.
+
+**FNIRSI 2C53T.** Los diez botones y la cruceta como en la sección 21.3: MENU (osciloscopio, multímetro,
+generador), CH1/CH2 (canal, acoplamiento AC/DC, factor de sonda del menú y conmutador de la sonda, invertir),
+TRIGGER (Auto/Normal/Single, fuente, flanco, nivel), PRM (Vpp, Vef, Vmed, Vmáx, Vmín, frecuencia, periodo, ciclo),
+SELECT (Math: CH1±CH2, CH1×CH2, FFT; cursores de tiempo con 1/Δt o de tensión; X-Y), MOVE (canal activo;
+mantenido, las flechas mueven las trazas), AUTO, RUN/STOP y SAVE (imagen PNG). En la pantalla se tocan los menús y
+se arrastran los cursores. Sus límites, emulados: 50 MHz de ancho de banda (6 MHz con la sonda en ×1), **1 000
+puntos** en 12 divisiones (muestreo real = 1 000/(12·s/div), como máximo 250 MS/s: aparece el aliasing), **8 bits**
+en 8 divisiones (lo que se sale se recorta y las medidas fallan sin avisar), ruido de 1–2 mV en la entrada. El
+generador DDS da 13 formas de 1 Hz a 50 kHz y de 0,1 a 3 V, siempre de 0 a la amplitud, y excita la fuente del
+circuito que se elija. El multímetro del 2C53T (19 999 cuentas, detección automática de V⎓/V∿ por encima de
+0,7 V) usa sus propias puntas.
+
+**Prácticas guiadas** (`#/instrumentos/practica/1` … `12`, y «Practicar» junto a cada práctica en el libro, con
+«Leer en el libro» de vuelta): divisor y ley de Ohm, carga RC, curva del diodo (también en X-Y), media onda y rizado,
+Bode del RC, armónicos con la FFT, 555 astable, BJT como interruptor, resonancia RLC y Q, tiempo de subida, AM y
+su demodulador, y medida de L y C. Cada una tiene sus montajes (variantes), los pasos del libro con «Preparar este
+paso en el banco» (conecta y ajusta los instrumentos como dice el libro), la tabla **«Tu medida frente a lo
+esperado»** (valor del libro, tolerancia, la lectura del instrumento en vivo y «Anotar») y, en las prácticas de
+barrido (diodo, Bode, resonancia), una tabla de puntos con su gráfica frente a la teoría. Los valores esperados se
+han comprobado con el mismo motor; donde la práctica real difiere de la cuenta del libro, la diferencia está en el
+circuito, como dice el libro: la resistencia de la bobina y los 50 Ω del generador bajan el Q de 3,16 a 1,86, la
+derivación del amperímetro se suma a la tensión del diodo si se pone en serie con él, la sonda de 10 MΩ deja la
+carga RC con 1 MΩ en el 90,9 %.
+
+Simplificaciones: el instrumento no tiene memoria entre sesiones; la persistencia, el modo «rolling», la
+compensación de la sonda, los disparos especiales y el registro por el puerto óptico no están; la temperatura
+se fija en el banco (no hay termopar simulado); el 2C53T muestra a menos de 4 µs/div la reconstrucción
+sen(x)/x (la forma analógica) y su FFT usa ventana de Hann (el manual no dice cuál).
+
+Supuestos donde ni el libro ni el manual dan el dato: impedancia de salida del DDS 50 Ω y flancos de 0,2 µs;
+ancho de banda del convertidor de verdadero valor eficaz del BM869s, un polo a 1,07 MHz (5 % menos a 350 kHz,
+medido por lygte-info); filtro VFD de cuarto orden a 700 Hz (5 % menos a 530 Hz); tensiones y resistencias
+internas de prueba del óhmetro y del diodo según las medidas de lygte-info (1,15 V y 0,38 mA; 2,94 V); del
+multímetro del 2C53T, entrada de 10 MΩ, convertidor de valor eficaz de un polo a 3 kHz y umbral de continuidad de
+50 Ω. El libro sitúa resistencia, continuidad, diodo y capacidad en una sola posición del selector; el BM869s real
+(manual y foto del libro) separa ⊣⊢/diodo y Ω/continuidad/nS, que es lo que se ha dibujado.
+
+Fuentes de las especificaciones: capítulos 20 (2C53T) y 21 (prácticas) del libro impreso y sección 52.7 (BM869s);
+[manual del Brymen BM867s/BM869s](https://storage.eleshop.eu/files/BM860s-manual-ES636.pdf) (rangos, exactitud,
+bandas de alterna, tensión de carga, sensibilidad del frecuencímetro, ciclo de trabajo, capacidad, diodo);
+[prueba del BM869s de lygte-info.dk](https://lygte-info.dk/review/DMMBrymen%20BM869s%20UK.html) (orden del selector,
+impedancia del rango de mV, tensiones de prueba, umbral de continuidad, respuesta en frecuencia);
+[ficha del FNIRSI 2C53T en Elektor](https://www.elektor.com/products/fnirsi-2c53t-3-in-1-2-ch-oscilloscope-50-mhz-multimeter-signal-generator)
+(sensibilidad 10 mV–10 V/div, base de tiempos 10 ns–20 s, 1 Kpts, ±400 V, multímetro de 19 999 cuentas y su
+exactitud, formas del generador) y el
+[hilo del 2C53T en EEVblog](https://eevblog.com/forum/testgear/new-handheld-scopedmm-fnirsi-2c53t-2ch-50mhz250msps-(aug-2024)).
+
+Rendimiento: el instrumento lee cinco veces por segundo y el osciloscopio adquiere ocho, solo con la ventana
+visible; la pantalla del 2C53T es un canvas que se redibuja solo cuando cambia lo que muestra. Una simulación del
+banco tarda de unos milisegundos (continua) a unos 2 s (la AM de 100 kHz, la más pesada).
+
+## Kit FM7303
+
+«Kit FM7303» en la barra lateral (`#/fm7303`), o el botón del mismo nombre junto a los esquemas del capítulo 15
+(figuras 15.25, 15.26, 15.9…) y a las secciones de bloques, puntos de prueba, alineación, averías y mapa de
+tensiones, abre el receptor entero en cuatro pestañas que comparten el mismo esquema:
+
+- **Esquema y tensiones**: el esquema completo del kit (las 219 piezas del original de la figura 15.26, redibujadas
+  y agrupadas en los ocho bloques de colores de la figura 15.9) con desplazamiento y zoom (arrastrar, rueda o
+  trackpad, pellizco, doble toque, `+` `−` `0` y flechas). Encima, la capa viva de las figuras: puntos que recorren
+  los cables con la corriente continua y cables coloreados por su tensión, calculadas con ngspice para el kit
+  entero. Al tocar una pieza se ve su valor, su función en la radio, la sección del libro que la explica, su
+  bloque y su animación de componente. El **multímetro** mide entre dos puntos tocados en el esquema (la negra
+  en masa por defecto) y, si el punto está en el mapa de tensiones, muestra el valor del libro y si está dentro
+  de la tolerancia (±5 % alimentaciones, ±10 % polarizaciones, sección 15.21). La tabla del **mapa de tensiones**
+  pone lado a lado los valores del libro y los simulados.
+- **Señal**: el camino antena → RF/mezclador → FI → detector → MPX → decodificador → desénfasis → volumen →
+  amplificador → altavoces, animado sobre el esquema, con la señal de cada etapa (la banda y el circuito de
+  entrada, la FI con los filtros cerámicos y B1, la curva en S del discriminador, la respuesta del desénfasis
+  simulada con la netlist del libro…) y un **osciloscopio** en TP1–TP4, los altavoces y el raíl de 12 V, con
+  los ajustes que recomienda el libro (sonda ×10 en TP2, acoplo AC y FFT en TP3, medida automática de
+  frecuencia en TP4).
+- **Alineación**: el procedimiento de la sección 15.11, paso a paso y en su orden, sobre un kit que sale de la
+  bolsa desajustado: C4A', B1, B2 (TP3 = 4,6 V), cobertura con C4B' y L2, seguimiento con L1 y C4A', AFC con W1
+  (TP1 = 4,6 V), VCO con W3 (38 kHz en TP4 con el puente «Monitor») y sensibilidad del mute con W2. Cada paso
+  muestra el texto del libro, los mandos y el instrumento que necesita y dice cuándo se ha llegado al ajuste.
+- **Averías**: diez averías que el libro describe (antena, L3 abierta, W1 o W3 desajustados, R13 abierta, un
+  condensador de salida abierto, oscilador parado, display sin alimentación, K4, L1 deformada) escondidas en el
+  kit. Se ve el síntoma, se mide con el multímetro y el osciloscopio, se usan las dos pruebas rápidas del libro
+  (pinzas en TP2, tono inyectado en el amplificador) y se señala la pieza culpable en el esquema.
+
+**Qué es del libro y qué es modelo.** Todo valor marcado «libro · 15.x» procede del capítulo 15 (el generador
+comprueba cada cita contra el texto de `cap16.typ`) o de sus figuras (15.26, el esquema original; 15.28, el mapa
+de tensiones y las bobinas; 15.16, las trazas del FNIRSI). Lo marcado «modelado» o «sintetizado» lo calcula la
+aplicación: los integrados son macromodelos con las tensiones y consumos que da el libro (las patillas cuya tensión
+depende del interior del chip quedan sin valor, «—»), la física de la alineación usa f = 1/(2π√(LC)) con los
+valores del esquema más unas capacidades parásitas elegidas para que, alineado, cubra exactamente 88–108 MHz, y
+las formas de onda de los puntos de prueba se generan a partir de la descripción del libro. Las emisoras son
+ficticias.
+
+Los datos se generan con `python3 contenido/fm7303.py` (también desde `generar.py`): escribe
+`web/public/fm7303/esquema.svg` y `kit.json`, comprueba las conexiones del dibujo, las citas y, con el ngspice
+del sistema, que el modelo de continua reproduce el mapa de tensiones del libro. Pruebas: `tests/fm7303.spec.ts`
+(capturas en `tests/capturas/fm7303-*.png`).
 
 ## Dónde se guardan los datos personales
 
@@ -226,6 +444,12 @@ servida (`npx vite preview --port 4173`):
 
 ```sh
 PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node tests/rendimiento.mjs
+```
+
+Coste por fotograma de los esquemas vivos (perfiles `mac`, `tableta`, `movil`; CPU ×4), con la web servida:
+
+```sh
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node tests/figuras-vivas.mjs --perfil mac
 ```
 
 `npm run tauri …` ejecuta la CLI de Tauri mediante `web/scripts/tauri.mjs`, que le indica dónde está
@@ -812,6 +1036,12 @@ app/
         animaciones/         componentes animados: catálogo (enlaces al libro), galería, página, escenas/
                              (una por animación, se cargan al abrirla), nucleo/ (física, dibujo), ui/
         grafica/             gráfica interactiva reutilizable (canvas): API en ESQUEMA.md
+        fm7303/              el kit FM7303 vivo: esquema con pan y zoom, modelo de continua, física de la
+                             alineación, señal, osciloscopio, multímetro, averías (ver «Kit FM7303»)
+        instrumentos/        Brymen BM869s y FNIRSI 2C53T virtuales, banco de pruebas y prácticas guiadas
+                             (motor/ en TypeScript puro; ver «Instrumentos» y ESQUEMA.md)
+        figuras-vivas/       figuras vivas: lectura de gráficas, esquemas con corriente y tensión, circuito
+                             del simulador (ver «Figuras vivas» y ESQUEMA.md)
         simulador/           vistas del simulador: Simulador (rutas), Indice, Pagina, Parametros,
                              Resultados, Editor (se cargan solo al abrir el simulador)
         Insignia.svelte, Icono.svelte

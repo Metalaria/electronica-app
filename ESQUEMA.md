@@ -418,3 +418,248 @@ Interactive canvas animations of how each component works, independent of the ge
   rAF timestamps, never per frame), controls from `ui/`, an own minimal plot (`ui/Grafica.svelte`) and the
   dynamic text. Shared physics in `nucleo/fisica.ts` (book device parameters), drawing helpers in
   `nucleo/dibujo.ts`, `esquema.ts`, `piezas.ts`, PN-junction particle model in `nucleo/union.ts`.
+
+## Live figures (`web/src/componentes/figuras-vivas/`)
+
+The interaction layer over the book's own figures, from «Datos de figuras». The figure SVG is shown unchanged
+(as an `<img>`); every layer is stacked over it in its viewBox (`svg_vista`), so it scales with it.
+- Integration: `Figura.svelte` asks `datosVivos(bloque)` (index.ts) and, for `grafica`/`esquema` figures with
+  `datos`, renders `FiguraViva.svelte` instead of the zoom button. The figure is only an image until it comes
+  within ~600 px of the viewport (`carga.svelte.ts`: one shared IntersectionObserver for «near» and one for
+  «on screen», an LRU cache of 24 parsed data files); animations run only on screen, with the page visible and
+  without reduced motion (then they start paused). A header row inside the plate has the label, «A|B» and
+  «Abrir en grande»; a click outside the live regions opens the full-screen view too.
+- `Escenario.svelte`: image + layers, optionally a crop of the picture (`imagen`). `CapaGraficas.svelte` (one
+  hit region per plotting box, twins together, insets first; `grafica/lectura.ts`: readable series — curves of
+  ≥ 3 points, single points, scatter, bars —, interpolation, nearest series, A/B values) and `CapaEsquema.svelte`.
+- Plots: crosshair snapped to the nearest series, readout of every series at x (axis units through `factor_si`,
+  SI prefixes, decimal comma, U+202F before the unit), click/tap pins it, arrows move it, A/B cursors per box
+  with `TablaCursores.svelte`. Axes without numeric ticks give no values (qualitative sketches: no readout).
+- Schematics (`esquema/`): `modelo.svelte.ts` (`EstadoEsquema`: SVG geometry of wires, nodes and current paths
+  — every `tramo`, two-terminal parts start→end, other parts terminal→centre —, results at the time shown,
+  hit testing), `particulas.ts` (one canvas over the drawings only, ≤ 420 particles per drawing, constant
+  spacing on screen, speed ∝ log |I| over four decades, still and faint at zero current, conventional current
+  amber / electrons blue), `color.ts` (diverging OKLab scale blue–grey–red, the same in every theme because the
+  figure plate is light), halos multiplied under the black wires, `Ficha.svelte` (V, I, P, terminal currents,
+  links to the component animation and its book section), `PanelEsquema.svelte` (play/pause, current or
+  electrons, legend, time scrubber of the transient at 4 s per period with linked `Grafica` plots of the
+  selected node/branch, sliders, assumptions, or why it cannot be simulated). The transient time drives the
+  particles every frame and the colours and readouts at ~15 Hz.
+- Sliders: `esquema/netlist.ts` is a port of `simular_esquema.py` (`netlist()`): with the book's values its text
+  is identical to `simulacion.netlist` for all 31 simulable drawings (tested). `resimular.ts` runs it in the
+  simulator's worker (`cliente.svelte.ts`) with `op` and the 5-period transient, and `resultado.ts` rebuilds
+  `op`/`tran` like `collect()`.
+- `Grande.svelte`: full-screen view (moved to `<body>`, an overlay of `ruta.svelte.ts` so «Atrás» closes it):
+  zoom/pan of the live figure next to its controls, and a «Datos» tab with the curves in `componentes/grafica`.
+- Simulator page: `circuito/CircuitoVivo.svelte` draws the circuit of the netlist above the results. The
+  drawing is a `DibujoConNetlist` (tipos.ts): the book figure whose schematic `circuito/netlist.ts`
+  `emparejar()` can match to the netlist (parts by designator or kind and value, pins by polarity, nodes one to
+  one; 22 of the 65 netlists that cite a schematic figure), or else `generarDibujo(netlist)` from
+  `componentes/esquema-auto/index.ts` when that module exists (same topology format plus its own SVG and the
+  `Correspondencia` of nodes and pins). After each simulation of the page, `instrumentar()` re-runs the
+  circuit without its analyses, with a 0 V source on every drawn pin (`op`, and the netlist's own `tran`, at
+  most 20 000 steps, shown over the last two periods of a drawn PULSE/SIN source); wire currents come from
+  Kirchhoff's law on the drawn wires (spanning tree rooted at a ground or rail symbol). Choosing a part dispatches the
+  window event `epa:elegir-componente` (`detail.nombre`: netlist instance name) that the page uses to bring up
+  its slider. The plate zooms (buttons, Ctrl + wheel, pinch) and pans by laying the drawing out larger, and
+  passes the visible region to `CapaEsquema` (`visible`), whose canvas never exceeds it.
+- Tests: `tests/figuras-vivas.spec.ts`; frame cost: `node tests/figuras-vivas.mjs --perfil mac|tableta|movil`
+  (reads `window.__epaFiguras`, kept by `CapaEsquema.svelte`).
+
+## Automatic schematics (`web/src/componentes/esquema-auto/`)
+
+The circuit of any netlist drawn from the netlist itself (the 231 book netlists without a drawn schematic, «Nuevo
+circuito», edited netlists), in the book's style (schemdraw look of figure 11.3: IEC resistors, `Inductor2`
+loops, circled sources and transistors, three-bar grounds, T-bar supplies, junction dots, Source Sans 3).
+Plain TypeScript without DOM (runs in a worker and in Node); the view is Svelte.
+
+```
+modelo.ts      netlist → circuit: devices with typed terminals (lineasNetlist() of simulador/motor/netlist.ts,
+               additive export), .model kinds (D/Zener/LED/Schottky by name or BV/N/IS, NPN/PNP, NMOS/PMOS,
+               NJF/PJF), subcircuits (op-amps recognised by name or ports inp/inn/out[/vp/vn] → triangle; logic
+               subcircuits and XSPICE d_* gates → IEC boxes &, ≥1, =1, 1; flip-flops with T/D/C/S/R/Q/nQ),
+               E with gain ≥ 1000 and out− on ground → op-amp, other E/G/F/H/B → diamond with the control in
+               the label, K → one transformer block (coils stay elements), 4 diodes forming a full-wave bridge
+               → diamond block, T/O/U lines, S/W switches, A devices (XSPICE NULL ports left out). Values with
+               SI prefixes and decimal comma (formatoCorto); sources show DC, «∿ amplitude · f», PULSE «v1/v2 · f».
+               Supply rails: a DC source from a net to ground named like a supply (vcc, vdd, vee, v5…) or feeding
+               ≥ 3 other pins; it is drawn apart (source + rail + ground) and every pin on the rail gets a
+               rail symbol (positive up, negative down). Ground is always a local symbol.
+simbolos.ts    symbol library: local geometry (y down, pins on the integer grid, two-terminal parts 2 units
+               long), leads, body box, label anchor, allowed orientations with their cost.
+colocacion.ts  one connected circuit (nets other than ground/rails): units (a part, a port/terminal marker),
+               their variants (orientation × mirror, precomputed pins, clearance boxes, label box, ground and
+               supply stubs), and the placement by simulated annealing (moves: shift, re-orient, align a pin on
+               a pin of its net, swap) with an incremental cost: rectilinear MST per net + bends + pins left
+               backwards, crossings of L-shaped estimates, wires through bodies or labels, orientation costs
+               (sources upright with + up, grounds down, positive rails up, NPN collector up / PNP emitter up),
+               signal flow left → right (BFS rank from the sources), compactness. Hard constraints: no
+               overlap of bodies (0,4 clearance), labels or stubs; pins only meet pins of their net. Then empty
+               rows/columns are closed (compactar).
+rutas.ts       orthogonal router on the unit grid: Steiner tree per net (Dijkstra from the drawn tree to the
+               nearest pin; length, bends, crossings, label and next-to-wire costs); no overlaps, no touching
+               another net except a straight right-angle crossing, no passing through pins or bodies. A pin that
+               cannot be reached sensibly gets a net label (stub + name) instead.
+generar.ts     whole netlist: components → placement (best of several runs by routed score: length, bends,
+               crossings, labels) → shelf packing to a target aspect ratio → net-label texts and small net-name
+               tags placed where they collide with nothing → topology. Layouts are kept per circuit structure
+               (kinds, pin-net pattern, name lengths; values never matter: label widths reserve «8,88 k»), so a
+               slider move redraws the same layout at once; precalculado.json holds the layouts of every book
+               netlist computed at high effort (scripts/esquema-auto-precalcular.mjs; a stale entry that no
+               longer fits is simply recomputed).
+svg.ts         SVG: palette «libro» (book colours, for the light figure plate, fonts embedded at /*@fuentes*/)
+               or «tema» (CSS variables, inline, data-el/data-disp attributes and hit areas).
+trabajador.ts  Web Worker (sequential queue; loads precalculado.json). index.ts: client, LRU of 16 results.
+EsquemaAuto.svelte  inline themed viewer: pan (drag when zoomed, wheel), zoom (buttons 44 px, Ctrl/⌘ + wheel,
+               trackpad/touch pinch, + − 0 keys), click/tap on a part → `alElegir` and window event
+               `epa:elegir-componente` {nombre}; subcircuit interiors on request. Interiores.svelte: «Ver el
+               interior de X» buttons under the live drawing.
+```
+
+Contracts (looked up lazily by the other modules):
+- `generarDibujo(netlist): Promise<DibujoConNetlist | null>` (figuras-vivas `tipos.ts`): `origen: 'auto'`, `svg`
+  (book palette, fonts embedded), `vista` [0, 0, W, H], `esquemas: [Esquema]`, `correspondencia: [{ nodos: Nk →
+  netlist node, elementos: Ek → { nombre, pines: terminal → index on the netlist line } }]`.
+- `esquemaDeNetlist(netlist): Promise<Esquema | null>` (instrument bench), `esquemaAutomatico(netlist, { subckt })`
+  → `ResultadoEsquema` (both SVGs, topology, mapping, `flujo`, statistics, subcircuits, unreadable lines).
+
+Topology («Datos de figuras» format, drawing units y up, `dibujo_a_svg` = 24 SVG units per unit, `eje: -1`):
+every part is an element with the book's `clase`/`rol` (R C L V VSIN VPULSE V? I D DZ LED QN QP MN MP JN JP DEP SW
+OA X, plus `K` coupling, `TL` line), `designador` = netlist name, `anclas` = its pins, `terminales` → nodes,
+`polaridad`. SPICE pin order maps to terminals as: R C L D S W I G F `start`=n1/n+, `end`=n2/n−; V E H B(V)
+`end`=n+ (schemdraw puts «+» at `end`), `start`=n−; Q collector/base/emitter; M drain/gate/source(/bulk when not
+on the source); J drain/gate/source; op-amps in1 (−), in2 (+), out, vd, vs; boxes p1…pn; bridge diodes
+start = anode, end = cathode at the diamond's corners. Ground symbols are `GND` elements on `N0`, rail symbols
+`RAIL` elements on the rail's node, junction dots and net labels `DOT` elements, ports/terminal markers `DOT`
+(`clase: 'Terminal'`). Nodes `N1…` in order of first appearance carry the netlist name in `etiquetas`; one node
+may be drawn in several pieces (rails, labels). Every wire run between attachment points is a `tramo` (also
+the leads of ground/rail symbols and net labels); `flujo[tramo]` lists the terminal currents whose sum is its
+current from `de` to `a` (the side without a ground, rail or label symbol).
+
+Checks: `node tests/esquema-auto.mjs [--hojas] [--en-vivo] [--esfuerzo k] [--solo texto]` lays out all 313
+netlists, checks every device and node drawn, topology consistency and overlaps, prints crossings, labels,
+lengths and times, and with `--hojas` writes contact sheets to `tests/capturas/esquema-auto/`.
+`tests/esquema-auto.spec.ts` covers the page (auto drawing under the live layer, XSPICE drawing, zoom, click →
+slider, subcircuit interior, «Nuevo circuito») and the screenshots.
+
+## Consoles (`web/src/componentes/consolas/`, data in `web/public/consolas/`)
+
+Three linked views of the two mainboards photographed in printed chapter 36 (figures 36.16 and 36.22): the NES
+NES-CPU-07 and the first Neo Geo AES board (NEO-AES). Route `#/consolas/<nes|neogeo>/<foto|arquitectura|esquema|fuentes>[/<sel>]`
+(`Vista` includes `'consolas'`); `<sel>` is a schematic reference (`U6`), `red:<net>`, `bloque:<id>` or `foto:<id>`,
+URI-encoded. Selections made inside a tab only replace the URL; the cross links («Ver en el esquema»…) push it.
+The reader shows «Explorar la placa» under both photos (`VerConsola.svelte`, labels `fig-37.16`/`fig-37.22`).
+
+**Pipeline.** `contenido/consolas.py` (called by `generar.py`, or alone) reads the research folder
+`/home/claude/consolas` (env `CONSOLAS_FUENTES`): KiCad 7 copies of OpenTendo NES-CPU-11 and Board-Folk
+NeoGeoAES-3.5, their kicad-cli netlists (`*.nets.json`), bus groups (`*.buses.json`) and SVG exports. Modules:
+`consolas_kicad.py` (s-expression reader; symbols with KiCad's TRANSFORM, pins from `lib_symbols`, wires, junctions,
+labels, power symbols, hierarchical labels ↔ sheet pins, bus labels; union-find connectivity mapped to netlist
+nets through the pins), `consolas_svg.py` (SVG → compact layers), `consolas_datos.py` (photo hotspots, bus group
+names, chip equivalences, sources). The build fails if a geometric group holds pins of two nets, a netlist net has no
+geometry, or a `.kicad_sch` wire is not a wire of the SVG (currently 0 / 0 / 0 on both machines).
+
+**Files** (≈ 1,24 MB in all):
+- `<maquina>.json`: `foto` {src, ancho, alto, figura}; `hotspots` [{id, nombre, pieza (marking read on the photo),
+  esquema [refs], bloque (diagram block), cajas [[x0,y0,x1,y1]] in photo pixels, confianza `marca|posicion`, buses
+  [group keys], funcion}]; `grupos` {key: Spanish name}; `hojas` [{id, nombre, ruta, archivo, ancho, alto (mm), padre}];
+  `componentes` {ref: {v value, l symbol, h [sheets], f hotspot}}; `redes` [{n KiCad name, g group, nodos
+  [[ref, pin, function]], h [sheets]}] sorted by name (the index is the net id used by the sheet files);
+  `equivalencias` (photo chip → AES3-5 chip) and `fuentes` (credits, licences).
+- `<maquina>/hoja-N.bin` «CSG1»: `'CSG1' u16 n_layers u16 0 f32 w_mm f32 h_mm`, then per layer `u8 role, u8 flags
+  (1 fill, 2 text strokes), u16 0, f32 stroke mm, u32 n_polylines, u32 n_circles, u32 n_bytes` and zigzag varints
+  in 0,01 mm: polylines `n, x0, y0` (delta from the previous start) then point deltas; circles `cx, cy` (delta), `r`.
+  Roles come from KiCad's plot colours: 1 symbol, 2 body fill, 3 wire, 4 bus, 5 label text, 6 fields, 7 pin
+  numbers, 8 sheet, 9 notes, 10 black, 11 other.
+- `<maquina>/hoja-N.json` (0,01 mm): `hilos` [net, x1, y1, x2, y2]…, `uniones` [net, x, y]…, `pines` [[net, ref,
+  pin, name, x, y (connection point), x2, y2]], `etiquetas` [[net (−1 bus label), kind local|global|hier|pwr|bus,
+  text, x0, y0, x1, y1]] (approximate boxes for hit testing), `simbolos` [[ref, box]], `buses` [x1, y1, x2, y2]…,
+  `subhojas` [[sheet, name, x, y, w, h, [[net, pin, x, y]]]].
+
+**Views.** `Foto.svelte` (SVG overlay on the photo; nearest hotspot within 22 px on touch; list of parts),
+`esquema/` (`dibujo.ts` decodes CSG1 into one Path2D per layer and 8 × 8 tile, culls tiles, skips text under
+~2,6 px; `capa.ts` hit tests and draws the highlighted net; `Lienzo.svelte` pan/zoom on demand without an
+animation loop, exposes `__epaEsquema` and `__epaEsquemaVista` for tests), `arquitectura/` (`modelo.ts`: scenarios
+as signal transition lists in real seconds, sampled by binary search; `nes.ts`, `neogeo.ts`: diagram, address
+decoder, scenarios with the documented timings; `dibujo.ts` draws the diagram in the shared `Escena`;
+`Analizador.svelte` is the logic-analyser view). Tests: `tests/consolas.spec.ts`.
+
+## Instruments and test bench (`web/src/componentes/instrumentos/`)
+
+Virtual Brymen BM869s and FNIRSI 2C53T measuring circuits simulated by the same ngspice worker
+(`simulador/cliente.svelte.ts`, unchanged). Routes: `#/instrumentos` (practices and free bench),
+`#/instrumentos/practica/<n>` (guided practice 1–12 of cap22.typ), `#/instrumentos/circuito/<parte>/<nombre>`
+(a catalogue netlist), `#/instrumentos/libre`. `Vista` includes `'instrumentos'` (`ruta.ancla` holds the rest).
+The reader shows «Practicar» (`VerPractica.svelte`, static label → practice map) next to sec-22.1 … sec-22.13.
+
+```
+motor/      plain TypeScript (runs in Node too)
+  circuito.ts     netlist → bench circuit: analyses/.control removed, top-level elements with the node of each
+                  terminal (token offsets, to cut a terminal for a series ammeter), voltage sources, sources that
+                  vary with time and their frequencies, the original .tran (UIC, span)
+  montaje.ts      bench → netlist + plan: every instrument is a part of the circuit (multimeter on VΩ: 10 MΩ ‖ 60 pF,
+                  mV ranges with the input protection conducting above 3 V; Ω/diode: Thévenin test source;
+                  capacitance: 1 A AC current source and a one-frequency .ac; current jacks: their shunt, whatever
+                  the selector says; 0 V sense source in series with every meter), probes (10 MΩ ‖ 20 pF ×10,
+                  1 MΩ ‖ 100 pF ×1, then E buffer, AC coupling 1 MΩ/15,9 nF, bandwidth RC 50 MHz or 6 MHz), the two
+                  ground clips joined (1 mΩ), the DDS replacing a V source with 50 Ω; .op always, .tran when a source
+                  varies, the generator is on, the original netlist had a .tran or the bench asks (oscillators):
+                  start = settling time, span = max(2,4 windows of the screen, 20 periods for the meters), step ≤
+                  window/2000 and ≤ 1/(40·f_max), at most 4·10⁵ points; .save of the read vectors only
+  generador.ts    the 13 DDS waveforms as PULSE/SIN/B sources (0 … A, 1 Hz … 50 kHz, 0,1 … 3 V)
+  senal.ts        interpolation, windows, radix-2 FFT, band-weighted RMS (Parseval), frequency counter, fixed
+                  pseudo-random calibration error
+  dmm.ts          functions, ranges (full scale, resolution, display unit), accuracy ± (% + d) by frequency band,
+                  electrical model per range, auto-ranging, displayed value (exact + fixed error ≤ ⅓ of the spec +
+                  last-digit noise, quantised; OL), for the BM869s (11 selector positions, SELECT sub-functions) and
+                  the 2C53T's multimeter
+  osciloscopio.ts acquisition: edge trigger (Auto/Normal/Single) on the analog data, 1 000 samples over 12 div
+                  (real rate 1000/(12·s/div) ≤ 250 MS/s: aliasing appears), noise, 8-bit quantisation over the
+                  8 div with clipping, PRM measurements, FFT (Hann, 1 024), AUTO
+brymen/     logica.svelte.ts (state machine: selector, buttons with long press, jacks, fuses, REL/REC/CREST/HOLD/
+            500 000 counts, LCD content), Brymen.svelte (SVG body, 7-segment LCD siete.ts, draggable selector)
+fnirsi/     logica.svelte.ts (oscilloscope/multimeter/generator modes, menus, cursors, math, X-Y), dibujo.ts
+            (320×240 canvas screen, redrawn by a Svelte effect only when what it reads changes), Fnirsi.svelte
+banco.svelte.ts  bench state: circuit text, leads, instruments, plan ($derived) → debounced run in the worker;
+            readings of each meter over whole periods of the last stretch; `vigente` (result matches the plan)
+banco/      Banco.svelte (layout, read loop 5/s and acquisition 8/s only while visible), Conexiones.svelte
+esquema/    Plano.svelte draws the circuit and the node tap targets: a book figure (fig/NAME.svg + the node
+            points of datos/NAME.json, figure node → net map per practice), a drawing in the `esquemas[]`
+            format built by the app (dibujoPropio.ts), or the automatic schematic of esquema-auto/
+            (`esquemaAutomatico()`, looked up with import.meta.glob; node map from its `correspondencia`);
+            without any, the node list
+practicas/  circuitos.ts (bench netlists derived from complementos/spice/cap22), dibujos.ts, practicas.ts (12
+            practices: variants, initial settings, steps from the book with «apply», checks with the expected
+            value, tolerance and how to read it, tables with a plot against theory), aplicar.ts, PanelPractica
+```
+Tests: `tests/instrumentos.spec.ts` (screenshots `tests/capturas/instrumentos-*.png`).
+
+## Kit FM7303 (`web/src/componentes/fm7303/`, datos en `web/public/fm7303/`)
+
+Vista `fm7303`, ruta `#/fm7303[/<pestaña>[/<selección>]]`: pestaña `esquema | senal | alineacion | averias`;
+selección = designador (`R13`), bloque (`b4`), etapa de la señal (`mpx`) o punto de prueba (`TP3`). El lector
+muestra «Kit FM7303» (`VerKit.svelte`, mapa estático de etiquetas) junto a figuras y secciones del capítulo 15 impreso (`cap16`).
+
+**Generación** (`contenido/fm7303.py`, llamado por `generar.py`; módulos `fm7303_dibujo.py` = motor de dibujo y
+topología, `fm7303_esquema.py` = el esquema completo colocado a mano, `fm7303_datos.py` = datos del libro):
+- `esquema.svg`: el dibujo (placa clara, tinta oscura), 1800 × 820 unidades.
+- `kit.json`: `esquema` (topología en el formato «Datos de figuras» de `esquemas[]`, `dibujo_a_svg` identidad,
+  `eje: -1`; cada nodo lleva además `red`), `modelo` (`plantilla`: netlist de continua del kit entero con
+  marcadores `{{NOMBRE}}` para mandos, interruptores, TP3, medidor y averías; `parametros` por defecto;
+  `correspondencia` con el dibujo para `instrumentar()`/`resultados()` de `figuras-vivas/circuito/netlist.ts`;
+  `sin_modelo`: redes sin tensión modelada), `citas` (id → `{ref, num, tipo, texto}`), `componentes` (ref →
+  función, sección, animación, bloque), `bloques` (8, con color y caja), `mapa` (puntos del mapa de tensiones con
+  valor del libro, tolerancia y cita), `tps`, `etapas` (trazos del camino de la señal sobre los cables), `pasos`
+  (alineación de la sección 15.11, `sec-16.11`), `averias` (síntoma, cambios del modelo de continua y del de señal, respuesta
+  aceptada), `emisoras` (ficticias), `constantes` (con su origen: libro o modelo).
+- Comprobaciones que paran la generación: cables que unen redes distintas, terminales sueltos, trozos de una red
+  sin símbolo de alimentación/masa, citas que no aparecen en su sección de `cap16.typ`, componentes sin ficha y,
+  si hay `ngspice`, un punto del mapa de tensiones fuera de la tolerancia del libro.
+
+**Aplicación.** `Visor.svelte` (SVG en línea cuyo `viewBox` sigue a la vista, sin rasterizar; encima
+`CapaEsquema` de figuras-vivas con la misma ventana, y capas propias), `estado.svelte.ts` (mandos, avería, punto
+de trabajo, multímetro), `dc.ts` (rellena la plantilla y la ejecuta en el worker del simulador con amperímetros en
+cada patilla), `fisica.ts` (modelo de la alineación: tanques LC, FI, discriminador, AFC, VCO, mute, audio),
+`ondas.ts` (formas de onda sintetizadas y trazas de la figura 15.16, `datos/16.15.json`), `alineacion.ts` (comprobación de cada paso),
+paneles por pestaña. La página expone `window.__epaKit` para las pruebas (`tests/fm7303.spec.ts`).
+

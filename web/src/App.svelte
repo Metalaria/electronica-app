@@ -141,6 +141,33 @@
         {:catch e}
           <div class="aviso"><h1>No se pudo abrir el simulador</h1><p>{String(e)}</p></div>
         {/await}
+      {:else if ruta.vista === 'consolas'}
+        <!-- NES and Neo Geo mainboards, loaded on demand. -->
+        {#await import('./componentes/consolas/Consolas.svelte')}
+          <div class="cargando" aria-live="polite"><span class="punto"></span> Abriendo las consolas…</div>
+        {:then m}
+          <m.default />
+        {:catch e}
+          <div class="aviso"><h1>No se pudieron abrir las consolas</h1><p>{String(e)}</p></div>
+        {/await}
+      {:else if ruta.vista === 'fm7303'}
+        <!-- The FM7303 kit of chapter 15, live: loaded on demand. -->
+        {#await import('./componentes/fm7303/Kit.svelte')}
+          <div class="cargando" aria-live="polite"><span class="punto"></span> Abriendo el kit FM7303…</div>
+        {:then m}
+          <m.default />
+        {:catch e}
+          <div class="aviso"><h1>No se pudo abrir el kit FM7303</h1><p>{String(e)}</p></div>
+        {/await}
+      {:else if ruta.vista === 'instrumentos'}
+        <!-- Virtual Brymen BM869s and FNIRSI 2C53T on a test bench, loaded on demand. -->
+        {#await import('./componentes/instrumentos/Instrumentos.svelte')}
+          <div class="cargando" aria-live="polite"><span class="punto"></span> Abriendo los instrumentos…</div>
+        {:then m}
+          <m.default />
+        {:catch e}
+          <div class="aviso"><h1>No se pudieron abrir los instrumentos</h1><p>{String(e)}</p></div>
+        {/await}
       {:else if ruta.vista === 'componentes'}
         <!-- Component animations, also loaded on demand. -->
         {#await import('./componentes/Componentes.svelte')}

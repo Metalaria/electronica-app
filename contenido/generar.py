@@ -35,6 +35,8 @@ import figuras                       # noqa: E402
 import validar                       # noqa: E402
 import datos_figuras                 # noqa: E402
 import spice                         # noqa: E402
+import consolas                      # noqa: E402
+import fm7303                        # noqa: E402
 
 ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII']
 
@@ -246,6 +248,8 @@ def main():
                      busqueda, glosario, time.time() - t0)
     ok = datos_figuras.validar(OUT) and ok
     ok = spice.main() == 0 and ok    # netlists for the simulator: spice/, spice.json (cached validation)
+    ok = consolas.main() == 0 and ok  # NES and Neo Geo mainboards: web/public/consolas/
+    ok = fm7303.main() == 0 and ok    # the FM7303 kit, live: web/public/fm7303/ (needs refs.json)
     if check_figs:
         validar.check_figures(figs, OUT)
     sys.exit(0 if ok else 1)

@@ -8,12 +8,14 @@
 //          #/simulador[/<id>]    the circuit simulator: index, a netlist of the book (cap42/fig-42.5_filtro_rc)
 //                                or «nuevo» (free-form circuit)
 //          #/componentes[/<id>]  the component animations: gallery, or one animation
+//          #/consolas[/<maquina>/<vista>[/<seleccion>]]  NES and Neo Geo mainboards (componentes/consolas)
+//          #/fm7303[/<capa>[/<seleccion>]]  the FM7303 kit, live (componentes/fm7303)
 //
 // Each history entry remembers its scroll position (history.state.y), so «Atrás» (the button,
 // the browser or the Android back button) returns exactly where the reader was. Overlays
 // (drawer, search, figure viewer) push their own entry so the back button closes them.
 
-export type Vista = 'inicio' | 'parte' | 'glosario' | 'marcadores' | 'simulador' | 'componentes';
+export type Vista = 'inicio' | 'parte' | 'glosario' | 'marcadores' | 'simulador' | 'componentes' | 'consolas' | 'instrumentos' | 'fm7303';
 
 export interface AnclaLectura {
   /** Index of the top-level block at the top of the screen. */
@@ -69,6 +71,18 @@ function leer(): void {
     ruta.parte = '';
     ruta.ancla = '';
     ruta.sim = b;
+  } else if (a === 'consolas') {
+    ruta.vista = 'consolas';
+    ruta.parte = '';
+    ruta.ancla = b;
+  } else if (a === 'fm7303') {
+    ruta.vista = 'fm7303';
+    ruta.parte = '';
+    ruta.ancla = b;
+  } else if (a === 'instrumentos') {
+    ruta.vista = 'instrumentos';
+    ruta.parte = '';
+    ruta.ancla = b;
   } else if (a === 'componentes') {
     ruta.vista = 'componentes';
     ruta.parte = '';

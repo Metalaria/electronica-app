@@ -10,6 +10,7 @@
   import Ejercicios from './Ejercicios.svelte';
   import BotonSimular from './BotonSimular.svelte';
   import VerAnimacion from './animaciones/VerAnimacion.svelte';
+  import VerKit from './fm7303/VerKit.svelte';
 
   let {
     bloques,
@@ -36,7 +37,7 @@
     <Seccion bloque={b} {parte} indice={db} />
   {:else if b.t === 'h3'}
     <h3 {id} data-b={db}>{#if b.num}<span class="num">{b.num}</span>{/if}{@html prepararHtml(b.html)}{#if b.label}
-        <span class="h3-simular"><BotonSimular label={b.label} compacto /> <VerAnimacion label={b.label} compacto /></span>{/if}</h3>
+        <span class="h3-simular"><BotonSimular label={b.label} compacto /> <VerAnimacion label={b.label} compacto /> <VerKit label={b.label} compacto /></span>{/if}</h3>
   {:else if b.t === 'h4'}
     <h4 {id} data-b={db}>{@html prepararHtml(b.html)}</h4>
   {:else if b.t === 'lista'}

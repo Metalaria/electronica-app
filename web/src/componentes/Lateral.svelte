@@ -97,6 +97,9 @@
     <a href="#/glosario" aria-current={ruta.vista === 'glosario' ? 'page' : undefined}><Icono nombre="glosario" /> Glosario</a>
     <a href="#/simulador" aria-current={ruta.vista === 'simulador' ? 'page' : undefined}><Icono nombre="simulador" /> Simulador</a>
     <a href="#/componentes" aria-current={ruta.vista === 'componentes' ? 'page' : undefined}><Icono nombre="componentes" /> Componentes animados</a>
+    <a href="#/instrumentos" aria-current={ruta.vista === 'instrumentos' ? 'page' : undefined}><Icono nombre="instrumentos" /> Instrumentos</a>
+    <a href="#/fm7303" aria-current={ruta.vista === 'fm7303' ? 'page' : undefined}><Icono nombre="radio" /> Kit FM7303</a>
+    <a href="#/consolas" aria-current={ruta.vista === 'consolas' ? 'page' : undefined}><Icono nombre="consolas" /> Consolas</a>
     <a href="#/marcadores" aria-current={ruta.vista === 'marcadores' ? 'page' : undefined}>
       <Icono nombre="marcador" /> Marcadores y notas
       {#if totalPersonal}<span class="cuenta">{totalPersonal}</span>{/if}

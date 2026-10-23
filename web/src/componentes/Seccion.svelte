@@ -7,6 +7,8 @@
   import Icono from './Icono.svelte';
   import BotonSimular from './BotonSimular.svelte';
   import VerAnimacion from './animaciones/VerAnimacion.svelte';
+  import VerPractica from './instrumentos/VerPractica.svelte';
+  import VerKit from './fm7303/VerKit.svelte';
 
   let { bloque, parte, indice }: { bloque: BH2; parte: string; indice?: number } = $props();
 
@@ -51,6 +53,8 @@
       <div class="herramientas">
         <BotonSimular {label} compacto />
         <VerAnimacion {label} compacto />
+        <VerPractica {label} compacto />
+        <VerKit {label} compacto />
         <button
           class="boton-icono"
           aria-pressed={!!nota || editando}
