@@ -1,22 +1,23 @@
 <script lang="ts">
-  // Page of one animation: title, links to the book sections it illustrates, the scene, and navigation.
+  // Page of one animation (component or concept): title, links to the book sections it illustrates, the
+  // scene, and navigation within its collection.
   import { onMount, type Component } from 'svelte';
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
   import BookOpen from '@lucide/svelte/icons/book-open';
   import CornerUpLeft from '@lucide/svelte/icons/corner-up-left';
-  import { ANIMACIONES, animacion, familiaDe } from './catalogo';
-  import { CARGADORES, disponible } from './cargadores';
+  import { COMPONENTES, disponibleEn, entrada, grupoDe, type Coleccion } from './coleccion';
   import { referencia } from './referencias';
   import { ruta, prepararSalto, volver } from '../../lib/ruta.svelte';
 
-  let { id }: { id: string } = $props();
+  let { id, coleccion = COMPONENTES }: { id: string; coleccion?: Coleccion } = $props();
 
-  const a = $derived(animacion(id));
-  const fam = $derived(a ? familiaDe(a.familia) : null);
+  const a = $derived(entrada(coleccion, id));
+  const fam = $derived(a ? grupoDe(coleccion, a.grupo) : null);
   const refs = $derived((a?.libro ?? []).map((l) => referencia(l)).filter((r) => r !== null));
-  const lista = $derived(ANIMACIONES.filter((x) => disponible(x.id)));
+  const lista = $derived(coleccion.lista.filter((x) => disponibleEn(coleccion, x.id)));
+  const base = $derived(`#/${coleccion.ruta}`);
   const pos = $derived(lista.findIndex((x) => x.id === id));
   const anterior = $derived(pos > 0 ? lista[pos - 1] : undefined);
   const siguiente = $derived(pos >= 0 && pos < lista.length - 1 ? lista[pos + 1] : undefined);
@@ -26,7 +27,7 @@
   let error = $state('');
 
   $effect(() => {
-    const cargar = CARGADORES[id];
+    const cargar = coleccion.cargadores[id];
     Escena = null;
     error = '';
     if (!cargar) return;
@@ -52,17 +53,17 @@
   });
 </script>
 
-<svelte:head><title>{a ? `${a.titulo} · Componentes` : 'Componentes'} · Electrónica Práctica Avanzada</title></svelte:head>
+<svelte:head><title>{a ? `${a.titulo} · ${coleccion.nombre}` : coleccion.nombre} · Electrónica Práctica Avanzada</title></svelte:head>
 
 <div class="pagina" style:--c={fam?.color}>
-  {#if !a || !disponible(id)}
+  {#if !a || !disponibleEn(coleccion, id)}
     <div class="aviso">
       <h1>No existe esa animación</h1>
-      <p><a href="#/componentes">Ver todas las animaciones</a></p>
+      <p><a href={base}>Ver todas las animaciones</a></p>
     </div>
   {:else}
     <nav class="migas" aria-label="Ruta">
-      <a href="#/componentes"><ArrowLeft size={16} strokeWidth={2.2} /> Componentes</a>
+      <a href={base}><ArrowLeft size={16} strokeWidth={2.2} /> {coleccion.nombre}</a>
       <span aria-hidden="true">·</span>
       <span class="fam"><i></i>{fam?.nombre}</span>
     </nav>
@@ -91,10 +92,10 @@
 
     <nav class="vecinos" aria-label="Otras animaciones">
       {#if anterior}
-        <a href={`#/componentes/${anterior.id}`} class="ant"><ChevronLeft size={18} /><span><small>Anterior</small>{anterior.titulo}</span></a>
+        <a href={`${base}/${anterior.id}`} class="ant"><ChevronLeft size={18} /><span><small>Anterior</small>{anterior.titulo}</span></a>
       {:else}<span></span>{/if}
       {#if siguiente}
-        <a href={`#/componentes/${siguiente.id}`} class="sig"><span><small>Siguiente</small>{siguiente.titulo}</span><ChevronRight size={18} /></a>
+        <a href={`${base}/${siguiente.id}`} class="sig"><span><small>Siguiente</small>{siguiente.titulo}</span><ChevronRight size={18} /></a>
       {/if}
     </nav>
   {/if}
@@ -251,7 +252,7 @@
   .volver {
     position: fixed;
     left: 50%;
-    bottom: calc(18px + env(safe-area-inset-bottom));
+    bottom: calc(18px + var(--hueco-inferior));
     z-index: 15;
     display: inline-flex;
     align-items: center;

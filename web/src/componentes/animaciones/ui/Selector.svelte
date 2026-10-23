@@ -25,7 +25,7 @@
         style:--c={o.color}
         onclick={() => (valor = o.valor)}
       >
-        {#if o.color}<i></i>{/if}<Rico texto={o.texto} />
+        {#if o.color}<i></i>{/if}<span><Rico texto={o.texto} /></span>
       </button>
     {/each}
   </div>

@@ -8,14 +8,18 @@
 //          #/simulador[/<id>]    the circuit simulator: index, a netlist of the book (cap42/fig-42.5_filtro_rc)
 //                                or «nuevo» (free-form circuit)
 //          #/componentes[/<id>]  the component animations: gallery, or one animation
+//          #/conceptos[/<id>]    the concept animations (phasors, Fourier, aliasing…): gallery, or one
 //          #/consolas[/<maquina>/<vista>[/<seleccion>]]  NES and Neo Geo mainboards (componentes/consolas)
 //          #/fm7303[/<capa>[/<seleccion>]]  the FM7303 kit, live (componentes/fm7303)
+//          #/calculadoras[/<id>]  formula calculators: catalogue, or one formula (componentes/calculadoras)
+//          #/repaso[/tarjetas|test/<parte>|examen|repasar[/<parte>]]  flashcards and quizzes (componentes/repaso)
+//          #/ejercicios[/repaso]  exercises and problems by chapter, or the review of the failed ones
 //
 // Each history entry remembers its scroll position (history.state.y), so «Atrás» (the button,
 // the browser or the Android back button) returns exactly where the reader was. Overlays
 // (drawer, search, figure viewer) push their own entry so the back button closes them.
 
-export type Vista = 'inicio' | 'parte' | 'glosario' | 'marcadores' | 'simulador' | 'componentes' | 'consolas' | 'instrumentos' | 'fm7303';
+export type Vista = 'inicio' | 'parte' | 'glosario' | 'marcadores' | 'simulador' | 'componentes' | 'conceptos' | 'consolas' | 'instrumentos' | 'fm7303' | 'repaso' | 'ejercicios' | 'calculadoras';
 
 export interface AnclaLectura {
   /** Index of the top-level block at the top of the screen. */
@@ -83,8 +87,24 @@ function leer(): void {
     ruta.vista = 'instrumentos';
     ruta.parte = '';
     ruta.ancla = b;
+  } else if (a === 'calculadoras') {
+    ruta.vista = 'calculadoras';
+    ruta.parte = '';
+    ruta.ancla = b;
+  } else if (a === 'repaso') {
+    ruta.vista = 'repaso';
+    ruta.parte = '';
+    ruta.ancla = b;
+  } else if (a === 'ejercicios') {
+    ruta.vista = 'ejercicios';
+    ruta.parte = '';
+    ruta.ancla = b;
   } else if (a === 'componentes') {
     ruta.vista = 'componentes';
+    ruta.parte = '';
+    ruta.ancla = b;
+  } else if (a === 'conceptos') {
+    ruta.vista = 'conceptos';
     ruta.parte = '';
     ruta.ancla = b;
   } else if (a === 'glosario') {

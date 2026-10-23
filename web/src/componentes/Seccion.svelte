@@ -9,6 +9,7 @@
   import VerAnimacion from './animaciones/VerAnimacion.svelte';
   import VerPractica from './instrumentos/VerPractica.svelte';
   import VerKit from './fm7303/VerKit.svelte';
+  import MarcaLeida from './aprender/MarcaLeida.svelte';
 
   let { bloque, parte, indice }: { bloque: BH2; parte: string; indice?: number } = $props();
 
@@ -55,6 +56,7 @@
         <VerAnimacion {label} compacto />
         <VerPractica {label} compacto />
         <VerKit {label} compacto />
+        <MarcaLeida {parte} {label} />
         <button
           class="boton-icono"
           aria-pressed={!!nota || editando}

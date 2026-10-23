@@ -92,6 +92,19 @@ test('la decodificación de direcciones baja la selección correcta', async ({ p
   await expect(page.locator('.resultado')).toHaveAttribute('data-seleccion', 'LSPWE');
 });
 
+test('la Neo Geo cita los documentos de SNK en la foto y en las fuentes', async ({ page }) => {
+  await page.goto('#/consolas/neogeo/foto');
+  await page.locator('button[data-hotspot="proc0"]').click();
+  const ficha = page.locator('.foto-vista .ficha');
+  await expect(ficha.locator('.verificado')).toContainText('MV4 h.1');
+  await expect(ficha).toContainText('PA0–PA3');
+  await page.goto('#/consolas/neogeo/fuentes');
+  const tabla = page.locator('.fuentes table');
+  await expect(tabla).toContainText('LSPC2-A2 (U21)');
+  await expect(tabla).toContainText('MV4 h.4');
+  await expect(page.locator('.fuentes')).toContainText('Multi Video System (MV4)');
+});
+
 const TAMANOS = [
   { nombre: 'movil', w: 390, h: 844, dpr: 3, tactil: true },
   { nombre: 'portatil', w: 1280, h: 800, dpr: 2, tactil: false },

@@ -1,16 +1,18 @@
 <script lang="ts">
   // «Ver animación» button that the reader shows next to a section heading or a figure illustrated by one
-  // or more component animations. With several, it opens a short menu.
+  // or more animations (components and concepts). With several, it opens a short menu.
   import Play from '@lucide/svelte/icons/circle-play';
-  import { animacionesDe } from './catalogo';
-  import { disponible } from './cargadores';
+  import { enlacesDe } from './coleccion';
+  import type { Simbolo as TipoSimbolo } from './catalogo';
+  import type { IconoConcepto } from './conceptos/catalogo';
   import { app } from '../../lib/estado.svelte';
   import { prepararSalto } from '../../lib/ruta.svelte';
   import Simbolo from './ui/Simbolo.svelte';
+  import Icono from './conceptos/Icono.svelte';
 
   let { label, compacto = false }: { label: string; compacto?: boolean } = $props();
 
-  const lista = $derived(animacionesDe(label).filter((a) => disponible(a.id)));
+  const lista = $derived(enlacesDe(label));
   let abierto = $state(false);
 
   function salto(): void {
@@ -20,7 +22,7 @@
 </script>
 
 {#if lista.length === 1}
-  <a class="ver" class:compacto href={`#/componentes/${lista[0]!.id}`} onclick={salto} title={lista[0]!.titulo}>
+  <a class="ver" class:compacto href={lista[0]!.href} onclick={salto} title={lista[0]!.entrada.titulo}>
     <Play size={16} strokeWidth={2.2} /><span class="texto">Ver animación</span>
   </a>
 {:else if lista.length > 1}
@@ -30,11 +32,13 @@
     </button>
     {#if abierto}
       <ul class="menu">
-        {#each lista as a (a.id)}
+        {#each lista as a (a.href)}
           <li>
-            <a href={`#/componentes/${a.id}`} onclick={salto}>
-              <span class="arte"><Simbolo s={a.simbolo} tam={52} /></span>
-              <span>{a.titulo}</span>
+            <a href={a.href} onclick={salto}>
+              <span class="arte">
+                {#if a.coleccion.ruta === 'conceptos'}<Icono s={a.entrada.arte as IconoConcepto} tam={52} />{:else}<Simbolo s={a.entrada.arte as TipoSimbolo} tam={52} />{/if}
+              </span>
+              <span>{a.entrada.titulo}</span>
             </a>
           </li>
         {/each}

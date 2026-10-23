@@ -9,6 +9,8 @@ export interface Preferencias {
   tema: Tema;
   /** Text size of the reading pane in px. */
   tam: number;
+  /** Book index panel hidden (desktop), by view: «libro» for the reader, else the tool's view. */
+  indiceOculto?: Record<string, boolean>;
 }
 
 export interface Posicion {
@@ -98,6 +100,11 @@ export function ponerTema(tema: Tema): void {
 export function ponerTam(tam: number): void {
   usuario.prefs.tam = Math.min(TAM_MAX, Math.max(TAM_MIN, tam));
   guardar('prefs', 200);
+}
+
+export function ponerIndiceOculto(clave: string, oculto: boolean): void {
+  usuario.prefs.indiceOculto = { ...(usuario.prefs.indiceOculto ?? {}), [clave]: oculto };
+  guardar('prefs', 50);
 }
 
 export function guardarPosicion(parte: string, p: Omit<Posicion, 't'>): void {

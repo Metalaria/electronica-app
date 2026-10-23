@@ -5,7 +5,7 @@
 //
 //   npm run build && npx vite preview --port 4173      (in another terminal)
 //   PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node tests/animaciones.mjs [--url http://localhost:4173] [--seg 3]
-//       [--cpu 4] [--solo id1,id2] [--perfil movil|mac|tableta|tableta-vertical]
+//       [--cpu 4] [--solo id1,id2] [--coleccion componentes|conceptos] [--perfil movil|mac|tableta|tableta-vertical]
 //
 // For each animation it reports the mean and 95th percentile interval between frames (16,7 ms = 60 fps) and
 // the mean and maximum cost of one simulation step plus drawing (window.__epaAnim, kept by Escena.svelte).
@@ -17,8 +17,15 @@ const opt = (k, d) => (args.includes(k) ? args[args.indexOf(k) + 1] : d);
 const BASE = opt('--url', 'http://localhost:4173');
 const SEG = Number(opt('--seg', '3'));
 const CPU = Number(opt('--cpu', '4'));
-const fuente = readFileSync(new URL('../src/componentes/animaciones/cargadores.ts', import.meta.url), 'utf8');
-let ids = [...fuente.matchAll(/^\s+'?([a-z0-9-]+)'?: \(\) => import/gm)].map((m) => m[1]);
+// Both collections: component animations (#/componentes/<id>) and concept animations (#/conceptos/<id>);
+// --coleccion componentes|conceptos restricts the run to one of them.
+const leer = (f) => readFileSync(new URL(f, import.meta.url), 'utf8');
+const idsDe = (txt) => [...txt.matchAll(/^\s+'?([a-z0-9-]+)'?: \(\) => import/gm)].map((m) => m[1]);
+const coleccion = opt('--coleccion', 'todas');
+const rutas = {};
+if (coleccion !== 'conceptos') for (const i of idsDe(leer('../src/componentes/animaciones/cargadores.ts'))) rutas[i] = 'componentes';
+if (coleccion !== 'componentes') for (const i of idsDe(leer('../src/componentes/animaciones/conceptos/cargadores.ts'))) rutas[i] = 'conceptos';
+let ids = Object.keys(rutas);
 const solo = opt('--solo', '');
 if (solo) ids = ids.filter((i) => solo.split(',').includes(i));
 
@@ -38,7 +45,7 @@ const cdp = await ctx.newCDPSession(page);
 const filas = [];
 for (const id of ids) {
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: 1 });
-  await page.goto(`${BASE}/#/componentes/${id}`);
+  await page.goto(`${BASE}/#/${rutas[id]}/${id}`);
   await page.waitForSelector('.escena canvas', { timeout: 20000 });
   await page.waitForTimeout(800);
   await cdp.send('Emulation.setCPUThrottlingRate', { rate: CPU });

@@ -1,33 +1,40 @@
 <script lang="ts">
-  // Gallery of the component animations, grouped by family, with an accent-insensitive filter.
+  // Gallery of a collection of animations (components or concepts), grouped by family or area, with an
+  // accent-insensitive filter.
   import { onMount } from 'svelte';
   import Search from '@lucide/svelte/icons/search';
   import X from '@lucide/svelte/icons/x';
-  import { ANIMACIONES, FAMILIAS, type Familia } from './catalogo';
-  import { disponible } from './cargadores';
+  import { COMPONENTES, disponibleEn, type Coleccion } from './coleccion';
+  import type { Simbolo as TipoSimbolo } from './catalogo';
+  import type { IconoConcepto } from './conceptos/catalogo';
   import { referencia } from './referencias';
   import { normalizar } from '../../lib/datos';
   import { ruta } from '../../lib/ruta.svelte';
   import Simbolo from './ui/Simbolo.svelte';
+  import Icono from './conceptos/Icono.svelte';
+
+  let { coleccion = COMPONENTES }: { coleccion?: Coleccion } = $props();
 
   let consulta = $state('');
-  let familia = $state<Familia | ''>('');
+  let familia = $state('');
 
-  const lista = $derived(ANIMACIONES.filter((a) => disponible(a.id)));
+  const conceptos = $derived(coleccion.ruta === 'conceptos');
+  const FAMILIAS = $derived(coleccion.grupos);
+  const lista = $derived(coleccion.lista.filter((a) => disponibleEn(coleccion, a.id)));
 
   const filtradas = $derived.by(() => {
     const palabras = normalizar(consulta).split(/\s+/).filter(Boolean);
     return lista.filter((a) => {
-      if (familia && a.familia !== familia) return false;
+      if (familia && a.grupo !== familia) return false;
       if (!palabras.length) return true;
       const nums = a.libro.map((l) => referencia(l)?.num ?? '').join(' ');
-      const texto = normalizar(`${a.titulo} ${a.resumen} ${a.claves} ${nums} ${FAMILIAS.find((f) => f.id === a.familia)?.nombre ?? ''}`);
+      const texto = normalizar(`${a.titulo} ${a.resumen} ${a.claves} ${nums} ${FAMILIAS.find((f) => f.id === a.grupo)?.nombre ?? ''}`);
       return palabras.every((p) => texto.includes(p));
     });
   });
 
   const grupos = $derived(
-    FAMILIAS.map((f) => ({ ...f, items: filtradas.filter((a) => a.familia === f.id) })).filter((g) => g.items.length),
+    FAMILIAS.map((f) => ({ ...f, items: filtradas.filter((a) => a.grupo === f.id) })).filter((g) => g.items.length),
   );
 
   function secciones(libro: string[]): string[] {
@@ -43,28 +50,38 @@
   });
 </script>
 
-<svelte:head><title>Componentes animados · Electrónica Práctica Avanzada</title></svelte:head>
+<svelte:head><title>{conceptos ? 'Conceptos animados' : 'Componentes animados'} · Electrónica Práctica Avanzada</title></svelte:head>
 
 <div class="galeria">
   <header>
-    <p class="sobre">Componentes animados</p>
-    <h1>Cómo funcionan por dentro</h1>
-    <p class="intro">
-      {lista.length} animaciones interactivas de los componentes que trata el libro: su construcción, lo que ocurre
-      dentro y lo que hacen en un circuito. Cada una enlaza con las secciones que la explican.
-    </p>
+    {#if conceptos}
+      <p class="sobre">Conceptos animados</p>
+      <h1>La teoría, en movimiento</h1>
+      <p class="intro">
+        {lista.length} animaciones interactivas de las ideas que una figura fija explica mal: fasores que giran,
+        armónicos que se suman, muestras que se confunden, lazos que oscilan, ondas que rebotan. Calculadas en el
+        momento con los números del libro, y cada una enlaza con las secciones que la explican.
+      </p>
+    {:else}
+      <p class="sobre">Componentes animados</p>
+      <h1>Cómo funcionan por dentro</h1>
+      <p class="intro">
+        {lista.length} animaciones interactivas de los componentes que trata el libro: su construcción, lo que ocurre
+        dentro y lo que hacen en un circuito. Cada una enlaza con las secciones que la explican.
+      </p>
+    {/if}
     <div class="filtro">
       <label class="buscar">
         <Search size={18} strokeWidth={2} aria-hidden="true" />
         <span class="solo-lector">Buscar animación</span>
-        <input type="search" placeholder="Buscar: diodo, MLCC, 5.3, saturación…" bind:value={consulta} />
+        <input type="search" placeholder={conceptos ? 'Buscar: fasor, Nyquist, 23.6, Bode…' : 'Buscar: diodo, MLCC, 5.3, saturación…'} bind:value={consulta} />
         {#if consulta}
           <button type="button" class="limpiar" aria-label="Borrar la búsqueda" onclick={() => (consulta = '')}><X size={16} /></button>
         {/if}
       </label>
-      <div class="familias" role="group" aria-label="Familias">
+      <div class="familias" role="group" aria-label={conceptos ? 'Áreas' : 'Familias'}>
         <button type="button" class:activa={familia === ''} onclick={() => (familia = '')}>Todas</button>
-        {#each FAMILIAS.filter((f) => lista.some((a) => a.familia === f.id)) as f (f.id)}
+        {#each FAMILIAS.filter((f) => lista.some((a) => a.grupo === f.id)) as f (f.id)}
           <button type="button" class:activa={familia === f.id} style:--c={f.color} onclick={() => (familia = familia === f.id ? '' : f.id)}>
             <i></i>{f.nombre}
           </button>
@@ -79,8 +96,10 @@
       <ul class="tarjetas">
         {#each g.items as a (a.id)}
           <li>
-            <a class="tarjeta" href={`#/componentes/${a.id}`}>
-              <span class="arte"><Simbolo s={a.simbolo} tam={104} /></span>
+            <a class="tarjeta" href={`#/${coleccion.ruta}/${a.id}`}>
+              <span class="arte">
+                {#if conceptos}<Icono s={a.arte as IconoConcepto} tam={104} />{:else}<Simbolo s={a.arte as TipoSimbolo} tam={104} />{/if}
+              </span>
               <span class="txt">
                 <span class="tit">{a.titulo}</span>
                 <span class="res">{a.resumen}</span>

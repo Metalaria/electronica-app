@@ -26,6 +26,8 @@ export const app = $state({
   progreso: 0,
   lateral: false,
   buscador: false,
+  /** Text the search opens with (e.g. from the index filter), consumed when it opens. */
+  buscarTexto: '',
   ajustes: false,
   figura: null as FiguraAbierta | null,
   /** Width class: phones and small tablets use the drawer. */

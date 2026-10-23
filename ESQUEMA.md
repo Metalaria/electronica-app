@@ -341,6 +341,38 @@ per chapter, bookmarks and personal notes per section (stored locally via Tauri 
 responsive: phone (single column, drawer), tablet/desktop (sidebar + content). Typography: Source Serif 4 for
 text, Source Sans 3 for UI and headings (bundled woff2), as in the book.
 
+### Navigation («carril de iconos»)
+- `lib/navegacion.svelte.ts` holds `HERRAMIENTAS`, the one registry of the app's sections
+  (`{ id, ruta, icono, etiqueta, corta?, vistas?, pestana?, atajo?, cuenta? }`, ordered by use: Libro, Buscar,
+  Simulador, Calculadoras, Ejercicios, Repaso, Componentes, Conceptos, Instrumentos, Kit FM7303, Consolas, Glosario,
+  Marcadores). A new section adds one entry (and its `Vista`/route in `ruta.svelte.ts`). `ruta: null` marks the two
+  actions: `libro` (phone: opens the index drawer; desktop: toggles the index while reading, else returns to the
+  last part read) and `buscar`. The module also has the reading sequence (`pasoVecino`: previous/next section,
+  crossing into the next part's opening `#/<parte>/<label>`; `parteVecina`), the index filter (`filtrarIndice`:
+  every word, accents and case ignored, in part and section titles; `5.8`/`A.3`/`sec 12.4` section numbers;
+  `33`/`cap 33`/`ap B` a chapter or appendix with all its sections; `resaltar` for the marks) and the index
+  panel's visibility per view (`indiceOculto`, `alternarIndice`: key `libro` for the reader, else the view; shown
+  by default only in the reader and on the start page; stored in `prefs.indiceOculto`).
+- Desktop and tablet landscape (≥ 1024 px): `Carril.svelte` (fixed rail, `--ancho-carril` 84 px: logo → Inicio,
+  icon + short label, tooltip with the full name, active pill; entries that do not fit the height go, least used
+  first, to «Más» = `MenuHerramientas.svelte`), `Lateral.svelte` (the index panel, `--ancho-panel` 300 px), and
+  `Barra.svelte` (index toggle, clickable breadcrumb → `MenuCapitulo.svelte` with the chapter's sections and the
+  chapters before/after, previous/next section buttons, Alt + ↑/↓). App.svelte sets `--ancho-lateral` (what the
+  content leaves on the left) from the panel state.
+- Phone and tablet portrait (< 1024 px): `Pestanas.svelte` (tab bar: the entries with `pestana` + «Más» as a sheet
+  with the rest and Inicio); «Libro» opens `Lateral.svelte` as a drawer. `--alto-pestanas` (58 px) and
+  `--hueco-inferior` (tabs + safe area) keep fixed bottom elements and the page end above the tabs; the tabs hide
+  while a text field has the keyboard up. Drawer, «Más» and the breadcrumb menu are history overlays
+  (`abrirCapa`), so the Android back button closes them first, and links inside them replace their entry.
+- `IndiceLibro.svelte` (panel and drawer): volumes (colour stripe of their chapters, collapsible, read bar),
+  chapters (badge, ring), only expanded chapters render sections; the current chapter opens by itself and its row
+  stays on top while its sections scroll; the current section is highlighted and kept in view (the list scrolls,
+  never the page, and not within 6 s of the reader touching the list); «Ir a la sección actual» appears when it is
+  out of view; filter box (Enter opens the first result, ↓ goes to the list, a button passes the words to the
+  full-text search through `app.buscarTexto`); keys ↑ ↓ Inicio Fin, → opens, ← closes or goes to the parent.
+- Tests: `tests/navegacion.spec.ts`; screenshots: `node tests/navegacion-capturas.mjs --url …` →
+  `tests/capturas/navegacion/` (`antes-*` are the previous sidebar).
+
 ## Simulator (phase 2)
 
 Routes: `#/simulador` (catalogue by chapter, search, analysis filter), `#/simulador/<parte>/<nombre>` (one netlist)
@@ -418,6 +450,33 @@ Interactive canvas animations of how each component works, independent of the ge
   rAF timestamps, never per frame), controls from `ui/`, an own minimal plot (`ui/Grafica.svelte`) and the
   dynamic text. Shared physics in `nucleo/fisica.ts` (book device parameters), drawing helpers in
   `nucleo/dibujo.ts`, `esquema.ts`, `piezas.ts`, PN-junction particle model in `nucleo/union.ts`.
+
+## Conceptos animados (`web/src/componentes/animaciones/conceptos/`)
+
+Segunda colección del mismo módulo: 34 escenas de la teoría que una figura fija explica mal (fasores, Fourier,
+muestreo, realimentación, conmutadas, metaestabilidad, líneas de transmisión…), con el núcleo, la interfaz y las
+reglas de rendimiento de las animaciones de componentes.
+- Rutas: `#/conceptos` (galería) y `#/conceptos/<id>`; `Vista` incluye `'conceptos'` (vista `Conceptos.svelte`).
+- `coleccion.ts` describe las dos colecciones (`COMPONENTES`, `CONCEPTOS_ANIMADOS`: ruta, grupos, entradas,
+  cargadores); `Galeria.svelte` y `Pagina.svelte` reciben la colección (por defecto, componentes), y
+  `enlacesDe(label)` reúne las dos para el botón «Ver animación» del lector (`VerAnimacion.svelte`, con menú si
+  hay varias). Basta añadir una etiqueta de `refs.json` a `libro` para enlazar una sección o figura.
+- `conceptos/catalogo.ts`: `id`, `titulo`, `area` (siete áreas con color), `resumen`, `claves`, `libro`,
+  `icono` (glifo de `conceptos/Icono.svelte`); `conceptos/cargadores.ts`: una escena perezosa por id.
+- `conceptos/nucleo/`: `grafica.ts` (gráficas dentro del canvas: ejes con prefijos SI y coma decimal, curvas,
+  barras, guías; `estatico()` dibuja papel, rejillas y textos fijos en **una sola** capa en caché por escena),
+  `complejo.ts`, `senal.ts` (FFT radix-2, ventanas, ruido determinista), `smith.ts` (carta de Smith),
+  `simbolos.ts` (fuente de corriente, flechas de corriente, chapas, barras) y `spice.ts` (transitorio con el
+  worker de ngspice de `simulador/cliente.svelte.ts`: lo usa la fuente lineal, con la netlist del libro).
+- Cálculo real en cada escena: soluciones analíticas (mallas, Thévenin, RLC con sus polos, Bessel en el efecto
+  pelicular y en FM, coeficientes de Fourier, Γ y VSWR, red en L de Pozar), integración numérica (oscilador de
+  Wien con su no linealidad, PID con retardo, PWM con RC exacto por tramos), FFT (ventanas, cuantificación,
+  THD), simulación por eventos (glitches) o ngspice (rectificador). Las gráficas de Bode legibles usan
+  `componentes/grafica`.
+- Pruebas: `tests/conceptos.spec.ts` (galería, carga de todas las escenas, enlaces con el libro, arrastre en
+  Bode, ngspice); `tests/animaciones.mjs` y `tests/animaciones-hz.mjs` recorren las dos colecciones
+  (`--coleccion componentes|conceptos`); `tests/conceptos-capturas.mjs` deja capturas y hojas de contacto en
+  `tests/capturas/conceptos/`.
 
 ## Live figures (`web/src/componentes/figuras-vivas/`)
 
@@ -565,7 +624,13 @@ geometry, or a `.kicad_sch` wire is not a wire of the SVG (currently 0 / 0 / 0 o
   [group keys], funcion}]; `grupos` {key: Spanish name}; `hojas` [{id, nombre, ruta, archivo, ancho, alto (mm), padre}];
   `componentes` {ref: {v value, l symbol, h [sheets], f hotspot}}; `redes` [{n KiCad name, g group, nodos
   [[ref, pin, function]], h [sheets]}] sorted by name (the index is the net id used by the sheet files);
-  `equivalencias` (photo chip → AES3-5 chip) and `fuentes` (credits, licences).
+  `equivalencias` [{foto, esquema, senales, cambios, fuente}] (photo chip → AES3-5 chip, with page citations) and
+  `fuentes` (credits, licences). Neo Geo hotspots may carry `verificacion` (what was checked against SNK documents
+  and where). Citation keys (in `consolas_datos.py`): `MV4 h.N` = MVS MV4 schematic sheet N (1st-generation chipset,
+  as on the photographed NEO-AES), `AES h.N` = SNK «NEOGEO-2» AES sheet N (2nd generation, same U1–U39 as
+  Board-Folk), `MV4F h.N` = MVS MV4F (2nd generation), `NG Hw-N` = SNK hardware specification page «Hardware-N».
+  The documents themselves are copyrighted and are not in the repo; renders for the owner are kept in
+  `/home/claude/consolas/neogeo/referencias/`.
 - `<maquina>/hoja-N.bin` «CSG1»: `'CSG1' u16 n_layers u16 0 f32 w_mm f32 h_mm`, then per layer `u8 role, u8 flags
   (1 fill, 2 text strokes), u16 0, f32 stroke mm, u32 n_polylines, u32 n_circles, u32 n_bytes` and zigzag varints
   in 0,01 mm: polylines `n, x0, y0` (delta from the previous start) then point deltas; circles `cx, cy` (delta), `r`.
@@ -634,6 +699,54 @@ practicas/  circuitos.ts (bench netlists derived from complementos/spice/cap22),
 ```
 Tests: `tests/instrumentos.spec.ts` (screenshots `tests/capturas/instrumentos-*.png`).
 
+## Ejercicios autocomprobables y progreso (`ejercicios.json`, `web/src/componentes/aprender/`)
+
+**Generación.** `contenido/ejercicios.py` (llamado por `generar.py`, o solo) lee `partes/*.json` y escribe
+`ejercicios.json`. Un analizador saca de cada solución el último valor de cada cadena «X = … = 12,5 mA» y unas
+pistas automáticas; `contenido/ejercicios_curado.txt` (revisado a mano para los 486) lo sustituye ítem a ítem:
+`= nombre | valor unidad [±tol] [(nota)] | alternativa…`, `~ clase: lo que se pide`, `1:`/`2:` pistas,
+`nota:`, `errata:`. Un error de formato o una etiqueta que no existe paran la generación.
+
+```json
+{ "version": 1,
+  "items": { "ej-5.1": {
+      "tipo": "ej",                  // ej | prob
+      "parte": "cap05", "num": "5.1", "seccion": "sec-5.11",
+      "pos": [312, 0],               // ej: [bloque `ejercicios`, ítem]; prob: [h3, párrafo «Se pide», fin (exclusivo)]
+      "modo": "auto",                // auto (campos numéricos) | comparar (con la solución)
+      "clase": "numerico",           // numerico eleccion texto deduccion diseno razonamiento sin-solucion
+      "respuestas": [ { "id": "r1", "nombre": "Resistencia calculada",   // html (sub, sup)
+                        "valor": 440, "unidad": "Ω", "texto": "440 Ω",   // valor en la unidad SI sin prefijo
+                        "tol": 0.02,                                     // o "tol_abs" en la unidad
+                        "nota": "…", "alternativas": [ { "valor": 470, "tol": 0.005, "texto": "470 Ω", "nota": "E12" } ] } ],
+      "otras": [ { "clase": "eleccion", "texto": "¿bastaría una de 1/4 W?" } ],   // lo no numérico que también se pide
+      "pistas": ["planteamiento (html)", "resultado intermedio (html)"],
+      "titulo": "…", "resumen": "inicio del enunciado", "nota": "…", "errata": "…", "origen": "curado" } },
+  "capitulos": [ { "parte": "cap05", "items": ["prob-5.A", "…", "ej-5.1"] } ],   // orden del libro
+  "resumen": { "total": 486, "auto": 249, "comparar": 237, "campos": 601, "…": "…" } }
+```
+Unidades: `Ω V A W F H Hz s J C S VA VAr Wh Ah m bit/s rad/s…` admiten prefijo; `dB dBm % ° °C ppm ppm/°C °C/W
+mm² V/µs h LSB…` se escriben enteras; `''` sin unidad. El lector (`lib/magnitudes.ts`) acepta coma o punto decimal,
+miles con espacio, exponentes (`e-3`, `×10^-3`, `·10⁻³`), código RKM (`4k7`, `2R2`, `4µ7`), prefijo solo (`4,7 k`),
+`u` por `µ` y alias (`ohm`, `grados`…). Veredictos: `bien` (principal o alternativa dentro de su tolerancia), `cerca`
+(potencia de 10 equivocada, signo cambiado, o a ≤ 10 %), `mal`, `unidad` (de otra magnitud; no cuenta), `ilegible`.
+
+**Aplicación.** `lib/ejercicios.svelte.ts` carga `ejercicios.json` la primera vez que hace falta (un bloque de
+ejercicios, un problema, la página o la portada). `Ejercicios.svelte` pone `aprender/Comprobador.svelte` bajo cada
+ejercicio; `Bloques.svelte` pone `aprender/PanelProblema.svelte` tras cada párrafo que empieza por «Se pide» de
+nivel superior (busca el problema por `pos[1]`); «Ocultar solución» esconde los bloques `pos[1]+1 … pos[2]−1` con
+una hoja de estilo compartida (`lib/tapar.ts`). `aprender/Deduccion.svelte` sustituye al bloque `deduccion` (cada
+hijo es un paso; las de un solo bloque se ven enteras). `lib/lectura.ts` sigue la lectura con un
+IntersectionObserver sobre los `.trozo` del lector (y `nav.contiguos` como final): una sección es leída cuando se ha
+visto el final de su último trozo y sus trozos han estado a la vista `clamp(alto/pantalla × 5 s, 4 s, 75 s)`; un
+único `setTimeout` al instante en que podría completarse, nada en los eventos de desplazamiento. Rutas
+`#/ejercicios` y `#/ejercicios/repaso` (`Vista` `'ejercicios'`, `aprender/PaginaEjercicios.svelte`).
+
+**Datos del lector** (`lib/aprendizaje.svelte.ts`, misma capa que marcadores y notas: `lector.json` de Tauri o
+`localStorage` `epa:*`): `ejercicios` (etiqueta → `{intentos, fallos, resuelto, pistas, solucion, valores, bien,
+tapada, t}`; fallado = `fallos > 0` y no resuelto), `leidas` (parte → etiqueta de sección → instante),
+`deducciones` (`"<parte>:<índice del bloque>"` → pasos visibles).
+
 ## Kit FM7303 (`web/src/componentes/fm7303/`, datos en `web/public/fm7303/`)
 
 Vista `fm7303`, ruta `#/fm7303[/<pestaña>[/<selección>]]`: pestaña `esquema | senal | alineacion | averias`;
@@ -663,3 +776,87 @@ cada patilla), `fisica.ts` (modelo de la alineación: tanques LC, FI, discrimina
 `ondas.ts` (formas de onda sintetizadas y trazas de la figura 15.16, `datos/16.15.json`), `alineacion.ts` (comprobación de cada paso),
 paneles por pestaña. La página expone `window.__epaKit` para las pruebas (`tests/fm7303.spec.ts`).
 
+## Calculadoras (`web/src/componentes/calculadoras/`, datos en `web/public/libro/formulas*.json`)
+
+**Generación.** `contenido/formulas.py` (llamado al final de `generar.py`, o solo) lee `partes/*.json`, `refs.json` e
+`indice.json` y las fórmulas curadas a mano en `formulas_cat1.py` … `formulas_cat4.py` (`F(id, nombre, parte, ec,
+ecuación, vars, ej=…, tol=…, origen=…, nota=…, no=…)`; las variables comunes, en `formulas_vars.py`). `ec` son
+subcadenas de la fuente Typst de las ecuaciones de esa parte (o `(parte, subcadena)`; terminada en `$`, final de la
+fuente); la ecuación principal es la primera fuera de tarjetas y deducciones. `origen` puede citar etiquetas
+(`@sec-30.6`), que se sustituyen por el número impreso. Lenguaje de expresiones (`formulas_expr.py`, el mismo en
+`expresion.ts`, sin `eval`): números con punto, `+ - * / ^`, paréntesis, variables, constantes `pi k_B q_e c_0 mu_0
+eps_0 h_P` y funciones `sqrt exp ln log10 log2 sin cos tan asin acos atan sinh cosh tanh asinh acosh atanh abs floor
+ceil round atan2 min max par` (`par`: resistencias en paralelo). No se publica (el generador sale con error) si una
+ecuación no aparece en el libro, si el ejemplo del libro no se reproduce, si un valor por defecto cae fuera de su
+intervalo o si un despeje no vuelve al valor de partida (despeje simbólico cuando la variable aparece una sola vez;
+si no, numérico acotado, el mismo algoritmo que la aplicación).
+
+`formulas.json`:
+```json
+{ "version": 1, "total": 351, "con_ejemplo": 276,
+  "tarjetas": [ { "parte": "cap03", "indice": 0, "seccion": "sec-3.6", "formulas": ["…"] } ],
+  "formulas": [ {                       // en orden de lectura
+    "id": "fc-rc", "nombre": "Frecuencia de corte de un filtro RC", "parte": "cap03", "cap": "3",
+    "seccion": { "label": "sec-3.6", "num": "3.6", "titulo": "…" }, "sub": "sec-3.6.1",   // sub: etiqueta del h3, opcional
+    "fuente": "f_(\"c\") = …", "svg": "ec/….svg", "w": 98.1, "h": 25.2,              // la ecuación principal del libro
+    "ecuacion": "f_c = 1/(2*pi*R*C)", "resultado": "f_c", "expr": "1/(2*pi*R*C)",
+    "vars": [ { "id": "R", "nombre": "Resistencia", "sim": "R", "unidad": "Ω", "min": 0.001, "max": 1e8,
+                "defecto": 10000, "escala": "log", "entero": false } ],
+    "despejes": { "R": "1/f_c/(2*pi*C)", "C": null },   // null: numérico (acotado); ausente: no se despeja
+    "ejemplo": { "valores": { "R": 10000, "C": 1e-7 }, "resultado": 159.15, "libro": 159.15, "origen": "…" },
+    "nota": "html", "claves": "palabras de búsqueda" } ] }
+```
+Los valores van en la `unidad` de cada variable (SI sin prefijo; `%`, `dB`, `°C`, `h`… tal cual; `sim` es HTML).
+`formulas-ec.json` es `{ "<svg de una ecuación>": ["id", …] }` para cada ecuación con «Calcular» (la misma fuente da
+el mismo SVG, así que una fórmula repetida en otro capítulo también lleva el botón).
+
+**Aplicación.** `BotonCalcular.svelte` (dentro de `Ecuacion.svelte`; el primero que se monta pide `formulas-ec.json`
+en un rato libre) → `Emergente.svelte` (carga diferida: panel bajo la ecuación, u hoja inferior movida a `<body>` por
+debajo de 640 px, con su capa en `ruta.svelte.ts` para que «Atrás» la cierre) → `Calculadora.svelte` (variable que se
+calcula, campos `CampoValor.svelte`, resultado, ejemplo del libro, gráfica de sensibilidad con `componentes/grafica`).
+`TarjetaViva.svelte` (en `Bloques.svelte`, bloques `tarjeta`) → `TarjetaPanel.svelte`: variables compartidas por id y
+unidad; una variable que calcula otra fórmula de la tarjeta puede enlazarse a ella (por defecto, cuando esa fórmula
+solo combina variables que usa el resto de la tarjeta). `Calculadoras.svelte`: ruta `#/calculadoras[/<id>]` (`Vista`
+incluye `'calculadoras'`). `expresion.ts` (analizador, cierres, `resolverNumerico` = el del generador), `motor.ts`
+(cálculo de cualquier variable, barridos, tarjetas), `unidades.ts` (lectura de «4k7», «2,2 µ»; formato con prefijo SI
+y U+202F), `datos.svelte.ts` (JSON diferido, favoritas en la clave `calc-favoritos` del almacén). Pruebas:
+`tests/calculadoras.spec.ts`.
+
+## Repaso: tarjetas del glosario y tests (`web/src/componentes/repaso/`, datos en `web/public/libro/repaso/`)
+
+**Generación.** `contenido/repaso.py` (llamado por `generar.py`, o solo) lee las preguntas escritas a mano en
+`contenido/repaso/<stem>.json` (una por capítulo o apéndice) y escribe `web/public/libro/repaso/<stem>.json` e
+`indice.json`. Fuente:
+```json
+{ "parte": "cap05", "preguntas": [
+  { "id": "cap05-01", "tipo": "opcion", "enunciado": "html", "respuesta": "html", "distractores": ["html", "…"],
+    "explicacion": "html", "ref": "sec-5.3", "cita": "texto literal del libro" },
+  { "id": "cap05-02", "tipo": "numero", "enunciado": "…", "valor": 59.5, "unidad": "mV", "tolerancia": 0.02,
+    "valor_texto": "59,5", "explicacion": "…", "ref": "sec-5.3", "cita": "…" } ] }
+```
+Comprobaciones que paran la generación (no se escribe nada): esquema e ids (`<stem>-NN`, únicos), 10–20
+preguntas por capítulo y 5–20 por apéndice, 2–4 distractores distintos de la respuesta, `ref` que exista en
+`refs.json` (o una sección generada `apG-N`) y pertenezca a esa parte, y **la cita**: normalizada (marcas Typst
+`#strong[…]`, `#sub[…]`, `#nr(…)`, celdas de tabla unidas por «, », comillas, espacios) debe aparecer en la fuente
+`v3/libro/<stem>.typ` dentro del tramo de la sección de `ref` (de su `==` al siguiente); «[…]» separa trozos que
+deben aparecer en orden; mínimo 20 caracteres normalizados. En las numéricas, `valor_texto` debe leerse como `valor`
+y aparecer en la cita. `<` y `&` sueltos se escapan. Las opciones se barajan de forma determinista (sha1 del id).
+Salida por parte: `{parte, preguntas: [{id, tipo, enunciado, opciones, correcta | valor, unidad, tolerancia,
+valor_texto, explicacion, ref, ref_num, ref_tipo, ref_titulo?, cita}]}`; `indice.json`: `{version, total, partes:
+[{parte, tipo, num, titulo, tomo, color, preguntas, numericas}]}`.
+
+**Tarjetas.** Se construyen en el cliente desde `glosario.json` (910 términos; anverso término, reverso definición
+y enlaces «ver»; inversas opcionales, id `<id>~i`). Mazos: todo, por tomo y por capítulo o apéndice (por las
+partes de sus «ver») y por tema (color de bloque). Planificador SM-2 de Anki (`srs.ts`, funciones puras): pasos de
+aprendizaje 1 y 10 min, reaprendizaje 10 min, graduación 1 d, «Fácil» 4 d, facilidad inicial 2,5 (mínimo 1,3;
+«Difícil» −0,15 e ×1,2; «Fácil» +0,15 y bono 1,3; fallo −0,2), dispersión determinista ±5 % desde 3 d, máximo
+3650 d, el día empieza a las 04:00, adelanto de 20 min para las de aprendizaje. Cola diaria (`cola.ts`):
+aprendizaje vencido, después repaso y nuevas intercaladas (una nueva cada cuatro), con un cupo de nuevas al día.
+
+**Aplicación.** Vista `'repaso'`, rutas `#/repaso` (portada), `#/repaso/tarjetas`, `#/repaso/test/<stem>`,
+`#/repaso/examen`, `#/repaso/repasar[/<stem>]`; `BotonTest.svelte` al final de cada capítulo en el lector. Datos
+del lector (misma capa que marcadores y notas: `lector.json` de Tauri o `localStorage` `epa:*`, escritura diferida
+y volcado al ocultar la página): `repaso-tarjetas` (id → `{e: a|r|ra, p, f, i, v, n, l, u}`), `repaso-diario`
+(día → `{r, n, b}`), `repaso-ajustes` (`{nuevasDia, inversas, mazo}`), `repaso-tests` (parte → `{mejor,
+intentos, ultimo}`), `repaso-fallos` (id → `{parte, t, veces}`), `repaso-examenes` (últimos 30). Pruebas:
+`tests/repaso.spec.ts` (capturas `tests/capturas/repaso-*.png`).

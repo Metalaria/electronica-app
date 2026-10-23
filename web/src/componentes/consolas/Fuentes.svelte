@@ -24,14 +24,22 @@
     <h3>Sobre el esquema</h3>
     <p>{datos.aviso}</p>
     {#if datos.equivalencias.length}
-      <table>
-        <thead><tr><th>Placa de la foto (1.ª generación)</th><th>Esquema NEO-AES3-5</th><th>Nota</th></tr></thead>
-        <tbody>
-          {#each datos.equivalencias as e (e.foto)}
-            <tr><td>{e.foto}</td><td>{e.esquema}</td><td>{e.nota}</td></tr>
-          {/each}
-        </tbody>
-      </table>
+      <p class="leyenda">
+        Citas: <strong>MV4 h.N</strong>, hoja N de los esquemas de la MVS MV4 (1.ª generación, como la placa de la foto);
+        <strong>AES h.N</strong>, hoja N de los esquemas «NEOGEO-2» de SNK (AES de 2.ª generación, misma numeración
+        U1–U39 que Board-Folk); <strong>MV4F h.N</strong>, MVS MV4F (2.ª generación); <strong>NG Hw-N</strong>, página
+        «Hardware-N» de la especificación de SNK. Los documentos no se incluyen en la aplicación.
+      </p>
+      <div class="tabla">
+        <table>
+          <thead><tr><th>Placa de la foto (1.ª generación)</th><th>Esquema NEO-AES3-5</th><th>Señales</th><th>Qué cambia</th><th>Fuente</th></tr></thead>
+          <tbody>
+            {#each datos.equivalencias as e (e.foto + e.esquema)}
+              <tr><td>{e.foto}</td><td>{e.esquema}</td><td>{e.senales ?? ''}</td><td>{e.cambios ?? e.nota ?? ''}</td><td class="cita">{e.fuente ?? ''}</td></tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
     {/if}
   </section>
 
@@ -42,6 +50,7 @@
       <li>Las redes se calculan a partir de los ficheros .kicad_sch (cables, uniones, etiquetas, símbolos de alimentación, etiquetas jerárquicas y pines de cada símbolo) y se comprueban contra el netlist que exporta KiCad: ningún grupo de cables mezcla dos redes, todas las redes del netlist aparecen y cada cable coincide con un trazo del dibujo.</li>
       <li>Los puntos de la foto se han colocado mirando la foto a resolución completa; cada ficha dice si la marca del chip se lee o si la pieza se identifica por su posición.</li>
       <li>Los patillajes de neogeodev/SVGPinout (sin licencia) solo se han consultado; no se incluyen en la aplicación.</li>
+      {#if datos.id === 'neogeo'}<li>Los chips de 1.ª generación (LSPC-A0, PRO-B0, PRO-C0) y su lógica TTL se han comprobado con los esquemas de la MV4; el mapa de memoria, los registros, las interrupciones y el protocolo de sonido, con la especificación de SNK. Las fichas de la foto dicen qué está comprobado y dónde. Esos documentos tienen copyright de SNK: se citan por hoja y página, sin copiarlos.</li>{/if}
     </ul>
   </section>
 </div>
@@ -50,7 +59,7 @@
   .fuentes {
     display: grid;
     gap: 16px;
-    max-width: 60em;
+    max-width: 76em;
   }
   h3 {
     margin: 0 0 8px;
@@ -101,10 +110,38 @@
   th {
     color: var(--tinta-suave);
   }
-  @media (max-width: 599px) {
-    table {
-      display: block;
-      overflow-x: auto;
-    }
+  .leyenda {
+    color: var(--tinta-suave);
+    font-size: 14px;
+  }
+  .tabla {
+    overflow-x: auto;
+  }
+  table {
+    min-width: 760px;
+    table-layout: fixed;
+  }
+  th:nth-child(1) {
+    width: 17%;
+  }
+  th:nth-child(2) {
+    width: 14%;
+  }
+  th:nth-child(3) {
+    width: 35%;
+  }
+  th:nth-child(4) {
+    width: 22%;
+  }
+  th:nth-child(5) {
+    width: 12%;
+  }
+  .cita {
+    white-space: normal !important;
+  }
+  .cita {
+    white-space: nowrap;
+    color: var(--tinta-suave);
+    font-size: 13px;
   }
 </style>

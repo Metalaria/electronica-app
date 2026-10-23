@@ -13,6 +13,7 @@ const SUBTITULOS: Record<string, string> = {
   'sec-3.4.2': 'Condensadores electrolíticos de aluminio',
   'sec-3.4.3': 'Condensadores de película plástica',
   'sec-3.4.4': 'Condensadores de tántalo y supercondensadores',
+  'sec-1.1.3': 'Tensión: la Fuerza que Impulsa la Corriente',
 };
 
 export interface RefLibro {

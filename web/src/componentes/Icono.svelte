@@ -32,9 +32,24 @@
   import Library from '@lucide/svelte/icons/library';
   import Activity from '@lucide/svelte/icons/activity';
   import Atom from '@lucide/svelte/icons/atom';
+  import AudioWaveform from '@lucide/svelte/icons/audio-waveform';
   import Gauge from '@lucide/svelte/icons/gauge';
   import Gamepad2 from '@lucide/svelte/icons/gamepad-2';
   import Radio from '@lucide/svelte/icons/radio';
+  import GraduationCap from '@lucide/svelte/icons/graduation-cap';
+  import Lightbulb from '@lucide/svelte/icons/lightbulb';
+  import ListChecks from '@lucide/svelte/icons/list-checks';
+  import CircleCheck from '@lucide/svelte/icons/circle-check';
+  import StepForward from '@lucide/svelte/icons/step-forward';
+  import Repeat from '@lucide/svelte/icons/repeat';
+  import Calculator from '@lucide/svelte/icons/calculator';
+  import PanelLeftClose from '@lucide/svelte/icons/panel-left-close';
+  import PanelLeftOpen from '@lucide/svelte/icons/panel-left-open';
+  import LocateFixed from '@lucide/svelte/icons/locate-fixed';
+  import Ellipsis from '@lucide/svelte/icons/ellipsis';
+  import ChevronUp from '@lucide/svelte/icons/chevron-up';
+  import ChevronDown from '@lucide/svelte/icons/chevron-down';
+  import TextSearch from '@lucide/svelte/icons/text-search';
 
   const ICONOS = {
     menu: Menu,
@@ -71,9 +86,24 @@
     tomos: Library,
     simulador: Activity,
     componentes: Atom,
+    conceptos: AudioWaveform,
     instrumentos: Gauge,
     consolas: Gamepad2,
     radio: Radio,
+    aprender: GraduationCap,
+    pista: Lightbulb,
+    ejercicios: ListChecks,
+    leida: CircleCheck,
+    paso: StepForward,
+    repaso: Repeat,
+    calculadora: Calculator,
+    'panel-cerrar': PanelLeftClose,
+    'panel-abrir': PanelLeftOpen,
+    localizar: LocateFixed,
+    mas: Ellipsis,
+    'chevron-arriba': ChevronUp,
+    'chevron-abajo': ChevronDown,
+    filtrar: TextSearch,
   } as const;
 
   export type NombreIcono = keyof typeof ICONOS;

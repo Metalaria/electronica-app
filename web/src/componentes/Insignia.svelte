@@ -46,6 +46,12 @@
     box-shadow: inset 0 0 0 1.5px var(--c);
     color: var(--c);
   }
+  /* Dark theme: the darkest block colours (navy) almost vanish on the dark panels, so lighten the fill a
+     little and add a faint ring; the white number keeps its contrast. */
+  :global(:root[data-tema='oscuro']) .insignia:not(.hueca) {
+    background: color-mix(in srgb, var(--c) 78%, #fff 22%);
+    box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.22);
+  }
   :global(:root[data-tema='oscuro']) .hueca {
     filter: brightness(1.7) saturate(0.8);
   }

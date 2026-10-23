@@ -13,6 +13,8 @@ export interface Hotspot {
   confianza: 'marca' | 'posicion';
   buses: string[];
   funcion: string;
+  /** What was checked against SNK documents, with page citations (Neo Geo). */
+  verificacion?: string;
 }
 
 export interface Hoja {
@@ -39,6 +41,16 @@ export interface Red {
   h: number[];
 }
 
+export interface Equivalencia {
+  foto: string;
+  esquema: string;
+  senales?: string;
+  cambios?: string;
+  /** Page citations (MV4 h.N, AES h.N, MV4F h.N, NG Hw-N). */
+  fuente?: string;
+  nota?: string;
+}
+
 export interface Fuente {
   titulo: string;
   autor: string;
@@ -60,7 +72,7 @@ export interface DatosMaquina {
   hojas: Hoja[];
   componentes: Record<string, Componente>;
   redes: Red[];
-  equivalencias: { foto: string; esquema: string; nota: string }[];
+  equivalencias: Equivalencia[];
   fuentes: Fuente[];
 }
 

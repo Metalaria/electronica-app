@@ -8,6 +8,7 @@
   import { abrirBuscador } from '../lib/acciones';
   import Icono from './Icono.svelte';
   import Insignia from './Insignia.svelte';
+  import ProgresoInicio from './aprender/ProgresoInicio.svelte';
 
   const indice = $derived(app.indice!);
   const capitulos = $derived(Object.values(indice.partes).filter((p) => p.tipo === 'capitulo').length);
@@ -69,6 +70,7 @@
       <button class="boton" onclick={abrirBuscador}><Icono nombre="buscar" tam={17} /> Buscar</button>
       <a class="boton" href="#/glosario"><Icono nombre="glosario" tam={17} /> Glosario</a>
       <a class="boton" href="#/componentes"><Icono nombre="componentes" tam={17} /> Componentes animados</a>
+      <a class="boton" href="#/conceptos"><Icono nombre="conceptos" tam={17} /> Conceptos animados</a>
       <a class="boton" href="#/marcadores"
         ><Icono nombre="marcador" tam={17} /> Marcadores y notas{#if totalPersonal}<span class="cuenta">{totalPersonal}</span>{/if}</a
       >
@@ -94,6 +96,8 @@
       </div>
     </section>
   {/if}
+
+  <ProgresoInicio />
 
   <section class="bloque">
     <h2>Índice</h2>

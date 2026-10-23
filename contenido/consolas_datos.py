@@ -309,27 +309,104 @@ NEOGEO_HOTSPOTS = [
 ]
 
 # First-generation board (photo) -> NEO-AES3-5 schematic (Board-Folk), from INFORME §5.3 and the wiki.
+# Abbreviations of the page citations (the documents are NOT bundled; see FUENTES):
+#   MV4 h.N   SNK/Alpha Denshi «Multi Video System (MV4)», 19-02-1990, rev. 1.0, sheet N of 13
+#             (PDF page N + 1); first-generation chipset (LSPC-A0, PRO-B0, PRO-C0) as on the photographed board.
+#   AES h.N   SNK/Alpha Denshi «NEOGEO-2», 04-10-1991 (stamped 03-04-1992), sheet N of 11, PAL; second
+#             generation; reference designators U1–U39 equal to those of the Board-Folk recreation.
+#   MV4F h.N  SNK «NEO-MVH MV4F», 1992 (stamped 08-03-1993), sheet N of 7: second generation (NEO-B1, NEO-ZMC2).
+#   NG Hw-N   SNK «Neo-Geo Hardware Specification» (1989–1991), page «Hardware-N» (PDF page N + 2).
 EQUIVALENCIAS = [
-    {'foto': 'LSPC-A0 (QFP160)', 'esquema': 'LSPC2-A2 (U21)', 'nota': 'Misma función.'},
-    {'foto': 'PRO-B0', 'esquema': 'NEO-C1 (U4) y NEO-B1 (U13)',
-     'nota': 'Mandos e interfaz Z80 (NEO-C1); número de paleta de los buffers de línea (NEO-B1).'},
-    {'foto': 'PRO-C0', 'esquema': 'NEO-C1 (U4) y NEO-B1 (U13)',
-     'nota': 'Decodificación del 68000 y watchdog (NEO-C1); número de color de los buffers de línea (NEO-B1).'},
-    {'foto': 'Lógica TTL 74LS', 'esquema': 'NEO-D0 (U22), NEO-G0 (U5), NEO-E0 (U34)',
-     'nota': 'Divisor de reloj y selecciones del Z80, búfer de paleta, vectores. Sin esquema público de la 1.ª generación.'},
-    {'foto': 'TMP68HC000N-12', 'esquema': 'HD68HC000P (U3)', 'nota': 'Misma CPU, otro fabricante.'},
-    {'foto': 'Z0840004PSC', 'esquema': 'Z80 (U24)', 'nota': ''},
-    {'foto': 'YM2610 (+ YM3016)', 'esquema': 'YM2610 (U27), YM3016 (U26)', 'nota': ''},
-    {'foto': 'NEO-EP0 (TC531024P)', 'esquema': '27C1024 (U36)', 'nota': 'BIOS.'},
-    {'foto': '000-L0 (TC531000CP)', 'esquema': 'TC531000 (U16)', 'nota': ''},
-    {'foto': 'CXK58257 (RAM de usuario)', 'esquema': '43256 (U1, U2)', 'nota': ''},
-    {'foto': 'CXK58257 (VRAM lenta)', 'esquema': '43256 (U17, U18)', 'nota': ''},
-    {'foto': 'CXK5814P-35L ×2', 'esquema': '5814/5863 (U19, U20)', 'nota': 'VRAM rápida.'},
-    {'foto': 'BR6116', 'esquema': '6116 (U23)', 'nota': 'RAM del Z80.'},
-    {'foto': 'RAM de paleta (oculta)', 'esquema': '4364 (U6, U7)', 'nota': ''},
-    {'foto': '74LS273 (latches de paleta)', 'esquema': '74LS273 (U9, U10)', 'nota': ''},
-    {'foto': 'CRE401 ×4', 'esquema': 'CRE401 (CR1–CR5)', 'nota': ''},
-    {'foto': 'Protección de sobretensión lineal', 'esquema': 'LM2576T-5 (U37)', 'nota': 'Regulador conmutado en la 3-5.'},
+    {'foto': 'LSPC-A0', 'esquema': 'LSPC2-A2 (U21)',
+     'senales': 'Igual en ambos: A1–A3, D0–D15, LSPOE/LSPWE, 24M (entrada), VRAM lenta B0–B14/E0–E15 con BOE/BWE, '
+                'VRAM rápida C0–C10/F0–F15 con CWE, bus P0–P23 con PCK1/PCK2, 8M y 4M (salidas, patillas 109 y 112), '
+                'LOAD, H, EVEN, 1H1, 2H1, CA4, SYNC, BNKB, CHBL, IPL0/IPL1, DOTA/DOTB, RESETP.',
+     'cambios': 'El LSPC2-A2 añade DIVI/DIVO/REF para el PLL de subportadora (CX23065A), el cambio NTSC/PAL por '
+                'hardware y el registro de parada del temporizador ($3C000E). El LSPC-A0 no tiene esas patillas.',
+     'fuente': 'MV4 h.4; AES h.4 y h.11; NG Hw-2, Hw-7, Hw-8'},
+    {'foto': 'PRO-C0 (decodificación del 68000)', 'esquema': 'NEO-C1 (U4)',
+     'senales': 'Entradas A1–A4, A17–A23, /AS, /UDS, /LDS, R/W, 68KCLK. Salidas ROMOEU/L, RAMOEU/L, RAMWEU/L, '
+                'PORTADRS, PORTOEU/L, PORTWEU/L, SROMOEU/L, LSPOE, LSPWE, PAL, CARDCS/OE/WE, BITW0/1, IN0–IN2, '
+                'SDR/SDW, /DTACK, VPA; esperas ROMWAIT, PWAIT0/1, PDTACK.',
+     'cambios': 'Mismas selecciones; el NEO-C1 absorbe además los mandos y el latch del Z80 (antes en el PRO-B0).',
+     'fuente': 'MV4 h.1; AES h.1'},
+    {'foto': 'PRO-C0 (color y watchdog)', 'esquema': 'NEO-B1 (U13)',
+     'senales': 'Píxeles del cartucho GAD0–3/GBD0–3 y de la capa fija FIXD0–7, DOTFIX; control de los buffers de '
+                'línea 58WE1–4, 669CK1–4, 669LD1–2, 58BG1–2, 58CHG, 1H1, 6HB; salida PA0–PA3 (número de color). '
+                'Watchdog: entrada DOGE con el puente «CUT DOG».',
+     'cambios': 'En la 2.ª generación el puente «CUT DOG» (J2) está junto al NEO-B1.',
+     'fuente': 'MV4 h.1; AES h.3'},
+    {'foto': 'PRO-B0 (número de paleta)', 'esquema': 'NEO-B1 (U13)',
+     'senales': 'Bus P0–P23 con PCK1/PCK2 y las mismas señales de control de los buffers de línea; salida PA4–PA11 '
+                '(número de paleta).',
+     'cambios': 'Las dos mitades del buffer de línea (paleta del PRO-B0 y color del PRO-C0) pasan a un solo chip.',
+     'fuente': 'MV4 h.3; AES h.3; MV4F h.2'},
+    {'foto': 'PRO-B0 (mandos y Z80)', 'esquema': 'NEO-C1 (U4)',
+     'senales': 'Mandos IN00–IN27 hacia D8–D15 con IN0–IN2; latch de sonido: SDR/SDW del lado 68000, '
+                'SDZ80R/SDZ80W/SDZ80CLR y SDD0–SDD7 del lado Z80.',
+     'cambios': 'Mismo protocolo ($320000 en el 68000; puertos $00 y $0C en el Z80).',
+     'fuente': 'MV4 h.3; AES h.1; NG Hw-10'},
+    {'foto': 'Reloj discreto: 74LS368 (oscilador), 74LS161, 2 × 74F74, 74AS04', 'esquema': 'NEO-D0 (U22) + 74HC04 (U80)',
+     'senales': '24M, 12M, 68KCLK/68KCLKB (12 MHz para el 68000), 6MB (píxel) y 1HB.',
+     'cambios': 'El divisor pasa de cinco TTL a una matriz de puertas; 8M y 4M siguen saliendo del LSPC.',
+     'fuente': 'MV4 h.2; AES h.5 y h.11'},
+    {'foto': 'Lógica del Z80: 74LS139, 74LS32, 74LS11, 74LS08, 74LS74/574', 'esquema': 'NEO-D0 (U22)',
+     'senales': 'Puertos $00/$04/$08/$0C (SDZ80R, SDZ80CLR, 2610RD/WR → 2610CS, SDRD0/1, SDZ80W), /CS de la RAM '
+                'en $F800–$FFFF (SDA11–SDA15 = 1), lectura de la ROM M1.',
+     'cambios': 'Integrado en el NEO-D0 junto con el divisor de reloj.',
+     'fuente': 'MV4 h.5; AES h.5; NG Hw-10'},
+    {'foto': '2 × 74LS245 (búfer de paleta) y 74LS08 (ROMOE)', 'esquema': 'NEO-G0 (U5)',
+     'senales': 'D0–D15 ↔ PC0–PC15 de la RAM de paleta; ROMOE = ROMOEU · ROMOEL.',
+     'cambios': 'Un solo chip.', 'fuente': 'MV4 h.1 y h.2; AES h.2'},
+    {'foto': '74HC259 (latch del sistema)', 'esquema': '74HC259 (U35)',
+     'senales': 'D = A4, S0–S2 = A1–A3, G = BITW1, CLR = RESET; salidas SHADOW, CARDWEN, CARDWENB, REGEN, '
+                'SYSTEM, PALBNK. Por eso $3A0001/$3A0011 apagan/encienden la sombra y $3A000F/$3A001F eligen el banco '
+                'de paleta.',
+     'cambios': 'Igual.', 'fuente': 'MV4 h.9; AES h.9; NG Hw-8, Hw-9'},
+    {'foto': '— (no documentado en la 1.ª generación del AES)', 'esquema': "NEO-E0 (U34): A22', A23'",
+     'senales': "Conmutación de la tabla de vectores ($000000–$00007F entre BIOS y cartucho).",
+     'cambios': "En la MV4 el PRO-C0 ya recibe A22'/A23', generadas fuera de él.",
+     'fuente': 'AES h.9; MV4 h.1; NG Hw-8, System Program-1'},
+    {'foto': '—', 'esquema': 'CX23065A (U39)',
+     'senales': 'PLL que engancha la subportadora (3,579545 MHz NTSC; 4,43361875 MHz PAL) a la temporización del LSPC2.',
+     'cambios': 'Solo existe con el LSPC2. En la placa de la foto, la placa auxiliar PL241S podría hacer este papel (sin confirmar).',
+     'fuente': 'AES h.11'},
+    {'foto': 'TMP68HC000N-12', 'esquema': 'HD68HC000P (U3)', 'senales': '12 MHz.',
+     'cambios': 'Otro fabricante (SNK dibuja HD68HC000PS12 en ambos).', 'fuente': 'MV4 h.1; AES h.1; NG Hw-1'},
+    {'foto': 'Z0840004PSC', 'esquema': 'Z80 (U24)', 'senales': '4 MHz (4M del LSPC).', 'cambios': '',
+     'fuente': 'MV4 h.5; AES h.5; NG Hw-2'},
+    {'foto': 'YM2610 (+ YM3016)', 'esquema': 'YM2610 (U27), YM3016 (U26)', 'senales': '8 MHz (8M del LSPC).',
+     'cambios': '', 'fuente': 'MV4 h.6; AES h.6'},
+    {'foto': 'NEO-EP0 (TC531024P)', 'esquema': '27C1024 (U36)', 'senales': 'BIOS en $C00000–$C1FFFF.',
+     'cambios': 'Board-Folk usa una EPROM.', 'fuente': 'AES h.9; NG Hw-8'},
+    {'foto': '000-L0 (TC531000CP)', 'esquema': 'TC531000 (U16) + 74LS244 (U15)',
+     'senales': 'Dirección desde el bus P; el dato vuelve a P16–P23 por el 74LS244.', 'cambios': '',
+     'fuente': 'MV4 h.4; AES h.4'},
+    {'foto': 'CXK58257 ×2 (RAM de usuario)', 'esquema': '43256 (U1, U2)', 'senales': '/OE y /WE por byte (RAMOEU/L, RAMWEU/L).',
+     'cambios': '', 'fuente': 'MV4 h.1; AES h.1'},
+    {'foto': 'CXK58257 ×2 (VRAM lenta)', 'esquema': '43256 (U17, U18)', 'senales': 'B0–B14, E0–E15, BOE, BWE.',
+     'cambios': '', 'fuente': 'MV4 h.4; AES h.4'},
+    {'foto': 'CXK5814P-35L ×2 (VRAM rápida)', 'esquema': '5814/5863 (U19, U20)', 'senales': 'C0–C10, F0–F15, CWE.',
+     'cambios': '', 'fuente': 'MV4 h.4; AES h.4'},
+    {'foto': 'BR6116', 'esquema': '6116 (U23)', 'senales': 'RAM del Z80 en $F800–$FFFF.', 'cambios': '',
+     'fuente': 'MV4 h.5; AES h.5; NG Hw-10'},
+    {'foto': 'RAM de paleta (oculta)', 'esquema': '4364 (U6, U7)', 'senales': 'A0–A11 = PA0–PA11, A12 = PALBNK.',
+     'cambios': '', 'fuente': 'MV4 h.2; AES h.2'},
+    {'foto': '74LS273 ×2 (latches de paleta)', 'esquema': '74LS273 (U9, U10)',
+     'senales': 'Reloj de píxel; CLR = BNKB (negro durante el borrado).', 'cambios': '', 'fuente': 'MV4 h.2; AES h.2'},
+    {'foto': 'CRE401 ×4', 'esquema': 'CRE401 (CR1–CR5)', 'senales': 'Entradas de los mandos.', 'cambios': '',
+     'fuente': 'MV4 h.3; AES h.3'},
+    {'foto': 'Protección de sobretensión (transistor en disipador)', 'esquema': 'LM2576T-5 (U37)',
+     'senales': 'Alimentación de 5 V.', 'cambios': 'La NEOGEO-2 de SNK ya usa el regulador conmutado LM2576.',
+     'fuente': 'AES h.9'},
+    {'foto': 'NJM2066D (auriculares)', 'esquema': 'Q101, Q102 (Board-Folk)',
+     'senales': 'Salida de auriculares con control de volumen.',
+     'cambios': 'En la hoja de SNK es U25, con «NJM2066D» anotado a mano; Board-Folk lo sustituye por dos transistores.',
+     'fuente': 'AES h.6'},
+    {'foto': 'Serializador de ROM C: en el cartucho (NEO-ZMC2)', 'esquema': '— (cartucho)',
+     'senales': 'CR0–CR31 (32 bits) → GAD0–3/GBD0–3 y DOTA/DOTB con LOAD, 12M, EVEN, H.',
+     'cambios': 'La MV4 lleva un serializador en placa, ALPHA-8921, con exactamente esas señales.',
+     'fuente': 'MV4 h.13; MV4F h.2'},
 ]
 
 # ------------------------------------------------------------------ sources and licences
@@ -357,12 +434,145 @@ FUENTES = {
         {'titulo': 'NeoGeo Development Wiki (placas, chips, mapas de memoria)', 'autor': 'Comunidad neogeodev',
          'url': 'https://wiki.neogeodev.org/', 'licencia': 'Dominio público salvo indicación',
          'uso': 'Mapa de la placa NEO-AES (zonas «5CD», «7H»…), funciones de PRO-B0/PRO-C0/LSPC, mapas de memoria.'},
-        {'titulo': 'SNK, «Neo-Geo Hardware Specification» (1989–1991)', 'autor': 'SNK',
-         'url': 'https://www.neogeodev.org/NG.pdf', 'licencia': 'Copyright de SNK; solo consulta',
-         'uso': 'Mapa de memoria del 68000 y registros del LSPC.'},
+        {'titulo': 'SNK, «Neo-Geo Hardware Specification» (versiones de 01-12-1989, 22-08-1990 y 18-06-1991)',
+         'autor': 'SNK (documento confidencial escaneado con OCR, 220 páginas)',
+         'url': 'https://www.neogeodev.org/NG.pdf', 'licencia': 'Copyright de SNK; solo consulta privada, no se incluye',
+         'uso': 'Comprobados con él: mapa del 68000 y registros del LSPC (Hardware-8 a -10), interrupciones de vblank y '
+                'temporizador con su reconocimiento en $3C000C (Hardware-5 a -7), píxel de 167 ns, 96 sprites por línea, '
+                'capa fija de 40 × 28 tiles de 8 × 8 (Hardware-3, -4, -12), mapa y puertos del Z80 y protocolo de sonido '
+                '(Hardware-10).'},
+        {'titulo': 'SNK / Alpha Denshi, esquemas «Multi Video System (MV4)» (13 hojas, 19-02-1990, rev. 1.0) y «SLOT4» (11 hojas)',
+         'autor': 'Alpha Denshi Co., Ltd. (Eiji Fukatsu) para SNK; escaneo de 2024 aportado por el propietario',
+         'url': 'https://drive.google.com/drive/folders/1QpMv94jbslgKyeiTama89Y3W6AnRzMZS',
+         'licencia': 'Copyright de SNK; solo consulta privada, no se incluye',
+         'uso': 'La placa MVS con el mismo chipset de 1.ª generación que la NEO-AES de la foto (LSPC-A0, PRO-B0, PRO-C0). '
+                'De ella salen los patillajes y conexiones de esos tres chips y de la lógica TTL de la tabla de equivalencias '
+                '(se cita «MV4 h.N»).'},
+        {'titulo': 'SNK / Alpha Denshi, esquemas «NEOGEO-2» de la AES (PAL, 11 hojas, 04-10-1991)',
+         'autor': 'Alpha Denshi Co., Ltd. para SNK; escaneos de Wolfsoft y ArcadeTV (wiki de neogeodev)',
+         'url': 'https://wiki.neogeodev.org/index.php/MVS_schematics',
+         'licencia': 'Copyright de SNK; solo consulta privada, no se incluye',
+         'uso': 'AES de 2.ª generación. Sus referencias U1–U39 coinciden con la recreación Board-Folk que se dibuja aquí '
+                '(se cita «AES h.N»).'},
+        {'titulo': 'SNK, esquemas «NEO-MVH MV4F» (7 hojas, 1992)', 'autor': 'SNK; escaneo aportado por el propietario',
+         'url': 'https://drive.google.com/drive/folders/1QpMv94jbslgKyeiTama89Y3W6AnRzMZS',
+         'licencia': 'Copyright de SNK; solo consulta privada, no se incluye',
+         'uso': 'MVS de 2.ª generación (NEO-B1, NEO-ZMC2), no de la 1.ª. Sirve para comparar el NEO-B1 con el PRO-B0 '
+                'y el PRO-C0 (se cita «MV4F h.N»).'},
         {'titulo': 'neogeodev/SVGPinout', 'autor': 'Comunidad neogeodev', 'url': 'https://github.com/neogeodev/SVGPinout',
          'licencia': 'Sin licencia: referencia privada, no se incluye en la aplicación', 'uso': 'Consulta de patillajes.'},
         {'titulo': 'Foto de la placa NEO-AES', 'autor': 'Evan-Amos (Wikimedia Commons)',
          'url': 'https://commons.wikimedia.org/', 'licencia': 'Dominio público', 'uso': 'Figura 36.22 del libro.'},
     ],
 }
+
+
+# ------------------------------------------------------------------ Neo Geo: check against SNK documents
+# Second pass (23-10-2026) with the MV4 and NEOGEO-2 schematics and the SNK hardware specification (citation
+# abbreviations above EQUIVALENCIAS). Each entry overrides fields of NEOGEO_HOTSPOTS; `verificacion` says what
+# was checked and where. Markings were read again on the full-resolution photo (v3/img/foto_neogeo.jpg).
+
+REVISION_NEOGEO = {
+    '68k': {'verificacion': 'Conexiones: MV4 h.1 (HD68HC000PS12, CLK = 68KCLK, IPL0/IPL1 del LSPC). 12 MHz: NG Hw-1.'},
+    'z80': {'verificacion': 'MV4 h.5 (Z80A, CLK = 4M del LSPC-A0, /INT = IRQ del YM2610). 4 MHz: NG Hw-2. '
+                            'Puertos y NMI: NG Hw-10.'},
+    'ym2610': {'verificacion': 'MV4 h.6 (CLK = 8M, /IRQ → Z80INT). Temporizador → IRQ del Z80: NG Hw-10.'},
+    'lspc': {
+        'funcion': 'Controlador de sprites y de vídeo de 1.ª generación. Recorre las dos VRAM (lenta: B0–B14/E0–E15; '
+                   'rápida: C0–C10/F0–F15), elige los sprites de cada línea (hasta 96) y saca por el bus P0–P23 las '
+                   'direcciones de las ROM C, S y L0, marcadas con PCK1 y PCK2. Además controla el serializador del '
+                   'cartucho (LOAD, H, EVEN, CA4, 1H1, 2H1), genera los relojes de 8 MHz (patilla 109, YM2610) y '
+                   '4 MHz (patilla 112, Z80), el sincronismo y el borrado (SYNC, BNKB, CHBL) y las interrupciones del '
+                   '68000 (IPL0, IPL1). En el esquema de la 3-5 es el LSPC2-A2 (U21), que añade el PLL de subportadora '
+                   'y el modo NTSC/PAL por hardware.',
+        'verificacion': 'Patillaje: MV4 h.4. Diferencias con el LSPC2: AES h.4 y h.11; NG Hw-2 y Hw-7.'},
+    'prob0': {
+        'funcion': 'Chip a medida de 1.ª generación con tres funciones:\n'
+                   '- Toma del bus P el número de paleta (P0–P23, con PCK1) y da la mitad alta de la dirección de paleta, '
+                   'PA4–PA11.\n'
+                   '- Lee los 28 bits de los mandos (IN00–IN27) y los pone en D8–D15 cuando el PRO-C0 activa IN0–IN2.\n'
+                   '- Contiene el latch de sonido entre las dos CPU: SDR/SDW del lado del 68000; SDZ80R, SDZ80W, '
+                   'SDZ80CLR y SDD0–7 del lado del Z80.\n'
+                   'En la 2.ª generación la paleta pasa al NEO-B1 (U13) y los mandos y el latch al NEO-C1 (U4).',
+        'verificacion': 'Patillaje completo: MV4 h.3. 2.ª generación: AES h.1 (NEO-C1) y h.3 (NEO-B1).'},
+    'proc0': {
+        'funcion': 'Chip a medida de 1.ª generación con dos funciones:\n'
+                   '- Decodifica las direcciones del 68000 (A1–A4, A17–A23, /AS, /UDS, /LDS, R/W) y genera:\n'
+                   '  - las selecciones (ROMOEU/L, RAMOEU/L, RAMWEU/L, PORTADRS, SROMOEU/L, LSPOE/LSPWE, PAL, CARDCS, '
+                   'IN0–IN2, SDR/SDW);\n'
+                   '  - /DTACK, VPA (interrupciones autovectorizadas) y las esperas (ROMWAIT, PWAIT0/1);\n'
+                   '  - el watchdog (DOGE, con el puente «CUT DOG»).\n'
+                   '- Lleva la parte de color de los buffers de línea: recibe los píxeles del cartucho (GAD/GBD) y de la '
+                   'capa fija (FIXD0–7) y da PA0–PA3.\n'
+                   'En la 2.ª generación la decodificación pasa al NEO-C1 (U4) y el color y el watchdog al NEO-B1 (U13).',
+        'verificacion': 'Patillaje: MV4 h.1. 2.ª generación: AES h.1 (NEO-C1) y h.3 (NEO-B1, puente J2 «CUT DOG»).'},
+    'bios': {'verificacion': 'Dirección $C00000–$C1FFFF y conmutación de vectores: NG Hw-8 y System Program-1. '
+                             'Chip: AES h.9 (TC531024P-15).'},
+    'l0': {'verificacion': 'MV4 h.4: TC531000AP direccionada por el bus P; su dato vuelve a P16–P23 por un 74LS244.'},
+    'ls244': {'confianza': 'marca', 'pieza': '74LS244 (serigrafía «LS244» legible)',
+              'verificacion': 'MV4 h.4 (10N) y AES h.4 (U15): devuelve al bus P (P16–P23) el dato de la ROM L0.'},
+    'z80ram': {'verificacion': 'MV4 h.5: 6116 seleccionada cuando SDA11–SDA15 = 1 ($F800–$FFFF). NG Hw-10.'},
+    'wram': {'confianza': 'marca', 'pieza': 'Sony CXK58257M-12L (serigrafía «43256»)',
+             'funcion': '64 KB de RAM de trabajo en $100000–$10FFFF, en dos chips de 32K × 8 (byte alto y byte bajo) con '
+                        '/OE y /WE separados por byte (RAMOEU/L, RAMWEU/L). Solo se decodifica hasta A15, así que el '
+                        'resto de la zona son espejos.',
+             'verificacion': 'MV4 h.1 (dos µPD43256). Dirección: NG Hw-8. Marca leída en la foto.'},
+    'svram': {'confianza': 'marca', 'pieza': 'Sony CXK58257M-12L ×2',
+              'verificacion': 'MV4 h.4: dos 43256 en B0–B14/E0–E15 con BOE/BWE del LSPC. 64 KB + 4 KB de VRAM: NG Hw-1.'},
+    'fvram': {'verificacion': 'MV4 h.4: CXK5814P-35 ×2 en C0–C10/F0–F15, /WE = CWE.'},
+    'palram': {'pieza': '8K × 8 ×2 (µPD4364 en los esquemas de SNK); oculta en la foto',
+               'verificacion': 'MV4 h.2:\n'
+                               '- A0–A11 = PA0–PA11 y A12 = PALBNK;\n'
+                               '- /WE se genera a partir de PAL y R/W;\n'
+                               '- el dato llega al 68000 por dos 74LS245.\n'
+                               'Paleta en $400000–$401FFF, con 2 bancos y acceso por palabras (NG Hw-8 y Hw-19).'},
+    'latch': {'confianza': 'marca', 'pieza': '74LS273 (serigrafía «LS273» legible)',
+              'funcion': 'Capturan los 16 bits del color con el reloj de píxel para que el DAC vea un valor estable durante '
+                         'todo el píxel. Su /CLR es BNKB: durante el borrado la salida es negro. Zona «3EF».',
+              'verificacion': 'MV4 h.2 (4E, 5E). Igual en AES h.2 (U9, U10).'},
+    'dac': {'confianza': 'marca',
+            'verificacion': 'MV4 h.2: por cada color, 3,9 kΩ, 2,2 kΩ, 1 kΩ, 470 Ω y 220 Ω, más 8,2 kΩ por un 74LS05 (bit '
+                            'oscuro) y 150 Ω de salida. Los valores coinciden con la serigrafía de la foto.'},
+    'enc': {'confianza': 'marca', 'pieza': 'Cristal «…79545» (3,579545 MHz, legible); el CXA1145 queda tapado',
+            'verificacion': 'AES h.7 (CXA1145P) y h.11 (X2: 3,579545 MHz en NTSC, 4,43361875 MHz en PAL).'},
+    'reloj': {
+        'pieza': 'Serigrafía X1; el cristal queda bajo los cables',
+        'esquema': ['X1', 'U80', 'U22'],
+        'funcion': 'Cristal de 24 MHz con su oscilador. En la 1.ª generación el divisor es lógica TTL: un 74LS161 y dos '
+                   '74F74 dan 68KCLK (12 MHz, el 68000), 6MB (píxel, 6 MHz) y 1HB. Los 8 y 4 MHz del YM2610 y del Z80 '
+                   'salen del LSPC-A0. En la 2.ª generación el divisor es el NEO-D0 (U22). Zona «1F».',
+        'verificacion': 'MV4 h.2 (oscilador 74LS368, 74LS161 5B, 74F74 4CA/4CB) y h.4 (8M y 4M del LSPC). 2.ª generación: '
+                        'AES h.5 y h.11.'},
+    'cart': {'verificacion': 'AES h.8: CN4/CN5 (AXC90020). La ROM C se serializa en el cartucho: señales en MV4 h.13.'},
+    'cre401': {'verificacion': 'MV4 h.3 y AES h.3 (CRE401 + ferritas ZBF253D).'},
+    'pl241s': {
+        'funcion': 'Placa añadida en fábrica, con contadores 74LS161, un cristal y un ajuste. Tapa la zona «8OPQR». Es '
+                   'probable que sea la placa de limpieza de vídeo (PLL de subportadora), pero sigue sin confirmar:\n'
+                   '- lo dice el wiki de neogeodev para las NEO-AES tardías;\n'
+                   '- el LSPC-A0 no tiene las patillas DIVI/DIVO/REF con las que el LSPC2 engancha la subportadora '
+                   '(MV4 h.4 frente a AES h.11), así que ese PLL tendría que ir fuera.',
+        'verificacion': 'Sin esquema. MV4 h.4 y AES h.11 solo apoyan la hipótesis.'},
+    'ttl': {
+        'nombre': 'Lógica del Z80 (74LS)', 'confianza': 'marca', 'esquema': ['U22'],
+        'pieza': 'HD74LS32P, HD74LS139P, HD74LS74AP y otro HD74LS (marcas parcialmente legibles)',
+        'funcion': 'Está junto a la RAM del Z80 (serigrafía «6116»). Hace lo mismo que en la MV4:\n'
+                   '- el 74LS139 decodifica los puertos $00, $04, $08 y $0C (SDZ80R, 2610RD/WR, SDRD0/1, SDZ80CLR, '
+                   'SDZ80W);\n'
+                   '- el 74LS32 combina /MREQ, /IORQ, /RD y /WR;\n'
+                   '- un 74LS11 selecciona la RAM en $F800;\n'
+                   '- los 74LS74/574 son registros.\n'
+                   'En la 2.ª generación todo eso está en el NEO-D0 (U22).',
+        'verificacion': 'MV4 h.5. NEO-D0: AES h.5. Puertos: NG Hw-10.'},
+    'audio': {
+        'nombre': 'Amplificador de auriculares', 'confianza': 'marca', 'pieza': 'JRC NJM2066D', 'esquema': ['Q101'],
+        'funcion': 'Amplificador estéreo para los auriculares, tras el control de volumen. En la hoja de SNK de la AES es '
+                   'U25, con «NJM2066D» anotado a mano; la recreación Board-Folk lo sustituye por dos transistores '
+                   '(Q101, Q102). Zona «9HIJK».',
+        'verificacion': 'AES h.6. Marca leída en la foto.'},
+    'din': {'verificacion': 'AES h.7: CN3, DIN-8 (vídeo compuesto, RGB, sincronismo, audio).'},
+    'card': {'verificacion': 'Dirección $800000–$BFFFFF, 8 bits (NG Hw-10). Conector: AES h.10.'},
+    'prot': {'verificacion': 'Sin esquema de esta etapa. La NEOGEO-2 ya usa el regulador LM2576 (AES h.9).'},
+}
+
+for _h in NEOGEO_HOTSPOTS:
+    _h.update(REVISION_NEOGEO.get(_h['id'], {}))

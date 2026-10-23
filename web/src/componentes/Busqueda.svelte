@@ -21,6 +21,10 @@
   // Focus and select the query every time the search opens.
   $effect(() => {
     if (!app.buscador) return;
+    if (app.buscarTexto) {
+      consulta = app.buscarTexto;
+      app.buscarTexto = '';
+    }
     tick().then(() => {
       campo?.focus();
       campo?.select();

@@ -23,16 +23,16 @@ const diagrama: Diagrama = {
   bloques: [
     { id: 'reloj', x: 20, y: 18, w: 170, h: 60, titulo: 'Oscilador 24 MHz', sub: 'X1 · 12 MHz al 68000', foto: 'reloj', esquema: ['X1'],
       actividad: [{ pista: '24M', nivel: 1 }],
-      info: 'Cristal de 24 MHz. El 68000 recibe la mitad (12 MHz); el LSPC genera 8 MHz para el YM2610, 4 MHz para el Z80 y el reloj de píxel de 6 MHz.' },
+      info: 'Cristal de 24 MHz. En la 1.ª generación un 74LS161 y dos 74F74 dan 12 MHz al 68000 y el reloj de píxel de 6 MHz (MV4 h.2); el LSPC-A0 genera 8 MHz para el YM2610 y 4 MHz para el Z80 (MV4 h.4). En la 2.ª generación el divisor es el NEO-D0.' },
     { id: 'm68k', x: 20, y: 104, w: 180, h: 116, titulo: 'CPU 68000', sub: 'TMP68HC000N-12 · 12 MHz', foto: '68k', esquema: ['U3'],
       actividad: [{ pista: 'AS' }],
       info: 'Bus de 24 bits de dirección (A1–A23 más /UDS y /LDS para los bytes) y 16 de datos. Cada ciclo de bus dura 4 ciclos de reloj (333 ns) más las esperas que pida el chipset retrasando /DTACK.' },
     { id: 'proc0', x: 230, y: 140, w: 150, h: 72, titulo: 'PRO-C0', sub: 'decodificación 68k · watchdog', foto: 'proc0', esquema: ['U4'],
       actividad: [{ pista: 'SEL' }],
-      info: 'Decodifica la dirección del 68000 y baja la selección del chip que corresponde (ROM, RAM, paleta, LSPC, puertos, BIOS, tarjeta); genera /DTACK. En la 2.ª generación lo hace el NEO-C1.' },
+      info: 'Decodifica la dirección del 68000 y baja la selección del chip que corresponde (ROM, RAM, paleta, LSPC, puertos, BIOS, tarjeta); genera /DTACK, VPA, las esperas y el watchdog. También lleva la parte de color (4 bits, PA0–PA3) de los buffers de línea (MV4 h.1). En la 2.ª generación la decodificación la hace el NEO-C1 y el color el NEO-B1.' },
     { id: 'lspc', x: 480, y: 104, w: 170, h: 116, titulo: 'LSPC-A0', sub: 'sprites · vídeo · IRQ', foto: 'lspc', esquema: ['U21'],
       actividad: [{ pista: 'LSPSEL' }, { pista: 'PCK1', nivel: 1 }, { pista: 'PCK2', nivel: 1 }, { pista: 'IPL' }],
-      info: 'Recorre las VRAM, decide qué sprites hay en cada línea y saca por el bus P las direcciones de las ROM C, S y L0. Genera el sincronismo y las interrupciones del 68000 (IPL0, IPL1).' },
+      info: 'Recorre las VRAM, decide qué sprites hay en cada línea y saca por el bus P las direcciones de las ROM C, S y L0 (PCK1, PCK2). Genera el sincronismo, el borrado, las interrupciones del 68000 (IPL0, IPL1) y los relojes 8M y 4M (MV4 h.4).' },
     { id: 'svram', x: 690, y: 18, w: 140, h: 60, titulo: 'VRAM lenta', sub: '32 K × 16 · SCB1, fix', foto: 'svram', esquema: ['U17', 'U18'],
       actividad: [{ pista: 'SVRAM' }],
       info: 'Tiles y atributos de los sprites (SCB1) y mapa de la capa fija.' },
@@ -61,7 +61,7 @@ const diagrama: Diagrama = {
       actividad: [{ pista: 'PAL' }, { pista: 'PA' }],
       info: 'La direcciona el buffer de línea durante la imagen y el 68000 durante el borrado (o con espera).' },
     { id: 'dac', x: 480, y: 420, w: 120, h: 60, titulo: 'Latches + DAC', sub: '74LS273 · resistencias', foto: 'latch', esquema: ['U9', 'U10'],
-      actividad: [{ pista: 'RGB' }], info: 'Los 74LS273 retienen el color con el reloj de píxel; las resistencias lo convierten en R, G y B.' },
+      actividad: [{ pista: 'RGB' }], info: 'Los 74LS273 retienen el color con el reloj de píxel y lo ponen a cero (negro) durante el borrado (CLR = BNKB); las resistencias de 3,9 kΩ a 220 Ω lo convierten en R, G y B (MV4 h.2).' },
     { id: 'enc', x: 480, y: 510, w: 120, h: 56, titulo: 'Codificador', sub: 'CXA1145 → A/V', foto: 'enc', esquema: ['U32'],
       actividad: [{ pista: 'SYNC' }], info: 'RGB y sincronismo → vídeo compuesto y RGB para el conector DIN.' },
     { id: 'z80', x: 20, y: 425, w: 140, h: 70, titulo: 'Z80', sub: '4 MHz · sonido', foto: 'z80', esquema: ['U24'],
@@ -70,9 +70,9 @@ const diagrama: Diagrama = {
       actividad: [{ pista: 'YMCS' }], info: 'Sus registros se escriben por los puertos $04–$07 del Z80; lee las muestras ADPCM de las ROM V él solo.' },
     { id: 'prob0', x: 330, y: 425, w: 130, h: 70, titulo: 'PRO-B0', sub: 'código 68k ↔ Z80 · mandos', foto: 'prob0', esquema: ['U4'],
       actividad: [{ pista: 'SDZ80' }, { pista: 'ZNMI' }],
-      info: 'Contiene el latch de un byte entre las dos CPU y lee los mandos. Escribir en $320000 deja el código y dispara la NMI del Z80.' },
+      info: 'Contiene el latch de un byte entre las dos CPU (SDZ80R/W/CLR, SDD0–7), lee los mandos (IN00–IN27) y da la mitad de paleta de los buffers de línea (PA4–PA11). Escribir en $320000 deja el código y dispara la NMI del Z80 (MV4 h.3; NG Hw-10).' },
     { id: 'z80ram', x: 20, y: 520, w: 120, h: 50, titulo: 'RAM del Z80', sub: '2 KB · $F800', foto: 'z80ram', esquema: ['U23'],
-      actividad: [{ pista: 'ZRAM' }], info: 'BR6116.' },
+      actividad: [{ pista: 'ZRAM' }], info: 'BR6116, seleccionada con SDA11–SDA15 = 1 (MV4 h.5).' },
     { id: 'vrom', x: 180, y: 520, w: 140, h: 50, titulo: 'ROM M1 y V', sub: 'cartucho (PROG)', foto: 'cart', esquema: ['CN4'], externo: true,
       actividad: [{ pista: 'ZROM' }], info: 'M1: programa del Z80. V: muestras ADPCM que lee el YM2610.' },
   ],
@@ -143,32 +143,32 @@ interface Region {
 
 const MAPA: Region[] = [
   { desde: 0x000000, hasta: 0x0fffff, zona: 'ROM P, banco fijo (1 MB)', bloque: 'prom', lectura: 'ROMOE', escritura: null,
-    texto: 'ROM de programa del cartucho. Los primeros 128 bytes (vectores) pueden venir de la BIOS o del cartucho según el registro de cambio de vectores.' },
+    texto: 'ROM de programa del cartucho. Los vectores ($000000–$00007F) vienen de la BIOS tras el reset y del cartucho cuando el programa escribe en $3A0013 (NG Hw-8, System Program-1).' },
   { desde: 0x100000, hasta: 0x1fffff, zona: 'RAM de usuario (64 KB, espejada)', bloque: 'wram', lectura: 'RAM /OE', escritura: 'RAM /WE',
-    texto: 'Dos SRAM de 32K × 8: /UDS elige la del byte alto y /LDS la del bajo. Solo se decodifican A1–A15: el resto de la zona son espejos.' },
+    texto: 'Dos SRAM de 32K × 8 con /OE y /WE por byte (RAMOEU/L, RAMWEU/L del PRO-C0, MV4 h.1). Solo se decodifican A1–A15: el resto de la zona son espejos. $10F300–$10FFFF es del sistema (NG System Program-2).' },
   { desde: 0x200000, hasta: 0x2fffff, zona: 'ROM P conmutable / E/S del cartucho', bloque: 'prom', lectura: 'PORTADRS', escritura: 'PORTADRS',
     texto: 'Ventana de 1 MB sobre el resto de la ROM P; los cartuchos grandes ponen aquí su registro de banco (PORTWEL/U).' },
   { desde: 0x300000, hasta: 0x31ffff, zona: 'Mando 1 / watchdog', bloque: 'prob0', lectura: 'mando 1', escritura: 'watchdog',
-    texto: 'Lectura en $300000: mando 1 (PRO-B0). Escritura en $300001: reinicia el watchdog (PRO-C0); si el programa no lo hace, la consola se reinicia.' },
+    texto: 'Lectura en $300000: mando 1 (PRO-B0, IN00–IN07 hacia D8–D15). Escritura de un byte en $300001: reinicia el watchdog (PRO-C0); hay que hacerlo al menos cada 100 ms (NG Hw-8 y Hw-10).' },
   { desde: 0x320000, hasta: 0x33ffff, zona: 'Código de sonido (68000 ↔ Z80)', bloque: 'prob0', lectura: 'SDZ80R', escritura: 'SDZ80W',
-    texto: 'Escritura: deja un byte para el Z80 y le provoca una NMI. Lectura: la respuesta del Z80 (más las entradas de monedas en el MVS).' },
+    texto: 'Escritura de un byte: deja el código para el Z80 en el latch del PRO-B0 y le provoca una NMI. Lectura: la respuesta que el Z80 escribió en su puerto $0C (NG Hw-9 y Hw-10; MV4 h.3).' },
   { desde: 0x340000, hasta: 0x35ffff, zona: 'Mando 2', bloque: 'prob0', lectura: 'mando 2', escritura: null, texto: 'Lectura del mando 2 (PRO-B0).' },
   { desde: 0x360000, hasta: 0x37ffff, zona: 'Sin uso en el AES', bloque: null, lectura: null, escritura: null, texto: 'Nada responde.' },
   { desde: 0x380000, hasta: 0x39ffff, zona: 'Estado y salidas', bloque: 'prob0', lectura: 'estado', escritura: 'salidas',
-    texto: 'Lectura: botones Start/Select y estado de la tarjeta. Escritura: salidas de los puertos de mando.' },
+    texto: 'Lectura en $380000: Start y Select de los dos mandos, tarjeta insertada y protegida, y el bit 7 = 0 (NEO-GEO) o 1 (MVS). Escritura en $380001: salidas de los mandos; en $380011: banco de la tarjeta (NG Hw-9).' },
   { desde: 0x3a0000, hasta: 0x3bffff, zona: 'Latch del sistema', bloque: 'proc0', lectura: null, escritura: 'latch del sistema',
-    texto: 'Bits de control (vectores BIOS/cartucho, banco de paleta, protección de la tarjeta…); en la 3-5, el 74HC259 U35.' },
+    texto: 'Un 74HC259: A1–A3 eligen el bit y A4 es su valor. $3A0001/$3A0011, sombra apagada/encendida; $3A0003/$3A0013, vectores de la BIOS o del cartucho; $3A000F/$3A001F, banco de paleta 0/1; además, la escritura de la tarjeta (NG Hw-8 y Hw-9; MV4 h.9; AES h.9, U35).' },
   { desde: 0x3c0000, hasta: 0x3dffff, zona: 'Registros del LSPC', bloque: 'lspc', lectura: 'LSPOE', escritura: 'LSPWE',
-    texto: 'VRAMADDR ($3C0000), VRAMRW ($3C0002), VRAMMOD ($3C0004), LSPCMODE ($3C0006), TIMER ($3C0008–A), IRQACK ($3C000C). El 68000 solo ve la VRAM a través de ellos.' },
+    texto: 'Dirección de VRAM ($3C0000), dato ($3C0002), autoincremento ($3C0004), modo / línea actual ($3C0006), temporizador alto y bajo ($3C0008, $3C000A) y borrado de interrupciones ($3C000C). El 68000 solo ve la VRAM por ellos, por palabras y sin esperas; entre dos escrituras de dato hacen falta 12 ciclos (NG Hw-6 a Hw-8).' },
   { desde: 0x3e0000, hasta: 0x3fffff, zona: 'Sin uso', bloque: null, lectura: null, escritura: null, texto: 'Nada responde.' },
   { desde: 0x400000, hasta: 0x7fffff, zona: 'RAM de paleta ($400000–$401FFF, espejada)', bloque: 'palram', lectura: 'PAL', escritura: 'PAL',
-    texto: '4096 colores de 16 bits por banco; el banco activo lo elige el latch del sistema (PALBNK).' },
+    texto: '256 paletas de 16 colores de 16 bits por banco (la 255, última entrada, es el fondo); el banco lo elige PALBNK. SNK pide acceder solo por palabras y durante el borrado vertical (NG Hw-10 y Hw-19).' },
   { desde: 0x800000, hasta: 0xbfffff, zona: 'Tarjeta de memoria', bloque: null, lectura: 'CARDCS', escritura: 'CARDCS',
-    texto: 'Tarjeta de 8 bits: solo los bytes impares (/LDS).' },
+    texto: 'Tarjeta de 8 bits: una de 2 KB ocupa $800000–$800FFF y se ignoran D8–D15 (NG Hw-10).' },
   { desde: 0xc00000, hasta: 0xcfffff, zona: 'BIOS (128 KB, espejada)', bloque: 'bios', lectura: 'SROMOE', escritura: null,
-    texto: 'ROM del sistema NEO-EP0.' },
+    texto: 'ROM del sistema NEO-EP0, $C00000–$C1FFFF; los juegos entran en ella por la tabla de saltos de $C00402 (NG Hw-8 y System Program-5).' },
   { desde: 0xd00000, hasta: 0xdfffff, zona: 'RAM de respaldo (solo MVS)', bloque: null, lectura: null, escritura: null,
-    texto: 'El AES no tiene RAM de respaldo ni reloj: nada responde.' },
+    texto: 'El AES no tiene RAM de respaldo ni reloj: nada responde (en el MVS, $D00000, NG System Program-2).' },
   { desde: 0xe00000, hasta: 0xffffff, zona: 'Sin uso', bloque: null, lectura: null, escritura: null, texto: 'Nada responde.' },
 ];
 
@@ -298,7 +298,7 @@ function ciclos68k(id: string, titulo: string, descripcion: string, lista: Ciclo
     realPorSegundo: (4 * T12) / 3,
     defecto: ['CLK68', 'AS', 'RW', 'UDS', 'LDS', 'A', 'D', 'DTACK', 'SEL'],
     fidelidad:
-      'Exacto: reloj de 12 MHz, ciclo de 4 periodos (8 estados) más las esperas, /AS y /UDS·/LDS bajos de S2 a S7 (en escritura los strobes bajan en S4), dato capturado al entrar en S7 y /DTACK muestreado al final de S4 (manual del M68000). Ilustrativo: los retardos de decodificación del PRO-C0 (no documentados: la selección se dibuja con /AS) y cuándo deja el dato cada memoria (se dibuja desde S5).',
+      'Exacto: reloj de 12 MHz, ciclo de 4 periodos (8 estados) más las esperas, /AS y /UDS·/LDS bajos de S2 a S7 (en escritura los strobes bajan en S4), dato capturado al entrar en S7 y /DTACK muestreado al final de S4 (manual del M68000). Comprobado con SNK: las selecciones y /DTACK salen del PRO-C0, con las esperas ROMWAIT/PWAIT0/PWAIT1 que pide el cartucho (MV4 h.1); los registros del LSPC no tienen esperas (NG Hw-7); direcciones según NG Hw-8 a Hw-10. Ilustrativo: los retardos de decodificación del PRO-C0 (no documentados: la selección se dibuja con /AS) y cuándo deja el dato cada memoria (se dibuja desde S5).',
   };
 }
 
@@ -499,7 +499,7 @@ function escenarioZ80(): Escenario {
     realPorSegundo: TZ / 1.2,
     defecto: ['AS', 'SDZ80', 'ZNMI', 'ZCLK', 'M1', 'MREQ', 'IORQ', 'RD', 'WR', 'ZA', 'ZD', 'YMCS'],
     fidelidad:
-      'Exacto: reloj del Z80 de 4 MHz, ciclos M1 de 4 T (con refresco en T3–T4), de memoria de 3 T y de E/S de 4 T con espera automática, respuesta a la NMI de 11 T (manual del Z80), puertos $00, $04–$05 y $0C, ciclo del 68000 de 333 ns. Ilustrativo: el programa (bucle JR $, rutina mínima) y cuándo suelta /NMI el chipset.',
+      'Exacto: reloj del Z80 de 4 MHz, ciclos M1 de 4 T (con refresco en T3–T4), de memoria de 3 T y de E/S de 4 T con espera automática, respuesta a la NMI de 11 T (manual del Z80), ciclo del 68000 de 333 ns. Comprobado con SNK: puerto $00 para leer el código, $04–$07 para el YM2610 y $0C para la respuesta; un solo latch en $320000 del lado del 68000; la NMI se borra al leer el código (NG Hw-10); decodificación con un 74LS139 sobre SDA2–SDA3 y RAM en $F800–$FFFF (MV4 h.5). Ilustrativo: el programa (bucle JR $, rutina mínima) y cuándo suelta /NMI el chipset.',
   };
 }
 
@@ -598,7 +598,7 @@ function escenarioLinea(): Escenario {
     defecto: ['6MB', 'P', 'PCK1', 'PCK2', 'LOAD', 'CA4', 'GAD', 'BUFW', 'BUFR', 'PA', 'BNKB'],
     ventana: [0, 64 * T24],
     fidelidad:
-      'Exacto: 384 píxeles de 166,7 ns (64 µs), 320 visibles, 96 sprites de 16 píxeles por línea a 2 píxeles por ciclo de 12 MHz, un tile fijo cada 8 píxeles, doble buffer de línea, color capturado con el reloj de píxel. Esquemático: el reparto del bus P dentro de cada ranura (C, S, C, L0), la posición de los pulsos PCK y de SYNC en la línea, y los valores mostrados.',
+      'Comprobado con SNK: píxel de 167 ns (NG Hw-5), 320 píxeles visibles y capa fija de 40 × 28 tiles de 8 × 8 (Hw-4, Hw-12), hasta 96 sprites de 16 píxeles por línea (Hw-3), ROM C de 32 bits serializada en GAD/GBD con LOAD, 12M, EVEN y H (MV4 h.13), dirección de la ROM S tomada del bus P con PCK2 y 2H1 como A3 (MV4 h.13), número de paleta tomado del bus P con PCK1 por el PRO-B0 (MV4 h.3), color retenido con el reloj de píxel y borrado a negro con BNKB (MV4 h.2). De neogeodev (no está en los documentos de SNK): 384 píxeles por línea (64 µs, 15,625 kHz). La especificación dice que 32 líneas son 18 432 píxeles, 576 por línea, lo que no cuadra con el vídeo de 15,6 kHz; parece una errata. Esquemático: el reparto del bus P dentro de cada ranura (C, S, C, L0), la posición de los pulsos PCK y de SYNC en la línea, y los valores mostrados.',
   };
 }
 
@@ -622,23 +622,25 @@ function escenarioCuadro(): Escenario {
   const tT = 112 * TL + 10e-6;
   c.set('IPL1', tT, 0);
   c.set('IPL', tT, 0);
-  c.set('CPU', tT + 3e-6, 'IRQ2: cambia el scroll');
+  c.set('CPU', tT + 3e-6, 'IRQ2: MOVE.W #2,$3C000C');
+  c.set('CPU', tT + 8e-6, 'IRQ2: cambia el scroll');
   c.set('IPL1', tT + 8e-6, 1);
   c.set('IPL', tT + 8e-6, 1);
   c.set('CPU', tT + 20e-6, 'juego');
   const tV = 224 * TL;
   c.set('IPL0', tV, 0);
   c.set('IPL', tV, 0);
-  c.set('CPU', tV + 3e-6, 'IRQ1: escribe IRQACK');
+  c.set('CPU', tV + 3e-6, 'IRQ1: MOVE.W #4,$3C000C');
+  c.set('CPU', tV + 8e-6, 'IRQ1: watchdog ($300001)');
   c.set('IPL0', tV + 8e-6, 1);
   c.set('IPL', tV + 8e-6, 1);
   c.set('CPU', tV + 10e-6, 'IRQ1: copia sprites a la VRAM');
   c.set('CPU', tV + 1.5e-3, 'juego');
   for (const t of [0, tT, tT + 8e-6, tV, tV + 8e-6, fin]) c.marca(t);
   c.paso(0, tT, 'Líneas visibles: el LSPC dibuja; el juego corre en el 68000.');
-  c.paso(tT, tT + 20e-6, 'El temporizador del LSPC (TIMER, programable en ciclos de píxel) baja /IPL1: interrupción de nivel 2, útil para efectos de raster a mitad de pantalla. El 68000 la reconoce escribiendo en IRQACK ($3C000C).');
+  c.paso(tT, tT + 20e-6, 'El contador del temporizador del LSPC, que baja una unidad por píxel (167 ns), llega a 0 y baja /IPL1: interrupción 2 (vector $68), útil para efectos de raster a mitad de pantalla. La rutina la reconoce con MOVE.W #2,$3C000C (NG Hw-5).');
   c.paso(tT + 20e-6, tV, 'Sigue la imagen.');
-  c.paso(tV, tV + 1.5e-3, 'Empieza el retrazado vertical: /IPL0 baja (nivel 1, vblank). La rutina reconoce la IRQ y actualiza la VRAM y la paleta sin interferir con la imagen.');
+  c.paso(tV, tV + 1.5e-3, 'Empieza el borrado vertical: /IPL0 baja (interrupción 1, vector $64). La rutina la reconoce con MOVE.W #4,$3C000C, reinicia el watchdog escribiendo en $300001 (NG Hw-5) y actualiza la VRAM y la paleta, que SNK pide tocar solo ahora (Hw-10).');
   c.paso(tV + 1.5e-3, fin, 'Fin del retrazado: 264 líneas, ≈ 59,19 Hz.');
   return {
     id: 'cuadro',
@@ -653,7 +655,7 @@ function escenarioCuadro(): Escenario {
     defecto: ['LINEA', 'VIS', 'IPL0', 'IPL1', 'CPU'],
     ventana: [222 * TL, 236 * TL],
     fidelidad:
-      'Exacto: 264 líneas de 64 µs, 224 visibles, IRQ1 = vblank por IPL0, IRQ2 = temporizador por IPL1, reconocimiento en IRQACK. Ilustrativo: la línea elegida para el temporizador, la numeración de líneas (empieza en la primera visible) y la duración de las rutinas.',
+      'Comprobado con SNK: 224 líneas visibles en NTSC (256 en PAL, NG Hw-2 y Hw-12); interrupción 1 (vector $64) al empezar el borrado vertical, reconocida con MOVE.W #4,$3C000C; interrupción 2 (vector $68) cuando el temporizador, que baja una unidad por píxel (167 ns), llega a 0, reconocida con MOVE.W #2,$3C000C (Hw-5 a Hw-7); IPL0/IPL1 salen del LSPC (MV4 h.4). De neogeodev: 264 líneas por cuadro (≈ 59,19 Hz). Ilustrativo: la línea elegida para el temporizador, la numeración de líneas (empieza en la primera visible) y la duración de las rutinas.',
   };
 }
 
@@ -677,7 +679,7 @@ function escenarioRelojes(): Escenario {
   return {
     id: 'relojes',
     titulo: 'Relojes',
-    descripcion: '24 MHz divididos entre 2 (68000), 3 (YM2610), 4 (píxel) y 6 (Z80). El 68000 lo toma de NEO-D0/la lógica de reloj; 8M y 4M los da el LSPC.',
+    descripcion: '24 MHz divididos entre 2 (68000), 3 (YM2610), 4 (píxel) y 6 (Z80). En la placa de la foto, 68KCLK y 6MB salen de un 74LS161 y dos 74F74 (MV4 h.2), y 8M y 4M del LSPC-A0 (patillas 109 y 112, MV4 h.4); en la 2.ª generación el divisor es el NEO-D0.',
     duracion: fin,
     escala: 'ns',
     pistas: c.pistas(),
@@ -685,7 +687,7 @@ function escenarioRelojes(): Escenario {
     marcas: c.marcas,
     realPorSegundo: fin / 8,
     defecto: ['24M', 'CLK68', '8M', '6MB', '4M'],
-    fidelidad: 'Exacto: frecuencias y relaciones. Ilustrativo: la fase relativa y el ciclo de trabajo de 8M y 4M (dibujados al 50 %).',
+    fidelidad: 'Exacto: frecuencias y relaciones (68000 a 12 MHz, NG Hw-1; Z80 a 4 MHz, Hw-2; YM2610 con 8M y Z80 con 4M, MV4 h.5 y h.6). Ilustrativo: la fase relativa y el ciclo de trabajo de 8M y 4M (dibujados al 50 %).',
   };
 }
 

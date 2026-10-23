@@ -8,15 +8,22 @@
 //      (4 s): what moves does so in proportion to the elapsed time, not to the number of calls.
 //
 //   PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node tests/animaciones-hz.mjs [--url http://localhost:4173]
-//       [--solo id1,id2]
+//       [--solo id1,id2] [--coleccion componentes|conceptos]
 import { chromium } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 
 const args = process.argv.slice(2);
 const opt = (k, d) => (args.includes(k) ? args[args.indexOf(k) + 1] : d);
 const BASE = opt('--url', 'http://localhost:4173');
-const fuente = readFileSync(new URL('../src/componentes/animaciones/cargadores.ts', import.meta.url), 'utf8');
-let ids = [...fuente.matchAll(/^\s+'?([a-z0-9-]+)'?: \(\) => import/gm)].map((m) => m[1]);
+// Both collections: component animations (#/componentes/<id>) and concept animations (#/conceptos/<id>);
+// --coleccion componentes|conceptos restricts the run to one of them.
+const leer = (f) => readFileSync(new URL(f, import.meta.url), 'utf8');
+const idsDe = (txt) => [...txt.matchAll(/^\s+'?([a-z0-9-]+)'?: \(\) => import/gm)].map((m) => m[1]);
+const coleccion = opt('--coleccion', 'todas');
+const rutas = {};
+if (coleccion !== 'conceptos') for (const i of idsDe(leer('../src/componentes/animaciones/cargadores.ts'))) rutas[i] = 'componentes';
+if (coleccion !== 'componentes') for (const i of idsDe(leer('../src/componentes/animaciones/conceptos/cargadores.ts'))) rutas[i] = 'conceptos';
+let ids = Object.keys(rutas);
 const solo = opt('--solo', '');
 if (solo) ids = ids.filter((i) => solo.split(',').includes(i));
 
@@ -75,10 +82,14 @@ page.on('pageerror', (e) => console.log('ERROR', e.message));
 
 const filas = [];
 for (const id of ids) {
-  await page.goto(`${BASE}/#/componentes/${id}`);
+  await page.goto(`${BASE}/#/${rutas[id]}/${id}`);
   await page.waitForSelector('.escena canvas', { timeout: 20000 });
   await page.waitForTimeout(300);
   const fotogramas = await page.evaluate(() => window.__bombear(2000, 1000 / 144));
+  // Canvas text requests its font weights on first use (during the frames above): wait for them and draw a
+  // few more frames, so that a late font swap is not taken for movement.
+  await page.evaluate(() => document.fonts.ready);
+  await page.evaluate(() => window.__bombear(50, 1000 / 144));
   const a = await page.evaluate(() => window.__foto());
   const b = await page.evaluate(() => (window.__epaEscena.dibujar(), window.__foto()));
   const c = await page.evaluate(() => (window.__epaEscena.pasos(240, 1e-5), window.__foto()));

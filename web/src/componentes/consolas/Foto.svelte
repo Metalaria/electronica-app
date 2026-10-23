@@ -133,7 +133,7 @@
       <p class="tipo">{mostrado.esquema.length ? mostrado.esquema.join(', ') : 'Sin referencia en el esquema'}</p>
       <h3>{mostrado.nombre}</h3>
       <p class="pieza">{mostrado.pieza}</p>
-      <p>{mostrado.funcion}</p>
+      <p class="funcion">{mostrado.funcion}</p>
       {#if mostrado.buses.length}
         <p class="sub">Buses y señales</p>
         <div class="chips">
@@ -142,9 +142,12 @@
       {/if}
       <p class="confianza">
         {mostrado.confianza === 'marca'
-          ? 'Identificado por la marca legible en la foto.'
-          : 'Identificado por su posición (serigrafía o mapa de la placa); la marca no se lee en la foto.'}
+          ? 'Identificado por la marca o la serigrafía legibles en la foto.'
+          : 'Identificado por su posición (mapa de la placa); la marca no se lee en la foto.'}
       </p>
+      {#if mostrado.verificacion}
+        <p class="verificado"><strong>Comprobado con documentos de SNK:</strong> {mostrado.verificacion}</p>
+      {/if}
       <div class="acciones">
         {#if mostrado.esquema.length}
           <button type="button" class="accion" onclick={() => irA('esquema', { tipo: 'componente', id: mostrado.esquema[0]! })}>
@@ -303,6 +306,17 @@
     border-radius: 999px;
     background: var(--superficie-2);
     font-size: 13px;
+  }
+  .funcion,
+  .verificado {
+    white-space: pre-line;
+  }
+  .verificado {
+    padding: 6px 9px;
+    border-left: 3px solid var(--c-ejemplo);
+    border-radius: 0 8px 8px 0;
+    background: var(--superficie-2);
+    font-size: 13.5px;
   }
   .confianza,
   .nota {

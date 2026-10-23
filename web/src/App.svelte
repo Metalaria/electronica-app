@@ -8,6 +8,9 @@
   import { acentos, type TemaEfectivo } from './lib/color';
   import { abrirBuscador, cerrarLateral } from './lib/acciones';
   import Lateral from './componentes/Lateral.svelte';
+  import Carril from './componentes/Carril.svelte';
+  import Pestanas from './componentes/Pestanas.svelte';
+  import { indiceOculto } from './lib/navegacion.svelte';
   import Barra from './componentes/Barra.svelte';
   import Inicio from './componentes/Inicio.svelte';
   import Lector from './componentes/Lector.svelte';
@@ -41,6 +44,15 @@
 
   $effect(() => {
     document.documentElement.style.setProperty('--tam', `${usuario.prefs.tam}px`);
+  });
+
+  // Room taken by the navigation: the rail and the index panel on the left (desktop), the tab bar at the
+  // bottom (phone). Fixed elements centre themselves with --ancho-lateral and clear the tabs with --hueco-inferior.
+  $effect(() => {
+    const raiz = document.documentElement.style;
+    const izquierda = app.movil ? '0px' : indiceOculto() ? 'var(--ancho-carril)' : 'calc(var(--ancho-carril) + var(--ancho-panel))';
+    raiz.setProperty('--ancho-lateral', izquierda);
+    raiz.setProperty('--alto-pestanas', app.movil ? '58px' : '0px');
   });
 
   // No page scroll under an overlay.
@@ -114,6 +126,11 @@
 
 <div class="app" class:movil={app.movil}>
   {#if app.cargado}
+    {#if app.movil}
+      <Pestanas />
+    {:else}
+      <Carril />
+    {/if}
     <Lateral />
   {/if}
   <div class="principal">
@@ -168,6 +185,42 @@
         {:catch e}
           <div class="aviso"><h1>No se pudieron abrir los instrumentos</h1><p>{String(e)}</p></div>
         {/await}
+      {:else if ruta.vista === 'conceptos'}
+        <!-- Concept animations (phasors, Fourier, aliasing, feedback…), loaded on demand. -->
+        {#await import('./componentes/Conceptos.svelte')}
+          <div class="cargando" aria-live="polite"><span class="punto"></span> Abriendo las animaciones…</div>
+        {:then m}
+          <m.default />
+        {:catch e}
+          <div class="aviso"><h1>No se pudieron abrir las animaciones</h1><p>{String(e)}</p></div>
+        {/await}
+      {:else if ruta.vista === 'calculadoras'}
+        <!-- Formula calculators: the catalogue (formulas.json) is fetched only here. -->
+        {#await import('./componentes/calculadoras/Calculadoras.svelte')}
+          <div class="cargando" aria-live="polite"><span class="punto"></span> Abriendo las calculadoras…</div>
+        {:then m}
+          <m.default />
+        {:catch e}
+          <div class="aviso"><h1>No se pudieron abrir las calculadoras</h1><p>{String(e)}</p></div>
+        {/await}
+      {:else if ruta.vista === 'repaso'}
+        <!-- Glossary flashcards and chapter quizzes, loaded on demand. -->
+        {#await import('./componentes/repaso/Repaso.svelte')}
+          <div class="cargando" aria-live="polite"><span class="punto"></span> Abriendo el repaso…</div>
+        {:then m}
+          <m.default />
+        {:catch e}
+          <div class="aviso"><h1>No se pudo abrir el repaso</h1><p>{String(e)}</p></div>
+        {/await}
+      {:else if ruta.vista === 'ejercicios'}
+        <!-- Exercises and problems by chapter, with the review of the failed ones: loaded on demand. -->
+        {#await import('./componentes/aprender/PaginaEjercicios.svelte')}
+          <div class="cargando" aria-live="polite"><span class="punto"></span> Abriendo los ejercicios…</div>
+        {:then m}
+          <m.default />
+        {:catch e}
+          <div class="aviso"><h1>No se pudieron abrir los ejercicios</h1><p>{String(e)}</p></div>
+        {/await}
       {:else if ruta.vista === 'componentes'}
         <!-- Component animations, also loaded on demand. -->
         {#await import('./componentes/Componentes.svelte')}
@@ -207,7 +260,7 @@
   }
   main {
     min-height: calc(100vh - var(--alto-barra));
-    padding-bottom: env(safe-area-inset-bottom);
+    padding-bottom: var(--hueco-inferior);
   }
   .cargando {
     display: flex;

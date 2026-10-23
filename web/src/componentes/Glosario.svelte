@@ -398,7 +398,7 @@
   .volver {
     position: fixed;
     left: 50%;
-    bottom: calc(18px + env(safe-area-inset-bottom));
+    bottom: calc(18px + var(--hueco-inferior));
     z-index: 25;
     display: inline-flex;
     align-items: center;

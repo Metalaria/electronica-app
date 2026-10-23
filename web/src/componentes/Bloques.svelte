@@ -11,6 +11,9 @@
   import BotonSimular from './BotonSimular.svelte';
   import VerAnimacion from './animaciones/VerAnimacion.svelte';
   import VerKit from './fm7303/VerKit.svelte';
+  import TarjetaViva from './calculadoras/TarjetaViva.svelte';
+  import Deduccion from './aprender/Deduccion.svelte';
+  import PanelProblema from './aprender/PanelProblema.svelte';
 
   let {
     bloques,
@@ -33,6 +36,7 @@
   {@const db = raiz ? desde + i : undefined}
   {#if b.t === 'p'}
     <p {id} data-b={db}>{@html prepararHtml(b.html)}</p>
+    {#if db != null && b.html.startsWith('<strong>Se pide')}<PanelProblema {parte} indice={db} />{/if}
   {:else if b.t === 'h2'}
     <Seccion bloque={b} {parte} indice={db} />
   {:else if b.t === 'h3'}
@@ -57,14 +61,12 @@
       <div class="bloques"><Bloques bloques={b.bloques} {parte} /></div>
     </aside>
   {:else if b.t === 'deduccion'}
-    <section {id} data-b={db} class="deduccion">
-      <div class="deduccion-tit">Deducción <span class="guion">—</span> {@html prepararHtml(b.titulo)}</div>
-      <Bloques bloques={b.bloques} {parte} />
-    </section>
+    <Deduccion bloque={b} {parte} indice={db} />
   {:else if b.t === 'tarjeta'}
     <section {id} data-b={db} class="tarjeta" aria-label="Tarjeta de fórmulas">
       <div class="tarjeta-tit">TARJETA DE FÓRMULAS</div>
       <Bloques bloques={b.bloques} {parte} />
+      <TarjetaViva bloques={b.bloques} />
     </section>
   {:else if b.t === 'ec'}
     <Ecuacion bloque={b} indice={db} />

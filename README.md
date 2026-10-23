@@ -10,8 +10,19 @@ fases siguientes (ejercicios, modelos 3D, editor de esquemas) están descritas e
 
 ## Qué hace
 
-- **Índice** en la barra lateral: tomos → capítulos (con el color de su bloque temático) → secciones. La
-  sección que se está leyendo se resalta mientras se avanza.
+- **Navegación**: a la izquierda, un **carril de iconos** con todas las secciones de la aplicación por orden de
+  uso (Libro, Buscar, Simulador, Calculadoras, Ejercicios, Repaso, Componentes, Conceptos, Instrumentos, Kit
+  FM7303, Consolas, Glosario, Marcadores; el logotipo lleva a Inicio), cada una con su nombre debajo y la marca de
+  la actual; si la ventana es baja, las últimas pasan a «Más». Junto al carril, el **índice del libro**: tomos
+  plegables con su barra de lectura → capítulos con su anillo → secciones, con la sección que se lee resaltada y
+  siempre a la vista (botón «Ir a la sección actual» si se ha desplazado el índice), las leídas marcadas y un
+  **filtro** por palabras sin tildes o por número («5.8», «cap 33», «ap B»). El índice se oculta con el botón de
+  la barra superior (o pulsando «Libro» mientras se lee) y se recuerda por herramienta: en el simulador, las
+  consolas y demás herramientas empieza oculto para dejarles todo el ancho. En la barra superior, la miga
+  «Capítulo 5 · Diodos › 5.8 …» abre las secciones del capítulo y los capítulos anterior y siguiente, y los botones
+  ↑ ↓ (o `Alt ↑` / `Alt ↓`) van a la sección anterior o siguiente. En el teléfono y la tableta en vertical, una
+  **barra inferior** (Libro, Buscar, Simulador, Ejercicios, Más): «Libro» abre el índice en un cajón y «Más»,
+  el resto; el botón Atrás de Android los cierra primero.
 - **Lectura** con la tipografía del libro (Source Serif 4 para el texto, Source Sans 3 para títulos e
   interfaz, Source Code Pro para el código; las fuentes van dentro de la aplicación). El color del
   capítulo es el acento: apertura, números de sección, ecuaciones, tablas.
@@ -35,8 +46,8 @@ fases siguientes (ejercicios, modelos 3D, editor de esquemas) están descritas e
   - marcadores de sección y notas breves por sección (botones junto al título de cada sección);
   - la vista «Marcadores y notas», en el orden del libro;
   - tema claro, sepia, oscuro o el del sistema, y tamaño del texto (botón «Aa»).
-- **Diseño adaptable**: en el teléfono, una columna y el índice en un cajón lateral; en tableta y
-  ordenador, índice fijo y texto. Rutas con almohadilla (`#/cap05/sec-5.3`), que funcionan sin servidor
+- **Diseño adaptable**: en el teléfono y la tableta en vertical, una columna, barra inferior e índice en un cajón;
+  en tableta apaisada y ordenador, carril, índice fijo y texto. Rutas con almohadilla (`#/cap05/sec-5.3`), que funcionan sin servidor
   dentro de Tauri.
 - **Saltos rápidos entre capítulos**: al seguir una referencia se dibuja primero el tramo de destino y el
   resto del capítulo después, en los ratos libres; mientras se lee, la aplicación prepara en segundo plano
@@ -47,17 +58,30 @@ fases siguientes (ejercicios, modelos 3D, editor de esquemas) están descritas e
   esquema real con redes interactivas (ver más abajo).
 - **Componentes animados**: 39 animaciones interactivas de cómo funciona cada componente por dentro, enlazadas
   con sus secciones y figuras (botón «Ver animación» en el libro; ver más abajo).
+- **Conceptos animados**: 34 animaciones interactivas de la teoría (fasores, Fourier, aliasing, realimentación,
+  conmutadas, metaestabilidad, líneas de transmisión…) calculadas en el momento con los números del libro, con
+  el mismo botón «Ver animación» junto a sus secciones y figuras (ver más abajo).
 - **Instrumentos**: el Brymen BM869s y el FNIRSI 2C53T en virtual, en un banco de pruebas con cualquier circuito
   del simulador y las doce prácticas del capítulo 21 guiadas (botón «Practicar» en el libro; ver más abajo).
 - **Kit FM7303**: el receptor de FM del capítulo 15, completo y vivo: esquema con todos sus componentes, tensiones
   simuladas frente al mapa del libro, multímetro, recorrido de la señal y osciloscopio en TP1–TP4, alineación
   guiada y averías (botón «Kit FM7303» en el libro; ver más abajo).
+- **Aprender con el libro**: ejercicios y problemas que corrigen la respuesta (prefijos, unidades, coma
+  decimal), con pistas progresivas y repaso de los fallados; deducciones paso a paso; progreso de lectura por
+  sección, capítulo y tomo (ver más abajo).
+- **Calculadoras**: 351 fórmulas del libro listas para calcular cualquiera de sus variables, con unidades y
+  prefijos, gráfica de sensibilidad y enlace a su sección; botón «Calcular» junto a cada ecuación catalogada y
+  tarjetas de fórmulas vivas (ver más abajo).
+- **Repaso**: tarjetas de los 910 términos del glosario con repetición espaciada y 1028 preguntas de test de
+  todos los capítulos y apéndices, cada una con la cita del libro de la que sale (ver más abajo).
 
 ### Atajos de teclado
 
 | Tecla | Acción |
 |---|---|
 | `Ctrl K` / `⌘ K`, `/` | Buscar |
+| `Alt ↑` / `Alt ↓` | Sección anterior / siguiente |
+| `↑` `↓` `→` `←` `Intro` (en el índice) | Recorrer, desplegar, plegar y abrir; `↓` desde el filtro entra en la lista |
 | `↑` `↓` `Intro` | Elegir y abrir un resultado de búsqueda |
 | `Esc` | Cerrar la búsqueda, el visor de figuras o el panel «Aa» |
 | `+` `-` `0` | Acercar, alejar y ajustar en el visor de figuras |
@@ -65,7 +89,7 @@ fases siguientes (ejercicios, modelos 3D, editor de esquemas) están descritas e
 
 ## Simulador de circuitos
 
-«Simulador» en la barra lateral (`#/simulador`) abre el catálogo de las 309 netlists de ngspice que
+«Simulador» en la carril de iconos (`#/simulador`) abre el catálogo de las 309 netlists de ngspice que
 comprueban los circuitos y los números del libro, por capítulos, con búsqueda (sin tildes) y filtro por tipo
 de análisis. Cada figura, sección, problema o ejercicio que tiene netlist muestra en el lector un botón
 «Simular»; el botón Atrás vuelve al punto exacto de la lectura.
@@ -144,7 +168,7 @@ cambia). Límites:
 
 ## Componentes animados
 
-«Componentes animados» en la barra lateral (`#/componentes`) abre una galería de 39 animaciones agrupadas
+«Componentes animados» en el carril de iconos (`#/componentes`) abre una galería de 39 animaciones agrupadas
 por familias (resistencias, condensadores, bobinas y transformadores, diodos, BJT, MOSFET, potencia y
 protección, especiales y sensores), con búsqueda sin tildes por nombre, concepto o número de sección. Cada
 una (`#/componentes/<id>`) tiene la animación (canvas, nítida a cualquier tamaño y con los colores del tema),
@@ -163,9 +187,53 @@ corriente convencional en ámbar y flujo de electrones en azul discontinuo; cada
   intervalo entre fotogramas de todas las escenas con la CPU ×4 (`--perfil movil|mac|tableta|tableta-vertical`);
   `node tests/animaciones-hz.mjs` comprueba que nada avanza por fotograma (144 Hz simulados).
 
+## Conceptos animados
+
+«Conceptos animados» en el carril de iconos o en la portada (`#/conceptos`) abre una galería de 34 animaciones de
+las ideas que una figura fija explica mal, agrupadas en siete áreas, con la misma búsqueda (por nombre, idea o
+número de sección: «Nyquist», «23.6», «Bode»). Cada página tiene la escena, controles con sus unidades, lecturas
+con coma decimal y prefijos SI, la explicación con los números del momento y los enlaces «En el libro»; en el
+libro, esas secciones y figuras llevan el botón «Ver animación» (o «Ver animaciones» con un menú, si también
+tienen animación de componente), y «Volver» regresa al punto de lectura.
+
+- **Campos, leyes y teoremas**: campo eléctrico y potencial (cargas y placas que se arrastran, una carga de
+  prueba que cae de potencial), campo magnético e inducción (imán y bobina, Faraday y Lenz; campo de un hilo),
+  Kirchhoff en dos mallas (el «caminante» que recorre un lazo y dibuja el potencial; ejemplos de 0.2 y 22.4),
+  Thévenin y Norton (la red de la figura 22.6 y sus dos equivalentes con la misma carga), superposición (con
+  el diodo que la rompe) y máxima transferencia de potencia.
+- **Alterna**: fasores que giran (suma de senoides, derivar = ×jω), impedancia y tensiones en cuadratura,
+  transitorio RLC (respuesta natural y forzada, energía, polos en el plano s), resonancia y Q (serie y tanque,
+  la emisora a 9 kHz), potencia activa, reactiva y aparente con la corrección del factor de potencia (y el
+  rectificador que no se deja corregir).
+- **Señales**: series de Fourier con fasores giratorios y Gibbs, la FFT con su fuga y sus ventanas (THD del
+  libro), muestreo y aliasing (700 Hz a 1 kHz), cuantificación y dither, modulación AM/FM con su espectro
+  (Bessel, Carson) y el superheterodino del FM7303 (oscilador local, FI de 10,7 MHz, imagen).
+- **Analógica**: realimentación y ganancia por ancho de banda, margen de fase (el seguidor de 52°), Bode
+  construido con polos y ceros que se arrastran, oscilador de Wien que arranca desde el ruido (recorte, diodos o
+  lámpara, con su THD), ruido y suma en cuadratura, control PID de un horno con retardo y windup.
+- **Potencia**: fuente lineal (el rectificador y el condensador se **simulan con ngspice**, con la netlist del
+  libro; rizado, pulsos de corriente, caída mínima y disipación del regulador), conmutadas buck, boost y
+  buck-boost en cámara lenta (modo continuo y discontinuo) y PWM con su filtro RC.
+- **Digital**: niveles lógicos y márgenes de ruido (3,3 V contra HC y HCT), retardo de propagación y glitches
+  (con un contador que los cuenta), metaestabilidad y el MTBF del problema 28.B.
+- **Alta frecuencia**: reflexiones en un metro de coaxial (lo que ve el osciloscopio en cada extremo), onda
+  estacionaria con la carta de Smith, redes de adaptación en L sobre la carta, antenas (dipolo, diagrama y
+  resistencia de radiación) y efecto pelicular (solución exacta con funciones de Bessel).
+
+Todo se calcula en el momento (fórmulas del libro, integración numérica, FFT, simulación por eventos o
+ngspice), no son vídeos. Las escenas siguen las reglas de rendimiento de las animaciones de componentes:
+avanzan con el tiempo real, se paran fuera de pantalla, con la ventana oculta y con «reducir movimiento», y su
+parte fija se dibuja una sola vez en caché. Algunas se manipulan directamente en el lienzo: arrastrar polos y
+ceros en el Bode, cargas y la carga de prueba en el campo eléctrico, el imán, el punto de observación de la
+onda estacionaria. Pruebas: `tests/conceptos.spec.ts`; capturas y hojas de contacto con
+`node tests/conceptos-capturas.mjs` (en `tests/capturas/conceptos/`); `tests/animaciones.mjs` y
+`tests/animaciones-hz.mjs` incluyen las escenas de conceptos (`--coleccion conceptos` para medir solo estas).
+Medido con la CPU 4 veces más lenta: el paso más el dibujo cuestan de media entre 1 y 4,3 ms por fotograma en
+los perfiles de Mac, tableta y móvil (unos 2 ms de media global), muy por debajo de los 16,7 ms de 60 Hz.
+
 ## Consolas
 
-«Consolas» en la barra lateral (`#/consolas`), o el botón «Explorar la placa» bajo las fotos de las figuras
+«Consolas» en el carril de iconos (`#/consolas`), o el botón «Explorar la placa» bajo las fotos de las figuras
 36.16 y 36.22, abre las placas base de la NES (NES-CPU-07) y de la primera Neo Geo AES (NEO-AES) en cuatro
 pestañas enlazadas entre sí:
 
@@ -188,7 +256,11 @@ pestañas enlazadas entre sí:
   referencia o chip; se desplaza arrastrando y se amplía con la rueda, el pellizco, doble clic o `+` `−` `0`.
 - **Fuentes**: créditos y licencias (OpenTendo, TAPR OHL 1.0; Board-Folk, dominio público según su README),
   qué diferencia hay entre la placa de la foto y la del esquema, y la tabla de equivalencias de chips de la
-  Neo Geo.
+  Neo Geo. La tabla dice, para cada chip de la 1.ª generación (LSPC-A0, PRO-B0, PRO-C0 y la lógica TTL), qué
+  chip lo sustituye en la 2.ª, qué señales pasan y qué cambia, con la hoja de los esquemas de SNK de donde sale
+  («MV4 h.4», «AES h.1», «NG Hw-10»…). Las fichas de la foto de la Neo Geo indican qué se ha comprobado con
+  esos documentos. Los documentos de SNK no van dentro de la aplicación; las imágenes de las hojas citadas están
+  en `/home/claude/consolas/neogeo/referencias/`.
 
 Los datos se generan con `python3 contenido/consolas.py` (también desde `generar.py`) a partir de la carpeta
 de investigación `/home/claude/consolas`; si falta, se conservan los de `web/public/consolas/`.
@@ -231,7 +303,7 @@ ofrece («Lectura de valores», «Circuito vivo», «Conexiones») y tiene «A|B
 
 ## Instrumentos
 
-«Instrumentos» en la barra lateral (`#/instrumentos`) abre un **banco de pruebas** con los dos instrumentos del
+«Instrumentos» en el carril de iconos (`#/instrumentos`) abre un **banco de pruebas** con los dos instrumentos del
 libro dibujados (no son fotos), midiendo circuitos que simula el mismo ngspice del simulador. El circuito se ve
 dibujado: en las prácticas, la figura del libro (o un esquema propio cuando la figura no lo tiene); en el banco
 libre, el esquema automático de la netlist. Se elige una punta (roja o negra de cada multímetro, sondas CH1 y CH2,
@@ -309,7 +381,7 @@ banco tarda de unos milisegundos (continua) a unos 2 s (la AM de 100 kHz, la má
 
 ## Kit FM7303
 
-«Kit FM7303» en la barra lateral (`#/fm7303`), o el botón del mismo nombre junto a los esquemas del capítulo 15
+«Kit FM7303» en el carril de iconos (`#/fm7303`), o el botón del mismo nombre junto a los esquemas del capítulo 15
 (figuras 15.25, 15.26, 15.9…) y a las secciones de bloques, puntos de prueba, alineación, averías y mapa de
 tensiones, abre el receptor entero en cuatro pestañas que comparten el mismo esquema:
 
@@ -351,6 +423,114 @@ Los datos se generan con `python3 contenido/fm7303.py` (también desde `generar.
 del sistema, que el modelo de continua reproduce el mapa de tensiones del libro. Pruebas: `tests/fm7303.spec.ts`
 (capturas en `tests/capturas/fm7303-*.png`).
 
+## Aprender con el libro: ejercicios, deducciones y progreso
+
+**Ejercicios y problemas que corrigen la respuesta.** Debajo de cada ejercicio (373) y tras el «Se pide» de cada
+problema (113) hay un panel con un campo por cada magnitud pedida. Se escribe el valor como en el papel: coma
+decimal, prefijos y unidad opcionales (`4,7 kΩ`, `4k7`, `2R2`, `2,2 µF` o `2,2u`, `20 mA`, `1,2e-3`, `−6 dB`);
+la unidad del campo se muestra a la derecha. «Comprobar» (o `Intro`) responde campo a campo:
+
+- **Correcto**, dentro de la tolerancia (la del redondeo del libro, entre el 2 % y el 6 %, o la que fija el
+  curado); también se aceptan las alternativas válidas (el valor comercial E12 frente al calculado, otro
+  redondeo), con una nota.
+- **Casi**: las cifras están bien pero sobra o falta un prefijo (o la coma está corrida), el signo está cambiado,
+  o el valor está a menos de un 10 %.
+- **No es correcto**, o «esa unidad no es de esta magnitud» (no cuenta como intento).
+
+«Pista» descubre primero el planteamiento (la fórmula o el método, sin números) y después un resultado
+intermedio; la tercera pulsación abre la solución del libro. «Ver solución» la abre en cualquier momento. Las
+preguntas que no son numéricas (elegir, explicar, deducir, diseñar) ofrecen «comparar con la solución» y, al
+verla, «¿Lo tenía bien? Sí / No». En los problemas, «Ocultar solución» tapa el análisis del libro mientras se
+intenta. De cada ejercicio se guardan los intentos, si está resuelto (a la primera, con pistas o tras ver la
+solución) y lo último escrito; «Reiniciar» lo borra.
+
+De los 486, **249 se comprueban solos** (601 campos) y 237 se comparan con la solución; todos tienen dos pistas.
+Las respuestas las saca `contenido/ejercicios.py` de las soluciones y se revisaron una a una en
+`contenido/ejercicios_curado.txt`, que manda sobre lo automático (formato al principio del fichero).
+
+**Página «Ejercicios»** (carril de iconos, `#/ejercicios`): todos por capítulos, con lo resuelto de cada uno, filtros
+(pendientes, fallados, resueltos; ejercicios o problemas; solo los que se comprueban solos) y cada uno se abre
+ahí mismo. **Repaso de fallados** (`#/ejercicios/repaso`) los recorre uno a uno con «Anterior» y «Siguiente».
+
+**Deducciones paso a paso.** Las 46 deducciones del libro se descubren de una en una: «Siguiente paso», la flecha
+`→` o la barra espaciadora (con la deducción seleccionada) o un toque sobre ella; `←` vuelve atrás y «Ver todo» la
+muestra entera. Cada una recuerda hasta dónde se llegó.
+
+**Progreso de lectura.** Una sección cuenta como leída cuando se ha visto su final y ha estado en pantalla el
+tiempo suficiente para su longitud (unos 5 s por pantalla, entre 4 y 75 s); también se marca o desmarca a mano
+con el botón ✓ junto a su título. El índice lateral muestra un anillo por capítulo, una barra por tomo y una ✓ en
+cada sección leída; la portada añade «Progreso»: el porcentaje del libro leído, los ejercicios resueltos, el
+acceso al repaso y los capítulos en curso (lectura y ejercicios de cada uno). La detección usa un
+IntersectionObserver: no hace ningún trabajo mientras se desplaza la página.
+
+Pruebas: `tests/ejercicios.spec.ts` (capturas en `tests/capturas/ejercicios-*.png`).
+
+## Calculadoras
+
+**351 fórmulas del libro, vivas.** Cada ecuación del libro que es una relación de ingeniería con uso numérico (ley de
+Ohm, divisores, constantes de tiempo, reactancias, resonancia y Q, cortes de filtros, ganancias, potencias y
+decibelios, polarización, operacionales, 555, reguladores, rizado, efecto pelicular, líneas de transmisión, ruido,
+conversión A/D, enlaces de radio, fiabilidad…) lleva debajo un botón **«Calcular»** (497 de las 911 ecuaciones; la
+misma fórmula repetida en otro capítulo también lo lleva). En el ordenador y la tableta abre la calculadora justo
+debajo de la ecuación, sin mover el texto; en el teléfono, como una hoja desde abajo que se cierra con «Atrás», un
+toque fuera o deslizando el asa. Si una ecuación reúne varias fórmulas, unas pestañas las separan.
+
+- **Cualquier variable**: «Calcular» elige la incógnita (τ, R o C de τ = R·C). 836 despejes son exactos; los 53
+  que no tienen forma cerrada (la C de una impedancia RLC, el tiempo de una senoide…) se resuelven numéricamente,
+  y si hay varias soluciones se muestra la más cercana al valor anterior y se avisa.
+- **Valores como en el papel**: coma decimal, prefijos y unidad opcionales (`4k7`, `2R2`, `100n`, `100 nF`,
+  `2,2 µ`, `1e-3`, `1 000`); `↑`/`↓` cambian el valor un 10 % (`Mayús`: ×10). El resultado se da con cuatro cifras,
+  prefijo SI y espacio fino. Un valor fuera de lo habitual en el libro (o un resultado) se marca con un aviso.
+- **El ejemplo del libro**: los valores por defecto son los del ejemplo resuelto en esa sección cuando lo hay (276
+  fórmulas), con «Valores del libro» para volver a él. El generador comprueba que la fórmula reproduce el
+  resultado impreso.
+- **Sensibilidad**: «Ver cómo depende» dibuja el resultado frente a cualquier entrada en su intervalo habitual
+  (escala logarítmica cuando abarca décadas), con la gráfica del simulador (cruz de lectura, cursores, zoom).
+- **Tarjetas de fórmulas vivas**: las 23 tarjetas con fórmulas catalogadas tienen «Calcular con la tarjeta»: cada
+  magnitud se escribe una vez y todas las fórmulas de la tarjeta se recalculan. Si una magnitud la calcula otra
+  fórmula de la tarjeta (τ = R·C para la curva de carga), «Calcularla con…» la enlaza.
+- **Página «Calculadoras»** (carril de iconos, `#/calculadoras`): todas por capítulos, búsqueda sin tildes por
+  nombre, símbolo, palabra clave, sección o «cap 33», filtro por capítulo y **favoritas** (la estrella; se guardan
+  como los marcadores). `#/calculadoras/<id>` abre una a página completa, con la gráfica y las demás fórmulas de su
+  sección.
+
+El catálogo lo escribe `contenido/formulas.py` (lo llama `generar.py`, o se ejecuta solo) a partir de las fórmulas
+curadas a mano en `contenido/formulas_cat1.py` … `formulas_cat4.py`: nombre, ecuación en un lenguaje de expresiones
+propio (sin `eval`), variables con su nombre en el libro, unidad, intervalo habitual y el ejemplo resuelto. Para
+publicarse, cada fórmula tiene que encontrar su ecuación en el libro, reproducir el ejemplo (tolerancia del
+redondeo del libro), y cada despeje tiene que volver al valor de partida; si el libro cambia, el generador lo dice.
+La aplicación solo descarga el mapa pequeño de botones (`formulas-ec.json`, unos 20 kB) al leer, y el catálogo
+completo (`formulas.json`) al abrir una calculadora. Pruebas: `tests/calculadoras.spec.ts` (capturas en
+`tests/capturas/calculadoras-*.png`).
+
+## Repaso: tarjetas y tests
+
+**Página «Repaso»** (carril de iconos, `#/repaso`). Reúne lo que hay para hoy, las aprendidas y los días seguidos de
+repaso, con un mapa de actividad de las últimas cuatro semanas.
+
+**Tarjetas del glosario.** Cada uno de los 910 términos es una tarjeta: delante el término, detrás la definición
+del glosario y los enlaces «En el libro» a sus secciones. Con «Tarjetas inversas» se estudia también al revés (de
+la definición al término: 1820 tarjetas). Mazos: todo el glosario, por tomo, por capítulo o apéndice y por tema.
+Tras ver la respuesta se elige **Otra vez · Difícil · Bien · Fácil**; cada botón dice cuándo volverá la tarjeta
+(1 min, 10 min, 4 d…). El planificador es el de Anki (SM-2): las nuevas pasan por dos pasos cortos (1 y 10 min) y
+después vuelven a intervalos de días que crecen con cada acierto; un fallo las devuelve a un paso corto y baja su
+facilidad. Se presentan como mucho las nuevas al día que se elijan (15 por defecto). Teclado: `espacio` o `Intro`
+muestra la respuesta, `1`–`4` califican (`espacio` = Bien), `Ctrl`/`⌘` `Z` deshace la última. En pantalla táctil:
+tocar la tarjeta la gira; deslizar a la derecha es «Bien» y a la izquierda «Otra vez».
+
+**Tests por capítulo.** 1028 preguntas (de 10 a 20 por capítulo y de 5 a 12 por apéndice), de opción múltiple y
+numéricas (con coma decimal y tolerancia). Los distractores recogen los errores contra los que el libro previene.
+Cada respuesta se corrige al momento con la explicación, la **cita literal del libro** y el enlace «Leer en el
+libro» a la sección o el problema de donde sale. Al final, la puntuación y la lista «Para repasar»; los fallos
+quedan en **«Repasar fallos»** hasta acertarlos. El **examen mixto** saca 10, 20, 40 o 60 preguntas al azar de los
+capítulos elegidos. Al final de cada capítulo del lector hay un botón **«Test del capítulo»**. Teclado: `1`–`5` o
+`A`–`E` eligen, `Intro` pasa a la siguiente.
+
+**Fidelidad.** Las preguntas están en `contenido/repaso/<capítulo>.json`; `contenido/repaso.py` (lo llama
+`generar.py`) no publica nada si una cita no aparece literalmente en la sección del libro a la que remite, si una
+referencia no existe o es de otro capítulo, o si el número de una pregunta numérica no está en su cita. Pruebas:
+`tests/repaso.spec.ts` (capturas en `tests/capturas/repaso-*.png`).
+
 ## Dónde se guardan los datos personales
 
 | Plataforma | Ubicación |
@@ -359,10 +539,10 @@ del sistema, que el modelo de continua reproduce el mapa de tensiones del libro.
 | macOS | `~/Library/Application Support/es.gonzalomejias.electronica/lector.json` |
 | Android | almacenamiento interno de la aplicación (se borra al desinstalarla) |
 | Linux | `~/.local/share/es.gonzalomejias.electronica/lector.json` |
-| Navegador (desarrollo) | `localStorage`, claves `epa:prefs`, `epa:posiciones`, `epa:marcadores`, `epa:notas` |
+| Navegador (desarrollo) | `localStorage`, claves `epa:prefs`, `epa:posiciones`, `epa:marcadores`, `epa:notas`, `epa:ejercicios`, `epa:leidas`, `epa:deducciones`, `epa:calc-favoritos`, `epa:repaso-tarjetas`, `epa:repaso-diario`, `epa:repaso-ajustes`, `epa:repaso-tests`, `epa:repaso-fallos`, `epa:repaso-examenes` |
 
-El fichero `lector.json` es JSON legible: para llevar marcadores y notas de un equipo a otro basta
-copiarlo con la aplicación cerrada.
+El fichero `lector.json` es JSON legible: para llevar marcadores, notas y el progreso (ejercicios, secciones
+leídas, deducciones, tarjetas y tests del repaso) de un equipo a otro basta copiarlo con la aplicación cerrada.
 
 ## Requisitos
 
@@ -1020,8 +1200,13 @@ app/
         fuentes.css          @font-face woff2 de los paquetes @fontsource (sin CDN)
         lectura.css          tipografía y bloques del libro en pantalla
       componentes/
-        Lateral.svelte       índice (barra lateral o cajón)
-        Barra.svelte         barra superior: dónde estoy, buscar, «Aa», progreso
+        Carril.svelte        carril de iconos (ordenador y tableta apaisada), del registro HERRAMIENTAS
+        Pestanas.svelte      barra inferior del teléfono y la tableta en vertical
+        MenuHerramientas.svelte  «Más» (junto al carril o como hoja en el teléfono)
+        Lateral.svelte       panel del índice junto al carril, o cajón en el teléfono
+        IndiceLibro.svelte   índice: tomos, capítulos, secciones, filtro, sección actual, teclado
+        Barra.svelte         barra superior: mostrar/ocultar índice, miga, sección anterior/siguiente, «Aa», progreso
+        MenuCapitulo.svelte  menú de la miga: secciones del capítulo y capítulos contiguos
         Ajustes.svelte       tema y tamaño del texto
         Inicio.svelte        portada: continuar leyendo, índice por tomos
         Lector.svelte        vista de un capítulo: posición, referencias, «Volver»
@@ -1049,6 +1234,8 @@ app/
         tipos.ts             tipos del contenido (ESQUEMA.md)
         datos.ts             carga del contenido, rutas de recursos, HTML de las referencias
         ruta.svelte.ts       rutas con almohadilla, historial y posición de cada entrada
+        navegacion.svelte.ts registro HERRAMIENTAS (una entrada por sección), índice oculto por vista,
+                             secciones anterior/siguiente y filtro del índice
         usuario.svelte.ts    preferencias, posiciones, marcadores y notas
         almacen.ts           Tauri plugin-store o localStorage
         buscador.ts          índice de búsqueda y fragmentos

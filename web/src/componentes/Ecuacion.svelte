@@ -2,6 +2,7 @@
   // Display equation: an SVG rendered by Typst, painted with the text colour through a mask.
   import type { BEc } from '../lib/tipos';
   import { prepararHtml, url, urlCss } from '../lib/datos';
+  import BotonCalcular from './calculadoras/BotonCalcular.svelte';
 
   let { bloque, indice }: { bloque: BEc; indice?: number } = $props();
 
@@ -20,4 +21,5 @@
   <div class="ec-marco">
     <img class="m ec-img" {src} alt={bloque.fuente} title={bloque.fuente} style={estilo} draggable="false" />
   </div>
+  <BotonCalcular svg={bloque.svg} />
 </div>

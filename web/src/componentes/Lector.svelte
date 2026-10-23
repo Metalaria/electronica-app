@@ -17,8 +17,10 @@
   import { colorBloque } from '../lib/color';
   import { anchoColumna, trozoDe, trozosDe } from '../lib/trozos';
   import { alInactivo, precargar, refsCitadas } from '../lib/precarga';
+  import { seguirLectura } from '../lib/lectura';
   import Bloques from './Bloques.svelte';
   import Icono from './Icono.svelte';
+  import BotonTest from './repaso/BotonTest.svelte';
 
   let { parte }: { parte: string } = $props();
 
@@ -277,9 +279,19 @@
     app.progreso = alto > 0 ? Math.min(1, Math.max(0, window.scrollY / alto)) : 0;
 
     // Section being read: the one of the chunk under the reading line (chunks start at sections).
-    const t = trozoActual(barra + 90);
+    let t = trozoActual(barra + 90);
+    let linea = barra + 90;
+    // At the end of the page a short last section never reaches the reading line: take the last section
+    // that starts in the upper half of the screen.
+    if (alto > 0 && window.scrollY >= alto - 4) {
+      const mitad = window.innerHeight / 2;
+      linea = Math.max(linea, mitad);
+      for (const x of elTrozos()) {
+        if (x.dataset.seccion && x.getBoundingClientRect().top < mitad) t = x;
+      }
+    }
     const label = t?.dataset.seccion ?? '';
-    if (label && t && t.getBoundingClientRect().top <= barra + 90) {
+    if (label && t && t.getBoundingClientRect().top <= linea) {
       if (app.seccion?.label !== label || app.seccion.parte !== parte) {
         const s = secciones.find((x) => x.label === label);
         const h = document.getElementById(label);
@@ -414,6 +426,13 @@
     for (const t of elTrozos()) observador.observe(t);
   });
 
+  // Sections read (aprender): one IntersectionObserver over the chunks, nothing on scroll.
+  $effect(() => {
+    if (!cuerpo || !trozos.length) return;
+    const c = cuerpo;
+    return untrack(() => seguirLectura(c, parte, barra));
+  });
+
   // Every navigation that lands on this part positions the view.
   $effect(() => {
     if (!datos || !cuerpo) return;
@@ -507,6 +526,7 @@
       {/each}
     </div>
 
+    <BotonTest {parte} />
     <nav class="contiguos" aria-label="Partes contiguas">
       {#if anterior}
         <a class="prev" href={hrefParte(anterior)}>
@@ -760,7 +780,7 @@
   .volver {
     position: fixed;
     left: 50%;
-    bottom: calc(18px + env(safe-area-inset-bottom));
+    bottom: calc(18px + var(--hueco-inferior));
     z-index: 25;
     display: inline-flex;
     align-items: center;
