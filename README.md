@@ -994,7 +994,7 @@ source ~/.zshrc
 6. Destinos de Rust para Android (en Windows y en macOS):
 
 ```sh
-rustup target add aarch64-linux-android armv7-linux-androideabi i686-linux-android x86_64-linux-android
+rustup target add aarch64-linux-android
 ```
 
 7. Clave de firma. La clave de la aplicación (`electronica-release.jks`) se entrega aparte, fuera del
@@ -1056,10 +1056,11 @@ node scripts/tauri.mjs android init
 npm run android:preparar
 ```
 
-10. Compilar el APK (64 y 32 bits ARM, que cubren cualquier teléfono):
+10. Compilar el APK (solo ARM de 64 bits, la arquitectura de la Xiaomi Pad 6, el Pixel 8 Pro y cualquier
+    Android de 2017 en adelante; un Android de 32 bits no podría instalarlo):
 
 ```sh
-node scripts/tauri.mjs android build --apk --target aarch64 armv7
+node scripts/tauri.mjs android build --apk --target aarch64
 ```
 
    El APK firmado queda en
@@ -1102,7 +1103,7 @@ a mano desde la pestaña «Actions». Tiene cuatro trabajos:
 |---|---|---|
 | Windows (.exe y .msi) | `windows-latest` | `Electronica-Windows`: `Electronica-<versión>-windows-x64-setup.exe` y `…-windows-x64.msi` |
 | macOS (.dmg universal) | `macos-latest` | `Electronica-macOS`: `Electronica-<versión>-macos-universal.dmg` (Apple Silicon e Intel) |
-| Android (.apk firmado) | `ubuntu-latest` | `Electronica-Android`: `Electronica-<versión>-android.apk` (arm64-v8a y armeabi-v7a) |
+| Android (.apk firmado) | `ubuntu-latest` | `Electronica-Android`: `Electronica-<versión>-android.apk` (arm64-v8a) |
 | Publicar en Releases | `ubuntu-latest` | solo con etiquetas `v…`: una «Release» con los cuatro instaladores y `SHA256SUMS.txt` |
 
 Cada artefacto incluye un fichero `SHA256SUMS-…txt` con las sumas de comprobación. El trabajo de Android

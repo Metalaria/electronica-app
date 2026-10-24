@@ -268,7 +268,9 @@ jobs:
       - name: Set up Rust (Android targets)
         uses: dtolnay/rust-toolchain@stable
         with:
-          targets: aarch64-linux-android,armv7-linux-androideabi,i686-linux-android,x86_64-linux-android
+          # 64-bit ARM only: the owner's devices (Xiaomi Pad 6, Pixel 8 Pro) are arm64, and the Pixel 8 Pro
+          # cannot even run 32-bit code; one Rust target halves the longest step of this job.
+          targets: aarch64-linux-android
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
@@ -347,12 +349,12 @@ jobs:
           ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
         run: npm run android:preparar
 
-      - name: Build APK (arm64-v8a + armeabi-v7a)
+      - name: Build APK (arm64-v8a)
         working-directory: web
         run: |
           # Gradle downloads its distribution and dependencies; retry once on a transient failure.
           for attempt in 1 2; do
-            if npm run tauri -- android build --apk --target aarch64 armv7 --ci; then exit 0; fi
+            if npm run tauri -- android build --apk --target aarch64 --ci; then exit 0; fi
             echo "::warning::Intento $attempt fallido; se reintenta."
             sleep 15
           done
@@ -377,7 +379,7 @@ jobs:
           else
             echo "::warning::No se encontró apksigner; no se comprueba la firma."
           fi
-          unzip -l "$apk" | grep -E 'lib/(arm64-v8a|armeabi-v7a)/'
+          unzip -l "$apk" | grep -E 'lib/arm64-v8a/'
           mkdir -p salida
           cp "$apk" "salida/Electronica-${VERSION}-android.apk"
           (cd salida && sums="$(sha256sum -- *)" && printf '%s\n' "$sums" | tee SHA256SUMS-android.txt)
