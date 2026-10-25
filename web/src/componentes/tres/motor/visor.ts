@@ -278,17 +278,9 @@ export class Visor {
           const col = (mat.userData.corte as string | undefined) ?? c ?? '#' + new Color(mat.color ?? 0x888888).multiplyScalar(0.72).getHexString();
           let mt = this.matTapas.get(col);
           if (!mt) {
+            // Flat, unlit cut colour. A hatched section (diagonal lines, as in a technical drawing) was tried in
+            // 0.7.0 and dropped: on small parts the lines hid the inside the cut is meant to show.
             mt = new MeshBasicMaterial({ color: new Color(col), side: BackSide, clippingPlanes: [this.plano] });
-            // Section hatching (as in a technical drawing): fine diagonal lines in screen space, so a cut
-            // face never reads as a lit surface of the solid.
-            const paso = (9 * this.renderer.getPixelRatio()).toFixed(1);
-            mt.onBeforeCompile = (sh) => {
-              sh.fragmentShader = sh.fragmentShader.replace(
-                '#include <dithering_fragment>',
-                `#include <dithering_fragment>\n\tif (mod(gl_FragCoord.x + gl_FragCoord.y, ${paso}) < ${paso} * 0.2) gl_FragColor.rgb *= 0.8;`,
-              );
-            };
-            mt.customProgramCacheKey = () => `tapa-rayada-${paso}`;
             this.matTapas.set(col, mt);
           }
           let tapa: Mesh;

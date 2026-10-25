@@ -1,13 +1,15 @@
 <script lang="ts">
-  // «2D | 3D» switch of the component pages: the animated scene or the physical model. The choice is
-  // remembered (compartir.svelte.ts) and applies to every component page and to the gallery.
+  // «Animación | Pieza 3D» switch of the component pages: the animated scene (often a circuit, not a
+  // drawing of the part) or the physical model of the part. Named by what each shows, because «2D | 3D»
+  // suggested the same thing in two styles. The choice is remembered (compartir.svelte.ts) and applies to
+  // every component page and to the gallery.
   import { vista3d, ponerVista } from './compartir.svelte';
 
   let { deshabilitado3d = false, titulo = '' }: { deshabilitado3d?: boolean; titulo?: string } = $props();
 </script>
 
 <div class="conmutador" role="radiogroup" aria-label="Vista del componente">
-  <button type="button" role="radio" aria-checked={vista3d.modo === '2d' || deshabilitado3d} data-vista="2d" onclick={() => ponerVista('2d')} title="Animación de cómo funciona">2D</button>
+  <button type="button" role="radio" aria-checked={vista3d.modo === '2d' || deshabilitado3d} data-vista="2d" onclick={() => ponerVista('2d')} title="Animación de cómo funciona">Animación</button>
   <button
     type="button"
     role="radio"
@@ -15,7 +17,7 @@
     data-vista="3d"
     disabled={deshabilitado3d}
     onclick={() => ponerVista('3d')}
-    title={deshabilitado3d ? titulo || 'Sin vista 3D en este dispositivo' : 'Modelo 3D: cómo es por fuera y por dentro'}>3D</button
+    title={deshabilitado3d ? titulo || 'Sin vista 3D en este dispositivo' : 'Modelo 3D: cómo es la pieza por fuera y por dentro'}>Pieza 3D</button
   >
 </div>
 
@@ -38,7 +40,7 @@
     color: var(--tinta-suave);
     font-size: 15px;
     font-weight: 700;
-    letter-spacing: 0.02em;
+    white-space: nowrap;
     cursor: pointer;
   }
   button[aria-checked='true'] {

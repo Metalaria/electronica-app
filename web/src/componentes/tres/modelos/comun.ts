@@ -6,6 +6,7 @@
 import {
   Box3,
   BufferGeometry,
+  Float32BufferAttribute,
   CanvasTexture,
   Color,
   Curve,
@@ -224,6 +225,66 @@ export function caja(ctx: Ctx, w: number, d: number, h: number, r = 0): BufferGe
   const rr = Math.min(r, w / 2 - 1e-3, d / 2 - 1e-3, h / 2 - 1e-3);
   const clave = `caja:${w.toFixed(3)}:${d.toFixed(3)}:${h.toFixed(3)}:${rr.toFixed(3)}:${ctx.bajo}`;
   return ctx.rec.geometria(clave, () => (rr > 0.005 ? new RoundedBoxGeometry(w, d, h, ctx.bajo ? 1 : 2, rr) : new RoundedBoxGeometry(w, d, h, 1, 0.001)));
+}
+
+/**
+ * A closed cup (a box with a rectangular pocket open on its −X face), as one watertight solid: the
+ * wrap-around end terminations of chip parts, which cover the end of the substrate on five sides. Outer box
+ * x ∈ [0, largo], y ∈ [−ancho/2, ancho/2], z ∈ [z0, z1]; pocket x ∈ [0, largo − fondo], y ∈ [−bolsa/2,
+ * bolsa/2], z ∈ [c0, c1] with z0 < c0 < c1 < z1. Being one solid (no box hidden inside another), a cutaway
+ * shows the metal as a U around the substrate instead of an empty-looking shell.
+ */
+export function copa(ctx: Ctx, largo: number, ancho: number, z0: number, z1: number, fondo: number, bolsa: number, c0: number, c1: number): BufferGeometry {
+  const clave = `copa:${[largo, ancho, z0, z1, fondo, bolsa, c0, c1].map((v) => v.toFixed(4)).join(':')}`;
+  return ctx.rec.geometria(clave, () => {
+    const pos: number[] = [];
+    const nor: number[] = [];
+    type P = [number, number, number];
+    // One quad with its outward normal; the winding is fixed from the normal, so callers need not care.
+    const quad = (a: P, b: P, c: P, d: P, n: P) => {
+      const [ux, uy, uz] = [b[0] - a[0], b[1] - a[1], b[2] - a[2]];
+      const [vx, vy, vz] = [c[0] - a[0], c[1] - a[1], c[2] - a[2]];
+      const dot = (uy * vz - uz * vy) * n[0] + (uz * vx - ux * vz) * n[1] + (ux * vy - uy * vx) * n[2];
+      const tri = dot >= 0 ? [a, b, c, a, c, d] : [a, c, b, a, d, c];
+      for (const p of tri) {
+        pos.push(...p);
+        nor.push(...n);
+      }
+    };
+    // Axis-aligned rectangle on a plane: eje 0 → x = k (spans y, z), 1 → y = k (x, z), 2 → z = k (x, y).
+    const rect = (eje: 0 | 1 | 2, k: number, a0: number, a1: number, b0: number, b1: number, signo: 1 | -1) => {
+      const punto = (a: number, b: number): P => (eje === 0 ? [k, a, b] : eje === 1 ? [a, k, b] : [a, b, k]);
+      const n: P = [0, 0, 0];
+      n[eje] = signo;
+      quad(punto(a0, b0), punto(a1, b0), punto(a1, b1), punto(a0, b1), n);
+    };
+    const y = ancho / 2;
+    const yi = bolsa / 2;
+    const xe = largo - fondo;
+    // outside
+    rect(0, largo, -y, y, z0, z1, 1);
+    rect(1, y, 0, largo, z0, z1, 1);
+    rect(1, -y, 0, largo, z0, z1, -1);
+    rect(2, z1, 0, largo, -y, y, 1);
+    rect(2, z0, 0, largo, -y, y, -1);
+    // the open face (x = 0): the outer rectangle minus the pocket's mouth
+    rect(0, 0, -y, y, z0, c0, -1);
+    rect(0, 0, -y, y, c1, z1, -1);
+    rect(0, 0, -y, -yi, c0, c1, -1);
+    rect(0, 0, yi, y, c0, c1, -1);
+    // the pocket, its faces looking into it
+    rect(0, xe, -yi, yi, c0, c1, -1);
+    rect(1, yi, 0, xe, c0, c1, -1);
+    rect(1, -yi, 0, xe, c0, c1, 1);
+    rect(2, c1, 0, xe, -yi, yi, -1);
+    rect(2, c0, 0, xe, -yi, yi, 1);
+    const g = new BufferGeometry();
+    g.setAttribute('position', new Float32BufferAttribute(pos, 3));
+    g.setAttribute('normal', new Float32BufferAttribute(nor, 3));
+    g.computeBoundingBox();
+    g.computeBoundingSphere();
+    return g;
+  });
 }
 
 /** Cylinder along Z (base at z = 0). */

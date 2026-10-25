@@ -235,7 +235,7 @@
     </ul>
     <p class="nota">
       No se sincroniza (es propio de cada dispositivo): tema y tamaño de letra, el índice abierto o cerrado en cada
-      vista, la elección 2D/3D de los componentes, el circuito libre del simulador y estos ajustes. Las eliminaciones
+      vista, la elección entre animación y pieza 3D de los componentes, el circuito libre del simulador y estos ajustes. Las eliminaciones
       viajan como «lápidas» que se borran a los 90 días: un dispositivo que pase más tiempo sin sincronizar podría
       recuperar algo borrado.
     </p>

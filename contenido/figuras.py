@@ -8,7 +8,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 from PIL import Image, ImageOps
 
-FIG_VERSION = '3'
+FIG_VERSION = '4'  # 4: join_numbers looked at the whole previous chunk, not its last number
 MAX_PX = 1600
 JPEG_QUALITY = 85
 NUM = re.compile(r'(-?\d+\.\d{3,})')
@@ -33,11 +33,20 @@ def fmt(v):
     return '-' + s if neg else s
 
 
+LAST_NUMBER = re.compile(r'[-+]?(?:\d+\.?\d*|\.\d+)$')
+
+
 def join_numbers(nums, prev=''):
+    """Numbers of a path command with the fewest separators. A space is needed unless the next number
+    starts with '-', or starts with '.' right after a number that already has a decimal point ('.5.3' is
+    .5 then .3). `prev` is the text written before: only its LAST number counts — '1.2-7' ends in -7, which
+    has no point, so '.5' after it needs a space (writing '1.2-7.5' would turn -7 and .5 into -7.5)."""
     out = []
     for s in nums:
         last = out[-1] if out else prev
-        if last and not (s.startswith('-') or (s.startswith('.') and '.' in last.split(' ')[-1])):
+        m = LAST_NUMBER.search(last) if last else None
+        tail = m.group(0) if m else ''
+        if last and not (s.startswith('-') or (s.startswith('.') and '.' in tail)):
             out.append(' ')
         out.append(s)
     return ''.join(out)

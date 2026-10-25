@@ -1,7 +1,7 @@
 // The 3D component viewer on touch screens and small GPUs (0.7): a two-finger pinch on the model (also when it
 // starts on a label) zooms the model and never the page; the camera never gets inside the model; the depth
 // range is tight (depth precision on mobile GPUs); a label keeps its side while the model turns (no flicker);
-// the cut faces are drawn (hatched caps) and every model passes the coplanar-faces audit
+// the cut faces are drawn (flat caps) and every model passes the coplanar-faces audit
 // (tests/modelos3d-auditoria.mjs, run separately).
 import { expect, test, type Page } from '@playwright/test';
 
@@ -109,7 +109,7 @@ test('una etiqueta no cambia de lado a cada paso al girar el modelo (LDR)', asyn
   for (const c of cambios) expect(c).toBeLessThanOrEqual(1);
 });
 
-test('el corte dibuja las caras cortadas (tapas rayadas) del SMD', async ({ page }) => {
+test('el corte dibuja las caras cortadas (tapas) del SMD', async ({ page }) => {
   await abrir(page, 'resistencia-smd');
   await page.click('[data-control="corte"]');
   await page.waitForTimeout(800);

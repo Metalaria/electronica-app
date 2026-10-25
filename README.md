@@ -65,7 +65,7 @@ esquemas (fase 5) está en la versión 0.7.
 - **Componentes animados**: 39 animaciones interactivas de cómo funciona cada componente por dentro, enlazadas
   con sus secciones y figuras (botón «Ver animación» en el libro; ver más abajo).
 - **Componentes en 3D**: 39 modelos tridimensionales de los componentes del libro, con corte, explosión y
-  etiquetas, y el interruptor «2D | 3D» en cada animación de componente (ver más abajo).
+  etiquetas, y el interruptor «Animación | Pieza 3D» en cada animación de componente (ver más abajo).
 - **Conceptos animados**: 34 animaciones interactivas de la teoría (fasores, Fourier, aliasing, realimentación,
   conmutadas, metaestabilidad, líneas de transmisión…) calculadas en el momento con los números del libro, con
   el mismo botón «Ver animación» junto a sus secciones y figuras (ver más abajo).
@@ -326,8 +326,9 @@ los perfiles de Mac, tableta y móvil (unos 2 ms de media global), muy por debaj
 
 ## Componentes en 3D
 
-En «Componentes» (carril de iconos) y en cada animación de componente hay un interruptor **2D | 3D**: 2D es la
-animación de siempre; 3D es el componente físico, en tres dimensiones, generado con sus medidas reales (milímetros
+En «Componentes» (carril de iconos) y en cada animación de componente hay un interruptor **Animación | Pieza 3D**
+(«2D | 3D» hasta la 0.7.0): «Animación» es la animación de siempre, que a menudo es un circuito y no un dibujo de
+la pieza; «Pieza 3D» es el componente físico, en tres dimensiones, generado con sus medidas reales (milímetros
 de la norma del encapsulado) y con lo que cuenta el libro de su construcción. La elección se recuerda en el
 dispositivo: si se deja en 3D, la galería pasa a ser el **catálogo de modelos** y las animaciones se abren en 3D.
 
@@ -1578,7 +1579,7 @@ app/
         proyectos/           Proyectos KiCad: placa en 3D (three.js, modelos de tres/modelos) y en 2D, esquema,
                              simulación y comprobaciones de las siete placas (ver «Proyectos KiCad» y ESQUEMA.md)
         tres/                componentes en 3D: biblioteca de modelos paramétricos (modelos/, crearModelo),
-                             visor (motor/), interruptor 2D | 3D, catálogo, página de modelo, «Ver en 3D»
+                             visor (motor/), interruptor Animación | Pieza 3D, catálogo, página de modelo, «Ver en 3D»
         Insignia.svelte, Icono.svelte
       lib/
         tipos.ts             tipos del contenido (ESQUEMA.md)

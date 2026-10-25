@@ -8,6 +8,7 @@ import {
   caja,
   cilindro,
   colocar,
+  copa,
   finPatilla,
   hilo,
   malla,
@@ -317,10 +318,17 @@ export function resistenciaSmd(ctx: Ctx, p: Parametros): { g: Group; datos: Part
   const hRes = H * 0.08;
   const hCapa = H - hSus - hRes;
   const largoInt = L - 2 * t;
+  // Metal of the wrap-around terminations (a cup over each end of the substrate) and the hairline left
+  // between the substrate and the cup's pocket, so that no two faces lie on the same plane: a cutaway then
+  // shows alumina inside a U of metal, never an empty-looking shell.
+  const e = Math.max(0.02, Math.min(0.04, t * 0.08));
+  const holgura = 0.004;
+  const z0 = e; // the body rests on the bottom of the terminations
 
-  // Alumina substrate.
-  const sus = malla(caja(ctx, L - 0.02, W, hSus, Math.min(0.03, hSus * 0.2)), material(ctx, ACABADOS.alumina));
-  g.add(colocar(parte('sustrato', { etiqueta: { texto: 'Sustrato de alúmina (cerámica)', ref: 'sec-2.2.5', punto: [0, -W / 2, hSus / 2] }, interior: true }, sus), 0, 0, hSus / 2));
+  // Alumina substrate: runs into both terminations, up to their end walls.
+  const largoSus = L - 2 * e - 2 * holgura;
+  const sus = malla(caja(ctx, largoSus, W, hSus, Math.min(0.03, hSus * 0.2)), material(ctx, ACABADOS.alumina));
+  g.add(colocar(parte('sustrato', { etiqueta: { texto: 'Sustrato de alúmina (cerámica)', ref: 'sec-2.2.5', punto: [0, -W / 2, hSus / 2] }, interior: true }, sus), 0, 0, z0 + hSus / 2));
 
   // Resistive thick film with its laser trim: the trim is a slot cut through the film from its front edge
   // to the middle, so the white alumina shows through it. The film is one extruded solid with the slot as a
@@ -356,12 +364,14 @@ export function resistenciaSmd(ctx: Ctx, p: Parametros): { g: Group; datos: Part
       }, res),
       0,
       0,
-      hSus + hRes / 2,
+      z0 + hSus + hRes / 2,
     ),
   );
 
-  // Protective overglaze (black) with the marking: from the alumina up, covering the film.
-  const capa = malla(caja(ctx, largoInt, W * 0.92, hCapa + hRes, Math.min(0.04, hCapa * 0.45)), material(ctx, { color: '#16171a', rugosidad: 0.45, corte: '#2a2b30' }));
+  // Protective overglaze (black) with the marking: from the alumina up, covering the film, stopping a hair
+  // short of the terminations.
+  const largoCapa = largoInt - 2 * holgura;
+  const capa = malla(caja(ctx, largoCapa, W * 0.92, hCapa + hRes, Math.min(0.04, hCapa * 0.45)), material(ctx, { color: '#16171a', rugosidad: 0.45, corte: '#2a2b30' }));
   const grupoCapa = parte('recubrimiento', {
     etiqueta: { texto: codigo ? `Recubrimiento protector con el código «${codigo}» → ${textoValor(valorCodigo, 'Ω')}` : 'Recubrimiento protector (sin marcar: 0402)', ref: 'sec-2.5', punto: [0, W * 0.3, (hCapa + hRes) / 2] },
     explosion: [0, 0, H * 3],
@@ -371,21 +381,28 @@ export function resistenciaSmd(ctx: Ctx, p: Parametros): { g: Group; datos: Part
     tx.position.z = (hCapa + hRes) / 2;
     grupoCapa.add(tx);
   }
-  g.add(colocar(grupoCapa, 0, 0, hSus + (hRes + hCapa) / 2));
+  g.add(colocar(grupoCapa, 0, 0, z0 + hSus + (hRes + hCapa) / 2));
 
-  // Wrap-around terminations: tin over nickel over the silver base.
+  // Wrap-around terminations: tin over nickel over the silver base. Each is a cup whose pocket holds the
+  // end of the substrate and the tip of the film; above them, up to its top, it is solid metal.
   const matTerm = material(ctx, { ...ACABADOS.estanoMate, corte: '#8d9095' });
+  const zTope = z0 + H + 0.03;
+  const geoTerm = copa(ctx, t, W + 2 * e, 0, zTope, e, W + 2 * holgura, z0 - holgura, z0 + hSus + hRes + holgura);
   for (const s of [-1, 1]) {
-    const term = malla(caja(ctx, t, W + 0.02, H + 0.03, Math.min(0.05, t * 0.25)), matTerm);
+    const term = malla(geoTerm, matTerm);
     g.add(
       colocar(
         parte(s < 0 ? 'terminacion-1' : 'terminacion-2', {
-          etiqueta: s < 0 ? { texto: 'Terminación envolvente: plata, barrera de níquel y estaño', ref: 'sec-2.2.5', punto: [-L / 2 + t / 2, -W / 2, H * 0.6] } : undefined,
+          etiqueta: s < 0 ? { texto: 'Terminación envolvente: plata, barrera de níquel y estaño', ref: 'sec-2.2.5', punto: [t / 2, -(W / 2 + e), zTope * 0.6] } : undefined,
           explosion: [s * L * 0.55, 0, 0],
         }, term),
-        s * (L / 2 - t / 2),
+        // the cup opens towards the middle of the part: +X side as built, the −X side turned half round
+        s * (L / 2 - t),
         0,
-        (H + 0.03) / 2,
+        0,
+        0,
+        0,
+        s < 0 ? Math.PI : 0,
       ),
     );
   }
@@ -393,7 +410,7 @@ export function resistenciaSmd(ctx: Ctx, p: Parametros): { g: Group; datos: Part
   return {
     g,
     datos: {
-      huella: { pads: padsChip(L, W, t), ancho: L, fondo: W, alto: H, origenKicad: [0, 0], kicad: `Resistor_SMD:R_${tam}` },
+      huella: { pads: padsChip(L, W, t), ancho: L, fondo: W + 2 * e, alto: zTope, origenKicad: [0, 0], kicad: `Resistor_SMD:R_${tam}` },
       marcado: codigo,
       cortes: [{ nombre: 'Longitudinal', normal: [0, 1, 0], min: -W / 2, max: W / 2, inicial: 0 }],
       explosionable: true,

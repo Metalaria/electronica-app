@@ -490,7 +490,7 @@ reglas de rendimiento de las animaciones de componentes.
 
 Procedural, parametric three.js models of the components of chapters 2–10 and 45 (no model files: every
 model is generated in code from standard package dimensions and the book's descriptions), the viewer, and the
-«2D | 3D» switch of the «Componentes» pages. three.js `0.186.1` (exact), loaded only when a 3D view opens.
+«Animación | Pieza 3D» switch (labelled «2D | 3D» up to 0.7.0) of the «Componentes» pages. three.js `0.186.1` (exact), loaded only when a 3D view opens.
 
 ```
 modelos/            the library (also used by the KiCad board views)
@@ -515,7 +515,7 @@ motor/              soporte.ts (WebGL2 check without three.js), estudio.ts (ligh
 Vista3D.svelte      light wrapper: WebGL2 check, lazy import of Visor3D.svelte, failure → callback
 Visor3D.svelte      canvas, label layer, toolbar (initial view, cut + plane slider + orientation, explosion,
                     labels); window.__epaVisor3d = { visor, datos } for the tests
-Conmutador.svelte   «2D | 3D»; compartir.svelte.ts: the remembered choice (store key `componentes-vista`) and
+Conmutador.svelte   «Animación | Pieza 3D»; compartir.svelte.ts: the remembered choice (store key `componentes-vista`) and
                     the context through which a scene shares its parameters (compartir3d)
 escenas3d.ts        animation id → model options from the scene's shared parameters
 catalogo3d.ts       MODELOS_3D (book labels, related animations, catalogue mounting), modelosDe(label)
@@ -574,8 +574,8 @@ camera never enters (zooming in stops at its surface; panning still works). Gest
 canvas's container (`zona`), so a drag or a pinch that starts on a label turns or zooms the model; the container
 has `touch-action: none` and two-finger `touchstart`/`touchmove` are cancelled there (a pinch never zooms the
 page; page zoom elsewhere is untouched); a drag that ends on a label does not follow its link. Cut faces: the
-caps (back faces of the clipped solids in flat colour) are hatched in screen space (`onBeforeCompile`), so a
-section never reads as a lit surface; solids that sit inside others show as sections inside them (the SMD's
+caps (back faces of the clipped solids) are drawn in a flat, unlit cut colour (the 0.7.0 screen-space hatching
+was dropped in 0.7.1: on small parts it hid the inside); solids that sit inside others show as sections inside them (the SMD's
 substrate inside its terminations). Disposal:
 model resources (`liberarModelo`), cap materials, board, studio, renderer and `forceContextLoss()` on unmount.
 
