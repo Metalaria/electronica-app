@@ -2,6 +2,7 @@
   // Ceramic capacitors (book 3.4.1 and 3.7): the disc, the multilayer chip (MLCC) with its interleaved
   // electrodes, and the DC-bias effect of class 2 dielectrics: ferroelectric domains aligned by the DC field
   // stop contributing, and a 10 µF X7R 0805 of 16 V keeps only 30–50 % of its capacitance at 5 V.
+  import { compartir3d } from '../../tres/compartir.svelte';
   import Escena from '../ui/Escena.svelte';
   import Marco from '../ui/Marco.svelte';
   import Deslizador from '../ui/Deslizador.svelte';
@@ -232,6 +233,9 @@
           { e: 'Dieléctrico', v: 'cerámica de clase 2' },
         ],
   );
+
+  // 3D view of the page (componentes/tres): the model follows these controls.
+  compartir3d(() => ({ modo, clase }));
 </script>
 
 <Marco {reloj} {texto} {lecturas} leyenda={modo === 'mlcc' ? ['campoE'] : ['campoE']}>

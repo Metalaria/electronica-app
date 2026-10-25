@@ -2,6 +2,7 @@
   // Rectifiers (book 5.6): half wave, centre-tapped full wave and bridge, with the diodes that conduct in each
   // half cycle and the filter capacitor that charges in short current pulses at the peaks. Book numbers:
   // 12 V rms → 16,97 V peak; after a bridge (two drops of 0,7 V) 15,57 V.
+  import { compartir3d } from '../../tres/compartir.svelte';
   import Escena from '../ui/Escena.svelte';
   import Marco from '../ui/Marco.svelte';
   import Deslizador from '../ui/Deslizador.svelte';
@@ -306,6 +307,9 @@
     { e: 'Pico de corriente por diodo', v: si(ipico, 'A', 3), c: pal.corriente },
     { e: 'Frecuencia del rizado', v: tipo === 'media' ? '50 Hz' : '100 Hz' },
   ]);
+
+  // 3D view of the page (componentes/tres): the model follows these controls.
+  compartir3d(() => ({ tipo }));
 </script>
 
 <Marco {reloj} {texto} {lecturas} leyenda={['electron', 'corriente']}>

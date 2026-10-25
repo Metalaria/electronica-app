@@ -2,6 +2,7 @@
   // Optocoupler (book 19.1 and 44.4): an infrared LED and a phototransistor face each other across a
   // transparent insulating barrier. Only light crosses: the two circuits keep separate grounds. The current
   // transfer ratio CTR = I_C/I_F, and the output saturates when the load cannot take CTR·I_F.
+  import { compartir3d } from '../../tres/compartir.svelte';
   import Escena from '../ui/Escena.svelte';
   import Marco from '../ui/Marco.svelte';
   import Deslizador from '../ui/Deslizador.svelte';
@@ -153,6 +154,9 @@
     { e: 'CTR efectivo', v: IF > 0 ? pct(IC / IF, 0) : '—' },
     { e: 'Estado', v: saturado ? 'saturado' : IC < 1e-5 ? 'cortado' : 'activo' },
   ]);
+
+  // 3D view of the page (componentes/tres): the model follows these controls.
+  compartir3d(() => ({ IF }));
 </script>
 
 <Marco {reloj} {texto} {lecturas} leyenda={['foton', 'electron', 'corriente']}>

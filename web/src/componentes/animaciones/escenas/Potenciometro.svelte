@@ -1,6 +1,7 @@
 <script lang="ts">
   // Potentiometer, rheostat and trimmer (book 2.11): the wiper splits the track; linear (B) or logarithmic
   // (A) law, and the load that bends the law (10 kΩ at 50 % with a 10 kΩ load gives 40 %, not 50 %).
+  import { compartir3d } from '../../tres/compartir.svelte';
   import Escena from '../ui/Escena.svelte';
   import Marco from '../ui/Marco.svelte';
   import Deslizador from '../ui/Deslizador.svelte';
@@ -353,6 +354,9 @@
           { e: 'R de salida', v: si(paralelo(rBaja, rAlta), 'Ω', 3) },
         ],
   );
+
+  // 3D view of the page (componentes/tres): the model follows these controls.
+  compartir3d(() => ({ modo, x, ley }));
 </script>
 
 <Marco {reloj} {texto} {lecturas} leyenda={['electron']}>

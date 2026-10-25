@@ -48,6 +48,7 @@ export const HERRAMIENTAS: Herramienta[] = [
   { id: 'instrumentos', ruta: '#/instrumentos', icono: 'instrumentos', etiqueta: 'Instrumentos' },
   { id: 'fm7303', ruta: '#/fm7303', icono: 'radio', etiqueta: 'Kit FM7303' },
   { id: 'consolas', ruta: '#/consolas', icono: 'consolas', etiqueta: 'Consolas' },
+  { id: 'proyectos', ruta: '#/proyectos', icono: 'placa', etiqueta: 'Proyectos KiCad', corta: 'Proyectos' },
   { id: 'glosario', ruta: '#/glosario', icono: 'glosario', etiqueta: 'Glosario' },
   {
     id: 'marcadores',

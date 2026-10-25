@@ -1,6 +1,7 @@
 <script lang="ts">
   // How resistors are built (book 2.2): carbon film and metal film with their helical trim, wirewound,
   // and SMD thick film, drawn in cut-away with the electrons following the resistive path.
+  import { compartir3d } from '../../tres/compartir.svelte';
   import Escena from '../ui/Escena.svelte';
   import Marco from '../ui/Marco.svelte';
   import Deslizador from '../ui/Deslizador.svelte';
@@ -394,6 +395,9 @@
         ]
       : []),
   ]);
+
+  // 3D view of the page (componentes/tres): the model follows these controls.
+  compartir3d(() => ({ tipo }));
 </script>
 
 <Marco {reloj} {texto} {lecturas} leyenda={['electron']}>

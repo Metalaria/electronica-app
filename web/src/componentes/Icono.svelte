@@ -35,6 +35,7 @@
   import AudioWaveform from '@lucide/svelte/icons/audio-waveform';
   import Gauge from '@lucide/svelte/icons/gauge';
   import Gamepad2 from '@lucide/svelte/icons/gamepad-2';
+  import CircuitBoard from '@lucide/svelte/icons/circuit-board';
   import Radio from '@lucide/svelte/icons/radio';
   import GraduationCap from '@lucide/svelte/icons/graduation-cap';
   import Lightbulb from '@lucide/svelte/icons/lightbulb';
@@ -89,6 +90,7 @@
     conceptos: AudioWaveform,
     instrumentos: Gauge,
     consolas: Gamepad2,
+    placa: CircuitBoard,
     radio: Radio,
     aprender: GraduationCap,
     pista: Lightbulb,

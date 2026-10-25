@@ -1,7 +1,7 @@
 <script lang="ts">
   // Page of one animation (component or concept): title, links to the book sections it illustrates, the
   // scene, and navigation within its collection.
-  import { onMount, type Component } from 'svelte';
+  import { onMount, untrack, type Component } from 'svelte';
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import ChevronLeft from '@lucide/svelte/icons/chevron-left';
   import ChevronRight from '@lucide/svelte/icons/chevron-right';
@@ -10,6 +10,9 @@
   import { COMPONENTES, disponibleEn, entrada, grupoDe, type Coleccion } from './coleccion';
   import { referencia } from './referencias';
   import { ruta, prepararSalto, volver } from '../../lib/ruta.svelte';
+  import Conmutador from '../tres/Conmutador.svelte';
+  import { cargarVista, crearContexto3D, vista3d } from '../tres/compartir.svelte';
+  import { tiene3d } from '../tres/escenas3d';
 
   let { id, coleccion = COMPONENTES }: { id: string; coleccion?: Coleccion } = $props();
 
@@ -21,6 +24,14 @@
   const pos = $derived(lista.findIndex((x) => x.id === id));
   const anterior = $derived(pos > 0 ? lista[pos - 1] : undefined);
   const siguiente = $derived(pos >= 0 && pos < lista.length - 1 ? lista[pos + 1] : undefined);
+
+  // «2D | 3D»: component animations also have a physical model (componentes/tres); the scene shares its
+  // parameters with it through this context.
+  const c3d = crearContexto3D(untrack(() => id));
+  const hay3d = $derived(coleccion.ruta === 'componentes' && tiene3d(id));
+  $effect(() => {
+    c3d.activo = hay3d && vista3d.modo === '3d' && !c3d.fallo;
+  });
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   let Escena: Component<any> | null = $state(null);
@@ -50,6 +61,7 @@
 
   onMount(() => {
     window.scrollTo({ top: ruta.y ?? 0, behavior: 'instant' });
+    void cargarVista();
   });
 </script>
 
@@ -67,8 +79,12 @@
       <span aria-hidden="true">·</span>
       <span class="fam"><i></i>{fam?.nombre}</span>
     </nav>
-    <h1>{a.titulo}</h1>
+    <div class="cabecera">
+      <h1>{a.titulo}</h1>
+      {#if hay3d}<Conmutador deshabilitado3d={!!c3d.fallo} titulo={c3d.fallo} />{/if}
+    </div>
     <p class="resumen">{a.resumen}</p>
+    {#if hay3d && c3d.fallo}<p class="aviso3d" role="status">Vista 3D no disponible: {c3d.fallo} Se muestra la animación 2D.</p>{/if}
     {#if refs.length}
       <div class="libro">
         <span class="et"><BookOpen size={16} strokeWidth={2} /> En el libro</span>
@@ -141,6 +157,25 @@
     height: 9px;
     border-radius: 3px;
     background: var(--c);
+  }
+  .cabecera {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px 16px;
+    margin: 8px 0 4px;
+  }
+  .cabecera h1 {
+    margin: 0;
+  }
+  .aviso3d {
+    margin: 0 0 12px;
+    padding: 8px 12px;
+    border-radius: 10px;
+    background: var(--superficie-2);
+    color: var(--tinta-suave);
+    font-size: 14.5px;
   }
   h1 {
     margin: 8px 0 4px;

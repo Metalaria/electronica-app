@@ -1,6 +1,7 @@
 <script lang="ts">
   // Power, heating and derating (book 2.8): P = V²/R becomes body temperature T = T_a + θ·P, with the
   // book's 0,25 W resistor rated at 70 °C and derated linearly to 0 W at 155 °C (θ = 340 °C/W).
+  import { compartir3d } from '../../tres/compartir.svelte';
   import { untrack } from 'svelte';
   import Escena from '../ui/Escena.svelte';
   import Marco from '../ui/Marco.svelte';
@@ -177,6 +178,9 @@
     { e: 'Temperatura del cuerpo', v: `${num(tcMostrada, 0)} °C` },
     { e: 'Corriente', v: si(I, 'A', 3) },
   ]);
+
+  // 3D view of the page (componentes/tres): the model follows these controls.
+  compartir3d(() => ({ R }));
 </script>
 
 <Marco {reloj} {texto} {lecturas} leyenda={['calor']}>

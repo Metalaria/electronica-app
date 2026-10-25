@@ -2,6 +2,7 @@
   // SCR and TRIAC (book 10.1): four layers PNPN equivalent to a PNP and an NPN that feed each other's base.
   // A gate pulse closes the loop (gain > 1) and the device stays on until the current falls below the holding
   // current, which in AC happens at every zero crossing. Phase control: firing at angle α each half cycle.
+  import { compartir3d } from '../../tres/compartir.svelte';
   import Escena from '../ui/Escena.svelte';
   import Marco from '../ui/Marco.svelte';
   import Deslizador from '../ui/Deslizador.svelte';
@@ -193,6 +194,9 @@
     { e: 'Fracción de la potencia', v: pct(fraccion, 0) },
     { e: 'Estado', v: conduceEn(faseM) ? 'conduce' : 'bloquea' },
   ]);
+
+  // 3D view of the page (componentes/tres): the model follows these controls.
+  compartir3d(() => ({ tipo }));
 </script>
 
 <Marco {reloj} {texto} {lecturas} leyenda={['electron', 'hueco', 'corriente']}>

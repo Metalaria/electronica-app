@@ -1,6 +1,7 @@
 <script lang="ts">
   // A real capacitor is C + ESR + ESL in series (book 3.5, fig. 3.8): |Z| falls as a capacitor, bottoms out
   // at the ESR at f_SRF = 1/(2π·√(ESL·C)) and rises as an inductor above it. Presets are the book's table.
+  import { compartir3d } from '../../tres/compartir.svelte';
   import Escena from '../ui/Escena.svelte';
   import Marco from '../ui/Marco.svelte';
   import Deslizador from '../ui/Deslizador.svelte';
@@ -181,6 +182,9 @@
     { e: 'Impedancia mínima (ESR)', v: si(T.R, 'Ω', 2) },
     { e: 'Fase', v: `${num((Math.atan2(XL - XC, T.R) * 180) / Math.PI, 0)}°` },
   ]);
+
+  // 3D view of the page (componentes/tres): the model follows these controls.
+  compartir3d(() => ({ tipo }));
 </script>
 
 <Marco {reloj} {texto} {lecturas} leyenda={['electron']}>

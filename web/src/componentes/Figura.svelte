@@ -5,8 +5,10 @@
   import Icono from './Icono.svelte';
   import BotonSimular from './BotonSimular.svelte';
   import VerAnimacion from './animaciones/VerAnimacion.svelte';
+  import VerEn3D from './tres/VerEn3D.svelte';
   import VerConsola from './consolas/VerConsola.svelte';
   import VerKit from './fm7303/VerKit.svelte';
+  import VerPlaca from './proyectos/VerPlaca.svelte';
   import FiguraViva from './figuras-vivas/FiguraViva.svelte';
   import { datosVivos } from './figuras-vivas';
 
@@ -51,7 +53,7 @@
       {#if bloque.credito}<span class="credito">{@html prepararHtml(bloque.credito)}</span>{/if}
     </figcaption>
   {/if}
-  {#if bloque.label}<div class="figura-simular"><BotonSimular label={bloque.label} /> <VerAnimacion label={bloque.label} /> <VerConsola label={bloque.label} /> <VerKit label={bloque.label} /></div>{/if}
+  {#if bloque.label}<div class="figura-simular"><BotonSimular label={bloque.label} /> <VerAnimacion label={bloque.label} /> <VerEn3D label={bloque.label} /> <VerConsola label={bloque.label} /> <VerKit label={bloque.label} /> <VerPlaca label={bloque.label} /></div>{/if}
 </figure>
 
 <style>

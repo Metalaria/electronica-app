@@ -931,6 +931,19 @@ export function subcircuitosDe(texto: string): Subcircuito[] {
   return [...leerSubckts(lineasNetlist(texto).subckts).values()];
 }
 
+/** A switch, transistor or MOSFET whose switched terminals join the nets `a` and `b`. */
+function conmutadorEntre(e: Dispositivo, a: string, b: string): boolean {
+  const canal = (x: string, y: string) => {
+    const p = e.pines.find((q) => q.nombre === x)?.nodo;
+    const q = e.pines.find((q) => q.nombre === y)?.nodo;
+    return p != null && q != null && ((p === a && q === b) || (p === b && q === a));
+  };
+  if (e.simbolo === 'SW') return canal('start', 'end');
+  if (e.simbolo === 'NMOS' || e.simbolo === 'PMOS') return canal('drain', 'source');
+  if (e.simbolo === 'NPN' || e.simbolo === 'PNP') return canal('collector', 'emitter');
+  return false;
+}
+
 /**
  * Four diodes forming a full-wave bridge (two cathodes on p, two anodes on n, the other ends on the AC nets
  * a and b) are drawn together as the classic diamond.
@@ -954,6 +967,9 @@ function agruparPuentes(ds: Dispositivo[]): void {
             if (n === p || n === a || n === b) continue;
             const d4 = diodos.find((d) => d.pines[1]!.nodo === b && d.pines[0]!.nodo === n && d !== d1 && d !== d2 && d !== d3);
             if (!d4) continue;
+            // Freewheeling diodes across the switches of an H bridge are not a rectifier: each is drawn next
+            // to its switch.
+            if ([d1, d2, d3, d4].some((d) => ds.some((e) => conmutadorEntre(e, d.pines[0]!.nodo, d.pines[1]!.nodo)))) continue;
             const puente: Dispositivo = {
               nombre: [d1, d2, d3, d4].map((d) => d.nombre).join(', '),
               clave: `puente:${d1.clave}`,

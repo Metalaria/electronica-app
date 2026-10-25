@@ -12,7 +12,7 @@ fases siguientes (ejercicios, modelos 3D, editor de esquemas) están descritas e
 
 - **Navegación**: a la izquierda, un **carril de iconos** con todas las secciones de la aplicación por orden de
   uso (Libro, Buscar, Simulador, Calculadoras, Ejercicios, Repaso, Componentes, Conceptos, Instrumentos, Kit
-  FM7303, Consolas, Glosario, Marcadores; el logotipo lleva a Inicio), cada una con su nombre debajo y la marca de
+  FM7303, Consolas, Proyectos KiCad, Glosario, Marcadores; el logotipo lleva a Inicio), cada una con su nombre debajo y la marca de
   la actual; si la ventana es baja, las últimas pasan a «Más». Junto al carril, el **índice del libro**: tomos
   plegables con su barra de lectura → capítulos con su anillo → secciones, con la sección que se lee resaltada y
   siempre a la vista (botón «Ir a la sección actual» si se ha desplazado el índice), las leídas marcadas y un
@@ -56,8 +56,13 @@ fases siguientes (ejercicios, modelos 3D, editor de esquemas) están descritas e
   ejercicio que tiene netlist.
 - **Consolas**: las placas base de la NES, la Neo Geo AES, la Master System II, la Mega Drive, la Game Boy y la
   Game Boy Color con foto interactiva, arquitectura animada y esquema real con redes interactivas (ver más abajo).
+- **Proyectos KiCad**: las siete placas de los cuatro proyectos detallados (capítulos 48 a 51) en 3D y en 2D, con su
+  esquema de KiCad, sus redes, sus tensiones y la comprobación placa ↔ esquema ↔ lista de materiales ↔ libro (botón «Ver
+  la placa» en el libro; ver más abajo).
 - **Componentes animados**: 39 animaciones interactivas de cómo funciona cada componente por dentro, enlazadas
   con sus secciones y figuras (botón «Ver animación» en el libro; ver más abajo).
+- **Componentes en 3D**: 39 modelos tridimensionales de los componentes del libro, con corte, explosión y
+  etiquetas, y el interruptor «2D | 3D» en cada animación de componente (ver más abajo).
 - **Conceptos animados**: 34 animaciones interactivas de la teoría (fasores, Fourier, aliasing, realimentación,
   conmutadas, metaestabilidad, líneas de transmisión…) calculadas en el momento con los números del libro, con
   el mismo botón «Ver animación» junto a sus secciones y figuras (ver más abajo).
@@ -145,6 +150,31 @@ subcircuitos como cajas con el nombre de cada patilla; «Ver el interior de …�
 subcircuito de la netlist. Si una netlist trae varios circuitos independientes (variantes de un mismo
 ejemplo), se dibujan uno junto a otro.
 
+Algunos circuitos que el libro siempre dibuja igual se reconocen por su estructura (no por el nombre de las
+piezas) y se dibujan en su forma de libro: el **puente en H** como la H clásica, con la alimentación arriba, la
+carga en el travesaño y cada diodo de libre circulación junto a su interruptor; los **convertidores reductor y
+elevador** con interruptor, diodo (o interruptor síncrono) y bobina en fila en su orden canónico, el interruptor
+a masa colgando del nodo de conmutación, la entrada a la izquierda y el condensador de salida y la carga a la
+derecha; el **oscilador en puente de Wien** con la red RC serie por encima del operacional, la RC paralelo a la
+izquierda de la entrada + y la red de ganancia bajo la entrada −; los **reguladores** con la entrada a la
+izquierda, el elemento de paso (transistor tumbado) en el camino serie, el amplificador de error, la referencia,
+el Zener, el Darlington y el transistor limitador debajo, y la carga a la derecha (los ajustables tipo LM317 con
+el divisor de realimentación en vertical); y los **circuitos lógicos** grandes (contadores y decodificadores)
+de izquierda a derecha por profundidad lógica, cada contador en su fila, el reloj y las salidas que van lejos
+con etiquetas de red y los enlaces entre columnas vecinas como cables rectos. Los **rectificadores** se dibujan
+en su forma de libro: la fuente de alterna de pie a la izquierda, el puente como el rombo clásico (alterna
+arriba y abajo, + a la derecha, − a la izquierda), el diodo de media onda o los dos de toma media en fila, y el
+condensador de filtro y la carga colgando del + a la derecha; si el − del puente no va a masa, se une con una
+etiqueta de red (sin ella, un cruce sería inevitable). Una netlist hecha de varios rectificadores
+independientes (las variantes de un mismo ejemplo) se dibuja en una rejilla de celdas iguales, en el orden de
+la netlist.
+
+Los nombres y valores de las piezas nunca quedan encima de un cable ni pegados a él: si un cable pasa a menos de
+0,15 unidades (unos 4 px a la escala del libro), el rótulo se mueve al sitio libre más cercano alrededor del
+símbolo (al lado, encima o debajo, o partido en dos líneas, «C₁ 11,1 pF» → «C₁» / «11,1 pF»). Un circuito nuevo
+o editado se dibuja en unas decenas de milisegundos (los más grandes, en unos 0,2 s); al mover solo un valor, el
+dibujo no cambia y sale al instante.
+
 Sobre el dibujo se ven las tensiones y corrientes de la última simulación (colores de los nodos y puntos
 que se mueven por los cables). Al cambiar un valor con su control deslizante el dibujo no se mueve; al
 añadir o quitar componentes en la netlist se vuelve a dibujar a los pocos instantes. Las netlists que no se
@@ -231,6 +261,40 @@ onda estacionaria. Pruebas: `tests/conceptos.spec.ts`; capturas y hojas de conta
 Medido con la CPU 4 veces más lenta: el paso más el dibujo cuestan de media entre 1 y 4,3 ms por fotograma en
 los perfiles de Mac, tableta y móvil (unos 2 ms de media global), muy por debajo de los 16,7 ms de 60 Hz.
 
+## Componentes en 3D
+
+En «Componentes» (carril de iconos) y en cada animación de componente hay un interruptor **2D | 3D**: 2D es la
+animación de siempre; 3D es el componente físico, en tres dimensiones, generado con sus medidas reales (milímetros
+de la norma del encapsulado) y con lo que cuenta el libro de su construcción. La elección se recuerda en el
+dispositivo: si se deja en 3D, la galería pasa a ser el **catálogo de modelos** y las animaciones se abren en 3D.
+
+- **39 modelos paramétricos** (sin ficheros de modelos: se generan en el momento): resistencia axial con sus
+  bandas calculadas del valor (4 bandas E24 o 5 bandas E96), SMD con el código de tres o cuatro cifras o EIA-96,
+  potenciómetro y trimmer, NTC/PTC/varistor y LDR; cerámico de disco, MLCC (0402–1210), película, electrolítico
+  radial (el tamaño de la lata sale de C·V) y SMD, tántalo y supercondensador; bobina axial (colores en µH), de
+  tambor, toroidal (con sus espiras contadas) y SMD apantallada, transformador EI y relé; diodos DO-41, DO-35 de
+  vidrio, SOD-123, Zener y Schottky, LED de 5 mm y SMD, puente rectificador; TO-92, TO-220, SOT-23 y D-PAK; DIP,
+  SOIC, LQFP y QFN (el 555, el LM358, el CD4069…), optoacoplador; cristal HC-49, fusible 5 × 20, PTC rearmable,
+  tira de pines y borna de tornillo. Cada uno con su marcado legible y sus parámetros (valor, tamaño, color,
+  patillas…).
+- **Por dentro**: «Corte» quita la mitad del componente con un plano que se desplaza (y en varios se elige la
+  orientación: longitudinal, transversal o desde arriba, como al decapar un integrado) y «Explosión» separa las
+  piezas. Se ven la película y su corte helicoidal sobre el cilindro cerámico, los electrodos alternos de un MLCC,
+  las láminas de ánodo y cátodo enrolladas con el papel de un electrolítico, el bobinado de una película, el dado y
+  los hilos de oro de diodos, LED, transistores e integrados, el disco de cuarzo de un cristal… Las **etiquetas**
+  nombran cada pieza con los términos del libro y llevan a su sección.
+- **Mandos**: arrastrar gira (un dedo en pantallas táctiles), `Ctrl` + rueda o pellizco acerca, `Mayús` + arrastrar
+  o dos dedos desplazan; con el modelo activo, flechas, `+` `−` y `0` (vista inicial). En la página de una
+  animación, sus propios controles mueven el modelo: el valor de la resistencia cambia las bandas, el material del
+  LED su color, la capacidad del circuito RC el tamaño de la lata, el relé cierra sus contactos…
+- En el libro, junto a las secciones y figuras sobre cómo está hecho un componente, aparece **«Ver en 3D»**.
+- Si el dispositivo no tiene WebGL 2, las páginas siguen en 2D y lo indican. La vista 3D se descarga solo al
+  abrirla (three.js en un fragmento aparte), dibuja únicamente cuando algo cambia y se para fuera de pantalla.
+- En pantallas estrechas las etiquetas pasan a ser números sobre el modelo con su lista debajo.
+- Pruebas: `tests/modelos3d.spec.ts` (`npx playwright test -c playwright.modelos3d.config.ts`, con su propia
+  compilación en el puerto 4193); capturas y hojas de contacto: `node tests/modelos3d-capturas.mjs --hoja
+  --paginas` (en `tests/capturas/modelos3d/`); coste por fotograma al girar: `node tests/modelos3d-rendimiento.mjs`.
+
 ## Consolas
 
 «Consolas» en el carril de iconos (`#/consolas`), o el botón «Explorar la placa» bajo las fotos de las figuras
@@ -291,6 +355,46 @@ pestañas enlazadas entre sí:
 
 Los datos se generan con `python3 contenido/consolas.py` (también desde `generar.py`) a partir de la carpeta
 de investigación `/home/claude/consolas`; si falta, se conservan los de `web/public/consolas/`.
+
+## Proyectos KiCad
+
+«Proyectos» en el carril de iconos (`#/proyectos`), o el botón «Ver la placa» junto a las figuras de las placas de KiCad
+de los capítulos 48 a 51 (y junto a los esquemas del libro que esas placas llevan a la práctica), abre las siete placas
+del material complementario (`complementos/kicad/`): la placa portadora de la **estación IoT** (cap. 48), el núcleo de
+regulación de la **fuente de laboratorio** (cap. 49), las cuatro placas del **amplificador Hi-Fi** (potencia,
+preamplificador, fuente y protección; cap. 50) y el **receptor SDR** (cap. 51). Cada placa tiene cinco pestañas enlazadas
+por una misma selección (un componente, un pad o una red): lo que se toca en una se ve en las demás.
+
+- **Placa en 3D**: la placa como saldría del fabricante: FR-4 de 1,6 mm con todos sus taladros, máscara (verde, la del
+  README del proyecto), cobre bajo la máscara un tono más claro, pads estañados (HASL) o dorados (ENIG), serigrafía real
+  (la que traza KiCad), taladros metalizados, y los componentes de la biblioteca de modelos 3D de la aplicación
+  (resistencias con sus bandas de color según el valor, condensadores por encapsulado y valor, integrados con su
+  marcado, conectores…). Se gira arrastrando, se acerca con dos dedos o Ctrl + rueda; vistas Inclinada, Arriba, Abajo
+  (le da la vuelta a la placa) y Canto; capas (cobre de cada cara, máscara, serigrafía, componentes); «Separar capas»
+  las despega; «Rayos X» enseña las dos caras de cobre a través del FR-4 (son placas de dos capas: no hay capas
+  internas). Al tocar un componente se ve su nombre sobre él; si está bajo la cabina de blindaje del SDR, la cabina se
+  vuelve translúcida.
+- **Placa en 2D**: la placa plana, vista desde arriba o desde abajo (espejada), con aspecto real o por capas al estilo de
+  KiCad, contornos de fabricación y zonas sin cobre (la de la antena del ESP32). Al pasar el ratón se lee el pad, la
+  pista o la red; al tocar una red se resalta todo su cobre.
+- **Esquema**: el esquema de KiCad del proyecto con las redes interactivas (el mismo visor que el de las consolas).
+- **Simulación**: las netlists del capítulo en el simulador y, donde se pueden emparejar sin ambigüedad, la tensión de
+  continua de cada red de la placa: en la etapa de potencia y en la fuente de laboratorio, el punto de trabajo de los
+  modelos SPICE del propio proyecto (que usan las mismas referencias y nombres de red que la placa), calculado con
+  ngspice al generar los datos; en la estación IoT, las tensiones que anota su esquema. «Tensiones» colorea el cobre.
+- **Comprobaciones**: lo comprobado al generar los datos (cada pad en la red de su esquema, cada red una sola pieza de
+  cobre, valores, huellas y referencias de fabricante iguales en esquema, placa y lista de materiales, tamaño y número
+  de componentes frente al libro y al README) y las posibles erratas para la próxima edición.
+
+En el panel de la derecha (debajo en el teléfono) está la ficha de lo seleccionado: referencia, valor, encapsulado,
+referencia de fabricante, su función (del README del proyecto, o deducida de sus conexiones si el README no la cita),
+la sección del libro que la explica, su símbolo recortado del esquema y sus pads con sus redes.
+
+Los datos se generan con `python3 contenido/proyectos_kicad.py` (también desde `generar.py`); necesita `kicad-cli` 7 y,
+para las tensiones, `ngspice`. Si falta la carpeta de los proyectos o `kicad-cli`, se conservan los de
+`web/public/proyectos/`. Pruebas: `npx playwright test -c playwright.proyectos.config.ts`; capturas de todas las placas:
+`node tests/proyectos-capturas.mjs`; coste por fotograma al girar la placa: `node tests/proyectos-rendimiento.mjs
+--perfil mac|tableta|movil` (con la web servida en el puerto 4189).
 
 ## Figuras vivas
 
@@ -414,7 +518,9 @@ tensiones, abre el receptor entero en cuatro pestañas que comparten el mismo es
 
 - **Esquema y tensiones**: el esquema completo del kit (las 219 piezas del original de la figura 15.26, redibujadas
   y agrupadas en los ocho bloques de colores de la figura 15.9) con desplazamiento y zoom (arrastrar, rueda o
-  trackpad, pellizco, doble toque, `+` `−` `0` y flechas). Encima, la capa viva de las figuras: puntos que recorren
+  trackpad, pellizco, doble toque, `+` `−` `0` y flechas). Al abrir cada pestaña, al girar el dispositivo o
+  cambiar el tamaño de la ventana, el esquema se vuelve a encuadrar centrado en su recuadro (entero, o a toda la
+  altura desde la izquierda si el recuadro es estrecho); «ver todo» (`0`) lo centra en ambos ejes. Encima, la capa viva de las figuras: puntos que recorren
   los cables con la corriente continua y cables coloreados por su tensión, calculadas con ngspice para el kit
   entero. Al tocar una pieza se ve su valor, su función en la radio, la sección del libro que la explica, su
   bloque y su animación de componente. El **multímetro** mide entre dos puntos tocados en el esquema (la negra
@@ -1280,6 +1386,10 @@ app/
                              del simulador (ver «Figuras vivas» y ESQUEMA.md)
         simulador/           vistas del simulador: Simulador (rutas), Indice, Pagina, Parametros,
                              Resultados, Editor (se cargan solo al abrir el simulador)
+        proyectos/           Proyectos KiCad: placa en 3D (three.js, modelos de tres/modelos) y en 2D, esquema,
+                             simulación y comprobaciones de las siete placas (ver «Proyectos KiCad» y ESQUEMA.md)
+        tres/                componentes en 3D: biblioteca de modelos paramétricos (modelos/, crearModelo),
+                             visor (motor/), interruptor 2D | 3D, catálogo, página de modelo, «Ver en 3D»
         Insignia.svelte, Icono.svelte
       lib/
         tipos.ts             tipos del contenido (ESQUEMA.md)

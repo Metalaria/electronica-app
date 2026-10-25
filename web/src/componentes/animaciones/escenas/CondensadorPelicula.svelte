@@ -2,6 +2,7 @@
   // Metallised film capacitor and self-healing (book 3.4.3 and 3.10): if the plastic film is punctured, the arc
   // vaporises the very thin metal layer around the spot, isolating the defect; the capacitor loses a tiny
   // fraction of its capacitance and keeps working.
+  import { compartir3d } from '../../tres/compartir.svelte';
   import { untrack } from 'svelte';
   import Escena from '../ui/Escena.svelte';
   import Marco from '../ui/Marco.svelte';
@@ -165,6 +166,9 @@
     { e: 'Autorregeneraciones', v: String(cuenta) },
     { e: 'Tensión / nominal', v: `${num((V / VN) * 100, 0)} %`, c: V > VN ? pal.peligro : pal.tinta },
   ]);
+
+  // 3D view of the page (componentes/tres): the model follows these controls.
+  compartir3d(() => ({ film, V }));
 </script>
 
 <Marco {reloj} {texto} {lecturas}>

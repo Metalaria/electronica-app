@@ -263,7 +263,7 @@ export function defPuerto(nombre: string): DefSimbolo {
   void nombre;
 }
 
-function construirVariante(u: Unidad, def: DefSimbolo, o: number, coste: number): VarU {
+export function construirVariante(u: Unidad, def: DefSimbolo, o: number, coste: number): VarU {
   const pines: PinGeo[] = u.pines.map((p) => {
     const pd = def.pines[p.nombre];
     if (!pd) throw new Error(`símbolo sin terminal ${p.nombre}`);
@@ -330,6 +330,42 @@ function construirVariante(u: Unidad, def: DefSimbolo, o: number, coste: number)
     cy1 = Math.max(cy1, g.y);
   }
   return { def, o, coste: coste + extra, pines, cuerpo, rects, patas, etq, talones, caja: [cx0, cy0, cx1, cy1], rf, pf, qf, of, ow };
+}
+
+// ------------------------------------------------------------------ layout rules (recognised topologies)
+
+/** A point of a placed unit: one of its pins, or its body's centre or edges. */
+export interface RefRegla {
+  u: number;
+  p: number | 'c' | 'x0' | 'x1' | 'y0' | 'y1';
+}
+
+/**
+ * Layout rules of the topologies recognised in a component (plantillas.ts): how a textbook draws an H bridge,
+ * a converter, a Wien oscillator, a regulator or a logic circuit. Orientations are folded into the variant
+ * costs; what is left are soft constraints between units, added to the annealing cost.
+ */
+export interface Reglas {
+  /** Families recognised (part of the layout's cache key). */
+  familias: string[];
+  /** coord(a) + min ≤ coord(b) along `eje` (0 = x, 1 = y). */
+  orden: { a: RefRegla; b: RefRegla; eje: 0 | 1; min: number; peso: number }[];
+  /** coord(a) = coord(b) along `eje`. */
+  alin: { a: RefRegla; b: RefRegla; eje: 0 | 1; peso: number }[];
+  /** Nets drawn with net labels at every pin instead of wires. */
+  etiquetar: Set<number>;
+  /** Single pins («unit,pin») joined to their net by a label while the net's other pins are wired. */
+  etiquetarPines?: Set<string>;
+  /** Flow rank of each unit (replaces the one derived from the nets), e.g. logic depth. */
+  rangoU?: number[];
+  /** Row of each unit for the layered start (a chain of a logic circuit), −1 none. */
+  fila?: number[];
+  /** A drawn start for the topology: pin `pin` of unit `u` at (x, y), in its cheapest variant. */
+  anclas?: { u: number; pin: number; x: number; y: number }[];
+}
+
+export function reglasVacias(familia: string): Reglas {
+  return { familias: [familia], orden: [], alin: [], etiquetar: new Set() };
 }
 
 // ------------------------------------------------------------------ units of a component
@@ -538,6 +574,9 @@ interface Pendiente {
   cruces: [number, number, number][];
   unidades: [number, number][];
   area: number;
+  /** Changed rule costs: [rule index, new cost]; and the new total. */
+  reglas: [number, number][];
+  reglasTotal: number;
 }
 
 export class Colocador {
@@ -557,13 +596,29 @@ export class Colocador {
   private redesDe: number[][];
   /** Flow rank of each unit: sources to ground 0, then one more than the earliest net it touches. */
   private rangoU: number[];
+  /** Rules of the recognised topologies (null: none). */
+  readonly reglas: Reglas | null;
+  private costeReglasV = 0;
+  /** Cost of each rule (orden first, then alin) and the rules touching each unit (incremental updates). */
+  private costeRegla = new Float64Array(0);
+  private reglasDeUnidad: number[][] = [];
 
-  constructor(c: Componente, seed: number) {
+  constructor(c: Componente, seed: number, reglas: Reglas | null = null) {
     this.c = c;
     this.us = c.unidades;
     this.rnd = aleatorio(seed);
+    this.reglas = reglas && (reglas.orden.length || reglas.alin.length || reglas.rangoU) ? reglas : null;
+    if (this.reglas) {
+      const R = this.reglas;
+      this.costeRegla = new Float64Array(R.orden.length + R.alin.length);
+      this.reglasDeUnidad = c.unidades.map(() => []);
+      [...R.orden, ...R.alin].forEach((r, i) => {
+        this.reglasDeUnidad[r.a.u]!.push(i);
+        if (r.b.u !== r.a.u) this.reglasDeUnidad[r.b.u]!.push(i);
+      });
+    }
     this.redesDe = this.us.map((u) => [...new Set(u.pines.filter((p) => p.red >= 0).map((p) => p.red))]);
-    this.rangoU = this.us.map((u) => {
+    this.rangoU = reglas?.rangoU ?? this.us.map((u) => {
       const d = u.disp;
       if (d && (d.letra === 'V' || d.letra === 'I') && u.pines.some((p) => p.tipo !== 'red')) return 0;
       let m = Infinity;
@@ -646,9 +701,11 @@ export class Colocador {
   }
 
   private estadoRed(k: number): EstadoRed {
-    const ps = this.c.pinesRed[k]!;
+    let ps = this.c.pinesRed[k]!;
+    // A net drawn with labels has no wires to estimate (nor have the pins labelled one by one).
+    if (this.reglas?.etiquetarPines?.size) ps = ps.filter(([u, i]) => !this.reglas!.etiquetarPines!.has(`${u},${i}`));
     const n = ps.length;
-    if (n < 2) return conCaja(0, []);
+    if (n < 2 || this.reglas?.etiquetar.has(k)) return conCaja(0, []);
     const g = ps.map(([ui, pi]) => this.pin(this.us[ui]!, pi));
     // Prim's rectilinear MST.
     const en = new Array<boolean>(n).fill(false);
@@ -718,6 +775,43 @@ export class Colocador {
     return c;
   }
 
+  /** Coordinate of a rule reference along an axis. */
+  private coord(r: RefRegla, eje: 0 | 1): number {
+    const u = this.us[r.u]!;
+    const v = u.vars[u.v]!;
+    const o = eje ? u.y : u.x;
+    if (typeof r.p === 'number') return (eje ? v.pines[r.p]!.y : v.pines[r.p]!.x) + o;
+    const k = v.cuerpo;
+    if (r.p === 'c') return (eje ? (k[1] + k[3]) / 2 : (k[0] + k[2]) / 2) + o;
+    if (r.p === 'x0') return k[0] + u.x;
+    if (r.p === 'x1') return k[2] + u.x;
+    if (r.p === 'y0') return k[1] + u.y;
+    return k[3] + u.y;
+  }
+
+  /** Cost of rule `i` (orden first, then alin). */
+  private reglaI(i: number): number {
+    const R = this.reglas!;
+    if (i < R.orden.length) {
+      const r = R.orden[i]!;
+      const falta = this.coord(r.a, r.eje) + r.min - this.coord(r.b, r.eje);
+      return falta > 1e-6 ? r.peso * (1 + falta) : 0;
+    }
+    const r = R.alin[i - R.orden.length]!;
+    const d = Math.abs(this.coord(r.a, r.eje) - this.coord(r.b, r.eje));
+    return d > 1e-6 ? r.peso * (0.5 + d) : 0;
+  }
+
+  /** Cost of the soft constraints of the recognised topologies. */
+  costeDeReglas(): number {
+    const R = this.reglas;
+    if (!R) return 0;
+    let c = 0;
+    const n = R.orden.length + R.alin.length;
+    for (let i = 0; i < n; i++) c += this.reglaI(i);
+    return c;
+  }
+
   private area(): number {
     let x0 = Infinity;
     let y0 = Infinity;
@@ -749,7 +843,9 @@ export class Colocador {
       for (let j = k + 1; j < nr; j++) this.cruces[k]![j] = this.cruces[j]![k] = crucesEntre(this.redes[k]!, this.redes[j]!);
     this.costeUnidades = this.us.map((u) => this.costeUnidad(u));
     this.costeArea = this.area();
-    let c = this.costeArea;
+    this.costeReglasV = 0;
+    for (let i = 0; i < this.costeRegla.length; i++) this.costeReglasV += this.costeRegla[i] = this.reglaI(i);
+    let c = this.costeArea + this.costeReglasV;
     for (const x of this.costeUnidades) c += x;
     for (let k = 0; k < nr; k++) {
       c += this.costeRedes[k]!;
@@ -765,7 +861,7 @@ export class Colocador {
     const nr = this.c.redes.length;
     const A = new Set<number>();
     for (const u of movidas) for (const k of this.redesDe[u.id]!) A.add(k);
-    const p: Pendiente = { coste: 0, redes: new Map(), costeRed: new Map(), cuerpo: [], cruces: [], unidades: [], area: 0 };
+    const p: Pendiente = { coste: 0, redes: new Map(), costeRed: new Map(), cuerpo: [], cruces: [], unidades: [], area: 0, reglas: [], reglasTotal: 0 };
     let d = 0;
     for (const k of A) {
       const e = this.estadoRed(k);
@@ -805,6 +901,23 @@ export class Colocador {
     }
     p.area = this.area();
     d += p.area - this.costeArea;
+    if (this.reglas) {
+      // Only the rules touching the moved units change.
+      const vistas = new Set<number>();
+      let dr = 0;
+      for (const u of movidas)
+        for (const i of this.reglasDeUnidad[u.id]!) {
+          if (vistas.has(i)) continue;
+          vistas.add(i);
+          const n = this.reglaI(i);
+          if (n !== this.costeRegla[i]) {
+            dr += n - this.costeRegla[i]!;
+            p.reglas.push([i, n]);
+          }
+        }
+      p.reglasTotal = this.costeReglasV + dr;
+      d += dr;
+    }
     p.coste = this.coste + d;
     this.pendiente = p;
     return d;
@@ -820,6 +933,10 @@ export class Colocador {
     for (const [k, j, x] of p.cruces) this.cruces[k]![j] = this.cruces[j]![k] = x;
     for (const [u, c] of p.unidades) this.costeUnidades[u] = c;
     this.costeArea = p.area;
+    if (this.reglas) {
+      for (const [i, n] of p.reglas) this.costeRegla[i] = n;
+      this.costeReglasV = p.reglasTotal;
+    }
     this.coste = p.coste;
     this.pendiente = null;
   }
@@ -829,6 +946,8 @@ export class Colocador {
   /** Starting placement: compact columns by rank (`capas` false) or layered with barycentre ordering. */
   inicial(capas = false): void {
     if (!capas) return this.inicialColumnas();
+    if (this.reglas?.anclas?.length) return this.inicialAnclado(this.reglas.anclas);
+    if (this.reglas?.fila && this.reglas.rangoU) return this.inicialFilas(this.reglas.rangoU, this.reglas.fila);
     // Layered start: one column per flow rank, columns as wide as their widest part, and the parts of
     // each column ordered by the mean position of their neighbours in the previous one (barycentre).
     for (const u of this.us) {
@@ -886,6 +1005,87 @@ export class Colocador {
     }
   }
 
+  /** The topology's own drawing as the start: anchored units where the template puts them, the others in
+   *  compact columns below it. */
+  private inicialAnclado(anclas: { u: number; pin: number; x: number; y: number }[]): void {
+    const colocadas: Unidad[] = [];
+    const fijas = new Set<number>();
+    for (const a of anclas) {
+      const u = this.us[a.u]!;
+      let mejor = 0;
+      u.vars.forEach((v, i) => {
+        if (v.coste < u.vars[mejor]!.coste) mejor = i;
+      });
+      u.v = mejor;
+      const g = u.vars[u.v]!.pines[a.pin]!;
+      const x0 = a.x - g.x;
+      const y0 = a.y - g.y;
+      // Nearest free spot around the anchor (labels may need a little room).
+      let hecho = false;
+      for (let r = 0; r <= 4 && !hecho; r++)
+        for (let dy = -r; dy <= r && !hecho; dy++)
+          for (let dx = -r; dx <= r && !hecho; dx++) {
+            if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+            u.x = x0 + dx;
+            u.y = y0 + dy;
+            hecho = colocadas.every((w) => this.compatibles(u, w));
+          }
+      if (!hecho) continue;
+      fijas.add(u.id);
+      colocadas.push(u);
+    }
+    let fondo = -Infinity;
+    for (const u of colocadas) fondo = Math.max(fondo, u.y + u.vars[u.v]!.caja[3]);
+    let x = 0;
+    for (const u of this.us) {
+      if (fijas.has(u.id)) continue;
+      let mejor = 0;
+      u.vars.forEach((v, i) => {
+        if (v.coste < u.vars[mejor]!.coste) mejor = i;
+      });
+      u.v = mejor;
+      const k = u.vars[u.v]!.caja;
+      u.x = Math.round(x - k[0]);
+      u.y = Math.round(fondo + 2 - k[1]);
+      let intentos = 0;
+      while (colocadas.some((w) => !this.compatibles(u, w)) && intentos++ < 400) u.y += 1;
+      colocadas.push(u);
+      x += Math.ceil(k[2] - k[0]) + 2;
+    }
+  }
+
+  /** Layered start on a grid: one column per rank, one band per row (the chains of a logic circuit); parts
+   *  without a row go where their column has room. */
+  private inicialFilas(rango: number[], fila: number[]): void {
+    for (const u of this.us) {
+      let mejor = 0;
+      u.vars.forEach((v, i) => {
+        if (v.coste < u.vars[mejor]!.coste) mejor = i;
+      });
+      u.v = mejor;
+    }
+    const alto = Math.max(...this.us.map((u) => u.vars[u.v]!.caja[3] - u.vars[u.v]!.caja[1])) + 2;
+    const cols = [...new Set(rango)].sort((a, b) => a - b);
+    const colocadas: Unidad[] = [];
+    let x = 0;
+    for (const c of cols) {
+      const col = this.us.filter((u) => rango[u.id] === c).sort((a, b) => (fila[a.id]! < 0 ? 1e9 : fila[a.id]!) - (fila[b.id]! < 0 ? 1e9 : fila[b.id]!) || a.id - b.id);
+      let ancho = 0;
+      let libre = 0;
+      for (const u of col) {
+        const k = u.vars[u.v]!.caja;
+        u.x = Math.round(x - k[0]);
+        u.y = Math.round((fila[u.id]! >= 0 ? fila[u.id]! * alto : libre) - k[1]);
+        let intentos = 0;
+        while (colocadas.some((w) => !this.compatibles(u, w)) && intentos++ < 400) u.y += 1;
+        colocadas.push(u);
+        libre = u.y + k[3] + 1;
+        ancho = Math.max(ancho, k[2] - k[0]);
+      }
+      x += Math.ceil(ancho) + 4;
+    }
+  }
+
   private inicialColumnas(): void {
     const colocadas: Unidad[] = [];
     const columnas = new Map<number, number>();
@@ -907,6 +1107,7 @@ export class Colocador {
   }
 
   private rangoUnidad(u: Unidad): number {
+    if (this.reglas?.rangoU) return this.reglas.rangoU[u.id]!;
     let m = Infinity;
     for (const p of u.pines) if (p.red >= 0) m = Math.min(m, this.c.rango[p.red]!);
     return Number.isFinite(m) ? m : 0;
@@ -914,13 +1115,17 @@ export class Colocador {
 
   // -------------------------------------------------------------- annealing
 
-  recocer(iteraciones: number, T0 = 3.5, T1 = 0.03): void {
+  /** Simulated annealing; `rapido` (live layout) stops once the best has not improved for a while. */
+  recocer(iteraciones: number, T0 = 3.5, T1 = 0.03, rapido = false): void {
     this.costeTotal();
     const us = this.us;
     if (us.length < 2 && us.every((u) => u.vars.length === 1)) return;
     let mejorCoste = this.coste;
     let mejor = us.map((u) => [u.x, u.y, u.v] as const);
+    let ultimaMejora = 0;
+    const quieto = Math.max(1500, iteraciones * 0.2);
     for (let it = 0; it < iteraciones; it++) {
+      if (rapido && it > iteraciones * 0.4 && it - ultimaMejora > quieto) break;
       const T = T0 * Math.pow(T1 / T0, it / iteraciones);
       const u = us[Math.floor(this.rnd() * us.length)]!;
       const antes = { x: u.x, y: u.y, v: u.v };
@@ -965,6 +1170,7 @@ export class Colocador {
         this.confirmar();
         if (this.coste < mejorCoste - 1e-9) {
           mejorCoste = this.coste;
+          ultimaMejora = it;
           mejor = us.map((w) => [w.x, w.y, w.v] as const);
         }
       } else {

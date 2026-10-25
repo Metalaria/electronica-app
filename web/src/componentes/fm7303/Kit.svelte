@@ -227,6 +227,7 @@
           captura={kk.modo !== 'normal'}
           alTocar={tocar}
           enfoque={kk.enfoque}
+          reinicio={kk.pestana}
         >
           {#snippet capas(z: number)}
             {#if kk.bloque != null && kk.kit.bloques[String(kk.bloque)]}

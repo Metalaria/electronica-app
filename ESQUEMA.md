@@ -478,6 +478,86 @@ reglas de rendimiento de las animaciones de componentes.
   (`--coleccion componentes|conceptos`); `tests/conceptos-capturas.mjs` deja capturas y hojas de contacto en
   `tests/capturas/conceptos/`.
 
+## 3D component models (`web/src/componentes/tres/`, phase 4)
+
+Procedural, parametric three.js models of the components of chapters 2–10 and 45 (no model files: every
+model is generated in code from standard package dimensions and the book's descriptions), the viewer, and the
+«2D | 3D» switch of the «Componentes» pages. three.js `0.186.1` (exact), loaded only when a 3D view opens.
+
+```
+modelos/            the library (also used by the KiCad board views)
+  index.ts          crearModelo(tipo, parametros?, opciones?) → THREE.Group; liberarModelo(g); re-exports
+  tipos.ts          Parametros, OpcionesModelo, Huella/Pad, DatosParte (labels, explosion), Corte, DatosModelo
+  paquetes.ts       PAQUETES: key, name, family, package, defaults, UI controls, KiCad names (no three.js)
+  codigos.ts        E12/E24/E96, IEC 60062 bands, SMD codes (3 and 4 digits, R, EIA-96), «104», value texts
+  comun.ts          Recursos (shared cache), PBR finishes, leads, gull-wing leads, lathe bodies, text decals,
+                    painted textures, die texture, bond wires (merged), instancing helpers
+  resistencias.ts   axial resistor (and colour-coded axial inductor), SMD chip, potentiometer, trimmer
+  condensadores.ts  radial disc (ceramic, NTC/PTC/MOV), MLCC, film box, aluminium electrolytic radial and V-chip,
+                    supercapacitor, tantalum chip
+  inductivos.ts     drum inductor, toroid, shielded SMD inductor, EI transformer, relay
+  semiconductores.ts DO-41/DO-15, DO-35, SOD-123, LED 5 mm, SMD LED, bridge, TO-92, TO-220, SOT-23, D-PAK
+  integrados.ts     DIP (also bridge and optocoupler), SOIC, LQFP, QFN with lead frame, die and bond wires
+  varios.ts         HC-49 crystal, 5 × 20 fuse in clips, resettable PTC, NTC/PTC/varistor, LDR, pin header,
+                    screw terminal
+  huellas.ts        tipoDeHuella(nombreKiCad, valor?) → { tipo, parametros } | null
+motor/              soporte.ts (WebGL2 check without three.js), estudio.ts (lights, environment, contact shadow,
+                    background), orbita.ts (Z-up orbit camera), visor.ts (Visor: render on demand, cutaway, caps,
+                    explosion, HTML labels), placa.ts (piece of PCB from the footprint)
+Vista3D.svelte      light wrapper: WebGL2 check, lazy import of Visor3D.svelte, failure → callback
+Visor3D.svelte      canvas, label layer, toolbar (initial view, cut + plane slider + orientation, explosion,
+                    labels); window.__epaVisor3d = { visor, datos } for the tests
+Conmutador.svelte   «2D | 3D»; compartir.svelte.ts: the remembered choice (store key `componentes-vista`) and
+                    the context through which a scene shares its parameters (compartir3d)
+escenas3d.ts        animation id → model options from the scene's shared parameters
+catalogo3d.ts       MODELOS_3D (book labels, related animations, catalogue mounting), modelosDe(label)
+Catalogo3D.svelte, Pagina3D.svelte, ControlesModelo.svelte, miniaturas.ts, VerEn3D.svelte
+```
+
+**Model contract** (what the board views rely on). Millimetres; origin at the centre of the footprint on the
+board surface (z = 0), +Z up; orientation of the KiCad standard footprint with KiCad's y flipped: two-terminal
+parts along X with pin 1 at −X; DIP/SOIC rows along Y with pin 1 at the top-left (−X, +Y); SOT-23 pins 1, 2 at −X
+and 3 at +X; TO-92/TO-220 pins along X (1 at −X) with the marked face towards −Y; D-PAK leads at −X, tab at +X.
+`group.userData` (DatosModelo): `tipo`, `parametros` (defaults merged), `huella` {`pads` [{n, x, y, forma, w, h,
+taladro?}], `ancho`, `fondo`, `alto`, `origenKicad` = where KiCad's footprint origin is in model coordinates (pad 1
+for most THT footprints): place with `position = P_kicad − R(θ)·origenKicad`}, `cortes` [{nombre, normal, min,
+max, inicial}], `explosionable`, `montaje`, `marcado`, `triangulos`. Each part (child Group) carries DatosParte:
+`parte`, `etiqueta` {texto, ref (refs.json label), punto (local mm)}, `explosion` [dx, dy, dz] mm at full
+explosion, `interior` (label only when the inside is shown), `entero` (never clipped: dies, wires),
+`colorCorte`. Every package that prints a part number (diodes, TO-92, TO-220, SOT-23, D-PAK, DIP/SOIC/QFP/QFN,
+crystal, optocoupler) takes `parametros.marcado`: free text printed verbatim, fitted to the face («|» or a line
+break separates lines; a long single line on a narrow face is split in two); `userData.marcado` returns what was
+printed. Options: `recursos` (a shared `Recursos`: equal materials, markings and geometries are reused;
+dispose once with `recursos.liberar()`), `detalle: 'bajo'` (fewer segments, no hidden interiors), `montaje:
+'placa'` (default: THT leads cut 1 mm under a `grosorPlaca` board) or `'suelto'` (as delivered: LED anode longer,
+electrolytic + longer). Keys: see `PAQUETES` (39 types).
+
+**Viewer rules.** A frame is rendered only when the camera moves (inertia and animated resets included), the
+explosion animates, or something changes (model, cut, theme, size); none while the page is hidden or the canvas
+off screen. Device pixels ≤ 2× and ≈ 2 Mpx; MSAA only below 1,5× DPR. Lighting: hemisphere + key + fill
+directional lights, a prefiltered `RoomEnvironment` (for the PBR metals), `NeutralToneMapping`; ground shadow =
+one blurred texture on a plane (no shadow maps); background from the theme (`--fondo-3d`). Mounted parts stand on
+a piece of board built from their footprint (`placa.ts`). Cutaway: one local clipping plane on the materials of
+non-`entero` meshes; cut faces are the back faces of each clipped solid drawn flat in its cut colour (cheap cap
+trick); a thin outline marks the plane; switching the cut on turns the camera to face the cut. Labels are HTML
+(links to the book through `rutaDeRef`) placed in two columns that never overlap, with SVG leader lines; their
+sizes are measured once (no layout per frame). On a viewer narrower than 560 px they become numbered markers on
+the model and the texts go to a numbered list under the canvas. Disposal:
+model resources (`liberarModelo`), cap materials, board, studio, renderer and `forceContextLoss()` on unmount.
+
+**Pages.** `#/componentes` shows the animation gallery or, when the remembered choice is 3D, the catalogue;
+`#/componentes/3d` the catalogue; `#/componentes/3d/<tipo>[?param=valor…]` one model with its controls. On an
+animation page (component collection) the switch replaces the canvas scene by the model; the scene's controls
+stay and drive it (`compartir3d(() => ({ … }))` in 23 scenes; `escenas3d.ts` maps the values), legend, plot and
+playback are hidden. Without WebGL2 the page stays in 2D and says why. The reader's «Ver en 3D» (`VerEn3D.svelte`,
+next to «Ver animación» in `Seccion`, `Figura`, `Bloques`) appears for the labels in `catalogo3d.ts`.
+Tests: `tests/modelos3d.spec.ts` (`-c playwright.modelos3d.config.ts` serves its own build on :4193);
+screenshots and contact sheets: `node tests/modelos3d-capturas.mjs --hoja --paginas`; frame cost while orbiting:
+`node tests/modelos3d-rendimiento.mjs --perfil mac|tableta|movil|todos` (`window.__epa3d`: render and whole-frame
+JS cost, triangles, draw calls). Budget: ≤ 17 000 triangles and ≤ 60 draw calls for the heaviest models (LQFP-64,
+QFN with every bond wire); the 3D chunk (three.js, engine and models) is ≈ 590 kB, 147 kB gzip, loaded only
+when a 3D view opens.
+
 ## Live figures (`web/src/componentes/figuras-vivas/`)
 
 The interaction layer over the book's own figures, from «Datos de figuras». The figure SVG is shown unchanged
@@ -539,7 +619,8 @@ modelo.ts      netlist → circuit: devices with typed terminals (lineasNetlist(
                subcircuits and XSPICE d_* gates → IEC boxes &, ≥1, =1, 1; flip-flops with T/D/C/S/R/Q/nQ),
                E with gain ≥ 1000 and out− on ground → op-amp, other E/G/F/H/B → diamond with the control in
                the label, K → one transformer block (coils stay elements), 4 diodes forming a full-wave bridge
-               → diamond block, T/O/U lines, S/W switches, A devices (XSPICE NULL ports left out). Values with
+               → diamond block (not when each diode is across a switch: an H bridge's freewheeling diodes stay
+               separate), T/O/U lines, S/W switches, A devices (XSPICE NULL ports left out). Values with
                SI prefixes and decimal comma (formatoCorto); sources show DC, «∿ amplitude · f», PULSE «v1/v2 · f».
                Supply rails: a DC source from a net to ground named like a supply (vcc, vdd, vee, v5…) or feeding
                ≥ 3 other pins; it is drawn apart (source + rail + ground) and every pin on the rail gets a
@@ -558,10 +639,42 @@ colocacion.ts  one connected circuit (nets other than ground/rails): units (a pa
 rutas.ts       orthogonal router on the unit grid: Steiner tree per net (Dijkstra from the drawn tree to the
                nearest pin; length, bends, crossings, label and next-to-wire costs); no overlaps, no touching
                another net except a straight right-angle crossing, no passing through pins or bodies. A pin that
-               cannot be reached sensibly gets a net label (stub + name) instead.
+               cannot be reached sensibly gets a net label (stub + name) instead. Optional: nets labelled at
+               every pin, single pins labelled while the rest of their net is wired.
+plantillas.ts  topologies recognised by structure → `Reglas` (colocacion.ts): orientation wishes folded into
+               the variants' costs (a pass transistor gets horizontal variants), soft constraints between units
+               (`orden`: coord(a) + min ≤ coord(b); `alin`: equal coordinate; refs = a pin or the body's centre
+               or edges), per-unit flow rank, rows and an anchored start for the layered/low-temperature run,
+               nets or pins drawn as labels. Families: H bridge (four switches T–a, T–b, a–B, b–B with a series
+               load from a to b; anchored H), buck/boost (an inductor whose switch node has a switch/diode to
+               ground, maybe with an ammeter, and a series switch; buck when that switch comes from a voltage
+               source/rail or a transformer, boost the other way), Wien (op-amp with R ∥ C to ground on + and a
+               series R–C to the output side), series regulators (BJT/MOS between an input — source, rail,
+               ammeter, `in` port — and a load, with a Zener or an op-amp with a DC reference; Darlington driver
+               and current-limit transistor), adjustable regulators (a DEPV equal to v(adj) + k over a divider),
+               logic (six or more gates/flip-flops besides XSPICE bridges: depth columns, rows by chain, clock
+               and enable nets from a source or ADC bridge with ≥ 4 inputs and far inputs as labels),
+               rectifiers (a diode bridge, or diodes from the AC side — a sine source or transformer, maybe
+               through series parts — into a node with a capacitor: source upright on the left with its
+               series parts and shunts on the AC wires, bridge with the AC corners top/bottom and + right,
+               filter capacitor then load hanging from + on the right; a bridge − that is not ground is joined
+               by a net label, since source, bridge and load form a K4 that cannot be drawn without a crossing;
+               half-wave diode horizontal, centre-tap diodes on two rows with their cathodes in one column).
+               The recognisers run once per circuit structure (cache in generar.ts: the rules, the variants they
+               added and every variant's cost).
 generar.ts     whole netlist: components → placement (best of several runs by routed score: length, bends,
                crossings, labels) → shelf packing to a target aspect ratio → net-label texts and small net-name
-               tags placed where they collide with nothing → topology. Layouts are kept per circuit structure
+               tags placed where they collide with nothing → topology. With recognised topologies the runs are
+               ranked by crossings + fallback labels first, then by score + 2 × rule cost, and the families
+               are part of the cache key. Several components that are all rectifiers are packed in a grid of
+               equal cells in netlist order (columns chosen for the target aspect). After routing, a part label
+               closer than HOLGURA_ETIQUETA (0,15) to any wire moves to the nearest free place around its symbol
+               (beside, above, below, shifted, a little further out, corners; also as two lines «R1» / «10 kΩ»)
+               with the largest clearance; `UnidadDibujada.etq` holds it in world coordinates (`etiquetaMundo`).
+               Live layout (effort ≤ 1, an edited netlist): annealing runs capped at 12 000 iterations that stop
+               after 20 % of them without improvement, the topology's own start (anchored or rows) first, no
+               extra runs for recognised topologies and no more runs once one has no crossing, no fallback label
+               and no rule left unmet; incremental rule costs. Layouts are kept per circuit structure
                (kinds, pin-net pattern, name lengths; values never matter: label widths reserve «8,88 k»), so a
                slider move redraws the same layout at once; precalculado.json holds the layouts of every book
                netlist computed at high effort (scripts/esquema-auto-precalcular.mjs; a stale entry that no
@@ -596,7 +709,8 @@ the leads of ground/rail symbols and net labels); `flujo[tramo]` lists the termi
 current from `de` to `a` (the side without a ground, rail or label symbol).
 
 Checks: `node tests/esquema-auto.mjs [--hojas] [--en-vivo] [--esfuerzo k] [--solo texto]` lays out all 313
-netlists, checks every device and node drawn, topology consistency and overlaps, prints crossings, labels,
+netlists, checks every device and node drawn, topology consistency, overlaps and the label–wire clearance
+(≥ 0,15 for every part label; prints how many labels were moved), prints crossings, labels,
 lengths and times, and with `--hojas` writes contact sheets to `tests/capturas/esquema-auto/`.
 `tests/esquema-auto.spec.ts` covers the page (auto drawing under the live layer, XSPICE drawing, zoom, click →
 slider, subcircuit interior, «Nuevo circuito») and the screenshots.
@@ -677,6 +791,100 @@ as signal transition lists in real seconds, sampled by binary search; `nes.ts`, 
 68000/Z80), `notaDecodificador` and `variantes` + `diagramaDe` (machine-wide variant passed to every scenario as
 `op.norma` and shown as a toggle «Norma de vídeo»: the Mega Drive's PAL default and NTSC clocks); `dibujo.ts` draws the diagram in the shared `Escena`;
 `Analizador.svelte` is the logic-analyser view). Tests: `tests/consolas.spec.ts`.
+
+## Proyectos KiCad (`web/src/componentes/proyectos/`, data in `web/public/proyectos/`)
+
+The boards of the four KiCad projects of the book (printed chapters 48–51, sources `cap49`–`cap52`): estación IoT,
+fuente de laboratorio, the four boards of the Hi-Fi amplifier (potencia, preamplificador, fuente, protección) and the
+SDR. Route `#/proyectos[/<placa>/<vista>[/<sel>]]` (`Vista` includes `'proyectos'`), `placa` ∈ `estacion_iot
+fuente_laboratorio hifi-potencia hifi-preamplificador hifi-fuente hifi-proteccion sdr`, `vista` ∈ `3d placa esquema
+simulacion comprobaciones`, `sel` = a reference (`R17`), `red:<net>` or `pad:<ref>.<pin>` (URI-encoded). Selections made
+inside a view replace the URL; «Ver en 3D / 2D / el esquema» push it. The reader shows «Ver la placa»
+(`proyectos/VerPlaca.svelte`, static map `PLACA_DE_LABEL` in `estado.ts`) next to the four KiCad figures
+(`fig-new-49-placa` … `fig-new-52-placa`), the book schematics the boards implement (figs. 49.8, 49.10, 50.22, 51.4,
+51.6, 51.10) and the sections that present them.
+
+**Pipeline.** `contenido/proyectos_kicad.py` (called by `generar.py` after the consoles, or alone; needs `kicad-cli` 7 and
+reads `/home/claude/v3/complementos/kicad`, env `PROYECTOS_KICAD`, read only). Modules: `proyectos_kicad_pcb.py` (the
+`.kicad_pcb` reader on top of `consolas_kicad`'s s-expression parser: outline, layers, nets, footprints with absolute
+pads, tracks, vias, zone fills, rule areas; copper connectivity; 3D model descriptor per footprint), `proyectos_kicad_datos.py`
+(curated: projects and boards, README fabrication notes, schematic block → book labels, function of the main parts
+from the READMEs with the label of the section that explains them, DC wrappers). kicad-cli runs are cached by content in
+`contenido/.cache/proyectos/`: `sch export netlist` (kicadsexpr), `sch export svg` (→ CSG1 with `consolas_svg`) and
+`pcb export svg` of F.SilkS / B.SilkS (text already stroked in KiCad's font). The schematic sheet goes through
+`consolas_kicad.connectivity`/`map_nets` exactly as the consoles'. Checks (shown in «Comprobaciones», errors make
+`main()` return 1): every PCB pad on the schematic net of its (ref, pin), same partition of pads, references schematic ↔
+PCB (mounting holes apart), each net one piece of copper (union-find over pads, track ends and T joints, vias and zone
+fills), values / footprints / MPN schematic ↔ PCB ↔ BOM, the project's DRC report, board size, layers and part count
+against the book text and the README, chapter numbers printed on the silkscreen against the printed book, parts under a
+shielding can taller than the can. What does not agree is also collected in `indice.json → erratas`.
+
+**Files** (≈ 1,5 MB for the seven boards; each board fetched only when opened). Units: `u` = 0,01 mm, board frame with
+the origin at the top-left corner of the outline, y down; polylines are delta coded (`x0, y0, dx, dy, …`).
+- `indice.json`: `{version, proyectos: [{id, titulo, resumen, parte, capitulo (printed), capitulo_titulo, color, figura,
+  carpeta, placas: [{id, titulo, ancho, alto (mm), capas, componentes, redes, pads, vias, pistas, bytes, tensiones,
+  avisos}], netlists: [{id, titulo, ref, analisis, estado}] (the chapter's entries of spice.json), netlists_proyecto
+  [file names in complementos/kicad/<p>/spice]}], erratas: [{placa, texto, detalle?}], bytes}`.
+- `<placa>.json`: `placa {ancho, alto (u), origen [mm in KiCad], grosor (mm), capas ['F','B'], cobre_um, mascara (colour
+  name), mascara_fuente, serigrafia, acabado, fabricacion (README quote), contorno, apilado}`; `redes [{n, p (pads),
+  v? {v (V), origen anotacion|simulacion, texto?}}]` (sorted by name; the index is the net id everywhere, also in the
+  sheet file); `huellas [{r, v, l (footprint), lib, x, y (u), a (° CCW), lado F|B, t tht|smd|mec, pads [first, count],
+  m (3D descriptor: tipo + parameters in mm, `caja` = fab outline box, footprint-local), fab (outline primitives,
+  local u), f (function, Spanish), fo readme|deducida, fr? (book label), b? (schematic block), mpn?, dnp?, desc?}]`;
+  `pads [[huella, number, shape c|r|o|rr|t|x, x, y, w, h, rot°, roundrect ratio, drill w, drill h, flags, net, pin
+  function]]` (flags: 1 F.Cu, 2 B.Cu, 4 plated hole, 8 unplated hole, 16 F.Mask opening, 32 B.Mask, 64 F.Paste);
+  `pistas {F|B: [net, width, x1, y1, x2, y2]…}`; `vias [net, x, y, diameter, drill]…`; `zonas [{l, r (net), p}]`
+  (KiCad's fractured fills, collinear points dropped: fill even-odd); `areas [{capas, nombre, reglas, p}]` (rule areas:
+  the IoT antenna keep-out, the SDR shield wall); `serigrafia {F|B: {lineas [[width mm, n, x0, y0, dx, dy…, n, …]],
+  rellenos [delta polygons], circulos [[cx, cy, r, stroke (0 = filled)]]}}`; `esquema {hoja, ancho, alto, notas
+  (annotation texts of the sheet), bloques [{nombre, refs (book labels)}]}`; `simulacion {titulo, fuente} | null`;
+  `comprobaciones [{tipo ok|aviso|error, texto, detalle?}]`.
+- `<placa>/hoja-0.bin` and `hoja-0.json`: the schematic in the consoles' CSG1 and electrical-layer formats (net = index
+  into `redes`).
+- DC voltages: `ANOTACIONES` (the IoT schematic's «Tensiones esperadas») and the operating point of the project's own
+  SPICE models run with the native ngspice (`hifi-potencia`: `etapa_potencia.inc` at RV1 = 225 Ω, ±35 V, 8 Ω;
+  `fuente_laboratorio`: `nucleo.inc` at 30 V / 1 A), which use the board's references and net names: node `x1.<name>`
+  ↔ board net `<name>` (exact match only). Other boards have no voltages (their models use other node names).
+
+**App** (lazy chunk; three.js only in the 3D view's chunk). `datos.ts` (types, loaders, decoding), `geometria.ts` (Path2D
+per copper side and net — zone fills, tracks by width, pads, vias —, mask openings, drills, silkscreen, fab outlines,
+rule areas; `impacto()` hit testing: pads, vias, tracks, part bodies, zones), `pintar.ts` (`pintarLado()`: look «real» —
+mask over the laminate, copper under the mask a lighter shade, HASL/ENIG pads, silkscreen clipped by the openings — or
+«capas» — KiCad-like colours —; selected/hovered net and voltage colours), `Placa2D.svelte` (pan/zoom; the board painted
+into a cached bitmap ≈ 2 screens wide, panning only blits it, a new zoom repaints after 140 ms; `window.__epaPlacaVista`
+and `__epaPlaca2D` for the tests), `escena3d.ts` + `Vista3D.svelte` (below), `EsquemaPlaca.svelte` (the consoles'
+`esquema/Lienzo.svelte`), `Ficha.svelte` (selection panel; `Simbolo.svelte` crops the sheet around the part),
+`Simulacion.svelte`, `Comprobaciones.svelte`, `seleccion.ts`, `estado.ts`, `opciones3d.svelte.ts`.
+
+**3D** (`escena3d.ts`): the model library of `componentes/tres/modelos` (`crearModelo(tipo, parametros, {recursos,
+detalle: 'bajo', grosorPlaca})`, found with `import.meta.glob`, so the board view also builds without it) chosen by
+`modelos3d.ts → claveBiblioteca()` from the descriptor (resistor value → colour bands, capacitor package and value,
+ICs by package with their marking, connectors, transistors…); the model's pad 1 is put on the footprint's pad 1 (else its
+`origenKicad`), and a model whose body differs by more than ≈ 35 % from the footprint's fab outline is scaled to it. A
+library model is refused when it would misrepresent the part: discrete parts whose marking comes from the library's fixed
+table (`userData.marcado` ≠ the board's value: diodes, TO-92, TO-220, SOT-23, relays), packages it draws differently
+(female sockets, horizontal panel pots, the hand-wound air coil of the power amplifier). Those and the parts the library
+does not cover get a body built in `modelos3d.ts → cuerpoSimple` from the fab outline and the package, with the value
+printed on it when the package carries a marking. The library's studio (`tres/motor/estudio.ts`:
+lights, room environment, contact shadow) and orbit (`tres/motor/orbita.ts`) are reused. Board: FR-4 core extruded from the
+outline with every hole, faces textured from `pintarLado` (≤ 4096 px on the long side, about 21–37 px/mm, uploaded at once
+and the canvas freed) plus a half-size metal/roughness map (glossy mask, matt silkscreen, metallic pads), plated barrels
+in one InstancedMesh, overlays for the selected net and voltages. All part meshes are merged per material (40–60 draw
+calls per board). Shielding cans stay separate and turn translucent when the selected part is under them. «Abajo» turns
+the board over; «Separar capas» explodes silkscreen / mask / copper / core / parts; «Rayos X» shows both copper layers
+(pours faint) through a translucent core (two-layer boards: there are no inner layers). Render on demand; DPR ≤ 2 and
+≤ 2,4 Mpx; everything disposed on unmount; `window.__epaPlaca3D` (frame CPU times, draw calls, triangles, texture time,
+parts from the library / own) and `__epaPlaca3DListo`. Without WebGL2 (`tres/motor/soporte.ts`) the 3D tab shows the 2D view.
+
+Measured (`tests/proyectos-rendimiento.mjs`, Chromium headless with SwiftShader, i.e. WebGL rasterised on the CPU, so far
+slower than any real GPU): 53–73 draw calls and 42 000–99 000 triangles per board, 1,5–6 ms of CPU per `render()`, both face
+textures painted in 50–170 ms (up to 750 ms with the tablet profile's emulation), board ready with its parts in 3–9 s (up to
+43 s for the SDR under SwiftShader at 2,25 × DPR); the 2D view blits its cache in 0,1–0,4 ms per frame while panning and
+repaints it in 1–15 ms. Frame intervals under SwiftShader (16,7 ms to 2 s) depend on the software rasteriser, not on the app.
+
+Tests: `tests/proyectos-kicad.spec.ts` (own config `playwright.proyectos.config.ts`, port 4189); screenshots of every board
+`node tests/proyectos-capturas.mjs --url http://localhost:4189/` → `tests/capturas/proyectos/`; frame cost while
+orbiting `node tests/proyectos-rendimiento.mjs --perfil mac|tableta|movil`.
 
 ## Instruments and test bench (`web/src/componentes/instrumentos/`)
 
@@ -799,7 +1007,11 @@ topología, `fm7303_esquema.py` = el esquema completo colocado a mano, `fm7303_d
   si hay `ngspice`, un punto del mapa de tensiones fuera de la tolerancia del libro.
 
 **Aplicación.** `Visor.svelte` (SVG en línea cuyo `viewBox` sigue a la vista, sin rasterizar; encima
-`CapaEsquema` de figuras-vivas con la misma ventana, y capas propias), `estado.svelte.ts` (mandos, avería, punto
+`CapaEsquema` de figuras-vivas con la misma ventana, y capas propias; recuerda qué muestra —vista inicial, todo,
+una región pedida por la página o una vista libre del usuario— y la rehace en cada cambio de tamaño del recuadro;
+`reinicio` = pestaña: al cambiar vuelve a la vista inicial; los límites centran el dibujo en cada eje en que cabe
+y, si no cabe, dejan desplazarlo hasta 40 px más allá de su borde; una región pedida en un recuadro estrecho no se
+muestra más pequeña que la vista inicial), `estado.svelte.ts` (mandos, avería, punto
 de trabajo, multímetro), `dc.ts` (rellena la plantilla y la ejecuta en el worker del simulador con amperímetros en
 cada patilla), `fisica.ts` (modelo de la alineación: tanques LC, FI, discriminador, AFC, VCO, mute, audio),
 `ondas.ts` (formas de onda sintetizadas y trazas de la figura 15.16, `datos/16.15.json`), `alineacion.ts` (comprobación de cada paso),

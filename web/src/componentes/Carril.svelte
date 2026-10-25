@@ -8,7 +8,7 @@
   import MenuHerramientas from './MenuHerramientas.svelte';
 
   /** Height of one entry (keep in sync with `.item` in the CSS). */
-  const ALTO_ITEM = 54;
+  const ALTO_ITEM = 48;
 
   let alto = $state(0);
   let botonMas: HTMLButtonElement | undefined = $state();
@@ -161,7 +161,7 @@
     justify-content: center;
     gap: 2px;
     width: calc(var(--ancho-carril) - 8px);
-    height: 54px;
+    height: 48px;
     padding: 0;
     border: 0;
     border-radius: 12px;

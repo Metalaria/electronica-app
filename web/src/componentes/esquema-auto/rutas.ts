@@ -86,7 +86,14 @@ class Monticulo {
   }
 }
 
-export function enrutar(pines: PinRuta[], nRedes: number, obs: Obstaculos, orden?: number[]): ResultadoRutas {
+export function enrutar(
+  pines: PinRuta[],
+  nRedes: number,
+  obs: Obstaculos,
+  orden?: number[],
+  etiquetar?: Set<number>,
+  pinesEtiqueta?: Set<number>,
+): ResultadoRutas {
   // Grid bounds.
   let x0 = Infinity;
   let y0 = Infinity;
@@ -143,7 +150,12 @@ export function enrutar(pines: PinRuta[], nRedes: number, obs: Obstaculos, orden
   const nodoP = new Uint8Array(N); // 1 when that wire bends, ends or branches there (no crossing allowed)
 
   const pinesDe: number[][] = Array.from({ length: nRedes }, () => []);
-  pines.forEach((p, i) => pinesDe[p.red]?.push(i));
+  // Pins joined by a label of their own (the far ends of a net whose near pins are wired) are not routed.
+  const etiquetasFijas: number[] = [];
+  pines.forEach((p, i) => {
+    if (pinesEtiqueta?.has(i)) etiquetasFijas.push(i);
+    else pinesDe[p.red]?.push(i);
+  });
 
   // Net order: short nets first.
   const extension = (k: number) => {
@@ -155,7 +167,9 @@ export function enrutar(pines: PinRuta[], nRedes: number, obs: Obstaculos, orden
   };
   const redes = orden ?? [...Array(nRedes).keys()].sort((a, b) => extension(a) - extension(b) || a - b);
 
-  const etiquetas: number[] = [];
+  const etiquetas: number[] = [...etiquetasFijas];
+  // A net left with a single wired pin is labelled there too.
+  for (const ps of pinesDe) if (ps.length === 1 && etiquetasFijas.some((i) => pines[i]!.red === pines[ps[0]!]!.red)) etiquetas.push(ps[0]!);
   const dist = new Float64Array(N * 4);
   const previo = new Int32Array(N * 4);
   // dist[s] is valid only when sello[s] === vuelta (no refill of the whole array per search).
@@ -193,6 +207,11 @@ export function enrutar(pines: PinRuta[], nRedes: number, obs: Obstaculos, orden
   for (const k of redes) {
     const ps = pinesDe[k]!;
     if (ps.length < 2) continue;
+    // Nets that read better as labels (a clock, an enable): a label at every pin, no wire.
+    if (etiquetar?.has(k)) {
+      for (const i of ps) etiquetas.push(i);
+      continue;
+    }
     enArbol.fill(0);
     const arbol: number[] = [];
     const conectado = new Set<number>();

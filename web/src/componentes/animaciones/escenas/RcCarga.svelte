@@ -1,6 +1,7 @@
 <script lang="ts">
   // RC charge and discharge (book 3.2, fig. 3.4): v_C(t) = V_CC·(1 − e^(−t/RC)) and V₀·e^(−t/RC), traced live
   // with the milestones at 1τ (63,2 %), 2τ (86,5 %), 3τ (95 %) and 5τ (99,3 %). Book example: 10 kΩ, 100 µF, 9 V.
+  import { compartir3d } from '../../tres/compartir.svelte';
   import { untrack } from 'svelte';
   import Escena from '../ui/Escena.svelte';
   import Marco from '../ui/Marco.svelte';
@@ -238,6 +239,9 @@
     { e: 'Corriente inicial', v: si(VCC / R, 'A', 3) },
     { e: 'Energía final ½·C·V²', v: si(0.5 * C * VCC * VCC, 'J', 3) },
   ]);
+
+  // 3D view of the page (componentes/tres): the model follows these controls.
+  compartir3d(() => ({ R, C, VCC }));
 </script>
 
 <Marco {reloj} {texto} {lecturas} leyenda={['electron', 'corriente']}>

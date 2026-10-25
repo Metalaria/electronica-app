@@ -118,6 +118,80 @@ test('el lector enlaza el kit desde el esquema del capítulo', async ({ page }) 
   await expect(page.locator('[data-kit-fm7303]')).toBeVisible();
 });
 
+/** Where the drawing sits inside the viewer: free px above, below, left and right of the drawn sheet. */
+async function encuadre(page: Page): Promise<{ arriba: number; abajo: number; izq: number; der: number; alto: number; ancho: number }> {
+  return page.evaluate(() => {
+    const v = document.querySelector('[data-kit-fm7303] .visor')!;
+    const r = v.getBoundingClientRect();
+    const g = v.querySelector('svg.dibujo > g')!.getBoundingClientRect();
+    return { arriba: g.top - r.top, abajo: r.bottom - g.bottom, izq: g.left - r.left, der: r.right - g.right, alto: r.height, ancho: r.width };
+  });
+}
+
+/** Waits until the drawing is vertically centred in the viewer (within 3 % of its height); with `ambos`, also
+ *  horizontally. */
+async function centrado(page: Page, que: string, ambos = false): Promise<void> {
+  await expect
+    .poll(async () => {
+      const e = await encuadre(page);
+      const v = Math.abs(e.arriba - e.abajo) / e.alto;
+      const h = ambos ? Math.abs(e.izq - e.der) / e.ancho : 0;
+      return v < 0.03 && h < 0.03 ? 'centrado' : `${que}: arriba ${e.arriba.toFixed(0)} abajo ${e.abajo.toFixed(0)} izq ${e.izq.toFixed(0)} der ${e.der.toFixed(0)}`;
+    }, { timeout: 10_000 })
+    .toBe('centrado');
+}
+
+const ENCUADRES = [
+  { nombre: 'móvil', w: 390, h: 844, tactil: true },
+  { nombre: 'portátil', w: 1280, h: 800, tactil: false },
+  { nombre: 'tableta vertical', w: 800, h: 1280, tactil: true },
+  { nombre: 'tableta horizontal', w: 1280, h: 800, tactil: true },
+];
+
+for (const t of ENCUADRES) {
+  test(`el esquema queda centrado en vertical en cada pestaña (${t.nombre})`, async ({ browser }) => {
+    const ctx = await browser.newContext({ viewport: { width: t.w, height: t.h }, deviceScaleFactor: 1, hasTouch: t.tactil });
+    const page = await ctx.newPage();
+    await tema(page, 'claro');
+    const pestanas = ['esquema', 'senal', 'alineacion', 'averias'];
+    for (const p of pestanas) {
+      await page.goto(`#/fm7303/${p}`);
+      await page.waitForSelector('[data-kit-fm7303] .visor');
+      await centrado(page, `al abrir ${p}`);
+    }
+    // Switching tabs, also after a stage of the signal path was brought into view.
+    await page.goto('#/fm7303/senal/mpx');
+    await centrado(page, 'etapa mpx');
+    for (const p of [...pestanas].reverse()) {
+      await page.click(`[data-pestana="${p}"]`);
+      await centrado(page, `pestaña ${p}`);
+    }
+    // «Ver todo» centres the drawing both ways.
+    await page.click('button[aria-label="Ver todo el esquema"]');
+    await centrado(page, 'ver todo', true);
+    // Pan and zoom still work, and the view stays inside its limits.
+    await page.click('button[aria-label="Acercar"]');
+    await page.click('button[aria-label="Acercar"]');
+    const antes = await page.locator('.visor').getAttribute('data-vista');
+    const caja = (await page.locator('.visor').boundingBox())!;
+    await page.mouse.move(caja.x + caja.width / 2, caja.y + caja.height / 2);
+    await page.mouse.down();
+    await page.mouse.move(caja.x + caja.width / 2 - 80, caja.y + caja.height / 2 - 60, { steps: 6 });
+    await page.mouse.up();
+    expect(await page.locator('.visor').getAttribute('data-vista')).not.toBe(antes);
+    await page.click('button[aria-label="Ver todo el esquema"]');
+    await centrado(page, 'ver todo tras desplazar', true);
+    // Rotation / resize: the automatic view is redone for the new box.
+    await page.setViewportSize({ width: t.h, height: t.w });
+    await centrado(page, 'tras girar', true);
+    await page.click('[data-pestana="alineacion"]');
+    await centrado(page, 'alineación tras girar');
+    await page.setViewportSize({ width: t.w, height: t.h });
+    await centrado(page, 'tras volver a girar');
+    await ctx.close();
+  });
+}
+
 const TAMANOS = [
   { nombre: 'movil', w: 390, h: 844, dpr: 3, tactil: true },
   { nombre: 'portatil', w: 1280, h: 800, dpr: 2, tactil: false },

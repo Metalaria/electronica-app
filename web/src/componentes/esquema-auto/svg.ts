@@ -3,7 +3,7 @@
 // inline SVG that follows light and dark mode).
 
 import { ALTO_LINEA, partesRef, TAM_ETQ, type Talon } from './colocacion.ts';
-import { esc, TAM_NOMBRE, type EsquemaAuto } from './generar.ts';
+import { esc, etiquetaMundo, TAM_NOMBRE, type EsquemaAuto } from './generar.ts';
 import { girar, type Prim, type Pt, type Rect } from './simbolos.ts';
 
 export type Paleta = 'libro' | 'tema';
@@ -105,11 +105,11 @@ export function svgEsquema(a: EsquemaAuto, op: OpcionesSvg = {}): string {
     out.push(`<g class="ea-u${sel ? ' ea-sel' : ''}"${attrs}>`);
     const centro = T([(v.def.cuerpo[0] + v.def.cuerpo[2]) / 2, (v.def.cuerpo[1] + v.def.cuerpo[3]) / 2]);
     for (const pr of v.def.prims) out.push(primitiva(pr, T, camino, X, Y, S, centro));
-    if (v.etq) {
-      const e = v.etq;
+    const e = etiquetaMundo(ud);
+    if (e) {
       e.lineas.forEach((l, i) => {
-        const yb = e.rect[1] + ud.y + i * ALTO_LINEA + 0.36;
-        out.push(texto(e.x + ud.x, yb, l, e.ancla, i === 0 ? 'ea-t' : 'ea-v', u.disp?.nombre));
+        const yb = e.rect[1] + i * ALTO_LINEA + 0.36;
+        out.push(texto(e.x, yb, l, e.ancla, i === 0 ? 'ea-t' : 'ea-v', u.disp?.nombre));
       });
     }
     for (const t of v.talones) out.push(talon(t, ud.x, ud.y, camino, X, Y, S, u.pines[t.pin]!.riel?.html ?? ''));

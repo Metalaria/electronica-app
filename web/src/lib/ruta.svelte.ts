@@ -11,6 +11,7 @@
 //          #/conceptos[/<id>]    the concept animations (phasors, Fourier, aliasing…): gallery, or one
 //          #/consolas[/<maquina>/<vista>[/<seleccion>]]  NES and Neo Geo mainboards (componentes/consolas)
 //          #/fm7303[/<capa>[/<seleccion>]]  the FM7303 kit, live (componentes/fm7303)
+//          #/proyectos[/<placa>/<vista>[/<seleccion>]]  the KiCad boards of the book (componentes/proyectos)
 //          #/calculadoras[/<id>]  formula calculators: catalogue, or one formula (componentes/calculadoras)
 //          #/repaso[/tarjetas|test/<parte>|examen|repasar[/<parte>]]  flashcards and quizzes (componentes/repaso)
 //          #/ejercicios[/repaso]  exercises and problems by chapter, or the review of the failed ones
@@ -19,7 +20,7 @@
 // the browser or the Android back button) returns exactly where the reader was. Overlays
 // (drawer, search, figure viewer) push their own entry so the back button closes them.
 
-export type Vista = 'inicio' | 'parte' | 'glosario' | 'marcadores' | 'simulador' | 'componentes' | 'conceptos' | 'consolas' | 'instrumentos' | 'fm7303' | 'repaso' | 'ejercicios' | 'calculadoras';
+export type Vista = 'inicio' | 'parte' | 'glosario' | 'marcadores' | 'simulador' | 'componentes' | 'conceptos' | 'consolas' | 'instrumentos' | 'fm7303' | 'repaso' | 'ejercicios' | 'calculadoras' | 'proyectos';
 
 export interface AnclaLectura {
   /** Index of the top-level block at the top of the screen. */
@@ -77,6 +78,10 @@ function leer(): void {
     ruta.sim = b;
   } else if (a === 'consolas') {
     ruta.vista = 'consolas';
+    ruta.parte = '';
+    ruta.ancla = b;
+  } else if (a === 'proyectos') {
+    ruta.vista = 'proyectos';
     ruta.parte = '';
     ruta.ancla = b;
   } else if (a === 'fm7303') {

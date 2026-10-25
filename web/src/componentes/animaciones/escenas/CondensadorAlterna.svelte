@@ -1,6 +1,7 @@
 <script lang="ts">
   // The capacitor in AC (book 3.3): i = C·dv/dt, so the current leads the voltage by 90° and the reactance
   // X_C = 1/(2π·f·C) falls with frequency. Shown in slow motion: one period lasts two seconds on screen.
+  import { compartir3d } from '../../tres/compartir.svelte';
   import Escena from '../ui/Escena.svelte';
   import Marco from '../ui/Marco.svelte';
   import Deslizador from '../ui/Deslizador.svelte';
@@ -181,6 +182,9 @@
     { e: 'Desfase de I sobre V', v: '+90°' },
     { e: 'Potencia media', v: '0 W' },
   ]);
+
+  // 3D view of the page (componentes/tres): the model follows these controls.
+  compartir3d(() => ({ C }));
 </script>
 
 <Marco {reloj} {texto} {lecturas} leyenda={['electron', 'corriente']}>

@@ -3,6 +3,7 @@
   // temperature reaches the melting point after a time that falls roughly as 1/I² (the I²t of the fuse), the
   // wire opens and an arc may form. The polymer PTC instead jumps to a high resistance, limits the current,
   // and resets when the fault is removed and it cools.
+  import { compartir3d } from '../../tres/compartir.svelte';
   import { untrack } from 'svelte';
   import Escena from '../ui/Escena.svelte';
   import Marco from '../ui/Marco.svelte';
@@ -255,6 +256,9 @@
     { e: 'Temperatura del elemento', v: `${num(estado.T, 0)} °C` },
     tipo === 'fusible' ? { e: 'Estado', v: estado.fundido ? 'fundido' : 'conduce', c: estado.fundido ? pal.peligro : pal.bien } : { e: 'Resistencia de la PTC', v: si(estado.rptc, 'Ω', 2) },
   ]);
+
+  // 3D view of the page (componentes/tres): the model follows these controls.
+  compartir3d(() => ({ tipo, fundido: estado.fundido }));
 </script>
 
 <Marco {reloj} {texto} {lecturas} leyenda={['electron', 'corriente', 'calor']}>

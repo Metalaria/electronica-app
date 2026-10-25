@@ -7,8 +7,10 @@
   import Icono from './Icono.svelte';
   import BotonSimular from './BotonSimular.svelte';
   import VerAnimacion from './animaciones/VerAnimacion.svelte';
+  import VerEn3D from './tres/VerEn3D.svelte';
   import VerPractica from './instrumentos/VerPractica.svelte';
   import VerKit from './fm7303/VerKit.svelte';
+  import VerPlaca from './proyectos/VerPlaca.svelte';
   import MarcaLeida from './aprender/MarcaLeida.svelte';
 
   let { bloque, parte, indice }: { bloque: BH2; parte: string; indice?: number } = $props();
@@ -54,8 +56,10 @@
       <div class="herramientas">
         <BotonSimular {label} compacto />
         <VerAnimacion {label} compacto />
+        <VerEn3D {label} compacto />
         <VerPractica {label} compacto />
         <VerKit {label} compacto />
+        <VerPlaca {label} compacto />
         <MarcaLeida {parte} {label} />
         <button
           class="boton-icono"

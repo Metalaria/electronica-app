@@ -40,6 +40,7 @@ import fm7303                        # noqa: E402
 import repaso                        # noqa: E402
 import formulas                      # noqa: E402
 import ejercicios                    # noqa: E402
+import proyectos_kicad               # noqa: E402
 
 ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII']
 
@@ -252,6 +253,7 @@ def main():
     ok = datos_figuras.validar(OUT) and ok
     ok = spice.main() == 0 and ok    # netlists for the simulator: spice/, spice.json (cached validation)
     ok = consolas.main() == 0 and ok  # NES and Neo Geo mainboards: web/public/consolas/
+    ok = proyectos_kicad.main() == 0 and ok  # KiCad boards of chapters 48-51: web/public/proyectos/ (needs spice.json)
     ok = fm7303.main() == 0 and ok    # the FM7303 kit, live: web/public/fm7303/ (needs refs.json)
     ok = repaso.main() == 0 and ok    # chapter quizzes: web/public/libro/repaso/ (needs indice.json, refs.json)
     ok = formulas.main() == 0 and ok  # live calculators: formulas.json, formulas-ec.json (needs partes/, refs.json)

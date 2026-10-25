@@ -2,6 +2,7 @@
   // LED (book 5.5, 44.1 and 44.2): in a direct band-gap semiconductor the recombination of an electron with a
   // hole releases a photon whose energy is the band gap: λ = 1240 nm·eV / E_g. Book table: infrared 1,4 eV,
   // red 1,9 eV, green 2,3 eV, blue 2,7 eV; silicon (indirect gap) gives heat, not light.
+  import { compartir3d } from '../../tres/compartir.svelte';
   import Escena from '../ui/Escena.svelte';
   import Marco from '../ui/Marco.svelte';
   import Deslizador from '../ui/Deslizador.svelte';
@@ -259,6 +260,9 @@
     { e: 'Resistencia serie', v: Number.isFinite(R) ? si(R, 'Ω', 3) : '∞' },
     { e: 'Potencia en R', v: si(I * I * (Number.isFinite(R) ? R : 0), 'W', 3) },
   ]);
+
+  // 3D view of the page (componentes/tres): the model follows these controls.
+  compartir3d(() => ({ mat, I }));
 </script>
 
 <Marco {reloj} {texto} {lecturas} leyenda={['electron', 'hueco', 'foton', 'calor']}>

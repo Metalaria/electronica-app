@@ -25,6 +25,19 @@ const carril = (page: Page) => page.getByRole('navigation', { name: 'Secciones d
 const indice = (page: Page) => page.getByRole('complementary', { name: 'Índice del libro' });
 const filtro = (page: Page) => page.getByRole('searchbox', { name: 'Filtrar capítulos y secciones' });
 
+/**
+ * Clicks a link of the sticky reading bar where a person would, at its centre on screen. Locator.click()
+ * first asks Chromium to scroll the element into view, and for an element inside a sticky header that can
+ * scroll the page while the reader is still pinning a freshly opened section, so the click lands on the
+ * bar of another section (seen as a flaky «5.7» instead of «5.8» on a busy machine).
+ */
+async function pulsarEnBarra(page: Page, enlace: ReturnType<Page['locator']>): Promise<void> {
+  await expect(enlace).toBeVisible();
+  const caja = await enlace.boundingBox();
+  if (!caja) throw new Error('the bar link has no box');
+  await page.mouse.click(caja.x + caja.width / 2, caja.y + caja.height / 2);
+}
+
 /** The row is inside the visible part of the index list. */
 async function enVista(page: Page, fila: ReturnType<Page['locator']>): Promise<boolean> {
   const caja = await fila.boundingBox();
@@ -40,7 +53,7 @@ test.describe('escritorio', () => {
     const c = carril(page);
     await expect(c.getByRole('link', { name: 'Inicio' })).toHaveAttribute('aria-current', 'page');
     // every entry of the registry fits at 800 px, labels visible without hovering
-    for (const nombre of ['Libro', 'Buscar', 'Simulador', 'Calculadoras', 'Ejercicios', 'Repaso', 'Componentes', 'Conceptos', 'Instrumentos', 'Kit FM7303', 'Consolas', 'Glosario', 'Marcadores']) {
+    for (const nombre of ['Libro', 'Buscar', 'Simulador', 'Calculadoras', 'Ejercicios', 'Repaso', 'Componentes', 'Conceptos', 'Instrumentos', 'Kit FM7303', 'Consolas', 'Proyectos', 'Glosario', 'Marcadores']) {
       await expect(c.locator('.etiqueta', { hasText: new RegExp(`^${nombre}$`) })).toBeVisible();
     }
     const destinos: [string, string][] = [
@@ -53,6 +66,7 @@ test.describe('escritorio', () => {
       ['Instrumentos', '#/instrumentos'],
       ['Kit FM7303', '#/fm7303'],
       ['Consolas', '#/consolas'],
+      ['Proyectos KiCad', '#/proyectos'],
       ['Glosario', '#/glosario'],
       ['Marcadores y notas', '#/marcadores'],
     ];
@@ -186,10 +200,10 @@ test.describe('escritorio', () => {
     // let the reading position settle (late images move the page for a moment)
     await page.waitForTimeout(1500);
     await expect(barra.locator('.seccion')).toContainText('5.8');
-    await barra.getByRole('link', { name: /Sección siguiente: 5\.9/ }).click();
+    await pulsarEnBarra(page, barra.getByRole('link', { name: /Sección siguiente: 5\.9/ }));
     await expect(page).toHaveURL(/#\/cap05\/sec-5\.9$/);
     await expect(barra.locator('.seccion')).toContainText('5.9');
-    await barra.getByRole('link', { name: /Sección anterior: 5\.8/ }).click();
+    await pulsarEnBarra(page, barra.getByRole('link', { name: /Sección anterior: 5\.8/ }));
     await expect(page).toHaveURL(/sec-5\.8$/);
     // Alt + ↓
     await expect(barra.locator('.seccion')).toContainText('5.8');

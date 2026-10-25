@@ -3,6 +3,7 @@
   // output moves until the inputs are almost equal (v_d = v_out/A₀, microvolts). Inverting: G = −R_f/R_in and
   // the inverting input is a virtual ground; non-inverting: G = 1 + R_f/R_in; without feedback it is a
   // comparator that slams into the rails.
+  import { compartir3d } from '../../tres/compartir.svelte';
   import Escena from '../ui/Escena.svelte';
   import Marco from '../ui/Marco.svelte';
   import Deslizador from '../ui/Deslizador.svelte';
@@ -253,6 +254,9 @@
     { e: 'Pico de salida', v: `${num(Math.max(...ondas.b.map(Math.abs)), 2)} V` },
     { e: 'Diferencia entre entradas (pico)', v: si(modo === 'comparador' ? amp : Math.max(...ondas.b.map(Math.abs)) / A0, 'V', 2) },
   ]);
+
+  // 3D view of the page (componentes/tres): the model follows these controls.
+  compartir3d(() => ({ modo }));
 </script>
 
 <Marco {reloj} {texto} {lecturas} leyenda={['corriente']}>

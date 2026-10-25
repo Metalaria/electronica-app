@@ -2,6 +2,7 @@
   // Zener and avalanche breakdown (book 5.2, 5.5 and 5.8): below about 5 V the electrons tunnel through a very
   // thin junction (negative temperature coefficient), above it they multiply by impact (positive); near
   // 5,6 V both compensate. The shunt regulator: V_out stays near V_Z while the input or the load change.
+  import { compartir3d } from '../../tres/compartir.svelte';
   import Escena from '../ui/Escena.svelte';
   import Marco from '../ui/Marco.svelte';
   import Deslizador from '../ui/Deslizador.svelte';
@@ -248,6 +249,9 @@
     { e: 'Potencia en el Zener', v: si(punto.vo * punto.iz, 'W', 3) },
     { e: 'Potencia en R_S', v: si(punto.is * punto.is * RS, 'W', 3) },
   ]);
+
+  // 3D view of the page (componentes/tres): the model follows these controls.
+  compartir3d(() => ({ vz }));
 </script>
 
 <Marco {reloj} {texto} {lecturas} leyenda={['electron', 'hueco', 'corriente']}>

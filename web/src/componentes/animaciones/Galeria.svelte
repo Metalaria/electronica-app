@@ -12,6 +12,7 @@
   import { ruta } from '../../lib/ruta.svelte';
   import Simbolo from './ui/Simbolo.svelte';
   import Icono from './conceptos/Icono.svelte';
+  import Conmutador from '../tres/Conmutador.svelte';
 
   let { coleccion = COMPONENTES }: { coleccion?: Coleccion } = $props();
 
@@ -63,7 +64,10 @@
         momento con los números del libro, y cada una enlaza con las secciones que la explican.
       </p>
     {:else}
-      <p class="sobre">Componentes animados</p>
+      <div class="fila-sobre">
+        <p class="sobre">Componentes animados</p>
+        <Conmutador />
+      </div>
       <h1>Cómo funcionan por dentro</h1>
       <p class="intro">
         {lista.length} animaciones interactivas de los componentes que trata el libro: su construcción, lo que ocurre
@@ -126,6 +130,13 @@
   }
   header {
     padding: clamp(20px, 5vw, 44px) 0 8px;
+  }
+  .fila-sobre {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
   }
   .sobre {
     margin: 0;

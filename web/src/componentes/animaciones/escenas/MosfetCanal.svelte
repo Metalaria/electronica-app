@@ -3,6 +3,7 @@
   // the holes (depletion with fixed acceptor ions), then attracts electrons until the surface inverts at V_th;
   // V_DS tapers the channel and pinches it off at the drain when V_DS = V_GS − V_th. Square law with λ,
   // k = 0,5 A/V², V_th = 2 V. With the drain below the source, the body diode conducts.
+  import { compartir3d } from '../../tres/compartir.svelte';
   import { untrack } from 'svelte';
   import Escena from '../ui/Escena.svelte';
   import Marco from '../ui/Marco.svelte';
@@ -252,6 +253,9 @@
     { e: 'V_ov = V_GS − V_th', v: `${num(vov, 2)} V` },
     { e: 'V_DS de estrangulamiento', v: vov > 0 ? `${num(vov, 2)} V` : '—' },
   ]);
+
+  // 3D view of the page (componentes/tres): the model follows these controls.
+  compartir3d(() => ({ tipo }));
 </script>
 
 <Marco {reloj} {texto} {lecturas} leyenda={tipo === 'n' ? ['electron', 'hueco', 'ionA'] : ['hueco', 'electron', 'ionD']}>

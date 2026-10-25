@@ -8,7 +8,8 @@
 //   PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers  when the browsers live there
 //
 // Checks for each netlist: no exception; every device of the netlist (main circuit) is drawn; every node is
-// in the topology with at least one terminal; no overlapping symbols or labels; the topology is consistent
+// in the topology with at least one terminal; no overlapping symbols or labels; every part label at least
+// HOLGURA_ETIQUETA (0,15) from any wire; the topology is consistent
 // (terminal points belong to their node, wire segments join points of their node). Reports crossings, net
 // labels, wire length, bends and the generation time.
 
@@ -106,6 +107,8 @@ for (const id of ids) {
     if (puntos.get(t.de)?.nodo !== t.nodo || puntos.get(t.a)?.nodo !== t.nodo) problemas.push(`${t.id}: extremos de otro nodo`);
   }
   if (a.estadisticas.solapes) problemas.push(`${a.estadisticas.solapes} solapes`);
+  // Every part label keeps its distance from the wires (generar.ts HOLGURA_ETIQUETA).
+  if (a.estadisticas.etiquetasPegadas) problemas.push(`${a.estadisticas.etiquetasPegadas} etiquetas pegadas a un cable (holgura ${a.estadisticas.holguraEtiquetas})`);
   if (problemas.length) fallos.push(`${id}: ${problemas.slice(0, 6).join('; ')}`);
   filas.push({ id, figura: conFigura.has(id), ...a.estadisticas, ms: Math.round(ms * 10) / 10, problemas: problemas.length });
   if (hojas) svgs.push({ id, svg: svgEsquema(a, { paleta: 'libro' }), figura: conFigura.has(id), st: a.estadisticas });
@@ -121,6 +124,7 @@ console.log(`Netlists: ${ids.length} · con esquema: ${filas.length} · fallos: 
 console.log(`Dispositivos: ${suma('dispositivos')} · componentes conexas: ${suma('componentes')} · nodos: ${suma('nodos')}`);
 console.log(`Solapes: ${suma('solapes')} · cruces: ${suma('cruces')} (en ${conCruces.length} netlists) · etiquetas de red: ${suma('etiquetasRed')} (en ${conEtiquetas.length})`);
 console.log(`Longitud de cable: ${suma('longitud')} · codos: ${suma('codos')}`);
+console.log(`Etiquetas de pieza apartadas de los cables: ${suma('etiquetasMovidas')} (en ${filas.filter((f) => f.etiquetasMovidas).length} netlists) · holgura mínima etiqueta–cable: ${Math.min(...filas.map((f) => f.holguraEtiquetas)).toFixed(2)}`);
 console.log(`Tiempo (Node, ${enVivo ? 'trazado en vivo' : 'con los trazados precalculados'}): mediana ${pct(0.5).toFixed(1)} ms · p90 ${pct(0.9).toFixed(1)} ms · máx ${pct(1).toFixed(1)} ms (${tiempos.at(-1)?.id})`);
 const sinFig = filas.filter((f) => !f.figura);
 console.log(`Sin figura en el libro: ${sinFig.length} · cruces ${sinFig.reduce((s, f) => s + f.cruces, 0)} · etiquetas ${sinFig.reduce((s, f) => s + f.etiquetasRed, 0)}`);

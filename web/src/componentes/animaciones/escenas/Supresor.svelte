@@ -2,6 +2,7 @@
   // Surge protection (book 10.4, 5.5 and 2.6): a transient of about 1 kV arrives on a 24 V line through the
   // line's impedance. A varistor (MOV) and a TVS diode both conduct steeply above their threshold and clamp
   // the voltage the load sees; the TVS has the sharper knee. Each surge wears a varistor a little.
+  import { compartir3d } from '../../tres/compartir.svelte';
   import { untrack } from 'svelte';
   import Escena from '../ui/Escena.svelte';
   import Marco from '../ui/Marco.svelte';
@@ -198,6 +199,9 @@
     { e: 'Corriente de pico en el protector', v: si(ondas.imax, 'A', 3), c: pal.corriente },
     { e: 'Transitorio', v: si(vpico, 'V', 3) },
   ]);
+
+  // 3D view of the page (componentes/tres): the model follows these controls.
+  compartir3d(() => ({ prot }));
 </script>
 
 <Marco {reloj} {texto} {lecturas} leyenda={['corriente']}>

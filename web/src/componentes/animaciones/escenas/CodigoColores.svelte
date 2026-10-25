@@ -12,6 +12,7 @@
   import { si, siCorto, num, superindice } from '../nucleo/formato';
   import { app } from '../../../lib/estado.svelte';
   import type { EventoPuntero } from '../ui/Escena.svelte';
+  import { compartir3d } from '../../tres/compartir.svelte';
 
   const reloj = new Reloj();
   const pal = $derived(paleta(app.tema));
@@ -31,6 +32,7 @@
   const valor = $derived(base * 10 ** exponente);
   const tolerancia = $derived(COLORES[tol]!.tol ?? 20);
   const indicesBandas = $derived([...digitos, mult, tol]);
+  compartir3d(() => ({ valor, bandas: cinco, tolerancia }));
 
   function normalizado(x: number): boolean {
     if (!(x > 0)) return false;

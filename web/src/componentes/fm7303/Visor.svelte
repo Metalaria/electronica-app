@@ -22,6 +22,7 @@
     enfoque = null,
     capas,
     etiqueta = 'Esquema del FM7303',
+    reinicio,
   }: {
     /** Inner markup of esquema.svg (without the <svg> element). */
     svg: string;
@@ -40,6 +41,8 @@
     /** Layers drawn in drawing units over everything; receives the zoom (px per unit). */
     capas?: Snippet<[number, Caja]>;
     etiqueta?: string;
+    /** Any value; when it changes (another tab) the view goes back to the first view. */
+    reinicio?: unknown;
   } = $props();
 
   let w = $state(0);
@@ -58,7 +61,13 @@
     return [cx - w / (2 * z), cy - h / (2 * z), w / z, h / z];
   });
 
-  function encuadrar(c: [number, number, number, number], margen = 0.08): void {
+  /** What the view is showing, so that a new size of the box (rotation, a panel growing, a window resize) can
+   *  show it again: the first view, the whole drawing, a region asked for by the page, or wherever the user
+   *  took it (then only the limits are applied again). Not reactive on purpose. */
+  type Modo = { k: 'inicial' } | { k: 'todo' } | { k: 'caja'; caja: [number, number, number, number]; margen: number } | { k: 'libre' };
+  let modo: Modo = { k: 'inicial' };
+
+  function encuadrarSin(c: [number, number, number, number], margen: number): void {
     if (!w || !h) return;
     const [x0, y0, x1, y1] = c;
     const zz = Math.min(w / ((x1 - x0) * (1 + 2 * margen)), h / ((y1 - y0) * (1 + 2 * margen)));
@@ -68,21 +77,50 @@
     limitar();
   }
 
+  function encuadrar(c: [number, number, number, number], margen = 0.08): void {
+    modo = { k: 'caja', caja: c, margen };
+    encuadrarSin(c, margen);
+    // A tall box would show a wide region (a stage of the signal path) as a thin strip: never smaller than
+    // the first view, which fills the height; the region's centre stays in the middle.
+    const proporcion = w / h / (total[2] / total[3]);
+    if (w && h && proporcion <= 0.7) {
+      const zInicial = Math.min(zMax, Math.max(zMin, (h / total[3]) * 0.97));
+      if (z < zInicial) {
+        z = zInicial;
+        cx = (c[0] + c[2]) / 2;
+        cy = (c[1] + c[3]) / 2;
+        limitar();
+      }
+    }
+  }
+
   function todo(): void {
-    encuadrar([total[0], total[1], total[0] + total[2], total[1] + total[3]], 0.01);
+    modo = { k: 'todo' };
+    encuadrarSin([total[0], total[1], total[0] + total[2], total[1] + total[3]], 0.01);
+  }
+
+  /** Extra pan past the edge of the drawing, in px (only once the drawing is larger than the view). */
+  const MARGEN_PX = 40;
+
+  /** One axis of the limits: a drawing narrower than the view stays centred on it; a wider one can be panned
+   *  until its edge is MARGEN_PX inside the view (growing continuously from 0, so there is no jump). */
+  function eje(c: number, origen: number, largo: number, mitadVista: number): number {
+    const centro = origen + largo / 2;
+    const holgura = largo / 2 - mitadVista;
+    if (holgura <= 0) return centro;
+    const r = holgura + Math.min(MARGEN_PX / z, holgura);
+    return Math.min(centro + r, Math.max(centro - r, c));
   }
 
   function limitar(): void {
-    const mx = Math.max(0, total[2] / 2 - w / (2 * z) * 0.4);
-    const my = Math.max(0, total[3] / 2 - h / (2 * z) * 0.4);
-    const ccx = total[0] + total[2] / 2;
-    const ccy = total[1] + total[3] / 2;
-    cx = Math.min(ccx + mx + w / (4 * z), Math.max(ccx - mx - w / (4 * z), cx));
-    cy = Math.min(ccy + my + h / (4 * z), Math.max(ccy - my - h / (4 * z), cy));
+    if (!z || !w || !h) return;
+    cx = eje(cx, total[0], total[2], w / (2 * z));
+    cy = eje(cy, total[1], total[3], h / (2 * z));
   }
 
   /** Zoom to `n` px/unit keeping the drawing point under (px, py) (container px) fixed. */
   function zoomEn(n: number, px = w / 2, py = h / 2): void {
+    modo = { k: 'libre' };
     const nz = Math.min(zMax, Math.max(zMin, n));
     const X = cx + (px - w / 2) / z;
     const Y = cy + (py - h / 2) / z;
@@ -93,31 +131,70 @@
   }
 
   /** First view: the whole drawing when the box has its shape; otherwise fill the height from the left
-   *  (a tall box would show the wide sheet as a thin strip). */
+   *  (a tall box would show the wide sheet as a thin strip). Either way centred vertically. */
   function inicial(): void {
     const proporcion = w / h / (total[2] / total[3]);
-    if (proporcion > 0.7) return todo();
+    if (proporcion > 0.7) {
+      todo();
+      modo = { k: 'inicial' };
+      return;
+    }
+    modo = { k: 'inicial' };
     const zz = Math.min(zMax, Math.max(zMin, (h / total[3]) * 0.97));
     const ancho = w / zz;
-    encuadrar([total[0], total[1], total[0] + ancho, total[1] + total[3]], 0.01);
+    encuadrarSin([total[0], total[1], total[0] + ancho, total[1] + total[3]], 0.01);
   }
 
-  // First fit, and refit when the box changes size a lot (rotation).
+  /** Shows again what the view was showing (after a change of size). */
+  function rehacer(): void {
+    if (modo.k === 'inicial') inicial();
+    else if (modo.k === 'todo') todo();
+    else if (modo.k === 'caja') encuadrarSin(modo.caja, modo.margen);
+    else limitar();
+  }
+
+  // Every change of the box's size: redo the automatic views exactly; a view the user chose keeps its centre
+  // and zoom (within the limits) unless the box changed shape a lot (rotation), which starts again.
   let ultimoAjuste = 0;
   $effect(() => {
     const a = ajuste;
+    void w;
+    void h;
     if (!a) return;
-    if (!z || Math.abs(a - ultimoAjuste) / a > 0.25) {
+    untrack(() => {
+      if (!z) {
+        ultimoAjuste = a;
+        const e = enfoque;
+        if (e) encuadrar(e.caja);
+        else inicial();
+        return;
+      }
+      if (modo.k === 'libre' && Math.abs(a - ultimoAjuste) / a > 0.25) modo = { k: 'inicial' };
       ultimoAjuste = a;
-      const e = untrack(() => enfoque);
-      if (e) encuadrar(e.caja);
-      else inicial();
-    }
+      rehacer();
+    });
   });
 
+  // A region asked for by the page (part, block, stage, node).
   $effect(() => {
     const e = enfoque;
-    if (e && w) encuadrar(e.caja);
+    if (!e) return;
+    untrack(() => {
+      if (w && h) encuadrar(e.caja);
+      else modo = { k: 'caja', caja: e.caja, margen: 0.08 };
+    });
+  });
+
+  // Another tab: back to the first view (a region asked for with the tab arrives afterwards).
+  let reinicioPrevio: unknown = untrack(() => reinicio);
+  $effect(() => {
+    const r = reinicio;
+    untrack(() => {
+      if (r === reinicioPrevio) return;
+      reinicioPrevio = r;
+      modo = { k: 'inicial' };
+      if (w && h) inicial();
+    });
   });
 
   // ---------------------------------------------------------------- pointer
@@ -159,6 +236,7 @@
       const [a, b] = [...punteros.values()];
       const d = Math.hypot(a!.x - b!.x, a!.y - b!.y) || 1;
       const [mx, my] = rel({ clientX: (a!.x + b!.x) / 2, clientY: (a!.y + b!.y) / 2 });
+      modo = { k: 'libre' };
       z = Math.min(zMax, Math.max(zMin, (pinza.z * d) / pinza.d));
       cx = pinza.X - (mx - w / 2) / z;
       cy = pinza.Y - (my - h / 2) / z;
@@ -170,6 +248,7 @@
       raiz?.setPointerCapture(ev.pointerId);
     }
     if (arrastrando) {
+      modo = { k: 'libre' };
       cx -= dx / z;
       cy -= dy / z;
       limitar();
@@ -208,6 +287,7 @@
       const k = ev.deltaMode === 1 ? 0.06 : ev.ctrlKey ? 0.012 : 0.0022;
       zoomEn(z * Math.exp(-ev.deltaY * k), px, py);
     } else {
+      modo = { k: 'libre' };
       cx += ev.deltaX / z;
       cy += ev.deltaY / z;
       limitar();
@@ -224,7 +304,10 @@
     else if (ev.key === 'ArrowUp') cy -= paso;
     else if (ev.key === 'ArrowDown') cy += paso;
     else return;
-    limitar();
+    if (ev.key.startsWith('Arrow')) {
+      modo = { k: 'libre' };
+      limitar();
+    }
     ev.preventDefault();
   }
 

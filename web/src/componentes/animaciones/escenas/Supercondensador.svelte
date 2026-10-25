@@ -2,6 +2,7 @@
   // Electric double-layer capacitor (book 3.10): ions of the electrolyte pile up against porous carbon,
   // forming layers about a nanometre thick. 1 F at 2,7 V stores 3,6 J; with 100 mA it falls from 2,7 to
   // 1,8 V in 9 s. Above about 2,7 V per cell the electrolyte decomposes.
+  import { compartir3d } from '../../tres/compartir.svelte';
   import { untrack } from 'svelte';
   import Escena from '../ui/Escena.svelte';
   import Marco from '../ui/Marco.svelte';
@@ -137,6 +138,9 @@
     { e: 'Energía ½·C·V²', v: si(0.5 * C * vMostrada * vMostrada, 'J', 3) },
     { e: 'Carga Q = C·V', v: si(C * vMostrada, 'C', 3) },
   ]);
+
+  // 3D view of the page (componentes/tres): the model follows these controls.
+  compartir3d(() => ({ Vmax }));
 </script>
 
 <Marco {reloj} {texto} {lecturas}>

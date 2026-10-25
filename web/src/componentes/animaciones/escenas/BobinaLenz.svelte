@@ -3,6 +3,7 @@
   // develops v_L = L·di/dt against the change; i(t) = V/R·(1 − e^(−t/τ)) with τ = L/R. Opening it, the coil
   // keeps its current through the discharge resistor, with a peak of I·R_d. L = µ₀·µ_r·N²·A/l
   // (book: 100 turns, 5 cm, 1 cm² → 25,1 µH in air, 50,3 mH with µ_r = 2000).
+  import { compartir3d } from '../../tres/compartir.svelte';
   import { untrack } from 'svelte';
   import Escena from '../ui/Escena.svelte';
   import Marco from '../ui/Marco.svelte';
@@ -228,6 +229,9 @@
     { e: 'v_L', v: si(mostrado.vL, 'V', 3), c: pal.peligro },
     { e: 'Energía ½·L·i²', v: si(0.5 * L * mostrado.i * mostrado.i, 'J', 3) },
   ]);
+
+  // 3D view of the page (componentes/tres): the model follows these controls.
+  compartir3d(() => ({ N }));
 </script>
 
 <Marco {reloj} {texto} {lecturas} leyenda={['electron', 'corriente', 'campoB']}>

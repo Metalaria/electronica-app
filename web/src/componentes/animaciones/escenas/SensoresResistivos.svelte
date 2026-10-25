@@ -2,6 +2,7 @@
   // NTC, PTC and LDR (book 2.6, 19.5, 44.3): resistances that change with temperature or light, in a
   // divider. NTC: R = R₂₅·e^(B(1/T − 1/T₂₅)); switching PTC: abrupt rise above its switch temperature;
   // LDR: R = R₁₀·(E/10 lx)^(−γ).
+  import { compartir3d } from '../../tres/compartir.svelte';
   import Escena from '../ui/Escena.svelte';
   import Marco from '../ui/Marco.svelte';
   import Deslizador from '../ui/Deslizador.svelte';
@@ -256,6 +257,9 @@
     { e: 'Corriente', v: si(I, 'A', 3) },
     ...(tipo === 'ntc' ? [{ e: 'Sensibilidad', v: `${num((-3950 / (T + 273.15) ** 2) * 100, 2)} %/°C` }] : []),
   ]);
+
+  // 3D view of the page (componentes/tres): the model follows these controls.
+  compartir3d(() => ({ tipo }));
 </script>
 
 <Marco {reloj} {texto} {lecturas} leyenda={tipo === 'ldr' ? ['electron', 'foton'] : ['electron', 'calor']}>

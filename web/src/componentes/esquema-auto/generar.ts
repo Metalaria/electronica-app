@@ -3,9 +3,10 @@
 // Plain TypeScript, no DOM: runs in the app (main thread or worker) and in Node.
 
 import { esTierra, leerCircuito, type Circuito, type Dispositivo, type OpcionesModelo, type Riel } from './modelo.ts';
-import { Colocador, crearUnidades, semilla, TAM_ETQ, type Componente, type Unidad } from './colocacion.ts';
+import { ALTO_LINEA, Colocador, construirVariante, crearUnidades, semilla, TAM_ETQ, type Componente, type Reglas, type Unidad } from './colocacion.ts';
+import { reglasDe } from './plantillas.ts';
 import { enrutar, type PinRuta } from './rutas.ts';
-import { anchoTexto, girar, girarRect, type Pt, type Rect } from './simbolos.ts';
+import { anchoTexto, girar, girarRect, simboloDe, type Pt, type Rect } from './simbolos.ts';
 import type { Correspondencia, Elemento, Esquema, Nodo, Tramo } from '../figuras-vivas/tipos';
 
 // ------------------------------------------------------------------ result types
@@ -17,6 +18,24 @@ export interface UnidadDibujada {
   y: number;
   /** Element id of the main element of this unit in the topology («E3»). */
   el: string;
+  /** Its label moved away from the wires (world coordinates); otherwise the variant's own place. */
+  etq?: EtiquetaUnidad;
+}
+
+/** A unit's label in world coordinates: text box, anchor x, anchor and lines (one per ALTO_LINEA). */
+export interface EtiquetaUnidad {
+  rect: Rect;
+  x: number;
+  ancla: 'start' | 'middle' | 'end';
+  lineas: string[];
+}
+
+/** The label of a drawn unit where it is drawn (world coordinates), or null. */
+export function etiquetaMundo(ud: UnidadDibujada): EtiquetaUnidad | null {
+  if (ud.etq) return ud.etq;
+  const e = ud.u.vars[ud.u.v]!.etq;
+  if (!e) return null;
+  return { rect: [e.rect[0] + ud.x, e.rect[1] + ud.y, e.rect[2] + ud.x, e.rect[3] + ud.y], x: e.x + ud.x, ancla: e.ancla, lineas: e.lineas };
 }
 
 export interface CableRed {
@@ -64,6 +83,10 @@ export interface Estadisticas {
   /** Overlapping symbol/label pairs after placement (should be 0). */
   solapes: number;
   etiquetasRed: number;
+  /** Part labels moved away from wires, the smallest label–wire clearance, labels below the minimum. */
+  etiquetasMovidas: number;
+  holguraEtiquetas: number;
+  etiquetasPegadas: number;
   longitud: number;
   codos: number;
   ms: number;
@@ -160,6 +183,8 @@ interface Colocado {
   duenos: [number, number][];
   limites: Rect;
   puntuacion: number;
+  /** Topology families recognised in it (plantillas.ts). */
+  familias: string[];
 }
 
 function limitesComponente(comp: Componente): Rect {
@@ -183,7 +208,7 @@ function limitesComponente(comp: Componente): Rect {
   return [x0, y0, x1, y1];
 }
 
-function rutear(comp: Componente): { rutas: ReturnType<typeof enrutar>; pines: PinRuta[]; duenos: [number, number][] } {
+function rutear(comp: Componente, reglas: Reglas | null = null): { rutas: ReturnType<typeof enrutar>; pines: PinRuta[]; duenos: [number, number][] } {
   const pines: PinRuta[] = [];
   const duenos: [number, number][] = [];
   const cuerpos: Rect[] = [];
@@ -204,7 +229,16 @@ function rutear(comp: Componente): { rutas: ReturnType<typeof enrutar>; pines: P
       duenos.push([u.id, i]);
     });
   }
-  return { rutas: enrutar(pines, comp.redes.length, { cuerpos, blandos }), pines, duenos };
+  const fijas = reglas?.etiquetarPines?.size ? new Set(duenos.flatMap(([u, i], k) => (reglas.etiquetarPines!.has(`${u},${i}`) ? [k] : []))) : undefined;
+  let rutas = enrutar(pines, comp.redes.length, { cuerpos, blandos }, undefined, reglas?.etiquetar.size ? reglas.etiquetar : undefined, fijas);
+  // Logic: where the router gives up on a pin (a long detour), the whole net is labelled instead, so a net
+  // reads either as wires or as labels.
+  if (reglas?.rangoU && rutas.etiquetas.length) {
+    const todas = new Set(reglas.etiquetar);
+    for (const i of rutas.etiquetas) if (!fijas?.has(i)) todas.add(pines[i]!.red);
+    if (todas.size > reglas.etiquetar.size) rutas = enrutar(pines, comp.redes.length, { cuerpos, blandos }, undefined, todas, fijas);
+  }
+  return { rutas, pines, duenos };
 }
 
 function codos(r: ReturnType<typeof enrutar>): number {
@@ -235,6 +269,7 @@ const precalculados = new Map<string, Posiciones[]>();
 /** Forgets the drawings kept per circuit structure (tests and benchmarks); `todo` also the precomputed ones. */
 export function olvidarDibujos(todo = false): void {
   cacheEstructura.clear();
+  cacheReglas.clear();
   if (todo) precalculados.clear();
 }
 
@@ -257,25 +292,58 @@ function recordar(firma: string, pos: Posiciones): void {
   if (cacheEstructura.size > 2000) cacheEstructura.delete(cacheEstructura.keys().next().value!);
 }
 
+/** Topology rules per circuit structure (the recognisers run once per structural change): the rules, the
+ *  variants they added and every variant's final cost. */
+const cacheReglas = new Map<string, { reglas: Reglas | null; extra: [number, number, number][]; costes: number[][] }>();
+
+function reglasCacheadas(comp: Componente, firma: string): Reglas | null {
+  const c = cacheReglas.get(firma);
+  if (c && c.costes.length === comp.unidades.length) {
+    for (const [u, o, coste] of c.extra) {
+      const un = comp.unidades[u]!;
+      if (un.disp && !un.vars.some((v) => v.o === o)) un.vars.push(construirVariante(un, simboloDe(un.disp, 0), o, coste));
+    }
+    if (comp.unidades.every((u, i) => u.vars.length === c.costes[i]!.length)) {
+      comp.unidades.forEach((u, i) => u.vars.forEach((v, j) => (v.coste = c.costes[i]![j]!)));
+      return c.reglas;
+    }
+  }
+  const n0 = comp.unidades.map((u) => u.vars.length);
+  const reglas = reglasDe(comp);
+  const extra: [number, number, number][] = [];
+  comp.unidades.forEach((u, i) => u.vars.slice(n0[i]).forEach((v) => extra.push([i, v.o, v.coste])));
+  cacheReglas.set(firma, { reglas, extra, costes: comp.unidades.map((u) => u.vars.map((v) => v.coste)) });
+  if (cacheReglas.size > 500) cacheReglas.delete(cacheReglas.keys().next().value!);
+  return reglas;
+}
+
 function colocarComponente(comp: Componente, esfuerzo: number): Colocado {
   const U = comp.unidades.length;
-  const firma = firmaEstructura(comp);
+  // Recognised topologies (H bridge, converters, Wien oscillator, regulators, logic, rectifiers): their rules
+  // shape the annealing and the choice of the best run, and they are part of the cache key.
+  const reglas = reglasCacheadas(comp, firmaEstructura(comp));
+  const firma = firmaEstructura(comp) + (reglas ? `#${reglas.familias.join('+')}` : '');
   const previos = [...(cacheEstructura.get(firma) ?? []), ...(precalculados.get(firma) ?? [])];
   const evaluar = (): Colocado => {
-    const { rutas, pines, duenos } = rutear(comp);
+    const { rutas, pines, duenos } = rutear(comp, reglas);
     const lim = limitesComponente(comp);
     let p = 0;
     for (const u of comp.unidades) p += u.vars[u.v]!.coste;
-    p += rutas.longitud + 2.6 * codos(rutas) + 9 * rutas.cruces + 14 * rutas.etiquetas.length;
+    p += rutas.longitud + 2.6 * codos(rutas) + 9 * rutas.cruces + 14 * (rutas.etiquetas.length - etiquetasForzadas);
     p += 0.15 * (lim[2] - lim[0] + lim[3] - lim[1]);
-    return { comp, rutas, pines, duenos, limites: lim, puntuacion: p };
+    // The topology's rules weigh double here: a run that draws it the textbook way wins.
+    if (reglas) p += 2 * new Colocador(comp, 1, reglas).costeDeReglas();
+    return { comp, rutas, pines, duenos, limites: lim, puntuacion: p, familias: reglas?.familias ?? [] };
   };
+  let etiquetasForzadas = 0;
+  if (reglas) for (const k of reglas.etiquetar) etiquetasForzadas += comp.pinesRed[k]!.length > 1 ? comp.pinesRed[k]!.length : 0;
+  if (reglas?.etiquetarPines) etiquetasForzadas += reglas.etiquetarPines.size;
   for (const pos of previos) {
     if (pos.length !== comp.unidades.length) continue;
     comp.unidades.forEach((u, i) => {
       [u.x, u.y, u.v] = pos[i]!;
     });
-    const col = new Colocador(comp, 1);
+    const col = new Colocador(comp, 1, reglas);
     if (comp.unidades.every((u) => u.v < u.vars.length && col.valida(u))) {
       recordar(firma, pos);
       return evaluar();
@@ -286,26 +354,40 @@ function colocarComponente(comp: Componente, esfuerzo: number): Colocado {
     comp.unidades[0]!.y = 0;
     return evaluar();
   }
-  const intentos = (U <= 3 ? 1 : U <= 8 ? 3 : U <= 16 ? 2 : 1) + (esfuerzo > 1 ? Math.round(esfuerzo) : 0);
-  const iter = Math.round(Math.min(30000, 600 * U + 1500) * Math.min(esfuerzo, 2) * (U > 30 ? 0.6 : 1));
+  // Live layout (an edited netlist, effort ≤ 1) must answer fast: fewer, shorter runs that stop when they
+  // settle, the topology's own start first, and no more runs once one is flawless. The precomputed layouts
+  // of the book (effort 3) keep the full search.
+  const vivo = esfuerzo <= 1;
+  const intentos = (U <= 3 ? 1 : U <= 8 ? 3 : U <= 16 ? 2 : 1) + (esfuerzo > 1 ? Math.round(esfuerzo) : 0) + (reglas && !vivo ? 2 : 0);
+  const iter = Math.round(Math.min(vivo ? 12000 : 30000, 600 * U + 1500) * Math.min(esfuerzo, 2) * (U > 30 ? 0.6 : 1));
   let mejor: Colocado | null = null;
   let mejorPos: [number, number, number][] = [];
   const base = semilla(firma);
+  let perfecto = false;
   const probar = (k: number, T0: number) => {
-    const col = new Colocador(comp, base + k * 7919);
+    if (vivo && perfecto) return;
+    const col = new Colocador(comp, base + k * 7919, reglas);
     col.inicial(T0 < 1);
-    col.recocer(iter, T0);
+    col.recocer(iter, T0, 0.03, vivo);
     col.compactar();
     const r = evaluar();
-    if (!mejor || r.puntuacion < mejor.puntuacion) {
+    perfecto = !r.rutas.cruces && r.rutas.etiquetas.length <= etiquetasForzadas && (!reglas || col.costeDeReglas() < 1e-6);
+    // With a recognised topology, crossings and fallback labels decide first (the rules must not cost
+    // readability), then the score.
+    const clave = (x: Colocado) => (reglas ? 1000 * (x.rutas.cruces + x.rutas.etiquetas.length - etiquetasForzadas) : 0) + x.puntuacion;
+    if (!mejor || clave(r) < clave(mejor)) {
       mejor = r;
       mejorPos = comp.unidades.map((u) => [u.x, u.y, u.v]);
     }
   };
-  for (let k = 0; k < intentos; k++) probar(k, 3.5);
-  // Many multi-pin blocks (logic, subcircuits): also refine the layered start without scrambling it.
+  // Many multi-pin blocks (logic, subcircuits): also refine the layered start without scrambling it (live:
+  // first, when it is the topology's own drawing).
   const bloques = comp.unidades.filter((u) => u.pines.length > 3).length;
-  if (bloques >= 3 || U > 16) probar(intentos, 0.6);
+  const capas = bloques >= 3 || U > 16 || !!reglas?.rangoU || !!reglas?.anclas?.length;
+  const propia = !!(reglas?.fila || reglas?.anclas?.length);
+  if (vivo && capas && propia) probar(intentos, 0.6);
+  for (let k = 0; k < intentos; k++) probar(k, 3.5);
+  if (capas && !(vivo && propia)) probar(intentos, 0.6);
   comp.unidades.forEach((u, i) => {
     [u.x, u.y, u.v] = mejorPos[i]!;
   });
@@ -356,6 +438,26 @@ function empaquetar(cs: Colocado[], aspecto: number): [number, number][] {
     }
   }
   return mejor.res;
+}
+
+/** Grid packing: every circuit in a cell as large as the largest, row by row in reading order, with the
+ *  number of columns that brings the sheet nearest to `aspecto`; each circuit at the top left of its cell. */
+function empaquetarRejilla(cs: Colocado[], aspecto: number): [number, number][] {
+  const GX = 2.2;
+  const GY = 2;
+  const W = Math.max(...cs.map((c) => c.limites[2] - c.limites[0])) + GX;
+  const H = Math.max(...cs.map((c) => c.limites[3] - c.limites[1])) + GY;
+  let cols = 1;
+  let nota = Infinity;
+  for (let k = 1; k <= cs.length; k++) {
+    const filas = Math.ceil(cs.length / k);
+    const n = Math.abs(Math.log((k * W) / (filas * H) / aspecto));
+    if (n < nota - 1e-9) {
+      nota = n;
+      cols = k;
+    }
+  }
+  return cs.map((c, i) => [Math.round((i % cols) * W - c.limites[0]), Math.round(Math.floor(i / cols) * H - c.limites[1])]);
 }
 
 // ------------------------------------------------------------------ topology
@@ -421,7 +523,10 @@ export function generarEsquema(texto: string, opciones: OpcionesEsquema = {}): E
     const comp = crearUnidades(g.disps, circuito.rieles, g.puertos);
     colocados.push(colocarComponente(comp, opciones.esfuerzo ?? 1));
   }
-  const desp = empaquetar(colocados, opciones.aspecto ?? 1.8);
+  // Several separate rectifiers (variants of one example): a grid of equal cells in netlist order.
+  const propios = colocados.filter((c) => !(c.comp.unidades.length === 1 && c.comp.unidades[0]!.disp && circuito.fuentesRiel.includes(c.comp.unidades[0]!.disp)));
+  const rejilla = propios.length >= 2 && propios.every((c) => c.familias.includes('rectificador'));
+  const desp = rejilla ? empaquetarRejilla(colocados, opciones.aspecto ?? 1.8) : empaquetar(colocados, opciones.aspecto ?? 1.8);
 
   // ---------------------------------------------------------------- world geometry
   const unidades: UnidadDibujada[] = [];
@@ -448,6 +553,7 @@ export function generarEsquema(texto: string, opciones: OpcionesEsquema = {}): E
     nCodos += codos(c.rutas);
   });
 
+  const holgura = separarEtiquetas(unidades, cables, etiquetas);
   const nombres = rotular(unidades, cables, etiquetas, circuito);
 
   // Overlap audit (placement guarantees none inside a component; packing keeps components apart).
@@ -458,7 +564,8 @@ export function generarEsquema(texto: string, opciones: OpcionesEsquema = {}): E
       const v = ud.u.vars[ud.u.v]!;
       const mov = (r: Rect): Rect => [r[0] + ud.x, r[1] + ud.y, r[2] + ud.x, r[3] + ud.y];
       rs.push({ r: mov(v.cuerpo), u: i });
-      if (v.etq) rs.push({ r: mov(v.etq.rect), u: i });
+      const e = etiquetaMundo(ud);
+      if (e) rs.push({ r: e.rect, u: i });
       for (const t of v.talones) rs.push({ r: mov(t.rect), u: i });
     });
     for (let a = 0; a < rs.length; a++)
@@ -847,6 +954,10 @@ export function generarEsquema(texto: string, opciones: OpcionesEsquema = {}): E
     ampliar(cajaTexto(e.tx, e.ty, e.ancla, anchoTexto(e.red, TAM_ETQ), TAM_ETQ));
   }
   for (const m of nombres) ampliar(cajaTexto(m.x, m.y, m.ancla, anchoTexto(m.red, TAM_NOMBRE), TAM_NOMBRE));
+  for (const ud of unidades) {
+    const e = etiquetaMundo(ud);
+    if (e) ampliar(e.rect);
+  }
   const limites: Rect = [x0, y0, x1, y1];
   const S = ESCALA;
   const M = MARGEN;
@@ -878,6 +989,9 @@ export function generarEsquema(texto: string, opciones: OpcionesEsquema = {}): E
       cruces,
       solapes,
       etiquetasRed: etiquetas.length,
+      etiquetasMovidas: holgura.movidas,
+      holguraEtiquetas: Math.round(holgura.minima * 100) / 100,
+      etiquetasPegadas: holgura.pegadas,
       longitud,
       codos: nCodos,
       ms: Math.round((t1 - t0) * 10) / 10,
@@ -887,6 +1001,130 @@ export function generarEsquema(texto: string, opciones: OpcionesEsquema = {}): E
 }
 
 export const TAM_NOMBRE = 0.34;
+
+/** Minimum clearance between a part's label and any wire (drawing units). */
+export const HOLGURA_ETIQUETA = 0.15;
+
+/** Axis-aligned distance between two rectangles (0 when they touch or overlap). */
+function distancia(a: Rect, b: Rect): number {
+  const dx = Math.max(0, a[0] - b[2], b[0] - a[2]);
+  const dy = Math.max(0, a[1] - b[3], b[1] - a[3]);
+  return Math.hypot(dx, dy);
+}
+
+/**
+ * Part labels too close to a wire (closer than HOLGURA_ETIQUETA, or crossed by it) move to the free place
+ * around their symbol with the largest clearance: beside, above or below the body, centred or shifted, never
+ * over a symbol, a lead, a ground or supply symbol, a net-label stub or another label. Returns how many moved,
+ * the smallest clearance left and how many labels stay below the minimum.
+ */
+function separarEtiquetas(unidades: UnidadDibujada[], cables: CableRed[], etiquetas: EtiquetaRed[]): { movidas: number; minima: number; pegadas: number } {
+  const cablesR: Rect[] = [];
+  for (const cb of cables) for (const [a, b, x, y] of cb.runs) cablesR.push([Math.min(a, x), Math.min(b, y), Math.max(a, x), Math.max(b, y)]);
+  const duros: Rect[] = [];
+  for (const ud of unidades) {
+    const v = ud.u.vars[ud.u.v]!;
+    const m = (r: Rect): Rect => [r[0] + ud.x, r[1] + ud.y, r[2] + ud.x, r[3] + ud.y];
+    duros.push(m(v.cuerpo));
+    for (const [a, b] of v.patas) duros.push(m([Math.min(a[0], b[0]) - 0.03, Math.min(a[1], b[1]) - 0.03, Math.max(a[0], b[0]) + 0.03, Math.max(a[1], b[1]) + 0.03]));
+    for (const t of v.talones) {
+      duros.push(m(t.rect));
+      if (t.etq) duros.push(m(t.etq));
+    }
+  }
+  for (const e of etiquetas) duros.push([Math.min(e.pin[0], e.fin[0]) - 0.05, Math.min(e.pin[1], e.fin[1]) - 0.05, Math.max(e.pin[0], e.fin[0]) + 0.05, Math.max(e.pin[1], e.fin[1]) + 0.05]);
+  const textos = unidades.map((ud) => etiquetaMundo(ud));
+  const holguraDe = (r: Rect) => {
+    let d = Infinity;
+    for (const c of cablesR) {
+      const x = distancia(r, c);
+      if (x < d) d = x;
+      if (d === 0) break;
+    }
+    return d;
+  };
+  const choca = (r: Rect, yo: number) => {
+    const ri: Rect = [r[0] - 0.01, r[1] - 0.01, r[2] + 0.01, r[3] + 0.01];
+    const cruza = (o: Rect) => ri[0] < o[2] && o[0] < ri[2] && ri[1] < o[3] && o[1] < ri[3];
+    if (duros.some(cruza)) return true;
+    return textos.some((t, i) => i !== yo && t && cruza(t.rect));
+  };
+  let movidas = 0;
+  let minima = Infinity;
+  let pegadas = 0;
+  unidades.forEach((ud, i) => {
+    const e = textos[i];
+    if (!e || !ud.u.disp) return;
+    const h0 = holguraDe(e.rect);
+    if (h0 >= HOLGURA_ETIQUETA) {
+      minima = Math.min(minima, h0);
+      return;
+    }
+    const v = ud.u.vars[ud.u.v]!;
+    const B: Rect = [v.cuerpo[0] + ud.x, v.cuerpo[1] + ud.y, v.cuerpo[2] + ud.x, v.cuerpo[3] + ud.y];
+    const cx = (B[0] + B[2]) / 2;
+    const cy = (B[1] + B[3]) / 2;
+    const cand: EtiquetaUnidad[] = [];
+    // The label as it is, and «R1 10 kΩ» also as two lines (narrower, it fits between close wires).
+    const formas: { lineas: string[]; w: number; h: number }[] = [{ lineas: e.lineas, w: e.rect[2] - e.rect[0], h: e.rect[3] - e.rect[1] }];
+    if (e.lineas.length === 1 && e.lineas[0]!.includes(' ')) {
+      const k = e.lineas[0]!.indexOf(' ');
+      const dos = [e.lineas[0]!.slice(0, k), e.lineas[0]!.slice(k + 1)];
+      formas.push({ lineas: dos, w: Math.max(...dos.map((l) => anchoTexto(l.replace(/[0-9]+(?:[,.][0-9]+)?/g, '8,88'), TAM_ETQ))), h: 2 * ALTO_LINEA });
+    }
+    let w = 0;
+    let h = 0;
+    let lineas = e.lineas;
+    let lejania = 0;
+    const claves: number[] = [];
+    const poner = (x0: number, y0: number, ancla: EtiquetaUnidad['ancla']) => {
+      cand.push({ rect: [x0, y0, x0 + w, y0 + h], x: ancla === 'start' ? x0 : ancla === 'end' ? x0 + w : x0 + w / 2, ancla, lineas });
+      claves.push(lejania);
+    };
+    // Every place around the body (beside, above, below, centred or shifted, near or a little further out,
+    // corners), in both shapes; tried nearest first (the two-line shape counts as a little further).
+    formas.forEach((f, k) => {
+      ({ w, h, lineas } = f);
+      for (const g of [0.14, 0.45, 0.9, 1.4, 2])
+        for (const d of [0, -0.5, 0.5, -1, 1, -1.5, 1.5, -2, 2, -2.5, 2.5, -3, 3, -4, 4]) {
+          lejania = g + 0.6 * Math.abs(d) + 0.3 * k;
+          poner(B[2] + g, cy - h / 2 + d, 'start');
+          poner(B[0] - g - w, cy - h / 2 + d, 'end');
+          poner(cx - w / 2 + d, B[1] - g - h, 'middle');
+          poner(cx - w / 2 + d, B[3] + g, 'middle');
+        }
+      for (const g of [0.14, 0.45]) {
+        lejania = g + 0.8 + 0.3 * k;
+        poner(B[2] + g, B[1] - g - h, 'start');
+        poner(B[0] - g - w, B[1] - g - h, 'end');
+        poner(B[2] + g, B[3] + g, 'start');
+        poner(B[0] - g - w, B[3] + g, 'end');
+      }
+    });
+    const orden = cand.map((_, j) => j).sort((x, y) => claves[x]! - claves[y]! || x - y);
+    let mejor: EtiquetaUnidad | null = null;
+    let hMejor = h0;
+    for (const j of orden) {
+      const c = cand[j]!;
+      if (choca(c.rect, i)) continue;
+      const hc = holguraDe(c.rect);
+      // The first place (nearest the usual one) that is clear enough, else the clearest.
+      if (hc > hMejor + 1e-9) {
+        mejor = c;
+        hMejor = hc;
+        if (hc >= HOLGURA_ETIQUETA) break;
+      }
+    }
+    if (mejor) {
+      ud.etq = mejor;
+      textos[i] = mejor;
+      movidas++;
+    }
+    minima = Math.min(minima, hMejor);
+    if (hMejor < HOLGURA_ETIQUETA) pegadas++;
+  });
+  return { movidas, minima: Number.isFinite(minima) ? minima : 99, pegadas };
+}
 
 /**
  * Texts of net labels and net-name tags, placed where they collide with nothing drawn (symbols, labels,
@@ -898,7 +1136,8 @@ function rotular(unidades: UnidadDibujada[], cables: CableRed[], etiquetas: Etiq
     const v = ud.u.vars[ud.u.v]!;
     const m = (r: Rect): Rect => [r[0] + ud.x, r[1] + ud.y, r[2] + ud.x, r[3] + ud.y];
     ocupado.push(m(v.cuerpo));
-    if (v.etq) ocupado.push(m(v.etq.rect));
+    const e = etiquetaMundo(ud);
+    if (e) ocupado.push(e.rect);
     for (const t of v.talones) {
       ocupado.push(m(t.rect));
       if (t.etq) ocupado.push(m(t.etq));
@@ -944,9 +1183,9 @@ function rotular(unidades: UnidadDibujada[], cables: CableRed[], etiquetas: Etiq
   }
   // Net-name tags: one per wired net, next to its longest run.
   const res: NombreRed[] = [];
-  const conEtiqueta = new Set(etiquetas.map((e) => e.red));
   for (const cb of cables) {
-    if (conEtiqueta.has(cb.red) || c.rieles.has(cb.red) || esTierra(cb.red)) continue;
+    // (A net with labels at some pins still gets its name on the wired part.)
+    if (c.rieles.has(cb.red) || esTierra(cb.red)) continue;
     const w = anchoTexto(cb.red, TAM_NOMBRE);
     const runs = mezclarRuns(cb.runs).sort((a, b) => Math.abs(b[2] - b[0]) + Math.abs(b[3] - b[1]) - (Math.abs(a[2] - a[0]) + Math.abs(a[3] - a[1])));
     let hecho = false;

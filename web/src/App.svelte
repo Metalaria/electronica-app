@@ -158,6 +158,15 @@
         {:catch e}
           <div class="aviso"><h1>No se pudo abrir el simulador</h1><p>{String(e)}</p></div>
         {/await}
+      {:else if ruta.vista === 'proyectos'}
+        <!-- The KiCad boards of the book in 3D and 2D, loaded on demand. -->
+        {#await import('./componentes/proyectos/Proyectos.svelte')}
+          <div class="cargando" aria-live="polite"><span class="punto"></span> Abriendo los proyectos KiCad…</div>
+        {:then m}
+          <m.default />
+        {:catch e}
+          <div class="aviso"><h1>No se pudieron abrir los proyectos KiCad</h1><p>{String(e)}</p></div>
+        {/await}
       {:else if ruta.vista === 'consolas'}
         <!-- NES and Neo Geo mainboards, loaded on demand. -->
         {#await import('./componentes/consolas/Consolas.svelte')}

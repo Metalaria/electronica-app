@@ -2,6 +2,7 @@
   // Electrolytic capacitors (book 3.4.2, 3.4.4, 3.8): the rolled aluminium foils, the anodic oxide that is the
   // dielectric (about 1,4 nm per volt of forming voltage), the liquid electrolyte as cathode; what reverse
   // polarity does (the oxide dissolves, leakage and gas grow, the vent opens); tantalum and polymer.
+  import { compartir3d } from '../../tres/compartir.svelte';
   import { untrack } from 'svelte';
   import Escena from '../ui/Escena.svelte';
   import Marco from '../ui/Marco.svelte';
@@ -287,6 +288,9 @@
             { e: 'Vida', v: modo === 'polimero' ? 'sin secado' : 'mitad cada +10 °C' },
           ],
   );
+
+  // 3D view of the page (componentes/tres): the model follows these controls.
+  compartir3d(() => ({ modo }));
 </script>
 
 <Marco {reloj} {texto} {lecturas} leyenda={['calor']}>

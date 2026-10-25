@@ -2,6 +2,7 @@
   // Relay and the inductive kick (book 4.5 and 19.2): the coil pulls the armature and closes the contact;
   // at switch-off the coil keeps its current and, without a path, the collector voltage climbs until the
   // transistor breaks down. The freewheeling diode clamps it at V_CC + 0,7 V, at the price of a slower release.
+  import { compartir3d } from '../../tres/compartir.svelte';
   import { untrack } from 'svelte';
   import Escena from '../ui/Escena.svelte';
   import Marco from '../ui/Marco.svelte';
@@ -337,6 +338,9 @@
     { e: 'Tiempo real desde el cambio', v: si(mostrado.t, 's', 3) },
     { e: 'Armadura', v: mostrado.arm > 0.8 ? 'atraída' : mostrado.arm < 0.2 ? 'en reposo' : 'moviéndose' },
   ]);
+
+  // 3D view of the page (componentes/tres): the model follows these controls.
+  compartir3d(() => ({ activado: on }));
 </script>
 
 <Marco {reloj} {texto} {lecturas} leyenda={['electron', 'corriente', 'campoB']}>

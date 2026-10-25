@@ -3,6 +3,7 @@
   // injects carriers into a thin base; almost all of them cross it and the reverse-biased base-collector
   // junction sweeps them into the collector. I_C = I_S·e^(V_BE/V_T); the few that recombine in the base are
   // the base current, I_B = I_C/β. A base twice as thick quadruples the recombination (β falls ~4×).
+  import { compartir3d } from '../../tres/compartir.svelte';
   import { untrack } from 'svelte';
   import Escena from '../ui/Escena.svelte';
   import Marco from '../ui/Marco.svelte';
@@ -283,6 +284,9 @@
     { e: 'α = I_C/I_E', v: num(beta / (beta + 1), 4) },
     { e: 'Llegan al colector', v: cuenta.llegan + cuenta.recombinan > 0 ? pct(cuenta.llegan / (cuenta.llegan + cuenta.recombinan), 1) : '—' },
   ]);
+
+  // 3D view of the page (componentes/tres): the model follows these controls.
+  compartir3d(() => ({ tipo }));
 </script>
 
 <Marco {reloj} {texto} {lecturas} leyenda={tipo === 'npn' ? ['electron', 'hueco', 'corriente', 'campoE', 'recombinacion'] : ['hueco', 'electron', 'corriente', 'campoE', 'recombinacion']}>
