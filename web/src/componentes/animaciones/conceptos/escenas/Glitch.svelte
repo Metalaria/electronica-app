@@ -161,7 +161,10 @@
       }
       c.stroke();
       for (let t = 0; t <= TW; t += 40) txt(vv, `${t} ns`, X(eT, t), eT.y + eT.h + 12, { tam: 10.5, color: p.suave });
-      sim.forEach((s, i) => txtRico(vv, s.nombre, eT.x - 8, eT.y + i * (eT.h / lanes) + eT.h / lanes / 2, { tam: 11, peso: 700, color: p.suave, alin: 'right' }));
+      // Phone: names left of the lanes. Wide: above each lane inside the diagram (left of it they ran into the
+      // counter).
+      if (est) sim.forEach((s, i) => txtRico(vv, s.nombre, eT.x - 8, eT.y + i * (eT.h / lanes) + eT.h / lanes / 2, { tam: 11, peso: 700, color: p.suave, alin: 'right' }));
+      else sim.forEach((s, i) => txtRico(vv, s.nombre, eT.x + 3, eT.y + i * (eT.h / lanes) + 4, { tam: 10.5, peso: 700, color: p.suave, alin: 'left' }));
     });
     const s = sim;
     if (modo === 'xor') {

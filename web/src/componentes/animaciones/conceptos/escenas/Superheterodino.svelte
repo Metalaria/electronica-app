@@ -92,7 +92,7 @@
       ctx.fillRect(X(e1, fim - 150e3), e1.y, Math.max(3, X(e1, fim + 150e3) - X(e1, fim - 150e3)), e1.h);
       txt(v, 'imagen', X(e1, fim), e1.y + e1.h - 10, { tam: 11.5, color: p.corriente, peso: 700 });
     }
-    txt(v, pre === 'ninguno' ? 'sin filtro de entrada' : pre === 'bpf' ? 'BPF 87–108 MHz' : 'circuito sintonizado (Q ≈ 25)', e1.x + 6, Y(e1, 0.12), { tam: 11.5, color: p.serie[2], alin: 'left', peso: 700 });
+    txt(v, pre === 'ninguno' ? 'sin filtro de entrada' : pre === 'bpf' ? 'BPF 87–108 MHz' : 'circuito sintonizado (Q ≈ 25)', e1.x + 6, Y(e1, 0.26), { tam: 11.5, color: p.serie[2], alin: 'left', peso: 700 });
 
     // IF panel: every station shifted to |f_LO − f|.
     funcion(ctx, e2, (f) => hFI(f), alfa(p.serie[4], 0.9), 2, 600);

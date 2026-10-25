@@ -72,7 +72,8 @@
     fondo(v);
     const est = v.estrecho;
     dibujarFisico(v, est ? v.w / 2 : 110, est ? 90 : 160);
-    txt(v, '=', est ? v.w / 2 : 220, est ? 190 : 160, { tam: 30, peso: 300, color: p.suave });
+    // «part = model»; on a phone the model sits right under the part's name, with no room for the sign.
+    if (!est) txt(v, '=', 220, 160, { tam: 30, peso: 300, color: p.suave });
     // Series model.
     const y = est ? 250 : 160;
     const xa = est ? 40 : 270;

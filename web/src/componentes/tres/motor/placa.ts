@@ -10,7 +10,8 @@ export interface Placa {
   liberar(): void;
 }
 
-export function crearPlaca(h: Huella, ancho: number, fondo: number, grosor = 1.6): Placa {
+/** `elevacion`: height of the pads over the board's top face (a real gap, not polygonOffset). */
+export function crearPlaca(h: Huella, ancho: number, fondo: number, grosor = 1.6, elevacion = 0.012): Placa {
   const geos: BufferGeometry[] = [];
   const mats: Material[] = [];
   const g = new Group();
@@ -40,7 +41,7 @@ export function crearPlaca(h: Huella, ancho: number, fondo: number, grosor = 1.6
   mats.push(mascara, canto);
   g.add(new Mesh(geo, [mascara, canto]));
 
-  const estano = new MeshStandardMaterial({ color: new Color('#c9cdd1'), metalness: 1, roughness: 0.3, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 });
+  const estano = new MeshStandardMaterial({ color: new Color('#c9cdd1'), metalness: 1, roughness: 0.3 });
   const agujero = new MeshStandardMaterial({ color: new Color('#0d0e0f'), roughness: 1 });
   mats.push(estano, agujero);
   for (const p of h.pads) {
@@ -49,7 +50,7 @@ export function crearPlaca(h: Huella, ancho: number, fondo: number, grosor = 1.6
     else pg = new PlaneGeometry(p.w, p.h);
     geos.push(pg);
     const m = new Mesh(pg, estano);
-    m.position.set(p.x, p.y, 0.012);
+    m.position.set(p.x, p.y, elevacion);
     g.add(m);
     if (p.taladro) {
       const hg = new CircleGeometry(p.taladro / 2, 24);

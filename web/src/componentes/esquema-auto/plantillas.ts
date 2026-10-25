@@ -1169,6 +1169,175 @@ function rectificadores(cx: Contexto): Reglas | null {
   return r;
 }
 
+// ------------------------------------------------------------------ ladders of parallel cells
+
+/**
+ * Series chains of parallel cells (two or more R/C/L across the same two nets, cells joined by nets that
+ * nothing else touches): a capacitor bank with its leakage and balancing resistors, a Foster thermal network.
+ * A short chain that ends at ground is drawn as a vertical stack (cells side by side, one cell above the other,
+ * ground at the bottom); a longer one as a row of horizontal cells (first part of each cell on the main row,
+ * the others below it), its last cell hanging to ground on the right when it ends there.
+ */
+function escaleras(cx: Contexto): Reglas | null {
+  const pasivo = (u: number) => ['R', 'C', 'L'].includes(cx.letra(u)) && cx.dosPines(u) && cx.us[u]!.pines.every((p) => p.tipo !== 'riel' && p.tipo !== 'puerto');
+  const celdas = new Map<string, number[]>();
+  for (const u of cx.us) {
+    if (!pasivo(u.id)) continue;
+    const [a, b] = cx.nodos2(u.id);
+    if (a === b) continue;
+    const k = [a, b].sort().join('\u0000');
+    if (!celdas.has(k)) celdas.set(k, []);
+    celdas.get(k)!.push(u.id);
+  }
+  const grupos = [...celdas.values()].filter((g) => g.length >= 2);
+  if (grupos.length < 2) return null;
+  const netsDe = (g: number[]) => cx.nodos2(g[0]!);
+  // A net joins two cells of a chain when only the members of those two cells touch it.
+  const enlace = (n: string, g: number[]): number[] | null => {
+    if (n === '0') return null;
+    const otros = grupos.filter((h) => h !== g && netsDe(h).includes(n));
+    if (otros.length !== 1) return null;
+    const total = cx.porNodo.get(n)?.length ?? 0;
+    return total === g.length + otros[0]!.length ? otros[0]! : null;
+  };
+  const usados = new Set<number[]>();
+  const r = reglasVacias('escalera');
+  /** Vertical stacks drawn so far: the net on top, the first part of their top cell and its last part. */
+  const pilas: { de: string; u: number; ultimo: number }[] = [];
+  /** The drawn start: every cell part where the template puts it, the chains side by side. */
+  const anclas: NonNullable<Reglas['anclas']> = [];
+  let x0 = 0;
+  for (const g0 of grupos) {
+    if (usados.has(g0)) continue;
+    // Walk to one end of the chain, then collect it from there.
+    let g = g0;
+    let [desde] = netsDe(g0);
+    const vistos = new Set([g0]);
+    for (;;) {
+      const sig = enlace(desde!, g);
+      if (!sig || vistos.has(sig)) break;
+      vistos.add(sig);
+      desde = netsDe(sig).find((n) => n !== desde)!;
+      g = sig;
+    }
+    // `g` is an end cell and `desde` its outer net.
+    const cadena: { g: number[]; de: string; a: string }[] = [];
+    let n = desde!;
+    let actual: number[] | null = g;
+    while (actual && !usados.has(actual)) {
+      usados.add(actual);
+      const a = netsDe(actual).find((x) => x !== n)!;
+      cadena.push({ g: actual, de: n, a });
+      const sig = enlace(a, actual);
+      n = a;
+      actual = sig;
+    }
+    if (cadena.length < 2) continue;
+    // Start from the end that is not ground (or the earlier one in the signal flow).
+    const ini = cadena[0]!.de;
+    const fin = cadena[cadena.length - 1]!.a;
+    if (ini === '0' || (fin !== '0' && cx.rango(fin) >= 0 && cx.rango(fin) < cx.rango(ini))) {
+      cadena.reverse();
+      for (const c of cadena) [c.de, c.a] = [c.a, c.de];
+    }
+    const p = (u: number, net: string) => cx.pinEn(u, net);
+    const aTierra = cadena[cadena.length - 1]!.a === '0';
+    /** Prefers the variants of `u` whose label lies on the side `ok` accepts (relative to its pins' axis). */
+    const ladoEtq = (u: number, ok: (e: [number, number, number, number]) => boolean) => {
+      const vs = cx.us[u]!.vars;
+      if (!vs.some((v) => v.etq && ok(v.etq.rect))) return;
+      for (const v of vs) if (!v.etq || !ok(v.etq.rect)) v.coste += 2;
+    };
+    /** Width of the label of `u` in its cheapest variant (the orientation the rules want). */
+    const anchoEtq = (u: number) => {
+      const vs = cx.us[u]!.vars;
+      const v = vs.reduce((m, x) => (x.coste < m.coste ? x : m), vs[0]!);
+      return v.etq ? v.etq.rect[2] - v.etq.rect[0] : 0;
+    };
+    /** A cell upright, its parts side by side left to right, tops on one row; drawn start from (x, y). */
+    const derecha = (c: { g: number[]; de: string; a: string }, x: number, y: number, paso: number) => {
+      c.g.forEach((u, j) => {
+        cx.vertical(u, p(u, c.de), p(u, c.a), 6);
+        ladoEtq(u, (e) => e[0] >= 0);
+        anclas.push({ u, pin: p(u, c.de), x: x + j * paso, y });
+        if (j) {
+          orden(r, R(c.g[j - 1]!, 'c'), R(u, 'c'), 0, 1.5, 4);
+          alin(r, R(c.g[0]!, p(c.g[0]!, c.de)), R(u, p(u, c.de)), 1, 3);
+        }
+      });
+    };
+    /** The source that feeds the chain from ground (upright on its left, its top on the chain's first row). */
+    const fuente = (x: number, y: number) => {
+      const n = cadena[0]!.de;
+      const fs = cx.en(n).filter((u) => cx.esFuente(u) && cx.otro(u, n) === '0');
+      if (fs.length !== 1 || anclas.some((a) => a.u === fs[0])) return;
+      anclas.push({ u: fs[0]!, pin: p(fs[0]!, n), x, y });
+    };
+    // Column pitch of upright cells: the part and its label beside it.
+    const pasoV = (cs: typeof cadena) => Math.ceil(Math.max(...cs.flatMap((c) => c.g.map(anchoEtq))) + 1.3);
+    if (aTierra && cadena.length <= 2) {
+      // Vertical stack: cells one above the other, part j of every cell in column j.
+      const paso = pasoV(cadena);
+      fuente(x0 - 3, 1);
+      cadena.forEach((c, i) => {
+        derecha(c, x0, 2 * i, paso);
+        if (!i) return;
+        const ant = cadena[i - 1]!;
+        c.g.forEach((u, j) => {
+          const w = ant.g[Math.min(j, ant.g.length - 1)]!;
+          alin(r, R(w, 'c'), R(u, 'c'), 0, j ? 3 : 6);
+        });
+        orden(r, R(ant.g[0]!, p(ant.g[0]!, ant.a)), R(c.g[0]!, p(c.g[0]!, c.de)), 1, 0, 4);
+      });
+      // Stacks fed from the same net stand side by side, their tops on one row.
+      const c0 = cadena[0]!;
+      const vecina = pilas.find((x) => x.de === c0.de);
+      if (vecina) {
+        alin(r, R(vecina.u, p(vecina.u, c0.de)), R(c0.g[0]!, p(c0.g[0]!, c0.de)), 1, 3);
+        orden(r, R(vecina.ultimo, 'c'), R(c0.g[0]!, 'c'), 0, 2, 4);
+      }
+      pilas.push({ de: c0.de, u: c0.g[0]!, ultimo: c0.g[c0.g.length - 1]! });
+      x0 += Math.max(...cadena.map((c) => c.g.length)) * paso + 1;
+      continue;
+    }
+    // Row of horizontal cells: part j of every cell on row j (labels above each part).
+    const fila = aTierra ? cadena.slice(0, -1) : cadena;
+    const pasoH = Math.max(3, Math.ceil(Math.max(...fila.flatMap((c) => c.g.map(anchoEtq))) + 0.4));
+    fuente(x0 - 2, 1);
+    fila.forEach((c, i) => {
+      c.g.forEach((u, j) => {
+        cx.horizontal(u, p(u, c.de), p(u, c.a), 6);
+        // Labels outside the cell: above its first row, below its last one.
+        if (!j) ladoEtq(u, (e) => e[3] <= 0);
+        else if (j === c.g.length - 1) ladoEtq(u, (e) => e[1] >= 0);
+        anclas.push({ u, pin: p(u, c.de), x: x0 + i * pasoH, y: 2 * j });
+        if (j) {
+          orden(r, R(c.g[j - 1]!, 'c'), R(u, 'c'), 1, 1.5, 4);
+          alin(r, R(c.g[0]!, p(c.g[0]!, c.de)), R(u, p(u, c.de)), 0, 3);
+        }
+      });
+      if (!i) return;
+      const ant = fila[i - 1]!;
+      c.g.forEach((u, j) => {
+        if (j < ant.g.length) alin(r, R(ant.g[j]!, 'c'), R(u, 'c'), 1, j ? 2 : 3);
+      });
+      orden(r, R(ant.g[0]!, p(ant.g[0]!, ant.a)), R(c.g[0]!, p(c.g[0]!, c.de)), 0, 0, 4);
+    });
+    if (aTierra) {
+      const c = cadena[cadena.length - 1]!;
+      const ant = fila[fila.length - 1]!;
+      derecha(c, x0 + fila.length * pasoH - pasoH + 3, 0, pasoV([c]));
+      alin(r, R(ant.g[0]!, p(ant.g[0]!, ant.a)), R(c.g[0]!, p(c.g[0]!, c.de)), 1, 3);
+      orden(r, R(ant.g[0]!, p(ant.g[0]!, ant.a)), R(c.g[0]!, p(c.g[0]!, c.de)), 0, 1, 4);
+      x0 += c.g.length * pasoV([c]);
+    }
+    x0 += fila.length * pasoH + 2;
+  }
+  if (!r.orden.length && !r.alin.length) return null;
+  if (anclas.length) r.anclas = anclas;
+  return r;
+}
+
 // ------------------------------------------------------------------ entry
 
 /** Layout rules of the topologies recognised in a component (null: none). Mutates the variants' costs. */
@@ -1194,6 +1363,10 @@ export function reglasDe(comp: Componente): Reglas | null {
   }
   const l = logica(cx);
   if (l) todas.push(l);
+  if (!todas.length) {
+    const e = escaleras(cx);
+    if (e) todas.push(e);
+  }
   if (!todas.length) return null;
   const r = reglasVacias(todas.flatMap((x) => x.familias).join('+'));
   r.familias = todas.flatMap((x) => x.familias);

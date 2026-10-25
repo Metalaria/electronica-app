@@ -1,7 +1,7 @@
 // Resistors (book 2.2, 2.4, 2.5, 2.11): axial film/wirewound resistor with its IEC 60062 bands (also the
 // colour-coded axial inductor), SMD thick-film chip with its code, rotary potentiometer and trimmer.
 
-import { CylinderGeometry, DoubleSide, Group, MeshStandardMaterial } from 'three';
+import { CylinderGeometry, DoubleSide, ExtrudeGeometry, Group, MeshStandardMaterial, Shape } from 'three';
 import { bandas, codigoSmd, COLORES, leerValor, normalizar, textoValor, rkm } from './codigos';
 import {
   ACABADOS,
@@ -322,35 +322,56 @@ export function resistenciaSmd(ctx: Ctx, p: Parametros): { g: Group; datos: Part
   const sus = malla(caja(ctx, L - 0.02, W, hSus, Math.min(0.03, hSus * 0.2)), material(ctx, ACABADOS.alumina));
   g.add(colocar(parte('sustrato', { etiqueta: { texto: 'Sustrato de alúmina (cerámica)', ref: 'sec-2.2.5', punto: [0, -W / 2, hSus / 2] }, interior: true }, sus), 0, 0, hSus / 2));
 
-  // Resistive thick film with its laser trim.
-  const res = malla(caja(ctx, largoInt + t * 0.6, W * 0.84, hRes, 0), material(ctx, { color: '#1f2a3a', rugosidad: 0.6, corte: '#2b3a52' }));
-  const corteLaser = malla(caja(ctx, Math.max(0.05, L * 0.05), W * 0.45, hRes * 1.2, 0), material(ctx, { color: '#f0eee8', rugosidad: 0.8 }));
-  corteLaser.position.set(L * 0.08, -W * 0.2, 0);
+  // Resistive thick film with its laser trim: the trim is a slot cut through the film from its front edge
+  // to the middle, so the white alumina shows through it. The film is one extruded solid with the slot as a
+  // notch (no separate trim box sharing the film's top and bottom planes, which z-fights on mobile GPUs).
+  // The film lies inside the overglaze and the terminations, as on the real part: only the cutaway and the
+  // explosion show it.
+  const aRes = (largoInt + t * 0.6) / 2;
+  const bRes = W * 0.42;
+  const anchoCorte = Math.max(0.05, L * 0.05);
+  const xCorte = L * 0.08;
+  const geoRes = ctx.rec.geometria(`smd-pelicula:${aRes.toFixed(3)}:${bRes.toFixed(3)}:${hRes.toFixed(4)}:${xCorte.toFixed(3)}`, () => {
+    const f = new Shape();
+    f.moveTo(-aRes, -bRes);
+    f.lineTo(xCorte - anchoCorte / 2, -bRes);
+    f.lineTo(xCorte - anchoCorte / 2, 0);
+    f.lineTo(xCorte + anchoCorte / 2, 0);
+    f.lineTo(xCorte + anchoCorte / 2, -bRes);
+    f.lineTo(aRes, -bRes);
+    f.lineTo(aRes, bRes);
+    f.lineTo(-aRes, bRes);
+    f.closePath();
+    const geo = new ExtrudeGeometry(f, { depth: hRes, bevelEnabled: false });
+    geo.translate(0, 0, -hRes / 2);
+    return geo;
+  });
+  const res = malla(geoRes, material(ctx, { color: '#1f2a3a', rugosidad: 0.6, corte: '#2b3a52' }));
   g.add(
     colocar(
       parte('capa-resistiva', {
         etiqueta: { texto: 'Capa resistiva (película gruesa), con el corte láser que ajusta el valor', ref: 'sec-2.2.5', punto: [L * 0.08, -W * 0.3, hRes / 2] },
         interior: true,
         explosion: [0, 0, H * 1.6],
-      }, res, corteLaser),
+      }, res),
       0,
       0,
       hSus + hRes / 2,
     ),
   );
 
-  // Protective overglaze (black) with the marking.
-  const capa = malla(caja(ctx, largoInt, W * 0.92, hCapa, Math.min(0.04, hCapa * 0.45)), material(ctx, { color: '#16171a', rugosidad: 0.45, corte: '#2a2b30' }));
+  // Protective overglaze (black) with the marking: from the alumina up, covering the film.
+  const capa = malla(caja(ctx, largoInt, W * 0.92, hCapa + hRes, Math.min(0.04, hCapa * 0.45)), material(ctx, { color: '#16171a', rugosidad: 0.45, corte: '#2a2b30' }));
   const grupoCapa = parte('recubrimiento', {
-    etiqueta: { texto: codigo ? `Recubrimiento protector con el código «${codigo}» → ${textoValor(valorCodigo, 'Ω')}` : 'Recubrimiento protector (sin marcar: 0402)', ref: 'sec-2.5', punto: [0, W * 0.3, hCapa / 2] },
+    etiqueta: { texto: codigo ? `Recubrimiento protector con el código «${codigo}» → ${textoValor(valorCodigo, 'Ω')}` : 'Recubrimiento protector (sin marcar: 0402)', ref: 'sec-2.5', punto: [0, W * 0.3, (hCapa + hRes) / 2] },
     explosion: [0, 0, H * 3],
   }, capa);
   if (codigo) {
     const tx = rotulo(ctx, [codigo], largoInt * 0.86, W * 0.62, { color: '#f4f4f0', peso: 600 });
-    tx.position.z = hCapa / 2 + 0.002;
+    tx.position.z = (hCapa + hRes) / 2;
     grupoCapa.add(tx);
   }
-  g.add(colocar(grupoCapa, 0, 0, hSus + hRes + hCapa / 2));
+  g.add(colocar(grupoCapa, 0, 0, hSus + (hRes + hCapa) / 2));
 
   // Wrap-around terminations: tin over nickel over the silver base.
   const matTerm = material(ctx, { ...ACABADOS.estanoMate, corte: '#8d9095' });

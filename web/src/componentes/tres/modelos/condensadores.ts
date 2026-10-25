@@ -328,7 +328,7 @@ const condensadorPelicula: Constructor = (ctx, p) => {
       const aa = a - 2 * paso2 * i;
       const bb = b - 2 * paso2 * i;
       if (bb <= paso2 * 1.2) break;
-      rollo.add(malla(anilloEstadio(ctx, aa, bb, paso2, largo - 0.2, `${aa.toFixed(3)}:${bb.toFixed(3)}:${paso2.toFixed(3)}:${largo}`), i % 2 ? matMet : matFilm));
+      rollo.add(malla(anilloEstadio(ctx, aa, bb, paso2 * 0.94, largo - 0.2, `${aa.toFixed(3)}:${bb.toFixed(3)}:${(paso2 * 0.94).toFixed(3)}:${largo}`), i % 2 ? matMet : matFilm));
     }
     g.add(
       colocar(

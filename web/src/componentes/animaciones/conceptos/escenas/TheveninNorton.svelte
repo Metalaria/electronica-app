@@ -150,7 +150,7 @@
     punto(ctx, e, 0, th.vth, p.acento, 5);
     punto(ctx, e, IN, 0, p.serie[2], 5);
     punto(ctx, e, op.il, op.vl, p.corriente, 7, p.fondo);
-    txtRico(v, `vacío: V_Th = ${num(th.vth, 2)} V`, X(e, 0) + 10, Y(e, th.vth) - 12, { tam: 12, peso: 700, color: p.acento, alin: 'left' });
+    txtRico(v, `vacío: V_Th = ${num(th.vth, 2)} V`, X(e, 0) + 24, Y(e, th.vth) - 12, { tam: 12, peso: 700, color: p.acento, alin: 'left' });
     txtRico(v, `cortocircuito: I_N = ${si(IN, 'A', 3)}`, X(e, IN) - 6, Y(e, 0) - 14, { tam: 12, peso: 700, color: p.serie[2], alin: 'right' });
     txtRico(v, `pendiente −R_Th = −${num(th.rth, 2)} Ω`, X(e, IN / 2) + 14, Y(e, th.vth / 2) + 4, { tam: 12, color: p.acento, alin: 'left' });
     const xo = X(e, op.il);

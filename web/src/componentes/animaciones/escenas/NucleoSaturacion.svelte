@@ -115,8 +115,10 @@
         ctx.quadraticCurveTo(gx + 18 + Math.abs(k) * 8, cy + k * 8, gx + 10, cy + 12 + k * 6);
         ctx.stroke();
       }
-      txt(v, 'entrehierro 0,5 mm', gx + 34, cy - 30, { tam: 12.5, peso: 700, alin: 'left', color: p.campoB });
-      txt(v, 'aquí se guarda la energía', gx + 34, cy - 12, { tam: 12, alin: 'left', color: p.suave });
+      // Kept between the gap and the right edge (pushed back from the edge they ran into «I = …»).
+      const hueco = v.w - (gx + 34) - 4;
+      txt(v, 'entrehierro 0,5 mm', gx + 34, cy - 30, { tam: 12.5, peso: 700, alin: 'left', color: p.campoB, max: hueco });
+      txt(v, 'aquí se guarda la energía', gx + 34, cy - 12, { tam: 12, alin: 'left', color: p.suave, max: hueco });
     }
     // Winding (50 turns, drawn as ~16 across the ring at the left).
     for (let k = 0; k < 16; k++) {

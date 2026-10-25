@@ -5,6 +5,7 @@
 
 import { obtenerAlmacen, type Almacen } from '../../lib/almacen';
 import { claveDia, responder, type Calificacion, type EstadoTarjeta } from './srs';
+import { anotarBorrado, anotarCambio } from '../../lib/sincronizacion/marcas';
 
 export interface AjustesRepaso {
   /** New cards introduced per day (shared by every deck). */
@@ -147,16 +148,27 @@ export function calificar(id: string, c: Calificacion, ahora = Date.now()): Desh
   if (!previo) d.n += 1;
   if (c > 1) d.b += 1;
   repaso.diario[dia] = d;
+  anotarCambio('repaso-diario', dia);
   guardar('tarjetas');
   guardar('diario');
   return { id, previo, dia, diaPrevio };
 }
 
 export function deshacer(d: Deshacer): void {
-  if (d.previo) repaso.tarjetas[d.id] = d.previo;
-  else delete repaso.tarjetas[d.id];
-  if (d.diaPrevio) repaso.diario[d.dia] = d.diaPrevio;
-  else delete repaso.diario[d.dia];
+  if (d.previo) {
+    repaso.tarjetas[d.id] = d.previo;
+    anotarCambio('repaso-tarjetas', d.id);
+  } else {
+    delete repaso.tarjetas[d.id];
+    anotarBorrado('repaso-tarjetas', d.id);
+  }
+  if (d.diaPrevio) {
+    repaso.diario[d.dia] = d.diaPrevio;
+    anotarCambio('repaso-diario', d.dia);
+  } else {
+    delete repaso.diario[d.dia];
+    anotarBorrado('repaso-diario', d.dia);
+  }
   guardar('tarjetas');
   guardar('diario');
 }
@@ -164,11 +176,14 @@ export function deshacer(d: Deshacer): void {
 export function ponerAjustes(a: Partial<AjustesRepaso>): void {
   repaso.ajustes = { ...repaso.ajustes, ...a };
   repaso.ajustes.nuevasDia = Math.min(NUEVAS_DIA_MAX, Math.max(0, Math.round(repaso.ajustes.nuevasDia)));
+  anotarCambio('repaso-ajustes', 'ajustes');
   guardar('ajustes', 100);
 }
 
 /** Forgets every flashcard state and the log (the quiz results stay). */
 export function reiniciarTarjetas(): void {
+  anotarBorrado('repaso-tarjetas', Object.keys(repaso.tarjetas));
+  anotarBorrado('repaso-diario', Object.keys(repaso.diario));
   repaso.tarjetas = {};
   repaso.diario = {};
   guardar('tarjetas', 50);
@@ -202,6 +217,7 @@ export function registrarRespuesta(id: string, parte: string, bien: boolean, aho
   if (bien) {
     if (id in repaso.fallos) {
       delete repaso.fallos[id];
+      anotarBorrado('repaso-fallos', id);
       guardar('fallos');
     }
     return;
@@ -230,5 +246,6 @@ export function registrarExamen(partes: string[], aciertos: number, total: numbe
 
 export function quitarFallo(id: string): void {
   delete repaso.fallos[id];
+  anotarBorrado('repaso-fallos', id);
   guardar('fallos');
 }

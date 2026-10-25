@@ -499,8 +499,9 @@ const rele: Constructor = (ctx, p) => {
     brazo.position.set(xk + 2.2, 0, z);
     const pastilla = malla(cilindro(ctx, 0.9, 0.5, 16), matAg);
     pastilla.position.set(xk, 0, z + (nombre === 'nc' ? -0.8 : 0.3));
-    const pata = malla(caja(ctx, 0.6, 3.4, z - 1, 0.05), matLat);
-    pata.position.set(xk + 4.2, 0, (z + 1) / 2);
+    // The NC and NO pins stand side by side (they used to occupy the same place).
+    const pata = malla(caja(ctx, 0.6, 1.4, z - 1, 0.05), matLat);
+    pata.position.set(xk + 4.2, nombre === 'nc' ? 0.9 : -0.9, (z + 1) / 2);
     return parte(`contacto-${nombre}`, { etiqueta: { texto: et, ref: 'sec-4.5', punto: [xk + 2.2, -1.7, z] }, interior: true, explosion: [L * 0.3, 0, nombre === 'nc' ? 3 : -1] }, brazo, pastilla, pata);
   };
   g.add(fijo(zNC, 'nc', 'Contacto NC (normalmente cerrado)'), fijo(zNO, 'na', 'Contacto NA (normalmente abierto)'));

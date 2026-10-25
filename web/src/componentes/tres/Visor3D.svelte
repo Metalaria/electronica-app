@@ -235,6 +235,8 @@
   .lienzo {
     position: relative;
     width: 100%;
+    /* Gestures on the canvas and on its labels move the model, never the page (no page pinch-zoom). */
+    touch-action: none;
     aspect-ratio: 16 / 10;
     max-height: 72vh;
     border-radius: 14px;
@@ -373,8 +375,9 @@
     color: var(--acento);
   }
   @media (pointer: coarse) {
+    /* Touch targets: the same padding on every item (a min-height made one-line items taller than the rest). */
     .leyenda3d :global(li) {
-      min-height: 32px;
+      padding-block: 3px;
     }
   }
 

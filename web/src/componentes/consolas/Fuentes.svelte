@@ -1,6 +1,7 @@
 <script lang="ts">
   // «Fuentes» tab: credits, licences and how the data were obtained and checked.
   import { htmlKicad, type DatosMaquina } from './datos';
+  import PlacaFuentes from './placa/PlacaFuentes.svelte';
 
   let { datos }: { datos: DatosMaquina } = $props();
   const cabecera = $derived(datos.equivalencias_cabecera ?? ['Placa de la foto (1.ª generación)', 'Esquema NEO-AES3-5', 'Señales', 'Qué cambia', 'Fuente']);
@@ -20,6 +21,8 @@
       {/each}
     </ul>
   </section>
+
+  <PlacaFuentes maquina={datos.id} />
 
   {#if datos.revisiones?.length}
     <section>

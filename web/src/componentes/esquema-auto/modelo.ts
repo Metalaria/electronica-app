@@ -169,11 +169,84 @@ function argumentos(tok: string): string[] {
 
 const NUM = (t: string | undefined): number | null => (t == null ? null : numeroSpice(t));
 
-/** «10 kΩ» for a number, the expression itself for «{rl}». */
+/**
+ * Value of a constant expression such as «{30e-6/0.058737}» (numbers with SPICE suffixes, + − * / ^ **,
+ * parentheses), or null when it names a parameter or a function: those stay as written.
+ */
+export function constanteSpice(tok: string): number | null {
+  const s = tok.trim().replace(/^[{']|[}']$/g, '');
+  const re = /\s*(?:((?:\d+\.?\d*|\.\d+)(?:e[-+]?\d+)?[a-zµ]*)|(\*\*|[-+*/^()]))/iy;
+  const toks: string[] = [];
+  re.lastIndex = 0;
+  while (re.lastIndex < s.length) {
+    const i = re.lastIndex;
+    const m = re.exec(s);
+    if (!m || re.lastIndex === i) return /^\s*$/.test(s.slice(i)) ? (toks.length ? evaluar(toks) : null) : null;
+    toks.push(m[1] ?? m[2]!);
+  }
+  return toks.length ? evaluar(toks) : null;
+}
+
+function evaluar(toks: string[]): number | null {
+  let k = 0;
+  const suma = (): number | null => {
+    let a = producto();
+    while (a !== null && (toks[k] === '+' || toks[k] === '-')) {
+      const op = toks[k++];
+      const b = producto();
+      if (b === null) return null;
+      a = op === '+' ? a + b : a - b;
+    }
+    return a;
+  };
+  const producto = (): number | null => {
+    let a = potencia();
+    while (a !== null && (toks[k] === '*' || toks[k] === '/')) {
+      const op = toks[k++];
+      const b = potencia();
+      if (b === null) return null;
+      a = op === '*' ? a * b : a / b;
+    }
+    return a;
+  };
+  const potencia = (): number | null => {
+    const a = unario();
+    if (a !== null && (toks[k] === '^' || toks[k] === '**')) {
+      k++;
+      const b = potencia();
+      return b === null ? null : a ** b;
+    }
+    return a;
+  };
+  const unario = (): number | null => {
+    const t = toks[k];
+    if (t === '-' || t === '+') {
+      k++;
+      const a = unario();
+      return a === null ? null : t === '-' ? -a : a;
+    }
+    if (t === '(') {
+      k++;
+      const a = suma();
+      if (toks[k++] !== ')') return null;
+      return a;
+    }
+    if (t == null) return null;
+    k++;
+    return numeroSpice(t);
+  };
+  const v = suma();
+  return v !== null && k === toks.length && Number.isFinite(v) ? v : null;
+}
+
+/** «10 kΩ» for a number or a constant expression, the expression itself for «{rl}». */
 function textoValor(tok: string | undefined, unidad: string): { texto: string; numero: number | null } {
   if (!tok) return { texto: '', numero: null };
   const n = numeroSpice(tok);
   if (n !== null) return { texto: formatoCorto(n, unidad), numero: n };
+  // A constant expression reads as its value (the netlist keeps the expression; sliders do not see it).
+  const e = tok.startsWith('{') || tok.startsWith("'") ? constanteSpice(tok) : null;
+  if (e !== null) return { texto: formatoCorto(e, unidad), numero: null };
   let t = tok.replace(/^'|'$/g, '');
   if (t.length > 16) t = t.slice(0, 15) + '…';
   return { texto: t, numero: null };

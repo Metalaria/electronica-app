@@ -7,6 +7,8 @@
   import { decodificar, type Dibujo } from './dibujo';
   import type { Impacto } from './capa';
   import type { Seleccion } from '../estado.svelte';
+  import { PLACAS_DE } from '../placa/datos';
+  import { soporteWebGL2 } from '../../tres/motor/soporte';
   import Lienzo from './Lienzo.svelte';
   import ZoomIn from '@lucide/svelte/icons/zoom-in';
   import ZoomOut from '@lucide/svelte/icons/zoom-out';
@@ -23,8 +25,12 @@
     datos: DatosMaquina;
     sel: Seleccion | null;
     seleccionar: (s: Seleccion | null) => void;
-    irA: (pestana: 'foto' | 'arquitectura', s: Seleccion) => void;
+    irA: (pestana: 'foto' | 'arquitectura' | 'placa3d' | 'placa2d', s: Seleccion) => void;
   } = $props();
+
+  // «Ver en la placa»: only when the machine has a board linked to this schematic
+  const conPlaca = $derived(!!PLACAS_DE[datos.id]?.some((p) => p.enlazada));
+  const pestanaPlaca = soporteWebGL2() ? 'placa3d' : 'placa2d';
 
   let hoja = $state(0);
   let dibujo: Dibujo | null = $state(null);
@@ -281,9 +287,10 @@
             {/each}
           </div>
         {/if}
-        {#if conPista}
+        {#if conPista || conPlaca}
           <div class="acciones">
-            <button type="button" class="accion" onclick={() => irA('foto', { tipo: 'red', id: redSel.n })}>Ver sus pistas en la placa</button>
+            {#if conPista}<button type="button" class="accion" onclick={() => irA('foto', { tipo: 'red', id: redSel.n })}>Ver sus pistas en la placa</button>{/if}
+            {#if conPlaca}<button type="button" class="accion" onclick={() => irA(pestanaPlaca, { tipo: 'red', id: redSel.n })}>Ver la red en la placa</button>{/if}
           </div>
         {/if}
         <p class="sub">{redSel.nodos.length} pines conectados:</p>
@@ -324,6 +331,11 @@
           </div>
         {:else}
           <p class="detalle">No tiene punto en la foto.</p>
+        {/if}
+        {#if conPlaca}
+          <div class="acciones">
+            <button type="button" class="accion" onclick={() => irA(pestanaPlaca, { tipo: 'componente', id: comp })}>Ver en la placa</button>
+          </div>
         {/if}
         {#if pinesComp.length}
           <p class="sub">{pinesComp.length} pines:</p>

@@ -77,7 +77,8 @@
       if (c === 'L') bobina(v, xc - 30, yT, xc + 30, yT, { largo: 46 });
       if (c === 'C') condensador(v, xc - 30, yT, xc + 30, yT, { placa: 24 });
       const val = c === 'R' ? si(R, 'Ω', 3) : c === 'L' ? si(L, 'H', 3) : si(C, 'F', 3);
-      txtRico(v, `${c} ${val}`, xc, yT - 20, { tam: 12, peso: 700 });
+      // Three parts on a phone: the middle one's value under the wire (side by side they overlapped).
+      txtRico(v, `${c} ${val}`, xc, est && comps.length === 3 && i === 1 ? yT + 24 : yT - 20, { tam: 12, peso: 700, max: ((x1 - x0 - 60) / comps.length) * (est && comps.length === 3 ? 2 : 1) - 8 });
     });
     // Current direction follows i(t) (slow motion).
     const iInst = Math.cos(th - fi);

@@ -98,7 +98,7 @@
       c.lineTo(cx, cy + R + 12);
       c.stroke();
       txtRico(vv, 'Re', cx + R + 16, cy + 12, { tam: 11.5, color: p.suave, alin: 'right' });
-      txtRico(vv, 'Im', cx + 8, cy - R - 10, { tam: 11.5, color: p.suave, alin: 'left' });
+      txtRico(vv, 'Im', cx + 8, cy - R + 2, { tam: 11.5, color: p.suave, alin: 'left' });
       panel(vv, e, { titulo: 'Proyección: Im{V·e^{jωt}} = V·sen(ωt + φ)', fmtX: (x) => `${num(x, 1).replace(',0', '')} T`, uy: 'V', cero: true });
     });
 

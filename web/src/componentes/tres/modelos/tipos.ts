@@ -24,6 +24,9 @@ export interface OpcionesModelo {
   montaje?: Montaje;
   /** Board thickness in mm (default 1,6). */
   grosorPlaca?: number;
+  /** Resolution of the printed markings: 'alta' (default with detalle 'alto': crisp when zoomed in) or
+   *  'baja' (64 px/mm, as on boards; thumbnails). */
+  marcas?: 'alta' | 'baja';
 }
 
 export interface Pad {

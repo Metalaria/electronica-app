@@ -450,6 +450,14 @@ Interactive canvas animations of how each component works, independent of the ge
   rAF timestamps, never per frame), controls from `ui/`, an own minimal plot (`ui/Grafica.svelte`) and the
   dynamic text. Shared physics in `nucleo/fisica.ts` (book device parameters), drawing helpers in
   `nucleo/dibujo.ts`, `esquema.ts`, `piezas.ts`, PN-junction particle model in `nucleo/union.ts`.
+- Text: `txt()` and `txtRico()` take `max` (widest the text may be, logical units: a longer one is drawn with a
+  smaller font that fits), used where a label shares its room with another (panel titles, values between parts);
+  a panel's x tick label that would touch the previous one is left out. Test hook: while
+  `globalThis.__epaTextos` is a Map, both record every text's box per canvas (device pixels; `ui/Escena.svelte`
+  clears a canvas's list before each frame and copies the cached layers' texts into it).
+  `tests/escenas-textos.spec.ts` opens every scene of both collections, every option of every selector, at 390,
+  800 and 1366 px, with the app's font and with a wider fallback of Arial/Roboto metrics (FreeSans mapped to
+  «Source Sans 3»), and fails when two labels overlap by more than 2 CSS px (single «+»/«−» charge signs apart).
 
 ## Conceptos animados (`web/src/componentes/animaciones/conceptos/`)
 
@@ -530,7 +538,22 @@ break separates lines; a long single line on a narrow face is split in two); `us
 printed. Options: `recursos` (a shared `Recursos`: equal materials, markings and geometries are reused;
 dispose once with `recursos.liberar()`), `detalle: 'bajo'` (fewer segments, no hidden interiors), `montaje:
 'placa'` (default: THT leads cut 1 mm under a `grosorPlaca` board) or `'suelto'` (as delivered: LED anode longer,
-electrolytic + longer). Keys: see `PAQUETES` (39 types).
+electrolytic + longer), `marcas: 'alta' | 'baja'` (markings about 1024 px on their long side, ≤ 640 px/mm, crisp
+when a 1 mm code fills a tablet; 'baja' = 64 px/mm, the default with `detalle: 'bajo'`, used by boards and
+thumbnails). Keys: see `PAQUETES` (39 types).
+
+**No shared faces (0.7).** Depth fighting showed on mobile GPUs and ANGLE-Metal (16/24-bit depth, polygonOffset
+that differs between drivers): `crearModelo()` ends with `separarSolidos()` (comun.ts), which pulls every solid in
+by a hair — each face moves inward by e = 0,004–0,05 mm with the model's size (≤ 5 % of the solid's thickness) —
+and gives solids whose boxes end on the same plane on the same side different steps of e (1, 1,5, 2… × e, greedy
+colouring), so touching faces and coplanar faces part; the geometry is untouched (shared through `Recursos`): the
+mesh matrix or each instance matrix gets the scale about the geometry's box centre. Decals (`rotulo`) are lifted
+by a real distance (max(0,01 mm, 0,4 % of the marking), no polygonOffset); the viewer's piece of board puts its
+contact shadow and its pads at 1 and 2 × max(0,004 mm, 0,4 % of the model's radius) over the board (no
+polygonOffset either). `node tests/modelos3d-auditoria.mjs [--solo tipo] [--detalle bajo]` builds every model
+in Chromium (its own Vite server, no WebGL) and lists coplanar overlapping faces of different solids (closer
+than 0,001 mm) and decals closer than 0,008 mm to their face; exit 1 when it finds any (0.6: 99 findings in 33
+models; 0.7: none, in both detail levels).
 
 **Viewer rules.** A frame is rendered only when the camera moves (inertia and animated resets included), the
 explosion animates, or something changes (model, cut, theme, size); none while the page is hidden or the canvas
@@ -541,8 +564,19 @@ a piece of board built from their footprint (`placa.ts`). Cutaway: one local cli
 non-`entero` meshes; cut faces are the back faces of each clipped solid drawn flat in its cut colour (cheap cap
 trick); a thin outline marks the plane; switching the cut on turns the camera to face the cut. Labels are HTML
 (links to the book through `rutaDeRef`) placed in two columns that never overlap, with SVG leader lines; their
-sizes are measured once (no layout per frame). On a viewer narrower than 560 px they become numbered markers on
-the model and the texts go to a numbered list under the canvas. Disposal:
+sizes are measured once (no layout per frame); a label keeps its column until its point is past the model's
+centre by max(24 px, 6 % of the width) (hysteresis: the LDR's label flickered from side to side while turning).
+On a viewer narrower than 560 px they become numbered markers on the model (pushed apart when closer than 24 px)
+and the texts go to a numbered list under the canvas. Depth range: `Orbita.escena` (the sphere of everything
+that can be drawn: model at full explosion, board, shadow) gives near/far around it on every camera move (far/near
+≈ 2–4 instead of 6000: depth precision on 16-bit buffers), and `Orbita.solido` (the model at rest) is a sphere the
+camera never enters (zooming in stops at its surface; panning still works). Gestures: `Orbita` listens on the
+canvas's container (`zona`), so a drag or a pinch that starts on a label turns or zooms the model; the container
+has `touch-action: none` and two-finger `touchstart`/`touchmove` are cancelled there (a pinch never zooms the
+page; page zoom elsewhere is untouched); a drag that ends on a label does not follow its link. Cut faces: the
+caps (back faces of the clipped solids in flat colour) are hatched in screen space (`onBeforeCompile`), so a
+section never reads as a lit surface; solids that sit inside others show as sections inside them (the SMD's
+substrate inside its terminations). Disposal:
 model resources (`liberarModelo`), cap materials, board, studio, renderer and `forceContextLoss()` on unmount.
 
 **Pages.** `#/componentes` shows the animation gallery or, when the remembered choice is 3D, the catalogue;
@@ -551,7 +585,10 @@ animation page (component collection) the switch replaces the canvas scene by th
 stay and drive it (`compartir3d(() => ({ … }))` in 23 scenes; `escenas3d.ts` maps the values), legend, plot and
 playback are hidden. Without WebGL2 the page stays in 2D and says why. The reader's «Ver en 3D» (`VerEn3D.svelte`,
 next to «Ver animación» in `Seccion`, `Figura`, `Bloques`) appears for the labels in `catalogo3d.ts`.
-Tests: `tests/modelos3d.spec.ts` (`-c playwright.modelos3d.config.ts` serves its own build on :4193);
+Tests: `tests/modelos3d.spec.ts` (`-c playwright.modelos3d.config.ts` serves its own build on :4193),
+`tests/visor3d-tactil.spec.ts` (pinch on the model and on a label with CDP touch events: `visualViewport.scale`
+stays 1 while the model's distance changes; the camera stays out of the model; far/near < 20; the LDR's label
+changes side at most once over 120° in 2° steps; the SMD's cut draws its caps);
 screenshots and contact sheets: `node tests/modelos3d-capturas.mjs --hoja --paginas`; frame cost while orbiting:
 `node tests/modelos3d-rendimiento.mjs --perfil mac|tableta|movil|todos` (`window.__epa3d`: render and whole-frame
 JS cost, triangles, draw calls). Budget: ≤ 17 000 triangles and ≤ 60 draw calls for the heaviest models (LQFP-64,
@@ -621,7 +658,10 @@ modelo.ts      netlist → circuit: devices with typed terminals (lineasNetlist(
                the label, K → one transformer block (coils stay elements), 4 diodes forming a full-wave bridge
                → diamond block (not when each diode is across a switch: an H bridge's freewheeling diodes stay
                separate), T/O/U lines, S/W switches, A devices (XSPICE NULL ports left out). Values with
-               SI prefixes and decimal comma (formatoCorto); sources show DC, «∿ amplitude · f», PULSE «v1/v2 · f».
+               SI prefixes and decimal comma (formatoCorto); a constant expression in braces or quotes
+               («{30e-6/0.058737}»: numbers, + − * / ^ **, parentheses; `constanteSpice()`) reads as its value
+               («511 µF»), one with parameters or functions stays as written; sources show DC, «∿ amplitude · f»,
+               PULSE «v1/v2 · f».
                Supply rails: a DC source from a net to ground named like a supply (vcc, vdd, vee, v5…) or feeding
                ≥ 3 other pins; it is drawn apart (source + rail + ground) and every pin on the rail gets a
                rail symbol (positive up, negative down). Ground is always a local symbol.
@@ -659,14 +699,24 @@ plantillas.ts  topologies recognised by structure → `Reglas` (colocacion.ts): 
                series parts and shunts on the AC wires, bridge with the AC corners top/bottom and + right,
                filter capacitor then load hanging from + on the right; a bridge − that is not ground is joined
                by a net label, since source, bridge and load form a K4 that cannot be drawn without a crossing;
-               half-wave diode horizontal, centre-tap diodes on two rows with their cathodes in one column).
+               half-wave diode horizontal, centre-tap diodes on two rows with their cathodes in one column),
+               and, only when nothing else is recognised, ladders of parallel cells (two or more R/C/L across
+               the same two nets, cells joined in series by nets nothing else touches: a capacitor bank with its
+               leakage and balancing resistors, a compensated probe, a Foster thermal network): a chain of one
+               or two cells ending at ground is a vertical stack (cells side by side, part j of every cell in
+               column j, labels to the right, stacks fed from one net side by side with their tops on one row),
+               a longer one a row of horizontal cells (first part on the main row with its label above, the
+               last part's label below) with its ground cell hanging upright on the right; the source that feeds
+               the chain from ground stands on its left; anchored start for all of it.
                The recognisers run once per circuit structure (cache in generar.ts: the rules, the variants they
                added and every variant's cost).
 generar.ts     whole netlist: components → placement (best of several runs by routed score: length, bends,
                crossings, labels) → shelf packing to a target aspect ratio → net-label texts and small net-name
                tags placed where they collide with nothing → topology. With recognised topologies the runs are
                ranked by crossings + fallback labels first, then by score + 2 × rule cost, and the families
-               are part of the cache key. Several components that are all rectifiers are packed in a grid of
+               are part of the cache key; every run is also charged 25 per fallback label and 10 per crossing
+               on top of its score (a run that trades crossings for labels must gain more than wire). The
+               precomputation (effort > 1) makes effort + 1 more runs, and 5 more with a recognised topology. Several components that are all rectifiers are packed in a grid of
                equal cells in netlist order (columns chosen for the target aspect). After routing, a part label
                closer than HOLGURA_ETIQUETA (0,15) to any wire moves to the nearest free place around its symbol
                (beside, above, below, shifted, a little further out, corners; also as two lines «R1» / «10 kΩ»)
@@ -682,6 +732,8 @@ generar.ts     whole netlist: components → placement (best of several runs by 
 svg.ts         SVG: palette «libro» (book colours, for the light figure plate, fonts embedded at /*@fuentes*/)
                or «tema» (CSS variables, inline, data-el/data-disp attributes and hit areas).
 trabajador.ts  Web Worker (sequential queue; loads precalculado.json). index.ts: client, LRU of 16 results.
+editable.ts    the layout as plain editable data (parts with orientation and variant, wires with their net,
+               ground/supply/label symbols) for the schematic editor; reads generar.ts, changes nothing.
 EsquemaAuto.svelte  inline themed viewer: pan (drag when zoomed, wheel), zoom (buttons 44 px, Ctrl/⌘ + wheel,
                trackpad/touch pinch, + − 0 keys), click/tap on a part → `alElegir` and window event
                `epa:elegir-componente` {nombre}; subcircuit interiors on request. Interiores.svelte: «Ver el
@@ -711,16 +763,96 @@ current from `de` to `a` (the side without a ground, rail or label symbol).
 Checks: `node tests/esquema-auto.mjs [--hojas] [--en-vivo] [--esfuerzo k] [--solo texto]` lays out all 313
 netlists, checks every device and node drawn, topology consistency, overlaps and the label–wire clearance
 (≥ 0,15 for every part label; prints how many labels were moved), prints crossings, labels,
-lengths and times, and with `--hojas` writes contact sheets to `tests/capturas/esquema-auto/`.
+lengths and times, and with `--hojas` writes contact sheets to `tests/capturas/esquema-auto/`. Totals of the
+book (0.7, precomputed): 313 netlists, 0 failures, 21 crossings, 101 net labels (11 of them the cap50 rectifier's,
+kept on purpose), wire length 5689, 588 bends (0.6: 21, 101, 5727, 591).
 `tests/esquema-auto.spec.ts` covers the page (auto drawing under the live layer, XSPICE drawing, zoom, click →
 slider, subcircuit interior, «Nuevo circuito») and the screenshots.
+
+## Schematic editor (`web/src/componentes/editor/`, phase 5)
+
+Draw a circuit with the book's symbols and simulate it without writing a netlist; open any netlist (the
+book's, the free one, a `.cir` file) as an editable drawing. A tab of «Simulador» (no rail entry), loaded as
+its own chunk only when opened (`Simulador.svelte` imports `editor/EditorEsquemas.svelte` on demand).
+
+Routes (`ruta.svelte.ts`: view `simulador`, `ruta.sim = 'editor…'`): `#/editor` (the working draft),
+`#/editor/<id>` (a saved circuit, saved by itself on every change), `#/editor/libro/<parte>/<nombre>` (a book
+netlist laid out as a drawing; the address becomes `#/editor`), `#/editor/importar` (a netlist text handed
+over by the simulator page in `sessionStorage`). `#/simulador/esquema` is the simulator page of the netlist
+generated by the editor («Ver como netlist», with «Volver al esquema»). The simulator page of every netlist
+has «Editar el esquema»; `PestanasSimulador.svelte` holds the three tabs (book netlists, free netlist, editor).
+
+```
+tipos.ts          DocumentoEsquema: titulo, componentes, cables, analisis (.op/.tran/.ac/.dc settings),
+                  directivas (verbatim netlist text: .model, .subckt, .param, .meas, .control…), origen
+catalogo.ts       palette kinds (TIPOS): name, group, designator prefix, topology role, fields (value with unit,
+                  model, option, net name, PWL points, SPICE text), initial values and orientation; symbols
+                  from esquema-auto/simbolos.ts (simboloDe) plus the editor's own in the same style (ground,
+                  supply, net label, potentiometer, 4-pin E/G sources, probe, meters); value text of labels
+geometria.ts      placed geometry: pins, body, hit box, SVG paths (24 px per unit) cached per shape and
+                  orientation (orientation codes of esquema-auto: bit 2 mirrors, then quarter turns)
+rotulos.ts        part labels «R₁ 4,7 kΩ» placed by anchor (start/middle/end) on the side the symbol says
+conectividad.ts   nets: pins and wire ends meeting at a point, a wire end on another wire (T, junction dot);
+                  crossing wires and a pin on the inside of a wire do not connect; labels/supplies of the
+                  same name join; every ground is 0. Names: 0, label, the node name kept by imported wires
+                  (Cable.red), n1, n2…; loose pins and wire ends are marked
+netlist.ts        drawing → netlist: one line per part (instance = designator, with the element letter in
+                  front when missing), library models used and not defined in the directives, directives,
+                  analyses; probes (v(net), ammeter i(v…), differential voltmeter B source) choose the plotted
+                  vectors; checks in plain Spanish (missing ground, values, models, names, loose pins)
+modelos.ts        the palette's models, as in the book's netlists: 1N4148, 1N4007, Schottky, red/green LED,
+                  Zener 5,1/5,6/12 V, 2N3904, 2N3906, power NPN/PNP, level-1 MOSFETs, JFETs, op-amps
+                  (opamp: A0 1e5, 10 Hz pole, ±14 V; op741; opa5 with supply pins)
+valores.ts        Spanish values «4,7k», «4k7», «100n», «2,2M», «1meg», «{expr}» ↔ SPICE («M» is mega)
+importar.ts       netlist → drawing: esquema-auto's layout (precalculado.json for the book) in a worker
+                  (trabajador.ts → esquema-auto/editable.ts) turned into parts and wires; R/C/L, sources (DC,
+                  SIN, PULSE, PWL, AC; otherwise «Texto SPICE»), diodes, BJTs, MOSFETs (bulk on source),
+                  JFETs become palette parts; anything else (subcircuits, op-amps, E/G/F/H/B, switches,
+                  transformers with their K lines, diode bridges) stays a GEN part with its SPICE line;
+                  every other line goes to the directives. Regenerating gives an equivalent netlist (tested:
+                  same measurements as the text)
+estado.svelte.ts  Editor: document, selection, tool, undo/redo (snapshots), place, move (attached wires
+                  stretch into L shapes), rotate/mirror about the selection's centre, copy/paste, delete
+Lienzo.svelte     SVG canvas, pointer events for mouse, pen and touch (see below); window.__epaEditor for tests
+Paleta.svelte, Propiedades.svelte, MisCircuitos.svelte, EditorEsquemas.svelte (page, keys, menus, analyses,
+                  results, netlist and directives views, import/export)
+vivo.ts           the drawing as a figuras-vivas DibujoConNetlist (topology in drawing units y up, mapping to the
+                  generated netlist, book-palette SVG from svg.ts), so VistaViva.svelte reuses EstadoEsquema,
+                  Escenario/CapaEsquema, PanelEsquema and instrumentar()/resultados() of the simulator page:
+                  node colours, currents and particles of the transient, plus tags with every node voltage
+                  and every two-terminal current (anchor «valor»: the side opposite to the label)
+circuitos.svelte.ts  storage (below), draft, hand-overs
+```
+
+Gestures: tap/click a palette part then the canvas (or drag it onto the canvas); drag from a pin draws an L
+wire (the first leg follows the pin), the wire tool also draws tap by tap; drag a part or wire to move the
+selection; mouse drag on empty space = box selection, finger drag = pan; middle button or Space + drag =
+pan; as in the 3D viewer, a plain wheel scrolls the page (never trapped: the page is not full height),
+Ctrl/⌘ + wheel and pinch (touch, or trackpad = ctrl+wheel) zoom, Shift + wheel or a sideways trackpad swipe
+pans horizontally (hint line at the bottom of the canvas); long press (touch) or right click = context
+menu; double tap/click = properties. The canvas has `touch-action: none` and cancels touchstart/touchmove and
+Safari gesture events, so a pinch never zooms the page (tested with CDP touch events: visualViewport.scale
+stays 1). Keys: R rotate, X/M mirror, Supr/Retroceso delete, Ctrl Z / Ctrl Y (Ctrl Mayús Z), Ctrl C/X/V/D/A,
+Ctrl S save, W wire, S/V select, G ground, F/0 fit, + − zoom, Esc cancel.
+
+Storage: `obtenerAlmacen()` key **`editor-circuitos`** = `{ version: 1, circuitos: { [id]: { id, nombre, creado,
+actualizado, borrado?, doc } } }` (times in ms; delete keeps a tombstone with `borrado` and an empty drawing,
+for syncing). The unsaved draft is `localStorage` `epa:editor-borrador`; an unsaved draft with parts is kept in
+«Mis circuitos» before an import replaces it. Export: `.cir` (the generated netlist) and SVG (book palette,
+fonts embedded); on phones through the share sheet when available. Import: `.cir/.net/.sp/.txt`.
+
+Tests: `tests/editor.spec.ts` (`playwright.editor.config.ts`, port 4201): mouse and touch drawing, .op and
+.tran against hand calculations, undo/redo, pinch, save/reload/rename/delete, two book rectifiers drawn give
+the same measurements as their text, .cir round trip, «Ver como netlist», screenshots in
+`tests/capturas/editor/`. `node tests/editor-rendimiento.mjs` times pointer moves with ~80 parts (Mac profile,
+CPU ×4).
 
 ## Consoles (`web/src/componentes/consolas/`, data in `web/public/consolas/`)
 
 Three linked views of six mainboards: the two photographed in printed chapter 36 (figures 36.16 and 36.22), the NES
 NES-CPU-07 and the first Neo Geo AES board (NEO-AES), plus the Master System II (171-5922A), Mega Drive (model 1
 VA6), Game Boy (DMG-CPU-05/06 + DMG-LCD-06) and Game Boy Color (CGB-CPU-04). `IDS_MAQUINA` in `datos.ts` lists them.
-Route `#/consolas/<nes|neogeo|sms|megadrive|gb|gbc>/<foto|arquitectura|esquema|fuentes>[/<sel>]`
+Route `#/consolas/<nes|neogeo|sms|megadrive|gb|gbc>/<foto|arquitectura|esquema|placa3d|placa2d|fuentes>[/<sel>]`
 (`Vista` includes `'consolas'`); `<sel>` is a schematic reference (`U6`), `red:<net>`, `bloque:<id>` or `foto:<id>`,
 URI-encoded. Selections made inside a tab only replace the URL; the cross links («Ver en el esquema»…) push it.
 The reader shows «Explorar la placa» under both photos (`VerConsola.svelte`, labels `fig-37.16`/`fig-37.22`).
@@ -791,6 +923,43 @@ as signal transition lists in real seconds, sampled by binary search; `nes.ts`, 
 68000/Z80), `notaDecodificador` and `variantes` + `diagramaDe` (machine-wide variant passed to every scenario as
 `op.norma` and shown as a toggle «Norma de vídeo»: the Mega Drive's PAL default and NTSC clocks); `dibujo.ts` draws the diagram in the shared `Escena`;
 `Analizador.svelte` is the logic-analyser view). Tests: `tests/consolas.spec.ts`.
+
+### Console boards in 3D and 2D (`consolas/placa/`, data in `web/public/consolas/placas/`)
+
+Tabs `placa3d` and `placa2d`, only for the machines listed in `placa/datos.ts → PLACAS_DE` (Mega Drive; Game Boy
+Color with two boards, the choice kept in `placa/eleccion.svelte.ts`). `PlacaConsola.svelte` mounts the «Proyectos
+KiCad» components unchanged (`proyectos/Vista3D.svelte`, `Placa2D.svelte`, `geometria.ts`, `seleccion.ts`,
+`opciones3d.svelte.ts`; without WebGL2 the 3D tab shows the 2D view) and translates the selection: a schematic
+reference → the footprint with that reference, a schematic net → the board net mapped to it, a board part or pad →
+the reference, a board net → its schematic net. Boards with `consola.enlazada: false` (OpenGBC) take no selection
+from the other tabs. The schematic offers «Ver en la placa» for parts and nets when the machine has a linked board;
+`placa/PlacaFuentes.svelte` adds the boards' credits to «Fuentes».
+
+**Pipeline** (`contenido/consolas_pcb.py`, run by hand; sources read from `CONSOLAS_FUENTES`, never copied):
+- KiCad 9 boards (stonedDiscord MegaDrive, whatware OpenGBC) through `proyectos_kicad_pcb.read_board` (outline,
+  footprints, pads, tracks, vias, zone fills, rule areas) and `model_for` (plus heights for the consoles' own
+  packages; logos, fiducials and net ties get no body). kicad-cli 7 cannot open KiCad 9 boards, so every silkscreen
+  item (footprint graphics and texts in board coordinates, footprint texts «keep upright» as KiCad draws them,
+  board graphics and texts) is copied into a minimal KiCad 7 board that `kicad-cli pcb export svg` plots per side
+  (cached in `contenido/.cache/consolas_pcb/`), read with `proyectos_kicad.silk_layer`.
+- Gerber-only board (Natalie the Nerd's CGB-CPU-04, 4 layers) through `contenido/consolas_gerber.py`: RS-274X with
+  KiCad's X2 attributes (`TO.N` net, `TO.C`/`TO.P` reference, pin and pin function, `TA.AperFunction`), apertures
+  C/R/O/P and macros (KiCad's RoundRect and FreePoly), arcs, regions, polarity, and the Excellon drill files (holes
+  and routed slots). Flashes with a pin become pads (merged across faces; RoundRect → `rr` with its rotation; a
+  custom shape → its exact copper as a zone plus a mask-only pad), via pads and via drills → `vias`, other flashes
+  and regions → `zonas`, strokes → `pistas`; mask flashes set the pads' mask flags; unplated holes become
+  mechanical footprints `H<n>`. Pads are grouped by reference into mechanical footprints (`t: 'mec'`, box around
+  the pads, no 3D body). Inner layers In1/In2 hold only the rings of the drills and are not drawn.
+- Checks against the console's own `<maquina>.json`: references on both sides, every pad's net against the
+  schematic's (board net → schematic net by majority of its pads), and for the Gerber board the two-pin parts whose
+  pins 1 and 2 are swapped between the PDF reconstruction and the copper.
+
+**Files**: `indice.json` `{version, placas: [{id, maquina, titulo, corto, enlazada, tipo kicad|gerber, aviso, fuente
+{titulo, autor, url, licencia, uso}, ancho, alto (mm), capas, componentes, redes, bytes}]}` and `<placa>.json`: the
+`DatosPlaca` of «Proyectos KiCad» (`esquema` empty, `simulacion: null`, `comprobaciones` = the checks above) plus
+`consola {maquina, enlazada, aviso, fuente, redes {board net: schematic net}, refs [references also in the
+schematic], capas_cobre ['F', 'In1', 'In2', 'B'], tipo}`. Sizes: megadrive 840 kB, gbc-cgb04 290 kB, gbc-opengbc
+240 kB. Tests: `tests/consolas-placas.spec.ts`.
 
 ## Proyectos KiCad (`web/src/componentes/proyectos/`, data in `web/public/proyectos/`)
 
@@ -869,22 +1038,61 @@ printed on it when the package carries a marking. The library's studio (`tres/mo
 lights, room environment, contact shadow) and orbit (`tres/motor/orbita.ts`) are reused. Board: FR-4 core extruded from the
 outline with every hole, faces textured from `pintarLado` (≤ 4096 px on the long side, about 21–37 px/mm, uploaded at once
 and the canvas freed) plus a half-size metal/roughness map (glossy mask, matt silkscreen, metallic pads), plated barrels
-in one InstancedMesh, overlays for the selected net and voltages. All part meshes are merged per material (40–60 draw
-calls per board). Shielding cans stay separate and turn translucent when the selected part is under them. «Abajo» turns
+in one InstancedMesh, overlays for the selected net and voltages. Loading (0.7): the faces are first painted at a quarter
+of the resolution (a few ms: the board is on screen at once) and repainted at full resolution, one face per task, after
+the first frame with the parts (their uploads would otherwise queue in front of the parts' shaders), or 4 s after the
+scene is created if no parts are loaded; `cargarPiezas(alProgreso?)` builds each distinct part once (same library model
+and parameters — and value, for the parts whose marking comes from the library's table —, or the same simple body:
+72 templates for the SDR's 131 parts), flattened into per-material triangle arrays in the part's axes
+(`plantilla()`), then writes every copy, transformed by its board matrix, straight into one buffer per material in
+slices of about 12 ms (`scheduler.yield()` or a macrotask between them: the page stays responsive and the view shows
+«Colocando los componentes… n de N» with a bar), compiles the shaders with `renderer.compileAsync()` (in parallel where
+KHR_parallel_shader_compile exists) and only then adds the parts: the same meshes and draw calls as before (40–60 per
+board). The depth range follows the board (`Orbita.escena`). `stats.fases` (models, merge, shaders, first frame, total,
+distinct models), `stats.cuadros`, `stats.programas` (shader programs after the first frame with the parts) and `stats.carasFinas` (ms
+to the full-resolution faces) are in `__epaPlaca3D`.
+Shielding cans stay separate and turn translucent when the selected part is under them. «Abajo» turns
 the board over; «Separar capas» explodes silkscreen / mask / copper / core / parts; «Rayos X» shows both copper layers
 (pours faint) through a translucent core (two-layer boards: there are no inner layers). Render on demand; DPR ≤ 2 and
 ≤ 2,4 Mpx; everything disposed on unmount; `window.__epaPlaca3D` (frame CPU times, draw calls, triangles, texture time,
 parts from the library / own) and `__epaPlaca3DListo`. Without WebGL2 (`tres/motor/soporte.ts`) the 3D tab shows the 2D view.
 
-Measured (`tests/proyectos-rendimiento.mjs`, Chromium headless with SwiftShader, i.e. WebGL rasterised on the CPU, so far
-slower than any real GPU): 53–73 draw calls and 42 000–99 000 triangles per board, 1,5–6 ms of CPU per `render()`, both face
-textures painted in 50–170 ms (up to 750 ms with the tablet profile's emulation), board ready with its parts in 3–9 s (up to
-43 s for the SDR under SwiftShader at 2,25 × DPR); the 2D view blits its cache in 0,1–0,4 ms per frame while panning and
-repaints it in 1–15 ms. Frame intervals under SwiftShader (16,7 ms to 2 s) depend on the software rasteriser, not on the app.
+Measured (`tests/proyectos-rendimiento.mjs --veces 3`, median of three loads, Chromium headless with SwiftShader,
+i.e. WebGL rasterised on the CPU of a 2-core machine, so far slower than any real GPU and noisy): 53–85 draw calls and
+41 000–99 000 triangles per board (unchanged in 0.7), 2–5 ms of CPU per `render()`, both face textures painted in
+25–80 ms; the 2D view blits its cache in 0,1–0,4 ms per frame while panning and repaints it in 1–15 ms. Board with its
+parts on screen, 0.6 → 0.7, «mac» profile: estación IoT 11,2 → 11,6 s, fuente de laboratorio 25,8 → 22,3, etapa de
+potencia 24,3 → 21,2, preamplificador 30,9 → 23,9, fuente hi-fi 24,4 → 14,5, protección 24,1 → 16,7, SDR 34,9 → 22,0;
+«tableta» profile: 7,4 → 12,2, 25,5 → 17,8, 27,2 → 18,6, 15,9 → 17,0, 22,7 → 13,1, 28,4 → 14,9, 33,2 → 19,4. The
+board itself (first frame) shows earlier (SDR, tablet: 32,4 → 6,3 s). What 0.7 removed is the app's own work: building
+the parts takes 150–350 ms (SDR: 72 templates for 131 parts), merging them 30–90 ms, in slices, so the page answers
+and the progress bar moves while they are built (0.6 built them in one blocking task). What is left under SwiftShader
+is the GPU process compiling the 9 shader programs (`stats.programas`) and JIT-compiling its draw routines at the first
+draw: 4–12 s, the same in both versions and on the order of 100–300 ms on a real GPU (a CPU profile of a cold load of
+the preamplifier: 0.6 spends 6,8 s waiting in `getProgramInfoLog`, 0.7 waits as long in the GPU process). Frame
+intervals while orbiting under SwiftShader (16,7 ms to 2 s) depend on the software rasteriser, not on the app.
 
 Tests: `tests/proyectos-kicad.spec.ts` (own config `playwright.proyectos.config.ts`, port 4189); screenshots of every board
 `node tests/proyectos-capturas.mjs --url http://localhost:4189/` → `tests/capturas/proyectos/`; frame cost while
 orbiting `node tests/proyectos-rendimiento.mjs --perfil mac|tableta|movil`.
+
+## Performance diagnostic (`web/src/componentes/diagnostico/`, 0.7)
+
+`#/diagnostico` (`Vista` includes `'diagnostico'`), reached from «Ajustes» (`EntradaAjustes.svelte`, a link in the
+settings popover; not a rail entry). `Diagnostico.svelte` lists the tests with checkboxes and the seconds each 3D
+view turns (default 5); nothing is built or downloaded until «Empezar». `pruebas.ts`: device (user agent, screen,
+DPR, cores, memory, theme); WebGL 2 (unmasked renderer, version, max texture and renderbuffer size, MSAA samples,
+depth bits, high-precision floats, anisotropy, KHR_parallel_shader_compile); the component viewer (`Visor` of
+tres/motor with the 64-pin LQFP: module load, model build, first frame, then frames per second, p95 interval and
+render CPU while a synthetic mouse drag turns it); the SDR board (`Escena3D` of proyectos: data and geometry, board
+visible, board with its parts and the load phases, then turning as above, draw calls and triangles); the live layout
+(`generarEsquema`, effort 1, nothing remembered) of cap50/rectificador, cap06/fig-6.13, cap08/fig-8.3 and
+cap29/prob-29.C-decodificador; ngspice (`simularTexto` of the simulator's client: fig. 3.1, first run with the
+download and compile of the engine, then a second one). The views draw in a visible box of the page (browsers do not
+draw hidden canvases) and are disposed after each test. The results go to a table grouped by test with ok / warning /
+error marks and to plain text («Copiar resultados»: clipboard, or the text selected in a textarea where the WebView
+has no clipboard permission). Test: `tests/diagnostico.spec.ts` (opened from «Aa», nothing before «Empezar», every
+group in the table, the copied text).
 
 ## Instruments and test bench (`web/src/componentes/instrumentos/`)
 
@@ -1143,3 +1351,51 @@ y volcado al ocultar la página): `repaso-tarjetas` (id → `{e: a|r|ra, p, f, i
 (día → `{r, n, b}`), `repaso-ajustes` (`{nuevasDia, inversas, mazo}`), `repaso-tests` (parte → `{mejor,
 intentos, ultimo}`), `repaso-fallos` (id → `{parte, t, veces}`), `repaso-examenes` (últimos 30). Pruebas:
 `tests/repaso.spec.ts` (capturas `tests/capturas/repaso-*.png`).
+
+## Sincronización y aviso de versión (`web/src/lib/sincronizacion/`, `web/src/componentes/sincronizacion/`)
+
+**Document** in the owner's private repository (default `Metalaria/electronica-datos`, path
+`sincronizacion/datos.json`; written with one level of indentation and sorted keys):
+```json
+{ "formato": "epa-sincronizacion", "version": 1, "id": "random id of this file", "actualizado": 1761400000000,
+  "podado": 0,
+  "dispositivos": { "<device id>": { "nombre": "Mac", "ultima": 1761400000000, "version": "0.7.0" } },
+  "almacenes": { "marcadores": { "sec-5.3": { "t": 1761400000000, "v": { "parte": "cap05", "…": "…" } },
+                                 "sec-5.2": { "t": 1761400100000, "x": 1 } } } }
+```
+Every item is a last-write-wins register: larger `t` wins; on equal `t`, the entry whose canonical JSON (sorted
+keys) sorts last (a tombstone `{t, x: 1}` beats a live entry). Total order ⇒ the merge (`fusion.ts`) is
+commutative, associative and idempotent. Tombstones older than 90 days are pruned and `podado` records the horizon;
+a device holding an unchanged copy (same `t` as last synchronised) of an item absent from the file, when `podado ≥
+t`, drops it. A file with another `id` (new file, other repository) is another history: everything local is
+merged in as new.
+
+**Local state** (almacen keys in `lector.json` / `localStorage epa:*`): `sinc-ajustes` {repositorio, ruta, auto},
+`sinc-estado` {doc id, dispositivo, ultima, items: {store: {id: [t, hash]}} of the last synchronised version,
+resumen}, `sinc-marcas` {cambios, borrados: {store: {id: ms}}} written by the data modules (`marcas.ts`:
+`anotarCambio`, `anotarBorrado`), `sinc-version` {t, ultima release, descartada}. Dating a local item: unchanged hash
+→ its synchronised `t`; changed → max(its own time field, its mark), or now when that is not newer; a synchronised
+item missing locally → tombstone at its deletion mark (or now). The token is stored apart (`credenciales.ts`:
+plugin-store file `credenciales.json`, or `localStorage epa-credencial:github` in a browser).
+
+**Run** (`sincronizar.svelte.ts`): event `epa:antes-de-sincronizar` → read every store → GET contents (`cache:
+no-store`; base64 UTF-8; files over 1 MB through `application/vnd.github.raw`; 404 → check the repository → new
+file) → merge → PUT with the `sha` only when the stores changed (409/422 → read and merge again, up to 5 times) →
+apply item by item (skipping items edited during the run) → event `epa:sincronizado {claves}`. Errors are Spanish
+(`github.ts → explicar`: 401 token, 403 permission or rate limit, 404 repository or access, 5xx, offline);
+automatic runs (start-up, every 5 min while visible, on hide, on return after > 1 min) keep transient errors quiet.
+
+**Syncable stores** (`registro.svelte.ts`): `{clave, nombre, leer(), aplicar(poner, quitar), tiempo?, valido?,
+maximo?}`; registered: marcadores, notas, posiciones, leidas («parte/label»), ejercicios, deducciones,
+repaso-tarjetas, repaso-diario, repaso-ajustes, repaso-tests, repaso-fallos, repaso-examenes (newest 30),
+calc-favoritos, editor-circuitos (`{version, circuitos}` of the schematic editor, items with their own `borrado`). A
+new module registers its `Record<id, item>` almacen key in one line:
+`registrarSincronizable(mapaDelAlmacen({ clave: 'k', nombre: '…', tiempo: (v) => v.t }))`.
+
+**Update notice** (`actualizaciones.svelte.ts`): `GET /repos/Metalaria/electronica-app/releases/latest` with the same
+token, at start-up at most every 12 h, silent on errors, compared with `VERSION_APP` (`version-app.ts`: vite
+`define` from `src-tauri/tauri.conf.json`, which `scripts/version-ci.mjs` sets from the tag). The notice
+(`Avisos.svelte`, mounted by `Arranque.svelte` in idle time) shows the version, the first lines of the release
+notes, this device's installer and «Ver la publicación» (Tauri: `plugin:opener|open_url`; browser: new tab).
+Without a token nothing is requested. Tests: `tests/sincronizacion.spec.ts` (GitHub mocked with `route()`);
+screenshots: `node tests/sincronizacion-capturas.mjs --url …` → `tests/capturas/sincronizacion/`.

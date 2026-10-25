@@ -16,7 +16,7 @@
 //   PAQUETES, paquete(tipo), FAMILIAS_3D                                           (paquetes.ts)
 
 import { Group, MeshStandardMaterial, type Object3D } from 'three';
-import { Recursos, caja, contarTriangulos, malla, parte, type Constructor, type Ctx } from './comun';
+import { Recursos, caja, contarTriangulos, malla, parte, separarSolidos, type Constructor, type Ctx } from './comun';
 import { conDefecto } from './paquetes';
 import type { DatosModelo, OpcionesModelo, Parametros } from './tipos';
 import { potenciometro, resistenciaAxial, resistenciaSmd, trimmer } from './resistencias';
@@ -59,6 +59,7 @@ export function crearModelo(tipo: string, parametros: Parametros = {}, opciones:
     seg: (n) => Math.max(6, Math.round(bajo ? n * 0.45 : n)),
     montaje: opciones.montaje ?? 'placa',
     placa: opciones.grosorPlaca ?? 1.6,
+    marcasBajas: opciones.marcas ? opciones.marcas === 'baja' : bajo,
   };
   const p = conDefecto(tipo, parametros);
   const fn = CONSTRUCTORES[tipo];
@@ -72,6 +73,8 @@ export function crearModelo(tipo: string, parametros: Parametros = {}, opciones:
     datos = { huella: { pads: [], ancho: 4, fondo: 4, alto: 2, origenKicad: [0, 0] } };
   }
   g.name = tipo;
+  // No two solids share a face (depth fighting on mobile GPUs, broken cut faces).
+  separarSolidos(g);
   const completo: DatosModelo = {
     tipo,
     parametros: p,

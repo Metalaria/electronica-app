@@ -64,8 +64,9 @@
       if (y < y0 + 4) foton(ctx, x, y, Math.PI / 2, '#d4a017', 22, 3.5, Math.sin(Math.PI * Math.min(1, u * 1.05)));
     }
     sim.dibujar(v);
-    txt(v, 'P⁺ (capa delgada, frente a la luz)', x0, y0 - 12, { tam: 12, peso: 700, color: p.hueco, alin: 'left' });
-    txt(v, 'N (poco dopado)', x1, y0 - 12, { tam: 12, peso: 700, color: p.electron, alin: 'right' });
+    // Both on one line: each keeps to its share of the width (narrow phones, wider fonts).
+    txt(v, 'P⁺ (capa delgada, frente a la luz)', x0, y0 - 12, { tam: 12, peso: 700, color: p.hueco, alin: 'left', max: (x1 - x0) * 0.6 - 8 });
+    txt(v, 'N (poco dopado)', x1, y0 - 12, { tam: 12, peso: 700, color: p.electron, alin: 'right', max: (x1 - x0) * 0.4 - 8 });
     // External circuit.
     const yTop = est ? 60 : 44;
     const xc = v.w / 2;

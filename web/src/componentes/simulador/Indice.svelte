@@ -5,6 +5,7 @@
   import { normalizar, rotuloParte } from '../../lib/datos';
   import { colorBloque } from '../../lib/color';
   import Icono from '../Icono.svelte';
+  import PestanasSimulador from './PestanasSimulador.svelte';
 
   let indice = $state<IndiceSpice | null>(null);
   let cargado = $state(false);
@@ -61,6 +62,7 @@
 </script>
 
 <div class="indice-sim">
+  <PestanasSimulador />
   <header>
     <h1>Simulador de circuitos</h1>
     <p class="intro">
@@ -70,6 +72,7 @@
     </p>
     <div class="acciones">
       <a class="boton primario" href="#/simulador/nuevo"><Icono nombre="editar" tam={17} /> Nuevo circuito</a>
+      <a class="boton" href="#/editor">Dibujar un esquema</a>
     </div>
   </header>
 

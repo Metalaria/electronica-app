@@ -7,6 +7,7 @@
 
 import {
   BufferAttribute,
+  BufferGeometry,
   CanvasTexture,
   Color,
   CylinderGeometry,
@@ -16,6 +17,7 @@ import {
   InstancedMesh,
   LinearMipmapLinearFilter,
   LinearFilter,
+  Matrix3,
   Matrix4,
   Mesh,
   MeshBasicMaterial,
@@ -32,11 +34,9 @@ import {
   Vector3,
   Box3,
   WebGLRenderer,
-  type BufferGeometry,
   type Material,
   Box3Helper,
 } from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import type { DatosPlaca, Huella } from './datos';
 import { crearEstudio, type Estudio } from '../tres/motor/estudio';
 import { Orbita, type EstadoOrbita } from '../tres/motor/orbita';
@@ -50,6 +50,16 @@ export interface Estadisticas {
   triangulos: number;
   textura: number;
   piezas: { biblioteca: number; propias: number };
+  /** Where the load time goes (ms): building the models, merging them, the first frame with them (shader
+   *  compilation and uploads), and the whole load of the parts; `modelosUnicos`: models built (equal parts
+   *  share one). */
+  fases?: { modelos: number; fusion: number; compilar: number; primerCuadro: number; piezas: number; modelosUnicos: number };
+  /** Frames drawn since the view opened. */
+  cuadros: number;
+  /** Shader programs in use after the first frame with the parts (each one is compiled by the GPU driver). */
+  programas?: number;
+  /** ms from the scene's creation to the full-resolution faces (the first pass is a quick low-resolution one). */
+  carasFinas?: number;
 }
 
 export interface CapasEscena {
@@ -100,9 +110,14 @@ export class Escena3D {
     tensiones: false,
     red: null,
   };
-  readonly stats: Estadisticas = { ms: [], llamadas: 0, triangulos: 0, textura: 0, piezas: { biblioteca: 0, propias: 0 } };
+  readonly stats: Estadisticas = { ms: [], llamadas: 0, triangulos: 0, textura: 0, piezas: { biblioteca: 0, propias: 0 }, cuadros: 0 };
   private ladoTextura: number;
   private recursos: { liberar(): void } | null = null;
+  /** The faces are the quick low-resolution pass; `refino`: the timer of the full one. */
+  private provisional = false;
+  private refino = 0;
+  private refinarTrasCuadro = false;
+  private creada = performance.now();
   private ajustada = false;
   /** Height of the tallest part (mm), for framing. */
   private altoMax = 6;
@@ -178,7 +193,10 @@ export class Escena3D {
     this.orbita.minDist = 6;
     this.orbita.alReiniciar = () => this.vista('iso');
     this.vista('iso', false);
-    this.pintarCaras();
+    // A quarter of the resolution first (a few ms): the board is on screen at once; the full one follows when
+    // the parts are placed (or after a few seconds if nobody loads them).
+    this.pintarCaras(0.25);
+    this.refino = window.setTimeout(() => void this.refinarCaras(), 4000);
   }
 
   // ---------------------------------------------------------------- geometry
@@ -279,12 +297,23 @@ export class Escena3D {
     return t;
   }
 
-  /** Paints both faces (colour and metal/roughness maps). */
-  pintarCaras(): void {
+  /**
+   * Paints both faces (colour and metal/roughness maps). `escala` < 1: a quick low-resolution pass so the board
+   * shows at once; refinarCaras() paints the full resolution afterwards (the final look is the same).
+   */
+  pintarCaras(escala = 1): void {
     const t0 = performance.now();
+    this.provisional = escala < 1;
+    for (const lado of ['F', 'B'] as const) this.pintarCara(lado, escala);
+    if (escala === 1) this.stats.textura = performance.now() - t0;
+    this.pintarRealce();
+    this.pedir();
+  }
+
+  private pintarCara(lado: Lado, escala: number): void {
     const cap = this.opc.capas;
-    for (const lado of ['F', 'B'] as const) {
-      const { c, ctx, s } = this.lienzoTextura();
+    {
+      const { c, ctx, s } = this.lienzoTextura(escala);
       pintarLado(ctx, this.d, this.g, {
         lado,
         aspecto: 'real',
@@ -295,7 +324,7 @@ export class Escena3D {
         textura: true,
       });
       // metal (blue) and roughness (green): glossy mask, matt silkscreen, metallic exposed pads
-      const pb = this.lienzoTextura(0.5);
+      const pb = this.lienzoTextura(0.5 * escala);
       const k = pb.ctx;
       k.save();
       k.clip(this.g.contorno);
@@ -335,9 +364,25 @@ export class Escena3D {
       m.metalnessMap = tp;
       m.needsUpdate = true;
     }
-    this.stats.textura = performance.now() - t0;
-    this.pintarRealce();
-    this.pedir();
+  }
+
+  /** The full-resolution faces after the quick first pass, one face per task (no-op when already done). */
+  async refinarCaras(): Promise<void> {
+    if (this.refino) clearTimeout(this.refino);
+    this.refino = 0;
+    if (!this.vivo || !this.provisional) return;
+    this.provisional = false;
+    let ms = 0;
+    for (const lado of ['F', 'B'] as const) {
+      const t0 = performance.now();
+      this.pintarCara(lado, 1);
+      ms += performance.now() - t0;
+      this.pedir();
+      await new Promise<void>((r) => setTimeout(r, 0));
+      if (!this.vivo) return;
+    }
+    this.stats.textura = ms;
+    this.stats.carasFinas = performance.now() - this.creada;
   }
 
   /** Selected net (orange) and DC voltages (colours) over each face. */
@@ -369,54 +414,102 @@ export class Escena3D {
 
   // ---------------------------------------------------------------- components
 
-  async cargarPiezas(): Promise<void> {
+  /**
+   * Builds the parts and adds them to the board without freezing the page: equal parts (same library model and
+   * parameters, or the same simple body) are built once and their triangles copied for each footprint; the
+   * copies are written straight into one buffer per material, in slices of a few milliseconds between which
+   * the page stays responsive (`alProgreso(hechas, total)`); the shaders are compiled before the parts are shown
+   * (in parallel where the GPU driver allows). The result is the same as building every part: one mesh per
+   * material for the whole board.
+   */
+  async cargarPiezas(alProgreso?: (hechas: number, total: number) => void): Promise<void> {
+    const tA = performance.now();
+    // The full-resolution faces now wait for the frame with the parts (see frame()).
+    if (this.refino) clearTimeout(this.refino);
+    this.refino = 0;
     const lib = await cargarBiblioteca();
     if (!this.vivo) return;
+    const tB = performance.now();
     const rec = lib ? new lib.Recursos() : null;
     const disponibles = new Set(lib?.tiposDisponibles?.() ?? []);
-    const grupos: Object3D[] = [];
-    this.d.huellas.forEach((h, i) => {
-      if (h.t === 'mec' || h.dnp) return;
-      const o = this.pieza(h, lib, rec, disponibles);
-      if (!o) return;
-      o.updateMatrixWorld(true);
-      const b = new Box3().setFromObject(o);
-      if (!b.isEmpty()) this.cajas.push({ h: i, caja: b });
-      if (h.m.tipo === 'blindaje') {
-        // shielding cans stay apart: they turn translucent when the selected part is under them
-        const mat = new MeshStandardMaterial({ color: '#c9cdd1', roughness: 0.32, metalness: 0.9, transparent: true, opacity: 1 });
-        o.traverse((x) => {
-          if ((x as Mesh).isMesh) (x as Mesh).material = mat;
-        });
-        this.liberables.push(mat);
-        this.blindajes.push({ o, caja: b, mat });
-        this.piezas.add(o);
-        return;
+    const plantillas = new Map<string, Plantilla | null>();
+    const copias: { pl: Plantilla; m: Matrix4; h: number }[] = [];
+    const huellas = this.d.huellas.map((h, i) => [h, i] as const).filter(([h]) => h.t !== 'mec' && !h.dnp);
+    const pausa = crearPausa();
+    let hechas = 0;
+    for (const [h, i] of huellas) {
+      const c = this.colocar(h, lib, rec, disponibles, plantillas);
+      hechas++;
+      if (c) {
+        const caja = c.pl.caja.clone().applyMatrix4(c.m);
+        if (!caja.isEmpty()) this.cajas.push({ h: i, caja });
+        if (h.m.tipo === 'blindaje') this.blindaje(c.pl, c.m, caja);
+        else copias.push({ pl: c.pl, m: c.m, h: i });
       }
-      grupos.push(o);
-    });
-    this.fusionar(grupos);
+      if (await pausa()) {
+        if (!this.vivo) return;
+        alProgreso?.(hechas, huellas.length);
+      }
+    }
+    const tC = performance.now();
+    const grupo = await this.unir(copias, pausa);
+    if (!this.vivo) return;
+    const tD = performance.now();
+    // Shaders before the first frame with the parts: in parallel where KHR_parallel_shader_compile exists.
+    try {
+      await this.renderer.compileAsync(grupo, this.camara, this.estudio.escena);
+    } catch {
+      /* compiled at the first frame instead */
+    }
+    if (!this.vivo) return;
+    const tE = performance.now();
+    this.piezas.add(grupo);
+    this.stats.fases = { modelos: tC - tB, fusion: tD - tC, compilar: tE - tD, primerCuadro: 0, piezas: tE - tA, modelosUnicos: plantillas.size };
     for (const c of this.cajas) this.altoMax = Math.max(this.altoMax, c.caja.max.z);
+    this.ajustarProfundidad();
     if (!this.tocada) this.vista('iso', false);
     // the library's shared resources (materials, label textures) stay in use by the merged meshes
     this.recursos = rec;
+    alProgreso?.(huellas.length, huellas.length);
     this.pedir();
+    // Then the faces at full resolution, once the frame with the parts is on screen (their uploads would
+    // otherwise queue in front of the parts' shaders and delay that frame).
+    this.refinarTrasCuadro = true;
   }
 
-  private pieza(h: Huella, lib: Awaited<ReturnType<typeof cargarBiblioteca>>, rec: unknown, disp: Set<string>): Object3D | null {
-    const raiz = new Group();
+  /** The part of a footprint: its template (built once per model and parameters) and its board matrix. */
+  private colocar(
+    h: Huella,
+    lib: Awaited<ReturnType<typeof cargarBiblioteca>>,
+    rec: unknown,
+    disp: Set<string>,
+    plantillas: Map<string, Plantilla | null>,
+  ): { pl: Plantilla; m: Matrix4 } | null {
     const [X, Y] = this.p(h.x, h.y);
+    const raiz = new Object3D();
     raiz.position.set(X, Y, h.lado === 'F' ? 0 : -this.t);
     raiz.rotation.z = (h.a * Math.PI) / 180;
     if (h.lado === 'B') raiz.rotation.x = Math.PI;
-    let cuerpo: Object3D | null = null;
+    raiz.updateMatrix();
     const clave = lib ? claveBiblioteca(h) : null;
     if (lib && clave && (!disp.size || disp.has(clave.tipo))) {
-      try {
-        const m = lib.crearModelo(clave.tipo, clave.p, { recursos: rec, detalle: 'bajo', grosorPlaca: this.t });
-        // never show someone else's marking (the library knows a fixed set of discrete parts)
-        if (CON_MARCADO_FIJO.has(clave.tipo) && !marcadoCoincide(m.userData.marcado, h.v)) throw new Error('marcado');
-        const hu = m.userData.huella as { ancho: number; fondo: number; origenKicad: [number, number]; pads?: { n: string; x: number; y: number }[] } | undefined;
+      // Parts whose marking comes from the library's table also depend on the value printed.
+      const k = `b|${clave.tipo}|${JSON.stringify(clave.p)}${CON_MARCADO_FIJO.has(clave.tipo) ? `|${h.v}` : ''}`;
+      let pl = plantillas.get(k);
+      if (pl === undefined) {
+        pl = null;
+        try {
+          const m = lib.crearModelo(clave.tipo, clave.p, { recursos: rec, detalle: 'bajo', grosorPlaca: this.t });
+          // never show someone else's marking (the library knows a fixed set of discrete parts)
+          if (!CON_MARCADO_FIJO.has(clave.tipo) || marcadoCoincide(m.userData.marcado, h.v)) pl = plantilla(m, m.userData.huella as HuellaModelo | undefined);
+        } catch {
+          pl = null;
+        }
+        plantillas.set(k, pl);
+      }
+      if (pl) {
+        const local = new Matrix4();
+        const hu = pl.huella;
         if (hu) {
           // put the model's pad 1 on the footprint's pad 1 (or use its KiCad origin)
           let ox = hu.origenKicad?.[0] ?? 0;
@@ -434,85 +527,123 @@ export class Escena3D {
             ox = m1.x - lx;
             oy = m1.y + ly;
           }
-          m.position.set(-ox, -oy, 0);
           // a model much smaller or larger than the footprint body (other package size): scale it to fit
           const [x0, y0, x1, y1] = h.m.caja;
           const fw = x1 - x0;
           const fd = y1 - y0;
+          let f = 1;
           if (hu.ancho > 0 && hu.fondo > 0 && fw > 0 && fd > 0) {
-            const f = Math.sqrt((fw * fd) / (hu.ancho * hu.fondo));
-            if (f > 1.35 || f < 0.7) m.scale.setScalar(f);
+            const k2 = Math.sqrt((fw * fd) / (hu.ancho * hu.fondo));
+            if (k2 > 1.35 || k2 < 0.7) f = k2;
           }
+          local.makeTranslation(-ox, -oy, 0).multiply(new Matrix4().makeScale(f, f, f));
         }
-        cuerpo = m;
         this.stats.piezas.biblioteca++;
-      } catch {
-        cuerpo = null;
+        return { pl, m: raiz.matrix.clone().multiply(local) };
       }
     }
-    if (!cuerpo) {
-      cuerpo = cuerpoSimple(h);
-      this.stats.piezas.propias++;
+    // Simple bodies built here: also one per distinct footprint description.
+    const k = `s|${JSON.stringify(h.m)}|${h.v}|${h.l}|${h.mpn ?? ''}`;
+    let pl = plantillas.get(k);
+    if (pl === undefined) {
+      pl = plantilla(cuerpoSimple(h), undefined);
+      plantillas.set(k, pl);
     }
-    raiz.add(cuerpo);
-    raiz.userData.ref = h.r;
-    return raiz;
+    this.stats.piezas.propias++;
+    return pl ? { pl, m: raiz.matrix.clone() } : null;
   }
 
-  /** Merges every component mesh by material: a few draw calls for the whole board. */
-  private fusionar(grupos: Object3D[]): void {
-    const porMat = new Map<Material, BufferGeometry[]>();
-    const tmp = new Matrix4();
-    for (const gr of grupos) {
-      gr.updateMatrixWorld(true);
-      gr.traverse((o) => {
-        const me = o as Mesh;
-        if (!me.isMesh || !me.visible) return;
-        const base = me.geometry.index ? me.geometry.toNonIndexed() : me.geometry.clone();
-        for (const k of Object.keys(base.attributes)) if (!['position', 'normal', 'uv'].includes(k)) base.deleteAttribute(k);
-        if (!base.getAttribute('normal')) base.computeVertexNormals();
-        if (!base.getAttribute('uv')) base.setAttribute('uv', new BufferAttribute(new Float32Array(base.getAttribute('position').count * 2), 2));
-        // one piece per material (multi-material meshes are split by their groups)
-        const piezas: [Material, BufferGeometry][] = [];
-        if (Array.isArray(me.material)) {
-          for (const gr2 of base.groups) {
-            const m2 = me.material[gr2.materialIndex ?? 0];
-            if (m2) piezas.push([m2, subGeometria(base, gr2.start, gr2.count)]);
-          }
-          base.dispose();
-        } else {
-          base.clearGroups();
-          piezas.push([me.material, base]);
-        }
-        const im = (me as InstancedMesh).isInstancedMesh ? (me as InstancedMesh) : null;
-        for (const [mat, geo] of piezas) {
-          const lista = porMat.get(mat) ?? [];
-          if (im) {
-            for (let i = 0; i < im.count; i++) {
-              im.getMatrixAt(i, tmp);
-              const g2 = geo.clone();
-              g2.applyMatrix4(new Matrix4().multiplyMatrices(im.matrixWorld, tmp));
-              lista.push(g2);
-            }
-            geo.dispose();
-          } else {
-            geo.applyMatrix4(me.matrixWorld);
-            lista.push(geo);
-          }
-          porMat.set(mat, lista);
-        }
-      });
+  /** Shielding cans stay apart: they turn translucent when the selected part is under them. */
+  private blindaje(pl: Plantilla, m: Matrix4, caja: Box3): void {
+    const mat = new MeshStandardMaterial({ color: '#c9cdd1', roughness: 0.32, metalness: 0.9, transparent: true, opacity: 1 });
+    const o = new Group();
+    for (const p of pl.piezas) {
+      const geo = new BufferGeometry();
+      geo.setAttribute('position', new BufferAttribute(p.pos.slice(), 3));
+      geo.setAttribute('normal', new BufferAttribute(p.nor.slice(), 3));
+      const me = new Mesh(geo, mat);
+      me.applyMatrix4(m);
+      o.add(me);
+      this.liberables.push(geo);
     }
-    // the merged meshes live in the board group: undo its world transform (identity at build time)
-    for (const [mat, geos] of porMat) {
-      const g = mergeGeometries(geos, false);
-      for (const x of geos) x.dispose();
-      if (!g) continue;
+    this.liberables.push(mat);
+    this.blindajes.push({ o, caja, mat });
+    this.piezas.add(o);
+  }
+
+  /** One mesh per material for all the copies, written in slices between pauses. */
+  private async unir(copias: { pl: Plantilla; m: Matrix4 }[], pausa: () => Promise<boolean>): Promise<Group> {
+    const porMat = new Map<Material, { n: number; pos?: Float32Array; nor?: Float32Array; uv?: Float32Array; k: number }>();
+    for (const c of copias)
+      for (const p of c.pl.piezas) {
+        const e = porMat.get(p.mat) ?? { n: 0, k: 0 };
+        e.n += p.n;
+        porMat.set(p.mat, e);
+      }
+    for (const e of porMat.values()) {
+      e.pos = new Float32Array(e.n * 3);
+      e.nor = new Float32Array(e.n * 3);
+      e.uv = new Float32Array(e.n * 2);
+    }
+    const nm = new Matrix3();
+    for (const c of copias) {
+      const m = c.m.elements;
+      nm.getNormalMatrix(c.m);
+      const q = nm.elements;
+      for (const p of c.pl.piezas) {
+        const e = porMat.get(p.mat)!;
+        const P = e.pos!;
+        const N = e.nor!;
+        let o = e.k * 3;
+        for (let i = 0; i < p.n * 3; i += 3, o += 3) {
+          const x = p.pos[i]!;
+          const y = p.pos[i + 1]!;
+          const z = p.pos[i + 2]!;
+          P[o] = m[0]! * x + m[4]! * y + m[8]! * z + m[12]!;
+          P[o + 1] = m[1]! * x + m[5]! * y + m[9]! * z + m[13]!;
+          P[o + 2] = m[2]! * x + m[6]! * y + m[10]! * z + m[14]!;
+          const a = p.nor[i]!;
+          const b = p.nor[i + 1]!;
+          const d = p.nor[i + 2]!;
+          let nx = q[0]! * a + q[3]! * b + q[6]! * d;
+          let ny = q[1]! * a + q[4]! * b + q[7]! * d;
+          let nz = q[2]! * a + q[5]! * b + q[8]! * d;
+          const l = Math.hypot(nx, ny, nz) || 1;
+          nx /= l;
+          ny /= l;
+          nz /= l;
+          N[o] = nx;
+          N[o + 1] = ny;
+          N[o + 2] = nz;
+        }
+        if (p.uv) e.uv!.set(p.uv, e.k * 2);
+        e.k += p.n;
+      }
+      if (await pausa()) {
+        if (!this.vivo) break;
+      }
+    }
+    const grupo = new Group();
+    for (const [mat, e] of porMat) {
+      if (!e.n) continue;
+      const g = new BufferGeometry();
+      g.setAttribute('position', new BufferAttribute(e.pos!, 3));
+      g.setAttribute('normal', new BufferAttribute(e.nor!, 3));
+      g.setAttribute('uv', new BufferAttribute(e.uv!, 2));
+      g.computeBoundingSphere();
       const me = new Mesh(g, mat);
       me.matrixAutoUpdate = false;
-      this.piezas.add(me);
+      grupo.add(me);
       this.liberables.push(g);
     }
+    return grupo;
+  }
+
+  /** Depth range from the board and its parts (exploded too): precision for mobile GPUs. */
+  private ajustarProfundidad(): void {
+    const r = Math.hypot(this.W, this.H) / 2;
+    const paso = Math.max(10, Math.max(this.W, this.H) * 0.1);
+    this.orbita.escena = { centro: new Vector3(0, 0, this.altoMax / 2), radio: r + this.altoMax + paso * 4 + 10 };
   }
 
   // ---------------------------------------------------------------- explode and X-ray
@@ -628,7 +759,7 @@ export class Escena3D {
     if (o.capas) this.opc.capas = { ...o.capas };
     const c0 = antes.capas;
     const c1 = this.opc.capas;
-    if (c0.F !== c1.F || c0.B !== c1.B || c0.mascara !== c1.mascara || c0.serigrafia !== c1.serigrafia || antes.acabado !== this.opc.acabado) this.pintarCaras();
+    if (c0.F !== c1.F || c0.B !== c1.B || c0.mascara !== c1.mascara || c0.serigrafia !== c1.serigrafia || antes.acabado !== this.opc.acabado) this.pintarCaras(this.provisional ? 0.25 : 1);
     else if (antes.red !== this.opc.red || antes.tensiones !== this.opc.tensiones) this.pintarRealce();
     this.aplicarCapas();
   }
@@ -802,18 +933,28 @@ export class Escena3D {
       const t0 = performance.now();
       this.renderer.render(this.estudio.escena, this.camara);
       const ms = performance.now() - t0;
+      this.stats.cuadros++;
+      if (this.stats.fases && !this.stats.fases.primerCuadro) {
+        this.stats.fases.primerCuadro = ms;
+        this.stats.programas = this.renderer.info.programs?.length;
+      }
       this.stats.ms.push(ms);
       if (this.stats.ms.length > 300) this.stats.ms.splice(0, 150);
       this.stats.llamadas = this.renderer.info.render.calls;
       this.stats.triangulos = this.renderer.info.render.triangles;
       this.sucio = false;
       this.alCambiar();
+      if (this.refinarTrasCuadro) {
+        this.refinarTrasCuadro = false;
+        setTimeout(() => void this.refinarCaras(), 100);
+      }
     }
     if (mas) this.pedir();
   }
 
   liberar(): void {
     this.vivo = false;
+    if (this.refino) clearTimeout(this.refino);
     if (this.raf) cancelAnimationFrame(this.raf);
     this.orbita.liberar();
     for (const x of this.liberables) x.dispose();
@@ -832,14 +973,98 @@ export class Escena3D {
   }
 }
 
-/** Vertices [start, start + count) of a non-indexed geometry. */
-function subGeometria(g: BufferGeometry, start: number, count: number): BufferGeometry {
-  const out = g.clone();
-  for (const k of Object.keys(g.attributes)) {
-    const a = g.getAttribute(k);
-    const arr = (a.array as Float32Array).slice(start * a.itemSize, (start + count) * a.itemSize);
-    out.setAttribute(k, new BufferAttribute(arr, a.itemSize));
-  }
-  out.clearGroups();
-  return out;
+// ---------------------------------------------------------------- templates of equal parts
+
+interface HuellaModelo {
+  ancho: number;
+  fondo: number;
+  origenKicad: [number, number];
+  pads?: { n: string; x: number; y: number }[];
+}
+
+/** A part built once: its triangles per material in the part's own axes (non-indexed), box and footprint. */
+interface Plantilla {
+  piezas: { mat: Material; pos: Float32Array; nor: Float32Array; uv: Float32Array | null; n: number }[];
+  caja: Box3;
+  huella?: HuellaModelo;
+}
+
+/** Flattens a built part (meshes, instanced meshes, multi-material meshes) into a template. */
+function plantilla(o: Object3D, huella: HuellaModelo | undefined): Plantilla | null {
+  o.updateMatrixWorld(true);
+  const inv = new Matrix4().copy(o.matrixWorld).invert();
+  const piezas: Plantilla['piezas'] = [];
+  const tmp = new Matrix4();
+  const rel = new Matrix4();
+  const nm = new Matrix3();
+  const v = new Vector3();
+  const caja = new Box3();
+  o.traverse((x) => {
+    const me = x as Mesh;
+    if (!me.isMesh || !me.visible) return;
+    const geo = me.geometry;
+    const pos = geo.getAttribute('position');
+    if (!pos) return;
+    const nor = geo.getAttribute('normal') ?? (geo.computeVertexNormals(), geo.getAttribute('normal'));
+    const uv = geo.getAttribute('uv');
+    const idx = geo.index;
+    const rangos: [Material, number, number][] = [];
+    const total = idx ? idx.count : pos.count;
+    if (Array.isArray(me.material)) {
+      for (const g of geo.groups) {
+        const m = me.material[g.materialIndex ?? 0];
+        if (m) rangos.push([m, g.start, Math.min(g.count, total - g.start)]);
+      }
+    } else rangos.push([me.material, 0, total]);
+    const im = (me as InstancedMesh).isInstancedMesh ? (me as InstancedMesh) : null;
+    const n = im ? im.count : 1;
+    for (let k = 0; k < n; k++) {
+      rel.multiplyMatrices(inv, me.matrixWorld);
+      if (im) {
+        im.getMatrixAt(k, tmp);
+        rel.multiply(tmp);
+      }
+      nm.getNormalMatrix(rel);
+      for (const [mat, ini, cuenta] of rangos) {
+        const P = new Float32Array(cuenta * 3);
+        const N = new Float32Array(cuenta * 3);
+        const U = uv ? new Float32Array(cuenta * 2) : null;
+        for (let j = 0; j < cuenta; j++) {
+          const i = idx ? idx.getX(ini + j) : ini + j;
+          v.fromBufferAttribute(pos, i).applyMatrix4(rel);
+          P[j * 3] = v.x;
+          P[j * 3 + 1] = v.y;
+          P[j * 3 + 2] = v.z;
+          caja.expandByPoint(v);
+          v.fromBufferAttribute(nor, i).applyMatrix3(nm).normalize();
+          N[j * 3] = v.x;
+          N[j * 3 + 1] = v.y;
+          N[j * 3 + 2] = v.z;
+          if (U && uv) {
+            U[j * 2] = uv.getX(i);
+            U[j * 2 + 1] = uv.getY(i);
+          }
+        }
+        piezas.push({ mat, pos: P, nor: N, uv: U, n: cuenta });
+      }
+    }
+  });
+  // The template keeps the triangles; the part's own geometries (not shared through Recursos) can go.
+  return piezas.length ? { piezas, caja, huella } : null;
+}
+
+/**
+ * A pause every ~12 ms of work (a frame's worth): resolves to true when it did pause, so the caller can report
+ * progress. Uses scheduler.yield() where it exists (the task keeps its priority), else a macrotask.
+ */
+function crearPausa(): () => Promise<boolean> {
+  let t = performance.now();
+  const sch = (globalThis as { scheduler?: { yield?: () => Promise<void> } }).scheduler;
+  return async () => {
+    if (performance.now() - t < 12) return false;
+    if (sch?.yield) await sch.yield();
+    else await new Promise<void>((r) => setTimeout(r, 0));
+    t = performance.now();
+    return true;
+  };
 }

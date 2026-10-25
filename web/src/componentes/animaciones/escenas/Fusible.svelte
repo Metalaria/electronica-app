@@ -220,7 +220,8 @@
       [xa, (y0 + y1) / 2 + 22],
     ]);
     txtRico(v, RL < 0.5 ? 'cortocircuito' : `carga ${si(RL, 'Ω', 2)}`, xb + 16, (y0 + y1) / 2, { alin: 'left', tam: 13 });
-    txtRico(v, `I = ${si(I, 'A', 3)}`, cx, y0 - 26, { tam: 14, peso: 800, color: p.corriente });
+    // Inside the loop, under the fuse (above it, the PTC's caption needs the room).
+    txtRico(v, `I = ${si(I, 'A', 3)}`, cx, y0 + 28, { tam: 14, peso: 800, color: p.corriente });
     if (I > 0.01) {
       const c = new Camino([
         [xa, (y0 + y1) / 2 - 22],

@@ -183,7 +183,9 @@
     ctx.restore();
     txtRico(v, `P ${si(Pp, 'W', 3)}`, ox + (Pp * esc) / 2, oy + 14, { tam: 11.5, peso: 700, color: p.bien });
     if (Math.abs(Qv) * esc > 3) txtRico(v, `Q ${si(Qv, 'VAr', 3)}`, ox + Pp * esc + 6, oy - (Qv * esc) / 2, { tam: 11.5, peso: 700, color: p.serie[1], alin: 'left' });
-    txtRico(v, `S ${si(d.S, 'VA', 3)}`, ox + (Pp * esc) / 2 - 8, oy - (Qv * esc) / 2 - 12, { tam: 11.5, peso: 700, color: p.acento, alin: 'right' });
+    // Phone: the triangle stands right of the load's box; the label must not reach it.
+    const xS = ox + (Pp * esc) / 2 - 8;
+    txtRico(v, `S ${si(d.S, 'VA', 3)}`, xS, oy - (Qv * esc) / 2 - 12, { tam: 11.5, peso: 700, color: p.acento, alin: 'right', max: est ? Math.max(56, xS - 338) : undefined });
   }
 
   // Capacitance that cancels the load's reactive power: C = Q/(ω·V²).

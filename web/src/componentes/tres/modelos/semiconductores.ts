@@ -125,7 +125,8 @@ const diodoDo41: Constructor = (ctx, p) => {
     cabeza.position.x = s < 0 ? -0.48 : 0.13;
     const varilla = malla(cilindro(ctx, d / 2, L / 2 - 0.4, 14), matCu);
     varilla.rotation.y = Math.PI / 2;
-    varilla.position.x = s < 0 ? -L / 2 : 0.45;
+    // The rod starts inside the head (no face shared with it).
+    varilla.position.x = s < 0 ? -L / 2 : 0.4;
     g.add(
       colocar(
         parte(s < 0 ? 'cabeza-catodo' : 'cabeza-anodo', {
@@ -375,7 +376,8 @@ const led5mm: Constructor = (ctx, p) => {
     return m;
   });
   const dado = malla(caja(ctx, tamDado, tamDado, 0.18, 0.01), foto ? materialTextura(ctx, texturaDado(ctx, 5, 4, '#3b4258'), { metal: 0.3, rugosidad: 0.3 }) : matDado);
-  const zDado = foto ? zCup + 0.1 : zCup - 0.09;
+  // The die stands a hair above the cup's floor (no shared face).
+  const zDado = foto ? zCup + 0.1 : zCup - 0.07;
   dado.position.z = zDado;
   const grupoDado = parte('dado', { etiqueta: { texto: foto ? 'Dado de silicio grande: más área, más fotocorriente' : `Dado semiconductor (${c.material}): su banda prohibida da el color`, ref: foto ? 'sec-45.3' : 'sec-5.5', punto: [0, 0, zDado + 0.1] }, interior: true, entero: true, explosion: [0, 0, 3] }, dado);
   if (on) grupoDado.add(colocar(brillo(ctx, c.luz, 5), 0, 0, zDado + 0.3));

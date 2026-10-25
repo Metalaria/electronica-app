@@ -358,7 +358,7 @@ function colocarComponente(comp: Componente, esfuerzo: number): Colocado {
   // settle, the topology's own start first, and no more runs once one is flawless. The precomputed layouts
   // of the book (effort 3) keep the full search.
   const vivo = esfuerzo <= 1;
-  const intentos = (U <= 3 ? 1 : U <= 8 ? 3 : U <= 16 ? 2 : 1) + (esfuerzo > 1 ? Math.round(esfuerzo) : 0) + (reglas && !vivo ? 2 : 0);
+  const intentos = (U <= 3 ? 1 : U <= 8 ? 3 : U <= 16 ? 2 : 1) + (esfuerzo > 1 ? Math.round(esfuerzo) + 1 : 0) + (reglas && !vivo ? 5 : 0);
   const iter = Math.round(Math.min(vivo ? 12000 : 30000, 600 * U + 1500) * Math.min(esfuerzo, 2) * (U > 30 ? 0.6 : 1));
   let mejor: Colocado | null = null;
   let mejorPos: [number, number, number][] = [];
@@ -374,7 +374,7 @@ function colocarComponente(comp: Componente, esfuerzo: number): Colocado {
     perfecto = !r.rutas.cruces && r.rutas.etiquetas.length <= etiquetasForzadas && (!reglas || col.costeDeReglas() < 1e-6);
     // With a recognised topology, crossings and fallback labels decide first (the rules must not cost
     // readability), then the score.
-    const clave = (x: Colocado) => (reglas ? 1000 * (x.rutas.cruces + x.rutas.etiquetas.length - etiquetasForzadas) : 0) + x.puntuacion;
+    const clave = (x: Colocado) => (reglas ? 1000 * (x.rutas.cruces + x.rutas.etiquetas.length - etiquetasForzadas) : 0) + x.puntuacion + 25 * (x.rutas.etiquetas.length - etiquetasForzadas) + 10 * x.rutas.cruces;
     if (!mejor || clave(r) < clave(mejor)) {
       mejor = r;
       mejorPos = comp.unidades.map((u) => [u.x, u.y, u.v]);

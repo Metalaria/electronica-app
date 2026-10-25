@@ -7,6 +7,8 @@
 //          #/marcadores          bookmarks and notes
 //          #/simulador[/<id>]    the circuit simulator: index, a netlist of the book (cap42/fig-42.5_filtro_rc)
 //                                or «nuevo» (free-form circuit)
+//          #/editor[/<id>|/libro/<netlist>|/importar]  the schematic editor, a tab of the simulator (view
+//                                «simulador», ruta.sim = «editor…»): the draft, a saved circuit, a book netlist as a drawing
 //          #/componentes[/<id>]  the component animations: gallery, or one animation
 //          #/conceptos[/<id>]    the concept animations (phasors, Fourier, aliasing…): gallery, or one
 //          #/consolas[/<maquina>/<vista>[/<seleccion>]]  NES and Neo Geo mainboards (componentes/consolas)
@@ -15,12 +17,14 @@
 //          #/calculadoras[/<id>]  formula calculators: catalogue, or one formula (componentes/calculadoras)
 //          #/repaso[/tarjetas|test/<parte>|examen|repasar[/<parte>]]  flashcards and quizzes (componentes/repaso)
 //          #/ejercicios[/repaso]  exercises and problems by chapter, or the review of the failed ones
+//          #/sincronizacion      GitHub synchronisation of the reader's data and update check
+//          #/diagnostico         performance diagnostic of this device (componentes/diagnostico), from «Ajustes»
 //
 // Each history entry remembers its scroll position (history.state.y), so «Atrás» (the button,
 // the browser or the Android back button) returns exactly where the reader was. Overlays
 // (drawer, search, figure viewer) push their own entry so the back button closes them.
 
-export type Vista = 'inicio' | 'parte' | 'glosario' | 'marcadores' | 'simulador' | 'componentes' | 'conceptos' | 'consolas' | 'instrumentos' | 'fm7303' | 'repaso' | 'ejercicios' | 'calculadoras' | 'proyectos';
+export type Vista = 'inicio' | 'parte' | 'glosario' | 'marcadores' | 'simulador' | 'componentes' | 'conceptos' | 'consolas' | 'instrumentos' | 'fm7303' | 'repaso' | 'ejercicios' | 'calculadoras' | 'proyectos' | 'sincronizacion' | 'diagnostico';
 
 export interface AnclaLectura {
   /** Index of the top-level block at the top of the screen. */
@@ -76,6 +80,11 @@ function leer(): void {
     ruta.parte = '';
     ruta.ancla = '';
     ruta.sim = b;
+  } else if (a === 'editor') {
+    ruta.vista = 'simulador';
+    ruta.parte = '';
+    ruta.ancla = '';
+    ruta.sim = b ? `editor/${b}` : 'editor';
   } else if (a === 'consolas') {
     ruta.vista = 'consolas';
     ruta.parte = '';
@@ -102,6 +111,14 @@ function leer(): void {
     ruta.ancla = b;
   } else if (a === 'ejercicios') {
     ruta.vista = 'ejercicios';
+    ruta.parte = '';
+    ruta.ancla = b;
+  } else if (a === 'diagnostico') {
+    ruta.vista = 'diagnostico';
+    ruta.parte = '';
+    ruta.ancla = '';
+  } else if (a === 'sincronizacion') {
+    ruta.vista = 'sincronizacion';
     ruta.parte = '';
     ruta.ancla = b;
   } else if (a === 'componentes') {

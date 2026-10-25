@@ -18,6 +18,7 @@
   import Marcadores from './componentes/Marcadores.svelte';
   import Busqueda from './componentes/Busqueda.svelte';
   import VisorFigura from './componentes/VisorFigura.svelte';
+  import Arranque from './componentes/sincronizacion/Arranque.svelte';
 
   let oscuroSistema = $state(false);
 
@@ -230,6 +231,24 @@
         {:catch e}
           <div class="aviso"><h1>No se pudieron abrir los ejercicios</h1><p>{String(e)}</p></div>
         {/await}
+      {:else if ruta.vista === 'diagnostico'}
+        <!-- Performance diagnostic of this device (from «Ajustes»): nothing runs until «Empezar». -->
+        {#await import('./componentes/diagnostico/Diagnostico.svelte')}
+          <div class="cargando" aria-live="polite"><span class="punto"></span> Abriendo el diagnóstico…</div>
+        {:then m}
+          <m.default />
+        {:catch e}
+          <div class="aviso"><h1>No se pudo abrir el diagnóstico</h1><p>{String(e)}</p></div>
+        {/await}
+      {:else if ruta.vista === 'sincronizacion'}
+        <!-- GitHub token, data repository, «Sincronizar ahora» and the update check. -->
+        {#await import('./componentes/sincronizacion/PaginaSincronizacion.svelte')}
+          <div class="cargando" aria-live="polite"><span class="punto"></span> Abriendo la sincronización…</div>
+        {:then m}
+          <m.default />
+        {:catch e}
+          <div class="aviso"><h1>No se pudo abrir la sincronización</h1><p>{String(e)}</p></div>
+        {/await}
       {:else if ruta.vista === 'componentes'}
         <!-- Component animations, also loaded on demand. -->
         {#await import('./componentes/Componentes.svelte')}
@@ -254,6 +273,7 @@
 {#if app.figura}
   <VisorFigura />
 {/if}
+<Arranque />
 
 <style>
   .app {

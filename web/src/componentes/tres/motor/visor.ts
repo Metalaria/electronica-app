@@ -62,6 +62,8 @@ interface EtiquetaViva {
   item: HTMLLIElement | null;
   linea: SVGLineElement;
   punto2: SVGCircleElement;
+  /** Column it is in (−1 left, 1 right, 0 not placed yet): kept until its point is well past the centre. */
+  lado: number;
 }
 
 type Stats = { n: number; total: number; max: number; cuadro: number; marcas: number[]; triangulos: number; llamadas: number };
@@ -115,7 +117,7 @@ export class Visor {
     this.renderer.toneMappingExposure = 1.0;
     this.renderer.localClippingEnabled = true;
     this.estudio = crearEstudio(this.renderer);
-    this.orbita = new Orbita(this.camara, lienzo, () => this.pedir(), () => this.quieto);
+    this.orbita = new Orbita(this.camara, lienzo, () => this.pedir(), () => this.quieto, lienzo.parentElement ?? lienzo);
     this.orbita.alReiniciar = () => this.vistaInicial(true);
     this.svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     this.svg.setAttribute('class', 'lineas');
@@ -180,15 +182,34 @@ export class Visor {
       this.placa.liberar();
       this.placa = null;
     }
+    const esfera = caja.getBoundingSphere(new Sphere());
     const enPlaca = datos.montaje === 'placa' && (datos.huella?.pads.length ?? 0) > 0;
     if (enPlaca) {
-      this.placa = crearPlaca(datos.huella, tam.x, tam.y);
+      // Board top, shadow and pads a real distance apart (no polygonOffset: it differs between GPUs).
+      const capa = Math.max(0.004, esfera.radius * 0.004);
+      this.placa = crearPlaca(datos.huella, tam.x, tam.y, 1.6, 2 * capa);
       this.estudio.raiz.add(this.placa.grupo);
-      this.estudio.ajustarSombra(tam.x * 0.85, tam.y * 0.85, 0.02);
+      this.estudio.ajustarSombra(tam.x * 0.85, tam.y * 0.85, capa + 0.01);
     } else this.estudio.ajustarSombra(Math.max(tam.x, datos.huella?.ancho ?? 0) * 0.92, Math.max(tam.y, datos.huella?.fondo ?? 0) * 0.92, caja.min.z);
-    const esfera = caja.getBoundingSphere(new Sphere());
+    // Depth range from everything that can be drawn (model at full explosion, board, shadow, cut outline);
+    // the camera never enters the model at rest.
+    const todo = caja.clone();
+    if (this.bases.size) {
+      const e = this.explosion;
+      this.explosion = 1;
+      this.aplicarExplosion();
+      todo.union(new Box3().setFromObject(g));
+      this.explosion = e;
+      this.aplicarExplosion();
+    }
+    if (this.placa) todo.union(new Box3().setFromObject(this.placa.grupo));
+    todo.union(new Box3().setFromObject(this.estudio.sombra));
+    todo.expandByScalar(0.25 + tam.length() * 0.06);
+    const total = todo.getBoundingSphere(new Sphere());
+    this.orbita.escena = { centro: total.center, radio: total.radius };
+    this.orbita.solido = { centro: esfera.center.clone(), radio: esfera.radius * 1.02 };
     const dist = esfera.radius / Math.sin((this.camara.fov * Math.PI) / 360) * 1.08;
-    this.orbita.minDist = esfera.radius * 0.5;
+    this.orbita.minDist = esfera.radius * 0.3;
     this.orbita.maxDist = dist * 5;
     const ini: EstadoOrbita = { azimut: 0.5, elevacion: 0.55, distancia: dist, objetivo: esfera.center.clone() };
     this.vistaInicialEstado = ini;
@@ -258,6 +279,16 @@ export class Visor {
           let mt = this.matTapas.get(col);
           if (!mt) {
             mt = new MeshBasicMaterial({ color: new Color(col), side: BackSide, clippingPlanes: [this.plano] });
+            // Section hatching (as in a technical drawing): fine diagonal lines in screen space, so a cut
+            // face never reads as a lit surface of the solid.
+            const paso = (9 * this.renderer.getPixelRatio()).toFixed(1);
+            mt.onBeforeCompile = (sh) => {
+              sh.fragmentShader = sh.fragmentShader.replace(
+                '#include <dithering_fragment>',
+                `#include <dithering_fragment>\n\tif (mod(gl_FragCoord.x + gl_FragCoord.y, ${paso}) < ${paso} * 0.2) gl_FragColor.rgb *= 0.8;`,
+              );
+            };
+            mt.customProgramCacheKey = () => `tapa-rayada-${paso}`;
             this.matTapas.set(col, mt);
           }
           let tapa: Mesh;
@@ -434,7 +465,14 @@ export class Visor {
       contenido(el);
       if (enl) {
         (el as HTMLAnchorElement).href = enl.href;
-        el.addEventListener('click', () => this.opc.alSeguir?.());
+        el.addEventListener('click', (ev) => {
+          // A drag (turning the model) that ended on the label is not a click on its link.
+          if (this.orbita.arrastrado) {
+            ev.preventDefault();
+            return;
+          }
+          this.opc.alSeguir?.();
+        });
       }
       this.capa.appendChild(el);
       let item: HTMLLIElement | null = null;
@@ -454,7 +492,7 @@ export class Visor {
       const punto2 = document.createElementNS(ns, 'circle');
       punto2.setAttribute('r', '3.2');
       this.svg.append(linea, punto2);
-      this.etiquetas.push({ obj: o, punto: new Vector3(...(d.etiqueta.punto ?? [0, 0, 0])), interior, visible: true, ancho: 0, alto: 0, el, item, linea, punto2 });
+      this.etiquetas.push({ obj: o, punto: new Vector3(...(d.etiqueta.punto ?? [0, 0, 0])), interior, visible: true, ancho: 0, alto: 0, el, item, linea, punto2, lado: 0 });
     });
   }
 
@@ -504,7 +542,27 @@ export class Visor {
     }
     if (compacto) {
       // Narrow viewer: a numbered marker on each point, the text in the list under the canvas.
-      for (const { e, ax, ay } of vivas) e.el.style.transform = `translate(${(ax - 11).toFixed(1)}px, ${(ay - 11).toFixed(1)}px)`;
+      // Markers whose points are close (the anode and cathode foils at the top of an electrolytic) are pushed
+      // apart so their numbers stay readable.
+      const pos = vivas.map(({ ax, ay }) => [ax, ay] as [number, number]);
+      const D = 24;
+      for (let pasada = 0; pasada < 4; pasada++)
+        for (let i = 1; i < pos.length; i++)
+          for (let j = 0; j < i; j++) {
+            const a = pos[i]!;
+            const b = pos[j]!;
+            let dx = a[0] - b[0];
+            let dy = a[1] - b[1];
+            const d = Math.hypot(dx, dy);
+            if (d >= D) continue;
+            if (d < 0.5) [dx, dy] = [1, 0];
+            const k = (D - d) / 2 / Math.max(d, 1);
+            a[0] += dx * k;
+            a[1] += dy * k;
+            b[0] -= dx * k;
+            b[1] -= dy * k;
+          }
+      vivas.forEach(({ e }, i) => (e.el.style.transform = `translate(${(pos[i]![0] - 11).toFixed(1)}px, ${(pos[i]![1] - 11).toFixed(1)}px)`));
       return;
     }
     for (const { e } of vivas)
@@ -512,7 +570,13 @@ export class Visor {
         e.ancho = e.el.offsetWidth;
         e.alto = e.el.offsetHeight;
       }
-    for (const { e, ax, ay } of vivas) lista.push({ e, ax, ay, x: 0, y: ay + (ay - cy) * 0.25, lado: ax >= cx ? 1 : -1, ancho: e.ancho, alto: e.alto });
+    // Column with hysteresis: a point near the model's centre (the top of an LDR seen from above) would
+    // otherwise flip its label from side to side on every frame while the model turns.
+    const margenLado = Math.max(24, w * 0.06);
+    for (const { e, ax, ay } of vivas) {
+      if (!e.lado || (ax - cx) * e.lado < -margenLado) e.lado = ax >= cx ? 1 : -1;
+      lista.push({ e, ax, ay, x: 0, y: ay + (ay - cy) * 0.25, lado: e.lado, ancho: e.ancho, alto: e.alto });
+    }
     // Two columns (left and right of the model): sort by height, push apart downwards, then pull back up
     // from the bottom edge if needed, so that pills never overlap (unless there is no room at all).
     const margen = 8;

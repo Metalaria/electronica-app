@@ -4,6 +4,7 @@
 // bookkeeping of parts (labels, explosion offsets, cut colours).
 
 import {
+  Box3,
   BufferGeometry,
   CanvasTexture,
   Color,
@@ -105,6 +106,8 @@ export interface Ctx {
   montaje: Montaje;
   /** Board thickness (mm). */
   placa: number;
+  /** Markings at low resolution (boards, thumbnails). */
+  marcasBajas?: boolean;
 }
 
 // ------------------------------------------------------------------ materials
@@ -382,12 +385,14 @@ function lienzo(w: number, h: number): HTMLCanvasElement | OffscreenCanvas {
 
 /**
  * Texture with one or more lines of text filling a w × h mm box (transparent background unless `fondo`).
- * About 48 px per mm, at most 1024 px wide: crisp when zoomed in on a 1 mm SOT-23 marking.
+ * Detailed models: about 1024 px on the long side (at most 640 px per mm), so that a 1 mm marking stays
+ * crisp when it fills a tablet screen; low detail (boards with many parts): 64 px per mm, at most 512 px.
  */
 export function texturaTexto(ctx: Ctx, lineas: string[], wmm: number, hmm: number, o: OpcionesTexto = {}): Texture {
-  const clave = `txt:${lineas.join('|')}:${wmm}:${hmm}:${o.color}:${o.fondo}:${o.peso}:${o.alinear}:${o.familia}:${o.espaciado}`;
+  const baja = ctx.bajo || !!ctx.marcasBajas;
+  const clave = `txt:${lineas.join('|')}:${wmm}:${hmm}:${o.color}:${o.fondo}:${o.peso}:${o.alinear}:${o.familia}:${o.espaciado}:${baja}`;
   return ctx.rec.textura(clave, () => {
-    const ppm = Math.min(64, 1024 / Math.max(wmm, hmm));
+    const ppm = baja ? Math.min(64, 512 / Math.max(wmm, hmm)) : Math.min(640, 1024 / Math.max(wmm, hmm));
     const W = Math.max(16, Math.round(wmm * ppm));
     const H = Math.max(16, Math.round(hmm * ppm));
     const c = lienzo(W, H);
@@ -417,7 +422,7 @@ export function texturaTexto(ctx: Ctx, lineas: string[], wmm: number, hmm: numbe
     }
     const t = new CanvasTexture(c as HTMLCanvasElement);
     t.colorSpace = SRGBColorSpace;
-    t.anisotropy = 4;
+    t.anisotropy = baja ? 4 : 8;
     return t;
   });
 }
@@ -426,22 +431,107 @@ export function texturaTexto(ctx: Ctx, lineas: string[], wmm: number, hmm: numbe
 export function rotulo(ctx: Ctx, lineas: string[], w: number, h: number, o: OpcionesTexto & { rugosidad?: number } = {}): Mesh {
   const tex = texturaTexto(ctx, lineas, w, h, o);
   const mat = ctx.rec.material(`rot:${tex.uuid}`, () => {
+    // (Not premultiplied: uploading a canvas with UNPACK_PREMULTIPLY_ALPHA takes a slow path, 20 s for a
+    // board's markings under SwiftShader.)
     const m = new MeshStandardMaterial({
       map: tex,
       transparent: !o.fondo,
       roughness: o.rugosidad ?? 0.6,
       metalness: 0,
-      polygonOffset: true,
-      polygonOffsetFactor: -2,
-      polygonOffsetUnits: -2,
       depthWrite: !!o.fondo,
     });
     return m;
   });
-  const m = new Mesh(plano(ctx, w, h), mat);
+  // Lifted off its face by a real distance (not polygonOffset, which differs between GPUs): 0,01 mm, or
+  // 0,4 % of the marking's size on large parts.
+  const alto = Math.min(0.06, Math.max(0.01, 0.004 * Math.max(w, h)));
+  const geo = ctx.rec.geometria(`rotulo:${w.toFixed(3)}:${h.toFixed(3)}:${alto.toFixed(4)}`, () => new PlaneGeometry(w, h).translate(0, 0, alto));
+  const m = new Mesh(geo, mat);
   m.renderOrder = 1;
   m.userData.decal = true;
   return m;
+}
+
+/**
+ * Pulls every solid of a model in by a hair, so that no two solids share a face: touching faces and coplanar
+ * faces of neighbouring parts fight in the depth buffer (worst on mobile GPUs and ANGLE-Metal, with less depth
+ * precision) and break the cutaway's caps. Each face moves inward by e = 0,004–0,05 mm depending on the
+ * model's size (at most 5 % of the solid's thickness); solids whose boxes end on the same plane on the same
+ * side (two coplanar faces facing the same way) get different steps of e (1, 1,5, 2… × e), so they part
+ * too. Decals are lifted instead (rotulo). The geometry is not touched (it may be shared): the mesh transform,
+ * or each instance matrix, gets the scale about the geometry's box centre.
+ */
+export function separarSolidos(g: Group): void {
+  g.updateMatrixWorld(true);
+  const radio = new Box3().setFromObject(g).getSize(new Vector3()).length() / 2;
+  const e0 = Math.min(0.05, Math.max(0.004, radio * 0.0025));
+  const inversa = new Matrix4().copy(g.matrixWorld).invert();
+  // Every solid (a mesh, or one instance) with its matrix in model space and its box there.
+  type Solido = { m: Mesh; j: number; rel: Matrix4; caja: Box3; tam: Vector3; c: Vector3; color: number };
+  const solidos: Solido[] = [];
+  g.traverse((o) => {
+    const m = o as Mesh;
+    if (!m.isMesh || m.userData.decal) return;
+    const geo = m.geometry;
+    if (!geo.boundingBox) geo.computeBoundingBox();
+    const b = geo.boundingBox!;
+    const base = new Matrix4().multiplyMatrices(inversa, m.matrixWorld);
+    const n = (m as InstancedMesh).isInstancedMesh ? (m as InstancedMesh).count : 1;
+    for (let j = 0; j < n; j++) {
+      const rel = base.clone();
+      if (n > 1 || (m as InstancedMesh).isInstancedMesh) {
+        const k = new Matrix4();
+        (m as InstancedMesh).getMatrixAt(j, k);
+        rel.multiply(k);
+      }
+      solidos.push({ m, j, rel, caja: b.clone().applyMatrix4(rel), tam: b.getSize(new Vector3()), c: b.getCenter(new Vector3()), color: 0 });
+    }
+  });
+  // Greedy colouring: a solid takes the first step not used by an earlier one ending on the same plane, on
+  // the same side, where their boxes overlap across that plane.
+  const tol = 1e-4;
+  const solapan = (a: Box3, b: Box3, k: number) =>
+    [0, 1, 2].every((q) => q === k || (Math.min(a.max.getComponent(q), b.max.getComponent(q)) - Math.max(a.min.getComponent(q), b.min.getComponent(q)) > tol));
+  solidos.forEach((s, i) => {
+    const usados = new Set<number>();
+    for (let t = 0; t < i; t++) {
+      const o = solidos[t]!;
+      for (let k = 0; k < 3; k++) {
+        const mismoMin = Math.abs(s.caja.min.getComponent(k) - o.caja.min.getComponent(k)) < tol;
+        const mismoMax = Math.abs(s.caja.max.getComponent(k) - o.caja.max.getComponent(k)) < tol;
+        if ((mismoMin || mismoMax) && solapan(s.caja, o.caja, k)) {
+          usados.add(o.color);
+          break;
+        }
+      }
+    }
+    while (usados.has(s.color)) s.color++;
+  });
+  const ejes = [new Vector3(), new Vector3(), new Vector3()] as const;
+  const T = new Matrix4();
+  const S = new Matrix4();
+  for (const s of solidos) {
+    s.rel.extractBasis(ejes[0], ejes[1], ejes[2]);
+    const f = [0, 1, 2].map((k) => {
+      const t = s.tam.getComponent(k) * ejes[k]!.length();
+      return t < 1e-6 ? 1 : 1 - (2 * Math.min(e0, t * 0.05) * (1 + 0.5 * Math.min(s.color, 6))) / t;
+    });
+    const local = T.makeTranslation(s.c.x, s.c.y, s.c.z)
+      .multiply(S.makeScale(f[0]!, f[1]!, f[2]!))
+      .multiply(new Matrix4().makeTranslation(-s.c.x, -s.c.y, -s.c.z));
+    if ((s.m as InstancedMesh).isInstancedMesh) {
+      const im = s.m as InstancedMesh;
+      const k = new Matrix4();
+      im.getMatrixAt(s.j, k);
+      im.setMatrixAt(s.j, k.multiply(local));
+      im.instanceMatrix.needsUpdate = true;
+    } else {
+      s.m.matrix.multiply(local);
+      s.m.matrix.decompose(s.m.position, s.m.quaternion, s.m.scale);
+    }
+  }
+  g.traverse((o) => (o as InstancedMesh).isInstancedMesh && (o as InstancedMesh).computeBoundingSphere());
+  g.updateMatrixWorld(true);
 }
 
 /** Canvas texture painted by a function (bands, sleeves, tracks), w × h px. */

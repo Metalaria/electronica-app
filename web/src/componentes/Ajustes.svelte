@@ -3,6 +3,7 @@
   import { app } from '../lib/estado.svelte';
   import { usuario, ponerTema, ponerTam, TAM_MAX, TAM_MIN, TAM_DEFECTO, type Tema } from '../lib/usuario.svelte';
   import Icono, { type NombreIcono } from './Icono.svelte';
+  import EntradaDiagnostico from './diagnostico/EntradaAjustes.svelte';
 
   let { ancla }: { ancla: HTMLElement | undefined } = $props();
   let panel: HTMLDivElement | undefined = $state();
@@ -91,6 +92,14 @@
     </div>
   </div>
 
+  <!-- Performance diagnostic of this device (componentes/diagnostico): a link to its page. -->
+  <EntradaDiagnostico />
+
+  <!-- Synchronisation and update check (componentes/sincronizacion), loaded on demand. -->
+  {#await import('./sincronizacion/GrupoAjustes.svelte') then m}
+    <m.default />
+  {/await}
+
   <p class="pie">
     {#if app.modo === 'muestra'}
       <strong>Contenido de muestra.</strong> Genere el libro con <code>python3 contenido/generar.py</code>.
@@ -107,6 +116,8 @@
     right: 10px;
     z-index: 40;
     width: min(340px, calc(100vw - 20px));
+    max-height: calc(100dvh - var(--alto-barra) - env(safe-area-inset-top) - var(--hueco-inferior) - 16px);
+    overflow-y: auto;
     padding: 14px 16px 12px;
     border: 1px solid var(--linea);
     border-radius: 14px;

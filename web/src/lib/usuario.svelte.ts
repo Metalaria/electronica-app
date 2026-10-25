@@ -2,6 +2,7 @@
 // Reactive (Svelte runes) and persisted through the storage layer, with debounced writes.
 
 import { obtenerAlmacen, type Almacen } from './almacen';
+import { anotarBorrado } from './sincronizacion/marcas';
 
 export type Tema = 'auto' | 'claro' | 'sepia' | 'oscuro';
 
@@ -119,24 +120,30 @@ export function esMarcador(label: string): boolean {
 }
 
 export function alternarMarcador(m: Omit<Marcador, 't'>): void {
-  if (m.label in usuario.marcadores) delete usuario.marcadores[m.label];
-  else usuario.marcadores[m.label] = { ...m, t: Date.now() };
+  if (m.label in usuario.marcadores) {
+    delete usuario.marcadores[m.label];
+    anotarBorrado('marcadores', m.label);
+  } else usuario.marcadores[m.label] = { ...m, t: Date.now() };
   guardar('marcadores', 50);
 }
 
 export function quitarMarcador(label: string): void {
   delete usuario.marcadores[label];
+  anotarBorrado('marcadores', label);
   guardar('marcadores', 50);
 }
 
 export function guardarNota(m: Omit<Marcador, 't'>, texto: string): void {
   const limpio = texto.trim().slice(0, LARGO_NOTA);
-  if (!limpio) delete usuario.notas[m.label];
-  else usuario.notas[m.label] = { ...m, texto: limpio, t: Date.now() };
+  if (!limpio) {
+    if (m.label in usuario.notas) anotarBorrado('notas', m.label);
+    delete usuario.notas[m.label];
+  } else usuario.notas[m.label] = { ...m, texto: limpio, t: Date.now() };
   guardar('notas', 50);
 }
 
 export function quitarNota(label: string): void {
   delete usuario.notas[label];
+  anotarBorrado('notas', label);
   guardar('notas', 50);
 }

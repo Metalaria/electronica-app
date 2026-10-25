@@ -8,6 +8,7 @@
   import { cargarArquitectura } from './arquitectura/maquinas';
   import Foto from './Foto.svelte';
   import Fuentes from './Fuentes.svelte';
+  import { tienePlaca } from './placa/datos';
 
   const actual = $derived(leerAncla(ruta.ancla));
   let sel: Seleccion | null = $state(null);
@@ -50,6 +51,10 @@
     return enlace(maquina, pestana, null);
   }
 
+  // «Placa en 3D / 2D» only for the machines with a board
+  const pestanas = $derived(PESTANAS.filter((p) => (p.id !== 'placa3d' && p.id !== 'placa2d') || tienePlaca(actual.maquina)));
+  const pestana = $derived(pestanas.some((p) => p.id === actual.pestana) ? actual.pestana : 'foto');
+
   const MAQUINAS: { id: IdMaquina; titulo: string; placa: string }[] = [
     { id: 'nes', titulo: 'NES', placa: 'NES-CPU-07 · 1987' },
     { id: 'neogeo', titulo: 'Neo Geo AES', placa: 'NEO-AES · 1990' },
@@ -66,11 +71,11 @@
   <header>
     <div class="titulo">
       <h1>Consolas</h1>
-      <p>Las placas base de las figuras 36.16 y 36.22 y otras cuatro consolas: foto interactiva, arquitectura animada y esquema real.</p>
+      <p>Las placas base de las figuras 36.16 y 36.22 y otras cuatro consolas: foto interactiva, arquitectura animada, esquema real y, donde hay placa publicada, la placa en 3D.</p>
     </div>
     <nav class="maquinas" aria-label="Consola">
       {#each MAQUINAS as m (m.id)}
-        <a href={href(m.id, actual.pestana)} aria-current={actual.maquina === m.id ? 'page' : undefined}>
+        <a href={href(m.id, (actual.pestana === 'placa3d' || actual.pestana === 'placa2d') && !tienePlaca(m.id) ? 'foto' : actual.pestana)} aria-current={actual.maquina === m.id ? 'page' : undefined}>
           <strong>{m.titulo}</strong><small>{m.placa}</small>
         </a>
       {/each}
@@ -78,8 +83,8 @@
   </header>
 
   <nav class="pestanas" aria-label="Vista">
-    {#each PESTANAS as p (p.id)}
-      <a href={enlace(actual.maquina, p.id, sel)} aria-current={actual.pestana === p.id ? 'page' : undefined}>{p.titulo}</a>
+    {#each pestanas as p (p.id)}
+      <a href={enlace(actual.maquina, p.id, sel)} aria-current={pestana === p.id ? 'page' : undefined}>{p.titulo}</a>
     {/each}
   </nav>
 
@@ -87,17 +92,26 @@
     <div class="aviso"><p>No se pudieron cargar los datos: {error}</p></div>
   {:else if !datos || datos.id !== actual.maquina}
     <div class="cargando">Cargando…</div>
-  {:else if actual.pestana === 'foto'}
+  {:else if pestana === 'foto'}
     <Foto {datos} {sel} {seleccionar} {irA} />
-  {:else if actual.pestana === 'arquitectura'}
+  {:else if pestana === 'arquitectura'}
     {#await Promise.all([import('./arquitectura/Arquitectura.svelte'), cargarArquitectura(datos.id)])}
       <div class="cargando">Cargando…</div>
     {:then [m, maquina]}
       {#key datos.id}<m.default {datos} {maquina} {sel} {seleccionar} {irA} />{/key}
     {/await}
-  {:else if actual.pestana === 'esquema'}
+  {:else if pestana === 'esquema'}
     {#await import('./esquema/Esquema.svelte') then m}
       {#key datos.id}<m.default {datos} {sel} {seleccionar} {irA} />{/key}
+    {/await}
+  {:else if pestana === 'placa3d' || pestana === 'placa2d'}
+    <!-- The mainboard in the «Proyectos KiCad» viewer (contenido/consolas_pcb.py), loaded on demand. -->
+    {#await import('./placa/PlacaConsola.svelte')}
+      <div class="cargando">Cargando…</div>
+    {:then m}
+      {#key datos.id}<m.default {datos} vista={pestana === 'placa3d' ? '3d' : '2d'} {sel} {seleccionar} {irA} />{/key}
+    {:catch e}
+      <div class="aviso"><p>No se pudo abrir la placa: {String(e)}</p></div>
     {/await}
   {:else}
     <Fuentes {datos} />

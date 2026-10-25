@@ -4,6 +4,7 @@
 
 import type { CatalogoFormulas, Formula } from './tipos';
 import { obtenerAlmacen } from '../../lib/almacen';
+import { anotarBorrado, anotarCambio } from '../../lib/sincronizacion/marcas';
 
 const BASE = 'libro/';
 
@@ -91,7 +92,10 @@ export function esFavorita(id: string): boolean {
 }
 
 export function alternarFavorita(id: string): void {
-  calc.favoritos = esFavorita(id) ? calc.favoritos.filter((x) => x !== id) : [...calc.favoritos, id];
+  const quitar = esFavorita(id);
+  calc.favoritos = quitar ? calc.favoritos.filter((x) => x !== id) : [...calc.favoritos, id];
+  if (quitar) anotarBorrado('calc-favoritos', id);
+  else anotarCambio('calc-favoritos', id);
   void obtenerAlmacen().then((a) => a.escribir(CLAVE, $state.snapshot(calc.favoritos)));
 }
 

@@ -149,8 +149,8 @@
     const p = pal;
     const est = v.estrecho;
     const eM: Ejes = est ? { x: 60, y: 120, w: 510, h: 170, x0: 1, x1: 1e6, y0: -80, y1: 30, logX: true } : { x: 60, y: 110, w: 500, h: 150, x0: 1, x1: 1e6, y0: -80, y1: 30, logX: true };
-    const eF: Ejes = est ? { x: 60, y: 330, w: 510, h: 120, x0: 1, x1: 1e6, y0: -180, y1: 180, logX: true } : { x: 60, y: 300, w: 500, h: 110, x0: 1, x1: 1e6, y0: -180, y1: 180, logX: true };
-    const eT: Ejes = est ? { x: 60, y: 500, w: 510, h: 110, x0: 0, x1: 2, y0: -1.3, y1: 1.3 } : { x: 620, y: 110, w: 250, h: 150, x0: 0, x1: 2, y0: -1.3, y1: 1.3 };
+    const eF: Ejes = est ? { x: 60, y: 345, w: 510, h: 112, x0: 1, x1: 1e6, y0: -180, y1: 180, logX: true } : { x: 60, y: 300, w: 500, h: 110, x0: 1, x1: 1e6, y0: -180, y1: 180, logX: true };
+    const eT: Ejes = est ? { x: 60, y: 522, w: 510, h: 90, x0: 0, x1: 2, y0: -1.3, y1: 1.3 } : { x: 620, y: 110, w: 250, h: 150, x0: 0, x1: 2, y0: -1.3, y1: 1.3 };
     const yRegla = est ? 60 : 55;
     geo = { eM, eF, yRegla };
     estatico(v, `bd:${est}`, (vv) => {
@@ -226,7 +226,7 @@
     }
     curva(ctx, eT, xs, yi, alfa(p.tinta, 0.5), 1.6, [5, 4]);
     curva(ctx, eT, xs, yo, p.corriente, 2.4);
-    txt(v, `${si(fPrueba, 'Hz', 3)}: ${num(20 * Math.log10(h.m), 1)} dB, ${num((h.fase * 180) / Math.PI, 1)}°`, eT.x + eT.w / 2, eT.y + eT.h + 20, { tam: 12.5, peso: 700, color: p.corriente });
+    txt(v, `${si(fPrueba, 'Hz', 3)}: ${num(20 * Math.log10(h.m), 1)} dB, ${num((h.fase * 180) / Math.PI, 1)}°`, eT.x + eT.w / 2, eT.y + eT.h + (est ? 16 : 20), { tam: 12.5, peso: 700, color: p.corriente });
   }
 
   const texto = $derived.by(() => {

@@ -6,7 +6,8 @@ genera a partir de las fuentes Typst del libro, de modo que una corrección en u
 aplicación con solo regenerar y volver a compilar.
 
 Incluye la fase 1 (el lector) y la fase 2 (el simulador de circuitos, con las 309 netlists del libro). Las
-fases siguientes (ejercicios, modelos 3D, editor de esquemas) están descritas en `ESQUEMA.md`.
+fases siguientes (ejercicios, modelos 3D, editor de esquemas) están descritas en `ESQUEMA.md`; el editor de
+esquemas (fase 5) está en la versión 0.7.
 
 ## Qué hace
 
@@ -54,6 +55,8 @@ fases siguientes (ejercicios, modelos 3D, editor de esquemas) están descritas e
   los capítulos a los que remite la sección en pantalla y el siguiente.
 - **Simulador de circuitos** (sección siguiente): botón «Simular» junto a cada figura, sección, problema o
   ejercicio que tiene netlist.
+- **Editor de esquemas**: dibujar un circuito con los símbolos del libro y simularlo sin escribir la netlist, o
+  abrir como dibujo editable cualquier netlist del libro (ver más abajo).
 - **Consolas**: las placas base de la NES, la Neo Geo AES, la Master System II, la Mega Drive, la Game Boy y la
   Game Boy Color con foto interactiva, arquitectura animada y esquema real con redes interactivas (ver más abajo).
 - **Proyectos KiCad**: las siete placas de los cuatro proyectos detallados (capítulos 48 a 51) en 3D y en 2D, con su
@@ -167,7 +170,12 @@ arriba y abajo, + a la derecha, − a la izquierda), el diodo de media onda o lo
 condensador de filtro y la carga colgando del + a la derecha; si el − del puente no va a masa, se une con una
 etiqueta de red (sin ella, un cruce sería inevitable). Una netlist hecha de varios rectificadores
 independientes (las variantes de un mismo ejemplo) se dibuja en una rejilla de celdas iguales, en el orden de
-la netlist.
+la netlist. Las **escaleras de celdas en paralelo** (varias resistencias, condensadores o bobinas entre los mismos
+dos nodos, celdas unidas en serie) se dibujan como en el libro: la asociación de condensadores en serie con sus
+resistencias de fuga y de equilibrado (figura 3.12) o la sonda compensada, como columnas apiladas con la masa
+abajo; la red térmica de Foster (figura 47.8), como una fila de celdas con R arriba y C debajo y la última celda
+colgando a masa. Un valor escrito como expresión constante (`{30e-6/0.058737}`) se rotula con su valor
+(`511 µF`); si lleva parámetros, se deja como está.
 
 Los nombres y valores de las piezas nunca quedan encima de un cable ni pegados a él: si un cable pasa a menos de
 0,15 unidades (unos 4 px a la escala del libro), el rótulo se mueve al sitio libre más cercano alrededor del
@@ -196,6 +204,58 @@ cambia). Límites:
   transitorio no converge («Timestep too small») repite la simulación con KLU y lo indica.
 - `plot`, `quit` y similares del bloque `.control` se ignoran (la aplicación dibuja las gráficas).
 
+## Editor de esquemas
+
+La tercera pestaña del simulador, «Editor de esquemas» (`#/editor`), dibuja un circuito con los símbolos del
+libro y lo simula sin escribir la netlist. También abre como dibujo editable cualquier netlist: el botón
+**«Editar el esquema»** de la página de cada netlist del libro (o de la netlist libre) la dibuja con el mismo
+trazado automático y la deja lista para cambiarla; la vuelta es **«Ver como netlist»**, que abre la netlist
+generada en el simulador de texto.
+
+- **Paleta** con buscador: resistencia, potenciómetro, condensador, bobina, transformador, interruptor, fuentes
+  de tensión y de corriente (continua, senoidal, pulsos, por tramos o texto SPICE), fuentes controladas E y G,
+  diodo, Zener, LED, Schottky, transistores NPN y PNP, MOSFET N y P, JFET N y P, operacional (con o sin
+  patillas de alimentación), masa, alimentación, etiqueta de red, sonda de tensión, voltímetro entre dos
+  puntos y amperímetro. Un toque en la paleta y otro en el lienzo coloca la pieza; también se puede arrastrar.
+- **Modelos** de las netlists del libro en una lista: 1N4148, 1N4007, Schottky, LED rojo y verde, Zener de
+  5,1, 5,6 y 12 V, 2N3904, 2N3906, NPN y PNP de potencia, MOSFET de nivel 1, JFET y el operacional del libro
+  (A₀ = 10⁵, polo de 10 Hz, ±14 V), un tipo 741 y uno con raíles. Los modelos definidos en las directivas
+  también se pueden elegir.
+- **Cables**: se arrastra desde una patilla (sale recto y dobla en L) o, con la herramienta Cable, se toca punto
+  a punto. Un cable que termina sobre otro lo une con un punto; dos cables que se cruzan no se unen. Las
+  patillas sin conectar se marcan con un círculo.
+- **Propiedades** de la pieza elegida con los valores como se escriben en el libro: «4,7k», «4k7», «100n»,
+  «2,2M» (M es mega), «1µ», «{expresión}»; cada campo se comprueba al escribir y explica el error en español.
+- **Análisis**: punto de trabajo, transitorio, alterna y barrido de continua, con sus parámetros; «Simular»
+  usa el mismo motor del simulador. Antes de simular se avisa de lo que falta (la masa, un valor, un modelo,
+  un nombre repetido, una patilla suelta).
+- **Resultados en el esquema**: tras simular se ven las tensiones de cada nodo y la corriente de cada
+  componente escritas sobre el dibujo, los cables coloreados por su tensión y, en un transitorio, la
+  corriente animada, con la reproducción y las fichas de las figuras vivas. Las sondas eligen las curvas de
+  las gráficas, que son las del simulador (cursores, zoom, tabla).
+- **Mis circuitos**: «Guardar» los deja en el dispositivo; desde entonces cada cambio se guarda solo. Se
+  pueden abrir, renombrar y borrar. El dibujo sin guardar se conserva como borrador.
+- **Exportar** la netlist (`.cir`) o el dibujo (SVG con las fuentes del libro dentro) e **importar** un `.cir`.
+- **Netlist generada** (de solo lectura, con «Copiar») y **directivas SPICE** (modelos, subcircuitos,
+  `.param`, `.meas`, `.control`), que se copian tal cual al final de la netlist. Una netlist del libro abierta
+  como dibujo conserva en ellas todo lo que no es un componente dibujado, y da exactamente los mismos
+  resultados que su texto.
+
+| Gesto o tecla | Acción |
+|---|---|
+| Arrastrar una pieza (ratón o dedo) | Moverla (los cables conectados la siguen) |
+| Arrastrar en vacío con el ratón · con un dedo | Seleccionar con un recuadro · desplazar |
+| Rueda | Desplazar la página, como en el resto de la aplicación |
+| `Ctrl` + rueda, pellizco (pantalla o panel táctil) | Acercar y alejar (solo el dibujo, nunca la página) |
+| `Mayús` + rueda, deslizar de lado en el panel táctil | Desplazar el dibujo en horizontal |
+| Botón central, `Espacio` + arrastrar | Desplazar el dibujo |
+| Pulsación larga (táctil), botón derecho | Menú de la pieza |
+| Doble toque o doble clic | Propiedades |
+| `R` · `X` · `Supr` | Girar 90° · reflejar · borrar |
+| `Ctrl Z` · `Ctrl Y` | Deshacer · rehacer |
+| `Ctrl C` `Ctrl X` `Ctrl V` `Ctrl D` `Ctrl A` | Copiar, cortar, pegar, duplicar, seleccionar todo |
+| `W` · `S` · `G` · `F` · `Esc` | Cable · seleccionar · masa · ver todo · cancelar |
+
 ## Componentes animados
 
 «Componentes animados» en el carril de iconos (`#/componentes`) abre una galería de 39 animaciones agrupadas
@@ -215,7 +275,10 @@ corriente convencional en ámbar y flujo de electrones en azul discontinuo; cada
   descarga al abrirla.
 - Pruebas (con la aplicación servida, p. ej. `npx vite preview`): `node tests/animaciones.mjs` mide el
   intervalo entre fotogramas de todas las escenas con la CPU ×4 (`--perfil movil|mac|tableta|tableta-vertical`);
-  `node tests/animaciones-hz.mjs` comprueba que nada avanza por fotograma (144 Hz simulados).
+  `node tests/animaciones-hz.mjs` comprueba que nada avanza por fotograma (144 Hz simulados);
+  `tests/escenas-textos.spec.ts` comprueba que ninguna etiqueta pisa a otra en ninguna escena ni pestaña (de esta
+  colección y de la de conceptos), en móvil, tableta vertical y escritorio, con la letra de la aplicación y con una
+  de reserva más ancha (la que usaría Android si aún no ha cargado la suya).
 
 ## Conceptos animados
 
@@ -290,9 +353,17 @@ dispositivo: si se deja en 3D, la galería pasa a ser el **catálogo de modelos*
 - En el libro, junto a las secciones y figuras sobre cómo está hecho un componente, aparece **«Ver en 3D»**.
 - Si el dispositivo no tiene WebGL 2, las páginas siguen en 2D y lo indican. La vista 3D se descarga solo al
   abrirla (three.js en un fragmento aparte), dibuja únicamente cuando algo cambia y se para fuera de pantalla.
-- En pantallas estrechas las etiquetas pasan a ser números sobre el modelo con su lista debajo.
-- Pruebas: `tests/modelos3d.spec.ts` (`npx playwright test -c playwright.modelos3d.config.ts`, con su propia
-  compilación en el puerto 4193); capturas y hojas de contacto: `node tests/modelos3d-capturas.mjs --hoja
+- En pantallas estrechas las etiquetas pasan a ser números sobre el modelo con su lista debajo (si dos caen
+  juntos, se separan para poder leerlos).
+- Pensado también para las GPU de tabletas y móviles (0.7): ninguna pieza comparte una cara con otra (las caras
+  pegadas o coplanarias «se peleaban» en el búfer de profundidad y dejaban bandas rayadas), los rótulos van
+  separados de verdad de su cara y se dibujan a más resolución (nítidos al acercarse), el rango de profundidad se
+  ajusta al modelo, la cámara no se mete dentro del modelo al acercar, las caras cortadas se rayan como en un
+  plano técnico, una etiqueta no salta de un lado a otro al girar y pellizcar sobre el modelo (o sobre una
+  etiqueta) acerca el modelo, nunca la página. `node tests/modelos3d-auditoria.mjs` revisa los 39 modelos en
+  busca de caras coplanarias.
+- Pruebas: `tests/modelos3d.spec.ts` y `tests/visor3d-tactil.spec.ts` (`npx playwright test -c
+  playwright.modelos3d.config.ts`, con su propia compilación en el puerto 4193); capturas y hojas de contacto: `node tests/modelos3d-capturas.mjs --hoja
   --paginas` (en `tests/capturas/modelos3d/`); coste por fotograma al girar: `node tests/modelos3d-rendimiento.mjs`.
 
 ## Consolas
@@ -356,6 +427,29 @@ pestañas enlazadas entre sí:
 Los datos se generan con `python3 contenido/consolas.py` (también desde `generar.py`) a partir de la carpeta
 de investigación `/home/claude/consolas`; si falta, se conservan los de `web/public/consolas/`.
 
+**Placa en 3D y Placa en 2D.** La Mega Drive y la Game Boy Color tienen dos pestañas más con la placa dibujada por
+el mismo visor que «Proyectos KiCad» (girar, ver desde arriba, abajo o de canto, separar capas, rayos X, cara
+superior o inferior, aspecto real o por capas). La placa está enlazada con el esquema: elegir U1 o una red en el
+esquema la elige en la placa («Ver en la placa») y al revés («Ver en el esquema», «Ver en la foto»); al tocar un
+componente se ven sus pads con su red, y al tocar una red, todos sus pads.
+
+- **Mega Drive**: la PCB de la recreación de stonedDiscord (KiCad 9), el mismo proyecto que el esquema: 291
+  componentes con su cuerpo, las dos caras de cobre, planos, 785 vías y la serigrafía. Las 291 referencias y los
+  1291 pads conectados coinciden con el esquema. Es una recreación «1:1» dibujada a partir de escaneos de la placa
+  desnuda, no la placa de Sega fotografiada.
+- **Game Boy Color**, dos placas a elegir: «CGB-CPU-04 · Gerber», los Gerber de 4 capas de Natalie the Nerd (la
+  misma placa que el esquema), leídos con un lector de Gerber propio; no tiene cuerpos de componentes (un Gerber no
+  dice dónde va cada uno), pero cada pad lleva su referencia, su patilla y su red, así que el enlace con el esquema
+  funciona igual (124 de las 128 referencias; D3, Q5, TST3 y VR2 no tienen pads). «OpenGBC · placa moderna», la
+  placa de sustitución de whatware con sus componentes: no es la original y no se enlaza con el esquema.
+- Sin placa: NES (los ficheros de la placa de OpenTendo no se descargaron), Neo Geo (el `.kicad_pcb` de Board-Folk,
+  de 53 MB, no se descargó), Master System (el `.kicad_pcb` de slowcoder está vacío: KiCad 4 sin huellas) y Game
+  Boy (Gekkio solo publica los esquemas).
+
+«Fuentes» da el autor y la licencia de cada placa. Se generan con `python3 contenido/consolas_pcb.py` (aparte de
+`generar.py`) en `web/public/consolas/placas/` (unos 1,4 MB; cada placa se descarga al abrir su pestaña). Los
+ficheros originales no se copian: solo la geometría que dibuja el visor.
+
 ## Proyectos KiCad
 
 «Proyectos» en el carril de iconos (`#/proyectos`), o el botón «Ver la placa» junto a las figuras de las placas de KiCad
@@ -373,7 +467,11 @@ por una misma selección (un componente, un pad o una red): lo que se toca en un
   (le da la vuelta a la placa) y Canto; capas (cobre de cada cara, máscara, serigrafía, componentes); «Separar capas»
   las despega; «Rayos X» enseña las dos caras de cobre a través del FR-4 (son placas de dos capas: no hay capas
   internas). Al tocar un componente se ve su nombre sobre él; si está bajo la cabina de blindaje del SDR, la cabina se
-  vuelve translúcida.
+  vuelve translúcida. Desde la 0.7 la placa aparece enseguida (las caras se pintan primero a un cuarto de resolución
+  y luego a la completa) y los componentes llegan después, con «Colocando los componentes… n de N» y una barra: cada
+  modelo distinto se construye una sola vez (el SDR, 72 para sus 131 piezas) y la página sigue respondiendo mientras
+  tanto. Lo que más tarda en un equipo sin GPU (Chromium con SwiftShader) es compilar los sombreadores, igual que en
+  la 0.6; las cifras antes/después están en ESQUEMA.md («Proyectos KiCad»).
 - **Placa en 2D**: la placa plana, vista desde arriba o desde abajo (espejada), con aspecto real o por capas al estilo de
   KiCad, contornos de fabricación y zonas sin cobre (la de la antena del ESP32). Al pasar el ratón se lee el pad, la
   pista o la red; al tocar una red se resalta todo su cobre.
@@ -687,6 +785,84 @@ capítulos elegidos. Al final de cada capítulo del lector hay un botón **«Tes
 referencia no existe o es de otro capítulo, o si el número de una pregunta numérica no está en su cita. Pruebas:
 `tests/repaso.spec.ts` (capturas en `tests/capturas/repaso-*.png`).
 
+## Diagnóstico de rendimiento
+
+«Ajustes» (el botón «Aa» de la barra superior) → **Diagnóstico de rendimiento** (`#/diagnostico`) mide en el propio
+dispositivo lo más pesado de la aplicación, para poder comparar el MacBook, la tableta y el móvil con números reales:
+
+- la GPU tal como la ve WebGL 2 (nombre, versión, textura máxima, bits de profundidad, compilación paralela);
+- el visor 3D de componentes girando unos segundos (el QFP de 64 patillas): cuadros por segundo y coste por cuadro;
+- la placa del receptor SDR en 3D: cuánto tarda en verse, en tener todos los componentes y a cuántos cuadros por
+  segundo gira;
+- el trazado en vivo de cuatro esquemas automáticos grandes (el rectificador del capítulo 50, entre otros);
+- una simulación corta con ngspice (la primera incluye la descarga y compilación del motor, la segunda no).
+
+No se ejecuta nada hasta pulsar **Empezar**; se pueden desmarcar pruebas y elegir cuántos segundos gira cada vista 3D.
+Al terminar se ve una tabla con los resultados y **Copiar resultados** deja el informe como texto para pegarlo en una
+conversación. Conviene tener la aplicación en primer plano y no tocar la pantalla mientras mide.
+
+## Sincronización entre dispositivos y aviso de versión nueva
+
+Marcadores, notas, progreso y repaso pasan de un dispositivo a otro (Mac, tableta, teléfono) a través de un
+fichero JSON en un repositorio privado de GitHub del propietario. Se configura en «Aa» → «Sincronización» →
+«Configurar» (página `#/sincronizacion`): token de GitHub, repositorio (por defecto `Metalaria/electronica-datos`)
+y ruta del fichero (por defecto `sincronizacion/datos.json`). Con «Sincronizar automáticamente» (activado) se
+sincroniza al abrir la aplicación, cada 5 minutos mientras está abierta, al pasar a segundo plano y al volver
+tras más de un minuto; «Sincronizar ahora» lo hace al momento. «Desconectar» borra el token de este dispositivo.
+
+**Qué viaja**: marcadores, notas, posición de lectura de cada capítulo, secciones leídas, progreso de ejercicios y
+problemas, pasos vistos de las deducciones, tarjetas del repaso (SM-2) y su registro diario, ajustes del repaso,
+resultados de los tests, preguntas falladas, exámenes, calculadoras favoritas y los circuitos del editor de
+esquemas. **Qué no**: tema, tamaño de letra, índice abierto o cerrado, elección 2D/3D y el circuito libre del
+simulador (cosas de cada pantalla), y los propios ajustes de sincronización.
+
+**Cómo se fusiona**: nunca se sobrescribe el fichero entero. Cada elemento (un marcador, una nota, una tarjeta…)
+lleva la hora de su último cambio y gana el más reciente; un borrado viaja como «lápida» con su hora. La regla es
+determinista (a igual hora decide el contenido), así que tres dispositivos acaban con los mismos datos sea cual
+sea el orden. Cada sincronización lee el fichero con su `sha`, fusiona y lo escribe con ese `sha`; si otro
+dispositivo escribió en medio (GitHub responde 409), vuelve a leer y a fusionar. Solo se escribe cuando algo ha
+cambiado (un commit por sincronización con cambios, «Sincronización desde Mac (fecha)»). Las lápidas se borran a
+los 90 días: un dispositivo que pase más tiempo sin sincronizar podría recuperar algo borrado. Dos dispositivos que
+repasen tarjetas el mismo día conservan el recuento diario del último que sincronice.
+
+**Aviso de versión nueva**: con el token configurado, al abrir la aplicación (como mucho cada 12 horas, sin
+esperar y sin decir nada si falla o no hay red) se consulta la última publicación de `Metalaria/electronica-app`.
+Si es más nueva que la instalada aparece abajo a la derecha «Versión X.Y.Z disponible» con el principio de las
+notas, el instalador que toca a ese equipo y «Ver la publicación», que abre la página en el navegador del sistema
+(con la sesión de GitHub iniciada, porque el repositorio es privado). «Ahora no» lo oculta hasta la siguiente
+versión. En «Aa» → «Buscar actualizaciones» se comprueba al momento. Sin token no se hace ninguna petición.
+
+**Seguridad**: el token solo se guarda en el dispositivo, en un fichero propio de la aplicación
+(`credenciales.json`, junto a `lector.json` pero separado de él); en el navegador de desarrollo, en
+`localStorage` (`epa-credencial:github`), que cualquiera con acceso a ese perfil del navegador podría leer. Nunca
+se escribe en el repositorio, en el fichero sincronizado ni en los registros, y en pantalla solo se ven sus
+cuatro últimos caracteres.
+
+### Crear el repositorio de datos y el token (una vez)
+
+1. En github.com, con la cuenta Metalaria: «+» → «New repository». Owner: `Metalaria`. Repository name:
+   `electronica-datos`. Description: «Datos sincronizados del lector» (opcional). Visibilidad: **Private**.
+   Marcar «Add a README file» (el repositorio no puede estar vacío para la API). .gitignore: None. License: None.
+   «Create repository». El fichero `sincronizacion/datos.json` lo crea la aplicación en la primera sincronización.
+2. Foto de perfil → «Settings» → «Developer settings» (abajo a la izquierda) → «Personal access tokens» →
+   «Fine-grained tokens» → «Generate new token».
+3. Token name: `Electrónica — sincronización`. Description: «Sincronización y aviso de versiones del lector»
+   (opcional). Resource owner: `Metalaria`. Expiration: «Custom…» y una fecha de dentro de un año (cuando caduque,
+   la aplicación dirá «GitHub rechaza el token (401)» y bastará con generar otro y pegarlo).
+4. Repository access: «Only select repositories» → elegir `Metalaria/electronica-app` y `Metalaria/electronica-datos`.
+5. Permissions → «Repository permissions»: **Contents: Read and write**. «Metadata: Read-only» aparece sola y es
+   obligatoria. Todo lo demás en «No access»; en «Account permissions», nada.
+6. «Generate token» y copiarlo (empieza por `github_pat_`; solo se muestra una vez).
+7. En cada dispositivo: «Aa» → «Sincronización» → «Configurar» → pegar el token → «Guardar y sincronizar».
+
+Si `Metalaria` fuese una organización y no la cuenta personal, su propietario debe permitir los tokens
+fine-grained («Settings» de la organización → «Personal access tokens» → «Allow access via fine-grained personal
+access tokens») y, si lo pide, aprobar el token.
+
+Con Contents: Read and write el token podría escribir también en `electronica-app` (un token fine-grained da los
+mismos permisos en todos los repositorios elegidos); la aplicación solo lee sus publicaciones y solo escribe el
+fichero de datos. Quien prefiera dos tokens de permisos mínimos no puede: la aplicación usa uno solo.
+
 ## Dónde se guardan los datos personales
 
 | Plataforma | Ubicación |
@@ -695,7 +871,11 @@ referencia no existe o es de otro capítulo, o si el número de una pregunta num
 | macOS | `~/Library/Application Support/es.gonzalomejias.electronica/lector.json` |
 | Android | almacenamiento interno de la aplicación (se borra al desinstalarla) |
 | Linux | `~/.local/share/es.gonzalomejias.electronica/lector.json` |
-| Navegador (desarrollo) | `localStorage`, claves `epa:prefs`, `epa:posiciones`, `epa:marcadores`, `epa:notas`, `epa:ejercicios`, `epa:leidas`, `epa:deducciones`, `epa:calc-favoritos`, `epa:repaso-tarjetas`, `epa:repaso-diario`, `epa:repaso-ajustes`, `epa:repaso-tests`, `epa:repaso-fallos`, `epa:repaso-examenes` |
+| Navegador (desarrollo) | `localStorage`, claves `epa:prefs`, `epa:posiciones`, `epa:marcadores`, `epa:notas`, `epa:ejercicios`, `epa:leidas`, `epa:deducciones`, `epa:calc-favoritos`, `epa:repaso-tarjetas`, `epa:repaso-diario`, `epa:repaso-ajustes`, `epa:repaso-tests`, `epa:repaso-fallos`, `epa:repaso-examenes`, `epa:editor-circuitos`, `epa:sinc-ajustes`, `epa:sinc-estado`, `epa:sinc-marcas`, `epa:sinc-version` y, aparte, `epa-credencial:github` (el token) |
+
+El token de GitHub va en otro fichero de la misma carpeta, `credenciales.json`, para que copiar `lector.json` no
+lo lleve consigo. `lector.json` guarda además el estado de la sincronización (`sinc-*`: ajustes, última versión
+sincronizada de cada elemento, horas de los cambios y borrados pendientes, última comprobación de versión).
 
 El fichero `lector.json` es JSON legible: para llevar marcadores, notas y el progreso (ejercicios, secciones
 leídas, deducciones, tarjetas y tests del repaso) de un equipo a otro basta copiarlo con la aplicación cerrada.
@@ -1321,6 +1501,9 @@ con la sesión de GitHub iniciada en el navegador, se puede descargar el APK dir
 Si un trabajo falla por algo pasajero (una descarga cortada), en la ejecución: «Re-run jobs» → «Re-run
 failed jobs».
 
+Las aplicaciones instaladas con el token configurado ven la publicación nueva al abrirse (como mucho cada
+12 horas) y muestran «Versión X.Y.Z disponible»; el principio del texto de la publicación sale en el aviso.
+
 ### Actualizar el contenido del libro
 
 `web/public/libro/` se versiona porque las máquinas de GitHub no pueden regenerarlo (necesita las fuentes
@@ -1364,7 +1547,7 @@ app/
         IndiceLibro.svelte   índice: tomos, capítulos, secciones, filtro, sección actual, teclado
         Barra.svelte         barra superior: mostrar/ocultar índice, miga, sección anterior/siguiente, «Aa», progreso
         MenuCapitulo.svelte  menú de la miga: secciones del capítulo y capítulos contiguos
-        Ajustes.svelte       tema y tamaño del texto
+        Ajustes.svelte       tema y tamaño del texto; diagnóstico; sincronización y versión (sincronizacion/GrupoAjustes)
         Inicio.svelte        portada: continuar leyendo, índice por tomos
         Lector.svelte        vista de un capítulo: posición, referencias, «Volver»
         Bloques.svelte       dibuja cada tipo de bloque (recursivo)
@@ -1385,7 +1568,13 @@ app/
         figuras-vivas/       figuras vivas: lectura de gráficas, esquemas con corriente y tensión, circuito
                              del simulador (ver «Figuras vivas» y ESQUEMA.md)
         simulador/           vistas del simulador: Simulador (rutas), Indice, Pagina, Parametros,
-                             Resultados, Editor (se cargan solo al abrir el simulador)
+                             Resultados, Editor, PestanasSimulador (se cargan solo al abrir el simulador)
+        editor/              editor de esquemas (#/editor): lienzo, paleta, propiedades, netlist generada,
+                             importación de netlists, resultados sobre el dibujo, «Mis circuitos» (su propio
+                             trozo, solo al abrir la pestaña; ver «Editor de esquemas» y ESQUEMA.md)
+        sincronizacion/      página #/sincronizacion, grupos de «Aa», arranque diferido y aviso de versión nueva
+        diagnostico/         página #/diagnostico: medidas de rendimiento en el propio dispositivo (pruebas.ts)
+        consolas/placa/      «Placa en 3D / 2D» de las consolas con el visor de proyectos/ (datos de consolas_pcb.py)
         proyectos/           Proyectos KiCad: placa en 3D (three.js, modelos de tres/modelos) y en 2D, esquema,
                              simulación y comprobaciones de las siete placas (ver «Proyectos KiCad» y ESQUEMA.md)
         tres/                componentes en 3D: biblioteca de modelos paramétricos (modelos/, crearModelo),
@@ -1399,6 +1588,9 @@ app/
                              secciones anterior/siguiente y filtro del índice
         usuario.svelte.ts    preferencias, posiciones, marcadores y notas
         almacen.ts           Tauri plugin-store o localStorage
+        sincronizacion/      sincronización por GitHub (fusion.ts, github.ts, credenciales.ts, marcas.ts,
+                             registro.svelte.ts: los almacenes sincronizables, sincronizar.svelte.ts) y
+                             comprobación de versiones (actualizaciones.svelte.ts)
         buscador.ts          índice de búsqueda y fragmentos
         trozos.ts            división de un capítulo en tramos para dibujar solo lo visible
         precarga.ts          preparación en segundo plano de los capítulos a los que se puede saltar
@@ -1408,7 +1600,7 @@ app/
       simulador/             motor (ngspice en WebAssembly), worker, cliente, netlists: ver ESQUEMA.md
   src-tauri/                 envoltorio nativo (Tauri 2, Rust)
     tauri.conf.json          nombre, identificador, ventana, CSP, instaladores
-    capabilities/default.json  permisos: solo el almacén de datos
+    capabilities/default.json  permisos: el almacén de datos y abrir enlaces http(s) en el navegador (opener)
     src/lib.rs, src/main.rs
     icons/                   iconos generados con `tauri icon` (fuente: icons/fuente/icono.svg)
 ```
@@ -1430,8 +1622,9 @@ app/
 - **Historial**: cada entrada del historial guarda su posición (como bloque más desplazamiento, no solo
   en píxeles, para que sea exacta aunque cambie el tamaño de letra o carguen imágenes). El cajón, la
   búsqueda y el visor de figuras añaden su propia entrada, de modo que Atrás los cierra.
-- **Seguridad**: la CSP de Tauri solo permite recursos propios; el único permiso nativo es el del
-  almacén de datos.
+- **Seguridad**: la CSP de Tauri solo permite recursos propios y conexiones a `https://api.github.com`
+  (sincronización y aviso de versión); los permisos nativos son el almacén de datos y abrir una página http(s)
+  en el navegador del sistema (`tauri-plugin-opener`, para la página de la publicación nueva).
 - **Icono**: original, una resistencia estilizada con bandas de los colores de los bloques sobre el azul
   marino del libro (`1A3A5C`). Para cambiarlo, editar `src-tauri/icons/fuente/icono.svg`, exportarlo a
   PNG de 1024 px y ejecutar `npm run tauri -- icon ../src-tauri/icons/fuente/icono.png` desde `web/`.

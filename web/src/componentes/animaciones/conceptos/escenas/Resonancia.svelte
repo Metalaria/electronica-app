@@ -149,7 +149,7 @@
       flecha(ctx, cx, cy, cx + m * Math.cos(a), cy - m * Math.sin(a), c.color, c.nombre.length === 1 ? 3.2 : 2.4, 11);
       txtRico(v, c.nombre, cx + (m + 14) * Math.cos(a), cy - (m + 14) * Math.sin(a), { tam: 12, peso: 800, color: c.color });
     }
-    txt(v, serie ? 'Tensiones (1 V aplicado)' : 'Corrientes (1 mA inyectado)', cx, cy - Rad - 16, { tam: 12, peso: 700, color: p.suave });
+    txt(v, serie ? 'Tensiones (1 V aplicado)' : 'Corrientes (1 mA inyectado)', cx, cy - Rad - 32, { tam: 12, peso: 700, color: p.suave });
   }
 
   const lect = $derived.by(() => {

@@ -228,7 +228,9 @@
       const py = ym + r * Math.sin(a);
       const t = horario ? a + Math.PI / 2 : a - Math.PI / 2;
       flecha(ctx, px - Math.cos(t) * 2, py - Math.sin(t) * 2, px + Math.cos(t) * 8, py + Math.sin(t) * 8, alfa(p.acento, 0.8), 1.8, 9);
-      txtRico(v, `${et} = ${si(Math.abs(I), 'A', 3)}`, cx, ym + 2, { tam: 12.5, peso: 700, color: p.acento });
+      // The right mesh's label must not reach R_2's value, written right of the middle branch.
+      const max = et === 'I_2' ? 2 * (cx - g.xM - 80) : undefined;
+      txtRico(v, `${et} = ${si(Math.abs(I), 'A', 3)}`, cx, ym + 2, { tam: 12.5, peso: 700, color: p.acento, max });
     }
 
     // Branch currents (conventional, amber) moving along each wire; reversed when negative.

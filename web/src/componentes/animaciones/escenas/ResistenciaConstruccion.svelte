@@ -274,7 +274,7 @@
     const tx1 = w * 0.8;
     const ty0 = est ? 70 : 50;
     const ty1 = ty0 + (est ? 170 : 140);
-    txt(v, 'Vista superior (sin el recubrimiento)', tx0, ty0 - 16, { tam: 13, alin: 'left', color: p.suave, peso: 700 });
+    txt(v, 'Vista superior (sin el recubrimiento)', tx0, ty0 - 16, { tam: 13, alin: 'left', color: p.suave, peso: 700, max: est ? tx1 - tx0 : (tx1 - tx0) * 0.5 });
     rr(ctx, tx0, ty0, tx1 - tx0, ty1 - ty0, 4);
     ctx.fillStyle = p.ceramica;
     ctx.fill();
@@ -315,7 +315,8 @@
     }
     electrones(ctx, pts, 3, p);
     etiqueta(v, 'corte láser en L', cx + 40, ty1 + (est ? 22 : 18), cx, Math.min(fy1 - 4, cy + 20), { alin: 'left' });
-    etiqueta(v, 'capa gruesa (RuO₂)', fx0 + 10, ty0 - (est ? 40 : 16), fx0 + 30, fy0 + 10, { alin: 'left' });
+    // Above the right half of the film: the heading «Vista superior…» takes the left (they overlapped).
+    etiqueta(v, 'capa gruesa (RuO₂)', fx1 - 10, ty0 - (est ? 40 : 16), fx1 - 30, fy0 + 10, { alin: 'right', max: est ? undefined : (tx1 - tx0) * 0.33 });
 
     // Cross-section.
     const sx0 = w * 0.16;
@@ -348,9 +349,10 @@
         ctx.fill();
       }
     }
-    etiqueta(v, 'sustrato de alúmina', sx0 + wTerm * 2, sub1 + (est ? 30 : 22), sx0 + wTerm * 2.4, sub1 - h * 0.2, { alin: 'left' });
+    etiqueta(v, 'sustrato de alúmina', sx0 + wTerm * 2, sub1 + (est ? 30 : 22), sx0 + wTerm * 2.4, sub1 - h * 0.2, { alin: 'left', max: est ? undefined : (sx1 - sx0) * 0.42 });
     etiqueta(v, 'vidrio + epoxi', (sx0 + sx1) / 2 + 60, sy - (est ? 26 : 14), (sx0 + sx1) / 2 + 40, sub0 - h * 0.3, { alin: 'left' });
-    etiqueta(v, 'terminación Ag / Ni / Sn', sx1 - wTerm, sub1 + (est ? 30 : 22), sx1 - wTerm * 0.4, sub1 - h * 0.3, { alin: 'right' });
+    // Phone: one line lower than the substrate's label (side by side they overlapped).
+    etiqueta(v, 'terminación Ag / Ni / Sn', sx1 - wTerm, sub1 + (est ? 54 : 22), sx1 - wTerm * 0.4, sub1 - h * 0.3, { alin: 'right', max: est ? undefined : (sx1 - sx0) * 0.3 });
   }
 
   function dibujar(v: Vista): void {

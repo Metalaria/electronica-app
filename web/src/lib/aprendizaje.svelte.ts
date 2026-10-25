@@ -6,6 +6,7 @@
 // Reactive (Svelte runes), loaded once on first use, debounced writes, flushed when the page hides.
 
 import { obtenerAlmacen, type Almacen } from './almacen';
+import { anotarBorrado, anotarCambio } from './sincronizacion/marcas';
 
 export interface EstadoEjercicio {
   /** Checks with at least one readable answer (or self-assessments). */
@@ -152,11 +153,13 @@ export function verSolucion(label: string): void {
 export function taparProblema(label: string, tapada: boolean): void {
   const e = asegurarEj(label);
   e.tapada = tapada;
+  anotarCambio('ejercicios', label);
   guardar('ejercicios', 100);
 }
 
 export function reiniciarEjercicio(label: string): void {
   delete aprendizaje.ejercicios[label];
+  anotarBorrado('ejercicios', label);
   guardar('ejercicios', 100);
 }
 
@@ -174,6 +177,7 @@ export function marcarLeida(parte: string, label: string, leida: boolean): void 
   } else {
     if (!aprendizaje.leidas[parte]?.[label]) return;
     delete aprendizaje.leidas[parte]![label];
+    anotarBorrado('leidas', `${parte}/${label}`);
   }
   guardar('leidas', 800);
 }
@@ -187,5 +191,6 @@ export function pasosDeduccion(clave: string): number | undefined {
 export function guardarPasos(clave: string, n: number): void {
   if (aprendizaje.deducciones[clave] === n) return;
   aprendizaje.deducciones[clave] = n;
+  anotarCambio('deducciones', clave);
   guardar('deducciones', 600);
 }

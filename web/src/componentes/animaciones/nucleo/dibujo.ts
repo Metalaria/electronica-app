@@ -29,6 +29,37 @@ export interface Vista {
 
 export const FAMILIA = '"Source Sans 3", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif';
 
+// ------------------------------------------------------------------ text boxes (tests)
+
+/** A text drawn in the last frame: its box in device pixels of the visible canvas. */
+export interface CajaTexto {
+  s: string;
+  x0: number;
+  y0: number;
+  x1: number;
+  y1: number;
+}
+
+/**
+ * Test hook (tests/escenas-textos.spec.ts): while `globalThis.__epaTextos` is a Map, every text drawn by txt()
+ * and txtRico() is recorded per canvas, so overlapping labels can be found at any size and with any font.
+ * Ui/Escena.svelte clears a canvas's list before each frame and copies the cached layers' texts into it.
+ */
+export function registroTextos(): Map<HTMLCanvasElement | OffscreenCanvas, CajaTexto[]> | null {
+  const r = (globalThis as { __epaTextos?: unknown }).__epaTextos;
+  return r instanceof Map ? (r as Map<HTMLCanvasElement | OffscreenCanvas, CajaTexto[]>) : null;
+}
+
+function registrar(ctx: Ctx, s: string, x0: number, y0: number, w: number, h: number): void {
+  const reg = registroTextos();
+  if (!reg || !s.trim()) return;
+  const m = ctx.getTransform();
+  if (m.b !== 0 || m.c !== 0) return;
+  let l = reg.get(ctx.canvas);
+  if (!l) reg.set(ctx.canvas, (l = []));
+  l.push({ s, x0: m.a * x0 + m.e, y0: m.d * y0 + m.f, x1: m.a * (x0 + w) + m.e, y1: m.d * (y0 + h) + m.f });
+}
+
 // ------------------------------------------------------------------ primitives
 
 export function rr(ctx: Ctx, x: number, y: number, w: number, h: number, r: number): void {
@@ -146,6 +177,8 @@ export interface OpcTexto {
   /** Rotation in radians. */
   rot?: number;
   cursiva?: boolean;
+  /** Widest the text may be (logical units): a longer one is drawn with a smaller font to fit. */
+  max?: number;
 }
 
 /**
@@ -179,7 +212,11 @@ export function txt(v: Vista, s: string, x: number, y: number, o: OpcTexto = {})
     x = 0;
     y = 0;
   }
-  const ancho = ctx.measureText(s).width;
+  let ancho = ctx.measureText(s).width;
+  if (o.max && ancho > o.max) {
+    ctx.font = (o.cursiva ? 'italic ' : '') + v.fuente((tam * o.max) / ancho, o.peso ?? 600);
+    ancho = ctx.measureText(s).width;
+  }
   if (!o.rot) {
     const al0 = ctx.textAlign;
     const pad0 = o.fondo ? v.f(tam) * 0.45 : 0;
@@ -204,6 +241,14 @@ export function txt(v: Vista, s: string, x: number, y: number, o: OpcTexto = {})
   }
   ctx.fillStyle = o.color ?? v.pal.tinta;
   ctx.fillText(s, x, y);
+  if (!o.rot) {
+    const al = ctx.textAlign;
+    const bl = ctx.textBaseline;
+    const alto = v.f(tam);
+    const xi = al === 'center' ? x - ancho / 2 : al === 'right' || al === 'end' ? x - ancho : x;
+    const yi = bl === 'middle' ? y - alto * 0.5 : bl === 'top' || bl === 'hanging' ? y : bl === 'bottom' ? y - alto : y - alto * 0.78;
+    registrar(ctx, s, xi, yi, ancho, alto);
+  }
   ctx.restore();
   return ancho;
 }
@@ -227,12 +272,24 @@ export function txtRico(v: Vista, s: string, x: number, y: number, o: OpcTexto =
   }
   if (k < s.length) trozos.push({ t: s.slice(k), tipo: 0 });
   ctx.save();
-  const fN = (o.cursiva ? 'italic ' : '') + v.fuente(tam, o.peso ?? 600);
-  const fP = (o.cursiva ? 'italic ' : '') + v.fuente(tam * 0.72, o.peso ?? 600);
+  let fN = (o.cursiva ? 'italic ' : '') + v.fuente(tam, o.peso ?? 600);
+  let fP = (o.cursiva ? 'italic ' : '') + v.fuente(tam * 0.72, o.peso ?? 600);
   let total = 0;
   for (const t of trozos) {
     ctx.font = t.tipo ? fP : fN;
     total += ctx.measureText(t.t).width;
+  }
+  let tamReal = tam;
+  if (o.max && total > o.max) {
+    // Too wide (a narrow phone, or a wider fallback font): a smaller font that fits.
+    tamReal = (tam * o.max) / total;
+    fN = (o.cursiva ? 'italic ' : '') + v.fuente(tamReal, o.peso ?? 600);
+    fP = (o.cursiva ? 'italic ' : '') + v.fuente(tamReal * 0.72, o.peso ?? 600);
+    total = 0;
+    for (const t of trozos) {
+      ctx.font = t.tipo ? fP : fN;
+      total += ctx.measureText(t.t).width;
+    }
   }
   const al = o.alin ?? 'center';
   let cx = al === 'center' ? x - total / 2 : al === 'right' || al === 'end' ? x - total : x;
@@ -253,7 +310,8 @@ export function txtRico(v: Vista, s: string, x: number, y: number, o: OpcTexto =
   ctx.fillStyle = o.color ?? v.pal.tinta;
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
-  const d = v.f(tam);
+  const d = v.f(tamReal);
+  registrar(ctx, s, cx, y - d * 0.5, total, d);
   for (const t of trozos) {
     ctx.font = t.tipo ? fP : fN;
     const dy = t.tipo === 1 ? d * 0.3 : t.tipo === 2 ? -d * 0.38 : 0;

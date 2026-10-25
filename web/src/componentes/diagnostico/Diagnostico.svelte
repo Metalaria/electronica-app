@@ -1,0 +1,352 @@
+<script lang="ts">
+  // «Diagnóstico de rendimiento» (#/diagnostico, reached from «Ajustes»): measures, on the reader's own device,
+  // WebGL 2, the 3D component viewer while it turns, the SDR board (load and turning), the live layout of a few
+  // big automatic schematics and a short ngspice simulation, and shows the results in a table with «Copiar
+  // resultados» (plain text to paste in a conversation). Nothing heavy runs until «Empezar».
+  import { onDestroy } from 'svelte';
+  import Gauge from '@lucide/svelte/icons/gauge';
+  import Copy from '@lucide/svelte/icons/copy';
+  import Check from '@lucide/svelte/icons/check';
+  import { VERSION_APP } from '../../lib/sincronizacion/version-app';
+  import { infoDispositivo, infoWebGL, visor3d, placaSdr, esquemaVivo, simulacion, textoResultados, type Resultado, type ContextoPrueba } from './pruebas';
+
+  const PRUEBAS = [
+    { id: 'webgl', nombre: 'WebGL 2: GPU, textura máxima, profundidad', duracion: 'al momento' },
+    { id: 'visor', nombre: 'Visor 3D de componentes girando (QFP de 64 patillas)', duracion: 'unos segundos' },
+    { id: 'placa', nombre: 'Placa SDR en 3D: carga y giro', duracion: 'de 5 a 40 s' },
+    { id: 'esquema', nombre: 'Esquema automático en vivo de cuatro circuitos grandes', duracion: 'unos segundos' },
+    { id: 'spice', nombre: 'Simulación corta con ngspice (descarga el motor, 6 MB)', duracion: 'unos segundos' },
+  ] as const;
+  type IdPrueba = (typeof PRUEBAS)[number]['id'];
+
+  let elegidas = $state<Record<IdPrueba, boolean>>({ webgl: true, visor: true, placa: true, esquema: true, spice: true });
+  let segundos = $state(5);
+  let estado = $state<'listo' | 'midiendo' | 'hecho'>('listo');
+  let aviso = $state('');
+  let resultados = $state<Resultado[]>([]);
+  let copiado = $state(false);
+  let zona: HTMLDivElement | undefined = $state();
+  let cancelar = false;
+
+  const texto = $derived(textoResultados(resultados, VERSION_APP));
+
+  async function empezar(): Promise<void> {
+    if (!zona) return;
+    estado = 'midiendo';
+    cancelar = false;
+    copiado = false;
+    resultados = infoDispositivo();
+    const ctx: ContextoPrueba = { zona, segundos, avisar: (t) => (aviso = t), cancelada: () => cancelar };
+    const pasos: [IdPrueba, () => Promise<Resultado[]> | Resultado[]][] = [
+      ['webgl', () => infoWebGL()],
+      ['visor', () => visor3d(ctx)],
+      ['placa', () => placaSdr(ctx)],
+      ['esquema', () => esquemaVivo(ctx)],
+      ['spice', () => simulacion(ctx)],
+    ];
+    for (const [id, f] of pasos) {
+      if (cancelar) break;
+      if (!elegidas[id]) continue;
+      try {
+        const r = await f();
+        resultados = [...resultados, ...r];
+      } catch (e) {
+        const nombre = PRUEBAS.find((p) => p.id === id)!.nombre;
+        resultados = [...resultados, { grupo: nombre, prueba: 'Error', valor: e instanceof Error ? e.message : String(e), estado: 'error' }];
+      }
+      // Leave the page a moment between tests (the next one starts with the main thread free).
+      await new Promise((r) => setTimeout(r, 300));
+    }
+    aviso = cancelar ? 'Detenido.' : '';
+    estado = 'hecho';
+  }
+
+  async function copiar(): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(texto);
+    } catch {
+      // Without clipboard permission (some WebViews): select the text so the reader can copy it.
+      const t = document.querySelector<HTMLTextAreaElement>('.diagnostico textarea');
+      t?.select();
+      document.execCommand?.('copy');
+    }
+    copiado = true;
+    setTimeout(() => (copiado = false), 2500);
+  }
+
+  onDestroy(() => {
+    cancelar = true;
+  });
+</script>
+
+<div class="diagnostico" data-estado={estado}>
+  <header>
+    <h1><Gauge size={26} aria-hidden="true" /> Diagnóstico de rendimiento</h1>
+    <p class="intro">
+      Mide en este dispositivo las vistas más pesadas de la aplicación: la GPU (WebGL 2), el visor 3D de componentes al girar, la placa SDR en 3D, el
+      trazado en vivo de esquemas automáticos grandes y una simulación con ngspice. Al terminar, «Copiar resultados» deja el informe como texto para
+      pegarlo en la conversación.
+    </p>
+  </header>
+
+  <section class="tarjeta" aria-labelledby="t-pruebas">
+    <h2 id="t-pruebas">Pruebas</h2>
+    <ul class="pruebas">
+      {#each PRUEBAS as p (p.id)}
+        <li>
+          <label>
+            <input type="checkbox" bind:checked={elegidas[p.id]} disabled={estado === 'midiendo'} />
+            <span>{p.nombre}</span>
+            <small>{p.duracion}</small>
+          </label>
+        </li>
+      {/each}
+    </ul>
+    <label class="segundos">
+      <span>Segundos girando cada vista 3D</span>
+      <input type="number" min="2" max="30" step="1" bind:value={segundos} disabled={estado === 'midiendo'} />
+    </label>
+    <p class="nota">Durante las medidas conviene no tocar la pantalla y tener la aplicación en primer plano; la placa SDR puede tardar en un móvil.</p>
+    <div class="botones">
+      {#if estado === 'midiendo'}
+        <button class="boton" onclick={() => (cancelar = true)} data-accion="detener">Detener</button>
+      {:else}
+        <button class="boton primario" onclick={empezar} data-accion="empezar" disabled={!Object.values(elegidas).some(Boolean)}>
+          {estado === 'hecho' ? 'Repetir' : 'Empezar'}
+        </button>
+      {/if}
+    </div>
+    {#if aviso}<p class="aviso" aria-live="polite">{aviso}</p>{/if}
+  </section>
+
+  <!-- The views under test draw here (they must be on screen for the browser to draw them). -->
+  <div class="zona" bind:this={zona} aria-hidden="true"></div>
+
+  {#if resultados.length}
+    <section class="tarjeta" aria-labelledby="t-resultados">
+      <div class="cabecera">
+        <h2 id="t-resultados">Resultados</h2>
+        <button class="boton" onclick={copiar} disabled={estado === 'midiendo'} data-accion="copiar">
+          {#if copiado}<Check size={16} aria-hidden="true" /> Copiado{:else}<Copy size={16} aria-hidden="true" /> Copiar resultados{/if}
+        </button>
+      </div>
+      <div class="tabla-envoltorio">
+        <table>
+          <thead><tr><th scope="col">Prueba</th><th scope="col">Resultado</th><th scope="col">Detalle</th></tr></thead>
+          <tbody>
+            {#each resultados as r, i (i)}
+              {#if i === 0 || resultados[i - 1]!.grupo !== r.grupo}
+                <tr class="grupo"><th colspan="3" scope="rowgroup">{r.grupo}</th></tr>
+              {/if}
+              <tr class={r.estado}>
+                <td>{r.prueba}</td>
+                <td class="valor">{r.valor}</td>
+                <td>{r.detalle ?? ''}</td>
+              </tr>
+            {/each}
+          </tbody>
+        </table>
+      </div>
+      <details>
+        <summary>Ver el texto que se copia</summary>
+        <textarea readonly rows="10">{texto}</textarea>
+      </details>
+    </section>
+  {/if}
+</div>
+
+<style>
+  .diagnostico {
+    max-width: 880px;
+    margin: 0 auto;
+    padding: 24px 16px calc(var(--hueco-inferior, 0px) + 32px);
+    font-family: var(--sans);
+    color: var(--tinta);
+  }
+  h1 {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin: 0 0 8px;
+    font-size: 1.6rem;
+  }
+  .intro {
+    margin: 0 0 18px;
+    color: var(--tinta-suave);
+    font-family: var(--serif);
+    line-height: 1.5;
+  }
+  .tarjeta {
+    margin-bottom: 18px;
+    padding: 16px 18px;
+    border: 1px solid var(--linea);
+    border-radius: 14px;
+    background: var(--superficie);
+  }
+  h2 {
+    margin: 0 0 10px;
+    font-size: 1.1rem;
+  }
+  .pruebas {
+    margin: 0 0 12px;
+    padding: 0;
+    list-style: none;
+  }
+  .pruebas label {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: 6px 10px;
+    padding: 6px 0;
+  }
+  .pruebas small {
+    color: var(--tinta-tenue);
+  }
+  input[type='checkbox'] {
+    accent-color: var(--acento);
+  }
+  .segundos {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: var(--tinta-suave);
+  }
+  .segundos input {
+    width: 4.5em;
+    padding: 4px 6px;
+    border: 1px solid var(--linea);
+    border-radius: 8px;
+    background: var(--fondo);
+    color: var(--tinta);
+    font: inherit;
+  }
+  .nota {
+    margin: 10px 0;
+    color: var(--tinta-tenue);
+    font-size: 0.9rem;
+  }
+  .botones {
+    display: flex;
+    gap: 8px;
+  }
+  .boton {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    min-height: 40px;
+    padding: 6px 16px;
+    border: 1px solid var(--linea);
+    border-radius: 10px;
+    background: var(--superficie);
+    color: var(--tinta);
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
+  }
+  .boton.primario {
+    border-color: var(--acento);
+    background: var(--acento);
+    color: var(--sobre-acento, #fff);
+  }
+  .boton:disabled {
+    opacity: 0.5;
+    cursor: default;
+  }
+  .aviso {
+    margin: 10px 0 0;
+    color: var(--acento);
+    font-weight: 600;
+  }
+  .zona:empty {
+    display: none;
+  }
+  .zona {
+    margin-bottom: 18px;
+  }
+  .zona :global(.lienzo-prueba) {
+    position: relative;
+    width: 100%;
+    aspect-ratio: 16 / 10;
+    max-height: 60vh;
+    overflow: hidden;
+    border-radius: 14px;
+    box-shadow: 0 0 0 1px var(--linea);
+    touch-action: none;
+  }
+  .zona :global(canvas) {
+    display: block;
+    width: 100%;
+    height: 100%;
+  }
+  .zona :global(.capa-prueba) {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .zona :global(.etiqueta3d),
+  .zona :global(svg.lineas) {
+    display: none;
+  }
+  .cabecera {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 10px;
+  }
+  .cabecera h2 {
+    margin: 0;
+  }
+  .tabla-envoltorio {
+    overflow-x: auto;
+  }
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.92rem;
+  }
+  th,
+  td {
+    padding: 6px 8px;
+    border-bottom: 1px solid var(--linea-suave, var(--linea));
+    text-align: left;
+    vertical-align: top;
+  }
+  thead th {
+    color: var(--tinta-tenue);
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  tr.grupo th {
+    padding-top: 14px;
+    color: var(--acento);
+  }
+  td.valor {
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    word-break: break-word;
+  }
+  tr.aviso td.valor {
+    color: #b7791f;
+  }
+  tr.error td.valor {
+    color: #c0392b;
+  }
+  details {
+    margin-top: 12px;
+  }
+  textarea {
+    width: 100%;
+    margin-top: 8px;
+    padding: 8px;
+    border: 1px solid var(--linea);
+    border-radius: 8px;
+    background: var(--fondo);
+    color: var(--tinta);
+    font-family: var(--mono);
+    font-size: 0.82rem;
+  }
+</style>

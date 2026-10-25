@@ -307,7 +307,7 @@ const ldr: Constructor = (ctx, p) => {
   // Rotate the face so the serpentine runs across the leads.
   const capa = malla(cilindro(ctx, R + 0.05, 0.25, 48), material(ctx, { color: '#f4f8f7', rugosidad: 0.05, transparente: 0.3 }));
   capa.position.z = h;
-  g.add(colocar(parte('ldr', { etiqueta: { texto: 'Pista de sulfuro de cadmio en serpentina entre los dos electrodos', ref: 'sec-45.3', punto: [0, 0, h] } }, disco, cara, capa), 0, 0, z0));
+  g.add(colocar(parte('ldr', { etiqueta: { texto: 'Pista de sulfuro de cadmio en serpentina entre los dos electrodos', ref: 'sec-45.3', punto: [R * 0.35, 0, h + 0.02] } }, disco, cara, capa), 0, 0, z0));
   const matP = material(ctx, ACABADOS.estano);
   const zFin = finPatilla(ctx, 0);
   for (const s of [-1, 1]) g.add(parte(`patilla-${s}`, {}, malla(hilo(ctx, [[s * 1.7, 0, z0 + 0.3], [s * 1.7, 0, ctx.montaje === 'placa' ? zFin : 0]], 0.25, { clave: `ldr:${s}:${z0}:${zFin}` }), matP)));

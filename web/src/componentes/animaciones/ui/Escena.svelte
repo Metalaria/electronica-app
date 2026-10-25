@@ -5,7 +5,7 @@
   import { onMount } from 'svelte';
   import { app } from '../../../lib/estado.svelte';
   import { paleta } from '../nucleo/paleta';
-  import { FAMILIA, limitar, type Ctx, type Vista } from '../nucleo/dibujo';
+  import { FAMILIA, limitar, registroTextos, type Ctx, type Vista } from '../nucleo/dibujo';
   import type { Reloj } from '../nucleo/reloj.svelte';
 
   export interface EventoPuntero {
@@ -97,6 +97,7 @@
           if (oc) {
             oc.setTransform(s, 0, 0, s, 0, 0);
             oc.clearRect(0, 0, w, h);
+            registroTextos()?.set(off, []);
             fn(oc);
           }
           e = { clave: id, c: off };
@@ -107,9 +108,12 @@
         ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.drawImage(e.c, 0, 0);
         ctx.restore();
+        const reg = registroTextos();
+        if (reg) reg.get(c)?.push(...(reg.get(e.c) ?? []));
       },
     };
     ctx.clearRect(0, 0, w, h);
+    registroTextos()?.set(c, []);
     dibujar(v);
   }
 

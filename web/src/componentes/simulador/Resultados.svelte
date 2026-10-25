@@ -18,8 +18,10 @@
     resultado: Simulacion;
     /** Pinned earlier result, drawn as a faint trace. */
     referencia?: Simulacion | null;
+    /** Vectors to draw first when the plot has them (the probes of the schematic editor). */
+    preferidos?: string[];
   }
-  let { resultado, referencia = null }: Props = $props();
+  let { resultado, referencia = null, preferidos = [] }: Props = $props();
 
   const multiples = $derived(resultado.ejecucion.graficas.filter((g) => g.puntos > 1));
   const unPunto = $derived(resultado.ejecucion.graficas.filter((g) => g.puntos === 1));
@@ -36,6 +38,8 @@
     if (!grafica) return [];
     const s = selecciones[claveSel];
     if (s) return s.filter((n) => grafica.vectores.some((v) => v.nombre === n));
+    const p = preferidos.filter((n) => grafica.vectores.some((v) => v.nombre.toLowerCase() === n.toLowerCase()));
+    if (p.length) return grafica.vectores.filter((v) => p.includes(v.nombre.toLowerCase())).map((v) => v.nombre);
     return seleccionInicial(grafica);
   });
   const mismasClase = $derived(grafica ? multiples.filter((g) => claseDe(g) === claseDe(grafica)).length : 0);

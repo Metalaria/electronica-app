@@ -33,6 +33,8 @@
   let escena: Escena3D | null = null;
   let error = $state('');
   let listo = $state(false);
+  /** Parts placed / total while they load (the board is already there). */
+  let progreso = $state<[number, number] | null>(null);
   let ancho = 0;
   let alto = 0;
   let globo = $state<{ x: number; y: number; t: string } | null>(null);
@@ -143,7 +145,7 @@
     escena.opciones({ capas: { ...opciones.capas }, acabado: opciones.acabado, rayosX: opciones.rayosX, tensiones: opciones.tensiones, red: res.red });
     escena.explotar(opciones.explosion);
     escena.seleccionar(res.huella);
-    void escena.cargarPiezas().then(() => {
+    void escena.cargarPiezas((n, total) => (progreso = [n, total])).then(() => {
       listo = true;
       escena?.seleccionar(res.huella);
       // a selection from the route: frame it now that the parts are there
@@ -246,7 +248,10 @@
       <div class="globo" style:left={`${globo.x + 14}px`} style:top={`${globo.y + 14}px`}>{globo.t}</div>
     {/if}
     {#if !listo && !error}
-      <div class="carga" aria-live="polite">Colocando los componentes…</div>
+      <div class="carga" aria-live="polite">
+        Colocando los componentes…{#if progreso && progreso[1]}<span class="cuenta"> {progreso[0]} de {progreso[1]}</span>
+          <span class="barra-progreso" style:--p={progreso[0] / progreso[1]}></span>{/if}
+      </div>
     {/if}
     {#if opciones.rayosX}
       <div class="nota">Rayos X: placa de {datos.placa.capas.length} capas; el cobre superior (rojo) y el inferior (azul) a través del FR-4.</div>
@@ -424,6 +429,16 @@
     color: #fff;
     font-size: 12px;
     pointer-events: none;
+  }
+  .carga .cuenta {
+    font-variant-numeric: tabular-nums;
+  }
+  .barra-progreso {
+    display: block;
+    height: 3px;
+    margin-top: 3px;
+    border-radius: 2px;
+    background: linear-gradient(90deg, #fff calc(var(--p) * 100%), rgba(255, 255, 255, 0.25) 0);
   }
   .error {
     position: absolute;

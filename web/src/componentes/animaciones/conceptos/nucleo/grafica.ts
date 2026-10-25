@@ -152,19 +152,29 @@ export function panel(v: Vista, e: Ejes, o: OpcPanel = {}): void {
   }
   ctx.restore();
   const tam = 10.5;
-  if (!o.sinX)
+  if (!o.sinX) {
+    // A tick label that would touch the previous one is left out (dense ticks on a phone, wide fonts).
+    let fin = -Infinity;
+    ctx.save();
+    ctx.font = v.fuente(tam, 500);
     for (const m of mx) {
       const px = X(e, m);
       if (px < e.x - 0.5 || px > e.x + e.w + 0.5) continue;
-      txt(v, o.fmtX ? o.fmtX(m) : fmt(m, o.ux), px, e.y + e.h + 6 + v.f(tam) * 0.6, { tam, peso: 500, color: pal.suave });
+      const s = o.fmtX ? o.fmtX(m) : fmt(m, o.ux);
+      const w = ctx.measureText(s).width;
+      if (px - w / 2 < fin + v.f(6)) continue;
+      fin = px + w / 2;
+      txt(v, s, px, e.y + e.h + 6 + v.f(tam) * 0.6, { tam, peso: 500, color: pal.suave });
     }
+    ctx.restore();
+  }
   if (!o.sinY)
     for (const m of my) {
       const py = Y(e, m);
       if (py < e.y - 0.5 || py > e.y + e.h + 0.5) continue;
       txt(v, o.fmtY ? o.fmtY(m) : fmt(m, o.uy), e.x - 8, py, { tam, peso: 500, color: pal.suave, alin: 'right' });
     }
-  if (o.titulo) txtRico(v, o.titulo, e.x + 2, e.y - 6 - v.f(12) * 0.75, { tam: 12, peso: 700, color: pal.suave, alin: 'left' });
+  if (o.titulo) txtRico(v, o.titulo, e.x + 2, e.y - 6 - v.f(12) * 0.75, { tam: 12, peso: 700, color: pal.suave, alin: 'left', max: e.w - 4 });
   if (o.etX) txtRico(v, o.etX, e.x + e.w - 2, e.y + e.h - v.f(11) * 0.7, { tam: 11.5, peso: 700, color: pal.suave, alin: 'right' });
   if (o.etY) txtRico(v, o.etY, e.x + 4, e.y + v.f(11) * 0.75, { tam: 11.5, peso: 700, color: pal.suave, alin: 'left' });
 }

@@ -193,8 +193,9 @@
     resistencia(v, 125, 50, 195, 50, { largo: 50, alto: 16 });
     bobina(v, 210, 50, 290, 50, { largo: 56 });
     condensador(v, 330, 95, 330, 125, { placa: 34 });
-    txtRico(v, `R ${si(R, 'Ω', 3)}`, 160, 28, { tam: 12, peso: 700 });
-    txtRico(v, `L ${si(L, 'H', 3)}`, 250, 28, { tam: 12, peso: 700 });
+    // 90 units apart: each value keeps to its share (narrow phones, wider fonts).
+    txtRico(v, `R ${si(R, 'Ω', 3)}`, 160, 28, { tam: 12, peso: 700, max: 84 });
+    txtRico(v, `L ${si(L, 'H', 3)}`, 250, 28, { tam: 12, peso: 700, max: 84 });
     txtRico(v, `C ${si(C, 'F', 3)}`, 322, 145, { tam: 12, peso: 700, alin: 'right' });
     corriente(v, [[40, 170], [40, 50], [330, 50], [330, 170], [40, 170]], fase, r.i, 44, 10, cv.imax * 0.02);
     // Plate charge.
