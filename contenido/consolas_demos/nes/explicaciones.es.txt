@@ -1,0 +1,93 @@
+# Explicación en español de cada instrucción de demo.s («Un fotograma», NES).
+# Formato: etiqueta+n: texto   (n = número de instrucción a partir de la etiqueta, empezando en 0)
+reset+0: Desactiva las interrupciones IRQ (bandera I = 1): durante la preparación nada debe interrumpir.
+reset+1: Borra la bandera decimal. El 6502 del 2A03 no tiene modo decimal, pero es costumbre dejarla a 0.
+reset+2: Carga $FF en X para inicializar la pila.
+reset+3: Copia X en el puntero de pila: la pila empieza en $01FF de la WRAM.
+reset+4: X pasa de $FF a $00: un cero listo para escribir en los registros de la PPU.
+reset+5: Escribe 0 en PPUCTRL ($2000): la PPU no generará NMI mientras se prepara todo.
+reset+6: Escribe 0 en PPUMASK ($2001): fondo y sprites apagados; la PPU solo saca el color de fondo.
+wait_vblank1+0: Lee PPUSTATUS ($2002): el bit 7 (VBlank) pasa a la bandera N. Leerlo también lo borra.
+wait_vblank1+1: Si aún no ha empezado el borrado vertical (N = 0), vuelve a leer. La PPU tarda unos dos cuadros en estar lista.
+wait_vblank1+2: Carga $FF: una Y de $FF deja un sprite por debajo de la pantalla, es decir, oculto.
+clear_oam+0: Guarda el $FF en la copia de la OAM en la WRAM ($0200 + X).
+clear_oam+1: Siguiente byte.
+clear_oam+2: Repite hasta que X vuelve a 0: 256 bytes, los 64 sprites ocultos.
+clear_oam+3: El robot empieza en la columna 40.
+clear_oam+4: Guarda la posición del robot en la página cero.
+wait_vblank2+0: Segunda espera del VBlank: tras ella ya se puede escribir en la VRAM sin estorbar al dibujo.
+wait_vblank2+1: Repite hasta que el bit 7 de PPUSTATUS valga 1.
+wait_vblank2+2: Byte alto de la dirección $3F00 de la PPU (las paletas).
+wait_vblank2+3: Primera escritura en PPUADDR ($2006): byte alto de la dirección de la VRAM.
+wait_vblank2+4: Byte bajo de $3F00.
+wait_vblank2+5: Segunda escritura en PPUADDR: la dirección queda en el registro v de la PPU.
+wait_vblank2+6: X = 0, índice de las paletas.
+load_palettes+0: Lee un color de la tabla de paletas de la PRG-ROM del cartucho.
+load_palettes+1: Lo escribe en PPUDATA ($2007): va a la RAM de paletas de la PPU y la dirección avanza 1.
+load_palettes+2: Siguiente color.
+load_palettes+3: ¿Ya van 32 (8 paletas de 4 colores)?
+load_palettes+4: Si no, repite.
+load_palettes+5: Byte alto de $2000: la tabla de nombres 0 en la VRAM (CIRAM).
+load_palettes+6: Primera escritura en PPUADDR.
+load_palettes+7: Byte bajo de $2000.
+load_palettes+8: Segunda escritura en PPUADDR: la PPU apunta a $2000.
+load_palettes+9: Byte bajo de la dirección del dibujo del fondo en la ROM.
+load_palettes+10: Lo guarda en el puntero de la página cero.
+load_palettes+11: Byte alto de la dirección del fondo.
+load_palettes+12: Completa el puntero de 16 bits.
+load_palettes+13: Cuatro páginas de 256 bytes: 960 números de tesela y 64 bytes de atributos.
+load_palettes+14: Y = 0, índice dentro de la página.
+copy_nametable+0: Lee un byte del fondo con direccionamiento indirecto: dirección = puntero + Y.
+copy_nametable+1: Lo escribe en la VRAM por PPUDATA; la PPU lo pone en el bus PA/AD con /WE bajo.
+copy_nametable+2: Siguiente byte.
+copy_nametable+3: Repite las 256 posiciones de la página.
+copy_nametable+4: Pasa a la página siguiente de la ROM.
+copy_nametable+5: Una página menos.
+copy_nametable+6: Repite hasta copiar las cuatro.
+copy_nametable+7: Llama a la rutina que coloca los cuatro sprites del robot en la copia de la OAM.
+wait_vblank3+0: Tercera espera: el dibujo se enciende durante el VBlank para no ver un cuadro a medias.
+wait_vblank3+1: Repite hasta el VBlank.
+wait_vblank3+2: A = 0.
+wait_vblank3+3: Desplazamiento horizontal 0 (primera escritura en PPUSCROLL).
+wait_vblank3+4: Desplazamiento vertical 0 (segunda escritura).
+wait_vblank3+5: Bit 7 = NMI al empezar cada VBlank; tabla de nombres 0, teselas en $0000.
+wait_vblank3+6: Escribe PPUCTRL: desde ahora, cada cuadro la PPU bajará /NMI.
+wait_vblank3+7: Bits 1–4: fondo y sprites visibles, también en los 8 píxeles de la izquierda.
+wait_vblank3+8: Escribe PPUMASK: la PPU empieza a leer teselas y a dibujar.
+main_loop+0: Lee el contador de cuadros que incrementa la NMI.
+wait_frame+0: Lo compara con el valor anterior.
+wait_frame+1: Mientras no cambie, sigue esperando: la CPU da vueltas aquí casi todo el cuadro.
+wait_frame+2: Ha pasado un cuadro: el robot avanza un píxel a la derecha.
+wait_frame+3: Escribe las nuevas posiciones de sus sprites en la copia de la OAM (en la WRAM).
+wait_frame+4: Vuelve a esperar el cuadro siguiente.
+place_robot+0: X = 0: desplazamiento dentro de la tabla de piezas y de la OAM.
+place_part+0: Lee el desplazamiento vertical de la pieza (0 u 8).
+place_part+1: Borra el acarreo antes de sumar.
+place_part+2: Le suma la Y del robot.
+place_part+3: Byte 0 del sprite en la OAM: su Y.
+place_part+4: Lee el número de tesela de la pieza.
+place_part+5: Byte 1 del sprite: la tesela.
+place_part+6: Lee los atributos (paleta 0, delante del fondo, sin voltear).
+place_part+7: Byte 2 del sprite: los atributos.
+place_part+8: Lee el desplazamiento horizontal de la pieza (0 u 8).
+place_part+9: Borra el acarreo.
+place_part+10: Le suma la X del robot.
+place_part+11: Byte 3 del sprite: su X.
+place_part+12: Cuatro incrementos de X: el siguiente sprite empieza 4 bytes más allá.
+place_part+13: Segundo incremento.
+place_part+14: Tercero.
+place_part+15: Cuarto.
+place_part+16: ¿Ya van 16 bytes (cuatro sprites)?
+place_part+17: Si no, la pieza siguiente.
+place_part+18: Vuelve a quien la llamó (la dirección de vuelta está en la pila).
+nmi+0: Ha empezado el VBlank y la PPU ha bajado /NMI. Guarda A en la pila para no estropear el programa interrumpido.
+nmi+1: Byte alto de la copia de la OAM ($02).
+nmi+2: Escribe $4014: el DMA del 2A03 para la CPU y copia 256 bytes de $0200 a la OAM de la PPU (513 o 514 ciclos).
+nmi+3: A = 0.
+nmi+4: Desplazamiento horizontal 0 para el cuadro siguiente.
+nmi+5: Desplazamiento vertical 0.
+nmi+6: NMI activada y tabla de nombres 0.
+nmi+7: Escribe PPUCTRL (también fija los bits altos del desplazamiento).
+nmi+8: Cuenta el cuadro: el bucle principal lo verá cambiar.
+nmi+9: Recupera A de la pila.
+irq+0: Vuelve de la interrupción: saca de la pila P y el contador de programa.

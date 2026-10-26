@@ -1,6 +1,7 @@
 // ngspice driver: runs one netlist in a fresh ngspice instance and returns its printed output and every plot.
 //
-// The Emscripten build (eecircuit-engine) runs ngspice's interactive front end. ngspice asks for each command
+// Both Emscripten builds (motores.ts: ours with XSPICE, and eecircuit-engine's) run ngspice's interactive front
+// end with the same hooks. ngspice asks for each command
 // line through `window.prompt` (our `getInput`) and, before each prompt, calls `handleThings`, where the driver
 // may suspend the WebAssembly stack (Asyncify) until there is more work. One run is:
 //
@@ -13,8 +14,15 @@
 // (variables set with `set`, circuits, plots), and a run that never ends is cancelled by dropping the instance
 // (or the Web Worker that hosts it). This module has no DOM dependency: it runs in a Web Worker and in Node.
 
-import crearModulo from './ngspice.js';
-import type { ModuloNgspice } from './ngspice.js';
+import crearEecircuit from './ngspice.js';
+import crearXspice from './ngspice-xspice.js';
+import type { ModuloNgspice, OpcionesModulo } from './ngspice.js';
+import { MOTOR_PREDETERMINADO, type IdMotor } from './motores.ts';
+
+const FABRICAS: Record<IdMotor, (opciones?: OpcionesModulo) => Promise<ModuloNgspice>> = {
+  xspice: crearXspice,
+  eecircuit: crearEecircuit,
+};
 
 export interface Vector {
   nombre: string;
@@ -53,6 +61,8 @@ export interface OpcionesEjecucion {
   control: boolean;
   /** Receives each printed line as it is produced (progress). */
   alImprimir?: (linea: string) => void;
+  /** Build of ngspice the module was compiled from (default MOTOR_PREDETERMINADO). */
+  motor?: IdMotor;
 }
 
 const PROMPT = /^(?:ngspice \d+ -> )+/;
@@ -139,7 +149,7 @@ export async function ejecutar(
   let M: ModuloNgspice | null = null;
   let t0 = 0;
 
-  M = await crearModulo({
+  M = await FABRICAS[op.motor ?? MOTOR_PREDETERMINADO]({
     noInitialRun: true,
     print: imprimir,
     printErr: imprimir,
@@ -259,6 +269,16 @@ export function leerRaw(bytes: Uint8Array): Omit<Grafica, 'id'>[] {
       const t = l.trim().split(/\s+/);
       return { nombre: t[1] ?? '?', tipo: t[2] ?? 'notype', escalar: /dims=1\b/.test(l) };
     });
+    // Names must be unique (the app keys plots and tables by them). ngspice writes every branch current
+    // «x#branch…» as «i(x)», so an XSPICE bridge with several outputs (ada#branch_1_0, ada#branch_1_1) gives
+    // the same name twice: the second one becomes «i(ada)#2», and so on.
+    const vistos = new Map<string, number>();
+    for (const v of vars) {
+      const k = v.nombre.toLowerCase();
+      const n = (vistos.get(k) ?? 0) + 1;
+      vistos.set(k, n);
+      if (n > 1) v.nombre = `${v.nombre}#${n}`;
+    }
     const vectores: Vector[] = vars.map((v) => ({
       nombre: v.nombre,
       tipo: v.tipo,

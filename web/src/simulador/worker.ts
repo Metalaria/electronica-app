@@ -4,8 +4,10 @@
 import { compilar } from './motor/nucleo.ts';
 import { simular } from './motor/simular.ts';
 import type { MensajeAlMotor, MensajeDelMotor } from './protocolo';
+import type { IdMotor } from './motor/motores.ts';
 
 let modulo: WebAssembly.Module | null = null;
+let idMotor: IdMotor | undefined;
 
 const enviar = (m: MensajeDelMotor, transferir: Transferable[] = []) =>
   (self as unknown as Worker).postMessage(m, transferir);
@@ -15,6 +17,7 @@ self.onmessage = async (ev: MessageEvent<MensajeAlMotor>) => {
   if (m.t === 'motor') {
     try {
       modulo = m.modulo ?? (await compilar(m.bytes!));
+      idMotor = m.motor;
       enviar({ t: 'listo' });
     } catch (e) {
       enviar({ t: 'error', id: 0, mensaje: `No se pudo preparar ngspice: ${String(e)}` });
@@ -39,7 +42,7 @@ self.onmessage = async (ev: MessageEvent<MensajeAlMotor>) => {
       }
     };
     try {
-      const r = await simular(modulo, m.texto, alImprimir);
+      const r = await simular(modulo, m.texto, alImprimir, idMotor);
       const buffers: Transferable[] = [];
       for (const g of r.ejecucion.graficas) {
         for (const v of g.vectores) {

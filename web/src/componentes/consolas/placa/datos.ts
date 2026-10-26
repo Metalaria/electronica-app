@@ -49,7 +49,9 @@ export interface ResumenPlaca {
 
 /** Boards of each machine, for the tabs (known without fetching anything). */
 export const PLACAS_DE: Partial<Record<IdMaquina, { id: string; corto: string; enlazada: boolean }[]>> = {
+  nes: [{ id: 'nes', corto: 'NES-CPU-11 · OpenTendo', enlazada: true }],
   megadrive: [{ id: 'megadrive', corto: 'IC BD M5 PAL · recreación KiCad', enlazada: true }],
+  neogeo: [{ id: 'neogeo', corto: 'NEO-AES3-5 · recreación KiCad', enlazada: true }],
   gbc: [
     { id: 'gbc-cgb04', corto: 'CGB-CPU-04 · Gerber', enlazada: true },
     { id: 'gbc-opengbc', corto: 'OpenGBC · placa moderna', enlazada: false },

@@ -90,6 +90,22 @@ Inline HTML conventions:
 ### `glosario.json`
 `[ { "termino": "Acoplador direccional", "html": "…", "ver": ["sec-36.4"] } ]` (alphabetical, as in the book).
 
+### `glosario-imagenes.json` (0.8)
+Written by `contenido/glosario_imagenes.py` (run alone or at the end of `generar.py`) from `glosario.json`:
+```json
+{ "version": 1,
+  "terminos": { "glos-diodo": { "s": "D", "m": "diodo-do41" },
+                "glos-ntc-ptc": { "s": "R", "m": "termistor", "p": { "clase": "ntc" } } },
+  "cobertura": { "total": 910, "simbolo": 137, "modelo": 75, "ambos": 54, "alguno": 158, "ninguno": 752 } }
+```
+Only terms with something to show are listed, by glossary `id`. `s`: symbol key drawn by
+`web/src/componentes/glosario/simbolo.ts` from the automatic schematics' symbols (`R POT C CPOL L TRAFO D DZ DS
+LED FOTODIODO NPN PNP FOTOTRANSISTOR NMOS PMOS NJF PJF OPAMP AND NAND OR NOR XOR NOT FF REG VDC VSIN VPULSO IDC SW
+TL PUENTE TIERRA FUSIBLE XTAL PILA`); `m`: a model type of `tres/modelos/paquetes.ts`; `p`: parameters merged over
+the model's defaults. The mapping is a curated table by exact term (`CURADO`, where `None` blocks a term) plus
+rules on the term's name (`REGLAS`); nothing is guessed from definitions. Unknown keys fail the script and are
+skipped by the app.
+
 ### `busqueda.json`
 `[ { "id": "sec-5.3", "parte": "cap05", "titulo": "5.3 …", "texto": "plain text of the section" } ]`
 One document per `h2` section (plus glossary entries); the app builds the index (MiniSearch). The text before
@@ -107,7 +123,8 @@ Written by `contenido/spice.py` (run after `generar.py`; `generar.py` calls it a
 ```json
 {
   "version": 1,
-  "motor": { "paquete": "eecircuit-engine", "version": "1.8.0" },
+  "motor": { "id": "xspice", "xspice": true, "ngspice": "45.2", "emscripten": "6.0.3",   // engine that validated
+             "alternativo": { "paquete": "eecircuit-engine", "version": "1.8.0" } },       // fallback (no XSPICE)
   "total": 309,
   "capitulos": [ { "parte": "cap42", "tipo": "capitulo", "num": "41", "titulo": "Simulación de Circuitos con SPICE",
                    "color": "…", "tomo": "VI", "netlists": ["cap42/fig-42.3_ac_frente_a_tran", "…"] } ],
@@ -139,8 +156,15 @@ zero, expressions, or elements changed by `alter`/`alterparam` in the `.control`
 `.subckt X` the id is `x.<name>`. Range: `min = valor/10`, `max = valor·10`, log scale; `e12` for R, C, L.
 `motor.estado`: `ok` (ran without ngspice errors), `errores` (ran, ngspice printed errors: some netlists show
 errors on purpose), `fallo` (engine crash), `tiempo` (not finished in the validator's limit), `no-disponible`
-(uses XSPICE `A` devices, not in this ngspice build; `nota` explains), `sin-validar` (validation skipped).
-`pesada: true` when it took more than 8 s in the validator (the app does not run it automatically).
+(uses XSPICE `A` devices and the app's default engine has no XSPICE; `nota` explains), `sin-validar` (validation
+skipped). `motor.xspice: true` when the netlist has XSPICE `A` devices (the app checks it against the engine in
+use: the fallback engine cannot run them). An XSPICE netlist `<n>` with an analog twin `<n>_analogica` (gates as
+behavioural sources, same measurements) has `motor.alternativa: "<id of the twin>"` and the twin has
+`motor.original`; with an XSPICE engine the twins are left out of `porRef` (the reader's «Simular» opens the
+original, whose page links to the twin).
+`ms`: CPU time of the run in the validator's simulation thread (`cpuMs` of validar-spice.mjs; the wall clock
+when that is not available), so a busy build machine does not change it. `pesada: true` when it is more than
+8 s (the app does not run it automatically).
 `errores` lists up to three ngspice error lines.
 
 ## Datos de figuras: `datos/NAME.json`
@@ -341,6 +365,51 @@ per chapter, bookmarks and personal notes per section (stored locally via Tauri 
 responsive: phone (single column, drawer), tablet/desktop (sidebar + content). Typography: Source Serif 4 for
 text, Source Sans 3 for UI and headings (bundled woff2), as in the book.
 
+### Reference previews (0.8, `lib/vistaPrevia.ts`, `componentes/vista-previa/`)
+- Every `a.ref[data-ref][href]` whose key is in `refs.json` (reader, exercises, glossary, quizzes; not inside the card
+  nor inside `[aria-modal="true"]` overlays) has a floating preview. The controller (`instalarVistaPrevia`, called by
+  `main.ts`) is a few delegated listeners on the document and is the only part in the start-up bundle; the card
+  (`montar.svelte.ts` mounts `Tarjeta.svelte` on `<body>` once) is a lazy chunk, requested when the pointer rests on
+  a reference (with the target part, `cargarParte`, which is cached).
+- Mouse: 350 ms on a reference opens it; leaving reference and card for 280 ms closes it; a click jumps as before.
+  Touch/pen: a tap opens it instead of jumping (the click is stopped in the capture phase, so the reader's
+  `prepararSalto` does not run); «Ir a …» or a second tap on the same reference jumps. Keyboard: Enter on the focused
+  reference opens it and focuses «Ir a …» (Enter again jumps); Esc closes and returns the focus. It also closes on a
+  press outside, a page scroll of more than 12 px, a route change and (mouse) a resize.
+- «Ir a …» (`seguirReferencia`) clicks the original link with the interception off, so the jump, the history entry
+  and «Volver a 5.2» are exactly those of a click.
+- Content (`destino.ts`): the target block is found by `candidatosDeRef` in a per-part label index (inside boxes,
+  derivations, cards and exercise items). `fig` → the image (aspect from `svg_vista`) and caption; `tab` → `Tabla`
+  (label removed: no duplicate ids); an `ec` block (any key whose label is on an `ec` block; the book has none yet)
+  → the masked SVG and `etiqueta`; `sec`/`subsec`/`prob` → title, the first two paragraphs of its range (faded when
+  cut) and its first figure; `cap`/`ap` → title, intro paragraphs, first figure; `ej` → the item's paragraphs.
+  References inside the card are plain text.
+- Placement: `position: fixed` (the text never moves). ≥ 600 px wide: up to 440 px wide, below the line of the
+  reference under the pointer if it fits, else above, else on the larger side with its body scrolling; never over
+  the reference, clamped to the window, the top bar and the tab bar. < 600 px: a full-width sheet at the bottom, or
+  at the top under the bar when the sheet would cover the reference. `role="dialog"`, `aria-labelledby`, the link
+  gets `aria-describedby="vista-previa"` while it is open. Animations only without `prefers-reduced-motion`.
+- Tests: `tests/visual.spec.ts` (`playwright.visual.config.ts`, port 4271).
+
+### Start page (0.8, `Inicio.svelte`, `componentes/inicio/`)
+`Inicio.svelte` is a lazy chunk (App.svelte `{#await import()}`; prefetched at start-up when the route is `#/`).
+Order: cover and shortcuts; `SeguirLeyendo` (the part with the newest `usuario.posiciones` entry, its section `sec`,
+the figure of that section the reader passed last (`figura` blocks with top index ≤ `pos.b`), else its first, else the
+part's first; without positions, «Empezar a leer» with the first chapter) next to `RepasoHoy` (counted in idle time
+by the lazy `repasoHoy.ts`: `cargarBaraja` + `recuento` for `repaso.ajustes.mazo`, same numbers as the «Repaso»
+page); «También leyendo» (the other recent parts); `MapaLibro` (every part of `indice.tomos[].partes` as a tile:
+block colour, tint rising with `aprendizaje.leidas` fraction, one notch per section, solid colour and ✓ when complete,
+dashed for unnumbered parts, ring on the part read last; `data-parte`, `data-leidas` and an `aria-label` with the
+counts); `ProgresoInicio`. The page loads one image at most (the «Seguir leyendo» figure).
+
+### Glossary pictures (0.8, `componentes/glosario/`)
+`Glosario.svelte` imports `glosario/imagenes.ts` lazily (it reads `glosario-imagenes.json`, draws symbols with
+`simbolo.ts` → inline SVG in `currentColor`, and imports `tres/catalogo3d.ts`). A term with a model gets a 4:3 tile
+observed by an IntersectionObserver (200 px margin); only then `imagenes.miniaturaDe` imports `tres/miniaturas.ts`
+(three.js) and renders the thumbnail with the 3D viewer's studio background of the current theme. Object URLs are
+cached per model, parameters and theme for the session (not in the store: a PNG per model and theme would grow the
+synced data file). «Ver en 3D» → `hrefModelo`. Without WebGL2 (`window.__epaSinWebGL`) the tile keeps its icon.
+
 ### Navigation («carril de iconos»)
 - `lib/navegacion.svelte.ts` holds `HERRAMIENTAS`, the one registry of the app's sections
   (`{ id, ruta, icono, etiqueta, corta?, vistas?, pestana?, atajo?, cuenta? }`, ordered by use: Libro, Buscar,
@@ -380,12 +449,25 @@ and `#/simulador/nuevo` (free-form circuit, kept in `localStorage` key `epa:circ
 «Simular» button next to every section, figure, problem (h3) and exercise whose label is in `spice.porRef`
 (`spice-refs.json` is fetched in idle time after start-up; `spice.json` only by the simulator).
 
-Engine: ngspice 45.2 compiled to WebAssembly by the npm package `eecircuit-engine@1.8.0` (MIT). The package's
-own driver is not used (its raw-file reader takes byte offsets from decoded text, so any non-ASCII title, i.e.
-every book netlist, makes `runSim()` never resolve; it also returns only the last plot and ships the binary
-twice as base64 in a 20 MB module). `web/scripts/ngspice.mjs` (run by `npm run dev|build|check`) extracts the
-Emscripten factory to `web/src/simulador/motor/ngspice.js` (67 kB) and the binary to `web/public/ngspice/ngspice.wasm`
-(5.8 MB); both are generated and git-ignored.
+Engine (0.8): two WebAssembly builds of ngspice 45.2 with the same driver, chosen in
+`web/src/simulador/motor/motores.ts` (`MOTOR_PREDETERMINADO`; `localStorage` `epa:motor-spice` = `xspice` |
+`eecircuit` overrides it on one device; if the chosen one cannot be loaded the client loads the other):
+- `xspice` (default): ngspice 45.2 **with XSPICE** and the code-model libraries spice2poly, analog, digital,
+  xtradev, xtraevt, table and tlines linked in statically, built by `web/scripts/ngspice-wasm/compilar.sh`
+  (Emscripten 6.0.3, LLVM 23.1.4, binaryen 129; pinned versions and checksums in `versiones.sh`, details in its
+  README) and **committed** in `web/vendor/ngspice-xspice/` (`ngspice.mjs` 92 kB, `ngspice.wasm` 6.5 MB / 2.1 MB
+  gzip, `compilacion.json` with versions, options and SHA-256, `LICENSE.txt`). CI does not build it.
+- `eecircuit`: the build of the npm package `eecircuit-engine@1.8.0` (MIT, no XSPICE), the engine up to 0.7,
+  kept as a fallback during 0.8. The package's own driver is not used (its raw-file reader takes byte offsets
+  from decoded text, so any non-ASCII title, i.e. every book netlist, makes `runSim()` never resolve; it also
+  returns only the last plot and ships the binary twice as base64 in a 20 MB module).
+`web/scripts/ngspice.mjs` (run by `npm run dev|build|check`) copies the XSPICE build to
+`web/src/simulador/motor/ngspice-xspice.js` and `web/public/ngspice/ngspice-xspice.wasm`, and extracts the
+eecircuit factory to `web/src/simulador/motor/ngspice.js` (67 kB) and its binary to
+`web/public/ngspice/ngspice.wasm` (5.8 MB); all generated and git-ignored. Both builds have the same hooks
+(`setGetInput`, `setHandleThings`, `runThings`, Asyncify; `scripts/ngspice-wasm/pre.js` and `parches.py`), so
+`nucleo.ts` only picks the factory (`OpcionesEjecucion.motor`); the worker gets the engine id with the module
+(`{ t: 'motor', modulo, motor }`).
 
 ```
 web/src/simulador/
@@ -403,8 +485,12 @@ web/src/simulador/
                       (sliders), 3-minute limit, «Detener».
   graficas.ts         ngspice plots → plot panels (AC: magnitude dB + unwrapped phase; otherwise one panel per unit).
   datos.svelte.ts     spice.json, netlist texts, «Simular» map.
+  motor/motores.ts    the two engines (ids, binaries, XSPICE or not), the default and the local override.
 web/scripts/validar-spice.mjs   runs every netlist through the same engine in Node (worker_threads, timeout),
-                      optionally against native `ngspice -b` (--nativo); used by contenido/spice.py.
+                      `--motor xspice|eecircuit` (default: the app's), optionally against native `ngspice -b`
+                      (--nativo); used by contenido/spice.py (with the app's default engine).
+web/scripts/ngspice-wasm/       build of the XSPICE engine (compilar.sh, versiones.sh, parches.py,
+                      cm_estatico.c, pre.js, README.md); output in web/vendor/ngspice-xspice/.
 ```
 
 ## Plot component (`web/src/componentes/grafica/`)
@@ -579,6 +665,31 @@ was dropped in 0.7.1: on small parts it hid the inside); solids that sit inside 
 substrate inside its terminations). Disposal:
 model resources (`liberarModelo`), cap materials, board, studio, renderer and `forceContextLoss()` on unmount.
 
+**0.8: adaptive resolution, shaders before the first frame.** (`motor/resolucion.ts`, used by `Visor` and by the
+boards' `Escena3D`.) The MacBook Pro 2017 (Iris Plus 640, DPR 2) turned the SDR board at 44–46 fps with 2 ms of
+CPU per frame: fill-rate bound. While the camera moves (`Orbita.ultimoCambio` within `REPOSO` = 180 ms, a camera
+change since the last frame, inertia, animated resets, the board turn-over or the explosion) the interval between
+frames is measured; when its time-weighted median over the last frames (4, or 2 slow ones adding up to 0,5 s)
+exceeds 1,1 × 16,7 ms the pixel ratio becomes ratio · √(16,7 / interval) · 0,92 (at most one change per 250 ms,
+never below half the full ratio nor 0,5), and it goes back up while moving only below 0,7 × 16,7 ms. The rest is
+checked in an animation frame (pointer events come aligned with the frames, so a GPU stall is not taken for a
+pause): then the full ratio returns with one final full-quality frame. A device that keeps 60 fps never changes
+(the Android phones: 107–143 fps). `EstadoResolucion` {base, actual, minima, cambios, intervalo} is in
+`__epa3d.resolucion` and `__epaPlaca3D.resolucion`; localStorage `epa-resolucion` = `fija` turns it off. Cheaper
+materials for distant parts were considered and left out: switching materials while moving compiles new programs
+at the first move (the stall the next point removes), and the frames are fill-rate bound, not shading bound.
+Shaders: `ponerModelo()` compiles the programs of the first frame with `renderer.compileAsync()` (in parallel and
+without blocking where KHR_parallel_shader_compile exists: WKWebView, Chromium on a GPU) before drawing it; the view
+keeps its previous frame and Visor3D keeps «Preparando el modelo 3D…» (option `alPreparar`); `visor.preparacion`
+{compilar, primerCuadro, programas, paralela}. The cut's clipping plane is on the materials only while the cut is on
+(so, without it, the programs are those of the catalogue's thumbnails and of the boards — same lights, tone mapping
+and output — which the GPU driver may already hold: WebKit's ANGLE/Metal and Chromium keep compiled programs per
+source across WebGL contexts); 300 ms after the first frame the cut's variants (clipped materials and caps) are
+compiled in the background. The boards' `Escena3D` compiles its own programs (core, faces, barrels, studio) the same
+way before its first frame (`stats.compilarPlaca`, `stats.primerCuadroPlaca`), as `cargarPiezas()` already did for
+the parts. Tests: `tests/rendimiento.spec.ts` (own config `playwright.rendimiento.config.ts`, port 4261: the drawing
+buffer narrows while a synthetic drag turns the board and the LQFP, and is the full one again at rest).
+
 **Pages.** `#/componentes` shows the animation gallery or, when the remembered choice is 3D, the catalogue;
 `#/componentes/3d` the catalogue; `#/componentes/3d/<tipo>[?param=valor…]` one model with its controls. On an
 animation page (component collection) the switch replaces the canvas scene by the model; the scene's controls
@@ -729,6 +840,21 @@ generar.ts     whole netlist: components → placement (best of several runs by 
                slider move redraws the same layout at once; precalculado.json holds the layouts of every book
                netlist computed at high effort (scripts/esquema-auto-precalcular.mjs; a stale entry that no
                longer fits is simply recomputed).
+               0.8: the same layouts about twice as fast (Node, the four netlists of the diagnostic: sum of
+               medians 685 → 341 ms of CPU; every one of the 313 live layouts identical bit for bit to 0.7.1):
+               Colocador keeps its cost terms in flat typed arrays (per net its estimated wires, box and cost,
+               current and pending, swapped on accept; hits per net × unit; crossings per net × net), a move
+               allocates nothing, box tests are inline, the unit cost is cached per variant; the router keeps its
+               search targets in a stamped Int32Array (a Map lookup per neighbour was its hottest line) and pops
+               without an array; symbol definitions are shared by a unit's variants, label widths and character
+               widths are memoised; the winning run is not routed a second time. Edited circuits (0.8): the last
+               six layouts are kept by part (designator, symbol, pin count); a live component sharing ≥ 60 % of
+               its parts (and three) with one of them first runs from it (`Colocador.inicialDesde`: old parts in
+               their places when still valid, new ones at the nearest free spot by their neighbours, one run of
+               40 % of the iterations at T0 = 0,6); a flawless result ends there, otherwise it competes with the
+               usual runs (`estadisticas.recolocadas`). Benchmark (one resistor added in parallel to a part of
+               each of the 173 book netlists with ≥ 8 units): CPU 4985 → 3068 ms, parts in place up to a common
+               shift 49 → 59 %, crossings 28 → 32, net labels 17 → 14, length 5755 → 5829, bends 828 → 843.
 svg.ts         SVG: palette «libro» (book colours, for the light figure plate, fonts embedded at /*@fuentes*/)
                or «tema» (CSS variables, inline, data-el/data-disp attributes and hit areas).
 trabajador.ts  Web Worker (sequential queue; loads precalculado.json). index.ts: client, LRU of 16 results.
@@ -796,10 +922,17 @@ conectividad.ts   nets: pins and wire ends meeting at a point, a wire end on ano
                   crossing wires and a pin on the inside of a wire do not connect; labels/supplies of the
                   same name join; every ground is 0. Names: 0, label, the node name kept by imported wires
                   (Cable.red), n1, n2…; loose pins and wire ends are marked
+                  Digital group (0.8, XSPICE): AND/OR/NAND/NOR/XOR gates and NOT (IEC boxes of esquema-auto,
+                  pins a, b → y; field «retardo»), D and JK flip-flops (boxes with D/J/K, C, S, R, Q, nQ;
+                  «retardo» = clk_delay, «ic»), ADC and DAC bridges (in → out; thresholds / levels / edge time),
+                  digital clock (d_osc tied to ground, frequency and duty cycle; starts at 0)
 netlist.ts        drawing → netlist: one line per part (instance = designator, with the element letter in
                   front when missing), library models used and not defined in the directives, directives,
                   analyses; probes (v(net), ammeter i(v…), differential voltmeter B source) choose the plotted
-                  vectors; checks in plain Spanish (missing ground, values, models, names, loose pins)
+                  vectors; checks in plain Spanish (missing ground, values, models, names, loose pins).
+                  Digital parts: `A<designator>` lines (`[a b] y`, flip-flop pins in XSPICE order with NULL for
+                  an unconnected S/R) and one `.model a<designator>_mod d_and(…)` per part; a probe on a digital
+                  net is an error (it has no voltage: put a DAC bridge in between)
 modelos.ts        the palette's models, as in the book's netlists: 1N4148, 1N4007, Schottky, red/green LED,
                   Zener 5,1/5,6/12 V, 2N3904, 2N3906, power NPN/PNP, level-1 MOSFETs, JFETs, op-amps
                   (opamp: A0 1e5, 10 Hz pole, ±14 V; op741; opa5 with supply pins)
@@ -845,7 +978,10 @@ Tests: `tests/editor.spec.ts` (`playwright.editor.config.ts`, port 4201): mouse 
 .tran against hand calculations, undo/redo, pinch, save/reload/rename/delete, two book rectifiers drawn give
 the same measurements as their text, .cir round trip, «Ver como netlist», screenshots in
 `tests/capturas/editor/`. `node tests/editor-rendimiento.mjs` times pointer moves with ~80 parts (Mac profile,
-CPU ×4).
+CPU ×4). `tests/xspice.spec.ts` (`playwright.xspice.config.ts`, port 4251) builds a digital circuit from the
+palette's parts (clock → toggling D flip-flop, pulse → ADC → NOT → DAC) through `__epaEditor.pines()` and checks
+its simulation; it also runs the book's four XSPICE netlists in the browser against the book's values and the
+fallback engine's «no se puede simular».
 
 ## Consoles (`web/src/componentes/consolas/`, data in `web/public/consolas/`)
 
@@ -926,7 +1062,7 @@ as signal transition lists in real seconds, sampled by binary search; `nes.ts`, 
 
 ### Console boards in 3D and 2D (`consolas/placa/`, data in `web/public/consolas/placas/`)
 
-Tabs `placa3d` and `placa2d`, only for the machines listed in `placa/datos.ts → PLACAS_DE` (Mega Drive; Game Boy
+Tabs `placa3d` and `placa2d`, only for the machines listed in `placa/datos.ts → PLACAS_DE` (NES, 0.8; Mega Drive; Neo Geo, 0.8; Game Boy
 Color with two boards, the choice kept in `placa/eleccion.svelte.ts`). `PlacaConsola.svelte` mounts the «Proyectos
 KiCad» components unchanged (`proyectos/Vista3D.svelte`, `Placa2D.svelte`, `geometria.ts`, `seleccion.ts`,
 `opciones3d.svelte.ts`; without WebGL2 the 3D tab shows the 2D view) and translates the selection: a schematic
@@ -936,6 +1072,11 @@ from the other tabs. The schematic offers «Ver en la placa» for parts and nets
 `placa/PlacaFuentes.svelte` adds the boards' credits to «Fuentes».
 
 **Pipeline** (`contenido/consolas_pcb.py`, run by hand; sources read from `CONSOLAS_FUENTES`, never copied):
+- KiCad 8 board of the NES (0.8): OpenTendo v1.4 `Board Files/Motherboard.kicad_pcb` (TAPR OHL 1.0, commit 3bd0b0b,
+  copied into `CONSOLAS_FUENTES/nes/original/OpenTendo/Board Files/`), the same references and net names as the
+  NES-CPU-11 schematic (98 references and 567 pads agree, 2 pads on another net). Its Edge.Cuts arcs miss the lines
+  they meet by 1–4 µm: `soldar_bordes` (config `soldar_bordes: 0.005` mm) joins them before `outline`.
+  `python3 contenido/consolas_pcb.py nes` rebuilds only that board.
 - KiCad 9 boards (stonedDiscord MegaDrive, whatware OpenGBC) through `proyectos_kicad_pcb.read_board` (outline,
   footprints, pads, tracks, vias, zone fills, rule areas) and `model_for` (plus heights for the consoles' own
   packages; logos, fiducials and net ties get no body). kicad-cli 7 cannot open KiCad 9 boards, so every silkscreen
@@ -950,6 +1091,12 @@ from the other tabs. The schematic offers «Ver en la placa» for parts and nets
   and regions → `zonas`, strokes → `pistas`; mask flashes set the pads' mask flags; unplated holes become
   mechanical footprints `H<n>`. Pads are grouped by reference into mechanical footprints (`t: 'mec'`, box around
   the pads, no 3D body). Inner layers In1/In2 hold only the rings of the drills and are not drawn.
+- Board-Folk's Neo Geo NEO-AES3-5 (KiCad 10, public domain per its README; the 53 MB `.kicad_pcb` is not kept: its
+  path comes from `CONSOLAS_PCB_NEOGEO`, see `fuente_de(cfg)` → env `CONSOLAS_PCB_<ID>`). KiCad 10 names nets inside
+  segments, vias, zones and pads (`(net "name")` instead of a number): `proyectos_kicad_pcb.net_id` maps both forms.
+  `fusionar_colineales` merges collinear consecutive track segments of the KiCad boards (Neo Geo 18 210 → 15 212).
+  `main(ids)` rebuilds only the boards whose sources are found and keeps the other entries of `indice.json` and
+  their files.
 - Checks against the console's own `<maquina>.json`: references on both sides, every pad's net against the
   schematic's (board net → schematic net by majority of its pads), and for the Gerber board the two-pin parts whose
   pins 1 and 2 are swapped between the PDF reconstruction and the copper.
@@ -958,8 +1105,168 @@ from the other tabs. The schematic offers «Ver en la placa» for parts and nets
 {titulo, autor, url, licencia, uso}, ancho, alto (mm), capas, componentes, redes, bytes}]}` and `<placa>.json`: the
 `DatosPlaca` of «Proyectos KiCad» (`esquema` empty, `simulacion: null`, `comprobaciones` = the checks above) plus
 `consola {maquina, enlazada, aviso, fuente, redes {board net: schematic net}, refs [references also in the
-schematic], capas_cobre ['F', 'In1', 'In2', 'B'], tipo}`. Sizes: megadrive 840 kB, gbc-cgb04 290 kB, gbc-opengbc
-240 kB. Tests: `tests/consolas-placas.spec.ts`.
+schematic], capas_cobre ['F', 'In1', 'In2', 'B'], tipo}`. Sizes: megadrive 840 kB, neogeo 1064 kB (272 kB gzip;
+320 footprints, 2287 pads, 631 nets, 1498 vias, 107 zones; 317/317 references and 2265 pads on the same net as the
+schematic), gbc-cgb04 290 kB, gbc-opengbc 240 kB. Tests: `tests/consolas-placas.spec.ts`.
+
+### «Un fotograma» (`consolas/fotograma/`, data in `web/public/consolas/fotograma/`, pipeline in `contenido/fotograma/`)
+
+Tab `fotograma` («Un fotograma», 0.8), for every machine with an adapter file `fotograma/maquinas/<maquina>.ts`
+(found with `import.meta.glob`, so each console adds its own; `maquinas.ts → tieneFotograma`). It replays, from a
+cycle-level trace recorded offline, how the signals travel from reading the program's code to a finished frame, and
+draws that journey on the schematic, on the board (2D) and, for the Game Boy, on the scanned copper. This section
+documents the framework and NES / Game Boy / Game Boy Color; the Master System II, Mega Drive and Neo Geo use the same
+framework (see their own notes below or in their adapters).
+
+**Programs** (`<maquina>/indice.json {version, programas: [{id, titulo, tipo demo|juego, archivo, bytes, resumen,
+juego? {nombre, autor, licencia, url, commit, licenciaTexto}, norma? pal|ntsc}]}`):
+- «Paso a paso» (`demo`): a short program written for the app, `contenido/consolas_demos/<maquina>/` — `nes/demo.s`
+  (ca65/ld65, `nes.cfg`, NROM-128), `gb/demo.asm` and `gbc/demo.asm` (rgbds; the GBC one copies the tiles with a
+  general-purpose HDMA, gives every tile a CGB palette through VRAM bank 1 and animates the water with an HBlank
+  HDMA). Same scene everywhere (tiles and backgrounds drawn as text in `consolas_demos/arte.py`, which writes
+  `nes/chr.inc`, `nes/fondo.inc`, `gb/teselas.inc`, `gb/fondo.inc`): a background and a 16 × 16 robot of four sprites
+  that walks one pixel per frame. Comments in English; the Spanish explanation of every instruction is in
+  `explicaciones.es.txt` (`etiqueta+n: texto`, n = instruction index after the label). The built ROMs and their
+  symbol files (`demo.nes`, `demo.lbl`, `demo.dbg`, `demo.gb`/`demo.gbc`, `demo.sym`) are versioned, so the traces
+  regenerate without the toolchains.
+- «Un juego de verdad» (`juego`): a free homebrew game, one entry each in `contenido/fotograma/juegos.json`
+  (`juegos.mjs`: `rom` + `sha256` or `descarga {url, sha256}`, `licenciaTexto`, `cuadro` (VBlanks after the picture
+  is switched on) or `cuadroDesdeReset`, `entradas` = button script `[[VBlank, 'start+a'], …]`). Chosen by the owner:
+  NES robotfindskitten (Damian Yerrick, zlib, built with ca65 from pinobatch/rfk-nes b9764ce), Game Boy Libbet and
+  the Magic Floor (Damian Yerrick, zlib, built with rgbds from pinobatch/libbet 1232e71), Game Boy Color Tobu Tobu
+  Girl Deluxe (Tangram Games, MIT code + CC BY 4.0 assets, the official ROM from itch.io). ROMs and licence texts in
+  `contenido/consolas_juegos/<maquina>/`; next to each trace go `<id>-LICENCIA.txt` and `<id>-FUENTE.txt`.
+
+**Pipeline** (`node contenido/fotograma/generar.mjs [nes] [gb] [gbc]`; `CC65_BIN`, `RGBDS_BIN` = folders of the
+toolchains, optional). Own emulator cores in plain Node, no dependencies:
+- `cpu6502.mjs`: every 6502 cycle is one bus access in the chip's order (dummy reads and writes included), NMI/IRQ
+  polling at the penultimate cycle. Validated (`validar6502.mjs`): SingleStepTests 65x02/nes6502, 151 official
+  opcodes, 43 609 tests, 171 762 bus cycles, 0 failures; nestest.log, 5003 instructions, 0 differences.
+- `nes.mjs`: NROM, the 74HC139 decoding (WRAM, PPU, /ROMSEL), OAM DMA (1 + parity halt cycle, 256 read/write
+  pairs), controller shift registers, and a dot-exact 2C02: the 8-dot fetch pattern (NT, AT, pattern low/high, 2 dots
+  each, ALE in the first), loopy v/t/x/w, sprite evaluation at dot 257 and fetches at 257–320 (tile $FF for empty
+  slots), shifters, the pixel of every dot, VBlank/NMI at 241/1, odd-frame dot skip, composite sync lines.
+  Palette computed from the composite levels (`paletaNes`).
+- `sm83.mjs`: every machine cycle a read, a write or an internal cycle; interrupt dispatch in 5 cycles. Validated
+  (`validarSm83.mjs`, `validarGb.mjs`): SingleStepTests sm83, 498 opcodes (242 + 256 CB), 149 400 tests, 300 806
+  machine cycles, 0 failures; blargg cpu_instrs (11/11), instr_timing, mem_timing 01–03: 15/15.
+- `gb.mjs`: DMG and CGB (and a DMG game on a CGB, with the boot ROM's compatibility palettes): MBC1/3/5, timer,
+  joypad matrix, serial, OAM DMA (the CPU blocked outside HRAM), CGB HDMA (general and HBlank, 2 bytes per machine
+  cycle), VRAM/WRAM banks, palettes, and a dot-level PPU: OAM scan (one entry per 2 dots), the pixel FIFO (first
+  fetch thrown away, 12 dots before the first pixel, SCX discard, window, sprite stalls of 6 + up to 5 dots per Pan
+  Docs «Mode 3 length»), STAT/LYC. The run starts at $0100 with the registers the boot ROM leaves (Nintendo's boot
+  ROMs are not used).
+- `registro.mjs` (`Registro`: records buses, instructions, phases, signals, pixels and line starts only inside the
+  recorded segments), `traza.mjs` (`escribirTraza` / `leerTraza`), `comun.mjs` (assemblers, explanations),
+  `maquina_nes.mjs`, `maquina_gb.mjs` (build, find the window with a first run, record with a second, identical one).
+- Segments: `arranque` (from reset: the vector, the stack, waiting for VBlank; no picture) and `fotograma` (from the
+  instruction in progress when a VBlank starts to the one when the next starts: the interrupt, the DMA, all lines).
+- Cross-checks with independent emulators (scratch only): `contrastar_nes.mjs` (jsnes; it hides an 8-pixel border:
+  240 × 224 compared) and `contrastar_gb.py` (PyBoy, its own boot ROM, button script shifted by its length). Demo
+  NES, robotfindskitten, demo DMG, Libbet DMG: 0 pixels differ. Demo GBC: 360 (the HBlank-HDMA water, which PyBoy
+  2.8 does not run). Tobu Tobu Girl DX: logos, intro, title and main menu 0; the recorded in-game frame 417 (the game
+  seeds its random numbers with DIV when START is pressed, title.c, and DIV depends on the boot ROM).
+
+**Trace «EPAF» v1** (`<programa>.bin`, little-endian): `'EPAF'`, u16 version 1, u16 0, u32 n, the manifest JSON (n bytes,
+space padded), then the array area — LZ-compressed as a whole when `compresion {tipo: 'lz', bytes}` (byte-oriented
+LZ77 sequences: varint literal length, literals, varint match length, varint distance). Every array is
+`arrays[name] = {tipo u8|u16|u32|i32, n, cod crudo|vlq|vlqd, offset, bytes}` (`vlqd` = zigzag LEB128 of the
+differences). Manifest (`fotograma/tipos.ts → ManifiestoTraza`): `maquina, idPrograma, titulo, tipo, generador,
+reloj {hz, nombre}` (one time unit: the PPU dot on NES/GB), `cpus [{id, tipo, hz, unidadesPorCiclo, registros}]`,
+`buses [{id, titulo, anchoDir, anchoDato, t, a, d, f, c, k?, chips, tipos?, duracion?, duraciones?}]` (flags `f`: 1
+write, 2 opcode fetch, 4 dummy/internal cycle, 8 DMA, 16 vector, 32 inside the chip — no pins move, 64 operand),
+`instrucciones [{cpu, t, pc, ciclo (index of its first bus cycle), k? (0 instruction, 1 NMI, 2 interrupt, 3 reset),
+r [register arrays]}]`, `video {ancho, alto, puntosPorLinea, lineas, formato indice|rgb555, paleta?, unidadesPorPunto?,
+lineasT, lineasN}`, `fases {tipos, t, k, linea}`, `senales {tipos [{id, titulo, activaBaja?}], t, k, v}`, `pixeles {t,
+c}` (raster order), `fb` (the emulator's framebuffer of the recorded frame), `segmentos [{id, titulo, descripcion, t0,
+t1, pixel0, pixel1}]`, `memoria [{nombre, array, base}]` (PRG/ROM and HRAM images for the disassembler), `programa
+{fuente, autor, licencia, url?, etiquetas {hex: label}, explicaciones {hex: Spanish text}, lineas? {hex: [line,
+text]}}`. Sizes: NES demo 75 kB, robotfindskitten 87 kB, DMG demo 26 kB, Libbet 42 kB, CGB demo 31 kB, Tobu Tobu
+Girl Deluxe 85 kB (each fetched only when its program is opened).
+
+**App** (lazy chunk ≈ 42 kB): `Fotograma.svelte` (programs, segments, speed levels «Cuadro entero» — the segment in
+30 s — «Una línea» — 8 s per line — «Unos puntos» — 5 dots/s — «Un ciclo» — one CPU cycle per second; play/pause,
+steps by cycle, instruction and line, keyboard ← → Mayús, PAL/NTSC switch for programs with `norma`),
+`reproductor.ts` (`Reproductor`: time cursor, steps, `duracion(bus, i)`, live nets with an energy that fades so fast
+playback still shows where the signals went; a snapshot `foto()` for the panels at ≤ 9 Hz while playing),
+`traza.ts` (reader, binary searches), `Pantalla.svelte` (the pixels output so far, the previous frame dimmed, the beam),
+`Linea.svelte` (overview of the segment's phases + zoomed rows per bus, instruction boundaries and pixel output;
+the static part cached while the window does not move), `Desensamblado.svelte` (the instructions actually run
+around the current one, its Spanish explanation and source line, its bus cycles one by one), `Lecturas.svelte`,
+`EsquemaRecorrido.svelte` (`esquema/Lienzo.svelte` + an overlay that follows its view through the new `alPintar`
+prop), `PlacaRecorrido.svelte` (the linked board painted once with `proyectos/pintar.ts → pintarLado`, dimmed, the face
+with the CPU by default, tracks of the live nets of both faces), `FotoRecorrido.svelte` (photo with `trazas`),
+`pulsos.ts` (segments oriented by shortest path from the driving part's pins; dashes whose offset continues that
+distance, so pulses flow away from the driver; only lines at 1 carry dashes, lines at 0 stay dim),
+`capaRecorrido.ts` (draws the live nets by group and frames the parts that answer), `colores.ts` (group colours:
+address blue, data amber, control violet, chip select green, clocks grey, video pink, interrupts red, DMA cyan),
+`cpu/6502.ts`, `cpu/sm83.ts` (disassemblers with a generic Spanish explanation), `maquinas/nes.ts`, `gbcomun.ts`
+(+ `maquinas/gb.ts`, `maquinas/gbc.ts`): bus access → schematic nets with level and driver (NES: A0–A15/R/W from
+U6, D0–D7 from the chip that answers, /ROMSEL, WRAM /CE, PPU /CE from U3 while M2 is high, PPU AD0–AD7 with ALE,
+PA0–PA7 from the latch U2, CIRAM /CE and A10 from the cartridge; DMG: the cartridge bus and /CS, the VRAM chip U2 on
+MA/MD; CGB: the WRAM U2 on MA/MD, VRAM inside the CPU; LCD pins), `FotogramaFuentes.svelte` (sources in «Fuentes»).
+Hooks for tests: `__epaFotograma {rep, traza, ir(t)}`, `__epaFotogramaRedes {redes, dibujadas, chips}`,
+`__epaFotogramaMs`, `__epaFotogramaPlacaMs`, `__epaFotogramaLinea`, `__epaFotogramaPantalla`. Tests:
+`tests/fotograma.spec.ts` (own config `playwright.fotogramaA.config.ts`, port 4231), screenshots
+`node tests/fotograma-capturas.mjs`, frame cost `node tests/fotograma-rendimiento.mjs`.
+
+#### Master System II, Mega Drive and Neo Geo
+
+Adapters `maquinas/sms.ts`, `megadrive.ts`, `neogeo.ts` (nets of every bus access on the schematic and the board,
+chips, clocks, phases, address map, fidelity, sources); disassemblers `cpu/z80.ts` (`desZ80`, SMS port names) and
+`cpu/m68k.ts` (`crearDesM68k(nombres)`), both with a Spanish explanation of every instruction. Time unit: the master
+clock (SMS 53,203424 MHz: Z80 /15, VDP slot 20, dot 10; Mega Drive 53,203424 or 53,693175 MHz: 68000 /7, Z80 /15,
+slot 16 in H40, dot 8) or, on the Neo Geo, half a master cycle (48 MHz: 68000 cycle 4, dot 8, line 3072), with
+`duracion`/`duraciones` per bus and `video.unidadesPorPunto`.
+
+**Generators** (native tools, run by hand; `node contenido/fotograma/{sms/generar_sms,megadrive/generar_md,
+neogeo/generar_ng}.mjs`, tools built in `FOTOGRAMA_TMP`):
+- `nucleos_b.mjs` fetches the pinned cores with SHA-256 into `contenido/.cache/fotograma/nucleos` (floooh's z80.h,
+  zlib; Moira, MIT; BlastEm's vdp.c/vdp.h, GPL-3, run offline only, never shipped) and builds `sms_traza`,
+  `md_traza`, `ng_traza`, `m68k_sst`, `z80_sst`. `vdp/parchear_vdp.py` instruments BlastEm (every VRAM read, one
+  hook per slot with its tags, writes, pixel pairs, line changes; fast path off; the PAL V counter of mode 4; mode-4
+  sprites wrap around line 256 as on the hardware and in Genesis Plus GX); `vdp/vdp_registro.c` records slots,
+  pixels and lines (`vreg.activo`; `vreg.lineas_siempre` keeps counting frames while nothing else is recorded).
+  `m68k/parchear_moira.py`: precise timing, the bus order of RTE, JSR and ADD/SUB to memory. Checks:
+  `z80/validar_z80.py` (SingleStepTests z80: 50 000 tests, 130 000 accesses, only undocumented flags of LDIR/OTIR
+  differ) and `m68k/validar_m68k.py` (SingleStepTests 680x0, 35 files: 282 275 tests, 712 426 accesses, offset
+  always −2 cycles; 8511 tests differ: MOVE to SR, MOVEM.l, ADDQ.l to An, BTST; 85 640 address-error tests apart).
+- `sms/sms_traza.c`: z80.h + BlastEm's VDP in mode 4 (PAL), Sega mapper, pad 1 on port $DC. `megadrive/md_traza.cpp`:
+  Moira + z80.h (`z80_md.c`) + BlastEm (H40, V28): /DTACK waits, 68000 → VRAM DMA with /BR, autovectored IACK, the
+  Z80's bus request/reset, a 3-button pad on port 1 (TH protocol); PAL and NTSC files (`norma`).
+  `neogeo/ng_traza.cpp`: Moira + our own LSPC model (wiki.neogeodev «Rendering logic»: 16-cycle slots with 4 slow and
+  10 fast VRAM accesses, parsing of 381 sprites for line N + 2, two C ROM reads per sprite line, four S ROM reads per
+  fix tile); the VRAM read latch as in MAME (writing the address reads that word; a data write refreshes it with the
+  next one), CPU accesses queued until their slot. Demo mode starts at USER; `--bios <rom>` starts from the reset with
+  the system ROM mapped at $C00000 and over the vectors until REG_SWPROM (the AES has no SFIX: the fix layer always
+  comes from the cartridge; REG_CRTFIX/BRDFIX change nothing), controllers idle-high, the Z80's reply read as 0.
+- Game mode of the three tools (`--juego` / `--bios`): records the first N CPU cycles after the reset (`arranque`)
+  and then nothing until the frame before the chosen one (frames counted from the reset), so a frame seconds into a
+  game costs no memory; optional button script `frame:mask,…`. An «instruction» logged just before the 68000 takes
+  an interrupt instead is dropped (it runs after RTE).
+- `comun_b.mjs`: GNU as listings, symbols, explanations, `ejecutarTraza`, `juegosDe(maquina)`, `copiarLicencias`.
+
+**Games** (`contenido/fotograma/juegos.json` entries with `maquina` `sms`, `megadrive` or `neogeo`; generated by
+these generators, not by `generar.mjs`). Extra fields: `rom` may be an object (Neo Geo `{p1, c1, c2, s1, bios}`),
+`simbolos` (SDCC `.noi`, or `{programa, bios}` nm listings), `licenciaTexto` a list (`<id>-LICENCIA.txt`,
+`<id>-LICENCIA-2.txt`), `arranque` (CPU cycles of the start-up segment), `descripcion` (text of the frame segment),
+`nota` (into `<id>-FUENTE.txt`), `cuadroNtsc`; `cuadro` counts frames from the reset. Buttons: SMS `arriba abajo
+izquierda derecha 1 2`; Mega Drive `… a b c start`; Neo Geo `… a b c d start select`. The Mega Drive game gives two
+programs (`<id>` PAL, `<id>-ntsc`, both with `norma`). Builds in `contenido/consolas_juegos/`: `sms/construir.sh`
+(Food Fighter 48fe2ea, SDCC 4.0.0 + devkitSMS 50b0fc4: SDCC 4.2's own library uses the new calling convention and
+garbles the game's text), `megadrive/obtener.sh` (Gentris, the ROM SGDK ships at 9a78a44, SHA-256 checked),
+`neogeo/construir.sh` (ngdevkit-examples 4e7900b `05-scrolling` and nullbios from ngdevkit 5106cbd, with Ubuntu's
+`gcc-14-m68k-linux-gnu -m68000`, two libc header stubs and no newlib; reproducible byte for byte). Trace sizes: SMS
+demo 45 kB, Food Fighter 98 kB; Mega Drive demo 61 kB ×2, Gentris 131 kB ×2 (the 128 KB ROM image for the
+disassembler); Neo Geo demo 40 kB, 05-scrolling 100 kB.
+
+**Cross-check** (`contenido/fotograma/contraste_b/`): `contrastar.py` fetches Genesis Plus GX and Geolith at pinned
+commits into `contenido/.cache/fotograma/contraste`, builds them and `frente.c` (a minimal libretro front end that
+writes frames as PPM, with an optional pad script and core options), packs a TerraOnion `.NEO` and an `aes.zip`
+with nullbios for Geolith, and compares each frame up to a one-to-one colour mapping (games without buttons).
+Results: Mega Drive demo PAL and NTSC and the Gentris menu 0 of 71 680 pixels; Neo Geo 05-scrolling 0 of 71 680;
+Master System only column 255 (64 pixels in the demo, 186 in Food Fighter: BlastEm outputs the border colour there).
+Tests: `tests/fotogramaB.spec.ts` (`playwright.fotogramaB.config.ts`, port 4241).
 
 ## Proyectos KiCad (`web/src/componentes/proyectos/`, data in `web/public/proyectos/`)
 
@@ -1057,6 +1364,47 @@ the board over; «Separar capas» explodes silkscreen / mask / copper / core / p
 ≤ 2,4 Mpx; everything disposed on unmount; `window.__epaPlaca3D` (frame CPU times, draw calls, triangles, texture time,
 parts from the library / own) and `__epaPlaca3DListo`. Without WebGL2 (`tres/motor/soporte.ts`) the 3D tab shows the 2D view.
 
+**Faces, 0.8** (`caras.ts`, `caras.trabajador.ts`, `texturas-caras.ts`; `ModoCaras`). 0.7.0 on the MacBook
+(WKWebView): 1,2–1,3 s of the page's thread to paint and upload the two 4096 px faces (Xiaomi and Pixel: 12–13 ms
+for the same textures). Chromium only records the canvas drawing and rasterises and uploads it on the GPU
+(texImage2D of an accelerated canvas is a GPU copy); WebKit rasterises a large 2D canvas with CoreGraphics on the CPU
+and its texImage2D(canvas) copies the pixels out of the canvas and converts them (unpremultiply, flip) on the page's
+thread. Three ways, chosen per WebView (`modoCarasPorDefecto()`; localStorage `epa-caras` forces one; the
+constructor's 5th argument `{ modoCaras }`, optional, keeps the API of consolas/placa): **directo** — the 0.7 path,
+unchanged (Chromium: Android, WebView2: the same behaviour as 0.7, deliberately not switched by any timing);
+**trabajador** (WebKit: WKWebView, WebKitGTK) — a worker per view rebuilds the geometry from
+the board data (`datosParaCaras`, without footprints or areas) and paints each map on an OffscreenCanvas
+(`willReadFrequently`) in bands of 128 rows (in Chromium's workers a 4096 px canvas with the board's clips
+rasterised 5–20× slower than bands), reads each band back and writes its rows in GL order (bottom first) into a
+buffer that is transferred to the page; the quick quarter pass is also painted there (the faces show 1 × 1 maps of
+the board's colours meanwhile, so their program is the final one); **franjas** (WebKit without OffscreenCanvas in
+workers) — bands of about half a megapixel painted on a software canvas of the page, one per task. The page uploads
+pixels with no conversion at all (`DataTexture`, flipY and premultiplied alpha off: `texSubImage2D` of a plain
+buffer): an allocated texture (`texStorage2D` of every level) receives strips of about 2 MB through
+`copyTextureToTexture`, a few per slice of at most 6 ms, the mipmaps after the last strip; between slices a fence
+(`fenceSync`, polled with `getSyncParameter` between tasks) waits for the GPU process to take the previous strips —
+a texSubImage2D issued while it is busy blocks the page until there is room for its data (17 s seen with
+SwiftShader) —; the unpack parameters are set once at creation so three's state cache never reads them back with a
+synchronous `getParameter`. The previous (quarter) texture stays on the material until the full one is complete; a
+layer change shows at once at a quarter and refines again; a newer pass stops an older one (`generacion`,
+`versionCaras`). Overlays and exploded layers in the new modes use software canvases read back the same way.
+`stats.fasesCaras` = {modo, cuarto {pintar, leer, subir}, completa {modo, motivo, geometria, pintar, leer, voltear,
+espera, subir, gpu, franjas, maxTarea, total}}; `stats.textura` = page-thread ms of the full faces. At rest the
+picture is the same: screenshots of the SDR and IoT boards and of two models, 0.7.1 against 0.8 in Chromium, differ
+by at most 2/255 on any pixel in the default mode (directo); painted by the worker (software raster instead of
+the GPU's), 0,07–0,1 % of the pixels differ, all on anti-aliased edges of pads, holes and silkscreen. Not done: caching the painted
+faces (IndexedDB / Tauri), left for when the diagnostic shows the worker is not enough on the Mac.
+
+Measured 0.7.1 → 0.8 (the diagnostic, both builds interleaved, Chromium headless with SwiftShader on a shared
+2-core machine at load ≈ 2–3, median of 3; WebKit could not be measured here): SDR board turning 0,2 → 1,9 fps
+(the drawing buffer at ×1 instead of ×2 while turning, ×2 again at rest; ×4 CPU throttling: 0,5 → 0,8), board
+visible 1,4 → 1,0 s, board with parts 2,5 → 1,8 s; full faces in the default mode (directo) 5,7 ms of the page's
+thread, longest task 3,7 ms (unchanged path); forced to the worker / bands: longest page task 17 / 21 ms (the GPU
+process, SwiftShader, takes seconds to swallow 48 MB textures: the fences wait for it between tasks). LQFP viewer:
+first view 1174 → 631 ms, a second view 313 ms, turning 2,2 → 2,8 fps; a model page opened cold from the
+catalogue 418 → 405 ms (no KHR_parallel_shader_compile in SwiftShader: the gain of compileAsync is for GPUs that
+have it, as the Iris Plus 640).
+
 Measured (`tests/proyectos-rendimiento.mjs --veces 3`, median of three loads, Chromium headless with SwiftShader,
 i.e. WebGL rasterised on the CPU of a 2-core machine, so far slower than any real GPU and noisy): 53–85 draw calls and
 41 000–99 000 triangles per board (unchanged in 0.7), 2–5 ms of CPU per `render()`, both face textures painted in
@@ -1076,7 +1424,7 @@ Tests: `tests/proyectos-kicad.spec.ts` (own config `playwright.proyectos.config.
 `node tests/proyectos-capturas.mjs --url http://localhost:4189/` → `tests/capturas/proyectos/`; frame cost while
 orbiting `node tests/proyectos-rendimiento.mjs --perfil mac|tableta|movil`.
 
-## Performance diagnostic (`web/src/componentes/diagnostico/`, 0.7)
+## Performance diagnostic (`web/src/componentes/diagnostico/`, 0.7; new rows in 0.8)
 
 `#/diagnostico` (`Vista` includes `'diagnostico'`), reached from «Ajustes» (`EntradaAjustes.svelte`, a link in the
 settings popover; not a rail entry). `Diagnostico.svelte` lists the tests with checkboxes and the seconds each 3D
@@ -1084,15 +1432,24 @@ view turns (default 5); nothing is built or downloaded until «Empezar». `prueb
 DPR, cores, memory, theme); WebGL 2 (unmasked renderer, version, max texture and renderbuffer size, MSAA samples,
 depth bits, high-precision floats, anisotropy, KHR_parallel_shader_compile); the component viewer (`Visor` of
 tres/motor with the 64-pin LQFP: module load, model build, first frame, then frames per second, p95 interval and
-render CPU while a synthetic mouse drag turns it); the SDR board (`Escena3D` of proyectos: data and geometry, board
-visible, board with its parts and the load phases, then turning as above, draw calls and triangles); the live layout
+render CPU while a synthetic mouse drag turns it; 0.8: the first frame measured until it is drawn, with the
+shader time of `visor.preparacion` and whether compilation is parallel, a «Segunda vista» of the same model in a new
+WebGL context — what the driver already had compiled —, and «Resolución al girar»: base → lowest pixel ratio,
+changes, and the ratio back at rest); the SDR board (`Escena3D` of proyectos: data and geometry, board visible
+(0.8: until its first frame, with `compilarPlaca` and the quarter pass phases), board with its parts and the load
+phases, «Caras a resolución completa» (0.8: `fasesCaras.completa`: mode, page-thread ms, longest task, paint, read,
+flip, upload in strips, GPU wait), then turning as above, draw calls and triangles, and the resolution while
+turning); «Caras de la placa SDR» (0.8, `carasSdr`): one new view per `ModoCaras` (directo, trabajador, franjas)
+without its parts, `refinarCaras()` at once, the time to both full faces and the page's longest gap meanwhile (a
+4 ms timer chain), marking the mode this WebView uses by default; the live layout
 (`generarEsquema`, effort 1, nothing remembered) of cap50/rectificador, cap06/fig-6.13, cap08/fig-8.3 and
 cap29/prob-29.C-decodificador; ngspice (`simularTexto` of the simulator's client: fig. 3.1, first run with the
 download and compile of the engine, then a second one). The views draw in a visible box of the page (browsers do not
 draw hidden canvases) and are disposed after each test. The results go to a table grouped by test with ok / warning /
 error marks and to plain text («Copiar resultados»: clipboard, or the text selected in a textarea where the WebView
 has no clipboard permission). Test: `tests/diagnostico.spec.ts` (opened from «Aa», nothing before «Empezar», every
-group in the table, the copied text).
+group in the table — 0.8: also «Caras de la placa SDR», «Segunda vista», «Caras a resolución completa», «Resolución
+al girar» and the three modes —, the copied text).
 
 ## Instruments and test bench (`web/src/componentes/instrumentos/`)
 

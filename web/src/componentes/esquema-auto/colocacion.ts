@@ -106,8 +106,15 @@ function anchoRef(n: string): number {
 
 /** Width reserved for a value: every number counts as «8,88» so that a slider never changes the layout. */
 function anchoReservado(s: string): number {
-  return anchoTexto(s.replace(/[0-9]+(?:[,.][0-9]+)?(\s?)[pnµumkMGT]?(?=[A-Za-zΩ])/g, '8,88$1k').replace(/[0-9]+(?:[,.][0-9]+)?/g, '8,88'), TAM_ETQ);
+  let w = reservados.get(s);
+  if (w === undefined) {
+    w = anchoTexto(s.replace(/[0-9]+(?:[,.][0-9]+)?(\s?)[pnµumkMGT]?(?=[A-Za-zΩ])/g, '8,88$1k').replace(/[0-9]+(?:[,.][0-9]+)?/g, '8,88'), TAM_ETQ);
+    if (reservados.size > 4000) reservados.clear();
+    reservados.set(s, w);
+  }
+  return w;
 }
+const reservados = new Map<string, number>();
 
 export function lineasEtiqueta(d: Dispositivo, horizontal: boolean): { lineas: string[]; ancho: number } {
   const ref = d.nombre;
@@ -304,15 +311,33 @@ export function construirVariante(u: Unidad, def: DefSimbolo, o: number, coste: 
     if (t.etq) rects.push(inflar(t.etq, 0.05));
     extra += costeTalon(t, p.riel);
   });
-  // Flat arrays.
-  const rf = new Float64Array(rects.flat());
-  const pf = new Float64Array(patas.flatMap(([a, b]) => rectLinea(a, b, 0.02)));
-  const qf = new Float64Array(pines.flatMap((g, i) => [g.x, g.y, g.dx, g.dy, u.pines[i]!.red]));
-  const obst: [Rect, number][] = [[cuerpo, 1]];
-  if (etq) obst.push([etq.rect, 0.35]);
-  for (const t of talones) obst.push([t.rect, 0.6]);
-  const of = new Float64Array(obst.flatMap(([r]) => r));
-  const ow = new Float64Array(obst.map(([, w]) => w));
+  // Flat arrays (filled by hand: Array.prototype.flat/flatMap were a good part of the live layout's time).
+  const rf = new Float64Array(4 * rects.length);
+  rects.forEach((r, i) => rf.set(r, 4 * i));
+  const pf = new Float64Array(4 * patas.length);
+  patas.forEach(([a, b], i) => pf.set(rectLinea(a, b, 0.02), 4 * i));
+  const qf = new Float64Array(5 * pines.length);
+  pines.forEach((g, i) => {
+    qf[5 * i] = g.x;
+    qf[5 * i + 1] = g.y;
+    qf[5 * i + 2] = g.dx;
+    qf[5 * i + 3] = g.dy;
+    qf[5 * i + 4] = u.pines[i]!.red;
+  });
+  const nObst = 1 + (etq ? 1 : 0) + talones.length;
+  const of = new Float64Array(4 * nObst);
+  const ow = new Float64Array(nObst);
+  of.set(cuerpo, 0);
+  ow[0] = 1;
+  let iObst = 1;
+  if (etq) {
+    of.set(etq.rect, 4 * iObst);
+    ow[iObst++] = 0.35;
+  }
+  for (const t of talones) {
+    of.set(t.rect, 4 * iObst);
+    ow[iObst++] = 0.6;
+  }
   let cx0 = Infinity;
   let cy0 = Infinity;
   let cx1 = -Infinity;
@@ -393,7 +418,13 @@ export function crearUnidades(
       return { nombre: p.nombre, nodo: p.nodo, red: red(p.nodo), tipo: 'red', riel: null };
     });
     const u: Unidad = { id: unidades.length, disp: d, puerto: null, pines, vars: [], x: 0, y: 0, v: 0 };
-    for (const vv of variantes(d)) u.vars.push(construirVariante(u, simboloDe(d, vv.v), vv.o, vv.coste));
+    // One symbol definition per drawing variant (they are read only; up to eight orientations share it).
+    const defs = new Map<number, DefSimbolo>();
+    for (const vv of variantes(d)) {
+      let def = defs.get(vv.v);
+      if (!def) defs.set(vv.v, (def = simboloDe(d, vv.v)));
+      u.vars.push(construirVariante(u, def, vv.o, vv.coste));
+    }
     unidades.push(u);
   }
   for (const p of puertos) {
@@ -492,43 +523,6 @@ const PESO = {
  */
 const PASO_SEG = 6;
 
-interface EstadoRed {
-  coste: number;
-  segs: Float64Array;
-  /** Bounding box of the segments (early outs). */
-  bx0: number;
-  by0: number;
-  bx1: number;
-  by1: number;
-}
-
-function conCaja(coste: number, l: number[]): EstadoRed {
-  let bx0 = Infinity;
-  let by0 = Infinity;
-  let bx1 = -Infinity;
-  let by1 = -Infinity;
-  for (let i = 0; i < l.length; i += PASO_SEG) {
-    const h = l[i + 3] === 1;
-    const x0 = h ? l[i]! : l[i + 2]!;
-    const x1 = h ? l[i + 1]! : l[i + 2]!;
-    const y0 = h ? l[i + 2]! : l[i]!;
-    const y1 = h ? l[i + 2]! : l[i + 1]!;
-    if (x0 < bx0) bx0 = x0;
-    if (x1 > bx1) bx1 = x1;
-    if (y0 < by0) by0 = y0;
-    if (y1 > by1) by1 = y1;
-  }
-  return { coste, segs: new Float64Array(l), bx0, by0, bx1, by1 };
-}
-
-/** Adds the segment (x0, y0)–(x1, y1) (axis-aligned) to a flat list. */
-function anadirSeg(l: number[], x0: number, y0: number, x1: number, y1: number, ua: number, ub: number): void {
-  if (x0 === x1 && y0 === y1) return;
-  if (y0 === y1) l.push(Math.min(x0, x1), Math.max(x0, x1), y0, 1, ua, ub);
-  else l.push(Math.min(y0, y1), Math.max(y0, y1), x0, 0, ua, ub);
-}
-
-
 /** Axis-aligned segment crosses the interior of a rectangle. */
 export function segEnRect(s: { x0: number; y0: number; x1: number; y1: number }, r: Rect): boolean {
   const e = 1e-6;
@@ -544,15 +538,16 @@ export function segEnRect(s: { x0: number; y0: number; x1: number; y1: number },
   return false;
 }
 
-/** Crossings (perpendicular, strictly inside both; 1 each) and overlaps (collinear; 1.5) of two segment lists. */
-function crucesListas(a: Float64Array, b: Float64Array): number {
+/** Crossings (perpendicular, strictly inside both; 1 each) and overlaps (collinear; 1.5) of two segment lists
+ *  (the first `na` / `nb` numbers of `a` / `b`). */
+function crucesListas(a: Float64Array, na: number, b: Float64Array, nb: number): number {
   let c = 0;
-  for (let i = 0; i < a.length; i += PASO_SEG) {
+  for (let i = 0; i < na; i += PASO_SEG) {
     const alo = a[i]!;
     const ahi = a[i + 1]!;
     const ac = a[i + 2]!;
     const ah = a[i + 3]!;
-    for (let j = 0; j < b.length; j += PASO_SEG) {
+    for (let j = 0; j < nb; j += PASO_SEG) {
       const blo = b[j]!;
       const bhi = b[j + 1]!;
       const bc = b[j + 2]!;
@@ -565,34 +560,80 @@ function crucesListas(a: Float64Array, b: Float64Array): number {
   return c;
 }
 
-
-interface Pendiente {
-  coste: number;
-  redes: Map<number, EstadoRed>;
-  costeRed: Map<number, number>;
-  cuerpo: [number, number, number][];
-  cruces: [number, number, number][];
-  unidades: [number, number][];
-  area: number;
-  /** Changed rule costs: [rule index, new cost]; and the new total. */
-  reglas: [number, number][];
-  reglasTotal: number;
-}
-
+/**
+ * Placement of one component by simulated annealing with an incremental cost.
+ *
+ * 0.8: the cost terms live in flat typed arrays (per net: its estimated wires, their box and cost, current and
+ * pending; per net × unit: wire hits on bodies; per net × net: crossings) and a move allocates nothing. The
+ * arithmetic and its order are exactly those of 0.7 (same sums in the same order, same random numbers), so the
+ * layouts are identical, only faster.
+ */
 export class Colocador {
   readonly c: Componente;
   readonly us: Unidad[];
   private rnd: () => number;
   coste = 0;
-  // Caches of the cost terms.
-  private redes: EstadoRed[] = [];
-  private costeRedes: number[] = [];
-  /** Body hits of net k's estimated wires on unit u. */
-  private cuerpo: number[][] = [];
-  private cruces: number[][] = [];
-  private costeUnidades: number[] = [];
+  private readonly nr: number;
+  private readonly nu: number;
+  // Current cost terms. Per net k: its estimated wires segs[k] (the first nSeg[k] numbers), their box
+  // caja[4k..4k+3] (x0, y0, x1, y1) and the net's own cost.
+  private segs: Float64Array[];
+  private nSeg: Int32Array;
+  private caja: Float64Array;
+  private costeRedes: Float64Array;
+  /** Body hits of net k's estimated wires on unit u: cuerpo[k·nu + u]. */
+  private cuerpo: Float64Array;
+  /** Crossings between nets k and j: cruces[k·nr + j] (symmetric). */
+  private cruces: Float64Array;
+  private costeUnidades: Float64Array;
   private costeArea = 0;
-  private pendiente: Pendiente | null = null;
+  /** World box of each unit's current variant (x0, y0, x1, y1 at 4u): the early outs of the hit tests without
+   *  a call per unit. Refreshed by costeTotal() and for the units a move changes. */
+  private cw: Float64Array;
+  // Pending move (delta → confirmar): nets recomputed (A, in the order they were found), their new terms in
+  // the p* buffers, and the changed hits, crossings, unit costs and rules.
+  private pSegs: Float64Array[];
+  private pNSeg: Int32Array;
+  private pCaja: Float64Array;
+  private pCosteRed: Float64Array;
+  private A: Int32Array;
+  private nA = 0;
+  private enA: Int32Array;
+  private selloA = 0;
+  private pcK: Int32Array;
+  private pcU: Int32Array;
+  private pcG: Float64Array;
+  private npc = 0;
+  private pxK: Int32Array;
+  private pxJ: Int32Array;
+  private pxX: Float64Array;
+  private npx = 0;
+  private puU = new Int32Array(2);
+  private puC = new Float64Array(2);
+  private npu = 0;
+  private pArea = 0;
+  private pCoste = 0;
+  private prI: Int32Array;
+  private prN: Float64Array;
+  private npr = 0;
+  private prTotal = 0;
+  private vistaRegla: Int32Array;
+  private selloR = 0;
+  /** Pins of each net that get estimated wires ([unit, pin] pairs; nets drawn with labels: none). */
+  private pinesK: Int32Array[];
+  private sinCables: Uint8Array;
+  /** Signal pins of each unit, and every pin of each net (for alinear). */
+  private senal: Int32Array[];
+  private pinesRedF: Int32Array[];
+  // Scratch for the MST.
+  private gx: Float64Array;
+  private gy: Float64Array;
+  private gdx: Float64Array;
+  private gdy: Float64Array;
+  private gu: Int32Array;
+  private dist: Float64Array;
+  private de: Int32Array;
+  private en: Uint8Array;
   private redesDe: number[][];
   /** Flow rank of each unit: sources to ground 0, then one more than the earliest net it touches. */
   private rangoU: number[];
@@ -625,6 +666,55 @@ export class Colocador {
       for (const p of u.pines) if (p.red >= 0) m = Math.min(m, c.rango[p.red]!);
       return Number.isFinite(m) ? m + 1 : 1;
     });
+    const nr = (this.nr = c.redes.length);
+    const nu = (this.nu = this.us.length);
+    // A net drawn with labels has no wires to estimate (nor have the pins labelled one by one).
+    const R = this.reglas;
+    let maxN = 1;
+    this.sinCables = new Uint8Array(nr);
+    this.pinesK = c.pinesRed.map((ps0, k) => {
+      let ps = ps0;
+      if (R?.etiquetarPines?.size) ps = ps.filter(([u, i]) => !R.etiquetarPines!.has(`${u},${i}`));
+      if (ps.length < 2 || R?.etiquetar.has(k)) this.sinCables[k] = 1;
+      maxN = Math.max(maxN, ps.length);
+      return new Int32Array(ps.flat());
+    });
+    this.pinesRedF = c.pinesRed.map((ps) => new Int32Array(ps.flat()));
+    this.senal = this.us.map((u) => new Int32Array(u.pines.flatMap((p, i) => (p.red >= 0 ? [i] : []))));
+    // Up to two segments per MST edge.
+    const cap = (k: number) => Math.max(1, 12 * (this.pinesK[k]!.length / 2 - 1));
+    this.segs = this.pinesK.map((_, k) => new Float64Array(cap(k)));
+    this.pSegs = this.pinesK.map((_, k) => new Float64Array(cap(k)));
+    this.nSeg = new Int32Array(nr);
+    this.pNSeg = new Int32Array(nr);
+    this.caja = new Float64Array(4 * nr);
+    this.pCaja = new Float64Array(4 * nr);
+    this.costeRedes = new Float64Array(nr);
+    this.pCosteRed = new Float64Array(nr);
+    this.cuerpo = new Float64Array(nr * nu);
+    this.cruces = new Float64Array(nr * nr);
+    this.costeUnidades = new Float64Array(nu);
+    this.cw = new Float64Array(4 * nu);
+    this.A = new Int32Array(nr);
+    this.enA = new Int32Array(nr);
+    this.pcK = new Int32Array(nr * nu);
+    this.pcU = new Int32Array(nr * nu);
+    this.pcG = new Float64Array(nr * nu);
+    this.pxK = new Int32Array(nr * nr);
+    this.pxJ = new Int32Array(nr * nr);
+    this.pxX = new Float64Array(nr * nr);
+    const nReglas = this.costeRegla.length;
+    this.prI = new Int32Array(nReglas);
+    this.prN = new Float64Array(nReglas);
+    this.vistaRegla = new Int32Array(nReglas);
+    this.gx = new Float64Array(maxN);
+    this.gy = new Float64Array(maxN);
+    this.gdx = new Float64Array(maxN);
+    this.gdy = new Float64Array(maxN);
+    this.gu = new Int32Array(maxN);
+    this.dist = new Float64Array(maxN);
+    this.de = new Int32Array(maxN);
+    this.en = new Uint8Array(maxN);
   }
 
   // -------------------------------------------------------------- geometry helpers
@@ -676,13 +766,41 @@ export class Colocador {
   }
 
   valida(u: Unidad): boolean {
-    for (const w of this.us) if (w !== u && !this.compatibles(u, w)) return false;
+    // The box test of compatibles() first, inline (most units are far away).
+    const ca = u.vars[u.v]!.caja;
+    for (const w of this.us) {
+      if (w === u) continue;
+      const cb = w.vars[w.v]!.caja;
+      const ox = w.x - u.x;
+      const oy = w.y - u.y;
+      if (cb[0] + ox > ca[2] + 1e-6 || cb[2] + ox < ca[0] - 1e-6 || cb[1] + oy > ca[3] + 1e-6 || cb[3] + oy < ca[1] - 1e-6) continue;
+      if (!this.compatibles(u, w)) return false;
+    }
     return true;
+  }
+
+  private refrescar(u: Unidad): void {
+    const k = u.vars[u.v]!.caja;
+    const i = 4 * u.id;
+    this.cw[i] = k[0] + u.x;
+    this.cw[i + 1] = k[1] + u.y;
+    this.cw[i + 2] = k[2] + u.x;
+    this.cw[i + 3] = k[3] + u.y;
   }
 
   // -------------------------------------------------------------- cost terms
 
+  /** costeUnidad() per unit and variant (it depends on nothing else), computed once. */
+  private costeVar: Float64Array[] = [];
   private costeUnidad(u: Unidad): number {
+    let t = this.costeVar[u.id];
+    if (!t) this.costeVar[u.id] = t = new Float64Array(u.vars.length).fill(NaN);
+    let c = t[u.v]!;
+    if (Number.isNaN(c)) t[u.v] = c = this.costeUnidadDe(u);
+    return c;
+  }
+
+  private costeUnidadDe(u: Unidad): number {
     const v = u.vars[u.v]!;
     let c = v.coste;
     // Flow: a pin on a later net should not be left of a pin on an earlier net of the same part.
@@ -700,28 +818,80 @@ export class Colocador {
     return c;
   }
 
-  private estadoRed(k: number): EstadoRed {
-    let ps = this.c.pinesRed[k]!;
-    // A net drawn with labels has no wires to estimate (nor have the pins labelled one by one).
-    if (this.reglas?.etiquetarPines?.size) ps = ps.filter(([u, i]) => !this.reglas!.etiquetarPines!.has(`${u},${i}`));
-    const n = ps.length;
-    if (n < 2 || this.reglas?.etiquetar.has(k)) return conCaja(0, []);
-    const g = ps.map(([ui, pi]) => this.pin(this.us[ui]!, pi));
+  /**
+   * Estimated wires of net k (rectilinear MST, L-shaped edges) written into `segs` with their box into `caja`
+   * at 4k; returns [cost, numbers written] through `this.nEscritos`.
+   */
+  private nEscritos = 0;
+  private estadoRed(k: number, segs: Float64Array, caja: Float64Array): number {
+    this.nEscritos = 0;
+    caja[4 * k] = Infinity;
+    caja[4 * k + 1] = Infinity;
+    caja[4 * k + 2] = -Infinity;
+    caja[4 * k + 3] = -Infinity;
+    if (this.sinCables[k]) return 0;
+    const ps = this.pinesK[k]!;
+    const n = ps.length / 2;
+    const us = this.us;
+    const gx = this.gx;
+    const gy = this.gy;
+    const gdx = this.gdx;
+    const gdy = this.gdy;
+    const gu = this.gu;
+    for (let i = 0; i < n; i++) {
+      const u = us[ps[2 * i]!]!;
+      const g = u.vars[u.v]!.pines[ps[2 * i + 1]!]!;
+      gx[i] = g.x + u.x;
+      gy[i] = g.y + u.y;
+      gdx[i] = g.dx;
+      gdy[i] = g.dy;
+      gu[i] = u.id;
+    }
     // Prim's rectilinear MST.
-    const en = new Array<boolean>(n).fill(false);
-    const dist = new Array<number>(n).fill(Infinity);
-    const de = new Array<number>(n).fill(-1);
+    const en = this.en;
+    const dist = this.dist;
+    const de = this.de;
+    for (let i = 0; i < n; i++) {
+      en[i] = 0;
+      dist[i] = Infinity;
+      de[i] = -1;
+    }
     dist[0] = 0;
     let coste = 0;
-    const segs: number[] = [];
+    let o = 0;
     for (let it = 0; it < n; it++) {
       let m = -1;
       for (let i = 0; i < n; i++) if (!en[i] && (m < 0 || dist[i]! < dist[m]!)) m = i;
-      en[m] = true;
-      if (de[m]! >= 0) coste += costeArista(g[de[m]!]!, g[m]!, segs, ps[de[m]!]![0], ps[m]![0]);
+      en[m] = 1;
+      const a = de[m]!;
+      if (a >= 0) {
+        // costeArista(g[a], g[m]) of 0.7, writing its L-shaped estimate.
+        const dx = gx[m]! - gx[a]!;
+        const dy = gy[m]! - gy[a]!;
+        if (dx !== 0 || dy !== 0) {
+          let c = Math.abs(dx) + Math.abs(dy);
+          if (dx !== 0 && dy !== 0) c += PESO.bend;
+          if (dx * gdx[a]! + dy * gdy[a]! < 0) c += PESO.atras;
+          if (-dx * gdx[m]! - dy * gdy[m]! < 0) c += PESO.atras;
+          const ax = gx[a]!;
+          const ay = gy[a]!;
+          const bx = gx[m]!;
+          const by = gy[m]!;
+          if (dx !== 0 && dy !== 0) {
+            if (gdx[a] !== 0) {
+              o = seg(segs, o, ax, ay, bx, ay, gu[a]!, -1);
+              o = seg(segs, o, bx, ay, bx, by, -1, gu[m]!);
+            } else {
+              o = seg(segs, o, ax, ay, ax, by, gu[a]!, -1);
+              o = seg(segs, o, ax, by, bx, by, -1, gu[m]!);
+            }
+          } else o = seg(segs, o, ax, ay, bx, by, gu[a]!, gu[m]!);
+          coste += c;
+        }
+      }
       for (let i = 0; i < n; i++) {
         if (en[i]) continue;
-        const d = Math.abs(g[i]!.x - g[m]!.x) + Math.abs(g[i]!.y - g[m]!.y);
+        const d = Math.abs(gx[i]! - gx[m]!) + Math.abs(gy[i]! - gy[m]!);
         if (d < dist[i]!) {
           dist[i] = d;
           de[i] = m;
@@ -729,42 +899,66 @@ export class Colocador {
       }
     }
     // Flow between parts: a part of lower rank should sit left of the parts it feeds on this net.
+    const rangoU = this.rangoU;
     for (let i = 0; i < n; i++) {
-      const ui = this.us[ps[i]![0]]!;
-      const ri = this.rangoU[ui.id]!;
-      const ci = ui.x + (ui.vars[ui.v]!.caja[0] + ui.vars[ui.v]!.caja[2]) / 2;
+      const ui = us[ps[2 * i]!]!;
+      const ri = rangoU[ui.id]!;
+      const ki = ui.vars[ui.v]!.caja;
+      const ci = ui.x + (ki[0] + ki[2]) / 2;
       for (let j = 0; j < n; j++) {
-        const uj = this.us[ps[j]![0]]!;
-        if (uj === ui || this.rangoU[uj.id]! <= ri) continue;
-        const cj = uj.x + (uj.vars[uj.v]!.caja[0] + uj.vars[uj.v]!.caja[2]) / 2;
+        const uj = us[ps[2 * j]!]!;
+        if (uj === ui || rangoU[uj.id]! <= ri) continue;
+        const kj = uj.vars[uj.v]!.caja;
+        const cj = uj.x + (kj[0] + kj[2]) / 2;
         if (ci > cj) coste += PESO.flujoU * (ci - cj);
       }
     }
-    return conCaja(coste, segs);
+    // Box of the segments (early outs).
+    let bx0 = Infinity;
+    let by0 = Infinity;
+    let bx1 = -Infinity;
+    let by1 = -Infinity;
+    for (let i = 0; i < o; i += PASO_SEG) {
+      const h = segs[i + 3] === 1;
+      const x0 = h ? segs[i]! : segs[i + 2]!;
+      const x1 = h ? segs[i + 1]! : segs[i + 2]!;
+      const y0 = h ? segs[i + 2]! : segs[i]!;
+      const y1 = h ? segs[i + 2]! : segs[i + 1]!;
+      if (x0 < bx0) bx0 = x0;
+      if (x1 > bx1) bx1 = x1;
+      if (y0 < by0) by0 = y0;
+      if (y1 > by1) by1 = y1;
+    }
+    caja[4 * k] = bx0;
+    caja[4 * k + 1] = by0;
+    caja[4 * k + 2] = bx1;
+    caja[4 * k + 3] = by1;
+    this.nEscritos = o;
+    return coste;
   }
 
-  private golpes(red: EstadoRed, u: Unidad): number {
+  /** Weighted hits of a net's estimated wires (`n` numbers of `segs`, box at caja[4k]) on the obstacles of `u`. */
+  private golpes(segs: Float64Array, n: number, caja: Float64Array, k: number, u: Unidad): number {
     const v = u.vars[u.v]!;
     const k0 = v.caja;
-    if (!red.segs.length || red.bx0 >= k0[2] + u.x || red.bx1 <= k0[0] + u.x || red.by0 >= k0[3] + u.y || red.by1 <= k0[1] + u.y) return 0;
-    const segs = red.segs;
+    if (!n || caja[4 * k]! >= k0[2] + u.x || caja[4 * k + 2]! <= k0[0] + u.x || caja[4 * k + 1]! >= k0[3] + u.y || caja[4 * k + 3]! <= k0[1] + u.y) return 0;
     let c = 0;
     const of = v.of;
     const ow = v.ow;
     const ux = u.x;
     const uy = u.y;
     const e = 1e-6;
-    for (let i = 0; i < segs.length; i += PASO_SEG) {
+    for (let i = 0; i < n; i += PASO_SEG) {
       if (u.id === segs[i + 4] || u.id === segs[i + 5]) continue;
       const lo = segs[i]!;
       const hi = segs[i + 1]!;
       const cc = segs[i + 2]!;
       const h = segs[i + 3] === 1;
-      for (let k = 0, w = 0; k < of.length; k += 4, w++) {
-        const r0 = of[k]! + ux;
-        const r1 = of[k + 1]! + uy;
-        const r2 = of[k + 2]! + ux;
-        const r3 = of[k + 3]! + uy;
+      for (let q = 0, w = 0; q < of.length; q += 4, w++) {
+        const r0 = of[q]! + ux;
+        const r1 = of[q + 1]! + uy;
+        const r2 = of[q + 2]! + ux;
+        const r3 = of[q + 3]! + uy;
         const toca = h ? cc > r1 + e && cc < r3 - e && lo < r2 - e && hi > r0 + e : cc > r0 + e && cc < r2 - e && lo < r3 - e && hi > r1 + e;
         if (toca) {
           c += ow[w]!;
@@ -773,6 +967,12 @@ export class Colocador {
       }
     }
     return c;
+  }
+
+  /** Crossings between the wires of nets k and j (each from the current or the pending buffers). */
+  private crucesEntre(sa: Float64Array, na: number, ca: Float64Array, k: number, sb: Float64Array, nb: number, cb: Float64Array, j: number): number {
+    if (!na || !nb || ca[4 * k]! > cb[4 * j + 2]! || cb[4 * j]! > ca[4 * k + 2]! || ca[4 * k + 1]! > cb[4 * j + 3]! || cb[4 * j + 1]! > ca[4 * k + 3]!) return 0;
+    return crucesListas(sa, na, sb, nb);
   }
 
   /** Coordinate of a rule reference along an axis. */
@@ -829,116 +1029,176 @@ export class Colocador {
 
   /** Full cost from scratch (also refreshes the caches). */
   costeTotal(): number {
-    const nr = this.c.redes.length;
-    this.redes = [];
-    this.costeRedes = [];
+    const nr = this.nr;
+    const nu = this.nu;
+    for (const u of this.us) this.refrescar(u);
     for (let k = 0; k < nr; k++) {
-      const e = this.estadoRed(k);
-      this.redes.push(e);
-      this.costeRedes.push(e.coste);
+      this.costeRedes[k] = this.estadoRed(k, this.segs[k]!, this.caja);
+      this.nSeg[k] = this.nEscritos;
     }
-    this.cuerpo = this.redes.map((e) => this.us.map((u) => this.golpes(e, u)));
-    this.cruces = Array.from({ length: nr }, () => new Array<number>(nr).fill(0));
+    for (let k = 0; k < nr; k++) for (let i = 0; i < nu; i++) this.cuerpo[k * nu + i] = this.golpes(this.segs[k]!, this.nSeg[k]!, this.caja, k, this.us[i]!);
+    this.cruces.fill(0);
     for (let k = 0; k < nr; k++)
-      for (let j = k + 1; j < nr; j++) this.cruces[k]![j] = this.cruces[j]![k] = crucesEntre(this.redes[k]!, this.redes[j]!);
-    this.costeUnidades = this.us.map((u) => this.costeUnidad(u));
+      for (let j = k + 1; j < nr; j++)
+        this.cruces[k * nr + j] = this.cruces[j * nr + k] = this.crucesEntre(this.segs[k]!, this.nSeg[k]!, this.caja, k, this.segs[j]!, this.nSeg[j]!, this.caja, j);
+    for (let i = 0; i < nu; i++) this.costeUnidades[i] = this.costeUnidad(this.us[i]!);
     this.costeArea = this.area();
     this.costeReglasV = 0;
     for (let i = 0; i < this.costeRegla.length; i++) this.costeReglasV += this.costeRegla[i] = this.reglaI(i);
     let c = this.costeArea + this.costeReglasV;
-    for (const x of this.costeUnidades) c += x;
+    for (let i = 0; i < nu; i++) c += this.costeUnidades[i]!;
     for (let k = 0; k < nr; k++) {
       c += this.costeRedes[k]!;
-      for (const g of this.cuerpo[k]!) c += PESO.cuerpo * g;
-      for (let j = k + 1; j < nr; j++) c += PESO.cruce * this.cruces[k]![j]!;
+      for (let i = 0; i < nu; i++) c += PESO.cuerpo * this.cuerpo[k * nu + i]!;
+      for (let j = k + 1; j < nr; j++) c += PESO.cruce * this.cruces[k * nr + j]!;
     }
     this.coste = c;
     return c;
   }
 
-  /** Change of cost after moving `movidas` (already moved); keeps the new terms pending. */
-  private delta(movidas: Unidad[]): number {
-    const nr = this.c.redes.length;
-    const A = new Set<number>();
-    for (const u of movidas) for (const k of this.redesDe[u.id]!) A.add(k);
-    const p: Pendiente = { coste: 0, redes: new Map(), costeRed: new Map(), cuerpo: [], cruces: [], unidades: [], area: 0, reglas: [], reglasTotal: 0 };
+  /** Change of cost after moving `u` (and `otro`, a swap; both already moved); keeps the new terms pending. */
+  private delta(u: Unidad, otro: Unidad | null): number {
+    const nr = this.nr;
+    const nu = this.nu;
+    const us = this.us;
+    // Nets touched by the moved units, in the order they are found.
+    const sello = ++this.selloA;
+    const enA = this.enA;
+    const A = this.A;
+    let nA = 0;
+    for (const k of this.redesDe[u.id]!) if (enA[k] !== sello) (enA[k] = sello), (A[nA++] = k);
+    if (otro) for (const k of this.redesDe[otro.id]!) if (enA[k] !== sello) (enA[k] = sello), (A[nA++] = k);
+    this.nA = nA;
+    this.npc = this.npx = this.npu = this.npr = 0;
+    this.refrescar(u);
+    if (otro) this.refrescar(otro);
+    const cw = this.cw;
     let d = 0;
-    for (const k of A) {
-      const e = this.estadoRed(k);
-      p.redes.set(k, e);
-      d += e.coste - this.costeRedes[k]!;
-      for (const u of this.us) {
-        const g = this.golpes(e, u);
-        if (g !== this.cuerpo[k]![u.id]) {
-          d += PESO.cuerpo * (g - this.cuerpo[k]![u.id]!);
-          p.cuerpo.push([k, u.id, g]);
+    for (let a = 0; a < nA; a++) {
+      const k = A[a]!;
+      const s = this.pSegs[k]!;
+      const ck = this.estadoRed(k, s, this.pCaja);
+      const n = (this.pNSeg[k] = this.nEscritos);
+      this.pCosteRed[k] = ck;
+      d += ck - this.costeRedes[k]!;
+      const bx0 = this.pCaja[4 * k]!;
+      const by0 = this.pCaja[4 * k + 1]!;
+      const bx1 = this.pCaja[4 * k + 2]!;
+      const by1 = this.pCaja[4 * k + 3]!;
+      for (let i = 0; i < nu; i++) {
+        // golpes() returns 0 when the boxes do not overlap: tested here without the call.
+        const g = !n || bx0 >= cw[4 * i + 2]! || bx1 <= cw[4 * i]! || by0 >= cw[4 * i + 3]! || by1 <= cw[4 * i + 1]! ? 0 : this.golpes(s, n, this.pCaja, k, us[i]!);
+        const viejo = this.cuerpo[k * nu + i]!;
+        if (g !== viejo) {
+          d += PESO.cuerpo * (g - viejo);
+          this.pcK[this.npc] = k;
+          this.pcU[this.npc] = i;
+          this.pcG[this.npc++] = g;
         }
       }
     }
     for (let k = 0; k < nr; k++) {
-      if (A.has(k)) continue;
-      for (const u of movidas) {
-        const g = this.golpes(this.redes[k]!, u);
-        if (g !== this.cuerpo[k]![u.id]) {
-          d += PESO.cuerpo * (g - this.cuerpo[k]![u.id]!);
-          p.cuerpo.push([k, u.id, g]);
+      if (enA[k] === sello) continue;
+      const n = this.nSeg[k]!;
+      if (!n) {
+        // No wires: no hits now; only a hit counted before can change.
+        if (this.cuerpo[k * nu + u.id] === 0 && (!otro || this.cuerpo[k * nu + otro.id] === 0)) continue;
+      }
+      for (let m = 0; m < (otro ? 2 : 1); m++) {
+        const w = m ? otro! : u;
+        const g = this.golpes(this.segs[k]!, n, this.caja, k, w);
+        const viejo = this.cuerpo[k * nu + w.id]!;
+        if (g !== viejo) {
+          d += PESO.cuerpo * (g - viejo);
+          this.pcK[this.npc] = k;
+          this.pcU[this.npc] = w.id;
+          this.pcG[this.npc++] = g;
         }
       }
     }
-    for (const k of A) {
-      const a = p.redes.get(k)!;
+    for (let a = 0; a < nA; a++) {
+      const k = A[a]!;
+      const sk = this.pSegs[k]!;
+      const nk = this.pNSeg[k]!;
+      const kx0 = this.pCaja[4 * k]!;
+      const ky0 = this.pCaja[4 * k + 1]!;
+      const kx1 = this.pCaja[4 * k + 2]!;
+      const ky1 = this.pCaja[4 * k + 3]!;
       for (let j = 0; j < nr; j++) {
-        if (j === k || (A.has(j) && j < k)) continue;
-        const x = crucesEntre(a, p.redes.get(j) ?? this.redes[j]!);
-        d += PESO.cruce * (x - this.cruces[k]![j]!);
-        p.cruces.push([k, j, x]);
+        const jA = enA[j] === sello;
+        if (j === k || (jA && j < k)) continue;
+        // crucesEntre() inline: its box test first.
+        const cj = jA ? this.pCaja : this.caja;
+        const nj = jA ? this.pNSeg[j]! : this.nSeg[j]!;
+        const x = !nk || !nj || kx0 > cj[4 * j + 2]! || cj[4 * j]! > kx1 || ky0 > cj[4 * j + 3]! || cj[4 * j + 1]! > ky1 ? 0 : crucesListas(sk, nk, jA ? this.pSegs[j]! : this.segs[j]!, nj);
+        const viejo = this.cruces[k * nr + j]!;
+        // Unchanged: adds exactly nothing (the sum stays bit for bit the same).
+        if (x === viejo) continue;
+        d += PESO.cruce * (x - viejo);
+        this.pxK[this.npx] = k;
+        this.pxJ[this.npx] = j;
+        this.pxX[this.npx++] = x;
       }
     }
-    for (const u of movidas) {
-      const c = this.costeUnidad(u);
-      d += c - this.costeUnidades[u.id]!;
-      p.unidades.push([u.id, c]);
+    for (let m = 0; m < (otro ? 2 : 1); m++) {
+      const w = m ? otro! : u;
+      const c = this.costeUnidad(w);
+      d += c - this.costeUnidades[w.id]!;
+      this.puU[this.npu] = w.id;
+      this.puC[this.npu++] = c;
     }
-    p.area = this.area();
-    d += p.area - this.costeArea;
+    this.pArea = this.area();
+    d += this.pArea - this.costeArea;
     if (this.reglas) {
       // Only the rules touching the moved units change.
-      const vistas = new Set<number>();
+      const sr = ++this.selloR;
       let dr = 0;
-      for (const u of movidas)
-        for (const i of this.reglasDeUnidad[u.id]!) {
-          if (vistas.has(i)) continue;
-          vistas.add(i);
+      for (let m = 0; m < (otro ? 2 : 1); m++) {
+        const w = m ? otro! : u;
+        for (const i of this.reglasDeUnidad[w.id]!) {
+          if (this.vistaRegla[i] === sr) continue;
+          this.vistaRegla[i] = sr;
           const n = this.reglaI(i);
           if (n !== this.costeRegla[i]) {
             dr += n - this.costeRegla[i]!;
-            p.reglas.push([i, n]);
+            this.prI[this.npr] = i;
+            this.prN[this.npr++] = n;
           }
         }
-      p.reglasTotal = this.costeReglasV + dr;
+      }
+      this.prTotal = this.costeReglasV + dr;
       d += dr;
     }
-    p.coste = this.coste + d;
-    this.pendiente = p;
+    this.pCoste = this.coste + d;
     return d;
   }
 
   private confirmar(): void {
-    const p = this.pendiente!;
-    for (const [k, e] of p.redes) {
-      this.redes[k] = e;
-      this.costeRedes[k] = e.coste;
+    const nr = this.nr;
+    const nu = this.nu;
+    for (let a = 0; a < this.nA; a++) {
+      const k = this.A[a]!;
+      // Swap the net's buffers: the pending wires become the current ones.
+      const s = this.segs[k]!;
+      this.segs[k] = this.pSegs[k]!;
+      this.pSegs[k] = s;
+      this.nSeg[k] = this.pNSeg[k]!;
+      for (let q = 0; q < 4; q++) this.caja[4 * k + q] = this.pCaja[4 * k + q]!;
+      this.costeRedes[k] = this.pCosteRed[k]!;
     }
-    for (const [k, u, g] of p.cuerpo) this.cuerpo[k]![u] = g;
-    for (const [k, j, x] of p.cruces) this.cruces[k]![j] = this.cruces[j]![k] = x;
-    for (const [u, c] of p.unidades) this.costeUnidades[u] = c;
-    this.costeArea = p.area;
+    for (let i = 0; i < this.npc; i++) this.cuerpo[this.pcK[i]! * nu + this.pcU[i]!] = this.pcG[i]!;
+    for (let i = 0; i < this.npx; i++) {
+      const k = this.pxK[i]!;
+      const j = this.pxJ[i]!;
+      this.cruces[k * nr + j] = this.cruces[j * nr + k] = this.pxX[i]!;
+    }
+    for (let i = 0; i < this.npu; i++) this.costeUnidades[this.puU[i]!] = this.puC[i]!;
+    this.costeArea = this.pArea;
     if (this.reglas) {
-      for (const [i, n] of p.reglas) this.costeRegla[i] = n;
-      this.costeReglasV = p.reglasTotal;
+      for (let i = 0; i < this.npr; i++) this.costeRegla[this.prI[i]!] = this.prN[i]!;
+      this.costeReglasV = this.prTotal;
     }
-    this.coste = p.coste;
-    this.pendiente = null;
+    this.coste = this.pCoste;
   }
 
   // -------------------------------------------------------------- initial placement
@@ -1086,6 +1346,71 @@ export class Colocador {
     }
   }
 
+  /**
+   * 0.8, incremental re-layout: the units with a place in `desde` (x, y, variant; from the previous layout of
+   * the edited circuit) keep it while it stays valid; each other unit goes, in its cheapest variant, to the
+   * nearest free spot around the mean position of the placed units it shares a net with (else right of
+   * everything). Returns how many units kept their place.
+   */
+  inicialDesde(desde: (readonly [number, number, number] | null)[]): number {
+    const colocadas: Unidad[] = [];
+    let quedan = 0;
+    const libres: Unidad[] = [];
+    for (const u of this.us) {
+      const p = desde[u.id];
+      if (p && p[2] < u.vars.length) {
+        [u.x, u.y, u.v] = p;
+        if (colocadas.every((w) => this.compatibles(u, w))) {
+          colocadas.push(u);
+          quedan++;
+          continue;
+        }
+      }
+      libres.push(u);
+    }
+    let x1 = 0;
+    for (const u of colocadas) x1 = Math.max(x1, u.x + u.vars[u.v]!.caja[2]);
+    for (const u of libres) {
+      let mejor = 0;
+      u.vars.forEach((v, i) => {
+        if (v.coste < u.vars[mejor]!.coste) mejor = i;
+      });
+      u.v = mejor;
+      // Mean position of the placed units on its nets.
+      let sx = 0;
+      let sy = 0;
+      let n = 0;
+      for (const k of this.redesDe[u.id]!)
+        for (const [w] of this.c.pinesRed[k]!) {
+          const o = this.us[w]!;
+          if (o === u || !colocadas.includes(o)) continue;
+          sx += o.x;
+          sy += o.y;
+          n++;
+        }
+      const cx = n ? Math.round(sx / n) : Math.ceil(x1) + 2;
+      const cy = n ? Math.round(sy / n) : 0;
+      let hecho = false;
+      for (let r = 0; r <= 16 && !hecho; r++)
+        for (let dy = -r; dy <= r && !hecho; dy++)
+          for (let dx = -r; dx <= r && !hecho; dx++) {
+            if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
+            u.x = cx + dx;
+            u.y = cy + dy;
+            hecho = colocadas.every((w) => this.compatibles(u, w));
+          }
+      if (!hecho) {
+        u.x = Math.ceil(x1) + 2;
+        u.y = 0;
+        let intentos = 0;
+        while (colocadas.some((w) => !this.compatibles(u, w)) && intentos++ < 400) u.y += 1;
+      }
+      colocadas.push(u);
+      x1 = Math.max(x1, u.x + u.vars[u.v]!.caja[2]);
+    }
+    return quedan;
+  }
+
   private inicialColumnas(): void {
     const colocadas: Unidad[] = [];
     const columnas = new Map<number, number>();
@@ -1121,66 +1446,90 @@ export class Colocador {
     const us = this.us;
     if (us.length < 2 && us.every((u) => u.vars.length === 1)) return;
     let mejorCoste = this.coste;
-    let mejor = us.map((u) => [u.x, u.y, u.v] as const);
+    const mejor = new Float64Array(3 * us.length);
+    const guardar = () => {
+      for (let i = 0; i < us.length; i++) {
+        const w = us[i]!;
+        mejor[3 * i] = w.x;
+        mejor[3 * i + 1] = w.y;
+        mejor[3 * i + 2] = w.v;
+      }
+    };
+    guardar();
     let ultimaMejora = 0;
     const quieto = Math.max(1500, iteraciones * 0.2);
+    const rnd = this.rnd;
     for (let it = 0; it < iteraciones; it++) {
       if (rapido && it > iteraciones * 0.4 && it - ultimaMejora > quieto) break;
       const T = T0 * Math.pow(T1 / T0, it / iteraciones);
-      const u = us[Math.floor(this.rnd() * us.length)]!;
-      const antes = { x: u.x, y: u.y, v: u.v };
+      const u = us[Math.floor(rnd() * us.length)]!;
+      const ax = u.x;
+      const ay = u.y;
+      const av = u.v;
       let otro: Unidad | null = null;
-      let otroAntes: { x: number; y: number } | null = null;
-      const r = this.rnd();
+      let ox = 0;
+      let oy = 0;
+      const r = rnd();
       const paso = Math.max(1, Math.round(4 * (T / T0)));
-      const sacudir = () => {
-        u.x += Math.round((this.rnd() * 2 - 1) * paso);
-        u.y += Math.round((this.rnd() * 2 - 1) * paso);
-      };
-      if (r < 0.28) sacudir();
+      let sacudir = false;
+      if (r < 0.28) sacudir = true;
       else if (r < 0.46 && u.vars.length > 1) {
-        u.v = Math.floor(this.rnd() * u.vars.length);
-        if (this.rnd() < 0.6) this.alinear(u);
+        u.v = Math.floor(rnd() * u.vars.length);
+        if (rnd() < 0.6) this.alinear(u);
       } else if (r < 0.9) {
-        if (u.vars.length > 1 && this.rnd() < 0.2) u.v = Math.floor(this.rnd() * u.vars.length);
-        if (!this.alinear(u)) sacudir();
+        if (u.vars.length > 1 && rnd() < 0.2) u.v = Math.floor(rnd() * u.vars.length);
+        if (!this.alinear(u)) sacudir = true;
       } else {
-        otro = us[Math.floor(this.rnd() * us.length)]!;
+        otro = us[Math.floor(rnd() * us.length)]!;
         if (otro === u) continue;
-        otroAntes = { x: otro.x, y: otro.y };
-        [u.x, otro.x] = [otro.x, u.x];
-        [u.y, otro.y] = [otro.y, u.y];
+        ox = otro.x;
+        oy = otro.y;
+        otro.x = u.x;
+        otro.y = u.y;
+        u.x = ox;
+        u.y = oy;
       }
-      const deshacer = () => {
-        u.x = antes.x;
-        u.y = antes.y;
-        u.v = antes.v;
-        if (otro && otroAntes) {
-          otro.x = otroAntes.x;
-          otro.y = otroAntes.y;
-        }
-      };
-      if (u.x === antes.x && u.y === antes.y && u.v === antes.v && !otro) continue;
+      if (sacudir) {
+        u.x += Math.round((rnd() * 2 - 1) * paso);
+        u.y += Math.round((rnd() * 2 - 1) * paso);
+      }
+      if (u.x === ax && u.y === ay && u.v === av && !otro) continue;
       if (!this.valida(u) || (otro && !this.valida(otro))) {
-        deshacer();
+        u.x = ax;
+        u.y = ay;
+        u.v = av;
+        if (otro) {
+          otro.x = ox;
+          otro.y = oy;
+        }
         continue;
       }
-      const d = this.delta(otro ? [u, otro] : [u]);
-      if (d <= 0 || this.rnd() < Math.exp(-d / T)) {
+      const d = this.delta(u, otro);
+      if (d <= 0 || rnd() < Math.exp(-d / T)) {
         this.confirmar();
         if (this.coste < mejorCoste - 1e-9) {
           mejorCoste = this.coste;
           ultimaMejora = it;
-          mejor = us.map((w) => [w.x, w.y, w.v] as const);
+          guardar();
         }
       } else {
-        this.pendiente = null;
-        deshacer();
+        u.x = ax;
+        u.y = ay;
+        u.v = av;
+        this.refrescar(u);
+        if (otro) {
+          otro.x = ox;
+          otro.y = oy;
+          this.refrescar(otro);
+        }
       }
     }
-    us.forEach((w, i) => {
-      [w.x, w.y, w.v] = mejor[i]!;
-    });
+    for (let i = 0; i < us.length; i++) {
+      const w = us[i]!;
+      w.x = mejor[3 * i]!;
+      w.y = mejor[3 * i + 1]!;
+      w.v = mejor[3 * i + 2]!;
+    }
     this.costeTotal();
   }
 
@@ -1224,24 +1573,43 @@ export class Colocador {
 
   /** Moves `u` so that one of its signal pins lines up with (or touches) a pin of the same net. */
   private alinear(u: Unidad): boolean {
-    const mios = u.pines.map((p, i) => ({ p, i })).filter((x) => x.p.red >= 0);
+    const mios = this.senal[u.id]!;
     if (!mios.length) return false;
-    const { p, i } = mios[Math.floor(this.rnd() * mios.length)]!;
-    const otros = this.c.pinesRed[p.red]!.filter(([ui]) => ui !== u.id);
-    if (!otros.length) return false;
-    const [oi, op] = otros[Math.floor(this.rnd() * otros.length)]!;
-    const q = this.pin(this.us[oi]!, op);
-    const mi = this.pin(u, i);
+    const i = mios[Math.floor(this.rnd() * mios.length)]!;
+    const red = u.pines[i]!.red;
+    // The net's other pins (not of this unit): pick one at random.
+    const lista = this.pinesRedF[red]!;
+    let n = 0;
+    for (let q = 0; q < lista.length; q += 2) if (lista[q] !== u.id) n++;
+    if (!n) return false;
+    let elegido = Math.floor(this.rnd() * n);
+    let oi = -1;
+    let op = -1;
+    for (let q = 0; q < lista.length; q += 2) {
+      if (lista[q] === u.id) continue;
+      if (elegido-- === 0) {
+        oi = lista[q]!;
+        op = lista[q + 1]!;
+        break;
+      }
+    }
+    const w = this.us[oi]!;
+    const gq = w.vars[w.v]!.pines[op]!;
+    const qx = gq.x + w.x;
+    const qy = gq.y + w.y;
+    const gm = u.vars[u.v]!.pines[i]!;
+    const mx = gm.x + u.x;
+    const my = gm.y + u.y;
     const r = this.rnd();
-    if (r < 0.3 && mi.dx === -q.dx && mi.dy === -q.dy) {
-      u.x += q.x - mi.x;
-      u.y += q.y - mi.y;
+    if (r < 0.3 && gm.dx === -gq.dx && gm.dy === -gq.dy) {
+      u.x += qx - mx;
+      u.y += qy - my;
     } else if (r < 0.55) {
       const d = 1 + Math.floor(this.rnd() * 3);
-      u.x += q.x + q.dx * d - mi.x;
-      u.y += q.y + q.dy * d - mi.y;
-    } else if (r < 0.78) u.x += q.x - mi.x;
-    else u.y += q.y - mi.y;
+      u.x += qx + gq.dx * d - mx;
+      u.y += qy + gq.dy * d - my;
+    } else if (r < 0.78) u.x += qx - mx;
+    else u.y += qy - my;
     return true;
   }
 }
@@ -1252,28 +1620,21 @@ function enRects(px: number, py: number, r: Float64Array): boolean {
   return false;
 }
 
-function crucesEntre(a: EstadoRed, b: EstadoRed): number {
-  if (!a.segs.length || !b.segs.length || a.bx0 > b.bx1 || b.bx0 > a.bx1 || a.by0 > b.by1 || b.by0 > a.by1) return 0;
-  return crucesListas(a.segs, b.segs);
-}
-
-function costeArista(a: PinGeo, b: PinGeo, segs: number[], ua: number, ub: number): number {
-  const dx = b.x - a.x;
-  const dy = b.y - a.y;
-  if (dx === 0 && dy === 0) return 0;
-  let c = Math.abs(dx) + Math.abs(dy);
-  if (dx !== 0 && dy !== 0) c += PESO.bend;
-  if (dx * a.dx + dy * a.dy < 0) c += PESO.atras;
-  if (-dx * b.dx - dy * b.dy < 0) c += PESO.atras;
-  // L-shaped estimate: leave `a` along its own axis first.
-  if (dx !== 0 && dy !== 0) {
-    if (a.dx !== 0) {
-      anadirSeg(segs, a.x, a.y, b.x, a.y, ua, -1);
-      anadirSeg(segs, b.x, a.y, b.x, b.y, -1, ub);
-    } else {
-      anadirSeg(segs, a.x, a.y, a.x, b.y, ua, -1);
-      anadirSeg(segs, a.x, b.y, b.x, b.y, -1, ub);
-    }
-  } else anadirSeg(segs, a.x, a.y, b.x, b.y, ua, ub);
-  return c;
+/** Writes the axis-aligned segment (x0, y0)–(x1, y1) at `o` (nothing for a point); returns the next offset. */
+function seg(s: Float64Array, o: number, x0: number, y0: number, x1: number, y1: number, ua: number, ub: number): number {
+  if (x0 === x1 && y0 === y1) return o;
+  if (y0 === y1) {
+    s[o] = Math.min(x0, x1);
+    s[o + 1] = Math.max(x0, x1);
+    s[o + 2] = y0;
+    s[o + 3] = 1;
+  } else {
+    s[o] = Math.min(y0, y1);
+    s[o + 1] = Math.max(y0, y1);
+    s[o + 2] = x0;
+    s[o + 3] = 0;
+  }
+  s[o + 4] = ua;
+  s[o + 5] = ub;
+  return o + PASO_SEG;
 }

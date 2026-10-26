@@ -27,7 +27,8 @@ async function sin3D(page: Page): Promise<void> {
 }
 
 test('las pestañas de placa solo aparecen en las consolas con placa', async ({ page }) => {
-  await page.goto('#/consolas/nes/foto');
+  // (the NES has had a board since 0.8: OpenTendo; the Master System has none)
+  await page.goto('#/consolas/sms/foto');
   const pestanas = page.getByRole('navigation', { name: 'Vista' });
   await expect(pestanas.getByRole('link', { name: 'Esquema' })).toBeVisible();
   await expect(pestanas.getByRole('link', { name: 'Placa en 3D' })).toHaveCount(0);
@@ -36,7 +37,7 @@ test('las pestañas de placa solo aparecen en las consolas con placa', async ({ 
   await expect(pestanas.getByRole('link', { name: 'Placa en 2D' })).toBeVisible();
   // a machine without a board opened on a board tab falls back to the photo
   await page.goto('#/consolas/sms/placa2d');
-  await expect(pestanas.getByRole('link', { name: 'Foto' })).toHaveAttribute('aria-current', 'page');
+  await expect(pestanas.getByRole('link', { name: 'Foto', exact: true })).toHaveAttribute('aria-current', 'page');
 });
 
 test('Mega Drive: del esquema a la placa y de la placa al esquema', async ({ page }) => {
@@ -111,6 +112,9 @@ test('las fuentes dicen de dónde sale cada placa y su licencia', async ({ page 
   await expect(s).toContainText('stonedDiscord');
   await expect(s).toContainText('uso privado');
   await page.goto('#/consolas/nes/fuentes');
+  await expect(s).toContainText('OpenTendo');
+  await expect(s).toContainText('TAPR Open Hardware License 1.0');
+  await page.goto('#/consolas/sms/fuentes');
   await expect(page.locator('.fuentes')).toBeVisible();
   await expect(s).toHaveCount(0);
 });

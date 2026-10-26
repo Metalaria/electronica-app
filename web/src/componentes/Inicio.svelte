@@ -3,12 +3,14 @@
   import { app } from '../lib/estado.svelte';
   import { ruta } from '../lib/ruta.svelte';
   import { usuario } from '../lib/usuario.svelte';
-  import { infoParte, rotuloParte } from '../lib/datos';
+  import { rotuloParte } from '../lib/datos';
   import { colorBloque } from '../lib/color';
   import { abrirBuscador } from '../lib/acciones';
   import Icono from './Icono.svelte';
-  import Insignia from './Insignia.svelte';
   import ProgresoInicio from './aprender/ProgresoInicio.svelte';
+  import SeguirLeyendo from './inicio/SeguirLeyendo.svelte';
+  import RepasoHoy from './inicio/RepasoHoy.svelte';
+  import MapaLibro from './inicio/MapaLibro.svelte';
 
   const indice = $derived(app.indice!);
   const capitulos = $derived(Object.values(indice.partes).filter((p) => p.tipo === 'capitulo').length);
@@ -18,7 +20,7 @@
     Object.entries(usuario.posiciones)
       .filter(([id]) => indice.partes[id])
       .sort((a, b) => b[1].t - a[1].t)
-      .slice(0, 3)
+      .slice(0, 4)
       .map(([id, pos]) => {
         const info = indice.partes[id]!;
         const sec = info.secciones?.find((s) => s.label === pos.sec);
@@ -26,10 +28,6 @@
       }),
   );
   const totalPersonal = $derived(Object.keys(usuario.marcadores).length + Object.keys(usuario.notas).length);
-
-  function corto(t: string): string {
-    return t.split(' — ')[0] ?? t;
-  }
 
   function hace(t: number): string {
     const s = (Date.now() - t) / 1000;
@@ -77,63 +75,26 @@
     </div>
   </section>
 
-  {#if recientes.length}
-    <section class="bloque">
-      <h2>Continuar leyendo</h2>
-      <div class="recientes">
-        {#each recientes as r, k (r.id)}
-          <a class="reciente" class:principal={k === 0} href={`#/${r.id}`} style:--c={colorBloque(r.info.color)}>
-            <Insignia parte={r.id} grande />
-            <span class="txt">
-              <span class="rot">{rotuloParte(r.id)} · {hace(r.pos.t)}</span>
-              <span class="tit">{corto(r.info.titulo)}</span>
-              {#if r.sec}<span class="sec">{r.sec.num} {r.sec.titulo}</span>{/if}
-              <span class="barra-prog"><span style:width={`${Math.round((r.pos.f ?? 0) * 100)}%`}></span></span>
-            </span>
-            <Icono nombre="chevron" tam={18} />
-          </a>
-        {/each}
-      </div>
-    </section>
+  <!-- Where to go now: the reading left open and today's flashcards. -->
+  <div class="destacados">
+    <SeguirLeyendo />
+    <RepasoHoy />
+  </div>
+  {#if recientes.length > 1}
+    <nav class="otras" aria-label="Otras lecturas recientes">
+      <span class="otras-tit">También leyendo</span>
+      {#each recientes.slice(1) as r (r.id)}
+        <a href={`#/${r.id}`} style:--c={colorBloque(r.info.color)}>
+          <i aria-hidden="true"></i>{rotuloParte(r.id)}{#if r.sec}{` · ${r.sec.num} ${r.sec.titulo}`}{/if}
+          <span class="cuando">{hace(r.pos.t)}</span>
+        </a>
+      {/each}
+    </nav>
   {/if}
+
+  <MapaLibro actual={recientes[0]?.id ?? ''} />
 
   <ProgresoInicio />
-
-  <section class="bloque">
-    <h2>Índice</h2>
-    <div class="tomos">
-      {#each indice.tomos as t (t.id)}
-        <div class="tomo">
-          <div class="tomo-cab">
-            <span class="tomo-id">Tomo {t.id}</span>
-            <span class="tomo-tit">{t.titulo}</span>
-          </div>
-          <ul>
-            {#each t.partes.filter((p) => indice.partes[p]) as id (id)}
-              {@const p = infoParte(id)!}
-              <li>
-                <a href={id === 'glosario' ? '#/glosario' : `#/${id}`} style:--c={colorBloque(p.color)} title={p.titulo}>
-                  <Insignia parte={id} />
-                  <span class="nom">{corto(p.titulo)}</span>
-                  {#if usuario.posiciones[id]}
-                    <span class="leido" title="Leído en parte" style:--f={usuario.posiciones[id]?.f ?? 0}></span>
-                  {/if}
-                </a>
-              </li>
-            {/each}
-          </ul>
-        </div>
-      {/each}
-    </div>
-  </section>
-
-  {#if indice.bloques?.length}
-    <section class="bloque leyenda" aria-label="Bloques temáticos">
-      {#each indice.bloques as b (b.color)}
-        <span><i style:background={colorBloque(b.color)}></i>{b.nombre}</span>
-      {/each}
-    </section>
-  {/if}
 </div>
 
 <style>
@@ -216,156 +177,58 @@
     text-align: center;
   }
 
-  .bloque {
-    margin-top: 34px;
-  }
-  h2 {
-    margin: 0 0 14px;
-    color: var(--tinta-tenue);
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-  }
-
-  .recientes {
+  .destacados {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(290px, 1fr));
-    gap: 12px;
-  }
-  .reciente {
-    display: flex;
-    align-items: center;
+    grid-template-columns: minmax(0, 2.1fr) minmax(250px, 1fr);
     gap: 14px;
-    padding: 16px;
-    border: 1px solid var(--linea);
-    border-left: 4px solid var(--c);
-    border-radius: 12px;
-    background: var(--superficie);
-    color: var(--tinta-tenue);
-    text-decoration: none;
-    transition: box-shadow 0.15s, border-color 0.15s;
+    margin-top: 30px;
   }
-  .reciente:hover {
-    box-shadow: var(--sombra);
+  @media (max-width: 760px) {
+    .destacados {
+      grid-template-columns: 1fr;
+    }
   }
-  .txt {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-    gap: 2px;
-    min-width: 0;
-  }
-  .rot {
-    color: var(--tinta-tenue);
-    font-size: 13px;
-  }
-  .tit {
-    color: var(--tinta);
-    font-size: 17px;
-    font-weight: 700;
-    line-height: 1.25;
-  }
-  .sec {
-    overflow: hidden;
-    color: var(--tinta-suave);
-    font-size: 14px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .barra-prog {
-    height: 3px;
-    margin-top: 8px;
-    border-radius: 2px;
-    background: var(--linea-suave);
-    overflow: hidden;
-  }
-  .barra-prog span {
-    display: block;
-    height: 100%;
-    background: var(--c);
-  }
-
-  .tomos {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
-    gap: 16px;
-    align-items: start;
-  }
-  .tomo {
-    padding: 6px 6px 8px;
-    border: 1px solid var(--linea);
-    border-radius: 14px;
-    background: var(--superficie);
-  }
-  .tomo-cab {
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-    padding: 10px 10px 8px;
-  }
-  .tomo-id {
-    color: var(--tinta-tenue);
-    font-size: 12px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
-  }
-  .tomo-tit {
-    color: var(--titulos);
-    font-family: var(--serif);
-    font-size: 18px;
-    font-weight: 600;
-    line-height: 1.25;
-  }
-  ul {
-    margin: 0;
-    padding: 0;
-    list-style: none;
-  }
-  li a {
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-height: 40px;
-    padding: 6px 8px;
-    border-radius: 8px;
-    color: var(--tinta);
-    font-size: 15px;
-    line-height: 1.25;
-    text-decoration: none;
-  }
-  li a:hover {
-    background: var(--hover);
-  }
-  .nom {
-    flex: 1;
-  }
-  .leido {
-    flex: none;
-    width: 18px;
-    height: 18px;
-    border-radius: 50%;
-    background: conic-gradient(var(--c) calc(var(--f) * 360deg), var(--linea) 0);
-    -webkit-mask: radial-gradient(circle, transparent 4px, #000 4.5px);
-    mask: radial-gradient(circle, transparent 4px, #000 4.5px);
-  }
-
-  .leyenda {
+  .otras {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px 18px;
-    color: var(--tinta-suave);
-    font-size: 13.5px;
+    align-items: center;
+    gap: 6px 10px;
+    margin-top: 12px;
+    font-size: 14px;
   }
-  .leyenda span {
+  .otras-tit {
+    color: var(--tinta-tenue);
+    font-size: 13px;
+    font-weight: 600;
+  }
+  .otras a {
     display: inline-flex;
     align-items: center;
     gap: 7px;
+    min-height: 34px;
+    max-width: 100%;
+    padding: 0 12px;
+    overflow: hidden;
+    border: 1px solid var(--linea);
+    border-radius: 999px;
+    background: var(--superficie);
+    color: var(--tinta);
+    text-decoration: none;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
-  .leyenda i {
-    width: 12px;
-    height: 12px;
+  .otras a:hover {
+    border-color: var(--c);
+  }
+  .otras i {
+    flex: none;
+    width: 9px;
+    height: 9px;
     border-radius: 3px;
+    background: var(--c);
+  }
+  .cuando {
+    color: var(--tinta-tenue);
+    font-size: 12.5px;
   }
 </style>

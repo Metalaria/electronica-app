@@ -37,6 +37,8 @@
   let visor: Visor | null = null;
   let datos = $state<DatosModelo | null>(null);
   let listo = $state(false);
+  /** 0.8: the first model's shader programs are compiled (until then «Preparando el modelo 3D…» stays). */
+  let preparado = $state(false);
 
   let corte = $state(false);
   let iCorte = $state(0);
@@ -100,6 +102,7 @@
           alSeguir: () => prepararSalto({ texto: nombre ? `Volver a ${nombre}` : 'Volver al modelo 3D' }),
           alFallar: (m) => alFallar?.(m),
           leyenda,
+          alPreparar: () => (preparado = true),
         });
       } catch (e) {
         alFallar?.(e instanceof Error ? e.message : String(e));
@@ -173,7 +176,7 @@
       data-tipo={tipo}
     ></canvas>
     <div class="capa" bind:this={capa}></div>
-    {#if !listo}<div class="cargando" aria-live="polite">Preparando el modelo 3D…</div>{/if}
+    {#if !listo || !preparado}<div class="cargando" aria-live="polite">Preparando el modelo 3D…</div>{/if}
     <p class="ayuda" aria-hidden="true">
       {#if tactil}Un dedo gira · dos dedos acercan y desplazan{:else}Arrastra para girar · Ctrl + rueda para acercar · Mayús + arrastrar desplaza{/if}
     </p>
@@ -394,6 +397,7 @@
     display: grid;
     place-items: center;
     color: var(--tinta-suave);
+    pointer-events: none;
   }
   .ayuda {
     position: absolute;

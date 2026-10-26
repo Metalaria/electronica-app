@@ -3,7 +3,7 @@
 // the editor. Also: what each probe plots, and plain-Spanish checks before simulating.
 
 import { conectividad, type Conectividad } from './conectividad.ts';
-import { pinesDe, SIN_LINEA, tipoDe } from './catalogo.ts';
+import { pinesDe, PUERTAS_DIGITALES, SIN_LINEA, tipoDe } from './catalogo.ts';
 import { definidos, modeloPorNombre } from './modelos.ts';
 import type { Componente, DocumentoEsquema } from './tipos.ts';
 import { leerValor } from './valores.ts';
@@ -131,6 +131,12 @@ export function generarNetlist(doc: DocumentoEsquema): Netlist {
   const sondas: string[] = [];
   const modelosUsados = new Set<string>();
   const nombres = new Map<string, string>();
+  /** .model lines of the digital (XSPICE) parts, one per part. */
+  const modelosDigitales: string[] = [];
+  /** Nets driven or read by digital pins (they have no voltage). */
+  const redesDigitales = new Set<string>();
+  /** Probes, checked against redesDigitales at the end: [part id, net]. */
+  const sondasRed: [string, string][] = [];
 
   const poner = (c: Componente, l: string, inst?: { nombre: string; pines: Record<string, number> }) => {
     lineaDe.set(lineas.length, c.id);
@@ -155,7 +161,10 @@ export function generarNetlist(doc: DocumentoEsquema): Netlist {
     if (SIN_LINEA.has(c.tipo)) {
       if (c.tipo === 'SONDA') {
         const n = red('start');
-        if (n !== '0') sondas.push(`v(${n})`);
+        if (n !== '0') {
+          sondas.push(`v(${n})`);
+          sondasRed.push([c.id, n]);
+        }
       }
       continue;
     }
@@ -270,6 +279,81 @@ export function generarNetlist(doc: DocumentoEsquema): Netlist {
         poner(c, `${n} ${nodos} ${usarModelo()}`, { nombre: n, pines });
         break;
       }
+      case 'DAND':
+      case 'DOR':
+      case 'DNAND':
+      case 'DNOR':
+      case 'DXOR':
+      case 'DNOT': {
+        const n = N('A');
+        const m = `${n.toLowerCase()}_mod`;
+        const td = valor(c, 'retardo', 's', errores);
+        const [a, b, y] = [red('a'), c.tipo === 'DNOT' ? '' : red('b'), red('y')];
+        for (const x of [a, b, y]) if (x) redesDigitales.add(x);
+        const ent = c.tipo === 'DNOT' ? a : `[${a} ${b}]`;
+        poner(c, `${n} ${ent} ${y} ${m}`, { nombre: n, pines: c.tipo === 'DNOT' ? { a: 0, y: 1 } : { a: 0, b: 1, y: 2 } });
+        modelosDigitales.push(`.model ${m} ${PUERTAS_DIGITALES[c.tipo]!.modelo}(rise_delay=${td} fall_delay=${td})`);
+        break;
+      }
+      case 'DFF':
+      case 'DJK': {
+        const n = N('A');
+        const m = `${n.toLowerCase()}_mod`;
+        const td = valor(c, 'retardo', 's', errores);
+        // Set and reset may stay unconnected (NULL); the other pins are required.
+        const opcional = (pin: string) => {
+          const i = con.redDePin.get(`${c.id}.${pin}`);
+          const r = i == null ? null : con.redes[i]!;
+          return r && (r.pines.length >= 2 || r.explicita) ? r.nombre : 'NULL';
+        };
+        const entradas = c.tipo === 'DFF' ? [red('d')] : [red('j'), red('k')];
+        const nodos = [...entradas, red('clk'), opcional('set'), opcional('reset'), red('q'), red('nq')];
+        for (const x of nodos) if (x !== 'NULL') redesDigitales.add(x);
+        const pines: Record<string, number> = {};
+        (c.tipo === 'DFF' ? ['d', 'clk', 'set', 'reset', 'q', 'nq'] : ['j', 'k', 'clk', 'set', 'reset', 'q', 'nq']).forEach((p, i) => {
+          if (nodos[i] !== 'NULL') pines[p] = i;
+        });
+        poner(c, `${n} ${nodos.join(' ')} ${m}`, { nombre: n, pines });
+        const ic = c.campos['ic'] === '1' ? 1 : 0;
+        modelosDigitales.push(
+          `.model ${m} ${c.tipo === 'DFF' ? 'd_dff' : 'd_jkff'}(clk_delay=${td} set_delay=${td} reset_delay=${td} ic=${ic} rise_delay=1p fall_delay=1p)`,
+        );
+        break;
+      }
+      case 'DCLK': {
+        const n = N('A');
+        const m = `${n.toLowerCase()}_mod`;
+        const f = valor(c, 'freq', 'Hz', errores);
+        const ciclo = leerValor(c.campos['ciclo'] ?? '', '%');
+        if (!ciclo.ok || ciclo.v == null || ciclo.v <= 0 || ciclo.v >= 100) errores.push({ id: c.id, texto: `${c.nombre}: el ciclo de trabajo va de 1 a 99 %.` });
+        const dc = ciclo.ok && ciclo.v != null && ciclo.v > 0 && ciclo.v < 100 ? ciclo.v / 100 : 0.5;
+        const y = red('out');
+        redesDigitales.add(y);
+        // d_osc is controlled by an analog voltage: tied to ground, with the same frequency at both ends. So the
+        // netlist has a node 0 and a source even in a purely digital circuit.
+        poner(c, `${n} 0 ${y} ${m}`, { nombre: n, pines: { out: 1 } });
+        hayMasa = true;
+        hayFuente = true;
+        modelosDigitales.push(`.model ${m} d_osc(cntl_array=[-1 1] freq_array=[${f} ${f}] duty_cycle=${dc} init_phase=0 rise_delay=1p fall_delay=1p)`);
+        break;
+      }
+      case 'ADC':
+      case 'DAC': {
+        const n = N('A');
+        const m = `${n.toLowerCase()}_mod`;
+        const ent = red('in');
+        const sal = red('out');
+        redesDigitales.add(c.tipo === 'ADC' ? sal : ent);
+        poner(c, `${n} [${ent}] [${sal}] ${m}`, { nombre: n, pines: { in: 0, out: 1 } });
+        const bajo = valor(c, 'bajo', 'V', errores);
+        const alto = valor(c, 'alto', 'V', errores);
+        modelosDigitales.push(
+          c.tipo === 'ADC'
+            ? `.model ${m} adc_bridge(in_low=${bajo} in_high=${alto} rise_delay=1p fall_delay=1p)`
+            : `.model ${m} dac_bridge(out_low=${bajo} out_high=${alto} t_rise=${valor(c, 'flanco', 's', errores)} t_fall=${valor(c, 'flanco', 's', errores)})`,
+        );
+        break;
+      }
       case 'SW': {
         const n = N('R');
         poner(c, `${n} ${red('start')} ${red('end')} ${c.campos['estado'] === 'abierto' ? '1g' : '1m'}`, { nombre: n, pines: { start: 0, end: 1 } });
@@ -314,7 +398,8 @@ export function generarNetlist(doc: DocumentoEsquema): Netlist {
     for (const pin of pinesDe(c)) {
       const i = con.redDePin.get(`${c.id}.${pin}`);
       const r = i == null ? null : con.redes[i]!;
-      if (r && r.pines.length < 2 && !r.explicita) avisos.push({ id: c.id, texto: `${c.nombre}: un terminal (${nombrePin(pin)}) no está conectado a nada.` });
+      const opcional = (c.tipo === 'DFF' || c.tipo === 'DJK') && (pin === 'set' || pin === 'reset');
+      if (r && r.pines.length < 2 && !r.explicita && !opcional) avisos.push({ id: c.id, texto: `${c.nombre}: un terminal (${nombrePin(pin)}) no está conectado a nada.` });
     }
   }
 
@@ -337,6 +422,10 @@ export function generarNetlist(doc: DocumentoEsquema): Netlist {
       }
     }
     if (libreria.length) lineas.push('* modelos de la biblioteca del editor', ...libreria);
+    if (modelosDigitales.length) lineas.push('* modelos XSPICE de las piezas digitales', ...modelosDigitales);
+    for (const [id, r] of sondasRed)
+      if (redesDigitales.has(r))
+        errores.push({ id, texto: `La red ${r} es digital y no tiene tensión: para verla, pásela por un puente digital → analógico (DAC) y ponga la sonda a su salida.` });
   }
   const dir = doc.directivas.replace(/\s+$/, '');
   if (dir) lineas.push(...dir.split('\n').filter((l) => !/^\s*\.end\s*$/i.test(l)));
@@ -405,6 +494,18 @@ const NOMBRES_PIN: Record<string, string> = {
   'p.end': 'primario 2',
   's.start': 'secundario 1',
   's.end': 'secundario 2',
+  a: 'entrada A',
+  b: 'entrada B',
+  y: 'salida',
+  d: 'D',
+  j: 'J',
+  k: 'K',
+  clk: 'reloj',
+  set: 'S (puesta a 1)',
+  reset: 'R (puesta a 0)',
+  q: 'Q',
+  nq: 'Q negada',
+  in: 'entrada',
 };
 
 export function nombrePin(p: string): string {

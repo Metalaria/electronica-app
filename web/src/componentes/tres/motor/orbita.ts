@@ -41,6 +41,8 @@ export class Orbita {
 
   /** True from a pointer move of more than a few pixels until the next press (labels ignore that click). */
   arrastrado = false;
+  /** performance.now() of the last camera change (0.8: the views lower their resolution while it moves). */
+  ultimoCambio = 0;
   private inicio = { x: 0, y: 0 };
 
   /**
@@ -76,6 +78,7 @@ export class Orbita {
     on(elemento, 'focus', () => (this.enfocado = true));
     on(elemento, 'blur', () => (this.enfocado = false));
     this.aplicar();
+    this.ultimoCambio = 0;
   }
 
   liberar(): void {
@@ -95,7 +98,10 @@ export class Orbita {
       this.elevacion = a.elevacion;
       this.distancia = a.distancia;
       this.objetivo.copy(a.objetivo);
+      // A jump is not a movement (no lower resolution for it).
+      const antes = this.ultimoCambio;
       this.aplicar();
+      this.ultimoCambio = antes;
       this.cambio();
       return;
     }
@@ -134,7 +140,13 @@ export class Orbita {
     return Math.max(-0.35, Math.min(1.52, e));
   }
 
+  /** The camera changed less than `reposo` ms ago (a drag, a pinch, the wheel, inertia, an animated reset). */
+  moviendo(ahora = performance.now(), reposo = 180): boolean {
+    return ahora - this.ultimoCambio < reposo;
+  }
+
   aplicar(): void {
+    this.ultimoCambio = performance.now();
     const s = new Spherical(this.distancia, Math.PI / 2 - this.elevacion, this.azimut);
     // Spherical is Y-up: map (x, y, z)_Yup → (x, −z, y)_Zup.
     const v = new Vector3().setFromSpherical(s);

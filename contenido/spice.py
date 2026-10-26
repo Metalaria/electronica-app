@@ -228,7 +228,7 @@ def parametros(texto):
 
 
 def usa_xspice(texto):
-    """XSPICE code-model devices (A elements): the WebAssembly ngspice is built without XSPICE."""
+    """XSPICE code-model devices (A elements): only the XSPICE build of the engine runs them."""
     lineas, _, _ = estructura(texto)
     return any(l['tokens'] and l['tokens'][0][:1].upper() == 'A' and not l['tokens'][0].startswith('.')
                for l in lineas)
@@ -351,6 +351,14 @@ def etiquetas_en_partes():
 
 
 # ------------------------------------------------------------------ validation in the engine
+def motor_app():
+    """The app's default engine (MOTOR_PREDETERMINADO of web/src/simulador/motor/motores.ts): id, wasm, xspice."""
+    ts = open(os.path.join(WEB, 'src', 'simulador', 'motor', 'motores.ts'), encoding='utf-8').read()
+    ident = re.search(r"MOTOR_PREDETERMINADO: IdMotor = '(\w+)'", ts).group(1)
+    m = re.search(ident + r": \{ wasm: '([^']+)'.*?xspice: (true|false)", ts)
+    return {'id': ident, 'wasm': m.group(1), 'xspice': m.group(2) == 'true'}
+
+
 def validar(ids_textos, nativo, revalidar):
     """{id: result} from web/scripts/validar-spice.mjs, reusing cached results of unchanged netlists."""
     script = os.path.join(WEB, 'scripts', 'validar-spice.mjs')
@@ -362,7 +370,8 @@ def validar(ids_textos, nativo, revalidar):
     if r.returncode != 0:
         print('spice: no se pudo preparar el motor (¿falta «npm install» en web/?)', file=sys.stderr)
         return None
-    wasm = os.path.join(WEB, 'public', 'ngspice', 'ngspice.wasm')
+    motor = motor_app()
+    wasm = os.path.join(WEB, 'public', motor['wasm'])
     huella_motor = hashlib.sha256(open(wasm, 'rb').read()).hexdigest()[:16]
     for f in ('nucleo.ts', 'netlist.ts', 'salida.ts'):
         huella_motor += hashlib.sha256(open(os.path.join(WEB, 'src', 'simulador', 'motor', f), 'rb').read()).hexdigest()[:8]
@@ -383,7 +392,9 @@ def validar(ids_textos, nativo, revalidar):
     if pendientes:
         print(f'spice: validando {len(pendientes)} netlists en el motor (WebAssembly)…', file=sys.stderr)
         tmp = os.path.join(HERE, '.cache', 'spice-informe.json')
-        args = ['node', '--no-warnings', script, '--dir', os.path.join(OUT, 'spice'), '--salida', tmp]
+        # A generous wall-clock limit: a busy machine must not turn a heavy netlist into «tiempo».
+        args = ['node', '--no-warnings', script, '--dir', os.path.join(OUT, 'spice'), '--salida', tmp,
+                '--motor', motor['id'], '--tiempo', '900']
         if nativo:
             args.append('--nativo')
         if len(pendientes) < len(ids_textos):
@@ -406,19 +417,25 @@ def validar(ids_textos, nativo, revalidar):
     return res
 
 
-def resumen_motor(v, xspice):
-    """The «motor» field of spice.json from a validation result."""
-    if xspice:
-        return {'estado': 'no-disponible', 'nota': 'Usa dispositivos XSPICE (puertas digitales y puentes '
-                'ADC/DAC), que el ngspice de la aplicación no incluye. Se puede leer la netlist, pero no '
+def resumen_motor(v, xspice, motor_xspice):
+    """The «motor» field of spice.json from a validation result. `xspice`: the netlist has A devices;
+    `motor_xspice`: the app's engine runs them."""
+    if xspice and not motor_xspice:
+        return {'estado': 'no-disponible', 'xspice': True, 'nota': 'Usa dispositivos XSPICE (puertas digitales y '
+                'puentes ADC/DAC), que el ngspice de la aplicación no incluye. Se puede leer la netlist, pero no '
                 'simularla aquí; con ngspice instalado en el ordenador: ngspice -b fichero.cir.'}
     if v is None:
-        return {'estado': 'sin-validar'}
-    out = {'estado': v['estado'], 'ms': v.get('ms'), 'medidas': len(v.get('medidas') or []),
+        return {'estado': 'sin-validar', **({'xspice': True} if xspice else {})}
+    # Time of the run: the CPU time of the simulation thread when the validator gives it (stable when the
+    # machine is busy), otherwise the wall clock.
+    ms = v.get('cpuMs') if v.get('cpuMs') is not None else v.get('ms')
+    out = {'estado': v['estado'], 'ms': ms, 'medidas': len(v.get('medidas') or []),
            'graficas': len(v.get('graficas') or [])}
+    if xspice:
+        out['xspice'] = True
     if v.get('errores'):
         out['errores'] = v['errores'][:3]
-    if (v.get('ms') or 0) > PESADA_MS or v['estado'] == 'tiempo':
+    if (ms or 0) > PESADA_MS or v['estado'] == 'tiempo':
         out['pesada'] = True
     return out
 
@@ -492,16 +509,24 @@ def main():
 
     # validation in the engine, and agreement of the slider parameters with netlist.ts
     val = None if '--sin-validar' in args else validar(textos, '--nativo' in args, '--revalidar' in args)
+    motor_xspice = motor_app()['xspice']
     for nid, n in netlists.items():
         v = (val or {}).get(nid)
-        n['motor'] = resumen_motor(v if val is not None else None, n.pop('xspice'))
-        # XSPICE netlists have an analog equivalent (<name>_analogica.cir) that the app's engine can run
+        n['motor'] = resumen_motor(v if val is not None else None, n.pop('xspice'), motor_xspice)
+    # XSPICE netlists have an analog equivalent (<name>_analogica.cir: gates as behavioural sources, the same
+    # measurements), kept for teaching and for engines without XSPICE: each one links to the other.
+    for nid, n in netlists.items():
         alt = nid + '_analogica'
-        if n['motor']['estado'] == 'no-disponible' and alt in netlists:
-            n['motor']['alternativa'] = alt
+        if alt not in netlists:
+            continue
+        n['motor']['alternativa'] = alt
+        netlists[alt]['motor']['original'] = nid
+        if n['motor']['estado'] == 'no-disponible':
             n['motor']['nota'] = ('Usa dispositivos XSPICE (puertas digitales y puentes ADC/DAC), que el ngspice '
                                   'de la aplicación no incluye. Hay una versión analógica equivalente, con las '
                                   'mismas medidas, que sí se simula aquí.')
+    for nid, n in netlists.items():
+        v = (val or {}).get(nid)
         if v is not None and 'parametros' in v:
             py = [(p['id'], p['valor']) for p in n['parametros']]
             ts = [(p['id'], p['valor']) for p in v['parametros']]
@@ -511,14 +536,25 @@ def main():
 
     por_ref = {}
     for nid, n in netlists.items():
+        # With XSPICE in the engine, the reader's «Simular» opens the original; its page links to the analog twin.
+        if motor_xspice and n['motor'].get('original'):
+            continue
         for r in n['refs']:
             if r in en_partes:
                 por_ref.setdefault(r, []).append(nid)
 
-    motor = {'paquete': 'eecircuit-engine'}
+    # The engine that validated (motores.ts) and the fallback one.
+    m_app = motor_app()
+    motor = {'id': m_app['id'], 'xspice': m_app['xspice']}
+    try:
+        c = load_json(os.path.join(WEB, 'vendor', 'ngspice-xspice', 'compilacion.json'))
+        motor['ngspice'] = c['ngspice']['version']
+        motor['emscripten'] = c['emscripten']['version']
+    except (OSError, KeyError):
+        pass
     try:
         pk = load_json(os.path.join(WEB, 'node_modules', 'eecircuit-engine', 'package.json'))
-        motor['version'] = pk['version']
+        motor['alternativo'] = {'paquete': 'eecircuit-engine', 'version': pk['version']}
     except OSError:
         pass
     write_json(os.path.join(OUT, 'spice.json'), {

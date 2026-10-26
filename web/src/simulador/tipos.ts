@@ -38,8 +38,12 @@ export interface NetlistSpice {
     errores?: string[];
     pesada?: boolean;
     nota?: string;
-    /** Id of an equivalent netlist the app can simulate (analog version of an XSPICE one). */
+    /** Uses XSPICE code models (A devices): only engines with XSPICE run it (motores.ts). */
+    xspice?: boolean;
+    /** Id of the analog equivalent of an XSPICE netlist (<name>_analogica: same measurements). */
     alternativa?: string;
+    /** In an analog equivalent: id of the XSPICE original. */
+    original?: string;
   };
 }
 
@@ -55,7 +59,14 @@ export interface CapituloSpice {
 
 export interface IndiceSpice {
   version: number;
-  motor: { paquete: string; version?: string };
+  /** The engine that validated the netlists (motores.ts id) and the fallback one. */
+  motor: {
+    id?: string;
+    xspice?: boolean;
+    ngspice?: string;
+    emscripten?: string;
+    alternativo?: { paquete: string; version?: string };
+  };
   total: number;
   capitulos: CapituloSpice[];
   netlists: Record<string, NetlistSpice>;

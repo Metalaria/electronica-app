@@ -110,10 +110,23 @@ test('un control deslizante cambia el circuito y vuelve a simular', async ({ pag
   await expect(page.getByText('La referencia fijada')).toBeVisible();
 });
 
-test('una netlist con XSPICE explica que no se puede simular', async ({ page }) => {
+test('una netlist con XSPICE se simula y enlaza con su versión analógica', async ({ page }) => {
+  // Since 0.8 the engine has XSPICE: the book's digital netlist runs (two 6 ns glitches, figure 29.4)…
+  await abrir(page, 'cap29/fig-29.4-glitch');
+  await expect(page.locator('.estado')).toContainText('Simulado en', { timeout: 90_000 });
+  const m = await medidas(page);
+  expect(m.find(([n]) => n === 'ancho1')?.[1]).toBeCloseTo(6e-9, 12);
+  // …and its analog equivalent is one click away, with the same glitches and a link back.
+  await page.getByRole('link', { name: 'Ver la versión analógica' }).click();
+  await expect(page).toHaveURL(/fig-29\.4-glitch_analogica/);
+  await expect(page.getByText('ancho1').first()).toBeVisible({ timeout: 60_000 });
+  await expect(page.getByRole('link', { name: 'Ver la original (XSPICE)' })).toBeVisible();
+});
+
+test('con el motor de reserva (sin XSPICE) una netlist digital explica que no se puede simular', async ({ page }) => {
+  await page.addInitScript(() => localStorage.setItem('epa:motor-spice', 'eecircuit'));
   await abrir(page, 'cap29/fig-29.4-glitch');
   await expect(page.getByText('No se puede simular en la aplicación')).toBeVisible();
-  // the analog equivalent opens and runs: two 6 ns glitches
   await page.getByRole('link', { name: 'Abrir la versión analógica' }).click();
   await expect(page).toHaveURL(/fig-29\.4-glitch_analogica/);
   await expect(page.getByText('ancho1').first()).toBeVisible({ timeout: 60_000 });

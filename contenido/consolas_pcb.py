@@ -8,19 +8,26 @@ Writes web/public/consolas/placas/ in the format of the «Proyectos KiCad» boar
                      refs [references that are also in the console's schematic], capas_internas}
 
 Sources (read only, never copied into the repository; env CONSOLAS_FUENTES, default /home/claude/consolas):
+  - nes:         Redherring32/OpenTendo «Board Files/Motherboard.kicad_pcb» (KiCad 8, TAPR OHL 1.0): a near 1:1
+                 recreation of the NES-CPU-11 with the references and net names of the console's schematic;
   - megadrive:   stonedDiscord/MegaDrive.kicad_pcb (KiCad 9): the same project as the console's schematic, so
                  every reference and net matches it (checked here);
   - gbc-cgb04:   Natalie the Nerd's Gerbers of the CGB-CPU-04 (4 layers, X2 attributes: nets, references and pins
                  of every pad), read with consolas_gerber.py; there is no placement data, so no part bodies;
   - gbc-opengbc: whatwareweb/opengbc (KiCad 9), a modern replacement board: shown, but not linked to the
                  CGB-CPU-04 schematic (other references).
+  - neogeo:      Board-Folk/NeoGeoAES-3.5 NeoGeoAES3_5.kicad_pcb (KiCad 10, 53 MB, not in the research folder):
+                 the same project as the console's schematic. Pass its path in CONSOLAS_PCB_NEOGEO (any board's
+                 source can be given in CONSOLAS_PCB_<ID>); KiCad 10 names the nets of pads and tracks instead of
+                 numbering them, which proyectos_kicad_pcb.net_id handles.
 The Master System's slowcoder/SMSSchematic.kicad_pcb has no footprints (an empty KiCad 4 board): skipped.
 
 The KiCad 9 boards are read with proyectos_kicad_pcb (its s-expression reader copes with the newer syntax). Their
 silkscreen text needs KiCad's stroke font: every silkscreen item is copied, in board coordinates, into a minimal
 KiCad 7 board that kicad-cli 7 plots to SVG (cached in contenido/.cache/consolas_pcb), then read like the projects'.
 
-Run alone: python3 contenido/consolas_pcb.py
+Run alone: python3 contenido/consolas_pcb.py [board id …]   (with ids, only those boards are rebuilt; a board whose
+source is missing keeps its previous files and index entry)
 """
 
 import collections
@@ -51,6 +58,25 @@ Q = K.Q
 
 PLACAS = [
     {
+        'id': 'nes', 'maquina': 'nes', 'tipo': 'kicad',
+        'ruta': 'nes/original/OpenTendo/Board Files/Motherboard.kicad_pcb',
+        'soldar_bordes': 0.005,
+        'titulo': 'NES-CPU-11, recreación OpenTendo v1.4 (KiCad 8)',
+        'corto': 'NES-CPU-11 · OpenTendo',
+        'enlazada': True,
+        'mascara': 'verde', 'serigrafia': 'blanca', 'acabado': None,
+        'aviso': 'Recreación «casi 1:1» de la placa NES-CPU-11 de Nintendo hecha por el proyecto OpenTendo a partir de '
+                 'escaneos de la placa original: sigue el trazado OEM, pero es un dibujo nuevo, no una foto, y la foto de '
+                 'la pestaña «Foto» es de una NES-CPU-07. Usa las mismas referencias y nombres de red que el esquema '
+                 'NES-CPU-11, así que se enlazan uno a uno; los mandos, los LED y los interruptores van en placas aparte.',
+        'fuente': {'titulo': 'Redherring32/OpenTendo — Board Files/Motherboard.kicad_pcb (v1.4, KiCad 8, commit 3bd0b0b)',
+                   'autor': 'Redherring32, Muramasa y Kamoteshake (OpenTendo)',
+                   'url': 'https://github.com/Redherring32/OpenTendo',
+                   'licencia': 'TAPR Open Hardware License 1.0 (permite estudiar, modificar y distribuir)',
+                   'uso': 'Placa en 3D y en 2D: contorno, cobre de las dos caras, vías, taladros, serigrafía y componentes '
+                          'con sus huellas; recorrido de las señales en «Un fotograma».'},
+    },
+    {
         'id': 'megadrive', 'maquina': 'megadrive', 'tipo': 'kicad',
         'ruta': 'megadrive/original/MegaDrive-stonedDiscord/MegaDrive.kicad_pcb',
         'titulo': 'IC BD M5 PAL (VA5/VA6), recreación KiCad de stonedDiscord',
@@ -65,6 +91,26 @@ PLACAS = [
                    'autor': 'stonedDiscord, a partir de los escaneos de ArcadeTV («STRIP-CLUB PCB-Scans»)',
                    'url': 'https://github.com/stonedDiscord/MegaDrive',
                    'licencia': 'Sin fichero de licencia (el README dice OSHW, sin nombrarla): uso privado, sin redistribuir',
+                   'uso': 'Placa en 3D y en 2D: contorno, cobre de las dos caras, planos, vías, taladros, serigrafía y '
+                          'componentes con sus huellas.'},
+    },
+    {
+        'id': 'neogeo', 'maquina': 'neogeo', 'tipo': 'kicad',
+        'ruta': 'neogeo/original/NeoGeoAES-3.5/NeoGeoAES3_5.kicad_pcb',
+        'titulo': 'NEO-AES3-5, recreación KiCad de Board Folk (rev. BF1.5)',
+        'corto': 'NEO-AES3-5 · recreación KiCad',
+        'enlazada': True,
+        'mascara': 'verde', 'serigrafia': 'blanca', 'acabado': None,
+        'aviso': 'Recreación en KiCad de la placa NEO-AES3-5 (2.ª generación del chipset) hecha por el equipo Board Folk '
+                 'a partir de los esquemas de SNK y de escaneos del cobre original («razonablemente fiel», según su README; '
+                 'la revisión BF1.5 aún no se ha fabricado). Es el mismo proyecto que el esquema, así que referencias y '
+                 'redes coinciden, pero no es la NEO-AES de 1.ª generación de la foto del libro: el LSPC-A0 de la foto es aquí '
+                 'el LSPC2-A2, y los PRO-B0 y PRO-C0 se reparten entre NEO-B1 y NEO-C1 (tabla de equivalencias).',
+        'fuente': {'titulo': 'Board-Folk/NeoGeoAES-3.5 — PCB de la recreación (NeoGeoAES3_5.kicad_pcb, KiCad 10, rev. BF1.5)',
+                   'autor': 'Equipo Board Folk; trazado de Rob Taylor (@PeepoUK)',
+                   'url': 'https://github.com/Board-Folk/NeoGeoAES-3.5',
+                   'licencia': 'Dominio público según su README («no claim of copyright … solely for the purposes of '
+                               'study and historical preservation»)',
                    'uso': 'Placa en 3D y en 2D: contorno, cobre de las dos caras, planos, vías, taladros, serigrafía y '
                           'componentes con sus huellas.'},
     },
@@ -337,11 +383,67 @@ def serigrafia_json(silk, ox, oy):
 
 # ------------------------------------------------------------------ boards from KiCad
 
+def fusionar_colineales(arr):
+    """Join track segments [net, width, x1, y1, x2, y2]… that continue each other in a straight line (same net and
+    width, a joint shared by exactly those two segments, zero cross product in 0.01 mm units): the drawing is the
+    same, with fewer segments (the Neo Geo's traced copper is cut into many collinear pieces)."""
+    segs = [arr[i:i + 6] for i in range(0, len(arr), 6)]
+    vivos = [True] * len(segs)
+    while True:
+        ends = collections.defaultdict(list)
+        for i, sg in enumerate(segs):
+            if vivos[i]:
+                ends[(sg[0], sg[1], sg[2], sg[3])].append(i)
+                ends[(sg[0], sg[1], sg[4], sg[5])].append(i)
+        hecho = set()
+        cambios = 0
+        for k, v in ends.items():
+            if len(v) != 2 or v[0] == v[1] or v[0] in hecho or v[1] in hecho:
+                continue
+            a, b = segs[v[0]], segs[v[1]]
+            p = (k[2], k[3])
+            qa = (a[4], a[5]) if (a[2], a[3]) == p else (a[2], a[3])
+            qb = (b[4], b[5]) if (b[2], b[3]) == p else (b[2], b[3])
+            u, w = (qa[0] - p[0], qa[1] - p[1]), (qb[0] - p[0], qb[1] - p[1])
+            if u[0] * w[1] - u[1] * w[0] != 0 or u[0] * w[0] + u[1] * w[1] > 0:
+                continue
+            segs[v[0]] = [a[0], a[1], qa[0], qa[1], qb[0], qb[1]]
+            vivos[v[1]] = False
+            hecho.update(v)
+            cambios += 1
+        if not cambios:
+            break
+    return [x for i, sg in enumerate(segs) if vivos[i] for x in sg]
+
+
+def soldar_bordes(edges, tol):
+    """Joins the ends of Edge.Cuts pieces that miss each other by less than `tol` mm (OpenTendo's outline has
+    arcs whose ends are 1–4 µm away from the lines they meet, more than proyectos_kicad_pcb.outline accepts)."""
+    puntos = []
+
+    def unir(p):
+        for q in puntos:
+            if abs(p[0] - q[0]) < tol and abs(p[1] - q[1]) < tol:
+                return q
+        puntos.append(p)
+        return p
+
+    out = []
+    for e in edges:
+        e = list(e)
+        e[0] = unir(e[0])
+        e[-1] = unir(e[-1])
+        out.append(e)
+    return out
+
+
 def placa_kicad(cfg, d, problemas):
-    pcb_file = os.path.join(FUENTES, cfg['ruta'])
+    pcb_file = fuente_de(cfg)
     tree = K.parse_sexpr(open(pcb_file, encoding='utf-8').read())
     b = P.read_board(pcb_file)
     red_de = b['nets']
+    if cfg.get('soldar_bordes'):
+        b['edges'] = soldar_bordes(b['edges'], cfg['soldar_bordes'])
     loops = P.outline(b['edges'])
     if not loops:
         raise SystemExit('%s: sin contorno en Edge.Cuts' % cfg['id'])
@@ -415,6 +517,8 @@ def placa_kicad(cfg, d, problemas):
             continue
         pistas.setdefault(side, []).extend([rid(t['net']), q(t['w']), q(t['a'][0]) - ox, q(t['a'][1]) - oy,
                                             q(t['b'][0]) - ox, q(t['b'][1]) - oy])
+    for side in pistas:
+        pistas[side] = fusionar_colineales(pistas[side])
     vias = []
     for v in b['vias']:
         vias += [rid(v['net']), q(v['p'][0]) - ox, q(v['p'][1]) - oy, q(v['d']), q(v['drill'])]
@@ -469,7 +573,7 @@ def _capas_gerber(zpath):
 
 
 def placa_gerber(cfg, d, problemas):
-    ficheros = _capas_gerber(os.path.join(FUENTES, cfg['ruta']))
+    ficheros = _capas_gerber(fuente_de(cfg))
 
     def capa(sufijo):
         for n, t in ficheros.items():
@@ -744,13 +848,27 @@ def escribir(cfg, r):
             'bytes': len(texto.encode('utf-8'))}
 
 
-def main():
+def fuente_de(cfg):
+    """Path of a board's source: CONSOLAS_PCB_<ID> if set, else cfg['ruta'] under CONSOLAS_FUENTES."""
+    return os.environ.get('CONSOLAS_PCB_' + re.sub(r'[^A-Z0-9]', '_', cfg['id'].upper())) or os.path.join(FUENTES, cfg['ruta'])
+
+
+def main(ids=()):
     problemas = []
     indice = []
+    try:
+        with open(os.path.join(OUT, 'indice.json'), encoding='utf-8') as f:
+            previas = {e['id']: e for e in json.load(f)['placas']}
+    except (OSError, ValueError, KeyError):
+        previas = {}
     for cfg in PLACAS:
-        ruta = os.path.join(FUENTES, cfg['ruta'])
-        if not os.path.exists(ruta):
-            print('consolas_pcb: falta %s; se omite %s' % (ruta, cfg['id']))
+        ruta = fuente_de(cfg)
+        if (ids and cfg['id'] not in ids) or not os.path.exists(ruta):
+            if not (ids and cfg['id'] not in ids):
+                print('consolas_pcb: falta %s; se omite %s' % (ruta, cfg['id']))
+            if cfg['id'] in previas and os.path.exists(os.path.join(OUT, cfg['id'] + '.json')):
+                indice.append(previas[cfg['id']])
+                print('consolas_pcb: %-12s se conservan los ficheros ya generados' % cfg['id'])
             continue
         d = consola(cfg['maquina'])
         r = (placa_kicad if cfg['tipo'] == 'kicad' else placa_gerber)(cfg, d, problemas)
@@ -767,4 +885,4 @@ def main():
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    sys.exit(main(sys.argv[1:]))

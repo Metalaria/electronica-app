@@ -91,6 +91,8 @@ export interface Estadisticas {
   codos: number;
   ms: number;
   ignoradas: number;
+  /** 0.8: components laid out again from the previous layout of an edited circuit (incremental). */
+  recolocadas: number;
 }
 
 export interface EsquemaAuto {
@@ -270,6 +272,7 @@ const precalculados = new Map<string, Posiciones[]>();
 export function olvidarDibujos(todo = false): void {
   cacheEstructura.clear();
   cacheReglas.clear();
+  recientes.length = 0;
   if (todo) precalculados.clear();
 }
 
@@ -317,7 +320,48 @@ function reglasCacheadas(comp: Componente, firma: string): Reglas | null {
   return reglas;
 }
 
+/**
+ * 0.8: the last layouts drawn, by part (designator, symbol and pin count; ports by name): when an edit changes
+ * a circuit's structure, the new layout starts from the old one (recolocar).
+ */
+const recientes: Map<string, readonly [number, number, number]>[] = [];
+/** Components re-laid from a previous layout since the module loaded (statistics). */
+let recolocaciones = 0;
+
+function claveUnidad(u: Unidad): string {
+  return u.disp ? `${u.disp.nombre}|${u.disp.simbolo}|${u.disp.pines.length}` : `P|${u.puerto}`;
+}
+
+function anotarReciente(comp: Componente): void {
+  const m = new Map<string, readonly [number, number, number]>();
+  for (const u of comp.unidades) m.set(claveUnidad(u), [u.x, u.y, u.v]);
+  recientes.unshift(m);
+  if (recientes.length > 6) recientes.length = 6;
+}
+
+/** The previous place of each unit in the recent layout that shares most parts with `comp` (or null when none
+ *  shares at least 60 % of them, and three). */
+function lugaresPrevios(comp: Componente): (readonly [number, number, number] | null)[] | null {
+  let mejor: (readonly [number, number, number] | null)[] | null = null;
+  let n = 0;
+  for (const r of recientes) {
+    const l = comp.unidades.map((u) => r.get(claveUnidad(u)) ?? null);
+    const k = l.filter(Boolean).length;
+    if (k > n) {
+      n = k;
+      mejor = l;
+    }
+  }
+  return mejor && n >= 3 && n >= 0.6 * comp.unidades.length ? mejor : null;
+}
+
 function colocarComponente(comp: Componente, esfuerzo: number): Colocado {
+  const r = colocarComponente0(comp, esfuerzo);
+  anotarReciente(comp);
+  return r;
+}
+
+function colocarComponente0(comp: Componente, esfuerzo: number): Colocado {
   const U = comp.unidades.length;
   // Recognised topologies (H bridge, converters, Wien oscillator, regulators, logic, rectifiers): their rules
   // shape the annealing and the choice of the best run, and they are part of the cache key.
@@ -364,11 +408,12 @@ function colocarComponente(comp: Componente, esfuerzo: number): Colocado {
   let mejorPos: [number, number, number][] = [];
   const base = semilla(firma);
   let perfecto = false;
-  const probar = (k: number, T0: number) => {
+  const probar = (k: number, T0: number, desde: (readonly [number, number, number] | null)[] | null = null) => {
     if (vivo && perfecto) return;
     const col = new Colocador(comp, base + k * 7919, reglas);
-    col.inicial(T0 < 1);
-    col.recocer(iter, T0, 0.03, vivo);
+    if (desde) col.inicialDesde(desde);
+    else col.inicial(T0 < 1);
+    col.recocer(desde ? Math.round(iter * 0.4) : iter, T0, 0.03, vivo);
     col.compactar();
     const r = evaluar();
     perfecto = !r.rutas.cruces && r.rutas.etiquetas.length <= etiquetasForzadas && (!reglas || col.costeDeReglas() < 1e-6);
@@ -385,6 +430,15 @@ function colocarComponente(comp: Componente, esfuerzo: number): Colocado {
   const bloques = comp.unidades.filter((u) => u.pines.length > 3).length;
   const capas = bloques >= 3 || U > 16 || !!reglas?.rangoU || !!reglas?.anclas?.length;
   const propia = !!(reglas?.fila || reglas?.anclas?.length);
+  // An edited circuit (live, 0.8): first from its previous layout — the parts still there in their places, the
+  // new ones next to their neighbours, one short low-temperature run. When that drawing is flawless (no
+  // crossing, no fallback label, rules met) it is kept: recognisable and several times faster than a layout
+  // from scratch; otherwise it competes with the usual runs.
+  const antes = vivo && U > 3 ? lugaresPrevios(comp) : null;
+  if (antes) {
+    probar(intentos + 1, 0.6, antes);
+    if (perfecto) recolocaciones++;
+  }
   if (vivo && capas && propia) probar(intentos, 0.6);
   for (let k = 0; k < intentos; k++) probar(k, 3.5);
   if (capas && !(vivo && propia)) probar(intentos, 0.6);
@@ -392,7 +446,8 @@ function colocarComponente(comp: Componente, esfuerzo: number): Colocado {
     [u.x, u.y, u.v] = mejorPos[i]!;
   });
   recordar(firma, mejorPos);
-  return evaluar();
+  // The winner was routed when it was found (routing is deterministic): no second routing of the same layout.
+  return (mejor as Colocado | null) ?? evaluar();
 }
 
 // ------------------------------------------------------------------ packing
@@ -518,6 +573,7 @@ export function generarEsquema(texto: string, opciones: OpcionesEsquema = {}): E
   const circuito = leerCircuito(texto, opciones);
   if (!circuito.dispositivos.length && !circuito.fuentesRiel.length) return null;
   const grupos = componentes(circuito);
+  const recolocaciones0 = recolocaciones;
   const colocados: Colocado[] = [];
   for (const g of grupos) {
     const comp = crearUnidades(g.disps, circuito.rieles, g.puertos);
@@ -996,6 +1052,7 @@ export function generarEsquema(texto: string, opciones: OpcionesEsquema = {}): E
       codos: nCodos,
       ms: Math.round((t1 - t0) * 10) / 10,
       ignoradas: circuito.ignoradas.length,
+      recolocadas: recolocaciones - recolocaciones0,
     },
   };
 }

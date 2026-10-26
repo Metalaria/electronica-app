@@ -1,12 +1,13 @@
 // Shared state of the «Consolas» views and their routes:
 //   #/consolas/<maquina>/<pestana>[/<seleccion>]
-//   maquina: nes | neogeo | sms | megadrive | gb | gbc; pestana: foto | arquitectura | esquema | placa3d | placa2d | fuentes
-//   (placa3d/placa2d only for the machines with a board: placa/datos.ts → PLACAS_DE)
+//   maquina: nes | neogeo | sms | megadrive | gb | gbc; pestana: foto | arquitectura | fotograma | esquema | placa3d | placa2d | fuentes
+//   (placa3d/placa2d only for the machines with a board: placa/datos.ts → PLACAS_DE; fotograma only for the machines
+//   with an adapter: fotograma/maquinas.ts → tieneFotograma)
 //   seleccion: a component reference («U6»), «red:<net name>» or «bloque:<id>» (URI-encoded)
 
 import { IDS_MAQUINA, type IdMaquina } from './datos';
 
-export type Pestana = 'foto' | 'arquitectura' | 'esquema' | 'placa3d' | 'placa2d' | 'fuentes';
+export type Pestana = 'foto' | 'arquitectura' | 'fotograma' | 'esquema' | 'placa3d' | 'placa2d' | 'fuentes';
 
 export interface Seleccion {
   tipo: 'componente' | 'red' | 'bloque' | 'foto';
@@ -16,6 +17,7 @@ export interface Seleccion {
 export const PESTANAS: { id: Pestana; titulo: string }[] = [
   { id: 'foto', titulo: 'Foto' },
   { id: 'arquitectura', titulo: 'Arquitectura' },
+  { id: 'fotograma', titulo: 'Un fotograma' },
   { id: 'esquema', titulo: 'Esquema' },
   { id: 'placa3d', titulo: 'Placa en 3D' },
   { id: 'placa2d', titulo: 'Placa en 2D' },
@@ -25,7 +27,7 @@ export const PESTANAS: { id: Pestana; titulo: string }[] = [
 export function leerAncla(ancla: string): { maquina: IdMaquina; pestana: Pestana; sel: Seleccion | null } {
   const [m = '', p = '', ...resto] = ancla.split('/');
   const maquina: IdMaquina = IDS_MAQUINA.find((x) => x === m) ?? 'nes';
-  const pestana: Pestana = (['foto', 'arquitectura', 'esquema', 'placa3d', 'placa2d', 'fuentes'] as const).find((x) => x === p) ?? 'foto';
+  const pestana: Pestana = (['foto', 'arquitectura', 'fotograma', 'esquema', 'placa3d', 'placa2d', 'fuentes'] as const).find((x) => x === p) ?? 'foto';
   const s = resto.join('/');
   let sel: Seleccion | null = null;
   if (s) {

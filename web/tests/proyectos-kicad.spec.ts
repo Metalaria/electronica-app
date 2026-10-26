@@ -128,11 +128,15 @@ test('la simulación enlaza las netlists del capítulo y da las tensiones de la 
   await expect(page.getByText('emparejarlas no sería fiable')).toBeVisible();
 });
 
-test('las comprobaciones listan las posibles erratas', async ({ page }) => {
+test('las comprobaciones cruzan la placa con el libro impreso', async ({ page }) => {
+  // Book 3.0.2 fixed every errata these checks had found (silkscreen chapter numbers, SH1, the 48.23 caption),
+  // so the boards now pass them all and the «posibles erratas» list is gone.
   await page.goto('#/proyectos/sdr/comprobaciones');
   await expect(page.locator('.comp')).toContainText('coinciden con las redes del esquema');
-  await expect(page.locator('.comp')).toContainText('cap. 52');
-  await expect(page.locator('.comp')).toContainText('SH1');
+  await expect(page.locator('.comp li.aviso, .comp li.error')).toHaveCount(0);
+  await expect(page.getByText('Posibles erratas para la próxima edición')).toHaveCount(0);
+  await page.goto('#/proyectos/estacion_iot/comprobaciones');
+  await expect(page.locator('.comp')).toContainText('El pie de la figura 48.23 («el ESP32-DevKitC a la derecha») coincide con la placa');
 });
 
 test('el libro ofrece «Ver la placa» junto a las figuras de los proyectos', async ({ page }) => {

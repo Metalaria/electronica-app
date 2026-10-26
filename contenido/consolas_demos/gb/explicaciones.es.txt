@@ -1,0 +1,104 @@
+# Explicación en español de cada instrucción de demo.asm («Un fotograma», Game Boy).
+# Formato: etiqueta+n: texto   (n = número de instrucción a partir de la etiqueta, empezando en 0)
+EntryPoint+0: Primera instrucción del cartucho: la ROM de arranque de Nintendo (no incluida) salta a $0100 tras mostrar el logotipo. No hace nada.
+EntryPoint+1: Salta por encima de la cabecera del cartucho ($0104–$014F: logotipo, título, sumas de control) al programa.
+Start+0: Desactiva las interrupciones (IME = 0) mientras se prepara todo.
+Start+1: Pila en lo alto de la HRAM ($FFFE), dentro del SoC.
+WaitVBlank+0: Lee LY ($FF44), la línea que dibuja la PPU. Es un registro interno: el acceso no sale a las patillas.
+WaitVBlank+1: ¿Ya va por la línea 144 (VBlank)? Compara A con 144 (resta sin guardar el resultado).
+WaitVBlank+2: Si LY < 144 (acarreo), vuelve a leer: la pantalla solo se puede apagar durante el VBlank.
+WaitVBlank+3: A = 0 (XOR consigo mismo; también pone la bandera Z).
+WaitVBlank+4: LCDC = 0: pantalla apagada. La PPU deja de leer la VRAM y la CPU la tiene para ella sola.
+WaitVBlank+5: HL apunta al principio de la VRAM ($8000), donde van las teselas.
+WaitVBlank+6: DE apunta a las teselas en la ROM del cartucho.
+WaitVBlank+7: BC = número de bytes que copiar.
+CopyTiles+0: Lee un byte de la ROM: el SoC pone la dirección en A0–A15, baja /RD y el cartucho responde por D0–D7.
+CopyTiles+1: Lo escribe en la VRAM e incrementa HL. En la DMG la VRAM es un chip aparte (U2): sale por MA0–MA12 y MD0–MD7 con /MWR bajo.
+CopyTiles+2: Siguiente byte de origen.
+CopyTiles+3: Un byte menos (DEC de 16 bits: no toca las banderas).
+CopyTiles+4: Para saber si BC llegó a 0 se junta B…
+CopyTiles+5: …con C mediante OR: Z = 1 solo si los dos son 0.
+CopyTiles+6: Si quedan bytes, repite.
+CopyTiles+7: HL = $9800: el mapa del fondo (32 × 32 números de tesela).
+CopyTiles+8: DE apunta al mapa en la ROM.
+CopyTiles+9: 1024 bytes.
+CopyMap+0: Lee un byte del mapa de la ROM del cartucho (A0–A15, /RD, D0–D7).
+CopyMap+1: Lo escribe en el mapa de la VRAM e incrementa HL.
+CopyMap+2: Siguiente byte de origen.
+CopyMap+3: Un byte menos.
+CopyMap+4: B…
+CopyMap+5: …OR C: Z = 1 cuando BC = 0.
+CopyMap+6: Si quedan bytes, repite.
+CopyMap+7: HL apunta a la copia de la OAM en la WRAM ($C000).
+CopyMap+8: 160 bytes: 40 sprites de 4 bytes.
+CopyMap+9: A = 0: Y = 0 deja un sprite fuera de la pantalla.
+ClearOam+0: Escribe 0 en la copia de la OAM (WRAM) e incrementa HL.
+ClearOam+1: Un byte menos.
+ClearOam+2: Repite los 160.
+ClearOam+3: HL = $FF80: la HRAM, dentro del SoC.
+ClearOam+4: DE apunta a la rutina del DMA en la ROM.
+ClearOam+5: Su longitud en bytes.
+CopyDma+0: Lee un byte de la rutina.
+CopyDma+1: Lo escribe en la HRAM: durante el DMA de OAM la CPU solo puede leer la HRAM, así que la rutina tiene que ejecutarse desde ahí.
+CopyDma+2: Siguiente byte.
+CopyDma+3: Uno menos.
+CopyDma+4: Repite.
+CopyDma+5: El robot empieza en la columna 40.
+CopyDma+6: Lo guarda en la WRAM.
+CopyDma+7: A = 0.
+CopyDma+8: El contador de cuadros a 0 (la WRAM arranca con valores al azar).
+CopyDma+9: Llama a PlaceRobot: escribe los cuatro sprites del robot en la copia de la OAM.
+CopyDma+10: Tonos 3, 2, 1, 0 para los colores 3, 2, 1, 0.
+CopyDma+11: BGP ($FF47): paleta del fondo.
+CopyDma+12: OBP0 ($FF48): paleta de los sprites (el color 0 es transparente).
+CopyDma+13: A = 0.
+CopyDma+14: Desplazamiento horizontal del fondo (SCX) = 0.
+CopyDma+15: Desplazamiento vertical (SCY) = 0.
+CopyDma+16: IF = 0: olvida las peticiones de interrupción de la preparación.
+CopyDma+17: A = 1: bit 0 = VBlank.
+CopyDma+18: IE ($FFFF) = 1: solo se atiende la interrupción del VBlank.
+CopyDma+19: Pantalla encendida, teselas en $8000, mapa en $9800, sprites y fondo visibles.
+CopyDma+20: Escribe LCDC: la PPU empieza a recorrer las líneas.
+CopyDma+21: Activa las interrupciones (surte efecto tras la instrucción siguiente).
+MainLoop+0: HALT: la CPU se duerme (el reloj de la CPU se para) hasta que llegue una interrupción. Casi todo el cuadro pasa aquí.
+MainLoop+1: Tras la interrupción del VBlank: HL apunta a la X del robot.
+MainLoop+2: Suma 1 a la X en la WRAM (lee y escribe el mismo byte).
+MainLoop+3: Recoloca los sprites en la copia de la OAM para el cuadro siguiente.
+MainLoop+4: Vuelve a dormir.
+PlaceRobot+0: HL apunta a la copia de la OAM.
+PlaceRobot+1: DE apunta a la tabla de piezas del robot.
+PlaceRobot+2: Cuatro piezas (sprites de 8 × 8).
+PlaceRobot.part+0: Lee el desplazamiento vertical de la pieza (0 u 8).
+PlaceRobot.part+1: Le suma la Y del robot (en la OAM, Y = línea + 16).
+PlaceRobot.part+2: Byte 0 del sprite: Y.
+PlaceRobot.part+3: Siguiente dato de la tabla.
+PlaceRobot.part+4: Desplazamiento horizontal de la pieza.
+PlaceRobot.part+5: Lo aparta en C.
+PlaceRobot.part+6: Lee la X del robot de la WRAM.
+PlaceRobot.part+7: Le suma el desplazamiento.
+PlaceRobot.part+8: En la OAM, X = columna + 8.
+PlaceRobot.part+9: Byte 1 del sprite: X.
+PlaceRobot.part+10: Siguiente dato.
+PlaceRobot.part+11: Número de tesela.
+PlaceRobot.part+12: Byte 2 del sprite: tesela.
+PlaceRobot.part+13: Siguiente dato.
+PlaceRobot.part+14: Atributos (paleta 0, delante del fondo, sin voltear).
+PlaceRobot.part+15: Byte 3 del sprite: atributos.
+PlaceRobot.part+16: Siguiente pieza de la tabla.
+PlaceRobot.part+17: Una pieza menos.
+PlaceRobot.part+18: Repite las cuatro.
+PlaceRobot.part+19: Vuelve (la dirección de vuelta se lee de la pila en la HRAM).
+VBlankVector+0: La PPU ha llegado a la línea 144 y ha pedido la interrupción VBlank: la CPU ha guardado PC en la pila y saltado a $0040. De aquí, a la rutina.
+VBlankHandler+0: Guarda A y las banderas en la pila.
+VBlankHandler+1: Llama a la rutina del DMA de OAM, que está en la HRAM.
+VBlankHandler+2: Lee el contador de cuadros de la WRAM.
+VBlankHandler+3: Le suma 1.
+VBlankHandler+4: Lo vuelve a guardar.
+VBlankHandler+5: Recupera A y las banderas.
+VBlankHandler+6: RETI: vuelve al programa (tras el HALT) y reactiva las interrupciones.
+OamDmaRoutine+0: (En la HRAM) A = $C0: byte alto de la copia de la OAM ($C000).
+OamDmaRoutine+1: Escribe DMA ($FF46): el DMA lee $C000–$C09F de la WRAM y lo escribe en la OAM, un byte por ciclo de máquina (160 ciclos).
+OamDmaRoutine+2: 40 vueltas de espera.
+OamDmaRoutine.wait+0: Una vuelta menos. Mientras, la CPU solo lee la HRAM: el bus externo lo usa el DMA.
+OamDmaRoutine.wait+1: 4 ciclos por vuelta: 40 vueltas cubren los 160 ciclos del DMA.
+OamDmaRoutine.wait+2: Vuelve al manejador del VBlank.

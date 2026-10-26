@@ -35,6 +35,38 @@ async function cuadros(n: number): Promise<void> {
   for (let i = 0; i < n; i++) await cuadro();
 }
 
+/** Waits (frame by frame) until `cond()` or `ms` milliseconds; returns the time waited. */
+async function hasta(cond: () => boolean, ms: number, cancelada: () => boolean): Promise<number> {
+  const t0 = performance.now();
+  while (!cond() && performance.now() - t0 < ms && !cancelada()) await cuadro();
+  return performance.now() - t0;
+}
+
+/**
+ * Longest gap of the page's thread while `f` runs: a 4 ms timer chain whose late callbacks are the tasks that
+ * held the thread (painting, uploads, compiles…), whatever their kind.
+ */
+async function conLatido<T>(f: () => Promise<T>): Promise<{ r: T; max: number }> {
+  let max = 0;
+  let previo = performance.now();
+  let vivo = true;
+  const latir = () => {
+    const t = performance.now();
+    max = Math.max(max, t - previo);
+    previo = t;
+    if (vivo) setTimeout(latir, 4);
+  };
+  setTimeout(latir, 4);
+  try {
+    const r = await f();
+    return { r, max };
+  } finally {
+    vivo = false;
+  }
+}
+
+const mpx = (k: number) => `×${coma(k, 2)}`;
+
 function percentil(a: number[], p: number): number {
   const s = [...a].sort((x, y) => x - y);
   return s[Math.min(s.length - 1, Math.floor(s.length * p))] ?? 0;
@@ -72,11 +104,14 @@ async function girar(c: HTMLCanvasElement, s: number, dibujados: () => number, c
     ev('pointermove', x0 + Math.sin(dt / 700) * r.width * 0.3, y0 + Math.sin(dt / 1100) * r.height * 0.12);
     if (dt > s * 1000 || cancelada()) break;
   }
-  ev('pointerup', x0, y0);
   const t1 = performance.now();
+  const n1 = dibujados();
+  // Released after a short pause, without inertia (on a slow GPU it would keep the view moving for long).
+  await new Promise((res) => setTimeout(res, 150));
+  ev('pointerup', x0, y0);
   const d: number[] = [];
   for (let i = 1; i < marcas.length; i++) d.push(marcas[i]! - marcas[i - 1]!);
-  return { fps: ((dibujados() - n0) * 1000) / (t1 - t0), p95: percentil(d, 0.95), marcas: marcas.length };
+  return { fps: ((n1 - n0) * 1000) / (t1 - t0), p95: percentil(d, 0.95), marcas: marcas.length };
 }
 
 // ------------------------------------------------------------------ device and WebGL
@@ -130,39 +165,78 @@ export async function visor3d(ctx: ContextoPrueba, tipo = 'qfp'): Promise<Result
   const t0 = performance.now();
   const [{ Visor }, M] = await Promise.all([import('../tres/motor/visor'), import('../tres/modelos')]);
   const t1 = performance.now();
-  const l = lienzo(ctx);
-  const visor = new Visor(l.c, l.capa);
-  try {
-    const t2 = performance.now();
-    const modelo = M.crearModelo(tipo, {});
-    const t3 = performance.now();
-    visor.ponerFondo(app.tema === 'oscuro' ? '#23272e' : '#eeece6', app.tema === 'oscuro');
-    visor.ponerModelo(modelo);
-    const est = globalThis as unknown as { __epa3d?: { n: number; total: number } };
-    await cuadros(3);
-    const t4 = performance.now();
-    if (ctx.cancelada()) return [];
-    ctx.avisar(`Visor 3D: girando el modelo ${ctx.segundos} s…`);
-    const s0 = { n: est.__epa3d?.n ?? 0, total: est.__epa3d?.total ?? 0 };
-    const r = await girar(l.c, ctx.segundos, () => est.__epa3d?.n ?? 0, ctx.cancelada);
-    const n = (est.__epa3d?.n ?? 0) - s0.n;
-    const cpu = n ? ((est.__epa3d?.total ?? 0) - s0.total) / n : 0;
-    const datos = modelo.userData as { triangulos?: number };
-    return [
-      { grupo: g, prueba: 'Carga del módulo 3D', valor: ms(t1 - t0), detalle: 'three.js y la biblioteca de modelos', estado: 'ok' },
-      { grupo: g, prueba: `Modelo «${tipo}»`, valor: ms(t3 - t2), detalle: `${datos.triangulos ?? '?'} triángulos; primer cuadro ${ms(t4 - t3)}`, estado: 'ok' },
-      {
+  const est = globalThis as unknown as { __epa3d?: { n: number; total: number; resolucion?: { base: number; actual: number; minima: number; cambios: number } } };
+  // One view: build, programs (0.8: compiled before the first frame), first frame; `girarlo` also turns it.
+  const vista = async (girarlo: boolean) => {
+    const l = lienzo(ctx);
+    const visor = new Visor(l.c, l.capa);
+    try {
+      const a = performance.now();
+      const modelo = M.crearModelo(tipo, {});
+      const b = performance.now();
+      visor.ponerFondo(app.tema === 'oscuro' ? '#23272e' : '#eeece6', app.tema === 'oscuro');
+      const n0 = est.__epa3d?.n ?? 0;
+      visor.ponerModelo(modelo);
+      await hasta(() => (est.__epa3d?.n ?? 0) > n0, 60_000, ctx.cancelada);
+      const c = performance.now();
+      const p = { ...visor.preparacion };
+      let giro: { fps: number; p95: number; cpu: number; res?: { base: number; minima: number; cambios: number } } | null = null;
+      if (girarlo && !ctx.cancelada()) {
+        ctx.avisar(`Visor 3D: girando el modelo ${ctx.segundos} s…`);
+        const s0 = { n: est.__epa3d?.n ?? 0, total: est.__epa3d?.total ?? 0 };
+        const r = await girar(l.c, ctx.segundos, () => est.__epa3d?.n ?? 0, ctx.cancelada);
+        const n = (est.__epa3d?.n ?? 0) - s0.n;
+        giro = { fps: r.fps, p95: r.p95, cpu: n ? ((est.__epa3d?.total ?? 0) - s0.total) / n : 0, res: est.__epa3d?.resolucion ? { ...est.__epa3d.resolucion } : undefined };
+        // Back at rest: full resolution again? (a slow GPU may take a few frames to get there)
+        await hasta(() => !est.__epa3d?.resolucion || est.__epa3d.resolucion.actual === est.__epa3d.resolucion.base, 10_000, ctx.cancelada);
+      }
+      const reposo = est.__epa3d?.resolucion?.actual;
+      return { construir: b - a, primero: c - b, p, giro, reposo, triangulos: (modelo.userData as { triangulos?: number }).triangulos };
+    } finally {
+      visor.liberar();
+      l.quitar();
+    }
+  };
+  const fria = await vista(true);
+  if (ctx.cancelada()) return [];
+  ctx.avisar('Visor 3D: una segunda vista del mismo modelo (programas ya vistos por el controlador)…');
+  const segunda = await vista(false);
+  const res: Resultado[] = [
+    { grupo: g, prueba: 'Carga del módulo 3D', valor: ms(t1 - t0), detalle: 'three.js y la biblioteca de modelos', estado: 'ok' },
+    {
+      grupo: g,
+      prueba: `Modelo «${tipo}», primera vista`,
+      valor: ms(fria.primero),
+      detalle: `hasta el primer cuadro: sombreadores ${ms(fria.p.compilar)} (${fria.p.programas} programas, compilación ${fria.p.paralela ? 'en paralelo' : 'sin KHR_parallel_shader_compile'}); modelo ${ms(fria.construir)}, ${fria.triangulos ?? '?'} triángulos`,
+      estado: fria.primero < 1000 ? 'ok' : 'aviso',
+    },
+    {
+      grupo: g,
+      prueba: 'Segunda vista (otro contexto WebGL)',
+      valor: ms(segunda.primero),
+      detalle: `sombreadores ${ms(segunda.p.compilar)}; lo que el controlador de la GPU ya tenía compilado`,
+      estado: 'ok',
+    },
+  ];
+  const r = fria.giro;
+  if (r) {
+    res.push({
+      grupo: g,
+      prueba: 'Al girar',
+      valor: `${coma(r.fps)} cuadros/s`,
+      detalle: `p95 entre cuadros ${ms(r.p95)}, render ${ms(r.cpu)} de CPU`,
+      estado: r.fps >= 45 ? 'ok' : r.fps >= 25 ? 'aviso' : 'error',
+    });
+    if (r.res)
+      res.push({
         grupo: g,
-        prueba: 'Al girar',
-        valor: `${coma(r.fps)} cuadros/s`,
-        detalle: `p95 entre cuadros ${ms(r.p95)}, render ${ms(cpu)} de CPU`,
-        estado: r.fps >= 45 ? 'ok' : r.fps >= 25 ? 'aviso' : 'error',
-      },
-    ];
-  } finally {
-    visor.liberar();
-    l.quitar();
+        prueba: 'Resolución al girar',
+        valor: r.res.cambios ? `${mpx(r.res.base)} → ${mpx(r.res.minima)}` : `${mpx(r.res.base)} fija`,
+        detalle: `${r.res.cambios ? `${r.res.cambios} cambios mientras gira; ` : 'no hizo falta bajarla; '}en reposo ${fria.reposo != null ? mpx(fria.reposo) : '?'}`,
+        estado: fria.reposo != null && Math.abs(fria.reposo - r.res.base) > 1e-3 ? 'aviso' : 'ok',
+      });
   }
+  return res;
 }
 
 // ------------------------------------------------------------------ SDR board
@@ -184,23 +258,36 @@ export async function placaSdr(ctx: ContextoPrueba, id = 'sdr'): Promise<Resulta
     const r0 = l.caja.getBoundingClientRect();
     escena.tamano(r0.width, r0.height);
     const t3 = performance.now();
-    await cuadros(2);
+    const st = escena.stats;
+    // 0.8: the board's programs are compiled before its first frame; wait for that frame.
+    await hasta(() => st.cuadros > 0, 60_000, ctx.cancelada);
     const t4 = performance.now();
     await escena.cargarPiezas();
     await cuadros(2);
     const t5 = performance.now();
     if (ctx.cancelada()) return [];
-    const st = escena.stats;
+    ctx.avisar('Placa SDR: esperando las caras a resolución completa…');
+    await hasta(() => st.carasFinas != null, 120_000, ctx.cancelada);
+    await cuadros(2);
     ctx.avisar(`Placa SDR: girando la placa ${ctx.segundos} s…`);
-    const n0 = st.cuadros ?? 0;
     const ms0 = st.ms.length;
     const r = await girar(l.c, ctx.segundos, () => escena?.stats.cuadros ?? 0, ctx.cancelada);
     const render = st.ms.slice(Math.min(ms0, st.ms.length));
-    void n0;
+    const resGiro = st.resolucion ? { ...st.resolucion } : null;
+    await hasta(() => !st.resolucion || st.resolucion.actual === st.resolucion.base, 10_000, ctx.cancelada);
+    const reposo = st.resolucion?.actual;
     const f = st.fases;
-    return [
+    const fc = st.fasesCaras;
+    const c = fc?.completa;
+    const res: Resultado[] = [
       { grupo: g, prueba: 'Datos y geometría', valor: ms(t2 - t0), detalle: `descarga ${ms(t1 - t0)}, trazados ${ms(t2 - t1)}`, estado: 'ok' },
-      { grupo: g, prueba: 'Placa visible', valor: seg(t4 - t0), detalle: `${st.textura ? `texturas de las caras ${ms(st.textura)}` : 'caras a ¼ de resolución (las completas, después)'}; escena ${ms(t3 - t2)}`, estado: 'ok' },
+      {
+        grupo: g,
+        prueba: 'Placa visible',
+        valor: seg(t4 - t0),
+        detalle: `escena ${ms(t3 - t2)}; sombreadores de la placa ${ms(st.compilarPlaca ?? 0)}; caras a ¼ (${fc?.modo ?? '?'}): pintar ${ms(fc?.cuarto.pintar ?? 0)}, leer ${ms(fc?.cuarto.leer ?? 0)}, subir ${ms(fc?.cuarto.subir ?? 0)}`,
+        estado: 'ok',
+      },
       {
         grupo: g,
         prueba: 'Placa con componentes',
@@ -208,18 +295,89 @@ export async function placaSdr(ctx: ContextoPrueba, id = 'sdr'): Promise<Resulta
         detalle: `${st.piezas.biblioteca + st.piezas.propias} piezas${f ? `, ${f.modelosUnicos} modelos distintos; modelos ${ms(f.modelos)}, unión ${ms(f.fusion)}, sombreadores ${ms(f.compilar ?? 0)}${st.programas ? ` (${st.programas} programas)` : ''}` : ''}`,
         estado: t5 - t0 < 4000 ? 'ok' : t5 - t0 < 10000 ? 'aviso' : 'error',
       },
-      {
-        grupo: g,
-        prueba: 'Al girar',
-        valor: `${coma(r.fps)} cuadros/s`,
-        detalle: `p95 entre cuadros ${ms(r.p95)}, render ${ms(render.reduce((a, b) => a + b, 0) / Math.max(1, render.length))} de CPU; ${st.llamadas} llamadas, ${Math.round(st.triangulos / 1000)} k triángulos`,
-        estado: r.fps >= 45 ? 'ok' : r.fps >= 25 ? 'aviso' : 'error',
-      },
     ];
+    if (c)
+      res.push({
+        grupo: g,
+        prueba: 'Caras a resolución completa',
+        valor: ms(c.total),
+        detalle: `modo ${c.modo}${c.motivo ? ` (${c.motivo})` : ''}; hilo de la página ${ms(st.textura)}, tarea más larga ${ms(c.maxTarea)}; ${c.modo === 'directo' ? `pintar ${ms(c.pintar)}, subir ${ms(c.subir)}` : `pintar ${ms(c.pintar)}, leer ${ms(c.leer)}, voltear ${ms(c.voltear)}${c.modo === 'trabajador' ? `, geometría ${ms(c.geometria)}, primera cara a los ${ms(c.espera)}` : ''}; subir ${ms(c.subir)} en ${c.franjas} franjas, espera a la GPU ${ms(c.gpu)}`}`,
+        estado: c.maxTarea < 50 ? 'ok' : c.maxTarea < 200 ? 'aviso' : 'error',
+      });
+    res.push({
+      grupo: g,
+      prueba: 'Al girar',
+      valor: `${coma(r.fps)} cuadros/s`,
+      detalle: `p95 entre cuadros ${ms(r.p95)}, render ${ms(render.reduce((a, b) => a + b, 0) / Math.max(1, render.length))} de CPU; ${st.llamadas} llamadas, ${Math.round(st.triangulos / 1000)} k triángulos`,
+      estado: r.fps >= 45 ? 'ok' : r.fps >= 25 ? 'aviso' : 'error',
+    });
+    if (resGiro)
+      res.push({
+        grupo: g,
+        prueba: 'Resolución al girar',
+        valor: resGiro.cambios ? `${mpx(resGiro.base)} → ${mpx(resGiro.minima)}` : `${mpx(resGiro.base)} fija`,
+        detalle: `${resGiro.cambios ? `${resGiro.cambios} cambios mientras gira, intervalo ${ms(resGiro.intervalo)}; ` : 'no hizo falta bajarla; '}en reposo ${reposo != null ? mpx(reposo) : '?'}`,
+        estado: reposo != null && Math.abs(reposo - resGiro.base) > 1e-3 ? 'aviso' : 'ok',
+      });
+    return res;
   } finally {
     escena?.liberar();
     l.quitar();
   }
+}
+
+/**
+ * 0.8: the SDR board's faces painted at full resolution by each of the three ways (escena3d.ts, ModoCaras), one
+ * new view each, without the parts: time to both faces on screen, page-thread time and the page's longest gap
+ * meanwhile (a timer chain), so the WebView's best way can be read off on the device itself.
+ */
+export async function carasSdr(ctx: ContextoPrueba, id = 'sdr'): Promise<Resultado[]> {
+  const g = 'Caras de la placa SDR (resolución completa)';
+  const [{ cargarPlaca }, { construirGeometria }, { Escena3D, modoCarasPorDefecto }] = await Promise.all([
+    import('../proyectos/datos'),
+    import('../proyectos/geometria'),
+    import('../proyectos/escena3d'),
+  ]);
+  const d = await cargarPlaca(id);
+  const geo = construirGeometria(d);
+  const res: Resultado[] = [];
+  const porDefecto = modoCarasPorDefecto();
+  for (const modo of ['directo', 'trabajador', 'franjas'] as const) {
+    if (ctx.cancelada()) break;
+    ctx.avisar(`Caras de la placa: modo «${modo}»…`);
+    const l = lienzo(ctx);
+    let escena: InstanceType<typeof Escena3D> | null = null;
+    try {
+      escena = new Escena3D(l.c, d, geo, app.tema === 'oscuro', { modoCaras: modo });
+      const r0 = l.caja.getBoundingClientRect();
+      escena.tamano(r0.width, r0.height);
+      const st = escena.stats;
+      await hasta(() => st.cuadros > 0, 60_000, ctx.cancelada);
+      await cuadros(2);
+      const e = escena;
+      const { max } = await conLatido(async () => {
+        await e.refinarCaras();
+        await hasta(() => st.carasFinas != null, 120_000, ctx.cancelada);
+        await cuadros(2);
+      });
+      const c = st.fasesCaras?.completa;
+      const q = st.fasesCaras?.cuarto;
+      res.push({
+        grupo: g,
+        prueba: `${modo}${modo === porDefecto ? ' (el de este dispositivo)' : ''}`,
+        valor: c ? ms(c.total) : 'sin datos',
+        detalle: c
+          ? `hilo de la página ${ms(c.modo === 'trabajador' ? c.subir : c.pintar + c.leer + c.subir)}, hueco más largo de la página ${ms(max)}${c.modo !== modo ? `; usó «${c.modo}»${c.motivo ? ` (${c.motivo})` : ''}` : ''}; pintar ${ms(c.pintar)}, leer ${ms(c.leer)}, subir ${ms(c.subir)}${c.franjas ? ` en ${c.franjas} franjas` : ''}${c.gpu ? `, espera a la GPU ${ms(c.gpu)}` : ''}; ¼: ${ms((q?.pintar ?? 0) + (q?.leer ?? 0) + (q?.subir ?? 0))}`
+          : undefined,
+        estado: !c ? 'error' : max < 60 ? 'ok' : max < 250 ? 'aviso' : 'error',
+      });
+    } finally {
+      escena?.liberar();
+      l.quitar();
+    }
+    await new Promise((r) => setTimeout(r, 300));
+  }
+  return res;
 }
 
 // ------------------------------------------------------------------ automatic schematics

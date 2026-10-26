@@ -1,6 +1,6 @@
 <script lang="ts">
   // «Consolas» view: six mainboards (NES, Neo Geo AES, Master System II, Mega Drive, Game Boy, Game Boy Color)
-  // in three linked views (photo, architecture, schematic) plus sources. Route: #/consolas/<maquina>/<pestana>[/<seleccion>] (see estado.svelte.ts).
+  // in three linked views (photo, architecture, schematic) plus sources, the boards and «Un fotograma». Route: #/consolas/<maquina>/<pestana>[/<seleccion>] (see estado.svelte.ts).
   import { untrack } from 'svelte';
   import { ruta } from '../../lib/ruta.svelte';
   import { cargarMaquina, type DatosMaquina, type IdMaquina } from './datos';
@@ -9,6 +9,7 @@
   import Foto from './Foto.svelte';
   import Fuentes from './Fuentes.svelte';
   import { tienePlaca } from './placa/datos';
+  import { tieneFotograma } from './fotograma/maquinas';
 
   const actual = $derived(leerAncla(ruta.ancla));
   let sel: Seleccion | null = $state(null);
@@ -52,7 +53,10 @@
   }
 
   // «Placa en 3D / 2D» only for the machines with a board
-  const pestanas = $derived(PESTANAS.filter((p) => (p.id !== 'placa3d' && p.id !== 'placa2d') || tienePlaca(actual.maquina)));
+  // «Un fotograma» only for the machines with an adapter (fotograma/maquinas/<maquina>.ts)
+  const disponible = (m: IdMaquina, p: Pestana) =>
+    p === 'placa3d' || p === 'placa2d' ? tienePlaca(m) : p === 'fotograma' ? tieneFotograma(m) : true;
+  const pestanas = $derived(PESTANAS.filter((p) => disponible(actual.maquina, p.id)));
   const pestana = $derived(pestanas.some((p) => p.id === actual.pestana) ? actual.pestana : 'foto');
 
   const MAQUINAS: { id: IdMaquina; titulo: string; placa: string }[] = [
@@ -75,7 +79,7 @@
     </div>
     <nav class="maquinas" aria-label="Consola">
       {#each MAQUINAS as m (m.id)}
-        <a href={href(m.id, (actual.pestana === 'placa3d' || actual.pestana === 'placa2d') && !tienePlaca(m.id) ? 'foto' : actual.pestana)} aria-current={actual.maquina === m.id ? 'page' : undefined}>
+        <a href={href(m.id, disponible(m.id, actual.pestana) ? actual.pestana : 'foto')} aria-current={actual.maquina === m.id ? 'page' : undefined}>
           <strong>{m.titulo}</strong><small>{m.placa}</small>
         </a>
       {/each}
@@ -99,6 +103,15 @@
       <div class="cargando">Cargando…</div>
     {:then [m, maquina]}
       {#key datos.id}<m.default {datos} {maquina} {sel} {seleccionar} {irA} />{/key}
+    {/await}
+  {:else if pestana === 'fotograma'}
+    <!-- «Un fotograma»: the cycle-level trace of one frame, loaded with its code only when the tab opens. -->
+    {#await import('./fotograma/Fotograma.svelte')}
+      <div class="cargando">Cargando…</div>
+    {:then m}
+      {#key datos.id}<m.default {datos} />{/key}
+    {:catch e}
+      <div class="aviso"><p>No se pudo abrir la animación: {String(e)}</p></div>
     {/await}
   {:else if pestana === 'esquema'}
     {#await import('./esquema/Esquema.svelte') then m}

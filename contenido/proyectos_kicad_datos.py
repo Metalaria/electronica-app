@@ -423,20 +423,13 @@ ILOAD LP LN 1
 
 # ------------------------------------------------------------------ captions checked against the board
 # A figure caption that places a part: the build measures where the part really is (fraction of the board width).
+# 'texto' must appear in the printed caption; if the book rewords it, the build reports it so this entry is updated.
 POSICIONES_PIE = [
-    {'placa': 'estacion_iot', 'figura': 'fig-new-49-placa', 'refs': ['J2', 'J3'], 'texto': 'el ESP32-DevKitC en el centro',
-     'esperado': (0.3, 0.7)},
+    {'placa': 'estacion_iot', 'figura': 'fig-new-49-placa', 'refs': ['J2', 'J3'], 'texto': 'el ESP32-DevKitC a la derecha',
+     'esperado': (0.5, 1.0)},
 ]
 
 # Inconsistencies of the companion documentation found by reading it against the book (cited, not computed).
-ERRATAS_MANUALES = [
-    {'placa': 'fuente_laboratorio',
-     'texto': 'El README del proyecto (fuente_laboratorio/README.md, «Correcciones al libro») presenta como pendientes las '
-              'correcciones 4 a 7 (MJ15003 en TO-3, el cuarto de vatio con 0,01 Ω, R_jc del TIP35C, los 211 mJ del crowbar), que el '
-              'capítulo ya recoge (tabla de la lista de materiales de la sección 49.15 y sección 49.14); conviene marcarlas como '
-              'aplicadas, como hace el README de la estación IoT.'},
-    {'placa': 'amplificador_hifi',
-     'texto': 'El README del proyecto (amplificador_hifi/README.md, «Correcciones al libro») presenta como pendientes las correcciones '
-              '2 y 3 (bias con drivers, «≈ 29 veces, unos 29 dB»), que el capítulo ya recoge (secciones 50.5 y 50.2); conviene marcarlas '
-              'como aplicadas.'},
-]
+# Empty since book 3.0.2: the READMEs of fuente_laboratorio and amplificador_hifi now mark their corrections as
+# applied. Entries look like {'placa': <board or project id>, 'texto': <what to fix, with the cited sources>}.
+ERRATAS_MANUALES = []

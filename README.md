@@ -37,16 +37,42 @@ esquemas (fase 5) está en la versión 0.7.
 - **Referencias cruzadas**: cada «5.3» del texto es un enlace. Lleva a su destino (en el mismo
   capítulo o en otro), lo resalta un instante y muestra un botón «Volver a 5.2». El botón Atrás del
   navegador, del ratón o de Android devuelve al punto exacto donde se estaba leyendo.
+- **Vista previa de las referencias** (0.8): sin salir de la lectura, una tarjeta flotante enseña el destino:
+  la figura con su número y su pie, la tabla, la ecuación dibujada con su etiqueta, o, para una sección, un
+  capítulo, un ejercicio o un problema, su número, su título, el color de su bloque, el comienzo del texto y su
+  primera figura. Con ratón se abre al dejar el puntero un momento sobre la referencia (un clic sigue saltando
+  como siempre); en pantalla táctil, **un toque abre la vista previa** y «Ir a …» (o un segundo toque en la
+  misma referencia) salta, con su «Volver»; con teclado, `Intro` sobre la referencia la abre y pone el foco en
+  «Ir a …», de modo que otro `Intro` salta. Se cierra con `Esc`, tocando fuera o desplazando la página. En el
+  ordenador y la tableta flota junto a la referencia sin taparla; en el teléfono es una hoja abajo (o arriba, si
+  la referencia está en la parte baja de la pantalla). Funciona igual en los ejercicios, el glosario y los tests.
 - **Glosario**: orden alfabético, salto por letras, filtro instantáneo (sin importar tildes) y, en cada
-  término, los enlaces «→ 5.3» a las secciones donde se trata.
+  término, los enlaces «→ 5.3» a las secciones donde se trata. Desde la 0.8, los términos que lo tienen muestran
+  su **símbolo de circuito** (los mismos símbolos que los esquemas automáticos) y, si son una pieza física con
+  modelo 3D, su **miniatura 3D** con «Ver en 3D»; las miniaturas se dibujan en el propio equipo solo cuando el
+  término llega a la pantalla (el 3D no se carga antes) y se guardan, por tema, mientras la aplicación sigue
+  abierta.
 - **Búsqueda** en todo el libro (secciones y glosario) con `Ctrl K` / `⌘ K` o `/`: no distingue
   tildes ni mayúsculas, acepta el comienzo de las palabras y tolera pequeñas erratas. Cada resultado
   indica el capítulo y un fragmento con las coincidencias marcadas.
 - **Datos personales**, guardados en el propio dispositivo:
-  - la última posición de lectura de cada capítulo (la portada ofrece «Continuar leyendo»);
+  - la última posición de lectura de cada capítulo (la portada ofrece «Seguir leyendo»);
   - marcadores de sección y notas breves por sección (botones junto al título de cada sección);
   - la vista «Marcadores y notas», en el orden del libro;
   - tema claro, sepia, oscuro o el del sistema, y tamaño del texto (botón «Aa»).
+- **Inicio como mapa del libro** (0.8): en el centro, todos los capítulos, apéndices y anexos como teselas
+  del color de su bloque, agrupadas por tomo como el índice; cada tesela se rellena desde abajo con la parte
+  leída y lleva una muesca por sección (rellena si está leída); un capítulo leído entero queda de su color con
+  una marca ✓, y el que se está leyendo, recuadrado. Un toque abre el capítulo donde se dejó. Encima, una
+  tarjeta grande «Seguir leyendo» con la figura de la sección donde se dejó la lectura (la última que se pasó,
+  o la primera de la sección o del capítulo), su título y lo leído del capítulo, y «Repaso de hoy» con las
+  tarjetas pendientes del mazo elegido y «Empezar». Se mantienen los accesos (Buscar, Glosario…), «También
+  leyendo» y el progreso con los capítulos en curso. Las teselas son CSS puro: la portada no carga más
+  imagen que la de «Seguir leyendo».
+  Pruebas de las tres mejoras de la 0.8 (vista previa, glosario con imagen, mapa del libro):
+  `npx playwright test -c playwright.visual.config.ts tests/visual.spec.ts` (compilación propia, puerto 4271);
+  capturas en el Mac, la tableta y el teléfono, claro y oscuro: `node tests/visual-capturas.mjs` →
+  `tests/capturas/visual/`.
 - **Diseño adaptable**: en el teléfono y la tableta en vertical, una columna, barra inferior e índice en un cajón;
   en tableta apaisada y ordenador, carril, índice fijo y texto. Rutas con almohadilla (`#/cap05/sec-5.3`), que funcionan sin servidor
   dentro de Tauri.
@@ -180,8 +206,10 @@ colgando a masa. Un valor escrito como expresión constante (`{30e-6/0.058737}`)
 Los nombres y valores de las piezas nunca quedan encima de un cable ni pegados a él: si un cable pasa a menos de
 0,15 unidades (unos 4 px a la escala del libro), el rótulo se mueve al sitio libre más cercano alrededor del
 símbolo (al lado, encima o debajo, o partido en dos líneas, «C₁ 11,1 pF» → «C₁» / «11,1 pF»). Un circuito nuevo
-o editado se dibuja en unas decenas de milisegundos (los más grandes, en unos 0,2 s); al mover solo un valor, el
-dibujo no cambia y sale al instante.
+o editado se dibuja en unas decenas de milisegundos (los más grandes, en unos 0,1 s desde la 0.8, la mitad que
+antes, con exactamente el mismo dibujo); al mover solo un valor, el dibujo no cambia y sale al instante. Al añadir
+o quitar una pieza, el dibujo nuevo parte del anterior (las piezas que siguen ahí, en su sitio; la nueva, junto a
+sus vecinas) y, si sale limpio, se queda: es más rápido que dibujarlo de cero y se reconoce el circuito.
 
 Sobre el dibujo se ven las tensiones y corrientes de la última simulación (colores de los nodos y puntos
 que se mueven por los cables). Al cambiar un valor con su control deslizante el dibujo no se mueve; al
@@ -190,17 +218,23 @@ pueden simular aquí (XSPICE) también se dibujan, con zoom: botones + y −, `C
 arrastrar para desplazar cuando está ampliado, `0` para ajustar. **Pulsar un componente** del dibujo lleva a
 su control deslizante (lo muestra resaltado).
 
-El motor es ngspice 45.2 compilado a WebAssembly (paquete npm `eecircuit-engine` 1.8.0, licencia MIT; ngspice
-tiene licencia BSD), que se ejecuta en un *Web Worker*: la interfaz no se bloquea, se ve el progreso y una
-simulación se puede detener. Se descarga solo al abrir el simulador (5,8 MB; el arranque del lector no
-cambia). Límites:
+El motor es **ngspice 45.2 con XSPICE** compilado a WebAssembly para esta aplicación
+(`web/scripts/ngspice-wasm/`, ver «Desarrollo»; ngspice tiene licencia BSD), que se ejecuta en un *Web
+Worker*: la interfaz no se bloquea, se ve el progreso y una simulación se puede detener. Se descarga solo al
+abrir el simulador (6,5 MB, 2,1 MB comprimido; el arranque del lector no cambia). Hasta la 0.7 el motor era
+el del paquete npm `eecircuit-engine` 1.8.0 (MIT), sin XSPICE; en la 0.8 se conserva como motor de reserva
+(`src/simulador/motor/motores.ts`): se usa si el nuevo no se puede cargar, o en un dispositivo concreto
+guardando `eecircuit` en la clave `epa:motor-spice` de `localStorage`.
 
 - **Puertas digitales (XSPICE).** Las 4 netlists del capítulo 28 del libro impreso (carpeta `cap29`) usan
-  puertas, biestables y puentes ADC/DAC de XSPICE, que ningún ngspice para WebAssembly de npm incluye. Cada
-  una tiene en el material complementario una versión analógica equivalente (`…_analogica.cir`: puertas
-  como fuentes de comportamiento con umbral de 2,5 V, retardos exactos y biestables maestro-esclavo) que da
-  las mismas medidas y sí se simula aquí; la página de la original enlaza con ella.
-- Solo 2 netlists dan errores, y a propósito: los ejemplos de errores de la figura 42.6.
+  puertas, biestables y puentes ADC/DAC de XSPICE y se simulan como en ngspice nativo, con los valores que da
+  el libro. Cada una tiene además en el material complementario una versión analógica equivalente
+  (`…_analogica.cir`: puertas como fuentes de comportamiento con umbral de 2,5 V, retardos exactos y
+  biestables maestro-esclavo) con las mismas medidas, interesante para ver qué hay dentro de una puerta: la
+  página de la original enlaza con ella («Ver la versión analógica») y viceversa. Con el motor de reserva, las
+  originales no se pueden simular y la página lo explica.
+- Solo 3 netlists dan errores, y a propósito: los ejemplos de errores de la figura 42.6 y la última medida del
+  problema 29.C (el contador B no da un tercer pulso, como explica su cabecera).
 - **Unas 9 son pesadas** (más de 8 s en un ordenador): no se ejecutan solas al abrirlas, y la página avisa.
 - La aplicación usa el resolvedor SPARSE de ngspice, que da los mismos números que ngspice nativo; si un
   transitorio no converge («Timestep too small») repite la simulación con KLU y lo indica.
@@ -219,6 +253,11 @@ generada en el simulador de texto.
   diodo, Zener, LED, Schottky, transistores NPN y PNP, MOSFET N y P, JFET N y P, operacional (con o sin
   patillas de alimentación), masa, alimentación, etiqueta de red, sonda de tensión, voltímetro entre dos
   puntos y amperímetro. Un toque en la paleta y otro en el lienzo coloca la pieza; también se puede arrastrar.
+- **Digital (XSPICE)**: puertas AND, OR, NAND, NOR y XOR de dos entradas e inversor, con su retardo; biestables
+  D y JK (reloj por flanco de subida, S y R opcionales, estado inicial); puente analógico → digital (con sus
+  umbrales del 0 y del 1), puente digital → analógico (niveles y flancos) y reloj digital (frecuencia y ciclo
+  de trabajo). Las redes digitales no tienen tensión: una señal analógica entra por un puente ADC y, para ver
+  o medir una salida, se pasa por un puente DAC (una sonda puesta en una red digital se señala como error).
 - **Modelos** de las netlists del libro en una lista: 1N4148, 1N4007, Schottky, LED rojo y verde, Zener de
   5,1, 5,6 y 12 V, 2N3904, 2N3906, NPN y PNP de potencia, MOSFET de nivel 1, JFET y el operacional del libro
   (A₀ = 10⁵, polo de 10 Hz, ±14 V), un tipo 741 y uno con raíles. Los modelos definidos en las directivas
@@ -356,6 +395,12 @@ dispositivo: si se deja en 3D, la galería pasa a ser el **catálogo de modelos*
 - En el libro, junto a las secciones y figuras sobre cómo está hecho un componente, aparece **«Ver en 3D»**.
 - Si el dispositivo no tiene WebGL 2, las páginas siguen en 2D y lo indican. La vista 3D se descarga solo al
   abrirla (three.js en un fragmento aparte), dibuja únicamente cuando algo cambia y se para fuera de pantalla.
+- Desde la 0.8, si la GPU no llega a 60 cuadros por segundo mientras se gira o se acerca un modelo (o una placa),
+  la vista dibuja con menos píxeles mientras se mueve y vuelve a la resolución completa, con un último cuadro
+  nítido, en cuanto se suelta; en un equipo que ya va sobrado (los Android) no cambia nada. Los sombreadores del
+  modelo se compilan antes de su primer cuadro, en paralelo donde la GPU lo permite, con «Preparando el modelo
+  3D…» mientras tanto, y sin el plano de corte hasta que se activa «Corte» (así sirven los mismos que ya compiló el
+  catálogo; los del corte se preparan en segundo plano).
 - En pantallas estrechas las etiquetas pasan a ser números sobre el modelo con su lista debajo (si dos caen
   juntos, se separan para poder leerlos).
 - Pensado también para las GPU de tabletas y móviles (0.7): ninguna pieza comparte una cara con otra (las caras
@@ -430,12 +475,17 @@ pestañas enlazadas entre sí:
 Los datos se generan con `python3 contenido/consolas.py` (también desde `generar.py`) a partir de la carpeta
 de investigación `/home/claude/consolas`; si falta, se conservan los de `web/public/consolas/`.
 
-**Placa en 3D y Placa en 2D.** La Mega Drive y la Game Boy Color tienen dos pestañas más con la placa dibujada por
+**Placa en 3D y Placa en 2D.** La NES, la Mega Drive, la Neo Geo y la Game Boy Color tienen dos pestañas más con la placa dibujada por
 el mismo visor que «Proyectos KiCad» (girar, ver desde arriba, abajo o de canto, separar capas, rayos X, cara
 superior o inferior, aspecto real o por capas). La placa está enlazada con el esquema: elegir U1 o una red en el
 esquema la elige en la placa («Ver en la placa») y al revés («Ver en el esquema», «Ver en la foto»); al tocar un
 componente se ven sus pads con su red, y al tocar una red, todos sus pads.
 
+- **NES** (0.8): la PCB de la recreación OpenTendo v1.4 de la NES-CPU-11 (KiCad 8, TAPR OHL 1.0), con las mismas
+  referencias y redes que el esquema (98 referencias y 567 pads coinciden; 2 pads en otra red). Es un dibujo nuevo
+  «casi 1:1» hecho desde escaneos de la placa original; la foto de «Foto» es de una NES-CPU-07. La copia del
+  `.kicad_pcb` está en la carpeta de investigación (`/home/claude/consolas/nes/original/OpenTendo/Board Files/`);
+  `python3 contenido/consolas_pcb.py nes` la regenera.
 - **Mega Drive**: la PCB de la recreación de stonedDiscord (KiCad 9), el mismo proyecto que el esquema: 291
   componentes con su cuerpo, las dos caras de cobre, planos, 785 vías y la serigrafía. Las 291 referencias y los
   1291 pads conectados coinciden con el esquema. Es una recreación «1:1» dibujada a partir de escaneos de la placa
@@ -445,13 +495,112 @@ componente se ven sus pads con su red, y al tocar una red, todos sus pads.
   dice dónde va cada uno), pero cada pad lleva su referencia, su patilla y su red, así que el enlace con el esquema
   funciona igual (124 de las 128 referencias; D3, Q5, TST3 y VR2 no tienen pads). «OpenGBC · placa moderna», la
   placa de sustitución de whatware con sus componentes: no es la original y no se enlaza con el esquema.
-- Sin placa: NES (los ficheros de la placa de OpenTendo no se descargaron), Neo Geo (el `.kicad_pcb` de Board-Folk,
-  de 53 MB, no se descargó), Master System (el `.kicad_pcb` de slowcoder está vacío: KiCad 4 sin huellas) y Game
-  Boy (Gekkio solo publica los esquemas).
+- **Neo Geo**: la PCB de la recreación NEO-AES3-5 de Board Folk (KiCad, dominio público según su README), el mismo
+  proyecto que el esquema: 320 componentes, 2287 pads, 631 redes, 1498 vías y 107 zonas de cobre; las 317
+  referencias del esquema están en la placa y 2265 pads tienen la misma red. Es la 2.ª generación del chipset
+  (LSPC2-A2, NEO-B1, NEO-C1), no la NEO-AES de 1.ª generación de la foto. El `.kicad_pcb` (53 MB) no se guarda: para
+  regenerarla, `curl -L -o NeoGeoAES3_5.kicad_pcb https://raw.githubusercontent.com/Board-Folk/NeoGeoAES-3.5/75ef9665d5fc884c22607987b42478e3580d8f86/NeoGeoAES3_5.kicad_pcb`
+  (si se corta, repetir con `curl -L -C - -o …`) y `CONSOLAS_PCB_NEOGEO=/ruta/NeoGeoAES3_5.kicad_pcb python3
+  contenido/consolas_pcb.py neogeo`. La geometría que dibuja el visor ocupa 1064 kB (272 kB comprimida).
+- Sin placa: Master System (no hay ninguna
+  recreación abierta de la 171-5922A: el `.kicad_pcb` de slowcoder está vacío, KiCad 4 sin huellas, y los demás
+  proyectos son placas de vídeo) y Game Boy (Gekkio solo publica los esquemas).
 
 «Fuentes» da el autor y la licencia de cada placa. Se generan con `python3 contenido/consolas_pcb.py` (aparte de
-`generar.py`) en `web/public/consolas/placas/` (unos 1,4 MB; cada placa se descarga al abrir su pestaña). Los
+`generar.py`) en `web/public/consolas/placas/` (unos 2,7 MB; cada placa se descarga al abrir su pestaña). Los
 ficheros originales no se copian: solo la geometría que dibuja el visor.
+
+### Un fotograma: el reproductor, NES, Game Boy y Game Boy Color
+
+En las seis consolas (0.8), la pestaña «Un fotograma»
+reproduce ciclo a ciclo cómo viajan las señales desde que la CPU lee el código del juego hasta que el
+cuadro está en la pantalla, y enseña ese recorrido sobre la placa:
+
+- Dos programas: «Paso a paso», un programa corto escrito para la aplicación (fondo fijo y un robot de cuatro sprites
+  que avanza un píxel por cuadro; cada instrucción con su explicación en español), y «Un juego de verdad», un juego
+  homebrew libre: robotfindskitten en la NES y Libbet and the Magic Floor en la Game Boy (los dos de Damian Yerrick,
+  licencia zlib) y Tobu Tobu Girl Deluxe en la Game Boy Color (Tangram Games; código MIT, gráficos y música CC BY 4.0).
+  Dos tramos: «Tras el reset» (el vector de reset, la pila, la espera del VBlank) y «Un cuadro completo».
+- Velocidades «Cuadro entero», «Una línea», «Unos puntos» y «Un ciclo»; reproducir, pausar, paso por ciclo, por
+  instrucción y por línea (← →, Mayús + ← →, espacio). La línea de tiempo enseña las fases del cuadro (líneas
+  visibles, borrado horizontal y vertical, modos de la PPU) y, alrededor del cursor, cada acceso de cada bus, las
+  instrucciones y la salida de píxeles; se arrastra para moverse.
+- La pantalla se va dibujando píxel a píxel en su orden real; el resto es el cuadro anterior, atenuado. Al lado, la
+  instrucción en curso con su explicación y sus ciclos de bus uno a uno (dónde se lee el código de operación del
+  cartucho, los operandos, las lecturas fantasma), las instrucciones ejecutadas alrededor, y las lecturas de cada bus
+  (dirección en hexadecimal y en binario, dato, quién responde, si sale o no a las patillas), registros y señales.
+- El recorrido: en el esquema real, en la placa (NES OpenTendo; Game Boy Color CGB-CPU-04, por la cara de la CPU) y,
+  en la Game Boy, sobre el escaneo del cobre de la DMG-CPU-06, se iluminan las redes que se mueven en ese instante con
+  el color de su grupo (direcciones, datos, control, selección de chip, relojes, vídeo, interrupciones, DMA) y unos
+  pulsos recorren las pistas desde el chip que las conduce; las líneas a 1 llevan pulsos, las líneas a 0 quedan
+  tenues, y se recuadran los chips que responden.
+
+Las trazas se graban sin conexión con emuladores propios validados con baterías de pruebas públicas (6502:
+SingleStepTests y nestest; SM83: SingleStepTests y las ROM de blargg) y los cuadros se han contrastado con jsnes y
+PyBoy (iguales píxel a píxel salvo lo explicado en «Qué es exacto y de dónde sale»). Se regeneran con
+`node contenido/fotograma/generar.mjs` (ver ESQUEMA.md); pruebas en `tests/fotograma.spec.ts`
+(`playwright.fotogramaA.config.ts`), capturas con `node tests/fotograma-capturas.mjs` y coste por fotograma con
+`node tests/fotograma-rendimiento.mjs`.
+
+### Un fotograma: Master System II, Mega Drive y Neo Geo
+
+La pestaña «Un fotograma» de estas tres consolas sigue, ciclo a ciclo, cómo se forma un cuadro completo: el
+programa que lee la CPU, cada acceso del chip de vídeo a su memoria, la interrupción vertical y cada píxel en el
+instante en que sale, con las redes que se mueven en el esquema y en la placa (la Mega Drive y la Neo Geo tienen
+placa; la Master System, solo esquema). Dos programas por consola:
+
+- **Paso a paso**: una demostración escrita para la aplicación (`contenido/consolas_demos/<maquina>/`, con la
+  explicación en castellano de cada instrucción). Master System: cielo, hierba, ladrillos y una pelota (sprite);
+  Mega Drive (PAL y NTSC, con el conmutador «PAL · 50 Hz / NTSC · 60 Hz»): planos A y B, nubes que se desplazan y
+  una pelota cuya tabla de sprites copia un DMA; Neo Geo: una pelota de dos sprites enganchados, un suelo de 20
+  sprites y «NEO GEO» en la capa fija. La de la Neo Geo empieza en USER, como si la ROM del sistema de SNK ya la
+  hubiera llamado.
+- **Un juego de verdad**, elegidos por el dueño entre homebrew libres:
+  - Master System: **Food Fighter** (Haroldo O. Pinheiro, MIT; sprites de Henry Software, CC0), compilado aquí
+    desde su código (`contenido/consolas_juegos/sms/construir.sh`, SDCC 4.0.0 y devkitSMS); cuadro 300 con un
+    guion de botones.
+  - Mega Drive: **Gentris**, el ejemplo de juego de SGDK (Werton y Stéphane Dallongeville, MIT), la ROM que publica
+    SGDK (`contenido/consolas_juegos/megadrive/obtener.sh` la descarga y comprueba su SHA-256); PAL y NTSC, cuadro
+    480 de una partida guiada con el mando de 3 botones.
+  - Neo Geo: **05-scrolling** de ngdevkit-examples (Damien Ciabrini, LGPL-3.0+; fondos de ansimuz, CC0), paralaje
+    con 78 sprites, compilado aquí (`contenido/consolas_juegos/neogeo/construir.sh`). Arranca desde el reset con
+    **nullbios**, la ROM del sistema libre de ngdevkit (LGPL-3.0+): la de SNK tiene derechos y no se puede
+    distribuir, y UniBIOS tampoco; nullbios hace lo mínimo (vectores, llamar a USER, leer los mandos).
+  Junto a cada traza van el texto de su licencia y una nota con el código fuente (`<id>-LICENCIA.txt`,
+  `<id>-FUENTE.txt`).
+
+**Cómo se generan** (sin conexión; la aplicación solo lleva las trazas, 40–130 kB cada una):
+
+```sh
+node contenido/fotograma/sms/generar_sms.mjs
+node contenido/fotograma/megadrive/generar_md.mjs
+node contenido/fotograma/neogeo/generar_ng.mjs
+```
+
+Descargan a `contenido/.cache/fotograma/` los núcleos libres fijados por commit y SHA-256 (z80.h de floooh, zlib;
+el 68000 Moira, MIT; el VDP de BlastEm, GPL-3, solo para generar, nunca dentro de la aplicación), compilan las
+herramientas nativas y escriben `web/public/consolas/fotograma/<maquina>/`. Los juegos salen de
+`contenido/fotograma/juegos.json` (las entradas con `maquina` `sms`, `megadrive` o `neogeo`).
+
+**Qué se ha comprobado:**
+- El Z80 frente a SingleStepTests/z80: 50 000 pruebas de 50 códigos, 130 000 accesos con su dirección, dato y
+  ciclo; solo difieren banderas no documentadas de LDIR y OTIR. El 68000 (Moira con tres arreglos del orden de
+  los accesos) frente a SingleStepTests 680x0 (`contenido/fotograma/m68k/validar_m68k.py`, 35 ficheros de
+  instrucciones): 282 275 pruebas y 712 426 accesos comparados; el instante de cada acceso coincide siempre (desfase
+  fijo de 2 ciclos en los 534 557 accesos de las pruebas sin diferencias); difieren 8511 pruebas, todas de MOVE a
+  SR (4938), MOVEM.l (2704), ADD.l y SUB.l (731, ADDQ.l a un registro de dirección: 8 ciclos en Moira y en el
+  manual de Motorola, 6 en las pruebas) y BTST (138); las 85 640 pruebas que acaban en error de dirección se
+  cuentan aparte (los programas no hacen ninguno).
+- El cuadro de cada traza contra emuladores independientes (`python3 contenido/fotograma/contraste_b/contrastar.py`,
+  que descarga y compila Genesis Plus GX y Geolith): Mega Drive, demostración PAL y NTSC y el menú de Gentris,
+  0 píxeles distintos de 71 680; Neo Geo, 05-scrolling con nullbios en Geolith, 0 de 71 680; Master System, solo
+  la última columna (64 píxeles en la demostración, 186 en Food Fighter): el VDP de BlastEm saca ya el color del
+  borde en el punto 255 y Genesis Plus GX el último punto de la imagen. Los juegos se contrastan sin pulsar
+  botones: con el guion, el propio juego diverge (SGDK mezcla el contador H/V en sus números aleatorios).
+- `tests/fotogramaB.spec.ts`: para los siete programas, el cuadro repetido por la aplicación es igual píxel a
+  píxel al del emulador (datos y lienzo) y el paso por instrucciones cae en cada instrucción grabada; controles,
+  redes del esquema y de la placa en accesos conocidos, el arranque de la Neo Geo desde nullbios y el
+  conmutador PAL/NTSC del juego.
 
 ## Proyectos KiCad
 
@@ -474,7 +623,11 @@ por una misma selección (un componente, un pad o una red): lo que se toca en un
   y luego a la completa) y los componentes llegan después, con «Colocando los componentes… n de N» y una barra: cada
   modelo distinto se construye una sola vez (el SDR, 72 para sus 131 piezas) y la página sigue respondiendo mientras
   tanto. Lo que más tarda en un equipo sin GPU (Chromium con SwiftShader) es compilar los sombreadores, igual que en
-  la 0.6; las cifras antes/después están en ESQUEMA.md («Proyectos KiCad»).
+  la 0.6; las cifras antes/después están en ESQUEMA.md («Proyectos KiCad»). En la 0.8, en macOS (WKWebView, que
+  tardaba más de un segundo en pintar y subir las dos caras de 4096 px, bloqueando la página) las caras las pinta un
+  hilo aparte y se suben a la GPU a trozos, sin que la página se quede parada; en Android y Windows se pintan como
+  antes, que allí ya era cuestión de milisegundos. Al girar, si la GPU no llega a 60 cuadros por segundo, la placa se
+  dibuja con menos píxeles mientras se mueve y vuelve a la resolución completa al soltarla.
 - **Placa en 2D**: la placa plana, vista desde arriba o desde abajo (espejada), con aspecto real o por capas al estilo de
   KiCad, contornos de fabricación y zonas sin cobre (la de la antena del ESP32). Al pasar el ratón se lee el pad, la
   pista o la red; al tocar una red se resalta todo su cobre.
@@ -794,15 +947,29 @@ referencia no existe o es de otro capítulo, o si el número de una pregunta num
 dispositivo lo más pesado de la aplicación, para poder comparar el MacBook, la tableta y el móvil con números reales:
 
 - la GPU tal como la ve WebGL 2 (nombre, versión, textura máxima, bits de profundidad, compilación paralela);
-- el visor 3D de componentes girando unos segundos (el QFP de 64 patillas): cuadros por segundo y coste por cuadro;
-- la placa del receptor SDR en 3D: cuánto tarda en verse, en tener todos los componentes y a cuántos cuadros por
-  segundo gira;
+- el visor 3D de componentes (el QFP de 64 patillas): cuánto tarda el primer cuadro y cuánto de eso son los
+  sombreadores (y si se compilan en paralelo), una segunda vista del mismo modelo (lo que la GPU ya tenía
+  compilado), cuadros por segundo al girarlo y **la resolución al girar** (si ha tenido que bajarla para llegar a
+  60 cuadros por segundo, hasta cuánto, y si vuelve a la completa al soltar);
+- la placa del receptor SDR en 3D: cuánto tarda en verse, en tener todos los componentes, en tener **las caras a
+  resolución completa** (con sus fases: pintar, leer los píxeles, subirlos a la GPU en franjas, y la tarea más
+  larga que eso le ha costado a la página), a cuántos cuadros por segundo gira y su resolución al girar;
+- **las caras de la placa SDR pintadas de las tres maneras** que tiene la aplicación (directo, como en la 0.7;
+  trabajador, en un hilo aparte; franjas, por trozos en el hilo de la página), con lo que tarda cada una y el
+  hueco más largo que deja en la página: así se ve en el propio Mac cuál le conviene (la aplicación elige
+  «trabajador» en macOS y «directo» en Android y Windows);
 - el trazado en vivo de cuatro esquemas automáticos grandes (el rectificador del capítulo 50, entre otros);
 - una simulación corta con ngspice (la primera incluye la descarga y compilación del motor, la segunda no).
 
 No se ejecuta nada hasta pulsar **Empezar**; se pueden desmarcar pruebas y elegir cuántos segundos gira cada vista 3D.
 Al terminar se ve una tabla con los resultados y **Copiar resultados** deja el informe como texto para pegarlo en una
 conversación. Conviene tener la aplicación en primer plano y no tocar la pantalla mientras mide.
+
+Para probar a mano otra manera de pintar las caras de las placas o la resolución fija, en la consola de
+desarrollo: `localStorage.setItem('epa-caras', 'directo' | 'trabajador' | 'franjas')` y
+`localStorage.setItem('epa-resolucion', 'fija')` (se quitan con `localStorage.removeItem(…)`). Las pruebas de
+rendimiento de la 0.8 están en `tests/rendimiento.spec.ts` (`npx playwright test -c
+playwright.rendimiento.config.ts`, compilación propia en el puerto 4261).
 
 ## Sincronización entre dispositivos y aviso de versión nueva
 
@@ -903,6 +1070,11 @@ formato está descrito en `ESQUEMA.md`. Esa carpeta **se versiona** (unos 112 MB
 Actions no pueden regenerarla, porque hacen falta las fuentes del libro, las tipografías y las fotos, que
 están en otra máquina.
 
+`contenido/glosario_imagenes.py` (también llamado al final de `generar.py`, o solo) escribe
+`web/public/libro/glosario-imagenes.json`: el símbolo de circuito y el modelo 3D de cada término del glosario,
+según una tabla revisada a mano por término (más unas pocas reglas por nombre) e indica la cobertura (hoy 137
+términos con símbolo, 75 con modelo 3D, 54 con ambos y 752 sin imagen, de 910).
+
 Al final, `generar.py` llama a `contenido/spice.py`, que también se puede ejecutar solo (más rápido, si
 solo han cambiado las netlists):
 
@@ -941,9 +1113,18 @@ npm run check          # svelte-check (TypeScript estricto), debe acabar con 0 e
 npm run build          # compila la web en web/dist
 ```
 
-`dev`, `build` y `check` extraen antes el motor de simulación de `node_modules/eecircuit-engine`
-(`web/scripts/ngspice.mjs`): escriben `web/src/simulador/motor/ngspice.js` y `web/public/ngspice/ngspice.wasm`,
-que no se versionan.
+`dev`, `build` y `check` preparan antes los motores de simulación (`web/scripts/ngspice.mjs`): copian el de
+XSPICE de `web/vendor/ngspice-xspice/` (que sí se versiona) a `web/src/simulador/motor/ngspice-xspice.js` y
+`web/public/ngspice/ngspice-xspice.wasm`, y extraen el de reserva de `node_modules/eecircuit-engine` a
+`web/src/simulador/motor/ngspice.js` y `web/public/ngspice/ngspice.wasm`; ninguno de esos cuatro se versiona.
+
+El motor con XSPICE (ngspice 45.2 con todas las bibliotecas de modelos de código enlazadas dentro) se compila
+con `web/scripts/ngspice-wasm/compilar.sh`, que fija las versiones y sumas de todo lo que descarga (Emscripten
+6.0.3, LLVM 23.1.4 y binaryen 129, todo de GitHub) y explica en su `README.md` cómo y por qué. Solo hace falta
+para cambiar de versión de ngspice: GitHub Actions usa el binario versionado. Para comparar los dos motores con
+las 313 netlists: `node scripts/validar-spice.mjs --motor xspice|eecircuit --salida informe.json`. Sus pruebas
+en el navegador (las cuatro netlists XSPICE del libro, las piezas digitales del editor y el motor de reserva):
+`PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers npx playwright test -c playwright.xspice.config.ts`.
 
 Pruebas de extremo a extremo con Playwright (compilan la web, la sirven en el puerto 4173 y abren Chromium;
 en esta máquina el navegador ya está instalado en `/opt/pw-browsers`):
@@ -953,8 +1134,8 @@ PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers npm test
 ```
 
 Simulan once netlists de todos los tipos de análisis y comparan sus medidas con los valores que da el libro,
-prueban los controles deslizantes, la gráfica (lectura, cursores, zoom), los errores, el aviso de XSPICE y el
-enlace desde el lector, y dejan capturas de teléfono y de ordenador, en tema claro y oscuro, en
+prueban los controles deslizantes, la gráfica (lectura, cursores, zoom), los errores, las netlists XSPICE (y el
+aviso del motor de reserva) y el enlace desde el lector, y dejan capturas de teléfono y de ordenador, en tema claro y oscuro, en
 `web/tests/capturas/` (no se versionan). En otro equipo, `npx playwright install chromium` descarga el
 navegador.
 
@@ -1551,13 +1732,18 @@ app/
         Barra.svelte         barra superior: mostrar/ocultar índice, miga, sección anterior/siguiente, «Aa», progreso
         MenuCapitulo.svelte  menú de la miga: secciones del capítulo y capítulos contiguos
         Ajustes.svelte       tema y tamaño del texto; diagnóstico; sincronización y versión (sincronizacion/GrupoAjustes)
-        Inicio.svelte        portada: continuar leyendo, índice por tomos
+        Inicio.svelte        portada (trozo aparte): accesos, «Seguir leyendo», «Repaso de hoy», mapa del libro, progreso
+        inicio/              MapaLibro (teselas por tomo), SeguirLeyendo, RepasoHoy (+ repasoHoy.ts, perezoso)
+        vista-previa/        tarjeta de vista previa de las referencias (trozo perezoso; el controlador es
+                             lib/vistaPrevia.ts)
+        glosario/            imágenes del glosario: simbolo.ts (símbolos de esquema-auto en SVG), imagenes.ts
+                             (glosario-imagenes.json y miniaturas 3D perezosas)
         Lector.svelte        vista de un capítulo: posición, referencias, «Volver»
         Bloques.svelte       dibuja cada tipo de bloque (recursivo)
         Seccion.svelte       título de sección con marcador y nota
         Ecuacion.svelte, Figura.svelte, Tabla.svelte, Ejercicios.svelte
         VisorFigura.svelte   figura a pantalla completa con zoom y desplazamiento
-        Glosario.svelte      glosario con letras y filtro
+        Glosario.svelte      glosario con letras, filtro, símbolo y miniatura 3D
         Busqueda.svelte      búsqueda (MiniSearch)
         Marcadores.svelte    marcadores y notas
         BotonSimular.svelte  «Simular» junto a figuras, secciones, problemas y ejercicios
@@ -1581,7 +1767,8 @@ app/
         proyectos/           Proyectos KiCad: placa en 3D (three.js, modelos de tres/modelos) y en 2D, esquema,
                              simulación y comprobaciones de las siete placas (ver «Proyectos KiCad» y ESQUEMA.md)
         tres/                componentes en 3D: biblioteca de modelos paramétricos (modelos/, crearModelo),
-                             visor (motor/), interruptor Animación | Pieza 3D, catálogo, página de modelo, «Ver en 3D»
+                             visor (motor/: también la resolución adaptable al girar, resolucion.ts),
+                             interruptor Animación | Pieza 3D, catálogo, página de modelo, «Ver en 3D»
         Insignia.svelte, Icono.svelte
       lib/
         tipos.ts             tipos del contenido (ESQUEMA.md)
@@ -1599,6 +1786,8 @@ app/
         precarga.ts          preparación en segundo plano de los capítulos a los que se puede saltar
         color.ts             acentos de cada bloque temático en cada tema
         acciones.ts          capas (cajón, búsqueda, visor) ligadas al botón Atrás
+        vistaPrevia.ts       vista previa de las referencias: escuchas delegadas (ratón, toque, teclado); la
+                             tarjeta se carga aparte (componentes/vista-previa/)
         muestra/             contenido de muestra que sigue ESQUEMA.md
       simulador/             motor (ngspice en WebAssembly), worker, cliente, netlists: ver ESQUEMA.md
   src-tauri/                 envoltorio nativo (Tauri 2, Rust)

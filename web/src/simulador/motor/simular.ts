@@ -9,6 +9,7 @@
 import { ejecutar, type Ejecucion } from './nucleo.ts';
 import { prepararParaMotor } from './netlist.ts';
 import { analizarSalida, type SalidaAnalizada } from './salida.ts';
+import type { IdMotor } from './motores.ts';
 
 export interface Simulacion {
   ejecucion: Ejecucion;
@@ -26,9 +27,10 @@ export async function simular(
   modulo: WebAssembly.Module,
   texto: string,
   alImprimir?: (linea: string) => void,
+  motor?: IdMotor,
 ): Promise<Simulacion> {
   const prep = prepararParaMotor(texto);
-  const ejecucion = await ejecutar(modulo, prep.texto, { control: prep.control, alImprimir });
+  const ejecucion = await ejecutar(modulo, prep.texto, { control: prep.control, alImprimir, motor });
   const salida = analizarSalida(ejecucion.salida);
   const base: Simulacion = { ejecucion, salida, control: prep.control, anulados: prep.anulados, conKlu: false };
   const eligeResolvedor = /^\s*\.options?\b.*\b(klu|sparse)\b/im.test(texto);
@@ -37,7 +39,7 @@ export async function simular(
   alImprimir?.('');
   alImprimir?.('*** El análisis no converge con el resolvedor SPARSE: se repite con KLU ***');
   const prep2 = prepararParaMotor(texto, { klu: true });
-  const ej2 = await ejecutar(modulo, prep2.texto, { control: prep2.control, alImprimir });
+  const ej2 = await ejecutar(modulo, prep2.texto, { control: prep2.control, alImprimir, motor });
   const sal2 = analizarSalida(ej2.salida);
   if (ej2.fallo || sal2.errores.some((e) => ABORTO.test(e))) return base;
   return { ejecucion: ej2, salida: sal2, control: prep2.control, anulados: prep2.anulados, conKlu: true };

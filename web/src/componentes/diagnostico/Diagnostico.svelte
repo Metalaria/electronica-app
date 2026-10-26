@@ -8,18 +8,19 @@
   import Copy from '@lucide/svelte/icons/copy';
   import Check from '@lucide/svelte/icons/check';
   import { VERSION_APP } from '../../lib/sincronizacion/version-app';
-  import { infoDispositivo, infoWebGL, visor3d, placaSdr, esquemaVivo, simulacion, textoResultados, type Resultado, type ContextoPrueba } from './pruebas';
+  import { infoDispositivo, infoWebGL, visor3d, placaSdr, carasSdr, esquemaVivo, simulacion, textoResultados, type Resultado, type ContextoPrueba } from './pruebas';
 
   const PRUEBAS = [
     { id: 'webgl', nombre: 'WebGL 2: GPU, textura máxima, profundidad', duracion: 'al momento' },
-    { id: 'visor', nombre: 'Visor 3D de componentes girando (QFP de 64 patillas)', duracion: 'unos segundos' },
-    { id: 'placa', nombre: 'Placa SDR en 3D: carga y giro', duracion: 'de 5 a 40 s' },
+    { id: 'visor', nombre: 'Visor 3D de componentes: primer cuadro, segunda vista y giro (QFP de 64 patillas)', duracion: 'unos segundos' },
+    { id: 'placa', nombre: 'Placa SDR en 3D: carga, caras, giro y resolución', duracion: 'de 5 a 40 s' },
+    { id: 'caras', nombre: 'Caras de la placa SDR: los tres modos de pintarlas (directo, trabajador, franjas)', duracion: 'de 5 a 60 s' },
     { id: 'esquema', nombre: 'Esquema automático en vivo de cuatro circuitos grandes', duracion: 'unos segundos' },
     { id: 'spice', nombre: 'Simulación corta con ngspice (descarga el motor, 6 MB)', duracion: 'unos segundos' },
   ] as const;
   type IdPrueba = (typeof PRUEBAS)[number]['id'];
 
-  let elegidas = $state<Record<IdPrueba, boolean>>({ webgl: true, visor: true, placa: true, esquema: true, spice: true });
+  let elegidas = $state<Record<IdPrueba, boolean>>({ webgl: true, visor: true, placa: true, caras: true, esquema: true, spice: true });
   let segundos = $state(5);
   let estado = $state<'listo' | 'midiendo' | 'hecho'>('listo');
   let aviso = $state('');
@@ -41,6 +42,7 @@
       ['webgl', () => infoWebGL()],
       ['visor', () => visor3d(ctx)],
       ['placa', () => placaSdr(ctx)],
+      ['caras', () => carasSdr(ctx)],
       ['esquema', () => esquemaVivo(ctx)],
       ['spice', () => simulacion(ctx)],
     ];

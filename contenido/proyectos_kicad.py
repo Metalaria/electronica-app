@@ -428,6 +428,23 @@ def dc_voltages(placa, red_names, problemas):
 
 # ------------------------------------------------------------------ one board
 
+def pie_figura(parte, label):
+    """Caption of figure `label` in web/public/libro/partes/<parte>.json, or None if the part or figure is missing."""
+    ruta = os.path.join(LIBRO, 'partes', parte + '.json')
+    if not os.path.exists(ruta):
+        return None
+    pila = [json.load(open(ruta, encoding='utf-8'))]
+    while pila:
+        x = pila.pop()
+        if isinstance(x, dict):
+            if x.get('t') == 'figura' and x.get('label') == label:
+                return x.get('pie') or ''
+            pila.extend(x.values())
+        elif isinstance(x, list):
+            pila.extend(x)
+    return None
+
+
 def construir(proy, pl, refs, indice, problemas, erratas):
     pid = pl['id']
     base = os.path.join(SRC, pl['dir'], pl['base'])
@@ -620,13 +637,17 @@ def construir(proy, pl, refs, indice, problemas, erratas):
     for c in D.POSICIONES_PIE:
         if c['placa'] != pid:
             continue
+        pie = pie_figura(refs.get(c['figura'], {}).get('parte', proy['parte']), c['figura'])
+        if pie is not None and c['texto'] not in pie:
+            problemas.append(('error', '%s: el pie de %s ya no dice «%s»; actualiza POSICIONES_PIE' % (pid, c['figura'], c['texto'])))
+            continue
         xs = [p['x'] for f in b['footprints'] if f['ref'] in c['refs'] for p in f['pads']]
         if xs:
             f0 = (min(xs) - X0) / ancho
             f1 = (max(xs) - X0) / ancho
             fig = refs.get(c['figura'], {}).get('num', c['figura'])
             if f0 < c['esperado'][0] or f1 > c['esperado'][1]:
-                ok('aviso', 'El pie de la figura %s dice «%s», pero %s ocupan del %d %% al %d %% del ancho de la placa (lado derecho)'
+                ok('aviso', 'El pie de la figura %s dice «%s», pero %s ocupan del %d %% al %d %% del ancho de la placa'
                    % (fig, c['texto'], ' y '.join(c['refs']), round(f0 * 100), round(f1 * 100)), errata=True)
             else:
                 ok('ok', 'El pie de la figura %s («%s») coincide con la placa' % (fig, c['texto']))

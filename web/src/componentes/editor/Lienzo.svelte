@@ -436,6 +436,8 @@
       },
       zoom: () => z,
       ajustar: () => ajustar(),
+      /** World pins of a part (placed or not): tests build circuits from them. */
+      pines: (c: Componente) => pinesMundo(c),
       /** Screen point of the body centre of a part, by designator. */
       centroDe: (nombre: string) => {
         const c = ed.doc.componentes.find((x) => x.nombre === nombre);

@@ -354,15 +354,24 @@ export interface LadoPines {
 /** Text width in drawing units of a string at font size `tam` (Source Sans 3, approximate). */
 export function anchoTexto(s: string, tam: number): number {
   let w = 0;
-  for (const ch of s) {
-    if (/[ilj.,:;'|!·]/.test(ch)) w += 0.26;
-    else if (/[ftrI ()\-−/]/.test(ch)) w += 0.36;
-    else if (/[mwMWΩ∿µ…→]/.test(ch)) w += 0.82;
-    else if (/[A-Z]/.test(ch)) w += 0.6;
-    else w += 0.5;
-  }
+  for (const ch of s) w += anchoLetra(ch);
   return w * tam;
 }
+
+/** Width of one character in ems (the classes of 0.7, looked up instead of four regular expressions each). */
+function anchoLetra(ch: string): number {
+  let a = letras.get(ch);
+  if (a === undefined) {
+    if (/[ilj.,:;'|!·]/.test(ch)) a = 0.26;
+    else if (/[ftrI ()\-−/]/.test(ch)) a = 0.36;
+    else if (/[mwMWΩ∿µ…→]/.test(ch)) a = 0.82;
+    else if (/[A-Z]/.test(ch)) a = 0.6;
+    else a = 0.5;
+    letras.set(ch, a);
+  }
+  return a;
+}
+const letras = new Map<string, number>();
 
 export const TAM_PIN = 0.3;
 

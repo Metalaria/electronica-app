@@ -1,0 +1,87 @@
+# Explicación en español de cada instrucción de demo.s: «[etiqueta] texto». La etiqueta es la del comentario de
+# la línea del fuente; el generador la convierte en la dirección de la instrucción.
+[di] Desactiva las interrupciones enmascarables: mientras se prepara el VDP, una /INT no debe interrumpir.
+[im1] Modo de interrupción 1: cada /INT hace un RST $38 sin leer ningún vector del bus de datos.
+[sp] Pone la pila al final de los 8 KB de RAM de trabajo ($C000–$DFFF): CALL y PUSH escribirán allí.
+[jpmain] Salta por encima de los vectores fijos de $0038 (interrupción) y $0066 (botón de pausa).
+[irq] Vector de la interrupción del VDP: el Z80 llega aquí tras reconocer /INT y guardar el PC en la pila.
+[nmi] Vector del botón de pausa (/NMI): esta demo no lo usa y vuelve en seguida.
+[regs1] HL apunta a la tabla de 11 registros del VDP que hay en la ROM.
+[regs2] B cuenta los 22 bytes de la tabla: cada registro es un valor y luego $80 + su número.
+[regs3] C = $BF, el puerto de control del VDP: el 315-5237 deja pasar /IORQ y el VDP reconoce A7 = 1, A6 = 0, A0 = 1.
+[regs4] OTIR lee un byte de la ROM (ciclo de memoria) y lo escribe en el puerto (C) (ciclo de E/S), 22 veces: el VDP recibe sus registros de dos en dos bytes.
+[cram1] A = 0: la parte baja de la dirección de la CRAM.
+[cram2] Primer byte de una orden al VDP por el puerto de control.
+[cram3] El segundo byte lleva el código 3 en los bits 7 y 6: «escribir en la CRAM» (la memoria de colores).
+[cram4] Segundo byte de la orden: desde aquí, lo que llegue al puerto de datos irá a la CRAM.
+[cram5] HL apunta a los 32 colores de la ROM: 16 para el fondo y 16 para los sprites.
+[cram6] B = 32 bytes.
+[cram7] C = $BE, el puerto de datos del VDP.
+[cram8] Copia la paleta: cada byte es un color de 6 bits (2 de rojo, 2 de verde y 2 de azul).
+[vram1] Ahora la VRAM: dirección $0000, donde empiezan los dibujos de 8 × 8 puntos (patrones).
+[vram2] Parte baja de la dirección.
+[vram3] Código 1 = «escribir en la VRAM».
+[vram4] El VDP ya tiene dirección y modo: cada byte del puerto de datos irá a la VRAM y la dirección avanzará sola.
+[vram5] HL apunta a los cuatro patrones: cielo, hierba, ladrillo y la pelota.
+[vram6] 128 bytes: 4 patrones × 8 filas × 4 planos de bits.
+[vram7] OTIR otra vez: el VDP guarda cada byte en la VRAM en su siguiente hueco de acceso del bus AD.
+[map1] La tabla de nombres (qué patrón va en cada casilla de 8 × 8) está en $3800.
+[map2] Parte baja de la dirección ($00).
+[map3] $78 = $38 (parte alta) + $40 (código de escritura en la VRAM).
+[map4] Desde aquí se escriben las 32 × 24 casillas de la pantalla, dos bytes cada una.
+[map5] D = 16 filas de cielo.
+[map6] A = 0: el patrón del cielo.
+[map7] Llama a la subrutina que rellena D filas con el patrón A (el PC de vuelta queda en la pila, en la RAM).
+[map8] D = 1 fila de hierba.
+[map9] A = 1: el patrón de la hierba.
+[map10] Rellena la fila de hierba.
+[map11] D = 7 filas de ladrillo.
+[map12] A = 2: el patrón del ladrillo.
+[map13] Rellena las 7 filas de ladrillo: con las 16 + 1 de antes son las 24 filas de la imagen.
+[spr0] La pelota empieza en X = 64.
+[spr0b] Guarda la posición en la RAM ($C000): la RAM responde con /CE1, que el 315-5237 saca de /CSRAM del VDP.
+[spr1] Tabla de sprites en $3F00: primero las coordenadas Y de los 64 sprites.
+[spr2] Parte baja ($00).
+[spr3] $7F = $3F + código de escritura.
+[spr4] Segundo byte de la orden.
+[spr5] Y = 119: el VDP dibuja un sprite una línea por debajo de su Y, desde la línea 120.
+[spr6] Escribe la Y del sprite 0.
+[spr7] $D0 en la Y de un sprite marca el final de la lista: el VDP deja de buscar sprites ahí.
+[spr8] Escribe la marca de fin en la Y del sprite 1.
+[spr9] La subrutina escribe la X y el número de patrón del sprite 0 en $3F80.
+[on1] Registro 1 del VDP: bit 6 = imagen encendida, bit 5 = interrupción de cuadro, bit 7 = 1 por compatibilidad.
+[on2] Valor $E0.
+[on3] $81: «escribir en el registro 1».
+[on4] El VDP enciende la imagen: desde la próxima línea vuelve a leer la tabla de nombres y los patrones.
+[ei] Permite las interrupciones (a partir de la instrucción siguiente).
+[halt] El Z80 se detiene: repite ciclos M1 (con su refresco) sin avanzar hasta que el VDP baje /INT.
+[loop] Al volver de la interrupción, vuelve a dormir: todo el trabajo se hace en la interrupción de cuadro.
+[row1] E = 32 casillas por fila.
+[row2] Primer byte de la casilla: el número de patrón (8 bits bajos).
+[row3] Guarda el número de patrón en el A' alternativo para poder usar A.
+[row4] A = 0 para el segundo byte.
+[row5] Segundo byte: sin giro, paleta 0, detrás de los sprites y bit 8 del patrón a 0.
+[row6] Recupera el número de patrón.
+[row7] Una casilla menos en la fila.
+[row8] Sigue mientras queden casillas.
+[row9] Una fila menos.
+[row10] Sigue mientras queden filas.
+[row11] Vuelve: el Z80 lee de la pila (RAM) la dirección de vuelta.
+[px1] Dirección $3F80 de la VRAM: X y número de patrón del sprite 0.
+[px2] Parte baja ($80).
+[px3] $7F = $3F + código de escritura en la VRAM.
+[px4] Segundo byte de la orden.
+[px5] Lee la X de la RAM.
+[px6] Escribe la X del sprite 0.
+[px7] A = 3: el patrón de la pelota.
+[px8] Escribe el número de patrón.
+[px9] Vuelve de la subrutina.
+[vb1] Guarda A y F en la pila: la interrupción no debe cambiar nada del programa interrumpido.
+[vb2] Lee el estado del VDP en $BF: el bit 7 dice «fin de cuadro» y, al leerlo, el VDP suelta /INT.
+[vb3] Lee la X de la pelota.
+[vb4] Un punto más a la derecha.
+[vb5] La guarda en la RAM.
+[vb6] Copia la X nueva a la VRAM: se hace ahora, con la imagen en el borde inferior, y el VDP la usará en el cuadro siguiente.
+[vb7] Recupera A y F.
+[vb8] Vuelve a permitir las interrupciones (al reconocer /INT el Z80 las desactivó).
+[vb9] RETI: vuelve al bucle del HALT con la dirección guardada en la pila.

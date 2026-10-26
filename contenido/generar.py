@@ -41,6 +41,7 @@ import repaso                        # noqa: E402
 import formulas                      # noqa: E402
 import ejercicios                    # noqa: E402
 import proyectos_kicad               # noqa: E402
+import glosario_imagenes             # noqa: E402
 
 ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII']
 
@@ -258,6 +259,7 @@ def main():
     ok = repaso.main() == 0 and ok    # chapter quizzes: web/public/libro/repaso/ (needs indice.json, refs.json)
     ok = formulas.main() == 0 and ok  # live calculators: formulas.json, formulas-ec.json (needs partes/, refs.json)
     ok = ejercicios.main([]) == 0 and ok  # self-checking exercises and problems: ejercicios.json (needs partes/)
+    ok = glosario_imagenes.main([]) == 0 and ok  # glossary symbols and 3D models: glosario-imagenes.json
     if check_figs:
         validar.check_figures(figs, OUT)
     sys.exit(0 if ok else 1)

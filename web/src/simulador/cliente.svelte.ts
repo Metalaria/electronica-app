@@ -5,8 +5,7 @@
 
 import type { Simulacion } from './motor/simular.ts';
 import type { MensajeAlMotor, MensajeDelMotor } from './protocolo';
-
-const URL_WASM = 'ngspice/ngspice.wasm';
+import { MOTORES, motorElegido, otroMotor, type IdMotor } from './motor/motores.ts';
 /** A run that takes longer than this is stopped (the reader can start it again). */
 export const LIMITE_MS = 180_000;
 
@@ -22,7 +21,14 @@ export const motor = $state({
   inicio: 0,
   /** Analyses started in the current run («Doing analysis…» lines). */
   analisis: 0,
+  /** Build of ngspice in use (motores.ts), once loaded. */
+  id: null as IdMotor | null,
 });
+
+/** Whether the engine in use (or the one that will be loaded) runs XSPICE code models (A devices). */
+export function motorConXspice(): boolean {
+  return MOTORES[motor.id ?? motorElegido()].xspice;
+}
 
 export class SimulacionCancelada extends Error {
   constructor() {
@@ -30,45 +36,61 @@ export class SimulacionCancelada extends Error {
   }
 }
 
-let moduloPromesa: Promise<WebAssembly.Module> | null = null;
+interface MotorCargado {
+  modulo: WebAssembly.Module;
+  id: IdMotor;
+}
 
-/** Fetches and compiles ngspice.wasm once (≈ 6 MB), with download progress. */
-function cargarModulo(): Promise<WebAssembly.Module> {
+let moduloPromesa: Promise<MotorCargado> | null = null;
+
+/** Fetches and compiles the chosen engine once (≈ 6 MB), with download progress; the other one if it fails. */
+function cargarModulo(): Promise<MotorCargado> {
   moduloPromesa ??= (async () => {
-    motor.fase = 'descargando';
-    motor.descarga = 0;
-    const url = new URL(URL_WASM, document.baseURI).href;
-    const r = await fetch(url);
-    if (!r.ok) throw new Error(`No se pudo cargar el motor de simulación (${r.status}).`);
-    const total = Number(r.headers.get('content-length')) || 0;
-    let bytes: ArrayBuffer;
-    if (r.body && total) {
-      const lector = r.body.getReader();
-      const trozos: Uint8Array[] = [];
-      let n = 0;
-      for (;;) {
-        const { done, value } = await lector.read();
-        if (done) break;
-        trozos.push(value);
-        n += value.length;
-        motor.descarga = Math.min(1, n / total);
-      }
-      const todo = new Uint8Array(n);
-      let p = 0;
-      for (const t of trozos) {
-        todo.set(t, p);
-        p += t.length;
-      }
-      bytes = todo.buffer;
-    } else {
-      motor.descarga = null;
-      bytes = await r.arrayBuffer();
+    const elegido = motorElegido();
+    try {
+      return { modulo: await descargarYCompilar(elegido), id: elegido };
+    } catch (e) {
+      const otro = otroMotor(elegido);
+      console.warn(`No se pudo cargar ${MOTORES[elegido].nombre}; se usa ${MOTORES[otro].nombre}.`, e);
+      return { modulo: await descargarYCompilar(otro), id: otro };
     }
-    motor.fase = 'preparando';
-    return WebAssembly.compile(bytes);
   })();
-  moduloPromesa.catch(() => (moduloPromesa = null));
+  moduloPromesa.then((m) => (motor.id = m.id)).catch(() => (moduloPromesa = null));
   return moduloPromesa;
+}
+
+async function descargarYCompilar(id: IdMotor): Promise<WebAssembly.Module> {
+  motor.fase = 'descargando';
+  motor.descarga = 0;
+  const url = new URL(MOTORES[id].wasm, document.baseURI).href;
+  const r = await fetch(url);
+  if (!r.ok) throw new Error(`No se pudo cargar el motor de simulación (${r.status}).`);
+  const total = Number(r.headers.get('content-length')) || 0;
+  let bytes: ArrayBuffer;
+  if (r.body && total) {
+    const lector = r.body.getReader();
+    const trozos: Uint8Array[] = [];
+    let n = 0;
+    for (;;) {
+      const { done, value } = await lector.read();
+      if (done) break;
+      trozos.push(value);
+      n += value.length;
+      motor.descarga = Math.min(1, n / total);
+    }
+    const todo = new Uint8Array(n);
+    let p = 0;
+    for (const t of trozos) {
+      todo.set(t, p);
+      p += t.length;
+    }
+    bytes = todo.buffer;
+  } else {
+    motor.descarga = null;
+    bytes = await r.arrayBuffer();
+  }
+  motor.fase = 'preparando';
+  return WebAssembly.compile(bytes);
 }
 
 let trabajador: Worker | null = null;
@@ -76,7 +98,7 @@ let trabajadorListo: Promise<void> | null = null;
 let siguienteId = 1;
 let actual: { id: number; resolver: (r: Simulacion) => void; rechazar: (e: unknown) => void; limite: ReturnType<typeof setTimeout> } | null = null;
 
-function nuevoTrabajador(modulo: WebAssembly.Module): Promise<void> {
+function nuevoTrabajador({ modulo, id: idMotor }: MotorCargado): Promise<void> {
   const w = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module', name: 'ngspice' });
   trabajador = w;
   return new Promise<void>((listo, fallo) => {
@@ -115,14 +137,14 @@ function nuevoTrabajador(modulo: WebAssembly.Module): Promise<void> {
       }
       descartar();
     };
-    const msg: MensajeAlMotor = { t: 'motor', modulo };
+    const msg: MensajeAlMotor = { t: 'motor', modulo, motor: idMotor };
     try {
       w.postMessage(msg);
     } catch {
       // Engines that cannot send a compiled module to a worker get the bytes again.
-      fetch(new URL(URL_WASM, document.baseURI).href)
+      fetch(new URL(MOTORES[idMotor].wasm, document.baseURI).href)
         .then((r) => r.arrayBuffer())
-        .then((bytes) => w.postMessage({ t: 'motor', bytes } satisfies MensajeAlMotor, [bytes]))
+        .then((bytes) => w.postMessage({ t: 'motor', bytes, motor: idMotor } satisfies MensajeAlMotor, [bytes]))
         .catch(fallo);
     }
   });
@@ -151,11 +173,11 @@ export async function simularTexto(texto: string): Promise<Simulacion> {
   const id = siguienteId++;
   motor.lineas = [];
   motor.analisis = 0;
-  const modulo = await cargarModulo();
+  const cargado = await cargarModulo();
   if (siguienteId - 1 !== id) throw new SimulacionCancelada();
   if (!trabajador || !trabajadorListo) {
     motor.fase = 'preparando';
-    trabajadorListo = nuevoTrabajador(modulo);
+    trabajadorListo = nuevoTrabajador(cargado);
   }
   await trabajadorListo;
   if (siguienteId - 1 !== id) throw new SimulacionCancelada();

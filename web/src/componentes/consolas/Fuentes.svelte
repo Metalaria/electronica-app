@@ -24,6 +24,8 @@
 
   <PlacaFuentes maquina={datos.id} />
 
+  {#await import('./fotograma/FotogramaFuentes.svelte') then m}<m.default maquina={datos.id} />{/await}
+
   {#if datos.revisiones?.length}
     <section>
       <h3>Qué revisión muestra cada vista</h3>

@@ -108,6 +108,8 @@
                   {#each n.analisis as a (a)}<span class="etq">.{a}</span>{/each}
                   {#if n.motor.estado === 'no-disponible'}<span class="marca no" title={n.motor.nota}>no disponible</span>
                   {:else if n.motor.pesada}<span class="marca" title="Tarda en simular">pesada</span>{/if}
+                  {#if n.motor.xspice}<span class="marca" title="Usa dispositivos digitales XSPICE">XSPICE</span>
+                  {:else if n.motor.original}<span class="marca" title="Versión analógica de un circuito XSPICE">analógica</span>{/if}
                 </span>
                 <span class="desc">{resumen(n.descripcion)}</span>
               </a>

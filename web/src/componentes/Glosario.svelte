@@ -22,6 +22,7 @@
   } from '../lib/datos';
   import { colorBloque } from '../lib/color';
   import Icono from './Icono.svelte';
+  import type { ImagenTermino } from './glosario/imagenes';
 
   interface Entrada extends EntradaGlosario {
     id: string;
@@ -38,6 +39,72 @@
     filtroGuardado = filtro;
   });
   let barra: HTMLElement | undefined = $state();
+
+  // ------------------------------------------------------------------ pictures (symbol, 3D thumbnail)
+  // A lazy chunk (glosario/imagenes.ts) with the mapping and the symbols; three.js only when a term with a
+  // model comes into view. Thumbnails are cached per theme for the session.
+
+  type ModuloImagenes = typeof import('./glosario/imagenes');
+  let modImagenes: ModuloImagenes | null = null;
+  let imagenes = $state<Map<string, ImagenTermino> | null>(null);
+  let minis = $state<Record<string, string>>({});
+  let io: IntersectionObserver | null = null;
+  const pendientes = new Set<HTMLElement>();
+
+  function pedirMiniatura(id: string): void {
+    const m = imagenes?.get(id)?.modelo;
+    if (!m || !modImagenes?.hayWebGL2()) return;
+    const tema = app.tema;
+    const clave = modImagenes.claveMiniatura(m, tema);
+    if (minis[clave]) return;
+    modImagenes
+      .miniaturaDe(m, tema)
+      .then((u) => (minis[clave] = u))
+      .catch(() => {});
+  }
+
+  function observador(): IntersectionObserver {
+    io ??= new IntersectionObserver(
+      (entradas) => {
+        for (const en of entradas) {
+          if (!en.isIntersecting) continue;
+          const el = en.target as HTMLElement;
+          io?.unobserve(el);
+          pedirMiniatura(el.dataset.id ?? '');
+        }
+      },
+      { rootMargin: '200px 0px' },
+    );
+    return io;
+  }
+
+  /** Action: the thumbnail is asked for when its term is about to come into view. */
+  function perezosa(nodo: HTMLElement) {
+    pendientes.add(nodo);
+    observador().observe(nodo);
+    return {
+      destroy() {
+        pendientes.delete(nodo);
+        io?.unobserve(nodo);
+      },
+    };
+  }
+
+  function miniaturaVisible(im: ImagenTermino): string {
+    return im.modelo && modImagenes ? (minis[modImagenes.claveMiniatura(im.modelo, app.tema)] ?? '') : '';
+  }
+
+  // A change of theme asks again for the thumbnails on screen (each theme has its own studio background).
+  $effect(() => {
+    void app.tema;
+    untrack(() => {
+      if (!io) return;
+      for (const n of pendientes) {
+        io.unobserve(n);
+        io.observe(n);
+      }
+    });
+  });
 
   const titulo = $derived(infoParte('glosario')?.titulo ?? 'Glosario');
   const color = $derived(infoParte('glosario')?.color ?? '8A1F3D');
@@ -137,9 +204,19 @@
         intro = p && p.t === 'p' ? p.html : '';
       })
       .catch((e: unknown) => (error = e instanceof Error ? e.message : String(e)));
+    import('./glosario/imagenes')
+      .then(async (m) => {
+        modImagenes = m;
+        imagenes = await m.cargarImagenes();
+      })
+      .catch(() => {});
     const desplazar = () => recordarScroll();
     window.addEventListener('scroll', desplazar, { passive: true });
-    return () => window.removeEventListener('scroll', desplazar);
+    return () => {
+      window.removeEventListener('scroll', desplazar);
+      io?.disconnect();
+      io = null;
+    };
   });
 
   $effect(() => {
@@ -191,7 +268,8 @@
         <h2 class="letra">{g.letra}</h2>
         <dl>
           {#each g.entradas as e (e.id)}
-            <div class="entrada" id={e.id}>
+            {@const im = imagenes?.get(e.id)}
+            <div class="entrada" class:con-imagen={!!im} id={e.id}>
               <dt>{@html prepararHtml(e.termino_html || e.termino)}</dt>
               <dd>
                 {@html prepararHtml(e.html)}
@@ -211,6 +289,24 @@
                   </span>
                 {/if}
               </dd>
+              {#if im}
+                <dd class="imagen">
+                  {#if im.simbolo}
+                    <span class="simbolo" role="img" aria-label={`Símbolo: ${im.simbolo.nombre}`} title={`Símbolo: ${im.simbolo.nombre}`}
+                      >{@html im.simbolo.svg}</span
+                    >
+                  {/if}
+                  {#if im.modelo}
+                    {@const src = miniaturaVisible(im)}
+                    <a class="mini3d" href={im.modelo.href} data-id={e.id} use:perezosa title={im.modelo.nombre} aria-label={`Ver en 3D: ${im.modelo.nombre}`}>
+                      <span class="foto3d">
+                        {#if src}<img {src} alt="" decoding="async" draggable="false" />{:else}<Icono nombre="componentes" tam={22} />{/if}
+                      </span>
+                      <span class="ver3d">Ver en 3D</span>
+                    </a>
+                  {/if}
+                </dd>
+              {/if}
             </div>
           {/each}
         </dl>
@@ -225,11 +321,18 @@
 
 <style>
   .glosario {
+    --fondo-3d: #eeece6;
     --pad: clamp(16px, 4vw, 40px);
     max-width: calc(46em + 2 * var(--pad));
     margin: 0 auto;
     padding: 0 var(--pad) 64px;
     font-size: var(--tam);
+  }
+  :global(:root[data-tema='sepia']) .glosario {
+    --fondo-3d: #ece2cc;
+  }
+  :global(:root[data-tema='oscuro']) .glosario {
+    --fondo-3d: #23272e;
   }
   .cab {
     margin: 0 calc(-1 * var(--pad));
@@ -362,6 +465,109 @@
   dd {
     margin: 0;
     line-height: 1.55;
+  }
+  .entrada.con-imagen {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    grid-template-rows: auto 1fr;
+    column-gap: 18px;
+  }
+  .entrada.con-imagen > :global(*) {
+    grid-column: 1;
+  }
+  .entrada.con-imagen > .imagen {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+  .imagen {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    margin: 2px 0 0;
+    font-family: var(--sans);
+  }
+  .simbolo,
+  .mini3d {
+    width: 108px;
+    height: 76px;
+    border-radius: 8px;
+  }
+  .simbolo {
+    display: grid;
+    place-items: center;
+    padding: 6px;
+    border: 1px solid var(--linea-suave);
+    background: var(--superficie);
+    color: var(--titulos);
+    --simbolo-fondo: var(--superficie);
+  }
+  .simbolo :global(svg) {
+    max-width: 100%;
+    max-height: 100%;
+    height: auto;
+    overflow: visible;
+  }
+  .simbolo :global(svg text) {
+    fill: currentColor;
+    stroke: none;
+    font-family: var(--sans);
+  }
+  .simbolo :global(svg .t) {
+    fill: currentColor;
+  }
+  .simbolo :global(svg .f) {
+    fill: var(--simbolo-fondo);
+  }
+  .mini3d {
+    position: relative;
+    display: block;
+    overflow: hidden;
+    background: var(--fondo-3d);
+    color: var(--acento);
+    text-decoration: none;
+  }
+  .foto3d {
+    display: grid;
+    place-items: center;
+    width: 100%;
+    height: 100%;
+    color: var(--tinta-tenue);
+  }
+  .foto3d img {
+    display: block;
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+  .ver3d {
+    position: absolute;
+    right: 5px;
+    bottom: 5px;
+    padding: 1px 7px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--superficie) 88%, transparent);
+    font-size: 11.5px;
+    font-weight: 700;
+    line-height: 17px;
+  }
+  .mini3d:hover,
+  .mini3d:focus-visible {
+    box-shadow: 0 0 0 2px var(--acento-borde);
+  }
+  @media (max-width: 559px) {
+    .entrada.con-imagen {
+      grid-template-columns: minmax(0, 1fr);
+    }
+    .entrada.con-imagen > .imagen {
+      grid-column: 1;
+      grid-row: auto;
+      margin-top: 8px;
+    }
+    .simbolo,
+    .mini3d {
+      width: 96px;
+      height: 64px;
+    }
   }
   .ver {
     display: inline-flex;

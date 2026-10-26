@@ -335,7 +335,9 @@ test.describe('teléfono', () => {
     await page.goto('#/cap05/sec-5.8');
     const ref = page.locator('a.ref[href^="#/cap08"]').first();
     await ref.scrollIntoViewIfNeeded();
+    // on touch a tap opens the reference's preview (0.8); «Ir a …» follows it
     await ref.tap();
+    await page.locator('.vista-previa').getByRole('button', { name: /^Ir a / }).tap();
     const volver = page.locator('button.volver');
     await expect(volver).toBeVisible();
     const b = (await volver.boundingBox())!;

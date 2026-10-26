@@ -24,10 +24,24 @@ test('el diagnóstico se abre desde Ajustes, mide al pulsar «Empezar» y copia 
 
   const filas = page.locator('.diagnostico tbody tr:not(.grupo)');
   const grupos = await page.locator('.diagnostico tbody tr.grupo').allTextContents();
-  expect(grupos).toEqual(['Dispositivo', 'WebGL 2', 'Visor 3D de componentes', 'Placa KiCad (SDR)', 'Esquema automático (en vivo)', 'Simulación (ngspice)']);
+  expect(grupos).toEqual([
+    'Dispositivo',
+    'WebGL 2',
+    'Visor 3D de componentes',
+    'Placa KiCad (SDR)',
+    'Caras de la placa SDR (resolución completa)',
+    'Esquema automático (en vivo)',
+    'Simulación (ngspice)',
+  ]);
   expect(await filas.count()).toBeGreaterThan(15);
   await expect(page.locator('.diagnostico tbody')).toContainText('cuadros/s');
   await expect(page.locator('.diagnostico tbody')).toContainText('Placa con componentes');
+  // 0.8: the new phases (shaders before the first frame, a second view, full-resolution faces and their three
+  // ways of painting, the resolution while turning).
+  await expect(page.locator('.diagnostico tbody')).toContainText('Segunda vista');
+  await expect(page.locator('.diagnostico tbody')).toContainText('Caras a resolución completa');
+  await expect(page.locator('.diagnostico tbody')).toContainText('Resolución al girar');
+  for (const modo of ['directo', 'trabajador', 'franjas']) await expect(page.locator('.diagnostico tbody tr td:first-child', { hasText: new RegExp(`^${modo}`) })).toHaveCount(1);
   await expect(page.locator('.diagnostico tbody')).toContainText('cap50/rectificador');
   // No test failed (a slow result is also marked in red, as SwiftShader's frame rates are here; a failure is a
   // row named «Error»).

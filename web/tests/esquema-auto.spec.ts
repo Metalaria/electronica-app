@@ -20,6 +20,9 @@ test('una netlist sin figura dibujada muestra su circuito dibujado automáticame
 });
 
 test('una netlist XSPICE se dibuja aunque no se pueda simular, con zoom y clic en los componentes', async ({ page }) => {
+  // Since 0.8 the default engine runs XSPICE; the fallback engine (eecircuit-engine) cannot, which is the case
+  // this test covers.
+  await page.addInitScript(() => localStorage.setItem('epa:motor-spice', 'eecircuit'));
   await page.goto('/#/simulador/cap29/sec-29.7-contador-asincrono');
   const v = page.locator('.esquema-auto-vista');
   await expect(v).toBeVisible({ timeout: 60_000 });
@@ -105,7 +108,10 @@ for (const [tam, opciones] of Object.entries(TAMANOS)) {
         await page.waitForTimeout(500);
         await c.screenshot({ path: `tests/capturas/esquema-auto-${tam}-${tema}-${nombre}.png` });
       }
+      // The «not simulable» drawing of an XSPICE netlist: only with the fallback engine since 0.8.
+      await page.evaluate(() => localStorage.setItem('epa:motor-spice', 'eecircuit'));
       await page.goto('/#/simulador/cap29/prob-29.C-decodificador');
+      await page.reload();
       const v = page.locator('.esquema-auto-vista');
       await expect(v.locator('svg .ea-u').first()).toBeAttached({ timeout: 60_000 });
       await page.waitForTimeout(300);

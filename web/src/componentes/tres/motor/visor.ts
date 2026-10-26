@@ -29,6 +29,7 @@ import {
 import { crearEstudio, type Estudio } from './estudio';
 import { crearPlaca, type Placa } from './placa';
 import { Orbita, type EstadoOrbita } from './orbita';
+import { ResolucionAdaptable, REPOSO, type EstadoResolucion } from './resolucion';
 import { liberarModelo } from '../modelos';
 import type { Corte, DatosModelo, DatosParte } from '../modelos/tipos';
 
@@ -48,6 +49,16 @@ export interface OpcionesVisor {
   alFallar?: (motivo: string) => void;
   /** List under the canvas: on narrow viewers labels become numbered markers explained there. */
   leyenda?: HTMLElement;
+  /** 0.8: called when a model's shader programs are ready and its first frame is about to be drawn. */
+  alPreparar?: () => void;
+}
+
+/** Shader preparation of the last model (0.8; ms): compileAsync before its first frame, then that frame. */
+export interface PreparacionVisor {
+  compilar: number;
+  primerCuadro: number;
+  programas: number;
+  paralela: boolean;
 }
 
 interface EtiquetaViva {
@@ -66,7 +77,7 @@ interface EtiquetaViva {
   lado: number;
 }
 
-type Stats = { n: number; total: number; max: number; cuadro: number; marcas: number[]; triangulos: number; llamadas: number };
+type Stats = { n: number; total: number; max: number; cuadro: number; marcas: number[]; triangulos: number; llamadas: number; resolucion?: EstadoResolucion };
 
 export class Visor {
   readonly renderer: WebGLRenderer;
@@ -103,6 +114,31 @@ export class Visor {
   private fondoOscuro = false;
   private placa: Placa | null = null;
   private compacto = false;
+  /** Fewer pixels while the model turns on a GPU that cannot keep 60 frames per second (0.8). */
+  private res: ResolucionAdaptable;
+  private despertar = 0;
+  /** The camera changed since the last frame (its frame belongs to the movement, however late it comes). */
+  private movido = false;
+  /** At rest again? Checked in an animation frame: pointer events come aligned with the frames, so while the GPU
+   *  stalls a moving camera must not look still. */
+  private revisarReposo = (): void => {
+    requestAnimationFrame((ts) => {
+      if (this.liberado) return;
+      if (this.movido || this.orbita.moviendo(ts, REPOSO) || this.orbita.moviendo(performance.now(), REPOSO)) {
+        this.despertar = window.setTimeout(this.revisarReposo, REPOSO);
+        return;
+      }
+      if (this.res.enReposo()) this.pedir();
+    });
+  };
+  /** Materials clipped by the cut (the plane is set on them only while the cut is on: 0.8). */
+  private cortables = new Set<Material>();
+  /** The model's programs are compiled (no frame is drawn before: it would compile them on the spot). */
+  private preparado = true;
+  private genPreparar = 0;
+  private tPreparar = 0;
+  private cortePrecompilado = false;
+  readonly preparacion: PreparacionVisor = { compilar: 0, primerCuadro: 0, programas: 0, paralela: false };
 
   constructor(
     private lienzo: HTMLCanvasElement,
@@ -116,8 +152,9 @@ export class Visor {
     this.renderer.toneMapping = NeutralToneMapping;
     this.renderer.toneMappingExposure = 1.0;
     this.renderer.localClippingEnabled = true;
+    this.res = new ResolucionAdaptable((k) => this.renderer.setPixelRatio(k));
     this.estudio = crearEstudio(this.renderer);
-    this.orbita = new Orbita(this.camara, lienzo, () => this.pedir(), () => this.quieto, lienzo.parentElement ?? lienzo);
+    this.orbita = new Orbita(this.camara, lienzo, () => ((this.movido = true), this.pedir()), () => this.quieto, lienzo.parentElement ?? lienzo);
     this.orbita.alReiniciar = () => this.vistaInicial(true);
     this.svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
     this.svg.setAttribute('class', 'lineas');
@@ -217,7 +254,54 @@ export class Visor {
     this.crearEtiquetas();
     this.corte = null;
     this.ponerCorteDatos(Math.min(this.iCorte, Math.max(0, (datos.cortes?.length ?? 1) - 1)), this.posCorte);
+    void this.preparar();
+  }
+
+  /**
+   * 0.8: the programs of what the first frame draws are compiled before it, with compileAsync (in parallel and
+   * without blocking the page where KHR_parallel_shader_compile exists: WKWebView, Chromium with a GPU); the
+   * view keeps its previous frame (or the «Preparando» state) meanwhile. A model whose programs are already
+   * compiled (a parameter change) goes on at once.
+   */
+  private async preparar(): Promise<void> {
+    const gen = ++this.genPreparar;
+    this.preparado = false;
+    this.cortePrecompilado = false;
+    const t0 = (this.tPreparar = performance.now());
+    // Without the cut's caps (hidden; theirs come in the background after the first frame).
+    const tapas = this.tapas.map((t) => [t, t.parent] as const);
+    for (const [t] of tapas) t.removeFromParent();
+    let espera: Promise<unknown> | null = null;
+    try {
+      espera = this.renderer.compileAsync(this.estudio.escena, this.camara);
+    } catch {
+      /* compiled at the first frame instead */
+    }
+    for (const [t, padre] of tapas) padre?.add(t);
+    if (espera) await espera.catch(() => {});
+    if (gen !== this.genPreparar || this.liberado) return;
+    this.preparacion.compilar = performance.now() - t0;
+    this.preparacion.paralela = !!this.renderer.extensions.get('KHR_parallel_shader_compile');
+    this.preparado = true;
+    this.opc.alPreparar?.();
     this.pedir();
+  }
+
+  /** After the first frame: the programs of the cut (clipped materials and caps), compiled in the background. */
+  private precompilarCorte(): void {
+    if (this.cortePrecompilado || !this.tapas.length || this.corteActivo) return;
+    this.cortePrecompilado = true;
+    const antes = this.tapas.map((t) => t.visible);
+    for (const m of this.cortables) m.clippingPlanes = [this.plano];
+    for (const t of this.tapas) t.visible = true;
+    try {
+      void this.renderer.compileAsync(this.estudio.escena, this.camara).catch(() => {});
+    } catch {
+      /* compiled when the cut is turned on */
+    }
+    // compile() has run: back to the state of the view (the programs stay cached).
+    for (const m of this.cortables) m.clippingPlanes = null;
+    this.tapas.forEach((t, i) => (t.visible = antes[i]!));
   }
 
   datos(): DatosModelo | null {
@@ -265,7 +349,11 @@ export class Visor {
       }
       m.material = c;
     }
-    for (const mat of cortables) mat.clippingPlanes = [this.plano];
+    // The plane goes on these materials only while the cut is on (aplicarCorte): without it their shaders
+    // are those of the catalogue's thumbnails and of the boards (same lights, same tone mapping), which the
+    // GPU driver may already have compiled; the cut's variants are compiled in the background (precompilarCorte).
+    this.cortables = cortables;
+    for (const mat of cortables) mat.clippingPlanes = null;
     // Cut faces: back faces of every clipped closed solid drawn flat in its cut colour.
     const recorrerTapas = (o: Object3D, entero: boolean, color: string | undefined) => {
       const d = o.userData as DatosParte;
@@ -357,11 +445,13 @@ export class Visor {
     const c = this.corte;
     if (!c || !this.corteActivo) {
       this.plano.set(new Vector3(0, 0, 1), 1e6);
+      for (const m of this.cortables) m.clippingPlanes = null;
       for (const t of this.tapas) t.visible = false;
       if (this.contorno) this.contorno.visible = false;
     } else {
       const n = new Vector3(...c.normal).normalize();
       this.plano.set(n, -this.posCorte);
+      for (const m of this.cortables) if (!m.clippingPlanes) m.clippingPlanes = [this.plano];
       for (const t of this.tapas) t.visible = true;
       this.dibujarContorno(n);
     }
@@ -612,8 +702,8 @@ export class Visor {
     this.ancho = w;
     this.alto = h;
     const dpr = Math.min(window.devicePixelRatio || 1, 2, Math.sqrt(2.0e6 / (w * h)));
-    this.renderer.setPixelRatio(dpr);
     this.renderer.setSize(w, h, false);
+    this.res.ponerBase(dpr, this.orbita.moviendo());
     this.camara.aspect = w / h;
     this.camara.updateProjectionMatrix();
     this.svg.setAttribute('viewBox', `0 0 ${w} ${h}`);
@@ -631,6 +721,8 @@ export class Visor {
   private cuadro = (ts: number): void => {
     this.raf = 0;
     if (this.liberado || !this.visible || !this.paginaVisible) return;
+    // Nothing is drawn while the model's programs compile (preparar() asks for the frame when they are ready).
+    if (!this.preparado) return;
     let seguir = this.orbita.paso(ts);
     if (Math.abs(this.explosion - this.explosionObjetivo) > 1e-3) {
       this.explosion += (this.explosionObjetivo - this.explosion) * 0.22;
@@ -639,8 +731,13 @@ export class Visor {
       if (this.corteActivo && this.corte) this.dibujarContorno(new Vector3(...this.corte.normal).normalize());
       seguir = true;
     }
+    // Adaptive resolution: measured on the frames drawn while moving; at rest the full one, with a final frame.
+    const moviendo = seguir || this.movido || this.orbita.moviendo(ts, REPOSO);
+    this.movido = false;
+    if (!moviendo && this.res.enReposo()) this.sucio = true;
     if (this.sucio || seguir) {
       this.sucio = false;
+      if (moviendo) this.res.enMovimiento(ts);
       const t0 = performance.now();
       this.renderer.render(this.estudio.escena, this.camara);
       const coste = performance.now() - t0;
@@ -655,6 +752,19 @@ export class Visor {
       if (st.marcas.length > 600) st.marcas.splice(0, 300);
       st.triangulos = this.renderer.info.render.triangles;
       st.llamadas = this.renderer.info.render.calls;
+      st.resolucion = this.res.estado;
+      if (this.tPreparar) {
+        this.preparacion.primerCuadro = performance.now() - this.tPreparar;
+        this.preparacion.programas = this.renderer.info.programs?.length ?? 0;
+        this.tPreparar = 0;
+        // The cut's programs, in the background, once this frame is out.
+        setTimeout(() => this.precompilarCorte(), 300);
+      }
+      if (moviendo) {
+        // Check again when the model has been still for a moment: the full resolution (with a final frame).
+        clearTimeout(this.despertar);
+        this.despertar = window.setTimeout(this.revisarReposo, REPOSO + 20);
+      }
     }
     if (seguir) this.raf = requestAnimationFrame(this.cuadro);
   };
@@ -668,6 +778,7 @@ export class Visor {
   liberar(): void {
     this.liberado = true;
     cancelAnimationFrame(this.raf);
+    clearTimeout(this.despertar);
     this.io.disconnect();
     this.ro.disconnect();
     document.removeEventListener('visibilitychange', this.vis);

@@ -114,8 +114,27 @@ def arc_points(s, m, e, step_deg=10):
     return [(ux + r * math.cos(a0 + sweep * i / n), uy + r * math.sin(a0 + sweep * i / n)) for i in range(n + 1)]
 
 
+_NET_REV = {}  # net name -> number of the board being read (KiCad 10 boards name their nets, without a table)
+
+
+def net_id(node, nets):
+    """Number of the net of a (net …) node: KiCad ≤ 9 writes the number, KiCad 10 only the name."""
+    if not node or len(node) < 2:
+        return 0
+    v = str(node[1])
+    if v.lstrip('-').isdigit():
+        return int(v)
+    if not v:
+        return 0
+    if v not in _NET_REV:
+        _NET_REV[v] = max(list(nets) + [0]) + 1
+        nets[_NET_REV[v]] = v
+    return _NET_REV[v]
+
+
 def read_board(path):
     tree = K.parse_sexpr(open(path, encoding='utf-8').read())
+    _NET_REV.clear()
     b = {'nets': {}, 'footprints': [], 'tracks': [], 'arcs': [], 'vias': [], 'zones': [], 'areas': [],
          'edges': [], 'thickness': 1.6, 'copper': [], 'texts': []}
     g = child(tree, 'general')
@@ -157,16 +176,16 @@ def read_board(path):
             b['texts'].append({'text': str(e[1]), 'layer': str(ly[1]) if ly else '', 'x': x, 'y': y})
         elif h == 'segment':
             b['tracks'].append({'a': K.xy(child(e, 'start')), 'b': K.xy(child(e, 'end')), 'w': num(child(e, 'width')[1]),
-                                'layer': str(child(e, 'layer')[1]), 'net': int(child(e, 'net')[1])})
+                                'layer': str(child(e, 'layer')[1]), 'net': net_id(child(e, 'net'), b['nets'])})
         elif h == 'arc':
             pts = arc_points(K.xy(child(e, 'start')), K.xy(child(e, 'mid')), K.xy(child(e, 'end')))
             for p0, p1 in zip(pts, pts[1:]):
                 b['tracks'].append({'a': p0, 'b': p1, 'w': num(child(e, 'width')[1]),
-                                    'layer': str(child(e, 'layer')[1]), 'net': int(child(e, 'net')[1])})
+                                    'layer': str(child(e, 'layer')[1]), 'net': net_id(child(e, 'net'), b['nets'])})
         elif h == 'via':
             ly = child(e, 'layers')
             b['vias'].append({'p': K.xy(child(e, 'at')), 'd': num(child(e, 'size')[1]), 'drill': num(child(e, 'drill')[1]),
-                              'layers': [str(x) for x in ly[1:]] if ly else ['F.Cu', 'B.Cu'], 'net': int(child(e, 'net')[1])})
+                              'layers': [str(x) for x in ly[1:]] if ly else ['F.Cu', 'B.Cu'], 'net': net_id(child(e, 'net'), b['nets'])})
         elif h == 'zone':
             read_zone(e, b)
         elif h == 'footprint':
@@ -175,8 +194,7 @@ def read_board(path):
 
 
 def read_zone(e, b):
-    netn = child(e, 'net')
-    net = int(netn[1]) if netn else 0
+    net = net_id(child(e, 'net'), b['nets'])
     if child(e, 'keepout'):
         ko = child(e, 'keepout')
         rules = {str(r[0]): str(r[1]) for r in ko[1:] if isinstance(r, list) and len(r) > 1}
@@ -230,7 +248,7 @@ def read_footprint(fp, nets):
         f['pads'].append({'num': str(p[1]), 'type': str(p[2]), 'shape': str(p[3]), 'x': X + dx, 'y': Y + dy,
                           'lx': px, 'ly': py, 'rot': pa, 'w': num(size[1]), 'h': num(size[2]),
                           'rr': num(rr[1]) if rr else 0.0, 'drill': drill, 'layers': layers,
-                          'net': int(netn[1]) if netn else 0, 'mask_margin': num(smm[1]) if smm else None})
+                          'net': net_id(netn, nets), 'mask_margin': num(smm[1]) if smm else None})
     f['graphics'] = graphics(fp, ('F.Fab', 'B.Fab', 'F.CrtYd', 'B.CrtYd', 'F.SilkS', 'B.SilkS'))
     return f
 

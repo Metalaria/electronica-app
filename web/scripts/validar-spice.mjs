@@ -3,9 +3,11 @@
 // and writes a JSON report. Called by contenido/spice.py after copying the netlists; also usable alone.
 //
 //   node scripts/validar-spice.mjs --dir public/libro/spice [--salida informe.json] [--nativo] [--tiempo 120]
-//                                  [--hilos N] [--solo cap42/fig-42.5_filtro_rc]
+//                                  [--hilos N] [--solo cap42/fig-42.5_filtro_rc] [--motor xspice|eecircuit]
 //
-// For each netlist: whether it ran (estado: ok | errores | fallo | tiempo), run time, plots, measurements
+// --motor chooses the build of ngspice (src/simulador/motor/motores.ts; default: the app's default engine).
+// For each netlist: whether it ran (estado: ok | errores | fallo | tiempo), run time (ms: wall clock of the
+// run; cpuMs: CPU time of the simulation thread, simulation and output analysis), plots, measurements
 // printed, ngspice errors, and the slider parameters found by netlist.ts (contenido/spice.py checks they match
 // its own). With --nativo, the same file is also run with the system's `ngspice -b` and the measurements of
 // both are compared (relative tolerance 1e-3).
@@ -28,12 +30,16 @@ if (!isMainThread) {
   const modulo = workerData.modulo ?? (await compilar(fs.readFileSync(workerData.wasm)));
   parentPort.on('message', async ({ id, fichero }) => {
     const texto = fs.readFileSync(fichero, 'utf8');
-    const sim = await simular(modulo, texto);
+    // CPU time of this thread: unlike the wall time, it hardly changes when the machine is busy.
+    const cpu0 = process.threadCpuUsage?.();
+    const sim = await simular(modulo, texto, undefined, workerData.motor);
+    const cpu = cpu0 ? process.threadCpuUsage(cpu0) : null;
     const r = sim.ejecucion;
     const a = sim.salida;
     parentPort.postMessage({
       id,
       ms: r.ms,
+      cpuMs: cpu ? Math.round((cpu.user + cpu.system) / 1000) : null,
       fallo: r.fallo,
       graficas: r.graficas.map((g) => ({ id: g.id, analisis: g.analisis, puntos: g.puntos, vectores: g.vectores.length })),
       medidas: todasLasMedidas(a).map((m) => [m.nombre, m.valor]),
@@ -64,9 +70,15 @@ if (!isMainThread) {
   const tiempo = Number(opt('--tiempo', '120')) * 1000;
   const hilos = Math.max(1, Number(opt('--hilos', String(Math.min(8, os.availableParallelism?.() ?? os.cpus().length)))));
   const solo = opt('--solo', null);
-  const wasm = path.join(web, 'public', 'ngspice', 'ngspice.wasm');
+  const { MOTORES, MOTOR_PREDETERMINADO, esIdMotor } = await import(path.join(motor, 'motores.ts'));
+  const idMotor = opt('--motor', MOTOR_PREDETERMINADO);
+  if (!esIdMotor(idMotor)) {
+    console.error(`validar-spice: motor desconocido «${idMotor}» (xspice o eecircuit).`);
+    process.exit(2);
+  }
+  const wasm = path.join(web, 'public', MOTORES[idMotor].wasm);
   if (!fs.existsSync(wasm)) {
-    console.error('validar-spice: falta public/ngspice/ngspice.wasm (ejecute antes «node scripts/ngspice.mjs»).');
+    console.error(`validar-spice: falta public/${MOTORES[idMotor].wasm} (ejecute antes «node scripts/ngspice.mjs»).`);
     process.exit(2);
   }
   const ficheros = [];
@@ -92,9 +104,9 @@ if (!isMainThread) {
   function nuevoHilo() {
     let w;
     try {
-      w = new Worker(fileURLToPath(import.meta.url), { workerData: { modulo, wasm } });
+      w = new Worker(fileURLToPath(import.meta.url), { workerData: { modulo, wasm, motor: idMotor } });
     } catch {
-      w = new Worker(fileURLToPath(import.meta.url), { workerData: { wasm } });
+      w = new Worker(fileURLToPath(import.meta.url), { workerData: { wasm, motor: idMotor } });
     }
     return w;
   }
@@ -183,6 +195,7 @@ if (!isMainThread) {
   const valores = Object.values(informe);
   const cuenta = (k) => valores.filter((v) => v.estado === k).length;
   const resumen = {
+    motor: idMotor,
     total: valores.length,
     ok: cuenta('ok'),
     errores: cuenta('errores'),
@@ -198,7 +211,7 @@ if (!isMainThread) {
   if (salida) fs.writeFileSync(salida, json);
   else process.stdout.write(json + '\n');
   console.error(
-    `validar-spice: ${resumen.total} netlists en ${resumen.segundos} s: ${resumen.ok} sin errores, ` +
+    `validar-spice (${idMotor}): ${resumen.total} netlists en ${resumen.segundos} s: ${resumen.ok} sin errores, ` +
       `${resumen.errores} con errores de ngspice, ${resumen.fallo} fallos del motor, ${resumen.tiempo} sin terminar` +
       (nativo ? `; frente a ngspice nativo: ${resumen.nativoIgual} iguales, ${resumen.nativoDifiere} con diferencias` : ''),
   );

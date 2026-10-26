@@ -24,7 +24,7 @@ export interface Campo {
   si?: (c: Componente) => boolean;
 }
 
-export type Grupo = 'Pasivos' | 'Fuentes' | 'Semiconductores' | 'Integrados' | 'Conexiones' | 'Medida';
+export type Grupo = 'Pasivos' | 'Fuentes' | 'Semiconductores' | 'Integrados' | 'Digital' | 'Conexiones' | 'Medida';
 
 export interface Tipo {
   id: string;
@@ -74,6 +74,19 @@ const CAMPOS_FUENTE = (u: 'V' | 'A'): Campo[] => [
   { id: 'per', etiqueta: 'Periodo', tipo: 'valor', unidad: 's', si: vf('pulse') },
   { id: 'pwl', etiqueta: 'Puntos (tiempo valor; …)', tipo: 'pwl', unidad: u, si: vf('pwl'), ayuda: 'Pares «tiempo valor» separados por punto y coma: 0 0; 1m 5; 2m 5; 2,1m 0' },
   { id: 'spec', etiqueta: 'Especificación SPICE', tipo: 'texto', si: vf('texto'), ayuda: 'Lo que va tras los nodos, tal cual: DC 0 AC 1 SIN(0 1 1k)…' },
+];
+
+// Digital parts (XSPICE code models of ngspice: d_and…, d_dff, d_jkff, adc_bridge, dac_bridge, d_osc). Their
+// nets are digital (0/1 events, no voltage): an ADC bridge brings an analog signal in, a DAC bridge takes a
+// digital one out to be measured or plotted. Each part writes its own .model line (netlist.ts).
+const RETARDO: Campo = { id: 'retardo', etiqueta: 'Retardo de propagación', tipo: 'valor', unidad: 's', ayuda: 'Retardo de subida y de bajada de la salida (rise_delay, fall_delay).' };
+const AYUDA_DIGITAL = 'Las redes digitales no tienen tensión: para medir o dibujar una salida, pásela por un puente DAC.';
+function puertaDigital(id: string, nombre: string, claves: string): Tipo {
+  return { id, nombre, grupo: 'Digital', prefijo: 'U', rol: 'X', clase: 'Gate', o: 0, inicial: { retardo: '10n' }, campos: [{ ...RETARDO, ayuda: `${RETARDO.ayuda} ${AYUDA_DIGITAL}` }], claves: `xspice digital logica puerta ${claves}` };
+}
+const CAMPOS_BIESTABLE: Campo[] = [
+  { id: 'retardo', etiqueta: 'Retardo reloj → salida', tipo: 'valor', unidad: 's', ayuda: `clk_delay del modelo; S y R (activos a nivel alto) pueden quedar sin conectar. ${AYUDA_DIGITAL}` },
+  { id: 'ic', etiqueta: 'Estado inicial de Q', tipo: 'opcion', opciones: [['0', '0'], ['1', '1']] },
 ];
 
 const EXTRA: Campo = { id: 'extra', etiqueta: 'Parámetros SPICE adicionales', tipo: 'texto', opcional: true, ayuda: 'Se añaden al final de la línea tal cual (por ejemplo tc1=0.001).' };
@@ -175,6 +188,60 @@ export const TIPOS: Tipo[] = [
   { id: 'JP', nombre: 'JFET de canal P', grupo: 'Semiconductores', prefijo: 'J', rol: 'JP', clase: 'JFetP', o: 4, inicial: { modelo: 'JP' }, campos: [{ id: 'modelo', etiqueta: 'Modelo', tipo: 'modelo', familia: 'JP' }, EXTRA], claves: 'jfet' },
   { id: 'OA', nombre: 'Amplificador operacional', grupo: 'Integrados', prefijo: 'U', rol: 'OA', clase: 'Opamp', o: 0, inicial: { modelo: 'opamp' }, campos: [{ id: 'modelo', etiqueta: 'Modelo', tipo: 'modelo', familia: 'OA' }], claves: 'opamp 741 comparador' },
   { id: 'OA5', nombre: 'Operacional con alimentación', grupo: 'Integrados', prefijo: 'U', rol: 'OA', clase: 'Opamp', o: 0, inicial: { modelo: 'opa5' }, campos: [{ id: 'modelo', etiqueta: 'Modelo', tipo: 'modelo', familia: 'OA5' }], claves: 'opamp raíles alimentacion' },
+  puertaDigital('DAND', 'Puerta AND', 'and y'),
+  puertaDigital('DOR', 'Puerta OR', 'or o'),
+  puertaDigital('DNAND', 'Puerta NAND', 'nand'),
+  puertaDigital('DNOR', 'Puerta NOR', 'nor'),
+  puertaDigital('DXOR', 'Puerta XOR', 'xor o exclusiva'),
+  puertaDigital('DNOT', 'Inversor (NOT)', 'not inversor negador'),
+  { id: 'DFF', nombre: 'Biestable D', grupo: 'Digital', prefijo: 'U', rol: 'X', clase: 'Ic', o: 0, inicial: { retardo: '10n', ic: '0' }, campos: CAMPOS_BIESTABLE, claves: 'xspice digital flip-flop biestable d registro' },
+  { id: 'DJK', nombre: 'Biestable JK', grupo: 'Digital', prefijo: 'U', rol: 'X', clase: 'Ic', o: 0, inicial: { retardo: '10n', ic: '0' }, campos: CAMPOS_BIESTABLE, claves: 'xspice digital flip-flop biestable jk contador' },
+  {
+    id: 'DCLK',
+    nombre: 'Reloj digital',
+    grupo: 'Digital',
+    prefijo: 'CLK',
+    rol: 'X',
+    clase: 'Ic',
+    o: 0,
+    inicial: { freq: '1Meg', ciclo: '50' },
+    campos: [
+      { id: 'freq', etiqueta: 'Frecuencia', tipo: 'valor', unidad: 'Hz', ayuda: `Oscilador digital d_osc: empieza en 0 y pasa a 1 al acabar la parte baja del primer periodo (en T/2 con un ciclo del 50 %). ${AYUDA_DIGITAL}` },
+      { id: 'ciclo', etiqueta: 'Ciclo de trabajo (%)', tipo: 'valor', unidad: '%' },
+    ],
+    claves: 'xspice digital reloj clock oscilador d_osc',
+  },
+  {
+    id: 'ADC',
+    nombre: 'Puente analógico → digital',
+    grupo: 'Digital',
+    prefijo: 'U',
+    rol: 'X',
+    clase: 'Ic',
+    o: 0,
+    inicial: { bajo: '2,4', alto: '2,6' },
+    campos: [
+      { id: 'bajo', etiqueta: 'Umbral del 0 (por debajo)', tipo: 'valor', unidad: 'V', ayuda: 'adc_bridge: por debajo de este valor la salida es 0, por encima del umbral del 1 es 1; entre ambos, desconocida.' },
+      { id: 'alto', etiqueta: 'Umbral del 1 (por encima)', tipo: 'valor', unidad: 'V' },
+    ],
+    claves: 'xspice digital adc puente bridge conversor entrada',
+  },
+  {
+    id: 'DAC',
+    nombre: 'Puente digital → analógico',
+    grupo: 'Digital',
+    prefijo: 'U',
+    rol: 'X',
+    clase: 'Ic',
+    o: 0,
+    inicial: { bajo: '0', alto: '5', flanco: '1n' },
+    campos: [
+      { id: 'bajo', etiqueta: 'Tensión del 0', tipo: 'valor', unidad: 'V', ayuda: 'dac_bridge: la salida analógica de una red digital, para medirla o dibujarla.' },
+      { id: 'alto', etiqueta: 'Tensión del 1', tipo: 'valor', unidad: 'V' },
+      { id: 'flanco', etiqueta: 'Tiempo de subida y bajada', tipo: 'valor', unidad: 's' },
+    ],
+    claves: 'xspice digital dac puente bridge conversor salida',
+  },
   {
     id: 'SW',
     nombre: 'Interruptor',
@@ -202,6 +269,26 @@ export const TIPO_GEN: Tipo = { id: 'GEN', nombre: 'Componente importado', grupo
 export function tipoDe(c: Componente): Tipo {
   return TIPO.get(c.tipo) ?? TIPO_GEN;
 }
+
+/** XSPICE gate kinds → IEC symbol kind and code model. */
+export const PUERTAS_DIGITALES: Record<string, { iec: string; modelo: string }> = {
+  DAND: { iec: 'AND', modelo: 'd_and' },
+  DOR: { iec: 'OR', modelo: 'd_or' },
+  DNAND: { iec: 'NAND', modelo: 'd_nand' },
+  DNOR: { iec: 'NOR', modelo: 'd_nor' },
+  DXOR: { iec: 'XOR', modelo: 'd_xor' },
+  DNOT: { iec: 'NOT', modelo: 'd_inverter' },
+};
+
+/** Box pins of the other digital parts: [pin name, label drawn in the box]. */
+export const PINES_DIGITALES: Record<string, [string, string][]> = {
+  DFF: [['d', 'D'], ['clk', 'C'], ['set', 'S'], ['reset', 'R'], ['q', 'Q'], ['nq', 'nQ']],
+  DJK: [['j', 'J'], ['k', 'K'], ['clk', 'C'], ['set', 'S'], ['reset', 'R'], ['q', 'Q'], ['nq', 'nQ']],
+  ADC: [['in', 'in'], ['out', 'out']],
+  DAC: [['in', 'in'], ['out', 'out']],
+  DCLK: [['out', 'out']],
+};
+const TITULO_DIGITAL: Record<string, string> = { DFF: 'DFF', DJK: 'JKFF', ADC: 'ADC', DAC: 'DAC', DCLK: 'CLK' };
 
 /** Kinds that are not parts of the netlist (connections and probes). */
 export const SIN_LINEA = new Set(['GND', 'RIEL', 'ETQ', 'SONDA']);
@@ -444,6 +531,24 @@ function construirDef(c: Componente): DefSimbolo {
       return simboloDe(disp('OPAMP', ['in1', 'in2', 'out', 'vd', 'vs']), c.v ?? 0);
     case 'SW':
       return simboloDe(disp('SW', dos));
+    case 'DAND':
+    case 'DOR':
+    case 'DNAND':
+    case 'DNOR':
+    case 'DXOR':
+    case 'DNOT':
+      return simboloDe(disp('PUERTA', c.tipo === 'DNOT' ? ['a', 'y'] : ['a', 'b', 'y'], { titulo: PUERTAS_DIGITALES[c.tipo]!.iec }));
+    case 'DFF':
+    case 'DJK':
+    case 'ADC':
+    case 'DAC':
+    case 'DCLK':
+      return simboloDe(
+        disp('CAJA', [], {
+          pines: PINES_DIGITALES[c.tipo]!.map(([nombre, rotulo]) => ({ nombre, nodo: '', rotulo })),
+          titulo: TITULO_DIGITAL[c.tipo],
+        }),
+      );
     case 'GND':
       return masa();
     case 'RIEL':
@@ -508,6 +613,21 @@ export function textoValor(c: Componente): string {
     }
     case 'SW':
       return f['estado'] === 'abierto' ? 'abierto' : 'cerrado';
+    case 'DAND':
+    case 'DOR':
+    case 'DNAND':
+    case 'DNOR':
+    case 'DXOR':
+    case 'DNOT':
+    case 'DFF':
+    case 'DJK':
+      return num('retardo', 's');
+    case 'DCLK':
+      return num('freq', 'Hz');
+    case 'ADC':
+      return `${num('bajo', 'V').replace(/\s.*$/, '')}/${num('alto', 'V')}`;
+    case 'DAC':
+      return `${num('bajo', 'V').replace(/\s.*$/, '')}/${num('alto', 'V')}`;
     case 'RIEL':
     case 'ETQ':
       return f['red'] ?? '';

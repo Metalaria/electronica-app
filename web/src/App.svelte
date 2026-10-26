@@ -12,7 +12,6 @@
   import Pestanas from './componentes/Pestanas.svelte';
   import { indiceOculto } from './lib/navegacion.svelte';
   import Barra from './componentes/Barra.svelte';
-  import Inicio from './componentes/Inicio.svelte';
   import Lector from './componentes/Lector.svelte';
   import Glosario from './componentes/Glosario.svelte';
   import Marcadores from './componentes/Marcadores.svelte';
@@ -99,6 +98,8 @@
     window.addEventListener('pagehide', volcar);
 
     iniciarRuta();
+    // Opening on the start page: fetch its chunk while the index loads.
+    if (ruta.vista === 'inicio') void import('./componentes/Inicio.svelte');
     Promise.all([iniciar(), cargarUsuario()])
       .then(([datos]) => {
         app.indice = datos.indice;
@@ -145,7 +146,12 @@
       {:else if !app.cargado || !usuario.listo}
         <div class="cargando" aria-live="polite"><span class="punto"></span> Abriendo el libro…</div>
       {:else if ruta.vista === 'inicio'}
-        <Inicio />
+        <!-- The start page (the book's map) is its own chunk: the reader's start-up does not carry it. -->
+        {#await import('./componentes/Inicio.svelte') then m}
+          <m.default />
+        {:catch e}
+          <div class="aviso"><h1>No se pudo abrir el inicio</h1><p>{String(e)}</p></div>
+        {/await}
       {:else if ruta.vista === 'glosario'}
         <Glosario />
       {:else if ruta.vista === 'marcadores'}

@@ -4,7 +4,14 @@
   import { onDestroy, onMount, untrack } from 'svelte';
   import type { NetlistSpice } from '../../simulador/tipos';
   import { cargarIndiceSpice, cargarNetlist, rotuloRef, rutaSimulacion } from '../../simulador/datos.svelte';
-  import { motor, detener, precalentarMotor, simularTexto, SimulacionCancelada } from '../../simulador/cliente.svelte';
+  import {
+    motor,
+    motorConXspice,
+    detener,
+    precalentarMotor,
+    simularTexto,
+    SimulacionCancelada,
+  } from '../../simulador/cliente.svelte';
   import type { Simulacion } from '../../simulador/motor/simular.ts';
   import { aplicarParametro, listarParametros } from '../../simulador/motor/netlist.ts';
   import { rutaDeRef, rotuloParte } from '../../lib/datos';
@@ -54,6 +61,10 @@ C1 out 0 100n
   let verDescripcion = $state(false);
   let verSalida = $state(false);
 
+  /** This engine cannot run it: XSPICE netlist and an engine without XSPICE (the eecircuit fallback). */
+  const noSimulable = (x: NetlistSpice | null) =>
+    !!x && (x.motor.estado === 'no-disponible' || (!!x.motor.xspice && !motorConXspice()));
+  const noDisponible = $derived(noSimulable(n));
   const parametros = $derived(listarParametros(texto));
   const modificada = $derived(!libre && !deEsquema && texto !== original);
   const ejecutando = $derived(motor.fase !== 'inactivo');
@@ -100,7 +111,7 @@ C1 out 0 100n
         original = texto = t;
         rangos = Object.fromEntries(x.parametros.map((p) => [p.id, { min: p.min, max: p.max, original: p.valor }]));
         // Run at once, except what this engine cannot do or would take long.
-        if (x.motor.estado !== 'no-disponible' && !x.motor.pesada) void simular();
+        if (!noSimulable(x) && !x.motor.pesada) void simular();
       }
     } catch (e) {
       errorCarga = e instanceof Error ? e.message : String(e);
@@ -259,7 +270,7 @@ C1 out 0 100n
           {#each n.refs as r (r)}
             {#if rutaDeRef(r)}<a class="libro" href={rutaDeRef(r)}><Icono nombre="libro" tam={15} /> {rotuloRef(r)}</a>{/if}
           {/each}
-          {#if n.motor.estado !== 'no-disponible'}<a class="libro esquema" href={hrefEsquema} onclick={editarEsquema}>Editar el esquema</a>{/if}
+          {#if !noDisponible}<a class="libro esquema" href={hrefEsquema} onclick={editarEsquema}>Editar el esquema</a>{/if}
         </div>
       {:else if (libre && texto.trim()) || deEsquema}
         <div class="meta">
@@ -268,13 +279,27 @@ C1 out 0 100n
       {/if}
     </header>
 
-    {#if n?.motor.estado === 'no-disponible'}
+    {#if n && noDisponible}
       <div class="aviso">
         <strong>No se puede simular en la aplicación.</strong>
-        {n.motor.nota}
+        {n.motor.nota ??
+          'Usa dispositivos XSPICE (puertas digitales y puentes ADC/DAC), que el motor de simulación en uso no incluye.'}
         {#if n.motor.alternativa}
           <a class="boton" href={rutaSimulacion(n.motor.alternativa)}>Abrir la versión analógica</a>
         {/if}
+      </div>
+    {:else if n?.motor.alternativa}
+      <div class="aviso info">
+        Circuito digital con dispositivos <strong>XSPICE</strong> de ngspice (puertas, biestables y puentes ADC/DAC
+        entre lo analógico y lo digital). También hay una versión analógica equivalente, con las puertas como fuentes de
+        comportamiento, que da las mismas medidas.
+        <a class="boton" href={rutaSimulacion(n.motor.alternativa)}>Ver la versión analógica</a>
+      </div>
+    {:else if n?.motor.original}
+      <div class="aviso info">
+        Versión analógica de un circuito digital del libro: cada puerta es una fuente de comportamiento con umbral de
+        2,5 V y los biestables son maestro-esclavo; da las mismas medidas que la netlist original con XSPICE.
+        <a class="boton" href={rutaSimulacion(n.motor.original)}>Ver la original (XSPICE)</a>
       </div>
     {:else if n?.motor.pesada}
       <div class="aviso">
@@ -285,7 +310,7 @@ C1 out 0 100n
     {/if}
 
     <!-- The circuit itself, drawn and alive (figuras-vivas/circuito), before the netlist and the results. -->
-    {#if !cargando && n?.motor.estado !== 'no-disponible'}
+    {#if !cargando && !noDisponible}
       <CircuitoVivo {texto} refs={n?.refs ?? []} {resultado} pesada={!!n?.motor.pesada} />
       <Interiores {texto} />
     {:else if !cargando}
@@ -307,8 +332,9 @@ C1 out 0 100n
             <p>
               Escriba una netlist de ngspice (la primera línea es el título) o empiece con un ejemplo. Se admiten
               análisis <code>.op</code>, <code>.dc</code>, <code>.ac</code>, <code>.tran</code> y <code>.noise</code>,
-              medidas <code>.meas</code> y bloques <code>.control</code>; no hay dispositivos digitales XSPICE. El circuito
-              se guarda en este dispositivo.
+              medidas <code>.meas</code> y bloques <code>.control</code>{#if motorConXspice()}, y dispositivos XSPICE
+                (puertas <code>d_and</code>, biestables <code>d_dff</code>, puentes <code>adc_bridge</code>…){:else}; no hay
+                dispositivos digitales XSPICE{/if}. El circuito se guarda en este dispositivo.
             </p>
             {#if !texto.trim()}<button class="boton" onclick={() => (texto = EJEMPLO)}>Insertar un ejemplo</button>{/if}
           </section>
@@ -615,6 +641,10 @@ C1 out 0 100n
     background: color-mix(in srgb, var(--c-importante) 9%, var(--superficie));
     font-size: 14px;
     line-height: 1.45;
+  }
+  .aviso.info {
+    border-color: color-mix(in srgb, var(--c-nota) 40%, transparent);
+    background: color-mix(in srgb, var(--c-nota) 7%, var(--superficie));
   }
   .aviso.error {
     border-color: color-mix(in srgb, var(--c-precaucion) 45%, transparent);

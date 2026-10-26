@@ -60,7 +60,9 @@ class Monticulo {
     c[i] = coste;
     v[i] = val;
   }
-  pop(): [number, number] {
+  /** Cost of the last popped entry (pop() returns its value: no array per pop). */
+  coste = 0;
+  pop(): number {
     const c = this.c;
     const v = this.v;
     const rc = c[0]!;
@@ -82,7 +84,8 @@ class Monticulo {
       c[i] = lc;
       v[i] = lv;
     }
-    return [rc, rv];
+    this.coste = rc;
+    return rv;
   }
 }
 
@@ -177,6 +180,9 @@ export function enrutar(
   let vuelta = 0;
   const D = (s: number) => (sello[s] === vuelta ? dist[s]! : Infinity);
   const enArbol = new Uint8Array(N);
+  // Target points of the current search: esObjetivo[a] === vuelta (a Map lookup per neighbour was the
+  // router's hottest line).
+  const esObjetivo = new Int32Array(N);
   let cruces = 0;
   let longitud = 0;
   const aristas: [number, number][][] = Array.from({ length: nRedes }, () => []);
@@ -200,8 +206,8 @@ export function enrutar(
   const cruzable = (q: number, d: number): boolean => {
     if (nodoP[q]) return false;
     const otra = usoP[q]!;
-    const perp = d === 0 || d === 2 ? [1, 3] : [0, 2];
-    return usoArista(q, perp[0]!) === otra && usoArista(q, perp[1]!) === otra;
+    const horizontal = d === 0 || d === 2;
+    return usoArista(q, horizontal ? 1 : 0) === otra && usoArista(q, horizontal ? 3 : 2) === otra;
   };
 
   for (const k of redes) {
@@ -239,6 +245,7 @@ export function enrutar(
       }
       if (!objetivo.size) break;
       vuelta++;
+      for (const a of objetivo.keys()) esObjetivo[a] = vuelta;
       const h = new Monticulo();
       for (const a of arbol) {
         for (let d = 0; d < 4; d++) {
@@ -252,11 +259,12 @@ export function enrutar(
       }
       let fin = -1;
       while (h.size) {
-        const [c, s] = h.pop();
+        const s = h.pop();
+        const c = h.coste;
         if (c > D(s)) continue;
         const a = s >> 2;
         const d0 = s & 3;
-        if (objetivo.has(a) && !enArbol[a]) {
+        if (esObjetivo[a] === vuelta && !enArbol[a]) {
           fin = s;
           break;
         }
@@ -275,21 +283,21 @@ export function enrutar(
           if (bloq[q]) continue;
           if (enArbol[q]) continue;
           const pq = pinEn[q]!;
-          if (pq !== -1 && !(pq === k && objetivo.has(q))) continue;
+          if (pq !== -1 && !(pq === k && esObjetivo[q] === vuelta)) continue;
           let coste = C_PASO + blando[q]!;
           const otra = usoP[q]!;
           if (otra >= 0 && otra !== k) {
-            if (!cruzable(q, d) || objetivo.has(q)) continue;
+            if (!cruzable(q, d) || esObjetivo[q] === vuelta) continue;
             coste += C_CRUCE;
           }
           if (enArbol[a] ? false : d !== d0) coste += C_CODO;
           // Leaving a pin backwards into nothing is fine, but prefer leaving along the pin direction.
           // Light penalty for running right next to another net's wire.
-          for (const dd of d === 0 || d === 2 ? [1, 3] : [0, 2]) {
+          for (let m = 0, dd = d === 0 || d === 2 ? 1 : 0; m < 2; m++, dd += 2) {
             const vx = nx + DX[dd]!;
             const vy = ny + DY[dd]!;
             if (vx >= x0 && vx <= x1 && vy >= y0 && vy <= y1) {
-              const u = usoP[id(vx, vy)]!;
+              const u = usoP[(vy - y0) * W + (vx - x0)]!;
               if (u >= 0 && u !== k) coste += C_VECINO;
             }
           }

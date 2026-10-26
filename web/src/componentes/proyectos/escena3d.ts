@@ -35,13 +35,17 @@ import {
   Box3,
   WebGLRenderer,
   type Material,
+  type Texture,
   Box3Helper,
 } from 'three';
 import type { DatosPlaca, Huella } from './datos';
 import { crearEstudio, type Estudio } from '../tres/motor/estudio';
 import { Orbita, type EstadoOrbita } from '../tres/motor/orbita';
+import { ResolucionAdaptable, REPOSO, type EstadoResolucion } from '../tres/motor/resolucion';
 import type { Geometria, Lado } from './geometria';
-import { coloresTension, pintarLado, pintarRed, type Acabado } from './pintar';
+import { coloresTension, MASCARAS, pintarLado, pintarRed, type Acabado } from './pintar';
+import { datosParaCaras, pintarMapa, type MensajeTrabajador, type PedidoCara, type RespuestaTrabajador, type TipoMapa } from './caras';
+import { pintarDirecto, pintarPorBandas, subirPorFranjas, texturaDePixeles, texturaVacia, type Subida } from './texturas-caras';
 import { cargarBiblioteca, claveBiblioteca, CON_MARCADO_FIJO, cuerpoSimple, liberarMateriales, marcadoCoincide } from './modelos3d';
 
 export interface Estadisticas {
@@ -60,6 +64,67 @@ export interface Estadisticas {
   programas?: number;
   /** ms from the scene's creation to the full-resolution faces (the first pass is a quick low-resolution one). */
   carasFinas?: number;
+  /** Where the faces' time goes (0.8): see FasesCaras. */
+  fasesCaras?: FasesCaras;
+  /** Adaptive resolution while the view moves (0.8): base and current pixel ratio, lowest used, changes. */
+  resolucion?: EstadoResolucion;
+  /** 0.8: ms compiling the board's own programs (core, faces, barrels, studio) before its first frame, and
+   *  from the scene's creation to that frame. */
+  compilarPlaca?: number;
+  primerCuadroPlaca?: number;
+}
+
+/**
+ * How the full-resolution faces are painted (0.8). 'directo': as in 0.7 — a canvas of the page per map, uploaded
+ * with texImage2D(canvas), one face per task: right where the canvas is rasterised by the GPU and uploaded GPU to
+ * GPU (Chromium: Android, WebView2), where it costs the page a few ms. 'trabajador': painted by a worker
+ * (OffscreenCanvas) and uploaded as plain pixels in strips (WebKit: WKWebView, WebKitGTK, where the page's
+ * thread rasterised and converted the 4096 px faces for over a second). 'franjas': the same, painted in bands on
+ * the page's thread (WebKit without OffscreenCanvas in workers).
+ */
+export type ModoCaras = 'directo' | 'trabajador' | 'franjas';
+
+/** The mode for this WebView (the key «epa-caras» of localStorage forces one, for tests and comparisons). */
+export function modoCarasPorDefecto(): ModoCaras {
+  try {
+    const m = globalThis.localStorage?.getItem('epa-caras');
+    if (m === 'directo' || m === 'trabajador' || m === 'franjas') return m;
+  } catch {
+    /* no storage */
+  }
+  const ua = globalThis.navigator?.userAgent ?? '';
+  const webkit = /AppleWebKit/i.test(ua) && !/Chrome|Chromium|CriOS|Edg|Android/i.test(ua);
+  return webkit ? 'trabajador' : 'directo';
+}
+
+/**
+ * Phases of the faces (ms). `cuarto`: the quick quarter-resolution pass on the page's thread (both faces: drawing
+ * calls, read back, upload). `completa`: the full resolution — `modo` 'trabajador' (painted by a worker) or
+ * 'franjas' (bands painted on the page's thread, when the WebView has no OffscreenCanvas in workers; `motivo`
+ * says why); `geometria`, `pintar`, `leer` (raster flush and copy of the pixels), `voltear`: painting work (in
+ * the worker or on the page); `espera`: from asking the worker to having the first face's pixels; `subir`:
+ * page-thread time uploading strips (`franjas` of them), `maxTarea`: longest page-thread slice of all this;
+ * `total`: from the start of the pass to both faces on screen.
+ */
+export interface FasesCaras {
+  /** The mode used for the full resolution. */
+  modo: ModoCaras;
+  cuarto: { pintar: number; leer: number; subir: number };
+  completa?: {
+    modo: ModoCaras;
+    motivo?: string;
+    geometria: number;
+    pintar: number;
+    leer: number;
+    voltear: number;
+    espera: number;
+    subir: number;
+    /** Waiting, between tasks, for the GPU to take the previous strips (the page is free meanwhile). */
+    gpu: number;
+    franjas: number;
+    maxTarea: number;
+    total: number;
+  };
 }
 
 export interface CapasEscena {
@@ -84,9 +149,21 @@ export class Escena3D {
   private matNucleo: MeshStandardMaterial;
   private caras: Record<Lado, Mesh>;
   private matCaras: Record<Lado, MeshStandardMaterial>;
-  private texCaras: Partial<Record<Lado, { color: CanvasTexture; pbr: CanvasTexture }>> = {};
+  private texCaras: Partial<Record<Lado, { color: Texture; pbr: Texture }>> = {};
   private realce: Record<Lado, Mesh>;
-  private texRealce: Record<Lado, CanvasTexture | null> = { F: null, B: null };
+  private texRealce: Record<Lado, Texture | null> = { F: null, B: null };
+  /** The worker that paints the full-resolution faces (null: not started, or none in this WebView). */
+  private trabajador: Worker | null = null;
+  private trabajadorOk: Promise<string | null> | null = null;
+  private respuestas = new Map<number, (r: RespuestaTrabajador | null) => void>();
+  private nPedido = 0;
+  /** Generation of the full-resolution faces: a newer pass (or liberar) stops an older one. */
+  private generacion = 0;
+  /** Version of the faces' options (layers, finish; one per quick pass): maps of an older one are dropped. */
+  private versionCaras = 0;
+  /** Per face: the version and level (0 placeholder, 1 quick, 2 full) of the maps it shows. */
+  private nivelCara: Record<Lado, { v: number; n: number }> = { F: { v: -1, n: 0 }, B: { v: -1, n: 0 } };
+  private modo: ModoCaras;
   private barriles: InstancedMesh | null = null;
   private piezas = new Group();
   private cajas: { h: number; caja: Box3 }[] = [];
@@ -124,6 +201,25 @@ export class Escena3D {
   /** Set by the view on the first pointer or wheel interaction: then the camera is the user's. */
   tocada = false;
   private blindajes: { o: Object3D; caja: Box3; mat: MeshStandardMaterial }[] = [];
+  /** Fewer pixels while the camera moves on a GPU that cannot keep 60 frames per second (0.8). */
+  private res: ResolucionAdaptable;
+  private despertar = 0;
+  /** The camera changed since the last frame (its frame belongs to the movement, however late it comes). */
+  private movido = false;
+  /** At rest again? Checked in an animation frame: pointer events come aligned with the frames, so while the GPU
+   *  stalls a moving camera must not look still. */
+  private revisarReposo = (): void => {
+    requestAnimationFrame((ts) => {
+      if (!this.vivo) return;
+      if (this.movido || this.orbita.moviendo(ts, REPOSO) || this.orbita.moviendo(performance.now(), REPOSO)) {
+        this.despertar = window.setTimeout(this.revisarReposo, REPOSO);
+        return;
+      }
+      if (this.res.enReposo()) this.pedir();
+    });
+  };
+  /** The board's programs are compiled: no frame before (it would compile them on the spot, blocking). */
+  private preparado = false;
   alCambiar: () => void = () => {};
 
   constructor(
@@ -131,12 +227,17 @@ export class Escena3D {
     private d: DatosPlaca,
     private g: Geometria,
     oscuro: boolean,
+    /** 0.8: how to paint the full-resolution faces (default: modoCarasPorDefecto()). */
+    opciones: { modoCaras?: ModoCaras } = {},
   ) {
+    this.modo = opciones.modoCaras ?? modoCarasPorDefecto();
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.renderer = new WebGLRenderer({ canvas: lienzo, antialias: dpr < 2, powerPreference: 'high-performance', alpha: false });
     this.renderer.outputColorSpace = SRGBColorSpace;
     this.renderer.toneMapping = NeutralToneMapping;
     this.renderer.toneMappingExposure = 1;
+    this.res = new ResolucionAdaptable((k) => this.renderer.setPixelRatio(k));
+    this.stats.resolucion = this.res.estado;
     this.estudio = crearEstudio(this.renderer);
     this.estudio.ponerFondo(oscuro ? '#15191e' : '#e9e6de', oscuro);
     this.W = d.placa.ancho / 100;
@@ -188,15 +289,42 @@ export class Escena3D {
     this.construirBarriles();
     this.placa.add(this.piezas);
 
-    this.orbita = new Orbita(this.camara, lienzo, () => this.pedir(), () => matchMedia('(prefers-reduced-motion: reduce)').matches);
+    this.orbita = new Orbita(this.camara, lienzo, () => ((this.movido = true), this.pedir()), () => matchMedia('(prefers-reduced-motion: reduce)').matches);
     this.orbita.maxDist = Math.max(this.W, this.H) * 6;
     this.orbita.minDist = 6;
     this.orbita.alReiniciar = () => this.vista('iso');
     this.vista('iso', false);
     // A quarter of the resolution first (a few ms): the board is on screen at once; the full one follows when
-    // the parts are placed (or after a few seconds if nobody loads them).
+    // the parts are placed (or after a few seconds if nobody loads them), painted by a worker.
+    if (this.modo === 'trabajador') this.iniciarTrabajador();
+    else if (this.modo === 'franjas') this.trabajadorOk = Promise.resolve('modo franjas');
+    // The unpack parameters the strip uploads change, known to three's state cache from now on: its first
+    // copyTextureToTexture would otherwise read them with gl.getParameter, a synchronous round trip that waits
+    // for every frame queued in the GPU process (seconds with a software GPU).
+    const gl = this.renderer.getContext() as WebGL2RenderingContext;
+    for (const k of [gl.UNPACK_ROW_LENGTH, gl.UNPACK_IMAGE_HEIGHT, gl.UNPACK_SKIP_PIXELS, gl.UNPACK_SKIP_ROWS, gl.UNPACK_SKIP_IMAGES]) this.renderer.state.pixelStorei(k, 0);
     this.pintarCaras(0.25);
+    this.stats.fasesCaras!.modo = this.modo;
+    void this.prepararPlaca();
     this.refino = window.setTimeout(() => void this.refinarCaras(), 4000);
+  }
+
+  /**
+   * 0.8: the programs of the board itself compiled before its first frame with compileAsync (in parallel and
+   * without blocking the page where KHR_parallel_shader_compile exists), as cargarPiezas() already did for
+   * the parts.
+   */
+  private async prepararPlaca(): Promise<void> {
+    const t0 = performance.now();
+    try {
+      await this.renderer.compileAsync(this.estudio.escena, this.camara);
+    } catch {
+      /* compiled at the first frame instead */
+    }
+    if (!this.vivo) return;
+    this.stats.compilarPlaca = performance.now() - t0;
+    this.preparado = true;
+    this.pedir();
   }
 
   // ---------------------------------------------------------------- geometry
@@ -274,6 +402,28 @@ export class Escena3D {
 
   // ---------------------------------------------------------------- textures
 
+  private get anisotropia(): number {
+    return Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
+  }
+
+  private pedidoCara(lado: Lado): PedidoCara {
+    const cap = this.opc.capas;
+    return { lado, capas: { F: cap.F, B: cap.B, mascara: cap.mascara, serigrafia: cap.serigrafia }, acabado: this.opc.acabado, mascara: this.d.placa.mascara };
+  }
+
+  /** A map of the page's own painting (overlays, exploded layers) as a texture: `escala` of the faces' size. */
+  private texturaPintada(pintar: (ctx: CanvasRenderingContext2D, s: number) => void, escala: number): Texture {
+    if (this.modo === 'directo') {
+      const { c, ctx, s } = this.lienzoTextura(escala);
+      pintar(ctx, s);
+      return this.textura(c, true);
+    }
+    const r = pintarDirecto(pintar, this.d, Math.round(this.ladoTextura * escala));
+    return texturaDePixeles(this.renderer, r.px, r.w, r.h, true, this.anisotropia);
+  }
+
+  // 'directo' (the 0.7 path): a canvas of the page, uploaded with texImage2D(canvas).
+
   private lienzoTextura(escala = 1): { c: HTMLCanvasElement; ctx: CanvasRenderingContext2D; s: number } {
     const lado = Math.round(this.ladoTextura * escala);
     const s = lado / Math.max(this.d.placa.ancho, this.d.placa.alto);
@@ -289,7 +439,7 @@ export class Escena3D {
   private textura(c: HTMLCanvasElement, srgb: boolean): CanvasTexture {
     const t = new CanvasTexture(c);
     if (srgb) t.colorSpace = SRGBColorSpace;
-    t.anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
+    t.anisotropy = this.anisotropia;
     t.minFilter = LinearMipmapLinearFilter;
     t.magFilter = LinearFilter;
     this.renderer.initTexture(t);
@@ -297,91 +447,304 @@ export class Escena3D {
     return t;
   }
 
+  /** Both maps of a face the 0.7 way; returns the ms of drawing and of upload. */
+  private pintarCaraDirecta(lado: Lado, escala: number, nivel: number): { pintar: number; subir: number } {
+    const p = this.pedidoCara(lado);
+    const a = this.lienzoTextura(escala);
+    const b = this.lienzoTextura(0.5 * escala);
+    const t0 = performance.now();
+    pintarMapa(a.ctx, this.d, this.g, p, 'color', a.s);
+    pintarMapa(b.ctx, this.d, this.g, p, 'pbr', b.s);
+    const t1 = performance.now();
+    const color = this.textura(a.c, true);
+    const pbr = this.textura(b.c, false);
+    const t2 = performance.now();
+    this.ponerCara(lado, color, pbr, nivel);
+    return { pintar: t1 - t0, subir: t2 - t1 };
+  }
+
+  /** Puts a face's maps on its material (the previous ones are released); `nivel`: 0 placeholder, 1 quick, 2 full. */
+  private ponerCara(lado: Lado, color: Texture, pbr: Texture, nivel = 2): void {
+    const viejo = this.texCaras[lado];
+    viejo?.color.dispose();
+    viejo?.pbr.dispose();
+    this.texCaras[lado] = { color, pbr };
+    this.nivelCara[lado] = { v: this.versionCaras, n: nivel };
+    const m = this.matCaras[lado];
+    m.map = color;
+    m.roughnessMap = pbr;
+    m.metalnessMap = pbr;
+    m.needsUpdate = true;
+  }
+
   /**
-   * Paints both faces (colour and metal/roughness maps). `escala` < 1: a quick low-resolution pass so the board
-   * shows at once; refinarCaras() paints the full resolution afterwards (the final look is the same).
+   * Paints both faces (colour and metal/roughness maps). `escala` < 1: the quick low-resolution pass, so the
+   * board shows (or reacts to a layer change) at once — on the page's thread, or by the worker in 'trabajador'
+   * mode —; 1: the full resolution, progressively (refinarCaras()); the final look is the same.
    */
   pintarCaras(escala = 1): void {
-    const t0 = performance.now();
-    this.provisional = escala < 1;
-    for (const lado of ['F', 'B'] as const) this.pintarCara(lado, escala);
-    if (escala === 1) this.stats.textura = performance.now() - t0;
+    if (escala < 1) this.pintarRapido(escala);
+    else {
+      this.provisional = true;
+      void this.refinarCaras();
+    }
     this.pintarRealce();
     this.pedir();
   }
 
-  private pintarCara(lado: Lado, escala: number): void {
-    const cap = this.opc.capas;
-    {
-      const { c, ctx, s } = this.lienzoTextura(escala);
-      pintarLado(ctx, this.d, this.g, {
-        lado,
-        aspecto: 'real',
-        acabado: this.opc.acabado,
-        visibles: { F: cap.F, B: cap.B, mascara: cap.mascara, serigrafia: cap.serigrafia, fab: false, areas: false },
-        mascara: this.d.placa.mascara,
-        escala: s,
-        textura: true,
-      });
-      // metal (blue) and roughness (green): glossy mask, matt silkscreen, metallic exposed pads
-      const pb = this.lienzoTextura(0.5 * escala);
-      const k = pb.ctx;
-      k.save();
-      k.clip(this.g.contorno);
-      k.fillStyle = cap.mascara ? 'rgb(0,92,0)' : 'rgb(0,200,0)';
-      k.fill(this.g.contorno);
-      if (cap[lado]) {
-        k.save();
-        if (cap.mascara) k.clip(this.g.aberturas[lado], 'nonzero');
-        k.fillStyle = 'rgb(0,80,255)';
-        for (const m of [this.g.cobre[lado].pads, this.g.cobre[lado].vias, this.g.cobre[lado].zonas]) for (const p of m.values()) k.fill(p, 'evenodd');
-        k.strokeStyle = 'rgb(0,80,255)';
-        for (const [w, porRed] of this.g.cobre[lado].pistas) {
-          k.lineWidth = w;
-          for (const p of porRed.values()) k.stroke(p);
-        }
-        k.restore();
+  private pintarRapido(escala: number): void {
+    // Any full-resolution pass in flight is now out of date.
+    this.generacion++;
+    this.provisional = true;
+    const v = ++this.versionCaras;
+    const f = { pintar: 0, leer: 0, subir: 0 };
+    this.stats.fasesCaras = { ...this.stats.fasesCaras, modo: this.modo, cuarto: f };
+    if (this.modo === 'trabajador' && this.trabajador) {
+      // The worker paints this pass too (WebKit: the page's thread stays free). Until its maps arrive the faces
+      // show the board's plain colours (first view: 1 px maps, so the faces' shader is the final one) or keep
+      // their previous maps (a layer change).
+      if (!this.texCaras.F) {
+        const base = MASCARAS[this.d.placa.mascara] ?? MASCARAS.verde!;
+        for (const lado of ['F', 'B'] as const) this.ponerCara(lado, this.pixel(base.base, true), this.pixel('#005c00', false), 0);
       }
-      if (cap.serigrafia && this.g.serigrafia[lado]) {
-        k.strokeStyle = 'rgb(0,225,0)';
-        k.fillStyle = 'rgb(0,225,0)';
-        for (const [w, p] of this.g.serigrafia[lado]!.trazos) {
-          k.lineWidth = w;
-          k.stroke(p);
-        }
-        k.fill(this.g.serigrafia[lado]!.rellenos);
+      const mapas = [
+        { tipo: 'color' as const, lado: Math.round(this.ladoTextura * escala) },
+        { tipo: 'pbr' as const, lado: Math.round(this.ladoTextura * 0.5 * escala) },
+      ];
+      for (const lado of ['F', 'B'] as const) {
+        void this.pedirMapas(this.pedidoCara(lado), mapas).then((r) => {
+          if (!this.vivo || v !== this.versionCaras) return;
+          if (!r || r.tipo !== 'mapas') {
+            // No worker after all: this face on the page's thread.
+            this.pintarRapidoPagina(lado, escala, f);
+            this.pedir();
+            return;
+          }
+          // The full maps of this version may already be there.
+          if (this.nivelCara[lado].v === v && this.nivelCara[lado].n >= 2) return;
+          const a = performance.now();
+          const tex = r.mapas.map((m) => texturaDePixeles(this.renderer, new Uint8Array(m.px), m.w, m.h, m.tipo === 'color', this.anisotropia));
+          f.subir += performance.now() - a;
+          for (const m of r.mapas) {
+            f.pintar += m.t.pintar;
+            f.leer += m.t.leer + m.t.voltear;
+          }
+          this.ponerCara(lado, tex[0]!, tex[1]!, 1);
+          this.pedir();
+        });
       }
-      k.restore();
-      const viejo = this.texCaras[lado];
-      viejo?.color.dispose();
-      viejo?.pbr.dispose();
-      const tc = this.textura(c, true);
-      const tp = this.textura(pb.c, false);
-      this.texCaras[lado] = { color: tc, pbr: tp };
-      const m = this.matCaras[lado];
-      m.map = tc;
-      m.roughnessMap = tp;
-      m.metalnessMap = tp;
-      m.needsUpdate = true;
+      return;
     }
+    for (const lado of ['F', 'B'] as const) this.pintarRapidoPagina(lado, escala, f);
   }
 
-  /** The full-resolution faces after the quick first pass, one face per task (no-op when already done). */
+  /** The quick pass of one face on the page's thread ('directo': the 0.7 way; else plain pixels). */
+  private pintarRapidoPagina(lado: Lado, escala: number, f: { pintar: number; leer: number; subir: number }): void {
+    if (this.modo === 'directo') {
+      const r = this.pintarCaraDirecta(lado, escala, 1);
+      f.pintar += r.pintar;
+      f.subir += r.subir;
+      return;
+    }
+    const p = this.pedidoCara(lado);
+    const mapa = (tipo: TipoMapa, k: number): Texture => {
+      const r = pintarDirecto((ctx, s) => pintarMapa(ctx, this.d, this.g, p, tipo, s), this.d, Math.round(this.ladoTextura * k));
+      const t0 = performance.now();
+      const t = texturaDePixeles(this.renderer, r.px, r.w, r.h, tipo === 'color', this.anisotropia);
+      f.pintar += r.t.pintar;
+      f.leer += r.t.leer;
+      f.subir += performance.now() - t0;
+      return t;
+    };
+    this.ponerCara(lado, mapa('color', escala), mapa('pbr', 0.5 * escala), 1);
+  }
+
+  /** A 1 × 1 map of one colour (the faces' placeholder until the worker's first maps). */
+  private pixel(color: string, srgb: boolean): Texture {
+    const c = new Color(color);
+    // Colour gives linear components; the map stores sRGB bytes when `srgb`.
+    if (srgb) c.convertLinearToSRGB();
+    const px = new Uint8Array([Math.round(c.r * 255), Math.round(c.g * 255), Math.round(c.b * 255), 255]);
+    return texturaDePixeles(this.renderer, px, 1, 1, srgb, 1);
+  }
+
+  // ---------------------------------------------------------------- the painting worker
+
+  private iniciarTrabajador(): void {
+    if (this.trabajador || this.trabajadorOk) return;
+    if (typeof Worker === 'undefined' || typeof OffscreenCanvas === 'undefined') {
+      this.trabajadorOk = Promise.resolve('sin OffscreenCanvas');
+      return;
+    }
+    let w: Worker;
+    try {
+      w = new Worker(new URL('./caras.trabajador.ts', import.meta.url), { type: 'module', name: 'caras-placa' });
+    } catch (e) {
+      this.trabajadorOk = Promise.resolve(e instanceof Error ? e.message : String(e));
+      return;
+    }
+    this.trabajador = w;
+    this.trabajadorOk = new Promise<string | null>((resolver) => {
+      // Only a worker that hangs (one that fails to load raises «error»); a busy machine may take long to start it.
+      const plazo = setTimeout(() => resolver('el trabajador no respondió'), 60_000);
+      w.onerror = (e) => {
+        clearTimeout(plazo);
+        resolver(e.message || 'error del trabajador');
+      };
+      w.onmessage = (ev: MessageEvent<RespuestaTrabajador>) => {
+        const r = ev.data;
+        if (r.tipo === 'listo') {
+          clearTimeout(plazo);
+          resolver(r.ok ? null : (r.motivo ?? 'sin OffscreenCanvas 2D en el trabajador'));
+          return;
+        }
+        const f = this.respuestas.get(r.n);
+        this.respuestas.delete(r.n);
+        f?.(r);
+      };
+    });
+    void this.trabajadorOk.then((motivo) => {
+      if (motivo) this.cerrarTrabajador(motivo);
+    });
+    // The geometry is rebuilt there while the page builds the parts.
+    w.postMessage({ tipo: 'placa', datos: datosParaCaras(this.d) } satisfies MensajeTrabajador);
+  }
+
+  /** Stops the worker; whatever was asked of it is answered with null (painted on the page instead). */
+  private cerrarTrabajador(motivo: string): void {
+    this.trabajador?.terminate();
+    this.trabajador = null;
+    this.trabajadorOk = Promise.resolve(motivo);
+    const pendientes = [...this.respuestas.values()];
+    this.respuestas.clear();
+    for (const r of pendientes) r(null);
+  }
+
+  private pedirMapas(pedido: PedidoCara, mapas: { tipo: TipoMapa; lado: number }[]): Promise<RespuestaTrabajador | null> {
+    const w = this.trabajador;
+    if (!w) return Promise.resolve(null);
+    const n = ++this.nPedido;
+    return new Promise((resolver) => {
+      this.respuestas.set(n, resolver);
+      w.postMessage({ tipo: 'pintar', n, pedido, mapas } satisfies MensajeTrabajador);
+    });
+  }
+
+  /**
+   * The full-resolution faces after the quick first pass (no-op when already done): painted by the worker —
+   * both faces asked at once, so it paints the bottom while the page uploads the top — or, without one, in
+   * bands on the page's thread; uploaded in strips (see texturas-caras.ts). The quarter-resolution faces stay on
+   * screen until each full one is complete.
+   */
   async refinarCaras(): Promise<void> {
     if (this.refino) clearTimeout(this.refino);
     this.refino = 0;
     if (!this.vivo || !this.provisional) return;
     this.provisional = false;
-    let ms = 0;
-    for (const lado of ['F', 'B'] as const) {
-      const t0 = performance.now();
-      this.pintarCara(lado, 1);
-      ms += performance.now() - t0;
-      this.pedir();
-      await new Promise<void>((r) => setTimeout(r, 0));
-      if (!this.vivo) return;
+    const gen = ++this.generacion;
+    const sigue = () => this.vivo && gen === this.generacion;
+    const t0 = performance.now();
+    if (this.modo === 'directo') {
+      // As in 0.7: one face per task.
+      const f = { modo: 'directo' as const, geometria: 0, pintar: 0, leer: 0, voltear: 0, espera: 0, subir: 0, gpu: 0, franjas: 0, maxTarea: 0, total: 0 };
+      for (const lado of ['F', 'B'] as const) {
+        const r = this.pintarCaraDirecta(lado, 1, 2);
+        f.pintar += r.pintar;
+        f.subir += r.subir;
+        f.maxTarea = Math.max(f.maxTarea, r.pintar + r.subir);
+        this.pedir();
+        await new Promise<void>((r) => setTimeout(r, 0));
+        if (!sigue()) return;
+      }
+      f.total = performance.now() - t0;
+      this.stats.fasesCaras = { modo: this.modo, cuarto: this.stats.fasesCaras?.cuarto ?? { pintar: 0, leer: 0, subir: 0 }, completa: f };
+      this.stats.textura = f.pintar + f.subir;
+      this.stats.carasFinas = performance.now() - this.creada;
+      return;
     }
-    this.stats.textura = ms;
+    const motivo = (await this.trabajadorOk) ?? null;
+    if (!sigue()) return;
+    const f: NonNullable<FasesCaras['completa']> = {
+      modo: motivo ? 'franjas' : 'trabajador',
+      motivo: motivo ?? undefined,
+      geometria: 0,
+      pintar: 0,
+      leer: 0,
+      voltear: 0,
+      espera: 0,
+      subir: 0,
+      gpu: 0,
+      franjas: 0,
+      maxTarea: 0,
+      total: 0,
+    };
+    const lado = this.ladoTextura;
+    const mapas = [
+      { tipo: 'color' as const, lado },
+      { tipo: 'pbr' as const, lado: Math.round(lado * 0.5) },
+    ];
+    const pedidos = (['F', 'B'] as const).map((l) => this.pedidoCara(l));
+    const sub: Subida = { ms: 0, max: 0, franjas: 0, gpu: 0 };
+    if (!motivo) {
+      const respuestas = pedidos.map((p) => this.pedirMapas(p, mapas));
+      for (let i = 0; i < 2; i++) {
+        const r = await respuestas[i]!;
+        if (!sigue()) return;
+        if (!r || r.tipo !== 'mapas') {
+          // The worker failed: the page paints this pass itself.
+          this.provisional = true;
+          this.cerrarTrabajador(r && r.tipo === 'error' ? r.motivo : 'el trabajador falló');
+          return this.refinarCaras();
+        }
+        if (i === 0) f.espera = performance.now() - t0;
+        f.geometria += r.geometria;
+        const tex: Texture[] = [];
+        for (const m of r.mapas) {
+          f.pintar += m.t.pintar;
+          f.leer += m.t.leer;
+          f.voltear += m.t.voltear;
+          const a = performance.now();
+          const t = texturaVacia(this.renderer, m.w, m.h, m.tipo === 'color', this.anisotropia);
+          sub.ms += performance.now() - a;
+          const ok = await subirPorFranjas(this.renderer, t, new Uint8Array(m.px), m.w, m.h, sigue, sub);
+          if (!ok) {
+            t.dispose();
+            for (const x of tex) x.dispose();
+            return;
+          }
+          tex.push(t);
+        }
+        this.ponerCara(pedidos[i]!.lado, tex[0]!, tex[1]!);
+        this.pedir();
+      }
+    } else {
+      const en = { ...sub, pintar: 0, leer: 0 };
+      for (const p of pedidos) {
+        const tex: Texture[] = [];
+        for (const m of mapas) {
+          const t = await pintarPorBandas(this.renderer, this.d, this.g, p, m.tipo, m.lado, this.anisotropia, sigue, en);
+          if (!t) {
+            for (const x of tex) x.dispose();
+            return;
+          }
+          tex.push(t);
+        }
+        if (!sigue()) return;
+        this.ponerCara(p.lado, tex[0]!, tex[1]!);
+        this.pedir();
+      }
+      f.pintar = en.pintar;
+      f.leer = en.leer;
+      Object.assign(sub, { ms: en.ms, max: en.max, franjas: en.franjas, gpu: en.gpu });
+    }
+    f.subir = sub.ms;
+    f.gpu = sub.gpu;
+    f.franjas = sub.franjas;
+    f.maxTarea = sub.max;
+    f.total = performance.now() - t0;
+    this.stats.fasesCaras = { modo: this.modo, cuarto: this.stats.fasesCaras?.cuarto ?? { pintar: 0, leer: 0, subir: 0 }, completa: f };
+    // Page-thread time of the full faces (0.7: painting and upload, all of it on the page's thread).
+    this.stats.textura = f.modo === 'trabajador' ? f.subir : f.pintar + f.leer + f.subir;
     this.stats.carasFinas = performance.now() - this.creada;
   }
 
@@ -397,11 +760,11 @@ export class Escena3D {
         me.visible = false;
         continue;
       }
-      const { c, ctx } = this.lienzoTextura(0.5);
       const vis = { F: lado === 'F', B: lado === 'B', mascara: true, serigrafia: false, fab: false, areas: false };
-      if (colores) for (const [r, col] of colores) pintarRed(ctx, this.g, r, { lado, aspecto: 'real', visibles: vis }, col);
-      if (red !== null && red >= 0) pintarRed(ctx, this.g, red, { lado, aspecto: 'real', visibles: vis }, '#ffb02e');
-      const t = this.textura(c, true);
+      const t = this.texturaPintada((ctx) => {
+        if (colores) for (const [r, col] of colores) pintarRed(ctx, this.g, r, { lado, aspecto: 'real', visibles: vis }, col);
+        if (red !== null && red >= 0) pintarRed(ctx, this.g, red, { lado, aspecto: 'real', visibles: vis }, '#ffb02e');
+      }, 0.5);
       this.texRealce[lado] = t;
       const m = me.material as MeshBasicMaterial;
       m.map = t;
@@ -652,9 +1015,7 @@ export class Escena3D {
     if (this.capasX.length) return;
     const geo = this.caras.F.geometry;
     const plano = (pintar: (ctx: CanvasRenderingContext2D, s: number) => void, z: number, lado: Lado, opacidad = 1): Mesh => {
-      const { c, ctx, s } = this.lienzoTextura(0.4);
-      pintar(ctx, s);
-      const t = this.textura(c, true);
+      const t = this.texturaPintada(pintar, 0.4);
       const m = new MeshStandardMaterial({ map: t, transparent: true, alphaTest: 0.05, side: DoubleSide, roughness: 0.6, metalness: 0, opacity: opacidad, depthWrite: false });
       const me = new Mesh(geo, m);
       me.userData.z = z;
@@ -759,7 +1120,13 @@ export class Escena3D {
     if (o.capas) this.opc.capas = { ...o.capas };
     const c0 = antes.capas;
     const c1 = this.opc.capas;
-    if (c0.F !== c1.F || c0.B !== c1.B || c0.mascara !== c1.mascara || c0.serigrafia !== c1.serigrafia || antes.acabado !== this.opc.acabado) this.pintarCaras(this.provisional ? 0.25 : 1);
+    if (c0.F !== c1.F || c0.B !== c1.B || c0.mascara !== c1.mascara || c0.serigrafia !== c1.serigrafia || antes.acabado !== this.opc.acabado) {
+      // The change shows at once at a quarter of the resolution; the full one follows (unless the board is
+      // still loading: then it comes with the parts, as usual).
+      const fino = !this.provisional;
+      this.pintarCaras(0.25);
+      if (fino) void this.refinarCaras();
+    }
     else if (antes.red !== this.opc.red || antes.tensiones !== this.opc.tensiones) this.pintarRealce();
     this.aplicarCapas();
   }
@@ -831,8 +1198,8 @@ export class Escena3D {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     // at most about 2.4 Mpx drawn (Iris Plus 640 at 1280 × 800, DPR 2)
     const k = Math.min(dpr, Math.sqrt(2.4e6 / Math.max(1, w * h)));
-    this.renderer.setPixelRatio(k);
     this.renderer.setSize(w, h, false);
+    this.res.ponerBase(k, this.orbita.moviendo());
     const primera = this.camara.aspect === 1 && !this.ajustada;
     this.camara.aspect = w / Math.max(1, h);
     this.camara.updateProjectionMatrix();
@@ -911,7 +1278,7 @@ export class Escena3D {
 
   private frame(ahora: number): void {
     this.raf = 0;
-    if (!this.vivo) return;
+    if (!this.vivo || !this.preparado) return;
     let mas = this.orbita.paso(ahora);
     // board turn-over
     if (this.placa.rotation.y !== this.giro.a) {
@@ -929,11 +1296,17 @@ export class Escena3D {
       this.aplicarCapas();
       mas = true;
     }
+    // Adaptive resolution: measured on the frames drawn while moving; at rest the full one, with a final frame.
+    const moviendo = mas || this.movido || this.orbita.moviendo(ahora, REPOSO);
+    this.movido = false;
+    if (!moviendo && this.res.enReposo()) this.sucio = true;
     if (this.sucio || mas) {
+      if (moviendo) this.res.enMovimiento(ahora);
       const t0 = performance.now();
       this.renderer.render(this.estudio.escena, this.camara);
       const ms = performance.now() - t0;
       this.stats.cuadros++;
+      this.stats.primerCuadroPlaca ??= performance.now() - this.creada;
       if (this.stats.fases && !this.stats.fases.primerCuadro) {
         this.stats.fases.primerCuadro = ms;
         this.stats.programas = this.renderer.info.programs?.length;
@@ -948,12 +1321,20 @@ export class Escena3D {
         this.refinarTrasCuadro = false;
         setTimeout(() => void this.refinarCaras(), 100);
       }
+      if (moviendo) {
+        // Check again when the camera has been still for a moment: the full resolution (with a final frame).
+        clearTimeout(this.despertar);
+        this.despertar = window.setTimeout(this.revisarReposo, REPOSO + 20);
+      }
     }
     if (mas) this.pedir();
   }
 
   liberar(): void {
     this.vivo = false;
+    this.generacion++;
+    clearTimeout(this.despertar);
+    this.cerrarTrabajador('vista cerrada');
     if (this.refino) clearTimeout(this.refino);
     if (this.raf) cancelAnimationFrame(this.raf);
     this.orbita.liberar();
