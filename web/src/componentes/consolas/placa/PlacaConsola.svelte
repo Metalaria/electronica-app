@@ -16,7 +16,7 @@
   import { opciones3d } from '../../proyectos/opciones3d.svelte';
   import Placa2D from '../../proyectos/Placa2D.svelte';
   import { soporteWebGL2 } from '../../tres/motor/soporte';
-  import { cargarPlacaConsola, PLACAS_DE, redDePlaca, type DatosPlacaConsola } from './datos';
+  import { cargarPlacaConsola, PLACAS_DE, redDePlaca, refEnlazada, type DatosPlacaConsola } from './datos';
   import { eleccion } from './eleccion.svelte';
 
   type Destino = 'foto' | 'esquema' | 'placa3d' | 'placa2d';
@@ -82,9 +82,10 @@
   let emitida: Seleccion | null = null;
 
   function desdeConsola(s: Seleccion | null, x: DatosPlacaConsola): SelPlaca | null {
-    // a board that is not the schematic's own takes no selection from the other tabs (same names, other parts)
-    if (!s || !x.consola.enlazada) return null;
-    if (s.tipo === 'componente') return x.huellas.some((h) => h.r === s.id) ? { tipo: 'huella', id: s.id } : null;
+    // a board that is not the schematic's own takes no selection from the other tabs (same names, other parts),
+    // except, on a partly linked one, its shared parts and their nets
+    if (!s || (!x.consola.enlazada && !x.consola.parcial)) return null;
+    if (s.tipo === 'componente') return refEnlazada(x, s.id) && x.huellas.some((h) => h.r === s.id) ? { tipo: 'huella', id: s.id } : null;
     if (s.tipo === 'red') {
       const n = redDePlaca(x, s.id);
       return n ? { tipo: 'red', id: n } : null;
@@ -96,7 +97,7 @@
     if (!s) return null;
     if (s.tipo === 'huella') return { tipo: 'componente', id: s.id };
     if (s.tipo === 'pad') return { tipo: 'componente', id: s.id.slice(0, s.id.lastIndexOf('.')) };
-    return { tipo: 'red', id: (x.consola.enlazada && x.consola.redes[s.id]) || s.id };
+    return { tipo: 'red', id: ((x.consola.enlazada || x.consola.parcial) && x.consola.redes[s.id]) || s.id };
   }
 
   // the console's selection (route, other tabs) → the board's
@@ -140,8 +141,8 @@
   const huella = $derived(d && res.huella != null ? d.huellas[res.huella]! : null);
   const red = $derived(d && res.red != null ? d.redes[res.red]! : null);
   const pad = $derived(d && res.pad != null ? d.pads[res.pad]! : null);
-  const componente = $derived(huella && d?.consola.enlazada ? (datos.componentes[huella.r] ?? null) : null);
-  const redEsquema = $derived(red && d?.consola.enlazada ? (d.consola.redes[red.n] ?? null) : null);
+  const componente = $derived(huella && d && refEnlazada(d, huella.r) ? (datos.componentes[huella.r] ?? null) : null);
+  const redEsquema = $derived(red && (d?.consola.enlazada || d?.consola.parcial) ? (d.consola.redes[red.n] ?? null) : null);
   const padsRed = $derived(d && res.red != null && !huella ? padsDeRed(d, res.red).slice(0, 120) : []);
   const padsHuella = $derived(d && huella ? d.pads.slice(huella.pads[0], huella.pads[0] + huella.pads[1]) : []);
   const enFoto = $derived(
@@ -150,6 +151,13 @@
         !!datos.foto.posiciones?.[huella.r] ||
         (datos.fotos ?? []).some((f) => f.hotspots.some((h) => h.esquema.includes(huella.r)) || !!f.posiciones?.[huella.r])),
   );
+  /** Parts placed by reconstruction (a Gerber board): counts for the board's note. */
+  const reconstruidas = $derived.by(() => {
+    if (!d) return null;
+    const r = d.huellas.filter((h) => h.rec && h.t !== 'mec' && !h.dnp);
+    if (!r.length) return null;
+    return { cuerpo: r.length, huella: r.filter((h) => h.rec!.cuerpo === 'huella').length, aprox: r.filter((h) => h.rec!.cuerpo !== 'huella').length };
+  });
   const otraVista: Destino = $derived(vista === '3d' ? 'placa2d' : 'placa3d');
 
   function nombre(n: string): string {
@@ -158,11 +166,11 @@
 </script>
 
 <div class="placa-consola" data-placa={idPlaca}>
-  {#if placas.length > 1}
+  {#if placas.length > 1 || (placas[0] && !placas[0].enlazada)}
     <div class="placas" role="group" aria-label="Placa">
       {#each placas as p (p.id)}
         <button type="button" aria-pressed={p.id === idPlaca} onclick={() => cambiarPlaca(p.id)}>
-          {p.corto}{#if !p.enlazada}<small>no enlazada</small>{/if}
+          {p.corto}{#if !p.enlazada}<small>{p.parcial ? 'enlazada en parte' : 'no enlazada'}</small>{/if}
         </button>
       {/each}
     </div>
@@ -197,12 +205,14 @@
           <h3 class="nombre">{huella.r} <span class="valor">{huella.v || componente?.v || ''}</span></h3>
           {#if huella.f}<p class="detalle">{huella.f}</p>{/if}
           <p class="detalle">
-            {#if x.consola.tipo === 'gerber'}
+            {#if x.consola.tipo === 'gerber' && !huella.rec}
               {padsHuella.length} pad{padsHuella.length === 1 ? '' : 's'} en la cara {huella.lado === 'F' ? 'superior' : 'inferior'} (el Gerber no da la huella ni el cuerpo).
             {:else}
               Huella <code>{huella.l}</code> · cara {huella.lado === 'F' ? 'superior' : 'inferior'} · {padsHuella.length} pad{padsHuella.length === 1 ? '' : 's'}
             {/if}
           </p>
+          {#if huella.rec}<p class="reconstruida" data-cuerpo={huella.rec.cuerpo}><strong>Posición reconstruida.</strong> {huella.rec.nota}</p>{/if}
+          {#if huella.dnp}<p class="detalle">Sin montar en esta placa (DNP en el esquema).</p>{/if}
           {#if pad}
             {@const rp = pad[12] >= 0 ? x.redes[pad[12]]! : null}
             <p class="pad">Pad <strong>{pad[1]}</strong>{#if pad[13]} ({@html htmlKicad(pad[13])}){/if}{#if rp} · red <button type="button" class="enlace" onclick={() => elegirEnfocando({ tipo: 'red', id: rp.n })}>{@html htmlKicad(nombre(x.consola.redes[rp.n] ?? rp.n))}</button>{/if}</p>
@@ -215,6 +225,11 @@
             <button type="button" class="accion" onclick={() => irA(otraVista, { tipo: 'componente', id: huella.r })}>{vista === '3d' ? 'Ver en 2D' : 'Ver en 3D'}</button>
           </div>
           {#if x.consola.enlazada && !componente}<p class="detalle">No está en el esquema.</p>{/if}
+          {#if x.consola.parcial && !componente}
+            <p class="detalle">
+              No se enlaza con el esquema{datos.componentes[huella.r] ? `: en la ${datos.placa}, ${huella.r} es otro componente (${datos.componentes[huella.r]!.v})` : ''}.
+            </p>
+          {/if}
           {#if padsHuella.length}
             <p class="sub">Pads:</p>
             <ul class="nodos">
@@ -254,15 +269,27 @@
             </ul>
           {/if}
         {:else}
-          <p class="tipo">{x.consola.enlazada ? 'Enlazada con el esquema' : 'No enlazada con el esquema'}</p>
+          <p class="tipo">{x.consola.enlazada ? 'Enlazada con el esquema' : x.consola.parcial ? 'Enlazada en parte con el esquema' : 'No enlazada con el esquema'}</p>
           <h3 class="nombre">{x.titulo}</h3>
           <p class="detalle">
             {mm(x.placa.ancho, 1)} × {mm(x.placa.alto, 1)} mm · {x.consola.capas_cobre.length} capas de cobre ·
             {x.huellas.filter((h) => h.l !== 'NPTH').length} componentes · {x.redes.filter((r) => r.p >= 2).length} redes
           </p>
           <p class="aviso-placa">{x.consola.aviso}</p>
+          {#if x.consola.parcial}<p class="reconstruida parcial">{x.consola.parcial.texto}</p>{/if}
+          {#if reconstruidas}
+            <p class="reconstruida nota-placa">
+              <strong>Posiciones reconstruidas a partir de la serigrafía y los pads</strong>, no leídas de un fichero de colocación:
+              {reconstruidas.cuerpo} componentes con cuerpo ({reconstruidas.huella} con la huella de KiCad del esquema,
+              {reconstruidas.aprox} con medidas de la serigrafía o de las fotos). Cada componente dice de dónde sale.
+            </p>
+          {/if}
           <p class="ayuda">
-            Toque un componente, un pad o una pista para ver sus conexiones{x.consola.enlazada ? '; lo elegido aquí queda elegido en el esquema y al revés' : ''}.
+            Toque un componente, un pad o una pista para ver sus conexiones{x.consola.enlazada
+              ? '; lo elegido aquí queda elegido en el esquema y al revés'
+              : x.consola.parcial
+                ? `; ${x.consola.parcial.refs.join(', ')} y sus redes quedan elegidos en el esquema y al revés`
+                : ''}.
           </p>
           {#if x.comprobaciones.length}
             <p class="sub">Comprobaciones con el esquema:</p>
@@ -374,6 +401,15 @@
     border-left: 3px solid var(--c-importante);
     border-radius: 6px;
     background: color-mix(in srgb, var(--c-importante) 8%, transparent);
+    line-height: 1.45;
+  }
+  .reconstruida {
+    margin: 8px 0;
+    padding: 8px 10px;
+    border-left: 3px solid var(--acento);
+    border-radius: 6px;
+    background: var(--acento-tinte);
+    color: var(--tinta-suave);
     line-height: 1.45;
   }
   .sub {

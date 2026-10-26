@@ -27,6 +27,9 @@ export interface DatosPlacaConsola extends DatosPlaca {
     /** Copper layers of the original (the viewer draws the outer two). */
     capas_cobre: string[];
     tipo: 'kicad' | 'gerber';
+    /** A board that is not the schematic's own but shares some parts with it (OpenGBC): only these references,
+     *  and the nets of their pads (`redes`), are linked; why, in Spanish. */
+    parcial?: { refs: string[]; texto: string };
   };
 }
 
@@ -36,6 +39,7 @@ export interface ResumenPlaca {
   titulo: string;
   corto: string;
   enlazada: boolean;
+  parcial?: boolean;
   tipo: 'kicad' | 'gerber';
   aviso: string;
   fuente: FuentePlaca;
@@ -48,13 +52,15 @@ export interface ResumenPlaca {
 }
 
 /** Boards of each machine, for the tabs (known without fetching anything). */
-export const PLACAS_DE: Partial<Record<IdMaquina, { id: string; corto: string; enlazada: boolean }[]>> = {
+export const PLACAS_DE: Partial<Record<IdMaquina, { id: string; corto: string; enlazada: boolean; parcial?: boolean }[]>> = {
   nes: [{ id: 'nes', corto: 'NES-CPU-11 · OpenTendo', enlazada: true }],
   megadrive: [{ id: 'megadrive', corto: 'IC BD M5 PAL · recreación KiCad', enlazada: true }],
   neogeo: [{ id: 'neogeo', corto: 'NEO-AES3-5 · recreación KiCad', enlazada: true }],
+  // a modern recreation, not the DMG-CPU: linked only where references and nets match (0.8.2)
+  gb: [{ id: 'gb-superdmg', corto: 'Super DMG-01 · recreación moderna', enlazada: false, parcial: true }],
   gbc: [
     { id: 'gbc-cgb04', corto: 'CGB-CPU-04 · Gerber', enlazada: true },
-    { id: 'gbc-opengbc', corto: 'OpenGBC · placa moderna', enlazada: false },
+    { id: 'gbc-opengbc', corto: 'OpenGBC · placa moderna', enlazada: false, parcial: true },
   ],
 };
 
@@ -87,7 +93,14 @@ export function cargarIndicePlacas(): Promise<{ version: number; placas: Resumen
 
 /** Schematic net → board net (inverse of `consola.redes`). */
 export function redDePlaca(d: DatosPlacaConsola, redEsquema: string): string | null {
-  if (!d.consola.enlazada) return null;
+  if (!d.consola.enlazada && !d.consola.parcial) return null;
   for (const [placa, esq] of Object.entries(d.consola.redes)) if (esq === redEsquema) return placa;
+  // a partly linked board: only the nets mapped through its shared parts
+  if (!d.consola.enlazada) return null;
   return d.redes.some((r) => r.n === redEsquema) ? redEsquema : null;
+}
+
+/** The reference names the same part on the board and in the schematic. */
+export function refEnlazada(d: DatosPlacaConsola, ref: string): boolean {
+  return d.consola.enlazada || !!d.consola.parcial?.refs.includes(ref);
 }

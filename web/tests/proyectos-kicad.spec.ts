@@ -102,7 +102,14 @@ test('la vista 3D monta la placa con pocas llamadas de dibujo y sus modos', asyn
     await expect(boton).toHaveAttribute('aria-pressed', 'true');
   }
   await expect(page.locator('.v3d .nota')).toContainText('Rayos X');
+  // The core's top and bottom lie just under the faces: drawn only with the layers apart (X-ray or explosion),
+  // never under the faces, where they fought with them on less precise depth buffers (0.8.1).
+  const tapas = () => page.evaluate(() => (globalThis as unknown as { __epaPlaca3D: { tapasNucleo?: boolean } }).__epaPlaca3D.tapasNucleo);
+  expect(await tapas()).toBe(true);
+  await page.getByRole('button', { name: 'Rayos X', exact: true }).click();
+  await expect.poll(tapas).toBe(false);
   await page.locator('.explosion input').fill('1');
+  await expect.poll(tapas).toBe(true);
   expect(errores).toEqual([]);
 });
 

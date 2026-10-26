@@ -13,13 +13,17 @@ Sources (read only, never copied into the repository; env CONSOLAS_FUENTES, defa
   - megadrive:   stonedDiscord/MegaDrive.kicad_pcb (KiCad 9): the same project as the console's schematic, so
                  every reference and net matches it (checked here);
   - gbc-cgb04:   Natalie the Nerd's Gerbers of the CGB-CPU-04 (4 layers, X2 attributes: nets, references and pins
-                 of every pad), read with consolas_gerber.py; there is no placement data, so no part bodies;
+                 of every pad), read with consolas_gerber.py; there is no placement data: consolas_gerber_piezas.py
+                 rebuilds it from the pads, the schematic's footprints, the silkscreen and the photos (flag `rec`);
   - gbc-opengbc: whatwareweb/opengbc (KiCad 9), a modern replacement board: shown, but not linked to the
                  CGB-CPU-04 schematic (other references).
   - neogeo:      Board-Folk/NeoGeoAES-3.5 NeoGeoAES3_5.kicad_pcb (KiCad 10, 53 MB, not in the research folder):
                  the same project as the console's schematic. Pass its path in CONSOLAS_PCB_NEOGEO (any board's
                  source can be given in CONSOLAS_PCB_<ID>); KiCad 10 names the nets of pads and tracks instead of
                  numbering them, which proyectos_kicad_pcb.net_id handles.
+  - gb-superdmg: kamicane/Super-DMG-01 super-dmg-cpu.kicad_pcb (KiCad 7, CC BY-SA 4.0, commit bf540dd), a modern
+                 recreation of the DMG mainboard, not kept: pass its path in CONSOLAS_PCB_GB_SUPERDMG. Like OpenGBC it is
+                 linked to the console's schematic only in part (enlace_parcial: same reference and same nets).
 The Master System's slowcoder/SMSSchematic.kicad_pcb has no footprints (an empty KiCad 4 board): skipped.
 
 The KiCad 9 boards are read with proyectos_kicad_pcb (its s-expression reader copes with the newer syntax). Their
@@ -50,6 +54,7 @@ import consolas_kicad as K          # noqa: E402
 import proyectos_kicad_pcb as P     # noqa: E402
 import proyectos_kicad as PK        # noqa: E402  (read only: kicad-cli cache, silkscreen SVG reader, helpers)
 import consolas_gerber as G         # noqa: E402
+import consolas_gerber_piezas as GP  # noqa: E402
 
 # kicad-cli results of this script go to their own cache folder
 PK.CACHE = os.path.join(HERE, '.cache/consolas_pcb')
@@ -115,7 +120,38 @@ PLACAS = [
                           'componentes con sus huellas.'},
     },
     {
-        'id': 'gbc-cgb04', 'maquina': 'gbc', 'tipo': 'gerber',
+        'id': 'gb-superdmg', 'maquina': 'gb', 'tipo': 'kicad', 'cuerpos': True,
+        'ruta': 'gb/original/Super-DMG-01/super-dmg-cpu/super-dmg-cpu.kicad_pcb',
+        'titulo': 'Super DMG-01 (placa CPU), recreación moderna de kamicane (KiCad; no es la DMG-CPU original)',
+        'corto': 'Super DMG-01 · recreación moderna',
+        'enlazada': False,
+        'enlace_parcial': {
+            'refs': None,
+            'texto': 'Enlazada solo en parte: %(refs)s (%(n)d referencias) tienen la misma referencia que en el esquema de la '
+                     'DMG-CPU y todos sus pads (%(pads)d) están en las mismas redes, así que se enlazan. Las demás no: o no '
+                     'existen en la placa original (USB1, U5, CN4, JP5…), o la misma referencia nombra allí otra pieza, o '
+                     'sus patillas van a otras redes o se numeran de otro modo (los diodos DA1–DA4, las resistencias del '
+                     'puerto de enlace, el amplificador U4).',
+        },
+        'mascara': 'morada', 'serigrafia': 'blanca', 'acabado': 'enig',
+        'aviso': 'Super DMG-01 no es la placa de Nintendo: es una recreación en KiCad de la placa de la Game Boy original '
+                 '«con unos cuantos cambios modernos», dibujada a partir del esquema de bit9 y de sus escaneos de la placa. '
+                 'Según su README: una toma USB-C para cargar en lugar de la toma redonda, un circuito de distribución de '
+                 'la alimentación (U5) que descarga el interruptor, la salida de auriculares que no pasa por el amplificador, '
+                 'y resistencias y condensadores SMD 0805 actuales; la CPU, el interruptor y el puerto de enlace se sacan de '
+                 'una DMG o de una Super Game Boy (la de las fotos del autor es una SGB-CPU 01). Va con la placa de la '
+                 'pantalla y la del convertidor CC-CC aparte. Solo se enlazan con el esquema las piezas con la misma '
+                 'referencia y las mismas redes. El color de la máscara es el de las fotos del autor.',
+        'fuente': {'titulo': 'kamicane/Super-DMG-01 — super-dmg-cpu/super-dmg-cpu.kicad_pcb (KiCad 7, commit bf540dd)',
+                   'autor': 'kamicane (esquema basado en el trabajo de bit9; símbolos de Gekkio)',
+                   'url': 'https://github.com/kamicane/Super-DMG-01/tree/bf540ddf6e518167b68968f77fc7b9183c40c1e8',
+                   'licencia': 'CC BY-SA 4.0 (Creative Commons Atribución-CompartirIgual 4.0 Internacional)',
+                   'uso': 'Placa en 3D y en 2D de una recreación moderna de la placa de la CPU, para comparar con el '
+                          'esquema de la DMG-CPU: contorno, cobre de las dos caras, planos, vías, taladros, serigrafía y '
+                          'componentes con sus huellas.'},
+    },
+    {
+        'id': 'gbc-cgb04', 'maquina': 'gbc', 'tipo': 'gerber', 'reconstruir': True,
         'ruta': 'descargas_usuario_4/CGB_ReverseEngineer/Technical Files/Gerbers_CGB_CPU_04_Reverse_Engineer.zip',
         'titulo': 'CGB-CPU-04 redibujada por Natalie the Nerd (Gerber, 4 capas)',
         'corto': 'CGB-CPU-04 · Gerber',
@@ -123,26 +159,36 @@ PLACAS = [
         'mascara': 'verde', 'serigrafia': 'blanca', 'acabado': 'enig',
         'aviso': 'Natalie the Nerd escaneó y lijó una CGB-CPU-04 y redibujó su cobre en KiCad: estos Gerber son esa placa, '
                  'la del esquema. Un Gerber no guarda dónde va cada componente, solo sus pads (con su referencia, su patilla '
-                 'y su red), así que se ven el cobre, la serigrafía y los taladros, pero no los cuerpos de los componentes. '
+                 'y su red): los componentes se han colocado sobre sus pads con la huella y el valor del esquema, y los '
+                 'cuerpos que no son de la biblioteca de KiCad, con la serigrafía y las fotos (medidas aproximadas). '
                  'Las capas internas (In1, In2) solo llevan las coronas de los taladros. Ella misma avisa de que «puede '
                  'haber alguna inexactitud».',
         'fuente': {'titulo': 'Natalie the Nerd, CGB_ReverseEngineer — Gerbers_CGB_CPU_04_Reverse_Engineer.zip (KiCad 9.0.6)',
                    'autor': 'Natalie Cursio («Natalie the Nerd»)',
                    'url': 'https://github.com/nataliethenerd/CGB_ReverseEngineer',
                    'licencia': 'CC BY-NC-SA 4.0 (uso privado no comercial permitido, con atribución)',
-                   'uso': 'Placa en 3D y en 2D sin componentes: contorno, cobre de las caras exterior e interior, '
-                          'máscara, serigrafía y taladros; los atributos X2 dan la red y la referencia de cada pad.'},
+                   'uso': 'Placa en 3D y en 2D: contorno, cobre de las caras exterior e interior, máscara, serigrafía y '
+                          'taladros; los atributos X2 dan la red, la referencia y la patilla de cada pad, y con ellos se '
+                          'reconstruye dónde va cada componente (no hay fichero de colocación).'},
     },
     {
-        'id': 'gbc-opengbc', 'maquina': 'gbc', 'tipo': 'kicad',
+        'id': 'gbc-opengbc', 'maquina': 'gbc', 'tipo': 'kicad', 'cuerpos': True,
         'ruta': 'descargas_usuario_2/consolas_descargas_2/gbc/opengbc/PCB/opengbc-pcb/opengbc-pcb.kicad_pcb',
         'titulo': 'OpenGBC, placa moderna de sustitución (no es la original)',
         'corto': 'OpenGBC · placa moderna',
         'enlazada': False,
+        'enlace_parcial': {
+            'refs': ['U1', 'U2', 'P1', 'P2'],
+            'texto': 'Enlazada solo en parte: la CPU (U1), la WRAM (U2), la ranura del cartucho (P1) y el conector de la '
+                     'pantalla (P2) son las mismas piezas que en la CGB-CPU-04 y todos sus pads están en las mismas redes que '
+                     'en el esquema, así que se enlazan. El resto de la placa (alimentación, audio, reset, infrarrojos) usa '
+                     'otras piezas, y sus referencias (R1, C1…) nombran otros componentes: no se enlaza.',
+        },
         'mascara': 'negra', 'serigrafia': 'blanca', 'acabado': 'enig',
         'aviso': 'OpenGBC no es la placa de Nintendo: es una placa nueva y abierta que cabe en la carcasa de la Game Boy '
-                 'Color y usa la CPU CGB original con piezas actuales (RAM, amplificador, pantalla IPS). Sus referencias '
-                 'no son las de la CGB-CPU-04, así que no se enlaza con el esquema. El color de la máscara es supuesto.',
+                 'Color y usa la CPU CGB original con piezas actuales (RAM, amplificador, pantalla IPS). Solo se enlazan con '
+                 'el esquema las piezas que comparte con la CGB-CPU-04 (CPU, WRAM, cartucho y pantalla). El color de la '
+                 'máscara es supuesto.',
         'fuente': {'titulo': 'whatwareweb/opengbc — opengbc-pcb.kicad_pcb (KiCad 9)',
                    'autor': 'whatware',
                    'url': 'https://github.com/whatwareweb/opengbc',
@@ -199,6 +245,66 @@ def patillas_cambiadas(pads_red, d, mapa):
     return out
 
 
+def enlace_parcial(pads_red, d, cand):
+    """References of a board that is not the schematic's own linked only where they genuinely match.
+
+    1. Core: the candidates with at least 8 pins (the chips and big connectors) whose pins agree with the schematic
+       under one board net -> schematic net mapping (majority of their pads), at least 95 % of them; a core part
+       below that is dropped and the mapping recomputed.
+    2. Every other candidate is linked when its nets are those of the schematic part with the same reference
+       (the two pins of a two-pin part may be numbered the other way round), at least one of them already mapped by
+       the core; its nets not yet mapped are then mapped through it (each schematic net to one board net only).
+    Returns (refs, mapping, pads that agree, references rejected).
+    """
+    nodo = {(nd[0], str(nd[1])): r['n'] for r in d['redes'] for nd in r['nodos']}
+    pins = collections.defaultdict(dict)
+    for (ref, pin), red in pads_red.items():
+        if ref in cand and (ref, pin) in nodo:
+            pins[ref][pin] = red
+    nucleo = [r for r in cand if len(pins[r]) >= 8]
+    while True:
+        sub = {(r, p): n for r in nucleo for p, n in pins[r].items()}
+        mapa, _, _ = mapa_redes(sub, d)
+        malas = [r for r in nucleo if sum(mapa.get(n) == nodo[(r, p)] for p, n in pins[r].items()) < 0.95 * len(pins[r])]
+        if not malas:
+            break
+        nucleo = [r for r in nucleo if r not in malas]
+    mapa = dict(mapa)
+    usadas = set(mapa.values())
+    refs = list(nucleo)
+    resto = [r for r in cand if r not in nucleo and pins[r]]
+    cambio = True
+    while cambio:
+        cambio = False
+        for r in list(resto):
+            pp = pins[r]
+            orden = [sorted(pp)]
+            if set(pp) == {'1', '2'}:
+                orden.append(['2', '1'])
+            for perm in orden:
+                pares = [(pp[a], nodo[(r, b)]) for a, b in zip(sorted(pp), perm)]
+                anclas = [1 for bn, sn in pares if bn in mapa]
+                nuevos = {}
+                ok = bool(anclas)
+                for bn, sn in pares:
+                    if bn in mapa:
+                        ok &= mapa[bn] == sn
+                    elif sn in usadas or nuevos.get(bn, sn) != sn or sn in nuevos.values() and nuevos.get(bn) != sn:
+                        ok = False
+                    else:
+                        nuevos[bn] = sn
+                if ok:
+                    mapa.update(nuevos)
+                    usadas.update(nuevos.values())
+                    refs.append(r)
+                    resto.remove(r)
+                    cambio = True
+                    break
+    iguales = sum(1 for r in refs for p, n in pins[r].items() if mapa.get(n) == nodo[(r, p)])
+    return sorted(refs, key=lambda x: [(0, int(t), '') if t.isdigit() else (1, 0, t) for t in re.split(r'(\d+)', x)]), mapa, iguales, \
+        sorted(r for r in cand if r not in refs)
+
+
 # ------------------------------------------------------------------ 3D descriptors for the console parts
 
 ALTOS = {
@@ -209,12 +315,105 @@ ALTOS = {
     'Fuse_0603': 0.5, 'D_SOD-323': 1.0, 'L_CommonModeChoke': 2.0, 'AMPHENOL': 2.0, 'SWITCHCRAFT': 6.0,
 }
 SIN_CUERPO = ('Fiducial', 'NetTie', 'artwork', 'SolderJumper', 'gbc_buttons', 'gbc_ir_leds', 'GBC-PWRBD',
-              'gbc-link-cable-adapter', 'gbc_volume_wheel', 'gbc_PowerSwitch')
+              'gbc-link-cable-adapter', 'gbc_volume_wheel', 'gbc_PowerSwitch',
+              # Super DMG-01: battery and cartridge-shield contacts, ground pads, wire pads, jumper, logos
+              'DMG_BATTERY_PADS', 'DMG_CART_SHIELD_CONTACT', 'DMG_GROUNDPAD', 'PAD_2.54_HYBRID', 'solder_jumper',
+              'kmc_6mm', 'LOGO')
 
 
-def modelo(f):
+# Bodies drawn from the footprint for the boards that ask for them (`cuerpos`, OpenGBC): gull-wing ICs with their
+# leads over the pads, SMD cans, connectors in their colour, the thumb wheel and the slide switch. No marking is
+# invented: the values are KiCad symbol or order names, not what is printed on the parts.
+CUERPOS = [
+    # OpenGBC (KiCad library packages and whatware's own footprints)
+    (r'^(LQFP|TSOP|VSSOP|SOT-23|SOT-323|SOT-223)', dict(tipo='ci')),
+    (r'^CP_Elec_', dict(tipo='electrolitico_smd')),
+    (r'^D_SOD-323', dict(tipo='diodo_smd', alto=0.9)),
+    (r'^Oscillator_SMD', dict(tipo='conector', color='#c3c7cc', metal=0.8, rugosidad=0.35)),
+    (r'^(L_CommonModeChoke|R_Array|Fuse_0603)', dict(tipo='conector', color='#26262a')),
+    (r'^AMPHENOL', dict(tipo='conector', color='#ece6d6')),
+    (r'^(gbc_mgb_cart_slot|audio_jack|SWITCHCRAFT)', dict(tipo='conector', color='#1c1c1e')),
+    (r'^gbc_volume_wheel', dict(tipo='rueda', alto=1.5, grosor=2.4)),
+    (r'^gbc_PowerSwitch', dict(tipo='interruptor', alto=3.0)),
+    (r'^GBC-PWRBD', dict(tipo='placa_hija', alto=1.0, z0=1.5)),
+    # Super DMG-01 (kamicane's dmg_lib/kmc_lib footprints): body sizes of its README's BOM («QFP-80 14x20»,
+    # «SOP-28 17.5x8.4», «SSOP-18 6x7.4»), heights typical of the package
+    (r'^DMG_CPU$', dict(tipo='ci', cuerpo_mm=(20.0, 14.0), alto=2.7)),
+    (r'^DMG_RAM_64K$', dict(tipo='ci', cuerpo_mm=(17.5, 8.4), alto=2.5)),
+    (r'^DMG_AMP$', dict(tipo='ci', cuerpo_mm=(7.4, 6.0), alto=1.8)),
+    (r'^SOT-23-3_L2\.9-W1\.3', dict(tipo='ci', cuerpo_mm=(2.9, 1.3), alto=1.1)),
+    (r'^SOT-23-5_L2\.9-W1\.6', dict(tipo='ci', cuerpo_mm=(2.9, 1.6), alto=1.1)),
+    (r'^CP_EIA-3528', dict(tipo='conector', color='#d9a32a', alto=1.9)),
+    (r'^HC-49S$', dict(tipo='conector', color='#c3c7cc', metal=0.8, rugosidad=0.35, alto=3.5)),
+    (r'^DMG_CART_CONN$', dict(tipo='conector', color='#1c1c1e', alto=8.0)),
+    (r'^DMG_LINK_CONN$', dict(tipo='conector', color='#2a2a2c', alto=7.0)),
+    (r'^DMG_FPC_CONN$', dict(tipo='conector', color='#ece6d6', alto=2.0)),
+    (r'^USB_C_16p$', dict(tipo='conector', color='#c3c7cc', metal=0.8, rugosidad=0.35, alto=3.2)),
+    (r'^CONN-TH_2P-P1\.25', dict(tipo='conector', color='#ece6d6', alto=3.5, de_pads=1.2)),
+    (r'^DMG_VOLUME_POT$', dict(tipo='rueda', alto=1.5, grosor=2.4)),
+    (r'^DMGB_POWER_SWITCH$', dict(tipo='interruptor', alto=3.0)),
+]
+
+
+def _filas(pads):
+    """Direction of the rows of a two-row package: 'x' (rows run along x), 'y', or None (four sides, one pad…)."""
+    xs = {round(p['lx'], 1) for p in pads}
+    ys = {round(p['ly'], 1) for p in pads}
+    if len(ys) == 2 and len(xs) > 2:
+        return 'x'
+    if len(xs) == 2 and len(ys) > 2:
+        return 'y'
+    return None
+
+
+def modelo(f, cuerpos=False):
     m = P.model_for(f)
     name = f['lib'].split(':')[-1]
+    if cuerpos:
+        for rx, extra in CUERPOS:
+            if re.match(rx, name):
+                smd = [p for p in f['pads'] if p['num'] and p['type'] == 'smd']
+                if extra.get('de_pads') or (m['caja'][2] - m['caja'][0]) * (m['caja'][3] - m['caja'][1]) < 0.1:
+                    # no usable outline: the pads' box
+                    k = extra.get('de_pads', 0.5)
+                    m['caja'] = [round(min(p['lx'] for p in f['pads']) - k, 3), round(min(p['ly'] for p in f['pads']) - k, 3),
+                                 round(max(p['lx'] for p in f['pads']) + k, 3), round(max(p['ly'] for p in f['pads']) + k, 3)]
+                x0, y0, x1, y1 = m['caja']
+                m = dict(m, **{k: v for k, v in extra.items() if k not in ('cuerpo_mm', 'de_pads')})
+                m['cuerpo'] = m['caja']
+                if 'cuerpo_mm' in extra:
+                    largo, ancho = extra['cuerpo_mm']
+                    filas = _filas(smd)
+                    a_lo_largo_x = filas == 'x' if filas else (x1 - x0) >= (y1 - y0)
+                    if filas == 'y' or filas == 'x':
+                        # the pads' middle: the body sits centred on its rows
+                        cx = (min(p['lx'] for p in smd) + max(p['lx'] for p in smd)) / 2
+                        cy = (min(p['ly'] for p in smd) + max(p['ly'] for p in smd)) / 2
+                    else:
+                        cx, cy = (x0 + x1) / 2, (y0 + y1) / 2
+                    bw, bh = (largo, ancho) if a_lo_largo_x else (ancho, largo)
+                    m['cuerpo'] = [round(cx - bw / 2, 3), round(cy - bh / 2, 3), round(cx + bw / 2, 3), round(cy + bh / 2, 3)]
+                if 'alto' not in extra:
+                    for k, h in ALTOS.items():
+                        if extra['tipo'] in ('conector', 'ci') and (name.startswith(k) or k in name):
+                            m['alto'] = h
+                            break
+                if extra['tipo'] == 'ci':
+                    if 'alto' not in extra:
+                        m['alto'] = next((h for k, h in (('LQFP', 1.6), ('TSOP', 1.2), ('VSSOP', 1.0), ('SOT-223', 1.8),
+                                                          ('SOT-323', 0.9), ('SOT-23', 1.1)) if name.startswith(k)), 1.2)
+                    m['patas'] = [[round(p['lx'], 3), round(p['ly'], 3), round(p['w'], 3), round(p['h'], 3)]
+                                  for p in sorted(smd, key=lambda p: (0, int(p['num'])) if p['num'].isdigit() else (1, 0))]
+                    m.pop('texto', None)
+                elif extra['tipo'] == 'electrolitico_smd':
+                    dm = re.match(r'CP_Elec_(\d+(?:\.\d+)?)x(\d+(?:\.\d+)?)', name)
+                    m['diametro'], m['alto'] = float(dm.group(1)), float(dm.group(2))
+                elif extra['tipo'] == 'rueda':
+                    m['diametro'] = round(min(x1 - x0, y1 - y0) * 0.95, 2)
+                    m['centro'] = [round((x0 + x1) / 2, 3), round((y0 + y1) / 2, 3)]
+                elif extra['tipo'] == 'interruptor':
+                    m['alto'] = 3.0
+                return m
     if any(name.startswith(s) for s in SIN_CUERPO):
         return dict(m, tipo='taladro')
     if m['tipo'] == 'caja':
@@ -469,7 +668,7 @@ def placa_kicad(cfg, d, problemas):
             funcion.setdefault(r, h.get('nombre', ''))
     huellas, pads, pads_red = [], [], {}
     for f in b['footprints']:
-        m = modelo(f)
+        m = modelo(f, cfg.get('cuerpos', False))
         f['_modelo'] = m
         inicio = len(pads)
         for p in f['pads']:
@@ -551,6 +750,18 @@ def placa_kicad(cfg, d, problemas):
                                'texto': '%d pads en la misma red que en el esquema%s' % (iguales, (', %d en otra' % distintos) if distintos else '')})
         if distintos:
             problemas.append(('aviso', '%s: %d pads en otra red que en el esquema' % (cfg['id'], distintos)))
+    parcial = None
+    if not cfg['enlazada'] and cfg.get('enlace_parcial'):
+        # a board that is not the schematic's own, sharing some parts with it: only the references that are the same
+        # part AND whose every pad lands on the schematic's net (one mapping for all of them) are linked
+        cand = cfg['enlace_parcial']['refs'] or sorted({f['ref'] for f in b['footprints']} & set(comp))
+        refs, mapa, iguales, fuera = enlace_parcial(pads_red, d, cand)
+        distintos = 0
+        parcial = {'refs': refs, 'texto': cfg['enlace_parcial']['texto'] % {'refs': ', '.join(refs), 'n': len(refs), 'pads': iguales}}
+        comprobaciones.append({'tipo': 'ok' if not distintos else 'aviso',
+                               'texto': 'Enlazada en parte: %s (%d referencias), con sus %d pads en la misma red que en el esquema%s; '
+                               'el resto de referencias no se enlaza'
+                               % (', '.join(refs), len(refs), iguales, ('; con la misma referencia pero otras redes: ' + ', '.join(fuera)) if fuera else '')})
     extra = len(b['copper']) - 2
     return {
         'X0': X0, 'Y0': Y0, 'ancho': ancho, 'alto': alto, 'ox': ox, 'oy': oy,
@@ -558,6 +769,7 @@ def placa_kicad(cfg, d, problemas):
         'redes': redes, 'huellas': huellas, 'pads': pads, 'pistas': pistas, 'vias': vias, 'zonas': zonas, 'areas': areas,
         'serigrafia': serigrafia_json(silk, ox, oy), 'contorno': contorno, 'mapa': mapa, 'refs': refs,
         'comprobaciones': comprobaciones, 'internas': extra, 'stats': {'serigrafia': n_silk, 'pistas': len(b['tracks'])},
+        'parcial': parcial,
     }
 
 
@@ -702,6 +914,10 @@ def placa_gerber(cfg, d, problemas):
         por_ref[pd['ref']].append(pd)
     def nat(s):
         return [(0, int(t), '') if t.isdigit() else (1, 0, t) for t in re.split(r'(\d+)', s)]
+    # parts placed from their pads, the schematic's footprints, the silkscreen and the photos (consolas_gerber_piezas)
+    silk = {lado: [o['pts'] for o in c['trazos']] for lado, c in seri.items() if c}
+    piezas = GP.reconstruir(por_ref, comp, d['hotspots'] + [h for f in d.get('fotos', []) for h in f.get('hotspots', [])], silk) \
+        if cfg.get('reconstruir') else {}
     huellas, pads, pads_red = [], [], {}
     for ref in sorted(por_ref, key=nat):
         lista = sorted(por_ref[ref], key=lambda p: nat(p['num']))
@@ -735,6 +951,15 @@ def placa_gerber(cfg, d, problemas):
             if p['red'] >= 0 and p['num']:
                 pads_red[(ref, p['num'])] = redes[p['red']]
         c = comp.get(ref, {})
+        pz = piezas.get(ref)
+        if pz:
+            h = {'r': ref, 'v': pz['v'], 'l': pz['l'], 'lib': pz['lib'], 'x': q(pz['x']) - ox, 'y': q(pz['y']) - oy, 'a': pz['a'],
+                 'lado': pz['lado'], 't': pz['t'], 'pads': [inicio, len(pads) - inicio], 'm': pz['m'], 'fab': pz.get('fab', []),
+                 'f': funcion_hot.get(ref, ''), 'fo': 'deducida', 'rec': pz['rec']}
+            if pz.get('dnp'):
+                h['dnp'] = True
+            huellas.append(h)
+            continue
         huellas.append({'r': ref, 'v': c.get('v', ''), 'l': 'pads del Gerber', 'lib': '', 'x': q(cx) - ox, 'y': q(cy) - oy, 'a': 0,
                         'lado': 'B' if smd_b else 'F', 't': 'mec', 'pads': [inicio, len(pads) - inicio],
                         'm': {'tipo': 'taladro', 'caja': [round(x0, 3), round(y0, 3), round(x1, 3), round(y1, 3)]},
@@ -803,6 +1028,18 @@ def placa_gerber(cfg, d, problemas):
                                % (len(cambiadas), ', '.join(cambiadas))})
     if sin_sitio:
         comprobaciones.append({'tipo': 'aviso', 'texto': '%d taladros metalizados sin pad ni vía en las capas exteriores' % sin_sitio})
+    if piezas:
+        con_cuerpo = [r for r, pz in piezas.items() if pz['t'] != 'mec' and not pz.get('dnp')]
+        ajustes = [pz['ajuste'] for pz in piezas.values() if 'ajuste' in pz]
+        fuentes = collections.Counter(pz['rec']['cuerpo'] for r, pz in piezas.items() if r in con_cuerpo)
+        comprobaciones.append({'tipo': 'aviso', 'texto': 'Posiciones reconstruidas, no leídas: %d componentes colocados a partir de sus pads '
+                               '(%d con la huella de la biblioteca de KiCad que nombra el esquema, ajustada a los pads con un error medio '
+                               'máximo de %.3f mm; %d con el contorno de la serigrafía; %d con medidas aproximadas de las fotos); %d sin '
+                               'cuerpo (contactos, puentes, pads del altavoz)%s; sin pads, sin colocar: %s'
+                               % (len(con_cuerpo), fuentes['huella'], max(ajustes) if ajustes else 0, fuentes['serigrafia'],
+                                  fuentes['foto'], len([1 for pz in piezas.values() if pz['t'] == 'mec']),
+                                  ', ' + ', '.join('%s sin montar (DNP)' % r for r, pz in piezas.items() if pz.get('dnp')) if any(pz.get('dnp') for pz in piezas.values()) else '',
+                                  ', '.join(sorted(set(comp) - set(por_ref), key=nat)) or 'ninguno')})
     n_int = sum(len(c['destellos']) for c in internas)
     return {
         'X0': X0, 'Y0': Y0, 'ancho': ancho, 'alto': alto, 'ox': ox, 'oy': oy,
@@ -836,13 +1073,15 @@ def escribir(cfg, r):
         'consola': {'maquina': cfg['maquina'], 'enlazada': cfg['enlazada'], 'aviso': cfg['aviso'], 'fuente': cfg['fuente'],
                     'redes': r['mapa'], 'refs': r['refs'], 'capas_cobre': r['capas'], 'tipo': cfg['tipo']},
     }
+    if r.get('parcial'):
+        placa['consola']['parcial'] = r['parcial']
     os.makedirs(OUT, exist_ok=True)
     texto = json.dumps(placa, ensure_ascii=False, separators=(',', ':'))
     with open(os.path.join(OUT, pid + '.json'), 'w', encoding='utf-8') as f:
         f.write(texto)
     componentes = len([h for h in r['huellas'] if not h['r'].startswith('H') or h['l'] != 'NPTH'])
     return {'id': pid, 'maquina': cfg['maquina'], 'titulo': cfg['titulo'], 'corto': cfg['corto'], 'enlazada': cfg['enlazada'],
-            'aviso': cfg['aviso'], 'fuente': cfg['fuente'],
+            'aviso': cfg['aviso'], 'fuente': cfg['fuente'], 'parcial': bool(r.get('parcial')),
             'tipo': cfg['tipo'], 'ancho': round(r['ancho'], 2), 'alto': round(r['alto'], 2), 'capas': len(r['capas']),
             'componentes': componentes, 'redes': len([1 for i in range(len(r['redes'])) if pads_por_red.get(i, 0) >= 2]),
             'bytes': len(texto.encode('utf-8'))}

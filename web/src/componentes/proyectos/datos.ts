@@ -97,6 +97,9 @@ export interface Huella {
   mpn?: string;
   dnp?: boolean;
   desc?: string;
+  /** Placement reconstructed, not read (a board published only as Gerbers): where its position and its body
+   *  come from, and the note shown in its sheet (Spanish). */
+  rec?: { pos: 'pads'; cuerpo: 'huella' | 'serigrafia' | 'foto' | 'pads' | 'ninguno'; nota: string };
 }
 
 /** [footprint, number, shape c|r|o|rr|t|x, x, y, w, h, rot°, roundrect ratio, drill w, drill h, flags, net, pin function]. */

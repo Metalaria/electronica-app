@@ -323,6 +323,8 @@ export async function placaSdr(ctx: ContextoPrueba, id = 'sdr'): Promise<Resulta
   } finally {
     escena?.liberar();
     l.quitar();
+    // Time for the dropped context and its textures to be given back before the next test builds a view.
+    await new Promise((r) => setTimeout(r, 1000));
   }
 }
 
@@ -342,6 +344,24 @@ export async function carasSdr(ctx: ContextoPrueba, id = 'sdr'): Promise<Resulta
   const geo = construirGeometria(d);
   const res: Resultado[] = [];
   const porDefecto = modoCarasPorDefecto();
+  // The worker and the strips exist for WebKit (Mac, iPhone). Where the faces are painted directly (Chromium:
+  // Android, Windows) the previous test («Placa SDR en 3D») has already measured them in that mode, and a second
+  // full board right after the first one closed the app on the Xiaomi Pad 6 (0.8.0: the WebView's GPU memory
+  // had not been given back yet). So this test only runs where it tells something new.
+  if (porDefecto === 'directo') {
+    for (const modo of ['directo', 'trabajador', 'franjas'] as const)
+      res.push({
+        grupo: g,
+        prueba: modo,
+        valor: modo === 'directo' ? 'en «Placa SDR»' : 'no se mide aquí',
+        detalle:
+          modo === 'directo'
+            ? 'Es el modo de este dispositivo: lo mide la prueba «Placa SDR en 3D» (fila «Caras a resolución completa»).'
+            : 'Solo se usa en WebKit (Mac, iPhone); este dispositivo pinta las caras en el modo directo.',
+        estado: 'omitida',
+      });
+    return res;
+  }
   for (const modo of ['directo', 'trabajador', 'franjas'] as const) {
     if (ctx.cancelada()) break;
     ctx.avisar(`Caras de la placa: modo «${modo}»…`);
@@ -375,7 +395,8 @@ export async function carasSdr(ctx: ContextoPrueba, id = 'sdr'): Promise<Resulta
       escena?.liberar();
       l.quitar();
     }
-    await new Promise((r) => setTimeout(r, 300));
+    // Time for the dropped context and textures to be reclaimed before the next view is created.
+    await new Promise((r) => setTimeout(r, 1000));
   }
   return res;
 }

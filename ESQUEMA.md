@@ -1068,13 +1068,15 @@ as signal transition lists in real seconds, sampled by binary search; `nes.ts`, 
 
 ### Console boards in 3D and 2D (`consolas/placa/`, data in `web/public/consolas/placas/`)
 
-Tabs `placa3d` and `placa2d`, only for the machines listed in `placa/datos.ts → PLACAS_DE` (NES, 0.8; Mega Drive; Neo Geo, 0.8; Game Boy
-Color with two boards, the choice kept in `placa/eleccion.svelte.ts`). `PlacaConsola.svelte` mounts the «Proyectos
+Tabs `placa3d` and `placa2d`, only for the machines listed in `placa/datos.ts → PLACAS_DE` (NES, 0.8; Mega Drive; Neo Geo, 0.8; Game Boy,
+0.8.2: Super DMG-01; Game Boy Color with two boards, the choice kept in `placa/eleccion.svelte.ts`; the selector also shows
+alone for a board that is not the original). `PlacaConsola.svelte` mounts the «Proyectos
 KiCad» components unchanged (`proyectos/Vista3D.svelte`, `Placa2D.svelte`, `geometria.ts`, `seleccion.ts`,
 `opciones3d.svelte.ts`; without WebGL2 the 3D tab shows the 2D view) and translates the selection: a schematic
 reference → the footprint with that reference, a schematic net → the board net mapped to it, a board part or pad →
-the reference, a board net → its schematic net. Boards with `consola.enlazada: false` (OpenGBC) take no selection
-from the other tabs. The schematic offers «Ver en la placa» for parts and nets when the machine has a linked board;
+the reference, a board net → its schematic net. Boards with `consola.enlazada: false` take no selection
+from the other tabs, unless they carry `consola.parcial {refs, texto}` (0.8.2: OpenGBC, Super DMG-01, chip «enlazada en
+parte»): then only those references (`refEnlazada`) and the nets in `consola.redes` are linked. The schematic offers «Ver en la placa» for parts and nets when the machine has a linked board;
 `placa/PlacaFuentes.svelte` adds the boards' credits to «Fuentes».
 
 **Pipeline** (`contenido/consolas_pcb.py`, run by hand; sources read from `CONSOLAS_FUENTES`, never copied):
@@ -1095,8 +1097,8 @@ from the other tabs. The schematic offers «Ver en la placa» for parts and nets
   and routed slots). Flashes with a pin become pads (merged across faces; RoundRect → `rr` with its rotation; a
   custom shape → its exact copper as a zone plus a mask-only pad), via pads and via drills → `vias`, other flashes
   and regions → `zonas`, strokes → `pistas`; mask flashes set the pads' mask flags; unplated holes become
-  mechanical footprints `H<n>`. Pads are grouped by reference into mechanical footprints (`t: 'mec'`, box around
-  the pads, no 3D body). Inner layers In1/In2 hold only the rings of the drills and are not drawn.
+  mechanical footprints `H<n>`. Pads are grouped by reference into footprints, placed by `consolas_gerber_piezas.py`
+  (below; before 0.8.2: mechanical footprints, box around the pads, no 3D body). Inner layers In1/In2 hold only the rings of the drills and are not drawn.
 - Board-Folk's Neo Geo NEO-AES3-5 (KiCad 10, public domain per its README; the 53 MB `.kicad_pcb` is not kept: its
   path comes from `CONSOLAS_PCB_NEOGEO`, see `fuente_de(cfg)` → env `CONSOLAS_PCB_<ID>`). KiCad 10 names nets inside
   segments, vias, zones and pads (`(net "name")` instead of a number): `proyectos_kicad_pcb.net_id` maps both forms.
@@ -1106,6 +1108,26 @@ from the other tabs. The schematic offers «Ver en la placa» for parts and nets
 - Checks against the console's own `<maquina>.json`: references on both sides, every pad's net against the
   schematic's (board net → schematic net by majority of its pads), and for the Gerber board the two-pin parts whose
   pins 1 and 2 are swapped between the PDF reconstruction and the copper.
+- Partial links (`enlace_parcial` in the config, 0.8.2; `enlace_parcial()`): a core of candidates with ≥ 8 pins whose pins
+  agree ≥ 95 % under one majority mapping (dropped and recomputed otherwise), then every other candidate whose nets
+  are those of the schematic part with the same reference (two-pin parts either way round), anchored on at least one
+  core net; its unmapped nets are mapped through it, one board net per schematic net. OpenGBC: candidates U1, U2, P1,
+  P2 (the same parts, README), all 228 pads agree. Super DMG-01 (kamicane, KiCad 7, CC BY-SA 4.0, commit bf540dd,
+  `CONSOLAS_PCB_GB_SUPERDMG`, not kept): all common references are candidates; 23 linked (162 pads) against Gekkio's
+  DMG-CPU schematic.
+- Bodies (`cuerpos: True`, OpenGBC and Super DMG-01; `CUERPOS` in consolas_pcb.py): gull-wing ICs (`ci`: `cuerpo` box,
+  `patas` [x, y, w, h] per pad, `alto`; Super DMG's sizes from its README BOM), SMD cans (`electrolitico_smd`),
+  SOD-323 (`diodo_smd`), connectors (`conector`, colour, `z0`), thumb wheel (`rueda`), slide switch (`interruptor`,
+  `palanca`), daughterboard (`placa_hija`), drawn by `modelos3d.ts → cuerpoSimple`. No marking is invented.
+- Gerber placement (`consolas_gerber_piezas.py`, config `reconstruir`, 0.8.2): per reference, the schematic's footprint
+  name looked up in the installed KiCad library (`KICAD_FOOTPRINTS`, default `/usr/share/kicad/footprints`), mirrored for
+  the bottom (local y and layers), fitted to the Gerber pads by least squares (rotation snapped to 90° within 1,5°; by
+  pad shape when the pin numbers differ, as in Q2, Q4, RA1, RA2); the body from its fab outline. Natalie's own
+  footprints (`PROPIAS`): body from the silkscreen strokes inside the pads' box (CPU, SSOPs between their rows, switch,
+  wheel) or from the photos (cartridge slot, FFC, link port, jacks, resonator, DC-DC board: approximate); markings
+  from the photo hotspots (`ROTULO_EN_FOTO`). Every part gets `rec {pos: 'pads', cuerpo: huella|serigrafia|foto|ninguno,
+  nota}`, shown in its sheet (`.reconstruida`) and summed in the board's note; buttons' contacts, battery tabs, speaker
+  pads and the jumper stay `t: 'mec'`. A check sums it all up in `comprobaciones`.
 
 **Files**: `indice.json` `{version, placas: [{id, maquina, titulo, corto, enlazada, tipo kicad|gerber, aviso, fuente
 {titulo, autor, url, licencia, uso}, ancho, alto (mm), capas, componentes, redes, bytes}]}` and `<placa>.json`: the
@@ -1113,7 +1135,14 @@ from the other tabs. The schematic offers «Ver en la placa» for parts and nets
 `consola {maquina, enlazada, aviso, fuente, redes {board net: schematic net}, refs [references also in the
 schematic], capas_cobre ['F', 'In1', 'In2', 'B'], tipo}`. Sizes: megadrive 840 kB, neogeo 1064 kB (272 kB gzip;
 320 footprints, 2287 pads, 631 nets, 1498 vias, 107 zones; 317/317 references and 2265 pads on the same net as the
-schematic), gbc-cgb04 290 kB, gbc-opengbc 240 kB. Tests: `tests/consolas-placas.spec.ts`.
+schematic), gbc-cgb04 ≈ 355 kB, gbc-opengbc ≈ 250 kB, gb-superdmg ≈ 180 kB. Tests: `tests/consolas-placas.spec.ts`
+(`playwright.placas.config.ts`, port 4291); screenshots: `tests/consolas-placas-capturas.mjs`.
+
+**Bottom-side parts in 3D (0.8.2).** KiCad stores a bottom footprint's local y mirrored and its angle as seen from
+above; `escena3d.colocar` turns the part over about x and rotates it by −a (it used +a: bottom parts at 90°/270° faced
+the other way), aligns pad 1 with `oy = m1.y − ly` on the bottom, and `cuerpoSimple` maps local y through `fy` (flipped
+on top only). `Escena3D.ladoComponentes`: the face with more than twice the parts of the other is the one the
+inclined view shows (`stats.ladoComponentes`). Mask colour `morada` added for Super DMG-01.
 
 ### «Un fotograma» (`consolas/fotograma/`, data in `web/public/consolas/fotograma/`, pipeline in `contenido/fotograma/`)
 
@@ -1348,8 +1377,10 @@ table (`userData.marcado` ≠ the board's value: diodes, TO-92, TO-220, SOT-23, 
 (female sockets, horizontal panel pots, the hand-wound air coil of the power amplifier). Those and the parts the library
 does not cover get a body built in `modelos3d.ts → cuerpoSimple` from the fab outline and the package, with the value
 printed on it when the package carries a marking. The library's studio (`tres/motor/estudio.ts`:
-lights, room environment, contact shadow) and orbit (`tres/motor/orbita.ts`) are reused. Board: FR-4 core extruded from the
-outline with every hole, faces textured from `pintarLado` (≤ 4096 px on the long side, about 21–37 px/mm, uploaded at once
+lights, room environment, contact shadow) and orbit (`tres/motor/orbita.ts`) are reused. Board: FR-4 core as walls only (the
+outline's and every hole's, built directly; its top and bottom, the outline with the holes cut by a texture painted on
+first use, are drawn only with the layers apart or in X-ray: 0.8.2, the extrusion with every hole took seconds to
+triangulate on a tablet with the Neo Geo's 7500 holes and its caps fought with the faces when zooming in), faces textured from `pintarLado` (≤ 4096 px on the long side, about 21–37 px/mm, uploaded at once
 and the canvas freed) plus a half-size metal/roughness map (glossy mask, matt silkscreen, metallic pads), plated barrels
 in one InstancedMesh, overlays for the selected net and voltages. Loading (0.7): the faces are first painted at a quarter
 of the resolution (a few ms: the board is on screen at once) and repainted at full resolution, one face per task, after

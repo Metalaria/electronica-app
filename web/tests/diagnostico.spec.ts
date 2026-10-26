@@ -42,6 +42,10 @@ test('el diagnóstico se abre desde Ajustes, mide al pulsar «Empezar» y copia 
   await expect(page.locator('.diagnostico tbody')).toContainText('Caras a resolución completa');
   await expect(page.locator('.diagnostico tbody')).toContainText('Resolución al girar');
   for (const modo of ['directo', 'trabajador', 'franjas']) await expect(page.locator('.diagnostico tbody tr td:first-child', { hasText: new RegExp(`^${modo}`) })).toHaveCount(1);
+  // Chromium paints the faces directly: the second full board is not built (it closed the app on Android), the
+  // direct mode is the one «Placa SDR en 3D» measured and the other two are WebKit's.
+  await expect(page.locator('.diagnostico tbody tr', { hasText: /^directo/ })).toContainText('en «Placa SDR»');
+  await expect(page.locator('.diagnostico tbody tr', { hasText: /^trabajador/ })).toContainText('no se mide aquí');
   await expect(page.locator('.diagnostico tbody')).toContainText('cap50/rectificador');
   // No test failed (a slow result is also marked in red, as SwiftShader's frame rates are here; a failure is a
   // row named «Error»).

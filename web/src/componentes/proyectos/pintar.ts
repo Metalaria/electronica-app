@@ -46,6 +46,8 @@ export const MASCARAS: Record<string, { base: string; cobre: string }> = {
   roja: { base: '#7c1f1f', cobre: '#a8392f' },
   negra: { base: '#141414', cobre: '#2c2c2c' },
   blanca: { base: '#e8e8e2', cobre: '#f4f4ee' },
+  // Super DMG-01, as in its author's photos
+  morada: { base: '#4f1663', cobre: '#7a2a8f' },
 };
 
 export const COLORES_CAPA = {

@@ -1,6 +1,6 @@
 // «Placa en 3D / 2D» of the consoles (contenido/consolas_pcb.py → public/consolas/placas/, drawn by the
 // «Proyectos KiCad» viewer) and its link with the console's schematic.
-//   PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers npx playwright test -c playwright.sincronizacion.config.ts consolas-placas
+//   PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers npx playwright test -c playwright.placas.config.ts tests/consolas-placas.spec.ts
 import { test, expect, type Page } from '@playwright/test';
 
 interface Vista2D {
@@ -11,10 +11,29 @@ interface Vista2D {
 
 type Pad = [number, string, string, number, number];
 interface Placa {
-  huellas: { r: string; pads: [number, number] }[];
+  huellas: { r: string; t: string; lado: string; dnp?: boolean; pads: [number, number]; m: { tipo: string }; rec?: { pos: string; cuerpo: string; nota: string } }[];
   pads: Pad[];
   redes: { n: string }[];
-  consola: { enlazada: boolean; redes: Record<string, string>; refs: string[] };
+  consola: { enlazada: boolean; redes: Record<string, string>; refs: string[]; parcial?: { refs: string[]; texto: string } };
+}
+
+interface Stats3D {
+  piezas: { biblioteca: number; propias: number };
+  ladoComponentes?: string;
+}
+
+/** Opens a console's board in 3D with WebGL (optionally choosing it) and waits for its parts. */
+async function placa3D(page: Page, maquina: string, boton?: RegExp): Promise<Stats3D> {
+  await page.goto(`#/consolas/${maquina}/placa3d`);
+  await expect(page.locator('.placa-consola')).toBeVisible();
+  if (boton) {
+    await page.evaluate(() => ((globalThis as unknown as { __epaPlaca3DListo?: boolean }).__epaPlaca3DListo = false));
+    await page.locator('.placas').getByRole('button', { name: boton }).click({ timeout: 120_000 });
+  }
+  await page.waitForFunction(() => (globalThis as unknown as { __epaPlaca3DListo?: boolean }).__epaPlaca3DListo === true, null, {
+    timeout: 180_000,
+  });
+  return page.evaluate(() => (globalThis as unknown as { __epaPlaca3D: Stats3D }).__epaPlaca3D);
 }
 
 async function placa(page: Page, id: string): Promise<Placa> {
@@ -81,22 +100,51 @@ test('Mega Drive: tocar un pad en la placa 2D lo elige, también para el esquema
   await expect(page.locator('h3.nombre')).toContainText('U8');
 });
 
-test('Game Boy Color: la CGB-CPU-04 del Gerber enlazada y OpenGBC sin enlazar', async ({ page }) => {
+test('Game Boy Color: la CGB-CPU-04 del Gerber enlazada y OpenGBC enlazada solo en parte', async ({ page }) => {
   await sin3D(page);
   await page.goto('#/consolas/gbc/placa3d/U1');
   await expect(page.locator('.placa-consola')).toHaveAttribute('data-placa', 'gbc-cgb04');
   const lado = page.locator('.placa-consola .lado');
   await expect(lado.locator('.nombre')).toContainText('U1');
-  await expect(lado).toContainText('el Gerber no da la huella ni el cuerpo');
+  // a Gerber has no placement: the part's sheet says its position is reconstructed, and from what (0.8.2)
+  await expect(lado.locator('.reconstruida')).toContainText('Posición reconstruida');
+  await expect(lado.locator('.reconstruida')).toContainText('pads del Gerber');
+  await expect(lado.locator('.reconstruida')).toContainText('serigrafía');
   await expect(lado.locator('.nodos')).toContainText('ø');
   const d = await placa(page, 'gbc-cgb04');
   expect(d.consola.refs.length).toBeGreaterThan(120);
   expect(d.pads.length).toBeGreaterThan(500);
-  // the modern board: not the original, never linked
+  // every part with a body has its placement flagged as reconstructed; most of them sit on the bottom face
+  const conCuerpo = d.huellas.filter((h) => h.t !== 'mec' && !h.dnp);
+  expect(conCuerpo.length).toBeGreaterThan(100);
+  expect(conCuerpo.every((h) => h.rec?.pos === 'pads' && h.rec.nota.length > 20)).toBe(true);
+  expect(conCuerpo.filter((h) => h.rec!.cuerpo === 'huella').length).toBeGreaterThan(90);
+  expect(conCuerpo.filter((h) => h.lado === 'B').length).toBeGreaterThan(100);
+  // a library part: its KiCad footprint from the schematic, fitted to the pads
+  await page.goto('#/consolas/gbc/placa3d/C32');
+  await expect(lado.locator('.nombre')).toContainText('C32');
+  await expect(lado).toContainText('CP_Elec_6.3x5.4');
+  await expect(lado.locator('.reconstruida')).toContainText('biblioteca de KiCad');
+  // the board's note
+  await page.goto('#/consolas/gbc/placa3d');
+  await expect(lado.locator('.nota-placa')).toContainText('Posiciones reconstruidas a partir de la serigrafía y los pads');
+  // the modern board: not the original, linked only through the parts it shares with it
   await page.getByRole('button', { name: /OpenGBC/ }).click();
   await expect(page.locator('.placa-consola')).toHaveAttribute('data-placa', 'gbc-opengbc');
-  await expect(lado).toContainText('No enlazada con el esquema');
+  await expect(page.locator('.placas')).toContainText('enlazada en parte');
+  await expect(lado).toContainText('Enlazada en parte con el esquema');
   await expect(lado).toContainText('no es la placa de Nintendo');
+  const o = await placa(page, 'gbc-opengbc');
+  expect(o.consola.enlazada).toBe(false);
+  expect(o.consola.parcial?.refs).toEqual(['P1', 'P2', 'U1', 'U2']);
+  expect(o.huellas.filter((h) => h.t !== 'mec').length).toBeGreaterThan(60);
+  // U1 is the same CPU: linked; R12 names another part on the CGB-CPU-04: not linked
+  await page.goto('#/consolas/gbc/placa3d/U1');
+  await expect(page.locator('.placa-consola')).toHaveAttribute('data-placa', 'gbc-opengbc');
+  await expect(lado.locator('.nombre')).toContainText('U1');
+  await expect(lado.getByRole('button', { name: 'Ver en el esquema' })).toBeVisible();
+  await page.goto('#/consolas/gbc/placa3d/R12');
+  await expect(lado.locator('.nombre')).not.toContainText('R12');
   // the choice is kept while switching tabs
   await page.getByRole('navigation', { name: 'Vista' }).getByRole('link', { name: 'Placa en 2D' }).click();
   await expect(page.locator('.placa-consola')).toHaveAttribute('data-placa', 'gbc-opengbc');
@@ -127,4 +175,47 @@ test('la placa en 3D de la CGB-CPU-04 se monta con WebGL', async ({ page }) => {
   });
   await expect(page.locator('.placa-consola .lado .nombre')).toContainText('U3');
   await expect(page.locator('.placa-consola canvas').first()).toBeVisible();
+});
+
+test('Game Boy Color en 3D: la CGB-CPU-04 con sus componentes y OpenGBC con los suyos', async ({ page }) => {
+  test.setTimeout(420_000);
+  const s = await placa3D(page, 'gbc');
+  await expect(page.locator('.placa-consola')).toHaveAttribute('data-placa', 'gbc-cgb04');
+  // the «Componentes» toggle is on and the parts are there (0.8.1 drew none: a Gerber has no placement)
+  await expect(page.getByRole('button', { name: 'Componentes' })).toHaveAttribute('aria-pressed', 'true');
+  expect(s.piezas.biblioteca + s.piezas.propias).toBeGreaterThan(100);
+  // nearly all of them on the bottom face: the inclined view shows that face
+  expect(s.ladoComponentes).toBe('B');
+  const o = await placa3D(page, 'gbc', /OpenGBC/);
+  await expect(page.locator('.placa-consola')).toHaveAttribute('data-placa', 'gbc-opengbc');
+  expect(o.piezas.biblioteca + o.piezas.propias).toBeGreaterThan(60);
+  expect(o.ladoComponentes).toBe('F');
+});
+
+test('Game Boy: Super DMG-01, recreación moderna en 3D con sus componentes, enlazada solo en parte', async ({ page }) => {
+  test.setTimeout(300_000);
+  const s = await placa3D(page, 'gb');
+  await expect(page.locator('.placa-consola')).toHaveAttribute('data-placa', 'gb-superdmg');
+  await expect(page.locator('.placas')).toContainText('Super DMG-01 · recreación moderna');
+  await expect(page.locator('.placas')).toContainText('enlazada en parte');
+  expect(s.piezas.biblioteca + s.piezas.propias).toBeGreaterThan(40);
+  const lado = page.locator('.placa-consola .lado');
+  await expect(lado).toContainText('no es la placa de Nintendo');
+  await expect(lado).toContainText('USB-C');
+  const d = await placa(page, 'gb-superdmg');
+  expect(d.consola.enlazada).toBe(false);
+  // linked only where reference and nets agree with Gekkio's DMG-CPU schematic: the CPU and both RAMs among them
+  for (const r of ['U1', 'U2', 'U3', 'X1']) expect(d.consola.parcial?.refs).toContain(r);
+  expect(d.consola.parcial?.refs).not.toContain('U4');
+  expect(d.consola.parcial?.refs).not.toContain('DA1');
+  await page.goto('#/consolas/gb/placa3d/U1');
+  await expect(lado.locator('.nombre')).toContainText('U1');
+  await lado.getByRole('button', { name: 'Ver en el esquema' }).click();
+  await expect(page).toHaveURL(/#\/consolas\/gb\/esquema\/U1$/);
+  // the sources: author, licence and the pinned commit
+  await page.goto('#/consolas/gb/fuentes');
+  const f = page.locator('.placas-fuentes');
+  await expect(f).toContainText('kamicane');
+  await expect(f).toContainText('CC BY-SA 4.0');
+  await expect(f).toContainText('bf540dd');
 });

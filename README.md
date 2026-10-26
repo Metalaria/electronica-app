@@ -477,7 +477,7 @@ pestañas enlazadas entre sí:
 Los datos se generan con `python3 contenido/consolas.py` (también desde `generar.py`) a partir de la carpeta
 de investigación `/home/claude/consolas`; si falta, se conservan los de `web/public/consolas/`.
 
-**Placa en 3D y Placa en 2D.** La NES, la Mega Drive, la Neo Geo y la Game Boy Color tienen dos pestañas más con la placa dibujada por
+**Placa en 3D y Placa en 2D.** La NES, la Mega Drive, la Neo Geo, la Game Boy y la Game Boy Color tienen dos pestañas más con la placa dibujada por
 el mismo visor que «Proyectos KiCad» (girar, ver desde arriba, abajo o de canto, separar capas, rayos X, cara
 superior o inferior, aspecto real o por capas). La placa está enlazada con el esquema: elegir U1 o una red en el
 esquema la elige en la placa («Ver en la placa») y al revés («Ver en el esquema», «Ver en la foto»); al tocar un
@@ -493,10 +493,31 @@ componente se ven sus pads con su red, y al tocar una red, todos sus pads.
   1291 pads conectados coinciden con el esquema. Es una recreación «1:1» dibujada a partir de escaneos de la placa
   desnuda, no la placa de Sega fotografiada.
 - **Game Boy Color**, dos placas a elegir: «CGB-CPU-04 · Gerber», los Gerber de 4 capas de Natalie the Nerd (la
-  misma placa que el esquema), leídos con un lector de Gerber propio; no tiene cuerpos de componentes (un Gerber no
-  dice dónde va cada uno), pero cada pad lleva su referencia, su patilla y su red, así que el enlace con el esquema
-  funciona igual (124 de las 128 referencias; D3, Q5, TST3 y VR2 no tienen pads). «OpenGBC · placa moderna», la
-  placa de sustitución de whatware con sus componentes: no es la original y no se enlaza con el esquema.
+  misma placa que el esquema), leídos con un lector de Gerber propio; cada pad lleva su referencia, su patilla y su
+  red, así que el enlace con el esquema funciona igual (124 de las 128 referencias; D3, Q5, TST3 y VR2 no tienen
+  pads). Un Gerber no dice dónde va cada componente: desde 0.8.2 se reconstruye (`contenido/consolas_gerber_piezas.py`).
+  112 componentes con cuerpo: 100 con la huella de la biblioteca de KiCad que nombra el esquema de Natalie, ajustada
+  a sus pads (error 0,000 mm: ella usó esas huellas), 5 con el contorno de la serigrafía (CPU, amplificador,
+  regulador, interruptor, rueda del volumen) y 7 con medidas aproximadas de las fotos (ranura del cartucho, conector
+  de la pantalla, puerto de enlace, tomas, resonador y la placa del convertidor); los rótulos de los chips salen de la
+  foto, los valores del esquema y las alturas son las típicas. 11 sin cuerpo (contactos de los botones y de las pilas,
+  pads del altavoz, puente de soldadura) y C46 sin montar. Cada pieza lleva la marca `rec` y su ficha dice de dónde
+  sale; la placa avisa de que las posiciones están reconstruidas. Casi todo va en la cara inferior (la de los
+  botones queda arriba), así que la vista «Inclinada» enseña esa cara. «OpenGBC · placa moderna», la placa de
+  sustitución de whatware con sus componentes (CPU y RAM con patillas, condensadores, tomas, rueda…): no es la
+  original y se enlaza solo en parte, «enlazada en parte»: U1, U2, P1 y P2 (CPU, WRAM, cartucho y pantalla) son las
+  mismas piezas y sus 228 pads caen en las redes del esquema; el resto son otras piezas con referencias que en la
+  CGB-CPU-04 nombran otros componentes.
+- **Game Boy** (0.8.2): «Super DMG-01 · recreación moderna», la placa de la CPU de la recreación en KiCad de kamicane
+  (CC BY-SA 4.0, commit `bf540dd`; esquema basado en el de bit9). No es la DMG-CPU original: según su README cambia la
+  toma redonda por USB-C, añade un circuito de distribución de la alimentación (U5), saca los auriculares sin pasar por
+  el amplificador y usa componentes SMD 0805 actuales; la CPU, el interruptor y el puerto de enlace son de una DMG o de
+  una SGB. 61 huellas, 50 con cuerpo; enlazada solo en parte con el esquema de Gekkio: 23 referencias con la misma referencia y
+  todas sus patillas en las mismas redes (U1, U2, U3, X1 y 19 pasivos y diodos; 162 pads), a partir de las redes de la
+  CPU y las RAM. No se enlazan DA1–DA4, R1–R6, C3, C4, SW1, U4, P1 y P2 (otra numeración, el audio cambiado o, con la
+  misma referencia, otra pieza) ni las piezas nuevas. El `.kicad_pcb` (1,7 MB) no se guarda: para regenerarla, `curl -L -o super-dmg-cpu.kicad_pcb
+  https://raw.githubusercontent.com/kamicane/Super-DMG-01/bf540ddf6e518167b68968f77fc7b9183c40c1e8/super-dmg-cpu/super-dmg-cpu.kicad_pcb`
+  y `CONSOLAS_PCB_GB_SUPERDMG=/ruta/super-dmg-cpu.kicad_pcb python3 contenido/consolas_pcb.py gb-superdmg`.
 - **Neo Geo**: la PCB de la recreación NEO-AES3-5 de Board Folk (KiCad, dominio público según su README), el mismo
   proyecto que el esquema: 320 componentes, 2287 pads, 631 redes, 1498 vías y 107 zonas de cobre; las 317
   referencias del esquema están en la placa y 2265 pads tienen la misma red. Es la 2.ª generación del chipset
@@ -506,11 +527,15 @@ componente se ven sus pads con su red, y al tocar una red, todos sus pads.
   contenido/consolas_pcb.py neogeo`. La geometría que dibuja el visor ocupa 1064 kB (272 kB comprimida).
 - Sin placa: Master System (no hay ninguna
   recreación abierta de la 171-5922A: el `.kicad_pcb` de slowcoder está vacío, KiCad 4 sin huellas, y los demás
-  proyectos son placas de vídeo) y Game Boy (Gekkio solo publica los esquemas).
+  proyectos son placas de vídeo). De la DMG-CPU original no hay placa abierta (Gekkio solo publica los esquemas): por
+  eso la Game Boy enseña una recreación moderna.
 
 «Fuentes» da el autor y la licencia de cada placa. Se generan con `python3 contenido/consolas_pcb.py` (aparte de
-`generar.py`) en `web/public/consolas/placas/` (unos 2,7 MB; cada placa se descarga al abrir su pestaña). Los
-ficheros originales no se copian: solo la geometría que dibuja el visor.
+`generar.py`) en `web/public/consolas/placas/` (unos 3 MB; cada placa se descarga al abrir su pestaña). Los
+ficheros originales no se copian: solo la geometría que dibuja el visor. La reconstrucción de la CGB-CPU-04 lee las
+huellas de la biblioteca de KiCad instalada (`/usr/share/kicad/footprints`, o `KICAD_FOOTPRINTS`). Pruebas en
+`tests/consolas-placas.spec.ts` (`playwright.placas.config.ts`, puerto 4291) y capturas con
+`node tests/consolas-placas-capturas.mjs` (en `tests/capturas/consolas-gbc/` y `consolas-gb/`).
 
 ### Un fotograma: el reproductor, NES, Game Boy y Game Boy Color
 

@@ -12,7 +12,6 @@ import {
   Color,
   CylinderGeometry,
   DoubleSide,
-  ExtrudeGeometry,
   Group,
   InstancedMesh,
   LinearMipmapLinearFilter,
@@ -24,7 +23,6 @@ import {
   MeshStandardMaterial,
   NeutralToneMapping,
   Object3D,
-  Path,
   PerspectiveCamera,
   Raycaster,
   SRGBColorSpace,
@@ -54,6 +52,11 @@ export interface Estadisticas {
   triangulos: number;
   textura: number;
   piezas: { biblioteca: number; propias: number };
+  /** Whether the core's top and bottom are drawn (only with the layers apart: under the faces they fought
+   *  with them on GPUs with less depth precision). */
+  tapasNucleo?: boolean;
+  /** Face shown by the inclined view (the one with most parts). */
+  ladoComponentes?: 'F' | 'B';
   /** Where the load time goes (ms): building the models, merging them, the first frame with them (shader
    *  compilation and uploads), and the whole load of the parts; `modelosUnicos`: models built (equal parts
    *  share one). */
@@ -147,6 +150,8 @@ export class Escena3D {
   private placa = new Group();
   private nucleo: Mesh;
   private matNucleo: MeshStandardMaterial;
+  /** The core's top and bottom: only drawn with the layers apart (aplicarCapas). */
+  private matNucleoTapas: MeshStandardMaterial;
   private caras: Record<Lado, Mesh>;
   private matCaras: Record<Lado, MeshStandardMaterial>;
   private texCaras: Partial<Record<Lado, { color: Texture; pbr: Texture }>> = {};
@@ -177,6 +182,9 @@ export class Escena3D {
   private sucio = true;
   private vivo = true;
   private ladoArriba: Lado = 'F';
+  /** The face the inclined view shows: the one with the parts (the CGB-CPU-04 carries nearly all of them on the
+   *  bottom, the buttons' face up, and looked empty from the top). */
+  readonly ladoComponentes: Lado;
   private giro = { de: 0, a: 0, t0: 0 };
   private explosion = 0;
   private explosionObjetivo = 0;
@@ -243,25 +251,42 @@ export class Escena3D {
     this.W = d.placa.ancho / 100;
     this.H = d.placa.alto / 100;
     this.t = d.placa.grosor;
+    let enF = 0;
+    let enB = 0;
+    for (const h of d.huellas) if (h.t !== 'mec' && !h.dnp) h.lado === 'B' ? enB++ : enF++;
+    this.ladoComponentes = enB > 2 * enF ? 'B' : 'F';
+    this.stats.ladoComponentes = this.ladoComponentes;
     const max = this.renderer.capabilities.maxTextureSize;
     // texture resolution: up to 4096 px on the long side (about 21–37 px/mm on these boards)
     this.ladoTextura = Math.min(4096, max);
     this.estudio.raiz.add(this.placa);
     this.estudio.ajustarSombra(this.W * 1.05, this.H * 1.05, -this.t - 0.6);
 
-    // core: the outline extruded with every hole
-    const forma = this.formaContorno(true);
-    const geoN = new ExtrudeGeometry(forma, { depth: this.t - 2 * EPS, bevelEnabled: false, curveSegments: 8 });
-    geoN.translate(0, 0, -this.t + EPS);
-    this.matNucleo = new MeshStandardMaterial({ color: '#cdbb84', roughness: 0.75, metalness: 0, transparent: false });
-    this.nucleo = new Mesh(geoN, this.matNucleo);
-    this.placa.add(this.nucleo);
-    this.liberables.push(geoN, this.matNucleo);
-
     // faces: flat outline with UVs over the board, holes from the texture's alpha
-    const geoC = new ShapeGeometry(this.formaContorno(false), 1);
+    const geoC = new ShapeGeometry(this.formaContorno(), 1);
     this.uvPlaca(geoC);
     this.liberables.push(geoC);
+
+    // Core: the walls of the outline and of every hole, built directly. Until 0.8.0 it was the outline with
+    // every hole extruded (ExtrudeGeometry): triangulating its top and bottom with thousands of holes (earcut
+    // bridges each hole to the outline) took 2,3 s of the page's thread here for the Neo Geo board and far
+    // longer on a tablet, which froze the app on «Preparando la vista 3D…» (0.8.1). Those top and bottom also
+    // lay EPS under the faces and fought with them when zooming in on GPUs with less depth precision (the tan
+    // core showing through as broken streaks along the tracks).
+    const geoN = this.paredesNucleo();
+    this.matNucleo = new MeshStandardMaterial({ color: '#cdbb84', roughness: 0.75, metalness: 0, side: DoubleSide });
+    this.nucleo = new Mesh(geoN, this.matNucleo);
+    this.placa.add(this.nucleo);
+    // Its top and bottom, only seen with the layers apart (aplicarCapas): the outline without holes (no
+    // triangulation to speak of) with the holes cut by a texture painted when they are first shown.
+    this.matNucleoTapas = new MeshStandardMaterial({ color: '#ffffff', roughness: 0.75, metalness: 0, alphaTest: 0.5, side: DoubleSide });
+    this.matNucleoTapas.visible = false;
+    for (const z of [-EPS, -this.t + EPS]) {
+      const tapa = new Mesh(geoC, this.matNucleoTapas);
+      tapa.position.z = z;
+      this.placa.add(tapa);
+    }
+    this.liberables.push(geoN, this.matNucleo, this.matNucleoTapas);
     const cara = (lado: Lado): [Mesh, MeshStandardMaterial] => {
       const m = new MeshStandardMaterial({ color: '#ffffff', roughness: 1, metalness: 1, alphaTest: 0.5, side: lado === 'F' ? 0 : 1 });
       const me = new Mesh(geoC, m);
@@ -334,37 +359,93 @@ export class Escena3D {
     return [x / 100 - this.W / 2, this.H / 2 - y / 100];
   }
 
-  private formaContorno(conTaladros: boolean): Shape {
+  /** Holes through the core (plated barrels and unplated drills): centre and radius in board millimetres. */
+  private taladrosNucleo(): [number, number, number][] {
+    const r: [number, number, number][] = [];
+    for (const [x, y, w, h] of this.g.barriles) r.push([...this.p(x, y), Math.max(w, h) / 200]);
+    for (const p of this.d.pads) if (p[11] & 8 && p[9] > 0) r.push([...this.p(p[3], p[4]), p[9] / 200]);
+    return r;
+  }
+
+  /** The core's walls: one band of quads along the outline and around every hole (no caps, no triangulation). */
+  private paredesNucleo(): BufferGeometry {
+    const z0 = -this.t + EPS;
+    const z1 = -EPS;
+    const lazos: number[][] = [];
+    const pts = this.g.contornoPts;
+    const contorno: number[] = [];
+    for (let i = 0; i < pts.length; i += 2) contorno.push(...this.p(pts[i]!, pts[i + 1]!));
+    lazos.push(contorno);
+    for (const [x, y, r] of this.taladrosNucleo()) {
+      const n = r > 1 ? 20 : 10;
+      const l: number[] = [];
+      for (let k = 0; k < n; k++) l.push(x + r * Math.cos((2 * Math.PI * k) / n), y + r * Math.sin((2 * Math.PI * k) / n));
+      lazos.push(l);
+    }
+    let quads = 0;
+    for (const l of lazos) quads += l.length / 2;
+    const pos = new Float32Array(quads * 18);
+    const nor = new Float32Array(quads * 18);
+    let o = 0;
+    for (const l of lazos) {
+      const n = l.length / 2;
+      for (let i = 0; i < n; i++) {
+        const ax = l[2 * i]!;
+        const ay = l[2 * i + 1]!;
+        const bx = l[(2 * i + 2) % l.length]!;
+        const by = l[(2 * i + 3) % l.length]!;
+        // horizontal normal (its sign does not matter: the walls are drawn double-sided)
+        const len = Math.hypot(bx - ax, by - ay) || 1;
+        const nx = (by - ay) / len;
+        const ny = -(bx - ax) / len;
+        for (const [x, y, z] of [[ax, ay, z0], [bx, by, z0], [bx, by, z1], [ax, ay, z0], [bx, by, z1], [ax, ay, z1]] as const) {
+          pos[o] = x;
+          pos[o + 1] = y;
+          pos[o + 2] = z;
+          nor[o] = nx;
+          nor[o + 1] = ny;
+          nor[o + 2] = 0;
+          o += 3;
+        }
+      }
+    }
+    const geo = new BufferGeometry();
+    geo.setAttribute('position', new BufferAttribute(pos, 3));
+    geo.setAttribute('normal', new BufferAttribute(nor, 3));
+    return geo;
+  }
+
+  /** Texture of the core's top and bottom: the laminate's colour with every hole punched out (alpha 0). */
+  private texturaTapasNucleo(): CanvasTexture {
+    const lado = Math.min(2048, this.ladoTextura);
+    const k = lado / Math.max(this.W, this.H);
+    const c = document.createElement('canvas');
+    c.width = Math.max(1, Math.round(this.W * k));
+    c.height = Math.max(1, Math.round(this.H * k));
+    const x = c.getContext('2d')!;
+    x.fillStyle = '#cdbb84';
+    x.fillRect(0, 0, c.width, c.height);
+    x.globalCompositeOperation = 'destination-out';
+    x.beginPath();
+    for (const [X, Y, r] of this.taladrosNucleo()) {
+      // board millimetres (centred, y up) to canvas pixels (y down), as uvPlaca maps the outline
+      const px = (X + this.W / 2) * k;
+      const py = (this.H / 2 - Y) * k;
+      x.moveTo(px + r * k, py);
+      x.arc(px, py, r * k, 0, 2 * Math.PI);
+    }
+    x.fill();
+    return this.textura(c, true);
+  }
+
+  /** The board's outline (the holes are cut by the faces' alpha and drawn by the core's walls). */
+  private formaContorno(): Shape {
     const pts = this.g.contornoPts;
     const s = new Shape();
     for (let i = 0; i < pts.length; i += 2) {
       const [x, y] = this.p(pts[i]!, pts[i + 1]!);
       if (i === 0) s.moveTo(x, y);
       else s.lineTo(x, y);
-    }
-    if (conTaladros) {
-      const hueco = (x: number, y: number, r: number) => {
-        const h = new Path();
-        const n = r > 1 ? 20 : 10;
-        for (let k = 0; k < n; k++) {
-          const a = (-2 * Math.PI * k) / n;
-          const px = x + r * Math.cos(a);
-          const py = y + r * Math.sin(a);
-          if (k === 0) h.moveTo(px, py);
-          else h.lineTo(px, py);
-        }
-        s.holes.push(h);
-      };
-      for (const [x, y, w, h] of this.g.barriles) {
-        const [X, Y] = this.p(x, y);
-        hueco(X, Y, Math.max(w, h) / 200);
-      }
-      for (const p of this.d.pads) {
-        if (p[11] & 8 && p[9] > 0) {
-          const [X, Y] = this.p(p[3], p[4]);
-          hueco(X, Y, p[9] / 200);
-        }
-      }
     }
     return s;
   }
@@ -851,7 +932,10 @@ export class Escena3D {
     const [X, Y] = this.p(h.x, h.y);
     const raiz = new Object3D();
     raiz.position.set(X, Y, h.lado === 'F' ? 0 : -this.t);
-    raiz.rotation.z = (h.a * Math.PI) / 180;
+    // A bottom footprint is the library one mirrored (KiCad keeps its local y flipped and its angle as seen from
+    // above): turned over about x, its model must turn by −a to land on its pads (0.8.2; before, the bottom
+    // parts at 90° and 270° faced the other way and their pad 1 missed by 2·y).
+    raiz.rotation.z = ((h.lado === 'B' ? -h.a : h.a) * Math.PI) / 180;
     if (h.lado === 'B') raiz.rotation.x = Math.PI;
     raiz.updateMatrix();
     const clave = lib ? claveBiblioteca(h) : null;
@@ -887,8 +971,9 @@ export class Escena3D {
             const dy = p1[4] - h.y;
             const lx = (dx * Math.cos(an) + dy * Math.sin(an)) / 100;
             const ly = (-dx * Math.sin(an) + dy * Math.cos(an)) / 100;
+            // (the model's y points up: KiCad's local y flipped on top, the file's own local y on the bottom)
             ox = m1.x - lx;
-            oy = m1.y + ly;
+            oy = h.lado === 'B' ? m1.y - ly : m1.y + ly;
           }
           // a model much smaller or larger than the footprint body (other package size): scale it to fit
           const [x0, y0, x1, y1] = h.m.caja;
@@ -1102,10 +1187,20 @@ export class Escena3D {
       const m = me.material as MeshStandardMaterial;
       if (tipo === 'xray') m.alphaTest = 0.01;
     }
-    this.matNucleo.transparent = rx;
-    this.matNucleo.opacity = rx ? 0.18 : 1;
-    this.matNucleo.depthWrite = !rx;
-    this.matNucleo.needsUpdate = true;
+    for (const m of [this.matNucleo, this.matNucleoTapas]) {
+      m.transparent = rx;
+      m.opacity = rx ? 0.18 : 1;
+      m.depthWrite = !rx;
+      m.needsUpdate = true;
+    }
+    this.matNucleoTapas.visible = separado;
+    if (separado && !this.matNucleoTapas.map) {
+      const t = this.texturaTapasNucleo();
+      this.liberables.push(t);
+      this.matNucleoTapas.map = t;
+      this.matNucleoTapas.needsUpdate = true;
+    }
+    this.stats.tapasNucleo = separado;
     this.piezas.visible = cap.componentes && !rx;
     this.piezas.position.z = paso * 3.2;
     if (this.seleccion) this.seleccion.visible = !rx;
@@ -1161,7 +1256,7 @@ export class Escena3D {
 
   /** Camera presets; «abajo» turns the board over (as one does with a real board). */
   vista(v: Vista, animar = true): void {
-    const lado: Lado = v === 'abajo' ? 'B' : 'F';
+    const lado: Lado = v === 'abajo' ? 'B' : v === 'iso' ? this.ladoComponentes : 'F';
     if (lado !== this.ladoArriba) {
       this.ladoArriba = lado;
       this.giro = { de: this.placa.rotation.y, a: lado === 'B' ? Math.PI : 0, t0: performance.now() };

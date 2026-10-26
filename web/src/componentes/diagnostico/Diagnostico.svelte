@@ -14,7 +14,7 @@
     { id: 'webgl', nombre: 'WebGL 2: GPU, textura máxima, profundidad', duracion: 'al momento' },
     { id: 'visor', nombre: 'Visor 3D de componentes: primer cuadro, segunda vista y giro (QFP de 64 patillas)', duracion: 'unos segundos' },
     { id: 'placa', nombre: 'Placa SDR en 3D: carga, caras, giro y resolución', duracion: 'de 5 a 40 s' },
-    { id: 'caras', nombre: 'Caras de la placa SDR: los tres modos de pintarlas (directo, trabajador, franjas)', duracion: 'de 5 a 60 s' },
+    { id: 'caras', nombre: 'Caras de la placa SDR: modos de pintarlas (los tres solo en WebKit; si no, el directo)', duracion: 'de 5 a 60 s' },
     { id: 'esquema', nombre: 'Esquema automático en vivo de cuatro circuitos grandes', duracion: 'unos segundos' },
     { id: 'spice', nombre: 'Simulación corta con ngspice (descarga el motor, 6 MB)', duracion: 'unos segundos' },
   ] as const;
