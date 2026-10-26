@@ -123,3 +123,25 @@ test('el corte dibuja las caras cortadas (tapas) del SMD', async ({ page }) => {
   });
   expect(tapas).toEqual(expect.arrayContaining(['sustrato', 'recubrimiento', 'terminacion-1', 'terminacion-2']));
 });
+
+test('con el corte, las etiquetas apuntan a las caras cortadas y no al hueco', async ({ page }) => {
+  await abrir(page, 'resistencia-smd');
+  await page.click('[data-control="corte"]');
+  await page.waitForTimeout(800);
+  const anclas = await page.evaluate(() => {
+    type V3 = { x: number; y: number; z: number };
+    type Nodo = { name: string; parent: Nodo | null };
+    type Visor = {
+      etiquetas: { obj: Nodo }[];
+      plano: { distanceToPoint: (p: V3) => number };
+      anclaEtiqueta: (e: unknown) => V3;
+    };
+    const v = (globalThis as unknown as { __epaVisor3d: { visor: Visor } }).__epaVisor3d.visor;
+    const nombre = (n: Nodo | null): string => (n ? n.name || nombre(n.parent) : '');
+    return v.etiquetas.map((e) => ({ parte: nombre(e.obj), d: v.plano.distanceToPoint(v.anclaEtiqueta(e)) }));
+  });
+  expect(anclas.map((a) => a.parte)).toEqual(expect.arrayContaining(['sustrato', 'capa-resistiva', 'terminacion-1', 'recubrimiento']));
+  // Nothing points into the half the cut removes; the front-face points land exactly on the cut face.
+  for (const a of anclas) expect(a.d).toBeGreaterThanOrEqual(-1e-6);
+  for (const a of anclas.filter((x) => ['sustrato', 'capa-resistiva', 'terminacion-1'].includes(x.parte))) expect(Math.abs(a.d)).toBeLessThan(1e-6);
+});

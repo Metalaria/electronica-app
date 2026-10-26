@@ -386,8 +386,10 @@ dispositivo: si se deja en 3D, la galería pasa a ser el **catálogo de modelos*
   orientación: longitudinal, transversal o desde arriba, como al decapar un integrado) y «Explosión» separa las
   piezas. Se ven la película y su corte helicoidal sobre el cilindro cerámico, los electrodos alternos de un MLCC,
   las láminas de ánodo y cátodo enrolladas con el papel de un electrolítico, el bobinado de una película, el dado y
-  los hilos de oro de diodos, LED, transistores e integrados, el disco de cuarzo de un cristal… Las **etiquetas**
-  nombran cada pieza con los términos del libro y llevan a su sección.
+  los hilos de oro de diodos, LED, transistores e integrados, el disco de cuarzo de un cristal… La cara cortada es
+  plana, con las secciones de las piezas interiores dibujadas sobre ella (como en un corte real, no en
+  profundidad). Las **etiquetas** nombran cada pieza con los términos del libro y llevan a su sección; con el
+  corte activo apuntan a la cara cortada de su pieza.
 - **Mandos**: arrastrar gira (un dedo en pantallas táctiles), `Ctrl` + rueda o pellizco acerca, `Mayús` + arrastrar
   o dos dedos desplazan; con el modelo activo, flechas, `+` `−` y `0` (vista inicial). En la página de una
   animación, sus propios controles mueven el modelo: el valor de la resistencia cambia las bandas, el material del

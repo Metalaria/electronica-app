@@ -384,16 +384,19 @@ export function resistenciaSmd(ctx: Ctx, p: Parametros): { g: Group; datos: Part
   g.add(colocar(grupoCapa, 0, 0, z0 + hSus + (hRes + hCapa) / 2));
 
   // Wrap-around terminations: tin over nickel over the silver base. Each is a cup whose pocket holds the
-  // end of the substrate and the tip of the film; above them, up to its top, it is solid metal.
+  // end of the substrate and the tip of the film; above them, up to its top, it is solid metal. The label
+  // points at that solid part, so that with the cut on it lands on the cup's cut face, not in its pocket.
+  // Only the −X cup is labelled, and it is turned half round: its local +Y face is the front (−Y) face.
   const matTerm = material(ctx, { ...ACABADOS.estanoMate, corte: '#8d9095' });
   const zTope = z0 + H + 0.03;
-  const geoTerm = copa(ctx, t, W + 2 * e, 0, zTope, e, W + 2 * holgura, z0 - holgura, z0 + hSus + hRes + holgura);
+  const zBolsa = z0 + hSus + hRes + holgura; // top of the pocket: solid metal from here up to zTope
+  const geoTerm = copa(ctx, t, W + 2 * e, 0, zTope, e, W + 2 * holgura, z0 - holgura, zBolsa);
   for (const s of [-1, 1]) {
     const term = malla(geoTerm, matTerm);
     g.add(
       colocar(
         parte(s < 0 ? 'terminacion-1' : 'terminacion-2', {
-          etiqueta: s < 0 ? { texto: 'Terminación envolvente: plata, barrera de níquel y estaño', ref: 'sec-2.2.5', punto: [t / 2, -(W / 2 + e), zTope * 0.6] } : undefined,
+          etiqueta: s < 0 ? { texto: 'Terminación envolvente: plata, barrera de níquel y estaño', ref: 'sec-2.2.5', punto: [t / 2, W / 2 + e, (zBolsa + zTope) / 2] } : undefined,
           explosion: [s * L * 0.55, 0, 0],
         }, term),
         // the cup opens towards the middle of the part: +X side as built, the −X side turned half round

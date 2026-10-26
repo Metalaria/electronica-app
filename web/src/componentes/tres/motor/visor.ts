@@ -7,6 +7,13 @@ import {
   Box3,
   BackSide,
   Color,
+  DecrementWrapStencilOp,
+  DoubleSide,
+  FrontSide,
+  IncrementWrapStencilOp,
+  NotEqualStencilFunc,
+  ReplaceStencilOp,
+  AlwaysStencilFunc,
   InstancedMesh,
   Material,
   Mesh,
@@ -24,6 +31,7 @@ import {
   EdgesGeometry,
   PlaneGeometry,
   LineBasicMaterial,
+  Group as Grupo,
   type Group,
 } from 'three';
 import { crearEstudio, type Estudio } from './estudio';
@@ -91,8 +99,13 @@ export class Visor {
   private corteActivo = false;
   private posCorte = 0;
   private contorno: LineSegments | null = null;
+  /** Stencil passes of the cut, one pair (back faces, front faces) per clipped solid, children of its mesh. */
   private tapas: Mesh[] = [];
+  /** Cut faces: one quad on the plane per clipped solid, drawn where its stencil count says «inside». */
+  private grupoTapas = new Grupo();
   private matTapas = new Map<string, MeshBasicMaterial>();
+  private matCuenta: MeshBasicMaterial[] = [];
+  private radioTapas = 1;
   private clonados: Material[] = [];
   private explosion = 0;
   private explosionObjetivo = 0;
@@ -147,7 +160,8 @@ export class Visor {
   ) {
     this.quieto = matchMedia?.('(prefers-reduced-motion: reduce)').matches ?? false;
     const dpr = window.devicePixelRatio || 1;
-    this.renderer = new WebGLRenderer({ canvas: lienzo, antialias: dpr < 1.5, alpha: false, powerPreference: 'default', preserveDrawingBuffer: false });
+    // stencil: the cut faces are drawn with the stencil buffer (prepararTapas).
+    this.renderer = new WebGLRenderer({ canvas: lienzo, antialias: dpr < 1.5, alpha: false, stencil: true, powerPreference: 'default', preserveDrawingBuffer: false });
     this.renderer.outputColorSpace = SRGBColorSpace;
     this.renderer.toneMapping = NeutralToneMapping;
     this.renderer.toneMappingExposure = 1.0;
@@ -271,6 +285,7 @@ export class Visor {
     // Without the cut's caps (hidden; theirs come in the background after the first frame).
     const tapas = this.tapas.map((t) => [t, t.parent] as const);
     for (const [t] of tapas) t.removeFromParent();
+    this.grupoTapas.removeFromParent();
     let espera: Promise<unknown> | null = null;
     try {
       espera = this.renderer.compileAsync(this.estudio.escena, this.camara);
@@ -278,6 +293,7 @@ export class Visor {
       /* compiled at the first frame instead */
     }
     for (const [t, padre] of tapas) padre?.add(t);
+    this.estudio.escena.add(this.grupoTapas);
     if (espera) await espera.catch(() => {});
     if (gen !== this.genPreparar || this.liberado) return;
     this.preparacion.compilar = performance.now() - t0;
@@ -294,6 +310,7 @@ export class Visor {
     const antes = this.tapas.map((t) => t.visible);
     for (const m of this.cortables) m.clippingPlanes = [this.plano];
     for (const t of this.tapas) t.visible = true;
+    this.grupoTapas.visible = true;
     try {
       void this.renderer.compileAsync(this.estudio.escena, this.camara).catch(() => {});
     } catch {
@@ -302,6 +319,7 @@ export class Visor {
     // compile() has run: back to the state of the view (the programs stay cached).
     for (const m of this.cortables) m.clippingPlanes = null;
     this.tapas.forEach((t, i) => (t.visible = antes[i]!));
+    this.grupoTapas.visible = false;
   }
 
   datos(): DatosModelo | null {
@@ -354,7 +372,14 @@ export class Visor {
     // GPU driver may already have compiled; the cut's variants are compiled in the background (precompilarCorte).
     this.cortables = cortables;
     for (const mat of cortables) mat.clippingPlanes = null;
-    // Cut faces: back faces of every clipped closed solid drawn flat in its cut colour.
+    // Cut faces, with the stencil buffer: for each clipped closed solid, its clipped back faces add one and its
+    // clipped front faces take one away (no colour, no depth), so a pixel of the plane that lies inside the
+    // solid is left at a non-zero count; then a quad on the plane, in the solid's cut colour, is drawn where
+    // the count is not zero, resetting it. Until 0.8.0 the back faces themselves were drawn flat in that
+    // colour: a solid with others inside it (the MLCC's electrodes in their ceramic, the film winding in its
+    // resin, the trimmer's track in its body) then showed those inner parts in depth through the cut, as an
+    // X-ray, instead of a flat face with their sections on it.
+    const solidos: { m: Mesh; col: string; vol: number }[] = [];
     const recorrerTapas = (o: Object3D, entero: boolean, color: string | undefined) => {
       const d = o.userData as DatosParte;
       const e = entero || !!d.entero;
@@ -364,35 +389,96 @@ export class Visor {
         const mat = m.material as MeshStandardMaterial;
         if (!mat.transparent && mat.side !== 2 && !mat.alphaTest) {
           const col = (mat.userData.corte as string | undefined) ?? c ?? '#' + new Color(mat.color ?? 0x888888).multiplyScalar(0.72).getHexString();
-          let mt = this.matTapas.get(col);
-          if (!mt) {
-            // Flat, unlit cut colour. A hatched section (diagonal lines, as in a technical drawing) was tried in
-            // 0.7.0 and dropped: on small parts the lines hid the inside the cut is meant to show.
-            mt = new MeshBasicMaterial({ color: new Color(col), side: BackSide, clippingPlanes: [this.plano] });
-            this.matTapas.set(col, mt);
-          }
-          let tapa: Mesh;
-          if ((m as InstancedMesh).isInstancedMesh) {
-            const im = m as InstancedMesh;
-            const t = new InstancedMesh(im.geometry, mt, im.count);
-            t.instanceMatrix = im.instanceMatrix;
-            tapa = t;
-          } else tapa = new Mesh(m.geometry, mt);
-          tapa.userData.tapa = true;
-          tapa.visible = false;
-          tapa.renderOrder = -0.5;
-          m.add(tapa);
-          this.tapas.push(tapa);
+          if (!m.geometry.boundingBox) m.geometry.computeBoundingBox();
+          const t = m.geometry.boundingBox!.getSize(new Vector3());
+          const esc = m.getWorldScale(new Vector3());
+          let vol = t.x * t.y * t.z * Math.abs(esc.x * esc.y * esc.z);
+          if ((m as InstancedMesh).isInstancedMesh) vol *= 0.001; // many small pieces: drawn over their host
+          solidos.push({ m, col, vol });
         }
       }
       for (const h of [...o.children]) if (!h.userData.tapa) recorrerTapas(h, e, c);
     };
     recorrerTapas(g, false, undefined);
+
+    if (!this.matCuenta.length) {
+      for (const [lado, op] of [
+        [BackSide, IncrementWrapStencilOp],
+        [FrontSide, DecrementWrapStencilOp],
+      ] as const) {
+        this.matCuenta.push(
+          new MeshBasicMaterial({
+            side: lado,
+            colorWrite: false,
+            depthWrite: false,
+            depthTest: false,
+            stencilWrite: true,
+            stencilFunc: AlwaysStencilFunc,
+            stencilFail: op,
+            stencilZFail: op,
+            stencilZPass: op,
+            clippingPlanes: [this.plano],
+          }),
+        );
+      }
+    }
+    const esfera = new Box3().setFromObject(g).getBoundingSphere(new Sphere());
+    this.radioTapas = Math.max(1, esfera.radius);
+    const quad = new PlaneGeometry(1, 1);
+    // Outer solids first, then the ones inside them: a cut face drawn later at the same depth (the same quad
+    // on the same plane) wins, so the electrodes' sections show on the ceramic's face.
+    solidos.sort((a, b) => b.vol - a.vol);
+    solidos.forEach(({ m, col }, i) => {
+      const orden = 10 + i * 2;
+      for (const mc of this.matCuenta) {
+        let cuenta: Mesh;
+        if ((m as InstancedMesh).isInstancedMesh) {
+          const im = m as InstancedMesh;
+          const t = new InstancedMesh(im.geometry, mc, im.count);
+          t.instanceMatrix = im.instanceMatrix;
+          cuenta = t;
+        } else cuenta = new Mesh(m.geometry, mc);
+        cuenta.userData.tapa = true;
+        cuenta.visible = false;
+        cuenta.renderOrder = orden;
+        cuenta.frustumCulled = m.frustumCulled;
+        m.add(cuenta);
+        this.tapas.push(cuenta);
+      }
+      let mt = this.matTapas.get(col);
+      if (!mt) {
+        // Flat, unlit cut colour. A hatched section (diagonal lines, as in a technical drawing) was tried in
+        // 0.7.0 and dropped: on small parts the lines hid the inside the cut is meant to show.
+        mt = new MeshBasicMaterial({
+          color: new Color(col),
+          side: DoubleSide,
+          stencilWrite: true,
+          stencilRef: 0,
+          stencilFunc: NotEqualStencilFunc,
+          stencilFail: ReplaceStencilOp,
+          stencilZFail: ReplaceStencilOp,
+          stencilZPass: ReplaceStencilOp,
+        });
+        this.matTapas.set(col, mt);
+      }
+      const cara = new Mesh(quad, mt);
+      cara.userData.tapa = true;
+      cara.renderOrder = orden + 1;
+      cara.frustumCulled = false;
+      this.grupoTapas.add(cara);
+    });
+    this.grupoTapas.visible = false;
+    this.estudio.escena.add(this.grupoTapas);
   }
 
   private quitarTapas(): void {
     for (const t of this.tapas) t.removeFromParent();
     this.tapas = [];
+    for (const c of [...this.grupoTapas.children]) {
+      c.removeFromParent();
+      (c as Mesh).geometry.dispose();
+    }
+    this.grupoTapas.visible = false;
     if (this.contorno) {
       this.contorno.removeFromParent();
       this.contorno.geometry.dispose();
@@ -447,12 +533,14 @@ export class Visor {
       this.plano.set(new Vector3(0, 0, 1), 1e6);
       for (const m of this.cortables) m.clippingPlanes = null;
       for (const t of this.tapas) t.visible = false;
+      this.grupoTapas.visible = false;
       if (this.contorno) this.contorno.visible = false;
     } else {
       const n = new Vector3(...c.normal).normalize();
       this.plano.set(n, -this.posCorte);
       for (const m of this.cortables) if (!m.clippingPlanes) m.clippingPlanes = [this.plano];
       for (const t of this.tapas) t.visible = true;
+      this.grupoTapas.visible = true;
       this.dibujarContorno(n);
     }
     this.pedir();
@@ -479,6 +567,13 @@ export class Visor {
     const ax = Math.abs(n.x) > 0.5 ? [tam.y, tam.z] : Math.abs(n.y) > 0.5 ? [tam.x, tam.z] : [tam.x, tam.y];
     o.scale.set(ax[0]! * 1.08 + 0.4, ax[1]! * 1.08 + 0.4, 1);
     if (Math.abs(n.y) > 0.5) o.rotateZ(0);
+    // The cut-face quads: on the plane, around the model, big enough for the exploded parts too.
+    const lado = this.radioTapas * 6;
+    for (const c of this.grupoTapas.children) {
+      c.position.copy(o.position);
+      c.quaternion.copy(o.quaternion);
+      c.scale.set(lado, lado, 1);
+    }
   }
 
   // ------------------------------------------------------------------ explosion
@@ -578,6 +673,21 @@ export class Visor {
     });
   }
 
+  /**
+   * World point a label points at. With the cut on, a point on the removed side of the plane (most labels
+   * sit on the front faces, which the cut takes away) is moved straight onto the plane, onto the part's
+   * cut face, instead of pointing at empty space.
+   */
+  anclaEtiqueta(e: EtiquetaViva, v = new Vector3()): Vector3 {
+    v.copy(e.punto);
+    e.obj.localToWorld(v);
+    if (this.corteActivo && this.corte) {
+      const d = this.plano.distanceToPoint(v);
+      if (d < 0) v.addScaledVector(this.plano.normal, -d);
+    }
+    return v;
+  }
+
   private colocarEtiquetas(): void {
     const w = this.ancho;
     const h = this.alto;
@@ -607,8 +717,7 @@ export class Visor {
       let ax = 0;
       let ay = 0;
       if (ver) {
-        v.copy(e.punto);
-        e.obj.localToWorld(v);
+        this.anclaEtiqueta(e, v);
         v.project(this.camara);
         ver = v.z <= 1;
         ax = (v.x * 0.5 + 0.5) * w;
@@ -787,6 +896,7 @@ export class Visor {
     this.orbita.liberar();
     this.quitarTapas();
     for (const m of this.matTapas.values()) m.dispose();
+    for (const m of this.matCuenta) m.dispose();
     for (const m of this.clonados) m.dispose();
     if (this.modelo) {
       this.estudio.raiz.remove(this.modelo);

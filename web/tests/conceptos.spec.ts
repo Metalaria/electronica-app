@@ -1,7 +1,8 @@
 // Concept animations (componentes/animaciones/conceptos): the gallery and its filter, every scene loads and draws
 // without errors, the reader's «Ver animación» buttons lead to them and back, a pole of the Bode scene can be
 // dragged, and the linear supply is simulated with ngspice. Frame cost and frame-rate independence are measured
-// by tests/animaciones.mjs and tests/animaciones-hz.mjs; screenshots by tests/conceptos-capturas.mjs.
+// by tests/animaciones.mjs and tests/animaciones-hz.mjs; screenshots by tests/conceptos-capturas.mjs. Also: worded
+// readouts of a component scene stay inside their boxes.
 import { expect, test } from '@playwright/test';
 import { readFileSync } from 'node:fs';
 
@@ -101,4 +102,25 @@ test('fuente lineal: el rectificador se simula con ngspice', async ({ page }) =>
   const v = Number((await media.textContent())!.replace(/[^\d,]/g, '').replace(',', '.'));
   expect(v).toBeGreaterThan(21.5);
   expect(v).toBeLessThan(24.5);
+});
+
+test('las lecturas en palabras caben en su recuadro (cerámico de disco)', async ({ page }) => {
+  for (const ancho of [1366, 390]) {
+    await page.setViewportSize({ width: ancho, height: 900 });
+    await page.goto('/#/componentes/condensador-ceramico');
+    await page.getByRole('radio', { name: 'De disco' }).click();
+    const dd = page.locator('.lecturas div', { hasText: 'Dieléctrico' }).locator('dd');
+    await expect(dd).toHaveText('cerámica de clase 2');
+    // The text stays inside its box: no overflow of the value nor of the box over the next one.
+    const medidas = await page.locator('.lecturas div').evaluateAll((cajas) =>
+      cajas.map((c) => {
+        const d = c.querySelector('dd')!;
+        return { sobra: d.scrollWidth - d.clientWidth, caja: c.getBoundingClientRect().right, texto: d.getBoundingClientRect().right };
+      }),
+    );
+    for (const m of medidas) {
+      expect(m.sobra).toBeLessThanOrEqual(1);
+      expect(m.texto).toBeLessThanOrEqual(m.caja + 0.5);
+    }
+  }
 });

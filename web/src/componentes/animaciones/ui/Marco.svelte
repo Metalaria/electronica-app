@@ -224,6 +224,7 @@
   }
   .lecturas div {
     --c: var(--tinta);
+    min-width: 0;
     padding: 8px 10px;
     border-radius: 10px;
     background: var(--superficie-2);
@@ -239,7 +240,8 @@
     font-weight: 700;
     color: var(--c);
     font-variant-numeric: tabular-nums;
-    white-space: nowrap;
+    /* numbers fit on one line; a reading in words («cerámica de clase 2») wraps inside its box */
+    overflow-wrap: break-word;
   }
 
   @container (min-width: 860px) {

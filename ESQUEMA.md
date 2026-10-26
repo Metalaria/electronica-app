@@ -647,8 +647,12 @@ off screen. Device pixels ≤ 2× and ≈ 2 Mpx; MSAA only below 1,5× DPR. Ligh
 directional lights, a prefiltered `RoomEnvironment` (for the PBR metals), `NeutralToneMapping`; ground shadow =
 one blurred texture on a plane (no shadow maps); background from the theme (`--fondo-3d`). Mounted parts stand on
 a piece of board built from their footprint (`placa.ts`). Cutaway: one local clipping plane on the materials of
-non-`entero` meshes; cut faces are the back faces of each clipped solid drawn flat in its cut colour (cheap cap
-trick); a thin outline marks the plane; switching the cut on turns the camera to face the cut. Labels are HTML
+non-`entero` meshes; cut faces with the stencil buffer (the renderer is created with `stencil: true`): per
+clipped closed solid, its clipped back faces increment and its front faces decrement the stencil (no colour, no
+depth), then a quad on the plane in its cut colour is drawn where the count is not zero and resets it; outer
+solids first (bounding-box volume, instanced pieces last), so the sections of the inner ones show on the outer
+face (0.8.1; until 0.8.0 the back faces themselves were the cap, which showed inner solids in depth through the
+cut, as an X-ray: the MLCC's electrodes, the film winding, the trimmer's track); a thin outline marks the plane; switching the cut on turns the camera to face the cut. Labels are HTML
 (links to the book through `rutaDeRef`) placed in two columns that never overlap, with SVG leader lines; their
 sizes are measured once (no layout per frame); a label keeps its column until its point is past the model's
 centre by max(24 px, 6 % of the width) (hysteresis: the LDR's label flickered from side to side while turning).
@@ -660,9 +664,11 @@ camera never enters (zooming in stops at its surface; panning still works). Gest
 canvas's container (`zona`), so a drag or a pinch that starts on a label turns or zooms the model; the container
 has `touch-action: none` and two-finger `touchstart`/`touchmove` are cancelled there (a pinch never zooms the
 page; page zoom elsewhere is untouched); a drag that ends on a label does not follow its link. Cut faces: the
-caps (back faces of the clipped solids) are drawn in a flat, unlit cut colour (the 0.7.0 screen-space hatching
-was dropped in 0.7.1: on small parts it hid the inside); solids that sit inside others show as sections inside them (the SMD's
-substrate inside its terminations). Disposal:
+caps are drawn in a flat, unlit cut colour (the 0.7.0 screen-space hatching was dropped in 0.7.1: on small parts
+it hid the inside); solids that sit inside others show as sections inside them (the SMD's substrate inside its
+terminations). With the cut on, a label whose point lies on the removed side of the plane (most points are on
+the front faces) points at the projection of that point on the plane, the part's cut face
+(`Visor.anclaEtiqueta`, 0.8.1). Disposal:
 model resources (`liberarModelo`), cap materials, board, studio, renderer and `forceContextLoss()` on unmount.
 
 **0.8: adaptive resolution, shaders before the first frame.** (`motor/resolucion.ts`, used by `Visor` and by the
