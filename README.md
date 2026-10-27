@@ -665,8 +665,9 @@ por una misma selección (un componente, un pad o una red): lo que se toca en un
   tanto. Lo que más tarda en un equipo sin GPU (Chromium con SwiftShader) es compilar los sombreadores, igual que en
   la 0.6; las cifras antes/después están en ESQUEMA.md («Proyectos KiCad»). En la 0.8, en macOS (WKWebView, que
   tardaba más de un segundo en pintar y subir las dos caras de 4096 px, bloqueando la página) las caras las pinta un
-  hilo aparte y se suben a la GPU a trozos, sin que la página se quede parada; en Android y Windows se pintan como
-  antes, que allí ya era cuestión de milisegundos. Al girar, si la GPU no llega a 60 cuadros por segundo, la placa se
+  hilo aparte y se suben a la GPU a trozos, sin que la página se quede parada; en Windows se pintan como antes, que
+  allí ya era cuestión de milisegundos. Desde la 0.9.1 Android también las pinta en el hilo aparte: pintadas
+  directamente en la GPU, las caras de la Neo Geo y de la Super Nintendo cerraban la aplicación en la Xiaomi Pad 6. Al girar, si la GPU no llega a 60 cuadros por segundo, la placa se
   dibuja con menos píxeles mientras se mueve y vuelve a la resolución completa al soltarla. En la 0.9, con
   «Componentes» apagado los componentes no se cargan (solo se ocultaban): se construyen al encenderlo. Mientras se
   cargan se revisa su geometría: un modelo con números no finitos o de tamaño absurdo, uno de la biblioteca con otro
@@ -1037,7 +1038,7 @@ dispositivo lo más pesado de la aplicación, para poder comparar el MacBook, la
 - **las caras de la placa SDR pintadas de las tres maneras** que tiene la aplicación (directo, como en la 0.7;
   trabajador, en un hilo aparte; franjas, por trozos en el hilo de la página), con lo que tarda cada una y el
   hueco más largo que deja en la página: así se ve en el propio Mac cuál le conviene (la aplicación elige
-  «trabajador» en macOS y «directo» en Android y Windows);
+  «trabajador» en macOS y Android, y «directo» en Windows; fuera de WebKit solo se mide el del dispositivo);
 - **la placa de la Neo Geo en 3D** (0.9, la que colgaba la tableta): cuánto tarda en verse, en tener sus 320
   componentes (modelos, unión, sombreadores uno a uno) y las caras completas, el hueco más largo que deja en la
   página y la revisión de la geometría de las piezas;

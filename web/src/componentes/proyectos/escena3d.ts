@@ -121,7 +121,8 @@ const MAX_VERTICES_PLANTILLA = 400_000;
 /**
  * How the full-resolution faces are painted (0.8). 'directo': as in 0.7 — a canvas of the page per map, uploaded
  * with texImage2D(canvas), one face per task: right where the canvas is rasterised by the GPU and uploaded GPU to
- * GPU (Chromium: Android, WebView2), where it costs the page a few ms. 'trabajador': painted by a worker
+ * GPU (Chromium on the desktop: WebView2), where it costs the page a few ms; Android left it in 0.9.1 (see
+ * modoCarasPorDefecto). 'trabajador': painted by a worker
  * (OffscreenCanvas) and uploaded as plain pixels in strips (WebKit: WKWebView, WebKitGTK, where the page's
  * thread rasterised and converted the 4096 px faces for over a second). 'franjas': the same, painted in bands on
  * the page's thread (WebKit without OffscreenCanvas in workers).
@@ -136,9 +137,23 @@ export function modoCarasPorDefecto(): ModoCaras {
   } catch {
     /* no storage */
   }
+  // WebKit: the page's thread rasterises and converts a large canvas itself (0.8). Android (0.9.1): the full
+  // faces of the Neo Geo and Super Nintendo boards, painted directly on an accelerated canvas, closed the app on
+  // the Xiaomi Pad 6 right at «caras a resolución completa» (the WebView's GPU work runs in the app's own process,
+  // so a GPU failure takes the app down); the worker paints on a software canvas (willReadFrequently) and the
+  // page uploads plain pixels in strips, so the GPU never rasterises those faces.
+  return esWebKit() || esAndroid() ? 'trabajador' : 'directo';
+}
+
+/** WKWebView, WebKitGTK, Safari (not Chromium-based browsers that say AppleWebKit too). */
+export function esWebKit(): boolean {
   const ua = globalThis.navigator?.userAgent ?? '';
-  const webkit = /AppleWebKit/i.test(ua) && !/Chrome|Chromium|CriOS|Edg|Android/i.test(ua);
-  return webkit ? 'trabajador' : 'directo';
+  return /AppleWebKit/i.test(ua) && !/Chrome|Chromium|CriOS|Edg|Android/i.test(ua);
+}
+
+/** Android's WebView (and Chrome for Android). */
+export function esAndroid(): boolean {
+  return /Android/i.test(globalThis.navigator?.userAgent ?? '');
 }
 
 /**

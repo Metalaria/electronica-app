@@ -411,7 +411,7 @@ export async function placaSdr(ctx: ContextoPrueba, id = 'sdr'): Promise<Resulta
  */
 export async function carasSdr(ctx: ContextoPrueba, id = 'sdr'): Promise<Resultado[]> {
   const g = 'Caras de la placa SDR (resolución completa)';
-  const [{ cargarPlaca }, { construirGeometria }, { Escena3D, modoCarasPorDefecto }] = await Promise.all([
+  const [{ cargarPlaca }, { construirGeometria }, { Escena3D, modoCarasPorDefecto, esWebKit }] = await Promise.all([
     import('../proyectos/datos'),
     import('../proyectos/geometria'),
     import('../proyectos/escena3d'),
@@ -420,20 +420,20 @@ export async function carasSdr(ctx: ContextoPrueba, id = 'sdr'): Promise<Resulta
   const geo = construirGeometria(d);
   const res: Resultado[] = [];
   const porDefecto = modoCarasPorDefecto();
-  // The worker and the strips exist for WebKit (Mac, iPhone). Where the faces are painted directly (Chromium:
-  // Android, Windows) the previous test («Placa SDR en 3D») has already measured them in that mode, and a second
-  // full board right after the first one closed the app on the Xiaomi Pad 6 (0.8.0: the WebView's GPU memory
-  // had not been given back yet). So this test only runs where it tells something new.
-  if (porDefecto === 'directo') {
+  // Comparing the three ways only tells something new in WebKit (Mac, iPhone). Elsewhere (Chromium: Android,
+  // Windows) the previous test («Placa SDR en 3D») has already measured this device's mode, and a second full
+  // board right after the first one closed the app on the Xiaomi Pad 6 (0.8.0: the WebView's GPU memory had not
+  // been given back yet); the direct mode itself closed it with the Neo Geo board (0.9.0).
+  if (!esWebKit()) {
     for (const modo of ['directo', 'trabajador', 'franjas'] as const)
       res.push({
         grupo: g,
         prueba: modo,
-        valor: modo === 'directo' ? 'en «Placa SDR»' : 'no se mide aquí',
+        valor: modo === porDefecto ? 'en «Placa SDR»' : 'no se mide aquí',
         detalle:
-          modo === 'directo'
+          modo === porDefecto
             ? 'Es el modo de este dispositivo: lo mide la prueba «Placa SDR en 3D» (fila «Caras a resolución completa»).'
-            : 'Solo se usa en WebKit (Mac, iPhone); este dispositivo pinta las caras en el modo directo.',
+            : `Las tres maneras solo se comparan en WebKit (Mac, iPhone); este dispositivo pinta las caras en el modo «${porDefecto}».`,
         estado: 'omitida',
       });
     return res;

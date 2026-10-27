@@ -307,3 +307,34 @@ test('con «Componentes» apagado la placa en 3D no carga las piezas, y al encen
   const otra = await page.evaluate(() => (globalThis as unknown as { __epaPlaca3D: Stats3D }).__epaPlaca3D);
   expect(otra.piezas.biblioteca + otra.piezas.propias).toBe(320);
 });
+
+// 0.9.1: on the Xiaomi Pad 6 the Neo Geo and Super Nintendo boards closed the app at «caras a resolución
+// completa» (faces painted directly on an accelerated canvas). On Android the full faces are painted by the
+// worker on a software canvas and uploaded in strips: checked here with an Android WebView user agent.
+const UA_ANDROID =
+  'Mozilla/5.0 (Linux; Android 14; 23043RP34G Build/UKQ1.240624.001; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/135.0.7049.111 Safari/537.36';
+
+for (const maquina of ['neogeo', 'snes']) {
+  test(`en Android las caras completas de la placa ${maquina} las pinta el trabajador`, async ({ browser }) => {
+    test.setTimeout(300_000);
+    const ctx = await browser.newContext({ baseURL: test.info().project.use.baseURL, userAgent: UA_ANDROID, viewport: { width: 800, height: 1280 } });
+    const page = await ctx.newPage();
+    const errores: string[] = [];
+    page.on('pageerror', (e) => errores.push(e.message));
+    await page.goto(`./#/consolas/${maquina}/placa3d`);
+    await expect(page.locator('.placa-consola')).toHaveAttribute('data-placa', maquina);
+    await page.waitForFunction(
+      () => (globalThis as unknown as { __epaPlaca3D?: { carasFinas?: number } }).__epaPlaca3D?.carasFinas != null,
+      null,
+      { timeout: 240_000 },
+    );
+    const st = await page.evaluate(
+      () => (globalThis as unknown as { __epaPlaca3D: { fasesCaras?: { modo: string; completa?: { modo: string; franjas: number } } } }).__epaPlaca3D,
+    );
+    expect(st.fasesCaras?.modo).toBe('trabajador');
+    expect(st.fasesCaras?.completa?.modo).toBe('trabajador');
+    expect(st.fasesCaras?.completa?.franjas ?? 0).toBeGreaterThan(0);
+    expect(errores).toEqual([]);
+    await ctx.close();
+  });
+}

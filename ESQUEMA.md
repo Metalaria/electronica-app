@@ -1398,8 +1398,10 @@ for the same textures). Chromium only records the canvas drawing and rasterises 
 and its texImage2D(canvas) copies the pixels out of the canvas and converts them (unpremultiply, flip) on the page's
 thread. Three ways, chosen per WebView (`modoCarasPorDefecto()`; localStorage `epa-caras` forces one; the
 constructor's 5th argument `{ modoCaras }`, optional, keeps the API of consolas/placa): **directo** — the 0.7 path,
-unchanged (Chromium: Android, WebView2: the same behaviour as 0.7, deliberately not switched by any timing);
-**trabajador** (WebKit: WKWebView, WebKitGTK) — a worker per view rebuilds the geometry from
+unchanged (Chromium on the desktop: WebView2, the same behaviour as 0.7, deliberately not switched by any timing);
+**trabajador** (WebKit: WKWebView, WebKitGTK; Android since 0.9.1, because the Neo Geo and Super Nintendo faces
+painted directly on the GPU closed the app on the Xiaomi Pad 6 at «caras a resolución completa»: the WebView's GPU
+work runs in the app's process) — a worker per view rebuilds the geometry from
 the board data (`datosParaCaras`, without footprints or areas) and paints each map on an OffscreenCanvas
 (`willReadFrequently`) in bands of 128 rows (in Chromium's workers a 4096 px canvas with the board's clips
 rasterised 5–20× slower than bands), reads each band back and writes its rows in GL order (bottom first) into a
