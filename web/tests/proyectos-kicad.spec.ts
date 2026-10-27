@@ -113,6 +113,34 @@ test('la vista 3D monta la placa con pocas llamadas de dibujo y sus modos', asyn
   expect(errores).toEqual([]);
 });
 
+// 0.9: the parts are checked while they load (escena3d → stats.revision). The SDR's trifilar toroid T1 has five
+// pads and the library's toroid two leads: it gets a simple body; so do the vertical toroids and the 3296W
+// trimmer, whose library models' leads landed beside their pads.
+test('las piezas de la placa SDR son geometría válida y sus patillas caen en sus pads', async ({ page }) => {
+  const errores: string[] = [];
+  page.on('pageerror', (e) => errores.push(e.message));
+  await page.goto('#/proyectos/sdr/3d');
+  await page.waitForFunction(() => (globalThis as unknown as { __epaPlaca3DListo?: boolean }).__epaPlaca3DListo === true, null, { timeout: 90_000 });
+  const st = await page.evaluate(
+    () =>
+      (globalThis as unknown as {
+        __epaPlaca3D: {
+          piezas: { biblioteca: number; propias: number };
+          revision: { noFinitas: string[]; enormes: string[]; pinesDistintos: string[]; patasFuera: string[]; maxDesvio: number; fusionNoFinitos: number; triangulos: number };
+        };
+      }).__epaPlaca3D,
+  );
+  const r = st.revision;
+  expect(st.piezas.biblioteca + st.piezas.propias).toBe(130);
+  expect(r.noFinitas).toEqual([]);
+  expect(r.enormes).toEqual([]);
+  expect(r.fusionNoFinitos).toBe(0);
+  expect(r.maxDesvio).toBeLessThanOrEqual(0.5);
+  expect(r.pinesDistintos).toEqual(['T1 (modelo 2 patillas, huella 5 pads)']);
+  expect(r.patasFuera.map((x) => x.split(' ')[0]).sort()).toEqual(['L1', 'L2', 'L3', 'L4', 'RV1']);
+  expect(errores).toEqual([]);
+});
+
 test('sin WebGL la vista 3D cae a la placa en 2D', async ({ page }) => {
   await page.addInitScript(() => ((globalThis as unknown as { __epaSinWebGL: boolean }).__epaSinWebGL = true));
   await page.goto('#/proyectos/fuente_laboratorio/3d');

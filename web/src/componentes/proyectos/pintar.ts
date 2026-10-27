@@ -143,32 +143,27 @@ export function pintarLado(ctx: CanvasRenderingContext2D, _d: DatosPlaca, g: Geo
     ctx.fillStyle = v.mascara ? mk.base : '#c4b585';
     ctx.fill(g.contorno);
     ctx.clip(g.contorno);
-    if (v[L]) {
-      if (v.mascara) {
-        rellenarCobre(ctx, g.cobre[L], mk.cobre);
-        // exposed copper at the openings (pads), finished
-        ctx.save();
-        ctx.clip(g.aberturas[L], 'nonzero');
-        rellenarCobre(ctx, g.cobre[L], metal(o.acabado));
-        ctx.restore();
-      } else {
-        rellenarCobre(ctx, g.cobre[L], '#c47a45');
-      }
-    } else if (v.mascara) {
-      // copper of this side hidden: the openings still show bare laminate
-      ctx.fillStyle = '#bba870';
-      ctx.fill(g.aberturas[L], 'nonzero');
-    }
+    // No clip by the mask openings (0.9): a GPU-rasterised canvas (Chromium on Android) redraws a clip of
+    // thousands of openings for every net drawn under it; for the Neo Geo board (2286 openings, 1700 draws per
+    // face) it held the GPU thread for minutes and froze the app. The finish and the silkscreen are painted in
+    // an order that gives the same picture: copper under the mask, silkscreen, then the exposed pads (the
+    // openings are the pads' outlines) on top of both, so the silkscreen never prints on an opening.
+    if (v[L]) rellenarCobre(ctx, g.cobre[L], v.mascara ? mk.cobre : '#c47a45');
     if (v.areas) pintarAreas(ctx, g, o);
-    if (v.serigrafia && g.serigrafia[L]) {
-      ctx.save();
-      // silkscreen never prints on the openings
-      const fuera = new Path2D();
-      fuera.rect(-1e5, -1e5, 1e6, 1e6);
-      fuera.addPath(g.aberturas[L]);
-      ctx.clip(fuera, 'evenodd');
-      pintarSerigrafia(ctx, g, L, '#f3f3ec', minimo);
-      ctx.restore();
+    if (v.serigrafia && g.serigrafia[L]) pintarSerigrafia(ctx, g, L, '#f3f3ec', minimo);
+    if (v.mascara) {
+      // exposed copper at the openings (pads), finished; with the copper of this side hidden, the openings
+      // still show bare laminate
+      ctx.fillStyle = v[L] ? metal(o.acabado) : '#bba870';
+      ctx.fill(v[L] ? g.padsAbiertos[L] : g.aberturas[L], 'nonzero');
+    } else if (v.serigrafia && g.serigrafia[L]) {
+      // no mask: what lies under the openings again over the silkscreen (laminate, then the pads' copper)
+      ctx.fillStyle = '#c4b585';
+      ctx.fill(g.aberturas[L], 'nonzero');
+      if (v[L]) {
+        ctx.fillStyle = '#c47a45';
+        ctx.fill(g.padsAbiertos[L], 'nonzero');
+      }
     }
     if (v.fab) {
       ctx.strokeStyle = 'rgba(255,255,255,0.5)';

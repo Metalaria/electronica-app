@@ -12,6 +12,8 @@ export interface Preferencias {
   tam: number;
   /** Book index panel hidden (desktop), by view: «libro» for the reader, else the tool's view. */
   indiceOculto?: Record<string, boolean>;
+  /** «Tu nombre» for the start page's greeting (0.9; this device only, like the rest of `prefs`). */
+  nombre?: string;
 }
 
 export interface Posicion {
@@ -101,6 +103,14 @@ export function ponerTema(tema: Tema): void {
 export function ponerTam(tam: number): void {
   usuario.prefs.tam = Math.min(TAM_MAX, Math.max(TAM_MIN, tam));
   guardar('prefs', 200);
+}
+
+export const LARGO_NOMBRE = 40;
+
+/** Stored as typed (trimmed where it is shown, so a space can be typed between two names). */
+export function ponerNombre(nombre: string): void {
+  usuario.prefs.nombre = nombre.slice(0, LARGO_NOMBRE);
+  guardar('prefs', 400);
 }
 
 export function ponerIndiceOculto(clave: string, oculto: boolean): void {

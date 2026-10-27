@@ -1,188 +1,112 @@
-// «Un fotograma»: types shared by the player and the per-console adapters (maquinas/<maquina>.ts).
-// The trace format («EPAF» v1) is written by contenido/fotograma/traza.mjs; see ESQUEMA.md, «Un fotograma».
+// «Un fotograma» (0.9): a guided, step-by-step explanation of how one pixel of one frame comes to exist on each
+// console. No emulation: every machine has a data file (maquinas/<maquina>.ts) with numbered steps; each step
+// lights blocks and wires of the console's «Arquitectura» diagram, names the values on the buses and advances a
+// small example screen. The values are illustrative but consistent: the same tile, palette and pixel are followed
+// through the whole frame.
 
+import type { Conexion } from '../arquitectura/diagrama';
 import type { IdMaquina } from '../datos';
 
-export type TipoArray = 'u8' | 'u16' | 'u32' | 'i32';
+/**
+ * How far the example frame has got. Each stage keeps what the previous ones showed:
+ * - cuadro-anterior: the screen still shows the previous frame (CPU work, vertical blank);
+ * - vram: the tile's pattern is in video memory (or in the cartridge's graphics ROM);
+ * - mapa: the map places the tile on the screen;
+ * - patron: the bytes of the followed row have been read;
+ * - mezcla: the planes (or nibbles) are combined into one colour index per pixel;
+ * - prioridad: sprites and layers have been weighed for the followed pixel;
+ * - paleta: the index has become a colour;
+ * - punto: the followed pixel leaves for the screen;
+ * - cuadro: the whole frame is done.
+ */
+export type Etapa = 'cuadro-anterior' | 'vram' | 'mapa' | 'patron' | 'mezcla' | 'prioridad' | 'paleta' | 'punto' | 'cuadro';
 
-export interface DefArray {
-  tipo: TipoArray;
-  n: number;
-  cod: 'crudo' | 'vlq' | 'vlqd';
-  offset: number;
-  bytes: number;
-}
+export const ETAPAS: Etapa[] = ['cuadro-anterior', 'vram', 'mapa', 'patron', 'mezcla', 'prioridad', 'paleta', 'punto', 'cuadro'];
 
-export interface ChipBus {
+/** A wire of the diagram that takes part in a step. */
+export interface Senal {
+  /** Connection id of the «Arquitectura» diagram, or of the machine's `extra` wires. */
   id: string;
-  titulo: string;
+  /** Direction of the pulse: 1 from the first point of the connection to the last, -1 the other way. */
+  sentido: 1 | -1;
+  /** Value on the wire («$C0F0», «0»), shown on its label and in the step's list. */
+  valor?: string;
+  /** Name shown with the value instead of the connection's own label (taps have none). */
+  nombre?: string;
+  /** Label position in diagram units, when the default one is crowded. */
+  pos?: [number, number];
 }
 
-export interface BusTraza {
-  id: string;
-  titulo: string;
-  anchoDir: number;
-  anchoDato: number;
-  /** Names of the arrays: time, address, data, flags, chip index, kind index (optional). */
-  t: string;
-  a: string;
-  d: string;
-  f: string;
-  c: string;
-  k?: string;
-  chips: ChipBus[];
-  tipos?: ChipBus[];
-  /** Units every access lasts (default: unidadesPorCiclo for the CPU bus and «dma», 2 for the others). */
-  duracion?: number;
-  /** Units per access kind (index of `tipos`), when it varies. */
-  duraciones?: number[];
-}
-
-export interface SegmentoTraza {
-  id: string;
-  titulo: string;
-  descripcion: string;
-  t0: number;
-  t1: number;
-  pixel0: number;
-  pixel1: number;
-}
-
-export interface ManifiestoTraza {
-  formato: 'EPAF';
-  version: 1;
-  maquina: IdMaquina;
-  /** Program id (the file name without .bin). */
-  idPrograma: string;
-  titulo: string;
-  tipo: 'demo' | 'juego';
-  generador: { emulador: string; detalle: string };
-  reloj: { hz: number; nombre: string };
-  cpus: { id: string; tipo: '6502' | 'sm83' | 'z80' | '68000'; titulo: string; hz: number; unidadesPorCiclo: number; registros: string[] }[];
-  buses: BusTraza[];
-  instrucciones: { cpu: string; t: string; pc: string; ciclo: string; k?: string; r: string[] }[];
-  video: {
-    ancho: number;
-    alto: number;
-    puntosPorLinea: number;
-    lineas: number;
-    primeraVisible: number;
-    formato: 'indice' | 'rgb555';
-    paleta?: number[];
-    t0Cuadro?: number;
-    /** Time units per dot (1 when the unit is the dot). */
-    unidadesPorPunto?: number;
-    /** Arrays with the start time (dot 0) and number of every recorded video line. */
-    lineasT?: string;
-    lineasN?: string;
-  };
-  fases: { tipos: { id: string; titulo: string }[]; t: string; k: string; linea: string };
-  senales: { tipos: { id: string; titulo: string; activaBaja?: boolean }[]; t: string; k: string; v: string };
-  pixeles: { t: string; c: string };
-  fb?: string;
-  segmentos: SegmentoTraza[];
-  memoria: { nombre: string; array: string; base: number }[];
-  programa: {
-    fuente: string;
-    licencia: string;
-    autor: string;
-    url?: string;
-    etiquetas: Record<string, string>;
-    explicaciones: Record<string, string>;
-    lineas?: Record<string, [number, string]>;
-  };
-  compresion?: { tipo: 'lz'; bytes: number };
-  arrays: Record<string, DefArray>;
-}
-
-export type ArrayNum = Uint8Array | Uint16Array | Uint32Array | Int32Array;
-
-/** One bus access as the adapters see it. */
-export interface AccesoBus {
-  t: number;
-  a: number;
-  d: number;
-  f: number;
-  /** Chip id (BusTraza.chips[c].id). */
-  c: string;
-  /** Kind id (BusTraza.tipos[k].id), when the bus has kinds. */
-  k?: string;
-  /** Units elapsed since the access started (0 = its first unit). */
-  fase: number;
-}
-
-/** Colour group of a net (the same in the schematic, the board, the photo, the timeline and the legend). */
-export type GrupoSenal = 'direccion' | 'datos' | 'control' | 'seleccion' | 'reloj' | 'video' | 'interrupcion' | 'dma';
-
-export interface RedActiva {
-  /** Net name of the console's schematic (DatosMaquina.redes[].n). */
-  red: string;
-  grupo: GrupoSenal;
-  /** Logic level at that instant (null = not known or not logic). */
-  nivel: 0 | 1 | null;
-  /** Reference of the part that drives the net: the pulses travel away from its pins. */
-  desde?: string;
-}
-
-export interface InstruccionDesensamblada {
-  texto: string;
-  bytes: number;
-  /** Generic Spanish explanation of the instruction (the demo's own explanations take precedence). */
-  explicacion: string;
-}
-
-export interface Desensamblador {
-  instruccion(leer: (dir: number) => number, pc: number, etiquetas?: Record<string, string>): InstruccionDesensamblada;
-}
-
-/** What the player knows at an instant, passed to `narrar`. */
-export interface EstadoReproductor {
-  t: number;
-  linea: number;
-  punto: number;
+export interface Paso {
+  /** Short label above the title («Bus de la CPU», «Borrado vertical»). */
   fase: string;
-  acceso: Record<string, AccesoBus | null>;
-}
-
-export interface Adaptador {
-  maquina: IdMaquina;
-  /** Disassembler of every CPU of the trace (key = cpus[].id). */
-  cpus: Record<string, Desensamblador>;
-  /** Nets moved by one access of a bus at the given phase of the access. */
-  redesAcceso(bus: string, ev: AccesoBus, out: RedActiva[]): void;
-  /** Nets of a signal of the trace (senales.tipos[].id) at a level. */
-  redesSenal(senal: string, nivel: number, out: RedActiva[]): void;
-  /** Nets of the video output while a pixel goes out (colour value of the trace). */
-  redesPixel?(color: number, out: RedActiva[]): void;
-  /** Clocks: always running, drawn faintly. */
-  relojes: RedActiva[];
-  /** Parts that answer for each chip id of the buses (to frame them on the schematic and the board). */
-  chips: Record<string, string[]>;
-  /** Spanish text of what is happening (optional). */
-  narrar?(e: EstadoReproductor): string;
-  /** Notice about the board views (e.g. which board or photo is shown and why). */
-  avisoPlaca?: string;
-  /** Explanation of each video phase (fases.tipos[].id → text). */
-  fases?: Record<string, string>;
-  /** Memory map for the panel. */
-  mapa: { desde: number; hasta: number; chip: string; titulo: string; cpu?: string }[];
-  /** Sheet of the schematic to show first (index of DatosMaquina.hojas). */
-  hojaInicial?: number;
-  /** Fidelity notes: what is exact and what is illustrative (Spanish). */
-  fidelidad: string;
-  /** Sources of the timing (title, url) for «Fuentes». */
-  fuentes: { titulo: string; url: string; uso: string }[];
-}
-
-export interface IndicePrograma {
-  id: string;
   titulo: string;
-  tipo: 'demo' | 'juego';
-  archivo: string;
-  bytes: number;
-  resumen: string;
-  /** For a homebrew game: credits and licence (file next to the trace). */
-  juego?: { nombre: string; autor: string; licencia: string; url: string; commit: string; licenciaTexto: string };
-  /** Video standard of the program, when a machine has one trace per standard (Mega Drive). */
-  norma?: 'pal' | 'ntsc';
+  /** One to three sentences in Spanish: what happens and why. */
+  texto: string;
+  /** Diagram layer: the board (default) or the inside of the chip, where the machine has one. */
+  capa?: 'placa' | 'interior';
+  /** Blocks of the diagram that take part. */
+  bloques: string[];
+  /** Blocks of the board diagram to mark on the photo when they are not `bloques` (steps drawn inside the chip). */
+  placa?: string[];
+  /** Wires lit, in the direction of the signal. */
+  senales: Senal[];
+  /** Values that do not travel on a drawn wire (registers, internal buses, strobes not drawn): [name, value]. */
+  internos?: [string, string][];
+  pantalla: Etapa;
+  /** Line under the screen panel (otherwise one derived from the stage). */
+  nota?: string;
+}
+
+/** The example followed through the frame. */
+export interface Ejemplo {
+  /** Visible picture in pixels. */
+  ancho: number;
+  alto: number;
+  /** Size of the followed tile or sprite tile (8 or 16 pixels). */
+  tesela: number;
+  /** Top-left pixel of the tile on screen. */
+  x: number;
+  y: number;
+  /** Colour index of every pixel of the tile (rows of `tesela` values). */
+  indices: number[][];
+  /** The followed pixel inside the tile. */
+  fila: number;
+  columna: number;
+  /** CSS colour of each index the tile uses (index 0 is transparent: the backdrop shows). */
+  colores: Record<number, string>;
+  /** Backdrop colour (CSS). */
+  fondo: string;
+  /** Bits per pixel. */
+  bpp: 2 | 4;
+  /** How a row is stored: bit planes (one byte per plane, leftmost pixel in bit 7) or packed nibbles. */
+  formato: 'planos' | 'nibbles';
+  /** Planar bytes of this machine are not stored leftmost-pixel-in-bit-7 (Neo Geo): show the bits only. */
+  sinHex?: boolean;
+  /** Columns of the followed row read in one fetch (Neo Geo: the left half of a 16-pixel sprite line). */
+  ventana?: [number, number];
+  /** Tile number as the texts write it («$24»). */
+  numero: string;
+  /** Colour value of the followed pixel as the texts write it («$16»). */
+  color: string;
+  /** Name of the screen in the panel («Pantalla», «LCD»). */
+  pantalla?: string;
+}
+
+export interface FuenteFotograma {
+  titulo: string;
+  url: string;
+  /** What was checked there. */
+  nota?: string;
+}
+
+export interface FotogramaMaquina {
+  maquina: IdMaquina;
+  /** One or two sentences under the step bar: what is followed. */
+  entrada: string;
+  ejemplo: Ejemplo;
+  pasos: Paso[];
+  /** Wires drawn only in this tab (strobes the «Arquitectura» diagram leaves out). */
+  extra?: Conexion[];
+  fuentes: FuenteFotograma[];
 }

@@ -168,6 +168,9 @@ export interface DatosPlaca {
     fabricacion: string;
     contorno: number[];
     apilado: string;
+    /** Face the inclined 3D view shows, when counting parts would pick the wrong one (SNES: test points and
+     *  passives underneath, the chips on top). */
+    lado_componentes?: 'F' | 'B';
   };
   redes: Red[];
   huellas: Huella[];

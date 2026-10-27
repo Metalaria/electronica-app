@@ -163,7 +163,9 @@ test('test de un apéndice: corrección inmediata, cita del libro, resultado y f
   const fb = page.locator('[data-feedback]');
   await expect(fb).toContainText('No es correcto');
   await expect(fb.locator('blockquote')).toContainText(primera.cita.slice(0, 18));
-  await expect(fb.getByRole('link', { name: /Leer en el libro/ })).toHaveAttribute('href', /^#\/apC/);
+  // 0.9: the shared question component (componentes/pregunta) puts «Ver la sección …» in the footer
+  await expect(page.locator('[data-ver-seccion]')).toHaveText(/^Ver (la sección|el problema|el apartado|en el libro)/);
+  await expect(page.locator('[data-ver-seccion]')).toHaveAttribute('href', /^#\/apC/);
   if (primera.tipo === 'opcion') await expect(page.locator('button.opcion[data-correcta="true"]')).toHaveCount(1);
   else await expect(fb).toContainText('el libro da');
   await page.keyboard.press('Enter');

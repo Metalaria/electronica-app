@@ -1,5 +1,5 @@
 <script lang="ts">
-  // «Consolas» view: six mainboards (NES, Neo Geo AES, Master System II, Mega Drive, Game Boy, Game Boy Color)
+  // «Consolas» view: seven mainboards (NES, Neo Geo AES, Master System II, Mega Drive, Game Boy, Game Boy Color, Super Nintendo)
   // in three linked views (photo, architecture, schematic) plus sources, the boards and «Un fotograma». Route: #/consolas/<maquina>/<pestana>[/<seleccion>] (see estado.svelte.ts).
   import { untrack } from 'svelte';
   import { ruta } from '../../lib/ruta.svelte';
@@ -9,7 +9,6 @@
   import Foto from './Foto.svelte';
   import Fuentes from './Fuentes.svelte';
   import { tienePlaca } from './placa/datos';
-  import { tieneFotograma } from './fotograma/maquinas';
 
   const actual = $derived(leerAncla(ruta.ancla));
   let sel: Seleccion | null = $state(null);
@@ -53,9 +52,7 @@
   }
 
   // «Placa en 3D / 2D» only for the machines with a board
-  // «Un fotograma» only for the machines with an adapter (fotograma/maquinas/<maquina>.ts)
-  const disponible = (m: IdMaquina, p: Pestana) =>
-    p === 'placa3d' || p === 'placa2d' ? tienePlaca(m) : p === 'fotograma' ? tieneFotograma(m) : true;
+  const disponible = (m: IdMaquina, p: Pestana) => (p === 'placa3d' || p === 'placa2d' ? tienePlaca(m) : true);
   const pestanas = $derived(PESTANAS.filter((p) => disponible(actual.maquina, p.id)));
   const pestana = $derived(pestanas.some((p) => p.id === actual.pestana) ? actual.pestana : 'foto');
 
@@ -66,6 +63,7 @@
     { id: 'megadrive', titulo: 'Mega Drive', placa: 'Modelo 1 VA6.8 PAL · 1993' },
     { id: 'gb', titulo: 'Game Boy', placa: 'DMG-CPU-05/06 · 1989' },
     { id: 'gbc', titulo: 'Game Boy Color', placa: 'CGB-CPU-04 · 1999' },
+    { id: 'snes', titulo: 'Super Nintendo', placa: 'SNSP-CPU-01 PAL · 1992' },
   ];
 </script>
 
@@ -75,7 +73,7 @@
   <header>
     <div class="titulo">
       <h1>Consolas</h1>
-      <p>Las placas base de las figuras 36.16 y 36.22 y otras cuatro consolas: foto interactiva, arquitectura animada, esquema real y, donde hay placa publicada, la placa en 3D.</p>
+      <p>Las placas base de las figuras 36.16 y 36.22 y otras cinco consolas: foto interactiva, arquitectura animada, esquema real y, donde hay placa publicada, la placa en 3D.</p>
     </div>
     <nav class="maquinas" aria-label="Consola">
       {#each MAQUINAS as m (m.id)}
@@ -105,13 +103,13 @@
       {#key datos.id}<m.default {datos} {maquina} {sel} {seleccionar} {irA} />{/key}
     {/await}
   {:else if pestana === 'fotograma'}
-    <!-- «Un fotograma»: the cycle-level trace of one frame, loaded with its code only when the tab opens. -->
+    <!-- «Un fotograma»: how one pixel of a frame comes to exist, step by step, loaded only when the tab opens. -->
     {#await import('./fotograma/Fotograma.svelte')}
       <div class="cargando">Cargando…</div>
     {:then m}
       {#key datos.id}<m.default {datos} />{/key}
     {:catch e}
-      <div class="aviso"><p>No se pudo abrir la animación: {String(e)}</p></div>
+      <div class="aviso"><p>No se pudo abrir «Un fotograma»: {String(e)}</p></div>
     {/await}
   {:else if pestana === 'esquema'}
     {#await import('./esquema/Esquema.svelte') then m}
@@ -146,10 +144,14 @@
     align-items: end;
     gap: 10px 20px;
   }
+  /* 0.9 look (componentes/ui09): serif title, segmented machine picker with 14–18 px radii */
   h1 {
     margin: 0;
     color: var(--titulos);
-    font-size: 28px;
+    font-family: var(--serif);
+    font-size: 30px;
+    font-weight: 700;
+    line-height: 1.15;
   }
   .titulo p {
     margin: 2px 0 0;
@@ -157,11 +159,12 @@
   }
   .maquinas {
     display: grid;
-    grid-template-columns: repeat(6, minmax(0, 1fr));
+    grid-template-columns: repeat(7, minmax(0, 1fr));
     gap: 6px;
     width: 100%;
     padding: 4px;
-    border-radius: 14px;
+    border: 1px solid var(--linea);
+    border-radius: var(--radio-tarjeta);
     background: var(--superficie-2);
   }
   .maquinas a {
@@ -170,7 +173,7 @@
     min-width: 0;
     min-height: 44px;
     padding: 5px 14px;
-    border-radius: 10px;
+    border-radius: 14px;
     color: var(--tinta);
     text-decoration: none;
     line-height: 1.2;
@@ -220,10 +223,10 @@
   }
   @media (max-width: 599px) {
     .consolas {
-      padding: 12px 12px 40px;
+      padding: 16px 16px 40px;
     }
     h1 {
-      font-size: 24px;
+      font-size: 26px;
     }
     .maquinas {
       grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -234,7 +237,7 @@
   }
   @media (min-width: 600px) and (max-width: 1099px) {
     .maquinas {
-      grid-template-columns: repeat(3, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
     }
   }
 </style>

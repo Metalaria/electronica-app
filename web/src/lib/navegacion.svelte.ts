@@ -35,10 +35,14 @@ export interface Herramienta {
 
 const esMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
+/** The start page (0.9: the first tab and the first entry of the rail; the rail's logo also leads there). */
+export const INICIO: Herramienta = { id: 'inicio', ruta: '#/', icono: 'inicio', etiqueta: 'Inicio', pestana: true };
+
 /** Every section of the app, by frequency of use: the rail and the phone tabs follow this order. */
 export const HERRAMIENTAS: Herramienta[] = [
+  INICIO,
   { id: 'libro', ruta: null, icono: 'libro', etiqueta: 'Libro', vistas: ['parte'], pestana: true },
-  { id: 'buscar', ruta: null, icono: 'buscar', etiqueta: 'Buscar', atajo: esMac ? '⌘ K' : 'Ctrl K', vistas: [], pestana: true },
+  { id: 'buscar', ruta: null, icono: 'buscar', etiqueta: 'Buscar', atajo: esMac ? '⌘ K' : 'Ctrl K', vistas: [] },
   { id: 'simulador', ruta: '#/simulador', icono: 'simulador', etiqueta: 'Simulador', pestana: true },
   { id: 'calculadoras', ruta: '#/calculadoras', icono: 'calculadora', etiqueta: 'Calculadoras' },
   { id: 'ejercicios', ruta: '#/ejercicios', icono: 'ejercicios', etiqueta: 'Ejercicios', pestana: true },
@@ -59,9 +63,6 @@ export const HERRAMIENTAS: Herramienta[] = [
     cuenta: () => Object.keys(usuario.marcadores).length + Object.keys(usuario.notas).length,
   },
 ];
-
-/** The start page: the logo on the rail, the first entry of «Más» on the phone. */
-export const INICIO: Herramienta = { id: 'inicio', ruta: '#/', icono: 'inicio', etiqueta: 'Inicio' };
 
 export function esActiva(h: Herramienta): boolean {
   return (h.vistas ?? [h.id as Vista]).includes(ruta.vista);

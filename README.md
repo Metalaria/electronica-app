@@ -12,8 +12,8 @@ esquemas (fase 5) está en la versión 0.7.
 ## Qué hace
 
 - **Navegación**: a la izquierda, un **carril de iconos** con todas las secciones de la aplicación por orden de
-  uso (Libro, Buscar, Simulador, Calculadoras, Ejercicios, Repaso, Componentes, Conceptos, Instrumentos, Kit
-  FM7303, Consolas, Proyectos KiCad, Glosario, Marcadores; el logotipo lleva a Inicio), cada una con su nombre debajo y la marca de
+  uso (Inicio, Libro, Buscar, Simulador, Calculadoras, Ejercicios, Repaso, Componentes, Conceptos, Instrumentos, Kit
+  FM7303, Consolas, Proyectos KiCad, Glosario, Marcadores; el logotipo también lleva a Inicio), cada una con su nombre debajo y la marca de
   la actual; si la ventana es baja, las últimas pasan a «Más». Junto al carril, el **índice del libro**: tomos
   plegables con su barra de lectura → capítulos con su anillo → secciones, con la sección que se lee resaltada y
   siempre a la vista (botón «Ir a la sección actual» si se ha desplazado el índice), las leídas marcadas y un
@@ -22,8 +22,8 @@ esquemas (fase 5) está en la versión 0.7.
   consolas y demás herramientas empieza oculto para dejarles todo el ancho. En la barra superior, la miga
   «Capítulo 5 · Diodos › 5.8 …» abre las secciones del capítulo y los capítulos anterior y siguiente, y los botones
   ↑ ↓ (o `Alt ↑` / `Alt ↓`) van a la sección anterior o siguiente. En el teléfono y la tableta en vertical, una
-  **barra inferior** (Libro, Buscar, Simulador, Ejercicios, Más): «Libro» abre el índice en un cajón y «Más»,
-  el resto; el botón Atrás de Android los cierra primero.
+  **barra inferior** (0.9: Inicio, Libro, Simulador, Ejercicios, Más; una píldora detrás del icono activo):
+  «Libro» abre el índice en un cajón y «Más», el resto (Buscar incluido); el botón Atrás de Android los cierra primero.
 - **Lectura** con la tipografía del libro (Source Serif 4 para el texto, Source Sans 3 para títulos e
   interfaz, Source Code Pro para el código; las fuentes van dentro de la aplicación). El color del
   capítulo es el acento: apertura, números de sección, ecuaciones, tablas.
@@ -60,19 +60,34 @@ esquemas (fase 5) está en la versión 0.7.
   - marcadores de sección y notas breves por sección (botones junto al título de cada sección);
   - la vista «Marcadores y notas», en el orden del libro;
   - tema claro, sepia, oscuro o el del sistema, y tamaño del texto (botón «Aa»).
-- **Inicio como mapa del libro** (0.8): en el centro, todos los capítulos, apéndices y anexos como teselas
-  del color de su bloque, agrupadas por tomo como el índice; cada tesela se rellena desde abajo con la parte
-  leída y lleva una muesca por sección (rellena si está leída); un capítulo leído entero queda de su color con
-  una marca ✓, y el que se está leyendo, recuadrado. Un toque abre el capítulo donde se dejó. Encima, una
-  tarjeta grande «Seguir leyendo» con la figura de la sección donde se dejó la lectura (la última que se pasó,
-  o la primera de la sección o del capítulo), su título y lo leído del capítulo, y «Repaso de hoy» con las
-  tarjetas pendientes del mazo elegido y «Empezar». Se mantienen los accesos (Buscar, Glosario…), «También
-  leyendo» y el progreso con los capítulos en curso. Las teselas son CSS puro: la portada no carga más
-  imagen que la de «Seguir leyendo».
-  Pruebas de las tres mejoras de la 0.8 (vista previa, glosario con imagen, mapa del libro):
+- **Inicio con racha y camino del libro** (0.9, lavado de cara al estilo de Brilliant a partir de las maquetas
+  aprobadas): un saludo («Hola, Gonzalo»; el nombre se escribe en «Aa» → «Tu nombre», solo en este dispositivo; vacío
+  dice «Hola») y, en dos columnas en la tableta y el ordenador (una en el teléfono):
+  - **«Seguir leyendo»**: la lección por pasos que se dejó a medias («Paso 4 de 7 · unos 6 minutos», «Continuar»
+    vuelve a ese paso) o, si no hay ninguna, la sección donde se dejó la lectura, con una barra de segmentos (uno
+    por sección del capítulo) y el enlace «Estudiar … por pasos». Lleva la figura de esa sección: la única imagen
+    que carga la portada.
+  - **Racha**: días seguidos cumpliendo el objetivo diario, con una llama y los últimos siete días; hoy cuenta en
+    cuanto se cumple. **Objetivo de hoy**: un anillo («2/3»); se elige en «Aa» entre pasos de lección y preguntas
+    de repaso, de 1 a 10 al día (por defecto, 3 pasos). Cuentan los pasos de las lecciones, las preguntas
+    contestadas (tarjetas, tests, examen, fallos y las de las lecciones) y las secciones marcadas como leídas:
+    con un objetivo de pasos, cada sección leída cuenta como un paso (se puede desactivar en «Aa», «Cada sección
+    que marcas como leída cuenta como un paso»), así que leer el libro como siempre también mantiene la racha. El
+    día empieza a las 04:00, como en el repaso.
+  - **Repaso pendiente**: las tarjetas de hoy del mazo elegido, con «Repasar».
+  - **El libro como camino**: el tomo que se lee, desplegado, con un nodo por capítulo (leído con ✓, el actual
+    con «Estás aquí · 5.2», los pendientes con su número) y las secciones leídas de cada uno; los demás tomos, en
+    filas con los colores de sus bloques que se despliegan al tocarlas. Todo del color de su bloque.
+  - Debajo siguen «También leyendo», el progreso con los capítulos en curso y los atajos (Buscar, Glosario…).
+  El mismo estilo (tarjetas redondeadas, botón principal grande, chips, rótulos, títulos con Source Serif) llega a
+  las portadas del Simulador, Ejercicios, Repaso, Calculadoras, Componentes, Conceptos y Consolas, sin cambiar lo
+  que hacen. Pruebas: `npx playwright test -c playwright.inicio09.config.ts tests/inicio09.spec.ts
+  tests/visual.spec.ts tests/navegacion.spec.ts` (compilación propia, puerto 4301); capturas en el Mac, la
+  tableta en vertical y el teléfono, en claro, sepia y oscuro: `node tests/inicio09-capturas.mjs` →
+  `tests/capturas/lavado09/inicio/`.
+  Pruebas de las mejoras de la 0.8 (vista previa, glosario con imagen; el inicio, ya como camino):
   `npx playwright test -c playwright.visual.config.ts tests/visual.spec.ts` (compilación propia, puerto 4271);
-  capturas en el Mac, la tableta y el teléfono, claro y oscuro: `node tests/visual-capturas.mjs` →
-  `tests/capturas/visual/`.
+  capturas: `node tests/visual-capturas.mjs` → `tests/capturas/visual/`.
 - **Diseño adaptable**: en el teléfono y la tableta en vertical, una columna, barra inferior e índice en un cajón;
   en tableta apaisada y ordenador, carril, índice fijo y texto. Rutas con almohadilla (`#/cap05/sec-5.3`), que funcionan sin servidor
   dentro de Tauri.
@@ -108,6 +123,8 @@ esquemas (fase 5) está en la versión 0.7.
   una; botón «Calcular» junto a cada ecuación catalogada y tarjetas de fórmulas vivas (ver más abajo).
 - **Repaso**: tarjetas de los 910 términos del glosario con repetición espaciada y 1028 preguntas de test de
   todos los capítulos y apéndices, cada una con la cita del libro de la que sale (ver más abajo).
+- **Estudiar por pasos** (0.9): cualquier sección del libro como una lección de una pantalla por subapartado, con
+  sus figuras vivas, ecuaciones y calculadoras, y después las preguntas de Repaso de esa sección (ver más abajo).
 
 ### Atajos de teclado
 
@@ -447,7 +464,7 @@ pestañas enlazadas entre sí:
   esos documentos. Los documentos de SNK no van dentro de la aplicación; las imágenes de las hojas citadas están
   en `/home/claude/consolas/neogeo/referencias/`.
 
-**Las otras cuatro consolas** usan las mismas pestañas:
+**Las otras cinco consolas** usan las mismas pestañas:
 
 - **Master System II** (placa 171-5922A, PAL): fotos de la placa montada (IC BD M4Jr. PAL, 1992) y de la placa sin
   componentes, de ConsoleMods (CC BY). El esquema es el del manual de servicio de Sega (abril de 1991),
@@ -473,11 +490,30 @@ pestañas enlazadas entre sí:
   Nerd (CC BY-NC-SA 4.0), reconstruido a partir de su PDF y comprobado con la recreación opengbc (los 118 pines
   conectados de la CPU coinciden). Arquitectura: doble velocidad (KEY1), bancos de VRAM y WRAM, HDMA por línea y
   general, la PPU y las paletas.
+- **Super Nintendo** (SNSP-CPU-01 PAL, 0.9): esquema y placa de **nonSNES** de stonedDiscord (GPL-3.0, commit
+  `cf2e70b`), una recreación «1:1» de la SNSP-CPU-01 Rev5 con el esquema de arzi84; el texto completo de la GPL va
+  en «Fuentes» (`web/public/consolas/snes/LICENSE-nonSNES.txt`). Dos fotos de esa misma placa, del propio
+  repositorio: la cara de componentes escaneada sin los chips y la de soldadura con sus SMD (Wikimedia Commons no se
+  pudo consultar desde aquí). Los recuadros **no se dibujan a mano**: son las huellas de la PCB llevadas a cada foto
+  con un ajuste afín a sus vías (792 y 44 puntos; error mediano de 1,6 y 3,1 px), así que cualquier componente del
+  esquema se marca en la foto de su cara. Arquitectura con selector PAL/NTSC (PAL por defecto: 21,28137 MHz, 312
+  líneas): accesos de 6, 8 o 12 ciclos maestros por zona, decodificador del bus A y del bus B, DMA de la ROM a la
+  VRAM o a la WRAM por los dos buses a la vez, una línea con el refresco de la WRAM y el HDMA, el cuadro con la NMI
+  y la lectura automática de los mandos, los puertos CPU ↔ SPC700, la salida del S-DSP al DAC y los relojes.
+
+  **Cambiar las fotos por otras** (por ejemplo, de la placa del dueño con sus chips): copiar la foto a
+  `/home/claude/consolas/snes/fotos/`, escribir junto a ella un `<foto>.alineacion.json` como
+  `nonSNES_front.alineacion.json` con al menos 4 puntos `[X mm, Y mm, x px, y px]` (un pad o taladro de la placa,
+  con las coordenadas de `snes/pcb/SNSP-CPU-01_huellas.json`, y el mismo punto en la foto a su tamaño original;
+  `"modelo": "homografia"` si la foto está hecha en ángulo, `"cara": "bottom"` si es la de soldadura), cambiar
+  `origen` y `alineacion` de la foto en `MAQUINAS` (`contenido/consolas.py`, entrada `snes`) y ejecutar
+  `python3 contenido/consolas.py snes`. Los recuadros y las marcas salen solos; los textos de cada pieza están en
+  `contenido/consolas_snes.py`.
 
 Los datos se generan con `python3 contenido/consolas.py` (también desde `generar.py`) a partir de la carpeta
 de investigación `/home/claude/consolas`; si falta, se conservan los de `web/public/consolas/`.
 
-**Placa en 3D y Placa en 2D.** La NES, la Mega Drive, la Neo Geo, la Game Boy y la Game Boy Color tienen dos pestañas más con la placa dibujada por
+**Placa en 3D y Placa en 2D.** La NES, la Mega Drive, la Neo Geo, la Game Boy, la Game Boy Color y la Super Nintendo tienen dos pestañas más con la placa dibujada por
 el mismo visor que «Proyectos KiCad» (girar, ver desde arriba, abajo o de canto, separar capas, rayos X, cara
 superior o inferior, aspecto real o por capas). La placa está enlazada con el esquema: elegir U1 o una red en el
 esquema la elige en la placa («Ver en la placa») y al revés («Ver en el esquema», «Ver en la foto»); al tocar un
@@ -525,6 +561,23 @@ componente se ven sus pads con su red, y al tocar una red, todos sus pads.
   regenerarla, `curl -L -o NeoGeoAES3_5.kicad_pcb https://raw.githubusercontent.com/Board-Folk/NeoGeoAES-3.5/75ef9665d5fc884c22607987b42478e3580d8f86/NeoGeoAES3_5.kicad_pcb`
   (si se corta, repetir con `curl -L -C - -o …`) y `CONSOLAS_PCB_NEOGEO=/ruta/NeoGeoAES3_5.kicad_pcb python3
   contenido/consolas_pcb.py neogeo`. La geometría que dibuja el visor ocupa 1064 kB (272 kB comprimida).
+  En la 0.9 deja de colgar la tableta (Xiaomi Pad 6) en «Colocando los componentes… 236 de 320»: Chromium para
+  Android pinta los lienzos 2D en la GPU, y las caras de esta placa se pintaban con todo el cobre recortado por sus
+  2286 aberturas de máscara; ese recorte retenía la GPU minutos (en Chromium de escritorio con el lienzo en la GPU,
+  más de cinco minutos sin primer cuadro; ahora, componentes en 4,5 s). Ahora los pads se acaban con un solo relleno, sin recorte,
+  y el dibujo es el mismo. El regulador U37 (LM2576T-5, TO-220 de cinco patillas) ya no pasa por el TO-220 de tres
+  patillas de la biblioteca: tiene su cuerpo, con una patilla en cada uno de sus cinco pads.
+- **Super Nintendo**: la PCB de nonSNES (KiCad 10, GPL-3.0), el mismo proyecto que el esquema: las 400 referencias
+  coinciden y los 1552 pads con red están en la misma red que en el esquema (el resumen cuenta 1548 porque P5 tiene
+  cinco pads con el número 23, todos a masa). Los chips (QFP, SOP y las SRAM) se dibujan con patas; la vista
+  inclinada enseña la cara de los chips aunque la mayoría de las huellas (puntos de prueba y SMD) estén debajo. El
+  proyecto declara 4,69 mm de grosor y se dibuja con 1,6. El `.kicad_pcb` (4,5 MB) no se guarda: `curl -L -o
+  SNSP-CPU-01.kicad_pcb https://raw.githubusercontent.com/stonedDiscord/nonSNES/cf2e70b35b141b551b1683b0fac1c4b29f9ed0d6/SNSP-CPU-01/SNSP-CPU-01.kicad_pcb`
+  y `CONSOLAS_PCB_SNES=/ruta/SNSP-CPU-01.kicad_pcb python3 contenido/consolas_pcb.py snes`. El esquema se convierte
+  con `python3 /home/claude/consolas/tools/kicad9to7.py SNSP-CPU-01.kicad_sch snes/kicad7/SNSP-CPU-01.kicad_sch`
+  (también sirve para KiCad 10), su netlist y su SVG con `kicad-cli sch export netlist --format kicadxml` y
+  `kicad-cli sch export svg`, y las cajas de las huellas con `python3 tools/huellas_cajas.py`; solo se guardan esos
+  derivados.
 - Sin placa: Master System (no hay ninguna
   recreación abierta de la 171-5922A: el `.kicad_pcb` de slowcoder está vacío, KiCad 4 sin huellas, y los demás
   proyectos son placas de vídeo). De la DMG-CPU original no hay placa abierta (Gekkio solo publica los esquemas): por
@@ -535,99 +588,59 @@ componente se ven sus pads con su red, y al tocar una red, todos sus pads.
 ficheros originales no se copian: solo la geometría que dibuja el visor. La reconstrucción de la CGB-CPU-04 lee las
 huellas de la biblioteca de KiCad instalada (`/usr/share/kicad/footprints`, o `KICAD_FOOTPRINTS`). Pruebas en
 `tests/consolas-placas.spec.ts` (`playwright.placas.config.ts`, puerto 4291) y capturas con
-`node tests/consolas-placas-capturas.mjs` (en `tests/capturas/consolas-gbc/` y `consolas-gb/`).
+`node tests/consolas-placas-capturas.mjs` (en `tests/capturas/consolas-gbc/` y `consolas-gb/`). Las de la Super Nintendo,
+en `tests/consolas-snes.spec.ts` (`playwright.snes.config.ts`, puerto 4321), con sus capturas en
+`tests/capturas/consolas-snes/`.
 
-### Un fotograma: el reproductor, NES, Game Boy y Game Boy Color
+### Un fotograma (0.9)
 
-En las seis consolas (0.8), la pestaña «Un fotograma»
-reproduce ciclo a ciclo cómo viajan las señales desde que la CPU lee el código del juego hasta que el
-cuadro está en la pantalla, y enseña ese recorrido sobre la placa:
+La pestaña «Un fotograma» de las siete consolas explica, paso a paso y en orden, cómo llega a existir un punto de un
+cuadro. No emula ningún juego: sigue un ejemplo genérico (una tesela con una pelota de 8 × 8 puntos, o el sprite de
+16 × 16 de la Neo Geo) con valores de ejemplo coherentes de principio a fin: la misma tesela, la misma paleta y el
+mismo punto en todos los pasos. Entre 13 y 15 pasos por consola:
 
-- Dos programas: «Paso a paso», un programa corto escrito para la aplicación (fondo fijo y un robot de cuatro sprites
-  que avanza un píxel por cuadro; cada instrucción con su explicación en español), y «Un juego de verdad», un juego
-  homebrew libre: robotfindskitten en la NES y Libbet and the Magic Floor en la Game Boy (los dos de Damian Yerrick,
-  licencia zlib) y Tobu Tobu Girl Deluxe en la Game Boy Color (Tangram Games; código MIT, gráficos y música CC BY 4.0).
-  Dos tramos: «Tras el reset» (el vector de reset, la pila, la espera del VBlank) y «Un cuadro completo».
-- Velocidades «Cuadro entero», «Una línea», «Unos puntos» y «Un ciclo»; reproducir, pausar, paso por ciclo, por
-  instrucción y por línea (← →, Mayús + ← →, espacio). La línea de tiempo enseña las fases del cuadro (líneas
-  visibles, borrado horizontal y vertical, modos de la PPU) y, alrededor del cursor, cada acceso de cada bus, las
-  instrucciones y la salida de píxeles; se arrastra para moverse.
-- La pantalla se va dibujando píxel a píxel en su orden real; el resto es el cuadro anterior, atenuado. Al lado, la
-  instrucción en curso con su explicación y sus ciclos de bus uno a uno (dónde se lee el código de operación del
-  cartucho, los operandos, las lecturas fantasma), las instrucciones ejecutadas alrededor, y las lecturas de cada bus
-  (dirección en hexadecimal y en binario, dato, quién responde, si sale o no a las patillas), registros y señales.
-- El recorrido: en el esquema real, en la placa (NES OpenTendo; Game Boy Color CGB-CPU-04, por la cara de la CPU) y,
-  en la Game Boy, sobre el escaneo del cobre de la DMG-CPU-06, se iluminan las redes que se mueven en ese instante con
-  el color de su grupo (direcciones, datos, control, selección de chip, relojes, vídeo, interrupciones, DMA) y unos
-  pulsos recorren las pistas desde el chip que las conduce; las líneas a 1 llevan pulsos, las líneas a 0 quedan
-  tenues, y se recuadran los chips que responden.
+1. la CPU lee una instrucción de la ROM del cartucho (la dirección en el bus, la selección del chip, el byte de
+   vuelta por el bus de datos) y guarda un valor en la RAM;
+2. llega el borrado vertical: la interrupción (NMI, /INT, VINT, IRQ de nivel 1…) y la copia a la memoria de vídeo
+   por los puertos del chip de vídeo o por DMA donde la consola la tiene (OAM DMA, DMA del VDP, HDMA, canales de
+   DMA de la Super Nintendo), del mapa, del dibujo y de la paleta;
+3. el chip de vídeo, línea a línea: lee el número de tesela del mapa, los bytes del dibujo, junta los planos,
+   aplica el desplazamiento, decide entre sprites y fondos y busca el color en la paleta;
+4. el punto sale hacia el codificador de vídeo o el convertidor digital-analógico y la tele (o la pantalla de
+   cristal líquido de las Game Boy);
+5. fin del cuadro: la interrupción vuelve a llegar y todo empieza otra vez.
 
-Las trazas se graban sin conexión con emuladores propios validados con baterías de pruebas públicas (6502:
-SingleStepTests y nestest; SM83: SingleStepTests y las ROM de blargg) y los cuadros se han contrastado con jsnes y
-PyBoy (iguales píxel a píxel salvo lo explicado en «Qué es exacto y de dónde sale»). Se regeneran con
-`node contenido/fotograma/generar.mjs` (ver ESQUEMA.md); pruebas en `tests/fotograma.spec.ts`
-(`playwright.fotogramaA.config.ts`), capturas con `node tests/fotograma-capturas.mjs` y coste por fotograma con
-`node tests/fotograma-rendimiento.mjs`.
+Cada paso enseña:
 
-### Un fotograma: Master System II, Mega Drive y Neo Geo
+- **El texto**: título y una a tres frases, y la lista «Lo que viaja» con las direcciones, datos y señales activas
+  («/ROMSEL 0», «A0–A15 $C0F0»).
+- **El diagrama de bloques** de «Arquitectura» (los mismos nombres de chips y señales), con solo los chips y buses que
+  intervienen encendidos, unos pulsos que corren por los cables en el sentido de la señal y una flecha al final, y el
+  valor en la etiqueta de cada bus. Algunos pasos de la Game Boy se dibujan en la capa «Dentro del SoC». En el móvil
+  el diagrama se acerca a la parte encendida (con «Ver el diagrama entero» para verlo todo); si un paso recorre media
+  placa, el dibujo se desliza a los lados.
+- **La pantalla de ejemplo**: el cuadro anterior atenuado mientras trabaja la CPU, la tesela colocada por el mapa, los
+  bits de cada plano (o los bytes de dos puntos de la Mega Drive), el índice de cada punto, el color, el punto que sale
+  y, al final, el cuadro terminado; al lado, la tesela ampliada.
+- **En la placa**: la foto de «Foto» encuadrada en los chips del paso, con el resto oscurecido; cada chip enlaza con
+  su ficha.
 
-La pestaña «Un fotograma» de estas tres consolas sigue, ciclo a ciclo, cómo se forma un cuadro completo: el
-programa que lee la CPU, cada acceso del chip de vídeo a su memoria, la interrupción vertical y cada píxel en el
-instante en que sale, con las redes que se mueven en el esquema y en la placa (la Mega Drive y la Neo Geo tienen
-placa; la Master System, solo esquema). Dos programas por consola:
+Controles: «Anterior», «Siguiente», la barra de segmentos (cada segmento salta a su paso) con el contador «4/15»,
+«Reproducir» (avanza solo con una pausa para leer cada paso, de 7 a 20 s según su longitud) y «Pausa», y las teclas
+← →. El paso va en la dirección: `#/consolas/<maquina>/fotograma/<paso>`.
 
-- **Paso a paso**: una demostración escrita para la aplicación (`contenido/consolas_demos/<maquina>/`, con la
-  explicación en castellano de cada instrucción). Master System: cielo, hierba, ladrillos y una pelota (sprite);
-  Mega Drive (PAL y NTSC, con el conmutador «PAL · 50 Hz / NTSC · 60 Hz»): planos A y B, nubes que se desplazan y
-  una pelota cuya tabla de sprites copia un DMA; Neo Geo: una pelota de dos sprites enganchados, un suelo de 20
-  sprites y «NEO GEO» en la capa fija. La de la Neo Geo empieza en USER, como si la ROM del sistema de SNK ya la
-  hubiera llamado.
-- **Un juego de verdad**, elegidos por el dueño entre homebrew libres:
-  - Master System: **Food Fighter** (Haroldo O. Pinheiro, MIT; sprites de Henry Software, CC0), compilado aquí
-    desde su código (`contenido/consolas_juegos/sms/construir.sh`, SDCC 4.0.0 y devkitSMS); cuadro 300 con un
-    guion de botones.
-  - Mega Drive: **Gentris**, el ejemplo de juego de SGDK (Werton y Stéphane Dallongeville, MIT), la ROM que publica
-    SGDK (`contenido/consolas_juegos/megadrive/obtener.sh` la descarga y comprueba su SHA-256); PAL y NTSC, cuadro
-    480 de una partida guiada con el mando de 3 botones.
-  - Neo Geo: **05-scrolling** de ngdevkit-examples (Damien Ciabrini, LGPL-3.0+; fondos de ansimuz, CC0), paralaje
-    con 78 sprites, compilado aquí (`contenido/consolas_juegos/neogeo/construir.sh`). Arranca desde el reset con
-    **nullbios**, la ROM del sistema libre de ngdevkit (LGPL-3.0+): la de SNK tiene derechos y no se puede
-    distribuir, y UniBIOS tampoco; nullbios hace lo mínimo (vectores, llamar a USER, leer los mandos).
-  Junto a cada traza van el texto de su licencia y una nota con el código fuente (`<id>-LICENCIA.txt`,
-  `<id>-FUENTE.txt`).
+Los textos están en un fichero por consola (`web/src/componentes/consolas/fotograma/maquinas/<maquina>.ts`) y se han
+contrastado con los datos de la propia aplicación y con documentación pública (NESdev Wiki, Pan Docs, SMS Power!,
+Plutiedev y Sega Retro, NeoGeo Development Wiki, SNESdev Wiki y los documentos de anomie, los artículos de Rodrigo
+Copetti), sin copiar texto; la lista de cada consola está en «Fuentes». Pruebas en `tests/fotograma09.spec.ts`
+(`playwright.fotograma09.config.ts`, puerto 4341): pasos de cada consola, Siguiente, Anterior, teclado, barra,
+Reproducir y Pausa, el paso en la dirección, los chips y cables encendidos existen en el diagrama de su consola y en el
+móvil no se sale ningún texto. Capturas con `node tests/fotograma09-capturas.mjs` (tres pasos de cada consola en
+tableta vertical y móvil, claro y oscuro, en `tests/capturas/fotograma09/`).
 
-**Cómo se generan** (sin conexión; la aplicación solo lleva las trazas, 40–130 kB cada una):
-
-```sh
-node contenido/fotograma/sms/generar_sms.mjs
-node contenido/fotograma/megadrive/generar_md.mjs
-node contenido/fotograma/neogeo/generar_ng.mjs
-```
-
-Descargan a `contenido/.cache/fotograma/` los núcleos libres fijados por commit y SHA-256 (z80.h de floooh, zlib;
-el 68000 Moira, MIT; el VDP de BlastEm, GPL-3, solo para generar, nunca dentro de la aplicación), compilan las
-herramientas nativas y escriben `web/public/consolas/fotograma/<maquina>/`. Los juegos salen de
-`contenido/fotograma/juegos.json` (las entradas con `maquina` `sms`, `megadrive` o `neogeo`).
-
-**Qué se ha comprobado:**
-- El Z80 frente a SingleStepTests/z80: 50 000 pruebas de 50 códigos, 130 000 accesos con su dirección, dato y
-  ciclo; solo difieren banderas no documentadas de LDIR y OTIR. El 68000 (Moira con tres arreglos del orden de
-  los accesos) frente a SingleStepTests 680x0 (`contenido/fotograma/m68k/validar_m68k.py`, 35 ficheros de
-  instrucciones): 282 275 pruebas y 712 426 accesos comparados; el instante de cada acceso coincide siempre (desfase
-  fijo de 2 ciclos en los 534 557 accesos de las pruebas sin diferencias); difieren 8511 pruebas, todas de MOVE a
-  SR (4938), MOVEM.l (2704), ADD.l y SUB.l (731, ADDQ.l a un registro de dirección: 8 ciclos en Moira y en el
-  manual de Motorola, 6 en las pruebas) y BTST (138); las 85 640 pruebas que acaban en error de dirección se
-  cuentan aparte (los programas no hacen ninguno).
-- El cuadro de cada traza contra emuladores independientes (`python3 contenido/fotograma/contraste_b/contrastar.py`,
-  que descarga y compila Genesis Plus GX y Geolith): Mega Drive, demostración PAL y NTSC y el menú de Gentris,
-  0 píxeles distintos de 71 680; Neo Geo, 05-scrolling con nullbios en Geolith, 0 de 71 680; Master System, solo
-  la última columna (64 píxeles en la demostración, 186 en Food Fighter): el VDP de BlastEm saca ya el color del
-  borde en el punto 255 y Genesis Plus GX el último punto de la imagen. Los juegos se contrastan sin pulsar
-  botones: con el guion, el propio juego diverge (SGDK mezcla el contador H/V en sus números aleatorios).
-- `tests/fotogramaB.spec.ts`: para los siete programas, el cuadro repetido por la aplicación es igual píxel a
-  píxel al del emulador (datos y lienzo) y el paso por instrucciones cae en cada instrucción grabada; controles,
-  redes del esquema y de la placa en accesos conocidos, el arranque de la Neo Geo desde nullbios y el
-  conmutador PAL/NTSC del juego.
+Sustituye (0.9) al reproductor de trazas ciclo a ciclo de la 0.8: se quitaron el reproductor, las trazas, los
+generadores y emuladores de `contenido/fotograma/`, las demostraciones y los juegos homebrew que solo usaba él
+(`contenido/consolas_demos/`, `contenido/consolas_juegos/`) y sus pruebas.
 
 ## Proyectos KiCad
 
@@ -654,7 +667,14 @@ por una misma selección (un componente, un pad o una red): lo que se toca en un
   tardaba más de un segundo en pintar y subir las dos caras de 4096 px, bloqueando la página) las caras las pinta un
   hilo aparte y se suben a la GPU a trozos, sin que la página se quede parada; en Android y Windows se pintan como
   antes, que allí ya era cuestión de milisegundos. Al girar, si la GPU no llega a 60 cuadros por segundo, la placa se
-  dibuja con menos píxeles mientras se mueve y vuelve a la resolución completa al soltarla.
+  dibuja con menos píxeles mientras se mueve y vuelve a la resolución completa al soltarla. En la 0.9, con
+  «Componentes» apagado los componentes no se cargan (solo se ocultaban): se construyen al encenderlo. Mientras se
+  cargan se revisa su geometría: un modelo con números no finitos o de tamaño absurdo, uno de la biblioteca con otro
+  número de patillas que pads tiene la huella (el toroide trifilar T1 del SDR) o cuyas patillas caen fuera de sus
+  pads (los toroides verticales y el trimmer 3296W del SDR, las ferritas verticales y la tira de 2 mm de la Mega
+  Drive, los DIP de 400 y 600 milésimas, que la biblioteca solo dibuja a 7,62 mm) se cambia por un cuerpo propio con
+  sus patillas en los pads. Las piezas se colocan en tramos de 6 ms y, donde la GPU no compila en paralelo, los
+  sombreadores se compilan de uno en uno, cada uno en su tarea.
 - **Placa en 2D**: la placa plana, vista desde arriba o desde abajo (espejada), con aspecto real o por capas al estilo de
   KiCad, contornos de fabricación y zonas sin cobre (la de la antena del ESP32). Al pasar el ratón se lee el pad, la
   pista o la red; al tocar una red se resalta todo su cobre.
@@ -957,8 +977,8 @@ tocar la tarjeta la gira; deslizar a la derecha es «Bien» y a la izquierda «O
 
 **Tests por capítulo.** 1028 preguntas (de 10 a 20 por capítulo y de 5 a 12 por apéndice), de opción múltiple y
 numéricas (con coma decimal y tolerancia). Los distractores recogen los errores contra los que el libro previene.
-Cada respuesta se corrige al momento con la explicación, la **cita literal del libro** y el enlace «Leer en el
-libro» a la sección o el problema de donde sale. Al final, la puntuación y la lista «Para repasar»; los fallos
+Cada respuesta se corrige al momento con la explicación, la **cita literal del libro** y el enlace «Ver la
+sección…» (o «Ver el problema…») de donde sale. Al final, la puntuación y la lista «Para repasar»; los fallos
 quedan en **«Repasar fallos»** hasta acertarlos. El **examen mixto** saca 10, 20, 40 o 60 preguntas al azar de los
 capítulos elegidos. Al final de cada capítulo del lector hay un botón **«Test del capítulo»**. Teclado: `1`–`5` o
 `A`–`E` eligen, `Intro` pasa a la siguiente.
@@ -967,6 +987,39 @@ capítulos elegidos. Al final de cada capítulo del lector hay un botón **«Tes
 `generar.py`) no publica nada si una cita no aparece literalmente en la sección del libro a la que remite, si una
 referencia no existe o es de otro capítulo, o si el número de una pregunta numérica no está en su cita. Pruebas:
 `tests/repaso.spec.ts` (capturas en `tests/capturas/repaso-*.png`).
+
+**Preguntas (0.9).** Los tests, el examen y «Repasar fallos» usan la misma pregunta que las lecciones, como en la
+maqueta aprobada: barra de progreso por segmentos con «3/8», opciones A–D (o el número con su unidad), corrección al
+momento con icono y palabra («Correcta», «Tu respuesta»; nunca solo color), la explicación, la **figura del libro**
+cuando está junto a la cita (la que cita el párrafo citado o la más cercana, sin cruzar un subapartado; si no la
+hay con seguridad, no se pone), la cita «Del libro · Sección 5.2» y «Probar otra vez». Abajo, «Ver la sección 5.2»
+y «Continuar». Solo cuenta la primera respuesta: «Probar otra vez» es para aprender, no cambia la nota.
+
+## Estudiar por pasos (0.9)
+
+El botón discreto con huellas al final del título de cada sección del lector (`#/leccion/<capítulo>/<sección>`)
+abre la sección como una **lección**, a pantalla completa y en una columna de unos 640 px en el ordenador, la tableta
+y el teléfono:
+
+- **Pasos automáticos «por subapartados»**: cada subapartado (`===`) es un paso, y el texto anterior al primero, si
+  lo hay, es el paso «Introducción». Las 109 secciones sin subapartados se reparten en sus `====` o, si no tienen,
+  en tramos de una pantalla aproximada (unos 2000 caracteres; nunca se corta tras un párrafo que termina en «:»).
+  Un subapartado muy largo (el 1 % de ellos) sigue en pasos «Continuación». Funciona en las 754 secciones.
+- **Cada paso es una pantalla**: cerrar, barra por segmentos con «n/N», «Capítulo 5 · Diodos · 5.2 …», «Paso 4» y
+  el título del subapartado, y el texto con los mismos bloques del lector (figuras y figuras vivas, ecuaciones con
+  «Calcular», tablas, deducciones, cajas, «Simular», «Ver animación»…). Abajo, «Atrás» y «Continuar»; teclado: `→`
+  o `Intro` sigue, `←` vuelve, `Esc` cierra.
+- **Preguntas**: tras el último paso, las de Repaso cuya referencia es esa sección (o algo dentro de ella: un
+  subapartado, un problema), una por pantalla. **Resumen**: «Sección completada», que la marca como leída, con
+  «Siguiente sección» (su lección) y «Volver al libro».
+- **Historial**: la lección es una sola entrada; cada pantalla reemplaza la dirección (al recargar se vuelve a la
+  misma), así que «Atrás» del navegador o de Android sale de la lección a donde se abrió.
+- **Progreso**: pasos hechos, último paso y lecciones completadas por sección (clave `lecciones`, sincronizada); cada
+  paso y cada pregunta cuentan para el objetivo diario y la racha de la portada.
+
+Pruebas: `npx playwright test -c playwright.leccion09.config.ts tests/leccion09.spec.ts` (compilación propia,
+puerto 4311); capturas en el Mac, la tableta y el teléfono, en claro, oscuro y sepia:
+`node tests/leccion09-capturas.mjs` → `tests/capturas/lavado09/leccion/`.
 
 ## Diagnóstico de rendimiento
 
@@ -985,12 +1038,24 @@ dispositivo lo más pesado de la aplicación, para poder comparar el MacBook, la
   trabajador, en un hilo aparte; franjas, por trozos en el hilo de la página), con lo que tarda cada una y el
   hueco más largo que deja en la página: así se ve en el propio Mac cuál le conviene (la aplicación elige
   «trabajador» en macOS y «directo» en Android y Windows);
+- **la placa de la Neo Geo en 3D** (0.9, la que colgaba la tableta): cuánto tarda en verse, en tener sus 320
+  componentes (modelos, unión, sombreadores uno a uno) y las caras completas, el hueco más largo que deja en la
+  página y la revisión de la geometría de las piezas;
 - el trazado en vivo de cuatro esquemas automáticos grandes (el rectificador del capítulo 50, entre otros);
 - una simulación corta con ngspice (la primera incluye la descarga y compilación del motor, la segunda no).
 
 No se ejecuta nada hasta pulsar **Empezar**; se pueden desmarcar pruebas y elegir cuántos segundos gira cada vista 3D.
 Al terminar se ve una tabla con los resultados y **Copiar resultados** deja el informe como texto para pegarlo en una
 conversación. Conviene tener la aplicación en primer plano y no tocar la pantalla mientras mide.
+
+Desde la 0.9 cada prueba deja **migas** en el almacenamiento local al empezar cada fase («datos», «geometría»,
+«caras», «pieza 237: R1», «uniendo», «compilando», «primer cuadro»…, con su hora). Si una prueba cuelga o cierra la
+aplicación, al volver a abrir el diagnóstico aparece arriba «La última prueba se quedó en: … tras N s», también en
+«Copiar resultados» (el sistema guarda el almacenamiento a los pocos segundos de cada cambio, así que conviene esperar
+un poco antes de cerrar a la fuerza una aplicación colgada). Las pruebas de la 0.9 (geometría de las piezas de la
+Neo Geo, la Mega Drive y el SDR, el interruptor «Componentes» y las migas) se lanzan con `npx playwright test -c
+playwright.neogeo09.config.ts tests/consolas-placas.spec.ts tests/proyectos-kicad.spec.ts tests/diagnostico.spec.ts`
+(compilación propia en el puerto 4331).
 
 Para probar a mano otra manera de pintar las caras de las placas o la resolución fija, en la consola de
 desarrollo: `localStorage.setItem('epa-caras', 'directo' | 'trabajador' | 'franjas')` y
@@ -1068,7 +1133,7 @@ fichero de datos. Quien prefiera dos tokens de permisos mínimos no puede: la ap
 | macOS | `~/Library/Application Support/es.gonzalomejias.electronica/lector.json` |
 | Android | almacenamiento interno de la aplicación (se borra al desinstalarla) |
 | Linux | `~/.local/share/es.gonzalomejias.electronica/lector.json` |
-| Navegador (desarrollo) | `localStorage`, claves `epa:prefs`, `epa:posiciones`, `epa:marcadores`, `epa:notas`, `epa:ejercicios`, `epa:leidas`, `epa:deducciones`, `epa:calc-favoritos`, `epa:repaso-tarjetas`, `epa:repaso-diario`, `epa:repaso-ajustes`, `epa:repaso-tests`, `epa:repaso-fallos`, `epa:repaso-examenes`, `epa:editor-circuitos`, `epa:sinc-ajustes`, `epa:sinc-estado`, `epa:sinc-marcas`, `epa:sinc-version` y, aparte, `epa-credencial:github` (el token) |
+| Navegador (desarrollo) | `localStorage`, claves `epa:prefs`, `epa:posiciones`, `epa:marcadores`, `epa:notas`, `epa:ejercicios`, `epa:leidas`, `epa:deducciones`, `epa:calc-favoritos`, `epa:repaso-tarjetas`, `epa:repaso-diario`, `epa:repaso-ajustes`, `epa:repaso-tests`, `epa:repaso-fallos`, `epa:repaso-examenes`, `epa:progreso-diario`, `epa:progreso-objetivo`, `epa:editor-circuitos`, `epa:sinc-ajustes`, `epa:sinc-estado`, `epa:sinc-marcas`, `epa:sinc-version` y, aparte, `epa-credencial:github` (el token) |
 
 El token de GitHub va en otro fichero de la misma carpeta, `credenciales.json`, para que copiar `lector.json` no
 lo lleve consigo. `lector.json` guarda además el estado de la sincronización (`sinc-*`: ajustes, última versión
@@ -1759,8 +1824,9 @@ app/
         Barra.svelte         barra superior: mostrar/ocultar índice, miga, sección anterior/siguiente, «Aa», progreso
         MenuCapitulo.svelte  menú de la miga: secciones del capítulo y capítulos contiguos
         Ajustes.svelte       tema y tamaño del texto; diagnóstico; sincronización y versión (sincronizacion/GrupoAjustes)
-        Inicio.svelte        portada (trozo aparte): accesos, «Seguir leyendo», «Repaso de hoy», mapa del libro, progreso
-        inicio/              MapaLibro (teselas por tomo), SeguirLeyendo, RepasoHoy (+ repasoHoy.ts, perezoso)
+        Inicio.svelte        portada (trozo aparte, 0.9): saludo, «Seguir leyendo», racha, objetivo, repaso, camino del libro
+        inicio/              SeguirLeyendo, Racha, Objetivo, RepasoHoy (+ repasoHoy.ts, perezoso), CaminoLibro, destino
+        ui09/                primitivas del lavado de cara 0.9: Tarjeta, BotonPrincipal, BarraSegmentos, Chip, Rotulo (+ ui09.css)
         vista-previa/        tarjeta de vista previa de las referencias (trozo perezoso; el controlador es
                              lib/vistaPrevia.ts)
         glosario/            imágenes del glosario: simbolo.ts (símbolos de esquema-auto en SVG), imagenes.ts

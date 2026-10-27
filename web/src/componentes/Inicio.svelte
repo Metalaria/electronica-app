@@ -1,4 +1,8 @@
 <script lang="ts">
+  // Start page (0.9, from the approved mockup «Main.dc.html»): greeting; on the left «Seguir leyendo», the
+  // streak and today's goal side by side, «Repaso pendiente»; on the right the book as a path of chapters.
+  // Two columns from ~730 px of content (tablet, desktop), one on the phone. Below: other recent readings,
+  // the reading and exercise progress (ProgresoInicio) and shortcuts.
   import { onMount } from 'svelte';
   import { app } from '../lib/estado.svelte';
   import { ruta } from '../lib/ruta.svelte';
@@ -6,37 +10,46 @@
   import { rotuloParte } from '../lib/datos';
   import { colorBloque } from '../lib/color';
   import { abrirBuscador } from '../lib/acciones';
+  import { hrefParte } from '../lib/navegacion.svelte';
   import Icono from './Icono.svelte';
   import ProgresoInicio from './aprender/ProgresoInicio.svelte';
   import SeguirLeyendo from './inicio/SeguirLeyendo.svelte';
+  import Racha from './inicio/Racha.svelte';
+  import Objetivo from './inicio/Objetivo.svelte';
   import RepasoHoy from './inicio/RepasoHoy.svelte';
-  import MapaLibro from './inicio/MapaLibro.svelte';
+  import CaminoLibro from './inicio/CaminoLibro.svelte';
+  import Chip from './ui09/Chip.svelte';
+  import Rotulo from './ui09/Rotulo.svelte';
+  import { destinoActual, enPalabras } from './inicio/destino.svelte';
 
   const indice = $derived(app.indice!);
-  const capitulos = $derived(Object.values(indice.partes).filter((p) => p.tipo === 'capitulo').length);
-  const apendices = $derived(Object.values(indice.partes).filter((p) => p.tipo === 'apendice').length);
+  const destino = $derived(destinoActual());
+  const nombre = $derived((usuario.prefs.nombre ?? '').trim());
+
+  const entrada = $derived.by(() => {
+    const d = destino;
+    if (!d) return '';
+    const num = d.seccion?.num;
+    if (d.tipo === 'leccion') {
+      const quedan = Math.max(1, d.pasos - d.paso);
+      return `Hoy toca la sección ${num ?? d.capitulo}: te ${quedan === 1 ? 'queda un paso' : `quedan ${enPalabras(quedan)} pasos`}.`;
+    }
+    if (d.tipo === 'lectura') return num ? `Sigues en la sección ${num}, ${d.seccion!.titulo}.` : `Sigues en ${d.capitulo}.`;
+    return `Empieza por ${d.capitulo}.`;
+  });
 
   const recientes = $derived(
     Object.entries(usuario.posiciones)
-      .filter(([id]) => indice.partes[id])
+      .filter(([id]) => indice.partes[id] && id !== destino?.parte)
       .sort((a, b) => b[1].t - a[1].t)
-      .slice(0, 4)
+      .slice(0, 3)
       .map(([id, pos]) => {
         const info = indice.partes[id]!;
         const sec = info.secciones?.find((s) => s.label === pos.sec);
-        return { id, pos, info, sec };
+        return { id, info, sec };
       }),
   );
   const totalPersonal = $derived(Object.keys(usuario.marcadores).length + Object.keys(usuario.notas).length);
-
-  function hace(t: number): string {
-    const s = (Date.now() - t) / 1000;
-    if (s < 90) return 'hace un momento';
-    if (s < 3600) return `hace ${Math.round(s / 60)} min`;
-    if (s < 86400) return `hace ${Math.round(s / 3600)} h`;
-    const d = Math.round(s / 86400);
-    return d === 1 ? 'ayer' : `hace ${d} días`;
-  }
 
   onMount(() => {
     window.scrollTo({ top: ruta.y ?? 0, behavior: 'instant' });
@@ -46,105 +59,96 @@
 <svelte:head><title>Electrónica Práctica Avanzada</title></svelte:head>
 
 <div class="inicio">
-  <section class="portada">
-    {#if indice.bloques?.length}
-      <div class="espectro" aria-hidden="true">
-        {#each indice.bloques as b (b.color)}<span style:background={colorBloque(b.color)}></span>{/each}
-      </div>
-    {/if}
-    <p class="sobre">Gonzalo Mejías</p>
-    <h1>Electrónica Práctica Avanzada</h1>
-    <p class="datos">
-      Edición {indice.edicion} · {indice.tomos.length}
-      {indice.tomos.length === 1 ? 'tomo' : 'tomos'} · {capitulos} capítulos{apendices ? ` · ${apendices} apéndices` : ''}
-    </p>
-    {#if app.modo === 'muestra'}
-      <p class="muestra">
-        Se está mostrando el <strong>contenido de muestra</strong>. Para ver el libro completo, genere
-        <code>web/public/libro/</code> con <code>python3 contenido/generar.py</code>.
-      </p>
-    {/if}
-    <div class="acciones">
-      <button class="boton" onclick={abrirBuscador}><Icono nombre="buscar" tam={17} /> Buscar</button>
-      <a class="boton" href="#/glosario"><Icono nombre="glosario" tam={17} /> Glosario</a>
-      <a class="boton" href="#/componentes"><Icono nombre="componentes" tam={17} /> Componentes animados</a>
-      <a class="boton" href="#/conceptos"><Icono nombre="conceptos" tam={17} /> Conceptos animados</a>
-      <a class="boton" href="#/marcadores"
-        ><Icono nombre="marcador" tam={17} /> Marcadores y notas{#if totalPersonal}<span class="cuenta">{totalPersonal}</span>{/if}</a
-      >
-    </div>
-  </section>
+  <header class="saludo">
+    <h1>{nombre ? `Hola, ${nombre}` : 'Hola'}</h1>
+    {#if entrada}<p>{entrada}</p>{/if}
+  </header>
 
-  <!-- Where to go now: the reading left open and today's flashcards. -->
-  <div class="destacados">
-    <SeguirLeyendo />
-    <RepasoHoy />
-  </div>
-  {#if recientes.length > 1}
-    <nav class="otras" aria-label="Otras lecturas recientes">
-      <span class="otras-tit">También leyendo</span>
-      {#each recientes.slice(1) as r (r.id)}
-        <a href={`#/${r.id}`} style:--c={colorBloque(r.info.color)}>
-          <i aria-hidden="true"></i>{rotuloParte(r.id)}{#if r.sec}{` · ${r.sec.num} ${r.sec.titulo}`}{/if}
-          <span class="cuando">{hace(r.pos.t)}</span>
-        </a>
-      {/each}
-    </nav>
+  {#if app.modo === 'muestra'}
+    <p class="muestra">
+      Se está mostrando el <strong>contenido de muestra</strong>. Para ver el libro completo, genere
+      <code>web/public/libro/</code> con <code>python3 contenido/generar.py</code>.
+    </p>
   {/if}
 
-  <MapaLibro actual={recientes[0]?.id ?? ''} />
+  <div class="columnas">
+    <div class="columna">
+      <SeguirLeyendo />
+      <div class="pareja">
+        <Racha />
+        <Objetivo />
+      </div>
+      <RepasoHoy />
+      {#if recientes.length}
+        <nav class="recientes" aria-label="También leyendo">
+          <Rotulo>También leyendo</Rotulo>
+          <div class="chips">
+            {#each recientes as r (r.id)}
+              <Chip href={hrefParte(r.id)} color={colorBloque(r.info.color)}>
+                <span class="recorte">{rotuloParte(r.id)}{#if r.sec}{` · ${r.sec.num ?? ''} ${r.sec.titulo}`}{/if}</span>
+              </Chip>
+            {/each}
+          </div>
+        </nav>
+      {/if}
+    </div>
+
+    <CaminoLibro actual={destino?.parte ?? ''} seccion={destino?.seccion?.num ?? ''} />
+  </div>
 
   <ProgresoInicio />
+
+  <nav class="atajos" aria-label="Atajos">
+    <Rotulo>Atajos</Rotulo>
+    <div class="chips">
+      <Chip onclick={abrirBuscador}><Icono nombre="buscar" tam={17} /> Buscar</Chip>
+      <Chip href="#/glosario"><Icono nombre="glosario" tam={17} /> Glosario</Chip>
+      <Chip href="#/componentes"><Icono nombre="componentes" tam={17} /> Componentes animados</Chip>
+      <Chip href="#/conceptos"><Icono nombre="conceptos" tam={17} /> Conceptos animados</Chip>
+      <Chip href="#/marcadores"
+        ><Icono nombre="marcador" tam={17} /> Marcadores y notas{#if totalPersonal}<span class="cuenta">{totalPersonal}</span>{/if}</Chip
+      >
+    </div>
+    <p class="edicion">Electrónica Práctica Avanzada · edición {indice.edicion}</p>
+  </nav>
 </div>
 
 <style>
   .inicio {
-    max-width: 1080px;
+    display: flex;
+    flex-direction: column;
+    gap: 24px;
+    max-width: 1120px;
     margin: 0 auto;
-    padding: 0 clamp(16px, 4vw, 40px) 64px;
+    padding: 32px 32px 64px;
     font-family: var(--sans);
   }
-  .portada {
-    padding: clamp(36px, 7vw, 72px) 0 28px;
-    border-bottom: 1px solid var(--linea);
+  @media (max-width: 600px) {
+    .inicio {
+      padding: 16px 16px 48px;
+    }
   }
-  .espectro {
+  .saludo {
     display: flex;
+    flex-direction: column;
     gap: 4px;
-    width: min(260px, 60%);
-    margin-bottom: 22px;
-  }
-  .espectro span {
-    flex: 1;
-    height: 6px;
-    border-radius: 3px;
-  }
-  .sobre {
-    margin: 0 0 10px;
-    color: var(--tinta-tenue);
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.14em;
-    text-transform: uppercase;
   }
   h1 {
     margin: 0;
     color: var(--titulos);
     font-family: var(--serif);
-    font-size: clamp(36px, 6.4vw, 60px);
+    font-size: 30px;
     font-weight: 700;
-    line-height: 1.04;
-    letter-spacing: -0.02em;
-    text-wrap: balance;
+    line-height: 1.15;
   }
-  .datos {
-    margin: 14px 0 0;
+  .saludo p {
+    margin: 0;
     color: var(--tinta-suave);
-    font-size: 16.5px;
+    font-size: 16px;
   }
   .muestra {
     max-width: 44em;
-    margin: 18px 0 0;
+    margin: 0;
     padding: 10px 14px;
     border: 1px solid var(--c-importante);
     border-radius: 10px;
@@ -157,78 +161,61 @@
     font-family: var(--mono);
     font-size: 0.9em;
   }
-  .acciones {
+
+  /* the mockup's two flexible columns (330 px minimum each): side by side on tablets and desktops */
+  .columnas {
     display: flex;
     flex-wrap: wrap;
-    gap: 8px;
-    margin-top: 24px;
+    align-items: flex-start;
+    gap: 24px;
   }
-  .acciones .boton {
-    min-height: 40px;
+  .columnas > :global(*) {
+    flex: 1 1 330px;
+    min-width: 0;
+  }
+  .columna {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .pareja {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+  }
+  .pareja > :global(*) {
+    flex: 1 1 150px;
+    min-width: 0;
+  }
+
+  .recientes,
+  .atajos {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px 8px;
+  }
+  .recorte {
+    overflow: hidden;
+    text-overflow: ellipsis;
   }
   .cuenta {
     min-width: 20px;
     padding: 0 6px;
     border-radius: 999px;
     background: var(--linea);
-    color: var(--tinta-suave);
+    color: var(--tinta);
     font-size: 12px;
     line-height: 19px;
     text-align: center;
   }
-
-  .destacados {
-    display: grid;
-    grid-template-columns: minmax(0, 2.1fr) minmax(250px, 1fr);
-    gap: 14px;
-    margin-top: 30px;
-  }
-  @media (max-width: 760px) {
-    .destacados {
-      grid-template-columns: 1fr;
-    }
-  }
-  .otras {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 6px 10px;
-    margin-top: 12px;
-    font-size: 14px;
-  }
-  .otras-tit {
-    color: var(--tinta-tenue);
+  .edicion {
+    margin: 6px 0 0;
+    color: var(--tinta-suave);
     font-size: 13px;
-    font-weight: 600;
-  }
-  .otras a {
-    display: inline-flex;
-    align-items: center;
-    gap: 7px;
-    min-height: 34px;
-    max-width: 100%;
-    padding: 0 12px;
-    overflow: hidden;
-    border: 1px solid var(--linea);
-    border-radius: 999px;
-    background: var(--superficie);
-    color: var(--tinta);
-    text-decoration: none;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
-  .otras a:hover {
-    border-color: var(--c);
-  }
-  .otras i {
-    flex: none;
-    width: 9px;
-    height: 9px;
-    border-radius: 3px;
-    background: var(--c);
-  }
-  .cuando {
-    color: var(--tinta-tenue);
-    font-size: 12.5px;
   }
 </style>

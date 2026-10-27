@@ -19,12 +19,14 @@
 //          #/ejercicios[/repaso]  exercises and problems by chapter, or the review of the failed ones
 //          #/sincronizacion      GitHub synchronisation of the reader's data and update check
 //          #/diagnostico         performance diagnostic of this device (componentes/diagnostico), from «Ajustes»
+//          #/leccion/<parte>/<seccion>[/<n>|/pregunta-<n>|/fin]  a section studied step by step (componentes/leccion):
+//                                step n (1-based), a question after the steps, or the summary
 //
 // Each history entry remembers its scroll position (history.state.y), so «Atrás» (the button,
 // the browser or the Android back button) returns exactly where the reader was. Overlays
 // (drawer, search, figure viewer) push their own entry so the back button closes them.
 
-export type Vista = 'inicio' | 'parte' | 'glosario' | 'marcadores' | 'simulador' | 'componentes' | 'conceptos' | 'consolas' | 'instrumentos' | 'fm7303' | 'repaso' | 'ejercicios' | 'calculadoras' | 'proyectos' | 'sincronizacion' | 'diagnostico';
+export type Vista = 'inicio' | 'parte' | 'glosario' | 'marcadores' | 'simulador' | 'componentes' | 'conceptos' | 'consolas' | 'instrumentos' | 'fm7303' | 'repaso' | 'ejercicios' | 'calculadoras' | 'proyectos' | 'sincronizacion' | 'diagnostico' | 'leccion';
 
 export interface AnclaLectura {
   /** Index of the top-level block at the top of the screen. */
@@ -113,6 +115,12 @@ function leer(): void {
     ruta.vista = 'ejercicios';
     ruta.parte = '';
     ruta.ancla = b;
+  } else if (a === 'leccion') {
+    // #/leccion/<parte>/<seccion>[/<pantalla>]: the part in ruta.parte, «<seccion>[/<pantalla>]» in ruta.ancla
+    const [parte = '', ...demas] = resto;
+    ruta.vista = 'leccion';
+    ruta.parte = parte;
+    ruta.ancla = demas.join('/');
   } else if (a === 'diagnostico') {
     ruta.vista = 'diagnostico';
     ruta.parte = '';

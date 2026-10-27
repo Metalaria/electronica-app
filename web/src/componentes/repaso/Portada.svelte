@@ -136,7 +136,7 @@
           {/each}
         </select>
       </label>
-      <a class="boton primario empezar" href="#/repaso/tarjetas" aria-disabled={pendientes === 0 ? 'true' : undefined} data-empezar>
+      <a class="t09-boton empezar" href="#/repaso/tarjetas" aria-disabled={pendientes === 0 ? 'true' : undefined} data-empezar>
         {pendientes ? `Empezar · ${pendientes}` : 'Nada pendiente hoy'}
       </a>
     </div>
@@ -219,14 +219,16 @@
   .bloque {
     margin-top: 22px;
   }
+  /* 0.9 look (componentes/ui09): serif headings, 18 px cards, the big primary button */
   h2 {
     display: flex;
     align-items: center;
     gap: 8px;
     margin: 0 0 12px;
     color: var(--titulos);
-    font-size: 20px;
-    font-weight: 700;
+    font-family: var(--serif);
+    font-size: 21px;
+    font-weight: 600;
   }
   .aviso {
     color: var(--tinta-suave);
@@ -240,9 +242,9 @@
     display: flex;
     flex-direction: column;
     gap: 2px;
-    padding: 14px 16px;
+    padding: 16px;
     border: 1px solid var(--linea);
-    border-radius: 14px;
+    border-radius: var(--radio-tarjeta);
     background: var(--superficie);
   }
   .cifra.principal {
@@ -426,9 +428,9 @@
   h3.tomo {
     margin: 22px 0 8px;
     color: var(--tinta-suave);
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
-    letter-spacing: 0.06em;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
   }
   .lista {
@@ -460,7 +462,7 @@
   }
   .lista .n {
     flex: none;
-    color: var(--tinta-tenue);
+    color: var(--tinta-suave);
     font-size: 13.5px;
   }
   .lista .nota {
@@ -476,7 +478,7 @@
     justify-content: flex-end;
   }
   .lista .nota.vacia {
-    color: var(--tinta-tenue);
+    color: var(--tinta-suave);
   }
   .barra {
     width: 52px;
@@ -492,7 +494,7 @@
   }
   .lista a > :global(svg) {
     flex: none;
-    color: var(--tinta-tenue);
+    color: var(--tinta-suave);
   }
   .pie {
     margin-top: 36px;

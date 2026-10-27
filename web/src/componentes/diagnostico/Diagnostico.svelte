@@ -2,29 +2,51 @@
   // «Diagnóstico de rendimiento» (#/diagnostico, reached from «Ajustes»): measures, on the reader's own device,
   // WebGL 2, the 3D component viewer while it turns, the SDR board (load and turning), the live layout of a few
   // big automatic schematics and a short ngspice simulation, and shows the results in a table with «Copiar
-  // resultados» (plain text to paste in a conversation). Nothing heavy runs until «Empezar».
+  // resultados» (plain text to paste in a conversation). Nothing heavy runs until «Empezar». 0.9: the Neo Geo
+  // board in 3D, and breadcrumbs of every test in localStorage: a test that froze or closed the app is reported
+  // the next time this page opens («La última prueba se quedó en: … tras N s»).
   import { onDestroy } from 'svelte';
   import Gauge from '@lucide/svelte/icons/gauge';
   import Copy from '@lucide/svelte/icons/copy';
   import Check from '@lucide/svelte/icons/check';
   import { VERSION_APP } from '../../lib/sincronizacion/version-app';
-  import { infoDispositivo, infoWebGL, visor3d, placaSdr, carasSdr, esquemaVivo, simulacion, textoResultados, type Resultado, type ContextoPrueba } from './pruebas';
+  import {
+    infoDispositivo,
+    infoWebGL,
+    visor3d,
+    placaSdr,
+    carasSdr,
+    placaConsola,
+    esquemaVivo,
+    simulacion,
+    textoResultados,
+    migasDe,
+    migasPendientes,
+    filaMigas,
+    type Resultado,
+    type ContextoPrueba,
+  } from './pruebas';
 
   const PRUEBAS = [
     { id: 'webgl', nombre: 'WebGL 2: GPU, textura máxima, profundidad', duracion: 'al momento' },
     { id: 'visor', nombre: 'Visor 3D de componentes: primer cuadro, segunda vista y giro (QFP de 64 patillas)', duracion: 'unos segundos' },
     { id: 'placa', nombre: 'Placa SDR en 3D: carga, caras, giro y resolución', duracion: 'de 5 a 40 s' },
     { id: 'caras', nombre: 'Caras de la placa SDR: modos de pintarlas (los tres solo en WebKit; si no, el directo)', duracion: 'de 5 a 60 s' },
+    { id: 'consola', nombre: 'Placa de consola en 3D (Neo Geo): 320 componentes, con migas por si se cuelga', duracion: 'de 5 a 60 s' },
     { id: 'esquema', nombre: 'Esquema automático en vivo de cuatro circuitos grandes', duracion: 'unos segundos' },
     { id: 'spice', nombre: 'Simulación corta con ngspice (descarga el motor, 6 MB)', duracion: 'unos segundos' },
   ] as const;
   type IdPrueba = (typeof PRUEBAS)[number]['id'];
 
-  let elegidas = $state<Record<IdPrueba, boolean>>({ webgl: true, visor: true, placa: true, caras: true, esquema: true, spice: true });
+  let elegidas = $state<Record<IdPrueba, boolean>>({ webgl: true, visor: true, placa: true, caras: true, consola: true, esquema: true, spice: true });
   let segundos = $state(5);
   let estado = $state<'listo' | 'midiendo' | 'hecho'>('listo');
   let aviso = $state('');
-  let resultados = $state<Resultado[]>([]);
+  // A test of an earlier visit that never ended (the app froze or closed): shown at once and kept on top of
+  // the next run's results, so «Copiar resultados» carries it too.
+  const pendiente = migasPendientes();
+  const filaPendiente: Resultado[] = pendiente ? [filaMigas(pendiente)] : [];
+  let resultados = $state<Resultado[]>(filaPendiente);
   let copiado = $state(false);
   let zona: HTMLDivElement | undefined = $state();
   let cancelar = false;
@@ -36,25 +58,32 @@
     estado = 'midiendo';
     cancelar = false;
     copiado = false;
-    resultados = infoDispositivo();
+    resultados = [...filaPendiente, ...infoDispositivo()];
     const ctx: ContextoPrueba = { zona, segundos, avisar: (t) => (aviso = t), cancelada: () => cancelar };
     const pasos: [IdPrueba, () => Promise<Resultado[]> | Resultado[]][] = [
       ['webgl', () => infoWebGL()],
       ['visor', () => visor3d(ctx)],
       ['placa', () => placaSdr(ctx)],
       ['caras', () => carasSdr(ctx)],
+      ['consola', () => placaConsola(ctx)],
       ['esquema', () => esquemaVivo(ctx)],
       ['spice', () => simulacion(ctx)],
     ];
     for (const [id, f] of pasos) {
       if (cancelar) break;
       if (!elegidas[id]) continue;
+      const nombre = PRUEBAS.find((p) => p.id === id)!.nombre;
+      const migas = migasDe(nombre);
+      ctx.miga = migas.fase;
+      migas.fase('empezando');
       try {
         const r = await f();
         resultados = [...resultados, ...r];
       } catch (e) {
-        const nombre = PRUEBAS.find((p) => p.id === id)!.nombre;
         resultados = [...resultados, { grupo: nombre, prueba: 'Error', valor: e instanceof Error ? e.message : String(e), estado: 'error' }];
+      } finally {
+        migas.terminar();
+        ctx.miga = undefined;
       }
       // Leave the page a moment between tests (the next one starts with the main thread free).
       await new Promise((r) => setTimeout(r, 300));
@@ -85,9 +114,9 @@
   <header>
     <h1><Gauge size={26} aria-hidden="true" /> Diagnóstico de rendimiento</h1>
     <p class="intro">
-      Mide en este dispositivo las vistas más pesadas de la aplicación: la GPU (WebGL 2), el visor 3D de componentes al girar, la placa SDR en 3D, el
-      trazado en vivo de esquemas automáticos grandes y una simulación con ngspice. Al terminar, «Copiar resultados» deja el informe como texto para
-      pegarlo en la conversación.
+      Mide en este dispositivo las vistas más pesadas de la aplicación: la GPU (WebGL 2), el visor 3D de componentes al girar, la placa SDR y la de la
+      Neo Geo en 3D, el trazado en vivo de esquemas automáticos grandes y una simulación con ngspice. Al terminar, «Copiar resultados» deja el informe
+      como texto para pegarlo en la conversación. Si una prueba cuelga o cierra la aplicación, al volver aquí se dice en qué fase se quedó.
     </p>
   </header>
 

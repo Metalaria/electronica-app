@@ -7,6 +7,8 @@
 
 import { obtenerAlmacen, type Almacen } from './almacen';
 import { anotarBorrado, anotarCambio } from './sincronizacion/marcas';
+import { registrarActividad } from './progreso-diario.svelte';
+import { claveDia } from '../componentes/repaso/srs';
 
 export interface EstadoEjercicio {
   /** Checks with at least one readable answer (or self-assessments). */
@@ -174,8 +176,12 @@ export function marcarLeida(parte: string, label: string, leida: boolean): void 
     if (aprendizaje.leidas[parte]?.[label]) return;
     aprendizaje.leidas[parte] ??= {};
     aprendizaje.leidas[parte]![label] = Date.now();
+    registrarActividad('seccion');
   } else {
-    if (!aprendizaje.leidas[parte]?.[label]) return;
+    const t = aprendizaje.leidas[parte]?.[label];
+    if (!t) return;
+    // unmarking a section marked today takes it off today's activity
+    if (claveDia(t) === claveDia(Date.now())) registrarActividad('seccion', -1);
     delete aprendizaje.leidas[parte]![label];
     anotarBorrado('leidas', `${parte}/${label}`);
   }

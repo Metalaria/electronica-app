@@ -1,13 +1,14 @@
 <script lang="ts">
-  // Bottom tab bar (phone and tablet portrait): the registry's entries marked `pestana` and «Más» for the rest.
-  // «Libro» opens the index drawer.
+  // Bottom tab bar (phone and tablet portrait): the registry's entries marked `pestana` (0.9: Inicio, Libro,
+  // Simulador, Ejercicios) and «Más» for the rest. «Libro» opens the index drawer. Styled as the 0.9 mockups:
+  // a pill behind the active icon, the active label in the accent.
   import { app } from '../lib/estado.svelte';
-  import { HERRAMIENTAS, INICIO, activar, esActiva, type Herramienta } from '../lib/navegacion.svelte';
+  import { HERRAMIENTAS, activar, esActiva, type Herramienta } from '../lib/navegacion.svelte';
   import Icono from './Icono.svelte';
   import MenuHerramientas from './MenuHerramientas.svelte';
 
   const pestanas = HERRAMIENTAS.filter((h) => h.pestana);
-  const resto = [INICIO, ...HERRAMIENTAS.filter((h) => !h.pestana)];
+  const resto = HERRAMIENTAS.filter((h) => !h.pestana);
 
   let mas = $state(false);
   let botonMas: HTMLButtonElement | undefined = $state();
@@ -73,7 +74,7 @@
     justify-content: space-around;
     height: calc(var(--alto-pestanas) + env(safe-area-inset-bottom));
     padding: 0 env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
-    background: color-mix(in srgb, var(--fondo-lateral) 96%, transparent);
+    background: color-mix(in srgb, var(--barra-nav) 96%, transparent);
     border-top: 1px solid var(--linea);
     -webkit-backdrop-filter: saturate(1.4) blur(12px);
     backdrop-filter: saturate(1.4) blur(12px);
@@ -81,7 +82,7 @@
   }
   @supports not (background: color-mix(in srgb, red 50%, blue)) {
     .pestanas {
-      background: var(--fondo-lateral);
+      background: var(--barra-nav);
     }
   }
   /* the keyboard is up: the tabs would only take room above it */
@@ -107,7 +108,7 @@
   .icono {
     display: grid;
     place-items: center;
-    width: 56px;
+    width: 52px;
     height: 30px;
     border-radius: 15px;
     transition: background 0.15s, color 0.15s;
@@ -121,12 +122,13 @@
     text-overflow: ellipsis;
     white-space: nowrap;
   }
-  .pestana.activa .icono {
-    background: var(--acento-suave);
+  .pestana.activa {
     color: var(--acento);
   }
+  .pestana.activa .icono {
+    background: var(--acento-tinte);
+  }
   .pestana.activa .etiqueta {
-    color: var(--tinta);
     font-weight: 700;
   }
   .pestana:focus-visible {

@@ -9,7 +9,7 @@
 // (detail.claves: the store keys that changed) and flushes pending writes on `epa:antes-de-sincronizar`.
 // Deletions are dated with anotarBorrado(clave, id) from marcas.ts (else when the merge notices them).
 //
-// Not synchronised, on purpose (they belong to each device): theme and text size, the index panel
+// Not synchronised, on purpose (they belong to each device): theme and text size, the greeting's name, the index panel
 // shown/hidden per view (`prefs`), the 2D/3D choice of the component pages (`componentes-vista`), the
 // free-form netlist of the simulator (localStorage `epa:circuito`, a draft), and the synchronisation and
 // update settings themselves.
@@ -19,6 +19,8 @@ import { usuario, type Marcador, type Nota, type Posicion } from '../usuario.sve
 import { aprendizaje, cargarAprendizaje, type EstadoEjercicio } from '../aprendizaje.svelte';
 import { repaso, cargarRepaso } from '../../componentes/repaso/estado.svelte';
 import { calc, cargarFavoritos } from '../../componentes/calculadoras/datos.svelte';
+import { aplicarDias, aplicarObjetivo, diaValido, leerDias, leerObjetivo } from '../progreso-diario.svelte';
+import { progresoLecciones, cargarLecciones, type ProgresoGuardado } from '../lecciones.svelte';
 
 export type Valores = Record<string, unknown>;
 
@@ -320,5 +322,40 @@ registrarSincronizable(
     campo: 'circuitos',
     tiempo: (v) => Math.max(numero(v?.actualizado) ?? 0, numero(v?.borrado) ?? 0) || undefined,
     valido: (v) => esObjeto(v) && typeof v.id === 'string' && typeof v.actualizado === 'number',
+  }),
+);
+
+// ------------------------------------------------------------------ daily progress and streak (0.9)
+
+// One item per review day («2026-10-27» → { pasos, preguntas, secciones, cumplido, t }), last write wins.
+registrarSincronizable({
+  clave: 'progreso-diario',
+  nombre: 'Progreso diario y racha',
+  tiempo: (v) => numero((v as { t?: unknown }).t),
+  valido: diaValido,
+  leer: async () => (await leerDias()) as unknown as Valores,
+  aplicar: aplicarDias,
+});
+
+registrarSincronizable({
+  clave: 'progreso-objetivo',
+  nombre: 'Objetivo diario',
+  tiempo: (v) => numero((v as { t?: unknown }).t),
+  valido: esObjeto,
+  leer: leerObjetivo,
+  aplicar: (poner) => aplicarObjetivo(poner),
+});
+
+// ------------------------------------------------------------------ lessons «Estudiar por pasos» (0.9)
+
+// «<parte>/<label>» → { h: steps done, u: last screen, n: steps, c: completed (ms), t }.
+registrarSincronizable(
+  mapaReactivo<ProgresoGuardado>({
+    clave: 'lecciones',
+    nombre: 'Lecciones por pasos',
+    cargar: cargarLecciones,
+    obtener: () => progresoLecciones.secciones,
+    tiempo: (v) => numero(v.t),
+    valido: (v) => esObjeto(v) && Array.isArray(v.h) && typeof v.u === 'number' && typeof v.n === 'number' && typeof v.t === 'number',
   }),
 );

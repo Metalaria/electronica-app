@@ -1,226 +1,238 @@
-// «Un fotograma» of the Mega Drive (model 1, IC BD M5 PAL VA6.8; schematic and board: stonedDiscord's KiCad
-// recreation): which nets every bus access moves.
-// 68000 bus (U1): /VA1–/VA23, /VD0–/VD15, /AS, /UDS, /LDS, R/W, /DTACK (from the 315-5402 U4 or the VDP U8), FC0–1;
-// the cartridge answers with /CE0 (U4), the work RAM with /RAS0 (from the VDP, U8) and /NOE, /LWR, /UWR; a DMA
-// moves the same lines driven by the VDP after /BR and /BG. Z80 bus (U6): /ZA0–15, /ZD0–7, /MREQ, /ZRD, /ZWR,
-// /M1, /REF, the RAM U7 with /ZRAM; /BUSRQ and /BUSACK with U4. VRAM (U9, U10, multiport): the VDP multiplexes row
-// and column on /A0–/A7 with /RAS and /CAS; writes go through the random port (/WB/WE), the planes' and sprites'
-// reads leave through the serial port SD0–SD7 after a transfer (/DT/OE) and SC pulses (68000UM, Sega «Genesis
-// Technical Overview», Nemesis's VDP timing via BlastEm).
+// «Un fotograma» of the Mega Drive (model 1 VA6.8, PAL): tile $24 of plane A with palette 1, row 3, pixel 3 →
+// point (99, 51).
+//
+// Checked against plutiedev («VDP ports», «VDP commands»: the 32-bit address and code word, «DMA», «Tiles»: 4 bits
+// per pixel packed two per byte, «Planes»: name table entries PCCV HTTT TTTT TTTT, «Palettes»: CRAM ----BBB-GGG-RRR-,
+// «Sprites»), Sega Retro («Sega Mega Drive/Interrupts»: VINT level 6, vector $78) and the app's «Arquitectura» data
+// (arquitectura/megadrive.ts: 315-5433 decoding with /CE0 and /DTACK, the VDP's /RAS0 /CAS0 for the work RAM, /BR
+// /BG for its DMA, the VRAM's random port A0–A7 with RAS/CAS and serial port SD0–SD7 with SC). Arithmetic: plane A
+// at $C000, 64 entries per row: $C000 + (6 × 64 + 12) × 2 = $C318; pattern $24 × 32 + 3 × 4 = $048C; palette 1
+// colour 6 → CRAM byte (16 + 6) × 2 = $2C.
 
-import { crearDesM68k } from '../cpu/m68k';
-import desZ80 from '../cpu/z80';
-import { bus, linea, nombres } from '../redes';
-import type { AccesoBus, Adaptador, RedActiva } from '../tipos';
+import type { FotogramaMaquina } from '../tipos';
+import { PELOTA_4BPP } from '../ejemplo';
 
-const VA = ['', ...Array.from({ length: 23 }, (_, i) => `/VA${i + 1}`)]; // bit 0 has no line: /UDS and /LDS
-const VD = nombres('/VD', 16);
-const ZA = nombres('/ZA', 16);
-const ZD = nombres('/ZD', 8);
-const RA = nombres('/A', 8); // VDP AD0–AD7 → VRAM A0–A7 / W0–W3
-const SD = nombres('/SD', 8);
-const C68 = 7; // master cycles per 68000 clock
-const TZ = 15;
-
-const NOMBRES_MD: Record<number, string> = {
-  0xa10000: 'registro de versión del 315-5402', 0xa10001: 'registro de versión del 315-5402 (región, PAL/NTSC, revisión)',
-  0xa11100: 'petición del bus del Z80 (/BUSREQ) y su estado', 0xa11200: 'reset del Z80', 0xa14000: 'TMSS: hay que escribir «SEGA»',
-  0xa00000: 'RAM del Z80 vista desde el 68000', 0xa00001: 'RAM del Z80 vista desde el 68000',
-  0xc00000: 'puerto de datos del VDP', 0xc00002: 'puerto de datos del VDP', 0xc00004: 'puerto de control del VDP', 0xc00006: 'puerto de control del VDP',
-  0xc00008: 'contador HV del VDP', 0xc00011: 'PSG del VDP', 0xff0000: 'RAM del 68000', 0xff0006: 'RAM del 68000', 0xff0008: 'RAM del 68000',
-};
-
-const QUIEN68: Record<string, string> = { rom: 'J3', ram: 'U2', vdp: 'U8', io: 'U4', arbitro: 'U4', tmss: 'U4', zram: 'U4', ym: 'U11', psg: 'U8' };
-
-function acceso68k(ev: AccesoBus, out: RedActiva[]): void {
-  const k = ev.k ?? '';
-  const f = ev.fase;
-  const dma = k === 'dma';
-  const amo = dma ? 'U8' : 'U1';
-  if (k === 'iack') {
-    // interrupt acknowledge: FC = 7, the level on A1–A3; /VPA from U4 (autovector)
-    bus(out, VA, ev.a, 'direccion', 'U1');
-    linea(out, '/FC0', 1, 'control', 'U1');
-    linea(out, '/FC1', 1, 'control', 'U1');
-    linea(out, '/~{INTAK}', 0, 'interrupcion', 'U4');
-    linea(out, '/~{VPA}', f >= 2 * C68 ? 0 : 1, 'control', 'U4');
-    return;
-  }
-  const escritura = !!(ev.f & 1);
-  const byte = k.endsWith('-byte');
-  // S0–S1: address out; /AS from S2 (half way through the first clock) to the end
-  bus(out, VA, ev.a, 'direccion', amo);
-  const as = f >= C68 / 2;
-  linea(out, '/~{AS}', as ? 0 : 1, 'control', amo);
-  linea(out, '/~{R{slash}W}', escritura ? 0 : 1, 'control', amo);
-  const uds = !byte || !(ev.a & 1);
-  const lds = !byte || !!(ev.a & 1);
-  const ds = escritura ? f >= C68 * 1.5 : as;
-  linea(out, '/~{UDS}', uds && ds ? 0 : 1, 'control', amo);
-  linea(out, '/~{LDS}', lds && ds ? 0 : 1, 'control', amo);
-  if (!dma) {
-    const prog = k === 'programa';
-    linea(out, '/FC0', prog ? 0 : 1, 'control', 'U1');
-    linea(out, '/FC1', prog ? 1 : 0, 'control', 'U1');
-  } else {
-    linea(out, '/BG', 0, 'dma', 'U1');
-    linea(out, '/BGACK', 0, 'dma', 'U8');
-  }
-  const datosListos = escritura ? f >= C68 : f >= C68 * 2;
-  if (datosListos) {
-    const v = byte ? (ev.a & 1 ? ev.d : ev.d << 8) : ev.d;
-    const lineas = byte ? (ev.a & 1 ? VD.slice(0, 8) : VD.slice(8)) : VD;
-    const valor = byte ? ev.d : v;
-    bus(out, lineas, valor, 'datos', escritura ? 'U1' : QUIEN68[ev.c] ?? 'U4');
-  }
-  if (as) {
-    if (ev.c === 'rom') {
-      linea(out, '/~{CE0}', 0, 'seleccion', 'U4');
-      if (!escritura) linea(out, '/~{OE0}', ds ? 0 : 1, 'seleccion', 'U4');
-    } else if (ev.c === 'ram') {
-      linea(out, '/~{RAS0}', 0, 'seleccion', 'U8');
-      if (escritura) {
-        if (uds && ds) linea(out, '/~{UWR}', 0, 'seleccion', 'U8');
-        if (lds && ds) linea(out, '/~{LWR}', 0, 'seleccion', 'U8');
-      } else linea(out, '/~{NOE}', 0, 'seleccion', 'U4');
-    } else if (ev.c === 'zram') {
-      // the 68000 reaches the Z80 RAM through the 315-5402, which drives the Z80 bus
-      bus(out, ZA, ev.a & 0x1fff, 'direccion', 'U4');
-      linea(out, '/~{ZRAM}', 0, 'seleccion', 'U4');
-      linea(out, escritura ? '/~{ZWR}' : '/~{ZRD}', ds ? 0 : 1, 'control', 'U4');
-      if (datosListos) bus(out, ZD, byte ? ev.d : ev.d >> 8, 'datos', escritura ? 'U4' : 'U7');
-    } else if (ev.c === 'vdp' || ev.c === 'psg') {
-      linea(out, '/~{VDPM}', 0, 'seleccion', 'U4');
-    }
-  }
-  // /DTACK: the answering chip ends the cycle (the VDP holds it back while its FIFO is full)
-  if (f >= C68 * 2) linea(out, '/~{DTAK}', 0, 'control', ev.c === 'vdp' || ev.c === 'psg' || dma ? 'U8' : 'U4');
-}
-
-function accesoZ80(ev: AccesoBus, out: RedActiva[]): void {
-  const k = ev.k ?? '';
-  const f = ev.fase;
-  bus(out, ZA, ev.a, 'direccion', 'U6');
-  if (k === 'refresco') {
-    linea(out, '/~{REF}', 0, 'control', 'U6');
-    linea(out, '/~{MREQ}', f >= TZ / 2 && f < TZ * 1.5 ? 0 : 1, 'control', 'U6');
-    return;
-  }
-  if (k === 'm1' || k === 'int-ack') linea(out, '/~{M1}', 0, 'control', 'U6');
-  const memoria = k === 'm1' || k === 'lectura' || k === 'escritura';
-  const activa = memoria ? f >= TZ / 2 : f >= TZ;
-  if (memoria) linea(out, '/~{MREQ}', activa ? 0 : 1, 'control', 'U6');
-  else linea(out, '/~{IREQ}', activa ? 0 : 1, 'control', 'U6');
-  const escritura = !!(ev.f & 1);
-  linea(out, escritura ? '/~{ZWR}' : '/~{ZRD}', activa ? 0 : 1, 'control', 'U6');
-  if (f >= TZ) bus(out, ZD, ev.d, 'datos', escritura ? 'U6' : ev.c === 'ram' ? 'U7' : 'U4');
-  if (activa && ev.c === 'ram') linea(out, '/~{ZRAM}', 0, 'seleccion', 'U4');
-}
-
-function accesoVram(ev: AccesoBus, out: RedActiva[]): void {
-  const k = ev.k ?? '';
-  const f = ev.fase;
-  if (k === 'refresco') {
-    linea(out, 'Net-(U10-~{RAS})', f < 8 ? 0 : 1, 'control', 'U8');
-    return;
-  }
-  const escritura = !!(ev.f & 1);
-  // row (high byte) with /RAS, then column (low byte) with /CAS
-  bus(out, RA, f < 4 ? ev.a >> 8 : ev.a & 0xff, 'direccion', 'U8');
-  linea(out, 'Net-(U10-~{RAS})', f >= 2 ? 0 : 1, 'control', 'U8');
-  linea(out, 'Net-(U10-~{CAS})', f >= 6 ? 0 : 1, 'control', 'U8');
-  if (escritura) {
-    if (f >= 8) bus(out, RA, ev.d & 0xff, ev.f & 8 ? 'dma' : 'datos', 'U8');
-    linea(out, 'Net-(U10-~{WB}{slash}~{WE})', f >= 8 ? 0 : 1, 'control', 'U8');
-  } else {
-    // read transfer into the serial port, then SC pulses: the bytes leave on SD0–SD7
-    linea(out, 'Net-(U10-~{DT}{slash}~{OE})', f >= 4 && f < 10 ? 0 : 1, 'control', 'U8');
-    linea(out, 'Net-(U10-SC)', f >= 10 && (Math.floor(f) & 2) ? 1 : 0, 'reloj', 'U8');
-    linea(out, 'Net-(U10-~{SE})', 0, 'control', 'U8');
-    if (f >= 10) bus(out, SD, ev.d >>> 24, 'datos', 'U9');
-  }
-}
-
-export const adaptador: Adaptador = {
+export const MEGADRIVE: FotogramaMaquina = {
   maquina: 'megadrive',
-  cpus: { m68k: crearDesM68k(NOMBRES_MD), z80: desZ80 },
-  redesAcceso(b, ev, out) {
-    if (b === 'm68k') acceso68k(ev, out);
-    else if (b === 'z80') accesoZ80(ev, out);
-    else if (b === 'vram') accesoVram(ev, out);
+  entrada:
+    'Seguimos la tesela $24 del plano A, una pelota de 8 × 8 puntos pintada con la paleta 1, desde que el 68000 lee su entrada en la ROM del cartucho hasta que su punto (99, 51) sale del VDP hacia la tele.',
+  ejemplo: {
+    ancho: 320,
+    alto: 224,
+    tesela: 8,
+    x: 96,
+    y: 48,
+    indices: PELOTA_4BPP,
+    fila: 3,
+    columna: 3,
+    // CRAM (----BBB-GGG-RRR-): palette 1 colour 1 $0006, 6 $000E (red), 15 $0EEE; backdrop $0E84
+    colores: { 1: '#6d0000', 6: '#ff0000', 15: '#ffffff' },
+    fondo: '#4992ff',
+    bpp: 4,
+    formato: 'nibbles',
+    numero: '$24',
+    color: '$000E',
   },
-  redesSenal(s, nivel, out) {
-    switch (s) {
-      case 'ipl':
-        // level 6 = /IPL1 and /IPL2 low, level 4 = /IPL2 low (/IPL0 is not wired on this board)
-        linea(out, '/IPL1', nivel & 2 ? 0 : 1, 'interrupcion', 'U8');
-        linea(out, '/IPL2', nivel & 4 ? 0 : 1, 'interrupcion', 'U8');
-        break;
-      case 'br':
-        linea(out, '/BR', nivel as 0 | 1, 'dma', 'U8');
-        if (!nivel) linea(out, '/BG', 0, 'dma', 'U1');
-        break;
-      case 'zbusreq':
-        linea(out, 'Net-(U4-~{ZBR})', nivel as 0 | 1, 'control', 'U4');
-        break;
-      case 'zbusack':
-        linea(out, '/~{ZBAK}', nivel as 0 | 1, 'control', 'U6');
-        break;
-      case 'zreset':
-        linea(out, '/~{ZRES}', nivel as 0 | 1, 'control', 'U4');
-        break;
-      case 'hsync':
-        linea(out, '/~{HSYNC}', nivel as 0 | 1, 'video', 'U8');
-        linea(out, 'Net-(U13-C_SYNC_IN)', nivel as 0 | 1, 'video', 'U8');
-        break;
-      case 'vsync':
-        linea(out, '/~{VSYNC}', nivel as 0 | 1, 'video', 'U8');
-        break;
-    }
-  },
-  redesPixel(_c, out) {
-    for (const r of ['Net-(U8-R)', 'Net-(U8-G)', 'Net-(U8-B)']) linea(out, r, null, 'video', 'U8');
-  },
-  relojes: [
-    { red: 'MCLK', grupo: 'reloj', nivel: null },
-    { red: '/VCLK', grupo: 'reloj', nivel: null, desde: 'U4' },
-    { red: '/ZCLK', grupo: 'reloj', nivel: null, desde: 'U8' },
-    { red: '/EDCK', grupo: 'reloj', nivel: null, desde: 'U8' },
+  pasos: [
+    {
+      fase: 'Bus del 68000',
+      titulo: 'El 68000 lee una instrucción del cartucho',
+      texto:
+        'El 68000 saca $000300 por VA1–VA23, baja /AS y deja R/W a 1. El 315-5433 decodifica la dirección y baja /CE0, la selección de la ROM, que pone la palabra $33FC en VD0–VD15; el árbitro contesta con /DTACK y el 68000 la captura. Es el principio de MOVE.W #$2024,$FF0100: el valor $2024 dice tesela $24, paleta 1.',
+      bloques: ['m68k', 'io', 'cart'],
+      senales: [
+        { id: 'm68-a', sentido: 1 },
+        { id: 'bus-a', sentido: 1, valor: '$000300' },
+        { id: 'io-a', sentido: 1 },
+        { id: 'cart-a', sentido: 1 },
+        { id: 'ce0', sentido: 1, valor: '0' },
+        { id: 'cart-d', sentido: -1 },
+        { id: 'bus-d', sentido: -1, valor: '$33FC' },
+        { id: 'm68-d', sentido: -1 },
+        { id: 'dtack', sentido: 1, valor: '0' },
+      ],
+      internos: [
+        ['/AS, R/W', '0, 1'],
+        ['Instrucción', 'MOVE.W #$2024,$FF0100'],
+      ],
+      pantalla: 'cuadro-anterior',
+    },
+    {
+      fase: 'Bus del 68000',
+      titulo: 'Y guarda el valor en la RAM de trabajo',
+      texto:
+        'La escritura va a $FF0100 con /UDS y /LDS bajos (los dos bytes) y R/W a 0. La RAM de 64 KB son dos PSRAM que no se gobiernan solas: el VDP, que también las refresca, les da /RAS0 y /CAS0. El valor $2024 queda guardado hasta que llegue el borrado vertical.',
+      bloques: ['m68k', 'io', 'vdp', 'wram'],
+      senales: [
+        { id: 'm68-a', sentido: 1 },
+        { id: 'bus-a', sentido: 1, valor: '$FF0100' },
+        { id: 'ram-a', sentido: 1 },
+        { id: 'ras0', sentido: 1, valor: '0' },
+        { id: 'm68-d', sentido: 1 },
+        { id: 'bus-d', sentido: 1, valor: '$2024' },
+        { id: 'ram-d', sentido: 1 },
+        { id: 'dtack', sentido: 1, valor: '0' },
+      ],
+      internos: [['/UDS, /LDS, R/W', '0, 0, 0']],
+      pantalla: 'cuadro-anterior',
+    },
+    {
+      fase: 'Borrado vertical',
+      titulo: 'Línea 224: el VDP pide VINT',
+      texto:
+        'Tras la última de las 224 líneas visibles el VDP pide la interrupción vertical: baja /IPL1 y /IPL2, que el 68000 lee como nivel 6. Acaba la instrucción en curso, guarda el contador de programa y el registro de estado y salta a la rutina cuya dirección está en el vector $78.',
+      bloques: ['vdp', 'm68k'],
+      senales: [{ id: 'ipl', sentido: 1, valor: '0, 0' }],
+      internos: [
+        ['Nivel', '6'],
+        ['Vector', '$78'],
+      ],
+      pantalla: 'cuadro-anterior',
+      nota: 'En el borrado vertical el VDP no dibuja y la DMA va más deprisa: es cuando se actualiza la VRAM.',
+    },
+    {
+      fase: 'Borrado vertical',
+      titulo: 'El dibujo de la tesela, por DMA',
+      texto:
+        'La rutina programa en el VDP la longitud (16 palabras) y el origen en la ROM, y escribe la orden $4480 0080: escribir en la VRAM desde $0480 por DMA. El VDP pide el bus con /BR, el 68000 lo suelta con /BG y se queda parado mientras el VDP lee cada palabra del cartucho y la escribe en la VRAM por su puerto aleatorio.',
+      bloques: ['vdp', 'm68k', 'io', 'cart', 'vram'],
+      senales: [
+        { id: 'br', sentido: 1, valor: '0' },
+        { id: 'bg', sentido: 1, valor: '0' },
+        { id: 'vdp-a', sentido: 1 },
+        { id: 'bus-a', sentido: -1, valor: '$012480…' },
+        { id: 'cart-a', sentido: 1 },
+        { id: 'ce0', sentido: 1, valor: '0' },
+        { id: 'cart-d', sentido: -1 },
+        { id: 'bus-d', sentido: 1, valor: 'palabra del dibujo' },
+        { id: 'vdp-d', sentido: -1 },
+        { id: 'vram-bus', sentido: 1, valor: '$0480…$049F' },
+      ],
+      internos: [
+        ['Orden ($C00004)', '$4480 0080'],
+        ['Longitud', '16 palabras'],
+      ],
+      pantalla: 'vram',
+    },
+    {
+      fase: 'Borrado vertical',
+      titulo: 'La entrada del plano A',
+      texto:
+        'El plano A empieza en $C000 con 64 entradas de 2 bytes por fila; la de la columna 12, fila 6 está en $C318. El 68000 escribe la orden $4318 0003 en el puerto de control ($C00004) y la palabra $2024 en el de datos ($C00000). El 315-5433 selecciona el VDP y este la escribe en la VRAM.',
+      bloques: ['m68k', 'io', 'vdp', 'vram'],
+      senales: [
+        { id: 'm68-a', sentido: 1 },
+        { id: 'bus-a', sentido: 1, valor: '$C00004, $C00000' },
+        { id: 'io-a', sentido: 1 },
+        { id: 'vdpsel', sentido: 1, valor: '0' },
+        { id: 'm68-d', sentido: 1 },
+        { id: 'bus-d', sentido: 1, valor: '$4318, $0003, $2024' },
+        { id: 'vdp-d', sentido: -1 },
+        { id: 'vram-bus', sentido: 1, valor: '$C318' },
+      ],
+      internos: [['Entrada', '$2024: paleta 1, tesela $24']],
+      pantalla: 'mapa',
+    },
+    {
+      fase: 'Borrado vertical',
+      titulo: 'El color, en la CRAM',
+      texto:
+        'La CRAM, 64 colores de 9 bits en cuatro paletas, está dentro del VDP. La orden $C02C 0000 apunta al color 6 de la paleta 1 y la palabra $000E lo deja con rojo 7, verde 0 y azul 0.',
+      bloques: ['m68k', 'io', 'vdp'],
+      senales: [
+        { id: 'bus-a', sentido: 1, valor: '$C00004, $C00000' },
+        { id: 'vdpsel', sentido: 1, valor: '0' },
+        { id: 'bus-d', sentido: 1, valor: '$C02C, $0000, $000E' },
+        { id: 'vdp-d', sentido: -1 },
+      ],
+      internos: [['CRAM, paleta 1, color 6', '$000E']],
+      pantalla: 'mapa',
+    },
+    {
+      fase: 'Línea a línea',
+      titulo: 'El VDP lee la entrada del plano A',
+      texto:
+        'Para dibujar, el VDP lee la VRAM por su puerto serie, mucho más rápido: da la dirección por A0–A7 (fila con RAS, columna con CAS) y los bytes salen por SD0–SD7 al ritmo de SC. En la línea 51 lee la entrada $C318 del plano A: $2024.',
+      bloques: ['vdp', 'vram'],
+      senales: [
+        { id: 'vram-bus', sentido: 1, valor: '$C318' },
+        { id: 'vram-sd', sentido: -1, valor: '$20, $24' },
+      ],
+      pantalla: 'mapa',
+    },
+    {
+      fase: 'Línea a línea',
+      titulo: 'Los 4 bytes de la fila',
+      texto:
+        'Cada tesela ocupa 32 bytes, 4 por fila; la fila 3 de la tesela $24 empieza en $048C. Llegan $16, $F6, $66 y $61. Aquí no hay planos que juntar: cada medio byte es ya el índice de un punto, el de la izquierda en los 4 bits altos.',
+      bloques: ['vdp', 'vram'],
+      senales: [
+        { id: 'vram-bus', sentido: 1, valor: '$048C' },
+        { id: 'vram-sd', sentido: -1, valor: '$16, $F6, $66, $61' },
+      ],
+      pantalla: 'patron',
+    },
+    {
+      fase: 'Dentro del VDP',
+      titulo: 'El índice del punto: 6 de la paleta 1',
+      texto:
+        'El punto 3 es el medio byte bajo de $F6: índice 6. La entrada del plano añade la paleta, 1, así que el color saldrá de la entrada 16 + 6 = 22 de la CRAM. Los desplazamientos del plano (la tabla de scroll horizontal y la VSRAM) están a 0.',
+      bloques: ['vdp'],
+      senales: [],
+      internos: [['Punto 3', '$F6 → 6, paleta 1']],
+      pantalla: 'mezcla',
+    },
+    {
+      fase: 'Dentro del VDP',
+      titulo: 'Planos, sprites y prioridad',
+      texto:
+        'El VDP mezcla el plano B, el plano A y hasta 20 sprites por línea, y cada uno lleva un bit de prioridad. En el punto 99 de la línea 51 ningún sprite es opaco y el plano A tapa al B, así que gana nuestro índice; si fuera 0, transparente, se vería el color de fondo que elige el registro 7.',
+      bloques: ['vdp'],
+      senales: [],
+      internos: [['Gana', 'plano A']],
+      pantalla: 'prioridad',
+      nota: 'Ningún sprite cubre el punto (99, 51) y el plano A va delante del B.',
+    },
+    {
+      fase: 'Paleta y salida',
+      titulo: 'La CRAM da el color: $000E',
+      texto:
+        'La entrada 22 de la CRAM vale $000E: 3 bits por canal, rojo 7, verde 0 y azul 0. Los convertidores del VDP lo pasan a tres tensiones, R, G y B.',
+      bloques: ['vdp'],
+      senales: [],
+      internos: [
+        ['CRAM 22', '$000E'],
+        ['R, G, B', '7, 0, 0'],
+      ],
+      pantalla: 'paleta',
+    },
+    {
+      fase: 'Paleta y salida',
+      titulo: 'El punto sale hacia la tele',
+      texto:
+        'R, G, B y el sincronismo salen del VDP hacia el codificador de vídeo (un CXA1145 en el esquema; la placa PAL de la foto lleva un MB3514), que forma el vídeo compuesto PAL y lo manda al conector de A/V y al modulador. En el modo de 320 puntos cada uno dura unos 150 ns.',
+      bloques: ['vdp', 'av'],
+      senales: [{ id: 'rgb', sentido: 1, nombre: 'RGB', valor: 'rojo' }],
+      internos: [['Punto', '(99, 51)']],
+      pantalla: 'punto',
+    },
+    {
+      fase: 'Fin del cuadro',
+      titulo: 'Línea 224: VINT otra vez',
+      texto:
+        'Tras las 224 líneas visibles el VDP vuelve a pedir la interrupción de nivel 6. El 68000, que ha preparado el cuadro siguiente en la RAM de trabajo, vuelve a la rutina del vector $78: 50 veces por segundo en esta consola PAL, cada 313 líneas.',
+      bloques: ['vdp', 'm68k'],
+      senales: [{ id: 'ipl', sentido: 1, valor: '0, 0' }],
+      pantalla: 'cuadro',
+    },
   ],
-  chips: {
-    rom: ['J3'], ram: ['U2', 'U3'], vdp: ['U8'], psg: ['U8'], io: ['U4'], arbitro: ['U4'], tmss: ['U4'], zram: ['U4', 'U7'], ym: ['U11'],
-    vram: ['U9', 'U10'], banco: ['U4'], ventana: ['U4'],
-  },
-  avisoPlaca:
-    'La placa es la recreación KiCad de stonedDiscord de la IC BD M5 PAL (generación VA5/VA6): mismas referencias y redes que el esquema, dibujada a partir de escaneos de la placa desnuda. La foto es la de una VA6.8 PAL.',
-  fases: {
-    activa: 'En cada ranura de 16 ciclos el VDP lee 4 bytes de la VRAM: nombres y patrones de los planos A y B, atributos y patrones de sprites, la tabla de desplazamiento; 18 de las 210 ranuras de la línea son para el 68000 (FIFO) o un DMA.',
-    borde: 'Borde: el VDP saca el color de fondo y prepara los sprites de la línea siguiente.',
-    borrado: 'Borrado: imagen en negro; en las líneas del borrado vertical casi todas las ranuras quedan para el 68000 y los DMA.',
-    hsync: 'Sincronismo horizontal: 17 ranuras más largas (18–20 ciclos) con /HSYNC abajo.',
-    vsync: 'Sincronismo vertical: posición aproximada (3 líneas dentro del borrado vertical): las fuentes consultadas no la documentan.',
-  },
-  mapa: [
-    { desde: 0x000000, hasta: 0x3fffff, chip: 'rom', titulo: 'Cartucho (ROM, /CE0)' },
-    { desde: 0xa00000, hasta: 0xa0ffff, chip: 'zram', titulo: 'Zona del Z80: su RAM (U7) y el YM2612, a través del 315-5402' },
-    { desde: 0xa10000, hasta: 0xa1001f, chip: 'io', titulo: 'E/S del 315-5402: versión y mandos' },
-    { desde: 0xa11100, hasta: 0xa11201, chip: 'arbitro', titulo: 'Bus y reset del Z80' },
-    { desde: 0xa14000, hasta: 0xa14003, chip: 'tmss', titulo: 'TMSS' },
-    { desde: 0xc00000, hasta: 0xc0001f, chip: 'vdp', titulo: 'VDP: datos, control, contador HV y PSG' },
-    { desde: 0xe00000, hasta: 0xffffff, chip: 'ram', titulo: 'RAM de trabajo 64 KB (U2, U3), espejada' },
-  ],
-  hojaInicial: 0,
-  fidelidad:
-    'Exacto: cada ciclo de bus del 68000 (Moira en temporización precisa, con el mismo instante de inicio que SingleStepTests 680x0 en todos los accesos comparados) con las esperas de /DTACK del VDP; el DMA de la RAM a la VRAM con /BR y cada lectura del VDP; el IACK; los ciclos del Z80; cada ranura del VDP con lo que lee o escribe (núcleo de BlastEm, según las medidas de Nemesis); el instante de cada píxel. Ilustrativo: la forma de las líneas dentro de cada ciclo (68000 User\'s Manual), el reparto fila/columna y el puerto serie de la VRAM dentro de la ranura, la posición de /VSYNC. El Z80 cede su bus al terminar la instrucción en curso (el real, al terminar el ciclo de máquina). Sin sonido: el YM2612 y el PSG no se emulan (sus escrituras sí están en la traza; el estado del YM se lee como 0). En «Un juego de verdad» el mando del puerto 1 es uno de 3 botones que sigue un guion fijo.',
   fuentes: [
-    { titulo: 'Moira, 68000 de Dirk W. Hoffmann (MIT)', url: 'https://github.com/dirkwhoffmann/Moira', uso: '68000 ciclo a ciclo; con tres correcciones del orden del bus (RTE, JSR, ADD/SUB.l en memoria).' },
-    { titulo: 'SingleStepTests 680x0 (Thomas Harte, MIT)', url: 'https://github.com/SingleStepTests/680x0', uso: 'Validación del 68000: 282 275 pruebas, 707 752 accesos con su ciclo de inicio.' },
-    { titulo: 'BlastEm, vdp.c y genesis.c (Michael Pavone, GPL-3)', url: 'https://github.com/libretro/blastem', uso: 'VDP ranura a ranura, FIFO, DMA y esperas del 68000; usado sin conexión.' },
-    { titulo: 'Nemesis, «VDP VRAM access timing» (SpritesMind)', url: 'https://gendev.spritesmind.net/forum/viewtopic.php?p=12349', uso: 'Reparto de las ranuras de una línea H40.' },
-    { titulo: 'Plutiedev: TMSS, bus del Z80, DMA, registros del VDP', url: 'https://plutiedev.com/', uso: 'Secuencia de arranque de la demostración.' },
-    { titulo: 'Motorola, «M68000 Family Programmer\'s Reference Manual» y «MC68000 User\'s Manual»', url: 'https://www.nxp.com/docs/en/reference-manual/M68000PRM.pdf', uso: 'Instrucciones y forma de los ciclos de bus.' },
-    { titulo: 'Werton y Stéphane Dallongeville, «Gentris», ejemplo de SGDK (MIT)', url: 'https://github.com/Stephane-D/SGDK', uso: '«Un juego de verdad»: la ROM que publica SGDK (sample/game/gentris/out/release/rom.bin, commit 9a78a44), con un guion de botones del mando de 3 botones.' },
+    { titulo: 'Plutiedev: VDP commands', url: 'https://plutiedev.com/vdp-commands', nota: 'órdenes de escritura en VRAM y CRAM' },
+    { titulo: 'Plutiedev: DMA transfer', url: 'https://plutiedev.com/dma-transfer' },
+    { titulo: 'Plutiedev: Tiles', url: 'https://plutiedev.com/tiles', nota: '4 bits por punto, dos por byte' },
+    { titulo: 'Plutiedev: Planes', url: 'https://plutiedev.com/planes', nota: 'formato de las entradas' },
+    { titulo: 'Plutiedev: Palettes', url: 'https://plutiedev.com/palettes', nota: 'CRAM de 9 bits' },
+    { titulo: 'Sega Retro: Sega Mega Drive/Interrupts', url: 'https://segaretro.org/Sega_Mega_Drive/Interrupts', nota: 'VINT de nivel 6' },
+    { titulo: 'Rodrigo Copetti: Mega Drive / Genesis Architecture', url: 'https://www.copetti.org/writings/consoles/mega-drive-genesis/' },
   ],
 };
-
-export default adaptador;

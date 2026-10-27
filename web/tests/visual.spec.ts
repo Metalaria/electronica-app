@@ -1,6 +1,6 @@
 // 0.8 visual improvements end to end: the floating preview of references (mouse, touch, keyboard; figure,
 // table, equation, section, chapter), the glossary's symbols and lazy 3D thumbnails, and the start page as a
-// map of the book (tiles that follow the reading, «Seguir leyendo», «Repaso de hoy»), on desktop and phone.
+// path of the book (0.9: nodes that follow the reading, «Seguir leyendo», «Repaso pendiente»), on desktop and phone.
 //   PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers npx playwright test -c playwright.visual.config.ts tests/visual.spec.ts
 import { expect, test, type Browser, type Locator, type Page } from '@playwright/test';
 
@@ -265,7 +265,7 @@ test.describe('glosario con imagen', () => {
   });
 });
 
-test.describe('inicio como mapa del libro', () => {
+test.describe('inicio como camino del libro (0.9)', () => {
   async function sembrar(page: Page, b: number): Promise<void> {
     await page.addInitScript((bloque) => {
       const t = Date.now();
@@ -276,7 +276,7 @@ test.describe('inicio como mapa del libro', () => {
     }, b);
   }
 
-  test('las teselas siguen la lectura y «Seguir leyendo» abre la sección', async ({ page, request }) => {
+  test('los nodos siguen la lectura y «Seguir leyendo» abre la sección', async ({ page, request }) => {
     const cap05 = await (await request.get('libro/partes/cap05.json')).json();
     const b = cap05.bloques.findIndex((x: { t: string; label?: string }) => x.t === 'h2' && x.label === 'sec-5.3') + 1;
     const indice = await (await request.get('libro/indice.json')).json();
@@ -294,57 +294,68 @@ test.describe('inicio como mapa del libro', () => {
       if (/\/libro\/(fig|img)\//.test(r.url())) figuras.push(r.url());
     });
     await page.goto('#/');
-    const mapa = page.locator('section.mapa');
-    await expect(mapa).toBeVisible();
-    const total = Object.values(indice.tomos as { partes: string[] }[]).reduce((n, t) => n + t.partes.filter((p) => indice.partes[p]).length, 0);
-    await expect(mapa.locator('a.tesela')).toHaveCount(total);
-    const c5 = mapa.locator('a.tesela[data-parte="cap05"]');
+    // the volume being read is open: one node per part of tome I
+    const camino = page.locator('section.camino-libro');
+    await expect(camino).toBeVisible();
+    const tomoI = (indice.tomos as { id: string; partes: string[] }[]).find((t) => t.partes.includes('cap05'))!;
+    const nodos = camino.locator(':scope > ol.camino a.nodo');
+    await expect(nodos).toHaveCount(tomoI.partes.filter((p) => indice.partes[p]).length);
+    const c5 = camino.locator('a.nodo[data-parte="cap05"]');
     await expect(c5).toHaveAttribute('data-leidas', '4');
-    await expect(c5.locator('.muescas i.l')).toHaveCount(4);
-    await expect(c5).toHaveAttribute('aria-current', 'true');
+    await expect(c5).toHaveAttribute('data-estado', 'actual');
+    await expect(c5).toHaveAttribute('aria-current', 'step');
     await expect(c5).toHaveAttribute('aria-label', new RegExp(`4 de ${indice.partes.cap05.secciones.length} secciones leídas`));
-    const c1 = mapa.locator('a.tesela[data-parte="cap01"]');
-    await expect(c1).toHaveClass(/completa/);
-    await expect(c1.locator('.hecho')).toBeVisible();
-    await expect(mapa.locator('a.tesela[data-parte="cap02"]')).toHaveAttribute('data-leidas', '0');
-    await expect(mapa.locator('.tesela.completa')).toHaveCount(1);
+    await expect(c5).toContainText('Estás aquí · 5.3');
+    const c1 = camino.locator('a.nodo[data-parte="cap01"]');
+    await expect(c1).toHaveAttribute('data-estado', 'hecho');
+    await expect(camino.locator('a.nodo[data-parte="cap02"]')).toHaveAttribute('data-leidas', '0');
+    await expect(camino.locator('a.nodo[data-estado="hecho"]')).toHaveCount(1);
+    await expect(camino).toContainText('1 de 8 partes leídas');
 
-    // «Repaso de hoy»: the count and the way in
+    // the other volumes are rows that open in place
+    const tomoII = camino.locator('button.tomo-fila[data-tomo="II"]');
+    await expect(tomoII).toHaveAttribute('aria-expanded', 'false');
+    await expect(camino.locator('a.nodo[data-parte="cap07"]')).toHaveCount(0);
+    await tomoII.click();
+    await expect(tomoII).toHaveAttribute('aria-expanded', 'true');
+    await expect(camino.locator('a.nodo[data-parte="cap07"]')).toBeVisible();
+
+    // «Repaso pendiente»: the count and the way in
     const repaso = page.locator('.repaso-hoy');
-    await expect(repaso.locator('.cifra[data-pendientes]')).toBeVisible();
-    await expect(repaso.getByRole('link', { name: /Empezar/ })).toHaveAttribute('href', '#/repaso/tarjetas');
+    await expect(repaso).toHaveAttribute('data-pendientes', /\d+/);
+    await expect(repaso.getByRole('link', { name: 'Repasar' })).toHaveAttribute('href', '#/repaso/tarjetas');
 
     // «Seguir leyendo»: its figure is the only one the start page loads
-    const seguir = page.locator('a.seguir');
+    const seguir = page.locator('.seguir');
     await expect(seguir).toHaveAttribute('data-seccion', 'sec-5.3');
     await expect(seguir.locator('.imagen img')).toBeVisible();
     await expect(seguir).toContainText('5.3');
     await page.waitForTimeout(800);
     expect(figuras.length).toBe(1);
-    await seguir.click();
+    await seguir.getByRole('link', { name: 'Continuar' }).click();
     await expect(page).toHaveURL(/#\/cap05$/);
     await expect(page.locator('header.barra')).toContainText('5.3');
 
-    // a tile opens its chapter
+    // a node opens its chapter
     await page.goto('#/');
-    await mapa.locator('a.tesela[data-parte="cap02"]').click();
+    await camino.locator('a.nodo[data-parte="cap02"]').click();
     await expect(page).toHaveURL(/#\/cap02$/);
   });
 
   test('teléfono: sin desplazamiento lateral ni zoom', async ({ browser }) => {
     const page = await movil(browser, (p) => sembrar(p, 3));
     await page.goto('#/');
-    await expect(page.locator('section.mapa a.tesela').first()).toBeVisible();
-    await expect(page.locator('a.seguir')).toBeVisible();
+    await expect(page.locator('a.nodo').first()).toBeVisible();
+    await expect(page.locator('.seguir')).toBeVisible();
     const medidas = await page.evaluate(() => ({ ancho: document.documentElement.scrollWidth, vista: window.innerWidth, escala: window.visualViewport?.scale ?? 1 }));
     expect(medidas.ancho).toBeLessThanOrEqual(medidas.vista);
     expect(medidas.escala).toBe(1);
-    // tiles are big enough to tap
-    const caja = (await page.locator('a.tesela[data-parte="cap05"]').boundingBox())!;
-    expect(caja.width).toBeGreaterThanOrEqual(72);
-    expect(caja.height).toBeGreaterThanOrEqual(72);
-    await page.locator('a.tesela[data-parte="cap05"]').tap();
+    // nodes are big enough to tap
+    const caja = (await page.locator('a.nodo[data-parte="cap05"]').boundingBox())!;
+    expect(caja.height).toBeGreaterThanOrEqual(52);
+    await page.locator('a.nodo[data-parte="cap05"]').tap();
     await expect(page).toHaveURL(/#\/cap05$/);
     await page.context().close();
   });
 });
+

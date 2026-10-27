@@ -34,6 +34,7 @@ import consolas_datos as D   # noqa: E402
 import consolas_datos2 as D2  # noqa: E402
 import consolas_fotos as F   # noqa: E402
 import consolas_pdf as P    # noqa: E402
+import consolas_snes as SN  # noqa: E402
 from PIL import Image        # noqa: E402
 
 MAQUINAS = [
@@ -172,6 +173,34 @@ MAQUINAS = [
                  '(valores del esquema de Nintendo). Solo se publica como PDF de KiCad: el dibujo, los pines y las redes se han '
                  'reconstruido del PDF y se han comprobado con la recreación opengbc (ver «Fuentes»). Natalie avisa de que puede '
                  'haber alguna inexactitud.',
+    },
+    {
+        'id': 'snes',
+        'titulo': 'Super Nintendo',
+        'placa': 'SNSP-CPU-01 (PAL)',
+        'esquema_titulo': 'SNSP-CPU-01 Rev5 (nonSNES)',
+        'raiz': 'snes/kicad7/SNSP-CPU-01.kicad_sch',
+        'netlist': 'snes/netlist/SNSP-CPU-01.nets.json',
+        'buses': 'snes/netlist/SNSP-CPU-01.buses.json',
+        'svg': lambda path: 'snes/svg/SNSP-CPU-01.svg',
+        # photos placed from the PCB: hotspot boxes and markers come from the footprints through each photo's alignment
+        # file (consolas_snes.py); to show another photo of the board, add it here with its own alignment file
+        'huellas': 'snes/pcb/SNSP-CPU-01_huellas.json',
+        'licencia_texto': ('snes/original/LICENSE', 'snes/LICENSE-nonSNES.txt'),
+        'fotos': [
+            {'id': 'cara-a', 'titulo': 'Cara de componentes (sin chips)', 'origen': 'snes/fotos/nonSNES_front.jpg',
+             'alineacion': 'snes/fotos/nonSNES_front.alineacion.json', 'ancho': 1600, 'calidad': 78,
+             'credito': 'nonSNES · GPL-3.0', 'revision': 'SNSP-CPU-01 PAL, la del esquema', 'hotspots': SN.CARA_A,
+             'nota': 'Escaneo de la placa con los chips quitados: se ven sus pads y la serigrafía (U1, U2…).'},
+            {'id': 'cara-b', 'titulo': 'Cara de soldadura', 'origen': 'snes/fotos/nonSNES_back.jpg',
+             'alineacion': 'snes/fotos/nonSNES_back.alineacion.json', 'ancho': 1600, 'calidad': 78,
+             'credito': 'nonSNES · GPL-3.0', 'revision': 'SNSP-CPU-01 PAL', 'hotspots': SN.CARA_B,
+             'nota': 'Vista desde abajo: la placa sale dada la vuelta (el puerto de expansión queda a la derecha).'},
+        ],
+        'aviso': 'Esquema de la recreación nonSNES de stonedDiscord: una copia «1:1» de la placa PAL SNSP-CPU-01 Rev5 (esquema '
+                 'de arzi84) para fabricarla hoy con los chips de una consola. Las fotos son de esa misma placa. nonSNES añade '
+                 'algunas piezas (placa A/V y de mandos separables, otro supervisor de reset, otro pulsador y otro trimmer): '
+                 'la tabla de abajo dice cuáles.',
     },
 ]
 
@@ -583,7 +612,30 @@ def preparar_fotos(m, problemas):
                    'ancho': w, 'alto': h, 'figura': None, 'credito': fs['credito'], 'revision': fs.get('revision', '')}
         if fs.get('nota'):
             entrada['nota'] = fs['nota']
-        for hs in fs['hotspots']:
+        hot_fs = [dict(hs) for hs in fs['hotspots']]
+        if fs.get('alineacion'):
+            # a photo placed from the PCB (Super Nintendo): boxes and markers from the footprints (consolas_snes.py)
+            llevar, al, med = SN.cargar_alineacion(os.path.join(SRC, fs['alineacion']), w)
+            hu = {f['ref']: f for f in json.load(open(os.path.join(SRC, m['huellas']), encoding='utf-8'))['footprints']}
+            cara = al.get('cara', 'top')
+            for hs in hot_fs:
+                if not hs.get('cajas'):
+                    hs['cajas'] = SN.cajas_de_huellas(hs.pop('huellas', None) or hs['esquema'], hu, llevar, w, h)
+                    if not hs['cajas']:
+                        problemas.append('%s: el punto %s no tiene huellas en la foto %s' % (m['id'], hs['id'], fs['id']))
+                hs.pop('huellas', None)
+            pos = {}
+            for f in hu.values():
+                if f['side'] != cara or f['ref'].startswith(('H', 'FID')):
+                    continue
+                x, y = llevar(f['x'], f['y'])
+                if 0 <= x < w and 0 <= y < h:
+                    pos[f['ref']] = [round(x), round(y)]
+            entrada['posiciones'] = pos
+            entrada['posiciones_nota'] = ('Punto de referencia de su huella en la PCB de nonSNES, llevado a esta foto con un ajuste '
+                                          '%s a %d puntos (error mediano de %.1f px)'
+                                          % ('afín' if al.get('modelo', 'afin') == 'afin' else 'proyectivo', len(al['puntos']), med))
+        for hs in hot_fs:
             for c in hs['cajas']:
                 if not F.caja_valida(c, w, h):
                     problemas.append('%s: caja fuera de la foto %s en %s' % (m['id'], fs['id'], hs['id']))
@@ -632,14 +684,14 @@ def preparar_fotos(m, problemas):
                     pos[fp['ref']] = [round(x), round(y)]
             entrada['posiciones'] = pos
             entrada['posiciones_nota'] = nota
-        lista.append((entrada, [dict(hs) for hs in fs['hotspots']]))
+        lista.append((entrada, hot_fs))
     principal, hot = lista[0]
     extra = [dict(e, hotspots=hs) for e, hs in lista[1:]]
     return principal, hot, extra, tam
 
 
 def grupos_de(mid):
-    return D.GRUPOS.get(mid) or D2.GRUPOS2[mid]
+    return D.GRUPOS.get(mid) or (SN.GRUPOS if mid == 'snes' else D2.GRUPOS2[mid])
 
 
 def finalizar(m, componentes, redes, hojas, tam, problemas):
@@ -687,9 +739,18 @@ def finalizar(m, componentes, redes, hojas, tam, problemas):
         'hojas': hojas,
         'componentes': componentes,
         'redes': redes,
-        'equivalencias': D.EQUIVALENCIAS if m['id'] == 'neogeo' else m.get('equivalencias') or D2.EQUIVALENCIAS_DE.get(m['id'], []),
-        'fuentes': D.FUENTES.get(m['id']) or D2.FUENTES2[m['id']],
+        'equivalencias': D.EQUIVALENCIAS if m['id'] == 'neogeo' else m.get('equivalencias') or D2.EQUIVALENCIAS_DE.get(m['id'])
+        or (SN.EQUIVALENCIAS if m['id'] == 'snes' else []),
+        'fuentes': D.FUENTES.get(m['id']) or (SN.FUENTES if m['id'] == 'snes' else D2.FUENTES2[m['id']]),
     }
+    if m.get('licencia_texto'):
+        # a licence that asks for its text to travel with the work (GPL-3.0, nonSNES): copied next to the data
+        origen, destino = m['licencia_texto']
+        with open(os.path.join(SRC, origen), encoding='utf-8') as f:
+            texto_lic = f.read()
+        with open(os.path.join(OUT, destino), 'w', encoding='utf-8') as f:
+            f.write(texto_lic)
+        tam += len(texto_lic.encode('utf-8'))
     if fotos_extra:
         datos['fotos'] = fotos_extra
     if m.get('dudas'):
@@ -699,7 +760,7 @@ def finalizar(m, componentes, redes, hojas, tam, problemas):
         spec.loader.exec_module(tr)
         datos['notas'] = [{'ref': r, 'pin': p, 'texto': t} for r, p, t in tr.DUDAS]
     for k in ('revisiones', 'equivalencias_cabecera', 'citas', 'notas', 'trazas_de'):
-        v = D2.EXTRA.get(m['id'], {}).get(k)
+        v = (SN.EXTRA if m['id'] == 'snes' else D2.EXTRA.get(m['id'], {})).get(k)
         if v:
             datos[k] = v
     texto = json.dumps(datos, ensure_ascii=False, separators=(',', ':'))
@@ -710,7 +771,7 @@ def finalizar(m, componentes, redes, hojas, tam, problemas):
             'hotspots': len(todos), 'bytes': tam, 'fotos': tam_fotos}
 
 
-def main():
+def main(ids=()):
     if not os.path.isdir(SRC):
         print('consolas: no está la carpeta de fuentes %s; se conservan los datos de web/public/consolas' % SRC)
         return 0
@@ -718,6 +779,8 @@ def main():
     problemas = []
     total = 0
     for m in MAQUINAS:
+        if ids and m['id'] not in ids:
+            continue
         r = construir(m, problemas)
         total += r['bytes']
         print('consolas: %-7s %2d hojas, %4d redes, %3d componentes, %2d puntos en la foto, %6.1f kB'
@@ -729,4 +792,5 @@ def main():
 
 
 if __name__ == '__main__':
-    sys.exit(main())
+    # optional machine ids: python3 contenido/consolas.py snes  (only those are rebuilt)
+    sys.exit(main(sys.argv[1:]))

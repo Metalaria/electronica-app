@@ -20,6 +20,17 @@ interface Placa {
 interface Stats3D {
   piezas: { biblioteca: number; propias: number };
   ladoComponentes?: string;
+  fases?: { piezas: number };
+  revision?: {
+    plantillas: number;
+    triangulos: number;
+    noFinitas: string[];
+    enormes: string[];
+    pinesDistintos: string[];
+    patasFuera: string[];
+    maxDesvio: number;
+    fusionNoFinitos: number;
+  };
 }
 
 /** Opens a console's board in 3D with WebGL (optionally choosing it) and waits for its parts. */
@@ -218,4 +229,81 @@ test('Game Boy: Super DMG-01, recreación moderna en 3D con sus componentes, enl
   await expect(f).toContainText('kamicane');
   await expect(f).toContainText('CC BY-SA 4.0');
   await expect(f).toContainText('bf540dd');
+});
+
+// 0.9: the Neo Geo board froze the Xiaomi Pad 6 (Chromium rasterises 2D canvases on the GPU there; painting its
+// faces with every net clipped by 2286 mask openings held the GPU thread for minutes). Its parts are checked
+// while they load (escena3d → stats.revision): finite geometry, the library models' pin counts against the
+// footprints' pads and their leads on those pads; the 5-lead TO-220 (U37, LM2576T-5) gets its own body.
+test('Neo Geo y Mega Drive en 3D: geometría de las piezas válida y patillas sobre sus pads', async ({ page }) => {
+  test.setTimeout(480_000);
+  const errores: string[] = [];
+  page.on('pageerror', (e) => errores.push(e.message));
+  for (const [maquina, n] of [
+    ['neogeo', 320],
+    ['megadrive', 257],
+  ] as const) {
+    await page.evaluate(() => ((globalThis as unknown as { __epaPlaca3DListo?: boolean }).__epaPlaca3DListo = false));
+    const s = await placa3D(page, maquina);
+    const r = s.revision!;
+    expect(s.piezas.biblioteca + s.piezas.propias, maquina).toBe(n);
+    expect(r.noFinitas, maquina).toEqual([]);
+    expect(r.enormes, maquina).toEqual([]);
+    expect(r.fusionNoFinitos, maquina).toBe(0);
+    // no library model with another pin count than its footprint; the accepted ones on their pads
+    expect(r.pinesDistintos, maquina).toEqual([]);
+    expect(r.maxDesvio, maquina).toBeLessThanOrEqual(0.5);
+    expect(r.triangulos, maquina).toBeGreaterThan(1000);
+    expect(r.triangulos, maquina).toBeLessThan(400_000);
+    if (maquina === 'neogeo') {
+      // the 5-lead regulator is not drawn as the library's 3-lead TO-220, nor refused for it
+      expect([...r.pinesDistintos, ...r.patasFuera].join(' ')).not.toContain('U37');
+      expect(r.patasFuera).toEqual([]);
+    } else {
+      // Mega Drive: models that did not fit their footprints (vertical ferrite beads, a 2 mm header, a double
+      // DIP-28) get a simple body instead of leads beside their pads
+      expect(r.patasFuera.map((x) => x.split(' ')[0])).toEqual(expect.arrayContaining(['FB1', 'J110', 'U7']));
+    }
+  }
+  expect(errores).toEqual([]);
+});
+
+test('con «Componentes» apagado la placa en 3D no carga las piezas, y al encenderlo las carga', async ({ page }) => {
+  test.setTimeout(360_000);
+  // A small board first, to switch the toggle off (it is kept while moving between boards).
+  await page.goto('#/proyectos/estacion_iot/3d');
+  await page.waitForFunction(() => (globalThis as unknown as { __epaPlaca3DListo?: boolean }).__epaPlaca3DListo === true, null, { timeout: 180_000 });
+  const comp = page.getByRole('button', { name: 'Componentes' });
+  await comp.click();
+  await expect(comp).toHaveAttribute('aria-pressed', 'false');
+  await page.goto('#/consolas/neogeo/placa3d');
+  await expect(page.locator('.placa-consola')).toHaveAttribute('data-placa', 'neogeo');
+  // ready with the board alone: no parts built, no load phases, no progress overlay
+  await page.waitForFunction(
+    () => {
+      const g = globalThis as unknown as { __epaPlaca3DListo?: boolean; __epaPlaca3D?: { cuadros: number; piezas: { propias: number } } };
+      return g.__epaPlaca3DListo === true && (g.__epaPlaca3D?.cuadros ?? 0) > 0;
+    },
+    null,
+    { timeout: 180_000 },
+  );
+  await page.waitForTimeout(1500);
+  const sin = await page.evaluate(() => (globalThis as unknown as { __epaPlaca3D: Stats3D }).__epaPlaca3D);
+  expect(sin.piezas).toEqual({ biblioteca: 0, propias: 0 });
+  expect(sin.fases).toBeUndefined();
+  expect(sin.revision).toBeUndefined();
+  await expect(page.locator('.v3d .carga')).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Componentes' })).toHaveAttribute('aria-pressed', 'false');
+  // turned on: now they are built, once
+  await page.getByRole('button', { name: 'Componentes' }).click();
+  await page.waitForFunction(() => (globalThis as unknown as { __epaPlaca3D?: Stats3D }).__epaPlaca3D?.fases?.piezas != null, null, { timeout: 180_000 });
+  await page.waitForFunction(() => (globalThis as unknown as { __epaPlaca3DListo?: boolean }).__epaPlaca3DListo === true, null, { timeout: 180_000 });
+  const con = await page.evaluate(() => (globalThis as unknown as { __epaPlaca3D: Stats3D }).__epaPlaca3D);
+  expect(con.piezas.biblioteca + con.piezas.propias).toBe(320);
+  // off and on again: nothing is built twice
+  await page.getByRole('button', { name: 'Componentes' }).click();
+  await page.getByRole('button', { name: 'Componentes' }).click();
+  await page.waitForTimeout(500);
+  const otra = await page.evaluate(() => (globalThis as unknown as { __epaPlaca3D: Stats3D }).__epaPlaca3D);
+  expect(otra.piezas.biblioteca + otra.piezas.propias).toBe(320);
 });

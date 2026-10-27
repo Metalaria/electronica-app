@@ -1,8 +1,9 @@
 <script lang="ts">
-  // Start page: today's flashcards (counted in idle time, the glossary is not needed to show the page).
+  // Start page (0.9): «Repaso pendiente», the flashcards due today in the deck chosen on the «Repaso» page
+  // (the same count as that page), counted in idle time: the glossary is not needed to show the page.
   import { onMount } from 'svelte';
-  import Icono from '../Icono.svelte';
   import type { ResumenRepaso } from './repasoHoy';
+  import BotonPrincipal from '../ui09/BotonPrincipal.svelte';
 
   let resumen = $state<ResumenRepaso | null>(null);
   let fallo = $state(false);
@@ -26,113 +27,84 @@
   });
 
   const detalle = $derived.by(() => {
-    if (!resumen) return '';
-    const partes: string[] = [];
-    if (resumen.nuevas) partes.push(`${resumen.nuevas} ${resumen.nuevas === 1 ? 'nueva' : 'nuevas'}`);
-    if (resumen.aprendiendo) partes.push(`${resumen.aprendiendo} en aprendizaje`);
-    if (resumen.repaso) partes.push(`${resumen.repaso} de repaso`);
-    return partes.join(' · ');
+    if (fallo) return 'No se pudo contar el repaso.';
+    if (!resumen) return 'Contando las tarjetas…';
+    if (!resumen.total) return 'Al día: vuelve mañana para las siguientes.';
+    // about 20 s per card
+    const min = Math.max(1, Math.round(resumen.total / 3));
+    return `${resumen.total} ${resumen.total === 1 ? 'tarjeta' : 'tarjetas'} · unos ${min} ${min === 1 ? 'minuto' : 'minutos'}`;
   });
 </script>
 
-<section class="repaso-hoy" aria-labelledby="tit-repaso-hoy" aria-busy={!resumen && !fallo}>
-  <h2 id="tit-repaso-hoy"><Icono nombre="repaso" tam={16} /> Repaso de hoy</h2>
-  {#if fallo}
-    <p class="det">No se pudo contar el repaso.</p>
-    <a class="boton" href="#/repaso">Abrir el repaso</a>
-  {:else if !resumen}
-    <p class="cifra cargando" aria-hidden="true">·</p>
-    <p class="det">Contando las tarjetas…</p>
-  {:else}
-    <p class="cifra" data-pendientes={resumen.total}>{resumen.total}</p>
-    <p class="txt">{resumen.total === 1 ? 'tarjeta para hoy' : resumen.total ? 'tarjetas para hoy' : 'tarjetas: al día'}</p>
-    <p class="det">
-      {#if detalle}{detalle}{:else}Vuelva mañana para las siguientes.{/if}
-      <span class="mazo">{resumen.mazo}</span>
-    </p>
-    <div class="acciones">
-      {#if resumen.total}
-        <a class="boton primario" href="#/repaso/tarjetas">Empezar <Icono nombre="chevron" tam={16} /></a>
-      {:else}
-        <a class="boton" href="#/repaso">Ver el repaso</a>
-      {/if}
-      {#if resumen.fallos}<a class="enlace" href="#/repaso/repasar">{resumen.fallos} {resumen.fallos === 1 ? 'pregunta fallada' : 'preguntas falladas'}</a>{/if}
+<section class="t09-tarjeta repaso-hoy" aria-labelledby="tit-repaso-hoy" aria-busy={!resumen && !fallo} data-pendientes={resumen?.total}>
+  <div class="fila">
+    <span class="icono" aria-hidden="true">
+      <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"
+        ><rect x="3" y="6" width="14" height="14" rx="2" /><path d="M7 3h12a2 2 0 0 1 2 2v12" /><path d="M7 13h6" /></svg
+      >
+    </span>
+    <div class="textos">
+      <h2 id="tit-repaso-hoy">Repaso pendiente</h2>
+      <span class="det">{detalle}</span>
     </div>
-    {#if resumen.racha > 1}<p class="racha">Racha de {resumen.racha} días</p>{/if}
+    {#if resumen?.total}
+      <BotonPrincipal href="#/repaso/tarjetas" contorno>Repasar</BotonPrincipal>
+    {:else if resumen || fallo}
+      <BotonPrincipal href="#/repaso" contorno>Ver</BotonPrincipal>
+    {/if}
+  </div>
+  {#if resumen?.fallos}
+    <a class="fallos" href="#/repaso/repasar">{resumen.fallos} {resumen.fallos === 1 ? 'pregunta fallada' : 'preguntas falladas'} para repasar</a>
   {/if}
 </section>
 
 <style>
-  .repaso-hoy {
-    display: flex;
-    flex-direction: column;
-    padding: 16px 18px;
-    border: 1px solid var(--linea);
-    border-radius: 14px;
-    background: var(--superficie);
-  }
-  h2 {
+  .fila {
     display: flex;
     align-items: center;
-    gap: 7px;
-    margin: 0 0 10px;
-    color: var(--tinta-tenue);
-    font-size: 13px;
-    font-weight: 700;
-    letter-spacing: 0.12em;
-    text-transform: uppercase;
+    gap: 14px;
   }
-  .cifra {
+  .icono {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 48px;
+    height: 48px;
+    border-radius: 12px;
+    background: var(--acento-tinte);
+    color: var(--acento);
+  }
+  .textos {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 2px;
+    min-width: 0;
+  }
+  h2 {
     margin: 0;
-    color: var(--titulos);
-    font-size: 44px;
-    font-weight: 700;
-    line-height: 1;
-    font-variant-numeric: tabular-nums;
-  }
-  .cifra.cargando {
-    color: var(--linea);
-  }
-  .txt {
-    margin: 4px 0 0;
     color: var(--tinta);
     font-size: 16px;
     font-weight: 600;
   }
   .det {
-    margin: 6px 0 0;
     color: var(--tinta-suave);
     font-size: 14px;
-    line-height: 1.4;
   }
-  .mazo {
-    display: block;
-    color: var(--tinta-tenue);
-    font-size: 13px;
+  .fila :global(.t09-boton) {
+    flex: none;
   }
-  .acciones {
+  .fallos {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: 8px 14px;
-    margin-top: auto;
-    padding-top: 14px;
-  }
-  .acciones .boton {
-    min-height: 40px;
-  }
-  .enlace {
+    min-height: var(--toque);
+    margin: 6px 0 -10px 62px;
     color: var(--acento);
     font-size: 14px;
     font-weight: 600;
     text-decoration: none;
   }
-  .enlace:hover {
+  .fallos:hover {
     text-decoration: underline;
-  }
-  .racha {
-    margin: 10px 0 0;
-    color: var(--tinta-tenue);
-    font-size: 13px;
   }
 </style>

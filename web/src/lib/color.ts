@@ -97,3 +97,42 @@ export function acentos(color: string | null | undefined, tema: TemaEfectivo): A
 export function colorBloque(color: string | null | undefined): string {
   return '#' + normalizarColor(color);
 }
+
+/** Surface of the cards of each theme (must match --superficie in app.css). */
+const SUPERFICIE: Record<TemaEfectivo, string> = { claro: 'FFFFFF', sepia: 'FAF3E4', oscuro: '1F2329' };
+
+/** A block colour as the 0.9 facelift paints it (componentes/ui09, the start page's path). */
+export interface TonoBloque {
+  /** Solid fills: done nodes, the primary button, the segments done. */
+  relleno: string;
+  /** Text and icons on `relleno` (≥ 4.5:1). */
+  sobre: string;
+  /** Pale background of the current node and of chips. */
+  tinte: string;
+  /** The colour as text on the page and on cards (≥ 4.5:1 on both). */
+  texto: string;
+}
+
+/**
+ * Light and sepia: the block colour itself with white on it; dark: a light version of its bright variant
+ * (≥ 7:1 on the page) with near-black on it, as in the 0.9 mockups.
+ */
+export function tonoBloque(color: string | null | undefined, tema: TemaEfectivo): TonoBloque {
+  const base = normalizarColor(color);
+  const fondo = aRGB(FONDO[tema]);
+  const sup = aRGB(SUPERFICIE[tema]);
+  if (tema === 'oscuro') {
+    const blanco: RGB = [255, 255, 255];
+    const brillante = aRGB(BRILLANTE[base] ?? base);
+    let t = 0.3;
+    let c = mezclar(brillante, blanco, t);
+    while (Math.min(contraste(c, fondo), contraste(c, sup)) < 7 && t < 0.92) {
+      t += 0.04;
+      c = mezclar(brillante, blanco, t);
+    }
+    return { relleno: aHex(c), sobre: '#10161d', tinte: aHex(mezclar(c, sup, 0.84)), texto: aHex(c) };
+  }
+  let c = aRGB(base);
+  while (Math.min(contraste(c, fondo), contraste(c, sup)) < 4.6) c = mezclar(c, [0, 0, 0], 0.06);
+  return { relleno: aHex(c), sobre: '#ffffff', tinte: aHex(mezclar(c, sup, tema === 'sepia' ? 0.88 : 0.9)), texto: aHex(c) };
+}

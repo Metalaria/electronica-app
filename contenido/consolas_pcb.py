@@ -79,7 +79,7 @@ PLACAS = [
                    'url': 'https://github.com/Redherring32/OpenTendo',
                    'licencia': 'TAPR Open Hardware License 1.0 (permite estudiar, modificar y distribuir)',
                    'uso': 'Placa en 3D y en 2D: contorno, cobre de las dos caras, vías, taladros, serigrafía y componentes '
-                          'con sus huellas; recorrido de las señales en «Un fotograma».'},
+                          'con sus huellas.'},
     },
     {
         'id': 'megadrive', 'maquina': 'megadrive', 'tipo': 'kicad',
@@ -148,6 +148,32 @@ PLACAS = [
                    'licencia': 'CC BY-SA 4.0 (Creative Commons Atribución-CompartirIgual 4.0 Internacional)',
                    'uso': 'Placa en 3D y en 2D de una recreación moderna de la placa de la CPU, para comparar con el '
                           'esquema de la DMG-CPU: contorno, cobre de las dos caras, planos, vías, taladros, serigrafía y '
+                          'componentes con sus huellas.'},
+    },
+    {
+        # nonSNES (GPL-3.0): not kept in the research folder (4.5 MB). To rebuild:
+        #   curl -L -o SNSP-CPU-01.kicad_pcb https://raw.githubusercontent.com/stonedDiscord/nonSNES/cf2e70b35b141b551b1683b0fac1c4b29f9ed0d6/SNSP-CPU-01/SNSP-CPU-01.kicad_pcb
+        #   CONSOLAS_PCB_SNES=/path/SNSP-CPU-01.kicad_pcb python3 contenido/consolas_pcb.py snes
+        'id': 'snes', 'maquina': 'snes', 'tipo': 'kicad', 'cuerpos': True,
+        'ruta': 'snes/original/SNSP-CPU-01.kicad_pcb',
+        # the project's stackup says 4.69 mm (a 4.6 mm dielectric); the console's board is a normal 1.6 mm one
+        'grosor': 1.6,
+        # 339 of its 400 footprints (test points, passives) are underneath; the chips are on top
+        'lado_componentes': 'F',
+        'titulo': 'SNSP-CPU-01 Rev5 (PAL), recreación nonSNES de stonedDiscord (KiCad 10, commit cf2e70b)',
+        'corto': 'SNSP-CPU-01 PAL · nonSNES',
+        'enlazada': True,
+        'mascara': 'verde', 'serigrafia': 'blanca', 'acabado': None,
+        'aviso': 'Recreación «1:1» en KiCad de la placa PAL SNSP-CPU-01 Rev5 hecha por stonedDiscord (nonSNES) para fabricarla '
+                 'hoy con los chips de una consola. Es el mismo proyecto que el esquema, así que referencias y redes coinciden '
+                 'una a una. Sigue el trazado de la placa de las fotos, pero añade una placa A/V y otra de mandos separables '
+                 '(P6, J3, P7, J4, J5) y cambia el pulsador de reset, el supervisor U11 y el trimmer TC1. El grosor del '
+                 'proyecto (4,69 mm) se dibuja como 1,6 mm.',
+        'fuente': {'titulo': 'stonedDiscord/nonSNES — SNSP-CPU-01/SNSP-CPU-01.kicad_pcb (KiCad 10, commit cf2e70b)',
+                   'autor': 'stonedDiscord; esquema de arzi84; escaneos de ArcadeTV',
+                   'url': 'https://github.com/stonedDiscord/nonSNES/tree/cf2e70b35b141b551b1683b0fac1c4b29f9ed0d6',
+                   'licencia': 'GPL-3.0 (el texto completo está en las fuentes de la Super Nintendo)',
+                   'uso': 'Placa en 3D y en 2D: contorno, cobre de las dos caras, planos, vías, taladros, serigrafía y '
                           'componentes con sus huellas.'},
     },
     {
@@ -352,6 +378,15 @@ CUERPOS = [
     (r'^CONN-TH_2P-P1\.25', dict(tipo='conector', color='#ece6d6', alto=3.5, de_pads=1.2)),
     (r'^DMG_VOLUME_POT$', dict(tipo='rueda', alto=1.5, grosor=2.4)),
     (r'^DMGB_POWER_SWITCH$', dict(tipo='interruptor', alto=3.0)),
+    # nonSNES (SNES_Library): the custom chips and memories as gull-wing packages, bodies as their footprint names
+    # say (PQFP-100 14 × 20, PQFP-80 15 × 22, PQFP-64 14 × 20, SOP-64 11 × 28, SOIC-18 7 × 12); the 62256 SRAMs
+    # («RAM», SOP-28) at the usual 18 × 8.4 mm; heights typical of the package
+    (r'^PQFP-100_14x20mm', dict(tipo='ci', cuerpo_mm=(20.0, 14.0), alto=2.8)),
+    (r'^PQFP-80_15x22mm', dict(tipo='ci', cuerpo_mm=(22.0, 15.0), alto=2.8)),
+    (r'^PQFP-64_14x20mm', dict(tipo='ci', cuerpo_mm=(20.0, 14.0), alto=2.8)),
+    (r'^SOP-64_11x28mm', dict(tipo='ci', cuerpo_mm=(28.0, 11.0), alto=2.5)),
+    (r'^SOIC-18_7x12mm', dict(tipo='ci', cuerpo_mm=(12.0, 7.0), alto=2.0)),
+    (r'^RAM$', dict(tipo='ci', cuerpo_mm=(18.0, 8.4), alto=2.5)),
 ]
 
 
@@ -765,7 +800,7 @@ def placa_kicad(cfg, d, problemas):
     extra = len(b['copper']) - 2
     return {
         'X0': X0, 'Y0': Y0, 'ancho': ancho, 'alto': alto, 'ox': ox, 'oy': oy,
-        'capas': [c.split('.')[0] for c in b['copper']], 'grosor': b['thickness'],
+        'capas': [c.split('.')[0] for c in b['copper']], 'grosor': cfg.get('grosor', b['thickness']),
         'redes': redes, 'huellas': huellas, 'pads': pads, 'pistas': pistas, 'vias': vias, 'zonas': zonas, 'areas': areas,
         'serigrafia': serigrafia_json(silk, ox, oy), 'contorno': contorno, 'mapa': mapa, 'refs': refs,
         'comprobaciones': comprobaciones, 'internas': extra, 'stats': {'serigrafia': n_silk, 'pistas': len(b['tracks'])},
@@ -1075,6 +1110,9 @@ def escribir(cfg, r):
     }
     if r.get('parcial'):
         placa['consola']['parcial'] = r['parcial']
+    if cfg.get('lado_componentes'):
+        # the face the inclined 3D view shows, when counting parts would pick the other one
+        placa['placa']['lado_componentes'] = cfg['lado_componentes']
     os.makedirs(OUT, exist_ok=True)
     texto = json.dumps(placa, ensure_ascii=False, separators=(',', ':'))
     with open(os.path.join(OUT, pid + '.json'), 'w', encoding='utf-8') as f:

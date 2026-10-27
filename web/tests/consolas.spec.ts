@@ -202,7 +202,7 @@ test('las consolas nuevas buscan en su esquema y citan sus fuentes', async ({ pa
 test('en el teléfono ninguna vista de ninguna consola desborda a lo ancho', async ({ browser }) => {
   const ctx = await browser.newContext({ viewport: { width: 390, height: 844 }, hasTouch: true });
   const page = await ctx.newPage();
-  for (const m of ['nes', 'neogeo', 'sms', 'megadrive', 'gb', 'gbc']) {
+  for (const m of ['nes', 'neogeo', 'sms', 'megadrive', 'gb', 'gbc', 'snes']) {
     for (const v of ['foto', 'arquitectura', 'esquema', 'fuentes']) {
       await page.goto(`#/consolas/${m}/${v}`);
       await page.waitForTimeout(500);

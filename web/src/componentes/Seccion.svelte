@@ -12,6 +12,8 @@
   import VerKit from './fm7303/VerKit.svelte';
   import VerPlaca from './proyectos/VerPlaca.svelte';
   import MarcaLeida from './aprender/MarcaLeida.svelte';
+  import Footprints from '@lucide/svelte/icons/footprints';
+  import { rutaLeccion } from '../lib/lecciones.svelte';
 
   let { bloque, parte, indice }: { bloque: BH2; parte: string; indice?: number } = $props();
 
@@ -50,7 +52,12 @@
 <div class="seccion-cab" data-b={indice}>
   <div class="fila">
     <h2 id={label || undefined}>
-      {#if bloque.num}<span class="num">{bloque.num}</span>{/if}{@html prepararHtml(bloque.html)}
+      {#if bloque.num}<span class="num">{bloque.num}</span>{/if}{@html prepararHtml(bloque.html)}{#if label}
+        <!-- 0.9: the section as a step-by-step lesson (componentes/leccion); inline after the title, so it takes no
+             width from it and adds no height or line -->
+        <a class="por-pasos" href={rutaLeccion(parte, label)} title="Estudiar por pasos" aria-label="Estudiar por pasos" data-por-pasos
+          ><Footprints size={18} strokeWidth={1.9} aria-hidden="true" /></a
+        >{/if}
     </h2>
     {#if label}
       <div class="herramientas">
@@ -112,3 +119,32 @@
     <div class="texto">{nota.texto}</div>
   </div>
 {/if}
+
+<style>
+  .por-pasos {
+    position: relative;
+    display: inline-grid;
+    place-items: center;
+    width: 30px;
+    height: 30px;
+    /* hangs past the end of the line (negative right margin): it never wraps to a line of its own */
+    margin: -8px -32px -8px 2px;
+    border-radius: 8px;
+    color: var(--tinta-tenue);
+    vertical-align: middle;
+    transition:
+      color 0.15s,
+      background 0.15s;
+  }
+  /* 44 px to the finger without growing the line */
+  .por-pasos::after {
+    content: '';
+    position: absolute;
+    inset: -7px;
+  }
+  .por-pasos:hover,
+  .por-pasos:focus-visible {
+    background: var(--acento-tinte);
+    color: var(--acento);
+  }
+</style>

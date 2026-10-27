@@ -4,7 +4,7 @@
   import { onMount } from 'svelte';
   import { app } from '../../lib/estado.svelte';
   import { rotuloParte } from '../../lib/datos';
-  import { colorBloque } from '../../lib/color';
+  import { tonoBloque } from '../../lib/color';
   import { cargarEjercicios, ejercicios } from '../../lib/ejercicios.svelte';
   import { aprendizaje, cargarAprendizaje, estadoDe } from '../../lib/aprendizaje.svelte';
   import Icono from '../Icono.svelte';
@@ -113,7 +113,7 @@
           {@const info = indice.partes[c.id]}
           {@const e = ej.porParte[c.id]}
           <li>
-            <a href={c.id === 'glosario' ? '#/glosario' : `#/${c.id}`} style:--c={colorBloque(info?.color)}>
+            <a href={c.id === 'glosario' ? '#/glosario' : `#/${c.id}`} style:--c={tonoBloque(info?.color, app.tema).relleno}>
               <Insignia parte={c.id} />
               <span class="cuerpo">
                 <span class="nom">{rotuloParte(c.id)} · {corto(info?.titulo)}</span>
@@ -131,12 +131,13 @@
 {/if}
 
 <style>
+  /* 0.9: the start page's card look (componentes/ui09) */
   .bloque {
-    margin-top: 34px;
+    margin-top: 8px;
   }
   h2 {
     margin: 0 0 14px;
-    color: var(--tinta-tenue);
+    color: var(--tinta-suave);
     font-size: 13px;
     font-weight: 700;
     letter-spacing: 0.12em;
@@ -158,9 +159,9 @@
     display: flex;
     flex-direction: column;
     gap: 4px;
-    padding: 14px 16px;
+    padding: 16px;
     border: 1px solid var(--linea);
-    border-radius: 12px;
+    border-radius: var(--radio-tarjeta);
     background: var(--superficie);
     color: var(--tinta);
     text-decoration: none;
@@ -176,7 +177,7 @@
     font-variant-numeric: tabular-nums;
   }
   .cifra small {
-    color: var(--tinta-tenue);
+    color: var(--tinta-suave);
     font-size: 17px;
     font-weight: 600;
   }
@@ -185,7 +186,7 @@
     font-size: 14.5px;
   }
   .det {
-    color: var(--tinta-tenue);
+    color: var(--tinta-suave);
     font-size: 13px;
   }
   .barra {
@@ -222,7 +223,7 @@
     padding: 10px 14px;
     border: 1px solid var(--linea);
     border-left: 4px solid var(--c);
-    border-radius: 10px;
+    border-radius: var(--radio-tarjeta-p);
     background: var(--superficie);
     color: var(--tinta);
     text-decoration: none;

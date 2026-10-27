@@ -1,112 +1,290 @@
-// «Un fotograma» of the NES (NES-CPU-11 schematic of OpenTendo, board OpenTendo v1.4): which nets every bus access
-// moves. CPU bus: A0–A15 and R/W from the 2A03 (U6), D0–D7 from whoever answers, /ROMSEL, WRAM /CE and PPU /CE from
-// the 74HC139 (U3) (NESdev Wiki, «CPU pin-out», «74139»). PPU bus: in the first dot of every fetch the 2C02 (U5)
-// puts the low address byte on AD0–AD7 with ALE high and the 74HC373 (U2) latches it onto PA0–PA7; in the second
-// dot /RD goes low and CHR-ROM (cartridge) or CIRAM (U4) drives AD0–AD7 (NESdev, «PPU pin-out», «PPU rendering»).
+// «Un fotograma» of the NES (NES-CPU-07, NTSC): tile $24 of the background, row 3, pixel 3 → point (99, 51).
+//
+// Checked against the NESdev Wiki («PPU rendering»: four fetches of 2 dots per tile, two tiles ahead, sprite
+// fetches at dots 257–320, VBlank and NMI at line 241 dot 1; «PPU registers»; «PPU attribute tables»; «PPU
+// palettes»; «PPU pinout»: ALE and the multiplexed AD0–AD7; «CPU memory map»; OAM DMA: 513 or 514 cycles) and the
+// app's own «Arquitectura» data (arquitectura/nes.ts: 74LS139 decoding with M2, latch U2, CIRAM /CE and A10 from
+// the cartridge). Arithmetic: nametable $2000 + 6 × 32 + 12 = $20CC; attribute $23C0 + (6 / 4) × 8 + 12 / 4 =
+// $23CB, bottom-left quadrant → bits 5–4; pattern $24 × 16 + 3 = $0243 and + 8 = $024B; palette 1 colour 1 → $3F05.
 
-import des6502 from '../cpu/6502';
-import { bus, linea, nombres } from '../redes';
-import type { AccesoBus, Adaptador, RedActiva } from '../tipos';
+import type { FotogramaMaquina } from '../tipos';
+import { PELOTA } from '../ejemplo';
 
-const A = nombres('/CPU-A', 16);
-const D = nombres('/CPU-D', 8);
-const PA_BAJA = nombres('/PPU-A', 8); // latch outputs PA0–PA7
-const PA_ALTA = ['/PPU-A8', '/PPU-A9', '/PPU-A10', '/PPU-A11', '/PPU-A12', '/PPU-A13'];
-const AD = nombres('/PPU-D', 8);
-const RW = '/CPU-R~{W}';
-
-const QUIEN: Record<string, string> = { wram: 'U1', ppu: 'U5', prg: 'P1', mandos: 'U7', apu: 'U6' };
-
-function accesoCpu(ev: AccesoBus, out: RedActiva[]): void {
-  const escritura = !!(ev.f & 1);
-  bus(out, A, ev.a, 'direccion', 'U6');
-  linea(out, RW, escritura ? 0 : 1, 'control', 'U6');
-  const interno = !!(ev.f & 32);
-  if (!interno) bus(out, D, ev.d, 'datos', escritura ? 'U6' : QUIEN[ev.c] ?? 'U6');
-  // M2 is high in the second half of the cycle; the 74HC139 decodes A13–A15 while M2 is high
-  const m2 = ev.fase >= 1.5 ? 1 : 0;
-  linea(out, '/M2', m2 as 0 | 1, 'reloj', 'U6');
-  if (ev.c === 'prg') linea(out, '/~{ROMSEL}', m2 ? 0 : 1, 'seleccion', 'U3');
-  else if (ev.c === 'wram') linea(out, '/WRAM-~{CE}', m2 ? 0 : 1, 'seleccion', 'U3');
-  else if (ev.c === 'ppu') linea(out, '/PPU-~{CE}', m2 ? 0 : 1, 'seleccion', 'U3');
-  else if (ev.c === 'mandos') linea(out, ev.a === 0x4016 ? '/~{OE1}' : '/~{OE2}', 0, 'seleccion', 'U6');
-}
-
-function accesoPpu(ev: AccesoBus, out: RedActiva[]): void {
-  if (ev.f & 32) return; // palette RAM: inside the PPU
-  const escritura = !!(ev.f & 1);
-  const a = ev.a;
-  bus(out, PA_ALTA, a >> 8, 'direccion', 'U5');
-  if (ev.fase < 1) {
-    // first dot: address on AD0–AD7, ALE high, the latch follows
-    linea(out, '/ALE', 1, 'control', 'U5');
-    bus(out, AD, a & 0xff, 'direccion', 'U5');
-    bus(out, PA_BAJA, a & 0xff, 'direccion', 'U2');
-  } else {
-    // second dot: the latch holds PA0–PA7, the memory drives the data
-    linea(out, '/ALE', 0, 'control', 'U5');
-    bus(out, PA_BAJA, a & 0xff, 'direccion', 'U2');
-    bus(out, AD, ev.d, 'datos', escritura ? 'U5' : ev.c === 'chr' ? 'P1' : 'U4');
-    linea(out, escritura ? '/PPU-~{WE}' : '/PPU-~{RD}', 0, 'control', 'U5');
-  }
-  if (ev.c === 'ciram') {
-    linea(out, '/VRAM-~{CE}', 0, 'seleccion', 'P1');
-    linea(out, '/VRAM-A10', ((a >> 10) & 1) as 0 | 1, 'direccion', 'P1');
-  }
-  linea(out, '/PPU-~{A13}', a & 0x2000 ? 0 : 1, 'seleccion', 'U5');
-}
-
-export const adaptador: Adaptador = {
+export const NES: FotogramaMaquina = {
   maquina: 'nes',
-  cpus: { cpu: des6502 },
-  redesAcceso(b, ev, out) {
-    if (b === 'cpu') accesoCpu(ev, out);
-    else if (b === 'ppu') accesoPpu(ev, out);
+  entrada:
+    'Seguimos la tesela $24 del fondo, una pelota de 8 × 8 puntos, desde que la CPU lee su número en la ROM del cartucho hasta que su punto (99, 51) sale hacia la tele.',
+  ejemplo: {
+    ancho: 256,
+    alto: 240,
+    tesela: 8,
+    x: 96,
+    y: 48,
+    indices: PELOTA,
+    fila: 3,
+    columna: 3,
+    // 2C02 colours $16, $30 and $06 over the backdrop $21 (approximate RGB of the composite signal)
+    colores: { 1: '#b53120', 2: '#fffeff', 3: '#6e1a0c' },
+    fondo: '#64b0ff',
+    bpp: 2,
+    formato: 'planos',
+    numero: '$24',
+    color: '$16',
   },
-  redesSenal(s, nivel, out) {
-    if (s === 'nmi') linea(out, '/~{NMI}', nivel as 0 | 1, 'interrupcion', 'U5');
-    else if (s === 'dma' && nivel) linea(out, RW, null, 'dma', 'U6');
-  },
-  redesPixel(_c, out) {
-    linea(out, '/VIDEO', null, 'video', 'U5');
-  },
-  relojes: [
-    { red: '/SYSTEM-CLK', grupo: 'reloj', nivel: null, desde: 'X1' },
-    { red: '/CPU-CLK', grupo: 'reloj', nivel: null },
-    { red: '/PPU-CLK', grupo: 'reloj', nivel: null },
+  extra: [
+    // PPU /WE (PPU-~{WE}) to the CIRAM: the «Arquitectura» diagram only draws /RD
+    { id: 'we', puntos: [[680, 240], [680, 306], [740, 306], [740, 320]], bits: 1, etiqueta: '/WE', pos: [770, 312], clase: 'control', red: '/PPU-~{WE}' },
   ],
-  chips: { wram: ['U1'], ppu: ['U5'], apu: ['U6'], mandos: ['U7', 'U8'], prg: ['P1'], chr: ['P1'], ciram: ['U4'], paleta: ['U5'] },
-  avisoPlaca:
-    'La placa es la recreación OpenTendo de la NES-CPU-11 (las mismas referencias y redes que el esquema); la foto de la pestaña «Foto» es de una NES-CPU-07, con el mismo circuito.',
-  fases: {
-    visible: 'La PPU saca un píxel por punto y, cada 8 puntos, lee el número de tesela, el atributo y los dos planos de la siguiente.',
-    sprites: 'Con la búsqueda de sprites hecha, la PPU lee los planos de los hasta 8 sprites de la línea siguiente.',
-    precarga: 'Lee las dos primeras teselas de la línea siguiente para tener los registros de desplazamiento llenos.',
-    relleno: 'Dos lecturas de la tabla de nombres que no se usan; el punto 0 es ocioso.',
-    postrender: 'Línea 240: la PPU no lee nada; la CPU sigue con su bucle.',
-    vblank: 'Borrado vertical: la PPU pone la bandera de VBlank y baja /NMI. La CPU puede escribir en la VRAM.',
-    prerender: 'Línea de preparación: borra las banderas, recarga el desplazamiento vertical y lee como una línea normal.',
-  },
-  mapa: [
-    { desde: 0x0000, hasta: 0x1fff, chip: 'wram', titulo: 'WRAM 2 KB (U1) y sus espejos' },
-    { desde: 0x2000, hasta: 0x3fff, chip: 'ppu', titulo: 'Registros de la PPU (U5), cada 8 bytes' },
-    { desde: 0x4000, hasta: 0x401f, chip: 'apu', titulo: 'APU, DMA y mandos (dentro del 2A03)' },
-    { desde: 0x4020, hasta: 0x7fff, chip: 'nada', titulo: 'Cartucho (sin uso en NROM)' },
-    { desde: 0x8000, hasta: 0xffff, chip: 'prg', titulo: 'PRG-ROM del cartucho (/ROMSEL)' },
+  pasos: [
+    {
+      fase: 'Bus de la CPU',
+      titulo: 'La CPU pide una instrucción a la ROM',
+      texto:
+        'La CPU 2A03 pone en el bus de direcciones su contador de programa, $C0F0, con R/W a 1 porque va a leer. El decodificador 74LS139 ve A15 = 1 y, mientras M2 está alto, baja /ROMSEL: de todos los chips, solo la PRG-ROM del cartucho se da por aludida.',
+      bloques: ['cpu', 'dec', 'prg'],
+      senales: [
+        { id: 'cpu-a', sentido: 1 },
+        { id: 'bus-a', sentido: 1, valor: '$C0F0' },
+        { id: 'prg-a', sentido: 1 },
+        { id: 'a-dec', sentido: 1, nombre: 'A15', valor: '1' },
+        { id: 'm2', sentido: 1, valor: '1' },
+        { id: 'romsel', sentido: 1, valor: '0' },
+      ],
+      internos: [['R/W', '1 (lectura)']],
+      pantalla: 'cuadro-anterior',
+    },
+    {
+      fase: 'Bus de la CPU',
+      titulo: 'La ROM contesta con el código de la instrucción',
+      texto:
+        'Con /ROMSEL a 0, la ROM saca por D0–D7 el byte guardado en $C0F0: $A9, el código de LDA con un dato inmediato. La CPU lo captura al final de la fase alta de M2 y, en el ciclo siguiente, lee en $C0F1 el dato: $24, el número de la tesela que vamos a seguir hasta la pantalla.',
+      bloques: ['prg', 'cpu', 'dec'],
+      senales: [
+        { id: 'bus-a', sentido: 1, valor: '$C0F0' },
+        { id: 'prg-a', sentido: 1 },
+        { id: 'romsel', sentido: 1, valor: '0' },
+        { id: 'prg-d', sentido: -1 },
+        { id: 'bus-d', sentido: -1, valor: '$A9' },
+        { id: 'cpu-d', sentido: -1 },
+      ],
+      internos: [['Instrucción', 'LDA #$24 (A9 24)']],
+      pantalla: 'cuadro-anterior',
+    },
+    {
+      fase: 'Escritura en la RAM',
+      titulo: 'La CPU guarda el valor en la WRAM',
+      texto:
+        'La instrucción siguiente, STA $0300 (8D 00 03), copia el acumulador en la RAM de trabajo. Con la dirección $0300, A13, A14 y A15 valen 0 y el 74LS139 baja WRAM /CS; la CPU pone R/W a 0 y saca $24 por el bus de datos, y la MB8416 lo guarda. El juego prepara así el cuadro siguiente mientras la PPU dibuja el actual.',
+      bloques: ['cpu', 'dec', 'wram'],
+      senales: [
+        { id: 'cpu-a', sentido: 1 },
+        { id: 'bus-a', sentido: 1, valor: '$0300' },
+        { id: 'wram-a', sentido: 1 },
+        { id: 'a-dec', sentido: 1, nombre: 'A13–A15', valor: '0' },
+        { id: 'm2', sentido: 1, valor: '1' },
+        { id: 'wramcs', sentido: 1, valor: '0' },
+        { id: 'cpu-d', sentido: 1 },
+        { id: 'bus-d', sentido: 1, valor: '$24' },
+        { id: 'wram-d', sentido: 1 },
+      ],
+      internos: [['R/W', '0 (escritura)']],
+      pantalla: 'cuadro-anterior',
+    },
+    {
+      fase: 'Borrado vertical',
+      titulo: 'La PPU avisa con /NMI: empieza el borrado vertical',
+      texto:
+        'Tras la última línea visible (la 239) y una línea de reposo, en la línea 241 la PPU activa su bandera de VBlank y, como el juego puso a 1 el bit 7 de PPUCTRL, baja /NMI. La CPU acaba la instrucción en curso, guarda en la pila el contador de programa y salta a la rutina cuya dirección lee en $FFFA–$FFFB.',
+      bloques: ['ppu', 'cpu'],
+      senales: [{ id: 'nmi', sentido: 1, valor: '0' }],
+      internos: [
+        ['Línea', '241, punto 1'],
+        ['Vector', '$FFFA–$FFFB'],
+      ],
+      pantalla: 'cuadro-anterior',
+      nota: 'Durante las 20 líneas del borrado vertical la PPU no lee su memoria: es el momento de escribir en ella.',
+    },
+    {
+      fase: 'Borrado vertical',
+      titulo: 'Los sprites, por DMA',
+      texto:
+        'La rutina escribe $02 en $4014 y el 2A03 se encarga solo: detiene la CPU y copia los 256 bytes de $0200–$02FF, la tabla de sprites que el juego mantiene en la WRAM, al registro OAMDATA ($2004) de la PPU. Un byte leído y otro escrito por cada dos ciclos: 513 o 514 ciclos en total.',
+      bloques: ['cpu', 'dec', 'wram', 'ppu'],
+      senales: [
+        { id: 'cpu-a', sentido: 1 },
+        { id: 'bus-a', sentido: 1, valor: '$0200…, $2004' },
+        { id: 'wram-a', sentido: 1 },
+        { id: 'wramcs', sentido: 1, valor: '0' },
+        { id: 'ppucs', sentido: 1, valor: '0' },
+        { id: 'wram-d', sentido: -1 },
+        { id: 'bus-d', sentido: 1, valor: 'byte de sprite' },
+        { id: 'ppu-d', sentido: 1 },
+      ],
+      internos: [
+        ['$4014 (OAMDMA)', '$02'],
+        ['Duración', '513–514 ciclos'],
+      ],
+      pantalla: 'cuadro-anterior',
+    },
+    {
+      fase: 'Borrado vertical',
+      titulo: 'La CPU elige una dirección de la memoria de vídeo',
+      texto:
+        'La CPU no tiene camino directo a la memoria de la PPU: le habla por sus registros. Escribe dos veces en PPUADDR ($2006), primero $20 y luego $CC, y la PPU guarda la dirección $20CC: columna 12, fila 6 de la primera tabla de nombres, el mapa de teselas del fondo.',
+      bloques: ['cpu', 'dec', 'ppu'],
+      senales: [
+        { id: 'cpu-a', sentido: 1 },
+        { id: 'bus-a', sentido: 1, valor: '$2006' },
+        { id: 'a-dec', sentido: 1, nombre: 'A13–A15', valor: '1, 0, 0' },
+        { id: 'ppucs', sentido: 1, valor: '0' },
+        { id: 'ppu-a', sentido: 1, nombre: 'A0–A2', valor: '6' },
+        { id: 'cpu-d', sentido: 1 },
+        { id: 'bus-d', sentido: 1, valor: '$20, $CC' },
+        { id: 'ppu-d', sentido: 1 },
+      ],
+      internos: [['PPUADDR', '$20CC']],
+      pantalla: 'vram',
+      nota: 'El dibujo de la tesela $24 no hay que copiarlo: está en la CHR-ROM del cartucho, en la tabla de patrones.',
+    },
+    {
+      fase: 'Borrado vertical',
+      titulo: 'El número de tesela llega a la CIRAM',
+      texto:
+        'La rutina lee $24 de la WRAM y lo escribe en PPUDATA ($2007). La PPU lo lleva a su memoria por su propio bus: pone el byte bajo de la dirección en AD0–AD7 con ALE a 1 para que el latch 74LS373 lo retenga, después el dato $24 en las mismas líneas, y baja /WE. Como PA13 = 1, el cartucho activa la CIRAM y elige con A10 una de sus dos tablas.',
+      bloques: ['ppu', 'latch', 'vram', 'chr'],
+      senales: [
+        { id: 'ale', sentido: 1, valor: '1' },
+        { id: 'bus-ad', sentido: 1, valor: '$CC, $24' },
+        { id: 'ad-latch', sentido: 1 },
+        { id: 'bus-pa', sentido: 1, valor: '$20CC' },
+        { id: 'pa-vram', sentido: 1 },
+        { id: 'ad-vram', sentido: 1 },
+        { id: 'we', sentido: 1, valor: '0' },
+        { id: 'ciramce', sentido: 1, nombre: 'CIRAM /CE', valor: '0' },
+        { id: 'a10', sentido: 1, valor: '0' },
+      ],
+      internos: [['PPUDATA ($2007)', '$24']],
+      pantalla: 'mapa',
+    },
+    {
+      fase: 'Línea a línea',
+      titulo: 'La PPU lee el número de tesela',
+      texto:
+        'Acaba el borrado y la PPU vuelve a dibujar, línea a línea, leyendo cada tesela 16 puntos antes de mostrarla. En la línea 51 pide el byte $20CC de la tabla de nombres: dirección por AD0–AD7 con ALE, después /RD = 0, y la CIRAM devuelve $24 por las mismas líneas. Cada lectura dura 2 puntos de 186 ns.',
+      bloques: ['ppu', 'latch', 'vram'],
+      senales: [
+        { id: 'ale', sentido: 1, valor: '1' },
+        { id: 'ad-latch', sentido: 1 },
+        { id: 'bus-pa', sentido: 1, valor: '$20CC' },
+        { id: 'pa-vram', sentido: 1 },
+        { id: 'rd', sentido: 1, valor: '0' },
+        { id: 'ciramce', sentido: 1, nombre: 'CIRAM /CE', valor: '0' },
+        { id: 'ad-vram', sentido: -1 },
+        { id: 'bus-ad', sentido: -1, valor: '$24' },
+      ],
+      pantalla: 'mapa',
+    },
+    {
+      fase: 'Línea a línea',
+      titulo: 'El byte de atributos elige la paleta',
+      texto:
+        'En los 2 puntos siguientes lee el byte de atributos $23CB, que reparte paletas por cuadros de 32 × 32 puntos. Nuestra tesela cae en el cuarto inferior izquierdo de su cuadro, así que cuentan sus bits 5 y 4: el byte vale $10 y elige la paleta 1 del fondo.',
+      bloques: ['ppu', 'latch', 'vram'],
+      senales: [
+        { id: 'ale', sentido: 1, valor: '1' },
+        { id: 'ad-latch', sentido: 1 },
+        { id: 'bus-pa', sentido: 1, valor: '$23CB' },
+        { id: 'pa-vram', sentido: 1 },
+        { id: 'rd', sentido: 1, valor: '0' },
+        { id: 'ciramce', sentido: 1, nombre: 'CIRAM /CE', valor: '0' },
+        { id: 'ad-vram', sentido: -1 },
+        { id: 'bus-ad', sentido: -1, valor: '$10' },
+      ],
+      internos: [['Paleta', '1 (bits 5–4 = 01)']],
+      pantalla: 'mapa',
+      nota: 'Paleta 1 del fondo: sus colores están en $3F05–$3F07; el índice 0 de todas las paletas es el color de fondo común, $3F00.',
+    },
+    {
+      fase: 'Línea a línea',
+      titulo: 'Los dos planos del dibujo, desde la CHR-ROM',
+      texto:
+        'Ahora la dirección cae en la tabla de patrones: tesela $24 × 16 bytes + fila 3 = $0243. Con PA13 = 0 responde la CHR-ROM del cartucho, que da $DF; 2 puntos después, en $024B, 8 bytes más allá, da el segundo plano, $A1. Cada byte guarda un bit de cada uno de los 8 puntos de la fila.',
+      bloques: ['ppu', 'latch', 'chr'],
+      senales: [
+        { id: 'ale', sentido: 1, valor: '1' },
+        { id: 'ad-latch', sentido: 1 },
+        { id: 'bus-pa', sentido: 1, valor: '$0243, $024B' },
+        { id: 'pa-chr', sentido: 1 },
+        { id: 'rd', sentido: 1, valor: '0' },
+        { id: 'rd-chr', sentido: 1 },
+        { id: 'ad-chr', sentido: -1 },
+        { id: 'bus-ad', sentido: -1, valor: '$DF, $A1' },
+      ],
+      pantalla: 'patron',
+    },
+    {
+      fase: 'Dentro de la PPU',
+      titulo: 'Se juntan los planos: un índice por punto',
+      texto:
+        'Los dos bytes entran en dos registros de desplazamiento que avanzan un bit por punto, y el desplazamiento fino X (aquí 0: el juego no ha movido el fondo) elige qué bit sale. En el punto 99 salen un 1 del plano 0 y un 0 del plano 1: índice 1. Los dos bits del atributo se le ponen delante: paleta 1, color 1.',
+      bloques: ['ppu'],
+      senales: [],
+      internos: [
+        ['Planos 0 y 1', '1 y 0 → índice 1'],
+        ['Con el atributo', '%01 01'],
+      ],
+      pantalla: 'mezcla',
+    },
+    {
+      fase: 'Dentro de la PPU',
+      titulo: 'Sprites y prioridad',
+      texto:
+        'En cada línea la PPU busca en la OAM hasta 8 sprites que toquen la línea siguiente y lee sus dibujos entre los puntos 257 y 320. En el punto 99 de la línea 51 ninguno tiene un punto opaco, así que pasa el fondo. Si lo hubiera, ganaría el sprite, salvo que su bit de prioridad lo mandara detrás de un fondo opaco.',
+      bloques: ['ppu'],
+      senales: [],
+      internos: [['Sprite en el punto 99', 'ninguno']],
+      pantalla: 'prioridad',
+      nota: 'Ningún sprite cubre el punto (99, 51): su color sale del fondo.',
+    },
+    {
+      fase: 'Paleta y salida',
+      titulo: 'La paleta da el color: $16',
+      texto:
+        'Los 5 bits (fondo, paleta 1, color 1) apuntan a la entrada $3F05 de la memoria de paletas, 32 bytes dentro de la propia PPU que el juego escribió en un borrado anterior, también por $2006 y $2007. Allí hay un $16: matiz 6, un rojo, con luminancia 1.',
+      bloques: ['ppu'],
+      senales: [],
+      internos: [
+        ['Entrada de paleta', '$3F05'],
+        ['Color', '$16'],
+      ],
+      pantalla: 'paleta',
+    },
+    {
+      fase: 'Paleta y salida',
+      titulo: 'El punto sale como vídeo compuesto',
+      texto:
+        'La PPU no da RGB: su generador de vídeo convierte $16 directamente en señal compuesta NTSC, la subportadora con la fase del matiz 6 sobre el nivel de la luminancia 1. El transistor Q1 la lleva al conector de A/V y al modulador de RF. El punto (99, 51) dura 186 ns.',
+      bloques: ['ppu', 'av'],
+      senales: [{ id: 'video', sentido: 1, valor: 'compuesto' }],
+      internos: [['Punto', '(99, 51)']],
+      pantalla: 'punto',
+    },
+    {
+      fase: 'Fin del cuadro',
+      titulo: 'Cuadro acabado: /NMI otra vez',
+      texto:
+        'La PPU repite lo mismo en los 61 440 puntos de las 240 líneas visibles. Al llegar a la línea 241 vuelve a activar VBlank y a bajar /NMI; la CPU, que entretanto ha preparado el cuadro siguiente en la WRAM, salta de nuevo a la rutina y todo empieza otra vez, unas 60 veces por segundo.',
+      bloques: ['ppu', 'cpu'],
+      senales: [{ id: 'nmi', sentido: 1, valor: '0' }],
+      pantalla: 'cuadro',
+    },
   ],
-  hojaInicial: 0,
-  fidelidad:
-    'Exacto: cada ciclo de bus de la CPU (dirección, dato, lectura o escritura, ciclos fantasma y los 513 o 514 del DMA de OAM) del núcleo 6502 validado con SingleStepTests y nestest; cada lectura de la PPU en su punto, 2 puntos por lectura con ALE en el primero; el píxel de cada punto; la NMI. El cuadro de la demostración y el de robotfindskitten coinciden píxel a píxel con los de jsnes (240 × 224 píxeles: jsnes oculta un borde de 8). Ilustrativo: M2 dibujado en la segunda mitad del ciclo (su flanco real cae a 5/8 del ciclo), las selecciones de chip durante toda esa mitad y los sincronismos del vídeo compuesto (posiciones de la wiki de NESdev).',
   fuentes: [
-    { titulo: 'NESdev Wiki: «PPU rendering» y «PPU frame timing»', url: 'https://www.nesdev.org/wiki/PPU_rendering', uso: 'Orden y punto de cada lectura de la PPU, VBlank, línea de preparación y cuadros impares.' },
-    { titulo: 'NESdev Wiki: «PPU scrolling»', url: 'https://www.nesdev.org/wiki/PPU_scrolling', uso: 'Registros v, t, x y w y sus incrementos.' },
-    { titulo: 'NESdev Wiki: «PPU pin-out and signal description»', url: 'https://www.nesdev.org/wiki/PPU_pinout', uso: 'Bus multiplexado AD0–AD7, ALE, /RD, /WE.' },
-    { titulo: 'NESdev Wiki: «CPU pin-out and signal description» y «DMA»', url: 'https://www.nesdev.org/wiki/CPU_pinout', uso: 'M2, R/W, /ROMSEL y el DMA de OAM.' },
-    { titulo: 'NESdev Wiki: «NTSC video»', url: 'https://www.nesdev.org/wiki/NTSC_video', uso: 'Sincronismos y colores de la paleta.' },
-    { titulo: 'SingleStepTests 65x02 (Tom Harte), MIT', url: 'https://github.com/SingleStepTests/65x02', uso: 'Validación del 6502 ciclo a ciclo.' },
-    { titulo: 'nestest (kevtris)', url: 'https://github.com/christopherpow/nes-test-roms', uso: 'Validación del 6502 por instrucciones.' },
-    { titulo: 'jsnes (Ben Firshman), Apache-2.0', url: 'https://github.com/bfirsh/jsnes', uso: 'Contraste del cuadro final con otro emulador.' },
+    { titulo: 'NESdev Wiki: PPU rendering', url: 'https://www.nesdev.org/wiki/PPU_rendering', nota: 'orden de las lecturas, sprites, VBlank y NMI' },
+    { titulo: 'NESdev Wiki: PPU registers', url: 'https://www.nesdev.org/wiki/PPU_registers', nota: 'PPUCTRL, PPUADDR, PPUDATA, OAMDMA' },
+    { titulo: 'NESdev Wiki: PPU attribute tables', url: 'https://www.nesdev.org/wiki/PPU_attribute_tables' },
+    { titulo: 'NESdev Wiki: PPU palettes', url: 'https://www.nesdev.org/wiki/PPU_palettes' },
+    { titulo: 'NESdev Wiki: PPU pinout', url: 'https://www.nesdev.org/wiki/PPU_pinout', nota: 'ALE, AD0–AD7, /RD, /WE' },
+    { titulo: 'Rodrigo Copetti: NES Architecture', url: 'https://www.copetti.org/writings/consoles/nes/' },
   ],
 };
-
-export default adaptador;

@@ -65,16 +65,18 @@ export function pintarMapa(ctx: Ctx, d: DatosPlaca, g: Geometria, p: PedidoCara,
   k.fillStyle = cap.mascara ? 'rgb(0,92,0)' : 'rgb(0,200,0)';
   k.fill(g.contorno);
   if (cap[lado]) {
-    k.save();
-    if (cap.mascara) k.clip(g.aberturas[lado], 'nonzero');
     k.fillStyle = 'rgb(0,80,255)';
-    for (const m of [g.cobre[lado].pads, g.cobre[lado].vias, g.cobre[lado].zonas]) for (const c of m.values()) k.fill(c, 'evenodd');
-    k.strokeStyle = 'rgb(0,80,255)';
-    for (const [w, porRed] of g.cobre[lado].pistas) {
-      k.lineWidth = w;
-      for (const c of porRed.values()) k.stroke(c);
+    // Under the mask only the openings' copper is metal: the exposed pads, one fill (0.9; it was all the copper
+    // clipped by the openings, which a GPU-rasterised canvas could not finish for the Neo Geo board).
+    if (cap.mascara) k.fill(g.padsAbiertos[lado], 'nonzero');
+    else {
+      for (const m of [g.cobre[lado].pads, g.cobre[lado].vias, g.cobre[lado].zonas]) for (const c of m.values()) k.fill(c, 'evenodd');
+      k.strokeStyle = 'rgb(0,80,255)';
+      for (const [w, porRed] of g.cobre[lado].pistas) {
+        k.lineWidth = w;
+        for (const c of porRed.values()) k.stroke(c);
+      }
     }
-    k.restore();
   }
   if (cap.serigrafia && g.serigrafia[lado]) {
     k.strokeStyle = 'rgb(0,225,0)';

@@ -29,9 +29,9 @@
 </script>
 
 <nav class="carril" aria-label="Secciones de la aplicación">
-  <a class="logo" href="#/" aria-label="Inicio" aria-current={ruta.vista === 'inicio' ? 'page' : undefined}>
+  <!-- The logo also leads home; «Inicio» is the first entry (0.9), so the logo stays out of the tab order. -->
+  <a class="logo" href="#/" tabindex="-1" aria-hidden="true">
     <svg viewBox="0 0 1024 1024" aria-hidden="true"><rect width="1024" height="1024" rx="230" fill="#1A3A5C" /><path d="M196 512H330M694 512H828" stroke="#F4F1EA" stroke-width="56" stroke-linecap="round" /><circle cx="176" cy="512" r="64" fill="#F4F1EA" /><circle cx="848" cy="512" r="64" fill="#F4F1EA" /><rect x="318" y="392" width="388" height="240" rx="64" fill="#F4F1EA" /><rect x="388" y="392" width="40" height="240" fill="#A6552B" /><rect x="458" y="392" width="40" height="240" fill="#8A1F3D" /><rect x="528" y="392" width="40" height="240" fill="#1F6F5C" /><rect x="606" y="392" width="28" height="240" fill="#C9A227" /></svg>
-    <span class="tip" aria-hidden="true">Inicio</span>
   </a>
 
   <div class="items" bind:clientHeight={alto}>
@@ -133,15 +133,6 @@
   .logo:hover svg {
     transform: scale(1.06);
   }
-  .logo[aria-current='page']::after {
-    content: '';
-    position: absolute;
-    bottom: -3px;
-    width: 18px;
-    height: 3px;
-    border-radius: 2px;
-    background: var(--titulos);
-  }
 
   .items {
     display: flex;
@@ -198,6 +189,7 @@
     color: var(--tinta);
   }
   .item.activo .icono {
+    /* the rail is darker than the tab bar: the stronger tint keeps the pill visible */
     background: var(--acento-suave);
     color: var(--acento);
   }
@@ -251,9 +243,6 @@
     transition: opacity 0.12s, transform 0.12s;
     visibility: hidden;
   }
-  .logo .tip {
-    left: calc(100% + 10px);
-  }
   .tip kbd {
     padding: 0 5px;
     border: 1px solid color-mix(in srgb, var(--fondo) 40%, transparent);
@@ -264,16 +253,14 @@
     opacity: 0.85;
   }
   @media (hover: hover) {
-    .item:hover .tip,
-    .logo:hover .tip {
+    .item:hover .tip {
       opacity: 1;
       transform: translate(0, -50%);
       visibility: visible;
       transition-delay: 0.45s;
     }
   }
-  .item:focus-visible .tip,
-  .logo:focus-visible .tip {
+  .item:focus-visible .tip {
     opacity: 1;
     transform: translate(0, -50%);
     visibility: visible;

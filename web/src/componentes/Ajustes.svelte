@@ -1,7 +1,8 @@
 <script lang="ts">
   import { onMount } from 'svelte';
   import { app } from '../lib/estado.svelte';
-  import { usuario, ponerTema, ponerTam, TAM_MAX, TAM_MIN, TAM_DEFECTO, type Tema } from '../lib/usuario.svelte';
+  import { usuario, ponerTema, ponerTam, ponerNombre, LARGO_NOMBRE, TAM_MAX, TAM_MIN, TAM_DEFECTO, type Tema } from '../lib/usuario.svelte';
+  import { progresoDiario, ponerObjetivo, OBJETIVO_MAX, OBJETIVO_MIN } from '../lib/progreso-diario.svelte';
   import Icono, { type NombreIcono } from './Icono.svelte';
   import EntradaDiagnostico from './diagnostico/EntradaAjustes.svelte';
 
@@ -14,6 +15,12 @@
     { id: 'sepia', nombre: 'Sepia', icono: 'sepia' },
     { id: 'oscuro', nombre: 'Oscuro', icono: 'luna' },
   ];
+
+  const textoObjetivo = $derived.by(() => {
+    const { tipo, cantidad } = progresoDiario.objetivo;
+    const unidad = tipo === 'pasos' ? (cantidad === 1 ? 'paso' : 'pasos') : cantidad === 1 ? 'pregunta' : 'preguntas';
+    return `${cantidad} ${unidad} al día`;
+  });
 
   function cerrar() {
     app.ajustes = false;
@@ -90,6 +97,51 @@
         <button class="enlace" onclick={() => ponerTam(TAM_DEFECTO)}>Restablecer</button>
       {/if}
     </div>
+  </div>
+
+  <!-- 0.9: the daily goal of the start page (synchronised) and the greeting's name (this device only). -->
+  <div class="grupo">
+    <span class="etiqueta" id="et-objetivo">Objetivo diario</span>
+    <div class="objetivo-tipo" role="radiogroup" aria-labelledby="et-objetivo">
+      <button role="radio" aria-checked={progresoDiario.objetivo.tipo === 'pasos'} onclick={() => ponerObjetivo({ tipo: 'pasos' })}>Pasos de lección</button>
+      <button role="radio" aria-checked={progresoDiario.objetivo.tipo === 'preguntas'} onclick={() => ponerObjetivo({ tipo: 'preguntas' })}>Preguntas de repaso</button>
+    </div>
+    <div class="cantidad">
+      <button
+        class="boton-icono"
+        aria-label="Objetivo más pequeño"
+        disabled={progresoDiario.objetivo.cantidad <= OBJETIVO_MIN}
+        onclick={() => ponerObjetivo({ cantidad: progresoDiario.objetivo.cantidad - 1 })}><span class="signo" aria-hidden="true">−</span></button
+      >
+      <output aria-live="polite" id="cantidad-objetivo">{textoObjetivo}</output>
+      <button
+        class="boton-icono"
+        aria-label="Objetivo más grande"
+        disabled={progresoDiario.objetivo.cantidad >= OBJETIVO_MAX}
+        onclick={() => ponerObjetivo({ cantidad: progresoDiario.objetivo.cantidad + 1 })}><span class="signo" aria-hidden="true">+</span></button
+      >
+    </div>
+    {#if progresoDiario.objetivo.tipo === 'pasos'}
+      <label class="secciones-pasos">
+        <input type="checkbox" checked={progresoDiario.objetivo.secciones} onchange={(e) => ponerObjetivo({ secciones: e.currentTarget.checked })} />
+        Cada sección que marcas como leída cuenta como un paso
+      </label>
+    {/if}
+  </div>
+
+  <div class="grupo">
+    <label class="etiqueta" for="tu-nombre">Tu nombre</label>
+    <input
+      id="tu-nombre"
+      class="nombre"
+      type="text"
+      autocomplete="given-name"
+      maxlength={LARGO_NOMBRE}
+      placeholder="Para el saludo del inicio"
+      value={usuario.prefs.nombre ?? ''}
+      oninput={(e) => ponerNombre(e.currentTarget.value)}
+    />
+    <span class="ayuda">Solo en este dispositivo; vacío, el inicio dice «Hola».</span>
   </div>
 
   <!-- Performance diagnostic of this device (componentes/diagnostico): a link to its page. -->
@@ -227,6 +279,85 @@
   .pie code {
     font-family: var(--mono);
     font-size: 0.92em;
+  }
+  .secciones-pasos {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    font-size: 15px;
+    color: var(--tinta);
+    cursor: pointer;
+  }
+  .secciones-pasos input {
+    width: 20px;
+    height: 20px;
+    accent-color: var(--acento);
+    flex-shrink: 0;
+  }
+  .objetivo-tipo {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .objetivo-tipo button {
+    min-height: 44px;
+    padding: 4px 6px;
+    border: 1.5px solid var(--linea);
+    border-radius: 10px;
+    background: none;
+    color: var(--tinta-suave);
+    font-size: 13.5px;
+    line-height: 1.2;
+  }
+  .objetivo-tipo button[aria-checked='true'] {
+    border-color: var(--acento);
+    background: var(--acento-tinte);
+    color: var(--acento);
+    font-weight: 700;
+  }
+  .cantidad {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    margin-top: 6px;
+  }
+  .cantidad .boton-icono {
+    width: 44px;
+    height: 44px;
+  }
+  .signo {
+    font-size: 22px;
+    font-weight: 600;
+    line-height: 1;
+  }
+  .cantidad output {
+    color: var(--tinta);
+    font-size: 15px;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+  }
+  .nombre {
+    width: 100%;
+    min-height: 44px;
+    padding: 0 12px;
+    border: 1px solid var(--linea);
+    border-radius: 10px;
+    background: var(--fondo);
+    color: var(--tinta);
+    font-size: 16px;
+  }
+  .nombre::placeholder {
+    color: var(--tinta-suave);
+    opacity: 0.8;
+  }
+  .ayuda {
+    display: block;
+    margin-top: 5px;
+    color: var(--tinta-suave);
+    font-size: 12.5px;
+    line-height: 1.35;
   }
   .boton-icono:disabled {
     opacity: 0.35;

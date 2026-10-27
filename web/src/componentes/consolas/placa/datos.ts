@@ -62,6 +62,7 @@ export const PLACAS_DE: Partial<Record<IdMaquina, { id: string; corto: string; e
     { id: 'gbc-cgb04', corto: 'CGB-CPU-04 · Gerber', enlazada: true },
     { id: 'gbc-opengbc', corto: 'OpenGBC · placa moderna', enlazada: false, parcial: true },
   ],
+  snes: [{ id: 'snes', corto: 'SNSP-CPU-01 PAL · nonSNES', enlazada: true }],
 };
 
 export function tienePlaca(m: IdMaquina): boolean {

@@ -77,6 +77,8 @@ export function claveBiblioteca(h: Huella): { tipo: string; p: Params } | null {
     case 'led':
       return { tipo: 'led-5mm', p: { color: String(m.color ?? 'rojo'), difuso: true, diametro: num(m.diametro, 3) } };
     case 'dip':
+      // the library's DIP has its rows 7,62 mm apart: a 600 mil (15,24) or 400 mil (10,16) one is built here
+      if (num(m.ancho_filas, 7.62) > 8) return null;
       return { tipo: 'dip', p: { pines: num(m.pines, 8), referencia: h.v.split(' ')[0]!, zocalo: !!m.zocalo } };
     case 'soic':
       return { tipo: 'soic', p: { pines: num(m.pines, 8), referencia: h.v.split(' ')[0]! } };
@@ -85,7 +87,8 @@ export function claveBiblioteca(h: Huella): { tipo: string; p: Params } | null {
     case 'to92':
       return { tipo: 'to92', p: { referencia: h.v } };
     case 'to':
-      return m.encapsulado === 'TO-220' ? { tipo: 'to220', p: { referencia: h.v } } : null;
+      // the library's TO-220 has three leads; a 5-lead one (the Neo Geo's LM2576T-5) gets a body built here
+      return m.encapsulado === 'TO-220' && num(m.pines, 3) === 3 ? { tipo: 'to220', p: { referencia: h.v } } : null;
     case 'tira_pines':
       return { tipo: 'tira-pines', p: { pines: num(m.columnas, 2), filas: num(m.filas, 1) } };
     case 'zocalo_hembra':
@@ -187,9 +190,10 @@ function malla(g: BufferGeometry, m: Material, x: number, y: number, z: number):
 
 /**
  * A body in footprint-local axes (KiCad x right, y flipped up), origin at the KiCad footprint origin, on the
- * board surface. Box from the fabrication outline, height and look from the package.
+ * board surface. Box from the fabrication outline, height and look from the package. `pads`: the footprint's
+ * pads in the same local axes (mm, KiCad's y), for the packages whose leads are drawn (TO-220 / TO-247…).
  */
-export function cuerpoSimple(h: Huella): Group {
+export function cuerpoSimple(h: Huella, pads: { n: string; x: number; y: number }[] = []): Group {
   const m: DescriptorModelo = h.m;
   const g = new Group();
   const [x0, y0, x1, y1] = m.caja;
@@ -431,6 +435,7 @@ export function cuerpoSimple(h: Huella): Group {
     conmutador_deslizante: ['#1a1a1a', 0.6, 0],
     potenciometro: ['#3a3a3a', 0.5, 0],
     trimmer_multivuelta: ['#2a54a8', 0.5, 0],
+    condensador_film: ['#b8322a', 0.45, 0],
     resistencia_shunt: ['#c9cdd1', 0.3, 0.85],
     ptc_radial: ['#d9a12a', 0.5, 0],
     bobina_axial: ['#b87333', 0.35, 0.8],
@@ -443,13 +448,37 @@ export function cuerpoSimple(h: Huella): Group {
     hh = m.encapsulado === 'TO-247' ? 20 : m.encapsulado === 'TO-3P' ? 20 : m.encapsulado === 'TO-126' ? 11 : 15.5;
     const grosor = m.encapsulado === 'TO-126' ? 2.6 : 4.8;
     if (vertical) {
-      const yb = cy - fy(d / 2 - grosor / 2);
-      g.add(malla(new BoxGeometry(w, grosor, hh * 0.62), mat(c, r), cx, yb, 3 + hh * 0.31));
-      g.add(malla(new BoxGeometry(w, 1.3, hh * 0.4), mat('#c9cdd1', 0.3, 0.9), cx, cy - fy(d / 2 - 0.65), 3 + hh * 0.62 + hh * 0.2));
-      const rt = rotulo(h.v, w * 0.8, hh * 0.25);
-      rt.rotation.x = h.lado === 'B' ? -Math.PI / 2 : Math.PI / 2;
-      rt.position.set(cx, yb + fy(grosor / 2 + 0.02), 3 + hh * 0.36);
+      // 0.9: the tab at the back of the outline (the side away from the row of leads), the moulded body in front
+      // of it, standing 3 mm above the board on one lead per pad (any count: TO-220-3, the 5-lead TO-220 of a
+      // switching regulator…). KiCad local y here; fy() turns it into the model's.
+      const z0 = 3;
+      const filaY = pads.length ? pads.reduce((a, p) => a + p.y, 0) / pads.length : (y0 + y1) / 2;
+      const atras = Math.abs(y0 - filaY) >= Math.abs(y1 - filaY) ? y0 : y1;
+      const sentido = atras === y0 ? 1 : -1;
+      const tTab = Math.min(1.3, d * 0.3);
+      const gCuerpo = Math.max(0.6, Math.min(grosor, d - tTab));
+      const yTab = atras + (sentido * tTab) / 2;
+      const yCuerpo = atras + sentido * (tTab + gCuerpo / 2);
+      const altoCuerpo = hh * 0.58;
+      g.add(malla(new BoxGeometry(w, gCuerpo, altoCuerpo), mat(c, r), cx, fy(yCuerpo), z0 + altoCuerpo / 2));
+      g.add(malla(new BoxGeometry(w, tTab, hh), mat('#c9cdd1', 0.3, 0.9), cx, fy(yTab), z0 + hh / 2));
+      const rt = rotulo(h.v, w * 0.8, Math.min(altoCuerpo * 0.4, hh * 0.25));
+      // the marking faces the front (away from the tab)
+      rt.rotation.x = fy(sentido) > 0 ? -Math.PI / 2 : Math.PI / 2;
+      rt.position.set(cx, fy(yCuerpo + (sentido * gCuerpo) / 2) + fy(sentido) * 0.02, z0 + altoCuerpo * 0.55);
       g.add(rt);
+      // leads: up from each pad, then bent to the body's mid-plane when the pad row is not under it
+      const metal = mat('#c9cdd1', 0.3, 0.9);
+      const ancho = Math.min(0.8, pads.length > 1 ? Math.abs(pads[1]!.x - pads[0]!.x) * 0.5 : 0.8);
+      for (const p of pads) {
+        const doblez = Math.abs(p.y - yCuerpo) > 0.25;
+        const zDoblez = z0 * 0.45;
+        g.add(malla(new BoxGeometry(ancho, 0.45, doblez ? zDoblez : z0), metal, p.x, fy(p.y), (doblez ? zDoblez : z0) / 2));
+        if (doblez) {
+          g.add(malla(new BoxGeometry(ancho, Math.abs(p.y - yCuerpo) + 0.45, 0.45), metal, p.x, fy((p.y + yCuerpo) / 2), zDoblez));
+          g.add(malla(new BoxGeometry(ancho, 0.45, z0 - zDoblez), metal, p.x, fy(yCuerpo), (zDoblez + z0) / 2));
+        }
+      }
       return g;
     }
   }
@@ -521,6 +550,13 @@ export function cuerpoSimple(h: Huella): Group {
     }
     return g;
   }
+  if (t === 'trimmer_multivuelta') {
+    // multi-turn trimmer (Bourns 3296): the box and its brass adjusting screw at one end, on top
+    g.add(malla(new BoxGeometry(w, d, hh), mat(c, r), cx, cy, hh / 2));
+    const rr = Math.min(1.1, d * 0.25);
+    g.add(malla(new CylinderGeometry(rr, rr, 0.6, 16), mat('#c8a43a', 0.3, 0.9), x0 + rr + 0.5, cy, hh + 0.3).rotateX(Math.PI / 2));
+    return g;
+  }
   if (t === 'resistencia_shunt') {
     g.add(malla(new BoxGeometry(w * 0.85, d * 0.5, 6), mat(c, r, mt), cx, cy, 8));
     return g;
@@ -535,6 +571,48 @@ export function cuerpoSimple(h: Huella): Group {
     const r = rotulo(`OMRON\n${h.v}`, w * 0.8, d * 0.5);
     r.position.set(cx, cy, hh + 0.02);
     g.add(r);
+    return g;
+  }
+  if (t === 'dip' && pads.length) {
+    // 0.9: a DIP the library does not draw (rows 10,16 / 15,24 / 22,86 mm apart, double footprints): the body
+    // between the rows, a lead on each pad (the nearest of two pads with the same number) and its marking
+    const porNumero = new Map<string, { x: number; y: number }>();
+    const centro = { x: cx, y: (y0 + y1) / 2 };
+    for (const p of pads) {
+      const q = porNumero.get(p.n);
+      if (!q || Math.hypot(p.x - centro.x, p.y - centro.y) < Math.hypot(q.x - centro.x, q.y - centro.y)) porNumero.set(p.n, p);
+    }
+    const ps = [...porNumero.values()];
+    const xs = ps.map((p) => p.x);
+    const ys = ps.map((p) => p.y);
+    const [px0, px1, py0, py1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
+    // rows along the longer extent of the pads; the body spans the rows' length and most of the gap between them
+    const filasEnY = py1 - py0 >= px1 - px0;
+    const largo = (filasEnY ? py1 - py0 : px1 - px0) + 2.0;
+    const hueco = Math.max(2, (filasEnY ? px1 - px0 : py1 - py0) - 1.6);
+    const bx = filasEnY ? hueco : largo;
+    const by = filasEnY ? largo : hueco;
+    const mx = (px0 + px1) / 2;
+    const my = (py0 + py1) / 2;
+    const z0 = 0.6;
+    const hz = 3.3;
+    g.add(malla(new BoxGeometry(bx, by, hz), mat(c, r), mx, fy(my), z0 + hz / 2));
+    const metal = mat('#c9cdd1', 0.3, 0.9);
+    for (const p of ps) {
+      // a pin down to the board and a shoulder to the body
+      g.add(malla(new BoxGeometry(0.5, 0.3, z0 + 1.2), metal, p.x, fy(p.y), (z0 + 1.2) / 2));
+      const borde = filasEnY ? mx + Math.sign(p.x - mx) * (bx / 2) : my + Math.sign(p.y - my) * (by / 2);
+      const tramo = Math.max(0.2, Math.abs((filasEnY ? p.x : p.y) - borde));
+      if (filasEnY) g.add(malla(new BoxGeometry(tramo, 0.5, 0.25), metal, (p.x + borde) / 2, fy(p.y), z0 + 1.1));
+      else g.add(malla(new BoxGeometry(0.5, tramo, 0.25), metal, p.x, fy((p.y + borde) / 2), z0 + 1.1));
+    }
+    const texto = h.v.split(/\s*\/\s*|\s+\(/)[0]!.trim();
+    if (texto && texto !== '~') {
+      const rt = rotulo(texto, Math.max(bx, by) * 0.7, Math.min(bx, by) * 0.45, '#d6d9dd');
+      if (filasEnY) rt.rotation.z = Math.PI / 2;
+      rt.position.set(mx, fy(my), z0 + hz + 0.01);
+      g.add(rt);
+    }
     return g;
   }
   if (t === 'cristal_smd') hh = 0.8;

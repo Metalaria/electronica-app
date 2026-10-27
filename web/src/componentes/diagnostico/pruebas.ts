@@ -21,6 +21,80 @@ export interface ContextoPrueba {
   segundos: number;
   avisar: (texto: string) => void;
   cancelada: () => boolean;
+  /** 0.9: a breadcrumb of the running test (see Migas): the phase about to start. */
+  miga?: (fase: string) => void;
+}
+
+// ------------------------------------------------------------------ breadcrumbs (0.9)
+
+/**
+ * Breadcrumbs of the running test in localStorage, written as each phase starts, so that a test that freezes or
+ * crashes the app (the Neo Geo board froze the Xiaomi Pad 6 in 0.8.2) still says where it stopped: the next time
+ * the diagnostic opens it finds a run without `fin` and shows «La última prueba se quedó en: … tras N s». Times
+ * are Date.now() (ms). Consecutive phases of one kind («pieza 12: R3», «pieza 13: C4»…) replace each other, so
+ * the record stays a few hundred bytes. The WebView writes storage to disk a few seconds after a change.
+ */
+export interface Migas {
+  prueba: string;
+  inicio: number;
+  /** [ms since `inicio`, phase] in order. */
+  fases: [number, string][];
+  /** When the test ended (absent: it never did). */
+  fin?: number;
+}
+
+const CLAVE_MIGAS = 'epa-diagnostico-migas';
+
+function guardarMigas(m: Migas | null): void {
+  try {
+    if (m) localStorage.setItem(CLAVE_MIGAS, JSON.stringify(m));
+    else localStorage.removeItem(CLAVE_MIGAS);
+  } catch {
+    /* no storage: no breadcrumbs */
+  }
+}
+
+/** The breadcrumbs of one test: `fase()` before each phase, `terminar()` when it ends (even with an error). */
+export function migasDe(prueba: string): { fase: (texto: string) => void; terminar: () => void } {
+  const m: Migas = { prueba, inicio: Date.now(), fases: [] };
+  const tipo = (f: string) => /^(pieza \d|compilando \d)/.test(f) ? f.split(' ')[0] : f;
+  guardarMigas(m);
+  return {
+    fase: (texto) => {
+      const ult = m.fases.at(-1);
+      const e: [number, string] = [Date.now() - m.inicio, texto];
+      if (ult && tipo(ult[1]) === tipo(texto) && tipo(texto) !== texto) m.fases[m.fases.length - 1] = e;
+      else m.fases.push(e);
+      guardarMigas(m);
+    },
+    terminar: () => {
+      m.fin = Date.now();
+      guardarMigas(m);
+    },
+  };
+}
+
+/** The breadcrumbs of a test that never ended (the app froze or closed during it), or null. */
+export function migasPendientes(): Migas | null {
+  try {
+    const m = JSON.parse(localStorage.getItem(CLAVE_MIGAS) ?? 'null') as Migas | null;
+    return m && typeof m.inicio === 'number' && Array.isArray(m.fases) && !m.fin ? m : null;
+  } catch {
+    return null;
+  }
+}
+
+/** The row that reports an unfinished test: «La última prueba se quedó en: <fase> tras N s». */
+export function filaMigas(m: Migas): Resultado {
+  const ult = m.fases.at(-1) ?? [0, 'el comienzo'];
+  const antes = m.fases.slice(-6, -1).map(([t, f]) => `${f} (${coma(t / 1000)} s)`);
+  return {
+    grupo: 'Prueba anterior sin terminar',
+    prueba: 'La última prueba se quedó en',
+    valor: `${ult[1]} tras ${coma(ult[0] / 1000)} s`,
+    detalle: `«${m.prueba}», empezada el ${new Date(m.inicio).toLocaleString('es-ES')}${antes.length ? `; antes: ${antes.join(', ')}` : ''}. La aplicación se colgó o se cerró en esa fase.`,
+    estado: 'error',
+  };
 }
 
 const ms = (x: number) => `${x < 10 ? x.toFixed(1).replace('.', ',') : Math.round(x)} ms`;
@@ -254,6 +328,7 @@ export async function placaSdr(ctx: ContextoPrueba, id = 'sdr'): Promise<Resulta
   let escena: InstanceType<typeof Escena3D> | null = null;
   try {
     ctx.avisar('Placa SDR: pintando las caras y colocando los componentes…');
+    ctx.miga?.('caras');
     escena = new Escena3D(l.c, d, geo, app.tema === 'oscuro');
     const r0 = l.caja.getBoundingClientRect();
     escena.tamano(r0.width, r0.height);
@@ -262,7 +337,8 @@ export async function placaSdr(ctx: ContextoPrueba, id = 'sdr'): Promise<Resulta
     // 0.8: the board's programs are compiled before its first frame; wait for that frame.
     await hasta(() => st.cuadros > 0, 60_000, ctx.cancelada);
     const t4 = performance.now();
-    await escena.cargarPiezas();
+    await escena.cargarPiezas({ alFase: ctx.miga });
+    ctx.miga?.('primer cuadro');
     await cuadros(2);
     const t5 = performance.now();
     if (ctx.cancelada()) return [];
@@ -292,7 +368,7 @@ export async function placaSdr(ctx: ContextoPrueba, id = 'sdr'): Promise<Resulta
         grupo: g,
         prueba: 'Placa con componentes',
         valor: seg(t5 - t0),
-        detalle: `${st.piezas.biblioteca + st.piezas.propias} piezas${f ? `, ${f.modelosUnicos} modelos distintos; modelos ${ms(f.modelos)}, unión ${ms(f.fusion)}, sombreadores ${ms(f.compilar ?? 0)}${st.programas ? ` (${st.programas} programas)` : ''}` : ''}`,
+        detalle: `${st.piezas.biblioteca + st.piezas.propias} piezas${f ? `, ${f.modelosUnicos} modelos distintos; modelos ${ms(f.modelos)}, unión ${ms(f.fusion)}, sombreadores ${ms(f.compilar ?? 0)}${st.programas ? ` (${st.programas} programas)` : ''}; tramo más largo ${ms(f.maxTramo ?? 0)}` : ''}`,
         estado: t5 - t0 < 4000 ? 'ok' : t5 - t0 < 10000 ? 'aviso' : 'error',
       },
     ];
@@ -399,6 +475,98 @@ export async function carasSdr(ctx: ContextoPrueba, id = 'sdr'): Promise<Resulta
     await new Promise((r) => setTimeout(r, 1000));
   }
   return res;
+}
+
+// ------------------------------------------------------------------ a console board (0.9)
+
+/**
+ * 0.9: the Neo Geo board in 3D (the one that froze the Xiaomi Pad 6 in 0.8.2), loaded as the consoles' tab
+ * does, with breadcrumbs before every phase («datos», «geometría», «caras», «pieza 237: R1», «uniendo»,
+ * «compilando», «primer cuadro»…) and the longest gap of the page's thread over the whole load.
+ */
+export async function placaConsola(ctx: ContextoPrueba, id = 'neogeo'): Promise<Resultado[]> {
+  const g = 'Placa de consola en 3D (Neo Geo)';
+  const miga = ctx.miga ?? (() => {});
+  ctx.avisar('Placa de la Neo Geo: descargando los datos…');
+  const t0 = performance.now();
+  miga('datos');
+  const [{ cargarPlacaConsola }, { construirGeometria }, { Escena3D }] = await Promise.all([
+    import('../consolas/placa/datos'),
+    import('../proyectos/geometria'),
+    import('../proyectos/escena3d'),
+  ]);
+  const d = await cargarPlacaConsola(id);
+  const t1 = performance.now();
+  miga('geometría');
+  const geo = construirGeometria(d);
+  const t2 = performance.now();
+  const l = lienzo(ctx);
+  // (a holder: the scene is created inside the timed function)
+  const v: { escena: InstanceType<typeof Escena3D> | null } = { escena: null };
+  try {
+    miga('caras');
+    ctx.avisar('Placa de la Neo Geo: pintando las caras y colocando los componentes…');
+    let tPlaca = 0;
+    let tPiezas = 0;
+    let tCuadro = 0;
+    const { max } = await conLatido(async () => {
+      const e = new Escena3D(l.c, d, geo, app.tema === 'oscuro');
+      v.escena = e;
+      const r0 = l.caja.getBoundingClientRect();
+      e.tamano(r0.width, r0.height);
+      miga('primer cuadro de la placa');
+      await hasta(() => e.stats.cuadros > 0, 120_000, ctx.cancelada);
+      tPlaca = performance.now();
+      await e.cargarPiezas({ alFase: miga });
+      tPiezas = performance.now();
+      miga('primer cuadro');
+      await hasta(() => !!e.stats.fases?.primerCuadro, 120_000, ctx.cancelada);
+      tCuadro = performance.now();
+      miga('caras a resolución completa');
+      await hasta(() => e.stats.carasFinas != null, 120_000, ctx.cancelada);
+      await cuadros(2);
+    });
+    if (ctx.cancelada() || !v.escena) return [];
+    const st = v.escena.stats;
+    const f = st.fases;
+    const rv = st.revision;
+    const cp = st.compilacion;
+    const fc = st.fasesCaras?.completa;
+    const problemas = rv ? [...rv.noFinitas, ...rv.enormes, ...rv.pinesDistintos, ...rv.patasFuera] : [];
+    return [
+      { grupo: g, prueba: 'Datos y geometría', valor: ms(t2 - t0), detalle: `descarga ${ms(t1 - t0)}, trazados ${ms(t2 - t1)}; ${d.huellas.length} huellas, ${d.pads.length} pads`, estado: 'ok' },
+      { grupo: g, prueba: 'Placa visible', valor: seg(tPlaca - t0), detalle: `sombreadores de la placa ${ms(st.compilarPlaca ?? 0)}`, estado: tPlaca - t0 < 4000 ? 'ok' : 'aviso' },
+      {
+        grupo: g,
+        prueba: 'Placa con componentes',
+        valor: seg(tCuadro - t0),
+        detalle: `${st.piezas.biblioteca + st.piezas.propias} piezas${f ? `, ${f.modelosUnicos} modelos distintos; modelos ${ms(f.modelos)}, unión ${ms(f.fusion)}, sombreadores ${ms(f.compilar)}` : ''}${cp ? ` (${cp.paralela ? 'en paralelo' : `${cp.programas} programas, uno por tarea, el más largo ${ms(cp.maxPrograma)}`})` : ''}; tramo más largo de las piezas ${ms(f?.maxTramo ?? 0)}; primer cuadro con ellas ${ms(f?.primerCuadro ?? tCuadro - tPiezas)}`,
+        estado: tCuadro - t0 < 6000 ? 'ok' : tCuadro - t0 < 15000 ? 'aviso' : 'error',
+      },
+      {
+        grupo: g,
+        prueba: 'Hueco más largo de la página',
+        valor: ms(max),
+        detalle: 'la tarea más larga del hilo de la página durante toda la carga (pintar, piezas, sombreadores, caras)',
+        estado: max < 100 ? 'ok' : max < 500 ? 'aviso' : 'error',
+      },
+      ...(fc ? [{ grupo: g, prueba: 'Caras a resolución completa', valor: ms(fc.total), detalle: `modo ${fc.modo}; tarea más larga ${ms(fc.maxTarea)}`, estado: (fc.maxTarea < 50 ? 'ok' : fc.maxTarea < 200 ? 'aviso' : 'error') as Estado }] : []),
+      {
+        grupo: g,
+        prueba: 'Revisión de las piezas',
+        valor: problemas.length ? `${problemas.length} piezas con otro cuerpo` : 'sin problemas',
+        detalle: rv
+          ? `${rv.plantillas} modelos, ${Math.round(rv.triangulos / 1000)} k triángulos, ${rv.fusionNoFinitos} valores no finitos${problemas.length ? `; ${problemas.join(', ')}` : ''}`
+          : undefined,
+        estado: !rv || rv.fusionNoFinitos || rv.noFinitas.length ? 'error' : 'ok',
+      },
+    ];
+  } finally {
+    v.escena?.liberar();
+    l.quitar();
+    // Time for the dropped context and its textures to be given back before the next test builds a view.
+    await new Promise((r) => setTimeout(r, 1000));
+  }
 }
 
 // ------------------------------------------------------------------ automatic schematics

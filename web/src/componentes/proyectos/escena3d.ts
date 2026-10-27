@@ -36,7 +36,7 @@ import {
   type Texture,
   Box3Helper,
 } from 'three';
-import type { DatosPlaca, Huella } from './datos';
+import { PAD_NPTH, type DatosPlaca, type Huella } from './datos';
 import { crearEstudio, type Estudio } from '../tres/motor/estudio';
 import { Orbita, type EstadoOrbita } from '../tres/motor/orbita';
 import { ResolucionAdaptable, REPOSO, type EstadoResolucion } from '../tres/motor/resolucion';
@@ -60,7 +60,7 @@ export interface Estadisticas {
   /** Where the load time goes (ms): building the models, merging them, the first frame with them (shader
    *  compilation and uploads), and the whole load of the parts; `modelosUnicos`: models built (equal parts
    *  share one). */
-  fases?: { modelos: number; fusion: number; compilar: number; primerCuadro: number; piezas: number; modelosUnicos: number };
+  fases?: { modelos: number; fusion: number; compilar: number; primerCuadro: number; piezas: number; modelosUnicos: number; inicio?: number; maxTramo?: number };
   /** Frames drawn since the view opened. */
   cuadros: number;
   /** Shader programs in use after the first frame with the parts (each one is compiled by the GPU driver). */
@@ -75,7 +75,48 @@ export interface Estadisticas {
    *  from the scene's creation to that frame. */
   compilarPlaca?: number;
   primerCuadroPlaca?: number;
+  /** 0.9: the check of the parts' geometry made while they load (see RevisionPiezas). */
+  revision?: RevisionPiezas;
+  /** 0.9: programs compiled one per task (no KHR_parallel_shader_compile) and the longest of them (ms). */
+  compilacion?: { programas: number; paralela: boolean; maxPrograma: number };
 }
+
+/**
+ * What cargarPiezas() found while building the parts (0.9). Templates with a NaN or an infinite coordinate, or an
+ * absurd vertex count, are refused (the part gets a simple body); so are library models whose pin count is not
+ * the footprint's (a 3-lead TO-220 on a 5-pad footprint) or whose leads land off the footprint's pads. Kept in
+ * the stats so the tests (and the diagnostic) can assert a board is clean.
+ */
+export interface RevisionPiezas {
+  /** Distinct templates built and the vertices / triangles of the merged meshes. */
+  plantillas: number;
+  vertices: number;
+  triangulos: number;
+  /** References whose template had non-finite positions or normals (refused). */
+  noFinitas: string[];
+  /** References whose template had an absurd size (refused). */
+  enormes: string[];
+  /** «REF (modelo n patillas, huella m pads)»: library models refused for their pin count. */
+  pinesDistintos: string[];
+  /** «REF (x,x mm)»: library models refused because a lead landed that far beyond its pad. */
+  patasFuera: string[];
+  /** Largest distance (mm) a library model's lead lands beyond its footprint pad, over the accepted parts. */
+  maxDesvio: number;
+  /** Non-finite values found in the merged buffers (always 0 once the templates are checked). */
+  fusionNoFinitos: number;
+}
+
+/** Callbacks of cargarPiezas(): progress (parts placed / total) and the phase about to start (diagnostic). */
+export interface AvisosCarga {
+  alProgreso?: (hechas: number, total: number) => void;
+  /** «pieza 237: R1», «uniendo», «compilando 2/9», called before each step starts. */
+  alFase?: (fase: string) => void;
+}
+
+/** A lead this far (mm) beyond its footprint pad means the model does not fit the footprint. */
+const TOLERANCIA_PATA = 0.5;
+/** More vertices than this in one part's template is a broken model, not a component. */
+const MAX_VERTICES_PLANTILLA = 400_000;
 
 /**
  * How the full-resolution faces are painted (0.8). 'directo': as in 0.7 — a canvas of the page per map, uploaded
@@ -228,6 +269,9 @@ export class Escena3D {
   };
   /** The board's programs are compiled: no frame before (it would compile them on the spot, blocking). */
   private preparado = false;
+  private placaDibujada: () => void = () => {};
+  /** Resolves with the board's first frame (0.9: the view without its parts is ready then). */
+  readonly placaLista = new Promise<void>((r) => (this.placaDibujada = r));
   alCambiar: () => void = () => {};
 
   constructor(
@@ -254,7 +298,7 @@ export class Escena3D {
     let enF = 0;
     let enB = 0;
     for (const h of d.huellas) if (h.t !== 'mec' && !h.dnp) h.lado === 'B' ? enB++ : enF++;
-    this.ladoComponentes = enB > 2 * enF ? 'B' : 'F';
+    this.ladoComponentes = d.placa.lado_componentes ?? (enB > 2 * enF ? 'B' : 'F');
     this.stats.ladoComponentes = this.ladoComponentes;
     const max = this.renderer.capabilities.maxTextureSize;
     // texture resolution: up to 4096 px on the long side (about 21–37 px/mm on these boards)
@@ -337,15 +381,11 @@ export class Escena3D {
   /**
    * 0.8: the programs of the board itself compiled before its first frame with compileAsync (in parallel and
    * without blocking the page where KHR_parallel_shader_compile exists), as cargarPiezas() already did for
-   * the parts.
+   * the parts; 0.9: without that extension, one program per task (prepararPorPartes).
    */
   private async prepararPlaca(): Promise<void> {
     const t0 = performance.now();
-    try {
-      await this.renderer.compileAsync(this.estudio.escena, this.camara);
-    } catch {
-      /* compiled at the first frame instead */
-    }
+    await this.prepararPorPartes(this.estudio.escena);
     if (!this.vivo) return;
     this.stats.compilarPlaca = performance.now() - t0;
     this.preparado = true;
@@ -866,7 +906,20 @@ export class Escena3D {
    * (in parallel where the GPU driver allows). The result is the same as building every part: one mesh per
    * material for the whole board.
    */
-  async cargarPiezas(alProgreso?: (hechas: number, total: number) => void): Promise<void> {
+  async cargarPiezas(avisos: AvisosCarga | ((hechas: number, total: number) => void) = {}): Promise<void> {
+    // Loaded once (the «Componentes» toggle may ask again).
+    this.cargaPiezas ??= this.cargarPiezasUnaVez(typeof avisos === 'function' ? { alProgreso: avisos } : avisos);
+    return this.cargaPiezas;
+  }
+
+  /** Whether the parts were asked for (cargarPiezas() called). */
+  get piezasPedidas(): boolean {
+    return !!this.cargaPiezas;
+  }
+
+  private cargaPiezas: Promise<void> | null = null;
+
+  private async cargarPiezasUnaVez({ alProgreso, alFase }: AvisosCarga): Promise<void> {
     const tA = performance.now();
     // The full-resolution faces now wait for the frame with the parts (see frame()).
     if (this.refino) clearTimeout(this.refino);
@@ -879,10 +932,15 @@ export class Escena3D {
     const plantillas = new Map<string, Plantilla | null>();
     const copias: { pl: Plantilla; m: Matrix4; h: number }[] = [];
     const huellas = this.d.huellas.map((h, i) => [h, i] as const).filter(([h]) => h.t !== 'mec' && !h.dnp);
-    const pausa = crearPausa();
+    const rev: RevisionPiezas = { plantillas: 0, vertices: 0, triangulos: 0, noFinitas: [], enormes: [], pinesDistintos: [], patasFuera: [], maxDesvio: 0, fusionNoFinitos: 0 };
+    this.stats.revision = rev;
+    // Short slices (0.9: 6 ms, was 12): with a 4× slower CPU a slice and the part that ends it stay near 50 ms
+    // (the longest single step left is building one library model, a DIP with its marking: 10–25 ms here).
+    const pausa = crearPausa(6);
     let hechas = 0;
     for (const [h, i] of huellas) {
-      const c = this.colocar(h, lib, rec, disponibles, plantillas);
+      alFase?.(`pieza ${hechas + 1}: ${h.r}`);
+      const c = this.colocar(h, lib, rec, disponibles, plantillas, rev);
       hechas++;
       if (c) {
         const caja = c.pl.caja.clone().applyMatrix4(c.m);
@@ -895,20 +953,34 @@ export class Escena3D {
         alProgreso?.(hechas, huellas.length);
       }
     }
+    rev.plantillas = [...plantillas.values()].filter(Boolean).length;
     const tC = performance.now();
-    const grupo = await this.unir(copias, pausa);
+    alFase?.('uniendo');
+    const grupo = await this.unir(copias, pausa, rev);
     if (!this.vivo) return;
     const tD = performance.now();
-    // Shaders before the first frame with the parts: in parallel where KHR_parallel_shader_compile exists.
-    try {
-      await this.renderer.compileAsync(grupo, this.camara, this.estudio.escena);
-    } catch {
-      /* compiled at the first frame instead */
-    }
+    // Shaders before the first frame with the parts: in parallel where KHR_parallel_shader_compile exists, else
+    // one program per task (each one blocks the page while the driver compiles it).
+    // (the end of the merge is a stretch of its own too)
+    await pausa();
+    if (!this.vivo) return;
+    alFase?.('compilando');
+    this.stats.compilacion = await this.prepararPorPartes(grupo, alFase);
     if (!this.vivo) return;
     const tE = performance.now();
     this.piezas.add(grupo);
-    this.stats.fases = { modelos: tC - tB, fusion: tD - tC, compilar: tE - tD, primerCuadro: 0, piezas: tE - tA, modelosUnicos: plantillas.size };
+    // (`inicio`: performance.now() when the parts were asked for, to place the phases on a timeline; `maxTramo`:
+    // the longest stretch of the parts' own work between two yields — building, merging, one program —, ms)
+    this.stats.fases = {
+      modelos: tC - tB,
+      fusion: tD - tC,
+      compilar: tE - tD,
+      primerCuadro: 0,
+      piezas: tE - tA,
+      modelosUnicos: plantillas.size,
+      inicio: tA,
+      maxTramo: Math.max(pausa.max, this.stats.compilacion.maxPrograma),
+    };
     for (const c of this.cajas) this.altoMax = Math.max(this.altoMax, c.caja.max.z);
     this.ajustarProfundidad();
     if (!this.tocada) this.vista('iso', false);
@@ -921,6 +993,59 @@ export class Escena3D {
     this.refinarTrasCuadro = true;
   }
 
+  /**
+   * Compiles the programs that `objeto` needs and uploads its textures before it is drawn. With
+   * KHR_parallel_shader_compile: compileAsync (the driver compiles in the background). Without it (Adreno 650 of
+   * the Xiaomi Pad 6, SwiftShader) every program blocks the page until the driver has compiled and linked it, so
+   * they go one per task: compile one material, force its link status to be read now (three would read it at the
+   * first frame, all programs in one task), upload its textures, yield. Returns how many programs were built.
+   */
+  private async prepararPorPartes(objeto: Object3D, alFase?: (fase: string) => void): Promise<{ programas: number; paralela: boolean; maxPrograma: number }> {
+    const r = this.renderer;
+    const paralela = r.extensions.has('KHR_parallel_shader_compile');
+    if (paralela) {
+      try {
+        await r.compileAsync(objeto, this.camara, this.estudio.escena);
+      } catch {
+        /* compiled at the first frame instead */
+      }
+      return { programas: 0, paralela, maxPrograma: 0 };
+    }
+    const porMaterial = new Map<Material, Object3D>();
+    objeto.traverse((o) => {
+      const m = (o as Mesh).material;
+      if (!(o as Mesh).isMesh || !m) return;
+      for (const x of Array.isArray(m) ? m : [m]) if (!porMaterial.has(x)) porMaterial.set(x, o);
+    });
+    const vistos = new Set<unknown>();
+    let n = 0;
+    let max = 0;
+    let k = 0;
+    for (const [mat, o] of porMaterial) {
+      k++;
+      alFase?.(`compilando ${k}/${porMaterial.size}`);
+      const t0 = performance.now();
+      try {
+        // compile() of this object alone (with the scene's lights) builds its material's program
+        r.compile(o, this.camara, this.estudio.escena);
+        const prog = (r.properties.get(mat) as { currentProgram?: { getUniforms?: () => unknown } }).currentProgram;
+        if (prog && !vistos.has(prog)) {
+          vistos.add(prog);
+          n++;
+          // reading the uniforms makes three check the link status now, in this task
+          prog.getUniforms?.();
+        }
+        for (const t of texturasDe(mat)) r.initTexture(t);
+      } catch {
+        /* compiled at the first frame instead */
+      }
+      max = Math.max(max, performance.now() - t0);
+      await ceder();
+      if (!this.vivo) break;
+    }
+    return { programas: n, paralela, maxPrograma: max };
+  }
+
   /** The part of a footprint: its template (built once per model and parameters) and its board matrix. */
   private colocar(
     h: Huella,
@@ -928,6 +1053,7 @@ export class Escena3D {
     rec: unknown,
     disp: Set<string>,
     plantillas: Map<string, Plantilla | null>,
+    rev?: RevisionPiezas,
   ): { pl: Plantilla; m: Matrix4 } | null {
     const [X, Y] = this.p(h.x, h.y);
     const raiz = new Object3D();
@@ -952,7 +1078,16 @@ export class Escena3D {
         } catch {
           pl = null;
         }
+        if (pl && !this.plantillaSana(pl, h, rev)) pl = null;
         plantillas.set(k, pl);
+      }
+      // a model with another number of leads than the footprint has pads is another package (0.9: the 3-lead
+      // TO-220 on the Neo Geo's 5-lead LM2576T-5): a simple body instead
+      const pinesModelo = pl?.huella?.pads?.length ? new Set(pl.huella.pads.map((p) => p.n)).size : 0;
+      const pinesHuella = numerosPads(this.d, h).size;
+      if (pl && pinesModelo && pinesModelo !== pinesHuella) {
+        rev?.pinesDistintos.push(`${h.r} (modelo ${pinesModelo} patillas, huella ${pinesHuella} pads)`);
+        pl = null;
       }
       if (pl) {
         const local = new Matrix4();
@@ -986,19 +1121,71 @@ export class Escena3D {
           }
           local.makeTranslation(-ox, -oy, 0).multiply(new Matrix4().makeScale(f, f, f));
         }
-        this.stats.piezas.biblioteca++;
-        return { pl, m: raiz.matrix.clone().multiply(local) };
+        const m = raiz.matrix.clone().multiply(local);
+        // every lead on its pad (same number): no more than half a millimetre beyond the pad's copper
+        const desvio = hu?.pads?.length ? this.desvioPatas(h, hu, m) : 0;
+        if (desvio <= TOLERANCIA_PATA) {
+          if (rev) rev.maxDesvio = Math.max(rev.maxDesvio, desvio);
+          this.stats.piezas.biblioteca++;
+          return { pl, m };
+        }
+        rev?.patasFuera.push(`${h.r} (${desvio.toFixed(1).replace('.', ',')} mm)`);
       }
     }
     // Simple bodies built here: also one per distinct footprint description.
-    const k = `s|${JSON.stringify(h.m)}|${h.v}|${h.l}|${h.mpn ?? ''}`;
+    // (the pads' local positions count for the bodies that draw leads, e.g. a 5-lead TO-220)
+    const locales = padsLocales(this.d, h);
+    const k = `s|${JSON.stringify(h.m)}|${h.v}|${h.l}|${h.mpn ?? ''}|${h.m.tipo === 'to' || h.m.tipo === 'dip' ? JSON.stringify(locales) : ''}`;
     let pl = plantillas.get(k);
     if (pl === undefined) {
-      pl = plantilla(cuerpoSimple(h), undefined);
+      pl = plantilla(cuerpoSimple(h, locales), undefined);
+      if (pl && !this.plantillaSana(pl, h, rev)) pl = null;
       plantillas.set(k, pl);
     }
     this.stats.piezas.propias++;
     return pl ? { pl, m: raiz.matrix.clone() } : null;
+  }
+
+  /** A template with finite numbers and a sane size; else it is recorded and refused. */
+  private plantillaSana(pl: Plantilla, h: Huella, rev?: RevisionPiezas): boolean {
+    let n = 0;
+    let malos = 0;
+    for (const p of pl.piezas) {
+      n += p.n;
+      if (p.n % 3) malos++;
+      for (const a of [p.pos, p.nor]) for (let i = 0; i < a.length; i++) if (!Number.isFinite(a[i]!)) malos++;
+    }
+    if (malos) {
+      rev?.noFinitas.push(h.r);
+      return false;
+    }
+    if (n > MAX_VERTICES_PLANTILLA) {
+      rev?.enormes.push(`${h.r} (${n} vértices)`);
+      return false;
+    }
+    return true;
+  }
+
+  /**
+   * How far (mm) a model's leads land beyond the footprint pads with their numbers, once placed by `m`: the
+   * distance from each lead to its pad's centre less the pad's half size (0 when every lead is on its pad).
+   */
+  private desvioPatas(h: Huella, hu: HuellaModelo, m: Matrix4): number {
+    const [a, n] = h.pads;
+    let max = 0;
+    const v = new Vector3();
+    for (const q of hu.pads ?? []) {
+      v.set(q.x, q.y, 0).applyMatrix4(m);
+      let mejor = Infinity;
+      for (let i = a; i < a + n; i++) {
+        const p = this.d.pads[i]!;
+        if (p[1] !== q.n) continue;
+        const [x, y] = this.p(p[3], p[4]);
+        mejor = Math.min(mejor, Math.max(0, Math.hypot(v.x - x, v.y - y) - Math.max(p[5], p[6]) / 200));
+      }
+      if (mejor < Infinity) max = Math.max(max, mejor);
+    }
+    return max;
   }
 
   /** Shielding cans stay apart: they turn translucent when the selected part is under them. */
@@ -1020,7 +1207,7 @@ export class Escena3D {
   }
 
   /** One mesh per material for all the copies, written in slices between pauses. */
-  private async unir(copias: { pl: Plantilla; m: Matrix4 }[], pausa: () => Promise<boolean>): Promise<Group> {
+  private async unir(copias: { pl: Plantilla; m: Matrix4 }[], pausa: () => Promise<boolean>, rev?: RevisionPiezas): Promise<Group> {
     const porMat = new Map<Material, { n: number; pos?: Float32Array; nor?: Float32Array; uv?: Float32Array; k: number }>();
     for (const c of copias)
       for (const p of c.pl.piezas) {
@@ -1074,6 +1261,16 @@ export class Escena3D {
     const grupo = new Group();
     for (const [mat, e] of porMat) {
       if (!e.n) continue;
+      if (rev) {
+        // the merged buffers once more (a template was checked, but a board matrix could still be broken)
+        let malos = 0;
+        for (const a of [e.pos!, e.nor!]) for (let i = 0; i < a.length; i++) if (!Number.isFinite(a[i]!)) malos++;
+        rev.fusionNoFinitos += malos;
+        rev.vertices += e.n;
+        rev.triangulos += e.n / 3;
+        await pausa();
+        if (!this.vivo) break;
+      }
       const g = new BufferGeometry();
       g.setAttribute('position', new BufferAttribute(e.pos!, 3));
       g.setAttribute('normal', new BufferAttribute(e.nor!, 3));
@@ -1402,6 +1599,7 @@ export class Escena3D {
       const ms = performance.now() - t0;
       this.stats.cuadros++;
       this.stats.primerCuadroPlaca ??= performance.now() - this.creada;
+      this.placaDibujada();
       if (this.stats.fases && !this.stats.fases.primerCuadro) {
         this.stats.fases.primerCuadro = ms;
         this.stats.programas = this.renderer.info.programs?.length;
@@ -1533,14 +1731,53 @@ function plantilla(o: Object3D, huella: HuellaModelo | undefined): Plantilla | n
  * A pause every ~12 ms of work (a frame's worth): resolves to true when it did pause, so the caller can report
  * progress. Uses scheduler.yield() where it exists (the task keeps its priority), else a macrotask.
  */
-function crearPausa(): () => Promise<boolean> {
+function crearPausa(ms = 12): (() => Promise<boolean>) & { max: number } {
   let t = performance.now();
-  const sch = (globalThis as { scheduler?: { yield?: () => Promise<void> } }).scheduler;
-  return async () => {
-    if (performance.now() - t < 12) return false;
-    if (sch?.yield) await sch.yield();
-    else await new Promise<void>((r) => setTimeout(r, 0));
+  const f = async () => {
+    const dt = performance.now() - t;
+    if (dt < ms) return false;
+    // the stretch of work that ends here (the longest one is kept in `max`)
+    f.max = Math.max(f.max, dt);
+    await ceder();
     t = performance.now();
     return true;
   };
+  f.max = 0;
+  return f;
+}
+
+/** Gives the page's thread back for a moment: scheduler.yield() where it exists, else a macrotask. */
+function ceder(): Promise<void> {
+  const sch = (globalThis as { scheduler?: { yield?: () => Promise<void> } }).scheduler;
+  return sch?.yield ? sch.yield() : new Promise<void>((r) => setTimeout(r, 0));
+}
+
+/** The textures a material uses (uploaded one material per task before the first frame). */
+function texturasDe(m: Material): Texture[] {
+  const r: Texture[] = [];
+  for (const v of Object.values(m)) if (v && (v as Texture).isTexture) r.push(v as Texture);
+  return r;
+}
+
+/** Distinct pad numbers of a footprint (unnumbered pads, such as mounting holes, do not count). */
+function numerosPads(d: DatosPlaca, h: Huella): Set<string> {
+  const r = new Set<string>();
+  for (let i = h.pads[0]; i < h.pads[0] + h.pads[1]; i++) {
+    const p = d.pads[i]!;
+    if (p[1] !== '' && !(p[11] & PAD_NPTH)) r.add(p[1]);
+  }
+  return r;
+}
+
+/** The footprint's pads in its own axes (mm, KiCad's: x right, y down; as the fab outline `m.caja`). */
+export function padsLocales(d: DatosPlaca, h: Huella): { n: string; x: number; y: number }[] {
+  const an = (-h.a * Math.PI) / 180;
+  const r: { n: string; x: number; y: number }[] = [];
+  for (let i = h.pads[0]; i < h.pads[0] + h.pads[1]; i++) {
+    const p = d.pads[i]!;
+    const dx = p[3] - h.x;
+    const dy = p[4] - h.y;
+    r.push({ n: p[1], x: Math.round(dx * Math.cos(an) + dy * Math.sin(an)) / 100, y: Math.round(-dx * Math.sin(an) + dy * Math.cos(an)) / 100 });
+  }
+  return r;
 }

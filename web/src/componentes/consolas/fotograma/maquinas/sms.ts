@@ -1,136 +1,228 @@
-// «Un fotograma» of the Master System II (board 171-5922A, schematic transcribed from Sega's service manual): which
-// nets every bus access moves. Z80 bus: A0–A15, /M1, /MREQ, /IOREQ, /RD, /WR, /REFSH from the Z80 (IC1), D0–D7
-// from whoever answers; /CE3 (cartridge) and /CE1 (RAM) from the 315-5237 (IC4), /CSRAM from the VDP (IC5)
-// (Zilog UM0080 for the machine cycles; SMS Power «Port mapping» and «Memory map» for the decoding).
-// VRAM bus: the 315-5246 puts the word address on AD0–AD12 and latches it in both 4168 PSRAMs with VRAM /CE; then
-// /OE (read: IC6 drives AD0–AD7, IC7 AD8–AD15) or /WE0 or /WE1 (write of one byte).
+// «Un fotograma» of the Master System II (171-5922A, PAL): tile $24 of the background, row 3, pixel 3 → point
+// (99, 51).
+//
+// Checked against SMS Power! (Charles MacDonald's «Sega Master System VDP documentation»: ports $BE/$BF, the
+// two-byte address and code word, mode 4 name table entries, 4 bitplanes interleaved per row, CRAM --BBGGRR, 8
+// sprites per line, the frame interrupt) and the app's «Arquitectura» data (arquitectura/sms.ts: the 315-5237
+// decoding /CE0 /CE1 /CE3 with /CSRAM from the VDP, the VDP port decoding with A0, A6, A7 and /IOREQ, the two PSRAMs
+// on the multiplexed AD bus, 16 bits per access, /INT in IM 1 → $0038). Arithmetic: name table $3800 + (6 × 32 +
+// 12) × 2 = $3998 (word $1CCC); pattern $24 × 32 + 3 × 4 = $048C (words $0446 and $0447); index 6 → CRAM 6.
 
-import desZ80 from '../cpu/z80';
-import { bus, linea, nombres } from '../redes';
-import type { AccesoBus, Adaptador, RedActiva } from '../tipos';
+import type { FotogramaMaquina } from '../tipos';
+import { PELOTA_4BPP } from '../ejemplo';
 
-const A = nombres('A', 16);
-const D = nombres('D', 8);
-const AD = nombres('AD', 16);
-const T = 15; // master cycles per Z80 T state
-
-const QUIEN: Record<string, string> = { cartucho: 'CN1', ram: 'IC3', vdp: 'IC5', psg: 'IC5', io: 'IC4' };
-
-function accesoZ80(ev: AccesoBus, out: RedActiva[]): void {
-  const k = ev.k ?? '';
-  const f = ev.fase;
-  const escritura = !!(ev.f & 1);
-  if (k === 'refresco') {
-    // T3–T4 of an opcode fetch: the refresh address (register R) with /MREQ and /REFSH
-    bus(out, A, ev.a, 'direccion', 'IC1');
-    linea(out, '~{REFSH}', 0, 'control', 'IC1');
-    linea(out, '~{MREQ}', f >= T / 2 && f < T * 1.5 ? 0 : 1, 'control', 'IC1');
-    linea(out, '~{M1}', 1, 'control', 'IC1');
-    return;
-  }
-  bus(out, A, ev.a, 'direccion', 'IC1');
-  if (k === 'm1' || k === 'int-ack') linea(out, '~{M1}', 0, 'control', 'IC1');
-  if (k === 'int-ack') {
-    // M1 with /IORQ instead of /MREQ: nobody puts a vector (IM 1); /INT is released by the status read
-    linea(out, '~{IOREQ}', f >= T * 2.5 ? 0 : 1, 'control', 'IC1');
-    return;
-  }
-  const memoria = k === 'm1' || k === 'lectura' || k === 'escritura';
-  const activa = memoria ? f >= T / 2 : f >= T; // /MREQ from the middle of T1, /IORQ from T2
-  if (memoria) linea(out, '~{MREQ}', activa ? 0 : 1, 'control', 'IC1');
-  else linea(out, '~{IOREQ}', activa ? 0 : 1, 'control', 'IC1');
-  if (escritura) {
-    linea(out, '~{WR}', (memoria ? f >= T * 1.5 : f >= T) ? 0 : 1, 'control', 'IC1');
-    bus(out, D, ev.d, 'datos', 'IC1');
-  } else {
-    linea(out, '~{RD}', activa ? 0 : 1, 'control', 'IC1');
-    if (f >= T) bus(out, D, ev.d, 'datos', QUIEN[ev.c] ?? 'IC1');
-  }
-  if (memoria && activa) {
-    if (ev.c === 'cartucho') linea(out, '~{CE3}', 0, 'seleccion', 'IC4');
-    else if (ev.c === 'ram') {
-      linea(out, '~{CSRAM}', 0, 'seleccion', 'IC5');
-      linea(out, '~{CE1}', 0, 'seleccion', 'IC4');
-    }
-  }
-}
-
-function accesoVram(ev: AccesoBus, out: RedActiva[]): void {
-  const k = ev.k ?? '';
-  if (k === 'refresco') {
-    linea(out, 'VRAM-~{CE}', ev.fase < 10 ? 0 : 1, 'control', 'IC5');
-    return;
-  }
-  const escritura = !!(ev.f & 1);
-  if (ev.fase < 6) {
-    // address phase: the word address on AD0–AD12, latched when VRAM /CE falls
-    bus(out, AD.slice(0, 13), ev.a >> 1, 'direccion', 'IC5');
-    linea(out, 'VRAM-~{CE}', 1, 'control', 'IC5');
-    return;
-  }
-  linea(out, 'VRAM-~{CE}', 0, 'seleccion', 'IC5');
-  if (escritura) {
-    const impar = ev.a & 1;
-    bus(out, impar ? AD.slice(8) : AD.slice(0, 8), ev.d, 'datos', 'IC5');
-    linea(out, impar ? '~{WE1}' : '~{WE0}', ev.fase >= 10 ? 0 : 1, 'control', 'IC5');
-  } else {
-    linea(out, 'VRAM-~{OE}', ev.fase >= 10 ? 0 : 1, 'control', 'IC5');
-    if (ev.fase >= 10) {
-      bus(out, AD.slice(0, 8), ev.d & 0xff, 'datos', 'IC6');
-      bus(out, AD.slice(8), ev.d >> 8, 'datos', 'IC7');
-    }
-  }
-}
-
-export const adaptador: Adaptador = {
+export const SMS: FotogramaMaquina = {
   maquina: 'sms',
-  cpus: { z80: desZ80 },
-  redesAcceso(b, ev, out) {
-    if (b === 'z80') accesoZ80(ev, out);
-    else if (b === 'vram') accesoVram(ev, out);
+  entrada:
+    'Seguimos la tesela $24 del fondo, una pelota de 8 × 8 puntos, desde que el Z80 lee su número en el cartucho hasta que su punto (99, 51) sale del VDP hacia la tele.',
+  ejemplo: {
+    ancho: 256,
+    alto: 192,
+    tesela: 8,
+    x: 96,
+    y: 48,
+    indices: PELOTA_4BPP,
+    fila: 3,
+    columna: 3,
+    // CRAM (--BBGGRR): 0 $39 (sky), 1 $01 (dark red), 6 $03 (red), 15 $3F (white)
+    colores: { 1: '#550000', 6: '#ff0000', 15: '#ffffff' },
+    fondo: '#55aaff',
+    bpp: 4,
+    formato: 'planos',
+    numero: '$24',
+    color: '$03',
   },
-  redesSenal(s, nivel, out) {
-    if (s === 'int') linea(out, '~{INT}', nivel as 0 | 1, 'interrupcion', 'IC5');
-    else if (s === 'sync') linea(out, '~{SYNC}', nivel as 0 | 1, 'video', 'IC5');
-  },
-  redesPixel(_c, out) {
-    for (const r of ['R', 'G', 'B']) linea(out, r, null, 'video', 'IC5');
-  },
-  relojes: [
-    { red: '53M', grupo: 'reloj', nivel: null },
-    { red: '10.7M', grupo: 'reloj', nivel: null, desde: 'IC4' },
-    { red: 'VDP-CLOCK', grupo: 'reloj', nivel: null, desde: 'IC5' },
-    { red: '3.58M', grupo: 'reloj', nivel: null },
+  pasos: [
+    {
+      fase: 'Bus del Z80',
+      titulo: 'El Z80 lee una instrucción del cartucho',
+      texto:
+        'El Z80 saca la dirección $0200 y baja /MREQ y /RD. El 315-5237 decodifica las líneas altas y baja /CE3, la selección del cartucho, que devuelve $3E, el código de LD A con un dato inmediato; en el ciclo siguiente llega el dato, $24, el número de la tesela que vamos a seguir.',
+      bloques: ['z80', 'io', 'cart'],
+      senales: [
+        { id: 'z80-a', sentido: 1 },
+        { id: 'bus-a', sentido: 1, valor: '$0200' },
+        { id: 'a-io', sentido: 1 },
+        { id: 'cart-a', sentido: 1 },
+        { id: 'ctl', sentido: 1, nombre: '/MREQ, /RD', valor: '0' },
+        { id: 'ce3', sentido: 1, valor: '0' },
+        { id: 'cart-d', sentido: -1 },
+        { id: 'bus-d', sentido: -1, valor: '$3E, $24' },
+        { id: 'z80-d', sentido: -1 },
+      ],
+      internos: [['Instrucción', 'LD A,$24 (3E 24)']],
+      pantalla: 'cuadro-anterior',
+    },
+    {
+      fase: 'Bus del Z80',
+      titulo: 'Y guarda el valor en la RAM',
+      texto:
+        'Con LD ($C100),A la dirección cae en $C000–$FFFF. Esa zona la detecta el VDP, que baja /CSRAM; el 315-5237 la convierte en /CE1 y la RAM de 8 KB guarda el $24 cuando el Z80 baja /WR.',
+      bloques: ['z80', 'vdp', 'io', 'ram'],
+      senales: [
+        { id: 'z80-a', sentido: 1 },
+        { id: 'bus-a', sentido: 1, valor: '$C100' },
+        { id: 'a-vdp', sentido: 1, nombre: 'A15, A14', valor: '1, 1' },
+        { id: 'csram', sentido: 1, valor: '0' },
+        { id: 'ce1', sentido: 1, valor: '0' },
+        { id: 'ram-a', sentido: 1 },
+        { id: 'ctl', sentido: 1, nombre: '/MREQ, /WR', valor: '0' },
+        { id: 'z80-d', sentido: 1 },
+        { id: 'bus-d', sentido: 1, valor: '$24' },
+        { id: 'ram-d', sentido: 1 },
+      ],
+      pantalla: 'cuadro-anterior',
+    },
+    {
+      fase: 'Borrado vertical',
+      titulo: 'El VDP pide /INT: se acabó la imagen',
+      texto:
+        'Tras la última de las 192 líneas visibles, el VDP activa su bandera de cuadro y, como el juego lo permitió en el registro 1, baja /INT. El Z80, en modo de interrupción 1, salta a $0038; al leer el puerto de control $BF la bandera se borra y /INT sube.',
+      bloques: ['vdp', 'z80'],
+      senales: [{ id: 'int', sentido: 1, valor: '0' }],
+      internos: [['Vector', '$0038 (IM 1)']],
+      pantalla: 'cuadro-anterior',
+      nota: 'Durante el borrado vertical el VDP no dibuja: es el momento de escribir en la VRAM.',
+    },
+    {
+      fase: 'Borrado vertical',
+      titulo: 'El dibujo de la tesela llega a la VRAM',
+      texto:
+        'El Z80 no ve la VRAM y la Master System no tiene DMA: todo pasa por los puertos del VDP. Un OUT a $BF con $80 y $44 fija la dirección $0480 en modo escritura, y un OTIR manda los 32 bytes del dibujo al puerto $BE. El VDP los lleva a la VRAM por el bus AD: primero la dirección, que las PSRAM retienen al bajar /CE, y después el dato.',
+      bloques: ['z80', 'vdp', 'vram'],
+      senales: [
+        { id: 'z80-a', sentido: 1 },
+        { id: 'bus-a', sentido: 1, valor: 'puerto $BE' },
+        { id: 'a-vdp', sentido: 1, nombre: 'A7, A6, A0', valor: '1, 0, 0' },
+        { id: 'iorq', sentido: 1, valor: '0' },
+        { id: 'z80-d', sentido: 1 },
+        { id: 'bus-d', sentido: 1, valor: 'byte del dibujo' },
+        { id: 'd-vdp', sentido: 1 },
+        { id: 'ad', sentido: 1, valor: '$0480…$049F' },
+        { id: 'vce', sentido: 1, nombre: '/CE, /WE', valor: '0' },
+      ],
+      internos: [['Puerto $BF', '$80, $44 → $0480']],
+      pantalla: 'vram',
+    },
+    {
+      fase: 'Borrado vertical',
+      titulo: 'El número de tesela, en la tabla de nombres',
+      texto:
+        'La tabla de nombres empieza en $3800 y cada entrada ocupa 2 bytes. La de la columna 12, fila 6 está en $3998: $98 y $79 al puerto $BF, y después $24 y $00 al puerto $BE. El $00 alto dice paleta del fondo, sin volteos ni prioridad.',
+      bloques: ['z80', 'vdp', 'vram'],
+      senales: [
+        { id: 'bus-a', sentido: 1, valor: 'puerto $BE' },
+        { id: 'iorq', sentido: 1, valor: '0' },
+        { id: 'bus-d', sentido: 1, valor: '$24, $00' },
+        { id: 'd-vdp', sentido: 1 },
+        { id: 'ad', sentido: 1, valor: '$3998' },
+        { id: 'vce', sentido: 1, nombre: '/CE, /WE', valor: '0' },
+      ],
+      internos: [['Puerto $BF', '$98, $79 → $3998']],
+      pantalla: 'mapa',
+    },
+    {
+      fase: 'Borrado vertical',
+      titulo: 'El color, en la CRAM',
+      texto:
+        'La CRAM, 32 colores de 6 bits, está dentro del VDP. $06 y $C0 al puerto $BF eligen la entrada 6 en modo CRAM, y $03 al puerto $BE la deja con rojo al máximo (bits RR = 11) y sin verde ni azul.',
+      bloques: ['z80', 'vdp'],
+      senales: [
+        { id: 'bus-a', sentido: 1, valor: 'puertos $BF, $BE' },
+        { id: 'iorq', sentido: 1, valor: '0' },
+        { id: 'bus-d', sentido: 1, valor: '$06, $C0, $03' },
+        { id: 'd-vdp', sentido: 1 },
+      ],
+      internos: [['CRAM 6', '$03 (--BBGGRR)']],
+      pantalla: 'mapa',
+    },
+    {
+      fase: 'Línea a línea',
+      titulo: 'El VDP lee la entrada del mapa',
+      texto:
+        'En la línea 51 el VDP pide la palabra $1CCC (bytes $3998 y $3999): las dos PSRAM, una con los bytes pares y otra con los impares, contestan a la vez por AD0–AD15. Llega $0024: tesela $24, paleta del fondo.',
+      bloques: ['vdp', 'vram'],
+      senales: [
+        { id: 'ad', sentido: -1, valor: '$0024' },
+        { id: 'vce', sentido: 1, nombre: '/CE, /OE', valor: '0' },
+      ],
+      internos: [['Dirección de palabra', '$1CCC']],
+      pantalla: 'mapa',
+    },
+    {
+      fase: 'Línea a línea',
+      titulo: 'Los cuatro planos de la fila',
+      texto:
+        'La fila 3 de la tesela $24 ocupa 4 bytes desde $048C, uno por plano. Con dos lecturas de 16 bits, las palabras $0446 y $0447, el VDP recibe $A1, $7E, $7E y $20.',
+      bloques: ['vdp', 'vram'],
+      senales: [
+        { id: 'ad', sentido: -1, valor: '$7EA1, $207E' },
+        { id: 'vce', sentido: 1, nombre: '/CE, /OE', valor: '0' },
+      ],
+      internos: [['Direcciones de palabra', '$0446, $0447']],
+      pantalla: 'patron',
+    },
+    {
+      fase: 'Dentro del VDP',
+      titulo: 'Se juntan los planos: índice 6',
+      texto:
+        'El VDP toma un bit de cada plano para cada punto. El punto 3 de la fila da 0, 1, 1 y 0 en los planos 0 a 3: índice %0110 = 6. Con la paleta del fondo, la entrada de la CRAM es la 6. El desplazamiento horizontal y vertical está a 0.',
+      bloques: ['vdp'],
+      senales: [],
+      internos: [['Planos 0–3 del punto 3', '0, 1, 1, 0 → 6']],
+      pantalla: 'mezcla',
+    },
+    {
+      fase: 'Dentro del VDP',
+      titulo: 'Sprites y prioridad',
+      texto:
+        'En cada línea el VDP busca en la tabla de sprites hasta 8 que la toquen y lee sus dibujos en el borrado horizontal. En el punto 99 de la línea 51 no hay ninguno opaco; si lo hubiera, taparía el fondo salvo que el bit de prioridad de la entrada del mapa pusiera la tesela delante.',
+      bloques: ['vdp'],
+      senales: [],
+      internos: [['Sprite en el punto 99', 'ninguno']],
+      pantalla: 'prioridad',
+      nota: 'Ningún sprite cubre el punto (99, 51): su color sale del fondo.',
+    },
+    {
+      fase: 'Paleta y salida',
+      titulo: 'La CRAM da el color: $03',
+      texto:
+        'La entrada 6 de la CRAM vale $03: dos bits por canal, rojo 3, verde 0, azul 0. Los convertidores del VDP lo pasan a tres tensiones analógicas, R, G y B.',
+      bloques: ['vdp'],
+      senales: [],
+      internos: [
+        ['CRAM 6', '$03'],
+        ['R, G, B', '3, 0, 0'],
+      ],
+      pantalla: 'paleta',
+    },
+    {
+      fase: 'Paleta y salida',
+      titulo: 'El punto sale hacia la tele',
+      texto:
+        'R, G, B y /SYNC salen del VDP hacia el CXA1145, que con la subportadora SC del 315-5237 forma el vídeo compuesto PAL; el modulador lo convierte en señal de antena. El punto (99, 51) dura unos 188 ns.',
+      bloques: ['vdp', 'av', 'io'],
+      senales: [
+        { id: 'rgb', sentido: 1, nombre: 'R, G, B', valor: 'rojo' },
+        { id: 'sc', sentido: 1, valor: '4,43 MHz' },
+      ],
+      internos: [['Punto', '(99, 51)']],
+      pantalla: 'punto',
+    },
+    {
+      fase: 'Fin del cuadro',
+      titulo: 'Cuadro acabado: /INT otra vez',
+      texto:
+        'Tras las 192 líneas visibles el VDP vuelve a bajar /INT; el Z80, que ha preparado el cuadro siguiente en la RAM, salta otra vez a $0038. En la Master System II PAL esto se repite 50 veces por segundo, cada 313 líneas.',
+      bloques: ['vdp', 'z80'],
+      senales: [{ id: 'int', sentido: 1, valor: '0' }],
+      pantalla: 'cuadro',
+    },
   ],
-  chips: { cartucho: ['CN1'], ram: ['IC3'], vdp: ['IC5'], psg: ['IC5'], io: ['IC4'], vram: ['IC6', 'IC7'], 'vram-par': ['IC6'], 'vram-impar': ['IC7'] },
-  avisoPlaca:
-    'La Master System II no tiene una placa publicada en formato abierto (el .kicad_pcb de slowcoder está vacío y no hay otra recreación de la 171-5922A): el recorrido se ve en el esquema transcrito del manual de servicio de Sega.',
-  fases: {
-    activa: 'El VDP saca un punto cada 10 ciclos del oscilador mientras lee, para cada casilla de 8 puntos, su entrada de la tabla de nombres y las dos palabras del patrón; cada 4 casillas deja un hueco al Z80.',
-    borde: 'Borde: el VDP saca el color de borde (registro 7) y sigue leyendo la VRAM para la línea siguiente (búsqueda de sprites).',
-    borrado: 'Borrado: la señal de vídeo se queda en negro; el VDP deja casi todas las ranuras al Z80.',
-    hsync: 'Sincronismo horizontal: /SYNC baja 26 puntos (unos 4,9 µs).',
-    salva: 'Salva de color: el codificador CXA1145 mete la subportadora para que la tele enganche el color.',
-    vsync: 'Sincronismo vertical: 3 líneas con /SYNC casi siempre abajo.',
-  },
-  mapa: [
-    { desde: 0x0000, hasta: 0xbfff, chip: 'cartucho', titulo: 'ROM del cartucho (/CE3), 3 ventanas de 16 KB del paginador' },
-    { desde: 0xc000, hasta: 0xdfff, chip: 'ram', titulo: 'RAM de trabajo 8 KB (IC3: /CSRAM y /CE1)' },
-    { desde: 0xe000, hasta: 0xffff, chip: 'ram', titulo: 'Espejo de la RAM; $FFFC–$FFFF también al paginador' },
-  ],
-  hojaInicial: 2,
-  fidelidad:
-    'Exacto: cada ciclo de máquina del Z80 (dirección, dato, tipo y su instante) del núcleo z80.h de floooh, que coincide con SingleStepTests/z80 en dirección, dato y ciclo de cada acceso; cada ranura del VDP en modo 4 y su dirección de la VRAM, del núcleo de BlastEm (con el contador V de PAL); la interrupción de cuadro; el punto de cada píxel. Ilustrativo: la forma de /MREQ, /RD y /WR dentro de cada ciclo (según el manual de Zilog, no medida), el reparto dirección/dato del bus AD dentro de cada ranura, y los tramos del sincronismo, tomados de msvdp.txt. Durante HALT, z80.h repite la lectura en la dirección de HALT; según otras fuentes el Z80 lee la siguiente (el dato se ignora en ambos casos). Sin sonido (el PSG no se emula). En «Un juego de verdad» el mando 1 sigue un guion fijo de botones.',
   fuentes: [
-    { titulo: 'Charles MacDonald, «Sega Master System VDP documentation» (msvdp.txt)', url: 'https://www.smspower.org/Development/', uso: 'Modo 4, 342 puntos y 313 líneas en PAL, contador V, interrupciones, tramos del sincronismo.' },
-    { titulo: 'SMS Power: «Port mapping», «Memory map», «Mappers», «VDP»', url: 'https://www.smspower.org/Development/', uso: 'Decodificación de puertos y memoria, paginador, cabecera «TMR SEGA».' },
-    { titulo: 'floooh/chips, z80.h (zlib)', url: 'https://github.com/floooh/chips', uso: 'Z80 ciclo a ciclo (contenido/fotograma/sms/sms_traza.c).' },
-    { titulo: 'BlastEm, vdp.c (Michael Pavone, GPL-3)', url: 'https://github.com/libretro/blastem', uso: 'VDP ranura a ranura, usado sin conexión para generar la traza.' },
-    { titulo: 'SingleStepTests/z80 (MIT)', url: 'https://github.com/SingleStepTests/z80', uso: 'Validación del Z80: 50 000 pruebas de 50 códigos, 130 000 accesos al bus.' },
-    { titulo: 'Zilog, «Z80 CPU User Manual» (UM0080)', url: 'https://www.zilog.com/docs/z80/um0080.pdf', uso: 'Forma de los ciclos de máquina: M1, lectura, escritura, E/S, reconocimiento de interrupción.' },
-    { titulo: 'Haroldo O. Pinheiro, «Food Fighter» (MIT)', url: 'https://github.com/haroldo-ok/food-fighter', uso: '«Un juego de verdad» (commit 48fe2ea); compilado con contenido/consolas_juegos/sms/construir.sh (SDCC 4.0.0, devkitSMS de sverx).' },
-    { titulo: 'Henry Software, «64 16x16 food sprites» (CC0)', url: 'https://opengameart.org/node/64948', uso: 'Sprites de Food Fighter.' },
+    { titulo: 'SMS Power!: Sega Master System VDP documentation (Charles MacDonald)', url: 'https://www.smspower.org/uploads/Development/msvdp-20021112.txt', nota: 'puertos, tabla de nombres, planos, CRAM, sprites, interrupción de cuadro' },
+    { titulo: 'SMS Power!: VDP registers', url: 'https://www.smspower.org/Development/VDPRegisters' },
+    { titulo: 'SMS Power!: Tilemap', url: 'https://www.smspower.org/Development/Tilemap' },
+    { titulo: 'Rodrigo Copetti: Master System Architecture', url: 'https://www.copetti.org/writings/consoles/master-system/' },
   ],
 };
-
-export default adaptador;

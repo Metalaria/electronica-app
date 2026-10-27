@@ -6,6 +6,7 @@
 import { obtenerAlmacen, type Almacen } from '../../lib/almacen';
 import { claveDia, responder, type Calificacion, type EstadoTarjeta } from './srs';
 import { anotarBorrado, anotarCambio } from '../../lib/sincronizacion/marcas';
+import { registrarActividad } from '../../lib/progreso-diario.svelte';
 
 export interface AjustesRepaso {
   /** New cards introduced per day (shared by every deck). */
@@ -151,10 +152,13 @@ export function calificar(id: string, c: Calificacion, ahora = Date.now()): Desh
   anotarCambio('repaso-diario', dia);
   guardar('tarjetas');
   guardar('diario');
+  // a flashcard answered counts as a review question for the daily goal
+  registrarActividad('pregunta');
   return { id, previo, dia, diaPrevio };
 }
 
 export function deshacer(d: Deshacer): void {
+  if (d.dia === claveDia(Date.now())) registrarActividad('pregunta', -1);
   if (d.previo) {
     repaso.tarjetas[d.id] = d.previo;
     anotarCambio('repaso-tarjetas', d.id);
@@ -214,6 +218,8 @@ export function racha(ahora = Date.now()): number {
 
 /** Stores the result of a chapter quiz, an exam or a review of mistakes. */
 export function registrarRespuesta(id: string, parte: string, bien: boolean, ahora = Date.now()): void {
+  // every quiz answer (right or wrong) counts for the daily goal
+  registrarActividad('pregunta');
   if (bien) {
     if (id in repaso.fallos) {
       delete repaso.fallos[id];

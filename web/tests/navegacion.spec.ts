@@ -53,7 +53,7 @@ test.describe('escritorio', () => {
     const c = carril(page);
     await expect(c.getByRole('link', { name: 'Inicio' })).toHaveAttribute('aria-current', 'page');
     // every entry of the registry fits at 800 px, labels visible without hovering
-    for (const nombre of ['Libro', 'Buscar', 'Simulador', 'Calculadoras', 'Ejercicios', 'Repaso', 'Componentes', 'Conceptos', 'Instrumentos', 'Kit FM7303', 'Consolas', 'Proyectos', 'Glosario', 'Marcadores']) {
+    for (const nombre of ['Inicio', 'Libro', 'Buscar', 'Simulador', 'Calculadoras', 'Ejercicios', 'Repaso', 'Componentes', 'Conceptos', 'Instrumentos', 'Kit FM7303', 'Consolas', 'Proyectos', 'Glosario', 'Marcadores']) {
       await expect(c.locator('.etiqueta', { hasText: new RegExp(`^${nombre}$`) })).toBeVisible();
     }
     const destinos: [string, string][] = [
@@ -304,7 +304,9 @@ test.describe('teléfono', () => {
     // «Más» opens the rest; «Atrás» closes it
     await tabs.getByRole('button', { name: 'Más' }).click();
     const hoja = page.getByRole('menu', { name: 'Más secciones' });
-    await expect(hoja.getByRole('menuitem', { name: 'Inicio' })).toBeVisible();
+    // 0.9: «Inicio» is a tab; «Buscar» moved into «Más»
+    await expect(tabs.getByRole('link', { name: 'Inicio' })).toBeVisible();
+    await expect(hoja.getByRole('menuitem', { name: 'Buscar' })).toBeVisible();
     await expect(hoja.getByRole('menuitem', { name: 'Consolas' })).toBeVisible();
     await page.goBack();
     await expect(hoja).toHaveCount(0);

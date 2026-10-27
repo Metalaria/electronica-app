@@ -122,14 +122,20 @@
 </div>
 
 <style>
+  /* 0.9 look (componentes/ui09): serif title, chips, 18 px cards */
   .galeria {
     max-width: 1120px;
     margin: 0 auto;
-    padding: 0 clamp(16px, 4vw, 40px) 72px;
+    padding: 0 32px 72px;
     font-family: var(--sans);
   }
+  @media (max-width: 600px) {
+    .galeria {
+      padding: 0 16px 72px;
+    }
+  }
   header {
-    padding: clamp(20px, 5vw, 44px) 0 8px;
+    padding: 24px 0 8px;
   }
   .fila-sobre {
     display: flex;
@@ -140,7 +146,7 @@
   }
   .sobre {
     margin: 0;
-    font-size: 13px;
+    font-size: 12px;
     font-weight: 700;
     letter-spacing: 0.08em;
     text-transform: uppercase;
@@ -148,15 +154,17 @@
   }
   h1 {
     margin: 6px 0 8px;
-    font-size: clamp(28px, 5vw, 40px);
-    line-height: 1.1;
+    font-family: var(--serif);
+    font-size: clamp(26px, 4vw, 30px);
+    font-weight: 700;
+    line-height: 1.15;
     color: var(--titulos);
   }
   .intro {
     max-width: 44em;
     margin: 0 0 18px;
-    font-family: var(--serif);
-    font-size: 17px;
+    font-size: 16px;
+    line-height: 1.5;
     color: var(--tinta-suave);
   }
   .filtro {
@@ -171,7 +179,7 @@
     height: 46px;
     padding: 0 12px;
     border: 1px solid var(--linea);
-    border-radius: 12px;
+    border-radius: var(--radio-boton);
     background: var(--superficie);
     color: var(--tinta-suave);
   }
@@ -203,8 +211,12 @@
     flex-wrap: wrap;
     gap: 6px;
   }
+  .familias {
+    row-gap: 10px;
+  }
   .familias button {
     --c: var(--acento);
+    position: relative;
     display: inline-flex;
     align-items: center;
     gap: 6px;
@@ -216,6 +228,12 @@
     font-size: 14px;
     font-weight: 600;
     color: var(--tinta-suave);
+  }
+  /* 44 px touch target around the 34 px chip */
+  .familias button::after {
+    content: '';
+    position: absolute;
+    inset: -5px 0;
   }
   .familias button.activa {
     border-color: var(--c);
@@ -237,7 +255,9 @@
     align-items: center;
     gap: 10px;
     margin: 0 0 12px;
-    font-size: 19px;
+    font-family: var(--serif);
+    font-size: 21px;
+    font-weight: 600;
     color: var(--titulos);
   }
   .tarjetas {
@@ -254,8 +274,8 @@
     gap: 14px;
     height: 100%;
     padding: 14px;
-    border: 1px solid var(--linea-suave);
-    border-radius: 14px;
+    border: 1px solid var(--linea);
+    border-radius: var(--radio-tarjeta);
     background: var(--superficie);
     color: inherit;
     text-decoration: none;
@@ -274,7 +294,7 @@
     place-items: center;
     width: 112px;
     height: 76px;
-    border-radius: 10px;
+    border-radius: var(--radio-boton);
     background: color-mix(in srgb, var(--c) 8%, var(--superficie-2));
     color: var(--tinta);
   }

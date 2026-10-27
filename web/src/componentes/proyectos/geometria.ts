@@ -25,6 +25,13 @@ export interface Geometria {
   cobre: Record<Lado, CapaCobre>;
   /** Mask openings per side (pads with the side's mask layer). */
   aberturas: Record<Lado, Path2D>;
+  /**
+   * 0.9: the exposed copper per side — the pads with copper and a mask opening on that side, one path. A mask
+   * opening is the pad's own outline here, so this is the copper inside the openings: the faces paint their
+   * finish (HASL/ENIG, metal in the PBR map) with one fill of it instead of clipping all the copper by the
+   * openings, which a GPU-rasterised canvas (Chromium on Android) could not finish for the Neo Geo board.
+   */
+  padsAbiertos: Record<Lado, Path2D>;
   /** Every drill (plated pads, vias, unplated holes). */
   taladros: Path2D;
   /** Unplated holes only. */
@@ -158,6 +165,7 @@ export function construirGeometria(d: DatosPlaca): Geometria {
     }
   }
   const aberturas: Record<Lado, Path2D> = { F: new Path2D(), B: new Path2D() };
+  const padsAbiertos: Record<Lado, Path2D> = { F: new Path2D(), B: new Path2D() };
   const taladros = new Path2D();
   const taladrosNP = new Path2D();
   const barriles: Geometria['barriles'] = [];
@@ -168,6 +176,8 @@ export function construirGeometria(d: DatosPlaca): Geometria {
     if (fl & PAD_B && !(fl & PAD_NPTH)) poligono(obtener(cobre.B.pads, p[12], nueva), pts);
     if (fl & PAD_MASK_F) poligono(aberturas.F, fl & PAD_NPTH ? contornoPad(p) : pts);
     if (fl & PAD_MASK_B) poligono(aberturas.B, fl & PAD_NPTH ? contornoPad(p) : pts);
+    if (fl & PAD_F && fl & PAD_MASK_F && !(fl & PAD_NPTH)) poligono(padsAbiertos.F, pts);
+    if (fl & PAD_B && fl & PAD_MASK_B && !(fl & PAD_NPTH)) poligono(padsAbiertos.B, pts);
     if (p[9] > 0) {
       taladro(taladros, p[3], p[4], p[9], p[10], p[7]);
       if (fl & PAD_NPTH) taladro(taladrosNP, p[3], p[4], p[9], p[10], p[7]);
@@ -260,7 +270,7 @@ export function construirGeometria(d: DatosPlaca): Geometria {
     c.closePath();
     return { camino: c, capas: a.capas, nombre: a.nombre };
   });
-  return { ancho, alto, contorno, contornoPts, cobre, aberturas, taladros, taladrosNP, barriles, serigrafia, fab, areas, zonasRed };
+  return { ancho, alto, contorno, contornoPts, cobre, aberturas, padsAbiertos, taladros, taladrosNP, barriles, serigrafia, fab, areas, zonasRed };
 }
 
 // ------------------------------------------------------------------ hit testing

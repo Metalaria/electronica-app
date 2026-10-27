@@ -1,7 +1,8 @@
 <script lang="ts">
   // The board in 3D (escena3d.ts): orbit/pinch, views from above, below (the board is turned over), the side
   // and at an angle; layer toggles, explosion, X-ray, finish and voltages; tap or hover a part, a pad or a
-  // track to select it. Rendered on demand; disposed on unmount.
+  // track to select it. Rendered on demand; disposed on unmount. 0.9: the parts are only built when
+  // «Componentes» is on (at once, or when it is turned on later): with it off nothing of them is loaded.
   import { onMount, untrack } from 'svelte';
   import { formatoTension, type DatosPlaca } from './datos';
   import { cajaHuella, cajaRed, impacto, type Geometria } from './geometria';
@@ -123,6 +124,31 @@
     etiqueta = p ? { x: p[0], y: p[1], t: `${h.r} · ${h.v}` } : null;
   }
 
+  const g = globalThis as unknown as { __epaPlaca3D?: unknown; __epaPlaca3DListo?: boolean };
+
+  /** Builds the parts once, when «Componentes» is on. */
+  function pedirPiezas(): void {
+    if (!escena || escena.piezasPedidas) return;
+    const e = escena;
+    listo = false;
+    g.__epaPlaca3DListo = false;
+    progreso = null;
+    void e.cargarPiezas((n, total) => (progreso = [n, total])).then(() => {
+      if (e !== escena) return;
+      listo = true;
+      e.seleccionar(res.huella);
+      // a selection from the route: frame it now that the parts are there
+      if (enfocar > 0) {
+        if (res.huella !== null) e.enfocar(cajaHuella(datos, res.huella));
+        else if (res.red !== null) {
+          const b = cajaRed(datos, res.red);
+          if (b) e.enfocar(b);
+        }
+      }
+      g.__epaPlaca3DListo = true;
+    });
+  }
+
   onMount(() => {
     if (!lienzo || !caja) return;
     try {
@@ -132,7 +158,6 @@
       return;
     }
     escena.alCambiar = actualizarEtiqueta;
-    const g = globalThis as unknown as { __epaPlaca3D?: unknown };
     g.__epaPlaca3D = escena.stats;
     const ro = new ResizeObserver((e) => {
       const r = e[0]?.contentRect;
@@ -145,19 +170,16 @@
     escena.opciones({ capas: { ...opciones.capas }, acabado: opciones.acabado, rayosX: opciones.rayosX, tensiones: opciones.tensiones, red: res.red });
     escena.explotar(opciones.explosion);
     escena.seleccionar(res.huella);
-    void escena.cargarPiezas((n, total) => (progreso = [n, total])).then(() => {
-      listo = true;
-      escena?.seleccionar(res.huella);
-      // a selection from the route: frame it now that the parts are there
-      if (escena && enfocar > 0) {
-        if (res.huella !== null) escena.enfocar(cajaHuella(datos, res.huella));
-        else if (res.red !== null) {
-          const b = cajaRed(datos, res.red);
-          if (b) escena.enfocar(b);
-        }
-      }
-      (g as { __epaPlaca3DListo?: boolean }).__epaPlaca3DListo = true;
-    });
+    if (opciones.capas.componentes) pedirPiezas();
+    else {
+      // Without the parts the view is ready with the board's first frame.
+      const e = escena;
+      void e.placaLista.then(() => {
+        if (e !== escena || e.piezasPedidas) return;
+        listo = true;
+        g.__epaPlaca3DListo = true;
+      });
+    }
     const perdido = (ev: Event) => {
       ev.preventDefault();
       error = 'Se perdió el contexto WebGL (la GPU se ha reiniciado). Vuelve a abrir la vista 3D o usa la vista 2D.';
@@ -169,14 +191,18 @@
       if (pendiente) cancelAnimationFrame(pendiente);
       escena?.liberar();
       escena = null;
-      (g as { __epaPlaca3DListo?: boolean }).__epaPlaca3DListo = false;
+      g.__epaPlaca3DListo = false;
     };
   });
 
   // options and selection → scene
   $effect(() => {
     const o = { capas: { ...opciones.capas }, acabado: opciones.acabado, rayosX: opciones.rayosX, tensiones: opciones.tensiones, red: res.red };
-    untrack(() => escena?.opciones(o));
+    untrack(() => {
+      escena?.opciones(o);
+      // «Componentes» turned on: the parts are built now (only once)
+      if (o.capas.componentes) pedirPiezas();
+    });
   });
   $effect(() => {
     const e = opciones.explosion;
@@ -247,7 +273,7 @@
     {#if globo}
       <div class="globo" style:left={`${globo.x + 14}px`} style:top={`${globo.y + 14}px`}>{globo.t}</div>
     {/if}
-    {#if !listo && !error}
+    {#if !listo && !error && opciones.capas.componentes}
       <div class="carga" aria-live="polite">
         Colocando los componentes…{#if progreso && progreso[1]}<span class="cuenta"> {progreso[0]} de {progreso[1]}</span>
           <span class="barra-progreso" style:--p={progreso[0] / progreso[1]}></span>{/if}

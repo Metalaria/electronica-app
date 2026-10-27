@@ -71,8 +71,8 @@
       cambiar los valores de los componentes.
     </p>
     <div class="acciones">
-      <a class="boton primario" href="#/simulador/nuevo"><Icono nombre="editar" tam={17} /> Nuevo circuito</a>
-      <a class="boton" href="#/editor">Dibujar un esquema</a>
+      <a class="t09-boton" href="#/simulador/nuevo"><Icono nombre="editar" tam={18} /> Nuevo circuito</a>
+      <a class="t09-boton t09-contorno" href="#/editor">Dibujar un esquema</a>
     </div>
   </header>
 
@@ -88,14 +88,14 @@
       <input type="search" placeholder="Buscar: filtro rc, zener, figura 41.5, 555…" bind:value={filtro} aria-label="Buscar netlists" />
       <div class="tipos" role="group" aria-label="Tipo de análisis">
         {#each TIPOS as [k, t] (k)}
-          <button class="chip" aria-pressed={tipo === k} onclick={() => (tipo = k)}>{t}</button>
+          <button class="chip t09-chip" aria-pressed={tipo === k} onclick={() => (tipo = k)}>{t}</button>
         {/each}
       </div>
       <p class="cuenta" aria-live="polite">{total} {total === 1 ? 'netlist' : 'netlists'}</p>
     </div>
 
     {#each capitulos as { c, ids } (c.parte)}
-      <section class="capitulo" style:--c={colorBloque(c.color)}>
+      <section class="capitulo t09-tarjeta" style:--c={colorBloque(c.color)}>
         <h2><span class="num">{rotuloParte(c.parte)}</span> {c.titulo.split(' — ')[0]}</h2>
         <ul>
           {#each ids as id (id)}
@@ -124,26 +124,33 @@
 </div>
 
 <style>
+  /* 0.9 look (componentes/ui09): serif title, chips, chapters as cards */
   .indice-sim {
     max-width: 980px;
     margin: 0 auto;
-    padding: 18px 20px 60px;
+    padding: 24px 32px 60px;
     font-family: var(--sans);
   }
   h1 {
     margin: 4px 0 8px;
-    font-size: clamp(24px, 3.4vw, 32px);
     color: var(--titulos);
+    font-family: var(--serif);
+    font-size: clamp(26px, 4vw, 30px);
+    font-weight: 700;
+    line-height: 1.15;
   }
   .intro {
-    margin: 0 0 14px;
+    margin: 0 0 16px;
     max-width: 44em;
-    font-size: 15.5px;
+    font-size: 16px;
     line-height: 1.5;
     color: var(--tinta-suave);
   }
   .acciones {
-    margin-bottom: 18px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-bottom: 20px;
   }
   .filtros {
     position: sticky;
@@ -157,44 +164,31 @@
   }
   input[type='search'] {
     width: 100%;
+    min-height: var(--toque);
     padding: 10px 14px;
     border: 1px solid var(--linea);
-    border-radius: 10px;
+    border-radius: var(--radio-boton);
     background: var(--superficie);
     font-size: 15.5px;
   }
   .tipos {
     display: flex;
     flex-wrap: wrap;
-    gap: 6px;
-  }
-  .chip {
-    min-height: 32px;
-    padding: 0 12px;
-    border: 1px solid var(--linea);
-    border-radius: 999px;
-    background: var(--superficie);
-    color: var(--tinta-suave);
-    font-size: 13.5px;
-    font-weight: 600;
-  }
-  .chip[aria-pressed='true'] {
-    background: var(--acento-tinte);
-    border-color: var(--acento-borde);
-    color: var(--acento);
+    gap: 10px 6px;
   }
   .cuenta {
     margin: 0;
     font-size: 13px;
-    color: var(--tinta-tenue);
+    color: var(--tinta-suave);
   }
   .capitulo {
-    margin-top: 22px;
+    margin-top: 16px;
+    padding: 16px 10px 10px;
     content-visibility: auto;
     contain-intrinsic-size: auto 400px;
   }
   h2 {
-    margin: 0 0 6px;
+    margin: 0 6px 6px;
     padding-left: 10px;
     border-left: 4px solid var(--c);
     font-size: 17px;
@@ -211,8 +205,9 @@
   }
   li a {
     display: block;
+    min-height: var(--toque);
     padding: 9px 10px;
-    border-radius: 10px;
+    border-radius: var(--radio-boton);
     color: inherit;
     text-decoration: none;
   }
@@ -267,13 +262,13 @@
   }
   .aviso {
     padding: 12px 14px;
-    border-radius: 10px;
+    border-radius: var(--radio-tarjeta-p);
     background: var(--superficie);
     border: 1px solid var(--linea);
   }
   @media (max-width: 599px) {
     .indice-sim {
-      padding: 12px 14px 60px;
+      padding: 16px 16px 60px;
     }
   }
 </style>

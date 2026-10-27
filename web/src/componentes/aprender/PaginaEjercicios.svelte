@@ -5,7 +5,8 @@
   import { onMount, tick } from 'svelte';
   import { ruta } from '../../lib/ruta.svelte';
   import { infoParte, rotuloParte } from '../../lib/datos';
-  import { colorBloque } from '../../lib/color';
+  import { tonoBloque } from '../../lib/color';
+  import { app } from '../../lib/estado.svelte';
   import { cargarEjercicios, ejercicios, type ItemEjercicio } from '../../lib/ejercicios.svelte';
   import { aprendizaje, cargarAprendizaje, estadoDe, type Estado } from '../../lib/aprendizaje.svelte';
   import Icono from '../Icono.svelte';
@@ -136,7 +137,7 @@
         <span class="f" style:width={`${(cuenta.fallado / Math.max(1, todos.length)) * 100}%`}></span>
       </div>
       {#if cuenta.fallado}
-        <a class="boton primario repasar" href="#/ejercicios/repaso"><Icono nombre="repaso" tam={17} /> Repaso de fallados ({cuenta.fallado})</a>
+        <a class="t09-boton repasar" href="#/ejercicios/repaso"><Icono nombre="repaso" tam={17} /> Repaso de fallados ({cuenta.fallado})</a>
       {/if}
     </header>
 
@@ -170,7 +171,7 @@
 
     {#each capitulos as c (c.parte)}
       {@const ab = capAbierto(c.parte)}
-      <section class="capitulo" style:--c={colorBloque(c.info?.color)}>
+      <section class="capitulo" style:--c={tonoBloque(c.info?.color, app.tema).relleno} style:--ct={tonoBloque(c.info?.color, app.tema).texto}>
         <button
           class="cap-cab"
           aria-expanded={ab}
@@ -211,21 +212,28 @@
 </div>
 
 <style>
+  /* 0.9 look (componentes/ui09): serif title, chips, chapters as cards */
   .pagina-ej {
     max-width: 920px;
     margin: 0 auto;
-    padding: 0 clamp(16px, 4vw, 40px) 64px;
+    padding: 0 32px 64px;
     font-family: var(--sans);
   }
+  @media (max-width: 600px) {
+    .pagina-ej {
+      padding: 0 16px 64px;
+    }
+  }
   .cabecera {
-    padding: clamp(24px, 5vw, 44px) 0 18px;
+    padding: 24px 0 18px;
   }
   h1 {
     margin: 6px 0 0;
     color: var(--titulos);
     font-family: var(--serif);
-    font-size: clamp(30px, 5vw, 42px);
-    line-height: 1.1;
+    font-size: clamp(26px, 4vw, 30px);
+    font-weight: 700;
+    line-height: 1.15;
   }
   .sub {
     margin: 8px 0 0;
@@ -277,22 +285,28 @@
   .chip[aria-checked='true'] {
     border-color: var(--acento);
     background: var(--acento-tinte);
-    color: var(--tinta);
+    color: var(--acento);
   }
   .chip .n {
-    color: var(--tinta-tenue);
+    color: inherit;
+    font-weight: 400;
     font-variant-numeric: tabular-nums;
   }
   .capitulo {
-    border-bottom: 1px solid var(--linea-suave);
+    margin-bottom: 10px;
+    overflow: hidden;
+    border: 1px solid var(--linea);
+    border-left: 4px solid var(--c);
+    border-radius: var(--radio-tarjeta-p);
+    background: var(--superficie);
   }
   .cap-cab {
     display: flex;
     align-items: center;
     gap: 12px;
     width: 100%;
-    min-height: 56px;
-    padding: 8px 6px;
+    min-height: 60px;
+    padding: 10px 14px;
     border: 0;
     background: none;
     text-align: left;
@@ -334,15 +348,15 @@
   }
   .chev {
     display: inline-grid;
-    color: var(--tinta-tenue);
+    color: var(--tinta-suave);
     transition: transform 0.18s;
   }
   .chev.girado {
     transform: rotate(90deg);
   }
   ul {
-    margin: 0 0 10px;
-    padding: 0;
+    margin: 0;
+    padding: 0 6px 8px;
     list-style: none;
   }
   .fila {
@@ -353,7 +367,7 @@
     min-height: 48px;
     padding: 6px 8px 6px 14px;
     border: 0;
-    border-radius: 8px;
+    border-radius: var(--radio-boton);
     background: none;
     text-align: left;
   }
@@ -364,7 +378,7 @@
   .num {
     flex: none;
     min-width: 3.4em;
-    color: var(--c);
+    color: var(--ct, var(--c));
     font-weight: 700;
     font-variant-numeric: tabular-nums;
   }
@@ -381,7 +395,7 @@
   }
   .auto {
     flex: none;
-    color: var(--tinta-tenue);
+    color: var(--tinta-suave);
     font-size: 12.5px;
   }
   .estado-r {
@@ -393,7 +407,7 @@
     padding: 0 6px;
     border-radius: 999px;
     background: var(--linea-suave);
-    color: var(--tinta-tenue);
+    color: var(--tinta-suave);
     font-size: 13px;
     font-weight: 700;
   }
@@ -409,7 +423,7 @@
     margin: 4px 0 14px;
     padding: 14px clamp(10px, 3vw, 18px) 6px;
     border: 1px solid var(--linea);
-    border-radius: 12px;
+    border-radius: var(--radio-tarjeta-p);
     background: var(--superficie-2);
   }
   .navegar {

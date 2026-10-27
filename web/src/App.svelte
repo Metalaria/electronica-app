@@ -28,7 +28,7 @@
 
   // Accent colour: the part on screen, the glossary's, or the book's navy.
   const color = $derived.by(() => {
-    if (ruta.vista === 'parte' || ruta.vista === 'glosario') return app.indice?.partes[ruta.parte]?.color ?? app.color;
+    if (ruta.vista === 'parte' || ruta.vista === 'glosario' || ruta.vista === 'leccion') return app.indice?.partes[ruta.parte]?.color ?? app.color;
     return '1A3A5C';
   });
 
@@ -52,7 +52,13 @@
     const raiz = document.documentElement.style;
     const izquierda = app.movil ? '0px' : indiceOculto() ? 'var(--ancho-carril)' : 'calc(var(--ancho-carril) + var(--ancho-panel))';
     raiz.setProperty('--ancho-lateral', izquierda);
-    raiz.setProperty('--alto-pestanas', app.movil ? '58px' : '0px');
+    // 0.9: 64 px, the mockups' taller bar with the pill behind the active icon
+    raiz.setProperty('--alto-pestanas', app.movil ? '64px' : '0px');
+    // 0.9: a lesson («Estudiar por pasos») is full screen: no rail, index panel or tab bar
+    if (ruta.vista === 'leccion') {
+      raiz.setProperty('--ancho-lateral', '0px');
+      raiz.setProperty('--alto-pestanas', '0px');
+    }
   });
 
   // No page scroll under an overlay.
@@ -127,7 +133,7 @@
 <svelte:window onkeydown={teclas} />
 
 <div class="app" class:movil={app.movil}>
-  {#if app.cargado}
+  {#if app.cargado && ruta.vista !== 'leccion'}
     {#if app.movil}
       <Pestanas />
     {:else}
@@ -136,7 +142,7 @@
     <Lateral />
   {/if}
   <div class="principal">
-    <Barra />
+    {#if ruta.vista !== 'leccion'}<Barra />{/if}
     <main id="contenido">
       {#if app.error}
         <div class="aviso">
@@ -263,6 +269,17 @@
           <m.default />
         {:catch e}
           <div class="aviso"><h1>No se pudieron abrir las animaciones</h1><p>{String(e)}</p></div>
+        {/await}
+      {:else if ruta.vista === 'leccion'}
+        <!-- 0.9 «Estudiar por pasos»: a section as a lesson, one screen per step, full screen; loaded on demand. -->
+        {#await import('./componentes/leccion/Leccion.svelte')}
+          <div class="cargando" aria-live="polite"><span class="punto"></span> Abriendo la lección…</div>
+        {:then m}
+          {#key `${ruta.parte}/${ruta.ancla.split('/')[0]}`}
+            <m.default parte={ruta.parte} seccion={ruta.ancla.split('/')[0] ?? ''} />
+          {/key}
+        {:catch e}
+          <div class="aviso"><h1>No se pudo abrir la lección</h1><p>{String(e)}</p></div>
         {/await}
       {:else}
         {#key ruta.parte}

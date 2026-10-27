@@ -217,14 +217,19 @@
   .movil {
     padding: 16px 16px 56px;
   }
+  /* 0.9 look (componentes/ui09): serif title, 12–18 px radii, the formula groups as cards */
   .cabecera h1 {
     margin: 0 0 6px;
     color: var(--titulos);
+    font-family: var(--serif);
     font-size: 30px;
+    font-weight: 700;
+    line-height: 1.15;
   }
   .intro {
     margin: 0 0 16px;
     color: var(--tinta-suave);
+    font-size: 16px;
     line-height: 1.45;
   }
   .controles {
@@ -240,7 +245,7 @@
     min-height: 46px;
     padding: 0 12px;
     border: 1px solid var(--linea);
-    border-radius: 10px;
+    border-radius: var(--radio-boton);
     background: var(--superficie);
     color: var(--tinta-suave);
   }
@@ -265,7 +270,7 @@
     min-height: 46px;
     padding: 0 10px;
     border: 1px solid var(--linea);
-    border-radius: 10px;
+    border-radius: var(--radio-boton);
     background: var(--superficie);
     color: var(--tinta);
     font: inherit;
@@ -275,7 +280,7 @@
     min-height: 46px;
     padding: 0 14px;
     border: 1px solid var(--linea);
-    border-radius: 10px;
+    border-radius: var(--radio-boton);
     background: var(--superficie);
     color: var(--tinta);
     font: inherit;
@@ -303,7 +308,7 @@
     min-height: 88px;
     padding: 8px 10px 8px 8px;
     border: 1px solid var(--linea);
-    border-radius: 12px;
+    border-radius: var(--radio-tarjeta-p);
     background: var(--superficie);
     color: var(--tinta);
     font: inherit;
@@ -325,7 +330,7 @@
     width: 92px;
     height: 72px;
     overflow: hidden;
-    border-radius: 8px;
+    border-radius: 10px;
     background: var(--superficie-2);
     padding: 4px;
   }
@@ -399,19 +404,29 @@
   }
   .cuenta {
     margin: 10px 0 0;
-    color: var(--tinta-tenue);
+    color: var(--tinta-suave);
     font-size: 13.5px;
   }
   .grupo {
+    margin-top: 16px;
+    padding: 4px 10px 6px;
+    border: 1px solid var(--linea);
+    border-radius: var(--radio-tarjeta);
+    background: var(--superficie);
     content-visibility: auto;
     contain-intrinsic-size: auto 400px;
   }
   .grupo h2 {
-    margin: 22px 0 6px;
-    padding-bottom: 4px;
+    margin: 12px 6px 6px;
+    padding-bottom: 6px;
     border-bottom: 1px solid var(--linea);
     color: var(--titulos);
-    font-size: 17px;
+    font-family: var(--serif);
+    font-size: 19px;
+    font-weight: 600;
+  }
+  .grupo li:last-child {
+    border-bottom: 0;
   }
   ul {
     margin: 0;
@@ -432,7 +447,7 @@
     gap: 4px 14px;
     min-height: 48px;
     padding: 6px 6px;
-    border-radius: 8px;
+    border-radius: 10px;
     color: var(--tinta);
     text-decoration: none;
   }
@@ -461,7 +476,7 @@
   }
   .sec {
     min-width: 3.6em;
-    color: var(--tinta-tenue);
+    color: var(--tinta-suave);
     font-size: 13px;
     font-variant-numeric: tabular-nums;
     text-align: right;
@@ -474,9 +489,9 @@
     flex: none;
     width: 46px;
     border: 0;
-    border-radius: 8px;
+    border-radius: 10px;
     background: transparent;
-    color: var(--tinta-tenue);
+    color: var(--tinta-suave);
     font-size: 21px;
     cursor: pointer;
   }

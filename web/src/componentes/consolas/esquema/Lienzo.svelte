@@ -18,7 +18,6 @@
     enfocar = 0,
     alTocar,
     alPasar,
-    alPintar,
   }: {
     dibujo: Dibujo;
     capa: CapaHoja;
@@ -33,8 +32,6 @@
     enfocar?: number;
     alTocar: (i: Impacto | null) => void;
     alPasar: (i: Impacto | null, x: number, y: number) => void;
-    /** Called after every repaint with the view (sheet units -> CSS px): overlays («Un fotograma») follow it. */
-    alPintar?: (v: VistaEsquema, ancho: number, alto: number) => void;
   } = $props();
 
   let caja: HTMLDivElement | undefined = $state();
@@ -98,7 +95,6 @@
     st.teselas = n;
     // view for the end-to-end tests (tests/consolas.spec.ts): sheet units -> CSS pixels of the canvas
     (globalThis as unknown as { __epaEsquemaVista?: VistaEsquema }).__epaEsquemaVista = { ...v };
-    alPintar?.({ ...v }, anchoCss, altoCss);
   }
 
   function limites(): void {

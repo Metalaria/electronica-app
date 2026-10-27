@@ -1,153 +1,262 @@
-// «Un fotograma» of the Neo Geo AES (Board-Folk's NEO-AES3-5 schematic and board): which nets every bus access
-// moves. 68000 (U3): /CPU/A1–A23, /CPU/D0–D15, AS, UDS, LDS, R/W, DTACK (from NEO-C1, U4), ROMOE for the
-// cartridge's P ROM. LSPC2-A2 (U21): the slow VRAM (U17, U18) on /GRAPHICS/B0–B14 (address) and E0–E15 (data),
-// the fast VRAM (U19, U20) on C0–C10 and F0–F15; the sprite and fix graphics addresses on the cartridge's P bus
-// (P0–P23, latched with PCK1 for the C ROMs and PCK2 for the S ROM); the C ROM pixels come back already
-// serialised by the cartridge (GAD0–3, GBD0–3, DOTA, DOTB) and the S ROM bytes on FIXD0–7, both into NEO-B1 (U13),
-// which writes the line buffers and drives the palette RAM (U6, U7) (wiki.neogeodev.org).
+// «Un fotograma» of the Neo Geo AES (first NEO-AES board): sprite 2, a 16 × 16 tile $0240 with palette 5, line 7,
+// pixel 7 → point (167, 103).
+//
+// Checked against the NeoGeo Development Wiki («Sprites»: SCB1–SCB4, 96 sprites per line, 381 per frame; «Fix
+// layer»: map at $7000, 40 × 32 tiles top to bottom, two hidden rows at the top, palette in bits 15–12, always above
+// the sprites; «Palettes»: $400000, 256 palettes of 16 colours, backdrop at $401FFE; «Colors»: dark bit and the
+// 5-bit channels; «VRAM» registers $3C0000/$3C0002/$3C0004; «IRQ»: VBlank level 1, vector $64, acknowledged at
+// $3C000C) and the app's «Arquitectura» data (arquitectura/neogeo.ts, which cites SNK's own sheets: PRO-C0
+// decoding and /DTACK, LSPC-A0 and its two VRAMs, the P bus with PCK1 for the C ROM and PCK2 for the S ROM, the
+// cartridge's NEO-ZMC2 serialising 8 pixels onto GAD/GBD, the palette number taken from the P bus by the PRO-B0,
+// PA0–PA11 to the palette RAM, the 74LS273 latches and resistor DAC, the CXA1145). Arithmetic: SCB1 of sprite 2 at
+// 2 × 64 = $0080; SCB3 = (496 − 96) << 7 | 1 = $C801; SCB4 = 160 << 7 = $5000; fix map $7000 + 20 × 32 + (12 + 2)
+// = $728E; palette 5 colour 6 at $400000 + (5 × 16 + 6) × 2 = $4000AC, PA = $056; red: R0 (bit 14) and R4–R1
+// (bits 11–8) set = $4F00.
 
-import { crearDesM68k } from '../cpu/m68k';
-import { bus, linea, nombres } from '../redes';
-import type { AccesoBus, Adaptador, RedActiva } from '../tipos';
+import type { FotogramaMaquina } from '../tipos';
+import { PELOTA_4BPP, doblar } from '../ejemplo';
 
-const A = ['', ...Array.from({ length: 23 }, (_, i) => `/CPU/A${i + 1}`)];
-const D = nombres('/CPU/D', 16);
-const VLA = nombres('/GRAPHICS/B', 15);
-const VLD = nombres('/GRAPHICS/E', 16);
-const VRA = nombres('/GRAPHICS/C', 11);
-const VRD = nombres('/GRAPHICS/F', 16);
-const P = nombres('/Cartridge Slots/P', 24);
-const FIX = nombres('/Cartridge Slots/FIXD', 8);
-const PC = nombres('/VIDEO/PC', 16);
-const C68 = 4; // half master cycles per 68000 clock
-
-const NOMBRES_NG: Record<number, string> = {
-  0x300000: 'mando 1 (NEO-C1)', 0x300001: 'perro guardián (NEO-C1)', 0x320000: 'respuesta del Z80 (NEO-C1)', 0x380000: 'Start y Select (NEO-C1)',
-  0x3a001b: 'REG_CRTFIX (sin efecto en la AES)', 0x3a000b: 'REG_BRDFIX (sin efecto en la AES)', 0x3a0013: 'REG_SWPROM: vectores del cartucho', 0x3a0003: 'REG_SWPBIOS: vectores de la ROM del sistema',
-  0x3c0000: 'REG_VRAMADDR de la LSPC', 0x3c0002: 'REG_VRAMRW de la LSPC', 0x3c0004: 'REG_VRAMMOD de la LSPC', 0x3c0006: 'REG_LSPCMODE de la LSPC',
-  0x3c000c: 'REG_IRQACK de la LSPC', 0x401ffe: 'color de fondo (RAM de paleta)', 0x100000: 'RAM del 68000',
-};
-
-const QUIEN: Record<string, string> = { prom: 'CN5', ram: 'U1', io: 'U4', sistema: 'U35', lspc: 'U21', paleta: 'U6', bios: 'U36' };
-
-function acceso68k(ev: AccesoBus, out: RedActiva[]): void {
-  const k = ev.k ?? '';
-  const f = ev.fase;
-  bus(out, A, ev.a, 'direccion', 'U3');
-  if (k === 'iack') {
-    linea(out, 'IPL0', 0, 'interrupcion', 'U21');
-    linea(out, 'Net-(U3-VPA)', f >= C68 * 2 ? 0 : 1, 'control', 'U4');
-    return;
-  }
-  const escritura = !!(ev.f & 1);
-  const byte = k.endsWith('-byte');
-  const as = f >= C68 / 2;
-  linea(out, 'AS', as ? 0 : 1, 'control', 'U3');
-  linea(out, 'R{slash}W', escritura ? 0 : 1, 'control', 'U3');
-  const ds = escritura ? f >= C68 * 1.5 : as;
-  linea(out, 'Net-(U3-UDS)', (!byte || !(ev.a & 1)) && ds ? 0 : 1, 'control', 'U3');
-  linea(out, 'LDS', (!byte || !!(ev.a & 1)) && ds ? 0 : 1, 'control', 'U3');
-  const listos = escritura ? f >= C68 : f >= C68 * 2;
-  if (listos) {
-    if (byte) bus(out, ev.a & 1 ? D.slice(0, 8) : D.slice(8), ev.d, 'datos', escritura ? 'U3' : QUIEN[ev.c] ?? 'U4');
-    else bus(out, D, ev.d, 'datos', escritura ? 'U3' : QUIEN[ev.c] ?? 'U4');
-  }
-  if (as && ev.c === 'prom' && !escritura) linea(out, 'ROMOE', 0, 'seleccion', 'U4');
-  if (f >= C68 * 2) linea(out, 'Net-(U3-DTACK)', 0, 'control', 'U4');
-}
-
-function accesoLenta(ev: AccesoBus, out: RedActiva[]): void {
-  const escritura = !!(ev.f & 1);
-  bus(out, VLA, ev.a, 'direccion', 'U21');
-  if (ev.fase >= 3) bus(out, VLD, ev.d, 'datos', escritura ? 'U21' : 'U17');
-}
-
-function accesoRapida(ev: AccesoBus, out: RedActiva[]): void {
-  const escritura = !!(ev.f & 1);
-  bus(out, VRA, ev.a & 0x7ff, 'direccion', 'U21');
-  if (ev.fase >= 1) bus(out, VRD, ev.d, 'datos', escritura ? 'U21' : 'U19');
-}
-
-function accesoCrom(ev: AccesoBus, out: RedActiva[]): void {
-  // the LSPC puts the address on the P bus, the cartridge latches it with PCK1 and serialises the pixels
-  if (ev.fase < 6) {
-    bus(out, P, ev.a >> 2, 'direccion', 'U21');
-    linea(out, 'PCK1', ev.fase >= 2 ? 1 : 0, 'control', 'U21');
-  } else {
-    for (const n of ['GAD0', 'GAD1', 'GAD2', 'GAD3', 'GBD0', 'GBD1', 'GBD2', 'GBD3', 'DOTA', 'DOTB']) linea(out, n, null, 'datos', 'CN4');
-  }
-}
-
-function accesoSrom(ev: AccesoBus, out: RedActiva[]): void {
-  if (ev.fase < 6) {
-    bus(out, P, ev.a, 'direccion', 'U21');
-    linea(out, 'PCK2', ev.fase >= 2 ? 1 : 0, 'control', 'U21');
-  } else bus(out, FIX, ev.d, 'datos', 'CN4');
-}
-
-export const adaptador: Adaptador = {
+export const NEOGEO: FotogramaMaquina = {
   maquina: 'neogeo',
-  cpus: { m68k: crearDesM68k(NOMBRES_NG) },
-  redesAcceso(b, ev, out) {
-    if (b === 'm68k') acceso68k(ev, out);
-    else if (b === 'lenta') accesoLenta(ev, out);
-    else if (b === 'rapida') accesoRapida(ev, out);
-    else if (b === 'crom') accesoCrom(ev, out);
-    else if (b === 'srom') accesoSrom(ev, out);
+  entrada:
+    'La Neo Geo no tiene fondos de teselas: todo son sprites de 16 × 16 puntos más la capa fija de textos. Seguimos el sprite 2, una pelota con el dibujo $0240 y la paleta 5, desde que el 68000 lee su número en la ROM P hasta que su punto (167, 103) sale hacia la tele.',
+  ejemplo: {
+    ancho: 320,
+    alto: 224,
+    tesela: 16,
+    x: 160,
+    y: 96,
+    indices: doblar(PELOTA_4BPP),
+    fila: 7,
+    columna: 7,
+    // palette 5: colour 1 (dark red), 6 $4F00 (red), 15 $7FFF (white); backdrop $401FFE
+    colores: { 1: '#7b0000', 6: '#ff0000', 15: '#ffffff' },
+    fondo: '#4a8cff',
+    bpp: 4,
+    formato: 'planos',
+    sinHex: true,
+    ventana: [0, 8],
+    numero: '$0240',
+    color: '$4F00',
   },
-  redesSenal(s, nivel, out) {
-    if (s === 'ipl') linea(out, 'IPL0', nivel & 1 ? 0 : 1, 'interrupcion', 'U21');
-    else if (s === 'hsync' || s === 'vsync') {
-      linea(out, 'SYNC', nivel as 0 | 1, 'video', 'U21');
-      linea(out, '/RGB VIDEO/CSYNC', nivel as 0 | 1, 'video', 'U21');
-    }
-  },
-  redesPixel(_c, out) {
-    // NEO-B1 reads the palette RAM with the colour of the pixel; the resistor networks turn it into R, G and B
-    for (const n of PC) linea(out, n, null, 'video', 'U6');
-    for (const n of ['/RGB VIDEO/R', '/RGB VIDEO/G', '/RGB VIDEO/B']) linea(out, n, null, 'video', 'U13');
-  },
-  relojes: [
-    { red: '24M', grupo: 'reloj', nivel: null },
-    { red: '12M', grupo: 'reloj', nivel: null, desde: 'U21' },
-    { red: '68KCLK', grupo: 'reloj', nivel: null },
-    { red: '6MB', grupo: 'reloj', nivel: null, desde: 'U21' },
+  pasos: [
+    {
+      fase: 'Bus del 68000',
+      titulo: 'El 68000 lee una instrucción de la ROM P',
+      texto:
+        'El 68000 saca $000400 por A1–A23 y baja /AS. El PRO-C0 decodifica la dirección, activa la lectura de la ROM P del cartucho (ROMOE) y le contesta con /DTACK; por D0–D15 llega $33FC, el principio de MOVE.W #$0240,$100100. $0240 es el número del dibujo que vamos a seguir.',
+      bloques: ['m68k', 'proc0', 'prom'],
+      senales: [
+        { id: 'm-a', sentido: 1 },
+        { id: 'bus-a', sentido: 1, valor: '$000400' },
+        { id: 'p-a', sentido: 1 },
+        { id: 'r-a', sentido: 1 },
+        { id: 'p-sel', sentido: 1 },
+        { id: 'bus-sel', sentido: 1 },
+        { id: 'r-s', sentido: 1, nombre: 'ROMOE', valor: '0' },
+        { id: 'r-d', sentido: -1 },
+        { id: 'bus-d', sentido: -1, valor: '$33FC' },
+        { id: 'm-d', sentido: -1 },
+        { id: 'dtack', sentido: 1, valor: '0' },
+      ],
+      internos: [['/AS, R/W', '0, 1']],
+      pantalla: 'cuadro-anterior',
+    },
+    {
+      fase: 'Bus del 68000',
+      titulo: 'Y guarda el valor en la RAM de usuario',
+      texto:
+        'La escritura va a $100100 con R/W a 0. El PRO-C0 selecciona las dos SRAM de 32K × 8 de la RAM de usuario, una para el byte alto y otra para el bajo, que guardan $0240 hasta el borrado vertical.',
+      bloques: ['m68k', 'proc0', 'wram'],
+      senales: [
+        { id: 'm-a', sentido: 1 },
+        { id: 'bus-a', sentido: -1, valor: '$100100' },
+        { id: 'w-a', sentido: 1 },
+        { id: 'p-sel', sentido: 1 },
+        { id: 'bus-sel', sentido: -1 },
+        { id: 'w-s', sentido: 1, nombre: '/WE', valor: '0' },
+        { id: 'm-d', sentido: 1 },
+        { id: 'bus-d', sentido: -1, valor: '$0240' },
+        { id: 'w-d', sentido: 1 },
+        { id: 'dtack', sentido: 1, valor: '0' },
+      ],
+      internos: [['/AS, R/W', '0, 0']],
+      pantalla: 'cuadro-anterior',
+    },
+    {
+      fase: 'Borrado vertical',
+      titulo: 'Línea 224: interrupción de nivel 1',
+      texto:
+        'Tras las 224 líneas visibles el LSPC baja /IPL0: interrupción de nivel 1, la del borrado vertical. El 68000 salta a la rutina del vector $64, que la reconoce escribiendo 4 en $3C000C y reinicia el perro guardián escribiendo en $300001.',
+      bloques: ['lspc', 'm68k'],
+      senales: [{ id: 'ipl', sentido: 1, nombre: '/IPL0', valor: '0' }],
+      internos: [
+        ['Nivel', '1'],
+        ['Vector', '$64'],
+      ],
+      pantalla: 'cuadro-anterior',
+      nota: 'SNK pide tocar la VRAM y la paleta durante el borrado vertical.',
+    },
+    {
+      fase: 'Borrado vertical',
+      titulo: 'El sprite 2, en la VRAM lenta',
+      texto:
+        'El 68000 no ve la VRAM: le pasa al LSPC la dirección en $3C0000 y los datos en $3C0002. La primera tesela del sprite 2 está en SCB1, en $0080: escribe $0240 (el número del dibujo) y $0500 (paleta 5, sin volteos). El PRO-C0 baja LSPWE y el LSPC lo copia en la VRAM lenta.',
+      bloques: ['m68k', 'proc0', 'lspc', 'svram'],
+      senales: [
+        { id: 'm-a', sentido: 1 },
+        { id: 'bus-a', sentido: 1, valor: '$3C0000, $3C0002' },
+        { id: 'l-a', sentido: 1 },
+        { id: 'lspsel', sentido: 1, nombre: 'LSPWE', valor: '0' },
+        { id: 'm-d', sentido: 1 },
+        { id: 'bus-d', sentido: 1, valor: '$0080, $0240, $0500' },
+        { id: 'l-d', sentido: 1 },
+        { id: 'svram', sentido: 1, nombre: 'SCB1 $0080', valor: '$0240, $0500' },
+      ],
+      pantalla: 'vram',
+      nota: 'El dibujo $0240 no se copia: está en las ROM C del cartucho, 128 bytes por tesela de 16 × 16.',
+    },
+    {
+      fase: 'Borrado vertical',
+      titulo: 'La posición, en la VRAM rápida',
+      texto:
+        'Por el mismo camino escribe en la VRAM rápida la altura y la posición del sprite: SCB3 ($8202) = $C801, es decir, Y = 496 − 96 y una tesela de alto, y SCB4 ($8402) = $5000, X = 160.',
+      bloques: ['m68k', 'proc0', 'lspc', 'fvram'],
+      senales: [
+        { id: 'bus-a', sentido: 1, valor: '$3C0000, $3C0002' },
+        { id: 'lspsel', sentido: 1, nombre: 'LSPWE', valor: '0' },
+        { id: 'bus-d', sentido: 1, valor: '$8202, $C801…' },
+        { id: 'l-d', sentido: 1 },
+        { id: 'fvram', sentido: 1, valor: '$8202, $8402' },
+      ],
+      internos: [
+        ['SCB3 ($8202)', '$C801'],
+        ['SCB4 ($8402)', '$5000'],
+      ],
+      pantalla: 'mapa',
+    },
+    {
+      fase: 'Borrado vertical',
+      titulo: 'El color, directamente en la paleta',
+      texto:
+        'La RAM de paleta sí está en el bus del 68000: escribe $4F00 en $4000AC, el color 6 de la paleta 5. Es un rojo con los cinco bits al máximo, repartidos entre los bits 11–8 y el bit 14; el bit 15, el de oscurecer, está a 0.',
+      bloques: ['m68k', 'proc0', 'palram'],
+      senales: [
+        { id: 'm-a', sentido: 1 },
+        { id: 'bus-a', sentido: 1, valor: '$4000AC' },
+        { id: 'pal-a', sentido: 1 },
+        { id: 'p-sel', sentido: 1 },
+        { id: 'bus-sel', sentido: 1 },
+        { id: 'pal-s', sentido: 1, nombre: 'selección', valor: '0' },
+        { id: 'm-d', sentido: 1 },
+        { id: 'bus-d', sentido: 1, valor: '$4F00' },
+        { id: 'pal-d', sentido: 1 },
+      ],
+      pantalla: 'mapa',
+    },
+    {
+      fase: 'Línea a línea',
+      titulo: 'El LSPC busca los sprites de la línea',
+      texto:
+        'El LSPC prepara cada línea mientras se muestra otra. Para la línea 103 recorre las alturas y posiciones Y de SCB3 en la VRAM rápida y apunta los sprites que la cruzan, hasta 96. El sprite 2 entra: su fila 7 cae en esa línea.',
+      bloques: ['lspc', 'fvram'],
+      senales: [{ id: 'fvram', sentido: -1, valor: 'SCB3: $C801' }],
+      internos: [['Fila del sprite 2', '103 − 96 = 7']],
+      pantalla: 'mapa',
+    },
+    {
+      fase: 'Línea a línea',
+      titulo: 'Número de dibujo y reducción',
+      texto:
+        'De la VRAM lenta lee la entrada de SCB1: dibujo $0240, paleta 5. Con la reducción vertical de SCB2, la tabla de la ROM L0 le dice qué línea del dibujo toca; a tamaño completo es la misma, la 7.',
+      bloques: ['lspc', 'svram', 'l0'],
+      senales: [
+        { id: 'svram', sentido: -1, valor: '$0240, $0500' },
+        { id: 'bus-p', sentido: 1, nombre: 'P0–P23', valor: 'L0' },
+        { id: 'p-l0', sentido: 1 },
+      ],
+      pantalla: 'mapa',
+    },
+    {
+      fase: 'Línea a línea',
+      titulo: 'La ROM C, por el bus P',
+      texto:
+        'El LSPC pone en el bus P la dirección del dibujo (número $0240, línea 7, mitad izquierda con CA4 = 0) y la retiene en el cartucho con un pulso de PCK1; con el mismo pulso el PRO-B0 se queda con el número de paleta, 5. Las dos ROM C devuelven 32 bits: los cuatro planos de 8 puntos.',
+      bloques: ['lspc', 'crom', 'buf'],
+      senales: [
+        { id: 'bus-p', sentido: 1, nombre: 'P0–P23', valor: '$0240, línea 7' },
+        { id: 'pck1', sentido: 1, valor: '↑' },
+        { id: 'p-c', sentido: 1 },
+      ],
+      internos: [['CA4', '0 (puntos 0–7)']],
+      pantalla: 'patron',
+    },
+    {
+      fase: 'Línea a línea',
+      titulo: 'El NEO-ZMC2 junta los planos',
+      texto:
+        'El NEO-ZMC2 del cartucho toma un bit de cada plano para cada punto y manda dos puntos de 4 bits por ciclo de 12 MHz por GAD y GBD. El punto 7 de la fila da 0, 1, 1 y 0 en los planos 0 a 3: índice 6. Se escribe en el buffer de línea, en la X = 167, junto con la paleta 5.',
+      bloques: ['crom', 'buf'],
+      senales: [{ id: 'gad', sentido: 1, valor: '2 puntos por ciclo' }],
+      internos: [['Buffer, X = 167', 'paleta 5, color 6']],
+      pantalla: 'mezcla',
+    },
+    {
+      fase: 'Línea a línea',
+      titulo: 'La capa fija, por encima de todo',
+      texto:
+        'En la misma pasada el LSPC lee la capa fija: la entrada $728E del mapa vale $0020, una tesela vacía. Pide su fila a la ROM S por el bus P con PCK2 y llegan ceros por FIXD: transparente. Como ningún sprite posterior al 2 ocupa el punto, este se queda con el color de la pelota.',
+      bloques: ['lspc', 'svram', 'srom', 'buf'],
+      senales: [
+        { id: 'svram', sentido: -1, valor: '$728E: $0020' },
+        { id: 'bus-p', sentido: 1, nombre: 'P0–P23', valor: 'fija $020' },
+        { id: 'pck2', sentido: 1, valor: '↑' },
+        { id: 'p-s', sentido: 1 },
+        { id: 'fix', sentido: 1, valor: '$00' },
+      ],
+      pantalla: 'prioridad',
+      nota: 'La capa fija es transparente en (167, 103) y ningún otro sprite lo tapa: gana el sprite 2.',
+    },
+    {
+      fase: 'Paleta y salida',
+      titulo: 'Del buffer de línea a la paleta',
+      texto:
+        'En la línea siguiente los buffers se intercambian y el que llenamos se lee punto a punto. Para el punto 167 da la paleta 5 y el color 6, que forman la dirección de la RAM de paleta PA0–PA11 = $056; la RAM contesta por PC0–PC15 con $4F00.',
+      bloques: ['buf', 'palram'],
+      senales: [
+        { id: 'pa', sentido: 1, valor: '$056' },
+        { id: 'color', sentido: 1, valor: '$4F00' },
+      ],
+      pantalla: 'paleta',
+    },
+    {
+      fase: 'Paleta y salida',
+      titulo: 'El punto sale hacia la tele',
+      texto:
+        'Los 74LS273 retienen el color con el reloj de punto de 6 MHz y las redes de resistencias lo convierten en tres tensiones, R, G y B. El CXA1145 las convierte en vídeo compuesto y las lleva, con el RGB, al conector de A/V. El punto (167, 103) dura 167 ns.',
+      bloques: ['dac', 'enc'],
+      senales: [{ id: 'rgb', sentido: 1, valor: 'rojo' }],
+      internos: [['Punto', '(167, 103)']],
+      pantalla: 'punto',
+    },
+    {
+      fase: 'Fin del cuadro',
+      titulo: 'Línea 224: nivel 1 otra vez',
+      texto:
+        'Tras las 224 líneas visibles el LSPC vuelve a bajar /IPL0. El 68000, que ha preparado el cuadro siguiente en la RAM de usuario, vuelve a la rutina del vector $64, unas 59 veces por segundo, cada 264 líneas.',
+      bloques: ['lspc', 'm68k'],
+      senales: [{ id: 'ipl', sentido: 1, nombre: '/IPL0', valor: '0' }],
+      pantalla: 'cuadro',
+    },
   ],
-  chips: {
-    prom: ['CN5'], ram: ['U1', 'U2'], io: ['U4'], sistema: ['U35'], lspc: ['U21'], paleta: ['U6', 'U7'], bios: ['U36'],
-    'vram-lenta': ['U17', 'U18'], 'vram-rapida': ['U19', 'U20'], crom: ['CN4', 'U13'], srom: ['CN4', 'U13'],
-  },
-  avisoPlaca:
-    'La placa es la recreación KiCad de Board Folk de la NEO-AES3-5 (2.ª generación del chipset, mismas referencias y redes que el esquema); la foto del libro es una NEO-AES de 1.ª generación. Las ROM C y S están en el cartucho: en la placa solo se ven su bus de direcciones (P0–P23) y lo que vuelve ya convertido en puntos.',
-  fases: {
-    activa: 'Cada 16 ciclos del reloj maestro la LSPC analiza cinco sprites para la línea N + 2, lee de la VRAM la entrada de la lista, la reducción, la Y, la X y el patrón de un sprite de la línea N + 1 y pide 16 puntos a las ROM C; mientras, saca la línea actual con la capa fija encima.',
-    borrado: 'Borrado: sin imagen (en NTSC los bordes van apagados); la LSPC sigue analizando y dibujando la línea siguiente en el búfer.',
-    hsync: 'Sincronismo horizontal: 28 puntos.',
-    vsync: 'Sincronismo vertical: las líneas $F8–$FF del contador.',
-  },
-  mapa: [
-    { desde: 0x000000, hasta: 0x0fffff, chip: 'prom', titulo: 'ROM P del cartucho (vectores del cartucho tras REG_SWPROM)' },
-    { desde: 0x100000, hasta: 0x10ffff, chip: 'ram', titulo: 'RAM de trabajo 64 KB (U1, U2)' },
-    { desde: 0x300000, hasta: 0x39ffff, chip: 'io', titulo: 'NEO-C1: mandos, perro guardián, Z80' },
-    { desde: 0x3a0000, hasta: 0x3a001f, chip: 'sistema', titulo: 'Registros del sistema (latch U35)' },
-    { desde: 0x3c0000, hasta: 0x3c000f, chip: 'lspc', titulo: 'Registros de la LSPC: VRAM, modo, temporizador, IRQ' },
-    { desde: 0x400000, hasta: 0x401fff, chip: 'paleta', titulo: 'RAM de paleta (U6, U7)' },
-    { desde: 0xc00000, hasta: 0xc1ffff, chip: 'bios', titulo: 'ROM del sistema (U36): en «Un juego de verdad», nullbios, la libre de ngdevkit; la demo no la usa' },
-  ],
-  hojaInicial: 8,
-  fidelidad:
-    'Exacto: cada ciclo de bus del 68000 (Moira, validado con SingleStepTests 680x0) y el instante de cada píxel según el modelo. Modelo propio, no un emulador probado: la LSPC reparte sus accesos como describe wiki.neogeodev.org (ranuras de 16 ciclos con 4 accesos a la VRAM lenta y 10 a la rápida, 2 lecturas de la ROM C por línea de sprite, 4 de la ROM S por casilla fija; el análisis de sprites aún está en borrador allí) y el contenido de cada acceso sale de la VRAM real de la demostración; la imagen se compone con esos mismos datos. Ilustrativo: la fase exacta de cada ranura respecto al sincronismo y la forma de las líneas. La ROM del sistema de SNK no se incluye nunca: la demo empieza en USER con la VRAM ya borrada, y «Un juego de verdad» arranca desde el reset con nullbios, la ROM del sistema libre de ngdevkit (LGPL-3.0+), que hace lo mínimo (llamar a USER, conmutar vectores, leer los mandos en cada cuadro). Sin Z80 de sonido: el 68000 lee 0 en su puerto de respuesta. La señal es NTSC (264 líneas); las AES PAL tienen 312 líneas.',
   fuentes: [
-    { titulo: 'wiki.neogeodev.org: «Rendering logic»', url: 'https://wiki.neogeodev.org/index.php/Rendering_logic', uso: 'Ranuras de la VRAM lenta y rápida, análisis de sprites, ROM C y S, búferes de línea.' },
-    { titulo: 'wiki.neogeodev.org: «Display timing»', url: 'https://wiki.neogeodev.org/index.php/Display_timing', uso: 'Tramos de la línea y del cuadro, contador de líneas.' },
-    { titulo: 'wiki.neogeodev.org: «Sprites», «Fix layer», «VRAM», «Memory mapped registers»', url: 'https://wiki.neogeodev.org/index.php/Sprites', uso: 'SCB1–SCB4, enganche, capa fija, registros de la LSPC.' },
-    { titulo: 'MAME, src/mame/snk/neogeo.cpp (BSD-3)', url: 'https://github.com/mamedev/mame/tree/master/src/mame/snk', uso: 'Instante de la interrupción vertical y constantes de la pantalla.' },
-    { titulo: 'ngdevkit, tiletool.py (LGPL-3)', url: 'https://github.com/dciabrin/ngdevkit', uso: 'Formato de las ROM C y S (la demostración las codifica con su propio guion).' },
-    { titulo: 'Moira, 68000 de Dirk W. Hoffmann (MIT)', url: 'https://github.com/dirkwhoffmann/Moira', uso: '68000 ciclo a ciclo.' },
-    { titulo: 'Damien Ciabrini, ngdevkit: nullbios (LGPL-3.0+)', url: 'https://github.com/dciabrin/ngdevkit', uso: 'nullbios (carpeta nullbios, commit 5106cbd): ROM del sistema libre con la que arranca «Un juego de verdad» (en vez de la de SNK, que no se puede distribuir).' },
-    { titulo: 'Damien Ciabrini, ngdevkit-examples: 05-scrolling (LGPL-3.0+)', url: 'https://github.com/dciabrin/ngdevkit-examples', uso: '«Un juego de verdad» (05-scrolling, commit 4e7900b): paralaje con 78 sprites; compilado con contenido/consolas_juegos/neogeo/construir.sh.' },
-    { titulo: 'ansimuz, «Country side platform tiles» (CC0)', url: 'https://opengameart.org/content/country-side-platform-tiles', uso: 'Fondos de «Un juego de verdad».' },
+    { titulo: 'NeoGeo Development Wiki: Sprites', url: 'https://wiki.neogeodev.org/index.php/Sprites', nota: 'SCB1–SCB4, límites por línea y por cuadro' },
+    { titulo: 'NeoGeo Development Wiki: Fix layer', url: 'https://wiki.neogeodev.org/index.php/Fix_layer', nota: 'mapa en $7000, filas ocultas, prioridad' },
+    { titulo: 'NeoGeo Development Wiki: Palettes', url: 'https://wiki.neogeodev.org/index.php/Palettes', nota: '$400000, color de fondo en $401FFE' },
+    { titulo: 'NeoGeo Development Wiki: Colors', url: 'https://wiki.neogeodev.org/index.php/Colors', nota: 'bit de oscurecer y canales de 5 bits' },
+    { titulo: 'NeoGeo Development Wiki: L0 ROM', url: 'https://wiki.neogeodev.org/index.php/L0_ROM', nota: 'reducción vertical' },
+    { titulo: 'NeoGeo Development Wiki: Layer', url: 'https://wiki.neogeodev.org/index.php/Layer', nota: 'orden de las capas' },
+    { titulo: 'NeoGeo Development Wiki: PRO-CT0', url: 'https://wiki.neogeodev.org/index.php/PRO-CT0', nota: 'el serializador de los gráficos, luego NEO-ZMC2' },
+    { titulo: 'Rodrigo Copetti: Neo Geo Architecture', url: 'https://www.copetti.org/writings/consoles/neogeo/' },
   ],
 };
-
-export default adaptador;

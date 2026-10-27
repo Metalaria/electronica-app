@@ -10,6 +10,7 @@ const CARGADORES: Record<IdMaquina, () => Promise<Maquina>> = {
   megadrive: () => import('./megadrive').then((m) => m.MEGADRIVE),
   gb: () => import('./gb').then((m) => m.GB),
   gbc: () => import('./gbc').then((m) => m.GBC),
+  snes: () => import('./snes').then((m) => m.SNES),
 };
 
 export function cargarArquitectura(id: IdMaquina): Promise<Maquina> {

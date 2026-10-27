@@ -34,11 +34,11 @@ for (const e of EQUIPOS) {
     const n = `${e.id}-${tema}`;
     // start page
     await page.goto(base + '#/');
-    await page.waitForSelector('.mapa .tesela');
-    await page.waitForSelector('.repaso-hoy .cifra[data-pendientes]');
+    await page.waitForSelector('.camino-libro a.nodo');
+    await page.waitForSelector('.repaso-hoy[data-pendientes]');
     await page.waitForTimeout(1200);
     await page.screenshot({ path: `${out}${n}-inicio.png` });
-    await page.locator('section.mapa').scrollIntoViewIfNeeded();
+    await page.locator('section.camino-libro').scrollIntoViewIfNeeded();
     await page.waitForTimeout(300);
     await page.screenshot({ path: `${out}${n}-inicio-mapa.png` });
     // previews: figure, section
