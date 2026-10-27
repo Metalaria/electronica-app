@@ -1659,23 +1659,30 @@ la búsqueda y el cajón del índice, y deshace los saltos de referencias.
 
 El flujo `.github/workflows/compilar.yml` compila los tres instaladores en máquinas de GitHub cada vez que
 se sube algo a `main` (salvo cambios solo en ficheros `.md` o en `contenido/`), con cada etiqueta `v…` y
-a mano desde la pestaña «Actions». Tiene cuatro trabajos:
+a mano desde la pestaña «Actions». Tiene cinco trabajos:
 
-| Trabajo | Máquina | Resultado (artefacto) |
+| Trabajo | Máquina | Resultado |
 |---|---|---|
-| Windows (.exe y .msi) | `windows-latest` | `Electronica-Windows`: `Electronica-<versión>-windows-x64-setup.exe` y `…-windows-x64.msi` |
-| macOS (.dmg universal) | `macos-latest` | `Electronica-macOS`: `Electronica-<versión>-macos-universal.dmg` (Apple Silicon e Intel) |
-| Android (.apk firmado) | `ubuntu-latest` | `Electronica-Android`: `Electronica-<versión>-android.apk` (arm64-v8a) |
-| Publicar en Releases | `ubuntu-latest` | solo con etiquetas `v…`: una «Release» con los cuatro instaladores y `SHA256SUMS.txt` |
+| Preparar la release | `ubuntu-latest` | solo con etiquetas `v…`: crea la «Release» como borrador |
+| Windows (.exe y .msi) | `windows-latest` | `Electronica-<versión>-windows-x64-setup.exe` y `…-windows-x64.msi` |
+| macOS (.dmg universal) | `macos-latest` | `Electronica-<versión>-macos-universal.dmg` (Apple Silicon e Intel) |
+| Android (.apk firmado) | `ubuntu-latest` | `Electronica-<versión>-android.apk` (arm64-v8a) |
+| Publicar en Releases | `ubuntu-latest` | solo con etiquetas `v…`: junta las sumas en `SHA256SUMS.txt` y publica la «Release» |
 
-Cada artefacto incluye un fichero `SHA256SUMS-…txt` con las sumas de comprobación. El trabajo de Android
+Con una etiqueta, cada trabajo de compilación sube sus instaladores directamente a la «Release» en
+borrador, y el último la publica cuando están los tres. No se usan artefactos de Actions: ocupan la cuota
+de almacenamiento del repositorio privado, y con la cuota llena la compilación de la v0.9.0 falló al
+subirlos (los ficheros de una «Release» no cuentan). Un envío a `main` solo comprueba que todo compila; una
+ejecución a mano desde «Actions» guarda además los instaladores como artefactos durante un día.
+
+Cada plataforma genera su fichero `SHA256SUMS-…txt` con las sumas de comprobación. El trabajo de Android
 genera el proyecto con `tauri android init`, copia los iconos y configura la firma con
 `npm run android:preparar`, a partir de cuatro secretos del repositorio.
 
 **Coste**: en un repositorio privado, los minutos de Windows y, sobre todo, de macOS consumen la cuota
 gratuita de GitHub Actions mucho más deprisa que los de Linux, y los artefactos ocupan cuota de
-almacenamiento (por eso se conservan solo 14 días; los ficheros de una «Release» no caducan). Consulta el
-consumo en «Settings» → «Billing and plans» de tu cuenta.
+almacenamiento (por eso solo se guardan en las ejecuciones a mano, y un día; los ficheros de una «Release»
+no cuentan ni caducan). Consulta el consumo en «Settings» → «Billing and plans» de tu cuenta.
 
 ### 1. Crear el repositorio privado
 
@@ -1752,9 +1759,10 @@ izquierda) → «Run workflow» → «Branch: main» → «Run workflow».
 
 ### 4. Descargar los instaladores
 
-Pestaña «Actions» → la ejecución (marca verde) → abajo, en «Artifacts», pulsar `Electronica-Windows`,
-`Electronica-macOS` o `Electronica-Android`. Cada uno se descarga como `.zip` con el instalador y su suma
-SHA-256. Se borran a los 14 días.
+Con una etiqueta `v…`, en la «Release» de esa versión (a la derecha de la página del repositorio). Sin
+etiqueta, solo en una ejecución lanzada a mano: pestaña «Actions» → la ejecución (marca verde) → abajo, en
+«Artifacts», pulsar `Electronica-Windows`, `Electronica-macOS` o `Electronica-Android`. Cada uno se
+descarga como `.zip` con el instalador y su suma SHA-256. Se borran al día siguiente.
 
 ### 5. Publicar una versión con etiqueta
 

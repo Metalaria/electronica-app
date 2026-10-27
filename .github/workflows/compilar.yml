@@ -1,9 +1,13 @@
 # Builds the installers of the reader:
-#   - Windows: NSIS .exe and .msi            -> artifact Electronica-Windows
-#   - macOS:   universal .dmg (arm64 + x64)  -> artifact Electronica-macOS
-#   - Android: signed release .apk           -> artifact Electronica-Android
-# On a tag vX.Y.Z the version is taken from the tag and the installers are also attached to a
-# GitHub Release. The generated book content (web/public/libro/) is versioned in the repository
+#   - Windows: NSIS .exe and .msi
+#   - macOS:   universal .dmg (arm64 + x64)
+#   - Android: signed release .apk
+# On a tag vX.Y.Z the version is taken from the tag: a draft GitHub Release is created first, each
+# build job attaches its installers to it directly, and the last job adds SHA256SUMS.txt and
+# publishes it. No Actions artifacts are used for tags: they count against the private repository's
+# storage quota, and a full quota made the v0.9.0 build fail at the upload (release assets do not
+# count). A push to main only checks that everything builds; a manual run (workflow_dispatch) also
+# keeps the installers as one-day artifacts. The generated book content (web/public/libro/) is versioned in the repository
 # because it cannot be regenerated here (it needs the book sources, fonts and photos).
 name: Compilar
 
@@ -37,9 +41,42 @@ defaults:
     shell: bash
 
 jobs:
+  borrador:
+    name: Preparar la release
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - name: Create the draft release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          NOTAS: |
+            Instaladores de uso privado (sin firma de código en Windows y macOS).
+            - Windows: Electronica-*-windows-x64-setup.exe (o el .msi).
+            - macOS: Electronica-*-macos-universal.dmg (Apple Silicon e Intel).
+            - Android: Electronica-*-android.apk (firmado con la clave propia).
+            Sumas SHA-256 en SHA256SUMS.txt.
+        run: |
+          # Created here, once, so the three build jobs never race to create it (drafts are not unique
+          # per tag). A rerun finds it already there.
+          if gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "La release $TAG ya existe; se reutiliza."
+          else
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --draft --verify-tag \
+              --title "Electrónica Práctica Avanzada $TAG" --notes "$NOTAS"
+          fi
+
   windows:
     name: Windows (.exe y .msi)
+    needs: borrador
+    # borrador is skipped outside tags: build anyway, unless it failed
+    if: ${{ !cancelled() && needs.borrador.result != 'failure' }}
     runs-on: windows-latest
+    permissions:
+      contents: write
     timeout-minutes: 120
     steps:
       - name: Checkout
@@ -107,20 +144,31 @@ jobs:
           cp "${msi[0]}" "salida/Electronica-${VERSION}-windows-x64.msi"
           (cd salida && sums="$(sha256sum -- *)" && printf '%s\n' "$sums" | tee SHA256SUMS-windows.txt)
 
+      - name: Attach to the release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: gh release upload "$TAG" salida/* --repo "$GITHUB_REPOSITORY" --clobber
+
       - name: Upload artifact
+        # Only on a manual run: they count against the private repository's Actions storage quota
+        if: github.event_name == 'workflow_dispatch' && github.ref_type != 'tag'
         uses: actions/upload-artifact@v6
         with:
           name: Electronica-Windows
           path: salida/
           if-no-files-found: error
-          # the release job copies them into the GitHub release: one day is enough (they count against the
-          # private repository's Actions storage)
           retention-days: 1
           compression-level: 0
 
   macos:
     name: macOS (.dmg universal)
+    needs: borrador
+    if: ${{ !cancelled() && needs.borrador.result != 'failure' }}
     runs-on: macos-latest
+    permissions:
+      contents: write
     timeout-minutes: 120
     steps:
       - name: Checkout
@@ -195,20 +243,31 @@ jobs:
           cp "${dmg[0]}" "salida/Electronica-${VERSION}-macos-universal.dmg"
           (cd salida && sums="$(shasum -a 256 -- *)" && printf '%s\n' "$sums" | tee SHA256SUMS-macos.txt)
 
+      - name: Attach to the release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: gh release upload "$TAG" salida/* --repo "$GITHUB_REPOSITORY" --clobber
+
       - name: Upload artifact
+        # Only on a manual run: they count against the private repository's Actions storage quota
+        if: github.event_name == 'workflow_dispatch' && github.ref_type != 'tag'
         uses: actions/upload-artifact@v6
         with:
           name: Electronica-macOS
           path: salida/
           if-no-files-found: error
-          # the release job copies them into the GitHub release: one day is enough (they count against the
-          # private repository's Actions storage)
           retention-days: 1
           compression-level: 0
 
   android:
     name: Android (.apk firmado)
+    needs: borrador
+    if: ${{ !cancelled() && needs.borrador.result != 'failure' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     timeout-minutes: 120
     env:
       # NDK used by Rust to link the native library (the default NDK of the current Android Gradle plugin).
@@ -388,14 +447,21 @@ jobs:
           cp "$apk" "salida/Electronica-${VERSION}-android.apk"
           (cd salida && sums="$(sha256sum -- *)" && printf '%s\n' "$sums" | tee SHA256SUMS-android.txt)
 
+      - name: Attach to the release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+        run: gh release upload "$TAG" salida/* --repo "$GITHUB_REPOSITORY" --clobber
+
       - name: Upload artifact
+        # Only on a manual run: they count against the private repository's Actions storage quota
+        if: github.event_name == 'workflow_dispatch' && github.ref_type != 'tag'
         uses: actions/upload-artifact@v6
         with:
           name: Electronica-Android
           path: salida/
           if-no-files-found: error
-          # the release job copies them into the GitHub release: one day is enough (they count against the
-          # private repository's Actions storage)
           retention-days: 1
           compression-level: 0
 
@@ -405,38 +471,30 @@ jobs:
 
   publicar:
     name: Publicar en Releases
-    if: startsWith(github.ref, 'refs/tags/v')
-    needs: [windows, macos, android]
+    if: github.ref_type == 'tag'
+    needs: [borrador, windows, macos, android]
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 15
     permissions:
       contents: write
     steps:
-      - name: Download the installers
-        uses: actions/download-artifact@v7
-        with:
-          pattern: Electronica-*
-          path: salida
-          merge-multiple: true
-
-      - name: Checksums
+      - name: Checksums and publish
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
         run: |
-          cd salida
-          rm -f SHA256SUMS-*.txt
-          sums="$(sha256sum -- *)"
-          printf '%s\n' "$sums" | tee SHA256SUMS.txt
-
-      - name: Create the release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: Electrónica Práctica Avanzada ${{ github.ref_name }}
-          body: |
-            Instaladores de uso privado (sin firma de código en Windows y macOS).
-            - Windows: Electronica-*-windows-x64-setup.exe (o el .msi).
-            - macOS: Electronica-*-macos-universal.dmg (Apple Silicon e Intel).
-            - Android: Electronica-*-android.apk (firmado con la clave propia).
-            Sumas SHA-256 en SHA256SUMS.txt.
-          files: salida/*
-          fail_on_unmatched_files: true
-          draft: false
-          prerelease: false
+          # Each build job attached its own SHA256SUMS-<platform>.txt next to its installers: they are
+          # merged into a single SHA256SUMS.txt (same "hash  name" lines) without downloading the installers.
+          gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern 'SHA256SUMS-*.txt' --dir sumas --clobber
+          n=$(find sumas -name 'SHA256SUMS-*.txt' | wc -l)
+          if [ "$n" -ne 3 ]; then
+            echo "::error::Se esperaban 3 ficheros SHA256SUMS-*.txt en la release y hay $n"
+            exit 1
+          fi
+          cat sumas/SHA256SUMS-*.txt | sort -k2 > SHA256SUMS.txt
+          cat SHA256SUMS.txt
+          gh release upload "$TAG" SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --clobber
+          for f in sumas/SHA256SUMS-*.txt; do
+            gh release delete-asset "$TAG" "$(basename "$f")" --repo "$GITHUB_REPOSITORY" --yes
+          done
+          gh release edit "$TAG" --repo "$GITHUB_REPOSITORY" --draft=false --latest
