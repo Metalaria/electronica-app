@@ -6,20 +6,17 @@
 # build job attaches its installers to it directly, and the last job adds SHA256SUMS.txt and
 # publishes it. No Actions artifacts are used for tags: they count against the private repository's
 # storage quota, and a full quota made the v0.9.0 build fail at the upload (release assets do not
-# count). A push to main only checks that everything builds; a manual run (workflow_dispatch) also
-# keeps the installers as one-day artifacts. The generated book content (web/public/libro/) is versioned in the repository
-# because it cannot be regenerated here (it needs the book sources, fonts and photos).
+# count). A push to main does not build: the free Actions minutes ran out in October 2026 (macOS
+# minutes count ten times and Windows twice in a private repository), and every version was being
+# built twice, once for main and once for its tag. To build without a tag, run it by hand
+# (workflow_dispatch), which also keeps the installers as one-day artifacts.
+# The generated book content (web/public/libro/) is versioned in the repository because it cannot
+# be regenerated here (it needs the book sources, fonts and photos).
 name: Compilar
 
 on:
   push:
-    branches: [main]
     tags: ['v*']
-    # Documentation and the content generator do not change the installers (path filters are
-    # not evaluated for tag pushes, so tags always build).
-    paths-ignore:
-      - '**.md'
-      - 'contenido/**'
   workflow_dispatch:
 
 permissions:
@@ -27,7 +24,7 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
-  # A newer push to main supersedes the running build; tag builds are never cancelled.
+  # A newer manual run on the same branch supersedes the running one; tag builds are never cancelled.
   cancel-in-progress: ${{ github.ref_type != 'tag' }}
 
 env:

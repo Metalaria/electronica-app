@@ -1657,9 +1657,11 @@ la búsqueda y el cajón del índice, y deshace los saltos de referencias.
 
 ## Compilar con GitHub Actions
 
-El flujo `.github/workflows/compilar.yml` compila los tres instaladores en máquinas de GitHub cada vez que
-se sube algo a `main` (salvo cambios solo en ficheros `.md` o en `contenido/`), con cada etiqueta `v…` y
-a mano desde la pestaña «Actions». Tiene cinco trabajos:
+El flujo `.github/workflows/compilar.yml` compila los tres instaladores en máquinas de GitHub con cada
+etiqueta `v…` y a mano desde la pestaña «Actions». Subir algo a `main` no compila: en octubre de 2026 se
+agotaron los 2000 minutos gratuitos del mes (en un repositorio privado cada minuto de macOS cuenta por 10
+y cada uno de Windows por 2) y cada versión se compilaba dos veces, con `main` y con su etiqueta. Tiene
+cinco trabajos:
 
 | Trabajo | Máquina | Resultado |
 |---|---|---|
@@ -1672,8 +1674,8 @@ a mano desde la pestaña «Actions». Tiene cinco trabajos:
 Con una etiqueta, cada trabajo de compilación sube sus instaladores directamente a la «Release» en
 borrador, y el último la publica cuando están los tres. No se usan artefactos de Actions: ocupan la cuota
 de almacenamiento del repositorio privado, y con la cuota llena la compilación de la v0.9.0 falló al
-subirlos (los ficheros de una «Release» no cuentan). Un envío a `main` solo comprueba que todo compila; una
-ejecución a mano desde «Actions» guarda además los instaladores como artefactos durante un día.
+subirlos (los ficheros de una «Release» no cuentan). Una ejecución a mano desde «Actions» guarda los
+instaladores como artefactos durante un día.
 
 Cada plataforma genera su fichero `SHA256SUMS-…txt` con las sumas de comprobación. El trabajo de Android
 genera el proyecto con `tauri android init`, copia los iconos y configura la firma con
@@ -1754,8 +1756,8 @@ Si el envío se corta por el tamaño, amplía el búfer de HTTP y repite el `git
 git config http.postBuffer 524288000
 ```
 
-El envío a `main` lanza la compilación. Para lanzarla a mano: pestaña «Actions» → «Compilar» (a la
-izquierda) → «Run workflow» → «Branch: main» → «Run workflow».
+El envío a `main` no compila nada (solo las etiquetas `v…`, en el paso 5). Para lanzarla a mano: pestaña
+«Actions» → «Compilar» (a la izquierda) → «Run workflow» → «Branch: main» → «Run workflow».
 
 ### 4. Descargar los instaladores
 
