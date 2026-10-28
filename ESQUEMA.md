@@ -1331,7 +1331,8 @@ parte»): then only those references (`refEnlazada`) and the nets in `consola.re
 - Bodies (`cuerpos: True`, OpenGBC and Super DMG-01; `CUERPOS` in consolas_pcb.py): gull-wing ICs (`ci`: `cuerpo` box,
   `patas` [x, y, w, h] per pad, `alto`; Super DMG's sizes from its README BOM), SMD cans (`electrolitico_smd`),
   SOD-323 (`diodo_smd`), connectors (`conector`, colour, `z0`), thumb wheel (`rueda`), slide switch (`interruptor`,
-  `palanca`), daughterboard (`placa_hija`), drawn by `modelos3d.ts → cuerpoSimple`. No marking is invented.
+  `palanca`), daughterboard (`placa_hija`), drawn by `modelos3d.ts → cuerpoSimple` (0.10: the ICs among them by
+  `cuerpos3d.ts`, with the marking of `consolas_cuerpos.marcado_de`; see «Bodies of the console parts»).
 - Gerber placement (`consolas_gerber_piezas.py`, config `reconstruir`, 0.8.2): per reference, the schematic's footprint
   name looked up in the installed KiCad library (`KICAD_FOOTPRINTS`, default `/usr/share/kicad/footprints`), mirrored for
   the bottom (local y and layers), fitted to the Gerber pads by least squares (rotation snapped to 90° within 1,5°; by
@@ -1346,10 +1347,60 @@ parte»): then only those references (`refEnlazada`) and the nets in `consola.re
 {titulo, autor, url, licencia, uso}, ancho, alto (mm), capas, componentes, redes, bytes}]}` and `<placa>.json`: the
 `DatosPlaca` of «Proyectos KiCad» (`esquema` empty, `simulacion: null`, `comprobaciones` = the checks above) plus
 `consola {maquina, enlazada, aviso, fuente, redes {board net: schematic net}, refs [references also in the
-schematic], capas_cobre ['F', 'In1', 'In2', 'B'], tipo}`. Sizes: megadrive 840 kB, neogeo 1064 kB (272 kB gzip;
+schematic], capas_cobre ['F', 'In1', 'In2', 'B'], tipo}`. Sizes: megadrive 842 kB, neogeo 1094 kB (261 kB gzip;
 320 footprints, 2287 pads, 631 nets, 1498 vias, 107 zones; 317/317 references and 2265 pads on the same net as the
 schematic), gbc-cgb04 ≈ 355 kB, gbc-opengbc ≈ 250 kB, gb-superdmg ≈ 180 kB. Tests: `tests/consolas-placas.spec.ts`
 (`playwright.placas.config.ts`, port 4291); screenshots: `tests/consolas-placas-capturas.mjs`.
+
+**Bodies of the console parts (0.10).** Up to 0.9.2 most footprints of the hobbyist recreations had names of their
+own (Board Folk's «Resistor1-5mm», «CAP3-5mm», «BF-2.5mm», «LSPC2»; nonSNES's «TestPoint_Pad», «SC-59», «CASSETTE»;
+stonedDiscord's «Resonator-3Pin», «QFP128»…) that `model_for` did not know: typed `caja`, they were light grey boxes
+(Neo Geo 295 of 320, SNES 177, Mega Drive 47, NES 16), and no chip outside the library DIPs carried a marking.
+`contenido/consolas_cuerpos.py` now gives every footprint its descriptor `m` (`clasificar(h, pads, ctx)`, pads in the
+footprint's local axes as `escena3d.padsLocales` computes them, sizes turned by the pad's angle minus the footprint's):
+1. `TABLA`: regexes over the boards' footprint names → package and look (resistor DIN size from the pitch, disc
+   capacitor, electrolytic diameter, ferrite bead, SIP network, TO-92, axial diodes, lying HC-49/U, trimmer, drum
+   choke, wire link, slide switch and pot, push button, key switch, connectors with their opening, metal cans; marks,
+   holes, logos, test pads, solder jumpers and card-edge fingers get `sin_cuerpo`);
+2. `inferir`: the package from the pads when no name matches (two pads: chip, resistor, disc or electrolytic by the
+   value and the reference letter; one row: SIP or connector; two rows at 2,54 or 1,778 mm with a U reference: DIP; two
+   SMD rows ≤ 1,3 mm: SOIC/SOP; four sides: QFP with its body inside the pads' inner ends; anything else `generico`, a
+   dark box);
+3. `marcado_de`: the IC's marking — the board table `MARCADOS` where the value is a role name (SNES `S-CPU|5A22`,
+   `S-PPU1|5C77`, `S-PPU2|5C78`, `S-WRAM`, `F413`; Neo Geo `LSPC2-A2`; NES `3193A`; DMG `DMG-CPU`), else the value
+   cleaned («5863 / 5814» → 5863), else the schematic's value or symbol name (Mega Drive U13 `~` → CXA1145P). ICs that
+   were already typed (`ci`, `soic`, `dip`) only get the marking (`clasif: 'marcado'`); a marking the data already had
+   (the CGB-CPU-04's, read from the photo) is kept and flagged `marcado_dado`; SOT/SC-70 parts print codes, not names,
+   and get none.
+`m.clasif` = `tabla` | `geometria` | `marcado`; re-running is idempotent. Two-lead library models (resistors with
+the value's colour bands, disc and electrolytic capacitors, axial inductors, the HC-49 crystal) carry `giro_k` (the
+angle of pad 1 → pad 2 in local KiCad degrees) and `escala: false`: `escena3d.colocar` turns the model by
+`giroModelo(h)` (−giro_k on the top face, +giro_k underneath, where the local y is not flipped), puts its pad 1 on the
+footprint's pad 1 and skips the fit-to-outline scaling; the usual lead check (`patasFuera`, 0,5 mm) still applies. The
+other bodies are built from the pads in `web/src/componentes/proyectos/cuerpos3d.ts → cuerpoConsola(h, pads)` (called
+first by `cuerpoSimple` for descriptors with `clasif`): `ci` (gull-wing leads from the body side to each pad,
+three bars, the pin-1 dimple and the marking), `dip` (any row spacing, notch at pin 1), `sip` (body standing over the
+row, marking on the face that reads from pin 1, white pin-1 dot), `axial` (horizontal, vertical «anode up» or SMD with
+end caps; cathode band at pad 1), `radial`, `chip`, `to92`, `conector` (an opening `abertura {cara: arriba|frente,
+forma: ranura|redonda|dsub|rect}`; `frente`, the local unit vector towards the nearest board edge, computed by the
+pipeline), `lata`, `pulsador`, `deslizante`, `trimmer_c`, `bobina_tambor`, `puente_hilo`, `cristal_h`, `generico`,
+`sin_cuerpo`. Markings read as on a real chip (`giroRotulo`): two rows — from pin 1 to pin 2, so pin 1 is at the left
+end; oblong QFP — along the long side, pin 1 at the left; square QFP — pin 1 top left with the numbering going down,
+PLCC — pin 1's side up; the reconstructed CGB-CPU-04 keeps its photo's `giro_rotulo`. Materials are shared by colour
+(`cuerpos3d.mat`) and markings by text (one 512 px canvas texture per distinct text, `rotulo`); unit box and cylinder
+geometries are shared and scaled; templates of these bodies are keyed by their pads too. `stats.revision` gained
+`porTipo` (parts, triangles and library models by `m.tipo`), `genericos` (references drawn as a plain box: none on any
+board) and `sinRotulo` (ICs — DIP, SOIC/SOP and QFP with ≥ 8 pins, SIP with > 4 — without a printed marking: none);
+`stats.fases.cuadroEn` is when the first frame with the parts was drawn (ms after they were asked for). The sources of
+the Neo Geo, SNES and Super DMG-01 are not kept, so `python3 contenido/consolas_pcb.py --reclasificar [ids]` rebuilds
+the descriptors from the boards' own JSON (only `huellas[].m` changes; `placa_kicad`/`placa_gerber` call the same
+`CC.reclasificar` when a board is regenerated: the NES regenerated from its source is byte-identical to the
+reclassified file). Result: Neo Geo 83 resistors with their bands, 62 disc and 28 electrolytic capacitors, 43 marked
+ICs (10 QFP/SOP, 24 DIP, 9 SIP), 25 parts without a body (marks, logos, jumpers); SNES 107 test pads without a body
+and 15 marked ICs; Mega Drive 13, NES 16 marked ICs; triangles of the parts: Neo Geo 259 k (0.9.2: 23 k), SNES 100 k,
+Mega Drive 120 k, NES 80 k; draw calls Neo Geo 146 (30), one per material and marking. Tests: «las placas de las
+consolas en 3D: ningún componente queda como caja gris…» and «Neo Geo en 3D con agente de Android…» in
+`tests/consolas-placas.spec.ts`.
 
 **Bottom-side parts in 3D (0.8.2).** KiCad stores a bottom footprint's local y mirrored and its angle as seen from
 above; `escena3d.colocar` turns the part over about x and rotates it by −a (it used +a: bottom parts at 90°/270° faced
@@ -1501,7 +1552,8 @@ rule areas; `impacto()` hit testing: pads, vias, tracks, part bodies, zones), `p
 mask over the laminate, copper under the mask a lighter shade, HASL/ENIG pads, silkscreen clipped by the openings — or
 «capas» — KiCad-like colours —; selected/hovered net and voltage colours), `Placa2D.svelte` (pan/zoom; the board painted
 into a cached bitmap ≈ 2 screens wide, panning only blits it, a new zoom repaints after 140 ms; `window.__epaPlacaVista`
-and `__epaPlaca2D` for the tests), `escena3d.ts` + `Vista3D.svelte` (below), `EsquemaPlaca.svelte` (the consoles'
+and `__epaPlaca2D` for the tests), `escena3d.ts` + `Vista3D.svelte` (below; bodies in `modelos3d.ts` and, 0.10,
+`cuerpos3d.ts`), `EsquemaPlaca.svelte` (the consoles'
 `esquema/Lienzo.svelte`), `Ficha.svelte` (selection panel; `Simbolo.svelte` crops the sheet around the part),
 `Simulacion.svelte`, `Comprobaciones.svelte`, `seleccion.ts`, `estado.ts`, `opciones3d.svelte.ts`.
 

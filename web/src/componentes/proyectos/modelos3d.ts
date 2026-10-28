@@ -4,23 +4,11 @@
 // footprint (proyectos_kicad_pcb.model_for). Parts the library does not cover, or whose model does not fit
 // the footprint, get a simple body built here from the footprint's fabrication outline.
 
-import {
-  BoxGeometry,
-  CanvasTexture,
-  PlaneGeometry,
-  SRGBColorSpace,
-  CylinderGeometry,
-  Group,
-  Mesh,
-  MeshStandardMaterial,
-  TorusGeometry,
-  TubeGeometry,
-  CatmullRomCurve3,
-  Vector3,
-  type BufferGeometry,
-  type Material,
-} from 'three';
+import { BoxGeometry, CylinderGeometry, Group, Mesh, TorusGeometry, TubeGeometry, CatmullRomCurve3, Vector3 } from 'three';
 import type { DescriptorModelo, Huella } from './datos';
+import { cuerpoConsola, mat, malla, rotulo, type PadLocal } from './cuerpos3d';
+
+export { liberarMateriales } from './cuerpos3d';
 
 type Params = Record<string, string | number | boolean>;
 interface Biblioteca {
@@ -57,8 +45,12 @@ export function claveBiblioteca(h: Huella): { tipo: string; p: Params } | null {
   const texto = String(m.texto ?? h.v);
   switch (m.tipo) {
     case 'resistencia_axial': {
-      const din = { 0.25: '0207', 0.5: '0309', 1: '0414', 2: '0617' }[String(m.potencia ?? 0.25) as '0.25'] ?? '0207';
-      return v ? { tipo: 'resistencia-axial', p: { valor: v, bandas: 5, tolerancia: 1, tecnologia: 'metalica', cuerpo: din, paso: num(m.paso, 10.16) } } : null;
+      // (0.10: the console boards give the DIN size; their small Japanese resistors are carbon film, 4 bands)
+      const din = typeof m.cuerpo === 'string' ? m.cuerpo : ({ 0.25: '0207', 0.5: '0309', 1: '0414', 2: '0617' }[String(m.potencia ?? 0.25) as '0.25'] ?? '0207');
+      const consola = typeof m.cuerpo === 'string';
+      return v
+        ? { tipo: 'resistencia-axial', p: consola ? { valor: v, bandas: 4, tolerancia: 5, tecnologia: 'carbon', cuerpo: din, paso: num(m.paso, 10.16) } : { valor: v, bandas: 5, tolerancia: 1, tecnologia: 'metalica', cuerpo: din, paso: num(m.paso, 10.16) } }
+        : null;
     }
     case 'resistencia_smd':
       return { tipo: 'resistencia-smd', p: { valor: v ?? 0, tamano: String(m.encapsulado) } };
@@ -79,9 +71,12 @@ export function claveBiblioteca(h: Huella): { tipo: string; p: Params } | null {
     case 'dip':
       // the library's DIP has its rows 7,62 mm apart: a 600 mil (15,24) or 400 mil (10,16) one is built here
       if (num(m.ancho_filas, 7.62) > 8) return null;
-      return { tipo: 'dip', p: { pines: num(m.pines, 8), referencia: h.v.split(' ')[0]!, zocalo: !!m.zocalo } };
+      // (0.10: the console boards give the marking printed on the part)
+      return { tipo: 'dip', p: { pines: num(m.pines, 8), referencia: h.v.split(' ')[0]!, zocalo: !!m.zocalo, ...(typeof m.marcado === 'string' && m.marcado ? { marcado: m.marcado } : {}) } };
     case 'soic':
-      return { tipo: 'soic', p: { pines: num(m.pines, 8), referencia: h.v.split(' ')[0]! } };
+      return { tipo: 'soic', p: { pines: num(m.pines, 8), referencia: h.v.split(' ')[0]!, ...(typeof m.marcado === 'string' && m.marcado ? { marcado: m.marcado } : {}) } };
+    case 'cristal':
+      return { tipo: 'cristal', p: { frecuencia: num(m.frecuencia, 16e6), cuerpo: String(m.cuerpo ?? 'S') } };
     case 'sot23':
       return { tipo: 'sot23', p: { referencia: h.v } };
     case 'to92':
@@ -107,7 +102,7 @@ export function claveBiblioteca(h: Huella): { tipo: string; p: Params } | null {
       return { tipo: 'toroide', p: { diametro: num(m.diametro, 10), nucleo: m.trifilar ? 'ferrita' : 'hierro', espiras: 16 } };
     case 'bobina_axial':
       // air-core coil wound by hand (built here, see cuerpoSimple)
-      return /aire/i.test(h.v + (h.mpn ?? '')) ? null : { tipo: 'bobina-axial', p: { valor: (m.valor as number) ?? 2.2e-6 } };
+      return /aire/i.test(h.v + (h.mpn ?? '')) ? null : { tipo: 'bobina-axial', p: { valor: (m.valor as number) ?? 2.2e-6, ...(m.giro_k != null ? { paso: num(m.paso, 15.24) } : {}) } };
     case 'cristal_smd':
       return null;
     case 'portafusibles':
@@ -135,57 +130,15 @@ export function marcadoCoincide(marcado: unknown, valor: string): boolean {
 
 // ------------------------------------------------------------------ simple bodies built here
 
-const materiales = new Map<string, Material>();
-
-function mat(color: string, rough = 0.6, metal = 0): Material {
-  const k = `${color}|${rough}|${metal}`;
-  let m = materiales.get(k);
-  if (!m) {
-    m = new MeshStandardMaterial({ color, roughness: rough, metalness: metal });
-    materiales.set(k, m);
-  }
-  return m;
-}
-
-export function liberarMateriales(): void {
-  for (const m of materiales.values()) {
-    (m as MeshStandardMaterial).map?.dispose();
-    m.dispose();
-  }
-  materiales.clear();
-}
-
-/** A printed marking (the part's value from the BOM) on a face: a plane w × h mm facing +z. */
-function rotulo(texto: string, w: number, h: number, color = '#e9e9e4'): Mesh {
-  const k = `txt|${texto}|${color}|${Math.round((w / h) * 10)}`;
-  let m = materiales.get(k);
-  if (!m) {
-    const c = document.createElement('canvas');
-    c.width = 512;
-    c.height = Math.max(32, Math.round((512 * h) / w));
-    const g = c.getContext('2d')!;
-    const lineas = texto.split('\n');
-    let px = Math.min(c.height / (lineas.length * 1.25), 140);
-    g.font = `600 ${px}px "Source Sans 3", system-ui, sans-serif`;
-    const ancho = Math.max(...lineas.map((l) => g.measureText(l).width));
-    if (ancho > c.width * 0.92) px *= (c.width * 0.92) / ancho;
-    g.font = `600 ${px}px "Source Sans 3", system-ui, sans-serif`;
-    g.fillStyle = color;
-    g.textAlign = 'center';
-    g.textBaseline = 'middle';
-    lineas.forEach((l, i) => g.fillText(l, c.width / 2, c.height / 2 + (i - (lineas.length - 1) / 2) * px * 1.15));
-    const t = new CanvasTexture(c);
-    t.colorSpace = SRGBColorSpace;
-    m = new MeshStandardMaterial({ map: t, transparent: true, roughness: 0.7, depthWrite: false, polygonOffset: true, polygonOffsetFactor: -1 });
-    materiales.set(k, m);
-  }
-  return new Mesh(new PlaneGeometry(w, h), m);
-}
-
-function malla(g: BufferGeometry, m: Material, x: number, y: number, z: number): Mesh {
-  const o = new Mesh(g, m);
-  o.position.set(x, y, z);
-  return o;
+/**
+ * 0.10: the angle (radians, about the model's z) that turns a two-lead library model so that its pads 1 → 2 run
+ * as the footprint's do (`giro_k`, degrees in the footprint's local KiCad axes, from consolas_cuerpos.py), or null.
+ */
+export function giroModelo(h: Huella): number | null {
+  const g = h.m.giro_k;
+  if (typeof g !== 'number' || !Number.isFinite(g)) return null;
+  // model y is KiCad's local y flipped on the top face, the file's own on the bottom one
+  return ((h.lado === 'B' ? g : -g) * Math.PI) / 180;
 }
 
 /**
@@ -193,8 +146,11 @@ function malla(g: BufferGeometry, m: Material, x: number, y: number, z: number):
  * board surface. Box from the fabrication outline, height and look from the package. `pads`: the footprint's
  * pads in the same local axes (mm, KiCad's y), for the packages whose leads are drawn (TO-220 / TO-247…).
  */
-export function cuerpoSimple(h: Huella, pads: { n: string; x: number; y: number }[] = []): Group {
+export function cuerpoSimple(h: Huella, pads: PadLocal[] = []): Group {
   const m: DescriptorModelo = h.m;
+  // 0.10: the console boards' own packages (cuerpos3d.ts)
+  const propio = cuerpoConsola(h, pads);
+  if (propio) return propio;
   const g = new Group();
   const [x0, y0, x1, y1] = m.caja;
   const w = Math.max(0.6, x1 - x0);
@@ -441,7 +397,8 @@ export function cuerpoSimple(h: Huella, pads: { n: string; x: number; y: number 
     bobina_axial: ['#b87333', 0.35, 0.8],
     ferrita_smd: ['#2b2b2d', 0.55, 0],
   };
-  const [c, r, mt] = colores[t] ?? [typeof m.color === 'string' ? m.color : '#5b6168', 0.6, 0];
+  // (a part no branch knows: a dark body, not a light grey one)
+  const [c, r, mt] = colores[t] ?? [typeof m.color === 'string' ? m.color : '#2a2b2e', 0.6, 0];
   let hh = alto;
   if (t === 'to') {
     const vertical = m.vertical !== false;

@@ -11,7 +11,17 @@ interface Vista2D {
 
 type Pad = [number, string, string, number, number];
 interface Placa {
-  huellas: { r: string; t: string; lado: string; dnp?: boolean; pads: [number, number]; m: { tipo: string }; rec?: { pos: string; cuerpo: string; nota: string } }[];
+  huellas: {
+    r: string;
+    v: string;
+    l: string;
+    t: string;
+    lado: string;
+    dnp?: boolean;
+    pads: [number, number];
+    m: { tipo: string; marcado?: string; clasif?: string };
+    rec?: { pos: string; cuerpo: string; nota: string };
+  }[];
   pads: Pad[];
   redes: { n: string }[];
   consola: { enlazada: boolean; redes: Record<string, string>; refs: string[]; parcial?: { refs: string[]; texto: string } };
@@ -20,7 +30,8 @@ interface Placa {
 interface Stats3D {
   piezas: { biblioteca: number; propias: number };
   ladoComponentes?: string;
-  fases?: { piezas: number };
+  llamadas?: number;
+  fases?: { piezas: number; modelos: number; fusion: number; compilar: number };
   revision?: {
     plantillas: number;
     triangulos: number;
@@ -30,6 +41,9 @@ interface Stats3D {
     patasFuera: string[];
     maxDesvio: number;
     fusionNoFinitos: number;
+    porTipo?: Record<string, { piezas: number; triangulos: number; biblioteca: number }>;
+    genericos?: string[];
+    sinRotulo?: string[];
   };
 }
 
@@ -362,5 +376,93 @@ test('una pasada de caras que no terminó (la aplicación se cerró) baja el tam
   expect(ls.max).toBe('1024');
   expect(ls.intento).toBeNull();
   expect(ls.registro).toContain('no terminó');
+  await ctx.close();
+});
+
+// 0.10: the consoles' boards drew most of their parts as plain grey boxes (footprint names of their own that the
+// pipeline did not know: «Resistor1-5mm», «CAP3-5mm», «BF-2.5mm», «LSPC2»…) and their chips without markings.
+// contenido/consolas_cuerpos.py classifies every footprint (a table of those names and the package inferred from
+// the pads); escena3d counts what is drawn: by type, the plain boxes left (`genericos`) and the ICs without a
+// printed marking (`sinRotulo`).
+const PLACAS_3D: { maquina: string; boton?: RegExp; id: string }[] = [
+  { maquina: 'neogeo', id: 'neogeo' },
+  { maquina: 'snes', id: 'snes' },
+  { maquina: 'megadrive', id: 'megadrive' },
+  { maquina: 'nes', id: 'nes' },
+  { maquina: 'gb', id: 'gb-superdmg' },
+  { maquina: 'gbc', id: 'gbc-cgb04' },
+  { maquina: 'gbc', boton: /OpenGBC/, id: 'gbc-opengbc' },
+];
+
+test('las placas de las consolas en 3D: ningún componente queda como caja gris y todos los chips llevan su rótulo', async ({ page }) => {
+  test.setTimeout(900_000);
+  const errores: string[] = [];
+  page.on('pageerror', (e) => errores.push(e.message));
+  for (const p of PLACAS_3D) {
+    await page.goto('about:blank');
+    const s = await placa3D(page, p.maquina, p.boton);
+    await expect(page.locator('.placa-consola')).toHaveAttribute('data-placa', p.id);
+    const r = s.revision!;
+    // no plain box: every footprint got a body of its package (the list is in the message when it fails)
+    expect(r.genericos, `${p.id}: cuerpos genéricos`).toEqual([]);
+    expect(r.porTipo?.caja, `${p.id}: huellas sin clasificar`).toBeUndefined();
+    // every IC (DIP, SOIC/SOP, QFP, SIP) prints its marking
+    expect(r.sinRotulo, `${p.id}: chips sin rótulo`).toEqual([]);
+    expect(r.noFinitas, p.id).toEqual([]);
+    expect(r.fusionNoFinitos, p.id).toBe(0);
+    expect(r.pinesDistintos, p.id).toEqual([]);
+    expect(r.maxDesvio, p.id).toBeLessThanOrEqual(0.5);
+    expect(r.triangulos, p.id).toBeLessThan(400_000);
+  }
+  // the data: the bodies from the table or the pads, the markings of the custom chips
+  const ng = await placa(page, 'neogeo');
+  const de = (d: Placa, ref: string) => d.huellas.find((h) => h.r === ref)!;
+  expect(ng.huellas.filter((h) => h.t !== 'mec' && h.m.tipo === 'caja')).toEqual([]);
+  expect(de(ng, 'R56').m.tipo).toBe('resistencia_axial');
+  expect(de(ng, 'C124').m.tipo).toBe('condensador_disco');
+  expect(de(ng, 'C37').m.tipo).toBe('electrolitico');
+  expect(de(ng, 'BF27').m.tipo).toBe('radial');
+  expect(de(ng, 'CR2').m).toMatchObject({ tipo: 'sip', marcado: 'CRE401' });
+  expect(de(ng, 'H13').m.tipo).toBe('sin_cuerpo');
+  for (const [ref, mk] of [
+    ['U13', 'NEO-B1'],
+    ['U21', 'LSPC2-A2'],
+    ['U4', 'NEO-C1'],
+    ['U3', 'HD68HC000P'],
+    ['U18', '43256'],
+  ])
+    expect(de(ng, ref).m.marcado, ref).toBe(mk);
+  const sn = await placa(page, 'snes');
+  for (const [ref, mk] of [
+    ['U1', 'S-CPU|5A22'],
+    ['U2', 'S-PPU1|5C77'],
+    ['U10', 'LM324'],
+    ['U7', 'S-ENC'],
+  ])
+    expect(de(sn, ref).m.marcado, ref).toBe(mk);
+  expect(de(sn, 'TP10').m.tipo).toBe('sin_cuerpo');
+  expect(errores).toEqual([]);
+});
+
+test('Neo Geo en 3D con agente de Android: piezas con su cuerpo sin disparar la carga', async ({ browser }) => {
+  test.setTimeout(300_000);
+  const ctx = await browser.newContext({ baseURL: test.info().project.use.baseURL, userAgent: UA_ANDROID, viewport: { width: 800, height: 1280 } });
+  const page = await ctx.newPage();
+  const errores: string[] = [];
+  page.on('pageerror', (e) => errores.push(e.message));
+  await page.goto('./#/consolas/neogeo/placa3d');
+  await page.waitForFunction(() => !!(globalThis as unknown as { __epaPlaca3D?: Stats3D }).__epaPlaca3D?.fases?.piezas, null, { timeout: 240_000 });
+  const s = await page.evaluate(() => (globalThis as unknown as { __epaPlaca3D: Stats3D }).__epaPlaca3D);
+  const r = s.revision!;
+  expect(s.piezas.biblioteca + s.piezas.propias).toBe(320);
+  // most parts are the library's (resistors with their bands, ceramic discs, electrolytics, DIPs)
+  expect(s.piezas.biblioteca).toBeGreaterThan(150);
+  expect(r.genericos).toEqual([]);
+  expect(r.sinRotulo).toEqual([]);
+  // the parts' own work stays short: building, merging and compiling (0.9.2: about 0.2 s here, 0.10: about 0.6 s)
+  const f = s.fases!;
+  expect(f.modelos + f.fusion + f.compilar).toBeLessThan(4000);
+  expect(r.triangulos).toBeLessThan(400_000);
+  expect(errores).toEqual([]);
   await ctx.close();
 });

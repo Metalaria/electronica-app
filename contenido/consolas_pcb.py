@@ -32,6 +32,12 @@ KiCad 7 board that kicad-cli 7 plots to SVG (cached in contenido/.cache/consolas
 
 Run alone: python3 contenido/consolas_pcb.py [board id …]   (with ids, only those boards are rebuilt; a board whose
 source is missing keeps its previous files and index entry)
+
+3D bodies (0.10): every footprint's descriptor `m` goes through consolas_cuerpos.clasificar (the boards' own footprint
+names, the package inferred from the pads, the ICs' markings). The sources of the Neo Geo, Super Nintendo and Super
+DMG-01 boards are not kept, so the bodies of boards already generated are rebuilt from their own JSON:
+  python3 contenido/consolas_pcb.py --reclasificar [board id …]
+(it reads <placa>.json, replaces each `m` and writes it back; nothing else in the file changes).
 """
 
 import collections
@@ -55,6 +61,7 @@ import proyectos_kicad_pcb as P     # noqa: E402
 import proyectos_kicad as PK        # noqa: E402  (read only: kicad-cli cache, silkscreen SVG reader, helpers)
 import consolas_gerber as G         # noqa: E402
 import consolas_gerber_piezas as GP  # noqa: E402
+import consolas_cuerpos as CC       # noqa: E402
 
 # kicad-cli results of this script go to their own cache folder
 PK.CACHE = os.path.join(HERE, '.cache/consolas_pcb')
@@ -743,6 +750,8 @@ def placa_kicad(cfg, d, problemas):
         if 'dnp' in f['attrs']:
             h['dnp'] = True
         huellas.append(h)
+    # 0.10: the bodies of the boards' own footprints, the packages inferred from the pads and the ICs' markings
+    CC.reclasificar(cfg['id'], {'huellas': huellas, 'pads': pads, 'placa': {'ancho': q(ancho), 'alto': q(alto)}}, comp)
 
     pistas = {}
     for t in b['tracks']:
@@ -1010,6 +1019,8 @@ def placa_gerber(cfg, d, problemas):
                         'm': {'tipo': 'taladro', 'caja': [-w / 2, -h / 2, w / 2, h / 2]}, 'fab': [], 'f': 'Taladro sin metalizar', 'fo': 'deducida'})
         pads.append([len(huellas) - 1, '', 'o' if t['ranura'] else 'c', q(t['x']) - ox, q(t['y']) - oy, q(w), q(h), round(rot, 2), 0,
                      q(w), q(h), 8 | 16 | 32, -1, ''])
+    # 0.10: the ICs' markings (the reconstructed parts already have their bodies)
+    CC.reclasificar(cfg['id'], {'huellas': huellas, 'pads': pads, 'placa': {'ancho': q(ancho), 'alto': q(alto)}}, comp)
 
     pistas = {}
     for lado, c in cobre.items():
@@ -1130,6 +1141,32 @@ def fuente_de(cfg):
     return os.environ.get('CONSOLAS_PCB_' + re.sub(r'[^A-Z0-9]', '_', cfg['id'].upper())) or os.path.join(FUENTES, cfg['ruta'])
 
 
+def reclasificar(ids=()):
+    """Rebuilds the 3D descriptors of boards already generated, from their own JSON (consolas_cuerpos), and
+    updates their size in the index. Prints the bodies by type and the generic leftovers."""
+    with open(os.path.join(OUT, 'indice.json'), encoding='utf-8') as f:
+        indice = json.load(f)
+    for cfg in PLACAS:
+        ruta = os.path.join(OUT, cfg['id'] + '.json')
+        if (ids and cfg['id'] not in ids) or not os.path.exists(ruta):
+            continue
+        with open(ruta, encoding='utf-8') as f:
+            d = json.load(f)
+        lista = CC.reclasificar(cfg['id'], d, consola(cfg['maquina'])['componentes'])
+        texto = json.dumps(d, ensure_ascii=False, separators=(',', ':'))
+        with open(ruta, 'w', encoding='utf-8') as f:
+            f.write(texto)
+        for e in indice['placas']:
+            if e['id'] == cfg['id']:
+                e['bytes'] = len(texto.encode('utf-8'))
+        tipos, genericos = CC.informe(lista)
+        print('consolas_pcb: %-12s cuerpos: %s; genéricos: %s' % (cfg['id'], ', '.join('%s %d' % kv for kv in sorted(tipos.items())),
+                                                                ', '.join(r for r, _ in genericos) or 'ninguno'))
+    with open(os.path.join(OUT, 'indice.json'), 'w', encoding='utf-8') as f:
+        json.dump(indice, f, ensure_ascii=False, separators=(',', ':'))
+    return 0
+
+
 def main(ids=()):
     problemas = []
     indice = []
@@ -1162,4 +1199,6 @@ def main(ids=()):
 
 
 if __name__ == '__main__':
+    if '--reclasificar' in sys.argv:
+        sys.exit(reclasificar([a for a in sys.argv[1:] if a != '--reclasificar']))
     sys.exit(main(sys.argv[1:]))

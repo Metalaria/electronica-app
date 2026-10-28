@@ -683,7 +683,7 @@ componente se ven sus pads con su red, y al tocar una red, todos sus pads.
   (LSPC2-A2, NEO-B1, NEO-C1), no la NEO-AES de 1.ª generación de la foto. El `.kicad_pcb` (53 MB) no se guarda: para
   regenerarla, `curl -L -o NeoGeoAES3_5.kicad_pcb https://raw.githubusercontent.com/Board-Folk/NeoGeoAES-3.5/75ef9665d5fc884c22607987b42478e3580d8f86/NeoGeoAES3_5.kicad_pcb`
   (si se corta, repetir con `curl -L -C - -o …`) y `CONSOLAS_PCB_NEOGEO=/ruta/NeoGeoAES3_5.kicad_pcb python3
-  contenido/consolas_pcb.py neogeo`. La geometría que dibuja el visor ocupa 1064 kB (272 kB comprimida).
+  contenido/consolas_pcb.py neogeo`. La geometría que dibuja el visor ocupa 1094 kB (261 kB comprimida).
   En la 0.9 deja de colgar la tableta (Xiaomi Pad 6) en «Colocando los componentes… 236 de 320»: Chromium para
   Android pinta los lienzos 2D en la GPU, y las caras de esta placa se pintaban con todo el cobre recortado por sus
   2286 aberturas de máscara; ese recorte retenía la GPU minutos (en Chromium de escritorio con el lienzo en la GPU,
@@ -701,6 +701,29 @@ componente se ven sus pads con su red, y al tocar una red, todos sus pads.
   (también sirve para KiCad 10), su netlist y su SVG con `kicad-cli sch export netlist --format kicadxml` y
   `kicad-cli sch export svg`, y las cajas de las huellas con `python3 tools/huellas_cajas.py`; solo se guardan esos
   derivados.
+- **Cada componente con su cuerpo y cada chip con su rótulo (0.10).** Hasta la 0.9.2 casi todas las piezas de la Neo
+  Geo (295 de 320), muchas de la Super Nintendo (177), la Mega Drive (47) y la NES (16) salían como cajas grises, y
+  los chips no llevaban nada escrito: estas recreaciones usan huellas con nombres propios («Resistor1-5mm»,
+  «CAP3-5mm», «BF-2.5mm», «LSPC2», «CASSETTE»…) que el programa no reconocía. Ahora cada huella se clasifica
+  (`contenido/consolas_cuerpos.py`): por su nombre, y si no se conoce, por la forma de sus pads (dos pads: resistencia,
+  condensador o pieza SMD según el paso, el valor y la referencia; una fila: red de resistencias en línea o conector;
+  dos filas a 2,54 mm: DIP; dos filas SMD: SOIC/SOP; cuatro lados: QFP). Las resistencias llevan las bandas de su
+  valor (las pequeñas japonesas de la Neo Geo, de carbón, tumbadas entre sus dos pads), los condensadores cerámicos
+  su disco y los electrolíticos su lata; los chips (DIP, SOIC, SOP, QFP, SIP) llevan sus patas sobre sus pads, el
+  punto o la muesca de la patilla 1 y su rótulo escrito a lo largo del cuerpo como en el chip real: NEO-B1, LSPC2-A2,
+  NEO-C1, HD68HC000P, YM2610, 43256 en la Neo Geo; S-CPU 5A22, S-PPU1 5C77, S-PPU2 5C78, S-WRAM, S-SMP, S-DSP,
+  S-ENC, S-CLK, F413 y LM324 en la Super Nintendo; 315-5402 y 312-5313A en la Mega Drive; 3193A (el CIC) en la NES.
+  También tienen cuerpo las perlas de ferrita, los cristales, el trimmer, las bobinas, los puentes de hilo, los
+  interruptores, el potenciómetro deslizante de los auriculares, los conectores (ranuras de cartucho y de la tarjeta
+  de memoria, puertos de mando, tomas de vídeo y de alimentación, con su abertura hacia el borde de la placa) y los
+  moduladores de RF. Los puntos de prueba, las marcas, los taladros, los logotipos, los puentes de soldadura y los
+  contactos del borde de la placa no llevan cuerpo. Ninguna pieza queda como caja genérica. Las placas cuyos ficheros
+  originales no se guardan (Neo Geo, Super Nintendo, Super DMG-01) se reclasifican desde su propio JSON con
+  `python3 contenido/consolas_pcb.py --reclasificar` (solo cambian los cuerpos); al regenerar una placa desde su
+  fuente se clasifica igual. La Neo Geo tiene ahora más geometría (unos 260 000 triángulos en las piezas en lugar de
+  23 000, 146 llamadas de dibujo en lugar de 30): construir, unir y compilar las piezas cuesta unos 0,8 s en lugar de
+  0,25 s (Chromium con SwiftShader y agente de Android, mediana de cinco cargas alternadas); el tiempo hasta ver la
+  placa con sus componentes no cambia de forma medible (unos 12 s las dos versiones en esa máquina cargada).
 - Sin placa: Master System (no hay ninguna
   recreación abierta de la 171-5922A: el `.kicad_pcb` de slowcoder está vacío, KiCad 4 sin huellas, y los demás
   proyectos son placas de vídeo). De la DMG-CPU original no hay placa abierta (Gekkio solo publica los esquemas): por
@@ -710,7 +733,8 @@ componente se ven sus pads con su red, y al tocar una red, todos sus pads.
 `generar.py`) en `web/public/consolas/placas/` (unos 3 MB; cada placa se descarga al abrir su pestaña). Los
 ficheros originales no se copian: solo la geometría que dibuja el visor. La reconstrucción de la CGB-CPU-04 lee las
 huellas de la biblioteca de KiCad instalada (`/usr/share/kicad/footprints`, o `KICAD_FOOTPRINTS`). Pruebas en
-`tests/consolas-placas.spec.ts` (`playwright.placas.config.ts`, puerto 4291) y capturas con
+`tests/consolas-placas.spec.ts` (`playwright.placas.config.ts`, puerto 4291; desde la 0.10 también comprueba en las
+siete placas que no queda ninguna caja genérica y que todos los chips llevan su rótulo) y capturas con
 `node tests/consolas-placas-capturas.mjs` (en `tests/capturas/consolas-gbc/` y `consolas-gb/`). Las de la Super Nintendo,
 en `tests/consolas-snes.spec.ts` (`playwright.snes.config.ts`, puerto 4321), con sus capturas en
 `tests/capturas/consolas-snes/`.
@@ -2041,7 +2065,8 @@ app/
         sincronizacion/      página #/sincronizacion, grupos de «Aa», arranque diferido y aviso de versión nueva
         diagnostico/         página #/diagnostico: medidas de rendimiento en el propio dispositivo (pruebas.ts)
         consolas/placa/      «Placa en 3D / 2D» de las consolas con el visor de proyectos/ (datos de consolas_pcb.py)
-        proyectos/           Proyectos KiCad: placa en 3D (three.js, modelos de tres/modelos) y en 2D, esquema,
+        proyectos/           Proyectos KiCad: placa en 3D (three.js, modelos de tres/modelos; los cuerpos propios
+                             de las piezas de las consolas en cuerpos3d.ts) y en 2D, esquema,
                              simulación y comprobaciones de las siete placas (ver «Proyectos KiCad» y ESQUEMA.md)
         tres/                componentes en 3D: biblioteca de modelos paramétricos (modelos/, crearModelo),
                              visor (motor/: también la resolución adaptable al girar, resolucion.ts),

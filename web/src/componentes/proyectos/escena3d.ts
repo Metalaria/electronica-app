@@ -36,7 +36,7 @@ import {
   type Texture,
   Box3Helper,
 } from 'three';
-import { PAD_NPTH, type DatosPlaca, type Huella } from './datos';
+import { PAD_NPTH, PAD_PTH, type DatosPlaca, type Huella } from './datos';
 import { crearEstudio, type Estudio } from '../tres/motor/estudio';
 import { Orbita, type EstadoOrbita } from '../tres/motor/orbita';
 import { ResolucionAdaptable, REPOSO, type EstadoResolucion } from '../tres/motor/resolucion';
@@ -44,7 +44,7 @@ import type { Geometria, Lado } from './geometria';
 import { coloresTension, MASCARAS, pintarLado, pintarRed, type Acabado } from './pintar';
 import { datosParaCaras, pintarMapa, type MensajeTrabajador, type PedidoCara, type RespuestaTrabajador, type TipoMapa } from './caras';
 import { pintarDirecto, pintarPorBandas, subirPorFranjas, texturaDePixeles, texturaVacia, type Subida } from './texturas-caras';
-import { cargarBiblioteca, claveBiblioteca, CON_MARCADO_FIJO, cuerpoSimple, liberarMateriales, marcadoCoincide } from './modelos3d';
+import { cargarBiblioteca, claveBiblioteca, CON_MARCADO_FIJO, cuerpoSimple, giroModelo, liberarMateriales, marcadoCoincide } from './modelos3d';
 import { registrar } from '../../lib/registro';
 
 export interface Estadisticas {
@@ -61,7 +61,7 @@ export interface Estadisticas {
   /** Where the load time goes (ms): building the models, merging them, the first frame with them (shader
    *  compilation and uploads), and the whole load of the parts; `modelosUnicos`: models built (equal parts
    *  share one). */
-  fases?: { modelos: number; fusion: number; compilar: number; primerCuadro: number; piezas: number; modelosUnicos: number; inicio?: number; maxTramo?: number };
+  fases?: { modelos: number; fusion: number; compilar: number; primerCuadro: number; piezas: number; modelosUnicos: number; inicio?: number; maxTramo?: number; cuadroEn?: number };
   /** Frames drawn since the view opened. */
   cuadros: number;
   /** Shader programs in use after the first frame with the parts (each one is compiled by the GPU driver). */
@@ -107,6 +107,12 @@ export interface RevisionPiezas {
   maxDesvio: number;
   /** Non-finite values found in the merged buffers (always 0 once the templates are checked). */
   fusionNoFinitos: number;
+  /** 0.10: parts and triangles by descriptor type (`m.tipo`), and how many of them are library models. */
+  porTipo?: Record<string, { piezas: number; triangulos: number; biblioteca: number }>;
+  /** 0.10: references drawn as a plain box (a footprint nothing recognised: `caja` or `generico`). */
+  genericos?: string[];
+  /** 0.10: ICs (DIP, SOIC/SOP and QFP with 8 pins or more, SIP with more than four) without a printed marking. */
+  sinRotulo?: string[];
 }
 
 /** Callbacks of cargarPiezas(): progress (parts placed / total) and the phase about to start (diagnostic). */
@@ -1017,7 +1023,7 @@ export class Escena3D {
     const plantillas = new Map<string, Plantilla | null>();
     const copias: { pl: Plantilla; m: Matrix4; h: number }[] = [];
     const huellas = this.d.huellas.map((h, i) => [h, i] as const).filter(([h]) => h.t !== 'mec' && !h.dnp);
-    const rev: RevisionPiezas = { plantillas: 0, vertices: 0, triangulos: 0, noFinitas: [], enormes: [], pinesDistintos: [], patasFuera: [], maxDesvio: 0, fusionNoFinitos: 0 };
+    const rev: RevisionPiezas = { plantillas: 0, vertices: 0, triangulos: 0, noFinitas: [], enormes: [], pinesDistintos: [], patasFuera: [], maxDesvio: 0, fusionNoFinitos: 0, porTipo: {}, genericos: [], sinRotulo: [] };
     this.stats.revision = rev;
     // Short slices (0.9: 6 ms, was 12): with a 4× slower CPU a slice and the part that ends it stay near 50 ms
     // (the longest single step left is building one library model, a DIP with its marking: 10–25 ms here).
@@ -1025,8 +1031,10 @@ export class Escena3D {
     let hechas = 0;
     for (const [h, i] of huellas) {
       alFase?.(`pieza ${hechas + 1}: ${h.r}`);
+      const antes = this.stats.piezas.biblioteca;
       const c = this.colocar(h, lib, rec, disponibles, plantillas, rev);
       hechas++;
+      this.revisarPieza(h, c?.pl ?? null, this.stats.piezas.biblioteca > antes, rev);
       if (c) {
         const caja = c.pl.caja.clone().applyMatrix4(c.m);
         if (!caja.isEmpty()) this.cajas.push({ h: i, caja });
@@ -1177,7 +1185,26 @@ export class Escena3D {
       if (pl) {
         const local = new Matrix4();
         const hu = pl.huella;
-        if (hu) {
+        // 0.10: a console part whose pads do not run along the footprint's x (`giro_k`): the model turned to them
+        const giro = giroModelo(h);
+        if (hu && giro != null) {
+          const [a] = h.pads;
+          const p1 = this.d.pads[a];
+          const m1 = hu.pads?.find((p) => p.n === '1') ?? hu.pads?.[0];
+          if (p1 && m1 && h.pads[1] > 0) {
+            const an = (-h.a * Math.PI) / 180;
+            const dx = p1[3] - h.x;
+            const dy = p1[4] - h.y;
+            const lx = (dx * Math.cos(an) + dy * Math.sin(an)) / 100;
+            const ly = (-dx * Math.sin(an) + dy * Math.cos(an)) / 100;
+            // pad 1 of the turned model on pad 1 of the footprint (model axes: y flipped on the top face)
+            const c = Math.cos(giro);
+            const s = Math.sin(giro);
+            const rx = m1.x * c - m1.y * s;
+            const ry = m1.x * s + m1.y * c;
+            local.makeRotationZ(giro).setPosition(lx - rx, (h.lado === 'B' ? ly : -ly) - ry, 0);
+          }
+        } else if (hu) {
           // put the model's pad 1 on the footprint's pad 1 (or use its KiCad origin)
           let ox = hu.origenKicad?.[0] ?? 0;
           let oy = hu.origenKicad?.[1] ?? 0;
@@ -1196,11 +1223,12 @@ export class Escena3D {
             oy = h.lado === 'B' ? m1.y - ly : m1.y + ly;
           }
           // a model much smaller or larger than the footprint body (other package size): scale it to fit
+          // (not the console parts sized from their own pads: `escala: false`)
           const [x0, y0, x1, y1] = h.m.caja;
           const fw = x1 - x0;
           const fd = y1 - y0;
           let f = 1;
-          if (hu.ancho > 0 && hu.fondo > 0 && fw > 0 && fd > 0) {
+          if (h.m.escala !== false && hu.ancho > 0 && hu.fondo > 0 && fw > 0 && fd > 0) {
             const k2 = Math.sqrt((fw * fd) / (hu.ancho * hu.fondo));
             if (k2 > 1.35 || k2 < 0.7) f = k2;
           }
@@ -1220,7 +1248,8 @@ export class Escena3D {
     // Simple bodies built here: also one per distinct footprint description.
     // (the pads' local positions count for the bodies that draw leads, e.g. a 5-lead TO-220)
     const locales = padsLocales(this.d, h);
-    const k = `s|${JSON.stringify(h.m)}|${h.v}|${h.l}|${h.mpn ?? ''}|${h.m.tipo === 'to' || h.m.tipo === 'dip' ? JSON.stringify(locales) : ''}`;
+    // (the bodies built from their pads — TO, DIP and, since 0.10, the console parts — also by their pads)
+    const k = `s|${JSON.stringify(h.m)}|${h.v}|${h.l}|${h.mpn ?? ''}|${h.m.tipo === 'to' || h.m.tipo === 'dip' || h.m.clasif || h.m.patas_pads ? JSON.stringify(locales) : ''}`;
     let pl = plantillas.get(k);
     if (pl === undefined) {
       pl = plantilla(cuerpoSimple(h, locales), undefined);
@@ -1229,6 +1258,21 @@ export class Escena3D {
     }
     this.stats.piezas.propias++;
     return pl ? { pl, m: raiz.matrix.clone() } : null;
+  }
+
+  /** 0.10: the part in the review's tallies (by type, plain boxes, ICs without a marking). */
+  private revisarPieza(h: Huella, pl: Plantilla | null, biblioteca: boolean, rev: RevisionPiezas): void {
+    const t = h.m.tipo;
+    const e = (rev.porTipo![t] ??= { piezas: 0, triangulos: 0, biblioteca: 0 });
+    e.piezas++;
+    if (biblioteca) e.biblioteca++;
+    if (pl) e.triangulos += pl.piezas.reduce((a, p) => a + p.n / 3, 0);
+    if (t === 'caja' || t === 'generico') rev.genericos!.push(h.r);
+    const pines = numerosPads(this.d, h).size;
+    // (a SOT-23-5 or SC-70 regulator prints a two- or three-letter code, not drawn: not counted)
+    const esCI = t === 'dip' || t === 'soic' || (t === 'sip' && pines > 4) || (t === 'ci' && pines >= 8);
+    // a marking is a textured decal (the library's and the simple bodies' alike)
+    if (esCI && !pl?.piezas.some((p) => !!(p.mat as MeshStandardMaterial).map && p.n <= 6)) rev.sinRotulo!.push(h.r);
   }
 
   /** A template with finite numbers and a sane size; else it is recorded and refused. */
@@ -1687,6 +1731,8 @@ export class Escena3D {
       this.placaDibujada();
       if (this.stats.fases && !this.stats.fases.primerCuadro) {
         this.stats.fases.primerCuadro = ms;
+        // 0.10: when that frame was drawn, ms after the parts were asked for
+        this.stats.fases.cuadroEn = performance.now() - (this.stats.fases.inicio ?? 0);
         this.stats.programas = this.renderer.info.programs?.length;
       }
       this.stats.ms.push(ms);
@@ -1858,15 +1904,21 @@ function numerosPads(d: DatosPlaca, h: Huella): Set<string> {
   return r;
 }
 
-/** The footprint's pads in its own axes (mm, KiCad's: x right, y down; as the fab outline `m.caja`). */
-export function padsLocales(d: DatosPlaca, h: Huella): { n: string; x: number; y: number }[] {
+/**
+ * The footprint's pads in its own axes (mm, KiCad's: x right, y down; as the fab outline `m.caja`), with their size
+ * along those axes and whether they are through-hole.
+ */
+export function padsLocales(d: DatosPlaca, h: Huella): { n: string; x: number; y: number; w: number; h: number; tht: boolean }[] {
   const an = (-h.a * Math.PI) / 180;
-  const r: { n: string; x: number; y: number }[] = [];
+  const r: { n: string; x: number; y: number; w: number; h: number; tht: boolean }[] = [];
   for (let i = h.pads[0]; i < h.pads[0] + h.pads[1]; i++) {
     const p = d.pads[i]!;
     const dx = p[3] - h.x;
     const dy = p[4] - h.y;
-    r.push({ n: p[1], x: Math.round(dx * Math.cos(an) + dy * Math.sin(an)) / 100, y: Math.round(-dx * Math.sin(an) + dy * Math.cos(an)) / 100 });
+    // pad angles are absolute: turned by a quarter in the footprint's axes, its size swaps
+    const giro = Math.round((((p[7] - h.a) % 180) + 180) % 180);
+    const [w, hh] = giro === 90 ? [p[6], p[5]] : [p[5], p[6]];
+    r.push({ n: p[1], x: Math.round(dx * Math.cos(an) + dy * Math.sin(an)) / 100, y: Math.round(-dx * Math.sin(an) + dy * Math.cos(an)) / 100, w: w / 100, h: hh / 100, tht: !!(p[11] & PAD_PTH) });
   }
   return r;
 }
