@@ -13,18 +13,12 @@ import { Fnirsi } from './fnirsi/logica.svelte.ts';
 import { simularTexto, SimulacionCancelada, motor } from '../../simulador/cliente.svelte';
 import type { Simulacion } from '../../simulador/motor/simular.ts';
 
-/** A lead or probe that can be placed on a node. */
-export type Punta = 'bmRojo' | 'bmNegro' | 'fnRojo' | 'fnNegro' | 'ch1' | 'ch2' | 'masa';
+import type { Punta } from './puntas.ts';
+export type { Punta } from './puntas.ts';
+export { NOMBRE_PUNTA } from './puntas.ts';
 
-export const NOMBRE_PUNTA: Record<Punta, string> = {
-  bmRojo: 'Brymen · punta roja',
-  bmNegro: 'Brymen · punta negra (COM)',
-  fnRojo: 'FNIRSI multímetro · roja',
-  fnNegro: 'FNIRSI multímetro · negra',
-  ch1: 'Sonda CH1',
-  ch2: 'Sonda CH2',
-  masa: 'Pinza de masa (CH1 y CH2)',
-};
+/** What is being listened to: the earphone's node, or an oscilloscope channel's. */
+export type FuenteEscucha = 'esc' | 'ch1' | 'ch2';
 
 export interface Datos {
   plan: PlanSimulacion;
@@ -48,6 +42,8 @@ export class Banco {
   fuenteGenerador = $state<string | null>(null);
   asentamiento = $state(0);
   dinamico = $state(false);
+  /** The DC sources rise at power-up instead of starting at the operating point (montaje.ts, 0.10). */
+  arranque = $state(false);
   /** Variant of the guided practice on the bench ('' in free mode). */
   variante = $state('');
   /** Rows noted in the practice's table. */
@@ -66,6 +62,20 @@ export class Banco {
     serie: null,
   });
   sondas = $state<{ ch1: string | null; ch2: string | null; masa: string }>({ ch1: null, ch2: null, masa: '0' });
+  /** The earphone's tip (its other wire is on ground). */
+  auricular = $state<string | null>(null);
+  /** Listening (0.10): to the earphone or to a channel; null when silent. */
+  escucha = $state<FuenteEscucha | null>(null);
+
+  /** Node and reference listened to, or null. */
+  get nodoEscucha(): { punta: string; masa: string } | null {
+    if (this.escucha === 'esc') return this.auricular ? { punta: this.auricular, masa: '0' } : null;
+    if (this.escucha === 'ch1' || this.escucha === 'ch2') {
+      const n = this.sondas[this.escucha];
+      return n ? { punta: n, masa: this.sondas.masa } : null;
+    }
+    return null;
+  }
 
   brymen = new Brymen();
   fnirsi = new Fnirsi();
@@ -108,6 +118,8 @@ export class Banco {
       asentamiento: this.asentamiento,
       ventanaDmm: 0.2,
       dinamico: this.dinamico,
+      escucha: this.nodoEscucha,
+      arranque: this.arranque,
     });
   });
 
@@ -124,6 +136,8 @@ export class Banco {
     this.bm = { rojo: null, negro: null, serie: null };
     this.fn = { rojo: null, negro: null, serie: null };
     this.sondas = { ch1: null, ch2: null, masa: '0' };
+    this.auricular = null;
+    this.escucha = null;
   }
 
   /** Places a lead on a node (or removes it with null). */
@@ -150,6 +164,9 @@ export class Banco {
       case 'masa':
         this.sondas = { ...this.sondas, masa: nodo ?? '0' };
         break;
+      case 'esc':
+        this.auricular = nodo;
+        break;
     }
   }
 
@@ -170,6 +187,7 @@ export class Banco {
     if (this.sondas.ch1) res.push({ p: 'ch1', nodo: this.sondas.ch1 });
     if (this.sondas.ch2) res.push({ p: 'ch2', nodo: this.sondas.ch2 });
     if (this.sondas.ch1 || this.sondas.ch2) res.push({ p: 'masa', nodo: this.sondas.masa });
+    if (this.auricular) res.push({ p: 'esc', nodo: this.auricular });
     return res;
   }
 
@@ -180,6 +198,7 @@ export class Banco {
 
   /** Called by the view whenever the plan changes: simulate after a short pause. */
   pedir(netlist: string, inmediato = false): void {
+    this.detenido = false;
     if (netlist === this.ultimo && this.datos) return;
     if (this.temporizador) clearTimeout(this.temporizador);
     this.temporizador = setTimeout(() => void this.correr(netlist), inmediato ? 0 : 250);
@@ -188,7 +207,9 @@ export class Banco {
   cancelar(): void {
     if (this.temporizador) clearTimeout(this.temporizador);
     this.temporizador = null;
+    this.detenido = true;
   }
+  private detenido = false;
 
   private async correr(netlist: string): Promise<void> {
     this.temporizador = null;
@@ -203,7 +224,14 @@ export class Banco {
       this.version++;
       this.comprobarFusibles();
     } catch (e) {
-      if (e instanceof SimulacionCancelada) return;
+      if (e instanceof SimulacionCancelada) {
+        // Cancelled by another simulation of the page (not by a newer one of the bench): try again.
+        if (netlist === this.ultimo && !this.temporizador && !this.detenido) {
+          this.ultimo = '';
+          this.temporizador = setTimeout(() => void this.correr(netlist), 700);
+        }
+        return;
+      }
       this.error = e instanceof Error ? e.message : String(e);
     } finally {
       if (netlist === this.ultimo) this.simulando = false;
@@ -284,6 +312,24 @@ export class Banco {
     const inicio = d.plan.tran?.inicio ?? 0;
     const fin = d.t ? d.t[d.t.length - 1]! : 0;
     return { entradas, inicio, fin };
+  }
+
+  /**
+   * The voltage listened to (node minus reference) over the simulated stretch after the settling time, or a
+   * constant when there was no transient; null when nothing is listened to or the result is not current.
+   */
+  senalEscucha(): Serie | number | null {
+    const d = this.datos;
+    if (!d || !this.nodoEscucha) return null;
+    const p = d.plan.nodos['esc'];
+    if (!p) return null;
+    const m = d.plan.nodos['esc.m'];
+    const yp = d.t ? d.tran.get(`v(${p})`) : undefined;
+    if (!d.t || !yp) return (d.op.get(`v(${p})`) ?? 0) - (m ? (d.op.get(`v(${m})`) ?? 0) : 0);
+    const ym = m ? d.tran.get(`v(${m})`) : undefined;
+    const y = new Float64Array(yp.length);
+    for (let k = 0; k < y.length; k++) y[k] = yp[k]! - (ym ? ym[k]! : 0);
+    return recortar({ t: d.t, y }, d.plan.tran?.inicio ?? d.t[0]!, d.t[d.t.length - 1]!);
   }
 
   /** Nodes of the circuit with ground first. */

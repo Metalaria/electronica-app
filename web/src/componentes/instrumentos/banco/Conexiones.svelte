@@ -8,7 +8,7 @@
 
   let { b, activa = $bindable() }: { b: Banco; activa: Punta | null } = $props();
 
-  const PUNTAS: Punta[] = ['bmRojo', 'bmNegro', 'ch1', 'ch2', 'masa', 'fnRojo', 'fnNegro'];
+  const PUNTAS: Punta[] = ['bmRojo', 'bmNegro', 'ch1', 'ch2', 'masa', 'fnRojo', 'fnNegro', 'esc'];
 
   function nodoDe(p: Punta): string | null {
     switch (p) {
@@ -26,6 +26,8 @@
         return b.sondas.ch2;
       case 'masa':
         return b.sondas.ch1 || b.sondas.ch2 ? b.sondas.masa : null;
+      case 'esc':
+        return b.auricular;
     }
   }
 

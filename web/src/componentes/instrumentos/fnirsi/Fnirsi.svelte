@@ -9,14 +9,18 @@
   import { pulsacion } from '../ui/pulsacion';
   import { limitarDds } from '../motor/generador.ts';
   import type { Borne } from '../motor/dmm.ts';
+  import type { GuiaFnirsi } from '../guia';
 
   let {
     f,
     alAuto,
+    guia = null,
   }: {
     f: Fnirsi;
     /** AUTO needs the signals (the bench provides them). */
     alAuto: () => void;
+    /** Tutor (0.10): the button to light up. */
+    guia?: GuiaFnirsi | null;
   } = $props();
 
   let lienzo: HTMLCanvasElement | undefined = $state();
@@ -203,6 +207,7 @@
       <g class="boton" role="button" tabindex="0" aria-label={b.ayuda} use:pulsacion={{ corta: () => accion(b.id), larga: b.id === 'move' ? () => accion(b.id, true) : undefined }}>
         <title>{b.ayuda}</title>
         <rect class="tecla" x={b.x} y={b.y} width="62" height="44" rx="9" fill="#33373d" stroke="#4b5058" />
+        {#if guia?.boton === b.id}<rect class="guia" x={b.x - 3} y={b.y - 3} width="68" height="50" rx="11" />{/if}
         <text x={b.x + 31} y={b.y + (b.sub ? 20 : 27)} font-size="11.5" font-weight="700" text-anchor="middle" fill="#eef" font-family="var(--sans)">{b.t}</text>
         {#if b.sub}<text x={b.x + 31} y={b.y + 35} font-size="8" text-anchor="middle" fill="#9ab" font-family="var(--sans)">{b.sub}</text>{/if}
       </g>
@@ -225,10 +230,12 @@
     <!-- power and menu -->
     <g class="boton" role="button" tabindex="0" aria-label={f.encendido ? 'Apagar' : 'Encender'} use:pulsacion={{ corta: () => accion('power') }}>
       <circle class="tecla" cx="53" cy="490" r="23" fill="#2d1f22" stroke="#e04848" stroke-width="2.5" />
+      {#if guia?.boton === 'power'}<circle class="guia" cx="53" cy="490" r="27" />{/if}
       <path d="M 46 482 a 10 10 0 1 0 14 0 M 53 476 v 12" stroke="#e04848" stroke-width="2.6" fill="none" stroke-linecap="round" />
     </g>
     <g class="boton" role="button" tabindex="0" aria-label="MENU: osciloscopio, multímetro o generador" use:pulsacion={{ corta: () => accion('menu') }}>
       <circle class="tecla" cx="287" cy="490" r="23" fill="#2d2519" stroke="#f08a24" stroke-width="2.5" />
+      {#if guia?.boton === 'menu'}<circle class="guia" cx="287" cy="490" r="27" />{/if}
       <text x="287" y="494" font-size="10.5" font-weight="700" text-anchor="middle" fill="#f08a24" font-family="var(--sans)">MENU</text>
     </g>
 
@@ -276,6 +283,23 @@
 {/if}
 
 <style>
+  .guia {
+    fill: none;
+    stroke: #ffd34d;
+    stroke-width: 4;
+    pointer-events: none;
+    animation: guia 1.1s ease-in-out infinite;
+  }
+  @keyframes guia {
+    50% {
+      stroke-opacity: 0.25;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .guia {
+      animation: none;
+    }
+  }
   .fnirsi {
     position: relative;
     width: 100%;

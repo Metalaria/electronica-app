@@ -16,6 +16,8 @@
   import { verificarMontaje } from './verificar.ts';
   import { formatoSI } from '../grafica/formato.ts';
   import { clavePin, type CableProto, type Pieza } from './tipos.ts';
+  import type { MedidaProtoboard } from './medida.svelte.ts';
+  import { COLOR_PUNTA, LETRA_PUNTA, NOMBRE_PUNTA_PROTO, type PuntaProto } from '../instrumentos/puntas.ts';
 
   let {
     pb,
@@ -23,6 +25,7 @@
     encendidos = {},
     ruedaDesplaza = false,
     alTocar,
+    medida = null,
   }: {
     pb: Protoboard;
     rotulos?: boolean;
@@ -32,6 +35,8 @@
     ruedaDesplaza?: boolean;
     /** Double tap / double click on a part. */
     alTocar?: (id: string) => void;
+    /** The instruments' leads (0.10): drawn, and placed by a tap with the «medir» tool. */
+    medida?: MedidaProtoboard | null;
   } = $props();
 
   type Gesto =
@@ -39,7 +44,9 @@
     | { t: 'pata'; id: string; i: number; q: Pt; desde: Pt; movido: boolean }
     | { t: 'extremo'; id: string; e: 'a' | 'b'; q: Pt; desde: Pt; movido: boolean }
     | { t: 'cable'; a: Pt; b: Pt; desde: Pt; movido: boolean }
-    | { t: 'pan'; desde: Pt; t0: Pt; movido: boolean };
+    | { t: 'pan'; desde: Pt; t0: Pt; movido: boolean; o?: { t: 'pieza' | 'cable'; id: string } }
+    /** A probe of the instruments dragged to another hole (0.10). */
+    | { t: 'sonda'; p: PuntaProto; q: Pt; desde: Pt; movido: boolean };
 
   let caja: HTMLDivElement | undefined = $state();
   let ancho = $state(600);
@@ -194,6 +201,32 @@
     const q = red0(w);
     const desde: Pt = [ev.clientX, ev.clientY];
     const o = objetivo(ev);
+    if (pb.herramienta === 'medir' && medida) {
+      // A probe under the finger is dragged; a leg's handle too (opening the circuit); otherwise a tap places
+      // the chosen probe (or chooses the tutor's piece) and a drag pans.
+      const r = Math.max(0.55, (ev.pointerType === 'mouse' ? 10 : 18) / s);
+      let cerca: { p: PuntaProto; d: number } | null = null;
+      for (const d of medida.dibujo) {
+        const dd = Math.hypot(d.q[0] - w[0], d.q[1] - w[1]);
+        if (dd < r && (!cerca || dd < cerca.d)) cerca = { p: d.p, d: dd };
+      }
+      if (cerca) {
+        gesto = { t: 'sonda', p: cerca.p, q: medida.puntas[cerca.p]!, desde, movido: false };
+        return;
+      }
+      if (o?.t === 'asa' && !o.e) {
+        const p = pb.pieza(o.id);
+        if (p) gesto = { t: 'pata', id: o.id, i: o.i, q: p.pos[o.i]!, desde, movido: false };
+        return;
+      }
+      if (o?.t === 'asa' && o.e) {
+        const c = pb.cable(o.id);
+        if (c) gesto = { t: 'extremo', id: o.id, e: o.e, q: c[o.e], desde, movido: false };
+        return;
+      }
+      gesto = { t: 'pan', desde, t0: [tx, ty], movido: false, ...(o && o.t !== 'asa' ? { o: { t: o.t, id: o.id } } : {}) };
+      return;
+    }
     if (pb.herramienta === 'cable' && (!o || o.t !== 'asa')) {
       if (libreParaCable(q) || pendiente) gesto = { t: 'cable', a: pendiente ?? q, b: q, desde, movido: false };
       else gesto = { t: 'pan', desde, t0: [tx, ty], movido: false };
@@ -256,6 +289,13 @@
         g.dy = Math.round(w[1] - g.ini[1]);
         break;
       }
+      case 'sonda': {
+        const q = red0(w);
+        g.q = q;
+        redMarcada = medida?.nodoEn(q) ?? null;
+        info = describir(q);
+        break;
+      }
       case 'pata':
       case 'extremo':
       case 'cable': {
@@ -279,6 +319,12 @@
       return;
     }
     switch (g.t) {
+      case 'sonda':
+        if (medida) {
+          medida.activa = g.p;
+          info = medida.colocar(g.q);
+        }
+        break;
       case 'pieza':
         if (g.dx || g.dy) pb.moverPiezas(g.ids, g.dx, g.dy);
         break;
@@ -299,6 +345,43 @@
 
   function tocar(ev: PointerEvent, g: Gesto) {
     const q = red0(mundo(ev.clientX, ev.clientY));
+    if (pb.herramienta === 'medir' && medida) {
+      const tutor = medida.tutor;
+      const o = g.t === 'pan' ? g.o : undefined;
+      if (g.t === 'sonda') {
+        // A tap on a probe: it becomes the one in hand.
+        medida.activa = g.p;
+        info = `En la mano: ${NOMBRE_PUNTA_PROTO[g.p].toLowerCase()}. Arrástrela para moverla.`;
+        return;
+      }
+      if (tutor && o && tutor.esperaObjetivo) {
+        const m = tutor.elegir(o);
+        if (m) {
+          info = m;
+          return;
+        }
+      }
+      // Opening the circuit (tutor): a tap on a part selects it, so its legs can be dragged.
+      if (tutor && o?.t !== undefined && tutor.pasos[tutor.actual]?.id === 'abrir') {
+        pb.sel = [o.id];
+        info = 'Arrastre el círculo de una pata (o del extremo del cable) a una tira libre.';
+        return;
+      }
+      let punto: Pt | null = q;
+      if (!agujero(cfg, q[0], q[1]) && !borneEn(pb.doc, q)) {
+        // On a body: the nearest leg of that part.
+        const p = o?.t === 'pieza' ? pb.pieza(o.id) : undefined;
+        const w = mundo(ev.clientX, ev.clientY);
+        punto = p ? [...p.pos].sort((a, b) => Math.hypot(a[0] - w[0], a[1] - w[1]) - Math.hypot(b[0] - w[0], b[1] - w[1]))[0] ?? null : null;
+      }
+      if (!punto) {
+        info = 'Las puntas van en un agujero, en una pata o en un borne.';
+        return;
+      }
+      info = medida.colocar(punto);
+      redMarcada = medida.nodoEn(punto);
+      return;
+    }
     if (g.t === 'cable') {
       // Wire tool, tap by tap.
       if (!pendiente) {
@@ -547,6 +630,7 @@
 <div
   class="mesa"
   class:con-cable={pb.herramienta === 'cable'}
+  class:modo-medir={pb.herramienta === 'medir'}
   bind:this={caja}
   bind:clientWidth={ancho}
   bind:clientHeight={alto}
@@ -585,6 +669,20 @@
       {#each puntas as w (w.id)}
         <g data-cable={w.id} class="cable punta" class:sel={seleccion.has(w.id)} use:marcado={svgCable(vistaCable(w), true)}></g>
       {/each}
+      {#if medida}
+        <g class="sondas" aria-hidden="true">
+          {#each medida.tutor?.pasos[medida.tutor.actual]?.puntos?.() ?? [] as q, i (i)}
+            <circle class="guia-hueco" cx={q[0]} cy={q[1]} r=".46" />
+          {/each}
+          {#each medida.dibujo as d (d.p)}
+            {@const g = gesto}
+            {@const [x, y] = g?.t === 'sonda' && g.movido && g.p === d.p ? g.q : d.q}
+            <path class="cable-sonda" d={`M${x} ${y}C${x + 0.2} ${y - 1.4} ${x + 1.4} ${y - 1.6} ${x + 1.6} ${y - 2.8}`} stroke={COLOR_PUNTA[d.p]} />
+            <circle class="punta-sonda" cx={x} cy={y} r=".42" fill={COLOR_PUNTA[d.p]} class:activa={medida.activa === d.p} />
+            <text class="letra-sonda" x={x} y={y + 0.02} text-anchor="middle" dominant-baseline="central">{LETRA_PUNTA[d.p]}</text>
+          {/each}
+        </g>
+      {/if}
       {#if rotulos}
         <g class="rotulos">
           {#each enPlaca as p (p.id)}
@@ -596,6 +694,9 @@
       {#each pb.sel as id (id)}
         {@const p = pb.pieza(id)}
         {#if p}<path class="contorno" class:mal={!!invalida} d={contorno(vista(p))} />{/if}
+      {/each}
+      {#each medida?.tutor?.pieza ? [medida.tutor.pieza] : [] as p (p.id)}
+        <path class="contorno objetivo" d={contorno(vista(p))} />
       {/each}
       {#if gesto?.t === 'cable' && gesto.movido}
         <g class="fantasma" use:marcado={svgCable({ id: '', a: gesto.a, b: gesto.b, color: '#e8c11c' })}></g>
@@ -613,6 +714,11 @@
   </svg>
   {#if info || pb.mensaje || invalida}
     <p class="info" class:aviso={!!pb.mensaje || !!invalida} aria-live="polite">{invalida ?? (pb.mensaje || info)}</p>
+  {/if}
+  {#if pb.herramienta === 'medir'}
+    {@const t = medida?.tutor}
+    {@const paso = t && t.actual >= 0 ? t.pasos[t.actual] : undefined}
+    <p class="pista">{paso ? paso.texto : t?.terminado ? 'Hecho: la lectura está en el instrumento (panel «Medir»).' : medida?.activa ? 'Toque el agujero donde va la punta elegida en «Medir».' : 'Elija una punta en el panel «Medir».'}</p>
   {/if}
   {#if pb.herramienta === 'cable'}
     <p class="pista">{pendiente ? 'Toque el agujero donde acaba el cable (o el mismo para cancelar).' : 'Cable: toque un agujero libre y luego otro, o arrastre de uno a otro.'}</p>
@@ -634,8 +740,48 @@
     outline: none;
     cursor: default;
   }
-  .mesa.con-cable {
+  .mesa.con-cable,
+  .mesa.modo-medir {
     cursor: crosshair;
+  }
+  .sondas {
+    pointer-events: none;
+  }
+  .cable-sonda {
+    fill: none;
+    stroke-width: 0.2;
+    stroke-linecap: round;
+    opacity: 0.9;
+  }
+  .guia-hueco {
+    fill: rgba(255, 211, 77, 0.25);
+    stroke: #f2b705;
+    stroke-width: 0.12;
+    animation: guia-hueco 1.1s ease-in-out infinite;
+  }
+  @keyframes guia-hueco {
+    50% {
+      stroke-opacity: 0.3;
+      fill-opacity: 0.1;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .guia-hueco {
+      animation: none;
+    }
+  }
+  .punta-sonda {
+    stroke: #fff;
+    stroke-width: 0.09;
+  }
+  .punta-sonda.activa {
+    stroke: #ffd84a;
+    stroke-width: 0.16;
+  }
+  .letra-sonda {
+    font-size: 0.5px;
+    font-weight: 700;
+    fill: #fff;
   }
   svg {
     display: block;
@@ -665,6 +811,10 @@
     stroke-width: 0.1;
     stroke-dasharray: 0.35 0.2;
     pointer-events: none;
+  }
+  .contorno.objetivo {
+    stroke: #8e44c9;
+    fill: rgba(142, 68, 201, 0.1);
   }
   .contorno.mal {
     stroke: #d93025;

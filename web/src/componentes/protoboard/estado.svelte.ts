@@ -46,7 +46,8 @@ export class Protoboard {
   doc = $state<DocumentoProtoboard>(montajeVacio());
   /** Selected pieces and wires. */
   sel = $state<string[]>([]);
-  herramienta = $state<'seleccionar' | 'cable' | 'colocar'>('seleccionar');
+  /** «medir» (0.10): a tap places the chosen lead of the instruments (medida.svelte.ts). */
+  herramienta = $state<'seleccionar' | 'cable' | 'colocar' | 'medir'>('seleccionar');
   /** Palette kind chosen (the editor's palette sets it; the board adds the part at once). */
   colocando = $state<string | null>(null);
   version = $state(0);
@@ -488,7 +489,7 @@ function crearFachada(pb: Protoboard): EdicionPropiedades & EdicionPaleta {
       pb.sel = v;
     },
     get herramienta() {
-      return pb.herramienta === 'cable' ? 'cable' : pb.herramienta;
+      return pb.herramienta === 'medir' ? 'seleccionar' : pb.herramienta;
     },
     set herramienta(v) {
       pb.herramienta = v;

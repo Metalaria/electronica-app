@@ -8,24 +8,8 @@
     /** Drawn by the automatic schematic generator (SVG markup in theme colours). */
     | { tipo: 'auto'; svg: string; vista: [number, number, number, number]; esquema: Esquema; mapa: Record<string, string> };
 
-  export const COLOR_PUNTA: Record<string, string> = {
-    bmRojo: '#d62f37',
-    bmNegro: '#222',
-    fnRojo: '#f08a24',
-    fnNegro: '#6b4a2a',
-    ch1: '#d4b800',
-    ch2: '#1aa6cf',
-    masa: '#2e9a4a',
-  };
-  export const LETRA_PUNTA: Record<string, string> = {
-    bmRojo: '+',
-    bmNegro: '−',
-    fnRojo: '+',
-    fnNegro: '−',
-    ch1: '1',
-    ch2: '2',
-    masa: '⏚',
-  };
+  import { COLOR_PUNTA, LETRA_PUNTA } from '../puntas';
+  export { COLOR_PUNTA, LETRA_PUNTA };
 </script>
 
 <script lang="ts">

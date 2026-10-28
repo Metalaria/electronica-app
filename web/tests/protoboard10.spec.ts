@@ -72,6 +72,7 @@ Bo oi g V = v(q,g)*max(v(vc,g)-1.7, 0) + 0.05
 Ro oi o 10
 Bn nq g V = 1-v(q,g)
 Sd ds g nq g sdis555
+Ri vc g 15k
 .model sdis555 sw(vt=0.5 vh=0.1 ron=10 roff=1g)
 .ends ne555
 .tran 1m 1.5

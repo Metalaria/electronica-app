@@ -34,6 +34,9 @@
   import Play from '@lucide/svelte/icons/play';
   import RefreshCw from '@lucide/svelte/icons/refresh-ccw';
   import ToggleRight from '@lucide/svelte/icons/toggle-right';
+  import Gauge from '@lucide/svelte/icons/gauge';
+  import type { MedidaProtoboard } from './medida.svelte.ts';
+  import type MedirProtoboard from './MedirProtoboard.svelte';
 
   let {
     pb,
@@ -47,10 +50,31 @@
     cabecera?: Snippet;
   } = $props();
 
-  type Pestana = 'esquema' | 'simulacion' | 'avisos' | 'pieza' | 'anadir';
+  type Pestana = 'esquema' | 'simulacion' | 'avisos' | 'pieza' | 'anadir' | 'medir';
   let pestana = $state<Pestana>('esquema');
   let mesa: Mesa | undefined = $state();
   let rotulos = $state(true);
+
+  // ---------------------------------------------------------------- instruments (0.10)
+  // Loaded the first time «Medir» opens; then they stay (leads on the board, instruments reading) while the
+  // other tabs are used.
+  let medida = $state.raw<MedidaProtoboard | null>(null);
+  let Medir = $state.raw<typeof MedirProtoboard | null>(null);
+  async function abrirMedir() {
+    pestana = 'medir';
+    if (medida) return;
+    const [m, c] = await Promise.all([import('./medida.svelte.ts'), import('./MedirProtoboard.svelte')]);
+    medida ??= new m.MedidaProtoboard(pb);
+    Medir = c.default;
+  }
+  // The «medir» tool goes with the tab.
+  $effect(() => {
+    const p = pestana;
+    untrack(() => {
+      if (p === 'medir') pb.herramienta = 'medir';
+      else if (pb.herramienta === 'medir') pb.herramienta = 'seleccionar';
+    });
+  });
 
   // ---------------------------------------------------------------- simulation
 
@@ -111,7 +135,8 @@
   let espera: ReturnType<typeof setTimeout> | null = null;
   $effect(() => {
     void pb.version;
-    if (!vivo) return;
+    // (with the instruments on, they simulate the board: the engine is theirs)
+    if (!vivo || medida) return;
     untrack(() => {
       if (espera) clearTimeout(espera);
       espera = setTimeout(() => {
@@ -215,6 +240,7 @@
       <button type="button" class="hb" title="Conmutar el interruptor" aria-label="Conmutar" onclick={() => pb.conmutar(piezaSel.id)}><ToggleRight size={19} /></button>
     {/if}
     <button type="button" class="hb" title="Quitar (Supr)" aria-label="Quitar" disabled={!pb.sel.length} onclick={() => pb.borrar()}><Trash size={19} /></button>
+    <button type="button" class="hb" aria-pressed={pestana === 'medir'} title="Medir: multímetro, osciloscopio, generador y auricular" aria-label="Medir" onclick={() => (pestana === 'medir' ? (pestana = 'esquema') : void abrirMedir())}><Gauge size={19} /></button>
     <span class="sep"></span>
     <button type="button" class="hb" title="Deshacer (Ctrl Z)" aria-label="Deshacer" disabled={!pb.puedeDeshacer} onclick={() => pb.deshacer()}><Undo size={19} /></button>
     <button type="button" class="hb" title="Rehacer (Ctrl Y)" aria-label="Rehacer" disabled={!pb.puedeRehacer} onclick={() => pb.rehacer()}><Redo size={19} /></button>
@@ -238,7 +264,7 @@
 
   <div class="cuerpo">
     <div class="banco">
-      <Mesa bind:this={mesa} {pb} {rotulos} {encendidos} ruedaDesplaza={pantallaCompleta} alTocar={() => (pestana = 'pieza')} />
+      <Mesa bind:this={mesa} {pb} {rotulos} {encendidos} {medida} ruedaDesplaza={pantallaCompleta} alTocar={() => (pestana = 'pieza')} />
     </div>
 
     <section class="panel" aria-label="Panel de la protoboard">
@@ -250,10 +276,16 @@
         </button>
         <button type="button" role="tab" aria-selected={pestana === 'pieza'} onclick={() => (pestana = 'pieza')}>Pieza</button>
         <button type="button" role="tab" aria-selected={pestana === 'anadir'} onclick={() => (pestana = 'anadir')}>Añadir</button>
+        <button type="button" role="tab" aria-selected={pestana === 'medir'} onclick={() => void abrirMedir()}>Medir</button>
       </div>
 
       <div class="contenido">
-        {#if pestana === 'esquema'}
+        {#if medida && Medir}
+          <div class="panel-medir" hidden={pestana !== 'medir'}><Medir {pb} {medida} /></div>
+        {/if}
+        {#if pestana === 'medir'}
+          {#if !medida || !Medir}<p class="nota">Cargando los instrumentos…</p>{/if}
+        {:else if pestana === 'esquema'}
           <p class="nota">El esquema sale de lo que hay montado: cambia con cada pieza y cada cable.{#if vivo && !vigente} Pulse «Simular» para ver de nuevo sus tensiones y corrientes.{/if}</p>
           <div class="esquema-vivo">
             <CircuitoVivo texto={textoEsquema} refs={pb.doc.refs ?? []} resultado={vigente ? resultado : null} />

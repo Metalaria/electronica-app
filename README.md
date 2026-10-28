@@ -382,6 +382,39 @@ añadida desde «Añadir» llega en su chip, con lo demás por cablear. Diferenc
 su descripción: el 74HC112 cambia en el flanco de bajada y PRE y CLR son activas a nivel bajo. Lo que no tiene pieza real (los puentes ADC/DAC,
 el reloj digital, el decodificador del modelo analógico) sigue siendo un módulo.
 
+**Medir en la protoboard** (pestaña «Medir», o el botón del velocímetro). Los mismos Brymen BM869s y FNIRSI
+2C53T del banco de pruebas (ver «Instrumentos»), fieles a los de verdad, se usan como en el laboratorio: se gira
+el selector, se pasa la punta roja al borne que toca (COM, ΩV, mA µA, A), se elige una punta o sonda y se toca un
+agujero (o una pata, o un borne de la fuente): queda enchufada allí y mide la red de esa tira. Las puntas puestas
+se arrastran a otro agujero, que marca su red al pasar. Lo que hay: las dos puntas de cada multímetro, las sondas
+CH1 y CH2 con su pinza de masa, las dos puntas del generador del FNIRSI (añaden una fuente entre sus redes,
+movida por el DDS) y un auricular. «Alimentación encendida» conecta o quita la fuente, como al desenchufarla; al
+encenderla las fuentes suben desde cero, así que un oscilador como el 555 arranca como en la realidad.
+
+- **¿Qué quieres medir?** es un tutor, no un piloto automático: tensión entre dos puntos, tensión de una pieza,
+  corriente por una pieza, resistencia de una pieza, ver la señal en un punto y escucharlo. Dice paso a paso lo
+  que se haría con el instrumento real («Gire el selector a A mA», «Pase la punta roja al borne mA µA», «Abra el
+  circuito: arrastre una pata de R2 a una tira libre», «La punta roja en la tira de donde ha salido la pata»…),
+  ilumina la posición del selector, el borne, el botón o los agujeros donde va cada cosa, marca cada paso cuando se
+  hace y al final explica en una línea lo que marca el instrumento («El Brymen marca 6,000 V: la tensión en R2, de
+  la pata 1 de R2 a masa»). «Hazlo por mí» solo existe como último recurso: hace los pasos que faltan uno a uno, a
+  la vista.
+- **Errores explicados** como lo haría un profesor, con qué hacer en su lugar: la punta roja en un borne de
+  corriente con el selector en tensión (InErr y pitido), un amperímetro en paralelo (se funde el fusible: por qué, y
+  «Ponerlo en serie»), resistencia con el circuito alimentado («Medir sin alimentación»), OL (rango manual o fuera
+  de escala), sonda y canal con distinto ×1/×10, nivel de disparo fuera de la señal (la imagen no se queda quieta).
+- El **AUTO** del FNIRSI busca la frecuencia en la señal (ensancha la base de tiempos hasta ver periodos enteros)
+  y elige V/div y disparo; PRM muestra frecuencia, periodo, Vpp y media en la pantalla.
+- **Escuchar**: el auricular (o una sonda del osciloscopio) en un punto y «Escuchar»: la señal de ese punto por el
+  altavoz, sin continua, con un limitador suave y su volumen (0 dB: 1 V de pico llena el limitador). Solo suena lo
+  que está en la banda audible; para una señal lenta explica por qué no se oye (y ofrece sus chasquidos) y para una
+  de radio, por qué tampoco (y su envolvente, si cambia). Empieza solo al tocar un botón (Android) y se calla al
+  salir.
+- Una pista la primera vez (se cierra y no vuelve) y un «?» bajo cada instrumento con lo esencial de su manejo.
+
+El editor de esquemas tiene **«Medir»**: abre el banco de pruebas con su netlist y su propio dibujo, cuyos nodos
+reciben las puntas (y el auricular), con «← Editor» de vuelta. Para el tutor, «Ver en protoboard» y «Medir».
+
 La pestaña **«Protoboard»** del simulador (`#/protoboard`), que también está en el menú de herramientas (el
 carril de iconos o «Más»), parte de una placa vacía con la fuente de 5 V ya
 conectada a los carriles; «Guardar» la deja en **Mis montajes** (cada cambio se guarda solo desde entonces) y
@@ -834,7 +867,9 @@ dibujado: en las prácticas, la figura del libro (o un esquema propio cuando la 
 libre, el esquema automático de la netlist. Se elige una punta (roja o negra de cada multímetro, sondas CH1 y CH2,
 pinza de masa) y se toca un nodo del dibujo o de la lista; para medir corriente, el multímetro se pone **en serie**
 con un terminal de cualquier componente. Cada cambio (una punta, un valor, una función, la base de tiempos, el
-generador) vuelve a simular en unos milisegundos.
+generador) vuelve a simular en unos milisegundos. También hay un **auricular** (♪) para escuchar un nodo, como en
+la protoboard (0.10), y un «?» con la ayuda de cada instrumento. El AUTO del osciloscopio sube los V/div cuando una
+señal pequeña va sobre mucha continua (no cabría en pantalla con el mando de posición).
 
 Los instrumentos **forman parte del circuito**, como en el banco real: el voltímetro son 10 MΩ ‖ 60 pF (en el
 rango de mV la impedancia cae por encima de unos 3 V), el amperímetro es la derivación de su borne (BM869s:
@@ -1234,7 +1269,7 @@ fichero de datos. Quien prefiera dos tokens de permisos mínimos no puede: la ap
 | macOS | `~/Library/Application Support/es.gonzalomejias.electronica/lector.json` |
 | Android | almacenamiento interno de la aplicación (se borra al desinstalarla) |
 | Linux | `~/.local/share/es.gonzalomejias.electronica/lector.json` |
-| Navegador (desarrollo) | `localStorage`, claves `epa:prefs`, `epa:posiciones`, `epa:marcadores`, `epa:notas`, `epa:ejercicios`, `epa:leidas`, `epa:deducciones`, `epa:calc-favoritos`, `epa:repaso-tarjetas`, `epa:repaso-diario`, `epa:repaso-ajustes`, `epa:repaso-tests`, `epa:repaso-fallos`, `epa:repaso-examenes`, `epa:progreso-diario`, `epa:progreso-objetivo`, `epa:editor-circuitos`, `epa:protoboard-circuitos`, `epa:sinc-ajustes`, `epa:sinc-estado`, `epa:sinc-marcas`, `epa:sinc-version` y, aparte, `epa-credencial:github` (el token) |
+| Navegador (desarrollo) | `localStorage`, claves `epa:prefs`, `epa:posiciones`, `epa:marcadores`, `epa:notas`, `epa:ejercicios`, `epa:leidas`, `epa:deducciones`, `epa:calc-favoritos`, `epa:repaso-tarjetas`, `epa:repaso-diario`, `epa:repaso-ajustes`, `epa:repaso-tests`, `epa:repaso-fallos`, `epa:repaso-examenes`, `epa:progreso-diario`, `epa:progreso-objetivo`, `epa:editor-circuitos`, `epa:protoboard-circuitos`, `epa:medir-pista`, `epa:sinc-ajustes`, `epa:sinc-estado`, `epa:sinc-marcas`, `epa:sinc-version` y, aparte, `epa-credencial:github` (el token) |
 
 El token de GitHub va en otro fichero de la misma carpeta, `credenciales.json`, para que copiar `lector.json` no
 lo lleve consigo. `lector.json` guarda además el estado de la sincronización (`sinc-*`: ajustes, última versión
@@ -1348,10 +1383,17 @@ chips 74HC (alimentados, con las entradas libres atadas y el aviso de entrada CM
 simula desde la placa el contador asíncrono montado con 74HC74 y 74HC86 (cuenta hacia arriba) y avisa al quitar
 el cable de una XOR a su D, añade
 una puerta a mano, abre la protoboard desde el menú de herramientas y deja capturas (tableta y
-teléfono, claro y oscuro) en `web/tests/capturas/protoboard10/`:
+teléfono, claro y oscuro) en `web/tests/capturas/protoboard10/`. La de los instrumentos (`instrumentos10.spec.ts`,
+misma configuración) sigue el tutor en un divisor (tensión de una pieza, corriente abriendo el circuito, resistencia
+con «Hazlo por mí»: cada paso detectado y la lectura igual que la simulación), provoca y comprueba los errores
+explicados (punta roja en el borne A, amperímetro en paralelo, óhmetro alimentado), ve un 555 con AUTO a su
+frecuencia, mide un RC alimentado por el generador, escucha el 555 (nivel del analizador de Web Audio), prueba el
+tacto a 412 y 800 px (con una punta arrastrada) y el «Medir» del editor, y deja capturas en
+`web/tests/capturas/instrumentos10/`:
 
 ```sh
 PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers npx playwright test -c playwright.protoboard10.config.ts tests/protoboard10.spec.ts
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers npx playwright test -c playwright.protoboard10.config.ts tests/instrumentos10.spec.ts
 ```
 
 La colocación automática de **todos** los circuitos que tienen el botón (las 313 netlists del libro y los 31

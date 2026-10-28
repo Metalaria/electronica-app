@@ -1148,6 +1148,21 @@ pans in the full-screen view; `window.__epaProtoboard` for the tests), `Protoboa
 «Simulación» — the simulator's worker and `Resultados.svelte`; after the first run each change re-solves the
 operating point in the background (LEDs lit, voltages under the finger) —, «Avisos», «Pieza», «Añadir»).
 
+Instruments on the board (0.10): `medida.svelte.ts` (`MedidaProtoboard`: a `Banco` of componentes/instrumentos/ with
+`dinamico` and `arranque`; leads at board points, each connected to the net of its hole or terminal via
+`redEn`; `sincronizar()` puts the board's netlist — plus `VFNGEN red black DC 0` when both generator leads are
+placed, driven by the DDS — and the nodes into the bench), `MedirProtoboard.svelte` (tab «Medir», loaded on first
+use and kept mounted; while it exists the board's own live operating point is off, the engine is the bench's;
+the oscilloscope's AUTO finds the frequency on the simulated signal, widening the time base, and re-runs until the
+time base is stable; `window.__epaMedida` for the tests), `tutor.svelte.ts` (`Tutor`: per task the steps with
+`hecho()` read from the instruments and the board — dial position, jack, power, probe nets against the chosen
+piece's leg nets, an opened leg alone in its strip or a moved wire end —, the lead «in hand», the holes to light
+(`puntos`), the dial/jack/button to light, `hacer` for «Hazlo por mí» (700 ms apart; none for choices that are the
+user's); `erroresMedida()`: the explained mistakes with an action). `Mesa.svelte` with the «medir» tool: a tap
+places the lead in hand (on a body, at its nearest leg) or chooses the tutor's piece; a probe is dragged with
+snapping and its net lit; leg handles still drag (opening the circuit); the step's text is the bench's hint.
+`localStorage epa:medir-pista` remembers the dismissed first-use hint.
+
 Storage: almacen key **`protoboard-circuitos`** = `{ version: 1, circuitos: { [id]: { id, nombre, creado,
 actualizado, borrado?, doc } } }` (as the editor's, tombstones included), registered for synchronisation.
 
@@ -1686,7 +1701,35 @@ practicas/  circuitos.ts (bench netlists derived from complementos/spice/cap22),
             practices: variants, initial settings, steps from the book with «apply», checks with the expected
             value, tolerance and how to read it, tables with a plot against theory), aplicar.ts, PanelPractica
 ```
-Tests: `tests/instrumentos.spec.ts` (screenshots `tests/capturas/instrumentos-*.png`).
+0.10 (instruments on the user's own circuits):
+```
+puntas.ts        leads and probes: names, colours, letters (light: the breadboard imports it without the bench);
+                 the earphone «esc» and, on the breadboard, the generator's leads «genRojo»/«genNegro»
+guia.ts          GuiaBrymen / GuiaFnirsi: what a tutor lights up (a dial position, a jack, a button); Brymen.svelte
+                 and Fnirsi.svelte take `guia` and draw a pulsing ring, nothing else changes
+banco/activo.svelte.ts  activarBanco(b, activo?): the simulation request, the 5/s readings and 8/s acquisitions,
+                 BeepJack and cleanup, out of Banco.svelte so the breadboard reuses them
+banco/Aparatos.svelte   the two instruments with their captions and a «?» each (side by side ≥ 640 px of the
+                 surrounding container, tabs below)
+banco/Escuchar.svelte   listening to the earphone or a channel (Banco.escucha) with volume and level meter
+motor/escucha.ts prepararEscucha(serie, rate): DC removed; a periodic signal (frequency counter) resampled from its
+                 last period to ≈ 1 s exactly periodic (pitch right, no click); < 20 Hz: why not, and its clicks
+                 (300 Hz high-pass) as an alternative; > 20 kHz: why not, and the peak envelope per carrier period
+                 when it varies by > 10 %; not periodic: the stretch once
+auricular.ts     Web Audio: buffer source (loop) → gain (volume; 0 dB = 1 V peak at the knee) → tanh wave shaper
+                 → output gain → analyser (level, tests: window.__epaAuricular) → speakers; the context is created
+                 or resumed only in a gesture, suspended on stop
+editor.ts        «Medir» of the schematic editor: netlist + dibujoVivo() drawing as a Plano «auto» source, kept in
+                 sessionStorage; VistaBanco handles #/instrumentos/editor («← Editor»)
+```
+`motor/montaje.ts` gained `escucha` (the node and its reference are saved; a transient of at least 60 ms with a
+step ≤ 1/48 000 s) and `arranque` (power-up: plain DC sources become `PWL(0 0 1u V)` when there is a transient, and
+with a known source frequency the instruments look after 20 periods, ≤ 0,2 s). `Banco.correr` retries once when
+another simulation of the page cancelled its run. `autoVertical` raises V/div until the trace fits the screen with
+the ±4-division position (a small signal on a large DC level).
+
+Tests: `tests/instrumentos.spec.ts` (screenshots `tests/capturas/instrumentos-*.png`), `tests/instrumentos10.spec.ts`
+(0.10: the breadboard's instruments and tutor, the editor's «Medir»; screenshots `tests/capturas/instrumentos10/`).
 
 ## Application log (0.9.2, `web/src/lib/registro.ts`)
 

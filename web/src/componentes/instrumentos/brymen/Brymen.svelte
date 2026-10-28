@@ -7,8 +7,9 @@
   import { celdas, segmentos } from './siete';
   import { pulsacion } from '../ui/pulsacion';
   import { prepararAudio, pitido } from '../audio';
+  import type { GuiaBrymen } from '../guia';
 
-  let { m }: { m: Brymen } = $props();
+  let { m, guia = null }: { m: Brymen; /** Tutor (0.10): the dial position and the jack to light up. */ guia?: GuiaBrymen | null } = $props();
 
   const CX = 150;
   const CY = 424;
@@ -228,6 +229,7 @@
         onkeydown={(e) => e.key === 'Enter' && girarA(i)}
       >
         <circle cx={CX + R_ROTULO * Math.sin(a)} cy={CY - R_ROTULO * Math.cos(a)} r="22" fill="transparent" />
+        {#if guia?.posicion === p.id && i !== m.pos}<circle class="guia" cx={CX + R_ROTULO * Math.sin(a)} cy={CY - R_ROTULO * Math.cos(a)} r="21" />{/if}
         <text
           x={CX + R_ROTULO * Math.sin(a)}
           y={CY - R_ROTULO * Math.cos(a) + 4}
@@ -280,6 +282,7 @@
         >{j.rotulo}</text
       >
       <circle cx={j.x} cy="566" r="24" fill="transparent" />
+      {#if guia?.borne === j.id && m.borne !== j.id}<circle class="guia" cx={j.x} cy="566" r="23" />{/if}
       <circle cx={j.x} cy="566" r="17" fill="#111" stroke={j.id === 'COM' ? '#888' : '#b5262c'} stroke-width="4" />
       {#if rojo || j.id === 'COM'}
         <circle cx={j.x} cy="566" r="11" fill={j.id === 'COM' ? '#1b1b1b' : '#d0262e'} stroke={j.id === 'COM' ? '#555' : '#ff6b6b'} stroke-width="2" />
@@ -299,6 +302,23 @@
 </svg>
 
 <style>
+  .guia {
+    fill: none;
+    stroke: #ffd34d;
+    stroke-width: 4;
+    pointer-events: none;
+    animation: guia 1.1s ease-in-out infinite;
+  }
+  @keyframes guia {
+    50% {
+      stroke-opacity: 0.25;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .guia {
+      animation: none;
+    }
+  }
   .brymen {
     display: block;
     width: 100%;

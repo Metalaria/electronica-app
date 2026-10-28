@@ -155,6 +155,20 @@
     abrirProtoboard({ tipo: 'documento', doc, titulo: doc.titulo || 'Circuito del editor' });
   }
 
+  /** «Medir» (0.10): the bench with the editor's netlist and its own drawing (tap its nodes to place leads). */
+  async function medir() {
+    const nl = ed.nl;
+    const doc = $state.snapshot(ed.doc) as DocumentoEsquema;
+    const v = dibujoVivo(doc, nl);
+    const { medirCircuitoEditor } = await import('../instrumentos/editor.ts');
+    medirCircuitoEditor({
+      texto: nl.texto,
+      titulo: doc.titulo || 'Circuito del editor',
+      plano: v.esquemas[0] ? { tipo: 'auto', svg: v.svg, vista: v.vista, esquema: v.esquemas[0], mapa: v.correspondencia[0]?.nodos ?? {} } : null,
+      volver: idGuardado ? `#/editor/${idGuardado}` : '#/editor',
+    });
+  }
+
   async function guardar() {
     if (idGuardado) return;
     const doc = $state.snapshot(ed.doc) as DocumentoEsquema;
@@ -429,6 +443,7 @@
       {#if !idGuardado}<button type="button" class="boton primario" onclick={guardar} disabled={!ed.doc.componentes.length}>Guardar</button>{/if}
       <button type="button" class="boton" onclick={() => (verCircuitos = true)}>Mis circuitos</button>
       <button type="button" class="boton" onclick={verProtoboard} disabled={!ed.doc.componentes.length} title="Montar este circuito en una protoboard virtual (una prueba: el esquema no cambia)">Ver en protoboard</button>
+      <button type="button" class="boton" onclick={() => void medir()} disabled={!ed.doc.componentes.length || ed.nl.errores.length > 0} title="Medir este circuito con el polímetro, el osciloscopio y el generador (las puntas en los nodos del dibujo)">Medir</button>
       <button type="button" class="boton" onclick={nuevo}>Nuevo</button>
       {#if app.movil}
         <button type="button" class="boton" aria-haspopup="menu" aria-expanded={verArchivo} onclick={() => (verArchivo = !verArchivo)}>Archivo ▾</button>

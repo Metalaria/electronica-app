@@ -311,8 +311,15 @@ export function siguiente125(lista: number[], x: number): number {
 /** Vertical scale and position that make a signal fill about five divisions (section 21.6). */
 export function autoVertical(max: number, min: number): { vDiv: number; pos: number } {
   const pp = Math.max(max - min, 1e-3);
-  const vDiv = siguiente125(V_DIV, pp / 5);
+  let vDiv = siguiente125(V_DIV, pp / 5);
   const centro = (max + min) / 2;
+  // The position knob reaches ±4 divisions: a small signal on a large DC level needs a larger V/div to stay
+  // on the screen (with DC coupling, as the real AUTO does).
+  for (let i = V_DIV.indexOf(vDiv); i >= 0 && i < V_DIV.length - 1; i++) {
+    vDiv = V_DIV[i]!;
+    const p = Math.max(-4, Math.min(4, Math.round((-centro / vDiv) * 4) / 4));
+    if (max + p * vDiv <= 4 * vDiv && min + p * vDiv >= -4 * vDiv) break;
+  }
   let pos = -centro / vDiv;
   pos = Math.max(-4, Math.min(4, Math.round(pos * 4) / 4));
   return { vDiv, pos };

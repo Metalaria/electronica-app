@@ -11,6 +11,8 @@
 //                                          bandwidth (50 MHz, or 6 MHz with the probe on ×1) as RC stages
 //   the two ground clips                   joined inside the oscilloscope (they short what is between them)
 //   DDS generator                          replaces a voltage source of the circuit, with 50 Ω in series
+//   earphone («escuchar», 0.10)             nothing electrical (an ideal listener): its node (and reference) are
+//                                          saved, and the transient is long and fine enough to be heard
 //
 // The bench then reads node voltages and the current through each multimeter (a 0 V source in series).
 
@@ -64,7 +66,18 @@ export interface Banco {
   ventanaDmm: number;
   /** Run a transient even without time-varying sources (an oscillator). */
   dinamico?: boolean;
+  /**
+   * Power-up (0.10, the breadboard and the editor): with a transient, the DC sources rise from 0 in 1 µs at
+   * t = 0, as when the supply is switched on, instead of starting from the operating point (an oscillator
+   * such as a 555 may sit forever at its balanced operating point; a real one starts at power-up).
+   */
+  arranque?: boolean;
+  /** Listening to a node (0.10): the node and its reference; the transient covers `ESCUCHA` at audio rate. */
+  escucha?: { punta: string; masa: string } | null;
 }
+
+/** What listening asks of the transient: at least this long (s), with this step at most (s): 48 kHz. */
+export const ESCUCHA = { span: 0.06, paso: 1 / 48000 };
 
 export interface PlanSimulacion {
   netlist: string;
@@ -118,6 +131,10 @@ export function planificar(b: Banco): PlanSimulacion {
 
   // Sources: AC magnitudes removed (the bench runs its own .ac), sources off when the circuit is unpowered,
   // and the generator's source replaced by the DDS.
+  // (computed here too: power-up rewrites the DC sources only when there will be a transient)
+  const conTransitorio =
+    b.alimentado && (c.variables.some((v) => v.elemento.toLowerCase() !== b.generador?.fuente.toLowerCase()) || !!(b.generador && b.generador.dds.salida) || !!c.tran || !!b.dinamico || !!b.escucha);
+  const variables = new Set(c.variables.map((v) => v.elemento.toLowerCase()));
   for (const e of c.elementos) {
     if (e.tipo !== 'V' && e.tipo !== 'I' && e.tipo !== 'B') continue;
     const nodosTxt = e.terminales.map((_, i) => nodoDe(e, i)).join(' ');
@@ -139,6 +156,16 @@ export function planificar(b: Banco): PlanSimulacion {
       eds.push({ ini: e.ini, fin: e.fin, texto: `${e.nombre} ${nodosTxt} ${cero}` });
       reescritos.add(e.nombre.toLowerCase());
       continue;
+    }
+    if (b.arranque && conTransitorio && e.tipo !== 'B' && !variables.has(e.nombre.toLowerCase()) && !/\bac\b/i.test(e.linea)) {
+      // A plain DC source: «DC 9», «9», «dc=9».
+      const resto = e.linea.split(/\s+/).slice(1 + e.terminales.length).join(' ').trim();
+      const m = /^(?:dc\s*=?\s*)?([-+]?[0-9.]+(?:e[-+]?\d+)?[a-zµ]*)$/i.exec(resto);
+      if (m) {
+        eds.push({ ini: e.ini, fin: e.fin, texto: `${e.nombre} ${nodosTxt} PWL(0 0 1u ${m[1]})` });
+        reescritos.add(e.nombre.toLowerCase());
+        continue;
+      }
     }
     if (e.tipo !== 'B' && /\bac\b/i.test(e.linea)) {
       // Rebuilt from the logical line: name, nodes, and the rest without «AC mag [phase]».
@@ -241,6 +268,11 @@ export function planificar(b: Banco): PlanSimulacion {
     extra.push(`C__${k}_bw ${NODO.canal(k)} 0 ${n(cbw)}`);
     nodos[`${k}`] = NODO.canal(k).toLowerCase();
   }
+  // The earphone: its node and reference are read (as v(…), ground excluded).
+  if (b.escucha) {
+    nodos['esc'] = b.escucha.punta.toLowerCase();
+    if (!esMasa(b.escucha.masa)) nodos['esc.m'] = b.escucha.masa.toLowerCase();
+  }
   // The ground clips are one node inside the instrument.
   for (let i = 1; i < masas.length; i++) {
     extra.push(`R__masas_${i} ${masas[0]} ${masas[i]} 1m`);
@@ -254,7 +286,7 @@ export function planificar(b: Banco): PlanSimulacion {
   const conGenerador = !!(b.generador && b.generador.dds.salida && b.alimentado);
   // A transient is needed with time-varying sources, and also for circuits that move by themselves
   // (oscillators: the book's netlist ran a .tran) or when the bench asks for it.
-  const variable = b.alimentado && (fuentes.length > 0 || conGenerador || !!c.tran || !!b.dinamico);
+  const variable = b.alimentado && (fuentes.length > 0 || conGenerador || !!c.tran || !!b.dinamico || !!b.escucha);
   const frecuencias = fuentes.map((v) => v.frecuencia).filter((f): f is number => !!f && f > 0);
   if (conGenerador) frecuencias.push(b.generador!.dds.frecuencia);
   const fBase = frecuencias.length ? Math.min(...frecuencias) : null;
@@ -268,7 +300,9 @@ export function planificar(b: Banco): PlanSimulacion {
 
   let tran: PlanSimulacion['tran'] = null;
   if (variable) {
-    const inicio = Math.max(0, b.asentamiento);
+    // From power-up, a periodic circuit needs some periods to reach its steady state (a capacitor charging
+    // to its mean): the instruments look after twenty periods (at most 0,2 s).
+    const inicio = Math.max(0, b.asentamiento, b.arranque && fBase ? Math.min(20 / fBase, 0.2) : 0);
     const W = b.osciloscopio ? 12 * b.osciloscopio.sDiv : 0;
     // Oscilloscope: room to find a trigger in the first 1.2 windows and to show the next one.
     const spanOsc = b.osciloscopio ? 2.4 * W : 0;
@@ -276,9 +310,11 @@ export function planificar(b: Banco): PlanSimulacion {
     const sinF = Math.max(b.ventanaDmm, c.tran ? Math.min(2, c.tran.fin - inicio) : 0);
     // Twenty periods of the slowest source, or the requested window when f is not known.
     const spanDmm = b.dmms.some((d) => d.conexion) ? (fBase ? Math.min(Math.max(1e-5, 20 / fBase), 4) : sinF) : 0;
-    let span = Math.max(spanOsc, spanDmm, fBase ? 3 / fBase : 1e-3);
+    // Listening: a stretch long enough for several periods of a tone, at an audio sampling rate.
+    const spanEsc = b.escucha ? Math.max(ESCUCHA.span, fBase && fBase >= 20 ? Math.min(0.25, 20 / fBase) : 0) : 0;
+    let span = Math.max(spanOsc, spanDmm, spanEsc, fBase ? 3 / fBase : 1e-3);
     // Step: fine enough for the screen (2 points per sample of 1 000) and for the fastest source.
-    let paso = Math.min(W > 0 ? W / 2000 : Infinity, fMax > 0 ? 1 / (40 * fMax) : Infinity, (inicio + span) / 400);
+    let paso = Math.min(W > 0 ? W / 2000 : Infinity, fMax > 0 ? 1 / (40 * fMax) : Infinity, (inicio + span) / 400, b.escucha ? ESCUCHA.paso : Infinity);
     const MAX_PUNTOS = 4e5;
     if (span / paso > MAX_PUNTOS) {
       // Too many points: keep the oscilloscope's window resolved, shorten the multimeter's.

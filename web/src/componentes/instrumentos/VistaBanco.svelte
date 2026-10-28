@@ -16,6 +16,7 @@
   import { precalentarMotor } from '../../simulador/cliente.svelte';
   import { autoHorizontal } from './motor/osciloscopio.ts';
   import type { IndiceSpice } from '../../simulador/tipos';
+  import { circuitoEditor, type CircuitoEditor } from './editor';
 
   let { tipo, id }: { tipo: string; id: string } = $props();
 
@@ -24,6 +25,8 @@
   let plano = $state<Fuente | null>(null);
   let indice = $state<IndiceSpice | null>(null);
   let error = $state('');
+  /** A circuit of the schematic editor (#/instrumentos/editor, 0.10). */
+  let deEditor = $state<CircuitoEditor | null>(null);
 
   // ---------------------------------------------------------------- drawing of the circuit on the bench
   const figuras = new Map<string, Promise<DatosFigura | null>>();
@@ -59,6 +62,10 @@
       }
     }
     if (!texto) return;
+    if (deEditor?.plano) {
+      plano = deEditor.plano;
+      return;
+    }
     void esquemaAutomatico(texto).then((e) => {
       if (n === pedido) plano = e ? { tipo: 'auto', svg: e.svg, vista: e.vista, esquema: e.esquema, mapa: e.mapa } : null;
     });
@@ -97,6 +104,17 @@
     precalentarMotor();
     if (practica) iniciarPractica(b, practica);
     else if (tipo === 'circuito') void cargarCatalogo(id);
+    else if (tipo === 'editor') {
+      const c = circuitoEditor();
+      if (!c) {
+        error = 'No hay ningún circuito del editor que medir: abra el editor y pulse «Medir».';
+        return;
+      }
+      deEditor = c;
+      b.cargar(c.texto, c.titulo, { dinamico: true });
+      b.arranque = true;
+      b.poner('bmNegro', '0');
+    }
     else {
       b.cargar(CIRCUITOS.p1!, 'Divisor de tensión (práctica 1)');
       b.poner('bmRojo', 'out');
@@ -117,11 +135,11 @@
   // ---------------------------------------------------------------- free bench: chooser
   let capitulo = $state('cap22');
   const lista = $derived(indice?.capitulos.find((c) => c.parte === capitulo)?.netlists ?? []);
-  const titulo = $derived(practica ? `Práctica ${practica.n} · ${practica.titulo}` : b.titulo || 'Banco de pruebas');
+  const titulo = $derived(practica ? `Práctica ${practica.n} · ${practica.titulo}` : deEditor ? `Medir · ${b.titulo}` : b.titulo || 'Banco de pruebas');
 </script>
 
 <div class="cabecera">
-  <a class="atras" href="#/instrumentos">← Instrumentos</a>
+  <a class="atras" href={deEditor ? deEditor.volver : '#/instrumentos'}>{deEditor ? '← Editor' : '← Instrumentos'}</a>
   <h1>{titulo}</h1>
 </div>
 {#if error}<p class="error">{error}</p>{/if}
@@ -132,8 +150,10 @@
       <PanelPractica p={practica} {b} />
     {:else}
       <div class="elegir">
-        <h3>Circuito en el banco</h3>
-        {#if indice}
+        <h3>{deEditor ? 'Circuito del editor' : 'Circuito en el banco'}</h3>
+        {#if deEditor}
+          <p class="nota">Elija una punta o sonda arriba y toque un nodo del dibujo para ponerla. El circuito es el del editor tal como estaba al pulsar «Medir»; los cambios se hacen allí.</p>
+        {:else if indice}
           <label
             >Capítulo
             <select bind:value={capitulo}>
