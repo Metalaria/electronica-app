@@ -88,7 +88,7 @@ export function estimarTensiones(f: CircuitoFuente): Map<string, number> {
     (vecinos.get(b) ?? vecinos.set(b, []).get(b)!).push(a);
   };
   for (const c of f.componentes) {
-    if (['R', 'L', 'D', 'DS', 'DZ', 'LED', 'SW', 'AMP'].includes(c.tipo)) enlazar(red(c, 'start'), red(c, 'end'));
+    if (['R', 'L', 'D', 'DS', 'DZ', 'LED', 'SW', 'AMP', 'LDR', 'NTC', 'PTC', 'PULNA', 'PULNC', 'LAMP', 'MOTOR', 'ZUMB'].includes(c.tipo)) enlazar(red(c, 'start'), red(c, 'end'));
     else if (c.tipo === 'POT') {
       enlazar(red(c, 'start'), red(c, 'tap'));
       enlazar(red(c, 'tap'), red(c, 'end'));

@@ -2,7 +2,7 @@
 // parameters, so a drawn circuit behaves like the book's. Each entry adds its .model/.subckt text to the
 // generated netlist when a part uses it and the directives do not already define that name.
 
-export type FamiliaModelo = 'D' | 'DZ' | 'LED' | 'DS' | 'QN' | 'QP' | 'MN' | 'MP' | 'JN' | 'JP' | 'OA' | 'OA5' | 'T555';
+export type FamiliaModelo = 'D' | 'DZ' | 'LED' | 'DS' | 'QN' | 'QP' | 'MN' | 'MP' | 'JN' | 'JP' | 'OA' | 'OA5' | 'T555' | 'RELE' | 'INT';
 
 export interface ModeloLibreria {
   nombre: string;
@@ -110,7 +110,101 @@ export const MODELOS: ModeloLibreria[] = [
       '.ends ne555',
     ].join('\n'),
   },
+  ...[
+    ['rele5', 5, 70],
+    ['rele12', 12, 400],
+    ['rele24', 24, 1600],
+  ].map(([n, v, r]) => releLibreria(n as string, v as number, r as number)),
+  // Parts of the palette written as subcircuits with parameters (the family «INT» is not offered in a picker).
+  {
+    nombre: 'epa_lampara',
+    familia: 'INT',
+    descripcion: 'Bombilla de filamento',
+    subckt: true,
+    // Hot resistance Vn²/P at the rated voltage, a tenth of it cold: R = Rf + (Rc − Rf)·√(|V|/Vn).
+    texto: ['.subckt epa_lampara a b params: vn=12 p=5', 'B1 a b I=v(a,b)/({vn*vn/p/10}+{vn*vn/p*0.9}*sqrt(abs(v(a,b))/{vn}+1e-9))', '.ends epa_lampara'].join('\n'),
+  },
+  {
+    nombre: 'epa_zumbador',
+    familia: 'INT',
+    descripcion: 'Zumbador activo',
+    subckt: true,
+    texto: ['.subckt epa_zumbador a b params: vn=5 inom=25m', 'B1 a b I={inom/vn}*max(v(a,b),0)', 'R1 a b 1g', '.ends epa_zumbador'].join('\n'),
+  },
+  {
+    nombre: 'epa_altavoz',
+    familia: 'INT',
+    descripcion: 'Altavoz dinámico',
+    subckt: true,
+    // Voice coil Re + Le, then the mechanical resonance as a parallel RLC (motional impedance).
+    texto: [
+      '.subckt epa_altavoz a b params: z=8 fs=80',
+      'R1 a x {0.8*z}',
+      'L1 x y {62.5e-6*z}',
+      'R2 y b {5*z}',
+      'L2 y b {1.25e-3*z}',
+      'C1 y b {1/(39.4784176*fs*fs*1.25e-3*z)}',
+      '.ends epa_altavoz',
+    ].join('\n'),
+  },
+  {
+    nombre: 'epa_motor',
+    familia: 'INT',
+    descripcion: 'Motor de continua',
+    subckt: true,
+    // Armature Ra, back-EMF k·ω; the mechanics as an electrical analogue: node w = ω (rad/s), torque k·i into
+    // the inertia J (capacitor) and the viscous friction b (conductance), minus the load torque.
+    texto: [
+      '.subckt epa_motor a b params: ra=2 kt=0.01 jm=1e-6 bm=1e-6 tl=0',
+      'R1 a x {ra}',
+      'V1 x y DC 0',
+      'B1 y b V={kt}*v(w)',
+      'B2 0 w I={kt}*i(V1)-{tl}',
+      'C1 w 0 {jm}',
+      'R2 w 0 {1/bm}',
+      '.ends epa_motor',
+    ].join('\n'),
+  },
+  {
+    nombre: 'epa_cristal',
+    familia: 'INT',
+    descripcion: 'Cristal de cuarzo',
+    subckt: true,
+    // Butterworth–Van Dyke: Rs, Lm and Cm in series (series resonance at f), C0 across.
+    texto: ['.subckt epa_cristal a b params: f=4meg rs=50 cm=15f c0=5p', 'C0 a b {c0}', 'R1 a x {rs}', 'L1 x y {1/(39.4784176*f*f*cm)}', 'C1 y b {cm}', '.ends epa_cristal'].join('\n'),
+  },
 ];
+
+/**
+ * A relay: coil (its resistance and an inductance for a 1 ms time constant) with a 0 V sense source, and a
+ * changeover contact as two voltage-controlled switches driven by |coil current|: the NO contact closes above
+ * 70 % of the rated current and opens below 37 % (hysteresis), the NC contact the other way round.
+ */
+function releLibreria(nombre: string, v: number, r: number): ModeloLibreria {
+  const inom = (v / r) * 1000; // mA
+  const on = 0.7 * inom;
+  const off = 0.37 * inom;
+  const vt = ((on + off) / 2).toPrecision(4);
+  const vh = ((on - off) / 2).toPrecision(4);
+  return {
+    nombre,
+    familia: 'RELE',
+    descripcion: `Relé de ${v} V (bobina de ${r} Ω, ${Number(inom.toPrecision(3)).toString().replace('.', ',')} mA)`,
+    subckt: true,
+    texto: [
+      `.subckt ${nombre} b1 b2 com nc no`,
+      `L1 b1 x ${Number((r * 1e-3).toPrecision(4))}`,
+      `R1 x y ${r}`,
+      'V1 y b2 DC 0',
+      'B1 c 0 V=abs(i(V1))*1000',
+      `S1 com no c 0 sna_${nombre}`,
+      `S2 com nc 0 c snc_${nombre}`,
+      `.model sna_${nombre} sw(vt=${vt} vh=${vh} ron=0.05 roff=1g)`,
+      `.model snc_${nombre} sw(vt=-${vt} vh=${vh} ron=0.05 roff=1g)`,
+      `.ends ${nombre}`,
+    ].join('\n'),
+  };
+}
 
 export function modelosDe(f: FamiliaModelo): ModeloLibreria[] {
   return MODELOS.filter((m) => m.familia === f);

@@ -19,6 +19,10 @@
     texto,
     resultado,
     alto = 0,
+    soloOp = false,
+    alResuelto,
+    conmutables = [],
+    alConmutar,
   }: {
     dibujo: DibujoConNetlist;
     /** The netlist that was simulated. */
@@ -27,9 +31,26 @@
     resultado: Simulacion | null;
     /** Height available (px) for the plate; 0 = natural size. */
     alto?: number;
+    /** Only the operating point (a knob moving, a switch just toggled): fast, the transient comes later. */
+    soloOp?: boolean;
+    /** Called when the drawing has been solved (or could not be). */
+    alResuelto?: () => void;
+    /** Switches and push buttons that a tap toggles: box in the plate's SVG units. */
+    conmutables?: { id: string; x: number; y: number; w: number; h: number; nombre: string; estado: string }[];
+    alConmutar?: (id: string) => void;
   } = $props();
 
-  const est = $derived(new EstadoEsquema(dibujo.esquemas[0]!, 0, true));
+  let anterior: EstadoEsquema | null = null;
+  const est = $derived.by(() => {
+    const e = new EstadoEsquema(dibujo.esquemas[0]!, 0, true);
+    // Same circuit with other values (a knob, a switch): the old values stay until the new ones arrive.
+    const a = anterior;
+    if (a?.op && a.esq.nodos.length === e.esq.nodos.length && a.esq.elementos.length === e.esq.elementos.length) e.op = a.op;
+    return e;
+  });
+  $effect(() => {
+    anterior = est;
+  });
   const estadoG = new EstadoGraficas();
   let valores = $state(true);
 
@@ -46,15 +67,17 @@
   $effect(() => {
     const e = est;
     const r = resultado;
+    const t = texto;
+    const op = soloOp;
     untrack(() => {
-      if (r) void resolver(e);
+      if (r || op) void resolver(e, t, op).finally(() => alResuelto?.());
     });
   });
 
-  async function resolver(e: EstadoEsquema) {
+  async function resolver(e: EstadoEsquema, texto: string, soloOp: boolean) {
     const corr = dibujo.correspondencia[0];
     if (!corr) return;
-    const ins = instrumentar(texto, [corr], true);
+    const ins = instrumentar(texto, [corr], !soloOp);
     e.estadoSim = 'simulando';
     e.mensaje = '';
     const { simularTexto, SimulacionCancelada } = await import('../../simulador/cliente.svelte');
@@ -68,7 +91,7 @@
         return;
       }
       e.op = r.op;
-      e.tran = r.tran;
+      if (!soloOp) e.tran = r.tran;
       e.estadoSim = 'libro';
     } catch (x) {
       if (x instanceof SimulacionCancelada) {
@@ -132,6 +155,27 @@
           {/each}
         </svg>
       {/if}
+      {#if conmutables.length && alConmutar}
+        <svg class="toques" viewBox={dibujo.vista.join(' ')}>
+          {#each conmutables as k (k.id)}
+            <!-- svelte-ignore a11y_click_events_have_key_events -->
+            <rect
+              class="conmutable"
+              role="button"
+              tabindex="0"
+              aria-label={`${k.nombre}: ${k.estado}. Toque para cambiarlo`}
+              data-conmutar={k.nombre}
+              x={k.x}
+              y={k.y}
+              width={k.w}
+              height={k.h}
+              rx="4"
+              onclick={() => alConmutar(k.id)}
+              onkeydown={(ev) => (ev.key === 'Enter' || ev.key === ' ') && (ev.preventDefault(), alConmutar(k.id))}
+            />
+          {/each}
+        </svg>
+      {/if}
     </div>
   </div>
   <label class="interruptor"><input type="checkbox" bind:checked={valores} /> Mostrar las tensiones de los nodos y las corrientes</label>
@@ -171,6 +215,38 @@
     stroke: #ffffff;
     stroke-width: 3px;
     stroke-linejoin: round;
+  }
+  .toques {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    overflow: visible;
+    pointer-events: none;
+  }
+  .conmutable {
+    fill: rgba(242, 183, 5, 0.08);
+    stroke: #e8a400;
+    stroke-width: 1.2;
+    stroke-dasharray: 4 3;
+    pointer-events: all;
+    cursor: pointer;
+    animation: latido 1.6s ease-in-out infinite;
+  }
+  .conmutable:hover,
+  .conmutable:focus-visible {
+    fill: rgba(242, 183, 5, 0.22);
+    outline: none;
+  }
+  @keyframes latido {
+    50% {
+      stroke-opacity: 0.35;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .conmutable {
+      animation: none;
+    }
   }
   .v {
     fill: #a93226;

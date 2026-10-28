@@ -17,7 +17,16 @@
   import Propiedades from './Propiedades.svelte';
   import VistaViva from './VistaViva.svelte';
   import MisCircuitos from './MisCircuitos.svelte';
-  import { importarNetlist } from './importar.ts';
+  import { disponerNetlist, importarNetlist } from './importar.ts';
+  import { CONMUTABLES, conmutado, tipoDe } from './catalogo.ts';
+  import { cajaMundo } from './geometria.ts';
+  import Mando from './Mando.svelte';
+  import { aplicarArreglo, arreglos, noConverge, revisarCircuito, TITULO_ARREGLO, type Arreglo } from './erc.ts';
+  import { barridoPorDefecto, camposBarribles, documentoConValor, MAX_VALORES, partesBarribles, unirBarrido, valoresBarrido } from './barrido.ts';
+  import { generarNetlist } from './netlist.ts';
+  import { netlistParaOrdenar, ordenarDocumento } from './ordenar.ts';
+  import { leerValor } from './valores.ts';
+  import type { Alineacion } from './estado.svelte';
   import { abrirProtoboard } from '../../lib/protoboard.svelte';
   import { dibujoVivo } from './vivo.ts';
   import { svgDocumento } from './svg.ts';
@@ -43,6 +52,9 @@
   import ZoomIn from '@lucide/svelte/icons/zoom-in';
   import ZoomOut from '@lucide/svelte/icons/zoom-out';
   import Maximize from '@lucide/svelte/icons/scan';
+  import Route from '@lucide/svelte/icons/route';
+  import Ordenar from '@lucide/svelte/icons/wand-sparkles';
+  import AlinearIcono from '@lucide/svelte/icons/align-start-vertical';
 
   let { ruta }: { ruta: string } = $props();
 
@@ -104,8 +116,14 @@
       cargando = false;
       ultimaVersion = ed.version;
       queueMicrotask(() => lienzo?.reajustar());
+      if (simularAlAbrir) {
+        simularAlAbrir = false;
+        queueMicrotask(() => void simular(true));
+      }
     }
   }
+  /** A copy made by the convergence help is simulated as soon as it opens. */
+  let simularAlAbrir = false;
 
   function cargarBorrador() {
     idGuardado = null;
@@ -211,7 +229,23 @@
   const ejecutando = $derived(motor.fase !== 'inactivo');
   const desfasado = $derived(!!resultado && versionSimulada !== ed.version);
 
-  async function simular() {
+  /** The drawing behind the live view (switches to tap, knobs). */
+  let docVivo = $state.raw<DocumentoEsquema | null>(null);
+  /** The live view solves only the operating point (a knob moving, a switch just toggled). */
+  let soloOp = $state(false);
+  let esperaVivo: (() => void) | null = null;
+  /** The last result is a parameter sweep. */
+  let esBarrido = $state(false);
+  let progresoBarrido = $state('');
+  /** Electrical rule check of the drawing, and whether «Simular» stopped on it. */
+  const erc = $derived(revisarCircuito(ed.nl, ed.doc));
+  const ercErrores = $derived(erc.filter((p) => p.nivel === 'error'));
+  let paradoPorErc = $state(false);
+  let seccionErc: HTMLElement | undefined = $state();
+  /** Ranges of the source knobs, fixed at the last full simulation (so they do not move under the finger). */
+  let rangos = $state<Record<string, [number, number]>>({});
+
+  async function simular(forzar = false) {
     menu = null;
     const nl = ed.nl;
     errorSim = '';
@@ -219,22 +253,308 @@
       errorSim = 'Corrija lo que se indica antes de simular.';
       return;
     }
+    if (!forzar && ercErrores.length) {
+      paradoPorErc = true;
+      queueMicrotask(() => seccionErc?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
+      return;
+    }
+    paradoPorErc = false;
     const doc = $state.snapshot(ed.doc) as DocumentoEsquema;
+    if (doc.barrido?.activo) return simularBarrido(doc, nl);
     const version = ed.version;
     try {
       const r = await simularTexto(nl.texto);
       resultado = r;
+      esBarrido = false;
       // For the tests: the last result of the editor.
       (globalThis as unknown as { __epaEditorSim?: Simulacion }).__epaEditorSim = r;
       textoSimulado = nl.texto;
       versionSimulada = version;
       sondasSimuladas = nl.sondas;
+      soloOp = false;
+      docVivo = doc;
       vivo = dibujoVivo(doc, nl);
+      fijarRangos(doc);
       if (!r.salida.errores.length && !r.ejecucion.fallo) modo = 'resultados';
     } catch (e) {
       if (e instanceof SimulacionCancelada) return;
       errorSim = e instanceof Error ? e.message : String(e);
     }
+  }
+
+  /** «.step»: one run per value, merged into one result whose curves are overlaid. */
+  async function simularBarrido(doc: DocumentoEsquema, nl: typeof ed.nl) {
+    const b = doc.barrido!;
+    const vs = valoresBarrido(doc, b);
+    if ('error' in vs) {
+      errorSim = vs.error;
+      return;
+    }
+    const version = ed.version;
+    const corridas: { etiqueta: string; sim: Simulacion }[] = [];
+    try {
+      for (const [k, v] of vs.valores.entries()) {
+        const n = generarNetlist(documentoConValor(doc, b, v.texto));
+        if (n.errores.length) {
+          errorSim = `${v.etiqueta}: ${n.errores[0]!.texto}`;
+          return;
+        }
+        progresoBarrido = `Barrido: ${k + 1} de ${vs.valores.length} (${v.etiqueta})`;
+        const r = await simularTexto(n.texto);
+        if (r.salida.errores.length || r.ejecucion.fallo) {
+          resultado = r;
+          esBarrido = false;
+          errorSim = `Con ${v.etiqueta} ngspice no ha podido simular el circuito.`;
+          return;
+        }
+        corridas.push({ etiqueta: v.etiqueta, sim: r });
+      }
+    } catch (e) {
+      if (e instanceof SimulacionCancelada) return;
+      errorSim = e instanceof Error ? e.message : String(e);
+      return;
+    } finally {
+      progresoBarrido = '';
+    }
+    const r = unirBarrido(corridas);
+    resultado = r;
+    esBarrido = true;
+    (globalThis as unknown as { __epaEditorSim?: Simulacion }).__epaEditorSim = r;
+    textoSimulado = nl.texto;
+    versionSimulada = version;
+    sondasSimuladas = nl.sondas;
+    soloOp = false;
+    docVivo = doc;
+    vivo = dibujoVivo(doc, nl);
+    modo = 'resultados';
+  }
+
+  // ---------------------------------------------------------------- switches and knobs while simulating
+
+  /** The live view with the drawing as it is now, operating point only (fast). */
+  function vivoAlMomento(): Promise<void> {
+    const nl = ed.nl;
+    if (nl.errores.length || !vivo) return Promise.resolve();
+    const doc = $state.snapshot(ed.doc) as DocumentoEsquema;
+    docVivo = doc;
+    vivo = dibujoVivo(doc, nl);
+    textoSimulado = nl.texto;
+    sondasSimuladas = nl.sondas;
+    soloOp = true;
+    versionSimulada = ed.version;
+    return new Promise((r) => {
+      esperaVivo?.();
+      esperaVivo = r;
+    });
+  }
+  function vivoResuelto() {
+    const r = esperaVivo;
+    esperaVivo = null;
+    r?.();
+  }
+  let vivoEnCurso = false;
+  let vivoPendiente = false;
+  async function refrescarVivo() {
+    if (vivoEnCurso) {
+      vivoPendiente = true;
+      return;
+    }
+    vivoEnCurso = true;
+    try {
+      do {
+        vivoPendiente = false;
+        await vivoAlMomento();
+      } while (vivoPendiente);
+    } finally {
+      vivoEnCurso = false;
+    }
+  }
+
+  let toast = $state('');
+  let toastTemporizador: ReturnType<typeof setTimeout> | null = null;
+  function avisar(t: string) {
+    toast = t;
+    if (toastTemporizador) clearTimeout(toastTemporizador);
+    toastTemporizador = setTimeout(() => (toast = ''), 2200);
+  }
+
+  /** A tap on a switch of the results: toggled, the operating point at once, then the whole simulation again. */
+  async function conmutarSimulando(id: string) {
+    if (!ed.conmutar(id)) return;
+    const c = ed.componente(id);
+    if (c) avisar(`${c.nombre}: ${estadoConmutable(c)}`);
+    await refrescarVivo();
+    await simular(true);
+  }
+
+  function estadoConmutable(c: { tipo: string; campos: Record<string, string> }): string {
+    if (c.tipo === 'SW') return c.campos['estado'] === 'abierto' ? 'abierto' : 'cerrado';
+    if (c.tipo === 'CONM') return c.campos['posicion'] === 'b' ? 'posición 2' : 'posición 1';
+    return c.campos['pulsado'] === 'si' ? 'pulsado' : 'sin pulsar';
+  }
+
+  const conmutables = $derived.by(() => {
+    const d = docVivo;
+    const v = vivo;
+    if (!d || !v?.esquemas[0]) return [];
+    const A = v.esquemas[0].dibujo_a_svg;
+    const m = 4;
+    return d.componentes
+      .filter((c) => CONMUTABLES.has(c.tipo))
+      .map((c) => {
+        const b = cajaMundo(c);
+        const x0 = A.sx * b[0] + A.tx;
+        const y0 = A.sy * -b[1] + A.ty;
+        return { id: c.id, x: x0 - m, y: y0 - m, w: A.sx * (b[2] - b[0]) + 2 * m, h: -A.sy * (b[3] - b[1]) + 2 * m, nombre: c.nombre, estado: estadoConmutable(c) };
+      });
+  });
+
+  /** Knobs of the results: potentiometers, sensors and sources (DC value, sine amplitude). */
+  interface MandoSim {
+    id: string;
+    campo: string;
+    etiqueta: string;
+    unidad: string;
+    min: number;
+    max: number;
+    log?: boolean;
+    paso?: number;
+  }
+  function valorCampo(c: { campos: Record<string, string> }, campo: string, u: string): number | null {
+    const l = leerValor(c.campos[campo] ?? '', u);
+    return l.ok && l.v != null ? l.v : null;
+  }
+  function campoFuente(c: { tipo: string; campos: Record<string, string> }): [string, string] | null {
+    if (!['V', 'VSIN', 'VPULSE', 'I'].includes(c.tipo)) return null;
+    const f = c.campos['forma'] ?? 'dc';
+    if (f === 'dc') return ['dc', c.tipo === 'I' ? 'A' : 'V'];
+    if (f === 'sin') return ['va', 'V'];
+    return null;
+  }
+  function fijarRangos(doc: DocumentoEsquema) {
+    const r: Record<string, [number, number]> = {};
+    for (const c of doc.componentes) {
+      const cf = campoFuente(c);
+      if (!cf) continue;
+      const v = valorCampo(c, cf[0], cf[1]);
+      if (v == null) continue;
+      r[`${c.id}.${cf[0]}`] = v > 0 ? [0, 2 * v] : v < 0 ? [2 * v, 0] : [-5, 5];
+    }
+    rangos = r;
+  }
+  const mandos = $derived.by((): MandoSim[] => {
+    const res: MandoSim[] = [];
+    for (const c of ed.doc.componentes) {
+      const t = tipoDe(c);
+      for (const f of t.campos)
+        if (f.mando && (!f.si || f.si(c))) res.push({ id: c.id, campo: f.id, etiqueta: `${c.nombre} · ${f.etiqueta.replace(/\s*\(.*\)$/, '').toLowerCase()}`, unidad: f.unidad ?? '', ...f.mando });
+      const cf = campoFuente(c);
+      const rg = cf ? rangos[`${c.id}.${cf[0]}`] : undefined;
+      if (cf && rg) res.push({ id: c.id, campo: cf[0], etiqueta: `${c.nombre} · ${cf[0] === 'va' ? 'amplitud' : 'valor'}`, unidad: cf[1], min: rg[0], max: rg[1] });
+    }
+    return res;
+  });
+  let mandoMoviendo = $state<string | null>(null);
+  async function moverMando(m: MandoSim, texto: string, fin: boolean) {
+    const k = `${m.id}.${m.campo}`;
+    ed.cambiarCampo(m.id, m.campo, texto, mandoMoviendo === k);
+    mandoMoviendo = fin ? null : k;
+    if (!fin) {
+      void refrescarVivo();
+      return;
+    }
+    // Released: the operating point, then the transient and the plots.
+    await refrescarVivo();
+    await simular(true);
+  }
+
+  // ---------------------------------------------------------------- convergence help
+
+  const convergencia = $derived(resultado ? noConverge(resultado.salida.errores, resultado.ejecucion.fallo) : null);
+  const listaArreglos = $derived(convergencia ? arreglos(convergencia, ed.doc) : []);
+  async function probarArreglo(a: Arreglo) {
+    const doc = aplicarArreglo($state.snapshot(ed.doc) as DocumentoEsquema, a.id);
+    doc.titulo = `${(ed.doc.titulo || 'Circuito').replace(/\s*\((más iteraciones|con [^)]*)\)$/, '')} (${TITULO_ARREGLO[a.id]})`;
+    const id = await guardarNuevo(doc.titulo, doc);
+    simularAlAbrir = true;
+    location.hash = `#/editor/${id}`;
+  }
+
+  // ---------------------------------------------------------------- tidying up
+
+  let ordenando = $state(false);
+  async function ordenar() {
+    menu = null;
+    if (!ed.doc.componentes.length || ordenando) return;
+    ordenando = true;
+    try {
+      const doc = $state.snapshot(ed.doc) as DocumentoEsquema;
+      const nl = generarNetlist(doc);
+      const { texto, alias } = netlistParaOrdenar(doc, nl);
+      const e = await disponerNetlist(texto);
+      if (!e) {
+        aviso = 'No se ha podido ordenar este esquema.';
+        return;
+      }
+      const r = ordenarDocumento(doc, nl, e, alias, texto);
+      if ('error' in r) aviso = r.error;
+      else {
+        ed.reemplazar(r.doc);
+        lienzo?.reajustar();
+        avisar('Esquema ordenado: «Deshacer» lo deja como estaba.');
+      }
+    } catch (x) {
+      aviso = x instanceof Error ? x.message : String(x);
+    } finally {
+      ordenando = false;
+    }
+  }
+  let verAlinear = $state(false);
+  const partesSel = $derived(ed.sel.filter((id) => ed.doc.componentes.some((c) => c.id === id)).length);
+  function alinear(m: Alineacion | 'dist-h' | 'dist-v') {
+    verAlinear = false;
+    menu = null;
+    if (m === 'dist-h') ed.distribuir('h');
+    else if (m === 'dist-v') ed.distribuir('v');
+    else ed.alinear(m);
+  }
+  const ALINEACIONES: [Alineacion | 'dist-h' | 'dist-v', string][] = [
+    ['izquierda', 'Alinear a la izquierda'],
+    ['centro-h', 'Centrar en horizontal'],
+    ['derecha', 'Alinear a la derecha'],
+    ['arriba', 'Alinear arriba'],
+    ['centro-v', 'Centrar en vertical'],
+    ['abajo', 'Alinear abajo'],
+    ['dist-h', 'Repartir en horizontal'],
+    ['dist-v', 'Repartir en vertical'],
+  ];
+
+  // ---------------------------------------------------------------- sweep settings
+
+  const barrido = $derived(ed.doc.barrido ?? barridoPorDefecto());
+  const barribles = $derived(partesBarribles(ed.doc));
+  const compBarrido = $derived(ed.doc.componentes.find((c) => c.id === barrido.comp));
+  function cambiarBarrido(fn: (b: NonNullable<DocumentoEsquema['barrido']>) => void) {
+    ed.cambiar(() => {
+      ed.doc.barrido ??= barridoPorDefecto();
+      fn(ed.doc.barrido);
+    });
+  }
+  /** The part a new sweep starts with: a passive part or a sensor rather than a source. */
+  function parteBarridoInicial(): string | undefined {
+    return (barribles.find((c) => !['V', 'VSIN', 'VPULSE', 'I'].includes(c.tipo)) ?? barribles[0])?.id;
+  }
+  function elegirParteBarrido(id: string) {
+    cambiarBarrido((b) => {
+      b.comp = id;
+      const c = ed.doc.componentes.find((x) => x.id === id);
+      const f = c ? camposBarribles(c)[0] : undefined;
+      b.campo = f?.id ?? '';
+      if (c && f && !b.lista.trim()) {
+        const v = leerValor(c.campos[f.id] ?? '', f.unidad ?? '');
+        if (v.ok && v.v != null && v.v !== 0) b.lista = [0.5, 1, 2].map((k) => String(Number((v.v! * k).toPrecision(3))).replace('.', ',')).join('; ');
+      }
+    });
   }
 
   onMount(precalentarMotor);
@@ -354,6 +674,7 @@
       menu = null;
       if (!lienzo?.cancelar()) ed.sel = [];
     } else if (k === 'w') ed.herramienta = 'cable';
+    else if (k === 'a') ed.herramienta = 'ruta';
     else if (k === 's' || k === 'v') {
       ed.herramienta = 'seleccionar';
       ed.colocando = null;
@@ -475,6 +796,7 @@
           <span class="sep"></span>
           <button type="button" class="hb" aria-pressed={ed.herramienta === 'seleccionar'} title="Seleccionar y mover (S)" aria-label="Seleccionar" onclick={() => { ed.herramienta = 'seleccionar'; ed.colocando = null; }}><MousePointer size={19} /></button>
           <button type="button" class="hb" aria-pressed={ed.herramienta === 'cable'} title="Dibujar cables (W): toque o arrastre de punto a punto" aria-label="Cable" onclick={() => (ed.herramienta = 'cable')}><Spline size={19} /></button>
+          <button type="button" class="hb" aria-pressed={ed.herramienta === 'ruta'} title="Ruta automática (A): toque dos patillas y el cable se traza solo, esquivando los componentes" aria-label="Ruta automática" onclick={() => (ed.herramienta = ed.herramienta === 'ruta' ? 'seleccionar' : 'ruta')}><Route size={19} /></button>
           <span class="sep"></span>
           <button type="button" class="hb" title="Girar 90° (R)" aria-label="Girar" disabled={!ed.sel.length} onclick={() => ed.transformar(ed.sel, 'girar')}><RotateCw size={19} /></button>
           <button type="button" class="hb" title="Reflejar (X)" aria-label="Reflejar" disabled={!ed.sel.length} onclick={() => ed.transformar(ed.sel, 'reflejar')}><FlipHorizontal size={19} /></button>
@@ -484,6 +806,17 @@
           <button type="button" class="hb" title="Rehacer (Ctrl Y)" aria-label="Rehacer" disabled={!ed.puedeRehacer} onclick={() => ed.rehacer()}><Redo size={19} /></button>
           <span class="sep"></span>
           <button type="button" class="hb" title="Duplicar (Ctrl D; Ctrl C y Ctrl V para copiar y pegar)" aria-label="Duplicar" disabled={!ed.sel.length} onclick={() => ed.duplicar()}><Copy size={19} /></button>
+          <span class="alinear-caja">
+            <button type="button" class="hb" title="Alinear o repartir la selección (dos componentes o más)" aria-label="Alinear" aria-haspopup="menu" aria-expanded={verAlinear} disabled={partesSel < 2} onclick={() => (verAlinear = !verAlinear)}><AlinearIcono size={19} /></button>
+            {#if verAlinear && partesSel >= 2}
+              <div class="menu-alinear" role="menu">
+                {#each ALINEACIONES as [m, t] (m)}
+                  <button type="button" role="menuitem" disabled={m.startsWith('dist') && partesSel < 3} onclick={() => alinear(m)}>{t}</button>
+                {/each}
+              </div>
+            {/if}
+          </span>
+          <button type="button" class="hb" title="Ordenar el esquema: colocar y cablear todo de nuevo como los esquemas automáticos" aria-label="Ordenar el esquema" disabled={!ed.doc.componentes.length || ordenando} onclick={() => void ordenar()}><Ordenar size={19} /></button>
           <span class="sep"></span>
           {#if !app.movil}
             <button type="button" class="hb" title="Alejar (−)" aria-label="Alejar" onclick={() => lienzo?.zoom(0.8)}><ZoomOut size={19} /></button>
@@ -497,15 +830,31 @@
       {/if}
       <div class="zona" class:oculta={modo !== 'editar'}>
         {#if !cargando}
-          <Lienzo bind:this={lienzo} {ed} alPropiedades={propiedades} alMenu={(m) => (menu = m)} />
+          <Lienzo bind:this={lienzo} {ed} alPropiedades={propiedades} alMenu={(m) => (menu = m)} alAviso={(t) => (aviso = t)} />
         {:else}
           <p class="cargando">Dibujando el circuito…</p>
         {/if}
       </div>
       {#if modo === 'resultados' && vivo}
         {#if desfasado}<p class="nota aviso-desfase">El esquema ha cambiado desde la última simulación: pulse «Simular» para verlo al día.</p>{/if}
-        <VistaViva dibujo={vivo} texto={textoSimulado} {resultado} alto={app.movil ? 0 : 560} />
+        {#if conmutables.length}<p class="nota">Toque un interruptor o un pulsador del esquema (recuadro naranja) para cambiarlo: el punto de trabajo se recalcula al momento y después el resto de la simulación.</p>{/if}
+        <VistaViva dibujo={vivo} texto={textoSimulado} {resultado} alto={app.movil ? 0 : 560} {soloOp} alResuelto={vivoResuelto} {conmutables} alConmutar={(id) => void conmutarSimulando(id)} />
+        {#if mandos.length && !esBarrido}
+          <section class="mandos" aria-label="Mandos">
+            <h3>Mandos</h3>
+            <p class="nota">Al mover un mando el punto de trabajo se recalcula al momento; el transitorio y las gráficas, al soltarlo.</p>
+            <div class="lista-mandos">
+              {#each mandos as m (`${m.id}.${m.campo}`)}
+                {@const c = ed.componente(m.id)}
+                {#if c}
+                  <Mando etiqueta={m.etiqueta} nombre={`mando-${c.nombre}-${m.campo}`} texto={c.campos[m.campo] ?? ''} unidad={m.unidad} min={m.min} max={m.max} log={m.log} paso={m.paso} alCambiar={(t, fin) => void moverMando(m, t, fin)} />
+                {/if}
+              {/each}
+            </div>
+          </section>
+        {/if}
       {/if}
+      {#if toast}<p class="toast" role="status">{toast}</p>{/if}
     </div>
     <aside class="col-prop" bind:this={panelProp}>
       <Propiedades {ed} />
@@ -551,6 +900,34 @@
           </div>
         {/if}
       </div>
+      <div class="an barrido">
+        <label><input type="checkbox" name="barrido-activo" checked={barrido.activo} disabled={!barribles.length} onchange={(e) => { const v = (e.currentTarget as HTMLInputElement).checked; cambiarBarrido((b) => (b.activo = v)); const p = parteBarridoInicial(); if (v && !barrido.comp && p) elegirParteBarrido(p); }} /> Barrido de un valor <code>.step</code></label>
+        {#if barrido.activo}
+          <div class="params">
+            <label>Componente <select name="barrido-comp" value={barrido.comp} onchange={(e) => elegirParteBarrido((e.currentTarget as HTMLSelectElement).value)}>
+              {#each barribles as c (c.id)}<option value={c.id}>{c.nombre || tipoDe(c).nombre}</option>{/each}
+            </select></label>
+            {#if compBarrido}
+              <label>Valor <select name="barrido-campo" value={barrido.campo} onchange={(e) => { const v = (e.currentTarget as HTMLSelectElement).value; cambiarBarrido((b) => (b.campo = v)); }}>
+                {#each camposBarribles(compBarrido) as f (f.id)}<option value={f.id}>{f.etiqueta}</option>{/each}
+              </select></label>
+            {/if}
+            <label>Valores <select name="barrido-modo" value={barrido.modo} onchange={(e) => { const v = (e.currentTarget as HTMLSelectElement).value as 'lista'; cambiarBarrido((b) => (b.modo = v)); }}><option value="lista">una lista</option><option value="rango">un rango</option></select></label>
+          </div>
+          {#if barrido.modo === 'lista'}
+            <div class="params"><label class="ancho">Lista <input name="barrido-lista" placeholder="1k; 2,2k; 4,7k" value={barrido.lista} onchange={(e) => { const v = (e.currentTarget as HTMLInputElement).value; cambiarBarrido((b) => (b.lista = v)); }} /></label></div>
+          {:else}
+            <div class="params">
+              <label>Desde <input name="barrido-desde" value={barrido.desde} onchange={(e) => { const v = (e.currentTarget as HTMLInputElement).value; cambiarBarrido((b) => (b.desde = v)); }} /></label>
+              <label>Hasta <input name="barrido-hasta" value={barrido.hasta} onchange={(e) => { const v = (e.currentTarget as HTMLInputElement).value; cambiarBarrido((b) => (b.hasta = v)); }} /></label>
+              <label>N.º <input name="barrido-pasos" inputmode="numeric" value={barrido.pasos} onchange={(e) => { const v = (e.currentTarget as HTMLInputElement).value; cambiarBarrido((b) => (b.pasos = v)); }} /></label>
+              <label>Escala <select name="barrido-escala" value={barrido.escala} onchange={(e) => { const v = (e.currentTarget as HTMLSelectElement).value as 'lin'; cambiarBarrido((b) => (b.escala = v)); }}><option value="lin">lineal</option><option value="log">logarítmica</option></select></label>
+            </div>
+          {/if}
+          {@const vb = valoresBarrido(ed.doc, barrido)}
+          <p class="nota-barrido">{'error' in vb ? vb.error : `${vb.valores.length} simulaciones: ${vb.valores.map((x) => x.etiqueta.replace(/^.*? = /, '')).join(', ')} (hasta ${MAX_VALORES}).`}</p>
+        {/if}
+      </div>
     </div>
     {#if ed.doc.directivas.trim() && /^\s*\.(tran|ac|dc|op|noise)|^\s*\.control/im.test(ed.doc.directivas)}
       <p class="nota">Las directivas de la netlist importada traen sus propios análisis; los que marque aquí se añaden a ellos.</p>
@@ -559,10 +936,26 @@
       {#if ejecutando && motor.fase === 'simulando'}
         <button class="boton" onclick={detener}>Detener</button>
       {:else}
-        <button class="boton primario simular" onclick={simular} disabled={cargando || motor.fase === 'descargando'}>Simular</button>
+        <button class="boton primario simular" onclick={() => void simular()} disabled={cargando || motor.fase === 'descargando'}>Simular</button>
       {/if}
-      <span class="estado" aria-live="polite">{estado}</span>
+      <span class="estado" aria-live="polite">{progresoBarrido || estado}</span>
     </div>
+    {#if erc.length}
+      <section class="erc" class:parado={paradoPorErc} bind:this={seccionErc} aria-label="Revisión eléctrica">
+        <h4>{paradoPorErc ? 'Revisión eléctrica antes de simular' : 'Revisión eléctrica'}</h4>
+        {#if paradoPorErc}<p class="nota">Esto suele impedir que ngspice resuelva el circuito. Corríjalo o simule igualmente para ver qué dice.</p>{/if}
+        <ul>
+          {#each erc as p, i (i)}
+            <li class={p.nivel}>
+              <strong>{p.titulo}</strong>
+              <span>{p.texto}</span>
+              {#if p.ids.length}<button class="enlace" onclick={() => (ed.sel = p.ids.filter((x) => ed.existe(x)))}>Señalar en el esquema</button>{/if}
+            </li>
+          {/each}
+        </ul>
+        {#if paradoPorErc}<button class="boton" onclick={() => void simular(true)}>Simular de todos modos</button>{/if}
+      </section>
+    {/if}
     {#if ed.nl.errores.length || ed.nl.avisos.length}
       <ul class="problemas">
         {#each ed.nl.errores as e, i (i)}
@@ -582,13 +975,30 @@
         <ul>{#each resultado.salida.errores.slice(0, 5) as x, k (k)}<li><code>{x}</code></li>{/each}</ul>
       </div>
     {/if}
+    {#if convergencia}
+      <section class="convergencia" aria-label="Ayuda para la convergencia">
+        <h4>ngspice no ha conseguido {convergencia === 'tran' ? 'avanzar en el transitorio' : 'calcular el punto de trabajo'}</h4>
+        {#if convergencia === 'op'}
+          <p>El punto de trabajo se calcula resolviendo las ecuaciones del circuito por aproximaciones sucesivas (Newton–Raphson). No converge cuando hay nodos sin camino de continua a masa (solo condensadores o entradas), lazos de fuentes de tensión y bobinas, realimentación positiva que admite varias soluciones (biestables, osciladores) o modelos muy no lineales que empiezan lejos de la solución.</p>
+        {:else}
+          <p>En el transitorio ngspice reduce el paso de tiempo cuando algo cambia muy deprisa; si lo reduce por debajo del mínimo se rinde («timestep too small»). Suele pasar con conmutaciones ideales y bruscas, bobinas que se abren de golpe sin diodo de libre circulación o condensadores grandes cargados al instante.</p>
+        {/if}
+        <p>Pruebe uno de estos arreglos: cada uno crea una copia del circuito con el cambio (en «Mis circuitos») y la simula; el original no cambia.</p>
+        <div class="arreglos">
+          {#each listaArreglos as x (x.id)}
+            <button class="arreglo" data-arreglo={x.id} onclick={() => void probarArreglo(x)}><strong>{x.titulo}</strong><span>{x.texto}</span></button>
+          {/each}
+        </div>
+      </section>
+    {/if}
   </section>
 
   {#if resultado}
     <section class="resultados" class:viejo={ejecutando} aria-label="Resultados">
       <h3>Resultados</h3>
       {#if sondasSimuladas.length}<p class="nota">Las sondas del esquema eligen las curvas: {sondasSimuladas.join(', ')}.</p>{/if}
-      <Resultados {resultado} preferidos={sondasSimuladas} />
+      {#if esBarrido}<p class="nota">Barrido: una curva por valor (la leyenda dice cuál); el punto de trabajo, una columna por valor.</p>{/if}
+      <Resultados {resultado} preferidos={sondasSimuladas} barrido={esBarrido} />
     </section>
   {/if}
 
@@ -623,16 +1033,24 @@
   <div class="capa-menu" onclick={() => (menu = null)} oncontextmenu={(e) => { e.preventDefault(); menu = null; }}>
     <div class="menu" role="menu" style:left={`${Math.min(menu.x, innerWidth - 230)}px`} style:top={`${Math.min(menu.y, innerHeight - 320)}px`}>
       {#if menu.id}
+        {#if ed.unico && CONMUTABLES.has(ed.unico.tipo)}
+          {@const u = ed.unico}
+          <button role="menuitem" onclick={() => accionMenu(() => { const x = conmutado(u); if (x) ed.cambiarCampo(u.id, x[0], x[1]); })}>{u.tipo.startsWith('PUL') ? (u.campos['pulsado'] === 'si' ? 'Soltar' : 'Pulsar') : 'Conmutar'}</button>
+        {/if}
         <button role="menuitem" onclick={() => accionMenu(() => ed.transformar(ed.sel, 'girar'))}>Girar 90° <kbd>R</kbd></button>
         <button role="menuitem" onclick={() => accionMenu(() => ed.transformar(ed.sel, 'reflejar'))}>Reflejar <kbd>X</kbd></button>
         <button role="menuitem" onclick={() => accionMenu(() => ed.duplicar())}>Duplicar <kbd>Ctrl D</kbd></button>
         <button role="menuitem" onclick={() => accionMenu(() => ed.copiar())}>Copiar <kbd>Ctrl C</kbd></button>
         {#if ed.unico}<button role="menuitem" onclick={() => accionMenu(() => propiedades(ed.unico!.id))}>Propiedades…</button>{/if}
+        {#if partesSel >= 2}
+          {#each ALINEACIONES.slice(0, partesSel >= 3 ? 8 : 6) as [m, t] (m)}<button role="menuitem" onclick={() => alinear(m)}>{t}</button>{/each}
+        {/if}
         <button role="menuitem" class="peligro" onclick={() => accionMenu(() => ed.borrar())}>Borrar <kbd>Supr</kbd></button>
       {:else}
         <button role="menuitem" disabled={!ed.hayPortapapeles} onclick={() => accionMenu(() => ed.pegar())}>Pegar <kbd>Ctrl V</kbd></button>
         <button role="menuitem" onclick={() => accionMenu(() => ed.seleccionarTodo())}>Seleccionar todo <kbd>Ctrl A</kbd></button>
         <button role="menuitem" onclick={() => accionMenu(() => lienzo?.ajustar())}>Ver todo <kbd>F</kbd></button>
+        <button role="menuitem" disabled={!ed.doc.componentes.length} onclick={() => void ordenar()}>Ordenar el esquema</button>
       {/if}
     </div>
   </div>
@@ -918,6 +1336,151 @@
   }
   .aviso-desfase {
     color: var(--c-importante);
+  }
+  .alinear-caja {
+    position: relative;
+  }
+  .menu-alinear {
+    position: absolute;
+    top: 100%;
+    left: 0;
+    z-index: 30;
+    display: grid;
+    min-width: 220px;
+    padding: 6px;
+    border: 1px solid var(--linea-suave);
+    border-radius: 12px;
+    background: var(--superficie);
+    box-shadow: var(--sombra-alta);
+  }
+  .menu-alinear button {
+    min-height: 40px;
+    padding: 0 12px;
+    border: 0;
+    border-radius: 8px;
+    background: none;
+    color: var(--tinta);
+    font: 14px var(--sans);
+    text-align: left;
+  }
+  .menu-alinear button:hover:not(:disabled) {
+    background: var(--hover);
+  }
+  .menu-alinear button:disabled {
+    opacity: 0.4;
+  }
+  .mandos {
+    padding: 10px 12px;
+    border: 1px solid var(--linea-suave);
+    border-radius: 12px;
+    background: var(--superficie);
+  }
+  .lista-mandos {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 6px 16px;
+  }
+  .toast {
+    position: fixed;
+    left: 50%;
+    bottom: 24px;
+    z-index: 60;
+    transform: translateX(-50%);
+    max-width: min(90vw, 420px);
+    margin: 0;
+    padding: 8px 16px;
+    border-radius: 999px;
+    background: var(--tinta);
+    color: var(--superficie);
+    font: 600 14px var(--sans);
+    box-shadow: var(--sombra-alta);
+    pointer-events: none;
+  }
+  .barrido .params .ancho {
+    flex: 1 1 220px;
+  }
+  .barrido .params .ancho input {
+    width: 100%;
+    min-width: 160px;
+  }
+  .nota-barrido {
+    margin: 0;
+    max-width: 520px;
+    font-size: 12.5px;
+    color: var(--tinta-tenue);
+  }
+  .erc,
+  .convergencia {
+    margin-top: 12px;
+    padding: 10px 14px;
+    border: 1px solid var(--linea-suave);
+    border-radius: 12px;
+    background: var(--superficie);
+    font-size: 14px;
+  }
+  .erc.parado {
+    border-color: color-mix(in srgb, var(--c-precaucion) 55%, transparent);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-precaucion) 12%, transparent);
+  }
+  .erc h4,
+  .convergencia h4 {
+    margin: 0 0 6px;
+    font-size: 14.5px;
+    color: var(--titulos);
+  }
+  .erc ul {
+    margin: 0 0 8px;
+    padding: 0;
+    list-style: none;
+    display: grid;
+    gap: 6px;
+  }
+  .erc li {
+    display: grid;
+    gap: 2px;
+    padding: 6px 10px;
+    border-left: 4px solid var(--linea);
+    border-radius: 6px;
+    background: var(--fondo);
+    line-height: 1.4;
+  }
+  .erc li.error {
+    border-left-color: var(--c-precaucion);
+  }
+  .erc li.aviso {
+    border-left-color: var(--c-importante);
+  }
+  .erc li .enlace {
+    justify-self: start;
+    padding: 2px 0;
+    font-size: 13px;
+  }
+  .convergencia p {
+    margin: 4px 0;
+    line-height: 1.45;
+  }
+  .arreglos {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    gap: 8px;
+    margin-top: 8px;
+  }
+  .arreglo {
+    display: grid;
+    align-content: start;
+    gap: 3px;
+    padding: 8px 12px;
+    border: 1px solid var(--acento-borde);
+    border-radius: 10px;
+    background: var(--acento-tinte);
+    color: var(--tinta);
+    font: 13px/1.4 var(--sans);
+    text-align: left;
+    cursor: pointer;
+  }
+  .arreglo strong {
+    color: var(--acento);
+    font-size: 14px;
   }
   .resultados.viejo {
     opacity: 0.6;

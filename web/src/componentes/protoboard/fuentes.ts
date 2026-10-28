@@ -4,7 +4,7 @@
 // schematic («Datos de figuras», esquemas[], the same rules as its own simulation). Plain TypeScript,
 // except circuitoDeNetlist(), which uses the editor's layout worker.
 
-import { pinesDe, ES_CONEXION } from '../editor/catalogo.ts';
+import { pinesDe, ES_CONEXION, PUENTE_DIODOS } from '../editor/catalogo.ts';
 import { conectividad } from '../editor/conectividad.ts';
 import { documentoDeEditable } from '../editor/importar.ts';
 import { analisisPorDefecto, type Componente, type DocumentoEsquema } from '../editor/tipos.ts';
@@ -72,6 +72,29 @@ export function redesDelTexto(texto: string, componentes: Componente[]): Record<
     }
     if (c.spice) {
       for (const [pin, i] of Object.entries(c.spice.pines)) if (c.spice.nodos[i]) res[`${c.id}.${pin}`] = nodoSpice(c.spice.nodos[i]!);
+      continue;
+    }
+    // Palette transformers and bridges made from imported lines keep the names of those lines (0.10).
+    const propios = (c.campos['_nombres'] ?? '').split(/\s+/).filter(Boolean);
+    if (propios.length && (c.tipo === 'TRAFO' || c.tipo === 'PUENTE')) {
+      const pinesLinea: [string, string][] =
+        c.tipo === 'PUENTE'
+          ? PUENTE_DIODOS
+          : c.campos['toma'] === 'si'
+            ? [
+                ['p.start', 'p.end'],
+                ['s.start', 's.mid'],
+                ['s.mid', 's.end'],
+              ]
+            : [
+                ['p.start', 'p.end'],
+                ['s.start', 's.end'],
+              ];
+      pinesLinea.forEach(([a, b], i) => {
+        const t = lineas.get((propios[i] ?? '').toLowerCase());
+        if (t?.[1]) res[`${c.id}.${a}`] = nodoSpice(t[1]);
+        if (t?.[2]) res[`${c.id}.${b}`] = nodoSpice(t[2]);
+      });
       continue;
     }
     const t = lineas.get(c.nombre.toLowerCase());

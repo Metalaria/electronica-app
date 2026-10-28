@@ -79,6 +79,25 @@ export interface DocumentoEsquema {
   directivas: string;
   /** Imported from a book netlist (its id) or from a netlist text. */
   origen?: { tipo: 'libro' | 'texto'; id?: string };
+  /** Netlist adjustments of a copy made by the convergence help (erc.ts): a 1 mΩ resistor in series with every inductor and voltage source. */
+  ajustes?: { rserie?: boolean };
+  /** Parameter sweep (barrido.ts): one part field over a list of values. */
+  barrido?: Barrido;
+}
+
+/** «.step»: the circuit simulated once per value of one field of one part, the curves overlaid. */
+export interface Barrido {
+  activo: boolean;
+  /** Part id and field id. */
+  comp: string;
+  campo: string;
+  /** «lista»: the values as typed («1k; 2,2k; 4,7k»); «rango»: from, to and the number of values (linear or logarithmic). */
+  modo: 'lista' | 'rango';
+  lista: string;
+  desde: string;
+  hasta: string;
+  pasos: string;
+  escala: 'lin' | 'log';
 }
 
 export function analisisPorDefecto(): Analisis {

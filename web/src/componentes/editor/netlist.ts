@@ -3,8 +3,9 @@
 // the editor. Also: what each probe plots, and plain-Spanish checks before simulating.
 
 import { conectividad, type Conectividad } from './conectividad.ts';
-import { pinesDe, PUERTAS_DIGITALES, SIN_LINEA, tipoDe } from './catalogo.ts';
+import { conduce, pinesDe, PUENTE_DIODOS, PUERTAS_DIGITALES, SIN_LINEA, tipoDe } from './catalogo.ts';
 import { definidos, modeloPorNombre } from './modelos.ts';
+import { numeroSpiceCorto, resistenciaSensor } from './sensores.ts';
 import type { Componente, DocumentoEsquema } from './tipos.ts';
 import { leerValor } from './valores.ts';
 
@@ -153,6 +154,7 @@ export function generarNetlist(doc: DocumentoEsquema, con: Conectividad = conect
   };
 
   const fuentes = new Set<string>();
+  const rserie = !!doc.ajustes?.rserie;
   let hayMasa = false;
   let hayFuente = false;
   for (const c of doc.componentes) {
@@ -188,6 +190,13 @@ export function generarNetlist(doc: DocumentoEsquema, con: Conectividad = conect
       case 'L': {
         const n = N(c.tipo);
         const ic = valor(c, 'ic', c.tipo === 'C' ? 'V' : 'A', errores, true);
+        if (c.tipo === 'L' && rserie) {
+          // Convergence copy: a 1 mΩ resistor in series with the coil.
+          const x = `${n.toLowerCase()}_rs`;
+          poner(c, `${n} ${red('start')} ${x} ${valor(c, 'valor', 'H', errores)}${ic ? ` ic=${ic}` : ''}${extra(c)}`, { nombre: n, pines: { start: 0 } });
+          poner(c, `R${n}_rs ${x} ${red('end')} 1m`, { nombre: `R${n}_rs`, pines: { end: 1 } });
+          break;
+        }
         poner(c, `${n} ${red('start')} ${red('end')} ${valor(c, 'valor', c.tipo === 'C' ? 'F' : 'H', errores)}${ic ? ` ic=${ic}` : ''}${extra(c)}`, {
           nombre: n,
           pines: { start: 0, end: 1 },
@@ -210,12 +219,92 @@ export function generarNetlist(doc: DocumentoEsquema, con: Conectividad = conect
         break;
       }
       case 'TRAFO': {
-        const base = c.nombre.trim().replace(/\s+/g, '_');
+        const base = c.nombre.trim().replace(/\s+/g, '_') || 'T';
+        const toma = c.campos['toma'] === 'si';
+        // Imported transformers keep the names of their lines (coils, then couplings).
+        const propios = (c.campos['_nombres'] ?? '').split(/\s+/).filter(Boolean);
+        const nombresL = toma ? [`L${base}p`, `L${base}s1`, `L${base}s2`] : [`L${base}p`, `L${base}s`];
+        const nombresK = toma ? [`K${base}a`, `K${base}b`, `K${base}c`] : [`K${base}`];
+        if (propios.length === nombresL.length + nombresK.length) {
+          propios.slice(0, nombresL.length).forEach((x, i) => (nombresL[i] = x));
+          propios.slice(nombresL.length).forEach((x, i) => (nombresK[i] = x));
+        }
         const k = leerValor(c.campos['k'] ?? '', '');
-        if (!k.ok || k.v == null || k.v <= 0 || k.v > 1) errores.push({ id: c.id, texto: `${c.nombre}: el acoplamiento k debe estar entre 0 y 1 (por ejemplo 0,999).` });
-        poner(c, `L${base}p ${red('p.start')} ${red('p.end')} ${valor(c, 'lp', 'H', errores)}`, { nombre: `L${base}p`, pines: { 'p.start': 0, 'p.end': 1 } });
-        poner(c, `L${base}s ${red('s.start')} ${red('s.end')} ${valor(c, 'ls', 'H', errores)}`, { nombre: `L${base}s`, pines: { 's.start': 0, 's.end': 1 } });
-        poner(c, `K${base} L${base}p L${base}s ${k.ok && k.v != null ? k.spice : '0.999'}`);
+        if (!k.ok || (k.v != null && (k.v <= 0 || k.v > 1))) errores.push({ id: c.id, texto: `${c.nombre}: el acoplamiento k debe estar entre 0 y 1 (por ejemplo 0,999).` });
+        // A plain decimal («0.999», not «999m»), as the book writes couplings.
+        const kk = k.ok && k.v != null && k.v > 0 && k.v <= 1 ? String(k.v) : k.ok && k.v == null ? k.spice : '0.999';
+        const lp = valor(c, 'lp', 'H', errores);
+        let ls: string;
+        if ((c.campos['modo'] ?? 'inductancias') === 'relacion') {
+          const n = leerValor(c.campos['n'] ?? '', '');
+          const L = leerValor(c.campos['lp'] ?? '', 'H');
+          if (!n.ok || n.v == null || n.v <= 0) {
+            errores.push({ id: c.id, texto: `${c.nombre}: la relación de espiras debe ser un número positivo (10 para 10 : 1).` });
+            ls = '1';
+          } else ls = L.ok && L.v != null ? numeroSpiceCorto(L.v / (n.v * n.v) / (toma ? 4 : 1)) : '1';
+        } else ls = valor(c, 'ls', 'H', errores);
+        poner(c, `${nombresL[0]} ${red('p.start')} ${red('p.end')} ${lp}`, { nombre: nombresL[0]!, pines: { 'p.start': 0, 'p.end': 1 } });
+        if (toma) {
+          poner(c, `${nombresL[1]} ${red('s.start')} ${red('s.mid')} ${ls}`, { nombre: nombresL[1]!, pines: { 's.start': 0, 's.mid': 1 } });
+          poner(c, `${nombresL[2]} ${red('s.mid')} ${red('s.end')} ${ls}`, { nombre: nombresL[2]!, pines: { 's.mid': 0, 's.end': 1 } });
+          poner(c, `${nombresK[0]} ${nombresL[0]} ${nombresL[1]} ${kk}`);
+          poner(c, `${nombresK[1]} ${nombresL[0]} ${nombresL[2]} ${kk}`);
+          poner(c, `${nombresK[2]} ${nombresL[1]} ${nombresL[2]} ${kk}`);
+        } else {
+          poner(c, `${nombresL[1]} ${red('s.start')} ${red('s.end')} ${ls}`, { nombre: nombresL[1]!, pines: { 's.start': 0, 's.end': 1 } });
+          poner(c, `${nombresK[0]} ${nombresL[0]} ${nombresL[1]} ${kk}`);
+        }
+        break;
+      }
+      case 'PUENTE': {
+        const m = usarModelo();
+        const propios = (c.campos['_nombres'] ?? '').split(/\s+/).filter(Boolean);
+        const base = N('D');
+        PUENTE_DIODOS.forEach(([an, ca], i) => {
+          const n = propios.length === 4 ? propios[i]! : `${base}${'abcd'[i]}`;
+          poner(c, `${n} ${red(an)} ${red(ca)} ${m}`, { nombre: n, pines: { [an]: 0, [ca]: 1 } });
+        });
+        break;
+      }
+      case 'CONM': {
+        const n = N('R');
+        const b = c.campos['posicion'] === 'b';
+        poner(c, `${n}1 ${red('com')} ${red('c1')} ${b ? '1g' : '1m'}`, { nombre: `${n}1`, pines: { com: 0, c1: 1 } });
+        poner(c, `${n}2 ${red('com')} ${red('c2')} ${b ? '1m' : '1g'}`, { nombre: `${n}2`, pines: { com: 0, c2: 1 } });
+        break;
+      }
+      case 'PULNA':
+      case 'PULNC': {
+        const n = N('R');
+        poner(c, `${n} ${red('start')} ${red('end')} ${conduce(c) ? '1m' : '1g'}`, { nombre: n, pines: { start: 0, end: 1 } });
+        break;
+      }
+      case 'RELE': {
+        const n = N('X');
+        const orden = ['b1', 'b2', 'com', 'nc', 'no'];
+        const pines: Record<string, number> = {};
+        orden.forEach((x, i) => (pines[x] = i));
+        poner(c, `${n} ${orden.map(red).join(' ')} ${usarModelo()}`, { nombre: n, pines });
+        break;
+      }
+      case 'LDR':
+      case 'NTC':
+      case 'PTC': {
+        const n = N('R');
+        const r = resistenciaSensor(c);
+        if (r == null) errores.push({ id: c.id, texto: `${c.nombre}: revise sus valores (${c.tipo === 'LDR' ? 'la iluminación no puede ser negativa' : 'temperatura, resistencia y constante'}).` });
+        poner(c, `${n} ${red('start')} ${red('end')} ${r != null ? numeroSpiceCorto(r) : '1k'}`, { nombre: n, pines: { start: 0, end: 1 } });
+        break;
+      }
+      case 'LAMP':
+      case 'ZUMB':
+      case 'ALTAVOZ':
+      case 'MOTOR':
+      case 'XTAL': {
+        const n = N('X');
+        const [sub, params] = parametrosCarga(c, errores);
+        modelosUsados.add(sub);
+        poner(c, `${n} ${red('start')} ${red('end')} ${sub} params: ${params}`, { nombre: n, pines: { start: 0, end: 1 } });
         break;
       }
       case 'V':
@@ -224,6 +313,12 @@ export function generarNetlist(doc: DocumentoEsquema, con: Conectividad = conect
         const n = N('V');
         hayFuente = true;
         fuentes.add(n.toLowerCase());
+        if (rserie) {
+          const x = `${n.toLowerCase()}_rs`;
+          poner(c, `${n} ${red('end')} ${x} ${especFuente(c, 'V', errores)}`, { nombre: n, pines: { end: 0 } });
+          poner(c, `R${n}_rs ${x} ${red('start')} 1m`, { nombre: `R${n}_rs`, pines: { start: 1 } });
+          break;
+        }
         poner(c, `${n} ${red('end')} ${red('start')} ${especFuente(c, 'V', errores)}`, { nombre: n, pines: { end: 0, start: 1 } });
         break;
       }
@@ -413,8 +508,9 @@ export function generarNetlist(doc: DocumentoEsquema, con: Conectividad = conect
     for (const pin of pinesDe(c)) {
       const i = con.redDePin.get(`${c.id}.${pin}`);
       const r = i == null ? null : con.redes[i]!;
-      const opcional = (c.tipo === 'DFF' || c.tipo === 'DJK') && (pin === 'set' || pin === 'reset');
-      if (r && r.pines.length < 2 && !r.explicita && !opcional) avisos.push({ id: c.id, texto: `${c.nombre}: un terminal (${nombrePin(pin)}) no está conectado a nada.` });
+      // Pins that may stay free: set/reset of the flip-flops, the unused contact of a relay or changeover.
+      const opcional = ((c.tipo === 'DFF' || c.tipo === 'DJK') && (pin === 'set' || pin === 'reset')) || (c.tipo === 'RELE' && (pin === 'nc' || pin === 'no')) || (c.tipo === 'CONM' && (pin === 'c1' || pin === 'c2'));
+      if (r && r.pines.length < 2 && !r.explicita && !opcional) avisos.push({ id: c.id, texto: `${c.nombre}: un terminal (${nombrePin(pin, c.tipo)}) no está conectado a nada.` });
     }
   }
 
@@ -505,6 +601,14 @@ const NOMBRES_PIN: Record<string, string> = {
   n: '−',
   cp: 'control +',
   cn: 'control −',
+  com: 'común',
+  c1: 'contacto 1',
+  c2: 'contacto 2',
+  b1: 'bobina 1',
+  b2: 'bobina 2',
+  nc: 'contacto NC',
+  no: 'contacto NA',
+  's.mid': 'toma central',
   'p.start': 'primario 1',
   'p.end': 'primario 2',
   's.start': 'secundario 1',
@@ -529,6 +633,24 @@ const NOMBRES_PIN: Record<string, string> = {
   vcc: 'Vcc',
 };
 
-export function nombrePin(p: string): string {
+export function nombrePin(p: string, tipo?: string): string {
+  if (tipo === 'PUENTE') return p === 'p' ? '+' : p === 'n' ? '−' : p === 'a' ? '∿ 1' : '∿ 2';
   return NOMBRES_PIN[p] ?? p;
+}
+
+/** Subcircuit of a load or crystal of the palette and its parameters («vn=12 p=5»). */
+function parametrosCarga(c: Componente, errores: Aviso[]): [string, string] {
+  const v = (campo: string, unidad: string) => valor(c, campo, unidad, errores);
+  switch (c.tipo) {
+    case 'LAMP':
+      return ['epa_lampara', `vn=${v('vn', 'V')} p=${v('p', 'W')}`];
+    case 'ZUMB':
+      return ['epa_zumbador', `vn=${v('vn', 'V')} inom=${v('in', 'A')}`];
+    case 'ALTAVOZ':
+      return ['epa_altavoz', `z=${v('z', 'Ω')} fs=${v('fs', 'Hz')}`];
+    case 'MOTOR':
+      return ['epa_motor', `ra=${v('ra', 'Ω')} kt=${v('k', '')} jm=${v('j', '')} bm=${v('b', '')} tl=${v('carga', '')}`];
+    default:
+      return ['epa_cristal', `f=${v('f', 'Hz')} rs=${v('rs', 'Ω')} cm=${v('cm', '')}e-15 c0=${v('c0', 'F')}`];
+  }
 }

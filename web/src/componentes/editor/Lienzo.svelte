@@ -19,12 +19,15 @@
     ed,
     alPropiedades,
     alMenu,
+    alAviso,
   }: {
     ed: Editor;
     /** Double click / double tap on a part: show its properties. */
     alPropiedades?: (id: string) => void;
     /** Context menu at a screen point (long press or right click), on a part/wire or on empty space. */
     alMenu?: (m: { x: number; y: number; id: string | null }) => void;
+    /** A message for the page (the router found no way). */
+    alAviso?: (texto: string) => void;
   } = $props();
 
   type P = [number, number];
@@ -48,6 +51,8 @@
   let fantasma = $state<{ tipo: string; p: P } | null>(null);
   /** First point of a wire drawn tap by tap. */
   let pendiente = $state<P | null>(null);
+  /** «Ruta automática»: the first pin chosen and its lead direction. */
+  let rutaDesde = $state<{ pt: P; dir: P } | null>(null);
   let cursor = $state<P | null>(null);
   let espacio = false;
 
@@ -233,6 +238,22 @@
       fantasma = { tipo: ed.colocando, p: w };
       return;
     }
+    if (ed.herramienta === 'ruta') {
+      // Automatic wire: a pin, then another pin (or any point of a wire).
+      gesto = null;
+      const pin = pinCerca(w, r * 1.3);
+      const e = pin ? { pt: pin.pt, dir: [pin.dx, pin.dy] as P } : null;
+      const destino = e ?? (rutaDesde ? (() => { const g = enganche(w, r); return g.conectado ? { pt: g.pt, dir: [0, 0] as P } : null; })() : null);
+      if (!destino) return;
+      if (!rutaDesde) rutaDesde = destino;
+      else {
+        if (destino.pt[0] !== rutaDesde.pt[0] || destino.pt[1] !== rutaDesde.pt[1]) {
+          if (!ed.conectar(rutaDesde.pt, destino.pt, rutaDesde.dir)) alAviso?.('No se ha encontrado un camino libre entre esas dos patillas: mueva algún componente o dibuje el cable a mano.');
+        }
+        rutaDesde = null;
+      }
+      return;
+    }
     if (ed.herramienta === 'cable') {
       const e = pendiente ? { pt: pendiente, conectado: true, dir: undefined } : enganche(w, r);
       gesto = { t: 'cable', a: e.pt, b: e.pt, dir: e.dir ?? null, movido: false, desde: [ev.clientX, ev.clientY], enPin: !!e.dir };
@@ -293,7 +314,7 @@
     const g = gesto;
     if (!g) {
       if (ev.pointerType === 'mouse') {
-        const pin = ed.herramienta !== 'colocar' ? pinCerca(w, radio('mouse')) : null;
+        const pin = ed.herramienta !== 'colocar' ? pinCerca(w, radio('mouse') * (ed.herramienta === 'ruta' ? 1.3 : 1)) : null;
         hoverPin = pin?.pt ?? (ed.herramienta === 'cable' ? enganche(w, radio('mouse')).pt : null);
         if (ed.herramienta === 'colocar' && ed.colocando) fantasma = { tipo: ed.colocando, p: w };
       }
@@ -527,10 +548,11 @@
 
   /** Esc: drops the gesture in progress, the pending wire and the part being placed. */
   export function cancelar(): boolean {
-    const habia = !!gesto || !!pendiente || !!fantasma || ed.herramienta === 'colocar';
+    const habia = !!gesto || !!pendiente || !!fantasma || !!rutaDesde || ed.herramienta === 'colocar';
     gesto = null;
     pendiente = null;
     fantasma = null;
+    rutaDesde = null;
     if (ed.herramienta === 'colocar') {
       ed.herramienta = 'seleccionar';
       ed.colocando = null;
@@ -648,7 +670,7 @@
 
 <div
   class="lienzo"
-  class:cable={ed.herramienta === 'cable'}
+  class:cable={ed.herramienta === 'cable' || ed.herramienta === 'ruta'}
   class:colocar={ed.herramienta === 'colocar'}
   bind:this={caja}
   bind:clientWidth={ancho}
@@ -718,6 +740,9 @@
       {#if pendiente}
         <circle class="pendiente" cx={pendiente[0] * S} cy={pendiente[1] * S} r={0.16 * S} />
       {/if}
+      {#if rutaDesde}
+        <circle class="ruta-desde" cx={rutaDesde.pt[0] * S} cy={rutaDesde.pt[1] * S} r={0.26 * S} />
+      {/if}
       {#if hoverPin}
         <circle class="enganche" cx={hoverPin[0] * S} cy={hoverPin[1] * S} r={0.22 * S} />
       {/if}
@@ -736,7 +761,7 @@
     </g>
   </svg>
   <p class="ayuda" aria-hidden="true">
-    {#if tactilFino}Un dedo desplaza · dos dedos acercan · pulsación larga: menú{:else}Ctrl + rueda para acercar · Mayús + rueda desplaza · botón central o Espacio + arrastrar mueve la vista{/if}
+    {#if ed.herramienta === 'ruta'}{rutaDesde ? 'Ruta automática: toque la patilla (o el cable) de destino.' : 'Ruta automática: toque la patilla de origen y luego la de destino.'}{:else if tactilFino}Un dedo desplaza · dos dedos acercan · pulsación larga: menú{:else}Ctrl + rueda para acercar · Mayús + rueda desplaza · botón central o Espacio + arrastrar mueve la vista{/if}
   </p>
   {#if !ed.doc.componentes.length && !ed.doc.cables.length}
     <p class="vacio">
@@ -829,6 +854,11 @@
   }
   .pendiente {
     fill: var(--acento);
+  }
+  .ruta-desde {
+    fill: color-mix(in srgb, var(--acento) 25%, transparent);
+    stroke: var(--acento);
+    stroke-width: 1.5;
   }
   .enganche {
     fill: none;

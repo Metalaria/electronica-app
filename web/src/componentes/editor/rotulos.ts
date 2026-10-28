@@ -23,9 +23,13 @@ export interface Rotulo {
   ancla: 'start' | 'middle' | 'end';
 }
 
+/** Designator prefixes of several letters that read as a whole («LDR₁», «BZ₁», «RT₁», not «L_DR1»). */
+const PREFIJOS_LARGOS = /^(LDR|BZ|LS|BR|RT)(\d{1,4})$/;
+
 function linea(ref: string, resto: string): LineaRotulo {
   if (!ref) return { base: resto, sub: '', resto: '' };
-  const p = partesRef(ref);
+  const m = PREFIJOS_LARGOS.exec(ref);
+  const p = m ? { base: m[1]!, sub: m[2]! } : partesRef(ref);
   return { base: p.base, sub: p.sub, resto: resto ? ` ${resto}` : '' };
 }
 

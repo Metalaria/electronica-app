@@ -12,6 +12,7 @@
   import Resultados from '../simulador/Resultados.svelte';
   import Propiedades from '../editor/Propiedades.svelte';
   import Paleta from '../editor/Paleta.svelte';
+  import { CONMUTABLES } from '../editor/catalogo.ts';
   import { formatoSI } from '../grafica/formato.ts';
   import Mesa from './Mesa.svelte';
   import type { Protoboard } from './estado.svelte';
@@ -35,6 +36,11 @@
   import RefreshCw from '@lucide/svelte/icons/refresh-ccw';
   import ToggleRight from '@lucide/svelte/icons/toggle-right';
   import Gauge from '@lucide/svelte/icons/gauge';
+  import IconoEsquema from '@lucide/svelte/icons/workflow';
+  import IconoSimulacion from '@lucide/svelte/icons/activity';
+  import IconoAvisos from '@lucide/svelte/icons/triangle-alert';
+  import IconoPieza from '@lucide/svelte/icons/cpu';
+  import IconoAnadir from '@lucide/svelte/icons/plus';
   import type { MedidaProtoboard } from './medida.svelte.ts';
   import type MedirProtoboard from './MedirProtoboard.svelte';
 
@@ -236,8 +242,8 @@
     <span class="sep"></span>
     <button type="button" class="hb" title="Girar 90° (R)" aria-label="Girar" disabled={!pb.sel.length} onclick={() => pb.transformar(pb.sel, 'girar')}><RotateCw size={19} /></button>
     <button type="button" class="hb" title="Dar la vuelta (F): invierte las patas" aria-label="Dar la vuelta" disabled={!pb.sel.length} onclick={() => pb.transformar(pb.sel, 'reflejar')}><FlipHorizontal size={19} /></button>
-    {#if piezaSel?.comp.tipo === 'SW'}
-      <button type="button" class="hb" title="Conmutar el interruptor" aria-label="Conmutar" onclick={() => pb.conmutar(piezaSel.id)}><ToggleRight size={19} /></button>
+    {#if piezaSel && CONMUTABLES.has(piezaSel.comp.tipo)}
+      <button type="button" class="hb" title={piezaSel.comp.tipo.startsWith('PUL') ? 'Pulsar o soltar (también con un doble toque)' : 'Conmutar (también con un doble toque)'} aria-label="Conmutar" onclick={() => pb.conmutar(piezaSel.id)}><ToggleRight size={19} /></button>
     {/if}
     <button type="button" class="hb" title="Quitar (Supr)" aria-label="Quitar" disabled={!pb.sel.length} onclick={() => pb.borrar()}><Trash size={19} /></button>
     <button type="button" class="hb" aria-pressed={pestana === 'medir'} title="Medir: multímetro, osciloscopio, generador y auricular" aria-label="Medir" onclick={() => (pestana === 'medir' ? (pestana = 'esquema') : void abrirMedir())}><Gauge size={19} /></button>
@@ -268,15 +274,16 @@
     </div>
 
     <section class="panel" aria-label="Panel de la protoboard">
+      <!-- Six tabs that fit a 412 px phone: icon and short label (stacked on narrow panels), no sideways scroll. -->
       <div class="pestanas" role="tablist">
-        <button type="button" role="tab" aria-selected={pestana === 'esquema'} onclick={() => (pestana = 'esquema')}>Esquema</button>
-        <button type="button" role="tab" aria-selected={pestana === 'simulacion'} onclick={() => (pestana = 'simulacion')}>Simulación</button>
+        <button type="button" role="tab" aria-selected={pestana === 'esquema'} onclick={() => (pestana = 'esquema')}><IconoEsquema size={17} aria-hidden="true" /><span class="et">Esquema</span></button>
+        <button type="button" role="tab" aria-selected={pestana === 'simulacion'} onclick={() => (pestana = 'simulacion')}><IconoSimulacion size={17} aria-hidden="true" /><span class="et">Simulación</span></button>
         <button type="button" role="tab" aria-selected={pestana === 'avisos'} onclick={() => (pestana = 'avisos')}>
-          Avisos{#if nAvisos}<span class="n" class:mal={avisos.some((a) => a.nivel === 'error')}>{nAvisos}</span>{:else if correcto}<span class="ok" aria-label="correcto">✓</span>{/if}
+          <span class="ico"><IconoAvisos size={17} aria-hidden="true" />{#if nAvisos}<span class="n" class:mal={avisos.some((a) => a.nivel === 'error')}>{nAvisos}</span>{:else if correcto}<span class="ok" aria-label="correcto">✓</span>{/if}</span><span class="et">Avisos</span>
         </button>
-        <button type="button" role="tab" aria-selected={pestana === 'pieza'} onclick={() => (pestana = 'pieza')}>Pieza</button>
-        <button type="button" role="tab" aria-selected={pestana === 'anadir'} onclick={() => (pestana = 'anadir')}>Añadir</button>
-        <button type="button" role="tab" aria-selected={pestana === 'medir'} onclick={() => void abrirMedir()}>Medir</button>
+        <button type="button" role="tab" aria-selected={pestana === 'pieza'} onclick={() => (pestana = 'pieza')}><IconoPieza size={17} aria-hidden="true" /><span class="et">Pieza</span></button>
+        <button type="button" role="tab" aria-selected={pestana === 'anadir'} onclick={() => (pestana = 'anadir')}><IconoAnadir size={17} aria-hidden="true" /><span class="et">Añadir</span></button>
+        <button type="button" role="tab" aria-selected={pestana === 'medir'} onclick={() => void abrirMedir()}><Gauge size={17} aria-hidden="true" /><span class="et">Medir</span></button>
       </div>
 
       <div class="contenido">
@@ -472,19 +479,51 @@
   .pestanas {
     flex: none;
     display: flex;
-    overflow-x: auto;
-    scrollbar-width: none;
     border-bottom: 1px solid var(--linea-suave);
+    container-type: inline-size;
   }
   .pestanas button {
-    flex: 1 0 auto;
+    flex: 1 1 0;
+    min-width: 0;
     min-height: 44px;
-    padding: 0 12px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    padding: 0 4px;
     border: 0;
     border-bottom: 2.5px solid transparent;
     background: transparent;
     color: var(--tinta-suave);
-    font: 600 14px var(--sans);
+    font: 600 13.5px var(--sans);
+  }
+  .pestanas .et {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+  .ico {
+    position: relative;
+    display: inline-flex;
+  }
+  .ico .n,
+  .ico .ok {
+    position: absolute;
+    top: -7px;
+    left: 11px;
+    margin: 0;
+  }
+  /* Narrow panels (phones): icon over a small label, six tabs in one row without scrolling. */
+  @container (max-width: 540px) {
+    .pestanas button {
+      flex-direction: column;
+      gap: 1px;
+      min-height: 50px;
+      padding: 4px 1px 3px;
+      font-size: 11px;
+      letter-spacing: -0.01em;
+    }
   }
   .pestanas button[aria-selected='true'] {
     color: var(--acento);
@@ -494,7 +533,9 @@
     display: inline-block;
     min-width: 1.5em;
     margin-left: 5px;
-    padding: 0 5px;
+    padding: 0 4px;
+    line-height: 1.35;
+    text-align: center;
     border-radius: 999px;
     background: var(--ambar-tinte);
     color: var(--ambar);

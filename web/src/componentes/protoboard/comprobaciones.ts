@@ -307,6 +307,21 @@ export function brillos(doc: DocumentoProtoboard, con: ConexionesProto, op: Punt
   const res: Record<string, number> = {};
   if (!op) return res;
   for (const p of doc.piezas) {
+    // Loads (0.10): a lamp glows, a buzzer sounds and a motor turns with their voltage.
+    if (p.enc === 'lampara' || p.enc === 'zumbador' || p.enc === 'motor') {
+      const ra = con.redDePin.get(`${p.id}.start`);
+      const rb = con.redDePin.get(`${p.id}.end`);
+      const va = ra != null ? op.v[con.redes[ra]!.nombre] : undefined;
+      const vb = rb != null ? op.v[con.redes[rb]!.nombre] : undefined;
+      if (va == null || vb == null) continue;
+      const d = p.enc === 'lampara' ? Math.abs(va - vb) : va - vb;
+      const vn = Number((p.comp.campos['vn'] ?? '').replace(',', '.')) || (p.enc === 'motor' ? 3 : 5);
+      const x = d / vn;
+      if (p.enc === 'lampara' && x > 0.15) res[p.id] = Math.min(1, (x - 0.1) * 1.1);
+      if (p.enc === 'zumbador' && x > 0.6) res[p.id] = 1;
+      if (p.enc === 'motor' && Math.abs(d) > 0.3) res[p.id] = 1;
+      continue;
+    }
     if (p.enc !== 'led') continue;
     const inst = instancias.get(p.id);
     let i = inst ? op.i[inst.toLowerCase()] : undefined;

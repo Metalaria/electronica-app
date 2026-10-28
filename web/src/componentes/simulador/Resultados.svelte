@@ -20,10 +20,14 @@
     referencia?: Simulacion | null;
     /** Vectors to draw first when the plot has them (the probes of the schematic editor). */
     preferidos?: string[];
+    /** A parameter sweep of the editor: one plot per value, always overlaid, one tab per analysis. */
+    barrido?: boolean;
   }
-  let { resultado, referencia = null, preferidos = [] }: Props = $props();
+  let { resultado, referencia = null, preferidos = [], barrido = false }: Props = $props();
 
   const multiples = $derived(resultado.ejecucion.graficas.filter((g) => g.puntos > 1));
+  /** Tabs: every plot, or (sweep) the first plot of each analysis class. */
+  const pestanas = $derived(barrido ? multiples.filter((g, i) => multiples.findIndex((x) => claseDe(x) === claseDe(g)) === i) : multiples);
   const unPunto = $derived(resultado.ejecucion.graficas.filter((g) => g.puntos === 1));
 
   let elegida = $state<string | null>(null);
@@ -31,7 +35,8 @@
   /** Vector selection per plot class, kept across runs (sliders) and between plots of the same class. */
   let selecciones = $state<Record<string, string[]>>({});
   let db = $state(true);
-  let superponer = $state(false);
+  let superponerElegido = $state(false);
+  const superponer = $derived(barrido || superponerElegido);
 
   const claveSel = $derived(grafica ? `${claseDe(grafica)}:${grafica.vectores.slice(1).map((v) => v.nombre).join(',')}` : '');
   const seleccion = $derived.by(() => {
@@ -40,7 +45,10 @@
     if (s) return s.filter((n) => grafica.vectores.some((v) => v.nombre === n));
     const p = preferidos.filter((n) => grafica.vectores.some((v) => v.nombre.toLowerCase() === n.toLowerCase()));
     if (p.length) return grafica.vectores.filter((v) => p.includes(v.nombre.toLowerCase())).map((v) => v.nombre);
-    return seleccionInicial(grafica);
+    const ini = seleccionInicial(grafica);
+    // A sweep draws one curve per value: the input (the same in every run) only adds clutter.
+    const sinEntrada = barrido ? ini.filter((n) => !/^v\((in|vin|e|entrada)\)$/i.test(n)) : ini;
+    return sinEntrada.length ? sinEntrada : ini;
   });
   const mismasClase = $derived(grafica ? multiples.filter((g) => claseDe(g) === claseDe(grafica)).length : 0);
 
@@ -113,10 +121,10 @@
 <div class="resultados">
   {#if multiples.length}
     <section class="bloque" aria-label="Gráficas">
-      {#if multiples.length > 1}
+      {#if pestanas.length > 1}
         <div class="analisis" role="tablist" aria-label="Análisis">
-          {#each multiples as g (g.id)}
-            <button role="tab" aria-selected={g === grafica} class="chip" onclick={() => (elegida = g.id)}>{nombreGrafica(g)}</button>
+          {#each pestanas as g (g.id)}
+            <button role="tab" aria-selected={g === grafica || (barrido && !!grafica && claseDe(g) === claseDe(grafica))} class="chip" onclick={() => (elegida = g.id)}>{barrido ? nombreGrafica(g).replace(/ · .*$/, '') : nombreGrafica(g)}</button>
           {/each}
         </div>
       {/if}
@@ -131,8 +139,8 @@
             {#if grafica.complejo}
               <label><input type="checkbox" bind:checked={db} /> Magnitud en dB</label>
             {/if}
-            {#if mismasClase > 1}
-              <label><input type="checkbox" bind:checked={superponer} /> Superponer los {mismasClase} análisis</label>
+            {#if mismasClase > 1 && !barrido}
+              <label><input type="checkbox" bind:checked={superponerElegido} /> Superponer los {mismasClase} análisis</label>
             {/if}
           </div>
         </div>

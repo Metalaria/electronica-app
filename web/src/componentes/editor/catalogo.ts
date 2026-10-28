@@ -6,6 +6,7 @@ import type { Dispositivo } from '../esquema-auto/modelo.ts';
 import { simboloDe, type DefSimbolo, type Prim, type Pt } from '../esquema-auto/simbolos.ts';
 import { formatoCorto } from '../grafica/formato.ts';
 import type { FamiliaModelo } from './modelos.ts';
+import { altavoz, conmutador, cristal, interruptor, lampara, ldr, motor, nota, pulsador, rele, termistor, transformadorToma, zumbador } from './simbolos-extra.ts';
 import type { Componente } from './tipos.ts';
 import { leerValor } from './valores.ts';
 
@@ -22,9 +23,11 @@ export interface Campo {
   ayuda?: string;
   /** Shown only when this returns true (source waveform fields). */
   si?: (c: Componente) => boolean;
+  /** A knob (slider) for this value: range, logarithmic, rounding. */
+  mando?: { min: number; max: number; log?: boolean; paso?: number };
 }
 
-export type Grupo = 'Pasivos' | 'Fuentes' | 'Semiconductores' | 'Integrados' | 'Digital' | 'Conexiones' | 'Medida';
+export type Grupo = 'Pasivos' | 'Fuentes' | 'Semiconductores' | 'Interruptores' | 'Sensores y cargas' | 'Integrados' | 'Digital' | 'Conexiones' | 'Medida' | 'Anotaciones';
 
 export interface Tipo {
   id: string;
@@ -44,6 +47,8 @@ export interface Tipo {
 }
 
 const vf = (forma: string) => (c: Componente) => (c.campos['forma'] ?? 'dc') === forma;
+/** Transformer fields shown by its mode (saved before 0.10 without «modo»: inductances). */
+export const modoTrafo = (m: 'relacion' | 'inductancias') => (c: Componente) => (c.campos['modo'] ?? 'inductancias') === m;
 const noTexto = (c: Componente) => (c.campos['forma'] ?? 'dc') !== 'texto';
 
 const CAMPOS_FUENTE = (u: 'V' | 'A'): Campo[] => [
@@ -104,7 +109,7 @@ export const TIPOS: Tipo[] = [
     inicial: { valor: '10k', pos: '50' },
     campos: [
       { id: 'valor', etiqueta: 'Resistencia total', tipo: 'valor', unidad: 'Ω' },
-      { id: 'pos', etiqueta: 'Posición del cursor (%)', tipo: 'valor', unidad: '%', ayuda: '0 % = cursor junto al terminal 1; 100 % = junto al terminal 2.' },
+      { id: 'pos', etiqueta: 'Posición del cursor (%)', tipo: 'valor', unidad: '%', ayuda: '0 % = cursor junto al terminal 1; 100 % = junto al terminal 2.', mando: { min: 0, max: 100, paso: 1 } },
     ],
     claves: 'potenciometro trimmer divisor',
   },
@@ -118,13 +123,49 @@ export const TIPOS: Tipo[] = [
     rol: 'XFMR',
     clase: 'Transformer',
     o: 0,
-    inicial: { lp: '100m', ls: '1m', k: '0,999' },
+    inicial: { modo: 'relacion', n: '10', lp: '10', k: '0,999', toma: 'no' },
     campos: [
-      { id: 'lp', etiqueta: 'Inductancia del primario', tipo: 'valor', unidad: 'H' },
-      { id: 'ls', etiqueta: 'Inductancia del secundario', tipo: 'valor', unidad: 'H', ayuda: 'Relación de espiras n = √(Lp/Ls).' },
-      { id: 'k', etiqueta: 'Coeficiente de acoplamiento k', tipo: 'valor', unidad: '' },
+      {
+        id: 'modo',
+        etiqueta: 'Definido por',
+        tipo: 'opcion',
+        opciones: [
+          ['relacion', 'Relación de espiras'],
+          ['inductancias', 'Inductancias'],
+        ],
+      },
+      { id: 'n', etiqueta: 'Relación de espiras N₁ : N₂', tipo: 'valor', unidad: '', si: modoTrafo('relacion'), ayuda: 'Por ejemplo 10 para 10 : 1 (230 V → 23 V). La inductancia del secundario es Lp / n².' },
+      { id: 'lp', etiqueta: 'Inductancia del primario', tipo: 'valor', unidad: 'H', ayuda: 'La de magnetización: grande (unos henrios) para que el transformador se acerque al ideal.' },
+      { id: 'ls', etiqueta: 'Inductancia del secundario', tipo: 'valor', unidad: 'H', si: modoTrafo('inductancias'), ayuda: 'Relación de espiras n = √(Lp/Ls). Con toma central, la de cada mitad.' },
+      { id: 'k', etiqueta: 'Coeficiente de acoplamiento k', tipo: 'valor', unidad: '', ayuda: 'Entre 0 y 1; 0,999 es un buen transformador de red.' },
+      {
+        id: 'toma',
+        etiqueta: 'Secundario',
+        tipo: 'opcion',
+        opciones: [
+          ['no', 'Sin toma central'],
+          ['si', 'Con toma central'],
+        ],
+      },
     ],
-    claves: 'bobinas acopladas trafo',
+    claves: 'bobinas acopladas trafo toma central relacion espiras',
+  },
+  {
+    id: 'XTAL',
+    nombre: 'Cristal de cuarzo',
+    grupo: 'Pasivos',
+    prefijo: 'Y',
+    rol: 'X',
+    clase: 'Crystal',
+    o: 0,
+    inicial: { f: '4M', rs: '50', cm: '15', c0: '5p' },
+    campos: [
+      { id: 'f', etiqueta: 'Frecuencia de resonancia serie', tipo: 'valor', unidad: 'Hz' },
+      { id: 'rs', etiqueta: 'Resistencia serie (ESR)', tipo: 'valor', unidad: 'Ω' },
+      { id: 'cm', etiqueta: 'Capacidad dinámica Cm (fF)', tipo: 'valor', unidad: '', ayuda: 'En femtofaradios (1 fF = 0,001 pF). Modelo de Butterworth–Van Dyke: Rs, Lm y Cm en serie, con C0 en paralelo; Lm = 1/((2πf)²·Cm).' },
+      { id: 'c0', etiqueta: 'Capacidad en paralelo C0', tipo: 'valor', unidad: 'F' },
+    ],
+    claves: 'cuarzo xtal oscilador resonador',
   },
   { id: 'V', nombre: 'Fuente de tensión', grupo: 'Fuentes', prefijo: 'V', rol: 'V', clase: 'SourceV', o: 3, inicial: { forma: 'dc', dc: '5' }, campos: CAMPOS_FUENTE('V'), claves: 'pila bateria generador senoidal pulso' },
   {
@@ -186,6 +227,201 @@ export const TIPOS: Tipo[] = [
   { id: 'MP', nombre: 'MOSFET de canal P', grupo: 'Semiconductores', prefijo: 'M', rol: 'MP', clase: 'PFet', o: 4, inicial: { modelo: 'PTY' }, campos: [{ id: 'modelo', etiqueta: 'Modelo', tipo: 'modelo', familia: 'MP' }, EXTRA], claves: 'pmos fet' },
   { id: 'JN', nombre: 'JFET de canal N', grupo: 'Semiconductores', prefijo: 'J', rol: 'JN', clase: 'JFetN', o: 0, inicial: { modelo: 'JN' }, campos: [{ id: 'modelo', etiqueta: 'Modelo', tipo: 'modelo', familia: 'JN' }, EXTRA], claves: 'jfet' },
   { id: 'JP', nombre: 'JFET de canal P', grupo: 'Semiconductores', prefijo: 'J', rol: 'JP', clase: 'JFetP', o: 4, inicial: { modelo: 'JP' }, campos: [{ id: 'modelo', etiqueta: 'Modelo', tipo: 'modelo', familia: 'JP' }, EXTRA], claves: 'jfet' },
+  {
+    id: 'PUENTE',
+    nombre: 'Puente rectificador',
+    grupo: 'Semiconductores',
+    prefijo: 'BR',
+    rol: 'D',
+    clase: 'Bridge',
+    o: 0,
+    inicial: { modelo: 'D1N4007' },
+    campos: [{ id: 'modelo', etiqueta: 'Modelo de sus cuatro diodos', tipo: 'modelo', familia: 'D', ayuda: 'Las dos patillas ∿ van a la alterna; + y − dan la tensión rectificada.' }],
+    claves: 'puente diodos rectificador graetz onda completa',
+  },
+  {
+    id: 'SW',
+    nombre: 'Interruptor',
+    grupo: 'Interruptores',
+    prefijo: 'S',
+    rol: 'SW',
+    clase: 'Switch',
+    o: 0,
+    inicial: { estado: 'cerrado' },
+    campos: [{ id: 'estado', etiqueta: 'Estado', tipo: 'opcion', opciones: [['cerrado', 'Cerrado (1 mΩ)'], ['abierto', 'Abierto (1 GΩ)']], ayuda: 'Al simular, tóquelo en el esquema de resultados para abrirlo o cerrarlo.' }],
+    claves: 'interruptor spst llave',
+  },
+  {
+    id: 'CONM',
+    nombre: 'Conmutador',
+    grupo: 'Interruptores',
+    prefijo: 'S',
+    rol: 'SW',
+    clase: 'Switch',
+    o: 0,
+    inicial: { posicion: 'a' },
+    campos: [
+      {
+        id: 'posicion',
+        etiqueta: 'Posición',
+        tipo: 'opcion',
+        opciones: [
+          ['a', 'Común unido al contacto 1'],
+          ['b', 'Común unido al contacto 2'],
+        ],
+        ayuda: 'Al simular, tóquelo en el esquema de resultados para cambiarlo de posición.',
+      },
+    ],
+    claves: 'conmutador spdt inversor selector',
+  },
+  {
+    id: 'PULNA',
+    nombre: 'Pulsador NA',
+    grupo: 'Interruptores',
+    prefijo: 'S',
+    rol: 'SW',
+    clase: 'PushButton',
+    o: 0,
+    inicial: { pulsado: 'no' },
+    campos: [{ id: 'pulsado', etiqueta: 'Estado', tipo: 'opcion', opciones: [['no', 'Sin pulsar (abierto)'], ['si', 'Pulsado (cerrado)']], ayuda: 'Normalmente abierto. Al simular, tóquelo en el esquema de resultados para pulsarlo o soltarlo.' }],
+    claves: 'pulsador boton normalmente abierto no',
+  },
+  {
+    id: 'PULNC',
+    nombre: 'Pulsador NC',
+    grupo: 'Interruptores',
+    prefijo: 'S',
+    rol: 'SW',
+    clase: 'PushButton',
+    o: 0,
+    inicial: { pulsado: 'no' },
+    campos: [{ id: 'pulsado', etiqueta: 'Estado', tipo: 'opcion', opciones: [['no', 'Sin pulsar (cerrado)'], ['si', 'Pulsado (abierto)']], ayuda: 'Normalmente cerrado. Al simular, tóquelo en el esquema de resultados para pulsarlo o soltarlo.' }],
+    claves: 'pulsador boton normalmente cerrado nc',
+  },
+  {
+    id: 'RELE',
+    nombre: 'Relé',
+    grupo: 'Interruptores',
+    prefijo: 'K',
+    rol: 'X',
+    clase: 'Relay',
+    o: 0,
+    inicial: { modelo: 'rele12' },
+    campos: [{ id: 'modelo', etiqueta: 'Modelo', tipo: 'modelo', familia: 'RELE', ayuda: 'Bobina (resistencia e inductancia) y un contacto conmutado: se cierra el NA al superar la corriente de excitación y vuelve al NC por debajo de la de desexcitación. Ponga un diodo en antiparalelo con la bobina.' }],
+    claves: 'rele relay bobina contacto conmutado',
+  },
+  {
+    id: 'LDR',
+    nombre: 'Fotorresistencia (LDR)',
+    grupo: 'Sensores y cargas',
+    prefijo: 'LDR',
+    rol: 'R',
+    clase: 'Photoresistor',
+    o: 0,
+    inicial: { luz: '100', r10: '20k', gamma: '0,7', rosc: '1M' },
+    campos: [
+      { id: 'luz', etiqueta: 'Iluminación', tipo: 'valor', unidad: 'lx', mando: { min: 0.1, max: 100000, log: true }, ayuda: 'Unos 1 lx de noche con luna, 100–500 lx en una habitación, 10 000 lx o más a pleno sol.' },
+      { id: 'r10', etiqueta: 'Resistencia a 10 lux', tipo: 'valor', unidad: 'Ω' },
+      { id: 'gamma', etiqueta: 'Exponente γ', tipo: 'valor', unidad: '', ayuda: 'R = R₁₀ · (E / 10 lx)^(−γ), sin pasar de la resistencia en oscuridad.' },
+      { id: 'rosc', etiqueta: 'Resistencia en oscuridad', tipo: 'valor', unidad: 'Ω' },
+    ],
+    claves: 'ldr fotorresistencia luz sensor gl5528',
+  },
+  {
+    id: 'NTC',
+    nombre: 'Termistor NTC',
+    grupo: 'Sensores y cargas',
+    prefijo: 'RT',
+    rol: 'R',
+    clase: 'Thermistor',
+    o: 0,
+    inicial: { temp: '25', r25: '10k', beta: '3950' },
+    campos: [
+      { id: 'temp', etiqueta: 'Temperatura (°C)', tipo: 'valor', unidad: '°C', mando: { min: -40, max: 150, paso: 1 } },
+      { id: 'r25', etiqueta: 'Resistencia a 25 °C', tipo: 'valor', unidad: 'Ω' },
+      { id: 'beta', etiqueta: 'Constante β (K)', tipo: 'valor', unidad: '', ayuda: 'R = R₂₅ · exp(β · (1/T − 1/298,15 K)), con T en kelvin.' },
+    ],
+    claves: 'ntc termistor temperatura sensor',
+  },
+  {
+    id: 'PTC',
+    nombre: 'Termistor PTC',
+    grupo: 'Sensores y cargas',
+    prefijo: 'RT',
+    rol: 'R',
+    clase: 'Thermistor',
+    o: 0,
+    inicial: { temp: '25', r25: '100', tref: '80' },
+    campos: [
+      { id: 'temp', etiqueta: 'Temperatura (°C)', tipo: 'valor', unidad: '°C', mando: { min: -40, max: 150, paso: 1 } },
+      { id: 'r25', etiqueta: 'Resistencia a 25 °C', tipo: 'valor', unidad: 'Ω' },
+      { id: 'tref', etiqueta: 'Temperatura de conmutación (°C)', tipo: 'valor', unidad: '°C', ayuda: 'PTC cerámico: R = R₂₅ · (1 + e^(0,2·(T − Tref))) / (1 + e^(0,2·(25 − Tref))); unas 2 veces R₂₅ en Tref y 50 veces 20 °C por encima.' },
+    ],
+    claves: 'ptc termistor temperatura sensor fusible rearmable',
+  },
+  {
+    id: 'LAMP',
+    nombre: 'Bombilla',
+    grupo: 'Sensores y cargas',
+    prefijo: 'H',
+    rol: 'X',
+    clase: 'Lamp',
+    o: 0,
+    inicial: { vn: '12', p: '5' },
+    campos: [
+      { id: 'vn', etiqueta: 'Tensión nominal', tipo: 'valor', unidad: 'V' },
+      { id: 'p', etiqueta: 'Potencia nominal', tipo: 'valor', unidad: 'W', ayuda: 'Filamento de wolframio: en frío su resistencia es la décima parte que encendida; R = Rf + (Rc − Rf)·√(|V|/Vn).' },
+    ],
+    claves: 'lampara bombilla incandescente piloto carga',
+  },
+  {
+    id: 'ZUMB',
+    nombre: 'Zumbador',
+    grupo: 'Sensores y cargas',
+    prefijo: 'BZ',
+    rol: 'X',
+    clase: 'Buzzer',
+    o: 0,
+    inicial: { vn: '5', in: '25m' },
+    campos: [
+      { id: 'vn', etiqueta: 'Tensión nominal', tipo: 'valor', unidad: 'V' },
+      { id: 'in', etiqueta: 'Corriente nominal', tipo: 'valor', unidad: 'A', ayuda: 'Zumbador activo (con su oscilador): consume proporcionalmente a la tensión directa y nada al revés.' },
+    ],
+    claves: 'zumbador buzzer pitido sonido',
+  },
+  {
+    id: 'ALTAVOZ',
+    nombre: 'Altavoz',
+    grupo: 'Sensores y cargas',
+    prefijo: 'LS',
+    rol: 'X',
+    clase: 'Loudspeaker',
+    o: 0,
+    inicial: { z: '8', fs: '80' },
+    campos: [
+      { id: 'z', etiqueta: 'Impedancia nominal', tipo: 'valor', unidad: 'Ω', ayuda: 'Bobina móvil: Re = 0,8·Z y Le = 62,5 µH por ohmio, con la resonancia mecánica como un circuito RLC paralelo (Res = 5·Z).' },
+      { id: 'fs', etiqueta: 'Frecuencia de resonancia', tipo: 'valor', unidad: 'Hz' },
+    ],
+    claves: 'altavoz bocina speaker sonido',
+  },
+  {
+    id: 'MOTOR',
+    nombre: 'Motor de continua',
+    grupo: 'Sensores y cargas',
+    prefijo: 'M',
+    rol: 'X',
+    clase: 'Motor',
+    o: 0,
+    inicial: { ra: '2', k: '0,01', j: '1µ', b: '1µ', carga: '0' },
+    campos: [
+      { id: 'ra', etiqueta: 'Resistencia del inducido', tipo: 'valor', unidad: 'Ω' },
+      { id: 'k', etiqueta: 'Constante del motor (V·s/rad = N·m/A)', tipo: 'valor', unidad: '', ayuda: 'Fuerza contraelectromotriz E = k·ω y par T = k·i. La velocidad ω (rad/s) es la tensión del nodo interno «w» del motor.' },
+      { id: 'j', etiqueta: 'Inercia (kg·m²)', tipo: 'valor', unidad: '' },
+      { id: 'b', etiqueta: 'Rozamiento viscoso (N·m·s)', tipo: 'valor', unidad: '' },
+      { id: 'carga', etiqueta: 'Par de carga (N·m)', tipo: 'valor', unidad: '' },
+    ],
+    claves: 'motor cc dc continua carga',
+  },
   { id: 'OA', nombre: 'Amplificador operacional', grupo: 'Integrados', prefijo: 'U', rol: 'OA', clase: 'Opamp', o: 0, inicial: { modelo: 'opamp' }, campos: [{ id: 'modelo', etiqueta: 'Modelo', tipo: 'modelo', familia: 'OA' }], claves: 'opamp 741 comparador' },
   { id: 'OA5', nombre: 'Operacional con alimentación', grupo: 'Integrados', prefijo: 'U', rol: 'OA', clase: 'Opamp', o: 0, inicial: { modelo: 'opa5' }, campos: [{ id: 'modelo', etiqueta: 'Modelo', tipo: 'modelo', familia: 'OA5' }], claves: 'opamp raíles alimentacion' },
   {
@@ -254,24 +490,13 @@ export const TIPOS: Tipo[] = [
     ],
     claves: 'xspice digital dac puente bridge conversor salida',
   },
-  {
-    id: 'SW',
-    nombre: 'Interruptor',
-    grupo: 'Pasivos',
-    prefijo: 'S',
-    rol: 'SW',
-    clase: 'Switch',
-    o: 0,
-    inicial: { estado: 'cerrado' },
-    campos: [{ id: 'estado', etiqueta: 'Estado', tipo: 'opcion', opciones: [['cerrado', 'Cerrado (1 mΩ)'], ['abierto', 'Abierto (1 GΩ)']] }],
-    claves: 'pulsador conmutador',
-  },
   { id: 'GND', nombre: 'Masa', grupo: 'Conexiones', prefijo: '', rol: 'GND', clase: 'Ground', o: 0, inicial: {}, campos: [], claves: 'tierra gnd 0' },
   { id: 'RIEL', nombre: 'Alimentación', grupo: 'Conexiones', prefijo: '', rol: 'RAIL', clase: 'Vdd', o: 0, inicial: { red: 'vcc' }, campos: [{ id: 'red', etiqueta: 'Nombre de la red', tipo: 'red', ayuda: 'Todos los símbolos con el mismo nombre están unidos.' }], claves: 'vcc vdd raíl' },
   { id: 'ETQ', nombre: 'Etiqueta de red', grupo: 'Conexiones', prefijo: '', rol: 'RAIL', clase: 'Label', o: 0, inicial: { red: 'out' }, campos: [{ id: 'red', etiqueta: 'Nombre de la red', tipo: 'red', ayuda: 'Da nombre al nodo (v(out) en las gráficas) y une los puntos con la misma etiqueta.' }], claves: 'nombre nodo red' },
   { id: 'SONDA', nombre: 'Sonda de tensión', grupo: 'Medida', prefijo: 'SV', rol: 'ANOT', clase: 'Probe', o: 0, inicial: {}, campos: [], claves: 'voltimetro sonda tension grafica' },
   { id: 'VM', nombre: 'Voltímetro entre dos puntos', grupo: 'Medida', prefijo: 'VM', rol: 'ANOT', clase: 'MeterV', o: 3, inicial: {}, campos: [], claves: 'voltimetro diferencial' },
   { id: 'AMP', nombre: 'Amperímetro', grupo: 'Medida', prefijo: 'AM', rol: 'AM', clase: 'MeterA', o: 0, inicial: {}, campos: [], claves: 'corriente amperimetro' },
+  { id: 'NOTA', nombre: 'Nota de texto', grupo: 'Anotaciones', prefijo: '', rol: 'ANOT', clase: 'Note', o: 0, inicial: { texto: 'Nota' }, campos: [{ id: 'texto', etiqueta: 'Texto', tipo: 'texto', ayuda: 'Varias líneas: pulse Intro para empezar otra. Se guarda con el esquema y sale al exportarlo en SVG.' }], claves: 'nota texto comentario anotacion' },
 ];
 
 export const TIPO = new Map(TIPOS.map((t) => [t.id, t]));
@@ -302,6 +527,17 @@ export const PINES_DIGITALES: Record<string, [string, string][]> = {
 };
 const TITULO_DIGITAL: Record<string, string> = { DFF: 'DFF', DJK: 'JKFF', ADC: 'ADC', DAC: 'DAC', DCLK: 'CLK' };
 
+/**
+ * The four diodes of the bridge (PUENTE): [anode corner, cathode corner], in the order of their netlist lines
+ * (the corners of esquema-auto's diamond: a and b the AC inputs, p the + output, n the − output).
+ */
+export const PUENTE_DIODOS: ['a' | 'b' | 'n', 'a' | 'b' | 'p'][] = [
+  ['a', 'p'],
+  ['b', 'p'],
+  ['n', 'a'],
+  ['n', 'b'],
+];
+
 /** Pins of the 555 in the order of its netlist line (DIP pins 1–8) with the label drawn in the box. */
 export const PINES_555: [string, string][] = [
   ['gnd', 'GND'],
@@ -315,8 +551,34 @@ export const PINES_555: [string, string][] = [
 ];
 
 /** Kinds that are not parts of the netlist (connections and probes). */
-export const SIN_LINEA = new Set(['GND', 'RIEL', 'ETQ', 'SONDA']);
-export const ES_CONEXION = new Set(['GND', 'RIEL', 'ETQ']);
+export const SIN_LINEA = new Set(['GND', 'RIEL', 'ETQ', 'SONDA', 'NOTA']);
+/** Symbols of the drawing only (connections and notes): no designator, not on the breadboard. */
+export const ES_CONEXION = new Set(['GND', 'RIEL', 'ETQ', 'NOTA']);
+/** Parts toggled by a tap while simulating (and on the breadboard). */
+export const CONMUTABLES = new Set(['SW', 'CONM', 'PULNA', 'PULNC']);
+
+/** The field a tap toggles and its next value. */
+export function conmutado(c: Componente): [string, string] | null {
+  switch (c.tipo) {
+    case 'SW':
+      return ['estado', c.campos['estado'] === 'abierto' ? 'cerrado' : 'abierto'];
+    case 'CONM':
+      return ['posicion', c.campos['posicion'] === 'b' ? 'a' : 'b'];
+    case 'PULNA':
+    case 'PULNC':
+      return ['pulsado', c.campos['pulsado'] === 'si' ? 'no' : 'si'];
+    default:
+      return null;
+  }
+}
+
+/** Is a switch-like part conducting (closed) between its two terminals (SW, push buttons)? */
+export function conduce(c: Componente): boolean {
+  if (c.tipo === 'SW') return c.campos['estado'] !== 'abierto';
+  if (c.tipo === 'PULNA') return c.campos['pulsado'] === 'si';
+  if (c.tipo === 'PULNC') return c.campos['pulsado'] !== 'si';
+  return false;
+}
 
 // ------------------------------------------------------------------ symbols
 
@@ -493,6 +755,11 @@ export function claveForma(c: Componente): string {
   if (c.tipo === 'GEN') return `GEN|${JSON.stringify(c.forma)}|${c.v ?? 0}`;
   if (c.tipo === 'V' || c.tipo === 'VSIN' || c.tipo === 'VPULSE' || c.tipo === 'I') return `${c.tipo}|${c.campos['forma'] ?? 'dc'}`;
   if (c.tipo === 'OA' || c.tipo === 'OA5') return `${c.tipo}|${c.v ?? 0}`;
+  if (c.tipo === 'SW') return `SW|${c.campos['estado'] === 'abierto' ? 0 : 1}`;
+  if (c.tipo === 'CONM') return `CONM|${c.campos['posicion'] === 'b' ? 'b' : 'a'}`;
+  if (c.tipo === 'PULNA' || c.tipo === 'PULNC') return `${c.tipo}|${c.campos['pulsado'] === 'si' ? 1 : 0}`;
+  if (c.tipo === 'TRAFO') return `TRAFO|${c.campos['toma'] === 'si' ? 1 : 0}`;
+  if (c.tipo === 'NOTA') return `NOTA|${c.campos['texto'] ?? ''}`;
   return c.tipo;
 }
 
@@ -518,7 +785,34 @@ function construirDef(c: Componente): DefSimbolo {
     case 'POT':
       return potenciometro();
     case 'TRAFO':
+      if (c.campos['toma'] === 'si') return transformadorToma();
       return simboloDe(disp('TRAFO', [], { bobinas: [disp('L', [], { clave: 'p' }), disp('L', [], { clave: 's' })] }));
+    case 'XTAL':
+      return cristal();
+    case 'PUENTE':
+      return simboloDe(disp('PUENTE', [], { diodos: PUENTE_DIODOS.map(([anodo, catodo]) => ({ d: disp('D', []), anodo, catodo })) }));
+    case 'CONM':
+      return conmutador(c.campos['posicion'] === 'b' ? 'b' : 'a');
+    case 'PULNA':
+    case 'PULNC':
+      return pulsador(c.tipo === 'PULNC', c.campos['pulsado'] === 'si');
+    case 'RELE':
+      return rele();
+    case 'LDR':
+      return ldr();
+    case 'NTC':
+    case 'PTC':
+      return termistor(c.tipo === 'PTC');
+    case 'LAMP':
+      return lampara();
+    case 'ZUMB':
+      return zumbador();
+    case 'ALTAVOZ':
+      return altavoz();
+    case 'MOTOR':
+      return motor();
+    case 'NOTA':
+      return nota(c.campos['texto'] ?? '');
     case 'V':
     case 'VSIN':
     case 'VPULSE':
@@ -554,7 +848,7 @@ function construirDef(c: Componente): DefSimbolo {
     case 'OA5':
       return simboloDe(disp('OPAMP', ['in1', 'in2', 'out', 'vd', 'vs']), c.v ?? 0);
     case 'SW':
-      return simboloDe(disp('SW', dos));
+      return interruptor(c.campos['estado'] !== 'abierto');
     case 'DAND':
     case 'DOR':
     case 'DNAND':
@@ -615,8 +909,35 @@ export function textoValor(c: Componente): string {
       return num('valor', 'F');
     case 'L':
       return num('valor', 'H');
-    case 'TRAFO':
-      return `${num('lp', 'H')} : ${num('ls', 'H')}`;
+    case 'TRAFO': {
+      const toma = f['toma'] === 'si' ? ' · toma central' : '';
+      if ((f['modo'] ?? 'inductancias') === 'relacion') return `${(f['n'] ?? '').trim().replace('.', ',')} : 1${toma}`;
+      return `${num('lp', 'H')} : ${num('ls', 'H')}${toma}`;
+    }
+    case 'XTAL':
+      return num('f', 'Hz');
+    case 'CONM':
+      return f['posicion'] === 'b' ? 'pos. 2' : 'pos. 1';
+    case 'PULNA':
+    case 'PULNC':
+      return f['pulsado'] === 'si' ? 'pulsado' : '';
+    case 'LDR':
+      return num('luz', 'lx');
+    case 'NTC':
+    case 'PTC': {
+      const t = leerValor(f['temp'] ?? '', '°C');
+      return t.ok && t.v != null ? `${String(Number(t.v.toFixed(1))).replace('.', ',').replace('-', '−')} °C` : (f['temp'] ?? '');
+    }
+    case 'LAMP':
+      return `${num('vn', 'V')} ${num('p', 'W')}`;
+    case 'ZUMB':
+      return num('vn', 'V');
+    case 'ALTAVOZ':
+      return num('z', 'Ω');
+    case 'MOTOR':
+      return '';
+    case 'NOTA':
+      return '';
     case 'E':
       return `×${num('valor', '')}`;
     case 'G':
@@ -639,6 +960,9 @@ export function textoValor(c: Componente): string {
     }
     case 'SW':
       return f['estado'] === 'abierto' ? 'abierto' : 'cerrado';
+    case 'PUENTE':
+    case 'RELE':
+      return f['modelo'] ?? '';
     case 'DAND':
     case 'DOR':
     case 'DNAND':

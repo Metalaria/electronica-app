@@ -143,6 +143,8 @@ function interpolar(t: number[], y: number[], x: number): number {
 
 async function simular(page: Page) {
   await page.evaluate(() => delete (window as unknown as { __epaEditorSim?: unknown }).__epaEditorSim);
+  // On a phone the button may sit under the fixed bottom bar while «in the viewport»: centre it first.
+  await page.locator('button.simular').evaluate((el) => el.scrollIntoView({ block: 'center' }));
   await page.locator('button.simular').click();
   await page.waitForFunction(() => !!(window as unknown as { __epaEditorSim?: unknown }).__epaEditorSim, null, { timeout: 60_000 });
 }

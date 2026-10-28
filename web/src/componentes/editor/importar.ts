@@ -8,6 +8,9 @@ import type { DispositivoEditable, EditableAuto } from '../esquema-auto/editable
 import { trocear } from '../esquema-auto/modelo.ts';
 import { lineasNetlist, numeroSpice } from '../../simulador/motor/netlist.ts';
 import type { PeticionEditable, RespuestaEditable } from './trabajador.ts';
+import { PUENTE_DIODOS } from './catalogo.ts';
+import { pinesMundo } from './geometria.ts';
+import { huecoLibre, ruta, tramos, type P } from './rutas.ts';
 import { analisisPorDefecto, type Cable, type Componente, type DocumentoEsquema, type FormaImportada } from './tipos.ts';
 import { deSpice } from './valores.ts';
 
@@ -197,6 +200,119 @@ function orientacionHacia(dir: [number, number], base: [number, number]): number
   return 0;
 }
 
+/** A single value token (a number or a constant expression in braces), or null. */
+function valorSolo(resto: string): string | null {
+  const t = resto.trim();
+  if (!t || /\s/.test(t.replace(/\{[^}]*\}/g, 'x'))) return null;
+  return numeroSpice(t) != null || /^\{.*\}$/.test(t) ? t : null;
+}
+
+/** A coupling factor as the reader writes it: «0,999» (not «999m»). */
+function factor(tok: string): string {
+  return /^[0-9.]+$/.test(tok) ? tok.replace('.', ',') : deSpice(tok);
+}
+
+type Lineas = NonNullable<Componente['lineas']>;
+
+/**
+ * The palette's transformer for an imported one when it fits exactly: two coils with one coupling, or a primary
+ * and a secondary in two equal halves in series (the centre tap) with the three couplings equal. The line names
+ * are kept (field «_nombres»), so the netlist it writes is the same. Returns its fields and how the layout's pins
+ * map onto its own.
+ */
+function trafoPaleta(lineas: Lineas, claves: string[]): { campos: Record<string, string>; pines: Record<string, string> } | null {
+  const ls = lineas.filter((l) => l.letra === 'L');
+  const ks = lineas.filter((l) => l.letra === 'K');
+  if (ls.length !== claves.length || ls.some((l) => l.nodos.length !== 2 || !valorSolo(l.resto))) return null;
+  const kv = ks.map((k) => k.resto.trim().split(/\s+/));
+  if (kv.some((t) => t.length !== 3 || !valorSolo(t[2]!))) return null;
+  const valorK = kv[0]?.[2];
+  if (!valorK || kv.some((t) => t[2] !== valorK)) return null;
+  const par = (a: string, b: string) => kv.some((t) => (t[0]!.toLowerCase() === a && t[1]!.toLowerCase() === b) || (t[0]!.toLowerCase() === b && t[1]!.toLowerCase() === a));
+  const n = ls.map((l) => l.nombre.toLowerCase());
+  if (ls.length === 2) {
+    if (ks.length !== 1 || !par(n[0]!, n[1]!)) return null;
+    return {
+      campos: { modo: 'inductancias', lp: deSpice(valorSolo(ls[0]!.resto)!), ls: deSpice(valorSolo(ls[1]!.resto)!), k: factor(valorK), toma: 'no', _nombres: [...ls.map((l) => l.nombre), ks[0]!.nombre].join(' ') },
+      pines: { [`${claves[0]}.start`]: 'p.start', [`${claves[0]}.end`]: 'p.end', [`${claves[1]}.start`]: 's.start', [`${claves[1]}.end`]: 's.end' },
+    };
+  }
+  if (ls.length !== 3 || ks.length !== 3 || !par(n[0]!, n[1]!) || !par(n[0]!, n[2]!) || !par(n[1]!, n[2]!)) return null;
+  let [s1, s2] = [1, 2];
+  let c1 = claves[1]!;
+  let c2 = claves[2]!;
+  if (ls[1]!.nodos[1] !== ls[2]!.nodos[0]) {
+    if (ls[2]!.nodos[1] !== ls[1]!.nodos[0]) return null;
+    [s1, s2] = [2, 1];
+    [c1, c2] = [c2, c1];
+  }
+  if (valorSolo(ls[s1]!.resto) !== valorSolo(ls[s2]!.resto)) return null;
+  const kOrden = [par(n[0]!, n[s1]!), par(n[0]!, n[s2]!), par(n[s1]!, n[s2]!)];
+  if (kOrden.some((x) => !x)) return null;
+  const kDe = (a: string, b: string) => ks.find((_, i) => (kv[i]![0]!.toLowerCase() === a && kv[i]![1]!.toLowerCase() === b) || (kv[i]![0]!.toLowerCase() === b && kv[i]![1]!.toLowerCase() === a))!.nombre;
+  return {
+    campos: {
+      modo: 'inductancias',
+      lp: deSpice(valorSolo(ls[0]!.resto)!),
+      ls: deSpice(valorSolo(ls[s1]!.resto)!),
+      k: factor(valorK),
+      toma: 'si',
+      _nombres: [ls[0]!.nombre, ls[s1]!.nombre, ls[s2]!.nombre, kDe(n[0]!, n[s1]!), kDe(n[0]!, n[s2]!), kDe(n[s1]!, n[s2]!)].join(' '),
+    },
+    pines: { [`${claves[0]}.start`]: 'p.start', [`${claves[0]}.end`]: 'p.end', [`${c1}.start`]: 's.start', [`${c1}.end`]: 's.mid', [`${c2}.start`]: 's.mid', [`${c2}.end`]: 's.end' },
+  };
+}
+
+/** The palette's bridge for four diodes in the usual places with the same model and nothing else on their lines. */
+function puentePaleta(lineas: Lineas, diodos: NonNullable<FormaImportada['diodos']>): Record<string, string> | null {
+  if (lineas.length !== 4 || diodos.length !== 4) return null;
+  const modelos = lineas.map((l) => (l.nodos.length === 2 && /^\S+$/.test(l.resto.trim()) ? l.resto.trim() : null));
+  if (modelos.some((m) => !m || m.includes('=') || m.toLowerCase() !== modelos[0]!.toLowerCase())) return null;
+  const nombres: string[] = [];
+  for (const [an, ca] of PUENTE_DIODOS) {
+    const i = diodos.findIndex((x) => x.anodo === an && x.catodo === ca);
+    if (i < 0) return null;
+    nombres.push(diodos[i]!.nombre);
+  }
+  return { modelo: modelos[0]!, _nombres: nombres.join(' ') };
+}
+
+/**
+ * A subcircuit that is just a diode bridge (four diodes between its four ports, one model defined outside it, no
+ * parameters): which port is ∿1, ∿2, + and −, and the model.
+ */
+function subcircuitoPuente(texto: string, nombre: string): { puertos: ('a' | 'b' | 'p' | 'n')[]; modelo: string } | null {
+  const lineas = texto.replace(/\r\n?/g, '\n').split('\n');
+  const i0 = lineas.findIndex((l) => new RegExp(`^\\s*\\.subckt\\s+${nombre.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s`, 'i').test(l));
+  if (i0 < 0) return null;
+  const cab = lineas[i0]!.trim().split(/\s+/).slice(2);
+  if (cab.length !== 4 || cab.some((x) => x.includes('='))) return null;
+  const puertos = cab.map((x) => x.toLowerCase());
+  const diodos: [string, string, string][] = [];
+  for (let i = i0 + 1; i < lineas.length; i++) {
+    const t = lineas[i]!.trim();
+    if (!t || t.startsWith('*')) continue;
+    if (/^\.ends/i.test(t)) break;
+    const tk = t.replace(/;.*$/, '').trim().split(/\s+/);
+    if (!/^d/i.test(tk[0]!) || tk.length !== 4) return null;
+    diodos.push([tk[1]!.toLowerCase(), tk[2]!.toLowerCase(), tk[3]!]);
+  }
+  if (diodos.length !== 4 || diodos.some((d) => d[2].toLowerCase() !== diodos[0]![2].toLowerCase())) return null;
+  const catodos = new Map<string, number>();
+  const anodos = new Map<string, number>();
+  for (const [a, c] of diodos) {
+    catodos.set(c, (catodos.get(c) ?? 0) + 1);
+    anodos.set(a, (anodos.get(a) ?? 0) + 1);
+  }
+  const p = [...catodos.entries()].find(([, n]) => n === 2)?.[0];
+  const n = [...anodos.entries()].find(([, k]) => k === 2)?.[0];
+  if (!p || !n || p === n) return null;
+  const ac = puertos.filter((x) => x !== p && x !== n);
+  if (ac.length !== 2 || !puertos.includes(p) || !puertos.includes(n)) return null;
+  for (const x of ac) if (!diodos.some((d) => d[0] === x && d[1] === p) || !diodos.some((d) => d[0] === n && d[1] === x)) return null;
+  return { puertos: puertos.map((x) => (x === p ? 'p' : x === n ? 'n' : x === ac[0] ? 'a' : 'b')), modelo: diodos[0]![2] };
+}
+
 export function documentoDeEditable(texto: string, e: EditableAuto, origen: DocumentoEsquema['origen']): DocumentoEsquema {
   const fisicas = texto.replace(/\r\n?/g, '\n').split('\n');
   const elems = lineasElemento(texto);
@@ -210,6 +326,22 @@ export function documentoDeEditable(texto: string, e: EditableAuto, origen: Docu
   const marcar = (l: LineaElem) => {
     for (let i = l.desde; i <= l.hasta; i++) usadas.add(i);
   };
+  /** Pins that moved when a layout's symbol became a palette part: [where the layout's wires end, the new pin]. */
+  const reconectar: [P, P, string][] = [];
+  /** Turns an imported part into a palette part, keeping the layout's wires connected. */
+  const convertir = (gen: Componente, nuevo: Componente, mapa: Record<string, string>) => {
+    const viejos = pinesMundo(gen);
+    const nuevos = new Map(pinesMundo(nuevo).map((q) => [q.nombre, q]));
+    for (const v of viejos) {
+      const q = nuevos.get(mapa[v.nombre] ?? '');
+      if (q && (Math.abs(q.x - v.x) > 1e-6 || Math.abs(q.y - v.y) > 1e-6)) reconectar.push([[v.x, v.y], [q.x, q.y], nuevo.id]);
+    }
+    return nuevo;
+  };
+  let nTrafo = 0;
+  let nPuente = 0;
+  /** Subcircuit bridges to turn into the palette's bridge once the wires are known (a free place for the diamond). */
+  const puentesX: { gen: Componente; nuevo: Componente; mapa: Record<string, string> }[] = [];
 
   for (const p of e.partes) {
     const d = p.disp;
@@ -247,7 +379,22 @@ export function documentoDeEditable(texto: string, e: EditableAuto, origen: Docu
         pines: d.pines.map((x) => ({ nombre: x.nombre, ...(x.rotulo ? { rotulo: x.rotulo } : {}) })),
         ...(d.simbolo === 'TRAFO' ? { bobinas: subs.map((s) => s.clave) } : { diodos: d.diodos!.map((x) => ({ nombre: x.d.nombre, anodo: x.anodo, catodo: x.catodo })) }),
       };
-      componentes.push({ ...base, nombre: d.simbolo === 'TRAFO' ? subs.map((s) => s.nombre).join('·') : d.nombre || 'Puente', tipo: 'GEN', campos: {}, forma, lineas });
+      const gen: Componente = { ...base, nombre: d.simbolo === 'TRAFO' ? subs.map((s) => s.nombre).join('·') : d.nombre || 'Puente', tipo: 'GEN', campos: {}, forma, lineas };
+      // 0.10: the palette's transformer and bridge when they hold the lines exactly.
+      if (d.simbolo === 'TRAFO') {
+        const t = trafoPaleta(lineas, subs.map((s) => s.clave));
+        if (t) {
+          componentes.push(convertir(gen, { ...base, tipo: 'TRAFO', nombre: `T${++nTrafo}`, campos: t.campos }, t.pines));
+          continue;
+        }
+      } else {
+        const b = puentePaleta(lineas, forma.diodos!);
+        if (b) {
+          componentes.push({ ...base, tipo: 'PUENTE', nombre: `BR${++nPuente}`, campos: b });
+          continue;
+        }
+      }
+      componentes.push(gen);
       continue;
     }
     const l = elems.get(d.nombre.toLowerCase());
@@ -278,6 +425,26 @@ export function documentoDeEditable(texto: string, e: EditableAuto, origen: Docu
       const bulkEnFuente = l.letra === 'M' && l.nodos.length === 4 && l.nodos[3] === l.nodos[2] && !d.pines.some((x) => x.nombre === 'bulk');
       if ((l.letra === 'Q' && l.nodos.length === 3 && /^[^=]+$/.test(v0)) || (l.letra === 'J' && l.nodos.length === 3) || bulkEnFuente)
         c = simple(t, { modelo: v0, ...(resto0 ? { extra: resto0 } : {}) });
+    }
+    if (!c && l.letra === 'X' && l.nodos.length === 4) {
+      // A subcircuit that is only a diode bridge: the palette's bridge, its diodes written at the top level.
+      const sub = primeroYResto(l.resto)[0];
+      const pb = sub && !l.resto.trim().includes(' ') ? subcircuitoPuente(texto, sub) : null;
+      // Not when the text looks inside the instance (@d.xb1.d1[id], v(xb1.n)): those names would be lost.
+      const interno = new RegExp(`(^|[^a-z0-9_])${l.nombre.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\.`, 'i').test(texto);
+      if (pb && !interno && !definidoDentro(texto, pb.modelo)) {
+        const gen: Componente = {
+          ...base,
+          tipo: 'GEN',
+          campos: { resto: l.resto },
+          spice: { letra: l.letra, nodos: l.nodos, pines, resto: l.resto },
+          forma: { simbolo: s, pines: d.pines.map((x) => ({ nombre: x.nombre, ...(x.rotulo ? { rotulo: x.rotulo } : {}) })), ...(d.titulo ? { titulo: d.titulo } : {}) },
+        };
+        const mapa: Record<string, string> = {};
+        for (const [pin, k] of Object.entries(pines)) mapa[pin] = pb.puertos[k]!;
+        puentesX.push({ gen, nuevo: { ...base, o: 0, tipo: 'PUENTE', campos: { modelo: pb.modelo } }, mapa });
+        c = gen;
+      }
     }
     if (!c) {
       c = {
@@ -316,6 +483,39 @@ export function documentoDeEditable(texto: string, e: EditableAuto, origen: Docu
   for (const et of e.etiquetas)
     componentes.push({ id: cid(), tipo: 'ETQ', nombre: '', x: redondo(et.pin[0]), y: redondo(et.pin[1]), o: orientacionHacia(et.dir as [number, number], [1, 0]), campos: { red: et.red } });
 
+  // The layout's wires come as unit runs: joined into straight segments, so that two nets crossing at a grid
+  // point cross inside their segments (no connection) instead of both ending there (which would join them).
+  const unidos = fusionarTramos(cables, componentes);
+  cables.length = 0;
+  for (const w of unidos) cables.push({ ...w, id: wid() });
+
+  // Subcircuit bridges: the diamond in a free place near the box (it is bigger), wired to the box's pins.
+  for (const { gen, nuevo, mapa } of puentesX) {
+    const doc0: DocumentoEsquema = { version: 1, titulo: '', componentes, cables, analisis: analisisPorDefecto(), directivas: '' };
+    const gv = pinesMundo(gen);
+    const centro: P = [gv.reduce((a, q) => a + q.x, 0) / gv.length, gv.reduce((a, q) => a + q.y, 0) / gv.length];
+    const sitio = huecoLibre(doc0, nuevo, centro, 14, new Set([gen.id]));
+    if (!sitio) continue;
+    nuevo.x = sitio[0];
+    nuevo.y = sitio[1];
+    componentes[componentes.indexOf(gen)] = convertir(gen, nuevo, mapa);
+  }
+
+  // Pins of the palette parts that are not where the layout drew them: a routed wire from the old place (the part
+  // is an obstacle, its pin the destination); when there is no way, a pair of net labels (or grounds) joins them.
+  if (reconectar.length) {
+    const doc0: DocumentoEsquema = { version: 1, titulo: '', componentes, cables, analisis: analisisPorDefecto(), directivas: '' };
+    for (const [a, b] of reconectar) {
+      const pts = ruta(doc0, a, [b]);
+      if (pts) {
+        for (const t of tramos(pts)) if (Math.hypot(t[2] - t[0], t[3] - t[1]) > 1e-6) cables.push({ id: wid(), p: t });
+        continue;
+      }
+      const red = cables.find((w) => (Math.abs(w.p[0] - a[0]) < 1e-6 && Math.abs(w.p[1] - a[1]) < 1e-6) || (Math.abs(w.p[2] - a[0]) < 1e-6 && Math.abs(w.p[3] - a[1]) < 1e-6))?.red;
+      for (const q of [a, b]) componentes.push(red ? { id: cid(), tipo: 'ETQ', nombre: '', x: q[0], y: q[1], o: 0, campos: { red } } : { id: cid(), tipo: 'GND', nombre: '', x: q[0], y: q[1], o: 0, campos: {} });
+    }
+  }
+
   // Everything else stays as directives, in order (title and .end out).
   const directivas: string[] = [];
   fisicas.forEach((f, i) => {
@@ -330,6 +530,78 @@ export function documentoDeEditable(texto: string, e: EditableAuto, origen: Docu
   const analisis = analisisPorDefecto();
   analisis.op = !tieneAnalisis;
   return { version: 1, titulo, componentes, cables, analisis, directivas: directivas.join('\n'), origen };
+}
+
+/**
+ * Straight runs of each net joined into the longest segments: a point where exactly two collinear runs of the
+ * net meet, with no pin on it, disappears.
+ */
+function fusionarTramos(cables: Cable[], componentes: Componente[]): Omit<Cable, 'id'>[] {
+  const k = (x: number, y: number) => `${Math.round(x * 1000)},${Math.round(y * 1000)}`;
+  const pines = new Set<string>();
+  for (const c of componentes) for (const p of pinesMundo(c)) pines.add(k(p.x, p.y));
+  const porRed = new Map<string, Cable[]>();
+  for (const w of cables) {
+    const r = w.red ?? '0';
+    (porRed.get(r) ?? porRed.set(r, []).get(r)!).push(w);
+  }
+  const res: Omit<Cable, 'id'>[] = [];
+  for (const [red, ws] of porRed) {
+    // Points of the net and the runs at each.
+    const en = new Map<string, number[]>();
+    ws.forEach((w, i) => {
+      for (const kk of [k(w.p[0], w.p[1]), k(w.p[2], w.p[3])]) (en.get(kk) ?? en.set(kk, []).get(kk)!).push(i);
+    });
+    const hor = (w: Cable) => Math.abs(w.p[1] - w.p[3]) < 1e-9;
+    const usado = new Set<number>();
+    const paso = (kk: string, desde: number): number | null => {
+      const l = en.get(kk)!;
+      if (l.length !== 2 || pines.has(kk)) return null;
+      const otro = l[0] === desde ? l[1]! : l[0]!;
+      return hor(ws[otro]!) === hor(ws[desde]!) && !usado.has(otro) ? otro : null;
+    };
+    ws.forEach((w, i) => {
+      if (usado.has(i)) return;
+      usado.add(i);
+      let a: [number, number] = [w.p[0], w.p[1]];
+      let b: [number, number] = [w.p[2], w.p[3]];
+      // Extend from both ends.
+      for (const lado of [0, 1] as const) {
+        let actual = i;
+        let punto = lado ? b : a;
+        for (;;) {
+          const sig = paso(k(punto[0], punto[1]), actual);
+          if (sig == null) break;
+          usado.add(sig);
+          const s = ws[sig]!;
+          const lejos: [number, number] = k(s.p[0], s.p[1]) === k(punto[0], punto[1]) ? [s.p[2], s.p[3]] : [s.p[0], s.p[1]];
+          punto = lejos;
+          actual = sig;
+        }
+        if (lado) b = punto;
+        else a = punto;
+      }
+      res.push({ p: [a[0], a[1], b[0], b[1]], ...(red !== '0' && w.red ? { red: w.red } : {}) });
+    });
+  }
+  return res;
+}
+
+/** Is a model name defined inside some subcircuit (so it cannot be used at the top level)? */
+function definidoDentro(texto: string, modelo: string): boolean {
+  let dentro = 0;
+  for (const l of texto.split('\n')) {
+    const t = l.trim().toLowerCase();
+    if (t.startsWith('.subckt')) dentro++;
+    else if (t.startsWith('.ends')) dentro = Math.max(0, dentro - 1);
+    else if (dentro && new RegExp(`^\\.model\\s+${modelo.toLowerCase().replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s`).test(t)) return true;
+  }
+  return false;
+}
+
+/** The automatic schematic's layout of a netlist, as editable data (in the editor's worker). */
+export function disponerNetlist(texto: string): Promise<EditableAuto | null> {
+  return enTrabajador(texto);
 }
 
 /** Opens a netlist text as a drawing (null when nothing in it can be drawn). */

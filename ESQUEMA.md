@@ -1018,6 +1018,106 @@ palette's parts (clock → toggling D flip-flop, pulse → ADC → NOT → DAC) 
 its simulation; it also runs the book's four XSPICE netlists in the browser against the book's values and the
 fallback engine's «no se puede simular».
 
+### Editor additions of 0.10 (part 3)
+
+```
+simbolos-extra.ts  symbols of the new kinds in the book's style: SPST switch drawn open/closed, changeover
+                   (pins com, c1, c2) drawn in its position, NO/NC push buttons drawn released/pressed, relay
+                   (coil b1/b2, changeover com/nc/no, dashed linkage), transformer with centre tap (p.start, p.end,
+                   s.start, s.mid, s.end), LDR, NTC/PTC, lamp, buzzer, loudspeaker (both pins on the left), DC
+                   motor, crystal, text note (no pins; one text per line). claveForma() includes the state, so the
+                   drawing (and the live plate's SVG) shows it.
+sensores.ts        resistance of LDR (R10·(E/10 lx)^−γ, capped by the dark resistance), NTC (β equation) and
+                   switching PTC (R25·(1+e^(0,2(T−Tref)))/(1+e^(0,2(25−Tref)))): written as plain R lines.
+rutas.ts           orthogonal router on the unit grid (Dijkstra over point × direction: length, bends 1,2,
+                   crossings 1,5, next to a body 0,35): never inside a body, along another wire, through a pin
+                   or a wire end, nor turning on a wire (each would connect); destinations may be a pin or any
+                   point of a net (a T on a wire's inside); `puntosDeRed`, `huecoLibre` (a free origin for a part
+                   near a point: its box plus one unit touches no wire, pin or body).
+ordenar.ts         «Ordenar el esquema»: the generated netlist (lamp, buzzer, motor and crystal lines written as
+                   1 Ω resistors with an alias, so they get a two-terminal place) laid out by the editor's worker
+                   (`disponerNetlist`), turned into a document by `documentoDeEditable`, and every original part
+                   matched to its line(s) through the instances of both netlists («instance#pin index»). Same
+                   symbol and pins in the same places → the layout's x, y, o, v; another symbol (POT, relay, E/G,
+                   555, digital boxes…) → `huecoLibre` near the layout's place and routed wires from where the
+                   layout's pins were (net labels or grounds when there is no way). Grounds, supplies and labels
+                   are the layout's; probes go to a free spot near their net and are routed; notes stay. The
+                   result must have the same partition of «instance#index» into nets (`mismasConexiones`),
+                   otherwise nothing changes. One undoable change (`Editor.reemplazar`).
+erc.ts             electrical rule check of the generated netlist text (top-level elements, the directives'
+                   lines included): terminal classes conduce / fuerza (driven outputs: op-amp, DAC bridge) /
+                   entrada / corriente / digital / desconocido, from the element letter, the library
+                   subcircuits (op-amps, 555, relays, epa_*) and XSPICE code models; unknown subcircuits silence
+                   the rules on their nodes. Rules: 1 nodes without a DC path to ground (union–find of conducting
+                   terminals, driven outputs joined to 0); 2 loops of voltage sources (V, E, H, B V=, L) —
+                   short, parallel, loop (with a coil only «aviso»: ngspice warns and goes on when the source is
+                   0 V in DC); 3 nodes where only current sources meet (open, in series); 4 op-amp, ADC-bridge
+                   and gate inputs with nothing else on their node; 5 a part with every terminal on one node.
+                   Rules 1–2 are errors only when an analysis needs a true DC point (.op, .dc, .tran without UIC),
+                   otherwise warnings. Over the 313 book netlists it flags 3 (all genuine DC problems, among them
+                   fig. 42.6, the book's floating-node example). Also `noConverge(errores, fallo)` and the fixes
+                   (`arreglos`, `aplicarArreglo`): .options itl1/gminsteps/srcsteps, UIC, `doc.ajustes.rserie`
+                   (netlist.ts writes 1 mΩ in series with every L and V), .options rshunt=1e12, Gear.
+barrido.ts         parameter sweep: the values (a list «1k; 2,2k» or a lin/log range, ≤ 8), a copy of the
+                   document per value, and `unirBarrido()`: one Simulacion whose plots are renamed with the value
+                   («R1 = 2,2 kΩ»), so Resultados.svelte (`barrido`: always overlaid, one tab per analysis class,
+                   the input vector left out of the default selection) draws one curve per value and the
+                   operating-point table one column per value. ngspice batch has no .step.
+Mando.svelte       a knob (range input, linear or log) for a field: `alCambiar(texto, fin)`; Propiedades shows it
+                   for fields with `Campo.mando` (pot position, light, temperature) — on the breadboard too.
+```
+
+Kinds (catalogo.ts): `SW` (now drawn in its state), `CONM`, `PULNA`, `PULNC` (R lines 1 mΩ / 1 GΩ; `conmutado()`
+gives the field a tap toggles, `CONMUTABLES`), `RELE` (X line, library subcircuits `rele5/12/24`: coil L + R with a
+0 V sense source, B source |i|·1000 driving two `sw` switches with hysteresis: NO on above 70 % of the rated
+current, off below 37 %), `TRAFO` (`modo` relacion: n, Lp, k → Ls = Lp/n² (/4 per half with the tap); inductancias:
+Lp, Ls, k; `toma`; hidden field `_nombres` keeps an imported transformer's line names; documents saved before
+0.10 without `modo` read as inductances), `PUENTE` (four D lines in `PUENTE_DIODOS` order, `_nombres` likewise),
+`XTAL`, `LAMP`, `ZUMB`, `ALTAVOZ`, `MOTOR` (X lines with `params:` on the library subcircuits `epa_cristal`,
+`epa_lampara`, `epa_zumbador`, `epa_altavoz`, `epa_motor`), `LDR`, `NTC`, `PTC` (R lines), `NOTA` (in `SIN_LINEA`
+and `ES_CONEXION`: no line, not on the breadboard). New groups «Interruptores», «Sensores y cargas»,
+«Anotaciones». Designators LDR₁, BZ₁, LS₁, BR₁, RT₁ keep their letters together (rotulos.ts).
+
+Import (importar.ts): a layout transformer becomes the palette's `TRAFO` when it holds the lines exactly (two coils
+and one K, or a primary and two equal series halves with three equal K: the centre tap; single-value lines; pins
+remapped, a routed wire from each layout pin that moved); a layout bridge with four same-model diodes in the usual
+corners becomes `PUENTE`; an `X` instance of a subcircuit that is only a diode bridge (model defined outside it, no
+parameters, its internals not referenced as `xb1.` anywhere) becomes `PUENTE` placed in a free spot near the box and
+wired to it. The layout's unit runs are joined into straight segments per net (`fusionarTramos`): two nets crossing
+at a grid point where both had a run end were joined by the editor's connectivity — six book netlists (among them
+fig. 43.10, sec. 43.10, sec. 49.7, fig. 50.5, banda_base, detector_cuadratura) now regenerate with the measurements
+of their text, and none got worse (Node check of every non-XSPICE netlist against native ngspice).
+
+Editor page: «Ruta automática» tool (`A`: tap a pin, then a pin or a wire), «Alinear» menu (edges, centres,
+spread; ≥ 2 / ≥ 3 parts), «Ordenar el esquema»; analyses card «Barrido de un valor»; the ERC panel (always shown
+when there is something; «Simular» stops on errors with «Simular de todos modos»; «Señalar en el esquema»); the
+convergence panel with a button per fix (a copy saved in «Mis circuitos», opened and simulated: `simularAlAbrir`).
+Results: VistaViva takes `soloOp` (instrumentar without the transient), `alResuelto`, `conmutables` (hit boxes in
+the plate's SVG units, `data-conmutar`) and `alConmutar`; a new drawing of the same structure keeps the previous
+operating point until the new one arrives (no flicker). A tap toggles, solves the operating point at once
+(`vivoAlMomento`, coalesced) and then runs the whole simulation; the «Mandos» panel (pots, sensors, DC value or
+sine amplitude of sources, source ranges fixed at the last full run) does the same on input/release.
+`Editor.cambiar(fn, fusionar)` / `cambiarCampo(…, fusionar)` (also on the breadboard) merge a knob's movement into
+one history step. `DocumentoEsquema` gained `ajustes?` and `barrido?`.
+
+Breadboard (0.10 part 3): packages `pulsador` (6 × 6 mm, legs start · nc · end), `rele` (blue sealed relay, five legs
+b1 b2 com nc no), `trafo` (laminated core and winding, 4 or 5 legs), `motor`, `lampara` (glows with its voltage),
+`altavoz`, `ldr`, `termistor`, `zumbador` (waves when it sounds), `cristal` (HC-49), `puente` for `PUENTE`;
+`conmutador` serves SW and CONM (lever by state); a double tap or the toolbar button toggles every `CONMUTABLES`
+kind (`Protoboard.conmutar`). The panel's six tabs are flex 1 1 0 with an icon and, in a panel under 540 px
+(container query), the icon over an 11 px label: they fit 412 px without sideways scroll. The «Medir» tutor's step
+is a bar above the bench (Mesa.svelte `.mesa-caja`), so it never covers the equipment drawn above the board.
+The live schematic of the board (esquema-auto) still draws the `epa_*` and relay subcircuits as boxes and the
+switches as resistors (their netlist lines).
+
+Tests: `tests/editor10.spec.ts` (`playwright.editor10.config.ts`, port 4381): every new part against a hand
+calculation, the book's transformers (two coils, centre tap) and bridge as palette parts with the measurements of
+their text, a switch toggled while simulating (operating point and transient), a pot knob live and on release (one
+history step), a sweep with three labelled curves and their −3 dB frequencies, align / spread / automatic wire /
+«Ordenar el esquema» (same operating point), notes (move, edit, reload, SVG), each ERC rule and «Simular» stopping,
+the convergence help and its copy, the new parts on the breadboard (toggled there), touch at 412 and 800 px (the
+breadboard tab bar fits), screenshots in `tests/capturas/editor10/`.
+
 ## Virtual breadboard (`web/src/componentes/protoboard/`, 0.10)
 
 Circuits built on breadboards drawn as they look (top view, one pitch = 1 unit, y down, holes on integer
@@ -2047,6 +2147,83 @@ answered (Repaso answers are counted by `registrarRespuesta`); the summary calls
 `'seccion'`). Tests: `tests/leccion09.spec.ts` (`playwright.leccion09.config.ts`, port 4311; includes the step
 coverage of all 754 sections in Node); screenshots: `node tests/leccion09-capturas.mjs` →
 `tests/capturas/lavado09/leccion/`.
+
+## Práctica «Aprender haciendo» (0.10, `web/src/componentes/practica/`, data in `web/public/libro/practica/`)
+
+Interactive items placed in the lessons (and in Repaso's «Aprender haciendo» and under exercises), generated only
+from the book's data: no sentence written for the reader beyond fixed frames around book names and values
+(«Toca R<sub>2</sub> en el esquema de la figura 1.3.», «Si duplicas R<sub>2</sub> (de 5 kΩ a 10 kΩ), ¿la tensión en
+V<sub>sal</sub> aumenta, disminuye o se queda igual?», «Calcula … si …»).
+
+**Generation.** `web/scripts/practica10.mjs` (Node 22, imports the app's TypeScript modules; `--solo <parte>`,
+`--sin-simular`, `--detalle`; about one minute and ~3800 runs of the app's WebAssembly ngspice) writes
+`practica/<parte>.json` and `practica/indice.json`. Deterministic. Sources and rules:
+- `numerico` (problems with changing values): every formula of `formulas.json` with a book example, and every
+  numeric exercise of `ejercicios.json` that a catalogue formula of the same part reproduces with the quantities of its
+  statement (all assignments by unit tried; the answer within the exercise's tolerance; each quantity found exactly
+  once in the statement HTML, which is stored with `{{var}}` placeholders; a statement that already contains the
+  answer is refused). Inputs vary over fixed lists (`variantes.ts variacionDe`): E12 for Ω/F/H in ×⅓…×3 of the book
+  value, usual supplies (3,3…48 V) for voltages ≥ 3 V that are not a device's own (Zener, Early, threshold, logic
+  levels, references…), round 1-1,5-2-2,2-3-3,3-4-4,7-5-6-6,8-8 series for A, W, Hz, s, J, C, S…; the rest keeps the
+  book value. At least 8 valid variants (finite, same sign as the book's result, inside the result's range).
+- `prediccion` and `deslizador`: simulable schematics of figures without AC/pulse sources (`figuras-vivas/esquema/
+  netlist.ts`, operating point) and book netlists with an `op` analysis, not XSPICE, ≤ 3 s (reduced to `.op` +
+  `.options savecurrents` by `circuito.ts netlistLibroOp`). Changes: designated resistors and sources ×2 and ×½;
+  observed: labelled nodes, LED/diode currents, collector currents, resistor currents and voltages (only names that
+  read as the book's designators; a part's own current/voltage is never asked). One prediction per section (a figure
+  first), scored by teaching value (changes ≥ 5 %, some «se queda igual»). Sliders sweep the E12 values ×0,1…×10 of a
+  designated resistor; target = the reading at an E12 value 3–6 steps away, rounded to 2 figures, reached by 1–3
+  values (not the book's) within ±5 %.
+- `toque`: every figure with schematic data; a part named by its unique designator or as the only one of its kind,
+  or a node with its own label.
+- `protoboard`: simulable figure schematics laid out by the breadboard (`montaje.ts`: `circuitoDeEsquema` →
+  `colocarCircuito`); a two-leg part (LED, diode, resistor) lifted to beside the board or to the central channel, or a
+  jumper removed; parts and wires alternate between figures; kept only when the full board verifies and the
+  incomplete one does not.
+- `ordenar`: top-level numbered lists of 3–8 distinct items of ≤ 260 characters (the book's sentence before the list
+  is the context). `parejas`: glossary entries whose «ver» point into the section (≥ 3; term ↔ first sentence of the
+  definition, which must not contain the term), and terms with a symbol in `glosario-imagenes.json` (symbol ↔ term).
+- Explanations (`citas`): the paragraph that introduces the equation, the exercise's own solution (marked «con los
+  valores del libro»), the paragraph of the section that cites the figure (nearest one) and its caption, the list, the
+  glossary entries. Hints (`pistas`): the book's idea/formula first, then the set-up (the substitution with this
+  variant's numbers, the reading with the book's values, the symbol of the part, the holes of the missing piece).
+- Key ideas per section: boxes «importante/nota/precaución» (first paragraph ≤ 420 chars), the catalogue's formulas
+  of the section (else its formula card), and glossary definitions; at most 6.
+
+```json
+{ "version": 1, "parte": "cap01",
+  "items": [ { "id": "cap01-pred-sec-1.4", "tipo": "prediccion", "parte": "cap01", "seccion": "sec-1.4",
+               "bloque": 52, "ref": "fig-1.4", "verRef": "la figura 1.4", "enunciado": "html",
+               "citas": [ { "html": "book html", "ref": "fig-1.4", "donde": "Figura 1.4" } ],
+               "pistas": [ { "titulo": "Lo que dice el libro", "html": "…", "ec": { "svg": "ec/….svg", "w": 0, "h": 0 } } ],
+               "…": "per kind, see practica/tipos.ts" } ],
+  "secciones": { "sec-1.4": { "items": ["cap01-num-ej-1.2", "…"], "ideas": [ { "k": "formula", "…": "…" } ] } } }
+```
+`indice.json`: `{version, partes, porParte, items (per kind), secciones (sections whose lesson shows each kind, «ideas»,
+«alguno»), ejercicios (exercise label → item id), descartes (what could not be derived, by reason)}`.
+A lesson shows at most 4 items, one per kind by priority (prediction, slider, breadboard, problem — an exercise one
+first —, tap, order, pairs); Repaso's «Practicar» shows all of a part.
+
+**Application.** `datos.ts` (`cargarPractica`, `practicaDeSeccion`, `pantallasLeccion`: each step followed by the
+items whose `bloque` it holds, then the Repaso questions and the end; seeds of the variants in `localStorage
+epa:practica-semillas`), `Practica.svelte` (shell in the 0.9 question style: statement, «Comprobar», «Ver una pista» /
+«Otra pista», a second attempt with the first hint, then the explanation with the book fragments, «Ver …» and «Otro
+con otros valores» / «Probar otra vez»; a prediction has one answer), one component per kind (`Numerico` — reading
+with `lib/magnitudes.ts`, solution with the calculators' `PasoAPaso` —, `Prediccion` and `Deslizador` — runs in the
+simulator's worker through `medir.ts`, one at a time, cached; graded with the app's own run; a figure is shown live
+with `figuras-vivas/Escenario.svelte` and an `EstadoEsquema` holding the new operating point, and the changed part's
+value label is rewritten with the NEW value (the slider's as it moves): `etiquetas.ts` measures the figure SVG's glyph
+`<use>` elements in a hidden copy (getBBox), groups them into runs on one baseline and takes the run near the part
+whose number of visible glyphs is that of the label's last line («$R_2$ = 4 Ω» → «=4Ω»; the free text the value was
+read from when the part has no label), inside the schematic's crop; `EtiquetaNueva.svelte` draws a white patch and the
+new text in the glyphs' colour and size (right-aligned when the label is left of the part); no match, no overlay —, `Toque`, `Ordenar`,
+`Parejas` — symbols from `glosario/simbolo.ts` —, `Montar` — the breadboard's `Protoboard` state and `Mesa.svelte`,
+checked with `verificarMontaje`), `IdeasClave.svelte`, `PracticaParte.svelte` (`#/repaso/practica/<parte>`),
+`OtrosValores.svelte` (in `aprender/Comprobador.svelte`). Lesson URLs gain `/practica-<n>` (1-based among the
+lesson's items); the stored `u` stays a step index (a practice screen stores the step it follows). Daily goal: a
+practice item's first final answer counts as a lesson question (lessons) or a Repaso answer (Repaso); exercises do
+not count, as before. Tests: `tests/preguntas10.spec.ts` (`playwright.preguntas10.config.ts`, port 4391);
+screenshots in `tests/capturas/preguntas10/`.
 
 ## Sincronización y aviso de versión (`web/src/lib/sincronizacion/`, `web/src/componentes/sincronizacion/`)
 

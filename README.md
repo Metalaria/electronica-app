@@ -265,7 +265,7 @@ libro y lo simula sin escribir la netlist. También abre como dibujo editable cu
 trazado automático y la deja lista para cambiarla; la vuelta es **«Ver como netlist»**, que abre la netlist
 generada en el simulador de texto.
 
-- **Paleta** con buscador: resistencia, potenciómetro, condensador, bobina, transformador, interruptor, fuentes
+- **Paleta** con buscador: resistencia, potenciómetro, condensador, bobina, transformador, cristal, interruptores y relé, sensores y cargas (0.10, abajo), fuentes
   de tensión y de corriente (continua, senoidal, pulsos, por tramos o texto SPICE), fuentes controladas E y G,
   diodo, Zener, LED, Schottky, transistores NPN y PNP, MOSFET N y P, JFET N y P, operacional (con o sin
   patillas de alimentación), temporizador 555 (0.10, un modelo de comportamiento), masa, alimentación, etiqueta de red, sonda de tensión, voltímetro entre dos
@@ -313,6 +313,49 @@ generada en el simulador de texto.
 | `Ctrl Z` · `Ctrl Y` | Deshacer · rehacer |
 | `Ctrl C` `Ctrl X` `Ctrl V` `Ctrl D` `Ctrl A` | Copiar, cortar, pegar, duplicar, seleccionar todo |
 | `W` · `S` · `G` · `F` · `Esc` | Cable · seleccionar · masa · ver todo · cancelar |
+| `A` | Ruta automática (toque dos patillas) |
+
+### Novedades del editor en la 0.10
+
+- **Interruptores**: interruptor (SPST), conmutador de dos posiciones (SPDT), pulsador normalmente abierto y
+  normalmente cerrado, y relé con su bobina y un contacto conmutado (modelos de 5, 12 y 24 V: la bobina con su
+  resistencia e inductancia; el contacto NA se cierra al pasar del 70 % de la corriente nominal y vuelve al NC
+  por debajo del 37 %). El símbolo dibuja el estado: abierto o cerrado, pulsado o no, posición 1 o 2.
+- **Transformador** de la paleta definido por su **relación de espiras** (10 para 10 : 1, con la inductancia
+  del primario y el acoplamiento) o por sus inductancias, con **toma central** opcional. Las netlists del libro
+  con transformadores (bobinas y sus líneas K) y con puentes de diodos se abren ahora como estas piezas
+  (conservan los nombres de sus líneas) y dan las mismas medidas que su texto. Un puente escrito como
+  subcircuito también, salvo si la netlist mira dentro de él (por ejemplo `@d.xb1.d1[id]`).
+- **Sensores y cargas**: fotorresistencia (LDR, con la iluminación en lux), termistores NTC y PTC (con la
+  temperatura), bombilla (filamento que en frío tiene la décima parte de su resistencia), zumbador activo,
+  altavoz (bobina móvil y resonancia) y motor de continua (inducido, fuerza contraelectromotriz, inercia,
+  rozamiento y par de carga; la velocidad en rad/s es la tensión de su nodo interno «w»).
+- **Puente rectificador** y **cristal de cuarzo** (modelo de Butterworth–Van Dyke) en la paleta.
+- **Mientras se simula**: en el esquema de resultados los interruptores y pulsadores llevan un recuadro
+  naranja; un toque los cambia y el punto de trabajo se recalcula al momento (valores sobre el dibujo), y
+  después el resto de la simulación. Debajo, **Mandos**: potenciómetros, luz de las LDR, temperatura de los
+  termistores y valor de las fuentes con un deslizador; al moverlo cambian al momento las tensiones del
+  dibujo, y al soltarlo se repiten el transitorio y las gráficas. En «Propiedades» esos valores también
+  tienen su mando, y en la protoboard funcionan igual (un doble toque conmuta un interruptor o un pulsador).
+- **Barrido de un valor** (como `.step`, que ngspice no tiene en modo por lotes): se elige un componente, su
+  valor y una lista («1k; 2,2k; 4,7k») o un rango (lineal o logarítmico, hasta 8 valores); el circuito se
+  simula una vez por valor y las gráficas muestran una curva por valor con su leyenda («v(out) · R1 = 2,2
+  kΩ»); el punto de trabajo, una columna por valor.
+- **Ordenar**: alinear (bordes o centros) y repartir la selección; **«Ordenar el esquema»** vuelve a colocar y
+  cablear todo con el trazado automático de los esquemas del libro (sin cambiar ninguna conexión: si no lo
+  consigue, avisa y no toca nada; «Deshacer» lo devuelve); y **ruta automática** entre dos patillas, con cables
+  en ángulo recto que rodean los componentes y no tocan otras redes.
+- **Notas de texto** en el esquema: se mueven como un componente, se editan en «Propiedades» (varias líneas),
+  se guardan con el circuito y salen en el SVG exportado.
+- **Revisión eléctrica** antes de simular, explicada en español: nodos sin camino de continua a masa, fuentes
+  de tensión en paralelo o en cortocircuito (y lazos con bobinas), fuentes de corriente en serie o en circuito
+  abierto, entradas de operacionales o de puertas al aire y componentes con todas sus patillas en el mismo
+  nodo. «Señalar en el esquema» elige los componentes; si hay errores, «Simular» se detiene y ofrece
+  «Simular de todos modos».
+- **Ayuda cuando ngspice no converge**: explica las causas habituales y ofrece arreglos (más iteraciones con
+  gmin y source stepping, transitorio con condiciones iniciales, una resistencia de 1 mΩ en serie con bobinas y
+  fuentes, una resistencia de 1 TΩ de cada nodo a masa, integración de Gear); cada uno crea una copia del
+  circuito en «Mis circuitos» y la simula, sin tocar el original.
 
 ## Protoboard (0.10)
 
@@ -321,6 +364,12 @@ resistencia con sus bandas de colores, el LED con la pata larga y el lado plano,
 del negativo, los transistores TO-92 y TO-220 con su patillaje según el modelo, los integrados DIP a caballo
 del canal central, el trimmer, el conmutador deslizante) y la fuente de alimentación, el generador de funciones
 o la fuente de corriente quedan encima de la placa con sus puntas enchufadas en los carriles o en las tiras.
+Desde la 0.10 también el pulsador de 6 × 6 mm, el relé (cápsula azul con B1, B2, C, NC y NA), el transformador
+(núcleo de chapas y bobinado), el motor, la bombilla en su portalámparas (se enciende con su tensión), el
+zumbador, el altavoz, la LDR, los termistores, el cristal HC-49 y el puente en línea; un doble toque conmuta un
+interruptor o un conmutador y pulsa o suelta un pulsador. En el teléfono las seis pestañas del panel (Esquema,
+Simulación, Avisos, Pieza, Añadir, Medir) caben en una fila con su icono, y el paso del tutor de «Medir» va en
+una barra encima de la mesa, sin tapar la fuente ni los instrumentos.
 
 **«Ver en protoboard»** aparece en todo esquema que tiene un circuito real detrás:
 
@@ -1172,6 +1221,41 @@ y el teléfono:
 Pruebas: `npx playwright test -c playwright.leccion09.config.ts tests/leccion09.spec.ts` (compilación propia,
 puerto 4311); capturas en el Mac, la tableta y el teléfono, en claro, oscuro y sepia:
 `node tests/leccion09-capturas.mjs` → `tests/capturas/lavado09/leccion/`.
+
+## Aprender haciendo (0.10)
+
+Las lecciones «Estudiar por pasos» intercalan, tras el paso que contiene su figura, ecuación o lista, unas pocas
+pantallas para **practicar** (como mucho cuatro por sección, una de cada tipo), todas sacadas del libro: no hay texto
+inventado más allá de frases fijas alrededor de nombres y valores del libro.
+
+- **Predice y comprueba** (89 secciones): «Si duplicas R<sub>2</sub> (de 5 kΩ a 10 kΩ), ¿la tensión en V<sub>sal</sub>
+  aumenta, disminuye o se queda igual?». Tras responder, la aplicación simula con su ngspice el circuito del libro
+  con los dos valores y califica con lo que sale; el esquema de la figura se ve vivo con el valor nuevo (corriente y
+  tensiones), o se enlaza la netlist en el simulador.
+- **Calcula** (124 secciones): problemas con **valores distintos en cada intento**, de las fórmulas de las
+  calculadoras y de 41 ejercicios del libro que una fórmula reproduce con los datos de su enunciado (el enunciado del
+  libro con los números cambiados). Valores realistas: E12 en resistencias, condensadores y bobinas, alimentaciones
+  habituales, series redondas; se acepta «4,7 k», «4k7», «0,5 mA», «2,2e-3»… con la tolerancia del ejercicio (2 %
+  si no dice otra).
+- **Ajusta** (32): un deslizador por los valores E12 de una resistencia hasta que una corriente o tensión llegue al
+  objetivo; cada posición se simula.
+- **Señala en el esquema** (66): «Toca el transistor en el esquema de la figura 21.16».
+- **Completa el montaje** (21): la protoboard de «Ver en protoboard» con un cable o una pieza de menos; se acepta
+  cualquier arreglo que conecte como el esquema.
+- **Ordena** (15): los pasos de un procedimiento numerado del libro. **Une las parejas** (162): términos del glosario
+  con su definición, o símbolos con su componente.
+- Cada respuesta: **pistas en escalera** (primero la fórmula o la idea del libro, después el planteamiento con los
+  números), **un segundo intento** antes de la solución, y la explicación con **el fragmento del libro** que la
+  justifica y el enlace a su sección; en los cálculos, la solución paso a paso con los números de esa variante.
+- La pantalla final muestra las **ideas clave** de la sección (recuadros destacados, fórmulas con «Calcular»,
+  definiciones del glosario) y la siguiente lección. Cada práctica respondida cuenta para el objetivo diario como una
+  pregunta de la lección.
+- En **Repaso**, «Aprender haciendo» abre por capítulo todas las prácticas generadas (619 en 60 partes); bajo los
+  ejercicios que lo permiten, «Practicar con otros valores».
+
+Se generan con `node web/scripts/practica10.mjs` (unos 60 s; también lo llama `contenido/generar.py` al final) en
+`web/public/libro/practica/`. Pruebas: `npx playwright test -c playwright.preguntas10.config.ts
+tests/preguntas10.spec.ts` (puerto 4391); capturas en `tests/capturas/preguntas10/`.
 
 ## Diagnóstico de rendimiento
 

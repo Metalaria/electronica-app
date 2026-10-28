@@ -2,7 +2,9 @@
   // Properties of the selection: designator, value (Spanish engineering notation, checked as it is typed),
   // model, source waveform; or the circuit's title when nothing is selected.
   import { formatoCorto } from '../grafica/formato.ts';
-  import { tipoDe, ES_CONEXION, type Campo } from './catalogo.ts';
+  import { conmutado, CONMUTABLES, tipoDe, ES_CONEXION, type Campo } from './catalogo.ts';
+  import Mando from './Mando.svelte';
+  import { resistenciaSensor } from './sensores.ts';
   import { definidos, modelosDe } from './modelos.ts';
   import type { EdicionPropiedades } from './estado.svelte';
   import { leerValor } from './valores.ts';
@@ -50,6 +52,19 @@
     const { [k]: _, ...resto } = borrador;
     void _;
     borrador = resto;
+  }
+
+  /** A knob: every step while it moves (one change in the history), and once more when released. */
+  let moviendo = $state<string | null>(null);
+  function mover(campo: string, t: string, fin: boolean) {
+    if (!c) return;
+    ed.cambiarCampo(c.id, campo, t, moviendo === campo);
+    moviendo = fin ? null : campo;
+    if (borrador[campo] != null) {
+      const { [campo]: _, ...resto } = borrador;
+      void _;
+      borrador = resto;
+    }
   }
 
   function modelos(f: Campo): [string, string][] {
@@ -122,7 +137,7 @@
             <select name={f.id} value={c.campos[f.id] ?? ''} onchange={(e) => ed.cambiarCampo(c.id, f.id, (e.currentTarget as HTMLSelectElement).value)}>
               {#each modelos(f) as [v, t] (v)}<option value={v}>{t}</option>{/each}
             </select>
-          {:else if f.tipo === 'pwl' || (f.tipo === 'texto' && (f.id === 'resto' || f.id === 'spec'))}
+          {:else if f.tipo === 'pwl' || (f.tipo === 'texto' && (f.id === 'resto' || f.id === 'spec' || f.id === 'texto'))}
             <textarea
               name={f.id}
               rows="3"
@@ -148,8 +163,29 @@
           {/if}
           {#if aviso(f)}<small class="mal">{aviso(f)}</small>{:else if lectura(f)}<small>{lectura(f)}</small>{:else if f.ayuda}<small>{f.ayuda}</small>{/if}
         </label>
+        {#if f.mando}
+          <Mando
+            etiqueta="Mando"
+            nombre={`mando-${f.id}`}
+            texto={c.campos[f.id] ?? ''}
+            unidad={f.unidad ?? ''}
+            min={f.mando.min}
+            max={f.mando.max}
+            log={f.mando.log}
+            paso={f.mando.paso}
+            alCambiar={(t, fin) => mover(f.id, t, fin)}
+          />
+        {/if}
       {/if}
     {/each}
+    {#if CONMUTABLES.has(c.tipo)}
+      <button type="button" class="boton conmutar" onclick={() => { const x = conmutado(c); if (x) ed.cambiarCampo(c.id, x[0], x[1]); }}>
+        {c.tipo.startsWith('PUL') ? (c.campos['pulsado'] === 'si' ? 'Soltar' : 'Pulsar') : 'Conmutar'}
+      </button>
+    {/if}
+    {#if resistenciaSensor(c) != null}
+      <p class="nota">Resistencia ahora: <strong>{formatoCorto(resistenciaSensor(c)!, 'Ω')}</strong></p>
+    {/if}
     {#if c.tipo === 'GEN'}
       <p class="nota">Componente importado de la netlist: su línea SPICE se conserva tal cual; solo cambian los nodos al recablearlo.</p>
     {/if}
@@ -263,6 +299,10 @@
   }
   .nota.aviso {
     color: var(--c-importante);
+  }
+  .conmutar {
+    justify-self: start;
+    min-height: 40px;
   }
   code {
     font-family: var(--mono);

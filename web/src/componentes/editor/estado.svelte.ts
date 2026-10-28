@@ -2,12 +2,14 @@
 // document) and the editing operations shared by the canvas, the toolbar, the keyboard and the panels.
 
 import { conectividad } from './conectividad.ts';
-import { tipoDe, TIPO } from './catalogo.ts';
+import { conmutado, tipoDe, TIPO } from './catalogo.ts';
 import { cajaMundo, geometria, girada, pinesMundo, reflejada } from './geometria.ts';
 import { generarNetlist } from './netlist.ts';
+import { ruta, tramos, type P } from './rutas.ts';
 import { documentoVacio, type Cable, type Componente, type DocumentoEsquema } from './tipos.ts';
 
-export type Herramienta = 'seleccionar' | 'cable' | 'colocar';
+export type Herramienta = 'seleccionar' | 'cable' | 'colocar' | 'ruta';
+export type Alineacion = 'izquierda' | 'centro-h' | 'derecha' | 'arriba' | 'centro-v' | 'abajo';
 
 const MAX_HISTORIA = 200;
 
@@ -52,10 +54,15 @@ export class Editor {
     return `${p}${++this.ultimoId}`;
   }
 
-  /** Records the state before a change; `fn` changes the document. */
-  cambiar(fn: () => void): void {
-    this.pasado.push(JSON.stringify($state.snapshot(this.doc)));
-    if (this.pasado.length > MAX_HISTORIA) this.pasado.shift();
+  /**
+   * Records the state before a change; `fn` changes the document. `fusionar`: part of the previous change (a
+   * knob being dragged), no new step in the history.
+   */
+  cambiar(fn: () => void, fusionar = false): void {
+    if (!fusionar || !this.pasado.length) {
+      this.pasado.push(JSON.stringify($state.snapshot(this.doc)));
+      if (this.pasado.length > MAX_HISTORIA) this.pasado.shift();
+    }
     this.futuro = [];
     fn();
     this.puedeDeshacer = true;
@@ -300,12 +307,107 @@ export class Editor {
     return ids;
   }
 
-  cambiarCampo(id: string, campo: string, valor: string): void {
+  cambiarCampo(id: string, campo: string, valor: string, fusionar = false): void {
     const c = this.componente(id);
     if (!c || c.campos[campo] === valor) return;
     this.cambiar(() => {
       c.campos[campo] = valor;
+    }, fusionar);
+  }
+
+  /** Tap on a switch, changeover or push button: its next state (one undoable change). */
+  conmutar(id: string): boolean {
+    const c = this.componente(id);
+    const x = c ? conmutado(c) : null;
+    if (!c || !x) return false;
+    this.cambiarCampo(id, x[0], x[1]);
+    return true;
+  }
+
+  /** Moves several parts, each by its own (dx, dy); the wires on their pins stretch (one change). */
+  private moverPartes(desp: Map<string, [number, number]>): void {
+    const s = new Set([...desp.entries()].filter(([, d]) => d[0] || d[1]).map(([id]) => id));
+    if (!s.size) return;
+    this.cambiar(() => {
+      const mover = new Map<string, [number, number]>();
+      for (const c of this.doc.componentes) {
+        const d = desp.get(c.id);
+        if (!d || (!d[0] && !d[1])) continue;
+        for (const p of pinesMundo(c)) mover.set(clave(p.x, p.y), [p.x + d[0], p.y + d[1]]);
+        c.x += d[0];
+        c.y += d[1];
+      }
+      this.estirar(mover, s);
     });
+  }
+
+  /** Aligns the selected parts by their bodies: edges or centres, on the grid. */
+  alinear(modo: Alineacion): void {
+    const comps = this.sel.map((id) => this.componente(id)).filter((c): c is Componente => !!c);
+    if (comps.length < 2) return;
+    const caja = (c: Componente) => {
+      const b = geometria(c).cuerpo;
+      return [c.x + b[0], c.y + b[1], c.x + b[2], c.y + b[3]] as const;
+    };
+    const cajas = comps.map(caja);
+    const x0 = Math.min(...cajas.map((b) => b[0]));
+    const x1 = Math.max(...cajas.map((b) => b[2]));
+    const y0 = Math.min(...cajas.map((b) => b[1]));
+    const y1 = Math.max(...cajas.map((b) => b[3]));
+    const desp = new Map<string, [number, number]>();
+    comps.forEach((c, i) => {
+      const b = cajas[i]!;
+      let dx = 0;
+      let dy = 0;
+      if (modo === 'izquierda') dx = x0 - b[0];
+      else if (modo === 'derecha') dx = x1 - b[2];
+      else if (modo === 'centro-h') dx = (x0 + x1) / 2 - (b[0] + b[2]) / 2;
+      else if (modo === 'arriba') dy = y0 - b[1];
+      else if (modo === 'abajo') dy = y1 - b[3];
+      else dy = (y0 + y1) / 2 - (b[1] + b[3]) / 2;
+      desp.set(c.id, [Math.round(dx), Math.round(dy)]);
+    });
+    this.moverPartes(desp);
+  }
+
+  /** Spaces the selected parts evenly (by their body centres) between the first and the last one. */
+  distribuir(eje: 'h' | 'v'): void {
+    const comps = this.sel.map((id) => this.componente(id)).filter((c): c is Componente => !!c);
+    if (comps.length < 3) return;
+    const centro = (c: Componente) => {
+      const b = geometria(c).cuerpo;
+      return eje === 'h' ? c.x + (b[0] + b[2]) / 2 : c.y + (b[1] + b[3]) / 2;
+    };
+    const orden = [...comps].sort((a, b) => centro(a) - centro(b));
+    const a = centro(orden[0]!);
+    const z = centro(orden[orden.length - 1]!);
+    const desp = new Map<string, [number, number]>();
+    orden.forEach((c, i) => {
+      const d = Math.round(a + ((z - a) * i) / (orden.length - 1) - centro(c));
+      desp.set(c.id, eje === 'h' ? [d, 0] : [0, d]);
+    });
+    this.moverPartes(desp);
+  }
+
+  /** Automatic wire between two points (pins): orthogonal, around the parts. False when there is no way. */
+  conectar(a: P, b: P, salida?: P): boolean {
+    const pts = ruta(this.doc, a, [b], { salida }) ?? ruta(this.doc, a, [b], { salida, margen: 12 });
+    if (!pts || pts.length < 2) return false;
+    this.anadirCables(tramos(pts));
+    return true;
+  }
+
+  /** The whole drawing replaced (Ordenar el esquema), as one undoable change. */
+  reemplazar(doc: DocumentoEsquema): void {
+    this.cambiar(() => {
+      this.doc.componentes = doc.componentes;
+      this.doc.cables = doc.cables;
+    });
+    this.sel = [];
+    for (const x of [...doc.componentes, ...doc.cables]) {
+      const n = Number(/(\d+)$/.exec(x.id)?.[1] ?? 0);
+      if (n > this.ultimoId) this.ultimoId = n;
+    }
   }
 
   renombrar(id: string, nombre: string): void {

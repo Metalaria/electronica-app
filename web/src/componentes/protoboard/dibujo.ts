@@ -369,13 +369,191 @@ function trimmer(p: Pieza): string {
 function conmutador(p: Pieza): string {
   const { u } = enFila(p);
   const b = cuerpoDe(p)!;
-  const cerrado = (p.comp.campos['estado'] ?? 'cerrado') !== 'abierto';
-  const palanca = en(b.c, u, cerrado ? -0.55 : 0.55);
+  // The lever towards the first leg joins it to the common one: SW closed, changeover in position 1.
+  const primero = p.comp.tipo === 'CONM' ? p.comp.campos['posicion'] !== 'b' : (p.comp.campos['estado'] ?? 'cerrado') !== 'abierto';
+  const palanca = en(b.c, u, primero ? -0.55 : 0.55);
   return (
     p.pos.map((q) => `<circle cx="${f(q[0])}" cy="${f(q[1])}" r=".12" fill="#6b7076"/>`).join('') +
     `<rect x="${f(-b.hl)}" y="${f(-b.hw)}" width="${f(2 * b.hl)}" height="${f(2 * b.hw)}" rx=".12" fill="#2a2a2c" transform="translate(${f(b.c[0])} ${f(b.c[1])}) rotate(${f(ang(u))})"/>` +
     `<rect x="-.75" y="-.32" width="1.5" height=".64" rx=".08" fill="#58595d" transform="translate(${f(b.c[0])} ${f(b.c[1])}) rotate(${f(ang(u))})"/>` +
     `<rect x="-.32" y="-.27" width=".64" height=".54" rx=".08" fill="#f2f2f2" transform="translate(${f(palanca[0])} ${f(palanca[1])}) rotate(${f(ang(u))})"/>`
+  );
+}
+
+// ------------------------------------------------------------------ switches, relay, transformer, loads (0.10)
+
+/** A rectangle of the body frame: centre, half sizes along u and nn, colour. */
+function caja(c: Pt, u: Pt, hl: number, hw: number, color: string, rx = 0.15, extra = ''): string {
+  return `<rect x="${f(-hl)}" y="${f(-hw)}" width="${f(2 * hl)}" height="${f(2 * hw)}" rx="${f(rx)}" fill="${color}"${extra} transform="translate(${f(c[0])} ${f(c[1])}) rotate(${f(ang(u))})"/>`;
+}
+
+function pulsador(p: Pieza): string {
+  const { u } = enFila(p);
+  const b = cuerpoDe(p)!;
+  const pulsado = p.comp.campos['pulsado'] === 'si';
+  const nc = p.comp.tipo === 'PULNC';
+  const cap = nc ? '#c93a33' : '#2d2f33';
+  return (
+    p.pos.filter((_, i) => i !== 1).map((q) => `<circle cx="${f(q[0])}" cy="${f(q[1])}" r=".13" fill="#6b7076"/>`).join('') +
+    caja(b.c, u, b.hl, b.hw, '#1d1e21', 0.18) +
+    caja(b.c, u, b.hl - 0.12, b.hw - 0.12, '#c9ccd1', 0.12) +
+    `<circle cx="${f(b.c[0])}" cy="${f(b.c[1])}" r="${pulsado ? 0.62 : 0.72}" fill="${cap}" stroke="#000" stroke-opacity=".35" stroke-width=".06"/>` +
+    `<circle cx="${f(b.c[0])}" cy="${f(b.c[1])}" r="${pulsado ? 0.62 : 0.72}" fill="url(#pb-cupula)" opacity="${pulsado ? 0.25 : 0.7}"/>` +
+    (pulsado ? `<circle cx="${f(b.c[0])}" cy="${f(b.c[1])}" r=".95" fill="none" stroke="#f2b705" stroke-width=".1" stroke-dasharray=".2 .14"/>` : '')
+  );
+}
+
+function rele(p: Pieza): string {
+  const { u, nn } = enFila(p);
+  const b = cuerpoDe(p)!;
+  const e = encapsuladoDe(p.comp);
+  const patas = p.pos.map((q) => pata(q, en(q, nn, 0, nn, 0.5), 0.14)).join('');
+  const rotulos = p.pos.map((q, i) => marcaTexto(en(q, nn, 0, nn, 0.82), u, e.nombres[i] ?? '', 0.32, '#e8f0ff', 0.9)).join('');
+  return (
+    patas +
+    caja(b.c, u, b.hl, b.hw, '#1f5fb4', 0.14) +
+    caja(b.c, u, b.hl, b.hw, 'url(#pb-brillo)', 0.14, ' opacity=".45"') +
+    rotulos +
+    marcaTexto(en(b.c, nn, 0, nn, 0.2), u, 'RELÉ', 0.5, '#ffffff', 2 * b.hl) +
+    marcaTexto(en(b.c, nn, 0, nn, 0.8), u, `${e.marca} DC`, 0.4, '#d9e6ff', 2 * b.hl)
+  );
+}
+
+function trafo(p: Pieza): string {
+  const { u, nn } = enFila(p);
+  const b = cuerpoDe(p)!;
+  const e = encapsuladoDe(p.comp);
+  const patas = p.pos.map((q) => pata(q, en(q, nn, 0, nn, 0.4), 0.16)).join('');
+  // Laminated E-I core seen from above with the winding in the middle.
+  let lam = '';
+  for (let k = -b.hl + 0.25; k < b.hl - 0.1; k += 0.32) {
+    const a = en(b.c, u, k, nn, -b.hw + 0.12);
+    const z = en(b.c, u, k, nn, b.hw - 0.12);
+    lam += `<line x1="${f(a[0])}" y1="${f(a[1])}" x2="${f(z[0])}" y2="${f(z[1])}" stroke="#7d8389" stroke-width=".04"/>`;
+  }
+  return (
+    patas +
+    caja(b.c, u, b.hl, b.hw, '#9aa0a6', 0.1) +
+    lam +
+    caja(b.c, u, b.hl * 0.55, b.hw + 0.12, '#b3622b', 0.3) +
+    caja(b.c, u, b.hl * 0.55, b.hw + 0.12, 'url(#pb-brillo)', 0.3, ' opacity=".5"') +
+    p.pos.map((q, i) => marcaTexto(en(q, nn, 0, nn, 0.7), u, e.nombres[i] ?? '', 0.3, '#1d2a3a', 0.9)).join('') +
+    marcaTexto(b.c, u, p.comp.campos['toma'] === 'si' ? 'TRAFO TC' : 'TRAFO', 0.42, '#fff3e6', b.hl)
+  );
+}
+
+function motor(p: Pieza, encendido: number): string {
+  const { u, nn } = enFila(p);
+  const b = cuerpoDe(p)!;
+  const patas = p.pos.map((q) => pata(q, en(q, nn, 0, nn, 0.4), 0.14)).join('');
+  const eje = en(b.c, u, b.hl + 0.35);
+  const giro = encendido > 0 ? `<path d="M${f(eje[0] - 0.55)} ${f(eje[1] - 0.25)}a.6 .6 0 1 1 .2 .55" fill="none" stroke="#e8a400" stroke-width=".1"/>` : '';
+  return (
+    patas +
+    caja(b.c, u, b.hl, b.hw, '#c3c8ce', 0.9) +
+    caja(b.c, u, b.hl, b.hw, 'url(#pb-brillo)', 0.9, ' opacity=".6"') +
+    caja(en(b.c, u, -b.hl + 0.3), u, 0.3, b.hw * 0.75, '#2f2f33', 0.12) +
+    `<line x1="${f(en(b.c, u, b.hl)[0])}" y1="${f(en(b.c, u, b.hl)[1])}" x2="${f(eje[0])}" y2="${f(eje[1])}" stroke="#8a9096" stroke-width=".2" stroke-linecap="round"/>` +
+    marcaTexto(b.c, u, 'M', 0.7, '#3b3f45') +
+    marcaTexto(en(p.pos[0]!, nn, 0, nn, 0.75), u, '+', 0.5, '#c9302a') +
+    giro
+  );
+}
+
+function lampara(p: Pieza, encendido: number): string {
+  const { nn } = enFila(p);
+  const b = cuerpoDe(p)!;
+  const patas = p.pos.map((q) => pata(q, en(q, nn, 0, nn, 0.4), 0.14)).join('');
+  let luz = '';
+  if (encendido > 0) {
+    const R = 1.3 + 1.8 * encendido;
+    for (let k = 5; k >= 1; k--) luz += `<circle cx="${f(b.c[0])}" cy="${f(b.c[1])}" r="${f((R * k) / 5)}" fill="#ffd25e" opacity="${f(0.1 + 0.1 * encendido)}"/>`;
+  }
+  return (
+    patas +
+    `<circle cx="${f(b.c[0])}" cy="${f(b.c[1])}" r="${f(b.hl)}" fill="#3b3b3f"/>` +
+    luz +
+    `<circle cx="${f(b.c[0])}" cy="${f(b.c[1])}" r="${f(b.hl - 0.32)}" fill="${encendido > 0 ? '#fff4c2' : '#eef1f4'}" opacity=".92"/>` +
+    `<path d="M${f(b.c[0] - 0.35)} ${f(b.c[1] + 0.1)}q.12 -.4 .23 0t.23 0t.23 0" fill="none" stroke="${encendido > 0 ? '#ff8a00' : '#8b8f94'}" stroke-width=".07"/>` +
+    `<circle cx="${f(b.c[0])}" cy="${f(b.c[1])}" r="${f(b.hl - 0.32)}" fill="url(#pb-cupula)"/>`
+  );
+}
+
+function altavoz(p: Pieza): string {
+  const { nn } = enFila(p);
+  const b = cuerpoDe(p)!;
+  const patas = p.pos.map((q) => pata(q, en(q, nn, 0, nn, 0.4), 0.14)).join('');
+  let rejilla = '';
+  for (let r = 0.35; r < b.hl - 0.3; r += 0.32) rejilla += `<circle cx="${f(b.c[0])}" cy="${f(b.c[1])}" r="${f(r)}" fill="none" stroke="#3f4247" stroke-width=".06"/>`;
+  return (
+    patas +
+    `<circle cx="${f(b.c[0])}" cy="${f(b.c[1])}" r="${f(b.hl)}" fill="#26282b"/>` +
+    `<circle cx="${f(b.c[0])}" cy="${f(b.c[1])}" r="${f(b.hl - 0.18)}" fill="#55595f"/>` +
+    rejilla +
+    `<circle cx="${f(b.c[0])}" cy="${f(b.c[1])}" r=".3" fill="#2a2c30"/>` +
+    `<circle cx="${f(b.c[0])}" cy="${f(b.c[1])}" r="${f(b.hl)}" fill="url(#pb-cupula)" opacity=".45"/>`
+  );
+}
+
+/** Round two-leg parts standing on the board: LDR, thermistor, buzzer. */
+function redondo(p: Pieza, encendido: number): string {
+  const b = cuerpoDe(p)!;
+  const u = direccion(p);
+  const nn = normal(u);
+  const patas = p.pos.map((q) => `<circle cx="${f(q[0])}" cy="${f(q[1])}" r=".11" fill="#6b7076"/>`).join('');
+  const c = b.c;
+  const r = b.hl;
+  if (p.enc === 'ldr') {
+    // Ceramic disc with the zigzag track of cadmium sulphide.
+    let d = '';
+    const n = 5;
+    for (let i = 0; i <= n; i++) {
+      const t = -0.55 + (1.1 * i) / n;
+      const a = en(c, u, t, nn, i % 2 ? -0.5 : 0.5);
+      d += `${i ? 'L' : 'M'}${f(a[0])} ${f(a[1])}`;
+      const z = en(c, u, t, nn, i % 2 ? 0.5 : -0.5);
+      d += `L${f(z[0])} ${f(z[1])}`;
+    }
+    return (
+      patas +
+      `<circle cx="${f(c[0])}" cy="${f(c[1])}" r="${f(r)}" fill="#e9dcc0" stroke="#b9a479" stroke-width=".06"/>` +
+      `<path d="${d}" fill="none" stroke="#c0392b" stroke-width=".12" stroke-linejoin="round"/>` +
+      `<circle cx="${f(c[0])}" cy="${f(c[1])}" r="${f(r)}" fill="url(#pb-cupula)" opacity=".7"/>`
+    );
+  }
+  if (p.enc === 'termistor') {
+    const ptc = p.comp.tipo === 'PTC';
+    return (
+      patas +
+      `<circle cx="${f(c[0])}" cy="${f(c[1])}" r="${f(r)}" fill="${ptc ? '#c9a227' : '#2f4d39'}"/>` +
+      marcaTexto(c, u, ptc ? 'PTC' : 'NTC', 0.32, ptc ? '#3a2a00' : '#d8f0dc') +
+      `<circle cx="${f(c[0])}" cy="${f(c[1])}" r="${f(r)}" fill="url(#pb-cupula)" opacity=".8"/>`
+    );
+  }
+  // Buzzer: black can with its sound hole; + mark on the first leg's side; waves when it sounds.
+  const mas = en(p.pos[0]!, u, -0.1, nn, 1.0);
+  let ondas = '';
+  if (encendido > 0) for (let k = 1; k <= 3; k++) ondas += `<circle cx="${f(c[0])}" cy="${f(c[1])}" r="${f(r + 0.3 * k)}" fill="none" stroke="#e8a400" stroke-width=".08" opacity="${f(0.9 - 0.25 * k)}"/>`;
+  return (
+    patas +
+    ondas +
+    `<circle cx="${f(c[0])}" cy="${f(c[1])}" r="${f(r)}" fill="#1f1f22"/>` +
+    `<circle cx="${f(c[0])}" cy="${f(c[1])}" r="${f(r - 0.35)}" fill="none" stroke="#39393e" stroke-width=".08"/>` +
+    `<circle cx="${f(c[0])}" cy="${f(c[1])}" r=".35" fill="#0c0c0d"/>` +
+    `<circle cx="${f(c[0])}" cy="${f(c[1])}" r="${f(r)}" fill="url(#pb-cupula)" opacity=".5"/>` +
+    marcaTexto(mas, u, '+', 0.6, '#e8e8e8')
+  );
+}
+
+function cristal(p: Pieza): string {
+  const [a, z] = [p.pos[0]!, p.pos[1]!];
+  const b = cuerpoDe(p)!;
+  const u = b.u;
+  const fq = valor(p, 'f', 'Hz');
+  return (
+    `<circle cx="${f(a[0])}" cy="${f(a[1])}" r=".11" fill="#6b7076"/><circle cx="${f(z[0])}" cy="${f(z[1])}" r=".11" fill="#6b7076"/>` +
+    caja(b.c, u, b.hl, b.hw, 'url(#pb-metal)', b.hw * 0.95, ' stroke="#7c838a" stroke-width=".06"') +
+    marcaTexto(b.c, u, fq != null ? formatoCorto(fq, 'Hz').replace(/\s/g, '') : 'XTAL', 0.48, '#2c3036', b.hl * 2 - 0.4)
   );
 }
 
@@ -535,6 +713,24 @@ export function svgPieza(p: Pieza, o: OpcionesPieza = {}): string {
       return trimmer(p);
     case 'conmutador':
       return conmutador(p);
+    case 'pulsador':
+      return pulsador(p);
+    case 'rele':
+      return rele(p);
+    case 'trafo':
+      return trafo(p);
+    case 'motor':
+      return motor(p, o.encendido ?? 0);
+    case 'lampara':
+      return lampara(p, o.encendido ?? 0);
+    case 'altavoz':
+      return altavoz(p);
+    case 'ldr':
+    case 'termistor':
+    case 'zumbador':
+      return redondo(p, o.encendido ?? 0);
+    case 'cristal':
+      return cristal(p);
     case 'puente':
       return puente(p);
     case 'medida':

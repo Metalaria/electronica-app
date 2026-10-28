@@ -15,6 +15,7 @@
   import { redEn } from './conexiones.ts';
   import { verificarMontaje } from './verificar.ts';
   import { formatoSI } from '../grafica/formato.ts';
+  import { CONMUTABLES } from '../editor/catalogo.ts';
   import { clavePin, type CableProto, type Pieza } from './tipos.ts';
   import type { MedidaProtoboard } from './medida.svelte.ts';
   import { COLOR_PUNTA, LETRA_PUNTA, NOMBRE_PUNTA_PROTO, type PuntaProto } from '../instrumentos/puntas.ts';
@@ -403,7 +404,7 @@
         const ahora = performance.now();
         if (ultimoToque.id === id && ahora - ultimoToque.t < 380) {
           const p = pb.pieza(id);
-          if (p?.comp.tipo === 'SW') pb.conmutar(id);
+          if (p && CONMUTABLES.has(p.comp.tipo)) pb.conmutar(id);
           else alTocar?.(id);
         }
         ultimoToque = { t: ahora, id };
@@ -627,6 +628,13 @@
   const radioAsa = $derived(Math.max(0.42, (tactilGrueso ? 16 : 9) / s));
 </script>
 
+<div class="mesa-caja">
+{#if pb.herramienta === 'medir'}
+  {@const t = medida?.tutor}
+  {@const paso = t && t.actual >= 0 ? t.pasos[t.actual] : undefined}
+  <!-- The tutor's step is a bar above the bench (0.10): it never covers the supplies and instruments drawn there. -->
+  <p class="pista barra" aria-live="polite">{paso ? paso.texto : t?.terminado ? 'Hecho: la lectura está en el instrumento (panel «Medir»).' : medida?.activa ? 'Toque el agujero donde va la punta elegida en «Medir».' : 'Elija una punta en el panel «Medir».'}</p>
+{/if}
 <div
   class="mesa"
   class:con-cable={pb.herramienta === 'cable'}
@@ -715,21 +723,25 @@
   {#if info || pb.mensaje || invalida}
     <p class="info" class:aviso={!!pb.mensaje || !!invalida} aria-live="polite">{invalida ?? (pb.mensaje || info)}</p>
   {/if}
-  {#if pb.herramienta === 'medir'}
-    {@const t = medida?.tutor}
-    {@const paso = t && t.actual >= 0 ? t.pasos[t.actual] : undefined}
-    <p class="pista">{paso ? paso.texto : t?.terminado ? 'Hecho: la lectura está en el instrumento (panel «Medir»).' : medida?.activa ? 'Toque el agujero donde va la punta elegida en «Medir».' : 'Elija una punta en el panel «Medir».'}</p>
-  {/if}
   {#if pb.herramienta === 'cable'}
     <p class="pista">{pendiente ? 'Toque el agujero donde acaba el cable (o el mismo para cancelar).' : 'Cable: toque un agujero libre y luego otro, o arrastre de uno a otro.'}</p>
   {/if}
 </div>
+</div>
 
 <style>
-  .mesa {
-    position: relative;
+  .mesa-caja {
+    display: flex;
+    flex-direction: column;
     width: 100%;
     height: 100%;
+    min-height: 0;
+  }
+  .mesa {
+    position: relative;
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 0;
     overflow: hidden;
     touch-action: none;
     user-select: none;
@@ -878,5 +890,14 @@
     top: 8px;
     color: var(--ambar);
     font-weight: 600;
+  }
+  .pista.barra {
+    position: static;
+    flex: none;
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+    border-bottom: 1px solid var(--linea-suave);
+    background: var(--superficie);
   }
 </style>

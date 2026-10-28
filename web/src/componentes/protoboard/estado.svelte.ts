@@ -7,6 +7,7 @@
 import { analisisPorDefecto, type Componente, type DocumentoEsquema } from '../editor/tipos.ts';
 import type { EdicionPaleta, EdicionPropiedades } from '../editor/estado.svelte';
 import type { Conectividad } from '../editor/conectividad.ts';
+import { conmutado } from '../editor/catalogo.ts';
 import { CABLE } from './colores.ts';
 import { comprobar, type PuntoTrabajo } from './comprobaciones.ts';
 import { conexiones, netlistProtoboard } from './conexiones.ts';
@@ -105,9 +106,12 @@ export class Protoboard {
     return `${p}${++this.ultimoId}`;
   }
 
-  cambiar(fn: () => void): void {
-    this.pasado.push(JSON.stringify($state.snapshot(this.doc)));
-    if (this.pasado.length > MAX_HISTORIA) this.pasado.shift();
+  cambiar(fn: () => void, fusionar = false): void {
+    // fusionar: part of the previous change (a knob being dragged): no new step in the history.
+    if (!fusionar || !this.pasado.length) {
+      this.pasado.push(JSON.stringify($state.snapshot(this.doc)));
+      if (this.pasado.length > MAX_HISTORIA) this.pasado.shift();
+    }
     this.futuro = [];
     fn();
     this.puedeDeshacer = true;
@@ -344,20 +348,24 @@ export class Protoboard {
     }
   }
 
+  /** Switch, changeover or push button: its next state (tap on the board, toolbar button). */
   conmutar(id: string): void {
     const p = this.pieza(id);
-    if (!p || p.comp.tipo !== 'SW') return;
-    this.cambiarCampo(id, 'estado', p.comp.campos['estado'] === 'abierto' ? 'cerrado' : 'abierto');
+    const x = p ? conmutado(p.comp) : null;
+    if (!x) return;
+    this.cambiarCampo(id, x[0], x[1]);
   }
 
   // ---------------------------------------------------------------- adding and removing
 
   anadir(tipo: string, cerca: Pt = this.vista): Pieza | null {
-    if (tipo === 'GND' || tipo === 'RIEL' || tipo === 'ETQ') {
+    if (tipo === 'GND' || tipo === 'RIEL' || tipo === 'ETQ' || tipo === 'NOTA') {
       this.rechazar(
         tipo === 'GND'
           ? 'En la protoboard la masa es el carril azul (−) unido al borne negro de la fuente: lleve allí las masas con un cable.'
-          : 'En la protoboard una red es lo que unen las tiras y los cables: no hacen falta símbolos de alimentación ni etiquetas.',
+          : tipo === 'NOTA'
+            ? 'Las notas de texto son del esquema: en la protoboard no hacen falta.'
+            : 'En la protoboard una red es lo que unen las tiras y los cables: no hacen falta símbolos de alimentación ni etiquetas.',
       );
       return null;
     }
@@ -432,17 +440,18 @@ export class Protoboard {
 
   // ---------------------------------------------------------------- properties
 
-  cambiarCampo(id: string, campo: string, valor: string): void {
+  cambiarCampo(id: string, campo: string, valor: string, fusionar = false): void {
     const p = this.pieza(id);
     if (!p) {
       // A gate of a chip: only its own fields (its package is the chip's).
       const g = this.piezaDeComp(id)?.chip?.comps.find((c) => c.id === id);
-      if (g && g.campos[campo] !== valor) this.cambiar(() => (g.campos[campo] = valor));
+      if (g && g.campos[campo] !== valor) this.cambiar(() => (g.campos[campo] = valor), fusionar);
       return;
     }
     if (p.comp.campos[campo] === valor) return;
     this.cambiar(() => {
       p.comp.campos[campo] = valor;
+      if (fusionar) return;
       // The package may change with the value (a 100 nF ceramic becomes a 10 µF electrolytic) or the
       // pinout with the model (a BC547 has its collector where a 2N3904 has its emitter).
       const e = encapsuladoDe(p.comp);
@@ -460,7 +469,7 @@ export class Protoboard {
           }
         }
       }
-    });
+    }, fusionar);
   }
 
   renombrar(id: string, nombre: string): void {
@@ -509,11 +518,11 @@ function crearFachada(pb: Protoboard): EdicionPropiedades & EdicionPaleta {
     get nl() {
       return pb.nl;
     },
-    cambiarCampo: (id: string, campo: string, valor: string) => pb.cambiarCampo(id, campo, valor),
+    cambiarCampo: (id: string, campo: string, valor: string, fusionar?: boolean) => pb.cambiarCampo(id, campo, valor, fusionar),
     renombrar: (id: string, nombre: string) => pb.renombrar(id, nombre),
     transformar: (ids: string[], modo: 'girar' | 'reflejar') => pb.transformar([...new Set(ids.map((id) => pb.piezaDeComp(id)?.id ?? id))], modo),
     duplicar: () => pb.duplicar(),
     borrar: (ids?: string[]) => pb.borrar(ids),
-    cambiar: (fn: () => void) => pb.cambiar(fn),
+    cambiar: (fn: () => void, fusionar?: boolean) => pb.cambiar(fn, fusionar),
   } as EdicionPropiedades & EdicionPaleta;
 }

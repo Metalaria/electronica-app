@@ -253,9 +253,45 @@ export function encapsuladoDe(c: Componente): Encapsulado {
       return { id: 'dip', forma: 'dip', patas: Array.from({ length: n }, () => null), nombres: Array.from({ length: n }, (_, i) => String(i + 1)), marca: modelo, descripcion: `Chip lógico en DIP-${n} (${descripcionChip(modelo)}; Vcc en la ${n}, GND en la ${n / 2})` };
     }
     case 'SW':
-      return { id: 'conmutador', forma: 'fila', patas: ['end', 'start', null], nombres: ['1', 'común', '3'], marca: '', descripcion: 'Conmutador deslizante (toque para cambiarlo)' };
+      return { id: 'conmutador', forma: 'fila', patas: ['end', 'start', null], nombres: ['1', 'común', '3'], marca: '', descripcion: 'Conmutador deslizante (dos toques para cambiarlo)' };
+    case 'CONM':
+      return { id: 'conmutador', forma: 'fila', patas: ['c1', 'com', 'c2'], nombres: ['1', 'común', '2'], marca: '', descripcion: 'Conmutador deslizante de tres patas (dos toques para cambiarlo)' };
+    case 'PULNA':
+    case 'PULNC':
+      return {
+        id: 'pulsador',
+        forma: 'fila',
+        patas: ['start', null, 'end'],
+        nombres: ['1', '', '2'],
+        marca: '',
+        descripcion: `Pulsador de 6 × 6 mm, ${t === 'PULNA' ? 'normalmente abierto' : 'normalmente cerrado'} (dos toques para pulsarlo o soltarlo)`,
+      };
+    case 'RELE': {
+      const m = (c.campos['modelo'] ?? '').toLowerCase();
+      const v = /(\d+)/.exec(m)?.[1] ?? '';
+      return { id: 'rele', forma: 'fila', patas: ['b1', 'b2', 'com', 'nc', 'no'], nombres: ['B1', 'B2', 'C', 'NC', 'NA'], marca: v ? `${v} V` : 'RELÉ', descripcion: 'Relé de un contacto conmutado: bobina (B1, B2), común (C), normalmente cerrado (NC) y abierto (NA)' };
+    }
     case 'TRAFO':
-      return modulo(['p.start', 'p.end', 's.start', 's.end'], 'TRAFO', 'Transformador (módulo)');
+      return c.campos['toma'] === 'si'
+        ? { id: 'trafo', forma: 'fila', patas: ['p.start', 'p.end', 's.start', 's.mid', 's.end'], nombres: ['P1', 'P2', 'S1', 'TC', 'S2'], marca: 'TRAFO', descripcion: 'Transformador con toma central en el secundario (primario P1–P2, secundario S1–TC–S2)' }
+        : { id: 'trafo', forma: 'fila', patas: ['p.start', 'p.end', 's.start', 's.end'], nombres: ['P1', 'P2', 'S1', 'S2'], marca: 'TRAFO', descripcion: 'Transformador (primario P1–P2, secundario S1–S2; el punto marca el principio de cada devanado)' };
+    case 'PUENTE':
+      return { id: 'puente', forma: 'fila', patas: ['p', 'a', 'b', 'n'], nombres: ['+', '~', '~', '−'], marca: 'PUENTE', descripcion: 'Puente rectificador en línea (+ ∿ ∿ −)' };
+    case 'XTAL':
+      return dos('cristal', ['start', 'end'], ['1', '2'], [2, 2], [2], '', 'Cristal de cuarzo en cápsula HC-49');
+    case 'LDR':
+      return { ...dos('ldr', ['start', 'end'], ['1', '2'], [1, 4], [1, 2], '', 'Fotorresistencia (LDR) de 5 mm'), enFila: true };
+    case 'NTC':
+    case 'PTC':
+      return { ...dos('termistor', ['start', 'end'], ['1', '2'], [1, 4], [1, 2], '', t === 'NTC' ? 'Termistor NTC de gota' : 'Termistor PTC de disco'), enFila: true };
+    case 'ZUMB':
+      return { ...dos('zumbador', ['start', 'end'], ['+', '−'], [2, 3], [2], '', 'Zumbador activo de 12 mm (la pata + es la larga)', true), enFila: true };
+    case 'LAMP':
+      return { id: 'lampara', forma: 'fila', patas: ['start', 'end'], nombres: ['1', '2'], marca: '', descripcion: 'Bombilla en su portalámparas con dos terminales' };
+    case 'MOTOR':
+      return { id: 'motor', forma: 'fila', patas: ['start', 'end'], nombres: ['+', '−'], marca: 'M', descripcion: 'Motor de continua pequeño (la pata + lo hace girar en un sentido)' };
+    case 'ALTAVOZ':
+      return { id: 'altavoz', forma: 'fila', patas: ['start', 'end'], nombres: ['1', '2'], marca: '', descripcion: 'Altavoz pequeño con sus dos terminales' };
     case 'E':
     case 'G':
       return modulo(['p', 'n', 'cp', 'cn'], t === 'E' ? 'E' : 'G', 'Fuente controlada (módulo: no es una pieza real)');
@@ -414,6 +450,14 @@ export function medidasDos(p: Pieza): { largo: number; ancho: number; pie: boole
     }
     case 'medida':
       return { largo: 1.1, ancho: 1.1, pie: false };
+    case 'ldr':
+      return { largo: 1.95, ancho: 1.95, pie: false };
+    case 'termistor':
+      return { largo: 1.15, ancho: 1.15, pie: false };
+    case 'zumbador':
+      return { largo: 4.6, ancho: 4.6, pie: false };
+    case 'cristal':
+      return { largo: 4.3, ancho: 1.75, pie: false };
     default:
       return { largo: 1, ancho: 1, pie: false };
   }
@@ -423,13 +467,13 @@ export function medidasDos(p: Pieza): { largo: number; ancho: number; pie: boole
 export function cuerpoDe(p: Pieza): Cuerpo | null {
   const n = p.pos.length;
   if (p.enc === 'sonda' || EXTERNOS.has(p.enc) || !n) return null;
-  if (n === 2 && ['resistencia', 'bobina', 'diodo', 'zener', 'ceramico', 'film', 'led', 'electrolitico', 'medida'].includes(p.enc)) {
+  if (n === 2 && ['resistencia', 'bobina', 'diodo', 'zener', 'ceramico', 'film', 'led', 'electrolitico', 'medida', 'ldr', 'termistor', 'zumbador', 'cristal'].includes(p.enc)) {
     const [a, b] = [p.pos[0]!, p.pos[1]!];
     const m = medidasDos(p);
     const u = direccion(p);
     if (m.pie) return { c: a, u, hl: 0.55, hw: 0.55, redondo: true };
     const c: Pt = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
-    if (p.enc === 'led' || p.enc === 'electrolitico' || p.enc === 'medida') return { c, u, hl: m.largo / 2, hw: m.largo / 2, redondo: true };
+    if (['led', 'electrolitico', 'medida', 'ldr', 'termistor', 'zumbador'].includes(p.enc)) return { c, u, hl: m.largo / 2, hw: m.largo / 2, redondo: true };
     return { c, u, hl: m.largo / 2, hw: m.ancho / 2 };
   }
   const u = direccion(p);
@@ -458,6 +502,18 @@ export function cuerpoDe(p: Pieza): Cuerpo | null {
       return { c: mid, u, hl: 1.75, hw: 0.72 };
     case 'puente':
       return { c: lado(0.15), u, hl: (n - 1) / 2 + 0.7, hw: 0.62 };
+    case 'pulsador':
+      return { c: mid, u, hl: 1.2, hw: 1.2 };
+    case 'rele':
+      return { c: lado(1.35), u, hl: (n - 1) / 2 + 0.75, hw: 1.6 };
+    case 'trafo':
+      return { c: lado(1.25), u, hl: Math.max(1.9, (n - 1) / 2 + 0.55), hw: 1.05 };
+    case 'motor':
+      return { c: lado(1.8), u, hl: 1.75, hw: 1.45 };
+    case 'lampara':
+      return { c: lado(1.55), u, hl: 1.3, hw: 1.3 };
+    case 'altavoz':
+      return { c: lado(2.15), u, hl: 2.0, hw: 2.0 };
     default:
       // module: a small board beside its header, covering the next row only
       return { c: lado(1.0), u, hl: Math.max((n - 1) / 2 + 0.55, 1.1), hw: 0.72 };
