@@ -345,6 +345,12 @@
     return new Promise((r) => {
       esperaVivo?.();
       esperaVivo = r;
+      // Never wait for ever: if the live view does not report back (its operating point coalesced with another
+      // request or failed), go on after a while, so a toggled switch or a released knob still re-runs the whole
+      // simulation (seen once in the full test suite on a loaded machine).
+      setTimeout(() => {
+        if (esperaVivo === r) vivoResuelto();
+      }, 4000);
     });
   }
   function vivoResuelto() {

@@ -184,7 +184,13 @@ test('ejercicios: la figura o el circuito del enunciado, y un hueco cuando no ha
   await page.locator('button.cap-cab', { hasText: 'Capítulo 4 ·' }).click();
   const filas = page.locator('.pagina-ej li .fila');
   await expect(filas.first()).toBeVisible();
-  await expect.poll(async () => (await visibles(page)).every((v) => v.estado === 'lista' || v.estado === 'hueco')).toBe(true);
+  // (not vacuously true: wait until the rows' thumbnails are there and all of them settled)
+  await expect
+    .poll(async () => {
+      const v = await visibles(page);
+      return v.length > 0 && v.every((x) => x.estado === 'lista' || x.estado === 'hueco') && v.some((x) => x.tipo === 'esquema' && x.estado === 'lista');
+    })
+    .toBe(true);
   const v = await visibles(page);
   expect(v.some((x) => x.tipo === 'esquema' && x.estado === 'lista')).toBe(true);
   expect(v.some((x) => x.estado === 'hueco')).toBe(true);
