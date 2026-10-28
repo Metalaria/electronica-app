@@ -1399,9 +1399,8 @@ and its texImage2D(canvas) copies the pixels out of the canvas and converts them
 thread. Three ways, chosen per WebView (`modoCarasPorDefecto()`; localStorage `epa-caras` forces one; the
 constructor's 5th argument `{ modoCaras }`, optional, keeps the API of consolas/placa): **directo** — the 0.7 path,
 unchanged (Chromium on the desktop: WebView2, the same behaviour as 0.7, deliberately not switched by any timing);
-**trabajador** (WebKit: WKWebView, WebKitGTK; Android since 0.9.1, because the Neo Geo and Super Nintendo faces
-painted directly on the GPU closed the app on the Xiaomi Pad 6 at «caras a resolución completa»: the WebView's GPU
-work runs in the app's process) — a worker per view rebuilds the geometry from
+**trabajador** (WebKit: WKWebView, WebKitGTK; Android tried it in 0.9.1 and went back to directo in 0.9.2, because
+the worker's quick pass closed the app on the Xiaomi Pad 6 at once) — a worker per view rebuilds the geometry from
 the board data (`datosParaCaras`, without footprints or areas) and paints each map on an OffscreenCanvas
 (`willReadFrequently`) in bands of 128 rows (in Chromium's workers a 4096 px canvas with the board's clips
 rasterised 5–20× slower than bands), reads each band back and writes its rows in GL order (bottom first) into a
@@ -1536,6 +1535,24 @@ practicas/  circuitos.ts (bench netlists derived from complementos/spice/cap22),
             value, tolerance and how to read it, tables with a plot against theory), aplicar.ts, PanelPractica
 ```
 Tests: `tests/instrumentos.spec.ts` (screenshots `tests/capturas/instrumentos-*.png`).
+
+## Application log (0.9.2, `web/src/lib/registro.ts`)
+
+A ring of the last 400 lines `{t, n: 'info'|'aviso'|'error', o: origin, x: text}` in localStorage `epa-registro`,
+each written at once (`registrar()`), so the steps before a crash survive it: the Android WebView closes the whole
+app when its renderer or GPU work dies, with nothing for the page to catch. `iniciarRegistro(version)` runs first
+in `main.ts`: a start line (version, screen, `deviceMemory`, cores) and the capture of `error`,
+`unhandledrejection`, `console.error` and `console.warn` (the console keeps working). Writers: `escena3d.ts`
+(view opened: size, footprints, pads, face mode and size; full faces started/ready/failed; `webglcontextlost`;
+the size guard lowering), the diagnostic's breadcrumbs (`migasDe`: start, each new phase, end). Shown at the end of
+«Diagnóstico» (`Diagnostico.svelte`, card `.registro-app`): copy to the clipboard, download as `.txt` (Blob +
+`a[download]`), clear.
+
+Face size guard (`ladoCarasDispositivo`, `escena3d.ts`): full faces are 4096 px, 2048 on Android (4096 closed the
+app on the Xiaomi Pad 6 with the Neo Geo and SNES boards). `refinarCaras()` leaves its size in
+`epa-caras-intento` while it runs (cleared when it ends, is superseded or the view closes); a value still there
+when the next view opens means the app died in it, so the device's size is halved (floor 1024, the quick pass's
+size that always worked) and kept in `epa-caras-max`.
 
 ## Ejercicios autocomprobables y progreso (`ejercicios.json`, `web/src/componentes/aprender/`)
 

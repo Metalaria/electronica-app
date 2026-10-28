@@ -79,8 +79,8 @@ test('las migas de una prueba que no terminó se ven al volver, y las de la Neo 
   await expect(fila).toHaveCount(1);
   await expect(fila.locator('td.valor')).toHaveText('pieza 237: R1 tras 12,3 s');
   await expect(fila).toContainText('Placa de consola en 3D (Neo Geo)');
-  await page.locator('.diagnostico details summary').click();
-  await expect(page.locator('.diagnostico textarea')).toHaveValue(/- La última prueba se quedó en: pieza 237: R1 tras 12,3 s/);
+  await page.locator('.diagnostico section:not(.registro-app) details summary').click();
+  await expect(page.locator('.diagnostico textarea:not(.registro)')).toHaveValue(/- La última prueba se quedó en: pieza 237: R1 tras 12,3 s/);
 
   // Only the Neo Geo test: the report of the unfinished run stays on top and is copied with the new results.
   const etiquetas = page.locator('.pruebas label');
@@ -122,4 +122,24 @@ test('las migas de una prueba que no terminó se ven al volver, y las de la Neo 
   await expect(page.getByRole('heading', { name: 'Diagnóstico de rendimiento' })).toBeVisible();
   await page.waitForTimeout(500);
   await expect(page.locator('.diagnostico table')).toHaveCount(0);
+});
+
+test('el registro de la aplicación guarda errores y pasos y se puede copiar y borrar', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto('/#/');
+  await page.evaluate(() => console.error('fallo de prueba del registro'));
+  await page.goto('/#/diagnostico');
+  const tarjeta = page.locator('.registro-app');
+  await expect(tarjeta).toBeVisible();
+  await tarjeta.locator('[data-accion="copiar-registro"]').click();
+  await expect(tarjeta.locator('[data-accion="copiar-registro"]')).toContainText('Copiado');
+  const texto = await page.evaluate(() => navigator.clipboard.readText());
+  expect(texto).toMatch(/^Registro de la aplicación · Electrónica Práctica Avanzada \d+\.\d+\.\d+/);
+  expect(texto).toMatch(/\[app\] inicio \d+\.\d+\.\d+/);
+  expect(texto).toContain('[consola] fallo de prueba del registro');
+  // it survives a reload (stored at once)
+  await page.reload();
+  await expect(page.locator('.registro-app')).toContainText('líneas');
+  await page.locator('.registro-app [data-accion="borrar-registro"]').click();
+  await expect(page.locator('.registro-app')).toContainText('Tiene 0 líneas.');
 });

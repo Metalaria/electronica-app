@@ -3,6 +3,7 @@
 // page's «Empezar» button; every test builds its view in a box of the page, measures it and disposes it.
 
 import { app } from '../../lib/estado.svelte';
+import { registrar } from '../../lib/registro';
 
 export type Estado = 'ok' | 'aviso' | 'error' | 'omitida';
 
@@ -57,6 +58,7 @@ function guardarMigas(m: Migas | null): void {
 /** The breadcrumbs of one test: `fase()` before each phase, `terminar()` when it ends (even with an error). */
 export function migasDe(prueba: string): { fase: (texto: string) => void; terminar: () => void } {
   const m: Migas = { prueba, inicio: Date.now(), fases: [] };
+  registrar('info', 'diagnóstico', `empieza «${prueba}»`);
   const tipo = (f: string) => /^(pieza \d|compilando \d)/.test(f) ? f.split(' ')[0] : f;
   guardarMigas(m);
   return {
@@ -64,12 +66,17 @@ export function migasDe(prueba: string): { fase: (texto: string) => void; termin
       const ult = m.fases.at(-1);
       const e: [number, string] = [Date.now() - m.inicio, texto];
       if (ult && tipo(ult[1]) === tipo(texto) && tipo(texto) !== texto) m.fases[m.fases.length - 1] = e;
-      else m.fases.push(e);
+      else {
+        m.fases.push(e);
+        // Per-part phases are many: only the first of each run goes to the application log.
+        registrar('info', 'diagnóstico', `${texto} (${(e[0] / 1000).toFixed(1).replace('.', ',')} s)`);
+      }
       guardarMigas(m);
     },
     terminar: () => {
       m.fin = Date.now();
       guardarMigas(m);
+      registrar('info', 'diagnóstico', `termina «${prueba}» en ${((m.fin - m.inicio) / 1000).toFixed(1).replace('.', ',')} s`);
     },
   };
 }
@@ -550,7 +557,7 @@ export async function placaConsola(ctx: ContextoPrueba, id = 'neogeo'): Promise<
         detalle: 'la tarea más larga del hilo de la página durante toda la carga (pintar, piezas, sombreadores, caras)',
         estado: max < 100 ? 'ok' : max < 500 ? 'aviso' : 'error',
       },
-      ...(fc ? [{ grupo: g, prueba: 'Caras a resolución completa', valor: ms(fc.total), detalle: `modo ${fc.modo}; tarea más larga ${ms(fc.maxTarea)}`, estado: (fc.maxTarea < 50 ? 'ok' : fc.maxTarea < 200 ? 'aviso' : 'error') as Estado }] : []),
+      ...(fc ? [{ grupo: g, prueba: 'Caras a resolución completa', valor: ms(fc.total), detalle: `modo ${fc.modo}, ${st.ladoCaras ?? '?'} px; tarea más larga ${ms(fc.maxTarea)}`, estado: (fc.maxTarea < 50 ? 'ok' : fc.maxTarea < 200 ? 'aviso' : 'error') as Estado }] : []),
       {
         grupo: g,
         prueba: 'Revisión de las piezas',

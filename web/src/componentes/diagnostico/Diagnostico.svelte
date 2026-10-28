@@ -10,6 +10,10 @@
   import Copy from '@lucide/svelte/icons/copy';
   import Check from '@lucide/svelte/icons/check';
   import { VERSION_APP } from '../../lib/sincronizacion/version-app';
+  import ScrollText from '@lucide/svelte/icons/scroll-text';
+  import Download from '@lucide/svelte/icons/download';
+  import Trash2 from '@lucide/svelte/icons/trash-2';
+  import { lineasRegistro, textoRegistro, borrarRegistro } from '../../lib/registro';
   import {
     infoDispositivo,
     infoWebGL,
@@ -97,13 +101,58 @@
       await navigator.clipboard.writeText(texto);
     } catch {
       // Without clipboard permission (some WebViews): select the text so the reader can copy it.
-      const t = document.querySelector<HTMLTextAreaElement>('.diagnostico textarea');
+      const t = document.querySelector<HTMLTextAreaElement>('.diagnostico textarea:not(.registro)');
       t?.select();
       document.execCommand?.('copy');
     }
     copiado = true;
     setTimeout(() => (copiado = false), 2500);
   }
+
+  // «Registro de la aplicación» (0.9.2): the log kept across runs (lib/registro.ts), to copy or save.
+  let nRegistro = $state(lineasRegistro().length);
+  let registroCopiado = $state(false);
+  let textoReg = $state('');
+
+  function refrescarRegistro(): void {
+    nRegistro = lineasRegistro().length;
+    textoReg = textoRegistro(VERSION_APP);
+  }
+
+  async function copiarRegistro(): Promise<void> {
+    refrescarRegistro();
+    try {
+      await navigator.clipboard.writeText(textoReg);
+    } catch {
+      const t = document.querySelector<HTMLTextAreaElement>('.diagnostico textarea.registro');
+      t?.select();
+      document.execCommand?.('copy');
+    }
+    registroCopiado = true;
+    setTimeout(() => (registroCopiado = false), 2500);
+  }
+
+  function descargarRegistro(): void {
+    refrescarRegistro();
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([textoReg], { type: 'text/plain;charset=utf-8' }));
+    a.download = `registro-electronica-${VERSION_APP}-${new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-')}.txt`;
+    document.body.append(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 10_000);
+  }
+
+  function vaciarRegistro(): void {
+    borrarRegistro();
+    refrescarRegistro();
+  }
+
+  refrescarRegistro();
+  $effect(() => {
+    // the tests add lines while they run
+    if (estado !== 'midiendo') refrescarRegistro();
+  });
 
   onDestroy(() => {
     cancelar = true;
@@ -184,9 +233,41 @@
       </details>
     </section>
   {/if}
+
+  <section class="tarjeta registro-app" aria-labelledby="t-registro">
+    <div class="cabecera">
+      <h2 id="t-registro"><ScrollText size={18} aria-hidden="true" /> Registro de la aplicación</h2>
+    </div>
+    <p class="nota">
+      La aplicación apunta aquí sus errores y los pasos de las vistas pesadas (placas en 3D, diagnóstico), y lo guarda aunque se cierre de golpe. Si algo
+      falla, vuelve aquí y copia o descarga el registro para pasármelo. {nRegistro === 1 ? 'Tiene 1 línea.' : `Tiene ${nRegistro} líneas.`}
+    </p>
+    <div class="botones-registro">
+      <button class="boton" onclick={copiarRegistro} data-accion="copiar-registro">
+        {#if registroCopiado}<Check size={16} aria-hidden="true" /> Copiado{:else}<Copy size={16} aria-hidden="true" /> Copiar registro{/if}
+      </button>
+      <button class="boton" onclick={descargarRegistro} data-accion="descargar-registro"><Download size={16} aria-hidden="true" /> Descargar</button>
+      <button class="boton" onclick={vaciarRegistro} data-accion="borrar-registro"><Trash2 size={16} aria-hidden="true" /> Borrar</button>
+    </div>
+    <details>
+      <summary>Ver el registro</summary>
+      <textarea class="registro" readonly rows="12">{textoReg}</textarea>
+    </details>
+  </section>
 </div>
 
 <style>
+  .registro-app h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .botones-registro {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin: 10px 0;
+  }
   .diagnostico {
     max-width: 880px;
     margin: 0 auto;

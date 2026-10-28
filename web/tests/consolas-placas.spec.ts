@@ -308,33 +308,59 @@ test('con «Componentes» apagado la placa en 3D no carga las piezas, y al encen
   expect(otra.piezas.biblioteca + otra.piezas.propias).toBe(320);
 });
 
-// 0.9.1: on the Xiaomi Pad 6 the Neo Geo and Super Nintendo boards closed the app at «caras a resolución
-// completa» (faces painted directly on an accelerated canvas). On Android the full faces are painted by the
-// worker on a software canvas and uploaded in strips: checked here with an Android WebView user agent.
+// 0.9.1/0.9.2: on the Xiaomi Pad 6 the Neo Geo and Super Nintendo boards closed the app: in 0.9.0 at the
+// direct full-resolution faces (4096 px), in 0.9.1 at the worker's quick pass. Android now paints directly
+// (the quick pass that always worked there) with full faces of 2048 px, and a full pass that never ended halves
+// the device's size the next time. Checked here with an Android WebView user agent.
 const UA_ANDROID =
   'Mozilla/5.0 (Linux; Android 14; 23043RP34G Build/UKQ1.240624.001; wv) AppleWebKit/537.36 (KHTML, like Gecko) Version/4.0 Chrome/135.0.7049.111 Safari/537.36';
 
+interface StatsCaras {
+  carasFinas?: number;
+  ladoCaras?: number;
+  fasesCaras?: { modo: string; completa?: { modo: string } };
+}
+
+async function carasAndroid(browser: import('@playwright/test').Browser, maquina: string, antes?: Record<string, string>) {
+  const ctx = await browser.newContext({ baseURL: test.info().project.use.baseURL, userAgent: UA_ANDROID, viewport: { width: 800, height: 1280 } });
+  if (antes) await ctx.addInitScript((kv) => {
+    for (const [k, v] of Object.entries(kv)) if (!sessionStorage.getItem('puesto-' + k)) {
+      localStorage.setItem(k, v);
+      sessionStorage.setItem('puesto-' + k, '1');
+    }
+  }, antes);
+  const page = await ctx.newPage();
+  const errores: string[] = [];
+  page.on('pageerror', (e) => errores.push(e.message));
+  await page.goto(`./#/consolas/${maquina}/placa3d`);
+  await expect(page.locator('.placa-consola')).toHaveAttribute('data-placa', maquina);
+  await page.waitForFunction(() => (globalThis as unknown as { __epaPlaca3D?: StatsCaras }).__epaPlaca3D?.carasFinas != null, null, { timeout: 240_000 });
+  const st = await page.evaluate(() => (globalThis as unknown as { __epaPlaca3D: StatsCaras }).__epaPlaca3D);
+  const ls = await page.evaluate(() => ({ max: localStorage.getItem('epa-caras-max'), intento: localStorage.getItem('epa-caras-intento'), registro: localStorage.getItem('epa-registro') ?? '' }));
+  return { ctx, st, ls, errores };
+}
+
 for (const maquina of ['neogeo', 'snes']) {
-  test(`en Android las caras completas de la placa ${maquina} las pinta el trabajador`, async ({ browser }) => {
+  test(`en Android las caras de la placa ${maquina} se pintan directas a 2048 px`, async ({ browser }) => {
     test.setTimeout(300_000);
-    const ctx = await browser.newContext({ baseURL: test.info().project.use.baseURL, userAgent: UA_ANDROID, viewport: { width: 800, height: 1280 } });
-    const page = await ctx.newPage();
-    const errores: string[] = [];
-    page.on('pageerror', (e) => errores.push(e.message));
-    await page.goto(`./#/consolas/${maquina}/placa3d`);
-    await expect(page.locator('.placa-consola')).toHaveAttribute('data-placa', maquina);
-    await page.waitForFunction(
-      () => (globalThis as unknown as { __epaPlaca3D?: { carasFinas?: number } }).__epaPlaca3D?.carasFinas != null,
-      null,
-      { timeout: 240_000 },
-    );
-    const st = await page.evaluate(
-      () => (globalThis as unknown as { __epaPlaca3D: { fasesCaras?: { modo: string; completa?: { modo: string; franjas: number } } } }).__epaPlaca3D,
-    );
-    expect(st.fasesCaras?.modo).toBe('trabajador');
-    expect(st.fasesCaras?.completa?.modo).toBe('trabajador');
-    expect(st.fasesCaras?.completa?.franjas ?? 0).toBeGreaterThan(0);
+    const { ctx, st, ls, errores } = await carasAndroid(browser, maquina);
+    expect(st.fasesCaras?.modo).toBe('directo');
+    expect(st.fasesCaras?.completa?.modo).toBe('directo');
+    expect(st.ladoCaras).toBe(2048);
+    // the pass ended: nothing left marked
+    expect(ls.intento).toBeNull();
+    expect(ls.registro).toContain('caras a resolución completa: listas');
     expect(errores).toEqual([]);
     await ctx.close();
   });
 }
+
+test('una pasada de caras que no terminó (la aplicación se cerró) baja el tamaño de las caras del dispositivo', async ({ browser }) => {
+  test.setTimeout(300_000);
+  const { ctx, st, ls } = await carasAndroid(browser, 'neogeo', { 'epa-caras-intento': '2048' });
+  expect(st.ladoCaras).toBe(1024);
+  expect(ls.max).toBe('1024');
+  expect(ls.intento).toBeNull();
+  expect(ls.registro).toContain('no terminó');
+  await ctx.close();
+});

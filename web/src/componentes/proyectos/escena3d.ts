@@ -45,6 +45,7 @@ import { coloresTension, MASCARAS, pintarLado, pintarRed, type Acabado } from '.
 import { datosParaCaras, pintarMapa, type MensajeTrabajador, type PedidoCara, type RespuestaTrabajador, type TipoMapa } from './caras';
 import { pintarDirecto, pintarPorBandas, subirPorFranjas, texturaDePixeles, texturaVacia, type Subida } from './texturas-caras';
 import { cargarBiblioteca, claveBiblioteca, CON_MARCADO_FIJO, cuerpoSimple, liberarMateriales, marcadoCoincide } from './modelos3d';
+import { registrar } from '../../lib/registro';
 
 export interface Estadisticas {
   ms: number[];
@@ -67,6 +68,8 @@ export interface Estadisticas {
   programas?: number;
   /** ms from the scene's creation to the full-resolution faces (the first pass is a quick low-resolution one). */
   carasFinas?: number;
+  /** 0.9.2: long side (px) of the full-resolution face maps on this device (ladoCarasDispositivo). */
+  ladoCaras?: number;
   /** Where the faces' time goes (0.8): see FasesCaras. */
   fasesCaras?: FasesCaras;
   /** Adaptive resolution while the view moves (0.8): base and current pixel ratio, lowest used, changes. */
@@ -137,12 +140,49 @@ export function modoCarasPorDefecto(): ModoCaras {
   } catch {
     /* no storage */
   }
-  // WebKit: the page's thread rasterises and converts a large canvas itself (0.8). Android (0.9.1): the full
-  // faces of the Neo Geo and Super Nintendo boards, painted directly on an accelerated canvas, closed the app on
-  // the Xiaomi Pad 6 right at «caras a resolución completa» (the WebView's GPU work runs in the app's own process,
-  // so a GPU failure takes the app down); the worker paints on a software canvas (willReadFrequently) and the
-  // page uploads plain pixels in strips, so the GPU never rasterises those faces.
-  return esWebKit() || esAndroid() ? 'trabajador' : 'directo';
+  // WebKit: the page's thread rasterises and converts a large canvas itself (0.8). Android stays direct: in
+  // 0.9.1 the worker's software canvas closed the app on the Xiaomi Pad 6 already in the quick pass of the Neo
+  // Geo board («caras tras 0,5 s»), while the direct quick pass had always worked there; what closed it in 0.9.0
+  // was the direct pass at 4096 px, so Android paints the full faces at 2048 px instead (ladoCarasDispositivo).
+  return esWebKit() ? 'trabajador' : 'directo';
+}
+
+/** localStorage keys of the faces' size guard (0.9.2): the device's lowered maximum and the pass in flight. */
+const CLAVE_MAX = 'epa-caras-max';
+const CLAVE_INTENTO = 'epa-caras-intento';
+
+/**
+ * Long side (px) of the full-resolution face maps on this device: 4096, 2048 on Android (4096 closed the app on
+ * the Xiaomi Pad 6 with the Neo Geo and Super Nintendo boards), never above the GPU's maximum. A full pass
+ * leaves its size in localStorage while it runs; if the app died in it (the key is still there next time), the
+ * device's maximum is halved and remembered, down to 1024 px (the quick pass's size that always worked there).
+ */
+export function ladoCarasDispositivo(maxGpu: number): number {
+  let lado = esAndroid() ? 2048 : 4096;
+  try {
+    const ls = globalThis.localStorage;
+    const guardado = Number(ls?.getItem(CLAVE_MAX) ?? 0);
+    if (guardado >= 1024) lado = Math.min(lado, guardado);
+    const intento = Number(ls?.getItem(CLAVE_INTENTO) ?? 0);
+    if (intento >= 1024) {
+      lado = Math.min(lado, Math.max(1024, intento / 2));
+      ls?.setItem(CLAVE_MAX, String(lado));
+      ls?.removeItem(CLAVE_INTENTO);
+      registrar('aviso', 'placa 3D', `la última pasada de caras de ${intento} px no terminó (la aplicación se cerró): desde ahora, caras de ${lado} px en este dispositivo`);
+    }
+  } catch {
+    /* no storage: the default size */
+  }
+  return Math.min(lado, maxGpu);
+}
+
+function marcarIntento(lado: number | null): void {
+  try {
+    if (lado == null) globalThis.localStorage?.removeItem(CLAVE_INTENTO);
+    else globalThis.localStorage?.setItem(CLAVE_INTENTO, String(lado));
+  } catch {
+    /* no storage */
+  }
 }
 
 /** WKWebView, WebKitGTK, Safari (not Chromium-based browsers that say AppleWebKit too). */
@@ -300,6 +340,7 @@ export class Escena3D {
     this.modo = opciones.modoCaras ?? modoCarasPorDefecto();
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.renderer = new WebGLRenderer({ canvas: lienzo, antialias: dpr < 2, powerPreference: 'high-performance', alpha: false });
+    lienzo.addEventListener('webglcontextlost', () => registrar('error', 'placa 3D', 'contexto WebGL perdido (la GPU lo ha retirado)'));
     this.renderer.outputColorSpace = SRGBColorSpace;
     this.renderer.toneMapping = NeutralToneMapping;
     this.renderer.toneMappingExposure = 1;
@@ -316,8 +357,14 @@ export class Escena3D {
     this.ladoComponentes = d.placa.lado_componentes ?? (enB > 2 * enF ? 'B' : 'F');
     this.stats.ladoComponentes = this.ladoComponentes;
     const max = this.renderer.capabilities.maxTextureSize;
-    // texture resolution: up to 4096 px on the long side (about 21–37 px/mm on these boards)
-    this.ladoTextura = Math.min(4096, max);
+    // texture resolution: up to 4096 px on the long side (about 21–37 px/mm on these boards); 2048 on Android
+    this.ladoTextura = ladoCarasDispositivo(max);
+    this.stats.ladoCaras = this.ladoTextura;
+    registrar(
+      'info',
+      'placa 3D',
+      `abierta: ${d.placa.ancho}×${d.placa.alto} mm, ${d.huellas.length} huellas, ${d.pads.length} pads; caras «${this.modo}» de ${this.ladoTextura} px (máximo de la GPU ${max})`,
+    );
     this.estudio.raiz.add(this.placa);
     this.estudio.ajustarSombra(this.W * 1.05, this.H * 1.05, -this.t - 0.6);
 
@@ -780,6 +827,29 @@ export class Escena3D {
     const gen = ++this.generacion;
     const sigue = () => this.vivo && gen === this.generacion;
     const t0 = performance.now();
+    // Left in storage while this pass runs: if the app dies in it, the next view uses smaller maps.
+    marcarIntento(this.ladoTextura);
+    this.intento = gen;
+    registrar('info', 'placa 3D', `caras a resolución completa: empiezan (${this.ladoTextura} px, «${this.modo}»)`);
+    try {
+      await this.refinarCarasAhora(sigue, t0);
+      if (this.stats.carasFinas != null && sigue()) registrar('info', 'placa 3D', `caras a resolución completa: listas en ${Math.round(performance.now() - t0)} ms`);
+    } catch (e) {
+      registrar('error', 'placa 3D', `caras a resolución completa: ${e instanceof Error ? e.message : String(e)}`);
+      throw e;
+    } finally {
+      // A newer pass (a retry) owns the mark now; otherwise this one ended, finished or superseded.
+      if (this.intento === gen) {
+        marcarIntento(null);
+        this.intento = 0;
+      }
+    }
+  }
+
+  /** The pass that left its size marked in storage (0: none; cleared when it ends or the view closes). */
+  private intento = 0;
+
+  private async refinarCarasAhora(sigue: () => boolean, t0: number): Promise<void> {
     if (this.modo === 'directo') {
       // As in 0.7: one face per task.
       const f = { modo: 'directo' as const, geometria: 0, pintar: 0, leer: 0, voltear: 0, espera: 0, subir: 0, gpu: 0, franjas: 0, maxTarea: 0, total: 0 };
@@ -1640,6 +1710,10 @@ export class Escena3D {
 
   liberar(): void {
     this.vivo = false;
+    if (this.intento) {
+      marcarIntento(null);
+      this.intento = 0;
+    }
     this.generacion++;
     clearTimeout(this.despertar);
     this.cerrarTrabajador('vista cerrada');
