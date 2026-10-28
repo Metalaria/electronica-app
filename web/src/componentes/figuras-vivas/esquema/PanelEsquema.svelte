@@ -39,6 +39,18 @@
 
   // ---------------------------------------------------------------- sliders
   let espera: ReturnType<typeof setTimeout> | null = null;
+  // «Simulando con ngspice…» only for a run that takes a while (0.10): a quick re-run (the simulator page's own
+  // «Simular» re-runs the live schematic too) used to flash the line for a few frames and push the page down
+  // and back, which the owner saw on the tablet as something appearing and vanishing.
+  let simulandoLento = $state(false);
+  $effect(() => {
+    if (est.estadoSim !== 'simulando') {
+      simulandoLento = false;
+      return;
+    }
+    const t = setTimeout(() => (simulandoLento = true), 400);
+    return () => clearTimeout(t);
+  });
   function mover(id: string, v: number) {
     est.cambios = { ...est.cambios, [id]: v };
     if (espera) clearTimeout(espera);
@@ -192,7 +204,7 @@
       {/if}
     {/if}
 
-    {#if est.estadoSim !== 'libro' || est.mensaje}
+    {#if (est.estadoSim === 'simulando' ? simulandoLento : est.estadoSim !== 'libro') || est.mensaje}
       <p class="estado" class:error={est.estadoSim === 'error'} role="status">
         {#if est.estadoSim === 'simulando'}Simulando con ngspice…{:else if est.estadoSim === 'error'}{est.mensaje}{:else}Resultado de ngspice con los valores cambiados.{/if}
       </p>

@@ -3,6 +3,7 @@
 // is dropped and a fresh one started from the already compiled module, which takes a few tens of ms), so
 // moving a slider never queues stale simulations.
 
+import { registrar } from '../lib/registro';
 import type { Simulacion } from './motor/simular.ts';
 import type { MensajeAlMotor, MensajeDelMotor } from './protocolo';
 import { MOTORES, motorElegido, otroMotor, type IdMotor } from './motor/motores.ts';
@@ -169,6 +170,26 @@ export function detener(): void {
 
 /** Runs a netlist. Rejects with SimulacionCancelada if another run replaces it or it is stopped. */
 export async function simularTexto(texto: string): Promise<Simulacion> {
+  // Application log (0.10): every run with its title, time and outcome, so a report from the tablet says what was
+  // simulated and what came out (superseded runs are not errors).
+  const titulo = (texto.split('\n').find((l) => l.trim()) ?? '').replace(/^\*\s*/, '').slice(0, 80);
+  const t0 = performance.now();
+  try {
+    const r = await simularTextoSinRegistro(texto);
+    const errores = r.salida.errores ?? [];
+    registrar(
+      errores.length || r.ejecucion.fallo ? 'aviso' : 'info',
+      'simulador',
+      `«${titulo}»: ${Math.round(performance.now() - t0)} ms${errores.length ? `; ${errores.length} errores de ngspice: ${errores.slice(0, 2).join(' · ')}` : ''}${r.ejecucion.fallo ? `; fallo: ${String(r.ejecucion.fallo)}` : ''}`,
+    );
+    return r;
+  } catch (e) {
+    if (!(e instanceof SimulacionCancelada)) registrar('error', 'simulador', `«${titulo}»: ${e instanceof Error ? e.message : String(e)}`);
+    throw e;
+  }
+}
+
+async function simularTextoSinRegistro(texto: string): Promise<Simulacion> {
   detener();
   const id = siguienteId++;
   motor.lineas = [];

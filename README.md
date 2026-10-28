@@ -1334,8 +1334,11 @@ errores (los no capturados, las promesas rechazadas y los `console.error`/`conso
 (versión, pantalla, memoria) y los pasos de las vistas pesadas: cada placa en 3D que se abre (tamaño, pads, modo y
 tamaño de las caras), el principio y el final de sus caras a resolución completa, un contexto WebGL perdido y las
 fases del diagnóstico. Cada línea se guarda al momento en el almacenamiento local (`epa-registro`, las 400 últimas),
-así que sobrevive a un cierre de golpe. «Copiar registro» lo deja en el portapapeles, «Descargar» lo guarda como
-`.txt` y «Borrar» lo vacía.
+así que sobrevive a un cierre de golpe. «Copiar errores» copia solo los errores y avisos, cada uno con las tres
+líneas anteriores (lo que se estaba haciendo); «Copiar registro» lo copia entero, «Descargar» lo guarda como `.txt` y
+«Borrar» lo vacía. Desde la 0.10 apunta también cada simulación (título del circuito, tiempo, errores de ngspice) y
+cada pantalla visitada; cerrar una placa en 3D ya no se anota como «contexto WebGL perdido» (es la propia aplicación
+la que devuelve la memoria de la GPU) y el tamaño de la placa sale en milímetros reales.
 
 Para probar a mano otra manera de pintar las caras de las placas o la resolución fija, en la consola de
 desarrollo: `localStorage.setItem('epa-caras', 'directo' | 'trabajador' | 'franjas')` y

@@ -13,7 +13,7 @@
   import ScrollText from '@lucide/svelte/icons/scroll-text';
   import Download from '@lucide/svelte/icons/download';
   import Trash2 from '@lucide/svelte/icons/trash-2';
-  import { lineasRegistro, textoRegistro, borrarRegistro } from '../../lib/registro';
+  import { lineasRegistro, textoRegistro, borrarRegistro, erroresRegistro } from '../../lib/registro';
   import {
     infoDispositivo,
     infoWebGL,
@@ -114,22 +114,43 @@
   let registroCopiado = $state(false);
   let textoReg = $state('');
 
+  let nErrores = $state(0);
+  let erroresCopiados = $state(false);
+
   function refrescarRegistro(): void {
     nRegistro = lineasRegistro().length;
+    nErrores = erroresRegistro();
     textoReg = textoRegistro(VERSION_APP);
+  }
+
+  async function copiarTexto(t: string): Promise<void> {
+    try {
+      await navigator.clipboard.writeText(t);
+    } catch {
+      // Without clipboard permission: put the text in the box and select it so the reader can copy it.
+      const a = document.querySelector<HTMLTextAreaElement>('.diagnostico textarea.registro');
+      if (a) {
+        a.value = t;
+        a.closest('details')?.setAttribute('open', '');
+        a.select();
+        document.execCommand?.('copy');
+      }
+    }
   }
 
   async function copiarRegistro(): Promise<void> {
     refrescarRegistro();
-    try {
-      await navigator.clipboard.writeText(textoReg);
-    } catch {
-      const t = document.querySelector<HTMLTextAreaElement>('.diagnostico textarea.registro');
-      t?.select();
-      document.execCommand?.('copy');
-    }
+    await copiarTexto(textoReg);
     registroCopiado = true;
     setTimeout(() => (registroCopiado = false), 2500);
+  }
+
+  /** 0.10: only the errors and warnings, each with the lines just before it (the most useful part to send). */
+  async function copiarErrores(): Promise<void> {
+    refrescarRegistro();
+    await copiarTexto(textoRegistro(VERSION_APP, true));
+    erroresCopiados = true;
+    setTimeout(() => (erroresCopiados = false), 2500);
   }
 
   function descargarRegistro(): void {
@@ -240,9 +261,13 @@
     </div>
     <p class="nota">
       La aplicación apunta aquí sus errores y los pasos de las vistas pesadas (placas en 3D, diagnóstico), y lo guarda aunque se cierre de golpe. Si algo
-      falla, vuelve aquí y copia o descarga el registro para pasármelo. {nRegistro === 1 ? 'Tiene 1 línea.' : `Tiene ${nRegistro} líneas.`}
+      falla, vuelve aquí y copia o descarga el registro para pasármelo; «Copiar errores» copia solo los errores y avisos con lo que pasaba justo
+      antes. {nRegistro === 1 ? 'Tiene 1 línea' : `Tiene ${nRegistro} líneas`}, {nErrores === 1 ? '1 de error o aviso.' : `${nErrores} de error o aviso.`}
     </p>
     <div class="botones-registro">
+      <button class="boton" onclick={copiarErrores} data-accion="copiar-errores">
+        {#if erroresCopiados}<Check size={16} aria-hidden="true" /> Copiado{:else}<Copy size={16} aria-hidden="true" /> Copiar errores{/if}
+      </button>
       <button class="boton" onclick={copiarRegistro} data-accion="copiar-registro">
         {#if registroCopiado}<Check size={16} aria-hidden="true" /> Copiado{:else}<Copy size={16} aria-hidden="true" /> Copiar registro{/if}
       </button>

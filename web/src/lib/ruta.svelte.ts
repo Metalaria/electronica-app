@@ -28,6 +28,8 @@
 // the browser or the Android back button) returns exactly where the reader was. Overlays
 // (drawer, search, figure viewer) push their own entry so the back button closes them.
 
+import { registrar } from './registro';
+
 export type Vista = 'inicio' | 'parte' | 'glosario' | 'marcadores' | 'simulador' | 'componentes' | 'conceptos' | 'consolas' | 'instrumentos' | 'fm7303' | 'repaso' | 'ejercicios' | 'calculadoras' | 'proyectos' | 'sincronizacion' | 'diagnostico' | 'leccion';
 
 export interface AnclaLectura {
@@ -255,6 +257,8 @@ export function iniciarRuta(): void {
       desdePendiente = null;
     }
     leer();
+    // Application log (0.10): the screens visited, so a report says where the reader was.
+    registrar('info', 'navegación', decodeURIComponent(location.hash || '#/'));
   });
   window.addEventListener('popstate', () => {
     const top = pila[pila.length - 1];

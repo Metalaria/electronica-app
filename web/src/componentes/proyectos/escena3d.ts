@@ -346,7 +346,10 @@ export class Escena3D {
     this.modo = opciones.modoCaras ?? modoCarasPorDefecto();
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.renderer = new WebGLRenderer({ canvas: lienzo, antialias: dpr < 2, powerPreference: 'high-performance', alpha: false });
-    lienzo.addEventListener('webglcontextlost', () => registrar('error', 'placa 3D', 'contexto WebGL perdido (la GPU lo ha retirado)'));
+    // (liberar() drops the context on purpose to give the GPU memory back: that one is not an error)
+    lienzo.addEventListener('webglcontextlost', () => {
+      if (this.vivo) registrar('error', 'placa 3D', 'contexto WebGL perdido (la GPU lo ha retirado)');
+    });
     this.renderer.outputColorSpace = SRGBColorSpace;
     this.renderer.toneMapping = NeutralToneMapping;
     this.renderer.toneMappingExposure = 1;
@@ -369,7 +372,7 @@ export class Escena3D {
     registrar(
       'info',
       'placa 3D',
-      `abierta: ${d.placa.ancho}×${d.placa.alto} mm, ${d.huellas.length} huellas, ${d.pads.length} pads; caras «${this.modo}» de ${this.ladoTextura} px (máximo de la GPU ${max})`,
+      `abierta: ${(d.placa.ancho / 100).toFixed(1).replace('.', ',')}×${(d.placa.alto / 100).toFixed(1).replace('.', ',')} mm, ${d.huellas.length} huellas, ${d.pads.length} pads; caras «${this.modo}» de ${this.ladoTextura} px (máximo de la GPU ${max})`,
     );
     this.estudio.raiz.add(this.placa);
     this.estudio.ajustarSombra(this.W * 1.05, this.H * 1.05, -this.t - 0.6);

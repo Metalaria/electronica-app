@@ -141,5 +141,39 @@ test('el registro de la aplicación guarda errores y pasos y se puede copiar y b
   await page.reload();
   await expect(page.locator('.registro-app')).toContainText('líneas');
   await page.locator('.registro-app [data-accion="borrar-registro"]').click();
-  await expect(page.locator('.registro-app')).toContainText('Tiene 0 líneas.');
+  await expect(page.locator('.registro-app')).toContainText('Tiene 0 líneas');
 });
+
+// 0.10: a quick «Simular» on the simulator page must not flash the live schematic's «Simulando con ngspice…» line
+// (the owner saw something appear and vanish on the tablet), and the run goes to the application log.
+test('«Simular» no hace parpadear el esquema vivo y la simulación queda en el registro', async ({ page, context }) => {
+  await context.grantPermissions(['clipboard-read', 'clipboard-write']);
+  await page.goto('/#/simulador/cap00/fig-0.2_dos_mallas');
+  const boton = page.getByRole('button', { name: 'Simular', exact: true }).first();
+  await expect(boton).toBeEnabled({ timeout: 60_000 });
+  await expect(page.locator('text=/Simulado en/').first()).toBeVisible({ timeout: 60_000 });
+  await page.evaluate(() => {
+    const w = window as unknown as { __parrafos: string[] };
+    w.__parrafos = [];
+    new MutationObserver((ms) => {
+      for (const m of ms) for (const n of m.addedNodes) if (n instanceof HTMLElement && n.tagName === 'P') w.__parrafos.push(n.textContent ?? '');
+    }).observe(document.body, { subtree: true, childList: true });
+  });
+  await boton.click();
+  await page.waitForTimeout(1500);
+  const parrafos = await page.evaluate(() => (window as unknown as { __parrafos: string[] }).__parrafos);
+  expect(parrafos.filter((t) => /Simulando con ngspice/.test(t))).toEqual([]);
+  await page.goto('/#/diagnostico');
+  await page.locator('.registro-app [data-accion="copiar-registro"]').click();
+  const texto = await page.evaluate(() => navigator.clipboard.readText());
+  expect(texto).toMatch(/\[simulador\] «fig-0\.2.*»: \d+ ms/);
+  expect(texto).toContain('[navegación] #/diagnostico');
+  // «Copiar errores»: only errors and warnings with the lines just before them
+  await page.evaluate(() => console.error('fallo para copiar errores'));
+  await page.locator('.registro-app [data-accion="copiar-errores"]').click();
+  const errores = await page.evaluate(() => navigator.clipboard.readText());
+  expect(errores).toMatch(/^Errores y avisos de la aplicación/);
+  expect(errores).toContain('[consola] fallo para copiar errores');
+  expect(errores.split('\n').filter((l) => / \[simulador\] /.test(l)).length).toBeLessThanOrEqual(3);
+});
+

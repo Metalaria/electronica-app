@@ -75,13 +75,36 @@ function hora(t: number): string {
 const MARCA: Record<NivelRegistro, string> = { info: ' ', aviso: '!', error: '✗' };
 
 /** The whole log as plain text, oldest first, to copy or save. */
-export function textoRegistro(version: string): string {
+export function textoRegistro(version: string, soloErrores = false): string {
   const cab = [
-    `Registro de la aplicación · Electrónica Práctica Avanzada ${version}`,
+    `${soloErrores ? 'Errores y avisos' : 'Registro'} de la aplicación · Electrónica Práctica Avanzada ${version}`,
     `Copiado el ${hora(Date.now())} · ${globalThis.navigator?.userAgent ?? ''}`,
     '',
   ];
-  return [...cab, ...cargar().map((l) => `${hora(l.t)} ${MARCA[l.n] ?? ' '} [${l.o}] ${l.x}`)].join('\n');
+  const ls = cargar();
+  const linea = (l: LineaRegistro) => `${hora(l.t)} ${MARCA[l.n] ?? ' '} [${l.o}] ${l.x}`;
+  if (!soloErrores) return [...cab, ...ls.map(linea)].join('\n');
+  // Errors and warnings, each with the few lines before it (what the reader was doing), runs joined, gaps «…».
+  const CONTEXTO = 3;
+  const incluir = new Set<number>();
+  ls.forEach((l, i) => {
+    if (l.n === 'info') return;
+    for (let k = Math.max(0, i - CONTEXTO); k <= i; k++) incluir.add(k);
+  });
+  if (!incluir.size) return [...cab, 'Sin errores ni avisos.'].join('\n');
+  const out: string[] = [];
+  let anterior = -2;
+  for (const i of [...incluir].sort((a, b) => a - b)) {
+    if (i !== anterior + 1 && out.length) out.push('…');
+    out.push(linea(ls[i]!));
+    anterior = i;
+  }
+  return [...cab, ...out].join('\n');
+}
+
+/** Number of error and warning lines in the log. */
+export function erroresRegistro(): number {
+  return cargar().filter((l) => l.n !== 'info').length;
 }
 
 function aTexto(v: unknown): string {
