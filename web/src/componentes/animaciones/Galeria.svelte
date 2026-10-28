@@ -13,6 +13,9 @@
   import Simbolo from './ui/Simbolo.svelte';
   import Icono from './conceptos/Icono.svelte';
   import Conmutador from '../tres/Conmutador.svelte';
+  import { MODELOS_3D } from '../tres/catalogo3d';
+  import { urlModelo3d } from '../miniaturas/datos';
+  import { visible } from '../miniaturas/visible';
 
   let { coleccion = COMPONENTES }: { coleccion?: Coleccion } = $props();
 
@@ -37,6 +40,14 @@
   const grupos = $derived(
     FAMILIAS.map((f) => ({ ...f, items: filtradas.filter((a) => a.grupo === f.id) })).filter((g) => g.items.length),
   );
+
+  // Component animations with a 3D model of the same part show its pre-rendered thumbnail (lazily, see
+  // componentes/miniaturas) with the circuit symbol as a small badge; the first model that lists the animation.
+  const MODELO_DE = new Map<string, string>();
+  for (const m of MODELOS_3D) for (const a of m.animaciones) if (!MODELO_DE.has(a)) MODELO_DE.set(a, m.tipo);
+  let vistos = $state<Record<string, boolean>>({});
+  let sin3d = $state<Record<string, boolean>>({});
+  const modelo3dDe = (id: string): string | undefined => (conceptos || sin3d[id] ? undefined : MODELO_DE.get(id));
 
   function secciones(libro: string[]): string[] {
     return libro
@@ -101,9 +112,18 @@
         {#each g.items as a (a.id)}
           <li>
             <a class="tarjeta" href={`#/${coleccion.ruta}/${a.id}`}>
-              <span class="arte">
-                {#if conceptos}<Icono s={a.arte as IconoConcepto} tam={104} />{:else}<Simbolo s={a.arte as TipoSimbolo} tam={104} />{/if}
-              </span>
+              {#if modelo3dDe(a.id)}
+                <span class="arte con-3d" data-miniatura="modelo" use:visible={() => (vistos[a.id] = true)}>
+                  {#if vistos[a.id]}
+                    <img src={urlModelo3d(modelo3dDe(a.id)!)} alt="" width="384" height="288" loading="lazy" decoding="async" onerror={() => (sin3d[a.id] = true)} />
+                  {/if}
+                  <span class="insignia-simbolo"><Simbolo s={a.arte as TipoSimbolo} tam={40} /></span>
+                </span>
+              {:else}
+                <span class="arte">
+                  {#if conceptos}<Icono s={a.arte as IconoConcepto} tam={104} />{:else}<Simbolo s={a.arte as TipoSimbolo} tam={104} />{/if}
+                </span>
+              {/if}
               <span class="txt">
                 <span class="tit">{a.titulo}</span>
                 <span class="res">{a.resumen}</span>
@@ -301,6 +321,32 @@
   .arte :global(.simbolo) {
     --c: var(--c);
   }
+  .arte.con-3d {
+    position: relative;
+    overflow: hidden;
+    contain: strict;
+  }
+  .con-3d img {
+    position: absolute;
+    inset: 0;
+    width: 100%;
+    height: 100%;
+    object-fit: contain;
+  }
+  .insignia-simbolo {
+    position: absolute;
+    left: 3px;
+    bottom: 3px;
+    display: grid;
+    place-items: center;
+    padding: 2px 3px;
+    border-radius: 7px;
+    background: color-mix(in srgb, var(--superficie) 92%, transparent);
+    box-shadow: 0 0 0 1px var(--linea-suave);
+  }
+  .insignia-simbolo :global(svg) {
+    display: block;
+  }
   .txt {
     display: grid;
     gap: 3px;
@@ -344,6 +390,9 @@
     .arte :global(svg) {
       width: 80px;
       height: auto;
+    }
+    .arte .insignia-simbolo :global(svg) {
+      width: 32px;
     }
   }
   @media (pointer: coarse) {

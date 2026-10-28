@@ -261,6 +261,7 @@ def main():
     ok = ejercicios.main([]) == 0 and ok  # self-checking exercises and problems: ejercicios.json (needs partes/)
     ok = glosario_imagenes.main([]) == 0 and ok  # glossary symbols and 3D models: glosario-imagenes.json
     ok = practica() and ok             # 0.10 «Aprender haciendo»: libro/practica/ (needs all of the above)
+    ok = miniaturas() and ok           # 0.10 list thumbnails: web/public/miniaturas/ (needs spice.json, ejercicios.json)
     if check_figs:
         validar.check_figures(figs, OUT)
     sys.exit(0 if ok else 1)
@@ -274,6 +275,22 @@ def practica():
         print('practica: falta node; no se generan las preguntas interactivas')
         return True
     return subprocess.run(['node', os.path.join('scripts', 'practica10.mjs')], cwd=web).returncode == 0
+
+
+def miniaturas():
+    """Thumbnails of the lists: netlist schematics and the figures that sections and exercises refer to
+    (web/scripts/miniaturas.mjs, Node + Playwright's Chromium for the figures; ESQUEMA.md «List thumbnails»).
+    Only new or changed figures are drawn again; the 3D models are done apart (--modelos), they do not depend
+    on the book."""
+    import subprocess
+    web = os.path.join(os.path.dirname(HERE), 'web')
+    if not shutil.which('node'):
+        print('miniaturas: falta node; no se generan las miniaturas de las listas')
+        return True
+    r = subprocess.run(['node', os.path.join('scripts', 'miniaturas.mjs'), '--esquemas', '--figuras'], cwd=web).returncode
+    if r:
+        print('miniaturas: falló (¿falta el Chromium de Playwright? npx playwright install chromium en web/)')
+    return r == 0
 
 
 if __name__ == '__main__':

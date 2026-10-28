@@ -2,6 +2,7 @@
   // «Simular» next to a figure, section, problem or exercise that has netlists in the book's material.
   import { spice, rutaSimulacion } from '../simulador/datos.svelte';
   import Icono from './Icono.svelte';
+  import MiniaturaEsquema from './miniaturas/MiniaturaEsquema.svelte';
 
   let { label, compacto = false }: { label: string | null | undefined; compacto?: boolean } = $props();
 
@@ -25,7 +26,7 @@
     {#if abierto}
       <ul class="menu">
         {#each ids as id (id)}
-          <li><a href={rutaSimulacion(id)} onclick={() => (abierto = false)}>{nombre(id)}</a></li>
+          <li><a href={rutaSimulacion(id)} onclick={() => (abierto = false)}><MiniaturaEsquema {id} /><span>{nombre(id)}</span></a></li>
         {/each}
       </ul>
     {/if}
@@ -87,8 +88,15 @@
     text-align: left;
   }
   .menu a {
-    display: block;
-    padding: 7px 10px;
+    /* Each netlist with a small thumbnail of its schematic. */
+    --mini-w: 72px;
+    --mini-h: 42px;
+    --mini-radio: 7px;
+    --mini-fondo: var(--superficie-2);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 8px;
     border-radius: 7px;
     color: var(--tinta);
     font-family: var(--mono);

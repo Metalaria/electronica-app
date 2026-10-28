@@ -1257,6 +1257,42 @@ Se generan con `node web/scripts/practica10.mjs` (unos 60 s; también lo llama `
 `web/public/libro/practica/`. Pruebas: `npx playwright test -c playwright.preguntas10.config.ts
 tests/preguntas10.spec.ts` (puerto 4391); capturas en `tests/capturas/preguntas10/`.
 
+## Miniaturas en las listas (0.10)
+
+Las listas largas enseñan una miniatura de lo que abre cada fila, de tamaño fijo (nada se mueve cuando llega) y
+pedida solo cuando la fila está a punto de verse:
+
+- **Simulador** (índice de netlists y menú «Simular» cuando una figura tiene varias): el esquema automático de cada
+  netlist, sin textos, dibujado con los colores del tema.
+- **Búsqueda**: la primera figura de la sección encontrada; si no tiene, el esquema de su netlist; en los términos del
+  glosario, su símbolo; si no hay nada, un hueco neutro.
+- **Ejercicios y problemas**: la figura que contiene o enlaza el enunciado (4), si no el esquema de su netlist (133), si
+  no un hueco neutro.
+- **Componentes en 3D** y **Componentes animados**: la imagen del modelo 3D (en las animaciones, con el símbolo como
+  insignia). Si faltara la imagen de un modelo, el catálogo la dibuja en el dispositivo con un único contexto WebGL.
+- **Mis circuitos** (editor): el circuito tal como lo dibuja el editor, sin textos. **Mis montajes** (protoboard): la
+  placa con sus piezas y cables, sin rótulos. Se dibujan en el dispositivo a partir de lo guardado, una vez por circuito
+  y guardado: al editar un circuito guardado, su miniatura se rehace.
+
+Todo está **precalculado** en `web/public/miniaturas/` (versionado, ≈ 2,9 MB: esquemas 430 kB en 48 ficheros por
+capítulo, 649 figuras en WebP de 192 × 144 como máximo 2,1 MB, 39 modelos en WebP de 384 × 288 con fondo
+transparente 270 kB), así que la tableta solo decodifica imágenes pequeñas fuera del hilo principal y no carga
+three.js para ver un catálogo. Se regenera con:
+
+```sh
+cd web
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node scripts/miniaturas.mjs              # todo
+node scripts/miniaturas.mjs --esquemas                                             # solo esquemas (sin navegador)
+node scripts/miniaturas.mjs --figuras | --modelos [--forzar] [--solo tipo1,tipo2]
+```
+
+`contenido/generar.py` lo llama al final con `--esquemas --figuras` (solo se rehacen las figuras nuevas o cambiadas);
+después de tocar los modelos 3D hay que ejecutar `--modelos --forzar`, y después de
+`scripts/esquema-auto-precalcular.mjs`, `--esquemas`. Pruebas: `npx playwright test -c
+playwright.miniaturas10.config.ts tests/miniaturas10.spec.ts` (puerto 4401): lo que muestra cada lista, carga
+perezosa, sin saltos, contextos WebGL, tareas largas al desplazar con la CPU ×4 (`rendimiento.json`) y capturas en
+`tests/capturas/miniaturas10/`.
+
 ## Diagnóstico de rendimiento
 
 «Ajustes» (el botón «Aa» de la barra superior) → **Diagnóstico de rendimiento** (`#/diagnostico`) mide en el propio

@@ -12,6 +12,7 @@
   import Icono from '../Icono.svelte';
   import Insignia from '../Insignia.svelte';
   import TarjetaEjercicio from './TarjetaEjercicio.svelte';
+  import MiniaturaLibro from '../miniaturas/MiniaturaLibro.svelte';
 
   type Filtro = 'todos' | Estado;
   type Tipo = 'todos' | 'ej' | 'prob';
@@ -193,6 +194,7 @@
               <li class:abierto={abierto === l}>
                 <button class="fila" aria-expanded={abierto === l} onclick={() => (abierto = abierto === l ? null : l)}>
                   <span class="num">{it.tipo === 'ej' ? '' : 'P '}{it.num}</span>
+                  <MiniaturaLibro clave={l} />
                   <span class="res">{it.titulo ?? it.resumen ?? ''}</span>
                   {#if it.modo === 'auto'}<span class="auto" title="Comprobación automática">{it.respuestas.length} {it.respuestas.length === 1 ? 'valor' : 'valores'}</span>{/if}
                   <span class="estado-r estado-{e}" title={ETIQUETA[e]}>{e === 'resuelto' ? '✓' : e === 'fallado' ? '✗' : '·'}</span>
@@ -360,6 +362,11 @@
     list-style: none;
   }
   .fila {
+    /* The figure or the circuit of the exercise, at a fixed size (placeholder when it has none). */
+    --mini-w: 68px;
+    --mini-h: 46px;
+    --mini-radio: 8px;
+    --mini-fondo: var(--superficie-2);
     display: flex;
     align-items: center;
     gap: 10px;
@@ -453,6 +460,14 @@
   @media (max-width: 520px) {
     .auto {
       display: none;
+    }
+    .fila {
+      --mini-w: 56px;
+      --mini-h: 40px;
+      padding-left: 10px;
+    }
+    .num {
+      min-width: 2.8em;
     }
   }
   :global(.app.movil) .pagina-ej {

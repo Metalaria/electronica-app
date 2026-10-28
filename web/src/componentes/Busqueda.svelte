@@ -8,6 +8,7 @@
   import { cerrarBuscador } from '../lib/acciones';
   import Icono from './Icono.svelte';
   import Insignia from './Insignia.svelte';
+  import MiniaturaLibro from './miniaturas/MiniaturaLibro.svelte';
 
   let consulta = $state('');
   let resultados = $state<Resultado[]>([]);
@@ -123,7 +124,7 @@
         <button class="cerrar" onclick={cerrarBuscador}>{app.movil ? 'Cerrar' : 'Esc'}</button>
       </div>
 
-      <div class="cuerpo" bind:this={lista}>
+      <div class="cuerpo" bind:this={lista} data-miniaturas-raiz>
         {#if !consulta.trim()}
           <div class="ayuda">
             <p><strong>Busque en todo el libro:</strong> secciones de todos los capítulos y términos del glosario.</p>
@@ -153,6 +154,7 @@
                     <span class="donde">{etiqueta(r)}</span>
                     <span class="frag">{@html fragmento(r.doc.texto, r.terminos)}</span>
                   </span>
+                  <MiniaturaLibro clave={r.doc.id} icono={r.doc.parte === 'glosario' ? 'termino' : 'seccion'} />
                 </a>
               </li>
             {/each}
@@ -292,6 +294,10 @@
     list-style: none;
   }
   li a {
+    /* The figure of the section (or its circuit, or the term's symbol) on the right, at a fixed size. */
+    --mini-w: 88px;
+    --mini-h: 66px;
+    --mini-fondo: var(--superficie-2);
     display: flex;
     gap: 12px;
     padding: 11px 12px;
@@ -360,6 +366,12 @@
     text-align: center;
   }
   @media (max-width: 640px) {
+    li a {
+      --mini-w: 72px;
+      --mini-h: 54px;
+      gap: 10px;
+      padding: 10px 8px;
+    }
     .capa {
       padding: 0;
       background: var(--superficie);

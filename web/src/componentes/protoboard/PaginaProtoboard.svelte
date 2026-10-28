@@ -19,6 +19,8 @@
     renombrarMontaje,
   } from './circuitos.svelte';
   import type { DocumentoProtoboard } from './tipos.ts';
+  import { miniaturaMontaje } from './miniatura';
+  import MiniaturaFigura from '../miniaturas/MiniaturaFigura.svelte';
 
   let { ruta }: { ruta: string } = $props();
 
@@ -134,7 +136,7 @@
                       <input class="nombre" type="text" aria-label="Nuevo nombre" bind:value={nombreNuevo} onkeydown={(e) => { if (e.key === 'Enter') void renombrar(m.id); if (e.key === 'Escape') editando = null; }} />
                       <button type="button" class="enlace" onclick={() => renombrar(m.id)}>Aceptar</button>
                     {:else}
-                      <a href={`#/protoboard/${m.id}`} onclick={() => (verLista = false)}>{m.nombre}</a>
+                      <a href={`#/protoboard/${m.id}`} onclick={() => (verLista = false)}><MiniaturaFigura src={miniaturaMontaje(m)} icono="esquema" /><span>{m.nombre}</span></a>
                       <span class="fecha">{new Date(m.actualizado).toLocaleDateString('es-ES')}</span>
                       <button type="button" class="enlace" onclick={() => { editando = m.id; nombreNuevo = m.nombre; }}>Renombrar</button>
                     {/if}
@@ -209,7 +211,15 @@
     font-weight: 700;
   }
   .lista a {
+    /* A small drawing of the board with its parts (fixed size: list thumbnails, componentes/miniaturas). */
+    --mini-w: 84px;
+    --mini-h: 52px;
+    --mini-radio: 8px;
     flex: 1 1 10em;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
   }
   .nombre {
     flex: 1 1 10em;

@@ -1,6 +1,9 @@
 <script lang="ts">
   // «Componentes 3D»: the catalogue of every procedural model, grouped by family, with an accent-insensitive
-  // filter and thumbnails rendered on this device (lazily, one by one) when WebGL2 is available.
+  // filter and thumbnails: the WebP images pre-rendered by scripts/miniaturas.mjs (transparent, the card's
+  // studio colour of each theme shows through), requested when a card is about to be seen. Only when one is
+  // missing (a model added without running the script) is it drawn on this device, by the shared off-screen
+  // renderer of miniaturas.ts (one WebGL context for the whole page).
   import { onMount } from 'svelte';
   import Search from '@lucide/svelte/icons/search';
   import X from '@lucide/svelte/icons/x';
@@ -9,15 +12,19 @@
   import { referencia } from '../animaciones/referencias';
   import { normalizar } from '../../lib/datos';
   import { ruta } from '../../lib/ruta.svelte';
-  import { app } from '../../lib/estado.svelte';
   import { soporteWebGL2 } from './motor/soporte';
+  import { urlModelo3d } from '../miniaturas/datos';
+  import { visible } from '../miniaturas/visible';
   import Conmutador from './Conmutador.svelte';
 
   let consulta = $state('');
   let familia = $state('');
-  let imagenes = $state<Record<string, string>>({});
+  /** Cards seen (their image is requested), pre-rendered images that failed, thumbnails drawn here. */
+  let vistos = $state<Record<string, boolean>>({});
+  let fallidos = $state<Record<string, boolean>>({});
+  let dibujadas = $state<Record<string, string | null>>({});
   let sinWebGL = $state(false);
-  let caja: HTMLDivElement | undefined = $state();
+  let vivo = true;
 
   const filtrados = $derived.by(() => {
     const palabras = normalizar(consulta).split(/\s+/).filter(Boolean);
@@ -39,45 +46,36 @@
       .map((r) => r!.num);
   }
 
-  // Thumbnails: re-rendered when the theme changes (the studio background follows it).
-  let generacion = 0;
-  async function miniaturas(): Promise<void> {
+  // Fallback for a missing pre-rendered image: drawn here, transparent like the files (so it does not depend
+  // on the theme), queued in miniaturas.ts, which renders one at a time and keeps the object URLs.
+  async function dibujar(m: Modelo3D): Promise<void> {
+    fallidos[m.tipo] = true;
     if (!soporteWebGL2()) {
       sinWebGL = true;
+      dibujadas[m.tipo] = null;
       return;
     }
-    const g = ++generacion;
-    const { miniatura } = await import('./miniaturas');
-    const css = caja ? getComputedStyle(caja) : null;
-    const fondo = css?.getPropertyValue('--fondo-3d').trim() || '#eeece6';
-    const oscuro = app.tema === 'oscuro';
-    for (const m of MODELOS_3D) {
-      if (g !== generacion) return;
-      try {
-        const url = await miniatura(m.tipo, m.defecto, m.montaje, fondo, oscuro);
-        if (g === generacion) imagenes[m.tipo] = url;
-      } catch {
-        /* the card keeps its placeholder */
-      }
+    try {
+      const { miniatura } = await import('./miniaturas');
+      const url = await miniatura(m.tipo, m.defecto, m.montaje, null, false);
+      if (vivo) dibujadas[m.tipo] = url;
+    } catch {
+      if (vivo) dibujadas[m.tipo] = null;
     }
   }
 
-  $effect(() => {
-    void app.tema;
-    void miniaturas();
-  });
-
   onMount(() => {
+    sinWebGL = !soporteWebGL2();
     window.scrollTo({ top: ruta.y ?? 0, behavior: 'instant' });
     return () => {
-      generacion++;
+      vivo = false;
     };
   });
 </script>
 
 <svelte:head><title>Componentes 3D · Electrónica Práctica Avanzada</title></svelte:head>
 
-<div class="catalogo3d" bind:this={caja}>
+<div class="catalogo3d">
   <header>
     <div class="fila">
       <p class="sobre">Componentes en 3D</p>
@@ -115,8 +113,14 @@
         {#each g.items as m (m.tipo)}
           <li>
             <a class="tarjeta" href={`#/componentes/3d/${m.tipo}`} data-tipo={m.tipo}>
-              <span class="arte">
-                {#if imagenes[m.tipo]}<img src={imagenes[m.tipo]} alt="" width="192" height="144" />{:else}<span class="hueco">{m.encapsulado}</span>{/if}
+              <span class="arte" data-miniatura="modelo" use:visible={() => (vistos[m.tipo] = true)}>
+                {#if dibujadas[m.tipo]}
+                  <img src={dibujadas[m.tipo]} alt="" width="384" height="288" decoding="async" />
+                {:else if vistos[m.tipo] && !fallidos[m.tipo]}
+                  <img src={urlModelo3d(m.tipo)} alt="" width="384" height="288" loading="lazy" decoding="async" onerror={() => dibujar(m)} />
+                {:else if dibujadas[m.tipo] === null}
+                  <span class="hueco">{m.encapsulado}</span>
+                {/if}
               </span>
               <span class="txt">
                 <span class="tit">{m.nombre}</span>

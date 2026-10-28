@@ -1,6 +1,8 @@
 <script lang="ts">
   // «Mis circuitos»: the circuits saved on this device — open, rename, delete.
   import { biblioteca, borrar, listaCircuitos, renombrar } from './circuitos.svelte';
+  import { miniaturaCircuito } from './miniatura';
+  import MiniaturaEsquema from '../miniaturas/MiniaturaEsquema.svelte';
   import X from '@lucide/svelte/icons/x';
   import Pencil from '@lucide/svelte/icons/pencil';
   import Trash from '@lucide/svelte/icons/trash-2';
@@ -51,8 +53,11 @@
               </form>
             {:else}
               <a href={`#/editor/${c.id}`} onclick={cerrar}>
-                <strong>{c.nombre}</strong>
-                <span>{c.doc.componentes.length} elementos · {fecha(c.actualizado)}</span>
+                <MiniaturaEsquema dibujo={miniaturaCircuito(c)} />
+                <span class="txt">
+                  <strong>{c.nombre}</strong>
+                  <span>{c.doc.componentes.length} elementos · {fecha(c.actualizado)}</span>
+                </span>
               </a>
               {#if confirmar === c.id}
                 <button type="button" class="boton peligro" onclick={() => { void borrar(c.id); confirmar = null; }}>Borrar</button>
@@ -119,15 +124,25 @@
     background: var(--superficie-2);
   }
   li a {
+    /* The circuit as the editor draws it, at a fixed size (list thumbnails, componentes/miniaturas). */
+    --mini-w: 84px;
+    --mini-h: 52px;
+    --mini-radio: 8px;
     flex: 1;
     min-width: 0;
-    display: grid;
-    gap: 1px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
     padding: 6px 0;
     color: var(--tinta);
     text-decoration: none;
   }
-  li a span {
+  .txt {
+    display: grid;
+    gap: 1px;
+    min-width: 0;
+  }
+  li a .txt span {
     font-size: 12.5px;
     color: var(--tinta-tenue);
   }

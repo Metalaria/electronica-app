@@ -6,6 +6,7 @@
   import { colorBloque } from '../../lib/color';
   import Icono from '../Icono.svelte';
   import PestanasSimulador from './PestanasSimulador.svelte';
+  import MiniaturaEsquema from '../miniaturas/MiniaturaEsquema.svelte';
 
   let indice = $state<IndiceSpice | null>(null);
   let cargado = $state(false);
@@ -102,16 +103,19 @@
             {@const n = indice.netlists[id]!}
             <li>
               <a href={rutaSimulacion(id)}>
-                <span class="linea1">
-                  {#if n.ref}<span class="ref">{rotuloRef(n.ref)}</span>{/if}
-                  <span class="tit">{n.titulo || n.nombre}</span>
-                  {#each n.analisis as a (a)}<span class="etq">.{a}</span>{/each}
-                  {#if n.motor.estado === 'no-disponible'}<span class="marca no" title={n.motor.nota}>no disponible</span>
-                  {:else if n.motor.pesada}<span class="marca" title="Tarda en simular">pesada</span>{/if}
-                  {#if n.motor.xspice}<span class="marca" title="Usa dispositivos digitales XSPICE">XSPICE</span>
-                  {:else if n.motor.original}<span class="marca" title="Versión analógica de un circuito XSPICE">analógica</span>{/if}
+                <MiniaturaEsquema {id} />
+                <span class="texto">
+                  <span class="linea1">
+                    {#if n.ref}<span class="ref">{rotuloRef(n.ref)}</span>{/if}
+                    <span class="tit">{n.titulo || n.nombre}</span>
+                    {#each n.analisis as a (a)}<span class="etq">.{a}</span>{/each}
+                    {#if n.motor.estado === 'no-disponible'}<span class="marca no" title={n.motor.nota}>no disponible</span>
+                    {:else if n.motor.pesada}<span class="marca" title="Tarda en simular">pesada</span>{/if}
+                    {#if n.motor.xspice}<span class="marca" title="Usa dispositivos digitales XSPICE">XSPICE</span>
+                    {:else if n.motor.original}<span class="marca" title="Versión analógica de un circuito XSPICE">analógica</span>{/if}
+                  </span>
+                  <span class="desc">{resumen(n.descripcion)}</span>
                 </span>
-                <span class="desc">{resumen(n.descripcion)}</span>
               </a>
             </li>
           {/each}
@@ -204,7 +208,13 @@
     padding: 0;
   }
   li a {
-    display: block;
+    /* Thumbnail of the automatic schematic (fixed size: no shift when it arrives) beside the text. */
+    --mini-w: 112px;
+    --mini-h: 64px;
+    --mini-fondo: var(--superficie-2);
+    display: flex;
+    gap: 14px;
+    align-items: flex-start;
     min-height: var(--toque);
     padding: 9px 10px;
     border-radius: var(--radio-boton);
@@ -213,6 +223,10 @@
   }
   li a:hover {
     background: var(--hover);
+  }
+  .texto {
+    flex: 1;
+    min-width: 0;
   }
   .linea1 {
     display: flex;
@@ -269,6 +283,12 @@
   @media (max-width: 599px) {
     .indice-sim {
       padding: 16px 16px 60px;
+    }
+    li a {
+      --mini-w: 84px;
+      --mini-h: 52px;
+      gap: 10px;
+      padding: 9px 6px;
     }
   }
 </style>

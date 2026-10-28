@@ -2274,3 +2274,40 @@ token, at start-up at most every 12 h, silent on errors, compared with `VERSION_
 notes, this device's installer and «Ver la publicación» (Tauri: `plugin:opener|open_url`; browser: new tab).
 Without a token nothing is requested. Tests: `tests/sincronizacion.spec.ts` (GitHub mocked with `route()`);
 screenshots: `node tests/sincronizacion-capturas.mjs --url …` → `tests/capturas/sincronizacion/`.
+
+## List thumbnails (0.10, `web/src/componentes/miniaturas/`, data in `web/public/miniaturas/`)
+
+Pre-rendered by `web/scripts/miniaturas.mjs` (called by `contenido/generar.py` with `--esquemas --figuras`):
+- `esquemas/<parte>.json` `{ version: 1, esquemas: { <netlist name>: [w, h, wires, strokes, inkFills, bgFills] } }`:
+  `esquema-auto/miniatura.ts` (`trazosMiniatura`) reduces the automatic schematic (same layout as the app: precalculado
+  seeds, `aspecto` 1.8) to four path strings on an integer grid of 10 units per pin pitch, relative commands, no text,
+  no ± signs, bounds of what is drawn (the sheet's bounds include the labels). ≈ 1,4 kB per netlist.
+- `indice.json` `{ version: 1, w: 192, h: 144, figuras: { <label>: "fig/<n>" | "img/<n>" } }`: for each `h2` section
+  of `busqueda.json` its first figure up to the next `h2` (inside boxes, as the reference preview), and for each item
+  of `ejercicios.json` a figure inside its statement (`pos` range) or else the first `data-ref="fig-…"` it links to.
+- `fig/<n>.webp`, `img/<n>.webp`: those figures fitted in 192 × 144 (drawn at 2× and halved, WebP 0.8, transparent;
+  the page puts them on `--placa` with `--placa-filtro`). Redone when the source is newer.
+- `3d/<tipo>.webp`: every model of `MODELOS_3D` at its defaults and catalogue mounting, 384 × 288, transparent
+  background (`tres/miniaturas.ts` with `fondo: null`: no scene background, clear alpha 0, shadow opacity 0,4), so
+  one image serves every theme over the card's `--fondo-3d`.
+
+Runtime: `visible.ts` (one IntersectionObserver per scroll root and margin, 240 px; the root is the nearest
+`[data-miniaturas-raiz]` ancestor, e.g. the search panel, else the viewport; the callback runs once),
+`datos.ts` (the index and each chapter file fetched once per session; synchronous lookups so a list redrawn by a
+filter does not flash), `MiniaturaEsquema.svelte` (`id` = netlist id, or `dibujo` = the paths themselves),
+`MiniaturaFigura.svelte` (`<img loading="lazy" decoding="async">`, src set only when seen), `MiniaturaLibro.svelte`
+(label → figure, else `spice.porRef[label][0]`'s schematic, else the glossary symbol of `glosario/simbolo.ts`, else
+`Hueco.svelte`), all fixed boxes sized by `--mini-w`/`--mini-h` (`--mini-fondo`, `--mini-radio`), with
+`data-miniatura` (`esquema | figura | simbolo | libro | modelo`) and `data-estado` (`espera | lista | hueco`).
+Used by `simulador/Indice.svelte`, `BotonSimular.svelte`, `Busqueda.svelte`, `aprender/PaginaEjercicios.svelte`,
+`tres/Catalogo3D.svelte` (a card's image is requested when it is about to be seen; a missing file falls back to
+`tres/miniaturas.ts`, the shared off-screen renderer, transparent too) and `animaciones/Galeria.svelte` (component
+animations listed in a model's `animaciones` show that model with the animation's symbol as a badge).
+The reader's own drawings are made on the device, cached per saved item and its `actualizado` (redrawn only after
+a save): «Mis circuitos» (`editor/MisCircuitos.svelte`) uses `editor/miniatura.ts` (`miniaturaCircuito`: the
+editor's `geometria()` symbols, wires and `conectividad()` junctions through `Trazador`, the builder of
+`esquema-auto/miniatura.ts`) with `MiniaturaEsquema dibujo=…`; «Mis montajes» (`protoboard/PaginaProtoboard.svelte`)
+uses `protoboard/miniatura.ts` (`miniaturaMontaje`: `svgMontaje` without labels, viewBox cropped to the parts and
+hole-to-hole jumpers — not the bench equipment nor rail-to-rail jumpers — at the box's aspect, as an SVG data URL)
+with `MiniaturaFigura src=…`. Both 84 × 52.
+Tests: `tests/miniaturas10.spec.ts` (`playwright.miniaturas10.config.ts`, port 4401).

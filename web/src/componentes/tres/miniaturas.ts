@@ -1,8 +1,10 @@
-// Catalogue thumbnails: one shared off-screen renderer draws each model once (same studio and framing as the
-// viewer) into a small PNG; sequential, one per idle slot, and the renderer is released when the queue is
-// empty. Part of the 3D chunk (imported lazily by the catalogue).
+// Model thumbnails: one shared off-screen renderer draws each model once (same studio and framing as the
+// viewer) into a small image (WebP where the browser can encode it, else PNG); sequential, one per idle slot,
+// and the renderer is released when the queue is empty. Part of the 3D chunk, imported lazily by the
+// glossary and by the catalogue (whose thumbnails are normally the WebP files pre-rendered by
+// scripts/miniaturas.mjs with a transparent background, `fondo` null; this is its fallback).
 
-import { Box3, PerspectiveCamera, Sphere, Vector3, WebGLRenderer, NeutralToneMapping, SRGBColorSpace } from 'three';
+import { Box3, MeshBasicMaterial, PerspectiveCamera, Sphere, Vector3, WebGLRenderer, NeutralToneMapping, SRGBColorSpace } from 'three';
 import { crearEstudio, type Estudio } from './motor/estudio';
 import { crearPlaca } from './motor/placa';
 import type { DatosModelo } from './modelos/tipos';
@@ -14,7 +16,8 @@ interface Pedido {
   tipo: string;
   p: Parametros;
   montaje: Montaje;
-  fondo: string;
+  /** Studio background colour, or null for a transparent background. */
+  fondo: string | null;
   oscuro: boolean;
   resolver: (url: string) => void;
   rechazar: (e: unknown) => void;
@@ -34,7 +37,7 @@ function preparar(): void {
   const c = document.createElement('canvas');
   c.width = W;
   c.height = H;
-  renderer = new WebGLRenderer({ canvas: c, antialias: true, preserveDrawingBuffer: true });
+  renderer = new WebGLRenderer({ canvas: c, antialias: true, preserveDrawingBuffer: true, alpha: true });
   renderer.setPixelRatio(1);
   renderer.setSize(W, H, false);
   renderer.outputColorSpace = SRGBColorSpace;
@@ -54,7 +57,14 @@ function dibujar(x: Pedido): Promise<string> {
   preparar();
   const r = renderer!;
   const e = estudio!;
-  e.ponerFondo(x.fondo, x.oscuro);
+  e.ponerFondo(x.fondo ?? '#000000', x.oscuro);
+  if (x.fondo == null) {
+    // Transparent: the page's own studio colour shows through (one image for every theme); a shadow
+    // strength between the light (0.3) and dark (0.55) studios.
+    e.escena.background = null;
+    r.setClearColor(0x000000, 0);
+    (e.sombra.material as MeshBasicMaterial).opacity = 0.4;
+  }
   // Thumbnails: markings at board resolution (a 1024 px texture per marking is wasted at this size).
   const g = crearModelo(x.tipo, x.p, { montaje: x.montaje, marcas: 'baja' });
   e.raiz.add(g);
@@ -91,7 +101,7 @@ function dibujar(x: Pedido): Promise<string> {
     placa.liberar();
   }
   return new Promise((res, rej) =>
-    (r.domElement as HTMLCanvasElement).toBlob((b) => (b ? res(URL.createObjectURL(b)) : rej(new Error('toBlob'))), 'image/png'),
+    (r.domElement as HTMLCanvasElement).toBlob((b) => (b ? res(URL.createObjectURL(b)) : rej(new Error('toBlob'))), 'image/webp', 0.9),
   );
 }
 
@@ -113,9 +123,9 @@ async function trabajar(): Promise<void> {
   cierre = setTimeout(soltar, 3000);
 }
 
-/** PNG object URL of a model thumbnail (cached per model, parameters and theme). */
-export function miniatura(tipo: string, p: Parametros, montaje: Montaje, fondo: string, oscuro: boolean): Promise<string> {
-  const clave = `${tipo}|${JSON.stringify(p)}|${montaje}|${fondo}`;
+/** Object URL of a model thumbnail (cached per model, parameters and background). */
+export function miniatura(tipo: string, p: Parametros, montaje: Montaje, fondo: string | null, oscuro: boolean): Promise<string> {
+  const clave = `${tipo}|${JSON.stringify(p)}|${montaje}|${fondo ?? 'transparente'}`;
   let pr = hechas.get(clave);
   if (!pr) {
     pr = new Promise<string>((resolver, rechazar) => cola.push({ clave, tipo, p, montaje, fondo, oscuro, resolver, rechazar }));
