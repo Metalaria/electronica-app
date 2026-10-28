@@ -51,6 +51,7 @@
   import ChevronUp from '@lucide/svelte/icons/chevron-up';
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
   import TextSearch from '@lucide/svelte/icons/text-search';
+  import Grid3x3 from '@lucide/svelte/icons/grid-3x3';
 
   const ICONOS = {
     menu: Menu,
@@ -86,6 +87,7 @@
     'letra-menos': AArrowDown,
     tomos: Library,
     simulador: Activity,
+    protoboard: Grid3x3,
     componentes: Atom,
     conceptos: AudioWaveform,
     instrumentos: Gauge,

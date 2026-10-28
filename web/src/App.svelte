@@ -18,6 +18,7 @@
   import Busqueda from './componentes/Busqueda.svelte';
   import VisorFigura from './componentes/VisorFigura.svelte';
   import Arranque from './componentes/sincronizacion/Arranque.svelte';
+  import { capaProtoboard } from './lib/protoboard.svelte';
 
   let oscuroSistema = $state(false);
 
@@ -295,6 +296,14 @@
 {/if}
 {#if app.figura}
   <VisorFigura />
+{/if}
+{#if capaProtoboard.fuente}
+  <!-- «Ver en protoboard»: the breadboard sandbox over a schematic, its own chunk. -->
+  {#await import('./componentes/protoboard/CapaProtoboard.svelte') then m}
+    {#key capaProtoboard.n}
+      <m.default fuente={capaProtoboard.fuente} />
+    {/key}
+  {/await}
 {/if}
 <Arranque />
 

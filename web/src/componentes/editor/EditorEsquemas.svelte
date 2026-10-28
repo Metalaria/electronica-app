@@ -18,6 +18,7 @@
   import VistaViva from './VistaViva.svelte';
   import MisCircuitos from './MisCircuitos.svelte';
   import { importarNetlist } from './importar.ts';
+  import { abrirProtoboard } from '../../lib/protoboard.svelte';
   import { dibujoVivo } from './vivo.ts';
   import { svgDocumento } from './svg.ts';
   import { documentoVacio, type DocumentoEsquema } from './tipos.ts';
@@ -147,6 +148,12 @@
       }, 500);
     });
   });
+
+  /** «Ver en protoboard»: the drawing as it is now, full screen; the drawing itself does not change. */
+  function verProtoboard() {
+    const doc = JSON.parse(JSON.stringify($state.snapshot(ed.doc))) as DocumentoEsquema;
+    abrirProtoboard({ tipo: 'documento', doc, titulo: doc.titulo || 'Circuito del editor' });
+  }
 
   async function guardar() {
     if (idGuardado) return;
@@ -421,6 +428,7 @@
     <div class="botones">
       {#if !idGuardado}<button type="button" class="boton primario" onclick={guardar} disabled={!ed.doc.componentes.length}>Guardar</button>{/if}
       <button type="button" class="boton" onclick={() => (verCircuitos = true)}>Mis circuitos</button>
+      <button type="button" class="boton" onclick={verProtoboard} disabled={!ed.doc.componentes.length} title="Montar este circuito en una protoboard virtual (una prueba: el esquema no cambia)">Ver en protoboard</button>
       <button type="button" class="boton" onclick={nuevo}>Nuevo</button>
       {#if app.movil}
         <button type="button" class="boton" aria-haspopup="menu" aria-expanded={verArchivo} onclick={() => (verArchivo = !verArchivo)}>Archivo ▾</button>

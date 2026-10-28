@@ -4,14 +4,14 @@
   import { formatoCorto } from '../grafica/formato.ts';
   import { tipoDe, ES_CONEXION, type Campo } from './catalogo.ts';
   import { definidos, modelosDe } from './modelos.ts';
-  import type { Editor } from './estado.svelte';
+  import type { EdicionPropiedades } from './estado.svelte';
   import { leerValor } from './valores.ts';
   import RotateCw from '@lucide/svelte/icons/rotate-cw';
   import FlipHorizontal from '@lucide/svelte/icons/flip-horizontal-2';
   import Trash from '@lucide/svelte/icons/trash-2';
   import CopyPlus from '@lucide/svelte/icons/copy-plus';
 
-  let { ed }: { ed: Editor } = $props();
+  let { ed }: { ed: EdicionPropiedades } = $props();
 
   const c = $derived(ed.unico);
   const tipo = $derived(c ? tipoDe(c) : null);

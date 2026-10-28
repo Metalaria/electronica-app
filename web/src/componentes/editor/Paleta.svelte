@@ -4,7 +4,7 @@
   import { normalizar } from '../../lib/datos';
   import { TIPOS, type Tipo } from './catalogo.ts';
   import { geometria, S } from './geometria.ts';
-  import type { Editor } from './estado.svelte';
+  import type { EdicionPaleta } from './estado.svelte';
   import type { Componente } from './tipos.ts';
 
   let {
@@ -12,7 +12,7 @@
     arrastre,
     horizontal = false,
   }: {
-    ed: Editor;
+    ed: EdicionPaleta;
     /** Drag towards the canvas (screen point), returns whether it is over the canvas. */
     arrastre: (tipo: string, x: number, y: number, fase: 'mover' | 'soltar' | 'cancelar') => boolean;
     horizontal?: boolean;

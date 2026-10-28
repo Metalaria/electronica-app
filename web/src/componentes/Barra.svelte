@@ -5,7 +5,7 @@
   import { app } from '../lib/estado.svelte';
   import { ruta } from '../lib/ruta.svelte';
   import { infoParte, rotuloParte } from '../lib/datos';
-  import { HERRAMIENTAS, INICIO, alternarIndice, corto, indiceOculto, pasoVecino } from '../lib/navegacion.svelte';
+  import { HERRAMIENTAS, INICIO, alternarIndice, corto, esActiva, indiceOculto, pasoVecino } from '../lib/navegacion.svelte';
   import Icono from './Icono.svelte';
   import Ajustes from './Ajustes.svelte';
   import MenuCapitulo from './MenuCapitulo.svelte';
@@ -16,7 +16,7 @@
     if (!app.cargado) return '';
     if (ruta.vista === 'inicio') return INICIO.etiqueta;
     if (info) return corto(info.titulo);
-    return HERRAMIENTAS.find((h) => (h.vistas ?? [h.id]).includes(ruta.vista))?.etiqueta ?? '';
+    return HERRAMIENTAS.find(esActiva)?.etiqueta ?? '';
   });
   const rotulo = $derived(info ? rotuloParte(ruta.parte) : '');
   const conNumero = $derived(info?.num != null);

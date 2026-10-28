@@ -317,6 +317,13 @@ export class Editor {
   }
 }
 
+/**
+ * What the properties panel and the palette use of an editor. The breadboard (componentes/protoboard/)
+ * offers the same members over its own parts, so it reuses both panels unchanged.
+ */
+export type EdicionPropiedades = Pick<Editor, 'unico' | 'sel' | 'doc' | 'con' | 'nl' | 'cambiarCampo' | 'renombrar' | 'transformar' | 'duplicar' | 'borrar' | 'cambiar'>;
+export type EdicionPaleta = Pick<Editor, 'herramienta' | 'colocando' | 'sel'>;
+
 function mismo(a: number[], b: number[]): boolean {
   const eq = (i: number, j: number) => Math.abs(a[i]! - b[j]!) < 1e-9;
   return (eq(0, 0) && eq(1, 1) && eq(2, 2) && eq(3, 3)) || (eq(0, 2) && eq(1, 3) && eq(2, 0) && eq(3, 1));

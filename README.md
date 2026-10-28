@@ -268,7 +268,7 @@ generada en el simulador de texto.
 - **Paleta** con buscador: resistencia, potenciómetro, condensador, bobina, transformador, interruptor, fuentes
   de tensión y de corriente (continua, senoidal, pulsos, por tramos o texto SPICE), fuentes controladas E y G,
   diodo, Zener, LED, Schottky, transistores NPN y PNP, MOSFET N y P, JFET N y P, operacional (con o sin
-  patillas de alimentación), masa, alimentación, etiqueta de red, sonda de tensión, voltímetro entre dos
+  patillas de alimentación), temporizador 555 (0.10, un modelo de comportamiento), masa, alimentación, etiqueta de red, sonda de tensión, voltímetro entre dos
   puntos y amperímetro. Un toque en la paleta y otro en el lienzo coloca la pieza; también se puede arrastrar.
 - **Digital (XSPICE)**: puertas AND, OR, NAND, NOR y XOR de dos entradas e inversor, con su retardo; biestables
   D y JK (reloj por flanco de subida, S y R opcionales, estado inicial); puente analógico → digital (con sus
@@ -313,6 +313,96 @@ generada en el simulador de texto.
 | `Ctrl Z` · `Ctrl Y` | Deshacer · rehacer |
 | `Ctrl C` `Ctrl X` `Ctrl V` `Ctrl D` `Ctrl A` | Copiar, cortar, pegar, duplicar, seleccionar todo |
 | `W` · `S` · `G` · `F` · `Esc` | Cable · seleccionar · masa · ver todo · cancelar |
+
+## Protoboard (0.10)
+
+Una protoboard virtual para montar los circuitos como en el laboratorio: cada pieza se dibuja como es (la
+resistencia con sus bandas de colores, el LED con la pata larga y el lado plano, el electrolítico con la franja
+del negativo, los transistores TO-92 y TO-220 con su patillaje según el modelo, los integrados DIP a caballo
+del canal central, el trimmer, el conmutador deslizante) y la fuente de alimentación, el generador de funciones
+o la fuente de corriente quedan encima de la placa con sus puntas enchufadas en los carriles o en las tiras.
+
+**«Ver en protoboard»** aparece en todo esquema que tiene un circuito real detrás:
+
+- bajo las figuras del libro que comprueba alguna netlist (como «Simular»; si son varias, un menú) y bajo las
+  que tienen un esquema simulable en sus datos; no en las figuras que son solo dibujos (diagramas de bloques,
+  esquemas sin valores o sin fuentes, fotos) ni en las consolas;
+- en la página de cada netlist del simulador (y en la netlist libre), con la netlist tal como esté (deslizadores
+  y cambios incluidos);
+- en el editor de esquemas, con el dibujo tal como esté.
+
+Se abre a pantalla completa con el circuito ya montado: piezas colocadas, cables entre las tiras de cada red,
+la alimentación y la masa en los carriles. Es una prueba: se puede cambiar todo y simularlo, y al cerrar (la X
+o «Atrás») el esquema de partida queda exactamente como estaba. «Guardar como montaje propio» guarda una copia
+en «Mis montajes».
+
+- **Mover**: arrastrar una pieza la lleva a otros agujeros (en rojo donde no cabe: un agujero ocupado, una
+  pata bajo otra pieza, dos cuerpos uno encima de otro). En las piezas de dos patas y en los cables, al
+  elegirlos aparecen asas en las patas o los extremos: arrastrándolas se enchufan en otro agujero (las patas
+  se doblan). Los cables no siguen a las piezas: como en una protoboard de verdad, mover una pieza cambia el
+  circuito.
+- **Girar** (90°) y **Dar la vuelta** (invierte las patas: el LED o el diodo al revés, el transistor girado, el
+  integrado con la muesca al otro lado). **Conmutar** cambia el interruptor (también con doble toque).
+- **Cable**: con la herramienta Cable, toque un agujero libre (o un borne de la fuente) y luego otro, o
+  arrastre de uno a otro; con el ratón basta arrastrar desde un agujero libre. Su color se cambia en «Pieza».
+- **Añadir**: la paleta del editor de esquemas; la pieza aparece en un hueco libre a la vista y luego se
+  arrastra a su sitio. Las fuentes y los generadores van encima de la placa: sus puntas se llevan con Cable.
+- **Pieza**: las propiedades del editor (nombre, valor, modelo, forma de onda…). Cambiar el modelo de un
+  transistor cambia su patillaje (un BC547 tiene el colector donde un 2N3904 tiene el emisor); cambiar el valor
+  de un condensador puede convertirlo en electrolítico.
+- **Esquema**: el esquema que sale de lo montado, dibujado al momento con el trazado automático (o la figura del
+  libro mientras el montaje coincide con ella): cambia con cada pieza y cada cable. Tocar una pieza en el
+  esquema la elige en la protoboard.
+- **Simulación**: «Simular» ejecuta el circuito montado con los análisis del original y muestra las gráficas y
+  medidas del simulador; el esquema enseña tensiones y corrientes. Desde entonces cada cambio recalcula el punto
+  de trabajo: los LED se encienden y, al tocar un agujero, se ve su tensión. Los errores de montaje también se
+  simulan: así se ve qué pasa.
+- **Avisos**, sin bloquear nada: cortocircuito entre los bornes de una fuente, una pieza cortocircuitada por su
+  propia tira, LED, diodo o electrolítico al revés (respecto al esquema y por las tensiones), transistor o
+  integrado girados, patilla de un integrado al aire, puntas que no llegan, dos patas en un agujero, y si el
+  montaje corresponde al esquema original o qué red está partida o unida.
+- Tocar un agujero marca su tira y todo lo unido a ella, con el nombre de la red y, tras simular, su tensión.
+
+**Puertas lógicas en chips 74HC reales.** Las puertas y biestables de un circuito (los de las netlists
+digitales del libro, escritas con XSPICE; los subcircuitos de sus versiones analógicas; las piezas «Digital» del
+editor) se montan agrupados por tipo en chips DIP de la serie 74HC con su patillaje real: 74HC00 (NAND), 74HC02
+(NOR), 74HC04 (inversores), 74HC08 (AND), 74HC32 (OR), 74HC86 (XOR), 74HC10, 74HC11 y 74HC27 (de tres entradas),
+74HC20 y 74HC21 (de cuatro), 74HC30 (NAND de ocho), 74HC4078 (OR de ocho en la patilla 1 y NOR en la 13),
+74HC74 (dos biestables D) y 74HC112 (dos JK). Un biestable T se monta con uno de los D del 74HC74 y una XOR del
+74HC86 cableadas como D = T ⊕ Q (la XOR recibe T y Q, y su salida va a D): cambia en el flanco de subida, como el
+del libro, así que el contador asíncrono cuenta hacia arriba también con chips reales. El chip lleva su nombre impreso; la patilla 14 (Vcc)
+va al carril rojo y la 7 (GND) al azul (16 y 8 en el 74HC112), con una fuente de 5 V propia si el circuito no
+tiene una de entre 2 y 6 V; las entradas que el circuito no usa se atan con un cable a un carril (a + en una AND
+o NAND, a − en las demás; PRE y CLR de los biestables a +, inactivas). La simulación no cambia: sigue usando los
+modelos digitales de XSPICE, y esos cables de atar no están en la netlist. «Pieza» enseña el patillaje del chip
+(qué puerta lleva cada patilla, cuáles están libres) y deja elegir la puerta cuyas propiedades se editan. Si se
+quita uno de esos cables, «Avisos» dice qué entrada CMOS ha quedado al aire, y también si el chip no tiene Vcc o
+masa, o si falta uno de los cables de un biestable T (de la salida de la XOR a D, o de Q a la XOR). Una puerta
+añadida desde «Añadir» llega en su chip, con lo demás por cablear. Diferencias con el chip real que se indican en
+su descripción: el 74HC112 cambia en el flanco de bajada y PRE y CLR son activas a nivel bajo. Lo que no tiene pieza real (los puentes ADC/DAC,
+el reloj digital, el decodificador del modelo analógico) sigue siendo un módulo.
+
+La pestaña **«Protoboard»** del simulador (`#/protoboard`), que también está en el menú de herramientas (el
+carril de iconos o «Más»), parte de una placa vacía con la fuente de 5 V ya
+conectada a los carriles; «Guardar» la deja en **Mis montajes** (cada cambio se guarda solo desde entonces) y
+se sincroniza entre dispositivos como los circuitos del editor.
+
+| Gesto o tecla | Acción |
+|---|---|
+| Tocar o hacer clic | Elegir una pieza o un cable; en un agujero, ver su tira y su red |
+| Arrastrar una pieza, una asa | Moverla · enchufar esa pata o ese extremo en otro agujero |
+| Arrastrar en vacío con un dedo · pellizcar | Desplazar · acercar y alejar (nunca la página) |
+| `Ctrl` + rueda · `Mayús` + rueda | Acercar y alejar · desplazar en horizontal |
+| `R` · `F` · `Supr` · `W` | Girar · dar la vuelta · quitar · herramienta Cable |
+| `Ctrl Z` · `Ctrl Y` · `0` · `Esc` | Deshacer · rehacer · ver todo · cancelar |
+
+Límites: una placa de 400 puntos para los circuitos pequeños y hasta cuatro de 830 para los grandes. Lo que no
+es una pieza real (fuentes controladas, subcircuitos que no son operacionales, un 555 ni una puerta, puentes
+y relojes XSPICE, interruptores controlados, líneas de transmisión) se monta como un **módulo**, una placa pequeña con sus
+patillas en una tira. Los operacionales ideales del libro no usan su alimentación: sus patillas 4 y 7 se
+conectan a los carriles cuando hay fuente simétrica, y si no se avisa de que en un montaje real hacen falta.
+Los proyectos KiCad no tienen «Ver en protoboard» (ver ESQUEMA.md); las etapas que el libro simula (fuente,
+preamplificador, etapa de salida…) sí lo tienen desde sus figuras y netlists.
 
 ## Componentes animados
 
@@ -1144,7 +1234,7 @@ fichero de datos. Quien prefiera dos tokens de permisos mínimos no puede: la ap
 | macOS | `~/Library/Application Support/es.gonzalomejias.electronica/lector.json` |
 | Android | almacenamiento interno de la aplicación (se borra al desinstalarla) |
 | Linux | `~/.local/share/es.gonzalomejias.electronica/lector.json` |
-| Navegador (desarrollo) | `localStorage`, claves `epa:prefs`, `epa:posiciones`, `epa:marcadores`, `epa:notas`, `epa:ejercicios`, `epa:leidas`, `epa:deducciones`, `epa:calc-favoritos`, `epa:repaso-tarjetas`, `epa:repaso-diario`, `epa:repaso-ajustes`, `epa:repaso-tests`, `epa:repaso-fallos`, `epa:repaso-examenes`, `epa:progreso-diario`, `epa:progreso-objetivo`, `epa:editor-circuitos`, `epa:sinc-ajustes`, `epa:sinc-estado`, `epa:sinc-marcas`, `epa:sinc-version` y, aparte, `epa-credencial:github` (el token) |
+| Navegador (desarrollo) | `localStorage`, claves `epa:prefs`, `epa:posiciones`, `epa:marcadores`, `epa:notas`, `epa:ejercicios`, `epa:leidas`, `epa:deducciones`, `epa:calc-favoritos`, `epa:repaso-tarjetas`, `epa:repaso-diario`, `epa:repaso-ajustes`, `epa:repaso-tests`, `epa:repaso-fallos`, `epa:repaso-examenes`, `epa:progreso-diario`, `epa:progreso-objetivo`, `epa:editor-circuitos`, `epa:protoboard-circuitos`, `epa:sinc-ajustes`, `epa:sinc-estado`, `epa:sinc-marcas`, `epa:sinc-version` y, aparte, `epa-credencial:github` (el token) |
 
 El token de GitHub va en otro fichero de la misma carpeta, `credenciales.json`, para que copiar `lector.json` no
 lo lleve consigo. `lector.json` guarda además el estado de la sincronización (`sinc-*`: ajustes, última versión
@@ -1247,6 +1337,35 @@ servida (`npx vite preview --port 4173`):
 
 ```sh
 PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node tests/rendimiento.mjs
+```
+
+Protoboard (0.10): su prueba de Playwright, con su propio puerto (4351) y su carpeta de compilación en la carpeta
+temporal del sistema, abre «Ver en protoboard» en diez netlists del libro, en un dibujo del editor y en una figura,
+comprueba que no aparece en una figura que es solo un dibujo ni en las consolas, mueve una pata y mira que
+cambian la netlist y el esquema, simula el circuito cambiado, da la vuelta a un LED, cierra y comprueba que el
+esquema sigue igual, guarda un montaje propio, prueba el tacto a 412 y 800 px, monta un circuito de puertas en
+chips 74HC (alimentados, con las entradas libres atadas y el aviso de entrada CMOS al aire al quitar una),
+simula desde la placa el contador asíncrono montado con 74HC74 y 74HC86 (cuenta hacia arriba) y avisa al quitar
+el cable de una XOR a su D, añade
+una puerta a mano, abre la protoboard desde el menú de herramientas y deja capturas (tableta y
+teléfono, claro y oscuro) en `web/tests/capturas/protoboard10/`:
+
+```sh
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers npx playwright test -c playwright.protoboard10.config.ts tests/protoboard10.spec.ts
+```
+
+La colocación automática de **todos** los circuitos que tienen el botón (las 313 netlists del libro y los 31
+esquemas simulables de las figuras) se comprueba en Node: cada uno montado sin error, cada red del esquema una
+sola red de la placa, ninguna unida a otra, todas las patas en agujeros, un solo cable por agujero y ningún
+cuerpo encima de otro. Con `--escribir` deja las netlists de los montajes junto a las originales para pasarlas
+por el motor y comparar sus medidas:
+
+```sh
+node tests/protoboard10.mjs                      # resumen; --detalle, --solo cap22, --svg carpeta --png
+node tests/protoboard10.mjs --escribir /tmp/pb   # y luego:
+node scripts/validar-spice.mjs --dir /tmp/pb/original --salida /tmp/pb/original.json --hilos 1
+node scripts/validar-spice.mjs --dir /tmp/pb/montaje --salida /tmp/pb/montaje.json --hilos 1
+node tests/protoboard10-medidas.mjs /tmp/pb
 ```
 
 Coste por fotograma de los esquemas vivos (perfiles `mac`, `tableta`, `movil`; CPU ×4), con la web servida:
@@ -1875,6 +1994,8 @@ app/
         editor/              editor de esquemas (#/editor): lienzo, paleta, propiedades, netlist generada,
                              importación de netlists, resultados sobre el dibujo, «Mis circuitos» (su propio
                              trozo, solo al abrir la pestaña; ver «Editor de esquemas» y ESQUEMA.md)
+        protoboard/          protoboard virtual (0.10): colocación automática, dibujo de las piezas, mesa táctil,
+                             conexiones y netlist, avisos, «Ver en protoboard» y «Mis montajes» (ver «Protoboard»)
         sincronizacion/      página #/sincronizacion, grupos de «Aa», arranque diferido y aviso de versión nueva
         diagnostico/         página #/diagnostico: medidas de rendimiento en el propio dispositivo (pruebas.ts)
         consolas/placa/      «Placa en 3D / 2D» de las consolas con el visor de proyectos/ (datos de consolas_pcb.py)

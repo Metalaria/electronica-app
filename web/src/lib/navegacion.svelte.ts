@@ -31,7 +31,11 @@ export interface Herramienta {
   atajo?: string;
   /** Small counter shown next to the icon. */
   cuenta?: () => number;
+  /** Whether it is the current entry, when the view alone does not tell (the breadboard is a tab of the simulator). */
+  activa?: () => boolean;
 }
+
+const enProtoboard = () => ruta.vista === 'simulador' && (ruta.sim === 'protoboard' || ruta.sim.startsWith('protoboard/'));
 
 const esMac = typeof navigator !== 'undefined' && /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent);
 
@@ -43,13 +47,14 @@ export const HERRAMIENTAS: Herramienta[] = [
   INICIO,
   { id: 'libro', ruta: null, icono: 'libro', etiqueta: 'Libro', vistas: ['parte'], pestana: true },
   { id: 'buscar', ruta: null, icono: 'buscar', etiqueta: 'Buscar', atajo: esMac ? '⌘ K' : 'Ctrl K', vistas: [] },
-  { id: 'simulador', ruta: '#/simulador', icono: 'simulador', etiqueta: 'Simulador', pestana: true },
+  { id: 'simulador', ruta: '#/simulador', icono: 'simulador', etiqueta: 'Simulador', pestana: true, activa: () => ruta.vista === 'simulador' && !enProtoboard() },
   { id: 'calculadoras', ruta: '#/calculadoras', icono: 'calculadora', etiqueta: 'Calculadoras' },
   { id: 'ejercicios', ruta: '#/ejercicios', icono: 'ejercicios', etiqueta: 'Ejercicios', pestana: true },
   { id: 'repaso', ruta: '#/repaso', icono: 'aprender', etiqueta: 'Repaso' },
   { id: 'componentes', ruta: '#/componentes', icono: 'componentes', etiqueta: 'Componentes animados', corta: 'Componentes' },
   { id: 'conceptos', ruta: '#/conceptos', icono: 'conceptos', etiqueta: 'Conceptos animados', corta: 'Conceptos' },
   { id: 'instrumentos', ruta: '#/instrumentos', icono: 'instrumentos', etiqueta: 'Instrumentos' },
+  { id: 'protoboard', ruta: '#/protoboard', icono: 'protoboard', etiqueta: 'Protoboard', vistas: [], activa: enProtoboard },
   { id: 'fm7303', ruta: '#/fm7303', icono: 'radio', etiqueta: 'Kit FM7303' },
   { id: 'consolas', ruta: '#/consolas', icono: 'consolas', etiqueta: 'Consolas' },
   { id: 'proyectos', ruta: '#/proyectos', icono: 'placa', etiqueta: 'Proyectos KiCad', corta: 'Proyectos' },
@@ -65,6 +70,7 @@ export const HERRAMIENTAS: Herramienta[] = [
 ];
 
 export function esActiva(h: Herramienta): boolean {
+  if (h.activa) return h.activa();
   return (h.vistas ?? [h.id as Vista]).includes(ruta.vista);
 }
 

@@ -25,6 +25,7 @@
   import Interiores from '../esquema-auto/Interiores.svelte';
   import PestanasSimulador from './PestanasSimulador.svelte';
   import { dejarTraspaso, leerNetlist } from '../editor/circuitos.svelte';
+  import { abrirProtoboard } from '../../lib/protoboard.svelte';
 
   let { id }: { id: string } = $props();
 
@@ -240,6 +241,13 @@ C1 out 0 100n
     }
     dejarTraspaso(texto, n ? { tipo: 'libro', id } : { tipo: 'texto' });
   }
+
+  // «Ver en protoboard»: the netlist as it is now (sliders and edits included), full screen.
+  function verProtoboard() {
+    if (!texto.trim()) return;
+    const titulo = n ? `${n.ref ? `${rotuloRef(n.ref)} · ` : ''}${n.titulo || n.nombre}` : deEsquema ? tituloEsquema || 'Netlist del esquema' : 'Nuevo circuito';
+    abrirProtoboard({ tipo: 'netlist', texto, titulo, origen: n && !modificada ? { tipo: 'libro', id } : { tipo: 'texto' }, refs: n?.refs ?? [] });
+  }
 </script>
 
 <div class="pagina">
@@ -271,10 +279,12 @@ C1 out 0 100n
             {#if rutaDeRef(r)}<a class="libro" href={rutaDeRef(r)}><Icono nombre="libro" tam={15} /> {rotuloRef(r)}</a>{/if}
           {/each}
           {#if !noDisponible}<a class="libro esquema" href={hrefEsquema} onclick={editarEsquema}>Editar el esquema</a>{/if}
+          <button type="button" class="libro protoboard" onclick={verProtoboard}>Ver en protoboard</button>
         </div>
       {:else if (libre && texto.trim()) || deEsquema}
         <div class="meta">
           <a class="libro esquema" href={hrefEsquema} onclick={editarEsquema}>{deEsquema ? 'Volver al esquema' : 'Editar el esquema'}</a>
+          <button type="button" class="libro protoboard" onclick={verProtoboard}>Ver en protoboard</button>
         </div>
       {/if}
     </header>
@@ -482,6 +492,12 @@ C1 out 0 100n
   }
   .libro:hover {
     background: var(--acento-tinte);
+  }
+  button.libro {
+    background: none;
+    font: inherit;
+    font-weight: 600;
+    cursor: pointer;
   }
   .rejilla {
     display: grid;

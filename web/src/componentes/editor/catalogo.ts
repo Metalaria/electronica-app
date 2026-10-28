@@ -188,6 +188,18 @@ export const TIPOS: Tipo[] = [
   { id: 'JP', nombre: 'JFET de canal P', grupo: 'Semiconductores', prefijo: 'J', rol: 'JP', clase: 'JFetP', o: 4, inicial: { modelo: 'JP' }, campos: [{ id: 'modelo', etiqueta: 'Modelo', tipo: 'modelo', familia: 'JP' }, EXTRA], claves: 'jfet' },
   { id: 'OA', nombre: 'Amplificador operacional', grupo: 'Integrados', prefijo: 'U', rol: 'OA', clase: 'Opamp', o: 0, inicial: { modelo: 'opamp' }, campos: [{ id: 'modelo', etiqueta: 'Modelo', tipo: 'modelo', familia: 'OA' }], claves: 'opamp 741 comparador' },
   { id: 'OA5', nombre: 'Operacional con alimentación', grupo: 'Integrados', prefijo: 'U', rol: 'OA', clase: 'Opamp', o: 0, inicial: { modelo: 'opa5' }, campos: [{ id: 'modelo', etiqueta: 'Modelo', tipo: 'modelo', familia: 'OA5' }], claves: 'opamp raíles alimentacion' },
+  {
+    id: 'T555',
+    nombre: 'Temporizador 555',
+    grupo: 'Integrados',
+    prefijo: 'U',
+    rol: 'X',
+    clase: 'Ic',
+    o: 0,
+    inicial: { modelo: 'ne555' },
+    campos: [{ id: 'modelo', etiqueta: 'Modelo', tipo: 'modelo', familia: 'T555', ayuda: 'Modelo de comportamiento: comparadores a 1/3 y 2/3 de Vcc, biestable, salida y transistor de descarga.' }],
+    claves: '555 ne555 temporizador timer astable monoestable',
+  },
   puertaDigital('DAND', 'Puerta AND', 'and y'),
   puertaDigital('DOR', 'Puerta OR', 'or o'),
   puertaDigital('DNAND', 'Puerta NAND', 'nand'),
@@ -289,6 +301,18 @@ export const PINES_DIGITALES: Record<string, [string, string][]> = {
   DCLK: [['out', 'out']],
 };
 const TITULO_DIGITAL: Record<string, string> = { DFF: 'DFF', DJK: 'JKFF', ADC: 'ADC', DAC: 'DAC', DCLK: 'CLK' };
+
+/** Pins of the 555 in the order of its netlist line (DIP pins 1–8) with the label drawn in the box. */
+export const PINES_555: [string, string][] = [
+  ['gnd', 'GND'],
+  ['trig', 'TRIG'],
+  ['out', 'OUT'],
+  ['reset', 'RESET'],
+  ['ctrl', 'CTRL'],
+  ['thres', 'THR'],
+  ['dis', 'DIS'],
+  ['vcc', 'VCC'],
+];
 
 /** Kinds that are not parts of the netlist (connections and probes). */
 export const SIN_LINEA = new Set(['GND', 'RIEL', 'ETQ', 'SONDA']);
@@ -549,6 +573,8 @@ function construirDef(c: Componente): DefSimbolo {
           titulo: TITULO_DIGITAL[c.tipo],
         }),
       );
+    case 'T555':
+      return simboloDe(disp('CAJA', [], { pines: PINES_555.map(([nombre, rotulo]) => ({ nombre, nodo: '', rotulo })), titulo: '555' }));
     case 'GND':
       return masa();
     case 'RIEL':

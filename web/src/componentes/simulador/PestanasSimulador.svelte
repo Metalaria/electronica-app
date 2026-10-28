@@ -1,14 +1,17 @@
 <script lang="ts">
-  // The simulator's tabs: the book's netlists, the free netlist, and the schematic editor.
+  // The simulator's tabs: the book's netlists, the free netlist, the schematic editor and the breadboard.
   import { ruta } from '../../lib/ruta.svelte';
 
-  const actual = $derived(ruta.sim === 'nuevo' ? 'nuevo' : ruta.sim === 'editor' || ruta.sim.startsWith('editor/') ? 'editor' : ruta.sim ? '' : 'libro');
+  const actual = $derived(
+    ruta.sim === 'nuevo' ? 'nuevo' : ruta.sim === 'editor' || ruta.sim.startsWith('editor/') ? 'editor' : ruta.sim === 'protoboard' || ruta.sim.startsWith('protoboard/') ? 'protoboard' : ruta.sim ? '' : 'libro',
+  );
 </script>
 
 <nav class="pestanas-sim" aria-label="Simulador">
   <a href="#/simulador" aria-current={actual === 'libro' ? 'page' : undefined}>Netlists del libro</a>
   <a href="#/simulador/nuevo" aria-current={actual === 'nuevo' ? 'page' : undefined}>Netlist libre</a>
   <a href="#/editor" aria-current={actual === 'editor' ? 'page' : undefined}>Editor de esquemas</a>
+  <a href="#/protoboard" aria-current={actual === 'protoboard' ? 'page' : undefined}>Protoboard</a>
 </nav>
 
 <style>

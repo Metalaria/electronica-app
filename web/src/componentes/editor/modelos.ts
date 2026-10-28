@@ -2,7 +2,7 @@
 // parameters, so a drawn circuit behaves like the book's. Each entry adds its .model/.subckt text to the
 // generated netlist when a part uses it and the directives do not already define that name.
 
-export type FamiliaModelo = 'D' | 'DZ' | 'LED' | 'DS' | 'QN' | 'QP' | 'MN' | 'MP' | 'JN' | 'JP' | 'OA' | 'OA5';
+export type FamiliaModelo = 'D' | 'DZ' | 'LED' | 'DS' | 'QN' | 'QP' | 'MN' | 'MP' | 'JN' | 'JP' | 'OA' | 'OA5' | 'T555';
 
 export interface ModeloLibreria {
   nombre: string;
@@ -81,6 +81,33 @@ export const MODELOS: ModeloLibreria[] = [
       'B1 n1 0 V = (V(vp)+V(vn))/2 + (V(vp)-V(vn)-0.4)/2*tanh(1e5*V(inp,inn)/((V(vp)-V(vn)-0.4)/2))',
       'RO n1 out 30',
       '.ends opa5',
+    ].join('\n'),
+  },
+  {
+    nombre: 'ne555',
+    familia: 'T555',
+    descripcion: 'NE555 de comportamiento (umbrales 1/3 y 2/3 de Vcc, salida alta ≈ Vcc − 1,7 V)',
+    subckt: true,
+    // Pins 1–8: gnd trig out reset ctrl thres dis vcc. Smooth comparators (tanh) into a set–reset latch kept
+    // by a small RC with a bistable feedback, so the transient steps through the switching without trouble.
+    texto: [
+      '.subckt ne555 g tr o rs ct th ds vc',
+      'R1 vc ct 5k',
+      'R2 ct lo 5k',
+      'R3 lo g 5k',
+      'Bs s g V = 0.5*(1+tanh(40*(v(lo,g)-v(tr,g))))',
+      'Br r g V = 0.5*(1+tanh(40*(v(th,g)-v(ct,g))))',
+      'Bk k g V = 0.5*(1+tanh(20*(v(rs,g)-0.7)))',
+      'Bq qd g V = v(k,g)*(v(s,g) + (1-v(s,g))*(1-v(r,g))*0.5*(1+tanh(12*(v(q,g)-0.5))))',
+      'Rq qd q 1k',
+      'Cq q g 1p',
+      'Bo oi g V = v(q,g)*max(v(vc,g)-1.7, 0) + 0.05',
+      'Ro oi o 10',
+      'Bn nq g V = 1-v(q,g)',
+      'Sd ds g nq g sdis555',
+      'Ri vc g 15k',
+      '.model sdis555 sw(vt=0.5 vh=0.1 ron=10 roff=1g)',
+      '.ends ne555',
     ].join('\n'),
   },
 ];

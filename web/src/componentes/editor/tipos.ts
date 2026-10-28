@@ -12,6 +12,11 @@ export interface LineaImportada {
   pines: Record<string, number>;
   /** Everything after the nodes, verbatim (value, model, parameters). */
   resto: string;
+  /**
+   * The whole line with «{k}» where its k-th node goes, for lines whose nodes are not simply listed after the
+   * name (XSPICE «A» devices: «A1 [{0} {1}] {2} nand8»). The breadboard reads them this way.
+   */
+  plantilla?: string;
 }
 
 /** Symbol of an imported part (what esquema-auto's simbolos.ts needs to draw it). */

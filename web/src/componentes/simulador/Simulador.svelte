@@ -35,6 +35,15 @@
   {:catch e}
     <p class="cargando-editor">No se pudo abrir el editor de esquemas: {String(e)}</p>
   {/await}
+{:else if ruta.sim === 'protoboard' || ruta.sim.startsWith('protoboard/')}
+  <!-- The breadboard (own circuits): its own chunk. -->
+  {#await import('../protoboard/PaginaProtoboard.svelte')}
+    <p class="cargando-editor">Abriendo la protoboard…</p>
+  {:then m}
+    <m.default ruta={ruta.sim} />
+  {:catch e}
+    <p class="cargando-editor">No se pudo abrir la protoboard: {String(e)}</p>
+  {/await}
 {:else if ruta.sim}
   {#key ruta.sim}
     <Pagina id={ruta.sim} />

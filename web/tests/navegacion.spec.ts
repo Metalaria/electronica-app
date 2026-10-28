@@ -53,7 +53,7 @@ test.describe('escritorio', () => {
     const c = carril(page);
     await expect(c.getByRole('link', { name: 'Inicio' })).toHaveAttribute('aria-current', 'page');
     // every entry of the registry fits at 800 px, labels visible without hovering
-    for (const nombre of ['Inicio', 'Libro', 'Buscar', 'Simulador', 'Calculadoras', 'Ejercicios', 'Repaso', 'Componentes', 'Conceptos', 'Instrumentos', 'Kit FM7303', 'Consolas', 'Proyectos', 'Glosario', 'Marcadores']) {
+    for (const nombre of ['Inicio', 'Libro', 'Buscar', 'Simulador', 'Calculadoras', 'Ejercicios', 'Repaso', 'Componentes', 'Conceptos', 'Instrumentos', 'Protoboard', 'Kit FM7303', 'Consolas', 'Proyectos', 'Glosario', 'Marcadores']) {
       await expect(c.locator('.etiqueta', { hasText: new RegExp(`^${nombre}$`) })).toBeVisible();
     }
     const destinos: [string, string][] = [
@@ -64,6 +64,7 @@ test.describe('escritorio', () => {
       ['Componentes animados', '#/componentes'],
       ['Conceptos animados', '#/conceptos'],
       ['Instrumentos', '#/instrumentos'],
+      ['Protoboard', '#/protoboard'],
       ['Kit FM7303', '#/fm7303'],
       ['Consolas', '#/consolas'],
       ['Proyectos KiCad', '#/proyectos'],

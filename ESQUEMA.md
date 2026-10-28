@@ -1018,6 +1018,158 @@ palette's parts (clock → toggling D flip-flop, pulse → ADC → NOT → DAC) 
 its simulation; it also runs the book's four XSPICE netlists in the browser against the book's values and the
 fallback engine's «no se puede simular».
 
+## Virtual breadboard (`web/src/componentes/protoboard/`, 0.10)
+
+Circuits built on breadboards drawn as they look (top view, one pitch = 1 unit, y down, holes on integer
+coordinates), editable by touch, with the live schematic and the simulation of what is plugged in.
+
+Entry points:
+- «Ver en protoboard» (`lib/protoboard.svelte.ts`: `abrirProtoboard(fuente)`, an overlay of `ruta.svelte.ts`, so
+  «Atrás» closes it; App.svelte loads `CapaProtoboard.svelte` as its own chunk). `FuenteProtoboard`: a netlist text
+  (`tipo: 'netlist'`, with its origin and book labels), an editor document (`'documento'`) or a figure schematic
+  (`'figura'`: `datos/NAME.json`, index into `esquemas[]`). It is a sandbox: nothing of the source is touched;
+  «Guardar como montaje propio» copies the board to the store. Buttons: `VerProtoboard.svelte` next to «Simular»
+  under figures (labels of `spice.porRef`, menu when several; else the simulable schematics of the figure data,
+  fetched when near the viewport; nothing for drawing-only figures and none in the consoles), `Pagina.svelte` of
+  the simulator (the netlist as it is), `EditorEsquemas.svelte` (the drawing as it is).
+- `#/protoboard[/<id>]`: the simulator tab «Protoboard» (`PaginaProtoboard.svelte`, `ruta.sim = 'protoboard…'`):
+  the working board of the device (`localStorage epa:protoboard-borrador`) or a saved one.
+  Also an entry of its own in the tools registry (`lib/navegacion.svelte.ts` `HERRAMIENTAS`, id `protoboard`, icon
+  `grid-3x3`, after «Instrumentos»): `Herramienta.activa?()` overrides the view test, so on `#/protoboard` the
+  entry is marked and «Simulador» is not. The rail's items are 45 px high (were 48) so the 16 entries still fit an
+  800 px window.
+
+Geometry (`placa.ts`): N columns (30 = «400 puntos», 63 = «830 puntos»); rails at y = 0 (+), 1 (−), 16 (−),
+17 (+), rail holes in groups of five; strips a–e at y = 3…7 and f–j at y = 10…14 (5 holes per column and half);
+channel at y = 8–9 (DIP rows e/f are 3 apart). Boards stack every `ALTO_PLACA` = 21; each has its own rails.
+Equipment (sources, meters) lives above the first board (y < 0), not in holes. `agujero(cfg, x, y)` gives the
+conductor of a hole: `T<board>:<column>:<a|b>` (strip) or `R<board>:<0-3>` (rail).
+
+Document (`tipos.ts`, plain JSON, undo snapshots):
+```json
+{ "version": 1, "titulo": "…", "placas": 1, "columnas": 30,
+  "piezas": [ { "id": "c4", "comp": { …editor Componente… }, "enc": "resistencia",
+                "pos": [[3, 4], [7, 4]], "patas": ["start", "end"], "polo": 0 } ],
+  "cables": [ { "id": "w1", "a": [3, 6], "b": [3, 1], "color": "#2b2b2b" } ],
+  "analisis": { …editor Analisis… }, "directivas": ".model …\n.control …",
+  "original": { "c4.start": "vcc", "c4.end": "b" }, "refs": ["fig-42.3"],
+  "origen": { "tipo": "libro", "id": "cap42/fig-42.3_op_emisor_comun" } }
+```
+Each piece is an editor part (`comp`: kind, designator, fields, imported SPICE line), so the editor's netlist
+writer, properties panel and palette work on it unchanged; `pos` is where each leg is (or each terminal of a piece
+of equipment), `patas` the editor pin of each leg (null = not connected inside: the NC pins of a DIP, the supply
+legs of an ideal op-amp), `polo` the + leg of an electrolytic (only physical: its model is a plain C). Wire ends
+are coordinates: a hole, or an equipment terminal (they move with the equipment).
+
+Packages (`encapsulados.ts`): `resistencia` (4 or 5 colour bands, `colores.ts`), `bobina`, `diodo`/`zener`
+(cathode band), `led` (3 mm, long bent anode leg, flat flange on the cathode), `ceramico` (pF code «104»), `film`,
+`electrolitico` (≥ 1 µF; can 2–3,2 pitches by capacitance, − stripe), `to92`/`to220`/`to126` (pinout by model:
+2N3904/2N3906/2N2222 E-B-C, BC54x/55x C-B-E, BD13x E-C-B, TIP/power B-C-E, 2N7000 S-G-D, BS170 D-G-S, IRF/power
+MOSFET G-D-S, JFET D-S-G; others generic E-B-C / S-G-D / D-S-G, said so in the panel), `dip` (op-amps in DIP-8:
+2 −, 3 +, 4 V−, 6 out, 7 V+; the 555; the 74HC chips, DIP-14/16; an imported subcircuit recognised as op-amp or named «…555…» with eight
+nodes), `trimmer`, `conmutador` (SPST as a slide switch: common in the middle), `puente` (+ ~ ~ −), `medida` (a 0 V
+source: a wire with an «A» badge), `sonda`, `modulo` (everything that is not a real part: E/G/F/H/B sources,
+switches with control nodes, XSPICE bridges and clocks and gates with no 74HC part, transformers, lines, other subcircuits; a small board with
+its pins on a header). Equipment (`forma: 'externo'`): `alimentacion` (DC voltage source), `generador` (any other
+voltage source), `corriente`, `voltimetro`. Every package has a body (oriented rectangle or disc) for collisions;
+no leg or wire end may sit under a body. `dibujo.ts` draws all of it as SVG strings (board, parts, wires,
+equipment; the board stays light in every theme), shared by the page and the Node tests.
+
+Logic (`logica.ts`): gates and flip-flops as real 74HC chips. `partesXspice(directivas)` takes the top-level XSPICE
+«A» lines out of the directives (the editor's importer leaves them there) as `GEN` parts with letter A and the line
+as a template (`LineaImportada.plantilla`, «{k}» = k-th node, `NULL` kept; `editor/netlist.ts` writes it back with
+the board's nets), pins named by code model (`i0…`/`y` for gates, `d|j|k|t, clk, set, reset, q, nq` for
+flip-flops, `in…`/`out…` for bridges). `logicaDe(c)` recognises those, the editor's `DAND…DNOT`, `DFF`, `DJK` and
+the book's analog-twin subcircuits by name and pin labels (`AND2`, `NAND2`, `AND3`, `NOR8`, `INV`, `XOR2`, `TFF`).
+`empaquetar(comps, nuevoId, conectado)` groups them by kind in order into chips with their pinout (`CHIPS_PUERTAS`:
+74HC00/02/04/08/10/11/20/21/27/30/32/86/4078 — 4078: OR out on 1, NOR out on 13; `CHIPS_BIESTABLES`: 74HC74,
+74HC112 for JK only). A T flip-flop becomes two slots: half a 74HC74 (it owns the part, so its single d_tff line
+stays in the netlist; CLK, Q, nQ are its pins) and an XOR of a 74HC86, packed with the circuit's own XORs (input A
+is the T pin; input B is tied `{ pin: 'tffId.q' }` to Q's net; the output and D share `{ interna: 'tffId:d' }`, a
+board-only net `int:…` with no pin). D = T ⊕ Q on a rising edge, as XSPICE's d_tff, so the book's ripple counter
+also counts up with real chips. A gate with fewer inputs than its chip's has the rest tied to its neutral level; set/reset get legs only when wired
+in the circuit (XSPICE's are active high, the chip's PRE/CLR active low; left alone they are tied to Vcc).
+A chip is a `Pieza` with `comp` = `{ tipo: 'CHIP', campos: { modelo } }` (not in the netlist) and
+`chip: { comps, roles, ataduras }`: the gates (editor parts, written to the netlist unchanged), each leg's role
+(vcc, gnd, in, out, nc) and its tie (`'+'`, `'-'`, `{ igual: leg }`, `{ pin }`, `{ interna }`); its `patas` say `"gateId|pin"`, and
+`tipos.ts clavePin(p, pin)` / `compsDe(p)` give the pin key («gateId.pin») and the netlist parts of any piece.
+The auto-placement gives a tied leg the net it is tied to, so the usual jumper from its strip to the rail (or to
+the other leg) is the tie; the leg itself has no pin, so the tie is not in the netlist. Vcc is the net of a DC
+source of 2–6 V to ground, or a 5 V bench supply `VCC` added (the only line the board's netlist adds).
+`comprobaciones.ts chipSinConectar()` names inputs touching nothing (CMOS «al aire»), Vcc/GND off the supply and
+a missing wire of a T flip-flop (XOR output → D, Q → XOR), using `conexiones.ts` `grupo` (what is joined to what,
+pinless nets included); `verificar.ts` requires none of them. Chips are numbered CI1… as they sit on the board. The palette's logic parts come in a chip of their own (`edicion.ts nuevoChip`).
+Book circuits with chips: the 8 netlists of chapter 29 (4 XSPICE and their 4 analog twins).
+
+Sources (`fuentes.ts`) → `CircuitoFuente` (parts, the net of every pin, directives, analyses, schematic positions):
+an editor document through `conectividad()`; a netlist through `importarNetlist()` (the editor's layout worker)
+plus `redesDelTexto()`, which takes every pin's node name from the netlist text itself (the drawing only keeps
+names that ride on wires, and the `.control` blocks need them all); a figure schematic through its elements with
+the rules of `figuras-vivas/esquema/netlist.ts` (peak amplitudes, 1 kHz or 50 Hz, the generator's models, op-amps
+with ±14 V or their drawn supplies, Vdd/Vss rails as DC sources, the negative of the first source as ground when
+none is drawn; 5 periods of transient when a source oscillates).
+
+Auto-placement (`colocacion.ts`, plain TypeScript, a few ms per part): ground on the blue rails, the most used
+positive DC supply (a source from a net to ground) on the top red rail, a negative or second supply on the bottom
+one; parts one by one (the leftmost of the schematic first, then the one sharing most signal nets with what is
+placed), every position in a window of columns scored: a leg in a strip of its net or in its rail is free, a leg in
+a new strip costs the strip plus the jumper to the nearest strip of its net with a free hole; never a strip of
+another net, an occupied hole or a hole under a body; bodies 0,3 apart (touching only when nothing else fits) and
+over the strips (only a DIP or a two-leg part with legs on both sides crosses the channel; only a part with a leg
+in a rail covers the rails; electrolytic cans may overhang). Every net keeps a free hole while legs of it are still
+to come, and every new strip keeps one for its jumper. The jumper is laid at once (holes chosen for a short wire,
+straight when possible, crossing few bodies and wires). Then the equipment above the board in schematic order,
+each terminal with a lead to its rail or a free hole of its net; rails of one net used in several rows are
+bridged. Electrolytics get their + leg on the net with the higher estimated DC voltage (sources, then averaging
+through resistive parts). Sizes tried: one 400-point board, then one to four 830-point boards; beyond that an
+Error with a Spanish message. `verificar.ts` checks a board against its schematic.
+
+Nets and netlist (`conexiones.ts`): union–find over strips, rails, equipment terminals, legs and wire ends. Names:
+the original name most of a net's pins had (ground first; without an original, the − terminal of the first bench
+supply is ground), then n1, n2…; an original name merged away is rewritten in the directives' `v(…)`. The netlist
+is `editor/netlist.ts generarNetlist(doc, con)` with the board's nets (0.10: the optional `con` argument).
+`redEn(doc, con, x, y)` and `simulacion.ts tensionEn(…)` are the probe API for instruments of later versions:
+the net and the operating-point voltage of any hole or terminal.
+
+Checks (`comprobaciones.ts`, never blocking): short across a source, a part shorted by its strip, an LED, diode,
+transistor, trimmer or DIP turned round against the original, LED in reverse and electrolytic with reverse voltage
+by the operating point (or the supplies), floating pins (a DIP's: «al aire»), ideal op-amps without supply legs
+(info), 74HC chips with an input in the air or without Vcc/GND, leads that reach nothing, legs out of holes, two leads in a hole, and the comparison with the original
+schematic («El montaje corresponde al esquema original», or which net is split or which are joined).
+
+State and UI: `estado.svelte.ts` (`Protoboard`: document, selection, history, move/stretch/turn/reverse/wire/add/
+delete/change a field — the package follows a value or model change —, derived nets, netlist and checks;
+`edicion` is the same object as `editor/estado.svelte.ts` `EdicionPropiedades & EdicionPaleta`, so
+`Propiedades.svelte` and `Paleta.svelte` are reused unchanged), `Mesa.svelte` (SVG bench: pointer gestures as the
+editor's canvas, `touch-action: none`; tap selects or describes a hole and highlights its net; drag moves, handles
+stretch legs and wire ends, the wire tool lays jumpers tap–tap or by dragging; pinch, Ctrl/⌘ + wheel; the wheel
+pans in the full-screen view; `window.__epaProtoboard` for the tests), `Protoboard.svelte` (tools; tabs «Esquema»
+— `figuras-vivas/circuito/CircuitoVivo.svelte` on the board's netlist, results only while current —,
+«Simulación» — the simulator's worker and `Resultados.svelte`; after the first run each change re-solves the
+operating point in the background (LEDs lit, voltages under the finger) —, «Avisos», «Pieza», «Añadir»).
+
+Storage: almacen key **`protoboard-circuitos`** = `{ version: 1, circuitos: { [id]: { id, nombre, creado,
+actualizado, borrado?, doc } } }` (as the editor's, tombstones included), registered for synchronisation.
+
+Editor changes for it (0.10): `generarNetlist(doc, con?)`; the panels typed by `EdicionPropiedades`/`EdicionPaleta`;
+a «Temporizador 555» palette part (`T555`, DIP-8 pin order, subcircuit `ne555` in `modelos.ts`: comparators at 1/3
+and 2/3 of Vcc as tanh, a set–reset latch held by an RC with bistable feedback, output ≈ Vcc − 1,7 V, discharge
+switch; astable 1 k/10 k/100 nF at 9 V: 684 Hz against 686 Hz by the formula); `valores.ts` no longer writes
+values with the «f» prefix (0,5 pF read back as 500 F: imported sub-pF capacitors were wrong).
+
+KiCad projects: not offered. Their schematics are one flat sheet per board (no hierarchical sheets); the stages
+exist only as curated annotation blocks (`b` of each footprint), without ports between them, and most parts have
+no SPICE model in the app (ESP32, regulators, relays, NE5532/TL07x from KiCad libraries, SMD RF parts), so a stage
+would be neither complete nor simulable. The stages the book simulates (figs. 50.22, 51.4, 51.6, 51.10…) get «Ver en
+protoboard» through their netlists.
+
+Tests: `tests/protoboard10.mjs` (Node: every book netlist and simulable figure schematic placed and verified;
+`--escribir` + `scripts/validar-spice.mjs` + `tests/protoboard10-medidas.mjs` compare measurements: 296 of 297
+netlists identical, the other within numerical noise of a switching transient), `tests/protoboard10.spec.ts`
+(`playwright.protoboard10.config.ts`, port 4351; 74HC chips, the tools-menu entry), screenshots in
+`tests/capturas/protoboard10/` (`logica-*`: the chapter 29 OR-with-NAND circuit and the 74HC00 pinout;
+`contador-*`: the ripple counter with 74HC74 + 74HC86 and the XOR chip's pinout).
+
 ## Consoles (`web/src/componentes/consolas/`, data in `web/public/consolas/`)
 
 Three linked views of seven mainboards: the two photographed in printed chapter 36 (figures 36.16 and 36.22), the NES
@@ -1838,6 +1990,7 @@ automatic runs (start-up, every 5 min while visible, on hide, on return after > 
 maximo?}`; registered: marcadores, notas, posiciones, leidas («parte/label»), ejercicios, deducciones,
 repaso-tarjetas, repaso-diario, repaso-ajustes, repaso-tests, repaso-fallos, repaso-examenes (newest 30),
 calc-favoritos, editor-circuitos (`{version, circuitos}` of the schematic editor, items with their own `borrado`),
+protoboard-circuitos (0.10, the same shape for own breadboards),
 lecciones (0.9, «parte/label»), progreso-diario (0.9, one item per day) and progreso-objetivo (0.9). A
 new module registers its `Record<id, item>` almacen key in one line:
 `registrarSincronizable(mapaDelAlmacen({ clave: 'k', nombre: '…', tiempo: (v) => v.t }))`.

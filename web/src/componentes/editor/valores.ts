@@ -15,8 +15,8 @@ const PREF: [number, string][] = [
   [1e-3, 'm'],
   [1e-6, 'µ'],
   [1e-9, 'n'],
+  // No «f» (femto): «500f» would read back as 500 F for a capacitor. 0,5 pF is written «0,5p».
   [1e-12, 'p'],
-  [1e-15, 'f'],
 ];
 
 /** 4700 → «4,7k», 1e6 → «1M», 1.5915e-5 → «15,915µ», 0.5 → «500m», 12 → «12» (up to 6 significant digits). */

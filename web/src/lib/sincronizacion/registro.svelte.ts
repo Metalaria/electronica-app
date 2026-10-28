@@ -325,6 +325,20 @@ registrarSincronizable(
   }),
 );
 
+// ------------------------------------------------------------------ own breadboards (componentes/protoboard, 0.10)
+
+// The same shape as the editor's circuits: { version: 1, circuitos: { <id>: { id, nombre, creado, actualizado,
+// borrado?, doc } } } with their own tombstones. The breadboard module reloads it on `epa:sincronizado`.
+registrarSincronizable(
+  mapaDelAlmacen({
+    clave: 'protoboard-circuitos',
+    nombre: 'Montajes de la protoboard',
+    campo: 'circuitos',
+    tiempo: (v) => Math.max(numero(v?.actualizado) ?? 0, numero(v?.borrado) ?? 0) || undefined,
+    valido: (v) => esObjeto(v) && typeof v.id === 'string' && typeof v.actualizado === 'number',
+  }),
+);
+
 // ------------------------------------------------------------------ daily progress and streak (0.9)
 
 // One item per review day («2026-10-27» → { pasos, preguntas, secciones, cumplido, t }), last write wins.

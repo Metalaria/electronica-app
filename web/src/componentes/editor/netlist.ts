@@ -121,8 +121,11 @@ function nodosImportados(l: { nodos: string[]; pines: Record<string, number> }, 
   return res;
 }
 
-export function generarNetlist(doc: DocumentoEsquema): Netlist {
-  const con = conectividad(doc);
+/**
+ * The netlist of a drawing. `con` gives the nets when they do not come from the drawing's wires (the
+ * breadboard, componentes/protoboard/, passes the nets of its holes, strips and jumpers).
+ */
+export function generarNetlist(doc: DocumentoEsquema, con: Conectividad = conectividad(doc)): Netlist {
   const errores: Aviso[] = [];
   const avisos: Aviso[] = [];
   const lineas: string[] = [`* ${doc.titulo.trim() || 'Circuito del editor'}`];
@@ -279,6 +282,14 @@ export function generarNetlist(doc: DocumentoEsquema): Netlist {
         poner(c, `${n} ${nodos} ${usarModelo()}`, { nombre: n, pines });
         break;
       }
+      case 'T555': {
+        const n = N('X');
+        const orden = ['gnd', 'trig', 'out', 'reset', 'ctrl', 'thres', 'dis', 'vcc'];
+        const pines: Record<string, number> = {};
+        orden.forEach((p, i) => (pines[p] = i));
+        poner(c, `${n} ${orden.map(red).join(' ')} ${usarModelo()}`, { nombre: n, pines });
+        break;
+      }
       case 'DAND':
       case 'DOR':
       case 'DNAND':
@@ -382,6 +393,10 @@ export function generarNetlist(doc: DocumentoEsquema): Netlist {
             const nodos = nodosImportados(l, red);
             poner(c, `${l.nombre}${nodos.length ? ' ' + nodos.join(' ') : ''}${l.resto ? ' ' + l.resto : ''}`, l.letra === 'K' ? undefined : { nombre: l.nombre, pines: l.pines });
           }
+        } else if (c.spice?.plantilla) {
+          const nodos = nodosImportados(c.spice, red);
+          const plantilla = c.spice.plantilla;
+          poner(c, plantilla.replace(/\{(\d+)\}/g, (_, k: string) => nodos[Number(k)] ?? '0'), { nombre: plantilla.split(/\s+/)[0]!, pines: c.spice.pines });
         } else if (c.spice) {
           const nodos = nodosImportados(c.spice, red);
           const resto = (c.campos['resto'] ?? c.spice.resto).trim();
@@ -506,6 +521,12 @@ const NOMBRES_PIN: Record<string, string> = {
   q: 'Q',
   nq: 'Q negada',
   in: 'entrada',
+  gnd: 'masa',
+  trig: 'disparo',
+  ctrl: 'control',
+  thres: 'umbral',
+  dis: 'descarga',
+  vcc: 'Vcc',
 };
 
 export function nombrePin(p: string): string {

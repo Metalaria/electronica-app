@@ -9,6 +9,8 @@
 //                                or «nuevo» (free-form circuit)
 //          #/editor[/<id>|/libro/<netlist>|/importar]  the schematic editor, a tab of the simulator (view
 //                                «simulador», ruta.sim = «editor…»): the draft, a saved circuit, a book netlist as a drawing
+//          #/protoboard[/<id>]   the virtual breadboard, a tab of the simulator (view «simulador», ruta.sim =
+//                                «protoboard…»): the working board of this device, or a saved own circuit
 //          #/componentes[/<id>]  the component animations: gallery, or one animation
 //          #/conceptos[/<id>]    the concept animations (phasors, Fourier, aliasing…): gallery, or one
 //          #/consolas[/<maquina>/<vista>[/<seleccion>]]  NES and Neo Geo mainboards (componentes/consolas)
@@ -87,6 +89,11 @@ function leer(): void {
     ruta.parte = '';
     ruta.ancla = '';
     ruta.sim = b ? `editor/${b}` : 'editor';
+  } else if (a === 'protoboard') {
+    ruta.vista = 'simulador';
+    ruta.parte = '';
+    ruta.ancla = '';
+    ruta.sim = b ? `protoboard/${b}` : 'protoboard';
   } else if (a === 'consolas') {
     ruta.vista = 'consolas';
     ruta.parte = '';
