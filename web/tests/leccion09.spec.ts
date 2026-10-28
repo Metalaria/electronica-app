@@ -119,7 +119,9 @@ test('lección de 5.2: del botón del lector al resumen, con figuras vivas, tecl
   expect(suyas.some((p) => p.tipo === 'numero')).toBe(true);
   const banco = new Map(suyas.map((p) => [p.id, p]));
   const n = pasos.length;
-  const total = n + suyas.length;
+  // 0.10: the practice items of the section (componentes/practica/) come after the step that holds their block.
+  const practica = leerJson<{ secciones: Record<string, { items: string[] }> }>('practica/cap05.json').secciones['sec-5.2']?.items ?? [];
+  const total = n + practica.length + suyas.length;
 
   // The discreet button at the end of the section title
   await page.goto('#/cap05/sec-5.2');
@@ -149,10 +151,11 @@ test('lección de 5.2: del botón del lector al resumen, con figuras vivas, tecl
   await page.keyboard.press('ArrowLeft');
   await expect(leccion).toHaveAttribute('data-pantalla', '0');
 
-  // Through the steps with «Continuar»; the live plots of 5.2 work inside the lesson
+  // Through the steps with «Continuar» (practice screens skipped); the live plots of 5.2 work inside the lesson
   let vivas = 0;
   for (let k = 0; k < n; k++) {
-    await expect(leccion).toHaveAttribute('data-pantalla', String(k));
+    while (await page.locator('[data-practica]').count()) await page.locator('[data-saltar]').click();
+    await expect(leccion.locator(`[data-paso="${k}"]`)).toBeVisible();
     const figs = leccion.locator('figure#fig-5\\.5, figure#fig-5\\.6');
     for (let f = 0; f < (await figs.count()); f++) {
       await figs.nth(f).scrollIntoViewIfNeeded();
@@ -162,10 +165,11 @@ test('lección de 5.2: del botón del lector al resumen, con figuras vivas, tecl
     await page.locator('[data-continuar]').click();
   }
   expect(vivas).toBe(2);
+  while (await page.locator('[data-practica]').count()) await page.locator('[data-saltar]').click();
 
   // The questions about 5.2, one per screen
   for (let q = 0; q < suyas.length; q++) {
-    await expect(page.locator('.cab-pasos .cuenta')).toHaveText(`${n + q + 1}/${total}`);
+    await expect(page.locator('.cab-pasos .cuenta')).toHaveText(`${n + practica.length + q + 1}/${total}`);
     await expect(page.locator('[data-continuar]')).toBeDisabled();
     const id = await page.locator('[data-pregunta]').getAttribute('data-pregunta');
     const p = banco.get(id!)!;
@@ -234,7 +238,8 @@ test('esquema vivo dentro de una lección (5.3)', async ({ page }) => {
   const fig = page.locator('[data-leccion="cap05/sec-5.3"] figure#fig-5\\.8');
   await fig.scrollIntoViewIfNeeded();
   await expect(fig.locator('.viva.lista')).toBeVisible();
-  await expect(page.locator('[data-leccion="cap05/sec-5.3"]')).toHaveAttribute('data-pantalla', String(k));
+  // (0.10: practice screens may come before this step, so the screen index is not the step's; the step is.)
+  await expect(page.locator(`[data-leccion="cap05/sec-5.3"] [data-paso="${k}"]`)).toBeVisible();
 });
 
 test('el resto del libro: una lección de un apéndice y de una sección de un capítulo largo abren', async ({ page }) => {

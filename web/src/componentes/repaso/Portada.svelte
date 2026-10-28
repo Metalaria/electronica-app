@@ -6,6 +6,9 @@
   import ListChecks from '@lucide/svelte/icons/list-checks';
   import Shuffle from '@lucide/svelte/icons/shuffle';
   import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
+  import Hand from '@lucide/svelte/icons/hand';
+  import { cargarIndicePractica } from '../practica/datos';
+  import type { IndicePractica } from '../practica/tipos';
   import { obtenerIndice } from '../../lib/datos';
   import { colorBloque } from '../../lib/color';
   import Insignia from '../Insignia.svelte';
@@ -17,6 +20,7 @@
 
   let baraja = $state<Baraja | null>(null);
   let indiceTests = $state<IndiceRepaso | null>(null);
+  let indicePractica = $state.raw<IndicePractica | null>(null);
   let error = $state('');
   let ahora = $state(Date.now());
 
@@ -25,6 +29,7 @@
       .then((b) => (baraja = b))
       .catch((e: unknown) => (error = e instanceof Error ? e.message : String(e)));
     void cargarIndiceRepaso().then((i) => (indiceTests = i));
+    void cargarIndicePractica().then((i) => (indicePractica = i));
     const t = setInterval(() => (ahora = Date.now()), 60_000);
     return () => clearInterval(t);
   });
@@ -202,6 +207,26 @@
     {/each}
   {/if}
 </section>
+
+{#if indicePractica && indicePractica.partes.length}
+  {@const ind = obtenerIndice()}
+  <section class="bloque" aria-labelledby="tit-practica" data-practicar>
+    <h2 id="tit-practica"><Hand size={20} aria-hidden="true" /> Aprender haciendo</h2>
+    <p class="rp-sub">Predicciones comprobadas con el simulador, problemas con valores nuevos en cada intento, esquemas, montajes en la protoboard y parejas del glosario, sacados de cada capítulo.</p>
+    <ul class="practicas">
+      {#each indicePractica.partes as p (p)}
+        {@const info = ind.partes[p]}
+        <li style:--c={colorBloque(info?.color)}>
+          <a href={`#/repaso/practica/${p}`} data-practica-enlace={p}>
+            <Insignia parte={p} />
+            <span class="t">{(info?.titulo ?? p).split(' — ')[0]}</span>
+            <span class="n">{indicePractica.porParte?.[p] ?? ''}</span>
+          </a>
+        </li>
+      {/each}
+    </ul>
+  </section>
+{/if}
 
 {#if baraja}
   <section class="bloque pie">
@@ -524,5 +549,40 @@
     .empezar {
       flex: 1 1 100%;
     }
+  }
+  .practicas {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(230px, 1fr));
+    gap: 8px;
+    margin: 12px 0 0;
+    padding: 0;
+    list-style: none;
+  }
+  .practicas a {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 48px;
+    padding: 6px 12px 6px 6px;
+    border: 1px solid var(--linea);
+    border-left: 4px solid var(--c);
+    border-radius: 12px;
+    background: var(--superficie);
+    color: var(--tinta);
+    text-decoration: none;
+  }
+  .practicas a:hover {
+    background: var(--hover);
+  }
+  .practicas .t {
+    flex: 1;
+    min-width: 0;
+    font-size: 14.5px;
+    line-height: 1.25;
+  }
+  .practicas .n {
+    color: var(--tinta-suave);
+    font-size: 13px;
+    font-variant-numeric: tabular-nums;
   }
 </style>

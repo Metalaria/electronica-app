@@ -1,6 +1,6 @@
 <script lang="ts">
   // «Repaso» page (#/repaso…): home, flashcard session, chapter quiz, mixed exam, review of mistakes.
-  // Routes (ruta.ancla): ''  ·  tarjetas  ·  test/<parte>  ·  examen  ·  repasar[/<parte>]
+  // Routes (ruta.ancla): ''  ·  tarjetas  ·  test/<parte>  ·  examen  ·  repasar[/<parte>]  ·  practica/<parte> (0.10)
   import { onMount } from 'svelte';
   import { app } from '../../lib/estado.svelte';
   import { ruta } from '../../lib/ruta.svelte';
@@ -10,6 +10,7 @@
   import TestParte from './TestParte.svelte';
   import Examen from './Examen.svelte';
   import Repasar from './Repasar.svelte';
+  import PracticaParte from '../practica/PracticaParte.svelte';
 
   const [vista = '', arg = ''] = $derived(ruta.ancla.split('/'));
 
@@ -40,6 +41,8 @@
     {#key arg}<TestParte parte={arg} />{/key}
   {:else if vista === 'examen'}
     <Examen />
+  {:else if vista === 'practica' && arg}
+    {#key arg}<PracticaParte parte={arg} />{/key}
   {:else if vista === 'repasar'}
     {#key arg}<Repasar parte={arg} />{/key}
   {:else}

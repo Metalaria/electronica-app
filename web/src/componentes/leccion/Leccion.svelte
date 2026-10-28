@@ -41,6 +41,10 @@
   import Pregunta, { referenciaDe, type Respuesta } from '../pregunta/Pregunta.svelte';
   import PieAcciones from '../pregunta/PieAcciones.svelte';
   import CabeceraPasos from '../pregunta/CabeceraPasos.svelte';
+  import Practica, { type RespuestaPractica } from '../practica/Practica.svelte';
+  import IdeasClave from '../practica/IdeasClave.svelte';
+  import { NOMBRE_TIPO, pantallasLeccion, practicaDeSeccion } from '../practica/datos';
+  import type { Idea, ItemPractica } from '../practica/tipos';
 
   let { parte, seccion }: { parte: string; seccion: string } = $props();
 
@@ -52,6 +56,11 @@
   let mostrada = $state<Respuesta | null>(null);
   let error = $state('');
   let pantalla = $state(0);
+  // «Aprender haciendo» (0.10): the practice items placed after the steps, and the section's key ideas.
+  let items = $state.raw<ItemPractica[]>([]);
+  let ideas = $state.raw<Idea[]>([]);
+  let respuestasP = $state<(RespuestaPractica | null)[]>([]);
+  let finalP = $state(false);
   let titulo: HTMLElement | undefined = $state();
 
   // Opened from another page of the app (Back returns there) or as the first page (reload, link).
@@ -62,12 +71,21 @@
 
   const nPasos = $derived(leccion?.pasos.length ?? 0);
   const nPreguntas = $derived(preguntas?.length ?? 0);
-  const total = $derived(nPasos + nPreguntas);
-  const enPaso = $derived(pantalla < nPasos);
-  const paso = $derived(enPaso ? leccion!.pasos[pantalla]! : null);
-  const iPregunta = $derived(pantalla - nPasos);
-  const pregunta = $derived(!enPaso && preguntas && iPregunta < nPreguntas ? preguntas[iPregunta]! : null);
-  const enResumen = $derived(!!leccion && preguntas !== null && pantalla >= total);
+  // Screens: every step followed by its practice items, then the Repaso questions, then the end.
+  const pantallas = $derived(leccion ? pantallasLeccion(leccion.pasos, items, nPreguntas) : []);
+  /** Screens before the questions (steps and practice). */
+  const nAntes = $derived(nPasos + items.length);
+  const total = $derived(Math.max(0, pantallas.length - 1));
+  const actual = $derived(pantallas[Math.min(pantalla, Math.max(0, pantallas.length - 1))]);
+  const enPaso = $derived(actual?.k === 'paso');
+  const paso = $derived(actual?.k === 'paso' ? leccion!.pasos[actual.paso]! : null);
+  const iItem = $derived(actual?.k === 'practica' ? actual.item : -1);
+  const item = $derived(iItem >= 0 ? items[iItem]! : null);
+  const iPregunta = $derived(actual?.k === 'pregunta' ? actual.i : -1);
+  const pregunta = $derived(preguntas && iPregunta >= 0 && iPregunta < nPreguntas ? preguntas[iPregunta]! : null);
+  const enResumen = $derived(!!leccion && preguntas !== null && actual?.k === 'fin');
+  const aciertosP = $derived(respuestasP.filter((r) => r?.bien && r.intentos === 1).length);
+  const respondidasP = $derived(respuestasP.filter((r) => r).length);
   const tono = $derived(tonoBloque(leccion?.color, app.tema));
   const contenido = $derived(paso ? bloques.slice(paso.desde, paso.hasta) : []);
   const siguiente = $derived.by(() => {
@@ -78,33 +96,56 @@
   });
   const aciertos = $derived(respuestas.filter((r) => r?.bien).length);
 
-  /** «3», «pregunta-2», «fin» → screen index (needs the counts). */
-  function leerPantalla(ancla: string, n: number, q: number): number {
+  /** «3», «practica-1», «pregunta-2», «fin» → screen index (needs the steps, items and questions). */
+  function leerPantalla(ancla: string): number {
+    const ps = pantallasLeccion(leccion?.pasos ?? [], items, preguntas?.length ?? 0);
     const resto = ancla.split('/').slice(1).join('/');
     if (!resto) return 0;
-    if (resto === 'fin') return n + q;
+    if (resto === 'fin') return ps.length - 1;
     const m = /^pregunta-(\d+)$/.exec(resto);
-    if (m) return Math.min(n + q, n + Math.max(0, Number(m[1]) - 1));
-    const k = Number(resto);
-    return Number.isFinite(k) ? Math.min(Math.max(0, k - 1), Math.max(0, n - 1)) : 0;
+    if (m) {
+      const k = ps.findIndex((x) => x.k === 'pregunta' && x.i === Number(m[1]) - 1);
+      return k >= 0 ? k : ps.length - 1;
+    }
+    const mp = /^practica-(\d+)$/.exec(resto);
+    if (mp) {
+      const k = ps.findIndex((x) => x.k === 'practica' && x.item === Number(mp[1]) - 1);
+      return Math.max(0, k);
+    }
+    const n = Number(resto);
+    if (!Number.isFinite(n)) return 0;
+    const pasoK = Math.min(Math.max(0, n - 1), Math.max(0, (leccion?.pasos.length ?? 1) - 1));
+    return Math.max(0, ps.findIndex((x) => x.k === 'paso' && x.paso === pasoK));
   }
 
   function hashDe(i: number): string {
-    if (i < nPasos) return rutaLeccion(parte, seccion, i);
-    if (i < total) return `${rutaLeccion(parte, seccion)}/pregunta-${i - nPasos + 1}`;
-    return `${rutaLeccion(parte, seccion)}/fin`;
+    const x = pantallas[i];
+    if (!x || x.k === 'fin') return `${rutaLeccion(parte, seccion)}/fin`;
+    if (x.k === 'paso') return rutaLeccion(parte, seccion, x.paso);
+    if (x.k === 'practica') return `${rutaLeccion(parte, seccion)}/practica-${x.item + 1}`;
+    return `${rutaLeccion(parte, seccion)}/pregunta-${x.i + 1}`;
+  }
+
+  /** The step a screen belongs to, as the stored progress counts it (questions and the end: n and after). */
+  function pasoGuardado(i: number): number {
+    const x = pantallas[i];
+    if (!x) return nPasos + nPreguntas;
+    if (x.k === 'paso' || x.k === 'practica') return x.paso;
+    if (x.k === 'pregunta') return nPasos + x.i;
+    return nPasos + nPreguntas;
   }
 
   async function ir(i: number, enfocar = true) {
     if (!leccion) return;
-    // Past the last step the questions must be known.
-    if (i >= nPasos && preguntas === null) await cargarPreguntas();
+    // Past the last step and its practice the questions must be known.
+    if (i >= nAntes && preguntas === null) await cargarPreguntas();
     const destino = Math.max(0, Math.min(i, total));
     pantalla = destino;
     mostrada = null;
+    finalP = false;
     const h = hashDe(destino);
     if (location.hash !== h) history.replaceState(history.state, '', h);
-    anotarPaso(parte, seccion, destino, nPasos);
+    anotarPaso(parte, seccion, pasoGuardado(destino), nPasos);
     if (destino >= total) terminar();
     window.scrollTo({ top: 0, behavior: 'instant' });
     if (enfocar) {
@@ -121,9 +162,11 @@
 
   function continuar() {
     if (!leccion) return;
-    if (enPaso) {
-      completarPaso(parte, seccion, pantalla, nPasos);
-      contar(`p${pantalla}`, 'paso');
+    if (enPaso && actual?.k === 'paso') {
+      completarPaso(parte, seccion, actual.paso, nPasos);
+      contar(`p${actual.paso}`, 'paso');
+      void ir(pantalla + 1);
+    } else if (item) {
       void ir(pantalla + 1);
     } else if (pregunta) {
       if (!respuestas[iPregunta]) return;
@@ -139,6 +182,11 @@
     const primera = completarLeccion(parte, seccion, nPasos);
     completadaAhora = primera || completadaAhora;
     void cargarAprendizaje().then(() => marcarLeida(parte, seccion, true));
+  }
+
+  function responderPractica(r: RespuestaPractica) {
+    respuestasP[iItem] = r;
+    contar(`x${iItem}`, 'pregunta');
   }
 
   function responder(r: Respuesta) {
@@ -168,7 +216,8 @@
       return;
     } else if (ev.key === 'ArrowRight' || ev.key === 'Enter') {
       if (enResumen) return;
-      if (!enPaso && !respuestas[iPregunta]) return;
+      if (pregunta && !respuestas[iPregunta]) return;
+      if (item && !finalP) return;
       ev.preventDefault();
       continuar();
     } else if (ev.key === 'ArrowLeft') {
@@ -195,14 +244,21 @@
     void cargarLecciones();
     (async () => {
       try {
-        const [l, d] = await Promise.all([cargarLeccion(parte, seccion), cargarParte(parte)]);
+        const [l, d, pr] = await Promise.all([
+          cargarLeccion(parte, seccion),
+          cargarParte(parte),
+          practicaDeSeccion(parte, seccion).catch(() => ({ items: [] as ItemPractica[], ideas: [] as Idea[] })),
+        ]);
         bloques = d.bloques;
+        items = pr.items;
+        ideas = pr.ideas;
+        respuestasP = pr.items.map(() => null);
         leccion = l;
         const ancla = untrack(() => ruta.ancla);
         // Questions or summary in the URL: wait for the questions first.
         if (/\/(pregunta-\d+|fin)$/.test(ancla)) await cargarPreguntas();
         else void cargarPreguntas();
-        await ir(leerPantalla(ancla, l.pasos.length, preguntas?.length ?? 0), false);
+        await ir(leerPantalla(ancla), false);
       } catch (e) {
         error = e instanceof Error ? e.message : String(e);
       }
@@ -215,7 +271,7 @@
     const n = ruta.n;
     if (n === vistaN || !leccion) return;
     vistaN = n;
-    const i = untrack(() => leerPantalla(ruta.ancla, nPasos, nPreguntas));
+    const i = untrack(() => leerPantalla(ruta.ancla));
     if (i !== untrack(() => pantalla)) void ir(i, false);
   });
 </script>
@@ -239,18 +295,19 @@
       total={total || nPasos}
       actual={pantalla}
       contexto={`${leccion.capitulo} · ${leccion.num ? `${leccion.num} ` : ''}${leccion.titulo}`}
-      descripcion={enPaso ? `Paso ${pantalla + 1} de ${nPasos}` : pregunta ? `Pregunta ${iPregunta + 1} de ${nPreguntas}` : 'Lección completada'}
+      descripcion={paso && actual?.k === 'paso' ? `Paso ${actual.paso + 1} de ${nPasos}` : item ? `Práctica: ${NOMBRE_TIPO[item.tipo]}` : pregunta ? `Pregunta ${iPregunta + 1} de ${nPreguntas}` : 'Lección completada'}
       cerrar={cerrar}
       etiquetaCerrar="Cerrar la lección"
     />
 
     <main class="cuerpo">
       <div class="columna">
-        {#if paso}
+        {#if paso && actual?.k === 'paso'}
+          {@const kPaso = actual.paso}
           {#key pantalla}
             <div class="cab-paso">
-              <span class="etiqueta" data-paso={pantalla}>
-                Paso {pantalla + 1}{#if paso.num} · {paso.num}{:else if paso.tipo === 'intro'} · Introducción{:else if paso.tipo === 'continua'} · Continuación{/if}
+              <span class="etiqueta" data-paso={kPaso}>
+                Paso {kPaso + 1}{#if paso.num} · {paso.num}{:else if paso.tipo === 'intro'} · Introducción{:else if paso.tipo === 'continua'} · Continuación{/if}
               </span>
               <h1 bind:this={titulo} tabindex="-1">{@html prepararHtml(paso.html ?? leccion.html)}</h1>
               {#if paso.label}
@@ -267,6 +324,11 @@
             <a class="leer-libro" href={`#/${parte}/${encodeURIComponent(paso.label ?? seccion)}`}>
               Leer la sección {leccion.num || leccion.titulo} entera en el libro
             </a>
+          {/key}
+        {:else if item}
+          {#key item.id}
+            <h1 class="solo-lector" bind:this={titulo} tabindex="-1">Práctica: {NOMBRE_TIPO[item.tipo]}</h1>
+            <Practica {item} etiqueta={`Práctica · ${NOMBRE_TIPO[item.tipo]}`} respuesta={respuestasP[iItem]} onresponder={responderPractica} bind:final={finalP} />
           {/key}
         {:else if pregunta}
           {#key pregunta.id}
@@ -291,10 +353,14 @@
               {#if nPreguntas && respuestas.some((r) => r)}
                 <li><strong>{aciertos} de {nPreguntas}</strong> {nPreguntas === 1 ? 'pregunta' : 'preguntas'} a la primera</li>
               {/if}
+              {#if respondidasP}
+                <li data-cifra-practica><strong>{aciertosP} de {items.length}</strong> {items.length === 1 ? 'práctica' : 'prácticas'} a la primera</li>
+              {/if}
               <li class="leida"><Check size={16} strokeWidth={3} aria-hidden="true" /> Marcada como leída</li>
             </ul>
+            <IdeasClave {ideas} {parte} />
             {#if siguiente}
-              <div class="siguiente">
+              <div class="siguiente" data-siguiente-titulo>
                 <span class="rot">Siguiente sección</span>
                 <span class="tit">{siguiente.num ? `${siguiente.num} · ` : ''}{siguiente.titulo}</span>
               </div>
@@ -308,7 +374,16 @@
     </main>
 
     <PieAcciones>
-      {#if paso}
+      {#if item}
+        {#if finalP}
+          <button type="button" class="accion corta" onclick={atras} data-atras>Atrás</button>
+        {:else}
+          <button type="button" class="accion corta" onclick={() => ir(pantalla + 1)} data-saltar>Saltar</button>
+        {/if}
+        <button type="button" class="accion primaria" onclick={continuar} disabled={!finalP} data-continuar>
+          Continuar <ArrowRight size={20} strokeWidth={2.2} aria-hidden="true" />
+        </button>
+      {:else if paso}
         <button type="button" class="accion corta" onclick={atras} disabled={pantalla === 0} data-atras>Atrás</button>
         <button type="button" class="accion primaria" onclick={continuar} data-continuar>
           Continuar <ArrowRight size={20} strokeWidth={2.2} aria-hidden="true" />

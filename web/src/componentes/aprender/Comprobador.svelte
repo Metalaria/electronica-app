@@ -15,6 +15,7 @@
     verSolucion,
   } from '../../lib/aprendizaje.svelte';
   import Icono from '../Icono.svelte';
+  import OtrosValores from '../practica/OtrosValores.svelte';
 
   let {
     label,
@@ -199,6 +200,8 @@
   {#if item.errata}
     <p class="errata"><strong>Aviso:</strong> {@html item.errata}</p>
   {/if}
+
+  <OtrosValores {label} parte={item.parte} />
 
   {#if resumenEstado}
     <p class="estado">

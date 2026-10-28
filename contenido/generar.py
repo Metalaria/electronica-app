@@ -260,9 +260,20 @@ def main():
     ok = formulas.main() == 0 and ok  # live calculators: formulas.json, formulas-ec.json (needs partes/, refs.json)
     ok = ejercicios.main([]) == 0 and ok  # self-checking exercises and problems: ejercicios.json (needs partes/)
     ok = glosario_imagenes.main([]) == 0 and ok  # glossary symbols and 3D models: glosario-imagenes.json
+    ok = practica() and ok             # 0.10 «Aprender haciendo»: libro/practica/ (needs all of the above)
     if check_figs:
         validar.check_figures(figs, OUT)
     sys.exit(0 if ok else 1)
+
+
+def practica():
+    """The lessons' interactive items (web/scripts/practica10.mjs, Node + the app's ngspice; ESQUEMA.md «Práctica»)."""
+    import subprocess
+    web = os.path.join(os.path.dirname(HERE), 'web')
+    if not shutil.which('node'):
+        print('practica: falta node; no se generan las preguntas interactivas')
+        return True
+    return subprocess.run(['node', os.path.join('scripts', 'practica10.mjs')], cwd=web).returncode == 0
 
 
 if __name__ == '__main__':
