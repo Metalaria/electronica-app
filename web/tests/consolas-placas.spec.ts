@@ -70,18 +70,17 @@ async function sin3D(page: Page): Promise<void> {
   await page.addInitScript(() => ((globalThis as unknown as { __epaSinWebGL: boolean }).__epaSinWebGL = true));
 }
 
-test('las pestañas de placa solo aparecen en las consolas con placa', async ({ page }) => {
-  // (the NES has had a board since 0.8: OpenTendo; the Master System has none)
-  await page.goto('#/consolas/sms/foto');
+test('las siete consolas tienen las pestañas de placa', async ({ page }) => {
+  // (the NES has had a board since 0.8: OpenTendo; the Master System since 0.11, reconstructed from its photos)
   const pestanas = page.getByRole('navigation', { name: 'Vista' });
-  await expect(pestanas.getByRole('link', { name: 'Esquema' })).toBeVisible();
-  await expect(pestanas.getByRole('link', { name: 'Placa en 3D' })).toHaveCount(0);
-  await page.goto('#/consolas/megadrive/foto');
-  await expect(pestanas.getByRole('link', { name: 'Placa en 3D' })).toBeVisible();
-  await expect(pestanas.getByRole('link', { name: 'Placa en 2D' })).toBeVisible();
-  // a machine without a board opened on a board tab falls back to the photo
+  for (const m of ['nes', 'neogeo', 'sms', 'megadrive', 'gb', 'gbc', 'snes']) {
+    await page.goto(`#/consolas/${m}/foto`);
+    await expect(pestanas.getByRole('link', { name: 'Esquema' }), m).toBeVisible();
+    await expect(pestanas.getByRole('link', { name: 'Placa en 3D' }), m).toBeVisible();
+    await expect(pestanas.getByRole('link', { name: 'Placa en 2D' }), m).toBeVisible();
+  }
   await page.goto('#/consolas/sms/placa2d');
-  await expect(pestanas.getByRole('link', { name: 'Foto', exact: true })).toHaveAttribute('aria-current', 'page');
+  await expect(pestanas.getByRole('link', { name: 'Placa en 2D', exact: true })).toHaveAttribute('aria-current', 'page');
 });
 
 test('Mega Drive: del esquema a la placa y de la placa al esquema', async ({ page }) => {
@@ -187,9 +186,13 @@ test('las fuentes dicen de dónde sale cada placa y su licencia', async ({ page 
   await page.goto('#/consolas/nes/fuentes');
   await expect(s).toContainText('OpenTendo');
   await expect(s).toContainText('TAPR Open Hardware License 1.0');
+  // the Master System's board is a reconstruction from ConsoleMods' photos (CC BY), both faces credited
   await page.goto('#/consolas/sms/fuentes');
-  await expect(page.locator('.fuentes')).toBeVisible();
-  await expect(s).toHaveCount(0);
+  await expect(s).toContainText('reconstrucción a partir de fotos');
+  await expect(s).toContainText('ConsoleMods');
+  await expect(s).toContainText('171-5922ABottom.jpg');
+  await expect(s).toContainText('Creative Commons Attribution');
+  await expect(s).toContainText('enderezadas y reducidas');
 });
 
 test('la placa en 3D de la CGB-CPU-04 se monta con WebGL', async ({ page }) => {
@@ -354,7 +357,7 @@ async function carasAndroid(browser: import('@playwright/test').Browser, maquina
   return { ctx, st, ls, errores };
 }
 
-for (const maquina of ['neogeo', 'snes']) {
+for (const maquina of ['neogeo', 'snes', 'sms']) {
   test(`en Android las caras de la placa ${maquina} se pintan directas a 2048 px`, async ({ browser }) => {
     test.setTimeout(300_000);
     const { ctx, st, ls, errores } = await carasAndroid(browser, maquina);
@@ -392,6 +395,7 @@ const PLACAS_3D: { maquina: string; boton?: RegExp; id: string }[] = [
   { maquina: 'gb', id: 'gb-superdmg' },
   { maquina: 'gbc', id: 'gbc-cgb04' },
   { maquina: 'gbc', boton: /OpenGBC/, id: 'gbc-opengbc' },
+  { maquina: 'sms', id: 'sms' },
 ];
 
 test('las placas de las consolas en 3D: ningún componente queda como caja gris y todos los chips llevan su rótulo', async ({ page }) => {
@@ -463,6 +467,164 @@ test('Neo Geo en 3D con agente de Android: piezas con su cuerpo sin disparar la 
   const f = s.fases!;
   expect(f.modelos + f.fusion + f.compilar).toBeLessThan(4000);
   expect(r.triangulos).toBeLessThan(400_000);
+  expect(errores).toEqual([]);
+  await ctx.close();
+});
+
+// 0.11: the Master System II's 171-5922A has no published PCB: contenido/consolas_sms_placa.py rebuilds it from
+// ConsoleMods' scans of the bare board (holes and parts measured on the photo, scaled by the 2.54 mm pin grid,
+// the scans themselves as its faces, the schematic's nets on the pads, no vector copper).
+interface PlacaFoto extends Placa {
+  placa: { ancho: number; alto: number; fotos?: Record<string, { src: string; w: number; h: number }> };
+  consola: Placa['consola'] & { tipo: string; alias?: Record<string, string> };
+}
+
+test('Master System II: placa reconstruida a partir de la foto, en 3D, con sus piezas, rótulos y el aviso', async ({ page }) => {
+  test.setTimeout(300_000);
+  const errores: string[] = [];
+  page.on('pageerror', (e) => errores.push(e.message));
+  const st = await placa3D(page, 'sms');
+  await expect(page.locator('.placa-consola')).toHaveAttribute('data-placa', 'sms');
+  // the notice, above the view and in the board's summary
+  await expect(page.locator('.aviso-foto')).toContainText('Reconstrucción a partir de la foto: las pistas solo se ven en la imagen');
+  await expect(page.locator('.placa-consola .lado .aviso-placa')).toContainText('las pistas solo se ven en la imagen');
+  const d = (await placa(page, 'sms')) as PlacaFoto;
+  expect(d.consola.tipo).toBe('foto');
+  expect(d.consola.enlazada).toBe(true);
+  // two photo faces, within the 4096 px of the desktop faces; no copper of their own
+  expect(Object.keys(d.placa.fotos ?? {}).sort()).toEqual(['B', 'F']);
+  for (const f of Object.values(d.placa.fotos!)) expect(Math.max(f.w, f.h)).toBeLessThanOrEqual(4096);
+  for (const f of Object.values(d.placa.fotos!)) expect((await page.request.get(f.src)).ok()).toBe(true);
+  // board size from the 2.54 mm grid: about 191 × 152 mm
+  expect(d.placa.ancho / 100).toBeGreaterThan(185);
+  expect(d.placa.ancho / 100).toBeLessThan(196);
+  expect(d.placa.alto / 100).toBeGreaterThan(146);
+  expect(d.placa.alto / 100).toBeLessThan(157);
+  // every part of the schematic is on the board but CS4 and R31 (not printed on it) and RA2 (half of RA1)
+  expect(d.consola.refs.length).toBeGreaterThanOrEqual(150);
+  for (const r of ['IC1', 'IC2', 'IC3', 'IC4', 'IC5', 'IC6', 'IC7', 'IC8', 'IC9', 'CN1', 'CN2', 'CN3', 'CN4', 'OSC1', 'RF1', 'SW1', 'SW2', 'RA1'])
+    expect(d.consola.refs, r).toContain(r);
+  expect(d.consola.alias).toEqual({ RA2: 'RA1' });
+  // the parts drawn: every footprint that is not a hole and is mounted
+  const cuerpos = d.huellas.filter((h) => h.t !== 'mec' && !h.dnp).length;
+  expect(cuerpos).toBeGreaterThanOrEqual(150);
+  expect(st.piezas.biblioteca + st.piezas.propias).toBe(cuerpos);
+  const r = st.revision!;
+  expect(r.genericos).toEqual([]);
+  expect(r.porTipo?.caja).toBeUndefined();
+  expect(r.sinRotulo).toEqual([]);
+  expect(r.pinesDistintos).toEqual([]);
+  expect(r.maxDesvio).toBeLessThanOrEqual(0.5);
+  // the chips with the packages of the schematic and the markings of the M4Jr. photo
+  const de = (ref: string) => d.huellas.find((h) => h.r === ref)!;
+  for (const [ref, tipo, mk] of [
+    ['IC1', 'dip', 'Z0840004PSC|Z80 CPU'],
+    ['IC2', 'dip', 'MPR-12808'],
+    ['IC3', 'dip', '4168'],
+    ['IC4', 'dip', 'SEGA|315-5237'],
+    ['IC5', 'dip', 'SEGA|315-5246'],
+    ['IC6', 'dip', 'D4168C-15'],
+    ['IC7', 'dip', 'D4168C-15'],
+    ['IC9', 'dip', 'CXA1145P'],
+    ['OSC1', 'lata', '53.2034'],
+  ])
+    expect(de(ref).m, ref).toMatchObject({ tipo, marcado: mk });
+  expect(d.pads.filter((p) => d.huellas[p[0]]!.r === 'IC1').length).toBe(40);
+  expect(d.pads.filter((p) => d.huellas[p[0]]!.r === 'IC5').length).toBe(64);
+  expect(de('IC8').m.tipo).toBe('to');
+  expect(de('CN1').m.tipo).toBe('conector');
+  expect(de('RF1').m.tipo).toBe('lata');
+  expect(de('C41').m.tipo).toBe('electrolitico');
+  expect(de('R9').m.tipo).toBe('resistencia_axial');
+  // every part says it was placed from the photo
+  for (const h of d.huellas.filter((x) => x.t !== 'mec')) expect(h.rec?.pos, h.r).toBe('foto');
+  expect(errores).toEqual([]);
+});
+
+test('Master System II: la placa reconstruida enlazada con el esquema, y las redes solo con sus pads', async ({ page }) => {
+  await sin3D(page);
+  // schematic → board (3D tab without WebGL: the 2D view)
+  await page.goto('#/consolas/sms/esquema/IC5');
+  await page.getByRole('button', { name: 'Ver en la placa', exact: true }).click();
+  await expect(page).toHaveURL(/#\/consolas\/sms\/placa2d\/IC5$/);
+  const lado = page.locator('.placa-consola .lado');
+  await expect(lado.locator('.nombre')).toContainText('IC5');
+  await expect(lado).toContainText('315-5246');
+  await expect(lado.locator('.reconstruida')).toContainText('Posición reconstruida');
+  await expect(page.locator('.aviso-foto')).toContainText('las pistas solo se ven en la imagen');
+  // RA2 of the schematic is the other half of the board's RA1
+  await page.goto('#/consolas/sms/esquema/RA2');
+  await page.getByRole('button', { name: 'Ver en la placa', exact: true }).click();
+  await expect(lado.locator('.nombre')).toContainText('RA1');
+  // a pad → its net: the net's pads, listed; on this board there are no tracks
+  await page.goto('#/consolas/sms/placa2d/IC1');
+  await expect(lado.locator('.nombre')).toContainText('IC1');
+  await lado.locator('.nodos button').filter({ hasText: 'A0' }).first().click();
+  await expect(page).toHaveURL(/placa2d\/red%3AA0$/);
+  await expect(lado.locator('.nombre')).toHaveText('A0');
+  // A0: Z80, ROM, RAM, I/O chip, VDP, cartridge slot, RA1
+  expect(await lado.locator('.nodos li').count()).toBeGreaterThanOrEqual(7);
+  const d = (await placa(page, 'sms')) as PlacaFoto & { pistas: Record<string, number[]>; vias: number[] };
+  expect(Object.values(d.pistas).flat()).toEqual([]);
+  expect(d.vias).toEqual([]);
+  await lado.getByRole('button', { name: 'Ver en el esquema' }).click();
+  await expect(page).toHaveURL(/esquema\/red%3AA0$/);
+});
+
+test('Master System II en 2D: la foto es la cara, y tocar el Z80 lo elige también en el esquema', async ({ page }) => {
+  const errores: string[] = [];
+  page.on('pageerror', (e) => errores.push(e.message));
+  await page.goto('#/consolas/sms/placa2d');
+  const lienzo = page.locator('.placa2d canvas');
+  await expect(lienzo).toBeVisible();
+  await expect(page.locator('.aviso-foto')).toBeVisible();
+  await page.waitForFunction(() => !!(globalThis as unknown as { __epaPlacaVista?: unknown }).__epaPlacaVista);
+  await page.waitForTimeout(500);
+  // the face is the photo: many colours (a drawn face has a handful)
+  const colores = await lienzo.evaluate((c: HTMLCanvasElement) => {
+    const x = c.getContext('2d')!;
+    const img = x.getImageData(Math.round(c.width * 0.35), Math.round(c.height * 0.35), Math.round(c.width * 0.3), Math.round(c.height * 0.3));
+    const s = new Set<number>();
+    for (let i = 0; i < img.data.length; i += 4) s.add((img.data[i]! >> 3) * 1024 + (img.data[i + 1]! >> 3) * 32 + (img.data[i + 2]! >> 3));
+    return s.size;
+  });
+  expect(colores).toBeGreaterThan(300);
+  // tap IC1's pin 21 (the Z80): selected here and in the schematic
+  const d = await placa(page, 'sms');
+  const h = d.huellas.find((x) => x.r === 'IC1')!;
+  const pad = d.pads[h.pads[0] + 25]!;
+  const v = (await page.evaluate(() => (globalThis as unknown as { __epaPlacaVista: Vista2D }).__epaPlacaVista)) as Vista2D;
+  const caja = (await lienzo.boundingBox())!;
+  await page.mouse.click(caja.x + v.ox + pad[3] * v.k, caja.y + v.oy + pad[4] * v.k);
+  await expect(page.locator('.placa-consola .lado .nombre')).toContainText('IC1');
+  await page.getByRole('navigation', { name: 'Vista' }).getByRole('link', { name: 'Esquema' }).click();
+  await expect(page).toHaveURL(/esquema\/IC1$/);
+  await expect(page.locator('h3.nombre')).toContainText('IC1');
+  expect(errores).toEqual([]);
+});
+
+test('Master System II: el trabajador de las caras (WebKit) también pinta las fotos', async ({ browser }) => {
+  test.setTimeout(300_000);
+  const ctx = await browser.newContext({ baseURL: test.info().project.use.baseURL });
+  // the WebKit path (painted by a worker, which loads the photos itself from absolute URLs), forced in Chromium
+  await ctx.addInitScript(() => localStorage.setItem('epa-caras', 'trabajador'));
+  const page = await ctx.newPage();
+  const errores: string[] = [];
+  page.on('pageerror', (e) => errores.push(e.message));
+  const fotos: string[] = [];
+  page.on('request', (r) => {
+    if (/placas\/sms\/cara-[FB]\.jpg$/.test(r.url())) fotos.push(r.url());
+  });
+  await page.goto('./#/consolas/sms/placa3d');
+  await page.waitForFunction(() => (globalThis as unknown as { __epaPlaca3D?: StatsCaras }).__epaPlaca3D?.carasFinas != null, null, { timeout: 240_000 });
+  const st = await page.evaluate(() => (globalThis as unknown as { __epaPlaca3D: StatsCaras }).__epaPlaca3D);
+  expect(st.fasesCaras?.completa?.modo).toBe('trabajador');
+  // both faces fetched (by the page, and again by the worker unless the HTTP cache serves it)
+  expect(new Set(fotos.map((u) => u.slice(-10))).size).toBe(2);
+  const registro = await page.evaluate(() => localStorage.getItem('epa-registro') ?? '');
+  expect(registro).not.toContain('sin la foto');
+  expect(registro).not.toContain('el trabajador falló');
+  expect(registro).toContain('caras a resolución completa: listas');
   expect(errores).toEqual([]);
   await ctx.close();
 });

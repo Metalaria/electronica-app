@@ -73,7 +73,7 @@
   <header>
     <div class="titulo">
       <h1>Consolas</h1>
-      <p>Las placas base de las figuras 36.16 y 36.22 y otras cinco consolas: foto interactiva, arquitectura animada, esquema real y, donde hay placa publicada, la placa en 3D.</p>
+      <p>Las placas base de las figuras 36.16 y 36.22 y otras cinco consolas: foto interactiva, arquitectura animada, esquema real y la placa en 3D (la del Master System II, reconstruida a partir de sus fotos).</p>
     </div>
     <nav class="maquinas" aria-label="Consola">
       {#each MAQUINAS as m (m.id)}

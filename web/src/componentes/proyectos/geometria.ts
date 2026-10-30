@@ -43,6 +43,8 @@ export interface Geometria {
   areas: { camino: Path2D; capas: string[]; nombre: string }[];
   /** Zone polygons per net and layer, for hit testing. */
   zonasRed: { l: Lado; r: number; camino: Path2D; caja: [number, number, number, number] }[];
+  /** 0.11: decoded photographs of the faces (DatosPlaca.placa.fotos), set by fotos-caras.ts once loaded. */
+  fotos?: Partial<Record<Lado, ImageBitmap>>;
 }
 
 /** Outline points of a pad (u, board frame), grown by `crecer`. */

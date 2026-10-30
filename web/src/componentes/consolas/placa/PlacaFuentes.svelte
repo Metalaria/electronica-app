@@ -28,7 +28,10 @@
     <ul class="lista">
       {#each placas as p (p.id)}
         <li>
-          <p class="titulo"><strong>{p.fuente.titulo}</strong>{#if !p.enlazada} <span class="marca">no es la placa original</span>{/if}</p>
+          <p class="titulo">
+            <strong>{p.fuente.titulo}</strong>{#if !p.enlazada} <span class="marca">no es la placa original</span>{/if}{#if p.tipo === 'foto'}
+              <span class="marca">reconstrucción a partir de fotos</span>{/if}
+          </p>
           <p>{p.fuente.autor} · <a href={p.fuente.url} target="_blank" rel="noopener noreferrer">{p.fuente.url.replace(/^https?:\/\//, '')}</a></p>
           <p class="licencia">Licencia: {p.fuente.licencia}</p>
           <p class="uso">{p.fuente.uso}</p>
@@ -38,7 +41,11 @@
     </ul>
     <p class="nota">
       Los ficheros de las placas no se copian en la aplicación: <code>contenido/consolas_pcb.py</code> los lee de la carpeta de
-      investigación y guarda solo la geometría que dibuja el visor (cobre, taladros, serigrafía, huellas y redes).
+      investigación y guarda solo la geometría que dibuja el visor (cobre, taladros, serigrafía, huellas y redes).{#if placas.some(
+        (p) => p.tipo === 'foto',
+      )}
+        La placa reconstruida a partir de fotos sí lleva las fotos, enderezadas y reducidas para usarlas como caras de la
+        placa, con la licencia y el crédito de arriba.{/if}
     </p>
   </section>
 {/if}

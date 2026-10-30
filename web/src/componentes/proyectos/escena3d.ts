@@ -43,6 +43,7 @@ import { ResolucionAdaptable, REPOSO, type EstadoResolucion } from '../tres/moto
 import type { Geometria, Lado } from './geometria';
 import { coloresTension, MASCARAS, pintarLado, pintarRed, type Acabado } from './pintar';
 import { datosParaCaras, pintarMapa, type MensajeTrabajador, type PedidoCara, type RespuestaTrabajador, type TipoMapa } from './caras';
+import { fotosAbsolutas } from './fotos-caras';
 import { pintarDirecto, pintarPorBandas, subirPorFranjas, texturaDePixeles, texturaVacia, type Subida } from './texturas-caras';
 import { cargarBiblioteca, claveBiblioteca, CON_MARCADO_FIJO, cuerpoSimple, giroModelo, liberarMateriales, marcadoCoincide } from './modelos3d';
 import { registrar } from '../../lib/registro';
@@ -799,7 +800,7 @@ export class Escena3D {
       if (motivo) this.cerrarTrabajador(motivo);
     });
     // The geometry is rebuilt there while the page builds the parts.
-    w.postMessage({ tipo: 'placa', datos: datosParaCaras(this.d) } satisfies MensajeTrabajador);
+    w.postMessage({ tipo: 'placa', datos: datosParaCaras(fotosAbsolutas(this.d, document.baseURI)) } satisfies MensajeTrabajador);
   }
 
   /** Stops the worker; whatever was asked of it is answered with null (painted on the page instead). */

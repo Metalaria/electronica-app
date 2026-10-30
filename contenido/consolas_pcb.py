@@ -24,7 +24,10 @@ Sources (read only, never copied into the repository; env CONSOLAS_FUENTES, defa
   - gb-superdmg: kamicane/Super-DMG-01 super-dmg-cpu.kicad_pcb (KiCad 7, CC BY-SA 4.0, commit bf540dd), a modern
                  recreation of the DMG mainboard, not kept: pass its path in CONSOLAS_PCB_GB_SUPERDMG. Like OpenGBC it is
                  linked to the console's schematic only in part (enlace_parcial: same reference and same nets).
-The Master System's slowcoder/SMSSchematic.kicad_pcb has no footprints (an empty KiCad 4 board): skipped.
+  - sms (0.11):  no published board (slowcoder/SMSSchematic.kicad_pcb is an empty KiCad 4 board): RECONSTRUCTED from
+                 ConsoleMods' 600 dpi scans of the bare 171-5922A (CC BY) by consolas_sms_placa.py — holes and parts
+                 measured on the photo, scaled by the 2.54 mm pin grid, the scans themselves as the faces' textures
+                 (written to placas/sms/), the schematic's nets on the pads, no vector copper (tipo 'foto').
 
 The KiCad 9 boards are read with proyectos_kicad_pcb (its s-expression reader copes with the newer syntax). Their
 silkscreen text needs KiCad's stroke font: every silkscreen item is copied, in board coordinates, into a minimal
@@ -62,6 +65,7 @@ import proyectos_kicad as PK        # noqa: E402  (read only: kicad-cli cache, s
 import consolas_gerber as G         # noqa: E402
 import consolas_gerber_piezas as GP  # noqa: E402
 import consolas_cuerpos as CC       # noqa: E402
+import consolas_sms_placa as SMS    # noqa: E402
 
 # kicad-cli results of this script go to their own cache folder
 PK.CACHE = os.path.join(HERE, '.cache/consolas_pcb')
@@ -182,6 +186,31 @@ PLACAS = [
                    'licencia': 'GPL-3.0 (el texto completo está en las fuentes de la Super Nintendo)',
                    'uso': 'Placa en 3D y en 2D: contorno, cobre de las dos caras, planos, vías, taladros, serigrafía y '
                           'componentes con sus huellas.'},
+    },
+    {
+        # 0.11: no file of this board exists; rebuilt from the two scans of the bare board (consolas_sms_placa.py)
+        'id': 'sms', 'maquina': 'sms', 'tipo': 'foto',
+        'ruta': 'sms/fotos/171-5922ATop.jpg', 'ruta_inferior': 'sms/fotos/171-5922ABottom.jpg',
+        # long side of the face textures (px): the 4096 px faces of the desktop draw them a little enlarged, the
+        # 2048 px ones of Android a little reduced
+        'textura_px': {'F': 2560, 'B': 2048}, 'calidad': 78,
+        'titulo': '171-5922A (IC BD M4Jr. PAL), reconstruida a partir de las fotos de la placa desnuda',
+        'corto': '171-5922A · reconstrucción',
+        'enlazada': True,
+        'mascara': 'verde', 'serigrafia': 'amarilla', 'acabado': None,
+        'aviso': 'Reconstrucción a partir de la foto: las pistas solo se ven en la imagen. No hay ningún fichero publicado de '
+                 'la placa 171-5922A, así que el contorno, los taladros y la posición de cada componente se han medido en los '
+                 'escaneos de la placa desnuda de ConsoleMods (600 ppp), con la escala que dan las patillas de los chips '
+                 '(2,54 mm); las caras de la placa son esas mismas fotos, enderezadas. Cada pad lleva la red del esquema del '
+                 'manual por su referencia y su patilla; el cobre no se ha redibujado, así que al elegir una red se iluminan sus '
+                 'pads, no sus pistas. Los cuerpos y las alturas son los típicos de cada encapsulado y los rótulos de los chips, '
+                 'los de la foto de la IC BD M4Jr. PAL.',
+        'fuente': {'titulo': 'ConsoleMods Wiki — 171-5922ATop.jpg y 171-5922ABottom.jpg (placa desnuda, las dos caras, 600 ppp)',
+                   'autor': 'ConsoleMods Wiki (colaboradores)',
+                   'url': 'https://consolemods.org/wiki/Master_System:171-5922A_Board_Info',
+                   'licencia': 'Creative Commons Attribution (pie del wiki)',
+                   'uso': 'Placa en 3D y en 2D reconstruida: las dos fotos, enderezadas, son las caras de la placa, y en la de '
+                          'los componentes se han medido el contorno, los taladros y la posición de cada pieza.'},
     },
     {
         'id': 'gbc-cgb04', 'maquina': 'gbc', 'tipo': 'gerber', 'reconstruir': True,
@@ -1121,6 +1150,11 @@ def escribir(cfg, r):
     }
     if r.get('parcial'):
         placa['consola']['parcial'] = r['parcial']
+    if r.get('alias'):
+        placa['consola']['alias'] = r['alias']
+    if r.get('fotos'):
+        # 0.11: the faces are photographs (src relative to the app, size in px)
+        placa['placa']['fotos'] = {k: {'src': v['src'], 'w': v['w'], 'h': v['h']} for k, v in r['fotos'].items()}
     if cfg.get('lado_componentes'):
         # the face the inclined 3D view shows, when counting parts would pick the other one
         placa['placa']['lado_componentes'] = cfg['lado_componentes']
@@ -1185,7 +1219,13 @@ def main(ids=()):
                 print('consolas_pcb: %-12s se conservan los ficheros ya generados' % cfg['id'])
             continue
         d = consola(cfg['maquina'])
-        r = (placa_kicad if cfg['tipo'] == 'kicad' else placa_gerber)(cfg, d, problemas)
+        if cfg['tipo'] == 'foto':
+            r = SMS.construir(cfg, d, FUENTES, OUT, problemas)
+            CC.reclasificar(cfg['id'], {'huellas': r['huellas'], 'pads': r['pads'], 'placa': {'ancho': q(r['ancho']), 'alto': q(r['alto'])}},
+                            d['componentes'])
+            print('consolas_pcb: %-12s %s' % (cfg['id'], SMS.resumen(r['info'])))
+        else:
+            r = (placa_kicad if cfg['tipo'] == 'kicad' else placa_gerber)(cfg, d, problemas)
         e = escribir(cfg, r)
         indice.append(e)
         print('consolas_pcb: %-12s %6.1f × %5.1f mm, %d capas, %d componentes, %d pads, %d redes, %d vías, %d zonas, %.0f kB · %s'

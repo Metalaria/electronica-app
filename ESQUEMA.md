@@ -1376,7 +1376,8 @@ the SNES decoder has the spaces `a`, the 24-bit CPU address, and `b`, the B bus 
 
 ### Console boards in 3D and 2D (`consolas/placa/`, data in `web/public/consolas/placas/`)
 
-Tabs `placa3d` and `placa2d`, only for the machines listed in `placa/datos.ts → PLACAS_DE` (NES, 0.8; Mega Drive; Neo Geo, 0.8; Game Boy,
+Tabs `placa3d` and `placa2d`, only for the machines listed in `placa/datos.ts → PLACAS_DE` (NES, 0.8; Master System II, 0.11,
+reconstructed from photos; Mega Drive; Neo Geo, 0.8; Game Boy,
 0.8.2: Super DMG-01; Game Boy Color with two boards, the choice kept in `placa/eleccion.svelte.ts`; the selector also shows
 alone for a board that is not the original). `PlacaConsola.svelte` mounts the «Proyectos
 KiCad» components unchanged (`proyectos/Vista3D.svelte`, `Placa2D.svelte`, `geometria.ts`, `seleccion.ts`,
@@ -1443,11 +1444,36 @@ parte»): then only those references (`refEnlazada`) and the nets in `consola.re
   nota}`, shown in its sheet (`.reconstruida`) and summed in the board's note; buttons' contacts, battery tabs, speaker
   pads and the jumper stay `t: 'mec'`. A check sums it all up in `comprobaciones`.
 
-**Files**: `indice.json` `{version, placas: [{id, maquina, titulo, corto, enlazada, tipo kicad|gerber, aviso, fuente
+- Board reconstructed from photographs (0.11, `tipo: 'foto'`, Master System II 171-5922A, `contenido/consolas_sms_placa.py`):
+  no PCB of it is published. Sources: ConsoleMods' 600 dpi scans of the bare board (`sms/fotos/171-5922ATop.jpg`,
+  `171-5922ABottom.jpg`, CC BY). The tables `DIPS`, `DOS`, `EMIS` and the named parts give every component hole in px of
+  the top scan (read by eye on the silkscreen); `respuesta()` (ring-minus-centre matched filter on the «silver» pixels,
+  cached as `.npy` in `contenido/.cache/consolas_sms/`) snaps each to its ring. `ajustar_rejillas` fits one affine map
+  px = M · mm + o_part by least squares to all the parts whose pins lie on the 2.54 mm lattice (offsets rounded to half
+  pitches; one unknown origin per part; outliers > 6 px dropped): M gives the scale (23.65 × 23.58 px/mm), rotation and
+  shear, median residual 1 px. The outline and the inner holes come from the scan against the lid's white
+  (`contorno_px`), the board origin is the outline's top-left in that frame. The bottom scan is registered on the top
+  one by an affine map G (mirror guess from the outlines' boxes, refined six times on the nearest rings; 697 holes, 2.3 px).
+  Faces: both scans warped into the board frame (`placa.fotos {F, B: {src, w, h}}`, `textura_px` {F: 2560, B: 2048},
+  JPEG q78 in `placas/sms/`). Pads: round THT pads of typical sizes, NPTH holes and slots as mechanical `H<n>`; nets
+  are the schematic's (`consola.redes` identity; RA1 pins 6–9 take RA2's 2–5, `consola.alias {RA2: RA1}`); no tracks,
+  vias, zones or silkscreen. Footprints are named for `consolas_cuerpos.TABLA` (`SMS_*`, `DIP-n`, `Oscillator_DIP-14`,
+  `DSUB-9_*`, `DcJack`, `SW_*`, `Mod_RF`, `TO-220-3_Vertical`) and classified by `CC.reclasificar`; markings in
+  `MARCADOS['sms']`. Every part carries `rec {pos: 'foto', cuerpo: 'foto', nota}` saying what is measured and what is
+  assumed (pin order of non-polar two-lead parts, numbers of the unnumbered «CP»/«CE», contacts of jack/switches/RF).
+  Viewer: `proyectos/fotos-caras.ts` decodes the photos (fetch + createImageBitmap, also in the faces' worker, which
+  gets absolute URLs via `fotosAbsolutas`) into `Geometria.fotos`; `PlacaConsola` loads them before opening the views;
+  `pintarLado` (real look, with mask, silkscreen and that side's copper on) draws the photo clipped to the outline instead
+  of the drawn copper, mask and silkscreen, then the drills; the PBR map is unchanged (pads metal). Face sizes follow
+  the 0.9.2 rules (4096 / 2048 on Android, size guard): the photo is drawn into those maps. A net highlights its pads
+  only. `PlacaConsola` shows `.aviso-foto` «Reconstrucción a partir de la foto: las pistas solo se ven en la imagen».
+  `python3 contenido/consolas_pcb.py sms` rebuilds it (≈ 2 s with the cache, ≈ 100 s without).
+
+**Files**: `indice.json` `{version, placas: [{id, maquina, titulo, corto, enlazada, tipo kicad|gerber|foto, aviso, fuente
 {titulo, autor, url, licencia, uso}, ancho, alto (mm), capas, componentes, redes, bytes}]}` and `<placa>.json`: the
 `DatosPlaca` of «Proyectos KiCad» (`esquema` empty, `simulacion: null`, `comprobaciones` = the checks above) plus
 `consola {maquina, enlazada, aviso, fuente, redes {board net: schematic net}, refs [references also in the
-schematic], capas_cobre ['F', 'In1', 'In2', 'B'], tipo}`. Sizes: megadrive 842 kB, neogeo 1094 kB (261 kB gzip;
+schematic], capas_cobre ['F', 'In1', 'In2', 'B'], tipo, alias? (0.11)}`; `placa.fotos` (0.11) for photo faces. Sizes: sms 148 kB (plus its faces, 1.2 and 0.7 MB), megadrive 842 kB, neogeo 1094 kB (261 kB gzip;
 320 footprints, 2287 pads, 631 nets, 1498 vias, 107 zones; 317/317 references and 2265 pads on the same net as the
 schematic), gbc-cgb04 ≈ 355 kB, gbc-opengbc ≈ 250 kB, gb-superdmg ≈ 180 kB. Tests: `tests/consolas-placas.spec.ts`
 (`playwright.placas.config.ts`, port 4291); screenshots: `tests/consolas-placas-capturas.mjs`.

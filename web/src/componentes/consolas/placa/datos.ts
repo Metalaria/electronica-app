@@ -26,7 +26,11 @@ export interface DatosPlacaConsola extends DatosPlaca {
     refs: string[];
     /** Copper layers of the original (the viewer draws the outer two). */
     capas_cobre: string[];
-    tipo: 'kicad' | 'gerber';
+    /** 'foto' (0.11): reconstructed from photographs, faces textured with them, no vector copper. */
+    tipo: 'kicad' | 'gerber' | 'foto';
+    /** Schematic reference → board reference, where one part of the board is drawn as two in the schematic
+     *  (the Master System's 9-pin network RA1, which the manual splits into RA1 and RA2). */
+    alias?: Record<string, string>;
     /** A board that is not the schematic's own but shares some parts with it (OpenGBC): only these references,
      *  and the nets of their pads (`redes`), are linked; why, in Spanish. */
     parcial?: { refs: string[]; texto: string };
@@ -40,7 +44,7 @@ export interface ResumenPlaca {
   corto: string;
   enlazada: boolean;
   parcial?: boolean;
-  tipo: 'kicad' | 'gerber';
+  tipo: 'kicad' | 'gerber' | 'foto';
   aviso: string;
   fuente: FuentePlaca;
   ancho: number;
@@ -63,6 +67,8 @@ export const PLACAS_DE: Partial<Record<IdMaquina, { id: string; corto: string; e
     { id: 'gbc-opengbc', corto: 'OpenGBC · placa moderna', enlazada: false, parcial: true },
   ],
   snes: [{ id: 'snes', corto: 'SNSP-CPU-01 PAL · nonSNES', enlazada: true }],
+  // 0.11: no file of this board exists; reconstructed from the photos of the bare board (tipo 'foto')
+  sms: [{ id: 'sms', corto: '171-5922A · reconstrucción', enlazada: true }],
 };
 
 export function tienePlaca(m: IdMaquina): boolean {

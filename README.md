@@ -685,7 +685,7 @@ pestañas enlazadas entre sí:
 Los datos se generan con `python3 contenido/consolas.py` (también desde `generar.py`) a partir de la carpeta
 de investigación `/home/claude/consolas`; si falta, se conservan los de `web/public/consolas/`.
 
-**Placa en 3D y Placa en 2D.** La NES, la Mega Drive, la Neo Geo, la Game Boy, la Game Boy Color y la Super Nintendo tienen dos pestañas más con la placa dibujada por
+**Placa en 3D y Placa en 2D.** Las siete consolas (la Master System II desde la 0.11, reconstruida a partir de sus fotos) tienen dos pestañas más con la placa dibujada por
 el mismo visor que «Proyectos KiCad» (girar, ver desde arriba, abajo o de canto, separar capas, rayos X, cara
 superior o inferior, aspecto real o por capas). La placa está enlazada con el esquema: elegir U1 o una red en el
 esquema la elige en la placa («Ver en la placa») y al revés («Ver en el esquema», «Ver en la foto»); al tocar un
@@ -773,10 +773,30 @@ componente se ven sus pads con su red, y al tocar una red, todos sus pads.
   23 000, 146 llamadas de dibujo en lugar de 30): construir, unir y compilar las piezas cuesta unos 0,8 s en lugar de
   0,25 s (Chromium con SwiftShader y agente de Android, mediana de cinco cargas alternadas); el tiempo hasta ver la
   placa con sus componentes no cambia de forma medible (unos 12 s las dos versiones en esa máquina cargada).
-- Sin placa: Master System (no hay ninguna
-  recreación abierta de la 171-5922A: el `.kicad_pcb` de slowcoder está vacío, KiCad 4 sin huellas, y los demás
-  proyectos son placas de vídeo). De la DMG-CPU original no hay placa abierta (Gekkio solo publica los esquemas): por
-  eso la Game Boy enseña una recreación moderna.
+- **Master System II** (0.11): «171-5922A · reconstrucción». No hay ninguna placa publicada de la 171-5922A (el
+  `.kicad_pcb` de slowcoder está vacío, KiCad 4 sin huellas), así que se **reconstruye a partir de los escaneos de la
+  placa desnuda** de ConsoleMods (las dos caras, 600 ppp, CC BY), y la pestaña lo dice arriba: «Reconstrucción a partir
+  de la foto: las pistas solo se ven en la imagen». Cada taladro de componente se ha marcado a mano sobre la foto de la
+  cara de componentes (por la serigrafía, que lleva las referencias del manual) y se ha centrado en su anillo de cobre
+  (669 de 702); la escala sale de las propias piezas: las patillas de los DIP, de la ranura del cartucho, de la red
+  RA1, de los filtros EMI y del regulador están en una rejilla de 2,54 mm, y un único ajuste afín por mínimos cuadrados
+  a todas ellas da 23,65 × 23,58 px/mm (601 ppp, el escaneo de 600 ppp), un giro de −0,32° y un error mediano de
+  1 px (0,04 mm). La placa mide así 190,7 × 151,6 mm (contorno, 18 taladros de fijación y ranuras medidos en la misma
+  foto). Las caras son las dos fotos, enderezadas a ese marco (la de soldaduras registrada sobre la de componentes con
+  697 taladros comunes, error mediano 2,3 px) y reducidas a 2560 y 2048 px (1,2 MB y 0,7 MB). Exacto: posición de
+  cada taladro y de cada pieza, encapsulado de los chips (DIP-40, DIP-28 de 600 mil, DIP-48, el VDP en QUIP-64 de
+  cuatro filas, el CXA1145P en DIP-24 de 400 mil, el oscilador en huella DIP-14) y las redes de las patillas de los
+  chips y conectores (las del esquema del manual, por referencia y patilla). Supuesto: qué taladro lleva cada red en
+  las 100 piezas de dos patas sin polaridad (la foto no lo dice; electrolíticos y diodos siguen el «+» y la barra de
+  la serigrafía), los números de los «CP» y «CE» sin número de la serigrafía (por su posición), qué contacto es cada
+  taladro de la toma, los interruptores y el modulador, el orden de las patas 6–9 de RA1 (el manual la parte en RA1 y
+  RA2: elegir RA2 en el esquema elige RA1 en la placa) y los cuerpos y alturas (los típicos; rótulos de los chips de la
+  foto de la IC BD M4Jr. PAL). El cobre no se redibuja: al elegir una red se iluminan sus pads, no sus pistas. 153
+  componentes (150 del esquema; C7, C54 y R26 solo están en la placa; CS4 y R31 del esquema no aparecen en ella) y los 14 taladros sin usar de la huella estrecha de IC3; 720 pads. Se genera con `python3 contenido/consolas_pcb.py sms` (`contenido/consolas_sms_placa.py`, con las posiciones
+  en píxeles de la foto en sus tablas; necesita OpenCV). Pruebas en `tests/consolas-placas.spec.ts` y capturas con
+  `node tests/sms11-capturas.mjs` (en `tests/capturas/sms11/`).
+- De la DMG-CPU original no hay placa abierta (Gekkio solo publica los esquemas): por eso la Game Boy enseña una
+  recreación moderna.
 
 «Fuentes» da el autor y la licencia de cada placa. Se generan con `python3 contenido/consolas_pcb.py` (aparte de
 `generar.py`) en `web/public/consolas/placas/` (unos 3 MB; cada placa se descarga al abrir su pestaña). Los

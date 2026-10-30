@@ -527,6 +527,11 @@ FUENTES2 = {
         {'titulo': 'Escaneo de la placa 171-5922A sin componentes (171-5922ATop.jpg)', 'autor': 'ConsoleMods Wiki (colaboradores)',
          'url': 'https://consolemods.org/wiki/Master_System:171-5922A_Board_Info', 'licencia': 'Creative Commons Attribution (pie del wiki)',
          'uso': 'Segunda foto: la serigrafía (IC1–IC9, CN1–CN4…) coincide con las referencias del manual.'},
+        # 0.11: the solder side of the same scan series, one of the two faces of «Placa en 3D / 2D»
+        {'titulo': 'Escaneo de la cara de soldaduras de la placa 171-5922A (171-5922ABottom.jpg)', 'autor': 'ConsoleMods Wiki (colaboradores)',
+         'url': 'https://consolemods.org/wiki/Master_System:171-5922A_Board_Info', 'licencia': 'Creative Commons Attribution (pie del wiki)',
+         'uso': 'Cara inferior de la placa reconstruida en 3D y en 2D (enderezada y registrada sobre la de componentes por sus '
+                'taladros); la de componentes, 171-5922ATop.jpg, es la cara superior y la foto en la que se midió la placa.'},
         {'titulo': 'SMS Power: documentación técnica (reloj, mapa de memoria, puertos, VDP)', 'autor': 'Comunidad SMS Power',
          'url': 'https://www.smspower.org/Development/Index', 'licencia': 'Solo consulta',
          'uso': 'Cifras de la animación: 53,203424 MHz, 228 ciclos por línea, 313 líneas PAL, puertos $3E/$3F/$7E/$7F/$BE/$BF/$DC/$DD, paginador $FFFC–$FFFF.'},

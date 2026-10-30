@@ -6,6 +6,7 @@
 import { construirGeometria, type Geometria } from './geometria';
 import { pintarMapa, tamMapa, type MensajeTrabajador, type RespuestaTrabajador, type TiemposMapa } from './caras';
 import type { DatosPlaca } from './datos';
+import { cargarFotosCaras, tieneFotos } from './fotos-caras';
 
 const ambito = self as unknown as Worker;
 let datos: DatosPlaca | null = null;
@@ -27,7 +28,7 @@ try {
   enviar({ tipo: 'listo', ok: false, motivo: e instanceof Error ? e.message : String(e) });
 }
 
-ambito.onmessage = (ev: MessageEvent<MensajeTrabajador>) => {
+ambito.onmessage = async (ev: MessageEvent<MensajeTrabajador>) => {
   const m = ev.data;
   if (m.tipo === 'placa') {
     datos = m.datos;
@@ -40,6 +41,13 @@ ambito.onmessage = (ev: MessageEvent<MensajeTrabajador>) => {
       const t = performance.now();
       geo = construirGeometria(datos);
       msGeometria = performance.now() - t;
+    }
+    // 0.11: faces that are photographs (their URLs come absolute from the page); a face that fails to load is
+    // painted from the pads instead
+    if (tieneFotos(datos) && !geo.fotos) {
+      const g = geo;
+      await cargarFotosCaras(datos, g);
+      if (g !== geo) throw new Error('otra placa');
     }
     const mapas: Extract<RespuestaTrabajador, { tipo: 'mapas' }>['mapas'] = [];
     for (const pm of m.mapas) {

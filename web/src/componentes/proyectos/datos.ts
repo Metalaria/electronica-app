@@ -99,7 +99,7 @@ export interface Huella {
   desc?: string;
   /** Placement reconstructed, not read (a board published only as Gerbers): where its position and its body
    *  come from, and the note shown in its sheet (Spanish). */
-  rec?: { pos: 'pads'; cuerpo: 'huella' | 'serigrafia' | 'foto' | 'pads' | 'ninguno'; nota: string };
+  rec?: { pos: 'pads' | 'foto'; cuerpo: 'huella' | 'serigrafia' | 'foto' | 'pads' | 'ninguno'; nota: string };
 }
 
 /** [footprint, number, shape c|r|o|rr|t|x, x, y, w, h, rot°, roundrect ratio, drill w, drill h, flags, net, pin function]. */
@@ -171,6 +171,10 @@ export interface DatosPlaca {
     /** Face the inclined 3D view shows, when counting parts would pick the wrong one (SNES: test points and
      *  passives underneath, the chips on top). */
     lado_componentes?: 'F' | 'B';
+    /** 0.11: faces that are photographs (a board reconstructed from photos: the Master System II), each one
+     *  rectified into the board's frame — x right, y down as seen from the top, the bottom one mirrored into it —
+     *  covering the board's box; `src` relative to the app, `w` × `h` px. See fotos-caras.ts. */
+    fotos?: Partial<Record<'F' | 'B', { src: string; w: number; h: number }>>;
   };
   redes: Red[];
   huellas: Huella[];

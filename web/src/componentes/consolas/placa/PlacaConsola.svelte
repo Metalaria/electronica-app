@@ -9,6 +9,8 @@
   import { htmlKicad, nombreRed, type DatosMaquina } from '../datos';
   import type { Seleccion } from '../estado.svelte';
   import { construirGeometria, type Geometria, type Impacto2D, type Lado } from '../../proyectos/geometria';
+  import { cargarFotosCaras } from '../../proyectos/fotos-caras';
+  import { registrar } from '../../../lib/registro';
   import { deHuella, dePad, deRed, padsDeRed, resolver } from '../../proyectos/seleccion';
   import type { Seleccion as SelPlaca } from '../../proyectos/estado';
   import type { Aspecto, CapasVisibles } from '../../proyectos/pintar';
@@ -65,9 +67,15 @@
       }
     });
     cargarPlacaConsola(id)
-      .then((x) => {
+      .then(async (x) => {
         if (!vivo) return;
-        geo = construirGeometria(x);
+        const g = construirGeometria(x);
+        // 0.11: a board reconstructed from photos shows them as its faces (decoded before the views open, so the
+        // first frame already has them); without them its faces are drawn from the pads
+        const fallo = await cargarFotosCaras(x, g);
+        if (fallo) registrar('aviso', 'placa de consola', `${id}: sin la foto de una cara (${fallo})`);
+        if (!vivo) return;
+        geo = g;
         d = x;
       })
       .catch((e: unknown) => {
@@ -85,7 +93,11 @@
     // a board that is not the schematic's own takes no selection from the other tabs (same names, other parts),
     // except, on a partly linked one, its shared parts and their nets
     if (!s || (!x.consola.enlazada && !x.consola.parcial)) return null;
-    if (s.tipo === 'componente') return refEnlazada(x, s.id) && x.huellas.some((h) => h.r === s.id) ? { tipo: 'huella', id: s.id } : null;
+    if (s.tipo === 'componente') {
+      // one board part drawn as two in the schematic (the Master System's RA1 and RA2)
+      const r = x.consola.alias?.[s.id] ?? s.id;
+      return refEnlazada(x, r) && x.huellas.some((h) => h.r === r) ? { tipo: 'huella', id: r } : null;
+    }
     if (s.tipo === 'red') {
       const n = redDePlaca(x, s.id);
       return n ? { tipo: 'red', id: n } : null;
@@ -159,6 +171,8 @@
     return { cuerpo: r.length, huella: r.filter((h) => h.rec!.cuerpo === 'huella').length, aprox: r.filter((h) => h.rec!.cuerpo !== 'huella').length };
   });
   const otraVista: Destino = $derived(vista === '3d' ? 'placa2d' : 'placa3d');
+  /** 0.11: reconstructed from photos (no vector copper). */
+  const deFoto = $derived(d?.consola.tipo === 'foto');
 
   function nombre(n: string): string {
     return nombreRed(n).nombre;
@@ -183,6 +197,12 @@
   {:else}
     {@const x = d}
     {@const g = geo}
+    {#if deFoto}
+      <p class="aviso-foto" data-reconstruccion>
+        <strong>Reconstrucción a partir de la foto: las pistas solo se ven en la imagen.</strong>
+        Al elegir una red se iluminan sus pads.
+      </p>
+    {/if}
     <div class="cuerpo">
       <section class="vista" aria-label={vista === '3d' ? 'Placa en 3D' : 'Placa en 2D'}>
         {#if vista === '3d' && webgl}
@@ -277,7 +297,13 @@
           </p>
           <p class="aviso-placa">{x.consola.aviso}</p>
           {#if x.consola.parcial}<p class="reconstruida parcial">{x.consola.parcial.texto}</p>{/if}
-          {#if reconstruidas}
+          {#if reconstruidas && deFoto}
+            <p class="reconstruida nota-placa">
+              <strong>Posiciones medidas en la foto</strong> de la placa desnuda, no leídas de ningún fichero:
+              {reconstruidas.cuerpo} componentes con cuerpo, cada uno sobre los taladros de su serigrafía, con el encapsulado que
+              pide el esquema. Cada componente dice de dónde sale y qué es supuesto.
+            </p>
+          {:else if reconstruidas}
             <p class="reconstruida nota-placa">
               <strong>Posiciones reconstruidas a partir de la serigrafía y los pads</strong>, no leídas de un fichero de colocación:
               {reconstruidas.cuerpo} componentes con cuerpo ({reconstruidas.huella} con la huella de KiCad del esquema,
@@ -285,7 +311,7 @@
             </p>
           {/if}
           <p class="ayuda">
-            Toque un componente, un pad o una pista para ver sus conexiones{x.consola.enlazada
+            Toque un componente{deFoto ? ' o un pad' : ', un pad o una pista'} para ver sus conexiones{x.consola.enlazada
               ? '; lo elegido aquí queda elegido en el esquema y al revés'
               : x.consola.parcial
                 ? `; ${x.consola.parcial.refs.join(', ')} y sus redes quedan elegidos en el esquema y al revés`
@@ -402,6 +428,18 @@
     border-radius: 6px;
     background: color-mix(in srgb, var(--c-importante) 8%, transparent);
     line-height: 1.45;
+  }
+  .aviso-foto {
+    margin: 0;
+    padding: 8px 12px;
+    border-left: 3px solid var(--c-importante);
+    border-radius: 8px;
+    background: color-mix(in srgb, var(--c-importante) 9%, var(--superficie));
+    color: var(--tinta);
+    line-height: 1.45;
+  }
+  .aviso-foto strong {
+    color: var(--titulos);
   }
   .reconstruida {
     margin: 8px 0;

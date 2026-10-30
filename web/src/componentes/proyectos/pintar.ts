@@ -137,6 +137,29 @@ export function pintarLado(ctx: CanvasRenderingContext2D, _d: DatosPlaca, g: Geo
     }
     ctx.fillStyle = '#05080b';
     ctx.fill(g.taladros, 'nonzero');
+  } else if (g.fotos?.[L] && v.mascara && v.serigrafia && v[L]) {
+    // 0.11: the face is a photograph rectified into the board's frame (a board reconstructed from photos): its
+    // copper, mask and silkscreen are the real ones; only the drills and the highlights come from the data.
+    // With the mask, the silkscreen or this side's copper turned off the drawn look below is used instead.
+    ctx.fillStyle = (MASCARAS[o.mascara] ?? MASCARAS.verde!).base;
+    ctx.fill(g.contorno);
+    ctx.clip(g.contorno);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'medium';
+    ctx.drawImage(g.fotos[L]!, 0, 0, g.ancho, g.alto);
+    if (v.fab) {
+      ctx.strokeStyle = 'rgba(255,255,255,0.5)';
+      ctx.lineWidth = Math.max(10, minimo);
+      ctx.stroke(g.fab[L]);
+    }
+    if (o.textura) {
+      ctx.globalCompositeOperation = 'destination-out';
+      ctx.fill(g.taladros, 'nonzero');
+      ctx.globalCompositeOperation = 'source-over';
+    } else {
+      ctx.fillStyle = o.oscuro ? '#050607' : '#2a2a28';
+      ctx.fill(g.taladros, 'nonzero');
+    }
   } else {
     // manufactured look
     const mk = MASCARAS[o.mascara] ?? MASCARAS.verde!;

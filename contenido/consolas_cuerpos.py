@@ -169,6 +169,11 @@ MARCADOS = {
     'neogeo': {'U21': 'LSPC2-A2'},
     'gb-superdmg': {'U1': 'DMG-CPU'},
     'gbc-opengbc': {'U1': 'CPU CGB'},
+    # Master System II (0.11): what the chips of the IC BD M4Jr. PAL photo print (same board family)
+    'sms': {'IC1': 'Z0840004PSC|Z80 CPU', 'IC2': 'MPR-12808', 'IC3': '4168', 'IC4': 'SEGA|315-5237', 'IC5': 'SEGA|315-5246',
+            'IC6': 'D4168C-15', 'IC7': 'D4168C-15', 'IC9': 'CXA1145P', 'OSC1': '53.2034',
+            # the network's own print does not show in the photos: what it holds (one common pin, 8 resistors)
+            'RA1': '8 × R'},
 }
 
 
@@ -502,6 +507,27 @@ TABLA = [
                                               abertura={'cara': 'frente', 'forma': 'redonda'}, ctx=c)),
     (r'^SW_E-Switch', lambda h, P, c: dict(conector(caja_pads(P, 0.4), 6.0, '#202124'), tipo='interruptor',
                                            palanca=None)),
+    # --- Master System II 171-5922A, reconstructed from the photos (consolas_sms_placa.py, 0.11): its own names
+    # the VDP's QUIP: four rows (two staggered rows per side); its row spacing is the outer one
+    (r'^SMS_QUIP-64$', lambda h, P, c: dict(dip(h, P, c), ancho_filas=round(max(p['x'] for p in numerados(P)) -
+                                                                         min(p['x'] for p in numerados(P)), 2))),
+    (r'^SMS_CART_2x25$', lambda h, P, c: conector(caja_pads(P, 1.5), 11.0, '#1c1c1e',
+                                                  abertura={'cara': 'arriba', 'forma': 'ranura'})),
+    (r'^SMS_SIP-9$', lambda h, P, c: sip(h, P, c, alto=5.0, grosor=2.5)),
+    # Murata-style three-terminal EMI filters: a small blue block over their three leads
+    (r'^SMS_EMI-3$', lambda h, P, c: radial('caja', round(paso2(P) * 2 + 2.0, 2), 2.6, 5.0, '#3d5f8f', z0=0.8)),
+    (r'^SMS_R$', resistencia),
+    (r'^SMS_C$', disco),
+    # radial electrolytics: sizes typical of their value (the silkscreen only draws a circle between the leads)
+    (r'^SMS_CE$', lambda h, P, c: electrolitico(h, P, c, *((8.0, 11.5) if (capacidad(h['v']) or 0) >= 90e-6 else
+                                                          (6.3, 11.0) if (capacidad(h['v']) or 0) >= 40e-6 else (5.0, 11.0)))),
+    # FBA04 beads: a ferrite sleeve on a wire between two holes; FB7 («4 HOLE»), a larger core
+    (r'^SMS_FB$', lambda h, P, c: axial(h, P, c, '#3a3b3e', 3.5, 3.0)),
+    (r'^SMS_FB_4H$', lambda h, P, c: radial('cilindro', 6.5, 6.5, 5.0, '#3a3b3e', z0=0.8, centro=centro_de(P))),
+    (r'^SMS_L$', bobina),
+    (r'^SMS_D$', lambda h, P, c: axial(h, P, c, '#d9822b', 3.8, 1.9, banda='#1d1d1f', vidrio=True) if h['v'].startswith('1S2')
+        else axial(h, P, c, '#1d1d1f', 5.0, 2.7, banda='#c9cdd1')),
+    (r'^TO-220-3_Vertical$', lambda h, P, c: dict(lib2('to', P, encapsulado='TO-220', pines=3, vertical=True), texto=h['v'])),
     # --- NES (OpenTendo)
     (r'^NES_Edge_Connector$', lambda h, P, c: conector(caja_pads(numerados(P), 1.0), 9.0, '#1c1c1e',
                                                        abertura={'cara': 'arriba', 'forma': 'ranura'})),

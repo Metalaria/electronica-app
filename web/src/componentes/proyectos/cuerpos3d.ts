@@ -338,7 +338,9 @@ export function cuerpoConsola(h: Huella, pads: PadLocal[]): Group | null {
     const [px0, px1, py0, py1] = [Math.min(...xs), Math.max(...xs), Math.min(...ys), Math.max(...ys)];
     const filasEnY = py1 - py0 >= px1 - px0;
     const largo = (filasEnY ? py1 - py0 : px1 - px0) + 2.0;
-    const hueco = Math.max(2, (filasEnY ? px1 - px0 : py1 - py0) - 1.3);
+    // 0.11: a QUIP (two staggered rows per side, the Master System's VDP) has its body between the inner rows
+    const filas = [...new Set(qs.map((p) => Math.round((filasEnY ? p.x : p.y) * 2) / 2))].sort((a, b) => a - b);
+    const hueco = filas.length >= 4 ? Math.max(2, filas[filas.length - 2]! - filas[1]! - 1.0) : Math.max(2, (filasEnY ? px1 - px0 : py1 - py0) - 1.3);
     const bx = filasEnY ? hueco : largo;
     const by = filasEnY ? largo : hueco;
     const mx = (px0 + px1) / 2;
