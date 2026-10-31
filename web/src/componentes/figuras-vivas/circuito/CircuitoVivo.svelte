@@ -41,6 +41,12 @@
   const autos = import.meta.glob<Generador>('../../esquema-auto/index.ts');
 
   let dibujo = $state.raw<DibujoConNetlist | null>(null);
+  /**
+   * The first drawing has been decided (book figure, automatic schematic or none). Until then the section keeps
+   * its place with an empty plate, so the page below does not jump down when the drawing arrives (0.11 QA: on the
+   * tablet everything under it moved some 500 px about a second after opening a netlist).
+   */
+  let decidido = $state(false);
   let vistaMostrada = $state.raw<Caja | null>(null);
   const mostrada = $derived(vistaMostrada ?? dibujo?.vista ?? ([0, 0, 1, 1] as Caja));
   /** Part of a book figure that holds the schematic (the figure may also hold plots or other drawings). */
@@ -213,7 +219,8 @@
   }
 
   // Which drawing: re-decided (shortly after typing stops) when the netlist changes its parts.
-  let firma = '';
+  // null: nothing decided yet, so an empty netlist (the free circuit) is decided too and the reserved place goes
+  let firma: string | null = null;
   let espera: ReturnType<typeof setTimeout> | null = null;
   $effect(() => {
     const t = texto;
@@ -226,6 +233,15 @@
       if (f === firma) return;
       firma = f;
       if (espera) clearTimeout(espera);
+      // nothing to draw (the free circuit, empty): decided at once, without the reserved place that would be taken
+      // away when the drawing module answered (0.11 QA: the page jumped 300 px up on a slow device)
+      if (!t.trim()) {
+        dibujo = null;
+        est = null;
+        vistaMostrada = null;
+        decidido = true;
+        return;
+      }
       espera = setTimeout(async () => {
         recorte = null;
         const d = (await deLibro(t)) ?? (await automatico(t));
@@ -233,6 +249,7 @@
         vistaMostrada = d ? (recorte ?? d.vista) : null;
         dibujo = d;
         est = d && d.esquemas[0] ? new EstadoEsquema(d.esquemas[0], 0, true) : null;
+        decidido = true;
         if (resultado) void resolver();
       }, dibujo ? 400 : 0);
     });
@@ -305,10 +322,16 @@
   });
 </script>
 
-{#if dibujo && est && datos}
+{#if !decidido}
+  <section class="circuito-vivo" aria-label="Circuito" aria-busy="true" data-reserva>
+    <div class="cab reserva"><h2>Circuito</h2></div>
+    <div class="placa" style:--proporcion={16 / 9}><div class="ventana"></div></div>
+    <div class="hueco-panel"></div>
+  </section>
+{:else if dibujo && est && datos}
   <section class="circuito-vivo" aria-label="Circuito" bind:this={raiz}>
     <div class="cab">
-      <h3>Circuito</h3>
+      <h2>Circuito</h2>
       <span class="origen">
         {#if dibujo.origen === 'libro'}Dibujo de la figura del libro{:else}Dibujado automáticamente a partir de la netlist{/if}
       </span>
@@ -349,7 +372,11 @@
         {#if s > 1}<span class="nivel" aria-hidden="true">{Math.round(s * 100)} %</span>{/if}
       </div>
     </div>
-    <PanelEsquema {est} />
+    <!-- until the drawn circuit's first result fills the panel, it keeps the reserve's height (0.11 QA: on a phone
+         the page went 115 px up when the drawing came and 160 px down when the readings did) -->
+    <div class="caja-panel" class:esperando={!pesada && !est.op && !est.tran && est.estadoSim !== 'error'}>
+      <PanelEsquema {est} />
+    </div>
   </section>
   {#if grande}
     <Grande
@@ -380,7 +407,7 @@
     gap: 4px 12px;
     margin-bottom: 6px;
   }
-  h3 {
+  h2 {
     margin: 0;
     font-size: 15px;
     color: var(--titulos);
@@ -452,6 +479,30 @@
     border-radius: 10px;
     background: var(--placa);
     box-sizing: border-box;
+  }
+  /* the room of the panel under the drawing (PanelEsquema's bar) while the drawing is decided */
+  /* as tall as the controls' panel usually is (0.11 QA: 52 px left the page 80–130 px short when it came) */
+  .circuito-vivo {
+    --hueco-panel: 100px;
+  }
+  .hueco-panel {
+    height: var(--hueco-panel);
+  }
+  .caja-panel.esperando {
+    min-height: var(--hueco-panel);
+  }
+  /* as tall as the header with its zoom buttons */
+  .cab.reserva {
+    min-height: 44px;
+  }
+  /* a phone: the header wraps to two lines and the panel's controls stack */
+  @media (max-width: 600px) {
+    .cab.reserva {
+      min-height: 70px;
+    }
+    .circuito-vivo {
+      --hueco-panel: 150px;
+    }
   }
   .circuito-vivo :global(.panel-e) {
     max-width: none;

@@ -105,7 +105,7 @@
 
 <section class="parametros" aria-label="Parámetros">
   <div class="cab">
-    <h3>Parámetros</h3>
+    <h2>Parámetros</h2>
     {#if parametros.some((p) => p.e12)}
       <label class="e12"><input type="checkbox" bind:checked={e12} /> Valores E12</label>
     {/if}
@@ -176,7 +176,7 @@
     justify-content: space-between;
     gap: 10px;
   }
-  h3 {
+  h2 {
     margin: 0 0 6px;
     font-size: 15px;
     color: var(--titulos);
@@ -187,6 +187,13 @@
     align-items: center;
     font-size: 13px;
     color: var(--tinta-suave);
+  }
+  /* the whole label is the checkbox's touch area: 44 px tall on touch screens (0.11) */
+  @media (pointer: coarse) {
+    .e12 {
+      min-height: 44px;
+      padding: 0 4px;
+    }
   }
   ul {
     list-style: none;

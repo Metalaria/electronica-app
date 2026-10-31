@@ -99,7 +99,7 @@
     guia(ctx, e, 'x', dObs, p.serie[4], 2, [3, 3]);
     const px = X(e, dObs);
     circulo(ctx, px, e.y + e.h + 18, 8, p.serie[4], p.fondo, 2);
-    txt(v, 'arrastra el punto', px, e.y + e.h + 36, { tam: 10.5, color: p.suave });
+    txt(v, 'arrastre el punto', px, e.y + e.h + 36, { tam: 10.5, color: p.suave });
     txt(v, 'carga', e.x + e.w - 4, e.y + 12, { tam: 11, peso: 700, color: p.suave, alin: 'right' });
 
     // Smith chart: VSWR circle, load point, observation point.

@@ -319,7 +319,7 @@
   <canvas
     bind:this={lienzo}
     tabindex="0"
-    aria-label="Esquema: arrastra para desplazar, rueda o pellizco para ampliar, toca un hilo, un pin o una etiqueta para resaltar su red"
+    aria-label="Esquema: arrastre para desplazar, rueda o pellizco para ampliar, toque un hilo, un pin o una etiqueta para resaltar su red"
     onpointerdown={abajo}
     onpointermove={mover}
     onpointerup={arriba}

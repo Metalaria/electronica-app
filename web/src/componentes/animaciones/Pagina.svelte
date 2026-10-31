@@ -243,6 +243,9 @@
     display: grid;
     place-items: center;
     aspect-ratio: 16 / 9;
+    /* about the height of a scene with its legend and controls: the «Anterior/Siguiente» links stayed in view under
+       the placeholder and jumped down when the scene arrived (0.11 QA) */
+    min-height: min(70vh, 860px);
     border-radius: 14px;
     background: var(--superficie-2);
     color: var(--tinta-suave);

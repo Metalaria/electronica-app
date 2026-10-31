@@ -26,7 +26,7 @@ export interface CicloZ80 {
 export function senalesZ80(c: Cronograma, mhz: string): void {
   c.bit('CLK', `Reloj del Z80 (${mhz})`, 1)
     .bus('A', 'A15–A0', 'Dirección del Z80')
-    .bus('D', 'D7–D0', 'Datos (null = alta impedancia)')
+    .bus('D', 'D7–D0', 'Datos (trazo a media altura: alta impedancia)')
     .bit('M1', '/M1', 1, 'Ciclo de búsqueda de instrucción')
     .bit('MREQ', '/MREQ', 1, 'Acceso a memoria')
     .bit('IORQ', '/IORQ', 1, 'Acceso a puerto de E/S')

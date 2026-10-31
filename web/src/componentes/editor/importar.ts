@@ -9,8 +9,10 @@ import { trocear } from '../esquema-auto/modelo.ts';
 import { lineasNetlist, numeroSpice } from '../../simulador/motor/netlist.ts';
 import type { PeticionEditable, RespuestaEditable } from './trabajador.ts';
 import { PUENTE_DIODOS } from './catalogo.ts';
+import { generarNetlist } from './netlist.ts';
 import { pinesMundo } from './geometria.ts';
-import { huecoLibre, ruta, tramos, type P } from './rutas.ts';
+import { huecoLibre, puntosDeRed, ruta, tramos, type P } from './rutas.ts';
+import { conectividad } from './conectividad.ts';
 import { analisisPorDefecto, type Cable, type Componente, type DocumentoEsquema, type FormaImportada } from './tipos.ts';
 import { deSpice } from './valores.ts';
 
@@ -529,7 +531,77 @@ export function documentoDeEditable(texto: string, e: EditableAuto, origen: Docu
   const tieneAnalisis = /^\s*\.(op|tran|ac|dc|noise|tf|pz|sens|four|disto)\b/im.test(directivas.join('\n')) || /^\s*\.control/im.test(directivas.join('\n'));
   const analisis = analisisPorDefecto();
   analisis.op = !tieneAnalisis;
-  return { version: 1, titulo, componentes, cables, analisis, directivas: directivas.join('\n'), origen };
+  const doc: DocumentoEsquema = { version: 1, titulo, componentes, cables, analisis, directivas: directivas.join('\n'), origen };
+  recordarNodos(doc, elems);
+  unirRedesPartidas(doc, wid, cid);
+  return doc;
+}
+
+/**
+ * One netlist node drawn as several separate pieces: the layout gives up routing a pin now and then and puts a
+ * net label on it (the minus of a diode bridge, on its far side) while the rest of the net is plain wire with no
+ * matching label, so the drawing would leave that pin unconnected. Each loose piece is wired to the biggest one
+ * (its label goes); when no path exists, every piece gets a label with the node's name.
+ */
+function unirRedesPartidas(doc: DocumentoEsquema, wid: () => string, cid: () => string): void {
+  const porId = new Map(doc.componentes.map((c) => [c.id, c]));
+  const pistaDe = (pk: string) => {
+    const i = pk.indexOf('.');
+    return porId.get(pk.slice(0, i))?.redes?.[pk.slice(i + 1)];
+  };
+  const nombres = new Set(doc.componentes.flatMap((c) => Object.values(c.redes ?? {})));
+  for (const nodo of nombres) {
+    const con = conectividad(doc);
+    const trozos = con.redes.filter((r) => r.pines.some((pk) => pistaDe(pk) === nodo));
+    if (trozos.length < 2) continue;
+    trozos.sort((a, b) => b.pines.length + b.cables.length - (a.pines.length + a.cables.length));
+    const [mayor, ...resto] = trozos;
+    for (const t of resto) {
+      const etqs = t.pines.map((pk) => porId.get(pk.slice(0, pk.indexOf('.')))!).filter((c) => c.tipo === 'ETQ');
+      const pin = t.pines.find((pk) => pistaDe(pk) === nodo)!;
+      const c = porId.get(pin.slice(0, pin.indexOf('.')))!;
+      const pm = pinesMundo(c).find((q) => q.nombre === pin.slice(pin.indexOf('.') + 1))!;
+      const pts = ruta(doc, [pm.x, pm.y], puntosDeRed(doc, mayor!.pines, mayor!.cables), { ignorar: new Set(etqs.map((e) => e.id)), salida: [pm.dx, pm.dy] });
+      if (pts) {
+        for (const e of etqs) doc.componentes.splice(doc.componentes.indexOf(e), 1);
+        for (const q of tramos(pts)) if (Math.hypot(q[2] - q[0], q[3] - q[1]) > 1e-6) doc.cables.push({ id: wid(), p: q, red: nodo });
+        continue;
+      }
+      // No way through: the same label on every piece that lacks one.
+      for (const r of [mayor!, t]) {
+        if (r.pines.some((pk) => porId.get(pk.slice(0, pk.indexOf('.')))?.tipo === 'ETQ')) continue;
+        const pk = r.pines.find((x) => pistaDe(x) === nodo)!;
+        const cc = porId.get(pk.slice(0, pk.indexOf('.')))!;
+        const q = pinesMundo(cc).find((x) => x.nombre === pk.slice(pk.indexOf('.') + 1))!;
+        const etq: Componente = { id: cid(), tipo: 'ETQ', nombre: '', x: q.x, y: q.y, o: orientacionHacia([q.dx, q.dy], [1, 0]), campos: { red: nodo } };
+        doc.componentes.push(etq);
+        porId.set(etq.id, etq);
+      }
+    }
+  }
+}
+
+/**
+ * Every pin of an imported part remembers its node in the netlist (Componente.redes): a net whose pins meet
+ * without a wire carries no wire name, and would otherwise become «n1» and leave a «v(e)» of the directives
+ * without its node. The pins are matched to the netlist through the lines the drawing writes.
+ */
+function recordarNodos(doc: DocumentoEsquema, elems: Map<string, LineaElem>): void {
+  const porId = new Map(doc.componentes.map((c) => [c.id, c]));
+  const insts = generarNetlist(doc).instancias;
+  const veces = new Map<string, number>();
+  for (const inst of insts) veces.set(inst.nombre, (veces.get(inst.nombre) ?? 0) + 1);
+  for (const inst of insts) {
+    // A name written twice (the book's own example of that error) cannot tell which line is which.
+    if (veces.get(inst.nombre)! > 1) continue;
+    const l = elems.get(inst.nombre);
+    const c = porId.get(inst.comp);
+    if (!l || !c) continue;
+    for (const [pin, k] of Object.entries(inst.pines)) {
+      const n = l.nodos[k];
+      if (n && n !== '0') (c.redes ??= {})[pin] = n;
+    }
+  }
 }
 
 /**

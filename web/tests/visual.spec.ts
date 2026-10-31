@@ -305,7 +305,7 @@ test.describe('inicio como camino del libro (0.9)', () => {
     await expect(c5).toHaveAttribute('data-estado', 'actual');
     await expect(c5).toHaveAttribute('aria-current', 'step');
     await expect(c5).toHaveAttribute('aria-label', new RegExp(`4 de ${indice.partes.cap05.secciones.length} secciones leídas`));
-    await expect(c5).toContainText('Estás aquí · 5.3');
+    await expect(c5).toContainText('Está aquí · 5.3');
     const c1 = camino.locator('a.nodo[data-parte="cap01"]');
     await expect(c1).toHaveAttribute('data-estado', 'hecho');
     await expect(camino.locator('a.nodo[data-parte="cap02"]')).toHaveAttribute('data-leidas', '0');

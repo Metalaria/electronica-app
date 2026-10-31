@@ -174,7 +174,7 @@
     ctx.fill();
     txt(v, 'S', mx - 20, y0, { tam: 14, peso: 800, color: '#fff' });
     txt(v, 'N', mx + 20, y0, { tam: 14, peso: 800, color: '#fff' });
-    txt(v, 'arrastra el imán', mx, y0 + 30, { tam: 10.5, color: p.suave });
+    txt(v, 'arrastre el imán', mx, y0 + 30, { tam: 10.5, color: p.suave });
     // Galvanometer.
     const gx = est ? 520 : 760;
     const gy = 90;
@@ -262,7 +262,7 @@
     if (modo === 'hilo') {
       const r = Math.hypot(sonda.x - centro.x, sonda.y - centro.y) / 1000;
       return (
-        `**Toda corriente crea un campo magnético a su alrededor.** El de un hilo recto forma círculos (regla de la mano derecha: el pulgar en el sentido de la corriente, los dedos dan el del campo) y vale B = µ_0·I/(2π·r): con ${num(Math.abs(I), 1)} A, a ${si(r, 'm', 2)} son ${si((MU0 * Math.abs(I)) / (2 * Math.PI * Math.max(r, 0.003)), 'T', 3)} (el campo terrestre ronda los 50 µT). Arrastra la sonda.\n` +
+        `**Toda corriente crea un campo magnético a su alrededor.** El de un hilo recto forma círculos (regla de la mano derecha: el pulgar en el sentido de la corriente, los dedos dan el del campo) y vale B = µ_0·I/(2π·r): con ${num(Math.abs(I), 1)} A, a ${si(r, 'm', 2)} son ${si((MU0 * Math.abs(I)) / (2 * Math.PI * Math.max(r, 0.003)), 'T', 3)} (el campo terrestre ronda los 50 µT). Arrastre la sonda.\n` +
         'Si la corriente cambia, el campo cambia, y un campo variable induce tensión en cualquier espira que lo abrace: es la ley de Faraday (el otro modo).'
       );
     }

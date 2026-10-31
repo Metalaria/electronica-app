@@ -160,7 +160,7 @@
 
   {#if hayMedidas}
     <section class="bloque" aria-label="Medidas">
-      <h3>Medidas</h3>
+      <h2>Medidas</h2>
       <div class="desliza">
         <table class="medidas">
           {#each secciones as s, k (k)}
@@ -191,7 +191,7 @@
   {#if tablaOp}
     <section class="bloque" aria-label="Punto de trabajo">
       <div class="cab-op">
-        <h3>{unPunto.every((g) => claseDe(g) === 'op') ? 'Punto de trabajo' : 'Resultados de un solo punto'}</h3>
+        <h2>{unPunto.every((g) => claseDe(g) === 'op') ? 'Punto de trabajo' : 'Resultados de un solo punto'}</h2>
         {#if tablaOp.filas.length > 12}
           <input class="filtro" type="search" placeholder="Filtrar nodos…" bind:value={filtroOp} aria-label="Filtrar nodos" />
         {/if}
@@ -232,7 +232,7 @@
   .bloque {
     min-width: 0;
   }
-  h3 {
+  h2 {
     margin: 0 0 8px;
     font-size: 15px;
     color: var(--titulos);

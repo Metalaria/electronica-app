@@ -81,7 +81,7 @@
 
   {#if etapa}
     <section class="detalle">
-      <h3>{etapa.nombre} <Cita cita={k.kit.citas[etapa.cita]} /></h3>
+      <h2>{etapa.nombre} <Cita cita={k.kit.citas[etapa.cita]} /></h2>
       {#if etapa.id === 'antena' || etapa.id === 'rf' || etapa.id === 'ol'}
         <p>
           Sintonizado: <b>{mhz(r.fRx, 2)}</b>; oscilador local: <b>{mhz(r.fOL, 2)}</b> (siempre 10,7 MHz por encima <Cita cita={k.kit.citas['fi']} corto />);
@@ -123,7 +123,7 @@
   {/if}
 
   <section>
-    <h3>Osciloscopio en los puntos de prueba</h3>
+    <h2>Osciloscopio en los puntos de prueba</h2>
     <Osciloscopio {k} />
   </section>
 </div>
@@ -183,7 +183,7 @@
     font-size: 12.5px;
     color: var(--tinta-suave);
   }
-  section h3 {
+  section h2 {
     margin: 0 0 8px;
     font-size: 15px;
     color: var(--titulos);

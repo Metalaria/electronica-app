@@ -511,7 +511,7 @@ export function arreglos(tipo: 'op' | 'tran', doc: DocumentoEsquema): Arreglo[] 
   r.push({
     id: 'opciones',
     titulo: 'Más iteraciones y pasos de gmin y de fuentes',
-    texto: 'Añade «.options itl1=500 gminsteps=100 srcsteps=100»: ngspice insiste más y, si no converge, arranca con todas las fuentes a cero y las sube poco a poco (source stepping) o con una conductancia en cada unión que va retirando (gmin stepping).',
+    texto: 'Añada «.options itl1=500 gminsteps=100 srcsteps=100»: ngspice insiste más y, si no converge, arranca con todas las fuentes a cero y las sube poco a poco (source stepping) o con una conductancia en cada unión que va retirando (gmin stepping).',
   });
   if (doc.analisis.tran.activo || /\.tran\b/i.test(doc.directivas))
     r.push({
@@ -527,13 +527,13 @@ export function arreglos(tipo: 'op' | 'tran', doc: DocumentoEsquema): Arreglo[] 
   r.push({
     id: 'rshunt',
     titulo: 'Una resistencia enorme de cada nodo a masa',
-    texto: 'Añade «.options rshunt=1e12»: 1 TΩ de cada nodo a masa da camino de continua a los nodos flotantes (los que solo tocan condensadores o entradas).',
+    texto: 'Añada «.options rshunt=1e12»: 1 TΩ de cada nodo a masa da camino de continua a los nodos flotantes (los que solo tocan condensadores o entradas).',
   });
   if (tipo === 'tran')
     r.push({
       id: 'gear',
       titulo: 'Integración de Gear y tolerancias algo más amplias',
-      texto: 'Añade «.options method=gear reltol=0.003 itl4=100»: el método de Gear es más estable con conmutaciones bruscas y el paso de tiempo puede bajar menos.',
+      texto: 'Añada «.options method=gear reltol=0.003 itl4=100»: el método de Gear es más estable con conmutaciones bruscas y el paso de tiempo puede bajar menos.',
     });
   return r;
 }

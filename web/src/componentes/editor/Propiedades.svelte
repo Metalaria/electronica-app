@@ -102,7 +102,7 @@
 <section class="propiedades" aria-label="Propiedades">
   {#if c && tipo}
     <header>
-      <h3>{tipo.nombre}</h3>
+      <h2>{tipo.nombre}</h2>
       <div class="acciones">
         <button type="button" class="boton-icono" title="Girar 90° (R)" aria-label="Girar" onclick={() => ed.transformar([c.id], 'girar')}><RotateCw size={18} /></button>
         <button type="button" class="boton-icono" title="Reflejar (X)" aria-label="Reflejar" onclick={() => ed.transformar([c.id], 'reflejar')}><FlipHorizontal size={18} /></button>
@@ -192,13 +192,13 @@
     {#each errores as e, i (i)}<p class="mal">{e}</p>{/each}
     {#each pinesSueltos as e, i (i)}<p class="nota aviso">{e}</p>{/each}
   {:else if cable}
-    <header><h3>Cable</h3>
+    <header><h2>Cable</h2>
       <div class="acciones"><button type="button" class="boton-icono" title="Borrar (Supr)" aria-label="Borrar" onclick={() => ed.borrar()}><Trash size={18} /></button></div>
     </header>
     <p class="nota">Pertenece a la red <code>{redCable ?? '—'}</code>{redCable === '0' ? ' (masa)' : ''}. Para darle otro nombre, conecte una etiqueta de red.</p>
   {:else if ed.sel.length > 1}
     <header>
-      <h3>{ed.sel.length} elementos</h3>
+      <h2>{ed.sel.length} elementos</h2>
       <div class="acciones">
         <button type="button" class="boton-icono" title="Girar 90° (R)" aria-label="Girar" onclick={() => ed.transformar(ed.sel, 'girar')}><RotateCw size={18} /></button>
         <button type="button" class="boton-icono" title="Reflejar (X)" aria-label="Reflejar" onclick={() => ed.transformar(ed.sel, 'reflejar')}><FlipHorizontal size={18} /></button>
@@ -208,7 +208,7 @@
     </header>
     <p class="nota">Arrástrelos para moverlos juntos; los cables conectados los siguen.</p>
   {:else}
-    <header><h3>Circuito</h3></header>
+    <header><h2>Circuito</h2></header>
     <label class="campo">
       <span>Título</span>
       <input type="text" name="titulo" value={ed.doc.titulo} onchange={(e) => {
@@ -238,7 +238,7 @@
     gap: 2px 6px;
     min-height: 40px;
   }
-  h3 {
+  h2 {
     margin: 0;
     font-size: 15px;
     color: var(--titulos);

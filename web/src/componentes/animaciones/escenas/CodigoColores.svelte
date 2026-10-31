@@ -266,6 +266,36 @@
     box-shadow: 0 0 0 2px var(--acento);
     transform: scale(1.12);
   }
+  /* Touch screens: each swatch is a 44 px button with the colour drawn inside it, so neighbours do not share
+     their touch areas (they wrap to more rows; owner's decision on the 0.11 QA). */
+  @media (pointer: coarse) {
+    .muestras {
+      gap: 0;
+    }
+    .muestra,
+    .muestra.activa {
+      position: relative;
+      width: 44px;
+      height: 44px;
+      border: 0;
+      background: none;
+      box-shadow: none;
+      transform: none;
+    }
+    .muestra::before {
+      content: '';
+      position: absolute;
+      inset: 7px;
+      border: 2px solid var(--superficie);
+      border-radius: 50%;
+      background: var(--m);
+      box-shadow: 0 0 0 1px var(--linea);
+    }
+    .muestra.activa::before {
+      inset: 5px;
+      box-shadow: 0 0 0 2px var(--acento);
+    }
+  }
   .presets {
     display: flex;
     flex-wrap: wrap;

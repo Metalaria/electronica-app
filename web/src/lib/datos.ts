@@ -5,6 +5,7 @@
 // falls back to the small hand-written sample in src/lib/muestra/, which follows the same schema.
 
 import type { DocBusqueda, EntradaGlosario, Indice, InfoParte, Parte, Refs } from './tipos';
+import { sinFallos } from './errores';
 
 type Modo = 'libro' | 'muestra';
 
@@ -93,13 +94,14 @@ export function cargarParte(id: string): Promise<Parte> {
   return p;
 }
 
+// A failed load is not kept: the next call (a «Reintentar») asks again.
 export function cargarGlosario(): Promise<EntradaGlosario[]> {
-  glosario ??= leerJSON<EntradaGlosario[]>('glosario.json');
+  glosario ??= sinFallos(leerJSON<EntradaGlosario[]>('glosario.json'), () => (glosario = null));
   return glosario;
 }
 
 export function cargarBusqueda(): Promise<DocBusqueda[]> {
-  busqueda ??= leerJSON<DocBusqueda[]>('busqueda.json');
+  busqueda ??= sinFallos(leerJSON<DocBusqueda[]>('busqueda.json'), () => (busqueda = null));
   return busqueda;
 }
 

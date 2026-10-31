@@ -12,7 +12,8 @@
   import { esquemaAutomatico } from './esquema/auto';
   import { leerJSON } from '../../lib/datos';
   import type { DatosFigura } from '../figuras-vivas/tipos';
-  import { cargarIndiceSpice, cargarNetlist } from '../../simulador/datos.svelte';
+  import { cargarIndiceSpice, cargarNetlist, spice } from '../../simulador/datos.svelte';
+  import ErrorCarga from '../ErrorCarga.svelte';
   import { precalentarMotor } from '../../simulador/cliente.svelte';
   import { autoHorizontal } from './motor/osciloscopio.ts';
   import type { IndiceSpice } from '../../simulador/tipos';
@@ -22,9 +23,13 @@
 
   const b = new Banco();
   const practica = $derived(tipo === 'practica' ? PRACTICAS.find((p) => String(p.n) === id) : undefined);
-  let plano = $state<Fuente | null>(null);
+  /** undefined until the drawing is decided (Banco keeps its place meanwhile). */
+  let plano = $state<Fuente | null | undefined>(undefined);
   let indice = $state<IndiceSpice | null>(null);
   let error = $state('');
+  /** The circuit or the catalogue did not arrive (no network): «Reintentar». */
+  let errorRed = $state(false);
+  let errorTexto = $state<unknown>(null);
   /** A circuit of the schematic editor (#/instrumentos/editor, 0.10). */
   let deEditor = $state<CircuitoEditor | null>(null);
 
@@ -61,7 +66,15 @@
         return;
       }
     }
-    if (!texto) return;
+    if (!texto) {
+      // the free bench with no circuit has nothing to draw (said only if none arrives at once: the last circuit used is
+      // reloaded in a moment, and the notice flashed before it); a circuit still loading keeps its place
+      if (tipo === 'libre')
+        setTimeout(() => {
+          if (n === pedido) plano = null;
+        }, 400);
+      return;
+    }
     if (deEditor?.plano) {
       plano = deEditor.plano;
       return;
@@ -74,10 +87,13 @@
   // ---------------------------------------------------------------- loading
   async function cargarCatalogo(clave: string) {
     error = '';
+    errorRed = false;
     indice ??= await cargarIndiceSpice();
     const n = indice?.netlists[clave];
     if (!n) {
-      error = `No se encuentra la netlist ${clave}.`;
+      // no network is not a missing netlist: «Reintentar» instead of a dead end
+      if (spice.fallo) errorRed = true;
+      else error = `No se encuentra la netlist ${clave}.`;
       return;
     }
     try {
@@ -96,8 +112,14 @@
       if (fs.length) f.sDiv = autoHorizontal(Math.min(...fs));
       else if (b.circuito.tran) f.sDiv = autoHorizontal(12 / b.circuito.tran.fin);
     } catch (e) {
-      error = String(e);
+      errorRed = true;
+      errorTexto = e;
     }
+  }
+
+  /** The catalogue of the free bench, again after a failed load. */
+  function cargarLista() {
+    void cargarIndiceSpice().then((i) => (indice = i));
   }
 
   onMount(() => {
@@ -119,7 +141,7 @@
       b.cargar(CIRCUITOS.p1!, 'Divisor de tensión (práctica 1)');
       b.poner('bmRojo', 'out');
       b.poner('bmNegro', '0');
-      void cargarIndiceSpice().then((i) => (indice = i));
+      cargarLista();
     }
   });
 
@@ -143,6 +165,7 @@
   <h1>{titulo}</h1>
 </div>
 {#if error}<p class="error">{error}</p>{/if}
+{#if errorRed}<ErrorCarga titulo="No se pudo cargar el circuito." error={errorTexto} reintentar={() => void cargarCatalogo(id)} />{/if}
 
 <BancoVista {b} {plano}>
   {#snippet lateral()}
@@ -150,7 +173,7 @@
       <PanelPractica p={practica} {b} />
     {:else}
       <div class="elegir">
-        <h3>{deEditor ? 'Circuito del editor' : 'Circuito en el banco'}</h3>
+        <h2>{deEditor ? 'Circuito del editor' : 'Circuito en el banco'}</h2>
         {#if deEditor}
           <p class="nota">Elija una punta o sonda arriba y toque un nodo del dibujo para ponerla. El circuito es el del editor tal como estaba al pulsar «Medir»; los cambios se hacen allí.</p>
         {:else if indice}
@@ -168,6 +191,8 @@
               {/if}
             {/each}
           </ul>
+        {:else if spice.fallo}
+          <ErrorCarga titulo="No se pudo cargar el catálogo de circuitos." reintentar={cargarLista} />
         {:else}
           <p class="nota">Cargando el catálogo…</p>
         {/if}
@@ -216,7 +241,7 @@
     gap: 10px;
     font-family: var(--sans);
   }
-  .elegir h3 {
+  .elegir h2 {
     margin: 0;
     font-size: 16px;
     color: var(--titulos);

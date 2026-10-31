@@ -40,7 +40,7 @@
       <div class="desliza">
         <table>
           {#if t.titulo}<caption>{t.titulo}</caption>{/if}
-          <thead><tr><th></th><th>A</th><th>B</th><th>B − A</th></tr></thead>
+          <thead><tr><th><span class="solo-lector">Magnitud</span></th><th>A</th><th>B</th><th>B − A</th></tr></thead>
           <tbody>
             <tr class="x">
               <th scope="row">{t.nombreX}</th>

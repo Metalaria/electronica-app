@@ -230,7 +230,7 @@
     {/if}
   </div>
   {#if invalido}
-    <div class="aviso" id="{idBase}-{v.id}-aviso">No se entiende el valor: prueba «4k7», «100n», «2,2 µ» o «1e-3».</div>
+    <div class="aviso" id="{idBase}-{v.id}-aviso">No se entiende el valor: pruebe «4k7», «100n», «2,2 µ» o «1e-3».</div>
   {:else if fuera}
     <div class="aviso" id="{idBase}-{v.id}-aviso">Fuera de lo habitual en el libro: {explicacion}</div>
   {/if}

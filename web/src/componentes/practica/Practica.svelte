@@ -43,6 +43,10 @@
   import Ordenar from './Ordenar.svelte';
   import Parejas from './Parejas.svelte';
   import Montar from './Montar.svelte';
+  // 0.11: every check is reported as a learning event (sound, vibration, XP…); a right answer celebrates.
+  import { emitir, type OrigenRespuesta } from '../../lib/aprendizaje/eventos';
+  import { prepararSonido } from '../../lib/aprendizaje/retroalimentacion';
+  import Destello from '../progreso/Destello.svelte';
 
   let {
     item,
@@ -50,8 +54,13 @@
     respuesta = null,
     onresponder,
     final = $bindable(false),
+    origen = 'practica',
+    semilla = null,
+    repetir = true,
   }: {
     item: ItemPractica;
+    /** Where it is shown (for the learning events): a lesson, Repaso's «Practicar», under an exercise. */
+    origen?: OrigenRespuesta;
     /** Small line above the statement; the kind of question by default. */
     etiqueta?: string;
     /** The first final answer, kept by the caller (a revisited item shows it was answered). */
@@ -60,6 +69,10 @@
     onresponder?: (r: RespuestaPractica) => void;
     /** The explanation is on show (the caller enables «Continuar»). */
     final?: boolean;
+    /** 0.11 (group B): fixed values of a problem with changing values (the problem of the day). */
+    semilla?: number | null;
+    /** Offer «Probar otra vez» / «Otro con otros valores» after the answer (not for the problem of the day). */
+    repetir?: boolean;
   } = $props();
 
   let control: ControlPractica | undefined = $state();
@@ -74,6 +87,8 @@
   let comprobando = $state(false);
   let tarjeta: HTMLElement | undefined = $state();
   let ronda = $state(0);
+  /** Right answer just given in this round (the seal celebrates; a revisited item does not). */
+  let recien = $state(false);
 
   const maxIntentos = $derived(item.tipo === 'prediccion' ? 1 : 2);
   const pistas = $derived(pistasPropias ?? item.pistas);
@@ -88,13 +103,17 @@
   async function comprobar() {
     if (!control || comprobando || resultado !== null) return;
     comprobando = true;
+    prepararSonido();
     try {
       const r = await control.comprobar();
       if (r.nula) {
         mensaje = r.mensaje ?? '';
         return;
       }
-      if (r.bien || intento >= maxIntentos) {
+      const cierra = r.bien || intento >= maxIntentos;
+      emitir({ tipo: 'respuesta', id: item.id, clase: 'practica', origen, correcta: r.bien, intento, pistas: vistas, final: cierra, parte: item.parte, seccion: item.seccion, subtipo: item.tipo });
+      if (cierra) {
+        recien = r.bien;
         resultado = r.bien;
         mensaje = r.bien ? '' : (r.mensaje ?? '');
         final = true;
@@ -113,6 +132,7 @@
   }
 
   function otraVez() {
+    recien = false;
     resultado = null;
     final = false;
     mensaje = '';
@@ -140,7 +160,7 @@
 
   {#key ronda}
     {#if item.tipo === 'numerico'}
-      <Numerico bind:this={control} {item} {final} bind:listo bind:pistas={pistasPropias} onenviar={comprobar} />
+      <Numerico bind:this={control} {item} {final} bind:listo bind:pistas={pistasPropias} onenviar={comprobar} semillaFija={semilla} />
     {:else if item.tipo === 'prediccion'}
       <Prediccion bind:this={control} {item} {final} bind:listo onenviar={comprobar} />
     {:else if item.tipo === 'deslizador'}
@@ -162,7 +182,7 @@
         <span class="sello mal" aria-hidden="true"><X size={16} strokeWidth={3} /></span>
         <div>
           <p class="que">{mensaje}</p>
-          {#if intento > 1 && intento <= maxIntentos}<p class="queda">Tienes otro intento antes de ver la solución.</p>{/if}
+          {#if intento > 1 && intento <= maxIntentos}<p class="queda">Tiene otro intento antes de ver la solución.</p>{/if}
         </div>
       </div>
     {/if}
@@ -196,7 +216,7 @@
   {:else}
     <section class="respuesta" class:bien={resultado} bind:this={tarjeta} role="status" data-feedback={resultado ? 'bien' : 'mal'}>
       <div class="veredicto">
-        <span class="sello" aria-hidden="true">{#if resultado}<Check size={18} strokeWidth={3} />{:else}<X size={18} strokeWidth={3} />{/if}</span>
+        <Destello activo={recien}><span class="sello" aria-hidden="true">{#if resultado}<Check size={18} strokeWidth={3} />{:else}<X size={18} strokeWidth={3} />{/if}</span></Destello>
         <h3>{resultado ? (intento > 1 ? '¡Correcto a la segunda!' : '¡Correcto!') : item.tipo === 'prediccion' ? 'No era eso' : 'No es correcto'}</h3>
       </div>
       {#if !resultado && mensaje && !mensaje.startsWith('No es correcto')}<p class="sol">{mensaje}</p>{/if}
@@ -208,7 +228,7 @@
       {/each}
       <div class="enlaces">
         <a class="ver" href={refHref} data-ver-ref>Ver {item.verRef}</a>
-        <button type="button" class="otra-vez" onclick={otraVez} data-otra-vez>{item.tipo === 'numerico' ? 'Otro con otros valores' : 'Probar otra vez'}</button>
+        {#if repetir}<button type="button" class="otra-vez" onclick={otraVez} data-otra-vez>{item.tipo === 'numerico' ? 'Otro con otros valores' : 'Probar otra vez'}</button>{/if}
       </div>
     </section>
   {/if}

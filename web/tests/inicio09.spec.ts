@@ -49,7 +49,7 @@ test.describe('progreso diario y racha', () => {
     const racha = page.locator('section.racha');
     await expect(racha).toHaveAttribute('data-racha', '3');
     await expect(racha.locator('h2')).toHaveText('3 días');
-    await expect(racha).toContainText('Hoy te falta un paso para el cuarto.');
+    await expect(racha).toContainText('Hoy le falta un paso para el cuarto.');
     await expect(racha.locator('.semana li')).toHaveCount(7);
     await expect(racha.locator('.semana li.hecho')).toHaveCount(3);
     await expect(racha.locator('.semana li.hoy')).not.toHaveClass(/hecho/);
@@ -128,19 +128,19 @@ test.describe('progreso diario y racha', () => {
 });
 
 test.describe('saludo, pestañas y columnas', () => {
-  test('«Tu nombre» en «Aa»: solo en este dispositivo', async ({ page }) => {
+  test('«Su nombre» en «Aa»: solo en este dispositivo', async ({ page }) => {
     await page.setViewportSize(MAC);
     await sembrar(page);
     await page.goto('#/');
     await expect(page.locator('.saludo h1')).toHaveText('Hola');
     await abrirAjustes(page);
-    await page.getByLabel('Tu nombre').fill('Ada Lovelace');
+    await page.getByLabel('Su nombre').fill('Ada Lovelace');
     await expect(page.locator('.saludo h1')).toHaveText('Hola, Ada Lovelace');
     await expect.poll(async () => (await leer<{ nombre?: string }>(page, 'prefs'))?.nombre).toBe('Ada Lovelace');
     await page.reload();
     await expect(page.locator('.saludo h1')).toHaveText('Hola, Ada Lovelace');
     await abrirAjustes(page);
-    await page.getByLabel('Tu nombre').fill('   ');
+    await page.getByLabel('Su nombre').fill('   ');
     await expect(page.locator('.saludo h1')).toHaveText('Hola');
   });
 

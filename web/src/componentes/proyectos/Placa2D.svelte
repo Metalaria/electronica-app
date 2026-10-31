@@ -514,7 +514,7 @@
       bind:this={lienzo}
       tabindex="0"
       data-lado={lado}
-      aria-label="Placa en 2D: arrastra para desplazar, rueda o pellizco para ampliar, toca un pad, una pista o un componente para seleccionarlo"
+      aria-label="Placa en 2D: arrastre para desplazar, rueda o pellizco para ampliar, toque un pad, una pista o un componente para seleccionarlo"
       onpointerdown={abajo}
       onpointermove={mover}
       onpointerup={arriba}

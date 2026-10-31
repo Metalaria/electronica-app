@@ -1,7 +1,7 @@
 <script lang="ts">
   // Renders a list of content blocks (recursive for boxes, derivations, cards and exercises).
   import type { Bloque } from '../lib/tipos';
-  import { prepararHtml } from '../lib/datos';
+  import { prepararHtml, textoPlano } from '../lib/datos';
   import Bloques from './Bloques.svelte';
   import Seccion from './Seccion.svelte';
   import Ecuacion from './Ecuacion.svelte';
@@ -30,6 +30,15 @@
     ejemplo: { ic: '▸', nombre: 'EJEMPLO' },
     comprobacion: null,
   };
+
+  /** «nota: Una resistencia de…»: the box's kind and its first words. */
+  function nombreCaja(tipo: string, dentro: Bloque[]): string {
+    const primero = dentro.find((x) => x.t === 'p') as { html?: string } | undefined;
+    const texto = primero?.html ? textoPlano(primero.html).trim() : '';
+    if (!texto) return tipo;
+    const corto = texto.length > 60 ? `${texto.slice(0, 60).replace(/\s+\S*$/, '')}…` : texto;
+    return `${tipo}: ${corto}`;
+  }
 </script>
 
 {#each bloques as b, i (i)}
@@ -57,7 +66,8 @@
     {/if}
   {:else if b.t === 'caja'}
     {@const c = CAJAS[b.tipo]}
-    <aside {id} data-b={db} class="caja caja-{b.tipo}" aria-label={c ? c.nombre.toLowerCase() : 'comprobación'}>
+    <!-- named by its kind and its first words: several «nota» boxes on a page were landmarks of the same name (axe) -->
+    <aside {id} data-b={db} class="caja caja-{b.tipo}" aria-label={nombreCaja(c ? c.nombre.toLowerCase() : 'comprobación', b.bloques)}>
       {#if c}<div class="caja-tit"><span class="ic" aria-hidden="true">{c.ic}</span>{c.nombre}</div>{/if}
       <div class="bloques"><Bloques bloques={b.bloques} {parte} /></div>
     </aside>

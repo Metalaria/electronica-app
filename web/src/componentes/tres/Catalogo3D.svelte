@@ -84,7 +84,7 @@
     <h1>Cómo son por fuera y por dentro</h1>
     <p class="intro">
       {MODELOS_3D.length} modelos tridimensionales de los componentes del libro, generados con sus medidas reales:
-      gíralos, córtalos o sepáralos en piezas para ver la película de una resistencia, las láminas de un electrolítico
+      gírelos, córtelos o sepárelos en piezas para ver la película de una resistencia, las láminas de un electrolítico
       o el dado de un transistor, con el nombre de cada parte y la sección que la explica.
     </p>
     <div class="filtro">
@@ -233,6 +233,13 @@
     align-items: center;
     gap: 6px;
     min-height: 36px;
+  }
+  @media (pointer: coarse) {
+    .familias button {
+      min-height: 44px;
+    }
+  }
+  .familias button {
     padding: 0 12px;
     border: 1px solid var(--linea);
     border-radius: 999px;
@@ -335,7 +342,8 @@
   .enc {
     font-size: 13px;
     font-weight: 600;
-    color: var(--c);
+    /* the family's colour toned towards the text: dark family colours vanished on the dark theme's cards (0.11 QA) */
+    color: color-mix(in srgb, var(--c) 45%, var(--tinta));
   }
   .res {
     font-family: var(--serif);

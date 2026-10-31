@@ -71,7 +71,7 @@
 <div class="ficha" aria-live="polite">
   {#if !huella && !red}
     <div class="vacia">
-      <p><strong>Toca un componente, un pad, una pista o una red</strong> para ver qué es, su función, su símbolo y sus conexiones.</p>
+      <p><strong>Toque un componente, un pad, una pista o una red</strong> para ver qué es, su función, su símbolo y sus conexiones.</p>
       <p class="tenue">{datos.huellas.filter((h) => h.t !== 'mec').length} componentes · {datos.redes.filter((r) => r.p >= 2).length} redes · placa de {mm(datos.placa.ancho, 1)} × {mm(datos.placa.alto, 1)} mm, {datos.placa.capas.length} capas de cobre</p>
     </div>
   {:else}

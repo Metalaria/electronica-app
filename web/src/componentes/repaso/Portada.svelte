@@ -8,6 +8,7 @@
   import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
   import Hand from '@lucide/svelte/icons/hand';
   import { cargarIndicePractica } from '../practica/datos';
+  import ErrorCarga from '../ErrorCarga.svelte';
   import type { IndicePractica } from '../practica/tipos';
   import { obtenerIndice } from '../../lib/datos';
   import { colorBloque } from '../../lib/color';
@@ -24,14 +25,35 @@
   let error = $state('');
   let ahora = $state(Date.now());
 
-  onMount(() => {
+  /** The cards, the tests and the practice index (again after «Reintentar»). */
+  function cargar() {
+    error = '';
     cargarBaraja()
       .then((b) => (baraja = b))
       .catch((e: unknown) => (error = e instanceof Error ? e.message : String(e)));
     void cargarIndiceRepaso().then((i) => (indiceTests = i));
-    void cargarIndicePractica().then((i) => (indicePractica = i));
+    void cargarIndicePractica().then((i) => {
+      indicePractica = i;
+      practicaCargada = true;
+    });
+  }
+
+  /**
+   * The page shows at once when its three parts are in (at most 2.5 s): the cards' summary, the tests and the
+   * practice each arrived on its own and pushed the next one down (0.11 QA: 0.13 of CLS on the tablet).
+   */
+  let practicaCargada = $state(false);
+  let plazo = $state(false);
+  const listo = $derived(plazo || ((!!baraja || !!error) && !!indiceTests && practicaCargada));
+
+  onMount(() => {
+    const espera = setTimeout(() => (plazo = true), 2500);
+    cargar();
     const t = setInterval(() => (ahora = Date.now()), 60_000);
-    return () => clearInterval(t);
+    return () => {
+      clearInterval(t);
+      clearTimeout(espera);
+    };
   });
 
   const mazo = $derived(baraja?.mazos.find((m) => m.id === repaso.ajustes.mazo) ?? baraja?.mazos[0] ?? null);
@@ -99,11 +121,14 @@
   <p class="rp-sub">Tarjetas del glosario con repetición espaciada y tests de cada capítulo, con las palabras del libro.</p>
 </header>
 
+{#if !listo}
+  <div class="espera-portada" aria-busy="true"></div>
+{:else}
 <section class="bloque" aria-labelledby="tit-tarjetas">
   <h2 id="tit-tarjetas"><Layers size={20} aria-hidden="true" /> Tarjetas del glosario</h2>
 
   {#if error}
-    <p class="aviso">No se pudo cargar el glosario: {error}</p>
+    <ErrorCarga titulo="No se pudo cargar el glosario." {error} reintentar={cargar} />
   {:else if !baraja || !mazo}
     <p class="aviso">Preparando las tarjetas…</p>
   {:else}
@@ -176,6 +201,8 @@
   <h2 id="tit-tests"><ListChecks size={20} aria-hidden="true" /> Tests por capítulo</h2>
   {#if !indiceTests}
     <p class="aviso">Cargando los tests…</p>
+  {:else if indiceTests.fallo}
+    <ErrorCarga titulo="No se pudieron cargar los tests." reintentar={cargar} />
   {:else if !indiceTests.partes.length}
     <p class="aviso">Todavía no hay tests generados (<code>contenido/repaso.py</code>).</p>
   {:else}
@@ -239,8 +266,12 @@
     {/if}
   </section>
 {/if}
+{/if}
 
 <style>
+  .espera-portada {
+    min-height: 70vh;
+  }
   .bloque {
     margin-top: 22px;
   }
@@ -308,7 +339,7 @@
     color: var(--c-precaucion);
   }
   .c-repaso {
-    color: var(--c-ejemplo);
+    color: color-mix(in srgb, var(--c-ejemplo) 64%, var(--tinta));
   }
   .mazo {
     display: flex;

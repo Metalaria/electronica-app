@@ -245,7 +245,7 @@ export const CONCEPTOS: Concepto[] = [
     id: 'bode-polos-ceros',
     titulo: 'El diagrama de Bode con polos y ceros',
     area: 'analogica',
-    resumen: 'Arrastra polos y ceros por el eje de frecuencia: asíntotas de ±20 dB/década, la curva real, la fase y una senoide que atraviesa el filtro.',
+    resumen: 'Arrastre polos y ceros por el eje de frecuencia: asíntotas de ±20 dB/década, la curva real, la fase y una senoide que atraviesa el filtro.',
     claves: 'bode polos ceros asíntotas decibelios década fase filtro paso bajo paso alto paso banda frecuencia de corte',
     libro: ['sec-25.3', 'fig-25.3', 'fig-25.4', 'sec-0.20', 'sec-25.4', 'fig-25.5', 'sec-25.7', 'sec-22.5', 'sec-0.10'],
     icono: 'bode',

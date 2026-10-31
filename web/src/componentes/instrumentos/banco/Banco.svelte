@@ -20,7 +20,8 @@
     lateral,
   }: {
     b: Banco;
-    plano: Fuente | null;
+    /** The drawing; null: the circuit has none; undefined: still being decided (its place is kept). */
+    plano: Fuente | null | undefined;
     /** Practice panel or circuit chooser, shown next to the bench. */
     lateral?: Snippet;
   } = $props();
@@ -61,11 +62,15 @@
 <div class="banco">
   <section class="bloque circuito" aria-label="Circuito">
     <div class="cab">
-      <h3>Circuito</h3>
+      <h2>Circuito</h2>
       <span class="estado" class:error={!!b.error} aria-live="polite">{estado}</span>
     </div>
     {#if plano}
       <Plano fuente={plano} puntas={b.puntas} {activa} alTocar={(n) => activa && b.poner(activa, n)} />
+    {:else if plano === undefined}
+      <!-- 0.11: while the drawing loads, an empty place of about its size: «Este circuito no tiene dibujo» used to
+           show for a moment and the drawing then pushed everything under it some 290 px down -->
+      <div class="reserva-plano" aria-busy="true"></div>
     {:else}
       <p class="sin-dibujo">Este circuito no tiene dibujo: coloque las puntas con la lista de nodos.</p>
     {/if}
@@ -132,7 +137,7 @@
     gap: 8px;
     margin-bottom: 8px;
   }
-  h3 {
+  h2 {
     margin: 0;
     font-family: var(--sans);
     font-size: 16px;
@@ -145,6 +150,10 @@
   }
   .estado.error {
     color: var(--c-precaucion);
+  }
+  .reserva-plano {
+    aspect-ratio: 5 / 2;
+    max-height: 52vh;
   }
   .sin-dibujo,
   .nota {

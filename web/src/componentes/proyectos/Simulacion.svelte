@@ -62,10 +62,10 @@
         {#if anotadas}
           Tensiones esperadas anotadas por el proyecto en su esquema («ANOTACIONES»), no simuladas.
         {/if}
-        Actívalas con «Tensiones» en la vista 2D o 3D para ver el cobre coloreado.
+        Actívelas con «Tensiones» en la vista 2D o 3D para ver el cobre coloreado.
       </p>
       <table>
-        <thead><tr><th>Red</th><th>Tensión</th><th>Origen</th><th></th></tr></thead>
+        <thead><tr><th>Red</th><th>Tensión</th><th>Origen</th><th><span class="solo-lector">Ver</span></th></tr></thead>
         <tbody>
           {#each conTension as r (r.n)}
             <tr>

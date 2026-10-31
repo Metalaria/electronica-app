@@ -611,7 +611,7 @@ function escenarioCuadro(): Escenario {
   const fin = N * TL;
   c.bus('LINEA', 'Línea', '0–223 visibles, 224–263 retrazado')
     .bit('VIS', 'Imagen', 1)
-    .bit('IPL0', '/IPL0', 1, 'Nivel 1: vblank')
+    .bit('IPL0', '/IPL0', 1, 'Nivel 1: VBlank')
     .bit('IPL1', '/IPL1', 1, 'Nivel 2: temporizador')
     .bit('IPL', 'IRQ pendiente', 1)
     .bus('CPU', '68000');
@@ -645,7 +645,7 @@ function escenarioCuadro(): Escenario {
   return {
     id: 'cuadro',
     titulo: 'Cuadro e interrupciones',
-    descripcion: 'Un cuadro de 264 líneas de 64 µs (16,9 ms, ≈ 59,19 Hz), 224 visibles. El LSPC genera las dos interrupciones del 68000: vblank (nivel 1) y temporizador (nivel 2).',
+    descripcion: 'Un cuadro de 264 líneas de 64 µs (16,9 ms, ≈ 59,19 Hz), 224 visibles. El LSPC genera las dos interrupciones del 68000: VBlank (nivel 1) y temporizador (nivel 2).',
     duracion: fin,
     escala: 'ms',
     pistas: c.pistas(),

@@ -15,7 +15,9 @@ GRIEGAS = {
 # Units that never take an SI prefix (the value is shown as a plain number).
 SIN_PREFIJO = {'', '%', 'dB', 'dBm', 'dBc', 'dBi', 'dBV', 'dBµV', 'dB/déc', '°', '°C', 'K', 'ppm', 'ppm/°C',
                'bit', 'V/V', 'A/A', 'ciclos', 'vueltas', '°C/W', 'K/W', 'rad', 'dB/m', 'dB/100 m', 'h', 'años',
-               'espiras', 'LSB', 'Ω/sq', 'veces', 'm²', 'Ω·m', 'V/µs', 'mm²', 'cm', 'mm', '1/°C', 'cm⁻³', 'ppm/°C', 'rpm', 'palabras', 'µε', '€'}
+               'espiras', 'LSB', 'Ω/sq', 'veces', 'm²', 'Ω·m', 'V/µs', 'mm²', 'cm', 'mm', '1/°C', 'cm⁻³', 'ppm/°C', 'rpm', 'palabras', 'µε', '€',
+               # 0.11: as in web/src/componentes/calculadoras/unidades.ts (days; units that already carry a prefix)
+               'días', 'kg', 'mm/ns', 'FIT'}
 
 
 def unidad_con_prefijo(u):

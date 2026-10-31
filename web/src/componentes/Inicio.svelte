@@ -17,6 +17,10 @@
   import Racha from './inicio/Racha.svelte';
   import Objetivo from './inicio/Objetivo.svelte';
   import RepasoHoy from './inicio/RepasoHoy.svelte';
+  import NivelInicio from './inicio/NivelInicio.svelte';
+  // 0.11 group B: the problem of the day and «Práctica inteligente»
+  import ProblemaInicio from './inicio/ProblemaInicio.svelte';
+  import PracticaInicio from './inicio/PracticaInicio.svelte';
   import CaminoLibro from './inicio/CaminoLibro.svelte';
   import Chip from './ui09/Chip.svelte';
   import Rotulo from './ui09/Rotulo.svelte';
@@ -32,10 +36,10 @@
     const num = d.seccion?.num;
     if (d.tipo === 'leccion') {
       const quedan = Math.max(1, d.pasos - d.paso);
-      return `Hoy toca la sección ${num ?? d.capitulo}: te ${quedan === 1 ? 'queda un paso' : `quedan ${enPalabras(quedan)} pasos`}.`;
+      return `Hoy toca la sección ${num ?? d.capitulo}: ${quedan === 1 ? 'queda un paso' : `quedan ${enPalabras(quedan)} pasos`}.`;
     }
     if (d.tipo === 'lectura') return num ? `Sigues en la sección ${num}, ${d.seccion!.titulo}.` : `Sigues en ${d.capitulo}.`;
-    return `Empieza por ${d.capitulo}.`;
+    return `Empiece por ${d.capitulo}.`;
   });
 
   const recientes = $derived(
@@ -78,6 +82,10 @@
         <Racha />
         <Objetivo />
       </div>
+      <ProblemaInicio />
+      <!-- 0.11: level and XP, and the course of the chapter being studied -->
+      <NivelInicio parte={destino?.parte ?? ''} />
+      <PracticaInicio />
       <RepasoHoy />
       {#if recientes.length}
         <nav class="recientes" aria-label="También leyendo">
@@ -102,6 +110,8 @@
     <Rotulo>Atajos</Rotulo>
     <div class="chips">
       <Chip onclick={abrirBuscador}><Icono nombre="buscar" tam={17} /> Buscar</Chip>
+      <Chip href="#/cursos"><Icono nombre="cursos" tam={17} /> Cursos</Chip>
+      <Chip href="#/progreso"><Icono nombre="progreso" tam={17} /> Progreso y logros</Chip>
       <Chip href="#/glosario"><Icono nombre="glosario" tam={17} /> Glosario</Chip>
       <Chip href="#/componentes"><Icono nombre="componentes" tam={17} /> Componentes animados</Chip>
       <Chip href="#/conceptos"><Icono nombre="conceptos" tam={17} /> Conceptos animados</Chip>

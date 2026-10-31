@@ -21,6 +21,7 @@
   import Bloques from './Bloques.svelte';
   import Icono from './Icono.svelte';
   import BotonTest from './repaso/BotonTest.svelte';
+  import { mapasDeLectura } from '../lib/mapas-lectura';
 
   let { parte }: { parte: string } = $props();
 
@@ -354,8 +355,9 @@
 
   function cargar() {
     error = '';
-    cargarParte(parte)
-      .then((p) => {
+    // with the maps of the problem panels and the «Simular»/«Calcular» buttons: nothing jumps in later (0.11)
+    Promise.all([cargarParte(parte), mapasDeLectura()])
+      .then(([p]) => {
         datos = p;
       })
       .catch((e: unknown) => {
@@ -566,7 +568,8 @@
     display: flex;
     align-items: baseline;
     gap: 12px;
-    color: rgba(255, 255, 255, 0.78);
+    /* 0.92: at 0.78 «CAPÍTULO» was 3.9:1 on the lighter chapter colours (0.11 QA) */
+    color: rgba(255, 255, 255, 0.92);
     font-size: 14px;
     font-weight: 600;
     letter-spacing: 0.16em;

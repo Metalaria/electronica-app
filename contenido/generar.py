@@ -274,7 +274,10 @@ def practica():
     if not shutil.which('node'):
         print('practica: falta node; no se generan las preguntas interactivas')
         return True
-    return subprocess.run(['node', os.path.join('scripts', 'practica10.mjs')], cwd=web).returncode == 0
+    if subprocess.run(['node', os.path.join('scripts', 'practica10.mjs')], cwd=web).returncode != 0:
+        return False
+    # 0.11: the sections with something to answer (libro/conceptos.json), the denominator of the mastery bars
+    return subprocess.run(['node', os.path.join('scripts', 'conceptos11.mjs')], cwd=web).returncode == 0
 
 
 def miniaturas():

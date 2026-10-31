@@ -6,6 +6,7 @@
   import { cargarMaquina, type DatosMaquina, type IdMaquina } from './datos';
   import { enlace, leerAncla, PESTANAS, type Pestana, type Seleccion } from './estado.svelte';
   import { cargarArquitectura } from './arquitectura/maquinas';
+  import ErrorCarga from '../ErrorCarga.svelte';
   import Foto from './Foto.svelte';
   import Fuentes from './Fuentes.svelte';
   import { tienePlaca } from './placa/datos';
@@ -22,8 +23,12 @@
     untrack(() => (sel = s));
   });
 
+  /** «Reintentar» after a failed load: the data again, and the tab's parts that come on demand. */
+  let intento = $state(0);
+
   $effect(() => {
     const id = actual.maquina;
+    void intento;
     let vivo = true;
     error = '';
     cargarMaquina(id)
@@ -91,17 +96,21 @@
   </nav>
 
   {#if error}
-    <div class="aviso"><p>No se pudieron cargar los datos: {error}</p></div>
+    <ErrorCarga titulo="No se pudieron cargar los datos de la consola." {error} reintentar={() => intento++} />
   {:else if !datos || datos.id !== actual.maquina}
     <div class="cargando">Cargando…</div>
   {:else if pestana === 'foto'}
     <Foto {datos} {sel} {seleccionar} {irA} />
   {:else if pestana === 'arquitectura'}
-    {#await Promise.all([import('./arquitectura/Arquitectura.svelte'), cargarArquitectura(datos.id)])}
-      <div class="cargando">Cargando…</div>
-    {:then [m, maquina]}
-      {#key datos.id}<m.default {datos} {maquina} {sel} {seleccionar} {irA} />{/key}
-    {/await}
+    {#key intento}
+      {#await Promise.all([import('./arquitectura/Arquitectura.svelte'), cargarArquitectura(datos.id)])}
+        <div class="cargando">Cargando…</div>
+      {:then [m, maquina]}
+        {#key datos.id}<m.default {datos} {maquina} {sel} {seleccionar} {irA} />{/key}
+      {:catch e}
+        <ErrorCarga titulo="No se pudo abrir la arquitectura." error={e} reintentar={() => intento++} />
+      {/await}
+    {/key}
   {:else if pestana === 'fotograma'}
     <!-- «Un fotograma»: how one pixel of a frame comes to exist, step by step, loaded only when the tab opens. -->
     {#await import('./fotograma/Fotograma.svelte')}
@@ -109,11 +118,13 @@
     {:then m}
       {#key datos.id}<m.default {datos} />{/key}
     {:catch e}
-      <div class="aviso"><p>No se pudo abrir «Un fotograma»: {String(e)}</p></div>
+      <ErrorCarga titulo="No se pudo abrir «Un fotograma»." error={e} />
     {/await}
   {:else if pestana === 'esquema'}
     {#await import('./esquema/Esquema.svelte') then m}
       {#key datos.id}<m.default {datos} {sel} {seleccionar} {irA} />{/key}
+    {:catch e}
+      <ErrorCarga titulo="No se pudo abrir el esquema." error={e} />
     {/await}
   {:else if pestana === 'placa3d' || pestana === 'placa2d'}
     <!-- The mainboard in the «Proyectos KiCad» viewer (contenido/consolas_pcb.py), loaded on demand. -->
@@ -122,7 +133,7 @@
     {:then m}
       {#key datos.id}<m.default {datos} vista={pestana === 'placa3d' ? '3d' : '2d'} {sel} {seleccionar} {irA} />{/key}
     {:catch e}
-      <div class="aviso"><p>No se pudo abrir la placa: {String(e)}</p></div>
+      <ErrorCarga titulo="No se pudo abrir la placa." error={e} />
     {/await}
   {:else}
     <Fuentes {datos} />
@@ -216,10 +227,18 @@
     border-bottom-color: var(--acento);
     color: var(--acento);
   }
-  .cargando,
-  .aviso {
+  .cargando {
     padding: 30px;
     color: var(--tinta-suave);
+  }
+  /* «Cargando…» only when it takes a while: a quick load flashed it for a few frames (0.11 QA) */
+  .cargando {
+    animation: aparecer-tarde 0.2s ease 0.3s both;
+  }
+  @keyframes aparecer-tarde {
+    from {
+      opacity: 0;
+    }
   }
   @media (max-width: 599px) {
     .consolas {

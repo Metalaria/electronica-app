@@ -9,8 +9,16 @@
 
   let entrada = $state<EntradaIndiceRepaso | null>(null);
   onMount(() => {
-    void cargarIndiceRepaso().then((i) => (entrada = i.partes.find((p) => p.parte === parte) ?? null));
+    // the part read now: the index may arrive after leaving the part (as in OtrosValores, «derived_inert»)
+    const esta = parte;
+    let vivo = true;
+    void cargarIndiceRepaso().then((i) => {
+      if (vivo) entrada = i.partes.find((p) => p.parte === esta) ?? null;
+    });
     void cargarRepaso();
+    return () => {
+      vivo = false;
+    };
   });
   const previo = $derived(repaso.tests[parte]);
 </script>

@@ -60,9 +60,10 @@ function dentro(px: number, py: number, p: [number, number, number, number]): bo
 }
 
 export function conectividad(doc: DocumentoEsquema): Conectividad {
-  const pines: { k: string; x: number; y: number; tipo: string; red?: string }[] = [];
+  const pines: { k: string; x: number; y: number; tipo: string; red?: string; pista?: string }[] = [];
   for (const c of doc.componentes) {
-    for (const p of pinesMundo(c)) pines.push({ k: `${c.id}.${p.nombre}`, x: p.x, y: p.y, tipo: c.tipo, red: c.tipo === 'ETQ' || c.tipo === 'RIEL' ? c.campos['red'] : undefined });
+    for (const p of pinesMundo(c))
+      pines.push({ k: `${c.id}.${p.nombre}`, x: p.x, y: p.y, tipo: c.tipo, red: c.tipo === 'ETQ' || c.tipo === 'RIEL' ? c.campos['red'] : undefined, pista: c.redes?.[p.nombre] });
   }
   const P = pines.length;
   const W = doc.cables.length;
@@ -142,21 +143,29 @@ export function conectividad(doc: DocumentoEsquema): Conectividad {
     explicitas[gi] = true;
     usados.add(orden[0]!);
   });
-  // Names kept by imported wires (the most frequent one of the net), bigger nets first.
-  const porTamano = lista.map((_, i) => i).sort((a, b) => lista[b]!.cables.length - lista[a]!.cables.length);
-  for (const gi of porTamano) {
-    if (nombres[gi] != null) continue;
-    const cuenta = new Map<string, number>();
-    for (const j of lista[gi]!.cables) {
-      const r = doc.cables[j]!.red;
-      if (r) cuenta.set(r, (cuenta.get(r) ?? 0) + 1);
+  // Names kept by imported wires (the most frequent one of the net), bigger nets first; then the nodes that the
+  // pins of imported parts remember (a net whose pins meet without any wire), again bigger nets first.
+  const heredar = (cuantos: (g: (typeof lista)[number]) => number, nombresDe: (g: (typeof lista)[number]) => (string | undefined)[]) => {
+    const orden = lista.map((_, i) => i).sort((a, b) => cuantos(lista[b]!) - cuantos(lista[a]!));
+    for (const gi of orden) {
+      if (nombres[gi] != null) continue;
+      const cuenta = new Map<string, number>();
+      for (const r of nombresDe(lista[gi]!)) if (r) cuenta.set(r, (cuenta.get(r) ?? 0) + 1);
+      const mejor = [...cuenta.entries()].sort((a, b) => b[1] - a[1]).find(([n]) => !usados.has(n));
+      if (mejor) {
+        nombres[gi] = mejor[0];
+        usados.add(mejor[0]);
+      }
     }
-    const mejor = [...cuenta.entries()].sort((a, b) => b[1] - a[1]).find(([n]) => !usados.has(n));
-    if (mejor) {
-      nombres[gi] = mejor[0];
-      usados.add(mejor[0]);
-    }
-  }
+  };
+  heredar(
+    (g) => g.cables.length,
+    (g) => g.cables.map((j) => doc.cables[j]!.red),
+  );
+  heredar(
+    (g) => g.pines.length,
+    (g) => g.pines.map((i) => pines[i]!.pista),
+  );
   let k = 1;
   lista.forEach((_, gi) => {
     if (nombres[gi] != null) return;

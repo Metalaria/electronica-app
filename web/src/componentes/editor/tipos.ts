@@ -50,6 +50,11 @@ export interface Componente {
   forma?: FormaImportada;
   /** Several lines for one symbol (transformer coils and couplings, bridge diodes), imported verbatim. */
   lineas?: { nombre: string; letra: string; nodos: string[]; pines: Record<string, number>; resto: string }[];
+  /**
+   * Imported parts: the node each pin had in the netlist (pin → name). It names the pin's net when no label, ground
+   * or wire does (pins that meet without a wire), so that a «v(e)» in the directives still finds its node.
+   */
+  redes?: Record<string, string>;
 }
 
 export interface Cable {

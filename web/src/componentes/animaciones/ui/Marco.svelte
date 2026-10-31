@@ -238,7 +238,8 @@
     margin: 1px 0 0;
     font-size: 17px;
     font-weight: 700;
-    color: var(--c);
+    /* the scene's colour toned towards the text: orange and green readings were 2.5–4:1 (0.11 QA) */
+    color: color-mix(in srgb, var(--c) 55%, var(--tinta));
     font-variant-numeric: tabular-nums;
     /* numbers fit on one line; a reading in words («cerámica de clase 2») wraps inside its box */
     overflow-wrap: break-word;

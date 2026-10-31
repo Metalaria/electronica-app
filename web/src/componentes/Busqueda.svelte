@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { desplazable } from '../lib/desplazable';
   import { tick } from 'svelte';
   import { app } from '../lib/estado.svelte';
   import { navegarDesdeCapa } from '../lib/ruta.svelte';
@@ -124,7 +125,9 @@
         <button class="cerrar" onclick={cerrarBuscador}>{app.movil ? 'Cerrar' : 'Esc'}</button>
       </div>
 
-      <div class="cuerpo" bind:this={lista} data-miniaturas-raiz>
+      <!-- the results scroll and their links stay out of the tab order (the field drives them): the box itself
+           takes the focus while it overflows so the keyboard can scroll it (axe «scrollable-region-focusable», 0.11 QA) -->
+      <div class="cuerpo" bind:this={lista} data-miniaturas-raiz use:desplazable={{ nombre: 'Resultados de la búsqueda', vertical: true }}>
         {#if !consulta.trim()}
           <div class="ayuda">
             <p><strong>Busque en todo el libro:</strong> secciones de todos los capítulos y términos del glosario.</p>
@@ -141,8 +144,14 @@
           <ul id="resultados" role="listbox" aria-label="Resultados">
             {#each resultados as r, k (r.doc.id)}
               {@const p = infoParte(r.doc.parte)}
-              <li id={`res-${k}`} role="option" aria-selected={k === sel}>
+              <!-- the option is the link itself (an option holding a link nested two controls: axe, 0.11 QA); the
+                   focus stays in the field, which points at it with aria-activedescendant -->
+              <li role="none">
                 <a
+                  id={`res-${k}`}
+                  role="option"
+                  aria-selected={k === sel}
+                  tabindex="-1"
                   href={href(r)}
                   onclick={(e) => clic(e, r)}
                   onmousemove={() => (sel = k)}
@@ -305,7 +314,7 @@
     color: var(--tinta);
     text-decoration: none;
   }
-  li[aria-selected='true'] a {
+  a[aria-selected='true'] {
     background: var(--acento-tinte);
     box-shadow: inset 0 0 0 1px var(--acento-borde);
   }

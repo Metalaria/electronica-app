@@ -300,7 +300,7 @@
   <canvas
     bind:this={lienzo}
     style:height={`${alto}px`}
-    aria-label="Cronograma de las señales elegidas; arrastra para mover el instante"
+    aria-label="Cronograma de las señales elegidas; arrastre para mover el instante"
     onpointerdown={abajo}
     onpointermove={mover}
     onpointerup={arriba}

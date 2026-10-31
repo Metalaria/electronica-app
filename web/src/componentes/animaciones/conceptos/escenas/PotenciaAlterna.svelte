@@ -200,7 +200,7 @@
       );
     return (
       `**Rectificador con condensador:** la corriente llega en pulsos estrechos en los picos de la tensión. Están en fase (cos φ = ${num(d.cosfi, 3)}), y aun así el factor de potencia es ${num(d.FP, 2)}: FP = (desplazamiento) × (distorsión) = ${num(d.cosfi, 3)} × ${num(d.dist, 3)}. Toda la corriente que no está en la fundamental son armónicos.\n` +
-      `Un condensador no lo corrige (pruébalo): añade corriente reactiva y el FP empeora. Para esto hace falta corrección activa (PFC, sección 32.8), que obliga a la corriente a seguir la forma de la tensión.`
+      `Un condensador no lo corrige (pruébelo): añade corriente reactiva y el FP empeora. Para esto hace falta corrección activa (PFC, sección 32.8), que obliga a la corriente a seguir la forma de la tensión.`
     );
   });
 

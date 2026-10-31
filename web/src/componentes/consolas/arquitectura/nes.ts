@@ -179,7 +179,7 @@ function ciclosCPU(id: string, titulo: string, descripcion: string, accesos: Acc
     .bit('A15', 'A15', 0)
     .bit('A14', 'A14', 0)
     .bit('A13', 'A13', 0)
-    .bus('D', 'D7–D0', 'Bus de datos (null = alta impedancia)')
+    .bus('D', 'D7–D0', 'Bus de datos (trazo a media altura: alta impedancia)')
     .bit('ROMSEL', '/ROMSEL', 1, 'U3B Y3')
     .bit('WRAMCS', 'WRAM /CS', 1, 'U3A Y0')
     .bit('PPUCS', 'PPU /CS', 1, 'U3A Y1')
@@ -269,7 +269,7 @@ const PROGRAMA: Acceso[] = [
   { dir: 0xc006, escritura: false, dato: 0xad, nota: 'LDA abs' },
   { dir: 0xc007, escritura: false, dato: 0x02, nota: 'byte bajo' },
   { dir: 0xc008, escritura: false, dato: 0x20, nota: 'byte alto' },
-  { dir: 0x2002, escritura: false, dato: 0x80, nota: 'lee PPUSTATUS: PPU /CS baja (bit 7 = vblank)' },
+  { dir: 0x2002, escritura: false, dato: 0x80, nota: 'lee PPUSTATUS: PPU /CS baja (bit 7 = VBlank)' },
 ];
 
 function escenarioDecodificar(op: Opciones): Escenario {
@@ -374,7 +374,7 @@ function escenarioCuadro(): Escenario {
   const fin = 262 * TL;
   c.bus('LINEA', 'Línea', 'Contador de líneas de la PPU')
     .bit('REND', 'Renderizando', 1, 'Líneas 0–239 (y la 261, de preparación)')
-    .bit('VBL', 'Bandera vblank', 0, 'PPUSTATUS bit 7')
+    .bit('VBL', 'Bandera VBlank', 0, 'PPUSTATUS bit 7')
     .bit('NMI', '/NMI', 1, '/INT de la PPU, drenador abierto')
     .bus('CPU', 'CPU', 'Qué ejecuta la CPU');
   for (let l = 0; l < 262; l++) c.set('LINEA', l * TL, String(l));
@@ -402,9 +402,9 @@ function escenarioCuadro(): Escenario {
   for (const t of [0, 240 * TL, tV, tEntra, tLee, tDma, tVram, tRti, 261 * TL]) c.marca(t);
   c.paso(0, 240 * TL, 'Líneas 0–239: la PPU dibuja; la CPU ejecuta la lógica del juego.');
   c.paso(240 * TL, tV, 'Línea 240: posrenderizado, la PPU no accede a la memoria.');
-  c.paso(tV, tEntra, 'Línea 241, punto 1: la PPU activa la bandera de vblank y, con PPUCTRL.7 = 1, baja /INT → /NMI. La CPU acaba la instrucción en curso y salta por el vector $FFFA.');
+  c.paso(tV, tEntra, 'Línea 241, punto 1: la PPU activa la bandera de VBlank y, con PPUCTRL.7 = 1, baja /INT → /NMI. La CPU acaba la instrucción en curso y salta por el vector $FFFA.');
   c.paso(tEntra, tLee + TC, 'La rutina NMI lee PPUSTATUS ($2002): la lectura borra la bandera y la PPU suelta /NMI.');
-  c.paso(tLee + TC, tRti, 'Durante el vblank (20 líneas, ≈ 2270 ciclos) la CPU puede escribir en la VRAM: DMA de sprites y nametables.');
+  c.paso(tLee + TC, tRti, 'Durante el VBlank (20 líneas, ≈ 2270 ciclos) la CPU puede escribir en la VRAM: DMA de sprites y nametables.');
   c.paso(tRti, 261 * TL, 'Vuelve al bucle principal.');
   c.paso(261 * TL, fin, 'Línea 261 (preparación): la PPU borra la bandera y recarga el scroll para el cuadro siguiente.');
   c.marca(fin);
@@ -421,7 +421,7 @@ function escenarioCuadro(): Escenario {
     defecto: ['LINEA', 'REND', 'VBL', 'NMI', 'CPU'],
     ventana: [239 * TL, 262 * TL],
     fidelidad:
-      'Exacto: 341 × 262 puntos de 186,2 ns (16,64 ms), bandera de vblank y /NMI en la línea 241, punto 1, borrado al leer $2002 o en la línea 261, DMA de OAM de 513 ciclos. Ilustrativo: cuántos ciclos tarda la rutina en leer $2002 y en volver (dependen del juego).',
+      'Exacto: 341 × 262 puntos de 186,2 ns (16,64 ms), bandera de VBlank y /NMI en la línea 241, punto 1, borrado al leer $2002 o en la línea 261, DMA de OAM de 513 ciclos. Ilustrativo: cuántos ciclos tarda la rutina en leer $2002 y en volver (dependen del juego).',
   };
 }
 

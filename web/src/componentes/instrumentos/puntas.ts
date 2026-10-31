@@ -40,6 +40,21 @@ export const COLOR_PUNTA: Record<string, string> = {
   genNegro: '#4a4a58',
 };
 
+/** Relative luminance (WCAG) of a #rgb or #rrggbb colour. */
+function luminancia(hex: string): number {
+  const h = hex.length === 4 ? hex.replace(/^#(.)(.)(.)$/, '#$1$1$2$2$3$3') : hex;
+  const c = [1, 3, 5].map((i) => parseInt(h.slice(i, i + 2), 16) / 255).map((x) => (x <= 0.03928 ? x / 12.92 : ((x + 0.055) / 1.055) ** 2.4));
+  return 0.2126 * c[0]! + 0.7152 * c[1]! + 0.0722 * c[2]!;
+}
+
+/**
+ * Colour of the letter on each probe's disc: white where it reads (≥ 4.5:1), else near-black (0.11 QA: white on the
+ * yellow, cyan, orange, green and pink discs was 2–4:1).
+ */
+export const TEXTO_PUNTA: Record<string, string> = Object.fromEntries(
+  Object.entries(COLOR_PUNTA).map(([k, c]) => [k, 1.05 / (luminancia(c) + 0.05) >= 4.5 ? '#ffffff' : '#10161c']),
+);
+
 export const LETRA_PUNTA: Record<string, string> = {
   bmRojo: '+',
   bmNegro: '−',

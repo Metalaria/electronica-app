@@ -51,18 +51,18 @@
   </form>
 
   <section>
-    <h3>Multímetro</h3>
+    <h2>Multímetro</h2>
     <Multimetro {k} />
   </section>
 
   <section>
-    <h3>Mapa de tensiones</h3>
+    <h2>Mapa de tensiones</h2>
     <p class="nota">
       Valores del libro <Cita cita={k.kit.citas['railes']} /> <Cita cita={k.kit.citas['mapa_fig']} /> frente al modelo simulado. Tolerancia: ±5 % en
       las alimentaciones y ±10 % en las polarizaciones <Cita cita={k.kit.citas['tolerancia']} corto />.
     </p>
     <table class="mapa" data-mapa>
-      <thead><tr><th>Punto</th><th>Libro</th><th>Simulado</th><th></th></tr></thead>
+      <thead><tr><th>Punto</th><th>Libro</th><th>Simulado</th><th><span class="solo-lector">Coincide</span></th></tr></thead>
       <tbody>
         {#each filas as f (f.m.id)}
           <tr data-punto={f.m.id} data-simulado={f.v == null ? '' : f.v.toFixed(3)} class:activa={k.roja === f.m.nodo}>
@@ -98,7 +98,7 @@
     flex-direction: column;
     gap: 14px;
   }
-  section h3 {
+  section h2 {
     margin: 0 0 8px;
     font-size: 15px;
     color: var(--titulos);
@@ -186,7 +186,8 @@
     white-space: nowrap;
   }
   .si {
-    color: #1e8449;
+    /* the theme's green: the fixed light-theme green was 3.7:1 on the dark theme (0.11 QA) */
+    color: color-mix(in srgb, var(--c-ejemplo) 64%, var(--tinta));
     font-weight: 700;
   }
   .no {

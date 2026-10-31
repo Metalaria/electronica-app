@@ -123,7 +123,9 @@
 <div class="plano" bind:this={contenedor}>
   <div class="lamina" style={fuente.tipo === 'auto' ? `max-width:${Math.round(fuente.vista[2] * 1.3)}px` : undefined}>
   {#if fuente.tipo === 'figura'}
-    <img src={url(fuente.svg)} alt="Esquema del montaje" draggable="false" />
+    <!-- 0.11: the drawing's size, so the bench keeps its place before the image arrives (it pushed everything under
+         it some 290 px down on the tablet) -->
+    <img src={url(fuente.svg)} alt="Esquema del montaje" width={Math.round(fuente.vista[2])} height={Math.round(fuente.vista[3])} draggable="false" />
   {:else if fuente.tipo === 'auto'}
     <div class="auto">{@html fuente.svg}</div>
   {/if}

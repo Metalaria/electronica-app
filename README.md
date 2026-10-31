@@ -61,7 +61,7 @@ esquemas (fase 5) está en la versión 0.7.
   - la vista «Marcadores y notas», en el orden del libro;
   - tema claro, sepia, oscuro o el del sistema, y tamaño del texto (botón «Aa»).
 - **Inicio con racha y camino del libro** (0.9, lavado de cara al estilo de Brilliant a partir de las maquetas
-  aprobadas): un saludo («Hola, Gonzalo»; el nombre se escribe en «Aa» → «Tu nombre», solo en este dispositivo; vacío
+  aprobadas): un saludo («Hola, Gonzalo»; el nombre se escribe en «Aa» → «Su nombre», solo en este dispositivo; vacío
   dice «Hola») y, en dos columnas en la tableta y el ordenador (una en el teléfono):
   - **«Seguir leyendo»**: la lección por pasos que se dejó a medias («Paso 4 de 7 · unos 6 minutos», «Continuar»
     vuelve a ese paso) o, si no hay ninguna, la sección donde se dejó la lectura, con una barra de segmentos (uno
@@ -76,7 +76,7 @@ esquemas (fase 5) está en la versión 0.7.
     día empieza a las 04:00, como en el repaso.
   - **Repaso pendiente**: las tarjetas de hoy del mazo elegido, con «Repasar».
   - **El libro como camino**: el tomo que se lee, desplegado, con un nodo por capítulo (leído con ✓, el actual
-    con «Estás aquí · 5.2», los pendientes con su número) y las secciones leídas de cada uno; los demás tomos, en
+    con «Está aquí · 5.2», los pendientes con su número) y las secciones leídas de cada uno; los demás tomos, en
     filas con los colores de sus bloques que se despliegan al tocarlas. Todo del color de su bloque.
   - Debajo siguen «También leyendo», el progreso con los capítulos en curso y los atajos (Buscar, Glosario…).
   El mismo estilo (tarjetas redondeadas, botón principal grande, chips, rótulos, títulos con Source Serif) llega a
@@ -125,6 +125,9 @@ esquemas (fase 5) está en la versión 0.7.
   todos los capítulos y apéndices, cada una con la cita del libro de la que sale (ver más abajo).
 - **Estudiar por pasos** (0.9): cualquier sección del libro como una lección de una pantalla por subapartado, con
   sus figuras vivas, ecuaciones y calculadoras, y después las preguntas de Repaso de esa sección (ver más abajo).
+- **Cursos, XP, niveles y logros** (0.11): diez cursos temáticos con su prueba de nivel, sonidos y vibración al
+  acertar y fallar, celebración al terminar cada lección, XP, niveles con nombre, 28 logros y un recordatorio
+  diario en Android (ver «Cursos, XP y logros» más abajo).
 
 ### Atajos de teclado
 
@@ -367,9 +370,48 @@ o la fuente de corriente quedan encima de la placa con sus puntas enchufadas en 
 Desde la 0.10 también el pulsador de 6 × 6 mm, el relé (cápsula azul con B1, B2, C, NC y NA), el transformador
 (núcleo de chapas y bobinado), el motor, la bombilla en su portalámparas (se enciende con su tensión), el
 zumbador, el altavoz, la LDR, los termistores, el cristal HC-49 y el puente en línea; un doble toque conmuta un
-interruptor o un conmutador y pulsa o suelta un pulsador. En el teléfono las seis pestañas del panel (Esquema,
-Simulación, Avisos, Pieza, Añadir, Medir) caben en una fila con su icono, y el paso del tutor de «Medir» va en
-una barra encima de la mesa, sin tapar la fuente ni los instrumentos.
+interruptor o un conmutador y pulsa o suelta un pulsador. El paso del tutor de «Medir» va en una barra encima
+de la mesa, sin tapar la fuente ni los instrumentos.
+
+**Rediseño de la 0.11** (montar sin ayuda un LED con su resistencia en menos de un minuto):
+
+- **Bandeja de piezas** siempre a la vista (debajo de la placa en la tableta y el teléfono, en una columna a la
+  izquierda en pantallas anchas), con tarjetas grandes de cada pieza dibujada como es, su nombre y su valor
+  (resistencia, LED rojo y verde, pulsador, condensador, electrolítico, transistores NPN y PNP, potenciómetro,
+  diodo, interruptor, LDR, zumbador, 555, operacional, puertas NAND, fuente) y «Más piezas» con la paleta
+  completa. Se arrastra una tarjeta a la placa: mientras se arrastra, un fantasma de la pieza enseña los
+  agujeros exactos donde caerán sus patas y sus tiras, en verde si cabe y en rojo, con el motivo, si chocaría
+  con otra pieza, cae en un agujero ocupado o la tira la dejaría en cortocircuito (dos patas en la misma
+  tira); al soltar en rojo no se pone. También se puede tocar la tarjeta y luego tocar la placa.
+- **Barra flotante** junto a la pieza elegida: Girar, Voltear, su valor (valores comunes de la serie E12 en
+  fichas, ‹ › para el anterior y el siguiente de la serie, o escrito; las bandas de la resistencia cambian al
+  momento), Pulsar o Conmutar, Más (todas las propiedades) y Quitar. En un cable: Color y Quitar.
+- **Cables sin herramienta**: un toque en un agujero libre empieza el cable (se ilumina su tira) y un toque en
+  otro lo acaba; o se arrastra de uno a otro y el cable sigue al dedo, con las dos tiras iluminadas. Se pintan
+  por encima de las piezas y con una zona de toque ancha; su color sale de lo que llevan (rojo al +, negro a
+  masa, los demás variados) y se cambia en la barra; un extremo se arrastra a otro agujero sin elegirlo
+  antes, y una pulsación larga lo quita (con «Deshacer»). Dos dedos desplazan y acercan; «+», «−» y «Ver
+  todo» están en la esquina de la mesa.
+- **Botones con nombre** siempre en el mismo sitio: Deshacer, Rehacer, Nombres, «Monta este circuito» y
+  Simular/Detener. Los paneles (Piezas, Esquema, Resultados, Avisos, Pieza, Medir) van en pestañas bajo la
+  placa (en el teléfono, al abrir uno se pliega la bandeja), así la placa queda grande; en el teléfono se ve
+  de entrada con agujeros del tamaño de un dedo (las 18 primeras columnas; «Ver todo» enseña el resto).
+- **«Monta este circuito»**, al estilo de Brilliant: «0 · La protoboard por dentro» y cinco montajes de serie
+  (LED y resistencia, divisor de tensión, LED con pulsador, transistor como interruptor y 555 astable) y, desde
+  «Ver en protoboard», el propio circuito del esquema. Paso a paso: la tarjeta de arriba dice qué poner y
+  dónde (los agujeros brillan y la silueta de la pieza espera en su sitio), la bandeja tiene solo las piezas
+  que faltan, cada paso se comprueba por las tiras (no por el agujero exacto) y, al acertar, una frase dice por
+  qué va ahí (del libro, con su sección, cuando la hay); un paso mal se explica («D1 está al revés: la pata
+  larga va en la columna 14…», «Ese cable une … ; este paso pide unir …») con su arreglo (Voltear, Quitarlo).
+  «Hazlo por mí» hace el paso; el último es simular, y cuando el LED se enciende (o sale la tensión del
+  divisor) lo celebra. Al salir vuelve la placa de antes.
+- **La protoboard por dentro**, la primera vez que se usa la guía (se puede saltar; no vuelve): tocar un
+  agujero ilumina todo lo que está unido a él (su tira de cinco, o el carril entero); una idea por pantalla
+  (las tiras a–e y f–j, el canal central y por qué los DIP van a caballo, los carriles + y −) y cuatro
+  preguntas con segundo intento («¿Están unidos los agujeros a10 y f10?», «Toque un agujero unido a c23») cuyas
+  respuestas salen del propio modelo de la placa. Termina con «Siguiente: LED y resistencia».
+- **Primera vez**: un recorrido de tres tarjetas (la bandeja, los cables, Simular) que no tapa la placa y
+  no vuelve a salir; en una placa vacía, «Arrastre aquí una pieza desde la bandeja».
 
 **«Ver en protoboard»** aparece en todo esquema que tiene un circuito real detrás:
 
@@ -390,12 +432,13 @@ en «Mis montajes».
   elegirlos aparecen asas en las patas o los extremos: arrastrándolas se enchufan en otro agujero (las patas
   se doblan). Los cables no siguen a las piezas: como en una protoboard de verdad, mover una pieza cambia el
   circuito.
-- **Girar** (90°) y **Dar la vuelta** (invierte las patas: el LED o el diodo al revés, el transistor girado, el
-  integrado con la muesca al otro lado). **Conmutar** cambia el interruptor (también con doble toque).
-- **Cable**: con la herramienta Cable, toque un agujero libre (o un borne de la fuente) y luego otro, o
-  arrastre de uno a otro; con el ratón basta arrastrar desde un agujero libre. Su color se cambia en «Pieza».
-- **Añadir**: la paleta del editor de esquemas; la pieza aparece en un hueco libre a la vista y luego se
-  arrastra a su sitio. Las fuentes y los generadores van encima de la placa: sus puntas se llevan con Cable.
+- **Girar** (90°) y **Voltear** (invierte las patas: el LED o el diodo al revés, el transistor girado, el
+  integrado con la muesca al otro lado), en la barra flotante de la pieza. **Conmutar** cambia el interruptor
+  (también con doble toque).
+- **Cable**: toque un agujero libre (o un borne de la fuente) y luego otro, o arrastre de uno a otro.
+- **Más piezas**: la paleta del editor de esquemas; la pieza aparece en un hueco libre a la vista y luego se
+  arrastra a su sitio. Las fuentes y los generadores van encima de la placa: sus puntas se llevan tocando el
+  borne y luego un agujero.
 - **Pieza**: las propiedades del editor (nombre, valor, modelo, forma de onda…). Cambiar el modelo de un
   transistor cambia su patillaje (un BC547 tiene el colector donde un 2N3904 tiene el emisor); cambiar el valor
   de un condensador puede convertirlo en electrolítico.
@@ -471,11 +514,13 @@ se sincroniza entre dispositivos como los circuitos del editor.
 
 | Gesto o tecla | Acción |
 |---|---|
-| Tocar o hacer clic | Elegir una pieza o un cable; en un agujero, ver su tira y su red |
-| Arrastrar una pieza, una asa | Moverla · enchufar esa pata o ese extremo en otro agujero |
-| Arrastrar en vacío con un dedo · pellizcar | Desplazar · acercar y alejar (nunca la página) |
+| Tocar o hacer clic | Elegir una pieza o un cable; en un agujero libre, empezar (o acabar) un cable y ver su tira y su red |
+| Arrastrar una pieza, una asa, un extremo | Moverla · enchufar esa pata o ese extremo en otro agujero |
+| Arrastrar desde un agujero libre | Tender un cable hasta donde se suelte |
+| Pulsación larga en un cable | Quitarlo |
+| Arrastrar fuera de los agujeros · dos dedos | Desplazar · acercar y alejar (nunca la página) |
 | `Ctrl` + rueda · `Mayús` + rueda | Acercar y alejar · desplazar en horizontal |
-| `R` · `F` · `Supr` · `W` | Girar · dar la vuelta · quitar · herramienta Cable |
+| `R` · `F` · `Supr` · `W` | Girar · voltear · quitar · herramienta Cable (opcional: un toque en un agujero ya empieza un cable) |
 | `Ctrl Z` · `Ctrl Y` · `0` · `Esc` | Deshacer · rehacer · ver todo · cancelar |
 
 Límites: una placa de 400 puntos para los circuitos pequeños y hasta cuatro de 830 para los grandes. Lo que no
@@ -1277,6 +1322,121 @@ Se generan con `node web/scripts/practica10.mjs` (unos 60 s; también lo llama `
 `web/public/libro/practica/`. Pruebas: `npx playwright test -c playwright.preguntas10.config.ts
 tests/preguntas10.spec.ts` (puerto 4391); capturas en `tests/capturas/preguntas10/`.
 
+## Cursos, XP y logros (0.11)
+
+Para que estudiar se parezca más a Brilliant (aprender haciendo, con ganas de volver):
+
+- **Sonido y vibración.** Un acierto suena con dos notas cortas y vibra un instante; un fallo, con una nota grave y
+  suave; terminar una lección, subir de nivel o conseguir un logro tienen su propio sonido, y cada paso de «Monta
+  este circuito», un toque ligero. Los sonidos se generan en el momento (Web Audio, sin ficheros) y son bajos. En
+  «Aa» → «Sonido y vibración» se apagan por separado (vienen encendidos; solo en este dispositivo). En Android la
+  vibración usa el plugin de háptica de Tauri; en el ordenador no hay vibración.
+- **Celebraciones.** El sello de una respuesta correcta da un pequeño salto con unas chispas; al ganar XP aparece
+  arriba «+10 XP» (varios premios seguidos se suman); al subir de nivel o conseguir un logro, una tarjeta con su
+  insignia. Al terminar una lección, «Sección completada» muestra los XP ganados (contando), la racha y el porcentaje
+  de aciertos a la primera, la barra del nivel y un momento de confeti. Todo con transformaciones y opacidad (nada
+  de WebGL), nada se mueve en reposo y, con «reducir movimiento» del sistema, solo hay fundidos.
+- **XP y niveles.** Una pregunta o práctica acertada da 10 XP (5 a la segunda o con pistas), una lección completada
+  20, un ejercicio resuelto 15 (8 tras un fallo o con pistas; nada si se abrió antes la solución), un circuito
+  guiado de la protoboard 25 y cada día con el objetivo cumplido 10 más 2 por cada día de racha (hasta 20 más). Cada
+  cosa cuenta una sola vez aunque se repita o se haga en otro dispositivo. Los niveles tienen nombre («Chispa»,
+  «Corriente continua», «Ley de Ohm»… «Laboratorio completo») y cada uno pide 50 XP más que el anterior (100, 250,
+  450, 700…). El inicio muestra el nivel, los XP y el curso del capítulo que se estudia.
+- **Logros.** 30 insignias dibujadas (primera lección, diez y cincuenta lecciones, un capítulo entero, madrugador y
+  búho, primer acierto, sin pistas, capítulo dominado, ejercicios, primer montaje en la protoboard, los cinco
+  montajes, primera simulación, rachas de 3, 7 y 30 días, constancia, el problema del día y una semana de problemas
+  seguidos, prueba de nivel, cursos, niveles 5 y 10…). La
+  página **«Progreso y logros»** (`#/progreso`, desde la tarjeta del nivel y los atajos del inicio) enseña el nivel, los XP, la
+  racha, los últimos XP y todos los logros: los conseguidos en color con su fecha y los demás en gris, con lo que
+  hay que hacer y cuánto falta.
+- **Cursos** (`#/cursos`, también desde el inicio): los capítulos agrupados por temas, cada curso con su avance y
+  «Continuar» (la primera lección no completada ni superada, en el paso donde se dejó):
+
+  | Curso | Capítulos (ficheros `capNN`) |
+  |---|---|
+  | Fundamentos | 0–6 |
+  | Análisis de circuitos | 23, 24, 25, 42 |
+  | Electrónica analógica | 7, 8, 26, 27, 28, 32, 43 |
+  | Digital y programable | 9, 29, 34, 37, 38, 44 |
+  | Potencia y energía | 10, 33, 39, 50 |
+  | Señales, RF y comunicaciones | 30, 31, 36, 45 |
+  | Sensores y microcontroladores | 17–20, 35, 49 |
+  | Taller e instrumentos | 11–13, 15, 21, 22, 47, 53 |
+  | Diseño de placas | 40, 41, 46 |
+  | Proyectos completos | 16, 48–52, 54 |
+
+  Los números son los de los ficheros del contenido: desde `cap15` el capítulo impreso es uno menos (`cap15` es el
+  «Capítulo 14», y no existe `cap14`); la aplicación muestra siempre el número impreso. Todos los capítulos están en
+  algún curso; el 49 y el 50 están en dos. Los apéndices no están en ningún curso.
+- **Prueba de nivel** de cada curso: entre 6 y 10 preguntas de repaso del propio libro, de los primeros capítulos del
+  curso a los últimos, con «No lo sé». Al final, el resultado por capítulo, por dónde empezar (el primer capítulo con
+  un fallo) y la opción de marcar las lecciones de los capítulos anteriores como **«superadas por la prueba»**: se
+  ven distintas de las completadas, no dan XP y se pueden deshacer. Se puede saltar y repetir (cada vez con otras
+  preguntas); no da XP.
+- **Recordatorio diario** (solo Android): en «Aa» → «Recordatorio diario», una notificación cada día a la hora
+  elegida (20:00 por defecto): «Unos minutos con la electrónica: le espera el problema del día.» Al activarlo,
+  Android 13 o posterior pide permiso para mostrar notificaciones. Tocarla abre el problema del día (`#/problema`; si
+  Android tenía la aplicación cerrada del todo, se abre el inicio, que lo muestra arriba). Puede llegar unos minutos
+  tarde (Android agrupa las alarmas para ahorrar batería). En el ordenador, «Aa» dice «Solo en Android».
+
+XP, logros, lecciones superadas y pruebas se sincronizan como el resto del progreso; al instalar la 0.11 sobre la
+0.10, lo ya hecho (lecciones completadas, ejercicios resueltos, días con el objetivo cumplido) se convierte en XP y
+logros una sola vez, sin tocar los datos de antes.
+
+Pruebas: `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers npx playwright test -c playwright.grupoA.config.ts
+tests/grupoA11.spec.ts` (puerto 4451, compilación en la carpeta temporal del sistema); capturas en la tableta y el
+teléfono, en claro y oscuro, en `tests/capturas/grupoA11/`.
+
+## Aprender a la medida: dominio, práctica inteligente, problema del día y figuras que se exploran (0.11)
+
+- **Figuras vivas dentro de las lecciones.** En «Estudiar por pasos», los esquemas del libro que se pueden simular en
+  continua (25 dibujos de 20 figuras) traen debajo una fila para explorar: «Mueva R<sub>1</sub>: ¿qué le pasa a la
+  tensión en V<sub>sal</sub>?», un deslizador por los valores E12 (×0,1 a ×10) y la lectura grande con el valor del
+  libro y cuánto sube o baja. Qué se mueve y qué se mira sale de las prácticas del libro sobre ese mismo dibujo (el
+  componente del «Ajusta»; si solo hay un «Predice y comprueba», otro componente, para no darle la respuesta); si no
+  hay, una resistencia con nombre y un nodo con etiqueta. Con varias resistencias, unas fichas permiten cambiar de
+  componente. El dibujo se actualiza en su sitio (colores, cargas que circulan, lecturas) con el mismo ngspice de
+  siempre; se simula 0,25 s después de soltar el dedo, solo con la figura en pantalla (un cambio hecho fuera de ella
+  espera a que vuelva) y nada se mueve en reposo. Su sitio se reserva desde el principio: no empuja el texto.
+  Ningún esquema simulable del libro tiene interruptores, así que no hay «accionar un interruptor».
+- **Dominio por concepto.** Cada sección del libro es un concepto (632 tienen algo que responder en la aplicación; los
+  capítulos y los cursos suman sus secciones). Cada respuesta cuenta: a la primera y sin pistas 100 puntos, con ayuda
+  60, mal 0; repetir la misma pregunta enseguida («Probar otra vez», recargar) no cuenta otra vez. El dominio sube con
+  más preguntas acertadas y, sobre todo, con aciertos en días distintos, y baja poco a poco con el tiempo (nunca por
+  debajo de la mitad); cuando se empieza a olvidar algo sabido, queda «para repasar». Niveles: Intentado,
+  Familiarizado, Competente y Dominado. Se ve con cuatro segmentos junto al título de cada sección en el libro (un
+  toque lleva a practicarla), en el índice, en cada curso (barra por curso y por capítulo, segmentos por lección) y en
+  **«Dominio»** (`#/progreso/dominio`, desde «Progreso y logros» y el inicio): cuántos conceptos hay en cada nivel, lo
+  que más cuesta y lo que se empieza a olvidar, cada uno con «Practicar esto», y el dominio por cursos y capítulos.
+  Al instalar esta versión, las respuestas que la aplicación ya guardaba (aciertos con sus XP, preguntas falladas del
+  repaso, ejercicios) se convierten en dominio una sola vez, sin tocar esos datos.
+- **Práctica inteligente** (`#/practicar`, desde el inicio): unos diez ejercicios elegidos para cada lector: primero
+  lo que más le cuesta (4) y lo que empieza a olvidar (3), algo nuevo de su curso en orden (2; nunca de un capítulo
+  más allá del que lleva, y del siguiente solo cuando ha tocado todo lo anterior) y un repaso de lo que domina (1); lo
+  que un grupo no llena lo llenan los otros. Usa todo lo que la aplicación sabe preguntar: las prácticas de «Aprender
+  haciendo», las preguntas de repaso, los ejercicios que se comprueban solos y las **tarjetas del glosario que ya
+  tocaban hoy** (como mucho dos, de los mismos conceptos, nunca nuevas): se responden con los mismos botones y el mismo
+  planificador que en «Repaso», así que cuentan como repasadas allí y no compiten con él. No repite lo respondido en
+  las últimas 20 horas mientras haya otra cosa, vuelve a preguntar lo que se falló días atrás y no pone dos seguidos
+  del mismo concepto. Al final: aciertos a la primera, XP y **lo que ha mejorado** (el dominio de cada concepto antes
+  y después). Con «Practicar esto» la sesión es de una sección (completada hasta 5 con lo más flojo del capítulo) o de
+  un capítulo entero (`#/practicar/<capítulo>[/<sección>]`).
+- **Problema del día** (`#/problema`, tarjeta en el inicio): uno al día, el mismo todo el día y en todos los
+  dispositivos, de su curso y hasta el capítulo al que ha llegado (un lector nuevo, del primer capítulo de
+  Fundamentos): un «Calcula» del libro con los valores del día, o un ejercicio autocomprobable aún sin resolver. Dos
+  intentos y las pistas, como cualquier práctica; resolverlo da 15 XP más, cuenta para la racha de problemas (en la
+  tarjeta y en la página) y para los logros «Problema del día» y «Semana de problemas». Después se ve la solución
+  paso a paso con los valores del día; «La solución de ayer» enseña la de ayer. Funciona sin conexión.
+
+Dominio y problemas del día se sincronizan como el resto del progreso (las rondas de una misma pregunta respondida en
+dos dispositivos se suman, no se pisan).
+
+Pruebas: `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers npx playwright test -c playwright.grupoB.config.ts
+tests/grupoB11.spec.ts` (puerto 4461, compilación en `/tmp/epa-dist-grupoB`); capturas en la tableta y el teléfono,
+en claro y oscuro, en `tests/capturas/grupoB11/`. `node web/scripts/conceptos11.mjs` (lo llama `generar.py` tras las
+prácticas) escribe `libro/conceptos.json` (las secciones con algo que responder) y `libro/explorables.json` (los
+esquemas que se exploran en las lecciones).
+
 ## Miniaturas en las listas (0.10)
 
 Las listas largas enseñan una miniatura de lo que abre cada fila, de tamaño fijo (nada se mueve cuando llega) y
@@ -1378,8 +1538,10 @@ tras más de un minuto; «Sincronizar ahora» lo hace al momento. «Desconectar�
 **Qué viaja**: marcadores, notas, posición de lectura de cada capítulo, secciones leídas, progreso de ejercicios y
 problemas, pasos vistos de las deducciones, tarjetas del repaso (SM-2) y su registro diario, ajustes del repaso,
 resultados de los tests, preguntas falladas, exámenes, calculadoras favoritas y los circuitos del editor de
-esquemas. **Qué no**: tema, tamaño de letra, índice abierto o cerrado, elección 2D/3D y el circuito libre del
-simulador (cosas de cada pantalla), y los propios ajustes de sincronización.
+esquemas; desde la 0.11, también los XP, los logros, las lecciones superadas por la prueba de nivel y el resultado de
+cada prueba. **Qué no**: tema, tamaño de letra, índice abierto o cerrado, elección 2D/3D y el circuito libre del
+simulador (cosas de cada pantalla), sonido, vibración y recordatorio (de cada dispositivo), y los propios ajustes de
+sincronización.
 
 **Cómo se fusiona**: nunca se sobrescribe el fichero entero. Cada elemento (un marcador, una nota, una tarjeta…)
 lleva la hora de su último cambio y gana el más reciente; un borrado viaja como «lápida» con su hora. La regla es
@@ -1436,7 +1598,7 @@ fichero de datos. Quien prefiera dos tokens de permisos mínimos no puede: la ap
 | macOS | `~/Library/Application Support/es.gonzalomejias.electronica/lector.json` |
 | Android | almacenamiento interno de la aplicación (se borra al desinstalarla) |
 | Linux | `~/.local/share/es.gonzalomejias.electronica/lector.json` |
-| Navegador (desarrollo) | `localStorage`, claves `epa:prefs`, `epa:posiciones`, `epa:marcadores`, `epa:notas`, `epa:ejercicios`, `epa:leidas`, `epa:deducciones`, `epa:calc-favoritos`, `epa:repaso-tarjetas`, `epa:repaso-diario`, `epa:repaso-ajustes`, `epa:repaso-tests`, `epa:repaso-fallos`, `epa:repaso-examenes`, `epa:progreso-diario`, `epa:progreso-objetivo`, `epa:editor-circuitos`, `epa:protoboard-circuitos`, `epa:medir-pista`, `epa:sinc-ajustes`, `epa:sinc-estado`, `epa:sinc-marcas`, `epa:sinc-version` y, aparte, `epa-credencial:github` (el token) |
+| Navegador (desarrollo) | `localStorage`, claves `epa:prefs`, `epa:posiciones`, `epa:marcadores`, `epa:notas`, `epa:ejercicios`, `epa:leidas`, `epa:deducciones`, `epa:calc-favoritos`, `epa:repaso-tarjetas`, `epa:repaso-diario`, `epa:repaso-ajustes`, `epa:repaso-tests`, `epa:repaso-fallos`, `epa:repaso-examenes`, `epa:progreso-diario`, `epa:progreso-objetivo`, `epa:progreso-xp`, `epa:cursos`, `epa:dominio`, `epa:problema-dia`, `epa:editor-circuitos`, `epa:protoboard-circuitos`, `epa:protoboard-recorrido`, `epa:protoboard-leccion`, `epa:medir-pista`, `epa:sinc-ajustes`, `epa:sinc-estado`, `epa:sinc-marcas`, `epa:sinc-version` y, aparte, `epa-credencial:github` (el token) |
 
 El token de GitHub va en otro fichero de la misma carpeta, `credenciales.json`, para que copiar `lector.json` no
 lo lleve consigo. `lector.json` guarda además el estado de la sincronización (`sinc-*`: ajustes, última versión
@@ -1563,6 +1725,62 @@ PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers npx playwright test -c playwright.prot
 PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers npx playwright test -c playwright.protoboard10.config.ts tests/instrumentos10.spec.ts
 ```
 
+Protoboard (0.11): `proto11.spec.ts` (`playwright.proto11.config.ts`, puerto 4441, compilación en la carpeta
+temporal del sistema) usa gestos táctiles de verdad a 800 × 1280 y 412 px: arrastra una tarjeta de la bandeja a
+la placa (el fantasma enseña sus dos agujeros y sus tiras; una suelta encima de otra pieza se rechaza con el
+motivo; una pieza cortocircuitada por su tira también), tocar tarjeta y luego placa, la barra flotante (girar,
+voltear, 330 Ω de las fichas con sus bandas naranja-naranja-marrón, ‹ › de la E12, un valor escrito, quitar),
+cables toque a toque y arrastrando (rojo al +, negro a masa), mover un extremo y quitar con pulsación larga y
+«Deshacer», completa los cinco montajes de «Monta este circuito» hasta la celebración, un paso mal (cable al
+carril equivocado, LED al revés) con su explicación y su arreglo, la lección «La protoboard por dentro» (tira
+encendida, canal, carril, preguntas bien, mal y con segundo intento, saltarla y que no vuelva), el recorrido de
+la primera vez, que nada desborda a 412 px y un usuario nuevo cronometrado (LED, resistencia y fuente montados
+y simulados con el LED encendido en menos de un minuto); capturas en `web/tests/capturas/proto11/`:
+
+```sh
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers npx playwright test -c playwright.proto11.config.ts tests/proto11.spec.ts
+```
+
+Revisión independiente de la 0.11: `revision11.spec.ts` (`playwright.revision.config.ts`, puerto 4471, compilación en
+`/tmp/epa-dist-revision`) reproduce cada defecto encontrado y comprueba su arreglo: terminar una guía de la protoboard
+no pisa el montaje guardado ni el borrador; el problema del día resuelto en un dispositivo no se pierde frente al mismo
+día sin resolver en otro (con GitHub simulado y, en Node, una simulación de dos dispositivos con las reglas del motor:
+convergen sin ir y venir); la unión de rondas del dominio se guarda en el acto y sobrevive a una sincronización
+interrumpida; las celebraciones posteriores a la primera se ven; un fallo al calcular los logros no deja sin XP ni rompe
+la sincronización; el problema del día prefiere un «Calcula» del curso y el capítulo al que ha llegado el lector; el
+corte de día del dominio en los cambios de hora; el cambio de día a las 04:00 con la página abierta; los eventos de
+aprendizaje sobreviven a un fallo al cargar sus consumidores; y dos pestañas ya no se pisan los datos:
+
+```sh
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers npx playwright test -c playwright.revision.config.ts tests/revision11.spec.ts
+```
+
+La segunda y la tercera revisión del motor de sincronización tienen su especificación sin navegador,
+`revision11-motor.spec.ts`, que ejecuta el motor **real** en Node (`tests/motor-real/`: un grafo de módulos por
+dispositivo y por pestaña, almacenamiento y GitHub simulados con conflictos 409, y el motor de la 0.10 para un
+dispositivo que no se ha actualizado): un escenario por cada hallazgo de los revisores (un almacén que no se puede
+escribir, un borrado durante una pasada, un valor que el almacén rechaza, la unión de rondas en el fichero,
+normalizaciones opuestas, la memoria vieja de un módulo, un `aplicar` que falla a medias, lápidas podadas con el reloj
+atrasado, valores por defecto, volver a la 0.10, la unión asociativa, otra edición mientras se aplica, una petición
+colgada) y una simulación al azar con tres dispositivos con pestañas, uno de la 0.10 y una instalación nueva
+(ediciones y borrados sin conexión, el almacenamiento que rechaza escrituras, módulos no atómicos, relojes desfasados,
+pasadas interrumpidas, ediciones durante una pasada, otro dispositivo que escribe entre la lectura y la escritura) que
+comprueba que no se pierde nada, que nada borrado vuelve, que todos acaban igual y que los commits se detienen:
+
+```sh
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers npx playwright test -c playwright.revision.config.ts tests/revision11-motor.spec.ts
+```
+
+La misma especificación prueba también un solo `Guardado` al azar (`tests/motor-real/guardado-azar.ts`, con un
+almacenamiento como el de Tauri y como el del navegador): ediciones y borrados en cualquier momento, lecturas y
+escrituras que fallan y una carga que falla y se reintenta, sin perder nada de lo que hizo el lector. Que el editor y la
+protoboard avisan (con «Reintentar») cuando no pueden leer o guardar «Mis circuitos» o «Mis montajes» se comprueba en
+el navegador:
+
+```sh
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers npx playwright test -c playwright.revision.config.ts tests/revision11-avisos.spec.ts
+```
+
 La colocación automática de **todos** los circuitos que tienen el botón (las 313 netlists del libro y los 31
 esquemas simulables de las figuras) se comprueba en Node: cada uno montado sin error, cada red del esquema una
 sola red de la placa, ninguna unida a otra, todas las patas en agujeros, un solo cable por agujero y ningún
@@ -1582,6 +1800,107 @@ Coste por fotograma de los esquemas vivos (perfiles `mac`, `tableta`, `movil`; C
 ```sh
 PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node tests/figuras-vivas.mjs --perfil mac
 ```
+
+### Pruebas de QA exhaustivas (0.11)
+
+Además de las pruebas de cada función, `web/tests/qa/` recorre **toda** la aplicación como lo haría una persona y
+anota lo que encuentra en vez de pararse en el primer fallo. Tiene su propio puerto (4421) y su carpeta de
+compilación en la carpeta temporal del sistema, así que puede correr a la vez que las demás:
+
+```sh
+cd app/web
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers nice npx playwright test -c playwright.qa.config.ts                   # completa
+QA_MODO=rapido PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers nice npx playwright test -c playwright.qa.config.ts    # rápida
+```
+
+- **Tres perfiles**: la tableta del dueño (Xiaomi Pad 6: 800 × 1280 px, densidad 2,5, WebView de Android, táctil,
+  tema claro; visita todas las rutas), un teléfono (412 × 915, táctil, tema oscuro) y un escritorio (1366 × 900,
+  tema claro); estos dos, una muestra fija de una de cada cuatro rutas. `--project=tableta` corre solo uno.
+- **Rastreo** (`rastreo.spec.ts`): unas 3 250 rutas sacadas de los datos (partes, secciones, figuras con el visor
+  abierto, glosario, las 313 netlists en el simulador y en el editor, protoboard, instrumentos, kit FM7303,
+  consolas × pestañas, placas KiCad × vistas, animaciones, modelos 3D, conceptos, calculadoras, ejercicios, repaso,
+  diagnóstico, sincronización, «Aa», la búsqueda y el menú de herramientas). En cada página: errores y avisos de la
+  consola, peticiones fallidas (404), texto que se sale de su caja o de la pantalla, desplazamiento horizontal,
+  botones tapados o solapados, objetivos táctiles de menos de 40 px, saltos del diseño (CLS), cosas que aparecen y
+  desaparecen en menos de un segundo empujando la página (como la línea «Simulando con ngspice…» de la 0.10.0),
+  tareas de más de 200 ms, imágenes sin tamaño, «NaN», «undefined», «null», «[object Object]» o «Infinity» a la
+  vista, textos en inglés, botones sin nombre, campos sin etiqueta, contraste (calculado) y contextos WebGL vivos o
+  sin liberar al salir del 3D. Mide también si la memoria crece tras navegar por 60 páginas.
+- **Barridos funcionales** (`barridos.spec.ts`, en la tableta): cada netlist simula (o muestra el aviso de que no se
+  puede) y un segundo «Simular» no hace parpadear nada; cada lección «Estudiar por pasos» se recorre pantalla a
+  pantalla contestando cada práctica primero mal y luego bien, y las preguntas de repaso; cada «Ver en protoboard»
+  se abre, se comprueba, se simula y se cierra; cada placa de consola y de proyecto se abre en 3D y en 2D; cada
+  calculadora da el resultado del ejemplo del libro; cada ejercicio autocomprobable acepta la respuesta del libro; y
+  existe cada figura, imagen y ecuación que cita el libro.
+- **Mono** (`monos.spec.ts`): en 33 páginas interactivas (también la práctica inteligente, el problema del día y
+  una lección con fila explorable), toques, arrastres, pellizcos, escritura, deslizadores, Atrás/Adelante y giros
+  de la pantalla al azar pero con semilla: cada fallo se anota con la semilla y los últimos pasos. Para repetir
+  uno: `QA_SEMILLA=<semilla> QA_FILTRO=<página> … tests/qa/monos.spec.ts --project=tableta`.
+- **Accesibilidad** (`accesibilidad.spec.ts`, en el escritorio): foco visible con el tabulador y contraste en tema
+  oscuro.
+- **Segunda fase** (`fase2-*.spec.ts`, todas a la vez con `tests/qa/fase2-*.spec.ts`):
+  - `fase2-fugas`: tres vueltas seguidas por todas las vistas 3D y páginas pesadas, y otras tres por las figuras
+    explorables de las lecciones (moviendo su deslizador, que simula), la práctica inteligente, el problema del día y
+    el dominio; tras cada vuelta cuenta contextos WebGL, lienzos, `AudioContext`, workers, intervalos, bucles de
+    animación y la memoria (tras recoger basura). Lo que crece de vuelta en vuelta es una fuga.
+  - `fase2-lento`: una ruta de cada tipo en un equipo lento (CPU × 4 y red «Fast 3G»): tiempo hasta ver el
+    contenido (umbral 3 s) y hasta quedarse quieta; y la misma ruta con los JSON del contenido cortados: tiene que
+    avisar con «Reintentar» y recuperarse al volver la red, nunca quedarse «cargando» o a medias sin decir nada.
+  - `fase2-analizadores` y `fase2-editor`: el comprobador de respuestas con todas las unidades × prefijos ×
+    formatos, los números SPICE y parámetros de las 313 netlists, las calculadoras contra los ejemplos del libro, y
+    la ida y vuelta de las 313 netlists por el editor de esquemas (en Node y en la página): mismos elementos, mismas
+    conexiones y los nodos que miden sus `.control`.
+  - `fase2-estado`: recargar a mitad de cada lección, de una simulación, del editor, de la protoboard y de los
+    instrumentos; atrás y adelante por 30 rutas al azar (tres semillas); toques dobles y triples en los botones
+    principales (también «Empezar» y «Saltar» de la práctica inteligente); recargar a mitad de una práctica
+    inteligente, del problema del día y de una figura explorable; salir a mitad de una simulación o de una carga
+    3D; textos raros y muy largos en cada campo. Las páginas del aprendizaje (práctica, problema, dominio, filas
+    explorables) entran todas en `fase2-estado`, `fase2-lento` y `fase2-axe`, no solo una de cada tipo.
+  - `fase2-maquetacion`: todas las rutas en siete variantes más (tableta apaisada, móvil de 360 px, pantalla
+    partida a 600 y 700 px, la letra más grande, el tema sepia y el escritorio al 200 %), que son proyectos propios
+    (`--project=apaisada`, `movil360`, `partida600`, `partida700`, `letra-grande`, `sepia`, `zoom200`).
+  - `fase2-contenido`: cada referencia cruzada, enlace y recurso del contenido existe, la numeración no salta, y la
+    búsqueda encuentra cada término del glosario y cada sección por su título.
+  - `fase2-axe`: auditoría axe-core (dependencia de desarrollo) de una ruta de cada tipo en la tableta y el teléfono,
+    en claro y en oscuro; y los recorridos principales solo con teclado en el escritorio.
+  - `fase2-textos`: los textos de la interfaz (sacados del código con los analizadores de Svelte y TypeScript):
+    ortografía con `nspell` y el diccionario `dictionary-es` (dependencias de desarrollo; las palabras del libro
+    cuentan como conocidas), trato de usted, restos en inglés y nombres escritos de dos maneras.
+  - `fase2-visual`: unas 80 rutas comparadas píxel a píxel con la 0.10.1 (compilada aparte desde su commit y
+    servida en otro puerto, `QA_VIEJO=http://localhost:4423/`); lo que cambia más del 0,5 % queda con una imagen
+    «antes | ahora | diferencia» para revisarla.
+
+Variables: `QA_MODO=rapido` (muestra fija de ≈ 1 de cada 12 rutas, lecciones y circuitos: unos 40 min),
+`QA_FILTRO=<expresión>` (solo las rutas cuyo identificador encaja, p. ej. `'^simulador:cap05/'`), `QA_SEMILLA` y
+`QA_PASOS` (mono), `QA_WORKERS` (1 por defecto), `QA_INFORME=<carpeta>` (el informe en otra carpeta, para no
+mezclarlo con otra pasada) y `QA_TRAZA=1` (una línea por ruta o pantalla, para ver por dónde va). La pasada completa es larga (varias horas en esta máquina):
+se puede partir con `--shard=1/3`, `--shard=2/3`, `--shard=3/3` (lanzados uno tras otro, el informe junta los
+tramos).
+
+**El informe** queda en `web/tests/qa/informe/` (no se versiona): `informe.md` es el resumen en castellano
+(cobertura por perfil, número de grupos por gravedad y, para cada grupo, qué pasa, dónde —la firma del elemento—,
+en qué rutas y una captura en `capturas/`), e `informe.json` lo mismo para máquinas. Las gravedades son cuelgues y
+errores, funcionales, visuales y de maquetación, rendimiento, accesibilidad y textos. Un mismo problema visto en 300
+rutas es un solo grupo. `tests/qa/triaje.json` apunta lo ya revisado (corregido, solo informado, falso positivo o
+pendiente de decisión del dueño) y el informe lo muestra junto a cada grupo; si en una pasada aparece algo que el
+triaje da por corregido, el informe lo avisa arriba (en una compilación con los arreglos es un arreglo incompleto o
+una regresión). Para rehacer el informe sin volver a
+pasar las pruebas: `node tests/qa/informe.ts`. Las pruebas de regresión de lo corregido gracias al arnés están en
+`tests/regresiones11.spec.ts` (`-c playwright.regresiones11.config.ts`, puerto 4422).
+
+Lo que cambió en la aplicación gracias al arnés (0.11): nada que llegue tarde empuja ya lo que se está leyendo
+(el circuito del simulador, los paneles de problemas y los botones del lector, las figuras, el glosario, el banco
+de instrumentos), los avisos de carga solo salen si la carga tarda, la barra del simulador ya no parpadea con la
+simulación de fondo del circuito dibujado, el gris «tenue» del texto se ha oscurecido hasta 4,5:1 en los tres temas
+y en pantallas táctiles los controles pequeños tienen una zona de toque de 44 px sin cambiar de aspecto. En la
+segunda fase: el editor de esquemas conserva los nombres de los nodos y todas las conexiones al abrir una netlist
+del libro; sin red, cada página dice qué no ha podido cargar y ofrece «Reintentar» (y lo que falló ya no se queda
+guardado como fallo); los textos de la interfaz que tuteaban tratan ya de usted; el resumen de la práctica
+inteligente espera a que se anoten las respuestas de la sesión (con la máquina cargada salía sin ellas); y en
+pantallas táctiles la fórmula de una calculadora abre un elector con un botón grande por magnitud, el índice del
+glosario va en dos filas de letras de 44 px y las muestras del código de colores miden 44 px; abrir y cerrar una
+placa en 3D ya no deja la placa entera en memoria cada vez; y el tema sepia oscurece un poco sus colores de acento
+y de estado para que se lean con el contraste debido.
 
 `npm run tauri …` ejecuta la CLI de Tauri mediante `web/scripts/tauri.mjs`, que le indica dónde está
 `src-tauri/` (la CLI solo busca su configuración por debajo de la carpeta actual). Funciona igual en
@@ -2176,6 +2495,9 @@ app/
         Inicio.svelte        portada (trozo aparte, 0.9): saludo, «Seguir leyendo», racha, objetivo, repaso, camino del libro
         inicio/              SeguirLeyendo, Racha, Objetivo, RepasoHoy (+ repasoHoy.ts, perezoso), CaminoLibro, destino
         ui09/                primitivas del lavado de cara 0.9: Tarjeta, BotonPrincipal, BarraSegmentos, Chip, Rotulo (+ ui09.css)
+        cursos/              (0.11) página de cursos, un curso, la prueba de nivel y el avance de cada curso
+        progreso/            (0.11) «Progreso y logros», insignias, celebración de fin de lección, destello del
+                             acierto, contador de XP, avisos flotantes, «Sonido y vibración» y recordatorio en «Aa»
         vista-previa/        tarjeta de vista previa de las referencias (trozo perezoso; el controlador es
                              lib/vistaPrevia.ts)
         glosario/            imágenes del glosario: simbolo.ts (símbolos de esquema-auto en SVG), imagenes.ts
@@ -2223,8 +2545,13 @@ app/
                              secciones anterior/siguiente y filtro del índice
         usuario.svelte.ts    preferencias, posiciones, marcadores y notas
         almacen.ts           Tauri plugin-store o localStorage
+        aprendizaje/         (0.11) eventos de aprendizaje (eventos.ts, consumidores.ts), sonido y vibración
+                             (retroalimentacion.ts), XP y niveles (niveles.ts, progreso.svelte.ts), logros
+                             (logros.ts), cursos (cursos.ts, cursos-estado.svelte.ts), recordatorio diario
+                             (recordatorio.ts) y la cola de avisos (avisos.svelte.ts)
         sincronizacion/      sincronización por GitHub (fusion.ts, github.ts, credenciales.ts, marcas.ts,
-                             registro.svelte.ts: los almacenes sincronizables, sincronizar.svelte.ts) y
+                             guardado.ts: cómo guarda cada módulo lo que tiene en memoria sin pisar lo
+                             sincronizado, registro.svelte.ts: los almacenes sincronizables, sincronizar.svelte.ts) y
                              comprobación de versiones (actualizaciones.svelte.ts)
         buscador.ts          índice de búsqueda y fragmentos
         trozos.ts            división de un capítulo en tramos para dibujar solo lo visible
@@ -2238,6 +2565,7 @@ app/
   src-tauri/                 envoltorio nativo (Tauri 2, Rust)
     tauri.conf.json          nombre, identificador, ventana, CSP, instaladores
     capabilities/default.json  permisos: el almacén de datos y abrir enlaces http(s) en el navegador (opener)
+    capabilities/movil.json    (0.11, solo Android/iOS) vibración (haptics) y el recordatorio (notification)
     src/lib.rs, src/main.rs
     icons/                   iconos generados con `tauri icon` (fuente: icons/fuente/icono.svg)
 ```
@@ -2261,7 +2589,13 @@ app/
   búsqueda y el visor de figuras añaden su propia entrada, de modo que Atrás los cierra.
 - **Seguridad**: la CSP de Tauri solo permite recursos propios y conexiones a `https://api.github.com`
   (sincronización y aviso de versión); los permisos nativos son el almacén de datos y abrir una página http(s)
-  en el navegador del sistema (`tauri-plugin-opener`, para la página de la publicación nueva).
+  en el navegador del sistema (`tauri-plugin-opener`, para la página de la publicación nueva). Desde la 0.11, solo
+  en Android: la vibración (`tauri-plugin-haptics`, que declara el permiso `VIBRATE`) y el recordatorio diario
+  (`tauri-plugin-notification`, que declara `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED` para restaurarlo tras
+  reiniciar y `WAKE_LOCK`). Los permisos llegan al APK al fusionar los manifiestos de esas bibliotecas, así que el
+  proyecto `src-tauri/gen/android` que genera la CI no necesita ningún cambio; en el ordenador no se enlazan
+  (dependencias de Rust solo para Android/iOS y la capacidad `capabilities/movil.json`, limitada a esas
+  plataformas).
 - **Icono**: original, una resistencia estilizada con bandas de los colores de los bloques sobre el azul
   marino del libro (`1A3A5C`). Para cambiarlo, editar `src-tauri/icons/fuente/icono.svg`, exportarlo a
   PNG de 1024 px y ejecutar `npm run tauri -- icon ../src-tauri/icons/fuente/icono.png` desde `web/`.

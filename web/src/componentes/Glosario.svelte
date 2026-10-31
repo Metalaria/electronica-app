@@ -6,6 +6,7 @@
 <script lang="ts">
   import { onMount, tick, untrack } from 'svelte';
   import type { EntradaGlosario, Parte } from '../lib/tipos';
+  import ErrorCarga from './ErrorCarga.svelte';
   import { app } from '../lib/estado.svelte';
   import { ruta, prepararSalto, recordarScroll, volver } from '../lib/ruta.svelte';
   import {
@@ -14,6 +15,7 @@
     cargarParte,
     idGlosario,
     infoParte,
+    leerJSON,
     letraDe,
     normalizar,
     prepararHtml,
@@ -21,6 +23,7 @@
     textoPlano,
   } from '../lib/datos';
   import { colorBloque } from '../lib/color';
+  import { fuentesDeLectura } from '../lib/mapas-lectura';
   import Icono from './Icono.svelte';
   import type { ImagenTermino } from './glosario/imagenes';
 
@@ -47,6 +50,12 @@
   type ModuloImagenes = typeof import('./glosario/imagenes');
   let modImagenes: ModuloImagenes | null = null;
   let imagenes = $state<Map<string, ImagenTermino> | null>(null);
+  /**
+   * Which terms will have a symbol or a 3D picture (glosario-imagenes.json alone, a few kB): their places are kept
+   * at their final size until the pictures' chunk arrives, so nothing moves when it does (0.11 QA: the list jumped
+   * by a quarter of the screen when the chunk came 3 s late on a slow device).
+   */
+  let huecos = $state<Map<string, { s: boolean; m: boolean }> | null>(null);
   let minis = $state<Record<string, string>>({});
   let io: IntersectionObserver | null = null;
   const pendientes = new Set<HTMLElement>();
@@ -158,6 +167,9 @@
 
   async function posicionar() {
     await tick();
+    // the text's fonts change the height of 900 entries when they arrive: place the term once they are in, or it
+    // ends some 30 px off (0.11 QA, on the tablet)
+    await document.fonts?.ready;
     if (ruta.y != null) {
       window.scrollTo({ top: ruta.y, behavior: 'instant' });
       return;
@@ -187,10 +199,25 @@
     window.scrollTo({ top: 0, behavior: 'instant' });
   }
 
-  onMount(() => {
-    app.seccion = null;
-    Promise.all([cargarGlosario(), cargarParte('glosario').catch(() => null as Parte | null)])
-      .then(([g, parte]) => {
+  /** The terms, the glossary's introduction and the terms' pictures (again after «Reintentar»). */
+  function cargar() {
+    error = '';
+    const conImagenes = import('./glosario/imagenes')
+      .then(async (m) => {
+        modImagenes = m;
+        return await m.cargarImagenes();
+      })
+      .catch(() => null);
+    const mapa = leerJSON<{ terminos?: Record<string, { s?: string; m?: string }> }>('glosario-imagenes.json')
+      .then((f) => new Map(Object.entries(f.terminos ?? {}).filter(([, x]) => x.s || x.m).map(([id, x]) => [id, { s: !!x.s, m: !!x.m }])))
+      .catch(() => null);
+    void mapa.then((m) => (huecos = m));
+    Promise.all([cargarGlosario(), cargarParte('glosario').catch(() => null as Parte | null), mapa, fuentesDeLectura()])
+      // once the terms are in, up to 1 s more for their pictures (counted from here: the list itself can take a
+      // second or two to arrive on a slow device)
+      .then(async ([g, parte]) => [g, parte, await Promise.race([conImagenes, new Promise<null>((r) => setTimeout(() => r(null), 1000))])] as const)
+      .then(([g, parte, im]) => {
+        if (im) imagenes = im;
         const usados = new Map<string, number>();
         entradas = g.map((e) => {
           let id = e.id || idGlosario(e.termino);
@@ -204,12 +231,17 @@
         intro = p && p.t === 'p' ? p.html : '';
       })
       .catch((e: unknown) => (error = e instanceof Error ? e.message : String(e)));
-    import('./glosario/imagenes')
-      .then(async (m) => {
-        modImagenes = m;
-        imagenes = await m.cargarImagenes();
-      })
-      .catch(() => {});
+    void conImagenes.then((im) => {
+      if (im && !imagenes) imagenes = im;
+    });
+  }
+
+  onMount(() => {
+    app.seccion = null;
+    // The symbols and 3D pictures of the terms (glosario-imagenes.json) change the height of their entries: the list
+    // waits for them (at most 1.5 s) so an entry opened from a link does not jump away once it is on screen
+    // (0.11 QA: the term moved some 200 px down a second after opening it on the tablet).
+    cargar();
     const desplazar = () => recordarScroll();
     window.addEventListener('scroll', desplazar, { passive: true });
     return () => {
@@ -257,7 +289,7 @@
   </div>
 
   {#if error}
-    <p class="vacio">No se pudo cargar el glosario: {error}</p>
+    <ErrorCarga titulo="No se pudo cargar el glosario." {error} reintentar={cargar} />
   {:else if entradas.length && !filtradas.length}
     <p class="vacio">Ningún término coincide con «{filtro}».</p>
   {/if}
@@ -269,7 +301,8 @@
         <dl>
           {#each g.entradas as e (e.id)}
             {@const im = imagenes?.get(e.id)}
-            <div class="entrada" class:con-imagen={!!im} id={e.id}>
+            {@const hueco = im ? undefined : huecos?.get(e.id)}
+            <div class="entrada" class:con-imagen={!!im || !!hueco} id={e.id}>
               <dt>{@html prepararHtml(e.termino_html || e.termino)}</dt>
               <dd>
                 {@html prepararHtml(e.html)}
@@ -300,11 +333,16 @@
                     {@const src = miniaturaVisible(im)}
                     <a class="mini3d" href={im.modelo.href} data-id={e.id} use:perezosa title={im.modelo.nombre} aria-label={`Ver en 3D: ${im.modelo.nombre}`}>
                       <span class="foto3d">
-                        {#if src}<img {src} alt="" decoding="async" draggable="false" />{:else}<Icono nombre="componentes" tam={22} />{/if}
+                        {#if src}<img {src} alt="" width="120" height="90" decoding="async" draggable="false" />{:else}<Icono nombre="componentes" tam={22} />{/if}
                       </span>
                       <span class="ver3d">Ver en 3D</span>
                     </a>
                   {/if}
+                </dd>
+              {:else if hueco}
+                <dd class="imagen" aria-hidden="true">
+                  {#if hueco.s}<span class="simbolo"></span>{/if}
+                  {#if hueco.m}<span class="mini3d"></span>{/if}
                 </dd>
               {/if}
             </div>
@@ -428,6 +466,22 @@
     color: var(--linea);
     cursor: default;
   }
+  /* Touch screens: two rows of 14, each letter 44 px tall and as wide as the row allows (44 px on a tablet, about
+     25 px on a phone), instead of one tight scrolling row (owner's decision on the 0.11 QA). */
+  @media (pointer: coarse) {
+    .letras {
+      display: grid;
+      grid-template-columns: repeat(14, minmax(0, 44px));
+      justify-content: center;
+      gap: 2px;
+      overflow: visible;
+    }
+    .letras button {
+      min-width: 0;
+      height: 44px;
+      padding: 0;
+    }
+  }
 
   .vacio {
     margin: 32px 0;
@@ -549,6 +603,8 @@
     font-size: 11.5px;
     font-weight: 700;
     line-height: 17px;
+    /* toned towards the text: the glossary's accent was 4.4:1 here on the dark theme (0.11 QA) */
+    color: color-mix(in srgb, currentColor 64%, var(--tinta));
   }
   .mini3d:hover,
   .mini3d:focus-visible {

@@ -36,18 +36,27 @@
   }
 
   onMount(() => {
+    // when the cards arrive after leaving the page (a slow network), choosing one read this page's derived state
+    // after it was gone («derived_inert», 0.11 QA)
+    let vivo = true;
     cargarBaraja()
       .then((b) => {
+        if (!vivo) return;
         baraja = b;
         elegir();
       })
-      .catch((e: unknown) => (error = e instanceof Error ? e.message : String(e)));
+      .catch((e: unknown) => {
+        if (vivo) error = e instanceof Error ? e.message : String(e);
+      });
     // Learning cards come back after their step: look again every 15 s when the queue is empty.
     const t = setInterval(() => {
       if (!actual && baraja) elegir();
       else ahora = Date.now();
     }, 15_000);
-    return () => clearInterval(t);
+    return () => {
+      vivo = false;
+      clearInterval(t);
+    };
   });
 
   async function voltear() {
@@ -319,7 +328,7 @@
     color: var(--c-precaucion);
   }
   .c-repaso {
-    color: var(--c-ejemplo);
+    color: color-mix(in srgb, var(--c-ejemplo) 64%, var(--tinta));
   }
   .carta {
     position: relative;
@@ -374,7 +383,7 @@
   }
   .chip.nueva {
     background: color-mix(in srgb, var(--c-nota) 16%, transparent);
-    color: var(--c-nota);
+    color: color-mix(in srgb, var(--c-nota) 64%, var(--tinta));
   }
   .chip.aprendiendo {
     background: color-mix(in srgb, var(--c-precaucion) 14%, transparent);

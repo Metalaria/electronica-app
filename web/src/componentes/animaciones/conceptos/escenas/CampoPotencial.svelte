@@ -272,9 +272,9 @@
     void n;
     return (
       (modo === 'cargas'
-        ? `**Campo y potencial de dos cargas** (arrástralas): las líneas de campo (verdes) salen de la positiva y mueren en la negativa; las equipotenciales (discontinuas) las cortan siempre en ángulo recto. `
+        ? `**Campo y potencial de dos cargas** (arrástrelas): las líneas de campo (verdes) salen de la positiva y mueren en la negativa; las equipotenciales (discontinuas) las cortan siempre en ángulo recto. `
         : `**Placas paralelas** (sección 3.1): entre ellas el campo es uniforme, E = V/d = ${si(Vplacas / ((P.y1 - P.y0) * ESC), 'V/m', 3)}, y el potencial baja en línea recta de una placa a otra. `) +
-      `La carga de prueba (+1 pC, arrástrala o toca para soltarla en otro sitio) se mueve a favor del campo, de potencial alto a bajo: ahora está a ${si(lecturaV, 'V', 3)} con E = ${si(lecturaE, 'V/m', 3)}.\n` +
+      `La carga de prueba (+1 pC, arrástrela o toque para soltarla en otro sitio) se mueve a favor del campo, de potencial alto a bajo: ahora está a ${si(lecturaV, 'V', 3)} con E = ${si(lecturaE, 'V/m', 3)}.\n` +
       `**La tensión es energía por unidad de carga** (V = W/Q): desde donde se soltó, el campo ha hecho un trabajo q·(V_A − V_B) = ${si(trabajo, 'J', 3)}. La tensión entre dos puntos no depende del camino, y por eso es una magnitud relativa: se mide siempre respecto a una referencia.`
     );
   });

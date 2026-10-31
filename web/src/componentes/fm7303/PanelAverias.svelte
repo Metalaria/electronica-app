@@ -97,7 +97,7 @@
     </ol>
   {:else}
     <section class="sintoma">
-      <h3>Síntoma</h3>
+      <h2>Síntoma</h2>
       <p>{av.sintoma}</p>
       <div class="botones">
         <button type="button" onclick={salir}>Otro caso</button>
@@ -122,7 +122,7 @@
     <Frontal {k} />
 
     <section>
-      <h3>Pruebas rápidas</h3>
+      <h2>Pruebas rápidas</h2>
       <div class="botones">
         <button type="button" onclick={pinzas}>Tocar TP2 con unas pinzas</button>
         <button type="button" onclick={inyectar}>Inyectar 1 kHz en el TEA2025</button>
@@ -132,16 +132,16 @@
     </section>
 
     <section>
-      <h3>Multímetro</h3>
+      <h2>Multímetro</h2>
       <Multimetro {k} />
     </section>
     <section>
-      <h3>Osciloscopio</h3>
+      <h2>Osciloscopio</h2>
       <Osciloscopio {k} />
     </section>
     {#if k.medidas.length}
       <section>
-        <h3>Medidas anotadas</h3>
+        <h2>Medidas anotadas</h2>
         <ol class="medidas">
           {#each k.medidas as m (m.t)}<li><span>{m.donde}</span><b>{m.valor}</b></li>{/each}
         </ol>
@@ -149,7 +149,7 @@
     {/if}
     {#if resuelta && (av.senal.w1 != null || av.senal.w3 != null || av.senal.l1 != null)}
       <section>
-        <h3>Corregir el ajuste</h3>
+        <h2>Corregir el ajuste</h2>
         <Mandos {k} solo={av.senal.w1 != null ? ['w1'] : av.senal.w3 != null ? ['monitor', 'w3'] : ['l1', 'c4a']} />
       </section>
     {/if}
@@ -170,7 +170,7 @@
     font-size: 13.5px;
     line-height: 1.45;
   }
-  h3 {
+  h2 {
     margin: 0 0 6px;
     font-size: 15px;
     color: var(--titulos);

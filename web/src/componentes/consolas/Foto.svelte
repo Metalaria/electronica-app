@@ -165,7 +165,7 @@
       </div>
     {/if}
     <div class="herramientas">
-      <span class="pista">Toca un chip o un conector. {hotspots.length} puntos identificados.</span>
+      <span class="pista">Toque un chip o un conector. {hotspots.length} puntos identificados.</span>
       <span class="zoom">
         <button type="button" class="boton-icono" aria-label="Reducir la foto" disabled={ampliacion <= 1} onclick={() => (ampliacion = Math.max(1, ampliacion - 0.5))}><ZoomOut size={19} /></button>
         <button type="button" class="boton-icono" aria-label="Ampliar la foto" disabled={ampliacion >= 3} onclick={() => (ampliacion = Math.min(3, ampliacion + 0.5))}><ZoomIn size={19} /></button>
@@ -240,7 +240,7 @@
           </label>
           {#if !trazas}<span class="cargando-trazas">cargando…</span>{/if}
         </div>
-        <p class="ayuda">Elige un grupo para ver todas sus pistas, o una red para verla sola (en rojo). El dibujo de las pistas es de Gekkio y está alineado con el escaneo.</p>
+        <p class="ayuda">Elija un grupo para ver todas sus pistas, o una red para verla sola (en rojo). El dibujo de las pistas es de Gekkio y está alineado con el escaneo.</p>
         {#if redesGrupo.length}
           <div class="chips-redes">
             {#each redesGrupo as n (n)}
@@ -268,7 +268,7 @@
   <aside class="ficha" aria-live="polite">
     {#if mostrado}
       <p class="tipo">{mostrado.esquema.length ? mostrado.esquema.join(', ') : 'Sin referencia en el esquema'}</p>
-      <h3>{mostrado.nombre}</h3>
+      <h2>{mostrado.nombre}</h2>
       <p class="pieza">{mostrado.pieza}</p>
       <p class="funcion">{mostrado.funcion}</p>
       {#if mostrado.buses.length}
@@ -301,21 +301,21 @@
       {/if}
     {:else if marcador}
       <p class="tipo">Componente del esquema</p>
-      <h3>{marcador.ref} <span class="valor">{datos.componentes[marcador.ref]?.v ?? ''}</span></h3>
+      <h2>{marcador.ref} <span class="valor">{datos.componentes[marcador.ref]?.v ?? ''}</span></h2>
       <p class="confianza">{foto.posiciones_nota ?? 'Posición de su huella en la placa'}. No tiene recuadro propio en la foto.</p>
       <div class="acciones">
         <button type="button" class="accion" onclick={() => irA('esquema', { tipo: 'componente', id: marcador.ref })}>Ver en el esquema</button>
       </div>
     {:else}
       <p class="tipo">{datos.placa}</p>
-      <h3>{datos.titulo}</h3>
+      <h2>{datos.titulo}</h2>
       {#if figura}
         <p>Figura {figura} del libro. Los recuadros continuos marcan piezas cuya serigrafía o marca se lee en la foto; los discontinuos, piezas identificadas por su posición.</p>
       {:else}
         <p>{foto.titulo}. Los recuadros continuos marcan piezas cuya serigrafía o marca se lee en la foto; los discontinuos, piezas identificadas por su posición.</p>
       {/if}
       {#if foto.posiciones}<p class="confianza">Desde el esquema, cualquier componente se puede situar en esta foto: su huella se ha alineado con la de la PCB de la recreación.</p>{/if}
-      <p>Elige una pieza para ver qué hace, por qué buses pasa y saltar a su símbolo en el esquema o a su bloque en la arquitectura.</p>
+      <p>Elija una pieza para ver qué hace, por qué buses pasa y saltar a su símbolo en el esquema o a su bloque en la arquitectura.</p>
     {/if}
   </aside>
 </div>
@@ -545,7 +545,7 @@
       var(--sombra);
     font-size: 15px;
   }
-  .ficha h3 {
+  .ficha h2 {
     margin: 2px 0 2px;
     color: var(--titulos);
     font-size: 20px;

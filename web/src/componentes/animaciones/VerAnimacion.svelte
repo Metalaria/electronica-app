@@ -78,6 +78,8 @@
     padding: 1px 5px;
     border-radius: 999px;
     background: var(--acento-suave);
+    /* the accent on its own pale tint was 4.2:1 (0.11 QA) */
+    color: var(--titulos);
     font-size: 12px;
     text-align: center;
   }
@@ -157,7 +159,12 @@
     .ver.compacto::after {
       content: '';
       position: absolute;
-      inset: -6px -2px;
+      top: 50%;
+      left: 50%;
+      /* 44 × 44 at least: «-2px» left the icon-only chip of a phone 38 px wide (0.11 QA) */
+      width: max(100% + 4px, 44px);
+      height: max(100%, 44px);
+      transform: translate(-50%, -50%);
     }
     .menu a {
       min-height: 44px;

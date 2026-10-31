@@ -19,6 +19,7 @@
     montaje = 'placa',
     nombre = '',
     alFallar,
+    alListo,
     alto,
   }: {
     tipo: string;
@@ -26,6 +27,8 @@
     montaje?: Montaje;
     nombre?: string;
     alFallar?: (motivo: string) => void;
+    /** The model is drawn with its labels and its tool bar complete (its final height). */
+    alListo?: () => void;
     /** CSS height of the viewport (default: 16:10, taller on phones). */
     alto?: string;
   } = $props();
@@ -36,6 +39,18 @@
   let leyenda: HTMLOListElement | undefined = $state();
   let visor: Visor | null = null;
   let datos = $state<DatosModelo | null>(null);
+  let avisado = false;
+  /** The tool bar is shown with the model: its buttons depend on it, and it moved while the labels' list filled. */
+  let completo = $state(false);
+  $effect(() => {
+    if (!datos || !preparado || avisado) return;
+    avisado = true;
+    // the labels' list is filled in the next frame
+    requestAnimationFrame(() => {
+      completo = true;
+      untrack(() => alListo?.());
+    });
+  });
   let listo = $state(false);
   /** 0.8: the first model's shader programs are compiled (until then «Preparando el modelo 3D…» stays). */
   let preparado = $state(false);
@@ -119,6 +134,8 @@
       if (g.__epaVisor3d?.visor === visor) delete g.__epaVisor3d;
       visor?.liberar();
       visor = null;
+      // (as the boards' 3D view: the released context keeps its canvas, and the canvas its tree; 0.11 QA)
+      lienzo?.remove();
     };
   });
 
@@ -167,18 +184,18 @@
   }
 </script>
 
-<div class="visor3d" bind:this={caja}>
+<div class="visor3d" class:completo bind:this={caja}>
   <div class="lienzo" style:height={alto}>
     <canvas
       bind:this={lienzo}
       tabindex="0"
-      aria-label={`Modelo 3D${nombre ? ` de ${nombre}` : ''}. Arrastra para girarlo; las flechas también lo giran, + y − acercan, 0 vuelve a la vista inicial.`}
+      aria-label={`Modelo 3D${nombre ? ` de ${nombre}` : ''}. Arrastre para girarlo; las flechas también lo giran, + y − acercan, 0 vuelve a la vista inicial.`}
       data-tipo={tipo}
     ></canvas>
     <div class="capa" bind:this={capa}></div>
     {#if !listo || !preparado}<div class="cargando" aria-live="polite">Preparando el modelo 3D…</div>{/if}
     <p class="ayuda" aria-hidden="true">
-      {#if tactil}Un dedo gira · dos dedos acercan y desplazan{:else}Arrastra para girar · Ctrl + rueda para acercar · Mayús + arrastrar desplaza{/if}
+      {#if tactil}Un dedo gira · dos dedos acercan y desplazan{:else}Arrastre para girar · Ctrl + rueda para acercar · Mayús + arrastrar desplaza{/if}
     </p>
   </div>
 
@@ -337,7 +354,8 @@
     padding: 0;
     border-radius: 50%;
     background: var(--acento);
-    color: #fff;
+    /* white was 3.3:1 on the dark theme's light accent (0.11 QA) */
+    color: var(--sobre-acento);
     border-left: 0;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.3);
   }
@@ -410,6 +428,9 @@
     color: var(--tinta-tenue);
     font-size: 12px;
     pointer-events: none;
+  }
+  .visor3d:not(.completo) .barra {
+    visibility: hidden;
   }
   .barra,
   .corte {

@@ -172,7 +172,7 @@
         c.lineTo(x, yRegla + 5);
         c.stroke();
       }
-      txt(vv, 'arrastra los polos (×) y ceros (○) por el eje de frecuencia', eM.x, yRegla - 28, { tam: 11.5, color: p.suave, alin: 'left' });
+      txt(vv, 'arrastre los polos (×) y ceros (○) por el eje de frecuencia', eM.x, yRegla - 28, { tam: 11.5, color: p.suave, alin: 'left' });
     });
     // Curves.
     const N = 300;

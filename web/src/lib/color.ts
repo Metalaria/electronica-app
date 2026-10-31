@@ -76,13 +76,15 @@ export function acentos(color: string | null | undefined, tema: TemaEfectivo): A
     const blanco: RGB = [255, 255, 255];
     let t = 0.25;
     let c = mezclar(acento, blanco, t);
-    while (contraste(c, fondo) < 5 && t < 0.9) {
+    // and on its own pale tint (chips, table headers: 3.8:1 there before 0.11's QA)
+    while ((contraste(c, fondo) < 5 || contraste(c, mezclar(c, fondo, 0.78)) < 4.6) && t < 0.9) {
       t += 0.05;
       c = mezclar(acento, blanco, t);
     }
     acento = c;
   } else {
-    while (contraste(acento, fondo) < 4.6) acento = mezclar(acento, [0, 0, 0], 0.08);
+    // readable on the page and on its own pale tint (a chip's number was 4.3:1 on --acento-suave)
+    while (contraste(acento, fondo) < 4.6 || contraste(acento, mezclar(acento, fondo, 0.85)) < 4.6) acento = mezclar(acento, [0, 0, 0], 0.08);
   }
   const oscuro = tema === 'oscuro';
   return {

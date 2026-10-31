@@ -99,7 +99,7 @@
         <button type="button" onclick={() => p.deshacer()} disabled={!p.puedeDeshacer} aria-label="Deshacer" data-herr="deshacer"><Undo size={18} aria-hidden="true" /></button>
         <button type="button" onclick={reintentar} aria-label="Empezar de nuevo" data-herr="reiniciar"><RotateCcw size={18} aria-hidden="true" /></button>
       </div>
-      <p class="ayuda">{p.herramienta === 'cable' ? 'Toca un agujero y después otro (o arrastra) para tender un cable.' : 'Arrastra una pieza para moverla; con «Cable», tiende cables de agujero a agujero.'}</p>
+      <p class="ayuda">{p.herramienta === 'cable' ? 'Toque un agujero y después otro (o arrastre) para tender un cable.' : 'Arrastre una pieza para moverla; con «Cable», tienda cables de agujero a agujero.'}</p>
     {:else}
       <p class="ayuda">{'El montaje completo.'}</p>
     {/if}

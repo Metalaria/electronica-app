@@ -158,7 +158,7 @@
 
   const texto = $derived(
     `**A_f = A/(1 + A·β)**: con A·β = ${si(A0 * beta, '', 3)} ≫ 1 la ganancia es casi 1/β = ${num(G, 2)} (exacta: ${num(Af, 4)}) y ya no depende del amplificador sino de las resistencias. La realimentación «gasta» ganancia: el factor de desensibilización F = 1 + A·β = ${si(F, '', 4)} divide todos los defectos.\n` +
-      `${cambio !== 0 ? `A ha cambiado un ${pct(cambio, 0)} y la ganancia realimentada solo un ${pct((Af - AfNom) / AfNom, 4)}. ` : 'Mueve «Variación de A» y verás que la ganancia apenas cambia. '}En la entrada, el error ε es v_out/A: ${si(Math.abs((0.1 * Af) / A0), 'V', 2)} de pico, por eso las entradas «parecen» iguales.\n` +
+      `${cambio !== 0 ? `A ha cambiado un ${pct(cambio, 0)} y la ganancia realimentada solo un ${pct((Af - AfNom) / AfNom, 4)}. ` : 'Mueva «Variación de A» y verá que la ganancia apenas cambia. '}En la entrada, el error ε es v_out/A: ${si(Math.abs((0.1 * Af) / A0), 'V', 2)} de pico, por eso las entradas «parecen» iguales.\n` +
       `**Ganancia por ancho de banda constante:** con GBW = 1 MHz y ganancia ${num(G, 1)}, el ancho de banda en lazo cerrado es ${si(BWcl, 'Hz', 3)}; el de lazo abierto, solo ${si(fp, 'Hz', 2)}.`,
   );
 

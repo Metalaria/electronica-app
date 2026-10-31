@@ -6,15 +6,20 @@ import type { IndicePractica, ItemPractica, PracticaParte, SeccionPractica } fro
 
 const cache = new Map<string, Promise<PracticaParte | null>>();
 
-/** The practice file of a part, or null when the part has none (cached; a failed fetch is retried later). */
+/** The practice file of a part, or null when the part has none (cached; a failed fetch rejects and is retried later). */
 export function cargarPractica(parte: string): Promise<PracticaParte | null> {
   let p = cache.get(parte);
   if (!p) {
     p = cargarIndicePractica()
-      .then((ind) => (ind && ind.partes.includes(parte) ? leerJSON<PracticaParte>(`practica/${parte}.json`) : null))
-      .catch(() => {
+      .then((ind) => {
+        // the index did not arrive: a failure to report, not a part without practice
+        if (!ind && falloIndice) throw falloIndice;
+        return ind && ind.partes.includes(parte) ? leerJSON<PracticaParte>(`practica/${parte}.json`) : null;
+      })
+      .catch((e: unknown) => {
+        // not kept, so that «Reintentar» asks again; the caller says that it failed
         cache.delete(parte);
-        return null;
+        throw e;
       });
     cache.set(parte, p);
   }
@@ -22,12 +27,21 @@ export function cargarPractica(parte: string): Promise<PracticaParte | null> {
 }
 
 let indice: Promise<IndicePractica | null> | null = null;
+/** Why the index could not be read the last time (null once it arrives). */
+let falloIndice: unknown = null;
 
 export function cargarIndicePractica(): Promise<IndicePractica | null> {
-  indice ??= leerJSON<IndicePractica>('practica/indice.json').catch(() => {
-    indice = null;
-    return null;
-  });
+  indice ??= leerJSON<IndicePractica>('practica/indice.json').then(
+    (i) => {
+      falloIndice = null;
+      return i;
+    },
+    (e: unknown) => {
+      indice = null;
+      falloIndice = e;
+      return null;
+    },
+  );
   return indice;
 }
 

@@ -47,9 +47,10 @@
     color: var(--c);
   }
   /* Dark theme: the darkest block colours (navy) almost vanish on the dark panels, so lighten the fill a
-     little and add a faint ring; the white number keeps its contrast. */
+     little and add a faint ring; the white number keeps its contrast (8 %: at 22 % the lighter blocks left it at
+     3.5:1, 0.11 QA). */
   :global(:root[data-tema='oscuro']) .insignia:not(.hueca) {
-    background: color-mix(in srgb, var(--c) 78%, #fff 22%);
+    background: color-mix(in srgb, var(--c) 92%, #fff 8%);
     box-shadow: inset 0 0 0 1px rgb(255 255 255 / 0.22);
   }
   :global(:root[data-tema='oscuro']) .hueca {

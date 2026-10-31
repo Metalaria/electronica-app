@@ -1,4 +1,5 @@
 <script lang="ts">
+  import ErrorCarga from './componentes/ErrorCarga.svelte';
   import { onMount } from 'svelte';
   import { app } from './lib/estado.svelte';
   import { ruta, iniciarRuta } from './lib/ruta.svelte';
@@ -18,6 +19,7 @@
   import Busqueda from './componentes/Busqueda.svelte';
   import VisorFigura from './componentes/VisorFigura.svelte';
   import Arranque from './componentes/sincronizacion/Arranque.svelte';
+  import ArranqueProgreso from './componentes/progreso/ArranqueProgreso.svelte';
   import { capaProtoboard } from './lib/protoboard.svelte';
 
   let oscuroSistema = $state(false);
@@ -146,10 +148,7 @@
     {#if ruta.vista !== 'leccion'}<Barra />{/if}
     <main id="contenido">
       {#if app.error}
-        <div class="aviso">
-          <h1>No se pudo abrir el libro</h1>
-          <p>{app.error}</p>
-        </div>
+        <ErrorCarga grande titulo="No se pudo abrir el libro" error={app.error} />
       {:else if !app.cargado || !usuario.listo}
         <div class="cargando" aria-live="polite"><span class="punto"></span> Abriendo el libro…</div>
       {:else if ruta.vista === 'inicio'}
@@ -157,7 +156,7 @@
         {#await import('./componentes/Inicio.svelte') then m}
           <m.default />
         {:catch e}
-          <div class="aviso"><h1>No se pudo abrir el inicio</h1><p>{String(e)}</p></div>
+          <ErrorCarga grande titulo="No se pudo abrir el inicio" error={e} />
         {/await}
       {:else if ruta.vista === 'glosario'}
         <Glosario />
@@ -170,7 +169,7 @@
         {:then m}
           <m.default />
         {:catch e}
-          <div class="aviso"><h1>No se pudo abrir el simulador</h1><p>{String(e)}</p></div>
+          <ErrorCarga grande titulo="No se pudo abrir el simulador" error={e} />
         {/await}
       {:else if ruta.vista === 'proyectos'}
         <!-- The KiCad boards of the book in 3D and 2D, loaded on demand. -->
@@ -179,7 +178,7 @@
         {:then m}
           <m.default />
         {:catch e}
-          <div class="aviso"><h1>No se pudieron abrir los proyectos KiCad</h1><p>{String(e)}</p></div>
+          <ErrorCarga grande titulo="No se pudieron abrir los proyectos KiCad" error={e} />
         {/await}
       {:else if ruta.vista === 'consolas'}
         <!-- NES and Neo Geo mainboards, loaded on demand. -->
@@ -188,7 +187,7 @@
         {:then m}
           <m.default />
         {:catch e}
-          <div class="aviso"><h1>No se pudieron abrir las consolas</h1><p>{String(e)}</p></div>
+          <ErrorCarga grande titulo="No se pudieron abrir las consolas" error={e} />
         {/await}
       {:else if ruta.vista === 'fm7303'}
         <!-- The FM7303 kit of chapter 15, live: loaded on demand. -->
@@ -197,7 +196,7 @@
         {:then m}
           <m.default />
         {:catch e}
-          <div class="aviso"><h1>No se pudo abrir el kit FM7303</h1><p>{String(e)}</p></div>
+          <ErrorCarga grande titulo="No se pudo abrir el kit FM7303" error={e} />
         {/await}
       {:else if ruta.vista === 'instrumentos'}
         <!-- Virtual Brymen BM869s and FNIRSI 2C53T on a test bench, loaded on demand. -->
@@ -206,7 +205,7 @@
         {:then m}
           <m.default />
         {:catch e}
-          <div class="aviso"><h1>No se pudieron abrir los instrumentos</h1><p>{String(e)}</p></div>
+          <ErrorCarga grande titulo="No se pudieron abrir los instrumentos" error={e} />
         {/await}
       {:else if ruta.vista === 'conceptos'}
         <!-- Concept animations (phasors, Fourier, aliasing, feedback…), loaded on demand. -->
@@ -215,7 +214,7 @@
         {:then m}
           <m.default />
         {:catch e}
-          <div class="aviso"><h1>No se pudieron abrir las animaciones</h1><p>{String(e)}</p></div>
+          <ErrorCarga grande titulo="No se pudieron abrir las animaciones" error={e} />
         {/await}
       {:else if ruta.vista === 'calculadoras'}
         <!-- Formula calculators: the catalogue (formulas.json) is fetched only here. -->
@@ -224,7 +223,7 @@
         {:then m}
           <m.default />
         {:catch e}
-          <div class="aviso"><h1>No se pudieron abrir las calculadoras</h1><p>{String(e)}</p></div>
+          <ErrorCarga grande titulo="No se pudieron abrir las calculadoras" error={e} />
         {/await}
       {:else if ruta.vista === 'repaso'}
         <!-- Glossary flashcards and chapter quizzes, loaded on demand. -->
@@ -233,7 +232,7 @@
         {:then m}
           <m.default />
         {:catch e}
-          <div class="aviso"><h1>No se pudo abrir el repaso</h1><p>{String(e)}</p></div>
+          <ErrorCarga grande titulo="No se pudo abrir el repaso" error={e} />
         {/await}
       {:else if ruta.vista === 'ejercicios'}
         <!-- Exercises and problems by chapter, with the review of the failed ones: loaded on demand. -->
@@ -242,7 +241,7 @@
         {:then m}
           <m.default />
         {:catch e}
-          <div class="aviso"><h1>No se pudieron abrir los ejercicios</h1><p>{String(e)}</p></div>
+          <ErrorCarga grande titulo="No se pudieron abrir los ejercicios" error={e} />
         {/await}
       {:else if ruta.vista === 'diagnostico'}
         <!-- Performance diagnostic of this device (from «Ajustes»): nothing runs until «Empezar». -->
@@ -251,7 +250,56 @@
         {:then m}
           <m.default />
         {:catch e}
-          <div class="aviso"><h1>No se pudo abrir el diagnóstico</h1><p>{String(e)}</p></div>
+          <ErrorCarga grande titulo="No se pudo abrir el diagnóstico" error={e} />
+        {/await}
+      {:else if ruta.vista === 'cursos'}
+        <!-- 0.11: thematic courses, one course, or its placement test («Prueba de nivel»). -->
+        {#await import('./componentes/cursos/PaginaCursos.svelte')}
+          <div class="cargando" aria-live="polite"><span class="punto"></span> Abriendo los cursos…</div>
+        {:then m}
+          <m.default />
+        {:catch e}
+          <ErrorCarga grande titulo="No se pudieron abrir los cursos" error={e} />
+        {/await}
+      {:else if ruta.vista === 'progreso' && ruta.ancla === 'dominio'}
+        <!-- 0.11 group B: mastery per concept, weakest first, with «Practicar esto». -->
+        {#await import('./componentes/dominio/PaginaDominio.svelte')}
+          <div class="cargando" aria-live="polite"><span class="punto"></span> Abriendo el dominio…</div>
+        {:then m}
+          <m.default />
+        {:catch e}
+          <ErrorCarga grande titulo="No se pudo abrir el dominio" error={e} />
+        {/await}
+      {:else if ruta.vista === 'progreso'}
+        <!-- 0.11: level, XP, streak and achievements. -->
+        {#await import('./componentes/progreso/PaginaProgreso.svelte')}
+          <div class="cargando" aria-live="polite"><span class="punto"></span> Abriendo el progreso…</div>
+        {:then m}
+          <m.default />
+        {:catch e}
+          <ErrorCarga grande titulo="No se pudo abrir el progreso" error={e} />
+        {/await}
+      {:else if ruta.vista === 'practicar'}
+        <!-- 0.11 group B: «Práctica inteligente», a session chosen for the reader (or on one chapter or section). -->
+        {#await import('./componentes/practicar/SesionPractica.svelte')}
+          <div class="cargando" aria-live="polite"><span class="punto"></span> Preparando la práctica…</div>
+        {:then m}
+          {#key ruta.ancla}
+            <m.default alcance={ruta.ancla} />
+          {/key}
+        {:catch e}
+          <ErrorCarga grande titulo="No se pudo abrir la práctica" error={e} />
+        {/await}
+      {:else if ruta.vista === 'problema'}
+        <!-- 0.11 group B: the problem of the day (or yesterday's, with its solution). -->
+        {#await import('./componentes/problema/PaginaProblema.svelte')}
+          <div class="cargando" aria-live="polite"><span class="punto"></span> Abriendo el problema del día…</div>
+        {:then m}
+          {#key ruta.ancla}
+            <m.default ayer={ruta.ancla === 'ayer'} />
+          {/key}
+        {:catch e}
+          <ErrorCarga grande titulo="No se pudo abrir el problema del día" error={e} />
         {/await}
       {:else if ruta.vista === 'sincronizacion'}
         <!-- GitHub token, data repository, «Sincronizar ahora» and the update check. -->
@@ -260,7 +308,7 @@
         {:then m}
           <m.default />
         {:catch e}
-          <div class="aviso"><h1>No se pudo abrir la sincronización</h1><p>{String(e)}</p></div>
+          <ErrorCarga grande titulo="No se pudo abrir la sincronización" error={e} />
         {/await}
       {:else if ruta.vista === 'componentes'}
         <!-- Component animations, also loaded on demand. -->
@@ -269,7 +317,7 @@
         {:then m}
           <m.default />
         {:catch e}
-          <div class="aviso"><h1>No se pudieron abrir las animaciones</h1><p>{String(e)}</p></div>
+          <ErrorCarga grande titulo="No se pudieron abrir las animaciones" error={e} />
         {/await}
       {:else if ruta.vista === 'leccion'}
         <!-- 0.9 «Estudiar por pasos»: a section as a lesson, one screen per step, full screen; loaded on demand. -->
@@ -280,7 +328,7 @@
             <m.default parte={ruta.parte} seccion={ruta.ancla.split('/')[0] ?? ''} />
           {/key}
         {:catch e}
-          <div class="aviso"><h1>No se pudo abrir la lección</h1><p>{String(e)}</p></div>
+          <ErrorCarga grande titulo="No se pudo abrir la lección" error={e} />
         {/await}
       {:else}
         {#key ruta.parte}
@@ -306,7 +354,8 @@
   {/await}
 {/if}
 <Arranque />
-
+<!-- 0.11: «+10 XP», new level and achievement toasts (own chunk, mounted on the first one); daily reminder check. -->
+<ArranqueProgreso />
 <style>
   .app {
     min-height: 100vh;
@@ -331,6 +380,13 @@
     padding: 30vh 20px;
     color: var(--tinta-suave);
     font-family: var(--sans);
+    /* shown only when loading takes a while: a quick load would flash «Abriendo…» for a few frames (0.11 QA) */
+    animation: aparecer-tarde 0.2s ease 0.3s both;
+  }
+  @keyframes aparecer-tarde {
+    from {
+      opacity: 0;
+    }
   }
   .punto {
     width: 10px;
@@ -344,14 +400,5 @@
       opacity: 0.25;
       transform: scale(0.7);
     }
-  }
-  .aviso {
-    max-width: 36em;
-    margin: 18vh auto;
-    padding: 0 20px;
-    font-family: var(--sans);
-  }
-  .aviso h1 {
-    color: var(--titulos);
   }
 </style>

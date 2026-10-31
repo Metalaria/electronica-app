@@ -1,9 +1,35 @@
 <script lang="ts">
   // «Fuentes» tab: credits, licences and how the data were obtained and checked.
-  import { htmlKicad, type DatosMaquina } from './datos';
+  import { onMount, untrack, type Component } from 'svelte';
+  import { htmlKicad, type DatosMaquina, type IdMaquina } from './datos';
   import PlacaFuentes from './placa/PlacaFuentes.svelte';
+  import { cargarIndicePlacas } from './placa/datos';
+  import { cargarFotograma } from './fotograma/maquinas';
 
   let { datos }: { datos: DatosMaquina } = $props();
+
+  // The boards' and the frame's sources arrive apart (a lazy chunk and two data files) and pushed the sections
+  // under them down by a whole screen (0.11 QA, larger text: CLS 0.15). They are loaded first, and everything from
+  // them down waits hidden (at most 2.5 s).
+  let FotogramaFuentes = $state<Component<{ maquina: IdMaquina }> | null>(null);
+  let listo = $state(false);
+  onMount(() => {
+    let vivo = true;
+    const id = untrack(() => datos.id);
+    const todo = Promise.all([
+      import('./fotograma/FotogramaFuentes.svelte').then((m) => vivo && (FotogramaFuentes = m.default)),
+      cargarFotograma(id).catch(() => null),
+      cargarIndicePlacas().catch(() => null),
+    ]);
+    void Promise.race([todo, new Promise((r) => setTimeout(r, 2500))]).then(() =>
+      requestAnimationFrame(() => {
+        if (vivo) listo = true;
+      }),
+    );
+    return () => {
+      vivo = false;
+    };
+  });
 
   // Full licence texts (nonSNES, GPL-3.0) are fetched only when the reader opens them.
   const textos = $state<Record<string, string>>({});
@@ -20,7 +46,7 @@
 
 <div class="fuentes">
   <section>
-    <h3>Créditos y licencias</h3>
+    <h2>Créditos y licencias</h2>
     <ul class="lista">
       {#each datos.fuentes as f (f.titulo)}
         <li>
@@ -40,13 +66,14 @@
     </ul>
   </section>
 
+  <div class="resto" class:esperando={!listo} aria-busy={!listo}>
   <PlacaFuentes maquina={datos.id} />
 
-  {#await import('./fotograma/FotogramaFuentes.svelte') then m}<m.default maquina={datos.id} />{/await}
+  {#if FotogramaFuentes}<FotogramaFuentes maquina={datos.id} />{/if}
 
   {#if datos.revisiones?.length}
     <section>
-      <h3>Qué revisión muestra cada vista</h3>
+      <h2>Qué revisión muestra cada vista</h2>
       <div class="tabla">
         <table class="revisiones">
           <thead><tr><th>Vista</th><th>Placa o revisión</th><th>Fuente</th></tr></thead>
@@ -59,7 +86,7 @@
   {/if}
 
   <section>
-    <h3>Sobre el esquema</h3>
+    <h2>Sobre el esquema</h2>
     <p>{datos.aviso}</p>
     {#if datos.equivalencias.length}
       {#if datos.citas}
@@ -87,7 +114,7 @@
 
   {#if datos.notas?.length}
     <section>
-      <h3>{datos.id === 'sms' ? 'Lecturas dudosas o deducidas de la transcripción' : 'Notas de la reconstrucción'}</h3>
+      <h2>{datos.id === 'sms' ? 'Lecturas dudosas o deducidas de la transcripción' : 'Notas de la reconstrucción'}</h2>
       <ul class="notas">
         {#each datos.notas as n, i (i)}
           <li><strong>{n.ref}{n.pin && n.pin !== '?' ? `.${n.pin}` : ''}</strong>: {@html htmlKicad(n.texto)}</li>
@@ -97,10 +124,10 @@
   {/if}
 
   <section>
-    <h3>Cómo se han obtenido los datos</h3>
+    <h2>Cómo se han obtenido los datos</h2>
     <ul>
       {#if datos.id === 'sms'}<li>El esquema del Master System II no existe en KiCad: se ha transcrito a mano de las tres hojas escaneadas del manual de Sega (componentes, valores, números y nombres de pin, conexiones por cable y por nombre de bus) y se ha generado un KiCad limpio con una etiqueta de red en cada pin. La transcripción comprueba que cada chip tiene todas sus patillas (Z80 40, VDP 64, 315-5237 48, memorias 28, CXA1145 24, ranura 50) y que ninguna red tiene un solo pin.</li>{/if}
-      {#if datos.id === 'gbc'}<li>El esquema de la CGB-CPU-04 solo se publica como PDF: el dibujo es el del PDF y las redes salen de sus trazos (cables verdes, puntos de unión, patillas de cada símbolo) unidas por los nombres que KiCad guarda en las ventanas emergentes de cada cable y de cada símbolo. Se ha comprobado con la recreación opengbc (tabla de arriba).</li>{/if}
+      {#if datos.id === 'gbc'}<li>El esquema de la CGB-CPU-04 solo se publica como PDF: el dibujo es el del PDF y las redes salen de sus trazos (cables verdes, puntos de unión, patillas de cada símbolo) unidas por los nombres que KiCad guarda en las ventanas emergentes de cada cable y de cada símbolo. Se ha comprobado con la recreación openGBC (tabla de arriba).</li>{/if}
       {#if datos.id === 'megadrive'}<li>Las huellas de la PCB de stonedDiscord se han llevado a las dos fotos, así que cualquier componente del esquema se puede señalar aunque no tenga recuadro. En la VA6 de EE. UU., hecha de frente, basta una escala (5,32 px/mm) y un desplazamiento. La VA6.8 PAL está fotografiada en ángulo: se ha ajustado una homografía con una corrección cuadrática a 18 puntos (taladros de montaje y patas de los chips), con un error de unos 10 px que llega a 20 en el borde izquierdo.</li>{/if}
       {#if datos.id === 'snes'}<li>Las fotos no llevan recuadros dibujados a mano: cada recuadro es la huella de su pieza en la PCB de nonSNES llevada a la foto con un ajuste afín a las vías y taladros que se ven en ella (792 en la cara de componentes, con un error mediano de 1,6 px en el escaneo original de 300 ppp; 44 en la de soldadura, 3,1 px). Así cualquier componente del esquema se puede señalar en la foto de su cara.</li>{/if}
       {#if datos.id === 'gb'}<li>Las pistas resaltadas sobre el escaneo son el dibujo por redes de Gekkio (un trazo relleno por red, en la cuadrícula del escaneo), reducido a la resolución de la foto.</li>{/if}
@@ -111,9 +138,17 @@
       {#if datos.id === 'neogeo'}<li>Los chips de 1.ª generación (LSPC-A0, PRO-B0, PRO-C0) y su lógica TTL se han comprobado con los esquemas de la MV4; el mapa de memoria, los registros, las interrupciones y el protocolo de sonido, con la especificación de SNK. Las fichas de la foto dicen qué está comprobado y dónde. Esos documentos tienen copyright de SNK: se citan por hoja y página, sin copiarlos.</li>{/if}
     </ul>
   </section>
+  </div>
 </div>
 
 <style>
+  /* (its sections stay items of the page's grid) */
+  .resto {
+    display: contents;
+  }
+  .esperando {
+    visibility: hidden;
+  }
   .fuentes {
     display: grid;
     /* minmax(0, …): the wide tables scroll inside .tabla instead of widening the page */
@@ -121,7 +156,7 @@
     gap: 16px;
     max-width: 76em;
   }
-  h3 {
+  h2 {
     margin: 0 0 8px;
     color: var(--titulos);
     font-size: 18px;

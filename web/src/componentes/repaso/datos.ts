@@ -4,6 +4,7 @@
 import type { EntradaGlosario } from '../../lib/tipos';
 import { cargarGlosario, idGlosario, leerJSON, obtenerIndice, obtenerRefs, ordenLectura } from '../../lib/datos';
 import { normalizarColor } from '../../lib/color';
+import { sinFallos } from '../../lib/errores';
 
 // ------------------------------------------------------------------ flashcards
 
@@ -45,7 +46,7 @@ function numOrden(num: string | undefined): number {
 
 /** The cards and decks (built once from glossary.json, refs.json and indice.json). */
 export function cargarBaraja(): Promise<Baraja> {
-  baraja ??= cargarGlosario().then((glosario) => {
+  baraja ??= sinFallos(cargarGlosario(), () => (baraja = null)).then((glosario) => {
     const refs = obtenerRefs();
     const indice = obtenerIndice();
     const orden = ordenLectura();
@@ -156,13 +157,19 @@ export interface IndiceRepaso {
   version: number;
   total: number;
   partes: EntradaIndiceRepaso[];
+  /** The index did not arrive (no network): the page offers «Reintentar». */
+  fallo?: boolean;
 }
 
 let indiceRepaso: Promise<IndiceRepaso> | null = null;
 const cuestionarios = new Map<string, Promise<CuestionarioParte>>();
 
 export function cargarIndiceRepaso(): Promise<IndiceRepaso> {
-  indiceRepaso ??= leerJSON<IndiceRepaso>('repaso/indice.json').catch(() => ({ version: 1, total: 0, partes: [] }));
+  indiceRepaso ??= leerJSON<IndiceRepaso>('repaso/indice.json').catch(() => {
+    // not kept: the next call (a «Reintentar») asks again
+    indiceRepaso = null;
+    return { version: 1, total: 0, partes: [], fallo: true };
+  });
   return indiceRepaso;
 }
 

@@ -23,6 +23,12 @@
 //          #/diagnostico         performance diagnostic of this device (componentes/diagnostico), from «Ajustes»
 //          #/leccion/<parte>/<seccion>[/<n>|/pregunta-<n>|/fin]  a section studied step by step (componentes/leccion):
 //                                step n (1-based), a question after the steps, or the summary
+//          #/cursos[/<curso>[/prueba]]  the thematic courses (0.11, componentes/cursos): all, one, its placement test
+//          #/progreso[/dominio]  level, XP, streak and achievements (0.11, componentes/progreso); «Dominio»: mastery
+//                                per concept (group B, componentes/dominio)
+//          #/practicar[/<parte>[/<seccion>]]  «Práctica inteligente» (group B, componentes/practicar): a session of
+//                                ~10 items chosen for the reader, or focused on a chapter or a section
+//          #/problema[/ayer]     the problem of the day, or yesterday's with its solution (group B, componentes/problema)
 //
 // Each history entry remembers its scroll position (history.state.y), so «Atrás» (the button,
 // the browser or the Android back button) returns exactly where the reader was. Overlays
@@ -30,7 +36,7 @@
 
 import { registrar } from './registro';
 
-export type Vista = 'inicio' | 'parte' | 'glosario' | 'marcadores' | 'simulador' | 'componentes' | 'conceptos' | 'consolas' | 'instrumentos' | 'fm7303' | 'repaso' | 'ejercicios' | 'calculadoras' | 'proyectos' | 'sincronizacion' | 'diagnostico' | 'leccion';
+export type Vista = 'inicio' | 'parte' | 'glosario' | 'marcadores' | 'simulador' | 'componentes' | 'conceptos' | 'consolas' | 'instrumentos' | 'fm7303' | 'repaso' | 'ejercicios' | 'calculadoras' | 'proyectos' | 'sincronizacion' | 'diagnostico' | 'leccion' | 'cursos' | 'progreso' | 'practicar' | 'problema';
 
 export interface AnclaLectura {
   /** Index of the top-level block at the top of the screen. */
@@ -134,6 +140,22 @@ function leer(): void {
     ruta.vista = 'diagnostico';
     ruta.parte = '';
     ruta.ancla = '';
+  } else if (a === 'cursos') {
+    ruta.vista = 'cursos';
+    ruta.parte = '';
+    ruta.ancla = b;
+  } else if (a === 'progreso') {
+    ruta.vista = 'progreso';
+    ruta.parte = '';
+    ruta.ancla = b;
+  } else if (a === 'practicar') {
+    ruta.vista = 'practicar';
+    ruta.parte = '';
+    ruta.ancla = b;
+  } else if (a === 'problema') {
+    ruta.vista = 'problema';
+    ruta.parte = '';
+    ruta.ancla = b;
   } else if (a === 'sincronizacion') {
     ruta.vista = 'sincronizacion';
     ruta.parte = '';

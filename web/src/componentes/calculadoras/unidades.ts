@@ -9,6 +9,8 @@ const SIN_PREFIJO = new Set([
   '', '%', 'dB', 'dBm', 'dBc', 'dBi', 'dBV', 'dBµV', 'dB/déc', '°', '°C', 'K', 'ppm', 'ppm/°C', 'bit', 'V/V', 'A/A',
   'ciclos', 'vueltas', '°C/W', 'K/W', 'rad', 'dB/m', 'dB/100 m', 'h', 'años', 'espiras', 'LSB', 'Ω/sq', 'veces', 'm²',
   'Ω·m', 'V/µs', 'mm²', 'cm', 'mm', '1/°C', 'cm⁻³', 'ppm/°C', 'rpm', 'palabras', 'µε', '€', 'días',
+  // 0.11 (QA): units that already carry a prefix or are counts («960 mkg» was printed for 0,96 kg)
+  'kg', 'mm/ns', 'FIT',
 ]);
 
 export function conPrefijo(unidad: string): boolean {

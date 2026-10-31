@@ -2,7 +2,7 @@
   // A book figure with its live layer: interactive plots (readout, A/B cursors) and live schematics
   // (charge flow, voltages, values). The figure data are fetched only when the figure comes near the
   // viewport, and the layers animate only while it is on screen; until then this is just the image.
-  import { onMount } from 'svelte';
+  import { getContext, onMount } from 'svelte';
   import Maximize from '@lucide/svelte/icons/maximize-2';
   import Zap from '@lucide/svelte/icons/zap';
   import Activity from '@lucide/svelte/icons/activity';
@@ -14,6 +14,8 @@
   import Escenario from './Escenario.svelte';
   import TablaCursores from './grafica/TablaCursores.svelte';
   import PanelEsquema from './esquema/PanelEsquema.svelte';
+  import ExploraEsquema from './esquema/ExploraEsquema.svelte';
+  import { CONTEXTO_LECCION, type ContextoLeccion } from './contexto';
   import Grande from './Grande.svelte';
 
   let {
@@ -41,6 +43,11 @@
     /** The plain full-screen viewer (figures without a live layer). */
     abrirVisor: () => void;
   } = $props();
+
+  // 0.11 (group B): inside a lesson, a simulable DC schematic gets the «explore» row (one value, one reading)
+  const leccion = getContext<ContextoLeccion | undefined>(CONTEXTO_LECCION);
+
+  const explorables = $derived(leccion?.explorables[ruta] ?? []);
 
   let raiz: HTMLElement | undefined = $state();
   let datos = $state.raw<DatosFigura | null>(null);
@@ -129,9 +136,16 @@
     />
   </div>
 </div>
+{#if leccion && explorables.length && !(datos && vivo)}
+  <!-- the room of the «explore» rows while the figure's data load -->
+  {#each explorables as k (k)}<div class="explora-reserva" aria-hidden="true"></div>{/each}
+{/if}
 {#if datos && vivo}
   {#if estadoG.cursores}<TablaCursores {datos} {grupos} estado={estadoG} />{/if}
   {#each esquemas as e, i (i)}
+    {#if leccion && explorables.includes(i) && e.simulable && !e.externo && !e.esq.simulacion?.tran}
+      <ExploraEsquema est={e} {ruta} indice={i} parte={leccion.parte} visible={visible && pagina.visible && !grande} />
+    {/if}
     <PanelEsquema est={e} numero={esquemas.length > 1 ? i + 1 : null} />
   {/each}
 {/if}
@@ -152,6 +166,12 @@
 {/if}
 
 <style>
+  /* same height as ExploraEsquema's first state (group B) */
+  .explora-reserva {
+    max-width: 46em;
+    min-height: var(--alto-explora, 204px);
+    margin: 0.6em auto 0;
+  }
   .viva {
     cursor: default;
   }
@@ -192,8 +212,15 @@
     font-weight: 600;
     white-space: nowrap;
   }
-  .sello.apagado {
-    color: var(--tinta-tenue);
+  /* The label sits on the figure's plate, which stays light in every theme: the dark theme's light accent and faint
+     grey were 2.2–2.5:1 there (0.11 QA). */
+  :global(:root[data-tema='oscuro']) .sello {
+    color: color-mix(in srgb, var(--acento) 50%, #1a1a1a);
+  }
+  .sello.apagado,
+  :global(:root[data-tema='oscuro']) .sello.apagado,
+  :global(:root[data-tema='oscuro']) .m:not([aria-pressed='true']) {
+    color: #5b6672;
   }
   .txt {
     overflow: hidden;

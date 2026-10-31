@@ -83,7 +83,7 @@
         { k: 'punto', x: x0, y: y0, cls: 'res' },
         { k: 'texto', x: x0, y: y0, html: `${s(vy.sim)} = ${fmt(y0, vy.unidad)}`, cls: 'res', ancla: Number.isFinite(x0) && xs.length && (logx ? Math.log(x0 / (xs[0] as number)) / Math.log((xs[xs.length - 1] as number) / (xs[0] as number)) : (x0 - (xs[0] as number)) / ((xs[xs.length - 1] as number) - (xs[0] as number))) > 0.6 ? 'r' : 'l', dy: -8 },
       ],
-      pie: `Cómo cambia ${vy.sim} al mover ${vx.sim}, con los demás datos fijos. Mueve otro control para verlo frente a esa magnitud.`,
+      pie: `Cómo cambia ${vy.sim} al mover ${vx.sim}, con los demás datos fijos. Mueva otro control para verlo frente a esa magnitud.`,
     };
   }
 

@@ -6,7 +6,10 @@
   import { app } from '../../lib/estado.svelte';
   import { motor, detener, precalentarMotor, simularTexto, SimulacionCancelada } from '../../simulador/cliente.svelte';
   import type { Simulacion } from '../../simulador/motor/simular.ts';
-  import { cargarIndiceSpice, cargarNetlist } from '../../simulador/datos.svelte';
+  import { cargarIndiceSpice, cargarNetlist, spice } from '../../simulador/datos.svelte';
+  import { esDeRed, SIN_RED } from '../../lib/errores';
+  import ErrorCarga from '../ErrorCarga.svelte';
+  import AvisoGuardado from '../AvisoGuardado.svelte';
   import type { DibujoConNetlist } from '../figuras-vivas/tipos';
   import { formatoSI } from '../grafica/formato.ts';
   import Resultados from '../simulador/Resultados.svelte';
@@ -33,12 +36,14 @@
   import { documentoVacio, type DocumentoEsquema } from './tipos.ts';
   import {
     actualizar,
+    biblioteca,
     cargarCircuitos,
     circuito,
     dejarNetlist,
     escribirBorrador,
     guardarNuevo,
     leerBorrador,
+    reintentarCircuitos,
     tomarTraspaso,
   } from './circuitos.svelte';
   import MousePointer from '@lucide/svelte/icons/mouse-pointer-2';
@@ -55,6 +60,7 @@
   import Route from '@lucide/svelte/icons/route';
   import Ordenar from '@lucide/svelte/icons/wand-sparkles';
   import AlinearIcono from '@lucide/svelte/icons/align-start-vertical';
+  import { emitir } from '../../lib/aprendizaje/eventos';
 
   let { ruta }: { ruta: string } = $props();
 
@@ -88,7 +94,7 @@
         const id = resto.slice(6);
         const indice = await cargarIndiceSpice();
         const n = indice?.netlists[id];
-        if (!n) throw new Error('No existe esa netlist del libro.');
+        if (!n) throw new Error(spice.fallo ? SIN_RED : 'No existe esa netlist del libro.');
         const texto = await cargarNetlist(n);
         const doc = await importarNetlist(texto, { tipo: 'libro', id });
         if (!doc) throw new Error('Esta netlist no tiene nada que se pueda dibujar.');
@@ -105,7 +111,12 @@
         history.replaceState(history.state, '', '#/editor');
       } else if (resto) {
         const c = circuito(resto);
-        if (!c) throw new Error('Ese circuito ya no está guardado en este dispositivo.');
+        if (!c)
+          throw new Error(
+            biblioteca.error === 'lectura'
+              ? 'No se pudo leer «Mis circuitos» en este dispositivo, así que este circuito no se puede abrir ahora.'
+              : 'Ese circuito ya no está guardado en este dispositivo.',
+          );
         idGuardado = resto;
         ed.cargar(JSON.parse(JSON.stringify(c.doc)) as DocumentoEsquema);
         estadoGuardado = 'guardado';
@@ -187,11 +198,18 @@
     });
   }
 
+  /** «Reintentar» of the library's notice; a circuit that could not be opened for it is opened again. */
+  async function reintentarAbrir() {
+    await reintentarCircuitos();
+    if (errorCarga && !biblioteca.error) await abrir(ruta);
+  }
+
   async function guardar() {
     if (idGuardado) return;
     const doc = $state.snapshot(ed.doc) as DocumentoEsquema;
     const id = await guardarNuevo(doc.titulo || 'Circuito', doc);
-    escribirBorrador(null);
+    // a save that failed keeps the draft (the circuit is only in this page until a write succeeds)
+    if (!biblioteca.error) escribirBorrador(null);
     location.hash = `#/editor/${id}`;
   }
 
@@ -265,6 +283,7 @@
     try {
       const r = await simularTexto(nl.texto);
       resultado = r;
+      if (!r.ejecucion.fallo) emitir({ tipo: 'simulacion', origen: 'editor' });
       esBarrido = false;
       // For the tests: the last result of the editor.
       (globalThis as unknown as { __epaEditorSim?: Simulacion }).__epaEditorSim = r;
@@ -751,7 +770,9 @@
 <div class="editor-pagina">
   <PestanasSimulador />
 
-  {#if errorCarga}
+  {#if errorCarga && esDeRed(errorCarga)}
+    <ErrorCarga titulo="No se pudo abrir el circuito." error={errorCarga} reintentar={() => void abrir(ruta)} />
+  {:else if errorCarga}
     <div class="aviso error">
       <p>{errorCarga}</p>
       <a class="boton" href="#/editor">Abrir el editor</a>
@@ -760,10 +781,13 @@
 
   <header class="cab">
     <div class="titulo">
-      <h1>{ed.doc.titulo || 'Circuito nuevo'}</h1>
+      <!-- while a circuit loads, empty lines of the same height: «Circuito nuevo» flashed before the book's title -->
+      <h1>{cargando ? '\u00a0' : ed.doc.titulo || 'Circuito nuevo'}</h1>
       <span class="estado-guardado" aria-live="polite">
-        {#if idGuardado}{estadoGuardado === 'guardando' ? 'Guardando…' : 'Guardado en este dispositivo'}{:else}Sin guardar{/if}
-        {#if ed.doc.origen?.tipo === 'libro'} · dibujado a partir de la netlist del libro{/if}
+        {#if cargando}&nbsp;{:else}
+          {#if idGuardado}{biblioteca.error ? 'Sin guardar en este dispositivo' : estadoGuardado === 'guardando' ? 'Guardando…' : 'Guardado en este dispositivo'}{:else}Sin guardar{/if}
+          {#if ed.doc.origen?.tipo === 'libro'} · dibujado a partir de la netlist del libro{/if}
+        {/if}
       </span>
     </div>
     <div class="botones">
@@ -786,6 +810,7 @@
       <input bind:this={selectorFichero} type="file" accept=".cir,.net,.sp,.spi,.txt,.ckt" hidden onchange={importarFichero} />
     </div>
   </header>
+  <AvisoGuardado error={biblioteca.error} nombre="Mis circuitos" reintentar={reintentarAbrir} />
   {#if aviso}<div class="aviso" role="alert">{aviso} <button class="enlace" onclick={() => (aviso = '')}>Cerrar</button></div>{/if}
 
   <div class="mesa" class:lateral={anchoLateral}>
@@ -847,7 +872,7 @@
         <VistaViva dibujo={vivo} texto={textoSimulado} {resultado} alto={app.movil ? 0 : 560} {soloOp} alResuelto={vivoResuelto} {conmutables} alConmutar={(id) => void conmutarSimulando(id)} />
         {#if mandos.length && !esBarrido}
           <section class="mandos" aria-label="Mandos">
-            <h3>Mandos</h3>
+            <h2>Mandos</h2>
             <p class="nota">Al mover un mando el punto de trabajo se recalcula al momento; el transitorio y las gráficas, al soltarlo.</p>
             <div class="lista-mandos">
               {#each mandos as m (`${m.id}.${m.campo}`)}
@@ -868,7 +893,7 @@
   </div>
 
   <section class="analisis" aria-label="Análisis">
-    <h3>Análisis</h3>
+    <h2>Análisis</h2>
     <div class="tarjetas">
       <label class="an"><input type="checkbox" checked={a.op} onchange={(e) => cambiarAnalisis(() => (ed.doc.analisis.op = (e.currentTarget as HTMLInputElement).checked))} /> Punto de trabajo <code>.op</code></label>
       <div class="an">
@@ -1001,7 +1026,7 @@
 
   {#if resultado}
     <section class="resultados" class:viejo={ejecutando} aria-label="Resultados">
-      <h3>Resultados</h3>
+      <h2>Resultados</h2>
       {#if sondasSimuladas.length}<p class="nota">Las sondas del esquema eligen las curvas: {sondasSimuladas.join(', ')}.</p>{/if}
       {#if esBarrido}<p class="nota">Barrido: una curva por valor (la leyenda dice cuál); el punto de trabajo, una columna por valor.</p>{/if}
       <Resultados {resultado} preferidos={sondasSimuladas} barrido={esBarrido} />
@@ -1083,6 +1108,13 @@
   }
   .titulo {
     min-width: 0;
+  }
+  /* Phone, tablet (also turned: 1280 px) and laptop: the title on a line of its own, so a long one arriving with the
+     circuit does not push the buttons to a new line and the whole editor down (0.11 QA, 52 px on the tablet). */
+  @media (max-width: 1439px) {
+    .titulo {
+      flex: 1 1 100%;
+    }
   }
   h1 {
     margin: 0;
@@ -1217,7 +1249,7 @@
   .netlist {
     margin-top: 18px;
   }
-  h3 {
+  h2 {
     margin: 0 0 8px;
     font-size: 15px;
     color: var(--titulos);

@@ -84,7 +84,7 @@
     height: 34px;
     border-radius: 50%;
     background: var(--acento);
-    color: #fff;
+    color: var(--sobre-acento);
     font-weight: 800;
   }
   .t {

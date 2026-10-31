@@ -41,7 +41,7 @@
 {#if ficha && el}
   <article class="ficha-pieza" data-pieza={ref}>
     <header>
-      <h3>{ref}{#if ficha.valor}<span class="valor"> · {ficha.valor}</span>{/if}</h3>
+      <h2>{ref}{#if ficha.valor}<span class="valor"> · {ficha.valor}</span>{/if}</h2>
       <button type="button" class="cerrar" aria-label="Cerrar la ficha" onclick={() => k.elegirPieza(null)}><X size={18} /></button>
     </header>
     <p class="funcion">{ficha.funcion}</p>
@@ -85,7 +85,7 @@
     align-items: center;
     justify-content: space-between;
   }
-  h3 {
+  h2 {
     margin: 0;
     font-size: 17px;
     color: var(--titulos);

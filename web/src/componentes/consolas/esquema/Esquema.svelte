@@ -138,7 +138,7 @@
       case 'simbolo':
         return `${i.ref} · ${datos.componentes[i.ref]?.v ?? ''}`;
       case 'subhoja':
-        return `Hoja ${i.nombre}: toca para abrirla`;
+        return `Hoja ${i.nombre}: toque para abrirla`;
       case 'bus':
         return `Bus ${textoKicad(i.texto)}`;
     }
@@ -355,7 +355,7 @@
         <p class="tipo">Esquema</p>
         <h3 class="nombre">{datos.esquema_titulo}</h3>
         <p class="detalle">{datos.aviso}</p>
-        <p class="detalle">Toca o pasa el ratón por un hilo, un pin o una etiqueta para resaltar toda su red, en esta hoja y en las demás. Toca un símbolo para ver sus pines.{#if datos.hojas.length > 1}{' '}En la hoja raíz, toca un bloque para abrir su hoja.{/if}</p>
+        <p class="detalle">Toque o pase el ratón por un hilo, un pin o una etiqueta para resaltar toda su red, en esta hoja y en las demás. Toque un símbolo para ver sus pines.{#if datos.hojas.length > 1}{' '}En la hoja raíz, toque un bloque para abrir su hoja.{/if}</p>
       {/if}
       {#if sel}
         <button type="button" class="limpiar" onclick={() => seleccionar(null)}><X size={15} /> Quitar la selección</button>

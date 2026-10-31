@@ -52,7 +52,7 @@
 </script>
 
 <div class="ordenar" data-orden={colocados.join(',')}>
-  <ol class="colocados" aria-label="Tu orden">
+  <ol class="colocados" aria-label="Su orden">
     {#each Array.from({ length: n }, (_, i) => i) as i (i)}
       {@const k = mostrar[i]}
       {@const marca = revisado && !final && colocados[i] != null ? colocados[i] === i : null}
@@ -64,7 +64,7 @@
             {#if marca === true}<span class="icono ok" aria-label="En su sitio"><Check size={16} strokeWidth={3} /></span>{:else if marca === false}<span class="icono no" aria-label="Fuera de sitio"><X size={16} strokeWidth={3} /></span>{/if}
           </button>
         {:else}
-          <span class="vacio">Toca un paso de abajo</span>
+          <span class="vacio">Toque un paso de abajo</span>
         {/if}
       </li>
     {/each}

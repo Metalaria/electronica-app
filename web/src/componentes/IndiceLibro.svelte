@@ -15,6 +15,9 @@
   import Insignia from './Insignia.svelte';
   import AnilloLectura from './aprender/AnilloLectura.svelte';
   import ProgresoTomo from './aprender/ProgresoTomo.svelte';
+  // 0.11 (group B): the mastery of each practised section, loaded in idle time
+  import MedidorDominio from './dominio/MedidorDominio.svelte';
+  import { cargarDominio, dominioDe, estadoDominio } from '../lib/aprendizaje/dominio.svelte';
 
   let { visible = true }: { visible?: boolean } = $props();
 
@@ -164,8 +167,12 @@
       return;
     }
     let io: IntersectionObserver | null = null;
+    let vivo = true;
     const raiz = lista;
     void tick().then(() => {
+      // the effect may have been cleaned up meanwhile (the index closed): an observer made now would never be
+      // disconnected and would read this component's state after it is gone («derived_inert», 0.11 QA)
+      if (!vivo) return;
       const el = filaActual();
       const esSeccion = !!el?.closest('.secciones');
       // the section is hidden (chapter or volume collapsed, or filtered out)
@@ -184,7 +191,10 @@
       );
       io.observe(el);
     });
-    return () => io?.disconnect();
+    return () => {
+      vivo = false;
+      io?.disconnect();
+    };
   });
 
   /** «Ir a la sección actual»: clears the filter, opens its volume and chapter and brings it to view. */
@@ -270,6 +280,15 @@
   }
 
   const leidas = $derived(aprendizaje.leidas);
+  $effect(() => {
+    const ir = () => void cargarDominio();
+    if ('requestIdleCallback' in window) {
+      const id = window.requestIdleCallback(ir, { timeout: 4000 });
+      return () => window.cancelIdleCallback(id);
+    }
+    const t = setTimeout(ir, 1500);
+    return () => clearTimeout(t);
+  });
 </script>
 
 <div class="indice-libro">
@@ -434,6 +453,7 @@
               <span class="st">{@render texto(s.titulo, palabras)}</span>
               {#if usuario.marcadores[s.label]}<span class="pin" title="Marcador"><Icono nombre="marcador-lleno" tam={12} /></span>{/if}
               {#if leidas[id]?.[s.label]}<span class="pin hecha" title="Leída"><Icono nombre="hecho" tam={14} grosor={2.4} /><span class="solo-lector">(leída)</span></span>{/if}
+              {#if estadoDominio.listo}{@const d = dominioDe(`${id}/${s.label}`)}{#if d.nivel !== 'nuevo'}<span class="pin dominio"><MedidorDominio nivel={d.nivel} valor={d.valor} repasar={d.repasar} /></span>{/if}{/if}
             </a>
           </li>
         {/each}
@@ -744,6 +764,9 @@
   }
   .pin.hecha {
     color: var(--c-ejemplo);
+  }
+  .pin.dominio {
+    margin-left: 2px;
   }
   mark {
     padding: 0;

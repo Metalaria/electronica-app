@@ -182,7 +182,7 @@
         </div>
         <p class="nota-capa" data-norma={varianteSel.id}>{varianteSel.nota}</p>
       {/if}
-      <p class="desliza">Desliza el diagrama a los lados para verlo entero.</p>
+      <p class="desliza">Deslice el diagrama a los lados para verlo entero.</p>
       <div class="desplazable">
         <div class="diagrama">
           <Escena {dibujar} {paso} {reloj} dims={() => [diagrama.ancho, diagrama.alto]} etiqueta={`Diagrama de bloques de la ${datos.titulo}`} {puntero} />
@@ -320,7 +320,7 @@
           </div>
         {:else}
           <p class="tipo">Diagrama</p>
-          <p>Toca un bloque para ver qué hace y saltar a la foto o al esquema. Las líneas se iluminan cuando su señal está activa: azul, direcciones; verde azulado, datos; rojo, selecciones de chip; verde, relojes; ámbar, interrupciones.</p>
+          <p>Toque un bloque para ver qué hace y saltar a la foto o al esquema. Las líneas se iluminan cuando su señal está activa: azul, direcciones; verde azulado, datos; rojo, selecciones de chip; verde, relojes; ámbar, interrupciones.</p>
         {/if}
       </section>
     </aside>

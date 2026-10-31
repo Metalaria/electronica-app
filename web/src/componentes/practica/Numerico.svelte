@@ -21,9 +21,21 @@
     listo = $bindable(false),
     pistas = $bindable(null),
     onenviar,
-  }: { item: ItemNumerico; final: boolean; listo?: boolean; pistas?: Pista[] | null; onenviar: () => void } = $props();
+    semillaFija = null,
+  }: {
+    item: ItemNumerico;
+    final: boolean;
+    listo?: boolean;
+    pistas?: Pista[] | null;
+    onenviar: () => void;
+    /** 0.11 (group B): the values of the problem of the day (the same for the whole day; the stored seed is not advanced). */
+    semillaFija?: number | null;
+  } = $props();
 
-  const semilla = untrack(() => semillaDe(item.id));
+  const semilla = untrack(() => semillaFija ?? semillaDe(item.id));
+  const avanzar = (n: number) => {
+    if (untrack(() => semillaFija) == null) guardarSemilla(item.id, n);
+  };
   const v = untrack(() => variante(item, semilla));
   const f = untrack(() => item.formula);
   const vo = untrack(() => f.vars.find((x) => x.id === item.objetivo)!);
@@ -55,11 +67,11 @@
   export function comprobar(): Comprobacion {
     if (!v) return { bien: false, nula: true, mensaje: 'Este problema no tiene valores válidos.' };
     const r = comprobarValor(escrito, { valor: v.resultado, unidad: vo.unidad, tol: item.tol, texto: correcto });
-    if (r.tipo === 'vacio') return { bien: false, nula: true, mensaje: 'Escribe el resultado.' };
+    if (r.tipo === 'vacio') return { bien: false, nula: true, mensaje: 'Escriba el resultado.' };
     if (r.tipo === 'ilegible' || r.tipo === 'unidad') return { bien: false, nula: true, mensaje: r.mensaje };
     respondido = escrito.trim();
     if (r.tipo === 'bien') {
-      guardarSemilla(item.id, semilla + 1);
+      avanzar(semilla + 1);
       return { bien: true };
     }
     return { bien: false, mensaje: r.mensaje };
@@ -70,7 +82,7 @@
   }
 
   $effect(() => {
-    if (final) untrack(() => guardarSemilla(item.id, semilla + 1));
+    if (final) untrack(() => avanzar(semilla + 1));
   });
 
   function enviar(ev: Event) {
@@ -106,12 +118,12 @@
       {#if !final}<button class="comprobar" type="submit" disabled={vacio} data-comprobar>Comprobar</button>{/if}
     </form>
     {#if !final}
-      <p class="ayuda">Puedes escribir «4,7 k», «4k7», «0,5 mA» o «2,2e-3»: coma o punto decimal, con o sin prefijo.</p>
+      <p class="ayuda">Puede escribir «4,7 k», «4k7», «0,5 mA» o «2,2e-3»: coma o punto decimal, con o sin prefijo.</p>
     {:else}
       <div class="p10-solucion" data-solucion>
         <span class="rot">La solución con estos valores</span>
         <p class="res">
-          {#if respondido}Tu respuesta: {respondido}{vo.unidad && !/[a-zA-ZΩµ]$/.test(respondido) ? ` ${vo.unidad}` : ''}{' · '}{/if}resultado:
+          {#if respondido}Su respuesta: {respondido}{vo.unidad && !/[a-zA-ZΩµ]$/.test(respondido) ? ` ${vo.unidad}` : ''}{' · '}{/if}resultado:
           <strong data-correcto>{correcto}</strong> (se acepta ±{Math.round(item.tol * 100)} %)
         </p>
         <PasoAPaso {f} objetivo={item.objetivo} valores={v.valores} resultado={v.resultado} />

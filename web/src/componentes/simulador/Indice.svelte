@@ -1,7 +1,8 @@
 <script lang="ts">
   // Catalogue of the book's netlists, by chapter, with a filter; and the free-form circuit.
   import type { IndiceSpice } from '../../simulador/tipos';
-  import { cargarIndiceSpice, rotuloRef, rutaSimulacion } from '../../simulador/datos.svelte';
+  import { cargarIndiceSpice, rotuloRef, rutaSimulacion, spice } from '../../simulador/datos.svelte';
+  import ErrorCarga from '../ErrorCarga.svelte';
   import { normalizar, rotuloParte } from '../../lib/datos';
   import { colorBloque } from '../../lib/color';
   import Icono from '../Icono.svelte';
@@ -13,12 +14,14 @@
   let filtro = $state('');
   let tipo = $state<string>('');
 
-  $effect(() => {
+  function cargar() {
+    cargado = false;
     cargarIndiceSpice().then((d) => {
       indice = d;
       cargado = true;
     });
-  });
+  }
+  $effect(cargar);
 
   const TIPOS = [
     ['', 'Todas'],
@@ -79,6 +82,8 @@
 
   {#if !cargado}
     <p class="nota">Cargando la lista…</p>
+  {:else if !indice && spice.fallo}
+    <ErrorCarga titulo="No se pudo cargar la lista de netlists del libro." reintentar={cargar} />
   {:else if !indice}
     <div class="aviso">
       <p>Este contenido no incluye las netlists del libro (falta <code>libro/spice.json</code>; se genera con
@@ -256,7 +261,7 @@
     padding: 0 7px;
     border-radius: 5px;
     background: color-mix(in srgb, var(--c-importante) 14%, transparent);
-    color: var(--c-importante);
+    color: color-mix(in srgb, var(--c-importante) 64%, var(--tinta));
     font-size: 11.5px;
     font-weight: 700;
   }

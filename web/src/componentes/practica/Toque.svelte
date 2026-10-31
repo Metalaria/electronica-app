@@ -107,7 +107,7 @@
   const correcto = $derived(objetivos.find(es) ?? null);
 
   export function comprobar(): Comprobacion {
-    if (!elegido) return { bien: false, nula: true, mensaje: 'Toca una pieza o un cable del esquema.' };
+    if (!elegido) return { bien: false, nula: true, mensaje: 'Toque una pieza o un cable del esquema.' };
     resultado = es(elegido);
     return resultado ? { bien: true } : { bien: false, mensaje: 'Eso no es lo que se pide.' };
   }
@@ -132,14 +132,14 @@
 
 <div class="toque" data-elegido={elegido ? `${elegido.esq}:${elegido.k}:${elegido.id}` : undefined} data-objetivos={objetivos.length}>
   <div class="p10-placa marco">
-    <img src={url(item.figura.src)} alt={`Figura ${item.figura.num}`} draggable="false" />
+    <img src={url(item.figura.src)} alt={`Figura ${item.figura.num}`} width={Math.round(item.figura.vista[2])} height={Math.round(item.figura.vista[3])} draggable="false" />
     <svg
       bind:this={capa}
       class="capa"
       viewBox={vista.join(' ')}
       preserveAspectRatio="xMidYMid meet"
       role="application"
-      aria-label={`Esquema de la figura ${item.figura.num}: toca la pieza o el nodo que se pide`}
+      aria-label={`Esquema de la figura ${item.figura.num}: toque la pieza o el nodo que se pide`}
       onpointerdown={tocar}
       data-capa
     >
@@ -154,7 +154,7 @@
       {/if}
     </svg>
   </div>
-  <p class="ayuda">{final ? 'En verde, lo que se pedía.' : elegido ? 'Seleccionado. Toca otro sitio para cambiarlo, o comprueba.' : 'Toca directamente sobre el dibujo.'}</p>
+  <p class="ayuda">{final ? 'En verde, lo que se pedía.' : elegido ? 'Seleccionado. Toque otro sitio para cambiarlo, o compruebe.' : 'Toque directamente sobre el dibujo.'}</p>
 </div>
 
 <style>

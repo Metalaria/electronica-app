@@ -49,6 +49,16 @@
   });
 
   let fallo = $state('');
+  /**
+   * In one column (a phone), the model's details under the 3D view wait, hidden, until the view has its final
+   * height (its labels and tool bar come with the model): they were pushed down twice, 0.17 of CLS (0.11 QA). At
+   * most 5 s, so a slow model never hides them for long.
+   */
+  let visorListo = $state(false);
+  onMount(() => {
+    const t = setTimeout(() => (visorListo = true), 5000);
+    return () => clearTimeout(t);
+  });
 
   function irAlLibro(): void {
     prepararSalto({ texto: m ? `Volver a ${m.nombre}` : 'Volver al modelo 3D' });
@@ -78,12 +88,12 @@
 
     <div class="cuerpo">
       <div class="col-a">
-        <Vista3D {tipo} {parametros} {montaje} nombre={m.nombre} alFallar={(e) => (fallo = e)} />
+        <Vista3D {tipo} {parametros} {montaje} nombre={m.nombre} alFallar={(e) => (fallo = e)} alListo={() => (visorListo = true)} />
         {#if fallo && anims.length}
-          <p class="nota">Puedes ver cómo funciona en la animación 2D: <a href={`#/componentes/${anims[0]!.id}`} onclick={() => ponerVista('2d')}>{anims[0]!.titulo}</a>.</p>
+          <p class="nota">Puede ver cómo funciona en la animación 2D: <a href={`#/componentes/${anims[0]!.id}`} onclick={() => ponerVista('2d')}>{anims[0]!.titulo}</a>.</p>
         {/if}
       </div>
-      <aside class="col-b">
+      <aside class="col-b" class:esperando={!visorListo && !fallo}>
         <div class="panel">
           <p class="enc">{m.encapsulado}</p>
           <ControlesModelo controles={m.controles} bind:parametros />
@@ -205,6 +215,11 @@
     display: grid;
     gap: 14px;
   }
+  @container (max-width: 899px) {
+    .col-b.esperando {
+      visibility: hidden;
+    }
+  }
   .panel {
     display: grid;
     gap: 14px;
@@ -216,7 +231,8 @@
   .enc {
     margin: 0;
     font-weight: 700;
-    color: var(--c);
+    /* the family colour toned towards the text: the dark ones were 1.4:1 on the dark theme (0.11 QA) */
+    color: color-mix(in srgb, var(--c) 45%, var(--tinta));
   }
   .montaje {
     display: flex;

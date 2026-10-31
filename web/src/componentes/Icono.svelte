@@ -52,6 +52,8 @@
   import ChevronDown from '@lucide/svelte/icons/chevron-down';
   import TextSearch from '@lucide/svelte/icons/text-search';
   import Grid3x3 from '@lucide/svelte/icons/grid-3x3';
+  import Route from '@lucide/svelte/icons/route';
+  import Trophy from '@lucide/svelte/icons/trophy';
 
   const ICONOS = {
     menu: Menu,
@@ -108,6 +110,8 @@
     'chevron-arriba': ChevronUp,
     'chevron-abajo': ChevronDown,
     filtrar: TextSearch,
+    cursos: Route,
+    progreso: Trophy,
   } as const;
 
   export type NombreIcono = keyof typeof ICONOS;

@@ -100,7 +100,7 @@
       </button>
     {/each}
   </div>
-  <p class="ayuda">{final ? 'Las parejas del libro.' : activo != null ? `Ahora toca ${item.modo === 'simbolo' ? 'el componente' : 'la definición'} que va con el ${activo + 1}.` : 'Toca un elemento de arriba y después su pareja.'}</p>
+  <p class="ayuda">{final ? 'Las parejas del libro.' : activo != null ? `Ahora toque ${item.modo === 'simbolo' ? 'el componente' : 'la definición'} que va con el ${activo + 1}.` : 'Toque un elemento de arriba y después su pareja.'}</p>
   <ul class="der">
     {#each orden as k, pos (pos)}
       {@const i = izqDe(pos)}

@@ -16,13 +16,28 @@
   let Practica: typeof import('./Practica.svelte').default | null = $state.raw(null);
 
   onMount(() => {
-    void cargarIndicePractica().then((ind) => (id = ind?.ejercicios[label] ?? null));
+    // the label read now: when the index arrives the exercise may be gone (leaving the page), and reading its props
+    // then warned «derived_inert» (0.11 QA)
+    const l = label;
+    let vivo = true;
+    void cargarIndicePractica().then((ind) => {
+      if (vivo) id = ind?.ejercicios[l] ?? null;
+    });
+    return () => {
+      vivo = false;
+    };
   });
 
   async function abrir() {
     abierto = !abierto;
     if (!abierto || item) return;
-    const [d, m] = await Promise.all([cargarPractica(parte), import('./Practica.svelte')]);
+    const r = await Promise.all([cargarPractica(parte), import('./Practica.svelte')]).catch(() => null);
+    if (!r) {
+      // no network: closed again, the button stays to try later
+      abierto = false;
+      return;
+    }
+    const [d, m] = r;
     item = d?.items.find((x) => x.id === id) ?? null;
     Practica = m.default;
   }

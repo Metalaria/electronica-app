@@ -6,7 +6,14 @@
 
   const cabecera = $derived(bloque.cabecera !== false && bloque.filas.length > 1 ? bloque.filas[0] : null);
   const cuerpo = $derived(cabecera ? bloque.filas.slice(1) : bloque.filas);
-  const nombre = $derived(bloque.num ? `Tabla ${bloque.num}` : textoPlano(bloque.pie) || 'Tabla');
+  // a name of its own (axe: several regions called just «Tabla» on one page): its number, its caption or its headers
+  const nombre = $derived(
+    bloque.num
+      ? `Tabla ${bloque.num}`
+      : textoPlano(bloque.pie) ||
+          (cabecera ? `Tabla: ${cabecera.map((c) => textoPlano(c)).filter(Boolean).join(', ')}`.slice(0, 90) : '') ||
+          'Tabla',
+  );
 
   function alinear(k: number): string {
     const a = bloque.align?.[k] ?? 'left';

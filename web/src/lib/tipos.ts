@@ -86,6 +86,10 @@ export interface BFigura extends ConLabel {
   ancho?: number | null;
   pie?: Html | null;
   credito?: Html | null;
+  /** viewBox of a vector figure (`fig/…svg`) in pt: its aspect ratio before the image loads. */
+  svg_vista?: number[] | null;
+  /** Photos (img/*.jpg): [width, height] in pixels (0.11). */
+  img_tam?: number[] | null;
 }
 export interface BTabla extends ConLabel {
   t: 'tabla';

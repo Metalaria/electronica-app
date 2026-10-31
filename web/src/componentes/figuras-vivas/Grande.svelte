@@ -321,6 +321,11 @@
     background: var(--superficie);
   }
   .nombre {
+    /* it gives way on a phone: the bar's last buttons (zoom, close) were pushed past the screen (0.11 QA) */
+    min-width: 0;
+    flex: 0 1 auto;
+    overflow: hidden;
+    text-overflow: ellipsis;
     font-size: 16px;
     font-weight: 700;
     color: var(--titulos);
@@ -346,6 +351,16 @@
     color: var(--tinta-suave);
     font-size: 14px;
     font-weight: 600;
+  }
+  /* a phone: «Figura | Datos», «A|B», the zoom and «Cerrar» did not fit, and «Cerrar» was cut by the screen's edge
+     (0.11 QA, 412 px) */
+  @media (max-width: 460px) {
+    .pestanas {
+      margin-left: 2px;
+    }
+    .pestanas button {
+      padding: 0 10px;
+    }
   }
   .pestanas button[aria-selected='true'] {
     background: var(--superficie);

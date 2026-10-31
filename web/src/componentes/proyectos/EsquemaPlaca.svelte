@@ -53,7 +53,7 @@
 
 <div class="esquema">
   <div class="barra">
-    <span class="nota">Esquema de KiCad del proyecto (una hoja, una etiqueta de red en cada pin). Toca un pin, una etiqueta o un símbolo.</span>
+    <span class="nota">Esquema de KiCad del proyecto (una hoja, una etiqueta de red en cada pin). Toque un pin, una etiqueta o un símbolo.</span>
     <div class="zoom">
       <button type="button" aria-label="Alejar" onclick={() => lienzo?.zoom(1 / 1.5)}>−</button>
       <button type="button" onclick={() => lienzo?.ajustar()}>Ajustar</button>

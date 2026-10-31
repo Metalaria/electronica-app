@@ -5,6 +5,8 @@ import { defineConfig, devices } from '@playwright/test';
 export default defineConfig({
   testDir: 'tests',
   testMatch: /.*\.spec\.ts/,
+  // the QA harness (tests/qa/) has its own configuration: playwright.qa.config.ts
+  testIgnore: ['qa/**'],
   timeout: 120_000,
   expect: { timeout: 30_000 },
   fullyParallel: false,

@@ -5,6 +5,7 @@
   import { progresoDiario, ponerObjetivo, OBJETIVO_MAX, OBJETIVO_MIN } from '../lib/progreso-diario.svelte';
   import Icono, { type NombreIcono } from './Icono.svelte';
   import EntradaDiagnostico from './diagnostico/EntradaAjustes.svelte';
+  import AjustesRetro from './progreso/AjustesRetro.svelte';
 
   let { ancla }: { ancla: HTMLElement | undefined } = $props();
   let panel: HTMLDivElement | undefined = $state();
@@ -48,7 +49,18 @@
   });
 </script>
 
-<div class="ajustes" role="dialog" aria-label="Tema y tamaño de letra" bind:this={panel}>
+<!-- a popover, not a modal: when the focus leaves it with the keyboard it closes (it would cover the focused control
+     otherwise; 0.11 QA) -->
+<div
+  class="ajustes"
+  role="dialog"
+  aria-label="Tema y tamaño de letra"
+  bind:this={panel}
+  onfocusout={(e) => {
+    const a = e.relatedTarget as Node | null;
+    if (a && !panel?.contains(a) && !ancla?.contains(a)) cerrar();
+  }}
+>
   <div class="grupo">
     <span class="etiqueta" id="et-tema">Tema</span>
     <div class="temas" role="radiogroup" aria-labelledby="et-tema">
@@ -129,8 +141,11 @@
     {/if}
   </div>
 
+  <!-- 0.11: sounds, vibration and the daily reminder (Android). -->
+  <AjustesRetro />
+
   <div class="grupo">
-    <label class="etiqueta" for="tu-nombre">Tu nombre</label>
+    <label class="etiqueta" for="tu-nombre">Su nombre</label>
     <input
       id="tu-nombre"
       class="nombre"

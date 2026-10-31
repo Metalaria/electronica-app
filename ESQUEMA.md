@@ -68,7 +68,7 @@ Block types (`t`), each may carry `"label"` (string, the Typst label; used as DO
 | `deduccion` | `titulo` (html), `bloques` | `#deduccion[title][…]` |
 | `tarjeta` | `bloques` | `#tarjeta[…]` formula card |
 | `ec` | `svg` (path), `w`, `h` (pt, at the book's 10.5 pt text: scale by font-size/10.5), `fuente` (Typst math; plain text for `#formula-texto` and `#formula([text])`), optional `etiqueta` (html of #eclabel) | `#ec[$…$]`, `#formula($…$)`, `#formula-texto` |
-| `figura` | `src` (path: `fig/NAME.svg`, `img/NAME.jpg` or `img/NAME.png`), `num`, `ancho` (0–1), `pie` (html), `credito` (html or null), `tipo_figura` (`grafica` `esquema` `diagrama` `foto`), `svg_vista` ([x, y, w, h], the SVG viewBox in pt; `fig/` only), optional `datos` (`datos/NAME.json`, only for `grafica` and `esquema`): see «Datos de figuras» | `#figura(…)` |
+| `figura` | `src` (path: `fig/NAME.svg`, `img/NAME.jpg` or `img/NAME.png`), `num`, `ancho` (0–1), `pie` (html), `credito` (html or null), `tipo_figura` (`grafica` `esquema` `diagrama` `foto`), `svg_vista` ([x, y, w, h], the SVG viewBox in pt; `fig/` only), `img_tam` ([w, h] in pixels; `img/` photos only, 0.11: the `<img>` gets its size before it loads), optional `datos` (`datos/NAME.json`, only for `grafica` and `esquema`): see «Datos de figuras» | `#figura(…)` |
 | `tabla` | `num` (or null), `pie` (html or null), `cols` (int), `align` (["left","center","right"]), `cabecera` (bool), `filas`: [[html]] | `#tabla(…)` |
 | `codigo` | `lenguaje` (or ""), `texto` | ``#codigo[```lang …```]`` |
 | `centrado` | `html` | `#centrado[…]` |
@@ -86,6 +86,10 @@ Inline HTML conventions:
 - Equations are SVG rendered by Typst with the book's math font; their colour is `currentColor`
   (post-processed) so the app can theme them. Note: inside `<img>` currentColor resolves to black; to theme,
   inline the SVG, or use it as a CSS mask, or invert it in dark mode.
+
+### `conceptos.json` and `explorables.json` (0.11)
+Written by `web/scripts/conceptos11.mjs`: the sections with something to answer per part, and the live schematics a
+lesson makes explorable (see «Mastery, smart practice…»).
 
 ### `glosario.json`
 `[ { "termino": "Acoplador direccional", "html": "…", "ver": ["sec-36.4"] } ]` (alphabetical, as in the book).
@@ -1005,7 +1009,8 @@ Ctrl S save, W wire, S/V select, G ground, F/0 fit, + − zoom, Esc cancel.
 
 Storage: `obtenerAlmacen()` key **`editor-circuitos`** = `{ version: 1, circuitos: { [id]: { id, nombre, creado,
 actualizado, borrado?, doc } } }` (times in ms; delete keeps a tombstone with `borrado` and an empty drawing,
-for syncing). The unsaved draft is `localStorage` `epa:editor-borrador`; an unsaved draft with parts is kept in
+for syncing), written through `guardadoCircuitos` (`lib/sincronizacion/guardado.ts`: read-merge-write; the
+synchronisation's circuits reach the open editor's memory). The unsaved draft is `localStorage` `epa:editor-borrador`; an unsaved draft with parts is kept in
 «Mis circuitos» before an import replaces it. Export: `.cir` (the generated netlist) and SVG (book palette,
 fonts embedded); on phones through the share sheet when available. Import: `.cir/.net/.sp/.txt`.
 
@@ -1248,6 +1253,60 @@ pans in the full-screen view; `window.__epaProtoboard` for the tests), `Protoboa
 «Simulación» — the simulator's worker and `Resultados.svelte`; after the first run each change re-solves the
 operating point in the background (LEDs lit, voltages under the finger) —, «Avisos», «Pieza», «Añadir»).
 
+Redesign of 0.11 (interaction; the document, nets, netlist and checks are unchanged):
+- `Protoboard.svelte`: one action bar (`.herramientas.acciones`, labelled buttons: Deshacer, Rehacer, Original
+  when a schematic's board was changed, Nombres, «Monta este circuito», Simular/Detener); the bench; the tray
+  (`Bandeja.svelte`) under it on touch screens (`app.movil`) in a dock with the tabs Piezas · Esquema ·
+  Resultados · Avisos · Pieza · Medir (`data-pestana`; a panel folds the tray away below 1000 px of height), or
+  a column on the left and the panel on the right on wide screens; «Más piezas» opens the editor's palette in a
+  sheet. The tools «seleccionar» and «cable» remain (practica/Montar.svelte uses the latter), plus «explorar»
+  for the lesson.
+- `bandeja.ts` + `Bandeja.svelte`: the cards (`CARTAS`, drawn by `svgCarta` with `svgPieza` on a cropped
+  viewBox); cards take every touch (`touch-action: none`): a drag mostly along the tray scrolls it by hand
+  (with a flick), anything else drags the card; a tap arms it (`pb.armada`, then a tap on the board puts it).
+  The bench draws the ghost (`Mesa.fantasma/soltarFantasma/quitarFantasma`: legs snapped, a DIP kept across the
+  channel, 56 px above a finger, a guide's part near its place snapped to it), with its strips green or red;
+  `pb.anadirEn(comp | pieza, pos)` checks `motivoInvalida` and `edicion.ts motivoCorto` (two legs of a part in
+  one strip or rail — also refused for moves that create it) and `pb.nuevaEn` / `edicion.ts piezaDe` build the
+  piece (a gate comes in its chip).
+- `BarraPieza.svelte` (Mesa's `flotante` snippet, placed by the selection's screen box): Girar, Voltear, the
+  value (`valores.ts`: the field — R/POT/C/L value, a DC supply's voltage, else the model —, common values as
+  chips, `pasoE12`, typed with `leerValor`), Pulsar/Conmutar, Más (the «Pieza» tab), Quitar; a wire's colour.
+- Wires (`Mesa.svelte`): a free hole starts one in the select tool (tap–tap or drag; `tirasActivas` lights the
+  start and end strips); wires are drawn over the parts with a transparent `.golpe` line; a wire end is dragged
+  without selecting it first; a 600 ms press removes it (`pb.quitarCable`, a note with «Deshacer»); new wires are
+  not selected; `pb.colorAuto` colours them by role (`rolEn`: + of a bench supply or an unused + rail → red, ground
+  or − → black, else a cycle). Zoom buttons (`controles`), the empty-board hint (`vacia`), phones start at
+  `ajustarDedo` (18 columns), `mostrar(puntos)` brings a guide's step into view; the info line fades after 5 s.
+- «Monta este circuito»: `guiados.ts` (five built-in circuits as `CircuitoFuente`s with a hand layout on
+  `vacio.ts montajeVacio` — or the auto-placement —, a sentence per part, from the book with its section when it
+  has one, and the proof: an LED lit, a net's voltage or a clean run), `guia.ts` (plain: `planGuiado` /
+  `planDeMontaje` for the board a schematic opened with; the start keeps the equipment, its leads and rail
+  bridges; steps in a hand order or each part followed by the wires its strips allow; `evaluar` checks by
+  conductor — rails by what joins them —, symmetric parts either way round, and explains the newest stray piece
+  or wire: reversed, a leg off, a wire between other strips), `guia.svelte.ts` (`Guia` on `pb.guia`: state,
+  `hacerPaso`, `empezarGuia`), `Guia.svelte` (the step band, the answer at the foot of the bench, the chooser, the
+  celebration). While a guide or the lesson runs, the «Protoboard» page does not autosave (a change still waiting
+  to be written when it starts is written then: the board before the guide). The guide never writes over the
+  montage or draft it replaced: «Otro circuito» restores that board behind the chooser (the next guide's «Salir»
+  comes back to it); «Seguir con esta placa» goes on with the guide's board as the draft — from a saved montage
+  (`#/protoboard/<id>`, untouched) the page moves to `#/protoboard`; a draft with own work that it replaces is first
+  kept in «Mis montajes» as «<title> (antes de la guía)» with a notice —; «Guardar en Mis montajes» saves it as a
+  new montage and leaves the draft alone (`Guia.svelte alQuedarse(anterior, guardar)` → `PaginaProtoboard`). An
+  unchanged board is never written again (`ultimo`).
+- «La protoboard por dentro»: `leccion.ts` (screens, the nearest hole of a tap, joined holes and the answers of
+  the questions from `placa.ts agujero`: the same conductor; the 400- and 830-point models have whole rails, so
+  nothing is said about split rails), `leccion.svelte.ts` (`Leccion` on `pb.leccion`, `empezarLeccion`,
+  `terminarLeccion`), `Leccion.svelte`. Shown before the first guided circuit (`localStorage
+  epa:protoboard-leccion`), and as «0» in the chooser.
+- `Recorrido.svelte`: three cards the first time on the «Protoboard» page (`epa:protoboard-recorrido`), moving on
+  when a part or wire is added; it never blocks the bench.
+- The shared engine (0.11 QA): the bar counts only the board's own «Simular» runs (`propias`; `todas` adds the
+  live operating point), so a run of the page under «Ver en protoboard» shows no «Detener» there and is never
+  cancelled by it (nor by closing the board); «Simulando…»/«Detener» appear after 400 ms.
+- `pulsar.ts`: the floating bar's buttons (and the zoom buttons, the guide's fix) act on the release of a tap: right
+  after a drag Chrome sometimes drops the click of a quick tap over the bench.
+
 Instruments on the board (0.10): `medida.svelte.ts` (`MedidaProtoboard`: a `Banco` of componentes/instrumentos/ with
 `dinamico` and `arranque`; leads at board points, each connected to the net of its hole or terminal via
 `redEn`; `sincronizar()` puts the board's netlist — plus `VFNGEN red black DC 0` when both generator leads are
@@ -1264,7 +1323,8 @@ snapping and its net lit; leg handles still drag (opening the circuit); the step
 `localStorage epa:medir-pista` remembers the dismissed first-use hint.
 
 Storage: almacen key **`protoboard-circuitos`** = `{ version: 1, circuitos: { [id]: { id, nombre, creado,
-actualizado, borrado?, doc } } }` (as the editor's, tombstones included), registered for synchronisation.
+actualizado, borrado?, doc } } }` (as the editor's, tombstones included, written through `guardadoMontajes`),
+registered for synchronisation.
 
 Editor changes for it (0.10): `generarNetlist(doc, con?)`; the panels typed by `EdicionPropiedades`/`EdicionPaleta`;
 a «Temporizador 555» palette part (`T555`, DIP-8 pin order, subcircuit `ne555` in `modelos.ts`: comparators at 1/3
@@ -1283,7 +1343,7 @@ Tests: `tests/protoboard10.mjs` (Node: every book netlist and simulable figure s
 netlists identical, the other within numerical noise of a switching transient), `tests/protoboard10.spec.ts`
 (`playwright.protoboard10.config.ts`, port 4351; 74HC chips, the tools-menu entry), screenshots in
 `tests/capturas/protoboard10/` (`logica-*`: the chapter 29 OR-with-NAND circuit and the 74HC00 pinout;
-`contador-*`: the ripple counter with 74HC74 + 74HC86 and the XOR chip's pinout).
+`contador-*`: the ripple counter with 74HC74 + 74HC86 and the XOR chip's pinout); `tests/proto11.spec.ts` (`playwright.proto11.config.ts`, port 4441: the 0.11 redesign with touch gestures, screenshots in `tests/capturas/proto11/`).
 
 ## Consoles (`web/src/componentes/consolas/`, data in `web/public/consolas/`)
 
@@ -2251,6 +2311,230 @@ practice item's first final answer counts as a lesson question (lessons) or a Re
 not count, as before. Tests: `tests/preguntas10.spec.ts` (`playwright.preguntas10.config.ts`, port 4391);
 screenshots in `tests/capturas/preguntas10/`.
 
+## Learning events, feedback, XP, achievements, courses and reminder (0.11, `web/src/lib/aprendizaje/`)
+
+**Event module** (`eventos.ts`, the contract for everything that reacts to learning; group B hooks in here).
+Emitters call `emitir(evento)` with a plain object; `t` (ms) is filled in. Types (`EventoAprendizaje`):
+- `respuesta` `{id, clase: practica|pregunta|ejercicio, origen: leccion|repaso|practica|ejercicio|prueba-nivel|
+  inteligente|problema-dia (group B),
+  correcta, intento (1-based, per round), pistas (on show), final (closes the question), parte?, seccion?, subtipo?}`
+  — every checked attempt. Emitted by `practica/Practica.svelte` (each «Comprobar»; `origen` prop, `leccion` from
+  the lessons), `pregunta/Pregunta.svelte` (each answer; a retry after «Probar otra vez» is `intento` 2; `origen`
+  prop: `leccion`, `repaso` by default, `prueba-nivel` in the placement test) and `lib/aprendizaje.svelte.ts`
+  (`registrarIntento`, `autoevaluar`: `clase` `ejercicio`, `intento` = the exercise's lifetime attempts).
+- `leccion-completada` `{parte, seccion, primera}` — the lesson's summary reached by finishing it (not by opening
+  `/fin`); `ejercicio-resuelto` `{id, parte?, intentos, fallos, pistas, conSolucion}` — the first time it becomes
+  solved; `paso-montaje` `{circuito, paso, total}` and `circuito-montado` `{circuito}` — «Monta este circuito»
+  (`protoboard/Guia.svelte`; `circuito` is the plan id: led, divisor, pulsador, transistor, 555 or libro);
+  `simulacion` `{origen: simulador|editor|protoboard}` — a run without engine failure started from those pages;
+  `objetivo-cumplido` `{dia, racha}` — `progreso-diario.svelte.ts` when today's goal flips to met;
+  `prueba-nivel` `{curso, aciertos, total, recomendado}`; group B: `problema-dia` `{dia, id, correcta, intentos,
+  racha}` — the first final answer of the day's problem. Consumers: XP and achievements, and mastery
+  (`dominio.svelte.ts consumirDominio`, every `respuesta`).
+Delivery: (1) `retroalimentacion.ts retroDe` synchronously inside `emitir` (still inside the tap: audio needs a
+gesture); (2) `escuchar(fn)` synchronous UI listeners (returns the remover); (3) consumers
+(`registrarConsumidor`), installed by `consumidores.ts → instalar()`, a lazy chunk loaded on the first event —
+events emitted meanwhile are replayed in order. Until delivered, waiting events are also kept in localStorage — one key
+per tab, `epa:eventos-pendientes:<tab id>`, written on every event while loading or failed (`cola-eventos.ts`: the
+newest `MAX_COLA` = 1000 are kept, in memory and stored alike, with a console warning when older ones are dropped) —
+and the next start adopts every such key (also an older tab's), replays the events once each (`unirListas`) and
+removes the keys after delivering them (the consumers are idempotent: an event delivered twice counts once). If the
+chunk fails to load (state `fallido`), the load is retried after 2, 4, 8… s (≤ 60 s), on the next event and when the
+app becomes visible — Chromium remembers a failed module URL, so a retry imports the URL named in the error with
+`?reintento=n`. A throwing listener never stops the others. Events are
+facts; consumers must be idempotent (an answer can be reported again after a reload). Tests may set
+`window.__epaEventos = []` to collect the last 100.
+
+**Feedback** (`retroalimentacion.ts`): `sonar(tipo)`, `vibrar(tipo)`, `retro(tipo)` for `acierto | fallo | leccion |
+nivel | logro | paso`. Sounds: 1–6 sine/triangle notes with exponential envelopes through one GainNode at 0.16;
+the AudioContext is created on the first cue (`prepararSonido()` primes it at the start of a tap whose cue comes
+after an await, e.g. a prediction that simulates) and suspended 1.2 s after the last cue (8 s after priming).
+Nothing plays when the page is hidden. Vibration: `tauri-plugin-haptics` on Android (impact light, selection,
+notification error/success), `navigator.vibrate(VIBRACIONES[tipo])` elsewhere. `prefs.sonido` / `prefs.vibracion`
+(device-only, `undefined` = on), switched in «Aa» (`progreso/AjustesRetro.svelte`).
+
+**XP and levels** (`niveles.ts`, pure). Ledger ids and amounts: `pr:<item>` / `pq:<question>` right answer, 10 at
+the first attempt without hints, else 5 (once per id; `prueba-nivel` answers and exercises' `respuesta` give
+none); `l:<parte>/<label>` lesson 20; `e:<label>` exercise 15, 8 after a failed check or with hints, 0 after
+opening the solution; `c:<circuit>` guided circuit 25; `d:<day>` daily goal 10 + 2 × min(streak − 1, 10);
+`s:simulacion` 0 (marks the first simulation). Level n starts at 25(n−1)(n+2) XP (0, 100, 250, 450, 700…; each
+level 50 XP longer); 20 names (`NOMBRES_NIVEL`, «Chispa» … «Laboratorio completo»), the last kept past level 20.
+
+**Progress module** (`progreso.svelte.ts`). Almacen key `progreso-xp` `{version: 1, xp: {id: {x, t}}, logros:
+{id: ms}}`, read field by field (any object: the 1.0 migrations branch on `version`). `consumirEvento` →
+`premioDe(evento)` → `otorgar` (new id only: totals, «+N XP» toast, level-up toast) → `revisarLogros(false)`.
+`reconciliar()` (on load and after `epa:sincronizado`) adds, silently and with the same ids and amounts, what older
+data already proves: lessons with `c`, solved exercises, days with `cumplido` (streak computed from the stored
+days) — so a 0.10 install is credited once and its stores are never written. Ids of events still waiting for
+the module are reserved so the reconciliation does not take them silently. Reactive `progresoXp {listo, total,
+nivel, hoy, logros, version, estadisticas}`; `xpDesde(t)` (a lesson's XP), `historialXp(n)`, `calcularEstadisticas()`.
+Synchronised as stores `progreso-xp` (LWW per award; equal ids on two devices are one item, so the sum never
+double-counts) and `progreso-logros`.
+
+**Achievements** (`logros.ts`, pure): 30 `Logro {id, nombre, como, icono, familia, progreso(s) → [n, de]}` over
+`Estadisticas` (lessons, right answers, without help, exercises, guided circuits, simulations, longest streak,
+days with the goal, sections read, chapters with every practice item and Repaso question right — totals from
+`practica/indice.json porParte` + `repaso/indice.json` —, chapters with every lesson, courses started and
+finished, placement tests, a lesson before 8:00 / between 23:00 and 4:00, level; group B: days with the problem of
+the day solved and their longest run, from the ledger's `pd:` ids). Unlocked once (time stored),
+announced only when unlocked by a live event. Badges: `progreso/Medalla.svelte` (inline SVG glyphs, colour by
+family; grey, dashed ring and padlock when locked).
+
+**Several browser tabs** (`lib/pestanas.ts`): `progreso-xp`, `dominio`, `problema-dia` and `cursos` keep their data in
+memory and write the whole object. Each merges another tab's writes per item with a three-way merge whose base is
+what the tab last read or wrote (`fusionarPestanas`): one side changed → that side; both → the store's rule (XP and
+achievements: the earliest; mastery: `fusionarRegistros`; problem of the day: `preferirDia`; passed lessons: the
+earliest; placement tests: the latest); deleted on one side and unchanged on the other → deleted; new → kept.
+Read-merge-write (`EnlacePestanas`): before every write the tab reads the key synchronously and, if its text is not
+the one it last read or wrote, merges it first — so nothing depends on receiving every `storage` event (a tab still
+loading, a page restored from the back-forward cache); the `storage` event and `pageshow` (persisted) only refresh
+what is on screen, writing back when the other tab lacks something. Activated right after the key is read at load.
+Not in Tauri (one window, plugin-store). Writes are awaited by `aplicar*` (a storage failure reaches the engine).
+
+**Courses** (`cursos.ts`, pure): `CURSOS` — the owner's table with part ids `capNN` (the file numbering: from cap15
+on the printed number is one less), `leccionesDeCurso` (the h2 sections of its chapters, in order),
+`verificarCursos(indice)` (`sinCurso`, `inexistentes`, `repetidos`: cap49 and cap50 are in two courses each),
+`preguntasPrueba` / `repartoPrueba` (6–10 questions, one or two per chapter, extras to the first chapters).
+`cursos-estado.svelte.ts`: almacen key `cursos` `{version: 1, superadas: {"parte/label": ms}, pruebas: {curso:
+{t, aciertos, total, recomendado, marcadas}}}`, synchronised as `cursos-superadas` (deletions dated with
+`anotarBorrado`) and `cursos-pruebas`. A passed lesson is not a completed one (no XP, no daily goal).
+Pages (`componentes/cursos/`): `PaginaCursos.svelte` (`#/cursos` the ten courses; `#/cursos/<id>` chapters and
+lessons with `data-estado` hecha | superada | en-curso | pendiente and «Continuar» → `avance.svelte.ts`: the first
+lesson neither completed nor passed, at its last step), `PruebaNivel.svelte` (`#/cursos/<id>/prueba`: the course's
+Repaso questions, chapters in course order and choice before numeric inside a chapter, «No lo sé», result per
+chapter, recommendation = first chapter with a miss, else the last one; «Marcar como superadas» for the pending
+lessons of the chapters before it, «Deshacer», «Repetir la prueba»).
+
+**Pages and celebrations** (`componentes/progreso/`): `PaginaProgreso.svelte` (`#/progreso`), `CelebracionLeccion.svelte`
+(the lesson's summary: XP of the visit counting up, streak, accuracy at the first attempt, level bar, ~1 s CSS
+confetti only when the lesson was finished in this visit), `Destello.svelte` (pop and 8 sparks around a right
+answer's seal, 0.6 s, then removed), `ContadorXp.svelte` (requestAnimationFrame only while counting),
+`Celebraciones.svelte` (fixed, `pointer-events: none` toasts; mounted by `ArranqueProgreso.svelte` in App.svelte
+once `avisos.svelte.ts` queues something), `inicio/NivelInicio.svelte` (start page: level, XP, the course of the
+chapter being studied). Transforms and opacity only; nothing animates while idle; `prefers-reduced-motion` keeps
+only fades. No rail entries (the rail must keep fitting 800 px of height, `navegacion.spec.ts`): the start page
+links both (level card, «Cursos» and «Progreso y logros» chips), `Barra.svelte` names the two views; icons `cursos`
+(route) and `progreso` (trophy).
+
+**Daily reminder** (`recordatorio.ts`, Android only: `enTauri()` and an Android user agent). `prefs.recordatorio
+{activo, hora "HH:MM"}` (device-only; default off at 20:00). On: `plugin:notification|is_permission_granted` →
+`request_permission` (Android 13+ dialog) → `cancel([20110])` → `plugin:notification|notify {options: {id: 20110,
+title, body «Unos minutos con la electrónica: le espera el problema del día.», schedule: Schedule.interval({hour,
+minute}, allowWhileIdle true), autoCancel, extra: {ruta: RUTA_RECORDATORIO}}}`; a tap (`onAction`) opens
+`RUTA_RECORDATORIO` = `#/problema` (group B: the problem of the day the text announces; a cold start from the
+notification opens the start page, whose card leads to it). Off: `cancel`.
+At start-up (idle) `comprobarRecordatorio` re-schedules it if it is on but not pending. Native side: `src-tauri`
+`[target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]` tauri-plugin-haptics 2 and
+tauri-plugin-notification 2 (registered in `lib.rs` under the same cfg), capability `capabilities/movil.json`
+(platforms android, iOS: `haptics:allow-*`, `notification:default`). The plugins' Android libraries bring VIBRATE,
+POST_NOTIFICATIONS, RECEIVE_BOOT_COMPLETED and WAKE_LOCK (manifest merge), so `gen/android` needs no change.
+
+Tests: `tests/grupoA11.spec.ts` (`playwright.grupoA.config.ts`, port 4451; screenshots in `tests/capturas/grupoA11/`).
+
+## Mastery, smart practice, problem of the day and explorable figures (0.11 group B, `web/src/lib/aprendizaje/`)
+
+**Concepts.** A concept is an h2 section, key `"<parte>/<label>"`: the unit of the lessons, of the practice items
+(`seccion`), of the Repaso questions (`ref` = the section, an h3 inside it «sec-5.3.2», a problem «prob-…» whose
+section ejercicios.json gives, or an appendix section «apG-4») and of the exercises (`seccion` in ejercicios.json).
+`catalogo.ts` resolves them (`conceptoDeRef`, `conceptoDePregunta`, `conceptoDeEjercicio`, `conceptoDePractica`), lists
+a part's answerable items (`itemsDeParte`: practice items, Repaso questions, self-checked exercises with `modo:
+'auto'`), the flashcards due now with the concept of their first «ver» (`tarjetasDebidas`) and the problem
+candidates. Glossary terms were rejected as concepts: nothing but «Une las parejas» names them.
+Generated by `web/scripts/conceptos11.mjs` (after practica10.mjs in `generar.py`; reads only JSON):
+`libro/conceptos.json` `{version: 1, total, partes: {<parte>: [labels with something to answer, book order]}}` (632;
+the denominator of the chapter and course bars, `cargarPracticables`/`conceptosPracticables`) and
+`libro/explorables.json` `{version: 1, esquemas: {"datos/1.4.json": [0], …}}` (simulable DC schematics with an R, C or
+L of known value: 25 drawings in 20 figures).
+
+**Mastery** (`dominio.ts`, pure; `dominio.svelte.ts`, the consumer registered in `consumidores.ts`). Almacen key
+`dominio` `{version: 1, items: {<item id>: {s: concept, c: 'p'|'q'|'e', r: [[t, points 0–100, 1?], …]}}, migrado: ms}`.
+Every `respuesta` event becomes a round: the first answer to an item after ≥ VENTANA (10 min) without one; points
+100 (first attempt, no hints; exercises: no hints, as their `intento` is lifetime), 60 (with help), 0 (wrong). A wrong
+non-final attempt is a provisional round (`1` in the third slot) that the round's final answer settles (≤ 60); a
+retry inside the window or an event with the same `t` is ignored (idempotent: replays, «Probar otra vez», reloads);
+an older event opens its own round only if no round is within the window; ≤ 6 rounds per item. Days (spaced
+practice, stability) are review days: `numeroDia` uses `repaso/srs.ts inicioDia`, the 04:00 cut of `claveDia` also on
+DST days. Concept formula: item
+score q = recency-weighted mean (½ per older round), item weight 1 + ½·min(2, days − 1), accuracy A = (Σwq + 0,45) /
+(Σw + 1,5); stability S = 3 d · 2^(m−1) (m = days whose rounds averaged ≥ 60; 1,5 d if none; ≤ 192 d); retention
+R = 0,5^(days since last / S); mastery = A·(0,5 + 0,5R). Levels nuevo / intentado < 0,4 ≤ familiarizado < 0,6 ≤
+competente < 0,8 ≤ dominado; `repasar` = A ≥ 0,6 and R < 0,7. `agregar(claves)` (chapter, course): mean with untouched
+concepts as 0, counts per level. Events are processed one at a time (`cola`; a question's section may need its quiz
+file). Migration once per device (`migrado`): XP ledger `pr:`/`pq:` (10 → 100, 5 → 60), `repaso-fallos` (0),
+`ejercicios` (solved: 100, 60 with failures or hints, 30 after the solution; failed: 0), each at its stored time;
+those stores are only read. Queries (reactive through `estadoDominio.version`): `dominioDe`, `conceptosConDominio`,
+`dominioDeClaves`, `ultimasRespuestas`, `instantanea`, `esperarDominio`. Synchronised as store `dominio` (time = last
+round): the engine merges two devices' versions of an item in the file itself (`unir` = `fusionarRegistros`: union by
+time, settled beats provisional, symmetric — the concept and kind are chosen the same way on both devices —), so the
+union is durable as soon as one run writes it; `aplicarDominio` stores the union with what it holds (rounds answered
+meanwhile stay) and awaits the write.
+UI (`componentes/dominio/`): `MedidorDominio` (four segments, `--dominio-0…4` in app.css, level always in text or
+`title`), `BarraDominio` (a chapter's or course's sections per level), `MarcaDominio` (next to every h2 in the reader,
+only with evidence, → `#/practicar/<parte>/<label>`), the index's `.pin.dominio`, `PaginaCursos` (course, chapter,
+lesson), `PaginaProgreso` (summary card) and `PaginaDominio` (`#/progreso/dominio`: counts, weakest with «Practicar
+esto», decaying with «Repasar», per course with its chapters).
+
+**Smart practice** (`seleccion.ts`, pure; `componentes/practicar/`; `#/practicar[/<parte>[/<label>]]`, view
+`practicar`). `planificar`: buckets débil (evidence, mastery < 0,6), repasar (`repasar`), nuevo
+(`nuevosDisponibles`: the current course's chapters up to the furthest touched — lesson completed/passed, read, or
+evidence —, the next one only when all before are touched; studied-but-unanswered sections first, then book order),
+dominado; quotas 4/3/2/1 of 10, a bucket short of concepts takes its quota as more items of its own concepts (≤ 3/2/2/1),
+then more concepts in priority order. A section focus gives that section's items (topped up to 5 with the chapter's
+weakest), a chapter focus the chapter's own buckets (≤ 4 items per concept). `completar`: round robin over the plan,
+never an item answered < 20 h ago while the concept has another and never < 1 h; weak concepts retest failed items
+first, decaying/mastered ones the right answers answered longest ago, new ones unanswered items; kinds alternate;
+at most 2 flashcards, only due ones and never for new concepts; seeded (mulberry32, items sorted by id first).
+`ordenar`: a known item first as warm-up, then the concept with most items left that differs from the previous one.
+`sesion.ts` (`prepararSesion(alcance, semilla)`, `window.__epaSemillaPractica` fixes the seed) loads only the
+course's and the plan's parts; `SesionPractica.svelte` (intro by bucket, one item per screen with `Practica`/`Pregunta`
+`origen="inteligente"`, `TarjetaEjercicio` (its checks heard with `escuchar`), `TarjetaSesion` (the SM-2 `calificar` of
+Repaso: the card is simply reviewed); Repaso answers also go through `registrarRespuesta` (daily goal, «Repasar
+fallos»), practice items count as a question; end: first-attempt hits, `xpDesde`, each concept's mastery before → after).
+`contexto.ts`: `cursoActual()` (the course of the start page's chapter, else Fundamentos), `estudiada`, `nivelEnCurso`.
+
+**Problem of the day** (`problema-dia.svelte.ts`; `componentes/problema/PaginaProblema.svelte`, `#/problema[/ayer]`,
+view `problema`; `inicio/ProblemaInicio.svelte`). `problemaDelDia(dia, curso, nivel, candidatos, recientes)` (pure):
+pools in order — «Calcula» items (`numerico`) of the course's chapters ≤ level, self-checked numeric exercises not
+solved ≤ level, the same over the rest of the course, anything given —; the caller loads the whole course's
+«Calcula» items and only its exercises (`catalogo.ts candidatosProblema(partes, resueltos, 'partes')`), and the whole
+book's exercises only when the course has nothing. Chapter: the pool's chapters ranked from the frontier (the level's
+chapter, then backwards; after it, nearest first; outside the course, book order), the k-th gets ½, ¼, ⅛… of the days
+(`pesoCapitulo`; the last takes the rest), drawn with FNV(`dia|curso|nivel|capitulo`); the item inside it FNV(`dia|curso|
+nivel`), skipping the last 30 days' ids (that chapter first, then the others in rank order); seed FNV(`dia|valores`).
+Stored on first use of the day (almacen `problema-dia` `{version: 1, dias: {<day>: {id, k: practica|ejercicio, parte,
+semilla, curso, t, r?: {bien, intentos, t}}}}`, synchronised as `problema-dia`, time = max(t, r.t)). Of two versions of a
+day every device keeps the same (`seleccion.ts preferirDia`, a total order): answered beats unanswered, right beats
+wrong, then the first answer; of two unanswered, the first chosen — applied by the engine in the file itself (`unir`),
+so `aplicarProblemas` receives the preferred version (it still keeps ours if that one changed meanwhile). The day follows the 04:00 change: `reloj.hoy` (`seguirDia()`: a
+timer at the boundary, ≤ 1 h, and a check on `visibilitychange`/`focus`); the page and the start page card move on to
+the new day's problem. The page uses `Practica` with `semilla` (Numerico's `semillaFija`: the stored seed is not
+advanced) and `repetir={false}`, `origen="problema-dia"`; the first final answer → `registrarResultado(today, bien,
+intentos, the problem on screen)` (if the stored day has another, unanswered problem — replaced meanwhile, or the page
+opened before 04:00 — the answered one becomes the day's) → event `problema-dia {dia, id, correcta, intentos, racha}` →
+XP `pd:<day>` 15 (`XP.problemaDia`), achievements `problema-dia` and `problemas-7`. Answered: the solution with the
+day's values (`Numerico final`); `/ayer`: the stored day or the one it would have been (`problemaDe`, not stored).
+
+**Explorable figures in lessons** (`figuras-vivas/esquema/ExploraEsquema.svelte`). `Leccion.svelte` sets the context
+`CONTEXTO_LECCION` `{parte, seccion, explorables}` (`figuras-vivas/contexto.ts`, loaded with the step's maps before the
+first screen); `FiguraViva` keeps a 204 px room per listed schematic until the data arrive, then shows the row for
+simulable, non-external schematics without a transient. Part and quantity: the section's `deslizador` item on that
+drawing (`fuente.datos`/`esquema`), else a part other than the `prediccion`'s with its quantity, else a designated R and
+a labelled node that is not a supply (else the part's own current). Value `Valor.svelte` over E12; `est.cambios` +
+`resimular(est)` (the simulator worker) 250 ms after the last move, at once on release, only while on screen and the
+page visible (`data-pendiente` until seen again; `window.__epaExplora.simulaciones` and `data-simulaciones` count
+runs); reading of `est.op` vs the book's `simulacion.op`, ▲/▼ %, a sentence with both values, «Valores del libro»
+(`restaurar`). Classes prefixed `ex-` (the reader has a global `.lectura`).
+
+Routes for the QA harness: `progreso:dominio`, `practicar[:…]`, `problema[:ayer]`, `leccion-explora:…` (group
+`aprendizaje`). Tests: `tests/grupoB11.spec.ts` (`playwright.grupoB.config.ts`, port 4461, build `/tmp/epa-dist-grupoB`;
+screenshots in `tests/capturas/grupoB11/`). The fixes of the independent review of 0.11 (synchronisation of the problem
+of the day and of mastery, the engine's record rule simulated for two devices in Node, guides and saved montages,
+celebrations, day changes, events, tabs): `tests/revision11.spec.ts` (`playwright.revision.config.ts`, port 4471,
+build `/tmp/epa-dist-revision`); the second review's engine scenarios and the randomized simulation of the engine
+(three devices, an 0.10 one and a fresh install; offline edits and deletions, failing stores, rejected values, clock
+skew, interrupted runs; no loss, no resurrection, convergence, commits stop): `tests/revision11-motor.spec.ts` (pure,
+Node) with `tests/motor-simulado.ts` (the engine's steps with fusion.ts) and `tests/motor-azar.ts`.
+
 ## Sincronización y aviso de versión (`web/src/lib/sincronizacion/`, `web/src/componentes/sincronizacion/`)
 
 **Document** in the owner's private repository (default `Metalaria/electronica-datos`, path
@@ -2270,28 +2554,158 @@ t`, drops it. A file with another `id` (new file, other repository) is another h
 merged in as new.
 
 **Local state** (almacen keys in `lector.json` / `localStorage epa:*`): `sinc-ajustes` {repositorio, ruta, auto},
-`sinc-estado` {doc id, dispositivo, ultima, items: {store: {id: [t, hash]}} of the last synchronised version,
-resumen}, `sinc-marcas` {cambios, borrados: {store: {id: ms}}} written by the data modules (`marcas.ts`:
-`anotarCambio`, `anotarBorrado`), `sinc-version` {t, ultima release, descartada}. Dating a local item: unchanged hash
-→ its synchronised `t`; changed → max(its own time field, its mark), or now when that is not newer; a synchronised
-item missing locally → tombstone at its deletion mark (or now). The token is stored apart (`credenciales.ts`:
-plugin-store file `credenciales.json`, or `localStorage epa-credencial:github` in a browser).
+`sinc-estado` {doc id, dispositivo, ultima, items: {store: {id: [t, hash] | [t, hash, n, file hash]}} of the last
+synchronised version, borrados: {store: {id: t}} (0.11: the items recorded as deleted, in a field of their own so that
+an 0.10 engine — which knows only `items` — never reads «-» as a hash), resumen}, `sinc-marcas` {cambios, borrados:
+{store: {id: ms}}} written by the data modules (`marcas.ts`: `anotarCambio`, `anotarBorrado`; a module with a
+`Guardado` marks every item its write changes or removes, and stores the marks before the data), `sinc-version` {t,
+ultima release, descartada}. The marks are written at once and read-merge-write (a tab never overwrites another tab's
+marks; of a change and a deletion of an item, the later one stays), and a run forgets only the marks it saw, if
+unchanged since. `huellas` {store: {id: hash}}: the value a change mark is for, when the module knows it (a
+`Guardado`); a mark for another value (another tab's change not stored yet) is not taken for this copy's. `sinc-estado.iniciada`: the local time the last successful run started.
+Dating a local item (`fusion.ts fecharLocal`): unchanged hash → its synchronised `t`; changed **and marked** → max(its
+own time field, its mark), or — only for a mark newer than `iniciada` (made after the device recorded what it
+synchronised) — max(now, synchronised `t` + 1) when that is not newer (a clock behind still outdates what it saw); an
+older mark (kept for a store that could not be written, made again for a change still unwritten — possibly by another
+tab, for another value) never outdates the record: dated synchronised `t` − 1; changed **without a mark** — not an edit of the reader's (every module marks its edits) but a stale copy
+written back by a module's old memory or an old version — → its own time (unless equal to the record's), or
+synchronised `t` − 1 (it never outdates
+what it was synchronised with); never synchronised, without a mark → its own time, else 1 when it equals the store's
+default value (`porDefecto(id)`: a fresh install's settings) and 2 otherwise (a reader's value of unknown age always
+beats a default; finding 4 of the third review); a synchronised item missing locally → tombstone at its deletion mark
+only when marked (at max(mark, synchronised `t` + 1); for a mark not newer than `iniciada`, at the mark when it is
+newer than the record, else at synchronised `t` − 1, which loses; without a mark nothing is sent: a stale copy without
+that item does not delete it); recorded as deleted
+(`borrados`) and missing → that same tombstone, or one at a newer deletion mark; never recorded, missing, with a
+deletion mark (created and sent by a run that did not finish) → a tombstone at its mark. A local value equal to the
+file's takes the file's time (`alinearIguales`). Pruning: a local tombstone record absent from the file with `t ≤
+podado` is forgotten, so a device whose clock is behind does not send pruned tombstones back (no endless commits).
+**Unions in the file**: a store with `unir` (dominio: `fusionarRegistros`; problema-dia: `preferirDia`) has two live,
+valid versions of an item merged by the engine before the PUT and against the sha (a 409 merges again): the merge kept
+as the file's entry when it equals it, else dated max(t₁, t₂) + 1 (`fusionarColecciones`). `unir` must be commutative,
+associative and idempotent (`fusionarRegistros` is: the rounds are united by their exact time, the best of each time
+kept, then the newest `MAX_RONDAS`; property-tested on 3000 random triples). So the union is durable at once
+(another device's next run cannot replace it) and `aplicar` has nothing to add. XP and achievements are registers
+with deterministic ids (no union needed).
+**What is recorded after applying** (`registroSincronizado`): the merged time and the hash of the FILE's value, for the
+items the store holds; a tombstone of an item it does not hold → [its time, `BORRADO`] (so a re-creation here later
+outdates that deletion whatever the clock says). A store that keeps something else than the file (a normalisation)
+sees its item as changed and sends it once with a new time; against back-and-forth (two app versions normalising a
+value in opposite ways) the 4-slot form counts the runs in a row the store kept something else than the same file
+value (`n`, `file hash`; a run that only sent ours keeps counting, a run whose value the store took ends it): past
+`REENVIOS_MAXIMOS` (3) the record is [file t − 1, the store's hash, n, file hash] — the local copy loses to the file, is
+not sent, and `porAplicar` no longer gives that same value to the store (the count stops at 4). An item edited during
+the run keeps its previous record (a deletion made meanwhile becomes a tombstone next time). **A value the store
+rejects** (`valido` false: a newer version's shape, a damaged value) is not applied and is recorded as [file t − 1, the
+store's hash]: the old local copy is never sent over it; only a later local edit (dated after) replaces it. **A store
+whose `aplicar` fails** (or cannot be read back): each item it was given and holds is recorded as [file t − 1, its
+hash] (the local copy, which already lost, is not sent again; the next run retries), an item it was given and does not
+hold is not recorded (the file's newer version is not deleted again), an item the merge no longer has keeps its
+record; and that store's marks are kept (`olvidarMarcas(inicio, fallidos)`), so a deletion keeps its time.
+Every `aplicar` is **atomic** (third review, finding 2): the store writes the new value first and changes its memory
+only after the write succeeded, so a failed write leaves memory and storage alike (nothing half-applied can be sent
+later as the reader's own). If `sinc-estado` itself cannot be written at the end of a run, the run still succeeds, the
+marks are kept and the state is held in memory (`estadoSinGuardar`) for the next run of that page.
+The token is stored apart (`credenciales.ts`: plugin-store file `credenciales.json`, or `localStorage
+epa-credencial:github` in a browser).
 
 **Run** (`sincronizar.svelte.ts`): event `epa:antes-de-sincronizar` → read every store → GET contents (`cache:
 no-store`; base64 UTF-8; files over 1 MB through `application/vnd.github.raw`; 404 → check the repository → new
-file) → merge → PUT with the `sha` only when the stores changed (409/422 → read and merge again, up to 5 times) →
-apply item by item (skipping items edited during the run) → event `epa:sincronizado {claves}`. Errors are Spanish
+file) → merge (with the stores' unions) → PUT with the `sha` only when the stores changed (409/422 → read and merge
+again, up to 5 times) → apply store by store, each store read again right before its `porAplicar` (an edit made in
+it while an earlier store was being applied is never overwritten) and item by item (skipping items edited during the
+run, awaiting each store's write) → event `epa:sincronizado {claves}`. One run at a time across the tabs of the browser
+(`navigator.locks` `epa-sinc`, where it exists), each reading `sinc-estado` and the marks again (`recargarMarcas`: the
+stored ones merged with this tab's). Every request to GitHub is aborted after `ESPERA_RED` (45 s; `github.ts`): a hung
+request never holds the lock (and every tab's synchronisation) — «GitHub tarda demasiado en responder; se reintentará
+más tarde.», transient. Errors are Spanish
 (`github.ts → explicar`: 401 token, 403 permission or rate limit, 404 repository or access, 5xx, offline);
 automatic runs (start-up, every 5 min while visible, on hide, on return after > 1 min) keep transient errors quiet.
 
 **Syncable stores** (`registro.svelte.ts`): `{clave, nombre, leer(), aplicar(poner, quitar), tiempo?, valido?,
-maximo?}`; registered: marcadores, notas, posiciones, leidas («parte/label»), ejercicios, deducciones,
+maximo?, unir?, porDefecto?}` (`aplicar` must reject when it could not store what it was given, and change nothing
+then); registered: marcadores, notas, posiciones, leidas («parte/label»), ejercicios, deducciones,
 repaso-tarjetas, repaso-diario, repaso-ajustes, repaso-tests, repaso-fallos, repaso-examenes (newest 30),
 calc-favoritos, editor-circuitos (`{version, circuitos}` of the schematic editor, items with their own `borrado`),
 protoboard-circuitos (0.10, the same shape for own breadboards),
-lecciones (0.9, «parte/label»), progreso-diario (0.9, one item per day) and progreso-objetivo (0.9). A
-new module registers its `Record<id, item>` almacen key in one line:
-`registrarSincronizable(mapaDelAlmacen({ clave: 'k', nombre: '…', tiempo: (v) => v.t }))`.
+lecciones (0.9, «parte/label»), progreso-diario (0.9, one item per day), progreso-objetivo (0.9), and (0.11)
+progreso-xp (the XP ledger, award id → `{x, t}`), progreso-logros (achievement id → time), cursos-superadas
+(«parte/label» → time), cursos-pruebas (course id → last placement test), and (0.11 group B) dominio (item id →
+`{s, c, r}`, rounds merged as a union in the file) and problema-dia (day → its problem and result; `preferirDia`
+decides which version is kept, in the file). `repaso-ajustes` and `progreso-objetivo` declare their default value
+(`porDefecto`).
+**Modules and their memory** (`guardado.ts`, third review, finding 1): every module that keeps a store's items in
+memory (usuario: marcadores, notas, posiciones; aprendizaje: ejercicios, leidas, deducciones; Repaso: the six keys;
+calculators' favourites; lecciones; progreso-diario and its goal; the editor's and the breadboard's circuits) keeps a
+`Guardado` per almacen key and registers `sincronizableGuardado(g, …)`: reads are the memory merged with the storage
+(three-way, base = what the module last read or wrote); its own writes are read-merge-write and mark what changed;
+another tab's writes reach memory (`storage` event); the synchronisation's result is written first and put in memory
+after (atomic); a write the storage refused stays pending (its marks are made again at every synchronisation's read,
+and the next write retries it). Fourth review: reads, merges and writes of a key are one queue, and the memory is
+read INSIDE each step (a write queued behind another never writes a copy made before the first put the other
+writer's items in memory); after `aplicar`, memory gets what was STORED for the applied items (another tab's newer
+version kept by the merge, not the file's older one); of two changes of an item without a time of its own, the newer
+by the marks (a change still pending from a refused write loses to another tab's later one; applying a
+synchronisation, the other tab's edit stays). Cost: per item, the JSON text and the hash only when the text changed
+(an index reused from write to write); when the stored text is the one this module last read or wrote (`Almacen`
+`leerTexto`/`escribirTexto`, localStorage; in Tauri's store nobody else writes) nothing is parsed or merged; big
+stores (`guardadoDeRegistro`) read the live memory and assemble the stored text from the items' texts. An editor
+autosave with a 2 MB library: 1–1,4 s before, 20–80 ms now (5 MB: 2,4–5,3 s → 40–140 ms); after another tab wrote
+the key, a merge: about 0,1–0,3 s. Fifth review (the Tauri path): a step trusts that the storage is what it last read or wrote only
+after a successful read of the key (`leido`; in Tauri there is no text to compare) — a write after a failed or
+unfinished load reads and merges first, and fails if it cannot read (the saved library is never written over);
+`cargar(adoptar)` puts the loaded items in the module's memory within the load's step (every module passes it,
+keeping what the reader changed before the load), so a write queued during a load never runs from the memory before
+it; `aplicar` marks the reader's edits made while it waited in the queue (not the items it applies), and keeps another
+tab's deletion of an applied item; when the marks cannot be stored (storage full) the changes stay pending and are
+marked again by the next write. On the Tauri path a big store's write parses the value from the items' texts (no
+second serialisation): a 2 MB library 65–75 ms, 5 MB 160–220 ms with a Tauri-like store (75–115 and 180–250 before). So no module overwrites with its older copy what the
+synchronisation or another tab stored (before, the editor wrote its whole map from memory loaded once; a second tab
+its old bookmarks). `guardadoDeRegistro({claveAlmacen, claveSinc, obtener, campo?, tiempo?})` is the common case. The
+0.11 learning modules (progreso-xp/logros, cursos, dominio, problema-dia) mirror their key with `EnlacePestanas`
+(above) and apply atomically in the same way. A data module with no memory of its own may register its
+`Record<id, item>` almacen key in one line: `registrarSincronizable(mapaDelAlmacen({ clave: 'k', nombre: '…', tiempo:
+(v) => v.t }))`.
+Sixth review: a failed read of `sinc-marcas` is an error, not an empty set (`marcas.ts`: `volcarMarcas` and
+`olvidarMarcas` read, merge and write in one try; on failure the pending marks are restored and the call rejects; only
+damaged values inside are dropped), so a run never forgets — nor a flush overwrites — marks it could not read. A write
+of the reader's changes that fails (also at its read) leaves a write **due** (`Guardado.sinGuardar`): `volcar` (page
+hidden, before a run) writes it, and it is retried after 1 s, 5 s and 30 s; `alEstado(sinGuardar)` tells the module
+after every attempt. The editor's and the breadboard's libraries keep `error` ('lectura' | 'escritura' | '') and show
+`AvisoGuardado.svelte` (`role="alert"`, non-blocking, «Reintentar»: load again, then `volcar`); the save status says
+«Sin guardar en este dispositivo» (never «Guardado») while it is set, a failed «Guardar» keeps the draft, and a circuit
+or montage that could not be opened because the library could not be read says so. `aplicar` keeps the reader's edits
+made during its write's wait (Tauri's IPC): an applied item the reader changed meanwhile is not touched in memory, and
+a write is scheduled (it is marked by that write); with no base for an applied item (after a failed load) the applied
+value — or deletion — wins. A retried load adopts the stored items minus the deletions still pending and the ids the
+module removed since it last saw memory (no resurrection). Device entries of the file are validated
+(`fusion.ts dispositivosValidos`: a string `nombre`, a finite `ultima`; in `leerDoc`, `fusionarDocs` and the summary): a
+null or malformed entry is dropped instead of breaking every run. Memoised loads that fail are retried by the next
+call (usuario, aprendizaje, Repaso, lecciones, progreso-diario, favourites; background loads never leave an unhandled
+rejection); Repaso settings changed before the load are kept over the stored ones. A big store's previous value is
+kept without its items (`anteriorLigero`), not as a second parsed copy.
+Tests of the engine: `tests/revision11-motor.spec.ts` runs `tests/motor-real/` — the REAL engine in Node (one module
+graph per device and tab, fake storage and GitHub with 409s, the 0.10 engine for an 0.10 device): one scenario per
+finding of the second and third reviews, and a randomized simulation (devices with tabs, an 0.10 device, a fresh
+install, storage failures, non-atomic modules, two edits of a tab in flight at once, clock skew, interrupted runs,
+edits during a run, 409s) checking no loss, no resurrection, convergence and that commits stop; and the cost of a
+write (`rendimiento.ts`: 2 MB and 5 MB libraries, budget and fast path). `tests/revision11-actualizacion.spec.ts`
+runs `tests/actualizacion/` — the app's modules compiled in Node (`hooks-svelte.mjs`, a fake browser): the upgrade from
+0.10.1 store by store, two devices across the update and back to 0.10.1 with a fake GitHub (the 0.10.1 source taken
+from git, commit 8ffa4c6, read only), and every stored key damaged in 11 ways (load, read and two runs never throw).
+`sinc-estado` records are validated on reading ([t, hash] or [t, hash, n, file hash]; anything else is dropped),
+`sinc-ajustes` field by field, the stored summary (`resumen`) to its shape (devices without a name dropped). Both
+specifications also run on a Tauri-like storage (fifth review): `tests/motor-real/falsos/almacen.ts` per device
+(`nuevoDisp(…, { tauri: true })`: values, no texts, IPC round trips, read failures; B in every other random trial),
+and `EPA_TAURI=1` in `tests/actualizacion/navegador.ts` (a fake `__TAURI_INTERNALS__` answering the plugin-store's
+IPC: the app's real `almacenTauri`). Sixth review: scenarios r6·1–r6·5 and «r6 · menor» (each failed before its fix);
+`tests/motor-real/guardado-azar.ts` — ONE real `Guardado` at random on `falsos/almacen-ipc.ts` (`EPA_ALMACEN=tauri` or
+`navegador`): reader edits and deletions at any moment (also inside the IPC waits), `guardar`/`escribir`/`volcar`/
+`refrescar`, a load that fails and is retried, reads and writes of the key and of `sinc-marcas` failing at random;
+at every write nothing the reader kept is missing and nothing unknown is stored, and at the end (`escribir` or
+`volcar`) storage = memory = what the reader did (300 trials before the fixes: 17/19 problems on Tauri, 11/87 in a
+browser; now 0); `datos-rotos.ts` also damages the device list of the GitHub file; `tests/revision11-avisos.spec.ts`
+checks the editor's and the breadboard's notices in a browser whose storage refuses to read or write the libraries.
 
 **Update notice** (`actualizaciones.svelte.ts`): `GET /repos/Metalaria/electronica-app/releases/latest` with the same
 token, at start-up at most every 12 h, silent on errors, compared with `VERSION_APP` (`version-app.ts`: vite
@@ -2337,3 +2751,171 @@ uses `protoboard/miniatura.ts` (`miniaturaMontaje`: `svgMontaje` without labels,
 hole-to-hole jumpers — not the bench equipment nor rail-to-rail jumpers — at the box's aspect, as an SVG data URL)
 with `MiniaturaFigura src=…`. Both 84 × 52.
 Tests: `tests/miniaturas10.spec.ts` (`playwright.miniaturas10.config.ts`, port 4401).
+
+## QA harness (0.11, `web/tests/qa/`, `web/playwright.qa.config.ts`)
+
+A systematic sweep of the whole app that collects findings instead of failing (a test fails only when the harness
+itself breaks). Own port (4421) and build folder (`<tmp>/epa-dist-qa11`); Chromium only (SwiftShader).
+
+- `perfiles.ts`: the three Playwright projects. `tableta` (the owner's Xiaomi Pad 6: 800×1280 CSS px, DPR 2.5,
+  Android WebView UA, touch, light theme, every route), `telefono` (412×915, DPR 2.6, touch, dark theme, a 25 %
+  sample), `escritorio` (1366×900, light, a 25 % sample). `QA_MODO=rapido` keeps ≈ 8 % of each (deterministic:
+  FNV-1a of `perfil:id`, `azarDe` in `rutas.ts`), plus every route marked `siempre` (the index page of each tool).
+- `rutas.ts`: every route from the data (`Ruta { id, hash, grupo, accion?, pesada?, siempre?, completa? }`): parts,
+  sections, figures (action `visor`: opens the figure viewer), one glossary entry in ten, the 313 netlists in the
+  simulator and in the editor, the breadboard, instruments (12 practices, free bench, a sample of netlists on the
+  bench), the FM7303 tabs, consoles × tabs (board tabs only where `PLACAS_DE` has a board), KiCad boards × `VISTAS`,
+  animations, 3D models (`MODELOS_3D`), concepts, calculators (`formulas.json`), exercises, Repaso (tests and
+  practice per part), diagnostics, synchronisation, and the start page's actions (`ajustes`, `buscar`, `menu`).
+  `lecciones()` lists every lesson's screens with the rules of `practica/datos.ts` `pantallasLeccion`
+  (steps from `calcularPasos`, practice items after their step, the Repaso questions of the section, `fin`).
+- `sonda.ts` (`instalarSonda`, an init script): `window.__qa` with layout shifts (PerformanceObserver
+  `layout-shift`, sources as short CSS paths), long tasks, WebGL contexts (a wrapped `getContext`: live ones in the
+  document, and «orphans» — detached canvases whose context was never lost, after `gc()`), and flashes: a
+  MutationObserver keeps each added element (outside SVG/canvas) with its size, position mode and the siblings that
+  were already there; one removed within 1 s that was visible, in flow, and had stable siblings still in place
+  (it pushed existing content) is a flash, unless it was swapped for an element of the same height in the same place
+  within 50 ms (`Simular` ↔ `Detener`). `ultimaMutacion` drives the «quiet» wait.
+- `comprobaciones.ts` (`comprobarPagina`, run in the page): horizontal page scroll; blank screen; text overflowing
+  its content box (the text's own boxes measured with a Range over direct text and inline descendants, so
+  absolutely placed pseudo-elements and hanging icons do not count; `overflow: auto/scroll`, ellipsis and
+  visually-hidden text excluded) or cut at the bottom (`overflow: hidden/clip`); elements past the viewport not
+  inside a sideways scroller; interactive targets covered at their centre by something of the same layer (the same
+  fixed/sticky ancestor) and pairs overlapping > 25 % among reachable targets; touch targets < 40 px on touch
+  profiles (inline links in running text exempt; an absolutely placed `::before/::after` with negative insets
+  enlarges the target); images without width/height or aspect-ratio, and broken ones; visible text, attributes
+  (`aria-label`, `title`, `placeholder`, `alt`) and field values with `NaN`, `undefined`, `null`, `[object Object]`,
+  `Infinity`; English left in the UI (a list of whole UI words and English function words, outside the book's own
+  text and code); buttons and links without an accessible name (`textContent` as fallback: `innerText` is empty
+  inside chunks skipped by `content-visibility`); fields without a label; WCAG AA contrast of every text node's
+  element against its blended ancestor backgrounds (skipped over images, gradients, filters; disabled controls
+  exempt; 3:1 for large text). Findings are deduplicated by `tipo|firma` per page.
+- `arnes.ts`: `Registro` (one per test: findings as JSON lines in `informe/crudo/<perfil>-<hash>.jsonl`, coverage
+  counters, one compressed JPEG per new signature of the error/functional/visual kinds, at most 12 per test),
+  `prepararPagina` (probe, listeners: `pageerror`, console errors and warnings minus Chromium/SwiftShader noise and
+  what the current action expects, HTTP ≥ 400, failed requests except aborts, renderer crash; dialogs dismissed,
+  downloads cancelled, popups closed), `esperarCalma` (no DOM change outside SVG/canvas for 500 ms and no visible
+  `.cargando`/`[aria-busy=true]`), `visitar` (full load at the start of a chunk and every 25 routes, hash changes in
+  between — like taps on links — then the route's action, CLS > 0.1, flashes, long tasks > 200 ms, > 2 live WebGL
+  contexts, and the page checks).
+- Specs: `rastreo.spec.ts` (routes in chunks of 30 per group; WebGL orphans after leaving a 3D page; memory: JS
+  heap after 60 pages with `gc()`, `--js-flags=--expose-gc`, flagged above +30 MB), `barridos.spec.ts` (tablet:
+  every netlist simulates or shows the «no se puede simular» notice and a second «Simular» neither flashes nor
+  shifts; every lesson walked with practice items answered wrong then right — `respuestas.ts`, the DOM contract of
+  `preguntas10.spec.ts` — and Repaso questions alternately right and wrong; every «Ver en protoboard» opened,
+  `verificar()`, simulated from the board, closed; console and KiCad boards in 3D (`__epaPlaca3DListo`) then 2D
+  (`__epaPlacaVista`) with WebGL orphans checked; calculators against the result variable's `defecto` with
+  `magnitudes.comprobar` at 1 %; self-checked exercises with the book's answer texts; a HEAD request for every
+  `fig/`, `img/`, `ec/` and `datos/` file the parts cite), `monos.spec.ts` (seeded mulberry32 monkey on 33
+  interactive pages: taps on controls and points, drags and two-finger pinches through CDP `Input.dispatchTouchEvent`,
+  typing, sliders/selects by keyboard, wheel, back/forward, rotation by swapping the viewport, Escape; steps and seed
+  attached to every finding), `accesibilidad.spec.ts` (desktop: focus visible with Tab — outline, or any change of
+  box-shadow, background, border, colour or underline between focused and blurred; contrast in the dark theme).
+- `preparar.ts` (global set-up: empties `informe/crudo` and `capturas` unless a later shard or `QA_CONSERVAR=1`) and
+  `informe.ts` (global teardown, also `node tests/qa/informe.ts`: groups by severity — `error`, `funcional`,
+  `visual`, `rendimiento`, `accesibilidad`, `texto` — and signature, keeps up to 25 routes per group, merges coverage
+  per profile, applies `triaje.json` (`{ patron, estado: corregido | informado | falso-positivo | decision, nota }`,
+  a regex over `tipo|firma` or `tipo|msg`), and writes `informe/informe.json` and the Spanish `informe/informe.md`).
+  `informe/` is git-ignored. The main configuration ignores `tests/qa/`.
+
+`QA_INFORME=<folder>` writes the report elsewhere (a second run against another build without touching the first
+one's raw findings); `QA_TRAZA=1` prints one line per route or screen.
+
+Phase 2 (`tests/qa/fase2-*.spec.ts`, one command for all of them):
+- `fase2-fugas`: three rounds over every 3D view and heavy page; after each, back on the start page with `gc()`
+  (and CDP `HeapProfiler.collectGarbage`), `instalarSondaRecursos` (`sonda.ts`: wrapped `AudioContext`, `Worker`,
+  `setInterval`/`clearInterval` and `requestAnimationFrame`) counts what is alive; growth between rounds is a leak.
+  A second test does the same over the learning loop: the lessons' explorable rows (slider moved 12 times, each
+  move simulates), a smart-practice session skipped to its end, `#/problema` and `#/progreso/dominio`.
+- `fase2-lento`: one route of each kind (group × hash depth × action) with CDP CPU throttling ×4 and «Fast 3G»
+  (cold with an empty cache and warm from the start page; first content > 3 s flagged); and with every content JSON
+  aborted (`page.route`, except `indice.json`/`refs.json`) after a real reload: the page must show a notice with
+  «Reintentar» that recovers, else it is `error-sin-reintento`, `carga-sin-fin-sin-red`, `en-blanco-sin-red` or
+  `incompleta-sin-red` (under half of the text it has with the network and no notice).
+- `fase2-analizadores` (Node: `magnitudes.comprobar` with every unit × prefix × format, SPICE numbers, calculators
+  against the book's examples) and `fase2-editor` (the 313 netlists through `editableDeNetlist` → `documentoDeEditable`
+  → `generarNetlist`, in Node and through `#/editor/libro/<id>`: same elements, same connections up to renaming, and
+  every node named by `v(…)` kept).
+- `fase2-estado`: reload at the middle screen of every lesson, during a simulation, in the editor (the draft must
+  survive) and on the other tools; 30 seeded random routes back and forward (three seeds per touch profile);
+  double/triple taps on primary buttons (a lesson's «Continuar» must advance one screen); leaving during a simulation
+  or a 3D load (the engine and WebGL must recover); odd and very long input in every text field. The learning
+  pages (`grupo: 'aprendizaje'` in `rutas.ts`) are all taken by `fase2-estado`, `fase2-lento` and `fase2-axe` (not one
+  per kind), with a smart-practice session reloaded mid-way and double taps on its «Empezar»/«Saltar».
+- The report warns at the top when groups whose triage says «corregido» show up in the run: on a build that has the
+  fixes they are incomplete fixes, regressions or new findings caught by too general a pattern (there is no
+  catch-all «corregido» pattern for small touch targets any more: new ones show as untriaged).
+- `fase2-maquetacion`: every route under the seven `VARIANTES` of `perfiles.ts` (own projects that run only this
+  file; `prefs` are written to `localStorage` «epa:prefs» before the app starts).
+- `fase2-contenido` (Node: `data-ref` keys against `refs.json` and the anchors of their part, aliases as in
+  `candidatosDeRef`; internal links; asset paths of every content JSON; section/figure/table numbering) and the
+  search dialog queried with every glossary term and section title (expected in the first 10 results).
+- `fase2-axe`: axe-core (`devDependency`, injected with `addScriptTag`; WCAG 2.0/2.1/2.2 A/AA + best practices) on
+  one route of each kind, both touch profiles, light and dark (`emulateMedia`); keyboard-only flows on the desktop.
+- `fase2-textos`: UI strings from the Svelte AST (text, `aria-label`/`title`/`placeholder`/`alt`, script literals)
+  and the TypeScript AST (string literals that read as prose, minus keys, comparisons and DOM/console arguments),
+  checked with `nspell` + `dictionary-es` (devDependencies; the book's own words and a small list of technical terms
+  are known), the «usted» register, English words and names spelled two ways.
+- `fase2-visual`: ≈ 80 routes captured in the tablet against the 0.10.1 build (`QA_VIEJO`, built apart from the
+  commit's `git archive`), compared in a canvas; > 0.5 % changed pixels gives an «antes | ahora | diferencia» image.
+
+Failed loads (0.11): `componentes/ErrorCarga.svelte` (title, the cause in Spanish from `lib/errores.ts`
+`textoError`, «Reintentar»; without a callback it reloads the page, since a lazy chunk that failed cannot be imported
+again). Caches of content promises must not keep a failure (`sinFallos`, or reset in `catch`): `cargarGlosario`,
+`cargarBusqueda`, `cargarBaraja`, `cargarIndiceRepaso` (returns `{ fallo: true }`), `cargarIndiceSpice` (sets
+`spice.fallo`), `cargarCatalogo` (sets `calc.falloRed`), `cargarPractica` (rejects when the practice index failed).
+
+Regression tests of the fixes it led to: `tests/regresiones11.spec.ts` (`playwright.regresiones11.config.ts`, port 4422).
+
+### Layout and accessibility rules that came out of it (0.11)
+
+- Nothing that arrives late may push content the reader is looking at: places are kept for what is still loading
+  (`CircuitoVivo` `data-reserva`, the simulator page shown all at once, the instruments bench's drawing, the
+  animation scene's placeholder), vector figures carry `width`/`height` from `svg_vista`, and the reader and the
+  lessons wait (≤ 1.5 s, once per session) for the small maps that insert panels and buttons
+  (`lib/mapas-lectura.ts`). Loading placeholders (`.cargando`) fade in after 0.3 s. Status lines of a run go inside
+  an existing row (the simulator's toolbar, the live schematic's panel), never on a line of their own.
+- A page's controls show only its own engine runs (`simulador/Pagina.svelte` `propias`): other components share
+  the single ngspice worker.
+- Touch areas: on `(pointer: coarse)` small controls get a transparent `::after` box of at least 44 × 44 px centred
+  on them (the `toque-44` class, or the selectors listed in `app.css`), so they keep their look.
+- Table headers (`.tabla thead th`) wrap only when wider than a cell may be (22em), balanced; short ones stay on one
+  line (they were `nowrap` and a long one spilled out of its column).
+- `--tinta-tenue` is #5b6672 (light), #665a4b (sepia), #8c96a1 (dark): ≥ 4.5:1 over every background token; text in
+  a status colour (box titles, readings, badges) is mixed towards `--tinta` with `color-mix`.
+- UI text addresses the reader as «usted» («Toque», «Elija», «Su respuesta»), as the book does.
+- What a lazy chunk or late data will draw keeps its final size from the start, or what it would push waits hidden
+  (`visibility: hidden`, `aria-busy`): a calculator's controls wait for its illustration; a 3D model's details (one
+  column) wait for `Visor3D`'s `alListo` (≤ 5 s) and `Vista3D`'s placeholder has the view's size; the glossary
+  reserves its pictures' places from `glosario-imagenes.json` and waits for the book's fonts (`fuentesDeLectura`,
+  ≤ 1.5 s) as the reader does.
+- A lesson's «Continuar» ignores the second click of a double tap or double click (`event.detail > 1`): it landed on
+  the next screen's button and skipped that screen. The smart practice does the same for «Empezar», «Saltar» and
+  «Continuar», and drops a repeated click (`detail > 1`) that lands on another control than the first one.
+- Learning events reach their consumers (XP, mastery) through a lazy chunk loaded on the first event, which replays
+  the events emitted meanwhile. Whoever reads the consumers' result right after an answer waits for that delivery:
+  `esperarDominio()` awaits `eventosEntregados()` before the queue (a session's end screen computed «what improved»
+  without the session's answers on a loaded machine), and the end screen never stays on «Calculando…».
+- Touch screens, small inline targets (owner's decision): the calculator's formula is one button that opens a picker
+  with a ≥ 44 px button per quantity (`FormulaViva.svelte`, `(pointer: coarse)` via `matchMedia`); the glossary's A–Z
+  index becomes a 14 × 2 grid of 44 px letters (as wide as the screen allows); the colour-code swatches are 44 px
+  buttons with the colour drawn inside. Mouse layouts keep the inline buttons.
+- WebGL views and memory: three.js keeps every WebGL context it used reachable after `renderer.dispose()` (its
+  shared empty textures stay uploaded in it), and the context keeps its canvas. Whatever the canvas references
+  stays alive: a view removes its own listeners from the canvas (no `on…` attributes on a WebGL canvas: they are
+  added and removed by hand, `Vista3D.svelte` `oyentes`), the scene removes its `webglcontextlost` listener and
+  empties its groups (`Escena3D.liberar`), and the canvas is taken out of the DOM when the view closes (else it held
+  the view's whole subtree). Checked by regresiones11 with `Memory.getDOMCounters` after six visits.
+- Sepia redefines the accent and status inks a little darker (`--acento`, `--c-nota`, `--c-ejemplo`,
+  `--c-importante`, `--c-tarjeta-texto`): the light theme's values fell under 4.5:1 on its warmer surfaces.
+- A late part of a page whose height is unknown waits hidden with the content under it (`visibility: hidden`,
+  `aria-busy`, ≤ 2.5 s; the consoles' «Fuentes» tab), or its place is reserved (`CircuitoVivo`: 100 px for the
+  controls' panel, 150 px and a two-line header under 600 px; nothing reserved for an empty netlist).
+- A popover that is not modal (the «Tema y tamaño de letra» panel) closes when the focus leaves it (`focusout` with
+  a `relatedTarget` outside); a scrolling box whose items are out of the tab order (the search results) takes the
+  focus while it overflows (`lib/desplazable.ts`, `{ vertical: true }`).
+- Schematic editor import (`editor/importar.ts`): every pin of an imported part remembers its netlist node
+  (`Componente.redes`), which names its net when no label, ground or wire does (`conectividad.ts`, after the wires'
+  names); a node the layout drew as separate pieces (a lone net label on a bridge's pin) is joined with a routed
+  wire, or labelled on every piece when no path exists (`unirRedesPartidas`).
+

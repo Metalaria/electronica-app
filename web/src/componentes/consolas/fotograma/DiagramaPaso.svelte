@@ -309,7 +309,7 @@
       {/each}
     </svg>
   </div>
-  {#if ancha}<p class="pista">Este paso ocupa más que la pantalla: desliza el diagrama a los lados.</p>{/if}
+  {#if ancha}<p class="pista">Este paso ocupa más que la pantalla: deslice el diagrama a los lados.</p>{/if}
   {#if estrecho}
     <button type="button" class="ver-todo" aria-pressed={completo} onclick={() => (completo = !completo)}>
       {completo ? 'Acercar a este paso' : 'Ver el diagrama entero'}

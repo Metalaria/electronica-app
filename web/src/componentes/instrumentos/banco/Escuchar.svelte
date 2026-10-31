@@ -6,6 +6,7 @@
   import { onMount, untrack } from 'svelte';
   import type { Banco, FuenteEscucha } from '../banco.svelte.ts';
   import { COLOR_PUNTA, LETRA_PUNTA } from '../esquema/Plano.svelte';
+  import { TEXTO_PUNTA } from '../puntas';
   import { prepararEscucha, type Escucha } from '../motor/escucha.ts';
   import { auricular } from '../auricular.ts';
   import type { Datos } from '../banco.svelte.ts';
@@ -109,7 +110,7 @@
 </script>
 
 <section class="escuchar" aria-label="Escuchar señales">
-  <h3>Escuchar</h3>
+  <h2>Escuchar</h2>
   {#if sinAudio}
     <p class="nota">Este navegador no permite reproducir sonido (Web Audio).</p>
   {:else if !fuentes.length}
@@ -117,7 +118,7 @@
   {:else}
     <div class="botones" role="group" aria-label="Qué escuchar">
       {#each fuentes as [f, nodo, nombre] (f)}
-        <button type="button" class="fuente" aria-pressed={b.escucha === f} style={`--c:${COLOR_PUNTA[f]}`} onclick={() => escuchar(f)}>
+        <button type="button" class="fuente" aria-pressed={b.escucha === f} style={`--c:${COLOR_PUNTA[f]}; --sobre-c:${TEXTO_PUNTA[f] ?? '#fff'}`} onclick={() => escuchar(f)}>
           <span class="disco">{LETRA_PUNTA[f]}</span>{b.escucha === f ? 'Parar' : `Escuchar ${nombre.toLowerCase()}`}<span class="nodo">{nodo}</span>
         </button>
       {/each}
@@ -150,7 +151,7 @@
     background: var(--superficie);
     font-family: var(--sans);
   }
-  h3 {
+  h2 {
     margin: 0 0 6px;
     font-size: 15px;
     color: var(--titulos);
@@ -184,7 +185,7 @@
     height: 26px;
     border-radius: 50%;
     background: var(--c);
-    color: #fff;
+    color: var(--sobre-c, #fff);
     font-weight: 700;
   }
   .nodo {

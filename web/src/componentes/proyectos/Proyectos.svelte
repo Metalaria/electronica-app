@@ -7,6 +7,7 @@
   import { ruta, prepararSalto } from '../../lib/ruta.svelte';
   import type { CapaHoja } from '../consolas/datos';
   import { decodificar as decodificarHoja, type Dibujo } from '../consolas/esquema/dibujo';
+  import ErrorCarga from '../ErrorCarga.svelte';
   import { cargarCapaEsquema, cargarDibujoEsquema, cargarIndice, cargarPlaca, mm, type DatosPlaca, type IndiceProyectos } from './datos';
   import { enlace, leerAncla, VISTAS, type Seleccion, type Vista } from './estado';
   import { construirGeometria, type Geometria, type Impacto2D, type Lado } from './geometria';
@@ -41,7 +42,12 @@
   // WebGL2 or the 2D fallback (tests force it off with window.__epaSinWebGL)
   const webgl = soporteWebGL2();
 
+  /** «Reintentar» after a failed load: the index, the board and its schematic again. */
+  let intento = $state(0);
+  let errorEsquema = $state<unknown>(null);
+
   $effect(() => {
+    void intento;
     cargarIndice()
       .then((i) => (indice = i))
       .catch((e: unknown) => (error = e instanceof Error ? e.message : String(e)));
@@ -60,6 +66,7 @@
   $effect(() => {
     const id = actual.placa;
     if (!id) return;
+    void intento;
     let vivo = true;
     error = '';
     untrack(() => {
@@ -87,12 +94,16 @@
   $effect(() => {
     const d = datos;
     if (!d) return;
+    void intento;
     let vivo = true;
+    errorEsquema = null;
     Promise.all([cargarDibujoEsquema(d), cargarCapaEsquema(d)])
       .then(([b, c]) => {
         if (vivo && datos?.id === d.id) esquema = { dibujo: decodificarHoja(b), capa: c };
       })
-      .catch(() => {});
+      .catch((e: unknown) => {
+        if (vivo) errorEsquema = e;
+      });
     return () => {
       vivo = false;
     };
@@ -151,7 +162,7 @@
   </header>
 
   {#if error}
-    <div class="aviso"><p>No se pudieron cargar los datos: {error}</p></div>
+    <ErrorCarga titulo="No se pudieron cargar los datos de los proyectos." {error} reintentar={() => ((error = ''), intento++)} />
   {:else if !actual.placa}
     {#if indice}
       <div class="portada">
@@ -199,7 +210,7 @@
               {:then m}
                 {#key d.id}<m.default datos={d} geo={g} {res} {oscuro} {enfocar} opciones={opciones3d} alElegir={(s) => elegir(s, false)} />{/key}
               {:catch e}
-                <div class="aviso"><p>No se pudo abrir la vista 3D: {String(e)}</p></div>
+                <ErrorCarga titulo="No se pudo abrir la vista 3D." error={e} />
               {/await}
             {:else}
               <div class="aviso">
@@ -212,6 +223,8 @@
           {:else if actual.vista === 'esquema'}
             {#if esquema}
               <EsquemaPlaca datos={d} dibujo={esquema.dibujo} capa={esquema.capa} {res} {oscuro} {enfocar} alElegir={(s) => elegir(s, false)} />
+            {:else if errorEsquema}
+              <ErrorCarga titulo="No se pudo cargar el esquema." error={errorEsquema} reintentar={() => intento++} />
             {:else}
               <div class="cargando">Cargando el esquema…</div>
             {/if}
@@ -418,6 +431,15 @@
   .aviso {
     padding: 24px;
     color: var(--tinta-suave);
+  }
+  /* «Cargando la placa…» only when the board takes a while: a quick one flashed it for a few frames (0.11 QA) */
+  .cargando {
+    animation: aparecer-tarde 0.2s ease 0.3s both;
+  }
+  @keyframes aparecer-tarde {
+    from {
+      opacity: 0;
+    }
   }
   @media (max-width: 999px) {
     .cuerpo {

@@ -278,6 +278,10 @@ export class Escena3D {
   private seleccion: Box3Helper | null = null;
   private capasX: Mesh[] = [];
   private liberables: { dispose(): void }[] = [];
+  private lienzo: HTMLCanvasElement;
+  private readonly perdido = (): void => {
+    if (this.vivo) registrar('error', 'placa 3D', 'contexto WebGL perdido (la GPU lo ha retirado)');
+  };
   private W: number;
   private H: number;
   private t: number;
@@ -348,9 +352,8 @@ export class Escena3D {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     this.renderer = new WebGLRenderer({ canvas: lienzo, antialias: dpr < 2, powerPreference: 'high-performance', alpha: false });
     // (liberar() drops the context on purpose to give the GPU memory back: that one is not an error)
-    lienzo.addEventListener('webglcontextlost', () => {
-      if (this.vivo) registrar('error', 'placa 3D', 'contexto WebGL perdido (la GPU lo ha retirado)');
-    });
+    this.lienzo = lienzo;
+    lienzo.addEventListener('webglcontextlost', this.perdido);
     this.renderer.outputColorSpace = SRGBColorSpace;
     this.renderer.toneMapping = NeutralToneMapping;
     this.renderer.toneMappingExposure = 1;
@@ -1783,6 +1786,12 @@ export class Escena3D {
     liberarMateriales();
     this.renderer.dispose();
     this.renderer.forceContextLoss();
+    // 0.11 QA (leaks): the context outlives the view (three.js keeps its shared empty textures uploaded in it), and
+    // through its canvas this listener kept the whole board — parts, geometry buffers, label canvases — alive after
+    // each visit (≈ 0.7 MB of heap and several MB of buffers per board opened)
+    this.lienzo.removeEventListener('webglcontextlost', this.perdido);
+    this.piezas.clear();
+    this.placa.clear();
   }
 }
 

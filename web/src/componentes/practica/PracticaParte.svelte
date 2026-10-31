@@ -13,6 +13,7 @@
   import Practica, { type RespuestaPractica } from './Practica.svelte';
   import type { ItemPractica } from './tipos';
   import { cargarPractica, NOMBRE_TIPO } from './datos';
+  import ErrorCarga from '../ErrorCarga.svelte';
 
   let { parte }: { parte: string } = $props();
 
@@ -28,12 +29,19 @@
   const item = $derived(items && k < n ? items[k]! : null);
   const aciertos = $derived(respuestas.filter((r) => r?.bien && r.intentos === 1).length);
 
-  onMount(() => {
-    void cargarPractica(parte).then((d) => {
-      items = d?.items ?? [];
-      respuestas = (d?.items ?? []).map(() => null);
-    });
-  });
+  let error = $state<unknown>(null);
+
+  function cargar() {
+    error = null;
+    cargarPractica(parte)
+      .then((d) => {
+        items = d?.items ?? [];
+        respuestas = (d?.items ?? []).map(() => null);
+      })
+      .catch((e: unknown) => (error = e));
+  }
+
+  onMount(cargar);
 
   function responder(r: RespuestaPractica) {
     respuestas[k] = r;
@@ -50,13 +58,16 @@
 </script>
 
 <div class="practica-parte" style:--bloque={tono.relleno} style:--sobre-bloque={tono.sobre} style:--bloque-texto={tono.texto} data-practica-parte={parte}>
-  {#if items === null}
+  {#if error}
+    <ErrorCarga titulo="No se pudo cargar la práctica." {error} reintentar={cargar} />
+  {:else if items === null}
     <p class="aviso">Cargando la práctica…</p>
   {:else if !items.length}
     <p class="aviso">Este capítulo no tiene práctica todavía. <a href="#/repaso">Volver al repaso</a></p>
   {:else}
     <CabeceraPasos total={n} actual={k} contexto={`Practicar · ${rotuloParte(parte)} · ${(info?.titulo ?? '').split(' — ')[0]}`} descripcion={item ? `Práctica ${k + 1} de ${n}` : 'Práctica terminada'} cerrar="#/repaso" etiquetaCerrar="Volver al repaso" />
-    <main class="cuerpo">
+    <!-- not a <main>: the app's own #contenido is the page's main landmark (axe, 0.11 QA) -->
+    <div class="cuerpo">
       <div class="columna">
         {#if item}
           {#key item.id}
@@ -71,7 +82,7 @@
           </section>
         {/if}
       </div>
-    </main>
+    </div>
     {#if item}
       <PieAcciones>
         {#if final}

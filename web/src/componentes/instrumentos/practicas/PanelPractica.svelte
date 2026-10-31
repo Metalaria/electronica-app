@@ -83,7 +83,7 @@
       }
       series.push({ name: t.nombreTeoria ?? 'Teoría', unit: colY.unidad, x, y, dashed: true });
     }
-    if (filas.length) series.push({ name: 'Tus puntos', unit: colY.unidad, x: Float64Array.from(filas.map((r) => r[t.x]!)), y: Float64Array.from(filas.map((r) => r[t.y]!)) });
+    if (filas.length) series.push({ name: 'Sus puntos', unit: colY.unidad, x: Float64Array.from(filas.map((r) => r[t.x]!)), y: Float64Array.from(filas.map((r) => r[t.y]!)) });
     return { series, colX, colY, t };
   });
 
@@ -128,10 +128,10 @@
     <button class="boton" disabled={paso >= p.pasos.length - 1} onclick={() => irA(paso + 1, true)}>Siguiente →</button>
   </div>
 
-  <h3>Tu medida frente a lo esperado</h3>
+  <h3>Su medida frente a lo esperado</h3>
   <div class="tabla-envoltura">
     <table class="comprobaciones">
-      <thead><tr><th>Magnitud</th><th>Esperado (libro)</th><th>Tu medida</th><th></th></tr></thead>
+      <thead><tr><th>Magnitud</th><th>Esperado (libro)</th><th>Su medida</th><th><span class="solo-lector">Resultado</span></th></tr></thead>
       <tbody>
         {#each p.comprobaciones as c (c.id)}
           {@const e = estado(c.id)}
@@ -169,7 +169,7 @@
     {#if b.anotaciones.length}
       <div class="tabla-envoltura">
         <table class="puntos">
-          <thead><tr>{#each p.tabla.columnas as c (c.id)}<th>{@html c.nombre}</th>{/each}<th></th></tr></thead>
+          <thead><tr>{#each p.tabla.columnas as c (c.id)}<th>{@html c.nombre}</th>{/each}<th><span class="solo-lector">Acciones</span></th></tr></thead>
           <tbody>
             {#each b.anotaciones as r, i (i)}
               <tr>

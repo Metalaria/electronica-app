@@ -3,6 +3,7 @@
   // favourites; #/calculadoras/<id> opens one calculator full page.
   import { onMount } from 'svelte';
   import type { CatalogoFormulas, Formula } from './tipos';
+  import ErrorCarga from '../ErrorCarga.svelte';
   import { calc, cargarCatalogo, cargarFavoritos, alternarFavorita, rutaCalculadora } from './datos.svelte';
   import { ruta } from '../../lib/ruta.svelte';
   import { app } from '../../lib/estado.svelte';
@@ -19,12 +20,16 @@
   // The thumbnails of the families (drawing code) load with the page, not with the reader.
   const miniaturas = import('./ilustraciones/Miniatura.svelte');
 
-  onMount(() => {
-    void cargarFavoritos();
+  function cargar() {
     void cargarCatalogo().then((c) => {
       catalogo = c;
       fallo = !c;
     });
+  }
+
+  onMount(() => {
+    void cargarFavoritos();
+    cargar();
   });
 
   const elegida = $derived(catalogo && ruta.ancla ? (catalogo.formulas.find((f) => f.id === ruta.ancla) ?? null) : null);
@@ -107,7 +112,9 @@
 </script>
 
 <div class="pagina-calc" class:movil={app.movil} class:ancha={!!ruta.ancla}>
-  {#if fallo}
+  {#if fallo && calc.falloRed}
+    <ErrorCarga grande titulo="No se pudo cargar el catálogo de fórmulas." reintentar={() => ((fallo = false), cargar())} />
+  {:else if fallo}
     <div class="aviso"><h1>Calculadoras</h1><p>El catálogo de fórmulas no está generado (<code>python3 contenido/formulas.py</code>).</p></div>
   {:else if !catalogo}
     <p class="espera">Cargando el catálogo de fórmulas…</p>
@@ -136,7 +143,7 @@
       <p class="intro">
         {catalogo.total} fórmulas del libro listas para calcular, {catalogo.con_ejemplo} de ellas comprobadas con el ejemplo del propio libro.
         Cada una con su circuito o su curva, controles deslizantes, la cuenta paso a paso y lo que dice el libro de ella.
-        Elige una familia o busca por nombre, símbolo o capítulo.
+        Elija una familia o busque por nombre, símbolo o capítulo.
       </p>
     </header>
     <div class="controles">

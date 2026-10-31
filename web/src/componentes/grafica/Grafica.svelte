@@ -730,7 +730,7 @@
     <div class="tabla-desliza">
       <table class="cursores">
         <thead>
-          <tr><th></th><th>A</th><th>B</th><th>B − A</th></tr>
+          <tr><th><span class="solo-lector">Magnitud</span></th><th>A</th><th>B</th><th>B − A</th></tr>
         </thead>
         <tbody>
           <tr class="x">

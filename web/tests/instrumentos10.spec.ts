@@ -1,5 +1,5 @@
 // Instruments on the user's own circuits (0.10): on the breadboard («Medir»: the Brymen BM869s, the FNIRSI
-// 2C53T and an earphone, leads into holes) with the «¿Qué quieres medir?» tutor (each step detected as the
+// 2C53T and an earphone, leads into holes) with the «¿Qué quiere medir?» tutor (each step detected as the
 // user does it with the real controls, mistakes explained, the final reading right), the oscilloscope on a
 // 555, the generator driving an RC, listening, touch at 412 and 800 px, the editor's «Medir», and screenshots
 // in tests/capturas/instrumentos10/.

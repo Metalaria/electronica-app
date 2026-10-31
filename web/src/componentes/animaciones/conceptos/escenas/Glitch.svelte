@@ -247,7 +247,7 @@
     if (modo === 'xor')
       return (
         `**En teoría F = A ⊕ A = 0 siempre.** Pero la segunda entrada llega por dos inversores, ${num(2 * tInv, 1)} ns más tarde, y durante ese tiempo las dos entradas difieren: en cada flanco de A sale un **pulso de ${num(ancho, 1)} ns**. Es el experimento de la sección 28.3: unos 6 ns con puertas rápidas, unos 15 ns con un 74HC04 (unos 8 ns por puerta en HC, 3 en AC).\n` +
-        `Con una salida que enciende un LED no importa. Con una que hace de reloj, **un glitch es un flanco y cuenta**: mira el contador. Por eso en diseño síncrono las salidas combinacionales solo se leen con el reloj, cuando ya se han asentado.`
+        `Con una salida que enciende un LED no importa. Con una que hace de reloj, **un glitch es un flanco y cuenta**: mire el contador. Por eso en diseño síncrono las salidas combinacionales solo se leen con el reloj, cuando ya se han asentado.`
       );
     return (
       `**F = A·B + Ā·C** con B = C = 1 vale 1 tanto si A es 0 como si es 1. Pero al bajar A, el término A·B cae antes de que Ā·C suba (le falta el retardo del inversor, ${num(tInv, 1)} ns), y F baja un instante: ${np ? `un pulso de ${num(ancho, 1)} ns` : 'aquí no'}. Es un azar estático.\n` +

@@ -3,7 +3,9 @@
   // free-form circuit («nuevo»). The netlist is editable; sliders rewrite it and re-run after a short pause.
   import { onDestroy, onMount, untrack } from 'svelte';
   import type { NetlistSpice } from '../../simulador/tipos';
-  import { cargarIndiceSpice, cargarNetlist, rotuloRef, rutaSimulacion } from '../../simulador/datos.svelte';
+  import { cargarIndiceSpice, cargarNetlist, rotuloRef, rutaSimulacion, spice } from '../../simulador/datos.svelte';
+  import { esDeRed, SIN_RED } from '../../lib/errores';
+  import ErrorCarga from '../ErrorCarga.svelte';
   import {
     motor,
     motorConXspice,
@@ -15,6 +17,7 @@
   import type { Simulacion } from '../../simulador/motor/simular.ts';
   import { aplicarParametro, listarParametros } from '../../simulador/motor/netlist.ts';
   import { rutaDeRef, rotuloParte } from '../../lib/datos';
+  import { emitir } from '../../lib/aprendizaje/eventos';
   import { formatoSI } from '../grafica';
   import Editor from './Editor.svelte';
   import Parametros from './Parametros.svelte';
@@ -68,7 +71,16 @@ C1 out 0 100n
   const noDisponible = $derived(noSimulable(n));
   const parametros = $derived(listarParametros(texto));
   const modificada = $derived(!libre && !deEsquema && texto !== original);
-  const ejecutando = $derived(motor.fase !== 'inactivo');
+  /**
+   * Runs of this page in flight (the first automatic run, «Simular», a slider). The circuit drawn above
+   * (CircuitoVivo) re-solves itself with the same engine after every result: that background run must not
+   * flip the page's controls, or «Detener», «Simulando…», ngspice's first line and «Salida de ngspice» flash
+   * for a few frames after each result and push the page (0.11 QA).
+   */
+  let propias = $state(0);
+  /** The engine's phase as this page shows it: only its own runs (and the first download of the engine). */
+  const fase = $derived(propias > 0 ? motor.fase : motor.fase === 'descargando' ? 'descargando' : 'inactivo');
+  const ejecutando = $derived(fase !== 'inactivo');
 
   // New parameters (typed in the editor) get a range around their first value.
   $effect(() => {
@@ -106,7 +118,8 @@ C1 out 0 100n
       } else {
         const indice = await cargarIndiceSpice();
         const x = indice?.netlists[id];
-        if (!x) throw new Error('No existe esa netlist.');
+        // without network the list is missing: «Reintentar», not «No existe»
+        if (!x) throw new Error(spice.fallo ? SIN_RED : 'No existe esa netlist.');
         n = x;
         const t = await cargarNetlist(x);
         original = texto = t;
@@ -132,12 +145,16 @@ C1 out 0 100n
       return;
     }
     errorSim = '';
+    propias++;
     try {
       const r = await simularTexto(texto);
       resultado = r;
+      if (!r.ejecucion.fallo) emitir({ tipo: 'simulacion', origen: 'simulador' });
     } catch (e) {
       if (e instanceof SimulacionCancelada) return;
       errorSim = e instanceof Error ? e.message : String(e);
+    } finally {
+      propias--;
     }
   }
 
@@ -212,7 +229,7 @@ C1 out 0 100n
   });
 
   const estado = $derived.by(() => {
-    switch (motor.fase) {
+    switch (fase) {
       case 'descargando':
         return `Cargando el simulador${motor.descarga != null ? ` · ${Math.round(motor.descarga * 100)} %` : '…'}`;
       case 'preparando':
@@ -227,8 +244,12 @@ C1 out 0 100n
     }
   });
 
-  const ultimaLinea = $derived(motor.fase === 'simulando' ? (motor.lineas.filter((l) => l.trim()).at(-1) ?? '') : '');
-  const salidaTexto = $derived(ejecutando && motor.fase === 'simulando' ? motor.lineas.join('\n') : (resultado?.salida.texto ?? ''));
+  // ngspice's last line, only for a run that takes a while (a quick one would flash it for a few frames) and
+  // never its start-up notice about the missing «spinit» file (in English, and meaningless to the reader).
+  const ultimaLinea = $derived(
+    fase === 'simulando' && ahora - motor.inicio > 1000 ? (motor.lineas.filter((l) => l.trim() && !/initialization file spinit/i.test(l)).at(-1) ?? '') : '',
+  );
+  const salidaTexto = $derived(fase === 'simulando' ? motor.lineas.join('\n') : (resultado?.salida.texto ?? ''));
   const capitulo = $derived(n ? rotuloParte(n.parte) : '');
 
   // «Editar el esquema»: the book's netlist as it is opens by its id; an edited or free one is handed over.
@@ -253,15 +274,22 @@ C1 out 0 100n
 <div class="pagina">
   {#if libre || deEsquema}<PestanasSimulador />{/if}
   <nav class="migas" aria-label="Ruta">
-    <a href="#/simulador">Simulador</a>
+    <a class="toque-44" href="#/simulador">Simulador</a>
     {#if n}<span aria-hidden="true">›</span> <span>{capitulo}</span>{/if}
   </nav>
 
-  {#if errorCarga}
+  {#if errorCarga && esDeRed(errorCarga)}
+    <ErrorCarga titulo="No se pudo cargar la netlist." error={errorCarga} reintentar={() => void cargar()} />
+  {:else if errorCarga}
     <div class="aviso error">
       <p>{errorCarga}</p>
-      <a class="boton" href="#/simulador">Volver al simulador</a>
+      <a class="boton toque-44" href="#/simulador">Volver al simulador</a>
     </div>
+  {:else if cargando && !libre && !deEsquema}
+    <!-- A book netlist is shown all at once when its file is in: drawn piece by piece, the title, the circuit and
+         the netlist pushed each other down several hundred pixels on the tablet (0.11 QA). Empty, so it does not
+         flash either. -->
+    <div class="espera-carga" aria-busy="true"></div>
   {:else}
     <header class="cab">
       <h1>
@@ -276,15 +304,15 @@ C1 out 0 100n
           {#each n.analisis as a (a)}<span class="etq">.{a}</span>{/each}
           {#if n.control}<span class="etq">.control</span>{/if}
           {#each n.refs as r (r)}
-            {#if rutaDeRef(r)}<a class="libro" href={rutaDeRef(r)}><Icono nombre="libro" tam={15} /> {rotuloRef(r)}</a>{/if}
+            {#if rutaDeRef(r)}<a class="libro toque-44" href={rutaDeRef(r)}><Icono nombre="libro" tam={15} /> {rotuloRef(r)}</a>{/if}
           {/each}
-          {#if !noDisponible}<a class="libro esquema" href={hrefEsquema} onclick={editarEsquema}>Editar el esquema</a>{/if}
-          <button type="button" class="libro protoboard" onclick={verProtoboard}>Ver en protoboard</button>
+          {#if !noDisponible}<a class="libro esquema toque-44" href={hrefEsquema} onclick={editarEsquema}>Editar el esquema</a>{/if}
+          <button type="button" class="libro protoboard toque-44" onclick={verProtoboard}>Ver en protoboard</button>
         </div>
       {:else if (libre && texto.trim()) || deEsquema}
         <div class="meta">
-          <a class="libro esquema" href={hrefEsquema} onclick={editarEsquema}>{deEsquema ? 'Volver al esquema' : 'Editar el esquema'}</a>
-          <button type="button" class="libro protoboard" onclick={verProtoboard}>Ver en protoboard</button>
+          <a class="libro esquema toque-44" href={hrefEsquema} onclick={editarEsquema}>{deEsquema ? 'Volver al esquema' : 'Editar el esquema'}</a>
+          <button type="button" class="libro protoboard toque-44" onclick={verProtoboard}>Ver en protoboard</button>
         </div>
       {/if}
     </header>
@@ -295,7 +323,7 @@ C1 out 0 100n
         {n.motor.nota ??
           'Usa dispositivos XSPICE (puertas digitales y puentes ADC/DAC), que el motor de simulación en uso no incluye.'}
         {#if n.motor.alternativa}
-          <a class="boton" href={rutaSimulacion(n.motor.alternativa)}>Abrir la versión analógica</a>
+          <a class="boton toque-44" href={rutaSimulacion(n.motor.alternativa)}>Abrir la versión analógica</a>
         {/if}
       </div>
     {:else if n?.motor.alternativa}
@@ -303,13 +331,13 @@ C1 out 0 100n
         Circuito digital con dispositivos <strong>XSPICE</strong> de ngspice (puertas, biestables y puentes ADC/DAC
         entre lo analógico y lo digital). También hay una versión analógica equivalente, con las puertas como fuentes de
         comportamiento, que da las mismas medidas.
-        <a class="boton" href={rutaSimulacion(n.motor.alternativa)}>Ver la versión analógica</a>
+        <a class="boton toque-44" href={rutaSimulacion(n.motor.alternativa)}>Ver la versión analógica</a>
       </div>
     {:else if n?.motor.original}
       <div class="aviso info">
         Versión analógica de un circuito digital del libro: cada puerta es una fuente de comportamiento con umbral de
         2,5 V y los biestables son maestro-esclavo; da las mismas medidas que la netlist original con XSPICE.
-        <a class="boton" href={rutaSimulacion(n.motor.original)}>Ver la original (XSPICE)</a>
+        <a class="boton toque-44" href={rutaSimulacion(n.motor.original)}>Ver la original (XSPICE)</a>
       </div>
     {:else if n?.motor.pesada}
       <div class="aviso">
@@ -334,7 +362,7 @@ C1 out 0 100n
           <section class="descripcion" class:abierta={verDescripcion}>
             <pre>{n.descripcion}</pre>
             {#if n.descripcion.split('\n').length > 5}
-              <button class="enlace" onclick={() => (verDescripcion = !verDescripcion)}>{verDescripcion ? 'Ver menos' : 'Ver toda la descripción'}</button>
+              <button class="enlace toque-44" onclick={() => (verDescripcion = !verDescripcion)}>{verDescripcion ? 'Ver menos' : 'Ver toda la descripción'}</button>
             {/if}
           </section>
         {:else if libre}
@@ -346,7 +374,7 @@ C1 out 0 100n
                 (puertas <code>d_and</code>, biestables <code>d_dff</code>, puentes <code>adc_bridge</code>…){:else}; no hay
                 dispositivos digitales XSPICE{/if}. El circuito se guarda en este dispositivo.
             </p>
-            {#if !texto.trim()}<button class="boton" onclick={() => (texto = EJEMPLO)}>Insertar un ejemplo</button>{/if}
+            {#if !texto.trim()}<button class="boton toque-44" onclick={() => (texto = EJEMPLO)}>Insertar un ejemplo</button>{/if}
           </section>
         {/if}
 
@@ -356,9 +384,9 @@ C1 out 0 100n
 
         <section class="netlist" aria-label="Netlist">
           <div class="netlist-cab">
-            <h3>Netlist</h3>
+            <h2>Netlist</h2>
             {#if modificada}
-              <button class="enlace" onclick={() => { texto = original; programar(0); }}>Restaurar la del libro</button>
+              <button class="enlace toque-44" onclick={() => { texto = original; programar(0); }}>Restaurar la del libro</button>
             {/if}
           </div>
           <Editor bind:texto alEjecutar={simular} marcada={lineaError} placeholder={'* Título del circuito\nV1 in 0 DC 5\nR1 in out 1k\nR2 out 0 2k\n.op\n.end'} />
@@ -367,23 +395,24 @@ C1 out 0 100n
 
       <div class="der">
         <div class="mando" role="toolbar" aria-label="Simulación">
-          {#if ejecutando && motor.fase === 'simulando'}
-            <button class="boton" onclick={detener}><span class="cuadro" aria-hidden="true"></span> Detener</button>
+          {#if fase === 'simulando'}
+            <button class="boton toque-44" onclick={detener}><span class="cuadro" aria-hidden="true"></span> Detener</button>
           {:else}
-            <button class="boton primario" onclick={simular} disabled={cargando || motor.fase === 'descargando'}>
+            <button class="boton primario toque-44" onclick={simular} disabled={cargando || motor.fase === 'descargando'}>
               <span class="triangulo" aria-hidden="true"></span> Simular
             </button>
           {/if}
           {#if resultado && !referencia}
-            <button class="boton" onclick={() => (referencia = resultado)} title="Dibujar el resultado actual como referencia tenue para comparar">Fijar referencia</button>
+            <button class="boton toque-44" onclick={() => (referencia = resultado)} title="Dibujar el resultado actual como referencia tenue para comparar">Fijar referencia</button>
           {:else if referencia}
-            <button class="boton" onclick={() => (referencia = null)}>Quitar referencia</button>
+            <button class="boton toque-44" onclick={() => (referencia = null)}>Quitar referencia</button>
           {/if}
           <span class="estado" aria-live="polite">
             {#if ejecutando}<span class="punto" aria-hidden="true"></span>{/if}{estado}
           </span>
+          <!-- in the toolbar's row, not on a line of its own: appearing and going it moved the page (0.11 QA) -->
+          {#if ultimaLinea}<code class="ultima">{ultimaLinea}</code>{/if}
         </div>
-        {#if ultimaLinea}<div class="ultima"><code>{ultimaLinea}</code></div>{/if}
 
         {#if errorSim}
           <div class="aviso error" role="alert">{errorSim}</div>
@@ -412,7 +441,7 @@ C1 out 0 100n
           <div class="resultado" class:viejo={ejecutando}>
             <Resultados {resultado} {referencia} />
           </div>
-        {:else if !ejecutando && !errorSim && !cargando}
+        {:else if !ejecutando && !errorSim && !cargando && !propias}
           <p class="nota vacio">Pulse «Simular» (o Ctrl + Intro en la netlist) para ver los resultados.</p>
         {/if}
 
@@ -433,6 +462,9 @@ C1 out 0 100n
     margin: 0 auto;
     padding: 14px 20px 60px;
     font-family: var(--sans);
+  }
+  .espera-carga {
+    min-height: 70vh;
   }
   .migas {
     display: flex;
@@ -532,9 +564,6 @@ C1 out 0 100n
     .mando {
       order: 2;
     }
-    .ultima {
-      order: 3;
-    }
     .rejilla :global(.parametros) {
       order: 4;
     }
@@ -589,7 +618,7 @@ C1 out 0 100n
     align-items: baseline;
     justify-content: space-between;
   }
-  .netlist h3 {
+  .netlist h2 {
     margin: 0 0 6px;
     font-size: 15px;
     color: var(--titulos);
@@ -643,7 +672,8 @@ C1 out 0 100n
     }
   }
   .ultima {
-    margin-top: -10px;
+    flex: 1 1 0;
+    min-width: 0;
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;

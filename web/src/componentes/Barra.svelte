@@ -16,6 +16,12 @@
     if (!app.cargado) return '';
     if (ruta.vista === 'inicio') return INICIO.etiqueta;
     if (info) return corto(info.titulo);
+    // 0.11: «Progreso» is reached from the start page, not from the rail; «Cursos» is in the rail (kept for clarity)
+    if (ruta.vista === 'cursos') return 'Cursos';
+    if (ruta.vista === 'progreso') return ruta.ancla === 'dominio' ? 'Dominio' : 'Progreso y logros';
+    // group B: reached from the start page
+    if (ruta.vista === 'practicar') return 'Práctica inteligente';
+    if (ruta.vista === 'problema') return 'Problema del día';
     return HERRAMIENTAS.find(esActiva)?.etiqueta ?? '';
   });
   const rotulo = $derived(info ? rotuloParte(ruta.parte) : '');

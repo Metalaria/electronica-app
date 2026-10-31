@@ -11,6 +11,7 @@
     montaje = 'placa',
     nombre = '',
     alFallar,
+    alListo,
     alto,
   }: {
     tipo: string;
@@ -18,6 +19,7 @@
     montaje?: Montaje;
     nombre?: string;
     alFallar?: (motivo: string) => void;
+    alListo?: () => void;
     alto?: string;
   } = $props();
 
@@ -50,7 +52,7 @@
 {#if error}
   <div class="aviso3d" role="status">{error}</div>
 {:else if Visor}
-  <Visor {tipo} {parametros} {montaje} {nombre} {alto} alFallar={fallo} />
+  <Visor {tipo} {parametros} {montaje} {nombre} {alto} alFallar={fallo} {alListo} />
 {:else}
   <div class="espera" aria-live="polite">Cargando la vista 3D…</div>
 {/if}
@@ -67,5 +69,16 @@
     color: var(--tinta-suave);
     font-family: var(--sans);
     text-align: center;
+  }
+  /* the size of the view that replaces it (Visor3D: its canvas, 4 / 4.2 on a phone, and its tool bar's row), so
+     nothing moves when it comes (0.11 QA) */
+  .espera {
+    max-height: 72vh;
+    margin-bottom: 54px;
+  }
+  @media (max-width: 640px) {
+    .espera {
+      aspect-ratio: 4 / 4.2;
+    }
   }
 </style>

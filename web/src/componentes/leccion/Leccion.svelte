@@ -9,7 +9,8 @@
   // same screen), so the browser's or Android's «Atrás» leaves the lesson to where it was opened from; the close
   // button does the same (or opens the section in the reader when the lesson was the first page shown).
   // Keys: → or Intro continue, ← goes back, Esc closes; 1–4 / A–D answer a question.
-  import { onMount, tick, untrack } from 'svelte';
+  import { mapasDeLectura } from '../../lib/mapas-lectura';
+  import { onMount, setContext, tick, untrack } from 'svelte';
   import ArrowRight from '@lucide/svelte/icons/arrow-right';
   import Check from '@lucide/svelte/icons/check';
   import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
@@ -43,10 +44,29 @@
   import CabeceraPasos from '../pregunta/CabeceraPasos.svelte';
   import Practica, { type RespuestaPractica } from '../practica/Practica.svelte';
   import IdeasClave from '../practica/IdeasClave.svelte';
+  // 0.11: the lesson's end as a learning event, and its celebration (XP, streak, accuracy)
+  import { emitir } from '../../lib/aprendizaje/eventos';
+  import { cargarProgresoXp } from '../../lib/aprendizaje/progreso.svelte';
+  import CelebracionLeccion from '../progreso/CelebracionLeccion.svelte';
   import { NOMBRE_TIPO, pantallasLeccion, practicaDeSeccion } from '../practica/datos';
   import type { Idea, ItemPractica } from '../practica/tipos';
+  import { CONTEXTO_LECCION, cargarExplorables, type ContextoLeccion } from '../figuras-vivas/contexto';
 
   let { parte, seccion }: { parte: string; seccion: string } = $props();
+
+  // 0.11 (group B): the lesson's live schematics become explorable in place (figuras-vivas/esquema/ExploraEsquema)
+  let explorables = $state.raw<Record<string, number[]>>({});
+  setContext<ContextoLeccion>(CONTEXTO_LECCION, {
+    get parte() {
+      return parte;
+    },
+    get seccion() {
+      return seccion;
+    },
+    get explorables() {
+      return explorables;
+    },
+  });
 
   let leccion = $state<Leccion | null>(null);
   let bloques = $state<Bloque[]>([]);
@@ -68,6 +88,11 @@
   // Steps and questions already counted for the daily goal in this visit.
   const contados = new Set<string>();
   let completadaAhora = $state(false);
+  // 0.11: the XP earned since the lesson opened is this visit's; the summary reached by finishing it (not by
+  // opening the lesson at /fin) celebrates.
+  const inicioVisita = Date.now();
+  let abierta = false;
+  let fiesta = $state(false);
 
   const nPasos = $derived(leccion?.pasos.length ?? 0);
   const nPreguntas = $derived(preguntas?.length ?? 0);
@@ -160,8 +185,11 @@
     registrarActividad(tipo);
   }
 
-  function continuar() {
+  function continuar(e?: MouseEvent) {
     if (!leccion) return;
+    // the second click of a double tap or double click (detail 2, 3…) landed on the next screen's «Continuar», which
+    // is in the same place, and skipped that screen (0.11 QA)
+    if (e && e.detail > 1) return;
     if (enPaso && actual?.k === 'paso') {
       completarPaso(parte, seccion, actual.paso, nPasos);
       contar(`p${actual.paso}`, 'paso');
@@ -182,6 +210,10 @@
     const primera = completarLeccion(parte, seccion, nPasos);
     completadaAhora = primera || completadaAhora;
     void cargarAprendizaje().then(() => marcarLeida(parte, seccion, true));
+    if (abierta && !fiesta) {
+      fiesta = true;
+      emitir({ tipo: 'leccion-completada', parte, seccion, primera });
+    }
   }
 
   function responderPractica(r: RespuestaPractica) {
@@ -242,12 +274,17 @@
   onMount(() => {
     app.seccion = null;
     void cargarLecciones();
+    void cargarProgresoXp();
     (async () => {
       try {
         const [l, d, pr] = await Promise.all([
           cargarLeccion(parte, seccion),
           cargarParte(parte),
           practicaDeSeccion(parte, seccion).catch(() => ({ items: [] as ItemPractica[], ideas: [] as Idea[] })),
+          // the maps of the problem panels and the «Simular»/«Calcular» buttons, so nothing jumps in later (0.11)
+          mapasDeLectura(),
+          // group B: which live schematics get the «explore» row (their room is kept from the first frame)
+          cargarExplorables().then((x) => (explorables = x)),
         ]);
         bloques = d.bloques;
         items = pr.items;
@@ -259,6 +296,7 @@
         if (/\/(pregunta-\d+|fin)$/.test(ancla)) await cargarPreguntas();
         else void cargarPreguntas();
         await ir(leerPantalla(ancla), false);
+        abierta = true;
       } catch (e) {
         error = e instanceof Error ? e.message : String(e);
       }
@@ -300,7 +338,8 @@
       etiquetaCerrar="Cerrar la lección"
     />
 
-    <main class="cuerpo">
+    <!-- not a <main>: the app's own #contenido is the page's main landmark (axe, 0.11 QA) -->
+    <div class="cuerpo">
       <div class="columna">
         {#if paso && actual?.k === 'paso'}
           {@const kPaso = actual.paso}
@@ -328,7 +367,7 @@
         {:else if item}
           {#key item.id}
             <h1 class="solo-lector" bind:this={titulo} tabindex="-1">Práctica: {NOMBRE_TIPO[item.tipo]}</h1>
-            <Practica {item} etiqueta={`Práctica · ${NOMBRE_TIPO[item.tipo]}`} respuesta={respuestasP[iItem]} onresponder={responderPractica} bind:final={finalP} />
+            <Practica {item} origen="leccion" etiqueta={`Práctica · ${NOMBRE_TIPO[item.tipo]}`} respuesta={respuestasP[iItem]} onresponder={responderPractica} bind:final={finalP} />
           {/key}
         {:else if pregunta}
           {#key pregunta.id}
@@ -339,6 +378,7 @@
               orden={ordenes[iPregunta]}
               respuesta={respuestas[iPregunta]}
               onresponder={responder}
+              origen="leccion"
               etiqueta={nPreguntas > 1 ? `Pregunta ${iPregunta + 1} de ${nPreguntas}` : 'Pregunta'}
               bind:mostrada
             />
@@ -348,6 +388,12 @@
             <span class="sello" aria-hidden="true"><Check size={34} strokeWidth={3} /></span>
             <h1 bind:this={titulo} tabindex="-1">Sección completada</h1>
             <p class="que">{leccion.num ? `${leccion.num} · ` : ''}{leccion.titulo}</p>
+            <CelebracionLeccion
+              inicio={inicioVisita}
+              aciertos={aciertos + aciertosP}
+              respondidas={respuestas.filter((r) => r).length + respondidasP}
+              {fiesta}
+            />
             <ul class="cifras">
               <li><strong>{nPasos}</strong> {nPasos === 1 ? 'paso' : 'pasos'}</li>
               {#if nPreguntas && respuestas.some((r) => r)}
@@ -371,7 +417,7 @@
           <div class="cargando" aria-live="polite"><span class="punto"></span> Cargando las preguntas…</div>
         {/if}
       </div>
-    </main>
+    </div>
 
     <PieAcciones>
       {#if item}

@@ -48,6 +48,9 @@ const PREFIJOS: Record<string, number> = {
 const PREFIJABLES = new Set([
   'Ω', 'V', 'A', 'W', 'F', 'H', 'Hz', 's', 'J', 'C', 'S', 'Wb', 'T', 'VA', 'var', 'Wh', 'Ah', 'm', 'g', 'bit/s',
   'b/s', 'B', 'bit', 'Bd', 'baud', 'Pa', 'N', 'VAr', 'lm', 'lx', 'cd', 'Sa/s', 'S/s', 'FLOPS', 'V/s', 'A/s', 'V/V', 'rad/s',
+  // 0.11 (QA): noise densities and field strengths, which the practice problems write with a prefix («17,3 nV/√Hz»)
+  // and then rejected written the same way
+  'V/√Hz', 'A/√Hz', 'V/m', 'A/m',
 ]);
 
 /** Spellings the reader may use for a unit. */
@@ -197,6 +200,13 @@ export function comprobar(texto: string, principal: Esperado, alternativas: Espe
   const todos = [principal, ...alternativas];
   for (const e of todos) {
     if (dentro(l.valor, e)) return { tipo: 'bien', nota: e.nota, texto: e.texto };
+  }
+  // «3.323» reads as Spanish thousands (3323), but a keyboard with a decimal point writes 3,323 that way too: when
+  // the decimal reading is the right answer, it is accepted (0.11 QA)
+  const ambiguo = /^\s*[+-]?[1-9]\d{0,2}\.\d{3}(?![\d.,])/.exec(texto);
+  if (ambiguo) {
+    const decimal = leer(texto.replace(ambiguo[0], ambiguo[0].replace('.', ',')), unidad);
+    if (!('error' in decimal)) for (const e of todos) if (dentro(decimal.valor, e)) return { tipo: 'bien', nota: e.nota, texto: e.texto };
   }
   // close: right digits with a wrong power of ten (prefix), wrong sign, or within 10 %
   for (const e of todos) {

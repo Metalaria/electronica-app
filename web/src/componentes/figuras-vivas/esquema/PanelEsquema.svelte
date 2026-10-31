@@ -27,6 +27,9 @@
     /** Full-screen view: values open, larger plot. */
     amplio?: boolean;
   } = $props();
+  // the same circuit can show two panels (the figure and the large view): ids must differ (0.11 QA: the second
+  // time slider had no label)
+  const uid = $props.id();
 
   // A schematic driven by a netlist (simulator page) takes its values from the page's own sliders.
   const lista = $derived(est.externo ? [] : parametros(est, nombreElemento));
@@ -135,7 +138,7 @@
   }
 </script>
 
-<section class="panel-e" class:amplio aria-label={numero ? `Circuito ${numero}` : 'Circuito'}>
+<section class="panel-e" class:amplio aria-label={numero ? `Controles del circuito ${numero}` : 'Controles del circuito'}>
   {#if numero}<h4 class="num">Circuito {numero}</h4>{/if}
   {#if est.externo && !est.op}
     <p class="pista">{est.estadoSim === 'simulando' ? 'Calculando las corrientes del circuito…' : est.mensaje || 'Simule el circuito para ver sus tensiones y corrientes en el dibujo.'}</p>
@@ -170,13 +173,15 @@
           <SlidersHorizontal size={16} /> Valores
         </button>
       {/if}
+      <!-- 0.11: a slow run is announced in this row, not on a line of its own that came and went pushing the page -->
+      {#if est.estadoSim === 'simulando' && simulandoLento}<span class="estado en-fila" role="status">Simulando con ngspice…</span>{/if}
     </div>
 
     {#if est.tran}
       <div class="tiempo">
-        <label for={`fv-t-${est.indice}`}>t = <output>{si(est.tiempo ?? 0, 's', 3)}</output></label>
+        <label for={`fv-t-${uid}`}>t = <output>{si(est.tiempo ?? 0, 's', 3)}</output></label>
         <input
-          id={`fv-t-${est.indice}`}
+          id={`fv-t-${uid}`}
           type="range"
           min="0"
           max="1000"
@@ -204,7 +209,7 @@
       {/if}
     {/if}
 
-    {#if (est.estadoSim === 'simulando' ? simulandoLento : est.estadoSim !== 'libro') || est.mensaje}
+    {#if (est.estadoSim === 'simulando' ? simulandoLento && !(est.simulable && !(est.externo && !est.op)) : est.estadoSim !== 'libro') || est.mensaje}
       <p class="estado" class:error={est.estadoSim === 'error'} role="status">
         {#if est.estadoSim === 'simulando'}Simulando con ngspice…{:else if est.estadoSim === 'error'}{est.mensaje}{:else}Resultado de ngspice con los valores cambiados.{/if}
       </p>
@@ -381,6 +386,14 @@
     margin: 0;
     color: var(--tinta-tenue);
     font-size: 13px;
+  }
+  .estado.en-fila {
+    flex: 1 1 0;
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    text-align: right;
   }
   .estado.error {
     color: var(--c-precaucion);

@@ -175,6 +175,8 @@
     max-width: 100%;
     overflow: hidden;
     padding: 0 2px;
+    /* a touch darker than --tinta-suave: on the rail's own background it was 4.4:1 (0.11 QA) */
+    color: color-mix(in srgb, var(--tinta-suave) 82%, var(--tinta));
     font-size: 11.5px;
     font-weight: 500;
     letter-spacing: -0.01em;

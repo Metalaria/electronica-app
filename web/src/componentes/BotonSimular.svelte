@@ -64,6 +64,8 @@
     padding: 0 4px;
     border-radius: 999px;
     background: var(--acento-suave);
+    /* the accent on its own pale tint was 4.2:1 (0.11 QA) */
+    color: var(--titulos);
     font-size: 11.5px;
     text-align: center;
   }

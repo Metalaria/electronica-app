@@ -82,6 +82,27 @@
     const r = lienzo!.getBoundingClientRect();
     return { x: ev.clientX - r.left, y: ev.clientY - r.top };
   }
+  /**
+   * The canvas's listeners, added and removed by hand (0.11 QA, leaks): three.js keeps every WebGL context it used
+   * reachable (its shared empty textures stay uploaded in it), and with it the canvas; handlers set as attributes
+   * stay on the element after the view closes and kept this component's data (the whole board) alive per visit.
+   */
+  function oyentes(el: HTMLCanvasElement): { destroy(): void } {
+    const h: [string, EventListener, AddEventListenerOptions?][] = [
+      ['pointerdown', abajo as EventListener],
+      ['pointerup', arriba as EventListener],
+      ['pointermove', mover as EventListener],
+      ['pointerleave', () => (globo = null)],
+      ['wheel', () => escena && (escena.tocada = true), { passive: true }],
+    ];
+    for (const [t, f, o] of h) el.addEventListener(t, f, o);
+    return {
+      destroy() {
+        for (const [t, f] of h) el.removeEventListener(t, f);
+      },
+    };
+  }
+
   function abajo(ev: PointerEvent): void {
     if (escena) escena.tocada = true;
     const p = pos(ev);
@@ -182,7 +203,7 @@
     }
     const perdido = (ev: Event) => {
       ev.preventDefault();
-      error = 'Se perdió el contexto WebGL (la GPU se ha reiniciado). Vuelve a abrir la vista 3D o usa la vista 2D.';
+      error = 'Se perdió el contexto WebGL (la GPU se ha reiniciado). Vuelva a abrir la vista 3D o use la vista 2D.';
     };
     lienzo.addEventListener('webglcontextlost', perdido);
     return () => {
@@ -192,6 +213,9 @@
       escena?.liberar();
       escena = null;
       g.__epaPlaca3DListo = false;
+      // three.js keeps the context (and so the canvas) reachable after it is released: out of the page's tree,
+      // the canvas no longer holds the view's other ≈ 190 elements with it (0.11 QA, leaks)
+      lienzo?.remove();
     };
   });
 
@@ -260,12 +284,8 @@
     <canvas
       bind:this={lienzo}
       tabindex="0"
-      aria-label="Placa en 3D: arrastra para girar, dos dedos o la rueda con Ctrl para acercar, Mayúsculas y arrastrar para desplazar; toca un componente, un pad o una pista"
-      onpointerdown={abajo}
-      onpointerup={arriba}
-      onpointermove={mover}
-      onpointerleave={() => (globo = null)}
-      onwheel={() => escena && (escena.tocada = true)}
+      aria-label="Placa en 3D: arrastre para girar, dos dedos o la rueda con Ctrl para acercar, Mayúsculas y arrastrar para desplazar; toque un componente, un pad o una pista"
+      use:oyentes
     ></canvas>
     {#if etiqueta}
       <div class="etiqueta" style:left={`${etiqueta.x}px`} style:top={`${etiqueta.y}px`}>{etiqueta.t}</div>

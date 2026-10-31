@@ -4,6 +4,7 @@
   import type { Banco, Punta } from '../banco.svelte.ts';
   import { NOMBRE_PUNTA } from '../banco.svelte.ts';
   import { COLOR_PUNTA, LETRA_PUNTA } from '../esquema/Plano.svelte';
+  import { TEXTO_PUNTA } from '../puntas';
   import { conexionesDe } from '../motor/circuito.ts';
 
   let { b, activa = $bindable() }: { b: Banco; activa: Punta | null } = $props();
@@ -65,7 +66,7 @@
         class="punta"
         role="radio"
         aria-checked={activa === p}
-        style={`--c:${COLOR_PUNTA[p]}`}
+        style={`--c:${COLOR_PUNTA[p]}; --sobre-c:${TEXTO_PUNTA[p] ?? '#fff'}`}
         onclick={() => (activa = activa === p ? null : p)}
         title={NOMBRE_PUNTA[p]}
       >
@@ -137,7 +138,7 @@
     height: 24px;
     border-radius: 50%;
     background: var(--c);
-    color: #fff;
+    color: var(--sobre-c, #fff);
     font-weight: 800;
     font-size: 13px;
   }

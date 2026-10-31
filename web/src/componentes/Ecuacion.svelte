@@ -3,6 +3,7 @@
   import type { BEc } from '../lib/tipos';
   import { prepararHtml, url, urlCss } from '../lib/datos';
   import BotonCalcular from './calculadoras/BotonCalcular.svelte';
+  import { desplazable } from '../lib/desplazable';
 
   let { bloque, indice }: { bloque: BEc; indice?: number } = $props();
 
@@ -18,7 +19,7 @@
 
 <div class="ec" id={bloque.label || undefined} data-b={indice}>
   {#if bloque.etiqueta}<div class="ec-etiqueta">{@html prepararHtml(bloque.etiqueta)}</div>{/if}
-  <div class="ec-marco">
+  <div class="ec-marco" use:desplazable={'Ecuación (se puede desplazar)'}>
     <img class="m ec-img" {src} alt={bloque.fuente} title={bloque.fuente} style={estilo} draggable="false" />
   </div>
   <BotonCalcular svg={bloque.svg} />

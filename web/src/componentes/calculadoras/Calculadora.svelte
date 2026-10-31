@@ -30,6 +30,17 @@
     modo = 'emergente',
   }: { formulas: Formula[]; inicial?: string; modo?: 'emergente' | 'pagina' } = $props();
 
+  /** The illustration's component (a lazy chunk); the controls show with it. */
+  let ilustracion = $state<typeof import('./ilustraciones/Ilustracion.svelte').default | null>(null);
+  let sinIlustracion = $state(false);
+  import('./ilustraciones/Ilustracion.svelte')
+    .then((m) => (ilustracion = m.default))
+    .catch(() => {
+      // without the illustration (a chunk that did not arrive) the calculator still works
+      ilustracion = null;
+      sinIlustracion = true;
+    });
+
   const idBase = `calc${++siguiente}`;
   void cargarFavoritos();
 
@@ -213,19 +224,22 @@
     </div>
   </header>
 
-  <div class="cuerpo-calc">
+  <!-- the controls wait, hidden, for the illustration: its height is only known once it is drawn, and on a phone
+       (one column) it pushed them down by a quarter of the screen when its chunk arrived (0.11 QA) -->
+  <div class="cuerpo-calc" class:esperando={!ilustracion && !sinIlustracion} aria-busy={!ilustracion && !sinIlustracion}>
     <div class="visual">
-      {#await import('./ilustraciones/Ilustracion.svelte')}
+      {#if ilustracion}
+        {@const Ilustracion = ilustracion}
+        <Ilustracion {f} {objetivo} valores={lentosListos} {posibles} onelegir={elegirObjetivo} xResp={movida} />
+      {:else}
         <div class="ilus-espera" aria-hidden="true"></div>
-      {:then m}
-        <m.default {f} {objetivo} valores={lentosListos} {posibles} onelegir={elegirObjetivo} xResp={movida} />
-      {/await}
+      {/if}
     </div>
 
     <div class="control">
       <div class="ecuacion">
         <FormulaViva {f} {objetivo} {posibles} onelegir={elegirObjetivo} />
-        <p class="pista-toque">Toca una magnitud de la fórmula o del dibujo para calcularla.</p>
+        <p class="pista-toque">Toque una magnitud de la fórmula o del dibujo para calcularla.</p>
       </div>
 
       <div class="objetivo" role="radiogroup" aria-label="Variable que se calcula">
@@ -462,6 +476,9 @@
   .ilus-espera {
     aspect-ratio: 16 / 10;
   }
+  .esperando .control {
+    visibility: hidden;
+  }
   .control {
     display: flex;
     flex-direction: column;
@@ -642,7 +659,8 @@
   }
   .ok {
     margin-left: 6px;
-    color: var(--c-ejemplo);
+    /* toned towards the text: the green on the example's green tint was 4.1:1 (0.11 QA) */
+    color: color-mix(in srgb, var(--c-ejemplo) 64%, var(--tinta));
     font-weight: 600;
     white-space: nowrap;
   }

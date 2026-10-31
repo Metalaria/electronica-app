@@ -69,7 +69,7 @@
   }
 
   export async function comprobar(): Promise<Comprobacion> {
-    if (!eleccion) return { bien: false, nula: true, mensaje: 'Elige una respuesta.' };
+    if (!eleccion) return { bien: false, nula: true, mensaje: 'Elija una respuesta.' };
     esperando = true;
     try {
       const [a, b] = await lanzar();
@@ -113,7 +113,7 @@
     <p class="origen">Circuito de la netlist del libro «{item.fuente.titulo}»</p>
   {/if}
 
-  <div class="opciones" role="group" aria-label="Tu predicción">
+  <div class="opciones" role="group" aria-label="Su predicción">
     {#each OPCIONES as o (o.s)}
       {@const elegida = eleccion === o.s}
       {@const ok = final && real === o.s}
@@ -133,14 +133,14 @@
           {#if o.s === 'sube'}<ArrowUp size={20} strokeWidth={2.4} />{:else if o.s === 'baja'}<ArrowDown size={20} strokeWidth={2.4} />{:else}<Equal size={20} strokeWidth={2.4} />{/if}
         </span>
         <span class="txt">{o.t}</span>
-        {#if ok}<span class="marca">Lo que pasa</span>{:else if mal}<span class="marca">Tu predicción</span>{/if}
+        {#if ok}<span class="marca">Lo que pasa</span>{:else if mal}<span class="marca">Su predicción</span>{/if}
       </button>
     {/each}
   </div>
   {#if esperando}
     <p class="estado" aria-live="polite"><span class="punto"></span> Simulando el circuito con ngspice…</p>
   {:else if !final}
-    <p class="ayuda">Piensa primero y elige: después el simulador calcula el circuito con los dos valores.</p>
+    <p class="ayuda">Piense primero y elija: después el simulador calcula el circuito con los dos valores.</p>
   {/if}
 
   {#if final}

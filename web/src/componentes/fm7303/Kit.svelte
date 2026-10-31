@@ -2,7 +2,7 @@
   // «Kit FM7303»: the FM receiver kit of printed chapter 15, complete and alive. Route:
   // #/fm7303[/<pestana>[/<seleccion>]] with pestana = esquema | senal | alineacion | averias and an optional part
   // designator (R13), block (b4) or stage. Data: web/public/fm7303/ (contenido/fm7303.py).
-  import { onMount, untrack } from 'svelte';
+  import { untrack } from 'svelte';
   import ArrowLeft from '@lucide/svelte/icons/arrow-left';
   import { ruta } from '../../lib/ruta.svelte';
   import { prepararSalto } from '../../lib/ruta.svelte';
@@ -10,6 +10,7 @@
   import type { Caja } from '../figuras-vivas/tipos';
   import { EstadoKit, alineado, nodoEn, type Pestana } from './estado.svelte';
   import type { Kit } from './tipos';
+  import ErrorCarga from '../ErrorCarga.svelte';
   import Visor from './Visor.svelte';
   import PanelEsquema from './PanelEsquema.svelte';
   import PanelSenal from './PanelSenal.svelte';
@@ -27,8 +28,13 @@
   let svg = $state('');
   let error = $state('');
 
-  onMount(() => {
+  /** «Reintentar» after a failed load. */
+  let intento = $state(0);
+
+  $effect(() => {
+    void intento;
     let vivo = true;
+    error = '';
     Promise.all([
       fetch(new URL('fm7303/kit.json', document.baseURI)).then((r) => {
         if (!r.ok) throw new Error(`kit.json: ${r.status}`);
@@ -204,7 +210,7 @@
   </nav>
 
   {#if error}
-    <p class="error">No se pudo cargar el kit: {error}</p>
+    <ErrorCarga titulo="No se pudo cargar el kit." {error} reintentar={() => intento++} />
   {:else if !k || !svg}
     <p class="cargando">Cargando el esquema del kit…</p>
   {:else}
@@ -355,7 +361,8 @@
   .pestanas a[aria-current='page'] {
     border-color: var(--acento);
     background: var(--acento);
-    color: #fff;
+    /* white on the dark theme's light accent was 3.3:1 (0.11 QA) */
+    color: var(--sobre-acento);
   }
   .cuerpo {
     display: grid;
@@ -523,7 +530,6 @@
       animation: none;
     }
   }
-  .error,
   .cargando {
     padding: 30px 0;
     color: var(--tinta-suave);

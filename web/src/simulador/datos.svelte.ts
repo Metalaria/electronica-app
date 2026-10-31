@@ -9,7 +9,7 @@ let promesa: Promise<IndiceSpice | null> | null = null;
 let promesaRefs: Promise<void> | null = null;
 
 /** Reactive view for the reader's «Simular» buttons (filled when spice-refs.json or spice.json arrives). */
-export const spice = $state({ porRef: {} as Record<string, string[]>, listo: false });
+export const spice = $state({ porRef: {} as Record<string, string[]>, listo: false, fallo: false });
 
 /** The reader's map label → netlists (spice-refs.json, a few tens of kB instead of the whole index). */
 export function cargarRefsSpice(): Promise<void> {
@@ -31,9 +31,15 @@ export function cargarIndiceSpice(): Promise<IndiceSpice | null> {
       const d = (await r.json()) as IndiceSpice;
       spice.porRef = d.porRef;
       spice.listo = true;
+      spice.fallo = false;
       return d;
     })
-    .catch(() => null);
+    .catch(() => {
+      // no network (or a broken file): not kept, so that the next call (a «Reintentar») asks again
+      promesa = null;
+      spice.fallo = true;
+      return null;
+    });
   return promesa;
 }
 

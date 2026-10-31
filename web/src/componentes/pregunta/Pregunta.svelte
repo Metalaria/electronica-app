@@ -38,6 +38,9 @@
   import { abrirFigura } from '../../lib/acciones';
   import { leerNumero, numeroCorrecto } from '../repaso/datos';
   import { figuraDeCita } from './figura';
+  // 0.11: every answer is a learning event (sound, vibration, XP…); a right one celebrates.
+  import { emitir, type OrigenRespuesta } from '../../lib/aprendizaje/eventos';
+  import Destello from '../progreso/Destello.svelte';
 
   let {
     pregunta,
@@ -48,6 +51,7 @@
     etiqueta = 'Pregunta',
     rotulo = '',
     mostrada = $bindable(null),
+    origen = 'repaso',
   }: {
     pregunta: Pregunta;
     parte: string;
@@ -60,6 +64,8 @@
     etiqueta?: string;
     /** Small line above the statement (the chapter, in mixed exams). */
     rotulo?: string;
+    /** Where it is answered (learning events): a lesson, Repaso, the placement test (no XP there). */
+    origen?: OrigenRespuesta;
     /** The answer on show (null while choosing). */
     mostrada?: Respuesta | null;
   } = $props();
@@ -76,6 +82,8 @@
   let aviso = $state('');
   let tarjeta: HTMLElement | undefined = $state();
   let figura = $state<BFigura | null>(null);
+  /** An answer given now (not a recorded one shown again): the seal celebrates if it is right. */
+  let recien = $state(false);
 
   // The figure is looked up only once the explanation is on show (it loads the part).
   $effect(() => {
@@ -93,6 +101,9 @@
   async function contestar(r: Respuesta) {
     if (mostrada) return;
     mostrada = r;
+    recien = r.bien;
+    // a retry after «Probar otra vez» is a second attempt (less XP, and only if the question had none yet)
+    emitir({ tipo: 'respuesta', id: p.id, clase: 'pregunta', origen, correcta: r.bien, intento: respuesta ? 2 : 1, pistas: 0, final: true, parte });
     if (!respuesta) onresponder?.(r);
     await tick();
     tarjeta?.scrollIntoView({ block: 'nearest', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
@@ -121,6 +132,7 @@
   let raiz: HTMLElement | undefined = $state();
 
   async function reintentar() {
+    recien = false;
     mostrada = null;
     escrito = '';
     figura = null;
@@ -184,7 +196,7 @@
               {#if ok}<Check size={18} strokeWidth={3} aria-hidden="true" />{:else if mal}<X size={18} strokeWidth={3} aria-hidden="true" />{:else}{LETRAS[pos]}{/if}
             </span>
             <span class="txt">{@html prepararHtml(p.tipo === 'opcion' ? p.opciones[original] : '')}</span>
-            {#if ok}<span class="marca">Correcta</span>{:else if mal}<span class="marca">Tu respuesta</span>{/if}
+            {#if ok}<span class="marca">Correcta</span>{:else if mal}<span class="marca">Su respuesta</span>{/if}
           </button>
         </li>
       {/each}
@@ -216,16 +228,16 @@
   {/if}
 
   {#if !mostrada}
-    <p class="ayuda">{p.tipo === 'opcion' ? 'Toca una respuesta: verás al momento si es correcta y por qué.' : 'Escribe el resultado (coma o punto decimal) y comprueba: verás al momento si es correcto y por qué.'}</p>
+    <p class="ayuda">{p.tipo === 'opcion' ? 'Toque una respuesta: verá al momento si es correcta y por qué.' : 'Escriba el resultado (coma o punto decimal) y compruebe: verá al momento si es correcto y por qué.'}</p>
   {:else}
     <section class="respuesta" class:bien={mostrada.bien} bind:this={tarjeta} role="status" data-feedback={mostrada.bien ? 'bien' : 'mal'}>
       <div class="veredicto">
-        <span class="sello" aria-hidden="true">{#if mostrada.bien}<Check size={18} strokeWidth={3} />{:else}<X size={18} strokeWidth={3} />{/if}</span>
+        <Destello activo={recien}><span class="sello" aria-hidden="true">{#if mostrada.bien}<Check size={18} strokeWidth={3} />{:else}<X size={18} strokeWidth={3} />{/if}</span></Destello>
         <h3>{mostrada.bien ? '¡Correcto!' : 'No es correcto'}</h3>
       </div>
       {#if p.tipo === 'numero'}
         <p class="sol">
-          {mostrada.texto ? `Tu respuesta: ${mostrada.texto}${p.unidad ? ` ${p.unidad}` : ''} · ` : ''}el libro da <strong>{formato()}</strong>{p.tolerancia ? ` (se acepta ±${Math.round(p.tolerancia * 100)} %)` : ''}
+          {mostrada.texto ? `Su respuesta: ${mostrada.texto}${p.unidad ? ` ${p.unidad}` : ''} · ` : ''}el libro da <strong>{formato()}</strong>{p.tolerancia ? ` (se acepta ±${Math.round(p.tolerancia * 100)} %)` : ''}
         </p>
       {/if}
       <p class="explicacion">{@html prepararHtml(p.explicacion)}</p>

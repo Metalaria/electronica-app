@@ -41,6 +41,46 @@ def _viewbox(path):
     return [float(x) for x in m.group(1).replace(',', ' ').split()]
 
 
+def _tam_imagen(path):
+    """(width, height) in pixels of a JPEG or PNG, from its header (no imaging library), or None."""
+    try:
+        with open(path, 'rb') as fh:
+            data = fh.read(1 << 20)
+    except OSError:
+        return None
+    if data[:8] == b'\x89PNG\r\n\x1a\n' and data[12:16] == b'IHDR':
+        return int.from_bytes(data[16:20], 'big'), int.from_bytes(data[20:24], 'big')
+    if data[:2] != b'\xff\xd8':
+        return None
+    i = 2
+    while i + 9 < len(data):
+        if data[i] != 0xFF:
+            i += 1
+            continue
+        marca = data[i + 1]
+        if marca in (0xD8, 0x01) or 0xD0 <= marca <= 0xD7:
+            i += 2
+            continue
+        largo = int.from_bytes(data[i + 2:i + 4], 'big')
+        # start of frame (baseline, progressive…): height then width
+        if marca in (0xC0, 0xC1, 0xC2, 0xC3, 0xC5, 0xC6, 0xC7, 0xC9, 0xCA, 0xCB, 0xCD, 0xCE, 0xCF):
+            return int.from_bytes(data[i + 7:i + 9], 'big'), int.from_bytes(data[i + 5:i + 7], 'big')
+        i += 2 + largo
+    return None
+
+
+def tamanos_fotos(out, partes_bloques):
+    """`img_tam` [width, height] of every photo figure (img/*.jpg): the app gives the <img> its size before it
+    loads, so nothing below it moves when it arrives (0.11 QA)."""
+    for bloques in partes_bloques:
+        for b in _walk(bloques):
+            src = b.get('src', '')
+            if src and not src.startswith('fig/'):
+                t = _tam_imagen(os.path.join(out, src))
+                if t:
+                    b['img_tam'] = [t[0], t[1]]
+
+
 def _strip_png(d):
     """The app only needs SVG coordinates: drop the PNG mappings used to check the export."""
     d.get('lienzo', {}).pop('png', None)
@@ -62,6 +102,9 @@ def aplicar(v3, out, partes_bloques, problems):
             if not src.startswith('fig/'):
                 b['tipo_figura'] = 'foto'
                 stats['foto'] += 1
+                t = _tam_imagen(os.path.join(out, src))
+                if t:
+                    b['img_tam'] = [t[0], t[1]]
                 continue
             name = src[4:-4]
             vb = _viewbox(os.path.join(out, src))
