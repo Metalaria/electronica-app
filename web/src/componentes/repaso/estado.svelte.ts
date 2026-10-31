@@ -3,7 +3,7 @@
 // macOS and Android, localStorage in a browser), under its own keys, with debounced writes that are
 // flushed when the page is hidden or closed.
 
-import { obtenerAlmacen, type Almacen } from '../../lib/almacen';
+import { Guardado, copiaPlana, guardadoDeRegistro } from '../../lib/sincronizacion/guardado';
 import { claveDia, responder, type Calificacion, type EstadoTarjeta } from './srs';
 import { anotarBorrado, anotarCambio } from '../../lib/sincronizacion/marcas';
 import { registrarActividad } from '../../lib/progreso-diario.svelte';
@@ -70,54 +70,86 @@ const CLAVES = {
 } as const;
 type Campo = keyof typeof CLAVES;
 
-let almacen: Almacen | null = null;
 let carga: Promise<void> | null = null;
-const pendientes = new Map<Campo, ReturnType<typeof setTimeout>>();
 
-function escribir(campo: Campo): void {
-  void almacen?.escribir(CLAVES[campo], $state.snapshot(repaso[campo]));
+const esObjeto = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
+const numero = (v: unknown) => (typeof v === 'number' && Number.isFinite(v) ? v : undefined);
+/** The settings of a fresh install (the synchronised store's default value: registro.svelte.ts `porDefecto`). */
+export const AJUSTES_DEFECTO: AjustesRepaso = { nuevasDia: NUEVAS_DIA_DEFECTO, inversas: false, mazo: 'todo' };
+function normalizarAjustes(a: unknown): AjustesRepaso {
+  const r = { ...repaso.ajustes, ...(esObjeto(a) ? (a as Partial<AjustesRepaso>) : {}) };
+  r.nuevasDia = Math.min(NUEVAS_DIA_MAX, Math.max(0, Math.round(Number(r.nuevasDia) || 0)));
+  return r;
 }
+const MAX_EXAMENES = 30;
+function listaExamenes(m: Record<string, Examen>): Examen[] {
+  return Object.values(m)
+    .sort((a, b) => b.t - a.t)
+    .slice(0, MAX_EXAMENES);
+}
+const mapaExamenes = (l: unknown): Record<string, Examen> =>
+  Array.isArray(l) ? Object.fromEntries(l.filter((e) => esObjeto(e) && typeof e.t === 'number').map((e: Examen) => [String(e.t), e])) : {};
+
+// Every key is written with read-merge-write (lib/sincronizacion/guardado.ts): what the synchronisation or another
+// tab stored meanwhile is never overwritten with this tab's older copy; the synchronisation's results are applied
+// atomically. The settings are one item («ajustes»), the exams a list keyed by their time.
+export const guardadosRepaso = {
+  tarjetas: guardadoDeRegistro<EstadoTarjeta>({ claveAlmacen: CLAVES.tarjetas, claveSinc: CLAVES.tarjetas, obtener: () => repaso.tarjetas, tiempo: (v) => numero(v?.u) }),
+  diario: guardadoDeRegistro<DiaRepaso>({ claveAlmacen: CLAVES.diario, claveSinc: CLAVES.diario, obtener: () => repaso.diario }),
+  tests: guardadoDeRegistro<ResultadoTest>({ claveAlmacen: CLAVES.tests, claveSinc: CLAVES.tests, obtener: () => repaso.tests, tiempo: (v) => numero(v?.ultimo?.t) }),
+  fallos: guardadoDeRegistro<Fallo>({ claveAlmacen: CLAVES.fallos, claveSinc: CLAVES.fallos, obtener: () => repaso.fallos, tiempo: (v) => numero(v?.t) }),
+  ajustes: new Guardado<AjustesRepaso>({
+    claveAlmacen: CLAVES.ajustes,
+    claveSinc: CLAVES.ajustes,
+    deAlmacen: (v): Record<string, AjustesRepaso> => (esObjeto(v) ? { ajustes: v as unknown as AjustesRepaso } : {}),
+    aAlmacen: (m, anterior) => m.ajustes ?? anterior ?? null,
+    leerMemoria: () => ({ ajustes: copiaPlana(repaso.ajustes) }),
+    cambiarMemoria: (poner) => {
+      if (poner.ajustes) repaso.ajustes = normalizarAjustes(poner.ajustes);
+    },
+  }),
+  examenes: new Guardado<Examen>({
+    claveAlmacen: CLAVES.examenes,
+    claveSinc: CLAVES.examenes,
+    deAlmacen: mapaExamenes,
+    aAlmacen: listaExamenes,
+    leerMemoria: () => mapaExamenes(copiaPlana(repaso.examenes)),
+    cambiarMemoria: (poner, quitar) => {
+      const m = mapaExamenes(copiaPlana(repaso.examenes));
+      Object.assign(m, poner);
+      for (const id of quitar) delete m[id];
+      repaso.examenes = listaExamenes(m);
+    },
+    tiempo: (e) => e.t,
+  }),
+};
 
 function guardar(campo: Campo, espera = 250): void {
-  const t = pendientes.get(campo);
-  if (t) clearTimeout(t);
-  pendientes.set(
-    campo,
-    setTimeout(() => {
-      pendientes.delete(campo);
-      escribir(campo);
-    }, espera),
-  );
+  guardadosRepaso[campo].guardar(espera);
 }
 
 /** Writes everything still pending. */
 export function volcarRepaso(): void {
-  for (const [campo, t] of pendientes) {
-    clearTimeout(t);
-    escribir(campo);
-  }
-  pendientes.clear();
+  for (const g of Object.values(guardadosRepaso)) void g.volcar().catch(() => undefined);
 }
 
 /** Loads the stored data once (idempotent). */
 export function cargarRepaso(): Promise<void> {
   carga ??= (async () => {
-    almacen = await obtenerAlmacen();
-    const [tarjetas, diario, ajustes, tests, fallos, examenes] = await Promise.all([
-      almacen.leer<Record<string, EstadoTarjeta>>(CLAVES.tarjetas),
-      almacen.leer<Record<string, DiaRepaso>>(CLAVES.diario),
-      almacen.leer<Partial<AjustesRepaso>>(CLAVES.ajustes),
-      almacen.leer<Record<string, ResultadoTest>>(CLAVES.tests),
-      almacen.leer<Record<string, Fallo>>(CLAVES.fallos),
-      almacen.leer<Examen[]>(CLAVES.examenes),
+    const g = guardadosRepaso;
+    // each key adopted in its own load step (a write queued meanwhile runs after it, never from the memory before the
+    // load — fifth review); what was changed before the load stays
+    await Promise.all([
+      g.tarjetas.cargar((m) => (repaso.tarjetas = { ...m, ...repaso.tarjetas })),
+      g.diario.cargar((m) => (repaso.diario = { ...m, ...repaso.diario })),
+      g.ajustes.cargar((m) => {
+        repaso.ajustes = normalizarAjustes({ ...(m.ajustes ?? {}), ...ajustesAntesDeCargar });
+        ajustesAntesDeCargar = {};
+      }),
+      g.tests.cargar((m) => (repaso.tests = { ...m, ...repaso.tests })),
+      g.fallos.cargar((m) => (repaso.fallos = { ...m, ...repaso.fallos })),
+      g.examenes.cargar((m) => (repaso.examenes = listaExamenes({ ...m, ...mapaExamenes(copiaPlana(repaso.examenes)) }))),
     ]);
-    if (tarjetas && typeof tarjetas === 'object') repaso.tarjetas = tarjetas;
-    if (diario && typeof diario === 'object') repaso.diario = diario;
-    if (ajustes && typeof ajustes === 'object') repaso.ajustes = { ...repaso.ajustes, ...ajustes };
-    repaso.ajustes.nuevasDia = Math.min(NUEVAS_DIA_MAX, Math.max(0, Math.round(Number(repaso.ajustes.nuevasDia) || 0)));
-    if (tests && typeof tests === 'object') repaso.tests = tests;
-    if (fallos && typeof fallos === 'object') repaso.fallos = fallos;
-    if (Array.isArray(examenes)) repaso.examenes = examenes;
     repaso.listo = true;
     if (typeof document !== 'undefined') {
       document.addEventListener('visibilitychange', () => {
@@ -125,7 +157,12 @@ export function cargarRepaso(): Promise<void> {
       });
       window.addEventListener('pagehide', volcarRepaso);
     }
-  })();
+  })().catch((e: unknown) => {
+    // a load that failed (the storage could not be read) is tried again by the next call, not memoised for the
+    // session (sixth review); nothing was taken as stored meanwhile (sincronizacion/guardado.ts)
+    carga = null;
+    throw e;
+  });
   return carga;
 }
 
@@ -177,7 +214,11 @@ export function deshacer(d: Deshacer): void {
   guardar('diario');
 }
 
+/** The settings the reader changed before the load finished (they win over the stored ones: sixth review). */
+let ajustesAntesDeCargar: Partial<AjustesRepaso> = {};
+
 export function ponerAjustes(a: Partial<AjustesRepaso>): void {
+  if (!repaso.listo) Object.assign(ajustesAntesDeCargar, a);
   repaso.ajustes = { ...repaso.ajustes, ...a };
   repaso.ajustes.nuevasDia = Math.min(NUEVAS_DIA_MAX, Math.max(0, Math.round(repaso.ajustes.nuevasDia)));
   anotarCambio('repaso-ajustes', 'ajustes');

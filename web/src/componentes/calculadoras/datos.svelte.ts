@@ -3,8 +3,8 @@
 // full catalogue (formulas.json), fetched only when a calculator or the «Calculadoras» page opens.
 
 import type { CatalogoFormulas, Formula } from './tipos';
-import { obtenerAlmacen } from '../../lib/almacen';
 import { anotarBorrado, anotarCambio } from '../../lib/sincronizacion/marcas';
+import { Guardado } from '../../lib/sincronizacion/guardado';
 
 const BASE = 'libro/';
 
@@ -14,30 +14,52 @@ export const calc = $state({
   mapaListo: false,
   favoritos: [] as string[],
   favoritosListos: false,
+  /** The catalogue did not arrive (no network): the page offers «Reintentar» (it is not kept as missing). */
+  falloRed: false,
 });
 
+class SinRed extends Error {}
+
+/** A content file, or null when it is not there (content not generated); SinRed when the network fails. */
 async function leer<T>(ruta: string): Promise<T | null> {
+  let r: Response;
   try {
-    const r = await fetch(BASE + ruta);
-    if (!r.ok || (r.headers.get('content-type') ?? '').includes('text/html')) return null;
-    return (await r.json()) as T;
-  } catch {
-    return null;
+    r = await fetch(BASE + ruta);
+  } catch (e) {
+    throw new SinRed(String(e));
   }
+  if (!r.ok || (r.headers.get('content-type') ?? '').includes('text/html')) return null;
+  return (await r.json()) as T;
 }
 
 let promesaMapa: Promise<void> | null = null;
+
+/** The equation map at once (the reader waits for it before showing its first part: see Lector.svelte). */
+export function cargarMapa(): Promise<void> {
+  promesaMapa ??= leer<Record<string, string[]>>('formulas-ec.json')
+    .then((m) => {
+      if (m && !calc.mapaListo) calc.porSvg = m;
+      calc.mapaListo = true;
+    })
+    .catch(() => {
+      // asked again by the next page that needs it
+      promesaMapa = null;
+    });
+  return promesaMapa;
+}
 
 /** Asks for the equation map when the browser is idle (called by the first «Calcular» button). */
 export function pedirMapa(): void {
   if (promesaMapa) return;
   promesaMapa = new Promise<void>((hecho) => {
     const ir = () => {
-      void leer<Record<string, string[]>>('formulas-ec.json').then((m) => {
-        if (m && !calc.mapaListo) calc.porSvg = m;
-        calc.mapaListo = true;
-        hecho();
-      });
+      void leer<Record<string, string[]>>('formulas-ec.json')
+        .then((m) => {
+          if (m && !calc.mapaListo) calc.porSvg = m;
+          calc.mapaListo = true;
+        })
+        .catch(() => (promesaMapa = null))
+        .finally(hecho);
     };
     if ('requestIdleCallback' in window) window.requestIdleCallback(ir, { timeout: 2500 });
     else setTimeout(ir, 600);
@@ -50,6 +72,7 @@ let porId: Map<string, Formula> | null = null;
 /** The whole catalogue (cached). */
 export function cargarCatalogo(): Promise<CatalogoFormulas | null> {
   promesaCatalogo ??= leer<CatalogoFormulas>('formulas.json').then((c) => {
+    calc.falloRed = false;
     if (c) {
       porId = new Map(c.formulas.map((f) => [f.id, f]));
       if (!calc.mapaListo) {
@@ -60,6 +83,11 @@ export function cargarCatalogo(): Promise<CatalogoFormulas | null> {
       }
     }
     return c;
+  }, () => {
+    // no network: not kept, so that «Reintentar» asks again
+    promesaCatalogo = null;
+    calc.falloRed = true;
+    return null;
   });
   return promesaCatalogo;
 }
@@ -74,15 +102,41 @@ export async function formulasPorId(ids: string[]): Promise<Formula[]> {
 const CLAVE = 'calc-favoritos';
 let promesaFav: Promise<void> | null = null;
 
+const comoMapa = (l: unknown): Record<string, 1> => (Array.isArray(l) ? Object.fromEntries(l.filter((x) => typeof x === 'string').map((x: string) => [x, 1 as const])) : {});
+/** The list in its order (`orden`), without what is gone, with what is new at the end. */
+function enOrden(m: Record<string, 1>, orden: unknown): string[] {
+  const previa = Array.isArray(orden) ? orden.filter((x): x is string => typeof x === 'string' && x in m) : [];
+  const nuevas = Object.keys(m)
+    .filter((x) => !previa.includes(x))
+    .sort();
+  return [...new Set([...previa, ...nuevas])];
+}
+// Read-merge-write (lib/sincronizacion/guardado.ts): a list stored as is, synchronised as «id → 1».
+export const guardadoFavoritos = new Guardado<1>({
+  claveAlmacen: CLAVE,
+  claveSinc: CLAVE,
+  deAlmacen: comoMapa,
+  aAlmacen: (m) => enOrden(m, calc.favoritos),
+  leerMemoria: () => comoMapa(calc.favoritos),
+  cambiarMemoria: (poner, quitar) => {
+    const fuera = new Set(quitar);
+    const lista = calc.favoritos.filter((id) => !fuera.has(id));
+    for (const id of Object.keys(poner).sort()) if (!lista.includes(id)) lista.push(id);
+    calc.favoritos = lista;
+  },
+});
+
 export function cargarFavoritos(): Promise<void> {
-  promesaFav ??= obtenerAlmacen()
-    .then((a) => a.leer<string[]>(CLAVE))
-    .then((v) => {
-      if (Array.isArray(v)) calc.favoritos = v.filter((x) => typeof x === 'string');
+  promesaFav ??= guardadoFavoritos
+    // (adopted in the load's step, in the stored order; what was added before it stays)
+    .cargar((m) => (calc.favoritos = [...new Set([...Object.keys(m), ...calc.favoritos])]))
+    .then(() => {
       calc.favoritosListos = true;
     })
     .catch(() => {
+      // (shown as they are; the next call loads again)
       calc.favoritosListos = true;
+      promesaFav = null;
     });
   return promesaFav;
 }
@@ -96,7 +150,7 @@ export function alternarFavorita(id: string): void {
   calc.favoritos = quitar ? calc.favoritos.filter((x) => x !== id) : [...calc.favoritos, id];
   if (quitar) anotarBorrado('calc-favoritos', id);
   else anotarCambio('calc-favoritos', id);
-  void obtenerAlmacen().then((a) => a.escribir(CLAVE, $state.snapshot(calc.favoritos)));
+  void guardadoFavoritos.escribir().catch((e: unknown) => console.warn('No se pudieron guardar las favoritas', e));
 }
 
 /** Route of a calculator page. */

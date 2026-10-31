@@ -1,0 +1,3 @@
+// node --no-warnings --import ./tests/actualizacion/registrar.mjs tests/actualizacion/<script>.ts …
+import { register } from 'node:module';
+register('./hooks-svelte.mjs', import.meta.url);

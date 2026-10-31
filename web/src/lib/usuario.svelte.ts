@@ -3,6 +3,7 @@
 
 import { obtenerAlmacen, type Almacen } from './almacen';
 import { anotarBorrado } from './sincronizacion/marcas';
+import { guardadoDeRegistro } from './sincronizacion/guardado';
 
 export type Tema = 'auto' | 'claro' | 'sepia' | 'oscuro';
 
@@ -14,6 +15,12 @@ export interface Preferencias {
   indiceOculto?: Record<string, boolean>;
   /** «Tu nombre» for the start page's greeting (0.9; this device only, like the rest of `prefs`). */
   nombre?: string;
+  /** Feedback sounds (0.11, lib/aprendizaje/retroalimentacion.ts); undefined = on. */
+  sonido?: boolean;
+  /** Feedback vibration (0.11); undefined = on. */
+  vibracion?: boolean;
+  /** Daily study reminder (0.11, Android only: lib/aprendizaje/recordatorio.ts); undefined = off at 20:00. */
+  recordatorio?: { activo: boolean; hora: string };
 }
 
 export interface Posicion {
@@ -57,7 +64,20 @@ type Clave = 'prefs' | 'posiciones' | 'marcadores' | 'notas';
 let almacen: Almacen | null = null;
 const pendientes = new Map<Clave, ReturnType<typeof setTimeout>>();
 
+const tiempoPropio = (v: { t?: unknown }) => (typeof v?.t === 'number' ? v.t : undefined);
+// The synchronised ones (positions, bookmarks, notes) are written with read-merge-write (sincronizacion/guardado.ts):
+// what the synchronisation or another tab stored meanwhile is never overwritten with this tab's older copy.
+export const guardadosUsuario = {
+  posiciones: guardadoDeRegistro<Posicion>({ claveAlmacen: 'posiciones', claveSinc: 'posiciones', obtener: () => usuario.posiciones, tiempo: tiempoPropio }),
+  marcadores: guardadoDeRegistro<Marcador>({ claveAlmacen: 'marcadores', claveSinc: 'marcadores', obtener: () => usuario.marcadores, tiempo: tiempoPropio }),
+  notas: guardadoDeRegistro<Nota>({ claveAlmacen: 'notas', claveSinc: 'notas', obtener: () => usuario.notas, tiempo: tiempoPropio }),
+};
+
 function guardar(clave: Clave, espera = 300): void {
+  if (clave !== 'prefs') {
+    guardadosUsuario[clave].guardar(espera);
+    return;
+  }
   const t = pendientes.get(clave);
   if (t) clearTimeout(t);
   pendientes.set(
@@ -76,23 +96,33 @@ export function volcar(): void {
     void almacen?.escribir(clave, $state.snapshot(usuario[clave]));
   }
   pendientes.clear();
+  for (const g of Object.values(guardadosUsuario)) void g.volcar().catch(() => undefined);
 }
 
-export async function cargarUsuario(): Promise<void> {
-  almacen = await obtenerAlmacen();
-  usuario.almacen = almacen.tipo;
-  const [prefs, posiciones, marcadores, notas] = await Promise.all([
-    almacen.leer<Partial<Preferencias>>('prefs'),
-    almacen.leer<Record<string, Posicion>>('posiciones'),
-    almacen.leer<Record<string, Marcador>>('marcadores'),
-    almacen.leer<Record<string, Nota>>('notas'),
-  ]);
-  if (prefs) usuario.prefs = { ...usuario.prefs, ...prefs };
-  usuario.prefs.tam = Math.min(TAM_MAX, Math.max(TAM_MIN, Number(usuario.prefs.tam) || TAM_DEFECTO));
-  if (posiciones) usuario.posiciones = posiciones;
-  if (marcadores) usuario.marcadores = marcadores;
-  if (notas) usuario.notas = notas;
-  usuario.listo = true;
+let carga: Promise<void> | null = null;
+/** Loads the reader's data (once; the synchronisation's stores call it too). */
+export function cargarUsuario(): Promise<void> {
+  carga ??= (async () => {
+    almacen = await obtenerAlmacen();
+    usuario.almacen = almacen.tipo;
+    // each key adopted in its own load step (a write queued meanwhile runs after it, never from the memory before the
+    // load — fifth review); what was changed before the load stays
+    const [prefs] = await Promise.all([
+      almacen.leer<Partial<Preferencias>>('prefs'),
+      guardadosUsuario.posiciones.cargar((m) => (usuario.posiciones = { ...m, ...usuario.posiciones })),
+      guardadosUsuario.marcadores.cargar((m) => (usuario.marcadores = { ...m, ...usuario.marcadores })),
+      guardadosUsuario.notas.cargar((m) => (usuario.notas = { ...m, ...usuario.notas })),
+    ]);
+    if (prefs) usuario.prefs = { ...usuario.prefs, ...prefs };
+    usuario.prefs.tam = Math.min(TAM_MAX, Math.max(TAM_MIN, Number(usuario.prefs.tam) || TAM_DEFECTO));
+    usuario.listo = true;
+  })().catch((e: unknown) => {
+    // a load that failed (the storage could not be read) is tried again by the next call, not memoised for the
+    // session (sixth review); nothing was taken as stored meanwhile (sincronizacion/guardado.ts)
+    carga = null;
+    throw e;
+  });
+  return carga;
 }
 
 export function ponerTema(tema: Tema): void {
@@ -111,6 +141,23 @@ export const LARGO_NOMBRE = 40;
 export function ponerNombre(nombre: string): void {
   usuario.prefs.nombre = nombre.slice(0, LARGO_NOMBRE);
   guardar('prefs', 400);
+}
+
+/** «Sonidos» and «Vibración» in «Aa» (0.11, device-only). */
+export function ponerSonido(activo: boolean): void {
+  usuario.prefs.sonido = activo;
+  guardar('prefs', 50);
+}
+
+export function ponerVibracion(activo: boolean): void {
+  usuario.prefs.vibracion = activo;
+  guardar('prefs', 50);
+}
+
+/** «Recordatorio diario» (0.11): on/off and the time «HH:MM» (the scheduling is recordatorio.ts's). */
+export function ponerRecordatorio(r: { activo: boolean; hora: string }): void {
+  usuario.prefs.recordatorio = { activo: r.activo, hora: r.hora };
+  guardar('prefs', 50);
 }
 
 export function ponerIndiceOculto(clave: string, oculto: boolean): void {

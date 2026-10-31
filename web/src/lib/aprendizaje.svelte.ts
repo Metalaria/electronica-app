@@ -5,10 +5,11 @@
 //   deducciones  "<part>:<block index>" → steps revealed in that derivation
 // Reactive (Svelte runes), loaded once on first use, debounced writes, flushed when the page hides.
 
-import { obtenerAlmacen, type Almacen } from './almacen';
 import { anotarBorrado, anotarCambio } from './sincronizacion/marcas';
+import { Guardado, guardadoDeRegistro } from './sincronizacion/guardado';
 import { registrarActividad } from './progreso-diario.svelte';
 import { claveDia } from '../componentes/repaso/srs';
+import { emitir } from './aprendizaje/eventos';
 
 export interface EstadoEjercicio {
   /** Checks with at least one readable answer (or self-assessments). */
@@ -40,46 +41,87 @@ export const aprendizaje = $state({
 
 type Clave = 'ejercicios' | 'leidas' | 'deducciones';
 
-let almacen: Almacen | null = null;
 let carga: Promise<void> | null = null;
-const pendientes = new Map<Clave, ReturnType<typeof setTimeout>>();
 
-function escribir(clave: Clave): void {
-  void almacen?.escribir(clave, $state.snapshot(aprendizaje[clave]));
+const esObjeto = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
+/** «part/label» (a part never contains «/»). */
+const partir = (id: string): [string, string] => {
+  const i = id.indexOf('/');
+  return [id.slice(0, i), id.slice(i + 1)];
+};
+/** part → label → time, flattened to «part/label» → time (the synchronised store's items). */
+export function aplanarLeidas(le: unknown): Record<string, number> {
+  const r: Record<string, number> = {};
+  if (!esObjeto(le)) return r;
+  for (const [parte, secs] of Object.entries(le)) {
+    if (!esObjeto(secs)) continue;
+    for (const [label, t] of Object.entries(secs)) if (typeof t === 'number') r[`${parte}/${label}`] = t;
+  }
+  return r;
+}
+function anidarLeidas(m: Record<string, number>): Record<string, Record<string, number>> {
+  const r: Record<string, Record<string, number>> = {};
+  for (const [id, t] of Object.entries(m)) {
+    const [parte, label] = partir(id);
+    if (parte && label) (r[parte] ??= {})[label] = t;
+  }
+  return r;
 }
 
+// Written with read-merge-write (sincronizacion/guardado.ts): what the synchronisation or another tab stored meanwhile
+// is never overwritten with this tab's older copy; the synchronisation's results are applied atomically.
+export const guardadosAprendizaje = {
+  ejercicios: guardadoDeRegistro<EstadoEjercicio>({
+    claveAlmacen: 'ejercicios',
+    claveSinc: 'ejercicios',
+    obtener: () => aprendizaje.ejercicios,
+    tiempo: (v) => (typeof v?.t === 'number' ? v.t : undefined),
+  }),
+  deducciones: guardadoDeRegistro<number>({ claveAlmacen: 'deducciones', claveSinc: 'deducciones', obtener: () => aprendizaje.deducciones }),
+  leidas: new Guardado<number>({
+    claveAlmacen: 'leidas',
+    claveSinc: 'leidas',
+    deAlmacen: aplanarLeidas,
+    aAlmacen: anidarLeidas,
+    leerMemoria: () => aplanarLeidas(aprendizaje.leidas),
+    cambiarMemoria: (poner, quitar) => {
+      for (const [id, t] of Object.entries(poner)) {
+        const [parte, label] = partir(id);
+        if (!parte || !label) continue;
+        aprendizaje.leidas[parte] ??= {};
+        aprendizaje.leidas[parte]![label] = t;
+      }
+      for (const id of quitar) {
+        const [parte, label] = partir(id);
+        const secs = aprendizaje.leidas[parte];
+        if (!secs) continue;
+        delete secs[label];
+        if (!Object.keys(secs).length) delete aprendizaje.leidas[parte];
+      }
+    },
+    tiempo: (t) => t,
+  }),
+};
+
 function guardar(clave: Clave, espera = 400): void {
-  const t = pendientes.get(clave);
-  if (t) clearTimeout(t);
-  pendientes.set(
-    clave,
-    setTimeout(() => {
-      pendientes.delete(clave);
-      escribir(clave);
-    }, espera),
-  );
+  guardadosAprendizaje[clave].guardar(espera);
 }
 
 function volcar(): void {
-  for (const [clave, t] of pendientes) {
-    clearTimeout(t);
-    escribir(clave);
-  }
-  pendientes.clear();
+  for (const g of Object.values(guardadosAprendizaje)) void g.volcar().catch(() => undefined);
 }
 
 /** Loads the stored progress (once); every component that shows progress calls it. */
 export function cargarAprendizaje(): Promise<void> {
   carga ??= (async () => {
-    almacen = await obtenerAlmacen();
-    const [ej, le, de] = await Promise.all([
-      almacen.leer<Record<string, EstadoEjercicio>>('ejercicios'),
-      almacen.leer<Record<string, Record<string, number>>>('leidas'),
-      almacen.leer<Record<string, number>>('deducciones'),
+    // each key adopted in its own load step (a write queued meanwhile — the «Leída» button does not wait for the
+    // load — runs after it, never from the memory before the load: fifth review); what was changed before it stays
+    const g = guardadosAprendizaje;
+    await Promise.all([
+      g.ejercicios.cargar((m) => (aprendizaje.ejercicios = { ...m, ...aprendizaje.ejercicios })),
+      g.leidas.cargar((m) => (aprendizaje.leidas = anidarLeidas({ ...m, ...aplanarLeidas(aprendizaje.leidas) }))),
+      g.deducciones.cargar((m) => (aprendizaje.deducciones = { ...m, ...aprendizaje.deducciones })),
     ]);
-    if (ej && typeof ej === 'object') aprendizaje.ejercicios = ej;
-    if (le && typeof le === 'object') aprendizaje.leidas = le;
-    if (de && typeof de === 'object') aprendizaje.deducciones = de;
     aprendizaje.listo = true;
     if (typeof window !== 'undefined') {
       window.addEventListener('pagehide', volcar);
@@ -87,7 +129,12 @@ export function cargarAprendizaje(): Promise<void> {
         if (document.visibilityState === 'hidden') volcar();
       });
     }
-  })();
+  })().catch((e: unknown) => {
+    // a load that failed (the storage could not be read) is tried again by the next call, not memoised for the
+    // session (sixth review); nothing was taken as stored meanwhile (sincronizacion/guardado.ts)
+    carga = null;
+    throw e;
+  });
   return carga;
 }
 
@@ -112,6 +159,7 @@ function asegurarEj(label: string): EstadoEjercicio {
 /** One «Comprobar»: the values typed, which answers are right, and whether everything is solved. */
 export function registrarIntento(label: string, valores: Record<string, string>, bien: string[], completo: boolean): void {
   const e = asegurarEj(label);
+  const antes = e.resuelto;
   e.intentos++;
   if (!completo) e.fallos++;
   if (completo) e.resuelto = true;
@@ -119,11 +167,19 @@ export function registrarIntento(label: string, valores: Record<string, string>,
   e.bien = bien;
   e.t = Date.now();
   guardar('ejercicios');
+  avisarEjercicio(label, e, completo, antes);
+}
+
+/** 0.11: the check as a learning event (sound, vibration, XP when it becomes solved). */
+function avisarEjercicio(label: string, e: EstadoEjercicio, bien: boolean, antes: boolean): void {
+  emitir({ tipo: 'respuesta', id: label, clase: 'ejercicio', origen: 'ejercicio', correcta: bien, intento: e.intentos, pistas: e.pistas, final: bien });
+  if (bien && !antes) emitir({ tipo: 'ejercicio-resuelto', id: label, intentos: e.intentos, fallos: e.fallos, pistas: e.pistas, conSolucion: e.solucion });
 }
 
 /** Self-assessment after comparing with the solution (answers that are not checked automatically). */
 export function autoevaluar(label: string, bien: boolean): void {
   const e = asegurarEj(label);
+  const antes = e.resuelto;
   e.intentos++;
   if (bien) e.resuelto = true;
   else {
@@ -132,6 +188,7 @@ export function autoevaluar(label: string, bien: boolean): void {
   }
   e.t = Date.now();
   guardar('ejercicios');
+  avisarEjercicio(label, e, bien, antes);
 }
 
 export function usarPista(label: string, n: number): void {

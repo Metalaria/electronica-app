@@ -41,12 +41,22 @@ export function leerRutaFichero(texto: string): string | null {
   return partes.map(encodeURIComponent).join('/');
 }
 
+/** A request that does not answer in this time is given up (a hung connection must not block the synchronisation,
+ * which runs one at a time across tabs). Tests may lower it with `globalThis.__epaEsperaRed` (ms). */
+export const ESPERA_RED = 45_000;
+
 async function pedir(url: string, init: RequestInit): Promise<Response> {
+  const espera = (globalThis as { __epaEsperaRed?: number }).__epaEsperaRed ?? ESPERA_RED;
+  const control = new AbortController();
+  const reloj = setTimeout(() => control.abort(), espera);
   try {
     // no-store: GitHub's API answers with max-age=60, and a cached GET would give a stale sha.
-    return await fetch(url, { ...init, cache: 'no-store', credentials: 'omit' });
+    return await fetch(url, { ...init, cache: 'no-store', credentials: 'omit', signal: control.signal });
   } catch {
+    if (control.signal.aborted) throw new ErrorGitHub('GitHub tarda demasiado en responder; se reintentará más tarde.', 0, true);
     throw new ErrorGitHub('Sin conexión con GitHub (api.github.com); se reintentará más tarde.', 0, true);
+  } finally {
+    clearTimeout(reloj);
   }
 }
 

@@ -15,8 +15,8 @@
 import type { Bloque, BH2, Parte } from './tipos';
 import { calcularPasos, finDeSeccion, type PasoLeccion } from './leccion-pasos';
 import { cargarParte, infoParte, obtenerIndice, rotuloParte, textoPlano } from './datos';
-import { obtenerAlmacen, type Almacen } from './almacen';
 import { anotarCambio } from './sincronizacion/marcas';
+import { guardadoDeRegistro } from './sincronizacion/guardado';
 import { corto, pasoVecino } from './navegacion.svelte';
 import type { Pregunta } from '../componentes/repaso/datos';
 
@@ -135,47 +135,52 @@ export const progresoLecciones = $state({
   secciones: {} as Record<string, ProgresoGuardado>,
 });
 
-let almacen: Almacen | null = null;
 let carga: Promise<void> | null = null;
-let temporizador: ReturnType<typeof setTimeout> | null = null;
+let cargado = false;
 
-function escribir(): void {
-  if (temporizador) clearTimeout(temporizador);
-  temporizador = null;
-  void almacen?.escribir('lecciones', $state.snapshot(progresoLecciones.secciones));
-}
+// Read-merge-write (sincronizacion/guardado.ts): what the synchronisation or another tab stored meanwhile is never
+// overwritten with this tab's older copy; the synchronisation's results are applied atomically.
+export const guardadoLecciones = guardadoDeRegistro<ProgresoGuardado>({
+  claveAlmacen: 'lecciones',
+  claveSinc: 'lecciones',
+  obtener: () => progresoLecciones.secciones,
+  tiempo: (v) => (typeof v?.t === 'number' ? v.t : undefined),
+});
 
 function guardar(): void {
-  if (temporizador) clearTimeout(temporizador);
-  temporizador = setTimeout(escribir, 400);
+  guardadoLecciones.guardar(400);
 }
 
 /** Loads the stored progress (once). */
 export function cargarLecciones(): Promise<void> {
   carga ??= (async () => {
-    almacen = await obtenerAlmacen();
-    const v = await almacen.leer<Record<string, ProgresoGuardado>>('lecciones');
-    // Changes made before the stored data arrived win (they are newer).
-    if (v && typeof v === 'object') progresoLecciones.secciones = { ...v, ...progresoLecciones.secciones };
+    // Changes made before the stored data arrived win (they are newer); they differ from what was read, so the next
+    // write stores (and marks) them. (Adopted in the load's step: a write queued meanwhile runs after it.)
+    const antes = Object.keys(progresoLecciones.secciones).length > 0;
+    await guardadoLecciones.cargar((v) => (progresoLecciones.secciones = { ...v, ...progresoLecciones.secciones }));
     progresoLecciones.listo = true;
-    if (temporizador) escribir();
+    cargado = true;
+    if (antes) guardar();
     if (typeof window !== 'undefined') {
-      const volcar = () => {
-        if (temporizador) escribir();
-      };
+      const volcar = () => void guardadoLecciones.volcar().catch(() => undefined);
       window.addEventListener('pagehide', volcar);
       window.addEventListener('epa:antes-de-sincronizar', volcar);
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden') volcar();
       });
     }
-  })();
+  })().catch((e: unknown) => {
+    // a load that failed (the storage could not be read) is tried again by the next call, not memoised for the
+    // session (sixth review); nothing was taken as stored meanwhile (sincronizacion/guardado.ts)
+    carga = null;
+    throw e;
+  });
   return carga;
 }
 
 /** Starts loading from a reactive getter (the load mutates state later, never synchronously). */
 function pedirCarga(): void {
-  if (!carga && typeof window !== 'undefined') queueMicrotask(() => void cargarLecciones());
+  if (!carga && typeof window !== 'undefined') queueMicrotask(() => void cargarLecciones().catch(() => undefined));
 }
 
 function asegurar(parte: string, seccion: string, n: number): ProgresoGuardado {
@@ -189,7 +194,7 @@ function asegurar(parte: string, seccion: string, n: number): ProgresoGuardado {
 function cambiado(parte: string, seccion: string, p: ProgresoGuardado): void {
   p.t = Date.now();
   anotarCambio('lecciones', `${parte}/${seccion}`);
-  if (almacen) guardar();
+  if (cargado) guardar();
   else void cargarLecciones().then(guardar);
 }
 

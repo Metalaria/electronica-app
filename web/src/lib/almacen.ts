@@ -5,6 +5,13 @@
 export interface Almacen {
   leer<T>(clave: string): Promise<T | undefined>;
   escribir(clave: string, valor: unknown): Promise<void>;
+  /**
+   * The stored JSON text of a key, and writing one (localStorage only): a module that knows the text it last read or
+   * wrote knows, by comparing texts, whether another tab wrote the key since — without parsing it
+   * (lib/sincronizacion/guardado.ts).
+   */
+  leerTexto?(clave: string): Promise<string | undefined>;
+  escribirTexto?(clave: string, texto: string): Promise<void>;
   readonly tipo: 'tauri' | 'navegador' | 'memoria';
 }
 
@@ -27,6 +34,12 @@ class AlmacenNavegador implements Almacen {
   }
   async escribir(clave: string, valor: unknown): Promise<void> {
     localStorage.setItem(PREFIJO + clave, JSON.stringify(valor));
+  }
+  async leerTexto(clave: string): Promise<string | undefined> {
+    return localStorage.getItem(PREFIJO + clave) ?? undefined;
+  }
+  async escribirTexto(clave: string, texto: string): Promise<void> {
+    localStorage.setItem(PREFIJO + clave, texto);
   }
 }
 

@@ -5,7 +5,7 @@
 // a sync between devices can merge per circuit (the newest `actualizado` wins; a tombstone is never revived
 // by an older copy). The working draft (a circuit not saved yet) is a per-device convenience in localStorage.
 
-import { obtenerAlmacen } from '../../lib/almacen';
+import { guardadoDeRegistro } from '../../lib/sincronizacion/guardado';
 import type { CircuitoGuardado, DocumentoEsquema } from './tipos.ts';
 
 export const CLAVE_CIRCUITOS = 'editor-circuitos';
@@ -13,43 +13,61 @@ const CLAVE_BORRADOR = 'epa:editor-borrador';
 const CLAVE_TRASPASO = 'epa:editor-traspaso';
 const CLAVE_NETLIST = 'epa:netlist-esquema';
 
-interface Guardados {
-  version: 1;
-  circuitos: Record<string, CircuitoGuardado>;
-}
-
 export const biblioteca = $state({
   listo: false,
+  /**
+   * What the reader must be told (sixth review): «lectura» — the saved library could not be read (what is done here
+   * stays in this page, not saved yet); «escritura» — a save failed (retried; the page shows «Reintentar»); '' — fine.
+   */
+  error: '' as '' | 'lectura' | 'escritura',
   circuitos: {} as Record<string, CircuitoGuardado>,
 });
 
 let carga: Promise<void> | null = null;
 
+/** A circuit's own time: its last change or its deletion. */
+export const tiempoCircuito = (v: { actualizado?: unknown; borrado?: unknown } | null | undefined): number | undefined =>
+  Math.max(typeof v?.actualizado === 'number' ? v.actualizado : 0, typeof v?.borrado === 'number' ? v.borrado : 0) || undefined;
+
+// Read-merge-write (lib/sincronizacion/guardado.ts): what the synchronisation or another tab stored meanwhile is
+// merged into memory and never overwritten with this page's older copy (the third review: the editor wrote its whole
+// map from memory loaded once); the synchronisation's results reach the open editor at once (they go through here).
+export const guardadoCircuitos = guardadoDeRegistro<CircuitoGuardado>({
+  claveAlmacen: CLAVE_CIRCUITOS,
+  claveSinc: CLAVE_CIRCUITOS,
+  campo: 'circuitos',
+  obtener: () => biblioteca.circuitos,
+  // (a failed read keeps its notice: every write reads first, so it fails for the same reason)
+  alEstado: (sinGuardar) => (biblioteca.error = !sinGuardar ? '' : biblioteca.error === 'lectura' ? 'lectura' : 'escritura'),
+  tiempo: tiempoCircuito,
+});
+
 export function cargarCircuitos(): Promise<void> {
   carga ??= (async () => {
     try {
-      const a = await obtenerAlmacen();
-      const g = await a.leer<Guardados>(CLAVE_CIRCUITOS);
-      biblioteca.circuitos = g?.circuitos ?? {};
+      // (adopted in the load's step; what was changed before it stays)
+      await guardadoCircuitos.cargar((m) => (biblioteca.circuitos = { ...m, ...biblioteca.circuitos }));
+      if (biblioteca.error === 'lectura') biblioteca.error = guardadoCircuitos.sinGuardar ? 'escritura' : '';
     } catch {
-      biblioteca.circuitos = {};
+      // the store could not be read (fifth review): nothing is taken as stored — every write reads it first (and fails
+      // if it cannot), so the saved library is never written over; a later call loads again
+      carga = null;
+      biblioteca.error = 'lectura';
     }
     biblioteca.listo = true;
   })();
   return carga;
 }
 
-let escritura: Promise<void> = Promise.resolve();
+/** «Reintentar»: the library is read again (if it could not be), and a save that failed is written now. */
+export async function reintentarCircuitos(): Promise<void> {
+  await cargarCircuitos();
+  await guardadoCircuitos.volcar().catch(() => undefined);
+}
+
 function escribir(): Promise<void> {
-  const datos: Guardados = { version: 1, circuitos: $state.snapshot(biblioteca.circuitos) as Record<string, CircuitoGuardado> };
-  escritura = escritura.then(async () => {
-    try {
-      await (await obtenerAlmacen()).escribir(CLAVE_CIRCUITOS, datos);
-    } catch {
-      /* storage unavailable: the circuits stay in memory for this session */
-    }
-  });
-  return escritura;
+  // storage unavailable: kept in memory, written by the next write or a retry; the page shows it (`error`)
+  return guardadoCircuitos.escribir().catch(() => undefined);
 }
 
 /** Saved circuits (not deleted), most recent first. */
