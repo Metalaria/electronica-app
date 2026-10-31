@@ -52,38 +52,44 @@
 
 <div class="seccion-cab" data-b={indice}>
   <div class="fila">
-    <!-- 0.9: the section as a step-by-step lesson (componentes/leccion), inline after the title; the word joiner
-         (no space before it) keeps it with the last word, so it never goes to a line of its own -->
     <h2 id={label || undefined}>
-      {#if bloque.num}<span class="num">{bloque.num}</span>{/if}{@html prepararHtml(bloque.html)}{#if label}&#8288;<a class="por-pasos" href={rutaLeccion(parte, label)} title="Estudiar por pasos" aria-label="Estudiar por pasos" data-por-pasos
-          ><Footprints size={18} strokeWidth={1.9} aria-hidden="true" /></a
-        >{/if}
+      {#if bloque.num}<span class="num">{bloque.num}</span>{/if}{@html prepararHtml(bloque.html)}
     </h2>
     {#if label}
       <div class="herramientas">
-        <BotonSimular {label} compacto />
-        <VerAnimacion {label} compacto />
-        <VerEn3D {label} compacto />
-        <VerPractica {label} compacto />
-        <VerKit {label} compacto />
-        <VerPlaca {label} compacto />
-        <MarcaLeida {parte} {label} />
-        <MarcaDominio {parte} {label} />
-        <button
-          class="boton-icono"
-          aria-pressed={!!nota || editando}
-          aria-label={nota ? 'Editar la nota de esta sección' : 'Añadir una nota a esta sección'}
-          title={nota ? 'Editar nota' : 'Añadir nota'}
-          onclick={editar}><Icono nombre="nota" tam={19} /></button
-        >
-        <button
-          class="boton-icono"
-          aria-pressed={marcado}
-          aria-label={marcado ? 'Quitar el marcador' : 'Marcar esta sección'}
-          title={marcado ? 'Quitar marcador' : 'Marcar sección'}
-          onclick={() => alternarMarcador(datos)}
-          ><Icono nombre={marcado ? 'marcador-lleno' : 'marcador'} tam={19} /></button
-        >
+        <div class="chips">
+          <BotonSimular {label} compacto />
+          <VerAnimacion {label} compacto />
+          <VerEn3D {label} compacto />
+          <VerPractica {label} compacto />
+          <VerKit {label} compacto />
+          <VerPlaca {label} compacto />
+        </div>
+        <!-- Owner's decision (0.11 final pass): «Estudiar por pasos» (0.9: the section as a step-by-step lesson) is one
+             of these buttons, not the end of the title. Three to a row, as wide as the three of 0.10.1, so titles
+             wrap as they did; it goes under the bookmark. -->
+        <div class="iconos">
+          <MarcaLeida {parte} {label} />
+          <MarcaDominio {parte} {label} />
+          <button
+            class="boton-icono"
+            aria-pressed={!!nota || editando}
+            aria-label={nota ? 'Editar la nota de esta sección' : 'Añadir una nota a esta sección'}
+            title={nota ? 'Editar nota' : 'Añadir nota'}
+            onclick={editar}><Icono nombre="nota" tam={19} /></button
+          >
+          <button
+            class="boton-icono"
+            aria-pressed={marcado}
+            aria-label={marcado ? 'Quitar el marcador' : 'Marcar esta sección'}
+            title={marcado ? 'Quitar marcador' : 'Marcar sección'}
+            onclick={() => alternarMarcador(datos)}
+            ><Icono nombre={marcado ? 'marcador-lleno' : 'marcador'} tam={19} /></button
+          >
+          <a class="boton-icono por-pasos" href={rutaLeccion(parte, label)} title="Estudiar por pasos" aria-label="Estudiar por pasos" data-por-pasos
+            ><Footprints size={18} strokeWidth={1.9} aria-hidden="true" /></a
+          >
+        </div>
       </div>
     {/if}
   </div>
@@ -122,28 +128,6 @@
 {/if}
 
 <style>
-  .por-pasos {
-    position: relative;
-    display: inline-grid;
-    place-items: center;
-    width: 30px;
-    height: 30px;
-    /* its own width on the last line: hanging past the end (a negative margin), it went under the section's tools
-       when that line filled the column (0.11 QA); a fixed room for it wrapped titles that fit before */
-    margin: -8px 0 -8px 2px;
-    border-radius: 8px;
-    color: var(--tinta-tenue);
-    vertical-align: middle;
-    transition:
-      color 0.15s,
-      background 0.15s;
-  }
-  /* 44 px to the finger without growing the line */
-  .por-pasos::after {
-    content: '';
-    position: absolute;
-    inset: -7px;
-  }
   .por-pasos:hover,
   .por-pasos:focus-visible {
     background: var(--acento-tinte);

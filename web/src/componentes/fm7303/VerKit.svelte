@@ -84,8 +84,22 @@
     font-size: 12.5px;
   }
   @media (pointer: coarse) {
-    .ver-kit {
+    .ver-kit:not(.compacto) {
       min-height: 44px;
+    }
+    /* the compact chip of a heading's row (its own rule set 28 px over the one above: 0.11 final QA): a 44 px touch
+       area around it, and the row keeps its height */
+    .ver-kit.compacto {
+      position: relative;
+    }
+    .ver-kit.compacto::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: max(100%, 44px);
+      height: max(100%, 44px);
+      transform: translate(-50%, -50%);
     }
   }
   @media (max-width: 599px) {

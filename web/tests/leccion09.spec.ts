@@ -123,14 +123,16 @@ test('lección de 5.2: del botón del lector al resumen, con figuras vivas, tecl
   const practica = leerJson<{ secciones: Record<string, { items: string[] }> }>('practica/cap05.json').secciones['sec-5.2']?.items ?? [];
   const total = n + practica.length + suyas.length;
 
-  // The discreet button at the end of the section title
+  // The discreet button with the section's tools (owner's decision, 0.11 final pass: no longer at the end of the
+  // title), on the title's first line
   await page.goto('#/cap05/sec-5.2');
-  const boton = page.locator('h2#sec-5\\.2 [data-por-pasos]');
+  const boton = page.locator('.seccion-cab:has(h2#sec-5\\.2) .herramientas [data-por-pasos]');
   await expect(boton).toBeVisible();
   await expect(boton).toHaveAttribute('href', '#/leccion/cap05/sec-5.2');
+  await expect(boton).toHaveAccessibleName('Estudiar por pasos');
   const caja = (await boton.boundingBox())!;
   const titulo = (await page.locator('h2#sec-5\\.2').boundingBox())!;
-  expect(caja.height).toBeLessThanOrEqual(32);
+  expect(caja.height).toBeLessThanOrEqual(36);
   expect(caja.y).toBeGreaterThanOrEqual(titulo.y - 8);
   await boton.click();
   await expect(page).toHaveURL(/#\/leccion\/cap05\/sec-5\.2$/);

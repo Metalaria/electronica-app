@@ -152,6 +152,14 @@
     margin-top: 8px;
     font-size: 13px;
   }
+  /* touch screens: «Anotaciones del esquema» was 19 px high (0.11 final QA) */
+  @media (pointer: coarse) {
+    .notas summary {
+      box-sizing: border-box;
+      min-height: 44px;
+      padding-block: 12px;
+    }
+  }
   .notas pre {
     white-space: pre-wrap;
     font-size: 12px;

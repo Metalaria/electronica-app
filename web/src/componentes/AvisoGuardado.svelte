@@ -6,7 +6,7 @@
     error,
     nombre,
     reintentar,
-  }: { error: '' | 'lectura' | 'escritura'; nombre: string; reintentar: () => Promise<void> } = $props();
+  }: { error: '' | 'lectura' | 'escritura' | 'memoria'; nombre: string; reintentar: () => Promise<void> } = $props();
 
   let intentando = $state(false);
   async function otraVez() {
@@ -21,12 +21,14 @@
 
 {#if error}
   <div class="aviso-guardado" role="alert" data-aviso-guardado={error}>
-    {#if error === 'lectura'}
+    {#if error === 'memoria'}
+      <span>Este navegador no deja guardar nada en el dispositivo: «{nombre}» y lo que haga aquí se conservan solo mientras no cierre la página.</span>
+    {:else if error === 'lectura'}
       <span>No se pudo leer «{nombre}» en este dispositivo. Lo que haga aquí se conserva mientras no cierre la página, pero aún no está guardado.</span>
     {:else}
       <span>No se pudieron guardar sus cambios en «{nombre}» en este dispositivo. Se volverá a intentar; mientras tanto, no cierre la página.</span>
     {/if}
-    <button type="button" class="boton" onclick={otraVez} disabled={intentando}>{intentando ? 'Reintentando…' : 'Reintentar'}</button>
+    {#if error !== 'memoria'}<button type="button" class="boton" onclick={otraVez} disabled={intentando}>{intentando ? 'Reintentando…' : 'Reintentar'}</button>{/if}
   </div>
 {/if}
 

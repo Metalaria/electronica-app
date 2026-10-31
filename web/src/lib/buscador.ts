@@ -11,7 +11,14 @@ export interface Resultado {
   terminos: string[];
 }
 
-let motor: Promise<{ ms: MiniSearch<DocBusqueda>; docs: Map<string, DocBusqueda> }> | null = null;
+interface Motor {
+  ms: MiniSearch<DocBusqueda>;
+  docs: Map<string, DocBusqueda>;
+  /** Title as typed (claveTitulo) → ids, in the book's order; a section also by its title without its number. */
+  titulos: Map<string, string[]>;
+}
+
+let motor: Promise<Motor> | null = null;
 
 // Short Spanish words that only add noise to the results.
 const VACIAS = new Set(
@@ -23,7 +30,12 @@ function procesar(termino: string): string | null {
   return t.length < 2 && !/\d/.test(t) ? null : VACIAS.has(t) ? null : t;
 }
 
-export function prepararBuscador(): Promise<{ ms: MiniSearch<DocBusqueda>; docs: Map<string, DocBusqueda> }> {
+/** A title as a reader types it: case, accents, punctuation and spacing aside. */
+function claveTitulo(s: string): string {
+  return normalizar(s).split(/[^\p{L}\p{N}]+/u).filter(Boolean).join(' ');
+}
+
+export function prepararBuscador(): Promise<Motor> {
   motor ??= (async () => {
     const lista = await cargarBusqueda();
     const ms = new MiniSearch<DocBusqueda>({
@@ -43,7 +55,19 @@ export function prepararBuscador(): Promise<{ ms: MiniSearch<DocBusqueda>; docs:
     const docs = new Map<string, DocBusqueda>();
     for (const d of lista) if (!docs.has(d.id)) docs.set(d.id, d);
     await ms.addAllAsync([...docs.values()], { chunkSize: 200 });
-    return { ms, docs };
+    const titulos = new Map<string, string[]>();
+    const anotar = (k: string, id: string) => {
+      if (!k) return;
+      const l = titulos.get(k);
+      if (!l) titulos.set(k, [id]);
+      else if (!l.includes(id)) l.push(id);
+    };
+    for (const d of docs.values()) {
+      anotar(claveTitulo(d.titulo), d.id);
+      // «5.3 Diodos»: also «Diodos»
+      if (d.id.startsWith('sec-')) anotar(claveTitulo(d.titulo.replace(/^\S+\s+/, '')), d.id);
+    }
+    return { ms, docs, titulos };
   })();
   return motor;
 }
@@ -51,10 +75,21 @@ export function prepararBuscador(): Promise<{ ms: MiniSearch<DocBusqueda>; docs:
 export async function buscar(consulta: string, limite = 60): Promise<Resultado[]> {
   const q = consulta.trim();
   if (!q) return [];
-  const { ms, docs } = await prepararBuscador();
+  const { ms, docs, titulos } = await prepararBuscador();
   let r: SearchResult[] = ms.search(q);
   // If every word must match and nothing does, fall back to any word.
   if (r.length === 0) r = ms.search(q, { combineWith: 'OR' });
+  // A title typed whole goes first (0.11 final QA): single letters and short words are not indexed, so «Filtro en T»
+  // was one more «filtro», below the tenth result.
+  const exactos = titulos.get(claveTitulo(q));
+  if (exactos) {
+    const tope = r[0]?.score ?? 1;
+    const por = new Map(r.map((x) => [String(x.id), x]));
+    const terminos = [...new Set(q.split(/[^\p{L}\p{N}]+/u).map(procesar).filter((t): t is string => !!t))];
+    const primeros = exactos.map((id) => ({ ...(por.get(id) ?? { id, terms: terminos, queryTerms: terminos, match: {} }), score: tope }) as SearchResult);
+    const ya = new Set(exactos);
+    r = [...primeros, ...r.filter((x) => !ya.has(String(x.id)))];
+  }
   return r.slice(0, limite).flatMap((x) => {
     const doc = docs.get(String(x.id));
     return doc ? [{ doc, puntos: x.score, terminos: x.terms }] : [];

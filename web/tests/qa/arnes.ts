@@ -91,6 +91,18 @@ const RUIDO = [/KHR_parallel_shader_compile extension not supported/, /GPU stall
 export async function prepararPagina(page: Page, reg: Registro): Promise<void> {
   reg.page = page;
   await page.addInitScript(instalarSonda);
+  // QA_PILAS=1: the call stack of every console warning and error, printed (to find who warns: a production build
+  // has no names, but the chunk, line and column point to the code)
+  if (process.env.QA_PILAS) {
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Runtime.enable');
+    cdp.on('Runtime.consoleAPICalled', (e) => {
+      if (e.type !== 'warning' && e.type !== 'error') return;
+      const texto = e.args.map((a) => String(a.value ?? a.description ?? '')).join(' ').slice(0, 160);
+      const pila = (e.stackTrace?.callFrames ?? []).slice(0, 14).map((f) => `${f.functionName || '?'}@${f.url.split('/').pop()}:${f.lineNumber}:${f.columnNumber}`);
+      console.log(`[pila] ${reg.ruta} · ${texto}\n  ${pila.join('\n  ')}`);
+    });
+  }
   page.on('pageerror', (e) => {
     void reg.anotar({ sev: 'error', tipo: 'excepcion', firma: (e.message || String(e)).slice(0, 120), msg: `Excepción no capturada: ${e.message}\n${(e.stack ?? '').split('\n').slice(0, 4).join('\n')}` });
   });

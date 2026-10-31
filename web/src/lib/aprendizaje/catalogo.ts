@@ -6,6 +6,7 @@
 // the section, a subsection inside it («sec-5.3.2», «Apartado»), a problem («prob-…», whose section ejercicios.json
 // gives) or an appendix section («apG-4»); an exercise's section comes from ejercicios.json.
 
+import { esDeRed } from '../errores';
 import { leerJSON, obtenerIndice, obtenerRefs, ordenLectura } from '../datos';
 import { cargarEjercicios, ejercicios } from '../ejercicios.svelte';
 import type { ItemCatalogo, ConceptoCandidato, CandidatoProblema, DominioMinimo } from './seleccion';
@@ -110,8 +111,19 @@ export async function conceptoDePractica(id: string, parte?: string): Promise<st
 
 /** Every answerable item of a part: practice items, Repaso questions and self-checked exercises. */
 export async function itemsDeParte(parte: string): Promise<ItemCatalogo[]> {
+  return (await itemsYFalta(parte)).items;
+}
+
+/** The items of a part, and whether a bank of it did not come for lack of network (the list is then partial). */
+async function itemsYFalta(parte: string): Promise<{ items: ItemCatalogo[]; falta: boolean }> {
   const [{ cargarPractica }, { cargarCuestionario }] = await Promise.all([practica(), repaso()]);
-  const [pr, rp, ej] = await Promise.all([cargarPractica(parte).catch(() => null), cargarCuestionario(parte).catch(() => null), cargarEjercicios()]);
+  let falta = false;
+  // (a part without a quiz has no file: that is no failure)
+  const sinRed = (e: unknown) => {
+    if (esDeRed(e)) falta = true;
+    return null;
+  };
+  const [pr, rp, ej] = await Promise.all([cargarPractica(parte).catch(sinRed), cargarCuestionario(parte).catch(sinRed), cargarEjercicios()]);
   const r: ItemCatalogo[] = [];
   for (const it of pr?.items ?? []) r.push({ id: it.id, tipo: 'practica', subtipo: it.tipo, concepto: `${it.parte}/${it.seccion}` });
   for (const q of rp?.preguntas ?? []) {
@@ -122,7 +134,7 @@ export async function itemsDeParte(parte: string): Promise<ItemCatalogo[]> {
     if (it.parte !== parte || it.modo !== 'auto' || !it.respuestas.length || !it.seccion) continue;
     r.push({ id: label, tipo: 'ejercicio', subtipo: it.tipo, concepto: `${parte}/${it.seccion}` });
   }
-  return r;
+  return { items: r, falta };
 }
 
 const conceptosConItems = new Map<string, Promise<Set<string>>>();
@@ -131,7 +143,12 @@ const conceptosConItems = new Map<string, Promise<Set<string>>>();
 export function conceptosDeParte(parte: string): Promise<Set<string>> {
   let p = conceptosConItems.get(parte);
   if (!p) {
-    p = itemsDeParte(parte).then((l) => new Set(l.map((x) => x.concepto)));
+    // a list made while a bank was missing for lack of network is not kept: the next call loads again (0.11 final QA:
+    // offline, a chapter's practice stayed at 4 of its exercises after «Reintentar»)
+    p = itemsYFalta(parte).then(({ items, falta }) => {
+      if (falta) conceptosConItems.delete(parte);
+      return new Set(items.map((x) => x.concepto));
+    });
     p.catch(() => conceptosConItems.delete(parte));
     conceptosConItems.set(parte, p);
   }

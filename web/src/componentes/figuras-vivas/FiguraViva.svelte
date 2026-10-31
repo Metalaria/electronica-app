@@ -2,12 +2,12 @@
   // A book figure with its live layer: interactive plots (readout, A/B cursors) and live schematics
   // (charge flow, voltages, values). The figure data are fetched only when the figure comes near the
   // viewport, and the layers animate only while it is on screen; until then this is just the image.
-  import { getContext, onMount } from 'svelte';
+  import { getContext, onMount, untrack } from 'svelte';
   import Maximize from '@lucide/svelte/icons/maximize-2';
   import Zap from '@lucide/svelte/icons/zap';
   import Activity from '@lucide/svelte/icons/activity';
   import type { Caja, DatosFigura } from './tipos';
-  import { cargarDatos, cerca, enPantalla, pagina } from './carga.svelte';
+  import { cargarDatos, cerca, datosYa, enPantalla, pagina } from './carga.svelte';
   import { grupos as calcularGrupos } from './grafica/lectura';
   import { EstadoGraficas } from './grafica/estado.svelte';
   import { EstadoEsquema } from './esquema/modelo.svelte';
@@ -50,7 +50,23 @@
   const explorables = $derived(leccion?.explorables[ruta] ?? []);
 
   let raiz: HTMLElement | undefined = $state();
-  let datos = $state.raw<DatosFigura | null>(null);
+  /** The data match the figure (the viewBox; otherwise the layers would be misplaced). */
+  const encaja = (d: DatosFigura) => {
+    const s = d.lienzo?.svg;
+    return !!s && Math.abs(s.ancho - vista[2]) < 0.5 && Math.abs(s.alto - vista[3]) < 0.5;
+  };
+  // (already arrived: taken before the first paint, so the panels are there from the start)
+  let datos = $state.raw<DatosFigura | null>(untrack(() => {
+    const d = datosYa(ruta);
+    return d && encaja(d) ? d : null;
+  }));
+  // data that arrive while the figure is already on the page (the reader moving to it within the part asks for them
+  // before scrolling: 0.11 final QA, its panels pushed the caption 280 px down after the scroll)
+  $effect(() => {
+    if (datos) return;
+    const d = datosYa(ruta);
+    if (d && encaja(d)) datos = d;
+  });
   let visible = $state(false);
   let grande = $state(false);
 
@@ -67,9 +83,7 @@
       if (!dentro || datos) return;
       cargarDatos(ruta)
         .then((d) => {
-          // The viewBox of the data must match the figure; otherwise the layers would be misplaced.
-          const s = d.lienzo?.svg;
-          if (s && Math.abs(s.ancho - vista[2]) < 0.5 && Math.abs(s.alto - vista[3]) < 0.5) datos = d;
+          if (encaja(d)) datos = d;
         })
         .catch(() => {});
     });

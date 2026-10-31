@@ -240,7 +240,12 @@
   {:else if fase === 'vacio'}
     <section class="t09-tarjeta t09-grande intro" data-sesion-vacia>
       <h1 bind:this={titulo} tabindex="-1">Nada que practicar aquí</h1>
-      <p>{enfoque ? `${enfoque} no tiene prácticas ni preguntas que se puedan responder en la aplicación.` : 'No hay ejercicios disponibles ahora mismo.'}</p>
+      {#if sesion?.incompleta}
+        <p class="aviso-red" role="alert">Sin conexión no se han podido cargar los ejercicios. Compruebe la conexión y vuelva a intentarlo.</p>
+      {:else}
+        <p>{enfoque ? `${enfoque} no tiene prácticas ni preguntas que se puedan responder en la aplicación.` : 'No hay ejercicios disponibles ahora mismo.'}</p>
+      {/if}
+      {#if sesion?.incompleta}<div class="botones"><button type="button" class="t09-boton" onclick={preparar}>Reintentar</button></div>{/if}
       <div class="botones"><a class="t09-boton" href="#/practicar">Práctica para mí</a><a class="enlace" href="#/">Volver al inicio</a></div>
     </section>
   {:else if fase === 'intro' && sesion}
@@ -256,6 +261,13 @@
             un poco de repaso de lo que domina y algo nuevo de su curso{/if}.
         {/if}
       </p>
+      {#if sesion.incompleta}
+        <!-- offline: some of the chapter's exercises did not come (0.11 final QA) -->
+        <div class="aviso-red" role="alert" data-sesion-incompleta>
+          <p>Sin conexión no se han podido cargar todos los ejercicios: esta sesión tiene menos de los que tendría.</p>
+          <button type="button" class="enlace toque-44" onclick={preparar}>Reintentar</button>
+        </div>
+      {/if}
       <ul class="motivos" aria-label="Qué hay en la sesión">
         {#each ['debil', 'repasar', 'foco', 'nuevo', 'dominado'] as m (m)}
           {#if cuentas[m]}<li data-motivo={m}><strong>{cuentas[m]}</strong> {CUENTA_MOTIVO[m]![cuentas[m] === 1 ? 0 : 1]}</li>{/if}
@@ -514,6 +526,21 @@
   }
   .error {
     color: color-mix(in srgb, var(--c-precaucion) 75%, var(--tinta));
+  }
+  .aviso-red {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px 12px;
+    margin: 0 0 12px;
+    padding: 8px 12px;
+    border-left: 4px solid var(--c-precaucion);
+    border-radius: 8px;
+    background: var(--fondo);
+    color: color-mix(in srgb, var(--c-precaucion) 75%, var(--tinta));
+  }
+  .aviso-red p {
+    margin: 0;
   }
   .fin {
     display: flex;

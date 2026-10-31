@@ -185,6 +185,21 @@
     font-weight: 600;
     cursor: pointer;
   }
+  @media (pointer: coarse) {
+    .texto-licencia summary {
+      box-sizing: border-box;
+      min-height: 44px;
+      padding-block: 12px;
+    }
+  }
+  /* touch screens: the source's address, alone on its line, 44 px of touch area (0.11 final QA) */
+  @media (pointer: coarse) {
+    .lista li > p > a {
+      display: inline-block;
+      padding-block: 12px;
+      margin-block: -12px;
+    }
+  }
   .texto-licencia pre {
     max-height: 22em;
     margin: 6px 0 0;

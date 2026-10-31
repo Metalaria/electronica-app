@@ -22,6 +22,7 @@
   import Icono from './Icono.svelte';
   import BotonTest from './repaso/BotonTest.svelte';
   import { mapasDeLectura } from '../lib/mapas-lectura';
+  import { cargarDatos } from './figuras-vivas/carga.svelte';
 
   let { parte }: { parte: string } = $props();
 
@@ -353,11 +354,34 @@
 
   // ------------------------------------------------------------------ lifecycle
 
+  /**
+   * A route to a live figure (#/capXX/fig-…): its data come with the part (at most 1.5 s), so the figure is drawn
+   * with its panels from the start (0.11 final QA: they arrived after the first paint and pushed the caption and
+   * the text some 350 px down on a phone).
+   */
+  async function datosDeFiguraObjetivo(p: Parte): Promise<void> {
+    if (ruta.vista !== 'parte' || ruta.parte !== parte || !ruta.ancla) return;
+    const ids = new Set(candidatosDeRef(ruta.ancla));
+    let ruta_: string | null = null;
+    const buscar = (bs: unknown[]): void => {
+      for (const b of bs) {
+        if (ruta_ || !b || typeof b !== 'object') continue;
+        const o = b as { t?: string; label?: string; datos?: string; tipo_figura?: string };
+        if (o.t === 'figura' && o.label && ids.has(o.label) && o.datos && o.tipo_figura) ruta_ = o.datos;
+        else for (const v of Object.values(o)) if (Array.isArray(v)) buscar(v);
+      }
+    };
+    buscar(p.bloques as unknown[]);
+    if (!ruta_) return;
+    await Promise.race([cargarDatos(ruta_).catch(() => undefined), new Promise((r) => setTimeout(r, 1500))]);
+  }
+
   function cargar() {
     error = '';
     // with the maps of the problem panels and the «Simular»/«Calcular» buttons: nothing jumps in later (0.11)
     Promise.all([cargarParte(parte), mapasDeLectura()])
-      .then(([p]) => {
+      .then(async ([p]) => {
+        await datosDeFiguraObjetivo(p);
         datos = p;
       })
       .catch((e: unknown) => {
@@ -441,7 +465,10 @@
     void ruta.n;
     untrack(() => {
       if (ruta.vista !== 'parte' || ruta.parte !== parte) return;
+      // a live figure as the destination: its data first, so its panels are there when the view lands on it
+      const d = datos!;
       tick()
+        .then(() => datosDeFiguraObjetivo(d))
         .then(posicionar)
         .then(() => {
           actualizar();

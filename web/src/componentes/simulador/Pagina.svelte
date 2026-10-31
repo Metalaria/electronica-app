@@ -12,6 +12,7 @@
     detener,
     precalentarMotor,
     simularTexto,
+    sustituidaPorFondo,
     SimulacionCancelada,
   } from '../../simulador/cliente.svelte';
   import type { Simulacion } from '../../simulador/motor/simular.ts';
@@ -139,23 +140,44 @@ C1 out 0 100n
     untrack(cargar);
   });
 
+  /** Runs this page asked for, and whether the reader stopped the last one («Detener»). */
+  let pedidas = 0;
+  let detenida = false;
+  let vivo = true;
+
   async function simular() {
     if (!texto.trim()) {
       errorSim = 'La netlist está vacía.';
       return;
     }
     errorSim = '';
+    const mia = ++pedidas;
+    detenida = false;
     propias++;
     try {
       const r = await simularTexto(texto);
       resultado = r;
       if (!r.ejecucion.fallo) emitir({ tipo: 'simulacion', origen: 'simulador' });
     } catch (e) {
-      if (e instanceof SimulacionCancelada) return;
+      if (e instanceof SimulacionCancelada) {
+        // Replaced by a newer run of this page, or stopped by the reader: nothing to do. Replaced by a background
+        // run (the circuit drawn above re-solves itself after each result, on the same engine): this is still the
+        // page's latest netlist, so it runs again — under load that background run could start just after a
+        // slider's run and leave the page showing the previous values (0.11 QA, simulador.spec). Replaced by a
+        // run someone asked for (the breadboard opened over this page): not again, that would cancel it.
+        if (mia === pedidas && !detenida && vivo && sustituidaPorFondo()) programar(60);
+        return;
+      }
       errorSim = e instanceof Error ? e.message : String(e);
     } finally {
       propias--;
     }
+  }
+
+  /** «Detener»: only this page's run, and it is not run again. */
+  function detenerPropia() {
+    detenida = true;
+    detener();
   }
 
   let pausa: ReturnType<typeof setTimeout> | null = null;
@@ -215,6 +237,7 @@ C1 out 0 100n
     return () => window.removeEventListener('epa:elegir-componente', oir);
   });
   onDestroy(() => {
+    vivo = false;
     if (pausa) clearTimeout(pausa);
     if (reloj) clearInterval(reloj);
     if (motor.fase === 'simulando') detener();
@@ -396,7 +419,7 @@ C1 out 0 100n
       <div class="der">
         <div class="mando" role="toolbar" aria-label="Simulación">
           {#if fase === 'simulando'}
-            <button class="boton toque-44" onclick={detener}><span class="cuadro" aria-hidden="true"></span> Detener</button>
+            <button class="boton toque-44" onclick={detenerPropia}><span class="cuadro" aria-hidden="true"></span> Detener</button>
           {:else}
             <button class="boton primario toque-44" onclick={simular} disabled={cargando || motor.fase === 'descargando'}>
               <span class="triangulo" aria-hidden="true"></span> Simular
@@ -441,6 +464,11 @@ C1 out 0 100n
           <div class="resultado" class:viejo={ejecutando}>
             <Resultados {resultado} {referencia} />
           </div>
+        {:else if n && !errorSim && propias > 0}
+          <!-- A book netlist's first run: its results' place is kept. On tablets and phones they come before the
+               netlist, and arriving they pushed it out of the screen (CLS 0.10–0.15, 0.11 final QA); most results
+               are taller than this, so what grows then is below the screen. -->
+          <div class="resultado-reservado" aria-hidden="true"></div>
         {:else if !ejecutando && !errorSim && !cargando && !propias}
           <p class="nota vacio">Pulse «Simular» (o Ctrl + Intro en la netlist) para ver los resultados.</p>
         {/if}
@@ -720,6 +748,15 @@ C1 out 0 100n
   .resultado {
     transition: opacity 0.2s;
     min-width: 0;
+  }
+  .resultado-reservado {
+    min-height: 480px;
+  }
+  @media (min-width: 1340px) {
+    /* (two columns: the netlist is not under the results) */
+    .resultado-reservado {
+      min-height: 0;
+    }
   }
   .resultado.viejo {
     opacity: 0.6;

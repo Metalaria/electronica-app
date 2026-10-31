@@ -1,12 +1,18 @@
 // Lazy loading of the figure data and shared viewport observers: one IntersectionObserver for «near the
 // viewport» (start loading the JSON) and one for «on screen» (run animations), whatever the number of figures.
 
+import { SvelteMap } from 'svelte/reactivity';
 import { leerJSON } from '../../lib/datos';
 import type { DatosFigura } from './tipos';
 
 // A few recent figures are kept parsed; the browser's HTTP cache keeps the rest cheap to fetch again.
 const MAX_CACHE = 24;
 const cache = new Map<string, Promise<DatosFigura>>();
+/**
+ * The ones already arrived (a figure that mounts after them takes them at once, before its first paint). Reactive:
+ * a figure already on the page takes them as soon as the reader has them (moving to it within the part).
+ */
+const llegados = new SvelteMap<string, DatosFigura>();
 
 export function cargarDatos(ruta: string): Promise<DatosFigura> {
   let p = cache.get(ruta);
@@ -16,10 +22,22 @@ export function cargarDatos(ruta: string): Promise<DatosFigura> {
     return p;
   }
   p = leerJSON<DatosFigura>(ruta);
-  p.catch(() => cache.delete(ruta));
+  p.then((d) => cache.get(ruta) === p && llegados.set(ruta, d)).catch(() => cache.delete(ruta));
   cache.set(ruta, p);
-  while (cache.size > MAX_CACHE) cache.delete(cache.keys().next().value!);
+  while (cache.size > MAX_CACHE) {
+    const k = cache.keys().next().value!;
+    cache.delete(k);
+    llegados.delete(k);
+  }
   return p;
+}
+
+/**
+ * A figure's data if they have already arrived (0.11 final QA: a figure opened by its link loaded them after its
+ * first paint and its panels pushed the caption and the text 350 px down; the reader now asks for them first).
+ */
+export function datosYa(ruta: string): DatosFigura | undefined {
+  return llegados.get(ruta);
 }
 
 type Aviso = (dentro: boolean) => void;

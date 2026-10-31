@@ -11,6 +11,7 @@ import { completar, partesDelPlan, planificar, N_SESION, type Alcance, type Item
 import { cargarPractica } from '../practica/datos';
 import { cargarBaraja, cargarCuestionario, type Pregunta, type Tarjeta } from '../repaso/datos';
 import { barajarCon } from '../practica/azar';
+import { esDeRed } from '../../lib/errores';
 import type { ItemPractica } from '../practica/tipos';
 
 export interface ItemSesion extends ItemElegido {
@@ -32,6 +33,8 @@ export interface Sesion {
   /** The course the new material comes from. */
   curso: string;
   alcance: Alcance | null;
+  /** Some bank of its parts did not come for lack of network: the session is smaller than it should be. */
+  incompleta?: boolean;
 }
 
 export const NOMBRE_MOTIVO: Record<Motivo, string> = {
@@ -66,6 +69,12 @@ export async function prepararSesion(alcanceTexto: string, semilla: number, ahor
     Promise.all(partesDelPlan(plan).map((p) => itemsDeParte(p).catch(() => []))),
     tarjetasDebidas(ahora).catch(() => []),
   ]);
+  // a bank of the plan's parts that did not come for lack of network (not one a part does not have): the session is
+  // smaller than it should be and says so (0.11 final QA: offline, a chapter's practice offered 4 of its exercises
+  // without a word)
+  const incompleta = (
+    await Promise.all(partesDelPlan(plan).flatMap((p) => [cargarPractica(p), cargarCuestionario(p)].map((x) => x.then(() => false, (e: unknown) => esDeRed(e)))))
+  ).some(Boolean);
   const items = [...porParte.flat(), ...tarjetas].filter((it) => claves.has(it.concepto));
   const elegidos = completar({ plan, items, ultimas: ultimasRespuestas(), ahora, semilla });
 
@@ -91,5 +100,5 @@ export async function prepararSesion(alcanceTexto: string, semilla: number, ahor
     }
     resueltos.push(base);
   }
-  return { items: resueltos, plan, conceptos: [...new Set(resueltos.map((x) => x.concepto))], curso: curso.id, alcance };
+  return { items: resueltos, plan, conceptos: [...new Set(resueltos.map((x) => x.concepto))], curso: curso.id, alcance, incompleta };
 }

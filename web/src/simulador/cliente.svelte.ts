@@ -157,8 +157,20 @@ function descartar() {
   trabajadorListo = null;
 }
 
+/**
+ * Whether the newest run asked for is a background one (`simularTexto(…, { fondo: true })`: a drawn circuit solving
+ * itself again after a page's result). A page whose run that replaced runs it again; one replaced by someone's own
+ * run (the breadboard over the simulator, the instruments) does not — it would cancel that run in turn (0.11 final
+ * QA: the breadboard's «Simular» over a book netlist did nothing).
+ */
+let ultimaDeFondo = false;
+export function sustituidaPorFondo(): boolean {
+  return ultimaDeFondo;
+}
+
 /** Stops the running simulation (if any). */
 export function detener(): void {
+  ultimaDeFondo = false;
   if (!actual) return;
   const a = actual;
   actual = null;
@@ -169,13 +181,13 @@ export function detener(): void {
 }
 
 /** Runs a netlist. Rejects with SimulacionCancelada if another run replaces it or it is stopped. */
-export async function simularTexto(texto: string): Promise<Simulacion> {
+export async function simularTexto(texto: string, op: { fondo?: boolean } = {}): Promise<Simulacion> {
   // Application log (0.10): every run with its title, time and outcome, so a report from the tablet says what was
   // simulated and what came out (superseded runs are not errors).
   const titulo = (texto.split('\n').find((l) => l.trim()) ?? '').replace(/^\*\s*/, '').slice(0, 80);
   const t0 = performance.now();
   try {
-    const r = await simularTextoSinRegistro(texto);
+    const r = await simularTextoSinRegistro(texto, !!op.fondo);
     const errores = r.salida.errores ?? [];
     registrar(
       errores.length || r.ejecucion.fallo ? 'aviso' : 'info',
@@ -189,8 +201,9 @@ export async function simularTexto(texto: string): Promise<Simulacion> {
   }
 }
 
-async function simularTextoSinRegistro(texto: string): Promise<Simulacion> {
+async function simularTextoSinRegistro(texto: string, fondo: boolean): Promise<Simulacion> {
   detener();
+  ultimaDeFondo = fondo;
   const id = siguienteId++;
   motor.lineas = [];
   motor.analisis = 0;

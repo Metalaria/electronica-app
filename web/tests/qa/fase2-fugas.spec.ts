@@ -151,7 +151,7 @@ test('fugas: tres vueltas por todas las vistas 3D y páginas pesadas', async ({ 
       reg.traza(reg.ruta);
       await page.evaluate((x) => (location.hash = x), h);
       // the 3D boards report when they are drawn; the rest, when quiet
-      await page.waitForFunction(() => (globalThis as unknown as { __epaPlaca3DListo?: boolean }).__epaPlaca3DListo !== false, null, { timeout: 5000 }).catch(() => {});
+      await page.waitForFunction(() => (globalThis as unknown as { __epaPlaca3DListo?: boolean }).__epaPlaca3DListo !== false, null, { timeout: 5000, polling: 100 }).catch(() => {});
       await esperarCalma(page, /placa3d|\/3d/.test(h) ? 60_000 : 15_000);
       if (page.isClosed()) break;
     }

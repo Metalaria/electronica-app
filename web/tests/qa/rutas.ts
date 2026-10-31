@@ -118,7 +118,7 @@ export function todasLasRutas(): Ruta[] {
   for (const id of ids.filter((id) => azarDe(id) < 0.06)) r.push({ id: `instrumentos:circuito/${id}`, hash: `#/instrumentos/circuito/${id}`, grupo: 'instrumentos', pesada: true });
   for (const c of ['esquema', 'senal', 'alineacion', 'averias']) r.push({ id: `fm7303:${c}`, hash: `#/fm7303/${c}`, grupo: 'fm7303', siempre: c === 'esquema' });
 
-  // ---- consoles × tabs (no board tabs where there is no board; the Master System board is being built apart)
+  // ---- consoles × tabs (no board tabs where there is no board; the Master System's is the reconstructed one, 0.11)
   r.push({ id: 'consolas', hash: '#/consolas', grupo: 'consolas', siempre: true });
   for (const m of IDS_MAQUINA)
     for (const p of PESTANAS_CONSOLA) {

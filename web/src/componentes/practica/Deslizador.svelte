@@ -44,11 +44,15 @@
       import('../figuras-vivas/Escenario.svelte'),
       import('../figuras-vivas/grafica/estado.svelte'),
     ]);
+    if (desmontado) return;
     estadoG = new gr.EstadoGraficas();
     Escenario = esc.default;
     vivo = { datos, est: new mod.EstadoEsquema(esq, item.fuente.esquema) };
   }
 
+  // Left while a reading or the live figure was on its way (a lesson's next screen, a reload): they do nothing when
+  // they come (0.11 final QA: they read the destroyed item, Svelte's «derived_inert»).
+  let desmontado = false;
   let turno = 0;
   async function leer(k: number): Promise<Medida> {
     const mio = ++turno;
@@ -79,6 +83,8 @@
     void prepararVivo();
     void leer(pos);
     return () => {
+      desmontado = true;
+      turno++;
       if (espera) clearTimeout(espera);
     };
   });

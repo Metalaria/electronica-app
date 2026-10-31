@@ -46,8 +46,13 @@
     medidas ??= Promise.all([medir(item.fuente, null, item.observa), medir(item.fuente, { id: item.cambio.id, valor: item.a }, item.observa)]);
     return medidas;
   }
+  // Left while the live figure was on its way: it is not built (it read the destroyed item — 0.11 final QA).
+  let desmontado = false;
   onMount(() => {
     void lanzar();
+    return () => {
+      desmontado = true;
+    };
   });
 
   async function mostrarVivo(op: Medida) {
@@ -58,6 +63,7 @@
       import('../figuras-vivas/Escenario.svelte'),
       import('../figuras-vivas/grafica/estado.svelte'),
     ]);
+    if (desmontado) return;
     const est = new mod.EstadoEsquema(esq, item.fuente.esquema);
     est.cambios = { [item.cambio.id]: item.a };
     est.op = op.op;

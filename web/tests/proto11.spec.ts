@@ -288,6 +288,25 @@ async function elegirGuiado(page: Page, id: string) {
   await page.waitForTimeout(300);
 }
 
+/**
+ * The guide's last step, «Simular». Once a board has been simulated it also re-solves itself live after each change,
+ * so the proof may come from that run first: then the step is done, its button goes away (it never stays under the
+ * celebration) and there is nothing to tap. Waits for the page's own run otherwise.
+ */
+async function simularPasoFinal(page: Page): Promise<void> {
+  const boton = page.locator('.guia button:has-text("Simular")');
+  const fiesta = page.locator('.fiesta');
+  await expect(boton.or(fiesta).first()).toBeVisible({ timeout: 60_000 });
+  if (!(await boton.isVisible())) return;
+  await page.evaluate(() => delete (window as unknown as { __epaProtoboardSim?: unknown }).__epaProtoboardSim);
+  await boton.tap({ timeout: 15_000 }).catch(async (e: unknown) => {
+    if (!(await fiesta.isVisible())) throw e;
+  });
+  await expect
+    .poll(async () => (await page.evaluate(() => !!(window as unknown as { __epaProtoboardSim?: unknown }).__epaProtoboardSim)) || (await fiesta.isVisible()), { timeout: 90_000 })
+    .toBe(true);
+}
+
 test('monta este circuito: cada circuito de serie se completa y se celebra', async ({ browser }) => {
   test.setTimeout(300_000);
   const { ctx, page } = await contexto(browser, 800, 1280);
@@ -304,10 +323,8 @@ test('monta este circuito: cada circuito de serie se completa y se celebra', asy
     }
     e = await estado(page);
     expect(e.guia!.actual, `${id}: montado`).toBe(e.guia!.total - 1);
-    await page.locator('.guia button:has-text("Simular")').tap();
+    await simularPasoFinal(page);
     if (id === 'pulsador' || id === 'transistor') {
-      // Pressed with two taps, as the step says.
-      await expect.poll(async () => page.evaluate(() => !!(window as unknown as { __epaProtoboardSim?: unknown }).__epaProtoboardSim), { timeout: 90_000 }).toBe(true);
       const s1 = await page.evaluate(() => {
         const g = (window as unknown as Ventana).__epaProtoboard!;
         const p = g.pb.doc.piezas.find((x) => x.comp.nombre === 'S1')!;
@@ -539,6 +556,39 @@ for (const [ancho, alto] of [
   });
 }
 
+// 0.11 (full suite under load): after a simulated board the bench re-solves itself live, and right after a change it
+// still shows the previous operating point. The guide took that stale «LED lit» as the proof of the next circuit and
+// celebrated the push-button one with its switch still open (and the fresh result then put «Simular» back under the
+// celebration). Only an operating point of the board as it is now proves it.
+test('monta este circuito: no celebra con el resultado de la placa anterior', async ({ browser }) => {
+  test.setTimeout(300_000);
+  const { ctx, page } = await contexto(browser, 800, 1280);
+  const cdp = await ctx.newCDPSession(page);
+  await abrir(page);
+  for (const id of ['led', 'pulsador']) {
+    await elegirGuiado(page, id);
+    for (let k = 0; k < 30; k++) {
+      const e = await estado(page);
+      if (e.guia!.actual >= e.guia!.total - 1) break;
+      await page.locator('.guia button:has-text("Hazlo por mí")').tap();
+      await page.waitForTimeout(60);
+    }
+    if (id === 'led') {
+      await page.locator('.guia button:has-text("Simular")').tap();
+      await expect(page.locator('.fiesta')).toBeVisible({ timeout: 120_000 });
+      await page.locator('.fiesta button:has-text("Seguir con esta placa")').tap();
+      // (a loaded machine: the live re-solve comes late)
+      await cdp.send('Emulation.setCPUThrottlingRate', { rate: 6 });
+    } else {
+      // the push-button's circuit is built and its switch has not been touched: the LED is off
+      await page.waitForTimeout(6000);
+      await expect(page.locator('.fiesta')).toHaveCount(0);
+      await expect(page.locator('.guia button:has-text("Simular")')).toBeVisible();
+    }
+  }
+  await ctx.close();
+});
+
 // ------------------------------------------------------------------ screenshots
 
 for (const [disp, ancho, alto] of [
@@ -610,8 +660,10 @@ for (const [disp, ancho, alto] of [
         await page.locator('.guia button:has-text("Hazlo por mí")').tap();
         await page.waitForTimeout(100);
       }
-      await page.locator('.guia button:has-text("Simular")').tap();
-      await expect.poll(async () => page.evaluate(() => !!(window as unknown as { __epaProtoboardSim?: unknown }).__epaProtoboardSim), { timeout: 90_000 }).toBe(true);
+      // The last step: «Simular». The board was simulated before the guide, so it also re-solves itself live after
+      // each change: whichever comes first proves the circuit, and once it is proved the step's button goes away
+      // (it is never left under the celebration), so the tap is only for a board that still waits for it.
+      await simularPasoFinal(page);
       await page.evaluate(() => {
         const g = (window as unknown as Ventana & { __epaProtoboard: { pb: { conmutar: (id: string) => void } } }).__epaProtoboard!;
         const p = g.pb.doc.piezas.find((x) => x.comp.nombre === 'S1')!;

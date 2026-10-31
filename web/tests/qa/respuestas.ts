@@ -216,7 +216,10 @@ export async function contestarPractica(page: Page, it: ItemPractica): Promise<s
           }, [pz.id, pos] as const);
         await mover(pz.pos.map(([a, b]) => [a + 2, b]));
         await caja.locator('[data-comprobar]').click();
-        await espera('[data-reintento]');
+        // two holes along: usually another strip, but not when the piece goes from a rail to a hole nothing else
+        // uses (an open terminal: fig. 22.8, the I²C pull-ups) — the same circuit, and the app rightly says so
+        await espera('[data-reintento], [data-feedback="bien"]');
+        if (await caja.locator('[data-feedback="bien"]').count()) break;
         await mover(pz.pos);
       }
       await caja.locator('[data-comprobar]').click();

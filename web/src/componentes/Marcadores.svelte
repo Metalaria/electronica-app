@@ -322,6 +322,12 @@
     min-height: 32px;
     font-size: 13.5px;
   }
+  /* touch screens: «Editar en la sección» and «Borrar» of a note (32 px; 0.11 final QA, once there are notes) */
+  @media (pointer: coarse) {
+    .nota .boton {
+      min-height: 44px;
+    }
+  }
   @media (max-width: 520px) {
     .fecha {
       display: none;

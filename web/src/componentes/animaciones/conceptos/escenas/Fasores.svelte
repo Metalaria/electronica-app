@@ -149,10 +149,62 @@
       curva(ctx, e, xs, ys, f.color, f.nombre === 'V' && modo === 'suma' ? 2.8 : 2.2);
     }
     guia(ctx, e, 'x', 0, alfa(p.tinta, 0.3));
-    // Labels at the tips.
+    // Labels at the tips. As the phasors turn, the plain spot (16 px beyond the tip) passes over the axis labels
+    // («Im», «Re»), the time plot's value labels and the other tips' labels: the first free spot of a few around
+    // the tip is used (0.11: the overlap test hit them whenever its frame caught such an angle).
+    const ancho = (s: string, tam: number, peso: number) => {
+      ctx.save();
+      ctx.font = v.fuente(tam, peso);
+      const w = ctx.measureText(s.replace(/[_^{}]/g, '')).width;
+      ctx.restore();
+      return w;
+    };
+    type Caja = { x0: number; x1: number; y0: number; y1: number };
+    const hEje = v.f(11.5);
+    const ocupado: Caja[] = [
+      { x0: cx + 8, x1: cx + 8 + ancho('Im', 11.5, 600), y0: cy - R + 2 - hEje / 2, y1: cy - R + 2 + hEje / 2 },
+      { x0: cx + R + 16 - ancho('Re', 11.5, 600), x1: cx + R + 16, y0: cy + 12 - hEje / 2, y1: cy + 12 + hEje / 2 },
+      // the time plot's value labels (grafica.ts panel(): 10.5 px, right-aligned 8 px left of it; «−500 mV» is the
+      // widest) and its time labels under it
+      { x0: e.x - 8 - ancho('−500 mV', 10.5, 500) - 4, x1: e.x - 4, y0: e.y - v.f(10.5), y1: e.y + e.h + v.f(10.5) },
+      { x0: e.x - 20, x1: e.x + e.w + 20, y0: e.y + e.h + 2, y1: e.y + e.h + 6 + v.f(10.5) * 1.3 },
+      // «ωt = …» under the circle
+      { x0: cx - 50, x1: cx + 50, y0: cy + R + 28 - 9, y1: cy + R + 28 + 9 },
+    ];
+    /** Area of `c` over what is already written (0: free). */
+    const tapa = (c: Caja) =>
+      ocupado.reduce((s, b) => s + Math.max(0, Math.min(c.x1, b.x1 + 2) - Math.max(c.x0, b.x0 - 2)) * Math.max(0, Math.min(c.y1, b.y1 + 1) - Math.max(c.y0, b.y0 - 1)), 0);
     for (const q of pts) {
-      const ex = cx + (q.x - cx) * 1.0 + Math.cos(q.a) * 16;
-      const ey = q.y - Math.sin(q.a) * 16;
+      const w = ancho(q.f.nombre, 12.5, 800);
+      const h = v.f(12.5);
+      const ca = Math.cos(q.a);
+      const sa = Math.sin(q.a);
+      // beyond the tip, then a little further, then beside it (either side), then just inside it
+      const sitios: [number, number][] = [
+        [q.x + ca * 16, q.y - sa * 16],
+        [q.x + ca * 28, q.y - sa * 28],
+        [q.x + ca * 10 - sa * 16, q.y - sa * 10 - ca * 16],
+        [q.x + ca * 10 + sa * 16, q.y - sa * 10 + ca * 16],
+        [q.x - ca * 20 - sa * 14, q.y + sa * 20 - ca * 14],
+        [q.x - ca * 20 + sa * 14, q.y + sa * 20 + ca * 14],
+        [q.x - ca * 34, q.y + sa * 34],
+        // (a wide label, «dv/dt ÷ ω», on a phone: beside the tip, to one side or the other, or well inside)
+        [q.x + w / 2 + 10, q.y - 14],
+        [q.x - w / 2 - 10, q.y - 14],
+        [q.x + w / 2 + 10, q.y + 14],
+        [q.x - w / 2 - 10, q.y + 14],
+        [q.x - ca * 54, q.y + sa * 54],
+      ];
+      const caja = ([x, y]: [number, number]): Caja => ({ x0: x - w / 2, x1: x + w / 2, y0: y - h / 2, y1: y + h / 2 });
+      // the first free spot, or the least covered one
+      let [ex, ey] = sitios[0]!;
+      let menor = Infinity;
+      for (const p of sitios) {
+        const t = tapa(caja(p));
+        if (t < menor) [ex, ey, menor] = [p[0], p[1], t];
+        if (t === 0) break;
+      }
+      ocupado.push(caja([ex, ey]));
       txtRico(v, q.f.nombre, ex, ey, { tam: 12.5, peso: 800, color: q.f.color });
     }
     txtRico(v, `ωt = ${num(((rot * 180) / Math.PI) % 360, 0)}°`, cx, cy + R + 28, { tam: 12.5, peso: 700, color: p.suave });

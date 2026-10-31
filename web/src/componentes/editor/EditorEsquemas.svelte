@@ -81,7 +81,15 @@
 
   // ---------------------------------------------------------------- opening
 
+  /**
+   * Each opening's turn: a later one (another editor route) or leaving the editor stops an unfinished one. Before
+   * (0.11 final QA), a book netlist still loading when the reader left put «#/editor» over the new page's address.
+   */
+  let turnoApertura = 0;
+
   async function abrir(r: string) {
+    const mio = ++turnoApertura;
+    const vigente = () => mio === turnoApertura;
     cargando = true;
     errorCarga = '';
     resultado = null;
@@ -89,14 +97,17 @@
     modo = 'editar';
     try {
       await cargarCircuitos();
+      if (!vigente()) return;
       const resto = r.replace(/^editor\/?/, '');
       if (resto.startsWith('libro/')) {
         const id = resto.slice(6);
         const indice = await cargarIndiceSpice();
+        if (!vigente()) return;
         const n = indice?.netlists[id];
         if (!n) throw new Error(spice.fallo ? SIN_RED : 'No existe esa netlist del libro.');
         const texto = await cargarNetlist(n);
         const doc = await importarNetlist(texto, { tipo: 'libro', id });
+        if (!vigente()) return;
         if (!doc) throw new Error('Esta netlist no tiene nada que se pueda dibujar.');
         if (n.titulo && (!doc.titulo || doc.titulo.length > 70)) doc.titulo = n.titulo;
         empezarBorrador(doc);
@@ -106,7 +117,9 @@
         if (t) {
           const doc = await importarNetlist(t.texto, t.origen);
           if (!doc) throw new Error('Esta netlist no tiene nada que se pueda dibujar.');
+          // (left meanwhile: what was sent is kept as the working draft all the same — it was taken from the handover)
           empezarBorrador(doc);
+          if (!vigente()) return;
         } else cargarBorrador();
         history.replaceState(history.state, '', '#/editor');
       } else if (resto) {
@@ -122,14 +135,16 @@
         estadoGuardado = 'guardado';
       } else cargarBorrador();
     } catch (e) {
-      errorCarga = e instanceof Error ? e.message : String(e);
+      if (vigente()) errorCarga = e instanceof Error ? e.message : String(e);
     } finally {
-      cargando = false;
-      ultimaVersion = ed.version;
-      queueMicrotask(() => lienzo?.reajustar());
-      if (simularAlAbrir) {
-        simularAlAbrir = false;
-        queueMicrotask(() => void simular(true));
+      if (vigente()) {
+        cargando = false;
+        ultimaVersion = ed.version;
+        queueMicrotask(() => lienzo?.reajustar());
+        if (simularAlAbrir) {
+          simularAlAbrir = false;
+          queueMicrotask(() => void simular(true));
+        }
       }
     }
   }
@@ -227,6 +242,7 @@
   }
 
   onDestroy(() => {
+    turnoApertura++;
     if (temporizador) {
       clearTimeout(temporizador);
       const doc = $state.snapshot(ed.doc) as DocumentoEsquema;

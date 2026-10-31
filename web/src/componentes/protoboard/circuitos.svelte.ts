@@ -5,6 +5,7 @@
 // synchronisation (lib/sincronizacion/registro.svelte.ts) merges them per item. The unsaved working board of
 // «#/protoboard» is a per-device convenience in localStorage.
 
+import { obtenerAlmacen } from '../../lib/almacen';
 import { guardadoDeRegistro } from '../../lib/sincronizacion/guardado';
 import type { DocumentoProtoboard, MontajeGuardado } from './tipos.ts';
 
@@ -17,7 +18,8 @@ export const montajes = $state({
    * What the reader must be told (sixth review): «lectura» — the saved library could not be read (what is done here
    * stays in this page, not saved yet); «escritura» — a save failed (retried; the page shows «Reintentar»); '' — fine.
    */
-  error: '' as '' | 'lectura' | 'escritura',
+  /** «memoria»: this browser lets nothing be stored on the device (storage blocked): kept only while the page is open. */
+  error: '' as '' | 'lectura' | 'escritura' | 'memoria',
   circuitos: {} as Record<string, MontajeGuardado>,
 });
 
@@ -31,7 +33,7 @@ export const guardadoMontajes = guardadoDeRegistro<MontajeGuardado>({
   campo: 'circuitos',
   obtener: () => montajes.circuitos,
   // (a failed read keeps its notice: every write reads first, so it fails for the same reason)
-  alEstado: (sinGuardar) => (montajes.error = !sinGuardar ? '' : montajes.error === 'lectura' ? 'lectura' : 'escritura'),
+  alEstado: (sinGuardar) => (montajes.error = montajes.error === 'memoria' ? 'memoria' : !sinGuardar ? '' : montajes.error === 'lectura' ? 'lectura' : 'escritura'),
   tiempo: (v) => Math.max(typeof v?.actualizado === 'number' ? v.actualizado : 0, typeof v?.borrado === 'number' ? v.borrado : 0) || undefined,
 });
 
@@ -41,6 +43,9 @@ export function cargarMontajes(): Promise<void> {
       // (adopted in the load's step; what was changed before it stays)
       await guardadoMontajes.cargar((m) => (montajes.circuitos = { ...m, ...montajes.circuitos }));
       if (montajes.error === 'lectura') montajes.error = guardadoMontajes.sinGuardar ? 'escritura' : '';
+      // (the 0.11 final QA pass: with the storage blocked the library lives in memory and the page said «Guardado en este
+      // dispositivo»; it says now that nothing is kept once the page is closed)
+      if ((await obtenerAlmacen()).tipo === 'memoria') montajes.error = 'memoria';
     } catch {
       // the store could not be read: nothing is taken as stored — every write reads it first (and fails if it cannot)
       carga = null;

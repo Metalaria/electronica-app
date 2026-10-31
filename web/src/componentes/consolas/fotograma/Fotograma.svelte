@@ -515,5 +515,16 @@
     .txt {
       display: none;
     }
+    /* a small phone: the count goes above, right, and the steps get the whole row (with a dozen steps each one was
+       22 px wide to the finger, under WCAG's 24: 0.11 final QA) */
+    .progreso {
+      flex-wrap: wrap;
+      row-gap: 0;
+    }
+    .cuenta {
+      order: -1;
+      flex-basis: 100%;
+      text-align: right;
+    }
   }
 </style>

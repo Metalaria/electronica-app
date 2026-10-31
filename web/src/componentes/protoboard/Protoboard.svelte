@@ -144,6 +144,14 @@
     return pb.nl.instancias.filter((i) => leds.has(i.comp) && /^d/i.test(i.nombre)).map((i) => i.nombre);
   }
 
+  /**
+   * Board version the operating point was solved for. After a change the previous one stays on show until the
+   * live re-solve (650 ms later, longer under load): the guide must not take it as proof (0.11 QA: a stale «LED
+   * lit» from the board before celebrated a guided circuit whose switch was still open, and the celebration
+   * stayed over the «Simular» step when the fresh result said otherwise).
+   */
+  let versionOp = $state(-1);
+
   async function puntoTrabajo(): Promise<void> {
     const nl = pb.nl;
     if (nl.errores.length) {
@@ -154,7 +162,10 @@
     todas++;
     try {
       const r = await simularTexto(netlistPuntoTrabajo(nl.texto, diodosLed()));
-      if (version === pb.version) pb.op = r.salida.errores.length ? null : leerPuntoTrabajo(r);
+      if (version === pb.version) {
+        pb.op = r.salida.errores.length ? null : leerPuntoTrabajo(r);
+        versionOp = version;
+      }
     } catch (e) {
       if (!(e instanceof SimulacionCancelada)) pb.op = null;
     } finally {
@@ -324,11 +335,12 @@
     const g = pb.guia;
     if (!g || !g.montado || !vivo) return;
     const prueba = g.plan.prueba;
-    const op = pb.op;
+    // (only an operating point of the board as it is now proves anything)
+    const op = versionOp === pb.version ? pb.op : null;
     let ok = false;
     if (prueba.led) {
       const led = pb.doc.piezas.find((p) => p.comp.nombre === prueba.led);
-      ok = !!led && (encendidos[led.id] ?? 0) > 0.08;
+      ok = !!op && !!led && (encendidos[led.id] ?? 0) > 0.08;
     } else if (prueba.red) ok = !!op && op.v[prueba.red] != null;
     else ok = !!resultado && vigente && !resultado.salida.errores.length;
     untrack(() => {
@@ -967,6 +979,21 @@
     color: var(--tinta-suave);
     font-size: 13.5px;
     cursor: pointer;
+  }
+  /* touch screens: the notices (each selects its parts) and «Netlist del montaje» were 20 px high (0.11 final QA) */
+  @media (pointer: coarse) {
+    .avisos .enlace {
+      display: flex;
+      align-items: center;
+      width: 100%;
+      min-height: 44px;
+      margin: -8px 0;
+    }
+    .netlist summary {
+      box-sizing: border-box;
+      min-height: 44px;
+      padding: 12px 0;
+    }
   }
   .paquete {
     margin: 0 0 6px;

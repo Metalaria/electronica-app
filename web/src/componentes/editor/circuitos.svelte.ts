@@ -5,6 +5,7 @@
 // a sync between devices can merge per circuit (the newest `actualizado` wins; a tombstone is never revived
 // by an older copy). The working draft (a circuit not saved yet) is a per-device convenience in localStorage.
 
+import { obtenerAlmacen } from '../../lib/almacen';
 import { guardadoDeRegistro } from '../../lib/sincronizacion/guardado';
 import type { CircuitoGuardado, DocumentoEsquema } from './tipos.ts';
 
@@ -19,7 +20,8 @@ export const biblioteca = $state({
    * What the reader must be told (sixth review): «lectura» — the saved library could not be read (what is done here
    * stays in this page, not saved yet); «escritura» — a save failed (retried; the page shows «Reintentar»); '' — fine.
    */
-  error: '' as '' | 'lectura' | 'escritura',
+  /** «memoria»: this browser lets nothing be stored on the device (storage blocked): kept only while the page is open. */
+  error: '' as '' | 'lectura' | 'escritura' | 'memoria',
   circuitos: {} as Record<string, CircuitoGuardado>,
 });
 
@@ -38,7 +40,7 @@ export const guardadoCircuitos = guardadoDeRegistro<CircuitoGuardado>({
   campo: 'circuitos',
   obtener: () => biblioteca.circuitos,
   // (a failed read keeps its notice: every write reads first, so it fails for the same reason)
-  alEstado: (sinGuardar) => (biblioteca.error = !sinGuardar ? '' : biblioteca.error === 'lectura' ? 'lectura' : 'escritura'),
+  alEstado: (sinGuardar) => (biblioteca.error = biblioteca.error === 'memoria' ? 'memoria' : !sinGuardar ? '' : biblioteca.error === 'lectura' ? 'lectura' : 'escritura'),
   tiempo: tiempoCircuito,
 });
 
@@ -48,6 +50,9 @@ export function cargarCircuitos(): Promise<void> {
       // (adopted in the load's step; what was changed before it stays)
       await guardadoCircuitos.cargar((m) => (biblioteca.circuitos = { ...m, ...biblioteca.circuitos }));
       if (biblioteca.error === 'lectura') biblioteca.error = guardadoCircuitos.sinGuardar ? 'escritura' : '';
+      // (the 0.11 final QA pass: with the storage blocked the library lives in memory and the page said «Guardado en este
+      // dispositivo»; it says now that nothing is kept once the page is closed)
+      if ((await obtenerAlmacen()).tipo === 'memoria') biblioteca.error = 'memoria';
     } catch {
       // the store could not be read (fifth review): nothing is taken as stored — every write reads it first (and fails
       // if it cannot), so the saved library is never written over; a later call loads again

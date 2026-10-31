@@ -12,6 +12,7 @@ import { MODO } from './perfiles.ts';
 import { azarDe, bloquesDe, indice, lecciones, leerJson, recorrer, spice } from './rutas.ts';
 import { contestarPractica, contestarPregunta, itemPractica } from './respuestas.ts';
 import { comprobar } from '../../src/lib/magnitudes.ts';
+import { leerValor } from '../../src/componentes/calculadoras/unidades.ts';
 import { IDS_MAQUINA } from '../../src/componentes/consolas/datos.ts';
 import { PLACAS_DE } from '../../src/componentes/consolas/placa/datos.ts';
 import type { EstadoSonda } from './sonda.ts';
@@ -324,7 +325,13 @@ for (const [k, grupo] of trozos(FORMULAS, 60).entries()) {
         await reg.anotar({ sev: 'funcional', tipo: 'calculadora', firma: 'sin resultado', msg: `${f.id}: no muestra ningún resultado.` });
         continue;
       }
-      const v = comprobar(texto.replace(/\s+/g, ' ').trim(), { valor: r.defecto, unidad: r.unidad, tol: 0.01, texto: '' });
+      let v = comprobar(texto.replace(/\s+/g, ' ').trim(), { valor: r.defecto, unidad: r.unidad, tol: 0.01, texto: '' });
+      // a unit the exercises never ask for («mN·m», «cm⁻³», «mV/K»): the answer checker does not take it with a
+      // prefix, the calculators do — read it as the calculator reads its own fields
+      if (v.tipo === 'unidad') {
+        const x = leerValor(texto.trim(), r.unidad);
+        if (Number.isFinite(x) && Math.abs(x - r.defecto) <= Math.abs(r.defecto) * 0.01 * (1 + 1e-9)) v = { tipo: 'bien', texto: '' };
+      }
       if (v.tipo !== 'bien') await reg.anotar({ sev: 'funcional', tipo: 'calculadora', firma: `resultado distinto del libro (${v.tipo})`, msg: `${f.id}: muestra «${texto.trim()}» y el ejemplo del libro da ${r.defecto} ${r.unidad} (${v.tipo}).` });
       else bien++;
     }

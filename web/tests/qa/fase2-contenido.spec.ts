@@ -185,9 +185,16 @@ test('búsqueda: encuentra cada término del glosario y cada sección por su tí
   const caja = page.getByRole('dialog', { name: 'Buscar en el libro' }).locator('input');
   await caja.waitFor({ timeout: 15_000 });
   let encontrados = 0;
+  /** The words searched for a doc (what a reader types). */
+  const consulta = (d: Doc) => (d.id.startsWith('sec-') ? d.titulo.replace(/^\S+\s+/, '') : d.titulo).replace(/\s+/g, ' ').trim();
+  const clave = (q: string) => q.toLowerCase().normalize('NFD').replace(/\p{M}/gu, '');
+  // a title many sections share («Problemas de Diseño»): ten results cannot hold them all
+  const veces = new Map<string, number>();
+  for (const d of docs) veces.set(clave(consulta(d)), (veces.get(clave(consulta(d))) ?? 0) + 1);
   for (const d of docs) {
-    // the section's title without its number («5.3 Diodos» → «Diodos»): a reader types the words
-    const q = d.titulo.replace(/^[\dA-Z]+(\.\d+)*\.?\s+/, '').replace(/\s+/g, ' ').trim();
+    // the section's title without its number («5.3 Diodos» → «Diodos»): a reader types the words (a glossary term
+    // keeps its first word: «CIC (filtro)» is not «(filtro)»)
+    const q = consulta(d);
     reg.ruta = `buscar:${d.id}`;
     await caja.fill(q);
     // the dialog searches 90 ms after the last key: wait for its list to settle on this query
@@ -206,7 +213,7 @@ test('búsqueda: encuentra cada término del glosario y cada sección por su tí
       await reg.anotar({
         sev: 'funcional',
         tipo: 'busqueda',
-        firma: d.id.startsWith('glos') ? 'término del glosario no encontrado' : 'sección no encontrada por su título',
+        firma: (veces.get(clave(q)) ?? 0) > 10 ? 'título que comparten más de diez secciones' : d.id.startsWith('glos') ? 'término del glosario no encontrado' : 'sección no encontrada por su título',
         msg: `Buscar «${q}» no da ${d.id} entre los 10 primeros resultados (${hrefs.length ? `el primero es ${hrefs[0]}` : 'sin resultados'}).`,
       });
   }

@@ -342,7 +342,8 @@ test.describe('Aviso de versión nueva', () => {
     await page.getByRole('button', { name: 'Tema y tamaño de letra' }).click();
     await page.getByRole('button', { name: 'Buscar actualizaciones' }).click();
     await expect(page.locator('[data-grupo-actualizaciones]')).toContainText(`Versión ${siguiente()} disponible`);
-    expect(gh.peticiones.filter((p) => p.ruta.endsWith('/releases/latest'))).toHaveLength(2);
+    // (the group shows the version already known while the new request is on its way: under load it can be late)
+    await expect.poll(() => gh.peticiones.filter((p) => p.ruta.endsWith('/releases/latest')).length).toBe(2);
     await ctx.close();
   });
 

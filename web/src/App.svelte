@@ -369,6 +369,9 @@
     margin-left: 0;
   }
   main {
+    /* its own block formatting context: a page's first margin stays inside it, so the page arriving after the loading
+       notice does not move main itself (and with it everything) 28 px down (0.11 final QA, CLS 0.2 on the desktop) */
+    display: flow-root;
     min-height: calc(100vh - var(--alto-barra));
     padding-bottom: var(--hueco-inferior);
   }

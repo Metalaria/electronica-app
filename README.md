@@ -1263,7 +1263,8 @@ y «Continuar». Solo cuenta la primera respuesta: «Probar otra vez» es para a
 
 ## Estudiar por pasos (0.9)
 
-El botón discreto con huellas al final del título de cada sección del lector (`#/leccion/<capítulo>/<sección>`)
+El botón discreto con huellas junto a las herramientas de cada sección del lector, bajo el marcador
+(`#/leccion/<capítulo>/<sección>`)
 abre la sección como una **lección**, a pantalla completa y en una columna de unos 640 px en el ordenador, la tableta
 y el teléfono:
 
@@ -1852,7 +1853,9 @@ QA_MODO=rapido PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers nice npx playwright tes
     conexiones y los nodos que miden sus `.control`.
   - `fase2-estado`: recargar a mitad de cada lección, de una simulación, del editor, de la protoboard y de los
     instrumentos; atrás y adelante por 30 rutas al azar (tres semillas); toques dobles y triples en los botones
-    principales (también «Empezar» y «Saltar» de la práctica inteligente); recargar a mitad de una práctica
+    principales (también «Empezar» y «Saltar» de la práctica inteligente); el almacenamiento lleno y bloqueado
+    (guardar avisa y «Reintentar» guarda; sin almacenamiento nada dice «Guardado»); dos pestañas a la vez poniendo y
+    quitando marcadores y notas (ninguna deshace lo de la otra, tampoco tras recargar); recargar a mitad de una práctica
     inteligente, del problema del día y de una figura explorable; salir a mitad de una simulación o de una carga
     3D; textos raros y muy largos en cada campo. Las páginas del aprendizaje (práctica, problema, dominio, filas
     explorables) entran todas en `fase2-estado`, `fase2-lento` y `fase2-axe`, no solo una de cada tipo.
@@ -1873,7 +1876,8 @@ QA_MODO=rapido PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers nice npx playwright tes
 Variables: `QA_MODO=rapido` (muestra fija de ≈ 1 de cada 12 rutas, lecciones y circuitos: unos 40 min),
 `QA_FILTRO=<expresión>` (solo las rutas cuyo identificador encaja, p. ej. `'^simulador:cap05/'`), `QA_SEMILLA` y
 `QA_PASOS` (mono), `QA_WORKERS` (1 por defecto), `QA_INFORME=<carpeta>` (el informe en otra carpeta, para no
-mezclarlo con otra pasada) y `QA_TRAZA=1` (una línea por ruta o pantalla, para ver por dónde va). La pasada completa es larga (varias horas en esta máquina):
+mezclarlo con otra pasada), `QA_TRAZA=1` (una línea por ruta o pantalla, para ver por dónde va) y `QA_PILAS=1`
+(la pila de llamadas de cada aviso o error de la consola, para saber qué código lo da). La pasada completa es larga (varias horas en esta máquina):
 se puede partir con `--shard=1/3`, `--shard=2/3`, `--shard=3/3` (lanzados uno tras otro, el informe junta los
 tramos).
 

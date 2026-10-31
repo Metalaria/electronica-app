@@ -9,7 +9,7 @@
 import { writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { test, type Browser, type Page } from '@playwright/test';
-import { INFORME, Registro, esperarCalma } from './arnes.ts';
+import { INFORME, Registro } from './arnes.ts';
 import { azarDe, todasLasRutas, type Ruta } from './rutas.ts';
 
 const VIEJO = process.env.QA_VIEJO ?? 'http://localhost:4423/';

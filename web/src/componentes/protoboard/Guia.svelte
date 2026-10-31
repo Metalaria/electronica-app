@@ -150,7 +150,7 @@
         {/each}
       </div>
       <span class="cuenta">Paso {Math.min(guia.estado.actual + 1, guia.plan.pasos.length)} de {guia.plan.pasos.length} · {guia.plan.titulo}</span>
-      {#if paso?.tipo === 'simular'}
+      {#if paso?.tipo === 'simular' && !guia.celebrado}
         <button type="button" class="boton primario mini" onclick={alSimular}>Simular</button>
       {:else if paso}
         <button type="button" class="boton suave" onclick={() => guia.hacerPaso()}><Wand size={15} aria-hidden="true" /> Hazlo por mí</button>

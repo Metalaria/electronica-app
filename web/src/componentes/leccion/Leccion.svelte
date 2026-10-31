@@ -160,10 +160,16 @@
     return nPasos + nPreguntas;
   }
 
+  // The reader left while the lesson was still loading (another lesson, another page): the load's late steps do
+  // nothing. Before (0.11 final QA), the left lesson's `ir` wrote its own address over the new page's — sometimes
+  // before the router read it, so the reader's navigation was undone — and could mark it read or finished.
+  let desmontada = false;
+
   async function ir(i: number, enfocar = true) {
-    if (!leccion) return;
+    if (!leccion || desmontada) return;
     // Past the last step and its practice the questions must be known.
     if (i >= nAntes && preguntas === null) await cargarPreguntas();
+    if (desmontada) return;
     const destino = Math.max(0, Math.min(i, total));
     pantalla = destino;
     mostrada = null;
@@ -286,6 +292,7 @@
           // group B: which live schematics get the «explore» row (their room is kept from the first frame)
           cargarExplorables().then((x) => (explorables = x)),
         ]);
+        if (desmontada) return;
         bloques = d.bloques;
         items = pr.items;
         ideas = pr.ideas;
@@ -298,9 +305,12 @@
         await ir(leerPantalla(ancla), false);
         abierta = true;
       } catch (e) {
-        error = e instanceof Error ? e.message : String(e);
+        if (!desmontada) error = e instanceof Error ? e.message : String(e);
       }
     })();
+    return () => {
+      desmontada = true;
+    };
   });
 
   // Back from the reader (or forward) into this lesson: the URL says which screen.

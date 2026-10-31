@@ -199,18 +199,26 @@ test.describe('tableta', () => {
   });
 
   // A section title whose last line filled the column put the hanging «Estudiar por pasos» icon under the
-  // section's tools («Simular» covered it on the tablet).
+  // section's tools («Simular» covered it on the tablet). Since the final pass it is one of the tools: none of them
+  // overlaps another or the title.
   test('lector: el icono «Estudiar por pasos» no queda debajo de las herramientas de la sección', async ({ page }) => {
     for (const ruta of ['#/cap39/sec-39.8', '#/cap02/sec-2.11', '#/cap25/sec-25.6']) {
       await page.goto(`/${ruta}`);
       const label = ruta.split('/')[2]!;
       const cab = page.locator('.seccion-cab', { has: page.locator(`h2[id="${label}"]`) });
-      await expect(cab).toBeVisible({ timeout: 30_000 });
+      await expect(cab.locator('.herramientas [data-por-pasos]')).toBeVisible({ timeout: 30_000 });
       const pisadas = await cab.evaluate((c) => {
-        const a = c.querySelector('.por-pasos')!.getBoundingClientRect();
-        return [...c.querySelectorAll('.herramientas button, .herramientas a')]
-          .map((b) => b.getBoundingClientRect())
-          .filter((b) => b.width > 0 && Math.min(a.right, b.right) - Math.max(a.left, b.left) > 0.5 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 0.5).length;
+        const cruza = (a: DOMRect, b: DOMRect) => Math.min(a.right, b.right) - Math.max(a.left, b.left) > 0.5 && Math.min(a.bottom, b.bottom) - Math.max(a.top, b.top) > 0.5;
+        const rango = document.createRange();
+        rango.selectNodeContents(c.querySelector('h2')!);
+        const texto = [...rango.getClientRects()].filter((x) => x.width > 1);
+        const herr = [...c.querySelectorAll('.herramientas :is(.chips, .iconos) > *')].map((e) => e.getBoundingClientRect()).filter((b) => b.width > 0);
+        let n = 0;
+        for (let i = 0; i < herr.length; i++) {
+          for (let k = i + 1; k < herr.length; k++) if (cruza(herr[i]!, herr[k]!)) n++;
+          if (texto.some((t) => cruza(herr[i]!, t))) n++;
+        }
+        return n;
       });
       expect(pisadas, ruta).toBe(0);
     }
@@ -228,7 +236,7 @@ test.describe('teléfono', () => {
       const label = ruta.split('/')[2]!;
       const cab = page.locator('.seccion-cab', { has: page.locator(`h2[id="${label}"]`) });
       await expect(cab).toBeVisible({ timeout: 30_000 });
-      const derecha = await cab.evaluate((c) => Math.max(...[...c.querySelectorAll('.herramientas > *')].map((e) => e.getBoundingClientRect().right)));
+      const derecha = await cab.evaluate((c) => Math.max(...[...c.querySelectorAll('.herramientas :is(.chips, .iconos) > *')].map((e) => e.getBoundingClientRect().right)));
       expect(derecha, ruta).toBeLessThanOrEqual(412);
     }
   });
@@ -419,32 +427,37 @@ test.describe('sin red', () => {
   }
 });
 
-// Phase 2 visual comparison with 0.10.1: the fixed 32 px room for the «Estudiar por pasos» icon (the fix above) was
-// reserved on every line of a title. The icon now takes its own width on the last line only, glued to the last word by
-// a word joiner (never alone on a line), and still never under the tools (cap41 41.7 hung over «Simular» in 0.10.1).
+// Phase 2 visual comparison with 0.10.1: section titles wrapped that fit on one line in 0.10.1 (the room for the
+// «Estudiar por pasos» icon at the end of the title). Owner's decision (final pass): the icon is one of the section's
+// tools, the four icon buttons take the width of the three of 0.10.1, and titles wrap as they did — these four fit
+// on one line in 0.10.1 at the tablet's width (measured on the 0.10.1 build).
 test.describe('tableta: títulos', () => {
   test.use(TABLETA);
-  test('lector: el icono «Estudiar por pasos» va pegado a la última palabra del título', async ({ page }) => {
-    for (const ruta of ['#/cap41/sec-41.7', '#/cap42/sec-42.5', '#/cap05/sec-5.1', '#/cap39/sec-39.8']) {
+  for (const [ruta, lineas] of [
+    ['#/cap41/sec-41.1', 1],
+    ['#/cap41/sec-41.4', 1],
+    ['#/cap41/sec-41.7', 1],
+    ['#/cap42/sec-42.5', 1],
+  ] as const) {
+    test(`lector: el título de ${ruta} ocupa ${lineas} línea(s), como en la 0.10.1`, async ({ page }) => {
       await page.goto(`/${ruta}`);
       const label = ruta.split('/')[2]!;
       const h2 = page.locator(`h2[id="${label}"]`);
       await expect(h2).toBeVisible({ timeout: 30_000 });
-      const r = await h2.evaluate((h) => {
-        const icono = h.querySelector('.por-pasos')!.getBoundingClientRect();
-        const rango = document.createRange();
-        rango.setStart(h, 0);
-        rango.setEndBefore(h.querySelector('.por-pasos')!);
-        const lineas = [...rango.getClientRects()].filter((x) => x.width > 2);
-        const ultima = lineas[lineas.length - 1]!;
-        const herr = [...h.closest('.seccion-cab')!.querySelectorAll('.herramientas > *')].map((e) => e.getBoundingClientRect());
-        const pisa = herr.some((b) => b.width > 0 && Math.min(icono.right, b.right) - Math.max(icono.left, b.left) > 0.5 && Math.min(icono.bottom, b.bottom) - Math.max(icono.top, b.top) > 0.5);
-        return { mismaLinea: Math.abs((icono.top + icono.bottom) / 2 - (ultima.top + ultima.bottom) / 2) < ultima.height / 2, pisa };
-      });
-      expect(r.mismaLinea, ruta).toBe(true);
-      expect(r.pisa, ruta).toBe(false);
-    }
-  });
+      expect(await h2.evaluate((h) => Math.round(h.getBoundingClientRect().height / parseFloat(getComputedStyle(h).lineHeight)))).toBe(lineas);
+      // the icon: with the tools, same name and link, not in the title
+      const icono = page.locator('.seccion-cab', { has: h2 }).locator('.herramientas a[data-por-pasos]');
+      await expect(icono).toHaveAccessibleName('Estudiar por pasos');
+      await expect(icono).toHaveAttribute('href', `#/leccion/${ruta.slice(2)}`);
+      await expect(h2.locator('[data-por-pasos]')).toHaveCount(0);
+      // 44 px for the finger around it
+      const caja = (await icono.boundingBox())!;
+      const cx = caja.x + caja.width / 2;
+      const cy = caja.y + caja.height / 2;
+      for (const [dx, dy] of [[0, -21], [0, 21], [-9, 0], [9, 0]] as const)
+        expect(await page.evaluate(([x, y]) => !!document.elementFromPoint(x!, y!)?.closest('[data-por-pasos]'), [cx + dx, cy + dy])).toBe(true);
+    });
+  }
 });
 
 // The book's photos (img/*.jpg) came without their size: the text under them jumped when they arrived. The content
@@ -980,4 +993,361 @@ test.describe('tableta: consolas', () => {
     await page.waitForTimeout(5000);
     expect(await page.evaluate(() => (window as unknown as { __cls: number }).__cls)).toBeLessThan(0.05);
   });
+});
+
+// Final pass (0.11 integrated): with the browser's storage blocked the libraries live in memory, and after «Guardar»
+// the editor and the breadboard said «Guardado en este dispositivo» — lost when the page closes. They say so now.
+test.describe('tableta: almacenamiento bloqueado', () => {
+  test.use(TABLETA);
+  for (const [que, ruta, boton] of [
+    ['editor', '/#/editor/libro/cap42/fig-42.5_filtro_rc', '.editor-pagina header.cab .botones button.primario:has-text("Guardar")'],
+    ['protoboard', '/#/protoboard', 'button.primario:has-text("Guardar")'],
+  ] as const) {
+    test(`${que}: sin almacenamiento no dice «Guardado en este dispositivo»`, async ({ page }) => {
+      await page.addInitScript(() =>
+        Object.defineProperty(window, 'localStorage', {
+          configurable: true,
+          get() {
+            throw new DOMException('Almacenamiento bloqueado', 'SecurityError');
+          },
+        }),
+      );
+      await page.goto(ruta);
+      const aviso = page.locator('[data-aviso-guardado="memoria"]');
+      await expect(aviso).toBeVisible({ timeout: 60_000 });
+      await expect(aviso).toContainText('solo mientras no cierre la página');
+      await page.locator(boton).first().click();
+      await page.waitForTimeout(1500);
+      await expect(page.locator('#contenido')).not.toContainText('Guardado en este dispositivo');
+      await expect(page.locator('#contenido')).toContainText('Sin guardar en este dispositivo');
+    });
+  }
+});
+
+// Final pass (0.11 integrated, tablet): the breadboard opened over a book netlist did not simulate (84 of 314 in the
+// sweep). The simulator page under it runs its netlist again when another run replaces its own (the 0.11 fix of the
+// slider race with the drawn circuit's background run); it did so also when the breadboard's run replaced it, and
+// that cancelled the breadboard's. Now only a background run (the drawn circuit) makes the page run again.
+test.describe('tableta: protoboard sobre el simulador', () => {
+  test.use(TABLETA);
+  test('«Simular» de la protoboard abierta sobre una netlist del libro da su resultado', async ({ page }) => {
+    test.setTimeout(180_000);
+    await page.goto('/#/simulador/cap08/fig-8.7');
+    await page.locator('.meta button:has-text("Ver en protoboard")').first().click({ timeout: 60_000 });
+    await page.waitForFunction(() => !!(window as unknown as { __epaProtoboard?: { pb: { doc: { piezas: unknown[] } } } }).__epaProtoboard?.pb.doc.piezas.length, null, { timeout: 60_000 });
+    const simular = page.locator('.capa-protoboard button.simular').first();
+    await expect(simular).toBeEnabled({ timeout: 120_000 });
+    await page.evaluate(() => delete (window as unknown as { __epaProtoboardSim?: unknown }).__epaProtoboardSim);
+    await simular.click();
+    await page.waitForFunction(() => !!(window as unknown as { __epaProtoboardSim?: unknown }).__epaProtoboardSim, null, { timeout: 90_000, polling: 250 });
+  });
+});
+
+// Final pass (0.11 integrated, tablet): leaving a lesson while it was still loading — a link to another lesson —
+// let the left lesson finish its load anyway: it wrote its own address over the new page's (and, when that came
+// before the router read it, the reader's navigation was undone) and Svelte warned «derived_inert».
+test.describe('tableta: salir de una lección que carga', () => {
+  test.use(TABLETA);
+  test('la lección que se deja a medio cargar no pisa la dirección de la nueva', async ({ page }) => {
+    const avisos: string[] = [];
+    page.on('console', (m) => {
+      if (/derived_inert/.test(m.text())) avisos.push(m.text());
+    });
+    // the chapter of the lesson left comes late
+    let soltar: () => void = () => {};
+    const llega = new Promise<void>((r) => (soltar = r));
+    await page.route('**/partes/cap02.json', async (r) => {
+      await llega;
+      await r.continue();
+    });
+    await page.addInitScript(() => {
+      const w = window as unknown as { __direcciones: string[] };
+      w.__direcciones = [];
+      const rs = history.replaceState.bind(history);
+      history.replaceState = (st, t, u) => {
+        w.__direcciones.push(String(u));
+        rs(st, t, u);
+      };
+    });
+    await page.goto('/#/leccion/cap02/sec-2.1/2');
+    await expect(page.locator('.leccion .cargando')).toBeVisible({ timeout: 30_000 });
+    await page.evaluate(() => (location.hash = '#/leccion/cap01/sec-1.2/2'));
+    await expect(page.locator('[data-leccion="cap01/sec-1.2"]')).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('[data-leccion="cap01/sec-1.2"] .cargando')).toHaveCount(0, { timeout: 30_000 });
+    soltar();
+    await page.waitForResponse('**/partes/cap02.json').catch(() => {});
+    await page.waitForTimeout(1500);
+    expect(await page.evaluate(() => location.hash)).toBe('#/leccion/cap01/sec-1.2/2');
+    expect(await page.evaluate(() => (window as unknown as { __direcciones: string[] }).__direcciones.filter((u) => u.includes('cap02')))).toEqual([]);
+    await expect(page.locator('[data-leccion="cap01/sec-1.2"]')).toBeVisible();
+    expect(avisos).toEqual([]);
+  });
+});
+
+// Final pass (0.11 integrated, tablet): a practice slider left while its reading was still being simulated (the next
+// screen, a reload) took the reading anyway and read its destroyed item (Svelte's «derived_inert»; reloading the
+// lessons of chapter 1).
+test.describe('tableta: práctica que se deja a medio simular', () => {
+  test.use(TABLETA);
+  test('el deslizador que se deja mientras simula no lee su ítem destruido', async ({ page }) => {
+    test.setTimeout(120_000);
+    const avisos: string[] = [];
+    page.on('console', (m) => {
+      if (/derived_inert/.test(m.text())) avisos.push(m.text());
+    });
+    let soltar: () => void = () => {};
+    const llega = new Promise<void>((r) => (soltar = r));
+    await page.route('**/ngspice/**', async (r) => {
+      await llega;
+      await r.continue();
+    });
+    await page.goto('/#/leccion/cap23/sec-23.6/practica-3');
+    await expect(page.locator('[data-practica]').first()).toBeVisible({ timeout: 60_000 });
+    await page.waitForTimeout(500);
+    await page.evaluate(() => (location.hash = '#/cap23'));
+    await expect(page.locator('[data-practica]')).toHaveCount(0, { timeout: 30_000 });
+    soltar();
+    // the engine loads and the reading comes
+    await page.waitForTimeout(8000);
+    expect(avisos).toEqual([]);
+  });
+});
+
+// Final pass (0.11 integrated): the same with the schematic editor — a book netlist still loading when the reader
+// left the editor put «#/editor» over the new page's address (a reload then opened the editor).
+test('el editor que se deja mientras carga una netlist no pisa la dirección de la nueva página', async ({ page }) => {
+  let soltar: () => void = () => {};
+  const llega = new Promise<void>((r) => (soltar = r));
+  let pedida = false;
+  await page.route('**/spice/cap42/fig-42.5_filtro_rc.cir', async (r) => {
+    pedida = true;
+    await llega;
+    await r.continue();
+  });
+  await page.goto('/#/glosario');
+  await expect(page.locator('#contenido h1')).toBeVisible({ timeout: 30_000 });
+  await page.evaluate(() => (location.hash = '#/editor/libro/cap42/fig-42.5_filtro_rc'));
+  await expect.poll(() => pedida, { timeout: 30_000 }).toBe(true);
+  await page.evaluate(() => (location.hash = '#/glosario'));
+  await expect(page.locator('#contenido h1')).toContainText('Glosario', { timeout: 30_000 });
+  soltar();
+  await page.waitForResponse('**/spice/cap42/fig-42.5_filtro_rc.cir').catch(() => {});
+  await page.waitForTimeout(2000);
+  expect(await page.evaluate(() => location.hash)).toBe('#/glosario');
+  await page.reload();
+  await expect(page.locator('#contenido h1')).toContainText('Glosario', { timeout: 30_000 });
+});
+
+// Final pass (0.11 integrated): «Filtro en T» typed whole was one more «filtro» in the search (single letters and
+// stop words are not indexed) and fell below the tenth result. A title typed whole goes first.
+test('buscar un título entero lo da el primero', async ({ page }) => {
+  await page.goto('/#/');
+  await page.keyboard.press('Control+k');
+  const caja = page.getByRole('dialog', { name: 'Buscar en el libro' }).locator('input');
+  for (const [q, href] of [
+    ['Filtro en T', '#/glosario/glos-filtro-en-t'],
+    ['filtro en t', '#/glosario/glos-filtro-en-t'],
+    ['CIC (filtro)', '#/glosario/glos-cic-filtro'],
+    ['Tabla de Bandas de Color', '#/apA/sec-A.1'],
+  ] as const) {
+    await caja.fill(q);
+    await expect.poll(async () => decodeURIComponent((await page.locator('#resultados a').first().getAttribute('href')) ?? ''), { message: q, timeout: 30_000 }).toBe(href);
+  }
+});
+
+// Final pass (0.11 integrated, tablet): offline, a chapter's smart practice was prepared with the few exercises that
+// did not need the chapter's banks (4 of 10) and said nothing. It says so now and «Reintentar» prepares it again.
+test.describe('tableta: práctica de un capítulo sin red', () => {
+  test.use(TABLETA);
+  test('sin red avisa de que faltan ejercicios y «Reintentar» los trae', async ({ page }) => {
+    test.setTimeout(120_000);
+    await page.goto('/#/');
+    await expect(page.locator('#contenido h1, #contenido h2').first()).toBeVisible({ timeout: 30_000 });
+    const cortar = /\/libro\/(practica|repaso)\/cap23\.json$/;
+    await page.route((u) => cortar.test(u.pathname), (r) => r.abort('internetdisconnected'));
+    await page.evaluate(() => (location.hash = '#/practicar/cap23'));
+    const aviso = page.locator('[data-sesion-incompleta], .practicar .aviso-red');
+    await expect(aviso.first()).toBeVisible({ timeout: 60_000 });
+    await expect(aviso.first()).toContainText('Sin conexión');
+    await page.unrouteAll({ behavior: 'ignoreErrors' });
+    await page.locator('.practicar button:has-text("Reintentar")').first().click();
+    await expect(page.locator('[data-intro-sesion]')).toBeVisible({ timeout: 60_000 });
+    await expect(aviso).toHaveCount(0);
+    await expect(page.locator('[data-intro-sesion]')).toContainText('10 ejercicios');
+  });
+});
+
+// Final pass (0.11 integrated, tablet): small touch targets the full sweep found — the compact «Abrir el kit FM7303
+// vivo» chip in a heading (its 28 px rule beat the touch rule), and the breadboard's notices and «Netlist del
+// montaje» (20 px).
+test.describe('tableta: objetivos táctiles de la pasada final', () => {
+  test.use(TABLETA);
+  test('«Abrir el kit FM7303 vivo» compacto: 44 px de zona táctil', async ({ page }) => {
+    await page.goto('/#/cap16/fig-16.10');
+    const b = page.locator('.h3-simular a.ver-kit.compacto').first();
+    await expect(b).toBeVisible({ timeout: 60_000 });
+    await b.scrollIntoViewIfNeeded();
+    const caja = (await b.boundingBox())!;
+    const cx = caja.x + caja.width / 2;
+    const cy = caja.y + caja.height / 2;
+    for (const dy of [-21, 21]) expect(await page.evaluate(([x, y]) => !!document.elementFromPoint(x!, y!)?.closest('.ver-kit'), [cx, cy + dy])).toBe(true);
+  });
+  for (const [ruta, sel] of [
+    ['/#/consolas/gb/fuentes', '.fuentes .lista li > p > a'],
+    ['/#/consolas/snes/fuentes', 'details.texto-licencia > summary'],
+    ['/#/proyectos/estacion_iot/esquema', 'details.notas > summary'],
+  ] as const) {
+    test(`${ruta}: «${sel}» mide 44 px`, async ({ page }) => {
+      await page.goto(ruta);
+      const e = page.locator(sel).first();
+      await expect(e).toBeVisible({ timeout: 60_000 });
+      expect((await e.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    });
+  }
+  test('protoboard: los avisos y «Netlist del montaje» miden 44 px', async ({ page }) => {
+    test.setTimeout(120_000);
+    await page.goto('/#/simulador/cap42/fig-42.6_error2_nombre_duplicado');
+    await page.locator('.meta button:has-text("Ver en protoboard")').first().click({ timeout: 60_000 });
+    await page.locator('.capa-protoboard [role="tab"]:has-text("Avisos")').first().click({ timeout: 60_000 });
+    const aviso = page.locator('.capa-protoboard ul.avisos li.error button.enlace').first();
+    await expect(aviso).toBeVisible({ timeout: 30_000 });
+    expect((await aviso.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+    expect((await page.locator('.capa-protoboard details.netlist > summary').first().boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  });
+});
+
+// Final pass (0.11 integrated, tablet): a saved note under a section showed «Editar la nota» and «Borrar la nota» at
+// 32 × 32 px, and «Marcadores y notas» its «Editar en la sección» and «Borrar» at 32 px high (the crawler starts with
+// no notes, so only the two-tab check of the final pass saw them): 44 px on touch.
+test.describe('tableta: nota guardada', () => {
+  test.use(TABLETA);
+  test('los botones de una nota guardada miden 44 px (sección y «Marcadores y notas»)', async ({ page }) => {
+    await page.addInitScript(() => {
+      if (localStorage.getItem('epa:notas')) return;
+      const t = Date.now();
+      localStorage.setItem('epa:notas', JSON.stringify({ 'sec-5.1': { parte: 'cap05', label: 'sec-5.1', num: '5.1', titulo: 'Sección', texto: 'Una nota de prueba', t } }));
+    });
+    await page.goto('/#/cap05');
+    const nota = page.locator('.nota-personal').first();
+    await expect(nota).toContainText('Una nota de prueba', { timeout: 60_000 });
+    for (const n of ['Editar la nota', 'Borrar la nota']) {
+      const caja = (await nota.getByRole('button', { name: n, exact: true }).boundingBox())!;
+      expect(Math.min(caja.width, caja.height), n).toBeGreaterThanOrEqual(44);
+    }
+    // and in «Marcadores y notas»
+    await page.goto('/#/marcadores');
+    const acc = page.locator('.nota .acc').first();
+    await expect(acc).toBeVisible({ timeout: 30_000 });
+    for (const b of await acc.locator('.boton').all()) expect((await b.boundingBox())!.height).toBeGreaterThanOrEqual(44);
+  });
+});
+
+// Final pass (0.11 integrated, phone): a live figure opened by its link drew its panels when its data came, after the
+// first paint, and pushed its caption and the text 350 px down (CLS 0.08–0.22). The reader asks for that figure's
+// data with the part (≤ 1.5 s) and the figure takes them before painting.
+test.describe('teléfono: figura viva enlazada', () => {
+  test.use({ viewport: { width: 412, height: 915 }, isMobile: true, hasTouch: true });
+  test('figura viva abierta por su enlace: sus paneles no empujan el pie', async ({ page }) => {
+    await page.addInitScript(() => {
+      const w = window as unknown as { __cls: number };
+      w.__cls = 0;
+      new PerformanceObserver((l) => {
+        for (const e of l.getEntries() as (PerformanceEntry & { value: number; hadRecentInput: boolean })[]) if (!e.hadRecentInput) w.__cls += e.value;
+      }).observe({ type: 'layout-shift', buffered: true });
+    });
+    const cdp = await page.context().newCDPSession(page);
+    await cdp.send('Emulation.setCPUThrottlingRate', { rate: 2 });
+    await page.goto('/#/cap06/fig-6.13');
+    await expect(page.locator('[data-figura-viva="6.13"]')).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('.panel-e').first()).toBeAttached({ timeout: 30_000 });
+    await page.waitForTimeout(3000);
+    expect(await page.evaluate(() => (window as unknown as { __cls: number }).__cls)).toBeLessThan(0.05);
+  });
+});
+
+// Final pass (tablet): on a book netlist's page the results come before the netlist (tablets and phones), and the
+// first run's results pushed the netlist at the bottom of the screen out of it (CLS 0.10–0.15 on some 120 netlists).
+// Their place is kept during the first run.
+test.describe('tableta: resultados de una netlist del libro', () => {
+  test.use(TABLETA);
+  for (const id of ['cap41/prob-41.B_red_desacoplo', 'cap25/fig-25.9']) {
+    test(`${id}: los primeros resultados no empujan la netlist`, async ({ page }) => {
+      await page.addInitScript(() => {
+        const w = window as unknown as { __cls: number };
+        w.__cls = 0;
+        new PerformanceObserver((l) => {
+          for (const e of l.getEntries() as (PerformanceEntry & { value: number; hadRecentInput: boolean })[]) if (!e.hadRecentInput) w.__cls += e.value;
+        }).observe({ type: 'layout-shift', buffered: true });
+      });
+      await page.goto(`/#/simulador/${id}`);
+      await expect(page.locator('.pagina .resultado')).toBeVisible({ timeout: 60_000 });
+      await page.waitForTimeout(2500);
+      expect(await page.evaluate(() => (window as unknown as { __cls: number }).__cls)).toBeLessThan(0.1);
+    });
+  }
+});
+
+// Final pass (360 px phone): a frame with a dozen steps (the Master System's) left each step 22 px to the finger
+// (WCAG 2.5.8 asks 24): on a small phone the count goes above and the steps take the whole row.
+test.describe('móvil de 360 px: pasos del fotograma', () => {
+  test.use({ viewport: { width: 360, height: 780 }, isMobile: true, hasTouch: true });
+  test('cada paso tiene al menos 24 px de ancho para el dedo', async ({ page }) => {
+    await page.goto('/#/consolas/sms/fotograma');
+    const segs = page.locator('.progreso .segmentos button.seg');
+    await expect(segs.first()).toBeVisible({ timeout: 60_000 });
+    const xs = await segs.evaluateAll((l) => l.map((b) => b.getBoundingClientRect().left));
+    expect(xs.length).toBeGreaterThan(8);
+    for (let i = 1; i < xs.length; i++) expect(xs[i]! - xs[i - 1]!).toBeGreaterThanOrEqual(24);
+  });
+});
+
+// Final pass (phone, layout stress): moving within a part to a live figure further on (a reference, a link) scrolled
+// to it and only then loaded its data: its panels came in under the reader's eyes and pushed the caption 280 px. The
+// reader now asks for the destination figure's data before scrolling, and a figure already on the page takes them.
+test.describe('teléfono: figura viva más adelante en la parte', () => {
+  test.use({ viewport: { width: 360, height: 780 }, isMobile: true, hasTouch: true });
+  test('ir a una figura viva de la misma parte: sus paneles ya están al llegar', async ({ page }) => {
+    await page.goto('/#/cap03/fig-3.11');
+    await expect(page.locator('[data-figura-viva="3.11"]')).toBeVisible({ timeout: 30_000 });
+    await page.waitForTimeout(2000);
+    const marcos = await page.evaluate(async () => {
+      const out: { y: number; pie: number; paneles: number }[] = [];
+      const y0 = scrollY;
+      location.hash = '#/cap03/fig-3.12';
+      for (let i = 0; i < 90; i++) {
+        await new Promise<void>((r) => requestAnimationFrame(() => r()));
+        const f = document.getElementById('fig-3.12');
+        const pie = f?.querySelector('figcaption');
+        if (scrollY !== y0 && pie) out.push({ y: scrollY, pie: Math.round(pie.getBoundingClientRect().top), paneles: f!.querySelectorAll('.panel-e').length });
+      }
+      return out;
+    });
+    expect(marcos.length).toBeGreaterThan(5);
+    // from the first frame at the figure: its panels are there and the caption does not move any more
+    expect(marcos[0]!.paneles).toBeGreaterThan(0);
+    const ultimo = marcos[marcos.length - 1]!;
+    for (const m of marcos) if (m.y === ultimo.y) expect(Math.abs(m.pie - ultimo.pie)).toBeLessThanOrEqual(1);
+  });
+});
+
+// Final pass (desktop): a page's first top margin collapsed through <main>, so when the page replaced the loading
+// notice <main> itself — the whole page — moved 28 px down (CLS 0.2 in the glossary and the simulator). <main> is
+// its own block formatting context now.
+test('escritorio: al cargar una página no se mueve <main> entero', async ({ page }) => {
+  await page.addInitScript(() => {
+    const w = window as unknown as { __mainMovido: number };
+    w.__mainMovido = 0;
+    new PerformanceObserver((l) => {
+      for (const e of l.getEntries() as (PerformanceEntry & { sources?: { node?: Node }[] })[])
+        for (const s of e.sources ?? []) if (s.node instanceof HTMLElement && s.node.tagName === 'MAIN') w.__mainMovido++;
+    }).observe({ type: 'layout-shift', buffered: true });
+  });
+  const cdp = await page.context().newCDPSession(page);
+  await cdp.send('Emulation.setCPUThrottlingRate', { rate: 2 });
+  for (const ruta of ['/#/glosario', '/#/simulador/cap26/ej-26.1_rd_diodo']) {
+    await page.goto(ruta);
+    await page.locator('main h1').first().waitFor({ timeout: 30_000 });
+    await page.waitForTimeout(2500);
+    expect(await page.evaluate(() => (window as unknown as { __mainMovido: number }).__mainMovido), ruta).toBe(0);
+  }
 });

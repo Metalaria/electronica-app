@@ -2209,8 +2209,10 @@ nearest `figura` within ±2 blocks without crossing an h2/h3; else null (49 of 1
 
 **Route** `#/leccion/<parte>/<label>[/<n>|/pregunta-<n>|/fin]` (Vista `'leccion'`: `ruta.parte`, `ruta.ancla` =
 «label[/screen]»; step n is 1-based in the URL). App.svelte hides rail, index, top bar and tab bar for it and takes
-the part's accent. Entry: an inline icon link at the end of every `h2` in `Seccion.svelte` (negative right margin:
-it never takes width from the title nor wraps alone). The lesson is one history entry: screens use
+the part's accent. Entry: an icon link (`[data-por-pasos]`, «Estudiar por pasos») among the section's tools in
+`Seccion.svelte` (owner's decision, 0.11 final pass: no longer at the end of the `h2`). The icon buttons go in
+`.iconos`, three to a row (112 px, the width of 0.10.1's three), the lesson icon under the bookmark, so titles wrap as
+in 0.10.1; the chips (`.chips`) stay centred on the first row; under 600 px the tools go under the title. The lesson is one history entry: screens use
 `history.replaceState`; close = `history.back()` if the app had a previous route (`ruta.n > 1`), else
 `location.replace('#/<parte>/<label>')`; «Siguiente sección» uses `location.replace`.
 
@@ -2842,6 +2844,14 @@ Phase 2 (`tests/qa/fase2-*.spec.ts`, one command for all of them):
   or a 3D load (the engine and WebGL must recover); odd and very long input in every text field. The learning
   pages (`grupo: 'aprendizaje'` in `rutas.ts`) are all taken by `fase2-estado`, `fase2-lento` and `fase2-axe` (not one
   per kind), with a smart-practice session reloaded mid-way and double taps on its «Empezar»/«Saltar».
+- `fase2-estado` also fills the storage (writes throw QuotaExceededError: «Guardar» must warn and «Reintentar» save
+  once there is room) and blocks it (any use of localStorage throws, as some private modes: every page opens, the
+  libraries say nothing is kept after closing), and runs two tabs at once on one chapter (each one bookmarks and
+  annotates its own sections in random order, one reloads halfway: neither may undo the other's, on screen or in the
+  storage, before and after reloading both; then the bookmarks page and the home page are checked with that content).
+- The harness's `page.waitForFunction` calls that run while the probe counts animation frames pass a numeric
+  `polling` (by default Playwright polls with `requestAnimationFrame`, and a timed-out wait left its loop running:
+  `fase2-fugas` took it for the app's).
 - The report warns at the top when groups whose triage says «corregido» show up in the run: on a build that has the
   fixes they are incomplete fixes, regressions or new findings caught by too general a pattern (there is no
   catch-all «corregido» pattern for small touch targets any more: new ones show as untriaged).
@@ -2876,7 +2886,12 @@ Regression tests of the fixes it led to: `tests/regresiones11.spec.ts` (`playwri
   (`lib/mapas-lectura.ts`). Loading placeholders (`.cargando`) fade in after 0.3 s. Status lines of a run go inside
   an existing row (the simulator's toolbar, the live schematic's panel), never on a line of their own.
 - A page's controls show only its own engine runs (`simulador/Pagina.svelte` `propias`): other components share
-  the single ngspice worker.
+  the single ngspice worker. A run of the page that another component's run replaced (the drawn circuit re-solves
+  itself after each result) is run again unless a newer run of the page or «Detener» replaced it: under load the
+  background run could start just after a slider's run and leave the page with the previous values.
+- The protoboard's live operating point is proof only for the board version it was solved for (`versionOp`): after
+  a change the previous one stays on show until the re-solve, and the guide celebrated a circuit with the previous
+  board's «LED lit».
 - Touch areas: on `(pointer: coarse)` small controls get a transparent `::after` box of at least 44 × 44 px centred
   on them (the `toque-44` class, or the selectors listed in `app.css`), so they keep their look.
 - Table headers (`.tabla thead th`) wrap only when wider than a cell may be (22em), balanced; short ones stay on one
@@ -2911,6 +2926,32 @@ Regression tests of the fixes it led to: `tests/regresiones11.spec.ts` (`playwri
 - A late part of a page whose height is unknown waits hidden with the content under it (`visibility: hidden`,
   `aria-busy`, ≤ 2.5 s; the consoles' «Fuentes» tab), or its place is reserved (`CircuitoVivo`: 100 px for the
   controls' panel, 150 px and a two-line header under 600 px; nothing reserved for an empty netlist).
+- `<main>` is its own block formatting context (`display: flow-root`): a page's first top margin no longer collapses
+  through it, so a page replacing the loading notice does not move the whole of `<main>` (0.11 final QA).
+- A live figure opened by its link (`#/capXX/fig-…`): the reader loads its data with the part (≤ 1.5 s,
+  `Lector.datosDeFiguraObjetivo`) and `FiguraViva` takes data that have already arrived before painting
+  (`figuras-vivas/carga.svelte.ts` `datosYa`), so its panels do not push the caption and the text.
+- Storage unavailable (`obtenerAlmacen()` falls back to memory): the editor's and the breadboard's libraries say so
+  (`AvisoGuardado` «memoria», «Sin guardar en este dispositivo») instead of «Guardado en este dispositivo».
+- A page that loads after it mounts and then rewrites the address (`history.replaceState`: a lesson's screen, the
+  editor's «#/editor») stops when it is left before its load ends (`Leccion` `desmontada`, `EditorEsquemas`
+  `turnoApertura`): the left page wrote its address over the new one's, or undid the navigation (0.11 final QA).
+- `simularTexto(texto, { fondo: true })` marks a background run (the drawn circuit re-solving after a page's
+  result); a page whose run was replaced runs again only when a background run replaced it
+  (`sustituidaPorFondo()`), never after a run someone asked for (the breadboard over the simulator page).
+- A book netlist's page keeps its results' place (480 px under 1340 px wide) during its first run: the results come
+  before the netlist there and pushed it out of the screen.
+- A live figure reached within its part (a reference, a link): the reader asks for its data before scrolling
+  (`Lector` navigation effect → `datosDeFiguraObjetivo`), and `carga.svelte.ts` `llegados` is reactive, so a figure
+  already on the page takes them as soon as they arrive.
+- Smart practice offline: a bank of the plan's parts that did not come for lack of network makes the session
+  `incompleta` (notice with «Reintentar»), and `catalogo.ts` does not keep a part's concept list made without it.
+- A component that loads after mounting and then writes state from its props (`Deslizador`, `Prediccion`,
+  `Leccion`, `EditorEsquemas`) stops when unmounted: Svelte warns `derived_inert` otherwise, and some wrote the
+  address. The harness prints the call stack of every console warning with `QA_PILAS=1`.
+- Search (`lib/buscador.ts`): a title typed whole (case, accents and punctuation aside; a section's also without its
+  number) goes first, in the book's order — single letters and stop words are not indexed, so «Filtro en T» was one
+  more «filtro» (0.11 final QA).
 - A popover that is not modal (the «Tema y tamaño de letra» panel) closes when the focus leaves it (`focusout` with
   a `relatedTarget` outside); a scrolling box whose items are out of the tab order (the search results) takes the
   focus while it overflows (`lib/desplazable.ts`, `{ vertical: true }`).

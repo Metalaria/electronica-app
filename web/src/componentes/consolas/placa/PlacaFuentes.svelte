@@ -94,4 +94,12 @@
     font-family: var(--mono);
     font-size: 0.92em;
   }
+  /* touch screens: the source's address, alone on its line, 44 px of touch area (0.11 final QA) */
+  @media (pointer: coarse) {
+    .lista li > p > a {
+      display: inline-block;
+      padding-block: 12px;
+      margin-block: -12px;
+    }
+  }
 </style>

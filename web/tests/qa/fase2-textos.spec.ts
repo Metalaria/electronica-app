@@ -137,7 +137,7 @@ const DESCRIPCIONES = /^componentes\/(consolas\/(arquitectura|fotograma)\/|instr
  * pronouns (the dictionary has no enclitic forms). Anything else unknown is reported.
  */
 const PALABRAS = new Set(
-  `abs access account add ammeters android anomie api appendwrite attribute autoincremento autorregeneraciones autorregeneración binary borna bottom boy cartridge chipset
+  `abs access account add ammeters android anomie api appendwrite attribute autoincremento repasos autorregeneraciones autorregeneración binary borna bottom boy cartridge chipset
   ciérrelo cjo cntl colors commands comprimirlo contents copetti coprocesadores corríjalo create ctl defínalo desadaptada desexcitación deslizador deslizadores developer
   development dis docs documentation dumet dyke déc edlc elíjalo empty endc epa esc exp export fall femtofaradios ferroeléctrico filetype fix font format freq fujitsu
   function game gear gekkio generate genesis genvdp ghp github gminsteps gobernarla graetz homografía idss imm inf inn inom inp interrupts intro json klu layer list

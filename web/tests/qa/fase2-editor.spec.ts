@@ -108,7 +108,7 @@ export function comparar(original: string, texto: string): string[] {
 test('editor: cada netlist del libro abierta como dibujo devuelve una netlist equivalente', async ({ page }, info) => {
   const reg = new Registro(info);
   test.skip(reg.perfil.id !== 'tableta', 'en la tableta');
-  const sp = spice() as { netlists: Record<string, { fichero: string; motor: { estado: string } }> };
+  const sp = spice() as unknown as { netlists: Record<string, { fichero: string; motor: { estado: string } }> };
   const ids = Object.keys(sp.netlists).filter((id) => MODO !== 'rapido' || azarDe(`ed:${id}`) < 0.1);
   test.setTimeout(ids.length * 60_000);
   await prepararPagina(page, reg);
@@ -159,7 +159,7 @@ test('editor (Node): las 313 netlists pasan por el dibujo y vuelven equivalentes
   const { documentoDeEditable } = await import('../../src/componentes/editor/importar.ts');
   const { generarNetlist } = await import('../../src/componentes/editor/netlist.ts');
   sembrarDibujos(JSON.parse(readFileSync(new URL('../../src/componentes/esquema-auto/precalculado.json', import.meta.url), 'utf8')));
-  const sp = spice() as { netlists: Record<string, { fichero: string }> };
+  const sp = spice() as unknown as { netlists: Record<string, { fichero: string }> };
   let bien = 0;
   let total = 0;
   for (const [id, n] of Object.entries(sp.netlists)) {

@@ -276,7 +276,8 @@
     e.mensaje = '';
     const { simularTexto, SimulacionCancelada } = await import('../../../simulador/cliente.svelte');
     try {
-      const sim = await simularTexto(ins.texto);
+      // (a background run: the page's run it replaces is run again — cliente.svelte.ts sustituidaPorFondo)
+      const sim = await simularTexto(ins.texto, { fondo: true });
       if (e !== est) return;
       const r = resultados(e.esq, corr, ins, sim.ejecucion.graficas);
       if (!r.op && !r.tran) {

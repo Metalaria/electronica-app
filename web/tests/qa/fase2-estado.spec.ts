@@ -430,3 +430,196 @@ test('las rutas de este fichero existen', () => {
   expect(CORTA).toBeTruthy();
   expect(LARGAS.length).toBeGreaterThan(0);
 });
+
+// ------------------------------------------------------------------ storage full or blocked (0.11 final pass)
+// The synchronised stores save through lib/sincronizacion/guardado.ts (read-merge-write, retries) and the editor's
+// and the breadboard's libraries show AvisoGuardado when a save fails. Here the device storage refuses: writes throw
+// QuotaExceededError (full), or any use of localStorage throws SecurityError (blocked, as some private modes: the
+// app keeps everything in memory and must say so). A save must never look
+// saved when it was not; the notice's «Reintentar» saves once the storage works again; nothing breaks.
+test('almacenamiento lleno o bloqueado: avisa, no se cuelga y guarda al volver', async ({ page }, info) => {
+  const reg = new Registro(info);
+  test.skip(reg.perfil.id !== 'tableta', 'en la tableta');
+  test.setTimeout(10 * 60_000);
+  await page.addInitScript(() => {
+    const w = window as unknown as { __qaLleno: boolean; __qaBloqueado: boolean };
+    w.__qaLleno = false;
+    w.__qaBloqueado = sessionStorage.getItem('qa-bloqueado') === '1';
+    const poner = Storage.prototype.setItem;
+    const leer = Storage.prototype.getItem;
+    Storage.prototype.setItem = function (k: string, v: string) {
+      if (w.__qaLleno && String(k).startsWith('epa:')) throw new DOMException('El almacenamiento está lleno', 'QuotaExceededError');
+      return poner.call(this, k, v);
+    };
+    // storage blocked (site data blocked, some private modes): the browser throws on any use of localStorage
+    if (w.__qaBloqueado)
+      Object.defineProperty(window, 'localStorage', {
+        configurable: true,
+        get() {
+          throw new DOMException('Almacenamiento bloqueado', 'SecurityError');
+        },
+      });
+    void leer;
+  });
+  await prepararPagina(page, reg);
+  const fallo = (firma: string, msg: string) => reg.anotar({ sev: 'funcional', tipo: 'almacenamiento', firma, msg });
+  const lleno = (v: boolean) => page.evaluate((x) => ((window as unknown as { __qaLleno: boolean }).__qaLleno = x), v);
+  const aviso = page.locator('[data-aviso-guardado]');
+
+  // a save into a full storage, then «Reintentar» once there is room again
+  for (const [que, hash, listo, guardar, clave] of [
+    ['editor', '/#/editor/libro/cap42/fig-42.5_filtro_rc', () => !!(window as unknown as { __epaEditor?: { ed: { doc: { componentes: unknown[] } } } }).__epaEditor?.ed.doc.componentes.length, '.editor-pagina header.cab .botones button.primario:has-text("Guardar")', 'epa:editor-circuitos'],
+    ['protoboard', '/#/protoboard', () => !!(window as unknown as { __epaProtoboard?: unknown }).__epaProtoboard, 'button.primario:has-text("Guardar")', 'epa:protoboard-circuitos'],
+  ] as const) {
+    reg.ruta = `${que} (almacenamiento lleno)`;
+    await page.goto(hash);
+    await page.waitForFunction(listo, null, { timeout: 60_000 }).catch(() => {});
+    await esperarCalma(page, 20_000);
+    const antes = await page.evaluate((k) => localStorage.getItem(k), clave);
+    await lleno(true);
+    const b = page.locator(guardar).first();
+    if (!(await b.isVisible().catch(() => false))) {
+      await fallo(`${que}: sin «Guardar»`, `${que}: no se encontró el botón «Guardar» para la prueba.`);
+      continue;
+    }
+    await b.click();
+    const avisado = await aviso.first().waitFor({ timeout: 15_000 }).then(() => true).catch(() => false);
+    const dice = await page.evaluate(() => /Guardado en este dispositivo/.test(document.querySelector('#contenido')?.textContent ?? ''));
+    if (!avisado) await fallo(`${que}: guardado silencioso`, `${que}: con el almacenamiento lleno, «Guardar» no avisa${dice ? ' y la página dice «Guardado en este dispositivo»' : ''}.`);
+    else if (dice) await fallo(`${que}: dice guardado`, `${que}: avisa del fallo pero también dice «Guardado en este dispositivo».`);
+    await recogerYComprobar(page, reg, { tactil: true, completa: false, accesibilidad: false });
+    await lleno(false);
+    if (avisado) {
+      await aviso.locator('button:has-text("Reintentar")').click().catch(() => {});
+      const fuera = await aviso.first().waitFor({ state: 'detached', timeout: 20_000 }).then(() => true).catch(() => false);
+      if (!fuera) await fallo(`${que}: el aviso no se va`, `${que}: con sitio otra vez, «Reintentar» no quita el aviso.`);
+    }
+    await page.waitForTimeout(1500);
+    const despues = await page.evaluate((k) => localStorage.getItem(k), clave);
+    if (despues === antes) await fallo(`${que}: no se guardó`, `${que}: con sitio otra vez, lo que se pidió guardar no está en el almacenamiento (${clave}).`);
+  }
+
+  // every read refused (some private modes): pages open and work, the libraries say they could not read
+  await page.evaluate(() => sessionStorage.setItem('qa-bloqueado', '1'));
+  for (const h of ['#/', '#/cap05', '#/marcadores', '#/repaso', '#/progreso', '#/practicar', '#/editor', '#/protoboard', '#/sincronizacion']) {
+    reg.ruta = `${h} (almacenamiento bloqueado)`;
+    // a new document each time (a hash change keeps what the modules already read)
+    await page.goto(`/${h}`);
+    await page.reload();
+    if (!(await page.evaluate(() => (window as unknown as { __qaBloqueado: boolean }).__qaBloqueado))) await fallo('prueba', 'La prueba no consiguió bloquear la lectura.');
+    await esperarCalma(page, 20_000, 500);
+    const d = await pantalla(page);
+    if (d.texto < 40) await fallo(`${h.split('/')[1] || 'inicio'}: en blanco sin almacenamiento`, `${h}: con el almacenamiento bloqueado la página se queda casi vacía.`);
+    if (/editor|protoboard/.test(h) && !(await aviso.first().isVisible().catch(() => false)))
+      await fallo(`${h.split('/')[1]}: sin aviso sin almacenamiento`, `${h}: con el almacenamiento bloqueado no avisa de que su biblioteca solo vive mientras la página esté abierta.`);
+    await recogerYComprobar(page, reg, { tactil: true, completa: false, accesibilidad: false });
+  }
+  await page.evaluate(() => sessionStorage.removeItem('qa-bloqueado'));
+  reg.cobertura({ 'almacenamiento: páginas probadas sin poder leer': 9, 'almacenamiento: guardados con el almacenamiento lleno': 2 });
+});
+
+// ------------------------------------------------------------------ two tabs at once (0.11 final pass)
+// Every synchronised store writes through guardado.ts (read-merge-write, the other tab's writes merged in through
+// the storage event). Two tabs of the same browser on the same chapter: each one bookmarks, unbookmarks and annotates
+// its own sections (the even ones the first tab, the odd ones the second), in random order and with short random
+// pauses, and one tab reloads halfway. Nothing one tab did may undo what the other did: each tab shows, and the
+// storage holds, the last thing done to every section, before and after reloading both.
+test('dos pestañas a la vez: lo que hace una no deshace lo de la otra', async ({ page }, info) => {
+  const reg = new Registro(info);
+  test.skip(reg.perfil.id !== 'tableta', 'en la tableta');
+  test.setTimeout(10 * 60_000);
+  const rnd = mulberry32(SEMILLA ^ 0x2ba);
+  const otra = await page.context().newPage();
+  await prepararPagina(otra, reg);
+  await prepararPagina(page, reg);
+  const tabs = [page, otra];
+  const fallo = (firma: string, msg: string) => reg.anotar({ sev: 'funcional', tipo: 'pestanas', firma, msg });
+  reg.ruta = 'dos pestañas · #/cap05';
+  for (const p of tabs) {
+    await p.goto('/#/cap05');
+    await p.locator('.seccion-cab h2[id]').first().waitFor({ timeout: 60_000 });
+    await esperarCalma(p, 20_000);
+  }
+  const labels = (await page.evaluate(() => [...document.querySelectorAll('.seccion-cab h2[id]')].map((h) => h.id))).slice(0, 10);
+  const marcado = new Map<string, boolean>(labels.map((l) => [l, false]));
+  const nota = new Map<string, string>();
+  const cab = (p: Page, l: string) => p.locator('.seccion-cab', { has: p.locator(`h2[id="${l}"]`) });
+  const boton = (p: Page, l: string) => cab(p, l).locator('button[aria-label="Marcar esta sección"], button[aria-label="Quitar el marcador"]');
+  /** What a tab shows of a section: bookmarked, and whether it has a note. */
+  const muestra = (p: Page, l: string) =>
+    cab(p, l)
+      .evaluate((c) => ({
+        m: c.querySelector('button[aria-label="Quitar el marcador"]') !== null,
+        n: c.querySelector('button[aria-label="Editar la nota de esta sección"]') !== null,
+      }))
+      .catch(() => ({ m: false, n: false }));
+  /** Whether a tab shows what was last done to the section (within a moment: the other tab's write arrives late). */
+  const coincide = async (p: Page, l: string, ms: number) => {
+    const fin = Date.now() + ms;
+    for (;;) {
+      const v = await muestra(p, l);
+      if (v.m === marcado.get(l) && v.n === nota.has(l)) return true;
+      if (Date.now() > fin) return false;
+      await p.waitForTimeout(150);
+    }
+  };
+  const PASOS = 48;
+  let hechas = 0;
+  for (let k = 0; k < PASOS; k++) {
+    const t = rnd() < 0.5 ? 0 : 1;
+    const p = tabs[t]!;
+    const propias = labels.filter((_, i) => i % 2 === t);
+    const l = propias[Math.floor(rnd() * propias.length)]!;
+    reg.ruta = `dos pestañas · paso ${k + 1} (pestaña ${t + 1}, ${l})`;
+    // before acting, the tab must show what was last done to its own section
+    if (!(await coincide(p, l, 3000)))
+      await fallo('una pestaña deshace lo de la otra', `Dos pestañas: la pestaña ${t + 1} no muestra lo último que hizo en ${l} (marcador ${marcado.get(l) ? 'puesto' : 'quitado'}, ${nota.has(l) ? 'con' : 'sin'} nota) tras lo que guardó la otra.`);
+    if (rnd() < 0.7) {
+      await boton(p, l).click();
+      marcado.set(l, !marcado.get(l));
+    } else {
+      await cab(p, l).locator('button[aria-label$="nota a esta sección"], button[aria-label="Editar la nota de esta sección"]').click();
+      const texto = rnd() < 0.2 ? '' : `Nota ${k + 1} de la pestaña ${t + 1}`;
+      const area = p.locator('.nota-personal textarea');
+      await area.fill(texto);
+      await area.press('Control+Enter');
+      if (texto) nota.set(l, texto);
+      else nota.delete(l);
+    }
+    hechas++;
+    if (k === PASOS / 2) {
+      await otra.reload();
+      await otra.locator('.seccion-cab h2[id]').first().waitFor({ timeout: 60_000 });
+    } else await p.waitForTimeout(Math.floor(rnd() * 300));
+  }
+  await page.waitForTimeout(2000);
+  const comprobar = async (cuando: string) => {
+    for (const [t, p] of tabs.entries())
+      for (const l of labels)
+        if (!(await coincide(p, l, 4000)))
+          await fallo(`una pestaña no ve lo de la otra (${cuando})`, `Dos pestañas, ${cuando}: la pestaña ${t + 1} no muestra lo último hecho en ${l} (marcador ${marcado.get(l) ? 'puesto' : 'quitado'}, ${nota.has(l) ? 'con' : 'sin'} nota).`);
+    const guardado = await page.evaluate(() => ({ m: JSON.parse(localStorage.getItem('epa:marcadores') ?? '{}'), n: JSON.parse(localStorage.getItem('epa:notas') ?? '{}') }));
+    for (const l of labels) {
+      if (!!guardado.m[l] !== marcado.get(l)) await fallo(`marcadores guardados mal (${cuando})`, `Dos pestañas, ${cuando}: el almacenamiento tiene el marcador de ${l} ${guardado.m[l] ? 'puesto' : 'quitado'} y lo último hecho fue ${marcado.get(l) ? 'ponerlo' : 'quitarlo'}.`);
+      if ((guardado.n[l]?.texto ?? '') !== (nota.get(l) ?? '')) await fallo(`notas guardadas mal (${cuando})`, `Dos pestañas, ${cuando}: la nota guardada de ${l} es «${guardado.n[l]?.texto ?? ''}» y la última escrita «${nota.get(l) ?? ''}».`);
+    }
+  };
+  reg.ruta = 'dos pestañas · al final';
+  await comprobar('al terminar');
+  for (const p of tabs) {
+    await p.reload();
+    await p.locator('.seccion-cab h2[id]').first().waitFor({ timeout: 60_000 });
+  }
+  reg.ruta = 'dos pestañas · tras recargar';
+  await comprobar('tras recargar las dos');
+  await recogerYComprobar(page, reg, { tactil: true, completa: false, accesibilidad: false });
+  // the pages that list them, now that there are bookmarks and notes (an empty storage shows neither)
+  for (const h of ['#/marcadores', '#/']) {
+    reg.ruta = `dos pestañas · ${h} con marcadores y notas`;
+    await page.goto(`/${h}`);
+    await esperarCalma(page, 20_000);
+    await recogerYComprobar(page, reg, { tactil: true, completa: true, accesibilidad: true });
+  }
+  await otra.close();
+  reg.cobertura({ 'dos pestañas: acciones sobre marcadores y notas': hechas });
+});
