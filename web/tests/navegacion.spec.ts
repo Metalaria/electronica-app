@@ -52,11 +52,13 @@ test.describe('escritorio', () => {
     await page.goto('#/');
     const c = carril(page);
     await expect(c.getByRole('link', { name: 'Inicio' })).toHaveAttribute('aria-current', 'page');
-    // every entry of the registry fits at 800 px, labels visible without hovering
-    for (const nombre of ['Inicio', 'Libro', 'Buscar', 'Simulador', 'Calculadoras', 'Ejercicios', 'Repaso', 'Componentes', 'Conceptos', 'Instrumentos', 'Protoboard', 'Kit FM7303', 'Consolas', 'Proyectos', 'Glosario', 'Marcadores']) {
+    // at 800 px all but the last two entries fit, labels visible without hovering (0.11: «Cursos» joined the rail, so
+    // «Glosario» and «Marcadores» go to «Más», which takes a slot itself — 44 px targets leave no room for more)
+    for (const nombre of ['Inicio', 'Libro', 'Cursos', 'Buscar', 'Simulador', 'Calculadoras', 'Ejercicios', 'Repaso', 'Componentes', 'Conceptos', 'Instrumentos', 'Protoboard', 'Kit FM7303', 'Consolas', 'Proyectos']) {
       await expect(c.locator('.etiqueta', { hasText: new RegExp(`^${nombre}$`) })).toBeVisible();
     }
     const destinos: [string, string][] = [
+      ['Cursos', '#/cursos'],
       ['Simulador', '#/simulador'],
       ['Calculadoras', '#/calculadoras'],
       ['Ejercicios', '#/ejercicios'],
@@ -68,8 +70,6 @@ test.describe('escritorio', () => {
       ['Kit FM7303', '#/fm7303'],
       ['Consolas', '#/consolas'],
       ['Proyectos KiCad', '#/proyectos'],
-      ['Glosario', '#/glosario'],
-      ['Marcadores y notas', '#/marcadores'],
     ];
     for (const [nombre, hash] of destinos) {
       const enlace = c.getByRole('link', { name: nombre, exact: true });
@@ -77,6 +77,12 @@ test.describe('escritorio', () => {
       await expect(page).toHaveURL(new RegExp(`${hash.replace(/[/#]/g, '\\$&')}$`));
       await expect(enlace).toHaveAttribute('aria-current', 'page');
       await expect(c.locator('[aria-current="page"]')).toHaveCount(1);
+    }
+    // «Glosario» and «Marcadores y notas» are reached from «Más»
+    for (const [nombre, hash] of [['Glosario', /#\/glosario$/], ['Marcadores y notas', /#\/marcadores$/]] as const) {
+      await c.getByRole('button', { name: /^Más/ }).click();
+      await page.getByRole('menu', { name: 'Más secciones' }).getByRole('menuitem', { name: new RegExp(nombre) }).click();
+      await expect(page).toHaveURL(hash);
     }
     // «Buscar» opens the search; «Libro» returns to the reading
     await c.getByRole('button', { name: 'Buscar' }).click();

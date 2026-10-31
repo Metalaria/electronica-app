@@ -46,6 +46,8 @@ export const INICIO: Herramienta = { id: 'inicio', ruta: '#/', icono: 'inicio', 
 export const HERRAMIENTAS: Herramienta[] = [
   INICIO,
   { id: 'libro', ruta: null, icono: 'libro', etiqueta: 'Libro', vistas: ['parte'], pestana: true },
+  // 0.11: the thematic courses get a rail entry (owner's choice); on a 800 px high window «Marcadores» moves to «Más»
+  { id: 'cursos', ruta: '#/cursos', icono: 'cursos', etiqueta: 'Cursos' },
   { id: 'buscar', ruta: null, icono: 'buscar', etiqueta: 'Buscar', atajo: esMac ? '⌘ K' : 'Ctrl K', vistas: [] },
   { id: 'simulador', ruta: '#/simulador', icono: 'simulador', etiqueta: 'Simulador', pestana: true, activa: () => ruta.vista === 'simulador' && !enProtoboard() },
   { id: 'calculadoras', ruta: '#/calculadoras', icono: 'calculadora', etiqueta: 'Calculadoras' },

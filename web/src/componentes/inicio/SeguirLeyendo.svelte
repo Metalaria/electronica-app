@@ -104,7 +104,14 @@
 
     <div class="imagen" class:vacia={cargada && !figura} class:vectorial={!!figura && /\.svg$/i.test(figura.src)}>
       {#if figura}
-        <img src={url(figura.src)} alt={`Figura ${figura.num ?? ''}: ${textoPlano(figura.pie)}`} decoding="async" draggable="false" />
+        <img
+          src={url(figura.src)}
+          alt={`Figura ${figura.num ?? ''}: ${textoPlano(figura.pie)}`}
+          width={Math.round(figura.svg_vista?.[2] ?? figura.img_tam?.[0] ?? 0) || undefined}
+          height={Math.round(figura.svg_vista?.[3] ?? figura.img_tam?.[1] ?? 0) || undefined}
+          decoding="async"
+          draggable="false"
+        />
       {/if}
     </div>
 

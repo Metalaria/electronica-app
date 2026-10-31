@@ -14,8 +14,8 @@
   const texto = $derived.by(() => {
     if (p.cumplidoHoy) return p.racha === 1 ? 'de racha: hoy empieza. Objetivo cumplido.' : 'de racha. Objetivo de hoy cumplido.';
     const cuanto = `${faltan === 1 ? 'falta' : 'faltan'} ${faltan === 1 ? (unidad === 'pregunta' ? 'una' : 'un') : enPalabras(faltan)} ${unidad}`;
-    if (!p.racha) return `de racha. Hoy te ${cuanto} para empezarla.`;
-    return `de racha. Hoy te ${cuanto} para ${elOrdinal(p.racha + 1)}.`;
+    if (!p.racha) return `de racha. Hoy le ${cuanto} para empezarla.`;
+    return `de racha. Hoy le ${cuanto} para ${elOrdinal(p.racha + 1)}.`;
   });
 
   const dias = $derived(

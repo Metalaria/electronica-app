@@ -77,7 +77,7 @@
 
   function etiqueta(n: Nodo): string {
     const base = n.num != null ? `${rotuloParte(n.id)}: ${n.nombre}` : n.nombre;
-    const aqui = n.estado === 'actual' ? '. Estás aquí' : '';
+    const aqui = n.estado === 'actual' ? '. Está aquí' : '';
     if (!n.secciones) return base + aqui;
     if (n.leidas === n.secciones) return `${base}. Leído entero${aqui}`;
     return `${base}. ${n.leidas} de ${n.secciones} secciones leídas${aqui}`;
@@ -116,7 +116,7 @@
           </span>
           <span class="texto" aria-hidden="true">
             <span class="cuadro">
-              {#if n.estado === 'actual'}<span class="aqui">Estás aquí{seccion ? ` · ${seccion}` : ''}</span>{/if}
+              {#if n.estado === 'actual'}<span class="aqui">Está aquí{seccion ? ` · ${seccion}` : ''}</span>{/if}
               <span class="nom">{n.nombre}</span>
               <span class="sub">{sub(n)}</span>
             </span>
