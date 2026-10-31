@@ -6,7 +6,7 @@ import { TIPO } from '../editor/catalogo.ts';
 import type { Componente } from '../editor/tipos.ts';
 import { bajoCuerpo, bornesExterno, cajaExterno, cuerpoDe, encapsuladoDe, EXTERNOS, patasDip, patasFila, solapan, type Encapsulado } from './encapsulados.ts';
 import { agujero, ALTO_PLACA, clavePt, type Pt } from './placa.ts';
-import { empaquetar } from './logica.ts';
+import { empaquetar, tieneChip } from './logica.ts';
 import type { CableProto, DocumentoProtoboard, Pieza } from './tipos.ts';
 
 const cfgDe = (d: DocumentoProtoboard) => ({ placas: d.placas, columnas: d.columnas });
@@ -97,7 +97,7 @@ export function invertirPos(p: Pieza): Pt[] {
   return [...p.pos].reverse();
 }
 
-/** The first valid translation of a part near where it is (spiral over the board). */
+/** The first valid translation of a part near where it is (spiral over the board), not shorted by a strip. */
 export function huecoCercano(doc: DocumentoProtoboard, p: Pieza, radio = 40): Pt[] | null {
   const ignorar = new Set([p.id]);
   for (let r = 0; r <= radio; r++)
@@ -105,7 +105,8 @@ export function huecoCercano(doc: DocumentoProtoboard, p: Pieza, radio = 40): Pt
       for (let dx = -r; dx <= r; dx++) {
         if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
         const pos = p.pos.map(([x, y]) => [x + dx, y + dy] as Pt);
-        if (!motivoInvalida(doc, { ...p, pos }, ignorar)) return pos;
+        // (0.11: nor where its own strip would short it — a resistor turned on one half goes across the channel)
+        if (!motivoInvalida(doc, { ...p, pos }, ignorar) && !motivoCorto(doc, { ...p, pos })) return pos;
       }
   return null;
 }
@@ -125,6 +126,49 @@ export function patasIniciales(e: Encapsulado, cerca: Pt): Pt[] {
     default:
       return bornesExterno([x, Math.min(-3, y)], e.patas.length);
   }
+}
+
+/**
+ * Why a part would be shorted by the board itself (0.11): two of its legs in the same strip or rail, so the
+ * strip joins them. Null when it is not. Spanish, for the ghost of a part being placed and for the moves.
+ */
+export function motivoCorto(doc: DocumentoProtoboard, p: Pieza): string | null {
+  if (EXTERNOS.has(p.enc) || p.pos.length < 2) return null;
+  const cfg = cfgDe(doc);
+  const e = encapsuladoDe(p.comp);
+  const vistos = new Map<string, number>();
+  for (let i = 0; i < p.pos.length; i++) {
+    if (!p.patas[i]) continue;
+    const a = agujero(cfg, p.pos[i]![0], p.pos[i]![1]);
+    if (!a) continue;
+    const j = vistos.get(a.nodo);
+    if (j != null) {
+      const donde = a.tipo === 'riel' ? 'el mismo carril' : `la misma tira (columna ${a.x}, filas ${a.y % ALTO_PLACA <= 7 ? 'a–e' : 'f–j'})`;
+      const patas = p.pos.length === 2 ? 'sus dos patas' : `sus patas ${e.nombres[j] || j + 1} y ${e.nombres[i] || i + 1}`;
+      return `${patas} quedarían en ${donde}: la tira las uniría y la pieza estaría en cortocircuito.`;
+    }
+    vistos.set(a.nodo, i);
+  }
+  return null;
+}
+
+/**
+ * The piece of an editor part with its legs at `pos` (by default its initial legs around the origin, as a
+ * template to be moved). A logic gate comes in its 74HC chip, numbered after the chips on the board.
+ */
+export function piezaDe(doc: DocumentoProtoboard, comp: Componente, pos?: Pt[]): Pieza | null {
+  if (tieneChip(comp)) {
+    const ch = empaquetar([comp], () => comp.id).chips[0];
+    if (!ch) return null;
+    const usados = new Set(doc.piezas.map((p) => p.comp.nombre.toUpperCase()));
+    let k = 1;
+    while (usados.has(`CI${k}`)) k++;
+    ch.comp.nombre = `CI${k}`;
+    const e = encapsuladoDe(ch.comp);
+    return { id: comp.id, comp: ch.comp, enc: e.id, pos: pos ?? patasIniciales(e, [0, 0]), patas: ch.patas, chip: { comps: ch.comps, roles: ch.roles, ataduras: ch.ataduras } };
+  }
+  const e = encapsuladoDe(comp);
+  return { id: comp.id, comp, enc: e.id, pos: pos ?? patasIniciales(e, [0, 0]), patas: e.patas, ...(e.polar ? { polo: 0 } : {}) };
 }
 
 /** A new piece for an editor part, placed at a free spot near `cerca` (null when the board is full). */

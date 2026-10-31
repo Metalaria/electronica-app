@@ -11,7 +11,7 @@
   import { circuitoDeDocumento, circuitoDeEsquema, circuitoDeNetlist } from './fuentes.ts';
   import { colocarCircuito } from './colocacion.ts';
   import { verificarMontaje } from './verificar.ts';
-  import { guardarMontaje } from './circuitos.svelte';
+  import { guardarMontaje, montajes, reintentarMontajes } from './circuitos.svelte';
   import { Protoboard as EstadoProtoboard } from './estado.svelte';
   import type { CircuitoFuente } from './tipos.ts';
   import Protoboard from './Protoboard.svelte';
@@ -80,7 +80,7 @@
           <div class="tit">
             <h2>Protoboard <span>· {fuente.titulo}</span></h2>
             <p>
-              {#if guardado}Guardado en «Mis montajes». <button type="button" class="enlace" onclick={() => navegarDesdeCapa(`#/protoboard/${guardado}`)}>Abrirlo</button>{:else}{notas.join(' ')} Es una prueba: al cerrar, el esquema queda como estaba.{/if}
+              {#if guardado && montajes.error}<span role="alert" data-aviso-guardado={montajes.error}>Está en «Mis montajes», pero no se pudo guardar en este dispositivo.</span> <button type="button" class="enlace" onclick={() => void reintentarMontajes()}>Reintentar</button>{:else if guardado}Guardado en «Mis montajes». <button type="button" class="enlace" onclick={() => navegarDesdeCapa(`#/protoboard/${guardado}`)}>Abrirlo</button>{:else}{notas.join(' ')} Es una prueba: al cerrar, el esquema queda como estaba.{/if}
             </p>
           </div>
           <button type="button" class="boton" onclick={guardar} disabled={!!guardado} title="Guardar una copia en «Mis montajes»"><Save size={16} /><span class="largo">Guardar como montaje propio</span><span class="corto">Guardar</span></button>
@@ -151,6 +151,9 @@
     color: var(--tinta-tenue);
     font-size: 12.5px;
     line-height: 1.3;
+  }
+  .cab .boton {
+    min-height: 44px;
   }
   .cerrar {
     display: grid;

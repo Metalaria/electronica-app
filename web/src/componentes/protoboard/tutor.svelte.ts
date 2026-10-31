@@ -1,4 +1,4 @@
-// «¿Qué quieres medir?» on the breadboard (0.10): a tutor, not an autopilot. For each measurement it lists
+// «¿Qué quiere medir?» on the breadboard (0.10): a tutor, not an autopilot. For each measurement it lists
 // what you would do with the real Brymen BM869s or FNIRSI 2C53T, step by step (turn the dial to…, move the
 // red lead to the … jack, put the red probe on…, open the circuit here and put the meter in series…), shows
 // where (the dial position or the jack lit on the instrument, the holes lit on the board), ticks each step as

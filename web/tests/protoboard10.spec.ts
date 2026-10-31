@@ -271,10 +271,10 @@ test('un LED al revés se avisa y deja de encenderse', async ({ page }) => {
   await page.waitForFunction(() => !!(window as unknown as Ventana).__epaProtoboardSim, null, { timeout: 90_000 });
   const led = page.locator(`[data-pieza="${d1.id}"]`);
   await expect.poll(async () => (await led.innerHTML()).includes('pb-luz'), { timeout: 30_000 }).toBe(true);
-  // Turned round with «Dar la vuelta».
+  // Turned round with «Voltear» in the part's floating bar (0.11).
   const c = await page.evaluate(() => (window as unknown as Ventana).__epaProtoboard!.centro('D1'));
   await page.mouse.click(c![0], c![1]);
-  await page.locator('.herramientas button[aria-label="Dar la vuelta"]').click();
+  await page.locator('.barra-pieza button:has-text("Voltear")').click();
   const r1 = await pbDe(page);
   expect(r1.obs.some((o) => /LED D1 está al revés/.test(o))).toBe(true);
   await page.locator('.pestanas button:has-text("Avisos")').click();
@@ -331,19 +331,21 @@ test('guardar como montaje propio y la pestaña «Protoboard»', async ({ page }
   await listo(page);
   await page.locator('button:has-text("Mis montajes")').click();
   await expect(page.locator('.lista li')).toHaveCount(1);
-  // An empty board: add a resistor from the palette and a jumper with the wire tool.
+  // An empty board: add a resistor from the whole palette («Más piezas») and a jumper hole to hole (0.11).
+  await page.evaluate(() => localStorage.setItem('epa:protoboard-recorrido', '1'));
   await page.goto('/#/protoboard');
+  await page.reload();
   await listo(page);
   await page.locator('button:has-text("Nuevo")').click();
-  await page.locator('.pestanas button:has-text("Añadir")').click();
+  await page.locator('.bandeja button:has-text("Más piezas")').click();
   await page.locator('.paleta [data-tipo="R"]').click();
   await expect.poll(async () => (await pbDe(page)).piezas.length).toBe(2);
   const r = await pbDe(page);
   const res = r.piezas.find((p) => p.enc === 'resistencia')!;
   const a = await huecoLibre(page, [20, 5], 6);
   const [x, y] = res.pos[0]!;
-  await page.locator('.herramientas button[aria-label="Cable"]').click();
-  const pa = await page.evaluate(([x0, y0]) => (window as unknown as Ventana).__epaProtoboard!.pantalla(x0, y0), [x, y - 1 >= 3 ? y - 1 : y + 1] as P);
+  await page.keyboard.press('Escape');
+  const pa = await page.evaluate(([x0, y0]) => (window as unknown as Ventana).__epaProtoboard!.pantalla(x0, y0), [x, y === 3 || y === 10 ? y + 1 : y - 1] as P);
   const pb2 = await page.evaluate(([x0, y0]) => (window as unknown as Ventana).__epaProtoboard!.pantalla(x0, y0), a);
   await page.mouse.click(pa[0], pa[1]);
   await page.mouse.click(pb2[0], pb2[1]);
@@ -373,7 +375,7 @@ test('las puertas lógicas se montan en chips 74HC reales, con su alimentación 
   // Vcc (14) on the red rail and GND (7) on the blue one; the chip's pinout in the «Pieza» tab.
   const c = await page.evaluate(() => (window as unknown as Ventana).__epaProtoboard!.centro('CI2'));
   await page.mouse.click(c![0], c![1]);
-  await page.locator('.pestanas button:has-text("Pieza")').click();
+  await page.locator('.pestanas button[data-pestana="pieza"]').click();
   const dip = page.locator('.dip');
   await expect(dip).toContainText('74HC32');
   await expect(dip).toContainText('Vcc');
@@ -439,7 +441,7 @@ test('una puerta añadida a mano llega en su chip y avisa de lo que falta por ca
   await page.goto('/#/protoboard');
   await listo(page);
   await page.locator('button:has-text("Nuevo")').click();
-  await page.locator('.pestanas button:has-text("Añadir")').click();
+  await page.locator('.bandeja button:has-text("Más piezas")').click();
   await page.locator('.paleta [data-tipo="DNAND"]').click();
   await expect.poll(async () => (await pbDe(page)).piezas.length).toBe(2);
   const r = await pbDe(page);
@@ -556,7 +558,7 @@ for (const [disp, ancho, alto] of [
           // The 74HC00 (or the counter's first 74HC86) chosen: its pinout in the «Pieza» tab.
           const q = await page.evaluate((n) => (window as unknown as Ventana).__epaProtoboard!.centro(n), c.nombre === 'logica' ? 'CI1' : 'CI2');
           await page.mouse.click(q![0], q![1]);
-          await page.locator('.pestanas button:has-text("Pieza")').click();
+          await page.locator('.pestanas button[data-pestana="pieza"]').click();
         }
         await page.waitForTimeout(1500);
         await page.screenshot({ path: `${CAPTURAS}/${c.nombre}-${disp}-${tema}.png` });

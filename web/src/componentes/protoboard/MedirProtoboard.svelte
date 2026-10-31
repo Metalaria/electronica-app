@@ -1,7 +1,7 @@
 <script lang="ts">
   // «Medir» on the breadboard (0.10). The real instruments (Brymen BM869s, FNIRSI 2C53T, an earphone) of
   // componentes/instrumentos/, used as in the lab: turn the dial, plug the red lead into the right jack, put
-  // the probes into holes (or drag them), open the circuit to put an ammeter in series. «¿Qué quieres
+  // the probes into holes (or drag them), open the circuit to put an ammeter in series. «¿Qué quiere
   // medir?» is a tutor (tutor.svelte.ts): it says and shows each step, ticks it when done and explains
   // mistakes; «Hazlo por mí» only as a last resort.
   import { untrack } from 'svelte';
@@ -184,8 +184,8 @@
     </div>
   {/if}
 
-  <section class="que" aria-label="¿Qué quieres medir?">
-    <h3>¿Qué quieres medir?</h3>
+  <section class="que" aria-label="¿Qué quiere medir?">
+    <h3>¿Qué quiere medir?</h3>
     <div class="tareas">
       {#each TAREAS as t (t.id)}
         <button type="button" class="tarea" data-tarea={t.id} aria-pressed={tutor.tarea === t.id} onclick={() => empezar(t.id)}>

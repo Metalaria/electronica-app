@@ -4,51 +4,32 @@
 // live schematic and the warnings follow every change. `edicion` is the same object seen as the schematic
 // editor's panels expect (editor/Propiedades.svelte, editor/Paleta.svelte).
 
-import { analisisPorDefecto, type Componente, type DocumentoEsquema } from '../editor/tipos.ts';
+import type { Componente, DocumentoEsquema } from '../editor/tipos.ts';
 import type { EdicionPaleta, EdicionPropiedades } from '../editor/estado.svelte';
 import type { Conectividad } from '../editor/conectividad.ts';
 import { conmutado } from '../editor/catalogo.ts';
 import { CABLE } from './colores.ts';
+import { montajeVacio } from './vacio.ts';
+import type { Guia } from './guia.svelte.ts';
+import type { Leccion } from './leccion.svelte.ts';
 import { comprobar, type PuntoTrabajo } from './comprobaciones.ts';
-import { conexiones, netlistProtoboard } from './conexiones.ts';
-import { componenteNuevo, girarPos, huecoCercano, invertirPos, motivoExtremo, motivoInvalida, nuevaPieza, nuevoChip, cablesDeBornes } from './edicion.ts';
+import { conexiones, netlistProtoboard, redEn } from './conexiones.ts';
+import { componenteNuevo, girarPos, huecoCercano, invertirPos, motivoCorto, motivoExtremo, motivoInvalida, nuevaPieza, nuevoChip, cablesDeBornes, piezaDe } from './edicion.ts';
 import { tieneChip } from './logica.ts';
-import { bornesExterno, encapsuladoDe, EXTERNOS } from './encapsulados.ts';
-import { columnasRiel, type Pt } from './placa.ts';
+import { encapsuladoDe, EXTERNOS } from './encapsulados.ts';
+import { agujero, type Pt } from './placa.ts';
 import { compsDe, type CableProto, type DocumentoProtoboard, type Pieza } from './tipos.ts';
 
 const MAX_HISTORIA = 150;
 
-/** An empty board with a bench supply wired to the top rails (and the rails bridged to the bottom ones). */
-export function montajeVacio(titulo = 'Montaje nuevo'): DocumentoProtoboard {
-  const comp: Componente = { id: 'v1', tipo: 'V', nombre: 'V1', x: 0, y: 0, o: 3, campos: { forma: 'dc', dc: '5' } };
-  const pos = bornesExterno([3, -3]);
-  const rc = columnasRiel(30);
-  const fin = rc[rc.length - 1]!;
-  return {
-    version: 1,
-    titulo,
-    placas: 1,
-    columnas: 30,
-    piezas: [{ id: 'v1', comp, enc: 'alimentacion', pos, patas: ['end', 'start'] }],
-    cables: [
-      { id: 'w1', a: pos[0]!, b: [2, 0], color: CABLE.rojo },
-      { id: 'w2', a: pos[1]!, b: [5, 1], color: CABLE.negro },
-      { id: 'w3', a: [fin, 0], b: [fin, 17], color: CABLE.rojo },
-      { id: 'w4', a: [fin - 1, 1], b: [fin - 1, 16], color: CABLE.negro },
-    ],
-    analisis: analisisPorDefecto(),
-    directivas: '',
-    origen: { tipo: 'propio' },
-  };
-}
+export { montajeVacio };
 
 export class Protoboard {
   doc = $state<DocumentoProtoboard>(montajeVacio());
   /** Selected pieces and wires. */
   sel = $state<string[]>([]);
   /** «medir» (0.10): a tap places the chosen lead of the instruments (medida.svelte.ts). */
-  herramienta = $state<'seleccionar' | 'cable' | 'colocar' | 'medir'>('seleccionar');
+  herramienta = $state<'seleccionar' | 'cable' | 'colocar' | 'medir' | 'explorar'>('seleccionar');
   /** Palette kind chosen (the editor's palette sets it; the board adds the part at once). */
   colocando = $state<string | null>(null);
   version = $state(0);
@@ -62,6 +43,14 @@ export class Protoboard {
   puerta = $state<string | null>(null);
   /** Centre of what the canvas shows (new parts go near it). */
   vista: Pt = [10, 8];
+  /** «Monta este circuito» (0.11) while it runs: the board is the guide's, own circuits are not saved. */
+  guia = $state.raw<Guia | null>(null);
+  /** «La protoboard por dentro» (0.11) while it runs (an empty board; taps light what is joined). */
+  leccion = $state.raw<Leccion | null>(null);
+  /** A part of the tray chosen by a tap (0.11): the next tap on the board puts it there. */
+  armada = $state.raw<Componente | Pieza | null>(null);
+  /** A short note with an undo button (a wire removed by a long press). */
+  nota = $state<{ texto: string; deshacer?: boolean } | null>(null);
 
   readonly con = $derived(conexiones(this.doc));
   readonly nl = $derived(netlistProtoboard(this.doc, this.con));
@@ -96,6 +85,11 @@ export class Protoboard {
       this.doc = d;
     });
     this.sel = [];
+  }
+
+  /** The board as it was opened (the auto-placement of a schematic), or null for own circuits. */
+  docInicial(): DocumentoProtoboard | null {
+    return this.inicial ? (JSON.parse(this.inicial) as DocumentoProtoboard) : null;
   }
 
   get modificado(): boolean {
@@ -210,7 +204,7 @@ export class Protoboard {
     for (const [id, pos] of cambios) {
       const p = this.pieza(id);
       if (!p) continue;
-      const m = motivoInvalida(doc, { ...p, pos }, ignorar);
+      const m = motivoInvalida(doc, { ...p, pos }, ignorar) ?? (motivoCorto(doc, p) ? null : motivoCorto(doc, { ...p, pos }));
       if (m) return `${p.comp.nombre || 'La pieza'}: ${m}`;
     }
     return null;
@@ -296,13 +290,47 @@ export class Protoboard {
         return null;
       }
     }
-    // Colour: red/black/blue for wires into the rails, then a cycle.
-    const usados = this.doc.cables.length;
-    const ciclo = [CABLE.amarillo, CABLE.verde, CABLE.naranja, CABLE.azul, CABLE.blanco, CABLE.violeta];
-    const w: CableProto = { id: this.nuevoId('w'), a, b, color: color ?? ciclo[usados % ciclo.length]! };
+    const w: CableProto = { id: this.nuevoId('w'), a, b, color: color ?? this.colorAuto(a, b) };
     this.cambiar(() => this.doc.cables.push(w));
-    this.sel = [w.id];
+    // (a new wire is not selected: its bar would cover the board while wiring; a tap on it shows it)
+    this.sel = [];
     return w;
+  }
+
+  /**
+   * Role of a point (0.11): «+» when it reaches the + terminal of a bench supply (or is an unused + rail), «−»
+   * on ground or the − terminal (or an unused − rail), else null.
+   */
+  rolEn(q: Pt): '+' | '−' | null {
+    const r = redEn(this.doc, this.con, q[0], q[1]);
+    if (r === '0') return '−';
+    const red = r == null ? undefined : this.con.redes.find((x) => x.nombre === r);
+    for (const b of red?.bornes ?? []) {
+      const p = this.pieza(b.pieza);
+      if (p?.enc !== 'alimentacion') continue;
+      return p.patas[b.borne] === 'end' ? '+' : '−';
+    }
+    const a = agujero({ placas: this.doc.placas, columnas: this.doc.columnas }, q[0], q[1]);
+    if (a?.tipo === 'riel' && !red) return a.fila === '0' || a.fila === '3' ? '+' : '−';
+    return null;
+  }
+
+  /** Colour of a new wire by what it carries: red to the supply, black to ground, others varied. */
+  colorAuto(a: Pt, b: Pt): string {
+    const ra = this.rolEn(a);
+    const rb = this.rolEn(b);
+    if (ra === '+' || rb === '+') return CABLE.rojo;
+    if (ra === '−' || rb === '−') return CABLE.negro;
+    const ciclo = [CABLE.amarillo, CABLE.verde, CABLE.naranja, CABLE.azul, CABLE.blanco, CABLE.violeta];
+    const otros = this.doc.cables.filter((w) => w.color !== CABLE.rojo && w.color !== CABLE.negro).length;
+    return ciclo[otros % ciclo.length]!;
+  }
+
+  /** A wire removed by a long press, with a note to undo it. */
+  quitarCable(id: string): void {
+    if (!this.cable(id)) return;
+    this.borrar([id]);
+    this.nota = { texto: 'Cable quitado.', deshacer: true };
   }
 
   colorCable(id: string, color: string): void {
@@ -380,6 +408,46 @@ export class Protoboard {
     this.cambiar(() => this.doc.piezas.push(p));
     this.sel = [p.id];
     return p;
+  }
+
+  /**
+   * A part from the tray (0.11) put with its legs at `pos` (a translation of its template): an editor part
+   * (its package and legs from the catalogue; a gate comes in its chip) or a whole piece (the guide's, with
+   * its chip and polarity). Refused with the reason when a leg is not free, a body would sit on another or the
+   * strip would short it.
+   */
+  anadirEn(x: Componente | Pieza, pos: Pt[]): Pieza | null {
+    const p = this.nuevaEn(x, pos);
+    const m = p ? this.motivoNueva(p) : 'Esta pieza no se puede poner en la protoboard.';
+    if (m || !p) {
+      this.rechazar(m ?? '');
+      return null;
+    }
+    this.cambiar(() => this.doc.piezas.push(p));
+    this.sel = [p.id];
+    return p;
+  }
+
+  /** The piece a tray card makes, with its legs at `pos` (a fresh copy). */
+  nuevaEn(x: Componente | Pieza, pos: Pt[]): Pieza | null {
+    if ('comp' in x) {
+      const p = JSON.parse(JSON.stringify($state.snapshot(x))) as Pieza;
+      return { ...p, id: this.doc.piezas.some((o) => o.id === p.id) ? this.nuevoId('p') : p.id, pos: pos.map((q) => [q[0], q[1]] as Pt) };
+    }
+    return piezaDe(this.doc, JSON.parse(JSON.stringify($state.snapshot(x))) as Componente, pos);
+  }
+
+  /** Why a new piece cannot go where it is (Spanish), or null. */
+  motivoNueva(p: Pieza): string | null {
+    const m = motivoInvalida(this.doc, p) ?? motivoCorto(this.doc, p);
+    return m ? `No cabe ahí: ${m.charAt(0).toLowerCase()}${m.slice(1)}` : null;
+  }
+
+  /** A fresh editor part of a palette kind, with a free designator (the tray's cards). */
+  componente(tipo: string, campos: Record<string, string> = {}): Componente | null {
+    const c = componenteNuevo(this.doc, tipo, this.nuevoId('p'));
+    if (c) Object.assign(c.campos, campos);
+    return c;
   }
 
   borrar(ids: string[] = this.sel): void {
@@ -498,7 +566,7 @@ function crearFachada(pb: Protoboard): EdicionPropiedades & EdicionPaleta {
       pb.sel = v;
     },
     get herramienta() {
-      return pb.herramienta === 'medir' ? 'seleccionar' : pb.herramienta;
+      return pb.herramienta === 'medir' || pb.herramienta === 'explorar' ? 'seleccionar' : pb.herramienta;
     },
     set herramienta(v) {
       pb.herramienta = v;

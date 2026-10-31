@@ -1,7 +1,10 @@
 <script lang="ts">
   // «Protoboard», a tab of the simulator: own circuits built from an empty breadboard (#/protoboard: the
   // working board of this device; #/protoboard/<id>: a saved one, saved by itself on every change). The
-  // saved ones are «Mis montajes», synchronised like the editor's circuits.
+  // saved ones are «Mis montajes», synchronised like the editor's circuits. A guided circuit («Monta este
+  // circuito») is a sandbox: it never writes over the montage or the draft it replaced; when it ends keeping its
+  // board, «Guardar» makes it a new montage and «Seguir con esta placa» goes on with it as the draft (a saved montage
+  // stays as it was; a draft with own work is first kept in «Mis montajes»).
   import { onDestroy, onMount, untrack } from 'svelte';
   import PestanasSimulador from '../simulador/PestanasSimulador.svelte';
   import Protoboard from './Protoboard.svelte';
@@ -16,8 +19,10 @@
     listaMontajes,
     montaje,
     montajes,
+    reintentarMontajes,
     renombrarMontaje,
   } from './circuitos.svelte';
+  import AvisoGuardado from '../AvisoGuardado.svelte';
   import type { DocumentoProtoboard } from './tipos.ts';
   import { miniaturaMontaje } from './miniatura';
   import MiniaturaFigura from '../miniaturas/MiniaturaFigura.svelte';
@@ -29,7 +34,13 @@
   let estadoGuardado = $state<'guardado' | 'guardando'>('guardado');
   let verLista = $state(false);
   let errorCarga = $state('');
+  /** A short notice (what was kept in «Mis montajes» when a guide replaced the draft). */
+  let aviso = $state('');
   let listo = $state(false);
+  /** The board last written (or opened): an unchanged board is not written again. */
+  let ultimo = '';
+  /** Autosave held while the page moves to another board after a guide (until it is open). */
+  let retenido = false;
 
   async function abrir(r: string) {
     await cargarMontajes();
@@ -40,7 +51,10 @@
         pb.cargar(JSON.parse(JSON.stringify(m.doc)) as DocumentoProtoboard, false);
         idGuardado = id;
       } else {
-        errorCarga = 'Ese montaje no existe en este dispositivo (quizá se borró).';
+        errorCarga =
+          montajes.error === 'lectura'
+            ? 'No se pudo leer «Mis montajes» en este dispositivo, así que este montaje no se puede abrir ahora.'
+            : 'Ese montaje no existe en este dispositivo (quizá se borró).';
         pb.cargar(montajeVacio(), false);
         idGuardado = null;
       }
@@ -48,6 +62,8 @@
       pb.cargar(leerBorradorMontaje() ?? montajeVacio(), false);
       idGuardado = null;
     }
+    ultimo = JSON.stringify($state.snapshot(pb.doc));
+    retenido = false;
     listo = true;
   }
 
@@ -58,30 +74,104 @@
 
   // Saved boards save themselves; the working board is a draft of this device.
   let pausa: ReturnType<typeof setTimeout> | null = null;
+
+  function escribirPlaca(doc: DocumentoProtoboard) {
+    const texto = JSON.stringify(doc);
+    if (texto === ultimo) return;
+    ultimo = texto;
+    if (idGuardado) {
+      estadoGuardado = 'guardando';
+      void actualizarMontaje(idGuardado, doc).then(() => (estadoGuardado = 'guardado'));
+    } else escribirBorradorMontaje(doc);
+  }
+
   $effect(() => {
     void pb.version;
+    const sandbox = !!pb.guia || !!pb.leccion;
     if (!listo) return;
     untrack(() => {
+      // A guided circuit (or the lesson before it) is a sandbox: the own board is not touched until it ends. A change
+      // still waiting to be written when it started is written now — the board before the guide, not the guide's.
+      if (sandbox || retenido) {
+        if (pausa) {
+          clearTimeout(pausa);
+          pausa = null;
+          const antes = pb.guia?.anterior ?? pb.leccion?.anterior;
+          if (antes && !retenido) escribirPlaca(JSON.parse(JSON.stringify(antes)) as DocumentoProtoboard);
+        }
+        return;
+      }
       if (pausa) clearTimeout(pausa);
       pausa = setTimeout(() => {
         pausa = null;
-        const doc = $state.snapshot(pb.doc) as DocumentoProtoboard;
-        if (idGuardado) {
-          estadoGuardado = 'guardando';
-          void actualizarMontaje(idGuardado, doc).then(() => (estadoGuardado = 'guardado'));
-        } else escribirBorradorMontaje(doc);
+        escribirPlaca($state.snapshot(pb.doc) as DocumentoProtoboard);
       }, 500);
     });
   });
+
+  /** The board has own work (anything beyond an empty board's supply and its wires). */
+  function conTrabajo(d: DocumentoProtoboard): boolean {
+    const v = montajeVacio();
+    return JSON.stringify([d.piezas, d.cables]) !== JSON.stringify([v.piezas, v.cables]);
+  }
+
+  /** Keeps a board that a guide's «Seguir con esta placa» replaces as the draft, in «Mis montajes». */
+  async function conservar(d: DocumentoProtoboard) {
+    const nombre = `${d.titulo?.trim() || 'Montaje sin guardar'} (antes de la guía)`;
+    await guardarMontaje(nombre, d);
+    aviso = montajes.error
+      ? `Su montaje anterior está en «Mis montajes» como «${nombre}», pero aún no se ha guardado en este dispositivo.`
+      : `Su montaje anterior se ha guardado en «Mis montajes» como «${nombre}».`;
+    setTimeout(() => (aviso = ''), 10_000);
+  }
+
+  /**
+   * A guide ends keeping its board (Guia.svelte; called before the guide closes): «Guardar» (alGuardar follows) makes
+   * it a new montage and leaves the montage or draft it replaced as they were; «Seguir con esta placa» goes on with it
+   * as this device's draft — a saved montage keeps its own board, a draft with own work is kept in «Mis montajes».
+   */
+  function alQuedarse(anterior: DocumentoProtoboard, guardarla: boolean) {
+    if (pausa) {
+      clearTimeout(pausa);
+      pausa = null;
+    }
+    if (guardarla) {
+      retenido = true;
+      return;
+    }
+    const placa = JSON.parse(JSON.stringify($state.snapshot(pb.doc))) as DocumentoProtoboard;
+    if (idGuardado) {
+      const borrador = leerBorradorMontaje();
+      if (borrador && conTrabajo(borrador)) void conservar(borrador);
+      escribirBorradorMontaje(placa);
+      ultimo = JSON.stringify(placa);
+      idGuardado = null;
+      retenido = true;
+      location.hash = '#/protoboard';
+    } else if (conTrabajo(anterior) && JSON.stringify(anterior) !== JSON.stringify(placa)) {
+      void conservar(JSON.parse(JSON.stringify(anterior)) as DocumentoProtoboard);
+    }
+  }
   onDestroy(() => {
     if (pausa) clearTimeout(pausa);
   });
   onMount(() => void cargarMontajes());
 
-  async function guardar() {
+  /** «Reintentar» of the library's notice; a montage that could not be opened for it is opened again. */
+  async function reintentarAbrir() {
+    await reintentarMontajes();
+    if (errorCarga && !montajes.error) {
+      errorCarga = '';
+      await abrir(ruta);
+    }
+  }
+
+  /** Saves the board as a new montage; `desdeGuia`: a guide's board, so the draft (the board it replaced) stays. */
+  async function guardar(desdeGuia = false) {
     const nombre = pb.doc.titulo.trim() || 'Montaje nuevo';
     const id = await guardarMontaje(nombre, $state.snapshot(pb.doc) as DocumentoProtoboard);
-    escribirBorradorMontaje(null);
+    // a save that failed keeps the draft (the board is only in this page until a write succeeds)
+    if (!desdeGuia && !montajes.error) escribirBorradorMontaje(null);
     location.hash = `#/protoboard/${id}`;
   }
 
@@ -112,19 +202,21 @@
 
 <div class="pagina-protoboard">
   <PestanasSimulador />
+  <div class="avisos-guardado"><AvisoGuardado error={montajes.error} nombre="Mis montajes" reintentar={reintentarAbrir} /></div>
   {#if errorCarga}<p class="aviso" role="alert">{errorCarga}</p>{/if}
+  {#if aviso}<p class="aviso info" role="status" data-aviso-montaje>{aviso}</p>{/if}
   <div class="marco">
     {#if listo}
-      <Protoboard {pb}>
+      <Protoboard {pb} recorrido alGuardar={() => void guardar(true)} {alQuedarse}>
         {#snippet cabecera()}
           <header class="cab">
             <div class="tit">
               <h1>{pb.doc.titulo || 'Montaje nuevo'}</h1>
-              <span class="estado">{#if idGuardado}{estadoGuardado === 'guardando' ? 'Guardando…' : 'Guardado en este dispositivo'}{:else}Sin guardar (se conserva en este dispositivo){/if}</span>
+              <span class="estado">{#if idGuardado}{montajes.error ? 'Sin guardar en este dispositivo' : estadoGuardado === 'guardando' ? 'Guardando…' : 'Guardado en este dispositivo'}{:else}Sin guardar (se conserva en este dispositivo){/if}</span>
             </div>
-            {#if !idGuardado}<button type="button" class="boton primario" onclick={guardar}>Guardar</button>{/if}
-            <button type="button" class="boton" aria-expanded={verLista} onclick={() => (verLista = !verLista)}>Mis montajes</button>
-            <button type="button" class="boton" onclick={nuevo}>Nuevo</button>
+            {#if !idGuardado}<button type="button" class="boton primario" onclick={() => void guardar()} disabled={!!pb.guia || !!pb.leccion}>Guardar</button>{/if}
+            <button type="button" class="boton" aria-expanded={verLista} onclick={() => (verLista = !verLista)}><span class="largo">Mis montajes</span><span class="corto">Montajes</span></button>
+            <button type="button" class="boton" onclick={nuevo} disabled={!!pb.guia || !!pb.leccion}>Nuevo</button>
           </header>
           {#if verLista}
             <section class="lista" aria-label="Mis montajes">
@@ -164,15 +256,14 @@
   }
   .cab {
     display: flex;
-    flex-wrap: wrap;
     align-items: center;
-    gap: 8px;
-    padding: 8px 12px;
+    gap: 6px;
+    padding: 6px 12px;
     background: var(--superficie);
     border-bottom: 1px solid var(--linea-suave);
   }
   .tit {
-    flex: 1 1 12em;
+    flex: 1 1 auto;
     min-width: 0;
   }
   h1 {
@@ -184,8 +275,35 @@
     text-overflow: ellipsis;
   }
   .estado {
+    display: block;
+    overflow: hidden;
     color: var(--tinta-tenue);
     font-size: 12.5px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+  }
+  .cab .boton {
+    flex: none;
+    min-height: 44px;
+    padding: 0 12px;
+  }
+  .corto {
+    display: none;
+  }
+  @media (max-width: 520px) {
+    .largo {
+      display: none;
+    }
+    .corto {
+      display: inline;
+    }
+    .cab .boton {
+      padding: 0 10px;
+      font-size: 13.5px;
+    }
+    h1 {
+      font-size: 16px;
+    }
   }
   .lista {
     max-height: 40vh;
@@ -252,5 +370,11 @@
   .aviso {
     margin: 8px 12px;
     color: var(--c-precaucion);
+  }
+  .avisos-guardado {
+    margin: 0 12px;
+  }
+  .aviso.info {
+    color: var(--tinta);
   }
 </style>

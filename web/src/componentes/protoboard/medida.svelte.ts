@@ -27,7 +27,7 @@ export class MedidaProtoboard {
   puntas = $state<Partial<Record<PuntaProto, Pt>>>({});
   /** The lead the next tap places. */
   activa = $state<PuntaProto | null>('bmRojo');
-  /** «¿Qué quieres medir?» (tutor.svelte.ts), set by the panel. */
+  /** «¿Qué quiere medir?» (tutor.svelte.ts), set by the panel. */
   tutor = $state.raw<Tutor | null>(null);
   readonly pb: Protoboard;
 

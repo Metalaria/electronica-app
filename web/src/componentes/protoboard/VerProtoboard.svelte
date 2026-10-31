@@ -110,11 +110,31 @@
   .boton-pb:hover {
     background: var(--acento-tinte);
   }
+  /* The chip keeps its 32 px look; a touch screen gets a 44 px tall touch area around it (0.11 QA). */
+  @media (pointer: coarse) {
+    .boton-pb {
+      position: relative;
+    }
+    .boton-pb::after {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: max(100%, 44px);
+      height: max(100%, 44px);
+      transform: translate(-50%, -50%);
+    }
+    .menu button {
+      min-height: 44px;
+    }
+  }
+  /* the count in the ink colour: the accent on its pale tint fell short of 4.5:1 in some parts' colours (0.11 QA) */
   .n {
     min-width: 1.4em;
     padding: 0 4px;
     border-radius: 999px;
-    background: var(--acento-suave);
+    background: color-mix(in srgb, var(--acento) 16%, var(--superficie));
+    color: var(--tinta);
     font-size: 11.5px;
     text-align: center;
   }

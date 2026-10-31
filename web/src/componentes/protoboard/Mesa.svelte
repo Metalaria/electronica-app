@@ -1,17 +1,26 @@
 <script lang="ts">
   // The breadboard on the bench: the boards, the parts, the wires and the equipment, with every gesture
   // through pointer events (mouse, pen, touch). Tap a part or wire to select it; drag it to move it (it snaps
-  // to the holes and turns red where it cannot go); drag the handle of a leg (two-leg parts) or of a wire end
-  // to plug it elsewhere; drag from a free hole with the mouse, or use the wire tool (tap–tap or drag), to lay
-  // a new jumper; drag empty space with a finger to pan; pinch or Ctrl/⌘ + wheel to zoom. Tapping a hole
-  // shows its strip, its net and (after a simulation) its voltage. `touch-action: none` and preventDefault
-  // keep the browser from zooming the page.
-  import { onMount, untrack } from 'svelte';
+  // to the holes and turns red where it cannot go); drag the handle of a leg (two-leg parts) or the end of a
+  // wire to plug it elsewhere. Wires (0.11): a tap on a free hole starts one (its strip lit) and a tap on another
+  // ends it, or a drag from hole to hole with the wire following the finger; a long press on a wire removes it;
+  // wires are drawn over the parts with a wide touch area. Parts of the tray (0.11) are dragged in as a ghost
+  // that lands exactly in the holes it shows (green when it fits, red with the reason when not), or put by a
+  // tap on the board after a tap on their card. Empty space pans; pinch or Ctrl/⌘ + wheel zooms. Tapping a
+  // hole shows its strip, its net and (after a simulation) its voltage. `touch-action: none` and
+  // preventDefault keep the browser from zooming the page.
+  import { onMount, untrack, type Snippet } from 'svelte';
   import type { Protoboard } from './estado.svelte';
   import { cable as svgCable, defsProtoboard, posRotulo, rotuloCorto, svgPieza, svgPlacas } from './dibujo.ts';
-  import { cajaExterno, cuerpoDe, esquinas, encapsuladoDe, EXTERNOS } from './encapsulados.ts';
+  import { cajaCuerpo, cajaExterno, cuerpoDe, esquinas, encapsuladoDe, EXTERNOS } from './encapsulados.ts';
   import { agujero, agujerosDe, ALTO_PLACA, clavePt, nombreAgujero, type Pt } from './placa.ts';
-  import { borneEn } from './edicion.ts';
+  import { borneEn, piezaDe } from './edicion.ts';
+  import { huecoCercano as huecoMasCercano } from './leccion.ts';
+  import { pulsar } from './pulsar.ts';
+  import type { Componente } from '../editor/tipos.ts';
+  import Plus from '@lucide/svelte/icons/plus';
+  import Minus from '@lucide/svelte/icons/minus';
+  import Maximize from '@lucide/svelte/icons/scan';
   import { redEn } from './conexiones.ts';
   import { verificarMontaje } from './verificar.ts';
   import { formatoSI } from '../grafica/formato.ts';
@@ -27,6 +36,11 @@
     ruedaDesplaza = false,
     alTocar,
     medida = null,
+    guia = null,
+    controles = false,
+    vacia = '',
+    flotante,
+    sinInfo = false,
   }: {
     pb: Protoboard;
     rotulos?: boolean;
@@ -38,6 +52,16 @@
     alTocar?: (id: string) => void;
     /** The instruments' leads (0.10): drawn, and placed by a tap with the «medir» tool. */
     medida?: MedidaProtoboard | null;
+    /** «Monta este circuito» (0.11): the holes to light, the part's silhouette where it goes, the wire to lay. */
+    guia?: { puntos: Pt[]; pieza?: Pieza | null; cable?: [Pt, Pt] | null; luces?: Pt[] } | null;
+    /** Zoom buttons over the bench (0.11). */
+    controles?: boolean;
+    /** A hint in the middle of an empty board (0.11). */
+    vacia?: string;
+    /** The floating bar of the selection (0.11), placed by the bench next to it (box in px of the bench). */
+    flotante?: Snippet<[{ x: number; y: number; w: number; h: number; ancho: number; alto: number }]>;
+    /** Something else speaks at the foot of the bench (the guide's answer): no info line. */
+    sinInfo?: boolean;
   } = $props();
 
   type Gesto =
@@ -45,7 +69,7 @@
     | { t: 'pata'; id: string; i: number; q: Pt; desde: Pt; movido: boolean }
     | { t: 'extremo'; id: string; e: 'a' | 'b'; q: Pt; desde: Pt; movido: boolean }
     | { t: 'cable'; a: Pt; b: Pt; desde: Pt; movido: boolean }
-    | { t: 'pan'; desde: Pt; t0: Pt; movido: boolean; o?: { t: 'pieza' | 'cable'; id: string } }
+    | { t: 'pan'; desde: Pt; t0: Pt; movido: boolean; o?: { t: 'pieza' | 'cable'; id: string }; enCable?: boolean }
     /** A probe of the instruments dragged to another hole (0.10). */
     | { t: 'sonda'; p: PuntaProto; q: Pt; desde: Pt; movido: boolean };
 
@@ -63,6 +87,10 @@
   /** Net highlighted (selected part, tapped hole). */
   let redMarcada = $state<string | null>(null);
   let info = $state('');
+  /** A part of the tray being dragged in (0.11): where its legs would land and why it cannot, if so. */
+  let fant = $state.raw<{ p: Pieza; motivo: string | null } | null>(null);
+  /** Long press on a wire (removes it). */
+  let largo: ReturnType<typeof setTimeout> | null = null;
 
   const cfg = $derived({ placas: pb.doc.placas, columnas: pb.doc.columnas });
   const placasSvg = $derived(svgPlacas(cfg));
@@ -107,6 +135,47 @@
     ty = alto - (pb.doc.placas * ALTO_PLACA - 1.5) * s - 4;
     if (ty > 2 * s) ty = Math.min(ty, -limites()[1] * s + 4);
   }
+  /**
+   * Phones (0.11): holes big enough for a finger — the first 18 columns with the equipment above them (two
+   * fingers or «Ver todo» show the rest).
+   */
+  export function ajustarDedo() {
+    const [x0, y0] = limites();
+    s = Math.min(60, Math.max(4, ancho / 18.8));
+    tx = -Math.max(x0, -0.6) * s;
+    ty = -Math.max(y0, -9.2) * s + 4;
+    // A board with parts further right: centre on them instead.
+    const xs = pb.doc.piezas.filter((p) => !EXTERNOS.has(p.enc)).flatMap((p) => p.pos.map((q) => q[0]));
+    if (xs.length && Math.max(...xs) > 17) {
+      const c = (Math.min(...xs) + Math.max(...xs)) / 2;
+      tx = ancho / 2 - c * s;
+    }
+  }
+  /** Brings these points into view (the guide's step), panning — and zooming out if they do not fit. */
+  export function mostrar(puntos: Pt[]) {
+    if (!puntos.length || ancho < 50) return;
+    // (the foot of the bench is for the answers and the info line)
+    const m = 30;
+    const abajo = 110;
+    const xs = puntos.map((q) => q[0]);
+    const ys = puntos.map((q) => q[1]);
+    const [x0, x1, y0, y1] = [Math.min(...xs) - 1.5, Math.max(...xs) + 1.5, Math.min(...ys) - 1.5, Math.max(...ys) + 1.5];
+    const dentroVista = x0 * s + tx >= m && x1 * s + tx <= ancho - m && y0 * s + ty >= m && y1 * s + ty <= alto - abajo;
+    if (dentroVista) return;
+    const cabe = Math.min((ancho - 2 * m) / (x1 - x0), (alto - m - abajo) / (y1 - y0));
+    if (cabe < s) {
+      // Too big for the view at this zoom: zoom out and centre them.
+      s = Math.max(4, cabe);
+      tx = ancho / 2 - ((x0 + x1) / 2) * s;
+      ty = m + (alto - m - abajo) / 2 - ((y0 + y1) / 2) * s;
+      return;
+    }
+    // Else the smallest pan that brings them in (the rest of the view stays where the user had it).
+    if (x0 * s + tx < m) tx = m - x0 * s;
+    else if (x1 * s + tx > ancho - m) tx = ancho - m - x1 * s;
+    if (y0 * s + ty < m) ty = m - y0 * s;
+    else if (y1 * s + ty > alto - abajo) ty = alto - abajo - y1 * s;
+  }
   export function zoom(f: number, px = ancho / 2, py = alto / 2) {
     const n = Math.min(80, Math.max(3, s * f));
     tx = px - (px - tx) * (n / s);
@@ -119,6 +188,76 @@
     return [r.left + tx + x * s, r.top + ty + y * s];
   }
 
+  // ---------------------------------------------------------------- parts from the tray (0.11)
+
+  /** Anchor of a piece: the centre of its body (or box) the finger carries. */
+  function ancla(p: Pieza): Pt {
+    if (EXTERNOS.has(p.enc)) {
+      const c = cajaExterno(p);
+      return [(c[0] + c[2]) / 2, (c[1] + c[3]) / 2];
+    }
+    const b = cuerpoDe(p);
+    if (b) return b.c;
+    return [p.pos.reduce((a, q) => a + q[0], 0) / p.pos.length, p.pos.reduce((a, q) => a + q[1], 0) / p.pos.length];
+  }
+
+  /**
+   * Where a tray part would land with the finger at (cx, cy): its legs snapped to holes (a DIP keeps straddling
+   * the channel), lifted above a finger so it is not hidden. A guide's part near its place snaps to it.
+   */
+  function candidata(cx: number, cy: number, x: Componente | Pieza, dedo: boolean): Pieza | null {
+    const p0 = 'comp' in x ? x : piezaDe(pb.doc, x);
+    if (!p0) return null;
+    const w = mundo(cx, cy - (dedo ? 56 : 0));
+    const a = ancla(p0);
+    const dx = Math.round(w[0] - a[0]);
+    const dy = p0.enc === 'dip' ? Math.round((w[1] - a[1]) / ALTO_PLACA) * ALTO_PLACA : Math.round(w[1] - a[1]);
+    const nueva = pb.nuevaEn(x, p0.pos.map(([px, py]) => [px + dx, py + dy] as Pt));
+    if (!nueva) return null;
+    // The guide's part comes with its target legs: within a hole and a half of them, it snaps there.
+    if ('comp' in x && Math.hypot(dx, dy) <= 1.5 && (dx || dy)) {
+      const justa = pb.nuevaEn(x, p0.pos);
+      if (justa && !pb.motivoNueva(justa)) return justa;
+    }
+    return nueva;
+  }
+
+  /** Over the bench? (client coordinates) */
+  function dentro(cx: number, cy: number): boolean {
+    const r = caja?.getBoundingClientRect();
+    return !!r && cx >= r.left && cx <= r.right && cy >= r.top && cy <= r.bottom;
+  }
+
+  /** A tray part dragged over the bench: its ghost (false when the finger is not over the bench). */
+  export function fantasma(cx: number, cy: number, x: Componente | Pieza, dedo: boolean): boolean {
+    if (!dentro(cx, cy)) {
+      fant = null;
+      return false;
+    }
+    const p = candidata(cx, cy, x, dedo);
+    fant = p ? { p, motivo: pb.motivoNueva(p) } : null;
+    return true;
+  }
+
+  /** The tray part dropped: put where its ghost is, or refused with the reason. */
+  export function soltarFantasma(cx: number, cy: number, x: Componente | Pieza, dedo: boolean): boolean {
+    const sobre = fantasma(cx, cy, x, dedo);
+    const f = fant;
+    fant = null;
+    if (!sobre || !f) return false;
+    if (f.motivo) {
+      pb.mensaje = f.motivo;
+      return false;
+    }
+    const p = pb.anadirEn(x, f.p.pos);
+    if (p) info = describirPieza(p);
+    return !!p;
+  }
+
+  export function quitarFantasma() {
+    fant = null;
+  }
+
   // The view centre, for parts added from the palette.
   $effect(() => {
     pb.vista = [(ancho / 2 - tx) / s, (alto / 2 - ty) / s];
@@ -128,7 +267,7 @@
   $effect(() => {
     if (ancho > 50 && alto > 50 && !ajustado) {
       ajustado = true;
-      untrack(() => (ancho / alto < 1.05 && ancho < 700 ? ajustarAncho() : ajustar()));
+      untrack(() => (controles && ancho < 600 ? ajustarDedo() : ancho / alto < 1.05 && ancho < 700 ? ajustarAncho() : ajustar()));
     }
   });
   $effect(() => {
@@ -180,8 +319,26 @@
   let pinza: { d: number; s: number; c: Pt; t: Pt } | null = null;
   let ultimoToque = { t: 0, id: '' };
 
+  function soltarLargo() {
+    if (largo) clearTimeout(largo);
+    largo = null;
+  }
+
+  /** The end of a wire within a finger's reach of a world point. */
+  function extremoCerca(w: Pt, ev: PointerEvent): { id: string; e: 'a' | 'b'; q: Pt } | null {
+    const r = Math.max(0.42, (ev.pointerType === 'mouse' ? 8 : 14) / s);
+    let mejor: { id: string; e: 'a' | 'b'; q: Pt; d: number } | null = null;
+    for (const c of pb.doc.cables)
+      for (const e of ['a', 'b'] as const) {
+        const d = Math.hypot(c[e][0] - w[0], c[e][1] - w[1]);
+        if (d < r && (!mejor || d < mejor.d)) mejor = { id: c.id, e, q: c[e], d };
+      }
+    return mejor;
+  }
+
   function abajo(ev: PointerEvent) {
     caja?.focus({ preventScroll: true });
+    soltarLargo();
     punteros.set(ev.pointerId, { x: ev.clientX, y: ev.clientY });
     try {
       (ev.currentTarget as Element).setPointerCapture(ev.pointerId);
@@ -190,6 +347,7 @@
     }
     if (punteros.size >= 2) {
       gesto = null;
+      soltarLargo();
       const [a, b] = [...punteros.values()];
       pinza = { d: Math.hypot(a!.x - b!.x, a!.y - b!.y) || 1, s, c: rel((a!.x + b!.x) / 2, (a!.y + b!.y) / 2), t: [tx, ty] };
       return;
@@ -228,6 +386,11 @@
       gesto = { t: 'pan', desde, t0: [tx, ty], movido: false, ...(o && o.t !== 'asa' ? { o: { t: o.t, id: o.id } } : {}) };
       return;
     }
+    // «La protoboard por dentro»: taps only light what is joined; a drag pans.
+    if (pb.herramienta === 'explorar') {
+      gesto = { t: 'pan', desde, t0: [tx, ty], movido: false };
+      return;
+    }
     if (pb.herramienta === 'cable' && (!o || o.t !== 'asa')) {
       if (libreParaCable(q) || pendiente) gesto = { t: 'cable', a: pendiente ?? q, b: q, desde, movido: false };
       else gesto = { t: 'pan', desde, t0: [tx, ty], movido: false };
@@ -243,13 +406,36 @@
       }
       return;
     }
+    // A wire being laid tap by tap: the next tap ends it (or cancels it).
+    if (pendiente) {
+      gesto = { t: 'cable', a: pendiente, b: q, desde, movido: false };
+      return;
+    }
+    // A wire: its end is dragged straight away (0.11); elsewhere it moves; a long press removes it.
+    if (o?.t === 'cable') {
+      const x = extremoCerca(w, ev);
+      if (x && x.id === o.id) gesto = { t: 'extremo', id: x.id, e: x.e, q: x.q, desde, movido: false };
+      else gesto = { t: 'pieza', ids: seleccion.has(o.id) ? [...pb.sel] : [o.id], desde, ini: w, dx: 0, dy: 0, movido: false };
+      const id = o.id;
+      const g0 = gesto;
+      largo = setTimeout(() => {
+        largo = null;
+        if (gesto === g0 && !g0.movido) {
+          gesto = null;
+          pendiente = null;
+          pb.quitarCable(id);
+          info = '';
+        }
+      }, 600);
+      return;
+    }
     if (o) {
       const ids = seleccion.has(o.id) ? [...pb.sel] : [o.id];
       gesto = { t: 'pieza', ids, desde, ini: w, dx: 0, dy: 0, movido: false };
       return;
     }
-    // Empty space: the mouse lays a wire from a free hole; a finger (or the mouse elsewhere) pans.
-    if (ev.pointerType === 'mouse' && libreParaCable(q) && Math.hypot(w[0] - q[0], w[1] - q[1]) < 0.4) gesto = { t: 'cable', a: q, b: q, desde, movido: false };
+    // A free hole starts a wire (0.11): a tap marks it, a drag lays it. Empty space pans.
+    if (!pb.armada && libreParaCable(q) && Math.hypot(w[0] - q[0], w[1] - q[1]) < 0.5) gesto = { t: 'cable', a: q, b: q, desde, movido: false };
     else gesto = { t: 'pan', desde, t0: [tx, ty], movido: false };
   }
 
@@ -273,11 +459,18 @@
     cursor = w;
     const g = gesto;
     if (!g) {
-      if (ev.pointerType === 'mouse') info = describir(red0(w));
+      if (ev.pointerType === 'mouse') {
+        info = describir(red0(w));
+        // A tray part chosen by a tap follows the mouse as a ghost.
+        if (pb.armada) fantasma(ev.clientX, ev.clientY, pb.armada, false);
+      }
       return;
     }
     const umbral = ev.pointerType === 'mouse' ? 4 : 9;
-    if (!g.movido && Math.hypot(ev.clientX - g.desde[0], ev.clientY - g.desde[1]) > umbral) g.movido = true;
+    if (!g.movido && Math.hypot(ev.clientX - g.desde[0], ev.clientY - g.desde[1]) > umbral) {
+      g.movido = true;
+      soltarLargo();
+    }
     if (!g.movido) return;
     switch (g.t) {
       case 'pan':
@@ -310,6 +503,7 @@
   }
 
   function arriba(ev: PointerEvent) {
+    soltarLargo();
     punteros.delete(ev.pointerId);
     if (punteros.size < 2) pinza = null;
     const g = gesto;
@@ -383,14 +577,46 @@
       redMarcada = medida.nodoEn(punto);
       return;
     }
+    if (pb.herramienta === 'explorar') {
+      pb.leccion?.tocar(huecoMasCercano(cfg, mundo(ev.clientX, ev.clientY)));
+      return;
+    }
+    // A tray part chosen by a tap: this tap puts it here (its legs around the point), or says why not.
+    if (pb.armada && (g.t === 'pan' || g.t === 'cable')) {
+      const x = pb.armada;
+      const p = candidata(ev.clientX, ev.clientY, x, false);
+      const m = p ? pb.motivoNueva(p) : 'Ahí no cabe.';
+      if (m || !p) pb.mensaje = m ?? '';
+      else if (pb.anadirEn(x, p.pos)) {
+        pb.armada = null;
+        fant = null;
+      }
+      pendiente = null;
+      return;
+    }
     if (g.t === 'cable') {
-      // Wire tool, tap by tap.
+      // Tap by tap: the first tap marks the start (its strip lit), the second ends the wire.
       if (!pendiente) {
-        if (libreParaCable(q)) pendiente = q;
-        else pb.mensaje = 'Elija un agujero libre o un borne para empezar el cable.';
+        if (libreParaCable(q)) {
+          pendiente = q;
+          redMarcada = redEn(pb.doc, pb.con, q[0], q[1]);
+          const d = describir(q);
+          info = `${d ? `${d}. ` : ''}Toque el agujero donde acaba el cable.`;
+        } else pb.mensaje = 'Elija un agujero libre o un borne para empezar el cable.';
       } else if (q[0] !== pendiente[0] || q[1] !== pendiente[1]) {
-        if (pb.anadirCable(pendiente, q)) pendiente = null;
-      } else pendiente = null;
+        if (!agujero(cfg, q[0], q[1]) && !borneEn(pb.doc, q)) {
+          // Off the holes: the wire is dropped.
+          pendiente = null;
+          info = '';
+        } else if (pb.anadirCable(pendiente, q)) {
+          pendiente = null;
+          const d = describir(q);
+          info = `Cable puesto${d ? ` · ${d}` : ''}.`;
+        }
+      } else {
+        pendiente = null;
+        info = '';
+      }
       return;
     }
     if (g.t === 'pieza') {
@@ -443,6 +669,7 @@
   }
 
   function cancelar() {
+    soltarLargo();
     punteros.clear();
     pinza = null;
     gesto = null;
@@ -473,6 +700,8 @@
       }
     };
     const toque = (ev: TouchEvent) => {
+      // (the controls over the bench — zoom, the floating bar — keep their taps)
+      if ((ev.target as Element | null)?.closest?.('button, input, select, textarea, label, form, [role="toolbar"]')) return;
       if (ev.cancelable) ev.preventDefault();
     };
     const gestoSafari = (ev: Event) => ev.preventDefault();
@@ -512,6 +741,32 @@
       el.removeEventListener('gesturechange', gestoSafari);
       if ((g.__epaProtoboard as { pb?: unknown } | undefined)?.pb === pb) delete g.__epaProtoboard;
     };
+  });
+
+  // The tutor's holes come into view (0.11: the bench is smaller while the instruments are open).
+  $effect(() => {
+    const t = medida?.tutor;
+    const paso = t && t.actual >= 0 ? t.pasos[t.actual] : undefined;
+    const ps = paso?.puntos?.() ?? [];
+    if (ps.length) untrack(() => mostrar(ps));
+  });
+
+  // The info line fades after a while (a refusal stays a little longer); a wire being laid keeps its hint.
+  $effect(() => {
+    const t = info;
+    if (!t || pendiente) return;
+    const k = setTimeout(() => {
+      if (info === t && !pendiente) info = '';
+    }, 5000);
+    return () => clearTimeout(k);
+  });
+  $effect(() => {
+    const m = pb.mensaje;
+    if (!m) return;
+    const k = setTimeout(() => {
+      if (pb.mensaje === m) pb.mensaje = '';
+    }, 7000);
+    return () => clearTimeout(k);
   });
 
   // Selection → its net highlighted.
@@ -582,6 +837,88 @@
     return null;
   });
 
+  /** Box of a conductor (strip or rail) around a hole, in world units. */
+  function cajaTira(q: Pt): { x: number; y: number; w: number; h: number } | null {
+    const a = agujero(cfg, q[0], q[1]);
+    if (!a) return null;
+    const hs = agujerosDe(cfg, a.nodo);
+    const xs = hs.map((h) => h[0]);
+    const ys = hs.map((h) => h[1]);
+    return { x: Math.min(...xs) - 0.42, y: Math.min(...ys) - 0.42, w: Math.max(...xs) - Math.min(...xs) + 0.84, h: Math.max(...ys) - Math.min(...ys) + 0.84 };
+  }
+
+  /** Strips lit while laying a wire (its start and where the finger is) or dragging a tray part in. */
+  const tirasActivas = $derived.by(() => {
+    const res: { x: number; y: number; w: number; h: number; k: string }[] = [];
+    const g = gesto;
+    const puntos: Pt[] = [];
+    if (g?.t === 'cable') puntos.push(g.a, ...(g.movido ? [g.b] : []));
+    else if (pendiente) puntos.push(pendiente, ...(cursor ? [red0(cursor)] : []));
+    if (g?.t === 'extremo' && g.movido) puntos.push(g.q);
+    const vistos = new Set<string>();
+    for (const q of puntos) {
+      const a = agujero(cfg, q[0], q[1]);
+      if (!a || vistos.has(a.nodo)) continue;
+      vistos.add(a.nodo);
+      const c = cajaTira(q);
+      if (c) res.push({ ...c, k: a.nodo });
+    }
+    return res;
+  });
+  const tirasFantasma = $derived.by(() => {
+    const f = fant;
+    if (!f || EXTERNOS.has(f.p.enc)) return [] as { x: number; y: number; w: number; h: number; k: string }[];
+    const res: { x: number; y: number; w: number; h: number; k: string }[] = [];
+    const vistos = new Set<string>();
+    for (const q of f.p.pos) {
+      const a = agujero(cfg, q[0], q[1]);
+      if (!a || vistos.has(a.nodo)) continue;
+      vistos.add(a.nodo);
+      const c = cajaTira(q);
+      if (c) res.push({ ...c, k: a.nodo });
+    }
+    return res;
+  });
+
+  /** Strips lit by the lesson (one box per conductor). */
+  const lucesGuia = $derived.by(() => {
+    const res: { x: number; y: number; w: number; h: number; k: string }[] = [];
+    const vistos = new Set<string>();
+    for (const q of guia?.luces ?? []) {
+      const a = agujero(cfg, q[0], q[1]);
+      if (!a || vistos.has(a.nodo)) continue;
+      vistos.add(a.nodo);
+      const c = cajaTira(q);
+      if (c) res.push({ ...c, k: a.nodo });
+    }
+    return res;
+  });
+
+  /** Where the floating bar goes: the selection's box in px of the bench. */
+  const cajaSel = $derived.by(() => {
+    if (pb.sel.length !== 1 || pb.herramienta === 'medir' || (gesto && gesto.movido) || fant) return null;
+    const id = pb.sel[0]!;
+    const p = pb.pieza(id);
+    const w = pb.cable(id);
+    let c: [number, number, number, number] | null = null;
+    if (p) {
+      if (EXTERNOS.has(p.enc)) c = cajaExterno(p);
+      else {
+        const xs = p.pos.map((q) => q[0]);
+        const ys = p.pos.map((q) => q[1]);
+        c = [Math.min(...xs), Math.min(...ys), Math.max(...xs), Math.max(...ys)];
+        const b = cuerpoDe(p);
+        if (b) {
+          const k = cajaCuerpo(b);
+          c = [Math.min(c[0], k[0]), Math.min(c[1], k[1]), Math.max(c[2], k[2]), Math.max(c[3], k[3])];
+        }
+      }
+    } else if (w) c = [Math.min(w.a[0], w.b[0]), Math.min(w.a[1], w.b[1]), Math.max(w.a[0], w.b[0]), Math.max(w.a[1], w.b[1])];
+    if (!c) return null;
+    return { x: tx + (c[0] - 0.4) * s, y: ty + (c[1] - 0.4) * s, w: (c[2] - c[0] + 0.8) * s, h: (c[3] - c[1] + 0.8) * s, ancho, alto };
+  });
+  const anchoGolpe = $derived(Math.max(0.5, Math.min(0.95, (tactilGrueso ? 22 : 12) / s)));
+
   /** Outline of the conductors of the highlighted net. */
   const resaltes = $derived.by(() => {
     const r = redMarcada;
@@ -637,14 +974,15 @@
 {/if}
 <div
   class="mesa"
-  class:con-cable={pb.herramienta === 'cable'}
+  class:con-cable={pb.herramienta === 'cable' || !!pendiente}
   class:modo-medir={pb.herramienta === 'medir'}
+  class:armada={!!pb.armada}
   bind:this={caja}
   bind:clientWidth={ancho}
   bind:clientHeight={alto}
   tabindex="-1"
   role="application"
-  aria-label="Protoboard: toque una pieza para elegirla, arrástrela para moverla; arrastre con un dedo para desplazar y pellizque para acercar"
+  aria-label="Protoboard: toque una pieza para elegirla y arrástrela para moverla; toque un agujero y luego otro para tender un cable; dos dedos para desplazar y acercar"
 >
   <svg
     role="presentation"
@@ -654,7 +992,10 @@
     onpointermove={mover}
     onpointerup={arriba}
     onpointercancel={cancelar}
-    onpointerleave={() => (cursor = null)}
+    onpointerleave={() => {
+      cursor = null;
+      if (pb.armada) fant = null;
+    }}
     font-family="Source Sans 3, sans-serif"
   >
     <g use:marcado={defsProtoboard()}></g>
@@ -663,9 +1004,28 @@
       {#each resaltes as r, i (i)}
         <rect class="resalte" x={r.x} y={r.y} width={r.w} height={r.h} rx=".3" />
       {/each}
-      {#each cablesPlaca as w (w.id)}
-        <g data-cable={w.id} class="cable" class:sel={seleccion.has(w.id)} use:marcado={svgCable(vistaCable(w))}></g>
+      {#each tirasActivas as r (r.k)}
+        <rect class="tira-cable" x={r.x} y={r.y} width={r.w} height={r.h} rx=".3" />
       {/each}
+      {#each tirasFantasma as r (r.k)}
+        <rect class="tira-fantasma" class:mal={!!fant?.motivo} x={r.x} y={r.y} width={r.w} height={r.h} rx=".3" />
+      {/each}
+      {#if guia}
+        <!-- «Monta este circuito»: where the step goes (the part's silhouette, the wire's path, the holes). -->
+        <g class="guia-mesa" aria-hidden="true">
+          {#each lucesGuia as r (r.k)}
+            <rect class="tira-luz" x={r.x} y={r.y} width={r.w} height={r.h} rx=".3" />
+          {/each}
+          {#each guia.luces ?? [] as q, i (i)}
+            <circle class="luz" cx={q[0]} cy={q[1]} r=".3" />
+          {/each}
+          {#if guia.pieza}<g class="silueta" use:marcado={svgPieza(guia.pieza)}></g><path class="contorno guia-contorno" d={contorno(guia.pieza)} />{/if}
+          {#if guia.cable}<line class="guia-cable" x1={guia.cable[0][0]} y1={guia.cable[0][1]} x2={guia.cable[1][0]} y2={guia.cable[1][1]} />{/if}
+          {#each guia.puntos as q, i (i)}
+            <circle class="guia-hueco" cx={q[0]} cy={q[1]} r=".46" />
+          {/each}
+        </g>
+      {/if}
       {#each enPlaca as p (p.id)}
         {@const v = vista(p)}
         <g data-pieza={p.id} class="pieza" class:sel={seleccion.has(p.id)} class:mal={!!invalida && v !== p} use:marcado={svgPieza(v, { encendido: encendidos[p.id] })}></g>
@@ -674,9 +1034,26 @@
         {@const v = vista(p)}
         <g data-pieza={p.id} class="pieza externo" class:sel={seleccion.has(p.id)} class:mal={!!invalida && v !== p} use:marcado={svgPieza(v)}></g>
       {/each}
+      <!-- Wires over the parts (0.11), each with a wide transparent line that takes the touch. -->
+      {#each cablesPlaca as w (w.id)}
+        {@const v = vistaCable(w)}
+        <g data-cable={w.id} class="cable" class:sel={seleccion.has(w.id)}>
+          <line class="golpe" x1={v.a[0]} y1={v.a[1]} x2={v.b[0]} y2={v.b[1]} stroke-width={anchoGolpe} />
+          <g use:marcado={svgCable(v)}></g>
+        </g>
+      {/each}
       {#each puntas as w (w.id)}
         <g data-cable={w.id} class="cable punta" class:sel={seleccion.has(w.id)} use:marcado={svgCable(vistaCable(w), true)}></g>
       {/each}
+      {#if fant}
+        <g class="fantasma-pieza" class:mal={!!fant.motivo} use:marcado={svgPieza(fant.p)}></g>
+        <path class="contorno" class:bien={!fant.motivo} class:mal={!!fant.motivo} d={contorno(fant.p)} />
+        {#if !EXTERNOS.has(fant.p.enc)}
+          {#each fant.p.pos as q, i (i)}
+            <circle class="pata-fantasma" class:mal={!!fant.motivo} cx={q[0]} cy={q[1]} r=".34" />
+          {/each}
+        {/if}
+      {/if}
       {#if medida}
         <g class="sondas" aria-hidden="true">
           {#each medida.tutor?.pasos[medida.tutor.actual]?.puntos?.() ?? [] as q, i (i)}
@@ -707,7 +1084,8 @@
         <path class="contorno objetivo" d={contorno(vista(p))} />
       {/each}
       {#if gesto?.t === 'cable' && gesto.movido}
-        <g class="fantasma" use:marcado={svgCable({ id: '', a: gesto.a, b: gesto.b, color: '#e8c11c' })}></g>
+        <g class="fantasma" use:marcado={svgCable({ id: '', a: gesto.a, b: gesto.b, color: pb.colorAuto(gesto.a, gesto.b) })}></g>
+        <circle class="pendiente" cx={gesto.b[0]} cy={gesto.b[1]} r=".45" />
       {/if}
       {#if pendiente}
         <circle class="pendiente" cx={pendiente[0]} cy={pendiente[1]} r=".45" />
@@ -720,11 +1098,26 @@
       {/each}
     </g>
   </svg>
-  {#if info || pb.mensaje || invalida}
+  {#if vacia && !fant && !pb.armada}
+    <p class="vacia" aria-hidden="true">{vacia}</p>
+  {/if}
+  {#if controles}
+    <div class="zoom" role="group" aria-label="Vista">
+      <button type="button" title="Acercar" aria-label="Acercar" use:pulsar={() => zoom(1.25)}><Plus size={18} /></button>
+      <button type="button" title="Alejar" aria-label="Alejar" use:pulsar={() => zoom(0.8)}><Minus size={18} /></button>
+      <button type="button" title="Ver toda la placa" aria-label="Ver todo" use:pulsar={ajustar}><Maximize size={17} /></button>
+    </div>
+  {/if}
+  {#if cajaSel && flotante}
+    {@render flotante(cajaSel)}
+  {/if}
+  {#if fant?.motivo}
+    <p class="info aviso" aria-live="polite">{fant.motivo}</p>
+  {:else if (info && !sinInfo) || pb.mensaje || invalida}
     <p class="info" class:aviso={!!pb.mensaje || !!invalida} aria-live="polite">{invalida ?? (pb.mensaje || info)}</p>
   {/if}
-  {#if pb.herramienta === 'cable'}
-    <p class="pista">{pendiente ? 'Toque el agujero donde acaba el cable (o el mismo para cancelar).' : 'Cable: toque un agujero libre y luego otro, o arrastre de uno a otro.'}</p>
+  {#if pb.herramienta === 'cable' && !pendiente && !info}
+    <p class="pista">Cable: toque un agujero libre y luego otro, o arrastre de uno a otro.</p>
   {/if}
 </div>
 </div>
@@ -808,6 +1201,96 @@
   .cable {
     cursor: grab;
   }
+  .golpe {
+    stroke: transparent;
+    stroke-linecap: round;
+    fill: none;
+    pointer-events: stroke;
+  }
+  .tira-cable {
+    fill: rgba(232, 164, 0, 0.18);
+    stroke: rgba(232, 164, 0, 0.9);
+    stroke-width: 0.1;
+    pointer-events: none;
+  }
+  .tira-fantasma {
+    fill: rgba(30, 132, 73, 0.16);
+    stroke: rgba(30, 132, 73, 0.85);
+    stroke-width: 0.1;
+    pointer-events: none;
+  }
+  .tira-fantasma.mal {
+    fill: rgba(217, 48, 37, 0.14);
+    stroke: rgba(217, 48, 37, 0.85);
+  }
+  .fantasma-pieza {
+    opacity: 0.82;
+    pointer-events: none;
+  }
+  .fantasma-pieza.mal {
+    opacity: 0.5;
+  }
+  .pata-fantasma {
+    fill: rgba(30, 132, 73, 0.35);
+    stroke: #1e8449;
+    stroke-width: 0.1;
+    pointer-events: none;
+  }
+  .pata-fantasma.mal {
+    fill: rgba(217, 48, 37, 0.3);
+    stroke: #d93025;
+  }
+  .contorno.bien {
+    stroke: #1e8449;
+    fill: rgba(30, 132, 73, 0.1);
+  }
+  .guia-mesa {
+    pointer-events: none;
+  }
+  .tira-luz {
+    fill: rgba(255, 214, 10, 0.22);
+    stroke: #e0a800;
+    stroke-width: 0.12;
+    animation: luz 0.45s ease-out;
+  }
+  .luz {
+    fill: #ffd60a;
+    stroke: #b88600;
+    stroke-width: 0.06;
+    filter: drop-shadow(0 0 0.25px #ffd60a);
+  }
+  @keyframes luz {
+    from {
+      fill: rgba(255, 214, 10, 0.6);
+    }
+  }
+  .silueta {
+    opacity: 0.32;
+    filter: grayscale(0.4);
+  }
+  .guia-contorno {
+    stroke: #f2b705;
+    fill: rgba(255, 216, 74, 0.08);
+    animation: guia-hueco 1.1s ease-in-out infinite;
+  }
+  .guia-cable {
+    stroke: #f2b705;
+    stroke-width: 0.16;
+    stroke-dasharray: 0.35 0.25;
+    stroke-linecap: round;
+    animation: hormigas 1s linear infinite;
+  }
+  @keyframes hormigas {
+    to {
+      stroke-dashoffset: -0.6;
+    }
+  }
+  @media (prefers-reduced-motion: reduce) {
+    .guia-contorno,
+    .guia-cable {
+      animation: none;
+    }
+  }
   .cable.sel {
     filter: drop-shadow(0 0 0.25px #ffd84a) drop-shadow(0 0 0.25px #ffd84a);
   }
@@ -881,6 +1364,59 @@
   }
   .info {
     bottom: 8px;
+    max-width: 640px;
+    margin: 0 auto;
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+  .vacia {
+    position: absolute;
+    left: 50%;
+    top: 58%;
+    transform: translate(-50%, -50%);
+    width: min(80%, 26em);
+    margin: 0;
+    padding: 12px 16px;
+    border: 2px dashed color-mix(in srgb, var(--acento) 45%, transparent);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--superficie) 88%, transparent);
+    color: var(--tinta);
+    font: 600 15px/1.35 var(--sans);
+    text-align: center;
+    pointer-events: none;
+  }
+  .zoom {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--linea);
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--superficie) 94%, transparent);
+    box-shadow: var(--sombra);
+    overflow: hidden;
+  }
+  .zoom button {
+    display: grid;
+    place-items: center;
+    width: 44px;
+    height: 44px;
+    border: 0;
+    background: transparent;
+    color: var(--tinta);
+  }
+  .zoom button + button {
+    border-top: 1px solid var(--linea-suave);
+  }
+  .zoom button:hover {
+    background: var(--hover);
+  }
+  .mesa.armada {
+    cursor: copy;
   }
   .info.aviso {
     color: var(--c-precaucion);

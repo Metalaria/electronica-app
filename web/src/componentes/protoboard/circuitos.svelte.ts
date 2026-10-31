@@ -5,58 +5,61 @@
 // synchronisation (lib/sincronizacion/registro.svelte.ts) merges them per item. The unsaved working board of
 // «#/protoboard» is a per-device convenience in localStorage.
 
-import { obtenerAlmacen } from '../../lib/almacen';
+import { guardadoDeRegistro } from '../../lib/sincronizacion/guardado';
 import type { DocumentoProtoboard, MontajeGuardado } from './tipos.ts';
 
 export const CLAVE_MONTAJES = 'protoboard-circuitos';
 const CLAVE_BORRADOR = 'epa:protoboard-borrador';
 
-interface Guardados {
-  version: 1;
-  circuitos: Record<string, MontajeGuardado>;
-}
-
 export const montajes = $state({
   listo: false,
+  /**
+   * What the reader must be told (sixth review): «lectura» — the saved library could not be read (what is done here
+   * stays in this page, not saved yet); «escritura» — a save failed (retried; the page shows «Reintentar»); '' — fine.
+   */
+  error: '' as '' | 'lectura' | 'escritura',
   circuitos: {} as Record<string, MontajeGuardado>,
 });
 
 let carga: Promise<void> | null = null;
 
+// Read-merge-write (lib/sincronizacion/guardado.ts), like the editor's circuits: the synchronisation's results go
+// through it (straight into memory, atomically), and another tab's writes are merged, never overwritten.
+export const guardadoMontajes = guardadoDeRegistro<MontajeGuardado>({
+  claveAlmacen: CLAVE_MONTAJES,
+  claveSinc: CLAVE_MONTAJES,
+  campo: 'circuitos',
+  obtener: () => montajes.circuitos,
+  // (a failed read keeps its notice: every write reads first, so it fails for the same reason)
+  alEstado: (sinGuardar) => (montajes.error = !sinGuardar ? '' : montajes.error === 'lectura' ? 'lectura' : 'escritura'),
+  tiempo: (v) => Math.max(typeof v?.actualizado === 'number' ? v.actualizado : 0, typeof v?.borrado === 'number' ? v.borrado : 0) || undefined,
+});
+
 export function cargarMontajes(): Promise<void> {
   carga ??= (async () => {
     try {
-      const g = await (await obtenerAlmacen()).leer<Guardados>(CLAVE_MONTAJES);
-      montajes.circuitos = g?.circuitos ?? {};
+      // (adopted in the load's step; what was changed before it stays)
+      await guardadoMontajes.cargar((m) => (montajes.circuitos = { ...m, ...montajes.circuitos }));
+      if (montajes.error === 'lectura') montajes.error = guardadoMontajes.sinGuardar ? 'escritura' : '';
     } catch {
-      montajes.circuitos = {};
+      // the store could not be read: nothing is taken as stored — every write reads it first (and fails if it cannot)
+      carga = null;
+      montajes.error = 'lectura';
     }
     montajes.listo = true;
   })();
   return carga;
 }
 
-// A synchronisation that changed the store: read it again.
-if (typeof window !== 'undefined')
-  window.addEventListener('epa:sincronizado', (ev) => {
-    const claves = (ev as CustomEvent<{ claves?: string[] }>).detail?.claves;
-    if (!claves || claves.includes(CLAVE_MONTAJES)) {
-      carga = null;
-      void cargarMontajes();
-    }
-  });
+/** «Reintentar»: the library is read again (if it could not be), and a save that failed is written now. */
+export async function reintentarMontajes(): Promise<void> {
+  await cargarMontajes();
+  await guardadoMontajes.volcar().catch(() => undefined);
+}
 
-let escritura: Promise<void> = Promise.resolve();
 function escribir(): Promise<void> {
-  const datos: Guardados = { version: 1, circuitos: $state.snapshot(montajes.circuitos) as Record<string, MontajeGuardado> };
-  escritura = escritura.then(async () => {
-    try {
-      await (await obtenerAlmacen()).escribir(CLAVE_MONTAJES, datos);
-    } catch {
-      /* storage unavailable: kept in memory for this session */
-    }
-  });
-  return escritura;
+  // storage unavailable: kept in memory, written by the next write or a retry; the page shows it (`error`)
+  return guardadoMontajes.escribir().catch(() => undefined);
 }
 
 /** Saved boards (not deleted), most recent first. */
