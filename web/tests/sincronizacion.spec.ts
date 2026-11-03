@@ -163,10 +163,10 @@ test.describe('Sincronización con GitHub', () => {
     await page.reload();
     await expect(page.locator('#contenido')).not.toContainText('Abriendo el libro');
     await page.getByRole('button', { name: 'Tema y tamaño de letra' }).click();
-    await expect(page.locator('[data-grupo-actualizaciones] [data-sin-token]')).toContainText('repositorio Metalaria/electronica-app es privado');
+    await expect(page.locator('[data-grupo-actualizaciones] [data-sin-token]')).toContainText('la búsqueda usa el mismo token que la sincronización');
     await expect(page.locator('[data-grupo-sincronizacion]')).toContainText('falta el token');
     await page.goto('./#/sincronizacion');
-    await expect(page.locator('[data-pagina] [data-sin-token]')).toContainText('sin token no se puede');
+    await expect(page.locator('[data-pagina] [data-sin-token]')).toContainText('sin token no se comprueba nada');
     await expect(page.locator('[data-sincronizar]')).toBeDisabled();
     await page.waitForTimeout(2500);
     expect(todas).toEqual([]);

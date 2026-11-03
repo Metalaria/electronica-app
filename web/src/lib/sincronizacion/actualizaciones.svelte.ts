@@ -1,8 +1,9 @@
-// «Hay una versión nueva»: the latest release of the app's private repository (GitHub Releases, published
+// «Hay una versión nueva»: the latest release of the app's repository (GitHub Releases, published
 // by .github/workflows/compilar.yml on every tag vX.Y.Z) compared with this build's version. At start-up
 // at most once every 12 h, never blocking and silent on any error; «Buscar actualizaciones» in the
-// settings checks at once and reports errors. Without a token nothing is requested at all (the
-// repository is private, so the API answers 404 to anonymous requests).
+// settings checks at once and reports errors. Without a token nothing is requested at all: the check uses
+// the synchronisation token (the repository is public since 0.11, so a fine-grained token reads its
+// releases without the repository being selected in «Repository access»).
 
 import { obtenerAlmacen } from '../almacen';
 import { compararVersiones } from './fusion';

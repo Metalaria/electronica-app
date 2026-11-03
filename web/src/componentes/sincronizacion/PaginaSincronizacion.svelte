@@ -42,6 +42,20 @@
   let ahora = $state(Date.now());
 
   const repoValido = $derived(!!leerRepositorio(repositorio));
+  // The data repository the help refers to (the one typed in the form, or the default one).
+  const repoDatos = $derived(leerRepositorio(repositorio) ?? leerRepositorio(REPOSITORIO_DEFECTO)!);
+  // GitHub pre-fills the «new repository» form and the fine-grained token form from URL parameters
+  // (docs: «Creating a new repository» and «Pre-filling fine-grained token details using URL parameters»).
+  // Repository selection cannot be pre-filled, so the reader still picks the data repository by hand.
+  const urlNuevoRepo = $derived(
+    `https://github.com/new?owner=${encodeURIComponent(repoDatos.owner)}&name=${encodeURIComponent(repoDatos.repo)}&visibility=private` +
+      `&description=${encodeURIComponent('Datos sincronizados de la app Electrónica Práctica Avanzada')}`,
+  );
+  const urlNuevoToken = $derived(
+    `https://github.com/settings/personal-access-tokens/new?name=${encodeURIComponent('Electronica sincronizacion')}` +
+      `&description=${encodeURIComponent('Sincronización de la app Electrónica Práctica Avanzada')}` +
+      `&target_name=${encodeURIComponent(repoDatos.owner)}&expires_in=366&contents=write`,
+  );
   const rutaValida = $derived(!!leerRutaFichero(ruta) && /\.json$/i.test(ruta.trim()));
   const nueva = $derived(versionNueva());
   const NOMBRES: Record<string, string> = Object.fromEntries(sincronizables().map((s) => [s.clave, s.nombre]));
@@ -139,8 +153,9 @@
           aria-invalid={!!errorToken}
         />
         <p id="ayuda-token" class="ayuda">
-          Necesita acceso a <b>{REPO_APP.owner}/{REPO_APP.repo}</b> (Contents: lectura, para las actualizaciones) y a
-          <b>{repositorio || REPOSITORIO_DEFECTO}</b> (Contents: lectura y escritura). Abajo, «Cómo crear el token».
+          Necesita acceso a <b>{repoDatos.owner}/{repoDatos.repo}</b> con <b>Contents: Read and write</b>. Las
+          actualizaciones se leen de {REPO_APP.owner}/{REPO_APP.repo}, que es público: no hace falta añadirlo al token.
+          Abajo, «Cómo crear el repositorio y el token».
         </p>
         {#if errorToken}<p class="error" role="alert">{errorToken}</p>{/if}
         <span class="botones">
@@ -251,8 +266,8 @@
     </div>
     {#if !sinc.hayToken}
       <p class="nota" data-sin-token>
-        El repositorio de la aplicación ({REPO_APP.owner}/{REPO_APP.repo}) es privado: sin token no se puede
-        consultar, así que no se comprueba nada. Con el token, se mira al abrir la aplicación, como mucho cada 12 horas.
+        La búsqueda de actualizaciones usa el mismo token que la sincronización: sin token no se comprueba nada. Con el
+        token, se mira al abrir la aplicación, como mucho cada 12 horas.
       </p>
     {:else if actualizacion.error}
       <p class="error" role="alert">{actualizacion.error}</p>
@@ -273,36 +288,62 @@
       <summary><h2 id="t-como">Cómo crear el repositorio y el token</h2></summary>
       <ol class="pasos">
         <li>
-          En GitHub, <b>New repository</b>: Owner <b>{REPOSITORIO_DEFECTO.split('/')[0]}</b>, Repository name
-          <b>{REPOSITORIO_DEFECTO.split('/')[1]}</b>, visibilidad <b>Private</b>, marque <b>Add a README file</b> y
-          pulse <b>Create repository</b>. El fichero de datos lo crea la aplicación en la primera sincronización.
+          <b>Repositorio de datos</b> (solo la primera vez; si ya existe, pase al paso 2).
+          <button class="boton enlace-github" type="button" data-abrir="nuevo-repo" onclick={() => abrirEnNavegador(urlNuevoRepo)}>
+            Abrir «New repository» en GitHub
+          </button>
+          La página sale ya rellena: Owner <b>{repoDatos.owner}</b>, Repository name <b>{repoDatos.repo}</b> y visibilidad
+          <b>Private</b>. Active la opción de añadir un <b>README</b> y pulse <b>Create repository</b>. El fichero de
+          datos lo crea la aplicación en la primera sincronización.
         </li>
         <li>
-          <b>Settings → Developer settings → Personal access tokens → Fine-grained tokens → Generate new token</b>.
+          <b>Token.</b>
+          <button class="boton enlace-github" type="button" data-abrir="nuevo-token" onclick={() => abrirEnNavegador(urlNuevoToken)}>
+            Abrir «New fine-grained personal access token» en GitHub
+          </button>
+          Sale ya rellena con el nombre, Resource owner <b>{repoDatos.owner}</b>, caducidad de 366 días y el permiso
+          <b>Contents: Read and write</b>.
+          <span class="a-mano">
+            Si prefiere llegar a mano: la foto de su perfil, arriba a la derecha → <b>Settings</b> (los ajustes de su
+            cuenta, no los <i>Settings</i> de un repositorio) → al final del menú de la izquierda, <b>Developer settings</b>
+            → <b>Personal access tokens</b> → <b>Fine-grained tokens</b> → <b>Generate new token</b>.
+          </span>
         </li>
         <li>
-          Token name <b>Electrónica — sincronización</b>; Expiration <b>Custom</b>, una fecha de dentro de un año (al
-          caducar, la aplicación lo dirá y bastará con crear otro); Resource owner <b>{REPO_APP.owner}</b>.
+          En <b>Repository access</b>, elija <b>Only select repositories</b> y, en la lista, solo
+          <b>{repoDatos.owner}/{repoDatos.repo}</b>. Este paso no se puede rellenar desde el enlace.
         </li>
         <li>
-          Repository access: <b>Only select repositories</b> → <b>{REPO_APP.owner}/{REPO_APP.repo}</b> y
-          <b>{REPOSITORIO_DEFECTO}</b>.
+          En <b>Permissions</b>, compruebe que en la pestaña <b>Repositories</b> aparece <b>Contents</b> con
+          <b>Read and write</b> (<b>Metadata: Read-only</b> se añade solo). Si no aparece, pulse <b>Add permissions</b>,
+          busque <b>Contents</b> y elija <b>Read and write</b>. Nada más: ni otros permisos ni permisos de cuenta.
         </li>
         <li>
-          Permissions → Repository permissions: <b>Contents: Read and write</b> (lo único que hace falta;
-          <b>Metadata: Read-only</b> se añade solo). Nada en Account permissions.
+          Pulse <b>Generate token</b>, cópielo (GitHub solo lo enseña una vez) y péguelo arriba, en «Token de acceso
+          personal», en cada dispositivo.
         </li>
-        <li><b>Generate token</b>, cópielo (solo se muestra una vez) y péguelo arriba en cada dispositivo.</li>
       </ol>
       <p class="nota">
-        Un token fine-grained da el mismo permiso en todos los repositorios elegidos: con Contents: Read and write la
-        aplicación solo lee las publicaciones de {REPO_APP.repo} y solo escribe el fichero de datos.
+        El token solo da acceso a su repositorio de datos. La aplicación únicamente lee y escribe en él su fichero de
+        datos; las actualizaciones las lee de {REPO_APP.owner}/{REPO_APP.repo}, que es público. Cuando el token caduque,
+        la aplicación lo avisará y bastará con crear otro igual.
       </p>
     </details>
   </section>
 </div>
 
 <style>
+  .pasos .enlace-github {
+    display: flex;
+    margin: 8px 0;
+    min-height: 44px;
+  }
+  .pasos .a-mano {
+    display: block;
+    margin-top: 6px;
+    color: var(--tinta-suave);
+    font-size: 0.95em;
+  }
   .pagina {
     max-width: 820px;
     margin: 0 auto;

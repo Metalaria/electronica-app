@@ -9,7 +9,6 @@
     buscarActualizaciones,
     versionNueva,
     abrirEnNavegador,
-    REPO_APP,
   } from '../../lib/sincronizacion/actualizaciones.svelte';
   import { cuando } from './tiempo';
 
@@ -57,7 +56,7 @@
     <p class="linea">…</p>
   {:else if !sinc.hayToken}
     <p class="linea" data-sin-token>
-      Sin token no se buscan actualizaciones: el repositorio {REPO_APP.owner}/{REPO_APP.repo} es privado.
+      Sin token no se buscan actualizaciones: la búsqueda usa el mismo token que la sincronización.
     </p>
   {:else}
     <div class="botones">
