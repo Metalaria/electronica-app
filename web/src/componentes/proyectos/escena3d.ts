@@ -38,6 +38,7 @@ import {
 } from 'three';
 import { PAD_NPTH, PAD_PTH, type DatosPlaca, type Huella } from './datos';
 import { crearEstudio, type Estudio } from '../tres/motor/estudio';
+import { estadoEntorno, soltarContexto } from '../tres/motor/entorno';
 import { Orbita, type EstadoOrbita } from '../tres/motor/orbita';
 import { ResolucionAdaptable, REPOSO, type EstadoResolucion } from '../tres/motor/resolucion';
 import type { Geometria, Lado } from './geometria';
@@ -62,7 +63,7 @@ export interface Estadisticas {
   /** Where the load time goes (ms): building the models, merging them, the first frame with them (shader
    *  compilation and uploads), and the whole load of the parts; `modelosUnicos`: models built (equal parts
    *  share one). */
-  fases?: { modelos: number; fusion: number; compilar: number; primerCuadro: number; piezas: number; modelosUnicos: number; inicio?: number; maxTramo?: number; cuadroEn?: number };
+  fases?: { modelos: number; fusion: number; compilar: number; primerCuadro: number; piezas: number; modelosUnicos: number; inicio?: number; maxTramo?: number; cuadroEn?: number; esperaEntorno?: number };
   /** Frames drawn since the view opened. */
   cuadros: number;
   /** Shader programs in use after the first frame with the parts (each one is compiled by the GPU driver). */
@@ -83,6 +84,8 @@ export interface Estadisticas {
   revision?: RevisionPiezas;
   /** 0.9: programs compiled one per task (no KHR_parallel_shader_compile) and the longest of them (ms). */
   compilacion?: { programas: number; paralela: boolean; maxPrograma: number };
+  /** 0.12: the studio's environment: filtered now ('pmrem') or this device's saved copy ('memoria'). */
+  entorno?: 'pmrem' | 'memoria' | null;
 }
 
 /**
@@ -354,12 +357,17 @@ export class Escena3D {
     // (liberar() drops the context on purpose to give the GPU memory back: that one is not an error)
     this.lienzo = lienzo;
     lienzo.addEventListener('webglcontextlost', this.perdido);
+    // 0.12: hidden until its first frame: the view's background instead of a black box meanwhile, and nothing for
+    // the compositor to take from it while the GPU is still busy (a software compositor reads the canvas back and
+    // waited there for the environment's filtering with the page blocked)
+    lienzo.style.visibility = 'hidden';
     this.renderer.outputColorSpace = SRGBColorSpace;
     this.renderer.toneMapping = NeutralToneMapping;
     this.renderer.toneMappingExposure = 1;
     this.res = new ResolucionAdaptable((k) => this.renderer.setPixelRatio(k));
     this.stats.resolucion = this.res.estado;
-    this.estudio = crearEstudio(this.renderer);
+    // (the environment comes at the end of the constructor, after the first uploads: see below)
+    this.estudio = crearEstudio(this.renderer, { entornoLuego: true });
     this.estudio.ponerFondo(oscuro ? '#15191e' : '#e9e6de', oscuro);
     this.W = d.placa.ancho / 100;
     this.H = d.placa.alto / 100;
@@ -447,8 +455,20 @@ export class Escena3D {
     // for every frame queued in the GPU process (seconds with a software GPU).
     const gl = this.renderer.getContext() as WebGL2RenderingContext;
     for (const k of [gl.UNPACK_ROW_LENGTH, gl.UNPACK_IMAGE_HEIGHT, gl.UNPACK_SKIP_PIXELS, gl.UNPACK_SKIP_ROWS, gl.UNPACK_SKIP_IMAGES]) this.renderer.state.pixelStorei(k, 0);
+    // 0.12: the canvas at its size now if it is laid out (else the view's observer gives it): resizing it later,
+    // with the GPU busy, would wait for the GPU with the page blocked
+    const caja = lienzo.getBoundingClientRect();
+    if (caja.width > 0 && caja.height > 0) this.tamano(caja.width, caja.height);
     this.pintarCaras(0.25);
     this.stats.fasesCaras!.modo = this.modo;
+    // 0.12: the studio's environment after the quick faces: filtering it (the first time on this device) is GPU work
+    // that an upload issued after it had to wait for with the page blocked (seconds with a software GPU); its saved
+    // copy is a texture uploaded with the first frame. The programs below need it (the faces' and parts' shaders
+    // depend on it), so it is there before they are compiled.
+    // (filtered now — the first view on this device —: read back for later views only once the board's first frame
+    // has been on screen, two animation frames after it, so the read never delays that frame)
+    this.estudio.ponerEntorno({ lecturaTras: this.placaLista.then(() => dosCuadros()) });
+    this.stats.entorno = estadoEntorno.origen;
     void this.prepararPlaca();
     this.refino = window.setTimeout(() => void this.refinarCaras(), 4000);
   }
@@ -460,6 +480,10 @@ export class Escena3D {
    */
   private async prepararPlaca(): Promise<void> {
     const t0 = performance.now();
+    // 0.12: not while the GPU still filters the environment (the first view on this device): the programs' link
+    // status is read synchronously and would wait for it with the page blocked (the parts wait too: cargarPiezas)
+    await this.estudio.entornoListo();
+    if (!this.vivo) return;
     await this.prepararPorPartes(this.estudio.escena);
     if (!this.vivo) return;
     this.stats.compilarPlaca = performance.now() - t0;
@@ -1024,6 +1048,13 @@ export class Escena3D {
     this.refino = 0;
     const lib = await cargarBiblioteca();
     if (!this.vivo) return;
+    // 0.12: while the GPU filters the studio's environment (the first view on this device; at once with the saved
+    // copy) the parts wait: their programs need it, and with a GPU emulated on the CPU (the tests) building them
+    // meanwhile only took CPU time from it and delayed the board's first frame
+    const tEnt = performance.now();
+    await this.estudio.entornoListo();
+    if (!this.vivo) return;
+    const esperaEntorno = performance.now() - tEnt;
     const tB = performance.now();
     const rec = lib ? new lib.Recursos() : null;
     const disponibles = new Set(lib?.tiposDisponibles?.() ?? []);
@@ -1080,6 +1111,7 @@ export class Escena3D {
       modelosUnicos: plantillas.size,
       inicio: tA,
       maxTramo: Math.max(pausa.max, this.stats.compilacion.maxPrograma),
+      esperaEntorno,
     };
     for (const c of this.cajas) this.altoMax = Math.max(this.altoMax, c.caja.max.z);
     this.ajustarProfundidad();
@@ -1622,10 +1654,17 @@ export class Escena3D {
     this.orbita.ir({ ...s, distancia: Math.max(this.orbita.minDist, dist), objetivo: new Vector3(cx * flip, cy, 2 * flip) }, true);
   }
 
+  /** Size last given to tamano() (CSS px) and its pixel ratio. */
+  private tam = { w: 0, h: 0, k: 0 };
+
   tamano(w: number, h: number): void {
     const dpr = Math.min(window.devicePixelRatio || 1, 2);
     // at most about 2.4 Mpx drawn (Iris Plus 640 at 1280 × 800, DPR 2)
     const k = Math.min(dpr, Math.sqrt(2.4e6 / Math.max(1, w * h)));
+    // 0.12: the same size again (the first observation after the constructor took it): nothing to do. Resizing the
+    // canvas makes the browser check the drawing buffer synchronously, which waits for the GPU.
+    if (Math.abs(w - this.tam.w) < 0.5 && Math.abs(h - this.tam.h) < 0.5 && k === this.tam.k) return;
+    this.tam = { w, h, k };
     this.renderer.setSize(w, h, false);
     this.res.ponerBase(k, this.orbita.moviendo());
     const primera = this.camara.aspect === 1 && !this.ajustada;
@@ -1734,7 +1773,10 @@ export class Escena3D {
       this.renderer.render(this.estudio.escena, this.camara);
       const ms = performance.now() - t0;
       this.stats.cuadros++;
-      this.stats.primerCuadroPlaca ??= performance.now() - this.creada;
+      if (this.stats.primerCuadroPlaca == null) {
+        this.stats.primerCuadroPlaca = performance.now() - this.creada;
+        this.lienzo.style.visibility = '';
+      }
       this.placaDibujada();
       if (this.stats.fases && !this.stats.fases.primerCuadro) {
         this.stats.fases.primerCuadro = ms;
@@ -1785,7 +1827,8 @@ export class Escena3D {
     this.recursos?.liberar();
     liberarMateriales();
     this.renderer.dispose();
-    this.renderer.forceContextLoss();
+    // (0.12: at once, or when the studio's environment, read back from this context, is in memory)
+    soltarContexto(this.renderer);
     // 0.11 QA (leaks): the context outlives the view (three.js keeps its shared empty textures uploaded in it), and
     // through its canvas this listener kept the whole board — parts, geometry buffers, label canvases — alive after
     // each visit (≈ 0.7 MB of heap and several MB of buffers per board opened)
@@ -1892,6 +1935,11 @@ function crearPausa(ms = 12): (() => Promise<boolean>) & { max: number } {
   };
   f.max = 0;
   return f;
+}
+
+/** Resolves after two animation frames (the frame drawn before has been presented). */
+function dosCuadros(): Promise<void> {
+  return new Promise((r) => requestAnimationFrame(() => requestAnimationFrame(() => r())));
 }
 
 /** Gives the page's thread back for a moment: scheduler.yield() where it exists, else a macrotask. */

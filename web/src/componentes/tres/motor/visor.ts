@@ -35,6 +35,7 @@ import {
   type Group,
 } from 'three';
 import { crearEstudio, type Estudio } from './estudio';
+import { soltarContexto } from './entorno';
 import { crearPlaca, type Placa } from './placa';
 import { Orbita, type EstadoOrbita } from './orbita';
 import { ResolucionAdaptable, REPOSO, type EstadoResolucion } from './resolucion';
@@ -912,6 +913,7 @@ export class Visor {
     this.estudio.liberar();
     this.renderer.renderLists.dispose();
     this.renderer.dispose();
-    this.renderer.forceContextLoss();
+    // (0.12: at once, or when the studio's environment, read back from this context, is in memory)
+    soltarContexto(this.renderer);
   }
 }

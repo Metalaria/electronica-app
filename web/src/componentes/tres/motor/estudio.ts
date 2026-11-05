@@ -11,13 +11,12 @@ import {
   Mesh,
   MeshBasicMaterial,
   PlaneGeometry,
-  PMREMGenerator,
   Scene,
   SRGBColorSpace,
   type Texture,
   type WebGLRenderer,
 } from 'three';
-import { RoomEnvironment } from 'three/examples/jsm/environments/RoomEnvironment.js';
+import { crearEntorno } from './entorno';
 
 export interface Estudio {
   escena: Scene;
@@ -26,6 +25,11 @@ export interface Estudio {
   /** Places and scales the contact shadow for a model footprint (mm) resting at height z. */
   ajustarSombra(ancho: number, fondo: number, z: number): void;
   ponerFondo(color: string, oscuro: boolean): void;
+  /** 0.12: puts the room environment on the scene (crearEstudio does it unless asked to wait: see `entornoLuego`);
+   *  `lecturaTras`: when the first-ever filtering may be read back for later views (see crearEntorno). */
+  ponerEntorno(opciones?: { lecturaTras?: Promise<unknown> }): void;
+  /** 0.12: resolves when the GPU has the environment (at once when it is this device's saved copy). */
+  entornoListo(): Promise<void>;
   liberar(): void;
 }
 
@@ -68,7 +72,12 @@ function soltarSombra(): void {
   }
 }
 
-export function crearEstudio(renderer: WebGLRenderer): Estudio {
+/**
+ * `entornoLuego` (0.12): the environment is put later by `ponerEntorno()`: the board view uploads its first textures
+ * before it, because with a software GPU (or a slow one) an upload queued behind the environment's filtering waited
+ * for it with the page blocked.
+ */
+export function crearEstudio(renderer: WebGLRenderer, { entornoLuego = false }: { entornoLuego?: boolean } = {}): Estudio {
   const escena = new Scene();
   const raiz = new Group();
   escena.add(raiz);
@@ -81,19 +90,15 @@ export function crearEstudio(renderer: WebGLRenderer): Estudio {
   relleno.position.set(1.1, 0.8, 0.5);
   escena.add(hemi, clave, relleno);
 
-  // Small room environment so that tin, copper and gold look like metals (prefiltered once).
-  const pmrem = new PMREMGenerator(renderer);
-  const sala = new RoomEnvironment();
-  const env = pmrem.fromScene(sala, 0.04).texture;
-  sala.traverse((o) => {
-    const m = o as Mesh;
-    if (m.isMesh) {
-      m.geometry.dispose();
-      (m.material as MeshBasicMaterial).dispose();
-    }
-  });
-  pmrem.dispose();
-  escena.environment = env;
+  // Small room environment so that tin, copper and gold look like metals: prefiltered once per device and reused
+  // (0.12, entorno.ts; until 0.11 every view filtered it again).
+  let env: ReturnType<typeof crearEntorno> | null = null;
+  const ponerEntorno = (opciones: { lecturaTras?: Promise<unknown> } = {}): void => {
+    if (env) return;
+    env = crearEntorno(renderer, opciones);
+    escena.environment = env.textura;
+  };
+  if (!entornoLuego) ponerEntorno();
   escena.environmentIntensity = 0.55;
 
   const matSombra = new MeshBasicMaterial({ map: sombraTextura(), transparent: true, depthWrite: false, opacity: 0.32, color: 0x000000 });
@@ -114,8 +119,10 @@ export function crearEstudio(renderer: WebGLRenderer): Estudio {
       escena.background = new Color(color);
       matSombra.opacity = oscuro ? 0.55 : 0.3;
     },
+    ponerEntorno,
+    entornoListo: () => env?.listo ?? Promise.resolve(),
     liberar() {
-      env.dispose();
+      env?.liberar();
       sombra.geometry.dispose();
       matSombra.dispose();
       soltarSombra();

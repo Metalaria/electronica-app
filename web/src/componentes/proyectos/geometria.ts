@@ -89,10 +89,15 @@ export function contornoPad(p: Pad, crecer = 0): [number, number][] {
   return pts.map(([x, y]) => [p[3] + x * c + y * s, p[4] - x * s + y * c]);
 }
 
+/**
+ * A polygon as an open subpath of `camino`. Only for paths that are filled, clipped or hit-tested (an open subpath
+ * is closed implicitly there, the same pixels): 0.12, Chromium's Path2D.closePath() costs time proportional to the
+ * whole path, so closing every pad of a path with thousands of them was quadratic (the Neo Geo board: about 0,7 s
+ * of the page's thread here, 3 s with a 4× slower CPU, before its 2D or 3D view could open).
+ */
 function poligono(camino: Path2D, pts: [number, number][]): void {
   camino.moveTo(pts[0]![0], pts[0]![1]);
   for (let i = 1; i < pts.length; i++) camino.lineTo(pts[i]![0], pts[i]![1]);
-  camino.closePath();
 }
 
 /** A drill (round or slot) as a path. */
@@ -153,8 +158,7 @@ export function construirGeometria(d: DatosPlaca): Geometria {
       y0 = Math.min(y0, y);
       y1 = Math.max(y1, y);
     }
-    c.closePath();
-    sola.closePath();
+    // (filled and hit-tested only: left open, see poligono)
     zonasRed.push({ l: z.l, r: z.r, camino: sola, caja: [x0, y0, x1, y1] });
   }
   for (const lado of ['F', 'B'] as const) {
@@ -229,7 +233,7 @@ export function construirGeometria(d: DatosPlaca): Geometria {
         if (k === 0) rellenos.moveTo(pts[0]!, pts[1]!);
         else rellenos.lineTo(pts[k]!, pts[k + 1]!);
       }
-      rellenos.closePath();
+      // (filled only: left open, see poligono)
     }
     for (const [cx, cy, r, w] of s.circulos) {
       if (w > 0) {

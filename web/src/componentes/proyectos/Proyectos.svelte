@@ -42,6 +42,12 @@
   // WebGL2 or the 2D fallback (tests force it off with window.__epaSinWebGL)
   const webgl = soporteWebGL2();
 
+  // 0.12: the 3D view's code (three.js, about 900 kB) is fetched together with the board's data instead of after it
+  // (on a slow network the two downloads were one after the other)
+  $effect(() => {
+    if (webgl && actual.placa && actual.vista === '3d') import('./Vista3D.svelte').catch(() => {});
+  });
+
   /** «Reintentar» after a failed load: the index, the board and its schematic again. */
   let intento = $state(0);
   let errorEsquema = $state<unknown>(null);

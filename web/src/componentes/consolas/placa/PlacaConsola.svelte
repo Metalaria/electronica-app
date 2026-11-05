@@ -55,6 +55,11 @@
 
   const res = $derived(d ? resolver(d, selPlaca) : { huella: null, red: null, pad: null });
 
+  // 0.12: the 3D view's code (three.js) is fetched together with the board's data instead of after it
+  $effect(() => {
+    if (webgl && vista === '3d') import('../../proyectos/Vista3D.svelte').catch(() => {});
+  });
+
   $effect(() => {
     const id = idPlaca;
     if (!id) return;

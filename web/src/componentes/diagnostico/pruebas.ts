@@ -162,7 +162,20 @@ function lienzo(ctx: ContextoPrueba): { caja: HTMLDivElement; c: HTMLCanvasEleme
   capa.className = 'capa-prueba';
   caja.append(c, capa);
   ctx.zona.append(caja);
+  // On screen (0.12 QA): the component viewer only draws while it is visible, and the zone starts under the list of
+  // tests — on a short screen it measured a 60 s «first frame» (its timeout) and 0 frames per second.
+  caja.scrollIntoView({ block: 'center', behavior: 'instant' });
   return { caja, c, capa, quitar: () => caja.remove() };
+}
+
+/**
+ * The studio's environment this device saved (0.12, entorno.ts), read as the app's own views read it before creating
+ * their WebGL context (0.12 QA: without it, after a reload every view of the diagnostic filtered it again and the row
+ * «Entorno del estudio» said «calculado» where the app's boards use the saved one).
+ */
+async function entornoGuardado(): Promise<void> {
+  const { precargarEntorno } = await import('../tres/motor/entorno');
+  await precargarEntorno();
 }
 
 /**
@@ -238,6 +251,21 @@ export function infoWebGL(): Resultado[] {
   return res;
 }
 
+/**
+ * 0.12: where the studio's environment of the view came from (entorno.ts): this device's saved copy, or filtered by
+ * this view (the first one on the device, or when it could not be saved), with the state of its read-back.
+ */
+function filaEntorno(g: string, origen: 'pmrem' | 'memoria' | null | undefined): Resultado {
+  const e = (globalThis as { __epaEntorno?: { leidoDeBd: boolean; leerMs: number; lectura: string; error: string; guardado: boolean } }).__epaEntorno;
+  const detalle =
+    origen === 'memoria'
+      ? e?.leidoDeBd
+        ? `el de este dispositivo, leído del almacenamiento en ${ms(e.leerMs)}`
+        : 'el de este dispositivo (ya en memoria)'
+      : `calculado ahora; para las vistas siguientes: ${e?.error ? `no se pudo guardar (${e.error})` : e?.lectura || 'pendiente'}`;
+  return { grupo: g, prueba: 'Entorno del estudio', valor: origen === 'memoria' ? 'guardado' : 'calculado', detalle, estado: e?.error ? 'aviso' : 'ok' };
+}
+
 // ------------------------------------------------------------------ 3D component viewer
 
 export async function visor3d(ctx: ContextoPrueba, tipo = 'qfp'): Promise<Resultado[]> {
@@ -246,6 +274,8 @@ export async function visor3d(ctx: ContextoPrueba, tipo = 'qfp'): Promise<Result
   const t0 = performance.now();
   const [{ Visor }, M] = await Promise.all([import('../tres/motor/visor'), import('../tres/modelos')]);
   const t1 = performance.now();
+  // (after the module's own time: as Visor3D does before creating its view)
+  await entornoGuardado();
   const est = globalThis as unknown as { __epa3d?: { n: number; total: number; resolucion?: { base: number; actual: number; minima: number; cambios: number } } };
   // One view: build, programs (0.8: compiled before the first frame), first frame; `girarlo` also turns it.
   const vista = async (girarlo: boolean) => {
@@ -326,7 +356,7 @@ export async function placaSdr(ctx: ContextoPrueba, id = 'sdr'): Promise<Resulta
   const g = 'Placa KiCad (SDR)';
   ctx.avisar('Placa SDR: descargando los datos…');
   const t0 = performance.now();
-  const [{ cargarPlaca }, { construirGeometria }, { Escena3D }] = await Promise.all([import('../proyectos/datos'), import('../proyectos/geometria'), import('../proyectos/escena3d')]);
+  const [{ cargarPlaca }, { construirGeometria }, { Escena3D }] = await Promise.all([import('../proyectos/datos'), import('../proyectos/geometria'), import('../proyectos/escena3d'), entornoGuardado()]);
   const d = await cargarPlaca(id);
   const t1 = performance.now();
   const geo = construirGeometria(d);
@@ -371,6 +401,7 @@ export async function placaSdr(ctx: ContextoPrueba, id = 'sdr'): Promise<Resulta
         detalle: `escena ${ms(t3 - t2)}; sombreadores de la placa ${ms(st.compilarPlaca ?? 0)}; caras a ¼ (${fc?.modo ?? '?'}): pintar ${ms(fc?.cuarto.pintar ?? 0)}, leer ${ms(fc?.cuarto.leer ?? 0)}, subir ${ms(fc?.cuarto.subir ?? 0)}`,
         estado: 'ok',
       },
+      filaEntorno(g, st.entorno),
       {
         grupo: g,
         prueba: 'Placa con componentes',
@@ -422,6 +453,7 @@ export async function carasSdr(ctx: ContextoPrueba, id = 'sdr'): Promise<Resulta
     import('../proyectos/datos'),
     import('../proyectos/geometria'),
     import('../proyectos/escena3d'),
+    entornoGuardado(),
   ]);
   const d = await cargarPlaca(id);
   const geo = construirGeometria(d);
@@ -501,6 +533,7 @@ export async function placaConsola(ctx: ContextoPrueba, id = 'neogeo'): Promise<
     import('../consolas/placa/datos'),
     import('../proyectos/geometria'),
     import('../proyectos/escena3d'),
+    entornoGuardado(),
   ]);
   const d = await cargarPlacaConsola(id);
   const t1 = performance.now();

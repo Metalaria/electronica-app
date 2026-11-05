@@ -7,6 +7,8 @@
   import { formatoTension, type DatosPlaca } from './datos';
   import { cajaHuella, cajaRed, impacto, type Geometria } from './geometria';
   import { Escena3D } from './escena3d';
+  import { precargarEntorno } from '../tres/motor/entorno';
+  import { cargarBiblioteca } from './modelos3d';
   import type { Seleccion } from './estado';
   import type { Opciones3D } from './opciones3d.svelte';
   import { deHuella, dePad, deRed, type Resuelta } from './seleccion';
@@ -147,6 +149,15 @@
 
   const g = globalThis as unknown as { __epaPlaca3D?: unknown; __epaPlaca3DListo?: boolean };
 
+  /** Frames the selected part or net (from the route). */
+  function enfocarSeleccion(e: Escena3D): void {
+    if (res.huella !== null) e.enfocar(cajaHuella(datos, res.huella));
+    else if (res.red !== null) {
+      const b = cajaRed(datos, res.red);
+      if (b) e.enfocar(b);
+    }
+  }
+
   /** Builds the parts once, when «Componentes» is on. */
   function pedirPiezas(): void {
     if (!escena || escena.piezasPedidas) return;
@@ -159,55 +170,69 @@
       listo = true;
       e.seleccionar(res.huella);
       // a selection from the route: frame it now that the parts are there
-      if (enfocar > 0) {
-        if (res.huella !== null) e.enfocar(cajaHuella(datos, res.huella));
-        else if (res.red !== null) {
-          const b = cajaRed(datos, res.red);
-          if (b) e.enfocar(b);
-        }
-      }
+      if (enfocar > 0) enfocarSeleccion(e);
       g.__epaPlaca3DListo = true;
     });
   }
 
+  // 0.12: the studio's environment saved by an earlier session is read meanwhile (entorno.ts), so the scene
+  // below does not filter it again
+  const entornoListo = precargarEntorno();
+  // and the model library is fetched now, while the board is set up (it was asked for only once the scene existed)
+  untrack(() => {
+    if (opciones.capas.componentes) void cargarBiblioteca();
+  });
+
   onMount(() => {
     if (!lienzo || !caja) return;
-    try {
-      escena = new Escena3D(lienzo, datos, geo, oscuro);
-    } catch (e) {
-      error = e instanceof Error ? e.message : String(e);
-      return;
-    }
-    escena.alCambiar = actualizarEtiqueta;
-    g.__epaPlaca3D = escena.stats;
-    const ro = new ResizeObserver((e) => {
-      const r = e[0]?.contentRect;
-      if (!r || !escena) return;
-      ancho = r.width;
-      alto = r.height;
-      escena.tamano(r.width, r.height);
-    });
-    ro.observe(caja);
-    escena.opciones({ capas: { ...opciones.capas }, acabado: opciones.acabado, rayosX: opciones.rayosX, tensiones: opciones.tensiones, red: res.red });
-    escena.explotar(opciones.explosion);
-    escena.seleccionar(res.huella);
-    if (opciones.capas.componentes) pedirPiezas();
-    else {
-      // Without the parts the view is ready with the board's first frame.
-      const e = escena;
-      void e.placaLista.then(() => {
-        if (e !== escena || e.piezasPedidas) return;
-        listo = true;
-        g.__epaPlaca3DListo = true;
-      });
-    }
+    let cerrada = false;
+    let ro: ResizeObserver | null = null;
     const perdido = (ev: Event) => {
       ev.preventDefault();
       error = 'Se perdió el contexto WebGL (la GPU se ha reiniciado). Vuelva a abrir la vista 3D o use la vista 2D.';
     };
-    lienzo.addEventListener('webglcontextlost', perdido);
+    void entornoListo.then(() => {
+      if (!cerrada) crear();
+    });
+    function crear(): void {
+      if (!lienzo || !caja) return;
+      let es: Escena3D;
+      try {
+        es = new Escena3D(lienzo, datos, geo, oscuro);
+      } catch (e) {
+        error = e instanceof Error ? e.message : String(e);
+        return;
+      }
+      escena = es;
+      es.alCambiar = actualizarEtiqueta;
+      g.__epaPlaca3D = es.stats;
+      ro = new ResizeObserver((e) => {
+        const r = e[0]?.contentRect;
+        if (!r || escena !== es) return;
+        ancho = r.width;
+        alto = r.height;
+        es.tamano(r.width, r.height);
+      });
+      ro.observe(caja);
+      // (the effects below ran before the scene existed: what they set is applied here)
+      es.opciones({ capas: { ...opciones.capas }, acabado: opciones.acabado, rayosX: opciones.rayosX, tensiones: opciones.tensiones, red: res.red });
+      es.explotar(opciones.explosion);
+      es.seleccionar(res.huella);
+      if (enfocar > 0) enfocarSeleccion(es);
+      if (opciones.capas.componentes) pedirPiezas();
+      else {
+        // Without the parts the view is ready with the board's first frame.
+        void es.placaLista.then(() => {
+          if (es !== escena || es.piezasPedidas) return;
+          listo = true;
+          g.__epaPlaca3DListo = true;
+        });
+      }
+      lienzo.addEventListener('webglcontextlost', perdido);
+    }
     return () => {
-      ro.disconnect();
+      cerrada = true;
+      ro?.disconnect();
       lienzo?.removeEventListener('webglcontextlost', perdido);
       if (pendiente) cancelAnimationFrame(pendiente);
       escena?.liberar();
@@ -242,12 +267,7 @@
   $effect(() => {
     void enfocar;
     untrack(() => {
-      if (!escena || enfocar === 0) return;
-      if (res.huella !== null) escena.enfocar(cajaHuella(datos, res.huella));
-      else if (res.red !== null) {
-        const b = cajaRed(datos, res.red);
-        if (b) escena.enfocar(b);
-      }
+      if (escena && enfocar > 0) enfocarSeleccion(escena);
     });
   });
 </script>
