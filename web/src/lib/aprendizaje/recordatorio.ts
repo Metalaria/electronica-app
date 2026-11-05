@@ -8,9 +8,15 @@
 // The notification is sent with `invoke('plugin:notification|notify')` rather than the package's
 // sendNotification (which goes through the plugin's window.Notification shim and reports nothing back), so a
 // failure reaches the settings panel.
+//
+// Since 0.12 it carries the app's own small monochrome icon (ICONO_RECORDATORIO, a vector drawable that
+// web/scripts/android-preparar.mjs copies from src-tauri/recursos-android into the generated Android project)
+// instead of Android's generic «i». It is set per notification, not as plugins.notification.icon in
+// tauri.conf.json: the plugin's Rust side takes no configuration, and an object there stops the app at start-up.
+// A reminder scheduled by 0.11 (stored without an icon) is scheduled again once (key «recordatorio-icono»).
 
 import { invoke } from '@tauri-apps/api/core';
-import { enTauri } from '../almacen';
+import { enTauri, obtenerAlmacen } from '../almacen';
 import { usuario } from '../usuario.svelte';
 
 export const ID_RECORDATORIO = 20110;
@@ -19,6 +25,10 @@ export const TITULO_RECORDATORIO = 'Electrónica Práctica Avanzada';
 export const TEXTO_RECORDATORIO = 'Unos minutos con la electrónica: le espera el problema del día.';
 /** Where a tap on the reminder leads: the problem of the day it announces. */
 export const RUTA_RECORDATORIO = '#/problema';
+/** Name of the drawable resource of the notification's small icon (src-tauri/recursos-android/drawable). */
+export const ICONO_RECORDATORIO = 'ic_stat_epa';
+/** Per-device mark: the pending reminder was scheduled with ICONO_RECORDATORIO (not synchronised). */
+const CLAVE_ICONO = 'recordatorio-icono';
 
 /** The reminder exists only in the Android app. */
 export function recordatorioDisponible(): boolean {
@@ -57,9 +67,11 @@ async function programar(hora: string): Promise<void> {
       // every day when the clock reads hh:mm; allowed in Doze, re-armed by the plugin after each delivery
       schedule: Schedule.interval({ hour: h.hour, minute: h.minute }, true),
       autoCancel: true,
+      icon: ICONO_RECORDATORIO,
       extra: { ruta: RUTA_RECORDATORIO },
     },
   });
+  await (await obtenerAlmacen()).escribir(CLAVE_ICONO, 1).catch(() => undefined);
 }
 
 /**
@@ -112,7 +124,8 @@ export async function comprobarRecordatorio(): Promise<void> {
     if (!(await permiso(false))) return;
     const { pending } = await import('@tauri-apps/plugin-notification');
     const pendientes = await pending();
-    if (!pendientes.some((p) => p.id === ID_RECORDATORIO)) await programar(r.hora);
+    const conIcono = (await (await obtenerAlmacen()).leer<number>(CLAVE_ICONO)) === 1;
+    if (!pendientes.some((p) => p.id === ID_RECORDATORIO) || !conIcono) await programar(r.hora);
     escucharToque();
   } catch (e) {
     console.warn('No se pudo comprobar el recordatorio', e);

@@ -704,6 +704,8 @@ test.describe('recordatorio diario', () => {
     expect(notify.id).toBe(20110);
     expect(notify.body).toBe('Unos minutos con la electrónica: le espera el problema del día.');
     expect(notify.schedule).toEqual({ interval: { interval: { hour: 20, minute: 0 }, allowWhileIdle: true } });
+    // 0.12: the app's own small monochrome icon (src-tauri/recursos-android/drawable/ic_stat_epa.xml), not Android's «i»
+    expect((notify as { icon?: string }).icon).toBe('ic_stat_epa');
     await expect.poll(async () => leer(page, 'prefs')).toMatchObject({ recordatorio: { activo: true, hora: '20:00' } });
 
     // another time

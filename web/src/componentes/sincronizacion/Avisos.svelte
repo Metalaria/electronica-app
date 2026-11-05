@@ -1,6 +1,7 @@
 <script lang="ts">
   // Background part of the synchronisation and of the update check (lazy chunk, mounted by Arranque.svelte
-  // once the reader is up): starts both, and shows the «Versión X.Y.Z disponible» notice.
+  // once the reader is up): starts both, and shows the «Versión X.Y.Z disponible» notice; on Windows and macOS
+  // with «Descargar e instalar» when the release carries the signed update (0.12, BotonesInstalador).
   import { onMount } from 'svelte';
   import Sparkles from '@lucide/svelte/icons/sparkles';
   import X from '@lucide/svelte/icons/x';
@@ -15,17 +16,24 @@
     abrirEnNavegador,
   } from '../../lib/sincronizacion/actualizaciones.svelte';
   import { iniciarSincronizacionAutomatica } from '../../lib/sincronizacion/sincronizar.svelte';
+  import { instalador, recuperarFalloDeInstalacion } from '../../lib/sincronizacion/instalador.svelte';
+  import { app } from '../../lib/estado.svelte';
+  import BotonesInstalador from './BotonesInstalador.svelte';
 
   const nueva = $derived(avisoVisible() ? versionNueva() : null);
   const fichero = $derived(nueva ? ficheroParaEsteEquipo(nueva) : null);
+  // the signed update of this very version can be installed from the notice
+  const instalable = $derived(!!nueva && instalador.estado !== 'inactivo' && instalador.estado !== 'al-dia' && instalador.version === nueva.version);
 
   onMount(() => {
-    void buscarActualizaciones();
+    // first: a Windows installer that could not be started in the previous run (it relaunched the app)
+    void recuperarFalloDeInstalacion().finally(() => buscarActualizaciones());
     void iniciarSincronizacionAutomatica();
   });
 </script>
 
-{#if nueva}
+<!-- Hidden while «Aa» is open: it shows the same (and the notice would cover its lower part) -->
+{#if nueva && !app.ajustes}
   <div class="aviso" role="status" aria-live="polite" data-aviso-version={nueva.version}>
     <span class="icono" aria-hidden="true"><Sparkles size={20} /></span>
     <div class="texto">
@@ -34,8 +42,9 @@
       <p class="detalle">
         Tiene la {actualizacion.version}.{#if fichero} Para este equipo: <code>{fichero}</code>.{/if}
       </p>
+      <BotonesInstalador compacto version={nueva.version} />
       <div class="botones">
-        <button class="boton primario" onclick={() => abrirEnNavegador(nueva.url)}>Ver la publicación</button>
+        <button class="boton" class:primario={!instalable} onclick={() => abrirEnNavegador(nueva.url)}>Ver la publicación</button>
         <button class="boton" onclick={descartarAviso}>Ahora no</button>
       </div>
     </div>
@@ -126,5 +135,16 @@
     width: 32px;
     height: 32px;
     margin-top: -4px;
+  }
+  /* 44 px for a finger (0.12 QA: 36 px buttons and a 32 px close button), the same look */
+  @media (pointer: coarse) {
+    .botones .boton {
+      min-height: 44px;
+    }
+    .cerrar {
+      width: 44px;
+      height: 44px;
+      margin: -10px -6px 0 -6px;
+    }
   }
 </style>

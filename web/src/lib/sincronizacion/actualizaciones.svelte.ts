@@ -1,15 +1,25 @@
 // «Hay una versión nueva»: the latest release of the app's repository (GitHub Releases, published
 // by .github/workflows/compilar.yml on every tag vX.Y.Z) compared with this build's version. At start-up
 // at most once every 12 h, never blocking and silent on any error; «Buscar actualizaciones» in the
-// settings checks at once and reports errors. Without a token nothing is requested at all: the check uses
-// the synchronisation token (the repository is public since 0.11, so a fine-grained token reads its
-// releases without the repository being selected in «Repository access»).
+// settings checks at once and reports errors.
+//
+// The repository is public, so the check needs no token (0.12): with the synchronisation token it is sent with
+// it (GitHub allows far more requests then; a rejected token falls back to asking anonymously), without one it
+// goes without an Authorization header. The data repository is never contacted here. Anonymous requests share
+// GitHub's limit of 60 an hour per IP address: a rate-limited answer stores until when, and no request is sent
+// before that (the manual check says when it can be tried again). In the plain browser (development build) the
+// start-up check without a token is not made, so the browser tests and a development session stay off the
+// network unless asked; the apps (Tauri) make it.
+//
+// On Windows and macOS the newer version can also be downloaded and installed from the app (instalador.svelte.ts);
+// that check follows this one when it finds a newer version, or when the reader asks.
 
-import { obtenerAlmacen } from '../almacen';
+import { enTauri, obtenerAlmacen } from '../almacen';
 import { compararVersiones } from './fusion';
-import { ErrorGitHub, ultimaPublicacion, type Publicacion } from './github';
+import { ErrorGitHub, errorLimite, ultimaPublicacion, type Publicacion } from './github';
 import { leerToken } from './credenciales';
 import { VERSION_APP } from './version-app';
+import { actualizadorDisponible, comprobarInstalable } from './instalador.svelte';
 
 export const REPO_APP = { owner: 'Metalaria', repo: 'electronica-app' } as const;
 export const CADA = 12 * 3_600_000;
@@ -21,6 +31,8 @@ interface Guardado {
   ultima: Publicacion | null;
   /** Version whose notice was dismissed. */
   descartada?: string;
+  /** GitHub's rate limit: no request before this time (ms). */
+  limite?: number;
 }
 
 export const actualizacion = $state({
@@ -32,8 +44,16 @@ export const actualizacion = $state({
   error: '',
   /** «Buscar actualizaciones» was pressed and there is nothing newer. */
   alDia: false,
+  /** No synchronisation token: the check is anonymous. */
   sinToken: false,
+  /** GitHub's rate limit: no request before this time (ms; 0 = none). */
+  limite: 0,
 });
+
+/** Whether the start-up check is made without a token: in the apps, not in the plain browser (tests may force it). */
+function anonimaAlArrancar(): boolean {
+  return enTauri() || (globalThis as { __epaComprobarSinToken?: boolean }).__epaComprobarSinToken === true;
+}
 
 /** The newer release to announce, or null. */
 export function versionNueva(): Publicacion | null {
@@ -52,6 +72,7 @@ async function guardar(): Promise<void> {
     t: actualizacion.comprobada,
     ultima: $state.snapshot(actualizacion.ultima),
     descartada: actualizacion.descartada || undefined,
+    limite: actualizacion.limite > Date.now() ? actualizacion.limite : undefined,
   };
   await (await obtenerAlmacen()).escribir(CLAVE, g);
 }
@@ -64,9 +85,21 @@ function cargar(): Promise<void> {
       actualizacion.comprobada = Number(g.t) || 0;
       actualizacion.ultima = g.ultima && typeof g.ultima.version === 'string' ? g.ultima : null;
       actualizacion.descartada = typeof g.descartada === 'string' ? g.descartada : '';
+      actualizacion.limite = Number(g.limite) > Date.now() ? Number(g.limite) : 0;
     }
   })();
   return cargado;
+}
+
+/** The latest release, with the token when there is one; a rejected token (401) asks again anonymously. */
+async function pedirUltima(token: string): Promise<Publicacion | null> {
+  if (!token) return ultimaPublicacion(null, REPO_APP.owner, REPO_APP.repo);
+  try {
+    return await ultimaPublicacion(token, REPO_APP.owner, REPO_APP.repo);
+  } catch (e) {
+    if (e instanceof ErrorGitHub && e.estado === 401) return ultimaPublicacion(null, REPO_APP.owner, REPO_APP.repo);
+    throw e;
+  }
 }
 
 /** Checks GitHub now (manual) or when the last check is older than 12 h (automatic). */
@@ -75,18 +108,27 @@ export async function buscarActualizaciones(manual = false): Promise<void> {
   actualizacion.alDia = false;
   const token = await leerToken();
   actualizacion.sinToken = !token;
-  if (!token) {
-    if (manual) actualizacion.error = '';
+  if (!manual && !token && !anonimaAlArrancar()) return;
+  if (actualizacion.buscando) return;
+  if (!manual && Date.now() - actualizacion.comprobada < CADA) {
+    // The newer version found earlier: is it installable from here? (no request to the API)
+    if (versionNueva() && actualizadorDisponible()) void comprobarInstalable(false);
     return;
   }
-  if (!manual && Date.now() - actualizacion.comprobada < CADA) return;
-  if (actualizacion.buscando) return;
+  if (actualizacion.limite > Date.now()) {
+    if (manual) {
+      actualizacion.error = errorLimite(actualizacion.limite).message;
+      void comprobarInstalable(true);
+    }
+    return;
+  }
   actualizacion.buscando = true;
   try {
-    const p = await ultimaPublicacion(token, REPO_APP.owner, REPO_APP.repo);
+    const p = await pedirUltima(token);
     actualizacion.ultima = p;
     actualizacion.comprobada = Date.now();
     actualizacion.error = '';
+    actualizacion.limite = 0;
     if (manual) {
       actualizacion.alDia = !versionNueva();
       // Asking again shows a dismissed notice again.
@@ -94,10 +136,16 @@ export async function buscarActualizaciones(manual = false): Promise<void> {
     }
     await guardar();
   } catch (e) {
+    if (e instanceof ErrorGitHub && e.reintentarEn > Date.now()) {
+      actualizacion.limite = e.reintentarEn;
+      await guardar().catch(() => undefined);
+    }
     if (manual) actualizacion.error = e instanceof ErrorGitHub ? e.message : `No se pudo comprobar: ${String(e)}`;
   } finally {
     actualizacion.buscando = false;
   }
+  // latest.json is read from github.com, not from the API: it does not count against the API's limit
+  if (manual || versionNueva()) void comprobarInstalable(manual);
 }
 
 export function descartarAviso(): void {

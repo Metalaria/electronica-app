@@ -10,6 +10,20 @@
 # minutes count ten times and Windows twice in a private repository), and every version was being
 # built twice, once for main and once for its tag. To build without a tag, run it by hand
 # (workflow_dispatch), which also keeps the installers as one-day artifacts.
+# Signed automatic updates (0.12): the build jobs never see the updater's private key. Windows attaches its NSIS
+# .exe and .msi, macOS also a .app.tar.gz of the universal .app; then the job «firmar» — the only one with the GitHub
+# Environment «firma» (secrets TAURI_SIGNING_PRIVATE_KEY and TAURI_SIGNING_PRIVATE_KEY_PASSWORD; its deployment policy
+# admits tags v* only) — signs those three with the Tauri CLI installed on its own, verifies the signatures against
+# the public key of src-tauri/tauri.conf.json and attaches the .sig files; the publish job builds latest.json from them
+# (web/scripts/actualizador.mjs). A tag build FAILS when the public key is still the placeholder, a signing secret is
+# missing, or a platform's signature is missing or does not verify (EPA_ESTRICTO): the key is compiled into the apps,
+# so a release without it would leave them unable to update themselves for good. A deliberate release without
+# automatic updates: repository variable EPA_PERMITIR_SIN_ACTUALIZADOR=1. A manual run on a branch builds unsigned and
+# publishes nothing; a manual run on a tag ref behaves like that tag's build.
+# Checkouts do not keep the token (persist-credentials: false): no job pushes with git. npm ci runs without install
+# scripts.
+# TODO (README, «Pendiente: fijar las acciones por SHA»): pin every `uses:` to a full commit SHA with the tag as a
+# comment; the SHAs could not be looked up from the session that wrote this (GitHub API not allowed there).
 # The generated book content (web/public/libro/) is versioned in the repository because it cannot
 # be regenerated here (it needs the book sources, fonts and photos).
 name: Compilar
@@ -29,6 +43,9 @@ concurrency:
 
 env:
   NODE_VERSION: '22'
+  # 1 on tag builds unless the repository variable EPA_PERMITIR_SIN_ACTUALIZADOR is 1 (see the comment above)
+  EPA_ESTRICTO: ${{ github.ref_type == 'tag' && vars.EPA_PERMITIR_SIN_ACTUALIZADOR != '1' && '1' || '0' }}
+  EPA_PERMITIR_SIN_ACTUALIZADOR: ${{ vars.EPA_PERMITIR_SIN_ACTUALIZADOR }}
   CARGO_TERM_COLOR: always
   CARGO_INCREMENTAL: '0'
 
@@ -43,9 +60,27 @@ jobs:
     if: github.ref_type == 'tag'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # only to tell whether the signing secret exists (HAY_CLAVE below); the key itself is not given to this job
+    environment: firma
     permissions:
       contents: write
     steps:
+      - name: Checkout (only the updater script and the public key)
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            web/scripts/actualizador.mjs
+            src-tauri/tauri.conf.json
+          sparse-checkout-cone-mode: false
+
+      - name: The signed automatic update is ready
+        env:
+          HAY_CLAVE: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY != '' }}
+        # Fails (before any draft exists) when the public key is the placeholder or the secret is missing, unless
+        # EPA_PERMITIR_SIN_ACTUALIZADOR=1.
+        run: node web/scripts/actualizador.mjs exigir
+
       - name: Create the draft release
         env:
           GH_TOKEN: ${{ github.token }}
@@ -55,7 +90,8 @@ jobs:
             - Windows: Electronica-*-windows-x64-setup.exe (o el .msi).
             - macOS: Electronica-*-macos-universal.dmg (Apple Silicon e Intel).
             - Android: Electronica-*-android.apk (firmado con la clave propia).
-            Sumas SHA-256 en SHA256SUMS.txt.
+            Sumas SHA-256 en SHA256SUMS.txt. latest.json, los .sig y el .app.tar.gz son para la
+            actualización automática de Windows y macOS (los usa la propia aplicación).
         run: |
           # Created here, once, so the three build jobs never race to create it (drafts are not unique
           # per tag). A rerun finds it already there.
@@ -75,9 +111,16 @@ jobs:
     permissions:
       contents: write
     timeout-minutes: 120
+    # the SHA-256 of the updater artifacts as this job made them: «firmar» checks what it downloads against these
+    # (another job's token could have replaced an asset of the draft in between)
+    outputs:
+      sha256_exe: ${{ steps.recoger.outputs.exe }}
+      sha256_msi: ${{ steps.recoger.outputs.msi }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - name: Check the book content is in the repository
         run: |
@@ -96,6 +139,9 @@ jobs:
 
       - name: Set up Rust
         uses: dtolnay/rust-toolchain@stable
+        with:
+          # explicit: dtolnay/rust-toolchain takes the toolchain from its ref, which a pin by commit SHA loses
+          toolchain: stable
 
       - name: Cache Rust build
         uses: Swatinem/rust-cache@v2
@@ -109,21 +155,41 @@ jobs:
 
       - name: Install npm dependencies
         working-directory: web
-        run: npm ci
+        # No install scripts: the lockfile's only ones are fsevents' (an optional macOS file watcher the build does not
+        # use); nothing else needs them (vite 8's rolldown and the Tauri CLI ship prebuilt platform packages).
+        run: npm ci --ignore-scripts
 
-      - name: Build installers
+      - name: Build the app
         working-directory: web
         run: |
           rm -rf ../src-tauri/target/release/bundle
-          # Bundling downloads NSIS and WiX; retry once on a transient failure (Rust is cached).
+          npm run tauri -- build --no-bundle --ci
+          # A pristine copy of the binary: the bundler patches its bundle type (__TAURI_BUNDLE_TYPE_VAR_UNK → NSS/MSI)
+          # in place before each package and restores it only when that package succeeds, so a retry must start
+          # from this copy (or the .msi could carry a binary that says «nsis», and the updater would get the wrong one).
+          cp ../src-tauri/target/release/electronica-practica-avanzada.exe "$RUNNER_TEMP/binario-sin-tocar.exe"
+
+      - name: Bundle the installers
+        working-directory: web
+        # Unsigned installers only: the updater signatures are made by the «firmar» job, the only one with the key.
+        run: |
+          binario=../src-tauri/target/release/electronica-practica-avanzada.exe
+          # Bundling downloads NSIS and WiX; retry once on a transient failure, each time from the pristine binary.
           for attempt in 1 2; do
-            if npm run tauri -- build --bundles nsis,msi --ci; then exit 0; fi
+            rm -rf ../src-tauri/target/release/bundle
+            cp "$RUNNER_TEMP/binario-sin-tocar.exe" "$binario"
+            if [ "$(grep -ac __TAURI_BUNDLE_TYPE_VAR_UNK "$binario" || true)" -lt 1 ]; then
+              echo "::error::El binario no lleva la marca __TAURI_BUNDLE_TYPE_VAR_UNK antes de empaquetar."
+              exit 1
+            fi
+            if npm run tauri -- bundle --bundles nsis,msi --ci; then exit 0; fi
             echo "::warning::Intento $attempt fallido; se reintenta."
             sleep 15
           done
           exit 1
 
       - name: Collect installers
+        id: recoger
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
@@ -137,9 +203,14 @@ jobs:
             exit 1
           fi
           mkdir -p salida
+          # (the «firmar» job signs these two, under these names, for the automatic update)
           cp "${exe[0]}" "salida/Electronica-${VERSION}-windows-x64-setup.exe"
           cp "${msi[0]}" "salida/Electronica-${VERSION}-windows-x64.msi"
           (cd salida && sums="$(sha256sum -- *)" && printf '%s\n' "$sums" | tee SHA256SUMS-windows.txt)
+          {
+            echo "exe=$(sha256sum "salida/Electronica-${VERSION}-windows-x64-setup.exe" | cut -d ' ' -f 1)"
+            echo "msi=$(sha256sum "salida/Electronica-${VERSION}-windows-x64.msi" | cut -d ' ' -f 1)"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Attach to the release
         if: github.ref_type == 'tag'
@@ -167,9 +238,14 @@ jobs:
     permissions:
       contents: write
     timeout-minutes: 120
+    # as on Windows: the SHA-256 of the .app.tar.gz this job made, checked by «firmar»
+    outputs:
+      sha256_tgz: ${{ steps.recoger.outputs.tgz }}
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - name: Check the book content is in the repository
         run: |
@@ -189,6 +265,7 @@ jobs:
       - name: Set up Rust (Apple Silicon and Intel targets)
         uses: dtolnay/rust-toolchain@stable
         with:
+          toolchain: stable
           targets: aarch64-apple-darwin,x86_64-apple-darwin
 
       - name: Cache Rust build
@@ -203,21 +280,40 @@ jobs:
 
       - name: Install npm dependencies
         working-directory: web
-        run: npm ci
+        # No install scripts: the lockfile's only ones are fsevents' (an optional macOS file watcher the build does not
+        # use); nothing else needs them (vite 8's rolldown and the Tauri CLI ship prebuilt platform packages).
+        run: npm ci --ignore-scripts
 
-      - name: Build universal app and dmg
+      - name: Build the universal app
         working-directory: web
         run: |
           rm -rf ../src-tauri/target/universal-apple-darwin/release/bundle
-          # hdiutil sometimes fails with "Resource busy" on hosted runners; retry (Rust is cached).
+          npm run tauri -- build --target universal-apple-darwin --no-bundle --ci
+          # pristine copy of the binary, as on Windows (the bundler patches it per package)
+          cp ../src-tauri/target/universal-apple-darwin/release/electronica-practica-avanzada "$RUNNER_TEMP/binario-sin-tocar"
+
+      - name: Bundle app and dmg
+        working-directory: web
+        # Unsigned for the updater (the «firmar» job signs the .app.tar.gz made below); the .app keeps its ad-hoc
+        # code signature (signingIdentity "-").
+        run: |
+          binario=../src-tauri/target/universal-apple-darwin/release/electronica-practica-avanzada
+          # hdiutil sometimes fails with "Resource busy" on hosted runners; retry, each time from the pristine binary.
           for attempt in 1 2 3; do
-            if npm run tauri -- build --target universal-apple-darwin --bundles app,dmg --ci; then exit 0; fi
+            rm -rf ../src-tauri/target/universal-apple-darwin/release/bundle
+            cp "$RUNNER_TEMP/binario-sin-tocar" "$binario"
+            if [ "$(grep -ac __TAURI_BUNDLE_TYPE_VAR_UNK "$binario" || true)" -lt 1 ]; then
+              echo "::error::El binario no lleva la marca __TAURI_BUNDLE_TYPE_VAR_UNK antes de empaquetar."
+              exit 1
+            fi
+            if npm run tauri -- bundle --target universal-apple-darwin --bundles app,dmg --ci; then exit 0; fi
             echo "::warning::Intento $attempt fallido; se reintenta."
             sleep 20
           done
           exit 1
 
       - name: Collect installer
+        id: recoger
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
@@ -238,7 +334,27 @@ jobs:
           codesign -dv "${app[0]}" 2>&1 || echo "::warning::La app no tiene firma ad hoc."
           mkdir -p salida
           cp "${dmg[0]}" "salida/Electronica-${VERSION}-macos-universal.dmg"
+          # The automatic update's archive: the .app as tauri-bundler's createUpdaterArtifacts makes it
+          # (updater_bundle.rs: a gzipped tar whose first path component is «<app>.app», symlinks kept, nothing
+          # around it; tauri-plugin-updater drops that first component). GNU tar headers, no extended attributes
+          # (Python's tarfile writes none: no AppleDouble «._» entries). The «firmar» job signs it.
+          python3 - "${app[0]}" "salida/Electronica-${VERSION}-macos-universal.app.tar.gz" <<'PY'
+          import os, sys, tarfile
+          app, salida = sys.argv[1].rstrip('/'), sys.argv[2]
+          raiz = os.path.basename(app)
+          with tarfile.open(salida, 'w:gz', format=tarfile.GNU_FORMAT, encoding='utf-8') as t:
+              t.add(app, arcname=raiz, recursive=True)
+          with tarfile.open(salida, 'r:gz', encoding='utf-8') as t:
+              nombres = t.getnames()
+              enlaces_duros = [m.name for m in t.getmembers() if m.islnk()]
+          fuera = [n for n in nombres if n != raiz and not n.startswith(raiz + '/')]
+          assert not fuera and raiz + '/Contents/Info.plist' in nombres, ('archivo inesperado', fuera[:5])
+          # tarfile stores a hard link as a link entry, which the updater (tar 0.4 unpack) cannot extract
+          assert not enlaces_duros, ('enlaces duros en la .app; el actualizador no podría extraerlos', enlaces_duros[:5])
+          print(f'{salida}: {len(nombres)} entradas bajo {raiz}')
+          PY
           (cd salida && sums="$(shasum -a 256 -- *)" && printf '%s\n' "$sums" | tee SHA256SUMS-macos.txt)
+          echo "tgz=$(shasum -a 256 "salida/Electronica-${VERSION}-macos-universal.app.tar.gz" | cut -d ' ' -f 1)" >> "$GITHUB_OUTPUT"
 
       - name: Attach to the release
         if: github.ref_type == 'tag'
@@ -288,6 +404,8 @@ jobs:
 
       - name: Checkout
         uses: actions/checkout@v5
+        with:
+          persist-credentials: false
 
       - name: Check the book content is in the repository
         run: |
@@ -328,6 +446,7 @@ jobs:
       - name: Set up Rust (Android targets)
         uses: dtolnay/rust-toolchain@stable
         with:
+          toolchain: stable
           # 64-bit ARM only: the owner's devices (Xiaomi Pad 6, Pixel 8 Pro) are arm64, and the Pixel 8 Pro
           # cannot even run 32-bit code; one Rust target halves the longest step of this job.
           targets: aarch64-linux-android
@@ -343,7 +462,7 @@ jobs:
       - name: Use the preinstalled Android SDK
         run: |
           sdk="${ANDROID_HOME:-${ANDROID_SDK_ROOT:-/usr/local/lib/android/sdk}}"
-          tools="$(ls -d "$sdk"/cmdline-tools/*/bin 2>/dev/null | sort -V | tail -n 1)"
+          tools="$(find "$sdk/cmdline-tools" -mindepth 2 -maxdepth 2 -type d -name bin 2>/dev/null | sort -V | tail -n 1)"
           if [ -x "$sdk/cmdline-tools/latest/bin/sdkmanager" ]; then tools="$sdk/cmdline-tools/latest/bin"; fi
           if [ -z "$tools" ] || [ ! -x "$tools/sdkmanager" ]; then
             echo "::error::No se encuentra sdkmanager en $sdk/cmdline-tools"
@@ -381,7 +500,9 @@ jobs:
 
       - name: Install npm dependencies
         working-directory: web
-        run: npm ci
+        # No install scripts: the lockfile's only ones are fsevents' (an optional macOS file watcher the build does not
+        # use); nothing else needs them (vite 8's rolldown and the Tauri CLI ship prebuilt platform packages).
+        run: npm ci --ignore-scripts
 
       - name: Generate the Android project
         working-directory: web
@@ -396,7 +517,8 @@ jobs:
       - name: Install the compile SDK platform
         run: |
           # Gradle can download it by itself; installing it here only makes that step predictable.
-          level="$(sed -nE 's/^[[:space:]]*compileSdk[[:space:]]*=[[:space:]]*([0-9]+).*/\1/p' src-tauri/gen/android/app/build.gradle.kts | head -n 1)"
+          # (the first match only, without `| head`: under pipefail a closed pipe could fail the step)
+          level="$(sed -nE '/^[[:space:]]*compileSdk[[:space:]]*=[[:space:]]*[0-9]+/{s/^[^=]*=[[:space:]]*([0-9]+).*/\1/p;q;}' src-tauri/gen/android/app/build.gradle.kts)"
           if [ -n "$level" ]; then
             sdkmanager --install "platforms;android-${level}" > /dev/null || echo "::warning::No se pudo instalar platforms;android-${level}; Gradle lo intentará."
           fi
@@ -440,6 +562,20 @@ jobs:
             echo "::warning::No se encontró apksigner; no se comprueba la firma."
           fi
           unzip -l "$apk" | grep -E 'lib/arm64-v8a/'
+          # The reminder's own small icon (0.12, src-tauri/recursos-android) must be in the APK, or Android shows its
+          # generic «i». aapt2 lists resources by name even if the release build shortened their paths; counted with
+          # grep -c (reads everything: no SIGPIPE under pipefail).
+          aapt2="$(find "$sdk/build-tools" -name aapt2 -type f 2>/dev/null | sort -V | tail -n 1)"
+          if [ -n "$aapt2" ]; then
+            n="$("$aapt2" dump resources "$apk" | grep -c 'drawable/ic_stat_epa' || true)"
+          else
+            n="$(unzip -l "$apk" | grep -c 'res/drawable[^ ]*/ic_stat_epa' || true)"
+          fi
+          if [ "${n:-0}" -lt 1 ]; then
+            echo "::error::El APK no contiene drawable/ic_stat_epa (icono de la notificación del recordatorio)."
+            exit 1
+          fi
+          echo "Icono del recordatorio en el APK: drawable/ic_stat_epa ($n)."
           mkdir -p salida
           cp "$apk" "salida/Electronica-${VERSION}-android.apk"
           (cd salida && sums="$(sha256sum -- *)" && printf '%s\n' "$sums" | tee SHA256SUMS-android.txt)
@@ -466,29 +602,150 @@ jobs:
         if: always()
         run: rm -f "$RUNNER_TEMP/electronica-release.jks" src-tauri/gen/android/keystore.properties
 
+  firmar:
+    name: Firmar la actualización automática
+    # The only job that sees the updater's private key (environment «firma», whose policy admits tags v* only). It
+    # runs no code of the project's dependencies: a sparse checkout of two files plus the lockfile, and the Tauri CLI
+    # alone, installed without install scripts and checked against the lockfile (version and integrity). It downloads
+    # the unsigned updater artifacts the build jobs attached to the draft release, signs them bound to the version
+    # (`tauri signer sign --app-version`, as createUpdaterArtifacts does), verifies each .sig against the public key of
+    # tauri.conf.json and attaches the .sig files. Strict on tags (EPA_ESTRICTO): any missing or bad signature fails.
+    if: github.ref_type == 'tag'
+    # android too: every job that runs third-party code with a write token has finished before anything is signed
+    needs: [borrador, windows, macos, android]
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    environment: firma
+    permissions:
+      contents: write
+    steps:
+      - name: Checkout (the updater script, the public key and the lockfile only)
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            web/scripts/actualizador.mjs
+            src-tauri/tauri.conf.json
+            web/package-lock.json
+          sparse-checkout-cone-mode: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Install the Tauri CLI only (lockfile version, no install scripts)
+        run: |
+          cli="$RUNNER_TEMP/tauri-cli"
+          mkdir -p "$cli"
+          version="$(node -p "require('./web/package-lock.json').packages['node_modules/@tauri-apps/cli'].version")"
+          npm install --prefix "$cli" --no-save --ignore-scripts --no-audit --no-fund "@tauri-apps/cli@$version"
+          node web/scripts/actualizador.mjs cli --lock web/package-lock.json --instalado "$cli/node_modules"
+
+      - name: Sign the updater artifacts
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: ${{ github.ref_name }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+          SHA256_EXE: ${{ needs.windows.outputs.sha256_exe }}
+          SHA256_MSI: ${{ needs.windows.outputs.sha256_msi }}
+          SHA256_TGZ: ${{ needs.macos.outputs.sha256_tgz }}
+        run: |
+          version="${TAG#v}"
+          mkdir -p artefactos
+          for sufijo in -windows-x64-setup.exe -windows-x64.msi -macos-universal.app.tar.gz; do
+            nombre="Electronica-${version}${sufijo}"
+            if ! gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern "$nombre" --dir artefactos --clobber; then
+              echo "::warning::No se pudo descargar $nombre de la release."
+            fi
+          done
+          # Only the bytes the build jobs made are signed: each download against the SHA-256 that job reported
+          # (job outputs, not anything stored in the release, which another job's token could have replaced).
+          for h in "$SHA256_EXE" "$SHA256_MSI" "$SHA256_TGZ"; do
+            if ! [[ "$h" =~ ^[0-9a-f]{64}$ ]]; then
+              echo "::error::Falta la suma SHA-256 de un artefacto en las salidas de los trabajos de compilación."
+              exit 1
+            fi
+          done
+          if ! printf '%s  %s\n' \
+            "$SHA256_EXE" "artefactos/Electronica-${version}-windows-x64-setup.exe" \
+            "$SHA256_MSI" "artefactos/Electronica-${version}-windows-x64.msi" \
+            "$SHA256_TGZ" "artefactos/Electronica-${version}-macos-universal.app.tar.gz" | sha256sum -c -; then
+            echo "::error::Lo descargado de la release no es lo que subieron los trabajos de compilación: no se firma nada."
+            exit 1
+          fi
+          # fails on a tag build (EPA_ESTRICTO=1) if anything is missing or does not verify
+          node web/scripts/actualizador.mjs firmar --dir artefactos --version "$version" --cli "$RUNNER_TEMP/tauri-cli/node_modules/@tauri-apps/cli/tauri.js"
+          shopt -s nullglob
+          firmas=(artefactos/*.sig)
+          if [ ${#firmas[@]} -gt 0 ]; then
+            (cd artefactos && sums="$(sha256sum -- *.sig)" && printf '%s\n' "$sums" | tee SHA256SUMS-firmas.txt)
+            gh release upload "$TAG" "${firmas[@]}" artefactos/SHA256SUMS-firmas.txt --repo "$GITHUB_REPOSITORY" --clobber
+          fi
+
   publicar:
     name: Publicar en Releases
     if: github.ref_type == 'tag'
-    needs: [borrador, windows, macos, android]
+    needs: [borrador, windows, macos, android, firmar]
     runs-on: ubuntu-latest
     timeout-minutes: 15
     permissions:
       contents: write
     steps:
-      - name: Checksums and publish
+      - name: Checkout (only the manifest script and the public key)
+        uses: actions/checkout@v5
+        with:
+          persist-credentials: false
+          sparse-checkout: |
+            web/scripts/actualizador.mjs
+            src-tauri/tauri.conf.json
+          sparse-checkout-cone-mode: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+
+      - name: Checksums, update manifest and publish
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: ${{ github.ref_name }}
         run: |
-          # Each build job attached its own SHA256SUMS-<platform>.txt next to its installers: they are
-          # merged into a single SHA256SUMS.txt (same "hash  name" lines) without downloading the installers.
+          # Each build job attached its own SHA256SUMS-<platform>.txt next to its installers (and «firmar» its
+          # SHA256SUMS-firmas.txt): they are merged into a single SHA256SUMS.txt (same "hash  name" lines) without
+          # downloading the installers.
           gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern 'SHA256SUMS-*.txt' --dir sumas --clobber
-          n=$(find sumas -name 'SHA256SUMS-*.txt' | wc -l)
-          if [ "$n" -ne 3 ]; then
-            echo "::error::Se esperaban 3 ficheros SHA256SUMS-*.txt en la release y hay $n"
-            exit 1
-          fi
+          for plataforma in windows macos android; do
+            if [ ! -f "sumas/SHA256SUMS-$plataforma.txt" ]; then
+              echo "::error::Falta SHA256SUMS-$plataforma.txt en la release."
+              exit 1
+            fi
+          done
           cat sumas/SHA256SUMS-*.txt | sort -k2 > SHA256SUMS.txt
+
+          # latest.json (signed automatic updates, Windows and macOS) from the .sig files the build jobs attached.
+          # It is uploaded while the release is still a draft, so .../releases/latest/download/latest.json never
+          # points at a release without its installers. No signatures: a warning, and the release is still published.
+          mkdir -p firmas
+          rm -f latest.json
+          # (counted by gh itself: `gh … | grep -q` under pipefail can fail with SIGPIPE and skip the signatures)
+          nsig="$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json assets --jq '[.assets[].name|select(endswith(".sig"))]|length')"
+          if [ "$nsig" -gt 0 ]; then
+            gh release download "$TAG" --repo "$GITHUB_REPOSITORY" --pattern '*.sig' --dir firmas --clobber
+          fi
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json body --jq .body > notas.txt
+          node web/scripts/actualizador.mjs manifiesto --firmas firmas --version "${TAG#v}" --etiqueta "$TAG" \
+            --repo "$GITHUB_REPOSITORY" --notas notas.txt --salida latest.json
+          if [ -f latest.json ]; then
+            cat latest.json
+            sha256sum latest.json >> SHA256SUMS.txt
+            sort -k2 -o SHA256SUMS.txt SHA256SUMS.txt
+            gh release upload "$TAG" latest.json --repo "$GITHUB_REPOSITORY" --clobber
+          else
+            echo "::warning::Esta versión se publica sin latest.json: las aplicaciones instaladas mostrarán el aviso con el enlace, sin «Descargar e instalar»."
+          fi
+
           cat SHA256SUMS.txt
           gh release upload "$TAG" SHA256SUMS.txt --repo "$GITHUB_REPOSITORY" --clobber
           for f in sumas/SHA256SUMS-*.txt; do
