@@ -26,6 +26,7 @@
   import type { DocumentoProtoboard } from './tipos.ts';
   import { miniaturaMontaje } from './miniatura';
   import MiniaturaFigura from '../miniaturas/MiniaturaFigura.svelte';
+  import { confirmar } from '../../lib/confirmar';
 
   let { ruta }: { ruta: string } = $props();
 
@@ -192,7 +193,8 @@
   }
 
   async function quitar(id: string, nombre: string) {
-    if (!confirm(`¿Borrar «${nombre}»?`)) return;
+    // the app's own dialog (0.12): window.confirm is not reliable in the apps (lib/confirmar.ts)
+    if (!(await confirmar({ titulo: `¿Borrar «${nombre}»?`, aceptar: 'Borrar' }))) return;
     await borrarMontaje(id);
     if (id === idGuardado) location.hash = '#/protoboard';
   }

@@ -418,8 +418,9 @@ test('exportar .cir y volver a importarlo da la misma netlist', async ({ page })
   await page.locator('a.esquema', { hasText: 'Volver al esquema' }).click();
   await page.waitForFunction(() => (window as unknown as { __epaEditor?: { ed: { doc: { componentes: unknown[] } } } }).__epaEditor?.ed.doc.componentes.length === 6);
   // Import: a new drawing whose netlist has the same element lines.
-  page.once('dialog', (d) => void d.accept());
   await page.getByRole('button', { name: 'Nuevo' }).click();
+  // (0.12: the app's own confirmation instead of window.confirm — the drawing is not saved)
+  await page.getByRole('alertdialog', { name: '¿Empezar un circuito nuevo?' }).getByRole('button', { name: 'Descartar' }).click();
   await page.locator('input[type="file"]').setInputFiles({ name: 'divisor.cir', mimeType: 'text/plain', buffer: Buffer.from(texto) });
   await page.waitForFunction(() => (window as unknown as { __epaEditor: { ed: { doc: { componentes: unknown[] } } } }).__epaEditor.ed.doc.componentes.length > 2);
   const despues = await netlist(page);

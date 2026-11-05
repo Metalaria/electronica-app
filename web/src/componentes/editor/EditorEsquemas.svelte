@@ -61,6 +61,7 @@
   import Ordenar from '@lucide/svelte/icons/wand-sparkles';
   import AlinearIcono from '@lucide/svelte/icons/align-start-vertical';
   import { emitir } from '../../lib/aprendizaje/eventos';
+  import { confirmar } from '../../lib/confirmar';
 
   let { ruta }: { ruta: string } = $props();
 
@@ -228,8 +229,18 @@
     location.hash = `#/editor/${id}`;
   }
 
-  function nuevo() {
-    if (!idGuardado && ed.doc.componentes.length && !confirm('¿Empezar un circuito nuevo? El que está dibujando no se ha guardado y se perderá.')) return;
+  async function nuevo() {
+    // the app's own dialog (0.12): window.confirm is not reliable in the apps (lib/confirmar.ts)
+    if (
+      !idGuardado &&
+      ed.doc.componentes.length &&
+      !(await confirmar({
+        titulo: '¿Empezar un circuito nuevo?',
+        mensaje: 'El que está dibujando no se ha guardado y se perderá.',
+        aceptar: 'Descartar',
+      }))
+    )
+      return;
     escribirBorrador(null);
     if (idGuardado) location.hash = '#/editor';
     else {
