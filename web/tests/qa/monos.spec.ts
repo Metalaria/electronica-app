@@ -44,6 +44,11 @@ const PAGINAS: [string, string][] = [
   ['dominio', '#/progreso/dominio'],
   ['leccion-explora', '#/leccion/cap22/sec-22.1'],
   ['calculadora-formula', '#/calculadoras/deslizamiento'],
+  // 0.12: the backup card (its file picker and «Exportar copia»), the editor's «Nuevo» over a drawing (the in-app
+  // confirmation) and the progress page with the day summed across devices
+  ['copia', '#/sincronizacion/copia'],
+  ['editor-nuevo', '#/editor/libro/cap05/sec-5.3_led_150ohm'],
+  ['progreso', '#/progreso'],
 ];
 
 /** mulberry32: small seeded PRNG. */

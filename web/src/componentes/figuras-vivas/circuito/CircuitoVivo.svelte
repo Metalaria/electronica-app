@@ -25,6 +25,7 @@
     refs = [],
     resultado,
     pesada = false,
+    tamano,
   }: {
     /** The netlist as it is now (sliders and edits included). */
     texto: string;
@@ -34,6 +35,11 @@
     resultado: Simulacion | null;
     /** Heavy netlist: only the operating point is solved for the drawing. */
     pesada?: boolean;
+    /**
+     * 0.12 QA: [width, height] of the drawing it will show (proporciones.ts, precomputed for the book's netlists), so its
+     * place is kept exactly while it is decided; null: nothing will be drawn; undefined: unknown (a 16:9 place).
+     */
+    tamano?: [number, number] | null;
   } = $props();
 
   // The automatic generator is another module; it is used only if it exists in this build.
@@ -324,11 +330,13 @@
 </script>
 
 {#if !decidido}
-  <section class="circuito-vivo" aria-label="Circuito" aria-busy="true" data-reserva>
-    <div class="cab reserva"><h2>Circuito</h2></div>
-    <div class="placa" style:--proporcion={16 / 9}><div class="ventana"></div></div>
-    <div class="hueco-panel"></div>
-  </section>
+  {#if tamano !== null}
+    <section class="circuito-vivo" aria-label="Circuito" aria-busy="true" data-reserva>
+      <div class="cab reserva"><h2>Circuito</h2></div>
+      <div class="placa" style:--proporcion={tamano ? tamano[0] / tamano[1] : 16 / 9}><div class="ventana"></div></div>
+      <div class="hueco-panel"></div>
+    </section>
+  {/if}
 {:else if dibujo && est && datos}
   <section class="circuito-vivo" aria-label="Circuito" bind:this={raiz}>
     <div class="cab">

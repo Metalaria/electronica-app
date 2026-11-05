@@ -18,6 +18,7 @@
   import { autoHorizontal } from './motor/osciloscopio.ts';
   import type { IndiceSpice } from '../../simulador/tipos';
   import { circuitoEditor, type CircuitoEditor } from './editor';
+  import { tamanoDibujo } from '../figuras-vivas/circuito/proporciones';
 
   let { tipo, id }: { tipo: string; id: string } = $props();
 
@@ -167,7 +168,8 @@
 {#if error}<p class="error">{error}</p>{/if}
 {#if errorRed}<ErrorCarga titulo="No se pudo cargar el circuito." error={errorTexto} reintentar={() => void cargarCatalogo(id)} />{/if}
 
-<BancoVista {b} {plano}>
+<!-- 0.12 QA: a book circuit's drawing size is known beforehand (its place is kept exactly) -->
+<BancoVista {b} {plano} tamano={tipo === 'circuito' ? tamanoDibujo(id, 'banco') : undefined}>
   {#snippet lateral()}
     {#if practica}
       <PanelPractica p={practica} {b} />

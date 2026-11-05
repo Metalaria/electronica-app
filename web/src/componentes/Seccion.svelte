@@ -66,8 +66,8 @@
           <VerPlaca {label} compacto />
         </div>
         <!-- Owner's decision (0.11 final pass): «Estudiar por pasos» (0.9: the section as a step-by-step lesson) is one
-             of these buttons, not the end of the title. Three to a row, as wide as the three of 0.10.1, so titles
-             wrap as they did; it goes under the bookmark. -->
+             of these buttons, not the end of the title. Three to a row, as wide as the three of 0.10.1; it goes under
+             the bookmark. (0.12: the tools go under the title when beside it they would make it take more lines.) -->
         <div class="iconos">
           <MarcaLeida {parte} {label} />
           <MarcaDominio {parte} {label} />

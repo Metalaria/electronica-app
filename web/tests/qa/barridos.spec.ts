@@ -282,10 +282,16 @@ test('placas · 3D y 2D de consolas y proyectos', async ({ page }, info) => {
       await page.evaluate((h) => (location.hash = h), p.d2);
       await page.waitForFunction(() => !!(globalThis as unknown as { __epaPlacaVista?: unknown }).__epaPlacaVista, null, { timeout: 120_000 });
       await esperarCalma(page, 10_000);
-      const huerfanos = await page.evaluate(() => {
-        (window as unknown as { gc?: () => void }).gc?.();
-        return (window as unknown as { __qa: EstadoSonda }).__qa.contextosHuerfanos();
-      });
+      // (0.12: the 3D view keeps its context until the environment's read-back ends, at most 60 s)
+      let huerfanos = 0;
+      for (const fin = Date.now() + 62_000; ; ) {
+        huerfanos = await page.evaluate(() => {
+          (window as unknown as { gc?: () => void }).gc?.();
+          return (window as unknown as { __qa: EstadoSonda }).__qa.contextosHuerfanos();
+        });
+        if (!huerfanos || Date.now() > fin) break;
+        await page.waitForTimeout(2000);
+      }
       if (huerfanos) await reg.anotar({ sev: 'rendimiento', tipo: 'webgl-fuga', firma: p.id.split(':')[0]!, msg: `Al pasar de la placa en 3D a 2D quedan ${huerfanos} contexto(s) WebGL sin liberar.` });
       await recogerYComprobar(page, reg, { tactil: true, completa: false, accesibilidad: false });
       bien++;

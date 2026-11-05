@@ -5,7 +5,8 @@
 //   PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers nice npx playwright test -c playwright.qa.config.ts tests/qa/fase2-axe.spec.ts
 import { createRequire } from 'node:module';
 import { test, type Page } from '@playwright/test';
-import { Registro, esperarCalma, prepararPagina, trozos } from './arnes.ts';
+import { Registro, esperarCalma, hacerAccion, prepararPagina, trozos } from './arnes.ts';
+import { deshacerAccion012, esAccion012 } from './novedades.ts';
 import { lecciones, spice, todasLasRutas, type Ruta } from './rutas.ts';
 
 const AXE = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
@@ -19,6 +20,14 @@ function representantes(): Ruta[] {
     if (!m.has(k) || r.grupo === 'aprendizaje') m.set(r.grupo === 'aprendizaje' ? r.id : k, r);
   }
   const filtro = process.env.QA_FILTRO;
+  // QA_MUESTRA=<n> (0.12 QA): instead of one route of each kind, n routes spread evenly over the ones QA_FILTRO picks
+  // (e.g. QA_FILTRO=seccion: QA_MUESTRA=40 after a change to the section header)
+  const muestra = Number(process.env.QA_MUESTRA ?? 0);
+  if (muestra > 0) {
+    const todas = todasLasRutas().filter((r) => !filtro || r.id.includes(filtro));
+    const paso = Math.max(1, todas.length / muestra);
+    return [...new Set(Array.from({ length: Math.min(muestra, todas.length) }, (_, i) => todas[Math.floor(i * paso)]!))];
+  }
   return [...m.values()].filter((r) => !filtro || r.id.includes(filtro));
 }
 
@@ -29,9 +38,12 @@ interface Violacion {
   nodes: { target: string[]; failureSummary?: string }[];
 }
 
-/** Opens what the route's action opens (settings, search, menu, a figure's viewer). */
-async function accion(page: Page, r: Ruta): Promise<void> {
-  if (r.accion === 'ajustes') await page.getByRole('button', { name: 'Tema y tamaño de letra' }).first().click({ timeout: 10_000 });
+/** Opens what the route's action opens (settings, search, menu, a figure's viewer, a 0.12 state). */
+async function accion(page: Page, r: Ruta, reg: Registro): Promise<void> {
+  // (0.12 QA: the figure viewer's button is found by its accessible name, as the crawler does: matched by its text it
+  // was never found — the button has only an icon — and the viewer was audited closed, silently)
+  if (esAccion012(r.accion) || r.accion === 'visor') await hacerAccion(page, r, reg);
+  else if (r.accion === 'ajustes') await page.getByRole('button', { name: 'Tema y tamaño de letra' }).first().click({ timeout: 10_000 });
   else if (r.accion === 'buscar') {
     await page.keyboard.press('Control+k');
     const caja = page.getByRole('dialog', { name: 'Buscar en el libro' }).locator('input');
@@ -64,7 +76,10 @@ trozos(representantes(), 8).forEach((trozo, k) => {
         if (i === 0) await page.goto(`/${r.hash}`);
         else await page.goto(`/${r.hash}`);
         await esperarCalma(page, r.pesada ? 60_000 : 15_000, 600);
-        if (r.accion) await accion(page, r).catch(() => {});
+        if (r.accion)
+          await accion(page, r, reg).catch((e: unknown) =>
+            reg.anotar({ sev: 'funcional', tipo: 'accion', firma: `${r.accion}: ${String(e).split('\n')[0]!.slice(0, 80)}`, msg: `axe: no se pudo hacer «${r.accion}» en ${r.hash}: ${String(e).split('\n')[0]}` }),
+          );
         await page.addScriptTag({ path: AXE });
         const v = (await page.evaluate(async () => {
           const axe = (window as unknown as { axe: { run: (c: unknown, o: unknown) => Promise<{ violations: Violacion[] }> } }).axe;
@@ -72,6 +87,7 @@ trozos(representantes(), 8).forEach((trozo, k) => {
           return res.violations.map((x) => ({ id: x.id, impact: x.impact, help: x.help, nodes: x.nodes.slice(0, 6).map((n) => ({ target: n.target as string[], failureSummary: n.failureSummary })) }));
         })) as Violacion[];
         auditadas++;
+        if (esAccion012(r.accion)) await deshacerAccion012(page, r.accion).catch(() => {});
         for (const x of v) {
           reglas++;
           for (const n of x.nodes) {

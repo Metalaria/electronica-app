@@ -7,6 +7,7 @@
   import Layers from '@lucide/svelte/icons/layers';
   import Tag from '@lucide/svelte/icons/tag';
   import { Visor } from './motor/visor';
+  import { precargarEntorno } from './motor/entorno';
   import { crearModelo, liberarModelo } from './modelos';
   import type { DatosModelo, Montaje, Parametros } from './modelos/tipos';
   import { app } from '../../lib/estado.svelte';
@@ -109,7 +110,9 @@
     let vivo = true;
     // Markings are drawn with the app's font: wait for it (briefly) so the first textures use it.
     const fuentes = document.fonts?.load ? Promise.race([document.fonts.load('700 40px "Source Sans 3"'), new Promise((r) => setTimeout(r, 600))]) : Promise.resolve();
-    void fuentes.then(() => {
+    // 0.12 QA: and the studio's environment this device saved (entorno.ts; at most 600 ms, once per page), as the boards'
+    // view does — without it a model's page in a new session filtered the environment again (seconds on a slow GPU)
+    void Promise.all([fuentes, precargarEntorno()]).then(() => {
       if (!vivo || !lienzo || !capa) return;
       try {
         visor = new Visor(lienzo, capa, {

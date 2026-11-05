@@ -19,11 +19,15 @@
   let {
     est,
     numero = null,
+    figura = null,
     amplio = false,
   }: {
     est: EstadoEsquema;
     /** «Circuito 2» when the figure has several drawings. */
     numero?: number | null;
+    /** 0.12 QA: the figure's number, in the panel's name (axe «landmark-unique»: two live figures of one page had two
+     *  regions called «Controles del circuito»). */
+    figura?: string | null;
     /** Full-screen view: values open, larger plot. */
     amplio?: boolean;
   } = $props();
@@ -138,7 +142,7 @@
   }
 </script>
 
-<section class="panel-e" class:amplio aria-label={numero ? `Controles del circuito ${numero}` : 'Controles del circuito'}>
+<section class="panel-e" class:amplio aria-label={`Controles del circuito${numero ? ` ${numero}` : ''}${figura ? ` de la figura ${figura}` : ''}`}>
   {#if numero}<h4 class="num">Circuito {numero}</h4>{/if}
   {#if est.externo && !est.op}
     <p class="pista">{est.estadoSim === 'simulando' ? 'Calculando las corrientes del circuito…' : est.mensaje || 'Simule el circuito para ver sus tensiones y corrientes en el dibujo.'}</p>

@@ -15,12 +15,13 @@ import type { Bloque, Indice } from '../../src/lib/tipos.ts';
 import type { PracticaParte } from '../../src/componentes/practica/tipos.ts';
 import { CURSOS } from '../../src/lib/aprendizaje/cursos.ts';
 import { MODO, type Perfil } from './perfiles.ts';
+import type { Accion012 } from './novedades.ts';
 
 const PUBLICO = new URL('../../public/', import.meta.url);
 export const leerJson = <T>(ruta: string): T => JSON.parse(readFileSync(new URL(ruta, PUBLICO), 'utf8')) as T;
 
 /** What to do on the page besides looking at it. */
-export type Accion = 'visor' | 'ajustes' | 'buscar' | 'menu';
+export type Accion = 'visor' | 'ajustes' | 'buscar' | 'menu' | Accion012;
 
 export interface Ruta {
   /** Stable id (also the sampling key). */
@@ -182,6 +183,25 @@ export function todasLasRutas(): Ruta[] {
   // lesson steps with an explorable live schematic (figuras-vivas/esquema/ExploraEsquema.svelte)
   r.push({ id: 'leccion-explora:cap01/sec-1.4/5', hash: '#/leccion/cap01/sec-1.4/5', grupo: 'aprendizaje' });
   r.push({ id: 'leccion-explora:cap22/sec-22.1', hash: '#/leccion/cap22/sec-22.1', grupo: 'aprendizaje' });
+
+  // ---- 0.12 (novedades.ts): every state of the new interface, in every profile and layout variant
+  // the backup card (#/sincronizacion/copia), its preview, «Sustituir todo», the result, the files it refuses and the
+  // undo of a replacement; «Aa» → «Exportar copia»
+  r.push({ id: 'copia', hash: '#/sincronizacion/copia', grupo: 'copia', siempre: true });
+  r.push({ id: 'copia:aa-exportar', hash: '#/', grupo: 'copia', accion: 'aa-exportar', siempre: true });
+  for (const a of ['copia-unir', 'copia-sustituir', 'copia-resultado', 'copia-danada', 'copia-ajena', 'copia-nueva', 'copia-deshacer'] as const)
+    r.push({ id: `copia:${a}`, hash: '#/sincronizacion/copia', grupo: 'copia', accion: a, siempre: true });
+  // the in-app confirmation (Confirmacion.svelte): «Borrar» a montage, «Nuevo» over an unsaved circuit
+  r.push({ id: 'confirmacion:protoboard', hash: '#/protoboard', grupo: 'confirmacion', accion: 'confirmar-borrar', siempre: true });
+  r.push({ id: 'confirmacion:editor', hash: '#/editor/libro/cap05/sec-5.3_led_150ohm', grupo: 'confirmacion', accion: 'confirmar-nuevo', siempre: true });
+  // the signed updater (Windows and macOS through the test bridge): «Aa», the notice and the synchronisation page
+  for (const a of ['actualizador-disponible', 'actualizador-descargando', 'actualizador-listo', 'actualizador-error', 'actualizador-mac'] as const)
+    r.push({ id: `actualizador:${a.slice(13)}`, hash: '#/', grupo: 'actualizador', accion: a, siempre: true });
+  r.push({ id: 'actualizador:aviso', hash: '#/cap05', grupo: 'actualizador', accion: 'actualizador-aviso', siempre: true });
+  r.push({ id: 'actualizador:pagina', hash: '#/sincronizacion', grupo: 'actualizador', accion: 'actualizador-pagina', siempre: true });
+  // the day's activity summed across devices (lib/progreso-dias.ts): the start page's goal and «Progreso y logros»
+  r.push({ id: 'actividad:inicio', hash: '#/', grupo: 'actividad', accion: 'dias-sumados', siempre: true, completa: true });
+  r.push({ id: 'actividad:progreso', hash: '#/progreso', grupo: 'actividad', accion: 'dias-sumados', siempre: true, completa: true });
   return r;
 }
 

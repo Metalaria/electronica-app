@@ -6,6 +6,7 @@
 
 import { Box3, MeshBasicMaterial, PerspectiveCamera, Sphere, Vector3, WebGLRenderer, NeutralToneMapping, SRGBColorSpace } from 'three';
 import { crearEstudio, type Estudio } from './motor/estudio';
+import { precargarEntorno, soltarContexto } from './motor/entorno';
 import { crearPlaca } from './motor/placa';
 import type { DatosModelo } from './modelos/tipos';
 import { crearModelo, liberarModelo } from './modelos';
@@ -48,7 +49,7 @@ function preparar(): void {
 function soltar(): void {
   estudio?.liberar();
   renderer?.dispose();
-  renderer?.forceContextLoss();
+  if (renderer) soltarContexto(renderer);
   renderer = null;
   estudio = null;
 }
@@ -109,6 +110,8 @@ async function trabajar(): Promise<void> {
   if (trabajando) return;
   trabajando = true;
   if (cierre) clearTimeout(cierre);
+  // the environment this device saved (0.12 QA: the thumbnails' renderer filtered it again in a new session)
+  if (!renderer) await precargarEntorno();
   while (cola.length) {
     const x = cola.shift()!;
     try {

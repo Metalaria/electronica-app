@@ -25,6 +25,7 @@
   import Resultados from './Resultados.svelte';
   import Icono from '../Icono.svelte';
   import CircuitoVivo from '../figuras-vivas/circuito/CircuitoVivo.svelte';
+  import { tamanoDibujo } from '../figuras-vivas/circuito/proporciones';
   import EsquemaAuto from '../esquema-auto/EsquemaAuto.svelte';
   import Interiores from '../esquema-auto/Interiores.svelte';
   import PestanasSimulador from './PestanasSimulador.svelte';
@@ -372,7 +373,7 @@ C1 out 0 100n
 
     <!-- The circuit itself, drawn and alive (figuras-vivas/circuito), before the netlist and the results. -->
     {#if !cargando && !noDisponible}
-      <CircuitoVivo {texto} refs={n?.refs ?? []} {resultado} pesada={!!n?.motor.pesada} />
+      <CircuitoVivo {texto} refs={n?.refs ?? []} {resultado} pesada={!!n?.motor.pesada} tamano={n && !modificada ? tamanoDibujo(id, 'pagina') : undefined} />
       <Interiores {texto} />
     {:else if !cargando}
       <!-- Not simulable here (XSPICE): the circuit is still drawn (esquema-auto). -->

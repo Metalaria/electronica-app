@@ -244,6 +244,10 @@
     /* numbers fit on one line; a reading in words («cerámica de clase 2») wraps inside its box */
     overflow-wrap: break-word;
   }
+  /* sepia: its warmer surface needs a little more ink (0.12 QA: an orange reading was 4,2:1 on --superficie-2) */
+  :global(:root[data-tema='sepia']) .lecturas dd {
+    color: color-mix(in srgb, var(--c) 45%, var(--tinta));
+  }
 
   @container (min-width: 860px) {
     .marco {

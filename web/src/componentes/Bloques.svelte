@@ -7,6 +7,7 @@
   import Ecuacion from './Ecuacion.svelte';
   import Figura from './Figura.svelte';
   import Tabla from './Tabla.svelte';
+  import { desplazable } from '../lib/desplazable';
   import Ejercicios from './Ejercicios.svelte';
   import BotonSimular from './BotonSimular.svelte';
   import VerAnimacion from './animaciones/VerAnimacion.svelte';
@@ -86,7 +87,7 @@
   {:else if b.t === 'tabla'}
     <Tabla bloque={b} indice={db} />
   {:else if b.t === 'codigo'}
-    <pre {id} data-b={db} class="codigo">{#if b.lenguaje}<span class="lenguaje">{b.lenguaje}</span>{/if}<code>{b.texto}</code></pre>
+    <pre {id} data-b={db} class="codigo" use:desplazable={b.lenguaje ? `Código ${b.lenguaje} (se puede desplazar)` : 'Código (se puede desplazar)'}>{#if b.lenguaje}<span class="lenguaje">{b.lenguaje}</span>{/if}<code>{b.texto}</code></pre>
   {:else if b.t === 'centrado'}
     <div {id} data-b={db} class="centrado">{@html prepararHtml(b.html)}</div>
   {:else if b.t === 'ejercicios'}

@@ -160,7 +160,7 @@
     {#if leccion && explorables.includes(i) && e.simulable && !e.externo && !e.esq.simulacion?.tran}
       <ExploraEsquema est={e} {ruta} indice={i} parte={leccion.parte} visible={visible && pagina.visible && !grande} />
     {/if}
-    <PanelEsquema est={e} numero={esquemas.length > 1 ? i + 1 : null} />
+    <PanelEsquema est={e} numero={esquemas.length > 1 ? i + 1 : null} figura={num} />
   {/each}
 {/if}
 {#if grande && datos}

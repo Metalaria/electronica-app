@@ -7,6 +7,7 @@ import type { BrowserContext, Page, TestInfo } from '@playwright/test';
 import { comprobarPagina, type Crudo, type OpcionesComprobar } from './comprobaciones.ts';
 import { instalarSonda, type EstadoSonda } from './sonda.ts';
 import { perfilDe, type Perfil } from './perfiles.ts';
+import { deshacerAccion012, esAccion012, hacerAccion012, instalarPuenteQa } from './novedades.ts';
 import type { Ruta } from './rutas.ts';
 
 export const INFORME = process.env.QA_INFORME ? `${process.env.QA_INFORME.replace(/\/$/, '')}/` : new URL('./informe/', import.meta.url).pathname;
@@ -42,6 +43,8 @@ export class Registro {
   semilla: number | undefined;
   /** Console messages that the current action expects (e.g. ngspice's own errors on purpose). */
   silenciar: RegExp[] = [];
+  /** Keep downloads (a test that reads the exported backup); by default they are cancelled. */
+  descargas = false;
 
   constructor(info: TestInfo) {
     this.perfil = perfilDe(info.project.name);
@@ -85,12 +88,16 @@ export class Registro {
 }
 
 /** Console noise that is not the app's (Chromium/SwiftShader messages). */
-const RUIDO = [/KHR_parallel_shader_compile extension not supported/, /GPU stall due to ReadPixels/i, /Automatic fallback to software WebGL/i, /WebGL: too many errors/i, /\[\.WebGL-[^\]]*\]/];
+const RUIDO = [/KHR_parallel_shader_compile extension not supported/, /GPU stall due to ReadPixels/i, /Automatic fallback to software WebGL/i, /WebGL: too many errors/i, /\[\.WebGL-[^\]]*\]/,
+  // the harness's own block of the real GitHub (prepararPagina) and the fake one's aborts
+  /net::ERR_BLOCKED_BY_CLIENT/];
 
 /** Probe, listeners and popups blocked. Call once per page, before the first navigation. */
 export async function prepararPagina(page: Page, reg: Registro): Promise<void> {
   reg.page = page;
   await page.addInitScript(instalarSonda);
+  // 0.12: the updater's test bridge, only when an action turns it on (sessionStorage «qa-actualizador»)
+  await page.addInitScript(instalarPuenteQa);
   // QA_PILAS=1: the call stack of every console warning and error, printed (to find who warns: a production build
   // has no names, but the chunk, line and column point to the code)
   if (process.env.QA_PILAS) {
@@ -135,8 +142,13 @@ export async function prepararPagina(page: Page, reg: Registro): Promise<void> {
   page.on('crash', () => {
     void reg.anotar({ sev: 'error', tipo: 'cuelgue', firma: 'la pestaña se ha caído', msg: 'La pestaña del navegador se ha caído (crash del renderizador).' });
   });
+  // 0.12: no real GitHub (the monkey found «Buscar actualizaciones», now shown without a token, and asked the real
+  // API); the updater's actions answer with their own fake release, registered later, which takes precedence
+  await page.route('https://api.github.com/**', (r) => r.abort('blockedbyclient'));
   page.on('dialog', (d) => void d.dismiss().catch(() => {}));
-  page.on('download', (d) => void d.cancel().catch(() => {}));
+  page.on('download', (d) => {
+    if (!reg.descargas) void d.cancel().catch(() => {});
+  });
   page.context().on('page', (p) => {
     if (p !== page) void p.close().catch(() => {});
   });
@@ -173,9 +185,14 @@ export interface ResultadoVisita {
   contextos: number;
 }
 
-/** Opens the settings panel, the search or the tools menu (route actions). */
-async function hacerAccion(page: Page, r: Ruta): Promise<void> {
-  if (r.accion === 'ajustes') await page.getByRole('button', { name: 'Tema y tamaño de letra' }).first().click({ timeout: 10_000 });
+/** Opens the settings panel, the search, the tools menu, a figure's viewer or a 0.12 state (route actions). */
+export async function hacerAccion(page: Page, r: Ruta, reg: Registro): Promise<void> {
+  if (esAccion012(r.accion)) {
+    await hacerAccion012(page, r.accion, reg);
+    // these actions are scripted walks (a preview opened and cancelled, a file imported twice): what they make appear
+    // and go is the harness's doing; the state they end in is what the probe and the checks judge from here
+    await page.evaluate(() => (window as unknown as { __qa?: EstadoSonda }).__qa?.marcar()).catch(() => {});
+  } else if (r.accion === 'ajustes') await page.getByRole('button', { name: 'Tema y tamaño de letra' }).first().click({ timeout: 10_000 });
   else if (r.accion === 'buscar') {
     await page.keyboard.press('Control+k');
     const caja = page.getByRole('dialog', { name: 'Buscar en el libro' }).locator('input');
@@ -197,7 +214,7 @@ async function hacerAccion(page: Page, r: Ruta): Promise<void> {
 /** Closes any overlay the action opened (Escape, then «Atrás» if one is still open). */
 export async function cerrarCapas(page: Page): Promise<void> {
   for (let k = 0; k < 3; k++) {
-    const abierta = await page.evaluate(() => !!document.querySelector('[role="dialog"], .capa-protoboard, .visor-figura, .buscador, html.bloqueado')).catch(() => false);
+    const abierta = await page.evaluate(() => !!document.querySelector('[role="dialog"], [role="alertdialog"], .capa-protoboard, .visor-figura, .buscador, html.bloqueado')).catch(() => false);
     if (!abierta) return;
     await page.keyboard.press('Escape').catch(() => {});
     await page.waitForTimeout(150);
@@ -227,7 +244,7 @@ export async function visitar(page: Page, reg: Registro, r: Ruta, recarga: boole
   let calma = await esperarCalma(page, r.pesada ? 20_000 : 8000);
   if (r.accion) {
     try {
-      await hacerAccion(page, r);
+      await hacerAccion(page, r, reg);
       calma = await esperarCalma(page, 6000);
     } catch (e) {
       await reg.anotar({ sev: 'funcional', tipo: 'accion', firma: `${r.accion}: ${String(e).split('\n')[0]!.slice(0, 80)}`, msg: `No se pudo hacer «${r.accion}» en ${r.hash}: ${String(e).split('\n')[0]}` });
@@ -236,6 +253,7 @@ export async function visitar(page: Page, reg: Registro, r: Ruta, recarga: boole
   const ms = Date.now() - t0;
   if (!calma) await reg.anotar({ sev: 'rendimiento', tipo: 'sin-calma', firma: r.grupo, msg: `La página no se queda quieta (cambia el DOM o sigue «cargando») tras ${Math.round(ms / 1000)} s.` });
   const contextos = await recogerYComprobar(page, reg, { tactil: reg.perfil.tactil, completa: !!r.completa, accesibilidad: true, ...op });
+  if (esAccion012(r.accion)) await deshacerAccion012(page, r.accion).catch(() => {});
   if (r.accion) await cerrarCapas(page);
   return { calma, ms, contextos };
 }

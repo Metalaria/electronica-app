@@ -49,12 +49,19 @@ for (const g of GRUPOS) {
         ms += v.ms;
         // a 3D page left behind: its WebGL context must be released (the tablet runs out of GPU memory)
         if (anterior?.pesada && !r.pesada) {
-          const huerfanos = await page
-            .evaluate(() => {
-              (window as unknown as { gc?: () => void }).gc?.();
-              return (window as unknown as { __qa: EstadoSonda }).__qa.contextosHuerfanos();
-            })
-            .catch(() => 0);
+          // (0.12: a view left while the studio's environment is still being read back keeps its context until that
+          // read ends, at most 60 s — entorno.ts PLAZO_LECTURA —: only one still alive after that is a leak)
+          let huerfanos = 0;
+          for (const fin = Date.now() + 62_000; ; ) {
+            huerfanos = await page
+              .evaluate(() => {
+                (window as unknown as { gc?: () => void }).gc?.();
+                return (window as unknown as { __qa: EstadoSonda }).__qa.contextosHuerfanos();
+              })
+              .catch(() => 0);
+            if (!huerfanos || Date.now() > fin) break;
+            await page.waitForTimeout(2000);
+          }
           if (huerfanos > 0)
             await reg.anotar({ sev: 'rendimiento', tipo: 'webgl-fuga', firma: anterior.grupo, msg: `Al salir de ${anterior.hash} quedan ${huerfanos} contexto(s) WebGL sin liberar fuera del documento.` });
         }

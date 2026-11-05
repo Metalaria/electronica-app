@@ -28,13 +28,18 @@
       {@html prepararHtml(bloque.pie)}
     </figcaption>
   {/if}
+  <!-- 0.12 QA: always reachable with the keyboard (it may scroll), as a named group, not a region: every table was a
+       region named by its headers, and two with the same headers on one page were two landmarks with one name (axe
+       «landmark-unique», cap31 and cap46). Not only while it overflows (desplazable): a table that overflowed by 2 px
+       once its cells had grown was not seen (cap00 on the phone). -->
   <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
-  <div class="tabla-scroll" tabindex="0" role="region" aria-label={nombre}>
+  <div class="tabla-scroll" tabindex="0" role="group" aria-label={nombre}>
     <table>
       {#if cabecera}
         <thead>
           <tr>
-            {#each cabecera as c, k (k)}<th scope="col" style:text-align={alinear(k)}>{@html prepararHtml(c)}</th>{/each}
+            <!-- (an empty corner cell is not a column header: axe «empty-table-header», 0.12 QA) -->
+            {#each cabecera as c, k (k)}{#if textoPlano(c).trim() || /<(img|svg|math)\b/i.test(c)}<th scope="col" style:text-align={alinear(k)}>{@html prepararHtml(c)}</th>{:else}<td></td>{/if}{/each}
           </tr>
         </thead>
       {/if}

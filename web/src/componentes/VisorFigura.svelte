@@ -138,6 +138,16 @@
     if (ev.key === 'Escape') {
       ev.preventDefault();
       cerrarFigura();
+    } else if (ev.key === 'Tab' && raiz) {
+      // 0.12 QA: the focus goes round the viewer's controls (the page under it is inert: past the last one the
+      // focus left the page)
+      const controles = [...raiz.querySelectorAll<HTMLElement>('button:not([disabled]), a[href], [tabindex]:not([tabindex="-1"])')].filter((e) => e.getClientRects().length > 0);
+      if (!controles.length) return;
+      const i = controles.indexOf(document.activeElement as HTMLElement);
+      if (i === -1 || (ev.shiftKey ? i === 0 : i === controles.length - 1)) {
+        ev.preventDefault();
+        controles[ev.shiftKey ? controles.length - 1 : 0]!.focus();
+      }
     } else if (ev.key === '+' || ev.key === '=') zoom(s * 1.4, 0, 0, true);
     else if (ev.key === '-') zoom(s / 1.4, 0, 0, true);
     else if (ev.key === '0') {
@@ -162,9 +172,32 @@
   }
 
   let botonCerrar: HTMLButtonElement | undefined = $state();
+  let raiz: HTMLDivElement | undefined = $state();
+
+  /**
+   * 0.12 QA: the page under the viewer is inert while it is open (no focus, no clicks, out of the accessibility
+   * tree), as with the in-app confirmation: until then Tab went on from the viewer's last control to the links of
+   * the page hidden behind it. Every sibling of the viewer and of its ancestors up to <body>; gives back only what
+   * it set (the side index is already inert when hidden). Overlays opened later (the search) are new nodes.
+   */
+  function inertizarResto(el: HTMLElement): () => void {
+    const puestos: HTMLElement[] = [];
+    for (let e: HTMLElement | null = el; e && e !== document.body; e = e.parentElement) {
+      for (const h of e.parentElement?.children ?? []) {
+        if (h !== e && h instanceof HTMLElement && !h.inert) {
+          h.inert = true;
+          puestos.push(h);
+        }
+      }
+    }
+    return () => {
+      for (const h of puestos) h.inert = false;
+    };
+  }
 
   onMount(() => {
     const anterior = document.activeElement as HTMLElement | null;
+    const devolver = raiz ? inertizarResto(raiz) : () => {};
     botonCerrar?.focus();
     const ro = new ResizeObserver(() => {
       if (escenario) caja = { w: escenario.clientWidth, h: escenario.clientHeight };
@@ -176,6 +209,7 @@
     return () => {
       ro.disconnect();
       escenario?.removeEventListener('wheel', rueda);
+      devolver();
       anterior?.focus?.({ preventScroll: true });
     };
   });
@@ -183,7 +217,7 @@
 
 <svelte:window onkeydown={teclas} />
 
-<div class="visor" role="dialog" aria-modal="true" aria-label={f.num ? `Figura ${f.num}` : 'Figura'}>
+<div class="visor" bind:this={raiz} role="dialog" aria-modal="true" aria-label={f.num ? `Figura ${f.num}` : 'Figura'}>
   <div class="barra">
     <span class="nombre">{f.num ? `Figura ${f.num}` : 'Figura'}</span>
     <span class="zoom">{Math.round(s * 100)} %</span>

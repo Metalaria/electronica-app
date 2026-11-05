@@ -12,6 +12,7 @@ import { HUECO_FUENTES, type PeticionEsquema, type RespuestaEsquema, type Result
 import latin from '@fontsource/source-sans-3/files/source-sans-3-latin-400-normal.woff2?url';
 import griego from '@fontsource/source-sans-3/files/source-sans-3-greek-400-normal.woff2?url';
 import urlPrecalculado from './precalculado.json?url';
+import { aspectoPantalla } from './aspecto';
 
 export type { ResultadoEsquema } from './resultado.ts';
 export { HUECO_FUENTES } from './resultado.ts';
@@ -63,11 +64,7 @@ async function enHilo(texto: string, subckt: string | null, aspecto: number): Pr
   return a ? construirResultado(a) : null;
 }
 
-/** Sheet shape for netlists with several circuits: wide on wide screens, squarer on phones in portrait. */
-function aspectoPantalla(): number {
-  if (typeof innerWidth === 'undefined') return 1.8;
-  return innerWidth < 700 ? 1.1 : innerWidth < 1100 ? 1.5 : 2;
-}
+// (the sheet shape: aspecto.ts, shared with the drawings' reserved places)
 
 const MAX_CACHE = 16;
 const cache = new Map<string, Promise<ResultadoEsquema | null>>();

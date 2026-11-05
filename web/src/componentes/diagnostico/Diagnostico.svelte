@@ -250,7 +250,7 @@
       </div>
       <details>
         <summary>Ver el texto que se copia</summary>
-        <textarea readonly rows="10">{texto}</textarea>
+        <textarea readonly rows="10" aria-label="Texto de los resultados que se copia">{texto}</textarea>
       </details>
     </section>
   {/if}
@@ -276,7 +276,7 @@
     </div>
     <details>
       <summary>Ver el registro</summary>
-      <textarea class="registro" readonly rows="12">{textoReg}</textarea>
+      <textarea class="registro" readonly rows="12" aria-label="Registro de la aplicación">{textoReg}</textarea>
     </details>
   </section>
 </div>
@@ -466,14 +466,24 @@
     font-variant-numeric: tabular-nums;
     word-break: break-word;
   }
+  /* status colours mixed towards the ink (0.12 QA: the fixed #b7791f gave 3,6:1 on white and ignored the theme) */
   tr.aviso td.valor {
-    color: #b7791f;
+    color: color-mix(in srgb, var(--c-importante) 65%, var(--tinta));
   }
   tr.error td.valor {
-    color: #c0392b;
+    color: color-mix(in srgb, var(--c-precaucion) 80%, var(--tinta));
   }
   details {
     margin-top: 12px;
+  }
+  summary {
+    cursor: pointer;
+  }
+  /* 44 px for a finger (0.12 QA: 22 px) */
+  @media (pointer: coarse) {
+    summary {
+      padding-block: 11px;
+    }
   }
   textarea {
     width: 100%;

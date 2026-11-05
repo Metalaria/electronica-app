@@ -13,6 +13,8 @@ import { INFORME, Registro } from './arnes.ts';
 import { azarDe, todasLasRutas, type Ruta } from './rutas.ts';
 
 const VIEJO = process.env.QA_VIEJO ?? 'http://localhost:4423/';
+/** The version served at QA_VIEJO (0.12: 0.11.0, the last release; 0.11 compared with 0.10.1). */
+const NOMBRE_VIEJO = process.env.QA_VIEJO_NOMBRE ?? '0.10.1';
 const UMBRAL = 0.005;
 
 function rutas(): Ruta[] {
@@ -66,7 +68,7 @@ async function esperarListo(page: Page, r: Ruta): Promise<void> {
   }
 }
 
-test('comparación visual con la 0.10.1', async ({ page, browser }, info) => {
+test(`comparación visual con la ${NOMBRE_VIEJO}`, async ({ page, browser }, info) => {
   const reg = new Registro(info);
   test.skip(reg.perfil.id !== 'tableta', 'en la tableta');
   const lista = rutas();
@@ -82,7 +84,7 @@ test('comparación visual con la 0.10.1', async ({ page, browser }, info) => {
     reg.traza(`visual ${r.id}`);
     const [a, b] = [await capturar(browser, uso, VIEJO, r), await capturar(browser, uso, nuevo, r)];
     if (!a || !b) {
-      await reg.anotar({ sev: 'visual', tipo: 'visual-sin-captura', firma: r.grupo, msg: `${r.hash}: no se pudo capturar ${!a ? 'la 0.10.1' : 'la versión nueva'}.` });
+      await reg.anotar({ sev: 'visual', tipo: 'visual-sin-captura', firma: r.grupo, msg: `${r.hash}: no se pudo capturar ${!a ? `la ${NOMBRE_VIEJO}` : 'la versión nueva'}.` });
       continue;
     }
     comparadas++;
@@ -136,9 +138,9 @@ test('comparación visual con la 0.10.1', async ({ page, browser }, info) => {
     const nombre = `visual-${createHash('sha1').update(r.id).digest('hex').slice(0, 12)}.jpg`;
     writeFileSync(`${INFORME}capturas/${nombre}`, Buffer.from(res.jpeg, 'base64'));
     await reg.anotar(
-      { sev: 'visual', tipo: 'visual-cambio', firma: r.id, msg: `${r.hash}: cambia el ${(res.fraccion * 100).toFixed(1)} % de la pantalla respecto a la 0.10.1 (antes | ahora | diferencia en capturas/${nombre}).` },
+      { sev: 'visual', tipo: 'visual-cambio', firma: r.id, msg: `${r.hash}: cambia el ${(res.fraccion * 100).toFixed(1)} % de la pantalla respecto a la ${NOMBRE_VIEJO} (antes | ahora | diferencia en capturas/${nombre}).` },
       { captura: `capturas/${nombre}` },
     );
   }
-  reg.cobertura({ 'visual: rutas comparadas con la 0.10.1': comparadas, 'visual: rutas sin cambios': iguales });
+  reg.cobertura({ [`visual: rutas comparadas con la ${NOMBRE_VIEJO}`]: comparadas, 'visual: rutas sin cambios': iguales });
 });

@@ -7,11 +7,14 @@
 import { test, type Page } from '@playwright/test';
 import { Registro, esperarCalma, prepararPagina, trozos } from './arnes.ts';
 import { todasLasRutas, type Ruta } from './rutas.ts';
+import { esAccion012 } from './novedades.ts';
 
 /** The first route of each kind: group, number of hash segments and action. */
 function representantes(): Ruta[] {
   const m = new Map<string, Ruta>();
-  for (const r of todasLasRutas()) {
+  // (0.12 actions are not done here: their routes would only load a page another representative already loads; the
+  // backup card's own route, #/sincronizacion/copia, is one)
+  for (const r of todasLasRutas().filter((x) => !esAccion012(x.accion))) {
     const k = `${r.grupo}:${r.hash.split('/').length}:${r.accion ?? ''}`;
     // (0.11 group B: every page of the learning loop)
     if (!m.has(k) || r.grupo === 'aprendizaje') m.set(r.grupo === 'aprendizaje' ? r.id : k, r);
@@ -149,6 +152,8 @@ trozos(RUTAS, 6).forEach((trozo, k) => {
         if (e.error || (!e.cargando && e.texto > 20 && Date.now() - t0 > 3000)) break;
       }
       await page.unrouteAll({ behavior: 'ignoreErrors' }).catch(() => {});
+      // (unrouteAll also took prepararPagina's block of the real GitHub away)
+      await page.route('https://api.github.com/**', (rt) => rt.abort('blockedbyclient'));
       if (!cortadas) {
         bien++;
         continue;

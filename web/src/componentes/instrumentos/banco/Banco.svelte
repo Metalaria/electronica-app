@@ -18,12 +18,15 @@
     b,
     plano,
     lateral,
+    tamano,
   }: {
     b: Banco;
     /** The drawing; null: the circuit has none; undefined: still being decided (its place is kept). */
     plano: Fuente | null | undefined;
     /** Practice panel or circuit chooser, shown next to the bench. */
     lateral?: Snippet;
+    /** 0.12 QA: [width, height] of the automatic drawing it will get (precomputed), to keep its place exactly. */
+    tamano?: [number, number] | null;
   } = $props();
 
   let activa = $state<Punta | null>('bmRojo');
@@ -70,7 +73,13 @@
     {:else if plano === undefined}
       <!-- 0.11: while the drawing loads, an empty place of about its size: «Este circuito no tiene dibujo» used to
            show for a moment and the drawing then pushed everything under it some 290 px down -->
-      <div class="reserva-plano" aria-busy="true"></div>
+      {#if tamano}
+        <!-- as Plano lays out an automatic drawing (at most 1.3 × its width), with its hint under it -->
+        <div class="reserva-plano exacta" aria-busy="true" style:aspect-ratio="{tamano[0]} / {tamano[1]}" style:max-width="{Math.round(tamano[0] * 1.3)}px"></div>
+        {#if activa}<div class="reserva-ayuda" aria-hidden="true">Toque un nodo para poner la punta</div>{/if}
+      {:else if tamano !== null}
+        <div class="reserva-plano" aria-busy="true"></div>
+      {/if}
     {:else}
       <p class="sin-dibujo">Este circuito no tiene dibujo: coloque las puntas con la lista de nodos.</p>
     {/if}
@@ -154,6 +163,20 @@
   .reserva-plano {
     aspect-ratio: 5 / 2;
     max-height: 52vh;
+  }
+  .reserva-plano.exacta {
+    width: 100%;
+    max-height: none;
+    margin: 0 auto;
+  }
+  /* the same box as Plano's «.ayuda» */
+  .reserva-ayuda {
+    margin-top: 6px;
+    padding: 4px 10px;
+    border-left: 4px solid transparent;
+    font-family: var(--sans);
+    font-size: 13px;
+    visibility: hidden;
   }
   .sin-dibujo,
   .nota {

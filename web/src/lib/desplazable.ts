@@ -7,7 +7,9 @@ type Opciones = string | { nombre: string; vertical?: boolean };
 export function desplazable(el: HTMLElement, opciones: Opciones = 'Contenido desplazable'): { update(o: Opciones): void; destroy(): void } {
   let actual = typeof opciones === 'string' ? { nombre: opciones } : opciones;
   const mirar = () => {
-    const desborda = el.scrollWidth > el.clientWidth + 1 || (!!actual.vertical && el.scrollHeight > el.clientHeight + 1);
+    // (any overflow, as the browser and axe count it: from 2 px on only, a box 1 px too wide scrolled without being
+    // reachable — 0.12 QA, an equation of 372 px in 371)
+    const desborda = el.scrollWidth > el.clientWidth || (!!actual.vertical && el.scrollHeight > el.clientHeight);
     if (desborda) {
       el.tabIndex = 0;
       el.setAttribute('role', 'group');

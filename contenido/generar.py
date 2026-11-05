@@ -262,6 +262,7 @@ def main():
     ok = glosario_imagenes.main([]) == 0 and ok  # glossary symbols and 3D models: glosario-imagenes.json
     ok = practica() and ok             # 0.10 «Aprender haciendo»: libro/practica/ (needs all of the above)
     ok = miniaturas() and ok           # 0.10 list thumbnails: web/public/miniaturas/ (needs spice.json, ejercicios.json)
+    ok = proporciones() and ok         # 0.12: size of each netlist's drawing (needs spice.json and the figures' data)
     if check_figs:
         validar.check_figures(figs, OUT)
     sys.exit(0 if ok else 1)
@@ -295,6 +296,20 @@ def miniaturas():
         print('miniaturas: falló (¿falta el Chromium de Playwright? npx playwright install chromium en web/)')
     return r == 0
 
+
+
+def proporciones():
+    """Size of the drawing each book netlist shows (web/scripts/circuitos-proporciones.mjs, Node only, seconds), so the
+    simulator page and the instruments bench keep exactly its place while it is drawn (0.12 QA)."""
+    import subprocess
+    web = os.path.join(os.path.dirname(HERE), 'web')
+    if not shutil.which('node'):
+        print('proporciones: falta node; no se recalcula el tamaño de los dibujos de las netlists')
+        return True
+    r = subprocess.run(['node', os.path.join('scripts', 'circuitos-proporciones.mjs')], cwd=web).returncode
+    if r:
+        print('proporciones: falló')
+    return r == 0
 
 if __name__ == '__main__':
     main()

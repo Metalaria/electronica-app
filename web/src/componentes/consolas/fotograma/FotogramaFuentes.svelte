@@ -51,6 +51,16 @@
   a {
     overflow-wrap: anywhere;
   }
+  /* touch screens: 44 px for a finger, as the console's other source list (0.12 QA: 22 px) */
+  @media (pointer: coarse) {
+    ul {
+      gap: 0;
+    }
+    li > a {
+      display: inline-block;
+      padding-block: 11px;
+    }
+  }
   .nota {
     color: var(--tinta-suave);
   }

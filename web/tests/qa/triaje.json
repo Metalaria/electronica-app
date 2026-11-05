@@ -1,5 +1,205 @@
 [
  {
+  "patron": "^objetivos-solapados\\|.*⟂ .*button\\.ir-actual",
+  "estado": "falso-positivo",
+  "nota": "QA 0.12 (barrido de secciones en la tableta apaisada, índice abierto al lado): «Ir a la sección actual» flota sobre el final de la lista del índice mientras la sección actual queda fuera de la vista (igual que en la 0.11); la lista tiene 72 px de margen al final para que cualquier capítulo se pueda subir por encima del botón, y el botón desaparece al llegar a la sección."
+ },
+ {
+  "patron": "^axe-color-contrast\\|.*foreground color: #262626, background color: #(a6552b|1f6f5c)",
+  "estado": "falso-positivo",
+  "nota": "QA 0.12 (axe sobre 40 secciones): texto oscuro «sobre» el color del capítulo. axe toma como fondo el botón «Comprobar» de un problema que está en un trozo del lector fuera de la pantalla (content-visibility: auto: su caja mide 0×0 mientras no se pinta); en la página no hay nada encima del texto (elementsFromPoint con el texto a la vista: el propio texto sobre el fondo de la página)."
+ },
+ {
+  "patron": "^axe-(empty-table-header|landmark-unique|scrollable-region-focusable)\\|(.*tabla-scroll|.*> table > thead|.*\\.panel-e\\[|pre(\\[|$))",
+  "estado": "corregido",
+  "nota": "QA 0.12 (axe sobre 40 secciones; hasta ahora auditaba una sola): cada tabla del libro era una región con el nombre de sus cabeceras (dos con las mismas cabeceras en una página, dos regiones con un mismo nombre: cap31, cap46), la celda vacía de la esquina era un <th> vacío (cap03, cap10, cap38) y los listados de código más anchos que la columna se desplazaban sin poder llegar a ellos con el teclado (cap31, cap38). Tabla.svelte: grupo enfocable con nombre (no región) y la esquina vacía como <td>; Bloques.svelte: lo mismo en los listados. Además, dos figuras vivas de una misma página tenían dos regiones «Controles del circuito» (cap22: PanelEsquema lleva ahora el número de la figura) y una tabla que desbordaba 2 px solo cuando crecían sus celdas quedaba sin foco (cap00 en el teléfono): las tablas son siempre un grupo enfocable con nombre (como en la 0.11, pero sin ser región). regresiones12: «axe: sin regiones repetidas…» (tableta) y «axe: las tablas que desbordan se alcanzan con el teclado» (teléfono)."
+ },
+ {
+  "patron": "^axe-color-contrast\\|.*foreground color: (#d9dce0, background color: #ffffff|#82a8ca, background color: #edf1f1)",
+  "estado": "corregido",
+  "nota": "QA 0.12 (primera auditoría de axe con el visor de figuras abierto: hasta ahora el arnés no lo abría): axe medía los botones y enlaces de la página tapados por el visor contra su fondo blanco. La causa real: el visor (role=dialog, aria-modal) no retenía el foco y la página de debajo seguía activa; con Tab, tras su último control, el foco pasaba a los enlaces ocultos detrás (también en la 0.11). VisorFigura.svelte: la página queda inerte mientras está abierto y Tab da la vuelta por sus controles. regresiones12: «el foco no sale del visor y la página de debajo queda inerte»."
+ },
+ {
+  "patron": "^entorno-3d\\|otra imagen con el entorno guardado",
+  "estado": "corregido",
+  "nota": "QA 0.12: en 9 placas de consola la PRIMERA apertura en un dispositivo difería un 1,14 % de la 0.11.0 y de la segunda apertura. No era el entorno (mismos programas, materiales, geometría y datos; sin entorno ni luces seguía distinto): three.js, en setRenderTarget(null) al acabar el filtrado y la lectura del entorno (ahora después del primer redimensionado y del primer cuadro), deja el viewport en píxeles redondeado hacia abajo, y setSize() lo redondea al más cercano: con el lienzo de la tableta (572,4 px × 2) esa vista dibujaba 1144 filas en vez de 1145, todo una fracción de píxel desplazado hasta el siguiente redimensionado. entorno.ts reponerVista() tras el filtrado y tras la lectura. regresiones12: «la primera apertura dibuja lo mismo que la segunda»; 14 placas, primera y segunda apertura frente a la 0.11.0."
+ },
+ {
+  "patron": "^contraste\\|(div\\.confirmacion-host > div\\.fondo > div\\.caja|div\\.fondo > div\\.caja > div\\.botones)",
+  "estado": "falso-positivo",
+  "nota": "QA 0.12: novedades12 midió el diálogo de confirmación durante su aparición (0,12 s de fundido): los colores salían mezclados con la página. Medido después (rutas confirmacion:* en todos los perfiles y variantes, axe en claro/oscuro) cumple; la prueba espera ya al final del fundido."
+ },
+ {
+  "patron": "^destello\\|div\\.principal > main > div\\.pagina\\[data-pagina\\] > section\\.tarjeta\\.copia\\[data-copia\\] > div\\.vista",
+  "estado": "falso-positivo",
+  "nota": "QA 0.12: es la propia prueba (fase2-estado, almacenamiento bloqueado) pulsando «Importar y unir» nada más salir la vista previa; el arnés marca ya el punto de partida antes de esa pulsación."
+ },
+ {
+  "patron": "^cls\\|(#texto \\| div\\.app\\.movil > nav\\.pestanas|div\\.app\\.movil > div\\.principal > main > div\\.repaso-pagina)",
+  "estado": "informado",
+  "nota": "QA 0.12 (escritorio al 200 %): pasar de la práctica de un capítulo a la del siguiente cambia la página entera en los primeros 80 ms (aviso «Cargando la práctica…», luego cabecera y ejercicio): CLS 0,12 en la 0.12 y 0,09 en la 0.11.0 con el mismo código de práctica (no cambiado en la 0.12; la diferencia es de tiempos). En el instante de navegar, con un toque cuenta como respuesta a la entrada. Se vigila."
+ },
+ {
+  "patron": "^cls\\|(#texto \\| header\\.apertura > div\\.banda|main > article\\.lectura > div\\.cuerpo\\.texto-libro > div\\.trozo\\[data-seccion\\]$)",
+  "estado": "informado",
+  "nota": "QA 0.12 (escritorio al 200 %, 3 de ~985 figuras): al saltar a una figura de otra parte, unos 300 ms después de colocarla la figura baja 58 px y aparece su «Simular» (CLS 0,117 en #/cap10/fig-10.2, siempre); idéntico en la 0.11.0. Queda para una versión siguiente: es un caso del arreglo de la 0.11 (el lector espera los mapas una vez por sesión) que en esta variante no basta."
+ },
+ {
+  "patron": "^contraste\\|div\\.col-b > dl\\.lecturas > div > dd #[0-9a-f]{6}/#efe5cf",
+  "estado": "corregido",
+  "nota": "QA 0.12 (sepia, 19 páginas de animaciones y conceptos): las lecturas mezclan el color de la escena al 55 % con la tinta; en sepia una lectura naranja quedaba en #966210 sobre #efe5cf (4,17:1). En sepia la mezcla es del 45 % (animaciones/ui/Marco.svelte). regresiones12: «los valores de las lecturas se leen en sepia»."
+ },
+ {
+  "patron": "^objetivo-tapado\\|div\\.visor3d\\.completo > div\\.lienzo > div\\.capa\\.compacta > a\\.etiqueta3d",
+  "estado": "informado",
+  "nota": "QA 0.12 (móvil de 360 px, diodo DO-35 y fusible): dos números de 22 px del visor 3D quedan montados unos píxeles (4 × 6, 9 × 2) tras separarlos; los dos siguen legibles y se pueden tocar. Igual en la 0.11.0."
+ },
+ {
+  "patron": "^cls\\|.*(figure\\.figura|nav\\.contiguos|section\\.deduccion\\.por-pasos|a\\.test-capitulo)",
+  "estado": "informado",
+  "nota": "QA 0.12 (maquetación, móvil de 360 px sobre todo: 10 de ~985 figuras): saltos al ir a una figura por su dirección. Solo uno se repite (#/cap12/fig-12.2 desde la 12.1: 0,158, siempre, a los 35 ms del cambio de ruta) y es igual en la 0.11.0; ocurre en el instante de la navegación (con un toque del lector cuenta como respuesta a la entrada). Los demás (27.8: 0,45; 1.13: 0,21…) no se repiten al abrirlos otra vez en la 0.12 ni en la 0.11.0. Se vigila."
+ },
+ {
+  "patron": "^cls\\|(?:(?:nav\\.lista|aside\\.lateral|div\\.indice-libro|div\\.miga|header\\.barra\\.lector)[^|]*(?: \\| |$))+$",
+  "estado": "falso-positivo",
+  "nota": "QA 0.12 (tableta apaisada y escritorio, donde el índice está abierto al lado): al cambiar de capítulo el índice lateral abre el tomo y la parte actuales y la miga cambia de nombre (0,07 de CLS medido, a los 37 ms); es el índice siguiendo al lector. El arnés cambia de ruta por el hash, sin pulsación; con un toque o un enlace del lector cuenta como respuesta a la entrada y no es un salto. Igual en la 0.11.0."
+ },
+ {
+  "patron": "^fuera-de-pantalla\\|div\\.fila > div\\.herramientas > div\\.iconos > a\\.boton-icono\\.por-pasos",
+  "estado": "corregido",
+  "nota": "QA 0.12 (móvil de 360 px; también en la 0.11.0): con «Simular», «Ver animación», «Practicar» y los cinco iconos, la fila de herramientas de una sección medía 362 px y «Estudiar por pasos» acababa en 365–380 px, fuera de la pantalla. En el teléfono los iconos pasan a una segunda fila, a la derecha, cuando no caben (estilos/lectura.css). regresiones12: «las herramientas de una sección caben en la pantalla»."
+ },
+ {
+  "patron": "^sin-calma\\|libro$",
+  "estado": "informado",
+  "nota": "QA 0.12: una vez (cap38 en la tableta apaisada, máquina cargada con otras pruebas); 3 veces más sola, quieta. Se vigila."
+ },
+ {
+  "patron": "^consola-aviso\\|https://svelte\\.dev/e/derived_inert$",
+  "estado": "informado",
+  "nota": "QA 0.12: una vez en ~1000 figuras (tableta apaisada, figura 1.1 tras la 0.8, al cambiar de parte), y 1 de 3 al repetir ese trozo. Pila: el derivado «sello» de FiguraViva (Circuito vivo / Conexiones / Lectura de valores) se vuelve a evaluar cuando su bloque ya está saliendo (Svelte: efecto padre INERT), porque sus datos llegaron en ese momento; Svelte devuelve el valor anterior en un componente que se está quitando, sin efecto visible. No se reproduce de forma fiable (retrasar los datos 2,5 s y salir antes no lo provoca), así que no hay prueba que falle; se vigila."
+ },
+ {
+  "patron": "^accion\\|visor: TimeoutError: locator\\.click",
+  "estado": "corregido",
+  "nota": "QA 0.12: fallo del arnés: fase2-axe buscaba el botón del visor de figuras por su texto (solo tiene un icono) y, como callaba el error, en la 0.11 auditó la figura sin abrir el visor. Ahora usa la acción común (por nombre accesible) y anota los fallos."
+ },
+ {
+  "patron": "^accion\\|copia-(unir|sustituir|resultado): TimeoutError: page\\.waitForEvent",
+  "estado": "corregido",
+  "nota": "QA 0.12 (axe, teléfono): «Aa» seguía abierto al cambiar de página por debajo (atrás de Android, el historial, un enlace) y tapaba los controles de la página siguiente: tras «Exportar copia» en «Aa», «Importar una copia…» quedaba debajo. Ajustes.svelte se cierra con hashchange/popstate. regresiones12: «“Aa” se cierra cuando cambia la página»."
+ },
+ {
+  "patron": "^axe-scrollable-region-focusable\\|div\\[data-b=\"\\d+\"\\] > \\.ec-marco",
+  "estado": "corregido",
+  "nota": "QA 0.12 (teléfono, cap05 bloque 312): una ecuación 1 px más ancha que la columna se desplaza pero lib/desplazable.ts solo la hacía enfocable a partir de 2 px; ahora con cualquier desbordamiento, como lo cuentan el navegador y axe. regresiones12: «toda ecuación que se desplaza se puede enfocar»."
+ },
+ {
+  "patron": "^axe-color-contrast\\|.*mark$",
+  "estado": "corregido",
+  "nota": "QA 0.12: las palabras resaltadas (<mark>) de los fragmentos de la búsqueda conservaban el gris del texto sobre el amarillo en el tema claro (4,1:1); el arreglo de la 0.11 solo cubría el oscuro. Ahora <mark> lleva --tinta en todos los temas (app.css). regresiones12: «las palabras resaltadas de la búsqueda se leen»."
+ },
+ {
+  "patron": "^visual-cambio\\|copia$",
+  "estado": "decision",
+  "nota": "QA 0.12: #/sincronizacion/copia es nueva en la 0.12 (la tarjeta «Copia de seguridad»); en la 0.11.0 esa dirección abría la página de sincronización arriba."
+ },
+ {
+  "patron": "^visual-cambio\\|seccion:apA/sec-A\\.3$",
+  "estado": "informado",
+  "nota": "QA 0.12: al saltar a la última sección de una parte, el desplazamiento a veces se queda hasta 131 px corto (la página crece debajo después de colocarla; el título sigue a la vista). Igual en la 0.11.0: 3 de 10 veces en las dos versiones. No es un cambio de la 0.12."
+ },
+ {
+  "patron": "^protoboard-simular\\|no termina",
+  "estado": "informado",
+  "nota": "QA 0.12: una vez en 314 circuitos (cap42/fig-42.8, peor caso estadístico) la simulación desde la protoboard no terminó en 120 s con la máquina cargada; no se repite: 6 veces sola (1,3–1,9 s) y 2 veces el mismo trozo de 20 circuitos del barrido, sin fallo. Se vigila en la pasada final."
+ },
+ {
+  "patron": "^consola-error\\|Failed to load resource: net::ERR_BLOCKED_BY_CLIENT",
+  "estado": "falso-positivo",
+  "nota": "QA 0.12: es el bloqueo del GitHub real que pone el propio arnés (prepararPagina): el mono pulsó «Buscar actualizaciones». Desde entonces el arnés no lo anota."
+ },
+ {
+  "patron": "^cls\\|\\? \\| div > div\\.app > div\\.principal",
+  "estado": "falso-positivo",
+  "nota": "Escritorio: el panel del índice (300 px) se abre o se cierra con la vista (como el patrón de la 0.11 sin el «?» del nodo ya quitado): el arnés cambia de ruta por el hash, no es un salto al cargar una página."
+ },
+ {
+  "patron": "^cortado\\|div > div\\.visor > div\\.escenario\\.arrastrable > img",
+  "estado": "falso-positivo",
+  "nota": "QA 0.12 (mono): la figura ampliada con un pellizco en el visor de figuras se sale de la pantalla a propósito (se mueve arrastrando)."
+ },
+ {
+  "patron": "^webgl-fuga\\|(proyectos|consolas)$",
+  "estado": "falso-positivo",
+  "nota": "QA 0.12: al dejar una placa 3D antes de que termine la lectura del entorno del estudio, su contexto se queda (lienzo de 1 px) hasta que acaba esa lectura, como mucho 60 s (entorno.ts, PLAZO_LECTURA), para que se guarde igual; medido: 1 contexto al segundo de salir, 0 a los 10 s. El arnés ahora espera hasta 62 s antes de contar (rastreo y barridos)."
+ },
+ {
+  "patron": "^objetivo-pequeno\\|div\\.glosario > div\\.herramientas > nav\\.letras > button",
+  "estado": "decision",
+  "nota": "Decisión del dueño (0.11, opción c): el índice A–Z del glosario son dos filas de 14 letras tan anchas como deja la pantalla: 44 px en la tableta, 25 × 66 px en un teléfono de 412 px (más de los 24 px de WCAG 2.5.8). QA 0.12: igual que en la 0.11.0."
+ },
+ {
+  "patron": "^objetivo-pequeno\\|header\\.cabecera > div\\.progreso > div\\.segmentos > button\\.seg",
+  "estado": "decision",
+  "nota": "Pasos del «Un fotograma» de consolas con muchos pasos (Neo Geo, Master System): en el teléfono cada paso mide 28 × 60 px, por encima de los 24 px de WCAG 2.5.8, que es lo que fijó la pasada final de la 0.11 (regresiones11 «cada paso tiene al menos 24 px»). QA 0.12: igual que en la 0.11.0."
+ },
+ {
+  "patron": "^contraste\\|section\\.panel-e > .* #[0-9a-f]{6}/#3b3418",
+  "estado": "falso-positivo",
+  "nota": "QA 0.12: el fondo #3b3418 es el destello pasajero (tema oscuro) que marca la figura a la que se salta; medido justo en ese segundo. No se repite al abrirla de nuevo (dos veces en la 0.12 y dos en la 0.11.0)."
+ },
+ {
+  "patron": "^cls\\|(div\\.principal > main > div\\.pagina > div\\.rejilla|main > div\\.envoltura > div\\.banco|div\\.envoltura > div\\.banco|div\\.banco > section\\.bloque\\.circuito)",
+  "estado": "corregido",
+  "nota": "QA 0.12 (también en la 0.11.0, determinista): el sitio guardado para el dibujo del circuito tenía una forma fija (16:9 en la página de la netlist, 5:2 en el banco) y un dibujo mucho más ancho o más alto movía 300 px todo lo de debajo al llegar (CLS 0,12 en el contador asíncrono 29.7, 0,08–0,16 en los bancos 20.A y 32.B). Ahora se guarda el tamaño exacto del dibujo, calculado de antemano para las 313 netlists (scripts/circuitos-proporciones.mjs → figuras-vivas/circuito/proporciones.json, con las tres formas de hoja del esquema automático): comprobado en las 300 netlists que simulan a 360, 800 y 1280 px (diferencia ≤ 3 px). regresiones12: «nada se mueve al llegar el dibujo del circuito» y «el sitio guardado para el dibujo mide lo que el dibujo»."
+ },
+ {
+  "patron": "^objetivo-pequeno\\|section\\.fuentes-fotograma > ul > li > a",
+  "estado": "corregido",
+  "nota": "QA 0.12: las fuentes de «Un fotograma» (un enlace solo en su línea, 22 px) tienen 44 px de alto en pantallas táctiles, como la otra lista de fuentes de las consolas (FotogramaFuentes.svelte). regresiones12: «los enlaces de “Un fotograma…”»."
+ },
+ {
+  "patron": "^ortografia\\|(app|electronica|sincronizacion)$",
+  "estado": "falso-positivo",
+  "nota": "QA 0.12: textos que la página de sincronización pasa a los formularios de GitHub (descripción del repositorio y del token; el nombre del token va sin tildes a propósito), no textos de la aplicación. Ya estaban en la 0.11."
+ },
+ {
+  "patron": "^objetivo-pequeno\\|(div\\.ajustes > div\\.grupo > (div\\.botones > button\\.boton|p\\.linea > button\\.enlace)|(div > )?div\\.aviso > (div\\.texto > div\\.botones > button\\.boton(\\.primario)?|button\\.boton-icono\\.cerrar)|div\\.pagina > section\\.tarjeta > (div\\.fila > button\\.boton|div\\.nueva > button\\.boton|details > summary)|div\\.diagnostico > section\\.tarjeta(\\.registro-app)? > details > summary)$",
+  "estado": "corregido",
+  "nota": "QA 0.12: «Buscar actualizaciones» (ahora sin token) y «Ver la publicación» de «Aa» (34 y 19 px; la regla de la 0.11 solo cubría a.boton), del aviso de versión (36 px, cierre de 32 px) y de #/sincronizacion (36 px), y los «details» de la sincronización (26 px) y del diagnóstico (22 px): 44 px en pantallas táctiles (app.css, Avisos.svelte, PaginaSincronizacion.svelte, Diagnostico.svelte). regresiones12: «objetivos táctiles de la 0.12»."
+ },
+ {
+  "patron": "^contraste\\|table > tbody > tr\\.(aviso|error) > td\\.valor",
+  "estado": "corregido",
+  "nota": "QA 0.12: los valores de las filas con aviso del diagnóstico tenían el color fijo #b7791f (3,6:1 en claro, 4,3:1 en oscuro); ahora color-mix de --c-importante/--c-precaucion con --tinta (Diagnostico.svelte). regresiones12: «diagnóstico: los valores con aviso se leen…» en claro, sepia y oscuro."
+ },
+ {
+  "patron": "^campo-sin-etiqueta\\|div\\.diagnostico > section\\.tarjeta(\\.registro-app)? > details > textarea",
+  "estado": "corregido",
+  "nota": "QA 0.12: las áreas de texto «Ver el texto que se copia» y «Ver el registro» del diagnóstico no tenían nombre: aria-label. regresiones12 (misma prueba que el contraste)."
+ },
+ {
+  "patron": "^entorno-3d\\|(segunda no lee|primera no calcula)",
+  "estado": "corregido",
+  "nota": "QA 0.12: solo la vista de placas (Vista3D) leía el entorno guardado en IndexedDB al empezar (precargarEntorno); la página de un modelo 3D y las miniaturas, en una sesión nueva, lo volvían a filtrar (7,5 s con SwiftShader). Ahora Visor3D.svelte y miniaturas.ts lo esperan como Vista3D. regresiones12: «un modelo 3D en una sesión nueva usa el entorno guardado»."
+ },
+ {
+  "patron": "^diagnostico\\|(tras recargar|repetir|primera vez|no se guarda)$",
+  "estado": "corregido",
+  "nota": "QA 0.12: las vistas del diagnóstico (placa SDR, caras, Neo Geo, visor) no leían el entorno guardado: tras recargar, «Entorno del estudio» decía «calculado… pendiente» mientras las placas de la app usaban el guardado. pruebas.ts entornoGuardado(). regresiones12: «diagnóstico: tras recargar…»."
+ },
+ {
+  "patron": "^ingles\\|ol\\.pasos > li > span\\.a-mano > [bi] Settings",
+  "estado": "falso-positivo",
+  "nota": "QA 0.12: «Settings» es el nombre del menú de GitHub en las instrucciones para crear el token (se cita tal cual, junto a su traducción), no un texto de la aplicación."
+ },
+ {
+  "patron": "^cls\\|div\\.principal > main > div\\.diagnostico",
+  "estado": "informado",
+  "nota": "QA 0.12: al terminar «Empezar», el diagnóstico inserta su tabla de resultados (empuja la tarjeta «Registro» de debajo) y la tabla ajusta sus columnas un segundo después; es una página de medida, tras una pulsación expresa y con el lector esperando el resultado, no leyendo lo de debajo. Se deja así."
+ },
+ {
   "patron": "^objetivo-pequeno\\|header\\.cabecera > div\\.progreso > div\\.segmentos > button\\.seg",
   "estado": "corregido",
   "nota": "Pasada final: en el móvil de 360 px, el fotograma de la Master System (una docena de pasos) dejaba 22 px a cada paso (WCAG 2.5.8 pide 24): en teléfonos pequeños la cuenta «1/12» va encima y los pasos ocupan toda la fila. regresiones11: «cada paso tiene al menos 24 px de ancho para el dedo»."

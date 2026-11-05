@@ -15,8 +15,13 @@ import { leerJson } from './rutas.ts';
 
 const SRC = new URL('../../src/', import.meta.url);
 
-/** Areas owned by other agents in 0.11: reported for them, not fixed here. */
-const AJENAS = [/^lib\/aprendizaje\//, /^componentes\/(cursos|progreso|protoboard)\//];
+/** Areas owned by another agent (0.12: the data agent's files): reported for it, not fixed here. */
+const AJENAS = [
+  /^lib\/sincronizacion\/(guardado|marcas|sincronizar\.svelte|copia[^/]*|dispositivo)\.ts$/,
+  /^lib\/(almacen|progreso-dias|progreso-diario\.svelte|usuario\.svelte|registro\.svelte)\.ts$/,
+  /^lib\/aprendizaje\/repaso\/estado\.svelte\.ts$/,
+  /^componentes\/sincronizacion\/CopiaSeguridad\.svelte$/,
+];
 
 function ficheros(dir = SRC, base = ''): string[] {
   const r: string[] = [];
@@ -147,7 +152,8 @@ const PALABRAS = new Set(
   repositories repository resolvedor resource resuélvalo retrazado right rise roboto roff savecurrents sch schematics schoopage scroll segoe serializa serializada
   serializador settings shader singer slots small sna snc sony spdt speaker sprite spst sqrt srcsteps stepping strobe strobes sup super superfamicom svg tanh tdr
   termorretráctil tests thevenin thick thr three tile tilemap tilemaps tiles timestep timing titanato token tokens trafo transfers tref txt unset vblank vdb vmax vmín
-  write xtal pwl pruébelo sepárelos gírelos córtelos actívelas arrástrelas arrástrela`.split(/\s+/),
+  write xtal pwl pruébelo sepárelos gírelos córtelos actívelas arrástrelas arrástrela
+  recupérelo descárguela dmg`.split(/\s+/),
 );
 
 test('textos de la interfaz: ortografía, «usted», inglés y nombres', async ({}, info) => {

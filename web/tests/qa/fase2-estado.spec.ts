@@ -10,6 +10,7 @@ import { Registro, esperarCalma, prepararPagina, recogerYComprobar, trozos } fro
 import { MODO } from './perfiles.ts';
 import { azarDe, lecciones, rutasDe, spice, todasLasRutas, type Ruta } from './rutas.ts';
 import type { EstadoSonda } from './sonda.ts';
+import { copiaDe, copiaQa, elegirCopia } from './novedades.ts';
 
 const SEMILLA = Number(process.env.QA_SEMILLA ?? 20261030);
 
@@ -501,7 +502,7 @@ test('almacenamiento lleno o bloqueado: avisa, no se cuelga y guarda al volver',
 
   // every read refused (some private modes): pages open and work, the libraries say they could not read
   await page.evaluate(() => sessionStorage.setItem('qa-bloqueado', '1'));
-  for (const h of ['#/', '#/cap05', '#/marcadores', '#/repaso', '#/progreso', '#/practicar', '#/editor', '#/protoboard', '#/sincronizacion']) {
+  for (const h of ['#/', '#/cap05', '#/marcadores', '#/repaso', '#/progreso', '#/practicar', '#/editor', '#/protoboard', '#/sincronizacion', '#/sincronizacion/copia']) {
     reg.ruta = `${h} (almacenamiento bloqueado)`;
     // a new document each time (a hash change keeps what the modules already read)
     await page.goto(`/${h}`);
@@ -514,8 +515,72 @@ test('almacenamiento lleno o bloqueado: avisa, no se cuelga y guarda al volver',
       await fallo(`${h.split('/')[1]}: sin aviso sin almacenamiento`, `${h}: con el almacenamiento bloqueado no avisa de que su biblioteca solo vive mientras la página esté abierta.`);
     await recogerYComprobar(page, reg, { tactil: true, completa: false, accesibilidad: false });
   }
+  // 0.12: the backup with the storage blocked: exporting what is in memory works; importing must not claim it is kept
+  reg.ruta = '#/sincronizacion/copia (almacenamiento bloqueado: exportar e importar)';
+  await page.goto('/#/sincronizacion/copia');
+  await page.reload();
+  await esperarCalma(page, 20_000, 500);
+  await page.locator('[data-copia-exportar]').click().catch(() => {});
+  const exportado = await page.locator('[data-copia-aviso], [data-copia-error]').first().textContent({ timeout: 20_000 }).catch(() => null);
+  if (!exportado || !/^Copia (descargada|guardada)/.test(exportado.trim())) await fallo('copia: exportar sin almacenamiento', `Con el almacenamiento bloqueado, «Exportar copia» dice «${exportado?.trim() ?? '(nada)'}».`);
+  await elegirCopia(page, 'qa-copia.json', copiaQa()).catch(() => {});
+  if (await page.locator('[data-copia-vista]').waitFor({ timeout: 20_000 }).then(() => true).catch(() => false)) {
+    await marcar(page);
+    await page.locator('[data-copia-aplicar]').click().catch(() => {});
+    await page.locator('[data-copia-resultado], [data-copia-error]').first().waitFor({ timeout: 30_000 }).catch(() => {});
+    const r = await page.evaluate(() => ({
+      ok: !!document.querySelector('[data-copia-resultado]'),
+      fallidos: Number(document.querySelector('[data-copia-resultado]')?.getAttribute('data-fallidos') ?? 0),
+      texto: (document.querySelector('[data-copia]') as HTMLElement | null)?.innerText.replace(/\s+/g, ' ').slice(0, 400) ?? '',
+    }));
+    // nothing can be stored: a plain «Importado: N cambios» would tell the reader it is safe
+    if (r.ok && !r.fallidos && !/no se (ha )?pod|no se guarda|memoria|al cerrar/i.test(r.texto)) await fallo('copia: importar sin almacenamiento', `Con el almacenamiento bloqueado, importar una copia dice «${r.texto.slice(0, 200)}» sin avisar de que no se guarda.`);
+  }
+  await recogerYComprobar(page, reg, { tactil: true, completa: false, accesibilidad: false });
   await page.evaluate(() => sessionStorage.removeItem('qa-bloqueado'));
-  reg.cobertura({ 'almacenamiento: páginas probadas sin poder leer': 9, 'almacenamiento: guardados con el almacenamiento lleno': 2 });
+
+  // 0.12: importing a backup into a full storage («Unir» and «Sustituir todo»): it must say what failed, change nothing it
+  // cannot store, and work once there is room
+  await page.goto('/#/sincronizacion/copia');
+  await page.reload();
+  await esperarCalma(page, 20_000, 500);
+  for (const modo of ['unir', 'sustituir'] as const) {
+    reg.ruta = `#/sincronizacion/copia (almacenamiento lleno: ${modo})`;
+    const antes = await page.evaluate(() => localStorage.getItem('epa:marcadores'));
+    await lleno(true);
+    await elegirCopia(page, `qa-copia-${modo}.json`, copiaQa());
+    await page.locator('[data-copia-vista]').waitFor({ timeout: 20_000 }).catch(() => {});
+    if (modo === 'sustituir') {
+      await page.locator('[data-copia-modo="sustituir"]').check().catch(() => {});
+      await page.locator('[data-copia-confirmar]').check().catch(() => {});
+    }
+    await marcar(page);
+    await page.locator('[data-copia-aplicar]').click().catch(() => {});
+    await page.locator('[data-copia-resultado], [data-copia-error]').first().waitFor({ timeout: 30_000 }).catch(() => {});
+    await page.waitForTimeout(500);
+    const r = await page.evaluate(() => ({
+      ok: !!document.querySelector('[data-copia-resultado]'),
+      fallidos: Number(document.querySelector('[data-copia-resultado]')?.getAttribute('data-fallidos') ?? 0),
+      error: !!document.querySelector('[data-copia-error]'),
+      ahora: localStorage.getItem('epa:marcadores'),
+    }));
+    if (r.ok && !r.fallidos && !r.error && r.ahora === antes) await fallo(`copia: lleno, ${modo}, dice importado`, `Con el almacenamiento lleno, «${modo === 'unir' ? 'Importar y unir' : 'Sustituir todo'}» dice que ha importado y no ha guardado nada.`);
+    if (!r.ok && !r.error) await fallo(`copia: lleno, ${modo}, sin aviso`, `Con el almacenamiento lleno, «${modo}» no dice nada.`);
+    await recogerYComprobar(page, reg, { tactil: true, completa: false, accesibilidad: false });
+    await lleno(false);
+  }
+  reg.ruta = '#/sincronizacion/copia (con sitio otra vez)';
+  await elegirCopia(page, 'qa-copia.json', copiaQa());
+  await page.locator('[data-copia-vista]').waitFor({ timeout: 20_000 }).catch(() => {});
+  if (Number(await page.locator('[data-copia-vista]').getAttribute('data-cambios').catch(() => '0')) > 0) {
+    await marcar(page);
+    await page.locator('[data-copia-aplicar]').click().catch(() => {});
+    await page.locator('[data-copia-resultado]').waitFor({ timeout: 30_000 }).catch(() => {});
+  }
+  await page.waitForTimeout(800);
+  if (!(await page.evaluate(() => !!(JSON.parse(localStorage.getItem('epa:marcadores') ?? '{}') as Record<string, unknown>)['sec-5.1'])))
+    await fallo('copia: con sitio no importa', 'Con sitio otra vez, importar la copia no guarda su marcador.');
+  reg.cobertura({ 'almacenamiento: páginas probadas sin poder leer': 10, 'almacenamiento: guardados con el almacenamiento lleno': 2, 'almacenamiento: importaciones de copia (lleno, bloqueado)': 3 });
 });
 
 // ------------------------------------------------------------------ two tabs at once (0.11 final pass)
@@ -620,6 +685,38 @@ test('dos pestañas a la vez: lo que hace una no deshace lo de la otra', async (
     await esperarCalma(page, 20_000);
     await recogerYComprobar(page, reg, { tactil: true, completa: true, accesibilidad: true });
   }
+  // 0.12: one tab imports a backup («Unir»: a bookmark and a note of chapter 6) while the other keeps changing its own
+  // sections of chapter 5: the import reaches the other tab, and neither undoes the other
+  reg.ruta = 'dos pestañas · importar una copia en una mientras la otra marca';
+  await otra.goto('/#/cap05');
+  await otra.locator('.seccion-cab h2[id]').first().waitFor({ timeout: 60_000 });
+  const ahora = Date.now();
+  const copia = copiaDe({
+    marcadores: { 'sec-6.1': { t: ahora - 1000, v: { parte: 'cap06', label: 'sec-6.1', num: '6.1', titulo: 'Estructura y Principio de Funcionamiento', t: ahora - 1000 } } },
+    notas: { 'sec-6.2': { t: ahora - 1000, v: { parte: 'cap06', label: 'sec-6.2', num: '6.2', titulo: 'Las Regiones de Operación', texto: 'Nota importada en la otra pestaña', t: ahora - 1000 } } },
+  });
+  await page.goto('/#/sincronizacion/copia');
+  await elegirCopia(page, 'qa-pestanas.json', copia);
+  await page.locator('[data-copia-vista]').waitFor({ timeout: 20_000 });
+  const propias2 = labels.filter((_, i) => i % 2 === 1);
+  const aplicar = page.locator('[data-copia-aplicar]').click();
+  for (let k = 0; k < 6; k++) {
+    const l = propias2[k % propias2.length]!;
+    await boton(otra, l).click();
+    marcado.set(l, !marcado.get(l));
+    await otra.waitForTimeout(Math.floor(rnd() * 200));
+  }
+  await aplicar;
+  await page.locator('[data-copia-resultado]').waitFor({ timeout: 30_000 }).catch(() => fallo('importar con otra pestaña', 'La importación no termina mientras la otra pestaña guarda.'));
+  await page.waitForTimeout(2000);
+  const g2 = await otra.evaluate(() => ({ m: JSON.parse(localStorage.getItem('epa:marcadores') ?? '{}'), n: JSON.parse(localStorage.getItem('epa:notas') ?? '{}') }));
+  if (!g2.m['sec-6.1'] || g2.n['sec-6.2']?.texto !== 'Nota importada en la otra pestaña') await fallo('la importación se pierde', 'Dos pestañas: lo importado en una (marcador sec-6.1, nota sec-6.2) no queda en el almacenamiento mientras la otra guarda.');
+  for (const l of labels) if (!!g2.m[l] !== marcado.get(l)) await fallo('importar deshace lo de la otra pestaña', `Dos pestañas: tras importar en una, el marcador de ${l} está ${g2.m[l] ? 'puesto' : 'quitado'} y lo último hecho en la otra fue ${marcado.get(l) ? 'ponerlo' : 'quitarlo'}.`);
+  // the other tab sees what was imported without reloading
+  await otra.goto('/#/marcadores');
+  await esperarCalma(otra, 20_000);
+  if (!(await otra.locator('#contenido').textContent())?.includes('Estructura y Principio de Funcionamiento')) await fallo('la otra pestaña no lo ve', 'Dos pestañas: «Marcadores» de la otra pestaña no muestra el marcador importado (sec-6.1) sin recargar.');
+  await recogerYComprobar(otra, reg, { tactil: true, completa: true, accesibilidad: false });
   await otra.close();
-  reg.cobertura({ 'dos pestañas: acciones sobre marcadores y notas': hechas });
+  reg.cobertura({ 'dos pestañas: acciones sobre marcadores y notas': hechas, 'dos pestañas: importaciones con la otra guardando': 1 });
 });

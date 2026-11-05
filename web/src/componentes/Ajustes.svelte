@@ -39,12 +39,19 @@
         ancla?.focus();
       }
     };
+    // another page under it (Android's back button, history, a link): the popover belongs to the page that is gone
+    // (0.12 QA: it stayed open and covered the next page's controls)
+    const ruta = () => cerrar();
     document.addEventListener('pointerdown', fuera, true);
     document.addEventListener('keydown', tecla);
+    window.addEventListener('hashchange', ruta);
+    window.addEventListener('popstate', ruta);
     panel?.querySelector<HTMLElement>('[aria-checked="true"]')?.focus();
     return () => {
       document.removeEventListener('pointerdown', fuera, true);
       document.removeEventListener('keydown', tecla);
+      window.removeEventListener('hashchange', ruta);
+      window.removeEventListener('popstate', ruta);
     };
   });
 </script>

@@ -8,7 +8,8 @@
 //   … tests/qa/rastreo.spec.ts --project=tableta   only the crawler, only the tablet profile
 // Environment: QA_MODO (completo | rapido), QA_SEMILLA (monkey seed), QA_PASOS (monkey steps), QA_FILTRO (regex
 // over route ids), QA_WORKERS (default 1), QA_INFORME (report folder, by default tests/qa/informe), EPA_DIST (build folder, by default in the system temp folder),
-// EPA_PUERTO (port, by default 4421). The report alone: node tests/qa/informe.ts
+// EPA_PUERTO (port, by default 4421), QA_SIN_COMPILAR=1 (serve EPA_DIST as it is), QA_VIEJO / QA_VIEJO_NOMBRE (fase2-visual).
+// The report alone: node tests/qa/informe.ts
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { defineConfig } from '@playwright/test';
@@ -41,7 +42,8 @@ export default defineConfig({
     launchOptions: { args: ['--js-flags=--expose-gc', '--enable-precise-memory-info'] },
   },
   webServer: {
-    command: `npx vite build --outDir ${dist} --emptyOutDir && npx vite preview --outDir ${dist} --port ${puerto} --strictPort`,
+    // QA_SIN_COMPILAR=1: serve the build already in EPA_DIST (one build for a run split in several commands)
+    command: `${process.env.QA_SIN_COMPILAR ? '' : `npx vite build --outDir ${dist} --emptyOutDir && `}npx vite preview --outDir ${dist} --port ${puerto} --strictPort`,
     url: `http://localhost:${puerto}/`,
     reuseExistingServer: true,
     timeout: 300_000,
