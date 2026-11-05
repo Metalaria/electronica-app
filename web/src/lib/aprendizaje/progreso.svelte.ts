@@ -15,7 +15,7 @@
 // the awards that are missing with the same ids and amounts the live events give (`reconciliar`). So the first
 // start of 0.11 on a 0.10 install credits the earlier work, silently (no toasts).
 
-import { obtenerAlmacen, type Almacen } from '../almacen';
+import { obtenerAlmacen, registrarVolcado, type Almacen } from '../almacen';
 import { anotarCambio } from '../sincronizacion/marcas';
 import { claveDia } from '../../componentes/repaso/srs';
 import { obtenerIndice } from '../datos';
@@ -183,6 +183,8 @@ export function cargarProgresoXp(): Promise<void> {
         if (temporizador) void escribir().catch(avisarEscritura);
       };
       window.addEventListener('pagehide', volcar);
+      // 0.12: the save before installing an update awaits this write (almacen.ts guardarTodoAntesDeSalir)
+      registrarVolcado(() => (temporizador ? escribir() : Promise.resolve()));
       window.addEventListener('epa:antes-de-sincronizar', volcar);
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden') volcar();

@@ -41,6 +41,8 @@ for (let p = 0; p < N; p++) {
   const borradosAlguna = new Set<string>();
   const valores = new Set(Object.values(inicial).map((v) => JSON.stringify(v)));
   let n = 0;
+  /** Edits scheduled by `__alEscribir` not made yet (review 12b, finding 5: the final check must wait for them). */
+  let programadas = 0;
   const editar = () => {
     const ids = Object.keys(mem.m);
     if (ids.length && azar() < 0.25) {
@@ -66,7 +68,14 @@ for (let p = 0; p < N; p++) {
         for (const [id, v] of Object.entries(st)) if (!valores.has(JSON.stringify(v))) problemas.push(`prueba ${p}: valor desconocido ${id}=${JSON.stringify(v)}`);
         void s;
       }, g.__ipcMs + 1);
-      if (azar() < 0.3) setTimeout(() => { editar(); gd.guardar(0); }, 0);
+      if (azar() < 0.3) {
+        programadas++;
+        setTimeout(() => {
+          editar();
+          gd.guardar(0);
+          programadas--;
+        }, 0);
+      }
     }
   };
   let cargado = false;
@@ -96,6 +105,11 @@ for (let p = 0; p < N; p++) {
   await espera(20);
   fallos = false;
   g.__alEscribir = undefined;
+  // (review 12b, finding 5) the edits a write scheduled still run after this point, each with its own guardar(0): the
+  // Guardado must be idle — none scheduled, no timer — before the final write, or memory is compared with a storage
+  // that has not had the chance to take an edit made after the final write (a harness artefact, not a loss)
+  for (let k = 0; k < 400 && (programadas > 0 || (gd as any).temporizador); k++) await espera(5);
+  if (programadas > 0 || (gd as any).temporizador) problemas.push(`prueba ${p}: el guardado no queda en reposo`);
   if (!process.env.SIN_REINTENTO) await cargar();
   if (FINAL === 'escribir') await gd.escribir().catch((e: any) => problemas.push(`prueba ${p}: escritura final ${e.message}`));
   else await gd.volcar().catch((e: any) => problemas.push(`prueba ${p}: volcar final ${e.message}`));

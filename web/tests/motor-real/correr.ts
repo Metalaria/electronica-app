@@ -7,6 +7,8 @@ import { errores } from './arnes.ts';
 const [modo = 'casos', a1 = '', a2 = ''] = process.argv.slice(2);
 if (modo === 'casos') {
   const { correrCasos } = await import('./escenarios.ts');
+  // (0.12: the backup and the daily activity summed across devices, added to the same list)
+  await import('./escenarios12.ts');
   console.log(JSON.stringify(await correrCasos(a1)));
 } else if (modo === 'rendimiento') {
   // … correr.ts rendimiento [circuitos,…] : one autosave of the editor's library (≈ 13 kB per circuit)

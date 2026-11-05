@@ -29,7 +29,11 @@
     abrirEnNavegador,
     REPO_APP,
   } from '../../lib/sincronizacion/actualizaciones.svelte';
+  import { instalador, actualizadorDisponible } from '../../lib/sincronizacion/instalador.svelte';
+  import BotonesInstalador from './BotonesInstalador.svelte';
   import { cuando } from './tiempo';
+  import CopiaSeguridad from './CopiaSeguridad.svelte';
+  import { ruta as rutaApp } from '../../lib/ruta.svelte';
 
   let token = $state('');
   let nuevoToken = $state('');
@@ -58,6 +62,8 @@
   );
   const rutaValida = $derived(!!leerRutaFichero(ruta) && /\.json$/i.test(ruta.trim()));
   const nueva = $derived(versionNueva());
+  const buscandoVersion = $derived(actualizacion.buscando || instalador.estado === 'buscando');
+  const autoActualizable = actualizadorDisponible();
   const NOMBRES: Record<string, string> = Object.fromEntries(sincronizables().map((s) => [s.clave, s.nombre]));
 
   onMount(() => {
@@ -256,31 +262,40 @@
     </p>
   </section>
 
+  <!-- 0.12: export / import of all the progress (#/sincronizacion/copia scrolls to it: the «Aa» entry) -->
+  <CopiaSeguridad enfocar={rutaApp.ancla === 'copia'} />
+
   <section class="tarjeta" aria-labelledby="t-version">
     <h2 id="t-version"><Download size={20} aria-hidden="true" /> Actualizaciones</h2>
     <div class="fila">
       <p>Versión instalada: <b data-version-app>{actualizacion.version}</b></p>
-      <button class="boton" onclick={() => buscarActualizaciones(true)} disabled={!sinc.hayToken || actualizacion.buscando}>
-        <span class:gira={actualizacion.buscando}><RefreshCw size={16} aria-hidden="true" /></span> Buscar actualizaciones
+      <button class="boton" onclick={() => buscarActualizaciones(true)} disabled={buscandoVersion}>
+        <span class:gira={buscandoVersion}><RefreshCw size={16} aria-hidden="true" /></span> Buscar actualizaciones
       </button>
     </div>
-    {#if !sinc.hayToken}
-      <p class="nota" data-sin-token>
-        La búsqueda de actualizaciones usa el mismo token que la sincronización: sin token no se comprueba nada. Con el
-        token, se mira al abrir la aplicación, como mucho cada 12 horas.
-      </p>
-    {:else if actualizacion.error}
+    <p class="nota" data-nota-actualizaciones>
+      Se mira al abrir la aplicación, como mucho cada 12 horas, con o sin token: {REPO_APP.owner}/{REPO_APP.repo} es
+      público.
+      {#if autoActualizable}
+        Cuando haya una versión nueva podrá descargarla e instalarla desde aquí; la aplicación comprueba su firma antes
+        de instalar y nunca instala nada sin que usted lo pida.
+      {:else}
+        Cuando haya una versión nueva, «Ver la publicación» abre la página para descargar el instalador.
+      {/if}
+    </p>
+    {#if actualizacion.error}
       <p class="error" role="alert">{actualizacion.error}</p>
     {:else if nueva}
       <div class="nueva">
         <p><b>Versión {nueva.version} disponible.</b> {resumenNotas(nueva.notas)}</p>
-        <button class="boton primario" onclick={() => abrirEnNavegador(nueva.url)}>Ver la publicación</button>
+        <button class="boton" class:primario={!autoActualizable || instalador.version !== nueva.version} onclick={() => abrirEnNavegador(nueva.url)}>Ver la publicación</button>
       </div>
     {:else if actualizacion.alDia}
       <p class="ok" role="status">Tiene la última versión publicada.</p>
     {:else if actualizacion.comprobada}
       <p class="nota">Comprobado {cuando(actualizacion.comprobada, ahora)}.</p>
     {/if}
+    <BotonesInstalador />
   </section>
 
   <section class="tarjeta" aria-labelledby="t-como">
@@ -565,5 +580,14 @@
   }
   .pasos li + li {
     margin-top: 6px;
+  }
+  /* 44 px for a finger (0.12 QA: «Buscar actualizaciones» and «Ver la publicación» were 36 px, the summary 26 px) */
+  @media (pointer: coarse) {
+    .boton {
+      min-height: 44px;
+    }
+    summary {
+      padding-block: 9px;
+    }
   }
 </style>

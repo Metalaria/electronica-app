@@ -22,6 +22,8 @@ interface Peticion {
   metodo: string;
   ruta: string;
   token: string;
+  /** The request carried an Authorization header at all. */
+  autorizada: boolean;
 }
 
 /** An in-memory GitHub: the two repositories, the Contents API with sha checks, and releases/latest. */
@@ -54,12 +56,14 @@ class FakeGitHub {
       'access-control-expose-headers': 'x-ratelimit-remaining, x-ratelimit-reset',
     };
     if (req.method() === 'OPTIONS') return route.fulfill({ status: 204, headers: cors });
-    const auth = (await req.headerValue('authorization')) ?? '';
-    const token = auth.replace(/^Bearer /, '');
-    this.peticiones.push({ metodo: req.method(), ruta: url.pathname, token });
+    const auth = await req.headerValue('authorization');
+    const token = (auth ?? '').replace(/^Bearer /, '');
+    this.peticiones.push({ metodo: req.method(), ruta: url.pathname, token, autorizada: auth !== null });
     const json = (status: number, cuerpo: unknown) =>
       route.fulfill({ status, headers: { ...cors, 'content-type': 'application/json; charset=utf-8' }, body: JSON.stringify(cuerpo) });
-    if (token !== TOKEN) return json(401, { message: 'Bad credentials' });
+    // The app's repository is public (anonymous reads allowed); a token that is sent must be the right one.
+    const publico = url.pathname.startsWith('/repos/Metalaria/electronica-app/') || url.pathname === '/repos/Metalaria/electronica-app';
+    if (auth === null ? !publico : token !== TOKEN) return json(401, { message: auth === null ? 'Requires authentication' : 'Bad credentials' });
 
     const m = /^\/repos\/([^/]+)\/([^/]+)(?:\/(.*))?$/.exec(url.pathname);
     if (!m) return json(404, { message: 'Not Found' });
@@ -150,12 +154,15 @@ async function leer<T>(page: Page, clave: string): Promise<T> {
 }
 
 test.describe('Sincronización con GitHub', () => {
-  test('sin token no se hace ninguna petición a GitHub', async ({ page }) => {
+  // 0.12: the app's repository is public, so the release check works without a token (anonymous: no Authorization
+  // header). The data repository is never contacted without a token, and the plain browser build makes no request
+  // at start-up (the apps do; tests/actualizador12.spec.ts).
+  test('sin token solo se consulta, sin credenciales, la publicación de la app; nunca el repositorio de datos', async ({ page }) => {
     const gh = new FakeGitHub();
     gh.release = { tag_name: 'v99.0.0', body: 'Nada' };
-    const todas: string[] = [];
+    const todas: { url: string; auth: string | null }[] = [];
     page.on('request', (r) => {
-      if (r.url().includes('api.github.com')) todas.push(r.url());
+      if (r.url().includes('api.github.com') && r.method() !== 'OPTIONS') todas.push({ url: r.url(), auth: r.headers()['authorization'] ?? null });
     });
     await page.route('https://api.github.com/**', (r) => gh.atender(r));
     await page.goto('./#/');
@@ -163,14 +170,24 @@ test.describe('Sincronización con GitHub', () => {
     await page.reload();
     await expect(page.locator('#contenido')).not.toContainText('Abriendo el libro');
     await page.getByRole('button', { name: 'Tema y tamaño de letra' }).click();
-    await expect(page.locator('[data-grupo-actualizaciones] [data-sin-token]')).toContainText('la búsqueda usa el mismo token que la sincronización');
     await expect(page.locator('[data-grupo-sincronizacion]')).toContainText('falta el token');
-    await page.goto('./#/sincronizacion');
-    await expect(page.locator('[data-pagina] [data-sin-token]')).toContainText('sin token no se comprueba nada');
-    await expect(page.locator('[data-sincronizar]')).toBeDisabled();
+    // nothing at start-up in the browser build
     await page.waitForTimeout(2500);
     expect(todas).toEqual([]);
-    expect(gh.peticiones).toEqual([]);
+    // «Buscar actualizaciones» works without a token
+    await page.locator('[data-grupo-actualizaciones]').getByRole('button', { name: 'Buscar actualizaciones' }).click();
+    await expect(page.locator('[data-grupo-actualizaciones]')).toContainText('Versión 99.0.0 disponible');
+    await page.goto('./#/sincronizacion');
+    await expect(page.locator('[data-pagina] [data-nota-actualizaciones]')).toContainText('con o sin token');
+    await expect(page.locator('[data-sincronizar]')).toBeDisabled();
+    await page.locator('section[aria-labelledby="t-version"]').getByRole('button', { name: 'Buscar actualizaciones' }).click();
+    await expect.poll(() => gh.peticiones.length).toBe(2);
+    await page.waitForTimeout(1000);
+    expect(gh.peticiones.map((p) => [p.metodo, p.ruta, p.autorizada])).toEqual([
+      ['GET', '/repos/Metalaria/electronica-app/releases/latest', false],
+      ['GET', '/repos/Metalaria/electronica-app/releases/latest', false],
+    ]);
+    expect(todas.every((t) => t.auth === null && !t.url.includes('electronica-datos'))).toBe(true);
   });
 
   test('la primera sincronización crea el fichero (UTF-8 correcto) y el token se ve solo por su final', async ({ browser }) => {

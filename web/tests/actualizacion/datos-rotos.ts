@@ -29,6 +29,8 @@ const CLAVES = [
   'repaso-tarjetas', 'repaso-diario', 'repaso-ajustes', 'repaso-tests', 'repaso-fallos', 'repaso-examenes',
   'calc-favoritos', 'editor-circuitos', 'protoboard-circuitos', 'progreso-diario', 'progreso-objetivo', 'lecciones',
   'progreso-xp', 'cursos', 'dominio', 'problema-dia',
+  // 0.12: the device id of the per-device records (the daily activity) and the automatic backup
+  'dispositivo-local', 'copia-automatica',
 ];
 const v = VARIANTES[variante % VARIANTES.length];
 for (const k of CLAVES) datos.set(`epa:${k}`, JSON.stringify(v));
@@ -121,6 +123,29 @@ try {
       if (!d || typeof d !== 'object' || typeof (d as { nombre?: unknown }).nombre !== 'string') problemas.push(`el fichero conserva un dispositivo mal formado: ${k}`);
     if (!disp.tableta) problemas.push('el fichero perdió el dispositivo válido');
   }
+  // 0.12: the backup of the damaged data can be made and imported back («unir» and «sustituir»), and the daily progress
+  // still adds up a step studied now
+  const C = await import('../../src/lib/sincronizacion/copia.ts');
+  try {
+    const c = await C.crearCopia();
+    const l = C.leerFicheroCopia(c.texto);
+    await C.importar(l, 'unir');
+    await C.importar(l, 'sustituir');
+    if (!(await C.leerCopiaAutomatica())) problemas.push('no quedó la copia automática');
+  } catch (e) {
+    problemas.push(`copia de seguridad: ${(e as Error).message}`);
+  }
+  try {
+    C.leerFicheroCopia(JSON.stringify(v));
+    problemas.push('un fichero dañado se aceptó como copia');
+  } catch (e) {
+    if (!(e instanceof C.ErrorCopia)) problemas.push(`un fichero dañado lanza ${(e as Error).message}`);
+  }
+  const D = await import('../../src/lib/progreso-diario.svelte.ts');
+  await D.cargarProgresoDiario();
+  const antesPasos = D.progresoDiario.hoy.pasos;
+  D.registrarActividad('paso', 2);
+  if (D.progresoDiario.hoy.pasos !== antesPasos + 2) problemas.push(`el progreso diario no suma (${antesPasos} → ${D.progresoDiario.hoy.pasos})`);
   const notas = JSON.parse(datos.get('epa:notas') ?? 'null') as Record<string, { texto?: string }> | null;
   if (notas?.z?.texto !== 'del fichero') problemas.push('la nota del fichero no se aplicó sobre los datos dañados');
   JSON.parse(texto!);

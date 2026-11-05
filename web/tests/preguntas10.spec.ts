@@ -435,14 +435,15 @@ test('lección con práctica: pantallas intercaladas, objetivo diario, ideas cla
       await expect(page).toHaveURL(/practica-\d+$/);
       if (practicas === 1) {
         // the first one answered (wrong twice): it counts for the day as a lesson question
-        const antes = Object.values((await leer<Record<string, { preguntas?: number }>>(page, 'progreso-diario')) ?? {}).reduce((s, d) => s + (d.preguntas ?? 0), 0);
+        // (0.12: the store keeps each day's total under «<day>» and this device's share under «<day>@<device>»: the totals only)
+        const antes = Object.entries((await leer<Record<string, { preguntas?: number }>>(page, 'progreso-diario')) ?? {}).reduce((s, [k, d]) => (k.includes('@') ? s : s + (d.preguntas ?? 0)), 0);
         await page.locator('[data-practica] [data-numero]').fill('1');
         await page.locator('[data-practica] [data-numero]').press('Enter');
         await page.locator('[data-practica] [data-numero]').fill('2');
         await page.locator('[data-practica] [data-numero]').press('Enter');
         await expect(page.locator('[data-practica] [data-feedback]')).toBeVisible();
         await expect
-          .poll(async () => Object.values((await leer<Record<string, { preguntas?: number }>>(page, 'progreso-diario')) ?? {}).reduce((s, d) => s + (d.preguntas ?? 0), 0))
+          .poll(async () => Object.entries((await leer<Record<string, { preguntas?: number }>>(page, 'progreso-diario')) ?? {}).reduce((s, [k, d]) => (k.includes('@') ? s : s + (d.preguntas ?? 0)), 0))
           .toBe(antes + 1);
         await page.locator('[data-continuar]').click();
       } else await page.locator('[data-saltar]').click();

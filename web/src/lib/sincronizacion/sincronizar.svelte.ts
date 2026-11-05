@@ -41,7 +41,7 @@ import {
 } from './fusion';
 import { ErrorGitHub, escribirFichero, leerFichero, leerRepositorio, leerRutaFichero } from './github';
 import { leerToken } from './credenciales';
-import { olvidarMarcas, recargarMarcas, volcarMarcas } from './marcas';
+import { olvidarMarcas, recargarMarcas, volcarMarcas, type Marcas } from './marcas';
 import { sincronizables, type Valores } from './registro.svelte';
 import { VERSION_APP } from './version-app';
 
@@ -70,6 +70,11 @@ interface EstadoLocal {
    * write, or made again for a change still unwritten) — fusion.ts fecharLocal does not move it past what is recorded.
    */
   iniciada?: number;
+  /**
+   * 0.12: the prune horizon (`podado`) of the file last merged: tombstones older than it are gone from the file, so an
+   * old backup's item older than it and unknown here may have been deleted since (copia.ts skips it by default).
+   */
+  podado?: number;
   /** Summary of the last successful run, for the settings page. */
   resumen?: Resumen;
 }
@@ -102,6 +107,76 @@ export const sinc = $state({
 
 const CLAVE_AJUSTES = 'sinc-ajustes';
 const CLAVE_ESTADO = 'sinc-estado';
+/**
+ * 0.12 (random trial 71337; scenario b12·21): what a run is about to PUT of this device's own versions, stored right
+ * before the PUT — {doc, items: {store: {id: [time, hash | «-»]}}} — and cleared when the run ends (or when GitHub
+ * answered that nothing was written). A run cut after its PUT records nothing and keeps its marks, so its next run
+ * dated those changes «now» again, and they beat a change another device made after seeing them in the file (a
+ * deletion: resurrected). The next run takes these entries as the record of an item still holding that version.
+ * Its own key: 0.10/0.11 never read it, and sinc-estado keeps its shape. Only items with a mark (only those are dated
+ * «now»: small even on a first run against a new file); `en`: when it was written — an item changed again since (a
+ * mark after it: back to the same value, A-B-A) is dated by its mark, not as sent (review 0.12i, finding 3). Not
+ * storable (a full storage): the run goes on without it (review 0.12i, finding 2).
+ */
+const CLAVE_ENVIADO = 'sinc-enviado';
+
+interface Enviado {
+  doc: string;
+  en?: number;
+  items: Record<string, Record<string, Sincronizado>>;
+}
+
+async function leerEnviado(): Promise<Enviado | null> {
+  try {
+    const v = await (await obtenerAlmacen()).leer<{ doc?: unknown; en?: unknown; items?: unknown }>(CLAVE_ENVIADO);
+    if (!v || typeof v !== 'object' || typeof v.doc !== 'string' || !v.doc) return null;
+    return { doc: v.doc, en: typeof v.en === 'number' && Number.isFinite(v.en) ? v.en : undefined, items: deGuardado(v.items, undefined) };
+  } catch {
+    return null;
+  }
+}
+
+async function guardarEnviado(v: Enviado | null): Promise<void> {
+  await (await obtenerAlmacen()).escribir(CLAVE_ENVIADO, v);
+}
+
+/** The records of a run: what was synchronised, and what an earlier run cut after its PUT sent of an item unchanged since. */
+function conEnviado(items: EstadoLocal['items'], doc: string, enviado: Enviado | null, huellas: Map<string, Map<string, string>>, marcas: Marcas): EstadoLocal['items'] {
+  if (!enviado || !doc || enviado.doc !== doc) return items;
+  const r: EstadoLocal['items'] = { ...items };
+  for (const [k, ids] of Object.entries(enviado.items)) {
+    const local = huellas.get(k);
+    if (!local) continue;
+    for (const [id, x] of Object.entries(ids)) {
+      const p = r[k]?.[id];
+      if (p && p[0] >= x[0]) continue;
+      // (only an item that still holds what was sent: a later change keeps its mark and is dated as before)
+      if (x[1] === BORRADO ? local.has(id) : local.get(id) !== x[1]) continue;
+      // (changed again after it was written — back to the same value —: dated by its mark)
+      if (!(enviado.en! >= Math.max(marcas.cambios[k]?.[id] ?? 0, marcas.borrados[k]?.[id] ?? 0))) continue;
+      r[k] = { ...(r[k] ?? {}), [id]: [x[0], x[1]] };
+    }
+  }
+  return r;
+}
+
+/** Of a merged document, the versions that are this device's own (its local value or deletion won): what a PUT sends. */
+function propiosEnviados(fusion: DocSincronizacion, huellas: Map<string, Map<string, string>>, previos: EstadoLocal['items'], marcas: Marcas): Enviado['items'] {
+  const r: Enviado['items'] = {};
+  for (const [k, c] of Object.entries(fusion.almacenes)) {
+    const local = huellas.get(k);
+    if (!local) continue;
+    for (const [id, e] of Object.entries(c)) {
+      if (marcas.cambios[k]?.[id] === undefined && marcas.borrados[k]?.[id] === undefined) continue;
+      const h = esLapida(e) ? (local.has(id) ? null : BORRADO) : local.get(id) === huella(e.v) ? local.get(id)! : null;
+      if (h === null) continue;
+      const p = previos[k]?.[id];
+      if (p && p[0] === e.t && p[1] === h) continue;
+      (r[k] ??= {})[id] = [e.t, h];
+    }
+  }
+  return r;
+}
 
 let estadoLocal: EstadoLocal | null = null;
 /** The last run's record could not be stored (storage full): the memory's copy is used until it can. */
@@ -196,6 +271,7 @@ async function leerEstadoLocal(releer = false): Promise<EstadoLocal> {
     dispositivo: typeof e?.dispositivo === 'string' && e.dispositivo ? e.dispositivo : (estadoLocal?.dispositivo ?? idAleatorio()),
     ultima: Number(e?.ultima) || 0,
     iniciada: Number(e?.iniciada) || 0,
+    podado: Number(e?.podado) || 0,
     // (shown on the settings page: only a summary of the expected shape)
     resumen: resumenValido(e?.resumen),
   };
@@ -237,10 +313,12 @@ export async function olvidarHistoria(): Promise<void> {
   e.items = {};
   e.ultima = 0;
   e.iniciada = 0;
+  e.podado = 0;
   e.resumen = undefined;
   sinc.ultima = 0;
   sinc.resumen = null;
   await guardarEstado(e);
+  await guardarEnviado(null).catch(() => undefined);
 }
 
 function mensajeCommit(nombre: string, ahora: number): string {
@@ -299,17 +377,43 @@ let enCurso: Promise<boolean> | null = null;
 
 /** One synchronisation; `manual` reports transient errors too. Returns whether it succeeded. */
 export function sincronizar(manual = false): Promise<boolean> {
-  enCurso ??= ejecutar(manual).finally(() => {
+  enCurso ??= enExclusiva(() => ejecutarSolo(manual)).finally(() => {
     enCurso = null;
   });
   return enCurso;
 }
 
-/** One run at a time across the tabs of this browser (where the Web Locks API exists; Tauri's WebViews have it). */
-function ejecutar(manual: boolean): Promise<boolean> {
-  const locks = typeof navigator !== 'undefined' ? (navigator as Navigator & { locks?: LockManager }).locks : undefined;
-  if (!locks?.request) return ejecutarSolo(manual);
-  return locks.request('epa-sinc', () => ejecutarSolo(manual)) as Promise<boolean>;
+/** The runs and the backups' imports and exports of this tab, one after another. */
+let cerrojo: Promise<unknown> = Promise.resolve();
+
+/**
+ * Runs `f` with no synchronisation run — nor a backup's import or export (copia.ts) — at the same time: in this tab
+ * (one after another) and across the tabs of this browser (the Web Locks API `epa-sinc`, where it exists; Tauri's
+ * WebViews have it). A run asked for meanwhile waits for `f` (0.12: an import never interleaves with a run).
+ */
+export function enExclusiva<T>(f: () => Promise<T>): Promise<T> {
+  const p = cerrojo.then(() => {
+    const locks = typeof navigator !== 'undefined' ? (navigator as Navigator & { locks?: LockManager }).locks : undefined;
+    return locks?.request ? (locks.request('epa-sinc', f) as Promise<T>) : f();
+  });
+  cerrojo = p.catch(() => undefined);
+  return p;
+}
+
+/**
+ * The local data of every store dated as the next run would send them (fusion.ts fecharLocal, with this device's
+ * record of what was synchronised and its marks), tombstones included — for a backup (copia.ts). Call it inside
+ * `enExclusiva`. Rejects when a store cannot be read (never a backup with a store missing).
+ */
+export async function fotografiaLocal(): Promise<{ almacenes: DocSincronizacion['almacenes']; ahora: number; leido: number; podado: number; sincronizado: boolean }> {
+  const e = await leerEstadoLocal(true);
+  // (when the data were read: what an import applies from them is dated from then — review 0.12f, finding 2)
+  const leido = Date.now();
+  const lectura = await leerLocales();
+  const marcas = await recargarMarcas();
+  const ahora = Date.now();
+  // (`podado`: the last merged file's prune horizon; `sincronizado`: this device has merged a file at least once)
+  return { almacenes: docLocal(lectura, e, true, marcas, ahora).almacenes, ahora, leido, podado: e.podado ?? 0, sincronizado: !!e.doc };
 }
 
 async function ejecutarSolo(manual: boolean): Promise<boolean> {
@@ -336,6 +440,11 @@ async function ejecutarSolo(manual: boolean): Promise<boolean> {
     const inicio = Date.now();
     const lectura = await leerLocales();
     const marcas = await recargarMarcas();
+    // (the records, with what an earlier run cut after its PUT had sent: CLAVE_ENVIADO)
+    const enviado = await leerEnviado();
+    const registros = conEnviado(e.items, e.doc, enviado, lectura.huellas, marcas);
+    const eR: EstadoLocal = { ...e, items: registros };
+    let conEnviadoGuardado = !!enviado;
     const maximos = Object.fromEntries(sincronizables().filter((s) => s.maximo).map((s) => [s.clave, s.maximo!]));
     const uniones: Record<string, Union> = Object.fromEntries(
       sincronizables()
@@ -365,13 +474,14 @@ async function ejecutarSolo(manual: boolean): Promise<boolean> {
       }
       const ahora = Date.now();
       mismoDoc = !!remoto && remoto.id === e.doc;
-      const local = docLocal(lectura, e, mismoDoc, marcas, ahora);
+      const local = docLocal(lectura, eR, mismoDoc, marcas, ahora);
       // An unchanged local item that the file no longer has, older than the prune horizon of the file:
       // it was deleted elsewhere and its tombstone already pruned; drop it instead of bringing it back.
       if (remoto && mismoDoc) {
         for (const s of sincronizables()) {
           const c = local.almacenes[s.clave]!;
           const r = remoto.almacenes[s.clave] ?? {};
+          // (the real records, not what an earlier run only attempted to send: review 0.12i, finding 1)
           const previos = e.items[s.clave] ?? {};
           for (const [id, entrada] of Object.entries(c)) {
             const p = previos[id];
@@ -406,6 +516,18 @@ async function ejecutarSolo(manual: boolean): Promise<boolean> {
       if (remoto && mismosAlmacenes(remoto, fusion)) break;
       fusion.actualizado = ahora;
       fusion.dispositivos[e.dispositivo] = { nombre, ultima: ahora, version: VERSION_APP };
+      // (stored before the PUT: if the run is cut after it, the next one knows what was sent — CLAVE_ENVIADO)
+      // (against the real records: an entry of an earlier cut run still valid is kept — review 0.12i, finding 4)
+      const propios = propiosEnviados(fusion, lectura.huellas, mismoDoc ? e.items : {}, marcas);
+      if (Object.keys(propios).length) {
+        try {
+          await guardarEnviado({ doc: fusion.id, en: Date.now(), items: propios });
+          conEnviadoGuardado = true;
+        } catch {
+          // (a full storage: this run goes on without the record of what it sends — review 0.12i, finding 2)
+          conEnviadoGuardado = !!enviado;
+        }
+      }
       const sha = await escribirFichero(
         token,
         repo.owner,
@@ -419,6 +541,11 @@ async function ejecutarSolo(manual: boolean): Promise<boolean> {
         escrito = true;
         creado = !f;
         break;
+      }
+      // (GitHub answered that nothing was written: what was about to be sent was not)
+      if (conEnviadoGuardado) {
+        await guardarEnviado(enviado).catch(() => undefined);
+        conEnviadoGuardado = !!enviado;
       }
       if (++reintentos >= REINTENTOS)
         throw new ErrorGitHub('Otro dispositivo escribía a la vez y no se ha podido terminar; se reintentará.', 409, true);
@@ -437,6 +564,8 @@ async function ejecutarSolo(manual: boolean): Promise<boolean> {
       const c = fusion.almacenes[s.clave] ?? {};
       const antes = lectura.huellas.get(s.clave)!;
       let actuales: Valores;
+      // (the second read, to tell edits made during the run; what is applied is dated from the first, below)
+      const leidoEn = Date.now();
       try {
         actuales = await s.leer();
       } catch (err) {
@@ -444,14 +573,17 @@ async function ejecutarSolo(manual: boolean): Promise<boolean> {
       }
       const ahoraH = new Map(Object.entries(actuales).map(([id, x]) => [id, huella(x)]));
       const tocado = (id: string) => antes.get(id) !== ahoraH.get(id);
-      const previos = mismoDoc ? (e.items[s.clave] ?? {}) : {};
+      const previos = mismoDoc ? (registros[s.clave] ?? {}) : {};
       const { poner, quitar, rechazados } = porAplicar(c, ahoraH, tocado, s.valido, previos);
       const n = Object.keys(poner).length + quitar.length;
       let despues: Map<string, string> = ahoraH;
       let fallo = false;
       if (n) {
         try {
-          await s.aplicar(poner, quitar);
+          // (dated from the FIRST read, `inicio`, the one the merge used — review 0.12f, finding 2: another tab's change
+          // made between the two reads, unseen by the second one, would else lose to the application's evidence)
+          // (and the hashes the merge read: review 0.12g, finding 2)
+          await s.aplicar(poner, quitar, Math.min(leidoEn, inicio), antes);
           porAlmacen[s.clave] = n;
           recibidos += n;
           claves.push(s.clave);
@@ -465,9 +597,34 @@ async function ejecutarSolo(manual: boolean): Promise<boolean> {
       // What is now synchronised: the time of the merged entry and the hash of the file's value (fusion.ts). When the
       // store could not take the merge (or be read back), the items it was given are recorded as losing to the file
       // (fusion.ts registroSincronizado): the next run tries again and sends nothing old.
-      items[s.clave] = fallo
-        ? registroSincronizado(c, ahoraH, previos, tocado, new Set(), new Set([...Object.keys(poner), ...quitar]), rechazados)
-        : registroSincronizado(c, despues, previos, tocado, new Set(Object.keys(poner)), new Set(), rechazados);
+      if (!fallo) {
+        items[s.clave] = registroSincronizado(c, despues, previos, tocado, new Set(Object.keys(poner)), new Set(), rechazados);
+        continue;
+      }
+      // Defence in depth (randomized trial 61139; scenario b12·20): a module that is not atomic may have taken some of
+      // the items before failing. Read back, an item it already holds as the file has it (a value with the file's hash,
+      // a deletion gone) is recorded as applied — else an item new here would have no record at all, and an edit made
+      // on top of it with this clock behind the file's time would lose to it. Every module the app registers applies
+      // atomically (written first, put in memory after), so for them nothing differs: they still hold what they held.
+      const tomados = new Set<string>();
+      const tras = new Map(ahoraH);
+      try {
+        const leidos = new Map(Object.entries(await s.leer()).map(([id, x]) => [id, huella(x)]));
+        for (const id of Object.keys(poner))
+          if (leidos.get(id) === huella(poner[id])) {
+            tomados.add(id);
+            tras.set(id, leidos.get(id)!);
+          }
+        for (const id of quitar)
+          if (!leidos.has(id)) {
+            tomados.add(id);
+            tras.delete(id);
+          }
+      } catch {
+        // not readable either: every item it was given loses to the file, as before
+      }
+      const noTomados = [...Object.keys(poner), ...quitar].filter((id) => !tomados.has(id));
+      items[s.clave] = registroSincronizado(c, tras, previos, tocado, new Set(Object.keys(poner).filter((id) => tomados.has(id))), new Set(noTomados), rechazados);
     }
     if (claves.length) window.dispatchEvent(new CustomEvent('epa:sincronizado', { detail: { claves } }));
 
@@ -476,6 +633,7 @@ async function ejecutarSolo(manual: boolean): Promise<boolean> {
     e.items = items;
     e.ultima = fin;
     e.iniciada = inicio;
+    e.podado = fusion.podado;
     e.resumen = {
       recibidos,
       escrito,
@@ -489,6 +647,8 @@ async function ejecutarSolo(manual: boolean): Promise<boolean> {
     try {
       await guardarEstado(e);
       estadoSinGuardar = false;
+      // (the run is recorded: what it sent is in its records)
+      if (conEnviadoGuardado) await guardarEnviado(null).catch(() => undefined);
       // (marks that cannot be forgotten now stay: harmless, the next run finds those items as recorded)
       await olvidarMarcas(inicio, fallidos).catch(() => undefined);
     } catch (err) {

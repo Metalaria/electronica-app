@@ -35,7 +35,8 @@ console.warn = () => {};
 if (process.env.EPA_TAURI === '1') {
   const rutas = new Map<number, string>();
   const clave = (rid: number, k: string) => (rutas.get(rid) === 'credenciales.json' ? `epa-credencial:${k}` : `epa:${k}`);
-  const ipc = () => new Promise<void>((r) => setTimeout(r, 0));
+  // (EPA_IPC_MS: each IPC round trip takes that long — a slow disk or a busy phone; 0.12, tests/actualizacion/salir.ts)
+  const ipc = () => new Promise<void>((r) => setTimeout(r, Number(process.env.EPA_IPC_MS ?? 0)));
   w.__TAURI_INTERNALS__ = {
     async invoke(cmd: string, a: Record<string, any> = {}) {
       await ipc();

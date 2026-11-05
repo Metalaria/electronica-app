@@ -9,7 +9,7 @@
 // for the daily goal, and completing it later works as usual. Another browser tab's writes are merged item by item,
 // deletions («Deshacer») included (lib/pestanas.ts).
 
-import { obtenerAlmacen, type Almacen } from '../almacen';
+import { obtenerAlmacen, registrarVolcado, type Almacen } from '../almacen';
 import { anotarBorrado, anotarCambio } from '../sincronizacion/marcas';
 import { EnlacePestanas, fusionarPestanas, huellasDe, type BasePestanas } from '../pestanas';
 
@@ -121,6 +121,8 @@ export function cargarCursos(): Promise<void> {
         if (temporizador) void escribir().catch(avisarEscritura);
       };
       window.addEventListener('pagehide', volcar);
+      // 0.12: the save before installing an update awaits this write (almacen.ts guardarTodoAntesDeSalir)
+      registrarVolcado(() => (temporizador ? escribir() : Promise.resolve()));
       window.addEventListener('epa:antes-de-sincronizar', volcar);
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden') volcar();

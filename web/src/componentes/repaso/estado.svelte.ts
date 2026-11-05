@@ -7,6 +7,8 @@ import { Guardado, copiaPlana, guardadoDeRegistro } from '../../lib/sincronizaci
 import { claveDia, responder, type Calificacion, type EstadoTarjeta } from './srs';
 import { anotarBorrado, anotarCambio } from '../../lib/sincronizacion/marcas';
 import { registrarActividad } from '../../lib/progreso-diario.svelte';
+import { efectivo, unirDiasRepaso } from './diario';
+export { efectivo, unirDiasRepaso };
 
 export interface AjustesRepaso {
   /** New cards introduced per day (shared by every deck). */
@@ -24,6 +26,10 @@ export interface DiaRepaso {
   n: number;
   /** Answers other than «Otra vez». */
   b: number;
+  /** 0.12d: what of r/n/b was undone (only growing; absent while 0): the day's counts are the difference (`efectivo`). */
+  dr?: number;
+  dn?: number;
+  db?: number;
 }
 
 export interface ResultadoTest {
@@ -95,7 +101,8 @@ const mapaExamenes = (l: unknown): Record<string, Examen> =>
 // atomically. The settings are one item («ajustes»), the exams a list keyed by their time.
 export const guardadosRepaso = {
   tarjetas: guardadoDeRegistro<EstadoTarjeta>({ claveAlmacen: CLAVES.tarjetas, claveSinc: CLAVES.tarjetas, obtener: () => repaso.tarjetas, tiempo: (v) => numero(v?.u) }),
-  diario: guardadoDeRegistro<DiaRepaso>({ claveAlmacen: CLAVES.diario, claveSinc: CLAVES.diario, obtener: () => repaso.diario }),
+  // (two tabs that answered the same day: the larger count per field — `unirDiasRepaso`)
+  diario: guardadoDeRegistro<DiaRepaso>({ claveAlmacen: CLAVES.diario, claveSinc: CLAVES.diario, obtener: () => repaso.diario, unir: (a, b) => unirDiasRepaso(a, b) }),
   tests: guardadoDeRegistro<ResultadoTest>({ claveAlmacen: CLAVES.tests, claveSinc: CLAVES.tests, obtener: () => repaso.tests, tiempo: (v) => numero(v?.ultimo?.t) }),
   fallos: guardadoDeRegistro<Fallo>({ claveAlmacen: CLAVES.fallos, claveSinc: CLAVES.fallos, obtener: () => repaso.fallos, tiempo: (v) => numero(v?.t) }),
   ajustes: new Guardado<AjustesRepaso>({
@@ -172,43 +179,58 @@ export interface Deshacer {
   id: string;
   previo: EstadoTarjeta | undefined;
   dia: string;
-  diaPrevio: DiaRepaso | undefined;
+  /** What the answer added to the day (an undo adds it to the undo counters: review 0.12d, finding 2). */
+  suma: { r: number; n: number; b: number };
+  /**
+   * The card's state the answer left (0.12f): the undo restores `previo` only while the card still has it — not after
+   * «Reiniciar tarjetas» or another answer of it (another tab, another device).
+   */
+  tras?: EstadoTarjeta;
 }
 
 /** Records an answer; returns what is needed to undo it. */
 export function calificar(id: string, c: Calificacion, ahora = Date.now()): Deshacer {
   const previo = repaso.tarjetas[id] ? { ...repaso.tarjetas[id] } : undefined;
   const dia = claveDia(ahora);
-  const diaPrevio = repaso.diario[dia] ? { ...repaso.diario[dia] } : undefined;
   repaso.tarjetas[id] = responder(previo, c, ahora, id);
   const d = repaso.diario[dia] ?? { r: 0, n: 0, b: 0 };
-  d.r += 1;
-  if (!previo) d.n += 1;
-  if (c > 1) d.b += 1;
+  const suma = { r: 1, n: previo ? 0 : 1, b: c > 1 ? 1 : 0 };
+  d.r += suma.r;
+  d.n += suma.n;
+  d.b += suma.b;
   repaso.diario[dia] = d;
   anotarCambio('repaso-diario', dia);
   guardar('tarjetas');
   guardar('diario');
   // a flashcard answered counts as a review question for the daily goal
   registrarActividad('pregunta');
-  return { id, previo, dia, diaPrevio };
+  return { id, previo, dia, suma, tras: { ...repaso.tarjetas[id]! } };
 }
 
 export function deshacer(d: Deshacer): void {
   if (d.dia === claveDia(Date.now())) registrarActividad('pregunta', -1);
-  if (d.previo) {
-    repaso.tarjetas[d.id] = d.previo;
-    anotarCambio('repaso-tarjetas', d.id);
-  } else {
-    delete repaso.tarjetas[d.id];
-    anotarBorrado('repaso-tarjetas', d.id);
+  const igual = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b);
+  if (d.tras === undefined || igual(repaso.tarjetas[d.id], d.tras)) {
+    if (d.previo) {
+      repaso.tarjetas[d.id] = d.previo;
+      anotarCambio('repaso-tarjetas', d.id);
+    } else {
+      delete repaso.tarjetas[d.id];
+      anotarBorrado('repaso-tarjetas', d.id);
+    }
   }
-  if (d.diaPrevio) {
-    repaso.diario[d.dia] = d.diaPrevio;
+  // the day's counts never go down (another device's or the file's larger count would bring the undone answer back:
+  // review 0.12d, finding 2): what is undone grows instead — never beyond what was answered (review 0.12f, finding 3:
+  // «Deshacer» in one tab after «Reiniciar tarjetas» in another, which leaves today wholly undone, made dr = r + 1 and
+  // the day's next answer and new card counted nothing)
+  const dia = repaso.diario[d.dia];
+  if (dia) {
+    const n = (x: unknown) => (typeof x === 'number' && Number.isFinite(x) && x > 0 ? x : 0);
+    dia.dr = Math.min(n(dia.r), n(dia.dr) + d.suma.r);
+    if (d.suma.n) dia.dn = Math.min(n(dia.n), n(dia.dn) + d.suma.n);
+    if (d.suma.b) dia.db = Math.min(n(dia.b), n(dia.db) + d.suma.b);
+    repaso.diario[d.dia] = dia;
     anotarCambio('repaso-diario', d.dia);
-  } else {
-    delete repaso.diario[d.dia];
-    anotarBorrado('repaso-diario', d.dia);
   }
   guardar('tarjetas');
   guardar('diario');
@@ -226,18 +248,30 @@ export function ponerAjustes(a: Partial<AjustesRepaso>): void {
 }
 
 /** Forgets every flashcard state and the log (the quiz results stay). */
-export function reiniciarTarjetas(): void {
+export function reiniciarTarjetas(ahora = Date.now()): void {
   anotarBorrado('repaso-tarjetas', Object.keys(repaso.tarjetas));
-  anotarBorrado('repaso-diario', Object.keys(repaso.diario));
   repaso.tarjetas = {};
+  // the past days are deleted (as before); TODAY is kept, wholly undone (review 0.12e, finding 3): its counters only
+  // grow and versions merge by the larger value, so a deleted today answered again after the reset ({1,1,1}) merged
+  // with the version already synchronised ({10,10,8}) and the pre-reset counts came back — and with them today's new
+  // cards, leaving the reader without new cards for the rest of the day. 0.10/0.11 still read today's r/n/b (the
+  // pre-reset answers): only today, and only what they show
+  const hoy = claveDia(ahora);
+  const pasados = Object.keys(repaso.diario).filter((d) => d !== hoy);
+  if (pasados.length) anotarBorrado('repaso-diario', pasados);
+  const d = repaso.diario[hoy];
   repaso.diario = {};
+  if (d) {
+    repaso.diario[hoy] = { ...d, dr: Math.max(d.r, d.dr ?? 0), dn: Math.max(d.n, d.dn ?? 0), db: Math.max(d.b, d.db ?? 0) };
+    anotarCambio('repaso-diario', hoy);
+  }
   guardar('tarjetas', 50);
   guardar('diario', 50);
 }
 
 /** New cards already introduced today. */
 export function nuevasHoy(ahora = Date.now()): number {
-  return repaso.diario[claveDia(ahora)]?.n ?? 0;
+  return efectivo(repaso.diario[claveDia(ahora)]).n;
 }
 
 /** Consecutive review days up to today (or up to yesterday, when today has no answers yet). */
@@ -247,7 +281,7 @@ export function racha(ahora = Date.now()): number {
   let hoy = true;
   for (let k = 0; k < 4000; k++) {
     const clave = claveDia(d.getTime());
-    if ((repaso.diario[clave]?.r ?? 0) > 0) n++;
+    if (efectivo(repaso.diario[clave]).r > 0) n++;
     else if (!hoy) break;
     hoy = false;
     d.setDate(d.getDate() - 1);

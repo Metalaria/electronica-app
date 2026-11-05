@@ -1,7 +1,7 @@
 // The reader's personal data: preferences, last position per part, bookmarks and notes.
 // Reactive (Svelte runes) and persisted through the storage layer, with debounced writes.
 
-import { obtenerAlmacen, type Almacen } from './almacen';
+import { obtenerAlmacen, registrarVolcado, type Almacen } from './almacen';
 import { anotarBorrado } from './sincronizacion/marcas';
 import { guardadoDeRegistro } from './sincronizacion/guardado';
 
@@ -63,6 +63,14 @@ type Clave = 'prefs' | 'posiciones' | 'marcadores' | 'notas';
 
 let almacen: Almacen | null = null;
 const pendientes = new Map<Clave, ReturnType<typeof setTimeout>>();
+/** The preference writes started and not finished yet (awaited before an update is installed: `volcarPrefs`). */
+const enVuelo = new Set<Promise<unknown>>();
+function escribirPrefs(clave: Clave): void {
+  if (!almacen) return;
+  const p = almacen.escribir(clave, $state.snapshot(usuario[clave])).catch(() => undefined);
+  enVuelo.add(p);
+  void p.finally(() => enVuelo.delete(p));
+}
 
 const tiempoPropio = (v: { t?: unknown }) => (typeof v?.t === 'number' ? v.t : undefined);
 // The synchronised ones (positions, bookmarks, notes) are written with read-merge-write (sincronizacion/guardado.ts):
@@ -84,7 +92,7 @@ function guardar(clave: Clave, espera = 300): void {
     clave,
     setTimeout(() => {
       pendientes.delete(clave);
-      void almacen?.escribir(clave, $state.snapshot(usuario[clave]));
+      escribirPrefs(clave);
     }, espera),
   );
 }
@@ -93,11 +101,25 @@ function guardar(clave: Clave, espera = 300): void {
 export function volcar(): void {
   for (const [clave, t] of pendientes) {
     clearTimeout(t);
-    void almacen?.escribir(clave, $state.snapshot(usuario[clave]));
+    escribirPrefs(clave);
   }
   pendientes.clear();
   for (const g of Object.values(guardadosUsuario)) void g.volcar().catch(() => undefined);
 }
+
+/**
+ * Writes the preferences still pending and waits for every preference write started (review 0.12b, finding 6: the
+ * save before installing an update waits for them, as for every other store — `registrarVolcado`).
+ */
+export async function volcarPrefs(): Promise<void> {
+  for (const [clave, t] of pendientes) {
+    clearTimeout(t);
+    escribirPrefs(clave);
+  }
+  pendientes.clear();
+  await Promise.all([...enVuelo]);
+}
+registrarVolcado(volcarPrefs);
 
 let carga: Promise<void> | null = null;
 /** Loads the reader's data (once; the synchronisation's stores call it too). */

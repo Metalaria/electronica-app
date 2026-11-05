@@ -10,9 +10,31 @@
     versionNueva,
     abrirEnNavegador,
   } from '../../lib/sincronizacion/actualizaciones.svelte';
+  import { instalador } from '../../lib/sincronizacion/instalador.svelte';
+  import BotonesInstalador from './BotonesInstalador.svelte';
   import { cuando } from './tiempo';
+  import { exportarCopia } from './exportar';
+
+  // 0.12: «Copia de seguridad» — export here; import (with its preview) on the Sincronización page
+  let exportando = $state(false);
+  let avisoCopia = $state('');
+  let errorCopia = $state(false);
+  async function exportar() {
+    exportando = true;
+    avisoCopia = '';
+    try {
+      avisoCopia = await exportarCopia();
+      errorCopia = false;
+    } catch (e) {
+      avisoCopia = e instanceof Error ? e.message : String(e);
+      errorCopia = true;
+    } finally {
+      exportando = false;
+    }
+  }
 
   const nueva = $derived(versionNueva());
+  const buscando = $derived(actualizacion.buscando || instalador.estado === 'buscando');
 
   onMount(() => {
     void cargarSinc();
@@ -50,31 +72,35 @@
   </div>
 </div>
 
+<div class="grupo" data-grupo-copia>
+  <span class="etiqueta" id="et-copia">Copia de seguridad</span>
+  <p class="linea" aria-labelledby="et-copia">Todo su progreso en un fichero, para guardarlo o pasarlo a otro dispositivo.</p>
+  <div class="botones">
+    <button class="boton toque-44" onclick={exportar} disabled={exportando} data-aa-exportar>Exportar copia</button>
+    <a class="boton toque-44" href="#/sincronizacion/copia" onclick={configurar} data-aa-importar>Importar…</a>
+  </div>
+  {#if avisoCopia}<p class="linea" class:error={errorCopia} role={errorCopia ? 'alert' : 'status'} data-aa-aviso-copia>{avisoCopia}</p>{/if}
+</div>
+
+<!-- No token needed (0.12): the app's repository is public -->
 <div class="grupo" data-grupo-actualizaciones>
   <span class="etiqueta" id="et-act">Versión {actualizacion.version}</span>
-  {#if !sinc.cargado}
-    <p class="linea">…</p>
-  {:else if !sinc.hayToken}
-    <p class="linea" data-sin-token>
-      Sin token no se buscan actualizaciones: la búsqueda usa el mismo token que la sincronización.
+  <div class="botones">
+    <button class="boton" onclick={() => buscarActualizaciones(true)} disabled={buscando}>
+      <span class:gira={buscando}><RefreshCw size={15} aria-hidden="true" /></span> Buscar actualizaciones
+    </button>
+  </div>
+  {#if actualizacion.error}
+    <p class="linea error" role="alert">{actualizacion.error}</p>
+  {:else if nueva}
+    <p class="linea">
+      <b>Versión {nueva.version} disponible.</b>
+      <button class="enlace" onclick={() => abrirEnNavegador(nueva.url)}>Ver la publicación</button>
     </p>
-  {:else}
-    <div class="botones">
-      <button class="boton" onclick={() => buscarActualizaciones(true)} disabled={actualizacion.buscando}>
-        <span class:gira={actualizacion.buscando}><RefreshCw size={15} aria-hidden="true" /></span> Buscar actualizaciones
-      </button>
-    </div>
-    {#if actualizacion.error}
-      <p class="linea error" role="alert">{actualizacion.error}</p>
-    {:else if nueva}
-      <p class="linea">
-        <b>Versión {nueva.version} disponible.</b>
-        <button class="enlace" onclick={() => abrirEnNavegador(nueva.url)}>Ver la publicación</button>
-      </p>
-    {:else if actualizacion.alDia}
-      <p class="linea" role="status">Tiene la última versión.</p>
-    {/if}
+  {:else if actualizacion.alDia}
+    <p class="linea" role="status">Tiene la última versión.</p>
   {/if}
+  <BotonesInstalador compacto />
 </div>
 
 <style>

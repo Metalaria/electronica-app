@@ -17,6 +17,8 @@ import { escribirDoc, esLapida, leerDoc, type Coleccion, type DocSincronizacion,
 export type Valores = Record<string, unknown>;
 
 const SRC = new URL('../../src/lib/sincronizacion/', import.meta.url).href;
+const LIB = new URL('../../src/lib/', import.meta.url).href;
+const tiempoT = (v: unknown) => (typeof (v as { t?: unknown })?.t === 'number' ? (v as { t: number }).t : undefined);
 const V010 = new URL('./v010/lib/sincronizacion/', import.meta.url).href;
 
 // ------------------------------------------------------------------ globals of a browser page, and the clock
@@ -24,11 +26,15 @@ const g = globalThis as Record<string, unknown> & typeof globalThis;
 const setTimeoutReal = globalThis.setTimeout;
 /** Real delays (a request timeout); else every timer fires at once (the engine's back-offs). */
 export const tiempos = { reales: false };
-(g as { setTimeout: unknown }).setTimeout = (fn: (...a: unknown[]) => void, ms?: number, ...a: unknown[]) => setTimeoutReal(fn, tiempos.reales ? ms : 0, ...a);
+(g as { setTimeout: unknown }).setTimeout = (fn: (...a: unknown[]) => void, ms?: number, ...a: unknown[]) =>
+  // (a timer of 10 minutes or more — the daily progress's change of day — never fires here: at once it would loop)
+  (ms ?? 0) >= 600_000 ? setTimeoutReal(() => {}, 0) : setTimeoutReal(fn, tiempos.reales ? ms : 0, ...a);
 const estado = (x: unknown) => x;
 (estado as unknown as { snapshot: (x: unknown) => unknown }).snapshot = (x: unknown) => structuredClone(x);
 g.$state = estado;
 g.window = new EventTarget();
+// (0.12: the daily-progress module listens to the page's visibility)
+g.document = Object.assign(new EventTarget(), { visibilityState: 'visible' });
 export const reloj = { ahora: 0 };
 Date.now = () => reloj.ahora;
 console.warn = () => {};
@@ -42,6 +48,14 @@ g.__ls = (grafo: string) => {
 };
 const fallos = new Set<string>();
 g.__fallaEscritura = (grafo: string, clave: string) => fallos.has(`${dispositivoDe.get(grafo) ?? grafo}|${clave}`);
+const limites = new Map<string, number>();
+(g as { __limiteEscritura?: (grafo: string, clave: string) => number | undefined }).__limiteEscritura = (grafo, clave) =>
+  limites.get(`${dispositivoDe.get(grafo) ?? grafo}|${clave}`);
+/** 0.12c: writes of `clave` longer than `max` characters fail (a nearly full quota); undefined lifts it. */
+export function limitarEscritura(d: Disp, clave: string, max: number | undefined): void {
+  if (max === undefined) limites.delete(`${d.etiqueta}|${clave}`);
+  else limites.set(`${d.etiqueta}|${clave}`, max);
+}
 const fallosLectura = new Set<string>();
 g.__fallaLectura = (grafo: string, clave: string) => fallosLectura.has(`${dispositivoDe.get(grafo) ?? grafo}|${clave}`);
 /** Devices whose storage is like Tauri's plugin-store (falsos/almacen.ts). */
@@ -83,7 +97,64 @@ export interface AlmacenG {
   vivo?: boolean;
 }
 
-export type Almacen = AlmacenSim | AlmacenG;
+/**
+ * 0.12: the app's REAL daily-progress module (src/lib/progreso-diario.svelte.ts, one per tab) and its store, registered
+ * as registro.svelte.ts does (`sincronizableGuardado(guardadoDias, …)`); storage key `progreso-diario`, device id in
+ * `dispositivo-local` (both per device).
+ */
+export interface AlmacenDiario {
+  diario: true;
+  guardado?: undefined;
+  clave: 'progreso-diario';
+  valido?: (v: unknown) => boolean;
+}
+
+/**
+ * 0.12f: a store of the app's REAL repaso module (src/componentes/repaso/estado.svelte.ts, one per tab), registered as
+ * registro.svelte.ts does; storage key = its clave.
+ */
+export interface AlmacenRepaso {
+  repaso: true;
+  guardado?: undefined;
+  clave: 'repaso-diario' | 'repaso-tarjetas';
+  valido?: (v: unknown) => boolean;
+}
+
+/** The real repaso module of one tab (what the harness uses of it). */
+export interface ModRepaso {
+  cargarRepaso(): Promise<void>;
+  calificar(id: string, c: 1 | 2 | 3 | 4, ahora?: number): unknown;
+  deshacer(d: unknown): void;
+  reiniciarTarjetas(ahora?: number): void;
+  nuevasHoy(ahora?: number): number;
+  repaso: { diario: Record<string, { r: number; n: number; b: number; dr?: number; dn?: number; db?: number }>; tarjetas: Record<string, unknown> };
+  guardadosRepaso: Record<string, { volcar(): Promise<void>; refrescar(): Promise<void> }>;
+  unirDiasRepaso(a: unknown, b: unknown): unknown;
+  efectivo(d: unknown): { r: number; n: number; b: number };
+}
+
+export type Almacen = AlmacenSim | AlmacenG | AlmacenDiario | AlmacenRepaso;
+
+/** The real progreso-diario.svelte.ts of one tab (what the harness uses of it). */
+export interface ModDiario {
+  registrarActividad(tipo: 'paso' | 'pregunta' | 'seccion', n?: number): void;
+  ponerObjetivo(o: { tipo?: 'pasos' | 'preguntas'; cantidad?: number; secciones?: boolean }): void;
+  cargarProgresoDiario(): Promise<void>;
+  leerDias(): Promise<Record<string, { pasos: number; preguntas: number; secciones: number; cumplido: boolean; t: number }>>;
+  itemsDias(): Record<string, { pasos: number; preguntas: number; secciones: number; cumplido: boolean; t: number }>;
+  progresoDiario: { hoy: { pasos: number; preguntas: number; secciones: number }; racha: number; cumplidoHoy: boolean };
+  guardadoDias: { volcar(): Promise<void>; escribir(): Promise<void>; o: { leerMemoria(): Valores } };
+  diaValido(v: unknown): boolean;
+}
+
+/** The real backup module (src/lib/sincronizacion/copia.ts) of one tab. */
+export interface ModCopia {
+  crearCopia(): Promise<{ texto: string; nombre: string; elementos: number }>;
+  leerFicheroCopia(texto: string): { copia: { almacenes: Record<string, Coleccion> }; descartados: Record<string, number>; desconocidos: string[] };
+  previsualizar(l: unknown, modo: 'unir' | 'sustituir'): Promise<{ clave: string; nuevos: number; cambiados: number; borrados: number }[]>;
+  importar(l: unknown, modo: 'unir' | 'sustituir'): Promise<{ planes: { clave: string; nuevos: number; cambiados: number; borrados: number }[]; fallidos: { clave: string }[]; copiaAutomatica?: string }>;
+  leerCopiaAutomatica(): Promise<{ nombre: string; texto: string; t: number } | null>;
+}
 
 export const registro = (clave: string, extra: Partial<AlmacenSim> = {}): AlmacenSim => ({ clave, valores: {}, ...extra });
 export const guardado = (clave: string, extra: Partial<AlmacenG> = {}): AlmacenG => ({ guardado: true, clave, ...extra });
@@ -106,12 +177,21 @@ export class Pestana {
   memoria = new Map<string, Valores>();
   guardados = new Map<string, InstanceType<ModGuardado['Guardado']>>();
   sincronizables: unknown[] = [];
+  /** The tab's real daily-progress module, when the device has that store. */
+  diario?: ModDiario;
+  /** 0.12f: the tab's real repaso module (an `AlmacenRepaso` store). */
+  repaso?: ModRepaso;
+  /** The tab's real backup module (loaded on first use). */
+  async copia(): Promise<ModCopia> {
+    return (await import(SRC + 'copia.ts' + `?d=${this.grafo}`)) as ModCopia;
+  }
   constructor(
     readonly disp: Disp,
     readonly grafo: string,
   ) {}
   /** The tab's memory of a `guardado` store. */
   mem(clave: string): Valores {
+    if (clave === 'progreso-diario' && this.diario) return this.diario.itemsDias();
     return this.memoria.get(clave)!;
   }
   /** The reader changes items in this tab: written as the module does (read-merge-write, marks). */
@@ -138,11 +218,14 @@ export class Disp {
   }
   /** A store's values: an `AlmacenSim`'s object, or what the storage holds for an `AlmacenG`. */
   almacen(k: string): AlmacenSim {
-    const s = this.almacenes.find((x) => x.clave === k)!;
-    if (!s.guardado) return s;
+    const s = this.almacenes.find((x) => x.clave === k);
+    // (a store this device does not have: empty — the traces ask every device)
+    if (!s) return { clave: k, valores: {} };
+    if (!s.guardado && !('diario' in s) && !('repaso' in s)) return s as AlmacenSim;
     const ls = almacenamiento(this);
+    const clave = 'diario' in s || 'repaso' in s ? k : `g:${k}`;
     return { clave: k, get valores() {
-      const v = ls.get(`g:${k}`);
+      const v = ls.get(clave);
       return v ? (JSON.parse(v) as Valores) : {};
     } } as AlmacenSim;
   }
@@ -221,6 +304,52 @@ async function montarPestana(d: Disp, grafo: string): Promise<Pestana> {
   p.motor = { sincronizar: s.sincronizar, sinc: s.sinc, anotarCambio: m.anotarCambio, anotarBorrado: m.anotarBorrado };
   const mg = d.version === '0.11' ? ((await import(SRC + 'guardado.ts' + q)) as ModGuardado) : null;
   for (const a of d.almacenes) {
+    if ('repaso' in a) {
+      if (!mg) throw new Error('el repaso necesita el motor de la 0.11');
+      const mr = (await import(new URL('../../src/componentes/repaso/estado.svelte.ts', import.meta.url).href + q)) as ModRepaso;
+      await mr.cargarRepaso();
+      p.repaso = mr;
+      // as registro.svelte.ts registers them
+      const diario = a.clave === 'repaso-diario';
+      const real = mg.sincronizableGuardado(diario ? mr.guardadosRepaso.diario : mr.guardadosRepaso.tarjetas, {
+        clave: a.clave,
+        nombre: a.clave,
+        cargar: mr.cargarRepaso,
+        ...(diario
+          ? { valido: (v: unknown) => !!v && typeof v === 'object' && typeof (v as { r?: unknown }).r === 'number', unir: (x: unknown, y: unknown) => mr.unirDiasRepaso(x, y) }
+          : { tiempo: (v: unknown) => Number((v as { u?: unknown })?.u) || undefined }),
+      });
+      p.sincronizables.push({
+        ...real,
+        async leer() {
+          contarLectura(d);
+          return real.leer();
+        },
+      });
+      continue;
+    }
+    if ('diario' in a) {
+      if (!mg) throw new Error('el progreso diario necesita el motor de la 0.11');
+      const md = (await import(LIB + 'progreso-diario.svelte.ts' + q)) as ModDiario;
+      await md.cargarProgresoDiario();
+      p.diario = md;
+      // as registro.svelte.ts registers it
+      const real = mg.sincronizableGuardado(md.guardadoDias, {
+        clave: 'progreso-diario',
+        nombre: 'Progreso diario y racha',
+        cargar: md.cargarProgresoDiario,
+        tiempo: (v: unknown) => tiempoT(v),
+        valido: md.diaValido,
+      });
+      p.sincronizables.push({
+        ...real,
+        async leer() {
+          contarLectura(d);
+          return real.leer();
+        },
+      });
+      continue;
+    }
     if (!a.guardado) {
       p.sincronizables.push(adaptador(p, a));
       continue;
@@ -265,10 +394,18 @@ async function montarPestana(d: Disp, grafo: string): Promise<Pestana> {
 
 let n = 0;
 /** A device with one tab. `version`: its engine (0.10: only `AlmacenSim` stores). */
-export async function nuevoDisp(nombre: string, almacenes: Almacen[], desfase = 0, version: '0.11' | '0.10' = '0.11', o: { tauri?: boolean } = {}): Promise<Disp> {
+export async function nuevoDisp(
+  nombre: string,
+  almacenes: Almacen[],
+  desfase = 0,
+  version: '0.11' | '0.10' = '0.11',
+  /** `guardado`: the device's storage before its first tab opens (key → JSON text; data of an older version). */
+  o: { tauri?: boolean; guardado?: Record<string, string> } = {},
+): Promise<Disp> {
   const d = new Disp(nombre, almacenes, desfase, version);
   d.etiqueta = `${nombre}_${++n}`;
   if (o.tauri) tauri.add(d.etiqueta);
+  for (const [k, v] of Object.entries(o.guardado ?? {})) almacenamiento(d).set(k, v);
   await montarPestana(d, d.etiqueta);
   return d;
 }

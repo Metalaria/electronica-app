@@ -12,7 +12,12 @@
 // storage). Checked: the final value comes from an operation nobody superseded (no loss), a deletion is one nobody
 // superseded (no resurrection), a union keeps every element, every device and tab holds what the file has, and the
 // commits stop.
+// 0.12: the 0.11 devices also keep the daily progress with the app's REAL module (progreso-diario.svelte.ts, one per
+// tab: its activity summed across devices) — checked at the end against the activity done, day by day, on every
+// device and tab: exactly the sum, never counted twice —, and a device sometimes exports a backup (copia.ts) and one
+// imports a backup made earlier on any device («unir»): what it brings counts as known, like a synchronisation.
 import { REENVIOS_MAXIMOS, huella } from '../../src/lib/sincronizacion/fusion.ts';
+import { claveDia } from '../../src/componentes/repaso/srs.ts';
 import { almacenamiento, esTauri, fallarEscritura, fallarLectura, guardado, nuevaPestana, nuevoDisp, nuevoRepo, pasada, registro, reloj, type Almacen, type Disp, type OpcionesPasada, type Pestana } from './arnes.ts';
 
 const M = 60_000;
@@ -70,6 +75,7 @@ export async function simularPrueba(prueba: number): Promise<ResultadoPrueba> {
     guardado('sin', { porDefecto: (id) => (id === 'aj' ? { op: 'def' } : undefined) }),
     guardado('conj', { unir: unirConj }),
     registro('crudo', { tiempo: tiempoT }),
+    { diario: true, clave: 'progreso-diario' },
   ];
   const desfase = () => Math.round((rnd() - 0.5) * 20 * M);
   const devs: Disp[] = [await nuevoDisp('A', almacenes011(false), desfase()), await nuevoDisp('B', almacenes011(false), desfase(), '0.11', { tauri: prueba % 2 === 0 }), await nuevoDisp('C', almacenes011(true), desfase())];
@@ -146,7 +152,9 @@ export async function simularPrueba(prueba: number): Promise<ResultadoPrueba> {
     }
     const kt = process.env.TRAZA_ALMACEN ?? 'sin';
     log(`corre ${quien(p, 'reg')} ${o.interrumpir ? 'interrumpida' : ''}${o.durante ? 'con edición' : ''} t=${t + d.desfase} antes: estado=${JSON.stringify(d.estado.items[kt] ?? {})} mem=${JSON.stringify(valoresDe(p, kt))} alm=${JSON.stringify(d.almacen(kt).valores)} marcas=${JSON.stringify(d.marcas)} fallos=${d.almacenes.filter((s) => s.guardado && (globalThis as unknown as { __fallaEscritura: (a: string, b: string) => boolean }).__fallaEscritura(d.etiqueta, `g:${s.clave}`)).map((s) => s.clave)}`);
+    if (p.diario && kt === 'progreso-diario') log(`  memoria del módulo antes: ${JSON.stringify(p.diario.itemsDias())}`);
     const w = await pasada(d, repo, t, { ...o, pestana: p });
+    if (p.diario && kt === 'progreso-diario') log(`  memoria del módulo después: ${JSON.stringify(p.diario.itemsDias())}`);
     for (const [k, xs] of sabido) for (const x of xs) de('fichero', k).add(x);
     const k = process.env.TRAZA_ALMACEN ?? 'sin';
     log(`  → ${w ? 'commit' : 'sin commit'} ${k}=${JSON.stringify(repo.doc?.almacenes[k] ?? {})} estado=${JSON.stringify(d.estado.items[k] ?? {})} mem=${JSON.stringify(valoresDe(p, k))} alm=${JSON.stringify(d.almacen(k).valores)} marcas=${JSON.stringify(d.marcas)}`);
@@ -168,6 +176,64 @@ export async function simularPrueba(prueba: number): Promise<ResultadoPrueba> {
   };
   const pestanaAzar = (d: Disp) => d.pestanas[Math.floor(rnd() * d.pestanas.length)]!;
 
+  // 0.12: the daily activity done (day → steps), and the backups made (text, and what they reflected)
+  const actividad: Record<string, number> = {};
+  const copias: { texto: string; sabido: [string, Set<string>][] }[] = [];
+  const conDiario = (d: Disp) => d.almacenes.some((s) => 'diario' in s);
+  const estudiar = async (p: Pestana) => {
+    const ahora = t + p.disp.desfase;
+    reloj.ahora = ahora;
+    const n = 1 + Math.floor(rnd() * 2);
+    p.diario!.registrarActividad('paso', n);
+    const dia = claveDia(ahora);
+    actividad[dia] = (actividad[dia] ?? 0) + n;
+    log(`estudia ${quien(p, 'reg')} ${dia} +${n}`);
+    // (written after a pause, or now; a write the storage refuses stays in memory and is retried)
+    if (rnd() < 0.5) await p.diario!.guardadoDias.volcar().catch(() => undefined);
+    log(`  → ${quien(p, 'reg')} memoria ${JSON.stringify(p.diario!.itemsDias())}`);
+  };
+  const exportar = async (p: Pestana) => {
+    const d = p.disp;
+    reloj.ahora = t + d.desfase;
+    const sabido: [string, Set<string>][] = [];
+    for (const s of d.almacenes) {
+      const ks = new Set([...[...ops.values()].filter((x) => x.clave.startsWith(`${s.clave}/`)).map((x) => x.clave)]);
+      for (const k of ks) sabido.push([k, new Set([...de(d.nombre, k), ...de(quien(p, s.clave), k)])]);
+    }
+    try {
+      copias.push({ texto: (await (await p.copia()).crearCopia()).texto, sabido });
+      log(`exporta ${quien(p, 'reg')} copia ${copias.length - 1}`);
+    } catch {
+      // (a store could not be read: no backup)
+    }
+  };
+  const importar = async (p: Pestana) => {
+    const c = copias[Math.floor(rnd() * copias.length)];
+    if (!c) return;
+    const d = p.disp;
+    reloj.ahora = t + d.desfase;
+    const m = await p.copia();
+    let r: Awaited<ReturnType<typeof m.importar>>;
+    try {
+      r = await m.importar(m.leerFicheroCopia(c.texto), 'unir');
+    } catch {
+      log(`importa ${quien(p, 'reg')} copia ${copias.indexOf(c)}: nada (sin espacio para las marcas)`);
+      return;
+    }
+    log(`importa ${quien(p, 'reg')} copia ${copias.indexOf(c)} fallidos=${r.fallidos.map((f) => f.clave)}`);
+    // the device (and this tab) now hold the merge of what they had and the backup: they know what it reflected —
+    // but for the stores it could not write
+    const fallidos = new Set(r.fallidos.map((f) => f.clave));
+    for (const [k, xs] of c.sabido) {
+      const clave = k.split('/')[0]!;
+      if (fallidos.has(clave)) continue;
+      for (const x of xs) {
+        de(d.nombre, k).add(x);
+        de(quien(p, clave), k).add(x);
+      }
+    }
+  };
+
   for (let paso = 0; paso < 70; paso++) {
     t += Math.floor(rnd() * 3 * M) + 1;
     const d = devs[Math.floor(rnd() * devs.length)]!;
@@ -176,13 +242,24 @@ export async function simularPrueba(prueba: number): Promise<ResultadoPrueba> {
     if (paso === 35) {
       // a fresh install joins the existing repository with its defaults
       const F = await nuevoDisp('F', almacenes011(false), desfase());
-      await F.pestanas[0]!.editar('reg', { cfg: { op: 'def', t: 0 } });
-      await F.pestanas[0]!.editar('sin', { aj: { op: 'def' } });
-      // (written by a fresh install before any synchronisation: no mark — they are defaults)
-      almacenamiento(F).delete('sinc-marcas');
+      // (written by a fresh install before any synchronisation: no mark — they are defaults). Stored as another
+      // writer would (an older version, a module that writes its defaults) and taken by the tab on a refresh: written
+      // through the tab and the marks key deleted afterwards, the tab would put its marks back since 0.12b (marcas.ts
+      // `reponerMias`: exactly what a stale tab's write of the marks key looks like) and they would be the reader's
+      // changes, not defaults
+      const ls = almacenamiento(F);
+      for (const [k, id, v] of [['reg', 'cfg', { op: 'def', t: 0 }], ['sin', 'aj', { op: 'def' }]] as const) {
+        const previo = ls.get(`g:${k}`);
+        ls.set(`g:${k}`, JSON.stringify({ ...(previo ? (JSON.parse(previo) as object) : {}), [id]: v }));
+        await (F.pestanas[0]!.guardados.get(k) as unknown as { refrescar(): Promise<void> }).refrescar();
+      }
+      if (!F.pestanas[0]!.mem('reg').cfg || !F.pestanas[0]!.mem('sin').aj) throw new Error('la instalación nueva no tomó sus valores por defecto');
       devs.push(F);
       await correr(F.pestanas[0]!);
-    } else if (x < 0.34) await operar(p);
+    } else if (x < 0.26) await operar(p);
+    else if (x < 0.31 && conDiario(d)) await estudiar(p);
+    else if (x < 0.325 && d.version === '0.11') await exportar(p);
+    else if (x < 0.34 && d.version === '0.11') await importar(p);
     else if (x < 0.4) {
       // two edits in a row in one tab, the second before the first's write finished (two quick clicks), unless its
       // storage refuses writes now (the knowledge kept here assumes both are stored)
@@ -195,7 +272,12 @@ export async function simularPrueba(prueba: number): Promise<ResultadoPrueba> {
     else if (x < 0.5 && d.version === '0.11') {
       // the storage refuses (or accepts again) a store's writes; a module without Guardado fails half-way
       const s = d.almacenes[Math.floor(rnd() * d.almacenes.length)]!;
-      if (s.guardado && esTauri(d) && rnd() < 0.4) {
+      if ('diario' in s) {
+        // the daily progress's storage refuses (or accepts again) writes
+        const si = rnd() < 0.6;
+        fallarEscritura(d, 'progreso-diario', si);
+        log(`fallo de escritura ${d.nombre} progreso-diario ${si}`);
+      } else if (s.guardado && esTauri(d) && rnd() < 0.4) {
         // Tauri: the store's IPC fails to read the key (the loads, writes and runs that need it fail; nothing is lost)
         const si = rnd() < 0.6;
         fallarLectura(d, `g:${s.clave}`, si);
@@ -215,9 +297,17 @@ export async function simularPrueba(prueba: number): Promise<ResultadoPrueba> {
       if (otro !== d) {
         const editar = rnd() < 0.5;
         repo.antesDePut = async () => {
-          const q = pestanaAzar(otro);
-          if (editar) await operar(q);
-          await correr(q);
+          // (the other device's edit and run set the clock to ITS time: the running device's clock is put back for its
+          // PUT and its retry — random trial 70207: an 0.10 device retried with a clock 16 min ahead, tied another
+          // device's later edit to the millisecond and won by hash, a loss the app cannot have)
+          const ahora = reloj.ahora;
+          try {
+            const q = pestanaAzar(otro);
+            if (editar) await operar(q);
+            await correr(q);
+          } finally {
+            reloj.ahora = ahora;
+          }
         };
       }
       await correr(p);
@@ -231,7 +321,7 @@ export async function simularPrueba(prueba: number): Promise<ResultadoPrueba> {
       if (s.guardado) {
         fallarEscritura(d, `g:${s.clave}`, false);
         fallarLectura(d, `g:${s.clave}`, false);
-      }
+      } else if ('diario' in s) fallarEscritura(d, 'progreso-diario', false);
       else s.fallaParcial = false;
     }
   // (a tab's changes whose write the storage refused are not written here: its next synchronisation must send them
@@ -257,7 +347,7 @@ export async function simularPrueba(prueba: number): Promise<ResultadoPrueba> {
     for (const s of d.almacenes) {
       const vivos = repo.vivos(s.clave);
       const copias: [string, Record<string, unknown>][] = [[`${d.nombre}`, d.almacen(s.clave).valores]];
-      if (s.guardado) d.pestanas.forEach((p, i) => copias.push([`${d.nombre}#${i}`, p.mem(s.clave)]));
+      if (s.guardado || 'diario' in s) d.pestanas.forEach((p, i) => copias.push([`${d.nombre}#${i}`, p.mem(s.clave)]));
       for (const [nombre, valores] of copias) {
         for (const id of new Set([...Object.keys(vivos), ...Object.keys(valores)])) {
           if (s.valido && id in vivos && !s.valido(vivos[id])) continue;
@@ -286,6 +376,16 @@ export async function simularPrueba(prueba: number): Promise<ResultadoPrueba> {
         const vigentes = deEste.filter((o) => !superadas.has(o.id));
         if (!vigentes.some((o) => o.borrado)) problemas.push(`${etiqueta}: ${clave}/${id} borrado sin un borrado vigente (vigentes ${vigentes.map((o) => o.id)})`);
       }
+    }
+  }
+  // the daily activity: on every device and tab, each day is exactly the sum of what was done on every device
+  for (const d of devs) {
+    if (!conDiario(d)) continue;
+    for (const p of d.pestanas) {
+      reloj.ahora = t + d.desfase;
+      const dias = await p.diario!.leerDias();
+      for (const dia of new Set([...Object.keys(actividad), ...Object.keys(dias)]))
+        if ((dias[dia]?.pasos ?? 0) !== (actividad[dia] ?? 0)) problemas.push(`${etiqueta}: ${quien(p, 'reg')} cuenta ${dias[dia]?.pasos ?? 0} pasos el ${dia}, se hicieron ${actividad[dia] ?? 0}`);
     }
   }
   for (const [id, s] of Object.entries(todos)) {

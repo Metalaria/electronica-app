@@ -7,6 +7,8 @@ const MAPA = {
   '../usuario.svelte': FALSOS + 'usuario.ts',
   './credenciales': FALSOS + 'credenciales.ts',
   './registro.svelte': FALSOS + 'registro.ts',
+  // (0.12: the daily-progress module's events)
+  './aprendizaje/eventos': FALSOS + 'eventos.ts',
 };
 // EPA_SUSTITUIR='src/lib/sincronizacion/marcas.ts=/ruta/marcas-antes.ts,…' (paths from web/ or absolute) runs the
 // harness with another version of a source module — to see a scenario fail before its fix.

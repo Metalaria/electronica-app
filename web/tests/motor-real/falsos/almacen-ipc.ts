@@ -19,6 +19,7 @@ export interface Almacen {
   escribir(c: string, v: unknown): Promise<void>;
   leerTexto?(c: string): Promise<string | undefined>;
   escribirTexto?(c: string, t: string): Promise<void>;
+  escribirTextoSi?(c: string, esperado: string | undefined, t: string): Promise<boolean>;
   readonly tipo: 'tauri' | 'navegador' | 'memoria';
 }
 const comun = {
@@ -54,10 +55,24 @@ const a: Almacen = tauri
         if (g.__fallaEscribir?.(c, n)) throw new Error('QuotaExceededError ' + c);
         g.__tauri.set(c, t);
       },
+      // (0.12: compare and write in one synchronous call, as localStorage does)
+      async escribirTextoSi(c: string, esperado: string | undefined, t: string) {
+        const n = cuenta('e:' + c);
+        g.__alEscribir?.(c);
+        if (g.__fallaEscribir?.(c, n)) throw new Error('QuotaExceededError ' + c);
+        if (g.__tauri.get(c) !== esperado) return false;
+        g.__tauri.set(c, t);
+        return true;
+      },
     };
 export function obtenerAlmacen(): Promise<Almacen> {
   return Promise.resolve(a);
 }
 export function enTauri() {
   return tauri;
+}
+
+// (0.12: the registry of pending writes of the real almacen.ts; not used here)
+export function registrarVolcado(_f: () => Promise<unknown>): () => void {
+  return () => {};
 }

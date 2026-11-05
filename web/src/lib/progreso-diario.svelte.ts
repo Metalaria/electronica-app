@@ -5,37 +5,43 @@
 // Days follow the review's day (lib: repaso/srs.ts, starting at 04:00 local time), so studying past midnight
 // still counts for the evening's day. Stored with the same layer as the other learning data
 // (lib/almacen.ts: Tauri plugin-store `lector.json`, or localStorage `epa:*`):
-//   progreso-diario     { "2026-10-27": { pasos, preguntas, secciones, cumplido, t } }   one item per day
+//   progreso-diario     { "2026-10-27": { pasos, preguntas, secciones, cumplido, t },          the day (mirror)
+//                         "2026-10-27@<device id>": { pasos, preguntas, secciones, cumplido: false, t } }   0.12
 //   progreso-objetivo   { tipo: 'pasos' | 'preguntas', cantidad: 1–10, secciones: boolean, t }
 // With `secciones` (on by default, «Aa»), each section marked as read counts as one lesson step towards a
 // «pasos» goal: reading the book the usual way also keeps the streak.
-// Both are synchronised (lib/sincronizacion/registro.svelte.ts): one last-write-wins item per day, and the goal.
+// Both are synchronised (lib/sincronizacion/registro.svelte.ts): the days and the goal.
+// 0.12: a day's activity is the SUM of what each device did that day — every device keeps its own record per day
+// («<day>@<device id>», in a browser «<day>@<device id>-<tab id>»: lib/progreso-dias.ts, sincronizacion/dispositivo.ts)
+// and writes the day item «<day>» as a mirror of the sum for older versions; data of 0.9–0.11 (only the day item) are
+// read as they are (a lazy migration: nothing is written at load).
 // `cumplido` freezes the verdict of past days, so changing the goal never rewrites the streak's history;
 // today's verdict always follows the current goal.
 
 import { Guardado } from './sincronizacion/guardado';
+import { idRegistro, usarIdDispositivo } from './sincronizacion/dispositivo';
 import { claveDia, diaMas } from '../componentes/repaso/srs';
 import { emitir } from './aprendizaje/eventos';
+import {
+  agrupar,
+  campoDe,
+  compactar,
+  cuenta,
+  cumplidoDia,
+  diasResumidos,
+  esAporte,
+  grupoDe,
+  rehacerDias,
+  tocarDia,
+  totalDia,
+  unirAportesPestanas,
+  type DiaProgreso,
+  type ObjetivoDiario,
+  type TipoActividad,
+  type TipoObjetivo,
+} from './progreso-dias';
 
-export type TipoActividad = 'paso' | 'pregunta' | 'seccion';
-export type TipoObjetivo = 'pasos' | 'preguntas';
-
-export interface DiaProgreso {
-  pasos: number;
-  preguntas: number;
-  secciones: number;
-  /** The goal was met that day (frozen once the day is over). */
-  cumplido: boolean;
-  /** Last change (ms), for the synchronisation. */
-  t: number;
-}
-
-export interface ObjetivoDiario {
-  tipo: TipoObjetivo;
-  cantidad: number;
-  /** Sections marked as read count as lesson steps (only for a «pasos» goal). */
-  secciones: boolean;
-}
+export type { DiaProgreso, ObjetivoDiario, TipoActividad, TipoObjetivo };
 
 export const OBJETIVO_MIN = 1;
 export const OBJETIVO_MAX = 10;
@@ -62,6 +68,8 @@ let objetivoT = 0;
 let carga: Promise<void> | null = null;
 let pendientesAntes: { tipo: TipoActividad; n: number; t: number }[] = [];
 let cambioDia: ReturnType<typeof setTimeout> | null = null;
+/** This device's (in a browser: this tab's) id: the key of its own record of each day (set by the load). */
+let yo = '';
 
 const esObjeto = (v: unknown): v is Record<string, unknown> => !!v && typeof v === 'object' && !Array.isArray(v);
 const entero = (v: unknown): number => (typeof v === 'number' && Number.isFinite(v) ? Math.max(0, Math.round(v)) : 0);
@@ -82,11 +90,6 @@ export function diaValido(v: unknown): v is DiaProgreso {
 
 function limpiarDia(v: Record<string, unknown>): DiaProgreso {
   return { pasos: entero(v.pasos), preguntas: entero(v.preguntas), secciones: entero(v.secciones), cumplido: v.cumplido === true, t: entero(v.t) };
-}
-
-function cuenta(d: DiaProgreso | undefined, o: ObjetivoDiario): number {
-  if (!d) return 0;
-  return o.tipo === 'preguntas' ? d.preguntas : d.pasos + (o.secciones ? d.secciones : 0);
 }
 
 // ------------------------------------------------------------------ storage
@@ -113,9 +116,29 @@ export const guardadoDias = new Guardado<DiaProgreso>({
   cambiarMemoria: (poner, quitar) => {
     Object.assign(dias, diasDe(poner));
     for (const k of quitar) delete dias[k];
-    if (progresoDiario.listo) recalcular();
+    if (!progresoDiario.listo) return;
+    // (the days' mirrors follow the merged records in `rehacerEspejos`, only in the tab that ran the synchronisation or
+    // the import: every tab rewriting them at once on the storage event made concurrent writes of the key likely —
+    // review 0.12, finding 3)
+    // another device's (or tab's) activity may complete today's goal: the same event as a goal met here (its XP id
+    // is the day's, so two devices never count it twice)
+    const antes = progresoDiario.cumplidoHoy;
+    const ahora = Date.now();
+    recalcular(ahora);
+    if (!antes && progresoDiario.cumplidoHoy) emitir({ tipo: 'objetivo-cumplido', dia: claveDia(ahora), racha: progresoDiario.racha, t: ahora });
   },
   tiempo: (v) => v.t,
+  // two tabs changed an item of a day: this tab's record keeps both counts (three-way), the legacy record the larger,
+  // the rest the newer (lib/progreso-dias.ts unirAportesPestanas)
+  unir: (a, b, base, id) => (id && yo ? unirAportesPestanas(id, a, b, base, yo) : undefined),
+  // the mirror of each day whose records another tab's write changed follows the merged records, in the write itself
+  // (review 0.12c, finding 3: written from one tab's memory it stayed short — 0.10/0.11 saw fewer steps); the same
+  // value from both tabs (`rehacerDia` is deterministic), so nothing is written back and forth
+  derivar: (m, tocados, almacen) => {
+    // (the days touched only, the map grouped once: review 0.12g, finding 1; the legacy excess also against the stored
+    // records: random trial 71031)
+    return rehacerDias(m, new Set(tocados.map((id) => id.split('@')[0]!)), { ...progresoDiario.objetivo, t: objetivoT }, claveDia(Date.now()), finDe, almacen);
+  },
 });
 export const guardadoObjetivo = new Guardado<ObjetivoGuardado>({
   claveAlmacen: CLAVE_OBJETIVO,
@@ -145,6 +168,7 @@ function volcar(): void {
 export function cargarProgresoDiario(): Promise<void> {
   carga ??= (async () => {
     // each key adopted in its own load step (a write queued meanwhile runs after it — fifth review)
+    yo = await idRegistro();
     await Promise.all([
       guardadoDias.cargar((d) => Object.assign(dias, d)),
       guardadoObjetivo.cargar((o) => {
@@ -159,8 +183,14 @@ export function cargarProgresoDiario(): Promise<void> {
     for (const p of antes) sumar(p.tipo, p.n, p.t);
     if (antes.length) guardar(CLAVE_DIAS);
     progresoDiario.listo = true;
+    compactarPasados();
     recalcular();
     if (typeof window !== 'undefined') {
+      // the synchronisation (or an import) changed the days in THIS tab: their mirrors follow
+      window.addEventListener('epa:sincronizado', (e) => {
+        const claves = (e as CustomEvent<{ claves?: string[] }>).detail?.claves;
+        if (!claves || claves.includes(CLAVE_DIAS)) rehacerEspejos();
+      });
       window.addEventListener('pagehide', volcar);
       window.addEventListener('epa:antes-de-sincronizar', volcar);
       document.addEventListener('visibilitychange', () => {
@@ -177,28 +207,48 @@ export function cargarProgresoDiario(): Promise<void> {
   return carga;
 }
 
+/**
+ * The mirror of every day with records follows them (for devices still on 0.10/0.11: lib/progreso-dias.ts
+ * rehacerDia), written as a change of this module (marked by its write).
+ */
+function rehacerEspejos(): void {
+  // (the map grouped once, each day remade on its own items: linear — review 0.12g, finding 1)
+  if (rehacerDias(dias, null, { ...progresoDiario.objetivo, t: objetivoT }, claveDia(Date.now()), finDe).length) guardar(CLAVE_DIAS);
+}
+
+/** This device's records of the days before yesterday, one per day (lib/progreso-dias.ts compactar). */
+function compactarPasados(): void {
+  if (!yo) return;
+  const { poner, quitar } = compactar(dias, yo.split('-')[0]!, claveDia(diaMas(Date.now(), -1)));
+  if (poner.length || quitar.length) guardar(CLAVE_DIAS);
+}
+
 // ------------------------------------------------------------------ summary
 
 /** Recomputes the reactive summary (after a change, a synchronisation or a new day). */
 function recalcular(ahora = Date.now()): void {
   const o = progresoDiario.objetivo;
+  const conHora = { ...o, t: objetivoT };
+  const grupos = agrupar(dias);
   const hoyClave = claveDia(ahora);
-  const hoy = dias[hoyClave];
+  const hoy = totalDia(grupos.get(hoyClave) ?? { aportes: new Map() });
   const cumplidoHoy = cuenta(hoy, o) >= o.cantidad;
-  const cumplido = (clave: string): boolean => (clave === hoyClave ? cumplidoHoy : !!dias[clave]?.cumplido);
+  // (k days ago: its key and the start of the next day, for the verdict of a past day — lib/progreso-dias.ts)
+  const cumplido = (k: number): boolean => {
+    if (k === 0) return cumplidoHoy;
+    const clave = claveDia(diaMas(ahora, -k));
+    return cumplidoDia(grupos.get(clave), conHora, false, diaMas(ahora, -k + 1));
+  };
 
   let racha = 0;
   for (let k = cumplidoHoy ? 0 : 1; k < 5000; k++) {
-    if (!cumplido(claveDia(diaMas(ahora, -k)))) break;
+    if (!cumplido(k)) break;
     racha++;
   }
   const ultimos: { fecha: string; cumplido: boolean }[] = [];
-  for (let k = 6; k >= 0; k--) {
-    const fecha = claveDia(diaMas(ahora, -k));
-    ultimos.push({ fecha, cumplido: cumplido(fecha) });
-  }
+  for (let k = 6; k >= 0; k--) ultimos.push({ fecha: claveDia(diaMas(ahora, -k)), cumplido: cumplido(k) });
 
-  progresoDiario.hoy = { pasos: hoy?.pasos ?? 0, preguntas: hoy?.preguntas ?? 0, secciones: hoy?.secciones ?? 0 };
+  progresoDiario.hoy = hoy;
   progresoDiario.cumplidoHoy = cumplidoHoy;
   progresoDiario.hechosHoy = cuenta(hoy, o);
   progresoDiario.racha = racha;
@@ -216,13 +266,10 @@ function programarCambioDia(ahora: number): void {
 
 // ------------------------------------------------------------------ activity
 
+/** This device's record of the day gets n more (lib/progreso-dias.ts tocarDia: also the mirror and the legacy excess). */
 function sumar(tipo: TipoActividad, n: number, t: number): void {
-  const clave = claveDia(t);
-  const d = (dias[clave] ??= { pasos: 0, preguntas: 0, secciones: 0, cumplido: false, t });
-  const campo = tipo === 'paso' ? 'pasos' : tipo === 'pregunta' ? 'preguntas' : 'secciones';
-  d[campo] = Math.max(0, d[campo] + n);
-  d.cumplido = cuenta(d, progresoDiario.objetivo) >= progresoDiario.objetivo.cantidad;
-  d.t = Math.max(t, d.t + 1);
+  usarIdDispositivo();
+  tocarDia(dias, claveDia(t), yo, t, progresoDiario.objetivo, campoDe(tipo), n);
 }
 
 /**
@@ -249,11 +296,12 @@ export function registrarActividad(tipo: TipoActividad, n = 1): void {
 export function ponerObjetivo(o: Partial<ObjetivoDiario>): void {
   progresoDiario.objetivo = limpiarObjetivo({ ...progresoDiario.objetivo, ...o });
   objetivoT = Date.now();
-  // today's stored verdict follows the new goal
-  const hoy = dias[claveDia(objetivoT)];
-  if (hoy) {
-    hoy.cumplido = cuenta(hoy, progresoDiario.objetivo) >= progresoDiario.objetivo.cantidad;
-    hoy.t = Math.max(objetivoT, hoy.t + 1);
+  // today's stored verdict follows the new goal (the mirror, dated with this device's record of the day)
+  const hoy = claveDia(objetivoT);
+  const g = grupoDe(dias, hoy);
+  if (progresoDiario.listo && (g.espejo || g.aportes.size)) {
+    usarIdDispositivo();
+    tocarDia(dias, hoy, yo, objetivoT, progresoDiario.objetivo);
     guardar(CLAVE_DIAS, 200);
   }
   guardar(CLAVE_OBJETIVO, 100);
@@ -262,13 +310,41 @@ export function ponerObjetivo(o: Partial<ObjetivoDiario>): void {
 
 // ------------------------------------------------------------------ synchronisation (registro.svelte.ts)
 
-/** The days kept on this device: day → item (a copy). */
+/** Start of the review day after «2026-10-27» (ms). */
+function finDe(dia: string): number {
+  const [a, m, d] = dia.split('-').map(Number);
+  return diaMas(new Date(a ?? 1970, (m ?? 1) - 1, d ?? 1, 12).getTime(), 1);
+}
+
+/**
+ * The days as they add up: day → { the activity of every device, the verdict (the streak), the newest time } (the XP
+ * reconciliation and the statistics; never the per-device records themselves).
+ */
 export async function leerDias(): Promise<Record<string, DiaProgreso>> {
   await cargarProgresoDiario();
+  return diasResumidos(dias, { ...progresoDiario.objetivo, t: objetivoT }, claveDia(Date.now()), finDe);
+}
+
+/** The stored items of the store (days and per-device records), a copy: for the tests. */
+export function itemsDias(): Record<string, DiaProgreso> {
   return structuredClone(dias);
 }
+
+/** Whether an item id is a device's record of a day (not a day). */
+export const esRegistroDeDispositivo = esAporte;
 
 // The synchronised stores (registro.svelte.ts) are `sincronizableGuardado(guardadoDias)` and
 // `sincronizableGuardado(guardadoObjetivo)`: they read the memory merged with the storage and apply atomically.
 
 if (typeof window !== 'undefined') void cargarProgresoDiario().catch(() => undefined);
+
+// Tests (tests/datos12-pestanas.spec.ts, two real browser tabs): a page that defines `window.__epaPruebasDiario` before
+// the app loads gets this module's functions on it.
+if (typeof window !== 'undefined' && (window as unknown as { __epaPruebasDiario?: object }).__epaPruebasDiario)
+  Object.assign((window as unknown as { __epaPruebasDiario: object }).__epaPruebasDiario, {
+    registrarActividad,
+    leerDias,
+    itemsDias,
+    escribir: () => guardadoDias.escribir(),
+    cargar: cargarProgresoDiario,
+  });

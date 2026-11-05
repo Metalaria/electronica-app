@@ -19,7 +19,7 @@ import { obtenerAlmacen } from '../almacen';
 import { sincronizableGuardado } from './guardado';
 import { cargarUsuario, guardadosUsuario } from '../usuario.svelte';
 import { cargarAprendizaje, guardadosAprendizaje } from '../aprendizaje.svelte';
-import { AJUSTES_DEFECTO, cargarRepaso, guardadosRepaso } from '../../componentes/repaso/estado.svelte';
+import { AJUSTES_DEFECTO, cargarRepaso, guardadosRepaso, unirDiasRepaso, type DiaRepaso } from '../../componentes/repaso/estado.svelte';
 import { cargarFavoritos, guardadoFavoritos } from '../../componentes/calculadoras/datos.svelte';
 import { cargarCircuitos, guardadoCircuitos, tiempoCircuito } from '../../componentes/editor/circuitos.svelte';
 import { cargarMontajes, guardadoMontajes } from '../../componentes/protoboard/circuitos.svelte';
@@ -41,8 +41,12 @@ export interface Sincronizable {
   nombre: string;
   /** The local items (loads the module if needed). */
   leer(): Promise<Valores>;
-  /** Applies the merged result: items to create or replace, and items to delete. */
-  aplicar(poner: Valores, quitar: string[]): Promise<void>;
+  /**
+   * Applies the merged result: items to create or replace, and items to delete. `leidoEn`: when the data it is based
+   * on were read (0.12d: a `Guardado` dates the applied items as its own version from then); `vistos`: the hash of each
+   * item the merge read (0.12g: evidence for another tab whose change the merge saw and merged over).
+   */
+  aplicar(poner: Valores, quitar: string[], leidoEn?: number, vistos?: Map<string, string>): Promise<void>;
   /** Modification time stored in the item itself, when it has one (ms). */
   tiempo?(v: unknown): number | undefined;
   /** Rejects malformed values coming from the file. */
@@ -199,6 +203,8 @@ registrarSincronizable(
     nombre: 'Registro diario del repaso',
     cargar: cargarRepaso,
     valido: (v) => esObjeto(v) && typeof v.r === 'number',
+    // two devices that answered the same day: the larger count per field, in the file itself (review 0.12c, finding 5)
+    unir: (a, b) => unirDiasRepaso(a as DiaRepaso, b as DiaRepaso),
   }),
 );
 
@@ -287,7 +293,9 @@ registrarSincronizable(
 
 // ------------------------------------------------------------------ daily progress and streak (0.9)
 
-// One item per review day («2026-10-27» → { pasos, preguntas, secciones, cumplido, t }), last write wins.
+// One item per review day («2026-10-27» → { pasos, preguntas, secciones, cumplido, t }), last write wins; 0.12: and one
+// record per device and day («2026-10-27@<device>», the same shape), summed (lib/progreso-dias.ts) — each has one
+// writer, so last write wins is exact and synchronising again never counts twice.
 registrarSincronizable(
   sincronizableGuardado(guardadoDias, {
     clave: 'progreso-diario',

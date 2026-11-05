@@ -17,7 +17,7 @@
   import { cargarBaraja, cargarIndiceRepaso, tarjetasDe, type Baraja, type IndiceRepaso } from './datos';
   import { recuento } from './cola';
   import { aprendida, claveDia, madura } from './srs';
-  import { NUEVAS_DIA_MAX, nuevasHoy, ponerAjustes, racha, reiniciarTarjetas, repaso } from './estado.svelte';
+  import { NUEVAS_DIA_MAX, efectivo, nuevasHoy, ponerAjustes, racha, reiniciarTarjetas, repaso } from './estado.svelte';
 
   let baraja = $state<Baraja | null>(null);
   let indiceTests = $state<IndiceRepaso | null>(null);
@@ -75,7 +75,7 @@
     return { aprendidas, maduras, vistas, total: tarjetas.length };
   });
   const diasRacha = $derived(racha(ahora));
-  const respondidasHoy = $derived(repaso.diario[claveDia(ahora)]?.r ?? 0);
+  const respondidasHoy = $derived(efectivo(repaso.diario[claveDia(ahora)]).r);
 
   // Last 28 days of activity.
   const actividad = $derived.by(() => {
@@ -84,7 +84,7 @@
       const d = new Date(ahora);
       d.setDate(d.getDate() - k);
       const clave = claveDia(d.getTime());
-      const r = repaso.diario[clave]?.r ?? 0;
+      const r = efectivo(repaso.diario[clave]).r;
       dias.push({ clave, r, etiqueta: `${d.toLocaleDateString('es-ES', { day: 'numeric', month: 'short' })}: ${r} respuestas` });
     }
     const max = Math.max(1, ...dias.map((d) => d.r));

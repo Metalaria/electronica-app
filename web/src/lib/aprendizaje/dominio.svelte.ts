@@ -17,7 +17,7 @@
 // opening the solution, or failed). Those stores are only read. Lessons completed without answers are not
 // evidence of mastery: they show as «studied» (the pages read the lessons store live).
 
-import { obtenerAlmacen, type Almacen } from '../almacen';
+import { obtenerAlmacen, registrarVolcado, type Almacen } from '../almacen';
 import { anotarCambio } from '../sincronizacion/marcas';
 import { eventosEntregados, type EventoAprendizaje } from './eventos';
 import {
@@ -153,6 +153,8 @@ export function cargarDominio(): Promise<void> {
         if (temporizador) void escribir().catch(avisarEscritura);
       };
       window.addEventListener('pagehide', volcar);
+      // 0.12: the save before installing an update awaits this write (almacen.ts guardarTodoAntesDeSalir)
+      registrarVolcado(() => (temporizador ? escribir() : Promise.resolve()));
       window.addEventListener('epa:antes-de-sincronizar', volcar);
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden') volcar();

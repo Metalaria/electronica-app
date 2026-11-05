@@ -15,7 +15,7 @@
 // The day changes at 04:00: `reloj.hoy` follows it (a timer at the boundary and the return to the app) and the
 // pages derive from it. Solving it emits `problema-dia` (XP `pd:<day>` and the achievements in progreso.svelte.ts).
 
-import { obtenerAlmacen, type Almacen } from '../almacen';
+import { obtenerAlmacen, registrarVolcado, type Almacen } from '../almacen';
 import { anotarCambio } from '../sincronizacion/marcas';
 import { claveDia, diaMas } from '../../componentes/repaso/srs';
 import { emitir } from './eventos';
@@ -131,6 +131,8 @@ export function cargarProblemas(): Promise<void> {
         if (temporizador) void escribir().catch(avisarEscritura);
       };
       window.addEventListener('pagehide', volcar);
+      // 0.12: the save before installing an update awaits this write (almacen.ts guardarTodoAntesDeSalir)
+      registrarVolcado(() => (temporizador ? escribir() : Promise.resolve()));
       window.addEventListener('epa:antes-de-sincronizar', volcar);
       document.addEventListener('visibilitychange', () => {
         if (document.visibilityState === 'hidden') volcar();
