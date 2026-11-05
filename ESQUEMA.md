@@ -424,6 +424,75 @@ yesterday. Both keys are synchronised (one LWW item per day; the goal as one ite
 (`playwright.inicio09.config.ts`, port 4301); screenshots: `node tests/inicio09-capturas.mjs` →
 `tests/capturas/lavado09/inicio/`.
 
+**Summed across devices (0.12, `lib/progreso-dias.ts`, pure).** The store `progreso-diario` holds two kinds of item:
+`"<day>@<record id>"` — ONE device's activity that day, `{pasos, preguntas, secciones, cumplido: false, t}`, changed
+only by that device (record id: `sincronizacion/dispositivo.ts idRegistro()`: the device id, almacen key
+`dispositivo-local` `{id}`, read at load and stored on first use, never synchronised nor exported; in a browser
+`<device>-<tab>`, the tab's id in sessionStorage `epa:pestana`: two tabs never share a record — while the storage
+refuses writes each tab's count lives only in its memory and the engine could keep only one of two versions of a
+shared record, found by the randomized simulation; «Duplicar pestaña» copies sessionStorage, so each tab holds a Web
+Lock `epa-pestana:<id>` (`ifAvailable`) for its whole life and a tab refused it takes a new id — review 0.12c, finding
+2: the BroadcastChannel `epa-pestanas` question used before (still the fallback without Web Locks; every tab still
+answers it) went unanswered when the original was busy for more than its 150 ms (a 3D board, a simulation) or frozen,
+and both tabs kept one id, `12c·5`; Tauri, one window, does none of this —), `"<day>@<record id>~"` — what that writer UNDID that day (same shape; subtracted: an undo
+never lowers a record, because an 0.10/0.11 device's mirror may already include the undone step and its excess would
+count it again — review 0.12, finding 4; an undo goes up to what the writer itself counted) — and `"<day>"`, the
+0.9–0.11 item, now a MIRROR of the day for older versions (sum, verdict, `t` = the newest record's `t`). Plain
+last-write-wins per record is exact (one writer), so the merge is commutative, associative and idempotent and
+re-synchronising never counts anything twice; the day's activity (`totalDia`) is the sum of its records, minus the undo
+records, plus the legacy EXCESS: when the mirror is newer than every record (`t` greater: written before 0.12 or by an
+0.10/0.11 device on top of a sum it saw), `max(0, mirror − records)` per field (records without the undos: what such a
+mirror may hold) counts too — the upgrade is a lazy migration (nothing is written at load) — and is stored in
+`"<day>@0"` (`LEGADO`) the next time this device changes that day (`tocarDia`: absorb, add n to its own record or its
+undo record, rewrite the mirror) or a synchronisation or an import changes the days in this tab (`rehacerDia` for every
+day with records, on `epa:sincronizado` — only the tab that ran it: every tab rewriting the mirrors on the storage
+event made concurrent writes of the key likely, review 0.12, finding 3 —; the mirror follows the merged records, so
+0.10/0.11 devices see the sum; deterministic — two devices write equal values, `alinearIguales` sends nothing twice).
+Two writers of one device's storage (browser tabs) that change the same item (`unirAportesPestanas`, through the
+Guardado's `unir(a, b, base, id)`): this tab's own record (or undo record) keeps base + what each side added and never
+less than its own count (another tab's stale copy never lowers it); `"<day>@0"` the larger per field, never a sum (it
+is an absorbed value, the same on every device that saw the same mirror — review 0.12, finding 2: two tabs with
+different views summed it); anything else the newer. The mirrors of several days are remade with the map grouped once
+(`rehacerDias`, review 0.12g, finding 1: remaking every day with `rehacerDia` on the whole map scanned it three times
+per day — 2920 items, 2 years × 3 devices: 1,4 s of main thread at CPU ×1, 6,2 s at ×4, on almost every run while
+studying on two devices; now one scan, ~10 ms in Node, test «ronda de arreglos 7» in `datos12.spec.ts` counts the
+scans). The day's mirror follows the merged records inside the write
+itself and on every refresh (`Guardado` option `derivar` → `rehacerDia` of the days the merge touched, review 0.12c,
+finding 3: written from one tab's memory it stayed 1–2 steps short after two tabs wrote at once, for 0.10/0.11 too, and
+a past day stayed so; deterministic, so both tabs write the same and nothing goes back and forth — scenario `b12·13`,
+`12c·3`). Past days are compacted at load (`compactar`, review finding 5:
+one record per tab and day grew the file ~100 kB a year): this device's records — and its undo records — of each day
+before yesterday become one `"<day>@<device>"` (and one `"<day>@<device>~"`) with their sum, dated after all of them,
+the others deleted (marked); the total does not change, 0.10/0.11 ignore records, no tab writes a day two days old, two
+tabs compacting at once write the same, an older version of a deleted record loses to its tombstone. When a write or a
+refresh merges this tab's memory with another writer's stored version, the legacy excess is also taken from the stored
+day alone (`absorber`, `rehacerDias(…, guardado)`): if the merged map shows more excess than the stored day — the
+stored mirror paired with a record of memory that lags the stored one —, nothing is absorbed and the day is left as it
+is for that pass (random trial 71031, scenario `b12·22`: mirror 3, a record at 1 of 2, «1 legacy step» went to
+«<day>@0» and the real record came after: 4 steps for 3); the next merge, with the record, decides — short for a pass
+at most, never twice. Invisible to 0.10/0.11 (no new field). Known limits
+(accurate, not «never twice»): an older (0.10/0.11) device's change made without having seen the whole sum or the last
+undo is counted SHORT, and stays so (only devices all on 0.12 avoid it) — also its step on top of a mirror that already had a step undone (review 0.12d, finding 3,
+d12d·3: X 2 steps, 1 undone, Y on 0.11 adds 1, X counts 1, not 2), because the excess is taken against the records
+without subtracting the undo records: that mirror is ambiguous (the 0.11 device may have added on top of the day with or
+without the undo, and its time, max(now, t + 1), is newer than the undo either way: an offline device acting later),
+and the other reading counts the undone step twice when it had not seen the undo. The step so lost is lost for good
+(review 0.12e, point 5; an earlier version of this text said «until every device runs 0.12»): the next run of a 0.12
+device rewrites the day's mirror from its records (`rehacerDia`, dated with the newest record, after the 0.11 change)
+and that mirror wins, so the 0.11 device too sees its step disappear, and the day's goal or streak may be missed. The
+check d12d·3 (`tests/motor-real/revision12d.ts`) stays as an expected failure, reported as this known limit; and, as with any item, a device offline for more than 90 days (the
+tombstones' pruning) does NOT bring back records compacted since (review 0.12b, finding 6; an earlier version of this
+text said it could): its copies of them are unchanged and recorded by a run on the same file, so once older than the
+file's prune horizon (`podado`) and absent from it they are dropped (`sincronizar.svelte.ts`), scenario `b12·9` (fails
+without that rule). Only a device whose record of the file is gone (the file deleted and created again, a cleared
+`sinc-estado`) can bring them back — as with any deleted data. Verdict (`cumplidoDia`): today, the total against the current goal; a past day, the mirror's frozen `cumplido`,
+or the total against the current goal if that goal was set before the day ended (a goal reached only by adding up two
+devices synchronised after midnight still counts). A goal met through another device's activity emits
+`objetivo-cumplido` (XP id `d:<day>`: never twice). `leerDias()` gives the days summed (`diasResumidos`: the XP
+reconciliation and the statistics; the records never reach them); `itemsDias()` the stored items (tests). The contract
+for the 0.10/0.11 code: the records have exactly their day shape (no normalisation, no back-and-forth) and
+`cumplido: false` (their XP reconciliation never credits a record).
+
 ### Shared 0.9 look (`componentes/ui09/`)
 `ui09.css` (imported by `app.css`) defines global `t09-` classes so existing pages adopt the look without markup or
 behaviour changes: `t09-tarjeta` (radius `--radio-tarjeta` 18 px, `t09-media` 14 px, `t09-banda` 6 px block stripe via
@@ -629,7 +698,8 @@ modelos/            the library (also used by the KiCad board views)
                     screw terminal
   huellas.ts        tipoDeHuella(nombreKiCad, valor?) → { tipo, parametros } | null
 motor/              soporte.ts (WebGL2 check without three.js), estudio.ts (lights, environment, contact shadow,
-                    background), orbita.ts (Z-up orbit camera), visor.ts (Visor: render on demand, cutaway, caps,
+                    background), entorno.ts (0.12: the environment's PMREM filtered once per device and saved),
+                    orbita.ts (Z-up orbit camera), visor.ts (Visor: render on demand, cutaway, caps,
                     explosion, HTML labels), placa.ts (piece of PCB from the footprint)
 Vista3D.svelte      light wrapper: WebGL2 check, lazy import of Visor3D.svelte, failure → callback
 Visor3D.svelte      canvas, label layer, toolbar (initial view, cut + plane slider + orientation, explosion,
@@ -677,7 +747,8 @@ models; 0.7: none, in both detail levels).
 **Viewer rules.** A frame is rendered only when the camera moves (inertia and animated resets included), the
 explosion animates, or something changes (model, cut, theme, size); none while the page is hidden or the canvas
 off screen. Device pixels ≤ 2× and ≈ 2 Mpx; MSAA only below 1,5× DPR. Lighting: hemisphere + key + fill
-directional lights, a prefiltered `RoomEnvironment` (for the PBR metals), `NeutralToneMapping`; ground shadow =
+directional lights, a prefiltered `RoomEnvironment` (for the PBR metals; 0.12: filtered once per device, see
+«Proyectos KiCad», 0.12), `NeutralToneMapping`; ground shadow =
 one blurred texture on a plane (no shadow maps); background from the theme (`--fondo-3d`). Mounted parts stand on
 a piece of board built from their footprint (`placa.ts`). Cutaway: one local clipping plane on the materials of
 non-`entero` meshes; cut faces with the stencil buffer (the renderer is created with `stencil: true`): per
@@ -879,6 +950,14 @@ generar.ts     whole netlist: components → placement (best of several runs by 
                slider move redraws the same layout at once; precalculado.json holds the layouts of every book
                netlist computed at high effort (scripts/esquema-auto-precalcular.mjs; a stale entry that no
                longer fits is simply recomputed).
+               0.12 QA: `scripts/circuitos-proporciones.mjs` (run it after the precompute, seconds) writes
+               `figuras-vivas/circuito/proporciones.json`, the size of the drawing each book netlist shows: «l» the
+               matching book figure (CircuitoVivo's choice and crop), «a» the automatic layout at the three sheet
+               shapes (`esquema-auto/aspecto.ts` `aspectoPantalla`, shared with the layout). `proporciones.ts`
+               `tamanoDibujo(id, 'pagina' | 'banco')` gives the simulator page's CircuitoVivo (`tamano`) and the
+               instruments bench (`Banco` `tamano`, the auto layout with Plano's 1.3 × width cap and its hint line)
+               the exact place to keep while the drawing is decided (a fixed 16:9 / 5:2 place moved 300 px of
+               content; null: nothing reserved; unknown, e.g. an edited netlist: the old generic place).
                0.8: the same layouts about twice as fast (Node, the four netlists of the diagnostic: sum of
                medians 685 → 341 ms of CPU; every one of the 313 live layouts identical bit for bit to 0.7.1):
                Colocador keeps its cost terms in flat typed arrays (per net its estimated wires, box and cost,
@@ -1853,6 +1932,97 @@ draw: 4–12 s, the same in both versions and on the order of 100–300 ms on a 
 the preamplifier: 0.6 spends 6,8 s waiting in `getProgramInfoLog`, 0.7 waits as long in the GPU process). Frame
 intervals while orbiting under SwiftShader (16,7 ms to 2 s) depend on the software rasteriser, not on the app.
 
+**0.12: the 3D boards under a slow device** (QA 0.11, `fase2-lento`: CPU ×4 + «Fast 3G», the IoT board took 40–47 s
+to show its content; tracing showed what the page was waiting for). Causes and changes:
+- *The studio's environment* (`tres/motor/entorno.ts`). `crearEstudio` ran `PMREMGenerator.fromScene(RoomEnvironment,
+  0.04)` (size 256: a 768 × 1024 RGBA16F cubeUV map) in every new WebGL context: every board, model page, glossary
+  picture and thumbnail renderer. With SwiftShader the GGX filtering took 8–9 s of GPU (size 128: 3 s, 64: 1,5 s), and
+  every synchronous GL call issued after it waited for it: the link status of the board's first program (three's
+  `getUniforms`/`checkShaderErrors`), `texSubImage2D` of a canvas, the drawing-buffer check of a canvas resize (the
+  ResizeObserver's `setSize`: `GLES2::GetGLError`), and — a software-compositing artefact of headless Chromium — the
+  compositor's read-back of a changed WebGL canvas at the next commit (`Commit → ReadPixels → Finish`): long tasks of
+  5–18 s. On a real GPU the filtering is milliseconds, but it costs 3–4 programs (the room's materials, cube-to-cubeUV,
+  GGX), compiled synchronously where there is no KHR_parallel_shader_compile (Adreno 650). Now the PMREM is computed
+  only when this device has no copy; once the board's first frame has been presented (`crearEntorno(renderer,
+  { lecturaTras })`, two animation frames after `placaLista`; at once in the model viewer and the thumbnails; at
+  `liberar()` if the view closes before that, while its texture is still there) the map is read as
+  RGBA/FLOAT (always allowed with EXT_color_buffer_float) into a pixel-pack buffer, a fence is polled between tasks
+  (`getSyncParameter`), the floats are copied out in 256 kB slices and converted to half floats with
+  `DataUtils.toHalfFloat` (exact), checked (`sanos`: finite, alpha 0 or 1, at least half the map used), kept in memory
+  and stored in IndexedDB `epa-cache-3d` / store `entorno`, key `sala|v1|r<REVISION>|0.04|256` ({clave, w, h, espacio,
+  datos: ArrayBuffer}; a database of its own, outside the user's data, backups and sync). Later views
+  (`crearEntorno`) build a `DataTexture(Uint16Array, w, h, RGBAFormat, HalfFloatType)` with the render target's
+  mapping (`CubeUVReflectionMapping`), name, filters (Linear, no mipmaps), `flipY` false and colour space: the same
+  program defines (`envMapCubeUVHeight`) and the same picture — screenshots of five boards (two KiCad, the IoT, two
+  consoles) and two 2D views, tablet and desktop, 0.11 against 0.12: 0 pixels differ. `precargarEntorno()` (Vista3D
+  awaits it, at most 600 ms, before creating its context) reads the saved copy once per page; `soltarContexto()`
+  replaces `forceContextLoss()` in `Escena3D`, `Visor` and the thumbnails: a view closed while its environment is still
+  being read back keeps only its context (drawing buffer shrunk to 1 px) until the read ends, at most 60 s
+  (`PLAZO_LECTURA`), so a QA run that leaves at the first content still saves it. `window.__epaEntorno` =
+  {origen, lectura, guardado, leidoDeBd, leerMs, error}; `stats.entorno` ('pmrem' | 'memoria'); the diagnostic shows
+  it as «Entorno del estudio» under the SDR board. Memory: the saved copy is 6,3 MB of JS memory for the session
+  (one `Uint16Array` shared by every view) and the same 6,3 MB texture per view as before; the PMREM's own targets
+  (pingpong 6,3 MB, cube 3 MB) are no longer created; the first-ever read uses a 12,6 MB pixel-pack buffer until the
+  GPU has filled it.
+- *Order in the constructor* (`escena3d.ts`): `crearEstudio(renderer, { entornoLuego: true })`, the canvas sized from
+  its layout box (`tamano`, which now skips an unchanged size), the quarter faces uploaded, and only then
+  `estudio.ponerEntorno()`; `prepararPlaca()` and the parts (before building them) await `estudio.entornoListo()` (a
+  fence; immediate with the saved copy), so no link status is read while the GPU filters, and with a CPU-emulated GPU
+  the parts' CPU work does not slow the filtering down (`stats.fases.esperaEntorno`, not part of `modelos`). The
+  fences are polled every 16 ms with a `gl.flush()` each time: without it, with nothing else sent, Chromium reported a
+  fence seconds after the GPU had passed it (13 s against 6,5 s here). The canvas is `visibility: hidden` until its first frame (the
+  view's background instead of an opaque black buffer meanwhile). The filtering and the read-back end with three's
+  `setRenderTarget(null)`, which floors the canvas viewport in device pixels where `setSize()` rounds it; since both
+  now come after the first `tamano`, `reponerVista()` (entorno.ts) sets the viewport and scissor again as `setSize()`
+  leaves them (0.12 QA: on the tablet, a 572,4 px high canvas at 2×, the first open drew 1144 rows instead of 1145 and
+  1,1 % of the NES board's pixels differed from 0.11 and from the second open; `regresiones12`).
+- *Fetching*: `Proyectos.svelte` and `PlacaConsola.svelte` import `Vista3D.svelte` (three.js, ≈ 900 kB, ≈ 240 kB
+  compressed) as soon as the route is a 3D view, in parallel with the board's JSON, instead of after its data and
+  geometry; `Vista3D` asks `cargarBiblioteca()` at creation (the model library was requested only once the scene
+  existed — behind the long tasks above).
+- *Geometry* (`geometria.ts`): Chromium's `Path2D.closePath()` costs time proportional to the whole path (153: 16 000
+  four-point subpaths take 1,3 s with it, 2 ms without), so closing every pad, slot, zone and silkscreen fill was
+  quadratic: the Neo Geo's `construirGeometria` (over 20 000 closes) took about 0,7 s, 3 s with the CPU ×4, before its
+  2D or 3D view could open. Those paths are only filled, clipped or hit-tested, where an open subpath is closed
+  implicitly (same pixels): `poligono` and the zone and fill loops leave them open; the outline (one subpath) and the
+  rule areas (stroked dashed) keep `closePath`. The consoles' schematics (`consolas/esquema/dibujo.ts`) close only the
+  polygons of filled layers, spread over 8 × 8 tiles: opening the largest sheets (SNES, Mega Drive, NES, Neo Geo) with
+  the CPU ×4 calls it 0–135 times for 0 ms in all, so they are left as they are.
+- Unchanged on purpose: the Android face size (`ladoCarasDispositivo`, 0.9.2), the release of every board on unmount
+  (0.11 leak fix), the merged meshes (57 draw calls for the IoT, 63 SDR, 72 lab supply, 83 NES, 146 Neo Geo) and the
+  parts' slices. What remains of the load under SwiftShader is GPU work the CPU emulates (each frame of a 2.4 Mpx PBR
+  view, 1–4 s here with the machine shared) and the canvas read-backs of headless compositing; the CPU side of a warm
+  IoT board is ≈ 0,7 s of JavaScript (parts ≈ 120 ms, faces ≈ 180 ms of canvas uploads).
+- Measured (scratch script reproducing `fase2-lento`: tablet profile with the Xiaomi's UA, CDP CPU ×4 + Fast 3G;
+  cold = empty cache, the app opened on the route; warm = from the start page in the same document, as the QA does;
+  0.11 and 0.12 builds interleaved, 5 runs each, medians; SwiftShader on a shared 2-core machine at load 4–6).
+  Seconds; «cold 1st frame» is on the page's clock (scene created + its first frame drawn, `stats.primerCuadroPlaca`),
+  «cold board seen» is when a poll from the test first saw a frame (a poll cannot run while the page is blocked or
+  busy placing the parts, so it lags behind the frame):
+
+  | board | cold content | cold 1st frame | cold board seen | cold with parts | warm content (= parts, calm) | warm 1st frame after the scene | warm full faces | warm longest task |
+  |---|---|---|---|---|---|---|---|---|
+  | IoT | 22,9 → 10,8 | 21,1 → 20,8 | 22,9 → 25,2 | 26,5 → 25,2 | 14,0 → 4,6 | 9,9 → 0,7 | 18,1 → 10,9 | 8,8 → 2,6 |
+  | SDR | 29,8 → 11,0 | 26,1 → 21,3 | 29,8 → 27,2 | 32,7 → 27,2 | 15,9 → 8,1 | 10,8 → 0,7 | 19,9 → 15,7 | 10,0 → 4,1 |
+  | lab supply | 23,6 → 10,7 | 22,5 → 21,3 | 23,6 → 25,6 | 27,3 → 25,6 | 14,0 → 6,0 | 9,2 → 0,7 | 17,4 → 9,9 | 8,4 → 2,8 |
+  | NES | 27,7 → 12,6 | 24,7 → 22,7 | 27,7 → 27,6 | 30,0 → 27,6 | 14,5 → 7,1 | 10,9 → 0,8 | 22,2 → 12,0 | 10,0 → 2,7 |
+  | Neo Geo | 28,7 → 14,0 | 28,2 → 24,3 | 29,0 → 32,4 | 35,7 → 32,4 | 20,2 → 9,0 | 9,3 → 1,3 | 27,7 → 16,2 | 8,1 → 3,3 |
+
+  Unchanged: draw calls (57, 63, 72, 83, 146), GPU memory at rest (estimated from the WebGL allocations: 73, 75, 78,
+  84, 131 MB). JS heap with the view open +6 MB (the saved environment); the peak GPU estimate +12 MB once (the first
+  read-back's pixel-pack buffer). A first version issued the read-back right behind the filtering, before the board's
+  first frame, which drew it 1,8–2,6 s later than 0.11 on a cold start; now it waits for that frame to be on screen
+  (test «la primera vista del dispositivo dibuja la placa antes de leer el entorno»), and the cold first frame is at or
+  before 0.11's on all five boards. The warm longest task left is the headless compositor reading back a frame of
+  SwiftShader.
+- Tests: `tests/rendimiento12.spec.ts` (`playwright.rendimiento12.config.ts`, port 4531; tablet with the Xiaomi's UA
+  and desktop): the first view on a device draws its board before the environment is read back, the second board
+  uses the saved environment and looks the same (≤ 0,1 % pixels, in practice 0), a
+  reload reads it from IndexedDB, leaving the board at once still saves it and every WebGL context ends lost, CPU ×4
+  with the environment saved (first board frame < 4 s; 0.11: 6,7–19 s, 0.12: 0,45–1,5 s; parts' longest slice < 400 ms), fewer than 200
+  `Path2D.closePath` calls opening the Neo Geo in 2D (0.11: 11 641), and the 3D code requested before a delayed board
+  JSON arrives. Each failed on the 0.11 build.
+
 Tests: `tests/proyectos-kicad.spec.ts` (own config `playwright.proyectos.config.ts`, port 4189); screenshots of every board
 `node tests/proyectos-capturas.mjs --url http://localhost:4189/` → `tests/capturas/proyectos/`; frame cost while
 orbiting `node tests/proyectos-rendimiento.mjs --perfil mac|tableta|movil`.
@@ -2191,7 +2361,24 @@ aprendizaje vencido, después repaso y nuevas intercaladas (una nueva cada cuatr
 `#/repaso/examen`, `#/repaso/repasar[/<stem>]`; `BotonTest.svelte` al final de cada capítulo en el lector. Datos
 del lector (misma capa que marcadores y notas: `lector.json` de Tauri o `localStorage` `epa:*`, escritura diferida
 y volcado al ocultar la página): `repaso-tarjetas` (id → `{e: a|r|ra, p, f, i, v, n, l, u}`), `repaso-diario`
-(día → `{r, n, b}`), `repaso-ajustes` (`{nuevasDia, inversas, mazo}`), `repaso-tests` (parte → `{mejor,
+(día → `{r, n, b, dr?, dn?, db?}`; desde la 0.12c dos versiones de un día — dos dispositivos o dos pestañas — se unen
+con el mayor valor de cada campo, `componentes/repaso/diario.ts unirDiasRepaso`, en el fichero y entre pestañas: antes
+ganaba entera la más nueva y se perdían las respuestas y las nuevas de la otra; nunca cuenta dos veces, puede quedarse
+corto si los dos repasaron el mismo día. Desde la 0.12d los contadores solo crecen: «Deshacer» sube los de lo
+deshecho, `dr`/`dn`/`db` (ausentes mientras valen 0), y las cuentas del día son la diferencia, `efectivo` — con el mayor
+por campo, bajar `r` al deshacer hacía volver la respuesta deshecha en todos los dispositivos (revisión 0.12d, hallazgo
+2). Una 0.10/0.11 lee `r/n/b`: muestra las respuestas contando las deshechas (su límite de nuevas es entonces más
+estricto, nunca más laxo), conserva `dr/dn/db` al cambiar el día (cambia el objeto en su sitio) y toma la versión unida
+sin ir y volver; su propio «Deshacer» sigue bajando `r` y frente al mayor de un dispositivo 0.12 se pierde.
+«Deshacer» nunca sube lo deshecho por encima de lo respondido (0.12f, hallazgo 3: tras «Reiniciar tarjetas» en otra
+pestaña dejaba `dr = r + 1` y la siguiente respuesta del día no contaba), y no devuelve el estado anterior de la
+tarjeta si ya no tiene el que dejó esa respuesta (`Deshacer.tras`: tras un reinicio, o respondida en otra pestaña).
+«Reiniciar tarjetas» (0.12e, hallazgo 3) borra los días pasados y deja hoy deshecho entero (`dr = r`, `dn = n`,
+`db = b`): borrado y vuelto a repasar, hoy se unía por el mayor con la versión ya sincronizada y volvían las cuentas de
+antes del reinicio — también las nuevas de hoy, sin nuevas el resto del día; una 0.10/0.11 sigue mostrando las
+respuestas de hoy de antes del reinicio (`tests/actualizacion`, pasos 43–55; con el módulo real en el motor,
+`b12·18` y `b12·19`, almacenes `AlmacenRepaso` de `tests/motor-real/arnes.ts`). Pruebas:
+`tests/actualizacion`, pasos 17–42), `repaso-ajustes` (`{nuevasDia, inversas, mazo}`), `repaso-tests` (parte → `{mejor,
 intentos, ultimo}`), `repaso-fallos` (id → `{parte, t, veces}`), `repaso-examenes` (últimos 30). Pruebas:
 `tests/repaso.spec.ts` (capturas `tests/capturas/repaso-*.png`).
 
@@ -2211,8 +2398,12 @@ nearest `figura` within ±2 blocks without crossing an h2/h3; else null (49 of 1
 «label[/screen]»; step n is 1-based in the URL). App.svelte hides rail, index, top bar and tab bar for it and takes
 the part's accent. Entry: an icon link (`[data-por-pasos]`, «Estudiar por pasos») among the section's tools in
 `Seccion.svelte` (owner's decision, 0.11 final pass: no longer at the end of the `h2`). The icon buttons go in
-`.iconos`, three to a row (112 px, the width of 0.10.1's three), the lesson icon under the bookmark, so titles wrap as
-in 0.10.1; the chips (`.chips`) stay centred on the first row; under 600 px the tools go under the title. The lesson is one history entry: screens use
+`.iconos`, three to a row (112 px, the width of 0.10.1's three), the lesson icon under the bookmark; the chips
+(`.chips`) stay centred on the first row; under 600 px the tools go under the title. Owner's decision (0.12 QA): the
+tools never make the title take more lines — the `h2` in `.fila` has `flex: 1 1 auto` (its basis is its one-line
+width), so when title and tools do not fit side by side the tools wrap to their own row under it (CSS only, decided
+before the first paint); `regresiones12` checks every section at 360, 800 and 1366 px against the title with the
+tools hidden. The lesson is one history entry: screens use
 `history.replaceState`; close = `history.back()` if the app had a previous route (`ruta.n > 1`), else
 `location.replace('#/<parte>/<label>')`; «Siguiente sección» uses `location.replace`.
 
@@ -2425,7 +2616,13 @@ title, body «Unos minutos con la electrónica: le espera el problema del día.�
 minute}, allowWhileIdle true), autoCancel, extra: {ruta: RUTA_RECORDATORIO}}}`; a tap (`onAction`) opens
 `RUTA_RECORDATORIO` = `#/problema` (group B: the problem of the day the text announces; a cold start from the
 notification opens the start page, whose card leads to it). Off: `cancel`.
-At start-up (idle) `comprobarRecordatorio` re-schedules it if it is on but not pending. Native side: `src-tauri`
+At start-up (idle) `comprobarRecordatorio` re-schedules it if it is on but not pending.
+0.12: the options also carry `icon: ICONO_RECORDATORIO` = `"ic_stat_epa"`, a 24 dp white vector drawable (the app's
+resistor mark) in `src-tauri/recursos-android/drawable/ic_stat_epa.xml`, which `web/scripts/android-preparar.mjs`
+copies into `gen/android/app/src/main/res` (and fails if it cannot); the plugin resolves it by name (else Android's
+`ic_dialog_info`). Not as `plugins.notification.icon` in `tauri.conf.json`: the plugin's Rust config type is `()`, so an
+object there fails its setup. Device-only key `recordatorio-icono` = 1 once the reminder was scheduled with the icon; a
+pending reminder without it (scheduled by 0.11) is scheduled again once. Native side: `src-tauri`
 `[target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]` tauri-plugin-haptics 2 and
 tauri-plugin-notification 2 (registered in `lib.rs` under the same cfg), capability `capabilities/movil.json`
 (platforms android, iOS: `haptics:allow-*`, `notification:default`). The plugins' Android libraries bring VIBRATE,
@@ -2556,15 +2753,26 @@ t`, drops it. A file with another `id` (new file, other repository) is another h
 merged in as new.
 
 **Local state** (almacen keys in `lector.json` / `localStorage epa:*`): `sinc-ajustes` {repositorio, ruta, auto},
+`sinc-enviado` (0.12, random trial 71337, scenario `b12·21`) {doc id, items: {store: {id: [t, hash | «-»]}}}: what a
+run is about to PUT of this device's own versions, written right before the PUT, put back as it was when GitHub answers
+that nothing was written (409), cleared when the run is recorded and by «forget the history». A run cut after its PUT
+records nothing and keeps its marks: its next run dated those changes «now» again (fusion.ts `fecharLocal`, a mark newer
+than `iniciada`) and they beat a deletion another device made after seeing them in the file. The next run takes these
+entries as the record of each item that still holds that version (a later change keeps its mark); a run that fails
+before its PUT writes nothing here; 0.10/0.11 never read the key. Review 0.12i: only items with a mark are listed (only
+those are dated «now»), entries of an earlier cut run still valid are kept, `en` (when written) makes an item changed
+again since — back to the same value — be dated by its mark; the prune rule («deleted elsewhere, tombstone pruned»)
+uses the real records only, never what was attempted; a storage that cannot take the key leaves the run without it.
 `sinc-estado` {doc id, dispositivo, ultima, items: {store: {id: [t, hash] | [t, hash, n, file hash]}} of the last
 synchronised version, borrados: {store: {id: t}} (0.11: the items recorded as deleted, in a field of their own so that
 an 0.10 engine — which knows only `items` — never reads «-» as a hash), resumen}, `sinc-marcas` {cambios, borrados:
 {store: {id: ms}}} written by the data modules (`marcas.ts`: `anotarCambio`, `anotarBorrado`; a module with a
 `Guardado` marks every item its write changes or removes, and stores the marks before the data), `sinc-version` {t,
-ultima release, descartada}. The marks are written at once and read-merge-write (a tab never overwrites another tab's
+ultima release, descartada, limite (0.12: GitHub's rate limit, no request before this ms)}. The marks are written at once and read-merge-write (a tab never overwrites another tab's
 marks; of a change and a deletion of an item, the later one stays), and a run forgets only the marks it saw, if
 unchanged since. `huellas` {store: {id: hash}}: the value a change mark is for, when the module knows it (a
-`Guardado`); a mark for another value (another tab's change not stored yet) is not taken for this copy's. `sinc-estado.iniciada`: the local time the last successful run started.
+`Guardado`); a mark for another value (another tab's change not stored yet) is not taken for this copy's. `sinc-estado.iniciada`: the local time the last successful run started. `sinc-estado.podado` (0.12): the prune horizon of the
+file last merged (copia.ts: an old backup's items older than it and unknown here are left out of «Unir»).
 Dating a local item (`fusion.ts fecharLocal`): unchanged hash → its synchronised `t`; changed **and marked** → max(its
 own time field, its mark), or — only for a mark newer than `iniciada` (made after the device recorded what it
 synchronised) — max(now, synchronised `t` + 1) when that is not newer (a clock behind still outdates what it saw); an
@@ -2630,7 +2838,8 @@ then); registered: marcadores, notas, posiciones, leidas («parte/label»), ejer
 repaso-tarjetas, repaso-diario, repaso-ajustes, repaso-tests, repaso-fallos, repaso-examenes (newest 30),
 calc-favoritos, editor-circuitos (`{version, circuitos}` of the schematic editor, items with their own `borrado`),
 protoboard-circuitos (0.10, the same shape for own breadboards),
-lecciones (0.9, «parte/label»), progreso-diario (0.9, one item per day), progreso-objetivo (0.9), and (0.11)
+lecciones (0.9, «parte/label»), progreso-diario (0.9, one item per day; 0.12: and one record per device and day,
+summed), progreso-objetivo (0.9), and (0.11)
 progreso-xp (the XP ledger, award id → `{x, t}`), progreso-logros (achievement id → time), cursos-superadas
 («parte/label» → time), cursos-pruebas (course id → last placement test), and (0.11 group B) dominio (item id →
 `{s, c, r}`, rounds merged as a union in the file) and problema-dia (day → its problem and result; `preferirDia`
@@ -2663,7 +2872,97 @@ tab's deletion of an applied item; when the marks cannot be stored (storage full
 marked again by the next write. On the Tauri path a big store's write parses the value from the items' texts (no
 second serialisation): a 2 MB library 65–75 ms, 5 MB 160–220 ms with a Tauri-like store (75–115 and 180–250 before). So no module overwrites with its older copy what the
 synchronisation or another tab stored (before, the editor wrote its whole map from memory loaded once; a second tab
-its old bookmarks). `guardadoDeRegistro({claveAlmacen, claveSinc, obtener, campo?, tiempo?})` is the common case. The
+its old bookmarks). `guardadoDeRegistro({claveAlmacen, claveSinc, obtener, campo?, tiempo?, unir?})` is the common case
+(0.12: `unir(a, b, base?, id?)` gets the item's base — a three-way merge — and its id, and may return undefined for
+the default rule; and in a browser a write is a compare-and-set — `Almacen.escribirTextoSi(key, expected, text)`,
+compare and write in one synchronous localStorage call — of the text the step read: if the key changed since, as far as
+this page can see, the step runs again (read, merge, write; unconditional after five tries; randomized simulation, trial
+642, scenario `r12·1`). It is NOT atomic across real tabs (review 0.12, finding 3, measured with two Chromium tabs):
+each tab reads its own cached view of localStorage and the other tabs' changes arrive as later tasks, so two tabs
+writing at once both succeed and the second writes the first's items back as it last saw them. What protects the data
+is `propios`: in a browser a Guardado remembers the reader's changes it stored (hash, time; and the last values it wrote
+per item); when the key, read again, lacks one of them or holds another version of it, that other version (or deletion)
+is taken only with evidence (`atestiguado`) — another tab's mark for that very value or deletion, newer than ours and
+not one this tab wrote itself, i.e. not with the same hash AND time as one of its own (the marks key can be written
+back by a stale tab too; review 0.12b, finding 1: by hash alone, the same value set again later in another tab — a
+favourite removed and added back — was never evidence, and the two tabs rewrote it ~10 000 times in 4 s); a
+synchronisation or an import that applied it (`sinc-aplicados`, written by `aplicar` before the data: {store: {id:
+[hash | «-», ms, hash read, ms written]}}, ~75 characters an item, every entry dated when the run read the store, not when written
+(review 0.12e, finding 1: dated when written, an entry was evidence against another tab's change made after that
+read), and since 0.12g with the hash the run's merge read for the item («-»: none): another tab whose change the merge
+read and merged over takes the entry as evidence by that hash, for a change of its made before the entry was written
+(review 0.12h, finding 1: unbounded, a later change of that tab back to the same value or deletion — A-B-A — lost to a
+stale copy of what was applied; an entry without that time gives no evidence by hash) (review 0.12g, finding 2: in a store
+without a time of its own, a change made just after the run started, read by its merge and then lost to a newer file
+version after a 409, was kept by that tab and written back — and the next run sent it over the newer edit). The `*`
+entry carries no hashes: with more than 1000 items in one application, that one case remains (a tab's change in the
+milliseconds between the run's start and its read of the store, then a 409 and a newer version from the file: the
+tab keeps its change; documented, not fixed — a hash of the whole snapshot would not tell the tab which of its items
+the merge read), kept 30 minutes, browser only; more than 1000 items in one application —
+the first synchronisation of a new device — or no room for them: one entry `*` for the whole store, 45 characters,
+dated when the run read the store (review 0.12d: dated when written, it was evidence against another tab's change
+made during the run, after that read, scenario `b12·17`); no
+room even for that: applied without it, logged — review 0.12c, finding 6: 0.12b made `aplicar` reject then, which
+would have blocked that store's synchronisation for as long as the quota stayed full, where 0.11 applied it; without
+the entry another open tab holding its own change of an applied item keeps it and writes it back, and the next run
+applies the synchronised version again, because that tab's mark is older than the run — scenarios `b12·5`, `b12·14`) or recorded it (`sinc-estado`, dated after ours — and recorded by a run that started after ours: the file's time is
+another device's clock, maybe ahead, review 0.12e finding 2); or the item's own time, newer than that of
+the value this tab holds —; without evidence it goes through the store's merge (a union keeps both; else the newer by
+its own time or the marks: a stale copy is older) and, where this tab's change stays, it is written again. A loop
+guard bounds that (`enTregua`): more than 8 such retentions of one item within 5 s and the item gets a 10 s truce in
+which a refresh writes it back only once every 3 s (`reescribirLuego`, constants in `tregua.ts`; 0.12d made it 2 s to fit `12b·1`'s quiet window — a test change, undone in 0.12e: that test now opens its window after the repair write), not at once — the change is still kept, never
+the other version taken (a first version of the guard took it, as before 0.12, and `datos12-pestanas.spec.ts` lost 4 of
+40 steps: a burst of real writes of two tabs counts that many retentions too) —; with a `console.warn` naming the key
+and item (`medidas.treguas`; scenario `b12·8` forces evidence never to be found: 30 writes in the last 3 s without the
+guard, at most 4 with it, and each tab still holds its own value). A kept change is due again (`retener`, review
+0.12c, finding 1): pending with its own time and value, so `volcar` (page hidden or closed) writes it even in a truce —
+before, a tab closed during a truce left the stale copy stored (`12c·1`, `12c·2`) — and marked again, because a run in
+another tab that saw only the stale copy forgets its mark, and without it the change would then pass for a stale copy
+(scenario `b12·12`). What a synchronisation or an import applies becomes this tab's own version too (review 0.12d,
+finding 1): `propios` gets the stored hash dated when the applied data were read (`aplicar(poner, quitar, leidoEn)`:
+the run's FIRST read, `inicio`, the one its merge used — not the second read that only tells edits made during the run
+(review 0.12f, finding 2) —; the import's read, `fotografiaLocal().leido`, taken before it reads) — before, applied items left `propios`, and a stale copy another tab
+wrote back right after was taken: a deleted item came back for good (`12d·1`, scenarios `b12·15`, `b12·16`). Against an
+applied version the evidence is the item's newest mark being for that very value (not this tab's), whatever its time:
+another tab marks a change before writing it, so a real change made during the run can carry a mark older than the
+read while its data land after it (random trials 31052, 31240 found that with the time check), and a stale copy has no
+such mark (a run forgets the old marks, an import marks what it applies). The item's own time is no evidence against an
+applied version («Sustituir todo» and its undo apply older versions on purpose); kept against a stale copy, the applied
+version stays as it is (no union with it) and is written again, unmarked — it is not the reader's change, and marked
+it would pass for a change made at the read and beat a newer version from another device (trial 31052). The import's read-back marks again only what differs from the
+value given AND from the value held before the import (that is a stale copy, not what was imported). On a
+refresh the base of each item becomes the storage's version only where the merge took it; where the merge kept or
+made something else (this tab's change kept against a stale copy, or merged with it) the previous base stays (review
+0.12b, finding 3: the stale copy is no ancestor of what memory holds, and a later up-to-date version merged three-way
+from it made `unirAportesPestanas` add this tab's own steps twice, `12b·4`, `b12·7`). With the previous base the next
+write merges the storage's version against the same ancestor the refresh used: an idempotent merge (newest, union,
+field max) gives the same result, and the sum of a tab's own record adds nothing twice — only this tab writes its own
+record (`idRegistro`, a duplicated tab takes another id), so another version of it is a stale copy, never a newer
+one. A new mark is always later than the item's current mark (`Math.max(Date.now(), mark + 1)`; review 0.12b, finding 4:
+with the clock set back, a newer value's mark was dropped by `poner` — the latest mark wins — and the value passed for
+a stale copy; random trial 9138, scenarios `b12·3`, `b12·4`). And a reader's change that the write combines with the
+other writer's version (the store's `unir`: a union, a sum) is marked for what is stored, not for the value in memory
+(found by random trial 9301 during review 0.12b, present since 0.11: the mark vouched for none of the stored value, the
+run dated it as an unmarked copy — `t = 1`, taken for a default — and a union's new element was dropped; scenario
+`b12·10`); where the other writer's version won as it is, its own mark vouches for it. `propios` (with `escritos`,
+`deAplicar`) keeps at most 5000 items, the oldest pruned down to 4000 (review 0.12e: one entry per applied item, for
+the tab's whole life; a stale copy comes within seconds) — never one younger than 10 minutes (review 0.12f, finding 1:
+one application of thousands of items gives them one time, and they were pruned in that very write, when a stale copy
+is most likely; a soft cap, bounded by the key's ids). Tauri (one window) keeps none of this. `tests/datos12-pestanas.spec.ts`: two real Chromium tabs write at once 20 times; 20 of 40
+steps were lost without it, none with it. A Web Lock was tried and rejected: its callback runs in a later task, which
+never comes while the page unloads, so the flush on `pagehide` was lost — `inicio09.spec.ts` caught it. The marks key
+`sinc-marcas` is read-merge-write too, so a tab whose cached view lagged can write it without another tab's marks
+(review 0.12b, finding 2; `12b·1` saw it with two tabs writing at once): in a browser each tab remembers the marks it
+stored (`marcas.ts` `mias`, in memory, at most 20 000 — ~150 bytes each; «Reiniciar tarjetas» makes ~2500, a big import
+a few thousand, review 0.12c finding 6 —, the last one per item — a change and then a deletion of one item at the
+same millisecond keep only the deletion: random trial 557 brought the item back, scenario `b12·11`) and puts back the missing ones (`reponerMias`) in every `volcarMarcas` and
+`olvidarMarcas` — after every data write of a Guardado, and on every `storage` event of the key — unless the item's
+`sinc-estado` record (or tombstone) is at or after the mark (a run dealt with it), or the last run started more than
+2 s after the mark was stored with the mark not newer than its start (it saw the mark and may have forgotten it). So a
+mark a run forgot legitimately — say an item changed and changed back, whose record stays older — is put back at most
+once per run that forgets it, and only if that run started within 2 s of the store (harmless then: a mark not newer
+than the last run's start never outdates what was recorded, `fecharLocal`); scenarios `b12·1`, `b12·2` (each fails
+without its rule).) The
 0.11 learning modules (progreso-xp/logros, cursos, dominio, problema-dia) mirror their key with `EnlacePestanas`
 (above) and apply atomically in the same way. A data module with no memory of its own may register its
 `Record<id, item>` almacen key in one line: `registrarSincronizable(mapaDelAlmacen({ clave: 'k', nombre: '…', tiempo:
@@ -2690,7 +2989,13 @@ Tests of the engine: `tests/revision11-motor.spec.ts` runs `tests/motor-real/` �
 graph per device and tab, fake storage and GitHub with 409s, the 0.10 engine for an 0.10 device): one scenario per
 finding of the second and third reviews, and a randomized simulation (devices with tabs, an 0.10 device, a fresh
 install, storage failures, non-atomic modules, two edits of a tab in flight at once, clock skew, interrupted runs,
-edits during a run, 409s) checking no loss, no resurrection, convergence and that commits stop; and the cost of a
+edits during a run, 409s) checking no loss, no resurrection, convergence and that commits stop (0.12, defence in depth — trial 61139, scenario `b12·20` —: when a store's `aplicar` fails, the run
+reads it back, and an item it already holds as the file has it — a value with the file's hash, a deletion gone — is
+recorded in `sinc-estado` as applied; before, a module that is NOT atomic, failing after taking a value new on this
+device into memory, left no record of it, and an edit made on top of it with the clock behind the file's time lost to
+it. Every module the app registers applies atomically — `sincronizableGuardado`, and the 0.11 learning modules write a
+copy first and put it in memory after —, so for them nothing differs: only the simulation's `crudo` store reached it);
+and the cost of a
 write (`rendimiento.ts`: 2 MB and 5 MB libraries, budget and fast path). `tests/revision11-actualizacion.spec.ts`
 runs `tests/actualizacion/` — the app's modules compiled in Node (`hooks-svelte.mjs`, a fake browser): the upgrade from
 0.10.1 store by store, two devices across the update and back to 0.10.1 with a fake GitHub (the 0.10.1 source taken
@@ -2706,16 +3011,222 @@ IPC: the app's real `almacenTauri`). Sixth review: scenarios r6·1–r6·5 and �
 `refrescar`, a load that fails and is retried, reads and writes of the key and of `sinc-marcas` failing at random;
 at every write nothing the reader kept is missing and nothing unknown is stored, and at the end (`escribir` or
 `volcar`) storage = memory = what the reader did (300 trials before the fixes: 17/19 problems on Tauri, 11/87 in a
-browser; now 0); `datos-rotos.ts` also damages the device list of the GitHub file; `tests/revision11-avisos.spec.ts`
+browser; now 0; review 0.12b, finding 5: the final check first waits until the Guardado is idle — the edits a write
+schedules done, no timer — or an edit made after the final write was compared as if it had been lost); `azar.ts`'s
+fresh install stores its defaults as another writer would (the key written, then taken by the tab on a refresh), not
+through the tab with the marks key deleted afterwards — since 0.12b the tab puts those marks back (`reponerMias`), so
+they were no longer defaults; `datos-rotos.ts` also damages the device list of the GitHub file; `tests/revision11-avisos.spec.ts`
 checks the editor's and the breadboard's notices in a browser whose storage refuses to read or write the libraries.
 
-**Update notice** (`actualizaciones.svelte.ts`): `GET /repos/Metalaria/electronica-app/releases/latest` with the same
-token, at start-up at most every 12 h, silent on errors, compared with `VERSION_APP` (`version-app.ts`: vite
-`define` from `src-tauri/tauri.conf.json`, which `scripts/version-ci.mjs` sets from the tag). The notice
-(`Avisos.svelte`, mounted by `Arranque.svelte` in idle time) shows the version, the first lines of the release
-notes, this device's installer and «Ver la publicación» (Tauri: `plugin:opener|open_url`; browser: new tab).
-Without a token nothing is requested. Tests: `tests/sincronizacion.spec.ts` (GitHub mocked with `route()`);
-screenshots: `node tests/sincronizacion-capturas.mjs --url …` → `tests/capturas/sincronizacion/`.
+**Backup (0.12, `copia-formato.ts` pure, `copia.ts`, `fichero.ts`, `componentes/sincronizacion/CopiaSeguridad.svelte`).**
+File `{formato: 'epa-copia-seguridad', version: 1, app, exportado, dispositivo, almacenes: {<store>: {<id>: {t, v} |
+{t, x: 1}}}}` (sorted keys, one level of indentation): every registered store, each item dated as this device's next
+run would send it — `sincronizar.svelte.ts fotografiaLocal()` = `leerLocales` + `recargarMarcas` + `docLocal` with the
+records of `sinc-estado` —, tombstones included; never the token, `sinc-*`, `prefs` or `dispositivo-local`. Export
+and import run inside `enExclusiva(f)` (the runs' own section: one after another in the tab, and the Web Lock
+`epa-sinc` across tabs; a run asked for meanwhile waits). `leerCopia(texto, stores)`: JSON (BOM allowed), `formato`
+(also the synchronisation's own `epa-sincronizacion` file, any version since 0.7), `version` (> 1: «actualice»; older:
+`MIGRACIONES[n]`, none yet), `almacenes` object; per item `entradaValida` and the store's `valido`, a bad item dropped
+and counted (`descartados`), unknown stores listed (`desconocidos`); Spanish `ErrorCopia` otherwise (nothing imported).
+`planificar(local, copia, stores, modo, ahora)` per store present in the copy: **«unir»** = `limitar(fusionarColecciones(
+local, copia, union), maximo)` — the synchronisation's rule: the newer version of each item, a newer local deletion
+keeps the copy's item away, a local item the copy lacks stays, unions merged —, each change marked at the MERGED
+item's time; the copy's live items older than the prune horizon of the file this device last merged (`sinc-estado
+podado`) and unknown here (neither live nor deleted) are LEFT OUT (`antiguos`, shown in the preview with «Incluirlos
+también»): they may have been deleted and their tombstones pruned since, and the synchronisation would take them for
+new and bring them back to every device (review 0.12, finding 1); a device that has a token but never merged the file
+is told to synchronise first; **«sustituir»** = the copy's live items (`maximo` applied), what changes marked at `ahora` (an item already
+equal is left to the usual dating); stores the copy lacks are not touched. `importar`: «sustituir» first stores an
+automatic backup of the current data (`copia-automatica`: IndexedDB `epa-copias` in a browser; in Tauri its own store
+file `copia-automatica.json`, written to disk with `save()` before it counts — not inside `lector.json`, which every
+autosave rewrites —; an almacen key, flushed, otherwise; refused → nothing replaced), plans again against the data as
+they are now, writes the marks (`anotarCambio` with the value's hash / `anotarBorrado`) and stores them BEFORE the data
+(`volcarMarcas`; refused → nothing imported, and those marks are withdrawn from this tab's pending ones —
+`marcas.ts retirarMarcas` — so that no later write stores them: unmarked, the import would be taken for a stale copy),
+then `aplicar` store by store (atomic; a
+failed store is reported, left as it was, its marks harmless: a change mark is for another value's hash, a deletion
+mark only dates a missing item), reads each store back and marks again, at the same time, an item stored as something
+else (a union, a normalisation), and dispatches `epa:sincronizado {claves, importado: true}`. So the next run sends
+exactly the merged data, dated as merged: nothing deleted after the backup comes back, no local item is lost, nothing
+older replaces what other devices hold, importing twice changes nothing. Saving (`guardarFichero`): Tauri — the
+system's save dialog (`@tauri-apps/plugin-dialog save`) and `@tauri-apps/plugin-fs writeTextFile` on the path or (Android,
+Storage Access Framework) the `content://` URI it returns; a failing plugin falls back to the Blob download; browser —
+Blob + `<a download>`. Opening: Tauri — the open dialog and `readTextFile` (no filter on Android: a provider may give a
+.json another MIME type); browser and fallback — `<input type="file">`. Why not a Blob download everywhere: Android's
+WebView ignores `<a download>` (it needs a native DownloadListener and cannot hand a blob: URL to the DownloadManager)
+and WKWebView needs a download delegate. UI: the «Copia de seguridad» card of `#/sincronizacion` (`#/sincronizacion/copia`
+scrolls to it and focuses its heading): «Exportar copia», «Importar una copia…», the preview (origin, dropped items,
+«Cómo importarla» radio group, a table «Nuevos / Cambian / Se borran» per store with changes), «Sustituir todo» behind
+a checkbox, the result, «Guardarla en un fichero» and «Deshacer la sustitución» for the last automatic backup (review
+0.12c, finding 4: re-importing it with the default «Unir» restored nothing, the replacement's marks being newer;
+`copia.ts deshacerSustitucion` imports it with «sustituir» after the app's own confirmation, `lib/confirmar.ts`, and
+stores first an automatic backup of the data as they are, so the undo can be undone; the automatic backup carries
+`automatica: true`, and importing such a file preselects «Sustituir» and says why); «Aa» → «Copia de seguridad»:
+«Exportar copia» and «Importar…» (`GrupoAjustes.svelte`, `exportar.ts`).
+Saving everything before the app quits on its own (`almacen.ts guardarTodoAntesDeSalir`, used before installing an
+update): every `Guardado`, the 0.11 learning modules and the reader's preferences (`usuario.svelte.ts volcarPrefs`,
+review 0.12b, finding 6: written by a timer of their own, not awaited before) register how to write what they have
+pending (`registrarVolcado`); those writes are AWAITED (at most 5 s), then the store is written to disk (review 0.12, finding 6:
+a fixed 300 ms wait lost a step and a note with a slow store — `tests/actualizacion/salir.ts`, `EPA_IPC_MS=150`).
+Review 0.12 (independent, `tests/motor-real/revision12a.ts` a12·1–3, by the reviewer; a12·4–6 in `escenarios12.ts`;
+`tests/datos12-pestanas.spec.ts`): each failed before its fix. Review 0.12b (`tests/revision12b-pestanas.spec.ts`
+12b·1–4, by the reviewer, two and three real Chromium tabs, `playwright.revision12b.config.ts`; `b12·1–11` in
+`escenarios12.ts`): each failed before its fix (`b12·9` without the prune rule it checks; `b12·5` shows the run no
+longer applies a store whose `sinc-aplicados` cannot be written; `b12·10` and `b12·11` came from random trials 9301 and 557).
+Review 0.12c (`tests/revision12c-pestanas.spec.ts` 12c·1–5, by the reviewer, real Chromium tabs,
+`playwright.revision12c.config.ts`; `b12·5`, `b12·8`, `b12·12–14` in `escenarios12.ts`; the review counts of two devices
+in `tests/actualizacion/escenario.ts`, steps 17–28, whose `EPA_SRC_NUEVA` runs it on another copy of the sources; the
+undo of «Sustituir todo» in `datos12.spec.ts`): each failed before its fix. Review 0.12d
+(`tests/revision12d-pestanas.spec.ts` 12d·1/12d·4 and `tests/motor-real/revision12d.ts` d12d·2/d12d·3, by the reviewer —
+d12d·2 adapted to the undo counters; d12d·3 is the documented limit of the excess, above —; `b12·15–17`; steps 29–42
+of `tests/actualizacion/escenario.ts`): each failed before its fix. Review 0.12e (`tests/motor-real/revision12e.ts`
+e12·1–3 with controls, by the reviewer — e12·3 adapted to what «Reiniciar tarjetas» now stores —;
+`tests/revision12e-pestanas.spec.ts`, measurements; steps 43–55 of `tests/actualizacion/escenario.ts`; `12b·1` opens
+its quiet window after `RETRASO_TREGUA`): each failed before its fix; `datos12.spec.ts` runs revision12d (d12d·3 as an
+expected failure: the documented limit) and revision12e. Review 0.12f (`tests/motor-real/revision12f.ts` f12·1–2 with
+controls, `tests/revision12f-pestanas.spec.ts` 12f·3, by the reviewer; `b12·18`–`b12·19` on the real repaso module):
+each failed before its fix; `datos12.spec.ts` runs revision12f too.
+Tests (0.12): `tests/datos12.spec.ts` (`playwright.datos12.config.ts`, port 4521, build `/tmp/claude-0/epa-datos12`):
+pure property tests (3000 random record sets: commutative, associative, idempotent, the sum of each device's newest
+record; 2000 random imports: the result is the LWW winner of every item, marks at the merged time, a second import
+changes nothing), the real engine's `d12·1–5` and `c12·1–7` (`tests/motor-real/escenarios12.ts`, added to the cases by
+`correr.ts`; `d12·1–3` and `d12·5` fail with the 0.11.0 module) and 60 random trials, and the browser (export,
+import, damaged files, «Sustituir todo», «Aa», the start page's goal with two devices' records and with 0.11 data,
+360 px, 44 px targets, axe in three themes). The harness: `AlmacenDiario` (`{diario: true}`) mounts the REAL
+`progreso-diario.svelte.ts` per tab (registered as `registro.svelte.ts` does; `falsos/eventos.ts` collects its events;
+a `document` stub; a timer of ≥ 10 min never fires there: the change-of-day timer would loop), `Pestana.copia()` the
+real `copia.ts`, `nuevoDisp(…, {guardado})` pre-fills a device's storage (older data); `azar.ts` adds the daily
+progress on the 0.11 devices (checked at the end: every device and tab counts exactly the steps done, per day) and
+backups exported and imported («unir»; what the backup reflected becomes known, like a run). Trials 168 and 215 lost
+steps with one record per browser device (two tabs, storage refusing writes) before `idRegistro`; trial 642 (and
+`r12·1`) before the Guardado's compare-and-set write (the fakes `falsos/almacen.ts` and `almacen-ipc.ts` implement
+`escribirTextoSi` like localStorage). `tests/actualizacion/
+escenario.ts [tauri] [0.11.0]`: also from 0.11.0 data (commit 0afc439; a commit missing from the clone is found by its
+message «Versión X.Y.Z:»; the 0.11 stores, which `generar.ts` does not fill, may be empty, and XP and achievements
+are compared without their times — both versions reconcile them at load with their own clock), then a day studied on
+both, X updated and Y old (steps 11–16: X 2 steps, Y receives and adds 3, X counts 5 and sends the legacy record once,
+then no commits); `datos-rotos.ts` also damages `dispositivo-local` and `copia-automatica`, exports and imports a
+backup («unir» and «sustituir») over the damaged data and checks that a step still adds up.
+
+**Update notice** (`actualizaciones.svelte.ts`): `GET /repos/Metalaria/electronica-app/releases/latest`, at start-up
+at most every 12 h, silent on errors, compared with `VERSION_APP` (`version-app.ts`: vite `define` from
+`src-tauri/tauri.conf.json`, which `scripts/version-ci.mjs` sets from the tag). 0.12: the repository is public, so
+with the synchronisation token the request carries it (a 401 is retried without it) and without one it is anonymous
+(`github.ts cabeceras(null)`: no `Authorization` header); the data repository is never asked without a token. Rate
+limit (`github.ts`): 429, or 403 with `x-ratelimit-remaining: 0`, `retry-after` or «rate limit» → `ErrorGitHub`
+transient with `reintentarEn` (`retry-after` seconds, else `x-ratelimit-reset`, else 60 s), stored as
+`sinc-version.limite`; no request before it (the manual check says «se podrá volver a intentar a las HH:MM»). Start-up
+without a token only in Tauri (`enTauri()`; tests: `globalThis.__epaComprobarSinToken = true`); the plain browser asks
+only with a token or on «Buscar actualizaciones». The notice (`Avisos.svelte`, mounted by `Arranque.svelte` in idle
+time; hidden while «Aa» is open, `app.ajustes`) shows the version, the first lines of the release notes, this
+device's installer and «Ver la publicación» (Tauri: `plugin:opener|open_url`; browser: new tab). Tests:
+`tests/sincronizacion.spec.ts` (GitHub mocked with `route()`) and `tests/actualizador12.spec.ts`; screenshots:
+`node tests/sincronizacion-capturas.mjs --url …` → `tests/capturas/sincronizacion/`.
+
+**Signed automatic updates** (0.12, `instalador.svelte.ts`, pure parts in `actualizador.ts`; Windows and macOS only).
+`tauri-plugin-updater` 2 + `tauri-plugin-process` 2 (desktop-only Rust dependencies, capability
+`capabilities/escritorio.json`: exactly `updater:allow-check`, `updater:allow-download`, `updater:allow-install`,
+`process:allow-restart`). `tauri.conf.json plugins.updater`: `endpoints`
+[`https://github.com/Metalaria/electronica-app/releases/latest/download/latest.json`], `pubkey` (base64 of the minisign
+`.pub`; placeholder `CLAVE-PUBLICA-PENDIENTE…` until the owner pastes his), `requireSignedVersion: true`,
+`windows.installMode: "passive"`. Available (`actualizadorDisponible`) when the bridge exists (Tauri, or the tests'
+`globalThis.__epaPuenteActualizador {clave?, comprobar(), reiniciar()}`), the user agent is Windows or macOS
+(`sistemaActualizable`), and the build-time key (vite `define __CLAVE_ACTUALIZADOR__`) decodes like the plugin does
+(`claveActualizadorValida`: second line → 42 bytes, «Ed»). States `instalador.estado`: inactivo → buscando →
+disponible | al-dia | error; disponible → descargando (`descargado`/`total` from the `Started`/`Progress` events;
+«Cancelar» → disponible, later events of that download ignored by a generation counter) → (macOS: instalando,
+`install()` replaces the .app) → listo → «Reiniciar para terminar»: `guardarTodoAntesDeSalir()` (`almacen.ts`:
+dispatches `pagehide` and `epa:antes-de-sincronizar`, waits 300 ms, then `store.save()`), then Windows `install()`
+(runs the NSIS installer with `/P /R` and ends the process) or macOS `relaunch()`. The download gets
+`{timeout: DESCARGA_MAXIMA}` (15 min, the plugin's reqwest timeout, body included) and a watchdog: no `Progress` for
+`ESPERA_DESCARGA` (60 s; tests: `globalThis.__epaEsperaDescarga`) → error «La descarga se ha detenido…», the Update
+dropped (closed when the abandoned download settles), «Volver a intentarlo» checks again. «Cancelar» also drops the
+Update and checks again at once (a new Update for the next «Descargar e instalar»): an Update object is never shared
+between an abandoned download and a new one, because `close()` frees its Rust resource and a later `install` would
+fail with «The resource id N is invalid» (an abandoned download that settles closes its own Update only if it is not
+the current one). Windows, installer that
+cannot be started: before `install()` (store alive) the attempt is recorded (`intento` {version, t} in
+`actualizador.json` and `localStorage epa-actualizador:intento`; at start-up a mark for a version newer than
+`VERSION_APP` means it did not install → a one-time notice; same or older → it worked, cleared silently), and the
+reader's store is saved once more right before `install()`. If install() fails, the plugin has already run its
+`on_before_exit` hook (`AppHandle::cleanup_before_exit`: window
+hidden, resources — the store, the single-instance lock — released), so the app writes the reason
+(`localStorage epa-actualizador:fallo` and the small store `actualizador.json` {fallo: {version, error, t}}) and
+relaunches; `recuperarFalloDeInstalacion()` (Avisos, at start-up, marks under a day old, once) shows it as an error
+that automatic checks do not replace. The hook itself is the plugin's (set in its `updater_builder`, used by its
+`install` command); replacing it would mean re-implementing that command, signature check included, so it stays.
+The check follows the release check when it finds a newer version (start-up: silent) or when asked (errors explained,
+`explicarErrorActualizador`); nothing is downloaded without «Descargar e instalar». UI: `BotonesInstalador.svelte` in
+the notice (only for the announced version), «Aa» and `#/sincronizacion`.
+The build jobs never see the signing key (third-party code runs there: vite plugins, crates' build.rs, npm scripts);
+`npm ci --ignore-scripts` (the lockfile's only install scripts are fsevents'). Windows/macOS: `tauri build --no-bundle`,
+a pristine copy of the binary in `$RUNNER_TEMP`, then `tauri bundle` in a retry loop that restores that copy, deletes
+`bundle/` and checks `grep -ac __TAURI_BUNDLE_TYPE_VAR_UNK` before each attempt (tauri-bundler 2.10.3 patches the
+bundle type into the binary in place and restores it only when that package succeeds: a retry after a failure would
+ship an .msi whose binary says nsis). macOS also writes `Electronica-X.Y.Z-macos-universal.app.tar.gz` (Python tarfile,
+GNU headers: first component `<app>.app`, symlinks kept, no extended attributes — the layout of tauri-bundler's
+`updater_bundle.rs create_tar`; the step fails if the .app has a hard link, which tarfile would store as a link entry
+the updater's tar 0.4 cannot unpack). Windows and macOS export the SHA-256 of `…-setup.exe`, `….msi` and `….app.tar.gz`
+as job outputs (`sha256_exe`, `sha256_msi`, `sha256_tgz`). Job «firmar» (tags only, `environment: firma`, needs
+borrador/windows/macos/android — every job that runs third-party code with a write token has finished — and checks
+each downloaded artifact with `sha256sum -c -` against those outputs before signing): sparse
+checkout of `actualizador.mjs`, `tauri.conf.json` and `web/package-lock.json`; `npm install --prefix $RUNNER_TEMP/tauri-cli
+--ignore-scripts @tauri-apps/cli@<lockfile version>` and `actualizador.mjs cli` (version and integrity of the installed
+packages = the lockfile's); downloads the three artifacts from the draft; `actualizador.mjs firmar` signs each with
+`tauri signer sign --app-version X.Y.Z` (trusted comment `version:` like createUpdaterArtifacts, required by
+`requireSignedVersion`) and verifies it; uploads the `.sig` files and `SHA256SUMS-firmas.txt`. A manual run on a tag
+ref behaves like the tag build (key, strict). Actions are still referenced by tag: pinning them by SHA is a TODO
+(README).
+CI (`web/scripts/actualizador.mjs`, `.github/workflows/compilar.yml`): workflow env `EPA_ESTRICTO` = 1 on tags unless
+`vars.EPA_PERMITIR_SIN_ACTUALIZADOR` is 1. `exigir` (job «borrador», `environment: firma`, before the draft: placeholder
+public key or `HAY_CLAVE != true` → error), `firmar` (job «firmar»: missing secret, invalid public key, missing
+artifact, failed or unverifiable signature → error when strict, warning otherwise), `verificar` (a `.sig` against its
+asset: Ed25519 over BLAKE2b-512, the global signature over the trusted comment, `version:` = the tag), `manifiesto`
+(publish job: `latest.json` {version, notes, pub_date, platforms: `windows-x86_64-nsis` →
+`Electronica-X.Y.Z-windows-x64-setup.exe`, `windows-x86_64-msi` → `.msi`, `windows-x86_64` → the NSIS only when both
+Windows signatures exist, `darwin-aarch64`/`darwin-x86_64` → `Electronica-X.Y.Z-macos-universal.app.tar.gz`; each {url,
+signature = the .sig text}}, only signatures of this version and key; strict: a missing platform → error, nothing
+published; uploaded while the release is a draft; the `.sig` count comes from `gh … --jq` — never `| grep -q` under
+`pipefail`). Checkouts with `persist-credentials: false`. Tests: `tests/actualizador-ci.spec.ts` (the «firmar» and
+publish steps' scripts run with bash and a fake `gh`, real `tauri signer` keys; the Windows build/bundle steps with a
+fake npm that patches the binary like the bundler; the macOS tar snippet on a test .app), `tests/actualizador12.spec.ts`,
+`tests/revision12p-descarga.spec.ts`.
+
+**Single instance** (0.12, desktop): `tauri-plugin-single-instance` 2, registered first in `lib.rs` under
+`#[cfg(desktop)]`; a second launch exits and the running one un-minimises, shows and focuses window `main`. Its lock
+lives in the resources table, which `restart()` clears before relaunching, so the updater's relaunch is not taken for
+a second instance.
+
+**Backup file** (0.12, all platforms, for the data agent's export/import, `web/src/lib/sincronizacion/fichero.ts`):
+the app's own commands `guardar_fichero_elegido {nombre, texto} → bool` and `abrir_fichero_elegido → {nombre, texto} |
+null` (`src-tauri/src/lib.rs`, module `fichero`) show the dialog (`tauri-plugin-dialog` blocking API on a blocking
+thread, `.json` filter on desktop only) and write or read the chosen file in Rust through `tauri-plugin-fs`'s
+`Fs::open` (a path on desktop; on Android a `content://` URI opened through the content resolver); reading is capped
+at 50 MB and must be UTF-8. No capability grants `dialog:*` or `fs:*`: tauri-plugin-fs 2.7.1's `resolve_file`
+(commands.rs) opens any URL (`file://`, and on Android `content://`) without checking its scope, so a webview with
+`fs:allow-write-text-file` could write anywhere; the path now never comes from the webview. Residual: none from the
+webview side; the dialog and fs plugins stay registered for Rust only. `fichero.ts noDisponible` falls back (Blob
+download / `<input type=file>`) only on Tauri's own rejection of these two commands (`^Command … not (found|allowed
+by ACL)`), never on an error of the file itself; on Android, where the WebView ignores a Blob download, a missing
+command is an error, never «descargado». Desktop dialogs get the main window as parent (`set_parent`: modal). The
+returned `nombre` is empty for an Android `content://` URI (its last segment is a document id, and neither plugin
+exposes the provider's display name): the import heading then says «Importar la copia elegida». `CopiaSeguridad.svelte
+elegir()` is busy while the picker is open (no second picker).
+
+**Confirmations** (0.12, `src/lib/confirmar.ts` + `src/componentes/Confirmacion.svelte`): `await confirmar({titulo,
+mensaje?, aceptar, cancelar?})` → true only for the destructive button. Used by the breadboard's «Borrar» and the
+editor's «Nuevo» over an unsaved circuit. Not window.confirm: on desktop tauri-plugin-dialog's init script replaces it
+with an async function (a Promise, always truthy: the action ran without asking), wry's WKWebView has no confirm
+delegate (macOS answered «no»: «Borrar» did nothing in 0.11), and on Android wry's RustWebChromeClient shows a native
+box with English «OK»/«Cancel». role=alertdialog, aria-modal, the rest of `body` inert, focus on «Cancelar», Tab
+cycles inside, Escape or a click outside cancels (only a press that also began on the backdrop, and not in the first
+300 ms: a double click on the trigger does not cancel), focus back to the trigger; while open, a window capture-phase
+guard stops every keydown/keyup/keypress (`inert` does not stop keys reaching window listeners: the editor's Supr, «g»,
+Ctrl+Z, Ctrl+S…), handling Escape and Tab itself; Enter/Space still activate the focused button; a route change
+(`hashchange`/`popstate`, e.g. Android's back button) answers «Cancelar» and closes it, 44 px on coarse pointers, destructive
+button in `--c-precaucion` with `--superficie` text. `tests/actualizador-ci.spec.ts` fails if `alert(`, `confirm(`
+or `prompt(` appears in `web/src` (ngspice*.js aside). Tests: `tests/confirmacion12.spec.ts`,
+`tests/revision12q-confirmar.spec.ts` (with the plugin's real init script injected).
 
 ## List thumbnails (0.10, `web/src/componentes/miniaturas/`, data in `web/public/miniaturas/`)
 
@@ -2876,6 +3387,34 @@ again). Caches of content promises must not keep a failure (`sinFallos`, or rese
 `spice.fallo`), `cargarCatalogo` (sets `calc.falloRed`), `cargarPractica` (rejects when the practice index failed).
 
 Regression tests of the fixes it led to: `tests/regresiones11.spec.ts` (`playwright.regresiones11.config.ts`, port 4422).
+
+**0.12 additions** (`tests/qa/novedades.ts`, `tests/qa/novedades12.spec.ts`). Route actions put every state of the new
+interface under the crawler, `fase2-maquetacion` (seven variants) and `fase2-axe`: groups `copia` (`#/sincronizacion/copia`
+and the actions `aa-exportar`, `copia-unir`, `copia-sustituir`, `copia-resultado` — import, then the same file again
+must announce 0 changes —, `copia-danada`, `copia-ajena`, `copia-nueva`, `copia-deshacer` — replace, then the in-app
+«¿Deshacer la sustitución?» left open for the checks), `confirmacion` (`confirmar-borrar`: a montage saved and its
+«Borrar» asked, then confirmed so visits do not pile montages up; `confirmar-nuevo`: «Nuevo» over a book circuit in the
+editor, then «Cancelar»), `actualizador` (`actualizador-disponible|descargando|listo|error|mac|aviso|pagina`: the
+updater's test bridge of `actualizador12.spec.ts` — `instalarPuenteQa`, an init script on every page that does nothing
+unless sessionStorage `qa-actualizador` holds its configuration: a Windows or macOS user agent, `__epaPuenteActualizador`
+with a key that `claveActualizadorValida` accepts, a download that can pause or fail once — and a fake GitHub release;
+undone by removing the flag and `epa:sinc-version` and reloading, else the stored release would show the notice on every
+later page) and `actividad` (`dias-sumados`: two other devices' records of today seeded in `epa:progreso-diario`, the
+goal must show the sum). Each action checks its own outcome (`novedad-<acción>` findings) and marks the probe when it
+ends (its scripted steps are not the app's flashes); `deshacerAccion012` restores the page; `cerrarCapas` also closes
+`[role=alertdialog]`. `novedades12.spec.ts` (three profiles): backup end to end (export through the reader's own
+buttons and its download read back, «Unir» on a fresh context twice, «Sustituir todo» with the checkbox, the automatic
+backup saved as a file, «Deshacer la sustitución» with Escape first, a reload, five unusable files that must change
+nothing), the confirmation (Escape, «Cancelar», a press on the backdrop, history.back(), the destructive button; keys
+must not reach the editor), the updater (cancel while downloading, an error then «Volver a intentarlo», the notice
+hidden while «Aa» is open), the diagnostic's «Entorno del estudio» row (fresh, «Repetir», after a reload), the studio's
+environment cache (every 3D board and a model opened twice in a fresh context: `__epaEntorno` «pmrem» + saved, then
+«memoria» + read from IndexedDB, same picture once the faces are at full resolution) and the day summed across devices
+(plus a step taken here). `fase2-estado` adds the backup with the storage full («Unir» and «Sustituir todo») and blocked
+(export works, an import must not claim it is kept) and a backup imported in one tab while the other keeps bookmarking.
+`fase2-visual` takes `QA_VIEJO_NOMBRE` (0.12 compares with 0.11.0); `QA_SIN_COMPILAR=1` serves `EPA_DIST` as it is (one
+build for a run split into several commands). Regression tests: `tests/regresiones12.spec.ts`
+(`playwright.regresiones12.config.ts`, port 4431).
 
 ### Layout and accessibility rules that came out of it (0.11)
 

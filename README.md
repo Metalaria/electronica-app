@@ -73,7 +73,13 @@ esquemas (fase 5) está en la versión 0.7.
     contestadas (tarjetas, tests, examen, fallos y las de las lecciones) y las secciones marcadas como leídas:
     con un objetivo de pasos, cada sección leída cuenta como un paso (se puede desactivar en «Aa», «Cada sección
     que marcas como leída cuenta como un paso»), así que leer el libro como siempre también mantiene la racha. El
-    día empieza a las 04:00, como en el repaso.
+    día empieza a las 04:00, como en el repaso. Desde la 0.12, lo hecho el mismo día en varios dispositivos **se
+    suma** (estudiar 2 pasos en el teléfono y 2 en la tableta son 4 en los dos, y cumplen un objetivo de 3), sin contar
+    nada dos veces por mucho que se sincronice. Mientras algún dispositivo siga con la 0.10 o la 0.11, lo que haga
+    ese dispositivo sin haber visto la suma completa (o encima de un paso deshecho) puede contarse de menos, y esa
+    diferencia ya no se recupera. Un dispositivo que pase más de 90 días sin
+    sincronizar no trae de vuelta los registros ya compactados en otro (sus copias, sin cambios y más antiguas que lo
+    podado del fichero, se descartan); solo podría si se borrara el fichero de sincronización y se creara de nuevo.
   - **Repaso pendiente**: las tarjetas de hoy del mazo elegido, con «Repasar».
   - **El libro como camino**: el tomo que se lee, desplegado, con un nodo por capítulo (leído con ✓, el actual
     con «Está aquí · 5.2», los pendientes con su número) y las secciones leídas de cada uno; los demás tomos, en
@@ -139,6 +145,7 @@ esquemas (fase 5) está en la versión 0.7.
 | `↑` `↓` `Intro` | Elegir y abrir un resultado de búsqueda |
 | `Esc` | Cerrar la búsqueda, el visor de figuras o el panel «Aa» |
 | `+` `-` `0` | Acercar, alejar y ajustar en el visor de figuras |
+| `Tab` (en el visor de figuras) | Recorre solo sus controles: la página de debajo queda inerte mientras está abierto |
 | `Ctrl Intro` | Guardar la nota que se está escribiendo |
 
 ## Simulador de circuitos
@@ -637,6 +644,10 @@ dispositivo: si se deja en 3D, la galería pasa a ser el **catálogo de modelos*
   modelo se compilan antes de su primer cuadro, en paralelo donde la GPU lo permite, con «Preparando el modelo
   3D…» mientras tanto, y sin el plano de corte hasta que se activa «Corte» (así sirven los mismos que ya compiló el
   catálogo; los del corte se preparan en segundo plano).
+- Desde la 0.12 el «entorno» del estudio (la sala cuyos reflejos hacen que el estaño, el cobre y el oro parezcan
+  metal) se calcula una sola vez en cada dispositivo y se guarda: hasta la 0.11 cada vista 3D (cada modelo, cada
+  placa, cada miniatura) lo volvía a calcular, con tres o cuatro sombreadores más que compilar al abrirla (ver
+  «Proyectos KiCad»). Se ve exactamente igual.
 - En pantallas estrechas las etiquetas pasan a ser números sobre el modelo con su lista debajo (si dos caen
   juntos, se separan para poder leerlos).
 - Pensado también para las GPU de tabletas y móviles (0.7): ninguna pieza comparte una cara con otra (las caras
@@ -939,6 +950,25 @@ por una misma selección (un componente, un pad o una red): lo que se toca en un
   Drive, los DIP de 400 y 600 milésimas, que la biblioteca solo dibuja a 7,62 mm) se cambia por un cuerpo propio con
   sus patillas en los pads. Las piezas se colocan en tramos de 6 ms y, donde la GPU no compila en paralelo, los
   sombreadores se compilan de uno en uno, cada uno en su tarea.
+  **0.12, placas en 3D más rápidas** (la prueba de «equipo lento» de la QA de la 0.11, CPU × 4 y red «Fast 3G»: la
+  placa IoT tardaba 40–47 s en verse). Lo que más pesaba no era la placa, sino el **entorno del estudio** (los reflejos
+  de los metales): cada vista lo volvía a calcular en la GPU, y con la GPU por software de las pruebas eso eran 8–9 s
+  durante los que la página se quedaba parada. Ahora se calcula **una vez por dispositivo**: se lee de la GPU sin
+  parar la página, después del primer cuadro de la placa (así la primera vista no tarda más que en la 0.11), se guarda en memoria y en el almacenamiento del navegador (una base de datos propia,
+  `epa-cache-3d`, que no forma parte de los datos del usuario ni de sus copias) y las vistas siguientes suben esos
+  mismos píxeles: la misma imagen (las capturas antes y después coinciden píxel a píxel) y tres o cuatro
+  sombreadores menos que compilar en cada placa o modelo que se abre (en la Xiaomi Pad 6, sin compilación en
+  paralelo, cada uno para la página). Además: el código de la vista 3D (three.js) y la biblioteca de modelos se
+  descargan a la vez que los datos de la placa, no después; las caras rápidas se suben antes del entorno y el
+  lienzo toma su tamaño al crearse (con la GPU ocupada, cualquier subida o cambio de tamaño esperaba por ella con
+  la página parada); el lienzo no se enseña hasta su primer cuadro (antes, un instante en negro); y la geometría
+  de la placa se construye sin `Path2D.closePath()`, que en Chromium cuesta tiempo proporcional a todo el trazado
+  (con miles de pads era cuadrático: la Neo Geo pasaba unos 3 s, con la CPU × 4, antes de poder abrir su vista 2D o
+  3D). El tamaño de las caras en Android (0.9.2) y la liberación de cada placa al cerrarla (0.11) no cambian; una
+  vista que se cierra mientras aún se lee el entorno suelta su contexto WebGL al terminar la lectura (como mucho un
+  minuto). Las cifras antes/después están en ESQUEMA.md («Proyectos KiCad», 0.12). Pruebas:
+  `npx playwright test -c playwright.rendimiento12.config.ts tests/rendimiento12.spec.ts` (compilación propia en el
+  puerto 4531).
 - **Placa en 2D**: la placa plana, vista desde arriba o desde abajo (espejada), con aspecto real o por capas al estilo de
   KiCad, contornos de fabricación y zonas sin cobre (la de la antena del ESP32). Al pasar el ratón se lee el pad, la
   pista o la red; al tocar una red se resalta todo su cobre.
@@ -1469,7 +1499,7 @@ node scripts/miniaturas.mjs --figuras | --modelos [--forzar] [--solo tipo1,tipo2
 
 `contenido/generar.py` lo llama al final con `--esquemas --figuras` (solo se rehacen las figuras nuevas o cambiadas);
 después de tocar los modelos 3D hay que ejecutar `--modelos --forzar`, y después de
-`scripts/esquema-auto-precalcular.mjs`, `--esquemas`. Pruebas: `npx playwright test -c
+`scripts/esquema-auto-precalcular.mjs`, `--esquemas`; después, `node scripts/circuitos-proporciones.mjs` (0.12: el tamaño del dibujo de cada netlist del libro, para que la página del simulador y el banco de instrumentos le guarden exactamente su sitio mientras se dibuja). Pruebas: `npx playwright test -c
 playwright.miniaturas10.config.ts tests/miniaturas10.spec.ts` (puerto 4401): lo que muestra cada lista, carga
 perezosa, sin saltos, contextos WebGL, tareas largas al desplazar con la CPU ×4 (`rendimiento.json`) y capturas en
 `tests/capturas/miniaturas10/`.
@@ -1486,7 +1516,9 @@ dispositivo lo más pesado de la aplicación, para poder comparar el MacBook, la
   60 cuadros por segundo, hasta cuánto, y si vuelve a la completa al soltar);
 - la placa del receptor SDR en 3D: cuánto tarda en verse, en tener todos los componentes, en tener **las caras a
   resolución completa** (con sus fases: pintar, leer los píxeles, subirlos a la GPU en franjas, y la tarea más
-  larga que eso le ha costado a la página), a cuántos cuadros por segundo gira y su resolución al girar;
+  larga que eso le ha costado a la página), a cuántos cuadros por segundo gira y su resolución al girar; desde la
+  0.12 también de dónde salió el **entorno del estudio** («guardado», el de este dispositivo, o «calculado» ahora, la
+  primera vez, con el estado de su guardado);
 - **las caras de la placa SDR pintadas de las tres maneras** que tiene la aplicación (directo, como en la 0.7;
   trabajador, en un hilo aparte; franjas, por trozos en el hilo de la página), con lo que tarda cada una y el
   hueco más largo que deja en la página: así se ve en el propio Mac cuál le conviene (la aplicación elige
@@ -1550,15 +1582,74 @@ determinista (a igual hora decide el contenido), así que tres dispositivos acab
 sea el orden. Cada sincronización lee el fichero con su `sha`, fusiona y lo escribe con ese `sha`; si otro
 dispositivo escribió en medio (GitHub responde 409), vuelve a leer y a fusionar. Solo se escribe cuando algo ha
 cambiado (un commit por sincronización con cambios, «Sincronización desde Mac (fecha)»). Las lápidas se borran a
-los 90 días: un dispositivo que pase más tiempo sin sincronizar podría recuperar algo borrado. Dos dispositivos que
-repasen tarjetas el mismo día conservan el recuento diario del último que sincronice.
+los 90 días: un dispositivo que pase más tiempo sin sincronizar descarta sus copias sin cambios de lo que ya no está
+en el fichero, pero podría recuperar algo borrado en otro si él lo había cambiado sin sincronizar. Si dos dispositivos
+(o dos pestañas) repasan tarjetas el mismo día, el recuento diario del repaso (respuestas y tarjetas nuevas) se queda
+con el mayor de cada uno: nunca cuenta dos veces, pero puede quedarse corto (antes se quedaba entero el del último que
+sincronizaba); «Deshacer» una respuesta ya sincronizada sigue deshecha en todos (un dispositivo con la 0.10 o la 0.11
+la sigue contando en su resumen del día); el objetivo diario y la racha, en cambio, suman lo de todos los dispositivos (0.12: cada dispositivo
+guarda su propio registro de cada día).
 
-**Aviso de versión nueva**: con el token configurado, al abrir la aplicación (como mucho cada 12 horas, sin
-esperar y sin decir nada si falla o no hay red) se consulta la última publicación de `Metalaria/electronica-app`.
-Si es más nueva que la instalada aparece abajo a la derecha «Versión X.Y.Z disponible» con el principio de las
-notas, el instalador que toca a ese equipo y «Ver la publicación», que abre la página en el navegador del sistema
-(con la sesión de GitHub iniciada, porque el repositorio es privado). «Ahora no» lo oculta hasta la siguiente
-versión. En «Aa» → «Buscar actualizaciones» se comprueba al momento. Sin token no se hace ninguna petición.
+**Aviso de versión nueva**: al abrir la aplicación (como mucho cada 12 horas, sin esperar y sin decir nada si
+falla o no hay red) se consulta la última publicación de `Metalaria/electronica-app`. El repositorio es público, así
+que desde la 0.12 no hace falta token: sin él la consulta va sin credenciales (sin cabecera `Authorization`); con
+él se envía (GitHub admite muchas más peticiones) y, si GitHub lo rechaza (caducado), se repite sin él. Nunca se
+toca el repositorio de datos sin token. Las peticiones sin token comparten el límite de GitHub de 60 por hora y
+dirección IP: si GitHub responde que se ha superado (403/429 con `x-ratelimit-remaining: 0` o `retry-after`), la
+aplicación guarda hasta cuándo y no vuelve a preguntar antes; «Buscar actualizaciones» dice entonces a qué hora se
+podrá. Si la versión publicada es más nueva que la instalada aparece abajo a la derecha «Versión X.Y.Z disponible»
+con el principio de las notas, el instalador que toca a ese equipo y «Ver la publicación», que abre la página en el
+navegador del sistema. «Ahora no» lo oculta hasta la siguiente versión; mientras «Aa» está abierto no se muestra
+(«Aa» dice lo mismo). En «Aa» → «Buscar actualizaciones» se comprueba al momento. En el navegador (versión de
+desarrollo) la comprobación al abrir solo se hace con token, para que las pruebas y el desarrollo no salgan a la red
+sin pedirlo; el botón funciona igual.
+
+**Actualización automática firmada (0.12, Windows y macOS)**: si la publicación trae `latest.json` (ver
+«Actualizaciones automáticas firmadas» en «Compilar con GitHub Actions»), el aviso, «Aa» y la página
+`#/sincronizacion` ofrecen «Descargar e instalar»: la aplicación descarga el instalador de ese sistema mostrando el
+progreso y comprueba su firma con la clave pública de `tauri.conf.json` (y que la firma sea de la versión anunciada)
+antes de instalar nada. En macOS la aplicación nueva sustituye a la actual al terminar la descarga y «Reiniciar para
+terminar» la vuelve a abrir; en Windows «Reiniciar para terminar» cierra la aplicación, ejecuta el instalador NSIS
+en modo pasivo (solo una barra de progreso) y la abre de nuevo. Antes de cerrar se guarda todo lo pendiente. Nada se
+descarga ni se instala sin pulsar: al abrir solo se comprueba. Mientras descarga hay «Cancelar»; si no llega nada en
+60 segundos (una conexión atascada) la descarga se da por perdida y sale «Volver a intentarlo», y en total no puede
+pasar de 15 minutos. Si en Windows el instalador no llega a arrancar (por ejemplo, un antivirus lo bloquea), la
+aplicación se vuelve a abrir sola y explica qué pasó. Los errores se explican en español (sin conexión, publicación
+sin actualización automática, firma no válida, permisos de macOS…) y el enlace a la publicación sigue ahí. En Android (el plugin no lo admite), en Linux, en el navegador y mientras `tauri.conf.json` tenga la clave de
+marcador, solo hay el aviso con el enlace, como antes.
+
+**Copia de seguridad (0.12)**: en `#/sincronizacion` → «Copia de seguridad» (y en «Aa» → «Copia de seguridad»),
+«Exportar copia» guarda todo el progreso en un fichero JSON (`electronica-copia-AAAA-MM-DD-HHMM.json`): cada
+almacén sincronizable con sus elementos fechados y los borrados, más la versión del formato, la de la aplicación, la
+fecha y el nombre del dispositivo. No lleva el token ni los ajustes propios del dispositivo. En el navegador se
+descarga; en la aplicación instalada se elige dónde guardarlo con el diálogo del sistema (también en Android, donde
+el WebView no admite descargas). «Importar una copia…» la abre, la comprueba (un fichero dañado o cortado, de otra
+aplicación o de una versión más nueva se rechaza con un aviso y no cambia nada; los elementos dañados se descartan y
+se cuentan) y enseña qué cambiará en cada apartado (nuevos, cambian, se borran). **«Unir»** (recomendado) aplica las
+mismas reglas que la sincronización: de cada elemento queda la versión más reciente, lo que se borró después de hacer
+la copia sigue borrado, nada de lo que hay en el dispositivo se pierde, e importar dos veces la misma copia no cambia
+nada; lo importado se envía a los demás dispositivos en la siguiente sincronización. **«Sustituir todo»** deja los
+datos como en la copia (también en los demás dispositivos al sincronizar); pide confirmación y antes guarda una copia
+automática de los datos actuales (en el navegador, en IndexedDB; en la aplicación, en su propio fichero
+`copia-automatica.json`), que se puede guardar como fichero, y **«Deshacer la sustitución»** la recupera (con su propia
+confirmación; antes guarda a su vez una copia automática de los datos de ese momento). Importar esa copia con «Unir» no
+recuperaría nada —las versiones de la sustitución son más recientes—, así que al importar un fichero que es una copia
+automática se propone «Sustituir» y se explica por qué. También se puede importar el propio `datos.json` de GitHub. Al unir
+una copia antigua, lo que tenga más de 90 días y este dispositivo ya no conozca se deja fuera (puede haberse borrado
+después, y sus lápidas ya no están en el fichero): la vista previa dice cuántos elementos son y permite incluirlos. Si
+el dispositivo tiene token pero aún no se ha sincronizado, la vista previa aconseja sincronizar antes.
+
+**Una sola instancia (0.12, escritorio)**: abrir la aplicación cuando ya está abierta trae al frente la ventana
+existente en lugar de arrancar un segundo proceso que escribiría también en `lector.json`
+(`tauri-plugin-single-instance`).
+
+Pruebas (0.12), desde `web/`: `PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers npx playwright test -c
+playwright.plataforma12.config.ts` (puerto 4511) prueba la comprobación sin token y el límite de GitHub, la interfaz
+del actualizador con el lado de Tauri simulado (Windows, macOS, Android, clave de marcador, errores, accesibilidad en
+los tres temas), el icono del recordatorio y la parte de la CI (`latest.json` con el paso real de `compilar.yml`, un
+`gh` simulado y claves de prueba hechas con `tauri signer`); con `EPA_SIN_SERVIDOR=1 … actualizador-ci`, solo la parte
+de la CI, sin compilar la aplicación. Solo se pueden comprobar en los equipos: la descarga y verificación reales del
+plugin, la sustitución del `.app` y el instalador NSIS, el reinicio y la instancia única.
 
 **Seguridad**: el token solo se guarda en el dispositivo, en un fichero propio de la aplicación
 (`credenciales.json`, junto a `lector.json` pero separado de él); en el navegador de desarrollo, en
@@ -1577,7 +1668,8 @@ cuatro últimos caracteres.
 3. Token name: `Electrónica — sincronización`. Description: «Sincronización y aviso de versiones del lector»
    (opcional). Resource owner: `Metalaria`. Expiration: «Custom…» y una fecha de dentro de un año (cuando caduque,
    la aplicación dirá «GitHub rechaza el token (401)» y bastará con generar otro y pegarlo).
-4. Repository access: «Only select repositories» → elegir `Metalaria/electronica-app` y `Metalaria/electronica-datos`.
+4. Repository access: «Only select repositories» → elegir solo `Metalaria/electronica-datos` (las publicaciones de
+   `Metalaria/electronica-app`, que es público, se leen sin token).
 5. Permissions → «Repository permissions»: **Contents: Read and write**. «Metadata: Read-only» aparece sola y es
    obligatoria. Todo lo demás en «No access»; en «Account permissions», nada.
 6. «Generate token» y copiarlo (empieza por `github_pat_`; solo se muestra una vez).
@@ -1587,7 +1679,9 @@ Si `Metalaria` fuese una organización y no la cuenta personal, su propietario d
 fine-grained («Settings» de la organización → «Personal access tokens» → «Allow access via fine-grained personal
 access tokens») y, si lo pide, aprobar el token.
 
-Con Contents: Read and write el token podría escribir también en `electronica-app` (un token fine-grained da los
+(Hasta la 0.11 el token incluía también `electronica-app` para el aviso de versión; ya no hace falta, y un token que
+lo incluya sigue funcionando.) Si se elige también `electronica-app`, con Contents: Read and write el token podría
+escribir en él (un token fine-grained da los
 mismos permisos en todos los repositorios elegidos); la aplicación solo lee sus publicaciones y solo escribe el
 fichero de datos. Quien prefiera dos tokens de permisos mínimos no puede: la aplicación usa uno solo.
 
@@ -1599,14 +1693,17 @@ fichero de datos. Quien prefiera dos tokens de permisos mínimos no puede: la ap
 | macOS | `~/Library/Application Support/es.gonzalomejias.electronica/lector.json` |
 | Android | almacenamiento interno de la aplicación (se borra al desinstalarla) |
 | Linux | `~/.local/share/es.gonzalomejias.electronica/lector.json` |
-| Navegador (desarrollo) | `localStorage`, claves `epa:prefs`, `epa:posiciones`, `epa:marcadores`, `epa:notas`, `epa:ejercicios`, `epa:leidas`, `epa:deducciones`, `epa:calc-favoritos`, `epa:repaso-tarjetas`, `epa:repaso-diario`, `epa:repaso-ajustes`, `epa:repaso-tests`, `epa:repaso-fallos`, `epa:repaso-examenes`, `epa:progreso-diario`, `epa:progreso-objetivo`, `epa:progreso-xp`, `epa:cursos`, `epa:dominio`, `epa:problema-dia`, `epa:editor-circuitos`, `epa:protoboard-circuitos`, `epa:protoboard-recorrido`, `epa:protoboard-leccion`, `epa:medir-pista`, `epa:sinc-ajustes`, `epa:sinc-estado`, `epa:sinc-marcas`, `epa:sinc-version` y, aparte, `epa-credencial:github` (el token) |
+| Navegador (desarrollo) | `localStorage`, claves `epa:dispositivo-local` (0.12: identificador de este dispositivo para su registro de actividad diaria; no se sincroniza), `epa:prefs`, `epa:posiciones`, `epa:marcadores`, `epa:notas`, `epa:ejercicios`, `epa:leidas`, `epa:deducciones`, `epa:calc-favoritos`, `epa:repaso-tarjetas`, `epa:repaso-diario`, `epa:repaso-ajustes`, `epa:repaso-tests`, `epa:repaso-fallos`, `epa:repaso-examenes`, `epa:progreso-diario`, `epa:progreso-objetivo`, `epa:progreso-xp`, `epa:cursos`, `epa:dominio`, `epa:problema-dia`, `epa:editor-circuitos`, `epa:protoboard-circuitos`, `epa:protoboard-recorrido`, `epa:protoboard-leccion`, `epa:medir-pista`, `epa:sinc-ajustes`, `epa:sinc-estado`, `epa:sinc-marcas`, `epa:sinc-version` y, aparte, `epa-credencial:github` (el token) |
 
 El token de GitHub va en otro fichero de la misma carpeta, `credenciales.json`, para que copiar `lector.json` no
 lo lleve consigo. `lector.json` guarda además el estado de la sincronización (`sinc-*`: ajustes, última versión
 sincronizada de cada elemento, horas de los cambios y borrados pendientes, última comprobación de versión).
 
 El fichero `lector.json` es JSON legible: para llevar marcadores, notas y el progreso (ejercicios, secciones
-leídas, deducciones, tarjetas y tests del repaso) de un equipo a otro basta copiarlo con la aplicación cerrada.
+leídas, deducciones, tarjetas y tests del repaso) de un equipo a otro basta copiarlo con la aplicación cerrada. Desde
+la 0.12 es mejor la «Copia de seguridad» (página de sincronización): no arrastra el identificador del dispositivo ni
+sus ajustes y se une con lo que ya haya. La copia automática que se guarda antes de «Sustituir todo» va en
+`lector.json` (clave `copia-automatica`) en la aplicación y en IndexedDB (`epa-copias`) en el navegador.
 
 ## Requisitos
 
@@ -1766,7 +1863,11 @@ atrasado, valores por defecto, volver a la 0.10, la unión asociativa, otra edic
 colgada) y una simulación al azar con tres dispositivos con pestañas, uno de la 0.10 y una instalación nueva
 (ediciones y borrados sin conexión, el almacenamiento que rechaza escrituras, módulos no atómicos, relojes desfasados,
 pasadas interrumpidas, ediciones durante una pasada, otro dispositivo que escribe entre la lectura y la escritura) que
-comprueba que no se pierde nada, que nada borrado vuelve, que todos acaban igual y que los commits se detienen:
+comprueba que no se pierde nada, que nada borrado vuelve, que todos acaban igual y que los commits se detienen (desde la 0.12, si el `aplicar` de un almacén falla, la pasada lo vuelve a leer y registra como aplicado lo
+que ya tiene como el fichero: un módulo no atómico que fallaba a medias con un elemento nuevo dejaba perder la
+edición hecha encima con el reloj atrasado; escenario `b12·20`, prueba 61139; y una pasada cortada después de su
+escritura deja constancia de lo que envió, para que la siguiente no resucite lo que otro dispositivo borró después:
+`b12·21`, prueba 71337):
 
 ```sh
 PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers npx playwright test -c playwright.revision.config.ts tests/revision11-motor.spec.ts
@@ -1800,6 +1901,44 @@ Coste por fotograma de los esquemas vivos (perfiles `mac`, `tableta`, `movil`; C
 
 ```sh
 PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node tests/figuras-vivas.mjs --perfil mac
+```
+
+Datos de la 0.12 (copia de seguridad y suma diaria entre dispositivos): `tests/datos12.spec.ts` (puerto 4521)
+comprueba en Node que la unión de los registros por dispositivo es conmutativa, asociativa e idempotente y que el día
+suma cada dispositivo una vez (3000 casos al azar), la regla de los días de la 0.11, el plan de importación (2000
+casos: nada local se pierde, nada borrado después vuelve, importar dos veces no cambia nada), los escenarios del motor
+real `d12·…` y `c12·…` (dos dispositivos el mismo día, el objetivo cumplido solo sumando, datos de la 0.11, un
+dispositivo con la 0.11 que suma encima, dos pestañas; importar y sincronizar con otros dos, una copia vieja tras
+borrar, ficheros dañados, importar durante una pasada, el almacenamiento lleno, «Sustituir todo», qué lleva la copia;
+y `r12·1`, dos pestañas que guardan a la vez), los de la revisión independiente de la 0.12 (`a12·1–6`: el registro
+antiguo de un día sumado dos veces entre pestañas, una copia de hace más de 90 días que resucitaba lo borrado, un paso
+deshecho que una 0.11 volvía a contar, la compactación de días pasados, una pestaña duplicada y las marcas de una
+importación fallida), lo que se guarda antes de instalar una actualización con un almacenamiento lento
+(`tests/actualizacion/salir.ts`), y 60 pruebas de la simulación al azar, que ahora incluye el progreso diario con el módulo real y copias que se
+exportan e importan; y en el navegador la exportación, la importación con su vista previa, los ficheros dañados,
+«Sustituir todo», «Aa», el objetivo del inicio con dos dispositivos, un teléfono de 360 px, los 44 px de los controles
+táctiles y axe en los tres temas. `tests/datos12-pestanas.spec.ts` abre dos pestañas reales de Chromium que guardan a
+la vez: cada pestaña lee su propia copia de `localStorage` y la de la otra le llega después, así que una escritura puede
+pisar la de la otra aunque se compruebe antes de escribir; desde la 0.12 la pestaña cuyo cambio se pisó lo conserva y lo
+vuelve a escribir, salvo que haya pruebas de que el otro cambio es posterior (sin esto se perdían 20 de 40 pasos).
+`tests/revision12b-pestanas.spec.ts`, `tests/revision12c-pestanas.spec.ts` y `tests/revision12d-pestanas.spec.ts` (segunda, tercera y cuarta revisión independiente)
+y los escenarios `b12·1–17` comprueban, con dos y
+tres pestañas reales, que ese mecanismo no entra en bucle (una favorita quitada y vuelta a poner en otra pestaña se
+reescribía miles de veces; ahora una marca solo es «de esta pestaña» si coinciden valor y hora, y un freno deja de
+reescribir enseguida durante 10 s —solo cada 3 s—, sin perder nada, un elemento que se ha reescrito más de 8 veces en
+5 s, y si se cierra la pestaña en ese rato lo pendiente se guarda igual), que cada pestaña vuelve a poner las marcas de
+sus cambios que otra pestaña desfasada borró, que una copia desfasada del propio registro del día no hace contar pasos
+de más y que el resumen del día que leen la 0.10 y la 0.11 es la suma de los registros, que una pestaña duplicada
+tiene su propio registro aunque la original esté ocupada, que con el reloj atrasado el cambio nuevo sigue ganando, que
+la sincronización aplica lo recibido aunque no quepa la anotación de lo aplicado (con la cuota casi llena), que lo
+importado o sincronizado no lo deshace una pestaña desfasada que escribe encima, que un cambio que se une al de otra pestaña al guardarse
+(una unión de rondas, por ejemplo) se sincroniza con lo que quedó guardado, y que un dispositivo que vuelve tras más de
+90 días no trae registros ya compactados. La actualización desde datos de la **0.11.0** se prueba como la de la 0.10.1:
+
+```sh
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers npx playwright test -c playwright.datos12.config.ts tests/datos12.spec.ts tests/datos12-pestanas.spec.ts
+node --experimental-transform-types --no-warnings --import ./tests/motor-real/registrar.mjs tests/motor-real/correr.ts azar 195 0   # (de 195 en 195: con muchas más por proceso se queda sin memoria)
+node --experimental-transform-types --no-warnings tests/actualizacion/escenario.ts [tauri] [0.11.0]
 ```
 
 ### Pruebas de QA exhaustivas (0.11)
@@ -1892,6 +2031,19 @@ una regresión). Para rehacer el informe sin volver a
 pasar las pruebas: `node tests/qa/informe.ts`. Las pruebas de regresión de lo corregido gracias al arnés están en
 `tests/regresiones11.spec.ts` (`-c playwright.regresiones11.config.ts`, puerto 4422).
 
+**Desde la 0.12** el arnés pasa también por todo lo nuevo, en los tres perfiles y en las siete variantes de la
+maquetación: la tarjeta «Copia de seguridad» (vista previa, «Sustituir todo», resultado, ficheros dañado, ajeno o de
+una versión más nueva, y «Deshacer la sustitución»), «Exportar copia» de «Aa», la confirmación propia («Borrar» un
+montaje, «Nuevo» en el editor), los estados del actualizador en «Aa», en el aviso y en la página de sincronización (con
+el puente de prueba de Tauri y una publicación de GitHub simulada) y la actividad del día sumada entre dispositivos.
+`tests/qa/novedades12.spec.ts` los recorre de principio a fin (exportar e importar en «otro dispositivo», dos veces,
+sustituir y deshacer; Escape, «Cancelar» y «Atrás» en la confirmación; cancelar y reintentar una descarga; la fila
+«Entorno del estudio» del diagnóstico; cada placa 3D abierta dos veces para ver que el entorno se calcula una vez y se
+lee la siguiente). Con `QA_SIN_COMPILAR=1` se sirve la compilación ya hecha (una sola para una pasada partida en
+varios comandos) y `QA_VIEJO_NOMBRE=0.11.0` pone el nombre de la versión con la que compara `fase2-visual`. Las
+pruebas de regresión de lo corregido en la 0.12 están en `tests/regresiones12.spec.ts` (`-c
+playwright.regresiones12.config.ts`, puerto 4431).
+
 Lo que cambió en la aplicación gracias al arnés (0.11): nada que llegue tarde empuja ya lo que se está leyendo
 (el circuito del simulador, los paneles de problemas y los botones del lector, las figuras, el glosario, el banco
 de instrumentos), los avisos de carga solo salen si la carga tarda, la barra del simulador ya no parpadea con la
@@ -1941,7 +2093,7 @@ Genera `bundle/deb/Electrónica Práctica Avanzada_0.1.0_amd64.deb`.
 
 ## Compilar en tus equipos
 
-Las instrucciones parten de cero: equipo recién instalado, repositorio privado `electronica-app` ya creado
+Las instrucciones parten de cero: equipo recién instalado, repositorio `electronica-app` (público) ya creado
 en GitHub (sección «Compilar con GitHub Actions») y el repositorio clonado en la carpeta personal
 (`$HOME\electronica-app` en PowerShell, `~/electronica-app` en macOS). La primera compilación
 de Rust tarda entre 5 y 15 minutos; las siguientes, mucho menos.
@@ -2323,7 +2475,7 @@ El flujo `.github/workflows/compilar.yml` compila los tres instaladores en máqu
 etiqueta `v…` y a mano desde la pestaña «Actions». Subir algo a `main` no compila: en octubre de 2026 se
 agotaron los 2000 minutos gratuitos del mes (en un repositorio privado cada minuto de macOS cuenta por 10
 y cada uno de Windows por 2) y cada versión se compilaba dos veces, con `main` y con su etiqueta. Tiene
-cinco trabajos:
+seis trabajos:
 
 | Trabajo | Máquina | Resultado |
 |---|---|---|
@@ -2331,7 +2483,8 @@ cinco trabajos:
 | Windows (.exe y .msi) | `windows-latest` | `Electronica-<versión>-windows-x64-setup.exe` y `…-windows-x64.msi` |
 | macOS (.dmg universal) | `macos-latest` | `Electronica-<versión>-macos-universal.dmg` (Apple Silicon e Intel) |
 | Android (.apk firmado) | `ubuntu-latest` | `Electronica-<versión>-android.apk` (arm64-v8a) |
-| Publicar en Releases | `ubuntu-latest` | solo con etiquetas `v…`: junta las sumas en `SHA256SUMS.txt` y publica la «Release» |
+| Firmar la actualización automática | `ubuntu-latest` | solo con etiquetas `v…`: el único que ve la clave del actualizador; firma el `.exe`, el `.msi` y el `.app.tar.gz` y sube los `.sig` |
+| Publicar en Releases | `ubuntu-latest` | solo con etiquetas `v…`: junta las sumas en `SHA256SUMS.txt`, genera `latest.json` (actualización automática) y publica la «Release» |
 
 Con una etiqueta, cada trabajo de compilación sube sus instaladores directamente a la «Release» en
 borrador, y el último la publica cuando están los tres. No se usan artefactos de Actions: ocupan la cuota
@@ -2348,14 +2501,18 @@ gratuita de GitHub Actions mucho más deprisa que los de Linux, y los artefactos
 almacenamiento (por eso solo se guardan en las ejecuciones a mano, y un día; los ficheros de una «Release»
 no cuentan ni caducan). Consulta el consumo en «Settings» → «Billing and plans» de tu cuenta.
 
-### 1. Crear el repositorio privado
+### 1. Crear el repositorio (público)
 
-En github.com, botón «+» (arriba a la derecha) → «New repository». Rellenar el formulario así:
+El repositorio de la aplicación es **público** desde la 0.11 (los datos personales van en otro, privado:
+`electronica-datos`). Tiene que serlo: con el plan gratuito de GitHub, los entornos con secretos y reglas de
+despliegue (el entorno `firma` del apartado 6) solo existen en repositorios públicos, y las aplicaciones instaladas
+leen `…/releases/latest/download/latest.json` y la última publicación sin credenciales. En github.com, botón «+»
+(arriba a la derecha) → «New repository». Rellenar el formulario así:
 
 - «Owner»: tu cuenta personal.
 - «Repository name»: `electronica-app`.
-- «Description»: `Lector privado de «Electrónica Práctica Avanzada» (Svelte 5 + Tauri 2)`.
-- Visibilidad: «Private».
+- «Description»: `Lector de «Electrónica Práctica Avanzada» (Svelte 5 + Tauri 2)`.
+- Visibilidad: «Public».
 - «Start with a template» (si aparece): «No template».
 - «Add a README file» / «Add README»: desactivado.
 - «Add .gitignore»: «No .gitignore».
@@ -2449,8 +2606,177 @@ con la sesión de GitHub iniciada en el navegador, se puede descargar el APK dir
 Si un trabajo falla por algo pasajero (una descarga cortada), en la ejecución: «Re-run jobs» → «Re-run
 failed jobs».
 
-Las aplicaciones instaladas con el token configurado ven la publicación nueva al abrirse (como mucho cada
-12 horas) y muestran «Versión X.Y.Z disponible»; el principio del texto de la publicación sale en el aviso.
+Las aplicaciones instaladas ven la publicación nueva al abrirse (como mucho cada 12 horas, con o sin token) y
+muestran «Versión X.Y.Z disponible»; el principio del texto de la publicación sale en el aviso. En Windows y macOS,
+si la publicación trae `latest.json`, el aviso ofrece además «Descargar e instalar» (siguiente apartado).
+
+### 6. Actualizaciones automáticas firmadas (Windows y macOS, una vez)
+
+Desde la 0.12 la aplicación de escritorio se actualiza sola, con permiso del lector: lee
+`https://github.com/Metalaria/electronica-app/releases/latest/download/latest.json`, descarga el instalador de su
+sistema y comprueba su firma con la clave pública que lleva dentro (`plugins.updater.pubkey` de
+`src-tauri/tauri.conf.json`). Hacen falta un par de claves de firma (minisign, del Tauri CLI), distinto del de
+Android: la privada y su contraseña se guardan como secretos del **entorno** `firma` del repositorio (GitHub
+Environments), que solo admite etiquetas `v*`, y la pública va en `tauri.conf.json`.
+
+**Una etiqueta `v*` no se publica sin esto**: como la clave pública queda compilada dentro de la aplicación, una
+versión publicada con el marcador `CLAVE-PUBLICA-PENDIENTE…` dejaría a quien la instale sin actualización automática
+para siempre. Por eso, en una etiqueta, el trabajo «Preparar la release» falla (antes de crear el borrador) si la
+clave pública es el marcador o falta el secreto; «Firmar la actualización automática» falla si la pareja de claves no
+casa, si falta alguno de los tres instaladores que firma o si lo descargado no es lo que subió su trabajo de
+compilación, y «Publicar en Releases» falla si a `latest.json` le falta una plataforma (en todos los casos la
+«Release» se queda en borrador). Para publicar **a propósito** una versión sin actualización automática, la variable del repositorio
+`EPA_PERMITIR_SIN_ACTUALIZADOR` con el valor `1` (se quita después). Una ejecución a mano desde «Actions» sobre una
+**rama** («Use workflow from: Branch: main») nunca recibe la clave: compila sin firmar, con un aviso. Lanzada a mano
+sobre una **etiqueta** («Use workflow from» → «Tags» → `v…`) se comporta exactamente como la compilación de esa
+etiqueta: recibe la clave, es estricta y publica (o completa) su «Release».
+
+Los trabajos que compilan **nunca** ven la clave privada (ahí se ejecuta código de terceros: los plugins de Vite,
+los `build.rs` de las dependencias, los scripts de npm). Dejan sin firmar en el borrador de la «Release» el `.exe` y el
+`.msi` de Windows y un `.app.tar.gz` de la aplicación de macOS; después, el trabajo «Firmar la actualización
+automática», el único con el entorno `firma`, descarga esos tres, los firma con el Tauri CLI instalado aparte (solo
+ese paquete, sin scripts de instalación y comprobado contra `web/package-lock.json`), comprueba cada firma con la
+clave pública y sube los `.sig`.
+
+Se hace una vez, antes de etiquetar la 0.12.0, en WSL (o el Terminal de macOS o Linux), desde la carpeta del
+repositorio, con Node.js y GitHub CLI con la sesión iniciada (`gh auth login`):
+
+```bash
+cd ~/electronica-app
+```
+
+```bash
+mkdir -p ~/electronica-firma
+```
+
+```bash
+(cd web && npx --yes @tauri-apps/cli@2.12.3 signer generate -w ~/electronica-firma/electronica-actualizador.key)
+```
+
+Pide una contraseña dos veces: elija una y guárdela junto a las de Android. Deja
+`~/electronica-firma/electronica-actualizador.key` (privada, cifrada con esa contraseña) y
+`~/electronica-firma/electronica-actualizador.key.pub` (pública). Guarde copia de las dos con las claves de
+Android: **si se pierde la privada o su contraseña, las aplicaciones instaladas ya no aceptarán actualizaciones** y
+habrá que instalar a mano la versión con la clave nueva.
+
+El entorno `firma`, que solo admite etiquetas `v*` (se puede repetir: el primero lo deja igual; el segundo, si la
+regla ya existe, responde que ya está):
+
+```bash
+gh api --method PUT repos/Metalaria/electronica-app/environments/firma -F 'deployment_branch_policy[protected_branches]=false' -F 'deployment_branch_policy[custom_branch_policies]=true'
+```
+
+```bash
+gh api --method POST repos/Metalaria/electronica-app/environments/firma/deployment-branch-policies -f name='v*' -f type=tag
+```
+
+Los dos secretos, en ese entorno (el primero, sin saltos de línea; el segundo pregunta la contraseña y la pega
+usted):
+
+```bash
+tr -d '\r\n' < ~/electronica-firma/electronica-actualizador.key | gh secret set TAURI_SIGNING_PRIVATE_KEY --env firma --repo Metalaria/electronica-app
+```
+
+```bash
+gh secret set TAURI_SIGNING_PRIVATE_KEY_PASSWORD --env firma --repo Metalaria/electronica-app
+```
+
+La clave pública en `tauri.conf.json` (sustituye el marcador) y su comprobación, que debe decir «clave pública
+válida» con el mismo id que muestra `base64 -d ~/electronica-firma/electronica-actualizador.key.pub` en su primera
+línea («untrusted comment: minisign public key: …»; el fichero está en base64, así que sin decodificar no se ve):
+
+```bash
+node -e "const fs=require('fs'),os=require('os'),path=require('path');const f='src-tauri/tauri.conf.json';const c=JSON.parse(fs.readFileSync(f,'utf8'));c.plugins.updater.pubkey=fs.readFileSync(path.join(os.homedir(),'electronica-firma','electronica-actualizador.key.pub'),'utf8').trim();fs.writeFileSync(f,JSON.stringify(c,null,2)+'\n')"
+```
+
+```bash
+node web/scripts/actualizador.mjs clave
+```
+
+Para comprobar el entorno: la primera orden debe dar `protected_branches: false` y `custom_branch_policies: true`; la
+segunda, una sola regla `v*` de tipo `tag`; la tercera, los dos secretos; y la cuarta (secretos del repositorio) no
+debe listar ninguno `TAURI_SIGNING_*` (si aparecen de una prueba anterior, bórrelos con `gh secret delete
+TAURI_SIGNING_PRIVATE_KEY --repo Metalaria/electronica-app` y lo mismo con `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`):
+
+```bash
+gh api repos/Metalaria/electronica-app/environments/firma --jq '.deployment_branch_policy'
+```
+
+```bash
+gh api repos/Metalaria/electronica-app/environments/firma/deployment-branch-policies --jq '.branch_policies[] | {name, type}'
+```
+
+```bash
+gh secret list --env firma --repo Metalaria/electronica-app
+```
+
+```bash
+gh secret list --repo Metalaria/electronica-app
+```
+
+Después, confirmar `src-tauri/tauri.conf.json` en `main` y etiquetar como siempre (apartado 5).
+
+**Pendiente: fijar las acciones por SHA.** `compilar.yml` usa las acciones por etiqueta (`actions/checkout@v5`,
+`actions/setup-node@v5`, `actions/setup-java@v5`, `actions/upload-artifact@v6`, `dtolnay/rust-toolchain@stable`,
+`Swatinem/rust-cache@v2`); una etiqueta se puede mover, y estas acciones ven el entorno del trabajo. Desde aquí no se
+pudieron consultar los SHA (la API de GitHub no estaba permitida en la sesión), así que queda para hacerlo con `gh` en
+WSL, desde `~/electronica-app`. Este comando sustituye cada `uses: dueño/acción@etiqueta` por
+`uses: dueño/acción@<sha de 40 caracteres> # etiqueta` y muestra cada cambio (los pasos de
+`dtolnay/rust-toolchain` ya llevan `toolchain: stable`, que esa acción deduce de la etiqueta y perdería al fijarla):
+
+```bash
+python3 - <<'PY'
+import re, subprocess
+p = '.github/workflows/compilar.yml'
+s = open(p, encoding='utf-8').read()
+cache = {}
+def fijar(m):
+    accion, ref = m.group(2), m.group(3)
+    if re.fullmatch(r'[0-9a-f]{40}', ref):
+        return m.group(0)
+    if (accion, ref) not in cache:
+        cache[(accion, ref)] = subprocess.run(['gh', 'api', f'repos/{accion}/commits/{ref}', '--jq', '.sha'], check=True, capture_output=True, text=True).stdout.strip()
+        print(f'{accion}@{ref} -> {cache[(accion, ref)]}')
+    sha = cache[(accion, ref)]
+    assert re.fullmatch(r'[0-9a-f]{40}', sha), sha
+    return f'{m.group(1)}{accion}@{sha} # {ref}'
+s2 = re.sub(r'^(\s*uses: )([\w.-]+/[\w.-]+)@([\w.-]+)[^\n]*$', fijar, s, flags=re.M)
+open(p, 'w', encoding='utf-8').write(s2)
+PY
+```
+
+```bash
+git diff --stat .github/workflows/compilar.yml
+```
+
+Qué hace la CI con ellos (`web/scripts/actualizador.mjs`):
+
+- «Preparar la release» (solo etiquetas): `actualizador.mjs exigir` comprueba la clave pública y que el secreto
+  exista (sin verlo: solo si está vacío).
+- Windows y macOS compilan sin la clave (`npm ci --ignore-scripts`; `tauri build --no-bundle` y luego `tauri bundle`,
+  reintentado si falla una descarga de NSIS o WiX o `hdiutil`: cada intento parte de una copia intacta del binario,
+  porque el empaquetador marca en él, sobre la marcha, el tipo de instalador, y un intento fallido lo dejaría marcado
+  con el tipo equivocado). macOS empaqueta además la `.app` en `…-macos-universal.app.tar.gz`, con la misma forma que
+  la de `createUpdaterArtifacts` (un tar.gz cuya primera carpeta es la `.app`, con sus enlaces simbólicos).
+- «Firmar la actualización automática» (solo etiquetas, entorno `firma`) empieza cuando han terminado todos los
+  trabajos de compilación, Android incluido, y comprueba que cada fichero descargado tiene la suma SHA-256 que dio su
+  trabajo (salidas del trabajo, no ficheros de la «Release», que otro trabajo podría haber cambiado); si no, no firma
+  nada. Después, `actualizador.mjs firmar` firma los tres con
+  `tauri signer sign --app-version X.Y.Z` (la versión queda dentro de la firma, como con `createUpdaterArtifacts`, y la
+  aplicación exige que coincida: `requireSignedVersion`), verifica cada `.sig` con la clave pública de
+  `tauri.conf.json` y los sube a la «Release» con `SHA256SUMS-firmas.txt`. En una etiqueta, cualquier firma que falte o
+  no se verifique hace fallar el trabajo y la «Release» se queda en borrador.
+- «Publicar en Releases» genera `latest.json` a partir de los `.sig` de la «Release» (solo los de esa versión y de
+  esa clave), lo sube mientras aún es borrador (así `…/releases/latest/download/latest.json` nunca apunta a una
+  publicación a medias) y lo añade a `SHA256SUMS.txt`.
+- `latest.json` lleva `windows-x86_64-nsis` (el `-setup.exe`), `windows-x86_64-msi` (el `.msi`, para quien instaló
+  con él), `windows-x86_64` (el `-setup.exe`, para una instalación de tipo desconocido; solo si están las dos firmas
+  de Windows, para que una instalación MSI nunca reciba el NSIS) y `darwin-aarch64` y `darwin-x86_64` (el mismo
+  `.app.tar.gz` universal).
+- Los `checkout` no guardan el token (`persist-credentials: false`).
+
+Las versiones hasta la 0.11 no tienen actualizador: la 0.12 se instala a mano una vez (con el aviso, como
+siempre); a partir de ahí, cada versión nueva se ofrece para instalar desde la propia aplicación.
 
 ### Actualizar el contenido del libro
 
@@ -2531,7 +2857,8 @@ app/
                              trozo, solo al abrir la pestaña; ver «Editor de esquemas» y ESQUEMA.md)
         protoboard/          protoboard virtual (0.10): colocación automática, dibujo de las piezas, mesa táctil,
                              conexiones y netlist, avisos, «Ver en protoboard» y «Mis montajes» (ver «Protoboard»)
-        sincronizacion/      página #/sincronizacion, grupos de «Aa», arranque diferido y aviso de versión nueva
+        sincronizacion/      página #/sincronizacion, grupos de «Aa», arranque diferido y aviso de versión nueva;
+                             (0.12) «Copia de seguridad» (CopiaSeguridad.svelte, exportar.ts)
         diagnostico/         página #/diagnostico: medidas de rendimiento en el propio dispositivo (pruebas.ts)
         consolas/placa/      «Placa en 3D / 2D» de las consolas con el visor de proyectos/ (datos de consolas_pcb.py)
         proyectos/           Proyectos KiCad: placa en 3D (three.js, modelos de tres/modelos; los cuerpos propios
@@ -2555,8 +2882,13 @@ app/
                              (recordatorio.ts) y la cola de avisos (avisos.svelte.ts)
         sincronizacion/      sincronización por GitHub (fusion.ts, github.ts, credenciales.ts, marcas.ts,
                              guardado.ts: cómo guarda cada módulo lo que tiene en memoria sin pisar lo
-                             sincronizado, registro.svelte.ts: los almacenes sincronizables, sincronizar.svelte.ts) y
-                             comprobación de versiones (actualizaciones.svelte.ts)
+                             sincronizado, registro.svelte.ts: los almacenes sincronizables, sincronizar.svelte.ts),
+                             comprobación de versiones (actualizaciones.svelte.ts) y, desde la 0.12, actualización
+                             automática firmada de escritorio (instalador.svelte.ts, actualizador.ts), la copia de
+                             seguridad (copia-formato.ts: formato, comprobación y plan; copia.ts: exportar e
+                             importar; fichero.ts: guardar y abrir ficheros) y el identificador del dispositivo
+                             (dispositivo.ts)
+        progreso-dias.ts     (0.12) la actividad del día sumada entre dispositivos (registros por dispositivo)
         buscador.ts          índice de búsqueda y fragmentos
         trozos.ts            división de un capítulo en tramos para dibujar solo lo visible
         precarga.ts          preparación en segundo plano de los capítulos a los que se puede saltar
@@ -2568,8 +2900,13 @@ app/
       simulador/             motor (ngspice en WebAssembly), worker, cliente, netlists: ver ESQUEMA.md
   src-tauri/                 envoltorio nativo (Tauri 2, Rust)
     tauri.conf.json          nombre, identificador, ventana, CSP, instaladores
-    capabilities/default.json  permisos: el almacén de datos y abrir enlaces http(s) en el navegador (opener)
+    capabilities/default.json  permisos: el almacén de datos y abrir enlaces http(s) en el navegador (opener); ninguno
+                               de diálogos ni de ficheros (la copia de seguridad usa dos órdenes propias, src/lib.rs)
     capabilities/movil.json    (0.11, solo Android/iOS) vibración (haptics) y el recordatorio (notification)
+    capabilities/escritorio.json  (0.12, solo escritorio) actualización automática (updater) y reinicio (process)
+    recursos-android/        (0.12) recursos propios del APK: el icono pequeño del recordatorio
+                             (drawable/ic_stat_epa.xml) y la regla que lo conserva (raw/epa_conservar.xml), copiados
+                             al proyecto generado por web/scripts/android-preparar.mjs; la CI comprueba que está en el APK
     src/lib.rs, src/main.rs
     icons/                   iconos generados con `tauri icon` (fuente: icons/fuente/icono.svg)
 ```
@@ -2593,13 +2930,28 @@ app/
   búsqueda y el visor de figuras añaden su propia entrada, de modo que Atrás los cierra.
 - **Seguridad**: la CSP de Tauri solo permite recursos propios y conexiones a `https://api.github.com`
   (sincronización y aviso de versión); los permisos nativos son el almacén de datos y abrir una página http(s)
-  en el navegador del sistema (`tauri-plugin-opener`, para la página de la publicación nueva). Desde la 0.11, solo
+  en el navegador del sistema (`tauri-plugin-opener`, para la página de la publicación nueva). Desde la 0.12, en
+  todas las plataformas, la copia de seguridad: dos órdenes propias de la aplicación (`guardar_fichero_elegido` y
+  `abrir_fichero_elegido`, en `src-tauri/src/lib.rs`) muestran el diálogo del sistema y escriben o leen, desde Rust,
+  solo el fichero elegido (`tauri-plugin-dialog` y `tauri-plugin-fs` se usan solo desde Rust; la vista web no tiene
+  ningún permiso `dialog:*` ni `fs:*`, porque `tauri-plugin-fs` 2.7.1 abre las URL `file://` —y en Android
+  `content://`— sin mirar su ámbito, así que un permiso de escritura dejaría escribir en cualquier sitio; la lectura
+  se limita a 50 MB de texto UTF-8); solo en escritorio, la actualización
+  automática (`tauri-plugin-updater`: descarga desde github.com en el lado nativo, no desde la vista web, y verifica
+  la firma minisign con la clave pública de `tauri.conf.json` antes de instalar), el reinicio
+  (`tauri-plugin-process`) y una sola instancia (`tauri-plugin-single-instance`). Desde la 0.11, solo
   en Android: la vibración (`tauri-plugin-haptics`, que declara el permiso `VIBRATE`) y el recordatorio diario
   (`tauri-plugin-notification`, que declara `POST_NOTIFICATIONS`, `RECEIVE_BOOT_COMPLETED` para restaurarlo tras
   reiniciar y `WAKE_LOCK`). Los permisos llegan al APK al fusionar los manifiestos de esas bibliotecas, así que el
   proyecto `src-tauri/gen/android` que genera la CI no necesita ningún cambio; en el ordenador no se enlazan
   (dependencias de Rust solo para Android/iOS y la capacidad `capabilities/movil.json`, limitada a esas
   plataformas).
+- **Confirmaciones (0.12)**: «Borrar» un montaje de la protoboard y «Nuevo» en el editor con un circuito sin guardar
+  preguntan con un diálogo propio de la aplicación («Cancelar» / «Borrar» o «Descartar»; Escape cancela), igual en el
+  navegador, el escritorio y Android, en lugar de `window.confirm`: en el escritorio `tauri-plugin-dialog` lo
+  sustituye por una función asíncrona (siempre «sí»: la 0.12 sin este arreglo borraba sin preguntar), en macOS la vista
+  web de wry no tiene diálogo de confirmación (en la 0.11 «Borrar» no hacía nada) y en Android sale un cuadro nativo
+  con «OK»/«Cancel» en inglés. Una prueba impide volver a usar `alert(`, `confirm(` o `prompt(` en `web/src`.
 - **Icono**: original, una resistencia estilizada con bandas de los colores de los bloques sobre el azul
   marino del libro (`1A3A5C`). Para cambiarlo, editar `src-tauri/icons/fuente/icono.svg`, exportarlo a
   PNG de 1024 px y ejecutar `npm run tauri -- icon ../src-tauri/icons/fuente/icono.png` desde `web/`.

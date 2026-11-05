@@ -1,6 +1,6 @@
 [package]
 name = "electronica-practica-avanzada"
-version = "0.11.0"
+version = "0.12.0"
 description = "Lector privado y sin conexión de «Electrónica Práctica Avanzada»"
 authors = ["Gonzalo Mejías"]
 edition = "2021"
@@ -19,6 +19,18 @@ tauri = { version = "2", features = [] }
 tauri-plugin-store = "2"
 # Opens the release page of a new version in the system browser (update notice).
 tauri-plugin-opener = "2"
+# Backup export and import (0.12): Android's WebView ignores Blob <a download>, so the app asks where to
+# save with the system dialog and writes the text file there, and picks the file to import the same way.
+# Both plugins are used only from Rust (src/lib.rs, module fichero): the webview gets no dialog:* or fs:*
+# permission, because tauri-plugin-fs 2.7.1 opens file:// (and on Android content://) URLs without
+# checking its scope.
+tauri-plugin-dialog = "2"
+tauri-plugin-fs = "2"
+# tauri::generate_context!() embeds a non-empty `plugins` section of tauri.conf.json (0.12: plugins.updater) as
+# ::serde_json values, so the crate itself must depend on serde_json (found by `cargo check`).
+serde_json = "1"
+# The result of the backup «open» command (src/lib.rs, module fichero).
+serde = { version = "1", features = ["derive"] }
 
 # Mobile only (0.11): vibration feedback (the plugin's Android library declares VIBRATE) and the daily
 # reminder (local notification scheduled with AlarmManager; its library declares POST_NOTIFICATIONS and
@@ -28,6 +40,17 @@ tauri-plugin-opener = "2"
 [target.'cfg(any(target_os = "android", target_os = "ios"))'.dependencies]
 tauri-plugin-haptics = "2"
 tauri-plugin-notification = "2"
+
+# Desktop only (0.12): signed automatic updates (the updater plugin downloads and checks the installer
+# against the public key in tauri.conf.json; it has no Android support, where the app keeps the «Versión
+# nueva» notice), relaunch after installing (process), and a single running instance (a second launch
+# focuses the open window instead of starting another process that would also write lector.json).
+# capabilities/escritorio.json only applies to desktop platforms, so mobile builds do not look for their
+# permissions.
+[target.'cfg(not(any(target_os = "android", target_os = "ios")))'.dependencies]
+tauri-plugin-updater = "2"
+tauri-plugin-process = "2"
+tauri-plugin-single-instance = "2"
 
 [profile.release]
 codegen-units = 1
