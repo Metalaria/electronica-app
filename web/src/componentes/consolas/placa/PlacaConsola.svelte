@@ -4,6 +4,7 @@
   // console's other tabs: a reference (U1) or a net of the schematic selects the same part or net on the board,
   // and choosing on the board selects it in the schematic. Boards that are not the schematic's own (OpenGBC)
   // are shown but never linked.
+  import Recuperable from '../../fallos/Recuperable.svelte';
   import { untrack } from 'svelte';
   import { app } from '../../../lib/estado.svelte';
   import { htmlKicad, nombreRed, type DatosMaquina } from '../datos';
@@ -214,7 +215,10 @@
           {#await import('../../proyectos/Vista3D.svelte')}
             <div class="cargando">Preparando la vista 3D…</div>
           {:then m}
-            {#key x.id}<m.default datos={x} geo={g} {res} {oscuro} {enfocar} opciones={opciones3d} alElegir={(s) => elegir(s)} />{/key}
+            <!-- 1.0: a failure of the view (or a lost WebGL context) shows «Reintentar» here, not a broken page -->
+            <Recuperable zona="la vista 3D de la placa" clave={x.id}>
+              {#key x.id}<m.default datos={x} geo={g} {res} {oscuro} {enfocar} opciones={opciones3d} alElegir={(s) => elegir(s)} />{/key}
+            </Recuperable>
           {:catch e}
             <div class="aviso"><p>No se pudo abrir la vista 3D: {String(e)}</p></div>
           {/await}
@@ -227,7 +231,7 @@
       <aside class="lado" aria-label="Detalle">
         {#if huella}
           <p class="tipo">{huella.t === 'mec' && x.consola.tipo !== 'gerber' ? 'Pieza mecánica' : 'Componente'}</p>
-          <h3 class="nombre">{huella.r} <span class="valor">{huella.v || componente?.v || ''}</span></h3>
+          <h2 class="nombre">{huella.r} <span class="valor">{huella.v || componente?.v || ''}</span></h2>
           {#if huella.f}<p class="detalle">{huella.f}</p>{/if}
           <p class="detalle">
             {#if x.consola.tipo === 'gerber' && !huella.rec}
@@ -272,7 +276,7 @@
           {/if}
         {:else if red}
           <p class="tipo">Red</p>
-          <h3 class="nombre">{@html htmlKicad(nombre(redEsquema ?? red.n))}</h3>
+          <h2 class="nombre">{@html htmlKicad(nombre(redEsquema ?? red.n))}</h2>
           <p class="detalle">Nombre en la placa: <code>{@html htmlKicad(red.n)}</code> · {red.p} pads</p>
           <div class="acciones">
             {#if redEsquema}<button type="button" class="accion" onclick={() => irA('esquema', { tipo: 'red', id: redEsquema })}>Ver en el esquema</button>{/if}
@@ -295,7 +299,7 @@
           {/if}
         {:else}
           <p class="tipo">{x.consola.enlazada ? 'Enlazada con el esquema' : x.consola.parcial ? 'Enlazada en parte con el esquema' : 'No enlazada con el esquema'}</p>
-          <h3 class="nombre">{x.titulo}</h3>
+          <h2 class="nombre">{x.titulo}</h2>
           <p class="detalle">
             {mm(x.placa.ancho, 1)} × {mm(x.placa.alto, 1)} mm · {x.consola.capas_cobre.length} capas de cobre ·
             {x.huellas.filter((h) => h.l !== 'NPTH').length} componentes · {x.redes.filter((r) => r.p >= 2).length} redes

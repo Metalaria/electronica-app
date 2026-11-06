@@ -183,7 +183,9 @@
         <p class="nota-capa" data-norma={varianteSel.id}>{varianteSel.nota}</p>
       {/if}
       <p class="desliza">Deslice el diagrama a los lados para verlo entero.</p>
-      <div class="desplazable">
+      <!-- tabindex: the block diagram scrolls sideways on a phone, also with the keyboard (WCAG 2.1.1) -->
+      <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+      <div class="desplazable" tabindex="0" role="group" aria-label="Diagrama de bloques (desplazable)">
         <div class="diagrama">
           <Escena {dibujar} {paso} {reloj} dims={() => [diagrama.ancho, diagrama.alto]} etiqueta={`Diagrama de bloques de la ${datos.titulo}`} {puntero} />
         </div>
@@ -239,7 +241,7 @@
 
       <section class="analizador-caja">
         <div class="cab-analizador">
-          <h3>Analizador lógico</h3>
+          <h2>Analizador lógico</h2>
           <span class="zoom">
             <button type="button" class="boton-icono" aria-label="Alejar el cronograma" onclick={() => analizador?.zoom(1.6)}><ZoomOut size={18} /></button>
             <button type="button" class="boton-icono" aria-label="Acercar el cronograma" onclick={() => analizador?.zoom(1 / 1.6)}><ZoomIn size={18} /></button>
@@ -264,7 +266,7 @@
 
     <aside class="lateral">
       <section class="ficha decodificador">
-        <h3>Decodificar una dirección</h3>
+        <h2>Decodificar una dirección</h2>
         <form
           onsubmit={(e) => {
             e.preventDefault();
@@ -311,7 +313,7 @@
       <section class="ficha">
         {#if bloque}
           <p class="tipo">Bloque</p>
-          <h3>{bloque.titulo}</h3>
+          <h2>{bloque.titulo}</h2>
           <p class="pieza">{bloque.sub}</p>
           <p>{bloque.info}</p>
           <div class="acciones">
@@ -496,8 +498,8 @@
     justify-content: space-between;
     margin-bottom: 6px;
   }
-  .cab-analizador h3,
-  .ficha h3 {
+  .cab-analizador h2,
+  .ficha h2 {
     margin: 0;
     color: var(--titulos);
     font-size: 17px;

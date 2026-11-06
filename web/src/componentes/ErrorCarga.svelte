@@ -4,14 +4,27 @@
   // showed half of themselves). Without `reintentar`, the page is loaded again (a part of the app that did not
   // arrive cannot be asked for twice in the same page).
   import { textoError } from '../lib/errores';
+  import { esCargaFallida, informarFallo } from '../lib/informe-fallos';
 
   let { titulo, error = null, reintentar, grande = false }: { titulo: string; error?: unknown; reintentar?: () => void; grande?: boolean } = $props();
+
+  // 1.0: a part of the app that did not arrive while the device is online is most likely a stale copy of the page
+  // after an update (its chunks have new names): say so and offer to load the page again. Into the «Informe de fallos».
+  const parte = $derived(!reintentar && esCargaFallida(error) && globalThis.navigator?.onLine !== false);
+  $effect(() => {
+    if (esCargaFallida(error)) informarFallo('carga', error, { zona: titulo });
+  });
 </script>
 
 <div class="error-carga" class:grande role="alert">
   {#if grande}<h1>{titulo}</h1>{:else}<p class="tit">{titulo}</p>{/if}
-  <p>{textoError(error)}</p>
-  <button type="button" class="boton" onclick={() => (reintentar ? reintentar() : location.reload())}>Reintentar</button>
+  {#if parte}
+    <p data-parte-desactualizada>Falta una parte de la aplicación; puede que se haya actualizado mientras estaba abierta. Vuelva a cargar la página.</p>
+    <button type="button" class="boton" onclick={() => location.reload()}>Recargar la página</button>
+  {:else}
+    <p>{textoError(error)}</p>
+    <button type="button" class="boton" onclick={() => (reintentar ? reintentar() : location.reload())}>Reintentar</button>
+  {/if}
 </div>
 
 <style>

@@ -69,6 +69,9 @@
 <style>
   .comp {
     display: grid;
+    /* 1.0 (reflow at 320–360 px): one column that may shrink, and long paths and net names break */
+    grid-template-columns: minmax(0, 1fr);
+    overflow-wrap: anywhere;
     gap: 18px;
     max-width: 920px;
     padding: 6px 0 20px;

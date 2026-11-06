@@ -4,11 +4,16 @@
 // moving a slider never queues stale simulations.
 
 import { registrar } from '../lib/registro';
+import { informarFallo, miga } from '../lib/informe-fallos';
 import type { Simulacion } from './motor/simular.ts';
 import type { MensajeAlMotor, MensajeDelMotor } from './protocolo';
 import { MOTORES, motorElegido, otroMotor, type IdMotor } from './motor/motores.ts';
 /** A run that takes longer than this is stopped (the reader can start it again). */
 export const LIMITE_MS = 180_000;
+/** 1.0: a download that receives nothing for this long is abandoned (the next run tries again). */
+export const SIN_DATOS_MS = 30_000;
+/** 1.0: a worker that does not report «listo» within this time is dropped (the next run starts another one). */
+export const ARRANQUE_MS = 60_000;
 
 export type Fase = 'inactivo' | 'descargando' | 'preparando' | 'simulando';
 
@@ -53,10 +58,17 @@ function cargarModulo(): Promise<MotorCargado> {
     } catch (e) {
       const otro = otroMotor(elegido);
       console.warn(`No se pudo cargar ${MOTORES[elegido].nombre}; se usa ${MOTORES[otro].nombre}.`, e);
+      informarFallo('simulador', e, { zona: `motor ${MOTORES[elegido].nombre}` });
       return { modulo: await descargarYCompilar(otro), id: otro };
     }
   })();
-  moduloPromesa.then((m) => (motor.id = m.id)).catch(() => (moduloPromesa = null));
+  moduloPromesa
+    .then((m) => (motor.id = m.id))
+    .catch((e: unknown) => {
+      moduloPromesa = null;
+      motor.fase = 'inactivo';
+      informarFallo('simulador', e, { zona: 'carga del motor de simulación' });
+    });
   return moduloPromesa;
 }
 
@@ -64,7 +76,26 @@ async function descargarYCompilar(id: IdMotor): Promise<WebAssembly.Module> {
   motor.fase = 'descargando';
   motor.descarga = 0;
   const url = new URL(MOTORES[id].wasm, document.baseURI).href;
-  const r = await fetch(url);
+  // 1.0: a stalled download (no bytes for SIN_DATOS_MS) is abandoned instead of «Descargando…» forever
+  const corte = new AbortController();
+  let vigia = setTimeout(() => corte.abort(), SIN_DATOS_MS);
+  const vigilar = () => {
+    clearTimeout(vigia);
+    vigia = setTimeout(() => corte.abort(), SIN_DATOS_MS);
+  };
+  try {
+    return await descargarYCompilarCon(url, corte.signal, vigilar);
+  } catch (e) {
+    if (corte.signal.aborted) throw new Error('La descarga del motor de simulación se ha detenido (sin datos durante 30 s). Compruebe la conexión e inténtelo de nuevo.');
+    throw e;
+  } finally {
+    clearTimeout(vigia);
+  }
+}
+
+async function descargarYCompilarCon(url: string, signal: AbortSignal, vigilar: () => void): Promise<WebAssembly.Module> {
+  const r = await fetch(url, { signal });
+  vigilar();
   if (!r.ok) throw new Error(`No se pudo cargar el motor de simulación (${r.status}).`);
   const total = Number(r.headers.get('content-length')) || 0;
   let bytes: ArrayBuffer;
@@ -76,6 +107,7 @@ async function descargarYCompilar(id: IdMotor): Promise<WebAssembly.Module> {
       const { done, value } = await lector.read();
       if (done) break;
       trozos.push(value);
+      vigilar();
       n += value.length;
       motor.descarga = Math.min(1, n / total);
     }
@@ -91,7 +123,11 @@ async function descargarYCompilar(id: IdMotor): Promise<WebAssembly.Module> {
     bytes = await r.arrayBuffer();
   }
   motor.fase = 'preparando';
-  return WebAssembly.compile(bytes);
+  try {
+    return await WebAssembly.compile(bytes);
+  } catch (e) {
+    throw new Error(`No se pudo preparar el motor de simulación (WebAssembly): ${e instanceof Error ? e.message : String(e)}`);
+  }
 }
 
 let trabajador: Worker | null = null;
@@ -102,7 +138,26 @@ let actual: { id: number; resolver: (r: Simulacion) => void; rechazar: (e: unkno
 function nuevoTrabajador({ modulo, id: idMotor }: MotorCargado): Promise<void> {
   const w = new Worker(new URL('./worker.ts', import.meta.url), { type: 'module', name: 'ngspice' });
   trabajador = w;
-  return new Promise<void>((listo, fallo) => {
+  const arrancado = new Promise<void>((listoOk, falloOk) => {
+    // 1.0: a worker that never says «listo» (its module failed to instantiate without an error event, or it hangs) is
+    // dropped after ARRANQUE_MS; and a failed start drops it too, so the NEXT run starts a new one — before, the
+    // rejected start stayed in `trabajadorListo` and every later run failed with it until the page was reloaded.
+    let resuelto = false;
+    const arranque = setTimeout(() => fallo(new Error('El motor de simulación no ha arrancado; se ha detenido. Vuelva a intentarlo.')), ARRANQUE_MS);
+    const listo = () => {
+      if (resuelto) return;
+      resuelto = true;
+      clearTimeout(arranque);
+      listoOk();
+    };
+    const fallo = (e: unknown) => {
+      if (resuelto) return;
+      resuelto = true;
+      clearTimeout(arranque);
+      if (trabajador === w) descartar();
+      else w.terminate();
+      falloOk(e);
+    };
     w.onmessage = (ev: MessageEvent<MensajeDelMotor>) => {
       const m = ev.data;
       if (m.t === 'listo') listo();
@@ -136,7 +191,7 @@ function nuevoTrabajador({ modulo, id: idMotor }: MotorCargado): Promise<void> {
         motor.fase = 'inactivo';
         a.rechazar(err);
       }
-      descartar();
+      if (trabajador === w) descartar();
     };
     const msg: MensajeAlMotor = { t: 'motor', modulo, motor: idMotor };
     try {
@@ -149,6 +204,9 @@ function nuevoTrabajador({ modulo, id: idMotor }: MotorCargado): Promise<void> {
         .catch(fallo);
     }
   });
+  // (whoever awaits it gets the failure; a start nobody awaits — precalentarMotor — is not an unhandled rejection)
+  arrancado.catch(() => {});
+  return arrancado;
 }
 
 function descartar() {
@@ -196,12 +254,17 @@ export async function simularTexto(texto: string, op: { fondo?: boolean } = {}):
     );
     return r;
   } catch (e) {
-    if (!(e instanceof SimulacionCancelada)) registrar('error', 'simulador', `«${titulo}»: ${e instanceof Error ? e.message : String(e)}`);
+    if (!(e instanceof SimulacionCancelada)) {
+      registrar('error', 'simulador', `«${titulo}»: ${e instanceof Error ? e.message : String(e)}`);
+      // (the report gets the failure, not the circuit's title)
+      informarFallo('simulador', e, { zona: 'simulación' });
+    }
     throw e;
   }
 }
 
 async function simularTextoSinRegistro(texto: string, fondo: boolean): Promise<Simulacion> {
+  miga(fondo ? 'simulación (de fondo)' : 'simulación');
   detener();
   ultimaDeFondo = fondo;
   const id = siguienteId++;

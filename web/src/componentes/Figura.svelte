@@ -11,6 +11,7 @@
   import VerPlaca from './proyectos/VerPlaca.svelte';
   import VerProtoboard from './protoboard/VerProtoboard.svelte';
   import FiguraViva from './figuras-vivas/FiguraViva.svelte';
+  import Recuperable from './fallos/Recuperable.svelte';
   import { datosVivos } from './figuras-vivas';
 
   let { bloque, indice }: { bloque: BFigura; indice?: number } = $props();
@@ -43,7 +44,10 @@
 
 <figure class="figura" id={bloque.label || undefined} data-b={indice}>
   {#if viva}
-    <FiguraViva {src} {alt} num={bloque.num} pie={bloque.pie} credito={bloque.credito} ruta={viva.ruta} vista={viva.vista} tipo={viva.tipo} {ancho} abrirVisor={abrir} />
+    <!-- 1.0: a live figure that fails shows «Reintentar» in its place; the rest of the page keeps working -->
+    <Recuperable zona={bloque.num ? `la figura ${bloque.num}` : 'la figura'}>
+      <FiguraViva {src} {alt} num={bloque.num} pie={bloque.pie} credito={bloque.credito} ruta={viva.ruta} vista={viva.vista} tipo={viva.tipo} {ancho} abrirVisor={abrir} />
+    </Recuperable>
   {:else}
   <button
     type="button"

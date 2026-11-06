@@ -161,7 +161,9 @@
   {#if hayMedidas}
     <section class="bloque" aria-label="Medidas">
       <h2>Medidas</h2>
-      <div class="desliza">
+      <!-- tabindex: a table wider or taller than its box scrolls with the keyboard too (WCAG 2.1.1) -->
+      <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+      <div class="desliza" tabindex="0" role="group" aria-label="Tabla de medidas">
         <table class="medidas">
           {#each secciones as s, k (k)}
             {#if s.titulo || s.notas.length}
@@ -196,7 +198,8 @@
           <input class="filtro" type="search" placeholder="Filtrar nodos…" bind:value={filtroOp} aria-label="Filtrar nodos" />
         {/if}
       </div>
-      <div class="desliza alto">
+      <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+      <div class="desliza alto" tabindex="0" role="group" aria-label="Tabla de resultados">
         <table class="op">
           <thead>
             <tr>

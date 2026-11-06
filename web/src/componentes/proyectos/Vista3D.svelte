@@ -12,6 +12,8 @@
   import type { Seleccion } from './estado';
   import type { Opciones3D } from './opciones3d.svelte';
   import { deHuella, dePad, deRed, type Resuelta } from './seleccion';
+  import { zonaRecuperable } from '../fallos/Recuperable.svelte';
+  import { informarFallo, miga } from '../../lib/informe-fallos';
 
   let {
     datos,
@@ -177,6 +179,8 @@
 
   // 0.12: the studio's environment saved by an earlier session is read meanwhile (entorno.ts), so the scene
   // below does not filter it again
+  // 1.0: the recoverable zone around the view (a lost WebGL context is shown there with «Reintentar»)
+  const zona = zonaRecuperable();
   const entornoListo = precargarEntorno();
   // and the model library is fetched now, while the board is set up (it was asked for only once the scene existed)
   untrack(() => {
@@ -189,13 +193,21 @@
     let ro: ResizeObserver | null = null;
     const perdido = (ev: Event) => {
       ev.preventDefault();
-      error = 'Se perdió el contexto WebGL (la GPU se ha reiniciado). Vuelva a abrir la vista 3D o use la vista 2D.';
+      // 1.0: inside a recoverable zone (Proyectos, PlacaConsola) the zone shows «Reintentar», which builds the view
+      // again in a new canvas; elsewhere the message as before. Either way, into the «Informe de fallos».
+      const motivo = 'Se perdió el contexto WebGL (la GPU se ha reiniciado). Pulse «Reintentar» o use la vista 2D.';
+      if (zona) zona.fallar(motivo, 'contexto WebGL perdido (placa 3D)', 'webgl');
+      else {
+        informarFallo('webgl', 'contexto WebGL perdido (placa 3D)', { zona: 'la vista 3D de la placa' });
+        error = 'Se perdió el contexto WebGL (la GPU se ha reiniciado). Vuelva a abrir la vista 3D o use la vista 2D.';
+      }
     };
     void entornoListo.then(() => {
       if (!cerrada) crear();
     });
     function crear(): void {
       if (!lienzo || !caja) return;
+      miga('placa 3D: abrir');
       let es: Escena3D;
       try {
         es = new Escena3D(lienzo, datos, geo, oscuro);

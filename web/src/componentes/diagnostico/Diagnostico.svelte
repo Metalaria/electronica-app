@@ -5,6 +5,7 @@
   // resultados» (plain text to paste in a conversation). Nothing heavy runs until «Empezar». 0.9: the Neo Geo
   // board in 3D, and breadcrumbs of every test in localStorage: a test that froze or closed the app is reported
   // the next time this page opens («La última prueba se quedó en: … tras N s»).
+  import EnlaceGuia from '../guia/EnlaceGuia.svelte';
   import { onDestroy } from 'svelte';
   import Gauge from '@lucide/svelte/icons/gauge';
   import Copy from '@lucide/svelte/icons/copy';
@@ -14,6 +15,11 @@
   import Download from '@lucide/svelte/icons/download';
   import Trash2 from '@lucide/svelte/icons/trash-2';
   import { lineasRegistro, textoRegistro, borrarRegistro, erroresRegistro } from '../../lib/registro';
+  import { entradasInforme, textoInforme, borrarInforme, marcarVistas, type EntradaFallo } from '../../lib/informe-fallos';
+  import { confirmar } from '../../lib/confirmar';
+  import { ruta } from '../../lib/ruta.svelte';
+  import { tick } from 'svelte';
+  import Bug from '@lucide/svelte/icons/bug';
   import {
     infoDispositivo,
     infoWebGL,
@@ -169,10 +175,52 @@
     refrescarRegistro();
   }
 
+  // 1.0 «Informe de fallos» (lib/informe-fallos.ts): one entry per failure with its breadcrumbs, local only.
+  let fallos = $state<EntradaFallo[]>([]);
+  let textoFallos = $state('');
+  let informeCopiado = $state(false);
+  function refrescarInforme(): void {
+    fallos = entradasInforme().map((e) => ({ ...e })).reverse();
+    textoFallos = textoInforme(VERSION_APP);
+  }
+  refrescarInforme();
+  // seen here: the notice after the next failure counts only new ones
+  marcarVistas();
+  async function copiarInforme(): Promise<void> {
+    refrescarInforme();
+    try {
+      await navigator.clipboard.writeText(textoFallos);
+    } catch {
+      const a = document.querySelector<HTMLTextAreaElement>('.diagnostico textarea.informe');
+      if (a) {
+        a.value = textoFallos;
+        a.closest('details')?.setAttribute('open', '');
+        a.select();
+        document.execCommand?.('copy');
+      }
+    }
+    informeCopiado = true;
+    setTimeout(() => (informeCopiado = false), 2500);
+  }
+  async function vaciarInforme(): Promise<void> {
+    if (!(await confirmar({ titulo: '¿Borrar el informe de fallos?', mensaje: 'Se borran los fallos guardados en este dispositivo. No afecta a sus datos.', aceptar: 'Borrar' }))) return;
+    borrarInforme();
+    refrescarInforme();
+  }
+  const horaFallo = (t: number) => new Date(t).toLocaleString('es-ES', { dateStyle: 'short', timeStyle: 'medium' });
+  // #/diagnostico/informe: straight to the report
+  $effect(() => {
+    if (ruta.ancla !== 'informe') return;
+    void tick().then(() => document.getElementById('informe-fallos')?.scrollIntoView({ block: 'start' }));
+  });
+
   refrescarRegistro();
   $effect(() => {
     // the tests add lines while they run
-    if (estado !== 'midiendo') refrescarRegistro();
+    if (estado !== 'midiendo') {
+      refrescarRegistro();
+      refrescarInforme();
+    }
   });
 
   onDestroy(() => {
@@ -188,6 +236,8 @@
       Neo Geo en 3D, el trazado en vivo de esquemas automáticos grandes y una simulación con ngspice. Al terminar, «Copiar resultados» deja el informe
       como texto para pegarlo en la conversación. Si una prueba cuelga o cierra la aplicación, al volver aquí se dice en qué fase se quedó.
     </p>
+    <!-- 1.0: the guide's section on the diagnostic and the local error report -->
+    <p class="guia-diagnostico"><EnlaceGuia seccion="diagnostico" texto="Guía: el diagnóstico y el informe de fallos" /></p>
   </header>
 
   <section class="tarjeta" aria-labelledby="t-pruebas">
@@ -279,9 +329,67 @@
       <textarea class="registro" readonly rows="12" aria-label="Registro de la aplicación">{textoReg}</textarea>
     </details>
   </section>
+
+  <div class="tarjeta informe-fallos" id="informe-fallos" role="region" aria-labelledby="t-informe" data-informe-fallos>
+    <div class="cabecera">
+      <h2 id="t-informe"><Bug size={18} aria-hidden="true" /> Informe de fallos</h2>
+    </div>
+    <p class="nota">
+      Cada fallo de la aplicación en este dispositivo (errores, simulaciones o vistas 3D que fallan, problemas al guardar o sincronizar y los cierres de
+      golpe), con la hora, la versión, la pantalla y lo que se hizo justo antes. Se guarda solo aquí: nunca se sincroniza ni se envía, y no incluye
+      sus textos ni sus respuestas: si un mensaje de error repite algo que usted ha escrito, queda tapado como «[texto]». «Copiar el informe» lo deja como texto para pegarlo en una conversación.
+      {fallos.length === 0 ? 'No hay fallos registrados.' : fallos.length === 1 ? 'Hay 1 fallo registrado.' : `Hay ${fallos.length} fallos registrados.`}
+    </p>
+    <div class="botones-registro">
+      <button class="boton" onclick={copiarInforme} data-accion="copiar-informe">
+        {#if informeCopiado}<Check size={16} aria-hidden="true" /> Copiado{:else}<Copy size={16} aria-hidden="true" /> Copiar el informe{/if}
+      </button>
+      <button class="boton" onclick={vaciarInforme} disabled={!fallos.length} data-accion="borrar-informe"><Trash2 size={16} aria-hidden="true" /> Borrar</button>
+    </div>
+    {#if fallos.length}
+      <ol class="lista-fallos">
+        {#each fallos.slice(0, 10) as f (f.t + f.k + f.m)}
+          <li data-fallo={f.k}>
+            <span class="cuando">{horaFallo(f.t)}{f.n > 1 ? ` · ${f.n} veces` : ''}</span>
+            <span class="que">{f.m}</span>
+            <span class="donde">{f.r}{f.z ? ` · ${f.z}` : ''}</span>
+          </li>
+        {/each}
+      </ol>
+      {#if fallos.length > 10}<p class="nota">Y {fallos.length - 10} más en el texto que se copia.</p>{/if}
+    {/if}
+    <details>
+      <summary>Ver el texto del informe</summary>
+      <textarea class="registro informe" readonly rows="12" aria-label="Texto del informe de fallos">{textoFallos}</textarea>
+    </details>
+  </div>
 </div>
 
 <style>
+  .informe-fallos h2 {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .informe-fallos .boton {
+    min-height: 44px;
+  }
+  .lista-fallos {
+    margin: 8px 0;
+    padding-left: 1.4em;
+  }
+  .lista-fallos li {
+    margin-bottom: 8px;
+  }
+  .lista-fallos span {
+    display: block;
+    overflow-wrap: anywhere;
+  }
+  .lista-fallos .cuando,
+  .lista-fallos .donde {
+    color: var(--tinta-suave);
+    font-size: 0.9em;
+  }
   .registro-app h2 {
     display: flex;
     align-items: center;

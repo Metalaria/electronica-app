@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { informarFallo } from '../lib/informe-fallos';
   // The reader's library («Mis circuitos», «Mis montajes») could not be read or a save failed (sixth review: the
   // failure was swallowed and the page said «Guardado en este dispositivo»). Non-blocking: the page keeps working, what
   // the reader does stays in the page, and «Reintentar» reads and writes again (the module also retries by itself).
@@ -7,6 +8,11 @@
     nombre,
     reintentar,
   }: { error: '' | 'lectura' | 'escritura' | 'memoria'; nombre: string; reintentar: () => Promise<void> } = $props();
+
+  // 1.0: a failed read or save goes to the local «Informe de fallos» (once per kind; the library's name, not its data)
+  $effect(() => {
+    if (error === 'lectura' || error === 'escritura') informarFallo('almacenamiento', error === 'lectura' ? 'No se pudo leer del almacenamiento del dispositivo.' : 'No se pudo guardar en el almacenamiento del dispositivo.', { zona: nombre });
+  });
 
   let intentando = $state(false);
   async function otraVez() {

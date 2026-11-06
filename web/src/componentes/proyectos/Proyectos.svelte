@@ -2,6 +2,7 @@
   // «Proyectos KiCad»: the boards of the four KiCad projects of the book (printed chapters 48-51) in linked
   // views — 3D, flat 2D, schematic, simulation and checks — sharing one selection (a part, a pad or a net).
   // Route: #/proyectos[/<placa>/<vista>[/<seleccion>]] (estado.ts).
+  import Recuperable from '../fallos/Recuperable.svelte';
   import { untrack } from 'svelte';
   import { app } from '../../lib/estado.svelte';
   import { ruta, prepararSalto } from '../../lib/ruta.svelte';
@@ -214,7 +215,10 @@
               {#await import('./Vista3D.svelte')}
                 <div class="cargando">Preparando la vista 3D…</div>
               {:then m}
-                {#key d.id}<m.default datos={d} geo={g} {res} {oscuro} {enfocar} opciones={opciones3d} alElegir={(s) => elegir(s, false)} />{/key}
+                <!-- 1.0: a failure of the view (or a lost WebGL context) shows «Reintentar» here, not a broken page -->
+                <Recuperable zona="la vista 3D de la placa" clave={d.id}>
+                  {#key d.id}<m.default datos={d} geo={g} {res} {oscuro} {enfocar} opciones={opciones3d} alElegir={(s) => elegir(s, false)} />{/key}
+                </Recuperable>
               {:catch e}
                 <ErrorCarga titulo="No se pudo abrir la vista 3D." error={e} />
               {/await}

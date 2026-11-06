@@ -202,6 +202,12 @@
     background: var(--superficie);
     color: var(--tinta-suave);
   }
+  .buscar:focus-within {
+    border-color: var(--acento);
+    /* the app's focus ring (WCAG 2.4.7 / 2.4.11; QA 1.0: a border colour alone was not enough) */
+    outline: 2px solid var(--acento);
+    outline-offset: 2px;
+  }
   .buscar input {
     flex: 1;
     min-width: 0;

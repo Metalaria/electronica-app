@@ -23,6 +23,7 @@
   import Editor from './Editor.svelte';
   import Parametros from './Parametros.svelte';
   import Resultados from './Resultados.svelte';
+  import Recuperable from '../fallos/Recuperable.svelte';
   import Icono from '../Icono.svelte';
   import CircuitoVivo from '../figuras-vivas/circuito/CircuitoVivo.svelte';
   import { tamanoDibujo } from '../figuras-vivas/circuito/proporciones';
@@ -463,7 +464,8 @@ C1 out 0 100n
 
         {#if resultado}
           <div class="resultado" class:viejo={ejecutando}>
-            <Resultados {resultado} {referencia} />
+            <!-- 1.0: results that fail to draw show «Reintentar» instead of breaking the simulator -->
+            <Recuperable zona="los resultados de la simulación"><Resultados {resultado} {referencia} /></Recuperable>
           </div>
         {:else if n && !errorSim && propias > 0}
           <!-- A book netlist's first run: its results' place is kept. On tablets and phones they come before the

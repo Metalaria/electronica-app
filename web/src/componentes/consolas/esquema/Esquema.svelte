@@ -272,7 +272,7 @@
       {#if redSel}
         {@const nr = nombreRed(redSel.n)}
         <p class="tipo">Red</p>
-        <h3 class="nombre">{@html htmlKicad(nr.nombre)}</h3>
+        <h2 class="nombre">{@html htmlKicad(nr.nombre)}</h2>
         <p class="detalle">
           Nombre en KiCad: <code>{@html htmlKicad(redSel.n)}</code>{#if redSel.g}<br />Grupo: <strong>{datos.grupos[redSel.g] ?? redSel.g}</strong>{/if}
         </p>
@@ -318,7 +318,7 @@
       {:else if comp}
         {@const c = datos.componentes[comp]!}
         <p class="tipo">Componente</p>
-        <h3 class="nombre">{comp} <span class="valor">{c.v}</span></h3>
+        <h2 class="nombre">{comp} <span class="valor">{c.v}</span></h2>
         <p class="detalle">Símbolo <code>{c.l}</code> · hoja{c.h.length > 1 ? 's' : ''} {c.h.map((h) => datos.hojas[h]?.nombre).join(', ')}</p>
         {#if fotoDe || bloqueDe}
           <div class="acciones">
@@ -353,7 +353,7 @@
         {/if}
       {:else}
         <p class="tipo">Esquema</p>
-        <h3 class="nombre">{datos.esquema_titulo}</h3>
+        <h2 class="nombre">{datos.esquema_titulo}</h2>
         <p class="detalle">{datos.aviso}</p>
         <p class="detalle">Toque o pase el ratón por un hilo, un pin o una etiqueta para resaltar toda su red, en esta hoja y en las demás. Toque un símbolo para ver sus pines.{#if datos.hojas.length > 1}{' '}En la hoja raíz, toque un bloque para abrir su hoja.{/if}</p>
       {/if}
