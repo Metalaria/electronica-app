@@ -269,9 +269,12 @@ test.describe('tableta en los tres temas', () => {
       const valores = await contraste(page, '.diagnostico tr.aviso td.valor, .diagnostico tr.error td.valor');
       expect(valores.length).toBeGreaterThan(0);
       for (const c of valores) expect(c).toBeGreaterThanOrEqual(4.5);
-      for (const sel of ['.diagnostico textarea:not(.registro)', '.diagnostico textarea.registro']) {
-        const nombre = await page.locator(sel).evaluate((t) => t.getAttribute('aria-label') ?? (t as HTMLTextAreaElement).labels?.[0]?.textContent ?? '');
-        expect(nombre.trim(), sel).not.toBe('');
+      // the results' text, and the two read-only logs (1.0: «Registro de la aplicación» and the error report's text,
+      // both of class «registro»): every one of them has a name
+      for (const [sel, n] of [['.diagnostico textarea:not(.registro)', 1], ['.diagnostico textarea.registro', 2]] as const) {
+        const nombres = await page.locator(sel).evaluateAll((ts) => ts.map((t) => t.getAttribute('aria-label') ?? (t as HTMLTextAreaElement).labels?.[0]?.textContent ?? ''));
+        expect(nombres, sel).toHaveLength(n);
+        for (const nombre of nombres) expect(nombre.trim(), sel).not.toBe('');
       }
     });
 });

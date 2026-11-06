@@ -36,7 +36,12 @@ test('README §6: fijar las acciones por SHA cambia solo las líneas uses:, deja
   const repo = path.join(dir, 'repo');
   fs.mkdirSync(path.join(repo, '.github', 'workflows'), { recursive: true });
   const copia = path.join(repo, '.github', 'workflows', 'compilar.yml');
-  fs.copyFileSync(FLUJO, copia);
+  // The repository's workflow is already pinned (the owner ran this command): the test starts from a tag-style copy
+  // of it, every `uses: owner/action@<sha> # tag` turned back into `uses: owner/action@tag`.
+  const real = fs.readFileSync(FLUJO, 'utf8');
+  const porEtiqueta = real.replace(/^(\s*uses: [\w.-]+\/[\w.-]+)@[0-9a-f]{40} # ([\w.-]+)$/gm, '$1@$2');
+  expect(porEtiqueta.split('\n').filter((l) => /^\s*uses: [\w.-]+\/[\w.-]+@[0-9a-f]{40}/.test(l))).toEqual([]);
+  fs.writeFileSync(copia, porEtiqueta);
   // fake gh: `gh api repos/OWNER/ACTION/commits/REF --jq .sha` → a deterministic 40-hex SHA; logs every call
   const bin = path.join(dir, 'bin');
   fs.mkdirSync(bin);
@@ -54,11 +59,12 @@ test('README §6: fijar las acciones por SHA cambia solo las líneas uses:, deja
     });
   const r1 = correr();
   expect(r1.status, r1.stdout + r1.stderr).toBe(0);
-  const antes = fs.readFileSync(FLUJO, 'utf8').split('\n');
+  const antes = porEtiqueta.split('\n');
   const despues = fs.readFileSync(copia, 'utf8').split('\n');
   expect(despues).toHaveLength(antes.length);
   const usos = antes.map((l, i) => [l, despues[i]!] as const).filter(([a, d]) => a !== d);
   // every `uses:` line, and nothing else
+  expect(usos.length).toBeGreaterThan(0);
   expect(usos.length).toBe(antes.filter((l) => /^\s*uses: /.test(l)).length);
   for (const [a, d] of usos) {
     const m = /^(\s*uses: )([\w.-]+\/[\w.-]+)@([\w.-]+)$/.exec(a);
@@ -72,6 +78,12 @@ test('README §6: fijar las acciones por SHA cambia solo las líneas uses:, deja
   const r2 = correr();
   expect(r2.status, r2.stdout + r2.stderr).toBe(0);
   expect(fs.readFileSync(copia, 'utf8')).toBe(despues.join('\n'));
+  expect(fs.readFileSync(path.join(dir, 'llamadas.txt'), 'utf8').trim().split('\n')).toHaveLength(llamadas.length);
+  // and on the repository's own (pinned) workflow it changes nothing either
+  fs.writeFileSync(copia, real);
+  const r3 = correr();
+  expect(r3.status, r3.stdout + r3.stderr).toBe(0);
+  expect(fs.readFileSync(copia, 'utf8')).toBe(real);
   expect(fs.readFileSync(path.join(dir, 'llamadas.txt'), 'utf8').trim().split('\n')).toHaveLength(llamadas.length);
 });
 

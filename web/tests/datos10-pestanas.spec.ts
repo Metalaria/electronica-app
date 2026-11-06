@@ -181,6 +181,65 @@ test.describe('una sola pestaña activa', () => {
     }
   });
 
+  test('la petición de la otra pestaña que llega tarde a la que ganó el relevo no la hace ceder: queda una activa', async ({ context }) => {
+    // The full suite's flake (two tabs asking at once, 0 active tabs for 20 s): B and C ask while A is active; A hands
+    // over and B gets the lock; C hears B's «activa» and withdraws its request (as it should); but C's «pedir» reached B
+    // only after B became active (a busy tab handles its messages late), B handed over to nobody and the lock stayed
+    // free with every tab paused or waiting. Here the late delivery is made certain: A's and B's incoming messages of
+    // `epa-activa` are held back and released one after another.
+    await preparar(context);
+    await context.addInitScript(() => {
+      const w = window as unknown as Record<string, unknown>;
+      const Original = window.BroadcastChannel;
+      const retenidos: (() => void)[] = [];
+      w.__epaSoltarCanal = () => {
+        w.__epaRetenerCanal = false;
+        for (const f of retenidos.splice(0)) f();
+      };
+      window.BroadcastChannel = class extends Original {
+        constructor(nombre: string) {
+          super(nombre);
+          if (nombre !== 'epa-activa') return;
+          let propio: ((e: MessageEvent) => unknown) | null = null;
+          Object.defineProperty(this, 'onmessage', { get: () => propio, set: (f) => (propio = f), configurable: true });
+          Original.prototype.addEventListener.call(this, 'message', (e: Event) => {
+            const dar = () => propio?.call(this, e as MessageEvent);
+            if (w.__epaRetenerCanal) retenidos.push(dar);
+            else dar();
+          });
+        }
+      };
+    });
+    const a = await abrir(context);
+    await esperarActiva(a);
+    const b = await abrir(context);
+    const c = await abrir(context);
+    const activas = async () => (await Promise.all([a, b, c].map(estado))).filter((x) => x === 'activa').length;
+    for (const p of [a, b]) await p.evaluate(() => ((window as unknown as Record<string, unknown>).__epaRetenerCanal = true));
+    // B asks first (its lock request is queued first), then C
+    await pantalla(b).getByRole('button', { name: 'Usar aquí' }).click();
+    await expect(pantalla(b).getByRole('button', { name: 'Usar aquí' })).toBeDisabled();
+    await pantalla(c).getByRole('button', { name: 'Usar aquí' }).click();
+    await expect(pantalla(c).getByRole('button', { name: 'Usar aquí' })).toBeDisabled();
+    // A now sees both requests: it hands over, B gets the lock, C withdraws and offers «Usar aquí» again
+    await a.evaluate(() => (window as unknown as { __epaSoltarCanal: () => void }).__epaSoltarCanal());
+    await expect.poll(() => estado(b), { timeout: 20_000 }).toBe('activa');
+    await expect(pantalla(c).getByRole('button', { name: 'Usar aquí' })).toBeEnabled();
+    expect(await estado(a)).toBe('pausada');
+    expect(await estado(c)).toBe('esperando');
+    // B, already active, now handles C's request made before it won: it was answered by B's win, B stays active
+    await b.evaluate(() => (window as unknown as { __epaSoltarCanal: () => void }).__epaSoltarCanal());
+    for (let i = 0; i < 15; i++) {
+      expect(await estado(b)).toBe('activa');
+      expect(await activas()).toBe(1);
+      await a.waitForTimeout(200);
+    }
+    // and C's next request, made after B's win, is a real one: B hands over to it
+    await usarAqui(c);
+    await expect.poll(() => estado(b)).toBe('pausada');
+    expect(await activas()).toBe(1);
+  });
+
   test('una pestaña que se cuelga: «Usar aquí de todos modos» la sustituye y, al volver, queda en pausa sin escribir', async ({ context }) => {
     await preparar(context);
     const a = await abrir(context);

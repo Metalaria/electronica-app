@@ -46,6 +46,8 @@ interface Mensaje {
   tipo: 'pedir' | 'cedida' | 'quien' | 'aqui' | 'latido' | 'robada' | 'activa';
   de: string;
   epoca?: number;
+  /** `pedir` (with Web Locks): when the request was made; `activa`: when the tab became active (Date.now()). */
+  t?: number;
 }
 
 let estado: Estado = 'libre';
@@ -192,11 +194,16 @@ async function decidirConCerrojo(): Promise<void> {
 
 /** The request of a «Usar aquí» still waiting for the lock (withdrawn when another tab becomes the active one). */
 let pendiente: AbortController | null = null;
+/** When that request was made (Date.now(), sent with `pedir`). */
+let pedidaEn = 0;
+/** When this tab became the active one (Date.now(), sent with `activa`). */
+let activaEn = 0;
 
 async function tomarConCerrojo(): Promise<void> {
   const control = new AbortController();
   pendiente = control;
-  canal?.postMessage({ tipo: 'pedir', de: yo } satisfies Mensaje);
+  pedidaEn = Date.now();
+  canal?.postMessage({ tipo: 'pedir', de: yo, t: pedidaEn } satisfies Mensaje);
   const pedida = pedirCerrojo({ signal: control.signal });
   let plazo: ReturnType<typeof setTimeout> | undefined;
   const lento = new Promise<false>((r) => (plazo = setTimeout(() => r(false), esperas().ceder ?? ESPERA_CEDER)));
@@ -267,10 +274,19 @@ async function recibir(m: Mensaje): Promise<void> {
     if (estado === 'activa') canal?.postMessage({ tipo: 'aqui', de: yo } satisfies Mensaje);
     return;
   }
-  if (m.tipo === 'pedir' && estado === 'activa') return ceder();
-  // another tab that also asked became the active one: this tab's request is withdrawn (else the lock would come here
-  // later on its own, when that tab hands over to a third one) and «Usar aquí» is offered again
-  if (m.tipo === 'activa' && pendiente && (estado === 'esperando' || estado === 'pausada')) {
+  // A request and an activation are ordered by their times, the same comparison on both sides (review 10, the full
+  // suite's «dos pestañas piden a la vez» with 0 active tabs): a request made before this tab became active was
+  // answered by this tab's win — its tab withdraws it on hearing `activa` (below) —, so it does not make this tab hand
+  // over, even when it is handled only now (a busy tab handles its messages late: handing over then left the lock free
+  // with every tab paused or waiting). A request without a time (heartbeats, no Web Locks) hands over as before.
+  if (m.tipo === 'pedir' && estado === 'activa') {
+    if (typeof m.t === 'number' && m.t <= activaEn) return;
+    return ceder();
+  }
+  // another tab that also asked became the active one after this tab's request: the request is withdrawn (else the
+  // lock would come here later on its own, when that tab hands over to a third one) and «Usar aquí» is offered again;
+  // a tab that became active before the request was made is asked by it and hands over, so the request stays
+  if (m.tipo === 'activa' && pendiente && (estado === 'esperando' || estado === 'pausada') && !(typeof m.t === 'number' && m.t < pedidaEn)) {
     pendiente.abort();
     pendiente = null;
     mostrar(estado === 'pausada' ? 'pausada' : 'otra');
@@ -365,11 +381,12 @@ function hacerseActiva(): void {
   estado = 'activa';
   fueActiva = true;
   epoca = Date.now();
+  activaEn = epoca;
   // (tests: when this page became the active tab, on the clock the pages share)
   (window as unknown as { __epaActivaDesde?: number }).__epaActivaDesde = performance.timeOrigin + performance.now();
   cedidaVista = false;
   quitarPantalla();
-  canal?.postMessage({ tipo: 'activa', de: yo } satisfies Mensaje);
+  canal?.postMessage({ tipo: 'activa', de: yo, t: activaEn } satisfies Mensaje);
   ultimoPulso = performance.now();
   pulso ??= setInterval(() => {
     if (estado === 'activa') latirPulso();

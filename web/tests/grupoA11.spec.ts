@@ -18,6 +18,7 @@ import { expect, test, type Browser, type BrowserContext, type Page, type Route 
 import { XP, nivelDe, nombreNivel, umbralNivel, xpEjercicio, xpObjetivo, xpRespuesta, NOMBRES_NIVEL } from '../src/lib/aprendizaje/niveles.ts';
 import { CURSOS, leccionesDeCurso, preguntasPrueba, repartoPrueba, verificarCursos } from '../src/lib/aprendizaje/cursos.ts';
 import { LOGROS } from '../src/lib/aprendizaje/logros.ts';
+import { grupoDe, totalDia, type DiaProgreso } from '../src/lib/progreso-dias.ts';
 import type { Indice } from '../src/lib/tipos.ts';
 
 const LIBRO = new URL('../public/libro/', import.meta.url);
@@ -417,13 +418,22 @@ test.describe('datos de la 0.10', () => {
     expect(l.version).toBe(1);
     expect(Object.keys(l.xp).sort()).toEqual(['d:' + dia(1), 'd:' + dia(2), 'e:ej-5.1', 'e:ej-5.2', 'l:cap01/sec-1.4', 'l:cap05/sec-5.1'].sort());
     expect(l.xp['l:cap05/sec-5.1']!.t).toBe(1761400000000);
-    // nothing of the old data changed
-    for (const [k, v] of Object.entries(datos010)) expect(await leer(page, k), k).toEqual(v);
+    // nothing of the old data changed, except the 1.0 shape of the daily progress (ESQUEMA.md, «Daily progress», 1.0):
+    // the schema migration 1 → 2 (`absorberLegado`) moves each old day's activity into a record «<day>@0» (its counts,
+    // `cumplido: false` as every record, the summary's time); the day's summary — its counts and its frozen
+    // `cumplido` — stays as it was, and the day's activity is the record alone, so it counts once
+    const diasViejos = datos010['progreso-diario'] as Record<string, { pasos: number; preguntas: number; secciones: number; cumplido: boolean; t: number }>;
+    const diarioEsperado: Record<string, unknown> = { ...diasViejos };
+    for (const [d, v] of Object.entries(diasViejos)) diarioEsperado[`${d}@0`] = { ...v, cumplido: false };
+    for (const [k, v] of Object.entries(datos010)) expect(await leer(page, k), k).toEqual(k === 'progreso-diario' ? diarioEsperado : v);
+    const diario = (await leer<Record<string, DiaProgreso>>(page, 'progreso-diario'))!;
+    for (const [d, v] of Object.entries(diasViejos)) expect(totalDia(grupoDe(diario, d)), d).toEqual({ pasos: v.pasos, preguntas: v.preguntas, secciones: v.secciones });
     // a second start does not add anything again
     await page.reload();
     await expect(page.locator('[data-nivel-inicio]')).toBeVisible();
     await page.waitForTimeout(800);
     expect(totalXp(await leer<Libro>(page, 'progreso-xp'))).toBe(esperado);
+    expect(await leer(page, 'progreso-diario')).toEqual(diarioEsperado);
     await expect(page.locator('[data-nivel-inicio] .xp [data-valor]')).toHaveAttribute('data-valor', String(esperado));
     // the earlier work also unlocks its achievements (silently: no toasts)
     await expect.poll(async () => (await leer<Libro>(page, 'progreso-xp'))?.logros['primera-leccion']).toBeGreaterThan(0);

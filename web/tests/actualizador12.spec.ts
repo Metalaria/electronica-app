@@ -17,7 +17,10 @@ import { claveActualizadorValida, explicarErrorActualizador, sistemaActualizable
 const WEB = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const CONF = JSON.parse(fs.readFileSync(path.join(WEB, '..', 'src-tauri', 'tauri.conf.json'), 'utf8'));
 const VERSION: string = CONF.version;
-const MARCADOR: string = CONF.plugins.updater.pubkey;
+/** The key the build carries (vite.config.ts takes it from tauri.conf.json): the owner's real one since 1.0. */
+const CLAVE_REPO: string = CONF.plugins.updater.pubkey;
+/** The placeholder the repository shipped until 1.0; the app is given it through the test bridge's `clave`. */
+const MARCADOR = 'CLAVE-PUBLICA-PENDIENTE: sustituir por el contenido de electronica-actualizador.key.pub (README, «Actualizaciones automáticas firmadas»)';
 const siguiente = () => {
   const [x, y, z] = VERSION.split('.').map(Number);
   return `${x}.${y}.${z! + 1}`;
@@ -201,7 +204,9 @@ async function abrirAa(page: Page): Promise<void> {
 test.describe('partes puras del actualizador', () => {
   test('la clave pública: la de tauri signer vale; el marcador, vacía o basura, no', () => {
     expect(claveActualizadorValida(CLAVE)).toBe(true);
-    expect(claveActualizadorValida(MARCADOR)).toBe(MARCADOR.startsWith('CLAVE-PUBLICA-PENDIENTE') ? false : true);
+    expect(claveActualizadorValida(MARCADOR)).toBe(false);
+    // the build's own key (the repository's tauri.conf.json) is a usable one
+    expect(claveActualizadorValida(CLAVE_REPO)).toBe(true);
     expect(claveActualizadorValida('')).toBe(false);
     expect(claveActualizadorValida('dW50cnVzdGVkIGNvbW1lbnQ6IGhvbGEK')).toBe(false);
     // a truncated key line (41 bytes) is refused, like the plugin does
@@ -323,20 +328,32 @@ test.describe('comprobación sin token', () => {
 test.describe('actualización automática firmada (Tauri simulado)', () => {
   test('con la clave pública de marcador no hay actualizador: aviso con enlace y ninguna comprobación', async ({ browser }) => {
     const gh = new GitHubFalso();
-    // no `clave`: the build's own one, the placeholder of the repository
-    const { ctx, page } = await contexto(browser, gh, UA_WINDOWS, { version: siguiente() });
+    // the build carries the real key since 1.0: the placeholder reaches the app through the bridge's own key, the same
+    // check (`actualizadorDisponible`) a build with the placeholder makes on its build-time key
+    const { ctx, page } = await contexto(browser, gh, UA_WINDOWS, { clave: MARCADOR, version: siguiente() });
     await page.goto('./#/');
     const aviso = page.locator('[data-aviso-version]');
     await expect(aviso).toContainText(`Versión ${siguiente()} disponible`);
     await page.waitForTimeout(1000);
     await expect(page.locator('[data-instalador]')).toHaveCount(0);
-    expect((await registro(page)).comprobar).toBe(MARCADOR.startsWith('CLAVE-PUBLICA-PENDIENTE') ? 0 : 1);
+    expect((await registro(page)).comprobar).toBe(0);
     // (the notice sits over the bottom of «Aa»)
     await aviso.getByRole('button', { name: 'Ahora no' }).click();
     await abrirAa(page);
     await page.locator('[data-grupo-actualizaciones]').getByRole('button', { name: 'Buscar actualizaciones' }).click();
     await expect(page.locator('[data-grupo-actualizaciones]')).toContainText(`Versión ${siguiente()} disponible`);
     await expect(page.locator('[data-grupo-actualizaciones] [data-instalador]')).toHaveCount(0);
+    await ctx.close();
+  });
+
+  test('con la clave de la compilación (la real del repositorio) el actualizador está disponible', async ({ browser }) => {
+    const gh = new GitHubFalso();
+    // no `clave`: the build-time key from tauri.conf.json decides
+    const { ctx, page } = await contexto(browser, gh, UA_WINDOWS, { version: siguiente() });
+    await page.goto('./#/');
+    const aviso = page.locator('[data-aviso-version]');
+    await expect(aviso.getByRole('button', { name: 'Descargar e instalar' })).toBeVisible();
+    expect((await registro(page)).comprobar).toBe(1);
     await ctx.close();
   });
 

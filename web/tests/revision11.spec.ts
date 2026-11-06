@@ -633,24 +633,43 @@ test.describe('6 · problema del día: qué fondo y qué capítulo', () => {
     for (const p of cuenta.keys()) expect(fund.partes.indexOf(p)).toBeLessThanOrEqual(nivel);
   });
 
-  test('en «Taller», con el ejercicio de cap11 resuelto, un «Calcula» del curso antes que un ejercicio posterior', async ({ browser }) => {
+  test('en «Taller», con los ejercicios de cap11 resueltos, un «Calcula» del curso antes que un ejercicio posterior', async ({ browser }) => {
     test.setTimeout(120_000);
-    const ctx = await browser.newContext({ viewport: TABLETA });
-    await preparar(ctx, {
-      posiciones: { cap11: { b: 3, sec: 'sec-11.1', f: 0.1, t: Date.now() - 60_000 } },
-      ejercicios: { 'prob-11.A': { intentos: 1, fallos: 0, resuelto: true, pistas: 0, solucion: false, t: Date.now() - 120_000 } },
-      'problema-dia': { version: 1, dias: {} },
-    });
-    const page = await ctx.newPage();
-    await page.goto('#/problema');
-    await expect(page.locator('[data-problema-dia][data-estado="listo"]')).toBeVisible({ timeout: 30_000 });
+    // Taller starts at cap11, which has no «Calcula» item: the pools are cap11's exercises, then the course's Calcula
+    // items (cap21, cap22, cap47), then the course's later exercises. Since 1.0 every self-checked exercise is a
+    // candidate (numeric fields or structured questions), so cap11 has seven (0.12: only prob-11.A).
+    const ej = leerJson<{ items: Record<string, { parte: string; modo: string; respuestas: unknown[]; preguntas?: unknown[] }> }>('ejercicios.json').items;
+    const cap11 = Object.keys(ej).filter((l) => ej[l]!.parte === 'cap11' && ej[l]!.modo === 'auto' && (ej[l]!.respuestas.length || ej[l]!.preguntas?.length));
+    expect(cap11).toContain('prob-11.A');
+    expect(practicaDe('cap11').filter((x) => x.tipo === 'numerico')).toEqual([]);
     type Dias = { dias: Record<string, { id: string; k: string; parte: string; curso: string }> };
-    await expect.poll(async () => Object.keys((await leer<Dias>(page, 'problema-dia'))?.dias ?? {}).length).toBe(1);
-    const d = Object.values((await leer<Dias>(page, 'problema-dia'))!.dias)[0]!;
+    const problema = async (resueltos: string[]) => {
+      const ctx = await browser.newContext({ viewport: TABLETA });
+      const t = Date.now() - 120_000;
+      await preparar(ctx, {
+        posiciones: { cap11: { b: 3, sec: 'sec-11.1', f: 0.1, t: Date.now() - 60_000 } },
+        ejercicios: Object.fromEntries(resueltos.map((l) => [l, { intentos: 1, fallos: 0, resuelto: true, pistas: 0, solucion: false, t }])),
+        'problema-dia': { version: 1, dias: {} },
+      });
+      const page = await ctx.newPage();
+      await page.goto('#/problema');
+      await expect(page.locator('[data-problema-dia][data-estado="listo"]')).toBeVisible({ timeout: 30_000 });
+      await expect.poll(async () => Object.keys((await leer<Dias>(page, 'problema-dia'))?.dias ?? {}).length).toBe(1);
+      const d = Object.values((await leer<Dias>(page, 'problema-dia'))!.dias)[0]!;
+      await ctx.close();
+      return d;
+    };
+    // with one of cap11's exercises still open, that exercise (up to the level) comes first
+    const abierto = await problema(['prob-11.A']);
+    expect(abierto.curso).toBe('taller');
+    expect(abierto.k).toBe('ejercicio');
+    expect(abierto.parte).toBe('cap11');
+    expect(abierto.id).not.toBe('prob-11.A');
+    // with all of them solved, a Calcula item of the course, not an exercise of a later chapter
+    const d = await problema(cap11);
     expect(d.curso).toBe('taller');
     expect(d.k).toBe('practica');
     expect(['cap21', 'cap22', 'cap47']).toContain(d.parte);
-    await ctx.close();
   });
 });
 

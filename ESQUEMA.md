@@ -4091,7 +4091,16 @@ this page's client? (a per-page lock `epa-yo:<id>` gives the client id) — and 
 refused, when it is: a false alarm costs a millisecond); the pulse that finds a gap starts the same check instead of
 hiding it; and `ceder` checks it before flushing. During `pagehide` nothing waits. 20 of 20 runs after the fix.
 Two tabs asking at once: one ends active (never two); a request still queued when another tab announces `activa` is
-withdrawn (else the lock would reach it later on its own, when that tab hands over to a third one). Reload of the
+withdrawn (else the lock would reach it later on its own, when that tab hands over to a third one). Request and
+activation are ordered by their times (`pedir` carries `t`, the time of the request; `activa` carries `t`, the time
+the tab became active; `Date.now()`, the same comparison on both sides): a request made before the tab became active
+was answered by that tab's win — the asking tab withdraws it — so the active tab does NOT hand over when it handles
+it only later (a busy tab handles its messages late); a request made after the activation is a real one — the active
+tab hands over and the asking tab keeps waiting even if it hears that `activa` late. Before (full 1.0 suite under load,
+`datos10-pestanas.spec.ts` «dos pestañas piden a la vez»: 0 active tabs for 20 s): the winner handed over on the late
+`pedir` of a tab that had already withdrawn, and the lock stayed free with every tab paused or waiting; test «la
+petición … que llega tarde» holds the channel's messages back to make that order certain. A `pedir` without `t`
+(heartbeats, no Web Locks) hands over as before. Reload of the
 active tab: the new page may find the old document's lock not yet released; with no tab answering `quien` it waits
 up to `ESPERA_PROPIA` (2,5 s). Back/forward cache: on `pageshow` (persisted) the page is still active only if
 `epa-activa` is held by its own client (a per-page lock `epa-yo:<id>` tells the client id), else it pauses. Without

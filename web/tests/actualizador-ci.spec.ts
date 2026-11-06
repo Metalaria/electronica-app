@@ -20,6 +20,9 @@ const REPO = 'Metalaria/electronica-app';
 const VERSION = '0.12.0';
 const TAG = `v${VERSION}`;
 const CLAVE = 'contraseña de prueba';
+// The placeholder the repository shipped until the owner pasted his public key (0.12; the real key since 1.0). The
+// placeholder scenarios run on a temporary tauri.conf.json carrying it, never on the repository's own file.
+const MARCADOR = 'CLAVE-PUBLICA-PENDIENTE: sustituir por el contenido de electronica-actualizador.key.pub (README, «Actualizaciones automáticas firmadas»)';
 
 interface Par {
   privada: string;
@@ -266,8 +269,7 @@ test.describe('latest.json en la publicación (paso real de compilar.yml con gh 
   });
 
   test('con la clave pública aún de marcador no se genera latest.json aunque haya firmas', () => {
-    const marcador = JSON.parse(fs.readFileSync(path.join(RAIZ, 'src-tauri', 'tauri.conf.json'), 'utf8')).plugins.updater.pubkey;
-    const p = publicacion(marcador, instaladores(temporal('marcador'), par));
+    const p = publicacion(MARCADOR, instaladores(temporal('marcador'), par));
     const r = publicar(p);
     expect(r.estado, r.salida).toBe(0);
     expect(fs.existsSync(path.join(p.assets, 'latest.json'))).toBe(false);
@@ -451,7 +453,7 @@ test.describe('actualizador.mjs en los trabajos de compilación', () => {
   });
 
   test('exigir (trabajo «borrador» de una etiqueta): marcador o secreto ausente → falla; desactivable a propósito', () => {
-    const marcador = JSON.parse(fs.readFileSync(path.join(RAIZ, 'src-tauri', 'tauri.conf.json'), 'utf8')).plugins.updater.pubkey;
+    const marcador = MARCADOR;
     const exigir = (pubkey: string, env: NodeJS.ProcessEnv) => {
       const dir = temporal('exigir');
       const r = spawnSync(process.execPath, [SCRIPT, 'exigir'], {
@@ -622,10 +624,13 @@ print(json.dumps([[m.name, m.type.decode(), oct(m.mode), m.linkname] for m in t.
   });
 
   test('clave: el marcador de tauri.conf.json se detecta y una clave real se acepta', () => {
+    // the placeholder, on a temporary copy of the configuration
+    const conMarcador = spawnSync(process.execPath, [SCRIPT, 'clave'], { env: { ...process.env, ACTUALIZADOR_CONF: conf(temporal('clave-marcador'), MARCADOR) }, encoding: 'utf8' });
+    expect(conMarcador.status, conMarcador.stdout + conMarcador.stderr).toBe(2);
+    // the repository's own file carries the owner's real key since 1.0 (a release with the placeholder would leave
+    // whoever installs it without automatic updates)
     const real = spawnSync(process.execPath, [SCRIPT, 'clave'], { encoding: 'utf8' });
-    // the repository ships the placeholder until the owner pastes his public key
-    const conf0 = JSON.parse(fs.readFileSync(path.join(RAIZ, 'src-tauri', 'tauri.conf.json'), 'utf8')).plugins.updater.pubkey as string;
-    expect(real.status).toBe(conf0.startsWith('CLAVE-PUBLICA-PENDIENTE') ? 2 : 0);
+    expect(real.status, real.stdout + real.stderr).toBe(0);
     const dir = temporal('clave');
     const ok = spawnSync(process.execPath, [SCRIPT, 'clave'], { env: { ...process.env, ACTUALIZADOR_CONF: conf(dir, par.publica) }, encoding: 'utf8' });
     expect(ok.status).toBe(0);

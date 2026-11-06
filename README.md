@@ -3241,13 +3241,13 @@ gh secret list --repo Metalaria/electronica-app
 
 Después, confirmar `src-tauri/tauri.conf.json` en `main` y etiquetar como siempre (apartado 5).
 
-**Pendiente: fijar las acciones por SHA.** `compilar.yml` usa las acciones por etiqueta (`actions/checkout@v5`,
-`actions/setup-node@v5`, `actions/setup-java@v5`, `actions/upload-artifact@v6`, `dtolnay/rust-toolchain@stable`,
-`Swatinem/rust-cache@v2`); una etiqueta se puede mover, y estas acciones ven el entorno del trabajo. Desde aquí no se
-pudieron consultar los SHA (la API de GitHub no estaba permitida en la sesión), así que queda para hacerlo con `gh` en
-WSL, desde `~/electronica-app`. Este comando sustituye cada `uses: dueño/acción@etiqueta` por
-`uses: dueño/acción@<sha de 40 caracteres> # etiqueta` y muestra cada cambio (los pasos de
-`dtolnay/rust-toolchain` ya llevan `toolchain: stable`, que esa acción deduce de la etiqueta y perdería al fijarla):
+**Acciones fijadas por SHA.** `compilar.yml` fija cada acción (`actions/checkout`, `actions/setup-node`,
+`actions/setup-java`, `actions/upload-artifact`, `dtolnay/rust-toolchain`, `Swatinem/rust-cache`) a un SHA de 40
+caracteres con la etiqueta como comentario (`uses: dueño/acción@<sha> # etiqueta`): una etiqueta se puede mover, y
+estas acciones ven el entorno del trabajo. Para pasar a una etiqueta nueva, cambie el comentario `# etiqueta` y la
+línea a `dueño/acción@etiqueta` y vuelva a fijarla con este comando, en WSL desde `~/electronica-app`; deja
+intactas las líneas ya fijadas y muestra cada cambio (los pasos de `dtolnay/rust-toolchain` llevan
+`toolchain: stable`, que esa acción deduce de la etiqueta y perdería al fijarla):
 
 ```bash
 python3 - <<'PY'
