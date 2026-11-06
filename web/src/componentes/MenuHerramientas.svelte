@@ -75,6 +75,9 @@
   });
 </script>
 
+<!-- 1.0 accessibility: inside a navigation landmark of its own (it is mounted next to the rail or the tab bar, not in
+     them, so it can cover the page) — `display: contents` leaves the layout as it was -->
+<nav class="nav-mas" aria-label="Menú «Más»">
 {#if modo === 'hoja'}
   <button class="velo" aria-label="Cerrar" tabindex="-1" onclick={cerrar}></button>
 {/if}
@@ -106,8 +109,12 @@
     </a>
   {/each}
 </div>
+</nav>
 
 <style>
+  .nav-mas {
+    display: contents;
+  }
   .menu {
     position: fixed;
     z-index: 45;

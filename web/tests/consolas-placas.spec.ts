@@ -121,7 +121,8 @@ test('Mega Drive: tocar un pad en la placa 2D lo elige, también para el esquema
   await expect(page).toHaveURL(/placa2d\/U8$/);
   await page.getByRole('navigation', { name: 'Vista' }).getByRole('link', { name: 'Esquema' }).click();
   await expect(page).toHaveURL(/esquema\/U8$/);
-  await expect(page.locator('h3.nombre')).toContainText('U8');
+  // (1.0 accessibility pass: the side panel's heading is an h2 — it was an h3 straight under the page's h1)
+  await expect(page.locator('h2.nombre')).toContainText('U8');
 });
 
 test('Game Boy Color: la CGB-CPU-04 del Gerber enlazada y OpenGBC enlazada solo en parte', async ({ page }) => {
@@ -599,7 +600,7 @@ test('Master System II en 2D: la foto es la cara, y tocar el Z80 lo elige tambi�
   await expect(page.locator('.placa-consola .lado .nombre')).toContainText('IC1');
   await page.getByRole('navigation', { name: 'Vista' }).getByRole('link', { name: 'Esquema' }).click();
   await expect(page).toHaveURL(/esquema\/IC1$/);
-  await expect(page.locator('h3.nombre')).toContainText('IC1');
+  await expect(page.locator('h2.nombre')).toContainText('IC1');
   expect(errores).toEqual([]);
 });
 

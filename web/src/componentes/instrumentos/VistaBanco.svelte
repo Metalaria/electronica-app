@@ -240,6 +240,8 @@
   }
   .elegir {
     display: grid;
+    /* 1.0 (reflow at 320–360 px): a <select> is as wide as its longest option; the column may shrink */
+    grid-template-columns: minmax(0, 1fr);
     gap: 10px;
     font-family: var(--sans);
   }
@@ -261,6 +263,8 @@
   }
   .elegir select,
   .elegir input[type='text'] {
+    min-width: 0;
+    max-width: 100%;
     min-height: 38px;
     border: 1px solid var(--linea);
     border-radius: 8px;

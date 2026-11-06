@@ -6,6 +6,7 @@
 
 import type { DocBusqueda, EntradaGlosario, Indice, InfoParte, Parte, Refs } from './tipos';
 import { sinFallos } from './errores';
+import { leerMatematicas } from './habla-matematicas';
 
 type Modo = 'libro' | 'muestra';
 
@@ -188,6 +189,10 @@ export function urlCss(u: string): string {
   return `url("${u.replace(/"/g, '%22').replace(/\n/g, '')}")`;
 }
 
+function desescapar(s: string): string {
+  return s.replace(/&quot;/g, '"').replace(/&lt;/g, '<').replace(/&gt;/g, '>').replace(/&#39;/g, "'").replace(/&amp;/g, '&');
+}
+
 function escaparAtributo(s: string): string {
   return s.replace(/&/g, '&amp;').replace(/"/g, '&quot;');
 }
@@ -215,6 +220,12 @@ export function prepararHtml(html: string | null | undefined): string {
       if (/\bstyle="/.test(a)) a = a.replace(/\bstyle="([^"]*)"/, (_s, st: string) => `style="${st.replace(/;?\s*$/, ';')}${escaparAtributo(mask)}"`);
       else a += ` style="${escaparAtributo(mask)}"`;
       a += ' decoding="async" draggable="false"';
+      // 1.0 accessibility pass: the alternative text is the equation in words (lib/habla-matematicas.ts), not its
+      // Typst source, which a screen reader spelled symbol by symbol; the source stays in data-fuente
+      a = a.replace(/\balt="([^"]*)"/, (_s, alt: string) => {
+        const fuente = desescapar(alt);
+        return `alt="${escaparAtributo(leerMatematicas(fuente))}" data-fuente="${escaparAtributo(fuente)}"`;
+      });
     } else {
       a += ' loading="lazy" decoding="async"';
     }

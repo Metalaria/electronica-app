@@ -5,6 +5,7 @@
   import { tick, untrack } from 'svelte';
   import type { BFigura } from '../../lib/tipos';
   import { prepararHtml, textoPlano, url, urlCss } from '../../lib/datos';
+  import { leerMatematicas } from '../../lib/habla-matematicas';
   import { ruta } from '../../lib/ruta.svelte';
   import { seguirReferencia } from '../../lib/vistaPrevia';
   import Insignia from '../Insignia.svelte';
@@ -221,7 +222,7 @@
               <img
                 class="m ec-img"
                 {src}
-                alt={e.fuente}
+                alt={leerMatematicas(e.fuente)}
                 draggable="false"
                 style={`width:${(e.w / PT_TEXTO).toFixed(3)}em;height:${(e.h / PT_TEXTO).toFixed(3)}em;-webkit-mask-image:${urlCss(src)};mask-image:${urlCss(src)}`}
               />

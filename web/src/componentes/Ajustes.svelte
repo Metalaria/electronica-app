@@ -166,6 +166,12 @@
     <span class="ayuda">Solo en este dispositivo; vacío, el inicio dice «Hola».</span>
   </div>
 
+  <!-- 1.0: the in-app user guide (componentes/guia). -->
+  <div class="grupo" data-grupo-guia>
+    <span class="etiqueta">Ayuda</span>
+    <a class="enlace-guia" href="#/guia" onclick={cerrar}><Icono nombre="guia" tam={17} /> Guía de uso</a>
+  </div>
+
   <!-- Performance diagnostic of this device (componentes/diagnostico): a link to its page. -->
   <EntradaDiagnostico />
 
@@ -384,5 +390,18 @@
   .boton-icono:disabled {
     opacity: 0.35;
     cursor: default;
+  }
+  .enlace-guia {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    min-height: 44px;
+    color: var(--acento);
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+  }
+  .enlace-guia:hover {
+    text-decoration: underline;
   }
 </style>

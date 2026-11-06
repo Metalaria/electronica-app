@@ -437,6 +437,160 @@
     if (!gesto && fantasma && !arrastreDesdePaleta) fantasma = null;
   }
 
+  // ---------------------------------------------------------------- keyboard (1.0 accessibility pass)
+  // Everything a click does, from the keyboard (WCAG 2.1.1): a cursor on the grid — arrows, Ctrl/⌘ + arrows 5 steps —
+  // and Enter acting on it exactly as a click there (place the part chosen in the palette, select, start and end a
+  // wire with the wire tool W, «Ruta automática» A). N / Mayús + N go to the next / previous part and select it;
+  // Mayús + arrows move the selection. The other keys are the page's (R, X, Supr, W, A, S, G, F, Esc, Ctrl + Z…). A
+  // polite live region says where the cursor is and what Enter did; the cursor is drawn only while the canvas has the
+  // keyboard focus.
+  let enfocado = $state(false);
+  let teclado = $state(false);
+  let cursorTec = $state<P | null>(null);
+  let anuncio = $state('');
+  const uidLienzo = $props.id();
+
+  const nombreTipo = (c: Componente) => TIPO.get(c.tipo)?.nombre ?? c.tipo;
+  const valorDe = (c: Componente) => (typeof c.campos?.['valor'] === 'string' && c.campos['valor'] ? ` ${c.campos['valor']}` : '');
+
+  /** What is at a grid point, in words: a pin, a part, a wire, or nothing; and the point. */
+  function describirPunto(p: P): string {
+    let que = '';
+    for (const c of ed.doc.componentes) {
+      const k = pinesMundo(c).findIndex((q) => Math.abs(q.x - p[0]) < 1e-6 && Math.abs(q.y - p[1]) < 1e-6);
+      if (k >= 0) {
+        const n = pinesMundo(c)[k]!.nombre;
+        que = `patilla ${n && !/^\d+$/.test(n) ? n : k + 1} de ${c.nombre}`;
+        break;
+      }
+    }
+    if (!que) {
+      const id = componenteEn(p);
+      const c = id ? ed.doc.componentes.find((x) => x.id === id) : null;
+      if (c) que = `${c.nombre}, ${nombreTipo(c)}${valorDe(c)}`;
+      else if (cableEn(p, 0.2)) que = 'un cable';
+      else que = 'vacío';
+    }
+    return `${que} · columna ${p[0]}, fila ${p[1]}`;
+  }
+
+  /** Keeps a world point inside the view (pans by the needed amount). */
+  function asegurarVisible(p: P) {
+    const m = Math.min(48, ancho / 4, alto / 4);
+    const sx = tx + p[0] * unidad;
+    const sy = ty + p[1] * unidad;
+    if (sx < m) tx += m - sx;
+    else if (sx > ancho - m) tx -= sx - (ancho - m);
+    if (sy < m) ty += m - sy;
+    else if (sy > alto - m) ty -= sy - (alto - m);
+  }
+
+  function centroDe(c: Componente): P {
+    const b = geometria(c).cuerpo;
+    return [Math.round(c.x + (b[0] + b[2]) / 2), Math.round(c.y + (b[1] + b[3]) / 2)];
+  }
+
+  /** The canvas takes the keyboard focus with its cursor at the centre of the view (after a palette choice). */
+  export function enfocarTeclado(texto?: string) {
+    if (!caja) return;
+    teclado = true;
+    if (!cursorTec) cursorTec = rejilla(centro());
+    caja.focus({ preventScroll: true });
+    caja.scrollIntoView({ block: 'nearest' });
+    if (texto) anuncio = texto;
+  }
+
+  /** Enter: a click at the cursor (pointer down and up there), then says what changed. */
+  function pulsarCursor() {
+    const p = cursorTec;
+    if (!p || !caja) return;
+    asegurarVisible(p);
+    const r = caja.getBoundingClientRect();
+    const cx = r.left + tx + p[0] * unidad;
+    const cy = r.top + ty + p[1] * unidad;
+    const el = document.elementFromPoint(cx, cy);
+    const target = el && caja.contains(el) ? el : caja;
+    const base = { pointerId: -1, pointerType: 'mouse', button: 0, clientX: cx, clientY: cy, shiftKey: false, ctrlKey: false, metaKey: false, target, currentTarget: null, preventDefault() {} };
+    const n0 = ed.doc.componentes.length;
+    const w0 = ed.doc.cables.length;
+    const sel0 = ed.sel.join('|');
+    const pend0 = pendiente;
+    const ruta0 = rutaDesde;
+    const herramienta0 = ed.herramienta;
+    abajo({ ...base, type: 'pointerdown' } as unknown as PointerEvent);
+    arriba({ ...base, type: 'pointerup' } as unknown as PointerEvent);
+    const nuevo = ed.doc.componentes.length > n0 ? ed.doc.componentes[ed.doc.componentes.length - 1] : null;
+    if (nuevo) anuncio = `${nuevo.nombre} colocado: ${nombreTipo(nuevo)}${valorDe(nuevo)}.`;
+    else if (ed.doc.cables.length > w0) anuncio = `Cable puesto hasta ${describirPunto(p)}.${pendiente ? ' Sigue el cable: pulse Intro en el punto siguiente o Esc para terminar.' : ''}`;
+    else if (pendiente && !pend0) anuncio = `Cable empezado en ${describirPunto(p)}. Mueva el cursor y pulse Intro donde acaba.`;
+    else if (rutaDesde && !ruta0) anuncio = `Ruta automática desde ${describirPunto(p)}. Mueva el cursor a la patilla de destino y pulse Intro.`;
+    else if (ruta0 && !rutaDesde) anuncio = 'Ruta automática terminada.';
+    else if (herramienta0 === 'colocar') anuncio = 'No se ha colocado nada.';
+    else if (ed.sel.join('|') !== sel0) {
+      const c = ed.doc.componentes.find((x) => x.id === ed.sel[0]);
+      anuncio = ed.sel.length === 0 ? 'Nada seleccionado.' : c ? `${c.nombre} seleccionado: ${nombreTipo(c)}${valorDe(c)}. Mayús + flechas lo mueven, R lo gira, Supr lo borra.` : 'Cable seleccionado.';
+    } else anuncio = describirPunto(p);
+  }
+
+  function teclaLienzo(ev: KeyboardEvent) {
+    if (ev.target !== caja) return;
+    const mod = ev.ctrlKey || ev.metaKey;
+    const flechas: Record<string, P> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+    const d = flechas[ev.key];
+    if (d) {
+      ev.preventDefault();
+      teclado = true;
+      if (ev.shiftKey && ed.sel.length) {
+        ed.mover([...ed.sel], d[0], d[1]);
+        if (cursorTec) cursorTec = [cursorTec[0] + d[0], cursorTec[1] + d[1]];
+        if (cursorTec) asegurarVisible(cursorTec);
+        anuncio = `Movido ${d[0] < 0 ? 'a la izquierda' : d[0] > 0 ? 'a la derecha' : d[1] < 0 ? 'arriba' : 'abajo'}.`;
+        return;
+      }
+      const k = mod ? 5 : 1;
+      const p0 = cursorTec ?? rejilla(centro());
+      cursorTec = [p0[0] + d[0] * k, p0[1] + d[1] * k];
+      asegurarVisible(cursorTec);
+      cursor = cursorTec;
+      anuncio = describirPunto(cursorTec);
+      return;
+    }
+    if (ev.key === 'Enter' && !mod && !ev.altKey) {
+      ev.preventDefault();
+      teclado = true;
+      if (!cursorTec) cursorTec = rejilla(centro());
+      pulsarCursor();
+      return;
+    }
+    if ((ev.key === 'n' || ev.key === 'N') && !mod && !ev.altKey) {
+      const cs = ed.doc.componentes;
+      if (!cs.length) {
+        anuncio = 'El esquema no tiene componentes.';
+        return;
+      }
+      ev.preventDefault();
+      teclado = true;
+      const i = cs.findIndex((c) => c.id === ed.sel[0]);
+      const j = i < 0 ? (ev.shiftKey ? cs.length - 1 : 0) : (i + (ev.shiftKey ? cs.length - 1 : 1)) % cs.length;
+      const c = cs[j]!;
+      ed.sel = [c.id];
+      cursorTec = centroDe(c);
+      asegurarVisible(cursorTec);
+      anuncio = `${c.nombre}: ${nombreTipo(c)}${valorDe(c)}, seleccionado (${j + 1} de ${cs.length}).`;
+    }
+  }
+
+  // A part chosen in the palette with the keyboard: the canvas takes the focus to place it with the cursor.
+  $effect(() => {
+    const t = ed.herramienta === 'colocar' ? ed.colocando : null;
+    if (!t) return;
+    untrack(() => {
+      const a = document.activeElement;
+      if (a instanceof HTMLElement && a.closest('.paleta') && a.matches(':focus-visible'))
+        enfocarTeclado(`${TIPO.get(t)?.nombre ?? t}: mueva el cursor con las flechas y pulse Intro para colocarlo; Esc cancela.`);
+    });
+  });
+
   // ---------------------------------------------------------------- wheel, keys, browser zoom
 
   function zoomEn(n: number, px = ancho / 2, py = alto / 2) {
@@ -668,6 +822,8 @@
   {/if}
 {/snippet}
 
+<!-- role=application with its own keyboard mode (1.0): focusable and with key handlers on purpose -->
+<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
 <div
   class="lienzo"
   class:cable={ed.herramienta === 'cable' || ed.herramienta === 'ruta'}
@@ -675,10 +831,23 @@
   bind:this={caja}
   bind:clientWidth={ancho}
   bind:clientHeight={alto}
-  tabindex="-1"
+  tabindex="0"
   role="application"
   aria-label="Lienzo del esquema"
+  aria-describedby="ayuda-teclado-{uidLienzo}"
   data-zoom={z}
+  onkeydown={teclaLienzo}
+  onfocus={() => {
+    enfocado = true;
+    if (caja?.matches(':focus-visible')) {
+      teclado = true;
+      if (!cursorTec) cursorTec = rejilla(centro());
+    }
+  }}
+  onblur={() => {
+    enfocado = false;
+    teclado = false;
+  }}
 >
   <svg
     width={ancho}
@@ -749,6 +918,13 @@
       {#if compFantasma}
         <g class="comp fantasma">{@render simbolo(compFantasma)}</g>
       {/if}
+      {#if enfocado && teclado && cursorTec}
+        <g class="cursor-teclado" data-cursor-teclado={`${cursorTec[0]},${cursorTec[1]}`}>
+          <circle cx={cursorTec[0] * S} cy={cursorTec[1] * S} r={0.32 * S} />
+          <line x1={(cursorTec[0] - 0.6) * S} y1={cursorTec[1] * S} x2={(cursorTec[0] + 0.6) * S} y2={cursorTec[1] * S} />
+          <line x1={cursorTec[0] * S} y1={(cursorTec[1] - 0.6) * S} x2={cursorTec[0] * S} y2={(cursorTec[1] + 0.6) * S} />
+        </g>
+      {/if}
       {#if cajaSel}
         <rect
           class="caja-sel"
@@ -760,9 +936,19 @@
       {/if}
     </g>
   </svg>
+  <p class="solo-lector" id="ayuda-teclado-{uidLienzo}">
+    Con el teclado: las flechas mueven el cursor (Control y flecha, de cinco en cinco); Intro actúa donde está el cursor: coloca
+    la pieza elegida en la paleta, selecciona o, con la herramienta Cable (W), empieza y acaba un cable. N y Mayúsculas N van a
+    la pieza siguiente o anterior; Mayúsculas y flechas mueven la selección; R gira, X refleja, Supr borra y Esc cancela.
+  </p>
+  <p class="solo-lector" aria-live="polite" data-anuncio-lienzo>{anuncio}</p>
+  {#if enfocado && teclado}
+    <p class="ayuda teclas" aria-hidden="true">Flechas: cursor · Intro: actuar · N: pieza siguiente · Mayús + flechas: mover · W: cable · Esc: cancelar</p>
+  {:else}
   <p class="ayuda" aria-hidden="true">
     {#if ed.herramienta === 'ruta'}{rutaDesde ? 'Ruta automática: toque la patilla (o el cable) de destino.' : 'Ruta automática: toque la patilla de origen y luego la de destino.'}{:else if tactilFino}Un dedo desplaza · dos dedos acercan · pulsación larga: menú{:else}Ctrl + rueda para acercar · Mayús + rueda desplaza · botón central o Espacio + arrastrar mueve la vista{/if}
   </p>
+  {/if}
   {#if !ed.doc.componentes.length && !ed.doc.cables.length}
     <p class="vacio">
       {#if tactilFino}Toque un componente de la paleta y luego el lienzo para colocarlo; arrastre desde una patilla para dibujar un cable.{:else}Elija
@@ -864,6 +1050,16 @@
     fill: none;
     stroke: var(--acento);
     stroke-width: 1.5;
+  }
+  .cursor-teclado {
+    fill: none;
+    stroke: var(--acento);
+    stroke-width: 2.2;
+    pointer-events: none;
+  }
+  .lienzo:focus-visible {
+    outline: 3px solid var(--acento);
+    outline-offset: -3px;
   }
   .fantasma {
     opacity: 0.55;

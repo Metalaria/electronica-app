@@ -423,6 +423,9 @@
   }
   .filtro:focus-within {
     border-color: var(--acento);
+    /* the app's focus ring (WCAG 2.4.7 / 2.4.11; QA 1.0: a border colour alone was not enough) */
+    outline: 2px solid var(--acento);
+    outline-offset: 2px;
   }
   .filtro input {
     flex: 1;
@@ -480,6 +483,13 @@
       min-width: 0;
       height: 44px;
       padding: 0;
+    }
+  }
+  /* 1.0 accessibility pass: on a phone two rows of 14 left 21.6 px per letter at 360 px (WCAG 2.5.8 asks for 24 px):
+     three rows of 10 there, each letter at least 30 px wide */
+  @media (pointer: coarse) and (max-width: 440px) {
+    .letras {
+      grid-template-columns: repeat(10, minmax(0, 44px));
     }
   }
 

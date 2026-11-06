@@ -142,6 +142,9 @@
     gap: 14px;
   }
   fieldset {
+    /* 1.0 (reflow at 320–360 px): a fieldset is min-content wide by default, so the longest chapter name pushed the
+       page 120 px sideways; with 0 the chips shorten their names with an ellipsis */
+    min-width: 0;
     margin: 0;
     padding: 0;
     border: 0;

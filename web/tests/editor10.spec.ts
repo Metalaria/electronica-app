@@ -547,7 +547,8 @@ test('revisión eléctrica: cada regla en un circuito hecho para ella, explicada
   });
   await montar(page, [V('V1', '5', 'a'), V('V2', '3', 'a'), ['R', 'R1', { valor: '1k' }, { start: 'a', end: '0' }]]);
   await page.locator('button.simular').click();
-  await expect(page.locator('.erc.parado h4')).toContainText('antes de simular');
+  // (1.0 accessibility pass: h3 under the «Análisis» h2; it was an h4)
+  await expect(page.locator('.erc.parado h3')).toContainText('antes de simular');
   await page.locator('.erc li', { hasText: 'paralelo' }).getByRole('button', { name: 'Señalar en el esquema' }).click();
   expect((await page.evaluate(() => (window as unknown as Ventana).__epaEditor.ed.sel)).length).toBe(2);
 });

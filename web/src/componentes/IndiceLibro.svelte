@@ -508,7 +508,9 @@
   }
   .filtro input:focus {
     border-color: var(--acento-borde);
-    outline: none;
+    /* the app's focus ring (WCAG 2.4.7 / 2.4.11; QA 1.0: a border colour alone was not enough) */
+    outline: 2px solid var(--acento);
+    outline-offset: 2px;
     box-shadow: 0 0 0 3px var(--acento-tinte);
   }
   .borrar {

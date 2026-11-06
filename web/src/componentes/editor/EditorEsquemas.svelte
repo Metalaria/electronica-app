@@ -842,7 +842,7 @@
 
   <div class="mesa" class:lateral={anchoLateral}>
     {#if anchoLateral}
-      <aside class="col-paleta"><Paleta {ed} arrastre={(t, x, y, f) => lienzo?.arrastreExterno(t, x, y, f) ?? false} /></aside>
+      <aside class="col-paleta" aria-label="Paleta de componentes"><Paleta {ed} arrastre={(t, x, y, f) => lienzo?.arrastreExterno(t, x, y, f) ?? false} /></aside>
     {/if}
     <div class="centro">
       <div class="herramientas" role="toolbar" aria-label="Herramientas del esquema">
@@ -914,7 +914,7 @@
       {/if}
       {#if toast}<p class="toast" role="status">{toast}</p>{/if}
     </div>
-    <aside class="col-prop" bind:this={panelProp}>
+    <aside class="col-prop" aria-label="Propiedades" bind:this={panelProp}>
       <Propiedades {ed} />
     </aside>
   </div>
@@ -1000,7 +1000,7 @@
     </div>
     {#if erc.length}
       <section class="erc" class:parado={paradoPorErc} bind:this={seccionErc} aria-label="Revisión eléctrica">
-        <h4>{paradoPorErc ? 'Revisión eléctrica antes de simular' : 'Revisión eléctrica'}</h4>
+        <h3>{paradoPorErc ? 'Revisión eléctrica antes de simular' : 'Revisión eléctrica'}</h3>
         {#if paradoPorErc}<p class="nota">Esto suele impedir que ngspice resuelva el circuito. Corríjalo o simule igualmente para ver qué dice.</p>{/if}
         <ul>
           {#each erc as p, i (i)}
@@ -1035,7 +1035,7 @@
     {/if}
     {#if convergencia}
       <section class="convergencia" aria-label="Ayuda para la convergencia">
-        <h4>ngspice no ha conseguido {convergencia === 'tran' ? 'avanzar en el transitorio' : 'calcular el punto de trabajo'}</h4>
+        <h3>ngspice no ha conseguido {convergencia === 'tran' ? 'avanzar en el transitorio' : 'calcular el punto de trabajo'}</h3>
         {#if convergencia === 'op'}
           <p>El punto de trabajo se calcula resolviendo las ecuaciones del circuito por aproximaciones sucesivas (Newton–Raphson). No converge cuando hay nodos sin camino de continua a masa (solo condensadores o entradas), lazos de fuentes de tensión y bobinas, realimentación positiva que admite varias soluciones (biestables, osciladores) o modelos muy no lineales que empiezan lejos de la solución.</p>
         {:else}
@@ -1487,8 +1487,8 @@
     border-color: color-mix(in srgb, var(--c-precaucion) 55%, transparent);
     box-shadow: 0 0 0 3px color-mix(in srgb, var(--c-precaucion) 12%, transparent);
   }
-  .erc h4,
-  .convergencia h4 {
+  .erc h3,
+  .convergencia h3 {
     margin: 0 0 6px;
     font-size: 14.5px;
     color: var(--titulos);

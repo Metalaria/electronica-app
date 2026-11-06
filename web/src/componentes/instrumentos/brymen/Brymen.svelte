@@ -8,6 +8,7 @@
   import { pulsacion } from '../ui/pulsacion';
   import { prepararAudio, pitido } from '../audio';
   import type { GuiaBrymen } from '../guia';
+  import { leerUnidades } from '../../../lib/habla-matematicas';
 
   let { m, guia = null }: { m: Brymen; /** Tutor (0.10): the dial position and the jack to light up. */ guia?: GuiaBrymen | null } = $props();
 
@@ -30,6 +31,16 @@
   // Units shown at the right of the main digits.
   const unidad = $derived(pan.principal?.unidad ?? '');
   const unidad2 = $derived(pan.secundaria?.unidad ?? '');
+  // 1.0 accessibility: the display read as one image with its reading (the digits are drawn as segments, so a screen
+  // reader had nothing to read); decimal comma as the rest of the app; not live — it changes many times a second.
+  const lectura = $derived.by(() => {
+    if (apagado) return 'Pantalla apagada';
+    const leer = (t: string) => t.replace(/\./g, ',').trim();
+    const p = pan.mensaje ? leer(pan.mensaje) : pan.principal ? `${leer(pan.principal.texto)} ${pan.principal.unidad}`.trim() : '';
+    const s2 = pan.secundaria ? `; secundaria ${leer(pan.secundaria.texto)} ${pan.secundaria.unidad}`.trim() : '';
+    const marcas = pan.marcas.length ? `; ${pan.marcas.join(', ')}` : '';
+    return leerUnidades(`Pantalla: ${p || 'sin lectura'}${s2}${marcas}`);
+  });
 
   // ---------------------------------------------------------------- selector by dragging
   let svg: SVGSVGElement | undefined = $state();
@@ -133,23 +144,23 @@
   <!-- LCD -->
   <rect x="26" y="28" width="248" height="166" rx="10" fill="#151618" />
   <rect x="34" y="36" width="232" height="150" rx="5" fill={luz ? '#bfe3d6' : '#c3c9b6'} />
-  <g class="lcd" fill="#1e2420" opacity={apagado ? 0 : 1}>
+  <g class="lcd" fill="#1e2420" opacity={apagado ? 0 : 1} role="img" aria-label={lectura} data-lectura-brymen>
     <g font-size="8.5" font-weight="700" font-family="var(--sans)">
-      <text x="42" y="50" opacity={marca('AUTO') ? 1 : 0.06}>AUTO</text>
-      <text x="68" y="50" opacity={marca('MANU') ? 1 : 0.06}>MANU</text>
-      <text x="98" y="50" opacity={marca('Δ') ? 1 : 0.06}>Δ</text>
-      <text x="108" y="50" opacity={m.hold ? 1 : 0.06}>H</text>
-      <text x="118" y="50" opacity={marca('CREST') ? 1 : 0.06}>C</text>
-      <text x="42" y="62" opacity={marca('MAX') ? 1 : 0.06}>MAX</text>
-      <text x="62" y="62" opacity={marca('MIN') ? 1 : 0.06}>MIN</text>
-      <text x="82" y="62" opacity={marca('AVG') ? 1 : 0.06}>AVG</text>
-      <text x="102" y="62" opacity={marca('REC') || marca('MAX') || marca('MIN') || marca('AVG') ? 1 : 0.06}>R</text>
-      <text x="42" y="74" opacity={marca('DC') || marca('AC+DC') ? 1 : 0.06}>DC</text>
-      <text x="56" y="74" opacity={marca('AC') || marca('AC+DC') ? 1 : 0.06}>AC</text>
-      <text x="70" y="74" opacity={marca('VFD') ? 1 : 0.06}>VFD</text>
-      <text x="89" y="74" opacity={marca('·)))') ? 1 : 0.06}>·)))</text>
-      <text x="108" y="74" opacity={marca('⏵') ? 1 : 0.06}>→|</text>
-      <text x="124" y="74" opacity={marca('500000') ? 1 : 0.06} font-size="7">500k</text>
+      <text x="42" y="50" opacity={marca('AUTO') ? 1 : 0.06} data-decorativo={marca('AUTO') ? undefined : true}>AUTO</text>
+      <text x="68" y="50" opacity={marca('MANU') ? 1 : 0.06} data-decorativo={marca('MANU') ? undefined : true}>MANU</text>
+      <text x="98" y="50" opacity={marca('Δ') ? 1 : 0.06} data-decorativo={marca('Δ') ? undefined : true}>Δ</text>
+      <text x="108" y="50" opacity={m.hold ? 1 : 0.06} data-decorativo={m.hold ? undefined : true}>H</text>
+      <text x="118" y="50" opacity={marca('CREST') ? 1 : 0.06} data-decorativo={marca('CREST') ? undefined : true}>C</text>
+      <text x="42" y="62" opacity={marca('MAX') ? 1 : 0.06} data-decorativo={marca('MAX') ? undefined : true}>MAX</text>
+      <text x="62" y="62" opacity={marca('MIN') ? 1 : 0.06} data-decorativo={marca('MIN') ? undefined : true}>MIN</text>
+      <text x="82" y="62" opacity={marca('AVG') ? 1 : 0.06} data-decorativo={marca('AVG') ? undefined : true}>AVG</text>
+      <text x="102" y="62" opacity={marca('REC') || marca('MAX') || marca('MIN') || marca('AVG') ? 1 : 0.06} data-decorativo={marca('REC') || marca('MAX') || marca('MIN') || marca('AVG') ? undefined : true}>R</text>
+      <text x="42" y="74" opacity={marca('DC') || marca('AC+DC') ? 1 : 0.06} data-decorativo={marca('DC') || marca('AC+DC') ? undefined : true}>DC</text>
+      <text x="56" y="74" opacity={marca('AC') || marca('AC+DC') ? 1 : 0.06} data-decorativo={marca('AC') || marca('AC+DC') ? undefined : true}>AC</text>
+      <text x="70" y="74" opacity={marca('VFD') ? 1 : 0.06} data-decorativo={marca('VFD') ? undefined : true}>VFD</text>
+      <text x="89" y="74" opacity={marca('·)))') ? 1 : 0.06} data-decorativo={marca('·)))') ? undefined : true}>·)))</text>
+      <text x="108" y="74" opacity={marca('⏵') ? 1 : 0.06} data-decorativo={marca('⏵') ? undefined : true}>→|</text>
+      <text x="124" y="74" opacity={marca('500000') ? 1 : 0.06} data-decorativo={marca('500000') ? undefined : true} font-size="7">500k</text>
     </g>
     <!-- secondary display -->
     <g transform="translate(160 44)">

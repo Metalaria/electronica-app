@@ -89,13 +89,14 @@
 </script>
 
 <div class="paleta" class:horizontal role="toolbar" aria-label="Paleta de componentes">
+  {#if !horizontal}<h2 class="solo-lector">Paleta de componentes</h2>{/if}
   {#if !horizontal}
     <input class="filtro" type="search" placeholder="Buscar componente" bind:value={filtro} aria-label="Buscar componente" />
   {/if}
   <div class="grupos">
     {#each grupos as [g, tipos] (g)}
       <div class="grupo">
-        {#if !horizontal}<h4>{g}</h4>{/if}
+        {#if !horizontal}<h3>{g}</h3>{/if}
         <div class="items">
           {#each tipos as t (t.id)}
             {@const m = muestra(t)}
@@ -159,7 +160,7 @@
     gap: 10px;
     padding-right: 2px;
   }
-  h4 {
+  h3 {
     margin: 0 0 4px;
     font-size: 11.5px;
     letter-spacing: 0.05em;

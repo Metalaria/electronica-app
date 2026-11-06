@@ -20,6 +20,7 @@
   } from './escalas';
   import { dibujarBase, dibujarCapa, preparar, type Marco, type Tema, type TrazoSerie } from './dibujo';
   import { formatoEje, formatoSI } from './formato';
+  import { leerUnidades } from '../../lib/habla-matematicas';
 
   interface Props {
     series: Series[];
@@ -339,6 +340,14 @@
       return { name: s.name, unit: s.unit, color: colorDe(s), y, antes };
     });
   });
+
+  // 1.0 accessibility pass: what the arrows read, for a screen reader (the floating readout is aria-hidden); only
+  // while the chart has the focus, so a mouse moving over it says nothing
+  const lecturaHablada = $derived(
+    enfocada && v.hoverX != null && lectura.length
+      ? leerUnidades(`${formatoSI(v.hoverX, xAxis.unit)}: ${lectura.map((l) => `${l.name} ${Number.isFinite(l.y) ? formatoSI(l.y, l.unit) : 'sin dato'}`).join('; ')}`)
+      : '',
+  );
 
   $effect(() => {
     void v.hoverX;
@@ -695,6 +704,7 @@
   >
     <canvas bind:this={lienzo} style:width={`${ancho}px`} style:height={`${height}px`}></canvas>
     <canvas class="encima" bind:this={capa} style:width={`${ancho}px`} style:height={`${height}px`}></canvas>
+    <p class="solo-lector" aria-live="polite" data-lectura-hablada>{lecturaHablada}</p>
     {#if cajaLectura}
       <div
         class="lectura"

@@ -683,6 +683,190 @@
     return false;
   }
 
+  // ---------------------------------------------------------------- keyboard (1.0 accessibility pass)
+  // Everything a tap does, from the keyboard (WCAG 2.1.1): a cursor on the holes — arrows jump to the next hole or
+  // terminal in that direction (Ctrl/⌘ + arrows: 5 holes) — and Enter acting on it exactly as a tap there: put the part
+  // chosen in the tray, start a wire on a free hole and end it on another, select the part whose leg is there (twice:
+  // switch it or open it, as a double tap), place the chosen probe with the «medir» tool. N / Mayús + N select the
+  // next / previous part or wire; Mayús + arrows move the selection by one hole; Esc drops a wire half laid. A polite
+  // live region says where the cursor is and what each key did; the cursor is drawn only with the keyboard focus.
+  let enfocado = $state(false);
+  let teclado = $state(false);
+  let cursorTec = $state<Pt | null>(null);
+  let anuncio = $state('');
+  const uidMesa = $props.id();
+
+  const esPunto = (q: Pt) => !!agujero(cfg, q[0], q[1]) || !!borneEn(pb.doc, q);
+
+  /** The hole nearest to the centre of the view (where the keyboard cursor starts). */
+  function puntoCentral(): Pt {
+    const c = red0([(ancho / 2 - tx) / s, (alto / 2 - ty) / s]);
+    if (esPunto(c)) return c;
+    for (let r = 1; r < 30; r++)
+      for (const [dx, dy] of [[0, r], [0, -r], [r, 0], [-r, 0], [r, r], [-r, -r], [r, -r], [-r, r]] as Pt[]) {
+        const q: Pt = [c[0] + dx, c[1] + dy];
+        if (esPunto(q)) return q;
+      }
+    return [1, 1];
+  }
+
+  function verPunto(q: Pt) {
+    const m = Math.min(40, ancho / 4, alto / 4);
+    const sx = tx + q[0] * s;
+    const sy = ty + q[1] * s;
+    if (sx < m) tx += m - sx;
+    else if (sx > ancho - m) tx -= sx - (ancho - m);
+    if (sy < m) ty += m - sy;
+    else if (sy > alto - m) ty -= sy - (alto - m);
+  }
+
+  /** What is at a hole, in words (its place, net and voltage, and the part or wire end in it). */
+  function describirTecla(q: Pt): string {
+    const base = describir(q) || 'Fuera de los agujeros';
+    const k = clavePt(q[0], q[1]);
+    const p = enPlaca.find((x) => x.pos.some((t) => clavePt(t[0], t[1]) === k));
+    if (p) {
+      const i = p.pos.findIndex((t) => clavePt(t[0], t[1]) === k);
+      return `${base} · pata ${encapsuladoDe(p.comp).nombres[i] ?? i + 1} de ${p.comp.nombre}`;
+    }
+    const w = pb.doc.cables.find((x) => clavePt(x.a[0], x.a[1]) === k || clavePt(x.b[0], x.b[1]) === k);
+    return w ? `${base} · extremo de un cable` : base;
+  }
+
+  /** The bench takes the keyboard focus, its cursor on a hole (after a tray card chosen with the keyboard). */
+  export function enfocarTeclado(texto?: string) {
+    if (!caja) return;
+    teclado = true;
+    if (!cursorTec || !esPunto(cursorTec)) cursorTec = puntoCentral();
+    caja.focus({ preventScroll: true });
+    caja.scrollIntoView({ block: 'nearest' });
+    if (texto) anuncio = texto;
+  }
+
+  /** Enter: a tap at the cursor (pointer down and up there, on the part whose leg is in that hole), then the outcome. */
+  function pulsarCursor(shift: boolean) {
+    const q = cursorTec;
+    if (!q || !caja) return;
+    verPunto(q);
+    const k = clavePt(q[0], q[1]);
+    const libre = pb.herramienta === 'seleccionar' && !pb.armada && !pendiente;
+    const w = pb.doc.cables.find((x) => clavePt(x.a[0], x.a[1]) === k || clavePt(x.b[0], x.b[1]) === k);
+    const p = pb.doc.piezas.find((x) => x.pos.some((t) => clavePt(t[0], t[1]) === k));
+    if (libre && w && !p) {
+      // a wire end: the pointer would drag it; the key selects the wire
+      pb.sel = [w.id];
+      redMarcada = redEn(pb.doc, pb.con, w.a[0], w.a[1]);
+      anuncio = `Cable seleccionado · ${describir(w.a)} · hasta ${describir(w.b)}. Supr lo quita.`;
+      return;
+    }
+    const r = caja.getBoundingClientRect();
+    const cx = r.left + tx + q[0] * s;
+    const cy = r.top + ty + q[1] * s;
+    const objetivoEl = p && !(libre && EXTERNOS.has(p.enc)) ? caja.querySelector(`[data-pieza="${CSS.escape(p.id)}"]`) : null;
+    const base = { pointerId: -1, pointerType: 'mouse', button: 0, clientX: cx, clientY: cy, shiftKey: shift, ctrlKey: false, metaKey: false, target: objetivoEl ?? caja.querySelector('svg'), currentTarget: null, preventDefault() {} };
+    const n0 = pb.doc.piezas.length;
+    const w0 = pb.doc.cables.length;
+    const pend0 = pendiente;
+    info = '';
+    pb.mensaje = '';
+    abajo({ ...base, type: 'pointerdown' } as unknown as PointerEvent);
+    arriba({ ...base, type: 'pointerup' } as unknown as PointerEvent);
+    const dicho = pb.mensaje || info;
+    if (pb.doc.piezas.length > n0) {
+      const nueva = pb.doc.piezas[pb.doc.piezas.length - 1]!;
+      anuncio = `${nueva.comp.nombre} puesta. ${dicho || describirPieza(nueva)}`;
+    } else if (pb.doc.cables.length > w0) anuncio = `Cable puesto hasta ${describir(q) || 'aquí'}.`;
+    else if (pendiente && !pend0) anuncio = `Cable empezado en ${describir(q)}. Mueva el cursor al agujero donde acaba y pulse Intro; Esc lo deja.`;
+    else anuncio = dicho || describirTecla(q);
+  }
+
+  function teclaMesa(ev: KeyboardEvent) {
+    if (ev.target !== caja) return;
+    const mod = ev.ctrlKey || ev.metaKey;
+    const flechas: Record<string, Pt> = { ArrowLeft: [-1, 0], ArrowRight: [1, 0], ArrowUp: [0, -1], ArrowDown: [0, 1] };
+    const d = flechas[ev.key];
+    if (d) {
+      ev.preventDefault();
+      teclado = true;
+      if (ev.shiftKey && pb.sel.length && pb.herramienta !== 'medir') {
+        pb.mensaje = '';
+        const ok = pb.moverPiezas([...pb.sel], d[0], d[1]);
+        if (ok && cursorTec) cursorTec = [cursorTec[0] + d[0], cursorTec[1] + d[1]];
+        if (cursorTec) verPunto(cursorTec);
+        anuncio = ok ? `Movido ${d[0] < 0 ? 'a la izquierda' : d[0] > 0 ? 'a la derecha' : d[1] < 0 ? 'arriba' : 'abajo'}.` : pb.mensaje || 'Ahí no cabe.';
+        return;
+      }
+      const p0 = cursorTec ?? puntoCentral();
+      let q = p0;
+      let saltos = 0;
+      // the next hole (or terminal) in that direction: the channel and the gaps between boards are skipped
+      for (let i = 1; i <= 40 && saltos < (mod ? 5 : 1); i++) {
+        const c: Pt = [p0[0] + d[0] * i, p0[1] + d[1] * i];
+        if (esPunto(c)) {
+          q = c;
+          saltos++;
+        }
+      }
+      if (q === p0) {
+        anuncio = 'Borde de la placa.';
+        return;
+      }
+      cursorTec = q;
+      cursor = q;
+      verPunto(q);
+      anuncio = describirTecla(q);
+      return;
+    }
+    if (ev.key === 'Enter' && !mod && !ev.altKey) {
+      ev.preventDefault();
+      teclado = true;
+      if (!cursorTec) cursorTec = puntoCentral();
+      pulsarCursor(ev.shiftKey);
+      return;
+    }
+    if (ev.key === 'Escape' && pendiente) {
+      pendiente = null;
+      info = '';
+      anuncio = 'Cable sin terminar: dejado.';
+      return;
+    }
+    if ((ev.key === 'n' || ev.key === 'N') && !mod && !ev.altKey) {
+      const todos = [...pb.doc.piezas.map((x) => x.id), ...pb.doc.cables.map((x) => x.id)];
+      if (!todos.length) {
+        anuncio = 'La placa está vacía.';
+        return;
+      }
+      ev.preventDefault();
+      teclado = true;
+      const i = todos.indexOf(pb.sel[0] ?? '');
+      const j = i < 0 ? (ev.shiftKey ? todos.length - 1 : 0) : (i + (ev.shiftKey ? todos.length - 1 : 1)) % todos.length;
+      const id = todos[j]!;
+      pb.sel = [id];
+      const p = pb.pieza(id);
+      const w = pb.cable(id);
+      if (p) {
+        cursorTec = p.pos[0] ?? cursorTec;
+        anuncio = `${describirPieza(p)} (${j + 1} de ${todos.length}). Mayús + flechas la mueven, R la gira, Supr la quita.`;
+      } else if (w) {
+        cursorTec = w.a;
+        redMarcada = redEn(pb.doc, pb.con, w.a[0], w.a[1]);
+        anuncio = `Cable · ${describir(w.a)} · hasta ${describir(w.b)} (${j + 1} de ${todos.length}).`;
+      }
+      if (cursorTec) verPunto(cursorTec);
+    }
+  }
+
+  // A card of the tray chosen with the keyboard: the bench takes the focus to put it with the cursor.
+  $effect(() => {
+    const x = pb.armada;
+    if (!x) return;
+    untrack(() => {
+      const a = document.activeElement;
+      if (a instanceof HTMLElement && a.closest('.bandeja') && a.matches(':focus-visible'))
+        enfocarTeclado(`${'comp' in x ? x.comp.nombre : 'Pieza'} elegida: mueva el cursor por los agujeros con las flechas y pulse Intro para ponerla ahí; Esc cancela.`);
+    });
+  });
+
   onMount(() => {
     const el = caja!;
     const rueda = (ev: WheelEvent) => {
@@ -972,6 +1156,8 @@
   <!-- The tutor's step is a bar above the bench (0.10): it never covers the supplies and instruments drawn there. -->
   <p class="pista barra" aria-live="polite">{paso ? paso.texto : t?.terminado ? 'Hecho: la lectura está en el instrumento (panel «Medir»).' : medida?.activa ? 'Toque el agujero donde va la punta elegida en «Medir».' : 'Elija una punta en el panel «Medir».'}</p>
 {/if}
+<!-- role=application with its own keyboard mode (1.0): focusable and with key handlers on purpose -->
+<!-- svelte-ignore a11y_no_noninteractive_tabindex, a11y_no_noninteractive_element_interactions -->
 <div
   class="mesa"
   class:con-cable={pb.herramienta === 'cable' || !!pendiente}
@@ -980,9 +1166,22 @@
   bind:this={caja}
   bind:clientWidth={ancho}
   bind:clientHeight={alto}
-  tabindex="-1"
+  tabindex="0"
   role="application"
   aria-label="Protoboard: toque una pieza para elegirla y arrástrela para moverla; toque un agujero y luego otro para tender un cable; dos dedos para desplazar y acercar"
+  aria-describedby="ayuda-teclado-{uidMesa}"
+  onkeydown={teclaMesa}
+  onfocus={() => {
+    enfocado = true;
+    if (caja?.matches(':focus-visible')) {
+      teclado = true;
+      if (!cursorTec) cursorTec = puntoCentral();
+    }
+  }}
+  onblur={() => {
+    enfocado = false;
+    teclado = false;
+  }}
 >
   <svg
     role="presentation"
@@ -1087,6 +1286,9 @@
         <g class="fantasma" use:marcado={svgCable({ id: '', a: gesto.a, b: gesto.b, color: pb.colorAuto(gesto.a, gesto.b) })}></g>
         <circle class="pendiente" cx={gesto.b[0]} cy={gesto.b[1]} r=".45" />
       {/if}
+      {#if enfocado && teclado && cursorTec}
+        <rect class="cursor-teclado" data-cursor-teclado={`${cursorTec[0]},${cursorTec[1]}`} x={cursorTec[0] - 0.62} y={cursorTec[1] - 0.62} width="1.24" height="1.24" rx=".25" />
+      {/if}
       {#if pendiente}
         <circle class="pendiente" cx={pendiente[0]} cy={pendiente[1]} r=".45" />
         {#if cursor}<line class="goma" x1={pendiente[0]} y1={pendiente[1]} x2={cursor[0]} y2={cursor[1]} />{/if}
@@ -1112,10 +1314,17 @@
     {@render flotante(cajaSel)}
   {/if}
   {#if fant?.motivo}
-    <p class="info aviso" aria-live="polite">{fant.motivo}</p>
+    <p class="info aviso" aria-live={enfocado && teclado ? 'off' : 'polite'}>{fant.motivo}</p>
   {:else if (info && !sinInfo) || pb.mensaje || invalida}
-    <p class="info" class:aviso={!!pb.mensaje || !!invalida} aria-live="polite">{invalida ?? (pb.mensaje || info)}</p>
+    <p class="info" class:aviso={!!pb.mensaje || !!invalida} aria-live={enfocado && teclado ? 'off' : 'polite'}>{invalida ?? (pb.mensaje || info)}</p>
   {/if}
+  <p class="solo-lector" id="ayuda-teclado-{uidMesa}">
+    Con el teclado: las flechas mueven el cursor de agujero en agujero (Control y flecha, de cinco en cinco); Intro actúa donde
+    está el cursor: pone la pieza elegida en la bandeja, empieza un cable en un agujero libre y lo acaba en otro, o elige la
+    pieza que tiene una pata ahí. N y Mayúsculas N eligen la pieza o el cable siguiente o anterior; Mayúsculas y flechas
+    mueven lo elegido; R gira, Supr quita y Esc cancela.
+  </p>
+  <p class="solo-lector" aria-live="polite" data-anuncio-mesa>{anuncio}</p>
   {#if pb.herramienta === 'cable' && !pendiente && !info}
     <p class="pista">Cable: toque un agujero libre y luego otro, o arrastre de uno a otro.</p>
   {/if}
@@ -1335,6 +1544,16 @@
     fill: none;
     stroke: #e8a400;
     stroke-width: 0.15;
+  }
+  .cursor-teclado {
+    fill: none;
+    stroke: var(--acento);
+    stroke-width: 0.16;
+    pointer-events: none;
+  }
+  .mesa:focus-visible {
+    outline: 3px solid var(--acento);
+    outline-offset: -3px;
   }
   .goma {
     stroke: #e8a400;

@@ -1,8 +1,8 @@
 <script lang="ts">
   import { desplazable } from '../lib/desplazable';
-  import { tick } from 'svelte';
+  import { tick, untrack } from 'svelte';
   import { app } from '../lib/estado.svelte';
-  import { navegarDesdeCapa } from '../lib/ruta.svelte';
+  import { navegarDesdeCapa, ruta } from '../lib/ruta.svelte';
   import { buscar, fragmento, prepararBuscador, type Resultado } from '../lib/buscador';
   import { infoParte, rotuloParte } from '../lib/datos';
   import { colorBloque } from '../lib/color';
@@ -19,6 +19,20 @@
   let campo: HTMLInputElement | undefined = $state();
   let lista: HTMLElement | undefined = $state();
   let turno = 0;
+
+  // 1.0 accessibility pass: closed without going anywhere (Esc, «Cerrar», the backdrop, «Atrás»), the focus goes back
+  // to what had it before (it fell to <body>); a result chosen changes the route, and the router moves the focus there.
+  $effect(() => {
+    if (!app.buscador) return;
+    const antes = untrack(() => (document.activeElement instanceof HTMLElement && document.activeElement !== document.body ? document.activeElement : null));
+    const n = untrack(() => ruta.n);
+    return () => {
+      requestAnimationFrame(() => {
+        const a = document.activeElement;
+        if (ruta.n === n && antes?.isConnected && (!a || a === document.body)) antes.focus({ preventScroll: true });
+      });
+    };
+  });
 
   // Focus and select the query every time the search opens.
   $effect(() => {
@@ -226,6 +240,11 @@
     padding: 0 12px 0 18px;
     border-bottom: 1px solid var(--linea);
     color: var(--tinta-tenue);
+  }
+  .campo:focus-within {
+    /* the app's focus ring, inside (the field spans the dialog's top edge; QA 1.0, WCAG 2.4.7 / 2.4.11) */
+    outline: 2px solid var(--acento);
+    outline-offset: -2px;
   }
   .campo input {
     flex: 1;
