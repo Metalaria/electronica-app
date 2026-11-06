@@ -5,7 +5,7 @@
 //   node scripts/practica10.mjs [--solo cap05] [--sin-simular] [--detalle]
 //
 // Nothing here writes text for the reader beyond short fixed sentences around book names and values
-// («Toca R<sub>2</sub> en el esquema», «Si duplicas R<sub>2</sub>, ¿…?»): statements, hints and explanations
+// («Toque R<sub>2</sub> en el esquema», «Si duplica R<sub>2</sub>, ¿…?»; «usted» since review 10d): statements, hints and explanations
 // are the book's paragraphs, captions, lists, glossary definitions, equations, exercises and netlists.
 // Predictions and slider targets come from simulating the changed circuit with the app's own ngspice
 // (WebAssembly, the same build as the simulator's worker); breadboard puzzles are checked with the
@@ -31,7 +31,8 @@ export async function resolve(spec, ctx, next) {
 );
 
 const web = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const libro = path.join(web, 'public', 'libro');
+// EPA_LIBRO: the tests' copy of the book folder (as libro-node.mjs)
+const libro = process.env.EPA_LIBRO ? path.resolve(process.env.EPA_LIBRO) : path.join(web, 'public', 'libro');
 const salidaDir = path.join(libro, 'practica');
 const args = process.argv.slice(2);
 const solo = args.includes('--solo') ? args[args.indexOf('--solo') + 1] : null;
@@ -342,7 +343,9 @@ function enlazarEjercicio(id, it) {
             else h = h.replace(re, `{{${v.id}}}`);
           });
           if (!bien) continue;
-          return { f, objetivo: vo.id, env, html: h, r };
+          // (the book's text of each value, to find it again in what the field asks)
+          const textos = Object.fromEntries(ins.map((v, k) => [v.id, cmb[k].txt]));
+          return { f, objetivo: vo.id, env, html: h, r, textos };
         }
       }
     }
@@ -350,7 +353,7 @@ function enlazarEjercicio(id, it) {
   return null;
 }
 
-function itemNumerico(f, { objetivo, libro, ejercicio, r, idEj }) {
+function itemNumerico(f, { objetivo, libro, ejercicio, r, idEj, ajuste }) {
   const sec = seccionDe(f.parte, f.seccion.label);
   if (!sec) return null;
   let top = bloqueEc(f.parte, sec, f.fuente);
@@ -384,6 +387,13 @@ function itemNumerico(f, { objetivo, libro, ejercicio, r, idEj }) {
     intro: intro ?? undefined,
   };
   if (ejercicio) it.ejercicio = ejercicio;
+  if (ajuste) {
+    for (const id of ajuste.fijas ?? []) delete it.varia[id];
+    for (const [id, valores] of Object.entries(ajuste.valores ?? {})) it.varia[id] = { serie: 'ajustada', valores };
+    if (ajuste.condiciones?.length) it.condiciones = ajuste.condiciones;
+    if (ajuste.normalizado) it.normalizado = ajuste.normalizado;
+    if (!Object.keys(it.varia).length) return descartar('numérico: ningún dato que variar tras el ajuste'), null;
+  }
   // At least 8 different valid variants.
   const vs = variantes(it);
   if (vs.length < 8) return descartar('numérico: menos de 8 variantes válidas'), null;
@@ -391,14 +401,94 @@ function itemNumerico(f, { objetivo, libro, ejercicio, r, idEj }) {
   return it;
 }
 
+// 1.0 (review 10e): what the automatic link of an exercise to a formula cannot know. Every one of the 41 linked
+// exercises was audited for variants that contradict the statement or leave the circuit out of its regime:
+//   fijas: inputs that keep the book's value (the statement fixes them elsewhere or derives other data from them);
+//   valores: realistic lists instead of the generic ones; condiciones: expressions that must be positive;
+//   intercambiar: two inputs the link swapped (a symmetric formula); excluir: a link to the wrong formula;
+//   normalizado + pide (final QA 1.0): the statement asks for a standard value — graded as the series value nearest to
+//   the result (variantes.ts pedidoDe), with the field's own text.
+const AJUSTES = {
+  // «a 50 Hz (onda completa, frecuencia de rizado …)»: the ripple of full-wave rectified 50 Hz mains is 100 Hz
+  'ej-5.6': { fijas: ['f_r'] },
+  // a blue LED (V_F 3,2 V) at usual currents, from a supply above it; «Elige valores comerciales»: the variant asks
+  // for the E12 value nearest to the computed resistance (final QA: the computed one was graded, an E12 got «Cerca»)
+  'ej-5.1': {
+    valores: { I_F: [0.005, 0.01, 0.015, 0.02] },
+    condiciones: ['V_CC - V_F - 1'],
+    normalizado: 'E12',
+    pide: 'Valor E12 más cercano a la resistencia limitadora',
+  },
+  // «¿Qué resistencia necesitas? Elige el valor E12 más cercano.» (linked to X_C = 1/(2πfC), the same expression)
+  'ej-3.4': { normalizado: 'E12', pide: 'Valor E12 más cercano a la resistencia necesaria' },
+  // the link took the load current for the Zener's and the reverse (the formula adds them); with headroom
+  'ej-5.3': { intercambiar: ['I_Z', 'I_L'], condiciones: ['V_in - V_Z - 1'] },
+  'ej-5.8': { intercambiar: ['I_Z', 'I_L'], condiciones: ['V_in - V_Z - 1'] },
+  // divider bias with R_E = 470 Ω and R_C = 2,2 kΩ: the base above V_BE and V_CE above saturation
+  'ej-6.2': { condiciones: ['V_CC*R_2/(R_1+R_2) - 0.7', 'V_CC - (V_CC*R_2/(R_1+R_2) - 0.7)/470*(2200 + 470) - 0.3'] },
+  // «una carga de 24 Ω alimentada a 12 V» was linked to the Early resistance V_A/I_C
+  'prob-6.C': { excluir: true },
+  // «consume 2 A (su devanado tiene, por tanto, 6 Ω)» at 12 V: the current is fixed by the winding
+  'prob-4.C': { fijas: ['I'] },
+  // FM broadcast band with the 10,7 MHz IF of the TA7358 (the link named the station f_FI and the IF f_s)
+  'ej-16.2': { fijas: ['f_s'], valores: { f_FI: [88e6, 90e6, 91.5e6, 94e6, 96e6, 98.5e6, 100e6, 102e6, 104e6, 106e6, 107.5e6] } },
+  // a divider, a buck, a three-terminal regulator: the output below the input (with the regulator's dropout)
+  'ej-1.4': { condiciones: ['V_in - V_out - 0.5'] },
+  'prob-4.A': { condiciones: ['V_in - V_out - 1'] },
+  // a TO-220 three-terminal regulator (Rjc 3 + Rcs 0,5 °C/W, Tj 125 °C at 40 °C, the book's derated 110 °C): it can
+  // burn at most 70/3,5 = 20 W — beyond that no heatsink exists (review 10g); and currents up to 1,5 A
+  'prob-8.A': { valores: { I: [0.5, 0.75, 1, 1.25, 1.5] }, condiciones: ['V_in - V_out - 2', '20 - (V_in - V_out)*I'] },
+  // LM317: R₁ carries its minimum load current (1,25 V / R₁); the book's 240 Ω is the largest that keeps it (review 10g)
+  'ej-8.4': { condiciones: ['240.5 - R_1'] },
+  'ej-33.1': { condiciones: ['V_in - V_out - 1'] },
+};
+
+/** Applies an exercise's adjustments to its link (before the item is built). */
+function ajustarEnlace(id, e) {
+  const a = AJUSTES[id];
+  if (!a?.intercambiar) return e;
+  const [x, y] = a.intercambiar;
+  const env = { ...e.env, [x]: e.env[y], [y]: e.env[x] };
+  const html = e.html.split(`{{${x}}}`).join('\u0000').split(`{{${y}}}`).join(`{{${x}}}`).split('\u0000').join(`{{${y}}}`);
+  const textos = { ...e.textos, [x]: e.textos[y], [y]: e.textos[x] };
+  return { ...e, env, html, textos };
+}
+
+/**
+ * What the field of a variant asks (final QA 1.0): the answer's name in the book (or the AJUSTES text) with every
+ * value of a quantity the variant changes turned into its «{{id}}» placeholder («X<sub>C</sub> a 50 Hz» →
+ * «X<sub>C</sub> a {{f}}»), so the app writes the variant's own value. A book value of a varied quantity that is
+ * still in it stops the generation.
+ */
+function pideDe(id, e, item) {
+  let pide = AJUSTES[id]?.pide ?? e.r.nombre;
+  for (const v of Object.keys(item.varia)) {
+    const txt = e.textos?.[v];
+    if (txt) pide = pide.replace(reTexto(txt), `{{${v}}}`);
+  }
+  const unidades = new Map(Object.keys(item.varia).map((v) => [item.formula.vars.find((x) => x.id === v)?.unidad, v]));
+  for (const q of cantidades(plano(pide))) {
+    const v = unidades.get(q.u);
+    if (v && Math.abs(q.v - item.libro[v]) <= Math.abs(item.libro[v]) * 0.005)
+      throw new Error(`${id}: lo que se pide («${plano(pide)}») nombra el valor del libro de ${v}, que la variante cambia`);
+  }
+  return pide;
+}
+
 let nEjEnlazados = 0;
 for (const [id, it] of Object.entries(ejercicios.items)) {
-  if (it.modo !== 'auto' || (solo && it.parte !== solo)) continue;
-  const e = enlazarEjercicio(id, it);
-  if (!e) {
+  // 1.0: exercises checked only by structured questions have no numeric answer to reproduce
+  if (it.modo !== 'auto' || !it.respuestas?.length || (solo && it.parte !== solo)) continue;
+  if (AJUSTES[id]?.excluir) {
+    descartar('ejercicio enlazado con una fórmula que no es la suya (revisado a mano)');
+    continue;
+  }
+  const e0 = enlazarEjercicio(id, it);
+  if (!e0) {
     descartar('ejercicio numérico sin fórmula del catálogo que lo reproduzca con los datos del enunciado');
     continue;
   }
+  const e = ajustarEnlace(id, e0);
   const r = refs[id];
   const item = itemNumerico(e.f, {
     objetivo: e.objetivo,
@@ -406,8 +496,12 @@ for (const [id, it] of Object.entries(ejercicios.items)) {
     r: e.r,
     idEj: id,
     ejercicio: { label: id, num: r?.num ?? it.num, html: e.html, pide: e.r.nombre },
+    ajuste: AJUSTES[id],
   });
   if (!item) continue;
+  item.ejercicio.pide = pideDe(id, e, item);
+  // the book's exercise asks more than this one result: the variant says it asks only this
+  if (it.respuestas.length + (it.preguntas?.length ?? 0) + (it.otras?.length ?? 0) > 1) item.ejercicio.solo = true;
   // the exercise's own solution in the book is cited too (its first paragraph)
   const sol = solucionEjercicio(it);
   if (sol) item.citas.push({ html: sol, ref: id, donde: `${donde(id)}, con los valores del libro` });
@@ -586,7 +680,7 @@ for (const { p, sec, top, fig } of figurasEsquema) {
     bloque: top,
     ref: fig.label,
     verRef: verRef(fig.label),
-    enunciado: `Toca ${ent} en el esquema de ${nombreFigura(fig)}.`,
+    enunciado: `Toque ${ent} en el esquema de ${nombreFigura(fig)}.`,
     citas: cf,
     pistas,
     figura: { label: fig.label, num: fig.num, src: fig.src, vista, datos: fig.datos, esquema: c.k, pie: fig.pie },
@@ -635,7 +729,7 @@ async function opFigura(esq, cambio) {
 }
 
 function preguntaPrediccion(c, factor, o) {
-  const verbo = factor > 1 ? 'duplicas' : 'reduces a la mitad';
+  const verbo = factor > 1 ? 'duplica' : 'reduce a la mitad';
   return `Si ${verbo} ${c.nombre} (de ${valorTexto(c.de, c.unidad)} a ${valorTexto(c.de * factor, c.unidad)}), ¿${o.nombre} aumenta, disminuye o se queda igual?`;
 }
 
@@ -916,7 +1010,7 @@ for (const [, e] of circuitosPorSeccion) {
       bloque: x.top,
       ref: x.ref,
       verRef: verRef(x.ref),
-      enunciado: `Ajusta ${x.c.nombre} hasta que ${x.o.nombre} sea de ${objT}.`,
+      enunciado: `Ajuste ${x.c.nombre} hasta que ${x.o.nombre} sea de ${objT}.`,
       citas: x.citas,
       pistas: [
         { titulo: 'Lo que dice el libro', html: x.citas[0]?.html ?? '' },
@@ -978,8 +1072,8 @@ for (const f of figurasEsquema) {
       verRef: verRef(f.fig.label),
       enunciado:
         quitar.k === 'cable'
-          ? `En este montaje del circuito de ${nombreFigura(f.fig)} falta un cable. Ponlo donde va.`
-          : `En este montaje del circuito de ${nombreFigura(f.fig)} falta una pieza, ${quitar.nombre}: colócala en su sitio.`,
+          ? `En este montaje del circuito de ${nombreFigura(f.fig)} falta un cable. Póngalo donde va.`
+          : `En este montaje del circuito de ${nombreFigura(f.fig)} falta una pieza, ${quitar.nombre}: colóquela en su sitio.`,
       citas: citaFigura(f.p, f.sec, f.fig, f.top),
       pistas: [
         { titulo: 'El esquema del libro', html: `Figura ${f.fig.num}. ${f.fig.pie}` },
@@ -1035,7 +1129,7 @@ for (const p of ordenPartes) {
         bloque: i,
         ref,
         verRef: verRef(ref),
-        // the book's sentence that introduces the list (the app adds «Ordena los pasos como los da el libro»)
+        // the book's sentence that introduces the list (the app adds «Ordene los pasos como los da el libro»)
         enunciado: prev ?? '',
         citas: [{ html: b.items.map((x, k) => `${k + 1}. ${x}`).join('<br>'), ref, donde: donde(ref) }],
         pistas: [
@@ -1088,7 +1182,7 @@ for (const [k, lista] of glosPorSeccion) {
       bloque: sec.fin - 1,
       ref: label,
       verRef: verRef(label),
-      enunciado: 'Une cada término con su definición del glosario del libro.',
+      enunciado: 'Una cada término con su definición del glosario del libro.',
       citas: defs.map((x) => ({ html: `<strong>${x.a}</strong>: ${glosario.find((g) => g.id === x.glosario).html}`, ref: label, donde: 'Glosario' })),
       pistas: [{ titulo: 'Una pareja resuelta', html: `<strong>${defs[0].a}</strong>: ${defs[0].b}` }],
       modo: 'definicion',
@@ -1114,7 +1208,7 @@ for (const [k, lista] of glosPorSeccion) {
       bloque: sec.fin - 1,
       ref: label,
       verRef: verRef(label),
-      enunciado: 'Une cada símbolo con su componente.',
+      enunciado: 'Una cada símbolo con su componente.',
       citas: sims.map((x) => ({ html: `<strong>${x.b}</strong>: ${glosario.find((g) => g.id === x.glosario).html}`, ref: label, donde: 'Glosario' })),
       pistas: [{ titulo: 'Una pareja resuelta', html: `El primer símbolo es: <strong>${sims[0].b}</strong>` }],
       modo: 'simbolo',
@@ -1162,6 +1256,18 @@ const PRIORIDAD = { prediccion: 0, deslizador: 1, protoboard: 2, numerico: 3, to
 const MAX_LECCION = 4;
 
 fs.mkdirSync(salidaDir, { recursive: true });
+// The later steps' items (retos10, averias10) already in a part file are kept, with their place in the lessons, so
+// that rerunning this step alone leaves the whole chain's output as it was (QA 1.0: idempotent, one order).
+const { ordenarPractica, recontarIndice, TIPOS_POSTERIORES } = await import('./libro-node.mjs');
+const heredadosDe = (p) => {
+  const f = path.join(salidaDir, `${p}.json`);
+  if (!fs.existsSync(f)) return { items: [], secciones: [] };
+  const viejo = JSON.parse(fs.readFileSync(f, 'utf8'));
+  const items = viejo.items.filter((x) => TIPOS_POSTERIORES.includes(x.tipo));
+  const ids = new Set(items.map((x) => x.id));
+  const secciones = Object.entries(viejo.secciones).map(([k, s]) => [k, s.items.filter((id) => ids.has(id))]).filter(([, xs]) => xs.length);
+  return { items, secciones };
+};
 const contar = { numerico: 0, prediccion: 0, deslizador: 0, toque: 0, ordenar: 0, parejas: 0, protoboard: 0 };
 const seccionesCon = { numerico: 0, prediccion: 0, deslizador: 0, toque: 0, ordenar: 0, parejas: 0, protoboard: 0, ideas: 0, alguno: 0 };
 const escritas = [];
@@ -1193,14 +1299,18 @@ for (const p of ordenPartes) {
   }
   for (const x of lista) contar[x.tipo]++;
   if (lista.length) porParte[p] = lista.length;
-  if (!lista.length && !Object.keys(secciones).length) continue;
-  const doc = { version: 1, parte: p, items: lista, secciones };
-  fs.writeFileSync(path.join(salidaDir, `${p}.json`), JSON.stringify(doc));
+  const heredados = heredadosDe(p);
+  if (!lista.length && !Object.keys(secciones).length && !heredados.items.length) continue;
+  for (const [k, ids] of heredados.secciones) (secciones[k] ??= { items: [], ideas: [] }).items.push(...ids);
+  const doc = { version: 1, parte: p, items: [...lista, ...heredados.items], secciones };
+  fs.writeFileSync(path.join(salidaDir, `${p}.json`), JSON.stringify(ordenarPractica(doc)));
   escritas.push(p);
 }
 if (!solo) {
   const ind = { version: 1, partes: escritas, porParte, items: contar, secciones: seccionesCon, ejercicios: enlaces, descartes };
-  fs.writeFileSync(path.join(salidaDir, 'indice.json'), JSON.stringify(ind, null, 1));
+  // the later steps' counts (and «alguno», porParte) over the kept items: the same keys, in the same place, as the chain
+  recontarIndice(salidaDir, ind, TIPOS_POSTERIORES);
+  fs.writeFileSync(path.join(salidaDir, 'indice.json'), JSON.stringify(ind));
 }
 const total = Object.values(contar).reduce((a, b) => a + b, 0);
 console.log(`practica10: ${total} preguntas en ${escritas.length} partes · ${simulaciones} simulaciones · ejercicios enlazados ${nEjEnlazados}`);

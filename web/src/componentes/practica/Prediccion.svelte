@@ -18,6 +18,8 @@
   import { valorTexto } from './variantes';
   import FiguraRecortada from './FiguraRecortada.svelte';
   import EtiquetaNueva from './EtiquetaNueva.svelte';
+  import { cargarPorque, type Porque } from '../pregunta/porque';
+  import PorQueNo from '../pregunta/PorQueNo.svelte';
 
   let { item, final, listo = $bindable(false), onenviar }: { item: ItemPrediccion; final: boolean; listo?: boolean; onenviar: () => void } = $props();
 
@@ -107,6 +109,28 @@
   const vb = $derived(despues?.valor ?? item.esperado.despues);
   const maximo = $derived(Math.max(Math.abs(va), Math.abs(vb), 1e-15));
   const deLibro = $derived(antes?.valor == null || despues?.valor == null);
+
+  // 1.0: why the chosen answer is not it — the simulated numbers, and the book's sentence about the part if any
+  let porque = $state<Porque | null>(null);
+  $effect(() => {
+    if (!final || !eleccion || !real || eleccion === real) return;
+    const s = eleccion;
+    let vivo = true;
+    void cargarPorque(item.parte).then((d) => {
+      if (vivo) porque = d?.prediccion[item.id]?.[s] ?? null;
+    });
+    return () => {
+      vivo = false;
+    };
+  });
+  const porqueSimulado = $derived.by(() => {
+    if (!eleccion || !real || eleccion === real) return '';
+    const pct = Math.abs(va) > 1e-15 ? Math.round(((Math.abs(vb) - Math.abs(va)) / Math.abs(va)) * 100) : 0;
+    const de = `${item.observa.nombre} pasa de ${valorTexto(va, item.observa.unidad)} a ${valorTexto(vb, item.observa.unidad)}`;
+    if (real === 'igual') return `${de}: cambia menos de un 1 %, así que se queda igual.`;
+    if (eleccion === 'igual') return `No se queda igual: ${de} (${pct > 0 ? '+' : '−'}${Math.abs(pct)} %).`;
+    return `No ${nombreReal(eleccion)}: ${de}, ${real === 'sube' ? 'sube' : 'baja'} un ${Math.abs(pct)} %.`;
+  });
 </script>
 
 <div class="prediccion" data-real={real ?? undefined}>
@@ -152,6 +176,7 @@
   {#if final}
     <div class="p10-solucion" data-simulacion>
       <span class="rot">Lo que da la simulación{deLibro ? ' (la del libro)' : ''}</span>
+      {#if porqueSimulado}<PorQueNo opcion={nombreReal(eleccion)} {porque} parte={item.parte} extra={porqueSimulado} />{/if}
       <p class="frase">Al {item.a > item.cambio.de ? 'duplicar' : 'reducir a la mitad'} {@html prepararHtml(item.cambio.nombre)}, {@html prepararHtml(item.observa.nombre)} <strong>{nombreReal(real)}</strong>.</p>
       <dl class="barras">
         {#each [{ k: 'antes', v: va, c: item.cambio.de }, { k: 'despues', v: vb, c: item.a }] as fila (fila.k)}

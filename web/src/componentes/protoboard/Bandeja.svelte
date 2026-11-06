@@ -15,6 +15,7 @@
     lateral = false,
     alArrastrar,
     alMas,
+    soloCartas = CARTAS,
   }: {
     pb: Protoboard;
     /** A column beside the bench (wide screens) instead of a strip under it. */
@@ -23,6 +24,8 @@
     alArrastrar: (fase: 'mover' | 'soltar' | 'cancelar', cx: number, cy: number, x: Componente | Pieza, dedo: boolean) => boolean;
     /** «Más piezas»: the whole palette. */
     alMas?: () => void;
+    /** 1.0 (building challenges): only these cards (free building: all of them). */
+    soloCartas?: CartaBandeja[];
   } = $props();
 
   interface Carta {
@@ -54,7 +57,7 @@
         }))
         .sort((a, b) => Number(!!b.actual) - Number(!!a.actual));
     }
-    return CARTAS.map((c) => {
+    return soloCartas.map((c) => {
       const m = muestra(c);
       return { clave: c.clave, nombre: c.nombre, valor: valorCarta(m), svg: svgCarta(m), carta: c };
     });

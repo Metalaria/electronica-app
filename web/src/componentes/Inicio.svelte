@@ -21,6 +21,7 @@
   // 0.11 group B: the problem of the day and «Práctica inteligente»
   import ProblemaInicio from './inicio/ProblemaInicio.svelte';
   import PracticaInicio from './inicio/PracticaInicio.svelte';
+  import RepasoCamino from './inicio/RepasoCamino.svelte';
   import CaminoLibro from './inicio/CaminoLibro.svelte';
   import Chip from './ui09/Chip.svelte';
   import Rotulo from './ui09/Rotulo.svelte';
@@ -86,6 +87,8 @@
       <!-- 0.11: level and XP, and the course of the chapter being studied -->
       <NivelInicio parte={destino?.parte ?? ''} />
       <PracticaInicio />
+      <!-- 1.0: spaced review of the completed lessons of the course paths -->
+      <RepasoCamino />
       <RepasoHoy />
       {#if recientes.length}
         <nav class="recientes" aria-label="También leyendo">

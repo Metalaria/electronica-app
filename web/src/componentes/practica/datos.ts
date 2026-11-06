@@ -109,11 +109,15 @@ export function guardarSemilla(id: string, n: number): void {
 
 /** Name of each kind for headers and the counts. */
 export const NOMBRE_TIPO: Record<ItemPractica['tipo'], string> = {
-  numerico: 'Calcula',
-  prediccion: 'Predice y comprueba',
-  deslizador: 'Ajusta',
-  toque: 'Señala en el esquema',
-  ordenar: 'Ordena',
-  parejas: 'Une las parejas',
-  protoboard: 'Completa el montaje',
+  // «usted», as all the app's text (review 10d: these were in «tú»)
+  numerico: 'Calcule',
+  prediccion: 'Prediga y compruebe',
+  deslizador: 'Ajuste',
+  toque: 'Señale en el esquema',
+  ordenar: 'Ordene',
+  parejas: 'Una las parejas',
+  protoboard: 'Complete el montaje',
+  reto: 'Reto con la figura',
+  construye: 'Monte el circuito',
+  averia: 'Encuentre la avería',
 };

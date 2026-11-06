@@ -8,7 +8,8 @@ import { readFileSync, readdirSync, writeFileSync, existsSync } from 'node:fs';
 import { join, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-const LIBRO = join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'libro');
+// EPA_LIBRO: the tests' copy of the book folder (as libro-node.mjs)
+const LIBRO = process.env.EPA_LIBRO || join(dirname(fileURLToPath(import.meta.url)), '..', 'public', 'libro');
 const leer = (r) => JSON.parse(readFileSync(join(LIBRO, r), 'utf8'));
 
 const indice = leer('indice.json');
@@ -47,7 +48,7 @@ if (existsSync(dirRepaso)) {
     for (const q of d.preguntas ?? []) anotar(d.parte, seccionDe(d.parte, q.ref));
   }
 }
-for (const it of Object.values(ejercicios)) if (it.modo === 'auto' && it.respuestas?.length && it.seccion) anotar(it.parte, it.seccion);
+for (const it of Object.values(ejercicios)) if (it.modo === 'auto' && (it.respuestas?.length || it.preguntas?.length) && it.seccion) anotar(it.parte, it.seccion);
 
 // in the index's order, parts and sections
 const partes = {};

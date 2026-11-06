@@ -653,6 +653,7 @@ test.describe('dominio en la aplicación', () => {
     await page.setViewportSize(TABLETA);
     await page.goto('#/cursos/fundamentos');
     await expect(page.locator('[data-dominio-curso="fundamentos"]')).toBeVisible({ timeout: 15_000 });
+    await page.locator('[data-vista="lista"]').click(); // 1.0: a course opens as a path; these checks use the list view
     await page.locator('[data-capitulo="cap05"] .cab-cap').click();
     await expect(page.locator('[data-dominio-capitulo="cap05"]')).toBeVisible();
     await expect(page.locator('[data-leccion-curso="cap05/sec-5.2"] [data-nivel-dominio="intentado"]')).toBeVisible();
@@ -1182,6 +1183,7 @@ test.describe('capturas y maquetación', () => {
         await foto('practica-fin');
 
         await page.goto('#/cursos/fundamentos');
+        await page.locator('[data-vista="lista"]').click(); // 1.0: a course opens as a path; these checks use the list view
         await page.locator('[data-capitulo="cap05"] .cab-cap').click();
         await page.locator('[data-capitulo="cap05"]').scrollIntoViewIfNeeded();
         await page.waitForTimeout(400);

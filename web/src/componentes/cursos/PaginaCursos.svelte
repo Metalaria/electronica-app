@@ -26,11 +26,19 @@
   import { cargarPracticables, conceptosPracticables } from '../../lib/aprendizaje/catalogo';
   import BarraDominio from '../dominio/BarraDominio.svelte';
   import MedidorDominio from '../dominio/MedidorDominio.svelte';
+  // 1.0: the course as a path of lessons that open one after another, with spaced review
+  import { calcularCamino, repasoDe, saltadas, type NodoEntrada } from '../../lib/aprendizaje/camino';
+  import { progresoLecciones } from '../../lib/lecciones.svelte';
+  import Camino, { type GrupoCamino } from './Camino.svelte';
+  import SaltarHasta from './SaltarHasta.svelte';
+  import { vistaCursos } from './vista.svelte';
+  import { ahoraMinuto } from '../../lib/aprendizaje/minuto.svelte';
 
   const indice = $derived(app.indice!);
   const partesRuta = $derived(ruta.ancla.split('/').filter(Boolean));
   const curso = $derived(partesRuta[0] ? (CURSO.get(partesRuta[0]) ?? null) : null);
   const enPrueba = $derived(!!curso && partesRuta[1] === 'prueba');
+  const enSalto = $derived(!!curso && partesRuta[1] === 'saltar' && !!partesRuta[3]);
 
   const avances = $derived(CURSOS.map((c) => ({ c, a: avanceCurso(c, indice) })));
   const avance = $derived(curso ? avanceCurso(curso, indice) : null);
@@ -43,6 +51,54 @@
   const porCapitulo = $derived.by(() => {
     if (!curso || !avance) return [];
     return curso.partes.map((p) => ({ parte: p, lecciones: avance.lecciones.filter((l) => l.parte === p) }));
+  });
+
+  // ---------------------------------------------------------------- 1.0: the path
+  const PROGRESO: Record<LeccionConEstado['estado'], NodoEntrada['progreso']> = { hecha: 'hecho', superada: 'superado', 'en-curso': 'empezado', pendiente: 'nada' };
+  const entradas = $derived(avance ? avance.lecciones.map((l): NodoEntrada => ({ clave: `${l.parte}/${l.label}`, leccion: true, progreso: PROGRESO[l.estado] })) : []);
+  const camino = $derived(calcularCamino(entradas));
+  // the review dates move into «Para repasar hoy» as time passes (a clock that ticks every minute)
+  const ahora = $derived(ahoraMinuto());
+  const grupos = $derived.by((): GrupoCamino[] => {
+    if (!curso || !avance) return [];
+    const r: GrupoCamino[] = [];
+    avance.lecciones.forEach((l, i) => {
+      const clave = `${l.parte}/${l.label}`;
+      const estado = camino.estados[i]!;
+      const p = progresoLecciones.secciones[clave];
+      const hecho = estado === 'hecho' || estado === 'superado';
+      let g = r[r.length - 1];
+      if (!g || g.clave !== l.parte) {
+        g = { clave: l.parte, titulo: `${rotuloParte(l.parte)} · ${corto(indice.partes[l.parte]?.titulo ?? l.parte)}`, nodos: [] };
+        r.push(g);
+      }
+      g.nodos.push({
+        clave,
+        rotulo: l.num ?? '',
+        titulo: l.titulo,
+        href: `#/leccion/${l.parte}/${encodeURIComponent(l.label)}`,
+        estado,
+        progreso: hecho ? 1 : p?.n ? Math.min(1, p.h.length / p.n) : 0,
+        repaso: hecho && estadoDominio.listo ? repasoDe(dominioDe(clave), ahora) : null,
+        tipo: 'leccion',
+        // offered on the first locked lesson and at the start of each later chapter (not on every node)
+        saltar:
+          estado === 'bloqueado' && (camino.estados.indexOf('bloqueado') === i || g.nodos.length === 0)
+            ? `#/cursos/${curso.id}/saltar/${l.parte}/${encodeURIComponent(l.label)}`
+            : undefined,
+      });
+    });
+    return r;
+  });
+  const siguienteClave = $derived(camino.siguiente >= 0 ? (entradas[camino.siguiente]?.clave ?? null) : null);
+  /** The jump of #/cursos/<id>/saltar/<parte>/<label>: the target and the lessons it skips. */
+  const salto = $derived.by(() => {
+    if (!enSalto || !avance) return null;
+    const clave = `${partesRuta[2]}/${decodeURIComponent(partesRuta[3] ?? '')}`;
+    const k = entradas.findIndex((e) => e.clave === clave);
+    if (k < 0) return null;
+    const l = avance.lecciones[k]!;
+    return { destino: `${l.num ? `${l.num} ` : ''}${l.titulo}`, href: `#/leccion/${l.parte}/${encodeURIComponent(l.label)}`, lecciones: saltadas(entradas, k) };
   });
 
   // Chapters unfolded: the one with the next lesson by default.
@@ -86,6 +142,10 @@
   {#key ruta.n}
     <PruebaNivel {curso} />
   {/key}
+{:else if curso && enSalto && salto}
+  {#key ruta.n}
+    <SaltarHasta destino={salto.destino} hrefDestino={salto.href} lecciones={salto.lecciones} volver={`#/cursos/${curso.id}`} contexto={`Saltar · ${curso.nombre}`} />
+  {/key}
 {:else if curso && avance}
   {@const tono = tonoDe(curso.partes)}
   <div class="cursos" data-curso={curso.id} style:--c09={tono.relleno} style:--sobre09={tono.sobre}>
@@ -127,6 +187,14 @@
       {/if}
     </header>
 
+    <div class="vistas" role="group" aria-label="Cómo ver el curso">
+      <button type="button" aria-pressed={vistaCursos.v === 'camino'} onclick={() => (vistaCursos.v = 'camino')} data-vista="camino">Camino</button>
+      <button type="button" aria-pressed={vistaCursos.v === 'lista'} onclick={() => (vistaCursos.v = 'lista')} data-vista="lista">Lista</button>
+    </div>
+
+    {#if vistaCursos.v === 'camino'}
+      <Camino {grupos} siguiente={siguienteClave} {ahora} />
+    {:else}
     <ol class="capitulos">
       {#each porCapitulo as cap (cap.parte)}
         {@const info = indice.partes[cap.parte]}
@@ -162,6 +230,7 @@
         </li>
       {/each}
     </ol>
+    {/if}
   </div>
 {:else}
   <div class="cursos" data-cursos>
@@ -201,6 +270,29 @@
 {/if}
 
 <style>
+  .vistas {
+    display: inline-flex;
+    align-self: flex-start;
+    padding: 3px;
+    border: 1px solid var(--linea);
+    border-radius: 14px;
+    background: var(--superficie);
+  }
+  .vistas button {
+    min-width: 96px;
+    min-height: 44px;
+    padding: 0 16px;
+    border: 0;
+    border-radius: 11px;
+    background: transparent;
+    color: var(--tinta);
+    font-size: 15px;
+    font-weight: 600;
+  }
+  .vistas button[aria-pressed='true'] {
+    background: var(--c09, var(--acento));
+    color: var(--sobre09, #fff);
+  }
   .dominio-curso {
     display: flex;
     flex-direction: column;

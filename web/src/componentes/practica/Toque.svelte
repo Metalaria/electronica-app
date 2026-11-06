@@ -54,7 +54,7 @@
         pistas = [...base, { titulo: `El símbolo de ${m.nombreSimbolo(item.pide.simbolo)}`, html: `<span class="p10-simbolo">${m.svgSimbolo(item.pide.simbolo)}</span>` }];
       });
     } else if (item.pide.k === 'nodo') {
-      pistas = [...base, { titulo: 'Dónde mirar', html: `Busca la etiqueta ${item.pide.nombre} en el esquema.` }];
+      pistas = [...base, { titulo: 'Dónde mirar', html: `Busque la etiqueta ${item.pide.nombre} en el esquema.` }];
     }
   });
 

@@ -43,10 +43,14 @@
   import Ordenar from './Ordenar.svelte';
   import Parejas from './Parejas.svelte';
   import Montar from './Montar.svelte';
+  import Reto from './Reto.svelte';
+  import Construye from './Construye.svelte';
+  import Averia from './Averia.svelte';
   // 0.11: every check is reported as a learning event (sound, vibration, XP…); a right answer celebrates.
   import { emitir, type OrigenRespuesta } from '../../lib/aprendizaje/eventos';
   import { prepararSonido } from '../../lib/aprendizaje/retroalimentacion';
   import Destello from '../progreso/Destello.svelte';
+  import Seguridad from '../pregunta/Seguridad.svelte';
 
   let {
     item,
@@ -90,9 +94,10 @@
   /** Right answer just given in this round (the seal celebrates; a revisited item does not). */
   let recien = $state(false);
 
-  const maxIntentos = $derived(item.tipo === 'prediccion' ? 1 : 2);
+  // 1.0: a challenge gives three attempts (each failure says how far it is and opens one more hint)
+  const maxIntentos = $derived(item.tipo === 'prediccion' ? 1 : item.tipo === 'reto' || item.tipo === 'construye' ? 3 : 2);
   const pistas = $derived(pistasPropias ?? item.pistas);
-  const titulo = $derived(item.tipo === 'ordenar' ? 'Ordena los pasos como los da el libro.' : item.enunciado);
+  const titulo = $derived(item.tipo === 'ordenar' ? 'Ordene los pasos como los da el libro.' : item.enunciado);
   const contexto = $derived(item.tipo === 'ordenar' ? item.enunciado : '');
 
   // A revisited item starts afresh but remembers it was answered (the recorded answer is the caller's).
@@ -100,11 +105,34 @@
     final = false;
   });
 
+  /**
+   * QA 1.0: let the browser paint «Comprobando…» before the check runs. A check starts with synchronous work (the
+   * circuit's netlist of «Monte el circuito») that held the old button on screen ~0,44 s at 4× CPU slowdown. One frame,
+   * with a timer as a floor where frames do not run (a hidden tab).
+   */
+  function pintar(): Promise<void> {
+    return new Promise((listo) => {
+      let hecho = false;
+      const fin = () => {
+        if (!hecho) {
+          hecho = true;
+          listo();
+        }
+      };
+      requestAnimationFrame(() => setTimeout(fin, 0));
+      setTimeout(fin, 100);
+    });
+  }
+
   async function comprobar() {
     if (!control || comprobando || resultado !== null) return;
     comprobando = true;
     prepararSonido();
     try {
+      // the previous attempt's message goes away, so the next one (even the same text) is announced again
+      mensaje = '';
+      await tick();
+      await pintar();
       const r = await control.comprobar();
       if (r.nula) {
         mensaje = r.mensaje ?? '';
@@ -123,8 +151,10 @@
       } else {
         mensaje = r.mensaje ?? 'No es correcto.';
         intento++;
-        // The second attempt comes with the first hint (the ladder goes on with «Otra pista»).
+        // The second attempt comes with the first hint (the ladder goes on with «Otra pista»); a challenge opens
+        // one more rung after each failed attempt.
         if (vistas < 1 && pistas.length) vistas = 1;
+        else if ((item.tipo === 'reto' || item.tipo === 'construye') && vistas < pistas.length) vistas = Math.max(vistas, Math.min(pistas.length, intento - 1));
       }
     } finally {
       comprobando = false;
@@ -173,6 +203,12 @@
       <Parejas bind:this={control} {item} {final} bind:listo />
     {:else if item.tipo === 'protoboard'}
       <Montar bind:this={control} {item} {final} bind:listo />
+    {:else if item.tipo === 'reto'}
+      <Reto bind:this={control} {item} {final} bind:listo />
+    {:else if item.tipo === 'construye'}
+      <Construye bind:this={control} {item} {final} bind:listo />
+    {:else if item.tipo === 'averia'}
+      <Averia bind:this={control} {item} {final} bind:listo />
     {/if}
   {/key}
 
@@ -204,13 +240,24 @@
           {vistas === 0 ? 'Ver una pista' : 'Otra pista'}
         </button>
       {/if}
-      {#if mensaje && intento > 1 && (item.tipo === 'ordenar' || item.tipo === 'parejas' || item.tipo === 'protoboard' || item.tipo === 'toque')}
+      {#if mensaje && intento > 1 && (item.tipo === 'ordenar' || item.tipo === 'parejas' || item.tipo === 'protoboard' || item.tipo === 'toque' || item.tipo === 'reto' || item.tipo === 'construye' || item.tipo === 'averia')}
         <button type="button" class="pedir" onclick={reintentar} data-de-nuevo>Borrar y volver a empezar</button>
       {/if}
       {#if item.tipo !== 'numerico' && item.tipo !== 'prediccion'}
-        <button type="button" class="comprobar" disabled={!listo || comprobando} onclick={comprobar} data-comprobar>
+        <!-- busy: aria-disabled, not disabled, so the focus stays on the button while it checks (QA 1.0) -->
+        <button
+          type="button"
+          class="comprobar"
+          disabled={!listo}
+          aria-disabled={comprobando ? 'true' : undefined}
+          aria-busy={comprobando ? 'true' : undefined}
+          onclick={comprobar}
+          data-comprobar
+          data-comprobando={comprobando ? '' : undefined}
+        >
           {comprobando ? 'Comprobando…' : 'Comprobar'}
         </button>
+        <span class="solo-lector" role="status" data-estado-comprobar>{comprobando ? 'Comprobando…' : ''}</span>
       {/if}
     </div>
   {:else}
@@ -219,6 +266,7 @@
         <Destello activo={recien}><span class="sello" aria-hidden="true">{#if resultado}<Check size={18} strokeWidth={3} />{:else}<X size={18} strokeWidth={3} />{/if}</span></Destello>
         <h3>{resultado ? (intento > 1 ? '¡Correcto a la segunda!' : '¡Correcto!') : item.tipo === 'prediccion' ? 'No era eso' : 'No es correcto'}</h3>
       </div>
+      {#if resultado && recien}<Seguridad item={item.id} />{/if}
       {#if !resultado && mensaje && !mensaje.startsWith('No es correcto')}<p class="sol">{mensaje}</p>{/if}
       {#each item.citas as c, i (i)}
         <blockquote data-cita>
@@ -386,6 +434,10 @@
   .comprobar:disabled {
     opacity: 0.45;
     cursor: default;
+  }
+  .comprobar[aria-busy='true'] {
+    opacity: 0.75;
+    cursor: progress;
   }
   .respuesta {
     display: flex;

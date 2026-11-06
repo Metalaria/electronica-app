@@ -7,12 +7,11 @@
   import { untrack } from 'svelte';
   import '../calculadoras/mates.css';
   import { prepararHtml } from '../../lib/datos';
-  import { comprobar as comprobarValor } from '../../lib/magnitudes';
   import { pasos } from '../calculadoras/mates';
   import PasoAPaso from '../calculadoras/PasoAPaso.svelte';
   import type { ItemNumerico, Pista } from './tipos';
   import type { Comprobacion } from './Practica.svelte';
-  import { enunciadoDe, valorTexto, variante } from './variantes';
+  import { citaConValores, comprobarPedido, enunciadoDe, pedidoDe, textoPide, variante } from './variantes';
   import { guardarSemilla, semillaDe } from './datos';
 
   let {
@@ -41,7 +40,11 @@
   const vo = untrack(() => f.vars.find((x) => x.id === item.objetivo)!);
   const sim = (id: string) => f.vars.find((x) => x.id === id)?.sim ?? id;
   const enunciado = untrack(() => (v ? enunciadoDe(item, v) : ''));
-  const correcto = v ? valorTexto(v.resultado, vo.unidad) : '';
+  // final QA 1.0: what the field asks and what is accepted, with this variant's values (the same as the exams')
+  const pedido = untrack(() => (v ? pedidoDe(item, v) : null));
+  const correcto = pedido?.texto ?? '';
+  // the field's label: what is asked (a bare symbol reads «R₂ =»; a phrase stands alone)
+  const etiquetaSimbolo = untrack(() => !item.ejercicio || !/\s/.test(item.ejercicio.pide.replace(/<[^>]+>/g, '').trim()));
 
   let escrito = $state('');
   let respondido = $state('');
@@ -56,7 +59,12 @@
     // the formula itself is the first hint: the set-up is the solved form (if any) and the substitution
     const lineas = pasos(f, item.objetivo, v.valores, v.resultado, sim).filter((p) => p.tipo === 'despeje' || p.tipo === 'sustitucion');
     pistas = [
-      { titulo: 'La fórmula del libro', ec: { svg: f.svg, w: f.w, h: f.h }, html: item.intro?.html ?? '' },
+      {
+        // (the book's paragraph may quote the book's example values, not this variant's)
+        titulo: item.intro?.html && citaConValores(item.intro.html) ? 'La fórmula del libro (el párrafo usa los valores del libro)' : 'La fórmula del libro',
+        ec: { svg: f.svg, w: f.w, h: f.h },
+        html: item.intro?.html ?? '',
+      },
       {
         titulo: 'El planteamiento',
         html: lineas.map((p) => `<div class="p10-linea"><span class="p10-nota">${p.nota ?? ''}</span><span class="mate">${p.html}</span></div>`).join(''),
@@ -65,8 +73,8 @@
   });
 
   export function comprobar(): Comprobacion {
-    if (!v) return { bien: false, nula: true, mensaje: 'Este problema no tiene valores válidos.' };
-    const r = comprobarValor(escrito, { valor: v.resultado, unidad: vo.unidad, tol: item.tol, texto: correcto });
+    if (!v || !pedido) return { bien: false, nula: true, mensaje: 'Este problema no tiene valores válidos.' };
+    const r = comprobarPedido(escrito, pedido);
     if (r.tipo === 'vacio') return { bien: false, nula: true, mensaje: 'Escriba el resultado.' };
     if (r.tipo === 'ilegible' || r.tipo === 'unidad') return { bien: false, nula: true, mensaje: r.mensaje };
     respondido = escrito.trim();
@@ -91,19 +99,23 @@
   }
 </script>
 
-<div class="numerico" data-semilla={semilla} data-resultado={v?.resultado} data-valores={v ? JSON.stringify(v.valores) : undefined}>
-  {#if !v}
+<div class="numerico" data-semilla={semilla} data-resultado={pedido?.valor} data-valores={v ? JSON.stringify(v.valores) : undefined}>
+  {#if !v || !pedido}
     <p class="aviso">No se pudieron preparar valores para este problema.</p>
   {:else}
     {#if item.ejercicio}
       <p class="origen">Ejercicio {item.ejercicio.num} del libro, con otros valores</p>
       <div class="p10-ej" data-enunciado>{@html prepararHtml(enunciado)}</div>
-      <p class="pide">En esta variante se pide: <strong>{@html prepararHtml(item.ejercicio.pide)}</strong></p>
+      <p class="pide" data-pide>{textoPide(item)} <strong>{@html prepararHtml(pedido.nombre)}</strong></p>
     {:else}
       <h2 class="enunciado" data-enunciado>{@html prepararHtml(enunciado)}</h2>
     {/if}
     <form class="campo-num" class:ok={final && respondido && respondido === escrito.trim() && !!escrito} onsubmit={enviar}>
-      <label for={`n10-${item.id}`} class="sim">{@html vo.sim} =</label>
+      {#if etiquetaSimbolo}
+        <label for={`n10-${item.id}`} class="sim" data-etiqueta-campo>{@html item.ejercicio ? prepararHtml(pedido.nombre) : vo.sim} =</label>
+      {:else}
+        <label for={`n10-${item.id}`} class="nombre-campo" data-etiqueta-campo>{@html prepararHtml(pedido.nombre)}</label>
+      {/if}
       <input
         id={`n10-${item.id}`}
         bind:value={escrito}
@@ -124,7 +136,11 @@
         <span class="rot">La solución con estos valores</span>
         <p class="res">
           {#if respondido}Su respuesta: {respondido}{vo.unidad && !/[a-zA-ZΩµ]$/.test(respondido) ? ` ${vo.unidad}` : ''}{' · '}{/if}resultado:
-          <strong data-correcto>{correcto}</strong> (se acepta ±{Math.round(item.tol * 100)} %)
+          {#if pedido.serie}
+            <strong data-correcto>{correcto}</strong>, el valor {pedido.serie} más cercano a {pedido.calculado?.texto} (solo se acepta ese valor)
+          {:else}
+            <strong data-correcto>{correcto}</strong> (se acepta ±{Math.round(item.tol * 100)} %)
+          {/if}
         </p>
         <PasoAPaso {f} objetivo={item.objetivo} valores={v.valores} resultado={v.resultado} />
       </div>
@@ -178,6 +194,12 @@
     font-size: 21px;
     font-style: italic;
   }
+  .nombre-campo {
+    flex: 1 1 100%;
+    color: var(--tinta);
+    font-size: 16px;
+    font-weight: 600;
+  }
   .sim :global(sub) {
     font-style: normal;
     font-size: 0.7em;
@@ -196,7 +218,9 @@
   }
   input:focus {
     border-color: var(--acento);
-    outline: none;
+    /* the app's focus ring (WCAG 2.4.7 / 2.4.11; QA 1.0: a border colour alone was not enough) */
+    outline: 2px solid var(--acento);
+    outline-offset: 2px;
   }
   .unidad {
     color: var(--tinta);

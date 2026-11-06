@@ -64,7 +64,7 @@
   }
 
   export function comprobar(): Comprobacion {
-    if (asignado.some((x) => x == null)) return { bien: false, nula: true, mensaje: 'Une todas las parejas.' };
+    if (asignado.some((x) => x == null)) return { bien: false, nula: true, mensaje: 'Una todas las parejas.' };
     revisado = true;
     const bien = orden.every((k, pos) => asignado[pos] === k);
     const aciertos = orden.filter((k, pos) => asignado[pos] === k).length;

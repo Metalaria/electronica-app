@@ -17,6 +17,12 @@ export function netlistFigura(esq: Esquema, cambio: { id: string; valor: number 
   return { texto: texto + '.control\nop\n.endc\n.end\n', meta };
 }
 
+/** 1.0 (challenges): a figure schematic's netlist with several element values changed, operating point only. */
+export function netlistFiguraCon(esq: Esquema, valores: Record<string, number>): { texto: string; meta: MetaNetlist } {
+  const { texto, meta } = generarNetlist(esq, { valor: { ...valores } });
+  return { texto: texto + '.control\nop\n.endc\n.end\n', meta };
+}
+
 /**
  * A book netlist reduced to its DC operating point: the analyses, measurements and the .control block are
  * dropped, `.op` and `.options savecurrents` (device currents as @x[i] vectors) are added.

@@ -548,6 +548,7 @@ test.describe('cursos y prueba de nivel', () => {
     await expect(page.locator('[data-continuar-curso="fundamentos"]')).toHaveText(/Continuar/);
     await expect(page.locator('[data-continuar-curso="analisis"]')).toHaveText(/Empezar/);
     await page.locator('[data-curso-tarjeta="taller"] h2 a').click();
+    await page.locator('[data-vista="lista"]').click(); // 1.0: a course opens as a path; these checks use the list view
     await expect(page.locator('[data-curso="taller"] [data-capitulo]')).toHaveCount(8);
     // chapter titles come from the content (cap15 is printed «Capítulo 14»)
     await expect(page.locator('[data-capitulo="cap15"] .rot')).toHaveText('Capítulo 14');
@@ -605,6 +606,7 @@ test.describe('cursos y prueba de nivel', () => {
     await expect.poll(async () => (await leer<Libro>(page, 'progreso-xp'))?.logros['prueba-nivel']).toBeGreaterThan(0);
     // the course page tells them apart from completed lessons
     await page.locator('[data-volver-curso]').click();
+    await page.locator('[data-vista="lista"]').click(); // 1.0: a course opens as a path; these checks use the list view
     await expect(page.locator('[data-curso="analisis"] [data-avance]')).toHaveAttribute('data-avance', `0/${n23}/${leccionesDeCurso(CURSOS[1]!, INDICE).length}`);
     await page.locator('[data-capitulo="cap23"] .cab-cap').click();
     await expect(page.locator('[data-capitulo="cap23"] [data-estado="superada"]')).toHaveCount(n23);
@@ -829,6 +831,7 @@ test.describe('capturas', () => {
         await page.waitForTimeout(300);
         await foto('cursos');
         await page.goto('#/cursos/analisis');
+        await page.locator('[data-vista="lista"]').click(); // 1.0: a course opens as a path; these checks use the list view
         await expect(page.locator('[data-capitulo="cap23"] .lecciones')).toBeVisible();
         await page.locator('[data-capitulo="cap23"]').scrollIntoViewIfNeeded();
         await page.waitForTimeout(300);

@@ -34,7 +34,7 @@
   }
 
   export function comprobar(): Comprobacion {
-    if (colocados.length < n) return { bien: false, nula: true, mensaje: 'Coloca todos los pasos.' };
+    if (colocados.length < n) return { bien: false, nula: true, mensaje: 'Coloque todos los pasos.' };
     revisado = true;
     const bien = colocados.every((k, i) => k === i);
     const aciertos = colocados.filter((k, i) => k === i).length;

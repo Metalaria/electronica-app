@@ -41,6 +41,10 @@
   // 0.11: every answer is a learning event (sound, vibration, XP…); a right one celebrates.
   import { emitir, type OrigenRespuesta } from '../../lib/aprendizaje/eventos';
   import Destello from '../progreso/Destello.svelte';
+  // 1.0: what the book says about the wrong option chosen
+  import { cargarPorque, type Porque } from './porque';
+  import PorQueNo from './PorQueNo.svelte';
+  import Seguridad from './Seguridad.svelte';
 
   let {
     pregunta,
@@ -82,6 +86,22 @@
   let aviso = $state('');
   let tarjeta: HTMLElement | undefined = $state();
   let figura = $state<BFigura | null>(null);
+  /** The explanation of the wrong option on show (loaded once a wrong option is chosen). */
+  let porque = $state<Porque | null>(null);
+  const elegidaOriginal = $derived(p.tipo === 'opcion' && mostrada && !mostrada.bien && mostrada.elegida != null ? (posiciones[mostrada.elegida] ?? null) : null);
+  $effect(() => {
+    const k = elegidaOriginal;
+    const q = p;
+    porque = null;
+    if (k == null) return;
+    let vivo = true;
+    void cargarPorque(parte).then((d) => {
+      if (vivo) porque = d?.repaso[q.id]?.[String(k)] ?? null;
+    });
+    return () => {
+      vivo = false;
+    };
+  });
   /** An answer given now (not a recorded one shown again): the seal celebrates if it is right. */
   let recien = $state(false);
 
@@ -106,6 +126,10 @@
     emitir({ tipo: 'respuesta', id: p.id, clase: 'pregunta', origen, correcta: r.bien, intento: respuesta ? 2 : 1, pistas: 0, final: true, parte });
     if (!respuesta) onresponder?.(r);
     await tick();
+    // 1.0 accessibility pass: the option or field that had the focus is disabled now, so the focus fell to <body> (a
+    // keyboard user started again from the top of the page, a screen reader heard nothing): it goes to the verdict
+    const a = document.activeElement;
+    if (tarjeta && (!a || a === document.body || raiz?.contains(a))) tarjeta.focus({ preventScroll: true });
     tarjeta?.scrollIntoView({ block: 'nearest', behavior: window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 'instant' : 'smooth' });
   }
 
@@ -230,7 +254,7 @@
   {#if !mostrada}
     <p class="ayuda">{p.tipo === 'opcion' ? 'Toque una respuesta: verá al momento si es correcta y por qué.' : 'Escriba el resultado (coma o punto decimal) y compruebe: verá al momento si es correcto y por qué.'}</p>
   {:else}
-    <section class="respuesta" class:bien={mostrada.bien} bind:this={tarjeta} role="status" data-feedback={mostrada.bien ? 'bien' : 'mal'}>
+    <section class="respuesta" class:bien={mostrada.bien} bind:this={tarjeta} role="status" tabindex="-1" data-feedback={mostrada.bien ? 'bien' : 'mal'}>
       <div class="veredicto">
         <Destello activo={recien}><span class="sello" aria-hidden="true">{#if mostrada.bien}<Check size={18} strokeWidth={3} />{:else}<X size={18} strokeWidth={3} />{/if}</span></Destello>
         <h3>{mostrada.bien ? '¡Correcto!' : 'No es correcto'}</h3>
@@ -240,6 +264,8 @@
           {mostrada.texto ? `Su respuesta: ${mostrada.texto}${p.unidad ? ` ${p.unidad}` : ''} · ` : ''}el libro da <strong>{formato()}</strong>{p.tolerancia ? ` (se acepta ±${Math.round(p.tolerancia * 100)} %)` : ''}
         </p>
       {/if}
+      {#if mostrada.bien && recien && origen !== 'prueba-nivel'}<Seguridad item={p.id} />{/if}
+      {#if elegidaOriginal != null && p.tipo === 'opcion'}<PorQueNo opcion={p.opciones[elegidaOriginal] ?? ''} {porque} {parte} />{/if}
       <p class="explicacion">{@html prepararHtml(p.explicacion)}</p>
       {#if figura}
         {@const f = figura}
@@ -417,6 +443,9 @@
   }
   .campo:focus-within {
     border-color: var(--acento);
+    /* the app's focus ring (WCAG 2.4.7 / 2.4.11; QA 1.0: a border colour alone was not enough) */
+    outline: 2px solid var(--acento);
+    outline-offset: 2px;
   }
   .numero input {
     flex: 1;
