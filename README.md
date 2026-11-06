@@ -13,7 +13,7 @@ esquemas (fase 5) está en la versión 0.7.
 
 - **Navegación**: a la izquierda, un **carril de iconos** con todas las secciones de la aplicación por orden de
   uso (Inicio, Libro, Buscar, Simulador, Calculadoras, Ejercicios, Repaso, Componentes, Conceptos, Instrumentos, Kit
-  FM7303, Consolas, Proyectos KiCad, Glosario, Marcadores; el logotipo también lleva a Inicio), cada una con su nombre debajo y la marca de
+  FM7303, Consolas, Proyectos KiCad, Glosario, Marcadores y, desde la 1.0, Modo docente y Guía de uso; el logotipo también lleva a Inicio), cada una con su nombre debajo y la marca de
   la actual; si la ventana es baja, las últimas pasan a «Más». Junto al carril, el **índice del libro**: tomos
   plegables con su barra de lectura → capítulos con su anillo → secciones, con la sección que se lee resaltada y
   siempre a la vista (botón «Ir a la sección actual» si se ha desplazado el índice), las leídas marcadas y un
@@ -134,6 +134,10 @@ esquemas (fase 5) está en la versión 0.7.
 - **Cursos, XP, niveles y logros** (0.11): diez cursos temáticos con su prueba de nivel, sonidos y vibración al
   acertar y fallar, celebración al terminar cada lección, XP, niveles con nombre, 28 logros y un recordatorio
   diario en Android (ver «Cursos, XP y logros» más abajo).
+- **Modo docente** (1.0): cursos y exámenes propios con las preguntas y los problemas del libro, que se hacen en la
+  aplicación (con nota y el desarrollo del libro) o se exportan a PDF, con variantes y soluciones (ver más abajo).
+- **Guía de uso** (1.0): cómo se usa cada parte de la aplicación, dentro de ella y sin conexión, con su propio buscador y
+  enlaces «¿Cómo funciona?» en unos pocos sitios (ver «Guía de uso» más abajo).
 
 ### Atajos de teclado
 
@@ -147,6 +151,74 @@ esquemas (fase 5) está en la versión 0.7.
 | `+` `-` `0` | Acercar, alejar y ajustar en el visor de figuras |
 | `Tab` (en el visor de figuras) | Recorre solo sus controles: la página de debajo queda inerte mientras está abierto |
 | `Ctrl Intro` | Guardar la nota que se está escribiendo |
+| `Tab` (al abrir cualquier página) | La primera parada es «Saltar al contenido»: `Intro` lleva al título de la página |
+| Flechas · `Intro` · `N` (en el lienzo del editor y en la protoboard) | Mover el cursor · actuar donde está (como un toque) · ir a la pieza siguiente (ver «Accesibilidad») |
+
+### Accesibilidad (1.0)
+
+La 1.0 se ha revisado entera con las pautas WCAG 2.2, nivel AA, en los tres temas (claro, sepia y oscuro), en el
+escritorio y en pantallas táctiles (teléfono de 360 px y tableta), solo con el teclado y con lector de pantalla
+(NVDA en Windows, VoiceOver en el Mac, TalkBack en Android).
+
+- **Moverse por la aplicación**: la primera pulsación de `Tab` en cualquier página muestra «Saltar al contenido». Al
+  cambiar de página (el carril, las pestañas, un enlace o un botón), el foco pasa al título de la página nueva, así que
+  el lector de pantalla la anuncia y `Tab` sigue desde arriba; en el índice del libro el foco se queda en el índice
+  mientras se recorre con las flechas. Los diálogos (confirmaciones, «Aa», búsqueda, visor de figuras) retienen el
+  foco, se cierran con `Esc` y lo devuelven a donde estaba (también la búsqueda, que antes lo dejaba en el vacío).
+- **Respuestas**: al responder una pregunta, el foco pasa al veredicto («¡Correcto!» / «No es correcto» y la
+  explicación). Al comprobar un ejercicio, una línea para el lector de pantalla resume cuántas respuestas son correctas
+  y qué falla en cada una, y cada campo queda unido a su mensaje (se vuelve a leer al volver al campo).
+  En las prácticas, «Comprobar» pasa al momento a «Comprobando…» (ocupado, sin perder el foco, también en un equipo
+  lento: en «Monte el circuito» tardaba casi medio segundo en reaccionar con la CPU frenada 4×) y el resultado se anuncia
+  siempre, aunque repita el mensaje del intento anterior.
+- **Foco visible en los campos de texto** (QA final): todos llevan el anillo de foco de la aplicación (2 px del color de
+  acento, contraste de al menos 3:1 en los tres temas), no solo un cambio de color del borde: el buscador de la guía, la
+  respuesta del problema del día y de las prácticas numéricas, la búsqueda, los filtros del índice, del glosario, de las
+  calculadoras, de la galería y del catálogo 3D, los valores de las calculadoras y el editor de netlists.
+- **Editor de esquemas y protoboard con el teclado**: el lienzo y la mesa se alcanzan con `Tab`. Al elegir con el
+  teclado una pieza de la paleta (o una carta de la bandeja de la protoboard), el foco pasa al lienzo con un cursor.
+  Las flechas lo mueven (de punto en punto de la rejilla en el editor, de agujero en agujero en la protoboard;
+  `Ctrl` + flecha, de cinco en cinco) y `Intro` hace lo mismo que un toque en ese punto: coloca la pieza, selecciona la
+  que tiene una patilla ahí, o con la herramienta Cable (`W`; en la protoboard basta un agujero libre) empieza un cable y
+  lo termina en el siguiente `Intro`. `N` y `Mayús N` eligen la pieza (o el cable) siguiente o anterior;
+  `Mayús` + flechas mueven lo elegido; `R` gira, `Supr` borra y `Esc` cancela. Cada pulsación se anuncia (dónde está el
+  cursor, qué hay ahí, qué se ha hecho).
+- **Ecuaciones y unidades**: las ecuaciones del libro (en línea y destacadas) se leen en palabras, no por su código:
+  «V sub B igual a V sub CC por R sub 2 entre R sub 1 más R sub 2», «I sub D igual a 1 entre 2 por k por V sub GS menos V
+  sub th, todo al cuadrado». Las unidades que siguen a un número se dicen enteras («4,7 kiloohmios», «10,7 megahercios»)
+  en las ecuaciones, las lecturas de las gráficas y la pantalla del multímetro.
+- **Gráficas e instrumentos**: en las gráficas, las flechas leen los valores bajo el cursor y el lector de pantalla los
+  dice. La pantalla del multímetro Brymen se lee como texto («Pantalla: 4,999 V; DC, AUTO»); su selector giratorio es un
+  control deslizante (flechas).
+- **Examen del modo docente**: el tiempo restante se puede leer en cualquier momento; el aviso hablado solo suena a la
+  mitad del tiempo, a falta de 10, 5 y 2 minutos y en el último minuto (no cada minuto).
+- **Animaciones**: con «Reducir movimiento» en el sistema, las animaciones empiezan en pausa y las transiciones son
+  instantáneas.
+- **Contraste y tamaños**: textos con contraste de al menos 4,5:1 y controles y trazos de al menos 3:1 en los tres
+  temas; el estado nunca se dice solo con el color (siempre hay texto o icono). En pantallas táctiles, cada control
+  tiene una zona de toque de al menos 44 × 44 px; todo se reorganiza sin desplazamiento lateral a 320–360 px de ancho y
+  con el texto ampliado.
+
+Lo que solo se puede comprobar en los dispositivos: TalkBack en la tableta Xiaomi Pad 6 y en el teléfono (gestos de
+exploración por toque sobre el lienzo y la protoboard, que con TalkBack se usan con doble toque), VoiceOver en el Mac
+(rotor de encabezados y de puntos de referencia) y NVDA en Windows (modo de aplicación en el lienzo, la protoboard y las
+gráficas).
+
+Pruebas: `tests/accesibilidad10-rutas.spec.ts` (axe con WCAG 2.0/2.1/2.2 A y AA y buenas prácticas, contraste incluido,
+en 79 rutas de todos los tipos, en claro, sepia y oscuro, en el escritorio y en un teléfono de 360 px; además, un solo
+`main`, «Saltar al contenido», título de página, `lang="es"`, un `h1` y sin desplazamiento lateral en el teléfono) y
+`tests/accesibilidad10-unidad.spec.ts` (sin navegador: lecturas de ecuaciones y que ninguna de las ≈ 800 ecuaciones
+del libro deje código de Typst en lo que se lee), `tests/accesibilidad10-teclado.spec.ts` (solo con el teclado: saltar
+al contenido y el foco tras cambiar de ruta, los diálogos «Aa», «Buscar» y el visor de figuras,
+responder una pregunta, comprobar un ejercicio, hacer y entregar un examen con su diálogo y los avisos de tiempo, montar
+un circuito en el editor y en la protoboard, el multímetro, exportar y restaurar una copia de seguridad):
+
+```sh
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers npx playwright test -c playwright.accesibilidad10.config.ts
+```
+
+`ACC_FILTRO=<expresión>` limita las rutas, `ACC_TEMAS=claro,oscuro` los temas y `ACC_INFORME=<fichero.json>` guarda
+todo lo encontrado en vez de fallar (modo de auditoría).
 
 ## Simulador de circuitos
 
@@ -1178,6 +1250,116 @@ De los 486, **249 se comprueban solos** (601 campos) y 237 se comparan con la so
 Las respuestas las saca `contenido/ejercicios.py` de las soluciones y se revisaron una a una en
 `contenido/ejercicios_curado.txt`, que manda sobre lo automático (formato al principio del fichero).
 
+**1.0: todos los ejercicios del libro, resolubles en la aplicación.** Se revisaron los 486 (373 ejercicios y 113
+problemas; todos traen su solución en el libro) y se clasificaron: 130 ya se comprobaban enteros; 5 eran numéricos o
+simbólicos sin comprobar (prefijos de ej-0.1, pareja E12 de ej-2.9, De Morgan de ej-9.2, hexadecimal y BCD de ej-29.6,
+biestables de prob-29.B); 79 tenían una respuesta estructurada (decidir sí o no, elegir, ordenar, clasificar, tabla
+de verdad); el resto pide explicar, describir un procedimiento o diseñar. Ahora:
+
+- **300 se comprueban solos** (604 campos numéricos y **99 preguntas** en 82 ejercicios): elegir una opción, ordenar
+  los pasos con los botones ↑ ↓ (con teclado, el foco sigue al paso movido), clasificar cada elemento (también la
+  tabla de verdad de ej-9.1), una respuesta exacta («D», «0001 0011»), una expresión lógica («A + B»; se acepta
+  cualquier equivalente, y una equivalente sin simplificar es «Casi») o dos resistencias E12 en serie o en paralelo
+  (cualquier pareja válida, no solo la del libro). Todo se comprueba a la vez con «Comprobar»; cada pregunta dice
+  «Correcto», «Casi» o lo que falla («3 de 5 están en su sitio», «7,5 kΩ no es un valor de la serie E12»).
+- **Desarrollo**: cuando una pregunta queda resuelta (acertada, tras dos comprobaciones fallidas o con la solución
+  abierta) se ve la respuesta y, debajo, «Del libro» con la frase de la solución que la justifica, copiada literalmente
+  (la generación se para si no está tal cual en el libro); en las pocas donde el libro no lo dice con esas palabras,
+  «Desarrollo», comprobado por otro camino en las pruebas. Al resolver un ejercicio, o tras dos fallos, «Ver el
+  desarrollo» abre la solución completa del libro.
+- **Autoevaluación** de lo que no se puede comprobar solo (186 ejercicios enteros y la parte abierta de otros 125):
+  «Su respuesta» (opcional, hasta 4000 caracteres con su contador; se guarda en el dispositivo y se sincroniza, también
+  si se cambia de página en seguida), «Ver solución» con la lista de **lo que se pide** para marcar punto por punto, y
+  «¿Lo tenía bien? Sí / No», que cuenta para el progreso y el dominio igual que antes (nunca como acierto automático).
+- Los ejercicios de preguntas entran, como los numéricos, en la práctica inteligente, el dominio por concepto y el
+  problema del día. Fuera de los 486 quedan los cinco «Ejemplo» resueltos dentro del texto (no se plantean como
+  ejercicio) y las doce prácticas de laboratorio del capítulo 21 impreso, que se guían en Instrumentos.
+
+Pruebas 1.0: `PLAYWRIGHT_BROWSERS_PATH=… npx playwright test -c playwright.ejercicios10.config.ts` (puerto 4611,
+compilación en `/tmp/claude-0/epa-ejercicios10`): `tests/ejercicios10-contenido.spec.ts` (sin navegador; con
+`EPA_SIN_SERVIDOR=1` no compila: los 486 con enunciado, comprobación o autoevaluación y desarrollo, cada pregunta
+acepta su respuesta y rechaza otra, cada cita está en la solución, propiedades del comprobador numérico y del
+estructurado, el escritor de `valores`, «usted») y `tests/ejercicios10-navegador.spec.ts` (elección con campos,
+ordenar con teclado, tabla de verdad, expresión lógica, pareja E12 en la página «Ejercicios», autoevaluación con
+recarga y navegación, práctica inteligente, 44 px en el teléfono y axe en claro, sepia y oscuro).
+
+Desde la revisión 10e, lo que se escribe en los campos y se elige en las preguntas se guarda mientras se hace (sin contar
+como intento) y vuelve al regresar al ejercicio; el veredicto solo se enseña de lo que se comprobó. Se aceptan también
+las grafías equivalentes de una unidad («0,165 m» o «16,5 cm» para mm, «960 g» para kg, «31 °C/W» para K/W, «38,5 mS»
+para mA/V, «R33», «5 V.», «- 6 dB»), y las mayúsculas cuentan donde cambian la unidad («4,7 mS» no vale por 4,7 ms). Un
+ejercicio autoevaluado dice «Autoevaluado: lo tenía bien» (o «no lo tenía bien»). «Practicar con otros valores» ya no
+saca variantes fuera del régimen del enunciado (transistor cortado o saturado, rizado de 40 Hz con onda completa a 50 Hz,
+emisoras fuera de la banda de FM, LED azul a 60 mA…): pruebas `tests/ejercicios10-r10e.spec.ts`.
+
+Revisión 10g: un borrador escrito en un dispositivo que aún no tenía el ejercicio ya no deshace, al sincronizar, el
+«resuelto» de otro; lo escrito sin comprobar nunca vuelve con veredicto, tampoco tras «Reiniciar» o si otro dispositivo
+comprobó entretanto (revisión 10j: un ejercicio resuelto en un dispositivo sigue resuelto aunque otro, que aún no lo
+sabía, falle después una comprobación —una autoevaluación «No» posterior sí lo deshace—; «Ocultar/Ver solución» de un
+problema se conserva al sincronizar y gana el último pulsado; un intento fallado tras un «Reiniciar» que ese dispositivo no
+había visto cuenta como «fallado», y la XP de un ejercicio nunca es mayor que la que dio el dispositivo que lo resolvió); se leen «10⁴», «10^4» y «10⁻³ A», y horas, minutos y segundos o m², cm² y mm² se convierten entre
+sí; los enunciados que escribe la aplicación dicen «Calcule…». Si el problema del día guardado es un ejercicio que una
+corrección retiró (prob-6.C en la 10e) y aún no se había respondido, se elige otro; respondido, se conserva su
+resultado. Al haber cambiado los valores posibles de algunos ejercicios, «La solución de ayer» de un problema elegido con
+la 0.12 puede enseñar otros valores que los que se vieron entonces. Pruebas: `tests/ejercicios10-r10g.spec.ts` (incluye
+los casos e10 del motor real).
+
+Revisión 10i: se acepta el prefijo femto («744 fF», como lo escribe la propia aplicación; «2,2 f» solo es femto, los
+faradios se escriben «F»). En «Practicar con otros valores», el problema del día y los exámenes del modo docente, el
+resultado esperado se calcula con los datos tal como se muestran (tres cifras): antes, una tensión térmica escrita
+25,9 mV pero usada como 25,85 mV daba un 4 % de diferencia. Ya no salen variantes que repiten los valores del libro, las
+velocidades se escriben «1,8 × 10⁸ m/s» y los enunciados generados dicen «Calcule I (corriente del diodo) con estos
+datos: …». Pruebas: `tests/ejercicios10-r10i.spec.ts`.
+
+QA final de la 1.0 (variantes y examen): lo que pide cada variante («En esta variante se pide: …», y «se pide solo»
+cuando el ejercicio del libro pide más cosas) se escribe con los valores de la variante —ej-3.3 pedía «X<sub>C</sub> a
+50 Hz» con la frecuencia cambiada, prob-4.A «Rizado con 100 µH» con otra bobina— y es también la etiqueta del campo (ej-3.4
+decía «X<sub>C</sub> =» donde se pide una resistencia). Los dos ejercicios que piden un valor comercial (ej-3.4 «Elige el
+valor E12 más cercano» y ej-5.1 «Elige valores comerciales») piden ahora el valor E12 más cercano a la resistencia
+calculada y solo aceptan ese valor (el calculado queda en «Cerca»: «Ese es el valor calculado; se pide el valor E12 más
+cercano a él»); antes se corregía la resistencia calculada al 2 % y el E12 correcto se quedaba en «Cerca». La primera
+pista avisa cuando el párrafo del libro que cita usa los valores del libro. En el modo docente cada variante dice lo
+mismo que la práctica, en pantalla y en el PDF (y las soluciones, «2,2 kΩ (el valor E12 más cercano a 2,26 kΩ)»), y
+«Solo lo que la aplicación corrige sola» deja fuera los 125 ejercicios que también piden explicar o diseñar (quedan
+175; en la lista salen como «En parte autoevaluado»). Un ejercicio de ordenar (ej-11.5) comprobado sin mover nada dice
+«Ordene los elementos con las flechas antes de comprobar.» (y cualquier «Comprobar» sin nada que comprobar lo dice en
+pantalla). Pruebas: `tests/ejercicios10-qa10b.spec.ts` (sin navegador), `tests/qa10b-variantes.spec.ts` y cuatro
+casos nuevos en `tests/ejercicios10-navegador.spec.ts` (sesión con semilla 12, que saca ej-11.5).
+
+Los ejercicios autoevaluados no dan XP al resolverse: abrir la solución (que es como se autoevalúan) anula los XP del
+ejercicio, sin excepción (decisión del dueño); sí cuentan para el progreso y el dominio como siempre.
+
+**Resolver paso a paso (1.0).** En 45 ejercicios numéricos (116 pasos, todos revisados a mano uno a uno) el panel
+ofrece resolverlo por partes: tras dos comprobaciones fallidas aparece «¿Lo resolvemos por partes…?» con «Resolver
+paso a paso», y en cualquier momento hay un botón discreto con ese nombre. Cada paso es una pregunta corta con su
+propia comprobación (un valor con su unidad, prefijos y coma decimal, con la tolerancia de siempre, o elegir una
+opción), una «Pista» y, en las opciones equivocadas, «Por qué no»; acertado (o tras dos fallos, con la respuesta) se
+ve «Del libro» con la frase de la solución de la que sale, y se pasa al siguiente. El último paso es el resultado del
+ejercicio: «Ha llegado al resultado… Escriba ahora las respuestas del ejercicio y compruébelas». «Salir del paso a
+paso» vuelve al ejercicio en cualquier momento. Mientras se responde, las pistas del ejercicio (que dan resultados
+intermedios) no se ven. El paso a paso cuenta como ayuda en cuanto se usa, lo que de verdad se vio: comprobar un paso o
+ver su pista equivale a la primera pista del ejercicio (el planteamiento) y ver la respuesta de un paso o llegar al
+resultado, a las dos (los resultados intermedios); al cerrarlo, las pistas del ejercicio se ven hasta ahí. Abrirlo y
+salir sin usarlo no cuenta nada. No se guarda nada más del paso a paso. No aparece en los exámenes del modo docente (el examen
+no usa el panel de ejercicios). Los pasos salen de las soluciones del libro: `python3 contenido/pasos.py --proponer
+FICHERO` propone uno por cada cadena «X = … = valor» de la solución, se revisan y reescriben a mano en
+`contenido/pasos_curado.json` (solo se publica lo que lleva `"aprobado": true`) y `contenido/pasos.py` (lo llama
+`generar.py`) escribe `libro/pasos.json` comprobando que cada paso cita literalmente la solución, que su valor está
+escrito en la cita y que el último es una respuesta del ejercicio. Pruebas: `tests/ejercicios10-pasos.spec.ts`.
+
+**Teoría que se mueve (1.0).** Bajo 14 ecuaciones del libro, en su propia sección (divisor de tensión, ley de Ohm,
+potencia V²/R, resonancia LC, carga y descarga de un RC, reactancia capacitiva, corte de un RC, corriente de un RL,
+resistencia de un LED, resistencia serie de un Zener, polarización por divisor, ganancia del inversor y del no
+inversor), cada magnitud es un deslizador: se arrastra con el ratón o el dedo, o con el teclado (flechas, Re Pág / Av
+Pág, Inicio, Fin), y el resultado y una gráfica pequeña del resultado frente a una de ellas cambian al momento (cálculo
+puro con el motor de las calculadoras; nada se simula). Las resistencias, condensadores y bobinas recorren la serie
+E12; las tensiones de alimentación, valores redondos; y se empieza en los valores del ejemplo del libro cuando lo hay
+(12 V, 10 kΩ y 5 kΩ → 4,00 V; LED de 2,0 V a 20 mA desde 5 V → 150 Ω…). «Volver a los valores del libro» los
+restituye. En las lecciones está abierta; en el lector es un botón discreto «Mover los valores de esta fórmula».
+Lectores de pantalla: cada deslizador anuncia su valor con prefijo y unidad, y la gráfica, el punto actual. Nada se
+anima. Se eligen a mano en `contenido/teoria_viva_curado.json` (fórmula, rangos, series, valor inicial, eje de la
+gráfica) y `web/scripts/teoria10.mjs` (lo llama `generar.py`; idempotente) escribe `libro/teoria-viva.json`.
+Pruebas: `tests/ejercicios10-teoria.spec.ts`.
+
 **Página «Ejercicios»** (carril de iconos, `#/ejercicios`): todos por capítulos, con lo resuelto de cada uno, filtros
 (pendientes, fallados, resueltos; ejercicios o problemas; solo los que se comprueban solos) y cada uno se abre
 ahí mismo. **Repaso de fallados** (`#/ejercicios/repaso`) los recorre uno a uno con «Anterior» y «Siguiente».
@@ -1314,6 +1496,10 @@ y el teléfono:
 - **Progreso**: pasos hechos, último paso y lecciones completadas por sección (clave `lecciones`, sincronizada); cada
   paso y cada pregunta cuentan para el objetivo diario y la racha de la portada.
 
+1.0: el `Intro` que sigue a una respuesta numérica (dada también con `Intro`) hace continuar siempre; antes, si llegaba
+antes de que el navegador quitara el foco del campo ya desactivado, se perdía (el fallo intermitente de la lección de 5.2
+en las pruebas).
+
 Pruebas: `npx playwright test -c playwright.leccion09.config.ts tests/leccion09.spec.ts` (compilación propia,
 puerto 4311); capturas en el Mac, la tableta y el teléfono, en claro, oscuro y sepia:
 `node tests/leccion09-capturas.mjs` → `tests/capturas/lavado09/leccion/`.
@@ -1324,21 +1510,21 @@ Las lecciones «Estudiar por pasos» intercalan, tras el paso que contiene su fi
 pantallas para **practicar** (como mucho cuatro por sección, una de cada tipo), todas sacadas del libro: no hay texto
 inventado más allá de frases fijas alrededor de nombres y valores del libro.
 
-- **Predice y comprueba** (89 secciones): «Si duplicas R<sub>2</sub> (de 5 kΩ a 10 kΩ), ¿la tensión en V<sub>sal</sub>
+- **Prediga y compruebe** (89 secciones): «Si duplica R<sub>2</sub> (de 5 kΩ a 10 kΩ), ¿la tensión en V<sub>sal</sub>
   aumenta, disminuye o se queda igual?». Tras responder, la aplicación simula con su ngspice el circuito del libro
   con los dos valores y califica con lo que sale; el esquema de la figura se ve vivo con el valor nuevo (corriente y
   tensiones), o se enlaza la netlist en el simulador.
-- **Calcula** (124 secciones): problemas con **valores distintos en cada intento**, de las fórmulas de las
+- **Calcule** (124 secciones): problemas con **valores distintos en cada intento**, de las fórmulas de las
   calculadoras y de 41 ejercicios del libro que una fórmula reproduce con los datos de su enunciado (el enunciado del
   libro con los números cambiados). Valores realistas: E12 en resistencias, condensadores y bobinas, alimentaciones
   habituales, series redondas; se acepta «4,7 k», «4k7», «0,5 mA», «2,2e-3»… con la tolerancia del ejercicio (2 %
   si no dice otra).
-- **Ajusta** (32): un deslizador por los valores E12 de una resistencia hasta que una corriente o tensión llegue al
+- **Ajuste** (32): un deslizador por los valores E12 de una resistencia hasta que una corriente o tensión llegue al
   objetivo; cada posición se simula.
-- **Señala en el esquema** (66): «Toca el transistor en el esquema de la figura 21.16».
-- **Completa el montaje** (21): la protoboard de «Ver en protoboard» con un cable o una pieza de menos; se acepta
+- **Señale en el esquema** (66): «Toque el transistor en el esquema de la figura 21.16».
+- **Complete el montaje** (21): la protoboard de «Ver en protoboard» con un cable o una pieza de menos; se acepta
   cualquier arreglo que conecte como el esquema.
-- **Ordena** (15): los pasos de un procedimiento numerado del libro. **Une las parejas** (162): términos del glosario
+- **Ordene** (15): los pasos de un procedimiento numerado del libro. **Una las parejas** (162): términos del glosario
   con su definición, o símbolos con su componente.
 - Cada respuesta: **pistas en escalera** (primero la fórmula o la idea del libro, después el planteamiento con los
   números), **un segundo intento** antes de la solución, y la explicación con **el fragmento del libro** que la
@@ -1346,7 +1532,8 @@ inventado más allá de frases fijas alrededor de nombres y valores del libro.
 - La pantalla final muestra las **ideas clave** de la sección (recuadros destacados, fórmulas con «Calcular»,
   definiciones del glosario) y la siguiente lección. Cada práctica respondida cuenta para el objetivo diario como una
   pregunta de la lección.
-- En **Repaso**, «Aprender haciendo» abre por capítulo todas las prácticas generadas (619 en 60 partes); bajo los
+- En **Repaso**, «Aprender haciendo» abre por capítulo todas las prácticas generadas (662 en 60 partes desde la 1.0,
+  con los retos de la sección siguiente); bajo los
   ejercicios que lo permiten, «Practicar con otros valores».
 
 Se generan con `node web/scripts/practica10.mjs` (unos 60 s; también lo llama `contenido/generar.py` al final) en
@@ -1424,13 +1611,13 @@ teléfono, en claro y oscuro, en `tests/capturas/grupoA11/`.
   continua (25 dibujos de 20 figuras) traen debajo una fila para explorar: «Mueva R<sub>1</sub>: ¿qué le pasa a la
   tensión en V<sub>sal</sub>?», un deslizador por los valores E12 (×0,1 a ×10) y la lectura grande con el valor del
   libro y cuánto sube o baja. Qué se mueve y qué se mira sale de las prácticas del libro sobre ese mismo dibujo (el
-  componente del «Ajusta»; si solo hay un «Predice y comprueba», otro componente, para no darle la respuesta); si no
+  componente del «Ajuste»; si solo hay un «Prediga y compruebe», otro componente, para no darle la respuesta); si no
   hay, una resistencia con nombre y un nodo con etiqueta. Con varias resistencias, unas fichas permiten cambiar de
   componente. El dibujo se actualiza en su sitio (colores, cargas que circulan, lecturas) con el mismo ngspice de
   siempre; se simula 0,25 s después de soltar el dedo, solo con la figura en pantalla (un cambio hecho fuera de ella
   espera a que vuelva) y nada se mueve en reposo. Su sitio se reserva desde el principio: no empuja el texto.
   Ningún esquema simulable del libro tiene interruptores, así que no hay «accionar un interruptor».
-- **Dominio por concepto.** Cada sección del libro es un concepto (632 tienen algo que responder en la aplicación; los
+- **Dominio por concepto.** Cada sección del libro es un concepto (633 tienen algo que responder en la aplicación; los
   capítulos y los cursos suman sus secciones). Cada respuesta cuenta: a la primera y sin pistas 100 puntos, con ayuda
   60, mal 0; repetir la misma pregunta enseguida («Probar otra vez», recargar) no cuenta otra vez. El dominio sube con
   más preguntas acertadas y, sobre todo, con aciertos en días distintos, y baja poco a poco con el tiempo (nunca por
@@ -1454,7 +1641,7 @@ teléfono, en claro y oscuro, en `tests/capturas/grupoA11/`.
   un capítulo entero (`#/practicar/<capítulo>[/<sección>]`).
 - **Problema del día** (`#/problema`, tarjeta en el inicio): uno al día, el mismo todo el día y en todos los
   dispositivos, de su curso y hasta el capítulo al que ha llegado (un lector nuevo, del primer capítulo de
-  Fundamentos): un «Calcula» del libro con los valores del día, o un ejercicio autocomprobable aún sin resolver. Dos
+  Fundamentos): un «Calcule» del libro con los valores del día, o un ejercicio autocomprobable aún sin resolver. Dos
   intentos y las pistas, como cualquier práctica; resolverlo da 15 XP más, cuenta para la racha de problemas (en la
   tarjeta y en la página) y para los logros «Problema del día» y «Semana de problemas». Después se ve la solución
   paso a paso con los valores del día; «La solución de ayer» enseña la de ayer. Funciona sin conexión.
@@ -1467,6 +1654,274 @@ tests/grupoB11.spec.ts` (puerto 4461, compilación en `/tmp/epa-dist-grupoB`); c
 en claro y oscuro, en `tests/capturas/grupoB11/`. `node web/scripts/conceptos11.mjs` (lo llama `generar.py` tras las
 prácticas) escribe `libro/conceptos.json` (las secciones con algo que responder) y `libro/explorables.json` (los
 esquemas que se exploran en las lecciones).
+
+## Modo docente: cursos y exámenes propios, exportables a PDF (1.0)
+
+**Modo docente** (carril de iconos, la última entrada —en una ventana baja y en el teléfono, en «Más»—; `#/docente`):
+cursos y exámenes propios hechos solo con el contenido del libro.
+
+- **Cursos propios**: una lista ordenada de secciones del libro (cada una se estudia como lección «Estudiar por
+  pasos»), ejercicios, problemas y preguntas de test, con un título y unas notas. Se siguen como los cursos temáticos:
+  el estado de cada elemento (hecho, empezado, fallado, pendiente) sale del progreso que la aplicación ya guarda
+  (lecciones, ejercicios, respuestas), con la barra de avance y «Continuar»; los ejercicios y las preguntas se abren
+  dentro del curso, uno por pantalla, con «Anterior» y «Siguiente», y cuentan como en cualquier otra parte.
+- **Exámenes propios**: ejercicios, problemas y preguntas de test elegidos a mano o con filtros (capítulo, concepto
+  —la sección—, tipo y «solo lo que la aplicación corrige sola», sin ninguna parte autoevaluada; «Elegir al azar con estos filtros» saca los que se
+  pidan repartidos por los capítulos), con los puntos de cada uno (por defecto 1 la pregunta de test, 2 el ejercicio y
+  3 el problema), el tiempo total, **variantes** con otros valores (los 41 ejercicios que una fórmula del libro
+  reproduce, con el mismo generador de «Practicar con otros valores») y la opción de **barajar** el orden y las
+  opciones (las de «Sí / No» conservan su orden). Cada examen tiene una semilla: la variante A, B, C… sale siempre
+  igual, en la aplicación y en el PDF, en todos los dispositivos; «Generar otras variantes» cambia la semilla. El
+  libro no da una dificultad por ejercicio, así que no hay filtro de dificultad.
+- **Hacer el examen en la aplicación**: todas las preguntas en una página, el tiempo que queda a la vista (se anuncia
+  a los lectores de pantalla una vez por minuto), sin pistas ni correcciones. Lo respondido se guarda mientras tanto en
+  el dispositivo (una recarga o un «Atrás» no lo pierden); al acabarse el tiempo se entrega solo. Al entregar: la
+  nota de cada pregunta y el total, lo respondido frente a lo correcto y el desarrollo del libro de cada una (la cita de
+  las preguntas de test). Cada parte vale lo mismo: bien 1, «casi» ½ (el mismo «Casi» de los ejercicios: un prefijo de
+  más o de menos, a menos de un 10 %…), mal o en blanco 0; lo que hay que explicar se compara con el desarrollo del
+  libro y se autoevalúa («Bien», «A medias», «Mal»), y la nota se recalcula. Los resultados se guardan y se
+  sincronizan.
+- **Exportar a PDF** (sin conexión, en Windows, macOS, Android y el navegador): el **examen** (encabezado con el
+  título, la fecha —o una línea para escribirla—, «Nombre» y «Calificación», las instrucciones, cada pregunta con sus
+  puntos, sus datos y su enunciado —o el de la variante—, casillas para las opciones y espacio para responder: sin
+  espacio, unas líneas o media página), las **soluciones** (las respuestas, las citas del libro y el desarrollo del
+  libro de cada pregunta; en las variantes, la fórmula, los datos y el resultado con sus valores, y después el
+  desarrollo original) y el **índice de un curso**. El PDF se hace dentro de la aplicación, en JavaScript: el WebView
+  de Android no sabe imprimir (`window.print()` no hace nada) y la impresión del sistema daría un fichero distinto en
+  cada equipo. Texto de verdad (se puede buscar y copiar) con las fuentes de la aplicación incrustadas, y las fórmulas y
+  figuras del libro como vectores, nítidas a cualquier aumento. La misma variante da siempre el mismo fichero, byte a
+  byte. Se guarda con el diálogo del sistema (Tauri) o se descarga (navegador).
+
+Pruebas: `PLAYWRIGHT_BROWSERS_PATH=/tmp/claude-0/pwb npx playwright test -c playwright.docente10.config.ts` (puerto
+4621, compilación en `/tmp/claude-0/epa-docente10/dist`): `tests/docente10-unidad.spec.ts` (sin navegador; con
+`EPA_SIN_SERVIDOR=1` no compila: el banco y sus filtros, el montaje sembrado de cada variante, la corrección de todo el
+libro con sus propias respuestas, el PDF de todo el libro leído con pdf.js —páginas, texto de cada enunciado, fuentes
+incrustadas, ningún carácter sin glifo, todas las fórmulas—, los mismos bytes para la misma variante y la conversión de
+las 795 ecuaciones y 880 figuras) y `tests/docente10-navegador.spec.ts` (crear, hacer con recarga, entregar con el
+diálogo propio, nota por pregunta y autoevaluación; el PDF descargado igual byte a byte al hecho en Node; filtros,
+«Elegir al azar» y variantes; el tiempo que se acaba; un curso propio y su índice; editar, duplicar y borrar; la
+entrada en el carril y en «Más»; 44 px y axe en claro, sepia y oscuro). `EPA_PDF_SALIDA=<carpeta>` deja allí los PDF
+de la prueba sin navegador para mirarlos.
+
+**Arreglos de la revisión 10c.** Un examen empezado sigue con la versión con la que se empezó: cambiar el título o las
+notas, pulsar «Guardar» sin cambios (ya no guarda nada) o recibir un cambio por la sincronización no tira las respuestas;
+si cambian las preguntas, el intento sigue con las suyas y lo dice («los cambios valdrán para el próximo»), y el editor
+avisa de que hay un intento sin entregar. Un borrador de antes de este arreglo cuyo examen cambió no se descarta: espera
+a que el lector pulse «Empezar de nuevo». Una entrega que no se pudo guardar ya no queda «en memoria» como si estuviera
+guardada: el borrador solo se borra cuando el resultado está escrito en el dispositivo. Con el tiempo agotado y la
+entrega automática fallida, el reloj sigue en 0:00, las respuestas ya no se pueden cambiar y la entrega se reintenta cada
+15 s. La variante elegida va en la ruta (`#/docente/examen/<id>/hacer/<n>`, la A sin número). Los fallos al guardar en el
+editor y en la autoevaluación se dicen en la página; el editor pregunta antes de salir con cambios sin guardar por un
+enlace de la aplicación o por «Ver el informe» / «Recargar la página» del aviso de fallo (el botón Atrás del navegador no
+se puede retener); un examen o curso borrado mientras se editaba se ofrece guardar como nuevo; los borradores de exámenes
+borrados se limpian al abrir la lista. En el PDF, las notas con saltos de línea salen en líneas separadas (antes, «?»), y
+si algún carácter no está en las fuentes de la aplicación la página lo dice. La orden de Rust solo acepta los tipos
+de fichero JSON y PDF. Pruebas: `tests/docente10-revision10c.spec.ts` (9, fallan con el código de antes) y las del revisor,
+`tests/revision10c-navegador.spec.ts` y `tests/revision10c-unidad.spec.ts` (`playwright.revision10c.config.ts`).
+
+**Arreglos de la revisión 10f.** Al volver a un intento se cargan sus propias preguntas (antes, las del examen actual: una
+pregunta quitada del examen desaparecía del intento al recargar, con su respuesta), y los números de las preguntas de un
+intento ya no se mueven nunca: si alguna no se pudiera cargar, el intento no se abre (las respuestas siguen guardadas). El
+editor pregunta antes de salir con cambios sin guardar por cualquier camino: enlaces, «Libro» y demás botones del carril,
+un resultado de «Buscar», el botón Atrás del navegador o de Android, «Usar aquí» de una pestaña en pausa y «Reiniciar para
+terminar» tras una actualización (solo cerrar la ventana no se puede retener). Un intento de un examen borrado en otro
+dispositivo ya no se pierde: la lista lo ofrece en «De exámenes borrados» para terminarlo y entregarlo, junto con los
+resultados de exámenes borrados; borrar aquí un examen con un intento sin entregar lo dice en el diálogo. Si el borrador
+no se puede escribir (almacenamiento lleno), el examen lo dice. La orden de Rust pone al nombre propuesto la extensión del
+filtro (`.pdf`, `.json`). Pruebas: `tests/docente10-revision10f.spec.ts` y las del revisor, `tests/revision10f-navegador.spec.ts`
+(`playwright.revision10f.config.ts`).
+
+**Arreglos de la revisión 10h.** El examen solo empieza (y solo corre su tiempo) cuando sus preguntas están en pantalla: si
+algo no carga, lo dice con sus palabras y «Reintentar», y un intento que nunca se abrió no se entrega solo. Si no carga la
+práctica, un examen con variantes no se abre (ni se imprime) con los valores del libro. Si alguna pregunta de un intento ya
+no está en el libro, «Ver y entregar lo que hay» entrega las demás y guarda con el resultado, sin corregir, las respuestas
+de las que faltan. Con respuestas que no se han podido guardar, salir del examen pregunta antes. Los intentos de exámenes
+que ya no existen (también cuando la sincronización olvida el examen borrado, a los 90 días) siguen en «De exámenes
+borrados», con su título. «Ver el informe» con cambios sin guardar pregunta una sola vez; tras «Atrás» y «Descartar», el
+siguiente «Atrás» sí retrocede; pulsar «Atrás» varias veces deja una sola pregunta. Borrar con el almacenamiento lleno no
+borra nada y lo dice. Dos dispositivos que autoevalúan el mismo resultado se unen pregunta a pregunta (gana la
+autoevaluación más reciente de cada una; un resultado borrado sigue borrado). El tiempo del examen se cuenta con un reloj
+que no salta con el del sistema. El resultado guarda los valores de su variante y su propio límite de tiempo. Pruebas:
+`tests/docente10-revision10h.spec.ts` y las del revisor, `tests/revision10h-navegador.spec.ts` (`playwright.revision10h.config.ts`).
+
+## Más Brilliant, solo con el libro: retos, «por qué no», caminos y repaso espaciado (1.0)
+
+Cuatro piezas nuevas en las lecciones y los cursos, todas hechas con lo que dice el libro (los textos para el lector
+son frases fijas alrededor de nombres y valores del libro, o frases del libro copiadas tal cual):
+
+- **Retos con la figura** (33 en 8 capítulos: los impresos 0, 1, 2, 6, 21, 22, 44 y 52): en lugar de escribir un número se
+  mueve un valor del esquema vivo —una resistencia en valores E96 o una fuente en pasos de un 1 %— hasta que una
+  magnitud llegue al valor del libro: «Ajuste R<sub>1</sub> y R<sub>2</sub> hasta que la tensión en V<sub>sal</sub> sea
+  4 V ± 2 %. Vale cualquier combinación que lo consiga». Cada posición se simula con el ngspice de la aplicación y la
+  figura cambia en su sitio (colores, cargas que circulan, la etiqueta del valor nuevo); debajo, la lectura grande, una
+  barra con la zona del objetivo y lo lejos que está («le sobran 1,14 V sobre 4 V (+29 %). Más cerca que antes»).
+  Botones ‹ › de un paso (44 px) y el deslizador con las flechas del teclado. «Comprobar» simula lo elegido: tres
+  intentos, y cada fallo abre un peldaño más de la escalera de pistas (lo que dice el libro de la figura, hacia dónde
+  mover cada valor —sacado de la simulación—, el valor del libro). Después, el desarrollo: el ajuste elegido y lo que da,
+  de dónde sale el objetivo y los valores del libro simulados. El objetivo es el número que escribe el libro en la
+  sección (y ese párrafo es la cita) o, si no lo escribe, el valor de la simulación que guarda el libro para esa figura.
+  Los capítulos 3 y 49 (impresos 3 y 48) tienen esquemas vivos sin nada que ajustar (piezas iguales sin nombre,
+  resistencias de pull-up sin corriente); los cuatro esquemas vivos con fuentes alternas o de pulsos (figuras 21.3, 21.7,
+  21.16 y 52.11) enseñarían una constante de tiempo o un rizado, que pide medir el transitorio: quedan fuera. Ningún
+  ejercicio del libro remite a una figura viva, así que no hay retos sacados de ejercicios sobre ellas.
+- **Retos de montar el circuito** (10): los ejercicios del libro que se resuelven montando y midiendo en una
+  protoboard —ej. 1.4 (3,3 V a partir de 5 V con R<sub>1</sub> = 1 kΩ), 2.4 (divisor 12 V → 5 V con valores E12), 2.5
+  (puente de Wheatstone equilibrado), 2.8 (divisor cargado: 3,33 V), 2.6, 44.1 y 25.3 (un LED con su resistencia a 15 o
+  10 mA), 5.3 y 5.8 (regulador Zener de 5,1 V con 20 mA de carga y, en el 5.8, 10 mA por el Zener) y 6.2 (polarización
+  de un 2N3904 por divisor: corriente de colector, base y emisor)— en la lección de la sección que lo enseña. Las
+  tolerancias son las del libro (el 2,7 % de su par E12 en el 2.4, «la aproximación es buena al 10 %» en el 6.2, lo
+  que deja pasar el 220 Ω que elige en el 5.8). Quedan fuera el 5.1 (LED azul: el simulador no tiene su modelo), el 6.3
+  y el 19.2 (relé con dos alimentaciones) y el 52.7 (depende de la hFE del transistor real). La protoboard empieza vacía con la fuente del ejercicio puesta; la bandeja trae solo las piezas que hacen
+  falta; arriba, el enunciado del libro y la lista de lo que se medirá. «Comprobar» simula lo montado y **mide**: la
+  salida, la corriente por el LED, la del Zener y la carga, que las resistencias sean E12… Vale cualquier circuito que lo
+  cumpla (no se compara con un montaje dado) y cada condición dice lo que midió y qué cambiar («Por el LED pasan 30 mA y
+  el reto pide 10 mA ± 10 %: para que pase menos corriente, la resistencia en serie tiene que ser mayor», «El Zener
+  conduce en directa: está al revés»). Al final, una solución que cumple, simulada, y la solución del libro.
+  Desde las revisiones 10d y 10g se mide también **cómo** está montado lo que importa, porque con valores bien
+  elegidos un circuito equivocado puede dar la lectura pedida:
+  - **nada de más** en ningún reto: ninguna pieza directamente entre el + y el − de la fuente, ninguna con una pata al
+    aire ni con las dos en el mismo punto, y una sola fuente;
+  - los **divisores** (1.4, 2.4 y 2.8) son exactamente los del ejercicio: una resistencia del + a la salida y el resto
+    de la salida al −; en el 1.4 la de 1 kΩ es la de arriba (R<sub>1</sub>), y en el 2.8 las tres son de 10 kΩ con la
+    carga en paralelo con la de abajo (tres en serie también dan 3,33 V, que es justo el error que enseña el
+    ejercicio);
+  - el **puente** (2.5) tiene dos ramas distintas con corriente, cada una con su punto medio, y sus cuatro brazos son
+    de 1 kΩ (R<sub>4</sub> = 1 kΩ es la respuesta; solo se admite además un detector entre los puntos medios); el
+    equilibrio se pide con 5 mV, muy por debajo de los 12 mV del sensor de 1010 Ω que, como dice el ejercicio, lo rompe;
+  - los **LED** (2.6, 26.3 y 45.1): un solo LED con una sola resistencia en serie, y toda la corriente de la fuente
+    pasa por él (dos LED en serie con otra resistencia dan la misma corriente);
+  - en los **reguladores Zener** (5.3 y 5.8) la carga es **todo** lo que cuelga de la salida en paralelo con el Zener
+    (dos cargas de 270 Ω suman 38 mA; una de 20 mA hecha con 510 Ω ∥ 510 Ω o 120 Ω + 150 Ω vale), con un solo Zener;
+  - en el 6.2, la polarización por divisor del ejercicio (R<sub>1</sub> del + a la base, R<sub>2</sub> de la base al
+    −, R<sub>C</sub> y R<sub>E</sub>; una sola resistencia de base daba la misma corriente) y además V<sub>CE</sub> =
+    3,98 V ± 10 %.
+  Las pruebas recorren los diez retos con montajes tramposos: piezas de más, combinaciones en serie o paralelo que dan
+  la lectura y piezas en otra posición.
+- **Por qué no esa opción**: al elegir una opción incorrecta (preguntas de las lecciones y de Repaso, preguntas de los
+  ejercicios, «Prediga y compruebe»), antes de la explicación general, «Por qué no «…»» con la frase del libro que habla
+  de lo que dice esa opción, entre comillas y con el enlace a su sección. Las saca `web/scripts/porque10.mjs` buscando en
+  la sección de la pregunta (o en la solución del ejercicio) la frase que comparte las palabras propias de esa opción y el
+  tema del enunciado, y **cada una de sus 386 propuestas se revisó a mano**: solo se muestran las 129 que explican de
+  verdad por qué esa opción no es correcta (`contenido/porque_curado.json`, que el generador lee; una propuesta nueva o
+  cambiada no se muestra hasta revisarla). En la revisión 10d se rechazaron diez más que, sacadas de su párrafo, no
+  tienen sujeto («Eso implementa una AND cableada…») o parecen darle la razón a la opción; cinco cuyo sujeto está en la
+  frase anterior del mismo párrafo se muestran con ella (`previa`). Si el libro no da una base clara, no se inventa
+  nada: queda la explicación general. Hoy tienen frase propia 122 de las 2697 opciones incorrectas de Repaso, 3 de las 127 de los ejercicios (casi
+  todas son «Sí / No», que explica la solución) y 4 de las predicciones; en las predicciones, cada opción incorrecta se
+  explica además con los números de la simulación
+  («No disminuye: la tensión en V<sub>sal</sub> pasa de 4 V a 6 V, sube un 50 %»).
+- **Cada curso como un camino** (`#/cursos/<curso>` y los cursos propios del modo docente; «Camino» o «Lista»): las
+  lecciones son nodos redondos en zigzag, con un anillo del avance de cada una, que se abren en orden: la siguiente
+  lección se abre al completar (o superar) la anterior; en un curso propio, los ejercicios y preguntas se abren con la
+  lección que los precede. Lo ya tocado nunca se bloquea (quien leyó por delante en el libro lo conserva). En la primera
+  lección bloqueada y al empezar cada capítulo, **«Saltar hasta aquí»**: una prueba corta (cuatro preguntas del libro de
+  las lecciones que se salta, con «No lo sé»); fallando como mucho una, quedan «superadas por la prueba» —la misma marca
+  de la prueba de nivel: no dan XP, se pueden deshacer—. Desde la QA final de la 1.0 las preguntas son **solo** de las
+  lecciones que se salta (antes, si tenían pocas, se completaba con las del resto del capítulo: saltar solo la 0.1
+  preguntaba por ω, los complejos o las bobinas): si tienen menos de cuatro, la prueba es más corta y hay que acertarlas
+  todas, y si no tienen ninguna no hay prueba: una nota lo dice y «Saltar sin prueba» las marca igual (con «Deshacer»). **Repaso espaciado**: en cada lección completada, «Para repasar
+  hoy» o «Repaso en 3 días», calculado con el dominio (se repasa cuando la retención baja del 70 %); el enlace abre la
+  práctica de esa sección. En el inicio, «Repaso de sus lecciones» dice cuántas tocan hoy y abre la primera. Las dos
+  cosas cambian solas con el paso del tiempo (un reloj de un minuto): lo que vence mientras la página está abierta pasa
+  a «Para repasar hoy» sin volver a abrirla; «hoy» y «mañana» son días del calendario.
+  Para lectores de pantalla y teclado el camino es una lista ordenada por capítulos: cada nodo dice su número, título,
+  estado y repaso; un nodo bloqueado no es un enlace.
+
+Nada de esto guarda datos nuevos: los retos cuentan como cualquier práctica (XP, dominio, objetivo diario), las
+lecciones saltadas van a las «superadas» de los cursos y el repaso se calcula con el dominio que ya se sincroniza (la
+única excepción es «¿Qué seguridad tiene?», más abajo, con su propio almacén).
+
+Generar: `node web/scripts/retos10.mjs` (unos 10 s; añade los retos a `libro/practica/`) y `node
+web/scripts/porque10.mjs` (unos 3 s; escribe `libro/porque/`), tras `practica10.mjs` y antes de `conceptos11.mjs`;
+`contenido/generar.py` los llama en ese orden. **Cadena idempotente** (QA final de la 1.0): cada paso de practica10 →
+retos10 → averias10 → porque10 → teoria10 → conceptos11 reescribe solo lo suyo y deja cada `practica/<parte>.json` en
+un único orden (lo de practica10, luego retos y montajes, luego averías), así que repetir cualquier paso suelto deja
+todo exactamente igual que la cadena entera (antes, repetir retos10 tras averias10 ponía las averías delante en ocho
+capítulos; y practica10 conserva ahora los retos y averías que ya hubiera). `EPA_LIBRO=<carpeta>` hace que los
+generadores trabajen sobre una copia del libro (lo usan las pruebas; `tests/brilliant10-cadena.spec.ts` corre la cadena,
+luego cada paso suelto, y compara byte a byte). **Lo que muestran las figuras** de retos y averías
+(`src/componentes/practica/encuadre.ts`): el recorte se ciñe al esquema y a sus rótulos, deja fuera las notas, gráficas
+y otros dibujos que tocaban su borde, y tapa con el color de la placa los textos que aún cortaría y las anotaciones del
+libro —lecturas, corrientes, resultados—: en un reto darían la respuesta (en la 0.2 se veía «I₁ = 2 A») y en una avería
+mostrarían los valores del circuito sano (1,52 V, 3,34 V… en la 1.3); en una avería las medidas salen solo del
+polímetro. `tests/brilliant10-encuadre.spec.ts` comprueba en todas que ningún texto queda cortado sin tapar ni ninguna
+anotación de color a la vista. Pruebas: `PLAYWRIGHT_BROWSERS_PATH=/tmp/claude-0/pwb npx playwright test
+-c playwright.brilliant10.config.ts` (puerto 4631, compilación en `/tmp/claude-0/epa-brilliant10/dist`):
+`tests/brilliant10-contenido.spec.ts` (sin navegador; con `EPA_SIN_SERVIDOR=1` no compila: cada reto con su cita en el
+libro, su objetivo alcanzado con los valores del libro y no desde el principio, y la pista «hacia dónde» comprobada,
+simulando en Node; cada reto de montar con sus números en el enunciado del libro y su referencia que cumple; soluciones
+distintas aceptadas y circuitos mal explicados; cada opción incorrecta de Repaso, de los ejercicios y de las predicciones
+con su explicación, cada frase en el libro tal cual y solo las revisadas y aprobadas; las reglas del camino y del repaso) y
+`tests/brilliant10-navegador.spec.ts` (un reto solo con el teclado, un montaje mal y luego bien, la opción incorrecta en
+una lección y en una predicción, el camino con «Saltar hasta aquí» y su prueba, el repaso en el camino y en el inicio, un
+curso propio, 44 px en el teléfono y axe en claro, sepia y oscuro).
+
+### «Encuentre la avería» y «¿Qué seguridad tiene?» (1.0)
+
+- **Encuentre la avería** (32 casos en 13 figuras de los capítulos impresos 0, 1, 2, 6, 22, 23, 45 y 53): un circuito
+  del libro con una pieza estropeada —resistencia abierta, en cortocircuito o con un valor diez veces mayor o menor;
+  el generador admite también el diodo al revés o abierto y la unión base-emisor del transistor abierta, pero en los
+  dibujos de hoy ninguno de esos casos sale sin ambigüedad (en continua, un diodo al revés se lee igual que uno
+  abierto) y se descartan—. Con un **polímetro virtual** se mide la tensión entre dos puntos marcados en la figura
+  (punta roja y negra; tocar un punto mueve la roja) o la corriente por una rama; las lecturas salen de simular en
+  ngspice el circuito **con la avería** (nunca son números escritos a mano) y se muestran como en un polímetro. Luego se
+  elige la pieza y el tipo de avería: pieza y tipo, 100 puntos; solo la pieza, 60; con más de tres medidas se restan 5
+  por cada una, y 25 por cada diagnóstico fallido antes del último (mínimo 20). Al final, la explicación: la avería,
+  cada medida comparada con el circuito sano —las que la delatan y aquellas en las que no se nota, sin dar por buena
+  ninguna pieza: entre los bornes de la fuente se mide lo mismo con cualquier avería— y la que más la delata. Todo con el teclado (grupos de opciones con flechas, «Medir»), etiquetas para lectores de pantalla y 44 px.
+  Salen en la práctica de su sección (como mucho una por lección), en los nodos del camino y en el repaso, y cuentan
+  como cualquier práctica. Los genera `web/scripts/averias10.mjs` (`contenido/generar.py` lo llama tras
+  `retos10.mjs`): para cada esquema vivo de continua con masa (o el borne negativo de la fuente), al menos dos piezas
+  con nombre y tres puntos que medir, prueba cada avería posible en ngspice y se queda con las **diagnosticables** (algo
+  cambia al menos 0,3 V o 10 µA y un 15 %) y **sin ambigüedad** (ninguna otra avería da las mismas lecturas); como mucho
+  tres por figura, de piezas y tipos distintos. **Cada caso se revisó a mano** en `contenido/averias_curado.json`: de
+  35 propuestas se aprobaron 32; los tres de la figura 23.6 se rechazaron porque el dibujo junta varios circuitos
+  equivalentes separados y medir entre ellos no tiene sentido. Un caso nuevo o cambiado no se publica hasta revisarlo
+  (`--revision FICHERO` escribe la lista para revisar).
+- **¿Qué seguridad tiene?**: tras acertar una pregunta (lecciones, Repaso, práctica) o resolver un ejercicio,
+  tres botones opcionales: «Lo sabía», «Dudaba», «He adivinado». No bloquean nada y, si no se tocan, no se guarda
+  nada. Cambian el repaso espaciado: «Lo sabía» (o nada) lo deja igual; «Dudaba» cuenta ese acierto como 59 puntos en
+  lugar de 100 —justo por debajo de lo que hace que un día cuente para la estabilidad—, así que el repaso llega antes
+  (más o menos a la mitad de plazo); «He adivinado» lo cuenta como 30 puntos, como un casi fallo: baja la precisión y
+  el repaso llega mucho antes. Se aplica el último toque hecho durante esa ronda o hasta 30 minutos después, pero
+  nunca uno hecho después de empezar la ronda siguiente de esa pregunta (cada toque vale para una sola ronda). Si el
+  toque no se puede guardar, lo dice («No se ha podido guardar todavía: se volverá a intentar») y se reintenta. Se guarda
+  en un almacén nuevo, `seguridad` (esquema v1), que se sincroniza: los toques de varios dispositivos y pestañas se
+  unen por su hora, nunca se pierde uno, y si dos tienen la misma hora gana el más prudente (he adivinado > dudaba >
+  lo sabía); se guardan los 12 últimos por pregunta.
+
+Pruebas: `tests/brilliant10-contenido.spec.ts` (cada caso aprobado y citado, diagnosticable y sin ambigüedad
+simulando en Node, las ediciones de la netlist y la puntuación; las reglas de unión de `seguridad`, la ventana de la
+ronda y su efecto en el repaso; el caso `b10·1` del motor real de sincronización con dos dispositivos y dos pestañas,
+`tests/motor-real/escenariosBrilliant10.ts`) y `tests/brilliant10-navegador.spec.ts` (una avería solo con el teclado,
+los botones de seguridad, 44 px y axe en los tres temas).
+
+## Guía de uso (1.0)
+
+**Guía de uso** (`#/guia`; la última entrada del carril, que en una ventana baja y en el teléfono está en «Más»; también
+en «Aa» → «Ayuda» y en el diagnóstico) explica, en español y de usted, cada parte de la aplicación: primeros pasos y
+navegación (lector, búsqueda, temas, tamaño del texto), lecciones y cursos («Saltar hasta aquí», cursos propios),
+preguntas («Por qué no», «¿Qué seguridad tenía?»), ejercicios (unidades, prefijos y coma decimal, pistas, solución,
+«Resolver paso a paso», «Practicar con otros valores», los autoevaluados no dan XP), retos de práctica (predicción, reto
+con la figura, «Monte el circuito», «Encuentre la avería»), «Teoría que se mueve» y calculadoras, simulador, editor y
+protoboard, animaciones, 3D, placas e instrumentos, repaso espaciado, problema del día, racha, XP y objetivos, modo
+docente (exámenes y cursos propios, hacer un examen, tiempo, variantes, nota y autoevaluación, PDF), datos y
+sincronización (dónde se guardan, configurar GitHub, copias de seguridad, una sola pestaña y «Usar aquí», qué pasa al
+actualizar y el consejo de la transición: sincronizar cada dispositivo justo antes de actualizarlo), actualizaciones
+(escritorio y APK de Android), diagnóstico e informe de fallos (solo en el dispositivo; cómo copiarlo), teclado y
+accesibilidad, y problemas frecuentes. Cada sección tiene sus apartados (`#/guia/<sección>/<apartado>` lleva directamente
+a uno, con el foco en su título), los enlaces «Abrir en la aplicación» y la anterior y la siguiente. «Buscar en la guía»
+filtra los apartados sin importar tildes ni mayúsculas y por el comienzo de las palabras. Enlaces «¿Cómo funciona?»: en
+la página de sincronización, en el modo docente, en cada «Encuentre la avería» y en «Repaso de sus lecciones» del inicio.
+
+El contenido está en `web/src/lib/guia/contenido.ts` (va dentro de la aplicación: no se descarga nada). **Mantenerla al
+día**: quien cambie una función o el texto de un botón actualiza la guía; `tests/guia10-contenido.spec.ts` (sin
+navegador) falla si un enlace de la guía no es una ruta de la aplicación, si un «¿Cómo funciona?» lleva a un apartado que
+no existe, si un texto entre «» de la guía ya no está en la aplicación, si una sección del carril no se nombra ni se
+enlaza en la guía o si aparece el tuteo. Pruebas: `EPA_SIN_SERVIDOR=1 PLAYWRIGHT_BROWSERS_PATH=/tmp/claude-0/pwb npx
+playwright test -c playwright.guia10.config.ts tests/guia10-contenido.spec.ts` y, con compilación propia (puerto 4721,
+`/tmp/claude-0/epa-guia10/dist`), `tests/guia10-navegador.spec.ts` (accesos, cada sección con el foco en su título, los
+enlaces directos, el buscador con teclado, 44 px en el teléfono, axe en claro, sepia y oscuro y sin conexión).
 
 ## Miniaturas en las listas (0.10)
 
@@ -1553,6 +2008,32 @@ líneas anteriores (lo que se estaba haciendo); «Copiar registro» lo copia ent
 cada pantalla visitada; cerrar una placa en 3D ya no se anota como «contexto WebGL perdido» (es la propia aplicación
 la que devuelve la memoria de la GPU) y el tamaño de la placa sale en milímetros reales.
 
+**Informe de fallos** (1.0, en el diagnóstico, tras el registro; `#/diagnostico/informe` lleva directamente a él):
+cada fallo de la aplicación en este dispositivo, con su hora, la versión, la plataforma, la pantalla, el mensaje, las
+primeras líneas de la pila y lo último que se hizo antes (las pantallas visitadas y acciones como «simulación» o
+«placa 3D: abrir»). Recoge los errores no capturados, las promesas rechazadas, los componentes que fallan (y se
+recuperan), los fallos del motor de simulación, los contextos WebGL perdidos, los problemas al leer o guardar, la
+actualización de los datos que no se pudo hacer, los errores de sincronización (no los pasajeros, como no tener red),
+las partes de la aplicación que no llegan y, en Tauri, los pánicos de la parte nativa. Si la aplicación se cierra de
+golpe mientras se usa (la tableta Android lo hace cuando falla la GPU), la siguiente vez que se abre lo anota como
+«Cierre inesperado» con lo que se estaba haciendo (en Android y en el navegador; no en la aplicación de escritorio,
+que puede cerrarse sin avisar a la página, y una pestaña que solo está ocupada unos segundos no cuenta). Se guarda solo en el dispositivo (`epa-informe-fallos`, las 40
+últimas entradas): nunca se sincroniza, no va en las copias de seguridad ni se envía a ningún sitio, y no incluye el
+token de GitHub, ni su repositorio de datos, ni su nombre de usuario en las rutas de ficheros, ni sus textos (se
+quitan antes de guardar). Desde la QA final de la 1.0, lo que usted escribe en la aplicación (respuestas, notas, textos
+de un examen, búsquedas) se recuerda **solo en memoria** mientras la página está abierta —nunca se guarda— para tapar
+como «[texto]» cualquier mensaje de error que lo repita, aunque no vaya entre comillas, sea corto o solo cite su
+principio (antes solo se tapaban los fragmentos entre comillas de más de 32 caracteres). Tras un fallo aparece abajo un aviso discreto con «Ver el
+informe»; «Copiar el informe» lo deja como texto para pegarlo en una conversación y «Borrar» lo vacía.
+
+Si una figura viva, la vista 3D de una placa, los resultados de una simulación o una página entera fallan al
+dibujarse, en su lugar aparece «No se ha podido mostrar …» con **Reintentar**, y el resto sigue funcionando; si la GPU
+retira el contexto WebGL de una placa en 3D, «Reintentar» la vuelve a montar. Si falta una parte de la aplicación
+(una copia vieja de la página después de actualizarla), se ofrece «Recargar la página». Pruebas: `EPA_SIN_SERVIDOR=1
+npx playwright test -c playwright.rendimiento10.config.ts tests/rendimiento10-unidad.spec.ts` (sin navegador) y
+`npx playwright test -c playwright.rendimiento10.config.ts tests/rendimiento10-navegador.spec.ts` (compilación propia en
+el puerto 4651).
+
 Para probar a mano otra manera de pintar las caras de las placas o la resolución fija, en la consola de
 desarrollo: `localStorage.setItem('epa-caras', 'directo' | 'trabajador' | 'franjas')` y
 `localStorage.setItem('epa-resolucion', 'fija')` (se quitan con `localStorage.removeItem(…)`). Las pruebas de
@@ -1589,6 +2070,31 @@ con el mayor de cada uno: nunca cuenta dos veces, pero puede quedarse corto (ant
 sincronizaba); «Deshacer» una respuesta ya sincronizada sigue deshecha en todos (un dispositivo con la 0.10 o la 0.11
 la sigue contando en su resumen del día); el objetivo diario y la racha, en cambio, suman lo de todos los dispositivos (0.12: cada dispositivo
 guarda su propio registro de cada día).
+
+**Paso a la 1.0 (desde la 0.12)**: la 1.0 guarda el fichero de sincronización en un formato nuevo (versión 2 del
+formato, en la misma ruta). La 0.12 no puede escribirlo: al sincronizar dice «El fichero … no se puede usar: el fichero
+tiene la versión 2 del formato; actualice la aplicación» y no toca nada; lo que se cambie en ella mientras tanto se
+queda guardado en ese dispositivo y se envía en cuanto se actualice. **Antes de actualizar cada dispositivo,
+sincronícelo**, y no responda ejercicios en un dispositivo que siga con la 0.12 cuando otro ya tenga la 1.0: la 0.12
+no guarda la hora de cada respuesta, así que al actualizarlo todas las respuestas de un ejercicio que cambió ahí
+cuentan como recientes, y una respuesta antigua puede sustituir a otra más nueva escrita en la 1.0 (o volver una
+anterior a «Reiniciar»). **No borre el fichero de GitHub ni cambie la
+ruta** aunque ese mensaje lo sugiera: las dos cosas parten la historia (un fichero nuevo es otra historia: podría
+volver algo borrado en otro dispositivo, y los dispositivos ya no se verían entre sí). La página de
+sincronización de un dispositivo con la 1.0 dice qué dispositivos faltan por actualizar. Los dispositivos con la 0.10
+o la 0.11 ya no se pueden sincronizar con la 1.0 (hay que actualizarlos; sus datos se convierten al hacerlo). Al
+abrir por primera vez la 1.0, los datos guardados se convierten a su formato (hoy solo cambia el progreso diario de
+días anteriores a la 0.12) y antes se guarda una copia de cómo estaban: en `#/sincronizacion` → «Datos anteriores a
+la actualización» se puede guardar en un fichero o restaurar. Volver a la 0.12 solo es posible en el escritorio
+(restaurar los datos anteriores y reinstalar la 0.12 encima): en Android instalar una versión anterior obliga a
+desinstalar, y eso borra los datos; y la 0.12 no puede sincronizar con el fichero de la 1.0 ni importar sus copias,
+así que lo hecho en la 1.0 no le llega. Si una conversión fallase, la
+aplicación lo dice, deja esos datos sin tocar (y no guarda cambios en ellos) y ofrece guardar los originales.
+
+**Una sola pestaña (1.0, navegador)**: la aplicación solo se usa en una pestaña a la vez. Si se abre en otra, esa dice
+«La aplicación está abierta en otra pestaña» con «Usar aquí»; al pulsarlo, la primera guarda lo pendiente, queda «en
+pausa» y deja de guardar, y la nueva continúa. Si la otra pestaña está colgada, a los pocos segundos se ofrece «Usar
+aquí de todos modos». En la aplicación instalada no hace falta (una sola ventana).
 
 **Aviso de versión nueva**: al abrir la aplicación (como mucho cada 12 horas, sin esperar y sin decir nada si
 falla o no hay red) se consulta la última publicación de `Metalaria/electronica-app`. El repositorio es público, así
@@ -1693,7 +2199,7 @@ fichero de datos. Quien prefiera dos tokens de permisos mínimos no puede: la ap
 | macOS | `~/Library/Application Support/es.gonzalomejias.electronica/lector.json` |
 | Android | almacenamiento interno de la aplicación (se borra al desinstalarla) |
 | Linux | `~/.local/share/es.gonzalomejias.electronica/lector.json` |
-| Navegador (desarrollo) | `localStorage`, claves `epa:dispositivo-local` (0.12: identificador de este dispositivo para su registro de actividad diaria; no se sincroniza), `epa:prefs`, `epa:posiciones`, `epa:marcadores`, `epa:notas`, `epa:ejercicios`, `epa:leidas`, `epa:deducciones`, `epa:calc-favoritos`, `epa:repaso-tarjetas`, `epa:repaso-diario`, `epa:repaso-ajustes`, `epa:repaso-tests`, `epa:repaso-fallos`, `epa:repaso-examenes`, `epa:progreso-diario`, `epa:progreso-objetivo`, `epa:progreso-xp`, `epa:cursos`, `epa:dominio`, `epa:problema-dia`, `epa:editor-circuitos`, `epa:protoboard-circuitos`, `epa:protoboard-recorrido`, `epa:protoboard-leccion`, `epa:medir-pista`, `epa:sinc-ajustes`, `epa:sinc-estado`, `epa:sinc-marcas`, `epa:sinc-version` y, aparte, `epa-credencial:github` (el token) |
+| Navegador (desarrollo) | `localStorage`, claves `epa:dispositivo-local` (0.12: identificador de este dispositivo para su registro de actividad diaria; no se sincroniza), `epa:prefs`, `epa:posiciones`, `epa:marcadores`, `epa:notas`, `epa:ejercicios`, `epa:leidas`, `epa:deducciones`, `epa:calc-favoritos`, `epa:repaso-tarjetas`, `epa:repaso-diario`, `epa:repaso-ajustes`, `epa:repaso-tests`, `epa:repaso-fallos`, `epa:repaso-examenes`, `epa:progreso-diario`, `epa:progreso-objetivo`, `epa:progreso-xp`, `epa:cursos`, `epa:dominio`, `epa:problema-dia`, `epa:editor-circuitos`, `epa:protoboard-circuitos`, `epa:protoboard-recorrido`, `epa:protoboard-leccion`, `epa:medir-pista`, `epa:sinc-ajustes`, `epa:sinc-estado`, `epa:sinc-marcas`, `epa:sinc-version`, `epa:docente`, `epa:docente-resultados`, `epa:esquemas` (1.0: versión del formato de cada clave; no se sincroniza) y, aparte, `epa-credencial:github` (el token) |
 
 El token de GitHub va en otro fichero de la misma carpeta, `credenciales.json`, para que copiar `lector.json` no
 lo lleve consigo. `lector.json` guarda además el estado de la sincronización (`sinc-*`: ajustes, última versión
@@ -1702,7 +2208,7 @@ sincronizada de cada elemento, horas de los cambios y borrados pendientes, últi
 El fichero `lector.json` es JSON legible: para llevar marcadores, notas y el progreso (ejercicios, secciones
 leídas, deducciones, tarjetas y tests del repaso) de un equipo a otro basta copiarlo con la aplicación cerrada. Desde
 la 0.12 es mejor la «Copia de seguridad» (página de sincronización): no arrastra el identificador del dispositivo ni
-sus ajustes y se une con lo que ya haya. La copia automática que se guarda antes de «Sustituir todo» va en
+sus ajustes y se une con lo que ya haya. Desde la 1.0, la clave `esquemas` dice en qué versión del formato está cada clave, y antes de convertir los datos a una versión nueva se guarda una copia de los originales (en IndexedDB `epa-copias` en el navegador; en la aplicación, en `copia-automatica.json`). La copia automática que se guarda antes de «Sustituir todo» va en
 `lector.json` (clave `copia-automatica`) en la aplicación y en IndexedDB (`epa-copias`) en el navegador.
 
 ## Requisitos
@@ -1845,7 +2351,7 @@ no pisa el montaje guardado ni el borrador; el problema del día resuelto en un 
 día sin resolver en otro (con GitHub simulado y, en Node, una simulación de dos dispositivos con las reglas del motor:
 convergen sin ir y venir); la unión de rondas del dominio se guarda en el acto y sobrevive a una sincronización
 interrumpida; las celebraciones posteriores a la primera se ven; un fallo al calcular los logros no deja sin XP ni rompe
-la sincronización; el problema del día prefiere un «Calcula» del curso y el capítulo al que ha llegado el lector; el
+la sincronización; el problema del día prefiere un «Calcule» del curso y el capítulo al que ha llegado el lector; el
 corte de día del dominio en los cambios de hora; el cambio de día a las 04:00 con la página abierta; los eventos de
 aprendizaje sobreviven a un fallo al cargar sus consumidores; y dos pestañas ya no se pisan los datos:
 
@@ -1903,6 +2409,26 @@ Coste por fotograma de los esquemas vivos (perfiles `mac`, `tableta`, `movil`; C
 PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers node tests/figuras-vivas.mjs --perfil mac
 ```
 
+Datos de la 1.0 (formato estable, migraciones, transición desde la 0.12, una sola pestaña activa):
+`tests/datos10.spec.ts` (puerto 4601) comprueba en Node el registro de migraciones (copia previa una sola vez,
+idempotente, una migración que falla deja el almacén intacto y bloqueado, sin sitio para la copia no se migra nada,
+datos de una versión más nueva, «Restaurar»), el fichero y las copias del formato 1 y del 3, la unión de los
+ejercicios (5000 tríos), los escenarios `t10·1–11` del motor real con la 0.12.0 sacada de git (no escribe el fichero
+nuevo, sus cambios llegan al actualizarse, la carrera con un 409, la vuelta atrás, el exceso de una 0.11 en el
+fichero, las copias entre versiones, dos pestañas al actualizar, los ejercicios en dos dispositivos, «Reiniciar»
+contra intentos viejos, la migración al arrancar, 2000 mapas de días contra la 0.12.0 y el modo docente) y 2 × 40
+pruebas al azar con un dispositivo en la 0.12.0 que se actualiza a mitad; y en el navegador el aviso de una
+migración que falla, «Datos anteriores a la actualización» y los dispositivos que faltan por actualizar.
+`tests/datos10-pestanas.spec.ts` abre dos y tres pestañas reales: la pantalla de la segunda, el relevo que guarda lo
+pendiente, que nunca escriben dos a la vez, una pestaña colgada, una cerrada de golpe, recargar, atrás y adelante, sin
+Web Locks y axe en los tres temas:
+
+```sh
+PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers npx playwright test -c playwright.datos10.config.ts tests/datos10.spec.ts tests/datos10-pestanas.spec.ts
+node --experimental-transform-types --no-warnings --import ./tests/motor-real/registrar.mjs tests/motor-real/correr.ts casos t10
+node --experimental-transform-types --no-warnings tests/actualizacion/escenario.ts [tauri] [0.11.0|0.10.1]   # de la 0.12.0 (por defecto) a la 1.0 y vuelta
+```
+
 Datos de la 0.12 (copia de seguridad y suma diaria entre dispositivos): `tests/datos12.spec.ts` (puerto 4521)
 comprueba en Node que la unión de los registros por dispositivo es conmutativa, asociativa e idempotente y que el día
 suma cada dispositivo una vez (3000 casos al azar), la regla de los días de la 0.11, el plan de importación (2000
@@ -1937,8 +2463,7 @@ importado o sincronizado no lo deshace una pestaña desfasada que escribe encima
 
 ```sh
 PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers npx playwright test -c playwright.datos12.config.ts tests/datos12.spec.ts tests/datos12-pestanas.spec.ts
-node --experimental-transform-types --no-warnings --import ./tests/motor-real/registrar.mjs tests/motor-real/correr.ts azar 195 0   # (de 195 en 195: con muchas más por proceso se queda sin memoria)
-node --experimental-transform-types --no-warnings tests/actualizacion/escenario.ts [tauri] [0.11.0]
+node --experimental-transform-types --no-warnings --import ./tests/motor-real/registrar.mjs tests/motor-real/correr.ts azar 130 0   # (de 130 en 130: con muchas más por proceso se queda sin memoria; la 1.0 extrae la 0.12.0 de git)
 ```
 
 ### Pruebas de QA exhaustivas (0.11)
@@ -2872,6 +3397,8 @@ app/
         tipos.ts             tipos del contenido (ESQUEMA.md)
         datos.ts             carga del contenido, rutas de recursos, HTML de las referencias
         ruta.svelte.ts       rutas con almohadilla, historial y posición de cada entrada
+        foco-ruta.ts         1.0: el foco al título de la página tras cambiar de ruta y «Saltar al contenido»
+        habla-matematicas.ts 1.0: las ecuaciones (fuente Typst) y las unidades en palabras para lectores de pantalla
         navegacion.svelte.ts registro HERRAMIENTAS (una entrada por sección), índice oculto por vista,
                              secciones anterior/siguiente y filtro del índice
         usuario.svelte.ts    preferencias, posiciones, marcadores y notas
@@ -2936,7 +3463,8 @@ app/
   solo el fichero elegido (`tauri-plugin-dialog` y `tauri-plugin-fs` se usan solo desde Rust; la vista web no tiene
   ningún permiso `dialog:*` ni `fs:*`, porque `tauri-plugin-fs` 2.7.1 abre las URL `file://` —y en Android
   `content://`— sin mirar su ámbito, así que un permiso de escritura dejaría escribir en cualquier sitio; la lectura
-  se limita a 50 MB de texto UTF-8); solo en escritorio, la actualización
+  se limita a 50 MB de texto UTF-8; 1.0: la misma orden guarda también el PDF del modo docente, que llega en base64
+  con su tipo de fichero, y sigue sin dejar a la vista web elegir dónde se escribe); solo en escritorio, la actualización
   automática (`tauri-plugin-updater`: descarga desde github.com en el lado nativo, no desde la vista web, y verifica
   la firma minisign con la clave pública de `tauri.conf.json` antes de instalar), el reinicio
   (`tauri-plugin-process`) y una sola instancia (`tauri-plugin-single-instance`). Desde la 0.11, solo
