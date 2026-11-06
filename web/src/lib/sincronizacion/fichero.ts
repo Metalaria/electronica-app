@@ -1,4 +1,5 @@
-// Saving and opening a text file chosen by the reader (0.12: the progress backup, copia.ts).
+// Saving and opening a text file chosen by the reader (0.12: the progress backup, copia.ts); 1.0: also saving binary
+// content (the «modo docente» PDF, guardarBinario: the same command with base64 and the file type).
 // Tauri (desktop and Android): the app's own commands `guardar_fichero_elegido` / `abrir_fichero_elegido`
 // (src-tauri/src/lib.rs, module fichero) show the system's save / open dialog and write or read the chosen file in
 // Rust — on Android a content:// URI (Storage Access Framework) opened through the content resolver. The webview has
@@ -59,6 +60,52 @@ export async function guardarFichero(nombre: string, texto: string, tipo = 'appl
     return guardado ? 'guardado' : CANCELADO;
   }
   descargar(nombre, texto, tipo);
+  return 'descargado';
+}
+
+function descargarBytes(nombre: string, bytes: Uint8Array, tipo: string): void {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([bytes as Uint8Array<ArrayBuffer>], { type: tipo }));
+  a.download = nombre;
+  a.rel = 'noopener';
+  document.body.append(a);
+  a.click();
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 30_000);
+}
+
+/** Base64 of some bytes (in pieces: String.fromCharCode with a whole PDF as arguments overflows the stack). */
+export function aBase64(bytes: Uint8Array): string {
+  let s = '';
+  for (let i = 0; i < bytes.length; i += 0x8000) s += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+  return btoa(s);
+}
+
+/**
+ * 1.0 («modo docente»): saves binary content (a PDF) as a file named `nombre`, with the same rules as guardarFichero.
+ * Tauri: the same command with `base64` and the dialog's file type `filtro` [name, extensions] (desktop filter;
+ * Android: the picker's MIME type). Browser: a Blob download. Android never claims a download that did not happen.
+ */
+export async function guardarBinario(
+  nombre: string,
+  bytes: Uint8Array,
+  tipo = 'application/pdf',
+  filtro: [string, string[]] = ['Documento PDF', ['pdf']],
+): Promise<'guardado' | 'descargado' | typeof CANCELADO> {
+  if (enTauri()) {
+    let guardado: boolean;
+    try {
+      guardado = await invoke<boolean>('guardar_fichero_elegido', { nombre, texto: aBase64(bytes), base64: true, filtro });
+    } catch (e) {
+      if (!noDisponible(e)) throw new Error(String(e));
+      if (!descargaPosible()) throw new Error('Este dispositivo no permite guardar el fichero: no se ha guardado nada.');
+      console.warn('diálogo de guardar no disponible; se descarga', e);
+      descargarBytes(nombre, bytes, tipo);
+      return 'descargado';
+    }
+    return guardado ? 'guardado' : CANCELADO;
+  }
+  descargarBytes(nombre, bytes, tipo);
   return 'descargado';
 }
 

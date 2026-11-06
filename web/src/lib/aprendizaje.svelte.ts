@@ -10,12 +10,28 @@ import { Guardado, guardadoDeRegistro } from './sincronizacion/guardado';
 import { registrarActividad } from './progreso-diario.svelte';
 import { claveDia } from '../componentes/repaso/srs';
 import { emitir } from './aprendizaje/eventos';
+import { unirEjercicios } from './union-ejercicios';
+import {
+  ayudaAlResolver,
+  estadoDeBorrador,
+  estadoEjercicio,
+  limpiarValorEjercicio,
+  marcarResuelto,
+  marcarTapada,
+  MAX_TEXTO_EJERCICIO,
+  normalizarTextoEjercicio,
+  ponerValores,
+  valorComprobado,
+} from './valores-ejercicio';
+
+export { ayudaAlResolver, estadoEjercicio, MAX_TEXTO_EJERCICIO, normalizarTextoEjercicio, ponerValores, valorComprobado };
 
 export interface EstadoEjercicio {
   /** Checks with at least one readable answer (or self-assessments). */
   intentos: number;
   /** Checks that were not all correct. */
   fallos: number;
+  /** Review 10j: decided only by the solving check and the self-assessment, merged by the key `_r` of `valores`. */
   resuelto: boolean;
   /** Hints revealed (0, 1, 2). */
   pistas: number;
@@ -25,8 +41,15 @@ export interface EstadoEjercicio {
   valores?: Record<string, string>;
   /** Answer ids already right. */
   bien?: string[];
-  /** Problems: the reader hides the analysis in the book while trying. */
+  /** Problems: the reader hides the analysis in the book while trying (review 10j: merged by the key `_o` of `valores`). */
   tapada?: boolean;
+  /**
+   * 1.0: per key of `valores`, when it was last typed (ms) — two devices' answers in different fields both survive the
+   * synchronisation (lib/union-ejercicios.ts); absent: 0.
+   */
+  vt?: Record<string, number>;
+  /** 1.0: reset epoch — the time of the last «Reiniciar» (lib/union-ejercicios.ts: the newer reset wins whole). */
+  r?: number;
   t: number;
 }
 
@@ -76,6 +99,8 @@ export const guardadosAprendizaje = {
     claveSinc: 'ejercicios',
     obtener: () => aprendizaje.ejercicios,
     tiempo: (v) => (typeof v?.t === 'number' ? v.t : undefined),
+    // (1.0: two writers' versions merged field by field, as the synchronisation does in the file)
+    unir: (a, b) => unirEjercicios(a, b),
   }),
   deducciones: guardadoDeRegistro<number>({ claveAlmacen: 'deducciones', claveSinc: 'deducciones', obtener: () => aprendizaje.deducciones }),
   leidas: new Guardado<number>({
@@ -141,16 +166,16 @@ export function cargarAprendizaje(): Promise<void> {
 // ------------------------------------------------------------------ exercises
 
 export function estadoDe(label: string): Estado {
-  const e = aprendizaje.ejercicios[label];
-  if (!e) return 'pendiente';
-  if (e.resuelto) return 'resuelto';
-  return e.fallos > 0 ? 'fallado' : 'pendiente';
+  // (review 10j, r10j·3: tried and not solved is «fallado», also with `fallos` 0 — valores-ejercicio.ts)
+  return estadoEjercicio(aprendizaje.ejercicios[label]);
 }
 
 function asegurarEj(label: string): EstadoEjercicio {
   let e = aprendizaje.ejercicios[label];
   if (!e) {
-    aprendizaje.ejercicios[label] = { intentos: 0, fallos: 0, resuelto: false, pistas: 0, solucion: false, t: Date.now() };
+    // t = 0 until a real attempt sets it (registrarIntento, autoevaluar): what only a hint, the solution opened or a draft
+    // created must not decide the whole-item fields of the merge (review 10g: `resuelto` solved on another device)
+    aprendizaje.ejercicios[label] = estadoDeBorrador();
     e = aprendizaje.ejercicios[label]!;
   }
   return e;
@@ -162,10 +187,15 @@ export function registrarIntento(label: string, valores: Record<string, string>,
   const antes = e.resuelto;
   e.intentos++;
   if (!completo) e.fallos++;
-  if (completo) e.resuelto = true;
-  e.valores = valores;
+  // 1.0: merged key by key (the written answer and the checklist marks live in the same map); `_c` = when this check
+  // happened, so a draft typed later is restored without a verdict (review 10e)
+  const ahora = Date.now();
+  ponerValores(e, { ...valores, _c: String(ahora) }, ahora, true);
+  // review 10j: only the check that solves it writes «resuelto» (with its own time, key `_r`): a failed one never
+  // undoes it, here or — merged — on another device that had not received the solve (r10j·2)
+  if (completo) marcarResuelto(e, true, ahora);
   e.bien = bien;
-  e.t = Date.now();
+  e.t = ahora;
   guardar('ejercicios');
   avisarEjercicio(label, e, completo, antes);
 }
@@ -181,21 +211,45 @@ export function autoevaluar(label: string, bien: boolean): void {
   const e = asegurarEj(label);
   const antes = e.resuelto;
   e.intentos++;
-  if (bien) e.resuelto = true;
-  else {
-    e.fallos++;
-    e.resuelto = false;
-  }
-  e.t = Date.now();
+  if (!bien) e.fallos++;
+  const ahora = Date.now();
+  // review 10j: the self-assessment decides «resuelto» either way, with its own time (key `_r`)
+  marcarResuelto(e, bien, ahora);
+  e.t = ahora;
   guardar('ejercicios');
   avisarEjercicio(label, e, bien, antes);
+}
+
+/**
+ * 1.0: the reader's written answer (key «texto»), the marks of the «lo que se pide» checklist (keys «c1»…) or, since
+ * review 10e, what is being typed in a numeric field (r1…) or chosen in a structured question (p1…) of an exercise.
+ * Not an attempt: it neither counts nor changes `t` (whose newest version decides resuelto in the merge);
+ * saved through the debounced store, flushed by volcarEjercicios() when the panel goes away and when the page hides.
+ */
+export function guardarRespuestaEscrita(label: string, cambios: Record<string, string>): void {
+  const limpios: Record<string, string> = {};
+  for (const [k, x] of Object.entries(cambios)) limpios[k] = limpiarValorEjercicio(k, x);
+  const e = aprendizaje.ejercicios[label];
+  // nothing to store for an untouched exercise and an empty answer
+  if (!e && Object.values(limpios).every((x) => !x)) return;
+  // a draft never decides the item's whole-item fields: an item it creates gets t = 0, so on another device's solved
+  // version (any t) `resuelto` is not undone by the merge (review 10g, r10g·7); its keys keep their own times in `vt`
+  if (!ponerValores(asegurarEj(label), limpios)) return;
+  anotarCambio('ejercicios', label);
+  guardar('ejercicios', 800);
+}
+
+/** Writes now what is waiting in the exercises store (a panel with a written answer being closed). */
+export function volcarEjercicios(): Promise<void> {
+  return guardadosAprendizaje.ejercicios.volcar().catch(() => undefined);
 }
 
 export function usarPista(label: string, n: number): void {
   const e = asegurarEj(label);
   if (n > e.pistas) {
+    // (merged by max: it needs no newer `t`, which would make this version's `resuelto` win — review 10g)
     e.pistas = n;
-    e.t = Date.now();
+    anotarCambio('ejercicios', label);
     guardar('ejercicios');
   }
 }
@@ -203,22 +257,30 @@ export function usarPista(label: string, n: number): void {
 export function verSolucion(label: string): void {
   const e = asegurarEj(label);
   if (!e.resuelto && !e.solucion) {
+    // (merged by OR: no newer `t`, as for the hints)
     e.solucion = true;
-    e.t = Date.now();
+    anotarCambio('ejercicios', label);
     guardar('ejercicios');
   }
 }
 
 export function taparProblema(label: string, tapada: boolean): void {
   const e = asegurarEj(label);
-  e.tapada = tapada;
+  // review 10j, r10j·1: with its own time (key `_o`) — it does not move `t`, so as a whole-item field it lost to this
+  // device's own older copy in the synchronised file
+  marcarTapada(e, tapada);
   anotarCambio('ejercicios', label);
   guardar('ejercicios', 100);
 }
 
+/**
+ * «Reiniciar»: 1.0 writes an empty state with a reset epoch `r` instead of deleting the item — the merge of two
+ * versions (lib/union-ejercicios.ts) keeps the larger counters and the union of answers, so a deletion followed by a
+ * new attempt would merge with another device's older version and bring its attempts back; the newer `r` wins whole.
+ */
 export function reiniciarEjercicio(label: string): void {
-  delete aprendizaje.ejercicios[label];
-  anotarBorrado('ejercicios', label);
+  const t = Math.max(Date.now(), (aprendizaje.ejercicios[label]?.t ?? 0) + 1);
+  aprendizaje.ejercicios[label] = { intentos: 0, fallos: 0, resuelto: false, pistas: 0, solucion: false, t, r: t };
   guardar('ejercicios', 100);
 }
 

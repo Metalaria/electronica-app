@@ -19,10 +19,22 @@ for (const s of R.sincronizables()) {
   valores[s.clave] = v;
   leido[s.clave] = Object.fromEntries(Object.entries(v).map(([id, x]) => [id, huella(x)]));
 }
+// 1.0: the days as this version adds them up (the daily progress's items change with the schema migration; what the
+// reader sees must not)
+let dias: Record<string, unknown> | null = null;
+try {
+  const D = await import(`file://${raiz}/lib/progreso-diario.svelte.ts`);
+  if (typeof D.leerDias === 'function') {
+    const r = (await D.leerDias()) as Record<string, { pasos: number; preguntas: number; secciones: number; cumplido: boolean }>;
+    dias = Object.fromEntries(Object.entries(r).map(([k, d]) => [k, { pasos: d.pasos, preguntas: d.preguntas, secciones: d.secciones, cumplido: d.cumplido }]));
+  }
+} catch {
+  dias = null;
+}
 await new Promise((r) => setTimeout(r, 1500));
 const despues: Record<string, string> = {};
 for (const [k, v] of datos) despues[k] = v;
 const cambiadas = [...new Set([...Object.keys(fx), ...Object.keys(despues)])].filter((k) => fx[k] !== despues[k]);
-writeFileSync(salida, JSON.stringify({ leido, valores, escrituras: [...new Set(escrituras)], cambiadas, despues }, null, 1));
+writeFileSync(salida, JSON.stringify({ leido, valores, dias, escrituras: [...new Set(escrituras)], cambiadas, despues }, null, 1));
 console.log('escrituras', [...new Set(escrituras)].join(' ') || '(ninguna)', '| claves cambiadas', cambiadas.join(' ') || '(ninguna)');
 process.exit(0);

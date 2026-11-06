@@ -370,18 +370,24 @@ caso('r3·4 · con 409: otro dispositivo escribe entre el GET y el PUT y nada se
   assert.ok((repo.vivos('dominio').X as RegistroItem).r.some((x) => x[0] === 30 * H), 'la ronda de A tras cinco conflictos');
 });
 
-caso('r3·5 · volver a la 0.10 (reinstalar, pestaña vieja) no borra lo recreado después', async () => {
+// 1.0: this was «volver a la 0.10 (reinstalar, pestaña vieja) no borra lo recreado después», with the 0.10 engine;
+// compatibility with 0.10/0.11 clients was dropped, so the way back is now to 0.12.0 (its engine from git): its runs
+// are refused by the file of format 2 — nothing written, nothing deleted —, and once updated again it converges.
+caso('r3·5 · volver a la 0.12 (reinstalar): sus pasadas se rechazan sin tocar el fichero y no borran lo recreado después', async () => {
   const repo = nuevoRepo();
   const mk = () => [registro('marcadores', { tiempo: tiempoT }), registro('deducciones')] as Almacen[];
-  const A = await nuevoDisp('A', mk(), 0, '0.10');
-  const B = await nuevoDisp('B', mk(), 0, '0.10');
+  const A = await nuevoDisp('A', mk(), 0, '0.12');
+  const B = await nuevoDisp('B', mk(), 0, '0.12');
   A.almacen('marcadores').valores = { m1: { label: 'a', t: 1000 }, m2: { label: 'b', t: 1000 } };
   A.almacen('deducciones').valores = { d1: 3 };
   A.cambio('deducciones', 'd1', 1000);
   await pasada(A, repo, 1000);
   await pasada(B, repo, 1100);
+  igual((JSON.parse(repo.texto!) as { version: number }).version, 1, 'la 0.12 escribe el formato 1');
   await cambiarVersion(A, '0.11');
   await pasada(A, repo, 2000);
+  igual((JSON.parse(repo.texto!) as { version: number }).version, 2, 'la primera pasada de la 1.0 lo deja en el formato 2');
+  await cambiarVersion(B, '0.11');
   await pasada(B, repo, 2100);
   await pasada(A, repo, 2200);
   delete B.almacen('marcadores').valores.m1;
@@ -390,8 +396,18 @@ caso('r3·5 · volver a la 0.10 (reinstalar, pestaña vieja) no borra lo recread
   await pasada(A, repo, 3100);
   B.almacen('marcadores').valores.m1 = { label: 'a otra vez', t: 5000 };
   await pasada(B, repo, 5000);
-  await cambiarVersion(A, '0.10');
-  await pasada(A, repo, 6000);
+  await cambiarVersion(A, '0.12');
+  const texto = repo.texto;
+  const commits = repo.commits;
+  assert.equal(await pasada(A, repo, 6000), false);
+  assert.match(ultimoError, /versión 2 del formato; actualice la aplicación/);
+  igual(repo.texto, texto, 'la 0.12 no toca el fichero');
+  igual(repo.commits, commits);
+  igual(repo.vivos('marcadores').m1, { label: 'a otra vez', t: 5000 });
+  await cambiarVersion(A, '0.11');
+  await pasada(A, repo, 7000);
+  await pasada(B, repo, 7100);
+  igual(A.almacen('marcadores').valores.m1, { label: 'a otra vez', t: 5000 });
   igual(repo.vivos('marcadores').m1, { label: 'a otra vez', t: 5000 });
 });
 

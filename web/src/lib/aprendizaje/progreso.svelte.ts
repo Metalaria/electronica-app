@@ -20,7 +20,7 @@ import { anotarCambio } from '../sincronizacion/marcas';
 import { claveDia } from '../../componentes/repaso/srs';
 import { obtenerIndice } from '../datos';
 import { progresoLecciones, cargarLecciones } from '../lecciones.svelte';
-import { aprendizaje, cargarAprendizaje } from '../aprendizaje.svelte';
+import { aprendizaje, ayudaAlResolver, cargarAprendizaje } from '../aprendizaje.svelte';
 import { progresoDiario, cargarProgresoDiario, leerDias } from '../progreso-diario.svelte';
 import { estadoCursos, cargarCursos } from './cursos-estado.svelte';
 import { CURSOS, leccionesDeCurso } from './cursos';
@@ -256,7 +256,8 @@ async function reconciliar(): Promise<number> {
   for (const [id, p] of Object.entries(progresoLecciones.secciones)) if (p.c && poner(`l:${id}`, XP.leccion, p.c, true)) n++;
   for (const [label, e] of Object.entries(aprendizaje.ejercicios)) {
     if (!e.resuelto) continue;
-    const x = xpEjercicio(e);
+    // (review 10j: never more than the device that solved it gave — the help it had then, kept with the solve)
+    const x = xpEjercicio(ayudaAlResolver(e));
     if (x > 0 && poner(`e:${label}`, x, e.t, true)) n++;
   }
   for (const d of await diasCumplidos()) if (poner(`d:${d.dia}`, xpObjetivo(d.racha), d.t, true)) n++;

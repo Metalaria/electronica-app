@@ -202,6 +202,26 @@ async function elegir(dia: string): Promise<DiaProblema | null> {
 const eligiendo = new Map<string, Promise<DiaProblema | null>>();
 
 /**
+ * Whether a stored problem is still in the app's data (1.0, review 10g: a practice item removed by a content fix —
+ * cap06-num-prob-6.C in 10e — left its day unsolvable, «No se encuentra el problema…», and the streak broken).
+ * Unknown (the data could not be read) counts as present: nothing is replaced on a read error.
+ */
+export async function problemaExiste(d: DiaProblema): Promise<boolean> {
+  try {
+    if (d.k === 'practica') {
+      const { cargarPractica } = await import('../../componentes/practica/datos');
+      const datos = await cargarPractica(d.parte);
+      return !datos || datos.items.some((x) => x.id === d.id && x.tipo === 'numerico');
+    }
+    const { cargarEjercicios } = await import('../ejercicios.svelte');
+    const ej = await cargarEjercicios();
+    return !ej || !!ej.items[d.id];
+  } catch {
+    return true;
+  }
+}
+
+/**
  * Today's problem: the stored one, or chosen now and stored (so it stays the same all day). Works offline: the
  * choice reads only the app's own data files and the stored progress. Null when nothing can be chosen.
  */
@@ -210,11 +230,14 @@ export function problemaDeHoy(dia = hoy()): Promise<DiaProblema | null> {
   if (!p) {
     p = (async () => {
       await cargarProblemas();
-      if (problemas.dias[dia]) return problemas.dias[dia]!;
+      const guardado = problemas.dias[dia];
+      // a stored problem that is gone from the data and still unanswered is chosen again (the same way on every
+      // device: the choice is deterministic and the removed item is no longer a candidate); answered, it stays
+      if (guardado && (guardado.r || (await problemaExiste(guardado)))) return guardado;
       const d = await elegir(dia);
-      if (!d) return null;
+      if (!d) return guardado ?? null;
       // another device may have chosen it meanwhile (a synchronisation during the choice)
-      if (problemas.dias[dia]) return problemas.dias[dia]!;
+      if (problemas.dias[dia] && problemas.dias[dia] !== guardado) return problemas.dias[dia]!;
       problemas.dias[dia] = d;
       anotarCambio(CLAVE, dia, d.t);
       guardar();

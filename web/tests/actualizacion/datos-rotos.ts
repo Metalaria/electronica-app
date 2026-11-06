@@ -31,6 +31,9 @@ const CLAVES = [
   'progreso-xp', 'cursos', 'dominio', 'problema-dia',
   // 0.12: the device id of the per-device records (the daily activity) and the automatic backup
   'dispositivo-local', 'copia-automatica',
+  // 1.0: the schema versions (lib/migrar.ts: a damaged value is read as «0.12 data», every migration idempotent) and the
+  // backup made before the migration
+  'esquemas', 'copia-migracion',
 ];
 const v = VARIANTES[variante % VARIANTES.length];
 for (const k of CLAVES) datos.set(`epa:${k}`, JSON.stringify(v));

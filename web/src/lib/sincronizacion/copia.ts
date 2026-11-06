@@ -18,10 +18,11 @@
 
 import { obtenerAlmacen } from '../almacen';
 import { huella } from './fusion';
+import { guardarCopiaEn, leerCopiaDe } from './copia-guardada';
 import { leerToken } from './credenciales';
 import { anotarBorrado, anotarCambio, retirarMarcas, volcarMarcas } from './marcas';
 import { sincronizables } from './registro.svelte';
-import { enExclusiva, fotografiaLocal, nombreDispositivo } from './sincronizar.svelte';
+import { activos, enExclusiva, fotografiaLocal, nombreDispositivo } from './sincronizar.svelte';
 import { VERSION_APP } from './version-app';
 import {
   ErrorCopia,
@@ -41,10 +42,11 @@ import {
 export { ErrorCopia, type CopiaLeida, type ModoImportacion, type PlanAlmacen };
 
 /** Almacen key of the automatic backup made before «Sustituir todo» (only the last one). */
-export const CLAVE_COPIA_AUTOMATICA = 'copia-automatica';
+export const CLAVE_COPIA_AUTOMATICA = 'copia-automatica' as const;
 
 function conocidos(): AlmacenConocido[] {
-  return sincronizables().map((s) => ({ clave: s.clave, nombre: s.nombre, valido: s.valido, unir: s.unir, maximo: s.maximo }));
+  // (1.0: not the blocked stores — sincronizar.svelte.ts `activos`)
+  return activos().map((s) => ({ clave: s.clave, nombre: s.nombre, valido: s.valido, unir: s.unir, maximo: s.maximo }));
 }
 
 const mensaje = (e: unknown) => (e instanceof Error ? e.message : String(e));
@@ -117,75 +119,14 @@ export interface ResultadoImportacion {
 
 // ------------------------------------------------------------------ the automatic backup («Sustituir todo»)
 
-/** The app runs in Tauri (the real window, not a test's storage double). */
-const conTauri = () => typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window;
-
-/** Tauri: the automatic backup's own store file (not inside lector.json, which every autosave rewrites). */
-async function almacenCopia() {
-  const { load } = await import('@tauri-apps/plugin-store');
-  return load('copia-automatica.json', { autoSave: false, defaults: {} });
-}
-
-/**
- * Stores the automatic backup: in a browser in IndexedDB (localStorage would need as much room again as the data
- * themselves); in Tauri in its own store file, written to disk (`save`) before it counts as stored (review 0.12,
- * finding 6: inside lector.json, `set` only reached memory); else under an almacen key, flushed if the storage can.
- * Rejects if it could not be stored.
- */
+/** Stores the automatic backup (copia-guardada.ts: IndexedDB, Tauri's own store file, or an almacen key). */
 async function guardarCopiaAutomatica(nombre: string, texto: string): Promise<void> {
-  const valor = { nombre, texto, t: Date.now() };
-  const a = await obtenerAlmacen();
-  if (a.tipo === 'navegador' && typeof indexedDB !== 'undefined') {
-    await idb('readwrite', (s) => s.put(valor, CLAVE_COPIA_AUTOMATICA));
-    return;
-  }
-  if (conTauri()) {
-    const s = await almacenCopia();
-    await s.set('copia', valor);
-    await s.save();
-    return;
-  }
-  await a.escribir(CLAVE_COPIA_AUTOMATICA, valor);
-  await a.guardarYa?.();
+  await guardarCopiaEn(await obtenerAlmacen(), CLAVE_COPIA_AUTOMATICA, nombre, texto);
 }
 
 /** The last automatic backup, if any: its name, text and time. */
 export async function leerCopiaAutomatica(): Promise<{ nombre: string; texto: string; t: number } | null> {
-  const a = await obtenerAlmacen();
-  let v: unknown;
-  if (a.tipo === 'navegador' && typeof indexedDB !== 'undefined') v = await idb('readonly', (s) => s.get(CLAVE_COPIA_AUTOMATICA)).catch(() => undefined);
-  else if (conTauri()) v = await almacenCopia().then((s) => s.get('copia')).catch(() => undefined);
-  else v = await a.leer<unknown>(CLAVE_COPIA_AUTOMATICA).catch(() => undefined);
-  const x = v as { nombre?: unknown; texto?: unknown; t?: unknown } | undefined;
-  return x && typeof x.texto === 'string' && typeof x.nombre === 'string' ? { nombre: x.nombre, texto: x.texto, t: Number(x.t) || 0 } : null;
-}
-
-function idb<T>(modo: IDBTransactionMode, f: (s: IDBObjectStore) => IDBRequest): Promise<T> {
-  return new Promise((ok, mal) => {
-    const abrir = indexedDB.open('epa-copias', 1);
-    abrir.onupgradeneeded = () => abrir.result.createObjectStore('copias');
-    abrir.onerror = () => mal(abrir.error ?? new Error('IndexedDB'));
-    abrir.onsuccess = () => {
-      const db = abrir.result;
-      try {
-        const tx = db.transaction('copias', modo);
-        const r = f(tx.objectStore('copias'));
-        let valor: T;
-        r.onsuccess = () => (valor = r.result as T);
-        tx.oncomplete = () => {
-          db.close();
-          ok(valor);
-        };
-        tx.onerror = tx.onabort = () => {
-          db.close();
-          mal(tx.error ?? new Error('IndexedDB'));
-        };
-      } catch (e) {
-        db.close();
-        mal(e);
-      }
-    };
-  });
+  return leerCopiaDe(await obtenerAlmacen(), CLAVE_COPIA_AUTOMATICA);
 }
 
 // ------------------------------------------------------------------ import

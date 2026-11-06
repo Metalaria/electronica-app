@@ -29,6 +29,7 @@ import {
   totalDia,
   unirAportesPestanas,
   LEGADO,
+  absorberLegado,
   type DiaProgreso,
   type ObjetivoDiario,
 } from '../src/lib/progreso-dias';
@@ -38,6 +39,16 @@ const WEB = fileURLToPath(new URL('..', import.meta.url));
 const AXE = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
 const TOKEN = ['github', 'pat', '11PRUEBA0123456789abcdefghijklmnopqrstuvwxyz'].join('_');
 const OBJ: ObjetivoDiario = { tipo: 'pasos', cantidad: 3, secciones: true };
+/**
+ * 1.0: data an older version wrote on top of a sum (a 0.11 device's mirror) reach 1.0 only through the schema migration
+ * (lib/esquemas.ts, `absorberLegado`, the same on the device's storage, an old file and an old backup): these 0.12
+ * checks of the legacy excess are run on the migrated map — the counts must be 0.12's.
+ */
+const migrado = (m: Record<string, DiaProgreso>): Record<string, DiaProgreso> => {
+  const c = structuredClone(m);
+  absorberLegado(c);
+  return c;
+};
 
 /** mulberry32 */
 function azar(semilla: number): () => number {
@@ -116,10 +127,10 @@ test.describe('suma diaria por dispositivo (puro)', () => {
     const u = { ...x, ...y, [idAporte(DIA, 'xxxxxxxx')]: x[idAporte(DIA, 'xxxxxxxx')]! };
     expect(totalDia(agrupar(u).get(DIA)!).pasos).toBe(6);
     // an older version adds 4 on top of the mirror it saw (6): newer than every record, its excess counts
-    const viejo = { ...u, [DIA]: { ...u[DIA]!, pasos: 10, t: 5000 } };
+    const viejo = migrado({ ...u, [DIA]: { ...u[DIA]!, pasos: 10, t: 5000 } });
     expect(totalDia(agrupar(viejo).get(DIA)!).pasos).toBe(10);
-    rehacerDia(viejo, DIA, OBJ, true, 0);
     expect(viejo[idAporte(DIA, LEGADO)]!.pasos).toBe(7);
+    rehacerDia(viejo, DIA, OBJ, true, 0);
     expect(totalDia(agrupar(viejo).get(DIA)!).pasos).toBe(10);
     // a mirror of 0.12 (dated as its newest record) never adds anything
     const nuevo = { ...u, [DIA]: { ...u[DIA]!, pasos: 99, t: 1001 } };
@@ -153,7 +164,7 @@ test.describe('ronda de arreglos 1 (puro)', () => {
     expect(m[idAporte(DIA, 'aaaaaaaa~')]!.secciones).toBe(1);
     expect(totalDia(agrupar(m).get(DIA)!).secciones).toBe(2);
     // a 0.11 device that saw 3 (before the undo) adds 1: 4 on its mirror, newer than every record → 2 + 1 = 3, not 4
-    const viejo = { ...m, [DIA]: { ...m[DIA]!, secciones: 4, t: 5000 } };
+    const viejo = migrado({ ...m, [DIA]: { ...m[DIA]!, secciones: 4, t: 5000 } });
     expect(totalDia(agrupar(viejo).get(DIA)!).secciones).toBe(3);
     // an undo never goes below what this writer counted
     tocarDia(m, DIA, 'aaaaaaaa', 3000, OBJ, 'secciones', -9);
@@ -226,7 +237,7 @@ test.describe('ronda de arreglos 4 (puro)', () => {
       tocarDia(m, dia, 'x', 2000, OBJ, 'pasos', 1);
       return m;
     };
-    const total = (m: Record<string, DiaProgreso>) => totalDia(grupoDe(m, dia)).pasos;
+    const total = (m: Record<string, DiaProgreso>) => totalDia(grupoDe(migrado(m), dia)).pasos;
     // A: the 0.11 device, offline, adds a step on top of the mirror it had (2, before the undo), later in real time
     // than the undo (its mirror is the newest): 2 − 1 + 1 = 2 — what a rule taking the excess against the sum without
     // the undo records whenever the mirror is newer than them would count as 3
@@ -235,8 +246,9 @@ test.describe('ronda de arreglos 4 (puro)', () => {
     tocarDia(a, dia, 'x', 3000, OBJ, 'pasos', -1);
     a[dia] = { ...visto, pasos: visto.pasos + 1, t: Math.max(4000, visto.t + 1) };
     expect(total(a)).toBe(2);
-    // B (review 12d·3, the documented limit): the 0.11 device had seen the undo (mirror 1) and adds a step: exact
-    // would be 2; counted 1 — short, never twice — until every device runs 0.12
+    // B (review 12d·3, the limit of 0.12's rule): the 0.11 device had seen the undo (mirror 1) and adds a step: exact
+    // would be 2; counted 1 — short, never twice. 1.0 migrates such data with 0.12's rule (once), and no 0.11 device
+    // can write on top of a 1.0 file any more
     const b = base();
     tocarDia(b, dia, 'x', 3000, OBJ, 'pasos', -1);
     const e = b[dia]!;
@@ -284,7 +296,8 @@ test.describe('copia de seguridad (puro)', () => {
       ['{"formato":', /dañado o incompleto/],
       ['null', /no contiene una copia/],
       [JSON.stringify({ formato: 'x' }), /no es una copia/],
-      [JSON.stringify({ ...JSON.parse(buena), version: 2 }), /versión más nueva.*Actualice/],
+      // (1.0: format 2 is this version's; a newer one is 3)
+      [JSON.stringify({ ...JSON.parse(buena), version: 3 }), /versión más nueva.*Actualice/],
       [JSON.stringify({ ...JSON.parse(buena), version: 0 }), /versión de formato válida/],
     ];
     for (const [t, e] of casos) {
@@ -369,7 +382,8 @@ test.describe('motor real · 0.12', () => {
     const r = await correrMotor<{ nombre: string; ok: boolean; error?: string }[]>('casos', '12·');
     expect(r.length).toBeGreaterThanOrEqual(25);
     const b12 = Array.from({ length: 22 }, (_, i) => `b12·${i + 1}`);
-    for (const n of ['d12·1', 'd12·2', 'd12·3', 'd12·4', 'd12·5', 'c12·1', 'c12·2', 'c12·3', 'c12·4', 'c12·5', 'c12·6', 'c12·7', 'r12·1', 'a12·4', 'a12·5', 'a12·6', ...b12])
+    // (1.0: d12·4, a 0.11 device adding on top of the sum, was removed with the 0.10/0.11 compatibility)
+    for (const n of ['d12·1', 'd12·2', 'd12·3', 'd12·5', 'c12·1', 'c12·2', 'c12·3', 'c12·4', 'c12·5', 'c12·6', 'c12·7', 'r12·1', 'a12·4', 'a12·5', 'a12·6', ...b12])
       expect(r.some((c) => c.nombre.startsWith(n)), n).toBe(true);
     expect(r.filter((c) => !c.ok).map((c) => `${c.nombre}: ${c.error}`)).toEqual([]);
   });
@@ -388,7 +402,9 @@ test.describe('motor real · 0.12', () => {
     expect(r.filter((c) => !c.ok).map((c) => `${c.nombre}: ${c.error}`)).toEqual([]);
   });
 
-  test('escenarios de las revisiones 12d a 12i (revision12d/e/f/g/h/i.ts); d12d·3, límite documentado, como fallo esperado', async () => {
+  // (1.0: d12d·3 was a documented limit of the 0.10/0.11 compatibility, reported as an expected failure; that
+  // compatibility was dropped and the check now asserts the 1.0 rule — no limit is left)
+  test('escenarios de las revisiones 12d a 12i (revision12d/e/f/g/h/i.ts)', async () => {
     test.setTimeout(300_000);
     const guion = <T,>(f: string) =>
       new Promise<T>((ok, mal) =>
@@ -401,7 +417,7 @@ test.describe('motor real · 0.12', () => {
       );
     const d = await guion<{ problemas: string[]; limites: string[] }>('tests/motor-real/revision12d.ts');
     expect(d.problemas).toEqual([]);
-    expect(d.limites.map((x) => x.slice(0, 6))).toEqual(['d12d·3']);
+    expect(d.limites).toEqual([]);
     const e = await guion<{ nombre: string; ok: boolean; error?: string }[]>('tests/motor-real/revision12e.ts');
     expect(e.length).toBeGreaterThanOrEqual(5);
     expect(e.filter((c) => !c.ok).map((c) => `${c.nombre}: ${c.error}`)).toEqual([]);
@@ -484,7 +500,8 @@ test.describe('copia de seguridad · página de Sincronización', () => {
     expect(f.nombre).toMatch(/^electronica-copia-\d{4}-\d{2}-\d{2}-\d{4}\.json$/);
     const o = JSON.parse(f.texto) as Copia;
     expect(o.formato).toBe('epa-copia-seguridad');
-    expect(o.version).toBe(1);
+    // (1.0: format 2)
+    expect(o.version).toBe(2);
     expect(o.dispositivo).toContain('navegador');
     expect(Object.keys(o.almacenes).length).toBeGreaterThanOrEqual(22);
     expect((o.almacenes.notas!['fig:1'] as { v: { texto: string } }).v.texto).toBe('nota exportada');
@@ -639,12 +656,16 @@ test.describe('suma diaria · página de inicio', () => {
     await expect(obj).toHaveAttribute('data-hechos', '4');
     await expect(obj).toHaveClass(/cumplido/);
   });
-  test('un día guardado por la 0.11 cuenta tal cual (sin escribir nada al cargar)', async ({ page }) => {
+  // (1.0: 0.12 read such a day lazily and wrote nothing at load; 1.0's schema migration stores it once in «<day>@0» at
+  // start-up, the day item untouched — lib/migrar.ts —, and still writes no device id: nothing was counted)
+  test('un día guardado por la 0.11 cuenta tal cual (la migración lo guarda una vez en «día@0»)', async ({ page }) => {
     const viejo = JSON.stringify({ [DIA]: { pasos: 2, preguntas: 0, secciones: 0, cumplido: false, t: HOY - 9000 } });
     await abrir(page, '#/', { 'epa:progreso-diario': viejo });
     await expect(page.locator('section.objetivo')).toHaveAttribute('data-hechos', '2');
     await page.waitForTimeout(1500);
-    expect(await page.evaluate(() => localStorage.getItem('epa:progreso-diario'))).toBe(viejo);
+    const tras = JSON.parse((await page.evaluate(() => localStorage.getItem('epa:progreso-diario')))!) as Record<string, unknown>;
+    expect(tras[DIA]).toEqual(JSON.parse(viejo)[DIA]);
+    expect((tras[`${DIA}@0`] as { pasos: number }).pasos).toBe(2);
     expect(await page.evaluate(() => localStorage.getItem('epa:dispositivo-local'))).toBeNull();
   });
 });

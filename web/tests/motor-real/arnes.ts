@@ -12,7 +12,9 @@
 //   - `AlmacenG` (`guardado(…)`): a real `Guardado` (src/lib/sincronizacion/guardado.ts) per tab: the module's memory
 //     (one per tab) apart from the device's storage, edits written with read-merge-write, the synchronisation's
 //     application atomic; `globalThis.__fallaEscritura` makes the storage refuse a write.
+import { pathToFileURL } from 'node:url';
 import { escribirDoc, esLapida, leerDoc, type Coleccion, type DocSincronizacion, type Sincronizado } from '../../src/lib/sincronizacion/fusion.ts';
+import { fuenteVieja } from '../fuentes-viejas.ts';
 
 export type Valores = Record<string, unknown>;
 
@@ -20,6 +22,23 @@ const SRC = new URL('../../src/lib/sincronizacion/', import.meta.url).href;
 const LIB = new URL('../../src/lib/', import.meta.url).href;
 const tiempoT = (v: unknown) => (typeof (v as { t?: unknown })?.t === 'number' ? (v as { t: number }).t : undefined);
 const V010 = new URL('./v010/lib/sincronizacion/', import.meta.url).href;
+/**
+ * 1.0: a device still on 0.12.0 runs the engine (and the daily-progress, repaso and backup modules) of 0.12.0's own
+ * sources, extracted read-only from git (tests/fuentes-viejas.ts) — the transition from 0.12 (ESQUEMA.md).
+ * Version '0.11' in this harness means «the sources of this tree» (the name predates 0.12; kept for the scenarios).
+ */
+export type VersionMotor = '0.11' | '0.10' | '0.12';
+let raiz012: string | null = null;
+function raiz(version: VersionMotor): string {
+  if (version !== '0.12') return new URL('../../src/', import.meta.url).href;
+  if (!raiz012) {
+    const src = fuenteVieja('0.12.0');
+    if (!src) throw new Error('no se encuentra el código de la 0.12.0 en git');
+    raiz012 = pathToFileURL(src).href + '/';
+  }
+  return raiz012;
+}
+const sincDe = (v: VersionMotor) => (v === '0.10' ? V010 : raiz(v) + 'lib/sincronizacion/');
 
 // ------------------------------------------------------------------ globals of a browser page, and the clock
 const g = globalThis as Record<string, unknown> & typeof globalThis;
@@ -133,7 +152,32 @@ export interface ModRepaso {
   efectivo(d: unknown): { r: number; n: number; b: number };
 }
 
-export type Almacen = AlmacenSim | AlmacenG | AlmacenDiario | AlmacenRepaso;
+/**
+ * 1.0: a store of the app's REAL teacher-mode module (src/lib/docente/estado.svelte.ts, one per tab), registered as
+ * registro.svelte.ts does; storage key `docente` (field `propios`) or `docente-resultados` (field `resultados`). A
+ * device on 0.12 has no such module: the store is left out (0.12 does not know it).
+ */
+export interface AlmacenDocente {
+  docente: true;
+  guardado?: undefined;
+  clave: 'docente-propios' | 'docente-resultados';
+  valido?: (v: unknown) => boolean;
+}
+
+/** The real teacher-mode module of one tab (what the harness uses of it). */
+export interface ModDocente {
+  cargarDocente(): Promise<void>;
+  crearCurso(titulo: string, notas: string, curso: unknown): Promise<string>;
+  crearExamen(titulo: string, notas: string, examen: unknown): Promise<string>;
+  actualizarPropio(id: string, c: { titulo: string; notas: string; curso?: unknown; examen?: unknown }): Promise<void>;
+  borrarPropio(id: string): Promise<void>;
+  guardarResultado(r: unknown): Promise<string>;
+  docente: { propios: Record<string, Record<string, unknown>>; resultados: Record<string, Record<string, unknown>> };
+  guardadoPropios: { volcar(): Promise<void> };
+  guardadoResultados: { volcar(): Promise<void> };
+}
+
+export type Almacen = AlmacenSim | AlmacenG | AlmacenDiario | AlmacenRepaso | AlmacenDocente;
 
 /** The real progreso-diario.svelte.ts of one tab (what the harness uses of it). */
 export interface ModDiario {
@@ -181,9 +225,11 @@ export class Pestana {
   diario?: ModDiario;
   /** 0.12f: the tab's real repaso module (an `AlmacenRepaso` store). */
   repaso?: ModRepaso;
+  /** 1.0: the tab's real teacher-mode module (an `AlmacenDocente` store). */
+  docente?: ModDocente;
   /** The tab's real backup module (loaded on first use). */
   async copia(): Promise<ModCopia> {
-    return (await import(SRC + 'copia.ts' + `?d=${this.grafo}`)) as ModCopia;
+    return (await import(sincDe(this.disp.version) + 'copia.ts' + `?d=${this.grafo}`)) as ModCopia;
   }
   constructor(
     readonly disp: Disp,
@@ -211,7 +257,7 @@ export class Disp {
     public almacenes: Almacen[],
     /** Clock offset of this device (ms). */
     public desfase = 0,
-    public version: '0.11' | '0.10' = '0.11',
+    public version: VersionMotor = '0.11',
   ) {}
   get motor(): Motor {
     return this.pestanas[0]!.motor;
@@ -221,6 +267,14 @@ export class Disp {
     const s = this.almacenes.find((x) => x.clave === k);
     // (a store this device does not have: empty — the traces ask every device)
     if (!s) return { clave: k, valores: {} };
+    if ('docente' in s) {
+      const ls = almacenamiento(this);
+      const [clave, campo] = s.clave === 'docente-propios' ? ['docente', 'propios'] : ['docente-resultados', 'resultados'];
+      return { clave: k, get valores() {
+        const v = ls.get(clave);
+        return v ? ((JSON.parse(v) as Record<string, Valores>)[campo] ?? {}) : {};
+      } } as AlmacenSim;
+    }
     if (!s.guardado && !('diario' in s) && !('repaso' in s)) return s as AlmacenSim;
     const ls = almacenamiento(this);
     const clave = 'diario' in s || 'repaso' in s ? k : `g:${k}`;
@@ -278,7 +332,7 @@ function adaptador(p: Pestana, s: AlmacenSim) {
     tiempo: s.tiempo,
     valido: s.valido,
     porDefecto: s.porDefecto,
-    ...(s.unir && d.version === '0.11' ? { unir: s.unir } : {}),
+    ...(s.unir && d.version !== '0.10' ? { unir: s.unir } : {}),
     async leer() {
       contarLectura(d);
       return structuredClone(s.valores);
@@ -297,16 +351,16 @@ async function montarPestana(d: Disp, grafo: string): Promise<Pestana> {
   const p = new Pestana(d, grafo);
   pestanaDe.set(grafo, p);
   dispositivoDe.set(grafo, d.etiqueta);
-  const base = d.version === '0.10' ? V010 : SRC;
+  const base = sincDe(d.version);
   const q = `?d=${grafo}`;
   const s = await import(base + 'sincronizar.svelte.ts' + q);
   const m = await import(base + 'marcas.ts' + q);
   p.motor = { sincronizar: s.sincronizar, sinc: s.sinc, anotarCambio: m.anotarCambio, anotarBorrado: m.anotarBorrado };
-  const mg = d.version === '0.11' ? ((await import(SRC + 'guardado.ts' + q)) as ModGuardado) : null;
+  const mg = d.version !== '0.10' ? ((await import(base + 'guardado.ts' + q)) as ModGuardado) : null;
   for (const a of d.almacenes) {
     if ('repaso' in a) {
       if (!mg) throw new Error('el repaso necesita el motor de la 0.11');
-      const mr = (await import(new URL('../../src/componentes/repaso/estado.svelte.ts', import.meta.url).href + q)) as ModRepaso;
+      const mr = (await import(raiz(d.version) + 'componentes/repaso/estado.svelte.ts' + q)) as ModRepaso;
       await mr.cargarRepaso();
       p.repaso = mr;
       // as registro.svelte.ts registers them
@@ -328,9 +382,32 @@ async function montarPestana(d: Disp, grafo: string): Promise<Pestana> {
       });
       continue;
     }
+    if ('docente' in a) {
+      // (0.12 has no teacher mode: it does not know these stores)
+      if (d.version !== '0.11') continue;
+      const mdoc = (await import(LIB + 'docente/estado.svelte.ts' + q)) as ModDocente & Record<string, unknown>;
+      await mdoc.cargarDocente();
+      p.docente = mdoc;
+      const propios = a.clave === 'docente-propios';
+      const real = mg!.sincronizableGuardado(propios ? mdoc.guardadoPropios : mdoc.guardadoResultados, {
+        clave: a.clave,
+        nombre: a.clave,
+        cargar: mdoc.cargarDocente,
+        tiempo: mdoc.tiempoDocente,
+        valido: propios ? mdoc.propioValido : mdoc.resultadoValido,
+      });
+      p.sincronizables.push({
+        ...real,
+        async leer() {
+          contarLectura(d);
+          return real.leer();
+        },
+      });
+      continue;
+    }
     if ('diario' in a) {
       if (!mg) throw new Error('el progreso diario necesita el motor de la 0.11');
-      const md = (await import(LIB + 'progreso-diario.svelte.ts' + q)) as ModDiario;
+      const md = (await import(raiz(d.version) + 'lib/progreso-diario.svelte.ts' + q)) as ModDiario;
       await md.cargarProgresoDiario();
       p.diario = md;
       // as registro.svelte.ts registers it
@@ -398,7 +475,7 @@ export async function nuevoDisp(
   nombre: string,
   almacenes: Almacen[],
   desfase = 0,
-  version: '0.11' | '0.10' = '0.11',
+  version: VersionMotor = '0.11',
   /** `guardado`: the device's storage before its first tab opens (key → JSON text; data of an older version). */
   o: { tauri?: boolean; guardado?: Record<string, string> } = {},
 ): Promise<Disp> {
@@ -406,6 +483,13 @@ export async function nuevoDisp(
   d.etiqueta = `${nombre}_${++n}`;
   if (o.tauri) tauri.add(d.etiqueta);
   for (const [k, v] of Object.entries(o.guardado ?? {})) almacenamiento(d).set(k, v);
+  // (1.0: older data start as the app starts: migrated first — lib/almacen.ts runs lib/migrar.ts before any read)
+  if (o.guardado && version === '0.11') {
+    dispositivoDe.set(d.etiqueta, d.etiqueta);
+    const fa = (await import(new URL('./falsos/almacen.ts', import.meta.url).href + `?d=${d.etiqueta}`)) as { obtenerAlmacen(): Promise<unknown> };
+    const mm = (await import(LIB + 'migrar.ts' + `?d=${d.etiqueta}`)) as { migrarAlmacen(a: unknown): Promise<unknown> };
+    await mm.migrarAlmacen(await fa.obtenerAlmacen());
+  }
   await montarPestana(d, d.etiqueta);
   return d;
 }
@@ -415,11 +499,24 @@ export async function nuevaPestana(d: Disp): Promise<Pestana> {
   return montarPestana(d, `${d.etiqueta}_t${++n}`);
 }
 
-/** The same device (storage and stores) now runs another version of the engine (an update, or going back). */
-export async function cambiarVersion(d: Disp, version: '0.11' | '0.10'): Promise<void> {
+/**
+ * The same device (storage and stores) now runs another version of the engine (an update, or going back). Updating to
+ * this tree's version ('0.11') runs its schema migration on the device's storage first, as lib/almacen.ts does at
+ * start-up (lib/migrar.ts); returns its result.
+ */
+export async function cambiarVersion(d: Disp, version: VersionMotor): Promise<unknown> {
   d.version = version;
   d.pestanas = [];
-  await montarPestana(d, `${d.etiqueta}_v${++n}`);
+  const grafo = `${d.etiqueta}_v${++n}`;
+  let r: unknown;
+  if (version === '0.11') {
+    dispositivoDe.set(grafo, d.etiqueta);
+    const fa = (await import(new URL('./falsos/almacen.ts', import.meta.url).href + `?d=${grafo}`)) as { obtenerAlmacen(): Promise<unknown> };
+    const mm = (await import(LIB + 'migrar.ts' + `?d=${grafo}`)) as { migrarAlmacen(a: unknown): Promise<unknown> };
+    r = await mm.migrarAlmacen(await fa.obtenerAlmacen());
+  }
+  await montarPestana(d, grafo);
+  return r;
 }
 
 /** The storage refuses (or accepts again) writes of a key on a device (`g:<clave>` for an `AlmacenG`). */
@@ -532,7 +629,9 @@ export async function pasada(d: Disp, repo: Repo, ahoraReal: number, o: Opciones
   const motor = (o.pestana ?? d.pestanas[0]!).motor;
   const ok = await motor.sincronizar(true);
   ultimoError = ok ? '' : motor.sinc.error;
-  if (!ok && !o.interrumpir && !/cortada|reintentará|No se pudieron leer los datos locales/.test(ultimoError)) errores.push(`${d.nombre}: ${ultimoError}`);
+  // (1.0: a 0.12 device refused by a file of format 2 is expected — it must be updated —, not an error of the run)
+  const esperado = d.version === '0.12' && /actualice la aplicación/.test(ultimoError);
+  if (!ok && !o.interrumpir && !esperado && !/cortada|reintentará|No se pudieron leer los datos locales/.test(ultimoError)) errores.push(`${d.nombre}: ${ultimoError}`);
   ctx = antes.ctx;
   reloj.ahora = antes.reloj;
   repoActual = antes.repo;

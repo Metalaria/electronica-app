@@ -10,8 +10,17 @@
 // A deletion is a tombstone `{ t, x: 1 }`; tombstones older than PODA_DIAS are pruned and `podado`
 // records the horizon, so a device that still holds an unchanged copy of a pruned item can drop it.
 
+import { FORMATO_DATOS, migrarColecciones } from '../esquemas';
+
 export const FORMATO = 'epa-sincronizacion';
-export const VERSION_DOC = 1;
+/**
+ * 1: up to 0.12. 2: 1.0 (lib/esquemas.ts FORMATO_DATOS) — the same document; its stores in the 1.0 schemas. A file of
+ * version 1 is read with the migrations of lib/esquemas.ts (`leerDoc`) and written back as 2. Why a new version and the
+ * same path (ESQUEMA.md «Transition from 0.12»): 0.12.0's `leerDoc` refuses any version above 1 — «actualice la
+ * aplicación», nothing written, every run of a 0.12 device stops before its PUT, also after a 409 — so a 0.12 device
+ * can never write its older shapes over a 1.0 file, and its changes wait on it until it is updated (no loss).
+ */
+export const VERSION_DOC = FORMATO_DATOS;
 /** Tombstones are kept this long (a device offline for longer may bring a deleted item back). */
 export const PODA_DIAS = 90;
 const DIA = 86_400_000;
@@ -31,6 +40,12 @@ export interface Dispositivo {
   nombre: string;
   ultima: number;
   version: string;
+  /**
+   * 1.0: the data format this device writes (VERSION_DOC). A device without it last synchronised with an older version
+   * (0.12 never writes a file of format 2): it must be updated before it can synchronise again (the Sincronización page
+   * names it).
+   */
+  datos?: number;
 }
 
 export interface DocSincronizacion {
@@ -178,12 +193,20 @@ export function leerDoc(texto: string): DocSincronizacion {
   if (o.formato !== FORMATO) throw new Error(`el fichero no es de sincronización («formato» ≠ «${FORMATO}»)`);
   if (typeof o.version !== 'number' || o.version > VERSION_DOC)
     throw new Error(`el fichero tiene la versión ${String(o.version)} del formato; actualice la aplicación`);
-  const almacenes: Record<string, Coleccion> = {};
+  if (o.version < 1 || !Number.isInteger(o.version)) throw new Error(`el fichero tiene una versión del formato no válida (${String(o.version)})`);
+  let almacenes: Record<string, Coleccion> = {};
   for (const [k, c] of Object.entries(o.almacenes ?? {})) {
     if (!c || typeof c !== 'object') continue;
     almacenes[k] = fusionarColecciones(c as Coleccion, undefined);
   }
-  return {
+  if (o.version < VERSION_DOC) {
+    // (an older app's file: its stores in this version's schemas — lib/esquemas.ts; a migration that fails stops the
+    // run, so nothing is ever written from a half-migrated file)
+    const m = migrarColecciones(almacenes, o.version);
+    if (m.fallidas.length) throw new Error(`no se han podido convertir los datos de la versión ${o.version} del formato (${m.fallidas.join(', ')})`);
+    almacenes = Object.fromEntries(Object.entries(m.almacenes).map(([k, c]) => [k, fusionarColecciones(c as Coleccion, undefined)]));
+  }
+  const doc: DocSincronizacion = {
     formato: FORMATO,
     version: VERSION_DOC,
     id: typeof o.id === 'string' && o.id ? o.id : 'sin-id',
@@ -192,6 +215,20 @@ export function leerDoc(texto: string): DocSincronizacion {
     dispositivos: dispositivosValidos(o.dispositivos),
     almacenes,
   };
+  if (o.version < VERSION_DOC) migrados.set(doc, o.version);
+  return doc;
+}
+
+/** Documents read from an older format version (never written into the file). */
+const migrados = new WeakMap<DocSincronizacion, number>();
+
+/**
+ * The format version a document was read from when it was older than this app's (`leerDoc`), else undefined: the run
+ * then writes the file even with nothing new in it, so the file is in the new format from the first 1.0 run on and the
+ * devices still on 0.12 are told at once to update (and never keep writing the old one in between).
+ */
+export function migradoDe(d: DocSincronizacion): number | undefined {
+  return migrados.get(d);
 }
 
 /**
@@ -206,7 +243,7 @@ export function dispositivosValidos(x: unknown): Record<string, Dispositivo> {
     if (!d || typeof d !== 'object' || Array.isArray(d)) continue;
     const e = d as Partial<Dispositivo>;
     if (typeof e.nombre !== 'string' || typeof e.ultima !== 'number' || !Number.isFinite(e.ultima)) continue;
-    r[id] = { nombre: e.nombre, ultima: e.ultima, version: typeof e.version === 'string' ? e.version : '' };
+    r[id] = { nombre: e.nombre, ultima: e.ultima, version: typeof e.version === 'string' ? e.version : '', ...(typeof e.datos === 'number' && Number.isInteger(e.datos) ? { datos: e.datos } : {}) };
   }
   return r;
 }

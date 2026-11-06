@@ -1070,6 +1070,8 @@ export function sincronizableGuardado<T>(
   return {
     clave: o.clave,
     nombre: o.nombre,
+    // (1.0: its almacen key — a blocked key is left out of the synchronisation: sincronizar.svelte.ts `activos`)
+    claveAlmacen: g.o.claveAlmacen,
     tiempo: o.tiempo as ((v: unknown) => number | undefined) | undefined,
     valido: o.valido,
     maximo: o.maximo,

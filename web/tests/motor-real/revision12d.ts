@@ -4,7 +4,9 @@
 //           the file's union (`unirDiasRepaso`, field max) keeps the larger count, and the device applies it
 //   d12d·3  progreso-diario with an 0.11 device: after an undo on the 0.12 device (its undo record «~»), the 0.11
 //           device's next step on top of the mirror it fully saw is not counted (the excess is taken against the sum
-//           without the undo records)
+//           without the undo records). 1.0: compatibility with 0.10/0.11 clients was dropped — a 0.11 device cannot
+//           read the file of format 2, so it can never write such a mirror —, and the day's total is the records' sum:
+//           the check now says that a mirror written on top is NOT read (no longer a documented limit)
 import { fusionarColecciones } from '../../src/lib/sincronizacion/fusion.ts';
 import { efectivo, unirDiasRepaso } from '../../src/componentes/repaso/diario.ts';
 import { grupoDe, tocarDia, totalDia, type DiaProgreso } from '../../src/lib/progreso-dias.ts';
@@ -39,12 +41,9 @@ const limites: string[] = [];
   const e = m[dia]!;
   m[dia] = { ...e, pasos: e.pasos + 1, t: Math.max(4000, e.t + 1) };
   const total = totalDia(grupoDe(m, dia)).pasos;
-  // EXPECTED FAILURE (a documented limit, ESQUEMA.md «Known limits», lib/progreso-dias.ts header): the excess is taken
-  // against the records without the undo records, so this step of the 0.11 device is lost — the mirror is ambiguous,
-  // and the other reading counts an undone step twice. Kept visible: reported as a known limit while it fails, and as
-  // a problem if it ever passes (then the limit and its documentation are out of date)
-  if (total !== visto + 1) limites.push(`d12d·3 (límite documentado): X contaba ${visto}, el dispositivo 0.11 añadió 1 y X cuenta ${total} (sin el límite, ${visto + 1})`);
-  else problemas.push('d12d·3 ya no falla: el límite documentado (ESQUEMA.md, progreso-dias.ts) ya no se da; revíselos');
+  // 1.0: the summary item is not read for a day with records (its counts are the records' sum when 1.0 writes it); a
+  // summary written on top by an older version — which can no longer synchronise — changes nothing
+  if (total !== visto) problemas.push(`d12d·3 (1.0): un resumen del día escrito encima cambia la cuenta (${visto} → ${total})`);
 }
 
 console.log(JSON.stringify({ problemas, limites }));

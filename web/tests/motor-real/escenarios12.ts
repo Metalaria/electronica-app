@@ -132,8 +132,12 @@ caso('d12·3 · datos de la 0.11 (solo el día): no se cuentan dos veces al actu
   const viejo = JSON.stringify({ [HOY]: { pasos: 3, preguntas: 1, secciones: 0, cumplido: true, t: T0 - H } });
   const A = await nuevoDisp('A', almacenes(), 0, '0.11', { guardado: { 'progreso-diario': viejo } });
   const B = await nuevoDisp('B', almacenes(), 0, '0.11', { guardado: { 'progreso-diario': viejo } });
-  // nothing written at load (a lazy migration)
-  igual(almacenamiento(A).get('progreso-diario'), viejo, 'cargar no escribe');
+  // 1.0: the schema migration at start-up stores the old day's activity in «<day>@0» once (0.12 did it lazily, at the
+  // first change of the day); the day item itself is left as it was
+  const tras = JSON.parse(almacenamiento(A).get('progreso-diario')!) as Record<string, { pasos: number; t: number }>;
+  igual(tras[HOY], JSON.parse(viejo)[HOY], 'el día de la 0.11 no cambia');
+  igual(tras[`${HOY}@0`]?.pasos, 3, 'la migración lo guarda en el registro heredado');
+  igual(tras[`${HOY}@0`]?.t, T0 - H, 'con la hora del día (la misma en todos los dispositivos)');
   igual((await diaDe(tab(A), T0))?.pasos, 3);
   await asentar([A, B], repo, T0);
   igual((await diaDe(tab(B), T0 + H))?.pasos, 3, 'lo de antes no se duplica');
@@ -145,26 +149,10 @@ caso('d12·3 · datos de la 0.11 (solo el día): no se cuentan dos veces al actu
   igual((repo.vivos('progreso-diario')[`${HOY}@0`] as { pasos: number }).pasos, 3);
 });
 
-caso('d12·4 · un dispositivo con la 0.11 que suma encima: se cuenta, sin duplicar, y todo converge', async () => {
-  const repo = nuevoRepo();
-  const A = await nuevoDisp('A', almacenes());
-  // a 0.11 device: the day item last-write-wins, its own time (registro: memory is its storage)
-  const V = await nuevoDisp('V', [registro('progreso-diario', { tiempo: tiempoT })]);
-  await actividad(tab(A), T0, 'paso', 2);
-  await asentar([A, V], repo, T0 + M);
-  const st = V.almacen('progreso-diario');
-  const d = st.valores[HOY] as { pasos: number; t: number };
-  igual(d.pasos, 2, 'la 0.11 ve la suma');
-  // the 0.11 device studies 3 steps on top of what it saw
-  st.valores[HOY] = { ...d, pasos: d.pasos + 3, t: T0 + 10 * M };
-  V.cambio('progreso-diario', HOY, T0 + 10 * M);
-  await asentar([A, V], repo, T0 + 11 * M);
-  igual((await diaDe(tab(A), T0 + H))?.pasos, 5, 'A cuenta los 3 pasos de la 0.11');
-  await actividad(tab(A), T0 + H, 'paso', 1);
-  await asentar([A, V], repo, T0 + H + M);
-  igual((await diaDe(tab(A), T0 + 2 * H))?.pasos, 6);
-  igual((V.almacen('progreso-diario').valores[HOY] as { pasos: number }).pasos, 6, 'la 0.11 ve 6');
-});
+// d12·4 («un dispositivo con la 0.11 que suma encima: se cuenta, sin duplicar, y todo converge») was removed in 1.0:
+// compatibility with 0.10/0.11 clients was dropped — a 0.11 device cannot read the file of format 2 any more, so it
+// can never write a day on top of a sum (the legacy excess that case checked is absorbed once by the migration:
+// escenarios10.ts t10·4).
 
 caso('d12·5 · dos pestañas del mismo dispositivo suman a la vez sin perder pasos', async () => {
   const repo = nuevoRepo();
@@ -412,7 +400,8 @@ caso('c12·7 · la copia lleva todos los almacenes y lápidas, y nunca el token 
   const texto = await textoCopia(tab(A), T0 + 2 * M);
   const o = JSON.parse(texto) as { formato: string; version: number; app: string; dispositivo: string; almacenes: Record<string, Record<string, { t: number; x?: 1 }>> };
   igual(o.formato, 'epa-copia-seguridad');
-  igual(o.version, 1);
+  // (1.0: format 2 — lib/esquemas.ts FORMATO_DATOS)
+  igual(o.version, 2);
   igual(Object.keys(o.almacenes).sort(), ['marcadores', 'notas', 'progreso-diario']);
   assert.ok(o.almacenes.notas!.n2 && esLapida(o.almacenes.notas!.n2 as never), 'la lápida de n2 viaja');
   for (const prohibido of ['token', 'sinc-ajustes', 'dispositivo-local', 'credencial', 'x/y']) assert.ok(!texto.includes(prohibido), prohibido);

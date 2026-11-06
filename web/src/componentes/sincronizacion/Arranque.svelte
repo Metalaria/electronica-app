@@ -3,6 +3,7 @@
   // update-check chunk (Avisos.svelte). Nothing is requested from GitHub without a token.
   import { app } from '../../lib/estado.svelte';
   import { usuario } from '../../lib/usuario.svelte';
+  import { resultadoMigracion } from '../../lib/migrar';
 
   let listo = $state(false);
 
@@ -22,4 +23,10 @@
   {#await import('./Avisos.svelte') then m}
     <m.default />
   {/await}
+  <!-- (1.0: what the schema migration at this start left undone — lib/migrar.ts) -->
+  {#if resultadoMigracion().fallidas.length}
+    {#await import('./AvisoDatos.svelte') then m}
+      <m.default />
+    {/await}
+  {/if}
 {/if}

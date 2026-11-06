@@ -26,7 +26,8 @@ function ejecutar(args: string[], tiempo: number, tauri = false): Promise<string
 
 // (each on a browser's storage and on the Tauri path — the plugin-store's IPC, as on desktop and Android: fifth review)
 for (const plataforma of ['navegador', 'tauri'] as const) {
-  for (const vieja of ['0.10.1', '0.11.0'] as const)
+  // (1.0: from 0.12.0 — and its data of 0.11.0/0.10.1 — to 1.0 and back; tests/actualizacion/escenario.ts)
+  for (const vieja of ['0.12.0', '0.11.0', '0.10.1'] as const)
     test.describe(`actualización desde la ${vieja} y vuelta atrás · ${plataforma}`, () => {
       test('almacén por almacén, y dos dispositivos que se actualizan y vuelven: sin commits ni lápidas de más, convergen', async () => {
         test.setTimeout(900_000);

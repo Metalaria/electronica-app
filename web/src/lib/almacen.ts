@@ -26,6 +26,9 @@ export interface Almacen {
   readonly tipo: 'tauri' | 'navegador' | 'memoria';
 }
 
+import { antesDeEscribir, escrituraPermitida, esperarPestanaActiva, registrarAntesDeCeder } from './pestana-activa';
+import { migrarAlmacen, restaurarAntesDeMigrar, resultadoMigracion } from './migrar';
+
 const PREFIJO = 'epa:';
 
 export function enTauri(): boolean {
@@ -88,9 +91,102 @@ async function almacenTauri(): Promise<Almacen> {
 }
 
 let almacen: Promise<Almacen> | null = null;
+/** The storage itself, without the guard (the migration, the restore of the data from before it). */
+let base: Almacen | null = null;
+/** Every write refused (the data from before the migration are being restored: the page reloads next). */
+let congelado = false;
 
+/** Why a write is refused now, or '' (lib/pestana-activa.ts; lib/migrar.ts `bloqueadas`). */
+function motivoRechazo(clave: string): string {
+  if (congelado) return 'se están restaurando los datos anteriores';
+  if (!escrituraPermitida()) return 'la aplicación se está usando en otra pestaña';
+  if (resultadoMigracion().bloqueadas.has(clave)) return 'estos datos no se han podido actualizar a esta versión';
+  return '';
+}
+
+/**
+ * 1.0: the storage with its guard — every write of a key refused (rejected, nothing written) while this tab is not the
+ * active one (lib/pestana-activa.ts) or when the key's migration failed (lib/migrar.ts). The check is synchronous (a
+ * write during `pagehide` must still complete in the same task).
+ */
+function protegido(a: Almacen): Almacen {
+  const comprobar = (clave: string) => {
+    const m = motivoRechazo(clave);
+    if (m) throw new Error(`No se ha guardado «${clave}»: ${m}.`);
+  };
+  // (after a hang of this tab the write first waits for the check that it is still the active one: lib/pestana-activa.ts
+  // `antesDeEscribir`; otherwise nothing is awaited — the write stays in the same task, as during `pagehide`)
+  return {
+    tipo: a.tipo,
+    leer: (clave) => a.leer(clave),
+    async escribir(clave, valor) {
+      const espera = antesDeEscribir();
+      if (espera) await espera;
+      comprobar(clave);
+      return a.escribir(clave, valor);
+    },
+    ...(a.leerTexto ? { leerTexto: (clave: string) => a.leerTexto!(clave) } : {}),
+    ...(a.escribirTexto
+      ? {
+          async escribirTexto(clave: string, texto: string) {
+            const espera = antesDeEscribir();
+            if (espera) await espera;
+            comprobar(clave);
+            return a.escribirTexto!(clave, texto);
+          },
+        }
+      : {}),
+    ...(a.escribirTextoSi
+      ? {
+          async escribirTextoSi(clave: string, esperado: string | undefined, texto: string) {
+            const espera = antesDeEscribir();
+            if (espera) await espera;
+            comprobar(clave);
+            return a.escribirTextoSi!(clave, esperado, texto);
+          },
+        }
+      : {}),
+    ...(a.guardarYa
+      ? {
+          async guardarYa() {
+            if (!congelado && escrituraPermitida()) await a.guardarYa!();
+          },
+        }
+      : {}),
+  };
+}
+
+/**
+ * The storage, once this tab may use it (1.0: the one active tab — lib/pestana-activa.ts; at once in Tauri and where
+ * the gate does not apply) and after the schema migration (lib/migrar.ts), which runs before any module reads.
+ */
 export function obtenerAlmacen(): Promise<Almacen> {
   almacen ??= (async () => {
+    await esperarPestanaActiva();
+    const a = await crearAlmacen();
+    base = a;
+    try {
+      await migrarAlmacen(a);
+    } catch (e) {
+      console.warn('No se ha podido comprobar la versión de los datos', e);
+    }
+    return protegido(a);
+  })();
+  return almacen;
+}
+
+/**
+ * «Restaurar los datos anteriores a la actualización»: every write refused from now on (the modules' memory holds the
+ * migrated data), the backup's values written back (lib/migrar.ts). The caller reloads the page.
+ */
+export async function restaurarDatosAnteriores(): Promise<string[]> {
+  await obtenerAlmacen();
+  congelado = true;
+  return restaurarAntesDeMigrar(base!);
+}
+
+async function crearAlmacen(): Promise<Almacen> {
+  {
     if (enTauri()) {
       try {
         return await almacenTauri();
@@ -106,8 +202,7 @@ export function obtenerAlmacen(): Promise<Almacen> {
     } catch {
       return new AlmacenMemoria();
     }
-  })();
-  return almacen;
+  }
 }
 
 /** The modules' pending writes, as functions that write them now (`registrarVolcado`). */
@@ -130,7 +225,7 @@ export function registrarVolcado(f: () => Promise<unknown>): () => void {
  * events that would save it otherwise.
  */
 export async function guardarTodoAntesDeSalir(espera = 5000): Promise<void> {
-  const escrituras = Promise.allSettled([...volcados].map((f) => f()));
+  const escrituras = volcarTodo();
   window.dispatchEvent(new Event('pagehide'));
   window.dispatchEvent(new CustomEvent('epa:antes-de-sincronizar'));
   let reloj: ReturnType<typeof setTimeout> | undefined;
@@ -142,3 +237,15 @@ export async function guardarTodoAntesDeSalir(espera = 5000): Promise<void> {
     console.warn('No se pudo guardar el almacén antes de salir', e);
   }
 }
+
+/** Every registered module writes what it has pending now; resolves when all have settled. */
+export function volcarTodo(): Promise<unknown> {
+  return Promise.allSettled([...volcados].map((f) => f()));
+}
+
+// (1.0: before this tab hands over to another, after a synchronisation run in progress — registered by
+// sincronizar.svelte.ts at its first run —, everything pending is written: lib/pestana-activa.ts)
+registrarAntesDeCeder(async () => {
+  await volcarTodo();
+  if (base?.guardarYa) await base.guardarYa();
+}, true);

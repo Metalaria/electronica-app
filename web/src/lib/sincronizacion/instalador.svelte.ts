@@ -14,6 +14,7 @@
 // Tests replace the Tauri side with `globalThis.__epaPuenteActualizador` (a PuenteActualizador, optionally with its
 // own public key); see tests/actualizador12.spec.ts.
 
+import { puedeSalir } from '../salida';
 import { enTauri, guardarTodoAntesDeSalir } from '../almacen';
 import { CLAVE_ACTUALIZADOR, claveActualizadorValida, explicarErrorActualizador, sistemaActualizable } from './actualizador';
 import { compararVersiones } from './fusion';
@@ -345,6 +346,8 @@ export async function reiniciarParaTerminar(): Promise<void> {
   const p = puente();
   const u = pendiente;
   if (!p || !u || instalador.estado !== 'listo') return;
+  // (review 10f: a page with unsaved changes — the teacher-mode editor — asks before the app is closed for the update)
+  if (!(await puedeSalir())) return;
   const windows = sistemaActualizable() === 'windows';
   instalador.estado = 'instalando';
   try {

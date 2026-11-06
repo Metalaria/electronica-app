@@ -9,6 +9,12 @@ if (modo === 'casos') {
   const { correrCasos } = await import('./escenarios.ts');
   // (0.12: the backup and the daily activity summed across devices, added to the same list)
   await import('./escenarios12.ts');
+  // (1.0: the transition from 0.12, the schema migration, the exercises' merge)
+  await import('./escenarios10.ts');
+  // (1.0 Brilliant: the store «seguridad» and its merge)
+  await import('./escenariosBrilliant10.ts');
+  // (1.0 exercises, review 10g: drafts against another device's solved state)
+  await import('./escenariosEjercicios10.ts');
   console.log(JSON.stringify(await correrCasos(a1)));
 } else if (modo === 'rendimiento') {
   // … correr.ts rendimiento [circuitos,…] : one autosave of the editor's library (≈ 13 kB per circuit)
@@ -22,10 +28,13 @@ if (modo === 'casos') {
   const desde = Number(a2 || 0);
   const problemas: string[] = [];
   let maximo = 0;
+  // (1.0: runs of the 0.12 device refused by a file of format 2 — the transition is exercised)
+  let rechazos012 = 0;
   for (let p = desde; p < desde + n; p++) {
     const r = await simularPrueba(p);
     problemas.push(...r.problemas);
     maximo = Math.max(maximo, r.commitsAsentar);
+    rechazos012 += r.rechazos012 ?? 0;
   }
-  console.log(JSON.stringify({ pruebas: n, problemas: problemas.slice(0, 30), conProblemas: problemas.length, commitsAsentarMax: maximo, errores: errores.slice(0, 10) }));
+  console.log(JSON.stringify({ pruebas: n, problemas: problemas.slice(0, 30), conProblemas: problemas.length, commitsAsentarMax: maximo, rechazos012, errores: errores.slice(0, 10) }));
 }

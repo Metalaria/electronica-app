@@ -5,28 +5,20 @@
 //                              only that device ever changes it, so last-write-wins per item is exact, and a day's
 //                              activity is the SUM of its devices' items: studying on two devices adds up, and
 //                              synchronising again never counts anything twice (each device's count is one item);
-//   «2026-10-27»              the day as 0.9–0.11 store it { pasos, preguntas, secciones, cumplido, t } — written by
-//                              0.12 as a mirror of the sum and of the day's verdict, so devices still on 0.10/0.11
-//                              see the summed numbers and the streak (they ignore the other items: their lookups are
-//                              by the exact day key, and a contribution's `cumplido` is always false, so their XP
-//                              reconciliation never takes it for a day with the goal met).
-// The contributions have exactly the 0.11 shape: an older version that stores or rewrites them changes nothing (no
-// normalisation, no back-and-forth).
+//   «2026-10-27»              the day's summary { pasos, preguntas, secciones, cumplido, t }: written as the sum of
+//                              the records, with the day's verdict and the newest record's time. Since 1.0 only its
+//                              `cumplido` is read (the frozen verdict of a past day, the streak); its counts are kept
+//                              for a person reading the file and as the activity of a day with no records at all.
+// The records have the 0.11 day shape (no normalisation, no back-and-forth).
 //
-// Days written before 0.12 (only the mirror) and days an older device changed (its mirror is newer than every
-// contribution of the day: 0.12 always dates its mirror with the newest contribution's time) hold activity that no
-// contribution counts: the EXCESS of the mirror over the sum, per field, is counted as the day's legacy activity — so
-// the upgrade needs no write at load (a lazy migration) — and is stored in the contribution «<day>@0» the next time this
-// device changes that day (the same value on every device that does it: the same mirror, the same sum). An older
-// device's change on top of a sum it had not fully seen may be counted short (never twice), and that shortfall stays
-// (a 0.12 device then stores the excess it saw in «<day>@0» and rewrites the mirror): only all devices on 0.12 avoid it.
-// The excess is taken against the sum WITHOUT subtracting the undo records («~»), so an older device's step on top of a
-// mirror that already had a step undone is counted short by up to what was undone (review 0.12d, finding 3) — for good:
-// the next run of a 0.12 device rewrites the mirror from the records (`rehacerDia`) and it wins, so the older device
-// sees that step disappear too (review 0.12e, point 5). Deliberately: that mirror is ambiguous — «the sum with the undone step + k» or «without it + k + 1»;
-// the older device does not say which day it saw, and its time (max(now, t + 1)) is newer than the undo in both cases
-// (an offline device acting later in real time) — and the other reading would count the undone step again whenever the
-// older device had not seen the undo. Short, never twice (tests/datos12.spec.ts, «ronda de arreglos 4»).
+// 1.0 (compatibility with 0.10/0.11 clients dropped): no device writes a day on top of a sum it has not seen any more
+// (only 0.9–0.11 did: their mirror, newer than every record, held activity no record counted — the «legacy excess»,
+// absorbed into «<day>@0» lazily by 0.12). That excess is now absorbed ONCE, by the schema migration of this store
+// (lib/esquemas.ts, `absorberLegado`: the local data at load, a synchronisation file or a backup of format 1), with
+// 0.12's own rule, and the day's total is just the sum of the records minus the undo records. Gone with it: the excess
+// at every read, its absorption at every change and merge (and the guard of random trial 71031 against a merged map
+// that paired a stored mirror with a lagging record), and the documented under-count of review 0.12d (d12d·3: a 0.11
+// device's step on top of a mirror with an undone step) — there is no 0.11 device to write such a mirror.
 //
 // Verdict of a day (the streak): today, the day's total against the current goal; a past day, the mirror's frozen
 // `cumplido`, or the total against the current goal when that goal was already in force at the end of the day (so a
@@ -120,7 +112,10 @@ function suma(g: GrupoDia): Cuentas & { maxT: number; menos: Cuentas } {
   return s;
 }
 
-/** What the mirror holds beyond the sum of the contributions, when an older version wrote it (see the header). */
+/**
+ * What the mirror holds beyond the sum of the contributions, when an older version wrote it (see the header): read only
+ * by the schema migration (`absorberLegado`) since 1.0.
+ */
 export function exceso(g: GrupoDia): Cuentas {
   const s = suma(g);
   const e = g.espejo;
@@ -128,11 +123,15 @@ export function exceso(g: GrupoDia): Cuentas {
   return { pasos: Math.max(0, e.pasos - s.pasos), preguntas: Math.max(0, e.preguntas - s.preguntas), secciones: Math.max(0, e.secciones - s.secciones) };
 }
 
-/** The day's activity: the sum of every device's contribution and the legacy excess. */
+/**
+ * The day's activity: the sum of every record minus the undo records (1.0: the legacy excess was absorbed into
+ * «<day>@0» by the migration). A day with no record at all (data of 0.9–0.11 the migration has not seen — e.g. a
+ * device that went back to 0.12 and imported an old backup) counts its summary as it is: never zero, never twice.
+ */
 export function totalDia(g: GrupoDia): Cuentas {
+  if (!g.aportes.size) return { pasos: g.espejo?.pasos ?? 0, preguntas: g.espejo?.preguntas ?? 0, secciones: g.espejo?.secciones ?? 0 };
   const s = suma(g);
-  const x = exceso(g);
-  const t = (c: keyof Cuentas) => Math.max(0, s[c] - s.menos[c] + x[c]);
+  const t = (c: keyof Cuentas) => Math.max(0, s[c] - s.menos[c]);
   return { pasos: t('pasos'), preguntas: t('preguntas'), secciones: t('secciones') };
 }
 
@@ -155,8 +154,7 @@ export function cumplidoDia(g: GrupoDia | undefined, o: ObjetivoDiario & { t?: n
 }
 
 /**
- * This device changes a day (mutates `m`, returns the ids written): the legacy excess goes into «<day>@0» first, then
- * `n` is added to `campo` of its own contribution (n < 0 undoes, never below 0), and the mirror gets the new total,
+ * This device changes a day (mutates `m`, returns the ids written): `n` is added to `campo` of its own contribution (n < 0 undoes, never below 0), and the mirror gets the new total,
  * the verdict against `objetivo` and the time of the newest contribution (so it is never taken for an older device's).
  * With no `campo` only the verdict and the times are refreshed (a new goal).
  */
@@ -169,7 +167,10 @@ export function tocarDia(
   campo?: keyof Cuentas,
   n = 0,
 ): string[] {
-  const escritos = absorber(m, dia)!;
+  // (a day with a summary and no record — not migrated, see `totalDia` — keeps its activity as «<day>@0» first: the new
+  // record alone would make it count less)
+  const g0 = grupoDe(m, dia);
+  const escritos: string[] = !g0.aportes.size && g0.espejo ? absorberDia(m, dia, g0) : [];
   const propio = idAporte(dia, dispositivo);
   const p = { ...(m[propio] ?? cero(t)) };
   p.t = Math.max(t, p.t + 1);
@@ -195,25 +196,25 @@ export function tocarDia(
 }
 
 /**
- * The legacy excess of a day stored in «<day>@0» (mutates `m`; the ids written). `guardado`: the day's items as stored,
- * when `m` is a merge of this tab's memory with them: the excess is only what neither view explains — the merged map
- * can pair the stored mirror with a record of memory that lags the stored one (random trial 71031: mirror 3, record 1
- * of 2, «1 legacy step» taken, the real record came after: 4 for 3). Less than the merged map's excess: null, nothing
- * absorbed and the day left as it is for this pass (`rehacerDia`: a mirror remade without its excess absorbed would
- * drop it) — the next merge, with the record, decides. Never twice.
+ * The schema migration of `progreso-diario` from 1 (0.12 and older) to 2 (1.0), pure and idempotent (lib/esquemas.ts):
+ * every day's legacy excess (a mirror newer than every record — written by 0.9–0.11 — holding more than the records)
+ * goes into «<day>@0», exactly as 0.12 absorbed it when it changed the day (the same value on every device that saw the
+ * same mirror; dated with the mirror's time, never older than before), so that 1.0 counts only records. A day with no
+ * record (0.9–0.11 data) gets its whole summary as «<day>@0». After it no mirror is newer than its day's records, so a
+ * second pass changes nothing. Mutates `m`; returns the ids written.
  */
-function absorber(m: Record<string, DiaProgreso>, dia: string, guardado?: Record<string, DiaProgreso>): string[] | null {
-  const g = grupoDe(m, dia);
+export function absorberLegado(m: Record<string, DiaProgreso>): string[] {
+  const escritos: string[] = [];
+  for (const [dia, g] of agrupar(m)) escritos.push(...absorberDia(m, dia, g));
+  return escritos;
+}
+
+function absorberDia(m: Record<string, DiaProgreso>, dia: string, g: GrupoDia): string[] {
   const x = exceso(g);
-  if (guardado && guardado[dia]) {
-    const y = exceso(grupoDe(guardado, dia));
-    if (CAMPOS.some((c) => !(y[c] >= x[c]))) return null;
-  }
   if (!x.pasos && !x.preguntas && !x.secciones) return [];
   const id = idAporte(dia, LEGADO);
   const l = { ...(m[id] ?? cero(0)) };
   for (const c of CAMPOS) l[c] += x[c];
-  // (the same value on every device that absorbs this excess: the mirror's time, never older than before)
   l.t = Math.max(g.espejo!.t, l.t + 1);
   l.cumplido = false;
   m[id] = l;
@@ -227,18 +228,15 @@ function tiempoAportes(g: GrupoDia): number {
 }
 
 /**
- * After a merge (a synchronisation, another tab): the day's mirror as it follows from the merged records — the sum,
- * the verdict (`cumplidoDia`), the newest record's time — so devices still on 0.10/0.11 see the whole day. The legacy
- * excess is stored in «<day>@0» first (never lost by the new mirror). A day without records (data of 0.9–0.11) is left
+ * After a merge (a synchronisation, another tab): the day's summary as it follows from the merged records — the sum,
+ * the verdict (`cumplidoDia`: once met, a past day keeps it), the newest record's time. A day without records is left
  * as it is. Deterministic: two devices with the same records and goal write the same items, equal values that the
  * synchronisation does not send twice (fusion.ts alinearIguales). Mutates `m`; returns the ids changed.
  */
-export function rehacerDia(m: Record<string, DiaProgreso>, dia: string, objetivo: ObjetivoDiario & { t?: number }, hoy: boolean, finDia: number, guardado?: Record<string, DiaProgreso>): string[] {
-  if (!grupoDe(m, dia).aportes.size) return [];
-  const absorbidos = absorber(m, dia, guardado);
-  if (!absorbidos) return [];
-  const escritos = absorbidos;
+export function rehacerDia(m: Record<string, DiaProgreso>, dia: string, objetivo: ObjetivoDiario & { t?: number }, hoy: boolean, finDia: number): string[] {
   const g = grupoDe(m, dia);
+  if (!g.aportes.size) return [];
+  const escritos: string[] = [];
   const espejo: DiaProgreso = { ...totalDia(g), cumplido: cumplidoDia(g, objetivo, hoy, finDia), t: tiempoAportes(g) };
   const e = m[dia];
   if (!e || CAMPOS.some((c) => e[c] !== espejo[c]) || e.cumplido !== espejo.cumplido || e.t !== espejo.t) {
@@ -260,11 +258,8 @@ export function rehacerDias(
   objetivo: ObjetivoDiario & { t?: number },
   hoy: string,
   finDe: (dia: string) => number,
-  /** The items as stored, when `m` is a merge with them (`absorber`). */
-  guardado?: Record<string, unknown>,
 ): string[] {
   const grupos = agrupar(m);
-  const guardados = guardado ? agrupar(guardado as Record<string, DiaProgreso>) : null;
   const deGrupo = (dia: string, g: GrupoDia): Record<string, DiaProgreso> => {
     const sub: Record<string, DiaProgreso> = {};
     if (g.espejo) sub[dia] = g.espejo;
@@ -276,8 +271,7 @@ export function rehacerDias(
     const g = grupos.get(dia);
     if (!g || !g.aportes.size) continue;
     const sub = deGrupo(dia, g);
-    const gg = guardados?.get(dia);
-    for (const id of rehacerDia(sub, dia, objetivo, dia === hoy, finDe(dia), gg ? deGrupo(dia, gg) : undefined)) {
+    for (const id of rehacerDia(sub, dia, objetivo, dia === hoy, finDe(dia))) {
       m[id] = sub[id]!;
       r.push(id);
     }
@@ -315,7 +309,7 @@ export function unirAportesPestanas(id: string, local: DiaProgreso, otro: DiaPro
  * a year in the synchronised file): for each day before `hasta` («YYYY-MM-DD») with more than one record of this
  * device (`dispositivo`: its id; a tab's record is «<device>-<tab>») or with a tab's record, one record «<day>@<device>»
  * with their sum, dated after all of them, and the others deleted. The day's total does not change (the mirror neither);
- * safe with 0.10/0.11 (they ignore records) and with the synchronisation: no tab writes a day two days old, two tabs
+ * safe with the synchronisation: no tab writes a day two days old, two tabs
  * compacting at once write the same, and an older version of a deleted record loses to its tombstone. Mutates `m`;
  * returns what changed.
  */
@@ -346,7 +340,7 @@ export function compactar(m: Record<string, DiaProgreso>, dispositivo: string, h
   return { poner, quitar };
 }
 
-/** The days as 0.11 read them (the XP reconciliation, the statistics): day → total, verdict and newest time. */
+/** The days summed (the XP reconciliation, the statistics): day → total, verdict and newest time. */
 export function diasResumidos(
   m: Record<string, DiaProgreso>,
   o: ObjetivoDiario & { t?: number },

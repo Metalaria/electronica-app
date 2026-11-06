@@ -115,9 +115,19 @@ function guardar(espera = 600): void {
   temporizador = setTimeout(() => void escribir().catch(avisarEscritura), espera);
 }
 
+// 1.0: another module may adjust the records before they are computed («¿Qué seguridad tiene?»,
+// seguridad.svelte.ts): the stored records are never changed by it.
+let ajuste: ((items: Record<string, RegistroItem>) => Record<string, RegistroItem>) | null = null;
+
+/** Sets the adjustment of the records (null: none) and recomputes. */
+export function establecerAjuste(f: typeof ajuste): void {
+  ajuste = f;
+  calcular();
+}
+
 /** Recomputes every concept (≈ 2 000 items at most: a few milliseconds). */
 function calcular(ahora = Date.now()): void {
-  conceptos = dominioPorConcepto(items, ahora);
+  conceptos = dominioPorConcepto(ajuste ? ajuste(items) : items, ahora);
   estadoDominio.calculado = ahora;
   estadoDominio.version++;
 }
@@ -125,6 +135,8 @@ function calcular(ahora = Date.now()): void {
 /** Loads the records once and migrates the older answers the first time. Idempotent. */
 export function cargarDominio(): Promise<void> {
   carga ??= (async () => {
+    // 1.0: the reader's «¿Qué seguridad tiene?» taps adjust the records (they set `ajuste` once loaded)
+    void import('./seguridad.svelte').then((m) => m.cargarSeguridad()).catch(() => undefined);
     almacen = await obtenerAlmacen();
     const v = await almacen.leer<Record<string, unknown>>(CLAVE);
     // version 1 is the first one: read field by field (later versions branch here)
@@ -187,7 +199,7 @@ function sembrar(id: string, s: string, c: ClaseItem, t: number, puntos: number)
 
 /** The answers 0.10/0.11 already kept, as rounds (only reads the other stores). */
 async function migrar(): Promise<number> {
-  const [{ leerXp }, { repaso, cargarRepaso }, { aprendizaje, cargarAprendizaje }] = await Promise.all([
+  const [{ leerXp }, { repaso, cargarRepaso }, { aprendizaje, cargarAprendizaje, ayudaAlResolver, estadoEjercicio }] = await Promise.all([
     import('./progreso.svelte'),
     import('../../componentes/repaso/estado.svelte'),
     import('../aprendizaje.svelte'),
@@ -216,7 +228,9 @@ async function migrar(): Promise<number> {
   }
   for (const [label, e] of Object.entries(aprendizaje.ejercicios)) {
     if (!e || typeof e.t !== 'number' || !e.intentos) continue;
-    const puntos = e.resuelto ? (e.solucion ? 30 : e.fallos > 0 || e.pistas > 0 ? PUNTOS.ayuda : PUNTOS.bien) : e.fallos > 0 ? PUNTOS.mal : -1;
+    // (review 10j: the help the solving device had, and a try that is not solved is a failure even with fallos 0)
+    const a = ayudaAlResolver(e);
+    const puntos = e.resuelto ? (a.solucion ? 30 : a.fallos > 0 || a.pistas > 0 ? PUNTOS.ayuda : PUNTOS.bien) : estadoEjercicio(e) === 'fallado' ? PUNTOS.mal : -1;
     if (puntos < 0) continue;
     const s = await conceptoDeEjercicio(label).catch(() => null);
     if (s && sembrar(label, s, 'e', e.t, puntos)) n++;

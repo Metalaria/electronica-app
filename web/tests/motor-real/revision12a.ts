@@ -99,7 +99,11 @@ caso('a12·2 · una copia de hace más de 90 días importada con «Unir» resuci
   assert.deepEqual({ A: textos(A), B: textos(B), fichero: Object.keys(repo.vivos('notas')).sort() }, { A: ['n2'], B: ['n2'], fichero: ['n2'] }, 'n1, borrada hace 119 días, vuelve en todos');
 });
 
-caso('a12·3 · un paso deshecho en la 0.12 vuelve a contarse si un dispositivo 0.11 que no lo vio suma encima', async () => {
+// 1.0: compatibility with 0.10/0.11 clients was dropped (a 0.11 device cannot read the file of format 2). This case
+// checked that a 0.11 device's step on top of the day counted without bringing an undone step back; 1.0 reads the
+// records only, so a day item written on top (by a store that is not the app's module, as V here) is not read: the
+// undone step never comes back, and V's write — which no real client can make any more — is not counted.
+caso('a12·3 · un paso deshecho en la 0.12 no vuelve a contarse aunque otro escritor reescriba el día encima (1.0: solo cuentan los registros)', async () => {
   const repo = nuevoRepo();
   const A = await nuevoDisp('A', [diario()]);
   const V = await nuevoDisp('V', [registro('progreso-diario', { tiempo: tiempoT })]);
@@ -119,9 +123,9 @@ caso('a12·3 · un paso deshecho en la 0.12 vuelve a contarse si un dispositivo 
   V.cambio('progreso-diario', HOY, T0 + 4 * M);
   let t = T0 + 5 * M;
   for (let r = 0; r < 3; r++) for (const x of [V, A]) await pasada(x, repo, (t += M));
-  // true activity: A 2 + V 1 = 3
+  // A's records: 3 − 1 undone = 2 (V's day item is not a record)
   const x = await diaDe(a, t + H);
-  assert.equal(x?.secciones, 3, `A cuenta ${x?.secciones} secciones (la deshecha vuelve); V ve ${(V.almacen('progreso-diario').valores[HOY] as { secciones: number }).secciones}`);
+  assert.equal(x?.secciones, 2, `A cuenta ${x?.secciones} secciones (la deshecha vuelve o cuenta el día de V)`);
 });
 
 console.log(JSON.stringify(await correrCasos(process.argv[2] ?? 'a12')));

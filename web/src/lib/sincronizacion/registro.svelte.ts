@@ -18,11 +18,15 @@
 import { obtenerAlmacen } from '../almacen';
 import { sincronizableGuardado } from './guardado';
 import { cargarUsuario, guardadosUsuario } from '../usuario.svelte';
-import { cargarAprendizaje, guardadosAprendizaje } from '../aprendizaje.svelte';
+import { cargarAprendizaje, guardadosAprendizaje, type EstadoEjercicio } from '../aprendizaje.svelte';
+import { unirEjercicios } from '../union-ejercicios';
 import { AJUSTES_DEFECTO, cargarRepaso, guardadosRepaso, unirDiasRepaso, type DiaRepaso } from '../../componentes/repaso/estado.svelte';
 import { cargarFavoritos, guardadoFavoritos } from '../../componentes/calculadoras/datos.svelte';
 import { cargarCircuitos, guardadoCircuitos, tiempoCircuito } from '../../componentes/editor/circuitos.svelte';
 import { cargarMontajes, guardadoMontajes } from '../../componentes/protoboard/circuitos.svelte';
+import { cargarDocente, guardadoPropios, guardadoResultados, propioValido, resultadoValido, tiempoDocente } from '../docente/estado.svelte';
+import { unirResultados } from '../docente/union';
+import type { Resultado } from '../docente/tipos';
 import { OBJETIVO_GUARDADO_DEFECTO, cargarProgresoDiario, diaValido, guardadoDias, guardadoObjetivo } from '../progreso-diario.svelte';
 import { cargarLecciones, guardadoLecciones } from '../lecciones.svelte';
 import { aplicarLogros, aplicarXp, leerLogros, leerXp, premioValido } from '../aprendizaje/progreso.svelte';
@@ -31,12 +35,20 @@ import { aplicarDominio, leerDominio, tiempoRegistro } from '../aprendizaje/domi
 import { fusionarRegistros, registroValido, type RegistroItem } from '../aprendizaje/dominio';
 import { preferirDia, type DiaComparable } from '../aprendizaje/seleccion';
 import { aplicarProblemas, diaProblemaValido, leerProblemas, tiempoProblema } from '../aprendizaje/problema-dia.svelte';
+import { cargarSeguridad, guardadoSeguridad } from '../aprendizaje/seguridad.svelte';
+import { seguridadValida, unirSeguridad, type RegistroSeguridad } from '../aprendizaje/seguridad';
 
 export type Valores = Record<string, unknown>;
 
 export interface Sincronizable {
   /** Key of the store in the synchronised file. */
   clave: string;
+  /**
+   * 1.0: the almacen key that holds it (lib/almacen.ts), when it is not `clave`: a store whose key is blocked — its
+   * migration failed, or the data from before it were restored (lib/migrar.ts) — is left out of the synchronisation
+   * and the backups (sincronizar.svelte.ts `activos`).
+   */
+  claveAlmacen?: string;
   /** Spanish name for the settings page. */
   nombre: string;
   /** The local items (loads the module if needed). */
@@ -173,6 +185,9 @@ registrarSincronizable(
     cargar: cargarAprendizaje,
     tiempo: (v) => numero(v.t),
     valido: (v) => esObjeto(v) && typeof v.intentos === 'number',
+    // (1.0: two devices' versions of an exercise merged field by field — answers typed in different fields both
+    // survive; a newer reset wins whole: lib/union-ejercicios.ts)
+    unir: (a, b) => unirEjercicios(a as EstadoEjercicio, b as EstadoEjercicio),
   }),
 );
 
@@ -291,6 +306,45 @@ registrarSincronizable(
   }),
 );
 
+// ------------------------------------------------------------------ teacher mode (1.0, lib/docente/)
+
+// Own courses and exams, and the results of those exams: the editor's shape — { version: 1, propios | resultados:
+// { <id>: … } } with their own tombstones (`borrado`, dated after the last version), last write wins per item, every
+// item kept (no cap). Schema 1 of both keys (lib/esquemas.ts).
+// 1.0: «¿Qué seguridad tiene?» — the taps of each item; two versions of an item are merged (union of the taps by time,
+// seguridad.ts unirSeguridad), in the file and between tabs alike.
+registrarSincronizable(
+  sincronizableGuardado(guardadoSeguridad, {
+    clave: 'seguridad',
+    nombre: 'Seguridad de las respuestas (lo sabía, dudaba, he adivinado)',
+    cargar: cargarSeguridad,
+    tiempo: (v) => v.t,
+    valido: seguridadValida,
+    unir: (a, b) => unirSeguridad(a as RegistroSeguridad, b as RegistroSeguridad),
+  }),
+);
+
+registrarSincronizable(
+  sincronizableGuardado(guardadoPropios, {
+    clave: 'docente-propios',
+    nombre: 'Cursos y exámenes propios',
+    cargar: cargarDocente,
+    tiempo: tiempoDocente,
+    valido: propioValido,
+  }),
+);
+registrarSincronizable(
+  sincronizableGuardado(guardadoResultados, {
+    clave: 'docente-resultados',
+    nombre: 'Resultados de los exámenes propios',
+    cargar: cargarDocente,
+    tiempo: tiempoDocente,
+    valido: resultadoValido,
+    // (1.0, review 10h, teacher agent: two devices' self-assessments of one result merged question by question)
+    unir: (a, b) => unirResultados(a as Resultado, b as Resultado),
+  }),
+);
+
 // ------------------------------------------------------------------ daily progress and streak (0.9)
 
 // One item per review day («2026-10-27» → { pasos, preguntas, secciones, cumplido, t }), last write wins; 0.12: and one
@@ -347,6 +401,7 @@ registrarSincronizable({
 // Achievements unlocked: id → time.
 registrarSincronizable({
   clave: 'progreso-logros',
+  claveAlmacen: 'progreso-xp',
   nombre: 'Logros',
   tiempo: numero,
   valido: (v) => numero(v) !== undefined,
@@ -357,6 +412,7 @@ registrarSincronizable({
 // Lessons marked «superada por la prueba» (lib/aprendizaje/cursos-estado.svelte.ts): «<parte>/<label>» → time.
 registrarSincronizable({
   clave: 'cursos-superadas',
+  claveAlmacen: 'cursos',
   nombre: 'Lecciones superadas por la prueba de nivel',
   tiempo: numero,
   valido: (v) => numero(v) !== undefined,
@@ -367,6 +423,7 @@ registrarSincronizable({
 // The last placement test of each course: course id → { t, aciertos, total, recomendado, marcadas }.
 registrarSincronizable({
   clave: 'cursos-pruebas',
+  claveAlmacen: 'cursos',
   nombre: 'Pruebas de nivel',
   tiempo: (v) => numero((v as { t?: unknown }).t),
   valido: pruebaValida,

@@ -13,8 +13,9 @@
 // Both are synchronised (lib/sincronizacion/registro.svelte.ts): the days and the goal.
 // 0.12: a day's activity is the SUM of what each device did that day — every device keeps its own record per day
 // («<day>@<device id>», in a browser «<day>@<device id>-<tab id>»: lib/progreso-dias.ts, sincronizacion/dispositivo.ts)
-// and writes the day item «<day>» as a mirror of the sum for older versions; data of 0.9–0.11 (only the day item) are
-// read as they are (a lazy migration: nothing is written at load).
+// and writes the day item «<day>» as the day's summary (its `cumplido` is the frozen verdict of a past day). 1.0: the
+// activity older versions left in the day item alone is moved into «<day>@0» by the schema migration (lib/esquemas.ts)
+// before this module reads the store; the total is the records' sum (lib/progreso-dias.ts).
 // `cumplido` freezes the verdict of past days, so changing the goal never rewrites the streak's history;
 // today's verdict always follows the current goal.
 
@@ -129,15 +130,15 @@ export const guardadoDias = new Guardado<DiaProgreso>({
   },
   tiempo: (v) => v.t,
   // two tabs changed an item of a day: this tab's record keeps both counts (three-way), the legacy record the larger,
-  // the rest the newer (lib/progreso-dias.ts unirAportesPestanas)
+  // the rest the newer (lib/progreso-dias.ts unirAportesPestanas; 1.0: one active tab at a time, lib/pestana-activa.ts —
+  // kept as a defence)
   unir: (a, b, base, id) => (id && yo ? unirAportesPestanas(id, a, b, base, yo) : undefined),
-  // the mirror of each day whose records another tab's write changed follows the merged records, in the write itself
-  // (review 0.12c, finding 3: written from one tab's memory it stayed short — 0.10/0.11 saw fewer steps); the same
-  // value from both tabs (`rehacerDia` is deterministic), so nothing is written back and forth
-  derivar: (m, tocados, almacen) => {
-    // (the days touched only, the map grouped once: review 0.12g, finding 1; the legacy excess also against the stored
-    // records: random trial 71031)
-    return rehacerDias(m, new Set(tocados.map((id) => id.split('@')[0]!)), { ...progresoDiario.objetivo, t: objetivoT }, claveDia(Date.now()), finDe, almacen);
+  // the summary of each day whose records another tab's write changed follows the merged records, in the write itself
+  // (review 0.12c, finding 3); the same value from both tabs (`rehacerDia` is deterministic), so nothing is written
+  // back and forth
+  derivar: (m, tocados) => {
+    // (the days touched only, the map grouped once: review 0.12g, finding 1)
+    return rehacerDias(m, new Set(tocados.map((id) => id.split('@')[0]!)), { ...progresoDiario.objetivo, t: objetivoT }, claveDia(Date.now()), finDe);
   },
 });
 export const guardadoObjetivo = new Guardado<ObjetivoGuardado>({
@@ -208,8 +209,8 @@ export function cargarProgresoDiario(): Promise<void> {
 }
 
 /**
- * The mirror of every day with records follows them (for devices still on 0.10/0.11: lib/progreso-dias.ts
- * rehacerDia), written as a change of this module (marked by its write).
+ * The summary of every day with records follows them (lib/progreso-dias.ts rehacerDia: the frozen verdict of the day),
+ * written as a change of this module (marked by its write).
  */
 function rehacerEspejos(): void {
   // (the map grouped once, each day remade on its own items: linear — review 0.12g, finding 1)
@@ -220,7 +221,11 @@ function rehacerEspejos(): void {
 function compactarPasados(): void {
   if (!yo) return;
   const { poner, quitar } = compactar(dias, yo.split('-')[0]!, claveDia(diaMas(Date.now(), -1)));
-  if (poner.length || quitar.length) guardar(CLAVE_DIAS);
+  // (1.0: and every day's summary follows its records at load — after a compaction its time is the compacted record's;
+  // in data of 0.12, which compacted without remaking them, too —, in the same write: remade only after the next
+  // synchronisation, they cost a commit of their own. Deterministic, one scan: lib/progreso-dias.ts rehacerDias)
+  const rehechos = rehacerDias(dias, null, { ...progresoDiario.objetivo, t: objetivoT }, claveDia(Date.now()), finDe);
+  if (poner.length || quitar.length || rehechos.length) guardar(CLAVE_DIAS);
 }
 
 // ------------------------------------------------------------------ summary
@@ -266,7 +271,7 @@ function programarCambioDia(ahora: number): void {
 
 // ------------------------------------------------------------------ activity
 
-/** This device's record of the day gets n more (lib/progreso-dias.ts tocarDia: also the mirror and the legacy excess). */
+/** This device's record of the day gets n more (lib/progreso-dias.ts tocarDia: also the day's summary). */
 function sumar(tipo: TipoActividad, n: number, t: number): void {
   usarIdDispositivo();
   tocarDia(dias, claveDia(t), yo, t, progresoDiario.objetivo, campoDe(tipo), n);

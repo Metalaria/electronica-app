@@ -18,6 +18,8 @@
 // and with «Sincronizar ahora».
 
 import { obtenerAlmacen } from '../almacen';
+import { pestanaEnUso, registrarAntesDeCeder } from '../pestana-activa';
+import { resultadoMigracion } from '../migrar';
 import { usuario } from '../usuario.svelte';
 import {
   alinearIguales,
@@ -31,6 +33,8 @@ import {
   horizontePoda,
   huella,
   leerDoc,
+  migradoDe,
+  VERSION_DOC,
   mismosAlmacenes,
   podar,
   porAplicar,
@@ -86,7 +90,8 @@ export interface Resumen {
   escrito: boolean;
   creado: boolean;
   reintentos: number;
-  dispositivos: { nombre: string; ultima: number; version: string; este: boolean }[];
+  /** `datos`: the data format the device writes (1.0: FORMATO_DATOS; absent: an older version, fusion.ts). */
+  dispositivos: { nombre: string; ultima: number; version: string; datos?: number; este: boolean }[];
   porAlmacen: Record<string, number>;
 }
 
@@ -335,7 +340,7 @@ interface Lectura {
 async function leerLocales(): Promise<Lectura> {
   const valores = new Map<string, Valores>();
   const huellas = new Map<string, Map<string, string>>();
-  for (const s of sincronizables()) {
+  for (const s of activos()) {
     let v: Valores;
     try {
       v = await s.leer();
@@ -352,7 +357,7 @@ async function leerLocales(): Promise<Lectura> {
 /** The local data as a document, dating each item (see the header and fusion.ts fecharLocal). */
 function docLocal(l: Lectura, e: EstadoLocal, mismoDoc: boolean, marcas: Awaited<ReturnType<typeof recargarMarcas>>, ahora: number) {
   const d = docVacio(e.doc || 'local', ahora);
-  for (const s of sincronizables()) {
+  for (const s of activos()) {
     // a change mark made for another value (another tab's change, still unwritten here) is not this value's: an older
     // copy of the item must not pass for the change
     const hs = l.huellas.get(s.clave)!;
@@ -373,10 +378,27 @@ function docLocal(l: Lectura, e: EstadoLocal, mismoDoc: boolean, marcas: Awaited
   return d;
 }
 
-let enCurso: Promise<boolean> | null = null;
+/**
+ * 1.0: the stores taking part — not those whose almacen key is blocked (lib/migrar.ts: a migration that failed, the
+ * data from before it restored, data of a newer version): sending them, applying the file to them (refused every run)
+ * or putting them in a backup would mix the older schema into format 2 (review 10a, low a). Their records and marks are
+ * kept as they are; the notice (AvisoDatos.svelte) says so.
+ */
+export function activos(): ReturnType<typeof sincronizables> {
+  const bloqueadas = resultadoMigracion().bloqueadas;
+  return bloqueadas.size ? sincronizables().filter((s) => !bloqueadas.has((s as { claveAlmacen?: string }).claveAlmacen ?? s.clave)) : sincronizables();
+}
 
-/** One synchronisation; `manual` reports transient errors too. Returns whether it succeeded. */
+let enCurso: Promise<boolean> | null = null;
+// (1.0: a tab that hands over to another first lets a run in progress finish — lib/pestana-activa.ts)
+registrarAntesDeCeder(() => enCurso ?? Promise.resolve(true));
+
+/**
+ * One synchronisation; `manual` reports transient errors too. Returns whether it succeeded. Never in a tab that is
+ * not the active one (1.0, lib/pestana-activa.ts: it could not record what it applied).
+ */
 export function sincronizar(manual = false): Promise<boolean> {
+  if (!pestanaEnUso()) return Promise.resolve(false);
   enCurso ??= enExclusiva(() => ejecutarSolo(manual)).finally(() => {
     enCurso = null;
   });
@@ -445,9 +467,9 @@ async function ejecutarSolo(manual: boolean): Promise<boolean> {
     const registros = conEnviado(e.items, e.doc, enviado, lectura.huellas, marcas);
     const eR: EstadoLocal = { ...e, items: registros };
     let conEnviadoGuardado = !!enviado;
-    const maximos = Object.fromEntries(sincronizables().filter((s) => s.maximo).map((s) => [s.clave, s.maximo!]));
+    const maximos = Object.fromEntries(activos().filter((s) => s.maximo).map((s) => [s.clave, s.maximo!]));
     const uniones: Record<string, Union> = Object.fromEntries(
-      sincronizables()
+      activos()
         .filter((s) => s.unir)
         .map((s) => [s.clave, { unir: s.unir!, valido: s.valido }]),
     );
@@ -478,7 +500,7 @@ async function ejecutarSolo(manual: boolean): Promise<boolean> {
       // An unchanged local item that the file no longer has, older than the prune horizon of the file:
       // it was deleted elsewhere and its tombstone already pruned; drop it instead of bringing it back.
       if (remoto && mismoDoc) {
-        for (const s of sincronizables()) {
+        for (const s of activos()) {
           const c = local.almacenes[s.clave]!;
           const r = remoto.almacenes[s.clave] ?? {};
           // (the real records, not what an earlier run only attempted to send: review 0.12i, finding 1)
@@ -491,7 +513,7 @@ async function ejecutarSolo(manual: boolean): Promise<boolean> {
         }
       }
       if (remoto) {
-        for (const s of sincronizables()) {
+        for (const s of activos()) {
           const c = local.almacenes[s.clave]!;
           const r = remoto.almacenes[s.clave] ?? {};
           for (const [id, entrada] of Object.entries(c)) {
@@ -505,7 +527,7 @@ async function ejecutarSolo(manual: boolean): Promise<boolean> {
         }
       }
       // the same value as the file's keeps the file's time (nothing to write for it)
-      if (remoto) for (const s of sincronizables()) alinearIguales(local.almacenes[s.clave]!, remoto.almacenes[s.clave]);
+      if (remoto) for (const s of activos()) alinearIguales(local.almacenes[s.clave]!, remoto.almacenes[s.clave]);
       const base = remoto ?? docVacio(idAleatorio(), ahora);
       fusion = fusionarDocs(base, { ...local, id: base.id }, maximos, uniones);
       fusion.id = base.id;
@@ -513,9 +535,10 @@ async function ejecutarSolo(manual: boolean): Promise<boolean> {
       let podado = false;
       for (const c of Object.values(fusion.almacenes)) podado = podar(c, horizonte) || podado;
       if (podado) fusion.podado = Math.max(fusion.podado, horizonte);
-      if (remoto && mismosAlmacenes(remoto, fusion)) break;
+      // (a file of an older format is written in this one even with nothing new: fusion.ts migradoDe)
+      if (remoto && migradoDe(remoto) === undefined && mismosAlmacenes(remoto, fusion)) break;
       fusion.actualizado = ahora;
-      fusion.dispositivos[e.dispositivo] = { nombre, ultima: ahora, version: VERSION_APP };
+      fusion.dispositivos[e.dispositivo] = { nombre, ultima: ahora, version: VERSION_APP, datos: VERSION_DOC };
       // (stored before the PUT: if the run is cut after it, the next one knows what was sent — CLAVE_ENVIADO)
       // (against the real records: an entry of an earlier cut run still valid is kept — review 0.12i, finding 4)
       const propios = propiosEnviados(fusion, lectura.huellas, mismoDoc ? e.items : {}, marcas);
@@ -560,7 +583,7 @@ async function ejecutarSolo(manual: boolean): Promise<boolean> {
     const items: EstadoLocal['items'] = {};
     /** Stores whose application failed: their marks are kept for the next run. */
     const fallidos = new Set<string>();
-    for (const s of sincronizables()) {
+    for (const s of activos()) {
       const c = fusion.almacenes[s.clave] ?? {};
       const antes = lectura.huellas.get(s.clave)!;
       let actuales: Valores;
@@ -629,6 +652,13 @@ async function ejecutarSolo(manual: boolean): Promise<boolean> {
     if (claves.length) window.dispatchEvent(new CustomEvent('epa:sincronizado', { detail: { claves } }));
 
     const fin = Date.now();
+    // (a blocked store keeps its records and its marks for when it takes part again: `activos`)
+    const enRun = new Set(activos().map((s) => s.clave));
+    for (const s of sincronizables())
+      if (!enRun.has(s.clave)) {
+        if (e.items[s.clave]) items[s.clave] = e.items[s.clave]!;
+        fallidos.add(s.clave);
+      }
     e.doc = fusion.id;
     e.items = items;
     e.ultima = fin;
@@ -641,7 +671,7 @@ async function ejecutarSolo(manual: boolean): Promise<boolean> {
       reintentos,
       porAlmacen,
       dispositivos: Object.entries(dispositivosValidos(fusion.dispositivos))
-        .map(([id, d]) => ({ nombre: d.nombre, ultima: d.ultima, version: d.version, este: id === e.dispositivo }))
+        .map(([id, d]) => ({ nombre: d.nombre, ultima: d.ultima, version: d.version, ...(d.datos ? { datos: d.datos } : {}), este: id === e.dispositivo }))
         .sort((a, b) => b.ultima - a.ultima),
     };
     try {

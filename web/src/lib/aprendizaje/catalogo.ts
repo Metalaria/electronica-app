@@ -131,7 +131,8 @@ async function itemsYFalta(parte: string): Promise<{ items: ItemCatalogo[]; falt
     if (c) r.push({ id: q.id, tipo: 'pregunta', subtipo: q.tipo, concepto: c });
   }
   for (const [label, it] of Object.entries(ej?.items ?? {})) {
-    if (it.parte !== parte || it.modo !== 'auto' || !it.respuestas.length || !it.seccion) continue;
+    // 1.0: also the exercises checked only through structured questions (choice, order, classification…)
+    if (it.parte !== parte || it.modo !== 'auto' || !(it.respuestas.length || it.preguntas?.length) || !it.seccion) continue;
     r.push({ id: label, tipo: 'ejercicio', subtipo: it.tipo, concepto: `${parte}/${it.seccion}` });
   }
   return { items: r, falta };
@@ -234,7 +235,8 @@ export async function candidatosProblema(partes: string[], resueltos: (label: st
     }
   }
   for (const [label, it] of Object.entries(ej?.items ?? {})) {
-    if (it.modo !== 'auto' || it.clase !== 'numerico' || !it.respuestas.length || resueltos(label)) continue;
+    // 1.0: any self-checked exercise (numeric fields or structured questions) can be the problem of the day
+    if (it.modo !== 'auto' || !(it.respuestas.length || it.preguntas?.length) || resueltos(label)) continue;
     if (alcanceEjercicios === 'partes' && !dentro.has(it.parte)) continue;
     r.push({ id: label, k: 'ejercicio', parte: it.parte, orden: orden.get(`${it.parte}/${it.seccion ?? ''}`) ?? 1e9 });
   }

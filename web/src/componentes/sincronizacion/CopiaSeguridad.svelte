@@ -72,6 +72,17 @@
     fichero = '';
   }
 
+  // 1.0 accessibility pass: a button disabled while it has the focus (`ocupado`) drops the focus to <body>; after the
+  // work the focus goes to what it produced (the preview, the result) or back to the button
+  let botonExportar: HTMLButtonElement | undefined = $state();
+  let tituloVista: HTMLElement | undefined = $state();
+  let cajaResultado: HTMLElement | undefined = $state();
+  const focoPerdido = () => !document.activeElement || document.activeElement === document.body;
+  async function enfocarTras(el: () => HTMLElement | undefined, siempre = false): Promise<void> {
+    await tick();
+    if (siempre || focoPerdido()) el()?.focus();
+  }
+
   async function exportar(): Promise<void> {
     ocupado = true;
     error = '';
@@ -82,6 +93,7 @@
       error = e instanceof Error ? e.message : String(e);
     } finally {
       ocupado = false;
+      void enfocarTras(() => botonExportar);
     }
   }
 
@@ -137,6 +149,7 @@
     if (leida.copia.automatica) modo = 'sustituir';
     sincronizarAntes = await convieneSincronizarAntes();
     await calcular();
+    if (leida && plan) await enfocarTras(() => tituloVista, true);
   }
 
   async function calcular(): Promise<void> {
@@ -168,6 +181,7 @@
       resultado = await importar(leida, modo, incluirAntiguos);
       limpiar();
       if (resultado.copiaAutomatica) automatica = await leerCopiaAutomatica();
+      void enfocarTras(() => cajaResultado, true);
     } catch (e) {
       error = e instanceof Error ? e.message : String(e);
     } finally {
@@ -219,7 +233,7 @@
     cada dispositivo no se guardan en la copia.
   </p>
   <div class="botones">
-    <button class="boton primario" onclick={exportar} disabled={ocupado} data-copia-exportar>
+    <button class="boton primario" bind:this={botonExportar} onclick={exportar} disabled={ocupado} data-copia-exportar>
       <FileDown size={16} aria-hidden="true" /> Exportar copia
     </button>
     <button class="boton" onclick={elegir} disabled={ocupado} data-copia-importar>
@@ -235,7 +249,7 @@
   {#if leida && plan}
     <div class="vista" data-copia-vista data-cambios={totalCambios}>
       <!-- (Android gives no file name: a content:// URI, see src-tauri lib.rs) -->
-      <h3>{#if fichero}Importar «{fichero}»{:else}Importar la copia elegida{/if}</h3>
+      <h3 tabindex="-1" bind:this={tituloVista}>{#if fichero}Importar «{fichero}»{:else}Importar la copia elegida{/if}</h3>
       <p class="origen">
         {#if leida.deSincronizacion}
           Es el fichero de sincronización de GitHub ({fecha(leida.copia.exportado)}).
@@ -342,7 +356,7 @@
   {/if}
 
   {#if resultado}
-    <div class="resultado" role="status" data-copia-resultado data-fallidos={resultado.fallidos.length}>
+    <div class="resultado" role="status" tabindex="-1" bind:this={cajaResultado} data-copia-resultado data-fallidos={resultado.fallidos.length}>
       <p class="ok">
         Importado: {hechos(resultado)} {hechos(resultado) === 1 ? 'cambio' : 'cambios'}. Si sincroniza, la próxima sincronización
         los llevará a sus demás dispositivos.

@@ -1,6 +1,7 @@
 <script lang="ts">
   // «Sincronización y actualizaciones» (#/sincronizacion): the GitHub token, the data repository and file,
   // «Sincronizar ahora», what is synchronised, and the update check of the app.
+  import EnlaceGuia from '../guia/EnlaceGuia.svelte';
   import { onMount } from 'svelte';
   import RefreshCw from '@lucide/svelte/icons/refresh-cw';
   import KeyRound from '@lucide/svelte/icons/key-round';
@@ -33,6 +34,8 @@
   import BotonesInstalador from './BotonesInstalador.svelte';
   import { cuando } from './tiempo';
   import CopiaSeguridad from './CopiaSeguridad.svelte';
+  import AvisoDatos from './AvisoDatos.svelte';
+  import { FORMATO_DATOS, VERSION_MINIMA_DATOS } from '../../lib/esquemas';
   import { ruta as rutaApp } from '../../lib/ruta.svelte';
 
   let token = $state('');
@@ -44,6 +47,11 @@
   let ruta = $state(RUTA_DEFECTO);
   let guardado = $state('');
   let ahora = $state(Date.now());
+  // 1.0: devices of the file still on an older version (0.12 refuses the 1.0 file: they cannot synchronise until
+  // updated; their changes wait on them — ESQUEMA.md «Transition from 0.12»)
+  const pendientes = $derived(
+    (sinc.resumen?.dispositivos ?? []).filter((d) => !d.este && (d.datos ?? 1) < FORMATO_DATOS),
+  );
 
   const repoValido = $derived(!!leerRepositorio(repositorio));
   // The data repository the help refers to (the one typed in the form, or the default one).
@@ -131,6 +139,8 @@
       repositorio privado de GitHub suyo. Cada dispositivo fusiona sus cambios con los de los demás, elemento a
       elemento: no se pisa nada.
     </p>
+    <!-- 1.0: how it works, in the user guide -->
+    <p class="guia-sinc"><EnlaceGuia seccion="datos" apartado="sincronizacion" /></p>
   </header>
 
   <section class="tarjeta" aria-labelledby="t-cuenta">
@@ -246,6 +256,18 @@
           {/each}
         </ul>
       {/if}
+      {#if pendientes.length}
+        <p class="pendientes" role="note" data-pendientes>
+          <TriangleAlert size={16} aria-hidden="true" />
+          <span>
+            {pendientes.length === 1 ? 'Falta por actualizar' : 'Faltan por actualizar'}:
+            {pendientes.map((d) => `«${d.nombre}» (versión ${d.version || 'desconocida'})`).join(', ')}. Hasta que tengan la
+            versión {VERSION_MINIMA_DATOS} o posterior no pueden sincronizar (verán «actualice la aplicación»); lo que cambien
+            mientras tanto espera en ellos y se enviará cuando se actualicen. No borre el fichero de GitHub aunque se lo
+            sugieran. Si ya no usa alguno de esos dispositivos, puede ignorar este aviso.
+          </span>
+        </p>
+      {/if}
     {/if}
   </section>
 
@@ -264,6 +286,8 @@
 
   <!-- 0.12: export / import of all the progress (#/sincronizacion/copia scrolls to it: the «Aa» entry) -->
   <CopiaSeguridad enfocar={rutaApp.ancla === 'copia'} />
+  <!-- 1.0: the backup of the data from before the schema migration (lib/migrar.ts) -->
+  <AvisoDatos pagina />
 
   <section class="tarjeta" aria-labelledby="t-version">
     <h2 id="t-version"><Download size={20} aria-hidden="true" /> Actualizaciones</h2>
@@ -548,6 +572,22 @@
   .resumen {
     color: var(--tinta-suave);
     font-size: 14.5px;
+  }
+  .pendientes {
+    display: flex;
+    gap: 8px;
+    align-items: flex-start;
+    margin: 10px 0 0;
+    padding: 10px 12px;
+    border-left: 3px solid var(--c-importante);
+    background: var(--acento-tinte);
+    font-size: 14.5px;
+    line-height: 1.5;
+  }
+  .pendientes :global(svg) {
+    flex: none;
+    margin-top: 3px;
+    color: var(--c-importante);
   }
   .dispositivos,
   .lista {

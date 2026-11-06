@@ -16,9 +16,33 @@
 // tab: its activity summed across devices) — checked at the end against the activity done, day by day, on every
 // device and tab: exactly the sum, never counted twice —, and a device sometimes exports a backup (copia.ts) and one
 // imports a backup made earlier on any device («unir»): what it brings counts as known, like a synchronisation.
+// 1.0 (compatibility with 0.10/0.11 clients dropped): the 0.10 device is gone; instead W runs 0.12.0 — its engine, its
+// Guardado, its daily-progress, repaso and backup modules, from git (arnes.ts) — and is updated to this version at a
+// random step (its pending writes flushed first, as the updater does; its storage migrated, lib/migrar.ts). While on
+// 0.12 its runs against a file of format 2 are refused («actualice la aplicación»: what it did waits on it, and counts
+// as unknown to the file) and it must never write such a file; its backups (format 1) imported by the others are
+// migrated, theirs (format 2) refused by it. Checked as for every device: nothing it did is lost once it is updated.
 import { REENVIOS_MAXIMOS, huella } from '../../src/lib/sincronizacion/fusion.ts';
 import { claveDia } from '../../src/componentes/repaso/srs.ts';
-import { almacenamiento, esTauri, fallarEscritura, fallarLectura, guardado, nuevaPestana, nuevoDisp, nuevoRepo, pasada, registro, reloj, type Almacen, type Disp, type OpcionesPasada, type Pestana } from './arnes.ts';
+import {
+  almacenamiento,
+  cambiarVersion,
+  esTauri,
+  fallarEscritura,
+  fallarLectura,
+  guardado,
+  nuevaPestana,
+  nuevoDisp,
+  nuevoRepo,
+  pasada,
+  registro,
+  reloj,
+  ultimoError,
+  type Almacen,
+  type Disp,
+  type OpcionesPasada,
+  type Pestana,
+} from './arnes.ts';
 
 const M = 60_000;
 const tiempoT = (v: unknown) => (typeof (v as { t?: unknown })?.t === 'number' ? (v as { t: number }).t : undefined);
@@ -47,6 +71,8 @@ interface Op {
 export interface ResultadoPrueba {
   problemas: string[];
   commitsAsentar: number;
+  /** Runs of W refused while it was on 0.12 (the file already in format 2). */
+  rechazos012?: number;
 }
 
 type Conj = { s: string[] };
@@ -79,7 +105,10 @@ export async function simularPrueba(prueba: number): Promise<ResultadoPrueba> {
   ];
   const desfase = () => Math.round((rnd() - 0.5) * 20 * M);
   const devs: Disp[] = [await nuevoDisp('A', almacenes011(false), desfase()), await nuevoDisp('B', almacenes011(false), desfase(), '0.11', { tauri: prueba % 2 === 0 }), await nuevoDisp('C', almacenes011(true), desfase())];
-  devs.push(await nuevoDisp('V', [registro('reg', { tiempo: tiempoT }), registro('sin'), registro('crudo', { tiempo: tiempoT })], desfase(), '0.10'));
+  // (1.0: W on 0.12.0, updated at step `pasoW`)
+  const W = await nuevoDisp('W', almacenes011(false), desfase(), '0.12', { tauri: prueba % 3 === 0 });
+  devs.push(W);
+  const pasoW = 10 + Math.floor(rnd() * 50);
   let t = 1_760_000_000_000;
   const todos: Record<string, Set<string>> = {};
   const tieneGuardado = (d: Disp, k: string) => !!d.almacenes.find((s) => s.clave === k)?.guardado;
@@ -104,7 +133,7 @@ export async function simularPrueba(prueba: number): Promise<ResultadoPrueba> {
     await operarA(p, d, ahora);
   };
   const operarA = async (p: Pestana, d: Disp, ahora: number) => {
-    const claves = d.version === '0.10' ? ['reg', 'sin', 'crudo'] : ['reg', 'sin', 'conj', 'crudo'];
+    const claves = ['reg', 'sin', 'conj', 'crudo'];
     const k = claves[Math.floor(rnd() * claves.length)]!;
     const borrar = k !== 'conj' && rnd() < 0.3;
     const id = k === 'reg' ? ['r0', 'r1', 'cfg'][Math.floor(rnd() * 3)]! : k === 'sin' ? ['s0', 'aj'][Math.floor(rnd() * 2)]! : k === 'conj' ? `c${Math.floor(rnd() * 2)}` : ['k0', 'k1'][Math.floor(rnd() * 2)]!;
@@ -115,7 +144,7 @@ export async function simularPrueba(prueba: number): Promise<ResultadoPrueba> {
     log(`op ${op.id} ${quien(p, k)} ${op.clave} ${borrar ? 'borra' : 'pone'} t=${ahora} supera=${[...op.supera]}`);
     de(quien(p, k), op.clave).add(op.id);
     let nuevo: unknown;
-    if (k === 'reg') nuevo = { op: op.id, t: ahora, ...(d.nombre !== 'C' && d.version === '0.11' && rnd() < 0.2 ? { futuro: true } : {}) };
+    if (k === 'reg') nuevo = { op: op.id, t: ahora, ...(d.nombre !== 'C' && rnd() < 0.2 ? { futuro: true } : {}) };
     else if (k === 'sin') nuevo = { op: op.id };
     else if (k === 'conj') {
       nuevo = { s: [...((valores[id] as Conj | undefined)?.s ?? []), op.id].sort() };
@@ -153,8 +182,19 @@ export async function simularPrueba(prueba: number): Promise<ResultadoPrueba> {
     const kt = process.env.TRAZA_ALMACEN ?? 'sin';
     log(`corre ${quien(p, 'reg')} ${o.interrumpir ? 'interrumpida' : ''}${o.durante ? 'con edición' : ''} t=${t + d.desfase} antes: estado=${JSON.stringify(d.estado.items[kt] ?? {})} mem=${JSON.stringify(valoresDe(p, kt))} alm=${JSON.stringify(d.almacen(kt).valores)} marcas=${JSON.stringify(d.marcas)} fallos=${d.almacenes.filter((s) => s.guardado && (globalThis as unknown as { __fallaEscritura: (a: string, b: string) => boolean }).__fallaEscritura(d.etiqueta, `g:${s.clave}`)).map((s) => s.clave)}`);
     if (p.diario && kt === 'progreso-diario') log(`  memoria del módulo antes: ${JSON.stringify(p.diario.itemsDias())}`);
+    const formatoAntes = repo.texto ? (JSON.parse(repo.texto) as { version: number }).version : 0;
     const w = await pasada(d, repo, t, { ...o, pestana: p });
     if (p.diario && kt === 'progreso-diario') log(`  memoria del módulo después: ${JSON.stringify(p.diario.itemsDias())}`);
+    // (1.0: a 0.12 device never writes a file of format 2; its refused run sends nothing, so the file learns nothing)
+    if (d.version === '0.12' && w && formatoAntes >= 2) problemas.push(`prueba ${prueba}: ${d.nombre} con la 0.12 escribió un fichero del formato ${formatoAntes}`);
+    if (d.version === '0.12' && repo.texto && (JSON.parse(repo.texto) as { version: number }).version < formatoAntes)
+      problemas.push(`prueba ${prueba}: ${d.nombre} con la 0.12 bajó el formato del fichero`);
+    const rechazada = !w && /actualice la aplicación/.test(ultimoError);
+    if (rechazada) {
+      rechazos012++;
+      log(`  → rechazada por la 0.12: ${ultimoError}`);
+      return w;
+    }
     for (const [k, xs] of sabido) for (const x of xs) de('fichero', k).add(x);
     const k = process.env.TRAZA_ALMACEN ?? 'sin';
     log(`  → ${w ? 'commit' : 'sin commit'} ${k}=${JSON.stringify(repo.doc?.almacenes[k] ?? {})} estado=${JSON.stringify(d.estado.items[k] ?? {})} mem=${JSON.stringify(valoresDe(p, k))} alm=${JSON.stringify(d.almacen(k).valores)} marcas=${JSON.stringify(d.marcas)}`);
@@ -175,6 +215,31 @@ export async function simularPrueba(prueba: number): Promise<ResultadoPrueba> {
     return w;
   };
   const pestanaAzar = (d: Disp) => d.pestanas[Math.floor(rnd() * d.pestanas.length)]!;
+  let rechazos012 = 0;
+  /**
+   * W is updated from 0.12.0 to this version: as the updater does (lib/almacen.ts guardarTodoAntesDeSalir), every tab
+   * writes what it has pending first (the storage accepting writes again for that), then the app starts again on the
+   * same storage — migrated (lib/migrar.ts) — with one tab, whose memory is what the storage holds.
+   */
+  const actualizarW = async () => {
+    for (const s of W.almacenes) {
+      if (s.guardado) {
+        fallarEscritura(W, `g:${s.clave}`, false);
+        fallarLectura(W, `g:${s.clave}`, false);
+      } else if ('diario' in s) fallarEscritura(W, 'progreso-diario', false);
+    }
+    for (const q of W.pestanas) {
+      for (const g of q.guardados.values()) await (g as unknown as { volcar(): Promise<void> }).volcar().catch(() => undefined);
+      await q.diario?.guardadoDias.volcar().catch(() => undefined);
+      for (const s of W.almacenes) if (s.guardado) igualar(q, s.clave);
+    }
+    const viejas = W.pestanas.length;
+    const r = (await cambiarVersion(W, '0.11')) as { fallidas: unknown[] };
+    if (r.fallidas.length) problemas.push(`prueba ${prueba}: la migración de W dejó sin hacer ${JSON.stringify(r.fallidas)}`);
+    // (the new tab knows what the storage holds)
+    for (const s of W.almacenes) if (s.guardado) for (const o of ops.values()) if (o.clave.startsWith(`${s.clave}/`)) sumar(`W#0`, 'W', o.clave);
+    log(`W pasa de la 0.12 a esta versión (${viejas} pestañas antes)`);
+  };
 
   // 0.12: the daily activity done (day → steps), and the backups made (text, and what they reflected)
   const actividad: Record<string, number> = {};
@@ -236,6 +301,7 @@ export async function simularPrueba(prueba: number): Promise<ResultadoPrueba> {
 
   for (let paso = 0; paso < 70; paso++) {
     t += Math.floor(rnd() * 3 * M) + 1;
+    if (paso === pasoW) await actualizarW();
     const d = devs[Math.floor(rnd() * devs.length)]!;
     const p = pestanaAzar(d);
     const x = rnd();
@@ -258,18 +324,18 @@ export async function simularPrueba(prueba: number): Promise<ResultadoPrueba> {
       await correr(F.pestanas[0]!);
     } else if (x < 0.26) await operar(p);
     else if (x < 0.31 && conDiario(d)) await estudiar(p);
-    else if (x < 0.325 && d.version === '0.11') await exportar(p);
-    else if (x < 0.34 && d.version === '0.11') await importar(p);
+    else if (x < 0.325) await exportar(p);
+    else if (x < 0.34) await importar(p);
     else if (x < 0.4) {
       // two edits in a row in one tab, the second before the first's write finished (two quick clicks), unless its
       // storage refuses writes now (the knowledge kept here assumes both are stored)
       const gg = globalThis as unknown as { __fallaEscritura: (a: string, b: string) => boolean; __fallaLectura: (a: string, b: string) => boolean };
       const falla = d.almacenes.some((s) => s.guardado && (gg.__fallaEscritura(d.etiqueta, `g:${s.clave}`) || gg.__fallaLectura(d.etiqueta, `g:${s.clave}`)));
-      if (falla || d.version === '0.10') await operar(p);
+      if (falla) await operar(p);
       else await Promise.all([operar(p), operar(p)]);
     }
-    else if (x < 0.44 && d.version === '0.11' && d.pestanas.length < 2 && !esTauri(d)) await nuevaPestana(d);
-    else if (x < 0.5 && d.version === '0.11') {
+    else if (x < 0.44 && d.pestanas.length < 2 && !esTauri(d)) await nuevaPestana(d);
+    else if (x < 0.5) {
       // the storage refuses (or accepts again) a store's writes; a module without Guardado fails half-way
       const s = d.almacenes[Math.floor(rnd() * d.almacenes.length)]!;
       if ('diario' in s) {
@@ -288,7 +354,7 @@ export async function simularPrueba(prueba: number): Promise<ResultadoPrueba> {
         log(`fallo de escritura ${d.nombre} ${s.clave} ${si}`);
       } else s.fallaParcial = !s.fallaParcial;
     } else if (x < 0.55) await correr(p, { interrumpir: true });
-    else if (x < 0.6 && d.version === '0.11') {
+    else if (x < 0.6) {
       let hecho: Promise<void> | null = null;
       await correr(p, { durante: () => void (hecho = operar(p, true)) });
       await hecho;
@@ -315,6 +381,7 @@ export async function simularPrueba(prueba: number): Promise<ResultadoPrueba> {
     } else await correr(p);
   }
 
+  if (W.version === '0.12') await actualizarW();
   // settle: no more failures nor edits; every tab of every device runs in turn
   for (const d of devs)
     for (const s of d.almacenes) {
@@ -356,10 +423,9 @@ export async function simularPrueba(prueba: number): Promise<ResultadoPrueba> {
       }
     }
   }
-  // no loss, no resurrection (an 0.10 device's own later edit may lose to an earlier one when its clock is behind —
-  // 0.10's engine, unchanged —: its operations supersede nothing here)
+  // no loss, no resurrection
   const superadas = new Set<string>();
-  for (const op of ops.values()) if (!op.id.startsWith('V')) for (const x of op.supera) superadas.add(x);
+  for (const op of ops.values()) for (const x of op.supera) superadas.add(x);
   const todasSuperadas = new Set<string>();
   for (const op of ops.values()) for (const x of op.supera) todasSuperadas.add(x);
   for (const clave of ['reg', 'sin', 'crudo']) {
@@ -392,5 +458,5 @@ export async function simularPrueba(prueba: number): Promise<ResultadoPrueba> {
     const final = new Set((repo.vivos('conj')[id] as Conj | undefined)?.s ?? []);
     for (const x of s) if (!final.has(x)) problemas.push(`${etiqueta}: conj/${id} perdió ${x}`);
   }
-  return { problemas, commitsAsentar: asentar };
+  return { problemas, commitsAsentar: asentar, rechazos012 };
 }

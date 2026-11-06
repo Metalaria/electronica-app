@@ -74,10 +74,25 @@ function normalizar(m: unknown): Marcas {
   return r;
 }
 
+/** Whether an object has no own key. */
+function vacio(o: object): boolean {
+  for (const k in o) if (Object.prototype.hasOwnProperty.call(o, k)) return false;
+  return true;
+}
+
+/**
+ * The stores left without any mark are dropped — once per write (`limpiar`), not once per mark: 1.0, performance
+ * review — an emptiness check at every mark (`Object.keys(o).length`, and a `for…in` too, which lists every key of an
+ * object in dictionary mode) made thousands of marks of one store quadratic: 2,5 s of a 3-year store's first start at
+ * CPU × 4; 8000 deletions 8,5 s in Node (scenario t10·12).
+ */
+function limpiar(m: Marcas): Marcas {
+  for (const tipo of ['cambios', 'borrados', 'huellas'] as const) for (const k of Object.keys(m[tipo])) if (vacio(m[tipo][k]!)) delete m[tipo][k];
+  return m;
+}
+
 function quitarHuella(m: Marcas, clave: string, id: string): void {
-  if (!m.huellas[clave]) return;
-  delete m.huellas[clave]![id];
-  if (!Object.keys(m.huellas[clave]!).length) delete m.huellas[clave];
+  if (m.huellas[clave]) delete m.huellas[clave]![id];
 }
 
 /** Puts a mark in `m`: the latest mark of an item wins (a change after its deletion is a re-creation, and back). */
@@ -93,7 +108,6 @@ function poner(m: Marcas, x: Marca): void {
   }
   if (contrario !== undefined) {
     delete m[otro][x.clave]![x.id];
-    if (!Object.keys(m[otro][x.clave]!).length) delete m[otro][x.clave];
   }
   if (x.tipo === 'borrados') quitarHuella(m, x.clave, x.id);
 }
@@ -219,7 +233,7 @@ export function volcarMarcas(): Promise<void> {
       s = await leerGuardadas();
       for (const x of escribir) poner(s, x);
       const repuestas = await reponerMias(s);
-      if (escribir.length || repuestas) await a.escribir(CLAVE_MARCAS, s);
+      if (escribir.length || repuestas) await a.escribir(CLAVE_MARCAS, limpiar(s));
       recordarMias(a, escribir);
     } catch (e) {
       // (the read or the write failed: this tab's marks stay pending, and its view as it was)
@@ -324,12 +338,12 @@ export function olvidarMarcas(hasta: number, conservar: Set<string> = new Set())
               if (tipo === 'cambios') quitarHuella(s, k, id);
               olvidadas.add(`${tipo}|${k}|${id}|${t}`);
             }
-          if (!Object.keys(s[tipo][k]!).length) delete s[tipo][k];
+          if (vacio(s[tipo][k]!)) delete s[tipo][k];
         }
       // (this tab's own forgotten marks are not put back; another tab's lost ones are: `reponerMias`)
       mias = mias.filter(({ x }) => !olvidadas.has(`${x.tipo}|${x.clave}|${x.id}|${x.t}`));
       await reponerMias(s);
-      await a.escribir(CLAVE_MARCAS, s);
+      await a.escribir(CLAVE_MARCAS, limpiar(s));
       recordarMias(a, escribir);
     } catch (e) {
       // (nothing forgotten: the marks stay — the next run sees them and finds the items as recorded)

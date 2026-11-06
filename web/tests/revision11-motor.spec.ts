@@ -66,7 +66,8 @@ test.describe('motor real · escenarios de las revisiones', () => {
 // ================================================================== randomized: devices, tabs, versions and failures
 
 test.describe('motor real · simulación al azar', () => {
-  test('tres dispositivos con pestañas, uno de la 0.10 y una instalación nueva: sin pérdidas, sin resurrecciones, convergen, los commits paran', async () => {
+  // (1.0: the 0.10 device is now a device on 0.12.0 — its engine from git — updated half-way: tests/motor-real/azar.ts)
+  test('tres dispositivos con pestañas, uno con la 0.12 que se actualiza a mitad y una instalación nueva: sin pérdidas, sin resurrecciones, convergen, los commits paran', async () => {
     test.setTimeout(1_500_000);
     // two child processes (seeds 0–39 and 40–79) side by side
     const partes = await Promise.all([correr<Resultado>('azar', '40', '0'), correr<Resultado>('azar', '40', '40')]);
