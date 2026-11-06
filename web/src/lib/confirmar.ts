@@ -14,6 +14,11 @@ export interface Pregunta {
   /** Label of the destructive button («Borrar», «Descartar»). */
   aceptar: string;
   cancelar?: string;
+  /**
+   * 1.0 (review 10h): the question is the guard of a route change itself (lib/salida.ts): the router has already put
+   * the page's address back, so a route change does not close it (the reader's repeated «Atrás» keeps one question).
+   */
+  seguirEnRuta?: boolean;
 }
 
 export function confirmar(p: Pregunta): Promise<boolean> {
@@ -40,8 +45,11 @@ export function confirmar(p: Pregunta): Promise<boolean> {
       if (antes?.isConnected) antes.focus();
       resolver(si);
     };
-    window.addEventListener('hashchange', alSalir);
-    window.addEventListener('popstate', alSalir);
-    componente = mount(Confirmacion, { target: host, props: { ...p, responder } });
+    const { seguirEnRuta, ...props } = p;
+    if (!seguirEnRuta) {
+      window.addEventListener('hashchange', alSalir);
+      window.addEventListener('popstate', alSalir);
+    }
+    componente = mount(Confirmacion, { target: host, props: { ...props, responder } });
   });
 }

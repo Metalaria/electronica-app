@@ -21,6 +21,7 @@
 //          #/ejercicios[/repaso]  exercises and problems by chapter, or the review of the failed ones
 //          #/sincronizacion      GitHub synchronisation of the reader's data and update check
 //          #/diagnostico         performance diagnostic of this device (componentes/diagnostico), from «Ajustes»
+//          #/diagnostico/informe the same page at its «Informe de fallos» (1.0)
 //          #/leccion/<parte>/<seccion>[/<n>|/pregunta-<n>|/fin]  a section studied step by step (componentes/leccion):
 //                                step n (1-based), a question after the steps, or the summary
 //          #/cursos[/<curso>[/prueba]]  the thematic courses (0.11, componentes/cursos): all, one, its placement test
@@ -29,14 +30,17 @@
 //          #/practicar[/<parte>[/<seccion>]]  «Práctica inteligente» (group B, componentes/practicar): a session of
 //                                ~10 items chosen for the reader, or focused on a chapter or a section
 //          #/problema[/ayer]     the problem of the day, or yesterday's with its solution (group B, componentes/problema)
+//          #/guia[/<seccion>[/<apartado>]]  the in-app user guide (1.0, componentes/guia, content in lib/guia/contenido.ts)
 //
 // Each history entry remembers its scroll position (history.state.y), so «Atrás» (the button,
 // the browser or the Android back button) returns exactly where the reader was. Overlays
 // (drawer, search, figure viewer) push their own entry so the back button closes them.
 
 import { registrar } from './registro';
+import { hayCambiosSinGuardar, olvidarPermiso, preguntandoSalida, puedeSalir } from './salida';
+import { miga, rutaSegura } from './informe-fallos';
 
-export type Vista = 'inicio' | 'parte' | 'glosario' | 'marcadores' | 'simulador' | 'componentes' | 'conceptos' | 'consolas' | 'instrumentos' | 'fm7303' | 'repaso' | 'ejercicios' | 'calculadoras' | 'proyectos' | 'sincronizacion' | 'diagnostico' | 'leccion' | 'cursos' | 'progreso' | 'practicar' | 'problema';
+export type Vista = 'inicio' | 'parte' | 'glosario' | 'marcadores' | 'simulador' | 'componentes' | 'conceptos' | 'consolas' | 'instrumentos' | 'fm7303' | 'repaso' | 'ejercicios' | 'calculadoras' | 'proyectos' | 'sincronizacion' | 'diagnostico' | 'leccion' | 'cursos' | 'progreso' | 'practicar' | 'problema' | 'docente' | 'guia';
 
 export interface AnclaLectura {
   /** Index of the top-level block at the top of the screen. */
@@ -139,7 +143,8 @@ function leer(): void {
   } else if (a === 'diagnostico') {
     ruta.vista = 'diagnostico';
     ruta.parte = '';
-    ruta.ancla = '';
+    // 1.0: #/diagnostico/informe opens it at the «Informe de fallos»
+    ruta.ancla = b;
   } else if (a === 'cursos') {
     ruta.vista = 'cursos';
     ruta.parte = '';
@@ -154,6 +159,16 @@ function leer(): void {
     ruta.ancla = b;
   } else if (a === 'problema') {
     ruta.vista = 'problema';
+    ruta.parte = '';
+    ruta.ancla = b;
+  } else if (a === 'guia') {
+    // 1.0: the user guide; «<seccion>[/<apartado>]» in ruta.ancla (componentes/guia)
+    ruta.vista = 'guia';
+    ruta.parte = '';
+    ruta.ancla = b;
+  } else if (a === 'docente') {
+    // 1.0: own courses and exams (componentes/docente)
+    ruta.vista = 'docente';
     ruta.parte = '';
     ruta.ancla = b;
   } else if (a === 'sincronizacion') {
@@ -182,6 +197,8 @@ function leer(): void {
   ruta.pos = e.pos && typeof e.pos.b === 'number' ? e.pos : null;
   ruta.desde = e.desde ?? null;
   ruta.n++;
+  direccionActual = location.href;
+  olvidarPermiso();
 }
 
 // ------------------------------------------------------------------ overlays
@@ -218,6 +235,17 @@ export function hayCapas(): boolean {
 export function navegarDesdeCapa(href: string, desde?: { texto: string }): void {
   while (pila.length) pila.pop()?.cerrar();
   const st: EstadoHistoria = desde ? { desde } : {};
+  if (hayCambiosSinGuardar()) {
+    // (review 10f: the page on screen has unsaved changes — the teacher-mode editor —: the overlay's entry becomes the
+    // page's again and the page asks; only a «yes» goes on)
+    history.replaceState({}, '', location.href);
+    void puedeSalir().then((ok) => {
+      if (!ok) return;
+      history.replaceState(st, '', href);
+      leer();
+    });
+    return;
+  }
   history.replaceState(st, '', href);
   leer();
 }
@@ -271,9 +299,33 @@ export function prepararSalto(desde: { texto: string }): void {
   desdePendiente = desde;
 }
 
+/** The address of the route on screen (the last one read). */
+let direccionActual = typeof location === 'undefined' ? '' : location.href;
+
+/**
+ * Review 10f: a route change while the page on screen has unsaved changes (lib/salida.ts) — a link, a button that sets
+ * location.hash, the browser's or Android's «Atrás» —: the page's address is put back (a new history entry: the one
+ * left behind stays where it was) and the page asks with the app's dialog; only a «yes» goes to where it was going.
+ */
+function retenerSalida(): boolean {
+  const destino = location.href;
+  if (!hayCambiosSinGuardar() || destino === direccionActual) return false;
+  history.pushState({}, '', direccionActual);
+  // (review 10h: a question already open stays — one dialog whatever the number of «Atrás»; its answer decides)
+  if (preguntandoSalida()) return true;
+  void puedeSalir().then((ok) => {
+    if (!ok) return;
+    // (review 10h, r10h·6: back over the entry pushed above to the one being reached — no duplicate entries, so the
+    // next «Atrás» moves on; the «yes» given lets that change through, lib/salida.ts)
+    history.back();
+  });
+  return true;
+}
+
 export function iniciarRuta(): void {
   if ('scrollRestoration' in history) history.scrollRestoration = 'manual';
   window.addEventListener('hashchange', () => {
+    if (retenerSalida()) return;
     if (desdePendiente) {
       history.replaceState({ ...estado(), desde: desdePendiente }, '');
       desdePendiente = null;
@@ -281,6 +333,8 @@ export function iniciarRuta(): void {
     leer();
     // Application log (0.10): the screens visited, so a report says where the reader was.
     registrar('info', 'navegación', decodeURIComponent(location.hash || '#/'));
+    // 1.0: and a breadcrumb of the «Informe de fallos» (ids only, lib/informe-fallos.ts)
+    miga(`ruta ${rutaSegura(location.hash || '#/')}`);
   });
   window.addEventListener('popstate', () => {
     const top = pila[pila.length - 1];

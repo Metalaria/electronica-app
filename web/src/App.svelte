@@ -1,6 +1,6 @@
 <script lang="ts">
   import ErrorCarga from './componentes/ErrorCarga.svelte';
-  import { onMount } from 'svelte';
+  import { onMount, untrack } from 'svelte';
   import { app } from './lib/estado.svelte';
   import { ruta, iniciarRuta } from './lib/ruta.svelte';
   import { usuario, cargarUsuario, volcar } from './lib/usuario.svelte';
@@ -20,7 +20,10 @@
   import VisorFigura from './componentes/VisorFigura.svelte';
   import Arranque from './componentes/sincronizacion/Arranque.svelte';
   import ArranqueProgreso from './componentes/progreso/ArranqueProgreso.svelte';
+  import Recuperable from './componentes/fallos/Recuperable.svelte';
+  import AvisoFallo from './componentes/fallos/AvisoFallo.svelte';
   import { capaProtoboard } from './lib/protoboard.svelte';
+  import { enfocarContenido, focoTrasRuta } from './lib/foco-ruta';
 
   let oscuroSistema = $state(false);
 
@@ -63,6 +66,28 @@
       raiz.setProperty('--alto-pestanas', '0px');
     }
   });
+
+  // 1.0 accessibility: after a route change the focus goes to the new page's heading (lib/foco-ruta.ts), so a
+  // screen reader announces it and Tab starts from the top of the page. Not on the first load, nor when only the
+  // history entry was read again for the same route.
+  let rutaAnterior: string | null = null;
+  $effect(() => {
+    void ruta.n;
+    const clave = `${ruta.vista}|${ruta.parte}|${ruta.ancla}|${ruta.sim}`;
+    untrack(() => {
+      const primera = rutaAnterior === null;
+      const igual = clave === rutaAnterior;
+      rutaAnterior = clave;
+      if (primera || igual) return;
+      focoTrasRuta(ruta.vista === 'parte' || ruta.vista === 'glosario' ? ruta.ancla || null : null);
+    });
+  });
+
+  function saltar(ev: MouseEvent) {
+    // the hash is the router's: the link only moves the focus
+    ev.preventDefault();
+    enfocarContenido();
+  }
 
   // No page scroll under an overlay.
   $effect(() => {
@@ -135,6 +160,8 @@
 
 <svelte:window onkeydown={teclas} />
 
+<!-- 1.0 accessibility: the first stop of Tab on every page (WCAG 2.4.1), visible only while it has the focus -->
+<a class="saltar-contenido" href="#contenido" data-saltar-contenido onclick={saltar}>Saltar al contenido</a>
 <div class="app" class:movil={app.movil}>
   {#if app.cargado && ruta.vista !== 'leccion'}
     {#if app.movil}
@@ -147,6 +174,9 @@
   <div class="principal">
     {#if ruta.vista !== 'leccion'}<Barra />{/if}
     <main id="contenido">
+      <!-- 1.0: a page that throws while it renders shows «No se ha podido mostrar esta página» with «Reintentar»
+           (componentes/fallos/Recuperable.svelte) instead of a blank page; another route tries again. -->
+      <Recuperable zona="esta página" clave={`${ruta.vista}|${ruta.parte}|${ruta.vista === 'parte' ? '' : ruta.ancla}`} grande>
       {#if app.error}
         <ErrorCarga grande titulo="No se pudo abrir el libro" error={app.error} />
       {:else if !app.cargado || !usuario.listo}
@@ -301,6 +331,24 @@
         {:catch e}
           <ErrorCarga grande titulo="No se pudo abrir el problema del día" error={e} />
         {/await}
+      {:else if ruta.vista === 'docente'}
+        <!-- 1.0: own courses and exams with the book's exercises, taken in the app and exported to PDF. -->
+        {#await import('./componentes/docente/PaginaDocente.svelte')}
+          <div class="cargando" aria-live="polite"><span class="punto"></span> Abriendo el modo docente…</div>
+        {:then m}
+          <m.default />
+        {:catch e}
+          <ErrorCarga grande titulo="No se pudo abrir el modo docente" error={e} />
+        {/await}
+      {:else if ruta.vista === 'guia'}
+        <!-- 1.0: the in-app user guide (its content is bundled with this chunk: it works offline). -->
+        {#await import('./componentes/guia/PaginaGuia.svelte')}
+          <div class="cargando" aria-live="polite"><span class="punto"></span> Abriendo la guía…</div>
+        {:then m}
+          <m.default />
+        {:catch e}
+          <ErrorCarga grande titulo="No se pudo abrir la guía" error={e} />
+        {/await}
       {:else if ruta.vista === 'sincronizacion'}
         <!-- GitHub token, data repository, «Sincronizar ahora» and the update check. -->
         {#await import('./componentes/sincronizacion/PaginaSincronizacion.svelte')}
@@ -335,6 +383,7 @@
           <Lector parte={ruta.parte} />
         {/key}
       {/if}
+      </Recuperable>
     </main>
   </div>
 </div>
@@ -356,7 +405,32 @@
 <Arranque />
 <!-- 0.11: «+10 XP», new level and achievement toasts (own chunk, mounted on the first one); daily reminder check. -->
 <ArranqueProgreso />
+<!-- 1.0: the notice after a failure («Ver el informe») and what feeds the local «Informe de fallos». -->
+<AvisoFallo />
 <style>
+  .saltar-contenido {
+    position: fixed;
+    top: 8px;
+    left: 8px;
+    z-index: 1000;
+    padding: 10px 16px;
+    min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    border-radius: 10px;
+    background: var(--banda);
+    color: #fff;
+    font-family: var(--sans);
+    font-weight: 600;
+    text-decoration: none;
+    transform: translateY(-200%);
+  }
+  .saltar-contenido:focus,
+  .saltar-contenido:focus-visible {
+    transform: none;
+    outline: 3px solid var(--acento);
+    outline-offset: 2px;
+  }
   .app {
     min-height: 100vh;
     min-height: 100dvh;

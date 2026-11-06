@@ -22,6 +22,7 @@
     // group B: reached from the start page
     if (ruta.vista === 'practicar') return 'Práctica inteligente';
     if (ruta.vista === 'problema') return 'Problema del día';
+    if (ruta.vista === 'docente') return 'Modo docente';
     return HERRAMIENTAS.find(esActiva)?.etiqueta ?? '';
   });
   const rotulo = $derived(info ? rotuloParte(ruta.parte) : '');

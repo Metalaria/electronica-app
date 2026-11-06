@@ -69,6 +69,11 @@ export const HERRAMIENTAS: Herramienta[] = [
     corta: 'Marcadores',
     cuenta: () => Object.keys(usuario.marcadores).length + Object.keys(usuario.notas).length,
   },
+  // 1.0: own courses and exams with the book's exercises, exportable to PDF; the least used, so on a low window it is
+  // the first to go to «Más» (and on the phone it is in «Más»)
+  { id: 'docente', ruta: '#/docente', icono: 'docente', etiqueta: 'Modo docente', corta: 'Docente' },
+  // 1.0: the user guide (#/guia); the very last, so on a low window and on the phone it is in «Más»
+  { id: 'guia', ruta: '#/guia', icono: 'guia', etiqueta: 'Guía de uso', corta: 'Guía' },
 ];
 
 export function esActiva(h: Herramienta): boolean {

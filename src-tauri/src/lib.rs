@@ -7,9 +7,79 @@
 //! (vibration feedback) and notifications (the daily reminder, 0.11). On desktop (0.12)
 //! it keeps a single running instance and provides the signed automatic updates
 //! (updater) and the relaunch after installing one (process).
+//! In 1.0 a panic of the native side is written, before the process ends, to a small file in the
+//! app's log folder (`fallos`), which the front end reads once at the next start into its local
+//! «Informe de fallos» (no new permission: one command of its own, no file path from the page).
 
 #[cfg(desktop)]
 use tauri::Manager;
+
+/// Native failures for the front end's «Informe de fallos» (1.0). A panic hook appends one line (time in ms,
+/// tab, message and location) to `fallos-nativos.log` in the app's log folder before the process aborts
+/// (`panic = "abort"` in release); `fallos_nativos` returns what is there and empties it, so each failure reaches
+/// the report once. Bounded: at 64 kB the file starts again. The path never comes from the page.
+mod fallos {
+    use std::io::Write;
+    use std::path::PathBuf;
+    use std::sync::OnceLock;
+    use tauri::{AppHandle, Manager, Runtime};
+
+    static FICHERO: OnceLock<PathBuf> = OnceLock::new();
+    const MAX_BYTES: u64 = 64 * 1024;
+
+    pub fn instalar<R: Runtime>(app: &AppHandle<R>) {
+        let Ok(dir) = app.path().app_log_dir() else { return };
+        if std::fs::create_dir_all(&dir).is_err() {
+            return;
+        }
+        let _ = FICHERO.set(dir.join("fallos-nativos.log"));
+        let previo = std::panic::take_hook();
+        std::panic::set_hook(Box::new(move |info| {
+            anotar(&linea_panico(info));
+            previo(info);
+        }));
+    }
+
+    /// One line for a panic: its message and where it happened (no newlines, at most 600 characters).
+    pub(crate) fn linea_panico(info: &std::panic::PanicHookInfo<'_>) -> String {
+        let mensaje = info
+            .payload()
+            .downcast_ref::<&str>()
+            .map(|s| s.to_string())
+            .or_else(|| info.payload().downcast_ref::<String>().cloned())
+            .unwrap_or_else(|| "pánico sin mensaje".into());
+        let donde = info.location().map(|l| format!(" ({}:{})", l.file(), l.line())).unwrap_or_default();
+        limpiar(&format!("pánico: {mensaje}{donde}"))
+    }
+
+    pub(crate) fn limpiar(texto: &str) -> String {
+        texto.replace(['\n', '\r', '\t'], " ").chars().take(600).collect()
+    }
+
+    fn anotar(texto: &str) {
+        // Never panics itself (a panic inside the hook would abort without a trace).
+        let Some(ruta) = FICHERO.get() else { return };
+        if std::fs::metadata(ruta).map(|m| m.len() > MAX_BYTES).unwrap_or(false) {
+            let _ = std::fs::remove_file(ruta);
+        }
+        let ms = std::time::SystemTime::now().duration_since(std::time::UNIX_EPOCH).map(|d| d.as_millis()).unwrap_or(0);
+        if let Ok(mut f) = std::fs::OpenOptions::new().create(true).append(true).open(ruta) {
+            let _ = writeln!(f, "{ms}\t{texto}");
+            let _ = f.flush();
+        }
+    }
+
+    /// The native failures recorded since the last call (lines «ms<TAB>text»), and the file emptied.
+    #[tauri::command]
+    pub fn fallos_nativos() -> String {
+        let Some(ruta) = FICHERO.get() else { return String::new() };
+        let texto = std::fs::read_to_string(ruta).unwrap_or_default();
+        if !texto.is_empty() {
+            let _ = std::fs::remove_file(ruta);
+        }
+        texto
+    }
+}
 
 /// The backup file the reader chooses in the system dialog (0.12). The front end gets no file-system or dialog
 /// permission at all: tauri-plugin-fs 2.7.1 opens any `file://` (or, on Android, `content://`) URL without
@@ -83,12 +153,85 @@ mod fichero {
             .map_err(|e| format!("No se pudo abrir el diálogo: {e}"))
     }
 
+    /// The bytes to write: `texto` as UTF-8, or (1.0, the «modo docente» PDF) the bytes `texto` encodes in base64.
+    /// The 50 MB cap applies to the decoded bytes (checked on the encoded length first, so nothing huge is decoded).
+    /// Review 10c: the file types the webview may ask for are a whitelist — the backup (JSON) and the teacher-mode PDF —
+    /// with the dialog's name fixed here (the webview's name is not shown). Anything else is refused before the dialog
+    /// opens. `None`: no filter asked (the backup's call of 0.12).
+    pub(crate) fn filtro_permitido(filtro: &Option<(String, Vec<String>)>) -> Result<Option<(&'static str, &'static str)>, String> {
+        let Some((_, extensiones)) = filtro else {
+            return Ok(None);
+        };
+        let ext: Vec<String> = extensiones.iter().map(|e| e.trim().trim_start_matches('.').to_ascii_lowercase()).collect();
+        match ext.as_slice() {
+            [e] if e == "json" => Ok(Some(("Copia de seguridad (JSON)", "json"))),
+            [e] if e == "pdf" => Ok(Some(("Documento PDF", "pdf"))),
+            _ => Err("Ese tipo de fichero no se puede guardar desde la aplicación.".into()),
+        }
+    }
+
+    /// The proposed file name with the filter's extension: kept when it already has it (any case), else the last
+    /// extension (if any) replaced by it, or it added (review 10f).
+    pub(crate) fn nombre_con_extension(nombre: &str, ext: &str) -> String {
+        let limpio = nombre.trim();
+        let base = if limpio.is_empty() { "documento" } else { limpio };
+        if base.to_ascii_lowercase().ends_with(&format!(".{ext}")) {
+            return base.to_string();
+        }
+        let sin = match base.rfind('.') {
+            Some(i) if i > 0 && !base[i + 1..].is_empty() && !base[i + 1..].contains(' ') && base.len() - i <= 6 => &base[..i],
+            _ => base,
+        };
+        format!("{sin}.{ext}")
+    }
+
+    pub(crate) fn contenido(texto: String, base64: bool) -> Result<Vec<u8>, String> {
+        if !base64 {
+            return Ok(texto.into_bytes());
+        }
+        use base64::Engine;
+        if (texto.len() as u64) / 4 * 3 > MAXIMO {
+            return Err("El fichero ocupa más de 50 MB: no se ha guardado.".into());
+        }
+        let bytes = base64::engine::general_purpose::STANDARD
+            .decode(texto.as_bytes())
+            .map_err(|e| format!("El contenido del fichero no es válido: {e}"))?;
+        if bytes.len() as u64 > MAXIMO {
+            return Err("El fichero ocupa más de 50 MB: no se ha guardado.".into());
+        }
+        Ok(bytes)
+    }
+
     /// Shows «Guardar como» with `nombre` proposed and writes `texto` there. `false`: the reader cancelled.
+    /// 1.0: `base64` (optional) — `texto` is binary content in base64 (a PDF); `filtro` (optional) — the dialog's
+    /// file type, name and extensions (desktop: the filter; Android: the MIME type of the create-document picker,
+    /// from the first extension). Without them it is the backup's call of 0.12 (JSON filter on desktop, none on
+    /// Android). The path still comes only from the dialog: nothing the webview sends chooses where to write.
     #[tauri::command]
-    pub async fn guardar_fichero_elegido<R: Runtime>(app: AppHandle<R>, nombre: String, texto: String) -> Result<bool, String> {
+    pub async fn guardar_fichero_elegido<R: Runtime>(
+        app: AppHandle<R>,
+        nombre: String,
+        texto: String,
+        base64: Option<bool>,
+        filtro: Option<(String, Vec<String>)>,
+    ) -> Result<bool, String> {
+        let bytes = contenido(texto, base64.unwrap_or(false))?;
+        let permitido = filtro_permitido(&filtro)?;
+        // (review 10f: the proposed name ends with the filter's extension — a PDF is never offered as «x.json» or «x»)
+        let nombre = match permitido {
+            Some((_, ext)) => nombre_con_extension(&nombre, ext),
+            None => nombre,
+        };
         let dialogo = app.dialog().file().set_file_name(nombre);
+        let dialogo = match permitido {
+            Some((tipo, ext)) => dialogo.add_filter(tipo, &[ext]),
+            #[cfg(desktop)]
+            None => dialogo.add_filter("Copia de seguridad (JSON)", &["json"]),
+            #[cfg(not(desktop))]
+            None => dialogo,
+        };
         #[cfg(desktop)]
-        let dialogo = con_ventana(&app, dialogo.add_filter("Copia de seguridad (JSON)", &["json"]));
+        let dialogo = con_ventana(&app, dialogo);
         let Some(ruta) = en_hilo(move || dialogo.blocking_save_file()).await? else {
             return Ok(false);
         };
@@ -99,7 +242,7 @@ mod fichero {
                 .fs()
                 .open(ruta, opciones)
                 .map_err(|e| format!("No se pudo crear el fichero: {e}"))?;
-            f.write_all(texto.as_bytes())
+            f.write_all(&bytes)
                 .and_then(|_| f.flush())
                 .map_err(|e| format!("No se pudo escribir el fichero: {e}"))?;
             Ok(true)
@@ -162,8 +305,13 @@ pub fn run() {
         .plugin(tauri_plugin_fs::init())
         .invoke_handler(tauri::generate_handler![
             fichero::guardar_fichero_elegido,
-            fichero::abrir_fichero_elegido
-        ]);
+            fichero::abrir_fichero_elegido,
+            fallos::fallos_nativos
+        ])
+        .setup(|app| {
+            fallos::instalar(app.handle());
+            Ok(())
+        });
     // The desktop and mobile plugins are target-specific dependencies (see Cargo.toml).
     #[cfg(desktop)]
     let builder = builder
@@ -176,4 +324,47 @@ pub fn run() {
     builder
         .run(tauri::generate_context!())
         .expect("error while running the application");
+}
+
+#[cfg(test)]
+mod pruebas {
+    use super::fichero::{contenido, filtro_permitido, nombre_con_extension};
+    use super::fallos::limpiar;
+
+    #[test]
+    fn linea_de_fallo_sin_saltos_y_acotada() {
+        assert_eq!(limpiar("uno\ndos\rtres\tcuatro"), "uno dos tres cuatro");
+        assert_eq!(limpiar(&"x".repeat(900)).chars().count(), 600);
+    }
+
+    #[test]
+    fn texto_tal_cual_y_base64_decodificado() {
+        assert_eq!(contenido("{\"a\":1}".into(), false).unwrap(), b"{\"a\":1}".to_vec());
+        assert_eq!(contenido("JVBERi0xLjcK/w==".into(), true).unwrap(), b"%PDF-1.7\n\xff".to_vec());
+        assert!(contenido("no es base64!".into(), true).is_err());
+    }
+
+    #[test]
+    fn solo_json_y_pdf() {
+        assert_eq!(filtro_permitido(&None).unwrap(), None);
+        let f = |n: &str, e: &[&str]| Some((n.to_string(), e.iter().map(|x| x.to_string()).collect::<Vec<_>>()));
+        assert_eq!(filtro_permitido(&f("Documento PDF", &["pdf"])).unwrap(), Some(("Documento PDF", "pdf")));
+        assert_eq!(filtro_permitido(&f("lo que sea", &[".PDF"])).unwrap(), Some(("Documento PDF", "pdf")));
+        assert_eq!(filtro_permitido(&f("Copia", &["json"])).unwrap(), Some(("Copia de seguridad (JSON)", "json")));
+        assert!(filtro_permitido(&f("Programa", &["exe"])).is_err());
+        assert!(filtro_permitido(&f("Varios", &["pdf", "exe"])).is_err());
+        assert!(filtro_permitido(&f("Nada", &[])).is_err());
+        assert!(filtro_permitido(&f("Todo", &["*"])).is_err());
+    }
+
+    #[test]
+    fn el_nombre_lleva_la_extension_del_filtro() {
+        assert_eq!(nombre_con_extension("Examen — variante A.pdf", "pdf"), "Examen — variante A.pdf");
+        assert_eq!(nombre_con_extension("Examen.PDF", "pdf"), "Examen.PDF");
+        assert_eq!(nombre_con_extension("examen.json", "pdf"), "examen.pdf");
+        assert_eq!(nombre_con_extension("examen", "pdf"), "examen.pdf");
+        assert_eq!(nombre_con_extension("Tema 5.3 diodos", "pdf"), "Tema 5.3 diodos.pdf");
+        assert_eq!(nombre_con_extension("   ", "json"), "documento.json");
+        assert_eq!(nombre_con_extension(".pdf", "pdf"), ".pdf");
+    }
 }

@@ -54,6 +54,8 @@
   import Grid3x3 from '@lucide/svelte/icons/grid-3x3';
   import Route from '@lucide/svelte/icons/route';
   import Trophy from '@lucide/svelte/icons/trophy';
+  import ClipboardList from '@lucide/svelte/icons/clipboard-list';
+  import CircleQuestionMark from '@lucide/svelte/icons/circle-question-mark';
 
   const ICONOS = {
     menu: Menu,
@@ -112,6 +114,8 @@
     filtrar: TextSearch,
     cursos: Route,
     progreso: Trophy,
+    docente: ClipboardList,
+    guia: CircleQuestionMark,
   } as const;
 
   export type NombreIcono = keyof typeof ICONOS;

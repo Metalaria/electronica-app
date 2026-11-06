@@ -783,6 +783,66 @@ test.describe('copia de seguridad: el fichero solo se toca desde Rust', () => {
       if (nav) Object.defineProperty(globalThis, 'navigator', nav);
     }
   });
+
+  test('1.0, PDF del modo docente: guardarBinario manda base64 y el tipo, y la orden de Rust decodifica sin elegir la ruta', async () => {
+    const llamadas: [string, Record<string, unknown>][] = [];
+    let respuesta: () => unknown = () => true;
+    const g = globalThis as unknown as { window?: unknown };
+    const antes = g.window;
+    const nav = Object.getOwnPropertyDescriptor(globalThis, 'navigator');
+    g.window = {
+      __TAURI_INTERNALS__: {
+        invoke: async (cmd: string, args: Record<string, unknown>) => {
+          llamadas.push([cmd, args]);
+          return respuesta();
+        },
+        transformCallback: () => 1,
+      },
+    };
+    try {
+      const { guardarBinario, guardarFichero, aBase64, CANCELADO } = await import('../src/lib/sincronizacion/fichero');
+      // every byte value survives (a PDF is binary), also past the 32 KB pieces of the encoder
+      const bytes = new Uint8Array(70_000).map((_, i) => (i * 37) % 256);
+      expect(Buffer.from(aBase64(bytes), 'base64').equals(Buffer.from(bytes))).toBe(true);
+      expect(await guardarBinario('examen.pdf', bytes)).toBe('guardado');
+      const [cmd, args] = llamadas.at(-1)!;
+      expect(cmd).toBe('guardar_fichero_elegido');
+      expect(Object.keys(args).sort()).toEqual(['base64', 'filtro', 'nombre', 'texto']);
+      expect(args).toMatchObject({ nombre: 'examen.pdf', base64: true, filtro: ['Documento PDF', ['pdf']] });
+      expect(Buffer.from(args.texto as string, 'base64').equals(Buffer.from(bytes))).toBe(true);
+      respuesta = () => false;
+      expect(await guardarBinario('examen.pdf', bytes)).toBe(CANCELADO);
+      // the backup's call is unchanged (no base64, no filter: JSON filter on desktop)
+      respuesta = () => true;
+      await guardarFichero('copia.json', '{}');
+      expect(llamadas.at(-1)).toEqual(['guardar_fichero_elegido', { nombre: 'copia.json', texto: '{}' }]);
+      // Android without the command: an error, never a pretended download
+      Object.defineProperty(globalThis, 'navigator', { value: { userAgent: 'Mozilla/5.0 (Linux; Android 14; wv)' }, configurable: true });
+      respuesta = () => {
+        throw 'Command guardar_fichero_elegido not found';
+      };
+      await expect(guardarBinario('examen.pdf', bytes)).rejects.toThrow('Este dispositivo no permite guardar el fichero');
+    } finally {
+      g.window = antes;
+      if (nav) Object.defineProperty(globalThis, 'navigator', nav);
+    }
+    // Rust: optional arguments, the decoded bytes are what is written, the path only from the dialog, 50 MB cap
+    const lib = fs.readFileSync(path.join(RAIZ, 'src-tauri', 'src', 'lib.rs'), 'utf8');
+    const orden = lib.slice(lib.indexOf('pub async fn guardar_fichero_elegido'), lib.indexOf('pub async fn abrir_fichero_elegido'));
+    expect(orden).toContain('base64: Option<bool>');
+    expect(orden).toContain('filtro: Option<(String, Vec<String>)>');
+    expect(orden).toContain('let bytes = contenido(texto, base64.unwrap_or(false))?;');
+    expect(orden).toContain('f.write_all(&bytes)');
+    expect(orden).toContain('blocking_save_file()');
+    expect(orden).toContain('None => dialogo.add_filter("Copia de seguridad (JSON)", &["json"])');
+    // review 10c: only the JSON backup and the PDF, with the names fixed in Rust (test pruebas::solo_json_y_pdf)
+    expect(orden).toContain('let permitido = filtro_permitido(&filtro)?;');
+    // review 10f: the proposed name gets the filter's extension (test pruebas::el_nombre_lleva_la_extension_del_filtro)
+    expect(orden).toContain('Some((_, ext)) => nombre_con_extension(&nombre, ext)');
+    expect(lib).toMatch(/fn filtro_permitido[\s\S]*?"json"[\s\S]*?"pdf"[\s\S]*?_ => Err\(/);
+    expect(orden.match(/\.open\(ruta, opciones\)/g)).toHaveLength(1);
+    expect(lib).toMatch(/fn contenido\(texto: String, base64: bool\)[\s\S]*?> MAXIMO[\s\S]*?bytes\.len\(\) as u64 > MAXIMO/);
+  });
 });
 
 // ------------------------------------------------------------------ no native alert/confirm/prompt in the app's code
