@@ -16,6 +16,8 @@
   import TarjetaViva from './calculadoras/TarjetaViva.svelte';
   import Deduccion from './aprender/Deduccion.svelte';
   import PanelProblema from './aprender/PanelProblema.svelte';
+  import TeoriaViva from './teoria/TeoriaViva.svelte';
+  import { lugaresTeoriaViva, pedirLugaresTeoriaViva } from '../lib/teoria-viva-lugares.svelte';
 
   let {
     bloques,
@@ -23,6 +25,12 @@
     raiz = false,
     desde = 0,
   }: { bloques: Bloque[]; parte: string; raiz?: boolean; desde?: number } = $props();
+
+  // 1.0 «Teoría que se mueve»: which equations of the book carry sliders (a small index, loaded once)
+  const teoriaViva = $derived(lugaresTeoriaViva.lugares);
+  $effect(() => {
+    if (raiz) pedirLugaresTeoriaViva();
+  });
 
   const CAJAS: Record<string, { ic: string; nombre: string } | null> = {
     nota: { ic: 'ℹ', nombre: 'NOTA' },
@@ -82,6 +90,7 @@
     </section>
   {:else if b.t === 'ec'}
     <Ecuacion bloque={b} indice={db} />
+    {#if db != null && teoriaViva.has(`${parte}:${db}`)}<TeoriaViva {parte} indice={db} />{/if}
   {:else if b.t === 'figura'}
     <Figura bloque={b} indice={db} />
   {:else if b.t === 'tabla'}

@@ -4,6 +4,7 @@
 
 import { leerJSON } from './datos';
 import type { Esperado } from './magnitudes';
+import type { Pregunta } from './preguntas-ejercicio';
 
 export type ClaseRespuesta = 'numerico' | 'eleccion' | 'texto' | 'deduccion' | 'diseno' | 'razonamiento' | 'sin-solucion';
 
@@ -24,11 +25,16 @@ export interface ItemEjercicio {
    * Problems: [index of the h3, index of the «Se pide» paragraph, index after the last block].
    */
   pos: number[];
-  /** 'auto': numeric answers checked by the app; 'comparar': the reader compares with the solution. */
+  /** 'auto': numeric answers or structured questions checked by the app; 'comparar': self-assessed. */
   modo: 'auto' | 'comparar';
   clase: ClaseRespuesta;
   respuestas: Respuesta[];
-  /** Parts of the question that are not numeric (HTML), to compare with the solution. */
+  /** 1.0: structured questions checked by the app (choice, order, classification…; lib/preguntas-ejercicio.ts). */
+  preguntas?: Pregunta[];
+  /**
+   * Parts of the question that are not checked automatically (HTML): the reader writes the answer, compares it with
+   * the book's solution and this list, and rates it.
+   */
   otras?: { clase: ClaseRespuesta; texto: string }[];
   /** Progressive hints (HTML): the approach, then an intermediate result. */
   pistas: string[];

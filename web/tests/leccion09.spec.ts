@@ -66,6 +66,75 @@ async function contestar(page: Page, banco: Map<string, PreguntaJson>, bien: boo
   return p;
 }
 
+test('regresión 1.0: un Intro que llega aún al campo numérico ya respondido (desactivado) hace continuar la lección', async ({ page }) => {
+  // The intermittent «16/18 … 15/18» of the test below: answered with Enter, the numeric field is disabled at once but
+  // keeps the focus until the browser's focus fixup (next rendering update); an Enter pressed before that went to the
+  // disabled field and the lesson ignored it as a key «inside a control». Here the race is made certain: the Enter is
+  // dispatched on the disabled field itself.
+  const pasos = pasosDe('cap05', 'sec-5.2');
+  const repaso = leerJson<{ preguntas: PreguntaJson[] }>('repaso/cap05.json').preguntas;
+  const bl = bloquesDe('cap05');
+  const h2 = bl.findIndex((b) => b.label === 'sec-5.2');
+  const dentro = new Set(bl.slice(h2, finDeSeccion(bl, h2)).map((b) => b.label).filter(Boolean));
+  const suyas = repaso.filter((p) => dentro.has(p.ref));
+  const banco = new Map(suyas.map((p) => [p.id, p]));
+  const practica = leerJson<{ secciones: Record<string, { items: string[] }> }>('practica/cap05.json').secciones['sec-5.2']?.items ?? [];
+  const primera = pasos.length + practica.length;
+  const total = primera + suyas.length;
+  // (a deep link stops at the last step: from there, on to the first question one screen at a time)
+  await page.goto(`#/leccion/cap05/sec-5.2/${pasos.length}`);
+  const cuenta = page.locator('.cab-pasos .cuenta');
+  for (let k = pasos.length; k <= primera; k++) {
+    await expect(cuenta).toHaveText(`${k}/${total}`);
+    if (k === primera + 1) break;
+    // screens after the steps and before the questions are the practice items (skipped; the locator waits for them)
+    await page.locator(k > pasos.length ? '[data-saltar]' : '[data-continuar]').click();
+  }
+  for (let q = 0; q < suyas.length; q++) {
+    await expect(page.locator('.cab-pasos .cuenta')).toHaveText(`${primera + q + 1}/${total}`);
+    const id = await page.locator('[data-pregunta]').getAttribute('data-pregunta');
+    const p = banco.get(id!)!;
+    await contestar(page, banco, true);
+    if (p.tipo !== 'numero') {
+      await page.locator('[data-continuar]').click();
+      continue;
+    }
+    await expect(page.locator('[data-numero]')).toBeDisabled();
+    await page.locator('[data-numero]').evaluate((el) => el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true })));
+    await expect(page.locator('.cab-pasos .cuenta')).toHaveText(`${primera + q + 2}/${total}`);
+    return;
+  }
+  throw new Error('5.2 no tiene ninguna pregunta numérica');
+});
+
+test('regresión 1.0 (10i): con el foco en el veredicto de una pregunta, Intro hace continuar la lección', async ({ page }) => {
+  // The accessibility pass focuses the verdict (role=status, tabindex=-1) after an answer; the lesson took it for a
+  // control with keys of its own and ignored Enter («13/18» stayed).
+  const pasos = pasosDe('cap05', 'sec-5.2');
+  const repaso = leerJson<{ preguntas: PreguntaJson[] }>('repaso/cap05.json').preguntas;
+  const bl = bloquesDe('cap05');
+  const h2 = bl.findIndex((b) => b.label === 'sec-5.2');
+  const dentro = new Set(bl.slice(h2, finDeSeccion(bl, h2)).map((b) => b.label).filter(Boolean));
+  const suyas = repaso.filter((p) => dentro.has(p.ref));
+  const banco = new Map(suyas.map((p) => [p.id, p]));
+  const practica = leerJson<{ secciones: Record<string, { items: string[] }> }>('practica/cap05.json').secciones['sec-5.2']?.items ?? [];
+  const primera = pasos.length + practica.length;
+  const total = primera + suyas.length;
+  await page.goto(`#/leccion/cap05/sec-5.2/${pasos.length}`);
+  const cuenta = page.locator('.cab-pasos .cuenta');
+  for (let k = pasos.length; k <= primera; k++) {
+    await expect(cuenta).toHaveText(`${k}/${total}`);
+    if (k === primera + 1) break;
+    await page.locator(k > pasos.length ? '[data-saltar]' : '[data-continuar]').click();
+  }
+  await expect(cuenta).toHaveText(`${primera + 1}/${total}`);
+  await contestar(page, banco, true);
+  // the verdict holds the focus (or the page does): either way Enter continues
+  await page.locator('[data-feedback]').focus();
+  await page.keyboard.press('Enter');
+  await expect(cuenta).toHaveText(`${primera + 2}/${total}`);
+});
+
 test('los pasos automáticos cubren todas las secciones del libro', () => {
   const indice = leerJson<Indice>('indice.json');
   let secciones = 0;

@@ -60,8 +60,10 @@
       if (d.k === 'practica') {
         const datos = await cargarPractica(d.parte);
         const it = datos?.items.find((x) => x.id === d.id);
-        if (!it || it.tipo !== 'numerico') throw new Error('No se encuentra el problema en los datos del libro.');
-        item = it;
+        // a day already answered (or yesterday) whose item a content fix removed keeps its result without it; today
+        // unanswered, problemaDeHoy has chosen another one (review 10g)
+        if ((!it || it.tipo !== 'numerico') && !(d.r || ayer)) throw new Error('No se encuentra el problema en los datos del libro.');
+        item = it && it.tipo === 'numerico' ? it : null;
       } else await cargarEjercicios();
       if (esta !== vez) return;
       estado = 'listo';
@@ -156,8 +158,10 @@
           <Numerico {item} final={true} listo={false} pistas={null} onenviar={() => {}} semillaFija={p.semilla} />
         </div>
       {:else}
-        <Practica {item} origen="problema-dia" etiqueta="Problema del día · Calcula" semilla={p.semilla} repetir={false} respuesta={null} onresponder={responder} bind:final={finalP} />
+        <Practica {item} origen="problema-dia" etiqueta="Problema del día · Calcule" semilla={p.semilla} repetir={false} respuesta={null} onresponder={responder} bind:final={finalP} />
       {/if}
+    {:else if p.k === 'practica'}
+      <p class="aviso" data-retirado>Este problema se retiró de la aplicación al corregir sus datos; {resultado ? 'su resultado se conserva' : 'no hay solución que mostrar'}.</p>
     {:else if p.k === 'ejercicio'}
       <TarjetaEjercicio label={p.id} />
     {/if}

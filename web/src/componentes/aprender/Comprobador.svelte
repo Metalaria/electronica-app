@@ -1,21 +1,35 @@
 <script lang="ts">
   // Answer panel of one exercise or problem: a field per requested quantity (SI prefixes, units, decimal
   // comma), «Comprobar» with per-field feedback, progressive hints, «Ver solución», and the attempt
-  // state saved on the device. Answers that cannot be checked automatically get «comparar con la solución»
-  // and a self-assessment.
+  // state saved on the device. 1.0: also the structured questions (PreguntaEjercicio: choice, order, classification…),
+  // each settled with its development quoted from the book; and, for what cannot be checked automatically, a
+  // self-assessment: the reader writes the answer, opens the solution with the list of what is asked, and rates it.
   import type { ItemEjercicio } from '../../lib/ejercicios.svelte';
   import { NOMBRE_CLASE } from '../../lib/ejercicios.svelte';
+  import { onDestroy } from 'svelte';
   import { comprobar, type Veredicto } from '../../lib/magnitudes';
+  import { comprobarPregunta, legible, type VeredictoPregunta } from '../../lib/preguntas-ejercicio';
   import {
     aprendizaje,
     autoevaluar,
+    ayudaAlResolver,
+    estadoEjercicio,
+    guardarRespuestaEscrita,
+    MAX_TEXTO_EJERCICIO,
     registrarIntento,
+    volcarEjercicios,
     reiniciarEjercicio,
     usarPista,
     verSolucion,
+    valorComprobado,
   } from '../../lib/aprendizaje.svelte';
   import Icono from '../Icono.svelte';
   import OtrosValores from '../practica/OtrosValores.svelte';
+  import PreguntaEjercicio from './PreguntaEjercicio.svelte';
+  import { cargarPorque, type PorqueParte } from '../pregunta/porque';
+  import Seguridad from '../pregunta/Seguridad.svelte';
+  import { cargarPasos, type PasoGuiado } from '../../lib/pasos-guiados';
+  import ResolverPasos from './ResolverPasos.svelte';
 
   let {
     label,
@@ -23,6 +37,7 @@
     solucionVisible = false,
     alVerSolucion,
     sinSolucion = false,
+    pasoAPaso = true,
   }: {
     label: string;
     item: ItemEjercicio;
@@ -30,13 +45,74 @@
     /** Shows (or hides) the book's solution. */
     alVerSolucion?: (ver: boolean) => void;
     sinSolucion?: boolean;
+    /** 1.0: offer «Resolver paso a paso» when the exercise has reviewed guided steps (never in an exam). */
+    pasoAPaso?: boolean;
   } = $props();
 
   const estado = $derived(aprendizaje.ejercicios[label]);
-  const auto = $derived(item.modo === 'auto' && item.respuestas.length > 0);
+  // 1.0 «¿Qué seguridad tiene?»: offered when the exercise gets solved by a check during this visit
+  let resueltoAntes: boolean | null = null;
+  const recienResuelto = $derived.by(() => {
+    const r = !!estado?.resuelto;
+    if (resueltoAntes === null) resueltoAntes = r;
+    return r && !resueltoAntes && !estado?.solucion;
+  });
+  const preguntas = $derived(item.preguntas ?? []);
+  // 1.0: the book's passage for each wrong option of the choice questions (loaded only when there are some)
+  let porques = $state<PorqueParte | null>(null);
+  $effect(() => {
+    const parte = item.parte;
+    if (!preguntas.some((q) => q.tipo === 'eleccion')) return;
+    let vivo = true;
+    void cargarPorque(parte).then((d) => {
+      if (vivo) porques = d;
+    });
+    return () => {
+      vivo = false;
+    };
+  });
+  const auto = $derived(item.modo === 'auto' && (item.respuestas.length > 0 || preguntas.length > 0));
+
+  // 1.0 «Resolver paso a paso»: the reviewed guided steps of this exercise, if it has them
+  let pasos = $state<PasoGuiado[] | null>(null);
+  let guiado = $state(false);
+  let botonPasos: HTMLButtonElement | undefined = $state();
+  $effect(() => {
+    const l = label;
+    pasos = null;
+    guiado = false;
+    if (!pasoAPaso || !auto) return;
+    let vivo = true;
+    void cargarPasos().then((d) => {
+      if (vivo) pasos = d?.items[l]?.pasos ?? null;
+    });
+    return () => {
+      vivo = false;
+    };
+  });
+  function entrarPasos() {
+    guiado = true;
+  }
+  /**
+   * The guided mode is help, counted as it is used (review 10e: counting it on leaving missed a check made with the
+   * panel open and a reader who just navigated away): n = 1 once a step is checked or its hint seen (the approach),
+   * 2 once a step's answer is revealed or the result reached (the intermediate results). The exercise's own hints stay
+   * hidden while the guided panel is open, and show afterwards only as far as was counted.
+   */
+  function usarPasos(n: number) {
+    if (item.pistas.length) usarPista(label, Math.min(n, item.pistas.length));
+  }
+  function salirPasos() {
+    guiado = false;
+    queueMicrotask(() => botonPasos?.focus());
+  }
 
   let valores = $state<Record<string, string>>({});
   let veredictos = $state<Record<string, Veredicto>>({});
+  let vPreguntas = $state<Record<string, VeredictoPregunta>>({});
+  /** 1.0: the reader's written answer to what is not checked automatically, and the checklist marks. */
+  let texto = $state('');
+  let marcas = $state<Record<string, boolean>>({});
   let iniciado = '';
 
   // Restore the last values typed (once per item).
@@ -44,22 +120,72 @@
     if (iniciado === label || !aprendizaje.listo) return;
     iniciado = label;
     const e = aprendizaje.ejercicios[label];
-    valores = { ...(e?.valores ?? {}) };
+    const guardados = e?.valores ?? {};
+    valores = {};
+    for (const r of item.respuestas) if (guardados[r.id] != null) valores[r.id] = guardados[r.id]!;
+    for (const q of item.preguntas ?? []) if (guardados[q.id] != null) valores[q.id] = guardados[q.id]!;
+    texto = guardados.texto ?? '';
+    marcas = {};
+    (item.otras ?? []).forEach((_, k) => (marcas[`c${k + 1}`] = guardados[`c${k + 1}`] === '1'));
     veredictos = {};
-    if (e?.valores) {
-      for (const r of item.respuestas) {
-        const v = e.valores[r.id];
-        if (v) veredictos[r.id] = comprobar(v, r, r.alternativas);
-      }
+    vPreguntas = {};
+    // the verdict of what the last «Comprobar» checked; a draft typed after it comes back without one
+    for (const r of item.respuestas) {
+      const v = guardados[r.id];
+      if (v && valorComprobado(e, r.id)) veredictos[r.id] = comprobar(v, r, r.alternativas);
+    }
+    for (const q of item.preguntas ?? []) {
+      const v = guardados[q.id];
+      if (v && valorComprobado(e, q.id)) vPreguntas[q.id] = comprobarPregunta(q, v);
     }
   });
+
+  // what is being written is stored at once when the panel goes away (navigation), not only when the page hides
+  onDestroy(() => void volcarEjercicios());
+
+  function escribir(ev: Event) {
+    texto = (ev.currentTarget as HTMLTextAreaElement).value.slice(0, MAX_TEXTO_EJERCICIO);
+    guardarRespuestaEscrita(label, { texto });
+  }
+  function marcar(k: number, si: boolean) {
+    marcas[`c${k + 1}`] = si;
+    guardarRespuestaEscrita(label, { [`c${k + 1}`]: si ? '1' : '' });
+  }
+  /** A question is settled (its answer and development shown) once right, after two failed checks or with the solution open. */
+  const zanjada = (id: string) =>
+    vPreguntas[id]?.tipo === 'bien' || solucionVisible || !!estado?.resuelto || (estado?.fallos ?? 0) >= 2;
 
   const pistasVistas = $derived(Math.min(item.pistas.length, estado?.pistas ?? 0));
   const idBase = $derived(`cmp-${label.replace(/[^\w-]/g, '_')}`);
 
+  // 1.0 accessibility pass: one live line that is always in the page says what «Comprobar» found (the per-field
+  // messages appear with the check, and a live region inserted with its text is not announced reliably); the messages
+  // stay tied to their fields with aria-describedby, so each one is read again when its field takes the focus.
+  let resumenComprobacion = $state('');
+  /** Shown while nothing has been answered after a «Comprobar» that found nothing to check. */
+  let avisoVacio = $state('');
+  const hayRespuesta = $derived(Object.values(valores).some((x) => !!x?.trim()));
+  const sinEtiquetas = (h: string) => h.replace(/<[^>]+>/g, '').replace(/&amp;/g, '&').replace(/&lt;/g, '<').replace(/&gt;/g, '>').trim();
+  function resumirComprobacion(vs: Record<string, Veredicto>, vp: Record<string, VeredictoPregunta>, nBien: number): string {
+    const total = item.respuestas.length + preguntas.length;
+    const partes: string[] = [];
+    for (const r of item.respuestas) {
+      const v = vs[r.id];
+      if (!v || v.tipo === 'vacio') continue;
+      partes.push(`${sinEtiquetas(r.nombre)}: ${v.tipo === 'bien' ? `correcto, ${v.texto}` : v.mensaje}`);
+    }
+    for (const q of preguntas) {
+      const v = vp[q.id];
+      if (v && v.tipo !== 'vacio' && v.tipo !== 'bien') partes.push(v.mensaje);
+    }
+    if (!partes.length) return 'Todavía no hay nada que comprobar: responda al menos una parte.';
+    return `${nBien} de ${total} ${total === 1 ? 'respuesta correcta' : 'respuestas correctas'}. ${partes.join('. ')}`.replace(/\.\./g, '.');
+  }
+
   function comprobarTodo(ev: SubmitEvent) {
     ev.preventDefault();
     const nuevos: Record<string, Veredicto> = {};
+    const nuevasP: Record<string, VeredictoPregunta> = {};
     let legibles = 0;
     const bien: string[] = [];
     for (const r of item.respuestas) {
@@ -68,10 +194,28 @@
       if (v.tipo === 'bien' || v.tipo === 'cerca' || v.tipo === 'mal') legibles++;
       if (v.tipo === 'bien') bien.push(r.id);
     }
+    for (const q of preguntas) {
+      const v = comprobarPregunta(q, valores[q.id] ?? '');
+      nuevasP[q.id] = v;
+      if (legible(v)) legibles++;
+      if (v.tipo === 'bien') bien.push(q.id);
+    }
     veredictos = nuevos;
-    // Only a check with something readable counts as an attempt.
-    if (legibles === 0) return;
-    const completo = bien.length === item.respuestas.length;
+    vPreguntas = nuevasP;
+    resumenComprobacion = resumirComprobacion(nuevos, nuevasP, bien.length);
+    // Only a check with something readable counts as an attempt. Final QA 1.0: a check with nothing to check says so
+    // on screen too (an ordering left as shown did nothing visible).
+    avisoVacio = '';
+    if (legibles === 0) {
+      const sinTocar = preguntas.filter((q) => !(valores[q.id] ?? ''));
+      avisoVacio =
+        preguntas.length && sinTocar.length === preguntas.length && !item.respuestas.length && preguntas.every((q) => q.tipo === 'orden')
+          ? 'Ordene los elementos con las flechas antes de comprobar.'
+          : 'Todavía no hay nada que comprobar: responda al menos una parte.';
+      resumenComprobacion = avisoVacio;
+      return;
+    }
+    const completo = bien.length === item.respuestas.length + preguntas.length;
     registrarIntento(label, $state.snapshot(valores), bien, completo);
   }
 
@@ -89,18 +233,30 @@
     reiniciarEjercicio(label);
     valores = {};
     veredictos = {};
+    vPreguntas = {};
+    texto = '';
+    marcas = {};
   }
 
   const resumenEstado = $derived.by(() => {
     if (!estado) return '';
     const partes: string[] = [];
-    if (estado.resuelto) {
-      if (estado.intentos <= 1 && !estado.pistas && !estado.solucion) partes.push('Resuelto a la primera');
-      else if (estado.solucion) partes.push('Resuelto después de ver la solución');
-      else if (estado.pistas) partes.push(`Resuelto con ${estado.pistas === 1 ? 'una pista' : `${estado.pistas} pistas`}`);
+    // review 10j: a try not solved is a failure even with fallos 0 (what the merge leaves of an attempt after a reset
+    // this device had not seen), and a solve is told with the help the device that solved it had (never «a la primera»
+    // on another device when it had opened the solution)
+    const fallado = estadoEjercicio(estado) === 'fallado';
+    const a = ayudaAlResolver(estado);
+    if (!auto) {
+      // self-assessed: comparing with the solution is the method, not a peek (0.12 said «después de ver la solución»)
+      if (estado.resuelto) partes.push('Autoevaluado: lo tenía bien');
+      else if (fallado) partes.push('Autoevaluado: no lo tenía bien');
+    } else if (estado.resuelto) {
+      if (a.intentos <= 1 && !a.pistas && !a.solucion) partes.push('Resuelto a la primera');
+      else if (a.solucion) partes.push('Resuelto después de ver la solución');
+      else if (a.pistas) partes.push(`Resuelto con ${a.pistas === 1 ? 'una pista' : `${a.pistas} pistas`}`);
       else partes.push('Resuelto');
-    } else if (estado.fallos) partes.push('Pendiente de acertar');
-    if (estado.intentos) partes.push(`${estado.intentos} ${estado.intentos === 1 ? 'intento' : 'intentos'}`);
+    } else if (fallado) partes.push('Pendiente de acertar');
+    if (a.intentos) partes.push(`${a.intentos} ${a.intentos === 1 ? 'intento' : 'intentos'}`);
     return partes.join(' · ');
   });
 
@@ -110,6 +266,7 @@
 <div class="comprobador" class:resuelto={estado?.resuelto} data-label={label}>
   {#if auto}
     <form onsubmit={comprobarTodo} novalidate>
+      <p class="solo-lector" aria-live="polite" data-resumen-comprobacion>{resumenComprobacion}</p>
       <div class="campos">
         {#each item.respuestas as r (r.id)}
           {@const v = veredictos[r.id]}
@@ -128,12 +285,15 @@
                 aria-describedby={v && v.tipo !== 'vacio' ? `${idBase}-${r.id}-fb` : undefined}
                 aria-invalid={v?.tipo === 'mal' ? 'true' : undefined}
                 bind:value={valores[r.id]}
-                oninput={() => delete veredictos[r.id]}
+                oninput={(ev) => {
+                  delete veredictos[r.id];
+                  guardarRespuestaEscrita(label, { [r.id]: (ev.currentTarget as HTMLInputElement).value });
+                }}
               />
               {#if r.unidad}<span class="u" aria-hidden="true">{r.unidad}</span>{/if}
             </span>
             {#if v && v.tipo !== 'vacio'}
-              <p class="fb fb-{v.tipo}" id={`${idBase}-${r.id}-fb`} aria-live="polite">
+              <p class="fb fb-{v.tipo}" id={`${idBase}-${r.id}-fb`}>
                 <span class="ic" aria-hidden="true">{ICONO[v.tipo]}</span>
                 {#if v.tipo === 'bien'}
                   <span>Correcto{v.nota ? ` (${v.nota})` : ''}: {v.texto}.</span>
@@ -144,13 +304,33 @@
             {/if}
           </div>
         {/each}
+        {#each preguntas as q (q.id)}
+          <PreguntaEjercicio
+            p={q}
+            valor={valores[q.id] ?? ''}
+            veredicto={vPreguntas[q.id]}
+            resuelta={zanjada(q.id)}
+            {idBase}
+            porque={porques?.ejercicios[`${label}/${q.id}`] ?? null}
+            parte={item.parte}
+            alCambiar={(v) => {
+              valores[q.id] = v;
+              delete vPreguntas[q.id];
+              // kept while choosing, like what is typed (review 10e): not an attempt
+              guardarRespuestaEscrita(label, { [q.id]: v });
+            }}
+          />
+        {/each}
       </div>
       {#if item.otras?.length}
         <p class="otras">
           <strong>También se pide</strong>, para comparar con la solución:
           {#each item.otras as o, k (k)}{@html o.texto}{k < item.otras.length - 1 ? '; ' : '.'}{/each}
         </p>
+        {@render escrita()}
       {/if}
+      <!-- (the live line above already announces it; this one is for the eyes) -->
+      {#if avisoVacio && !hayRespuesta}<p class="aviso-vacio" aria-hidden="true" data-aviso-vacio>{avisoVacio}</p>{/if}
       <div class="acciones">
         <button type="submit" class="boton primario">
           <Icono nombre="hecho" tam={17} /> Comprobar
@@ -170,23 +350,51 @@
         {/if}
       {/if}
     </p>
+    {#if item.clase !== 'sin-solucion'}{@render escrita()}{/if}
     <div class="acciones">
       {@render botones()}
     </div>
     {#if solucionVisible && item.clase !== 'sin-solucion'}
+      {@render criterios()}
       <div class="autoevaluacion" role="group" aria-label="Autoevaluación">
         <span>¿Lo tenía bien?</span>
         <button class="boton" class:elegido={estado?.resuelto} onclick={() => autoevaluar(label, true)}>
           <Icono nombre="hecho" tam={16} /> Sí
         </button>
-        <button class="boton" class:elegido={!!estado && !estado.resuelto && estado.fallos > 0} onclick={() => autoevaluar(label, false)}>
+        <button class="boton" class:elegido={estadoEjercicio(estado) === 'fallado'} onclick={() => autoevaluar(label, false)}>
           <Icono nombre="x" tam={16} /> No
         </button>
       </div>
     {/if}
   {/if}
 
-  {#if pistasVistas > 0}
+  {#if auto && solucionVisible && item.otras?.length}
+    {@render criterios()}
+  {/if}
+
+  {#if guiado && pasos}
+    <ResolverPasos {label} {pasos} parte={item.parte} alSalir={salirPasos} alUsar={usarPasos} />
+  {:else if auto && pasos && !estado?.resuelto && (estado?.fallos ?? 0) >= 2}
+    <p class="desarrollo-aviso oferta">
+      ¿Lo resolvemos por partes, con una pregunta corta en cada paso?
+      <button type="button" class="boton primario" onclick={entrarPasos} data-oferta-pasos>Resolver paso a paso</button>
+    </p>
+  {/if}
+
+  {#if auto && !solucionVisible && !sinSolucion && (estado?.resuelto || (estado?.fallos ?? 0) >= 2)}
+    <p class="desarrollo-aviso">
+      {estado?.resuelto ? 'Resuelto. Compare su desarrollo con el del libro.' : pasos && !guiado ? 'O vea el desarrollo completo del libro.' : 'Vea el desarrollo completo del libro.'}
+      <button type="button" class="boton" onclick={mostrarSolucion}>
+        <Icono nombre="ver" tam={17} /> Ver el desarrollo
+      </button>
+    </p>
+  {/if}
+
+  {#if auto && recienResuelto}
+    <Seguridad item={label} />
+  {/if}
+
+  {#if pistasVistas > 0 && !guiado}
     <ol class="pistas" aria-live="polite">
       {#each item.pistas.slice(0, pistasVistas) as p, k (k)}
         <li><span class="pn">Pista {k + 1}</span> {@html p}</li>
@@ -212,7 +420,37 @@
   {/if}
 </div>
 
+{#snippet escrita()}
+  <div class="escrita">
+    <label for={`${idBase}-texto`}>Su respuesta <span class="opc">(opcional; se guarda en este dispositivo y se sincroniza)</span></label>
+    <textarea
+      id={`${idBase}-texto`}
+      rows="3"
+      maxlength={MAX_TEXTO_EJERCICIO}
+      value={texto}
+      oninput={escribir}
+      aria-describedby={`${idBase}-cuenta`}
+    ></textarea>
+    <span class="cuenta" id={`${idBase}-cuenta`}>{texto.length} / {MAX_TEXTO_EJERCICIO} caracteres</span>
+  </div>
+{/snippet}
+
+{#snippet criterios()}
+  <fieldset class="criterios">
+    <legend>Compare con la solución del libro. Lo que se pide:</legend>
+    {#each item.otras ?? [] as o, k (k)}
+      <label class="criterio">
+        <input type="checkbox" checked={!!marcas[`c${k + 1}`]} onchange={(ev) => marcar(k, (ev.currentTarget as HTMLInputElement).checked)} />
+        <span>{@html o.texto}</span>
+      </label>
+    {/each}
+  </fieldset>
+{/snippet}
+
 {#snippet botones()}
+  {#if pasos && !guiado}
+    <button type="button" class="boton discreto" bind:this={botonPasos} onclick={entrarPasos} data-pasos-boton>Resolver paso a paso</button>
+  {/if}
   {#if item.pistas.length}
     <button type="button" class="boton" onclick={pista} aria-label={pistasVistas < item.pistas.length ? `Pista ${pistasVistas + 1} de ${item.pistas.length}` : 'Ver la solución'}>
       <Icono nombre="pista" tam={17} />
@@ -336,6 +574,12 @@
       transform: translateY(-2px);
     }
   }
+  .aviso-vacio {
+    margin: 10px 0 0;
+    color: var(--tinta);
+    font-size: 15px;
+    font-weight: 600;
+  }
   .otras,
   .comparar {
     margin: 10px 0 0;
@@ -377,6 +621,86 @@
   .autoevaluacion .elegido {
     border-color: var(--acento);
     background: var(--acento-tinte);
+  }
+  .escrita {
+    display: grid;
+    gap: 4px;
+    margin-top: 10px;
+  }
+  .escrita label {
+    color: var(--tinta);
+    font-weight: 600;
+  }
+  .escrita .opc,
+  .cuenta {
+    color: var(--tinta-tenue);
+    font-size: 13.5px;
+    font-weight: 400;
+  }
+  .cuenta {
+    justify-self: end;
+  }
+  textarea {
+    width: 100%;
+    min-height: 88px;
+    padding: 8px 12px;
+    border: 1px solid var(--linea);
+    border-radius: 8px;
+    background: var(--fondo);
+    color: var(--tinta);
+    font-family: var(--sans);
+    font-size: 16px;
+    line-height: 1.4;
+    resize: vertical;
+  }
+  textarea:focus-visible {
+    outline: 2px solid var(--acento);
+    outline-offset: 0;
+    border-color: transparent;
+  }
+  .criterios {
+    display: grid;
+    gap: 2px;
+    margin: 12px 0 0;
+    padding: 0;
+    border: 0;
+  }
+  .criterios legend {
+    margin-bottom: 4px;
+    color: var(--tinta-suave);
+    font-weight: 600;
+  }
+  .criterio {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 44px;
+    cursor: pointer;
+  }
+  .criterio input {
+    flex: none;
+    width: 18px;
+    height: 18px;
+    accent-color: var(--acento);
+  }
+  .desarrollo-aviso {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    margin: 12px 0 0;
+    color: var(--tinta-suave);
+    font-size: 14.5px;
+  }
+  .discreto {
+    border-color: transparent;
+    background: none;
+    color: var(--tinta-suave);
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .desarrollo-aviso .boton {
+    min-height: 44px;
   }
   .pistas {
     display: grid;

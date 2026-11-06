@@ -196,7 +196,10 @@
                   <span class="num">{it.tipo === 'ej' ? '' : 'P '}{it.num}</span>
                   <MiniaturaLibro clave={l} />
                   <span class="res">{it.titulo ?? it.resumen ?? ''}</span>
-                  {#if it.modo === 'auto'}<span class="auto" title="Comprobación automática">{it.respuestas.length} {it.respuestas.length === 1 ? 'valor' : 'valores'}</span>{/if}
+                  {#if it.modo === 'auto'}
+                    {@const n = it.respuestas.length + (it.preguntas?.length ?? 0)}
+                    <span class="auto" title="Comprobación automática">{n} {it.preguntas?.length ? (n === 1 ? 'respuesta' : 'respuestas') : n === 1 ? 'valor' : 'valores'}</span>
+                  {/if}
                   <span class="estado-r estado-{e}" title={ETIQUETA[e]}>{e === 'resuelto' ? '✓' : e === 'fallado' ? '✗' : '·'}</span>
                 </button>
                 {#if abierto === l}

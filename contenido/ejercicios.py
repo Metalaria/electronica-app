@@ -17,6 +17,7 @@ The automatic pass is a heuristic; contenido/ejercicios_curado.txt overrides it 
 the top of that file). The curated file wins wherever it says something. The contract is ESQUEMA.md
 («Ejercicios autocomprobables»). --revisar writes a text dump (statement, solution, result) for review.
 """
+import hashlib
 import html as htmlmod
 import json
 import math
@@ -29,7 +30,7 @@ APP = os.path.dirname(HERE)
 OUT = os.path.join(APP, 'web/public/libro')
 CURADO = os.path.join(HERE, 'ejercicios_curado.txt')
 
-VERSION = 1
+VERSION = 2              # 2 (1.0): structured «preguntas» next to the numeric «respuestas»
 TOL_DEFECTO = 0.02          # relative tolerance when the book's rounding is finer than 2 %
 TOL_MAX_REDONDEO = 0.06     # never accept more than 6 % just because the book rounds coarsely
 
@@ -380,6 +381,255 @@ def valor_dsl(t, linea):
     return d
 
 
+# ------------------------------------------------------------------ structured questions (1.0)
+
+TIPOS_PREGUNTA = ('eleccion', 'orden', 'clasificar', 'exacta', 'logica', 'combinacion')
+SERIES = {'E12': [1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2]}
+
+
+def permutacion(n, semilla, distinta=True):
+    """Deterministic shuffle of range(n) from a text seed; never the identity when distinta and n > 1."""
+    orden = list(range(n))
+    h = int(hashlib.sha256(semilla.encode('utf-8')).hexdigest(), 16)
+    for i in range(n - 1, 0, -1):
+        j = h % (i + 1)
+        h //= (i + 1)
+        orden[i], orden[j] = orden[j], orden[i]
+    if distinta and n > 1 and orden == list(range(n)):
+        orden = orden[1:] + orden[:1]
+    return orden
+
+
+def tokens_logica(t):
+    """Boolean expression tokens. Variables: single capital letters. NOT: postfix ' or ’, prefix ¬ ! ~;
+    AND: · * & or juxtaposition; OR: + |; XOR: ⊕ ^; parentheses; 0 and 1."""
+    out = []
+    for ch in t:
+        if ch.isspace():
+            continue
+        if ch in "'’′":
+            out.append("'")
+        elif ch in '¬!~':
+            out.append('!')
+        elif ch in '·*&∧⋅':
+            out.append('&')
+        elif ch in '+|∨':
+            out.append('|')
+        elif ch in '⊕^':
+            out.append('^')
+        elif ch in '()01':
+            out.append(ch)
+        elif 'A' <= ch.upper() <= 'Z':
+            out.append(ch.upper())
+        else:
+            raise ValueError(f'símbolo no válido en una expresión lógica: {ch!r}')
+    return out
+
+
+def evaluar_logica(t):
+    """Parses a boolean expression: (function of a dict var → 0/1, sorted variables, complexity), where the
+    complexity counts literals plus negations (what «simplificar» lowers)."""
+    tk = tokens_logica(t)
+    pos = [0]
+    compl = [0]
+
+    def ver():
+        return tk[pos[0]] if pos[0] < len(tk) else None
+
+    def tomar(x=None):
+        c = ver()
+        if x is not None and c != x:
+            raise ValueError(f'expresión lógica: se esperaba {x!r}')
+        pos[0] += 1
+        return c
+
+    def primario():
+        c = ver()
+        if c == '!':
+            tomar()
+            compl[0] += 1
+            f = primario()
+            g = lambda e, f=f: 1 - f(e)
+        elif c == '(':
+            tomar()
+            g = o_()
+            tomar(')')
+        elif c in ('0', '1'):
+            tomar()
+            v = int(c)
+            g = lambda e, v=v: v
+        elif c and c.isalpha():
+            tomar()
+            compl[0] += 1
+            g = lambda e, c=c: e[c]
+        else:
+            raise ValueError('expresión lógica incompleta')
+        while ver() == "'":
+            tomar()
+            compl[0] += 1
+            g = lambda e, f=g: 1 - f(e)
+        return g
+
+    def y_():
+        f = primario()
+        while ver() in ('&', '(', '!', '0', '1') or (ver() and ver().isalpha()):
+            if ver() == '&':
+                tomar()
+            h = primario()
+            f = lambda e, a=f, b=h: a(e) & b(e)
+        return f
+
+    def ox():
+        f = y_()
+        while ver() == '^':
+            tomar()
+            h = y_()
+            f = lambda e, a=f, b=h: a(e) ^ b(e)
+        return f
+
+    def o_():
+        f = ox()
+        while ver() == '|':
+            tomar()
+            h = ox()
+            f = lambda e, a=f, b=h: a(e) | b(e)
+        return f
+
+    f = o_()
+    if pos[0] != len(tk):
+        raise ValueError('expresión lógica: sobra algo al final')
+    variables = sorted({c for c in tk if c.isalpha()})
+    return f, variables, compl[0]
+
+
+def tabla_logica(t, variables):
+    f, _, _ = evaluar_logica(t)
+    filas = []
+    for k in range(2 ** len(variables)):
+        e = {v: (k >> (len(variables) - 1 - i)) & 1 for i, v in enumerate(variables)}
+        filas.append(f(e))
+    return filas
+
+
+def combinaciones_serie(serie, objetivo, tol):
+    """Every pair of values of a series (1 Ω … 10 MΩ) whose series or parallel combination is within tol."""
+    valores = sorted({round(b * 10 ** d, 6) for b in SERIES[serie] for d in range(0, 7)} | {10e6})
+    out = []
+    for i, a in enumerate(valores):
+        for b in valores[i:]:
+            for modo, r in (('serie', a + b), ('paralelo', a * b / (a + b))):
+                if abs(r - objetivo) <= tol * objetivo:
+                    out.append((a, b, modo, r))
+    return out
+
+
+def pregunta_dsl(s, donde):
+    m = re.match(r'^\?\s*(\w+)\s*:\s*(.+)$', s)
+    if not m or m.group(1) not in TIPOS_PREGUNTA:
+        raise ValueError(f'{donde}: «? tipo: enunciado | …» con tipo en {list(TIPOS_PREGUNTA)}')
+    tipo = m.group(1)
+    partes = [p.strip() for p in m.group(2).split(' | ')]
+    enun, resto = partes[0], partes[1:]
+    q = {'tipo': tipo, 'enunciado': enun, '_donde': donde}
+    if tipo == 'eleccion':
+        if len(resto) < 2 or sum(1 for o in resto if o.startswith('*')) != 1:
+            raise ValueError(f'{donde}: una elección necesita dos opciones o más y exactamente una con «*»')
+        q['opciones'] = [o.lstrip('*').strip() for o in resto]
+        q['correcta'] = next(k for k, o in enumerate(resto) if o.startswith('*'))
+    elif tipo == 'orden':
+        if len(resto) < 3:
+            raise ValueError(f'{donde}: ordenar necesita tres elementos o más')
+        q['elementos'] = resto
+    elif tipo == 'clasificar':
+        if len(resto) < 3:
+            raise ValueError(f'{donde}: «? clasificar: enunciado | cat / cat | elemento => cat | …»')
+        cats = [c.strip() for c in resto[0].split(' / ')]
+        els = []
+        for e in resto[1:]:
+            if ' => ' not in e:
+                raise ValueError(f'{donde}: elemento sin «=>»: {e!r}')
+            a, c = [x.strip() for x in e.split(' => ', 1)]
+            if c not in cats:
+                raise ValueError(f'{donde}: categoría {c!r} no está en {cats}')
+            els.append({'texto': a, 'cat': cats.index(c)})
+        q['categorias'] = cats
+        q['elementos'] = els
+    elif tipo == 'exacta':
+        if not resto:
+            raise ValueError(f'{donde}: exacta sin respuestas aceptadas')
+        q['aceptadas'] = resto
+    elif tipo == 'logica':
+        if len(resto) != 1:
+            raise ValueError(f'{donde}: «? logica: enunciado | expresión»')
+        _, variables, compl = evaluar_logica(resto[0])
+        q['expresion'] = resto[0]
+        q['variables'] = variables
+        q['tabla'] = tabla_logica(resto[0], variables)
+        q['complejidad'] = compl
+    elif tipo == 'combinacion':
+        if len(resto) != 2 or resto[0] not in SERIES:
+            raise ValueError(f'{donde}: «? combinacion: enunciado | E12 | 7,5 kΩ ±1%»')
+        v = valor_dsl(resto[1], donde)
+        if v['unidad'] != 'Ω' or 'tol' not in v:
+            raise ValueError(f'{donde}: combinación en Ω con tolerancia relativa')
+        q.update({'serie': resto[0], 'objetivo': v['valor'], 'unidad': 'Ω', 'tol': v['tol'], 'texto': v['texto']})
+        if not combinaciones_serie(resto[0], v['valor'], v['tol']):
+            raise ValueError(f'{donde}: ninguna pareja de la serie da {v["texto"]}')
+    return q
+
+
+def normalizar_cita(t):
+    t = re.sub(r'[\s   ]+', ' ', t)
+    return t.replace('’', "'").strip()
+
+
+def preparar_preguntas(label, preguntas, solucion):
+    """Ids, deterministic presentation order and HTML of the curated questions; every «>» explanation must
+    appear word for word in the book's solution (fidelity: nothing is attributed to the book that it does not say)."""
+    sol = normalizar_cita(solucion)
+    out = []
+    for k, q in enumerate(preguntas):
+        q = dict(q)
+        pid = f'p{k + 1}'
+        e = {'id': pid, 'tipo': q['tipo'], 'enunciado': marcado(q['enunciado'])}
+        if q['tipo'] == 'eleccion':
+            # yes/no questions keep their order; the rest are shuffled so the right one is not always first
+            sino = all(re.match(r'^(Sí|No)\b', o) for o in q['opciones'])
+            orden = list(range(len(q['opciones']))) if sino else permutacion(len(q['opciones']), label + pid, False)
+            e['opciones'] = [marcado(q['opciones'][i]) for i in orden]
+            e['correcta'] = orden.index(q['correcta'])
+        elif q['tipo'] == 'orden':
+            e['elementos'] = [marcado(x) for x in q['elementos']]
+            e['mezcla'] = permutacion(len(q['elementos']), label + pid)
+        elif q['tipo'] == 'clasificar':
+            orden = permutacion(len(q['elementos']), label + pid, False) if len(q['elementos']) > 2 else list(range(len(q['elementos'])))
+            if q['enunciado'].startswith('Tabla de verdad'):
+                orden = list(range(len(q['elementos'])))      # rows of a truth table stay in binary order
+            e['categorias'] = [marcado(c) for c in q['categorias']]
+            e['elementos'] = [{'texto': marcado(q['elementos'][i]['texto']), 'cat': q['elementos'][i]['cat']} for i in orden]
+        elif q['tipo'] == 'exacta':
+            e['aceptadas'] = q['aceptadas']
+        elif q['tipo'] == 'logica':
+            for c in ('expresion', 'variables', 'tabla', 'complejidad'):
+                e[c] = q[c]
+        elif q['tipo'] == 'combinacion':
+            for c in ('serie', 'objetivo', 'unidad', 'tol', 'texto'):
+                e[c] = q[c]
+        expl = []
+        calculo = False
+        for es_calculo, t, donde in q.get('_explicacion', []):
+            if not es_calculo and normalizar_cita(t) not in sol:
+                raise ValueError(f'{donde}: [{label}] la cita no está en la solución del libro: {t!r}')
+            calculo = calculo or es_calculo
+            expl.append(marcado(t))
+        if expl:
+            e['explicacion'] = ' '.join(expl)
+            if calculo:
+                e['calculo'] = True
+        out.append(e)
+    return out
+
+
 def leer_curado(ruta):
     """{label: {'respuestas': [...] | None, 'otras': [...], 'pistas': [...], 'clase': str|None, 'nota': str|None,
     'errata': str|None}}"""
@@ -394,7 +644,7 @@ def leer_curado(ruta):
         m = re.match(r'^\[([\w.\-]+)\]\s*$', s)
         if m:
             actual = out.setdefault(m.group(1), {'respuestas': None, 'otras': [], 'pistas': [], 'clase': None,
-                                                  'nota': None, 'errata': None, '_linea': n})
+                                                  'nota': None, 'errata': None, '_linea': n, 'preguntas': []})
             continue
         if actual is None:
             raise ValueError(f'{ruta}:{n}: línea fuera de un [label]')
@@ -434,6 +684,16 @@ def leer_curado(ruta):
             actual['errata'] = s[7:].strip()
         elif s == 'sin-respuestas':
             actual['respuestas'] = []
+        elif s.startswith('?'):
+            actual['preguntas'].append(pregunta_dsl(s, f'{ruta}:{n}'))
+        elif s.startswith('>'):
+            # explanation of the last «?» question: «> text» quotes the book's solution literally (checked
+            # against it later), «>> text» is the app's own working (only for answers the book does not spell out)
+            if not actual['preguntas']:
+                raise ValueError(f'{ruta}:{n}: «>» sin una pregunta «?» antes')
+            q = actual['preguntas'][-1]
+            calculo = s.startswith('>>')
+            q.setdefault('_explicacion', []).append((calculo, s[2 if calculo else 1:].strip(), f'{ruta}:{n}'))
         else:
             raise ValueError(f'{ruta}:{n}: línea no reconocida {s!r}')
     return out
@@ -479,8 +739,8 @@ def construir(revisar=None):
         nota = errata = None
         if c:
             estad['curados'] += 1
-            if c['respuestas'] is None and c['otras']:
-                c['respuestas'] = []          # only «~» lines: compare with the solution
+            if c['respuestas'] is None and (c['otras'] or c['preguntas']):
+                c['respuestas'] = []          # only «~» / «?» lines: no parser guesses
             if c['respuestas'] is not None:
                 respuestas = c['respuestas']
                 origen = 'curado'
@@ -496,11 +756,13 @@ def construir(revisar=None):
                 clase = 'numerico'
             elif otras:
                 clase = otras[0]['clase']
+        preguntas = preparar_preguntas(it['label'], c['preguntas'], it['_sol']) if c and c['preguntas'] else []
         if it['_sin_solucion']:
-            respuestas, otras, clase = [], [], 'sin-solucion'
-        modo = 'auto' if respuestas else 'comparar'
-        if modo == 'auto' and clase not in ('numerico',):
-            clase = 'numerico'
+            respuestas, otras, clase, preguntas = [], [], 'sin-solucion', []
+        modo = 'auto' if respuestas or preguntas else 'comparar'
+        if modo == 'auto':
+            # numerico: at least one numeric field; eleccion: only structured questions (choice, order…)
+            clase = 'numerico' if respuestas else 'eleccion'
         for k, r in enumerate(respuestas):
             r['id'] = f'r{k + 1}'
             r['texto'] = superindices(r.get('texto') or formatear(r['valor'], r['unidad']))
@@ -516,6 +778,12 @@ def construir(revisar=None):
         entrada['resumen'] = resumen(it['_enun'])
         if otras:
             entrada['otras'] = [{'clase': o['clase'], 'texto': marcado(o['texto'])} for o in otras]
+        if preguntas:
+            entrada['preguntas'] = preguntas
+            estad['preguntas'] = estad.get('preguntas', 0) + len(preguntas)
+            estad['con_preguntas'] = estad.get('con_preguntas', 0) + 1
+        if otras:
+            estad['autoevaluacion'] = estad.get('autoevaluacion', 0) + 1
         for r in entrada['respuestas']:
             r['nombre'] = marcado(r['nombre'])
             if 'nota' in r:
@@ -571,7 +839,8 @@ def main(argv=None):
     print(f"ejercicios.json: {e['total']} ({e['ej']} ejercicios, {e['prob']} problemas); "
           f"autocomprobables {e['auto']} ({pct:.0f} %, {e['campos']} campos: {e['respuestas_parser']} del analizador, "
           f"{e['respuestas_curadas']} curados); comparar con la solución {e['comparar']}; "
-          f"curados {e['curados']}; clases {e['clases']}")
+          f"curados {e['curados']}; clases {e['clases']}; preguntas estructuradas {e.get('preguntas', 0)} "
+          f"en {e.get('con_preguntas', 0)}; con autoevaluación {e.get('autoevaluacion', 0)}")
     for p in problemas:
         print('  ' + p)
     return 1 if problemas else 0

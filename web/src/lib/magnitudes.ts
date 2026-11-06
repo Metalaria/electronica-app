@@ -31,6 +31,9 @@ export type Veredicto =
   | { tipo: 'mal'; mensaje: string };
 
 const PREFIJOS: Record<string, number> = {
+  // 1.0 (review 10i): femto — the app itself writes «744 fF» (cap27, transimpedance); «2,2 f» alone is therefore
+  // 2,2 femto-units (a bare prefix, like «4,7 k»), never 2,2 farads: farads are written «F» (or «faradios»)
+  f: 1e-15,
   p: 1e-12,
   n: 1e-9,
   µ: 1e-6,
@@ -51,6 +54,8 @@ const PREFIJABLES = new Set([
   // 0.11 (QA): noise densities and field strengths, which the practice problems write with a prefix («17,3 nV/√Hz»)
   // and then rejected written the same way
   'V/√Hz', 'A/√Hz', 'V/m', 'A/m',
+  // 1.0: transconductances, which contenido/ejercicios.py stores in A/V from «38,5 mA/V» (mA/V was refused here)
+  'A/V',
 ]);
 
 /** Spellings the reader may use for a unit. */
@@ -77,12 +82,16 @@ const ALIAS: Record<string, string> = {
   amperios: 'A',
   w: 'W',
   vatios: 'W',
-  f: 'F',
   faradios: 'F',
   henrios: 'H',
   seg: 's',
   segundos: 's',
   horas: 'h',
+  minutos: 'min',
+  'm^2': 'm²',
+  'mm^2': 'mm²',
+  'cm^2': 'cm²',
+  cm2: 'cm²',
   db: 'dB',
   DB: 'dB',
   dbm: 'dBm',
@@ -109,7 +118,8 @@ function leerNumero(texto: string): [number, string] | null {
     .trim()
     .replace(/[−–—]/g, '-')
     .replace(/[    ]/g, ' ')
-    .replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹⁻⁺]/g, (c) => SUPERINDICES[c] ?? c);
+    // a run of superscripts is an exponent: «10⁴» → «10^4», «×10⁻³» → «×10^-3» (review 10g: «10⁴» was read as 104)
+    .replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹⁻⁺]+/g, (r) => '^' + [...r].map((c) => SUPERINDICES[c] ?? c).join(''));
   // thousands separated by spaces: «2 200 000»
   t = t.replace(/(\d) (?=\d{3}(?!\d))/g, '$1');
   // a leading «×» or «x» (factors: «×200»)
@@ -122,26 +132,99 @@ function leerNumero(texto: string): [number, string] | null {
   let v = Number(cifras.replace(',', '.'));
   const exp = m[3] ?? m[4] ?? m[5];
   if (exp != null) v *= 10 ** Number(exp);
+  let resto = t.slice(m[0].length);
+  // a bare power of ten: «10^4», «10^(-3)» (and «10⁴», «10⁻³» above)
+  const pot = exp == null && cifras === '10' ? /^\s*\^\s*\(?\s*([+-]?\d+)\s*\)?/.exec(resto) : null;
+  if (pot) {
+    v = 10 ** Number(pot[1]);
+    resto = resto.slice(pot[0].length);
+  }
   if (m[1] === '-') v = -v;
   if (!Number.isFinite(v)) return null;
-  return [v, t.slice(m[0].length)];
+  return [v, resto];
 }
 
 /**
- * Reads an answer for an expected unit. «4k7» (RKM code) and «2R2» are accepted; a bare prefix
- * («4,7 k») applies to the expected unit.
+ * Unit symbols whose case is meaningful: «S» (siemens) is not «s» (second), «H» (henry) is not «h» (hour), «T» (tesla)
+ * is not «t»… A case-insensitive match is only taken for the others («hz», «Ah»/«ah»). (1.0, review 10e: «4,7 mS»
+ * was accepted as 4,7 ms.)
  */
-export function leer(texto: string, unidad: string): Lectura | { error: 'ilegible' | 'unidad'; dada?: string } {
-  const t = texto.trim();
+const CONFUNDIBLES = new Set(['s', 'h', 't', 'm', 'g', 'b', 'k', 'c', 'pa', 'wb', 'n', 'j', 'f', 'w', 'a', 'v', 'ms', 'hs', 'ts']);
+function mismaUnidad(dada: string, esperada: string): boolean {
+  if (dada === esperada) return true;
+  const a = dada.toLowerCase();
+  return a === esperada.toLowerCase() && !CONFUNDIBLES.has(a);
+}
+
+/** Expected units written with their prefix glued in: read the answer in the bare unit and scale (1.0, review 10e). */
+const CON_PREFIJO: Record<string, [string, number]> = {
+  mm: ['m', 1e-3],
+  cm: ['m', 1e-2],
+  km: ['m', 1e3],
+  µm: ['m', 1e-6],
+  nm: ['m', 1e-9],
+  kg: ['g', 1e3],
+  mS: ['S', 1e-3],
+  µS: ['S', 1e-6],
+};
+/** Units of one magnitude in different scales (review 10g): the answer in any of them is converted. */
+const GRUPOS: Record<string, number>[] = [
+  { s: 1, min: 60, h: 3600 },
+  { 'm²': 1, 'cm²': 1e-4, 'mm²': 1e-6 },
+];
+
+/** Two spellings of the same unit (a difference of temperature: K ≡ °C; a transconductance: S ≡ A/V). */
+const EQUIVALENTES: Record<string, string> = { 'K/W': '°C/W', '°C/W': 'K/W', S: 'A/V', 'A/V': 'S' };
+
+type Leida = Lectura | { error: 'ilegible' | 'unidad'; dada?: string };
+
+/**
+ * Reads an answer for an expected unit. «4k7» (RKM code), «2R2» and «R33» are accepted; a bare prefix
+ * («4,7 k») applies to the expected unit; a final full stop («5 V.») is ignored; an equivalent unit is converted
+ * («0,165 m» for mm, «960 g» for kg, «31 °C/W» for K/W, «38,5 mS» for A/V).
+ */
+export function leer(texto: string, unidad: string): Leida {
+  const l = leerEn(texto, unidad);
+  if (!('error' in l) || l.error !== 'unidad') return l;
+  const conPrefijo = CON_PREFIJO[unidad];
+  if (conPrefijo) {
+    const b = leerEn(texto, conPrefijo[0]);
+    if (!('error' in b) && b.conUnidad) return { valor: b.valor / conPrefijo[1], conUnidad: true };
+  }
+  const grupo = GRUPOS.find((g) => g[unidad] != null);
+  if (grupo) {
+    for (const [u, f] of Object.entries(grupo)) {
+      if (u === unidad) continue;
+      const b = leerEn(texto, u);
+      if (!('error' in b) && b.conUnidad) return { valor: (b.valor * f) / grupo[unidad]!, conUnidad: true };
+    }
+  }
+  const eq = EQUIVALENTES[unidad];
+  if (eq) {
+    const b = leerEn(texto, eq);
+    if (!('error' in b) && b.conUnidad) return b;
+    const cp = CON_PREFIJO[eq];
+    if (cp) {
+      const c = leerEn(texto, cp[0]);
+      if (!('error' in c) && c.conUnidad) return { valor: c.valor * cp[1], conUnidad: true };
+    }
+  }
+  return l;
+}
+
+function leerEn(texto: string, unidad: string): Leida {
+  // «5 V.»: a sentence's full stop after the unit; «- 6 dB»: a sign set apart
+  const t = texto.trim().replace(/(?<=\D)\.$/, '').replace(/^([+\-−–])\s+(?=\d)/, '$1');
   if (!t) return { error: 'ilegible' };
-  // RKM code: 4k7, 2R2, 4µ7, 1M5 (optionally followed by the unit)
-  const rkm = /^([+-]?\d+)([pnuµμmkKMGR])(\d+)\s*(.*)$/.exec(t);
-  if (rkm) {
+  // RKM code: 4k7, 2R2, 4µ7, 1M5, R33 (optionally followed by the unit)
+  const rkm = /^([+-]?\d*)([pnuµμmkKMGR])(\d+)\s*(.*)$/.exec(t);
+  if (rkm && (rkm[1]!.replace(/[+-]/, '') !== '' || rkm[2] === 'R')) {
     const letra = rkm[2] === 'μ' ? 'µ' : rkm[2]!;
     const f = letra === 'R' ? 1 : (PREFIJOS[letra] ?? 1);
-    const v = Number(`${rkm[1]}.${rkm[3]}`) * f;
+    const entero = rkm[1]!.replace(/^([+-]?)$/, '$10');
+    const v = Number(`${entero}.${rkm[3]}`) * f;
     const resto = normalizarUnidad(rkm[4] ?? '');
-    if (resto && resto !== unidad) return { error: 'unidad', dada: resto };
+    if (resto && !mismaUnidad(resto, unidad)) return { error: 'unidad', dada: resto };
     return { valor: v, conUnidad: true };
   }
   const n = leerNumero(t);
@@ -149,14 +232,13 @@ export function leer(texto: string, unidad: string): Lectura | { error: 'ilegibl
   const [v, restoBruto] = n;
   const resto = normalizarUnidad(restoBruto);
   if (!resto) return { valor: v, conUnidad: false };
-  if (resto === unidad) return { valor: v, conUnidad: true };
-  // a case-insensitive match with the expected unit (hz, mv → mV handled below)
-  if (resto.toLowerCase() === unidad.toLowerCase() && !PREFIJOS[resto[0]!]) return { valor: v, conUnidad: true };
+  // the unit itself, or a harmless case variant («hz»); hz, mv → mV handled below
+  if (mismaUnidad(resto, unidad) && (resto === unidad || !PREFIJOS[resto[0]!])) return { valor: v, conUnidad: true };
   // prefix + unit, or prefix alone
   const p = resto[0]!;
   const base = normalizarUnidad(resto.slice(1));
   if (PREFIJOS[p] != null && PREFIJABLES.has(unidad)) {
-    if (!base || base === unidad || base.toLowerCase() === unidad.toLowerCase()) {
+    if (!base || mismaUnidad(base, unidad)) {
       return { valor: v * PREFIJOS[p], conUnidad: true };
     }
   }

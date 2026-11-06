@@ -40,6 +40,7 @@ import fm7303                        # noqa: E402
 import repaso                        # noqa: E402
 import formulas                      # noqa: E402
 import ejercicios                    # noqa: E402
+import pasos                         # noqa: E402
 import proyectos_kicad               # noqa: E402
 import glosario_imagenes             # noqa: E402
 
@@ -259,6 +260,7 @@ def main():
     ok = repaso.main() == 0 and ok    # chapter quizzes: web/public/libro/repaso/ (needs indice.json, refs.json)
     ok = formulas.main() == 0 and ok  # live calculators: formulas.json, formulas-ec.json (needs partes/, refs.json)
     ok = ejercicios.main([]) == 0 and ok  # self-checking exercises and problems: ejercicios.json (needs partes/)
+    ok = pasos.main([]) == 0 and ok   # 1.0 guided steps reviewed by hand: pasos.json (needs ejercicios.json)
     ok = glosario_imagenes.main([]) == 0 and ok  # glossary symbols and 3D models: glosario-imagenes.json
     ok = practica() and ok             # 0.10 «Aprender haciendo»: libro/practica/ (needs all of the above)
     ok = miniaturas() and ok           # 0.10 list thumbnails: web/public/miniaturas/ (needs spice.json, ejercicios.json)
@@ -276,6 +278,19 @@ def practica():
         print('practica: falta node; no se generan las preguntas interactivas')
         return True
     if subprocess.run(['node', os.path.join('scripts', 'practica10.mjs')], cwd=web).returncode != 0:
+        return False
+    # 1.0: challenges with the live figures and building challenges (added to the practice files)
+    if subprocess.run(['node', os.path.join('scripts', 'retos10.mjs')], cwd=web).returncode != 0:
+        return False
+    # 1.0: fault-finding cases on the live schematics (only those approved in contenido/averias_curado.json)
+    if subprocess.run(['node', os.path.join('scripts', 'averias10.mjs')], cwd=web).returncode != 0:
+        return False
+    # 1.0: the explanation of each wrong option of the choice questions (libro/porque/)
+    if subprocess.run(['node', os.path.join('scripts', 'porque10.mjs')], cwd=web).returncode != 0:
+        return False
+    # 1.0: the book's formulas whose values the reader moves in the text (only those approved in
+    # contenido/teoria_viva_curado.json; libro/teoria-viva.json, rewritten only when it changes)
+    if subprocess.run(['node', os.path.join('scripts', 'teoria10.mjs')], cwd=web).returncode != 0:
         return False
     # 0.11: the sections with something to answer (libro/conceptos.json), the denominator of the mastery bars
     return subprocess.run(['node', os.path.join('scripts', 'conceptos11.mjs')], cwd=web).returncode == 0

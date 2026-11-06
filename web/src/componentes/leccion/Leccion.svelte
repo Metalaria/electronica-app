@@ -246,7 +246,14 @@
     if (app.figura || app.buscador || hayCapas() || document.querySelector('[aria-modal="true"]')) return;
     const t = ev.target as HTMLElement | null;
     // Keys inside controls (live figures, sliders, inputs, links, buttons) keep their own meaning.
-    const libre = !t || t === document.body || t === titulo || !t.closest('a, button, input, textarea, select, summary, [tabindex], [contenteditable="true"], [role="slider"], [role="application"]');
+    // A disabled control keeps the focus until the browser's focus fixup (the next rendering update): the numeric answer's
+    // field, disabled as soon as it is answered with Enter, still received the next Enter, which was ignored — the lesson
+    // did not continue (the intermittent «5.2» failure of leccion09.spec.ts under load). A disabled control has no keys
+    // of its own: the lesson takes them.
+    const desactivado = !!t && (t as HTMLInputElement).disabled === true;
+    // (an element focused only to be read — tabindex="-1": the verdict of a question, which the 1.0 accessibility pass
+    // focuses after an answer — has no keys of its own either: Enter must still continue; review 10i)
+    const libre = !t || t === document.body || t === titulo || desactivado || !t.closest('a, button, input, textarea, select, summary, [tabindex]:not([tabindex="-1"]), [contenteditable="true"], [role="slider"], [role="application"]');
     if (ev.key === 'Escape') {
       ev.preventDefault();
       cerrar();
