@@ -50,6 +50,12 @@ V1 s 0 DC 5
 R1 s a 1k
 D1 a 0 D1N4148
 `,
+  // 1.1 (labs): the loose diode of the diode test (step «Prueba de diodos»): the variant named this circuit, which did
+  // not exist, and the bench loaded nothing (the Brymen read OL).
+  p3_suelto: `* Práctica 3: el diodo suelto (prueba de diodos)
+${D4148}
+D1 a 0 D1N4148
+`,
   p3_xy: `* Práctica 3: trazador de curvas con el generador y el modo X-Y
 ${D4148}
 VG g 0 DC 0

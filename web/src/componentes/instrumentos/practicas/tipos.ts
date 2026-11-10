@@ -26,6 +26,8 @@ export interface Ajustes {
     rojo?: string | null;
     negro?: string | null;
     serie?: { elemento: string; terminal: number } | null;
+    /** 1.1 labs: CREST on, showing the maximum (true) or off (false). */
+    crest?: boolean;
   };
   fnDmm?: { funcion?: string; borne?: Borne; rojo?: string | null; negro?: string | null; serie?: { elemento: string; terminal: number } | null };
   sondas?: { ch1?: string | null; ch2?: string | null; masa?: string };
@@ -37,6 +39,8 @@ export interface Ajustes {
     disparo?: Partial<Disparo>;
     mates?: Matematica;
     cursores?: Cursores;
+    /** Active channel (the one the voltage cursors and the vertical knobs act on). */
+    activo?: 0 | 1;
     cur?: { a: number; b: number };
     xy?: boolean;
     prm?: boolean;

@@ -2,6 +2,7 @@
   // The schematic editor page (#/editor, #/editor/<id>, #/editor/libro/<netlist>, #/editor/importar): draw a
   // circuit with the book's symbols, choose the analyses, simulate it in the simulator's worker, see the
   // results on the plots and on the drawing itself, and keep the circuit on the device.
+  import BandaEtapa from '../proyectos11/BandaEtapa.svelte';
   import { onDestroy, onMount, untrack } from 'svelte';
   import { app } from '../../lib/estado.svelte';
   import { motor, detener, precalentarMotor, simularTexto, SimulacionCancelada } from '../../simulador/cliente.svelte';
@@ -814,12 +815,15 @@
         {#if cargando}&nbsp;{:else}
           {#if idGuardado}{biblioteca.error ? 'Sin guardar en este dispositivo' : estadoGuardado === 'guardando' ? 'Guardando…' : 'Guardado en este dispositivo'}{:else}Sin guardar{/if}
           {#if ed.doc.origen?.tipo === 'libro'} · dibujado a partir de la netlist del libro{/if}
+          {#if ed.doc.origen?.tipo === 'proyecto'} · circuito de un proyecto por etapas{/if}
         {/if}
       </span>
     </div>
     <div class="botones">
       {#if !idGuardado}<button type="button" class="boton primario" onclick={guardar} disabled={!ed.doc.componentes.length}>Guardar</button>{/if}
       <button type="button" class="boton" onclick={() => (verCircuitos = true)}>Mis circuitos</button>
+      <!-- 1.1: the four projects of the book, built stage by stage in this editor -->
+      <a class="boton" href="#/etapas" data-editor-proyectos>Proyectos por etapas</a>
       <button type="button" class="boton" onclick={verProtoboard} disabled={!ed.doc.componentes.length} title="Montar este circuito en una protoboard virtual (una prueba: el esquema no cambia)">Ver en protoboard</button>
       <button type="button" class="boton" onclick={() => void medir()} disabled={!ed.doc.componentes.length || ed.nl.errores.length > 0} title="Medir este circuito con el polímetro, el osciloscopio y el generador (las puntas en los nodos del dibujo)">Medir</button>
       <button type="button" class="boton" onclick={nuevo}>Nuevo</button>
@@ -837,6 +841,10 @@
       <input bind:this={selectorFichero} type="file" accept=".cir,.net,.sp,.spi,.txt,.ckt" hidden onchange={importarFichero} />
     </div>
   </header>
+  {#if !cargando && ed.doc.origen?.tipo === 'proyecto' && ed.doc.origen.id}
+    <!-- 1.1: a stage's circuit (projects by stages): which stage, and the way back to check it -->
+    <BandaEtapa etapa={ed.doc.origen.id} />
+  {/if}
   <AvisoGuardado error={biblioteca.error} nombre="Mis circuitos" reintentar={reintentarAbrir} />
   {#if aviso}<div class="aviso" role="alert">{aviso} <button class="enlace" onclick={() => (aviso = '')}>Cerrar</button></div>{/if}
 

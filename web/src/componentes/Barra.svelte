@@ -23,6 +23,8 @@
     if (ruta.vista === 'practicar') return 'Práctica inteligente';
     if (ruta.vista === 'problema') return 'Problema del día';
     if (ruta.vista === 'docente') return 'Modo docente';
+    // 1.1: from the project chapters, the courses and the editor
+    if (ruta.vista === 'etapas') return 'Proyectos por etapas';
     return HERRAMIENTAS.find(esActiva)?.etiqueta ?? '';
   });
   const rotulo = $derived(info ? rotuloParte(ruta.parte) : '');

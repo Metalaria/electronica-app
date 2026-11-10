@@ -13,20 +13,37 @@
   import Parametros from '../../simulador/Parametros.svelte';
   import { listarParametros, aplicarParametro } from '../../../simulador/motor/netlist.ts';
   import { motor } from '../../../simulador/cliente.svelte';
+  import type { GuiaBrymen, GuiaFnirsi } from '../guia';
 
   let {
     b,
     plano,
     lateral,
+    lateralArriba = false,
+    barra = null,
     tamano,
+    guiaBm = null,
+    guiaFn = null,
+    pestana = $bindable('fnirsi'),
   }: {
     b: Banco;
     /** The drawing; null: the circuit has none; undefined: still being decided (its place is kept). */
     plano: Fuente | null | undefined;
     /** Practice panel or circuit chooser, shown next to the bench. */
     lateral?: Snippet;
+    /**
+     * Review 11c: on narrow screens the panel goes first (a lab's step had sat ~2 200 px down, under the circuit and
+     * the instruments). Wide screens keep it under the circuit, next to the instruments.
+     */
+    lateralArriba?: boolean;
+    /** A compact bar that sticks to the bottom of the window on narrow screens (the lab's step and «Comprobar»). */
+    barra?: Snippet | null;
     /** 0.12 QA: [width, height] of the automatic drawing it will get (precomputed), to keep its place exactly. */
     tamano?: [number, number] | null;
+    /** 1.1 labs: what the instruments light up («Mostrar dónde»), and the instrument shown on narrow screens. */
+    guiaBm?: GuiaBrymen | null;
+    guiaFn?: GuiaFnirsi | null;
+    pestana?: 'brymen' | 'fnirsi';
   } = $props();
 
   let activa = $state<Punta | null>('bmRojo');
@@ -62,7 +79,7 @@
 </script>
 
 <div class="envoltura">
-<div class="banco">
+<div class="banco" class:lateral-arriba={lateralArriba}>
   <section class="bloque circuito" aria-label="Circuito">
     <div class="cab">
       <h2>Circuito</h2>
@@ -94,7 +111,7 @@
   </section>
 
   <div class="instrumentos">
-    <Aparatos {b} alAuto={vivo.auto} />
+    <Aparatos {b} alAuto={vivo.auto} {guiaBm} {guiaFn} bind:pestana />
     <Escuchar {b} />
   </div>
 
@@ -105,6 +122,7 @@
       <Parametros {parametros} {rangos} alCambiar={cambiar} />
     </section>
   {/if}
+  {@render barra?.()}
 </div>
 </div>
 
@@ -120,6 +138,9 @@
     padding: 12px 16px 40px;
     max-width: 1500px;
     margin: 0 auto;
+  }
+  .banco.lateral-arriba {
+    grid-template-areas: 'lateral' 'circuito' 'instrumentos' 'parametros';
   }
   .circuito {
     grid-area: circuito;
@@ -229,6 +250,9 @@
       grid-template-columns: minmax(300px, 1fr) minmax(560px, 1.5fr);
       grid-template-areas: 'circuito instrumentos' 'lateral instrumentos' 'parametros instrumentos';
       grid-template-rows: auto auto 1fr;
+    }
+    .banco.lateral-arriba {
+      grid-template-areas: 'circuito instrumentos' 'lateral instrumentos' 'parametros instrumentos';
     }
     .instrumentos {
       position: sticky;

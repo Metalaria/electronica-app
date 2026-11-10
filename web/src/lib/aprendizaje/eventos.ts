@@ -27,9 +27,11 @@ import { encolar, leerLista, MAX_COLA, PREFIJO_PENDIENTES, unirListas } from './
 
 /**
  * Where an answer was given. `prueba-nivel` answers never give XP (the placement test only measures).
- * Group B: `inteligente` («Práctica inteligente», #/practicar) and `problema-dia` (#/problema).
+ * Group B: `inteligente` («Práctica inteligente», #/practicar) and `problema-dia` (#/problema). 1.1: `laboratorio`, a step of
+ * a guided lab of printed chapter 21 (#/instrumentos/laboratorio/<n>; id `cap22-lab<n>-<step>`, XP `pr:` once). 1.1:
+ * `proyecto`, a stage of a project by stages (#/etapas/<parte>/<n>; id `proy-<stage id>`, XP `pr:` once).
  */
-export type OrigenRespuesta = 'leccion' | 'repaso' | 'practica' | 'ejercicio' | 'prueba-nivel' | 'inteligente' | 'problema-dia';
+export type OrigenRespuesta = 'leccion' | 'repaso' | 'practica' | 'ejercicio' | 'prueba-nivel' | 'inteligente' | 'problema-dia' | 'laboratorio' | 'proyecto';
 
 /** What was answered: an «Aprender haciendo» item, a Repaso question, or a self-checked exercise. */
 export type ClasePregunta = 'practica' | 'pregunta' | 'ejercicio';

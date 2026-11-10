@@ -2,6 +2,7 @@
   // «Instrumentos» view (#/instrumentos…): the virtual Brymen BM869s and FNIRSI 2C53T on a test bench.
   //   #/instrumentos                      practices of printed chapter 21 and the free bench
   //   #/instrumentos/practica/<n>         guided practice n (1 … 12)
+  //   #/instrumentos/laboratorio/<n>      1.1: practice n as a guided lab (practicas/PanelLaboratorio.svelte)
   //   #/instrumentos/circuito/<parte>/<nombre>   a netlist of the simulator's catalogue on the bench
   //   #/instrumentos/libre                the free bench (choose any netlist)
   // Loaded on demand from App.svelte.

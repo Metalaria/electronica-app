@@ -56,6 +56,12 @@ export const ESQUEMAS: Readonly<Record<string, number>> = {
   'problema-dia': 1,
   // 1.0: «¿Qué seguridad tiene?» (lib/aprendizaje/seguridad.svelte.ts), synchronised as store `seguridad`
   seguridad: 1,
+  // 1.1: the guided labs of printed chapter 21 (lib/laboratorio.svelte.ts), synchronised as store `laboratorio`; a new
+  // key, so no migration (1.0 has nothing under it and leaves it alone)
+  laboratorio: 1,
+  // 1.1: the projects by stages of printed chapters 48–51 (lib/proyectos11/estado.svelte.ts), synchronised as store
+  // `proyectos`; a new key, so no migration
+  proyectos: 1,
   'editor-circuitos': 1,
   'protoboard-circuitos': 1,
   'protoboard-recorrido': 1,

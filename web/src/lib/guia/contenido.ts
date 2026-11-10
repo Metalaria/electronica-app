@@ -547,6 +547,17 @@ export const GUIA: SeccionGuia[] = [
         ],
       },
       {
+        id: 'etapas',
+        titulo: 'Proyectos por etapas',
+        bloques: [
+          {
+            t: 'p',
+            texto:
+              'Los cuatro proyectos detallados del libro se montan por etapas en el editor de esquemas: cada etapa pide lo que dice el libro, se diseña escribiendo los valores o en el editor («Abrir en el editor») y «Comprobar» simula el circuito y dice qué cumple y qué cambiar. Se llega desde el final de cada capítulo de proyecto, desde el botón de la etapa junto a sus secciones, desde el camino de los cursos y desde el editor.',
+          },
+        ],
+      },
+      {
         id: 'instrumentos',
         titulo: 'Instrumentos y kit FM7303',
         bloques: [
@@ -562,6 +573,7 @@ export const GUIA: SeccionGuia[] = [
       { texto: 'Componentes animados', ruta: '#/componentes' },
       { texto: 'Conceptos animados', ruta: '#/conceptos' },
       { texto: 'Proyectos KiCad', ruta: '#/proyectos' },
+      { texto: 'Proyectos por etapas', ruta: '#/etapas' },
       { texto: 'Consolas', ruta: '#/consolas' },
       { texto: 'Instrumentos', ruta: '#/instrumentos' },
       { texto: 'Kit FM7303', ruta: '#/fm7303' },

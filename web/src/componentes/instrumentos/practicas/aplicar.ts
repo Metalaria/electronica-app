@@ -49,6 +49,10 @@ export function aplicar(b: Banco, p: Practica, a: Ajustes): void {
       if (i >= 0) m.girar(i);
     }
     if (a.bm.sub !== undefined) m.sub = a.bm.sub;
+    if (a.bm.crest === true) {
+      if (!m.crest) m.pulsarCrest();
+      else m.crest.vista = 0;
+    } else if (a.bm.crest === false) m.crestLargo();
     if (a.bm.serie !== undefined && a.bm.serie) b.enSerie('bm', a.bm.serie.elemento, a.bm.serie.terminal);
     else {
       if (a.bm.rojo !== undefined) b.poner('bmRojo', a.bm.rojo);
@@ -98,6 +102,7 @@ export function aplicar(b: Banco, p: Practica, a: Ajustes): void {
     if (o.disparo) f.disparo = { ...f.disparo, ...o.disparo };
     if (o.mates !== undefined) f.mates = o.mates;
     if (o.cursores !== undefined) f.cursores = o.cursores;
+    if (o.activo !== undefined) f.activo = o.activo;
     if (o.cur) f.cur = { ...o.cur };
     if (o.xy !== undefined) f.xy = o.xy;
     if (o.prm !== undefined) f.prm = o.prm;

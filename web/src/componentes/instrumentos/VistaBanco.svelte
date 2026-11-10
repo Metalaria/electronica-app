@@ -4,6 +4,9 @@
   import { Banco } from './banco.svelte.ts';
   import BancoVista from './banco/Banco.svelte';
   import PanelPractica from './practicas/PanelPractica.svelte';
+  import PanelLaboratorio, { type ControlLab } from './practicas/PanelLaboratorio.svelte';
+  import { laboratorioDe } from './practicas/laboratorios';
+  import { iniciarLaboratorio } from './practicas/laboratorio';
   import { PRACTICAS } from './practicas/practicas';
   import { DIBUJOS } from './practicas/dibujos';
   import { iniciarPractica, varianteDe } from './practicas/aplicar';
@@ -23,7 +26,10 @@
   let { tipo, id }: { tipo: string; id: string } = $props();
 
   const b = new Banco();
-  const practica = $derived(tipo === 'practica' ? PRACTICAS.find((p) => String(p.n) === id) : undefined);
+  // 1.1: «laboratorio» is the same practice as a guided lab (its bench starts with the instruments not set up)
+  const practica = $derived(tipo === 'practica' || tipo === 'laboratorio' ? PRACTICAS.find((p) => String(p.n) === id) : undefined);
+  const laboratorio = $derived(tipo === 'laboratorio' && practica ? laboratorioDe(practica.n) : undefined);
+  const control = $state<ControlLab>({ guiaBm: null, guiaFn: null, pestana: 'fnirsi', barra: null });
   /** undefined until the drawing is decided (Banco keeps its place meanwhile). */
   let plano = $state<Fuente | null | undefined>(undefined);
   let indice = $state<IndiceSpice | null>(null);
@@ -125,7 +131,8 @@
 
   onMount(() => {
     precalentarMotor();
-    if (practica) iniciarPractica(b, practica);
+    if (practica && laboratorio) iniciarLaboratorio(b, practica, laboratorio);
+    else if (practica) iniciarPractica(b, practica);
     else if (tipo === 'circuito') void cargarCatalogo(id);
     else if (tipo === 'editor') {
       const c = circuitoEditor();
@@ -158,7 +165,7 @@
   // ---------------------------------------------------------------- free bench: chooser
   let capitulo = $state('cap22');
   const lista = $derived(indice?.capitulos.find((c) => c.parte === capitulo)?.netlists ?? []);
-  const titulo = $derived(practica ? `Práctica ${practica.n} · ${practica.titulo}` : deEditor ? `Medir · ${b.titulo}` : b.titulo || 'Banco de pruebas');
+  const titulo = $derived(laboratorio && practica ? `Laboratorio ${practica.n} · ${practica.titulo}` : practica ? `Práctica ${practica.n} · ${practica.titulo}` : deEditor ? `Medir · ${b.titulo}` : b.titulo || 'Banco de pruebas');
 </script>
 
 <div class="cabecera">
@@ -169,9 +176,11 @@
 {#if errorRed}<ErrorCarga titulo="No se pudo cargar el circuito." error={errorTexto} reintentar={() => void cargarCatalogo(id)} />{/if}
 
 <!-- 0.12 QA: a book circuit's drawing size is known beforehand (its place is kept exactly) -->
-<BancoVista {b} {plano} tamano={tipo === 'circuito' ? tamanoDibujo(id, 'banco') : undefined}>
+<BancoVista {b} {plano} tamano={tipo === 'circuito' ? tamanoDibujo(id, 'banco') : undefined} guiaBm={control.guiaBm} guiaFn={control.guiaFn} bind:pestana={control.pestana} lateralArriba={!!(practica && laboratorio)} barra={practica && laboratorio ? control.barra : null}>
   {#snippet lateral()}
-    {#if practica}
+    {#if practica && laboratorio}
+      <PanelLaboratorio p={practica} lab={laboratorio} {b} {control} />
+    {:else if practica}
       <PanelPractica p={practica} {b} />
     {:else}
       <div class="elegir">

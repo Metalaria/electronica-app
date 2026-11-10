@@ -82,8 +82,8 @@ export interface DocumentoEsquema {
   analisis: Analisis;
   /** Extra netlist text, verbatim: .model, .subckt, .param, .options, .meas, .control… */
   directivas: string;
-  /** Imported from a book netlist (its id) or from a netlist text. */
-  origen?: { tipo: 'libro' | 'texto'; id?: string };
+  /** Imported from a book netlist (its id) or from a netlist text; 1.1: `proyecto`, a stage's circuit (id: the stage, lib/proyectos11). */
+  origen?: { tipo: 'libro' | 'texto' | 'proyecto'; id?: string };
   /** Netlist adjustments of a copy made by the convergence help (erc.ts): a 1 mΩ resistor in series with every inductor and voltage source. */
   ajustes?: { rserie?: boolean };
   /** Parameter sweep (barrido.ts): one part field over a list of values. */

@@ -1,8 +1,22 @@
 <script lang="ts">
   // Entry page of the instruments: the two instruments in one line each, the twelve practices, and the
   // free bench.
+  import { onMount } from 'svelte';
   import { PRACTICAS } from './practicas/practicas';
   import { app } from '../../lib/estado.svelte';
+  // 1.1: each practice also as a guided lab, with its progress
+  import { cargarLaboratorio, registroLab } from '../../lib/laboratorio.svelte';
+  import { laboratorioDe } from './practicas/laboratorios';
+  import { labCompletado } from '../../lib/laboratorio';
+
+  onMount(() => void cargarLaboratorio());
+  function avanceLab(n: number): string {
+    const r = registroLab(n);
+    const total = laboratorioDe(n)?.pasos.length ?? 0;
+    // (review 11a: completed by `c` or by the steps done — after a merge of two devices only `h` may cover it)
+    if (labCompletado(r, laboratorioDe(n)?.pasos.map((x) => x.id) ?? [])) return 'completado';
+    return r?.h.length ? `${Math.min(r.h.length, total)} de ${total} pasos` : `${total} pasos`;
+  }
 </script>
 
 <div class="portada">
@@ -22,6 +36,7 @@
           <span class="t">{p.titulo}</span>
           <span class="o">{@html p.objetivo}</span>
         </a>
+        <a class="lab" href={`#/instrumentos/laboratorio/${p.n}`} data-laboratorio-enlace={p.n}>Laboratorio guiado <span class="avance">· {avanceLab(p.n)}</span></a>
       </li>
     {/each}
   </ol>
@@ -60,7 +75,25 @@
     padding: 0;
     list-style: none;
   }
-  .practicas a {
+  .practicas li {
+    display: grid;
+    grid-template-rows: 1fr auto;
+    gap: 4px;
+  }
+  .practicas a.lab {
+    display: flex;
+    align-items: center;
+    min-height: 44px;
+    padding: 0 12px;
+    color: var(--acento);
+    font-weight: 600;
+    font-size: 14px;
+  }
+  .avance {
+    color: var(--tinta-suave);
+    font-weight: 400;
+  }
+  .practicas a:not(.lab) {
     display: grid;
     grid-template-columns: auto 1fr;
     gap: 2px 10px;
@@ -72,7 +105,7 @@
     color: var(--tinta);
     text-decoration: none;
   }
-  .practicas a:hover {
+  .practicas a:not(.lab):hover {
     border-color: var(--acento-borde);
     background: var(--acento-tinte);
   }

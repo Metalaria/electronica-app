@@ -98,6 +98,8 @@
     <h2>{p.titulo}</h2>
     <p class="objetivo">{@html p.objetivo}</p>
     <a class="libro" href={`#/cap22/${p.label}`} onclick={volverLibro}>Leer en el libro →</a>
+    <!-- 1.1: the same practice done step by step, each step checked on the instruments -->
+    <a class="libro" href={`#/instrumentos/laboratorio/${p.n}`} data-laboratorio-enlace>Hacerla como laboratorio guiado →</a>
   </header>
 
   {#if p.variantes.length > 1}
@@ -301,10 +303,6 @@
     min-height: 32px;
     padding: 0 10px;
     font-size: 13px;
-  }
-  .boton:disabled {
-    opacity: 0.45;
-    cursor: default;
   }
   .tabla-envoltura {
     overflow-x: auto;

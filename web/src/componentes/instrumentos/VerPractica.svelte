@@ -1,27 +1,16 @@
 <script lang="ts">
   // «Practicar» next to the book sections of the twelve practices (printed chapter 21): opens the guided
-  // practice on the instruments' test bench. The map is static and tiny (no lazy load needed).
+  // practice on the instruments' test bench; 1.1: «Laboratorio» opens it as a guided lab (the reader does every step on
+  // the instruments and each one is checked). The map is static and tiny (no lazy load needed).
   import Gauge from '@lucide/svelte/icons/gauge';
+  import FlaskConical from '@lucide/svelte/icons/flask-conical';
+  import { PRACTICA_DE_SECCION } from './practicas/mapa';
   import { prepararSalto } from '../../lib/ruta.svelte';
   import { app } from '../../lib/estado.svelte';
 
   let { label, compacto = false }: { label: string; compacto?: boolean } = $props();
 
-  const PRACTICA: Record<string, number> = {
-    'sec-22.1': 1,
-    'sec-22.2': 2,
-    'sec-22.3': 3,
-    'sec-22.4': 4,
-    'sec-22.5': 5,
-    'sec-22.6': 6,
-    'sec-22.7': 7,
-    'sec-22.8': 8,
-    'sec-22.9': 9,
-    'sec-22.11': 10,
-    'sec-22.12': 11,
-    'sec-22.13': 12,
-  };
-  const n = $derived(PRACTICA[label]);
+  const n = $derived(PRACTICA_DE_SECCION[label]);
 
   function salto(): void {
     const r = app.refs[label];
@@ -33,10 +22,15 @@
   <a class="practicar" class:compacto href={`#/instrumentos/practica/${n}`} onclick={salto} title={`Práctica ${n} en el banco de instrumentos`}>
     <Gauge size={16} strokeWidth={2.2} />Practicar
   </a>
+  <a class="practicar-lab" class:compacto href={`#/instrumentos/laboratorio/${n}`} onclick={salto} title={`Práctica ${n} como laboratorio guiado`} data-laboratorio-enlace>
+    <FlaskConical size={16} strokeWidth={2.2} />Laboratorio
+  </a>
 {/if}
 
 <style>
-  .practicar {
+  /* 1.1: the lab link looks the same (its own class: «a.practicar» stays the practice's) */
+  .practicar,
+  .practicar-lab {
     display: inline-flex;
     align-items: center;
     gap: 5px;
@@ -53,10 +47,12 @@
     white-space: nowrap;
     vertical-align: middle;
   }
-  .practicar:hover {
+  .practicar:hover,
+  .practicar-lab:hover {
     background: var(--acento-tinte);
   }
-  .practicar.compacto {
+  .practicar.compacto,
+  .practicar-lab.compacto {
     min-height: 28px;
     padding: 0 9px;
     font-size: 12.5px;
