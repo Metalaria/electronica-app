@@ -81,6 +81,34 @@ export function obtenerRefs(): Refs {
   return refs;
 }
 
+/**
+ * 1.1: the printed number of a label («34.2» for fig-34.2) for the app's own texts that cite the book: a book expansion
+ * can shift it (contenido/ampliaciones.py), so it is never written by hand. `defecto` while refs.json is not loaded.
+ */
+export function numeroImpreso(label: string, defecto = ''): string {
+  return refs?.[label]?.num ?? defecto;
+}
+
+/**
+ * 1.1: an app text written as data (lib/proyectos11/etapas.ts) cites the book as «ejercicio {{num:ej-50.5}}»: each
+ * placeholder becomes the label's current printed number (numeroImpreso), resolved when shown, so an expansion that
+ * shifts it (a new chapter) never leaves a stale number. An unknown label is left as the label.
+ */
+export function conNumerosImpresos(texto: string): string {
+  return texto.replace(/\{\{num:([^}\s]+)\}\}/g, (_, label: string) => numeroImpreso(label, label));
+}
+
+/**
+ * 1.1: where a reference key leads when a book expansion retired it (contenido/ampliaciones.py, pieces «retirar»: P02
+ * absorbs 32.13): refs.json keeps the old label as an alias with the destination's part and «label». Null for any
+ * other key, or when the route is already in the destination's part.
+ */
+export function destinoRetirado(parte: string, label: string): { parte: string; label: string } | null {
+  const r = refs?.[label];
+  if (!r?.retirada || !r.label || r.parte === parte) return null;
+  return { parte: r.parte, label: r.label };
+}
+
 export function modoContenido(): Modo {
   return modo;
 }

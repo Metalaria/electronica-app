@@ -1,0 +1,35 @@
+* n3_rect1_R45: single-phase fully controlled bridge, 230 V, alpha=45 deg, load R
+* Behavioural thyristor: series diode + gate-controlled conductance (50 mohm on) that latches while I > IH (5 mA).
+* Gate pulses rise in 20 us: faster edges stall the WASM solver at the commutations.
+.subckt SCR A K G
+Vs A x 0
+D1 x y DSCR
+Gsw y K cur = V(y,K)*(1e-6 + 20*V(ctl))
+Bset c0 0 V = 1-(1-0.5*(1+tanh(20*(V(G,K)-0.5))))*(1-0.5*(1+tanh(2000*(I(Vs)-5m))))
+Rc c0 ctl 1k
+Cc ctl 0 10n
+.model DSCR D(IS=1e-12 N=1.5 RS=5m CJO=100p)
+* keeps the inner node defined while both parts are off
+Ry y K 1e7
+* RC snubber across the device (100 ohm + 22 nF), as in practice (section 10.6)
+Rsn A sn 100
+Csn sn K 22n
+.ends
+
+VS a0 b SIN(0 325.2691 50)
+LSRC a0 a 50u IC=-0.0000
+RB b 0 1m
+XT1 a p g1 SCR
+XT2 n b g2 SCR
+XT3 b p g3 SCR
+XT4 n a g4 SCR
+VG1 g1 p PULSE(0 5 0.0025 20u 20u 1m 20m)
+VG2 g2 b PULSE(0 5 0.0025 20u 20u 1m 20m)
+VG3 g3 p PULSE(0 5 0.0125 20u 20u 1m 20m)
+VG4 g4 a PULSE(0 5 0.0125 20u 20u 1m 20m)
+VSENSE p p1 0
+RL p1 n 100
+.options method=gear reltol=1e-3 vntol=1e-4 abstol=1e-9 itl4=100
+.tran 5u 100m 0 5u
+.save v(p) v(n) v(a) v(b) i(VSENSE) i(VS)
+.end

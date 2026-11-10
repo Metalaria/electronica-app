@@ -5,6 +5,7 @@
   // about 1 LSB of dither turns them into a flat noise floor (figure 33.2). The DAC holds each code (zero-order
   // hold) and a reconstruction filter smooths the staircase.
   import Escena from '../../ui/Escena.svelte';
+  import { numeroImpreso } from '../../../../lib/datos';
   import Marco from '../../ui/Marco.svelte';
   import Deslizador from '../../ui/Deslizador.svelte';
   import Interruptor from '../../ui/Interruptor.svelte';
@@ -203,6 +204,6 @@
     <Deslizador etiqueta="Resolución" bind:valor={bits} min={1} max={12} paso={1} formato={(x) => `${x} bits`} />
     <Deslizador etiqueta="Amplitud de la entrada" bind:valor={amp} min={0.02} max={1} paso={0.01} formato={(x) => pct(x, 0)} />
     <Interruptor etiqueta="Dither (≈ 1 LSB de ruido)" bind:valor={dither} />
-    <button class="boton" onclick={() => ((bits = 8), (amp = 0.02), (dither = false))}>Señal pequeña: 8 bits, 2 % (figura 33.2)</button>
+    <button class="boton" onclick={() => ((bits = 8), (amp = 0.02), (dither = false))}>Señal pequeña: 8 bits, 2 % (figura {numeroImpreso('fig-34.2', '34.2')})</button>
   {/snippet}
 </Marco>

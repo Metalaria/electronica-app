@@ -21,6 +21,9 @@
   import Bloques from './Bloques.svelte';
   import Icono from './Icono.svelte';
   import BotonTest from './repaso/BotonTest.svelte';
+  import EjerciciosNuevos from './aprender/EjerciciosNuevos.svelte';
+  import InsigniaNuevo from './aprender/InsigniaNuevo.svelte';
+  import ProyectoEnCapitulo from './proyectos11/ProyectoEnCapitulo.svelte';
   import { mapasDeLectura } from '../lib/mapas-lectura';
   import { cargarDatos } from './figuras-vivas/carga.svelte';
 
@@ -505,6 +508,13 @@
       <h1>{tituloPrincipal}</h1>
       {#if subtitulo}<p class="subtitulo">{subtitulo}</p>{/if}
     </div>
+    {#if info?.ampliacion || datos?.ampliacion}
+      <!-- 1.1: a whole chapter of a book expansion (contenido/ampliaciones11/), not in the book yet -->
+      <p class="ampliacion-cap" data-ampliacion>
+        <InsigniaNuevo titulo="Capítulo nuevo de la aplicación: estará en la próxima edición del libro" />
+        <span>Capítulo nuevo: la aplicación lo trae ya; estará en la próxima edición del libro.</span>
+      </p>
+    {/if}
     {#if tomo}<p class="tomo">Tomo {tomo.id} · {tomo.titulo}</p>{/if}
   </header>
 
@@ -519,6 +529,7 @@
             <a href={`#/${parte}/${s.label}`}>
               {#if s.num}<span class="n">{s.num}</span>{/if}
               <span class="t">{s.titulo}</span>
+              {#if s.ampliacion}<InsigniaNuevo compacta titulo="Sección nueva de la aplicación: estará en la próxima edición del libro" />{/if}
               {#if usuario.marcadores[s.label]}<span class="m" title="Marcador"><Icono nombre="marcador-lleno" tam={13} /></span>{/if}
               {#if usuario.notas[s.label]}<span class="m" title="Nota"><Icono nombre="nota" tam={13} /></span>{/if}
             </a>
@@ -549,10 +560,17 @@
           style:min-height={listos[k] ? undefined : `${t.estimado}px`}
         >
           {#if listos[k]}
-            <Bloques bloques={t.bloques} {parte} raiz desde={t.inicio} />
+            <Bloques bloques={t.bloques} {parte} raiz desde={t.inicio} anterior={t.inicio > 0 ? datos.bloques[t.inicio - 1] : undefined} nueva={!!datos.ampliacion} />
           {/if}
         </div>
       {/each}
+    </div>
+
+    <!-- 1.1: the chapter's new exercises, not in the book yet («Aún no en el libro») -->
+    <div class="texto-libro">
+      <EjerciciosNuevos {parte} />
+      <!-- 1.1: printed chapters 47–51, the projects by stages -->
+      <ProyectoEnCapitulo {parte} />
     </div>
 
     <BotonTest {parte} />
@@ -603,6 +621,7 @@
   }
   .numero {
     color: #fff;
+    font-family: var(--titular);
     font-size: clamp(52px, 9vw, 74px);
     font-weight: 700;
     letter-spacing: -0.02em;
@@ -638,25 +657,24 @@
       margin: 28px 0 0;
     }
     .banda {
-      border-radius: 14px 14px 0 0;
+      border-radius: var(--radio-tarjeta) var(--radio-tarjeta) 0 0;
     }
     .tomo {
       padding-left: var(--pad);
       border: 1px solid var(--linea-suave);
       border-top: 0;
-      border-radius: 0 0 14px 14px;
+      border-radius: 0 0 var(--radio-tarjeta) var(--radio-tarjeta);
       background: var(--superficie);
     }
     .apertura.sin-numero .banda:only-child {
-      border-radius: 14px;
+      border-radius: var(--radio-tarjeta);
     }
   }
 
   .en-este {
     margin: 24px 0 8px;
-    padding: 14px 16px 10px;
-    border: 1px solid var(--acento-borde);
-    border-radius: 12px;
+    padding: 16px 18px 12px;
+    border-radius: var(--radio-tarjeta-p);
     background: var(--acento-tinte);
     font-family: var(--sans);
   }
@@ -836,5 +854,14 @@
       opacity: 0;
       transform: translate(-50%, 8px);
     }
+  }
+  .ampliacion-cap {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 10px;
+    margin: 10px 0 0;
+    font-family: var(--sans);
+    font-size: 14px;
   }
 </style>

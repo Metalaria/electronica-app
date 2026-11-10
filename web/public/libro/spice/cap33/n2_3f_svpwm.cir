@@ -1,0 +1,41 @@
+* n2_3f_svpwm: three-phase inverter, Vdc=540.0 V, ma=1.1547005383792517, minmax references, fsw=10000 Hz, star load 10.0 ohm + 20 mH
+* Power switch with antiparallel diode: conducts (0.1 ohm) while V(c) is near 1.
+.subckt SWD D S c
+Gsw D S cur = V(D,S)*(1e-8 + 10*V(c))
+Dfw S D DFW
+.model DFW D(IS=1e-12 N=1.3 RS=10m)
+* output capacitance of the device (keeps the leg node defined during the dead time)
+Coss D S 200p
+.ends
+
+VDC p 0 540.0
+VCAR car 0 PULSE(1 -1 0 5e-05 5e-05 1e-12 0.0001)
+BSa sa 0 V = sin(2*pi*50.0*time - 0*2*pi/3)
+BSb sb 0 V = sin(2*pi*50.0*time - 1*2*pi/3)
+BSc sc 0 V = sin(2*pi*50.0*time - 2*2*pi/3)
+BZ z 0 V = -(max(max(V(sa),V(sb)),V(sc)) + min(min(V(sa),V(sb)),V(sc)))/2
+BRa ra 0 V = 1.1547005383792517*(V(sa)+V(z))
+BGaH gah 0 V = 0.5*(1+tanh(800*(V(ra)-V(car))))
+BGaL gal 0 V = 0.5*(1+tanh(800*(V(car)-V(ra))))
+XaH p a gah SWD
+XaL a 0 gal SWD
+Ra a ma 10.0
+La ma n 0.02
+BRb rb 0 V = 1.1547005383792517*(V(sb)+V(z))
+BGbH gbh 0 V = 0.5*(1+tanh(800*(V(rb)-V(car))))
+BGbL gbl 0 V = 0.5*(1+tanh(800*(V(car)-V(rb))))
+XbH p b gbh SWD
+XbL b 0 gbl SWD
+Rb b mb 10.0
+Lb mb n 0.02
+BRc rc 0 V = 1.1547005383792517*(V(sc)+V(z))
+BGcH gch 0 V = 0.5*(1+tanh(800*(V(rc)-V(car))))
+BGcL gcl 0 V = 0.5*(1+tanh(800*(V(car)-V(rc))))
+XcH p c gch SWD
+XcL c 0 gcl SWD
+Rc c mc 10.0
+Lc mc n 0.02
+.options method=gear
+.tran 1u 0.08 0 0.5u
+.save v(a) v(b) v(c) v(n) v(ra)
+.end

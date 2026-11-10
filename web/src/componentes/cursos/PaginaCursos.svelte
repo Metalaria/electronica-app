@@ -20,6 +20,7 @@
   import { CURSOS, CURSO } from '../../lib/aprendizaje/cursos';
   import { avanceCurso, type LeccionConEstado } from './avance.svelte';
   import Insignia from '../Insignia.svelte';
+  import InsigniaNuevo from '../aprender/InsigniaNuevo.svelte';
   import PruebaNivel from './PruebaNivel.svelte';
   // 0.11 group B: mastery of each course, chapter and lesson (only once something has been practised)
   import { cargarDominio, dominioDe, dominioDeClaves, estadoDominio } from '../../lib/aprendizaje/dominio.svelte';
@@ -27,12 +28,19 @@
   import BarraDominio from '../dominio/BarraDominio.svelte';
   import MedidorDominio from '../dominio/MedidorDominio.svelte';
   // 1.0: the course as a path of lessons that open one after another, with spaced review
-  import { calcularCamino, repasoDe, saltadas, type NodoEntrada } from '../../lib/aprendizaje/camino';
+  import { calcularCamino, repasoDe, saltadas, type EstadoNodo, type NodoEntrada } from '../../lib/aprendizaje/camino';
   import { progresoLecciones } from '../../lib/lecciones.svelte';
-  import Camino, { type GrupoCamino } from './Camino.svelte';
+  import Camino, { type GrupoCamino, type NodoVista } from './Camino.svelte';
   import SaltarHasta from './SaltarHasta.svelte';
   import { vistaCursos } from './vista.svelte';
   import { ahoraMinuto } from '../../lib/aprendizaje/minuto.svelte';
+  // 1.1: the guided labs of printed chapter 21, after their practice's lesson (they never block the path)
+  import FlaskConical from '@lucide/svelte/icons/flask-conical';
+  import Wrench from '@lucide/svelte/icons/wrench';
+  import { PASOS_LAB, PRACTICA_DE_SECCION } from '../instrumentos/practicas/mapa';
+  import { cargarLaboratorio, registroLab } from '../../lib/laboratorio.svelte';
+  import { proyectoIndice } from '../../lib/proyectos11/indice';
+  import { cargarProyectos, etapaPendiente, etapasHechas, registroEtapa } from '../../lib/proyectos11/estado.svelte';
 
   const indice = $derived(app.indice!);
   const partesRuta = $derived(ruta.ancla.split('/').filter(Boolean));
@@ -69,7 +77,7 @@
       const hecho = estado === 'hecho' || estado === 'superado';
       let g = r[r.length - 1];
       if (!g || g.clave !== l.parte) {
-        g = { clave: l.parte, titulo: `${rotuloParte(l.parte)} · ${corto(indice.partes[l.parte]?.titulo ?? l.parte)}`, nodos: [] };
+        g = { clave: l.parte, titulo: `${rotuloParte(l.parte)} · ${corto(indice.partes[l.parte]?.titulo ?? l.parte)}`, nodos: [], nuevo: !!indice.partes[l.parte]?.ampliacion };
         r.push(g);
       }
       g.nodos.push({
@@ -81,15 +89,56 @@
         progreso: hecho ? 1 : p?.n ? Math.min(1, p.h.length / p.n) : 0,
         repaso: hecho && estadoDominio.listo ? repasoDe(dominioDe(clave), ahora) : null,
         tipo: 'leccion',
+        nuevo: !!l.ampliacion && !g.nuevo,
         // offered on the first locked lesson and at the start of each later chapter (not on every node)
         saltar:
           estado === 'bloqueado' && (camino.estados.indexOf('bloqueado') === i || g.nodos.length === 0)
             ? `#/cursos/${curso.id}/saltar/${l.parte}/${encodeURIComponent(l.label)}`
             : undefined,
       });
+      const nl = l.parte === 'cap22' ? PRACTICA_DE_SECCION[l.label] : undefined;
+      if (nl) g.nodos.push(nodoLab(nl, estado));
+      // 1.1: after the last lesson of a project chapter, its project by stages
+      const siguiente = avance.lecciones[i + 1];
+      if (proyectoIndice(l.parte) && (!siguiente || siguiente.parte !== l.parte)) g.nodos.push(nodoProyecto(l.parte, g.nodos[0]!.estado));
     });
     return r;
   });
+
+  /** A project's node: done (every stage), started, or open/locked with the chapter's first lesson (never blocks). */
+  function nodoProyecto(parte: string, deCapitulo: EstadoNodo): NodoVista {
+    const p = proyectoIndice(parte)!;
+    const hechas = etapasHechas(parte);
+    const empezado = hechas > 0 || p.etapas.some((e) => registroEtapa(e.id)?.n);
+    const estado: EstadoNodo = hechas === p.etapas.length ? 'hecho' : empezado ? 'en-curso' : deCapitulo === 'bloqueado' ? 'bloqueado' : 'disponible';
+    return {
+      clave: `proyecto/${parte}`,
+      rotulo: 'Proyecto',
+      titulo: `${p.corto}, por etapas en el editor`,
+      href: `#/etapas/${parte}/${etapaPendiente(parte) || 1}`,
+      estado,
+      progreso: hechas / p.etapas.length,
+      repaso: null,
+      tipo: 'proyecto',
+    };
+  }
+
+  /** A lab's node: done, started, or open/locked with the lesson before it (outside calcularCamino: never blocks). */
+  function nodoLab(n: number, deLeccion: EstadoNodo): NodoVista {
+    const reg = registroLab(n);
+    const total = PASOS_LAB[n] ?? 1;
+    const estado: EstadoNodo = reg?.c ? 'hecho' : reg?.h.length ? 'en-curso' : deLeccion === 'bloqueado' ? 'bloqueado' : 'disponible';
+    return {
+      clave: `laboratorio/${n}`,
+      rotulo: `Lab. ${n}`,
+      titulo: 'Laboratorio guiado con los instrumentos',
+      href: `#/instrumentos/laboratorio/${n}`,
+      estado,
+      progreso: reg?.c ? 1 : Math.min(1, (reg?.h.length ?? 0) / total),
+      repaso: null,
+      tipo: 'laboratorio',
+    };
+  }
   const siguienteClave = $derived(camino.siguiente >= 0 ? (entradas[camino.siguiente]?.clave ?? null) : null);
   /** The jump of #/cursos/<id>/saltar/<parte>/<label>: the target and the lessons it skips. */
   const salto = $derived.by(() => {
@@ -128,6 +177,8 @@
     void cargarCursos();
     void cargarDominio();
     void cargarPracticables().then(() => (practicables = true));
+    void cargarLaboratorio();
+    void cargarProyectos();
   });
 
   $effect(() => {
@@ -205,7 +256,7 @@
             <Insignia parte={cap.parte} grande />
             <span class="tit">
               <span class="rot">{rotuloParte(cap.parte)}</span>
-              <span class="nombre">{corto(info?.titulo ?? cap.parte)}</span>
+              <span class="nombre">{corto(info?.titulo ?? cap.parte)}{#if info?.ampliacion}{' '}<InsigniaNuevo compacta titulo="Capítulo nuevo de la aplicación: estará en la próxima edición del libro" />{/if}</span>
               {#if dominioPartes([cap.parte])}<span class="dom-cap" data-dominio-capitulo={cap.parte}><BarraDominio a={dominioPartes([cap.parte])!} resumen={false} /></span>{/if}
             </span>
             <span class="cuenta">{hechas}/{cap.lecciones.length}</span>
@@ -219,12 +270,34 @@
                     <span class="marca {l.estado}" aria-hidden="true">
                       {#if l.estado === 'hecha'}<Check size={15} strokeWidth={3} />{:else if l.estado === 'superada'}<FastForward size={14} strokeWidth={2.4} />{/if}
                     </span>
-                    <span class="txt">{l.num ? `${l.num} ` : ''}{l.titulo}</span>
+                    <span class="txt">{l.num ? `${l.num} ` : ''}{l.titulo}{#if l.ampliacion && !info?.ampliacion}{' '}<InsigniaNuevo compacta titulo="Sección nueva de la aplicación: estará en la próxima edición del libro" />{/if}</span>
                     {#if estadoDominio.listo}{@const dl = dominioDe(`${l.parte}/${l.label}`)}{#if dl.nivel !== 'nuevo'}<MedidorDominio nivel={dl.nivel} valor={dl.valor} repasar={dl.repasar} />{/if}{/if}
                     <span class="estado" class:solo-lector={l.estado === 'pendiente'}>{ESTADO[l.estado]}</span>
                   </a>
                 </li>
+                {#if l.parte === 'cap22' && PRACTICA_DE_SECCION[l.label]}
+                  {@const nl = PRACTICA_DE_SECCION[l.label]!}
+                  {@const rl = registroLab(nl)}
+                  <li>
+                    <a class="leccion lab" href={`#/instrumentos/laboratorio/${nl}`} data-laboratorio-curso={nl}>
+                      <span class="marca" class:hecha={!!rl?.c} aria-hidden="true">{#if rl?.c}<Check size={15} strokeWidth={3} />{:else}<FlaskConical size={14} />{/if}</span>
+                      <span class="txt">Laboratorio guiado {nl}</span>
+                      <span class="estado">{rl?.c ? 'Completado' : rl?.h.length ? `${rl.h.length} de ${PASOS_LAB[nl]} pasos` : 'Sin empezar'}</span>
+                    </a>
+                  </li>
+                {/if}
               {/each}
+              {#if proyectoIndice(cap.parte)}
+                {@const pi = proyectoIndice(cap.parte)!}
+                {@const ph = etapasHechas(cap.parte)}
+                <li>
+                  <a class="leccion lab" href={`#/etapas/${cap.parte}/${etapaPendiente(cap.parte) || 1}`} data-proyecto-curso={cap.parte}>
+                    <span class="marca" class:hecha={ph === pi.etapas.length} aria-hidden="true">{#if ph === pi.etapas.length}<Check size={15} strokeWidth={3} />{:else}<Wrench size={14} />{/if}</span>
+                    <span class="txt">Proyecto por etapas: {pi.corto}</span>
+                    <span class="estado">{ph === pi.etapas.length ? 'Completado' : `${ph} de ${pi.etapas.length} etapas`}</span>
+                  </a>
+                </li>
+              {/if}
             </ul>
           {/if}
         </li>
@@ -334,7 +407,7 @@
   h1 {
     margin: 0;
     color: var(--titulos);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: 30px;
     line-height: 1.2;
   }
@@ -360,7 +433,7 @@
   }
   .curso h2 {
     margin: 0;
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: 21px;
     line-height: 1.25;
   }
@@ -518,7 +591,7 @@
   }
   .tit .nombre {
     color: var(--titulos);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: 17px;
     font-weight: 600;
     line-height: 1.3;

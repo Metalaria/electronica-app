@@ -30,6 +30,7 @@
   import EsquemaAuto from '../esquema-auto/EsquemaAuto.svelte';
   import Interiores from '../esquema-auto/Interiores.svelte';
   import PestanasSimulador from './PestanasSimulador.svelte';
+  import InsigniaNuevo from '../aprender/InsigniaNuevo.svelte';
   import { dejarTraspaso, leerNetlist } from '../editor/circuitos.svelte';
   import { abrirProtoboard } from '../../lib/protoboard.svelte';
 
@@ -325,6 +326,7 @@ C1 out 0 100n
       </h1>
       {#if n}
         <div class="meta">
+          {#if n.ampliacion}<InsigniaNuevo compacta titulo="Netlist de una ampliación de la aplicación: estará en la próxima edición del libro" />{/if}
           <code class="fichero">{n.nombre}.cir</code>
           {#each n.analisis as a (a)}<span class="etq">.{a}</span>{/each}
           {#if n.control}<span class="etq">.control</span>{/if}

@@ -7,7 +7,15 @@ export interface Seccion {
   num: string | null;
   label: string;
   titulo: string;
+  /** 1.1: a section of a book expansion (see Ampliacion). */
+  ampliacion?: string;
 }
+
+/**
+ * 1.1: the id of a book expansion (contenido/ampliaciones11/<id>, e.g. «P01») on everything it adds that the book does
+ * not have yet: the app shows it marked «Aún no en el libro» (aprender/InsigniaNuevo.svelte).
+ */
+export type Ampliacion = string;
 
 export type TipoParte = 'capitulo' | 'apendice' | 'glosario' | 'anexo';
 
@@ -19,6 +27,8 @@ export interface InfoParte {
   color?: string | null;
   tomo?: string | null;
   secciones?: Seccion[];
+  /** 1.1: a whole new chapter of an expansion. */
+  ampliacion?: Ampliacion;
 }
 
 export interface Tomo {
@@ -45,12 +55,22 @@ export interface Ref {
   tipo: string;
   /** Not in the schema today; honoured if the pipeline ever adds the canonical label. */
   label?: string;
+  /** 1.1: a label an expansion adds. */
+  ampliacion?: Ampliacion;
+  /** 1.1: the book's own number, when an expansion shifted it (the app shows `num`). */
+  num_libro?: string;
+  /** 1.1: a label an expansion retired (pieces «retirar»): an alias of `label`, with its part and number. */
+  retirada?: Ampliacion;
+  /** 1.1: the book's own entry of a retired label. */
+  libro?: { num: string; parte: string; tipo: string };
 }
 
 export type Refs = Record<string, Ref>;
 
 interface ConLabel {
   label?: string | null;
+  /** 1.1: a block an expansion adds (top-level blocks and formula-card lines; the blocks inside are not marked). */
+  ampliacion?: Ampliacion;
 }
 
 export interface BH2 extends ConLabel { t: 'h2'; num?: string | null; html: Html }
@@ -104,6 +124,8 @@ export interface BCodigo extends ConLabel { t: 'codigo'; lenguaje?: string; text
 export interface BCentrado extends ConLabel { t: 'centrado'; html: Html }
 export interface Ejercicio {
   label?: string | null;
+  /** 1.1: an exercise an expansion adds to the chapter's list. */
+  ampliacion?: Ampliacion;
   num: string;
   bloques: Bloque[];
   solucion?: Bloque[] | null;
@@ -134,6 +156,8 @@ export interface Parte {
   label?: string | null;
   color?: string | null;
   bloques: Bloque[];
+  /** 1.1: a whole new chapter of an expansion. */
+  ampliacion?: Ampliacion;
 }
 
 export interface DocBusqueda {
@@ -141,4 +165,6 @@ export interface DocBusqueda {
   parte: string;
   titulo: string;
   texto: string;
+  /** 1.1: a section (or the start of a chapter) an expansion adds. */
+  ampliacion?: Ampliacion;
 }

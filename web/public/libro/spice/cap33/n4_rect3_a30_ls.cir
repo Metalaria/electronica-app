@@ -1,0 +1,44 @@
+* n4_rect3_a30_ls: three-phase six-pulse bridge, 400 V, alpha=30 deg, Ls=1 mH, load L30, thyristors
+* Behavioural thyristor: series diode + gate-controlled conductance (50 mohm on) that latches while I > IH (5 mA).
+* Gate pulses rise in 20 us: faster edges stall the WASM solver at the commutations.
+.subckt SCR A K G
+Vs A x 0
+D1 x y DSCR
+Gsw y K cur = V(y,K)*(1e-6 + 20*V(ctl))
+Bset c0 0 V = 1-(1-0.5*(1+tanh(20*(V(G,K)-0.5))))*(1-0.5*(1+tanh(2000*(I(Vs)-5m))))
+Rc c0 ctl 1k
+Cc ctl 0 10n
+.model DSCR D(IS=1e-12 N=1.5 RS=5m CJO=100p)
+* keeps the inner node defined while both parts are off
+Ry y K 1e7
+* RC snubber across the device (100 ohm + 22 nF), as in practice (section 10.6)
+Rsn A sn 100
+Csn sn K 22n
+.ends
+
+Va a0 0 SIN(0 326.5986 50 0 0 0)
+LSa a0 a 0.001
+Vb b0 0 SIN(0 326.5986 50 0 0 -120)
+LSb b0 b 0.001
+Vc c0 0 SIN(0 326.5986 50 0 0 -240)
+LSc c0 c 0.001
+XT1 a p g1 SCR
+VG1 g1 p PULSE(0 5 3.333333e-03 20u 20u 6.6m 20m)
+XT3 b p g3 SCR
+VG3 g3 p PULSE(0 5 1.000000e-02 20u 20u 6.6m 20m)
+XT5 c p g5 SCR
+VG5 g5 gs5 PULSE(0 5 1.666667e-02 20u 20u 6.6m 20m)
+VG5S gs5 p PULSE(0 5 0 20u 20u 3.533333e-03 1)
+XT4 n a g4 SCR
+VG4 g4 a PULSE(0 5 1.333333e-02 20u 20u 6.6m 20m)
+XT6 n b g6 SCR
+VG6 g6 b PULSE(0 5 0.000000e+00 20u 20u 6.6m 20m)
+XT2 n c g2 SCR
+VG2 g2 c PULSE(0 5 6.666667e-03 20u 20u 6.6m 20m)
+VSENSE p p1 0
+LL p1 m 0.1
+RL m n 15.2939
+.options method=gear reltol=1e-3 vntol=1e-4 abstol=1e-9 itl4=100
+.tran 5u 120m 0 5u
+.save v(p) v(n) v(a) v(b) v(c) i(VSENSE) i(Va)
+.end

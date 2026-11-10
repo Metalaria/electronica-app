@@ -45,6 +45,8 @@ export interface NetlistSpice {
     /** In an analog equivalent: id of the XSPICE original. */
     original?: string;
   };
+  /** 1.1: a netlist of a book expansion (contenido/ampliaciones11/), not in the book's complements yet. */
+  ampliacion?: string;
 }
 
 export interface CapituloSpice {
@@ -55,6 +57,8 @@ export interface CapituloSpice {
   color: string | null;
   tomo: string | null;
   netlists: string[];
+  /** 1.1: the chapter is a new one of a book expansion. */
+  ampliacion?: string;
 }
 
 export interface IndiceSpice {

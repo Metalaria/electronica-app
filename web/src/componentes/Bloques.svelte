@@ -17,6 +17,7 @@
   import Deduccion from './aprender/Deduccion.svelte';
   import PanelProblema from './aprender/PanelProblema.svelte';
   import TeoriaViva from './teoria/TeoriaViva.svelte';
+  import InsigniaNuevo from './aprender/InsigniaNuevo.svelte';
   import { lugaresTeoriaViva, pedirLugaresTeoriaViva } from '../lib/teoria-viva-lugares.svelte';
 
   let {
@@ -24,7 +25,28 @@
     parte,
     raiz = false,
     desde = 0,
-  }: { bloques: Bloque[]; parte: string; raiz?: boolean; desde?: number } = $props();
+    anterior,
+    nueva = false,
+  }: {
+    bloques: Bloque[];
+    parte: string;
+    raiz?: boolean;
+    desde?: number;
+    /** 1.1: the block before the first one (the previous chunk's last), to know where an expansion's run starts. */
+    anterior?: Bloque;
+    /** 1.1: the whole part is a new chapter of an expansion (its title carries the mark). */
+    nueva?: boolean;
+  } = $props();
+
+  /**
+   * 1.1: «Aún no en el libro» before the first block of a run that a book expansion adds (contenido/ampliaciones11/)
+   * where nothing else marks it: a section's heading carries its own mark (Seccion.svelte), a new chapter its title.
+   */
+  function empiezaAmpliacion(b: Bloque, i: number): boolean {
+    if (!b.ampliacion || nueva || b.t === 'h2') return false;
+    const previo = i > 0 ? bloques[i - 1] : anterior;
+    return previo?.ampliacion !== b.ampliacion;
+  }
 
   // 1.0 «Teoría que se mueve»: which equations of the book carry sliders (a small index, loaded once)
   const teoriaViva = $derived(lugaresTeoriaViva.lugares);
@@ -53,6 +75,9 @@
 {#each bloques as b, i (i)}
   {@const id = b.label || undefined}
   {@const db = raiz ? desde + i : undefined}
+  {#if empiezaAmpliacion(b, i)}
+    <p class="ampliacion-bloque" data-ampliacion><InsigniaNuevo titulo={b.t === 'h3' ? 'Problema nuevo de la aplicación: estará en la próxima edición del libro' : 'Añadido de la aplicación: estará en la próxima edición del libro'} /></p>
+  {/if}
   {#if b.t === 'p'}
     <p {id} data-b={db}>{@html prepararHtml(b.html)}</p>
     {#if db != null && b.html.startsWith('<strong>Se pide')}<PanelProblema {parte} indice={db} />{/if}
@@ -110,3 +135,9 @@
     </dl>
   {/if}
 {/each}
+
+<style>
+  .ampliacion-bloque {
+    margin: 14px 0 4px;
+  }
+</style>

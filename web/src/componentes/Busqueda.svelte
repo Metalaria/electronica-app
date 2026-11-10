@@ -10,6 +10,7 @@
   import Icono from './Icono.svelte';
   import Insignia from './Insignia.svelte';
   import MiniaturaLibro from './miniaturas/MiniaturaLibro.svelte';
+  import InsigniaNuevo from './aprender/InsigniaNuevo.svelte';
 
   let consulta = $state('');
   let resultados = $state<Resultado[]>([]);
@@ -174,7 +175,7 @@
                   <span class="ins"><Insignia parte={r.doc.parte} /></span>
                   <span class="txt">
                     <span class="tit">{@html fragmento(r.doc.titulo, r.terminos, 400)}</span>
-                    <span class="donde">{etiqueta(r)}</span>
+                    <span class="donde">{etiqueta(r)}{#if r.doc.ampliacion} <InsigniaNuevo compacta titulo="Contenido nuevo de la aplicación: estará en la próxima edición del libro" />{/if}</span>
                     <span class="frag">{@html fragmento(r.doc.texto, r.terminos)}</span>
                   </span>
                   <MiniaturaLibro clave={r.doc.id} icono={r.doc.parte === 'glosario' ? 'termino' : 'seccion'} />

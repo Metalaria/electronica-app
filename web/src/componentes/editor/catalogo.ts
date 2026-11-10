@@ -9,6 +9,22 @@ import type { FamiliaModelo } from './modelos.ts';
 import { altavoz, conmutador, cristal, interruptor, lampara, ldr, motor, nota, pulsador, rele, termistor, transformadorToma, zumbador } from './simbolos-extra.ts';
 import type { Componente } from './tipos.ts';
 import { leerValor } from './valores.ts';
+import { numeroSpice } from '../../simulador/motor/netlist.ts';
+
+/**
+ * Review 11c: the label of a source kept as SPICE text because its AC phase is not a field (the three-phase sources of
+ * the expansions, «AC 230.940108 -120»): «AC 231 V ∠−120°», like the other labels (unit, decimal comma, true minus).
+ * Null when the text is not just «[DC x] AC magnitude [phase]».
+ */
+export function rotuloAc(spec: string, u: string): string | null {
+  const m = /^\s*(?:dc\s+\S+\s+)?ac\s+(\S+)(?:\s+(\S+))?\s*$/i.exec(spec);
+  if (!m) return null;
+  const mag = numeroSpice(m[1]!);
+  const fase = m[2] == null ? 0 : numeroSpice(m[2]);
+  if (mag == null || fase == null) return null;
+  const g = String(Number(fase.toFixed(1))).replace('.', ',').replace('-', '−');
+  return `AC ${formatoCorto(mag, u)}${fase ? ` ∠${g}°` : ''}`;
+}
 
 export type TipoCampo = 'valor' | 'texto' | 'modelo' | 'opcion' | 'red' | 'pwl';
 
@@ -955,7 +971,7 @@ export function textoValor(c: Componente): string {
         return `${num('v1', u).replace(/\s.*$/, '')}/${num('v2', u)}${fr}`;
       }
       if (forma === 'pwl') return 'PWL';
-      if (forma === 'texto') return (f['spec'] ?? '').slice(0, 18);
+      if (forma === 'texto') return rotuloAc(f['spec'] ?? '', u) ?? (f['spec'] ?? '').slice(0, 18);
       return f['dc']?.trim() ? num('dc', u) : f['ac']?.trim() ? `AC ${num('ac', u)}` : '';
     }
     case 'SW':

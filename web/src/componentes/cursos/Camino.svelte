@@ -12,15 +12,20 @@
     /** 0–1: steps done of a lesson (1 when done or passed). */
     progreso: number;
     repaso: Repaso | null;
-    tipo: 'leccion' | 'ejercicio' | 'pregunta';
+    /** 1.1: `laboratorio`, a guided lab of printed chapter 21; `proyecto`, a project by stages (never block the path). */
+    tipo: 'leccion' | 'ejercicio' | 'pregunta' | 'laboratorio' | 'proyecto';
     /** The short check that opens a locked node (its route). */
     saltar?: string;
+    /** 1.1: a section a book expansion adds in a chapter of the book («Aún no en el libro»). */
+    nuevo?: boolean;
   }
 
   export interface GrupoCamino {
     clave: string;
     titulo: string;
     nodos: NodoVista[];
+    /** 1.1: a whole new chapter of an expansion («Aún no en el libro»). */
+    nuevo?: boolean;
   }
 </script>
 
@@ -36,6 +41,9 @@
   import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
   import PenLine from '@lucide/svelte/icons/pen-line';
   import CircleHelp from '@lucide/svelte/icons/circle-help';
+  import FlaskConical from '@lucide/svelte/icons/flask-conical';
+  import InsigniaNuevo from '../aprender/InsigniaNuevo.svelte';
+  import Wrench from '@lucide/svelte/icons/wrench';
   import { cuandoRepaso } from '../../lib/aprendizaje/camino';
 
   let { grupos, siguiente = null, ahora = Date.now() }: { grupos: GrupoCamino[]; siguiente?: string | null; ahora?: number } = $props();
@@ -61,6 +69,10 @@
   };
 
   function estadoTexto(n: NodoVista): string {
+    if (n.tipo === 'laboratorio' || n.tipo === 'proyecto') {
+      const m: Record<EstadoNodo, string> = { hecho: 'Completado', superado: 'Completado', 'en-curso': `Empezado · ${Math.round(n.progreso * 100)} %`, disponible: 'Disponible', bloqueado: 'Bloqueado' };
+      return m[n.estado];
+    }
     if (n.tipo !== 'leccion') {
       const m: Record<EstadoNodo, string> = { hecho: 'Resuelto', superado: 'Superado', 'en-curso': 'Intentado', disponible: 'Disponible', bloqueado: 'Bloqueado' };
       return m[n.estado];
@@ -83,7 +95,7 @@
 <div class="camino" data-camino>
   {#each grupos as g, gi (g.clave)}
     <section class="tramo" data-tramo={g.clave}>
-      <h2 class="tit-tramo">{g.titulo}</h2>
+      <h2 class="tit-tramo">{g.titulo}{#if g.nuevo}{' '}<InsigniaNuevo compacta titulo="Capítulo nuevo de la aplicación: estará en la próxima edición del libro" />{/if}</h2>
       <ol class="nodos">
         {#each g.nodos as n, k (n.clave)}
           {@const r = repasoTexto(n.repaso)}
@@ -96,13 +108,13 @@
               {:else}
                 <a class="disco" href={n.href} style:--p={n.progreso} aria-label={`${n.rotulo} ${n.titulo}: ${estadoTexto(n)}${r ? `. ${r}` : ''}`} data-abrir-nodo>
                   <span class="cara" aria-hidden="true">
-                    {#if n.estado === 'hecho'}<Check size={26} strokeWidth={3} />{:else if n.estado === 'superado'}<FastForward size={22} />{:else if n.tipo === 'ejercicio'}<PenLine size={22} />{:else if n.tipo === 'pregunta'}<CircleHelp size={22} />{:else}<Play size={22} />{/if}
+                    {#if n.estado === 'hecho'}<Check size={26} strokeWidth={3} />{:else if n.estado === 'superado'}<FastForward size={22} />{:else if n.tipo === 'ejercicio'}<PenLine size={22} />{:else if n.tipo === 'pregunta'}<CircleHelp size={22} />{:else if n.tipo === 'laboratorio'}<FlaskConical size={22} />{:else if n.tipo === 'proyecto'}<Wrench size={22} />{:else}<Play size={22} />{/if}
                   </span>
                 </a>
               {/if}
               <div class="texto">
                 <span class="rotulo">{n.rotulo}</span>
-                <span class="titulo">{n.titulo}</span>
+                <span class="titulo">{n.titulo}{#if n.nuevo}{' '}<InsigniaNuevo compacta titulo="Sección nueva de la aplicación: estará en la próxima edición del libro" />{/if}</span>
                 <span class="estado">{estadoTexto(n)}{#if sig}{' · '}<strong>la siguiente</strong>{/if}</span>
                 {#if r}
                   <a class="repaso" class:ya={n.repaso?.k === 'ahora'} href={repasoHref(n.clave)} data-repasar={n.clave}><RotateCcw size={14} aria-hidden="true" /> {r}</a>

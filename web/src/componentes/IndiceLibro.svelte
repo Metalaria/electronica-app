@@ -17,6 +17,7 @@
   import ProgresoTomo from './aprender/ProgresoTomo.svelte';
   // 0.11 (group B): the mastery of each practised section, loaded in idle time
   import MedidorDominio from './dominio/MedidorDominio.svelte';
+  import InsigniaNuevo from './aprender/InsigniaNuevo.svelte';
   import { cargarDominio, dominioDe, estadoDominio } from '../lib/aprendizaje/dominio.svelte';
 
   let { visible = true }: { visible?: boolean } = $props();
@@ -420,6 +421,7 @@
         <Insignia parte={id} />
         <span class="texto">
           {#if p.num == null && p.tipo !== 'glosario'}<span class="solo-lector">{rotuloParte(id)}: </span>{/if}{@render texto(corto(p.titulo), palabras)}
+          {#if p.ampliacion}<InsigniaNuevo compacta titulo="Capítulo nuevo de la aplicación: estará en la próxima edición del libro" />{/if}
         </span>
         <AnilloLectura parte={id} />
       </a>
@@ -450,7 +452,8 @@
               aria-current={activa ? 'location' : undefined}
             >
               <span class="sn">{s.num ?? ''}</span>
-              <span class="st">{@render texto(s.titulo, palabras)}</span>
+              <span class="st">{@render texto(s.titulo, palabras)}{#if s.ampliacion}
+                  <InsigniaNuevo compacta titulo="Sección nueva de la aplicación: estará en la próxima edición del libro" />{/if}</span>
               {#if usuario.marcadores[s.label]}<span class="pin" title="Marcador"><Icono nombre="marcador-lleno" tam={12} /></span>{/if}
               {#if leidas[id]?.[s.label]}<span class="pin hecha" title="Leída"><Icono nombre="hecho" tam={14} grosor={2.4} /><span class="solo-lector">(leída)</span></span>{/if}
               {#if estadoDominio.listo}{@const d = dominioDe(`${id}/${s.label}`)}{#if d.nivel !== 'nuevo'}<span class="pin dominio"><MedidorDominio nivel={d.nivel} valor={d.valor} repasar={d.repasar} /></span>{/if}{/if}

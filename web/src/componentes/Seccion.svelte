@@ -11,8 +11,10 @@
   import VerPractica from './instrumentos/VerPractica.svelte';
   import VerKit from './fm7303/VerKit.svelte';
   import VerPlaca from './proyectos/VerPlaca.svelte';
+  import VerEtapa from './proyectos11/VerEtapa.svelte';
   import MarcaLeida from './aprender/MarcaLeida.svelte';
   import MarcaDominio from './dominio/MarcaDominio.svelte';
+  import InsigniaNuevo from './aprender/InsigniaNuevo.svelte';
   import Footprints from '@lucide/svelte/icons/footprints';
   import { rutaLeccion } from '../lib/lecciones.svelte';
 
@@ -64,6 +66,7 @@
           <VerPractica {label} compacto />
           <VerKit {label} compacto />
           <VerPlaca {label} compacto />
+          <VerEtapa {label} compacto />
         </div>
         <!-- Owner's decision (0.11 final pass): «Estudiar por pasos» (0.9: the section as a step-by-step lesson) is one
              of these buttons, not the end of the title. Three to a row, as wide as the three of 0.10.1; it goes under
@@ -93,6 +96,11 @@
       </div>
     {/if}
   </div>
+  {#if bloque.ampliacion}
+    <!-- 1.1: a section of a book expansion (contenido/ampliaciones11/), not in the book yet; under the title, so the
+         title keeps its lines -->
+    <p class="ampliacion-sec" data-ampliacion><InsigniaNuevo titulo="Sección nueva de la aplicación: estará en la próxima edición del libro" /></p>
+  {/if}
 </div>
 
 {#if editando}
@@ -132,5 +140,8 @@
   .por-pasos:focus-visible {
     background: var(--acento-tinte);
     color: var(--acento);
+  }
+  .ampliacion-sec {
+    margin: 4px 0 0;
   }
 </style>

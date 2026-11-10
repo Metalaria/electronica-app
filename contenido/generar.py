@@ -43,6 +43,7 @@ import ejercicios                    # noqa: E402
 import pasos                         # noqa: E402
 import proyectos_kicad               # noqa: E402
 import glosario_imagenes             # noqa: E402
+import ampliaciones                  # noqa: E402
 
 ROMAN = ['I', 'II', 'III', 'IV', 'V', 'VI', 'VII', 'VIII']
 
@@ -253,6 +254,9 @@ def main():
     ok = validar.run(OUT, LIB, [f for f, _ in order], indice, refs, libro, nums, ec_stats, fig_stats,
                      busqueda, glosario, time.time() - t0)
     ok = datos_figuras.validar(OUT) and ok
+    # 1.1: the book's expansions that are not in the book yet (contenido/ampliaciones11/), merged into the parts,
+    # the index, the references and the search, renumbered, before everything that is derived from them
+    ok = ampliaciones.fase_partes() == 0 and ok
     ok = spice.main() == 0 and ok    # netlists for the simulator: spice/, spice.json (cached validation)
     ok = consolas.main() == 0 and ok  # NES and Neo Geo mainboards: web/public/consolas/
     ok = proyectos_kicad.main() == 0 and ok  # KiCad boards of chapters 48-51: web/public/proyectos/ (needs spice.json)
@@ -262,6 +266,7 @@ def main():
     ok = ejercicios.main([]) == 0 and ok  # self-checking exercises and problems: ejercicios.json (needs partes/)
     ok = pasos.main([]) == 0 and ok   # 1.0 guided steps reviewed by hand: pasos.json (needs ejercicios.json)
     ok = glosario_imagenes.main([]) == 0 and ok  # glossary symbols and 3D models: glosario-imagenes.json
+    ok = ampliaciones.fase_derivados() == 0 and ok  # 1.1: the expansions' netlists and review questions
     ok = practica() and ok             # 0.10 «Aprender haciendo»: libro/practica/ (needs all of the above)
     ok = miniaturas() and ok           # 0.10 list thumbnails: web/public/miniaturas/ (needs spice.json, ejercicios.json)
     ok = proporciones() and ok         # 0.12: size of each netlist's drawing (needs spice.json and the figures' data)
@@ -293,7 +298,11 @@ def practica():
     if subprocess.run(['node', os.path.join('scripts', 'teoria10.mjs')], cwd=web).returncode != 0:
         return False
     # 0.11: the sections with something to answer (libro/conceptos.json), the denominator of the mastery bars
-    return subprocess.run(['node', os.path.join('scripts', 'conceptos11.mjs')], cwd=web).returncode == 0
+    if subprocess.run(['node', os.path.join('scripts', 'conceptos11.mjs')], cwd=web).returncode != 0:
+        return False
+    # 1.1: the hand-authored lessons (contenido/lecciones11/ → libro/lecciones11/), validated and checked with ngspice;
+    # independent of the steps above (it only reads the book's parts), so it can also run on its own
+    return subprocess.run(['node', os.path.join('scripts', 'lecciones11.mjs')], cwd=web).returncode == 0
 
 
 def miniaturas():

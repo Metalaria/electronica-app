@@ -120,6 +120,8 @@ export interface PreguntaBase {
   ref_tipo: string;
   ref_titulo?: string;
   cita: string;
+  /** 1.1: a question on a book expansion (contenido/ampliaciones11/): its quote is not in the book yet. */
+  ampliacion?: string;
 }
 export interface PreguntaOpcion extends PreguntaBase {
   tipo: 'opcion';
@@ -151,6 +153,8 @@ export interface EntradaIndiceRepaso {
   color: string | null;
   preguntas: number;
   numericas: number;
+  /** 1.1: how many of them are on a book expansion. */
+  ampliacion?: number;
 }
 
 export interface IndiceRepaso {

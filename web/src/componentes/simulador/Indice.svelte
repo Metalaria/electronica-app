@@ -3,11 +3,12 @@
   import type { IndiceSpice } from '../../simulador/tipos';
   import { cargarIndiceSpice, rotuloRef, rutaSimulacion, spice } from '../../simulador/datos.svelte';
   import ErrorCarga from '../ErrorCarga.svelte';
-  import { normalizar, rotuloParte } from '../../lib/datos';
+  import { normalizar, numeroImpreso, rotuloParte } from '../../lib/datos';
   import { colorBloque } from '../../lib/color';
   import Icono from '../Icono.svelte';
   import PestanasSimulador from './PestanasSimulador.svelte';
   import MiniaturaEsquema from '../miniaturas/MiniaturaEsquema.svelte';
+  import InsigniaNuevo from '../aprender/InsigniaNuevo.svelte';
 
   let indice = $state<IndiceSpice | null>(null);
   let cargado = $state(false);
@@ -91,7 +92,7 @@
     </div>
   {:else}
     <div class="filtros">
-      <input type="search" placeholder="Buscar: filtro rc, zener, figura 41.5, 555…" bind:value={filtro} aria-label="Buscar netlists" />
+      <input type="search" placeholder={`Buscar: filtro rc, zener, figura ${numeroImpreso('fig-42.5', '41.5')}, 555…`} bind:value={filtro} aria-label="Buscar netlists" />
       <div class="tipos" role="group" aria-label="Tipo de análisis">
         {#each TIPOS as [k, t] (k)}
           <button class="chip t09-chip" aria-pressed={tipo === k} onclick={() => (tipo = k)}>{t}</button>
@@ -116,6 +117,7 @@
                     {#each n.analisis as a (a)}<span class="etq">.{a}</span>{/each}
                     {#if n.motor.estado === 'no-disponible'}<span class="marca no" title={n.motor.nota}>no disponible</span>
                     {:else if n.motor.pesada}<span class="marca" title="Tarda en simular">pesada</span>{/if}
+                    {#if n.ampliacion}<InsigniaNuevo compacta titulo="Netlist de una ampliación de la aplicación: estará en la próxima edición del libro" />{/if}
                     {#if n.motor.xspice}<span class="marca" title="Usa dispositivos digitales XSPICE">XSPICE</span>
                     {:else if n.motor.original}<span class="marca" title="Versión analógica de un circuito XSPICE">analógica</span>{/if}
                   </span>
@@ -143,7 +145,7 @@
   h1 {
     margin: 4px 0 8px;
     color: var(--titulos);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: clamp(26px, 4vw, 30px);
     font-weight: 700;
     line-height: 1.15;

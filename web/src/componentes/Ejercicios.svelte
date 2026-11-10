@@ -10,8 +10,20 @@
   import Icono from './Icono.svelte';
   import BotonSimular from './BotonSimular.svelte';
   import Comprobador from './aprender/Comprobador.svelte';
+  import InsigniaNuevo from './aprender/InsigniaNuevo.svelte';
 
-  let { bloque, parte, indice }: { bloque: BEjercicios; parte: string; indice?: number } = $props();
+  let {
+    bloque,
+    parte,
+    indice,
+    nuevos = false,
+  }: {
+    bloque: BEjercicios;
+    parte: string;
+    indice?: number;
+    /** 1.1: the part's new exercises, not in the book yet (marked «Aún no en el libro»). */
+    nuevos?: boolean;
+  } = $props();
 
   let abiertas = $state<Record<number, boolean>>({});
   const conSolucion = $derived(bloque.items.map((it, k) => (it.solucion?.length ? k : -1)).filter((k) => k >= 0));
@@ -31,20 +43,25 @@
   });
 </script>
 
-<section class="ejercicios" id={bloque.label || undefined} data-b={indice}>
+<section class="ejercicios" class:nuevos id={bloque.label || undefined} data-b={indice} data-nuevos={nuevos || undefined} aria-label={nuevos ? 'Ejercicios nuevos, aún no en el libro' : undefined}>
   <div class="ejercicios-cab">
-    <span class="tit">✎ EJERCICIOS PROPUESTOS</span>
+    <span class="tit">{nuevos ? '✎ EJERCICIOS NUEVOS' : '✎ EJERCICIOS PROPUESTOS'}</span>
+    {#if nuevos}<InsigniaNuevo />{/if}
     {#if resueltos}<span class="cuenta-ej" title="Resueltos">{resueltos}/{bloque.items.length} ✓</span>{/if}
     {#if conSolucion.length > 1}
       <button onclick={alternarTodas}>{todas ? 'Ocultar soluciones' : 'Ver todas las soluciones'}</button>
     {/if}
   </div>
+  {#if nuevos}
+    <p class="nota-nuevos">Ejercicios de la aplicación sobre lo que enseña este capítulo; estarán en la próxima edición del libro.</p>
+  {/if}
   {#each bloque.items as it, k (it.label ?? k)}
     {@const datos = item(it.label)}
     {@const est = it.label && aprendizaje.listo ? estadoDe(it.label) : 'pendiente'}
     <div class="ejercicio" id={it.label || undefined} data-estado={est}>
       <div class="bloques">
         <span class="ejercicio-num">Ejercicio {it.num}.{#if est === 'resuelto'}<span class="marca-ok" title="Resuelto"> ✓</span>{/if}</span>
+        {#if it.ampliacion}<InsigniaNuevo compacta titulo="Ejercicio nuevo de la aplicación: estará en la próxima edición del libro" />{/if}
         {#if it.label}<span class="ej-simular"><BotonSimular label={it.label} compacto /></span>{/if}
         <Bloques bloques={it.bloques} {parte} />
       </div>
@@ -87,5 +104,14 @@
   }
   .marca-ok {
     color: var(--c-ejemplo);
+  }
+  .nota-nuevos {
+    margin: 0.6em 0 0;
+    color: var(--tinta-suave);
+    font-family: var(--sans);
+    font-size: 14px;
+  }
+  .nuevos .ejercicio {
+    scroll-margin-top: calc(var(--alto-barra) + 16px);
   }
 </style>

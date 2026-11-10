@@ -23,8 +23,11 @@ export const CURSOS: Curso[] = [
   { id: 'fundamentos', nombre: 'Fundamentos', descripcion: 'Matemáticas, electricidad y los componentes básicos: resistencias, condensadores, bobinas, diodos y transistores.', partes: cap([0, 6]) },
   { id: 'analisis', nombre: 'Análisis de circuitos', descripcion: 'Métodos formales, transitorios y alterna, cuadripolos y simulación con SPICE.', partes: cap(23, 24, 25, 42) },
   { id: 'analogica', nombre: 'Electrónica analógica', descripcion: 'MOSFET, integrados analógicos, el operacional, osciladores, ruido, amplificadores discretos y un amplificador de audio completo.', partes: cap(7, 8, 26, 27, 28, 32, 43, 51) },
-  { id: 'digital', nombre: 'Digital y programable', descripcion: 'Lógica, secuencias, conversión de datos, FPGA, sistemas embebidos y buses.', partes: cap(9, 29, 34, 37, 38, 44) },
-  { id: 'potencia', nombre: 'Potencia y energía', descripcion: 'Componentes de potencia, convertidores, baterías y una fuente de alimentación completa.', partes: cap(10, 33, 39, 50) },
+  // (1.1: the expansions' two new chapters, «Aún no en el libro», where the book places them: the PLCs after control and
+  // communications, the electric machines right after power electronics. Progress is kept per lesson
+  // «parte/label», so adding chapters leaves every stored course progress valid)
+  { id: 'digital', nombre: 'Digital y programable', descripcion: 'Lógica, secuencias, automatismos y autómatas programables, conversión de datos, FPGA, sistemas embebidos y buses.', partes: [...cap(9, 29), 'cap-new-automatas', ...cap(34, 37, 38, 44)] },
+  { id: 'potencia', nombre: 'Potencia y energía', descripcion: 'Componentes de potencia, convertidores, máquinas eléctricas y accionamientos, baterías y una fuente de alimentación completa.', partes: [...cap(10, 33), 'cap-new-maquinas', ...cap(39, 50)] },
   { id: 'senales', nombre: 'Señales, RF y comunicaciones', descripcion: 'Señales y sistemas, control y comunicaciones, radiofrecuencia, optoelectrónica y una radio definida por software.', partes: cap(30, 31, 36, 45, 52) },
   { id: 'sensores', nombre: 'Sensores y microcontroladores', descripcion: 'Arduino, Raspberry Pi, sensores, acondicionamiento de señal y una estación de medida.', partes: cap([17, 20], 35, 49) },
   { id: 'taller', nombre: 'Taller e instrumentos', descripcion: 'Esquemas, soldadura, protoboard, el osciloscopio, instrumentación y reparación.', partes: cap([11, 13], 15, 21, 22, 47, 53) },

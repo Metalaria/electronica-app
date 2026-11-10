@@ -1,0 +1,31 @@
+* n1_inv_td0: single-phase full-bridge inverter, unipolar SPWM, Vdc=400.0 V, ma=0.812607, fsw=20000 Hz, dead time 0 ns, LC 2.2 mH / 3.3 uF, R 105.8 ohm
+* Power switch with antiparallel diode: conducts (0.1 ohm) while V(c) is near 1.
+.subckt SWD D S c
+Gsw D S cur = V(D,S)*(1e-8 + 10*V(c))
+Dfw S D DFW
+.model DFW D(IS=1e-12 N=1.3 RS=10m)
+* output capacitance of the device (keeps the leg node defined during the dead time)
+Coss D S 200p
+.ends
+
+VDC p 0 400.0
+VCAR car 0 PULSE(1 -1 0 2.5e-05 2.5e-05 1e-12 5e-05)
+BREFA ra 0 V = 0.812607*sin(2*pi*50.0*time)
+BREFB rb 0 V = -0.812607*sin(2*pi*50.0*time)
+BGAH gah 0 V = 0.5*(1+tanh(800*(V(ra)-V(car)-0.0)))
+BGAL gal 0 V = 0.5*(1+tanh(800*(V(car)-V(ra)-0.0)))
+BGBH gbh 0 V = 0.5*(1+tanh(800*(V(rb)-V(car)-0.0)))
+BGBL gbl 0 V = 0.5*(1+tanh(800*(V(car)-V(rb)-0.0)))
+XAH p a gah SWD
+XAL a 0 gal SWD
+XBH p b gbh SWD
+XBL b 0 gbl SWD
+VSENSE a a1 0
+LF a1 x1 0.0022
+RLF x1 o1 0.1
+CF o1 b 3.3e-06
+RL o1 b 105.8
+.options method=gear
+.tran 0.5u 0.06 0 0.2u
+.save v(a) v(b) v(o1) i(VSENSE) i(VDC)
+.end
