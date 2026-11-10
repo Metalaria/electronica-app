@@ -81,7 +81,7 @@
   }
   .rot {
     color: var(--titulos);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: 19px;
     font-weight: 700;
     line-height: 1.2;

@@ -408,7 +408,7 @@
   h2 {
     margin: 0;
     color: var(--titulos);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: clamp(22px, 3.2vw, 26px);
     font-weight: 700;
     line-height: 1.2;

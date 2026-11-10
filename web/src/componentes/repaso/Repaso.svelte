@@ -90,7 +90,7 @@
   .repaso-pagina :global(h1.rp-titulo) {
     margin: 2px 0 0;
     color: var(--titulos);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: clamp(26px, 4.6vw, 38px);
     font-weight: 700;
     letter-spacing: -0.015em;
@@ -111,10 +111,6 @@
     min-height: 44px;
     padding: 0 18px;
     font-size: 15.5px;
-  }
-  .repaso-pagina :global(.boton:disabled) {
-    opacity: 0.5;
-    cursor: default;
   }
   .repaso-pagina :global(kbd) {
     display: inline-block;

@@ -2,6 +2,7 @@
   // «Consolas» view: seven mainboards (NES, Neo Geo AES, Master System II, Mega Drive, Game Boy, Game Boy Color, Super Nintendo)
   // in three linked views (photo, architecture, schematic) plus sources, the boards and «Un fotograma». Route: #/consolas/<maquina>/<pestana>[/<seleccion>] (see estado.svelte.ts).
   import { untrack } from 'svelte';
+  import { numeroImpreso } from '../../lib/datos';
   import { ruta } from '../../lib/ruta.svelte';
   import { cargarMaquina, type DatosMaquina, type IdMaquina } from './datos';
   import { enlace, leerAncla, PESTANAS, type Pestana, type Seleccion } from './estado.svelte';
@@ -78,7 +79,7 @@
   <header>
     <div class="titulo">
       <h1>Consolas</h1>
-      <p>Las placas base de las figuras 36.16 y 36.22 y otras cinco consolas: foto interactiva, arquitectura animada, esquema real y la placa en 3D (la del Master System II, reconstruida a partir de sus fotos).</p>
+      <p>Las placas base de las figuras {numeroImpreso('fig-37.16', '37.16')} y {numeroImpreso('fig-37.22', '37.22')} y otras cinco consolas: foto interactiva, arquitectura animada, esquema real y la placa en 3D (la del Master System II, reconstruida a partir de sus fotos).</p>
     </div>
     <nav class="maquinas" aria-label="Consola">
       {#each MAQUINAS as m (m.id)}
@@ -159,7 +160,7 @@
   h1 {
     margin: 0;
     color: var(--titulos);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: 30px;
     font-weight: 700;
     line-height: 1.15;

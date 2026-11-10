@@ -73,14 +73,14 @@
   .c,
   .l {
     fill: none;
-    stroke: var(--titulos);
+    stroke: var(--esquema-trazo);
     stroke-width: var(--mini-trazo, 1.1px);
     stroke-linecap: round;
     stroke-linejoin: round;
     vector-effect: non-scaling-stroke;
   }
   .t {
-    fill: var(--titulos);
+    fill: var(--esquema-trazo);
   }
   .b {
     fill: var(--mini-fondo, var(--superficie));

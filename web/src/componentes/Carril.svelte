@@ -172,9 +172,11 @@
     transition: background 0.15s, color 0.15s;
   }
   .etiqueta {
-    max-width: 100%;
+    /* (review 11c: the whole rail's width, not the item's: «Componentes» was cut to «Componen…» in 72 px) */
+    flex: none;
+    max-width: calc(var(--ancho-carril) - 2px);
     overflow: hidden;
-    padding: 0 2px;
+    padding: 0 1px;
     /* a touch darker than --tinta-suave: on the rail's own background it was 4.4:1 (0.11 QA) */
     color: color-mix(in srgb, var(--tinta-suave) 82%, var(--tinta));
     font-size: 11.5px;

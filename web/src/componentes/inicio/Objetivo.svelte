@@ -56,10 +56,13 @@
     flex-direction: column;
     gap: 10px;
   }
+  /* (1.1: the heading goes under the ring when the half-width card of a phone has no room beside it: in Space Grotesk
+     «Objetivo» was cut in two) */
   .fila {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 12px;
+    gap: 8px 12px;
   }
   .anillo {
     position: relative;
@@ -85,6 +88,7 @@
   }
   .textos {
     display: flex;
+    flex: 1 1 96px;
     flex-direction: column;
     gap: 2px;
     min-width: 0;

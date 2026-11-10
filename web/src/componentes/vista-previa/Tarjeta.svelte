@@ -396,7 +396,7 @@
   .titulo {
     margin: 2px 0 6px;
     color: var(--titulos);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: 18px;
     font-weight: 700;
     line-height: 1.25;

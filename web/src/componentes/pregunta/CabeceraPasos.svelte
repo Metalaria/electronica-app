@@ -74,7 +74,7 @@
     margin-left: -6px;
     padding: 0;
     border: 0;
-    border-radius: 22px;
+    border-radius: 12px;
     background: transparent;
     color: var(--tinta-suave);
   }
@@ -88,32 +88,33 @@
     gap: 5px;
     min-width: 0;
   }
+  /* 1.1: the mock-up's segmented progress (done green, current blue, to do grey) */
   .seg {
     flex: 1;
     min-width: 3px;
     height: 8px;
     border-radius: 4px;
-    background: var(--linea);
-    transition: background 0.2s;
+    background: var(--v11-pendiente);
+    transition: background 0.3s;
   }
   .seg.hecho {
-    background: var(--bloque, var(--titulos));
+    background: var(--v11-hecho);
   }
   .seg.actual {
-    background: var(--ambar-relleno, #d9921c);
+    background: var(--v11-actual);
   }
   .continua {
     flex: 1;
     height: 8px;
     border-radius: 4px;
-    background: var(--linea);
+    background: var(--v11-pendiente);
     overflow: hidden;
   }
   .continua span {
     display: block;
     height: 100%;
     border-radius: 4px;
-    background: var(--bloque, var(--titulos));
+    background: var(--v11-hecho);
   }
   .cuenta {
     flex-shrink: 0;

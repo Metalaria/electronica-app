@@ -207,13 +207,13 @@
   }
   .l {
     fill: none;
-    stroke: var(--titulos);
+    stroke: var(--esquema-trazo);
     stroke-width: 1.3;
     stroke-linecap: round;
     stroke-linejoin: round;
   }
   .ft {
-    fill: var(--titulos);
+    fill: var(--esquema-trazo);
   }
   .fb {
     fill: var(--superficie);

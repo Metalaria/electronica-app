@@ -284,27 +284,21 @@
 
 <style>
   .practica10 {
-    --ok: #1e7a45;
-    --ok-tinte: #e6f3eb;
-    --mal: #b03a1e;
-    --mal-tinte: #fbece6;
+    /* 1.1: the mock-up's feedback tokens (estilos/tokens11.css), as in pregunta/Pregunta.svelte; the kinds' components
+       inside read them too (--ok-texto / --mal-texto for words on the tints) */
+    --ok: var(--v11-bien);
+    --ok-tinte: var(--v11-bien-tinte);
+    --ok-texto: var(--v11-bien-texto);
+    --mal: var(--v11-mal);
+    --mal-tinte: var(--v11-mal-tinte);
+    --mal-texto: var(--v11-mal-texto);
     --sobre-veredicto: #ffffff;
     display: flex;
     flex-direction: column;
     gap: 18px;
     font-family: var(--sans);
   }
-  :global(:root[data-tema='sepia']) .practica10 {
-    --ok: #1c7442;
-    --ok-tinte: #dfe4d1;
-    --mal: #b03a1e;
-    --mal-tinte: #f1ddcc;
-  }
   :global(:root[data-tema='oscuro']) .practica10 {
-    --ok: #5dbb85;
-    --ok-tinte: #17291f;
-    --mal: #ec8a68;
-    --mal-tinte: #33221c;
     --sobre-veredicto: #10161d;
   }
   .cab {
@@ -329,10 +323,11 @@
   .enunciado {
     margin: 0;
     color: var(--titulos);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: clamp(21px, 3vw, 25px);
-    font-weight: 600;
-    line-height: 1.32;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.28;
     text-wrap: pretty;
   }
   .intento {
@@ -340,8 +335,7 @@
     gap: 10px;
     align-items: flex-start;
     padding: 12px 14px;
-    border-left: 4px solid var(--mal);
-    border-radius: 12px;
+    border-radius: var(--radio-boton);
     background: var(--mal-tinte);
   }
   .intento p {
@@ -378,9 +372,9 @@
     flex-direction: column;
     gap: 6px;
     padding: 12px 14px;
-    border: 1px dashed var(--ambar, #b7791f);
-    border-radius: 12px;
-    background: var(--ambar-tinte, rgba(183, 121, 31, 0.08));
+    border: 1px dashed var(--ambar);
+    border-radius: var(--radio-boton);
+    background: var(--ambar-tinte);
   }
   .pista .rot {
     display: inline-flex;
@@ -410,8 +404,8 @@
     gap: 6px;
     min-height: 44px;
     padding: 0 14px;
-    border: 1px solid var(--linea);
-    border-radius: 12px;
+    border: 1.5px solid var(--linea);
+    border-radius: var(--radio-boton);
     background: var(--superficie);
     color: var(--tinta);
     font-size: 15px;
@@ -425,14 +419,16 @@
     min-height: 52px;
     padding: 0 24px;
     border: 0;
-    border-radius: 14px;
-    background: var(--bloque, var(--titulos));
-    color: var(--sobre-bloque, var(--fondo));
+    border-radius: var(--v11-radio-boton);
+    background: var(--bloque, var(--acento));
+    color: var(--sobre-bloque, var(--sobre-acento));
     font-size: 17px;
-    font-weight: 700;
+    font-weight: 600;
   }
+  /* 1.1: the mock-up's grey disabled button, text readable (it was faded) */
   .comprobar:disabled {
-    opacity: 0.45;
+    background: var(--v11-inactivo);
+    color: var(--v11-sobre-inactivo);
     cursor: default;
   }
   .comprobar[aria-busy='true'] {
@@ -443,17 +439,17 @@
     display: flex;
     flex-direction: column;
     gap: 14px;
+    /* 1.1: the mock-up's feedback banner: the verdict's tint, no stripe; links on it in the checked blue */
     padding: 18px;
-    border: 1px solid var(--linea);
-    border-top: 5px solid var(--mal);
-    border-radius: 18px;
-    background: var(--superficie);
-    box-shadow: var(--sombra);
+    border-radius: var(--radio-tarjeta-p);
+    background: var(--mal-tinte);
+    color: var(--tinta);
+    --acento: var(--v11-azul);
     scroll-margin-bottom: 120px;
     animation: entrar 0.2s ease;
   }
   .respuesta.bien {
-    border-top-color: var(--ok);
+    background: var(--ok-tinte);
   }
   @keyframes entrar {
     from {
@@ -480,12 +476,12 @@
   }
   .veredicto h3 {
     margin: 0;
-    color: var(--mal);
+    color: var(--mal-texto);
     font-size: 19px;
     font-weight: 700;
   }
   .bien .veredicto h3 {
-    color: var(--ok);
+    color: var(--ok-texto);
   }
   .sol {
     margin: 0;

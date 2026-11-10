@@ -113,9 +113,9 @@
   }
   .caja {
     width: min(420px, 100%);
-    padding: 20px 20px 16px;
+    padding: 24px 22px 20px;
     border: 1px solid var(--linea);
-    border-radius: 14px;
+    border-radius: var(--radio-tarjeta);
     background: var(--superficie);
     box-shadow: var(--sombra-alta);
     color: var(--tinta);
@@ -127,8 +127,9 @@
   h2 {
     margin: 0;
     color: var(--titulos);
-    font-size: 18px;
-    line-height: 1.3;
+    font-size: 20px;
+    font-weight: 700;
+    line-height: 1.25;
   }
   p {
     margin: 8px 0 0;
@@ -140,16 +141,15 @@
     display: flex;
     flex-wrap: wrap;
     justify-content: flex-end;
-    gap: 8px;
-    margin-top: 18px;
+    gap: 10px;
+    margin-top: 20px;
   }
+  /* (1.1: the app's 44 px buttons everywhere; 88 px wide on touch screens) */
   .boton {
-    min-height: 40px;
     padding: 0 18px;
   }
   @media (pointer: coarse) {
     .boton {
-      min-height: 44px;
       min-width: 88px;
     }
   }

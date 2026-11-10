@@ -185,7 +185,7 @@
   h2 {
     margin: 0;
     color: var(--titulos);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: 21px;
     font-weight: 600;
     line-height: 1.3;
@@ -231,7 +231,7 @@
     border-radius: 50%;
     background: var(--superficie-2);
     color: var(--tinta-suave);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: 20px;
     font-weight: 700;
     line-height: 1;

@@ -390,9 +390,9 @@
 <style>
   .tarjeta {
     margin-top: 16px;
-    padding: 16px 18px;
+    padding: 18px 20px;
     border: 1px solid var(--linea);
-    border-radius: 14px;
+    border-radius: var(--radio-tarjeta);
     background: var(--superficie);
   }
   h2 {
@@ -533,10 +533,6 @@
     background: var(--superficie);
     color: var(--c-precaucion);
     font-weight: 700;
-  }
-  .boton:disabled {
-    opacity: 0.45;
-    cursor: default;
   }
   .boton.enlace {
     min-height: 44px;

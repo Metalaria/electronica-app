@@ -42,7 +42,7 @@
     min-height: 54px;
     padding: 0 20px;
     border: 2px solid var(--linea);
-    border-radius: 14px;
+    border-radius: var(--v11-radio-boton);
     background: transparent;
     color: var(--tinta);
     font-family: var(--sans);
@@ -61,10 +61,10 @@
   .fila :global(.accion.primaria) {
     flex: 2 1 180px;
     border-color: transparent;
-    background: var(--bloque, var(--titulos));
-    color: var(--sobre-bloque, var(--fondo));
+    background: var(--bloque, var(--acento));
+    color: var(--sobre-bloque, var(--sobre-acento));
     font-size: 17px;
-    font-weight: 700;
+    font-weight: 600;
   }
   @media (max-width: 440px) {
     .fila :global(.accion) {
@@ -75,11 +75,17 @@
     }
   }
   .fila :global(.accion.primaria:hover) {
-    filter: brightness(1.08);
+    filter: brightness(0.9);
   }
+  :global(:root[data-tema='oscuro']) .fila :global(.accion.primaria:hover) {
+    filter: brightness(1.1);
+  }
+  /* 1.1: a disabled action is the mock-up's grey button with readable text (it was faded to 45 %) */
   .fila :global(.accion[disabled]),
   .fila :global(.accion[aria-disabled='true']) {
-    opacity: 0.45;
+    border-color: transparent;
+    background: var(--v11-inactivo);
+    color: var(--v11-sobre-inactivo);
     cursor: default;
     filter: none;
   }

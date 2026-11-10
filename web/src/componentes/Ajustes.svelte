@@ -255,20 +255,20 @@
     border-radius: 50%;
   }
   .t-auto .muestra {
-    background: linear-gradient(135deg, #fcfbf8 50%, #16191d 50%);
+    background: linear-gradient(135deg, #ffffff 50%, #161a20 50%);
     color: #8a96a3;
   }
   .t-claro .muestra {
-    background: #fcfbf8;
-    color: #1a3a5c;
+    background: #ffffff;
+    color: #16202a;
   }
   .t-sepia .muestra {
-    background: #f5ecd9;
-    color: #6b5d4c;
+    background: #f8f1e3;
+    color: #5f5141;
   }
   .t-oscuro .muestra {
-    background: #16191d;
-    color: #c9d7e8;
+    background: #161a20;
+    color: #e6eaf0;
   }
   .tam {
     display: flex;

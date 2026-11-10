@@ -220,7 +220,7 @@
   .cab h1 {
     margin: 0;
     color: var(--titulos);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: 30px;
     line-height: 1.2;
   }
@@ -259,7 +259,7 @@
     align-items: center;
     justify-content: center;
     color: var(--titulos);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: 36px;
     font-weight: 700;
     line-height: 1;
@@ -282,7 +282,7 @@
   h2 {
     margin: 0;
     color: var(--titulos);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: 24px;
     line-height: 1.2;
   }
@@ -350,7 +350,7 @@
   .cuentas strong {
     display: block;
     color: var(--tinta);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: 22px;
   }
   .cursos {

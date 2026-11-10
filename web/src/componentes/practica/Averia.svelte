@@ -378,8 +378,8 @@
     padding: 0 22px;
     border: 0;
     border-radius: 12px;
-    background: var(--bloque, var(--titulos));
-    color: var(--sobre-bloque, var(--fondo));
+    background: var(--bloque, var(--acento));
+    color: var(--sobre-bloque, var(--sobre-acento));
     font-size: 16px;
     font-weight: 700;
   }
@@ -414,7 +414,7 @@
   }
   .error {
     margin: 0;
-    color: var(--mal, #b03a1e);
+    color: var(--mal-texto);
   }
   .diagnostico {
     margin: 0;

@@ -174,7 +174,7 @@
   }
   h1 {
     margin: 6px 0 8px;
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: clamp(26px, 4vw, 30px);
     font-weight: 700;
     line-height: 1.15;
@@ -278,7 +278,7 @@
     align-items: center;
     gap: 10px;
     margin: 0 0 12px;
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: 21px;
     font-weight: 600;
     color: var(--titulos);

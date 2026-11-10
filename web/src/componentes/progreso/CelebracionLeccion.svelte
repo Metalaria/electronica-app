@@ -138,7 +138,7 @@
   }
   .ficha strong {
     color: var(--titulos);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: 28px;
     font-weight: 700;
     line-height: 1.1;

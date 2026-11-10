@@ -467,14 +467,16 @@ const TEXTOS: Record<Pantalla, { titulo: string; texto: string; boton?: string }
 
 const ESTILO = `
 .epa-pestana{position:fixed;inset:0;z-index:2147483000;display:grid;place-items:center;padding:16px;
-  background:var(--fondo,#fcfbf8);color:var(--tinta,#262626);font-family:var(--sans,system-ui,sans-serif)}
-.epa-pestana__caja{max-width:30em;background:var(--superficie,#fff);border:1px solid var(--linea,#e3dfd6);
-  border-radius:12px;padding:24px;box-shadow:var(--sombra,none)}
-.epa-pestana h1{margin:0 0 .6em;font-size:1.3rem;line-height:1.3;color:var(--titulos,#1a3a5c);outline:none}
-.epa-pestana p{margin:0 0 1.2em;line-height:1.5;font-size:1rem}
-.epa-pestana button{min-height:44px;min-width:44px;padding:10px 20px;border-radius:8px;border:1px solid var(--acento,#2e6ea6);
-  background:var(--acento,#2e6ea6);color:var(--superficie,#fff);font:inherit;font-weight:600;cursor:pointer}
-.epa-pestana button:focus-visible{outline:3px solid var(--titulos,#1a3a5c);outline-offset:2px}
+  background:var(--superficie-2,#f5f7fa);color:var(--tinta,#16202a);font-family:var(--sans,system-ui,sans-serif)}
+.epa-pestana__caja{max-width:30em;background:var(--superficie,#fff);border:1px solid var(--linea,#dde2e9);
+  border-radius:var(--radio-tarjeta,20px);padding:28px 24px 24px;box-shadow:var(--sombra,none)}
+.epa-pestana h1{margin:0 0 .6em;font-family:var(--titular,var(--sans,system-ui,sans-serif));font-size:1.45rem;
+  font-weight:700;letter-spacing:-0.01em;line-height:1.25;color:var(--titulos,#16202a);outline:none}
+.epa-pestana p{margin:0 0 1.3em;line-height:1.5;font-size:1rem;color:var(--tinta-suave,#556170)}
+.epa-pestana button{min-height:48px;min-width:44px;padding:12px 22px;border-radius:var(--radio-boton,14px);border:0;
+  background:var(--acento,#2457d6);color:var(--sobre-acento,#fff);font:inherit;font-weight:600;cursor:pointer}
+.epa-pestana button:disabled{background:var(--v11-inactivo,#dde2e9);color:var(--v11-sobre-inactivo,#4f5a68);cursor:default}
+.epa-pestana button:focus-visible{outline:3px solid var(--acento,#2457d6);outline-offset:2px}
 `;
 
 function mostrar(cual: Pantalla, accion?: () => Promise<void>): void {

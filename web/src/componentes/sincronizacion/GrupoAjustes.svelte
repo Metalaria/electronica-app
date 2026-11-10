@@ -138,10 +138,6 @@
     padding: 0 12px;
     font-size: 13.5px;
   }
-  .boton:disabled {
-    opacity: 0.45;
-    cursor: default;
-  }
   .enlace {
     border: 0;
     padding: 0;

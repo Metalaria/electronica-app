@@ -493,10 +493,6 @@
     background: var(--acento);
     color: var(--sobre-acento, #fff);
   }
-  .boton:disabled {
-    opacity: 0.5;
-    cursor: default;
-  }
   .aviso {
     margin: 10px 0 0;
     color: var(--acento);

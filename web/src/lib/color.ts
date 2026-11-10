@@ -14,11 +14,22 @@ const BRILLANTE: Record<string, string> = {
   '8A1F3D': '8A1F3D',
 };
 
-/** Page background of each theme (must match app.css). */
+/** Page background of each theme (must match --fondo in app.css, which is --v11-fondo of estilos/tokens11.css). */
 export const FONDO: Record<TemaEfectivo, string> = {
-  claro: 'FCFBF8',
-  sepia: 'F5ECD9',
-  oscuro: '16191D',
+  claro: 'FFFFFF',
+  sepia: 'F8F1E3',
+  oscuro: '161A20',
+};
+
+/** The darkest surface a chapter accent is written on in each theme (--superficie-2 in app.css; in the dark theme the
+ * lightest one). 1.1: the accent must read on it too, not only on the page. */
+const PANEL: Record<TemaEfectivo, string> = { claro: 'F5F7FA', sepia: 'EFE5CF', oscuro: '262D36' };
+
+/** 1.1: the book's navy (the default outside the chapters) becomes the mock-up's blue (--v11-azul and its tint). */
+const AZUL11: Record<TemaEfectivo, { acento: string; tinte: string }> = {
+  claro: { acento: '#2457d6', tinte: '#eef3ff' },
+  sepia: { acento: '#1f4fc4', tinte: '#e6e6ec' },
+  oscuro: { acento: '#8aaaff', tinte: '#1f2a44' },
 };
 
 type RGB = [number, number, number];
@@ -70,6 +81,20 @@ export function acentos(color: string | null | undefined, tema: TemaEfectivo): A
   const base = normalizarColor(color);
   const banda = aRGB(base);
   const fondo = aRGB(FONDO[tema]);
+  const panel = aRGB(PANEL[tema]);
+  if (base === NAVY) {
+    const a = AZUL11[tema];
+    const c = aRGB(a.acento);
+    const oscuro = tema === 'oscuro';
+    return {
+      '--banda': aHex(oscuro ? mezclar(banda, fondo, 0.15) : banda),
+      '--acento': a.acento,
+      '--acento-tinte': a.tinte,
+      // (≥ 4.6:1 for the accent on it in every theme: a chip's number, the rail's pill)
+      '--acento-suave': aHex(mezclar(c, fondo, oscuro ? 0.8 : 0.84)),
+      '--acento-borde': aHex(mezclar(c, fondo, oscuro ? 0.5 : 0.55)),
+    };
+  }
   let acento = aRGB(BRILLANTE[base] ?? base);
   if (tema === 'oscuro') {
     // Lighten until it reads well on the dark page.
@@ -77,14 +102,14 @@ export function acentos(color: string | null | undefined, tema: TemaEfectivo): A
     let t = 0.25;
     let c = mezclar(acento, blanco, t);
     // and on its own pale tint (chips, table headers: 3.8:1 there before 0.11's QA)
-    while ((contraste(c, fondo) < 5 || contraste(c, mezclar(c, fondo, 0.78)) < 4.6) && t < 0.9) {
+    while ((contraste(c, fondo) < 5 || contraste(c, panel) < 4.6 || contraste(c, mezclar(c, fondo, 0.78)) < 4.6) && t < 0.9) {
       t += 0.05;
       c = mezclar(acento, blanco, t);
     }
     acento = c;
   } else {
     // readable on the page and on its own pale tint (a chip's number was 4.3:1 on --acento-suave)
-    while (contraste(acento, fondo) < 4.6 || contraste(acento, mezclar(acento, fondo, 0.85)) < 4.6) acento = mezclar(acento, [0, 0, 0], 0.08);
+    while (contraste(acento, fondo) < 4.6 || contraste(acento, panel) < 4.6 || contraste(acento, mezclar(acento, fondo, 0.85)) < 4.6) acento = mezclar(acento, [0, 0, 0], 0.08);
   }
   const oscuro = tema === 'oscuro';
   return {
@@ -101,7 +126,7 @@ export function colorBloque(color: string | null | undefined): string {
 }
 
 /** Surface of the cards of each theme (must match --superficie in app.css). */
-const SUPERFICIE: Record<TemaEfectivo, string> = { claro: 'FFFFFF', sepia: 'FAF3E4', oscuro: '1F2329' };
+const SUPERFICIE: Record<TemaEfectivo, string> = { claro: 'FFFFFF', sepia: 'F8F1E3', oscuro: '1F252D' };
 
 /** A block colour as the 0.9 facelift paints it (componentes/ui09, the start page's path). */
 export interface TonoBloque {
@@ -123,6 +148,11 @@ export function tonoBloque(color: string | null | undefined, tema: TemaEfectivo)
   const base = normalizarColor(color);
   const fondo = aRGB(FONDO[tema]);
   const sup = aRGB(SUPERFICIE[tema]);
+  // 1.1: the navy of the first tome is the mock-up's blue, as the accent outside the chapters
+  if (base === NAVY) {
+    const a = AZUL11[tema];
+    return { relleno: a.acento, sobre: tema === 'oscuro' ? '#0d1426' : '#ffffff', tinte: a.tinte, texto: a.acento };
+  }
   if (tema === 'oscuro') {
     const blanco: RGB = [255, 255, 255];
     const brillante = aRGB(BRILLANTE[base] ?? base);

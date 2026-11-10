@@ -207,7 +207,10 @@
     font-style: italic;
     font-weight: 600;
   }
+  /* 1.1: the live result in the mock-up's reading type */
   output {
+    font-family: var(--titular);
+    font-size: 1.15em;
     font-weight: 700;
     font-variant-numeric: tabular-nums;
   }

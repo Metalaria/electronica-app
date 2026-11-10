@@ -396,7 +396,7 @@
   h1 {
     margin: 0;
     color: var(--titulos);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: clamp(28px, 5vw, 40px);
     font-weight: 700;
     letter-spacing: -0.015em;
@@ -410,9 +410,9 @@
   }
   .tarjeta {
     margin-top: 16px;
-    padding: 16px 18px;
+    padding: 18px 20px;
     border: 1px solid var(--linea);
-    border-radius: 14px;
+    border-radius: var(--radio-tarjeta);
     background: var(--superficie);
   }
   h2 {
@@ -550,10 +550,6 @@
   }
   .peligro {
     color: var(--c-precaucion);
-  }
-  .boton:disabled {
-    opacity: 0.45;
-    cursor: default;
   }
   .gira {
     display: inline-grid;

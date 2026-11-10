@@ -387,8 +387,9 @@
     color: var(--tinta-suave);
   }
   @media (max-width: 520px) {
+    /* (minmax(0, 1fr): with the 1.1 fonts a long name made a column wider than half the 360 px screen) */
     .tarjetas {
-      grid-template-columns: 1fr 1fr;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: 8px;
     }
     .res {

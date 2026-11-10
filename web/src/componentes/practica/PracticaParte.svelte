@@ -123,7 +123,7 @@
   }
   .resultado h1 {
     margin: 0;
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: 28px;
   }
   .volver {

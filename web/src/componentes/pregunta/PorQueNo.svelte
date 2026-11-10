@@ -29,10 +29,10 @@
     display: flex;
     flex-direction: column;
     gap: 6px;
+    /* 1.1: a soft panel inside the verdict's tinted banner (it had a side stripe) */
     padding: 12px 14px;
-    border-left: 4px solid var(--mal, #b03a1e);
-    border-radius: 12px;
-    background: var(--superficie-2);
+    border-radius: var(--radio-boton);
+    background: var(--superficie);
   }
   .rot {
     color: var(--tinta);

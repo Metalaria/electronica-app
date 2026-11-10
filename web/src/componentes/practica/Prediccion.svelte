@@ -291,7 +291,7 @@
     color: var(--sobre-veredicto);
   }
   .opcion.ok .marca {
-    color: var(--ok);
+    color: var(--ok-texto, var(--ok));
   }
   .opcion.mal {
     border-color: var(--mal);
@@ -302,7 +302,7 @@
     color: var(--sobre-veredicto);
   }
   .opcion.mal .marca {
-    color: var(--mal);
+    color: var(--mal-texto, var(--mal));
   }
   .opcion:disabled {
     cursor: default;

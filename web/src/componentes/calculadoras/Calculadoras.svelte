@@ -228,7 +228,7 @@
   .cabecera h1 {
     margin: 0 0 6px;
     color: var(--titulos);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: 30px;
     font-weight: 700;
     line-height: 1.15;
@@ -431,7 +431,7 @@
     padding-bottom: 6px;
     border-bottom: 1px solid var(--linea);
     color: var(--titulos);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: 19px;
     font-weight: 600;
   }

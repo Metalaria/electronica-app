@@ -259,7 +259,7 @@
   }
   .error {
     margin: 0;
-    color: var(--mal);
+    color: var(--mal-texto, var(--mal));
   }
   .herramientas {
     display: flex;

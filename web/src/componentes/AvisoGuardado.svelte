@@ -45,10 +45,10 @@
     align-items: center;
     gap: 8px 14px;
     margin: 10px 0;
+    /* 1.1: the mock-up's «not yet» banner */
     padding: 10px 14px;
-    border-radius: 10px;
-    border: 1px solid color-mix(in srgb, var(--c-precaucion) 45%, transparent);
-    background: color-mix(in srgb, var(--c-precaucion) 8%, var(--superficie));
+    border-radius: var(--radio-boton);
+    background: var(--mal-tinte);
     font-family: var(--sans);
     font-size: 14px;
     color: var(--tinta);

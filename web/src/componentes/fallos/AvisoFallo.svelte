@@ -143,14 +143,14 @@
     bottom: calc(var(--alto-pestanas, 0px) + env(safe-area-inset-bottom, 0px) + 16px);
     max-width: 34em;
     margin: 0 auto;
-    padding: 12px 16px;
+    padding: 14px 16px;
     border: 1px solid var(--linea);
-    border-radius: 12px;
+    border-radius: var(--radio-tarjeta-p);
     background: var(--superficie);
     color: var(--tinta);
     font-family: var(--sans);
     font-size: 15px;
-    box-shadow: 0 6px 24px rgb(0 0 0 / 0.18);
+    box-shadow: var(--sombra-alta);
   }
   p {
     margin: 0 0 10px;
@@ -159,8 +159,5 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-  }
-  .boton {
-    min-height: 44px;
   }
 </style>

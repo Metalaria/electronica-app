@@ -282,7 +282,7 @@
     gap: 8px;
     margin: 0 0 12px;
     color: var(--titulos);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: 21px;
     font-weight: 600;
   }

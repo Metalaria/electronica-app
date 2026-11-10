@@ -984,13 +984,13 @@
   }
   .l {
     fill: none;
-    stroke: var(--titulos);
+    stroke: var(--esquema-trazo);
     stroke-width: 1.1;
     stroke-linecap: round;
     stroke-linejoin: round;
   }
   .ft {
-    fill: var(--titulos);
+    fill: var(--esquema-trazo);
   }
   .fb {
     fill: var(--superficie);
@@ -1008,7 +1008,7 @@
     font-style: italic;
   }
   .w {
-    stroke: var(--titulos);
+    stroke: var(--esquema-trazo);
     stroke-width: 1.1;
     stroke-linecap: square;
   }
@@ -1026,7 +1026,7 @@
     fill: var(--c-importante);
   }
   .union {
-    fill: var(--titulos);
+    fill: var(--esquema-trazo);
   }
   .suelto {
     fill: none;

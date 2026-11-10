@@ -171,6 +171,6 @@
     font-size: 14.5px;
   }
   .error {
-    color: var(--mal);
+    color: var(--mal-texto, var(--mal));
   }
 </style>

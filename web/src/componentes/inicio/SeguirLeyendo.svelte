@@ -117,12 +117,12 @@
 
     {#if d.tipo === 'leccion' && d.pasos > 0}
       <div class="progreso">
-        <BarraSegmentos total={d.pasos} hechos={d.paso} actual={d.paso} color={tono.relleno} />
+        <BarraSegmentos total={d.pasos} hechos={d.paso} actual={d.paso} />
         <span class="det">{progreso}</span>
       </div>
     {:else if d.tipo === 'lectura' && secciones.length}
       <div class="progreso">
-        <BarraSegmentos total={secciones.length} hechos={leidas} actual={indiceSeccion} color={tono.relleno} />
+        <BarraSegmentos total={secciones.length} hechos={leidas} actual={indiceSeccion} />
         <span class="det">{progreso}</span>
       </div>
     {/if}
@@ -156,7 +156,7 @@
   h2 {
     margin: 0;
     color: var(--titulos);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: 22px;
     font-weight: 600;
     line-height: 1.25;

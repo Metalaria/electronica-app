@@ -108,9 +108,10 @@
   .fallo-zona {
     max-width: 40em;
     margin: 16px auto;
-    padding: 14px 18px;
+    /* 1.1: the mock-up's soft card */
+    padding: 18px 20px;
     border: 1px solid var(--linea);
-    border-radius: 10px;
+    border-radius: var(--radio-tarjeta);
     background: var(--superficie);
     color: var(--tinta);
     font-family: var(--sans);
@@ -119,7 +120,9 @@
     margin: 14vh auto;
   }
   .tit {
-    margin: 0 0 4px;
+    margin: 0 0 6px;
+    font-family: var(--titular);
+    font-size: 18px;
     font-weight: 700;
     color: var(--titulos);
   }
@@ -131,8 +134,5 @@
     display: flex;
     flex-wrap: wrap;
     gap: 8px;
-  }
-  .boton {
-    min-height: 44px;
   }
 </style>

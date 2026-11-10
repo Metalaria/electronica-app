@@ -280,7 +280,7 @@
   h1 {
     margin: 0;
     color: var(--titulos);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: clamp(24px, 3.4vw, 30px);
     line-height: 1.25;
   }
@@ -317,6 +317,6 @@
     gap: 10px;
   }
   .error {
-    color: var(--mal, #b03a1e) !important;
+    color: var(--mal-texto) !important;
   }
 </style>

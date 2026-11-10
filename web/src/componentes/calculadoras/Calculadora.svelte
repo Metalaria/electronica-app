@@ -588,10 +588,10 @@
     flex-wrap: wrap;
     align-items: baseline;
     gap: 4px 8px;
-    padding: 10px 14px;
-    border-radius: 10px;
-    background: var(--acento-tinte);
-    border: 1px solid var(--acento-suave);
+    /* 1.1: the mock-up's live reading: a soft panel with the value big, in Space Grotesk and the reading's orange */
+    padding: 12px 16px;
+    border-radius: var(--radio-tarjeta-p);
+    background: var(--superficie-2);
   }
   .resultado .sim {
     font-family: var(--serif);
@@ -607,9 +607,11 @@
     color: var(--tinta-suave);
   }
   .resultado .valor {
-    font-size: 26px;
+    font-family: var(--titular);
+    font-size: 30px;
     font-weight: 700;
-    color: var(--acento);
+    line-height: 1.1;
+    color: var(--lectura);
     font-variant-numeric: tabular-nums;
   }
   .resultado .nombre {

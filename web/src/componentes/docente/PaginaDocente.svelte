@@ -208,7 +208,7 @@
   h1 {
     margin: 0;
     color: var(--titulos);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: 30px;
     line-height: 1.2;
   }

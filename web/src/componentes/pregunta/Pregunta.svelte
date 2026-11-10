@@ -38,6 +38,7 @@
   import { abrirFigura } from '../../lib/acciones';
   import { leerNumero, numeroCorrecto } from '../repaso/datos';
   import { figuraDeCita } from './figura';
+  import InsigniaNuevo from '../aprender/InsigniaNuevo.svelte';
   // 0.11: every answer is a learning event (sound, vibration, XP…); a right one celebrates.
   import { emitir, type OrigenRespuesta } from '../../lib/aprendizaje/eventos';
   import Destello from '../progreso/Destello.svelte';
@@ -194,6 +195,7 @@
   <div class="cab">
     {#if rotulo}<p class="rotulo">{rotulo}</p>{/if}
     <span class="etiqueta">{etiqueta}</span>
+    {#if p.ampliacion}<InsigniaNuevo compacta titulo="Pregunta sobre una ampliación de la aplicación: estará en la próxima edición del libro" />{/if}
     <h2 class="enunciado">{@html prepararHtml(p.enunciado)}</h2>
   </div>
 
@@ -280,7 +282,7 @@
         </figure>
       {/if}
       <blockquote>
-        <span class="de">Del libro · {ref.nombre}</span>
+        <span class="de">{p.ampliacion ? 'Aún no en el libro' : 'Del libro'} · {ref.nombre}</span>
         <p>«{p.cita}»</p>
       </blockquote>
       <button type="button" class="otra-vez" onclick={reintentar} data-reintentar>Probar otra vez</button>
@@ -290,28 +292,21 @@
 
 <style>
   .pregunta09 {
-    /* verdict colours of the mockup; sepia derived from its page and card colours */
-    --ok: #1e7a45;
-    --ok-tinte: #e6f3eb;
-    --mal: #b03a1e;
-    --mal-tinte: #fbece6;
+    /* 1.1: the verdict colours are the mock-up's feedback tokens (estilos/tokens11.css), per theme: right green, «not
+       yet» orange; the strong colours fill marks and borders, the -texto ones are for words on the tints */
+    --ok: var(--v11-bien);
+    --ok-tinte: var(--v11-bien-tinte);
+    --ok-texto: var(--v11-bien-texto);
+    --mal: var(--v11-mal);
+    --mal-tinte: var(--v11-mal-tinte);
+    --mal-texto: var(--v11-mal-texto);
     --sobre-veredicto: #ffffff;
     display: flex;
     flex-direction: column;
     gap: 18px;
     font-family: var(--sans);
   }
-  :global(:root[data-tema='sepia']) .pregunta09 {
-    --ok: #1c7442;
-    --ok-tinte: #dfe4d1;
-    --mal: #b03a1e;
-    --mal-tinte: #f1ddcc;
-  }
   :global(:root[data-tema='oscuro']) .pregunta09 {
-    --ok: #5dbb85;
-    --ok-tinte: #17291f;
-    --mal: #ec8a68;
-    --mal-tinte: #33221c;
     --sobre-veredicto: #10161d;
   }
   .cab {
@@ -335,10 +330,11 @@
   .enunciado {
     margin: 0;
     color: var(--titulos);
-    font-family: var(--serif);
-    font-size: clamp(23px, 3.2vw, 27px);
-    font-weight: 600;
-    line-height: 1.3;
+    font-family: var(--titular);
+    font-size: clamp(22px, 3.2vw, 26px);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    line-height: 1.25;
     text-wrap: pretty;
   }
   .opciones {
@@ -407,7 +403,7 @@
     color: var(--sobre-veredicto);
   }
   .opcion.ok .marca {
-    color: var(--ok);
+    color: var(--ok-texto);
   }
   .opcion.mal {
     border-color: var(--mal);
@@ -418,7 +414,7 @@
     color: var(--sobre-veredicto);
   }
   .opcion.mal .marca {
-    color: var(--mal);
+    color: var(--mal-texto);
   }
   .opcion.apagada {
     opacity: 0.6;
@@ -492,15 +488,15 @@
     min-height: 60px;
     padding: 0 24px;
     border: 0;
-    border-radius: 14px;
-    background: var(--bloque, var(--titulos));
-    color: var(--sobre-bloque, var(--fondo));
+    border-radius: var(--v11-radio-boton);
+    background: var(--bloque, var(--acento));
+    color: var(--sobre-bloque, var(--sobre-acento));
     font-size: 17px;
-    font-weight: 700;
+    font-weight: 600;
   }
   .aviso {
     margin: -8px 0 0;
-    color: var(--mal);
+    color: var(--mal-texto);
     font-size: 15px;
   }
   .ayuda {
@@ -513,17 +509,19 @@
     display: flex;
     flex-direction: column;
     gap: 14px;
+    /* 1.1: the mock-up's feedback banner: the verdict's tint, no stripe */
     padding: 18px;
-    border: 1px solid var(--linea);
-    border-top: 5px solid var(--mal);
-    border-radius: 18px;
-    background: var(--superficie);
-    box-shadow: var(--sombra);
+    border-radius: var(--radio-tarjeta-p);
+    background: var(--mal-tinte);
+    color: var(--tinta);
+    /* links and «Probar otra vez» on the tint: the mock-up's blue, checked on both tints in the three themes (a chapter
+       accent is only checked on the page and the panels) */
+    --acento: var(--v11-azul);
     scroll-margin-bottom: 120px;
     animation: entrar 0.2s ease;
   }
   .respuesta.bien {
-    border-top-color: var(--ok);
+    background: var(--ok-tinte);
   }
   @keyframes entrar {
     from {
@@ -557,12 +555,12 @@
   }
   .veredicto h3 {
     margin: 0;
-    color: var(--mal);
+    color: var(--mal-texto);
     font-size: 19px;
     font-weight: 700;
   }
   .bien .veredicto h3 {
-    color: var(--ok);
+    color: var(--ok-texto);
   }
   .sol {
     margin: 0;

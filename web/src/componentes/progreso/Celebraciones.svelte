@@ -190,7 +190,7 @@
   }
   strong {
     color: var(--titulos);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: 19px;
     line-height: 1.25;
   }

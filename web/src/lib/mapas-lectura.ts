@@ -17,7 +17,7 @@ import { cargarMapa } from '../componentes/calculadoras/datos.svelte';
 export function fuentes(): Promise<unknown> {
   const f = typeof document !== 'undefined' ? document.fonts : undefined;
   if (!f?.load) return Promise.resolve();
-  return Promise.all(['400 1em "Source Serif 4"', '700 1em "Source Serif 4"', '400 1em "Source Sans 3"', '700 1em "Source Sans 3"'].map((x) => f.load(x).catch(() => [])));
+  return Promise.all(['400 1em "Source Serif 4"', '700 1em "Source Serif 4"', '400 1em Inter', '600 1em Inter', '700 1em "Space Grotesk"'].map((x) => f.load(x).catch(() => [])));
 }
 
 /** The text's fonts only, at most 1.5 s (the glossary: 0.11 QA, the whole list reflowed and jumped when they came). */

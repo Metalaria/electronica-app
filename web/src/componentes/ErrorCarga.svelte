@@ -31,10 +31,11 @@
   .error-carga {
     max-width: 36em;
     margin: 24px auto;
-    padding: 14px 18px;
+    /* 1.1: the mock-up's soft card */
+    padding: 18px 20px;
     font-family: var(--sans);
     border: 1px solid var(--linea);
-    border-radius: 10px;
+    border-radius: var(--radio-tarjeta);
     background: var(--superficie);
   }
   .error-carga.grande {
@@ -47,7 +48,9 @@
     color: var(--titulos);
   }
   .tit {
-    margin: 0 0 4px;
+    margin: 0 0 6px;
+    font-family: var(--titular);
+    font-size: 18px;
     font-weight: 700;
     color: var(--titulos);
   }

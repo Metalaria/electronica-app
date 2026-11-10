@@ -231,14 +231,16 @@
     min-height: 56px;
     padding: 0 22px;
     border: 0;
-    border-radius: 14px;
-    background: var(--bloque, var(--titulos));
-    color: var(--sobre-bloque, var(--fondo));
+    border-radius: var(--v11-radio-boton);
+    background: var(--bloque, var(--acento));
+    color: var(--sobre-bloque, var(--sobre-acento));
     font-size: 17px;
-    font-weight: 700;
+    font-weight: 600;
   }
+  /* 1.1: the mock-up's grey disabled button, text readable */
   .comprobar:disabled {
-    opacity: 0.45;
+    background: var(--v11-inactivo);
+    color: var(--v11-sobre-inactivo);
   }
   .ayuda {
     margin: 0;

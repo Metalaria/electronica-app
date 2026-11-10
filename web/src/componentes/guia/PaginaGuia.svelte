@@ -215,7 +215,7 @@
   h1 {
     margin: 0;
     color: var(--titulos);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: 30px;
     line-height: 1.2;
     scroll-margin-top: calc(var(--alto-barra) + 16px);
@@ -223,7 +223,7 @@
   h2 {
     margin: 0 0 8px;
     color: var(--titulos);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: 22px;
     line-height: 1.25;
     scroll-margin-top: calc(var(--alto-barra) + 16px);
@@ -364,12 +364,18 @@
     padding: 0;
     list-style: none;
   }
+  /* 1.1: a soft panel (the book's «tarjeta» rule of estilos/lectura.css also matches this class: it made them yellow) */
   .tarjeta {
     display: flex;
     gap: 14px;
     align-items: flex-start;
     height: 100%;
     box-sizing: border-box;
+    margin: 0;
+    padding: 16px;
+    border: 1.5px solid transparent;
+    border-radius: var(--radio-tarjeta);
+    background: var(--superficie-2);
     color: var(--tinta);
     text-decoration: none;
   }
