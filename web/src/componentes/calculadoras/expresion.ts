@@ -29,6 +29,23 @@ function par(...xs: number[]): number {
   return 1 / s;
 }
 
+/**
+ * Wright's ω: the w > 0 with w + ln w = x (ω(x) = W(eˣ), Lambert's W of an exponential, without overflowing). The 1.1
+ * lessons solve a diode with Shockley's equation in series with a resistor with it (contenido/lecciones11/GUIA.md §5).
+ */
+export function wright(x: number): number {
+  if (!Number.isFinite(x)) return x === Infinity ? Infinity : x === -Infinity ? 0 : NaN;
+  let w = x > 1 ? x - Math.log(x) : x < -2 ? Math.exp(x) : Math.exp(x) / (1 + Math.exp(x) * 0.6);
+  for (let k = 0; k < 60; k++) {
+    // Newton on f(w) = w + ln w − x, f' = 1 + 1/w; kept positive
+    const d = ((w + Math.log(w) - x) * w) / (w + 1);
+    const n = w - d;
+    w = n > 0 ? n : w / 10;
+    if (Math.abs(d) <= 1e-15 * Math.max(1, w)) break;
+  }
+  return w;
+}
+
 /** Functions and their number of arguments (−1: any number). */
 const FUNCIONES: Record<string, [number, (...a: number[]) => number]> = {
   sqrt: [1, Math.sqrt],
@@ -56,6 +73,7 @@ const FUNCIONES: Record<string, [number, (...a: number[]) => number]> = {
   min: [-1, Math.min],
   max: [-1, Math.max],
   par: [-1, par],
+  wright: [1, wright],
 };
 
 export type Nodo =

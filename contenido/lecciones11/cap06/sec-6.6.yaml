@@ -1,0 +1,253 @@
+# Lección 1.1 de la sección 6.6 «Configuraciones Amplificadoras» (cap06): g_m y r_e dependen solo de la corriente de
+# polarización (51,2 mS y 19,5 Ω a 1,324 mA), la ganancia del emisor común (−169 con 3,3 kΩ), la degeneración de
+# emisor (−3,24 con 1 kΩ sin puentear; la gráfica con la parte sin puentear R_E1 es la de la sección 6.5), el efecto
+# Miller (4 pF → 680 pF, 234 kHz con 1 kΩ), el seguidor (0,981, 1 kΩ → 26 Ω), la base común y cómo se elige. Sin
+# esquema de alterna: gráficas de las fórmulas del libro. Formato: contenido/lecciones11/GUIA.md.
+leccion: cap06/sec-6.6
+
+libro:
+  200: "quedan exactamente tres combinaciones útiles"
+  201: "a 1,324 mA vale 51,2 mS"
+  205: 'A_("v") = - g_(m)'
+  206: "Con RC = 3,3 kΩ y re = 19,5 Ω: Av = −169."
+  207: "la ganancia pasa a −RC/(re + RE) ≈ −3,24"
+  208: "La capacidad base-colector, unos 4 pF"
+  210: "convierte una fuente de 1 kΩ en una de 26 Ω"
+  211: "sin inversión, +169, y una impedancia de entrada de solo re, 19,5 Ω"
+  212: "La elección se hace por lo que falta"
+  214: "el cociente de amplitudes, unas 170 veces, y el desfase de 180° confirman el emisor común"
+  "cap06#191": "La ganancia queda −RC/(re + RE1)"
+  "cap06#176": "1,363 mA"
+
+modelo:
+  valores:
+    I_C: { sim: "I_{C}", nombre: "corriente de polarización", unidad: A, valor: 0.001324 }
+    V_T: { sim: "V_{T}", nombre: "tensión térmica", unidad: V, valor: 0.02585 }
+    R_C: { sim: "R_{C}", nombre: "resistencia de colector", unidad: Ω, valor: 3300 }
+    R_E: { sim: "R_{E}", nombre: "resistencia de emisor", unidad: Ω, valor: 1000 }
+    R_E1: { sim: "R_{E1}", nombre: "parte de R_E sin puentear", unidad: Ω, valor: 0 }
+    C_bc: { sim: "C_{bc}", nombre: "capacidad base-colector", unidad: F, valor: 4e-12 }
+    R_s: { sim: "R_{S}", nombre: "resistencia de la fuente de señal", unidad: Ω, valor: 1000 }
+    beta: { sim: "β", nombre: "ganancia de corriente", unidad: "", valor: 150 }
+  calculos:
+    g_m: { expr: "I_C/V_T", sim: "g_{m}", nombre: "transconductancia", unidad: S }
+    r_e: { expr: "V_T/I_C", sim: "r_{e}", nombre: "resistencia dinámica del emisor", unidad: Ω }
+    A_v: { expr: "-R_C/r_e", sim: "A_{v}", nombre: "ganancia del emisor común", unidad: "", cifras: 3 }
+    A_deg: { expr: "R_C/(r_e + R_E1)", sim: "|A_{v}|", nombre: "ganancia con R_E1 sin puentear, en módulo", unidad: "", cifras: 3 }
+    A_dtot: { expr: "R_C/(r_e + R_E)", sim: "|A_{v}|", nombre: "ganancia con toda R_E sin puentear", unidad: "", cifras: 3 }
+    C_mil: { expr: "C_bc*(1 + R_C/r_e)", sim: "C_{Miller}", nombre: "capacidad vista desde la entrada", unidad: F }
+    f_mil: { expr: "1/(2*pi*R_s*C_mil)", sim: "f_{c}", nombre: "corte por efecto Miller", unidad: Hz }
+    A_cc: { expr: "R_E/(r_e + R_E)", sim: "A_{v}", nombre: "ganancia del seguidor", unidad: "", cifras: 3 }
+    R_occ: { expr: "r_e + R_s/(beta + 1)", sim: "R_{salida}", nombre: "resistencia de salida del seguidor", unidad: Ω }
+
+tarjetas:
+  - id: explore-gm
+    tipo: explorar
+    titulo: "Dos parámetros, una corriente"
+    texto: "La transconductancia g_{m} = I_{C}/V_{T} y la resistencia del emisor r_{e} ≈ 1/g_{m}. Mueva la corriente de polarización y mire las dos."
+    libro: [201]
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0.0001, max: 0.005, unidad: A, rotulo: "I_{C}" }
+      y: { min: 0, max: 0.2, unidad: S, rotulo: "g_{m}" }
+      curvas:
+        - { expr: "i/V_T", color: azul, rotulo: "g_{m}" }
+      asas:
+        - { mueve: I_C, x: "I_C", y: "g_m", rotulo: "Corriente de polarización" }
+      lectura: { valor: g_m, rotulo: "g_{m}" }
+      datos:
+        - { valor: r_e, rotulo: "r_{e} = {{r_e}}" }
+      mandos:
+        - { valor: I_C, min: 0.000124, max: 0.004924, paso: 0.00001, rotulo: "I_{C}" }
+    requiere: { mover: [I_C] }
+
+  - id: prediga-beta
+    tipo: predecir
+    titulo: "¿Y el transistor?"
+    texto: "Dos transistores, uno con β = 100 y otro con β = 300, polarizados los dos a 1,324 mA. ¿Qué transconductancia tiene cada uno?"
+    libro: [201, "cap06#176"]
+    fijar: { I_C: 0.001324 }
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0.0001, max: 0.005, unidad: A, rotulo: "I_{C}" }
+      y: { min: 0, max: 0.2, unidad: S, rotulo: "g_{m}" }
+      curvas:
+        - { expr: "i/V_T", color: azul, rotulo: "g_{m}" }
+      lectura: { valor: g_m, rotulo: "g_{m}" }
+      datos:
+        - { valor: r_e, rotulo: "r_{e} = {{r_e}}" }
+      ocultar: true
+    opciones:
+      - texto: "Los dos, 51,2 mS"
+        bien: true
+        porque: "g_{m} = I_{C}/V_{T}: solo depende de la corriente de polarización. Por eso la ganancia de una etapa bien diseñada no depende de β."
+      - texto: "El de β = 300, el triple"
+        porque: "β no aparece en g_{m}: a la misma corriente, la misma exponencial y la misma pendiente."
+      - texto: "El de β = 100, el triple"
+        porque: "Ni uno ni otro: g_{m} = I_{C}/V_{T} es igual para cualquier transistor a la misma corriente."
+    comprobar:
+      - { g_m: 0.0512, r_e: 19.5 }
+
+  - id: formula-ec
+    tipo: formula
+    titulo: "Emisor común"
+    texto: "La señal entra por la base y sale por el colector. Una variación v_{be} mueve g_{m}·v_{be} de corriente, que cae en R_{C}."
+    nota: "El signo negativo es la inversión: si la base sube, el colector baja."
+    libro: [205, 206]
+    ec: 205
+    sustitucion: "−{{g_m}} · {{R_C}} = {{A_v}}"
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0.0001, max: 0.005, unidad: A, rotulo: "I_{C}" }
+      y: { min: 0, max: 700, unidad: "", rotulo: "|A_{v}|" }
+      curvas:
+        - { expr: "R_C*i/V_T", color: naranja, rotulo: "|A_{v}| = g_{m}·R_{C}" }
+      asas:
+        - { mueve: I_C, x: "I_C", y: "-A_v", rotulo: "Corriente de polarización" }
+      lectura: { valor: A_v, rotulo: "Ganancia A_{v}" }
+      datos:
+        - { valor: r_e, rotulo: "r_{e} = {{r_e}}" }
+      mandos:
+        - { valor: I_C, min: 0.000124, max: 0.004924, paso: 0.00001, rotulo: "I_{C}" }
+        - { valor: R_C, lista: [1000, 3300, 4700], rotulo: "R_{C}" }
+    comprobar:
+      - { con: { I_C: 0.001324, R_C: 3300 }, A_v: -169 }
+
+  - id: sorpresa-degeneracion
+    tipo: sorpresa
+    titulo: "Sin el condensador de emisor"
+    texto: "Emisor común con 3,3 kΩ de colector, a 1,324 mA. Deje sin puentear una parte R_{E1} de la resistencia de emisor, hasta el kiloohmio entero. Mire la ganancia."
+    libro: [207, "cap06#191"]
+    fijar: { I_C: 0.001324, R_C: 3300 }
+    inicio: { R_E1: 0 }
+    widget:
+      tipo: grafica
+      x: { id: r, min: 0, max: 1000, unidad: Ω, rotulo: "R_{E1}" }
+      y: { min: 1, max: 300, unidad: "", rotulo: "|A_{v}|", escala: log }
+      curvas:
+        - { expr: "R_C/(r_e + r)", color: naranja, rotulo: "|A_{v}|" }
+      asas:
+        - { mueve: R_E1, x: "R_E1", y: "A_deg", rotulo: "Sin puentear" }
+      lectura: { valor: A_deg, rotulo: "Ganancia, en módulo" }
+      mandos:
+        - { valor: R_E1, min: 0, max: 1000, paso: 10, rotulo: "R_{E1} sin puentear" }
+    requiere: { mover: [R_E1] }
+    comprobar:
+      - { con: { R_E1: 1000 }, A_deg: 3.24 }
+      - { A_deg: 169 }
+
+  - id: por-que-degeneracion
+    tipo: porque
+    titulo: "¿Qué se gana perdiendo ganancia?"
+    texto: "Con 1 kΩ de emisor sin puentear, la ganancia cae de −169 a −3,24, cincuenta veces menos. ¿Qué se gana a cambio?"
+    libro: [207]
+    fijar: { I_C: 0.001324, R_C: 3300, R_E1: 1000 }
+    widget:
+      tipo: grafica
+      x: { id: r, min: 0, max: 1000, unidad: Ω, rotulo: "R_{E1}" }
+      y: { min: 1, max: 300, unidad: "", rotulo: "|A_{v}|", escala: log }
+      curvas:
+        - { expr: "R_C/(r_e + r)", color: naranja, rotulo: "|A_{v}|" }
+      lectura: { valor: A_deg, rotulo: "Ganancia, en módulo" }
+    opciones:
+      - texto: "Ya no depende del transistor ni de la temperatura: R_{C}/(r_{e} + R_{E}) es casi R_{C}/R_{E}"
+        bien: true
+        porque: "Es realimentación negativa: se sacrifica ganancia sobrante a cambio de precisión, linealidad e impedancias favorables."
+      - texto: "Más ancho de banda por el efecto Miller"
+        porque: "Algo mejora el Miller con menos ganancia, pero el libro lo presenta por la precisión: la ganancia pasa a depender de resistencias."
+      - texto: "Menos consumo"
+        porque: "La corriente de reposo es la misma: R_{E} ya estaba en continua. Solo cambia lo que la señal ve en el emisor."
+    comprobar:
+      - { A_deg: 3.24 }
+
+  - id: estime-miller
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El efecto Miller"
+    texto: "Un emisor común de ganancia 169 tiene unos 4 pF entre base y colector. Desde la entrada parecen multiplicados por (1 + |A_{v}|). Estime la capacidad que se ve."
+    libro: [208]
+    fijar: { I_C: 0.001324, R_C: 3300 }
+    estimar:
+      objetivo: "C_mil"
+      unidad: F
+      min: 0
+      max: 0.000000002
+      paso: 0.00000000001
+      inicio: 0.0000000016
+      tol: 0.05
+      rotulo: "C_{Miller}"
+    exito: "4 pF · 170 = 680 pF. Con una fuente de 1 kΩ cortan la respuesta hacia 234 kHz: el emisor común es la configuración con peor ancho de banda."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.000000000715 }, texto: "Se ha pasado. Multiplique los 4 pF por 1 + 169." }
+      - { texto: "Se ha quedado corto. La ganancia multiplica la capacidad: 4 pF por 170." }
+    comprobar:
+      - { C_mil: 0.00000000068, f_mil: 234000 }
+
+  - id: seguidor
+    tipo: pregunta
+    titulo: "El seguidor de emisor"
+    texto: "Un colector común tiene ganancia de tensión RE/(r_{e} + R_{E}) = 0,981, menos que uno. ¿Para qué sirve?"
+    libro: [210]
+    opciones:
+      - texto: "Convierte una fuente de 1 kΩ en una de 26 Ω: da corriente y potencia, sin efecto Miller"
+        bien: true
+        porque: "Es el adaptador entre una señal delicada y una carga pesada, o entre dos etapas que no deben cargarse."
+      - texto: "Para invertir la señal sin ganancia"
+        porque: "El seguidor no invierte: la salida sigue a la entrada. El que invierte es el emisor común."
+      - texto: "Para amplificar la radiofrecuencia"
+        porque: "Esa es la virtud de la base común: sin efecto Miller y con ganancia de tensión."
+    comprobar:
+      - { A_cc: 0.981, R_occ: 26.15 }
+
+  - id: empareje-configuraciones
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Tres configuraciones"
+    texto: "Mismo transistor, mismo punto de trabajo. Empareje cada configuración con su personalidad."
+    libro: [200, 206, 210, 211]
+    emparejar:
+      - ["Emisor común", "Ganancia −169: invierte, con efecto Miller"]
+      - ["Colector común", "Ganancia 0,981 y salida de 26 Ω"]
+      - ["Base común", "Ganancia +169, entrada de 19,5 Ω, sin Miller"]
+      - ["Cascodo", "Ganancia del emisor común, ancho de banda del base común"]
+    exito: "Eso es: la señal nunca entra y sale por el mismo terminal, así que quedan tres combinaciones, y el cascodo combina dos."
+    pistas:
+      - { texto: "El común es el terminal que no es ni entrada ni salida. El seguidor no gana tensión." }
+
+  - id: elegir
+    tipo: pregunta
+    titulo: "La elección, por lo que falta"
+    texto: "Una etapa de radiofrecuencia necesita ganancia de tensión y, sobre todo, ancho de banda. ¿Qué configuración?"
+    libro: [211, 212]
+    opciones:
+      - texto: "Base común, o un cascodo"
+        bien: true
+        porque: "La capacidad base-colector queda entre la salida y masa: no hay efecto Miller, y la ganancia sigue siendo 169."
+      - texto: "Emisor común"
+        porque: "Gana tensión, pero el efecto Miller multiplica su capacidad base-colector: es la de peor ancho de banda."
+      - texto: "Colector común"
+        porque: "No tiene efecto Miller, pero tampoco ganancia de tensión: 0,981."
+
+  - id: banco-osciloscopio
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "Con el generador en la entrada y dos canales del osciloscopio, la salida es unas 170 veces la entrada y está desfasada 180°. ¿Qué etapa es?"
+    libro: [214]
+    opciones:
+      - texto: "Un emisor común con el condensador de emisor puesto"
+        bien: true
+        porque: "Ganancia de unas 170 veces e inversión. Quitar el condensador y ver caer la ganancia a poco más de 3 demuestra la realimentación negativa."
+      - texto: "Una base común"
+        porque: "Tiene la misma ganancia, pero sin inversión: no estaría desfasada 180°."
+      - texto: "Un emisor común sin el condensador de emisor"
+        porque: "Sin condensador la ganancia cae a poco más de 3."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [201, 206, 207, 212]
+    ideas:
+      - { titulo: "g_{m} y r_{e}.", texto: "Solo dependen de la corriente: a 1,324 mA, 51,2 mS y 19,5 Ω, con cualquier β." }
+      - { titulo: "Emisor común.", texto: "A_{v} = −R_{C}/r_{e} = −169; con R_{E} sin puentear, −3,24, pero estable." }
+      - { titulo: "Seguidor y base común.", texto: "El seguidor da corriente sin ganar tensión; la base común gana sin efecto Miller." }
+      - { titulo: "Se elige por lo que falta.", texto: "Ganancia, emisor común; corriente, seguidor; ancho de banda, base común o cascodo." }

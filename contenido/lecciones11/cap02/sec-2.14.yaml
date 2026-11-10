@@ -1,0 +1,292 @@
+# Lección 1.1 de la sección 2.14 «Ampliación: El Ruido Más Allá del Térmico» (cap02): ruido de disparo frente al
+# térmico (1 mA sobre 1 kΩ), el ruido 1/f y su frecuencia de esquina, y la suma en cuadratura (cuándo parar).
+# Temperatura de 300 K: la que da los 4,07 nV/√Hz del libro para 1 kΩ. Formato: contenido/lecciones11/GUIA.md.
+leccion: cap02/sec-2.14
+
+libro:
+  321: "Densidad espectral plana (ruido blanco)"
+  323: "4,07 nV/√Hz"
+  325: "Aparece siempre que una corriente atraviesa una barrera de potencial"
+  326: 'i_(n) = sqrt("2" dot.op q dot.op I)'
+  328: "17,90 pA/√Hz"
+  329: "El disparo domina por un factor 4,4"
+  330: "crece al bajar la frecuencia como 1/f en potencia"
+  331: 'v_(n) lr(( f )) = v_("blanco")'
+  332: "4 nV/√Hz de suelo blanco y esquina a 1 kHz"
+  333: "126,6 nV/√Hz"
+  334: "no reducen el ruido, sino que trasladan la señal por encima de la frecuencia de esquina"
+  336: "sus tensiones se suman en cuadratura"
+  337: 'v_("total") = sqrt(v_("1")^("2")'
+  338: "Es exactamente la misma matemática de la combinación estadística de tolerancias"
+  339: "una fuente tres veces menor que la dominante solo añade un 5 % al total"
+  340: "Dos fuentes correlacionadas"
+
+modelo:
+  valores:
+    T_k: { sim: "T", nombre: "temperatura absoluta", unidad: "K", valor: 300 }
+    R_n: { sim: "R", nombre: "resistencia", unidad: Ω, valor: 1000 }
+    I_d: { sim: "I", nombre: "corriente por la unión", unidad: A, valor: 0.00001 }
+    v_w: { sim: "v_{blanco}", nombre: "suelo blanco del dispositivo", unidad: "V/√Hz", valor: 4e-9 }
+    f_c: { sim: "f_{c}", nombre: "frecuencia de esquina", unidad: Hz, valor: 1000 }
+    f_n: { sim: "f", nombre: "frecuencia", unidad: Hz, valor: 1000 }
+    x_r: { sim: "v₂/v₁", nombre: "fuente secundaria, en veces la dominante", unidad: "", valor: 1 }
+  calculos:
+    i_sh: { expr: "sqrt(2*1.602176634e-19*I_d)", sim: "i_{n}", nombre: "densidad de ruido de disparo", unidad: "A/√Hz" }
+    v_sh: { expr: "i_sh*R_n", sim: "v_{disparo}", nombre: "ruido de disparo convertido a tensión sobre R", unidad: "V/√Hz" }
+    v_th: { expr: "sqrt(4*1.380649e-23*T_k*R_n)", sim: "v_{térmico}", nombre: "densidad de ruido térmico de R", unidad: "V/√Hz" }
+    ratio: { expr: "v_sh/v_th", sim: "disparo/térmico", nombre: "cociente entre el ruido de disparo y el térmico", unidad: "", cifras: 2 }
+    v_f: { expr: "v_w*sqrt(1 + f_c/f_n)", sim: "v_{n}(f)", nombre: "densidad total con el 1/f", unidad: "V/√Hz", cifras: 4 }
+    v_rel: { expr: "v_f/v_w", sim: "v_{n}/v_{blanco}", nombre: "densidad en veces el suelo blanco", unidad: "", cifras: 3 }
+    tot: { expr: "sqrt(1 + x_r^2)", sim: "v_{total}/v₁", nombre: "total en veces la dominante", unidad: "", cifras: 4 }
+    aum: { expr: "(tot - 1)*100", sim: "aumento", nombre: "lo que añade la secundaria", unidad: "%", cifras: 2 }
+
+tarjetas:
+  - id: explore-disparo
+    tipo: explorar
+    titulo: "Disparo frente a térmico"
+    texto: "Una corriente que atraviesa una unión PN se convierte a tensión sobre 1 kΩ. Mueva la corriente y compare su ruido de disparo con el térmico de la resistencia."
+    libro: [321, 323, 325]
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0.0000001, max: 0.01, unidad: A, rotulo: "I", escala: log }
+      y: { min: 1e-10, max: 1e-7, unidad: "V/√Hz", rotulo: "densidad", escala: log }
+      curvas:
+        - { expr: "sqrt(2*1.602176634e-19*i)*R_n", color: naranja, rotulo: "disparo" }
+        - { expr: "v_th", color: azul, rotulo: "térmico", discontinua: true }
+      asas:
+        - { mueve: I_d, x: "I_d", y: "v_sh", rotulo: "Corriente" }
+      lectura: { valor: v_sh, rotulo: "Ruido de disparo sobre R" }
+      datos:
+        - { valor: v_th, rotulo: "Térmico: {{v_th}}" }
+      mandos:
+        - { valor: I_d, lista: [0.000001, 0.00001, 0.0001, 0.001, 0.01], rotulo: "Corriente, I" }
+
+  - id: prediga-un-ma
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Con 1 mA por la unión y 1 kΩ, ¿qué ruido domina, y por cuánto?"
+    libro: [329]
+    fijar: { I_d: 0.001 }
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0.0000001, max: 0.01, unidad: A, rotulo: "I", escala: log }
+      y: { min: 1e-10, max: 1e-7, unidad: "V/√Hz", rotulo: "densidad", escala: log }
+      curvas:
+        - { expr: "sqrt(2*1.602176634e-19*i)*R_n", color: naranja, rotulo: "disparo" }
+        - { expr: "v_th", color: azul, rotulo: "térmico", discontinua: true }
+      lectura: { valor: ratio, rotulo: "Disparo / térmico" }
+      ocultar: true
+    opciones:
+      - texto: "El de disparo, unas 4,4 veces"
+        bien: true
+        porque: "17,9 nV/√Hz de disparo frente a 4,07 nV/√Hz térmicos de la misma resistencia."
+      - texto: "El térmico: siempre es el dominante"
+        porque: "En muchos circuitos reales ni siquiera es el dominante: aquí el disparo lo supera."
+      - texto: "Los dos igual"
+        porque: "Solo a una corriente mucho menor. Con 1 mA, el disparo es más de cuatro veces mayor."
+    comprobar:
+      - { ratio: 4.4, tol: 0.01 }
+      - { v_sh: 1.79e-8, v_th: 4.07e-9, tol: 0.002 }
+
+  - id: regla-disparo
+    tipo: formula
+    titulo: "El ruido de disparo"
+    texto: "La carga es discreta: la corriente es un goteo de electrones. Densidad blanca, que crece con la raíz de la corriente."
+    libro: [325, 326, 328]
+    ec: 326
+    sustitucion: "√(2 · q · {{I_d}}) = {{i_sh}}"
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0.0000001, max: 0.01, unidad: A, rotulo: "I", escala: log }
+      y: { min: 1e-10, max: 1e-7, unidad: "V/√Hz", rotulo: "densidad", escala: log }
+      curvas:
+        - { expr: "sqrt(2*1.602176634e-19*i)*R_n", color: naranja, rotulo: "disparo" }
+        - { expr: "v_th", color: azul, rotulo: "térmico", discontinua: true }
+      asas:
+        - { mueve: I_d, x: "I_d", y: "v_sh", rotulo: "Corriente" }
+      lectura: { valor: i_sh, rotulo: "Densidad de disparo" }
+      mandos:
+        - { valor: I_d, lista: [0.000001, 0.00001, 0.0001, 0.001, 0.01], rotulo: "Corriente, I" }
+
+  - id: por-que-corrientes-pequenas
+    tipo: porque
+    titulo: "¿Por qué corrientes pequeñas?"
+    texto: "En las etapas de entrada de bajo ruido se trabaja con corrientes pequeñas siempre que la ganancia lo permite. ¿Por qué?"
+    libro: [329]
+    opciones:
+      - texto: "El ruido de disparo depende de la corriente; el térmico, no"
+        bien: true
+        porque: "Bajar la corriente reduce el disparo, que con 1 mA ya dominaba por un factor 4,4."
+      - texto: "Con menos corriente baja el ruido térmico"
+        porque: "El térmico no depende de la corriente: solo de R, T y el ancho de banda."
+      - texto: "Para que la unión no se caliente"
+        porque: "No es cuestión de temperatura: el ruido de disparo crece con la raíz de la corriente."
+
+  - id: explore-esquina
+    tipo: explorar
+    titulo: "El ruido 1/f"
+    texto: "Su densidad crece al bajar la frecuencia. Un dispositivo de 4 nV/√Hz de suelo blanco: mueva la frecuencia y la esquina."
+    libro: [330, 331, 332]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1, max: 10000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 1e-9, max: 1e-6, unidad: "V/√Hz", rotulo: "densidad", escala: log }
+      curvas:
+        - { expr: "v_w*sqrt(1 + f_c/nu)", color: naranja, rotulo: "total" }
+        - { expr: "v_w", color: azul, rotulo: "suelo blanco", discontinua: true }
+      asas:
+        - { mueve: f_n, x: "f_n", y: "v_f", rotulo: "Frecuencia" }
+      lectura: { valor: v_f, rotulo: "Densidad total" }
+      mandos:
+        - { valor: f_n, lista: [1, 10, 100, 1000, 10000], rotulo: "Frecuencia, f" }
+        - { valor: f_c, lista: [100, 1000, 10000], rotulo: "Esquina, f_{c}" }
+    requiere: { mover: [f_n, f_c] }
+
+  - id: prediga-esquina
+    tipo: predecir
+    titulo: "Prediga: en la esquina"
+    texto: "Esquina a 1 kHz, suelo de 4 nV/√Hz. ¿Cuánto vale la densidad justo a 1 kHz?"
+    libro: [331, 333]
+    fijar: { f_c: 1000, f_n: 1000 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1, max: 10000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 1e-9, max: 1e-6, unidad: "V/√Hz", rotulo: "densidad", escala: log }
+      curvas:
+        - { expr: "v_w*sqrt(1 + f_c/nu)", color: naranja, rotulo: "total" }
+        - { expr: "v_w", color: azul, rotulo: "suelo blanco", discontinua: true }
+      lectura: { valor: v_f, rotulo: "Densidad total" }
+      ocultar: true
+    opciones:
+      - texto: "5,66 nV/√Hz: √2 veces el suelo"
+        bien: true
+        porque: "En la esquina, el 1/f iguala al blanco y se suman en cuadratura: √2 veces, por definición."
+      - texto: "4 nV/√Hz: el suelo"
+        porque: "El suelo se alcanza muy por encima de la esquina. En ella, el 1/f vale lo mismo que el blanco."
+      - texto: "El doble del suelo"
+        porque: "No se suman las tensiones: se suman las potencias. √2, no 2."
+    comprobar:
+      - { v_f: 5.66e-9, v_rel: 1.414 }
+      - { con: { f_n: 10000 }, v_f: 4.2e-9 }
+
+  - id: estime-un-hercio
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "A 1 Hz"
+    texto: "Un dispositivo tiene 4 nV/√Hz de suelo blanco y esquina a 1 kHz. Estime su densidad a 1 Hz, tres décadas por debajo de la esquina."
+    libro: [332, 333]
+    fijar: { f_c: 1000, f_n: 1 }
+    estimar:
+      objetivo: "v_f"
+      unidad: "V/√Hz"
+      min: 0
+      max: 0.0000002
+      paso: 0.000000001
+      inicio: 0.00000002
+      tol: 0.05
+      rotulo: "Densidad a 1 Hz"
+    exito: "126,6 nV/√Hz: unas 32 veces el suelo. Por eso medir continuas muy pequeñas es difícil."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.000000133 }, texto: "Se ha pasado: 4 nV/√Hz · √(1 + 1000)." }
+      - { texto: "Se ha quedado corto: 4 nV/√Hz · √(1 + 1000/1), algo más de treinta veces el suelo." }
+    comprobar:
+      - { v_f: 1.266e-7, v_rel: 31.6, tol: 0.002 }
+
+  - id: chopper
+    tipo: pregunta
+    titulo: "Chopper y modulación"
+    texto: "Integrando de 1 Hz a 10 kHz, el 1/f añade un 39 %. ¿Qué hacen las técnicas de chopper?"
+    libro: [334]
+    opciones:
+      - texto: "Trasladan la señal por encima de la esquina, donde el 1/f ya no molesta"
+        bien: true
+        porque: "No reducen el ruido: mueven la señal a donde el ruido es el blanco."
+      - texto: "Eliminan el ruido 1/f del dispositivo"
+        porque: "El ruido sigue ahí; lo que cambia es dónde está la señal."
+      - texto: "Bajan el suelo blanco"
+        porque: "El suelo no cambia. La señal se lleva por encima de la frecuencia de esquina."
+
+  - id: regla-cuadratura
+    tipo: formula
+    titulo: "Se suman en cuadratura"
+    texto: "Fuentes independientes: se suman sus potencias, y sus tensiones en cuadratura. Mueva la secundaria, en veces la dominante."
+    nota: "La misma matemática de las tolerancias del problema 2.A: varianzas aditivas."
+    libro: [336, 337, 338]
+    ec: 337
+    sustitucion: "√(1² + {{x_r}}²) = {{tot}}"
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 1, unidad: "", rotulo: "v₂/v₁" }
+      y: { min: 1, max: 1.5, unidad: "", rotulo: "v_{total}/v₁" }
+      curvas:
+        - { expr: "sqrt(1 + x^2)", color: naranja, rotulo: "en cuadratura" }
+      asas:
+        - { mueve: x_r, x: "x_r", y: "tot", rotulo: "Fuente secundaria" }
+      lectura: { valor: tot, rotulo: "Total, en veces la dominante" }
+      mandos:
+        - { valor: x_r, min: 0, max: 1, paso: 0.01, rotulo: "Secundaria, v₂/v₁" }
+
+  - id: reto-cuando-parar
+    tipo: reto
+    titulo: "Reto: cuándo parar"
+    texto: "¿Cómo de pequeña tiene que ser una fuente para que solo añada un 5 % al total? Ajústela."
+    libro: [339]
+    inicio: { x_r: 1 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 1, unidad: "", rotulo: "v₂/v₁" }
+      y: { min: 1, max: 1.5, unidad: "", rotulo: "v_{total}/v₁" }
+      curvas:
+        - { expr: "sqrt(1 + x^2)", color: naranja, rotulo: "en cuadratura" }
+      asas:
+        - { mueve: x_r, x: "x_r", y: "tot", rotulo: "Fuente secundaria" }
+      lectura: { valor: aum, rotulo: "Añade" }
+      mandos:
+        - { valor: x_r, min: 0, max: 1, paso: 0.01, rotulo: "Secundaria, v₂/v₁" }
+    condiciones:
+      - { valor: aum, min: 4.5, max: 5.5, rotulo: "Añade: {{aum}}" }
+    exito: "Tres veces menor: √(1 + 1/9) = 1,054. No merece la pena optimizar nada que esté 10 dB por debajo."
+    pistas:
+      - { cuando: { valor: aum, mayor: 5.5 }, texto: "Todavía añade más del 5 %: hágala menor." }
+      - { cuando: { valor: aum, menor: 4.5 }, texto: "Ya añade menos del 5 %: súbala un poco." }
+    ayuda: "Pruebe con un tercio de la dominante."
+    comprobar:
+      - { con: { x_r: 0.33 }, tot: 1.053, tol: 0.001 }
+
+  - id: por-que-correladas
+    tipo: porque
+    titulo: "Cuando no vale la cuadratura"
+    texto: "El mismo ruido de alimentación entra en dos etapas. ¿Se suma en cuadratura?"
+    libro: [340]
+    opciones:
+      - texto: "No: son correlacionadas y se suman linealmente, o se cancelan"
+        bien: true
+        porque: "La cuadratura exige independencia. Si entran en oposición se cancelan: es el rechazo en modo común."
+      - texto: "Sí: el ruido siempre se suma en cuadratura"
+        porque: "Solo si las fuentes son independientes. Las correlacionadas pueden ser mucho peores."
+      - texto: "Sí, porque cada etapa tiene su propio ruido"
+        porque: "Cada etapa tiene el suyo, pero este es el mismo en las dos: están correlacionadas."
+
+  - id: empareje-fuentes
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Las tres fuentes"
+    texto: "Empareje cada ruido con su origen."
+    libro: [321, 325, 330]
+    emparejar:
+      - ["Térmico", "Agitación de los portadores en cualquier resistencia"]
+      - ["De disparo", "Carga discreta que cruza una barrera de potencial"]
+      - ["De parpadeo", "Crece al bajar la frecuencia, como 1/f"]
+    exito: "Eso es. Los dos primeros son blancos; el de parpadeo, no."
+    pistas:
+      - { texto: "El de disparo necesita una unión PN, no una resistencia." }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [326, 329, 331, 337, 339]
+    ideas:
+      - { titulo: "Disparo.", texto: "√(2qI): crece con la raíz de la corriente; con 1 mA sobre 1 kΩ supera 4,4 veces al térmico." }
+      - { titulo: "1/f.", texto: "Domina por debajo de la esquina; en ella, √2 veces el suelo." }
+      - { titulo: "Cuadratura.", texto: "Fuentes independientes: una tres veces menor solo añade un 5 %." }
+      - { titulo: "Correladas.", texto: "Se suman linealmente o se cancelan: el modo común." }

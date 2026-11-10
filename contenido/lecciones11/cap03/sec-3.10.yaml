@@ -1,0 +1,248 @@
+# Lección 1.1 de la sección 3.10 «Supercondensadores y Condensadores Especiales» (cap03): la doble capa (faradios,
+# 2,5–3 V por celda), entre el condensador y la batería, el cálculo de cuánto sostiene (1 F con 100 mA, de 2,7 a
+# 1,8 V en 9 s), lo que hay que respetar, los condensadores X e Y, la película autorregenerable, el tantalio, los
+# trimmers y el banco. La descarga a corriente constante es lineal: Δt = C·ΔV/I. Sección sin fórmula.
+# Formato: contenido/lecciones11/GUIA.md.
+leccion: cap03/sec-3.10
+
+libro:
+  168: "la capacidad alcanza faradios en un componente de tamaño moderado"
+  169: "solo 2,5 a 3 V por celda, limitada por la tensión a la que el electrolito se descompone"
+  171: "Tiempo de carga"
+  172: "unas tres mil veces menos que una pila AA alcalina (del orden de 10 kJ)"
+  173: "respaldo de memoria y reloj cuando se corta la alimentación"
+  174: "un supercondensador de 1 F entregando 100 mA baja de 2,7 a 1,8 V en 9 segundos"
+  176: "Un limitador o un regulador es obligatorio"
+  177: "la propia fuga puede vaciarlo antes que el consumo del circuito"
+  178: "limita la corriente de pico que realmente puede entregar"
+  179: "al principio es un cortocircuito"
+  181: "deben fallar en abierto con máxima fiabilidad"
+  182: "el arco vaporiza la finísima capa metálica alrededor del punto y aísla el defecto"
+  183: "Se usan con derating fuerte (la mitad de su tensión nominal)"
+  184: "para sintonía y calibración en radiofrecuencia"
+  186: "del salto inicial de tensión al conectar la carga se obtiene la ESR"
+
+modelo:
+  valores:
+    V_0: { sim: "V₀", nombre: "tensión de partida", unidad: V, valor: 2.7 }
+    V_m: { sim: "V_{mín}", nombre: "tensión mínima útil", unidad: V, valor: 1.8 }
+    I_d: { sim: "I", nombre: "corriente que entrega", unidad: A, valor: 0.1 }
+    C_d: { sim: "C", nombre: "capacidad del supercondensador", unidad: F, valor: 1 }
+    E_aa: { sim: "E_{AA}", nombre: "energía de una pila AA alcalina", unidad: J, valor: 10000 }
+  calculos:
+    t_m: { expr: "C_d*(V_0 - V_m)/I_d", sim: "Δt", nombre: "tiempo hasta la tensión mínima", unidad: s }
+    dV_d: { expr: "V_0 - V_m", sim: "ΔV", nombre: "bajada de tensión útil", unidad: V }
+    E_d: { expr: "0.5*C_d*V_0^2", sim: "E", nombre: "energía almacenada", unidad: J }
+    veces: { expr: "E_aa/E_d", sim: "E_{AA}/E", nombre: "veces más energía en la pila", unidad: "veces", cifras: 2 }
+
+tarjetas:
+  - id: explore-sostiene
+    tipo: explorar
+    titulo: "¿Cuánto aguanta?"
+    texto: "Un supercondensador cargado a 2,7 V alimenta un circuito que funciona hasta 1,8 V. Cambie la corriente y la capacidad."
+    nota: "A corriente constante la tensión baja en línea recta."
+    libro: [174]
+    inicio: { I_d: 0.1, C_d: 1 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 40, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 3, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "max(0, V_0 - I_d*t/C_d)", color: naranja, rotulo: "tensión" }
+        - { expr: "V_m + 0*t", color: tinta, rotulo: "mínima útil", discontinua: true }
+      marcas:
+        - { x: "t_m", y: "V_m", rotulo: "{{t_m}}" }
+      lectura: { valor: t_m, rotulo: "Hasta 1,8 V" }
+      mandos:
+        - { valor: I_d, lista: [0.05, 0.1, 0.2], rotulo: "Corriente, I" }
+        - { valor: C_d, lista: [0.5, 1, 2], rotulo: "Capacidad, C" }
+    requiere: { mover: [I_d, C_d] }
+
+  - id: prediga-nueve
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Un supercondensador de 1 F entrega 100 mA. ¿Cuánto tarda en bajar de 2,7 a 1,8 V?"
+    libro: [174]
+    fijar: { I_d: 0.1, C_d: 1 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 40, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 3, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "max(0, V_0 - I_d*t/C_d)", color: naranja, rotulo: "tensión" }
+        - { expr: "V_m + 0*t", color: tinta, rotulo: "mínima útil", discontinua: true }
+      lectura: { valor: t_m, rotulo: "Hasta 1,8 V" }
+      ocultar: true
+    opciones:
+      - texto: "9 segundos"
+        bien: true
+        porque: "Baja 0,9 V: Δt = C·ΔV/I = 1 · 0,9 / 0,1. Ese es el orden de lo que puede sostener."
+      - texto: "Varias horas, como una pila"
+        porque: "Un faradio parece mucho, pero a 100 mA se gasta en segundos: poca energía."
+      - texto: "27 segundos"
+        porque: "Eso sería bajando hasta cero, 2,7 V enteros. El circuito deja de funcionar a 1,8 V."
+    comprobar:
+      - { t_m: 9, dV_d: 0.9 }
+      - { con: { V_m: 0 }, t_m: 27 }
+
+  - id: reto-doble
+    tipo: reto
+    titulo: "Reto: el doble de corriente"
+    texto: "Un supercondensador a 2,7 V alimenta un circuito de 200 mA que funciona hasta 1,8 V. Elija la capacidad para que aguante 9 s."
+    libro: [174]
+    fijar: { I_d: 0.2 }
+    inicio: { C_d: 0.5 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 40, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 3, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "max(0, V_0 - I_d*t/C_d)", color: naranja, rotulo: "tensión" }
+        - { expr: "V_m + 0*t", color: tinta, rotulo: "mínima útil", discontinua: true }
+      marcas:
+        - { x: "t_m", y: "V_m", rotulo: "{{t_m}}" }
+      lectura: { valor: t_m, rotulo: "Hasta 1,8 V" }
+      mandos:
+        - { valor: C_d, lista: [0.5, 1, 2, 5, 10], rotulo: "Capacidad, C" }
+    condiciones:
+      - { valor: t_m, objetivo: 9, tol: 0.02, rotulo: "Aguanta: {{t_m}}" }
+    exito: "2 F: el doble de corriente pide el doble de capacidad para el mismo tiempo."
+    pistas:
+      - { cuando: { valor: t_m, menor: 8.82 }, texto: "Se vacía antes: hace falta más capacidad." }
+      - { cuando: { valor: t_m, mayor: 9.18 }, texto: "Aguanta de sobra: basta con menos capacidad." }
+    ayuda: "Δt = C·ΔV/I: con el doble de I, el doble de C."
+    comprobar:
+      - { con: { C_d: 2 }, t_m: 9 }
+
+  - id: estime-pila
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Frente a una pila AA"
+    texto: "1 F a 2,7 V guarda unos 3,6 J; una pila AA alcalina, del orden de 10 kJ. Estime cuántas veces más guarda la pila."
+    libro: [172]
+    fijar: { C_d: 1, V_0: 2.7, E_aa: 10000 }
+    estimar:
+      objetivo: "veces"
+      unidad: "veces"
+      min: 0
+      max: 10000
+      paso: 100
+      inicio: 300
+      tol: 0.12
+      rotulo: "Veces más energía"
+    exito: "Unas tres mil veces: no sustituye a una batería en energía, pero la supera en potencia y en ciclos."
+    pistas:
+      - { cuando: { valor: estimacion, menor: 2400 }, texto: "Se ha quedado corto: 10 kJ entre 3,6 J." }
+      - { texto: "Se ha pasado: 10 000 entre 3,6 es algo menos de tres mil." }
+    comprobar:
+      - { E_d: 3.645, veces: 2743, tol: 0.002 }
+
+  - id: por-que-tension
+    tipo: porque
+    titulo: "¿Por qué tan poca tensión?"
+    texto: "Un supercondensador alcanza faradios, pero cada celda solo admite de 2,5 a 3 V. ¿Por qué?"
+    libro: [168, 169]
+    opciones:
+      - texto: "Por encima, su electrolito se descompone"
+        bien: true
+        porque: "Es el precio de una separación de un nanómetro: mucha capacidad, poca tensión. Para más, celdas en serie con equilibrado."
+      - texto: "Porque su área es enorme"
+        porque: "El área da la capacidad. Lo que limita la tensión es el electrolito, que se descompone."
+      - texto: "Por norma del fabricante, para que dure más"
+        porque: "No es una convención: es la tensión a la que el electrolito se descompone."
+
+  - id: entre-dos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Entre el condensador y la batería"
+    texto: "Una cada componente con lo que tarda en cargarse."
+    libro: [171]
+    emparejar:
+      - ["Electrolítico", "Microsegundos"]
+      - ["Supercondensador", "Segundos"]
+      - ["Batería de litio", "Horas"]
+    exito: "Eso es. El supercondensador queda en medio: más energía que un electrolítico y más potencia que una batería."
+    pistas:
+      - { texto: "Cuanta más energía guarda por kilo, más tarda en cargarse." }
+
+  - id: aplicaciones
+    tipo: pregunta
+    titulo: "¿Para qué sirve?"
+    texto: "¿Cuál es una aplicación natural de un supercondensador?"
+    libro: [173]
+    opciones:
+      - texto: "Respaldo de memoria y reloj al cortarse la alimentación"
+        bien: true
+        porque: "También picos que la fuente no da y recuperar la energía de frenado: potencia y ciclos, no energía."
+      - texto: "Alimentar un portátil durante horas"
+        porque: "Eso pide energía, y en energía la batería lo supera de largo."
+      - texto: "Filtrar el rizado de 100 kHz de una conmutada"
+        porque: "Su ESR no es despreciable; para eso están los cerámicos y los electrolíticos de baja ESR."
+
+  - id: respetar
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Lo que hay que respetar"
+    texto: "Una cada rasgo del supercondensador con lo que obliga a hacer o tener en cuenta."
+    libro: [176, 177, 178, 179]
+    emparejar:
+      - ["No tolera sobretensión", "Limitador o regulador"]
+      - ["Fuga alta", "Puede vaciar un respaldo largo"]
+      - ["ESR apreciable", "Limita la corriente de pico"]
+      - ["Descargado, un cortocircuito", "Limitar la corriente de carga"]
+    exito: "Eso es. Y la sobretensión, aunque sea breve, lo degrada para siempre."
+    pistas:
+      - { texto: "Al cargarlo desde una fuente de tensión, al principio es como cualquier condensador descargado." }
+
+  - id: clase-y
+    tipo: porque
+    titulo: "¿Uno normal en lugar de un Y?"
+    texto: "Un condensador de clase Y, entre la red y el chasis, se avería. ¿Por qué no se sustituye por uno normal del mismo valor?"
+    libro: [181]
+    opciones:
+      - texto: "Debe fallar en abierto: un cortocircuito pondría el chasis a tensión de red"
+        bien: true
+        porque: "Es una sustitución peligrosa: se respetan la clase y su marcado de seguridad, no solo la capacidad."
+      - texto: "Porque uno normal tiene menos capacidad"
+        porque: "Aunque tenga la misma, no está hecho para fallar en abierto. Lo que importa es la clase."
+      - texto: "Sí se puede, si la tensión es igual o mayor"
+        porque: "La tensión no basta: un Y debe fallar en abierto con máxima fiabilidad."
+
+  - id: especiales
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Otros especiales"
+    texto: "Una cada condensador especial con su rasgo."
+    libro: [181, 182, 183, 184]
+    emparejar:
+      - ["Clase X", "Entre fase y neutro"]
+      - ["Película autorregenerable", "Aísla su propia perforación"]
+      - ["Tantalio", "A la mitad de su tensión"]
+      - ["Trimmer", "Sintonía en radiofrecuencia"]
+    exito: "Eso es. El tantalio falla en cortocircuito, a menudo incendiario: de ahí su derating fuerte."
+    pistas:
+      - { texto: "El de película se autorregenera: el arco vaporiza el metal alrededor del defecto." }
+
+  - id: banco
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "Se carga un supercondensador, se conecta una carga conocida y se registra su tensión. ¿Qué da el salto inicial al conectar?"
+    libro: [186]
+    opciones:
+      - texto: "La ESR"
+        bien: true
+        porque: "La caída instantánea es la corriente por la ESR. De la pendiente posterior sale la capacidad real."
+      - texto: "La capacidad"
+        porque: "La capacidad sale de la pendiente, la bajada lenta. El salto es la ESR."
+      - texto: "La fuga"
+        porque: "La fuga es lenta y pequeña. El salto instantáneo es la caída en la ESR."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [169, 172, 174, 181]
+    ideas:
+      - { titulo: "Doble capa.", texto: "Faradios con 2,5 a 3 V por celda; más tensión, celdas en serie con equilibrado." }
+      - { titulo: "Potencia, no energía.", texto: "1 F a 2,7 V guarda 3,6 J, unas tres mil veces menos que una pila AA." }
+      - { titulo: "Cuánto sostiene.", texto: "1 F con 100 mA, de 2,7 a 1,8 V en 9 s." }
+      - { titulo: "X e Y.", texto: "Se sustituyen por otro de su clase, nunca por uno normal." }

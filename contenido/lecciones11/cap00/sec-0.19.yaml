@@ -1,0 +1,193 @@
+# Lección 1.1 de la sección 0.20 «Probabilidad, Tolerancias y Monte Carlo» (cap00): las varianzas que se suman
+# (independientes, en cuadratura; correlacionados, el peor caso), lo que deja fuera ±3σ, el método de Monte Carlo y su
+# precisión, que mejora con la raíz de los ensayos. Formato: contenido/lecciones11/GUIA.md.
+leccion: cap00/sec-0.19
+
+libro:
+  267: "su desviación típica, σ = √(Σ(xi − x̄)²/(N − 1)), que mide cuánto se apartan de la media"
+  268: "Un límite de ±3σ deja fuera, por tanto, unas 3 unidades de cada mil"
+  269: "las desviaciones típicas se suman en cuadratura"
+  270: "la precisión con que se estima mejora con la raíz del número de ensayos"
+  271: "una simulación de 400 000 muestras da una dispersión que reproduce el valor cuadrático del 2,06 %"
+
+modelo:
+  valores:
+    sX: { sim: "σ_{X}", nombre: "desviación típica de X", unidad: "%", valor: 1 }
+    sY: { sim: "σ_{Y}", nombre: "desviación típica de Y", unidad: "%", valor: 1 }
+    corr: { tipo: interruptor, nombre: "errores totalmente correlacionados", valor: 0 }
+    k: { sim: "k", nombre: "margen, en desviaciones típicas", unidad: "", valor: 3 }
+    N: { sim: "N", nombre: "número de ensayos", unidad: "", valor: 100 }
+  calculos:
+    sZ: { si: corr, entonces: "sX + sY", sino: "sqrt(sX^2 + sY^2)", sim: "σ_{Z}", nombre: "desviación típica de la suma", unidad: "%" }
+    # share of a Gaussian within ±k·σ: erf(k/√2), with the Abramowitz–Stegun approximation 7.1.26 (error < 2e-7)
+    z: { expr: "k/sqrt(2)", nombre: "k entre raíz de dos", unidad: "" }
+    tt: { expr: "1/(1 + 0.3275911*z)", nombre: "variable auxiliar", unidad: "" }
+    dentro: { expr: "100*(1 - ((((1.061405429*tt - 1.453152027)*tt + 1.421413741)*tt - 0.284496736)*tt + 0.254829592)*tt*exp(-z*z))", sim: "dentro", nombre: "valores dentro del margen", unidad: "%" }
+    fuera_mil: { expr: "(100 - dentro)*10", sim: "fuera", nombre: "unidades fuera de cada mil", unidad: "", cifras: 3 }
+    mejora: { expr: "sqrt(N/100)", sim: "precisión", nombre: "precisión frente a 100 ensayos", unidad: "veces", cifras: 3 }
+    lgN: { expr: "log10(N)", nombre: "logaritmo del número de ensayos", unidad: "" }
+
+tarjetas:
+  - id: explore-varianzas
+    tipo: explorar
+    titulo: "Las varianzas se suman"
+    texto: "Z = X + Y. Mueva σ_{X} y σ_{Y}, y pruebe con errores independientes y totalmente correlacionados."
+    nota: "Independientes, en cuadratura; correlacionados, se suman: el peor caso."
+    libro: [269]
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 3, unidad: "%", rotulo: "σ_{X}" }
+      y: { min: 0, max: 6, unidad: "%", rotulo: "σ_{Z}" }
+      curvas:
+        - { expr: "sqrt(x^2 + sY^2)", color: azul, rotulo: "independientes" }
+        - { expr: "x + sY", color: tinta, rotulo: "correlacionados", discontinua: true }
+      asas:
+        - { mueve: sX, x: "sX", y: "sZ", rotulo: "Desviación de X" }
+      lectura: { valor: sZ, rotulo: "Desviación de la suma" }
+      mandos:
+        - { valor: sX, min: 0, max: 3, paso: 0.1, rotulo: "σ_{X}" }
+        - { valor: sY, min: 0, max: 3, paso: 0.5, rotulo: "σ_{Y}" }
+        - { valor: corr, tipo: interruptor, rotulo: "Totalmente correlacionados" }
+    requiere: { mover: [sX, sY] }
+
+  - id: que-mide-sigma
+    tipo: pregunta
+    titulo: "Media y desviación típica"
+    texto: "El valor real de una resistencia «de 10 kΩ» es una variable aleatoria. ¿Qué mide su desviación típica, σ?"
+    libro: [267]
+    opciones:
+      - texto: "Cuánto se apartan los valores de la media"
+        bien: true
+        porque: "σ = √(Σ(xᵢ − x̄)²/(N − 1)). Su cuadrado, σ², es la varianza."
+      - texto: "El valor medio de las resistencias"
+        porque: "Ese es x̄ = Σxᵢ/N. σ mide la dispersión alrededor de él."
+      - texto: "La diferencia entre la mayor y la menor"
+        porque: "Eso sería el rango. σ promedia el cuadrado de lo que cada valor se aparta de la media."
+
+  - id: prediga-3sigma
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Un fabricante acepta lo que cae dentro de ±3σ. ¿Cuántas unidades de cada mil quedan fuera?"
+    libro: [268]
+    fijar: { k: 3 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: -4, max: 4, unidad: "", rotulo: "desviación, en σ" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "frecuencia relativa" }
+      curvas:
+        - { expr: "exp(-x^2/2)", color: tinta, rotulo: "campana de Gauss", discontinua: true }
+        - { expr: "exp(-x^2/2)*min(max((k - abs(x))*1000, 0), 1)", color: azul, rotulo: "dentro de ±k·σ" }
+      lectura: { valor: fuera_mil, rotulo: "Fuera, de cada mil" }
+      ocultar: true
+    opciones:
+      - texto: "Unas 3"
+        bien: true
+        porque: "Dentro de ±3σ cae el 99,7 %: fuera, el 0,3 %, unas 3 de cada mil."
+      - texto: "Unas 317"
+        porque: "Eso es lo que deja fuera ±1σ, que solo recoge el 68,3 %."
+      - texto: "Ninguna"
+        porque: "La campana no se acaba en ±3σ: fuera queda el 0,3 %."
+    comprobar:
+      - { fuera_mil: 2.7, tol: 0.01 }
+      - { con: { k: 1 }, fuera_mil: 317, tol: 0.003 }
+
+  - id: explore-montecarlo
+    tipo: explorar
+    titulo: "Monte Carlo: sortear y repetir"
+    texto: "Se sortea cada componente, se calcula el resultado y se repite. Mueva el número de ensayos y mire cuánto mejora la precisión."
+    libro: [270]
+    widget:
+      tipo: grafica
+      x: { id: x, min: 2, max: 5.7, unidad: "", rotulo: "log₁₀ de los ensayos" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "error relativo, frente a 100 ensayos" }
+      curvas:
+        - { expr: "10^(-(x - 2)/2)", color: azul, rotulo: "error de la estimación" }
+      asas:
+        - { mueve: N, x: "lgN", y: "1/mejora", rotulo: "Ensayos" }
+      lectura: { valor: mejora, rotulo: "Precisión, frente a 100 ensayos" }
+      datos:
+        - { valor: N, rotulo: "Ensayos: {{N}}" }
+      mandos:
+        - { valor: N, lista: [100, 1000, 10000, 100000, 400000], rotulo: "Número de ensayos" }
+    requiere: { mover: [N] }
+
+  - id: reto-diez
+    tipo: reto
+    titulo: "Reto: diez veces más precisión"
+    texto: "Con 100 ensayos, la estimación es demasiado imprecisa. Elija cuántos hacen falta para que sea diez veces más precisa."
+    libro: [270]
+    inicio: { N: 100 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 2, max: 5.7, unidad: "", rotulo: "log₁₀ de los ensayos" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "error relativo, frente a 100 ensayos" }
+      curvas:
+        - { expr: "10^(-(x - 2)/2)", color: azul, rotulo: "error de la estimación" }
+      asas:
+        - { mueve: N, x: "lgN", y: "1/mejora", rotulo: "Ensayos" }
+      datos:
+        - { valor: N, rotulo: "Ensayos: {{N}}" }
+      mandos:
+        - { valor: N, lista: [100, 1000, 10000, 100000, 400000], rotulo: "Número de ensayos" }
+    condiciones:
+      - { valor: mejora, objetivo: 10, tol: 0.02, rotulo: "Precisión: {{mejora}}" }
+    exito: "10 000: cien veces más ensayos para diez veces más precisión. Mejora con la raíz, como el promediado."
+    pistas:
+      - { cuando: { valor: mejora, menor: 9.8 }, texto: "Aún no basta: más ensayos." }
+      - { cuando: { valor: mejora, mayor: 10.2 }, texto: "Más de lo que pide: menos ensayos bastan." }
+    ayuda: "La precisión crece con la raíz: para ×10 hacen falta 10² veces más ensayos."
+    comprobar:
+      - { con: { N: 10000 }, mejora: 10 }
+
+  - id: ordene-montecarlo
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "El método, paso a paso"
+    texto: "Ordene los pasos del método de Monte Carlo."
+    libro: [270]
+    ordenar:
+      - "Sortear un valor de cada componente según su distribución"
+      - "Calcular el resultado"
+      - "Repetir miles de veces"
+      - "Hacer el histograma: es la distribución buscada"
+    exito: "Eso es. Sirve cuando la propagación con derivadas parciales resulta inabordable."
+    pistas:
+      - { texto: "El histograma se hace al final, con todos los resultados." }
+
+  - id: produccion
+    tipo: pregunta
+    titulo: "Lo que se verá en producción"
+    texto: "P = V²/R con δV = 0,9 % y δR = 1 % como 3σ. ¿Qué dispersión da una simulación de 400 000 muestras?"
+    libro: [271]
+    opciones:
+      - texto: "La del cálculo cuadrático, 2,06 %"
+        bien: true
+        porque: "Monte Carlo reproduce el valor cuadrático: lo que se verá en producción."
+      - texto: "La del peor caso, 2,80 %"
+        porque: "El peor caso es un límite muy conservador que casi nunca se alcanza."
+      - texto: "Ninguna fija: cambia en cada simulación"
+        porque: "Con 400 000 muestras la estimación es muy precisa: reproduce el 2,06 %."
+
+  - id: por-que-peor
+    tipo: porque
+    titulo: "¿Por qué casi nunca el peor caso?"
+    texto: "El peor caso es posible. ¿Por qué casi nunca se ve?"
+    libro: [269, 271]
+    opciones:
+      - texto: "Exige que todos los errores vayan a la vez al límite y del mismo lado"
+        bien: true
+        porque: "Con errores independientes la covarianza es nula y unos compensan a otros: las desviaciones se suman en cuadratura."
+      - texto: "Porque los fabricantes eliminan las piezas del límite"
+        porque: "No hace falta: aunque todas estén dentro, es muy improbable que se desvíen todas a la vez hacia el mismo lado."
+      - texto: "Porque el peor caso está mal calculado"
+        porque: "Está bien calculado: responde a otra pregunta, «¿qué es lo peor posible?»."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [268, 269, 270, 271]
+    ideas:
+      - { titulo: "Varianzas.", texto: "Independientes, σ_{Z}² = σ_{X}² + σ_{Y}²; correlacionados, el peor caso." }
+      - { titulo: "±3σ.", texto: "Deja fuera unas 3 unidades de cada mil." }
+      - { titulo: "Monte Carlo.", texto: "Sortear, calcular, repetir: la precisión mejora con la raíz de los ensayos." }
+      - { titulo: "Dos preguntas.", texto: "Lo peor posible, 2,80 %; lo que se verá en producción, 2,06 %." }

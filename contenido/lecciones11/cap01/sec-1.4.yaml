@@ -1,0 +1,317 @@
+# Lección 1.1 de la sección 1.4 «Asociación de Resistencias» (cap01). Lección de referencia: sigue la maqueta
+# aprobada (divisor de tensión) con el contenido de la sección. Formato: contenido/lecciones11/GUIA.md.
+leccion: cap01/sec-1.4
+
+# Bloques del libro de los que sale (índice del bloque en partes/cap01.json: «cita literal» de ese bloque).
+libro:
+  78: "Componentes en serie comparten la misma corriente"
+  81: "la tensión se reparte en proporción a las resistencias"
+  82: 'V_("salida") = V_("entrada")'
+  83: "Con 12 V, 10 kΩ y 5 kΩ, la salida es 4,00 V"
+  84: "La fórmula solo vale en vacío"
+  85: "la carga debe ser al menos diez veces la resistencia equivalente del divisor"
+  87: "Componentes en paralelo comparten la misma tensión"
+  89: "La resistencia total es siempre menor que la menor de las asociadas"
+  90: "1000 ‖ 100"
+  91: "cuando una resistencia es mucho mayor que la otra, apenas influye"
+  93: "la corriente se reparte en proporción inversa a las resistencias"
+  95: "reducción progresiva desde el extremo más alejado de la fuente"
+  96: "Sustituirla por su equivalente y redibujar."
+  97: "El cuarto paso es el que más se olvida"
+  100: "En serie, la que más disipa es la mayor"
+  103: "4,00 V en vacío y 3,00 V con 10 kΩ conectados"
+  "cap01#345": "Diseña un divisor de tensión que entregue 3,3 V a partir de una fuente de 5 V"
+
+modelo:
+  valores:
+    V_in: { sim: "V_{entrada}", nombre: "tensión de la pila", unidad: V, valor: 12 }
+    R_1: { sim: "R₁", nombre: "resistencia de arriba", unidad: Ω, valor: 10000 }
+    R_2: { sim: "R₂", nombre: "resistencia de abajo", unidad: Ω, valor: 5000 }
+    R_L: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 10000 }
+    carga: { tipo: interruptor, nombre: "carga conectada", valor: 0 }
+    R_a: { sim: "R₁", nombre: "resistencia de la primera rama", unidad: Ω, valor: 1000 }
+    R_b: { sim: "R₂", nombre: "resistencia de la segunda rama", unidad: Ω, valor: 100 }
+  calculos:
+    R_ab: { si: carga, entonces: "par(R_2, R_L)", sino: "R_2", sim: "R_{abajo}", nombre: "resistencia de la rama de abajo", unidad: Ω }
+    V_out: { expr: "V_in*R_ab/(R_1 + R_ab)", sim: "V_{salida}", nombre: "tensión de salida", unidad: V }
+    V_1: { expr: "V_in - V_out", sim: "V_{R1}", nombre: "tensión en R₁", unidad: V }
+    I: { expr: "V_in/(R_1 + R_ab)", sim: "I", nombre: "corriente", unidad: A }
+    V_vacio: { expr: "V_in*R_2/(R_1 + R_2)", sim: "V_{vacío}", nombre: "salida sin carga", unidad: V }
+    error: { expr: "(V_vacio - V_out)/V_vacio*100", sim: "error", nombre: "error por la carga", unidad: "%", cifras: 2 }
+    R_eq: { expr: "par(R_1, R_2)", sim: "R₁ ‖ R₂", nombre: "resistencia equivalente del divisor", unidad: Ω }
+    R_Lmin: { expr: "10*R_eq", sim: "R_{L} mínima", nombre: "carga mínima", unidad: Ω }
+    P_1: { expr: "I^2*R_1", sim: "P₁", nombre: "potencia en R₁", unidad: W }
+    P_2: { expr: "I^2*R_ab", sim: "P₂", nombre: "potencia en R₂", unidad: W }
+    R_p: { expr: "par(R_a, R_b)", sim: "R_{paralelo}", nombre: "resistencia del paralelo", unidad: Ω }
+    I_a: { expr: "V_in/R_a", sim: "I₁", nombre: "corriente por R₁", unidad: A }
+    I_b: { expr: "V_in/R_b", sim: "I₂", nombre: "corriente por R₂", unidad: A }
+    I_t: { expr: "I_a + I_b", sim: "I_{total}", nombre: "corriente total", unidad: A }
+    I_L: { si: carga, entonces: "V_out/R_L", sino: "0", sim: "I_{L}", nombre: "corriente por la carga", unidad: A }
+
+tarjetas:
+  - id: explore-serie
+    tipo: explorar
+    titulo: "Dos resistencias, una pila"
+    texto: "Mueva R₁ y R₂. Fíjese en cómo se reparten los {{V_in}} entre las dos."
+    libro: [78, 81]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      barras:
+        - { valor: V_1, rotulo: "R₁ se queda {{V_1}}", color: azul }
+        - { valor: V_out, rotulo: "R₂ se queda {{V_out}}", color: naranja }
+      corriente: I
+      mide: { salida: V_out, corriente: I }
+      mandos:
+        - { valor: R_1, min: 1000, max: 20000, paso: 100 }
+        - { valor: R_2, min: 1000, max: 20000, paso: 100 }
+    requiere: { mover: [R_1, R_2] }
+
+  - id: prediga-salida
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Con {{V_in}}, R₁ = 10 kΩ y R₂ = 5 kΩ, ¿qué marcará la salida?"
+    libro: [83]
+    fijar: { R_1: 10000, R_2: 5000 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      barras:
+        - { valor: V_1, rotulo: "R₁ se queda {{V_1}}", color: azul }
+        - { valor: V_out, rotulo: "R₂ se queda {{V_out}}", color: naranja }
+      corriente: I
+      mide: { salida: V_out }
+      ocultar: true
+    opciones:
+      - texto: "4 V"
+        bien: true
+        porque: "R₂ es la tercera parte de R₁ + R₂, así que se queda con la tercera parte de los 12 V: 4,00 V."
+      - texto: "8 V"
+        porque: "Esos 8 V son los que se queda R₁, la de arriba. La salida mide la tensión de R₂."
+      - texto: "6 V"
+        porque: "6 V saldría con R₁ = R₂. Aquí R₂ es la menor y se queda con menos."
+    comprobar:
+      - { V_out: 4.0, V_1: 8.0 }
+      - { con: { R_2: 10000 }, V_out: 6.0 }
+
+  - id: regla-reparto
+    tipo: formula
+    titulo: "La regla del reparto"
+    texto: "Como la corriente es común, la tensión se reparte en proporción a las resistencias."
+    nota: "Es el circuito más usado: fija umbrales, adapta niveles, polariza bases y escala señales."
+    libro: [81, 82, 83]
+    ec: 82
+    sustitucion: "{{V_in}} · {{R_2}} / ({{R_1}} + {{R_2}}) = {{V_out}}"
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      corriente: I
+      mide: { salida: V_out, corriente: I }
+      mandos:
+        - { valor: R_1, min: 1000, max: 20000, paso: 100 }
+        - { valor: R_2, min: 1000, max: 20000, paso: 100 }
+
+  - id: reto-33
+    tipo: reto
+    titulo: "Reto: 3,3 V a partir de 5 V"
+    texto: "Con R₁ = 1 kΩ y una fuente de 5 V, elija R₂ de la serie E24 para que la salida dé 3,3 V (± 2 %)."
+    libro: ["cap01#345"]
+    fijar: { V_in: 5, R_1: 1000 }
+    inicio: { R_2: 1000 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      corriente: I
+      mide: { salida: V_out, corriente: I }
+      mandos:
+        - { valor: R_2, serie: E24, min: 1000, max: 10000, rotulo: "R₂ (E24)" }
+    condiciones:
+      - { valor: V_out, objetivo: 3.3, tol: 0.02, rotulo: "Salida: {{V_out}}" }
+    exito: "Su R₂ da {{V_out}}. El libro despeja R₂ = 1941 Ω y elige 2 kΩ: 3,33 V."
+    pistas:
+      - { cuando: { valor: V_out, mayor: 3.366 }, texto: "Sobra tensión: R₂ tiene que ser menor frente a R₁." }
+      - { cuando: { valor: V_out, menor: 3.234 }, texto: "Falta tensión: R₂ tiene que ser mayor frente a R₁." }
+    ayuda: "Despeje 3,3 = 5 · R₂ / (1000 + R₂): R₂ = 1941 Ω. Busque el valor E24 más cercano."
+    comprobar:
+      - { con: { R_2: 2000 }, V_out: 3.333 }
+      - { con: { R_2: 1941 }, V_out: 3.3 }
+
+  - id: con-carga
+    tipo: sorpresa
+    titulo: "Conecte una carga"
+    texto: "El divisor del libro, 10 kΩ y 5 kΩ, da {{V_vacio}} en vacío. Conecte una carga de 10 kΩ y mire la salida."
+    libro: [84, 103]
+    fijar: { V_in: 12, R_1: 10000, R_2: 5000 }
+    inicio: { R_L: 10000 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: carga }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      datos:
+        - { valor: V_vacio, rotulo: "Sin carga: {{V_vacio}}" }
+        - { valor: error, rotulo: "Error por la carga: {{error}}" }
+      corriente: I
+      mide: { salida: V_out, corriente: I }
+      mandos:
+        - { valor: carga, tipo: conectar, boton: "Conectar la carga (10 kΩ)" }
+        - { valor: R_L, lista: [1000, 3300, 10000, 33000, 100000, 330000, 1000000] }
+    comprobar:
+      - { con: { carga: 1, R_L: 10000 }, V_out: 3.0, error: 25 }
+
+  - id: por-que-baja
+    tipo: porque
+    titulo: "¿Por qué baja?"
+    texto: "Con la carga, la salida cae de 4,00 V a 3,00 V. ¿Cuál es la causa?"
+    libro: [84]
+    fijar: { V_in: 12, R_1: 10000, R_2: 5000, carga: 1, R_L: 10000 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: carga }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      corriente: I
+      mide: { salida: V_out, corriente: I, carga: "I_L" }
+    opciones:
+      - texto: "R_{L} queda en paralelo con R₂ y la rama de abajo baja a 3,33 kΩ"
+        bien: true
+        porque: "5 ‖ 10 = 3,33 kΩ. Con menos resistencia abajo, la salida se queda con menos tensión."
+      - texto: "La carga gasta parte de la tensión de la pila"
+        porque: "La pila sigue dando 12 V. Lo que cambia es el reparto: abajo hay ahora menos resistencia."
+      - texto: "Por R₁ pasa menos corriente"
+        porque: "Es al revés: la resistencia total baja, por R₁ pasa más corriente y R₁ se queda con más tensión."
+    comprobar:
+      - { R_ab: 3333.3, V_out: 3.0 }
+
+  - id: carga-minima
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La regla de la carga"
+    texto: "La carga debe ser al menos diez veces la resistencia equivalente del divisor, R₁ ‖ R₂. Con R₁ = 10 kΩ y R₂ = 5 kΩ, estime esa carga mínima."
+    libro: [85]
+    fijar: { R_1: 10000, R_2: 5000 }
+    estimar:
+      objetivo: "R_Lmin"
+      unidad: Ω
+      min: 0
+      max: 100000
+      paso: 1000
+      inicio: 80000
+      tol: 0.1
+      rotulo: "R_{L} mínima"
+    exito: "R₁ ‖ R₂ = 3,33 kΩ; diez veces, 33,3 kΩ. Así el error queda por debajo del 10 %; con cien veces, del 1 %."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 36700 }, texto: "Se ha pasado. Calcule R₁ ‖ R₂ con 10 kΩ y 5 kΩ: es menor que la menor." }
+      - { cuando: { valor: estimacion, menor: 30000 }, texto: "Se ha quedado corto. Calcule R₁ ‖ R₂ y multiplíquela por diez." }
+    comprobar:
+      - { R_eq: 3333.3, R_Lmin: 33333 }
+
+  - id: paralelo-estime
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Paralelo: la tensión manda"
+    texto: "En paralelo, las dos resistencias comparten la misma tensión. Estime cuánto vale 1000 ‖ 100."
+    libro: [87, 89, 90, 91]
+    fijar: { R_a: 1000, R_b: 100 }
+    estimar:
+      objetivo: "R_p"
+      unidad: Ω
+      min: 0
+      max: 200
+      paso: 1
+      inicio: 150
+      tol: 0.05
+      rotulo: "1000 ‖ 100"
+    exito: "90,9 Ω: siempre menor que la menor. Cuando una es mucho mayor que la otra, apenas influye."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 100 }, texto: "Se ha pasado: el paralelo es siempre menor que la menor de las dos." }
+      - { texto: "Se ha quedado corto: la de 1000 Ω, mucho mayor, apenas cambia la de 100 Ω." }
+
+  - id: divisor-corriente
+    tipo: pregunta
+    titulo: "El divisor de corriente"
+    texto: "Con dos ramas, I₁ = I_{total} · R / (R₁ + R₂). ¿Qué resistencia va en el numerador?"
+    libro: [93]
+    widget:
+      tipo: circuito
+      esquema: paralelo
+      piezas: { fuente: V_in, r1: R_a, r2: R_b }
+      lectura: { valor: I_t, rotulo: "Corriente total" }
+      barras:
+        - { valor: I_a, rotulo: "Por R₁: {{I_a}}", color: azul }
+        - { valor: I_b, rotulo: "Por R₂: {{I_b}}", color: naranja }
+      corriente: I_t
+      mide: { total: I_t, i1: I_a, i2: I_b }
+      ocultar: true
+      mandos:
+        - { valor: R_a, serie: E12, min: 100, max: 1000 }
+        - { valor: R_b, serie: E12, min: 100, max: 1000 }
+    opciones:
+      - texto: "R₂, la de la otra rama"
+        bien: true
+        porque: "La corriente se reparte en proporción inversa: por la rama de menor resistencia circula más. Por eso va la contraria."
+      - texto: "R₁, la de su propia rama"
+        porque: "Esa es la del divisor de tensión. En el de corriente va la otra: es el error de memoria más común."
+      - texto: "R₁ + R₂, la suma de las dos"
+        porque: "Entonces el cociente valdría la unidad y toda la corriente pasaría a la vez por cada rama."
+
+  - id: ordene-metodo
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Redes mixtas: el método"
+    texto: "Una red de series y paralelos se reduce desde el extremo más alejado de la fuente. Ordene los pasos."
+    libro: [95, 96, 97]
+    ordenar:
+      - "Identificar la asociación más interna."
+      - "Sustituirla por su equivalente y redibujar."
+      - "Repetir hasta quedarse con una sola resistencia y calcular la corriente total."
+      - "Deshacer el camino, repartiendo tensiones y corrientes con los divisores."
+    exito: "Ese es el orden. El cuarto paso es el que más se olvida, y el que da la información útil."
+    pistas:
+      - { texto: "Se empieza por dentro y se acaba deshaciendo el camino hacia atrás." }
+
+  - id: potencia-serie
+    tipo: pregunta
+    titulo: "Potencia: lo que se olvida"
+    texto: "Dos resistencias distintas en serie, con la misma corriente. ¿Cuál disipa más potencia?"
+    libro: [100]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: I, rotulo: "Corriente común" }
+      barras:
+        - { valor: P_1, rotulo: "R₁ disipa {{P_1}}", color: azul }
+        - { valor: P_2, rotulo: "R₂ disipa {{P_2}}", color: naranja }
+      corriente: I
+      mide: { salida: V_out, corriente: I }
+      ocultar: true
+      mandos:
+        - { valor: R_1, min: 1000, max: 20000, paso: 100 }
+        - { valor: R_2, min: 1000, max: 20000, paso: 100 }
+    opciones:
+      - texto: "La mayor"
+        bien: true
+        porque: "Con la corriente común, P = I²·R: a más resistencia, más potencia."
+      - texto: "La menor"
+        porque: "Eso pasa en paralelo, donde la tensión es común y P = V²/R."
+      - texto: "Las dos igual"
+        porque: "Solo si son iguales. Con la corriente común, la potencia crece con la resistencia."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [81, 82, 85, 89, 93, 100]
+    ideas:
+      - { titulo: "En serie.", texto: "La corriente es común y la tensión se reparte en proporción a las resistencias." }
+      - { titulo: "Solo en vacío.", texto: "Una carga en paralelo con R₂ hunde la salida: al menos diez veces R₁ ‖ R₂ para errar menos del 10 %." }
+      - { titulo: "En paralelo.", texto: "La tensión es común, el total es menor que la menor y la corriente va en proporción inversa." }
+      - { titulo: "Potencia.", texto: "En serie disipa más la mayor; en paralelo, la menor." }

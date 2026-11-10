@@ -1,0 +1,327 @@
+# Lección 1.1 de la sección 5.6 «Circuitos Rectificadores» (cap05): media onda, toma media y puente (lo que se paga en
+# cada uno), el error de dimensionar por la tensión eficaz, lo que cambia el condensador (salida cerca del pico y
+# pulsos de corriente), su fórmula C = I/(f·ΔV) con el aviso de los dos «factores 2» y el diseño completo en orden.
+# Formato: contenido/lecciones11/GUIA.md.
+leccion: cap05/sec-5.6
+
+libro:
+  198: "el pico es 325 V y la continua media sin filtro solo 104 V (Vp/π)"
+  199: "la continua media sube a 207 V (2·Vp/π) y el rizado pasa a 100 Hz"
+  200: "a costa de dos caídas de diodo en serie en cada semiciclo"
+  203: '"pico" = "12" times sqrt("2") = "16,97 V"'
+  204: "tras el puente = 16,97 − 1,4 = 15,57 V"
+  205: "que no basta para un 7812"
+  207: "los diodos solo conducen durante el breve instante en que la senoide supera la tensión del condensador"
+  208: "unos 4,4 A de media durante la conducción, casi nueve veces la corriente media"
+  210: "el factor de potencia de una fuente lineal con condensador ronda 0,6"
+  212: "Entre pulsos, el condensador alimenta la carga solo"
+  213: 'C = (I)/(f_("rizado") dot.op "Δ" V)'
+  214: "C = 0,5/(100 × 1) = 5 000 µF"
+  215: "da la mitad del condensador necesario"
+  217: "Tensión de salida mínima requerida"
+
+modelo:
+  valores:
+    V_a: { sim: "V_{p}", nombre: "pico de la red de 230 V", unidad: V, valor: 325.27 }
+    R_a: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 1000 }
+    V_ef: { sim: "V_{ef}", nombre: "tensión eficaz del secundario", unidad: V, valor: 12 }
+    f_red: { sim: "f", nombre: "frecuencia de la red", unidad: Hz, valor: 50 }
+    V_rd: { sim: "V_{D}", nombre: "caída de cada diodo", unidad: V, valor: 0.7 }
+    C_f: { sim: "C", nombre: "condensador de filtro", unidad: F, valor: 0.0047 }
+    I_L: { sim: "I", nombre: "corriente de la carga", unidad: A, valor: 0.5 }
+    dV_a: { sim: "ΔV", nombre: "rizado admisible", unidad: V, valor: 1 }
+  calculos:
+    V_m1: { expr: "V_a/pi", sim: "V_{p}/π", nombre: "media ideal de media onda", unidad: V }
+    V_m2: { expr: "2*V_a/pi", sim: "2·V_{p}/π", nombre: "media ideal de onda completa", unidad: V }
+    V_rp: { expr: "V_ef*sqrt(2)", sim: "V_{p}", nombre: "pico del secundario", unidad: V }
+    V_r2: { expr: "V_rp - 2*V_rd", sim: "V_{pico}", nombre: "pico tras el puente", unidad: V }
+    V_r1: { expr: "V_rp - V_rd", sim: "V_{pico}", nombre: "pico tras un diodo", unidad: V }
+    R_L: { expr: "V_r2/I_L", sim: "R_{L}", nombre: "carga que toma 0,5 A", unidad: Ω }
+    T_red: { expr: "1/f_red", sim: "T", nombre: "periodo de la red", unidad: s }
+    tau_r: { expr: "R_L*C_f", sim: "τ", nombre: "constante de descarga", unidad: s }
+    f_riz: { expr: "2*f_red", sim: "f_{rizado}", nombre: "frecuencia del rizado en onda completa", unidad: Hz }
+    dV: { expr: "I_L/(f_riz*C_f)", sim: "ΔV", nombre: "rizado", unidad: V }
+    dV1: { expr: "V_r1/R_L/(f_red*C_f)", sim: "ΔV", nombre: "rizado con media onda", unidad: V }
+    C_req: { expr: "I_L/(f_riz*dV_a)", sim: "C", nombre: "condensador necesario", unidad: F }
+    valle: { expr: "V_ef*0.9*sqrt(2) - 2*V_rd - 1", sim: "V_{valle}", nombre: "valle con la red al −10 % y 1 V de rizado", unidad: V }
+    I_cond: { expr: "I_L*10/1.15", sim: "I_{pulso}", nombre: "corriente media durante la conducción", unidad: A }
+
+tarjetas:
+  - id: explore-media-onda
+    tipo: explorar
+    titulo: "Un solo diodo"
+    texto: "La red de 230 V tiene 325 V de pico. Un solo diodo deja pasar un semiciclo. Mueva la carga y mire la salida."
+    libro: [198]
+    widget:
+      tipo: circuito
+      esquema: media-onda
+      piezas: { fuente: V_a, f: f_red, vd: V_rd, carga: R_a }
+      lectura: { valor: V_m1, rotulo: "Media ideal, V_{p}/π" }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: -350, max: 350, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_a*sin(2*pi*f_red*t)", color: tinta, rotulo: "entrada", mide: entrada, discontinua: true }
+          - { expr: "max(V_a*sin(2*pi*f_red*t) - V_rd, 0)", color: naranja, rotulo: "salida", mide: salida }
+      mandos:
+        - { valor: R_a, lista: [1000, 2200, 4700], rotulo: "Carga, R_{L}" }
+    requiere: { mover: [R_a] }
+    comprobar:
+      - { V_m1: 104 }
+
+  - id: prediga-puente
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Los 325 V de pico de la red, ahora con un puente de cuatro diodos que aprovecha los dos semiciclos. ¿Qué continua media da, sin filtro?"
+    libro: [199]
+    widget:
+      tipo: circuito
+      esquema: puente
+      piezas: { fuente: V_a, f: f_red, vd: V_rd, carga: R_a }
+      lectura: { valor: V_m2, rotulo: "Media ideal, 2·V_{p}/π" }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 350, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(V_a*abs(sin(2*pi*f_red*t)) - 2*V_rd, 0)", color: naranja, rotulo: "salida", mide: salida }
+      ocultar: true
+    opciones:
+      - texto: "207 V, el doble"
+        bien: true
+        porque: "2·V_{p}/π: aprovecha los dos semiciclos, y el rizado pasa de 50 a 100 Hz, más fácil de filtrar."
+      - texto: "104 V, como con un diodo"
+        porque: "Con un diodo se pierde un semiciclo entero. El puente aprovecha los dos."
+      - texto: "325 V, el pico"
+        porque: "Sin condensador la salida baja a cero en cada semiciclo: la media es menor que el pico."
+    comprobar:
+      - { V_m2: 207 }
+
+  - id: empareje-esquemas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Lo que se paga en cada uno"
+    texto: "Tres esquemas rectificadores, tres precios distintos. Empareje cada uno con el suyo."
+    libro: [198, 199, 200]
+    emparejar:
+      - ["Media onda", "Rizado a 50 Hz, y magnetiza el transformador en continua"]
+      - ["Toma media", "Un 40 % más de cobre en el transformador"]
+      - ["Puente", "Dos caídas de diodo en serie en cada semiciclo"]
+    exito: "Eso es. El puente es el estándar, salvo a tensiones muy bajas: ahí se prefiere la toma media con Schottky."
+    pistas:
+      - { texto: "La toma media solo tiene una caída de diodo, pero cada mitad del secundario trabaja la mitad del tiempo." }
+
+  - id: formula-pico
+    tipo: formula
+    titulo: "El condensador se carga al pico"
+    texto: "La tensión del transformador es eficaz. Cambie el secundario y mire el pico tras el puente."
+    libro: [203, 204]
+    ec: 204
+    sustitucion: "{{V_rp}} − 2 · {{V_rd}} = {{V_r2}}"
+    widget:
+      tipo: circuito
+      esquema: puente
+      piezas: { fuente: V_rp, f: f_red, vd: V_rd, c: C_f, carga: R_L }
+      lectura: { valor: V_r2, rotulo: "Pico tras el puente" }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 22, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(V_rp*abs(sin(2*pi*f_red*t)) - 2*V_rd, V_r2*exp(-(t - T_red/4 - T_red/2*floor((t - T_red/4)/(T_red/2)))/tau_r))", color: naranja, rotulo: "salida", mide: salida }
+      mandos:
+        - { valor: V_ef, lista: [9, 12, 15], rotulo: "Secundario, V_{ef}" }
+    comprobar:
+      - { V_rp: 16.97, V_r2: 15.57 }
+
+  - id: estime-valle
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "¿Basta para un 7812?"
+    texto: "Secundario de 12 V eficaces, puente (1,4 V en diodos), red al −10 % y 1 V de rizado. Estime el valle."
+    nota: "Un 7812 necesita unos 2 V por encima de sus 12 V."
+    libro: [204, 205]
+    fijar: { V_ef: 12 }
+    estimar:
+      objetivo: "valle"
+      unidad: V
+      min: 0
+      max: 20
+      paso: 0.1
+      inicio: 17
+      tol: 0.02
+      rotulo: "Valle"
+    exito: "Unos 12,9 V: no basta para un 7812. Quien dimensiona el transformador por la salida deseada se queda corto."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 13.2 }, texto: "Se ha pasado: 12 × 0,9 × √2, menos 1,4 V de los diodos y 1 V de rizado." }
+      - { texto: "Se ha quedado corto: el pico con la red al −10 % es 12 × 0,9 × √2." }
+    comprobar:
+      - { valle: 12.87 }
+
+  - id: explore-condensador
+    tipo: explorar
+    titulo: "Lo que hace el condensador"
+    texto: "Secundario de 12 V, puente y una carga de 0,5 A. Cambie el condensador y mire el rizado: la salida se queda cerca del pico."
+    libro: [207, 212]
+    fijar: { V_ef: 12 }
+    inicio: { C_f: 0.001 }
+    widget:
+      tipo: circuito
+      esquema: puente
+      piezas: { fuente: V_rp, f: f_red, vd: V_rd, c: C_f, carga: R_L }
+      lectura: { valor: dV, rotulo: "Rizado" }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 18, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(V_rp*abs(sin(2*pi*f_red*t)) - 2*V_rd, V_r2*exp(-(t - T_red/4 - T_red/2*floor((t - T_red/4)/(T_red/2)))/tau_r))", color: naranja, rotulo: "salida", mide: salida }
+      mandos:
+        - { valor: C_f, lista: [0.001, 0.0022, 0.0047], rotulo: "Condensador, C" }
+    requiere: { mover: [C_f] }
+
+  - id: formula-condensador
+    tipo: formula
+    titulo: "La fórmula del condensador"
+    texto: "Entre pulsos el condensador alimenta solo la carga y pierde I·t. Elija el rizado admisible y mire qué condensador pide."
+    libro: [212, 213, 214]
+    ec: 213
+    sustitucion: "{{I_L}} / ({{f_riz}} · {{dV_a}}) = {{C_req}}"
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0.25, max: 2, unidad: V, rotulo: "ΔV" }
+      y: { min: 0, max: 0.02, unidad: F, rotulo: "C" }
+      curvas:
+        - { expr: "I_L/(f_riz*d)", color: naranja, rotulo: "C necesario" }
+      asas:
+        - { mueve: dV_a, x: "dV_a", y: "C_req", rotulo: "Rizado admisible" }
+      lectura: { valor: C_req, rotulo: "Condensador necesario" }
+      mandos:
+        - { valor: dV_a, min: 0.25, max: 2, paso: 0.25, rotulo: "Rizado admisible, ΔV" }
+    comprobar:
+      - { con: { dV_a: 1 }, C_req: 0.005 }
+
+  - id: reto-condensador
+    tipo: reto
+    titulo: "Reto: 1 V de rizado"
+    texto: "Puente a 50 Hz, carga de 0,5 A. Elija el menor condensador comercial que deje el rizado en 1 V o menos."
+    libro: [214]
+    fijar: { V_ef: 12 }
+    inicio: { C_f: 0.0022 }
+    widget:
+      tipo: circuito
+      esquema: puente
+      piezas: { fuente: V_rp, f: f_red, vd: V_rd, c: C_f, carga: R_L }
+      lectura: { valor: dV, rotulo: "Rizado" }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 18, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(V_rp*abs(sin(2*pi*f_red*t)) - 2*V_rd, V_r2*exp(-(t - T_red/4 - T_red/2*floor((t - T_red/4)/(T_red/2)))/tau_r))", color: naranja, rotulo: "salida", mide: salida }
+      mandos:
+        - { valor: C_f, lista: [0.0022, 0.0033, 0.0047, 0.0068, 0.01], rotulo: "Condensador, C" }
+    condiciones:
+      - { valor: dV, max: 1, rotulo: "Rizado: {{dV}}" }
+      - { valor: C_f, max: 0.0068, rotulo: "El menor que cumple" }
+    exito: "6 800 µF: rizado de {{dV}}. La fórmula pide 5 000 µF; con 4 700 el rizado sería de 1,06 V."
+    pistas:
+      - { cuando: { valor: dV, mayor: 1 }, texto: "Demasiado rizado: hace falta más capacidad." }
+      - { cuando: { valor: C_f, mayor: 0.0068 }, texto: "Cumple, pero sobra: hay uno menor que también deja 1 V o menos." }
+    ayuda: "C = 0,5/(100 × 1) = 5 000 µF. El comercial que cumple por encima es el de 6 800 µF."
+    comprobar:
+      - { con: { C_f: 0.0047 }, dV: 1.06 }
+
+  - id: estime-pulsos
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Pulsos de corriente"
+    texto: "Con 1 V de rizado, los diodos solo conducen 1,15 ms de cada 10, y en ese instante reponen toda la carga. La carga toma 0,5 A. Estime la corriente media durante la conducción."
+    libro: [208]
+    estimar:
+      objetivo: "I_cond"
+      unidad: A
+      min: 0
+      max: 10
+      paso: 0.1
+      inicio: 1
+      tol: 0.05
+      rotulo: "Corriente en el pulso"
+    exito: "Unos 4,4 A, casi nueve veces la de la carga, y con un pico al empezar de 8 a 9 A."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 4.6 }, texto: "Se ha pasado: la carga de 10 ms a 0,5 A se repone en 1,15 ms." }
+      - { texto: "Se ha quedado corto: lo que sale en 10 ms a 0,5 A tiene que entrar en solo 1,15 ms." }
+
+  - id: sorpresa-media-onda
+    tipo: sorpresa
+    titulo: "Con un solo diodo"
+    texto: "Secundario de 12 V y la misma carga, pero con un solo diodo. Cambie el condensador y compare el rizado con el del puente."
+    libro: [198, 212]
+    fijar: { V_ef: 12 }
+    inicio: { C_f: 0.0047 }
+    widget:
+      tipo: circuito
+      esquema: media-onda
+      piezas: { fuente: V_rp, f: f_red, vd: V_rd, c: C_f, carga: R_L }
+      lectura: { valor: dV1, rotulo: "Rizado con media onda" }
+      datos:
+        - { valor: dV, rotulo: "Con puente: {{dV}}" }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 18, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(V_rp*sin(2*pi*f_red*t) - V_rd, V_r1*exp(-(t - T_red/4 - T_red*floor((t - T_red/4)/T_red))/tau_r))", color: naranja, rotulo: "salida", mide: salida }
+      mandos:
+        - { valor: C_f, lista: [0.0022, 0.0047], rotulo: "Condensador, C" }
+    requiere: { mover: [C_f] }
+
+  - id: porque-transformador
+    tipo: porque
+    titulo: "Un transformador que se calienta"
+    texto: "El transformador de una fuente lineal con condensador se calienta más de lo que la potencia entregada sugiere. ¿Por qué?"
+    libro: [208, 210]
+    opciones:
+      - texto: "Los pulsos estrechos tienen una corriente eficaz mucho mayor que la media"
+        bien: true
+        porque: "El cobre se calienta con la eficaz. El factor de potencia ronda 0,6; los diodos también se eligen por eficaz y pico."
+      - texto: "Porque el condensador consume potencia"
+        porque: "Un condensador ideal no consume: entrega y recupera. Lo que calienta es la forma de la corriente."
+      - texto: "Porque la tensión de salida es mayor que la eficaz"
+        porque: "La salida llega al pico, pero eso no calienta el cobre: lo hace la corriente eficaz de los pulsos."
+
+  - id: pregunta-factor-dos
+    tipo: pregunta
+    titulo: "Los dos «factores 2»"
+    texto: "La fórmula se escribe también C = I/(2·f_{red}·ΔV). ¿Qué ocurre si se usa ahí f = 100 Hz para un puente?"
+    libro: [215]
+    opciones:
+      - texto: "Da la mitad del condensador necesario"
+        bien: true
+        porque: "El 2 ya cuenta la onda completa: f_{rizado} = 2·f_{red}. Con 100 Hz se cuenta dos veces."
+      - texto: "Da el doble, que sobra"
+        porque: "Al revés: el denominador se dobla, sale la mitad de capacidad y el rizado se dobla."
+      - texto: "Lo mismo: es la misma fórmula"
+        porque: "Lo es con f = 50 Hz. Con 100 Hz se cuenta la onda completa dos veces."
+
+  - id: ordene-diseno
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "El diseño completo"
+    texto: "Ordene los pasos del diseño de una fuente con transformador, puente y condensador."
+    libro: [217]
+    ordenar:
+      - "Tensión de salida mínima: regulador, rizado y la red al −10 %."
+      - "Tensión del secundario: la anterior entre √2, más las caídas de los diodos."
+      - "Condensador, por el rizado admisible."
+      - "Diodos, por corriente eficaz y de pico y por tensión inversa."
+      - "Limitar la irrupción del condensador descargado."
+      - "Fusible, lento por la irrupción."
+    exito: "Ese es el orden: de la salida hacia atrás, y la protección al final."
+    pistas:
+      - { texto: "Se empieza por lo que necesita la carga y se acaba protegiendo el encendido." }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [199, 205, 207, 213, 215]
+    ideas:
+      - { titulo: "Tres esquemas.", texto: "Media onda pierde un semiciclo; el puente aprovecha los dos a cambio de dos caídas de diodo." }
+      - { titulo: "Eficaz y pico.", texto: "El condensador se carga al pico: 12 V eficaces dan 15,57 V tras el puente." }
+      - { titulo: "C = I/(f·ΔV).", texto: "Con f_{rizado} = 100 Hz en onda completa: 0,5 A y 1 V piden 5 000 µF." }
+      - { titulo: "Pulsos.", texto: "Los diodos solo conducen un instante: pulsos de unos 4,4 A para 0,5 A de carga." }

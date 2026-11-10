@@ -1,0 +1,228 @@
+# Lección 1.1 de la sección 6.14 «Ampliación: Amplificadores Multietapa» (cap06): dos etapas de ganancia 100 con
+# R_out1 = 10 kΩ y la R_in2 de la tabla del libro (909, 5000, 9091 y 9901), la regla del factor diez, el seguidor, el
+# acoplamiento RC (tres etapas a 20 Hz: unos 9 dB a 20 Hz) y el directo (2 mV en la primera base: 20 V a la salida).
+# La gráfica de la deriva va en grados de una décima; el eje de R_in2 (de 100 Ω a 10 MΩ) es mío.
+# Formato: contenido/lecciones11/GUIA.md.
+leccion: cap06/sec-6.14
+
+libro:
+  420: "la ganancia total no es el producto de las ganancias en vacío"
+  421: 'A_("total") = A_("1")'
+  422: "Es el problema 1.A otra vez, ahora entre etapas."
+  423: "Cuantificación con dos etapas de ganancia 100 y Rout1 = 10 kΩ:"
+  424: "9 091"
+  425: "para conservar el 90 % hace falta que la impedancia de entrada sea diez veces la de salida"
+  426: "intercalar un seguidor"
+  428: "cada una ya atenúa 3 dB en ese punto y las atenuaciones se suman en decibelios"
+  429: "una deriva de 2 mV en la base de la primera"
+
+modelo:
+  valores:
+    A_1: { sim: "A₁", nombre: "ganancia en vacío de la primera etapa", unidad: "", valor: 100 }
+    A_2: { sim: "A₂", nombre: "ganancia en vacío de la segunda etapa", unidad: "", valor: 100 }
+    R_o1: { sim: "R_{out1}", nombre: "impedancia de salida de la primera etapa", unidad: Ω, valor: 10000 }
+    R_i2: { sim: "R_{in2}", nombre: "impedancia de entrada de la segunda etapa", unidad: Ω, valor: 1000 }
+    n_et: { sim: "n", nombre: "etapas acopladas por condensador", unidad: "", valor: 3 }
+    dT: { sim: "ΔT", nombre: "calentamiento de la primera etapa", unidad: "°C", valor: 0 }
+    k_v: { sim: "dV_{BE}/dT", nombre: "deriva de V_BE, en módulo", unidad: V, valor: 0.002 }
+  calculos:
+    A_t: { expr: "A_1*R_i2/(R_o1 + R_i2)*A_2", sim: "A_{total}", nombre: "ganancia real", unidad: "", cifras: 4 }
+    A_id: { expr: "A_1*A_2", sim: "A_{ideal}", nombre: "producto de las ganancias en vacío", unidad: "" }
+    pct: { expr: "A_t/A_id*100", sim: "%", nombre: "fracción de la ganancia ideal", unidad: "%", cifras: 3 }
+    att: { expr: "n_et*10*log10(2)", sim: "atenuación", nombre: "atenuación total a la frecuencia de corte de cada etapa", unidad: "dB", cifras: 2 }
+    v_der: { expr: "k_v*dT", sim: "ΔV_{B}", nombre: "deriva en la base de la primera etapa", unidad: V }
+    v_sal: { expr: "v_der*A_1*A_2", sim: "ΔV_{salida}", nombre: "deriva a la salida", unidad: V }
+
+tarjetas:
+  - id: explore-carga
+    tipo: explorar
+    titulo: "Etapas que se cargan"
+    texto: "Dos etapas de ganancia 100 en vacío; la primera tiene 10 kΩ de salida. Cambie la impedancia de entrada de la segunda y mire la ganancia total."
+    libro: [420, 423, 424]
+    widget:
+      tipo: grafica
+      x: { id: r, min: 100, max: 10000000, unidad: Ω, rotulo: "R_{in2}", escala: log }
+      y: { min: 0, max: 11000, unidad: "", rotulo: "A_{total}" }
+      curvas:
+        - { expr: "A_1*r/(R_o1 + r)*A_2", color: naranja, rotulo: "ganancia real" }
+        - { expr: "A_id", color: azul, rotulo: "producto ideal", discontinua: true }
+      asas:
+        - { mueve: R_i2, x: "R_i2", y: "A_t", rotulo: "R_{in2}" }
+      lectura: { valor: A_t, rotulo: "Ganancia total" }
+      datos:
+        - { valor: pct, rotulo: "Del ideal: {{pct}}" }
+      mandos:
+        - { valor: R_i2, lista: [1000, 10000, 100000, 1000000], rotulo: "R_{in2}" }
+    requiere: { mover: [R_i2] }
+
+  - id: prediga-iguales
+    tipo: predecir
+    titulo: "Impedancias iguales"
+    texto: "Dos etapas de ganancia 100 en vacío. La salida de la primera es de 10 kΩ, y la entrada de la segunda, también de 10 kΩ. ¿Qué ganancia total dan?"
+    libro: [423, 424, 425]
+    fijar: { R_i2: 10000 }
+    widget:
+      tipo: grafica
+      x: { id: r, min: 100, max: 10000000, unidad: Ω, rotulo: "R_{in2}", escala: log }
+      y: { min: 0, max: 11000, unidad: "", rotulo: "A_{total}" }
+      curvas:
+        - { expr: "A_1*r/(R_o1 + r)*A_2", color: naranja, rotulo: "ganancia real" }
+      lectura: { valor: A_t, rotulo: "Ganancia total" }
+      ocultar: true
+    opciones:
+      - texto: "5000: la mitad"
+        bien: true
+        porque: "Las dos impedancias forman un divisor: con iguales, a la segunda etapa solo llega la mitad. Se pierde la mitad de la ganancia."
+      - texto: "10 000: el producto"
+        porque: "Sería así en vacío. Cada etapa carga a la anterior formando un divisor."
+      - texto: "La suma de las dos ganancias"
+        porque: "Las ganancias de etapas encadenadas se multiplican, no se suman. Lo que falta es el divisor entre ellas."
+    comprobar:
+      - { A_t: 5000, A_id: 10000, pct: 50 }
+
+  - id: formula-total
+    tipo: formula
+    titulo: "La ganancia total"
+    texto: "Cada etapa carga a la anterior: un divisor entre la impedancia de salida de una y la de entrada de la siguiente."
+    nota: "Es el problema 1.A otra vez, ahora entre etapas."
+    libro: [421, 422]
+    ec: 421
+    sustitucion: "{{A_1}} · [{{R_i2}} / ({{R_o1}} + {{R_i2}})] · {{A_2}} = {{A_t}}"
+    widget:
+      tipo: grafica
+      x: { id: r, min: 100, max: 10000000, unidad: Ω, rotulo: "R_{in2}", escala: log }
+      y: { min: 0, max: 11000, unidad: "", rotulo: "A_{total}" }
+      curvas:
+        - { expr: "A_1*r/(R_o1 + r)*A_2", color: naranja, rotulo: "ganancia real" }
+      asas:
+        - { mueve: R_i2, x: "R_i2", y: "A_t", rotulo: "R_{in2}" }
+      lectura: { valor: A_t, rotulo: "Ganancia total" }
+      mandos:
+        - { valor: R_i2, lista: [1000, 10000, 100000, 1000000], rotulo: "R_{in2}" }
+
+  - id: reto-noventa
+    tipo: reto
+    titulo: "Reto: conservar el 90 %"
+    texto: "Dos etapas de ganancia 100 en vacío y 10 kΩ de salida en la primera. Elija la menor impedancia de entrada de la segunda que conserve al menos el 90 % de la ganancia."
+    libro: [424, 425]
+    inicio: { R_i2: 1000 }
+    widget:
+      tipo: grafica
+      x: { id: r, min: 100, max: 10000000, unidad: Ω, rotulo: "R_{in2}", escala: log }
+      y: { min: 0, max: 11000, unidad: "", rotulo: "A_{total}" }
+      curvas:
+        - { expr: "A_1*r/(R_o1 + r)*A_2", color: naranja, rotulo: "ganancia real" }
+        - { expr: "0.9*A_id", color: tinta, rotulo: "90 %", discontinua: true }
+      asas:
+        - { mueve: R_i2, x: "R_i2", y: "A_t", rotulo: "R_{in2}" }
+      lectura: { valor: pct, rotulo: "Del ideal" }
+      mandos:
+        - { valor: R_i2, lista: [1000, 10000, 100000, 1000000], rotulo: "R_{in2}" }
+    condiciones:
+      - { valor: pct, min: 90, max: 95, rotulo: "Del ideal: {{pct}}" }
+    exito: "100 kΩ, diez veces la de salida: 9091, el 90,9 %. Es la regla del factor diez, justificada con números."
+    pistas:
+      - { cuando: { valor: pct, menor: 90 }, texto: "Se pierde demasiado en el divisor. La entrada tiene que ser bastante mayor que los 10 kΩ de salida." }
+      - { cuando: { valor: pct, mayor: 95 }, texto: "Cumple de sobra, pero el reto pide la menor que conserve el 90 %." }
+    ayuda: "Para conservar el 90 %, el divisor R_{in2}/(10 kΩ + R_{in2}) tiene que dejar pasar el 90 %: unas diez veces la impedancia de salida."
+    comprobar:
+      - { con: { R_i2: 100000 }, A_t: 9091, pct: 90.9 }
+      - { con: { R_i2: 1000000 }, pct: 99 }
+
+  - id: sorpresa-directo
+    tipo: sorpresa
+    titulo: "Acoplamiento directo"
+    texto: "Las mismas dos etapas de ganancia 100, ahora acopladas en continua. La primera se calienta una fracción de grado: su base deriva 2 mV/°C. Mire la salida."
+    libro: [429]
+    inicio: { dT: 0 }
+    widget:
+      tipo: grafica
+      x: { id: g, min: 0, max: 1, unidad: "°C", rotulo: "ΔT" }
+      y: { min: 0, max: 25, unidad: V, rotulo: "ΔV_{salida}" }
+      curvas:
+        - { expr: "k_v*g*A_1*A_2", color: naranja, rotulo: "deriva a la salida" }
+      asas:
+        - { mueve: dT, x: "dT", y: "v_sal", rotulo: "Calentamiento" }
+      lectura: { valor: v_sal, rotulo: "Deriva a la salida" }
+      datos:
+        - { valor: v_der, rotulo: "En la base: {{v_der}}" }
+      mandos:
+        - { valor: dT, min: 0, max: 1, paso: 0.1, rotulo: "Calentamiento, ΔT" }
+    requiere: { mover: [dT] }
+    comprobar:
+      - { con: { dT: 1 }, v_der: 0.002, v_sal: 20 }
+
+  - id: por-que-directo
+    tipo: porque
+    titulo: "¿Cómo se arregla?"
+    texto: "Con dos etapas de ganancia 100 acopladas en continua, 2 mV de deriva en la primera base son 20 V a la salida. ¿Qué lo resuelve?"
+    libro: [429]
+    opciones:
+      - texto: "Realimentación de continua que fije el punto de reposo"
+        bien: true
+        porque: "Es exactamente lo que hace el operacional del capítulo 26: todo amplificador acoplado en continua la necesita."
+      - texto: "Un disipador mayor en la primera etapa"
+        porque: "Reduce el calentamiento, pero un grado sigue siendo 20 V: hace falta que el circuito corrija su punto de trabajo."
+      - texto: "Más ganancia en la segunda etapa"
+        porque: "Al contrario: la deriva de la primera se amplifica por todas las siguientes."
+
+  - id: estime-rc
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Tres cortes de 20 Hz"
+    texto: "Tres etapas acopladas por condensador, cada una con su corte en 20 Hz: cada una atenúa 3 dB a 20 Hz. Estime la atenuación total a 20 Hz."
+    libro: [428]
+    estimar:
+      objetivo: "att"
+      unidad: "dB"
+      min: 0
+      max: 20
+      paso: 0.5
+      inicio: 3
+      tol: 0.06
+      rotulo: "Atenuación a 20 Hz"
+    exito: "Unos 9 dB: las atenuaciones se suman en decibelios. Por eso tres etapas a 20 Hz no cortan a 20 Hz, sino más arriba."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 9.5 }, texto: "Se ha pasado. Cada etapa atenúa 3 dB a 20 Hz: sume las tres." }
+      - { texto: "Se ha quedado corto. Las atenuaciones de las etapas se suman en decibelios." }
+    comprobar:
+      - { att: 9.03 }
+
+  - id: seguidor-entre
+    tipo: pregunta
+    titulo: "Cuando no cabe el factor diez"
+    texto: "Una etapa de salida de 10 kΩ tiene que excitar otra de entrada de 1 kΩ, y no se puede cambiar ninguna. ¿Qué se hace?"
+    libro: [424, 426]
+    opciones:
+      - texto: "Intercalar un seguidor: entrada alta, salida baja"
+        bien: true
+        porque: "Su única función es transformar impedancias. Sin él, con 1 kΩ frente a 10 kΩ se conservaría solo un 9,1 % de la ganancia."
+      - texto: "Añadir otra etapa de ganancia 100"
+        porque: "Ganaría, pero el divisor entre 10 kΩ y 1 kΩ seguiría tirando el 90 % de la señal."
+      - texto: "Acoplarlas por condensador"
+        porque: "El condensador bloquea la continua, pero no cambia las impedancias: el divisor sigue ahí."
+
+  - id: empareje-acoplamiento
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Dos formas de acoplar"
+    texto: "Empareje cada acoplamiento entre etapas con su ventaja y con su precio."
+    libro: [428, 429]
+    emparejar:
+      - ["Por condensador: ventaja", "Cada etapa se polariza con independencia"]
+      - ["Por condensador: precio", "Un paso alto por cada condensador"]
+      - ["Directo: ventaja", "Responde hasta continua"]
+      - ["Directo: precio", "La deriva de la primera se amplifica en todas"]
+    exito: "Eso es. El directo necesita realimentación de continua; el de condensador, cuidar dónde se acumulan los cortes."
+    pistas:
+      - { texto: "El condensador bloquea la continua: eso separa las polarizaciones y corta las frecuencias bajas." }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [421, 425, 428, 429]
+    ideas:
+      - { titulo: "Etapas que se cargan.", texto: "La ganancia total no es el producto: cada salida y la entrada siguiente forman un divisor." }
+      - { titulo: "Factor diez.", texto: "Con impedancias iguales se pierde la mitad; con diez veces, se conserva el 90 %." }
+      - { titulo: "Por condensador.", texto: "Polarizaciones independientes, pero los cortes se suman en decibelios." }
+      - { titulo: "Directo.", texto: "Hasta continua, pero 2 mV de deriva con dos etapas de 100 son 20 V: realimentación." }

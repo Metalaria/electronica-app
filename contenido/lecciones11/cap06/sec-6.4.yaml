@@ -1,0 +1,211 @@
+# Lección 1.1 de la sección 6.4 «Identificación Física y Encapsulados» (cap06): comprobar el transistor antes de
+# montarlo. El widget es el montaje de dos resistencias del banco (sección 6.3: 1 MΩ de base y 1 kΩ de colector desde
+# 9 V, 8,35 µA de base), que mide β; luego el procedimiento de la prueba de diodos (base, NPN o PNP, colector frente a
+# emisor), los encapsulados, la lengüeta del TO-220, el MOSFET, el sufijo y lo que se comprueba antes de sustituir.
+# V_BE = 0,65 V es la que da los 8,35 µA del libro: (9 − 0,65)/1 MΩ. Formato: contenido/lecciones11/GUIA.md.
+leccion: cap06/sec-6.4
+
+libro:
+  122: "el encapsulado no determina el patillaje"
+  124: "la secuencia EBC es común en unos fabricantes y BCE en otros"
+  125: "la lengüeta está conectada al colector"
+  127: "SOT-23: el SMD de tres patillas más común, de pequeña señal."
+  128: "la almohadilla grande conectada al colector o drenador"
+  132: "La base es la patilla común a las dos uniones que conducen."
+  133: "la unión base-emisor tiene una caída ligeramente mayor que la base-colector"
+  134: "La que dé la ganancia mayor es la correcta."
+  137: "La puerta no conduce con nada: si conduce, el transistor está destruido."
+  138: "cargar la puerta tocándola con el positivo"
+  142: "El sufijo no es decorativo."
+  145: "Patillaje, cotejado con la hoja de datos del componente exacto."
+  146: "rara vez lo es: un circuito bien diseñado no depende de ella"
+  148: "identificar cualquier transistor con el multímetro antes de montarlo"
+  "cap06#27": "detectar uno degradado, que conserva sus uniones pero ha perdido ganancia"
+  "cap06#116": "con 1 MΩ de base y 1 kΩ de colector desde 9 V, fija la corriente de base en 8,35 µA"
+
+modelo:
+  valores:
+    V_9: { sim: "V_{CC}", nombre: "alimentación del montaje", unidad: V, valor: 9 }
+    R_c1: { sim: "R_{C}", nombre: "resistencia de colector", unidad: Ω, valor: 1000 }
+    R_b1: { sim: "R_{B}", nombre: "resistencia de base", unidad: Ω, valor: 1000000 }
+    beta_m: { sim: "β", nombre: "ganancia del ejemplar", unidad: "", valor: 50 }
+    V_BE6: { sim: "V_{BE}", nombre: "tensión base-emisor", unidad: V, valor: 0.65 }
+  calculos:
+    I_b6: { expr: "max(0, (V_9 - V_BE6)/R_b1)", sim: "I_{B}", nombre: "corriente de base", unidad: A }
+    I_c6: { expr: "beta_m*I_b6", sim: "I_{C}", nombre: "corriente de colector", unidad: A }
+    V_rc6: { expr: "I_c6*R_c1", sim: "V_{RC}", nombre: "caída en la resistencia de colector", unidad: V }
+    V_ce6: { expr: "V_9 - V_rc6", sim: "V_{CE}", nombre: "tensión colector-emisor", unidad: V }
+    beta_med: { expr: "V_rc6/R_c1/I_b6", sim: "β", nombre: "ganancia medida", unidad: "", cifras: 3 }
+
+tarjetas:
+  - id: explore-medir-beta
+    tipo: explorar
+    titulo: "Medir antes de montar"
+    texto: "Montaje del banco: 1 MΩ de base y 1 kΩ de colector desde 9 V. Cambie de ejemplar y lea la caída en R_{C}."
+    nota: "Caída entre 1 kΩ: I_{C}. Entre la de base: β."
+    libro: ["cap06#116"]
+    widget:
+      tipo: circuito
+      esquema: bjt-interruptor
+      piezas: { vcc: V_9, rc: R_c1, entrada: V_9, rb: R_b1, beta: beta_m, vbe: V_BE6 }
+      lectura: { valor: V_rc6, rotulo: "Caída en R_{C}" }
+      datos:
+        - { valor: I_b6, rotulo: "I_{B} = {{I_b6}}" }
+        - { valor: beta_med, rotulo: "β medida = {{beta_med}}" }
+      corriente: I_c6
+      mide: { ib: I_b6, ic: I_c6, vce: V_ce6 }
+      mandos:
+        - { valor: beta_m, lista: [50, 100, 150, 300], rotulo: "β del ejemplar" }
+    requiere: { mover: [beta_m] }
+    comprobar:
+      - { I_b6: 0.00000835 }
+
+  - id: prediga-caida
+    tipo: predecir
+    titulo: "Prediga la caída"
+    texto: "Montaje de 1 MΩ de base y 1 kΩ de colector desde 9 V: entran 8,35 µA de base. Con un ejemplar de β = 150, ¿cuánto cae en R_{C}?"
+    libro: ["cap06#116"]
+    fijar: { beta_m: 150 }
+    widget:
+      tipo: circuito
+      esquema: bjt-interruptor
+      piezas: { vcc: V_9, rc: R_c1, entrada: V_9, rb: R_b1, beta: beta_m, vbe: V_BE6 }
+      lectura: { valor: V_rc6, rotulo: "Caída en R_{C}" }
+      corriente: I_c6
+      mide: { ib: I_b6, ic: I_c6, vce: V_ce6 }
+      ocultar: true
+    opciones:
+      - texto: "1,25 V"
+        bien: true
+        porque: "I_{C} = 150 · 8,35 µA = 1,25 mA, que en 1 kΩ son 1,25 V. Al revés: 1,25 V entre 1 kΩ y entre 8,35 µA da β = 150."
+      - texto: "0,65 V"
+        porque: "Esa es la caída base-emisor. En R_{C} cae I_{C} · 1 kΩ, con I_{C} = β · 8,35 µA."
+      - texto: "Casi 9 V"
+        porque: "Eso sería corte, con el colector sin corriente. La base recibe 8,35 µA y el colector conduce β veces más."
+    comprobar:
+      - { I_c6: 0.00125, V_rc6: 1.25, V_BE6: 0.65, beta_med: 150 }
+
+  - id: por-que-degradado
+    tipo: porque
+    titulo: "¿Por qué medir la ganancia?"
+    texto: "La prueba de diodos ya dice si las uniones están sanas. ¿Para qué sirve además este montaje?"
+    libro: ["cap06#27", "cap06#116"]
+    opciones:
+      - texto: "Un transistor degradado conserva sus uniones pero ha perdido ganancia"
+        bien: true
+        porque: "La prueba de diodos lo da por bueno; solo la medida de β lo delata. También sirve para comparar ejemplares de un par apareado."
+      - texto: "Para saber qué patilla es la base"
+        porque: "Eso lo dice la prueba de diodos: la base es la patilla común a las dos uniones que conducen."
+      - texto: "Porque la prueba de diodos puede destruirlo"
+        porque: "La prueba de diodos es inofensiva: es la rutina de treinta segundos que conviene hacer siempre."
+
+  - id: ordene-patillaje
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "El patillaje, con el multímetro"
+    texto: "Un transistor bipolar es dos uniones que comparten la base. Ordene el procedimiento con la prueba de diodos."
+    libro: [132]
+    ordenar:
+      - "Probar las seis combinaciones de pares de patillas en ambos sentidos."
+      - "La base es la patilla común a las dos uniones que conducen."
+      - "Con la punta roja en la base, NPN; con la negra, PNP."
+      - "Comprobar que entre colector y emisor no conduce en ningún sentido."
+    exito: "Eso es. Sin hoja de datos, el multímetro resuelve el problema práctico más común."
+    pistas:
+      - { texto: "Primero se recogen todas las lecturas; de ellas sale la base, y de la base, el tipo." }
+
+  - id: npn-o-pnp
+    tipo: pregunta
+    titulo: "¿NPN o PNP?"
+    texto: "Con la prueba de diodos, las dos uniones conducen cuando la punta negra está en la patilla común. ¿Qué transistor es?"
+    libro: [132]
+    opciones:
+      - texto: "Un PNP, y esa patilla es la base"
+        bien: true
+        porque: "En un PNP la base es tipo N: sus uniones conducen hacia la base, con la negra en ella."
+      - texto: "Un NPN, y esa patilla es la base"
+        porque: "Un NPN conduce con la punta roja en la base: su base es tipo P."
+      - texto: "Un PNP, y esa patilla es el emisor"
+        porque: "La patilla común a las dos uniones que conducen es siempre la base."
+
+  - id: colector-emisor
+    tipo: pregunta
+    titulo: "Colector o emisor"
+    texto: "Ya conoce la base. Las dos uniones dan casi lo mismo en la prueba de diodos. ¿Cómo se distingue el emisor?"
+    libro: [133, 134]
+    opciones:
+      - texto: "La unión base-emisor cae unos milivoltios más; y en h_{FE}, la orientación de mayor ganancia es la correcta"
+        bien: true
+        porque: "La unión base-emisor es más pequeña. La medida de h_{FE} en las dos orientaciones es la forma más fiable."
+      - texto: "El emisor es siempre la patilla de la izquierda"
+        porque: "El encapsulado no determina el patillaje: en el TO-92 unos fabricantes usan EBC y otros BCE."
+      - texto: "Entre colector y emisor conduce en un sentido"
+        porque: "En un transistor sano no conduce en ninguno: si lo hace, está en cortocircuito."
+
+  - id: empareje-encapsulados
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los encapsulados habituales"
+    texto: "Empareje cada encapsulado con su descripción."
+    libro: [124, 125, 127, 128]
+    emparejar:
+      - ["TO-92", "Plástico de media luna, pequeña señal, hasta unos 500 mW"]
+      - ["TO-220", "Lengüeta metálica con taladro, de 1 a 100 W con disipador"]
+      - ["SOT-23", "El SMD de tres patillas más común, de pequeña señal"]
+      - ["DPAK", "SMD de potencia: la almohadilla grande disipa"]
+    exito: "Eso es. En el TO-92 es donde más varía el orden de patillas; en los de potencia, la lengüeta o la almohadilla van al colector."
+    pistas:
+      - { texto: "Los de potencia tienen metal para disipar; los SMD van sin patillas que atraviesen la placa." }
+
+  - id: lengueta
+    tipo: pregunta
+    titulo: "Un disipador compartido"
+    texto: "Dos transistores en TO-220 se van a atornillar al mismo disipador. ¿Qué dato es imprescindible?"
+    libro: [125]
+    opciones:
+      - texto: "Que la lengüeta está conectada al colector"
+        bien: true
+        porque: "La lengüeta está eléctricamente viva: atornillados sin aislar, los dos colectores quedarían unidos por el disipador."
+      - texto: "El orden de las patillas"
+        porque: "Importa al soldar, pero no al atornillar. En el TO-220 el orden suele ser más estable; lo crítico es la lengüeta."
+      - texto: "La ganancia de cada uno"
+        porque: "La ganancia no tiene nada que ver con el disipador. Lo que se une al atornillar es la lengüeta, que es el colector."
+
+  - id: mosfet
+    tipo: pregunta
+    titulo: "El caso del MOSFET"
+    texto: "Con la prueba de diodos, un MOSFET conduce entre drenador y fuente en un sentido, y su puerta conduce con la fuente. ¿Está bien?"
+    libro: [137, 138]
+    opciones:
+      - texto: "No: la puerta no debe conducir con nada; está destruido"
+        bien: true
+        porque: "El drenador-fuente en un sentido es el diodo de cuerpo, normal. Una puerta que conduce delata un MOSFET roto."
+      - texto: "Sí: es su diodo de cuerpo"
+        porque: "El diodo de cuerpo explica la conducción entre drenador y fuente, no la de la puerta."
+      - texto: "Sí, si al tocar la puerta con el positivo deja de conducir"
+        porque: "Es al revés: cargar la puerta lo hace conducir entre drenador y fuente; descargarla lo apaga."
+
+  - id: ordene-sustituir
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Antes de sustituir"
+    texto: "Va a sustituir un transistor por otro. Ordene las cuatro comprobaciones."
+    libro: [142, 145, 146]
+    ordenar:
+      - "Tipo: NPN, PNP, MOSFET N o P."
+      - "Tensiones máximas, con margen."
+      - "Corriente y potencia, con su derating térmico."
+      - "Patillaje, cotejado con la hoja de datos del componente exacto."
+    exito: "Eso es. La β rara vez es crítica; el sufijo sí: el mismo número con otro sufijo puede tener otro encapsulado y otro patillaje."
+    pistas:
+      - { texto: "Se empieza por lo más gordo, el tipo, y se acaba por el detalle del componente exacto." }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [122, 132, 134, 148]
+    ideas:
+      - { titulo: "El encapsulado no dice el patillaje.", texto: "Suponerlo es la causa número uno de transistores destruidos al montar." }
+      - { titulo: "La base.", texto: "Es la patilla común a las dos uniones que conducen; roja en la base, NPN." }
+      - { titulo: "Colector o emisor.", texto: "La unión base-emisor cae algo más; en h_{FE}, gana la orientación de mayor ganancia." }
+      - { titulo: "Medir siempre.", texto: "Treinta segundos con el multímetro antes de montar; la ganancia delata al degradado." }

@@ -1,0 +1,337 @@
+# Lección 1.1 de la sección 4.1 «La Inductancia y la Ley de Faraday» (cap04): la bobina se opone al cambio de la
+# corriente (v = L·di/dt), el pico de 10 000 V al cortar deprisa, de qué depende L (N², µr, geometría), la energía
+# ½·L·I², la dualidad con el condensador y la inductancia de una pista. Formato: contenido/lecciones11/GUIA.md.
+leccion: cap04/sec-4.1
+
+libro:
+  4: "la tensión inducida se opone al cambio que la produjo"
+  5: "una bobina no se opone a la corriente, se opone a que la corriente cambie"
+  6: "es una consecuencia de la conservación de la energía"
+  8: "v = L dot.op (d i)/(d t)"
+  9: "un henrio es la inductancia que desarrolla un voltio cuando la corriente cambia a razón de un amperio por segundo"
+  10: "una bobina de 10 mH cuya corriente cambia 1 A cada milisegundo desarrolla 10 V"
+  16: "L = µ_(\"0\") dot.op µ_(\"r\") dot.op N^(\"2\")"
+  18: "Doblar las vueltas cuadruplica la inductancia"
+  19: "tiene 25,1 µH con núcleo de aire y 50,3 mH con ferrita de µr = 2000"
+  20: "Una bobina corta y gorda tiene más inductancia que una larga y fina"
+  21: "No depende de la corriente, siempre que el núcleo no sature"
+  23: "E = \"½\" dot.op L dot.op I^(\"2\")"
+  24: "La bobina de ferrita del ejemplo (50,3 mH), con 1 A, almacena 25 mJ"
+  28: "No puede cambiar bruscamente"
+  31: "Un centímetro de pista en una placa tiene aproximadamente 10 nH"
+  32: "una salida lógica que conmuta 20 mA en 2 ns"
+  "cap04#74": "Con 10 mH y 100 Ω, τ = 100 µs"
+  "cap04#341": "Una bobina de 200 espiras sobre un núcleo de ferrita"
+
+modelo:
+  valores:
+    V_l: { sim: "V", nombre: "tensión de la fuente", unidad: V, valor: 10 }
+    R_l: { sim: "R", nombre: "resistencia", unidad: Ω, valor: 100 }
+    L_l: { sim: "L", nombre: "inductancia", unidad: H, valor: 0.01 }
+    l_on: { tipo: interruptor, nombre: "fuente conectada", valor: 0 }
+    L_f: { sim: "L", nombre: "inductancia de la bobina", unidad: H, valor: 0.01 }
+    d_I: { sim: "Δi", nombre: "cambio de la corriente", unidad: A, valor: 1 }
+    d_t: { sim: "Δt", nombre: "tiempo del cambio", unidad: s, valor: 0.001 }
+    N_s: { sim: "N", nombre: "número de espiras", unidad: espiras, valor: 100 }
+    mu_r: { sim: "µ_{r}", nombre: "permeabilidad relativa del núcleo", unidad: "", valor: 1 }
+    A_s: { sim: "A", nombre: "sección", unidad: "mm²", valor: 100 }
+    l_s: { sim: "l", nombre: "longitud", unidad: cm, valor: 5 }
+    I_e: { sim: "I", nombre: "corriente de la bobina", unidad: A, valor: 1 }
+    L_p: { sim: "L", nombre: "inductancia de la pista", unidad: H, valor: 10e-9 }
+    i_p: { sim: "Δi", nombre: "corriente que conmuta la salida", unidad: A, valor: 0.02 }
+    t_p: { sim: "Δt", nombre: "tiempo de la conmutación", unidad: s, valor: 2e-9 }
+  calculos:
+    tau_l: { expr: "L_l/R_l", sim: "τ", nombre: "constante de tiempo", unidad: s }
+    V_lf: { si: l_on, entonces: "V_l", sino: "0", sim: "V", nombre: "tensión aplicada", unidad: V }
+    I_lf: { expr: "V_lf/R_l", sim: "I_{final}", nombre: "corriente final", unidad: A }
+    di_dt: { expr: "d_I/d_t", sim: "di/dt", nombre: "ritmo de cambio de la corriente", unidad: "A/s" }
+    v_f: { expr: "L_f*d_I/d_t", sim: "v", nombre: "tensión en la bobina", unidad: V }
+    L_s: { expr: "4*pi*1e-7*mu_r*N_s^2*(A_s*1e-6)/(l_s*0.01)", sim: "L", nombre: "inductancia del solenoide", unidad: H }
+    E_s: { expr: "0.5*L_s*I_e^2", sim: "E", nombre: "energía almacenada", unidad: J }
+    v_p: { expr: "L_p*i_p/t_p", sim: "v", nombre: "tensión en la pista", unidad: V }
+    k_p: { expr: "i_p/t_p", sim: "di/dt", nombre: "ritmo de cambio en la pista", unidad: "A/s" }
+
+tarjetas:
+  - id: explore-oposicion
+    tipo: explorar
+    titulo: "Una bobina y una resistencia"
+    texto: "Conecte la fuente. La corriente sube despacio. Mire la tensión en la bobina mientras sube y cuando ya no cambia."
+    nota: "v_{R} sigue a la corriente: i = v_{R}/R."
+    libro: [5, "cap04#74"]
+    widget:
+      tipo: circuito
+      esquema: carga-rl
+      piezas: { fuente: V_l, r: R_l, l: L_l, interruptor: l_on }
+      lectura: { valor: I_lf, rotulo: "Corriente final" }
+      grafica:
+        x: { id: t, min: 0, max: 0.0005, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 11, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_lf*exp(-t/tau_l)", color: naranja, rotulo: "v_{L}", mide: vl }
+          - { expr: "V_lf*(1 - exp(-t/tau_l))", color: azul, rotulo: "v_{R}", mide: vr, discontinua: true }
+      mandos:
+        - { valor: l_on, tipo: conectar, boton: "Conectar la fuente" }
+    requiere: { conectar: [l_on] }
+
+  - id: porque-cambio
+    tipo: porque
+    titulo: "¿A qué se opone?"
+    texto: "Al final la corriente vale {{I_lf}} y la bobina ya no tiene tensión. ¿A qué se opone una bobina?"
+    libro: [5]
+    fijar: { l_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: carga-rl
+      piezas: { fuente: V_l, r: R_l, l: L_l, interruptor: l_on }
+      lectura: { valor: I_lf, rotulo: "Corriente final" }
+      grafica:
+        x: { id: t, min: 0, max: 0.0005, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 11, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_lf*exp(-t/tau_l)", color: naranja, rotulo: "v_{L}", mide: vl }
+          - { expr: "V_lf*(1 - exp(-t/tau_l))", color: azul, rotulo: "v_{R}", mide: vr, discontinua: true }
+    opciones:
+      - texto: "A que la corriente cambie"
+        bien: true
+        porque: "Con corriente constante no desarrolla tensión, por grande que sea: es un simple hilo de cobre."
+      - texto: "A la corriente"
+        porque: "Es la idea que más se malinterpreta. Con la corriente ya estable, la bobina no tiene tensión."
+      - texto: "A la tensión de la fuente"
+        porque: "La fuente sigue dando lo mismo. La bobina solo responde mientras su corriente cambia."
+
+  - id: prediga-diez-voltios
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Una bobina de 10 mH; su corriente cambia 1 A cada milisegundo. ¿Qué tensión desarrolla?"
+    libro: [10]
+    fijar: { d_t: 0.001 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 0.000001, max: 0.001, unidad: s, rotulo: "Δt", escala: log }
+      y: { min: 1, max: 100000, unidad: V, rotulo: "v", escala: log }
+      curvas:
+        - { expr: "L_f*d_I/nu", color: naranja, rotulo: "v = L·Δi/Δt" }
+      lectura: { valor: v_f, rotulo: "Tensión en la bobina" }
+      ocultar: true
+    opciones:
+      - texto: "10 V"
+        bien: true
+        porque: "1 A por milisegundo son 1000 A/s; por 10 mH, 10 V."
+      - texto: "10 mV"
+        porque: "Ha dividido por mil en lugar de multiplicar: 1 A en un milisegundo son 1000 A/s."
+      - texto: "Nada: 1 A es poca corriente"
+        porque: "La bobina no responde al tamaño de la corriente, sino a lo deprisa que cambia."
+    comprobar:
+      - { v_f: 10, di_dt: 1000 }
+
+  - id: formula-faraday
+    tipo: formula
+    titulo: "La ecuación de la bobina"
+    texto: "La tensión es proporcional a lo deprisa que cambia la corriente. L es la constante, en henrios."
+    nota: "Un henrio desarrolla un voltio cuando la corriente cambia un amperio por segundo."
+    libro: [8, 9]
+    ec: 8
+    sustitucion: "{{L_f}} · {{d_I}} / {{d_t}} = {{v_f}}"
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 0.000001, max: 0.001, unidad: s, rotulo: "Δt", escala: log }
+      y: { min: 1, max: 100000, unidad: V, rotulo: "v", escala: log }
+      curvas:
+        - { expr: "L_f*d_I/nu", color: naranja, rotulo: "v = L·Δi/Δt" }
+      asas:
+        - { mueve: d_t, x: "d_t", y: "v_f", rotulo: "Tiempo del cambio" }
+      lectura: { valor: v_f, rotulo: "Tensión en la bobina" }
+      mandos:
+        - { valor: d_t, lista: [0.000001, 0.00001, 0.0001, 0.001], rotulo: "Tiempo del cambio, Δt" }
+
+  - id: sorpresa-corte
+    tipo: sorpresa
+    titulo: "Córtela de golpe"
+    texto: "Ahora corte esa misma corriente mil veces más deprisa, en un microsegundo. Mire la tensión."
+    nota: "Así se destruye el transistor que conmuta un relé sin diodo de protección."
+    libro: [10]
+    inicio: { d_t: 0.001 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 0.000001, max: 0.001, unidad: s, rotulo: "Δt", escala: log }
+      y: { min: 1, max: 100000, unidad: V, rotulo: "v", escala: log }
+      curvas:
+        - { expr: "L_f*d_I/nu", color: naranja, rotulo: "v = L·Δi/Δt" }
+      asas:
+        - { mueve: d_t, x: "d_t", y: "v_f", rotulo: "Tiempo del cambio" }
+      lectura: { valor: v_f, rotulo: "Tensión en la bobina" }
+      mandos:
+        - { valor: d_t, lista: [0.000001, 0.00001, 0.0001, 0.001], rotulo: "Tiempo del cambio, Δt" }
+    requiere: { mover: [d_t] }
+    comprobar:
+      - { con: { d_t: 0.000001 }, v_f: 10000 }
+
+  - id: porque-lenz
+    tipo: porque
+    titulo: "¿Por qué se opone?"
+    texto: "La tensión inducida se opone al cambio que la produjo (ley de Lenz). ¿Por qué no lo refuerza?"
+    libro: [4, 6]
+    opciones:
+      - texto: "Por la conservación de la energía"
+        bien: true
+        porque: "Si reforzara el cambio, cualquier perturbación crecería sin límite y se sacaría energía de la nada."
+      - texto: "Es un convenio de signos"
+        porque: "No es una regla arbitraria: es una consecuencia de la conservación de la energía."
+      - texto: "Por la resistencia del cobre"
+        porque: "La resistencia no entra: la oposición aparece igual en una bobina ideal, sin resistencia."
+
+  - id: prediga-espiras
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Un solenoide de 100 espiras, 5 cm y 1 cm², sin núcleo. Si dobla las espiras, ¿qué pasa con L?"
+    libro: [16, 18, 19]
+    fijar: { N_s: 100, mu_r: 1 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 0, max: 200, unidad: espiras, rotulo: "N" }
+      y: { min: 0, max: 0.00011, unidad: H, rotulo: "L" }
+      curvas:
+        - { expr: "4*pi*1e-7*mu_r*nu^2*(A_s*1e-6)/(l_s*0.01)", color: naranja, rotulo: "L sin núcleo" }
+      lectura: { valor: L_s, rotulo: "Inductancia" }
+      ocultar: true
+    opciones:
+      - texto: "Se multiplica por cuatro"
+        bien: true
+        porque: "Va con N²: cada espira aporta flujo y a la vez recoge el de todas las demás. De 25,1 µH a 100 µH."
+      - texto: "Se duplica"
+        porque: "Sería así si cada espira solo aportara flujo. También recoge el de las otras: va con el cuadrado."
+      - texto: "No cambia"
+        porque: "Las espiras son lo que más pesa en L: va con su cuadrado."
+    comprobar:
+      - { L_s: 25.13e-6 }
+      - { con: { N_s: 200 }, L_s: 100.5e-6 }
+
+  - id: formula-solenoide
+    tipo: formula
+    titulo: "De qué depende L"
+    texto: "Espiras al cuadrado, permeabilidad del núcleo y geometría: sección partida por longitud. Cambie las espiras y ponga ferrita."
+    libro: [16, 19, 20]
+    ec: 16
+    sustitucion: "µ₀ · {{mu_r}} · {{N_s}}² · 1 cm² / 5 cm = {{L_s}}"
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 10, max: 200, unidad: espiras, rotulo: "N" }
+      y: { min: 0.0000001, max: 1, unidad: H, rotulo: "L", escala: log }
+      curvas:
+        - { expr: "4*pi*1e-7*mu_r*nu^2*(A_s*1e-6)/(l_s*0.01)", color: naranja, rotulo: "L" }
+      asas:
+        - { mueve: N_s, x: "N_s", y: "L_s", rotulo: "Espiras" }
+      lectura: { valor: L_s, rotulo: "Inductancia" }
+      mandos:
+        - { valor: N_s, min: 10, max: 200, paso: 10, rotulo: "Espiras, N" }
+        - { valor: mu_r, lista: [1, 2000], nombres: [aire, ferrita], rotulo: "Núcleo, µ_{r}" }
+    comprobar:
+      - { con: { N_s: 100, mu_r: 2000 }, L_s: 50.27e-3 }
+
+  - id: estime-ejercicio
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Una bobina de ferrita"
+    texto: "200 espiras sobre ferrita de µr = 2000, sección 1 cm² y longitud 4 cm. Estime su inductancia."
+    libro: ["cap04#341"]
+    fijar: { N_s: 200, mu_r: 2000, A_s: 100, l_s: 4 }
+    estimar:
+      objetivo: "L_s"
+      unidad: H
+      min: 0
+      max: 0.5
+      paso: 0.001
+      inicio: 0.45
+      tol: 0.05
+      rotulo: "L"
+    exito: "Unos 251 mH: 4π × 10⁻⁷ × 2000 × 200² × 10⁻⁴ / 0,04."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.264 }, texto: "Se ha pasado. Pase la sección a metros cuadrados (10⁻⁴) y la longitud a metros (0,04)." }
+      - { texto: "Se ha quedado corto. Recuerde que N va al cuadrado: 200² = 40 000." }
+    comprobar:
+      - { L_s: 0.2513 }
+
+  - id: pregunta-dos-espiras
+    tipo: pregunta
+    titulo: "Dos espiras de más"
+    texto: "Bobina una de 20 espiras y se equivoca en dos. ¿Cuánto cambia la inductancia, más o menos?"
+    libro: [18]
+    opciones:
+      - texto: "Un 20 %"
+        bien: true
+        porque: "Un 10 % de espiras, al cuadrado, es un 20 % de inductancia. Por eso se ajusta con precisión al bobinar."
+      - texto: "Un 10 %"
+        porque: "Eso son las espiras. La inductancia va con su cuadrado: el error se duplica."
+      - texto: "Nada: son pocas"
+        porque: "Con N², cada espira cuenta, y más cuanto menos espiras haya."
+
+  - id: estime-energia
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La energía del campo"
+    texto: "La bobina de ferrita del ejemplo, 50,3 mH, lleva 1 A. Estime la energía que guarda, ½·L·I²."
+    nota: "No está en el cobre, sino en el campo."
+    libro: [23, 24]
+    fijar: { N_s: 100, mu_r: 2000, A_s: 100, l_s: 5, I_e: 1 }
+    estimar:
+      objetivo: "E_s"
+      unidad: J
+      min: 0
+      max: 0.1
+      paso: 0.001
+      inicio: 0.08
+      tol: 0.05
+      rotulo: "E"
+    exito: "25 mJ: la mitad de 50,3 mH por 1 A al cuadrado."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.0264 }, texto: "Se ha pasado. ¿Ha olvidado el ½?" }
+      - { texto: "Se ha quedado corto. Con 1 A, I² vale 1: es la mitad de L." }
+    comprobar:
+      - { E_s: 0.02513 }
+
+  - id: empareje-dualidad
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "La dualidad"
+    texto: "Cada afirmación sobre el condensador tiene su reflejo en la bobina. Empareje."
+    libro: [28]
+    emparejar:
+      - ["Bobina: no salta", "Su corriente"]
+      - ["Condensador: no salta", "Su tensión"]
+      - ["Bobina en continua", "Cortocircuito"]
+      - ["Condensador en continua", "Circuito abierto"]
+    exito: "Eso es: basta intercambiar tensión por corriente."
+    pistas:
+      - { texto: "La bobina guarda energía en el campo magnético, que va con la corriente." }
+
+  - id: estime-pista
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La inductancia de una pista"
+    texto: "Un centímetro de pista tiene unos 10 nH. Una salida lógica conmuta 20 mA en 2 ns. Estime la tensión en la pista."
+    libro: [31, 32]
+    estimar:
+      objetivo: "v_p"
+      unidad: V
+      min: 0
+      max: 1
+      paso: 0.01
+      inicio: 0.8
+      tol: 0.05
+      rotulo: "v en la pista"
+    exito: "0,1 V: di/dt = 10⁷ A/s sobre 10 nH. Varias salidas a la vez: el rebote de masa."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.105 }, texto: "Se ha pasado. 20 mA en 2 ns son 10⁷ A/s; por 10⁻⁸ H." }
+      - { texto: "Se ha quedado corto. 20 mA en 2 ns son 10⁷ A/s: multiplique por 10 nH." }
+    comprobar:
+      - { v_p: 0.1, k_p: 1e7 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [5, 8, 16, 21, 23, 31]
+    ideas:
+      - { titulo: "Se opone al cambio.", texto: "v = L·di/dt: sin cambio de corriente no hay tensión; cortarla de golpe da miles de voltios." }
+      - { titulo: "De qué depende L.", texto: "Del cuadrado de las espiras, de la permeabilidad del núcleo y de la geometría, mientras no sature." }
+      - { titulo: "Energía.", texto: "½·L·I², guardada en el campo, no en el cobre." }
+      - { titulo: "Sin querer.", texto: "Toda espira tiene inductancia: un centímetro de pista, unos 10 nH." }

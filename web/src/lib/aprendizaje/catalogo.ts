@@ -13,6 +13,7 @@ import type { ItemCatalogo, ConceptoCandidato, CandidatoProblema, DominioMinimo 
 
 const practica = () => import('../../componentes/practica/datos');
 const repaso = () => import('../../componentes/repaso/datos');
+const lecciones11 = () => import('../leccion11/datos');
 
 /** The h2 section (concept key) a label of a part belongs to, or null. Needs ejercicios.json for problems. */
 export function conceptoDeRef(parte: string, ref: string): string | null {
@@ -109,7 +110,25 @@ export async function conceptoDePractica(id: string, parte?: string): Promise<st
   return it ? `${it.parte}/${it.seccion}` : null;
 }
 
-/** Every answerable item of a part: practice items, Repaso questions and self-checked exercises. */
+/**
+ * The cards of a part's hand-authored 1.1 lessons that can be asked on their own (predictions, questions,
+ * challenges: libro/lecciones11/indice.json «preguntas»), under the id their answers are recorded with in the lesson
+ * (`<parte>-l11-<label>-<card>`): XP once per card wherever it is answered, and the same mastery rounds.
+ */
+export async function itemsLecciones11(parte: string): Promise<{ items: ItemCatalogo[]; falta: boolean }> {
+  const { cargarIndice11, indice11SinRed } = await lecciones11();
+  const ind = await cargarIndice11();
+  if (!ind) return { items: [], falta: indice11SinRed() };
+  const r: ItemCatalogo[] = [];
+  for (const [id, e] of Object.entries(ind.lecciones)) {
+    if (!id.startsWith(`${parte}/`)) continue;
+    const label = id.slice(parte.length + 1);
+    for (const q of e.preguntas ?? []) r.push({ id: `${parte}-l11-${label}-${q.id}`, tipo: 'leccion11', subtipo: `leccion11-${q.tipo}`, concepto: id });
+  }
+  return { items: r, falta: false };
+}
+
+/** Every answerable item of a part: practice items, Repaso questions, self-checked exercises and 1.1 lesson cards. */
 export async function itemsDeParte(parte: string): Promise<ItemCatalogo[]> {
   return (await itemsYFalta(parte)).items;
 }
@@ -123,7 +142,13 @@ async function itemsYFalta(parte: string): Promise<{ items: ItemCatalogo[]; falt
     if (esDeRed(e)) falta = true;
     return null;
   };
-  const [pr, rp, ej] = await Promise.all([cargarPractica(parte).catch(sinRed), cargarCuestionario(parte).catch(sinRed), cargarEjercicios()]);
+  const [pr, rp, ej, l11] = await Promise.all([
+    cargarPractica(parte).catch(sinRed),
+    cargarCuestionario(parte).catch(sinRed),
+    cargarEjercicios(),
+    itemsLecciones11(parte).catch(() => ({ items: [], falta: true })),
+  ]);
+  if (l11.falta) falta = true;
   const r: ItemCatalogo[] = [];
   for (const it of pr?.items ?? []) r.push({ id: it.id, tipo: 'practica', subtipo: it.tipo, concepto: `${it.parte}/${it.seccion}` });
   for (const q of rp?.preguntas ?? []) {
@@ -135,6 +160,7 @@ async function itemsYFalta(parte: string): Promise<{ items: ItemCatalogo[]; falt
     if (it.parte !== parte || it.modo !== 'auto' || !(it.respuestas.length || it.preguntas?.length) || !it.seccion) continue;
     r.push({ id: label, tipo: 'ejercicio', subtipo: it.tipo, concepto: `${parte}/${it.seccion}` });
   }
+  r.push(...l11.items);
   return { items: r, falta };
 }
 

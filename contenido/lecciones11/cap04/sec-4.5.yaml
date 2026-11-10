@@ -1,0 +1,251 @@
+# Lección 1.1 de la sección 4.5 «Cargas Inductivas y el Diodo de Protección» (cap04): el pico al cortar
+# (v = L·ΔI/Δt), el diodo de libre circulación que lo limita a VCC + 0,7 V, su precio (la corriente tarda más en
+# extinguirse), el diodo con resistencia (pico I·R), las cuatro variantes, la alterna y cómo dimensionar el diodo.
+# La curva de extinción usa el relé del problema 4.C (12 V, 10 mH, 2 A, 6 Ω). Formato: contenido/lecciones11/GUIA.md.
+leccion: cap04/sec-4.5
+
+libro:
+  123: "al abrir el circuito, la bobina genera la tensión que haga falta para mantener su corriente"
+  125: "v = L dot.op (\"Δ\" I)/(\"Δ\" t)"
+  126: "ese «algo» es precisamente lo que se destruye"
+  128: "la bobina es el problema, y el transistor que la gobierna, la víctima"
+  133: "un diodo en antiparalelo con la bobina, en inversa respecto a la alimentación"
+  134: "la corriente sigue circulando en un lazo cerrado hasta extinguirse en la resistencia del devanado"
+  135: "el colector no pasa de VCC + 0,7 V"
+  137: "el diodo alarga el tiempo de desconexión"
+  139: "El contacto se abre más despacio, y arquea más tiempo"
+  140: "El tiempo de respuesta empeora"
+  142: "Compromiso ajustable"
+  143: "permite un pico controlado —por ejemplo 30 V— y disipa la energía mucho más deprisa"
+  144: "el pico será I × R"
+  146: "un diodo la cortocircuitaría en un semiciclo"
+  148: "Tensión inversa: al menos la de alimentación, con margen"
+  149: "Corriente: la que circulaba por la bobina, no más"
+  150: "Con conmutación por encima de unos kilohercios, Schottky o rápido"
+  151: "lo más cerca posible de la bobina"
+  153: "un relé de 12 V gobernado por un transistor"
+  "cap04#321": "Un relé de potencia alimentado a 12 V, con 10 mH de bobina, consume 2 A"
+  "cap04#330": "la ecuación del lazo es L·di/dt = −(V + R·i)"
+
+modelo:
+  valores:
+    L_b: { sim: "L", nombre: "inductancia de la bobina", unidad: H, valor: 0.1 }
+    I_b: { sim: "ΔI", nombre: "corriente que se corta", unidad: A, valor: 0.1 }
+    d_t: { sim: "Δt", nombre: "tiempo del corte", unidad: s, valor: 0.001 }
+    V_cc: { sim: "V_{CC}", nombre: "alimentación del relé", unidad: V, valor: 12 }
+    L_r: { sim: "L", nombre: "inductancia del relé", unidad: H, valor: 0.01 }
+    R_w: { sim: "R_{dev}", nombre: "resistencia del devanado", unidad: Ω, valor: 6 }
+    I_r: { sim: "I", nombre: "corriente del relé", unidad: A, valor: 2 }
+    V_D: { sim: "V_{D}", nombre: "caída del diodo", unidad: V, valor: 0.7 }
+    R_e: { sim: "R", nombre: "resistencia en serie con el diodo", unidad: Ω, valor: 0 }
+  calculos:
+    v_b: { expr: "L_b*I_b/d_t", sim: "v", nombre: "tensión al cortar", unidad: V }
+    R_t: { expr: "R_w + R_e", sim: "R_{lazo}", nombre: "resistencia del lazo de extinción", unidad: Ω }
+    V_e: { expr: "I_r*R_e", sim: "I·R", nombre: "pico en la resistencia", unidad: V }
+    V_col: { expr: "V_cc + V_D + V_e", sim: "V_{colector}", nombre: "pico del colector", unidad: V }
+    t_x: { expr: "L_r/R_t*ln(1 + I_r*R_t/V_D)", sim: "t_{ext}", nombre: "tiempo de extinción", unidad: s }
+
+tarjetas:
+  - id: explore-corte
+    tipo: explorar
+    titulo: "El pico al abrir"
+    texto: "Una bobina de 100 mH lleva 0,1 A y se abre el circuito. Cambie lo que tarda la corriente en caer y mire la tensión."
+    libro: [123, 125]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 0.000001, max: 0.001, unidad: s, rotulo: "Δt", escala: log }
+      y: { min: 1, max: 100000, unidad: V, rotulo: "v", escala: log }
+      curvas:
+        - { expr: "L_b*I_b/nu", color: naranja, rotulo: "v = L·ΔI/Δt" }
+      asas:
+        - { mueve: d_t, x: "d_t", y: "v_b", rotulo: "Tiempo del corte" }
+      lectura: { valor: v_b, rotulo: "Tensión al cortar" }
+      mandos:
+        - { valor: d_t, lista: [0.000001, 0.00001, 0.0001, 0.001], rotulo: "Tiempo del corte, Δt" }
+    requiere: { mover: [d_t] }
+
+  - id: formula-pico
+    tipo: formula
+    titulo: "Diez mil voltios"
+    texto: "Con una corriente que intenta caer a cero en microsegundos, la tensión es enorme."
+    nota: "En la práctica algo rompe antes: el arco en el contacto o la ruptura del transistor."
+    libro: [125, 126]
+    fijar: { d_t: 0.000001 }
+    ec: 125
+    sustitucion: "{{L_b}} · {{I_b}} / {{d_t}} = {{v_b}}"
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 0.000001, max: 0.001, unidad: s, rotulo: "Δt", escala: log }
+      y: { min: 1, max: 100000, unidad: V, rotulo: "v", escala: log }
+      curvas:
+        - { expr: "L_b*I_b/nu", color: naranja, rotulo: "v = L·ΔI/Δt" }
+      lectura: { valor: v_b, rotulo: "Tensión al cortar" }
+    comprobar:
+      - { v_b: 10000 }
+
+  - id: porque-victima
+    tipo: porque
+    titulo: "¿Quién paga?"
+    texto: "El pico sube hasta que algo rompe. En un relé gobernado por un transistor, ¿qué se destruye?"
+    libro: [126, 128]
+    opciones:
+      - texto: "El transistor que lo gobierna"
+        bien: true
+        porque: "La bobina es el problema y el transistor, la víctima: lo que limita el pico es lo que se destruye."
+      - texto: "La bobina del relé"
+        porque: "La bobina genera el pico, pero no es ella la que rompe: rompe lo que intenta cortar su corriente."
+      - texto: "La fuente de alimentación"
+        porque: "El pico aparece entre la bobina y el transistor que la corta, no en la fuente."
+
+  - id: prediga-diodo
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Relé de 12 V con un diodo en antiparalelo con la bobina. Al cortar, ¿hasta dónde sube el colector del transistor?"
+    libro: [133, 134, 135, 153]
+    fijar: { R_e: 0 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.006, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 2.2, unidad: A, rotulo: "i" }
+      curvas:
+        - { expr: "max(0, (I_r + V_D/R_t)*exp(-t*R_t/L_r) - V_D/R_t)", color: naranja, rotulo: "i de la bobina" }
+      lectura: { valor: V_col, rotulo: "Pico del colector" }
+      datos:
+        - { valor: t_x, rotulo: "Se extingue en {{t_x}}" }
+      ocultar: true
+    opciones:
+      - texto: "A 12,7 V"
+        bien: true
+        porque: "El diodo conduce al cortar y deja la bobina en menos de un voltio: el colector no pasa de VCC + 0,7 V."
+      - texto: "A cientos de voltios"
+        porque: "Eso es sin diodo. Con él, la corriente sigue por el lazo bobina-diodo y no hace falta tensión."
+      - texto: "A 0 V"
+        porque: "El colector queda por encima de la alimentación: la bobina invierte su tensión y el diodo la sujeta en 0,7 V."
+    comprobar:
+      - { V_col: 12.7 }
+
+  - id: porque-precio
+    tipo: porque
+    titulo: "El precio"
+    texto: "La corriente tarda unos {{t_x}} en extinguirse en el devanado. Mientras, el relé sigue enganchado. ¿Qué consecuencia tiene?"
+    libro: [137, 139, 140]
+    fijar: { R_e: 0 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.006, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 2.2, unidad: A, rotulo: "i" }
+      curvas:
+        - { expr: "max(0, (I_r + V_D/R_t)*exp(-t*R_t/L_r) - V_D/R_t)", color: naranja, rotulo: "i de la bobina" }
+      lectura: { valor: t_x, rotulo: "Tiempo de extinción" }
+    opciones:
+      - texto: "El contacto se abre más despacio y arquea más"
+        bien: true
+        porque: "Paradójicamente, el diodo protege el transistor y acorta la vida del contacto. Y la respuesta empeora."
+      - texto: "Ninguna: el relé suelta igual"
+        porque: "La armadura no suelta mientras circula corriente por la bobina: tarda más."
+      - texto: "El diodo se quema"
+        porque: "Un diodo de la corriente de la bobina la aguanta. El precio es el tiempo."
+
+  - id: explore-resistencia
+    tipo: explorar
+    titulo: "Diodo más resistencia"
+    texto: "Ponga una resistencia en serie con el diodo. Mire el pico del colector y cuánto tarda la corriente en extinguirse."
+    nota: "La caída: L·di/dt = −(V_{D} + R_{lazo}·i)."
+    libro: [142, 144, "cap04#321", "cap04#330"]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.006, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 2.2, unidad: A, rotulo: "i" }
+      curvas:
+        - { expr: "max(0, (I_r + V_D/R_t)*exp(-t*R_t/L_r) - V_D/R_t)", color: naranja, rotulo: "i de la bobina" }
+      lectura: { valor: V_col, rotulo: "Pico del colector" }
+      datos:
+        - { valor: V_e, rotulo: "Pico en R: {{V_e}}" }
+        - { valor: t_x, rotulo: "Se extingue en {{t_x}}" }
+      mandos:
+        - { valor: R_e, lista: [0, 3.3, 6.8, 10, 15, 22, 33], rotulo: "Resistencia en serie, R" }
+    requiere: { mover: [R_e] }
+
+  - id: reto-resistencia
+    tipo: reto
+    titulo: "Reto: rápido, con el pico a raya"
+    texto: "El relé lleva 2 A. Elija la R que extinga la corriente lo antes posible sin dejar más de 30 V en la resistencia."
+    libro: [143, 144]
+    inicio: { R_e: 0 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.006, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 2.2, unidad: A, rotulo: "i" }
+      curvas:
+        - { expr: "max(0, (I_r + V_D/R_t)*exp(-t*R_t/L_r) - V_D/R_t)", color: naranja, rotulo: "i de la bobina" }
+      lectura: { valor: V_col, rotulo: "Pico del colector" }
+      datos:
+        - { valor: t_x, rotulo: "Se extingue en {{t_x}}" }
+      mandos:
+        - { valor: R_e, lista: [0, 3.3, 6.8, 10, 15, 22, 33], rotulo: "Resistencia en serie, R" }
+    condiciones:
+      - { valor: V_e, max: 30, rotulo: "Pico en R: {{V_e}}" }
+      - { valor: t_x, max: 0.0021, rotulo: "Extinción: {{t_x}}" }
+    exito: "15 Ω: 30 V de pico y {{t_x}}. Con más R, más pico; con menos, más lento. Es el compromiso ajustable."
+    pistas:
+      - { cuando: { valor: V_e, mayor: 30 }, texto: "Demasiado pico: el pico es I·R, y con 2 A cada ohmio suma 2 V." }
+      - { texto: "El pico cabe, pero aún es lento: suba R mientras I·R no pase de 30 V." }
+    ayuda: "I·R ≤ 30 V con 2 A: R ≤ 15 Ω. La mayor que cumple es la más rápida."
+    comprobar:
+      - { con: { R_e: 15 }, V_e: 30, t_x: 0.00196, tol: 0.01 }
+      - { con: { R_e: 10 }, V_e: 20, t_x: 0.0024, tol: 0.01 }
+      - { con: { R_e: 0 }, t_x: 0.00483, tol: 0.01 }
+
+  - id: empareje-variantes
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Las cuatro variantes"
+    texto: "Empareje cada protección con lo que la caracteriza."
+    libro: [142, 143]
+    emparejar:
+      - ["Diodo solo", "El más lento"]
+      - ["Diodo + Zener", "Pico V_{Z}, rápido"]
+      - ["Diodo + resistencia", "Pico I·R"]
+      - ["Snubber RC", "Para alterna"]
+    exito: "Eso es. Cuanto más bajo se deja el pico, más tarda en extinguirse la corriente."
+    pistas:
+      - { texto: "El diodo solo deja el pico en menos de un voltio: por eso es el más lento." }
+
+  - id: pregunta-alterna
+    tipo: pregunta
+    titulo: "En alterna no vale el diodo"
+    texto: "La bobina de un contactor de red, alimentada en alterna. ¿Por qué no se protege con un diodo?"
+    libro: [146]
+    opciones:
+      - texto: "La cortocircuitaría en un semiciclo"
+        bien: true
+        porque: "En alterna la polaridad se invierte: el diodo conduciría medio ciclo. Ahí va un snubber RC, típicamente 100 Ω y 100 nF."
+      - texto: "Porque en alterna no hay pico"
+        porque: "Al cortar también hay pico. Lo que falla es el diodo, que conduciría en un semiciclo."
+      - texto: "Porque el diodo sería demasiado lento"
+        porque: "La velocidad importa con transistores rápidos; aquí el problema es que conduciría medio ciclo."
+
+  - id: empareje-dimensionar
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Dimensionar el diodo"
+    texto: "Empareje cada aspecto del diodo con su regla."
+    libro: [148, 149, 150, 151]
+    emparejar:
+      - ["Tensión inversa", "La de alimentación"]
+      - ["Corriente", "La de la bobina"]
+      - ["Velocidad", "Schottky o rápido"]
+      - ["Ubicación", "Junto a la bobina"]
+    exito: "Eso es. Un diodo correcto a diez centímetros deja pasar el pico por la inductancia de los cables."
+    pistas:
+      - { texto: "Durante la extinción, por el diodo circula la corriente que llevaba la bobina." }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [125, 135, 137, 142, 146]
+    ideas:
+      - { titulo: "El pico.", texto: "v = L·ΔI/Δt: al cortar, la bobina genera lo que haga falta, y se destruye lo que lo limita." }
+      - { titulo: "El diodo.", texto: "En antiparalelo, deja el colector en VCC + 0,7 V." }
+      - { titulo: "Su precio.", texto: "La corriente tarda más en extinguirse: el relé suelta más despacio y el contacto arquea más." }
+      - { titulo: "Las variantes.", texto: "Zener o resistencia aceleran a cambio de pico; en alterna, snubber RC." }

@@ -1,0 +1,337 @@
+# Lección 1.1 de la sección 3.5 «ESR y Frecuencia de Autorresonancia» (cap03): el condensador real como C, ESR y
+# ESL en serie (la V de la impedancia, la autorresonancia y la tabla de tres condensadores), la ESL en el trazado, la
+# antirresonancia, la ESR que calienta y la que domina el rizado de una conmutada, el frío, DF y Q, y el banco.
+# El esquema rlc-serie dibuja el modelo de tres elementos; la fuente de 1 V es la señal de prueba (valor del modelo).
+# Formato: contenido/lecciones11/GUIA.md.
+leccion: cap03/sec-3.5
+
+libro:
+  64: "El modelo, para casi todo, es esos tres en serie"
+  65: "alcanza un mínimo igual a la ESR"
+  66: 'f_("SRF") = ("1")/("2" π dot.op sqrt("ESL" dot.op C))'
+  67: "Cerámico 100 pF (0603)"
+  68: "Por encima de su autorresonancia, un condensador es una bobina"
+  69: "no saltar más de dos décadas entre ellos"
+  71: "Casi toda la ESL está en la geometría del camino de la corriente"
+  72: "dos vías de 1 mm añaden más inductancia que la propia del condensador"
+  73: "mejorar el condensador no sirve de nada si el trazado es malo"
+  75: "Con 2 A eficaces de rizado y 0,2 Ω de ESR, 0,8 W disipados dentro del condensador"
+  77: "Electrolítico de baja ESR"
+  78: "a −25 °C puede ser diez veces la de 20 °C"
+  80: "En la mayoría de los diseños domina el segundo"
+  81: '"Δ" V approx "Δ" I dot.op "ESR"'
+  82: "Con 0,6 A de rizado de corriente y 0,5 Ω de ESR, 300 mV de rizado"
+  83: "se reemplaza siempre por uno de baja ESR"
+  85: "Un cerámico C0G tiene Q de miles; un electrolítico, de unidades"
+  87: "16 mΩ con 100 µF"
+
+modelo:
+  valores:
+    V_z: { sim: "V_{p}", nombre: "señal de prueba", unidad: V, valor: 1 }
+    f_z: { sim: "f", nombre: "frecuencia", unidad: Hz, valor: 1000 }
+    R_z: { sim: "ESR", nombre: "resistencia serie equivalente", unidad: Ω, valor: 0.2 }
+    L_z: { sim: "ESL", nombre: "inductancia serie equivalente", unidad: H, valor: 10e-9 }
+    C_z: { sim: "C", nombre: "capacidad", unidad: F, valor: 100e-6 }
+    I_r: { sim: "I", nombre: "corriente eficaz de rizado", unidad: A, valor: 2 }
+    dI: { sim: "ΔI", nombre: "rizado de corriente", unidad: A, valor: 0.6 }
+    ESR_s: { sim: "ESR", nombre: "ESR del condensador de salida", unidad: Ω, valor: 0.5 }
+    f_s: { sim: "f", nombre: "frecuencia de conmutación", unidad: Hz, valor: 100000 }
+    C_s: { sim: "C", nombre: "condensador de salida", unidad: F, valor: 470e-6 }
+  calculos:
+    w_z: { expr: "2*pi*f_z", sim: "ω", nombre: "frecuencia angular", unidad: "rad/s" }
+    Z_z: { expr: "sqrt(R_z^2 + (w_z*L_z - 1/(w_z*C_z))^2)", sim: "|Z|", nombre: "impedancia del condensador real", unidad: Ω }
+    I_z: { expr: "V_z/Z_z", sim: "I_{p}", nombre: "corriente de la señal de prueba", unidad: A }
+    f_srf: { expr: "1/(2*pi*sqrt(L_z*C_z))", sim: "f_{SRF}", nombre: "frecuencia de autorresonancia", unidad: Hz }
+    P_esr: { expr: "I_r^2*R_z", sim: "P", nombre: "potencia disipada en la ESR", unidad: W }
+    dV: { expr: "dI*ESR_s", sim: "ΔV", nombre: "rizado por la ESR", unidad: V }
+    dV_c: { expr: "dI/(8*f_s*C_s)", sim: "ΔV_{C}", nombre: "rizado por la capacidad", unidad: V }
+    X_z: { expr: "1/(w_z*C_z)", sim: "X_{C}", nombre: "reactancia de la capacidad", unidad: Ω }
+
+tarjetas:
+  - id: explore-v
+    tipo: explorar
+    titulo: "Un condensador real"
+    texto: "Un electrolítico de 100 µF es C, ESR y ESL en serie. Suba la frecuencia y mire su impedancia."
+    nota: "Primero manda la capacidad; en el mínimo, la ESR; después, la inductancia."
+    libro: [64, 65, 67]
+    fijar: { V_z: 1, R_z: 0.2, L_z: 10e-9, C_z: 100e-6 }
+    inicio: { f_z: 1000 }
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_z, f: f_z, r: R_z, l: L_z, c: C_z }
+      lectura: { valor: Z_z, rotulo: "Impedancia, |Z|" }
+      datos:
+        - { valor: f_srf, rotulo: "Autorresonancia: {{f_srf}}" }
+      mide: { i_amp: I_z }
+      grafica:
+        x: { id: nu, min: 1000, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0.01, max: 10000, unidad: Ω, rotulo: "|Z|", escala: log }
+        curvas:
+          - { expr: "sqrt(R_z^2 + (2*pi*nu*L_z - 1/(2*pi*nu*C_z))^2)", color: naranja, rotulo: "|Z|" }
+        marcas:
+          - { x: "f_z", y: "Z_z", rotulo: "{{Z_z}}" }
+      mandos:
+        - { valor: f_z, lista: [1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000, 2000000, 5000000, 10000000, 20000000, 50000000, 100000000], rotulo: "Frecuencia, f" }
+    requiere: { mover: [f_z] }
+
+  - id: prediga-bobina
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Un electrolítico de 100 µF, con 10 nH de ESL y 0,2 Ω de ESR, resuena a 160 kHz. ¿Qué impedancia tiene a 10 MHz?"
+    libro: [67, 68]
+    fijar: { V_z: 1, R_z: 0.2, L_z: 10e-9, C_z: 100e-6, f_z: 10000000 }
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_z, f: f_z, r: R_z, l: L_z, c: C_z }
+      lectura: { valor: Z_z, rotulo: "Impedancia a 10 MHz" }
+      mide: { i_amp: I_z }
+      dibujo: false
+      grafica:
+        x: { id: nu, min: 1000, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0.01, max: 10000, unidad: Ω, rotulo: "|Z|", escala: log }
+        curvas:
+          - { expr: "sqrt(R_z^2 + (2*pi*nu*L_z - 1/(2*pi*nu*C_z))^2)", color: naranja, rotulo: "|Z|" }
+      ocultar: true
+    opciones:
+      - texto: "0,66 Ω: sube con la frecuencia"
+        bien: true
+        porque: "Por encima de su autorresonancia, un condensador es una bobina: 0,21 Ω a 1 MHz, 0,66 Ω a 10 MHz."
+      - texto: "Casi cero: sigue bajando"
+        porque: "Eso haría un condensador ideal. El real no baja de la ESR y luego manda la ESL."
+      - texto: "0,2 Ω, la ESR"
+        porque: "La ESR es el mínimo, en la autorresonancia. Más arriba se suma la reactancia de la ESL."
+    comprobar:
+      - { Z_z: 0.66 }
+      - { con: { f_z: 1000000 }, Z_z: 0.21 }
+      - { f_srf: 159155 }
+
+  - id: regla-srf
+    tipo: formula
+    titulo: "La autorresonancia"
+    texto: "El mínimo de la V está donde la ESL y la capacidad se cancelan. Un cerámico de 100 nF en 0805."
+    libro: [66, 67]
+    ec: 66
+    fijar: { V_z: 1, R_z: 0.02, L_z: 1.5e-9, C_z: 100e-9 }
+    sustitucion: "1 / (2π · √({{L_z}} · {{C_z}})) = {{f_srf}}"
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_z, f: f_z, r: R_z, l: L_z, c: C_z }
+      lectura: { valor: Z_z, rotulo: "Impedancia, |Z|" }
+      mide: { i_amp: I_z }
+      dibujo: false
+      grafica:
+        x: { id: nu, min: 1000, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0.01, max: 10000, unidad: Ω, rotulo: "|Z|", escala: log }
+        curvas:
+          - { expr: "sqrt(R_z^2 + (2*pi*nu*L_z - 1/(2*pi*nu*C_z))^2)", color: naranja, rotulo: "|Z|" }
+        marcas:
+          - { x: "f_srf", y: "R_z", rotulo: "SRF" }
+      mandos:
+        - { valor: f_z, lista: [1000, 2000, 5000, 10000, 20000, 50000, 100000, 200000, 500000, 1000000, 2000000, 5000000, 10000000, 20000000, 50000000, 100000000], rotulo: "Frecuencia, f" }
+    comprobar:
+      - { f_srf: 13e6, tol: 0.01 }
+
+  - id: estime-cien-pico
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Un condensador pequeño"
+    texto: "Un cerámico de 100 pF en 0603 tiene 0,8 nH de ESL. Estime su autorresonancia."
+    libro: [66, 67]
+    fijar: { L_z: 0.8e-9, C_z: 100e-12 }
+    estimar:
+      objetivo: "f_srf"
+      unidad: Hz
+      min: 0
+      max: 1000000000
+      paso: 1000000
+      inicio: 100000000
+      tol: 0.05
+      rotulo: "Autorresonancia"
+    exito: "563 MHz: el pequeño llega mucho más arriba. Por eso se ponen valores muy distintos en paralelo."
+    pistas:
+      - { cuando: { valor: estimacion, menor: 535000000 }, texto: "Se ha quedado corto: ESL · C es diminuto, así que la autorresonancia es muy alta." }
+      - { texto: "Se ha pasado: 1/(2π·√(0,8 nH · 100 pF)), algo más de medio gigahercio." }
+    comprobar:
+      - { f_srf: 563e6, tol: 0.002 }
+
+  - id: donde-esl
+    tipo: pregunta
+    titulo: "¿Dónde está la ESL?"
+    texto: "Para bajar la ESL de un desacoplo, ¿dónde hay que actuar sobre todo?"
+    libro: [71, 72, 73]
+    opciones:
+      - texto: "En el camino de la corriente: pistas y vías cortas"
+        bien: true
+        porque: "Casi toda la ESL es geometría: dos vías de 1 mm ya añaden más que el propio condensador."
+      - texto: "En el condensador: uno de más capacidad"
+        porque: "La capacidad no baja la ESL. Si el trazado es malo, mejorar el componente no sirve de nada."
+      - texto: "En un encapsulado más grande, 0805 en vez de 0402"
+        porque: "Es al revés: cuanto más pequeño el encapsulado, menos ESL."
+
+  - id: antirresonancia
+    tipo: pregunta
+    titulo: "Grande y pequeño juntos"
+    texto: "En paralelo, la ESL del grande y la capacidad del pequeño crean una antirresonancia: la impedancia sube. ¿Cómo se mitiga?"
+    libro: [69]
+    opciones:
+      - texto: "Escalonando los valores y con algo de ESR"
+        bien: true
+        porque: "Sin saltar más de dos décadas entre ellos; la ESR amortigua el pico."
+      - texto: "Con condensadores de ESR lo más baja posible"
+        porque: "Sin ESR el pico de antirresonancia es más alto: algo de ESR lo amortigua."
+      - texto: "Con un grande y uno muy pequeño, cuanto más distintos mejor"
+        porque: "Saltar muchas décadas agrava la antirresonancia. Se escalonan."
+
+  - id: estime-calor
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La ESR calienta"
+    texto: "La ESR convierte el rizado de corriente en calor: P = I²·ESR. Estime la potencia con 2 A eficaces y 0,2 Ω."
+    libro: [75]
+    fijar: { I_r: 2, R_z: 0.2 }
+    estimar:
+      objetivo: "P_esr"
+      unidad: W
+      min: 0
+      max: 3
+      paso: 0.05
+      inicio: 2
+      tol: 0.05
+      rotulo: "Potencia en la ESR"
+    exito: "0,8 W dentro del condensador: sube su temperatura y, en un electrolítico, consume su vida."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.84 }, texto: "Se ha pasado: 2² · 0,2." }
+      - { texto: "Se ha quedado corto: la corriente va al cuadrado." }
+    comprobar:
+      - { P_esr: 0.8 }
+
+  - id: sorpresa-rizado
+    tipo: sorpresa
+    titulo: "La ESR manda en el rizado"
+    texto: "Una conmutada: 470 µF, 100 kHz, 0,6 A de rizado. Arrastre la ESR y compare los dos rizados."
+    libro: [80, 81, 82]
+    fijar: { dI: 0.6, f_s: 100000, C_s: 470e-6 }
+    inicio: { ESR_s: 0.5 }
+    widget:
+      tipo: grafica
+      x: { id: esr, min: 0.001, max: 2, unidad: Ω, rotulo: "ESR", escala: log }
+      y: { min: 0.0001, max: 2, unidad: V, rotulo: "rizado", escala: log }
+      curvas:
+        - { expr: "dI*esr", color: naranja, rotulo: "por la ESR" }
+        - { expr: "dV_c + 0*esr", color: azul, rotulo: "por la capacidad", discontinua: true }
+      asas:
+        - { mueve: ESR_s, x: "ESR_s", y: "dV", rotulo: "ESR del condensador" }
+      lectura: { valor: dV, rotulo: "Rizado por la ESR" }
+      datos:
+        - { valor: dV_c, rotulo: "Por la capacidad: {{dV_c}}" }
+      mandos:
+        - { valor: ESR_s, lista: [0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2], rotulo: "ESR" }
+    requiere: { mover: [ESR_s] }
+    nota: "Con 0,5 Ω, 300 mV frente a 1,6 mV: domina la ESR."
+    comprobar:
+      - { dV: 0.3, dV_c: 0.0016, tol: 0.003 }
+
+  - id: reto-sustituir
+    tipo: reto
+    titulo: "Reto: cambiar el condensador seco"
+    texto: "Con 0,6 A de rizado de corriente, un condensador seco de 0,5 Ω da 300 mV. Elija la ESR del sustituto para dejarlo en la décima parte o menos."
+    libro: [77, 81, 83]
+    fijar: { dI: 0.6 }
+    inicio: { ESR_s: 0.5 }
+    widget:
+      tipo: grafica
+      x: { id: esr, min: 0.001, max: 2, unidad: Ω, rotulo: "ESR", escala: log }
+      y: { min: 0.0001, max: 2, unidad: V, rotulo: "rizado", escala: log }
+      curvas:
+        - { expr: "dI*esr", color: naranja, rotulo: "por la ESR" }
+      asas:
+        - { mueve: ESR_s, x: "ESR_s", y: "dV", rotulo: "ESR del condensador" }
+      lectura: { valor: dV, rotulo: "Rizado por la ESR" }
+      mandos:
+        - { valor: ESR_s, lista: [0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2], rotulo: "ESR" }
+    condiciones:
+      - { valor: dV, max: 0.03, rotulo: "Rizado: {{dV}}" }
+    exito: "Con {{ESR_s}}, {{dV}}. Por eso se sustituye siempre por uno de baja ESR, nunca por «la misma capacidad»."
+    pistas:
+      - { cuando: { valor: dV, mayor: 0.03 }, texto: "Aún sobra rizado: ΔV ≈ ΔI·ESR. Baje la ESR: baja ESR, polímero o cerámico." }
+    ayuda: "La décima parte de 300 mV son 30 mV: con 0,6 A, una ESR de 0,05 Ω o menos."
+    comprobar:
+      - { con: { ESR_s: 0.05 }, dV: 0.03 }
+
+  - id: capacimetro
+    tipo: porque
+    titulo: "El capacímetro no lo ve"
+    texto: "Una conmutada tiene demasiado rizado y su electrolítico de salida mide la capacidad correcta. ¿Qué pasa?"
+    libro: [82, 87]
+    opciones:
+      - texto: "Está seco: la ESR ha subido y el capacímetro no la mide"
+        bien: true
+        porque: "Es la avería silenciosa más frecuente de las conmutadas. La ESR se mide aparte."
+      - texto: "Nada: si la capacidad es correcta, está bien"
+        porque: "El rizado depende sobre todo de la ESR, y la ESR crece al envejecer aunque la capacidad aguante."
+      - texto: "Le sobra capacidad"
+        porque: "Más capacidad bajaría el rizado. El culpable es la ESR, que el capacímetro no ve."
+
+  - id: arranque-frio
+    tipo: pregunta
+    titulo: "En verano sí, en invierno no"
+    texto: "Una fuente funciona bien en verano y falla al arrancar en frío. ¿Por qué?"
+    libro: [78]
+    opciones:
+      - texto: "La ESR del electrolítico crece mucho con el frío"
+        bien: true
+        porque: "El electrolito se vuelve viscoso: a −25 °C la ESR puede ser diez veces la de 20 °C."
+      - texto: "La capacidad se duplica con el frío"
+        porque: "Lo que cambia mucho con el frío es la ESR, no la capacidad."
+      - texto: "Los diodos dejan de conducir con el frío"
+        porque: "El culpable habitual es el condensador: su ESR se dispara con el frío."
+
+  - id: banco-esr
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Medir la ESR en el banco"
+    texto: "Se inyecta una senoide de 100 kHz en un electrolítico de 100 µF. Estime su reactancia: si es despreciable, se mide la ESR."
+    libro: [87]
+    fijar: { f_z: 100000, C_z: 100e-6 }
+    estimar:
+      objetivo: "X_z"
+      unidad: Ω
+      min: 0
+      max: 0.1
+      paso: 0.001
+      inicio: 0.08
+      tol: 0.07
+      rotulo: "X_{C} a 100 kHz"
+    exito: "16 mΩ: despreciable frente a la ESR de un electrolítico. La caída que se mide es la ESR."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.017 }, texto: "Se ha pasado: a 100 kHz, 100 µF son casi un cortocircuito." }
+      - { texto: "Se ha quedado corto: calcule 1/(2π · 100 kHz · 100 µF)." }
+    comprobar:
+      - { X_z: 0.0159 }
+
+  - id: factor-calidad
+    tipo: pregunta
+    titulo: "DF y Q"
+    texto: "El factor de disipación es la parte resistiva entre la reactiva; el factor de calidad Q, su inverso. ¿Cuál tiene Q de miles?"
+    libro: [85]
+    opciones:
+      - texto: "Un cerámico C0G"
+        bien: true
+        porque: "Pérdidas muy pequeñas frente a su reactancia. Importa en un filtro de precisión."
+      - texto: "Un electrolítico"
+        porque: "Su ESR es grande: su Q es de unidades."
+      - texto: "Todos parecido: Q depende solo de la bobina"
+        porque: "En un resonante suele limitar la bobina, pero el Q del condensador varía mucho con el tipo."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [64, 66, 68, 81, 83]
+    ideas:
+      - { titulo: "Tres elementos.", texto: "C, ESR y ESL en serie: la impedancia baja, toca la ESR en la autorresonancia y vuelve a subir." }
+      - { titulo: "Por encima, una bobina.", texto: "Por eso se combinan valores muy distintos, escalonados." }
+      - { titulo: "La ESL es trazado.", texto: "Vías y pistas pesan tanto como el componente." }
+      - { titulo: "La ESR manda.", texto: "Calienta (I²·ESR) y fija el rizado (ΔI·ESR): se sustituye por baja ESR." }

@@ -1,0 +1,218 @@
+# Lección 1.1 de la sección 2.12 «Medida y Selección Práctica» (cap02): medir fuera del circuito, las puntas en
+# valores bajos (dos hilos frente a cuatro), los valores altos, los siete criterios de elección y el diagnóstico
+# asimétrico. El óhmetro se dibuja como una fuente que inyecta una corriente conocida (1 A en el lazo de las puntas,
+# como el montaje a cuatro hilos del libro). Formato: contenido/lecciones11/GUIA.md.
+leccion: cap02/sec-2.12
+
+libro:
+  226: "Una lectura menor que el valor marcado casi siempre significa que hay otra rama"
+  227: "El óhmetro inyecta su propia corriente y compara"
+  228: "una resistencia de 1 Ω se mide con un 20 % de error"
+  230: "por otros dos, por los que no circula corriente y cuya resistencia por tanto no cuenta"
+  231: "con 1 A inyectado, una resistencia de 5 mΩ da 5 mV"
+  233: "crean caminos de decenas de megaohmios en paralelo"
+  234: "Hay que esperar, no anotar el primer número"
+  237: "Encapsulado, por espacio, por disipación y por si el montaje es manual o automático."
+  238: "una película metálica del 1 % en 0805 o 0,25 W axial"
+  240: "una resistencia que mide más de su valor nominal está claramente deteriorada"
+
+modelo:
+  valores:
+    I_0: { sim: "I", nombre: "corriente que inyecta el óhmetro", unidad: A, valor: 1 }
+    R_pt: { sim: "R_{punta}", nombre: "resistencia de cada punta y su contacto", unidad: Ω, valor: 0.1 }
+    R_x: { sim: "R_{x}", nombre: "resistencia que se mide", unidad: Ω, valor: 1 }
+    I_n: { sim: "I", nombre: "corriente de prueba del óhmetro", unidad: A, valor: 0.001 }
+    R_u: { sim: "R", nombre: "resistencia que se mide en la placa", unidad: Ω, valor: 10000 }
+    R_o: { sim: "R_{otra}", nombre: "otra rama de la placa en paralelo", unidad: Ω, valor: 10000 }
+    n_on: { tipo: interruptor, nombre: "otra rama conectada (sin levantar el extremo)", valor: 1 }
+  calculos:
+    V_f: { expr: "I_0*(2*R_pt + R_x)", sim: "V", nombre: "tensión en las bornas del óhmetro", unidad: V }
+    I_s: { expr: "V_f/(2*R_pt + R_x)", sim: "I", nombre: "corriente del lazo", unidad: A }
+    V_1: { expr: "I_s*R_pt", sim: "V_{punta}", nombre: "caída en la primera punta", unidad: V }
+    V_2: { expr: "I_s*R_x", sim: "V_{x}", nombre: "caída en la resistencia", unidad: V }
+    V_3: { expr: "I_s*R_pt", sim: "V_{punta}", nombre: "caída en la segunda punta", unidad: V }
+    R_2h: { expr: "V_f/I_s", sim: "R_{2 hilos}", nombre: "lectura a dos hilos", unidad: Ω, cifras: 3 }
+    R_4h: { expr: "V_2/I_s", sim: "R_{4 hilos}", nombre: "lectura a cuatro hilos", unidad: Ω, cifras: 3 }
+    err2: { expr: "(R_2h - R_x)/R_x*100", sim: "error", nombre: "error a dos hilos", unidad: "%", cifras: 3 }
+    V_no: { si: n_on, entonces: "I_n*par(R_u, R_o)", sino: "I_n*R_u", sim: "V", nombre: "tensión entre las puntas", unidad: V }
+    I_nl: { si: n_on, entonces: "V_no/R_o", sino: "0", sim: "I_{otra}", nombre: "corriente por la otra rama", unidad: A }
+    I_nr: { expr: "V_no/R_u", sim: "I_{R}", nombre: "corriente por la resistencia medida", unidad: A }
+    R_med: { expr: "V_no/I_n", sim: "lectura", nombre: "lo que marca el óhmetro", unidad: Ω, cifras: 3 }
+
+tarjetas:
+  - id: explore-puntas
+    tipo: explorar
+    titulo: "Las puntas también cuentan"
+    texto: "El óhmetro inyecta una corriente y mide la tensión entre sus bornas: puntas incluidas. Cambie la resistencia y las puntas."
+    libro: [227, 228]
+    widget:
+      tipo: circuito
+      esquema: serie
+      piezas: { fuente: V_f, r1: R_pt, r2: R_x, r3: R_pt }
+      lectura: { valor: R_2h, rotulo: "Lectura a dos hilos" }
+      barras:
+        - { valor: V_1, rotulo: "Punta: {{V_1}}", color: azul }
+        - { valor: V_2, rotulo: "R_{x}: {{V_2}}", color: naranja }
+        - { valor: V_3, rotulo: "Punta: {{V_3}}", color: azul }
+      datos:
+        - { valor: err2, rotulo: "Error: {{err2}}" }
+      corriente: I_s
+      mide: { corriente: I_s, v1: V_1, v2: V_2, v3: V_3 }
+      mandos:
+        - { valor: R_x, lista: [1, 10, 100], rotulo: "Resistencia medida, R_{x}" }
+        - { valor: R_pt, lista: [0.05, 0.1, 0.2], rotulo: "Cada punta" }
+    requiere: { mover: [R_x, R_pt] }
+
+  - id: prediga-un-ohmio
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Mide una de 1 Ω sin compensar las puntas, que suman unas décimas de ohmio. ¿Qué error comete?"
+    libro: [228]
+    fijar: { R_x: 1, R_pt: 0.1 }
+    widget:
+      tipo: circuito
+      esquema: serie
+      piezas: { fuente: V_f, r1: R_pt, r2: R_x, r3: R_pt }
+      lectura: { valor: R_2h, rotulo: "Lectura a dos hilos" }
+      corriente: I_s
+      mide: { corriente: I_s, v1: V_1, v2: V_2, v3: V_3 }
+      ocultar: true
+    opciones:
+      - texto: "Un 20 %: marca de más"
+        bien: true
+        porque: "Las puntas se suman a la resistencia: con 1 Ω, unas décimas son un 20 % de error."
+      - texto: "Ninguno: el óhmetro es exacto"
+        porque: "El óhmetro mide todo lo que hay entre sus bornas, y las puntas están ahí."
+      - texto: "Marca de menos"
+        porque: "Las puntas están en serie: suman, no restan."
+    comprobar:
+      - { R_2h: 1.2, err2: 20 }
+
+  - id: sorpresa-otra-rama
+    tipo: sorpresa
+    titulo: "Medir en la placa"
+    texto: "Mide en la placa una de 10 kΩ y marca menos. Levante un extremo, abriendo la otra rama, y vuelva a medir."
+    libro: [226]
+    inicio: { n_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: norton
+      piezas: { fuente: I_n, rn: R_u, carga: R_o, interruptor: n_on }
+      lectura: { valor: R_med, rotulo: "Lo que marca el óhmetro" }
+      corriente: I_nr
+      mide: { salida: V_no, carga: I_nl, paralelo: I_nr }
+      mandos:
+        - { valor: n_on, tipo: interruptor, rotulo: "Otra rama conectada" }
+    requiere: { mover: [n_on] }
+    comprobar:
+      - { R_med: 5000 }
+      - { con: { n_on: 0 }, R_med: 10000 }
+
+  - id: por-que-cuatro-hilos
+    tipo: porque
+    titulo: "Miliohmios"
+    texto: "Con la función REL se ponen las puntas a cero. Aun así, para miliohmios no basta. ¿Por qué?"
+    libro: [228, 230]
+    opciones:
+      - texto: "La resistencia de contacto cambia en cada apoyo"
+        bien: true
+        porque: "Se mide a cuatro hilos: dos llevan la corriente y otros dos, sin corriente, miden la caída."
+      - texto: "REL solo funciona en valores altos"
+        porque: "REL es justo para valores bajos. El problema es que el contacto no se repite igual."
+      - texto: "Porque el óhmetro no llega a miliohmios"
+        porque: "La técnica a cuatro hilos lo resuelve con una fuente y un milivoltímetro."
+
+  - id: estime-shunt
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "A cuatro hilos"
+    texto: "La fuente de laboratorio inyecta 1 A por un shunt de 5 mΩ; el multímetro mide la caída en el propio shunt. Estime qué marca."
+    libro: [231]
+    fijar: { R_x: 0.005, R_pt: 0.1 }
+    estimar:
+      objetivo: "V_2"
+      unidad: V
+      min: 0
+      max: 0.05
+      paso: 0.0005
+      inicio: 0.03
+      tol: 0.05
+      rotulo: "Caída en el shunt"
+    exito: "5 mV, cómodos de leer. Por los hilos de medida no circula corriente: sus contactos no cuentan."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.00525 }, texto: "Se ha pasado: 1 A por 5 mΩ son unos pocos milivoltios." }
+      - { texto: "Se ha quedado corto: V = I·R = 1 A × 5 mΩ." }
+    comprobar:
+      - { V_2: 0.005, R_4h: 0.005 }
+
+  - id: diagnostico
+    tipo: pregunta
+    titulo: "Más o menos que el nominal"
+    texto: "En reparación, dos resistencias de una placa: una mide más que su nominal y otra, menos. ¿Cuál está deteriorada con seguridad?"
+    libro: [226, 240]
+    opciones:
+      - texto: "La que mide más"
+        bien: true
+        porque: "La sobrecarga degrada la película y el valor sube. La que mide menos casi siempre tiene algo en paralelo."
+      - texto: "La que mide menos"
+        porque: "Medir menos suele ser otra rama en paralelo, no una avería de la resistencia."
+      - texto: "Las dos por igual"
+        porque: "El criterio es asimétrico: medir más es deterioro; medir menos, casi siempre otra rama."
+
+  - id: empareje-precauciones
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Precauciones al medir"
+    texto: "Empareje cada precaución con su razón."
+    libro: [226, 227, 228, 233, 234]
+    emparejar:
+      - ["Fuera del circuito", "El óhmetro mide todo lo que está en paralelo"]
+      - ["Sin alimentación", "Una tensión externa falsea la medida"]
+      - ["Compensar las puntas", "Suman décimas de ohmio en valores bajos"]
+      - ["Limpiar con alcohol", "La humedad y la grasa crean caminos en paralelo"]
+      - ["Esperar en valores altos", "La capacidad tarda segundos en cargarse"]
+    exito: "Eso es. En instrumentación, contra las fugas se añade un anillo de guarda."
+    pistas:
+      - { texto: "Las dos últimas son de los valores muy altos, por encima de unos megaohmios." }
+
+  - id: ordene-criterios
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Los siete criterios"
+    texto: "Ordene los criterios para elegir una resistencia, del que más a menudo decide al que menos."
+    libro: [237]
+    ordenar:
+      - "Valor y tolerancia"
+      - "Potencia, con el derating"
+      - "Tensión máxima"
+      - "Coeficiente de temperatura"
+      - "Tecnología por su ruido"
+      - "Comportamiento en frecuencia"
+      - "Encapsulado"
+    exito: "Ese es el orden del libro: el valor y la potencia deciden casi siempre."
+    pistas:
+      - { texto: "Primero el valor y la potencia; el encapsulado, al final." }
+
+  - id: noventa-por-ciento
+    tipo: pregunta
+    titulo: "El 90 % de los casos"
+    texto: "Para el 90 % de los casos hay una respuesta estándar. ¿Cuál?"
+    libro: [238]
+    opciones:
+      - texto: "Película metálica del 1 %, en 0805 o 0,25 W axial"
+        bien: true
+        porque: "El otro 10 %: shunts, terminaciones, alta tensión, precisión y entradas de bajo ruido."
+      - texto: "Película de carbón del 5 %"
+        porque: "Sirve en uso general, pero el libro propone película metálica del 1 % como respuesta estándar."
+      - texto: "Bobinada de 1 W"
+        porque: "Es para potencia: uno de los casos especiales, no la elección por defecto."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [226, 228, 230, 237, 240]
+    ideas:
+      - { titulo: "Fuera y sin tensión.", texto: "El óhmetro mide todo lo que hay entre sus puntas e inyecta su propia corriente." }
+      - { titulo: "Valores bajos.", texto: "Compensar las puntas con REL; para miliohmios, cuatro hilos." }
+      - { titulo: "Elegir.", texto: "Siete criterios; en el 90 % de los casos, película metálica del 1 %." }
+      - { titulo: "Diagnosticar.", texto: "Mide más: deteriorada. Mide menos: casi siempre algo en paralelo." }

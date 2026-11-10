@@ -1,0 +1,290 @@
+# Lección 1.1 de la sección 3.9 «Asociación, Derating de Tensión y Equilibrado» (cap03): la asociación (al revés que
+# las resistencias), el reparto de tensión de dos electrolíticos en serie que deciden sus fugas, las resistencias de
+# equilibrado (diez veces la fuga, su disipación, la descarga al apagar), el derating de tensión y los cerámicos en
+# serie. Esquema «condensadores-serie» (nuevo): las fugas se dibujan como resistencias equivalentes en paralelo; 10 y
+# 15 MΩ (fugas que difieren un 50 %, de decenas de µA) son valores del modelo, no del libro.
+# Sección sin fórmula. Formato: contenido/lecciones11/GUIA.md.
+leccion: cap03/sec-3.9
+
+libro:
+  149: "En paralelo, las capacidades se suman"
+  150: "En serie, se suman las inversas, igual que las resistencias en paralelo: dos de 100 µF dan 50 µF"
+  152: "el que menos fuga tenga se cargará a más tensión"
+  153: "Con 400 V en total, uno soportaría 240 V estando especificado para 200"
+  154: "200 V × 2 mA = 0,4 W en cada resistencia"
+  155: "Con 100 kΩ y 470 µF, la constante de tiempo es 47 s"
+  157: "un raíl de 12 V se filtra con condensadores de 16 o 25 V"
+  158: "lo que degrada la capa de óxido es pasar mucho tiempo sin ninguna tensión"
+  159: "el condensador ve el pico de la red al +10 %"
+  161: "con dos en serie, la probabilidad de que fallen ambos es mucho menor"
+  162: "el reparto lo domina la capacidad y no la fuga"
+  164: "o falta la resistencia de equilibrado o una de ellas está abierta"
+  "cap03#99": "En serie la capacidad es 50 µF (la mitad) y la tensión máxima se suma a 50 V"
+
+modelo:
+  valores:
+    V_s: { sim: "V", nombre: "tensión total", unidad: V, valor: 400 }
+    C_1: { sim: "C₁", nombre: "condensador de arriba", unidad: F, valor: 470e-6 }
+    C_2: { sim: "C₂", nombre: "condensador de abajo", unidad: F, valor: 470e-6 }
+    R_f1: { sim: "R_{f1}", nombre: "fuga del de arriba", unidad: Ω, valor: 10000000 }
+    R_f2: { sim: "R_{f2}", nombre: "fuga del de abajo", unidad: Ω, valor: 10000000 }
+    R_e: { sim: "R_{e}", nombre: "resistencia de equilibrado", unidad: Ω, valor: 100000 }
+    eq_on: { tipo: interruptor, nombre: "resistencias de equilibrado conectadas", valor: 0 }
+  calculos:
+    Rt1: { si: eq_on, entonces: "par(R_f1, R_e)", sino: "R_f1", sim: "R_{1}", nombre: "resistencia en paralelo con C₁", unidad: Ω }
+    Rt2: { si: eq_on, entonces: "par(R_f2, R_e)", sino: "R_f2", sim: "R_{2}", nombre: "resistencia en paralelo con C₂", unidad: Ω }
+    I_s: { expr: "V_s/(Rt1 + Rt2)", sim: "I", nombre: "corriente de la fuente", unidad: A }
+    V_1: { expr: "I_s*Rt1", sim: "V₁", nombre: "tensión en C₁", unidad: V }
+    V_2: { expr: "I_s*Rt2", sim: "V₂", nombre: "tensión en C₂", unidad: V }
+    I_f1: { expr: "V_1/R_f1", sim: "I_{f1}", nombre: "fuga de C₁", unidad: A }
+    I_f2: { expr: "V_2/R_f2", sim: "I_{f2}", nombre: "fuga de C₂", unidad: A }
+    I_e: { si: eq_on, entonces: "V_1/R_e", sino: "0", sim: "I_{e}", nombre: "corriente por la de equilibrado", unidad: A }
+    reparto: { expr: "100*V_2/V_s", sim: "V₂/V", nombre: "parte de la tensión en C₂", unidad: "%", cifras: 2 }
+    veces: { expr: "min(R_f1, R_f2)/R_e", sim: "I_{e}/I_{fuga}", nombre: "veces la fuga mayor", unidad: "veces", cifras: 2 }
+    P_e: { expr: "(V_s/2)^2/R_e", sim: "P", nombre: "potencia en cada resistencia de equilibrado", unidad: W }
+    I_eq: { expr: "(V_s/2)/R_e", sim: "I_{e}", nombre: "corriente de equilibrado a mitad de tensión", unidad: A }
+    tau_e: { expr: "R_e*C_1", sim: "τ", nombre: "constante de descarga", unidad: s }
+
+tarjetas:
+  - id: explore-reparto
+    tipo: explorar
+    titulo: "Dos en serie, 400 V"
+    texto: "Dos electrolíticos de 200 V en serie sobre 400 V. Cambie la fuga del de abajo y mire cómo se reparte la tensión."
+    nota: "La fuga se dibuja como una resistencia: más resistencia, menos fuga."
+    libro: [150, 152]
+    fijar: { eq_on: 0 }
+    inicio: { R_f2: 10000000 }
+    widget:
+      tipo: circuito
+      esquema: condensadores-serie
+      piezas: { fuente: V_s, c1: C_1, c2: C_2, f1: R_f1, f2: R_f2 }
+      lectura: { valor: V_2, rotulo: "Tensión en C₂" }
+      barras:
+        - { valor: V_1, rotulo: "C₁: {{V_1}}", color: azul }
+        - { valor: V_2, rotulo: "C₂: {{V_2}}", color: naranja }
+      mide: { v1: V_1, v2: V_2, corriente: I_s, fuga1: I_f1, fuga2: I_f2 }
+      mandos:
+        - { valor: R_f2, lista: [5000000, 10000000, 15000000, 20000000], rotulo: "Fuga de C₂, como resistencia" }
+    requiere: { mover: [R_f2] }
+
+  - id: asociar
+    tipo: pregunta
+    titulo: "Al revés que las resistencias"
+    texto: "Dos condensadores de 100 µF y 25 V se conectan en serie. ¿Qué capacidad y qué tensión máxima resultan?"
+    libro: [149, 150, "cap03#99"]
+    opciones:
+      - texto: "50 µF y 50 V"
+        bien: true
+        porque: "En serie se suman las inversas (la mitad) y, si se reparten por igual, la tensión admisible se suma: es lo que se gana."
+      - texto: "200 µF y 25 V"
+        porque: "Eso es en paralelo: las capacidades se suman y la tensión es la del menor."
+      - texto: "50 µF y 25 V"
+        porque: "La capacidad sí es la mitad, pero en serie, si se reparten por igual, la tensión admisible se suma."
+
+  - id: prediga-sesenta
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Dos electrolíticos de 200 V en serie sobre 400 V. Sus fugas difieren un 50 % y el de abajo fuga menos. ¿Qué tensión soporta?"
+    libro: [152, 153]
+    fijar: { eq_on: 0, R_f1: 10000000, R_f2: 15000000 }
+    widget:
+      tipo: circuito
+      esquema: condensadores-serie
+      piezas: { fuente: V_s, c1: C_1, c2: C_2, f1: R_f1, f2: R_f2 }
+      lectura: { valor: V_2, rotulo: "Tensión en C₂" }
+      barras:
+        - { valor: V_1, rotulo: "C₁: {{V_1}}", color: azul }
+        - { valor: V_2, rotulo: "C₂: {{V_2}}", color: naranja }
+      mide: { v1: V_1, v2: V_2 }
+      ocultar: true
+    opciones:
+      - texto: "240 V, por encima de sus 200 V"
+        bien: true
+        porque: "El que menos fuga se carga a más tensión: 60/40. Trabaja por encima de su límite."
+      - texto: "200 V: son iguales"
+        porque: "Solo si las fugas fueran idénticas. Son las fugas, no las capacidades, las que reparten."
+      - texto: "160 V"
+        porque: "Esa es la del que más fuga, el de arriba. El que fuga menos se lleva más."
+    comprobar:
+      - { V_2: 240, V_1: 160, reparto: 60 }
+
+  - id: por-que-fuga
+    tipo: porque
+    titulo: "¿Por qué la fuga y no la capacidad?"
+    texto: "Los dos son de 470 µF, pero la tensión se reparte 60/40. ¿Por qué decide la fuga?"
+    libro: [152]
+    opciones:
+      - texto: "En régimen permanente solo circula la fuga, y es la misma corriente para los dos"
+        bien: true
+        porque: "Cargados, no pasa corriente por la capacidad. La fuga común cae más en el que menos fuga."
+      - texto: "Porque los dos tienen la misma capacidad"
+        porque: "Con capacidades iguales se repartiría a medias si mandara la capacidad. No manda: manda la fuga."
+      - texto: "Porque el de abajo está más cerca de masa"
+        porque: "La posición no importa: el que menos fuga se carga a más, esté arriba o abajo."
+
+  - id: sorpresa-equilibrado
+    tipo: sorpresa
+    titulo: "Dos resistencias lo arreglan"
+    texto: "Con las fugas 60/40, conecte una resistencia de 100 kΩ en paralelo con cada condensador."
+    libro: [154]
+    fijar: { R_f1: 10000000, R_f2: 15000000, R_e: 100000 }
+    inicio: { eq_on: 0 }
+    widget:
+      tipo: circuito
+      esquema: condensadores-serie
+      piezas: { fuente: V_s, c1: C_1, c2: C_2, f1: R_f1, f2: R_f2, re: R_e, interruptor: eq_on }
+      lectura: { valor: V_2, rotulo: "Tensión en C₂" }
+      barras:
+        - { valor: V_1, rotulo: "C₁: {{V_1}}", color: azul }
+        - { valor: V_2, rotulo: "C₂: {{V_2}}", color: naranja }
+      datos:
+        - { valor: I_e, rotulo: "Por R_{e}: {{I_e}}" }
+        - { valor: I_f2, rotulo: "Fuga de C₂: {{I_f2}}" }
+      mide: { v1: V_1, v2: V_2, equilibrado: I_e, fuga2: I_f2 }
+      mandos:
+        - { valor: eq_on, tipo: conectar, boton: "Conectar las de equilibrado" }
+    requiere: { conectar: [eq_on] }
+    nota: "Ahora reparten las resistencias, del 1 %, y no las fugas, con su 50 % de dispersión."
+    comprobar:
+      - { con: { eq_on: 1 }, V_2: 200, tol: 0.01 }
+
+  - id: reto-diez-veces
+    tipo: reto
+    titulo: "Reto: diez veces la fuga"
+    texto: "Dos electrolíticos en serie sobre 400 V: la corriente de equilibrado debe ser unas diez veces la fuga mayor. Elija la resistencia más grande que lo cumpla."
+    libro: [154]
+    fijar: { R_f1: 10000000, R_f2: 15000000, eq_on: 1 }
+    inicio: { R_e: 10000000 }
+    widget:
+      tipo: circuito
+      esquema: condensadores-serie
+      piezas: { fuente: V_s, c1: C_1, c2: C_2, f1: R_f1, f2: R_f2, re: R_e, interruptor: eq_on }
+      lectura: { valor: V_2, rotulo: "Tensión en C₂" }
+      datos:
+        - { valor: veces, rotulo: "{{veces}} la fuga mayor" }
+      mide: { v1: V_1, v2: V_2, equilibrado: I_e }
+      mandos:
+        - { valor: R_e, lista: [10000000, 4700000, 2200000, 1000000, 470000, 100000], rotulo: "Equilibrado, R_{e}" }
+    condiciones:
+      - { valor: veces, min: 10, rotulo: "Veces la fuga: {{veces}}" }
+      - { valor: R_e, min: 1000000, rotulo: "La más grande" }
+    exito: "1 MΩ: diez veces la fuga mayor. El libro usa 100 kΩ, con 2 mA muy por encima de la fuga, a costa de disipar más."
+    pistas:
+      - { cuando: { valor: veces, menor: 10 }, texto: "Aún pesa la fuga: baje la resistencia de equilibrado." }
+      - { cuando: { valor: R_e, menor: 1000000 }, texto: "Cumple, pero puede ser más grande y disipar menos." }
+    ayuda: "La fuga mayor equivale a 10 MΩ: diez veces su corriente pide una resistencia diez veces menor."
+    comprobar:
+      - { con: { R_e: 1000000 }, veces: 10 }
+      - { con: { R_e: 100000 }, I_e: 0.002, tol: 0.01 }
+
+  - id: estime-potencia
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El precio: calor"
+    texto: "Cada resistencia de 100 kΩ soporta unos 200 V. Estime la potencia que disipa."
+    libro: [154]
+    fijar: { V_s: 400, R_e: 100000 }
+    estimar:
+      objetivo: "P_e"
+      unidad: W
+      min: 0
+      max: 2
+      paso: 0.05
+      inicio: 1.5
+      tol: 0.05
+      rotulo: "Potencia en cada R_{e}"
+    exito: "200 V × 2 mA = 0,4 W: pide resistencias de 1 W, y con tensión de trabajo de 200 V."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.42 }, texto: "Se ha pasado: por cada una pasan 2 mA; P = V·I." }
+      - { texto: "Se ha quedado corto: 200 V entre 100 kΩ son 2 mA, por 200 V." }
+    comprobar:
+      - { P_e: 0.4, I_eq: 0.002 }
+
+  - id: estime-descarga
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Una segunda función"
+    texto: "Al apagar, las resistencias descargan los condensadores. Estime la constante de tiempo con 100 kΩ y 470 µF."
+    libro: [155]
+    fijar: { R_e: 100000, C_1: 470e-6 }
+    estimar:
+      objetivo: "tau_e"
+      unidad: s
+      min: 0
+      max: 200
+      paso: 1
+      inicio: 120
+      tol: 0.05
+      rotulo: "Constante de descarga"
+    exito: "47 s: en cuatro minutos la tensión baja a valores seguros. Eso reduce el riesgo al abrir el equipo."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 49 }, texto: "Se ha pasado: τ = R·C = 100 kΩ · 470 µF." }
+      - { texto: "Se ha quedado corto: τ = R·C, en segundos." }
+    comprobar:
+      - { tau_e: 47 }
+
+  - id: siguen-cargados
+    tipo: pregunta
+    titulo: "Al abrir la fuente"
+    texto: "Se abre una fuente apagada hace varios minutos y sus condensadores en serie siguen cargados. ¿Qué indica?"
+    libro: [155, 164]
+    opciones:
+      - texto: "Que una resistencia de equilibrado está abierta o falta"
+        bien: true
+        porque: "Deberían haberlos descargado en unos minutos. Es un fallo que hay que buscar, midiendo cada tensión."
+      - texto: "Que los condensadores están en buen estado"
+        porque: "Un buen condensador no se descarga solo deprisa, pero las de equilibrado deberían haberlo hecho."
+      - texto: "Nada: es normal durante horas"
+        porque: "Con 47 s de constante, en cuatro minutos deberían estar descargados."
+
+  - id: derating
+    tipo: pregunta
+    titulo: "Derating de tensión"
+    texto: "Un raíl de 12 V tras un rectificador se filtra con un electrolítico. ¿De qué tensión nominal?"
+    libro: [157, 159]
+    opciones:
+      - texto: "16 o 25 V"
+        bien: true
+        porque: "Al 70 u 80 % de la nominal, y dimensionado por el pico real: la red puede llegar al +10 %."
+      - texto: "12 V justos"
+        porque: "Aunque la soporte, a su nominal la vida se acorta y la fuga aumenta. Y el pico real es mayor."
+      - texto: "Lo más alta posible: cuanto más margen, mejor"
+        porque: "El 50–80 % es un compromiso de tamaño y coste: más margen no estropea, pero encarece."
+
+  - id: poca-tension
+    tipo: porque
+    titulo: "¿Le daña la poca tensión?"
+    texto: "¿Daña a un electrolítico trabajar muy por debajo de su tensión nominal?"
+    libro: [158]
+    opciones:
+      - texto: "No: su vida sigue alargándose y su fuga baja"
+        bien: true
+        porque: "Lo que degrada el óxido es pasar mucho tiempo sin ninguna tensión, almacenado."
+      - texto: "Sí: por debajo del 50 % el óxido se degrada"
+        porque: "El 50–80 % no es un mínimo: lo que degrada es estar sin tensión, no con poca."
+      - texto: "Sí: pierde capacidad"
+        porque: "Eso les pasa a los cerámicos de clase 2 con mucha tensión. Al electrolítico la poca tensión no le daña."
+
+  - id: ceramicos-serie
+    tipo: pregunta
+    titulo: "Cerámicos en serie"
+    texto: "Donde se exige aislamiento reforzado se ponen a veces dos condensadores de clase Y en serie. ¿Por qué?"
+    libro: [161, 162]
+    opciones:
+      - texto: "Un MLCC suele fallar en cortocircuito; que fallen los dos es mucho menos probable"
+        bien: true
+        porque: "Y no necesitan resistencias: en los cerámicos el reparto lo domina la capacidad, no la fuga."
+      - texto: "Para sumar capacidad"
+        porque: "En serie la capacidad baja. Se ganan tensión y seguridad ante un cortocircuito."
+      - texto: "Porque sus fugas los equilibran"
+        porque: "La fuga de un cerámico es despreciable: el reparto lo domina la capacidad."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [150, 152, 154, 157]
+    ideas:
+      - { titulo: "Al revés que las resistencias.", texto: "En paralelo se suman; en serie, las inversas, y se suma la tensión." }
+      - { titulo: "Reparte la fuga.", texto: "En serie, el que menos fuga se carga a más: 60/40 puede pasar de 200 V." }
+      - { titulo: "Equilibrado.", texto: "Resistencias con diez veces la fuga: reparten y descargan al apagar, a costa de calor." }
+      - { titulo: "Derating.", texto: "Al 70 u 80 % de la nominal y por el pico real." }

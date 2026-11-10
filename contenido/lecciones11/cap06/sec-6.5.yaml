@@ -1,0 +1,325 @@
+# Lección 1.1 de la sección 6.5 «Curvas Características y Polarización» (cap06): la base fija frente al divisor con
+# resistencia de emisor (12 V, 47 kΩ, 10 kΩ, 3,3 kΩ, 1 kΩ: I_C de 1,186 a 1,363 mA con β de 50 a 300), el Thévenin
+# del divisor y la malla de entrada, la recta de carga (2,79 mA), el mecanismo de la realimentación, el criterio de
+# V_E ≥ 1 V (deriva de V_BE: 4,3 % frente a 30 %), la excursión (±4,37 V), el condensador de emisor (82 Hz con
+# 100 µF; unos 400 µF para 20 Hz) y el procedimiento de diseño. La resistencia de base fija (1,2 MΩ) es mía.
+# Formato: contenido/lecciones11/GUIA.md.
+leccion: cap06/sec-6.5
+
+libro:
+  157: "Hace falta superponer la señal a una tensión continua que mantenga al transistor en activa durante todo el ciclo."
+  161: 'V_("CE") = V_("CC") - I_("C")'
+  162: "Corta el eje horizontal en VCE = VCC"
+  163: "la recta va de 12 V a 12/4,3 kΩ = 2,79 mA"
+  165: "la corriente de colector es directamente proporcional a β"
+  170: 'R_("Th") = R_("1")'
+  171: "VTh = 2,105 V y RTh = 8,25 kΩ"
+  174: 'I_("B") = (V_("Th") - V_("BE"))'
+  176: "1,363 mA"
+  177: "β varía un 500 % y la corriente de colector solo un 15 %"
+  179: "La estabilidad no viene del divisor sino de RE."
+  181: "RTh ≪ (β+1)·RE"
+  182: "Con VE = 1,33 V, 30 °C de calentamiento producen 60 mV de deriva, un 4,3 % de variación de corriente"
+  184: "Con β = 150 el punto Q está en 1,324 mA y 6,31 V."
+  185: "1,324 mA × 3,3 kΩ = 4,37 V"
+  186: "la excursión simétrica máxima es de ±4,37 V"
+  189: "de −169 a −3,24 en el ejemplo"
+  190: "bajarlo a 20 Hz exige unos 400 µF (470 µF en la práctica)"
+  193: "Elegir VE entre el 10 y el 20 % de VCC"
+  195: "La medida que lo dice todo es VE con el Brymen"
+
+modelo:
+  valores:
+    V_cc: { sim: "V_{CC}", nombre: "alimentación", unidad: V, valor: 12 }
+    R_p1: { sim: "R₁", nombre: "divisor, arriba", unidad: Ω, valor: 47000 }
+    R_p2: { sim: "R₂", nombre: "divisor, abajo", unidad: Ω, valor: 10000 }
+    R_pc: { sim: "R_{C}", nombre: "resistencia de colector", unidad: Ω, valor: 3300 }
+    R_pe: { sim: "R_{E}", nombre: "resistencia de emisor", unidad: Ω, valor: 1000 }
+    R_bf: { sim: "R_{B}", nombre: "resistencia de base fija", unidad: Ω, valor: 1200000 }
+    beta: { sim: "β", nombre: "ganancia de corriente", unidad: "", valor: 150 }
+    V_BE: { sim: "V_{BE}", nombre: "tensión base-emisor", unidad: V, valor: 0.7 }
+    V_CEs: { sim: "V_{CE(sat)}", nombre: "tensión de saturación", unidad: V, valor: 0.2 }
+    V_m: { sim: "V_{Th} − V_{BE}", nombre: "tensión que queda entre V_Th y V_BE", unidad: V, valor: 1.4 }
+    dT: { sim: "ΔT", nombre: "calentamiento", unidad: "°C", valor: 30 }
+    r_e: { sim: "r_{e}", nombre: "resistencia que ve el condensador de emisor", unidad: Ω, valor: 19.5 }
+    C_e: { sim: "C_{E}", nombre: "condensador de emisor", unidad: F, valor: 0.0001 }
+    f_min: { sim: "f_{mín}", nombre: "frecuencia más baja que hay que amplificar", unidad: Hz, valor: 20 }
+  calculos:
+    I_fb: { expr: "max(0, (V_cc - V_BE)/R_bf)", sim: "I_{B}", nombre: "corriente de base fija", unidad: A }
+    I_fc: { expr: "min(beta*I_fb, (V_cc - V_CEs)/R_pc)", sim: "I_{C}", nombre: "corriente de colector con base fija", unidad: A, cifras: 4 }
+    V_fce: { expr: "V_cc - I_fc*R_pc", sim: "V_{CE}", nombre: "tensión colector-emisor con base fija", unidad: V }
+    V_pth: { expr: "V_cc*R_p2/(R_p1 + R_p2)", sim: "V_{Th}", nombre: "tensión Thévenin del divisor", unidad: V, cifras: 4 }
+    R_pth: { expr: "par(R_p1, R_p2)", sim: "R_{Th}", nombre: "resistencia Thévenin del divisor", unidad: Ω }
+    I_pb: { expr: "(V_pth - V_BE)/(R_pth + (beta + 1)*R_pe)", sim: "I_{B}", nombre: "corriente de base", unidad: A }
+    I_pc: { expr: "beta*I_pb", sim: "I_{C}", nombre: "corriente de colector", unidad: A, cifras: 4 }
+    V_pe: { expr: "(beta + 1)*I_pb*R_pe", sim: "V_{E}", nombre: "tensión de emisor", unidad: V, cifras: 4 }
+    V_pb: { expr: "V_pe + V_BE", sim: "V_{B}", nombre: "tensión de base", unidad: V }
+    V_pc: { expr: "V_cc - I_pc*R_pc", sim: "V_{C}", nombre: "tensión de colector", unidad: V }
+    V_pce: { expr: "V_pc - V_pe", sim: "V_{CE}", nombre: "tensión colector-emisor", unidad: V }
+    k_div: { expr: "(V_cc - V_pb)/R_p1/I_pb", sim: "I_{divisor}/I_{B}", nombre: "corriente del divisor en veces la de base", unidad: "", cifras: 2 }
+    R_beq: { expr: "(beta + 1)*R_pe", sim: "(β + 1)·R_{E}", nombre: "resistencia de emisor vista desde la base", unidad: Ω }
+    I_sat: { expr: "V_cc/(R_pc + R_pe)", sim: "I_{C(sat)}", nombre: "corte de la recta de carga con el eje de I_C", unidad: A }
+    m_rc: { expr: "I_pc*R_pc", sim: "I_{C}·R_{C}", nombre: "margen hacia el corte", unidad: V }
+    m_sat: { expr: "V_pce - V_CEs", sim: "V_{CE} − V_{CE(sat)}", nombre: "margen hacia la saturación", unidad: V }
+    d_vbe: { expr: "0.002*dT", sim: "ΔV_{BE}", nombre: "deriva de V_BE", unidad: V }
+    var_i: { expr: "100*d_vbe/V_m", sim: "ΔI_{C}/I_{C}", nombre: "variación de la corriente de colector", unidad: "%", cifras: 2 }
+    f_ce: { expr: "1/(2*pi*r_e*C_e)", sim: "f_{c}", nombre: "polo del condensador de emisor", unidad: Hz }
+    C_nec: { expr: "1/(2*pi*r_e*f_min)", sim: "C_{E}", nombre: "condensador de emisor necesario", unidad: F }
+
+tarjetas:
+  - id: explore-base-fija
+    tipo: explorar
+    titulo: "La peor polarización"
+    texto: "Base fija: una sola resistencia desde los 12 V a la base y 3,3 kΩ de colector. Cambie β entre 50 y 300 y mire I_{C}."
+    libro: [157, 165]
+    inicio: { beta: 50 }
+    widget:
+      tipo: circuito
+      esquema: bjt-interruptor
+      piezas: { vcc: V_cc, rc: R_pc, entrada: V_cc, rb: R_bf, beta: beta, vbe: V_BE, vcesat: V_CEs }
+      lectura: { valor: I_fc, rotulo: "I_{C}" }
+      datos:
+        - { valor: V_fce, rotulo: "V_{CE} = {{V_fce}}" }
+      corriente: I_fc
+      mide: { ib: I_fb, ic: I_fc, vce: V_fce }
+      mandos:
+        - { valor: beta, lista: [50, 100, 150, 300], rotulo: "β del ejemplar" }
+    requiere: { mover: [beta] }
+
+  - id: prediga-divisor
+    tipo: predecir
+    titulo: "Prediga con divisor y emisor"
+    texto: "Etapa a 12 V con divisor de 47 kΩ y 10 kΩ, 3,3 kΩ de colector y 1 kΩ de emisor. Con β = 50, I_{C} = 1,186 mA. ¿Y con β = 300?"
+    libro: [176, 177]
+    fijar: { beta: 300 }
+    widget:
+      tipo: circuito
+      esquema: bjt-polarizacion
+      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
+      lectura: { valor: I_pc, rotulo: "I_{C}" }
+      datos:
+        - { valor: V_pce, rotulo: "V_{CE} = {{V_pce}}" }
+      corriente: I_pc
+      mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
+      ocultar: true
+    opciones:
+      - texto: "1,363 mA: solo un 15 % más"
+        bien: true
+        porque: "β varía un 500 % y la corriente de colector solo un 15 %. Ese es el resultado que justifica el circuito."
+      - texto: "Seis veces más, como β"
+        porque: "Eso pasaría con la base fija, donde I_{C} es proporcional a β. Aquí la resistencia de emisor fija la corriente."
+      - texto: "1,186 mA: no cambia nada"
+        porque: "Casi, pero no del todo: la corriente de base, que depende de β, aún influye algo en la malla de entrada."
+    comprobar:
+      - { con: { beta: 50 }, I_pc: 0.001186 }
+      - { I_pc: 0.001363 }
+      - { con: { beta: 50 }, I_fc: 0.00047 }
+      - { con: { beta: 300 }, I_fc: 0.002825 }
+
+  - id: formula-malla
+    tipo: formula
+    titulo: "La malla de entrada"
+    texto: "El divisor se sustituye por su Thévenin: V_{Th} = 2,105 V y R_{Th} = 8,25 kΩ. La malla de entrada da la corriente de base."
+    nota: "Y con I_{C} = β·I_{B} se completa el punto de trabajo."
+    libro: [170, 171, 174]
+    ec: 174
+    sustitucion: "({{V_pth}} − {{V_BE}}) / ({{R_pth}} + ({{beta}} + 1) · {{R_pe}}) = {{I_pb}}"
+    widget:
+      tipo: circuito
+      esquema: bjt-polarizacion
+      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
+      lectura: { valor: I_pc, rotulo: "I_{C}" }
+      datos:
+        - { valor: I_pb, rotulo: "I_{B} = {{I_pb}}" }
+      corriente: I_pc
+      mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
+      mandos:
+        - { valor: beta, lista: [50, 100, 150, 300], rotulo: "β del ejemplar" }
+    comprobar:
+      - { V_pth: 2.105, R_pth: 8246 }
+
+  - id: estime-recta
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La recta de carga"
+    texto: "Con V_{CC} = 12 V, R_{C} = 3,3 kΩ y R_{E} = 1 kΩ, la recta de carga corta el eje horizontal en 12 V. Estime dónde corta el de I_{C}."
+    libro: [161, 162, 163]
+    estimar:
+      objetivo: "I_sat"
+      unidad: A
+      min: 0
+      max: 0.012
+      paso: 0.00001
+      inicio: 0.0036
+      tol: 0.02
+      rotulo: "I_{C} con V_{CE} = 0"
+    exito: "12 V entre 4,3 kΩ: 2,79 mA. Es el extremo de saturación; el de corte, V_{CE} = V_{CC}."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.00285 }, texto: "Se ha pasado. ¿Ha olvidado R_{E}? En la malla de salida están R_{C} y R_{E} en serie." }
+      - { texto: "Se ha quedado corto. Con V_{CE} = 0, los 12 V caen enteros en R_{C} + R_{E} = 4,3 kΩ." }
+    comprobar:
+      - { I_sat: 0.00279 }
+
+  - id: mecanismo
+    tipo: pregunta
+    titulo: "Lo que frena a I_{C}"
+    texto: "En una etapa con divisor de base y resistencia de emisor, I_{C} tiende a subir porque el transistor se calienta. ¿Qué la frena?"
+    libro: [179]
+    opciones:
+      - texto: "Sube la caída en R_{E}; con la base sujeta, V_{BE} baja y la exponencial reduce I_{C}"
+        bien: true
+        porque: "La estabilidad no viene del divisor sino de R_{E}: la subida se cancela casi por completo."
+      - texto: "El divisor baja la tensión de base"
+        porque: "El divisor sujeta la base a V_{Th}: no se mueve. Lo que cambia es V_{E}, y con ella V_{BE}."
+      - texto: "La resistencia de colector limita la corriente"
+        porque: "R_{C} no actúa sobre la malla de entrada: la que realimenta es R_{E}, compartida por las dos mallas."
+
+  - id: criterio-rth
+    tipo: pregunta
+    titulo: "Primer criterio"
+    texto: "Divisor de 47 kΩ y 10 kΩ (R_{Th} = 8,25 kΩ) y 1 kΩ de emisor, con β mínimo de 50. ¿Se cumple R_{Th} ≪ (β + 1)·R_{E}?"
+    libro: [171, 181]
+    fijar: { beta: 50 }
+    widget:
+      tipo: circuito
+      esquema: bjt-polarizacion
+      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
+      lectura: { valor: R_beq, rotulo: "(β + 1)·R_{E}" }
+      datos:
+        - { valor: R_pth, rotulo: "R_{Th} = {{R_pth}}" }
+      corriente: I_pc
+      mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe }
+    opciones:
+      - texto: "Sí: 51 kΩ frente a 8,25 kΩ, una relación de 6:1, suficiente"
+        bien: true
+        porque: "Así la corriente de base, que depende de β, deja de influir. La regla de diez veces la corriente de base es el criterio 10:1; con 6:1, el divisor lleva unas 9."
+      - texto: "No: hace falta que R_{Th} sea mayor"
+        porque: "Es al revés: cuanto menor R_{Th} frente a (β + 1)·R_{E}, menos pesa la corriente de base."
+      - texto: "Da igual: R_{Th} no influye"
+        porque: "Influye a través de la corriente de base, que depende de β. Por eso se pide que sea pequeña frente a (β + 1)·R_{E}."
+    comprobar:
+      - { R_beq: 51000, k_div: 9.06, tol: 0.01 }
+
+  - id: sorpresa-ve
+    tipo: sorpresa
+    titulo: "El segundo enemigo: la deriva"
+    texto: "V_{BE} deriva −2 mV/°C, un error sobre la tensión que queda entre V_{Th} y V_{BE}. Mueva el calentamiento y esa tensión, que casi toda es V_{E}."
+    libro: [182]
+    inicio: { V_m: 1.4, dT: 30 }
+    widget:
+      tipo: grafica
+      x: { id: v, min: 0.2, max: 3, unidad: V, rotulo: "V_{Th} − V_{BE}" }
+      y: { min: 0, max: 35, unidad: "%", rotulo: "ΔI_{C}/I_{C}" }
+      curvas:
+        - { expr: "100*0.002*dT/v", color: naranja, rotulo: "variación de I_{C}" }
+      asas:
+        - { mueve: V_m, x: "V_m", y: "var_i", rotulo: "Tensión de emisor" }
+      lectura: { valor: var_i, rotulo: "Variación de I_{C}" }
+      datos:
+        - { valor: d_vbe, rotulo: "Deriva: {{d_vbe}}" }
+      mandos:
+        - { valor: V_m, min: 0.2, max: 3, paso: 0.1, rotulo: "V_{Th} − V_{BE}" }
+        - { valor: dT, min: 0, max: 30, paso: 5, rotulo: "Calentamiento" }
+    requiere: { mover: [V_m] }
+    comprobar:
+      - { d_vbe: 0.06, var_i: 4.3 }
+      - { con: { V_m: 0.2 }, var_i: 30 }
+
+  - id: por-que-ve
+    tipo: porque
+    titulo: "¿Por qué al menos 1 V?"
+    texto: "Los mismos 60 mV de deriva son un 4,3 % de corriente con V_{E} = 1,33 V y un 30 % con 0,2 V. ¿Por qué?"
+    libro: [182]
+    fijar: { V_m: 0.2, dT: 30 }
+    widget:
+      tipo: grafica
+      x: { id: v, min: 0.2, max: 3, unidad: V, rotulo: "V_{Th} − V_{BE}" }
+      y: { min: 0, max: 35, unidad: "%", rotulo: "ΔI_{C}/I_{C}" }
+      curvas:
+        - { expr: "100*0.002*dT/v", color: naranja, rotulo: "variación de I_{C}" }
+      lectura: { valor: var_i, rotulo: "Variación de I_{C}" }
+    opciones:
+      - texto: "La corriente la fija la tensión sobre R_{E}; la deriva es un error fijo frente a ella"
+        bien: true
+        porque: "60 mV frente a 1,4 V es poco; frente a 0,2 V, mucho. La misma R_{E} combate la deriva y la dispersión de β."
+      - texto: "Con V_{E} pequeña el transistor se calienta más"
+        porque: "La deriva es la misma, −2 mV/°C, en los dos. Lo que cambia es contra cuánta tensión se compara."
+      - texto: "Con V_{E} pequeña, β cambia más"
+        porque: "β no tiene que ver aquí: es la deriva de V_{BE} restada de una tensión pequeña."
+    comprobar:
+      - { var_i: 30 }
+
+  - id: excursion
+    tipo: pregunta
+    titulo: "La excursión"
+    texto: "Con β = 150, el punto Q está en 1,324 mA y 6,31 V, con 3,3 kΩ de colector. ¿Cuál es la excursión simétrica máxima de V_{CE}?"
+    libro: [184, 185, 186]
+    fijar: { beta: 150 }
+    widget:
+      tipo: circuito
+      esquema: bjt-polarizacion
+      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
+      lectura: { valor: V_pce, rotulo: "V_{CE} en reposo" }
+      datos:
+        - { valor: I_pc, rotulo: "I_{C} = {{I_pc}}" }
+      corriente: I_pc
+      mide: { ib: I_pb, ic: I_pc, vc: V_pc, vce: V_pce }
+    opciones:
+      - texto: "±4,37 V"
+        bien: true
+        porque: "Hacia el corte el límite es la caída en R_{C}, 1,324 mA × 3,3 kΩ = 4,37 V; hacia la saturación hay 6,11 V. Manda el menor."
+      - texto: "±6,11 V"
+        porque: "Ese es el margen hacia la saturación, el mayor. La excursión simétrica la limita el menor de los dos."
+      - texto: "±5,69 V"
+        porque: "V_{CE} podría subir hasta 12 V, pero la corriente no baja de cero: el límite real es la caída en R_{C}, 4,37 V."
+    comprobar:
+      - { I_pc: 0.001324, V_pce: 6.31, m_rc: 4.37, m_sat: 6.11 }
+
+  - id: condensador-emisor
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El condensador de emisor"
+    texto: "Un condensador en paralelo con R_{E} recupera la ganancia, pero pone un polo. Con r_{e} = 19,5 Ω, 100 µF lo dejan en 82 Hz. Estime C_{E} para 20 Hz."
+    libro: [189, 190]
+    estimar:
+      objetivo: "C_nec"
+      unidad: F
+      min: 0
+      max: 0.001
+      paso: 0.00001
+      inicio: 0.00009
+      tol: 0.05
+      rotulo: "C_{E} para 20 Hz"
+    exito: "1/(2π · 19,5 Ω · 20 Hz): unos 400 µF, 470 µF en la práctica. El criterio es el polo, calculado con la r_{e} de la etapa."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.00043 }, texto: "Se ha pasado. El polo baja en proporción inversa a C_{E}: de 82 a 20 Hz, unas cuatro veces 100 µF." }
+      - { texto: "Se ha quedado corto. Para bajar el polo de 82 a 20 Hz hace falta unas cuatro veces más capacidad." }
+    comprobar:
+      - { f_ce: 82, C_nec: 0.000408 }
+
+  - id: ordene-diseno
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Procedimiento de diseño"
+    texto: "Ordene los pasos para diseñar una etapa con divisor y resistencia de emisor."
+    libro: [193, 195]
+    ordenar:
+      - "Elegir I_{CQ} según el consumo, el ruido y la carga."
+      - "Elegir V_{E} entre el 10 y el 20 % de V_{CC} y calcular R_{E}."
+      - "Elegir V_{CEQ} hacia la mitad del margen restante y calcular R_{C}."
+      - "Calcular V_{B} y un divisor con unas diez veces la corriente de base máxima."
+      - "Verificar el punto de trabajo con β mínimo y máximo."
+      - "Dimensionar C_{E} y los condensadores de acoplo por sus polos."
+    exito: "Eso es. En el banco, V_{E} entre R_{E} da la corriente de reposo real, con el β verdadero del ejemplar."
+    pistas:
+      - { texto: "Se empieza por la corriente, se baja del emisor al colector y a la base, y se acaba por los condensadores." }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [165, 177, 181, 182, 186]
+    ideas:
+      - { titulo: "Base fija, no.", texto: "I_{C} es proporcional a β: el punto se va al corte o a la saturación según el ejemplar." }
+      - { titulo: "Divisor y R_{E}.", texto: "β varía un 500 % e I_{C} un 15 %: la estabilidad la da R_{E}." }
+      - { titulo: "Dos criterios.", texto: "R_{Th} ≪ (β + 1)·R_{E} y V_{E} de al menos 1 V, contra β y contra la deriva." }
+      - { titulo: "Excursión.", texto: "La limita el menor margen: ±4,37 V en el ejemplo, con Q en 1,324 mA y 6,31 V." }

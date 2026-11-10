@@ -1,0 +1,304 @@
+# Lección 1.1 de la sección 4.6 «Transformadores» (cap04): la relación de espiras (230 V a 12 V, ej. 4.4), la
+# corriente inversa por conservación de la potencia, la impedancia reflejada (a²), la corriente magnetizante, las
+# pérdidas y la dispersión, el tamaño frente a la frecuencia (4,44·f·N·B·A), el rendimiento máximo y el
+# aislamiento. Formato: contenido/lecciones11/GUIA.md.
+leccion: cap04/sec-4.6
+
+libro:
+  159: "La relación entre las tensiones es igual a la relación entre el número de espiras"
+  160: '(V_("1"))/(V_("2")) = (N_("1"))/(N_("2"))'
+  161: "si la tensión se reduce a la mitad, la corriente disponible se duplica"
+  162: '(I_("1"))/(I_("2")) = (N_("2"))/(N_("1"))'
+  165: "El transformador de aislamiento (relación 1:1)"
+  167: "Ocho ohmios en el secundario de un transformador 10:1 aparecen como 800 Ω en el primario"
+  168: "Es la corriente magnetizante, del 5 al 10 % de la nominal"
+  169: "El rendimiento máximo se alcanza cuando ambas pérdidas se igualan"
+  170: "Ese flujo perdido se comporta como una inductancia en serie con cada bobinado"
+  171: "Con 1000 espiras, 1,5 T y 4 cm² a 50 Hz salen 133 V"
+  172: "el único componente que transfiere energía sin conexión galvánica"
+  174: "en torno al 50-70 % de la carga nominal"
+  "cap04#341": "Un transformador de red reduce 230 V a 12 V. Si el primario tiene 920 espiras"
+
+modelo:
+  valores:
+    V_1: { sim: "V₁", nombre: "tensión del primario", unidad: V, valor: 230 }
+    N_1: { sim: "N₁", nombre: "espiras del primario", unidad: espiras, valor: 920 }
+    N_2: { sim: "N₂", nombre: "espiras del secundario", unidad: espiras, valor: 100 }
+    R_2l: { sim: "R_{L}", nombre: "carga del secundario", unidad: Ω, valor: 6 }
+    tr_on: { tipo: interruptor, nombre: "carga conectada", valor: 1 }
+    a_r: { sim: "a", nombre: "relación de espiras", unidad: "", valor: 10 }
+    R_s8: { sim: "R_{L}", nombre: "altavoz en el secundario", unidad: Ω, valor: 8 }
+    f_t: { sim: "f", nombre: "frecuencia", unidad: Hz, valor: 50 }
+    N_t: { sim: "N", nombre: "espiras", unidad: espiras, valor: 1000 }
+    B_t: { sim: "B", nombre: "densidad de flujo de pico", unidad: T, valor: 1.5 }
+    A_t: { sim: "A", nombre: "sección del núcleo", unidad: "mm²", valor: 400 }
+  calculos:
+    V_2: { expr: "V_1*N_2/N_1", sim: "V₂", nombre: "tensión del secundario", unidad: V }
+    I_2: { si: tr_on, entonces: "V_2/R_2l", sino: "0", sim: "I₂", nombre: "corriente del secundario", unidad: A }
+    I_1: { expr: "I_2*N_2/N_1", sim: "I₁", nombre: "corriente del primario", unidad: A }
+    P_1: { expr: "V_1*I_1", sim: "P₁", nombre: "potencia del primario", unidad: W }
+    P_2: { expr: "V_2*I_2", sim: "P₂", nombre: "potencia del secundario", unidad: W }
+    a_t: { expr: "N_1/N_2", sim: "a", nombre: "relación de transformación", unidad: "", cifras: 4 }
+    R_ref: { expr: "R_s8*a_r^2", sim: "R_{reflejada}", nombre: "carga vista desde el primario", unidad: Ω }
+    V_i: { expr: "4.44*f_t*N_t*B_t*A_t*1e-6", sim: "V", nombre: "tensión inducida (eficaz)", unidad: V }
+
+tarjetas:
+  - id: explore-espiras
+    tipo: explorar
+    titulo: "Dos bobinados, un núcleo"
+    texto: "El flujo del primario atraviesa el secundario. Cambie las espiras del secundario y mire su tensión."
+    libro: [159]
+    widget:
+      tipo: circuito
+      esquema: transformador
+      piezas: { fuente: V_1, n1: N_1, n2: N_2, carga: R_2l, interruptor: tr_on }
+      lectura: { valor: V_2, rotulo: "Secundario" }
+      datos:
+        - { valor: a_t, rotulo: "Relación a = {{a_t}}" }
+      corriente: I_2
+      mide: { secundario: V_2, i1: I_1, i2: I_2 }
+      mandos:
+        - { valor: N_2, min: 20, max: 920, paso: 4, rotulo: "Espiras del secundario, N₂" }
+    requiere: { mover: [N_2] }
+
+  - id: prediga-espiras
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Un transformador de red reduce 230 V a 12 V. Su primario tiene 920 espiras. ¿Cuántas tiene el secundario?"
+    libro: ["cap04#341"]
+    fijar: { N_2: 48 }
+    widget:
+      tipo: circuito
+      esquema: transformador
+      piezas: { fuente: V_1, n1: N_1, n2: N_2, carga: R_2l, interruptor: tr_on }
+      lectura: { valor: V_2, rotulo: "Secundario" }
+      corriente: I_2
+      mide: { secundario: V_2, i1: I_1, i2: I_2 }
+      ocultar: true
+    opciones:
+      - texto: "48"
+        bien: true
+        porque: "a = 230/12 = 19,17; 920/19,17 = 48 espiras. Un reductor tiene menos espiras en el secundario."
+      - texto: "12"
+        porque: "Las espiras no son voltios: lo que se conserva es la proporción, 230 a 12."
+      - texto: "Las mismas 920"
+        porque: "Con las mismas espiras saldrían los mismos 230 V: es el 1:1 del transformador de aislamiento."
+    comprobar:
+      - { V_2: 12.0, a_t: 19.17 }
+      - { con: { N_2: 920 }, V_2: 230 }
+
+  - id: formula-tensiones
+    tipo: formula
+    titulo: "La relación de transformación"
+    texto: "Cada espira de cada bobinado lleva inducida la misma tensión: las tensiones van como las espiras."
+    libro: [159, 160]
+    ec: 160
+    sustitucion: "{{V_1}} · {{N_2}} / {{N_1}} = {{V_2}}"
+    widget:
+      tipo: circuito
+      esquema: transformador
+      piezas: { fuente: V_1, n1: N_1, n2: N_2, carga: R_2l, interruptor: tr_on }
+      lectura: { valor: V_2, rotulo: "Secundario" }
+      corriente: I_2
+      mide: { secundario: V_2, i1: I_1, i2: I_2 }
+      mandos:
+        - { valor: N_2, min: 20, max: 920, paso: 4, rotulo: "Espiras del secundario, N₂" }
+
+  - id: estime-primario
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La corriente del primario"
+    texto: "El de 230 V a 12 V entrega 2 A por el secundario. Estime la corriente del primario (transformador ideal)."
+    libro: [161, 162, "cap04#341"]
+    fijar: { N_2: 48, tr_on: 1, R_2l: 6 }
+    widget:
+      tipo: circuito
+      esquema: transformador
+      piezas: { fuente: V_1, n1: N_1, n2: N_2, carga: R_2l, interruptor: tr_on }
+      lectura: { valor: I_2, rotulo: "Corriente del secundario" }
+      corriente: I_2
+      mide: { secundario: V_2, i2: I_2 }
+    estimar:
+      objetivo: "I_1"
+      unidad: A
+      min: 0
+      max: 1
+      paso: 0.002
+      inicio: 0.8
+      tol: 0.05
+      rotulo: "I₁"
+    exito: "104 mA: 2 A / 19,17. La potencia se conserva: 230 × 0,104 ≈ 12 × 2 ≈ 24 W."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.109 }, texto: "Se ha pasado. Las corrientes van al revés que las tensiones: divida 2 A por 19,17." }
+      - { texto: "Se ha quedado corto. I₁ = I₂ · N₂/N₁ = 2 · 48/920." }
+    comprobar:
+      - { I_2: 2, I_1: 0.1043, P_1: 24, P_2: 24 }
+
+  - id: formula-corrientes
+    tipo: formula
+    titulo: "Las corrientes, al revés"
+    texto: "La potencia se conserva: si la tensión baja, la corriente disponible sube en la misma proporción. Cambie la carga."
+    libro: [161, 162]
+    fijar: { N_2: 48 }
+    ec: 162
+    sustitucion: "{{I_2}} · {{N_2}} / {{N_1}} = {{I_1}}"
+    widget:
+      tipo: circuito
+      esquema: transformador
+      piezas: { fuente: V_1, n1: N_1, n2: N_2, carga: R_2l, interruptor: tr_on }
+      lectura: { valor: I_1, rotulo: "Corriente del primario" }
+      datos:
+        - { valor: P_1, rotulo: "P₁ = {{P_1}}" }
+        - { valor: P_2, rotulo: "P₂ = {{P_2}}" }
+      corriente: I_2
+      mide: { secundario: V_2, i1: I_1, i2: I_2 }
+      mandos:
+        - { valor: R_2l, lista: [6, 12, 24], rotulo: "Carga, R_{L}" }
+
+  - id: estime-reflejada
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La impedancia reflejada"
+    texto: "Una carga en el secundario se ve desde el primario multiplicada por a². Estime cómo ve el primario un altavoz de 8 Ω con un 10:1."
+    libro: [167]
+    estimar:
+      objetivo: "R_ref"
+      unidad: Ω
+      min: 0
+      max: 2000
+      paso: 10
+      inicio: 1600
+      tol: 0.05
+      rotulo: "Carga vista desde el primario"
+    exito: "800 Ω: así se adaptaba una etapa de válvulas de alta impedancia a un altavoz de 8 Ω."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 840 }, texto: "Se ha pasado: a² con a = 10 es 100; por 8 Ω." }
+      - { texto: "Se ha quedado corto: no es a sino a², cien veces." }
+    comprobar:
+      - { R_ref: 800 }
+
+  - id: empareje-perdidas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Lo que añade la realidad"
+    texto: "Empareje cada imperfección del transformador real con su rasgo."
+    libro: [169, 170]
+    emparejar:
+      - ["Pérdidas de cobre", "Crecen con la carga"]
+      - ["Histéresis", "Proporcional a f"]
+      - ["Foucault", "Proporcional a f²"]
+      - ["Dispersión", "Inductancia en serie"]
+    exito: "Eso es. Las de hierro no dependen de la carga, sino del flujo: de la tensión y la frecuencia."
+    pistas:
+      - { texto: "El cobre disipa I²·R; el hierro, por histéresis y por Foucault." }
+
+  - id: estime-red
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Por qué pesa tanto"
+    texto: "La tensión inducida vale 4,44·f·N·B·A. Estime la de 1000 espiras, 1,5 T y 4 cm² a 50 Hz."
+    libro: [171]
+    fijar: { f_t: 50, N_t: 1000, B_t: 1.5, A_t: 400 }
+    estimar:
+      objetivo: "V_i"
+      unidad: V
+      min: 0
+      max: 300
+      paso: 1
+      inicio: 250
+      tol: 0.05
+      rotulo: "V"
+    exito: "133 V. A 50 Hz hacen falta muchas espiras y mucho hierro: por eso pesa kilos."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 140 }, texto: "Se ha pasado. Pase 4 cm² a metros cuadrados: 4 × 10⁻⁴." }
+      - { texto: "Se ha quedado corto. 4,44 × 50 × 1000 × 1,5 × 4 × 10⁻⁴." }
+    comprobar:
+      - { V_i: 133.2 }
+
+  - id: reto-conmutada
+    tipo: reto
+    titulo: "Reto: a 100 kHz"
+    texto: "Se quieren los mismos 133 V a 100 kHz, sobre 1 cm² de ferrita a 0,3 T. ¿Cuántas espiras bastan?"
+    libro: [171]
+    fijar: { f_t: 100000, B_t: 0.3, A_t: 100 }
+    inicio: { N_t: 100 }
+    widget:
+      tipo: grafica
+      x: { id: n, min: 0, max: 100, unidad: espiras, rotulo: "N" }
+      y: { min: 0, max: 1500, unidad: V, rotulo: "V" }
+      curvas:
+        - { expr: "4.44*f_t*n*B_t*A_t*1e-6", color: naranja, rotulo: "4,44·f·N·B·A" }
+      asas:
+        - { mueve: N_t, x: "N_t", y: "V_i", rotulo: "Espiras" }
+      lectura: { valor: V_i, rotulo: "Tensión inducida" }
+      mandos:
+        - { valor: N_t, min: 2, max: 100, paso: 1, rotulo: "Espiras, N" }
+    condiciones:
+      - { valor: V_i, objetivo: 133.2, tol: 0.02, rotulo: "Tensión: {{V_i}}" }
+    exito: "10 espiras dan {{V_i}}, frente a 1000 a 50 Hz. Las conmutadas son pequeñas por Faraday, no por un truco."
+    pistas:
+      - { cuando: { valor: V_i, mayor: 135.9 }, texto: "Sobran espiras: la frecuencia es dos mil veces mayor." }
+      - { cuando: { valor: V_i, menor: 130.5 }, texto: "Faltan espiras para llegar a 133 V." }
+    ayuda: "N = 133 / (4,44 × 100 000 × 0,3 × 10⁻⁴) = 10 espiras."
+    comprobar:
+      - { con: { N_t: 10 }, V_i: 133.2 }
+
+  - id: pregunta-rendimiento
+    tipo: pregunta
+    titulo: "¿Dónde rinde más?"
+    texto: "Las pérdidas de cobre crecen con el cuadrado de la corriente; las de hierro son casi constantes. ¿Dónde es máximo el rendimiento?"
+    libro: [169, 174]
+    opciones:
+      - texto: "Donde se igualan, hacia el 50-70 % de la carga"
+        bien: true
+        porque: "Ahí la suma de pérdidas por vatio entregado es mínima: no a plena carga."
+      - texto: "A plena carga"
+        porque: "A plena carga el cobre ya pierde más que el hierro. El máximo está antes."
+      - texto: "En vacío"
+        porque: "En vacío no entrega nada y sigue pagando las pérdidas de hierro: rendimiento nulo."
+
+  - id: porque-magnetizante
+    tipo: porque
+    titulo: "Corriente sin carga"
+    texto: "Con el secundario abierto, el ideal no toma nada. Uno real toma un 5 a 10 % de su corriente nominal. ¿Para qué?"
+    libro: [168]
+    fijar: { N_2: 48, tr_on: 0 }
+    widget:
+      tipo: circuito
+      esquema: transformador
+      piezas: { fuente: V_1, n1: N_1, n2: N_2, carga: R_2l, interruptor: tr_on }
+      lectura: { valor: I_1, rotulo: "Primario, modelo ideal" }
+      corriente: I_2
+      mide: { secundario: V_2, i1: I_1, i2: I_2 }
+    opciones:
+      - texto: "Para magnetizar el núcleo"
+        bien: true
+        porque: "Es la corriente magnetizante, una inductancia en paralelo con el primario. Si sube mucho, hay espiras en cortocircuito o satura."
+      - texto: "Por las pérdidas del cobre"
+        porque: "Sin carga apenas circula corriente por el cobre: lo que se toma es para magnetizar el núcleo."
+      - texto: "Por una fuga del aislamiento"
+        porque: "Un aislamiento sano no fuga eso. Es la corriente que magnetiza el núcleo."
+
+  - id: porque-aislamiento
+    tipo: porque
+    titulo: "Un transformador 1:1"
+    texto: "En el taller se usa un transformador 1:1, que no cambia la tensión. ¿Para qué sirve?"
+    libro: [165, 172]
+    opciones:
+      - texto: "Aísla el equipo de la red"
+        bien: true
+        porque: "Transfiere energía sin conexión galvánica: tocar el circuito y tierra a la vez ya no electrocuta."
+      - texto: "Filtra los armónicos de la red"
+        porque: "No es su función: lo que da es aislamiento galvánico entre la red y el equipo."
+      - texto: "Para nada: 1:1 no hace nada"
+        porque: "No cambia la tensión, pero corta la conexión eléctrica con la red. Es el elemento de seguridad del taller."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [160, 162, 167, 171, 174]
+    ideas:
+      - { titulo: "Espiras.", texto: "Las tensiones van como las espiras; las corrientes, al revés: la potencia se conserva." }
+      - { titulo: "Reflejada.", texto: "Una carga en el secundario se ve desde el primario multiplicada por a²." }
+      - { titulo: "El real.", texto: "Corriente magnetizante, pérdidas de cobre y de hierro, dispersión; rinde más hacia el 50-70 % de carga." }
+      - { titulo: "Frecuencia.", texto: "4,44·f·N·B·A: a más frecuencia, menos espiras y menos núcleo." }

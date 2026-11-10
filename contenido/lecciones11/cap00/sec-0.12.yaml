@@ -1,0 +1,347 @@
+# Lección 1.1 de la sección 0.12 «Nociones de Álgebra Lineal y Estadística» (cap00): el sistema de mallas como matriz
+# y la regla de Cramer (determinante 54), lo que hace SPICE, las tolerancias que se suman en cuadratura (1 %/√10) y la
+# campana de Gauss (68, 95 y 99,7 %); y, de la ampliación P08 («Aún no en el libro», bloques 170–178), los modos de dos
+# etapas RC (26,2 y 3,82 ms) y la estabilidad por la traza y el determinante (el arranque de un oscilador).
+# Formato: contenido/lecciones11/GUIA.md.
+leccion: cap00/sec-0.12
+
+libro:
+  157: "Para dos incógnitas basta la regla de Cramer"
+  158: 'op("det") mat(a, b; c, d) = a dot.op d - b dot.op c'
+  163: "el determinante de la matriz es 10 × 9 − (−6)(−6) = 90 − 36 = 54"
+  164: "La resuelve por eliminación gaussiana"
+  165: "Una matriz con un determinante nulo describe un circuito mal planteado"
+  166: "1 %/√10 = 0,32 %"
+  167: "el 68 % dentro de ±1σ, el 95 % dentro de ±2σ, el 99,7 % dentro de ±3σ"
+  174: "dos constantes de tiempo de 26,2 y 3,82 ms"
+  175: "La salida llega al 63 % a los 30,3 ms"
+  176: "Con una bobina y un condensador, los autovalores pueden ser complejos"
+  177: "estable si y solo si la traza es negativa y el determinante positivo"
+
+modelo:
+  valores:
+    V: { sim: "V", nombre: "tensión de la fuente", unidad: V, valor: 12 }
+    a11: { sim: "a", nombre: "coeficiente a", unidad: "", valor: 10 }
+    a12: { sim: "b", nombre: "coeficiente b", unidad: "", valor: -6 }
+    a21: { sim: "c", nombre: "coeficiente c", unidad: "", valor: -6 }
+    a22: { sim: "d", nombre: "coeficiente d", unidad: "", valor: 9 }
+    N: { sim: "n", nombre: "número de resistencias en serie", unidad: "", valor: 1 }
+    k: { sim: "k", nombre: "margen, en desviaciones típicas", unidad: "", valor: 1 }
+    R_m: { sim: "R", nombre: "resistencia de cada etapa", unidad: Ω, valor: 10000 }
+    C_m: { sim: "C", nombre: "condensador de cada etapa", unidad: F, valor: 1e-6 }
+    t_m: { sim: "t", nombre: "instante", unidad: s, valor: 0.01 }
+    R_t: { sim: "R", nombre: "resistencia total del RLC", unidad: Ω, valor: 10 }
+    L_r: { sim: "L", nombre: "bobina del RLC", unidad: H, valor: 0.001 }
+    C_r: { sim: "C", nombre: "condensador del RLC", unidad: F, valor: 1e-6 }
+  calculos:
+    det: { expr: "a11*a22 - a12*a21", sim: "det", nombre: "determinante", unidad: "", cifras: 2, recortar: true }
+    I1: { expr: "(V*a22 - 0*a12)/det", sim: "I₁", nombre: "corriente de la malla 1", unidad: A }
+    I2: { expr: "(a11*0 - a21*V)/det", sim: "I₂", nombre: "corriente de la malla 2", unidad: A }
+    rss: { expr: "1/sqrt(N)", sim: "desviación", nombre: "desviación de la suma, con errores independientes", unidad: "%" }
+    # share of a Gaussian within ±k·σ: erf(k/√2), with the Abramowitz–Stegun approximation 7.1.26 (error < 2e-7)
+    z: { expr: "k/sqrt(2)", nombre: "k entre raíz de dos", unidad: "" }
+    tt: { expr: "1/(1 + 0.3275911*z)", nombre: "variable auxiliar", unidad: "" }
+    dentro: { expr: "100*(1 - ((((1.061405429*tt - 1.453152027)*tt + 1.421413741)*tt - 0.284496736)*tt + 0.254829592)*tt*exp(-z*z))", sim: "dentro", nombre: "piezas dentro del margen", unidad: "%" }
+
+    # (P08) two RC stages in cascade: eigenvalues from trace −3/τ and determinant 1/τ² (Ec. 1), step response (Ec. 2)
+    tau_m: { expr: "R_m*C_m", sim: "τ", nombre: "constante de tiempo de cada etapa", unidad: s }
+    l_a: { expr: "(-3 + sqrt(5))/(2*tau_m)", nombre: "autovalor lento", unidad: "" }
+    l_b: { expr: "(-3 - sqrt(5))/(2*tau_m)", nombre: "autovalor rápido", unidad: "" }
+    tau_a: { expr: "-1/l_a", sim: "τ₁", nombre: "constante de tiempo lenta", unidad: s }
+    tau_b: { expr: "-1/l_b", sim: "τ₂", nombre: "constante de tiempo rápida", unidad: s }
+    a_a: { expr: "l_b/(l_a - l_b)", nombre: "peso del modo lento", unidad: "" }
+    a_b: { expr: "-l_a/(l_a - l_b)", nombre: "peso del modo rápido", unidad: "" }
+    v2_m: { expr: "1 + a_a*exp(l_a*t_m) + a_b*exp(l_b*t_m)", sim: "v₂", nombre: "salida de las dos etapas", unidad: V }
+    sep_m: { expr: "1 - (1 + t_m/tau_m)*exp(-t_m/tau_m)", sim: "v₂", nombre: "salida con un seguidor entre las etapas", unidad: V }
+    # (P08) the RLC of section 0.8 with its total resistance: λ = σ ± jω_d
+    sig: { expr: "-R_t/(2*L_r)", sim: "σ", nombre: "parte real de los autovalores", unidad: "" }
+    wd: { expr: "sqrt(1/(L_r*C_r) - sig^2)", sim: "ω", nombre: "parte imaginaria de los autovalores", unidad: rad/s }
+    traza: { expr: "-R_t/L_r", sim: "traza", nombre: "traza de la matriz de estado", unidad: "", cifras: 4 }
+tarjetas:
+  - id: explore-matriz
+    tipo: explorar
+    titulo: "Un sistema, una matriz"
+    texto: "Las mallas de la sección 0.2: la matriz de coeficientes (10, −6; −6, 9) por las corrientes da las fuentes (V, 0). Mueva V."
+    nota: "Las corrientes cambian; el determinante, no: es de la matriz."
+    libro: [163, 157]
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 24, unidad: V, rotulo: "V" }
+      y: { min: 0, max: 5, unidad: A, rotulo: "I" }
+      curvas:
+        - { expr: "x*a22/det", color: azul, rotulo: "I₁" }
+        - { expr: "-a21*x/det", color: naranja, rotulo: "I₂" }
+      asas:
+        - { mueve: V, x: "V", y: "I1", rotulo: "Fuente" }
+      lectura: { valor: I1, rotulo: "I₁" }
+      datos:
+        - { valor: I2, rotulo: "I₂ = {{I2}}" }
+        - { valor: det, rotulo: "det = {{det}}" }
+      mandos:
+        - { valor: V, min: 0, max: 24, paso: 1, rotulo: "Fuente, V" }
+    requiere: { mover: [V] }
+
+  - id: prediga-det-nulo
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "SPICE monta la matriz de un circuito y le sale un determinante nulo. ¿Qué indica?"
+    libro: [165]
+    opciones:
+      - texto: "Un circuito mal planteado: no hay solución única"
+        bien: true
+        porque: "Un nodo flotante o dos fuentes de tensión ideales en paralelo: es el error de convergencia más habitual."
+      - texto: "Que todas las corrientes valen cero"
+        porque: "Con corrientes nulas el sistema tendría solución. Un determinante nulo dice que no hay una única."
+      - texto: "Que el circuito no tiene fuentes"
+        porque: "El determinante es de la matriz de coeficientes: no depende de las fuentes."
+
+  - id: regla-cramer
+    tipo: formula
+    titulo: "La regla de Cramer"
+    texto: "Cada incógnita es un cociente de determinantes. El de abajo es siempre el de la matriz: 54."
+    libro: [158, 163]
+    ec: 158
+    sustitucion: "I₁ = ({{V}} · 9 − 0 · (−6)) / {{det}} = {{I1}};  I₂ = (10 · 0 − (−6) · {{V}}) / {{det}} = {{I2}}"
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 24, unidad: V, rotulo: "V" }
+      y: { min: 0, max: 5, unidad: A, rotulo: "I" }
+      curvas:
+        - { expr: "x*a22/det", color: azul, rotulo: "I₁" }
+        - { expr: "-a21*x/det", color: naranja, rotulo: "I₂" }
+      asas:
+        - { mueve: V, x: "V", y: "I1", rotulo: "Fuente" }
+      mandos:
+        - { valor: V, min: 0, max: 24, paso: 1, rotulo: "Fuente, V" }
+
+  - id: estime-det
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El determinante de las mallas"
+    texto: "Estime el determinante de la matriz (10, −6; −6, 9): a·d − b·c."
+    libro: [163, 158]
+    estimar:
+      objetivo: "det"
+      unidad: ""
+      min: 0
+      max: 120
+      paso: 1
+      inicio: 90
+      tol: 0.02
+      rotulo: "det"
+    exito: "10 × 9 − (−6)(−6) = 90 − 36 = 54. Con 12 V, I₁ = 2 A e I₂ = 1,333 A, como en la 0.2."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 55 }, texto: "Se ha pasado: falta restar el producto de la otra diagonal, (−6)(−6) = 36." }
+      - { texto: "Se ha quedado corto: (−6)(−6) es positivo, 36, y 10 × 9 = 90." }
+    comprobar:
+      - { det: 54 }
+      - { con: { V: 12 }, I1: 2, I2: 1.333, tol: 0.001 }
+
+  - id: explore-cuadratura
+    tipo: explorar
+    titulo: "Tolerancias en serie"
+    texto: "Resistencias del 1 % en serie. Mueva cuántas: compare el peor caso con la suma de errores independientes."
+    libro: [166]
+    widget:
+      tipo: grafica
+      x: { id: x, min: 1, max: 20, unidad: "", rotulo: "resistencias en serie" }
+      y: { min: 0, max: 1.2, unidad: "%", rotulo: "tolerancia de la suma" }
+      curvas:
+        - { expr: "1 + 0*x", color: tinta, rotulo: "peor caso", discontinua: true }
+        - { expr: "1/sqrt(x)", color: azul, rotulo: "errores independientes" }
+      asas:
+        - { mueve: N, x: "N", y: "rss", rotulo: "Número de resistencias" }
+      lectura: { valor: rss, rotulo: "Desviación de la suma" }
+      mandos:
+        - { valor: N, min: 1, max: 20, paso: 1, rotulo: "Resistencias en serie" }
+    requiere: { mover: [N] }
+
+  - id: prediga-diez
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Diez resistencias del 1 % en serie, con errores independientes y aleatorios. ¿Qué desviación tiene la suma?"
+    libro: [166]
+    fijar: { N: 10 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 1, max: 20, unidad: "", rotulo: "resistencias en serie" }
+      y: { min: 0, max: 1.2, unidad: "%", rotulo: "tolerancia de la suma" }
+      curvas:
+        - { expr: "1 + 0*x", color: tinta, rotulo: "peor caso", discontinua: true }
+      lectura: { valor: rss, rotulo: "Desviación de la suma" }
+      ocultar: true
+    opciones:
+      - texto: "0,32 %"
+        bien: true
+        porque: "Unos errores compensan a otros: la desviación crece con la raíz del número, 1 %/√10 = 0,32 %."
+      - texto: "1 %"
+        porque: "Ese es el peor caso, todas al +1 % a la vez: posible, pero improbable."
+      - texto: "10 %"
+        porque: "Los errores relativos no se suman así: el peor caso de la suma sigue siendo el 1 %."
+    comprobar:
+      - { rss: 0.316 }
+
+  - id: reto-campana
+    tipo: reto
+    titulo: "Reto: el 95 % de las piezas"
+    texto: "Con muchas causas pequeñas, los errores siguen una campana. Ajuste el margen ±k·σ hasta que quede dentro el 95 %."
+    libro: [167]
+    inicio: { k: 1 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: -4, max: 4, unidad: "", rotulo: "desviación, en σ" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "frecuencia relativa" }
+      curvas:
+        - { expr: "exp(-x^2/2)", color: tinta, rotulo: "campana de Gauss", discontinua: true }
+        - { expr: "exp(-x^2/2)*min(max((k - abs(x))*1000, 0), 1)", color: azul, rotulo: "dentro de ±k·σ" }
+      asas:
+        - { mueve: k, x: "k", y: "exp(-k^2/2)", rotulo: "Margen, k" }
+      mandos:
+        - { valor: k, min: 0.5, max: 3.5, paso: 0.5, rotulo: "Margen, k (en σ)" }
+    condiciones:
+      - { valor: dentro, objetivo: 95, tol: 0.01, rotulo: "Dentro: {{dentro}}" }
+    exito: "±2σ: el 95 %. Con ±1σ queda el 68 %, y con ±3σ, el 99,7 %."
+    pistas:
+      - { cuando: { valor: dentro, menor: 94.05 }, texto: "Quedan demasiadas piezas fuera: abra el margen." }
+      - { cuando: { valor: dentro, mayor: 95.95 }, texto: "Dentro queda más del 95 %: cierre el margen." }
+    ayuda: "El 68 % cae en ±1σ; el 95 %, un poco más allá."
+    comprobar:
+      - { con: { k: 2 }, dentro: 95.45, tol: 0.001 }
+      - { con: { k: 1 }, dentro: 68.27, tol: 0.001 }
+
+  - id: por-que-raiz
+    tipo: porque
+    titulo: "¿Por qué la raíz?"
+    texto: "Con errores independientes, la tolerancia de diez resistencias en serie no es 1 % sino 0,32 %. ¿Por qué baja?"
+    libro: [166]
+    opciones:
+      - texto: "Unos errores compensan a otros: la desviación crece solo con la raíz del número"
+        bien: true
+        porque: "Las varianzas se suman: es la suma en cuadratura, el RSS. El peor caso exige que todas se desvíen a la vez."
+      - texto: "Porque las resistencias en serie mejoran su tolerancia al calentarse"
+        porque: "La temperatura no interviene. Es estadística: errores independientes se compensan."
+      - texto: "Porque el fabricante las empareja"
+        porque: "No hace falta emparejarlas: basta que sus errores sean independientes y aleatorios."
+
+  - id: promediar
+    tipo: pregunta
+    titulo: "Repetir una medida"
+    texto: "Una medida ruidosa se repite diez veces y se promedia. ¿Cuánto mejora?"
+    libro: [167]
+    opciones:
+      - texto: "Unas tres veces: la desviación baja √10"
+        bien: true
+        porque: "La media de N medidas tiene una desviación √N veces menor que una sola."
+      - texto: "Diez veces"
+        porque: "Mejora con la raíz de N, no con N: diez repeticiones, unas tres veces."
+      - texto: "Nada: el ruido es el mismo"
+        porque: "El ruido de cada medida sí, pero al promediar unos errores compensan a otros."
+
+  - id: ordene-spice
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Lo que hace SPICE"
+    texto: "Ordene lo que hace un simulador para resolver un circuito lineal."
+    libro: [164]
+    ordenar:
+      - "Numerar los nodos"
+      - "Escribir la ley de Kirchhoff de corrientes en cada nodo"
+      - "Montar una matriz cuadrada con las conductancias"
+      - "Resolverla por eliminación gaussiana"
+    exito: "Eso es: la simulación no «sabe» electrónica, resuelve sistemas lineales muchas veces."
+    pistas:
+      - { texto: "Primero el circuito se convierte en ecuaciones; al final se resuelve la matriz." }
+
+  - id: prediga-modos
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Dos etapas RC iguales, de 10 ms cada una, en cascada y sin separador entre ellas. ¿Qué constantes de tiempo tiene el conjunto?"
+    libro: [174, 175]
+    opciones:
+      - texto: "26,2 y 3,82 ms"
+        bien: true
+        porque: "La segunda etapa carga a la primera: el circuito entero tiene sus propios modos, λ = (−3 ± √5)/(2·τ)."
+      - texto: "10 y 10 ms"
+        porque: "Serían las de cada etapa sola; sin separador, la segunda carga a la primera y ningún modo queda en 10 ms."
+      - texto: "Una sola, de 30 ms"
+        porque: "30 ms es la suma de las dos, el retardo de Elmore. Pero hay dos modos, uno lento y otro rápido."
+
+  - id: explore-modos
+    tipo: explorar
+    titulo: "Dos modos en la salida"
+    texto: "Escalón de 1 V en las dos etapas, frente a las mismas separadas por un seguidor. ¿Cuándo llega cada una al 63 %?"
+    nota: "Con carga, a los 30,3 ms; separadas, a los 21,5 ms."
+    libro: [175, 174]
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 0.1, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1, unidad: V, rotulo: "v₂" }
+      curvas:
+        - { expr: "1 + a_a*exp(l_a*x) + a_b*exp(l_b*x)", color: azul, rotulo: "dos etapas en cascada" }
+        - { expr: "1 - (1 + x/tau_m)*exp(-x/tau_m)", color: tinta, rotulo: "separadas por un seguidor", discontinua: true }
+      asas:
+        - { mueve: t_m, x: "t_m", y: "v2_m", rotulo: "Instante" }
+      lectura: { valor: v2_m, rotulo: "Salida en cascada" }
+      datos:
+        - { valor: sep_m, rotulo: "Separadas: {{sep_m}}" }
+        - { valor: tau_a, rotulo: "τ₁ = {{tau_a}}" }
+        - { valor: tau_b, rotulo: "τ₂ = {{tau_b}}" }
+      mandos:
+        - { valor: t_m, min: 0, max: 0.1, paso: 0.0005, rotulo: "Instante, t" }
+    requiere: { mover: [t_m] }
+    comprobar:
+      - { tau_a: 0.0262, tau_b: 0.00382, tol: 0.002 }
+      - { con: { t_m: 0.0303 }, v2_m: 0.632, tol: 0.003 }
+      - { con: { t_m: 0.0215 }, sep_m: 0.632, tol: 0.003 }
+
+  - id: reto-oscilador
+    tipo: reto
+    titulo: "Reto: el arranque de un oscilador"
+    texto: "El RLC serie de la sección 0.8 (1 mH, 1 µF). Ajuste su resistencia total para que la traza valga +5 000 s⁻¹, la del arranque de un oscilador."
+    libro: [176, 177]
+    inicio: { R_t: 10 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 0.0005, unidad: s, rotulo: "t" }
+      y: { min: -13, max: 13, unidad: V, rotulo: "v_{C}" }
+      curvas:
+        - { expr: "exp(sig*x)*cos(wd*x)", color: azul, rotulo: "respuesta natural" }
+      lectura: { valor: traza, rotulo: "Traza" }
+      datos:
+        - { valor: sig, rotulo: "σ = {{sig}}" }
+      mandos:
+        - { valor: R_t, min: -10, max: 20, paso: 1, rotulo: "Resistencia total, R" }
+    condiciones:
+      - { valor: traza, objetivo: 5000, tol: 0.01, rotulo: "Traza: {{traza}}" }
+    exito: "−5 Ω: λ = +2 500 ± j31 524 s⁻¹, y la oscilación se multiplica por 12,2 cada milisegundo."
+    pistas:
+      - { cuando: { valor: traza, menor: 4950 }, texto: "La traza es −R/L: para que sea positiva, la resistencia total tiene que ser negativa." }
+      - { cuando: { valor: traza, mayor: 5050 }, texto: "Crece demasiado deprisa: acerque la resistencia total a cero." }
+    ayuda: "Con L = 1 mH, una traza de +5 000 s⁻¹ pide una resistencia total de −5 Ω."
+    comprobar:
+      - { con: { R_t: -5 }, sig: 2500, wd: 31524, tol: 0.001 }
+      - { con: { R_t: 10 }, sig: -5000, wd: 31225, tol: 0.001 }
+
+  - id: pregunta-estabilidad
+    tipo: pregunta
+    titulo: "Traza y determinante"
+    texto: "La matriz de estado 2×2 de un circuito tiene la traza positiva y el determinante positivo. ¿Cómo responde?"
+    libro: [177]
+    opciones:
+      - texto: "Es inestable: su respuesta crece"
+        bien: true
+        porque: "En 2×2 es estable si y solo si la traza es negativa y el determinante positivo; con la traza positiva, los modos crecen."
+      - texto: "Es estable"
+        porque: "Un determinante positivo no basta: además, la traza tiene que ser negativa."
+      - texto: "Depende de la fuente"
+        porque: "La estabilidad es de la matriz, de sus autovalores; la fuente no interviene."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [158, 163, 164, 166, 167, 174, 177]
+    ideas:
+      - { titulo: "Cramer.", texto: "det = a·d − b·c; las mallas de la 0.2 dan 54, I₁ = 2 A, I₂ = 1,333 A. SPICE resuelve su matriz por eliminación gaussiana." }
+      - { titulo: "En cuadratura.", texto: "Diez del 1 % en serie: 1 % en el peor caso, 0,32 % con errores independientes." }
+      - { titulo: "La campana.", texto: "68 % en ±1σ, 95 % en ±2σ, 99,7 % en ±3σ." }
+      - { titulo: "Modos.", texto: "Dos etapas de 10 ms en cascada dan 26,2 y 3,82 ms; es estable si la traza es negativa y el determinante positivo." }

@@ -1,0 +1,296 @@
+# Lección 1.1 de la sección 6.7 «El BJT como Interruptor» (cap06): la saturación forzada I_B = k·I_C/β_mín sobre el
+# interruptor de la sección 6.2 (12 V, 1 kΩ, base desde 5 V: 11,8 mA), con un ejemplar de β real distinto del mínimo
+# (el cálculo ingenuo con k = 1 y β a la mitad deja el transistor en activa), la tabla de las tres cargas (LED, relé,
+# motor: el motor no cabe en un pin de 20 mA), la disipación (100 mW saturado, 1 W mal saturado), las pérdidas de
+# conmutación (6, 120 y 600 mW a 1, 20 y 100 kHz), los componentes auxiliares y la elección del transistor. El β = 50
+# del ejemplar es «la mitad» del bloque 222. Formato: contenido/lecciones11/GUIA.md.
+leccion: cap06/sec-6.7
+
+libro:
+  218: "que el transistor esté siempre en uno de los dos extremos, corte o saturación"
+  222: "a la corriente de conmutación puede ser la mitad"
+  224: 'I_("B") = k dot.op'
+  225: "Tres casos con βmín = 100, k = 5 y un pin de 5 V:"
+  226: "860 Ω"
+  227: "el diseño no cabe, y no por falta de ingenio sino por aritmética"
+  228: "Un factor de 10 satura mejor y conmuta peor que uno de 3."
+  231: "hasta 1,5 W instantáneos"
+  232: "un transistor mal saturado disipa diez veces más"
+  234: 'P_("conm") approx V'
+  235: "Con 12 V, 0,5 A y 1 µs de conmutación: a 1 kHz son 6 mW"
+  238: "Garantiza el corte cuando el pin de mando queda en alta impedancia"
+  239: "Diodo de rueda libre en paralelo con cualquier carga inductiva"
+  240: "la caída sobre ella es proporcional a la corriente de carga"
+  241: "para amortiguar el timbre de la inductancia parásita"
+  244: "VCEO ≥ tensión de alimentación con margen del doble"
+  245: "con 100 mW un TO-92 sobra"
+  247: "Debe estar entre 0,1 y 0,3 V."
+  "cap06#50": "Alimentación de 12 V, resistencia de colector de 1 kΩ, resistencia de base desde 5 V, β = 100."
+  "cap06#59": "no pueden circular más de 11,8 mA"
+
+modelo:
+  valores:
+    V_cc: { sim: "V_{CC}", nombre: "alimentación", unidad: V, valor: 12 }
+    R_bc: { sim: "R_{C}", nombre: "resistencia de colector", unidad: Ω, valor: 1000 }
+    V_bi: { sim: "V_{in}", nombre: "tensión del pin", unidad: V, valor: 5 }
+    beta: { sim: "β", nombre: "β real del ejemplar", unidad: "", valor: 50 }
+    beta_min: { sim: "β_{mín}", nombre: "β mínimo de la hoja de datos", unidad: "", valor: 100 }
+    k: { sim: "k", nombre: "factor de saturación forzada", unidad: "", valor: 1 }
+    V_BE: { sim: "V_{BE}", nombre: "tensión base-emisor", unidad: V, valor: 0.7 }
+    V_CEs: { sim: "V_{CE(sat)}", nombre: "tensión de saturación", unidad: V, valor: 0.2 }
+    I_cd: { sim: "I_{C}", nombre: "corriente de carga de diseño", unidad: A, valor: 0.0118 }
+    V_rb: { sim: "V_{RB}", nombre: "tensión en R_B de diseño (5 V − 0,7 V)", unidad: V, valor: 4.3 }
+    I_t: { sim: "I_{C}", nombre: "corriente de la carga", unidad: A, valor: 0.02 }
+    k_t: { sim: "k", nombre: "factor de la tabla", unidad: "", valor: 5 }
+    f_s: { sim: "f", nombre: "frecuencia de conmutación", unidad: Hz, valor: 1000 }
+    V_l: { sim: "V", nombre: "tensión conmutada", unidad: V, valor: 12 }
+    I_l: { sim: "I", nombre: "corriente conmutada", unidad: A, valor: 0.5 }
+    t_sw: { sim: "t_{conm}", nombre: "tiempo de conmutación", unidad: s, valor: 0.000001 }
+    V_act: { sim: "V_{CE}", nombre: "V_CE de un interruptor mal saturado", unidad: V, valor: 2 }
+  calculos:
+    I_csat: { expr: "(V_cc - V_CEs)/R_bc", sim: "I_{C(sat)}", nombre: "corriente de la carga", unidad: A }
+    I_bk: { expr: "k*I_cd/beta_min", sim: "I_{B}", nombre: "corriente de base de diseño", unidad: A }
+    R_bk: { expr: "V_rb/I_bk", sim: "R_{B}", nombre: "resistencia de base", unidad: Ω }
+    I_bb: { expr: "max(0, (V_bi - V_BE)/R_bk)", sim: "I_{B}", nombre: "corriente de base", unidad: A }
+    I_bc: { expr: "min(beta*I_bb, I_csat)", sim: "I_{C}", nombre: "corriente de colector", unidad: A }
+    V_bce: { expr: "V_cc - I_bc*R_bc", sim: "V_{CE}", nombre: "tensión colector-emisor", unidad: V }
+    P_q: { expr: "V_bce*I_bc", sim: "P", nombre: "potencia en el transistor", unidad: W }
+    I_bt: { expr: "k_t*I_t/beta_min", sim: "I_{B}", nombre: "corriente de base necesaria", unidad: A }
+    R_bt: { expr: "(V_bi - V_BE)/I_bt", sim: "R_{B}", nombre: "resistencia de base", unidad: Ω }
+    P_conm: { expr: "V_l*I_l*t_sw*f_s", sim: "P_{conm}", nombre: "pérdidas de conmutación", unidad: W }
+    P_cond: { expr: "V_CEs*I_l", sim: "P_{conducción}", nombre: "pérdidas de conducción", unidad: W }
+    P_act: { expr: "V_act*I_l", sim: "P", nombre: "disipación mal saturado", unidad: W }
+
+tarjetas:
+  - id: explore-factor
+    tipo: explorar
+    titulo: "Diseñar para el peor ejemplar"
+    texto: "Interruptor con 1 kΩ desde 12 V y base desde 5 V. R_{B} se calcula para β_{mín} = 100 con un factor k. Cambie k y el β real del ejemplar. Mire V_{CE}."
+    libro: ["cap06#50", 224]
+    inicio: { k: 1, beta: 50 }
+    widget:
+      tipo: circuito
+      esquema: bjt-interruptor
+      piezas: { vcc: V_cc, rc: R_bc, entrada: V_bi, rb: R_bk, beta: beta, vbe: V_BE, vcesat: V_CEs }
+      lectura: { valor: V_bce, rotulo: "V_{CE}" }
+      datos:
+        - { valor: R_bk, rotulo: "R_{B} = {{R_bk}}" }
+        - { valor: P_q, rotulo: "Disipa {{P_q}}" }
+      corriente: I_bc
+      mide: { ib: I_bb, ic: I_bc, vce: V_bce, vbe: V_BE }
+      mandos:
+        - { valor: k, lista: [1, 3, 5, 10], rotulo: "Factor k" }
+        - { valor: beta, lista: [50, 100, 200], rotulo: "β real del ejemplar" }
+    requiere: { mover: [k, beta] }
+
+  - id: prediga-ingenuo
+    tipo: predecir
+    titulo: "El cálculo ingenuo"
+    texto: "Interruptor con 1 kΩ desde 12 V. R_{B} se calcula con I_{B} = I_{C}/β_{mín}, β_{mín} = 100, pero a esa corriente el ejemplar tiene β = 50. ¿Qué marca V_{CE}?"
+    libro: ["cap06#50", 222]
+    fijar: { k: 1, beta: 50 }
+    widget:
+      tipo: circuito
+      esquema: bjt-interruptor
+      piezas: { vcc: V_cc, rc: R_bc, entrada: V_bi, rb: R_bk, beta: beta, vbe: V_BE, vcesat: V_CEs }
+      lectura: { valor: V_bce, rotulo: "V_{CE}" }
+      datos:
+        - { valor: P_q, rotulo: "Disipa {{P_q}}" }
+      corriente: I_bc
+      mide: { ib: I_bb, ic: I_bc, vce: V_bce, vbe: V_BE }
+      ocultar: true
+    opciones:
+      - texto: "Unos 6 V: se queda en la región activa"
+        bien: true
+        porque: "Con la mitad de β, el colector solo lleva la mitad de los 11,8 mA: V_{CE} sube a voltios y la disipación se multiplica."
+      - texto: "0,2 V: saturado"
+        porque: "Saturaría con β = 100 justo en el límite. Con β = 50, la base solo da para la mitad de la corriente."
+      - texto: "12 V: cortado"
+        porque: "La base recibe corriente, así que conduce; lo que no hace es saturar."
+    comprobar:
+      - { I_bk: 0.000118, I_bc: 0.0059, V_bce: 6.1, P_q: 0.036 }
+      - { con: { k: 5, beta: 50 }, V_bce: 0.2 }
+
+  - id: por-que-ingenuo
+    tipo: porque
+    titulo: "¿Por qué no basta I_{C}/β?"
+    texto: "Con I_{B} = I_{C}/β_{mín}, un ejemplar normal no satura. ¿Cuál de estas no es una de las razones del libro?"
+    libro: [222]
+    opciones:
+      - texto: "Que la resistencia de base se calienta y cambia de valor"
+        bien: true
+        porque: "Esa no es. Las tres razones son: β es un mínimo, β cae a corrientes altas y en el límite exacto cualquier variación lo devuelve a activa."
+      - texto: "β cae a corrientes altas: puede ser la mitad"
+        porque: "Sí es una razón: el valor de catálogo se mide a otra corriente."
+      - texto: "En el límite exacto, cualquier variación lo devuelve a la activa"
+        porque: "Sí es una razón: entre activa y saturación no hay margen, y en activa disipa diez veces más."
+
+  - id: formula-k
+    tipo: formula
+    titulo: "Saturación forzada"
+    texto: "Se sobreexcita deliberadamente: I_{B} es k veces lo que pediría el β mínimo, con k entre 3 y 10."
+    nota: "Un factor de 10 satura mejor y conmuta peor que uno de 3."
+    libro: [224, 228, "cap06#59"]
+    ec: 224
+    sustitucion: "{{k}} · {{I_cd}} / {{beta_min}} = {{I_bk}}"
+    widget:
+      tipo: circuito
+      esquema: bjt-interruptor
+      piezas: { vcc: V_cc, rc: R_bc, entrada: V_bi, rb: R_bk, beta: beta, vbe: V_BE, vcesat: V_CEs }
+      lectura: { valor: I_bk, rotulo: "I_{B}" }
+      datos:
+        - { valor: V_bce, rotulo: "V_{CE} = {{V_bce}}" }
+      corriente: I_bc
+      mide: { ib: I_bb, ic: I_bc, vce: V_bce, vbe: V_BE }
+      mandos:
+        - { valor: k, lista: [1, 3, 5, 10], rotulo: "Factor k" }
+
+  - id: estime-rele
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La base de un relé"
+    texto: "Un relé de 12 V consume 100 mA. Con β_{mín} = 100, k = 5 y un pin de 5 V, estime la resistencia de base."
+    libro: [225, 226]
+    fijar: { I_t: 0.1, k_t: 5 }
+    estimar:
+      objetivo: "R_bt"
+      unidad: Ω
+      min: 0
+      max: 5000
+      paso: 10
+      inicio: 4300
+      tol: 0.05
+      rotulo: "R_{B}"
+    exito: "I_{B} = 5 · 100 mA / 100 = 5 mA, y R_{B} = (5 − 0,7) V / 5 mA = 860 Ω. Cabe en un pin de 20 mA."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 903 }, texto: "Se ha pasado. Calcule primero I_{B} = k · I_{C} / β_{mín} = 5 mA." }
+      - { texto: "Se ha quedado corto. R_{B} = 4,3 V / 5 mA." }
+    comprobar:
+      - { I_bt: 0.005, R_bt: 860 }
+
+  - id: sorpresa-motor
+    tipo: sorpresa
+    titulo: "No cabe"
+    texto: "Con k = 5, β_{mín} = 100 y un pin de 5 V que da como mucho 20 mA, cambie de carga: LED de 20 mA, relé de 100 mA o motor pequeño de 500 mA."
+    libro: [225, 226, 227]
+    inicio: { I_t: 0.02 }
+    fijar: { k_t: 5 }
+    widget:
+      tipo: grafica
+      x: { id: c, min: 0, max: 0.6, unidad: A, rotulo: "I_{C}" }
+      y: { min: 0, max: 0.03, unidad: A, rotulo: "I_{B}" }
+      curvas:
+        - { expr: "k_t*c/beta_min", color: azul, rotulo: "I_{B} necesaria" }
+        - { expr: "0.02", color: naranja, rotulo: "límite del pin", discontinua: true }
+      marcas:
+        - { x: "I_t", y: "I_bt", rotulo: "{{I_bt}}" }
+      lectura: { valor: I_bt, rotulo: "Corriente de base necesaria" }
+      datos:
+        - { valor: R_bt, rotulo: "R_{B} = {{R_bt}}" }
+      mandos:
+        - { valor: I_t, lista: [0.02, 0.1, 0.5], nombres: [LED, relé, motor], rotulo: "Carga" }
+    requiere: { mover: [I_t] }
+    comprobar:
+      - { I_bt: 0.001, R_bt: 4300 }
+      - { con: { I_t: 0.5 }, I_bt: 0.025, R_bt: 172 }
+
+  - id: motor-salida
+    tipo: pregunta
+    titulo: "Un motor de 500 mA"
+    texto: "Un motor pequeño de 500 mA pide 25 mA de base (k = 5, β_{mín} = 100), y el pin del microcontrolador da como mucho 20 mA. ¿Cuál es hoy la salida razonable?"
+    libro: [226, 227]
+    opciones:
+      - texto: "Un MOSFET de nivel lógico"
+        bien: true
+        porque: "Se gobierna por tensión y no pide corriente de base: el problema desaparece."
+      - texto: "Un Darlington"
+        porque: "Funciona, porque multiplica las ganancias, pero cae de 0,8 a 1 V en saturación en lugar de 0,2 V."
+      - texto: "Bajar R_{B} hasta que entren 25 mA"
+        porque: "El pin no da más de 20 mA: no es cuestión de la resistencia sino de aritmética."
+
+  - id: explore-conmutacion
+    tipo: explorar
+    titulo: "El precio de cada flanco"
+    texto: "Una carga de 0,5 A a 12 V, saturada, disipa 100 mW en conducción. Cada flanco de 1 µs suma pérdidas. Suba la frecuencia de conmutación."
+    libro: [234, 235]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 100, max: 1000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.0001, max: 10, unidad: W, rotulo: "P", escala: log }
+      curvas:
+        - { expr: "V_l*I_l*t_sw*nu", color: naranja, rotulo: "conmutación" }
+        - { expr: "P_cond", color: azul, rotulo: "conducción", discontinua: true }
+      asas:
+        - { mueve: f_s, x: "f_s", y: "P_conm", rotulo: "Frecuencia" }
+      lectura: { valor: P_conm, rotulo: "Pérdidas de conmutación" }
+      datos:
+        - { valor: P_cond, rotulo: "Conducción: {{P_cond}}" }
+      mandos:
+        - { valor: f_s, lista: [1000, 20000, 100000], rotulo: "Frecuencia" }
+    requiere: { mover: [f_s] }
+    comprobar:
+      - { P_conm: 0.006, P_cond: 0.1 }
+      - { con: { f_s: 20000 }, P_conm: 0.12 }
+      - { con: { f_s: 100000 }, P_conm: 0.6 }
+
+  - id: mal-saturado
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Mal saturado"
+    texto: "Un interruptor con carga de 500 mA debería quedarse en 0,2 V y disipar 100 mW. Por falta de base se queda en 2 V. Estime lo que disipa."
+    libro: [231, 232]
+    estimar:
+      objetivo: "P_act"
+      unidad: W
+      min: 0
+      max: 2
+      paso: 0.01
+      inicio: 0.2
+      tol: 0.05
+      rotulo: "P en activa"
+    exito: "2 V por 500 mA: 1 W, diez veces más. Con 100 mW un TO-92 sobra; con un vatio hace falta lengüeta y probablemente disipador."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 1.05 }, texto: "Se ha pasado. Multiplique la tensión colector-emisor por la corriente." }
+      - { texto: "Se ha quedado corto. 2 V por 0,5 A." }
+    comprobar:
+      - { P_act: 1, P_cond: 0.1 }
+
+  - id: empareje-auxiliares
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Lo que acompaña al transistor"
+    texto: "Un interruptor bipolar bien hecho rara vez es solo un transistor y una resistencia de base. Empareje cada componente con su misión."
+    libro: [238, 239, 240, 241]
+    emparejar:
+      - ["Resistencia de base a emisor", "Asegura el corte con el pin en alta impedancia"]
+      - ["Diodo de rueda libre", "Protege al cortar una carga inductiva"]
+      - ["Resistencia de emisor de sensado", "Su caída dice la corriente de carga"]
+      - ["Snubber RC", "Amortigua el timbre de la inductancia parásita"]
+    exito: "Eso es. La de base a emisor, además, acelera el apagado: ofrece un camino a la carga almacenada."
+    pistas:
+      - { texto: "Durante el reset del microcontrolador el pin queda flotando; un relé al cortar genera un pico." }
+
+  - id: ordene-eleccion
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Elegir el transistor"
+    texto: "Ordene los cuatro parámetros para elegir el transistor de un interruptor."
+    libro: [244, 245, 247]
+    ordenar:
+      - "V_{CEO} de al menos el doble de la alimentación."
+      - "I_{C} máxima por encima de la de carga y de la de irrupción."
+      - "β mínimo a la corriente de trabajo, no el típico."
+      - "V_{CE(sat)} a esa corriente y con esa base, que fija la disipación."
+    exito: "Eso es. En el banco, V_{CE} con la carga encendida debe estar entre 0,1 y 0,3 V."
+    pistas:
+      - { texto: "Primero que aguante tensión y corriente; luego que sature; al final, cuánto disipa." }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [218, 224, 232, 235]
+    ideas:
+      - { titulo: "Siempre en un extremo.", texto: "Corte o saturación, donde la potencia es casi nula; la activa, lo más deprisa posible." }
+      - { titulo: "Sobreexcitar.", texto: "I_{B} = k·I_{C}/β_{mín}, con k de 3 a 10: con k = 1 un ejemplar de β mitad no satura." }
+      - { titulo: "Mal saturado.", texto: "2 V en lugar de 0,2 V: diez veces más disipación, 1 W en lugar de 100 mW." }
+      - { titulo: "Los flancos.", texto: "Con 1 µs, 6 mW a 1 kHz y 600 mW a 100 kHz: por encima de decenas de kilohercios, MOSFET." }

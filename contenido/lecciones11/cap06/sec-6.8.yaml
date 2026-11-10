@@ -1,0 +1,253 @@
+# Lección 1.1 de la sección 6.8 «El Modelo de Pequeña Señal» (cap06): la exponencial y su tangente en el punto de
+# reposo (1,324 mA), doblar I_C dobla la ganancia, r_π = β/g_m (2,93 kΩ con β = 150), r_o = V_A/I_C (75,5 kΩ), la
+# ganancia con r_o (−162 frente a −169) y el techo g_m·r_o = V_A/V_T = 3868, las dos fases del análisis, los modelos
+# en π y en T, las capacidades y f_T, y los límites del modelo (v_be ≪ V_T). Formato: contenido/lecciones11/GUIA.md.
+leccion: cap06/sec-6.8
+
+libro:
+  255: "unos milivoltios sobre los 700 de VBE"
+  256: "sustituir la curva por su tangente en el punto de reposo"
+  257: "primero se resuelve el circuito en continua para hallar el punto de reposo"
+  261: "Dos transistores distintos polarizados a la misma corriente tienen la misma transconductancia"
+  263: 'r_("π") = (β)/(g_(m))'
+  264: "Con β = 150: rπ = 2,93 kΩ."
+  266: 'r_("o") = (V_("A"))/(I_("C"))'
+  267: "Con VA = 100 V: ro = 75,5 kΩ."
+  270: "El modelo híbrido en π representa la entrada como rπ entre base y emisor"
+  271: "El modelo en T representa lo mismo con re en el emisor"
+  272: "Un error frecuente es mezclarlos y contar dos veces la misma resistencia."
+  275: '"162"'
+  276: "Sin considerar ro el resultado sería −169"
+  277: '"3 868"'
+  278: "gm sube con la corriente y ro baja en la misma proporción"
+  281: "Cµ (unos 2 a 5 pF) entre base y colector"
+  284: "un transistor es más rápido cuanto más corriente conduce"
+  286: "la variación de VBE debe ser mucho menor que VT = 25,9 mV"
+  289: "doblar IC dobla la ganancia"
+
+modelo:
+  valores:
+    I_Q: { sim: "I_{C}", nombre: "corriente de reposo", unidad: A, valor: 0.001324 }
+    V_T: { sim: "V_{T}", nombre: "tensión térmica", unidad: V, valor: 0.02585 }
+    v_s: { sim: "v_{be}", nombre: "variación de V_BE", unidad: V, valor: 0.003 }
+    beta: { sim: "β", nombre: "ganancia de corriente", unidad: "", valor: 150 }
+    V_A: { sim: "V_{A}", nombre: "tensión de Early", unidad: V, valor: 100 }
+    R_C: { sim: "R_{C}", nombre: "resistencia de colector", unidad: Ω, valor: 3300 }
+  calculos:
+    g_m: { expr: "I_Q/V_T", sim: "g_{m}", nombre: "transconductancia", unidad: S }
+    i_exp: { expr: "I_Q*exp(v_s/V_T)", sim: "i_{C}", nombre: "corriente de colector real", unidad: A, cifras: 4 }
+    i_tan: { expr: "I_Q*(1 + v_s/V_T)", sim: "i_{C}", nombre: "corriente según la tangente", unidad: A, cifras: 4 }
+    e_tan: { expr: "abs(i_exp - i_tan)/abs(i_exp - I_Q)*100", sim: "error", nombre: "error de la tangente sobre la variación", unidad: "%", cifras: 2 }
+    r_pi: { expr: "beta/g_m", sim: "r_{π}", nombre: "resistencia de entrada", unidad: Ω }
+    r_o: { expr: "V_A/I_Q", sim: "r_{o}", nombre: "resistencia de salida", unidad: Ω }
+    A_0: { expr: "g_m*R_C", sim: "|A_{v}|", nombre: "ganancia sin r_o", unidad: "", cifras: 3 }
+    A_ro: { expr: "g_m*par(R_C, r_o)", sim: "|A_{v}|", nombre: "ganancia con r_o", unidad: "", cifras: 3 }
+    A_max: { expr: "V_A/V_T", sim: "g_{m}·r_{o}", nombre: "ganancia intrínseca", unidad: "", cifras: 4 }
+
+tarjetas:
+  - id: explore-tangente
+    tipo: explorar
+    titulo: "De cerca, una recta"
+    texto: "La corriente de colector crece en exponencial con V_{BE}. Mueva la variación v_{be} alrededor del punto de reposo y compare la curva con su tangente."
+    libro: [255, 256]
+    widget:
+      tipo: grafica
+      x: { id: u, min: -0.03, max: 0.03, unidad: V, rotulo: "v_{be}" }
+      y: { min: 0, max: 0.004, unidad: A, rotulo: "i_{C}" }
+      curvas:
+        - { expr: "I_Q*exp(u/V_T)", color: azul, rotulo: "exponencial" }
+        - { expr: "I_Q*(1 + u/V_T)", color: naranja, rotulo: "tangente", discontinua: true }
+      asas:
+        - { mueve: v_s, x: "v_s", y: "i_exp", rotulo: "Variación de V_BE" }
+      lectura: { valor: e_tan, rotulo: "Error de la tangente" }
+      datos:
+        - { valor: i_exp, rotulo: "Real: {{i_exp}}" }
+        - { valor: i_tan, rotulo: "Tangente: {{i_tan}}" }
+      mandos:
+        - { valor: v_s, min: 0.001, max: 0.03, paso: 0.001, rotulo: "v_{be}" }
+    requiere: { mover: [v_s] }
+
+  - id: prediga-doblar
+    tipo: predecir
+    titulo: "Doblar la corriente"
+    texto: "Un emisor común con el emisor puenteado y R_{C} fija. Se dobla su corriente de polarización. ¿Qué le pasa a la ganancia?"
+    libro: [261, 289]
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0, max: 0.003, unidad: A, rotulo: "I_{C}" }
+      y: { min: 0, max: 400, unidad: "", rotulo: "|A_{v}|" }
+      curvas:
+        - { expr: "R_C*i/V_T", color: naranja, rotulo: "|A_{v}| = g_{m}·R_{C}" }
+      lectura: { valor: A_0, rotulo: "Ganancia, en módulo" }
+      ocultar: true
+    opciones:
+      - texto: "Se dobla"
+        bien: true
+        porque: "g_{m} = I_{C}/V_{T}: doblar la corriente dobla g_{m}, y con ella g_{m}·R_{C}. Es el experimento de diez minutos que convierte la fórmula en un hecho."
+      - texto: "No cambia: la fija R_{C}"
+        porque: "R_{C} es la mitad de la cuenta; la otra es g_{m}, proporcional a la corriente."
+      - texto: "Se multiplica por cuatro"
+        porque: "g_{m} es proporcional a I_{C}, no a su cuadrado: la ganancia crece en la misma proporción."
+
+  - id: formula-rpi
+    tipo: formula
+    titulo: "La resistencia de entrada"
+    texto: "Mirando desde la base, una variación de V_{BE} mueve β veces menos corriente de base que de colector."
+    nota: "r_{π} sí depende de β: la impedancia de entrada es lo peor controlado de un emisor común."
+    libro: [263, 264]
+    ec: 263
+    sustitucion: "{{beta}} / {{g_m}} = {{r_pi}}"
+    widget:
+      tipo: grafica
+      x: { id: b, min: 50, max: 300, unidad: "", rotulo: "β" }
+      y: { min: 0, max: 7000, unidad: Ω, rotulo: "r_{π}" }
+      curvas:
+        - { expr: "b*V_T/I_Q", color: azul, rotulo: "r_{π}" }
+      asas:
+        - { mueve: beta, x: "beta", y: "r_pi", rotulo: "β" }
+      lectura: { valor: r_pi, rotulo: "r_{π}" }
+      datos:
+        - { valor: g_m, rotulo: "g_{m} = {{g_m}}" }
+      mandos:
+        - { valor: beta, min: 50, max: 300, paso: 10, rotulo: "β" }
+    comprobar:
+      - { con: { beta: 150 }, r_pi: 2930 }
+
+  - id: estime-ro
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La resistencia de salida"
+    texto: "Un transistor con tensión de Early V_{A} = 100 V trabaja a 1,324 mA. Con r_{o} = V_{A}/I_{C}, estime su resistencia de salida."
+    libro: [266, 267]
+    estimar:
+      objetivo: "r_o"
+      unidad: Ω
+      min: 0
+      max: 200000
+      paso: 500
+      inicio: 150000
+      tol: 0.03
+      rotulo: "r_{o}"
+    exito: "100 V entre 1,324 mA: 75,5 kΩ. Alta, pero no infinita: en el modelo va en paralelo con la carga."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 77800 }, texto: "Se ha pasado. Divida 100 V entre 0,001324 A." }
+      - { texto: "Se ha quedado corto. 100 V entre 1,324 mA dan algo más de 75 kΩ." }
+    comprobar:
+      - { r_o: 75500, I_Q: 0.001324 }
+
+  - id: sorpresa-techo
+    tipo: sorpresa
+    titulo: "Subir R_{C} no basta"
+    texto: "Emisor común a 1,324 mA con V_{A} = 100 V. Suba la resistencia de colector y mire la ganancia, que incluye r_{o} en paralelo con R_{C}."
+    libro: [275, 276, 277]
+    fijar: { I_Q: 0.001324 }
+    inicio: { R_C: 3300 }
+    widget:
+      tipo: grafica
+      x: { id: r, min: 1000, max: 10000000, unidad: Ω, rotulo: "R_{C}", escala: log }
+      y: { min: 10, max: 10000, unidad: "", rotulo: "|A_{v}|", escala: log }
+      curvas:
+        - { expr: "g_m*r*r_o/(r + r_o)", color: naranja, rotulo: "con r_{o}" }
+        - { expr: "g_m*r", color: azul, rotulo: "sin r_{o}", discontinua: true }
+        - { expr: "A_max", color: tinta, rotulo: "g_{m}·r_{o}", discontinua: true }
+      asas:
+        - { mueve: R_C, x: "R_C", y: "A_ro", rotulo: "R_{C}" }
+      lectura: { valor: A_ro, rotulo: "Ganancia con r_{o}" }
+      datos:
+        - { valor: A_0, rotulo: "Sin r_{o}: {{A_0}}" }
+      mandos:
+        - { valor: R_C, lista: [3300, 33000, 330000, 3300000], rotulo: "R_{C}" }
+    requiere: { mover: [R_C] }
+    comprobar:
+      - { A_ro: 162, A_0: 169, A_max: 3868 }
+
+  - id: por-que-techo
+    tipo: porque
+    titulo: "¿Por qué un techo fijo?"
+    texto: "Por mucho que se suba R_{C}, la ganancia no supera g_{m}·r_{o} = V_{A}/V_{T} = 3868, a cualquier corriente. ¿Por qué no depende de la corriente?"
+    libro: [277, 278]
+    fijar: { I_Q: 0.001324, R_C: 3300000 }
+    widget:
+      tipo: grafica
+      x: { id: r, min: 1000, max: 10000000, unidad: Ω, rotulo: "R_{C}", escala: log }
+      y: { min: 10, max: 10000, unidad: "", rotulo: "|A_{v}|", escala: log }
+      curvas:
+        - { expr: "g_m*r*r_o/(r + r_o)", color: naranja, rotulo: "con r_{o}" }
+        - { expr: "A_max", color: tinta, rotulo: "g_{m}·r_{o}", discontinua: true }
+      lectura: { valor: A_ro, rotulo: "Ganancia con r_{o}" }
+    opciones:
+      - texto: "g_{m} sube con la corriente y r_{o} baja en la misma proporción"
+        bien: true
+        porque: "Su producto, V_{A}/V_{T}, es una propiedad del dispositivo. Alcanzarlo exige una carga activa (sección 6.11)."
+      - texto: "Porque R_{C} se queda en paralelo con r_{π}"
+        porque: "r_{π} está en la entrada, entre base y emisor. En la salida, en paralelo con R_{C}, está r_{o}."
+      - texto: "Porque el transistor satura"
+        porque: "Es un límite de pequeña señal, no de saturación: lo pone r_{o}, que manda en el paralelo cuando R_{C} es mucho mayor."
+
+  - id: ordene-fases
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Dos fases que no se mezclan"
+    texto: "Confundir las dos fases del análisis es el error más común de quien empieza. Ordene los pasos."
+    libro: [257]
+    ordenar:
+      - "Resolver el circuito en continua para hallar el punto de reposo."
+      - "Calcular g_{m}, r_{π} y r_{o} en ese punto."
+      - "Poner a masa las fuentes de continua y cortocircuitar los condensadores de acoplo."
+      - "Analizar el circuito lineal en alterna."
+    exito: "Eso es: primero la continua, después la alterna con el modelo lineal. Los parámetros salen del punto de reposo."
+    pistas:
+      - { texto: "Los parámetros dependen de la corriente de reposo: no se pueden calcular antes de conocerla." }
+
+  - id: empareje-modelos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Modelos y capacidades"
+    texto: "Empareje cada elemento del modelo de pequeña señal con lo que representa o cuándo se usa."
+    libro: [270, 271, 272, 281]
+    emparejar:
+      - ["Híbrido en π", "r_{π} en la entrada y g_{m}·v_{be} con r_{o}: el de por defecto"]
+      - ["Modelo en T", "r_{e} en el emisor: seguidores y base común"]
+      - ["C_{π}", "De 10 a 100 pF: la carga almacenada en la base"]
+      - ["C_{µ}", "De 2 a 5 pF entre base y colector: sufre el Miller"]
+    exito: "Eso es. Los dos modelos son equivalentes; mezclarlos es contar dos veces la misma resistencia."
+    pistas:
+      - { texto: "El modelo en T se usa cuando la señal entra o sale por el emisor." }
+
+  - id: ft
+    tipo: pregunta
+    titulo: "La frecuencia de transición"
+    texto: "f_{T} = g_{m}/(2π·(C_{π} + C_{µ})) es la frecuencia a la que la ganancia de corriente cae a 1. ¿Cómo se hace más rápido un transistor?"
+    libro: [284]
+    opciones:
+      - texto: "Polarizándolo con más corriente, hasta que la alta inyección lo estropea"
+        bien: true
+        porque: "f_{T} es proporcional a g_{m}, y por tanto a la corriente. En radiofrecuencia se polariza alto aunque se pague en consumo."
+      - texto: "Con más resistencia de colector"
+        porque: "R_{C} no aparece en f_{T}: más R_{C} da más ganancia de tensión y más efecto Miller."
+      - texto: "Con un β mayor"
+        porque: "β no aparece en f_{T}: lo que manda es g_{m}, que solo depende de la corriente."
+
+  - id: limites
+    tipo: pregunta
+    titulo: "¿Cuándo es pequeña la señal?"
+    texto: "El modelo de pequeña señal vale para variaciones pequeñas de V_{BE}. ¿Pequeñas comparadas con qué?"
+    libro: [286]
+    opciones:
+      - texto: "Con V_{T}, unos 25,9 mV: con 5 mV la distorsión ya ronda el 5 %"
+        bien: true
+        porque: "La exponencial se curva en una escala de V_{T}. Por encima hay que degenerar el emisor o analizar en gran señal."
+      - texto: "Con los 700 mV de V_{BE}"
+        porque: "Unos milivoltios son poco frente a 700 mV, pero la curvatura se mide con V_{T}, mucho menor."
+      - texto: "Con la alimentación"
+        porque: "La alimentación limita la excursión de la salida. El modelo se rompe antes, en la entrada, a la escala de V_{T}."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [256, 264, 267, 277]
+    ideas:
+      - { titulo: "La tangente.", texto: "En el punto de reposo la exponencial es casi una recta, si v_{be} ≪ V_{T}." }
+      - { titulo: "Tres parámetros.", texto: "g_{m} = I_{C}/V_{T}; r_{π} = β/g_{m}, que sí depende de β; r_{o} = V_{A}/I_{C}." }
+      - { titulo: "El techo.", texto: "g_{m}·r_{o} = V_{A}/V_{T} = 3868: ninguna etapa de un solo transistor lo supera." }
+      - { titulo: "Dos fases.", texto: "Primero la continua, para el punto de reposo; después la alterna, con el modelo lineal." }

@@ -1,0 +1,287 @@
+# Lección 1.1 de la sección 3.7 «El Efecto del DC Bias y los Coeficientes» (cap03): la capacidad de un cerámico de
+# clase 2 cae con la tensión continua (X7R de 10 µF, 16 V, 0805: 50–70 % menos a 5 V, más del 80 % a 10 V; la versión
+# de 50 V pierde mucho menos), los códigos de temperatura, el Y5V, el C0G, el envejecimiento logarítmico (2,5 % por
+# década de horas, reiniciado al soldar), la microfonía, la tabla de decisión y la medida en el banco.
+# La curva de capacidad frente a la tensión es la de la figura 3.10, ajustada como 100/(1 + (V/V₀)^1,7) con
+# V₀ = 3,94 V (16 V: 40 % a 5 V y 17 % a 10 V, los rótulos de la figura) y V₀ = 12 V (50 V). Sección sin fórmula.
+# Formato: contenido/lecciones11/GUIA.md.
+leccion: cap03/sec-3.7
+
+libro:
+  102: "marcado como 10 µF no tiene 10 µF en el circuito"
+  105: "esos dominios se alinean y dejan de estar disponibles"
+  106: "alimentado a 5 V, puede haber perdido entre el 50 y el 70 % de su capacidad. A 10 V, más del 80 %"
+  108: "Un filtro diseñado con 10 µF puede estar funcionando con 3"
+  111: "+22 % / −82 %"
+  112: "sustituir un X7R por un Y5V «porque es del mismo valor» es un error de sustitución serio"
+  113: "Donde el valor importa —filtros, osciladores, temporizadores— la respuesta es C0G"
+  115: "Tras mil horas (tres décadas) ha perdido casi un 8 %"
+  116: "Los C0G no lo tienen"
+  118: "X7R o X5R, con tensión nominal 2–3×"
+  120: "que aplica poca tensión y dará cerca de 10 µF"
+  121: "Pérdida de capacidad de un cerámico de clase 2 con la tensión continua aplicada"
+
+modelo:
+  valores:
+    V_b: { sim: "V_{DC}", nombre: "tensión continua aplicada", unidad: V, valor: 0 }
+    V_n: { sim: "V_{nom}", nombre: "tensión nominal", unidad: V, valor: 16 }
+    C_n: { sim: "C_{nom}", nombre: "capacidad marcada", unidad: F, valor: 10e-6 }
+    h_a: { sim: "t", nombre: "horas desde el último calentamiento", unidad: h, valor: 1 }
+  calculos:
+    V_0: { expr: "3.94 + (V_n - 16)*(12 - 3.94)/34", sim: "V₀", nombre: "tensión a la que queda la mitad", unidad: V }
+    frac: { expr: "100/(1 + (V_b/V_0)^1.7)", sim: "C/C_{nom}", nombre: "capacidad que queda", unidad: "%", cifras: 2 }
+    C_ef: { expr: "C_n*frac/100", sim: "C_{ef}", nombre: "capacidad efectiva", unidad: F, cifras: 2 }
+    perd_t: { expr: "2.5*log10(h_a)", sim: "ΔC/C", nombre: "capacidad perdida por envejecimiento", unidad: "%", cifras: 2 }
+
+tarjetas:
+  - id: explore-dc-bias
+    tipo: explorar
+    titulo: "La tensión se come la capacidad"
+    texto: "Un X7R marcado 10 µF, de 16 V y en 0805. Arrastre la tensión continua y mire cuánta capacidad le queda."
+    libro: [102, 106, 121]
+    fijar: { V_n: 16, C_n: 10e-6 }
+    inicio: { V_b: 0 }
+    widget:
+      tipo: grafica
+      x: { id: v, min: 0, max: 16, unidad: V, rotulo: "V_{DC}" }
+      y: { min: 0, max: 110, unidad: "%", rotulo: "C restante" }
+      curvas:
+        - { expr: "100 + 0*v", color: tinta, rotulo: "C0G", discontinua: true }
+        - { expr: "100/(1 + (v/V_0)^1.7)", color: naranja, rotulo: "X7R de 16 V" }
+      asas:
+        - { mueve: V_b, x: "V_b", y: "frac", rotulo: "Tensión continua" }
+      lectura: { valor: C_ef, rotulo: "Capacidad real" }
+      datos:
+        - { valor: frac, rotulo: "Queda el {{frac}}" }
+      mandos:
+        - { valor: V_b, min: 0, max: 16, paso: 1, rotulo: "Tensión continua, V_{DC}" }
+    requiere: { mover: [V_b] }
+    nota: "El C0G no cambia. La curva es la de la figura del libro."
+
+  - id: prediga-cinco-voltios
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Un X7R marcado 10 µF, de 16 V y en 0805, desacopla una línea de 5 V. ¿Qué capacidad tiene de verdad?"
+    libro: [106, 108]
+    fijar: { V_n: 16, C_n: 10e-6, V_b: 5 }
+    widget:
+      tipo: grafica
+      x: { id: v, min: 0, max: 16, unidad: V, rotulo: "V_{DC}" }
+      y: { min: 0, max: 110, unidad: "%", rotulo: "C restante" }
+      curvas:
+        - { expr: "100/(1 + (v/V_0)^1.7)", color: naranja, rotulo: "X7R de 16 V" }
+      marcas:
+        - { x: "V_b", y: "frac", rotulo: "5 V" }
+      lectura: { valor: C_ef, rotulo: "Capacidad real" }
+      ocultar: true
+    opciones:
+      - texto: "Entre 3 y 5 µF"
+        bien: true
+        porque: "A 5 V puede haber perdido entre el 50 y el 70 %: según la figura, quedan unos 4 µF."
+      - texto: "10 µF: no está defectuoso"
+        porque: "No está defectuoso, pero tampoco tiene 10 µF: se comporta como dice su hoja de datos."
+      - texto: "Casi todo, dentro de la tolerancia"
+        porque: "La pérdida por tensión no es una tolerancia: a 5 V se va más de la mitad."
+    comprobar:
+      - { C_ef: 4.0e-6, frac: 40, tol: 0.01 }
+      - { con: { V_b: 10 }, frac: 17, tol: 0.01 }
+
+  - id: sorpresa-cincuenta
+    tipo: sorpresa
+    titulo: "El mismo, de 50 V"
+    texto: "Misma capacidad, 5 V aplicados. Cambie la tensión nominal de 16 a 50 V y mire lo que queda."
+    libro: [108, 121]
+    fijar: { C_n: 10e-6, V_b: 5 }
+    inicio: { V_n: 16 }
+    widget:
+      tipo: grafica
+      x: { id: v, min: 0, max: 16, unidad: V, rotulo: "V_{DC}" }
+      y: { min: 0, max: 110, unidad: "%", rotulo: "C restante" }
+      curvas:
+        - { expr: "100/(1 + (v/V_0)^1.7)", color: naranja, rotulo: "X7R" }
+      marcas:
+        - { x: "V_b", y: "frac", rotulo: "{{frac}}" }
+      lectura: { valor: C_ef, rotulo: "Capacidad real a 5 V" }
+      mandos:
+        - { valor: V_n, lista: [16, 50], rotulo: "Tensión nominal" }
+    requiere: { mover: [V_n] }
+    nota: "La regla: tensión nominal del doble o el triple de la de trabajo, por capacidad."
+
+  - id: por-que-grueso
+    tipo: porque
+    titulo: "¿Por qué pierde menos?"
+    texto: "El de 50 V pierde mucho menos a 5 V que el de 16 V. ¿Por qué?"
+    libro: [105, 108]
+    opciones:
+      - texto: "Su dieléctrico es más grueso: a 5 V el campo es menor"
+        bien: true
+        porque: "Por lo mismo, un 1206 sufre menos que un 0603 con las mismas especificaciones."
+      - texto: "Es de mejor calidad"
+        porque: "Los dos están dentro de especificación. La diferencia es el espesor del dieléctrico."
+      - texto: "Tiene menos capacidad por dentro"
+        porque: "Los dos son de 10 µF. El de 50 V tiene más dieléctrico, con menos campo."
+
+  - id: estime-diez-voltios
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "A 10 V"
+    texto: "A 10 V, un X7R de 10 µF, 16 V y 0805 pierde más del 80 %. Estime cuántos µF le quedan."
+    libro: [106, 121]
+    fijar: { V_n: 16, C_n: 10e-6, V_b: 10 }
+    estimar:
+      objetivo: "C_ef*1e6"
+      unidad: "µF"
+      min: 0
+      max: 10
+      paso: 0.1
+      inicio: 6
+      tol: 0.12
+      rotulo: "Capacidad a 10 V"
+    exito: "Menos de 2 µF: la figura marca el 17 %. Un filtro diseñado con 10 µF trabajaría con 1,7."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 1.9 }, texto: "Se ha pasado: si pierde más del 80 %, quedan menos de 2 µF." }
+      - { texto: "Se ha quedado corto: la figura marca el 17 % a 10 V." }
+    comprobar:
+      - { C_ef: 1.7e-6, frac: 17, tol: 0.01 }
+
+  - id: codigos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "El código, descifrado"
+    texto: "Tres caracteres dicen el margen de temperatura y la variación admitida. Una cada código con lo suyo."
+    libro: [111]
+    emparejar:
+      - ["X7R", "−55 a +125 °C, ±15 %"]
+      - ["X5R", "−55 a +85 °C, ±15 %"]
+      - ["Y5V", "−30 a +85 °C, −82 %"]
+      - ["Z5U", "+10 a +85 °C, −56 %"]
+    exito: "Eso es. El Y5V puede perder el 82 % solo con la temperatura, antes de aplicarle tensión."
+    pistas:
+      - { texto: "Los dos ±15 % son los X; los que pierden mucho, Y5V y Z5U." }
+
+  - id: sustituir-y5v
+    tipo: pregunta
+    titulo: "Del mismo valor"
+    texto: "Un X7R de 1 µF se sustituye por un Y5V de 1 µF. ¿Es correcto?"
+    libro: [112]
+    opciones:
+      - texto: "No: un Y5V a 60 °C y con 5 V puede tener 100 nF"
+        bien: true
+        porque: "Es un error de sustitución serio. El Y5V solo sirve donde la capacidad no importa."
+      - texto: "Sí: es del mismo valor"
+        porque: "El valor marcado engaña: la temperatura y la tensión pueden dejarle la décima parte."
+      - texto: "Sí, si la tensión nominal es igual o mayor"
+        porque: "La tensión no lo arregla: el Y5V pierde hasta el 82 % solo con la temperatura."
+
+  - id: explore-envejece
+    tipo: explorar
+    titulo: "Envejece con el tiempo"
+    texto: "Un X7R pierde en torno a un 2,5 % por década de horas desde su último calentamiento. Arrastre el tiempo."
+    libro: [115]
+    inicio: { h_a: 1 }
+    widget:
+      tipo: grafica
+      x: { id: hh, min: 1, max: 100000, unidad: h, rotulo: "t", escala: log }
+      y: { min: 0, max: 15, unidad: "%", rotulo: "pérdida" }
+      curvas:
+        - { expr: "2.5*log10(hh)", color: naranja, rotulo: "X7R" }
+        - { expr: "0*hh", color: tinta, rotulo: "C0G", discontinua: true }
+      asas:
+        - { mueve: h_a, x: "h_a", y: "perd_t", rotulo: "Horas" }
+      lectura: { valor: perd_t, rotulo: "Capacidad perdida" }
+      mandos:
+        - { valor: h_a, lista: [1, 10, 100, 1000, 10000, 100000], rotulo: "Tiempo, t" }
+    requiere: { mover: [h_a] }
+
+  - id: prediga-mil-horas
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Un X7R pierde en torno a un 2,5 % por década de horas. ¿Cuánto ha perdido tras mil horas, respecto a su primera hora?"
+    libro: [115]
+    fijar: { h_a: 1000 }
+    widget:
+      tipo: grafica
+      x: { id: hh, min: 1, max: 100000, unidad: h, rotulo: "t", escala: log }
+      y: { min: 0, max: 15, unidad: "%", rotulo: "pérdida" }
+      curvas:
+        - { expr: "2.5*log10(hh)", color: naranja, rotulo: "X7R" }
+      lectura: { valor: perd_t, rotulo: "Capacidad perdida" }
+      ocultar: true
+    opciones:
+      - texto: "Casi un 8 %"
+        bien: true
+        porque: "Mil horas son tres décadas: tres veces el 2,5 %."
+      - texto: "Un 2,5 %"
+        porque: "Eso es por década. Mil horas son tres décadas."
+      - texto: "Nada: solo cambia al soldarlo"
+        porque: "Al soldarlo se reinicia; después va perdiendo poco a poco, con ley logarítmica."
+    comprobar:
+      - { perd_t: 7.5 }
+
+  - id: por-que-soldar
+    tipo: porque
+    titulo: "Medido tras el montaje"
+    texto: "El valor de un X7R medido justo tras soldarlo no es el que tendrá dentro de un año. ¿Por qué?"
+    libro: [115]
+    opciones:
+      - texto: "Soldarlo lo calienta por encima de su temperatura de Curie y reinicia el envejecimiento"
+        bien: true
+        porque: "Desde ahí vuelve a perder en torno a un 2,5 % por década de horas."
+      - texto: "Porque el estaño añade capacidad"
+        porque: "No: el calor de la soldadura reinicia el envejecimiento, que luego le resta capacidad."
+      - texto: "Porque el capacímetro mide mal en placa"
+        porque: "Aunque se mida bien, el valor seguirá bajando: es el envejecimiento, que el calor reinicia."
+
+  - id: microfonia
+    tipo: pregunta
+    titulo: "Un golpe en la placa"
+    texto: "Un golpe o una vibración inyecta ruido en un circuito sensible lleno de cerámicos X7R. ¿Qué pasa?"
+    libro: [116]
+    opciones:
+      - texto: "Son piezoeléctricos: la vibración genera tensión"
+        bien: true
+        porque: "Es la microfonía; a la inversa, una tensión alterna los hace zumbar. Los C0G no lo tienen."
+      - texto: "Se desueldan con la vibración"
+        porque: "No hace falta una avería: el propio dieléctrico convierte la vibración en tensión."
+      - texto: "Cambia su tensión nominal"
+        porque: "El efecto es piezoeléctrico: la deformación mecánica genera una tensión."
+
+  - id: decision
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Tabla de decisión"
+    texto: "Una cada aplicación con el dieléctrico que recomienda el libro."
+    libro: [113, 118]
+    emparejar:
+      - ["Oscilador o temporizador", "C0G / NP0"]
+      - ["Desacoplo", "X7R o X5R, tensión 2–3×"]
+      - ["Acoplo de audio", "Película"]
+      - ["Filtro de fuente", "Electrolítico o polímero"]
+      - ["Valor sin importancia", "Y5V, con reservas"]
+    exito: "Eso es. Donde el valor importa, C0G, aunque haya que aceptar un valor menor."
+    pistas:
+      - { texto: "El C0G es estable pero pequeño; el electrolítico, grande; el Y5V, solo si no importa." }
+
+  - id: banco-capacimetro
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "Un X7R de 10 µF da cerca de 10 µF en el capacímetro. Montado con 5 V continuos, ¿qué se mide?"
+    libro: [120]
+    opciones:
+      - texto: "Una fracción de los 10 µF"
+        bien: true
+        porque: "El capacímetro aplica poca tensión. Con 5 V, la reactancia medida revela la pérdida."
+      - texto: "Lo mismo, 10 µF"
+        porque: "El capacímetro casi no polariza; con 5 V continuos la capacidad cae."
+      - texto: "Más de 10 µF"
+        porque: "La tensión continua siempre le resta capacidad a un clase 2."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [106, 108, 111, 113, 115]
+    ideas:
+      - { titulo: "DC bias.", texto: "Un X7R de 10 µF y 16 V pierde a 5 V entre el 50 y el 70 %; a 10 V, más del 80 %." }
+      - { titulo: "Más tensión nominal.", texto: "El doble o el triple de la de trabajo, y encapsulado mayor: pierde menos." }
+      - { titulo: "Temperatura y edad.", texto: "Y5V, hasta −82 %; X7R, un 2,5 % por década de horas." }
+      - { titulo: "Donde el valor importa.", texto: "C0G: sin coeficiente de tensión ni envejecimiento." }

@@ -16,7 +16,7 @@
   import RotateCcw from '@lucide/svelte/icons/rotate-ccw';
   import type { Bloque } from '../../lib/tipos';
   import { app } from '../../lib/estado.svelte';
-  import { ruta, hayCapas } from '../../lib/ruta.svelte';
+  import { ruta, hayCapas, reemplazarDireccion } from '../../lib/ruta.svelte';
   import { cargarParte, prepararHtml } from '../../lib/datos';
   import { tonoBloque } from '../../lib/color';
   import { pasoVecino } from '../../lib/navegacion.svelte';
@@ -51,8 +51,11 @@
   import { NOMBRE_TIPO, pantallasLeccion, practicaDeSeccion } from '../practica/datos';
   import type { Idea, ItemPractica } from '../practica/tipos';
   import { CONTEXTO_LECCION, cargarExplorables, type ContextoLeccion } from '../figuras-vivas/contexto';
+  import { anclaClasica } from '../../lib/leccion11/ruta';
 
-  let { parte, seccion }: { parte: string; seccion: string } = $props();
+  // 1.1: `clasica` — the section also has a hand-authored lesson, which owns #/leccion/<parte>/<label>[/<n>]: this one
+  // lives at …/clasica[/<rest>] (lib/leccion11/ruta.ts; componentes/leccion11/ElegirLeccion.svelte chooses)
+  let { parte, seccion, clasica = false }: { parte: string; seccion: string; clasica?: boolean } = $props();
 
   // 0.11 (group B): the lesson's live schematics become explorable in place (figuras-vivas/esquema/ExploraEsquema)
   let explorables = $state.raw<Record<string, number[]>>({});
@@ -124,7 +127,7 @@
   /** «3», «practica-1», «pregunta-2», «fin» → screen index (needs the steps, items and questions). */
   function leerPantalla(ancla: string): number {
     const ps = pantallasLeccion(leccion?.pasos ?? [], items, preguntas?.length ?? 0);
-    const resto = ancla.split('/').slice(1).join('/');
+    const resto = anclaClasica(ancla).split('/').slice(1).join('/');
     if (!resto) return 0;
     if (resto === 'fin') return ps.length - 1;
     const m = /^pregunta-(\d+)$/.exec(resto);
@@ -144,6 +147,13 @@
   }
 
   function hashDe(i: number): string {
+    const h = hashPropio(i);
+    if (!clasica) return h;
+    const base = rutaLeccion(parte, seccion);
+    return `${base}/clasica${h.slice(base.length)}`;
+  }
+
+  function hashPropio(i: number): string {
     const x = pantallas[i];
     if (!x || x.k === 'fin') return `${rutaLeccion(parte, seccion)}/fin`;
     if (x.k === 'paso') return rutaLeccion(parte, seccion, x.paso);
@@ -175,7 +185,7 @@
     mostrada = null;
     finalP = false;
     const h = hashDe(destino);
-    if (location.hash !== h) history.replaceState(history.state, '', h);
+    reemplazarDireccion(h);
     anotarPaso(parte, seccion, pasoGuardado(destino), nPasos);
     if (destino >= total) terminar();
     window.scrollTo({ top: 0, behavior: 'instant' });
@@ -507,7 +517,7 @@
   h1 {
     margin: 0;
     color: var(--titulos);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: clamp(26px, 3.6vw, 30px);
     font-weight: 700;
     line-height: 1.2;
@@ -616,7 +626,7 @@
   }
   .siguiente .tit {
     color: var(--titulos);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: 20px;
     font-weight: 600;
     line-height: 1.3;

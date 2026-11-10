@@ -1,0 +1,221 @@
+# Lección 1.1 de la sección 5.7 «Recuperación Inversa y Conmutación» (cap05): el diodo que conduce al revés tras
+# apagarse (carga almacenada, Q_rr, I_RM, suavidad), los tiempos de cada tecnología, la pérdida ½·V·I_RM·t_rr·f
+# frente a la frecuencia, por qué el Schottky no la sufre y dónde muerde en la práctica. Formato:
+# contenido/lecciones11/GUIA.md.
+leccion: cap05/sec-5.7
+
+libro:
+  224: "durante un tiempo trr conduce en sentido inverso"
+  225: "La causa es la carga almacenada"
+  226: "un corte abrupto excita la inductancia parásita del circuito"
+  228: "trr típico"
+  229: "La pérdida por recuperación es aproximadamente ½·V·IRM·trr por conmutación"
+  230: "Pérdida (100 V, 2 A)"
+  231: "Poner un 1N4007 en una fuente conmutada es el error de sustitución más caro que existe"
+  233: "no hay minoritarios inyectados, luego no hay carga que evacuar"
+  235: "Es la razón de los tiempos muertos"
+  236: "La cura clásica son condensadores de 10 nF en paralelo con cada diodo del puente"
+  237: "su carga se suma a la corriente del transistor"
+  239: "su anchura es trr"
+  "cap05#348": "su trr es casi nulo y conmuta limpio"
+
+modelo:
+  valores:
+    V_c: { sim: "V", nombre: "tensión que bloquea", unidad: V, valor: 100 }
+    I_c: { sim: "I_{RM}", nombre: "pico de corriente inversa", unidad: A, valor: 2 }
+    t_rr: { sim: "t_{rr}", nombre: "tiempo de recuperación inversa", unidad: s, valor: 2e-6 }
+    f_c: { sim: "f", nombre: "frecuencia de conmutación", unidad: Hz, valor: 50 }
+  calculos:
+    P_rr: { expr: "0.5*V_c*I_c*t_rr*f_c", sim: "P", nombre: "pérdida por recuperación", unidad: W }
+    E_rr: { expr: "0.5*V_c*I_c*t_rr", sim: "E", nombre: "energía perdida en cada conmutación", unidad: J }
+    T_c: { expr: "1/f_c", sim: "T", nombre: "periodo de conmutación", unidad: s }
+
+tarjetas:
+  - id: explore-frecuencia
+    tipo: explorar
+    titulo: "Cada conmutación cuesta"
+    texto: "Un 1N4007, t_{rr} = 2 µs, bloquea 100 V con 2 A de pico inverso. Cada vez que se apaga pierde ½·V·I_{RM}·t_{rr}. Suba la frecuencia."
+    libro: [229, 230]
+    fijar: { t_rr: 2e-6 }
+    inicio: { f_c: 50 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 30, max: 600000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.000001, max: 300, unidad: W, rotulo: "pérdida", escala: log }
+      curvas:
+        - { expr: "0.5*V_c*I_c*t_rr*x", color: naranja, rotulo: "1N4007" }
+      asas:
+        - { mueve: f_c, x: "f_c", y: "P_rr", rotulo: "Frecuencia" }
+      lectura: { valor: P_rr, rotulo: "Pérdida por recuperación" }
+      datos:
+        - { valor: E_rr, rotulo: "Por conmutación: {{E_rr}}" }
+      mandos:
+        - { valor: f_c, lista: [50, 1000, 10000, 100000], rotulo: "Frecuencia de conmutación" }
+    requiere: { mover: [f_c] }
+    comprobar:
+      - { con: { f_c: 50 }, P_rr: 0.01 }
+
+  - id: prediga-100k
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Un 1N4007 (t_{rr} = 2 µs, 100 V, 2 A de pico inverso) pierde 10 mW a 50 Hz. ¿Cuánto pierde en una conmutada de 100 kHz?"
+    libro: [230]
+    fijar: { t_rr: 2e-6, f_c: 100000 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 30, max: 600000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.000001, max: 300, unidad: W, rotulo: "pérdida", escala: log }
+      curvas:
+        - { expr: "0.5*V_c*I_c*t_rr*x", color: naranja, rotulo: "1N4007" }
+      lectura: { valor: P_rr, rotulo: "Pérdida por recuperación" }
+      ocultar: true
+    opciones:
+      - texto: "20 W: se destruye en segundos"
+        bien: true
+        porque: "La pérdida va con la frecuencia: dos mil veces más conmutaciones, dos mil veces más pérdida."
+      - texto: "10 mW, lo mismo"
+        porque: "Pierde lo mismo en cada conmutación, pero a 100 kHz conmuta dos mil veces más a menudo."
+      - texto: "Nada: a 100 kHz no da tiempo a conducir al revés"
+        porque: "Al contrario: su t_{rr} de 2 µs es ya una buena parte del periodo de 10 µs."
+    comprobar:
+      - { P_rr: 20, T_c: 10e-6 }
+
+  - id: empareje-trr
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los números deciden"
+    texto: "Empareje cada diodo con su tiempo de recuperación inversa típico."
+    libro: [228]
+    emparejar:
+      - ["1N4007, rectificador", "2 – 30 µs"]
+      - ["Ultrarrápido, UF400x", "25 – 75 ns"]
+      - ["1N4148, señal", "4 ns"]
+      - ["Schottky", "Casi cero: solo su capacidad"]
+    exito: "Eso es. El 1N4007 es mil veces más lento que un diodo de señal: perfecto a 50 Hz, nada más."
+    pistas:
+      - { texto: "El rectificador de red es el lento, en microsegundos; el de señal, en nanosegundos." }
+
+  - id: estime-ultrarrapido
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Un ultrarrápido"
+    texto: "Un ultrarrápido de t_{rr} = 35 ns, en una conmutada de 100 kHz, bloqueando 100 V con 2 A de pico inverso. Estime su pérdida por recuperación."
+    libro: [229, 230]
+    fijar: { t_rr: 35e-9, f_c: 100000 }
+    estimar:
+      objetivo: "P_rr"
+      unidad: W
+      min: 0
+      max: 2
+      paso: 0.01
+      inicio: 1.5
+      tol: 0.05
+      rotulo: "Pérdida"
+    exito: "350 mW frente a 20 W: es la diferencia entre un diodo que funciona y uno que se destruye."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.37 }, texto: "Se ha pasado: ½ × 100 V × 2 A × 35 ns, por cien mil veces por segundo." }
+      - { texto: "Se ha quedado corto: ½ × 100 × 2 × 35 ns son 3,5 µJ por conmutación." }
+    comprobar:
+      - { E_rr: 3.5e-6 }
+
+  - id: sorpresa-sustitucion
+    tipo: sorpresa
+    titulo: "El error de sustitución más caro"
+    texto: "En una conmutada de 100 kHz, cambie el diodo. Los dos parecen equivalentes en tensión y corriente."
+    libro: [230, 231]
+    fijar: { f_c: 100000 }
+    inicio: { t_rr: 35e-9 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 30, max: 600000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.000001, max: 300, unidad: W, rotulo: "pérdida", escala: log }
+      curvas:
+        - { expr: "0.5*V_c*I_c*2e-6*x", color: naranja, rotulo: "1N4007" }
+        - { expr: "0.5*V_c*I_c*35e-9*x", color: azul, rotulo: "ultrarrápido" }
+      lectura: { valor: P_rr, rotulo: "Pérdida por recuperación" }
+      mandos:
+        - { valor: t_rr, lista: [35e-9, 2e-6], nombres: [ultrarrápido, rectificador estándar], rotulo: "Diodo" }
+    requiere: { mover: [t_rr] }
+    comprobar:
+      - { P_rr: 0.35 }
+      - { con: { t_rr: 2e-6 }, P_rr: 20 }
+
+  - id: porque-al-reves
+    tipo: porque
+    titulo: "Conduce después de apagarse"
+    texto: "Al invertir la tensión, un diodo de unión sigue conduciendo al revés durante t_{rr}, con una corriente que puede superar la directa. ¿Por qué?"
+    libro: [224, 225]
+    opciones:
+      - texto: "Hay que evacuar los minoritarios almacenados antes de formar la zona de agotamiento"
+        bien: true
+        porque: "La carga Q_{rr} es proporcional a la corriente directa que circulaba y a la vida media de los minoritarios."
+      - texto: "Por la capacidad de la unión"
+        porque: "Esa es la única que tiene un Schottky, y es pequeña. En el de unión manda la carga de minoritarios."
+      - texto: "Porque el diodo está averiado"
+        porque: "Lo hace todo diodo de unión sano: es la física de la carga almacenada."
+
+  - id: porque-schottky
+    tipo: porque
+    titulo: "El Schottky no lo sufre"
+    texto: "En la misma conmutada de 100 kHz, un Schottky funciona sin calentarse. ¿Por qué?"
+    libro: [233, "cap05#348"]
+    opciones:
+      - texto: "Lo llevan mayoritarios: no hay carga de minoritarios que evacuar"
+        bien: true
+        porque: "Solo hay que cargar la capacidad de la unión, pequeña y que no depende de la corriente previa."
+      - texto: "Porque cae menos tensión en directa"
+        porque: "Eso reduce la pérdida de conducción. La de recuperación desaparece por otra razón: no almacena minoritarios."
+      - texto: "Porque aguanta más tensión inversa"
+        porque: "Aguanta menos, de 20 a 100 V típicamente. Lo que no tiene es carga almacenada."
+
+  - id: pregunta-suavidad
+    tipo: pregunta
+    titulo: "Suave o abrupta"
+    texto: "La corriente inversa sube a un pico I_{RM} y luego decae a cero. ¿Por qué importa que ese final sea suave?"
+    libro: [226]
+    opciones:
+      - texto: "Un corte abrupto excita la inductancia parásita: sobretensiones y radiación"
+        bien: true
+        porque: "Por eso existen diodos «soft recovery» para conmutadas. No es un detalle estético."
+      - texto: "Por estética de la forma de onda"
+        porque: "No es estético: un corte brusco con la inductancia del circuito produce sobretensiones."
+      - texto: "Porque así el diodo conduce menos en directa"
+        porque: "La suavidad es del apagado, no de la conducción directa."
+
+  - id: empareje-donde
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Dónde muerde"
+    texto: "La recuperación inversa aparece en muchos circuitos. Empareje cada uno con su efecto o su cura."
+    libro: [235, 236, 237]
+    emparejar:
+      - ["Puente de transistores", "Pico en el transistor opuesto: tiempos muertos"]
+      - ["Rectificador de red", "Timbre de radiofrecuencia: 10 nF en paralelo con cada diodo"]
+      - ["Elevador (boost)", "La carga del diodo se suma a la corriente del transistor"]
+    exito: "Eso es. En el puente es el diodo de cuerpo del MOSFET el que recupera."
+    pistas:
+      - { texto: "En el puente, el diodo que aún conduce cortocircuita un instante la alimentación." }
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "En el osciloscopio"
+    texto: "Se conmuta un diodo con el generador a través de una resistencia y se mira su corriente con un shunt. ¿Cómo se ve t_{rr}?"
+    libro: [239]
+    opciones:
+      - texto: "Una excursión negativa breve justo tras el flanco; su anchura es t_{rr}"
+        bien: true
+        porque: "Comparar un 1N4007 con un 1N4148 a 100 kHz lo muestra sin medir nada."
+      - texto: "Un retraso antes de empezar a conducir"
+        porque: "La recuperación es del apagado: el diodo sigue conduciendo al revés tras el flanco."
+      - texto: "No se ve: dura picosegundos"
+        porque: "En un 1N4007 son microsegundos, bien visibles en cualquier osciloscopio."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [225, 228, 229, 231, 233]
+    ideas:
+      - { titulo: "Carga almacenada.", texto: "Un diodo de unión conduce al revés durante t_{rr} mientras evacúa sus minoritarios." }
+      - { titulo: "Pérdida ∝ f.", texto: "½·V·I_{RM}·t_{rr} en cada conmutación: 10 mW a 50 Hz son 20 W a 100 kHz." }
+      - { titulo: "Elegir bien.", texto: "1N4007 para la red; ultrarrápido o Schottky en conmutadas: el Schottky solo carga su capacidad." }
+      - { titulo: "Suavidad.", texto: "Un corte abrupto excita la inductancia parásita: sobretensiones y radiación." }

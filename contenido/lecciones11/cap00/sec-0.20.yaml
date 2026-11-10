@@ -1,0 +1,229 @@
+# Lección 1.1 de la sección 0.21 «Representación Logarítmica y Trazado Asintótico de Bode» (cap00): el polo simple
+# como dos rectas (0 dB y −20 dB/década) con −3,01 dB en el codo, la fase y su asíntota (5,7° de error), componer
+# sumando (dos polos en 1 kHz y 100 kHz) y la pendiente en el cruce. Formato: contenido/lecciones11/GUIA.md.
+leccion: cap00/sec-0.20
+
+libro:
+  274: "en un eje logarítmico de frecuencia, una recta de pendiente 20·n dB por década"
+  275: "Su función de transferencia es H(f) = 1/(1 + j·f/fc)"
+  276: 'lr(| H |)_("dB") = - "10" dot.op op("log")_("10")'
+  277: "en f = fc la curva real está en −10·log₁₀2 = −3,01 dB"
+  278: "Dos polos en 1 kHz y 100 kHz dan una asíntota de 0 dB hasta 1 kHz"
+  279: "cruzar a −40 dB/década, a una fase que se acerca a −180° y un margen escaso"
+
+modelo:
+  valores:
+    x0: { sim: "log₁₀(f/f_{c})", nombre: "décadas respecto al corte", unidad: "", valor: -1 }
+    lf: { sim: "log₁₀ f", nombre: "logaritmo de la frecuencia", unidad: "", valor: 2 }
+  calculos:
+    f_fc: { expr: "10^x0", sim: "f/f_{c}", nombre: "frecuencia relativa al corte", unidad: "", cifras: 3 }
+    H_dB: { expr: "-10*log10(1 + f_fc^2)", sim: "|H|", nombre: "módulo en decibelios", unidad: dB }
+    H_as: { expr: "min(0, -20*x0)", sim: "asíntota", nombre: "módulo según las asíntotas", unidad: dB }
+    ph: { expr: "-atan(f_fc)*180/pi", sim: "fase", nombre: "fase", unidad: "°" }
+    ph_as: { expr: "-45*min(max(x0 + 1, 0), 2)", sim: "asíntota de fase", nombre: "fase según su asíntota", unidad: "°" }
+    err_ph: { expr: "abs(ph - ph_as)", sim: "error de fase", nombre: "error de la asíntota de fase", unidad: "°", cifras: 2 }
+    A2: { expr: "min(0, -20*(lf - 3)) + min(0, -20*(lf - 5))", sim: "|H|", nombre: "asíntota de los dos polos", unidad: dB }
+    f_hz: { expr: "10^lf", sim: "f", nombre: "frecuencia", unidad: Hz }
+
+tarjetas:
+  - id: explore-polo
+    tipo: explorar
+    titulo: "Un polo, dos rectas"
+    texto: "Un polo simple en ejes logarítmicos. Arrastre el punto por la curva real y compárela con sus dos asíntotas."
+    libro: [275, 277]
+    widget:
+      tipo: grafica
+      x: { id: x, min: -2, max: 2, unidad: "", rotulo: "log₁₀(f/f_{c}), en décadas" }
+      y: { min: -45, max: 5, unidad: dB, rotulo: "|H|" }
+      curvas:
+        - { expr: "-10*log10(1 + 10^(2*x))", color: azul, rotulo: "curva real" }
+        - { expr: "min(0, -20*x)", color: tinta, rotulo: "asíntotas", discontinua: true }
+      asas:
+        - { mueve: x0, x: "x0", y: "H_dB", rotulo: "Frecuencia, en décadas" }
+      lectura: { valor: H_dB, rotulo: "Módulo" }
+      datos:
+        - { valor: H_as, rotulo: "Asíntota: {{H_as}}" }
+      mandos:
+        - { valor: x0, min: -2, max: 2, paso: 0.25, rotulo: "Décadas respecto a f_{c}" }
+    requiere: { mover: [x0] }
+    nota: "Muy por debajo del corte, 0 dB; muy por encima, una recta que cae."
+
+  - id: prediga-codo
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Las dos asíntotas se cortan justo en f_{c}. ¿Dónde está ahí la curva real?"
+    libro: [277]
+    fijar: { x0: 0 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: -2, max: 2, unidad: "", rotulo: "log₁₀(f/f_{c}), en décadas" }
+      y: { min: -45, max: 5, unidad: dB, rotulo: "|H|" }
+      curvas:
+        - { expr: "min(0, -20*x)", color: tinta, rotulo: "asíntotas", discontinua: true }
+      lectura: { valor: H_dB, rotulo: "Módulo en f_{c}" }
+      ocultar: true
+    opciones:
+      - texto: "En −3,01 dB"
+        bien: true
+        porque: "−10·log₁₀2 = −3,01 dB: es donde las asíntotas se equivocan más."
+      - texto: "En 0 dB, sobre las asíntotas"
+        porque: "Ahí se cortan las asíntotas, pero la curva real pasa por debajo: es el codo."
+      - texto: "En −20 dB"
+        porque: "Eso es una década por encima del corte, en 10·f_{c}."
+    comprobar:
+      - { H_dB: -3.01 }
+
+  - id: regla-polo
+    tipo: formula
+    titulo: "El módulo de un polo simple"
+    texto: "Para f ≪ f_{c}, |H| ≈ 0 dB. Para f ≫ f_{c}, |H| ≈ −20·log₁₀(f/f_{c}): 20 dB por década, 6 dB por octava."
+    libro: [276, 277]
+    ec: 276
+    sustitucion: "|H| = −10 · log₁₀(1 + {{f_fc}}²) = {{H_dB}}"
+    widget:
+      tipo: grafica
+      x: { id: x, min: -2, max: 2, unidad: "", rotulo: "log₁₀(f/f_{c}), en décadas" }
+      y: { min: -45, max: 5, unidad: dB, rotulo: "|H|" }
+      curvas:
+        - { expr: "-10*log10(1 + 10^(2*x))", color: azul, rotulo: "curva real" }
+        - { expr: "min(0, -20*x)", color: tinta, rotulo: "asíntotas", discontinua: true }
+      asas:
+        - { mueve: x0, x: "x0", y: "H_dB", rotulo: "Frecuencia, en décadas" }
+      mandos:
+        - { valor: x0, min: -2, max: 2, paso: 0.25, rotulo: "Décadas respecto a f_{c}" }
+
+  - id: reto-20db
+    tipo: reto
+    titulo: "Reto: −20 dB"
+    texto: "Busque la frecuencia a la que la salida ha caído 20 dB."
+    libro: [277, 274]
+    inicio: { x0: -1 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: -2, max: 2, unidad: "", rotulo: "log₁₀(f/f_{c}), en décadas" }
+      y: { min: -45, max: 5, unidad: dB, rotulo: "|H|" }
+      curvas:
+        - { expr: "-10*log10(1 + 10^(2*x))", color: azul, rotulo: "curva real" }
+      asas:
+        - { mueve: x0, x: "x0", y: "H_dB", rotulo: "Frecuencia, en décadas" }
+      datos:
+        - { valor: f_fc, rotulo: "f/f_{c} = {{f_fc}}" }
+      mandos:
+        - { valor: x0, min: -2, max: 2, paso: 0.25, rotulo: "Décadas respecto a f_{c}" }
+    condiciones:
+      - { valor: H_dB, objetivo: -20, tol: 0.02, rotulo: "Módulo: {{H_dB}}" }
+    exito: "Una década por encima del corte, 10·f_{c}: la recta cae 20 dB por década."
+    pistas:
+      - { cuando: { valor: H_dB, mayor: -19.6 }, texto: "Aún no ha caído bastante: suba la frecuencia." }
+      - { cuando: { valor: H_dB, menor: -20.4 }, texto: "Ha caído de más: baje la frecuencia." }
+    ayuda: "Por encima del corte la caída es de 20 dB por cada década."
+    comprobar:
+      - { con: { x0: 1 }, H_dB: -20.04, f_fc: 10 }
+
+  - id: la-fase
+    tipo: sorpresa
+    titulo: "La fase también tiene asíntota"
+    texto: "La fase va de 0° a −90°, con −45° en f_{c}. Su asíntota baja 45° por década entre f_{c}/10 y 10·f_{c}. Busque dónde se equivoca más."
+    nota: "En los extremos de ese tramo: 5,7°."
+    libro: [277]
+    inicio: { x0: 0 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: -2, max: 2, unidad: "", rotulo: "log₁₀(f/f_{c}), en décadas" }
+      y: { min: -100, max: 10, unidad: "°", rotulo: "fase" }
+      curvas:
+        - { expr: "-atan(10^x)*180/pi", color: azul, rotulo: "fase real" }
+        - { expr: "-45*min(max(x + 1, 0), 2)", color: tinta, rotulo: "asíntota de fase", discontinua: true }
+      asas:
+        - { mueve: x0, x: "x0", y: "ph", rotulo: "Frecuencia, en décadas" }
+      lectura: { valor: err_ph, rotulo: "Error de la asíntota" }
+      datos:
+        - { valor: ph, rotulo: "Fase: {{ph}}" }
+      mandos:
+        - { valor: x0, min: -2, max: 2, paso: 0.25, rotulo: "Décadas respecto a f_{c}" }
+    requiere: { mover: [x0] }
+    comprobar:
+      - { con: { x0: -1 }, err_ph: 5.7, tol: 0.003 }
+
+  - id: explore-dos-polos
+    tipo: explorar
+    titulo: "Componer sumando"
+    texto: "Dos polos, en 1 kHz y 100 kHz. En decibelios, sus diagramas se suman. Recorra la frecuencia."
+    libro: [278]
+    widget:
+      tipo: grafica
+      x: { id: x, min: 2, max: 6, unidad: "", rotulo: "log₁₀ f (f en Hz)" }
+      y: { min: -90, max: 5, unidad: dB, rotulo: "|H|" }
+      curvas:
+        - { expr: "min(0, -20*(x - 3))", color: tinta, rotulo: "polo en 1 kHz", discontinua: true }
+        - { expr: "min(0, -20*(x - 5))", color: verde, rotulo: "polo en 100 kHz", discontinua: true }
+        - { expr: "min(0, -20*(x - 3)) + min(0, -20*(x - 5))", color: azul, rotulo: "suma de las asíntotas" }
+      asas:
+        - { mueve: lf, x: "lf", y: "A2", rotulo: "Frecuencia" }
+      lectura: { valor: A2, rotulo: "Asíntota total" }
+      datos:
+        - { valor: f_hz, rotulo: "f = {{f_hz}}" }
+      mandos:
+        - { valor: lf, min: 2, max: 6, paso: 0.25, rotulo: "Frecuencia, log₁₀ f" }
+    requiere: { mover: [lf] }
+
+  - id: estime-100k
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "A 100 kHz"
+    texto: "Con los polos en 1 kHz y 100 kHz, estime cuánto vale la asíntota a 100 kHz."
+    libro: [278]
+    fijar: { lf: 5 }
+    estimar:
+      objetivo: "A2"
+      unidad: dB
+      min: -80
+      max: 0
+      paso: 1
+      inicio: -20
+      tol: 0.03
+      rotulo: "|H| a 100 kHz"
+    exito: "0 dB hasta 1 kHz y −20 dB por década hasta 100 kHz: dos décadas, −40 dB. Por encima, −40 dB por década."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: -38.8 }, texto: "Se ha quedado corto: de 1 kHz a 100 kHz hay dos décadas a −20 dB cada una." }
+      - { texto: "Se ha pasado: el segundo polo empieza a restar justo a partir de 100 kHz." }
+    comprobar:
+      - { A2: -40 }
+
+  - id: por-que-recta
+    tipo: porque
+    titulo: "¿Por qué rectas?"
+    texto: "En un diagrama de Bode, una función |H| ∝ fⁿ se ve como una recta. ¿Por qué?"
+    libro: [274]
+    opciones:
+      - texto: "En decibelios es 20·n·log₁₀ f: con eje logarítmico, una recta de 20·n dB por década"
+        bien: true
+        porque: "El logaritmo convierte la potencia en un producto por n; el eje logarítmico, en una recta."
+      - texto: "Porque los filtros reales son rectas"
+        porque: "La curva real se curva en el codo; las rectas son sus asíntotas."
+      - texto: "Porque el eje vertical es lineal en voltios"
+        porque: "El eje vertical va en decibelios, logarítmico. Con los dos ejes logarítmicos, la potencia es una recta."
+
+  - id: cruce
+    tipo: pregunta
+    titulo: "La pendiente en el cruce"
+    texto: "Un amplificador realimentado cruza la ganancia unidad con una pendiente de −40 dB/década. ¿Qué indica?"
+    libro: [279]
+    opciones:
+      - texto: "Una fase cerca de −180°: margen de fase escaso"
+        bien: true
+        porque: "Cruzar a −20 dB/década corresponde a unos −90° y un margen holgado; a −40 dB/década, escaso."
+      - texto: "Un margen de fase holgado"
+        porque: "Eso es cruzar a −20 dB/década, con unos −90° de fase."
+      - texto: "Nada: la pendiente no influye en la estabilidad"
+        porque: "Sí influye: la pendiente en el cruce determina el margen de fase."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [274, 277, 278, 279]
+    ideas:
+      - { titulo: "Un polo.", texto: "0 dB y luego −20 dB por década; en f_{c}, −3,01 dB." }
+      - { titulo: "La fase.", texto: "De 0° a −90°, −45° en f_{c}; su asíntota yerra 5,7° como mucho." }
+      - { titulo: "Sumar.", texto: "En dB, los diagramas se suman: polos en 1 kHz y 100 kHz, −40 dB a 100 kHz." }
+      - { titulo: "Estabilidad.", texto: "Cruzar a −20 dB/década, margen holgado; a −40, escaso." }

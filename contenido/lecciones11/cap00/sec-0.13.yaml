@@ -1,0 +1,220 @@
+# Lección 1.1 de la sección 0.14 «Cifras Significativas, Errores e Incertidumbre de Medida» (cap00): la especificación
+# de un multímetro con dos términos, los límites de una lectura (ejercicio 0.9), cifras significativas y tolerancia,
+# la propagación de errores relativos (peor caso y cuadrática) y la medida a cuatro hilos.
+# Formato: contenido/lecciones11/GUIA.md.
+leccion: cap00/sec-0.13
+
+libro:
+  212: "Una resistencia «de 10 kΩ» con tolerancia del 5 % está en realidad entre 9,5 y 10,5 kΩ"
+  214: "En 0,0047 hay dos cifras significativas; en 4,70 hay tres"
+  216: "al multiplicar o dividir se suman los errores relativos"
+  217: "en total ±0,045 V"
+  218: "si la tensión tiene un 1 % de error y la corriente un 2 %, la resistencia hereda hasta un 3 %"
+  219: "peor caso 2,80 %, cuadrático 2,06 %"
+  "cap00#284": "Mides 3,30 V en un multímetro con especificación ±(0,5 % de lectura + 3 dígitos)"
+
+modelo:
+  valores:
+    lect: { sim: "lectura", nombre: "lectura del multímetro", unidad: V, valor: 5 }
+    pct: { sim: "%", nombre: "término de porcentaje", unidad: "%", valor: 0.5 }
+    cuentas: { sim: "cuentas", nombre: "dígitos del último lugar", unidad: "", valor: 2 }
+    digito: { sim: "dígito", nombre: "valor del último dígito", unidad: V, valor: 0.01 }
+    v_min: { sim: "desde", nombre: "límite inferior", unidad: V, valor: 3.3, cifras: 3 }
+    v_max: { sim: "hasta", nombre: "límite superior", unidad: V, valor: 3.3, cifras: 3 }
+    eV: { sim: "δV", nombre: "error relativo de la tensión", unidad: "%", valor: 1 }
+    eI: { sim: "δI", nombre: "error relativo de la corriente", unidad: "%", valor: 2 }
+    dV: { sim: "δV", nombre: "error relativo de V en la potencia", unidad: "%", valor: 0.5 }
+    dR: { sim: "δR", nombre: "error relativo de R en la potencia", unidad: "%", valor: 1 }
+  calculos:
+    inc: { expr: "pct/100*lect + cuentas*digito", sim: "±", nombre: "incertidumbre", unidad: V }
+    err_rel: { expr: "inc/lect*100", sim: "error relativo", nombre: "error relativo de la lectura", unidad: "%" }
+    lo: { expr: "lect - inc", nombre: "valor real mínimo", unidad: V, cifras: 5 }
+    hi: { expr: "lect + inc", nombre: "valor real máximo", unidad: V, cifras: 5 }
+    e_R: { expr: "eV + eI", sim: "δR", nombre: "error de la resistencia calculada", unidad: "%" }
+    peor: { expr: "2*dV + dR", sim: "δP", nombre: "error de la potencia en el peor caso", unidad: "%" }
+    cuad: { expr: "sqrt((2*dV)^2 + dR^2)", sim: "δP", nombre: "error cuadrático de la potencia", unidad: "%" }
+
+tarjetas:
+  - id: explore-especificacion
+    tipo: explorar
+    titulo: "Dos términos de error"
+    texto: "Un multímetro especifica ±(0,5 % de la lectura + 2 dígitos), con el último dígito de 0,01 V. Mueva la lectura: ¿cuándo pesan más las cuentas?"
+    libro: [217]
+    fijar: { pct: 0.5, cuentas: 2, digito: 0.01 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0.5, max: 20, unidad: V, rotulo: "lectura" }
+      y: { min: 0, max: 5, unidad: "%", rotulo: "error relativo" }
+      curvas:
+        - { expr: "(pct/100*x + cuentas*digito)/x*100", color: azul, rotulo: "error relativo total" }
+        - { expr: "pct + 0*x", color: tinta, rotulo: "solo el porcentaje", discontinua: true }
+      asas:
+        - { mueve: lect, x: "lect", y: "err_rel", rotulo: "Lectura" }
+      lectura: { valor: inc, rotulo: "Incertidumbre, ±" }
+      datos:
+        - { valor: err_rel, rotulo: "Error relativo: {{err_rel}}" }
+      mandos:
+        - { valor: lect, min: 0.5, max: 20, paso: 0.5, rotulo: "Lectura" }
+    requiere: { mover: [lect] }
+    nota: "Con lecturas bajas, las cuentas dominan."
+
+  - id: prediga-5v
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Lee 5,00 V con ±(0,5 % + 2 dígitos), y el último dígito es 0,01 V. ¿Cuál es la incertidumbre total?"
+    libro: [217]
+    fijar: { lect: 5, pct: 0.5, cuentas: 2, digito: 0.01 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0.5, max: 20, unidad: V, rotulo: "lectura" }
+      y: { min: 0, max: 5, unidad: "%", rotulo: "error relativo" }
+      curvas:
+        - { expr: "(pct/100*x + cuentas*digito)/x*100", color: azul, rotulo: "error relativo total" }
+      lectura: { valor: inc, rotulo: "Incertidumbre, ±" }
+      ocultar: true
+    opciones:
+      - texto: "±0,045 V"
+        bien: true
+        porque: "0,025 V por el porcentaje más 0,02 V por las dos cuentas del último dígito."
+      - texto: "±0,025 V"
+        porque: "Es solo el porcentaje. Ignorar las cuentas hace creer al instrumento más preciso de lo que es."
+      - texto: "±0,02 V"
+        porque: "Son solo las dos cuentas. Falta el 0,5 % de la lectura, 0,025 V."
+    comprobar:
+      - { inc: 0.045 }
+
+  - id: reto-limites
+    tipo: reto
+    titulo: "Reto: entre qué valores"
+    texto: "Lee 3,30 V con ±(0,5 % + 3 dígitos), último dígito 0,01 V. Ajuste los límites de la tensión real, redondeando hacia fuera."
+    libro: ["cap00#284"]
+    fijar: { lect: 3.3, pct: 0.5, cuentas: 3, digito: 0.01 }
+    inicio: { v_min: 3.3, v_max: 3.3 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 3, max: 3.6, unidad: V, rotulo: "tensión" }
+      y: { min: 0, max: 1.5, unidad: "", rotulo: "" }
+      curvas:
+        - { expr: "min(max((x - lo)*100000, 0), 1)*min(max((hi - x)*100000, 0), 1)", color: tinta, rotulo: "valores posibles", discontinua: true }
+        - { expr: "0.6*min(max((x - v_min)*100000, 0), 1)*min(max((v_max - x)*100000, 0), 1)", color: azul, rotulo: "su intervalo" }
+      asas:
+        - { mueve: v_min, x: "v_min", y: "0.6", rotulo: "Límite inferior" }
+        - { mueve: v_max, x: "v_max", y: "0.6", rotulo: "Límite superior" }
+      datos:
+        - { valor: inc, rotulo: "Incertidumbre: ±{{inc}}" }
+      mandos:
+        - { valor: v_min, min: 3.2, max: 3.3, paso: 0.01, rotulo: "Desde" }
+        - { valor: v_max, min: 3.3, max: 3.4, paso: 0.01, rotulo: "Hasta" }
+    condiciones:
+      - { valor: v_min, min: 3.2499, max: 3.2501, rotulo: "Desde {{v_min}}" }
+      - { valor: v_max, min: 3.3499, max: 3.3501, rotulo: "Hasta {{v_max}}" }
+    exito: "0,0165 + 0,03 = ±0,0465 V: entre 3,2535 y 3,3465 V, es decir, entre 3,25 y 3,35 V."
+    pistas:
+      - { cuando: { valor: v_min, min: 3.2535 }, texto: "El límite inferior deja fuera valores posibles: bájelo." }
+      - { cuando: { valor: v_max, max: 3.3465 }, texto: "El límite superior deja fuera valores posibles: súbalo." }
+      - { cuando: { valor: v_min, max: 3.2499 }, texto: "El límite inferior sobra: redondee hacia fuera, pero lo justo." }
+      - { texto: "El límite superior sobra: redondee hacia fuera, pero lo justo." }
+    ayuda: "El 0,5 % de 3,30 V son 0,0165 V y tres dígitos, 0,03 V."
+    comprobar:
+      - { inc: 0.0465, lo: 3.2535, hi: 3.3465 }
+
+  - id: estime-propagacion
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "R = V/I"
+    texto: "Se calcula R = V/I con la tensión medida con un 1 % de error y la corriente con un 2 %. Estime el error de R."
+    libro: [218, 216]
+    fijar: { eV: 1, eI: 2 }
+    estimar:
+      objetivo: "e_R"
+      unidad: "%"
+      min: 0
+      max: 10
+      paso: 0.5
+      inicio: 0.5
+      tol: 0.05
+      rotulo: "Error de R"
+    exito: "Al dividir se suman los errores relativos: 1 % + 2 % = 3 %, en el peor caso."
+    pistas:
+      - { cuando: { valor: estimacion, menor: 2.85 }, texto: "Se ha quedado corto: al dividir, los errores relativos se suman, no se restan." }
+      - { texto: "Se ha pasado: sume los dos errores relativos, sin multiplicarlos." }
+    comprobar:
+      - { e_R: 3 }
+
+  - id: cifras
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cuánto dice cada número"
+    texto: "Una cada valor con lo que de verdad informa."
+    libro: [214, 212]
+    emparejar:
+      - ["0,0047", "Dos cifras significativas: los ceros solo sitúan la coma"]
+      - ["4,70", "Tres cifras: se midió hasta las centésimas"]
+      - ["10 kΩ al 5 %", "Cualquier valor entre 9,5 y 10,5 kΩ"]
+    exito: "Eso es. El resultado no puede tener más cifras significativas que el dato menos preciso."
+    pistas:
+      - { texto: "Un cero final cuenta; los ceros de delante, no." }
+
+  - id: peor-o-cuadratico
+    tipo: sorpresa
+    titulo: "Peor caso o en cuadratura"
+    texto: "En P = V²/R, el peor caso es 2·δV + δR; con errores independientes se suman en cuadratura. Mueva δV y compare."
+    nota: "Con δV = 0,9 % y δR = 1 %: 2,80 % frente a 2,06 %."
+    libro: [219]
+    fijar: { dR: 1 }
+    inicio: { dV: 0.5 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 2, unidad: "%", rotulo: "δV" }
+      y: { min: 0, max: 5, unidad: "%", rotulo: "δP" }
+      curvas:
+        - { expr: "2*x + dR", color: tinta, rotulo: "peor caso", discontinua: true }
+        - { expr: "sqrt((2*x)^2 + dR^2)", color: azul, rotulo: "en cuadratura" }
+      asas:
+        - { mueve: dV, x: "dV", y: "cuad", rotulo: "Error de V" }
+      lectura: { valor: cuad, rotulo: "En cuadratura" }
+      datos:
+        - { valor: peor, rotulo: "Peor caso: {{peor}}" }
+      mandos:
+        - { valor: dV, min: 0, max: 2, paso: 0.1, rotulo: "Error de V, δV" }
+    requiere: { mover: [dV] }
+    comprobar:
+      - { con: { dV: 0.9 }, peor: 2.8, cuad: 2.06, tol: 0.003 }
+
+  - id: por-que-doble
+    tipo: porque
+    titulo: "¿Por qué V cuenta doble?"
+    texto: "En P = V²/R, el error relativo de P es unas dos veces el de V más el de R. ¿Por qué el de V pesa doble?"
+    libro: [216, 219]
+    opciones:
+      - texto: "V está al cuadrado: V·V suma dos veces su error relativo"
+        bien: true
+        porque: "Al multiplicar se suman los errores relativos, y V² es V por V."
+      - texto: "Porque la tensión se mide peor que la resistencia"
+        porque: "No depende del instrumento: aunque δV y δR fueran iguales, V pesaría el doble por el cuadrado."
+      - texto: "Porque R divide y eso duplica el error"
+        porque: "Dividir suma el error relativo de R una sola vez. El doble viene del cuadrado de V."
+
+  - id: cuatro-hilos
+    tipo: pregunta
+    titulo: "Los cables también miden"
+    texto: "Al medir una resistencia baja, la de los cables de prueba se cuela en la medida. ¿Qué la elimina?"
+    libro: [218]
+    opciones:
+      - texto: "La medida a cuatro hilos"
+        bien: true
+        porque: "Nace precisamente de eliminar esa fuente de error."
+      - texto: "Un multímetro con más dígitos"
+        porque: "Más dígitos no quitan la resistencia de los cables: la medirían con más resolución."
+      - texto: "Repetir la medida y promediar"
+        porque: "Promediar reduce el ruido aleatorio, no un error que se suma siempre igual."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [214, 216, 217, 219]
+    ideas:
+      - { titulo: "Cifras.", texto: "No más cifras significativas que el dato menos preciso." }
+      - { titulo: "Dos términos.", texto: "±(% de lectura + cuentas): 5,00 V con 0,5 % + 2 dígitos, ±0,045 V." }
+      - { titulo: "Propagación.", texto: "Al sumar, errores absolutos; al multiplicar o dividir, relativos." }
+      - { titulo: "Cuadratura.", texto: "Con errores independientes, menos que el peor caso: 2,06 % frente a 2,80 %." }

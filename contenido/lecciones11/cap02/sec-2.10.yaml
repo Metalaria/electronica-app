@@ -1,0 +1,253 @@
+# Lección 1.1 de la sección 2.10 «Parásitos y Comportamiento en Frecuencia» (cap02): el modelo de tres elementos
+# (R con L en serie y C en paralelo, 10 nH y 0,3 pF), quién manda según el valor, las bobinadas, la película
+# grabada y dónde muerde en la práctica. Formato: contenido/lecciones11/GUIA.md.
+leccion: cap02/sec-2.10
+
+libro:
+  176: "una inductancia serie L"
+  178: '"la inductancia importa a partir de" space f = (R)/("2" π dot.op L)'
+  179: '"la capacidad importa a partir de" space f = ("1")/("2" π dot.op R dot.op C)'
+  180: "Con los valores típicos L = 10 nH y C = 0,3 pF"
+  181: "0,53 MHz"
+  182: "Las resistencias pequeñas se vuelven inductivas y las grandes, capacitivas"
+  184: "con 1 Ω y 20 µH, desde 8 kHz"
+  185: "la mitad del hilo se arrolla en un sentido y la otra mitad en el contrario"
+  186: "esa espiral es una bobina"
+  188: "un pico de tensión proporcional a di/dt"
+  189: "deja de terminar bien a partir de cientos de megahercios"
+  193: "cada milímetro de terminal son aproximadamente 1 nH"
+
+modelo:
+  valores:
+    R_p: { sim: "R", nombre: "valor de la resistencia", unidad: Ω, valor: 1000 }
+    L_p: { sim: "L", nombre: "inductancia serie parásita", unidad: H, valor: 10e-9 }
+    C_p: { sim: "C", nombre: "capacidad paralelo parásita", unidad: F, valor: 0.3e-12 }
+    f_v: { sim: "f", nombre: "frecuencia", unidad: Hz, valor: 100000 }
+    R_b: { sim: "R", nombre: "resistencia bobinada", unidad: Ω, valor: 1 }
+    L_b: { sim: "L", nombre: "inductancia de la bobinada", unidad: H, valor: 20e-6 }
+    R_t: { sim: "R", nombre: "resistencia de terminación", unidad: Ω, valor: 50 }
+  calculos:
+    w_v: { expr: "2*pi*f_v", sim: "ω", nombre: "frecuencia angular", unidad: "rad/s" }
+    Z_m: { expr: "sqrt(R_p^2 + (w_v*L_p)^2)/sqrt((1 - w_v^2*L_p*C_p)^2 + (w_v*R_p*C_p)^2)", sim: "|Z|", nombre: "módulo de la impedancia", unidad: Ω }
+    z_rel: { expr: "Z_m/R_p", sim: "|Z|/R", nombre: "impedancia en veces el valor nominal", unidad: "", cifras: 3 }
+    f_L: { expr: "R_p/(2*pi*L_p)", sim: "f_{L}", nombre: "frecuencia desde la que importa la inductancia", unidad: Hz }
+    f_C: { expr: "1/(2*pi*R_p*C_p)", sim: "f_{C}", nombre: "frecuencia desde la que importa la capacidad", unidad: Hz }
+    f_Lb: { expr: "R_b/(2*pi*L_b)", sim: "f_{L}", nombre: "frecuencia desde la que la bobinada es inductiva", unidad: Hz }
+    f_Lt: { expr: "R_t/(2*pi*L_p)", sim: "f_{L}", nombre: "frecuencia desde la que la terminación es inductiva", unidad: Hz }
+
+tarjetas:
+  - id: explore-parasitos
+    tipo: explorar
+    titulo: "Tres elementos"
+    texto: "En alta frecuencia, una resistencia lleva 10 nH en serie y 0,3 pF en paralelo. Cambie el valor y la frecuencia."
+    nota: "La curva es |Z|/R: vale 1 mientras se comporta como resistencia."
+    libro: [176, 180]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 10000, max: 10000000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.001, max: 100, unidad: "", rotulo: "|Z|/R", escala: log }
+      curvas:
+        - { expr: "sqrt(R_p^2 + (2*pi*nu*L_p)^2)/sqrt((1 - (2*pi*nu)^2*L_p*C_p)^2 + (2*pi*nu*R_p*C_p)^2)/R_p", color: naranja, rotulo: "|Z|/R" }
+      asas:
+        - { mueve: f_v, x: "f_v", y: "z_rel", rotulo: "Frecuencia" }
+      lectura: { valor: Z_m, rotulo: "Impedancia" }
+      datos:
+        - { valor: f_L, rotulo: "Inductancia desde {{f_L}}" }
+        - { valor: f_C, rotulo: "Capacidad desde {{f_C}}" }
+      mandos:
+        - { valor: R_p, lista: [100, 1000, 1000000], rotulo: "Valor, R" }
+        - { valor: f_v, lista: [10000, 100000, 1000000, 10000000, 100000000, 1000000000, 10000000000], rotulo: "Frecuencia, f" }
+    requiere: { mover: [R_p, f_v] }
+
+  - id: prediga-megaohmio
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Una resistencia de 1 MΩ con 0,3 pF parásitos. ¿Desde qué frecuencia deja de comportarse como resistencia?"
+    libro: [181, 182]
+    fijar: { R_p: 1000000, f_v: 1000000 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 10000, max: 10000000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.001, max: 100, unidad: "", rotulo: "|Z|/R", escala: log }
+      curvas:
+        - { expr: "sqrt(R_p^2 + (2*pi*nu*L_p)^2)/sqrt((1 - (2*pi*nu)^2*L_p*C_p)^2 + (2*pi*nu*R_p*C_p)^2)/R_p", color: naranja, rotulo: "|Z|/R" }
+      lectura: { valor: f_C, rotulo: "La capacidad importa desde" }
+      ocultar: true
+    opciones:
+      - texto: "Hacia medio megahercio"
+        bien: true
+        porque: "0,53 MHz, sorprendentemente baja: en la entrada de un amplificador de alta impedancia, esos 0,3 pF ya forman un filtro."
+      - texto: "Por encima del gigahercio"
+        porque: "Eso vale para las pequeñas. Cuanto mayor es R, antes manda la capacidad."
+      - texto: "Nunca: una resistencia es su valor"
+        porque: "Solo a frecuencias bajas. Arriba es un circuito de tres elementos."
+    comprobar:
+      - { f_C: 530000, tol: 0.01 }
+
+  - id: regla-capacidad
+    tipo: formula
+    titulo: "Cuándo importa la capacidad"
+    texto: "La capacidad en paralelo manda antes cuanto mayor es la resistencia."
+    nota: "Y la inductancia, desde f = R/(2π·L): antes cuanto menor es R."
+    libro: [178, 179]
+    ec: 179
+    sustitucion: "1 / (2π · {{R_p}} · {{C_p}}) = {{f_C}}"
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 10000, max: 10000000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.001, max: 100, unidad: "", rotulo: "|Z|/R", escala: log }
+      curvas:
+        - { expr: "sqrt(R_p^2 + (2*pi*nu*L_p)^2)/sqrt((1 - (2*pi*nu)^2*L_p*C_p)^2 + (2*pi*nu*R_p*C_p)^2)/R_p", color: naranja, rotulo: "|Z|/R" }
+      lectura: { valor: f_C, rotulo: "La capacidad importa desde" }
+      datos:
+        - { valor: f_L, rotulo: "Inductancia desde {{f_L}}" }
+      mandos:
+        - { valor: R_p, lista: [100, 1000, 1000000], rotulo: "Valor, R" }
+
+  - id: estime-cien
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Una pequeña"
+    texto: "Con 100 Ω y 10 nH, ¿desde qué frecuencia importa la inductancia? Use f = R/(2π·L)."
+    libro: [178, 181]
+    fijar: { R_p: 100 }
+    estimar:
+      objetivo: "f_L"
+      unidad: Hz
+      min: 0
+      max: 5000000000
+      paso: 50000000
+      inicio: 4000000000
+      tol: 0.05
+      rotulo: "f_{L} con 100 Ω"
+    exito: "1,6 GHz. Y la capacidad, hasta 5,3 GHz: las resistencias pequeñas se vuelven inductivas."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 1670000000 }, texto: "Se ha pasado: 100 / (2π · 10 nH) es algo más de mil megahercios." }
+      - { texto: "Se ha quedado corto: 100 / (2π · 10 nH) supera el gigahercio." }
+    comprobar:
+      - { f_L: 1.59e9, tol: 0.01 }
+
+  - id: empareje-quien-manda
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Quién manda"
+    texto: "Empareje cada resistencia con su comportamiento en alta frecuencia."
+    libro: [182, 184, 185]
+    emparejar:
+      - ["De valor pequeño", "Se vuelve inductiva"]
+      - ["De valor grande", "Se vuelve capacitiva"]
+      - ["Bobinada", "Inductiva desde kilohercios"]
+      - ["Bobinado Ayrton-Perry", "Inductancia uno o dos órdenes menor"]
+    exito: "Eso es. El valor de la resistencia decide qué parásito manda."
+    pistas:
+      - { texto: "f = R/(2π·L) crece con R: en las pequeñas la inductancia llega antes." }
+
+  - id: estime-bobinada
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Una bobinada"
+    texto: "Una bobinada es literalmente una bobina. Con 1 Ω y 20 µH, estime desde qué frecuencia deja de ser resistiva."
+    libro: [184]
+    estimar:
+      objetivo: "f_Lb"
+      unidad: Hz
+      min: 0
+      max: 50000
+      paso: 500
+      inicio: 40000
+      tol: 0.07
+      rotulo: "f_{L} de la bobinada"
+    exito: "Unos 8 kHz: excelentes para potencia y continua, e inservibles para señal."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 8500 }, texto: "Se ha pasado: 1 / (2π · 20 µH) son unos pocos kilohercios." }
+      - { texto: "Se ha quedado corto: 1 / (2π · 20 µH) son varios kilohercios." }
+    comprobar:
+      - { f_Lb: 7958 }
+
+  - id: por-que-ayrton
+    tipo: porque
+    titulo: "Bobinado no inductivo"
+    texto: "En el bobinado Ayrton-Perry, la mitad del hilo va en un sentido y la otra mitad en el contrario. ¿Por qué baja la inductancia?"
+    libro: [185]
+    opciones:
+      - texto: "Los campos de las dos mitades se cancelan"
+        bien: true
+        porque: "A costa de más capacidad y de un precio mayor. Se usa en shunts de precisión y cargas de RF."
+      - texto: "Porque el hilo es más corto"
+        porque: "El hilo es el mismo: lo que cambia es el sentido de las dos mitades."
+      - texto: "Porque desaparece la capacidad entre espiras"
+        porque: "Al contrario: gana capacidad. Lo que pierde es inductancia, porque los campos se cancelan."
+
+  - id: pelicula-grabada
+    tipo: pregunta
+    titulo: "La trampa de la película"
+    texto: "Para ajustar el valor, el fabricante graba una espiral en la película. ¿Qué pasa en los valores altos?"
+    libro: [186]
+    opciones:
+      - texto: "La espiral tiene más vueltas y la inductancia crece"
+        bien: true
+        porque: "Esa espiral es una bobina. Las de RF usan película uniforme, ajustada por el espesor."
+      - texto: "Nada: la película no tiene parásitos"
+        porque: "La espiral grabada es una bobina, y en valores altos tiene muchas vueltas."
+      - texto: "Desaparece la capacidad"
+        porque: "La capacidad sigue ahí; lo que añade la espiral es inductancia."
+
+  - id: estime-terminacion
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Una terminación de 50 Ω"
+    texto: "Una terminación de 50 Ω con 10 nH. Estime desde qué frecuencia manda la inductancia y la línea empieza a reflejar."
+    libro: [180, 189]
+    estimar:
+      objetivo: "f_Lt"
+      unidad: Hz
+      min: 0
+      max: 3000000000
+      paso: 20000000
+      inicio: 2500000000
+      tol: 0.07
+      rotulo: "f_{L} con 50 Ω"
+    exito: "Hacia 0,8 GHz: deja de terminar bien a partir de cientos de megahercios. SMD pequeñas y trazado corto."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 850000000 }, texto: "Se ha pasado: con 50 Ω es la mitad que con 100 Ω." }
+      - { texto: "Se ha quedado corto: 50 / (2π · 10 nH) son cientos de megahercios." }
+    comprobar:
+      - { f_Lt: 7.96e8, tol: 0.01 }
+
+  - id: shunt
+    tipo: pregunta
+    titulo: "Un shunt con inductancia"
+    texto: "Un shunt bobinado mide un flanco de corriente. ¿Qué aparece en la lectura?"
+    libro: [188]
+    opciones:
+      - texto: "Un pico de tensión proporcional a di/dt"
+        bien: true
+        porque: "Se suma a la lectura y falsea la forma: mejor un shunt de película o varios SMD en paralelo."
+      - texto: "Nada: un shunt es una resistencia"
+        porque: "Con inductancia, un flanco rápido da tensión extra, proporcional a di/dt."
+      - texto: "Una lectura más baja, por la capacidad"
+        porque: "Un shunt es de valor bajo: en él manda la inductancia, no la capacidad."
+
+  - id: ordene-medidas
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Reducir los parásitos"
+    texto: "Ordene las tres medidas de la más eficaz a la menos eficaz."
+    libro: [193]
+    ordenar:
+      - "Usar SMD: no hay patillas."
+      - "Acortar al máximo las patillas de las axiales."
+      - "Elegir la tecnología: película uniforme para RF."
+    exito: "Ese es el orden. Cada milímetro de terminal son aproximadamente 1 nH."
+    pistas:
+      - { texto: "Lo más eficaz es quitar las patillas del todo." }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [178, 179, 182, 184, 193]
+    ideas:
+      - { titulo: "Tres elementos.", texto: "R con una L en serie y una C en paralelo: 10 nH y 0,3 pF típicos." }
+      - { titulo: "Quién manda.", texto: "Las pequeñas se vuelven inductivas; las grandes, capacitivas: 1 MΩ desde 0,53 MHz." }
+      - { titulo: "Bobinadas.", texto: "Son bobinas: inductivas desde kilohercios, salvo el bobinado Ayrton-Perry." }
+      - { titulo: "Reducir.", texto: "SMD, patillas cortas y la tecnología adecuada." }

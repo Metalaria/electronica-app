@@ -1,0 +1,345 @@
+# Lección 1.1 de la sección 4.13 «Problemas de Diseño» (cap04): 4.A, la bobina de un reductor de 12 V a 5 V
+# (rizado del 20 al 40 %, corriente de pico 1,646 A y saturación de tres bobinas de 100 µH); 4.B, el transformador
+# de una fuente lineal (regulación y rendimiento máximo); 4.C, extinguir la energía de un relé (sin diodo, diodo
+# solo, diodo con Zener). Formato: contenido/lecciones11/GUIA.md.
+leccion: cap04/sec-4.13
+
+libro:
+  273: "Un convertidor reductor pasa de 12 V a 5 V, entrega 1,5 A y conmuta a 100 kHz"
+  277: '"Δ" I_("L") = (lr(( V_("in") - V_("out") )) dot.op D)/(L dot.op f)'
+  278: "Se elige L para que ese rizado quede entre el 20 y el 40 % de la corriente de carga"
+  279: "La saturación no depende de la corriente media sino de la de pico"
+  284: '"64,8 µH"'
+  285: "el catálogo del enunciado ofrece 100 µH, que cumple con margen y además reduce el rizado"
+  288: '"1,646 A"'
+  289: "con un núcleo de ferrita que satura a 0,35 T"
+  290: "correcta, con margen"
+  291: "Y lo haría de forma intermitente, apareciendo solo a plena carga"
+  292: "la corriente de saturación del catálogo debe superar 1,65 A, no los 1,5 A de carga"
+  302: '"regulación" = (V_("vacío") - V_("carga"))/(V_("carga"))'
+  303: "vale típicamente entre el 8 % en transformadores grandes y el 15 % o más en los pequeños"
+  309: "Con N₁ = 1000 y N₂ = 110, a = 9,091 y la tensión en vacío es 25,30 V"
+  310: "Pico − 1,8 V"
+  313: "las del hierro son prácticamente constantes (1,2 W)"
+  314: '"54" \%'
+  315: "el transformador rinde más al 54 % de su carga nominal que a plena carga"
+  321: "Un relé de potencia alimentado a 12 V, con 10 mH de bobina, consume 2 A (su devanado tiene, por tanto, 6 Ω)"
+  325: '"20 mJ"'
+  327: "Con una resistencia equivalente de solo 100 Ω"
+  328: '"200 V"'
+  329: "El transistor se perfora, y lo hace en el flanco de apagado"
+  331: 't = (L)/(R) dot.op ln'
+  334: "1,9 mJ (18,1 mJ en el devanado)"
+  335: "con el diodo solo, es el devanado quien disipa casi toda la energía y quien fija el tiempo"
+  337: "unos 43 V aquí, contando la caída del diodo"
+
+modelo:
+  valores:
+    V_in: { sim: "V_{in}", nombre: "tensión de entrada", unidad: V, valor: 12 }
+    V_out: { sim: "V_{out}", nombre: "tensión de salida", unidad: V, valor: 5 }
+    I_o: { sim: "I_{carga}", nombre: "corriente de carga", unidad: A, valor: 1.5 }
+    f_a: { sim: "f", nombre: "frecuencia de conmutación", unidad: Hz, valor: 100000 }
+    L_a: { sim: "L", nombre: "inductancia de la bobina", unidad: H, valor: 0.0001 }
+    N_a: { sim: "N", nombre: "espiras", unidad: espiras, valor: 20 }
+    A_e: { sim: "A_{e}", nombre: "sección del núcleo", unidad: "mm²", valor: 20 }
+    V_v: { sim: "V_{vacío}", nombre: "tensión del secundario en vacío", unidad: V, valor: 25.3 }
+    reg: { sim: "regulación", nombre: "regulación del transformador", unidad: "%", valor: 8 }
+    P_fe: { sim: "P_{hierro}", nombre: "pérdidas de hierro", unidad: W, valor: 1.2 }
+    P_cu: { sim: "P_{cobre}", nombre: "pérdidas de cobre a plena carga", unidad: W, valor: 4.1 }
+    L_c: { sim: "L", nombre: "inductancia del relé", unidad: H, valor: 0.01 }
+    I_c: { sim: "I", nombre: "corriente del relé", unidad: A, valor: 2 }
+    R_c: { sim: "R", nombre: "resistencia del devanado", unidad: Ω, valor: 6 }
+    R_f: { sim: "R_{fuga}", nombre: "resistencia del transistor abierto", unidad: Ω, valor: 100 }
+    V_x: { sim: "V_{extinción}", nombre: "tensión de extinción", unidad: V, valor: 0.7 }
+    V_cc: { sim: "V_{CC}", nombre: "alimentación del relé", unidad: V, valor: 12 }
+  calculos:
+    D_a: { expr: "V_out/V_in", sim: "D", nombre: "ciclo de trabajo", unidad: "", cifras: 4 }
+    dI: { expr: "(V_in - V_out)*D_a/(L_a*f_a)", sim: "ΔI_{L}", nombre: "rizado de corriente", unidad: A }
+    dI_p: { expr: "dI/I_o*100", sim: "ΔI_{L}/I", nombre: "rizado frente a la carga", unidad: "%", cifras: 3 }
+    I_pk: { expr: "I_o + dI/2", sim: "I_{pico}", nombre: "corriente de pico", unidad: A, cifras: 4 }
+    B_a: { expr: "L_a*I_pk/(N_a*A_e*1e-6)", sim: "B", nombre: "densidad de flujo en el pico", unidad: T }
+    V_c: { expr: "V_v/(1 + reg/100)", sim: "V_{carga}", nombre: "tensión del secundario a plena carga", unidad: V, cifras: 4 }
+    V_dc: { expr: "V_c*sqrt(2) - 1.8", sim: "V_{pico} − 1,8 V", nombre: "continua tras el puente, aproximada", unidad: V }
+    fr: { expr: "100*sqrt(P_fe/P_cu)", sim: "fracción", nombre: "carga de rendimiento máximo", unidad: "%" }
+    E_c: { expr: "0.5*L_c*I_c^2", sim: "E", nombre: "energía almacenada", unidad: J }
+    V_sin: { expr: "I_c*R_f", sim: "V", nombre: "tensión sin diodo", unidad: V }
+    t_x: { expr: "L_c/R_c*ln(1 + I_c*R_c/V_x)", sim: "t", nombre: "tiempo de extinción", unidad: s }
+    V_col: { expr: "V_cc + V_x", sim: "V_{transistor}", nombre: "tensión que soporta el transistor", unidad: V }
+    q_x: { expr: "(I_c + V_x/R_c)*(L_c/R_c)*(1 - exp(-t_x*R_c/L_c)) - V_x/R_c*t_x", sim: "Q", nombre: "carga que pasa durante la extinción", unidad: "A·s" }
+    E_d: { expr: "V_x*q_x", sim: "E_{diodo}", nombre: "energía en el diodo o el Zener", unidad: J }
+    E_w: { expr: "E_c - E_d", sim: "E_{devanado}", nombre: "energía en el devanado", unidad: J }
+
+tarjetas:
+  - id: explore-rizado
+    tipo: explorar
+    titulo: "4.A: la bobina de un reductor"
+    texto: "De 12 V a 5 V, 1,5 A, a 100 kHz. Cambie la inductancia y mire el rizado de corriente en la bobina."
+    libro: [273, 277]
+    widget:
+      tipo: grafica
+      x: { id: l, min: 0.00002, max: 0.0002, unidad: H, rotulo: "L" }
+      y: { min: 0, max: 1.6, unidad: A, rotulo: "ΔI_{L}" }
+      curvas:
+        - { expr: "(V_in - V_out)*D_a/(l*f_a)", color: naranja, rotulo: "rizado" }
+      asas:
+        - { mueve: L_a, x: "L_a", y: "dI", rotulo: "Inductancia" }
+      lectura: { valor: dI, rotulo: "Rizado de corriente" }
+      datos:
+        - { valor: dI_p, rotulo: "De la carga: {{dI_p}}" }
+      mandos:
+        - { valor: L_a, min: 0.00002, max: 0.0002, paso: 0.000001, rotulo: "Inductancia, L" }
+    requiere: { mover: [L_a] }
+
+  - id: formula-rizado
+    tipo: formula
+    titulo: "El balance voltios-segundo"
+    texto: "Durante la conducción la bobina soporta V_{in} − V_{out} y su corriente crece en rampa. D = V_{out}/V_{in}."
+    libro: [277]
+    ec: 277
+    sustitucion: "({{V_in}} − {{V_out}}) · {{D_a}} / ({{L_a}} · {{f_a}}) = {{dI}}"
+    widget:
+      tipo: grafica
+      x: { id: l, min: 0.00002, max: 0.0002, unidad: H, rotulo: "L" }
+      y: { min: 0, max: 1.6, unidad: A, rotulo: "ΔI_{L}" }
+      curvas:
+        - { expr: "(V_in - V_out)*D_a/(l*f_a)", color: naranja, rotulo: "rizado" }
+      asas:
+        - { mueve: L_a, x: "L_a", y: "dI", rotulo: "Inductancia" }
+      lectura: { valor: dI, rotulo: "Rizado de corriente" }
+      mandos:
+        - { valor: L_a, min: 0.00002, max: 0.0002, paso: 0.000001, rotulo: "Inductancia, L" }
+
+  - id: reto-rizado
+    tipo: reto
+    titulo: "Reto: el rizado admisible"
+    texto: "Elija L para que el rizado quede entre el 20 y el 40 % de la corriente de carga."
+    libro: [278, 284]
+    inicio: { L_a: 0.00002 }
+    widget:
+      tipo: grafica
+      x: { id: l, min: 0.00002, max: 0.0002, unidad: H, rotulo: "L" }
+      y: { min: 0, max: 1.6, unidad: A, rotulo: "ΔI_{L}" }
+      curvas:
+        - { expr: "(V_in - V_out)*D_a/(l*f_a)", color: naranja, rotulo: "rizado" }
+      asas:
+        - { mueve: L_a, x: "L_a", y: "dI", rotulo: "Inductancia" }
+      lectura: { valor: dI_p, rotulo: "Rizado frente a la carga" }
+      mandos:
+        - { valor: L_a, min: 0.00002, max: 0.0002, paso: 0.000001, rotulo: "Inductancia, L" }
+    condiciones:
+      - { valor: dI_p, min: 20, max: 40, rotulo: "Rizado: {{dI_p}}" }
+    exito: "Con {{L_a}}, {{dI_p}}. El libro apunta al 30 %: 64,8 µH."
+    pistas:
+      - { cuando: { valor: dI_p, mayor: 40 }, texto: "Demasiado rizado: más pérdidas y más pico. Suba L." }
+      - { texto: "Poco rizado, pero la bobina sale grande y cara. Baje L." }
+    ayuda: "Para el 30 %, 0,45 A: L = (12 − 5) · 0,4167 / (0,45 · 100 kHz) = 64,8 µH."
+    comprobar:
+      - { con: { L_a: 0.0000648 }, dI_p: 30, dI: 0.45, D_a: 0.4167, tol: 0.01 }
+
+  - id: estime-pico
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La corriente que decide"
+    texto: "Un reductor de 12 V a 5 V entrega 1,5 A a 100 kHz con 100 µH: rizado de 292 mA. La saturación depende del pico, la media más medio rizado. Estímelo."
+    libro: [273, 279, 285, 288]
+    fijar: { L_a: 0.0001 }
+    estimar:
+      objetivo: "I_pk"
+      unidad: A
+      min: 1
+      max: 3
+      paso: 0.01
+      inicio: 2.8
+      tol: 0.02
+      rotulo: "I_{pico}"
+    exito: "1,646 A: 1,5 A más la mitad de un rizado de 292 mA."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 1.68 }, texto: "Se ha pasado: con 100 µH el rizado son 292 mA; sume la mitad." }
+      - { texto: "Se ha quedado corto: a los 1,5 A de carga sume la mitad del rizado." }
+    comprobar:
+      - { I_pk: 1.646, dI: 0.292 }
+
+  - id: reto-saturacion
+    tipo: reto
+    titulo: "Reto: ¿cuál no satura?"
+    texto: "Todas tienen 100 µH. La ferrita satura a 0,35 T y B = L·I/(N·A_{e}). Elija espiras y sección para que no sature en el pico."
+    libro: [289, 290]
+    fijar: { L_a: 0.0001 }
+    inicio: { N_a: 20, A_e: 20 }
+    widget:
+      tipo: grafica
+      x: { id: n, min: 10, max: 40, unidad: espiras, rotulo: "N" }
+      y: { min: 0, max: 0.8, unidad: T, rotulo: "B" }
+      curvas:
+        - { expr: "L_a*I_pk/(n*A_e*1e-6)", color: naranja, rotulo: "B en el pico" }
+        - { expr: "0.35", color: tinta, rotulo: "saturación", discontinua: true }
+      asas:
+        - { mueve: N_a, x: "N_a", y: "B_a", rotulo: "Espiras" }
+      lectura: { valor: B_a, rotulo: "B en el pico" }
+      mandos:
+        - { valor: N_a, lista: [20, 30], rotulo: "Espiras, N" }
+        - { valor: A_e, lista: [20, 40], rotulo: "Sección, A_{e}" }
+    condiciones:
+      - { valor: B_a, max: 0.35, rotulo: "B: {{B_a}}" }
+    exito: "{{B_a}} en el pico: no satura. La de 20 espiras y 20 mm² llega a 0,411 T y saturaría en cada ciclo."
+    pistas:
+      - { cuando: { valor: B_a, mayor: 0.35 }, texto: "Satura: más espiras o más sección reparten el flujo." }
+    ayuda: "Con 20 espiras y 20 mm², 0,411 T. Con 30 espiras, 0,274 T; con 40 mm², 0,206 T."
+    comprobar:
+      - { B_a: 0.4115, tol: 0.01 }
+      - { con: { N_a: 30, A_e: 20 }, B_a: 0.274, tol: 0.01 }
+      - { con: { N_a: 20, A_e: 40 }, B_a: 0.206, tol: 0.01 }
+
+  - id: porque-intermitente
+    tipo: porque
+    titulo: "El fallo más difícil"
+    texto: "La bobina que satura falla solo a plena carga, de forma intermitente. ¿Qué dato del catálogo lo habría evitado?"
+    libro: [291, 292]
+    opciones:
+      - texto: "Una corriente de saturación por encima de 1,65 A"
+        bien: true
+        porque: "Hay que mirar el pico, no la media. Todas tienen 100 µH y, de las cuatro combinaciones, solo tres valen."
+      - texto: "Una corriente de saturación por encima de 1,5 A"
+        porque: "Esa es la media. La saturación la decide el pico, 1,646 A."
+      - texto: "La inductancia correcta"
+        porque: "Todas tienen 100 µH. La inductancia sola no sirve para elegir."
+
+  - id: formula-regulacion
+    tipo: formula
+    titulo: "4.B: la trampa del catálogo"
+    texto: "El catálogo da la tensión a plena carga; en vacío da más. Con 1000:110, en vacío salen 25,30 V. Cambie la regulación."
+    libro: [302, 303, 309, 310]
+    ec: 302
+    sustitucion: "{{V_c}} = {{V_v}} / (1 + {{reg}})"
+    widget:
+      tipo: grafica
+      x: { id: r, min: 0, max: 20, unidad: "%", rotulo: "regulación" }
+      y: { min: 18, max: 26, unidad: V, rotulo: "V_{carga}" }
+      curvas:
+        - { expr: "V_v/(1 + r/100)", color: naranja, rotulo: "a plena carga" }
+      asas:
+        - { mueve: reg, x: "reg", y: "V_c", rotulo: "Regulación" }
+      lectura: { valor: V_c, rotulo: "Secundario a plena carga" }
+      datos:
+        - { valor: V_dc, rotulo: "Pico − 1,8 V: {{V_dc}}" }
+      mandos:
+        - { valor: reg, lista: [8, 15], rotulo: "Regulación" }
+    comprobar:
+      - { V_c: 23.43, V_dc: 31.3, tol: 0.01 }
+      - { con: { reg: 15 }, V_c: 22.0, V_dc: 29.3, tol: 0.01 }
+
+  - id: estime-rendimiento
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "¿Dónde rinde más?"
+    texto: "A plena carga, el cobre pierde 4,1 W; el hierro, 1,2 W casi constantes. El máximo está donde se igualan: fracción = √(P_{hierro}/P_{cobre}). Estímela."
+    libro: [313, 314, 315]
+    estimar:
+      objetivo: "fr"
+      unidad: "%"
+      min: 0
+      max: 100
+      paso: 1
+      inicio: 90
+      tol: 0.05
+      rotulo: "Carga de rendimiento máximo"
+    exito: "54 %: rinde más ahí que a plena carga. Por eso se sobredimensiona."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 57 }, texto: "Se ha pasado: √(1,2/4,1), algo más de la mitad." }
+      - { texto: "Se ha quedado corto: no olvide la raíz de 1,2/4,1." }
+    comprobar:
+      - { fr: 54.1 }
+
+  - id: estime-energia-rele
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "4.C: la energía del relé"
+    texto: "Un relé de 12 V con 10 mH de bobina consume 2 A. Estime la energía que hay que extinguir al abrir."
+    libro: [321, 325]
+    estimar:
+      objetivo: "E_c"
+      unidad: J
+      min: 0
+      max: 0.1
+      paso: 0.001
+      inicio: 0.08
+      tol: 0.05
+      rotulo: "E"
+    exito: "20 mJ: ½ × 10 mH × 2². Tiene que ir a algún sitio."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.021 }, texto: "Se ha pasado: ½ × 10 mH × 2²." }
+      - { texto: "Se ha quedado corto: no olvide el cuadrado de los 2 A." }
+    comprobar:
+      - { E_c: 0.02 }
+
+  - id: prediga-sin-diodo
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Sin diodo, el único camino es la fuga del transistor abierto: unos 100 Ω. ¿Qué tensión aparece al cortar los 2 A?"
+    libro: [327, 328, 329]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.006, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 2.2, unidad: A, rotulo: "i" }
+      curvas:
+        - { expr: "max(0, (I_c + V_x/R_c)*exp(-t*R_c/L_c) - V_x/R_c)", color: naranja, rotulo: "i de la bobina" }
+      lectura: { valor: V_sin, rotulo: "Tensión sin diodo" }
+      ocultar: true
+    opciones:
+      - texto: "200 V"
+        bien: true
+        porque: "V = I·R = 2 × 100. Muy por encima de la ruptura de un transistor de baja tensión: se perfora al apagar."
+      - texto: "12 V, la de la alimentación"
+        porque: "La bobina genera lo que haga falta para mantener su corriente: I·R sobre ese camino."
+      - texto: "Nada: el transistor está abierto"
+        porque: "Abierto, la corriente busca camino por su fuga, y ahí la tensión es I·R."
+    comprobar:
+      - { V_sin: 200 }
+
+  - id: sorpresa-zener
+    tipo: sorpresa
+    titulo: "Diodo solo o con Zener"
+    texto: "Con el diodo solo, la corriente se extingue contra 0,7 V. Añada un Zener de 30 V en serie y mire el tiempo y lo que soporta el transistor."
+    libro: [331, 334, 337]
+    inicio: { V_x: 0.7 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.006, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 2.2, unidad: A, rotulo: "i" }
+      curvas:
+        - { expr: "max(0, (I_c + V_x/R_c)*exp(-t*R_c/L_c) - V_x/R_c)", color: naranja, rotulo: "i de la bobina" }
+      lectura: { valor: t_x, rotulo: "Tiempo de extinción" }
+      datos:
+        - { valor: V_col, rotulo: "El transistor soporta {{V_col}}" }
+      mandos:
+        - { valor: V_x, lista: [0.7, 30.7], nombres: [diodo solo, diodo y Zener], rotulo: "Extinción" }
+    requiere: { mover: [V_x] }
+    comprobar:
+      - { t_x: 0.0048, V_col: 12.7, tol: 0.01 }
+      - { con: { V_x: 30.7 }, t_x: 0.00055, V_col: 42.7, tol: 0.01 }
+
+  - id: porque-devanado
+    tipo: porque
+    titulo: "¿Quién se lleva la energía?"
+    texto: "Con el diodo solo, el diodo se lleva 1,9 mJ de los 20 mJ. ¿Dónde va el resto?"
+    libro: [334, 335]
+    fijar: { V_x: 0.7 }
+    opciones:
+      - texto: "Al devanado, que fija también el tiempo"
+        bien: true
+        porque: "Sus 6 Ω disipan 18,1 mJ. Sin esa resistencia, la extinción tardaría 28,6 ms."
+      - texto: "Vuelve a la fuente"
+        porque: "El transistor está abierto: la energía se queda en el lazo bobina-diodo y se disipa en él."
+      - texto: "Se radia"
+        porque: "Con el diodo pegado a la bobina, casi nada se radia: la disipa la resistencia del devanado."
+    comprobar:
+      - { E_d: 0.00194, E_w: 0.0181, tol: 0.01 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [278, 292, 315, 337]
+    ideas:
+      - { titulo: "4.A.", texto: "Rizado del 20 al 40 %, y una corriente de saturación por encima del pico, 1,65 A, no de la media." }
+      - { titulo: "4.B.", texto: "El catálogo da la tensión con carga; en vacío sale más. Rinde más hacia el 54 % de la carga." }
+      - { titulo: "4.C.", texto: "Diodo solo: protege, pero tarda 4,8 ms. Con Zener de 30 V, 0,55 ms a cambio de 43 V en el transistor." }

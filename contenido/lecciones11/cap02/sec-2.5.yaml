@@ -1,0 +1,264 @@
+# Lección 1.1 de la sección 2.5 «Código Numérico SMD y Series de Valores» (cap02): los cuatro marcados SMD, la
+# resistencia de cero ohmios, las series E (el paso encaja con la tolerancia) y diseñar con valores comerciales.
+# Formato: contenido/lecciones11/GUIA.md.
+leccion: cap02/sec-2.5
+
+libro:
+  89: "«100» es 10 × 10⁰ = 10 Ω, no 100 Ω, que es el error más frecuente"
+  90: "«4702» es 470 × 10² = 47 kΩ"
+  91: "«4R7» es 4,7 Ω, «R22» es 0,22 Ω"
+  92: "«01A» es 100 Ω y «68C» es 49,9 kΩ. No es deducible"
+  93: "«0» o «000» marca una resistencia de cero ohmios"
+  95: "La serie En divide la década en n pasos, cada uno multiplicando por 10^(1/n)"
+  96: "Razón entre valores"
+  97: "La lógica es que el paso encaje con la tolerancia"
+  101: "Dos resistencias en serie o paralelo dan valores intermedios"
+  102: "Un buen diseño usa pocos valores distintos"
+  "cap02#342": "Necesitas 7,5 kΩ pero solo tienes valores de la serie E12"
+
+modelo:
+  valores:
+    c_1: { sim: "1.ª cifra", nombre: "primera cifra", unidad: "", valor: 1 }
+    c_2: { sim: "2.ª cifra", nombre: "segunda cifra", unidad: "", valor: 0 }
+    c_n: { sim: "ceros", nombre: "número de ceros (tercera cifra)", unidad: "", valor: 1 }
+    n_s: { sim: "n", nombre: "pasos por década (serie En)", unidad: "", valor: 6 }
+    tol_s: { sim: "tol", nombre: "tolerancia", unidad: "%", valor: 20 }
+    V_p: { sim: "V", nombre: "tensión de la fuente", unidad: V, valor: 12 }
+    R_a: { sim: "R₁", nombre: "primera resistencia", unidad: Ω, valor: 10000 }
+    R_b: { sim: "R₂", nombre: "segunda resistencia", unidad: Ω, valor: 10000 }
+  calculos:
+    codigo: { expr: "100*c_1 + 10*c_2 + c_n", sim: "código", nombre: "código impreso", unidad: "", cifras: 3, recortar: true }
+    R: { expr: "(10*c_1 + c_2)*10^c_n", sim: "R", nombre: "valor de la resistencia", unidad: Ω, cifras: 3, recortar: true }
+    r_s: { expr: "10^(1/n_s)", sim: "razón", nombre: "razón entre valores contiguos", unidad: "", cifras: 4 }
+    paso: { expr: "(r_s - 1)*100", sim: "paso", nombre: "paso entre valores contiguos", unidad: "%", cifras: 3 }
+    hueco: { expr: "(r_s*(1 - tol_s/100)/(1 + tol_s/100) - 1)*100", sim: "hueco", nombre: "hueco entre los márgenes de dos valores contiguos (negativo: se solapan)", unidad: "%", cifras: 2 }
+    R_p: { expr: "par(R_a, R_b)", sim: "R₁ ‖ R₂", nombre: "resistencia del paralelo", unidad: Ω, cifras: 4 }
+    I_a: { expr: "V_p/R_a", sim: "I₁", nombre: "corriente por R₁", unidad: A }
+    I_b: { expr: "V_p/R_b", sim: "I₂", nombre: "corriente por R₂", unidad: A }
+    I_t: { expr: "I_a + I_b", sim: "I", nombre: "corriente total", unidad: A }
+
+tarjetas:
+  - id: explore-tres-cifras
+    tipo: explorar
+    titulo: "Tres cifras impresas"
+    texto: "Una SMD lleva tres cifras: los dos primeros dígitos y el número de ceros. Mueva las cifras y mire el código y el valor."
+    libro: [89]
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 6, unidad: "", rotulo: "número de ceros" }
+      y: { min: 1, max: 1000000000, unidad: Ω, rotulo: "R", escala: log }
+      curvas:
+        - { expr: "(10*c_1 + c_2)*10^x", color: azul, rotulo: "mismas cifras, más ceros" }
+      asas:
+        - { mueve: c_n, x: "c_n", y: "R", rotulo: "Número de ceros" }
+      lectura: { valor: R, rotulo: "Valor" }
+      datos:
+        - { valor: codigo, rotulo: "Código impreso: «{{codigo}}»" }
+      mandos:
+        - { valor: c_1, min: 1, max: 9, paso: 1, rotulo: "Primera cifra" }
+        - { valor: c_2, min: 0, max: 9, paso: 1, rotulo: "Segunda cifra" }
+        - { valor: c_n, min: 0, max: 6, paso: 1, rotulo: "Tercera cifra: ceros" }
+    requiere: { mover: [c_1, c_n] }
+
+  - id: prediga-cien
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Una SMD marcada «100». ¿Qué valor tiene?"
+    libro: [89]
+    fijar: { c_1: 1, c_2: 0, c_n: 0 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 6, unidad: "", rotulo: "número de ceros" }
+      y: { min: 1, max: 1000000000, unidad: Ω, rotulo: "R", escala: log }
+      curvas:
+        - { expr: "(10*c_1 + c_2)*10^x", color: azul, rotulo: "mismas cifras, más ceros" }
+      lectura: { valor: R, rotulo: "Valor" }
+      ocultar: true
+    opciones:
+      - texto: "10 Ω"
+        bien: true
+        porque: "Uno, cero y ningún cero más: 10 × 10⁰ = 10 Ω."
+      - texto: "100 Ω"
+        porque: "Es el error más frecuente: el último 0 no es una cifra, es el número de ceros, ninguno."
+      - texto: "1 Ω"
+        porque: "Las dos primeras cifras, 1 y 0, ya forman 10; el multiplicador no divide."
+    comprobar:
+      - { R: 10, codigo: 100 }
+      - { con: { c_n: 1 }, R: 100 }
+
+  - id: reto-47k
+    tipo: reto
+    titulo: "Reto: marque 4,7 kΩ"
+    texto: "Elija las tres cifras que llevaría impresas una SMD de 4,7 kΩ."
+    libro: [89]
+    inicio: { c_1: 1, c_2: 0, c_n: 1 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 6, unidad: "", rotulo: "número de ceros" }
+      y: { min: 1, max: 1000000000, unidad: Ω, rotulo: "R", escala: log }
+      curvas:
+        - { expr: "(10*c_1 + c_2)*10^x", color: azul, rotulo: "mismas cifras, más ceros" }
+      asas:
+        - { mueve: c_n, x: "c_n", y: "R", rotulo: "Número de ceros" }
+      lectura: { valor: R, rotulo: "Valor" }
+      datos:
+        - { valor: codigo, rotulo: "Código impreso: «{{codigo}}»" }
+      mandos:
+        - { valor: c_1, min: 1, max: 9, paso: 1, rotulo: "Primera cifra" }
+        - { valor: c_2, min: 0, max: 9, paso: 1, rotulo: "Segunda cifra" }
+        - { valor: c_n, min: 0, max: 6, paso: 1, rotulo: "Tercera cifra: ceros" }
+    condiciones:
+      - { valor: R, objetivo: 4700, tol: 0.001, rotulo: "Valor: {{R}}" }
+    exito: "«472»: 47 × 10² = 4,7 kΩ."
+    pistas:
+      - { cuando: { valor: R, mayor: 4705 }, texto: "Se ha pasado: 4,7 kΩ son 4 700 Ω, un 47 seguido de dos ceros." }
+      - { cuando: { valor: R, menor: 4695 }, texto: "Le falta: escriba 47 y cuente cuántos ceros faltan hasta 4 700 Ω." }
+    ayuda: "4 700 Ω: las cifras 4 y 7, y la tercera, 2, porque faltan dos ceros."
+    comprobar:
+      - { con: { c_1: 4, c_2: 7, c_n: 2 }, R: 4700, codigo: 472 }
+
+  - id: cuatro-cifras
+    tipo: pregunta
+    titulo: "Cuatro cifras"
+    texto: "Las del 1 % llevan cuatro cifras: tres dígitos y el multiplicador. ¿Cuánto vale una marcada «2201»?"
+    libro: [90, "cap02#342"]
+    opciones:
+      - texto: "2,2 kΩ"
+        bien: true
+        porque: "220 seguido de un cero: 2 200 Ω."
+      - texto: "22 kΩ"
+        porque: "La ha leído con dos dígitos y dos ceros. Con cuatro cifras son tres dígitos, 220, y un cero."
+      - texto: "220 Ω"
+        porque: "Le falta el multiplicador: la cuarta cifra, 1, añade un cero."
+
+  - id: empareje-marcados
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los otros marcados"
+    texto: "Empareje cada marcado con su valor."
+    libro: [90, 91, 92, 93]
+    emparejar:
+      - ["«4R7»", "4,7 Ω: la R es la coma"]
+      - ["«R22»", "0,22 Ω"]
+      - ["«4702»", "47 kΩ"]
+      - ["«01A»", "100 Ω, de la tabla EIA-96"]
+      - ["«000»", "Cero ohmios: un puente"]
+    exito: "Eso es. La R como coma es el marcado de los shunts y de las resistencias de emisor."
+    pistas:
+      - { texto: "La R ocupa el lugar de la coma decimal; «000» no es un error de impresión." }
+
+  - id: por-que-eia
+    tipo: porque
+    titulo: "«68C»"
+    texto: "En un encapsulado diminuto lee «68C». Es 49,9 kΩ. ¿Por qué no se puede deducir como «472»?"
+    libro: [92]
+    opciones:
+      - texto: "Las cifras son una posición en la tabla de la E96, no dígitos"
+        bien: true
+        porque: "En el EIA-96 hay que consultar la tabla: conviene fotografiar el componente antes de desoldarlo."
+      - texto: "La C es una coma decimal, como la R"
+        porque: "La letra es el multiplicador, pero las cifras no son el valor: son una posición en la tabla."
+      - texto: "Está mal impreso"
+        porque: "Es un convenio legítimo para encapsulados diminutos: dos cifras y una letra."
+
+  - id: explore-series
+    tipo: explorar
+    titulo: "Las series E"
+    texto: "Una serie En divide la década en n pasos iguales en proporción. La curva es el error al tomar el valor más cercano. Cambie la serie y la tolerancia."
+    libro: [95, 96]
+    widget:
+      tipo: grafica
+      x: { id: v, min: 1, max: 10, unidad: Ω, rotulo: "valor deseado", escala: log }
+      y: { min: -25, max: 25, unidad: "%", rotulo: "error" }
+      curvas:
+        - { expr: "(v/10^(round(n_s*log10(v))/n_s) - 1)*100", color: azul, rotulo: "error con el valor de la serie" }
+        - { expr: "tol_s", color: naranja, rotulo: "+tolerancia", discontinua: true }
+        - { expr: "-tol_s", color: naranja, rotulo: "−tolerancia", discontinua: true }
+      lectura: { valor: r_s, rotulo: "Razón entre valores" }
+      datos:
+        - { valor: paso, rotulo: "Paso: {{paso}}" }
+        - { valor: hueco, rotulo: "Hueco entre márgenes: {{hueco}}" }
+      mandos:
+        - { valor: n_s, lista: [6, 12, 24, 96], rotulo: "Serie, E" }
+        - { valor: tol_s, lista: [1, 5, 10, 20], rotulo: "Tolerancia" }
+    requiere: { mover: [n_s, tol_s] }
+
+  - id: reto-e12
+    tipo: reto
+    titulo: "Reto: la tolerancia de la E12"
+    texto: "Con la E12, elija la tolerancia con la que los márgenes de dos valores contiguos se tocan: sin huecos y sin solaparse demasiado."
+    nota: "Hueco negativo: los márgenes se solapan."
+    libro: [96, 97]
+    fijar: { n_s: 12 }
+    inicio: { tol_s: 1 }
+    widget:
+      tipo: grafica
+      x: { id: v, min: 1, max: 10, unidad: Ω, rotulo: "valor deseado", escala: log }
+      y: { min: -25, max: 25, unidad: "%", rotulo: "error" }
+      curvas:
+        - { expr: "(v/10^(round(n_s*log10(v))/n_s) - 1)*100", color: azul, rotulo: "error con el valor de la serie" }
+        - { expr: "tol_s", color: naranja, rotulo: "+tolerancia", discontinua: true }
+        - { expr: "-tol_s", color: naranja, rotulo: "−tolerancia", discontinua: true }
+      lectura: { valor: hueco, rotulo: "Hueco entre márgenes" }
+      mandos:
+        - { valor: tol_s, lista: [1, 5, 10, 20], rotulo: "Tolerancia" }
+    condiciones:
+      - { valor: hueco, min: -5, max: 0, rotulo: "Hueco: {{hueco}}" }
+    exito: "±10 %, el de la E12. Con la E96 y ±1 %, los márgenes quedan a apenas un 0,4 % de tocarse."
+    pistas:
+      - { cuando: { valor: hueco, mayor: 0 }, texto: "Quedan huecos: con un paso del 21,2 %, la tolerancia tiene que ser mayor." }
+      - { cuando: { valor: hueco, menor: -5 }, texto: "Se solapan demasiado: baje la tolerancia." }
+    ayuda: "El paso es aproximadamente el doble de la tolerancia: cada valor cubre la tolerancia hacia arriba y hacia abajo."
+    comprobar:
+      - { con: { tol_s: 10 }, hueco: -0.875, tol: 0.01 }
+      - { con: { n_s: 96, tol_s: 1 }, hueco: 0.399, tol: 0.01 }
+
+  - id: reto-paralelo
+    tipo: reto
+    titulo: "Reto: 7,5 kΩ con la E12"
+    texto: "Necesita 7,5 kΩ y solo tiene valores de la serie E12. Combine dos en paralelo (± 0,5 %)."
+    libro: [101, "cap02#342"]
+    inicio: { R_a: 10000, R_b: 10000 }
+    widget:
+      tipo: circuito
+      esquema: paralelo
+      piezas: { fuente: V_p, r1: R_a, r2: R_b }
+      lectura: { valor: R_p, rotulo: "R₁ ‖ R₂" }
+      corriente: I_t
+      mide: { total: I_t, i1: I_a, i2: I_b }
+      mandos:
+        - { valor: R_a, serie: E12, min: 1000, max: 100000, rotulo: "R₁ (E12)" }
+        - { valor: R_b, serie: E12, min: 1000, max: 100000, rotulo: "R₂ (E12)" }
+    condiciones:
+      - { valor: R_p, objetivo: 7500, tol: 0.005, rotulo: "Paralelo: {{R_p}}" }
+    exito: "Dos de 15 kΩ en paralelo dan 7,5 kΩ exactos. Su coste: un componente más y la suma de tolerancias."
+    pistas:
+      - { cuando: { valor: R_p, mayor: 7537.5 }, texto: "Sobra resistencia: baje una de las dos." }
+      - { cuando: { valor: R_p, menor: 7462.5 }, texto: "Falta resistencia: suba una de las dos. Dos iguales dan la mitad." }
+    ayuda: "Dos resistencias iguales en paralelo dan la mitad de una: busque el doble de 7,5 kΩ en la E12."
+    comprobar:
+      - { con: { R_a: 15000, R_b: 15000 }, R_p: 7500 }
+
+  - id: por-que-pocos-valores
+    tipo: porque
+    titulo: "¿E24 o E96?"
+    texto: "En producción se diseña con la E24 aunque la E96 tenga valores más cercanos. ¿Por qué?"
+    libro: [102]
+    opciones:
+      - texto: "Reduce el número de referencias distintas del inventario"
+        bien: true
+        porque: "Ese ahorro pesa más que el de una resistencia: un buen diseño usa pocos valores distintos."
+      - texto: "Las de la E24 son más precisas"
+        porque: "La serie no dice la precisión: las del 1 % también se venden en valores de la E24."
+      - texto: "Los valores de la E96 no existen en SMD"
+        porque: "Existen; el EIA-96 los marca. La razón es económica: menos referencias en el almacén."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [89, 90, 91, 93, 97, 101]
+    ideas:
+      - { titulo: "Tres cifras.", texto: "Dos dígitos y el número de ceros: «100» es 10 Ω." }
+      - { titulo: "Otros marcados.", texto: "Cuatro cifras en el 1 %, la R como coma, el EIA-96 con tabla y «000», cero ohmios." }
+      - { titulo: "Series E.", texto: "Progresión geométrica: el paso encaja con la tolerancia de la serie." }
+      - { titulo: "Combinar.", texto: "Dos valores en serie o paralelo dan los intermedios." }

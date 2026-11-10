@@ -1,0 +1,353 @@
+# Lección 1.1 de la sección 5.3 «La Ecuación de Shockley y la Curva Característica» (cap05): la exponencial (no hay
+# umbral), los milivoltios por década y la lectura inversa, el factor de idealidad, la resistencia dinámica, los
+# modelos del diodo, el coeficiente térmico y el ejemplo del LED con la dispersión de V_f. Formato:
+# contenido/lecciones11/GUIA.md.
+leccion: cap05/sec-5.3
+
+libro:
+  95: 'I = I_("S") dot.op lr(( "e"^((V)\/(n dot.op V_("T"))) - "1" ))'
+  99: "El «−1» solo importa en inversa"
+  101: "Con IS = 10⁻¹² A y n = 1"
+  102: "5,24 µA"
+  103: "No hay umbral. Hay una exponencial."
+  105: "59,5 mV"
+  107: 'V = n dot.op V_("T") dot.op op("ln") (I)/(I_("S"))'
+  108: "0,536 V"
+  109: "cien veces más corriente, la tensión sube solo 119 mV"
+  112: "a corrientes bajas manda la recombinación (n ≈ 2)"
+  116: 'r_("d") = (d V)/(d I) = (n dot.op V_("T"))/(I)'
+  117: "2,59 Ω"
+  118: "Es la resistencia que ve una señal pequeña"
+  120: "un rectificador de 325 V de pico"
+  121: "Es el modelo del 90 % de los cálculos de diseño"
+  122: "al calcular la disipación de un puente a plena carga"
+  123: "las referencias de tensión bandgap"
+  127: '(d V)/(d T) approx (V - V_("g" "0") - "3" dot.op V_("T"))/(T)'
+  128: "con Vg0 ≈ 1,206 V la extrapolación del ancho de banda a cero kelvin. Evaluando a 300 K"
+  129: "−2,28 mV/°C"
+  131: "la curva entera se desplaza hacia la izquierda al calentarse"
+  133: "Alimentar un LED rojo de 2,0 V nominales a 20 mA desde 5 V."
+  135: "El valor comercial de la serie E24 coincide: 150 Ω"
+  136: "típicamente de 1,8 a 2,2 V para el rojo"
+  137: "21,3 mA"
+  138: "la resistencia sería de 25 Ω y la misma dispersión de Vf daría corrientes de 28 y 12 mA"
+  140: "el de menor Vf se lleva la mayor parte de la corriente"
+  "cap05#348": "estima la corriente cuando se le aplican 0,6 V en directa"
+
+modelo:
+  valores:
+    I_S: { sim: "I_{S}", nombre: "corriente de saturación", unidad: A, valor: 1e-12 }
+    n_d: { sim: "n", nombre: "factor de idealidad", unidad: "", valor: 1 }
+    V_T: { sim: "V_{T}", nombre: "tensión térmica", unidad: V, valor: 0.025852 }
+    V_D: { sim: "V_{D}", nombre: "tensión del diodo", unidad: V, valor: 0.5 }
+    I_q: { sim: "I", nombre: "corriente elegida", unidad: A, valor: 0.001 }
+    V_s: { sim: "V", nombre: "tensión de la fuente", unidad: V, valor: 5 }
+    R_s: { sim: "R", nombre: "resistencia", unidad: Ω, valor: 1000 }
+    V_op: { sim: "V", nombre: "tensión de trabajo", unidad: V, valor: 0.6 }
+    V_e: { sim: "V", nombre: "tensión de la fuente", unidad: V, valor: 5 }
+    R_e: { sim: "R", nombre: "resistencia del LED", unidad: Ω, valor: 150 }
+    V_fe: { sim: "V_{f}", nombre: "tensión del LED", unidad: V, valor: 2 }
+  calculos:
+    I_D: { expr: "I_S*(exp(V_D/(n_d*V_T)) - 1)", sim: "I_{D}", nombre: "corriente del diodo", unidad: A }
+    dec: { expr: "n_d*V_T*ln(10)", sim: "ΔV", nombre: "tensión por década de corriente", unidad: V }
+    V_q: { expr: "n_d*V_T*ln(I_q/I_S)", sim: "V", nombre: "tensión a esa corriente", unidad: V }
+    I_ds: { expr: "n_d*V_T/R_s*wright(ln(I_S*R_s/(n_d*V_T)) + (V_s + I_S*R_s)/(n_d*V_T)) - I_S", sim: "I_{D}", nombre: "corriente del diodo", unidad: A }
+    V_ds: { expr: "V_s - I_ds*R_s", sim: "V_{D}", nombre: "tensión del diodo", unidad: V }
+    r_d: { expr: "n_d*V_T/I_ds", sim: "r_{d}", nombre: "resistencia dinámica", unidad: Ω }
+    r_q: { expr: "n_d*V_T/I_q", sim: "r_{d}", nombre: "resistencia dinámica a esa corriente", unidad: Ω }
+    dVdT: { expr: "(V_op - 1.206 - 3*V_T)/300", sim: "dV/dT", nombre: "coeficiente térmico", unidad: "V/°C" }
+    I_e: { expr: "(V_e - V_fe)/R_e", sim: "I", nombre: "corriente del LED", unidad: A }
+
+tarjetas:
+  - id: explore-exponencial
+    tipo: explorar
+    titulo: "¿Dónde está el umbral?"
+    texto: "Un diodo con I_{S} = 10⁻¹² A. Suba su tensión de 0,40 a 0,70 V y busque el punto en que «empieza a conducir»."
+    libro: [101, 102]
+    inicio: { V_D: 0.5 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 0.75, unidad: V, rotulo: "V_{D}" }
+      y: { min: 0, max: 0.6, unidad: A, rotulo: "I_{D}" }
+      curvas:
+        - { expr: "I_S*(exp(x/(n_d*V_T)) - 1)", color: naranja, rotulo: "I_{D}" }
+      asas:
+        - { mueve: V_D, x: "V_D", y: "I_D", rotulo: "Tensión del diodo" }
+      lectura: { valor: I_D, rotulo: "Corriente" }
+      mandos:
+        - { valor: V_D, min: 0.4, max: 0.7, paso: 0.05, rotulo: "Tensión del diodo, V_{D}" }
+    requiere: { mover: [V_D] }
+
+  - id: prediga-040
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "El mismo diodo, I_{S} = 10⁻¹² A y n = 1, con 0,40 V. En la gráfica lineal parece apagado. ¿Qué corriente lleva?"
+    libro: [101, 102]
+    fijar: { V_D: 0.4 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 0.75, unidad: V, rotulo: "V_{D}" }
+      y: { min: 0, max: 0.6, unidad: A, rotulo: "I_{D}" }
+      curvas:
+        - { expr: "I_S*(exp(x/(n_d*V_T)) - 1)", color: naranja, rotulo: "I_{D}" }
+      lectura: { valor: I_D, rotulo: "Corriente" }
+      ocultar: true
+    opciones:
+      - texto: "5,24 µA: conduce, poco"
+        bien: true
+        porque: "Conduce siempre. Esos microamperios parecen cero a la escala de trabajo, pero existen."
+      - texto: "Nada: no llega a 0,7 V"
+        porque: "No hay umbral: hay una exponencial tan empinada que, en escala lineal, lo parece."
+      - texto: "575 mA"
+        porque: "Eso lleva con 0,70 V. Con 0,30 V menos, la corriente es cien mil veces menor."
+    comprobar:
+      - { I_D: 5.24e-6 }
+      - { con: { V_D: 0.7 }, I_D: 0.575 }
+
+  - id: formula-shockley
+    tipo: formula
+    titulo: "La ecuación de Shockley"
+    texto: "En escala logarítmica la exponencial es una recta. El «−1» solo importa en inversa."
+    libro: [95, 99]
+    ec: 95
+    sustitucion: "{{I_S}} · (e^({{V_D}} / ({{n_d}} · {{V_T}})) − 1) = {{I_D}}"
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0.3, max: 0.75, unidad: V, rotulo: "V_{D}" }
+      y: { min: 0.0000001, max: 1, unidad: A, rotulo: "I_{D}", escala: log }
+      curvas:
+        - { expr: "I_S*(exp(x/(n_d*V_T)) - 1)", color: naranja, rotulo: "I_{D}" }
+      asas:
+        - { mueve: V_D, x: "V_D", y: "I_D", rotulo: "Tensión del diodo" }
+      lectura: { valor: I_D, rotulo: "Corriente" }
+      mandos:
+        - { valor: V_D, min: 0.4, max: 0.7, paso: 0.05, rotulo: "Tensión del diodo, V_{D}" }
+
+  - id: estime-060
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Con 0,6 V"
+    texto: "Un diodo de silicio con I_{S} = 10⁻¹² A y n = 1 recibe 0,6 V en directa. Estime su corriente con la ecuación de Shockley."
+    libro: [101, "cap05#348"]
+    fijar: { V_D: 0.6 }
+    estimar:
+      objetivo: "I_D"
+      unidad: A
+      min: 0
+      max: 0.03
+      paso: 0.0005
+      inicio: 0.025
+      tol: 0.05
+      rotulo: "I_{D} con 0,6 V"
+    exito: "12 mA, la corriente de trabajo típica. A 0,5 V eran 251 µA: casi cincuenta veces menos."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.0126 }, texto: "Se ha pasado. 0,6/0,02585 = 23,21, y e^{23,21} vale unos 1,2 × 10¹⁰." }
+      - { texto: "Se ha quedado corto. Multiplique 10⁻¹² A por e^{23,21}, unos 1,2 × 10¹⁰." }
+    comprobar:
+      - { I_D: 0.012, tol: 0.01 }
+      - { con: { V_D: 0.5 }, I_D: 251e-6 }
+
+  - id: prediga-decadas
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "La lectura inversa: V = n·V_{T}·ln(I/I_{S}). Con I_{S} = 10⁻¹² A, el diodo pasa de 1 mA a 100 mA. ¿Cuánto sube su tensión?"
+    libro: [107, 108, 109]
+    fijar: { I_q: 0.1 }
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0.000001, max: 0.1, unidad: A, rotulo: "I", escala: log }
+      y: { min: 0.3, max: 0.7, unidad: V, rotulo: "V" }
+      curvas:
+        - { expr: "n_d*V_T*ln(i/I_S)", color: azul, rotulo: "V" }
+      lectura: { valor: V_q, rotulo: "Tensión con 100 mA" }
+      ocultar: true
+    opciones:
+      - texto: "Solo 119 mV"
+        bien: true
+        porque: "De 0,536 a 0,655 V: cien veces más corriente, dos décadas de 59,5 mV. Por eso «cae 0,7 V» funciona."
+      - texto: "Cien veces"
+        porque: "La tensión va con el logaritmo de la corriente: cien veces más suma poco."
+      - texto: "0,7 V, como siempre"
+        porque: "La tensión sí se mueve, pero poco: 59,5 mV por cada década de corriente."
+    comprobar:
+      - { V_q: 0.655 }
+      - { con: { I_q: 0.001 }, V_q: 0.536 }
+
+  - id: explore-idealidad
+    tipo: explorar
+    titulo: "El factor de idealidad"
+    texto: "Elija el mecanismo que domina y mire la pendiente: cuántos milivoltios hacen falta para multiplicar la corriente por diez."
+    nota: "Recombinación a corrientes bajas; difusión a corrientes medias."
+    libro: [105, 112]
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0.3, max: 0.9, unidad: V, rotulo: "V_{D}" }
+      y: { min: 0.0000001, max: 1, unidad: A, rotulo: "I_{D}", escala: log }
+      curvas:
+        - { expr: "I_S*(exp(x/(n_d*V_T)) - 1)", color: naranja, rotulo: "I_{D}" }
+      lectura: { valor: dec, rotulo: "Tensión por década" }
+      mandos:
+        - { valor: n_d, lista: [1, 2], nombres: [difusión, recombinación], rotulo: "Mecanismo, n" }
+    requiere: { mover: [n_d] }
+    comprobar:
+      - { dec: 0.0595 }
+      - { con: { n_d: 2 }, dec: 0.119 }
+
+  - id: formula-rd
+    tipo: formula
+    titulo: "La resistencia dinámica"
+    texto: "El diodo no tiene «una resistencia»: tiene una pendiente en cada punto. Cambie R y mire cómo cambia r_{d} con la corriente."
+    libro: [116, 117, 118]
+    ec: 116
+    sustitucion: "{{n_d}} · {{V_T}} / {{I_ds}} = {{r_d}}"
+    widget:
+      tipo: circuito
+      esquema: diodo
+      piezas: { fuente: V_s, r: R_s, is: I_S, n: n_d, vt: V_T }
+      lectura: { valor: r_d, rotulo: "Resistencia dinámica" }
+      datos:
+        - { valor: I_ds, rotulo: "I_{D} = {{I_ds}}" }
+        - { valor: V_ds, rotulo: "V_{D} = {{V_ds}}" }
+      corriente: I_ds
+      mide: { corriente: I_ds, vd: V_ds }
+      mandos:
+        - { valor: R_s, lista: [100, 1000, 10000] }
+    fijar: { n_d: 1 }
+
+  - id: empareje-modelos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cuatro modelos"
+    texto: "Elegir el modelo es una decisión de ingeniería. Empareje cada modelo del diodo con un caso en que es el adecuado."
+    libro: [120, 121, 122, 123]
+    emparejar:
+      - ["Ideal, un interruptor", "Un rectificador de 325 V de pico"]
+      - ["Caída constante, 0,7 V", "El 90 % de los cálculos de diseño"]
+      - ["Lineal por tramos", "La disipación de un puente a plena carga"]
+      - ["Ecuación completa", "Una referencia de tensión bandgap"]
+    exito: "Eso es. Usar la ecuación donde basta la caída constante solo multiplica el trabajo."
+    pistas:
+      - { texto: "Cuanto más grandes las tensiones frente a 0,7 V, más simple puede ser el modelo." }
+
+  - id: formula-temperatura
+    tipo: formula
+    titulo: "Menos tensión al calentarse"
+    texto: "A corriente constante, la tensión del diodo baja al calentarse. Mire el coeficiente en dos puntos de trabajo."
+    nota: "La curva entera se desplaza a la izquierda: es un termómetro barato."
+    libro: [127, 128, 129, 131]
+    ec: 127
+    sustitucion: "({{V_op}} − 1,206 − 3 · {{V_T}}) / 300 = {{dVdT}}"
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0.5, max: 0.8, unidad: V, rotulo: "V" }
+      y: { min: -0.003, max: -0.001, unidad: "V/°C", rotulo: "dV/dT" }
+      curvas:
+        - { expr: "(x - 1.206 - 3*V_T)/300", color: azul, rotulo: "coeficiente térmico" }
+      asas:
+        - { mueve: V_op, x: "V_op", y: "dVdT", rotulo: "Tensión de trabajo" }
+      lectura: { valor: dVdT, rotulo: "Coeficiente térmico" }
+      mandos:
+        - { valor: V_op, lista: [0.6, 0.7], rotulo: "Tensión de trabajo" }
+    comprobar:
+      - { dVdT: -0.00228 }
+      - { con: { V_op: 0.7 }, dVdT: -0.00195 }
+
+  - id: reto-led
+    tipo: reto
+    titulo: "Reto: un LED a 20 mA"
+    texto: "Un LED rojo de 2,0 V nominales, desde 5 V. Elija la resistencia de la serie E24 que le da 20 mA (± 2 %)."
+    libro: [133, 135]
+    fijar: { V_e: 5, V_fe: 2 }
+    inicio: { R_e: 100 }
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_e, r: R_e, vf: V_fe }
+      lectura: { valor: I_e, rotulo: "Corriente del LED" }
+      corriente: I_e
+      mide: { corriente: I_e, vf: V_fe }
+      mandos:
+        - { valor: R_e, serie: E24, min: 100, max: 1000, rotulo: "R (E24)" }
+    condiciones:
+      - { valor: I_e, objetivo: 0.02, tol: 0.02, rotulo: "LED: {{I_e}}" }
+    exito: "R = (5 − 2,0)/0,020 = 150 Ω, y la serie E24 lo tiene. Disipa 60 mW: una de 1/4 W va sobrada."
+    pistas:
+      - { cuando: { valor: I_e, mayor: 0.0204 }, texto: "Demasiada corriente: hace falta más resistencia." }
+      - { cuando: { valor: I_e, menor: 0.0196 }, texto: "Poca corriente: baje la resistencia." }
+    ayuda: "La resistencia se queda con 5 − 2,0 = 3 V y debe dejar pasar 0,020 A."
+    comprobar:
+      - { con: { R_e: 150 }, I_e: 0.02 }
+
+  - id: sorpresa-dispersion
+    tipo: sorpresa
+    titulo: "Dos LED del mismo lote"
+    texto: "Con 5 V y 150 Ω, cambie la V_{f} del LED dentro de su tolerancia, de 1,8 a 2,2 V, y mire la corriente."
+    libro: [136, 137, 138]
+    fijar: { V_e: 5, R_e: 150 }
+    inicio: { V_fe: 2 }
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_e, r: R_e, vf: V_fe }
+      lectura: { valor: I_e, rotulo: "Corriente del LED" }
+      corriente: I_e
+      mide: { corriente: I_e, vf: V_fe }
+      mandos:
+        - { valor: V_fe, lista: [1.8, 2, 2.2], rotulo: "Tensión del LED, V_{f}" }
+    requiere: { mover: [V_fe] }
+    comprobar:
+      - { con: { V_fe: 1.8 }, I_e: 0.0213 }
+      - { con: { V_fe: 2.2 }, I_e: 0.0187 }
+
+  - id: prediga-25
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Un LED rojo cuya V_{f} va de 1,8 a 2,2 V según la unidad, alimentado desde 2,5 V con 25 Ω. ¿Entre qué corrientes queda?"
+    libro: [138]
+    fijar: { V_e: 2.5, R_e: 25 }
+    inicio: { V_fe: 2 }
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_e, r: R_e, vf: V_fe }
+      lectura: { valor: I_e, rotulo: "Corriente del LED" }
+      corriente: I_e
+      mide: { corriente: I_e, vf: V_fe }
+      ocultar: true
+      mandos:
+        - { valor: V_fe, lista: [1.8, 2, 2.2], rotulo: "Tensión del LED, V_{f}" }
+    opciones:
+      - texto: "Entre 28 y 12 mA"
+        bien: true
+        porque: "La resistencia solo se queda con 0,5 V: la dispersión pesa mucho más. Un factor 2,3."
+      - texto: "Entre 21,3 y 18,7 mA, como con 5 V"
+        porque: "Con 5 V la resistencia se quedaba con 3 V. Con 0,5 V, los mismos 0,2 V de dispersión pesan seis veces más."
+      - texto: "20 mA siempre"
+        porque: "Solo con 2,0 V justos. La corriente depende de lo que quede sobre la resistencia."
+    comprobar:
+      - { con: { V_fe: 1.8 }, I_e: 0.028 }
+      - { con: { V_fe: 2.2 }, I_e: 0.012 }
+
+  - id: porque-paralelo
+    tipo: porque
+    titulo: "Dos LED, una resistencia"
+    texto: "Dos LED en paralelo comparten una sola resistencia y uno luce mucho más que el otro. ¿Por qué?"
+    libro: [140]
+    opciones:
+      - texto: "Sus exponenciales no son idénticas: el de menor V_{f} se lleva casi toda la corriente"
+        bien: true
+        porque: "Luce más, se calienta, su V_{f} baja aún más y agrava el reparto. Cada LED necesita su resistencia."
+      - texto: "Se reparten la corriente a medias"
+        porque: "Solo si fueran idénticos. Con una exponencial, una pequeña diferencia de V_{f} desequilibra mucho."
+      - texto: "Uno de los dos está defectuoso"
+        porque: "No hace falta un defecto: dos LED sanos del mismo lote tienen V_{f} algo distintas, y la exponencial lo amplifica."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [103, 109, 116, 121, 129, 138]
+    ideas:
+      - { titulo: "No hay umbral.", texto: "I = I_{S}·(e^{V/nV_{T}} − 1): 59,5 mV por década con n = 1; 119 mV con n = 2." }
+      - { titulo: "Por eso 0,7 V.", texto: "De 1 a 100 mA la tensión sube 119 mV: la caída constante basta en el 90 % de los diseños." }
+      - { titulo: "r_{d} = n·V_{T}/I.", texto: "La pendiente en el punto de trabajo; baja con la corriente: 2,59 Ω a 10 mA." }
+      - { titulo: "Temperatura y dispersión.", texto: "Unos −2 mV/°C. Con poca tensión sobre la resistencia, la dispersión de V_{f} manda." }

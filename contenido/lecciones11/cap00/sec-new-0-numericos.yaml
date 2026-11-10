@@ -1,0 +1,295 @@
+# Lección 1.1 de la sección 0.13 «Métodos Numéricos: Cómo Resuelve el Simulador un Circuito» (cap00; ampliación P08,
+# «Aún no en el libro»): el diodo sin fórmula, Newton-Raphson como un circuito lineal por paso, el arranque desde 0 V y
+# la limitación de SPICE, la matriz de nodos y su eliminación, el condicionamiento con picoohmios, el modelo de
+# compañía del condensador, la estabilidad de Euler explícito (manda el modo rápido) y los tres métodos anidados.
+# Propuesta de P08/NOTAS.md («Lección 1.1 de la sección nueva»). Formato: contenido/lecciones11/GUIA.md.
+leccion: cap00/sec-new-0-numericos
+
+libro:
+  180: "son tres métodos numéricos, uno dentro de otro"
+  182: "Una fuente de 10 mA entra en el nodo 1"
+  183: 'mat("1,5", "−0,5", 0; "−0,5", 2, -1; 0, -1, 2)'
+  184: "v₃ = 1,25 V. Hacia atrás, v₂ = (3,333 + 1,25)/1,833 = 2,5 V y v₁ = (10 + 0,5 × 2,5)/1,5 = 7,5 V"
+  185: "con las 16 cifras de un ordenador"
+  189: "v₂ exacta (V)"
+  190: "aun así da v₂ un 2,6 % alta"
+  192: "el diodo de la sección 5.3"
+  193: "que dobla las cifras correctas en cada paso"
+  195: "0,58363831"
+  196: "La solución es 0,57415 V y 4,4259 mA"
+  197: "hacen falta 175 iteraciones, y SPICE se rinde a las 100"
+  198: "el primer paso queda en VT·ln(5 V/VT) = 0,136 V"
+  201: "una conductancia C/h en paralelo con una fuente"
+  202: 'i_(n+1) = C/h dot.op (v_(n+1) - v_n)'
+  203: "frente a e−0,1 = 0,9048 exacto"
+  204: "En las dos etapas RC de la figura 0.13, h ≤ 7,64 ms"
+  205: "los tres métodos uno dentro de otro"
+
+modelo:
+  valores:
+    V_d: { sim: "V", nombre: "tensión de la fuente", unidad: V, valor: 5 }
+    R_d: { sim: "R", nombre: "resistencia", unidad: Ω, valor: 1000 }
+    I_S: { sim: "I_{S}", nombre: "corriente de saturación", unidad: A, valor: 1e-12 }
+    n_d: { sim: "n", nombre: "factor de idealidad", unidad: "", valor: 1 }
+    V_T: { sim: "V_{T}", nombre: "tensión térmica", unidad: V, valor: 0.02585 }
+    v_0: { sim: "v₀", nombre: "tensión de arranque de Newton", unidad: V, valor: 0.6 }
+    N_it: { sim: "N", nombre: "iteraciones desde 0 V sin limitar, según el libro", unidad: "", valor: 175 }
+    I_n: { sim: "I", nombre: "corriente que entra en el nodo 1", unidad: A, valor: 0.01 }
+    R_1n: { sim: "R₁", nombre: "resistencia del nodo 1 a masa", unidad: Ω, valor: 1000 }
+    R_2n: { sim: "R₂", nombre: "resistencia del nodo 1 al 2", unidad: Ω, valor: 2000 }
+    R_3n: { sim: "R₃", nombre: "resistencia del nodo 2 a masa", unidad: Ω, valor: 2000 }
+    R_4: { sim: "R₄", nombre: "resistencia del nodo 2 al 3", unidad: Ω, valor: 1000 }
+    R_5n: { sim: "R₅", nombre: "resistencia del nodo 3 a masa", unidad: Ω, valor: 1000 }
+    C_c: { sim: "C", nombre: "condensador", unidad: F, valor: 1e-6 }
+    R_c: { sim: "R", nombre: "resistencia de descarga", unidad: Ω, valor: 1000 }
+    h_c: { sim: "h", nombre: "paso de integración", unidad: s, valor: 0.0001 }
+    R_e: { sim: "R", nombre: "resistencia de cada etapa", unidad: Ω, valor: 10000 }
+    C_e: { sim: "C", nombre: "condensador de cada etapa", unidad: F, valor: 1e-6 }
+    h_e: { sim: "h", nombre: "paso de Euler explícito", unidad: s, valor: 0.002 }
+  calculos:
+    # the diode with its resistor (Shockley, solved with Wright's omega as the schematic «diodo» does)
+    I_ds: { expr: "n_d*V_T/R_d*wright(ln(I_S*R_d/(n_d*V_T)) + (V_d + I_S*R_d)/(n_d*V_T)) - I_S", sim: "I_{D}", nombre: "corriente del diodo", unidad: A, cifras: 5 }
+    V_ds: { expr: "V_d - I_ds*R_d", sim: "V_{D}", nombre: "tensión del diodo", unidad: V, cifras: 5 }
+    # Newton-Raphson unrolled (Ec. 4: each step solves the circuit with the diode's tangent)
+    I_0: { expr: "I_S*(exp(v_0/(n_d*V_T)) - 1)", sim: "I₀", nombre: "corriente del diodo en v₀", unidad: A }
+    g_0: { expr: "I_S/(n_d*V_T)*exp(v_0/(n_d*V_T))", sim: "g₀", nombre: "conductancia de la tangente en v₀", unidad: S }
+    v_1: { expr: "(V_d/R_d - I_0 + g_0*v_0)/(1/R_d + g_0)", sim: "v₁", nombre: "primera iteración", unidad: V, cifras: 5 }
+    I_1: { expr: "I_S*(exp(v_1/(n_d*V_T)) - 1)", nombre: "corriente del diodo en v₁", unidad: A }
+    g_1: { expr: "I_S/(n_d*V_T)*exp(v_1/(n_d*V_T))", nombre: "conductancia de la tangente en v₁", unidad: S }
+    v_2: { expr: "(V_d/R_d - I_1 + g_1*v_1)/(1/R_d + g_1)", sim: "v₂", nombre: "segunda iteración", unidad: V, cifras: 5 }
+    I_2: { expr: "I_S*(exp(v_2/(n_d*V_T)) - 1)", nombre: "corriente del diodo en v₂", unidad: A }
+    g_2: { expr: "I_S/(n_d*V_T)*exp(v_2/(n_d*V_T))", nombre: "conductancia de la tangente en v₂", unidad: S }
+    v_3: { expr: "(V_d/R_d - I_2 + g_2*v_2)/(1/R_d + g_2)", sim: "v₃", nombre: "tercera iteración", unidad: V, cifras: 5 }
+    e_3: { expr: "abs(v_3 - V_ds)", sim: "error", nombre: "error tras tres iteraciones", unidad: V, cifras: 2 }
+    # the three-node circuit, eliminated as the book does
+    G_11: { expr: "1/R_1n + 1/R_2n", nombre: "conductancia total del nodo 1", unidad: S }
+    d_2: { expr: "1/R_2n + 1/R_3n + 1/R_4 - (1/R_2n)^2/G_11", nombre: "segundo pivote", unidad: S }
+    b_2: { expr: "I_n/R_2n/G_11", nombre: "segundo término independiente", unidad: A }
+    d_3: { expr: "1/R_4 + 1/R_5n - (1/R_4)^2/d_2", nombre: "tercer pivote", unidad: S }
+    v_n3: { expr: "b_2/R_4/d_2/d_3", sim: "v₃", nombre: "tensión del nodo 3", unidad: V, cifras: 4 }
+    v_n2: { expr: "(b_2 + v_n3/R_4)/d_2", sim: "v₂", nombre: "tensión del nodo 2", unidad: V, cifras: 4 }
+    v_n1: { expr: "(I_n + v_n2/R_2n)/G_11", sim: "v₁", nombre: "tensión del nodo 1", unidad: V, cifras: 4 }
+    # companion model of the capacitor (implicit Euler), discharging through R_c
+    tau_c: { expr: "R_c*C_c", sim: "τ", nombre: "constante de tiempo", unidad: s }
+    G_c: { expr: "C_c/h_c", sim: "C/h", nombre: "conductancia del modelo de compañía", unidad: S }
+    fac: { expr: "(C_c/h_c)/(1/R_c + C_c/h_c)", sim: "factor", nombre: "factor por paso de Euler implícito", unidad: "", cifras: 4 }
+    fex: { expr: "exp(-h_c/tau_c)", sim: "exacto", nombre: "factor exacto por paso", unidad: "", cifras: 4 }
+    # the two RC stages of figure 0.13: eigenvalues from trace and determinant (Ec. 1)
+    tau_e: { expr: "R_e*C_e", nombre: "constante de tiempo de cada etapa", unidad: s }
+    tr_e: { expr: "-3/tau_e", nombre: "traza de la matriz de estado", unidad: "" }
+    det_e: { expr: "1/tau_e^2", nombre: "determinante de la matriz de estado", unidad: "" }
+    l_1: { expr: "tr_e/2 + sqrt((tr_e/2)^2 - det_e)", nombre: "autovalor lento", unidad: "" }
+    l_2: { expr: "tr_e/2 - sqrt((tr_e/2)^2 - det_e)", nombre: "autovalor rápido", unidad: "" }
+    tau_1: { expr: "-1/l_1", sim: "τ₁", nombre: "constante de tiempo lenta", unidad: s }
+    tau_2: { expr: "-1/l_2", sim: "τ₂", nombre: "constante de tiempo rápida", unidad: s }
+    f_l: { expr: "abs(1 - h_e/tau_1)", nombre: "factor por paso del modo lento", unidad: "", cifras: 3 }
+    f_r: { expr: "abs(1 - h_e/tau_2)", sim: "factor", nombre: "factor por paso del modo rápido", unidad: "", cifras: 3 }
+
+tarjetas:
+  - id: explore-diodo
+    tipo: explorar
+    titulo: "Un diodo sin fórmula"
+    texto: "El diodo de la sección 5.3 con una resistencia: su punto de trabajo no se despeja con funciones elementales. Mueva la fuente y la resistencia."
+    nota: "La tensión del diodo apenas cambia; la corriente, mucho."
+    libro: [192, 196]
+    widget:
+      tipo: circuito
+      esquema: diodo
+      piezas: { fuente: V_d, r: R_d, is: I_S, n: n_d, vt: V_T }
+      lectura: { valor: V_ds, rotulo: "Tensión del diodo" }
+      datos:
+        - { valor: I_ds, rotulo: "Corriente: {{I_ds}}" }
+      corriente: I_ds
+      mide: { corriente: I_ds, vd: V_ds }
+      mandos:
+        - { valor: V_d, min: 1, max: 10, paso: 0.5 }
+        - { valor: R_d, lista: [100, 1000, 10000] }
+    requiere: { mover: [V_d] }
+    comprobar:
+      - { con: { V_d: 5, R_d: 1000 }, V_ds: 0.57415, I_ds: 0.0044259, tol: 0.0005 }
+
+  - id: prediga-primer-paso
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Newton-Raphson busca el punto de trabajo de ese diodo, con 5 V y 1 kΩ, arrancando en 0 V. ¿Adónde lleva el primer paso?"
+    libro: [192, 197, 198]
+    fijar: { V_d: 5, R_d: 1000 }
+    opciones:
+      - texto: "A 5,0 V"
+        bien: true
+        porque: "En 0 V el diodo apenas conduce: su tangente casi no deja pasar corriente, y el circuito lineal deja toda la fuente en él."
+      - texto: "Directo a la solución, unos 0,574 V"
+        porque: "Así trabaja Newton cerca de la solución. Desde 0 V la tangente de la exponencial es casi plana y el paso se va lejísimos."
+      - texto: "A 0,611 V, la tensión crítica"
+        porque: "A partir de esa tensión SPICE limita los pasos; Newton sin limitar no la conoce."
+    comprobar:
+      - { V_ds: 0.574 }
+
+  - id: explore-newton
+    tipo: explorar
+    titulo: "Cada paso, un circuito lineal"
+    texto: "Newton cambia el diodo por su tangente en v₀ y resuelve el circuito: su corte con la recta de la resistencia es v₁. Arrastre v₀."
+    nota: "Cerca de la solución, cada paso dobla las cifras correctas."
+    libro: [193, 195]
+    fijar: { V_d: 5, R_d: 1000 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0.55, max: 0.62, unidad: V, rotulo: "v" }
+      y: { min: 0, max: 0.02, unidad: A, rotulo: "i" }
+      curvas:
+        - { expr: "I_S*(exp(x/(n_d*V_T)) - 1)", color: naranja, rotulo: "diodo" }
+        - { expr: "(V_d - x)/R_d", color: azul, rotulo: "resistencia" }
+        - { expr: "I_0 + g_0*(x - v_0)", color: tinta, rotulo: "tangente en v₀", discontinua: true }
+      asas:
+        - { mueve: v_0, x: "v_0", y: "I_0", rotulo: "Arranque, v₀" }
+      lectura: { valor: e_3, rotulo: "Error tras tres pasos" }
+      datos:
+        - { valor: v_1, rotulo: "v₁ = {{v_1}}" }
+        - { valor: v_2, rotulo: "v₂ = {{v_2}}" }
+      mandos:
+        - { valor: v_0, min: 0.56, max: 0.62, paso: 0.005, rotulo: "Arranque, v₀" }
+    requiere: { mover: [v_0] }
+    comprobar:
+      - { con: { v_0: 0.6 }, v_1: 0.58364, v_2: 0.57569, tol: 0.0005 }
+
+  - id: formula-nodos
+    tipo: formula
+    titulo: "La matriz de nodos"
+    texto: "Cada fila es Kirchhoff en un nodo: en la diagonal, las conductancias que lo tocan; fuera, con signo menos, las que lo unen a otro."
+    nota: "La eliminación da v₃, luego v₂ y v₁."
+    libro: [182, 183, 184]
+    ec: 183
+    sustitucion: "v₁ = {{v_n1}},  v₂ = {{v_n2}},  v₃ = {{v_n3}}"
+    comprobar:
+      - { v_n1: 7.5, v_n2: 2.5, v_n3: 1.25 }
+      - { con: { R_4: 0.001 }, v_n2: 1.818183, v_n3: 1.818183, tol: 0.00001 }
+
+  - id: pregunta-picoohmios
+    tipo: pregunta
+    titulo: "Una resistencia de picoohmios"
+    texto: "En ese circuito de kiloohmios, R₄ pasa a valer 1 pΩ. ¿Qué ocurre al resolverlo con las 16 cifras de un ordenador?"
+    libro: [185, 189, 190]
+    opciones:
+      - texto: "La matriz pierde cifras al montarse y v₂ sale un 2,6 % alta"
+        bien: true
+        porque: "G₂₂ necesita dieciséis cifras: el 0,001 S de R₂ y R₃ pierde un 2,3 % al sumarse al billón."
+      - texto: "Nada: el ordenador trabaja con 16 cifras"
+        porque: "Esa suma necesita justo las dieciséis: el error aparece al montar la matriz, antes de resolverla."
+      - texto: "ngspice responde «singular matrix»"
+        porque: "Ese mensaje es de un nodo sin camino de continua a masa. Con 1 pΩ ngspice resuelve, con un 2,6 % de error."
+
+  - id: formula-compania
+    tipo: formula
+    titulo: "El condensador en un paso"
+    texto: "Con Euler implícito, durante un paso h el condensador es una conductancia C/h con una fuente que recuerda la tensión anterior. Elija h."
+    nota: "Con 0,1 ms, cada paso multiplica por 0,9091; el exacto, 0,9048."
+    libro: [201, 202, 203]
+    ec: 202
+    sustitucion: "C/h = {{C_c}} / {{h_c}} = {{G_c}};  factor por paso = {{fac}}"
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 0.005, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "exp(-x/tau_c)", color: tinta, rotulo: "exacta", discontinua: true }
+        - { expr: "(1 + h_c/tau_c)^(-floor(x/h_c))", color: azul, rotulo: "Euler implícito" }
+      lectura: { valor: fac, rotulo: "Factor por paso" }
+      datos:
+        - { valor: fex, rotulo: "Exacto: {{fex}}" }
+      mandos:
+        - { valor: h_c, lista: [0.0001, 0.0002, 0.0005, 0.001], rotulo: "Paso, h" }
+    requiere: { mover: [h_c] }
+    comprobar:
+      - { fac: 0.9091, fex: 0.9048, tol: 0.0005 }
+
+  - id: reto-paso
+    tipo: reto
+    titulo: "Reto: el paso más largo"
+    texto: "Euler explícito sobre las dos etapas RC de la figura 0.13. Elija el paso más largo con el que ningún modo crece."
+    libro: [204]
+    inicio: { h_e: 0.002 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 0.012, unidad: s, rotulo: "paso h" }
+      y: { min: 0, max: 2.5, unidad: "", rotulo: "factor por paso" }
+      curvas:
+        - { expr: "abs(1 - x/tau_1)", color: azul, rotulo: "modo lento" }
+        - { expr: "abs(1 - x/tau_2)", color: naranja, rotulo: "modo rápido" }
+        - { expr: "1 + 0*x", color: tinta, rotulo: "límite", discontinua: true }
+      asas:
+        - { mueve: h_e, x: "h_e", y: "f_r", rotulo: "Paso, h" }
+      lectura: { valor: f_r, rotulo: "Factor del modo rápido" }
+      datos:
+        - { valor: f_l, rotulo: "Modo lento: {{f_l}}" }
+      mandos:
+        - { valor: h_e, min: 0.0005, max: 0.012, paso: 0.0005, rotulo: "Paso, h" }
+    condiciones:
+      - { valor: h_e, min: 0.00725, max: 0.00764, rotulo: "Paso: {{h_e}}" }
+    exito: "7,5 ms: el límite es h ≤ 7,64 ms, el doble de los 3,82 ms del modo rápido, aunque la respuesta sea la del lento."
+    pistas:
+      - { cuando: { valor: h_e, mayor: 0.00764 }, texto: "El modo rápido crece: su factor pasa de la unidad. Manda él, aunque apenas se vea en la respuesta." }
+      - { cuando: { valor: h_e, menor: 0.00725 }, texto: "Los dos modos se apagan: todavía puede alargar el paso." }
+    ayuda: "Euler explícito exige h ≤ 2·τ en cada modo, y manda el más rápido, de 3,82 ms."
+    comprobar:
+      - { con: { h_e: 0.0075 }, h_e: 0.0075, tau_2: 0.00382, tau_1: 0.0262, tol: 0.002 }
+
+  - id: estime-iteraciones
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Desde 0 V, sin limitar"
+    texto: "Desde 0 V, el primer paso de Newton lleva el diodo a 5,0 V, y después cada iteración baja casi exactamente V_{T}. Estime cuántas iteraciones hacen falta."
+    libro: [197]
+    estimar:
+      objetivo: "N_it"
+      unidad: ""
+      min: 10
+      max: 400
+      paso: 5
+      inicio: 50
+      tol: 0.05
+      rotulo: "Iteraciones"
+    exito: "175 iteraciones: SPICE se rinde a las 100, su límite ITL1."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 183 }, texto: "Se ha pasado: cada iteración baja V_{T}, desde 5,0 V hasta la solución." }
+      - { texto: "Se ha quedado corto: cada iteración baja solo V_{T}, unas centésimas de voltio, desde 5,0 V." }
+
+  - id: por-que-limitar
+    tipo: porque
+    titulo: "¿Por qué limitar el paso?"
+    texto: "SPICE no deja dar ese salto: por encima de la tensión crítica, sustituye el paso de la tensión de una unión por su logaritmo. ¿Por qué?"
+    libro: [198]
+    opciones:
+      - texto: "Lejos de la solución, la tangente de una exponencial manda el cálculo a tensiones absurdas"
+        bien: true
+        porque: "Con la limitación, desde 0 V el primer paso queda en 0,136 V, y en seis iteraciones el punto está calculado."
+      - texto: "Porque el diodo real se rompería por encima de esa tensión"
+        porque: "Es un cálculo, no el diodo: la limitación solo evita pasos absurdos de Newton."
+      - texto: "Porque la matriz del circuito sería singular"
+        porque: "La matriz se resuelve en cada paso; lo que falla es Newton, que desde lejos avanza despacio o desborda."
+
+  - id: ordene-bucle
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Un instante de un transitorio"
+    texto: "Ordene lo que hace un simulador en cada instante de un transitorio de un circuito con diodos."
+    libro: [180, 205]
+    ordenar:
+      - "Avanzar un paso h en el tiempo"
+      - "Cambiar condensadores y bobinas por sus modelos de compañía"
+      - "Cambiar los diodos por su tangente (Newton)"
+      - "Resolver el circuito lineal por eliminación LU"
+      - "Repetir Newton hasta que converja"
+      - "Aceptar el instante si el error es pequeño"
+    exito: "Tres métodos, uno dentro de otro: la integración, Newton y, en el centro, la eliminación."
+    pistas:
+      - { texto: "De fuera adentro: el instante, luego Newton, y en el centro el circuito lineal." }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [184, 193, 202, 204]
+    ideas:
+      - { titulo: "Eliminación.", texto: "Kirchhoff en cada nodo da una matriz que la factorización LU resuelve; pivotar evita dividir por números pequeños." }
+      - { titulo: "Newton.", texto: "Cambia el diodo por su tangente y resuelve un circuito lineal; desde lejos, SPICE limita el paso." }
+      - { titulo: "Compañía.", texto: "Con Euler implícito, durante cada paso el condensador es una conductancia C/h con una fuente." }
+      - { titulo: "Rigidez.", texto: "Euler explícito exige h ≤ 2·τ del modo más rápido; por eso SPICE usa métodos implícitos." }

@@ -1,0 +1,236 @@
+# Lección 1.1 de la sección 6.9 «El Efecto Early y la Resistencia de Salida» (cap06): las curvas de salida inclinadas
+# que convergen en −V_A, el ejemplo del capítulo (de 6,31 a 12 V con V_A = 100 V: +5,35 %), la ecuación corregida, la
+# modulación del ancho de la base, r_o = V_A/I_C (ej. 6.8: 100 kΩ a 1 mA), la fuente de corriente que no es ideal (1 %
+# por voltio), el punch-through, el compromiso con la velocidad y la medida. Las curvas de 0,5 y 2 mA que acompañan a la
+# del ejemplo (1,324 mA) son mías. Formato: contenido/lecciones11/GUIA.md.
+leccion: cap06/sec-6.9
+
+libro:
+  293: "todas cortan el eje de tensiones en un mismo punto negativo"
+  295: 'I_("C") = I_("S")'
+  297: "La base efectiva —la parte que los portadores tienen que atravesar por difusión— se estrecha."
+  298: "pasar VCE de 6,31 a 12 V con VA = 100 V aumenta IC un 5,35 %"
+  299: "es el punch-through"
+  302: 'r_("o") = (V_("A"))/(I_("C"))'
+  303: "que a 1,324 mA con VA = 100 V vale 75,5 kΩ"
+  305: "eso significa un 1 % de error por cada voltio de excursión"
+  306: "velocidad y ganancia intrínseca tiran en sentidos opuestos"
+  308: "Se polariza el transistor con una corriente de base fija, se varía VCE en varios puntos"
+  "cap06#488": "Un transistor tiene una tensión de Early VA = 100 V"
+
+modelo:
+  valores:
+    V_A: { sim: "V_{A}", nombre: "tensión de Early", unidad: V, valor: 100 }
+    I_Q: { sim: "I_{CQ}", nombre: "corriente del ejemplo", unidad: A, valor: 0.001324 }
+    V_q: { sim: "V_{CEQ}", nombre: "tensión colector-emisor del ejemplo", unidad: V, valor: 6.31 }
+    V_ce: { sim: "V_{CE}", nombre: "tensión colector-emisor", unidad: V, valor: 6.31 }
+    I_1: { sim: "I_{C}", nombre: "corriente del ejercicio", unidad: A, valor: 0.001 }
+    V_x: { sim: "ΔV", nombre: "excursión de tensión en la carga", unidad: V, valor: 0 }
+  calculos:
+    I_ce: { expr: "I_Q*(1 + V_ce/V_A)/(1 + V_q/V_A)", sim: "I_{C}", nombre: "corriente de colector", unidad: A, cifras: 4 }
+    inc: { expr: "(I_ce/I_Q - 1)*100", sim: "ΔI_{C}", nombre: "aumento de I_C frente al reposo", unidad: "%", cifras: 3 }
+    f_ce: { expr: "1 + V_ce/V_A", sim: "1 + V_{CE}/V_{A}", nombre: "factor de Early", unidad: "", cifras: 4 }
+    f_q: { expr: "1 + V_q/V_A", sim: "1 + V_{CEQ}/V_{A}", nombre: "factor de Early en reposo", unidad: "", cifras: 5 }
+    I_0: { expr: "I_Q/(1 + V_q/V_A)", sim: "I_{S}·e^{V_{BE}/V_{T}}", nombre: "corriente sin efecto Early", unidad: A, cifras: 4 }
+    r_o: { expr: "V_A/I_Q", sim: "r_{o}", nombre: "resistencia de salida", unidad: Ω }
+    r_o1: { expr: "V_A/I_1", sim: "r_{o}", nombre: "resistencia de salida a 1 mA", unidad: Ω }
+    err_m: { expr: "100*V_x/V_A", sim: "error", nombre: "error de la fuente de corriente", unidad: "%", cifras: 2 }
+    I_m: { expr: "I_1*(1 + V_x/V_A)", sim: "I_{salida}", nombre: "corriente de la fuente", unidad: A, cifras: 4 }
+
+tarjetas:
+  - id: explore-early
+    tipo: explorar
+    titulo: "Curvas que no son horizontales"
+    texto: "En activa, I_{C} debería no depender de V_{CE}. Mueva V_{CE} sobre la curva del ejemplo y cambie V_{A}: fíjese adónde apuntan las prolongaciones."
+    libro: [293]
+    widget:
+      tipo: grafica
+      x: { id: u, min: -200, max: 15, unidad: V, rotulo: "V_{CE}" }
+      y: { min: 0, max: 0.0025, unidad: A, rotulo: "I_{C}" }
+      curvas:
+        - { expr: "max(0, 0.002*(1 + u/V_A)/(1 + V_q/V_A))", color: tinta, rotulo: "2 mA", discontinua: true }
+        - { expr: "max(0, I_Q*(1 + u/V_A)/(1 + V_q/V_A))", color: azul, rotulo: "ejemplo" }
+        - { expr: "max(0, 0.0005*(1 + u/V_A)/(1 + V_q/V_A))", color: naranja, rotulo: "0,5 mA", discontinua: true }
+      asas:
+        - { mueve: V_ce, x: "V_ce", y: "I_ce", rotulo: "Tensión colector-emisor" }
+      lectura: { valor: I_ce, rotulo: "I_{C}" }
+      datos:
+        - { valor: inc, rotulo: "Frente al reposo: {{inc}}" }
+      mandos:
+        - { valor: V_ce, min: 0, max: 15, paso: 0.01, rotulo: "V_{CE}" }
+        - { valor: V_A, min: 50, max: 200, paso: 10, rotulo: "V_{A}" }
+    requiere: { mover: [V_ce, V_A] }
+
+  - id: prediga-12v
+    tipo: predecir
+    titulo: "De 6,31 a 12 V"
+    texto: "Un transistor con V_{A} = 100 V trabaja en activa con V_{CE} = 6,31 V. Si V_{CE} sube a 12 V con la misma base, ¿cuánto aumenta I_{C}?"
+    libro: [298]
+    fijar: { V_A: 100, V_ce: 12 }
+    widget:
+      tipo: grafica
+      x: { id: u, min: -200, max: 15, unidad: V, rotulo: "V_{CE}" }
+      y: { min: 0, max: 0.0025, unidad: A, rotulo: "I_{C}" }
+      curvas:
+        - { expr: "max(0, I_Q*(1 + u/V_A)/(1 + V_q/V_A))", color: azul, rotulo: "ejemplo" }
+      lectura: { valor: inc, rotulo: "Aumento de I_{C}" }
+      ocultar: true
+    opciones:
+      - texto: "Un 5,35 %"
+        bien: true
+        porque: "I_{C} crece con (1 + V_{CE}/V_{A}): 1,12 frente a 1,0631. Poco, pero no cero: es la pendiente de la curva."
+      - texto: "Nada: en activa I_{C} no depende de V_{CE}"
+        porque: "Eso dice el modelo ideal. Medidas con cuidado, las curvas suben: es el efecto Early."
+      - texto: "Casi el doble, como V_{CE}"
+        porque: "La pendiente es pequeña: la referencia no es V_{CE} sino V_{A}, de 100 V."
+    comprobar:
+      - { inc: 5.35, f_ce: 1.12, f_q: 1.0631 }
+
+  - id: formula-early
+    tipo: formula
+    titulo: "La ecuación corregida"
+    texto: "La ecuación de la región activa gana un factor: I_{C} crece en la proporción V_{CE}/V_{A}."
+    nota: "V_{A} va de 50 a 200 V en transistores discretos."
+    libro: [295]
+    ec: 295
+    sustitucion: "{{I_0}} · (1 + {{V_ce}} / {{V_A}}) = {{I_ce}}"
+    widget:
+      tipo: grafica
+      x: { id: u, min: -200, max: 15, unidad: V, rotulo: "V_{CE}" }
+      y: { min: 0, max: 0.0025, unidad: A, rotulo: "I_{C}" }
+      curvas:
+        - { expr: "max(0, I_Q*(1 + u/V_A)/(1 + V_q/V_A))", color: azul, rotulo: "ejemplo" }
+      asas:
+        - { mueve: V_ce, x: "V_ce", y: "I_ce", rotulo: "Tensión colector-emisor" }
+      lectura: { valor: I_ce, rotulo: "I_{C}" }
+      mandos:
+        - { valor: V_ce, min: 0, max: 15, paso: 0.01, rotulo: "V_{CE}" }
+        - { valor: V_A, min: 50, max: 200, paso: 10, rotulo: "V_{A}" }
+
+  - id: por-que-early
+    tipo: porque
+    titulo: "¿Por qué sube?"
+    texto: "Con la misma corriente de base, I_{C} sube un poco al subir V_{CE}. ¿Cuál es la causa física?"
+    libro: [297]
+    opciones:
+      - texto: "La zona de agotamiento base-colector invade la base y la base efectiva se estrecha"
+        bien: true
+        porque: "Base más estrecha, menos recombinación: más α, más β y más corriente. Es la modulación del ancho de la base."
+      - texto: "El colector inyecta más portadores"
+        porque: "El colector no inyecta en activa: recoge. Lo que cambia es la base que hay que cruzar."
+      - texto: "La unión base-emisor se calienta"
+        porque: "El efecto ocurre aunque la temperatura no cambie: es geométrico, el ancho efectivo de la base."
+
+  - id: estime-ro
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La resistencia de salida"
+    texto: "Un transistor tiene V_{A} = 100 V y trabaja a 1 mA. La pendiente invertida de su curva es r_{o} = V_{A}/I_{C}. Estime r_{o}."
+    libro: [302, 303, "cap06#488"]
+    estimar:
+      objetivo: "r_o1"
+      unidad: Ω
+      min: 0
+      max: 300000
+      paso: 1000
+      inicio: 250000
+      tol: 0.06
+      rotulo: "r_{o}"
+    exito: "100 V entre 1 mA: 100 kΩ. A 1,324 mA serían 75,5 kΩ: va en paralelo con la carga y resta ganancia."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 106000 }, texto: "Se ha pasado. Divida 100 V entre 0,001 A." }
+      - { texto: "Se ha quedado corto. 100 V entre 1 mA." }
+    comprobar:
+      - { r_o1: 100000, r_o: 75500 }
+
+  - id: sorpresa-fuente
+    tipo: sorpresa
+    titulo: "Una fuente que no es tan fuente"
+    texto: "Un transistor hace de fuente de 1 mA con V_{A} = 100 V. Mueva la excursión de tensión de la carga y mire cuánto cambia la corriente."
+    libro: [305]
+    fijar: { V_A: 100 }
+    inicio: { V_x: 0 }
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 10, unidad: V, rotulo: "ΔV de la carga" }
+      y: { min: 0.0009, max: 0.0012, unidad: A, rotulo: "I_{salida}" }
+      curvas:
+        - { expr: "I_1*(1 + d/V_A)", color: naranja, rotulo: "fuente real" }
+        - { expr: "I_1", color: azul, rotulo: "fuente ideal", discontinua: true }
+      asas:
+        - { mueve: V_x, x: "V_x", y: "I_m", rotulo: "Excursión" }
+      lectura: { valor: err_m, rotulo: "Error de la corriente" }
+      datos:
+        - { valor: I_m, rotulo: "I_{salida} = {{I_m}}" }
+      mandos:
+        - { valor: V_x, min: 0, max: 10, paso: 0.5, rotulo: "Excursión, ΔV" }
+    requiere: { mover: [V_x] }
+    comprobar:
+      - { con: { V_x: 1 }, err_m: 1 }
+
+  - id: por-que-fuente
+    tipo: porque
+    titulo: "¿Cómo se arregla?"
+    texto: "Una fuente de corriente de un solo transistor yerra un 1 % por voltio de excursión (V_{A} = 100 V). ¿En qué consisten todas las soluciones?"
+    libro: [305]
+    opciones:
+      - texto: "En mantener constante la V_{CE} del transistor, para que la modulación no actúe"
+        bien: true
+        porque: "Es lo que hacen el cascodo, el espejo de Wilson y la degeneración de emisor (sección 6.11)."
+      - texto: "En subir la corriente de la fuente"
+        porque: "r_{o} = V_{A}/I_{C} baja al subir la corriente: el error relativo por voltio sigue siendo 1/V_{A}."
+      - texto: "En usar un transistor más rápido"
+        porque: "Al contrario: los rápidos tienen la base más delgada y V_{A} más baja, peor fuente."
+
+  - id: punch-through
+    tipo: pregunta
+    titulo: "Llevado al extremo"
+    texto: "Si V_{CE} crece lo suficiente, la zona de agotamiento atraviesa la base entera y toca el emisor. ¿Qué ocurre?"
+    libro: [299]
+    opciones:
+      - texto: "El punch-through: un cortocircuito efectivo entre emisor y colector que destruye el transistor"
+        bien: true
+        porque: "Es uno de los mecanismos que limitan V_{CEO}, junto con la avalancha."
+      - texto: "La ganancia se hace infinita y el transistor satura"
+        porque: "No satura: con la base atravesada, emisor y colector quedan en contacto. Se destruye."
+      - texto: "Nada: la corriente la sigue fijando V_{BE}"
+        porque: "Sin base que separe emisor y colector, V_{BE} deja de mandar: es un cortocircuito."
+
+  - id: rapidos
+    tipo: pregunta
+    titulo: "Rápido o con ganancia"
+    texto: "¿Por qué los transistores de radiofrecuencia, de f_{T} alta, suelen tener tensiones de Early bajas?"
+    libro: [306]
+    opciones:
+      - texto: "Su base es más delgada: la misma invasión de la zona de agotamiento es una fracción mayor"
+        bien: true
+        porque: "Base delgada da f_{T} alta y V_{A} baja: velocidad y ganancia intrínseca tiran en sentidos opuestos."
+      - texto: "Porque trabajan con menos corriente"
+        porque: "V_{A} no depende de la corriente de trabajo sino de la geometría de la base."
+      - texto: "Porque llevan el colector más dopado"
+        porque: "La causa que da el libro es la base: más delgada, más sensible a la zona de agotamiento."
+
+  - id: ordene-medida
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Medir V_{A}"
+    texto: "Basta la fuente de laboratorio y el multímetro. Ordene la medida de la tensión de Early."
+    libro: [308]
+    ordenar:
+      - "Polarizar el transistor con una corriente de base fija."
+      - "Variar V_{CE} en varios puntos, por ejemplo 2, 5, 10 y 15 V."
+      - "Medir I_{C} en cada uno como caída sobre una resistencia de colector pequeña."
+      - "Representar I_{C} frente a V_{CE} y prolongar la recta hasta cortar el eje en −V_{A}."
+    exito: "Eso es. El resultado suele sorprender: el mismo transistor puede dar V_{A} de 60 V a una corriente y de 120 a otra."
+    pistas:
+      - { texto: "Primero se fija la base, luego se barre V_{CE} y al final se dibuja." }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [293, 297, 302, 305]
+    ideas:
+      - { titulo: "Early.", texto: "Las curvas suben con V_{CE} y convergen en −V_{A}: de 6,31 a 12 V, un 5,35 % más." }
+      - { titulo: "La causa.", texto: "La zona de agotamiento estrecha la base efectiva: menos recombinación, más β." }
+      - { titulo: "r_{o} = V_{A}/I_{C}.", texto: "75,5 kΩ a 1,324 mA: resta ganancia y fija el techo g_{m}·r_{o}." }
+      - { titulo: "Fuentes de corriente.", texto: "Un 1 % por voltio con V_{A} = 100 V; se arregla fijando V_{CE}." }

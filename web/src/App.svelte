@@ -24,6 +24,7 @@
   import AvisoFallo from './componentes/fallos/AvisoFallo.svelte';
   import { capaProtoboard } from './lib/protoboard.svelte';
   import { enfocarContenido, focoTrasRuta } from './lib/foco-ruta';
+  import { iniciarEnlaces } from './lib/enlaces-app';
 
   let oscuroSistema = $state(false);
 
@@ -45,7 +46,7 @@
     const vars = acentos(color, tema);
     for (const [k, v] of Object.entries(vars)) raiz.style.setProperty(k, v);
     const meta = document.querySelector('meta[name="theme-color"]');
-    meta?.setAttribute('content', tema === 'oscuro' ? '#16191d' : tema === 'sepia' ? '#f5ecd9' : '#fcfbf8');
+    meta?.setAttribute('content', tema === 'oscuro' ? '#161a20' : tema === 'sepia' ? '#f8f1e3' : '#ffffff');
   });
 
   $effect(() => {
@@ -132,6 +133,8 @@
     window.addEventListener('pagehide', volcar);
 
     iniciarRuta();
+    // 1.1: the book's QR links (epa://leccion/…) given by the native shell — at start and while the app runs
+    void iniciarEnlaces();
     // Opening on the start page: fetch its chunk while the index loads.
     if (ruta.vista === 'inicio') void import('./componentes/Inicio.svelte');
     Promise.all([iniciar(), cargarUsuario()])
@@ -320,6 +323,15 @@
         {:catch e}
           <ErrorCarga grande titulo="No se pudo abrir la práctica" error={e} />
         {/await}
+      {:else if ruta.vista === 'etapas'}
+        <!-- 1.1: the four detailed projects built stage by stage in the editor, each stage checked by simulation. -->
+        {#await import('./componentes/proyectos11/PaginaEtapas.svelte')}
+          <div class="cargando" aria-live="polite"><span class="punto"></span> Abriendo los proyectos por etapas…</div>
+        {:then m}
+          <m.default ancla={ruta.ancla} />
+        {:catch e}
+          <ErrorCarga grande titulo="No se pudieron abrir los proyectos por etapas" error={e} />
+        {/await}
       {:else if ruta.vista === 'problema'}
         <!-- 0.11 group B: the problem of the day (or yesterday's, with its solution). -->
         {#await import('./componentes/problema/PaginaProblema.svelte')}
@@ -368,8 +380,9 @@
           <ErrorCarga grande titulo="No se pudieron abrir las animaciones" error={e} />
         {/await}
       {:else if ruta.vista === 'leccion'}
-        <!-- 0.9 «Estudiar por pasos»: a section as a lesson, one screen per step, full screen; loaded on demand. -->
-        {#await import('./componentes/leccion/Leccion.svelte')}
+        <!-- 0.9 «Estudiar por pasos»: a section as a lesson, one screen per step, full screen; loaded on demand.
+             1.1: the hand-authored lesson when the section has one (componentes/leccion11/ElegirLeccion.svelte). -->
+        {#await import('./componentes/leccion11/ElegirLeccion.svelte')}
           <div class="cargando" aria-live="polite"><span class="punto"></span> Abriendo la lección…</div>
         {:then m}
           {#key `${ruta.parte}/${ruta.ancla.split('/')[0]}`}

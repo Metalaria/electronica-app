@@ -1,0 +1,237 @@
+# Lección 1.1 de la sección 5.4 «Identificación Física de los Diodos» (cap05): la banda marca el cátodo y sus
+# excepciones, la prueba de diodos (la punta roja entrega la corriente; la caída dice la tecnología), el marcaje de las
+# familias y de los SMD, qué hacer sin marcaje y el error clásico de montarlo al revés. Formato:
+# contenido/lecciones11/GUIA.md.
+leccion: cap05/sec-5.4
+
+libro:
+  151: "cuál es el cátodo y qué diodo es este"
+  153: "la banda marca el cátodo"
+  155: "la referencia fiable es el chaflán, no la longitud"
+  157: "El instrumento entrega corriente por la punta roja"
+  158: "Tecnología probable"
+  161: "Como cuestan lo mismo, en la práctica se compra el 4007 para todo"
+  162: "No hay forma de deducirlo; hay que consultar una tabla de códigos SMD"
+  163: "Sin marcaje legible, la secuencia es"
+  165: "Montar un diodo al revés en un rectificador produce"
+  "cap05#121": "El diodo es una fuente de 0,7 V"
+
+modelo:
+  valores:
+    V_d: { sim: "V", nombre: "tensión de la pila", unidad: V, valor: 5 }
+    R_d: { sim: "R", nombre: "resistencia", unidad: Ω, valor: 1000 }
+    V_D: { sim: "V_{D}", nombre: "caída del diodo", unidad: V, valor: 0.7 }
+  calculos:
+    I_dc: { expr: "max(0, (V_d - V_D)/R_d)", sim: "I_{D}", nombre: "corriente del diodo", unidad: A }
+    V_dc: { expr: "V_d - I_dc*R_d", sim: "V_{D}", nombre: "tensión del diodo", unidad: V }
+
+tarjetas:
+  - id: explore-sentido
+    tipo: explorar
+    titulo: "La banda es el cátodo"
+    texto: "La banda marca el cátodo: el terminal por el que sale la corriente cuando el diodo conduce. Gire el diodo y mire la corriente."
+    libro: [151, 153, "cap05#121"]
+    inicio: { V_d: 5 }
+    widget:
+      tipo: circuito
+      esquema: diodo
+      piezas: { fuente: V_d, r: R_d, vd: V_D }
+      lectura: { valor: I_dc, rotulo: "Corriente" }
+      datos:
+        - { valor: V_dc, rotulo: "Tensión del diodo: {{V_dc}}" }
+      corriente: I_dc
+      mide: { corriente: I_dc, vd: V_dc }
+      mandos:
+        - { valor: V_d, lista: [-5, 5], nombres: [banda al positivo, banda al negativo], rotulo: "Sentido del diodo" }
+    requiere: { mover: [V_d] }
+
+  - id: prediga-reves
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Un diodo de silicio en serie con una resistencia y una pila, con la banda hacia el positivo. ¿Qué corriente pasa?"
+    libro: [153]
+    fijar: { V_d: -5 }
+    widget:
+      tipo: circuito
+      esquema: diodo
+      piezas: { fuente: V_d, r: R_d, vd: V_D }
+      lectura: { valor: I_dc, rotulo: "Corriente" }
+      corriente: I_dc
+      mide: { corriente: I_dc, vd: V_dc }
+      ocultar: true
+    opciones:
+      - texto: "Ninguna: está en inversa"
+        bien: true
+        porque: "La corriente tendría que entrar por el cátodo, la banda. En ese sentido el diodo bloquea."
+      - texto: "La misma que al derecho"
+        porque: "Un diodo conduce en un solo sentido. Girarlo es pasar de conducir a bloquear."
+      - texto: "Más, porque ya no cae 0,7 V"
+        porque: "La caída de 0,7 V solo existe cuando conduce. Al revés no conduce."
+
+  - id: empareje-encapsulados
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "La banda y sus excepciones"
+    texto: "No todos los diodos llevan banda. Empareje cada encapsulado con cómo se reconoce su cátodo."
+    libro: [155]
+    emparejar:
+      - ["Diodo de vidrio, 1N4148", "Banda negra sobre cuerpo transparente"]
+      - ["Rectificador de plástico, 1N4007", "Banda blanca o gris sobre cuerpo negro"]
+      - ["LED", "El chaflán del reborde, y la patilla corta"]
+      - ["Diodo en TO-220", "La lengüeta metálica, que está viva"]
+    exito: "Eso es. En el LED la patilla se corta al montar: la referencia fiable es el chaflán."
+    pistas:
+      - { texto: "El LED no lleva banda; el TO-220 tiene una pieza metálica unida al cátodo." }
+
+  - id: pregunta-led-cortado
+    tipo: pregunta
+    titulo: "Un LED ya montado"
+    texto: "Un LED montado en placa tiene las dos patillas cortadas a la misma longitud. ¿Dónde está el cátodo?"
+    libro: [155]
+    opciones:
+      - texto: "En el lado del chaflán del reborde"
+        bien: true
+        porque: "La patilla corta deja de servir al cortarlas; el chaflán no cambia. Dentro, la cazoleta grande también es el cátodo."
+      - texto: "En la banda"
+        porque: "Los LED no llevan banda: se reconocen por el chaflán y la patilla corta."
+      - texto: "No se puede saber sin desoldarlo"
+        porque: "El chaflán del encapsulado lo dice, y en caso de duda se mide."
+
+  - id: pregunta-punta-roja
+    tipo: pregunta
+    titulo: "La prueba de diodos"
+    texto: "Con la prueba de diodos, una posición de las puntas marca la caída directa; al invertirlas, OL. ¿Qué terminal es el ánodo?"
+    libro: [157]
+    opciones:
+      - texto: "El que tocaba la punta roja cuando había lectura"
+        bien: true
+        porque: "Con la roja en el ánodo y la negra en el cátodo se lee la caída directa; invertidas, OL."
+      - texto: "El que tocaba la punta negra cuando había lectura"
+        porque: "Esa era la del cátodo: la corriente sale del instrumento por la roja y entra en el diodo por el ánodo."
+      - texto: "Con OL no se puede saber"
+        porque: "La posición que da lectura basta: OL en la otra solo confirma que bloquea al revés."
+
+  - id: porque-roja
+    tipo: porque
+    titulo: "¿Por qué la roja?"
+    texto: "En la prueba de diodos, la punta roja marca el ánodo cuando hay lectura. ¿Por qué?"
+    libro: [157]
+    opciones:
+      - texto: "El instrumento entrega la corriente por la punta roja"
+        bien: true
+        porque: "Solo hay caída si esa corriente entra por el ánodo y sale por el cátodo: el diodo en directa."
+      - texto: "Por convenio de colores, sin más"
+        porque: "Es física, no un convenio: el instrumento inyecta la corriente por la roja y solo hay caída en directa."
+      - texto: "Porque la negra siempre es el cátodo"
+        porque: "La negra es el cátodo solo cuando hay lectura; invertidas, el diodo bloquea y marca OL."
+
+  - id: empareje-caidas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "La caída dice la tecnología"
+    texto: "Además del sentido, la lectura de la prueba de diodos identifica la tecnología. Empareje cada caída medida con su diodo."
+    libro: [158]
+    emparejar:
+      - ["0,15 – 0,45 V", "Schottky"]
+      - ["0,55 – 0,75 V", "Silicio de unión"]
+      - ["1,6 – 2,0 V", "LED rojo o ámbar"]
+      - ["2,6 – 3,4 V", "LED blanco o azul"]
+    exito: "Eso es. Algunos multímetros leen OL en un LED azul o blanco: su tensión supera la del instrumento."
+    pistas:
+      - { texto: "El Schottky cae menos que el silicio; los LED, más, y más cuanto más azul." }
+
+  - id: pregunta-averias
+    tipo: pregunta
+    titulo: "OL en los dos sentidos"
+    texto: "Un diodo da OL con las puntas en un sentido y también en el otro. ¿Qué puede ser?"
+    libro: [158]
+    opciones:
+      - texto: "Está abierto, o es un LED de tensión mayor que la del instrumento"
+        bien: true
+        porque: "Ninguno de los dos conduce con la prueba. Un diodo en cortocircuito daría 0 V en ambos sentidos."
+      - texto: "Está en cortocircuito"
+        porque: "Un cortocircuito marca 0 V en los dos sentidos, no OL."
+      - texto: "Es un Schottky"
+        porque: "Un Schottky sano marca de 0,15 a 0,45 V en directa."
+
+  - id: pregunta-4007
+    tipo: pregunta
+    titulo: "El 1N4007 para todo"
+    texto: "En la familia 1N400x la última cifra da la tensión inversa: 1N4001, 50 V; 1N4007, 1000 V. ¿Por qué se compra el 4007 para todo?"
+    libro: [161]
+    opciones:
+      - texto: "Cuestan lo mismo y el 4007 aguanta más tensión"
+        bien: true
+        porque: "Con el mismo amperio y el mismo precio, el de más tensión inversa sirve en todos los casos."
+      - texto: "Porque conduce más corriente"
+        porque: "Toda la familia es de 1 A; lo que cambia es la tensión inversa."
+      - texto: "Porque es más rápido"
+        porque: "Todos son rectificadores de red, lentos. Para señal rápida está el 1N4148."
+
+  - id: empareje-familias
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Descifrar el marcaje"
+    texto: "Los diodos con patillas llevan su referencia impresa. Empareje cada familia con lo que es."
+    libro: [161]
+    emparejar:
+      - ["1N540x", "Rectificador de 3 A"]
+      - ["1N4148", "Diodo de señal rápido, 100 V y 200 mA"]
+      - ["BAT85", "Schottky"]
+      - ["BZX55C12", "Zener de 12 V"]
+    exito: "Eso es. En los BZX, el número tras la C es la tensión Zener."
+    pistas:
+      - { texto: "BAT es Schottky; BZX, Zener; los 1N540x son los 1N400x de más corriente." }
+
+  - id: pregunta-smd
+    tipo: pregunta
+    titulo: "Un código de dos caracteres"
+    texto: "Un diodo SMD en SOT-23 lleva impreso «A6». ¿Cómo se sabe qué es?"
+    libro: [162]
+    opciones:
+      - texto: "Consultando una tabla de códigos SMD del fabricante"
+        bien: true
+        porque: "Suele ser un BAS16, pero el mismo código designa otra pieza en otro fabricante o encapsulado."
+      - texto: "Es la referencia abreviada: un 1N4006"
+        porque: "El código no es la referencia, sino una clave del fabricante: no se puede deducir."
+      - texto: "Midiendo su caída se lee el código"
+        porque: "La caída da la tecnología, no la pieza concreta. El código hay que buscarlo en una tabla."
+
+  - id: ordene-sin-marcaje
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Sin marcaje legible"
+    texto: "Hay que sustituir un diodo cuyo marcaje no se lee. Ordene los pasos."
+    libro: [163]
+    ordenar:
+      - "Medir la caída directa para saber la tecnología."
+      - "Estimar la tensión inversa por el tamaño del encapsulado."
+      - "Sustituirlo por uno de características iguales o mejores."
+    exito: "Ese es el orden: primero la medida, luego el tamaño y después la elección."
+    pistas:
+      - { texto: "Lo primero es lo que el multímetro dice en dos minutos." }
+
+  - id: empareje-al-reves
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "El error clásico"
+    texto: "Un diodo montado al revés nunca falla de forma sutil. Empareje cada montaje con lo que ocurre."
+    libro: [165]
+    emparejar:
+      - ["Diodo en serie", "No hay salida"]
+      - ["Diodo de un puente", "El fusible se funde al instante"]
+      - ["Rectificador con filtro electrolítico", "El condensador se carga invertido y revienta"]
+      - ["Diodo de rueda libre", "Cortocircuita la alimentación al encender la carga"]
+    exito: "Eso es. Todos se evitan con la comprobación de dos minutos antes de soldar."
+    pistas:
+      - { texto: "El de rueda libre está en paralelo con la carga: al revés, conduce en cuanto hay tensión." }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [153, 155, 157, 158, 162, 165]
+    ideas:
+      - { titulo: "La banda.", texto: "Marca el cátodo. En el LED, el chaflán; en el TO-220, la lengüeta, que está viva." }
+      - { titulo: "La medida.", texto: "La roja entrega la corriente: hay lectura con la roja en el ánodo. La caída dice la tecnología." }
+      - { titulo: "El marcaje.", texto: "Con patillas, la referencia; en SMD, una clave que hay que buscar en una tabla." }
+      - { titulo: "Al revés.", texto: "Sin salida, fusible fundido o electrolítico reventado: dos minutos de medida lo evitan." }

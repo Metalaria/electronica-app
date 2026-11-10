@@ -1,0 +1,212 @@
+# Lección 1.1 de la sección 6.1 «Estructura y Principio de Funcionamiento» (cap06): la base delgada decide la
+# ganancia (las pérdidas crecen con el cuadrado del espesor: α de 0,99 a 0,96 y β de 99 a 24), por qué dos diodos no
+# hacen un transistor, el papel de cada región, el compromiso del colector, por qué no se monta al revés, NPN frente a
+# PNP y la prueba de diodos. La gráfica va en espesor relativo (1 = la base de α = 0,99). Formato:
+# contenido/lecciones11/GUIA.md.
+leccion: cap06/sec-6.1
+
+libro:
+  3: "lo que hace transistor a un transistor no son sus uniones, sino la distancia entre ellas"
+  4: "Si se unen dos diodos, sus regiones P miden décimas de milímetro"
+  7: "típicamente cien o mil veces"
+  8: "reducirlo a la mitad divide por cuatro la fracción que se pierde por el camino"
+  9: "si α cae de 0,99 a 0,96, β se desploma de 99 a 24"
+  10: "en él se disipa casi toda la potencia"
+  11: "un colector poco dopado aguanta más tensión pero tiene más resistencia serie"
+  14: "la ganancia en inversa βR vale entre 1 y 5"
+  15: "el transistor se destruye en cuanto la tensión sube"
+  18: "una movilidad unas tres veces menor que los electrones"
+  19: "el diseño usa NPN: es el transistor por defecto"
+  25: "OL en ambos sentidos"
+  26: "la caída base-emisor suele ser ligeramente mayor que la base-colector"
+
+modelo:
+  valores:
+    w: { sim: "w", nombre: "espesor de la base, en veces el de referencia", unidad: "", valor: 1 }
+    alpha_0: { sim: "α₀", nombre: "α con la base de referencia", unidad: "", valor: 0.99 }
+  calculos:
+    p_w: { expr: "(1 - alpha_0)*w^2", sim: "1 − α", nombre: "fracción que se pierde en la base", unidad: "", cifras: 2 }
+    alpha_w: { expr: "1 - p_w", sim: "α", nombre: "fracción que llega al colector", unidad: "", cifras: 3 }
+    beta_w: { expr: "alpha_w/p_w", sim: "β", nombre: "ganancia de corriente", unidad: "", cifras: 3 }
+    beta_lin: { expr: "(1 - (1 - alpha_0)*w)/((1 - alpha_0)*w)", sim: "β", nombre: "β si las pérdidas crecieran con el espesor", unidad: "", cifras: 3 }
+
+tarjetas:
+  - id: explore-base
+    tipo: explorar
+    titulo: "La base decide la ganancia"
+    texto: "Mueva el espesor de la base, en veces el de un transistor con α = 0,99. Fíjese en cómo cambia β."
+    nota: "α es la fracción de portadores que cruza la base sin perderse."
+    libro: [8, 9]
+    widget:
+      tipo: grafica
+      x: { id: e, min: 0.5, max: 2, unidad: "", rotulo: "espesor relativo" }
+      y: { min: 0, max: 400, unidad: "", rotulo: "β" }
+      curvas:
+        - { expr: "(1 - (1 - alpha_0)*e^2)/((1 - alpha_0)*e^2)", color: azul, rotulo: "β" }
+      asas:
+        - { mueve: w, x: "w", y: "beta_w", rotulo: "Espesor de la base" }
+      lectura: { valor: beta_w, rotulo: "Ganancia β" }
+      datos:
+        - { valor: alpha_w, rotulo: "α = {{alpha_w}}" }
+      mandos:
+        - { valor: w, min: 0.5, max: 2, paso: 0.1, rotulo: "Espesor relativo, w" }
+    requiere: { mover: [w] }
+
+  - id: prediga-doble
+    tipo: predecir
+    titulo: "Una base el doble de gruesa"
+    texto: "Un transistor tiene α = 0,99, es decir, β = 99. ¿Cuánto valdría β si su base fuera el doble de gruesa?"
+    libro: [8, 9]
+    fijar: { w: 2 }
+    widget:
+      tipo: grafica
+      x: { id: e, min: 0.5, max: 2, unidad: "", rotulo: "espesor relativo" }
+      y: { min: 0, max: 400, unidad: "", rotulo: "β" }
+      curvas:
+        - { expr: "(1 - (1 - alpha_0)*e^2)/((1 - alpha_0)*e^2)", color: azul, rotulo: "β" }
+      lectura: { valor: beta_w, rotulo: "Ganancia β" }
+      datos:
+        - { valor: alpha_w, rotulo: "α = {{alpha_w}}" }
+      ocultar: true
+    opciones:
+      - texto: "Unos 24"
+        bien: true
+        porque: "Doble espesor, cuatro veces más recombinaciones: α cae de 0,99 a 0,96 y β = 0,96/0,04 = 24."
+      - texto: "Unos 49"
+        porque: "Sería así si las pérdidas crecieran con el espesor. Crecen con su cuadrado: se multiplican por cuatro, no por dos."
+      - texto: "Sigue en 99"
+        porque: "β no es una constante del dispositivo: mide lo bien hecha que está su base."
+    comprobar:
+      - { con: { w: 1 }, alpha_w: 0.99, beta_w: 99 }
+      - { alpha_w: 0.96, p_w: 0.04, beta_w: 24 }
+      - { beta_lin: 49 }
+
+  - id: por-que-cuadrado
+    tipo: porque
+    titulo: "¿Por qué con el cuadrado?"
+    texto: "Doblar el espesor de la base multiplica por cuatro la fracción que se pierde. ¿Cuál es la causa?"
+    libro: [8]
+    fijar: { w: 2 }
+    widget:
+      tipo: grafica
+      x: { id: e, min: 0.5, max: 2, unidad: "", rotulo: "espesor relativo" }
+      y: { min: 0, max: 400, unidad: "", rotulo: "β" }
+      curvas:
+        - { expr: "(1 - (1 - alpha_0)*e^2)/((1 - alpha_0)*e^2)", color: azul, rotulo: "β" }
+      lectura: { valor: beta_w, rotulo: "Ganancia β" }
+    opciones:
+      - texto: "El tiempo que tarda un portador en cruzarla por difusión crece con el cuadrado del espesor"
+        bien: true
+        porque: "Más tiempo dentro de la base, más ocasiones de recombinarse: la mitad de espesor divide por cuatro lo que se pierde."
+      - texto: "Una base más gruesa tiene más dopado"
+        porque: "El dopado es otra decisión de fabricación: la base se dopa poco en cualquier caso, para que haya pocos huecos con los que recombinarse."
+      - texto: "El campo del colector no llega tan lejos"
+        porque: "El campo barre los portadores cuando ya han llegado a la unión base-colector. Las pérdidas ocurren antes, durante el cruce por difusión."
+
+  - id: dos-diodos
+    tipo: pregunta
+    titulo: "¿Dos diodos hacen un transistor?"
+    texto: "Se sueldan dos diodos por sus ánodos para imitar un NPN. ¿Funciona como transistor?"
+    libro: [3, 4]
+    opciones:
+      - texto: "No: su región P mide décimas de milímetro y los electrones se recombinan antes de llegar"
+        bien: true
+        porque: "Hace falta una base más delgada que la longitud de difusión: fracciones de micra. Por eso se fabrica en una sola pieza."
+      - texto: "Sí, si los dos diodos son iguales"
+        porque: "La topología es la misma, pero no basta: lo que hace transistor a un transistor es la distancia entre las uniones."
+      - texto: "Sí, pero con poca ganancia"
+        porque: "No llega ni a eso: con décimas de milímetro de región P casi nada cruza y quedan dos diodos independientes."
+
+  - id: empareje-regiones
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Tres regiones, tres misiones"
+    texto: "Cada región del transistor se fabrica distinta por una razón. Empareje cada una con la suya."
+    libro: [7, 8, 10, 11]
+    emparejar:
+      - ["Emisor", "Muy dopado: inyecta portadores en la base"]
+      - ["Base", "Delgada y poco dopada: casi todos la cruzan sin perderse"]
+      - ["Colector", "Amplio y moderadamente dopado: disipa y soporta la tensión"]
+    exito: "Eso es. El emisor se dopa cien o mil veces más que la base; el colector disipa casi toda la potencia."
+    pistas:
+      - { texto: "Piense en qué hace cada una: inyectar, dejar pasar, recoger y disipar." }
+
+  - id: emisor-dopado
+    tipo: pregunta
+    titulo: "Un emisor muy dopado"
+    texto: "El emisor se dopa cien o mil veces más que la base. ¿Para qué?"
+    libro: [7]
+    opciones:
+      - texto: "Para que casi toda la corriente de la unión sean electrones del emisor y no huecos de la base"
+        bien: true
+        porque: "Los huecos que van de la base al emisor son corriente de base desperdiciada. Con esa asimetría, la eficiencia de emisor se acerca a 1."
+      - texto: "Para que aguante más tensión"
+        porque: "Es al revés: aguanta más tensión una región poco dopada. Esa es la tarea del colector."
+      - texto: "Para que disipe la potencia"
+        porque: "Casi toda la potencia se disipa en el colector, que por eso es amplio."
+
+  - id: colector-compromiso
+    tipo: pregunta
+    titulo: "El compromiso del colector"
+    texto: "Un fabricante dopa menos el colector para que el transistor aguante más tensión. ¿Qué empeora a cambio?"
+    libro: [11]
+    opciones:
+      - texto: "La tensión de saturación, V_{CE(sat)}"
+        bien: true
+        porque: "Un colector poco dopado tiene más resistencia serie. V_{CEO} y V_{CE(sat)} van en direcciones opuestas: elegir transistor es elegir el punto de ese compromiso."
+      - texto: "La ganancia β"
+        porque: "β la decide la base, no el colector: mide lo bien hecha que está la base."
+      - texto: "La tensión de ruptura, V_{CEO}"
+        porque: "Esa es la que mejora: la zona de agotamiento puede ensancharse hacia el colector sin que el campo alcance el valor crítico."
+
+  - id: al-reves
+    tipo: pregunta
+    titulo: "Montado al revés"
+    texto: "Un NPN se monta con colector y emisor cambiados. ¿Qué se observa en el banco?"
+    libro: [14, 15]
+    opciones:
+      - texto: "Casi funciona, con poca ganancia, y se destruye en cuanto la tensión sube"
+        bien: true
+        porque: "Invertido, β_{R} vale de 1 a 5, y la unión emisor-base, muy dopada por los dos lados, rompe entre 5 y 7 V."
+      - texto: "Funciona igual: los dos terminales son del mismo tipo"
+        porque: "Son de tipo N los dos, pero no iguales: el colector está poco dopado e inyecta mal como emisor."
+      - texto: "No conduce nada"
+        porque: "Conduce algo, porque la estructura es formalmente simétrica. Por eso el montaje «casi funciona» y despista."
+
+  - id: npn-pnp
+    tipo: pregunta
+    titulo: "NPN o PNP"
+    texto: "A igualdad de geometría, ¿por qué un PNP tiene menos ganancia, es más lento y satura peor que un NPN?"
+    libro: [18, 19]
+    opciones:
+      - texto: "Los huecos tienen en el silicio una movilidad unas tres veces menor que los electrones"
+        bien: true
+        porque: "Esa diferencia física no la compensa del todo la geometría. Por eso el NPN es el transistor por defecto."
+      - texto: "El PNP tiene la base más gruesa"
+        porque: "A igualdad de geometría, la base es la misma. Lo que cambia es el portador: huecos en lugar de electrones."
+      - texto: "Las tensiones del PNP son negativas"
+        porque: "El signo de las tensiones es cuestión del montaje, no de la física: no quita ganancia ni velocidad."
+
+  - id: prueba-diodos
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "Con la prueba de diodos, un NPN marca continuidad entre colector y emisor en un sentido. ¿Qué le pasa?"
+    libro: [25, 26]
+    opciones:
+      - texto: "Está en cortocircuito: un NPN sano da OL en ambos sentidos"
+        bien: true
+        porque: "Es el modo de fallo más frecuente. Las uniones sanas dan de 0,6 a 0,75 V desde la base; colector-emisor, nunca."
+      - texto: "Es normal: colector y emisor forman un diodo"
+        porque: "Colector y emisor están separados por dos uniones opuestas: en un transistor sano no conducen en ningún sentido."
+      - texto: "Es un PNP"
+        porque: "Un PNP sano también da OL entre colector y emisor. Solo cambia el sentido en que conducen las uniones desde la base."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [3, 9, 11, 14]
+    ideas:
+      - { titulo: "La base.", texto: "Delgada y poco dopada: el doble de gruesa cuadruplica las pérdidas y β cae de 99 a 24." }
+      - { titulo: "No son dos diodos.", texto: "Lo que hace al transistor es la distancia entre sus uniones: fracciones de micra." }
+      - { titulo: "El colector.", texto: "Menos dopado aguanta más tensión pero satura peor: V_{CEO} frente a V_{CE(sat)}." }
+      - { titulo: "No es simétrico.", texto: "Al revés, β_{R} de 1 a 5 y ruptura a 5-7 V. El NPN es el transistor por defecto." }

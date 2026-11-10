@@ -1,0 +1,248 @@
+# Lección 1.1 de la sección 1.11 «Cómo Miden los Instrumentos (y Cómo Perturban el Circuito)» (cap01). Formato:
+# contenido/lecciones11/GUIA.md. La sección no tiene bloques «ec»: no hay tarjeta de fórmula. El voltímetro se
+# dibuja como la carga del divisor (su resistencia de entrada) y el amperímetro como la segunda resistencia de un lazo
+# serie.
+leccion: cap01/sec-1.11
+
+libro:
+  213: "lo que lee no es lo que había antes sino lo que hay con él dentro"
+  215: "Su impedancia de entrada, típicamente 10 MΩ, queda en paralelo con la rama medida"
+  216: "la lectura es 4,762 V: un error del 4,8 %"
+  217: "el error es despreciable si la impedancia del instrumento es cien veces la del circuito"
+  220: "Un amperímetro de 10 Ω en un circuito de 100 Ω introduce un error del 9,1 %"
+  221: "En un circuito de 3,3 V, 300 mV son el 9 %"
+  222: "medir la caída sobre una resistencia que ya esté en el circuito y dividir por su valor"
+  224: "20 pF a 1 MHz son 8 kΩ"
+  228: "el instrumento altera el circuito"
+  229: "se elige siempre el rango más bajo que no dé desbordamiento"
+  230: "medir la magnitud equivocada"
+  232: "preguntarse qué está midiendo el instrumento y qué le está haciendo al circuito"
+  234: "Después repetir con dos resistencias de 1 kΩ: la lectura será 5,000 V"
+
+modelo:
+  valores:
+    V_d: { sim: "V", nombre: "tensión del divisor", unidad: V, valor: 10 }
+    R_d: { sim: "R", nombre: "resistencias del divisor", unidad: Ω, valor: 1000 }
+    R_V: { sim: "R_{V}", nombre: "entrada del voltímetro", unidad: Ω, valor: 10e6 }
+    volt: { tipo: interruptor, nombre: "voltímetro conectado", valor: 0 }
+    V_s: { sim: "V", nombre: "tensión de la fuente", unidad: V, valor: 1 }
+    R_c: { sim: "R", nombre: "resistencia del circuito", unidad: Ω, valor: 100 }
+    R_A: { sim: "R_{A}", nombre: "resistencia del amperímetro", unidad: Ω, valor: 0.1 }
+    f_o: { sim: "f", nombre: "frecuencia de la señal", unidad: Hz, valor: 1000 }
+    x1: { tipo: interruptor, nombre: "sonda en ×1", valor: 0 }
+  calculos:
+    R_ab: { si: volt, entonces: "par(R_d, R_V)", sino: "R_d", sim: "R_{abajo}", nombre: "rama de abajo", unidad: Ω }
+    V_out: { expr: "V_d*R_ab/(R_d + R_ab)", sim: "V_{lectura}", nombre: "tensión del punto medio", unidad: V, cifras: 4 }
+    I_d: { expr: "V_d/(R_d + R_ab)", sim: "I", nombre: "corriente del divisor", unidad: A }
+    I_V: { si: volt, entonces: "V_out/R_V", sino: "0", sim: "I_{V}", nombre: "corriente por el voltímetro", unidad: A }
+    err_v: { expr: "(V_d/2 - V_out)/(V_d/2)*100", sim: "error", nombre: "error de carga del voltímetro", unidad: "%", cifras: 2 }
+    R_max: { expr: "R_V/100", sim: "R_{circuito}", nombre: "impedancia máxima del circuito", unidad: Ω }
+    I_s: { expr: "V_s/(R_c + R_A)", sim: "I", nombre: "corriente con el amperímetro", unidad: A }
+    I_0: { expr: "V_s/R_c", sim: "I_{real}", nombre: "corriente sin amperímetro", unidad: A }
+    V_A: { expr: "I_s*R_A", sim: "V_{A}", nombre: "tensión de carga del amperímetro", unidad: V }
+    V_R: { expr: "I_s*R_c", sim: "V_{R}", nombre: "tensión en el circuito", unidad: V }
+    R_tot: { expr: "R_c + R_A", sim: "R_{total}", nombre: "resistencia total del lazo", unidad: Ω }
+    err_a: { expr: "(I_0 - I_s)/I_0*100", sim: "error", nombre: "error del amperímetro", unidad: "%", cifras: 2 }
+    C_s: { si: x1, entonces: "100e-12", sino: "20e-12", sim: "C", nombre: "capacidad de la sonda", unidad: F }
+    R_s: { si: x1, entonces: "1e6", sino: "1e7", sim: "R", nombre: "resistencia de la sonda", unidad: Ω }
+    X_s: { expr: "1/(2*pi*f_o*C_s)", sim: "X_{C}", nombre: "reactancia de la sonda", unidad: Ω }
+
+tarjetas:
+  - id: explore-voltimetro
+    tipo: explorar
+    titulo: "El instrumento forma parte del circuito"
+    texto: "Un divisor de dos resistencias iguales desde 10 V: el punto medio está a 5 V. Conecte el voltímetro y pruebe resistencias cada vez mayores."
+    libro: [213, 215]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_d, arriba: R_d, abajo: R_d, carga: R_V, interruptor: volt }
+      lectura: { valor: V_out, rotulo: "Lo que lee" }
+      datos:
+        - { valor: err_v, rotulo: "Error: {{err_v}}" }
+      corriente: I_d
+      mide: { salida: V_out, corriente: I_d, carga: I_V }
+      mandos:
+        - { valor: volt, tipo: conectar, boton: "Conectar el voltímetro (10 MΩ)" }
+        - { valor: R_d, lista: [1000, 10000, 100000, 1000000], rotulo: "Las dos, R" }
+    requiere: { conectar: [volt], mover: [R_d] }
+
+  - id: prediga-megaohmio
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "El divisor es de dos resistencias de 1 MΩ desde 10 V, y el voltímetro tiene 10 MΩ. ¿Qué lee?"
+    libro: [216]
+    fijar: { R_d: 1000000, volt: 1, V_d: 10 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_d, arriba: R_d, abajo: R_d, carga: R_V, interruptor: volt }
+      lectura: { valor: V_out, rotulo: "Lo que lee" }
+      corriente: I_d
+      mide: { salida: V_out, corriente: I_d, carga: I_V }
+      ocultar: true
+    opciones:
+      - texto: "4,762 V"
+        bien: true
+        porque: "La rama inferior pasa a 1 MΩ ‖ 10 MΩ = 0,909 MΩ: un 4,8 % menos. El error está en el hecho de medir."
+      - texto: "5,000 V"
+        porque: "Esa es la tensión real sin el voltímetro. Con él dentro, la rama inferior baja."
+      - texto: "Algo más de 5 V"
+        porque: "El voltímetro queda en paralelo con la rama inferior: la baja, nunca la sube."
+    comprobar:
+      - { V_out: 4.762, err_v: 4.76, R_ab: 909091 }
+      - { con: { volt: 0 }, V_out: 5.0 }
+
+  - id: estime-cien
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La regla de las cien veces"
+    texto: "El error es despreciable si el instrumento tiene cien veces la impedancia del circuito. Con 10 MΩ, ¿hasta qué impedancia de circuito?"
+    libro: [217]
+    estimar:
+      objetivo: "R_max"
+      unidad: Ω
+      min: 0
+      max: 1000000
+      paso: 10000
+      inicio: 800000
+      tol: 0.05
+      rotulo: "Circuito máximo"
+    exito: "10 MΩ / 100 = 100 kΩ. Por encima: corregir por cálculo, otro instrumento de más impedancia o un seguidor."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 105000 }, texto: "Se ha pasado: divida los 10 MΩ entre cien." }
+      - { texto: "Se ha quedado corto: 10 MΩ entre cien son cien mil ohmios." }
+    comprobar:
+      - { R_max: 100000 }
+
+  - id: explore-amperimetro
+    tipo: explorar
+    titulo: "El amperímetro, en serie"
+    texto: "Para medir corriente hay que abrir el circuito y meter el amperímetro en serie. Cambie su resistencia y compare con la corriente sin él."
+    libro: [220]
+    fijar: { R_c: 100 }
+    widget:
+      tipo: circuito
+      esquema: serie
+      piezas: { fuente: V_s, r1: R_c, r2: R_A }
+      lectura: { valor: I_s, rotulo: "Lo que lee" }
+      datos:
+        - { valor: I_0, rotulo: "Sin amperímetro: {{I_0}}" }
+        - { valor: err_a, rotulo: "Error: {{err_a}}" }
+      corriente: I_s
+      mide: { corriente: I_s, v1: V_R, v2: V_A }
+      mandos:
+        - { valor: R_A, lista: [0.1, 1, 10], rotulo: "Amperímetro, R_{A}" }
+    requiere: { mover: [R_A] }
+
+  - id: estime-amperimetro
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Diez ohmios en cien"
+    texto: "Un amperímetro de 10 Ω en un circuito de 100 Ω. Estime cuánto menos lee de la corriente real."
+    libro: [220]
+    fijar: { R_c: 100, R_A: 10 }
+    estimar:
+      objetivo: "err_a"
+      unidad: "%"
+      min: 0
+      max: 20
+      paso: 0.1
+      inicio: 18
+      tol: 0.05
+      rotulo: "Error"
+    exito: "La resistencia pasa de 100 a 110 Ω: la corriente baja a 100/110, un 9,1 % menos."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 9.6 }, texto: "Se ha pasado: no es 10/100. La corriente queda en 100/110 de la real." }
+      - { texto: "Se ha quedado corto: 10 Ω más sobre 110 Ω en total." }
+    comprobar:
+      - { err_a: 9.09, R_tot: 110 }
+
+  - id: por-que-falla
+    tipo: porque
+    titulo: "Solo falla al medirlo"
+    texto: "Un aparato de 3,3 V funciona, pero deja de hacerlo en cuanto se le conecta el amperímetro. ¿Por qué?"
+    libro: [221]
+    opciones:
+      - texto: "La tensión de carga del amperímetro le quita tensión"
+        bien: true
+        porque: "En miliamperios puede caer cientos de milivoltios: 300 mV de 3,3 V son el 9 %."
+      - texto: "El amperímetro inyecta corriente"
+        porque: "No inyecta nada: se suma en serie y su caída resta tensión al circuito."
+      - texto: "El amperímetro está estropeado"
+        porque: "Funciona bien. Es su resistencia en serie, inevitable, la que altera el circuito."
+
+  - id: sin-abrir
+    tipo: pregunta
+    titulo: "Corriente sin abrir nada"
+    texto: "¿Cómo se mide una corriente sin intercalar el amperímetro?"
+    libro: [222]
+    opciones:
+      - texto: "Midiendo la caída en una resistencia del circuito y dividiendo por su valor"
+        bien: true
+        porque: "No se abre nada ni se añade resistencia. Con buena resolución basta una de décimas de ohmio."
+      - texto: "Con el voltímetro en serie"
+        porque: "El voltímetro va en paralelo; en serie, con 10 MΩ, cortaría la corriente."
+      - texto: "Con el amperímetro en paralelo"
+        porque: "Con su baja resistencia en paralelo haría un cortocircuito y fundiría su fusible."
+
+  - id: explore-sonda
+    tipo: explorar
+    titulo: "El osciloscopio: también capacidad"
+    texto: "Una sonda ×10 tiene 10 MΩ en paralelo con unos 20 pF. Suba la frecuencia, y pase la sonda a ×1."
+    nota: "Su capacidad pesa cada vez más: 20 pF a 1 MHz son 8 kΩ."
+    libro: [224]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1000, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 10, max: 100000000, unidad: Ω, rotulo: "impedancia", escala: log }
+      curvas:
+        - { expr: "1/(2*pi*nu*C_s)", color: naranja, rotulo: "capacidad, X_{C}" }
+        - { expr: "R_s", color: tinta, rotulo: "resistencia", discontinua: true }
+      asas:
+        - { mueve: f_o, x: "f_o", y: "X_s", rotulo: "Frecuencia" }
+      lectura: { valor: X_s, rotulo: "Reactancia de la sonda" }
+      mandos:
+        - { valor: f_o, lista: [1000, 10000, 100000, 1000000, 10000000, 100000000], rotulo: "Frecuencia, f" }
+        - { valor: x1, tipo: interruptor, rotulo: "Sonda en ×1" }
+    requiere: { mover: [f_o, x1] }
+    comprobar:
+      - { con: { f_o: 1000000, x1: 0 }, X_s: 7958 }
+
+  - id: empareje-errores
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los tres tipos de error"
+    texto: "Se combaten de forma distinta. Empareje cada error con lo que es."
+    libro: [228, 229, 230]
+    emparejar:
+      - ["De carga", "El instrumento altera el circuito"]
+      - ["De exactitud", "La especificación del fabricante"]
+      - ["Del método", "Medir la magnitud equivocada"]
+    exito: "El del método no lo detecta ninguna calibración: solo el criterio de quien mide."
+    pistas:
+      - { texto: "Uno es del instrumento, otro de su conexión y otro de quien mide." }
+
+  - id: rango
+    tipo: pregunta
+    titulo: "Qué rango elegir"
+    texto: "La exactitud es «un % de la lectura más unos dígitos». Para medir una tensión pequeña, ¿qué rango conviene?"
+    libro: [229]
+    opciones:
+      - texto: "El más bajo que no dé desbordamiento"
+        bien: true
+        porque: "Con lecturas pequeñas dominan los dígitos; en un rango alto, una tensión pequeña tiene un error enorme."
+      - texto: "El más alto, para proteger el instrumento"
+        porque: "Medir 0,5 V en el rango de 1000 V da un error enorme aunque el instrumento sea excelente."
+      - texto: "Da igual: la exactitud es la misma"
+        porque: "No: el término de dígitos pesa más cuanto más pequeña es la lectura frente al rango."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [213, 217, 221, 224, 232, 234]
+    ideas:
+      - { titulo: "Voltímetro.", texto: "En paralelo: despreciable si tiene cien veces la impedancia del circuito." }
+      - { titulo: "Amperímetro.", texto: "En serie: su resistencia y su tensión de carga cambian lo que mide." }
+      - { titulo: "Osciloscopio.", texto: "La capacidad de la sonda pesa más con la frecuencia: ×10 mejor que ×1." }
+      - { titulo: "La regla.", texto: "Antes de leer: ¿qué mide el instrumento y qué le hace al circuito?" }

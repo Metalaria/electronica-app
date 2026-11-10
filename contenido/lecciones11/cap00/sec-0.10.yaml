@@ -1,0 +1,191 @@
+# Lección 1.1 de la sección 0.10 «La Transformada de Laplace» (cap00): e^(st) con s = σ + jω (decae, oscila o
+# crece), derivar es multiplicar por s, la función de transferencia del RC y su polo en −1/RC, la tabla de pares, el
+# escalón resuelto con álgebra y la estabilidad. Formato: contenido/lecciones11/GUIA.md.
+leccion: cap00/sec-0.10
+
+libro:
+  132: "transformando la derivada en una multiplicación por s y la integral en una división por s"
+  133: 'F lr(( s )) = integral_("0")^(infinity) f lr(( t )) dot.op "e"^(- s t) dot.op d t'
+  134: "Pares de transformada de Laplace básicos"
+  137: "la parte real σ describe crecimiento o decaimiento, y la imaginaria, oscilación"
+  138: "Ese cociente es la función de transferencia H(s) = 1/(1 + sRC)"
+  139: "El RC tiene un polo en s = −1/RC: para RC = 1 ms, en −1000 rad/s"
+  140: "transformar, operar algebraicamente, descomponer y volver con la tabla"
+  144: "derivar se convierte en multiplicar por s (más el término de condición inicial)"
+
+modelo:
+  valores:
+    sigma: { sim: "σ", nombre: "parte real de s", unidad: "rad/s", valor: -500 }
+    w: { sim: "ω", nombre: "parte imaginaria de s", unidad: "rad/s", valor: 2000 }
+    RC: { sim: "RC", nombre: "constante de tiempo", unidad: s, valor: 0.001 }
+  calculos:
+    polo: { expr: "-1/RC", sim: "s", nombre: "polo del RC", unidad: "rad/s" }
+
+tarjetas:
+  - id: explore-plano-s
+    tipo: explorar
+    titulo: "e^{st}, con s = σ + jω"
+    texto: "Mueva σ y ω. Fíjese en qué decide si la curva decae o crece, y qué decide si oscila."
+    libro: [137]
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 0.01, unidad: s, rotulo: "t" }
+      y: { min: -3, max: 3, unidad: "", rotulo: "e^{σt}·cos ωt" }
+      curvas:
+        - { expr: "exp(sigma*x)*cos(w*x)", color: azul, rotulo: "parte real de e^{st}" }
+      datos:
+        - { valor: sigma, rotulo: "σ = {{sigma}}" }
+        - { valor: w, rotulo: "ω = {{w}}" }
+      mandos:
+        - { valor: sigma, min: -1000, max: 300, paso: 100, rotulo: "Parte real, σ" }
+        - { valor: w, min: 0, max: 3000, paso: 500, rotulo: "Parte imaginaria, ω" }
+    requiere: { mover: [sigma, w] }
+    nota: "La parte real σ decide si decae o crece; la imaginaria ω, si oscila."
+
+  - id: prediga-semiplano
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Los polos de un sistema son sus respuestas naturales. Si un polo cruza al semiplano derecho, con parte real positiva, ¿qué pasa?"
+    libro: [139]
+    opciones:
+      - texto: "La respuesta crece sin límite: oscila o se satura"
+        bien: true
+        porque: "Con σ > 0, e^{σt} crece. En el semiplano izquierdo los polos decaen y el sistema es estable."
+      - texto: "La respuesta decae más deprisa"
+        porque: "Decaer es lo que hacen los polos con parte real negativa, los del semiplano izquierdo."
+      - texto: "Oscila siempre con la misma amplitud"
+        porque: "Eso ocurre justo sobre el eje, con σ = 0. A la derecha, la amplitud crece."
+
+  - id: regla-transferencia
+    tipo: formula
+    titulo: "Del tiempo a s"
+    texto: "Laplace cambia t por s: derivar es multiplicar por s. El RC queda H(s) = 1/(1 + sRC), con un polo en −1/RC."
+    libro: [133, 138, 139]
+    ec: 133
+    sustitucion: "H(s) = 1 / (1 + s · {{RC}});  polo en s = −1/RC = {{polo}}"
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 0.01, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.2, unidad: "", rotulo: "respuesta al escalón" }
+      curvas:
+        - { expr: "1 - exp(-x/RC)", color: azul, rotulo: "1 − e^{−t/RC}" }
+      lectura: { valor: polo, rotulo: "Polo" }
+      mandos:
+        - { valor: RC, lista: [0.0005, 0.001, 0.002, 0.004], rotulo: "Constante de tiempo, RC" }
+
+  - id: estime-polo
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "¿Dónde está el polo?"
+    texto: "Un RC con RC = 1 ms. Estime su polo, en rad/s."
+    libro: [139]
+    fijar: { RC: 0.001 }
+    estimar:
+      objetivo: "polo"
+      unidad: "rad/s"
+      min: -3000
+      max: 0
+      paso: 50
+      inicio: -2500
+      tol: 0.03
+      rotulo: "Polo, s"
+    exito: "−1/RC = −1000 rad/s: la inversa de la constante de tiempo, con el signo cambiado."
+    pistas:
+      - { cuando: { valor: estimacion, menor: -1030 }, texto: "Demasiado lejos del origen: el polo es −1/RC, y RC es 1 ms." }
+      - { texto: "Demasiado cerca del origen: −1/RC con RC = 1 ms." }
+    comprobar:
+      - { polo: -1000 }
+
+  - id: reto-senoide
+    tipo: reto
+    titulo: "Reto: una senoide pura"
+    texto: "Elija σ y ω para que e^{st} oscile sin crecer ni decaer: el régimen permanente."
+    libro: [137]
+    inicio: { sigma: -500, w: 0 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 0.01, unidad: s, rotulo: "t" }
+      y: { min: -3, max: 3, unidad: "", rotulo: "e^{σt}·cos ωt" }
+      curvas:
+        - { expr: "exp(sigma*x)*cos(w*x)", color: azul, rotulo: "parte real de e^{st}" }
+      mandos:
+        - { valor: sigma, min: -1000, max: 300, paso: 100, rotulo: "Parte real, σ" }
+        - { valor: w, min: 0, max: 3000, paso: 500, rotulo: "Parte imaginaria, ω" }
+    condiciones:
+      - { valor: sigma, min: 0, max: 0, rotulo: "Ni crece ni decae: σ = {{sigma}}" }
+      - { valor: w, min: 1, rotulo: "Oscila: ω = {{w}}" }
+    exito: "σ = 0: s = jω, el eje imaginario. Los fasores son el caso particular de Laplace con s = jω."
+    pistas:
+      - { cuando: { valor: w, max: 0 }, texto: "Sin parte imaginaria no hay oscilación: suba ω." }
+      - { cuando: { valor: sigma, max: -1 }, texto: "Todavía decae: suba σ." }
+      - { cuando: { valor: sigma, min: 1 }, texto: "Ahora crece: baje σ." }
+    ayuda: "Las senoides son las exponenciales complejas con σ = 0."
+
+  - id: pares
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "La tabla de pares"
+    texto: "Una cada función del tiempo con su transformada."
+    libro: [134]
+    emparejar:
+      - ["Impulso δ(t)", "1"]
+      - ["Escalón u(t)", "1 / s"]
+      - ["Rampa t", "1 / s²"]
+      - ["Exponencial e⁻ᵃᵗ", "1 / (s + a)"]
+      - ["Derivada df/dt", "s · F(s) − f(0)"]
+    exito: "Eso es. Cada integral divide por s: el escalón es la integral del impulso, y la rampa, la del escalón."
+    pistas:
+      - { texto: "Integrar es dividir por s: del impulso al escalón y del escalón a la rampa." }
+
+  - id: ordene-escalon
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "El escalón, sin ecuación diferencial"
+    texto: "Ordene los pasos para hallar la respuesta del RC a un escalón."
+    libro: [140]
+    ordenar:
+      - "Transformar: el escalón unitario es 1/s"
+      - "Operar: la salida es H(s)/s = 1/(s·(1 + sRC))"
+      - "Descomponer en fracciones simples: 1/s − RC/(1 + sRC)"
+      - "Volver con la tabla: 1 − e^{−t/RC}"
+    exito: "Tres líneas de álgebra, y el mismo método vale para cualquier orden."
+    pistas:
+      - { texto: "Se empieza pasando la entrada a s y se acaba volviendo al tiempo con la tabla." }
+
+  - id: por-que-s
+    tipo: porque
+    titulo: "¿Por qué derivar es multiplicar por s?"
+    texto: "La transformada convierte la derivada en s·F(s) − f(0). ¿De dónde sale?"
+    libro: [144, 133]
+    opciones:
+      - texto: "De integrar por partes la transformada de la derivada"
+        bien: true
+        porque: "Una línea de integración por partes lo demuestra; el f(0) es la condición inicial."
+      - texto: "Es una definición de la transformada"
+        porque: "La definición es la integral de f(t)·e^{−st}. Lo de multiplicar por s se deduce de ella."
+      - texto: "De que s es una frecuencia"
+        porque: "s = σ + jω tiene unidades de frecuencia, pero la regla sale de integrar por partes, no de eso."
+
+  - id: que-anade
+    tipo: pregunta
+    titulo: "Laplace y los fasores"
+    texto: "Los fasores evalúan el circuito en s = jω. ¿Qué añade Laplace?"
+    libro: [137, 144]
+    opciones:
+      - texto: "Los transitorios: la parte real σ recoge la amortiguación"
+        bien: true
+        porque: "Los fasores describen el régimen permanente; Laplace, además, el transitorio."
+      - texto: "Nada: es lo mismo con otra letra"
+        porque: "Con σ ≠ 0 cubre las exponenciales y las senoides amortiguadas, que los fasores no ven."
+      - texto: "Sirve para circuitos no lineales"
+        porque: "Como los fasores, vale para circuitos lineales. Lo que añade es el transitorio."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [132, 137, 139, 140]
+    ideas:
+      - { titulo: "Álgebra.", texto: "Derivar es multiplicar por s; integrar, dividir por s." }
+      - { titulo: "s = σ + jω.", texto: "σ decide si decae o crece; ω, si oscila. Con σ = 0, los fasores." }
+      - { titulo: "Polos.", texto: "El RC tiene un polo en −1/RC: −1000 rad/s con 1 ms. A la izquierda, estable." }
+      - { titulo: "El método.", texto: "Transformar, operar, descomponer y volver con la tabla." }

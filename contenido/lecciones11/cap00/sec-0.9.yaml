@@ -1,0 +1,194 @@
+# Lección 1.1 de la sección 0.9 «Impedancia Compleja y Análisis Fasorial» (cap00): la impedancia de R, L y C frente a
+# la frecuencia, el RC serie del libro a 1 kHz (1880 Ω, −57,9°, 0,532 mA), las tensiones que se suman como fasores y
+# los límites del método. Formato: contenido/lecciones11/GUIA.md.
+leccion: cap00/sec-0.9
+
+libro:
+  125: "la ley de Ohm se generaliza a V = I · Z"
+  126: "Impedancia de los componentes en régimen senoidal"
+  127: "como derivar es multiplicar por jω (sección 0.5), la bobina da jωL y el condensador 1/(jωC)"
+  128: "El módulo de la impedancia da la relación de amplitudes y su ángulo, el desfase entre tensión y corriente"
+  129: "Con R = 1 kΩ y C = 100 nF, la impedancia del condensador es −j/(2π·1000·10⁻⁷) = −j·1592 Ω"
+  130: "la impedancia solo describe el régimen senoidal permanente y una frecuencia a la vez"
+
+modelo:
+  valores:
+    R: { sim: "R", nombre: "resistencia", unidad: Ω, valor: 1000 }
+    C: { sim: "C", nombre: "capacidad", unidad: F, valor: 0.0000001 }
+    f: { sim: "f", nombre: "frecuencia", unidad: Hz, valor: 1000 }
+    V_in: { sim: "V", nombre: "tensión eficaz aplicada", unidad: V, valor: 1 }
+  calculos:
+    Xc: { expr: "1/(2*pi*f*C)", sim: "|Z_{C}|", nombre: "módulo de la impedancia del condensador", unidad: Ω }
+    Zt: { expr: "sqrt(R^2 + Xc^2)", sim: "|Z|", nombre: "módulo de la impedancia total", unidad: Ω }
+    ang: { expr: "-atan2(Xc, R)*180/pi", sim: "ángulo de Z", nombre: "ángulo de la impedancia total", unidad: "°" }
+    I_t: { expr: "V_in/Zt", sim: "I", nombre: "corriente", unidad: A }
+    V_R: { expr: "I_t*R", sim: "V_{R}", nombre: "tensión en la resistencia", unidad: V }
+    V_C: { expr: "I_t*Xc", sim: "V_{C}", nombre: "tensión en el condensador", unidad: V }
+    suma: { expr: "V_R + V_C", sim: "V_{R} + V_{C}", nombre: "suma de las tensiones como números", unidad: V }
+
+tarjetas:
+  - id: explore-impedancia
+    tipo: explorar
+    titulo: "La impedancia cambia con la frecuencia"
+    texto: "R = 1 kΩ y C = 100 nF. Arrastre la frecuencia: la resistencia no cambia; el condensador, sí."
+    libro: [126, 129]
+    fijar: { R: 1000, C: 0.0000001 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 100, max: 5000, unidad: Hz, rotulo: "f" }
+      y: { min: 0, max: 5000, unidad: Ω, rotulo: "|Z|" }
+      curvas:
+        - { expr: "R + 0*x", color: azul, rotulo: "resistencia, Z = R" }
+        - { expr: "1/(2*pi*x*C)", color: naranja, rotulo: "condensador, 1/(ωC)" }
+      asas:
+        - { mueve: f, x: "f", y: "Xc", rotulo: "Frecuencia" }
+      lectura: { valor: Xc, rotulo: "Módulo de Z_{C}" }
+      mandos:
+        - { valor: f, min: 100, max: 5000, paso: 50, rotulo: "Frecuencia, f" }
+    requiere: { mover: [f] }
+    nota: "El condensador es imaginario negativo y decrece con la frecuencia."
+
+  - id: prediga-bobina
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "La impedancia de una bobina es j·ω·L. Al subir la frecuencia, su módulo…"
+    libro: [126, 127]
+    opciones:
+      - texto: "Crece"
+        bien: true
+        porque: "ωL crece con la frecuencia: la bobina es imaginaria positiva, y la tensión adelanta 90°."
+      - texto: "Decrece"
+        porque: "Ese es el condensador, 1/(jωC): ω está en el denominador."
+      - texto: "No cambia"
+        porque: "Esa es la resistencia, Z = R: real y sin desfase."
+
+  - id: reto-1880
+    tipo: reto
+    titulo: "Reto: 1880 Ω"
+    texto: "En el plano complejo, Z = R − j·|Z_{C}|. Ajuste la frecuencia hasta que el módulo total sea 1880 Ω."
+    libro: [129, 128]
+    fijar: { R: 1000, C: 0.0000001 }
+    inicio: { f: 2000 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 4000, unidad: Ω, rotulo: "parte real" }
+      y: { min: -2315, max: 0, unidad: Ω, rotulo: "parte imaginaria" }
+      curvas:
+        - { expr: "-Xc/R*x", color: azul, rotulo: "recta del ángulo de Z" }
+      asas:
+        - { mueve: f, x: "R", y: "-Xc", rotulo: "Z: frecuencia" }
+      datos:
+        - { valor: ang, rotulo: "Ángulo: {{ang}}" }
+        - { valor: f, rotulo: "f = {{f}}" }
+      mandos:
+        - { valor: f, min: 100, max: 5000, paso: 50, rotulo: "Frecuencia, f" }
+    condiciones:
+      - { valor: Zt, objetivo: 1880, tol: 0.02, rotulo: "|Z| = {{Zt}}" }
+    exito: "1 kHz: 1000 − j·1592 Ω, de módulo √(1000² + 1592²) = 1880 Ω y ángulo −57,9°."
+    pistas:
+      - { cuando: { valor: Zt, menor: 1842 }, texto: "Falta impedancia: baje la frecuencia, que el condensador se opone más." }
+      - { cuando: { valor: Zt, mayor: 1918 }, texto: "Sobra impedancia: suba la frecuencia." }
+    ayuda: "El libro hace el ejemplo a 1 kHz."
+    comprobar:
+      - { con: { f: 1000 }, Xc: 1592, Zt: 1880, ang: -57.9, tol: 0.002 }
+
+  - id: estime-corriente
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La ley de Ohm, con complejos"
+    texto: "Al RC de 1880 Ω se le aplica 1 V eficaz. Estime la corriente: V = I · Z."
+    libro: [129, 125]
+    fijar: { R: 1000, C: 0.0000001, f: 1000, V_in: 1 }
+    estimar:
+      objetivo: "I_t"
+      unidad: A
+      min: 0
+      max: 0.002
+      paso: 0.00001
+      inicio: 0.0015
+      tol: 0.03
+      rotulo: "I"
+    exito: "1/1880 = 0,532 mA, adelantados 57,9° respecto a la tensión."
+    pistas:
+      - { cuando: { valor: estimacion, menor: 0.000516 }, texto: "Se ha quedado corto: divida 1 V entre 1880 Ω." }
+      - { texto: "Se ha pasado: divida 1 V entre el módulo, 1880 Ω, no entre R." }
+    comprobar:
+      - { I_t: 0.000532 }
+
+  - id: no-suman
+    tipo: sorpresa
+    titulo: "No suman 1 V"
+    texto: "Con 1 V aplicado, compare V_{R} y V_{C} con su suma. Mueva la frecuencia."
+    nota: "A 1 kHz, 0,532 V y 0,847 V suman 1 V, no 1,38 V: en alterna se suman como fasores."
+    libro: [129]
+    fijar: { R: 1000, C: 0.0000001, V_in: 1 }
+    inicio: { f: 2000 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 100, max: 5000, unidad: Hz, rotulo: "f" }
+      y: { min: 0, max: 1.5, unidad: V, rotulo: "V" }
+      curvas:
+        - { expr: "V_in*R/sqrt(R^2 + (1/(2*pi*x*C))^2)", color: azul, rotulo: "V_{R}" }
+        - { expr: "V_in/(2*pi*x*C)/sqrt(R^2 + (1/(2*pi*x*C))^2)", color: naranja, rotulo: "V_{C}" }
+        - { expr: "V_in*(R + 1/(2*pi*x*C))/sqrt(R^2 + (1/(2*pi*x*C))^2)", color: tinta, rotulo: "V_{R} + V_{C}, como números", discontinua: true }
+      asas:
+        - { mueve: f, x: "f", y: "suma", rotulo: "Frecuencia" }
+      lectura: { valor: suma, rotulo: "V_{R} + V_{C}" }
+      datos:
+        - { valor: V_R, rotulo: "V_{R} = {{V_R}}" }
+        - { valor: V_C, rotulo: "V_{C} = {{V_C}}" }
+      mandos:
+        - { valor: f, min: 100, max: 5000, paso: 50, rotulo: "Frecuencia, f" }
+    requiere: { mover: [f] }
+
+  - id: por-que-jw
+    tipo: porque
+    titulo: "¿Por qué 1/(jωC)?"
+    texto: "La impedancia de un condensador es 1/(jωC). ¿De dónde sale?"
+    libro: [127]
+    opciones:
+      - texto: "De i = C·dv/dt en fasores: derivar es multiplicar por jω"
+        bien: true
+        porque: "i = C·dv/dt queda I = jωC·V, y Z = V/I = 1/(jωC). La bobina, igual, da jωL."
+      - texto: "Es una definición, sin más"
+        porque: "Las tres impedancias se deducen de la relación de cada componente escrita en fasores."
+      - texto: "Del valor eficaz del condensador"
+        porque: "El eficaz no interviene: es la derivada, que en fasores es multiplicar por jω."
+
+  - id: cada-impedancia
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Tres componentes, tres impedancias"
+    texto: "Una cada componente con su impedancia y su desfase."
+    libro: [126]
+    emparejar:
+      - ["Resistencia R", "Z = R; 0°, en fase"]
+      - ["Bobina L", "Z = j·ω·L; +90°, la tensión adelanta"]
+      - ["Condensador C", "Z = 1/(j·ω·C); −90°, la tensión retrasa"]
+    exito: "Eso es. Con ellas, un circuito de alterna se resuelve con las reglas de continua y aritmética compleja."
+    pistas:
+      - { texto: "La j de la bobina va arriba (crece con ω); la del condensador, abajo." }
+
+  - id: limites
+    tipo: pregunta
+    titulo: "Una frecuencia a la vez"
+    texto: "Por un filtro RC pasa una señal cuadrada. ¿Sirve la impedancia?"
+    libro: [130]
+    opciones:
+      - texto: "Sí, frecuencia a frecuencia: la cuadrada es una suma de senoides"
+        bien: true
+        porque: "La impedancia describe el régimen senoidal permanente y una frecuencia a la vez."
+      - texto: "Sí, con la frecuencia de la cuadrada y nada más"
+        porque: "Una cuadrada no es una senoide: hay que tratar cada senoide que la forma, una a una."
+      - texto: "No: hace falta siempre la transformada de Laplace"
+        porque: "Laplace es para los transitorios. Una cuadrada en régimen permanente se trata frecuencia a frecuencia."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [125, 126, 129, 130]
+    ideas:
+      - { titulo: "V = I · Z.", texto: "La ley de Ohm con complejos: el módulo da amplitudes y el ángulo, el desfase." }
+      - { titulo: "Las tres.", texto: "R; j·ω·L, que crece con f; 1/(j·ω·C), que decrece." }
+      - { titulo: "El RC del libro.", texto: "A 1 kHz: 1880 Ω, −57,9° y 0,532 mA con 1 V." }
+      - { titulo: "Fasores.", texto: "Las tensiones se suman como fasores, y una frecuencia a la vez." }

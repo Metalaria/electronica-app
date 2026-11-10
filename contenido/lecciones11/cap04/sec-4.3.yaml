@@ -1,0 +1,307 @@
+# Lección 1.1 de la sección 4.3 «Comportamiento Dinámico y Reactancia Inductiva» (cap04): el transitorio RL con
+# τ = L/R (menos resistencia, más lento), los hitos de la exponencial, la desconexión (pico I·R frente a rapidez),
+# la reactancia jωL, el desfase de 90° sin potencia media y la autorresonancia que limita la impedancia.
+# Formato: contenido/lecciones11/GUIA.md.
+leccion: cap04/sec-4.3
+
+libro:
+  72: "Al conectar una bobina en serie con una resistencia a una fuente de tensión, la corriente no aparece de golpe"
+  73: "τ = (L)/(R)"
+  74: "Con la misma bobina y 10 Ω, τ sube a 1 ms"
+  75: "63,2 % en 1τ, 95 % en 3τ, 99,3 % en 5τ"
+  77: "Al abrir el circuito, la bobina intenta mantener su corriente"
+  78: "Con una resistencia grande la extinción es rápida pero la tensión de pico es alta (V = I·R)"
+  80: "la tensión adelanta 90° a la corriente"
+  81: "XL de 10 mH"
+  82: "Una bobina bloquea lo rápido y deja pasar lo lento"
+  83: "durante un cuarto de ciclo absorbe energía del circuito y durante el siguiente la devuelve"
+  85: "Un choque de 100 µH con 5 pF de capacidad parásita deja de bloquear por encima de 7 MHz"
+  89: "un condensador de 100 nF"
+  90: "Transitorio de una bobina de 10 mH con tres resistencias"
+  "cap04#341": "Calcula la reactancia de un inductor de 10 mH a 50 Hz, a 1 kHz y a 100 kHz"
+
+modelo:
+  valores:
+    V_l: { sim: "V", nombre: "tensión de la fuente", unidad: V, valor: 10 }
+    R_l: { sim: "R", nombre: "resistencia", unidad: Ω, valor: 100 }
+    L_l: { sim: "L", nombre: "inductancia", unidad: H, valor: 0.01 }
+    R_d: { sim: "R", nombre: "resistencia del camino de descarga", unidad: Ω, valor: 100 }
+    I_0: { sim: "I₀", nombre: "corriente al abrir", unidad: A, valor: 0.1 }
+    d_modo: { tipo: interruptor, nombre: "conmutador a la fuente", valor: 0 }
+    f_x: { sim: "f", nombre: "frecuencia", unidad: Hz, valor: 1000 }
+    C_x: { sim: "C", nombre: "capacidad del condensador de comparación", unidad: F, valor: 100e-9 }
+    V_p: { sim: "V_{p}", nombre: "amplitud de la fuente", unidad: V, valor: 1 }
+    R_g: { sim: "R", nombre: "resistencia en serie", unidad: Ω, valor: 100 }
+    L_c: { sim: "L", nombre: "inductancia del choque", unidad: H, valor: 100e-6 }
+    C_c: { sim: "C", nombre: "capacidad parásita del choque", unidad: F, valor: 5e-12 }
+  calculos:
+    tau_l: { expr: "L_l/R_l", sim: "τ", nombre: "constante de tiempo", unidad: s }
+    t_5: { expr: "5*tau_l", sim: "5τ", nombre: "fin práctico del transitorio", unidad: s }
+    v_tau: { expr: "0.632*V_l", sim: "v(τ)", nombre: "tensión en R al cabo de τ", unidad: V }
+    fr_3: { expr: "100*(1 - exp(-3))", sim: "i(3τ)", nombre: "fracción de la corriente final en 3τ", unidad: "%" }
+    tau_d: { expr: "L_l/R_d", sim: "τ", nombre: "constante de tiempo de la descarga", unidad: s }
+    V_pico: { expr: "I_0*R_d", sim: "V_{pico}", nombre: "tensión de pico al abrir", unidad: V }
+    X_L: { expr: "2*pi*f_x*L_l", sim: "X_{L}", nombre: "reactancia de la bobina", unidad: Ω }
+    X_C: { expr: "1/(2*pi*f_x*C_x)", sim: "X_{C}", nombre: "reactancia del condensador", unidad: Ω }
+    f_0x: { expr: "1/(2*pi*sqrt(L_l*C_x))", sim: "f₀", nombre: "frecuencia en la que se igualan", unidad: Hz }
+    X_0: { expr: "2*pi*f_0x*L_l", sim: "X₀", nombre: "reactancia en f₀", unidad: Ω }
+    w_f: { expr: "2*pi*f_x", sim: "ω", nombre: "frecuencia angular", unidad: "rad/s" }
+    x_l: { expr: "w_f*L_l/R_g", sim: "ωL/R", nombre: "ωL/R", unidad: "" }
+    A_l: { expr: "V_p*x_l/sqrt(1 + x_l^2)", sim: "V_{L}", nombre: "amplitud en L", unidad: V }
+    A_r: { expr: "V_p/sqrt(1 + x_l^2)", sim: "V_{R}", nombre: "amplitud en R", unidad: V }
+    f_s: { expr: "1/(2*pi*sqrt(L_c*C_c))", sim: "f_{SRF}", nombre: "autorresonancia del choque", unidad: Hz }
+
+tarjetas:
+  - id: explore-tau
+    tipo: explorar
+    titulo: "La corriente no aparece de golpe"
+    texto: "Una bobina de 10 mH se conecta a través de una resistencia. Cambie la resistencia y mire cuánto tarda la corriente."
+    nota: "v_{R} sigue a la corriente."
+    libro: [72, 90]
+    widget:
+      tipo: circuito
+      esquema: carga-rl
+      piezas: { fuente: V_l, r: R_l, l: L_l }
+      lectura: { valor: tau_l, rotulo: "Constante de tiempo" }
+      datos:
+        - { valor: t_5, rotulo: "Termina hacia 5τ: {{t_5}}" }
+      grafica:
+        x: { id: t, min: 0, max: 0.005, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 11, unidad: V, rotulo: "v_{R}" }
+        curvas:
+          - { expr: "V_l*(1 - exp(-t/tau_l))", color: azul, rotulo: "v_{R}", mide: vr }
+        marcas:
+          - { x: "tau_l", y: "v_tau", rotulo: "τ" }
+      mandos:
+        - { valor: R_l, lista: [10, 100, 1000], rotulo: "Resistencia, R" }
+    requiere: { mover: [R_l] }
+
+  - id: prediga-diez-ohmios
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Con 100 Ω, τ = 100 µs. Misma bobina, pero con 10 Ω. ¿Qué le pasa al transitorio?"
+    libro: [74]
+    fijar: { R_l: 10 }
+    widget:
+      tipo: circuito
+      esquema: carga-rl
+      piezas: { fuente: V_l, r: R_l, l: L_l }
+      lectura: { valor: tau_l, rotulo: "Constante de tiempo" }
+      grafica:
+        x: { id: t, min: 0, max: 0.005, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 11, unidad: V, rotulo: "v_{R}" }
+        curvas:
+          - { expr: "V_l*(1 - exp(-t/tau_l))", color: azul, rotulo: "v_{R}", mide: vr }
+      ocultar: true
+    opciones:
+      - texto: "Más lento: τ sube a 1 ms"
+        bien: true
+        porque: "τ = L/R: cuanta menos resistencia, más lento. Al revés que en el RC."
+      - texto: "Más rápido: τ baja a 10 µs"
+        porque: "Es la intuición de quien viene del RC, donde τ = R·C. Aquí R divide."
+      - texto: "Igual: τ depende de la bobina"
+        porque: "Depende de las dos: τ = L/R."
+    comprobar:
+      - { tau_l: 0.001 }
+      - { con: { R_l: 100 }, tau_l: 100e-6 }
+      - { con: { R_l: 1000 }, tau_l: 10e-6 }
+
+  - id: formula-tau
+    tipo: formula
+    titulo: "L partido por R"
+    texto: "La malla da V = L·di/dt + i·R, y su solución es una exponencial con τ = L/R, no el producto como en el RC."
+    libro: [72, 73]
+    ec: 73
+    sustitucion: "τ = {{L_l}} / {{R_l}} = {{tau_l}}"
+    widget:
+      tipo: circuito
+      esquema: carga-rl
+      piezas: { fuente: V_l, r: R_l, l: L_l }
+      lectura: { valor: tau_l, rotulo: "Constante de tiempo" }
+      grafica:
+        x: { id: t, min: 0, max: 0.005, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 11, unidad: V, rotulo: "v_{R}" }
+        curvas:
+          - { expr: "V_l*(1 - exp(-t/tau_l))", color: azul, rotulo: "v_{R}", mide: vr }
+        marcas:
+          - { x: "tau_l", y: "v_tau", rotulo: "τ" }
+      mandos:
+        - { valor: R_l, lista: [10, 100, 1000], rotulo: "Resistencia, R" }
+
+  - id: estime-tres-tau
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Los hitos"
+    texto: "En 1τ la corriente llega al 63,2 % de su valor final. Estime cuánto lleva al cabo de 3τ."
+    libro: [75]
+    estimar:
+      objetivo: "fr_3"
+      unidad: "%"
+      min: 0
+      max: 100
+      paso: 1
+      inicio: 70
+      tol: 0.02
+      rotulo: "i(3τ)"
+    exito: "95 %. Y en 5τ, 99,3 %: a efectos prácticos ha terminado."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 97 }, texto: "Se ha pasado: eso es más cerca de 5τ." }
+      - { texto: "Se ha quedado corto: cada τ recorta lo que falta a algo más de un tercio." }
+    comprobar:
+      - { fr_3: 95.02 }
+
+  - id: sorpresa-desconexion
+    tipo: sorpresa
+    titulo: "Al abrir"
+    texto: "La bobina lleva {{I_0}} y se abre el circuito: la corriente sigue por una resistencia. Cámbiela y mire el pico y lo que dura."
+    libro: [77, 78]
+    inicio: { R_d: 10 }
+    widget:
+      tipo: circuito
+      esquema: carga-rl
+      piezas: { fuente: V_l, r: R_d, l: L_l, i0: I_0, interruptor: d_modo }
+      lectura: { valor: V_pico, rotulo: "Pico de tensión" }
+      datos:
+        - { valor: tau_d, rotulo: "Se extingue con τ = {{tau_d}}" }
+      grafica:
+        x: { id: t, min: 0, max: 0.005, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 110, unidad: V, rotulo: "v_{R}" }
+        curvas:
+          - { expr: "I_0*R_d*exp(-t/tau_d)", color: azul, rotulo: "v_{R}", mide: vr }
+      mandos:
+        - { valor: R_d, lista: [10, 100, 1000], rotulo: "Resistencia del camino, R" }
+    requiere: { mover: [R_d] }
+    comprobar:
+      - { con: { R_d: 1000 }, V_pico: 100, tau_d: 10e-6 }
+      - { con: { R_d: 10 }, V_pico: 1, tau_d: 0.001 }
+
+  - id: porque-compromiso
+    tipo: porque
+    titulo: "¿Rápido y sin pico?"
+    texto: "Con 1 kΩ se extingue en microsegundos, pero con un pico de 100 V; con 10 Ω, 1 V y milisegundos. ¿Por qué no hay camino rápido y sin pico?"
+    libro: [78]
+    fijar: { R_d: 1000 }
+    opciones:
+      - texto: "Pico y rapidez crecen los dos con R"
+        bien: true
+        porque: "El pico es I·R y τ = L/R: una R grande da el pico alto y la extinción rápida. Es el compromiso de la sección 4.5."
+      - texto: "Porque la bobina es pequeña"
+        porque: "Con más L la extinción sería aún más lenta, y el pico, el mismo I·R."
+      - texto: "Sí lo hay: una R muy pequeña"
+        porque: "Una R pequeña baja el pico, pero alarga la extinción: τ = L/R crece."
+    comprobar:
+      - { V_pico: 100, tau_d: 10e-6 }
+      - { con: { R_d: 10 }, V_pico: 1 }
+
+  - id: explore-reactancia
+    tipo: explorar
+    titulo: "Reactancia inductiva"
+    texto: "En alterna, la bobina presenta X_{L} = ωL. Mueva la frecuencia y compare con un condensador de 100 nF."
+    libro: [81, 82, 89]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 10, max: 1000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.1, max: 100000, unidad: Ω, rotulo: "X", escala: log }
+      curvas:
+        - { expr: "2*pi*nu*L_l", color: naranja, rotulo: "X_{L} (10 mH)" }
+        - { expr: "1/(2*pi*nu*C_x)", color: azul, rotulo: "X_{C} (100 nF)", discontinua: true }
+      asas:
+        - { mueve: f_x, x: "f_x", y: "X_L", rotulo: "Frecuencia" }
+      marcas:
+        - { x: "f_0x", y: "X_0", rotulo: "Se igualan" }
+      lectura: { valor: X_L, rotulo: "Reactancia de la bobina" }
+      datos:
+        - { valor: X_C, rotulo: "Condensador: {{X_C}}" }
+      mandos:
+        - { valor: f_x, lista: [50, 1000, 100000], rotulo: "Frecuencia, f" }
+    requiere: { mover: [f_x] }
+
+  - id: estime-cien-kilohercios
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "A 100 kHz"
+    texto: "A 1 kHz, la bobina de 10 mH presenta 62,8 Ω. Estime su reactancia a 100 kHz."
+    libro: [81, "cap04#341"]
+    fijar: { f_x: 100000 }
+    estimar:
+      objetivo: "X_L"
+      unidad: Ω
+      min: 0
+      max: 10000
+      paso: 10
+      inicio: 500
+      tol: 0.05
+      rotulo: "X_{L} a 100 kHz"
+    exito: "6,28 kΩ: cien veces la frecuencia, cien veces la reactancia. Bloquea lo rápido y deja pasar lo lento."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 6600 }, texto: "Se ha pasado: X_{L} crece en proporción a f, ni más ni menos." }
+      - { texto: "Se ha quedado corto: de 1 kHz a 100 kHz, la reactancia se multiplica por cien." }
+    comprobar:
+      - { X_L: 6283 }
+      - { con: { f_x: 1000 }, X_L: 62.8 }
+
+  - id: porque-potencia
+    tipo: porque
+    titulo: "Noventa grados"
+    texto: "La tensión de la bobina adelanta 90° a la corriente (v_{R} la sigue). Una bobina ideal no consume potencia media. ¿Por qué?"
+    libro: [80, 83]
+    fijar: { f_x: 1000 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rl
+      piezas: { fuente: V_p, f: f_x, r: R_g, l: L_l }
+      lectura: { valor: A_l, rotulo: "Amplitud en L" }
+      mide: { vl_amp: A_l, vr_amp: A_r }
+      grafica:
+        x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+        y: { min: -1.2, max: 1.2, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "A_l*sin(w_f*t + pi/2 - atan(x_l))", color: naranja, rotulo: "v_{L}", mide: vl }
+          - { expr: "A_r*sin(w_f*t - atan(x_l))", color: azul, rotulo: "v_{R}", mide: vr, discontinua: true }
+    opciones:
+      - texto: "Absorbe un cuarto de ciclo y lo devuelve en el siguiente"
+        bien: true
+        porque: "La reactancia solo intercambia energía. Lo que disipa está en su cobre y en su núcleo."
+      - texto: "Porque su corriente es pequeña"
+        porque: "Aunque la corriente sea grande, con 90° de desfase lo que entra en un cuarto de ciclo sale en el siguiente."
+      - texto: "Porque en alterna es un cortocircuito"
+        porque: "Es un cortocircuito en continua. En alterna presenta ωL, que crece con la frecuencia."
+
+  - id: estime-autorresonancia
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La impedancia no crece sin fin"
+    texto: "Un choque de 100 µH con 5 pF de capacidad parásita. Estime desde qué frecuencia deja de bloquear (su autorresonancia)."
+    libro: [85]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 100000, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 10, max: 1000000, unidad: Ω, rotulo: "|Z|", escala: log }
+      curvas:
+        - { expr: "2*pi*nu*L_c/abs(1 - (2*pi*nu)^2*L_c*C_c)", color: naranja, rotulo: "|Z| real" }
+        - { expr: "2*pi*nu*L_c", color: tinta, rotulo: "ωL ideal", discontinua: true }
+    estimar:
+      objetivo: "f_s"
+      unidad: Hz
+      min: 0
+      max: 20000000
+      paso: 100000
+      inicio: 18000000
+      tol: 0.05
+      rotulo: "Autorresonancia"
+    exito: "Unos 7 MHz: por encima, la capacidad parásita lo cortocircuita, justo cuando más falta hace bloquear."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 7480000 }, texto: "Se ha pasado: busque el pico de la curva, o calcule 1/(2π·√(L·C))." }
+      - { texto: "Se ha quedado corto: el pico de la curva está más a la derecha." }
+    comprobar:
+      - { f_s: 7.12e6 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [73, 75, 78, 82, 85]
+    ideas:
+      - { titulo: "τ = L/R.", texto: "Menos resistencia, transitorio más lento; 63,2 % en 1τ y hecho en 5τ." }
+      - { titulo: "Al abrir.", texto: "Con una resistencia grande, extinción rápida pero pico alto, I·R; con una pequeña, al revés." }
+      - { titulo: "X_{L} = ωL.", texto: "Bloquea lo rápido y deja pasar lo lento; adelanta 90° y no consume potencia media." }
+      - { titulo: "Hasta la autorresonancia.", texto: "Por encima, su capacidad parásita la convierte en un condensador." }

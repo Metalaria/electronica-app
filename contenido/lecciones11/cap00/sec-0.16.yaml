@@ -1,0 +1,173 @@
+# Lección 1.1 de la sección 0.17 «Interpolación y Ajuste de Curvas» (cap00): la tabla de calibración con
+# interpolación lineal, la mejor recta por mínimos cuadrados (el sensor del libro: 0–100 °C), usarla para convertir
+# una lectura, R² y el cambio de variable que endereza un termistor. Formato: contenido/lecciones11/GUIA.md.
+leccion: cap00/sec-0.16
+
+libro:
+  245: "Convertir la lectura en el valor físico exige una función de calibración"
+  246: "se supone que entre ellos la relación es una recta y se calcula proporcionalmente cualquier valor intermedio"
+  248: "minimiza la suma de los cuadrados de las distancias verticales a los puntos"
+  249: "Un sensor de temperatura calibrado a 0, 25, 50, 75 y 100 °C da 0,502, 0,748, 1,003, 1,249 y 1,498 V"
+  250: "el logaritmo de la resistencia frente a la inversa de la temperatura absoluta"
+
+modelo:
+  valores:
+    T: { sim: "T", nombre: "temperatura", unidad: "°C", valor: 10 }
+    a: { sim: "a", nombre: "pendiente de la recta", unidad: "V/°C", valor: 0.0095 }
+    b: { sim: "b", nombre: "ordenada en el origen", unidad: V, valor: 0.45 }
+    a_fit: { sim: "a", nombre: "pendiente del ajuste del libro", unidad: "V/°C", valor: 0.009972 }
+    b_fit: { sim: "b", nombre: "ordenada del ajuste del libro", unidad: V, valor: 0.5014 }
+    V_l: { sim: "V", nombre: "lectura del sensor", unidad: V, valor: 0.9 }
+  calculos:
+    # the calibration table joined by straight lines (0, 25, 50, 75 and 100 °C)
+    V_tab: { expr: "0.502 + 0.246/25*min(max(T, 0), 25) + 0.255/25*min(max(T - 25, 0), 25) + 0.246/25*min(max(T - 50, 0), 25) + 0.249/25*min(max(T - 75, 0), 25)", sim: "V", nombre: "tensión interpolada", unidad: V, cifras: 3 }
+    V_rec: { expr: "a*T + b", sim: "a·T + b", nombre: "tensión que da la recta", unidad: V }
+    S_mv: { expr: "((0.502 - b)^2 + (0.748 - a*25 - b)^2 + (1.003 - a*50 - b)^2 + (1.249 - a*75 - b)^2 + (1.498 - a*100 - b)^2)*1000000", sim: "Σ", nombre: "suma de los errores al cuadrado, en mV²", unidad: "", cifras: 3 }
+    T_lect: { expr: "(V_l - b_fit)/a_fit", sim: "T", nombre: "temperatura de la lectura", unidad: "°C" }
+
+tarjetas:
+  - id: explore-tabla
+    tipo: explorar
+    titulo: "Una tabla y rectas entre puntos"
+    texto: "Un sensor calibrado en cinco temperaturas. Entre dos puntos se supone una recta. Mueva la temperatura y lea la tensión."
+    libro: [249, 246]
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 100, unidad: "°C", rotulo: "T" }
+      y: { min: 0, max: 1.6, unidad: V, rotulo: "V" }
+      curvas:
+        - { expr: "0.502 + 0.246/25*min(max(x, 0), 25) + 0.255/25*min(max(x - 25, 0), 25) + 0.246/25*min(max(x - 50, 0), 25) + 0.249/25*min(max(x - 75, 0), 25)", color: azul, rotulo: "tabla interpolada" }
+      asas:
+        - { mueve: T, x: "T", y: "V_tab", rotulo: "Temperatura" }
+      lectura: { valor: V_tab, rotulo: "Tensión" }
+      mandos:
+        - { valor: T, min: 0, max: 100, paso: 2.5, rotulo: "Temperatura, T" }
+    requiere: { mover: [T] }
+    nota: "Es la técnica preferida en microcontroladores."
+
+  - id: prediga-medio
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "A 25 °C da 0,748 V y a 50 °C, 1,003 V. ¿Qué tensión da la interpolación a medio camino?"
+    libro: [249, 246]
+    fijar: { T: 37.5 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 100, unidad: "°C", rotulo: "T" }
+      y: { min: 0, max: 1.6, unidad: V, rotulo: "V" }
+      curvas:
+        - { expr: "0.502 + 0.246/25*min(max(x, 0), 25) + 0.255/25*min(max(x - 25, 0), 25) + 0.246/25*min(max(x - 50, 0), 25) + 0.249/25*min(max(x - 75, 0), 25)", color: azul, rotulo: "tabla interpolada" }
+      lectura: { valor: V_tab, rotulo: "Tensión a 37,5 °C" }
+      ocultar: true
+    opciones:
+      - texto: "0,876 V"
+        bien: true
+        porque: "A medio camino, la mitad de la subida: 0,748 + (1,003 − 0,748)/2."
+      - texto: "0,748 V"
+        porque: "Ese es el punto de 25 °C. Entre dos puntos, el valor se calcula en proporción."
+      - texto: "1,003 V"
+        porque: "Ese es el punto de 50 °C. A medio camino toca la media de los dos."
+    comprobar:
+      - { V_tab: 0.8755, tol: 0.001 }
+
+  - id: reto-minimos
+    tipo: reto
+    titulo: "Reto: la mejor recta"
+    texto: "Con ruido no se pasa por todos los puntos: se busca la recta y = a·T + b con la menor suma de errores al cuadrado. Baje esa suma."
+    libro: [248, 249]
+    inicio: { a: 0.0095, b: 0.45 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 100, unidad: "°C", rotulo: "T" }
+      y: { min: 0, max: 1.6, unidad: V, rotulo: "V" }
+      curvas:
+        - { expr: "0.502 + 0.246/25*min(max(x, 0), 25) + 0.255/25*min(max(x - 25, 0), 25) + 0.246/25*min(max(x - 50, 0), 25) + 0.249/25*min(max(x - 75, 0), 25)", color: tinta, rotulo: "medidas, unidas", discontinua: true }
+        - { expr: "a*x + b", color: azul, rotulo: "su recta" }
+      mandos:
+        - { valor: a, min: 0.0095, max: 0.0105, paso: 0.00005, rotulo: "Pendiente, a" }
+        - { valor: b, min: 0.45, max: 0.55, paso: 0.005, rotulo: "Ordenada, b" }
+    condiciones:
+      - { valor: S_mv, max: 100, rotulo: "Suma de errores²: {{S_mv}} mV²" }
+    exito: "Muy cerca. El mínimo exacto da a = 9,972 mV/°C y b = 0,5014 V, con R² = 0,99997."
+    pistas:
+      - { cuando: { valor: a, max: 0.00989 }, texto: "La recta sube menos que las medidas: aumente la pendiente." }
+      - { cuando: { valor: a, min: 0.01011 }, texto: "La recta sube más que las medidas: reduzca la pendiente." }
+      - { texto: "Mueva la ordenada hasta que la recta pase entre los puntos, y después afine la pendiente." }
+    ayuda: "La recta ajustada pasa siempre por el punto medio de los datos: 50 °C y 1,000 V."
+    comprobar:
+      - { con: { a: 0.009972, b: 0.5014 }, S_mv: 17.1, tol: 0.01 }
+
+  - id: estime-lectura
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "De la tensión a la temperatura"
+    texto: "Con la recta del libro, a = 9,972 mV/°C y b = 0,5014 V, el sensor lee 0,900 V. Estime la temperatura."
+    libro: [249]
+    fijar: { a_fit: 0.009972, b_fit: 0.5014, V_l: 0.9 }
+    estimar:
+      objetivo: "T_lect"
+      unidad: "°C"
+      min: 0
+      max: 100
+      paso: 0.5
+      inicio: 70
+      tol: 0.01
+      rotulo: "T"
+    exito: "(0,900 − 0,5014)/0,009972 = 40,0 °C."
+    pistas:
+      - { cuando: { valor: estimacion, menor: 39.6 }, texto: "Se ha quedado corto: reste b a la lectura y divida por la pendiente." }
+      - { texto: "Se ha pasado: (0,900 − 0,5014) entre 0,009972." }
+    comprobar:
+      - { T_lect: 40.0, tol: 0.002 }
+
+  - id: por-que-tabla
+    tipo: porque
+    titulo: "¿Por qué una tabla?"
+    texto: "En un microcontrolador se prefiere una tabla de puntos con interpolación lineal. ¿Por qué?"
+    libro: [246, 245]
+    opciones:
+      - texto: "Cuesta muy poco cálculo y aproxima cualquier curva con puntos suficientes"
+        bien: true
+        porque: "Con más puntos, tan bien como se quiera, y entre ellos solo hay una proporción."
+      - texto: "Porque los sensores son siempre lineales"
+        porque: "Rara vez lo son: por eso hace falta una función de calibración."
+      - texto: "Porque la interpolación elimina el ruido de las medidas"
+        porque: "Pasa por cada punto con su ruido. Para promediar el ruido está el ajuste por mínimos cuadrados."
+
+  - id: erre-cuadrado
+    tipo: pregunta
+    titulo: "R² = 0,99997"
+    texto: "El ajuste del sensor da R² = 0,99997. ¿Qué indica?"
+    libro: [248, 249]
+    opciones:
+      - texto: "Que la recta explica casi toda la variación: el sensor es muy lineal en ese tramo"
+        bien: true
+        porque: "R², entre 0 y 1, mide cómo de bien explica la recta los datos: cuanto más cerca de 1, más lineal."
+      - texto: "Que la recta pasa exactamente por todos los puntos"
+        porque: "No pasa por todos: sus residuos no son cero. Es la mejor recta, no una interpolación."
+      - texto: "Que el sensor tiene un error del 0,99997 %"
+        porque: "R² no es un error en porcentaje: es la fracción de la variación que la recta explica."
+
+  - id: termistor
+    tipo: pregunta
+    titulo: "Enderezar una curva"
+    texto: "La característica de un termistor no es una recta. ¿Qué representación la vuelve casi lineal?"
+    libro: [250]
+    opciones:
+      - texto: "El logaritmo de la resistencia frente a la inversa de la temperatura absoluta"
+        bien: true
+        porque: "Es la ecuación B: un cambio de variable la endereza antes de ajustarla con una simple recta."
+      - texto: "La resistencia frente al cuadrado de la temperatura"
+        porque: "El cambio que la endereza es logarítmico: ln R frente a 1/T, con T absoluta."
+      - texto: "Ninguna: hay que usar siempre una tabla"
+        porque: "Una tabla sirve, pero con el cambio de variable basta una recta."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [246, 248, 249, 250]
+    ideas:
+      - { titulo: "Interpolar.", texto: "Entre dos puntos de calibración, una recta: en proporción." }
+      - { titulo: "Ajustar.", texto: "La recta que minimiza la suma de los errores al cuadrado: a = 9,972 mV/°C, b = 0,5014 V." }
+      - { titulo: "R².", texto: "Cuanto más cerca de 1, más lineal es el sensor en ese tramo." }
+      - { titulo: "Enderezar.", texto: "Un cambio de variable, como ln R frente a 1/T, convierte curvas en rectas." }

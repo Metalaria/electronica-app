@@ -2,7 +2,8 @@
   // «Práctica inteligente» (0.11, group B; #/practicar, #/practicar/<parte>, #/practicar/<parte>/<seccion>): about
   // ten items chosen for the reader by lib/aprendizaje/seleccion.ts — weak and decaying concepts first, a little
   // review of what is mastered, some new material of the current course in order — with every kind of item the app
-  // has: «Aprender haciendo» practice, Repaso questions, self-checked exercises and due glossary flashcards. One per
+  // has: «Aprender haciendo» practice, Repaso questions, self-checked exercises, due glossary flashcards and (1.1) the
+  // predictions, questions and challenges of the hand-authored lessons (leccion11/TarjetaPractica.svelte). One per
   // screen with the usual components (they emit the learning events: XP, mastery). The end screen says what
   // improved: each concept's mastery before and after.
   import { onMount, untrack } from 'svelte';
@@ -26,6 +27,7 @@
   import TarjetaEjercicio from '../aprender/TarjetaEjercicio.svelte';
   import MedidorDominio from '../dominio/MedidorDominio.svelte';
   import TarjetaSesion from './TarjetaSesion.svelte';
+  import TarjetaPractica from '../leccion11/TarjetaPractica.svelte';
   import { NOMBRE_MOTIVO, prepararSesion, tituloConcepto, type Sesion } from './sesion';
 
   let { alcance = '' }: { alcance?: string } = $props();
@@ -163,6 +165,12 @@
 
   function responderTarjeta(c: Calificacion) {
     anotar({ bien: c > 1, primera: c >= 3 });
+  }
+
+  function responderLeccion11(r: { bien: boolean; primera: boolean }) {
+    // a lesson card counts for the daily goal as the lesson's own answers do (once per item)
+    if (!resultados[k]) registrarActividad('pregunta');
+    anotar(r);
   }
 
   // a self-checked exercise reports its checks as learning events: the first one is the session's answer
@@ -310,6 +318,8 @@
             <TarjetaEjercicio label={item.id} />
           {:else if item.tarjeta}
             <TarjetaSesion tarjeta={item.tarjeta} onresponder={responderTarjeta} />
+          {:else if item.leccion11}
+            <TarjetaPractica leccion={item.leccion11.leccion} k={item.leccion11.k} prefijo={`ps11-${k}`} onresponder={responderLeccion11} />
           {/if}
         {/key}
       </div>
@@ -397,7 +407,7 @@
   h1 {
     margin: 0;
     color: var(--titulos);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: clamp(24px, 3.4vw, 30px);
     line-height: 1.2;
   }

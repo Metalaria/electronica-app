@@ -389,12 +389,15 @@ const RE_UNIDAD = /(\d(?:[\d.,]*\d)?)(\s| | | )?([pnµμumkMG])?(VA|Hz|dB|�
  * is (metres or milli-?). Units the table does not know stay as written.
  */
 export function leerUnidades(texto: string): string {
-  return texto.replace(RE_UNIDAD, (todo, n: string, _esp: string | undefined, pre: string | undefined, u: string) => {
-    const nombres = UNIDADES[u];
-    if (!nombres) return todo;
-    const uno = /^[-−]?1$/.test(n);
-    return `${n} ${pre ? PREFIJOS[pre] ?? pre : ''}${uno ? nombres[0] : nombres[1]}`;
-  });
+  return texto
+    .replace(RE_UNIDAD, (todo, n: string, _esp: string | undefined, pre: string | undefined, u: string) => {
+      const nombres = UNIDADES[u];
+      if (!nombres) return todo;
+      const uno = /^[-−]?1$/.test(n);
+      return `${n} ${pre ? PREFIJOS[pre] ?? pre : ''}${uno ? nombres[0] : nombres[1]}`;
+    })
+    // a noise density («20 nV/√Hz»: the unit just read, then the root of a hertz)
+    .replace(/(\p{L})\/√Hz(?![\p{L}\d])/gu, '$1 por raíz de hercio');
 }
 
 /** The Typst source of an equation of the book, in Spanish words for a screen reader. */

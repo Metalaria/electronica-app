@@ -1,6 +1,6 @@
 // The concepts that can be practised (0.11, group B): for every part, the h2 sections that have something to answer
 // in the app — an «Aprender haciendo» item, a Repaso question (its `ref` is the section, something inside it or a
-// problem) or a self-checked exercise. The mastery bars of chapters and courses use it as their denominator, so a
+// problem), a self-checked exercise or (1.1) a question of its hand-authored lesson. The mastery bars of chapters and courses use it as their denominator, so a
 // section with nothing to answer never counts as «sin practicar». Reads only the generated JSON (no ngspice):
 //   node web/scripts/conceptos11.mjs      → web/public/libro/conceptos.json
 // contenido/generar.py runs it after practica10.mjs. Deterministic; the same rules as lib/aprendizaje/catalogo.ts.
@@ -49,6 +49,15 @@ if (existsSync(dirRepaso)) {
   }
 }
 for (const it of Object.values(ejercicios)) if (it.modo === 'auto' && (it.respuestas?.length || it.preguntas?.length) && it.seccion) anotar(it.parte, it.seccion);
+// 1.1: the hand-authored lessons' questions, predictions and challenges (lecciones11/indice.json «preguntas», written
+// by lecciones11.mjs, which runs this script again whenever that index changes)
+if (existsSync(join(LIBRO, 'lecciones11', 'indice.json'))) {
+  for (const [id, e] of Object.entries(leer(join('lecciones11', 'indice.json')).lecciones ?? {})) {
+    if (!e?.preguntas?.length) continue;
+    const i = id.indexOf('/');
+    anotar(id.slice(0, i), id.slice(i + 1));
+  }
+}
 
 // in the index's order, parts and sections
 const partes = {};

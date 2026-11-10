@@ -1,0 +1,250 @@
+# Lección 1.1 de la sección 2.9 «Asociaciones y Redes de Resistencias» (cap02): un peldaño de la escalera R-2R,
+# las redes integradas, los atenuadores, el divisor cargado y la sensibilidad del puente de Wheatstone (la deducción
+# de la sección, con su comprobación numérica). Formato: contenido/lecciones11/GUIA.md.
+leccion: cap02/sec-2.9
+
+libro:
+  168: "dimensionar el divisor con corrientes al menos diez veces mayores que la que tomará la carga"
+  170: "cada peldaño divide la tensión exactamente por dos"
+  171: "comparten temperatura y proceso y mantienen su relación aunque el valor absoluto derive"
+  172: "Se detecta un cero, no se mide un valor"
+  "cap02#342": "Un divisor con dos resistencias de 10 kΩ alimentado a 10 V"
+
+modelo:
+  valores:
+    V_m: { sim: "V", nombre: "tensión de entrada del peldaño", unidad: V, valor: 5 }
+    R_m1: { sim: "R", nombre: "resistencia en serie del peldaño", unidad: Ω, valor: 1000 }
+    R_m2: { sim: "2R", nombre: "resistencia a masa del peldaño", unidad: Ω, valor: 2000 }
+    R_m3: { sim: "resto", nombre: "el resto de la escalera", unidad: Ω, valor: 1000 }
+    V_d: { sim: "V", nombre: "tensión del divisor", unidad: V, valor: 10 }
+    R_d1: { sim: "R₁", nombre: "resistencia de arriba", unidad: Ω, valor: 10000 }
+    R_d2: { sim: "R₂", nombre: "resistencia de abajo", unidad: Ω, valor: 10000 }
+    R_dl: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 10000 }
+    V_e: { sim: "V_{exc}", nombre: "tensión de excitación", unidad: V, valor: 5 }
+    R_s: { sim: "R", nombre: "resistencia de cada brazo", unidad: Ω, valor: 1000 }
+    dR: { sim: "ΔR", nombre: "cambio del sensor", unidad: Ω, valor: 1 }
+  calculos:
+    R_mp: { expr: "par(R_m2, R_m3)", sim: "2R ‖ resto", nombre: "rama a masa con el resto", unidad: Ω }
+    I_m: { expr: "V_m/(R_m1 + R_mp)", sim: "I", nombre: "corriente del peldaño", unidad: A }
+    V_mp: { expr: "I_m*R_mp", sim: "V_{nodo}", nombre: "tensión del nodo", unidad: V }
+    I_m2: { expr: "V_mp/R_m2", sim: "I_{2R}", nombre: "corriente por 2R", unidad: A }
+    I_m3: { expr: "V_mp/R_m3", sim: "I_{resto}", nombre: "corriente hacia el resto", unidad: A }
+    V_m1: { expr: "I_m*R_m1", sim: "V_{R}", nombre: "tensión en R", unidad: V }
+    frac: { expr: "V_mp/V_m", sim: "V_{nodo}/V", nombre: "fracción de la entrada", unidad: "", cifras: 3 }
+    R_dab: { expr: "par(R_d2, R_dl)", sim: "R₂ ‖ R_{L}", nombre: "rama de abajo con la carga", unidad: Ω }
+    I_d: { expr: "V_d/(R_d1 + R_dab)", sim: "I", nombre: "corriente de la fuente", unidad: A }
+    V_do: { expr: "I_d*R_dab", sim: "V_{salida}", nombre: "tensión de salida", unidad: V }
+    I_d2: { expr: "V_do/R_d2", sim: "I_{R2}", nombre: "corriente por R₂", unidad: A }
+    I_dl: { expr: "V_do/R_dl", sim: "I_{L}", nombre: "corriente por la carga", unidad: A }
+    V_a: { expr: "V_e*(R_s + dR)/(2*R_s + dR)", sim: "V_{a}", nombre: "punto medio del sensor", unidad: V, cifras: 5 }
+    V_b: { expr: "V_e/2", sim: "V_{b}", nombre: "punto medio de referencia", unidad: V }
+    V_ab: { expr: "V_a - V_b", sim: "V_{out}", nombre: "salida exacta del puente", unidad: V, cifras: 5 }
+    V_ap: { expr: "V_e/4*dR/R_s", sim: "V_{exc}/4 · ΔR/R", nombre: "salida aproximada", unidad: V, cifras: 5 }
+    err: { expr: "(V_ap - V_ab)/V_ab*100", sim: "error", nombre: "error de la aproximación", unidad: "%", cifras: 2 }
+    I_w: { expr: "V_e/(2*R_s + dR) + V_e/(2*R_s)", sim: "I", nombre: "corriente de la fuente", unidad: A }
+    R_sd: { expr: "R_s + dR", sim: "R + ΔR", nombre: "valor del sensor", unidad: Ω, cifras: 5 }
+
+tarjetas:
+  - id: explore-peldano
+    tipo: explorar
+    titulo: "Un peldaño de la escalera R-2R"
+    texto: "R en serie y 2R a masa, en paralelo con el resto de la escalera. Cambie lo que vale el resto y mire qué fracción queda en el nodo."
+    libro: [170]
+    widget:
+      tipo: circuito
+      esquema: mixto
+      piezas: { fuente: V_m, r1: R_m1, r2: R_m2, r3: R_m3 }
+      lectura: { valor: V_mp, rotulo: "Tensión del nodo" }
+      datos:
+        - { valor: frac, rotulo: "Fracción: {{frac}}" }
+      corriente: I_m
+      mide: { corriente: I_m, i2: I_m2, i3: I_m3, v1: V_m1, paralelo: V_mp }
+      mandos:
+        - { valor: R_m3, lista: [1000, 2000, 4000], rotulo: "El resto de la escalera" }
+
+  - id: prediga-mitad
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "En una escalera R-2R, el resto visto desde cada nodo vale 2R. ¿Qué fracción de la entrada queda en el nodo?"
+    libro: [170]
+    fijar: { R_m3: 2000 }
+    widget:
+      tipo: circuito
+      esquema: mixto
+      piezas: { fuente: V_m, r1: R_m1, r2: R_m2, r3: R_m3 }
+      lectura: { valor: V_mp, rotulo: "Tensión del nodo" }
+      datos:
+        - { valor: frac, rotulo: "Fracción: {{frac}}" }
+      corriente: I_m
+      mide: { corriente: I_m, i2: I_m2, i3: I_m3, v1: V_m1, paralelo: V_mp }
+      ocultar: true
+    opciones:
+      - texto: "La mitad exacta"
+        bien: true
+        porque: "2R en paralelo con 2R es R, igual que la de serie: cada peldaño divide la tensión exactamente por dos."
+      - texto: "Más de la mitad, porque 2R es mayor que R"
+        porque: "Sola, 2R se quedaría con más. Pero en paralelo con el resto, la rama a masa vale R."
+      - texto: "Menos de la mitad"
+        porque: "La rama a masa, 2R ‖ 2R, vale lo mismo que la R de serie: se reparten a partes iguales."
+    comprobar:
+      - { frac: 0.5, R_mp: 1000 }
+
+  - id: por-que-dos-valores
+    tipo: porque
+    titulo: "Solo dos valores"
+    texto: "La escalera R-2R es la base de muchos conversores digital-analógico. ¿Por qué basta con dos valores?"
+    libro: [170]
+    opciones:
+      - texto: "Cada peldaño divide por dos, y eso da una salida proporcional al número binario"
+        bien: true
+        porque: "Cada bit pesa la mitad que el anterior, como en binario. R y su doble bastan para todos los peldaños."
+      - texto: "Porque con dos valores se reduce el ruido térmico"
+        porque: "El ruido no tiene que ver. La clave es que cada peldaño divide exactamente por dos."
+      - texto: "Porque R y 2R son valores de la E12"
+        porque: "La serie no importa: importa la proporción exacta entre R y 2R."
+
+  - id: redes-integradas
+    tipo: pregunta
+    titulo: "En un mismo chip"
+    texto: "Un DAC R-2R o un amplificador de instrumentación dependen de que sus resistencias guarden una proporción exacta. ¿Por qué se fabrican en redes integradas?"
+    libro: [171]
+    opciones:
+      - texto: "Comparten temperatura y proceso: mantienen su relación aunque el valor derive"
+        bien: true
+        porque: "En instrumentación importa que estén igualadas entre sí, más que su valor."
+      - texto: "Porque su valor absoluto es más exacto"
+        porque: "El valor absoluto puede derivar; lo que se mantiene es la proporción entre ellas."
+      - texto: "Por ahorrar espacio, sin más"
+        porque: "Ahorran espacio, pero la razón de fondo es que guarden la proporción exacta."
+
+  - id: atenuadores
+    tipo: pregunta
+    titulo: "Atenuadores en escalón"
+    texto: "Con divisores en cascada se construyen atenuadores que bajan una señal en pasos calibrados, de 10 en 10 dB. ¿Qué mantienen constante?"
+    libro: [170]
+    opciones:
+      - texto: "La impedancia vista desde la entrada y la salida"
+        bien: true
+        porque: "Cambian de paso sin cambiar la impedancia: por eso se pueden encadenar."
+      - texto: "La tensión de salida"
+        porque: "La salida baja en cada paso: es lo que hace un atenuador."
+      - texto: "La corriente por cada resistencia"
+        porque: "Lo constante es la impedancia vista desde fuera, no las corrientes internas."
+
+  - id: divisor-cargado
+    tipo: pregunta
+    titulo: "El divisor cargado"
+    texto: "Cambie la carga y compare la corriente de R₂ con la de la carga. ¿Qué regla práctica da el libro?"
+    libro: [168, "cap02#342"]
+    fijar: { V_d: 10, R_d1: 10000, R_d2: 10000 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_d, arriba: R_d1, abajo: R_d2, carga: R_dl }
+      lectura: { valor: V_do, rotulo: "Tensión de salida" }
+      barras:
+        - { valor: I_d2, rotulo: "Por R₂: {{I_d2}}", color: azul }
+        - { valor: I_dl, rotulo: "Por la carga: {{I_dl}}", color: verde }
+      corriente: I_d
+      mide: { salida: V_do, corriente: I_d, abajo: I_d2, carga: I_dl }
+      mandos:
+        - { valor: R_dl, lista: [10000, 100000, 1000000], rotulo: "Carga" }
+    opciones:
+      - texto: "La corriente del divisor, al menos diez veces la de la carga"
+        bien: true
+        porque: "Así la carga no lo «hunda». Si toma tanta como R₂, la salida cae un tercio."
+      - texto: "Que la carga tome la mitad de la corriente"
+        porque: "Con la carga llevándose tanto como R₂ la salida se hunde: tiene que ser una fracción pequeña."
+      - texto: "Que R₁ y R₂ sean iguales"
+        porque: "La relación R₁/R₂ fija la salida en vacío; lo que la protege de la carga es la corriente del divisor."
+
+  - id: explore-sensibilidad
+    tipo: explorar
+    titulo: "Un puente fuera del equilibrio"
+    texto: "Cuatro brazos de 1 kΩ a 5 V; uno es un sensor que cambia ΔR. Muévalo y compare la salida exacta con la aproximación."
+    libro: [172]
+    widget:
+      tipo: circuito
+      esquema: wheatstone
+      piezas: { fuente: V_e, r1: R_s, r2: R_sd, r3: R_s, r4: R_s }
+      lectura: { valor: V_ab, rotulo: "Salida exacta" }
+      datos:
+        - { valor: V_ap, rotulo: "V_{exc}/4 · ΔR/R = {{V_ap}}" }
+        - { valor: err, rotulo: "Error de la aproximación: {{err}}" }
+      corriente: I_w
+      mide: { salida: V_ab, va: V_a, vb: V_b, corriente: I_w }
+      mandos:
+        - { valor: dR, min: 1, max: 20, paso: 1, rotulo: "Cambio del sensor, ΔR" }
+
+  - id: estime-galga
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La sensibilidad"
+    texto: "Para cambios pequeños, V_{out} ≈ V_{exc}/4 · ΔR/R. Con 5 V y brazos de 1 kΩ, estime la salida si el sensor cambia 10 Ω."
+    libro: [172]
+    fijar: { dR: 10 }
+    estimar:
+      objetivo: "V_ap"
+      unidad: V
+      min: 0
+      max: 0.05
+      paso: 0.0005
+      inicio: 0.04
+      tol: 0.02
+      rotulo: "V_{out} con ΔR = 10 Ω"
+    exito: "5/4 · 10/1000 = 12,5 mV. El valor exacto es 12,4378 mV."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.01275 }, texto: "Se ha pasado: es la cuarta parte de 5 V por una centésima." }
+      - { texto: "Se ha quedado corto: 10 Ω de 1 kΩ es una centésima, por 5/4 V." }
+    comprobar:
+      - { V_ap: 0.0125, V_ab: 0.0124378, tol: 0.001 }
+
+  - id: prediga-lineal
+    tipo: predecir
+    titulo: "¿Hasta dónde vale?"
+    texto: "Con ΔR = 1 Ω, la aproximación yerra un 0,05 %. ¿Y con ΔR = 10 Ω, un 1 % de desequilibrio?"
+    libro: [172]
+    fijar: { dR: 10 }
+    widget:
+      tipo: circuito
+      esquema: wheatstone
+      piezas: { fuente: V_e, r1: R_s, r2: R_sd, r3: R_s, r4: R_s }
+      lectura: { valor: err, rotulo: "Error de la aproximación" }
+      corriente: I_w
+      mide: { salida: V_ab, va: V_a, vb: V_b, corriente: I_w }
+      ocultar: true
+    opciones:
+      - texto: "Un 0,5 %: empieza a notarse"
+        bien: true
+        porque: "12,4378 mV frente a 12,5000: excelente para una galga, pero a partir del 1 % se nota."
+      - texto: "Un 0,05 %, igual que antes"
+        porque: "El error crece con el desequilibrio: diez veces más ΔR, unas diez veces más error."
+      - texto: "Un 5 %: ya no sirve"
+        porque: "Es diez veces menos: un 0,5 %. La aproximación lineal sigue siendo buena."
+    comprobar:
+      - { err: 0.5, tol: 0.01 }
+      - { con: { dR: 1 }, err: 0.05, tol: 0.02 }
+
+  - id: por-que-cero
+    tipo: porque
+    titulo: "¿Por qué tan preciso?"
+    texto: "El puente de Wheatstone es la base de casi todos los sensores de precisión. ¿Cuál es la idea de fondo?"
+    libro: [172]
+    opciones:
+      - texto: "Se detecta un cero, que no depende de la tensión de excitación"
+        bien: true
+        porque: "Detectar un cero es siempre más exacto que medir una magnitud. Y si comparten temperatura, sus derivas se cancelan."
+      - texto: "La salida es grande y fácil de medir"
+        porque: "Es pequeña: milivoltios. Su fuerza es que en el equilibrio se mide un cero."
+      - texto: "Las cuatro resistencias son de precisión"
+        porque: "Ayuda, pero la idea es otra: en el equilibrio la medida no depende de la excitación."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [168, 170, 171, 172]
+    ideas:
+      - { titulo: "R-2R.", texto: "Cada peldaño divide exactamente por dos: la base de muchos DAC." }
+      - { titulo: "Redes integradas.", texto: "Comparten temperatura y proceso: guardan la proporción aunque el valor derive." }
+      - { titulo: "Divisor cargado.", texto: "Corrientes del divisor al menos diez veces la de la carga." }
+      - { titulo: "Puente.", texto: "Fuera del equilibrio, V_{out} ≈ V_{exc}/4 · ΔR/R para cambios pequeños." }

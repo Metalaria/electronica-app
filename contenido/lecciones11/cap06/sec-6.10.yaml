@@ -1,0 +1,250 @@
+# Lección 1.1 de la sección 6.10 «Estabilidad de Polarización y Embalamiento Térmico» (cap06): dos bipolares en
+# paralelo con 10 A, uno 25 °C más caliente (50 mV menos de V_BE): sin resistencias de reparto se lleva casi 9 A; con
+# 0,22 Ω por transistor, 5,1 A frente a 4,9 A. El círculo del embalamiento, el criterio R_θ·dP/dT_j < 1, las tres
+# formas de romperlo, el compensador en el disipador, el MOSFET y la prueba del secador. Las curvas son las cuentas
+# del libro: sin resistencias, el reparto exponencial e^(ΔV/V_T); con ellas, ΔI = ΔV/R (el libro desprecia r_e).
+# Formato: contenido/lecciones11/GUIA.md.
+leccion: cap06/sec-6.10
+
+libro:
+  314: "VBE baja 2 mV/°C a corriente constante"
+  315: "β crece entre un 0,5 y un 1 % por grado."
+  316: "ICBO se duplica cada 10 °C"
+  317: "más corriente → más disipación → más temperatura → más corriente"
+  320: "Rθ · dP/dTj"
+  322: "Reducir Rθ: mejor disipador. Ataca el factor térmico."
+  323: "Reducir dP/dT: realimentación en el circuito. Ataca el factor eléctrico"
+  325: "eso reduce la VBE efectiva"
+  326: "una caída de 1 a 2 V en RE hace la polarización prácticamente insensible a la β y a la temperatura"
+  328: "con la corriente del divisor al menos diez veces la de base"
+  329: "Su VBE cae los mismos 2 mV/°C y cancela la deriva."
+  330: "el elemento compensador tiene que estar atornillado al disipador, no suelto en la placa"
+  332: "el que esté ligeramente más caliente conduce más, se calienta más, y acapara toda la corriente"
+  333: "Con 0,22 Ω y 5 A por transistor, cada resistencia cae 1,1 V"
+  334: "su RDS(on) tiene coeficiente positivo"
+  335: "en zona lineal, un MOSFET sí puede embalarse"
+  338: "Con RE adecuada, la corriente apenas se mueve."
+
+modelo:
+  valores:
+    dT: { sim: "ΔT", nombre: "cuánto más caliente está uno de los dos", unidad: "°C", valor: 0 }
+    V_T: { sim: "V_{T}", nombre: "tensión térmica", unidad: V, valor: 0.02585 }
+    k_v: { sim: "dV_{BE}/dT", nombre: "deriva de V_BE, en módulo", unidad: V, valor: 0.002 }
+    R_r: { sim: "R_{E}", nombre: "resistencia de reparto", unidad: Ω, valor: 0.22 }
+    I_tot: { sim: "I", nombre: "corriente total de la carga", unidad: A, valor: 10 }
+    rep: { tipo: interruptor, nombre: "resistencias de reparto puestas", valor: 0 }
+  calculos:
+    dV: { expr: "k_v*dT", sim: "ΔV_{BE}", nombre: "diferencia entre las V_BE", unidad: V }
+    I_sin: { expr: "I_tot*exp(dV/V_T)/(1 + exp(dV/V_T))", sim: "I_{caliente}", nombre: "corriente del caliente sin resistencias", unidad: A, cifras: 3 }
+    I_con: { expr: "I_tot/2 + dV/(2*R_r)", sim: "I_{caliente}", nombre: "corriente del caliente con resistencias", unidad: A, cifras: 3 }
+    I_hot: { si: rep, entonces: "I_con", sino: "I_sin", sim: "I_{caliente}", nombre: "corriente del transistor caliente", unidad: A, cifras: 3 }
+    I_cold: { expr: "I_tot - I_hot", sim: "I_{frío}", nombre: "corriente del transistor frío", unidad: A, cifras: 3 }
+    dI: { expr: "dV/R_r", sim: "ΔI", nombre: "diferencia de corrientes con resistencias", unidad: A }
+    V_rr: { expr: "I_tot/2*R_r", sim: "V_{RE}", nombre: "caída en cada resistencia de reparto", unidad: V }
+
+tarjetas:
+  - id: explore-paralelo
+    tipo: explorar
+    titulo: "Dos en paralelo"
+    texto: "Dos bipolares en paralelo comparten 10 A, sin resistencias de reparto. Caliente uno de ellos y mire cuánto se lleva."
+    nota: "Cada grado más caliente, su V_{BE} baja 2 mV a la misma corriente."
+    libro: [314, 332]
+    widget:
+      tipo: grafica
+      x: { id: g, min: 0, max: 25, unidad: "°C", rotulo: "ΔT" }
+      y: { min: 0, max: 10, unidad: A, rotulo: "I_{caliente}" }
+      curvas:
+        - { expr: "I_tot*exp(k_v*g/V_T)/(1 + exp(k_v*g/V_T))", color: naranja, rotulo: "sin reparto" }
+        - { expr: "I_tot/2", color: azul, rotulo: "la mitad", discontinua: true }
+      asas:
+        - { mueve: dT, x: "dT", y: "I_sin", rotulo: "Calentamiento" }
+      lectura: { valor: I_sin, rotulo: "Se lleva el caliente" }
+      datos:
+        - { valor: dV, rotulo: "ΔV_{BE} = {{dV}}" }
+      mandos:
+        - { valor: dT, min: 0, max: 25, paso: 1, rotulo: "Uno más caliente, ΔT" }
+    requiere: { mover: [dT] }
+
+  - id: prediga-acapara
+    tipo: predecir
+    titulo: "Prediga el reparto"
+    texto: "Dos bipolares en paralelo comparten 10 A sin resistencias de reparto. Uno está 25 °C más caliente: 50 mV menos de V_{BE}. ¿Cuánto se lleva?"
+    libro: [332, 333]
+    fijar: { dT: 25, rep: 0 }
+    widget:
+      tipo: grafica
+      x: { id: g, min: 0, max: 25, unidad: "°C", rotulo: "ΔT" }
+      y: { min: 0, max: 10, unidad: A, rotulo: "I_{caliente}" }
+      curvas:
+        - { expr: "I_tot*exp(k_v*g/V_T)/(1 + exp(k_v*g/V_T))", color: naranja, rotulo: "sin reparto" }
+      lectura: { valor: I_sin, rotulo: "Se lleva el caliente" }
+      ocultar: true
+    opciones:
+      - texto: "Casi 9 de los 10 A"
+        bien: true
+        porque: "La corriente es exponencial en V_{BE}: 50 mV son casi dos V_{T}, un factor de unas siete veces. Y al llevarse más, se calienta más."
+      - texto: "5,1 A: casi la mitad"
+        porque: "Eso es con resistencias de reparto de 0,22 Ω. Sin ellas, la exponencial manda."
+      - texto: "Los 10 A, al instante"
+        porque: "No al instante: con esa diferencia se lleva casi 9 A. Pero el círculo sigue y acaba acaparando toda la corriente."
+    comprobar:
+      - { dV: 0.05, I_sin: 8.74 }
+      - { con: { rep: 1 }, I_con: 5.11 }
+
+  - id: sorpresa-reparto
+    tipo: sorpresa
+    titulo: "Unas décimas de ohmio"
+    texto: "Los mismos dos bipolares con 10 A, uno 25 °C más caliente. Ponga una resistencia de emisor de 0,22 Ω en cada uno."
+    libro: [333]
+    fijar: { dT: 25 }
+    inicio: { rep: 0 }
+    widget:
+      tipo: grafica
+      x: { id: g, min: 0, max: 25, unidad: "°C", rotulo: "ΔT" }
+      y: { min: 0, max: 10, unidad: A, rotulo: "I_{caliente}" }
+      curvas:
+        - { expr: "I_tot*exp(k_v*g/V_T)/(1 + exp(k_v*g/V_T))", color: naranja, rotulo: "sin reparto" }
+        - { expr: "I_tot/2 + k_v*g/(2*R_r)", color: azul, rotulo: "con 0,22 Ω" }
+      lectura: { valor: I_hot, rotulo: "Se lleva el caliente" }
+      datos:
+        - { valor: I_cold, rotulo: "El frío: {{I_cold}}" }
+      mandos:
+        - { valor: rep, tipo: conectar, boton: "Poner las resistencias de 0,22 Ω" }
+    comprobar:
+      - { con: { rep: 1 }, I_hot: 5.11, I_cold: 4.89 }
+
+  - id: por-que-reparto
+    tipo: porque
+    titulo: "¿Por qué funciona?"
+    texto: "Con 0,22 Ω por transistor, 50 mV de diferencia entre las V_{BE} solo separan las corrientes 0,23 A. ¿Por qué tan poco?"
+    libro: [333]
+    fijar: { dT: 25, rep: 1 }
+    widget:
+      tipo: grafica
+      x: { id: g, min: 0, max: 25, unidad: "°C", rotulo: "ΔT" }
+      y: { min: 0, max: 10, unidad: A, rotulo: "I_{caliente}" }
+      curvas:
+        - { expr: "I_tot/2 + k_v*g/(2*R_r)", color: azul, rotulo: "con 0,22 Ω" }
+      lectura: { valor: I_hot, rotulo: "Se lleva el caliente" }
+      datos:
+        - { valor: V_rr, rotulo: "Cada resistencia cae {{V_rr}}" }
+    opciones:
+      - texto: "Cada resistencia cae 1,1 V: 50 mV frente a eso apenas mueven la corriente"
+        bien: true
+        porque: "La diferencia de V_{BE} tiene que caer en la resistencia: 50 mV/0,22 Ω ≈ 0,23 A. La exponencial ya no manda."
+      - texto: "La resistencia enfría al transistor caliente"
+        porque: "La resistencia no enfría: hace que la corriente dependa de su caída, lineal, y no de la exponencial de V_{BE}."
+      - texto: "Limitan la corriente total a 10 A"
+        porque: "La carga ya pide 10 A. Lo que cambian es el reparto entre los dos."
+    comprobar:
+      - { V_rr: 1.1, dI: 0.2273 }
+
+  - id: ordene-circulo
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "El círculo"
+    texto: "Una polarización de base fija se calienta. Ordene el círculo del embalamiento térmico."
+    libro: [314, 315, 316, 317]
+    ordenar:
+      - "La unión se calienta."
+      - "V_{BE} baja 2 mV/°C y β crece."
+      - "La corriente de colector crece."
+      - "Crece la disipación, y la unión se calienta más."
+    exito: "Eso es. Si nada lo frena, el transistor se destruye, en segundos si trabaja cerca de su límite."
+    pistas:
+      - { texto: "Más temperatura, más corriente, más potencia, más temperatura." }
+
+  - id: empareje-criterio
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "El criterio de estabilidad"
+    texto: "El sistema es estable si R_{θ}·dP/dT_{j} < 1. Empareje cada término y cada remedio."
+    libro: [320, 322, 323]
+    emparejar:
+      - ["R_{θ}", "La resistencia térmica total"]
+      - ["dP/dT_{j}", "El aumento de disipación por grado de unión"]
+      - ["Mejor disipador", "Ataca el factor térmico"]
+      - ["Realimentación en el circuito", "Ataca el factor eléctrico"]
+    exito: "Eso es: o se saca el calor mejor, o se hace que la potencia apenas crezca al calentarse."
+    pistas:
+      - { texto: "Un disipador baja la resistencia térmica; la resistencia de emisor baja dP/dT." }
+
+  - id: empareje-formas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Tres formas de romper el círculo"
+    texto: "Empareje cada técnica con cómo frena el embalamiento."
+    libro: [325, 328, 329]
+    emparejar:
+      - ["Resistencia de emisor", "Si la corriente crece, su caída reduce la V_{BE} efectiva"]
+      - ["Divisor de base", "Fija la base sin depender de β, con diez veces la corriente de base"]
+      - ["Diodo compensador", "Su V_{BE} cae los mismos 2 mV/°C y cancela la deriva"]
+    exito: "Eso es. La resistencia de emisor es la más eficaz y la más usada; con el divisor da la polarización estándar."
+    pistas:
+      - { texto: "Una realimenta, otra sujeta la base, otra copia la deriva." }
+
+  - id: caida-re
+    tipo: pregunta
+    titulo: "¿Cuánta caída en R_{E}?"
+    texto: "Para que la resistencia de emisor haga la polarización prácticamente insensible a β y a la temperatura, ¿cuánto debe caer en ella?"
+    libro: [326]
+    opciones:
+      - texto: "De 1 a 2 V"
+        bien: true
+        porque: "Así la deriva de V_{BE}, unos milivoltios por grado, es pequeña frente a la caída. Su precio es la ganancia: de ahí el condensador de desvío."
+      - texto: "Menos de 0,5 V"
+        porque: "Con menos de 0,5 V la estabilización es débil: la deriva pesa demasiado frente a la caída."
+      - texto: "Toda la alimentación"
+        porque: "No quedaría tensión para el colector: el transistor no tendría margen para amplificar."
+
+  - id: compensador
+    tipo: pregunta
+    titulo: "El compensador, ¿dónde?"
+    texto: "Un diodo compensa la deriva de V_{BE} de un transistor de potencia. ¿Dónde se monta?"
+    libro: [329, 330]
+    opciones:
+      - texto: "Atornillado al disipador del transistor"
+        bien: true
+        porque: "Solo compensa si está a su temperatura: en contacto térmico. Suelto en la placa no sigue al transistor."
+      - texto: "Suelto en la placa, junto a la base"
+        porque: "Es la regla que se incumple: lejos del disipador no se calienta igual y no cancela la deriva."
+      - texto: "En cualquier sitio: cae lo mismo"
+        porque: "Cae 2 mV/°C de su propia temperatura. Si no comparte la del transistor, no compensa."
+
+  - id: mosfet-paralelo
+    tipo: pregunta
+    titulo: "¿Y los MOSFET?"
+    texto: "En conmutación, dos MOSFET en paralelo no necesitan resistencias de reparto. ¿Por qué?"
+    libro: [334, 335]
+    opciones:
+      - texto: "Su R_{DS(on)} sube con la temperatura: el que más conduce se frena solo"
+        bien: true
+        porque: "Coeficiente positivo: se reparten solos. Con un matiz: en zona lineal manda V_{GS(th)} y sí pueden embalarse."
+      - texto: "Porque no se calientan"
+        porque: "Sí se calientan. Lo que cambia es el signo: al calentarse presentan más resistencia, no menos."
+      - texto: "Porque su puerta no consume corriente"
+        porque: "Es verdad, pero no explica el reparto: lo explica el coeficiente positivo de R_{DS(on)}."
+
+  - id: banco-secador
+    tipo: pregunta
+    titulo: "La prueba del secador"
+    texto: "Se mide la tensión en la resistencia de emisor en frío, se calienta el transistor con un secador y se vuelve a medir. ¿Qué indica una polarización buena?"
+    libro: [338]
+    opciones:
+      - texto: "Que la tensión, y con ella la corriente, apenas se mueve"
+        bien: true
+        porque: "Con R_{E} adecuada la corriente apenas cambia. Si sube y sigue subiendo, es el embalamiento en directo."
+      - texto: "Que la tensión sube y luego se estabiliza en el doble"
+        porque: "Doblar la corriente por unos grados es justo lo que no debe pasar."
+      - texto: "Que la tensión baja a cero"
+        porque: "Sería que el transistor se corta al calentarse: no es lo que hace un bipolar, que conduce más."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [317, 320, 326, 333]
+    ideas:
+      - { titulo: "El círculo.", texto: "Más corriente, más disipación, más temperatura, más corriente: V_{BE} baja 2 mV/°C." }
+      - { titulo: "El criterio.", texto: "Estable si R_{θ}·dP/dT_{j} < 1: mejor disipador o realimentación." }
+      - { titulo: "Resistencia de emisor.", texto: "De 1 a 2 V de caída: polarización casi insensible a β y temperatura." }
+      - { titulo: "En paralelo.", texto: "Sin reparto, el caliente se lleva casi 9 de 10 A; con 0,22 Ω, 5,1 frente a 4,9 A." }

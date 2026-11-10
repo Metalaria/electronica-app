@@ -1,0 +1,299 @@
+# Lección 1.1 de la sección 2.7 «Aplicaciones Fundamentales» (cap02): el divisor y el efecto de carga (ejercicios
+# 2.4 y 2.8), el puente de Wheatstone (ejercicio 2.5) y las resistencias pull-up y pull-down.
+# Formato: contenido/lecciones11/GUIA.md.
+leccion: cap02/sec-2.7
+
+libro:
+  136: "solo es válida en vacío"
+  138: "la resistencia de carga sea al menos diez veces mayor que R₂"
+  140: "la tensión entre los dos puntos medios es exactamente cero"
+  141: '(R_("1"))/(R_("2")) = (R_("3"))/(R_("4"))'
+  142: "La medición de un cambio relativo respecto al equilibrio es mucho más precisa que la medición absoluta"
+  144: "la entrada lee nivel alto en reposo y nivel bajo al pulsar"
+  "cap02#342": "Diseña un divisor de tensión 12 V → 5 V"
+
+modelo:
+  valores:
+    V_in: { sim: "V_{entrada}", nombre: "tensión de entrada", unidad: V, valor: 10 }
+    R_1: { sim: "R₁", nombre: "resistencia de arriba", unidad: Ω, valor: 10000 }
+    R_2: { sim: "R₂", nombre: "resistencia de abajo", unidad: Ω, valor: 10000 }
+    R_L: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 10000 }
+    carga: { tipo: interruptor, nombre: "carga conectada", valor: 0 }
+    V_w: { sim: "V", nombre: "alimentación del puente", unidad: V, valor: 5 }
+    R_w1: { sim: "R₁", nombre: "rama izquierda, arriba", unidad: Ω, valor: 1000 }
+    R_w2: { sim: "R₂", nombre: "rama izquierda, abajo", unidad: Ω, valor: 1000 }
+    R_w3: { sim: "R₃", nombre: "rama derecha, arriba", unidad: Ω, valor: 1000 }
+    R_w4: { sim: "R₄", nombre: "rama derecha, abajo (el sensor)", unidad: Ω, valor: 1000 }
+  calculos:
+    R_ab: { si: carga, entonces: "par(R_2, R_L)", sino: "R_2", sim: "R_{abajo}", nombre: "resistencia de la rama de abajo", unidad: Ω }
+    V_out: { expr: "V_in*R_ab/(R_1 + R_ab)", sim: "V_{salida}", nombre: "tensión de salida", unidad: V }
+    I: { expr: "V_in/(R_1 + R_ab)", sim: "I", nombre: "corriente de la fuente", unidad: A }
+    V_vacio: { expr: "V_in*R_2/(R_1 + R_2)", sim: "V_{vacío}", nombre: "salida sin carga", unidad: V }
+    error: { expr: "(V_vacio - V_out)/V_vacio*100", sim: "error", nombre: "error por la carga", unidad: "%", cifras: 3 }
+    I_L: { si: carga, entonces: "V_out/R_L", sino: "0", sim: "I_{L}", nombre: "corriente por la carga", unidad: A }
+    V_wa: { expr: "V_w*R_w2/(R_w1 + R_w2)", sim: "V_{a}", nombre: "punto medio izquierdo", unidad: V }
+    V_wb: { expr: "V_w*R_w4/(R_w3 + R_w4)", sim: "V_{b}", nombre: "punto medio derecho", unidad: V }
+    V_wab: { expr: "V_wa - V_wb", sim: "V_{ab}", nombre: "tensión del detector", unidad: V, cifras: 3 }
+    I_w: { expr: "V_w/(R_w1 + R_w2) + V_w/(R_w3 + R_w4)", sim: "I", nombre: "corriente de la fuente", unidad: A }
+    q_12: { expr: "R_w1/R_w2", sim: "R₁/R₂", nombre: "cociente de la rama izquierda", unidad: "", cifras: 4 }
+    q_34: { expr: "R_w3/R_w4", sim: "R₃/R₄", nombre: "cociente de la rama derecha", unidad: "", cifras: 4 }
+
+tarjetas:
+  - id: explore-carga
+    tipo: explorar
+    titulo: "Un divisor con carga"
+    texto: "Dos de 10 kΩ a 10 V, con una carga conectada. Cambie su valor y desconéctela. Fíjese en cuándo se hunde la salida."
+    libro: [136, "cap02#342"]
+    fijar: { V_in: 10, R_1: 10000, R_2: 10000 }
+    inicio: { carga: 1, R_L: 10000 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: carga }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      datos:
+        - { valor: V_vacio, rotulo: "En vacío: {{V_vacio}}" }
+        - { valor: error, rotulo: "Error por la carga: {{error}}" }
+      corriente: I
+      mide: { salida: V_out, corriente: I, carga: I_L }
+      mandos:
+        - { valor: carga, tipo: interruptor, rotulo: "Carga conectada" }
+        - { valor: R_L, lista: [1000, 3300, 10000, 33000, 100000, 1000000] }
+    requiere: { mover: [carga, R_L] }
+
+  - id: prediga-carga
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "El divisor de dos 10 kΩ a 10 V se carga con 10 kΩ. ¿Qué tensión queda en la salida?"
+    libro: ["cap02#342"]
+    fijar: { V_in: 10, R_1: 10000, R_2: 10000, R_L: 10000, carga: 1 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: carga }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      corriente: I
+      mide: { salida: V_out, corriente: I, carga: I_L }
+      ocultar: true
+    opciones:
+      - texto: "3,33 V"
+        bien: true
+        porque: "R₂ en paralelo con la carga son 5 kΩ: 10 · 5 / (10 + 5) = 3,33 V. Cae un tercio."
+      - texto: "5 V"
+        porque: "Eso da en vacío. La fórmula del divisor solo vale sin nada conectado."
+      - texto: "Casi lo mismo: la carga apenas influye"
+        porque: "Una carga igual a R₂ influye mucho: en paralelo con ella, la rama de abajo baja a la mitad."
+    comprobar:
+      - { V_out: 3.333, R_ab: 5000 }
+      - { con: { carga: 0 }, V_out: 5 }
+
+  - id: reto-carga-minima
+    tipo: reto
+    titulo: "Reto: menos del 10 %"
+    texto: "Elija una carga con la que el error de este divisor quede por debajo del 10 %."
+    libro: [138]
+    fijar: { V_in: 10, R_1: 10000, R_2: 10000, carga: 1 }
+    inicio: { R_L: 1000 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: carga }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      corriente: I
+      mide: { salida: V_out, corriente: I, carga: I_L }
+      mandos:
+        - { valor: R_L, lista: [1000, 3300, 10000, 33000, 100000, 1000000] }
+    condiciones:
+      - { valor: error, max: 10, rotulo: "Error: {{error}}" }
+    exito: "Con {{R_L}}, el error es {{error}}. La regla: al menos diez veces R₂, aquí 100 kΩ."
+    pistas:
+      - { cuando: { valor: error, mayor: 10 }, texto: "La salida aún se hunde: la carga debe ser mucho mayor que R₂." }
+    ayuda: "Con la carga diez veces mayor que R₂ el error queda por debajo del 10 %."
+    comprobar:
+      - { con: { R_L: 100000 }, error: 4.76, tol: 0.01 }
+      - { con: { R_L: 33000 }, error: 13.2, tol: 0.01 }
+
+  - id: reto-12-a-5
+    tipo: reto
+    titulo: "Reto: de 12 V a 5 V"
+    texto: "Diseñe un divisor de 12 V a 5 V con valores de la serie E12 (± 3 %)."
+    libro: ["cap02#342"]
+    fijar: { V_in: 12, carga: 0 }
+    inicio: { R_1: 1000, R_2: 1000 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      corriente: I
+      mide: { salida: V_out, corriente: I }
+      mandos:
+        - { valor: R_1, serie: E12, min: 1000, max: 10000, rotulo: "R₁ (E12)" }
+        - { valor: R_2, serie: E12, min: 1000, max: 10000, rotulo: "R₂ (E12)" }
+    condiciones:
+      - { valor: V_out, objetivo: 5, tol: 0.03, rotulo: "Salida: {{V_out}}" }
+    exito: "Su par da {{V_out}}. El libro propone 2,2 kΩ y 1,5 kΩ, 4,86 V; o 4,7 kΩ y 3,3 kΩ, 4,95 V."
+    pistas:
+      - { cuando: { valor: V_out, mayor: 5.15 }, texto: "Sobra tensión: R₂ tiene que ser menor frente a R₁." }
+      - { cuando: { valor: V_out, menor: 4.85 }, texto: "Falta tensión: R₂ tiene que ser mayor frente a R₁." }
+    ayuda: "Busque R₂/(R₁ + R₂) = 5/12 = 0,4167: R₂ algo menor que R₁."
+    comprobar:
+      - { con: { R_1: 2200, R_2: 1500 }, V_out: 4.865 }
+      - { con: { R_1: 4700, R_2: 3300 }, V_out: 4.95 }
+
+  - id: sorpresa-desplome
+    tipo: sorpresa
+    titulo: "Conecte 1 kΩ"
+    texto: "El divisor de 2,2 kΩ y 1,5 kΩ da 4,86 V en vacío. Conecte una carga de 1 kΩ a la salida."
+    libro: ["cap02#342", 136]
+    fijar: { V_in: 12, R_1: 2200, R_2: 1500, R_L: 1000 }
+    inicio: { carga: 0 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: carga }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      datos:
+        - { valor: error, rotulo: "Error por la carga: {{error}}" }
+      corriente: I
+      mide: { salida: V_out, corriente: I, carga: I_L }
+      mandos:
+        - { valor: carga, tipo: conectar, boton: "Conectar la carga (1 kΩ)" }
+    requiere: { conectar: [carga] }
+    comprobar:
+      - { con: { carga: 1 }, V_out: 2.571, R_ab: 600 }
+
+  - id: por-que-regulador
+    tipo: porque
+    titulo: "¿Un divisor como fuente?"
+    texto: "La salida se desploma de 4,86 V a 2,57 V. ¿Qué concluye el libro?"
+    libro: [138, "cap02#342"]
+    fijar: { V_in: 12, R_1: 2200, R_2: 1500, R_L: 1000, carga: 1 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: carga }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      corriente: I
+      mide: { salida: V_out, corriente: I, carga: I_L }
+    opciones:
+      - texto: "Un divisor no alimenta cargas que consumen corriente: para eso hay reguladores"
+        bien: true
+        porque: "Con una carga comparable o menor que R₂, el divisor deja de funcionar como se espera."
+      - texto: "Que hay que elegir R₁ y R₂ más exactas"
+        porque: "Con valores exactos pasaría lo mismo: el problema es la carga en paralelo con R₂."
+      - texto: "Que hace falta una fuente de más tensión"
+        porque: "Más tensión subiría todo, pero la salida seguiría dependiendo de la carga."
+    comprobar:
+      - { V_out: 2.571 }
+
+  - id: explore-puente
+    tipo: explorar
+    titulo: "El puente de Wheatstone"
+    texto: "Cuatro resistencias en diamante, dos divisores sobre la misma fuente. R₄ es un sensor: muévala y mire el detector."
+    libro: [140]
+    widget:
+      tipo: circuito
+      esquema: wheatstone
+      piezas: { fuente: V_w, r1: R_w1, r2: R_w2, r3: R_w3, r4: R_w4 }
+      lectura: { valor: V_wab, rotulo: "Detector" }
+      datos:
+        - { valor: V_wa, rotulo: "V_{a} = {{V_wa}}" }
+        - { valor: V_wb, rotulo: "V_{b} = {{V_wb}}" }
+      corriente: I_w
+      mide: { salida: V_wab, va: V_wa, vb: V_wb, corriente: I_w }
+      mandos:
+        - { valor: R_w4, min: 990, max: 1010, paso: 1, rotulo: "R₄, el sensor" }
+
+  - id: regla-equilibrio
+    tipo: formula
+    titulo: "La condición de equilibrio"
+    texto: "Cuando los dos cocientes son iguales, la tensión entre los puntos medios es exactamente cero."
+    nota: "Es la base de básculas, sensores de presión, termómetros PT100 y acelerómetros."
+    libro: [140, 141, 142]
+    ec: 141
+    sustitucion: "{{R_w1}} / {{R_w2}} = {{q_12}};  {{R_w3}} / {{R_w4}} = {{q_34}}"
+    widget:
+      tipo: circuito
+      esquema: wheatstone
+      piezas: { fuente: V_w, r1: R_w1, r2: R_w2, r3: R_w3, r4: R_w4 }
+      lectura: { valor: V_wab, rotulo: "Detector" }
+      corriente: I_w
+      mide: { salida: V_wab, va: V_wa, vb: V_wb, corriente: I_w }
+      mandos:
+        - { valor: R_w4, min: 990, max: 1010, paso: 1, rotulo: "R₄, el sensor" }
+
+  - id: prediga-sensor
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "R₁ = R₂ = R₃ = R₄ = 1 kΩ: equilibrado. El sensor R₄ pasa a 1010 Ω. ¿Qué ocurre?"
+    libro: [140, "cap02#342"]
+    fijar: { R_w1: 1000, R_w2: 1000, R_w3: 1000, R_w4: 1010 }
+    widget:
+      tipo: circuito
+      esquema: wheatstone
+      piezas: { fuente: V_w, r1: R_w1, r2: R_w2, r3: R_w3, r4: R_w4 }
+      lectura: { valor: V_wab, rotulo: "Detector" }
+      corriente: I_w
+      mide: { salida: V_wab, va: V_wa, vb: V_wb, corriente: I_w }
+      ocultar: true
+    opciones:
+      - texto: "Aparece una pequeña tensión, proporcional al cambio"
+        bien: true
+        porque: "1000/1000 ya no es 1000/1010: el puente se desequilibra. Ese es el principio de medición."
+      - texto: "Nada: un 1 % no rompe el equilibrio"
+        porque: "Cualquier cambio lo rompe: 1 ≠ 0,990. Por eso el puente mide variaciones muy pequeñas."
+      - texto: "El detector salta a la tensión de la fuente"
+        porque: "Es una tensión pequeña: cada punto medio se mueve muy poco."
+    comprobar:
+      - { V_wab: -0.01244, q_34: 0.990, tol: 0.002 }
+
+  - id: reto-equilibrio
+    tipo: reto
+    titulo: "Reto: equilibre el puente"
+    texto: "Con R₁ = R₂ = R₃ = 1 kΩ, elija R₄ de la serie E24 para que el detector marque cero."
+    libro: [141, "cap02#342"]
+    fijar: { R_w1: 1000, R_w2: 1000, R_w3: 1000 }
+    inicio: { R_w4: 1500 }
+    widget:
+      tipo: circuito
+      esquema: wheatstone
+      piezas: { fuente: V_w, r1: R_w1, r2: R_w2, r3: R_w3, r4: R_w4 }
+      lectura: { valor: V_wab, rotulo: "Detector" }
+      corriente: I_w
+      mide: { salida: V_wab, va: V_wa, vb: V_wb, corriente: I_w }
+      mandos:
+        - { valor: R_w4, serie: E24, min: 100, max: 10000, rotulo: "R₄ (E24)" }
+    condiciones:
+      - { valor: V_wab, min: -0.001, max: 0.001, rotulo: "Detector: {{V_wab}}" }
+    exito: "R₄ = R₂·R₃/R₁ = 1 kΩ: los dos cocientes valen lo mismo y el detector marca cero."
+    pistas:
+      - { cuando: { valor: V_wab, mayor: 0.001 }, texto: "El punto medio derecho está más bajo: suba R₄." }
+      - { cuando: { valor: V_wab, menor: -0.001 }, texto: "El punto medio derecho está más alto: baje R₄." }
+    ayuda: "Despeje R₄ de R₁/R₂ = R₃/R₄."
+    comprobar:
+      - { con: { R_w4: 1000 }, V_wab: 0 }
+
+  - id: pull-up
+    tipo: pregunta
+    titulo: "Un pulsador con pull-up"
+    texto: "Un pulsador lleva la entrada a masa; una resistencia de 10 kΩ la une a la alimentación. ¿Qué lee la entrada?"
+    libro: [144]
+    opciones:
+      - texto: "Nivel alto en reposo y bajo al pulsar"
+        bien: true
+        porque: "La pull-up fija el nivel alto mientras el pulsador está abierto; al pulsar, la entrada va a masa."
+      - texto: "Nivel bajo en reposo y alto al pulsar"
+        porque: "Eso haría una pull-down, conectada a masa, con el pulsador hacia la alimentación."
+      - texto: "Un nivel indefinido en reposo"
+        porque: "Eso pasaría sin la resistencia: la entrada quedaría flotante, susceptible al ruido."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [136, 138, 141, 144]
+    ideas:
+      - { titulo: "Efecto de carga.", texto: "La carga queda en paralelo con R₂: al menos diez veces R₂ para errar menos del 10 %." }
+      - { titulo: "No es una fuente.", texto: "Para alimentar cargas que consumen corriente se usan reguladores." }
+      - { titulo: "Wheatstone.", texto: "Con R₁/R₂ = R₃/R₄ el detector marca cero; un sensor que cambia da una tensión proporcional." }
+      - { titulo: "Pull-up y pull-down.", texto: "Fijan un nivel definido en una entrada que quedaría flotante; típicas, de 4,7 kΩ a 10 kΩ." }

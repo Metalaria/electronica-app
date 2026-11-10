@@ -1,0 +1,269 @@
+# Lección 1.1 de la sección 4.10 «Saturación del Núcleo y Almacenamiento de Energía» (cap04): el toroide de
+# ferrita del libro (µr = 2000, 6 cm, 1 cm², 50 espiras) satura con 167 mA; medio milímetro de entrehierro divide L
+# por 18 y multiplica por 18 la corriente de saturación y la energía; la reluctancia; B = L·I/(N·A); por qué la
+# saturación es un límite duro. La curva B(I) recorta en B_sat (sin el codo real).
+# Formato: contenido/lecciones11/GUIA.md.
+leccion: cap04/sec-4.10
+
+libro:
+  225: "En ese punto la inductancia se desploma y la bobina deja de oponerse a la corriente"
+  226: "no reside en el hierro sino en el entrehierro o en el aire"
+  228: "Un toroide de ferrita con µr = 2000, 6 cm de longitud magnética, 1 cm² de sección y 50 espiras tiene 10,5 mH"
+  229: "Un hueco de 0,5 mm en el camino magnético cambia las cuentas por completo"
+  230: "Corriente de saturación"
+  231: "El entrehierro es donde se almacena la energía"
+  232: "el medio milímetro de aire, 4,0 × 10⁶ A/Wb, diecisiete veces más"
+  233: "una bobina con gap es una bobina de valor estable"
+  234: "el flujo disperso radia"
+  235: "Para un choque de filtro o un transformador, sin entrehierro"
+  237: "una bobina de 1 mH con 50 espiras sobre un núcleo de 50 mm², recorrida por 3 A, alcanza B = 1,20 T"
+  "cap04#341": "Una bobina de fuente conmutada satura a 2 A"
+
+modelo:
+  valores:
+    mu_r: { sim: "µ_{r}", nombre: "permeabilidad de la ferrita", unidad: "", valor: 2000 }
+    l_m: { sim: "l", nombre: "longitud magnética", unidad: cm, valor: 6 }
+    A_m: { sim: "A", nombre: "sección del núcleo", unidad: "mm²", valor: 100 }
+    N_m: { sim: "N", nombre: "espiras", unidad: espiras, valor: 50 }
+    B_s: { sim: "B_{sat}", nombre: "densidad de flujo de saturación", unidad: T, valor: 0.35 }
+    g_m: { sim: "g", nombre: "entrehierro", unidad: mm, valor: 0 }
+    I_x: { sim: "I", nombre: "corriente de la bobina", unidad: A, valor: 0.05 }
+    L_b: { sim: "L", nombre: "inductancia", unidad: H, valor: 0.001 }
+    I_b: { sim: "I", nombre: "corriente", unidad: A, valor: 3 }
+    N_b: { sim: "N", nombre: "espiras", unidad: espiras, valor: 50 }
+    A_b: { sim: "A_{e}", nombre: "sección", unidad: "mm²", valor: 50 }
+  calculos:
+    R_c: { expr: "(l_m*0.01)/(4*pi*1e-7*mu_r*A_m*1e-6)", sim: "ℛ_{ferrita}", nombre: "reluctancia de la ferrita", unidad: "A/Wb" }
+    R_g: { expr: "(g_m*0.001)/(4*pi*1e-7*A_m*1e-6)", sim: "ℛ_{aire}", nombre: "reluctancia del entrehierro", unidad: "A/Wb" }
+    R_m: { expr: "R_c + R_g", sim: "ℛ", nombre: "reluctancia total", unidad: "A/Wb" }
+    L_m: { expr: "N_m^2/R_m", sim: "L", nombre: "inductancia", unidad: H }
+    I_s: { expr: "B_s*A_m*1e-6*R_m/N_m", sim: "I_{sat}", nombre: "corriente de saturación", unidad: A }
+    E_s: { expr: "0.5*L_m*I_s^2", sim: "E", nombre: "energía almacenada al saturar", unidad: J }
+    B_x: { expr: "min(B_s, N_m*I_x/(R_m*A_m*1e-6))", sim: "B", nombre: "densidad de flujo en el núcleo", unidad: T }
+    k_g: { expr: "(0.5*0.001)/(4*pi*1e-7*A_m*1e-6)/R_c", sim: "ℛ_{aire}/ℛ_{ferrita}", nombre: "reluctancia del hueco frente a la de la ferrita", unidad: "veces", cifras: 3 }
+    B_b: { expr: "L_b*I_b/(N_b*A_b*1e-6)", sim: "B", nombre: "densidad de flujo", unidad: T }
+
+tarjetas:
+  - id: explore-saturar
+    tipo: explorar
+    titulo: "Hasta dónde se magnetiza"
+    texto: "Un toroide de ferrita: µr = 2000, 6 cm, 1 cm² y 50 espiras. Suba la corriente y mire el campo en el núcleo."
+    nota: "Su ferrita satura con 0,35 T."
+    libro: [225, 228]
+    fijar: { g_m: 0 }
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0, max: 0.5, unidad: A, rotulo: "I" }
+      y: { min: 0, max: 0.4, unidad: T, rotulo: "B" }
+      curvas:
+        - { expr: "min(B_s, N_m*i/(R_m*A_m*1e-6))", color: naranja, rotulo: "B sin entrehierro" }
+      asas:
+        - { mueve: I_x, x: "I_x", y: "B_x", rotulo: "Corriente" }
+      lectura: { valor: B_x, rotulo: "Campo en el núcleo" }
+      datos:
+        - { valor: L_m, rotulo: "L = {{L_m}}" }
+        - { valor: I_s, rotulo: "Satura con {{I_s}}" }
+      mandos:
+        - { valor: I_x, min: 0, max: 0.5, paso: 0.01, rotulo: "Corriente, I" }
+    requiere: { mover: [I_x] }
+    comprobar:
+      - { L_m: 0.0105, I_s: 0.167, E_s: 146e-6 }
+
+  - id: pregunta-saturada
+    tipo: pregunta
+    titulo: "Más allá del codo"
+    texto: "Una bobina de fuente conmutada satura a 2 A y el circuito intenta forzar 2,5 A. ¿Qué ocurre?"
+    libro: [225, "cap04#341"]
+    opciones:
+      - texto: "L se desploma y la corriente sube de golpe"
+        bien: true
+        porque: "La bobina deja de limitar: la corriente solo la frenan las resistencias del lazo, y el conmutador corre peligro."
+      - texto: "La corriente se queda en 2 A"
+        porque: "Al contrario: saturada, la bobina deja de oponerse y la corriente se dispara."
+      - texto: "L sube para frenarla"
+        porque: "Al saturar, µr se desploma y con ella L: la bobina frena menos, no más."
+
+  - id: prediga-hueco
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Se corta medio milímetro de aire en el anillo. ¿Qué le pasa a la corriente con la que satura?"
+    libro: [229]
+    fijar: { g_m: 0.5 }
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0, max: 3.6, unidad: A, rotulo: "I" }
+      y: { min: 0, max: 0.4, unidad: T, rotulo: "B" }
+      curvas:
+        - { expr: "min(B_s, N_m*i/(R_m*A_m*1e-6))", color: naranja, rotulo: "B" }
+      lectura: { valor: I_s, rotulo: "Corriente de saturación" }
+      ocultar: true
+    opciones:
+      - texto: "Sube mucho"
+        bien: true
+        porque: "El aire, con µr = 1, domina el circuito magnético: hace falta mucha más corriente para llegar a 0,35 T."
+      - texto: "Baja: el hueco es un defecto"
+        porque: "Parece un defecto, pero el hueco frena el flujo: hace falta más corriente para saturar."
+      - texto: "No cambia: la ferrita es la misma"
+        porque: "La ferrita es la misma, pero el camino magnético ya no: ahora manda el aire."
+
+  - id: sorpresa-entrehierro
+    tipo: sorpresa
+    titulo: "Abra un hueco"
+    texto: "Corte medio milímetro de aire en el anillo. Mire la inductancia, dónde satura y cuánta energía guarda."
+    libro: [229, 230]
+    inicio: { g_m: 0 }
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0, max: 3.6, unidad: A, rotulo: "I" }
+      y: { min: 0, max: 0.4, unidad: T, rotulo: "B" }
+      curvas:
+        - { expr: "min(B_s, N_m*i/(R_m*A_m*1e-6))", color: naranja, rotulo: "B" }
+      lectura: { valor: E_s, rotulo: "Energía al saturar" }
+      datos:
+        - { valor: L_m, rotulo: "L = {{L_m}}" }
+        - { valor: I_s, rotulo: "Satura con {{I_s}}" }
+      mandos:
+        - { valor: g_m, lista: [0, 0.5], nombres: [sin hueco, con hueco], rotulo: "Entrehierro, g" }
+    requiere: { mover: [g_m] }
+    comprobar:
+      - { con: { g_m: 0.5 }, L_m: 0.59e-3, I_s: 2.95, E_s: 2583e-6, tol: 0.01 }
+
+  - id: estime-reluctancia
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Resistencia magnética"
+    texto: "La reluctancia es ℛ = l/(µ₀·µr·A). Los 6 cm de ferrita de µr = 2000 y 1 cm² tienen 2,4 × 10⁵ A/Wb. Estime cuántas veces más tiene un hueco de aire de 0,5 mm."
+    libro: [228, 232]
+    estimar:
+      objetivo: "k_g"
+      unidad: "veces"
+      min: 0
+      max: 50
+      paso: 0.5
+      inicio: 40
+      tol: 0.05
+      rotulo: "ℛ_{aire}/ℛ_{ferrita}"
+    exito: "Unas diecisiete: medio milímetro de aire equivale a 2000 × 0,5 mm = 1 m de ferrita. El hueco domina."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 17.5 }, texto: "Se ha pasado: compare 0,5 mm × 2000 con los 6 cm de ferrita." }
+      - { texto: "Se ha quedado corto: 0,5 mm de aire pesan como 1 m de ferrita, frente a 6 cm." }
+    comprobar:
+      - { k_g: 16.7, R_c: 2.4e5, tol: 0.01 }
+
+  - id: reto-entrehierro
+    tipo: reto
+    titulo: "Reto: que aguante 2 A"
+    texto: "Un toroide de ferrita de 10,5 mH debe llevar 2 A sin saturar, con la mayor inductancia posible. Elija el entrehierro."
+    nota: "Más hueco, más corriente, pero menos inductancia."
+    libro: [228, 229, 233]
+    inicio: { g_m: 0 }
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0, max: 3.6, unidad: A, rotulo: "I" }
+      y: { min: 0, max: 0.4, unidad: T, rotulo: "B" }
+      curvas:
+        - { expr: "min(B_s, N_m*i/(R_m*A_m*1e-6))", color: naranja, rotulo: "B" }
+      lectura: { valor: I_s, rotulo: "Corriente de saturación" }
+      datos:
+        - { valor: L_m, rotulo: "L = {{L_m}}" }
+      mandos:
+        - { valor: g_m, min: 0, max: 1, paso: 0.05, rotulo: "Entrehierro, g" }
+    condiciones:
+      - { valor: I_s, min: 2, max: 2.2, rotulo: "Satura con {{I_s}}" }
+    exito: "Con {{g_m}} satura con {{I_s}} y le quedan {{L_m}}: el hueco más pequeño que cumple."
+    pistas:
+      - { cuando: { valor: I_s, menor: 2 }, texto: "Satura antes de 2 A: abra más el entrehierro." }
+      - { texto: "Aguanta 2 A, pero sobra hueco: le está quitando inductancia. Ciérrelo un poco." }
+    ayuda: "I_{sat} = B_{sat}·A·ℛ/N: con 2 A hace falta ℛ de unos 2,9 × 10⁶ A/Wb, algo más de 0,3 mm de aire."
+    comprobar:
+      - { con: { g_m: 0.35 }, I_s: 2.117, L_m: 0.827e-3, tol: 0.01 }
+      - { con: { g_m: 0.3 }, I_s: 1.84, tol: 0.01 }
+      - { con: { g_m: 0.33 }, R_m: 2.86e6, tol: 0.02 }
+
+  - id: porque-energia
+    tipo: porque
+    titulo: "¿Dónde está la energía?"
+    texto: "La inductancia baja dieciocho veces, pero la energía almacenable sube otro tanto. ¿Dónde se guarda?"
+    libro: [226, 231]
+    opciones:
+      - texto: "En el entrehierro"
+        bien: true
+        porque: "La ferrita solo conduce el flujo hasta el hueco. La energía va con I², y la saturación sube dieciocho veces."
+      - texto: "En el hierro del núcleo"
+        porque: "No reside en el hierro, sino en el entrehierro o en el aire."
+      - texto: "En el cobre del bobinado"
+        porque: "En el cobre solo se pierde energía. Se guarda en el campo, sobre todo en el hueco."
+
+  - id: estime-flujo
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El criterio de diseño"
+    texto: "B = L·I/(N·A). Una bobina de 1 mH con 50 espiras sobre 50 mm², recorrida por 3 A. Estime B."
+    libro: [237]
+    estimar:
+      objetivo: "B_b"
+      unidad: T
+      min: 0
+      max: 2
+      paso: 0.01
+      inicio: 0.3
+      tol: 0.05
+      rotulo: "B"
+    exito: "1,20 T. Las ferritas saturan entre 0,3 y 0,5 T: estaría profundamente saturada."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 1.26 }, texto: "Se ha pasado: 10⁻³ × 3 / (50 × 50 × 10⁻⁶)." }
+      - { texto: "Se ha quedado corto: pase los 50 mm² a metros cuadrados antes de multiplicar por las espiras." }
+    comprobar:
+      - { B_b: 1.2 }
+
+  - id: porque-golpe
+    tipo: porque
+    titulo: "Un límite duro"
+    texto: "Una bobina saturada no se degrada suavemente: falla de golpe. ¿Por qué?"
+    libro: [237]
+    opciones:
+      - texto: "Al bajar L, di/dt = v/L crece y la corriente aún más"
+        bien: true
+        porque: "Es una realimentación positiva: más corriente, más saturación, menos L, más di/dt."
+      - texto: "Porque la ferrita se rompe"
+        porque: "No se rompe nada: µr cae, L cae y la corriente se dispara."
+      - texto: "Porque la resistencia del cobre sube"
+        porque: "La resistencia apenas cambia. Lo que se desploma es la inductancia."
+
+  - id: pregunta-coste
+    tipo: pregunta
+    titulo: "El precio del hueco"
+    texto: "Además de estabilizar la inductancia, el entrehierro tiene un coste. ¿Cuál?"
+    libro: [233, 234]
+    opciones:
+      - texto: "Flujo disperso: calienta el cobre próximo y radia"
+        bien: true
+        porque: "Se abre en abanico e induce Foucault en el bobinado. El polvo de hierro reparte el hueco en miles de huecos microscópicos."
+      - texto: "Hace la inductancia inestable"
+        porque: "Al revés: con gap, L la fija casi solo el hueco y apenas depende de µr."
+      - texto: "Satura antes"
+        porque: "Al revés: con hueco satura con mucha más corriente."
+
+  - id: pregunta-cual
+    tipo: pregunta
+    titulo: "¿Con o sin entrehierro?"
+    texto: "¿Cuál de estos componentes necesita entrehierro?"
+    libro: [226, 235]
+    opciones:
+      - texto: "La bobina de un convertidor reductor"
+        bien: true
+        porque: "Guarda energía en cada ciclo: ½·L·I_{pico}² con el pico por debajo de la saturación."
+      - texto: "Un transformador de red"
+        porque: "Un transformador transfiere energía, no la almacena: no necesita gap."
+      - texto: "Un choque de filtro"
+        porque: "Ahí interesa la máxima inductancia y no se almacena energía: sin entrehierro."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [225, 226, 230, 233, 237]
+    ideas:
+      - { titulo: "Saturación.", texto: "Al alinearse todos los dominios, L se desploma y la corriente se dispara: falla de golpe." }
+      - { titulo: "El entrehierro.", texto: "0,5 mm dividen L por 18, pero multiplican por 18 la corriente y la energía al saturar." }
+      - { titulo: "La energía.", texto: "½·L·I² vive en el hueco, no en el hierro. Un transformador no necesita gap." }
+      - { titulo: "El criterio.", texto: "B = L·I/(N·A) por debajo de la saturación del material." }

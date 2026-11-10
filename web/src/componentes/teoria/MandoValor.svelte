@@ -3,8 +3,12 @@
   // Slider semantics: role="slider" with aria-valuenow / min / max in the quantity's own units and aria-valuetext with
   // its prefix and unit («4,7 kΩ»); arrows move one value, Page Up / Page Down a tenth of the range, Home / End the
   // ends; the track is dragged with the mouse or a finger (vertical page scrolling keeps working). 44 px tall.
+  // aria-valuemin / max / now are plain decimals (never «2.2e-7»: axe and some screen readers reject the exponent);
+  // aria-valuetext says the value in words, prefix and unit included («220 nanofaradios»). With `nombres` (1.1: a
+  // list whose positions have names, such as the colours of the colour code) each position reads «rojo (2)».
   import { formatoValor } from '../calculadoras/unidades';
-  import { teclaMando } from '../../lib/teoria-viva';
+  import { ariaNumero, teclaMando } from '../../lib/teoria-viva';
+  import { leerUnidades } from '../../lib/habla-matematicas';
 
   let {
     id,
@@ -12,9 +16,10 @@
     nombre,
     unidad,
     valores,
+    nombres,
     pos,
     alMover,
-  }: { id: string; sim: string; nombre: string; unidad: string; valores: number[]; pos: number; alMover: (k: number) => void } = $props();
+  }: { id: string; sim: string; nombre: string; unidad: string; valores: number[]; nombres?: string[]; pos: number; alMover: (k: number) => void } = $props();
 
   let pista: HTMLDivElement | undefined = $state();
   let arrastrando = false;
@@ -28,7 +33,9 @@
     }
     return 6;
   });
-  const texto = $derived(formatoValor(valor, unidad, cifras, true));
+  const numero = $derived(formatoValor(valor, unidad, cifras, true));
+  const texto = $derived(nombres?.[pos] ? `${nombres[pos]} (${numero})` : numero);
+  const hablado = $derived(leerUnidades(texto));
   const fraccion = $derived(n > 1 ? pos / (n - 1) : 0);
 
   function tecla(ev: KeyboardEvent) {
@@ -60,7 +67,7 @@
   }
 </script>
 
-<div class="mando">
+<div class="mando" class:con-nombres={!!nombres?.length}>
   <span class="et" id={`${id}-et`}><span class="sim">{@html sim}</span> <span class="nom">{nombre}</span></span>
   <div
     class="pista"
@@ -68,10 +75,10 @@
     tabindex="0"
     bind:this={pista}
     aria-labelledby={`${id}-et`}
-    aria-valuemin={valores[0]}
-    aria-valuemax={valores[n - 1]}
-    aria-valuenow={valor}
-    aria-valuetext={texto}
+    aria-valuemin={ariaNumero(valores[0] ?? 0)}
+    aria-valuemax={ariaNumero(valores[n - 1] ?? 0)}
+    aria-valuenow={ariaNumero(valor)}
+    aria-valuetext={hablado}
     data-mando={id}
     onkeydown={tecla}
     onpointerdown={bajar}
@@ -91,6 +98,10 @@
     grid-template-columns: minmax(7.5em, auto) minmax(0, 1fr) 6.2em;
     align-items: center;
     gap: 4px 12px;
+  }
+  /* a named position («amarillo (4)», «nicromo (1,1 µΩ·m)») takes the room it needs */
+  .mando.con-nombres {
+    grid-template-columns: minmax(7.5em, auto) minmax(0, 1fr) auto;
   }
   .et {
     color: var(--tinta);
@@ -151,7 +162,8 @@
     text-align: right;
   }
   @media (max-width: 520px) {
-    .mando {
+    .mando,
+    .mando.con-nombres {
       grid-template-columns: minmax(0, 1fr) auto;
     }
     .et {

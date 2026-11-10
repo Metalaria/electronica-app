@@ -1,0 +1,275 @@
+# Lección 1.1 de la sección 0.7 «Cálculo Integral» (cap00): integrar es acumular el área (la carga), el valor medio de
+# un consumo a impulsos, el valor eficaz como raíz de la media del cuadrado de tres formas de onda y el multímetro
+# promediador que solo acierta con la senoide. Formato: contenido/lecciones11/GUIA.md.
+leccion: cap00/sec-0.7
+
+libro:
+  95: "representa la acumulación o el área bajo una curva"
+  96: 'q = integral i dot.op d t'
+  98: 'V_("RMS") = sqrt(("1")/(T) dot.op integral v lr(( t ))^("2") dot.op d t)'
+  99: "Integrales de uso frecuente"
+  101: "Si por un cable circulan 2 A durante 3 s, han pasado 6 culombios"
+  102: "Un nodo que consume 8 mA durante 5 ms cada segundo y 3 µA el resto"
+  104: "se eleva al cuadrado la señal (para que lo negativo cuente)"
+  105: "Triangular de pico Vp"
+  106: "multiplica el valor medio rectificado por 1,11"
+  108: "Derivar e integrar son operaciones inversas"
+  "cap00#284": "Una señal senoidal tiene una amplitud de pico de 10 V"
+
+modelo:
+  valores:
+    I: { sim: "I", nombre: "corriente", unidad: A, valor: 2 }
+    t_f: { sim: "t", nombre: "tiempo que circula", unidad: s, valor: 3 }
+    Vp: { sim: "V_{p}", nombre: "amplitud de pico", unidad: V, valor: 1 }
+    forma: { sim: "forma", nombre: "forma de onda: 1 senoide, 2 cuadrada, 3 triangular", unidad: "", valor: 1 }
+    I_on: { sim: "I_{activo}", nombre: "consumo activo", unidad: A, valor: 0.008 }
+    I_off: { sim: "I_{reposo}", nombre: "consumo en reposo", unidad: A, valor: 0.000003 }
+    t_on: { sim: "t_{activo}", nombre: "tiempo activo cada segundo", unidad: s, valor: 0.005 }
+  calculos:
+    q: { expr: "I*t_f", sim: "q", nombre: "carga", unidad: C }
+    cociente: { expr: "t_f/I", nombre: "tiempo entre corriente", unidad: "" }
+    # which waveform is chosen (1, 2 or 3): one of these is 1, the others 0
+    s1: { expr: "max(0, 1 - abs(forma - 1))", nombre: "es la senoide", unidad: "" }
+    s2: { expr: "max(0, 1 - abs(forma - 2))", nombre: "es la cuadrada", unidad: "" }
+    s3: { expr: "max(0, 1 - abs(forma - 3))", nombre: "es la triangular", unidad: "" }
+    V_rms: { expr: "Vp*(s1/sqrt(2) + s2 + s3/sqrt(3))", sim: "V_{RMS}", nombre: "valor eficaz", unidad: V }
+    media2: { expr: "(V_rms/Vp)^2", sim: "media de v²", nombre: "media del cuadrado, con pico 1", unidad: "" }
+    avg_rect: { expr: "Vp*(s1*2/pi + s2 + s3/2)", sim: "media rectificada", nombre: "valor medio rectificado", unidad: V }
+    V_prom: { expr: "1.11*avg_rect", sim: "lectura", nombre: "lectura de un multímetro promediador", unidad: V }
+    I_med: { expr: "(I_on*t_on + I_off*(1 - t_on))/1", sim: "I_{media}", nombre: "consumo medio", unidad: A }
+
+tarjetas:
+  - id: explore-area
+    tipo: explorar
+    titulo: "Integrar es acumular"
+    texto: "Por un cable circula una corriente durante un tiempo. La carga es el área bajo la curva. Mueva la corriente y el tiempo."
+    libro: [95, 101]
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 6, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 5, unidad: A, rotulo: "i" }
+      curvas:
+        - { expr: "I*min(max((t_f - x)*1000, 0), 1)", color: azul, rotulo: "corriente" }
+      asas:
+        - { mueve: t_f, x: "t_f", y: "I", rotulo: "Fin: tiempo" }
+      lectura: { valor: q, rotulo: "Carga acumulada" }
+      mandos:
+        - { valor: I, min: 0.5, max: 4, paso: 0.5, rotulo: "Corriente, I" }
+        - { valor: t_f, min: 0.5, max: 5, paso: 0.5, rotulo: "Tiempo, t" }
+    requiere: { mover: [I, t_f] }
+
+  - id: prediga-carga
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Por un cable circulan 2 A durante 3 s. ¿Cuánta carga ha pasado?"
+    libro: [101]
+    fijar: { I: 2, t_f: 3 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 6, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 5, unidad: A, rotulo: "i" }
+      curvas:
+        - { expr: "I*min(max((t_f - x)*1000, 0), 1)", color: azul, rotulo: "corriente" }
+      lectura: { valor: q, rotulo: "Carga acumulada" }
+      ocultar: true
+    opciones:
+      - texto: "6 C"
+        bien: true
+        porque: "Con corriente constante, el área es un rectángulo: 2 A × 3 s = 6 culombios."
+      - texto: "5 C"
+        porque: "Ha sumado corriente y tiempo. El área del rectángulo es su producto."
+      - texto: "1,5 C"
+        porque: "Ha dividido el tiempo entre la corriente. La carga es corriente por tiempo."
+    comprobar:
+      - { q: 6, cociente: 1.5 }
+
+  - id: regla-carga
+    tipo: formula
+    titulo: "La carga es la integral de la corriente"
+    texto: "Con corriente variable, se suman rectángulos infinitamente estrechos: eso hace la integral. La tensión del condensador es esa carga entre C."
+    libro: [96, 101]
+    ec: 96
+    sustitucion: "q = {{I}} · {{t_f}} = {{q}}"
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 6, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 5, unidad: A, rotulo: "i" }
+      curvas:
+        - { expr: "I*min(max((t_f - x)*1000, 0), 1)", color: azul, rotulo: "corriente" }
+      asas:
+        - { mueve: t_f, x: "t_f", y: "I", rotulo: "Fin: tiempo" }
+      mandos:
+        - { valor: t_f, min: 0.5, max: 5, paso: 0.5, rotulo: "Tiempo, t" }
+
+  - id: explore-eficaz
+    tipo: explorar
+    titulo: "La media del cuadrado"
+    texto: "Misma amplitud, tres formas de onda. Cambie la forma y mire el cuadrado (naranja) y el valor eficaz."
+    nota: "Al elevar al cuadrado, lo negativo también cuenta."
+    libro: [104, 105]
+    fijar: { Vp: 1 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 12.57, unidad: rad, rotulo: "ωt" }
+      y: { min: -1.2, max: 1.2, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "Vp*(s1*sin(x) + s2*min(max(sin(x)*1000000, -1), 1) + s3*(1 - 4*abs(x/(2*pi) - 0.25 - round(x/(2*pi) - 0.25))))", color: azul, rotulo: "v(t)" }
+        - { expr: "(Vp*(s1*sin(x) + s2*min(max(sin(x)*1000000, -1), 1) + s3*(1 - 4*abs(x/(2*pi) - 0.25 - round(x/(2*pi) - 0.25)))))^2", color: naranja, rotulo: "v², su cuadrado" }
+        - { expr: "V_rms + 0*x", color: tinta, rotulo: "valor eficaz", discontinua: true }
+      lectura: { valor: V_rms, rotulo: "Valor eficaz" }
+      mandos:
+        - { valor: forma, lista: [1, 2, 3], rotulo: "Forma: 1 senoide, 2 cuadrada, 3 triangular" }
+    requiere: { mover: [forma] }
+
+  - id: prediga-cuadrada
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Una onda cuadrada de ±Vₚ. ¿Cuál es su valor eficaz?"
+    libro: [105, 104]
+    fijar: { Vp: 1, forma: 2 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 12.57, unidad: rad, rotulo: "ωt" }
+      y: { min: -1.2, max: 1.2, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "Vp*(s1*sin(x) + s2*min(max(sin(x)*1000000, -1), 1) + s3*(1 - 4*abs(x/(2*pi) - 0.25 - round(x/(2*pi) - 0.25))))", color: azul, rotulo: "v(t)" }
+      lectura: { valor: V_rms, rotulo: "Valor eficaz" }
+      ocultar: true
+    opciones:
+      - texto: "Vₚ"
+        bien: true
+        porque: "Su cuadrado vale siempre Vₚ²: la media es Vₚ² y la raíz, Vₚ."
+      - texto: "Cero"
+        porque: "Cero es su valor medio: lo positivo cancela lo negativo. El cuadrado no deja que se cancelen."
+      - texto: "Vₚ/√2"
+        porque: "Ese es el eficaz de la senoide, 0,707·Vₚ. La cuadrada pasa todo el tiempo en el pico."
+
+  - id: regla-eficaz
+    tipo: formula
+    titulo: "El valor eficaz"
+    texto: "Se eleva al cuadrado, se promedia en un periodo y se saca la raíz. Es la continua que disiparía lo mismo en una resistencia."
+    libro: [98, 104]
+    ec: 98
+    fijar: { Vp: 1 }
+    sustitucion: "√(media de v²) = √{{media2}} · {{Vp}} = {{V_rms}}"
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 12.57, unidad: rad, rotulo: "ωt" }
+      y: { min: -1.2, max: 1.2, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "(Vp*(s1*sin(x) + s2*min(max(sin(x)*1000000, -1), 1) + s3*(1 - 4*abs(x/(2*pi) - 0.25 - round(x/(2*pi) - 0.25)))))^2", color: naranja, rotulo: "v², su cuadrado" }
+        - { expr: "media2*Vp^2 + 0*x", color: tinta, rotulo: "media del cuadrado", discontinua: true }
+      mandos:
+        - { valor: forma, lista: [1, 2, 3], rotulo: "Forma: 1 senoide, 2 cuadrada, 3 triangular" }
+
+  - id: reto-consumo
+    tipo: reto
+    titulo: "Reto: 43 µA de media"
+    texto: "Un nodo consume 8 mA un rato cada segundo y 3 µA el resto. Ajuste el tiempo activo para que la media sea 43 µA."
+    libro: [102]
+    fijar: { I_on: 0.008, I_off: 0.000003 }
+    inicio: { t_on: 0.001 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 0.02, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 0.01, unidad: A, rotulo: "i" }
+      curvas:
+        - { expr: "I_off + (I_on - I_off)*min(max((t_on - x)*1000000, 0), 1)", color: azul, rotulo: "consumo" }
+      asas:
+        - { mueve: t_on, x: "t_on", y: "I_on", rotulo: "Fin del impulso: tiempo activo" }
+      mandos:
+        - { valor: t_on, min: 0.001, max: 0.01, paso: 0.001, rotulo: "Tiempo activo cada segundo" }
+    condiciones:
+      - { valor: I_med, objetivo: 0.000043, tol: 0.02, rotulo: "Media: {{I_med}}" }
+    exito: "5 ms: 40 µC + 3 µC = 43 µC en cada segundo, 43 µA de media. Integrar es promediar con memoria."
+    pistas:
+      - { cuando: { valor: I_med, menor: 0.00004214 }, texto: "La media se queda corta: alargue el impulso." }
+      - { cuando: { valor: I_med, mayor: 0.00004386 }, texto: "La media se pasa: acorte el impulso." }
+    ayuda: "Cada milisegundo a 8 mA aporta 8 µC; el reposo, unos 3 µC. Faltan 40 µC."
+    comprobar:
+      - { con: { t_on: 0.005 }, I_med: 0.000043, tol: 0.001 }
+
+  - id: estime-ej05
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Del pico al eficaz"
+    texto: "Una senoide tiene una amplitud de pico de 10 V. Estime su valor eficaz."
+    libro: ["cap00#284", 105]
+    fijar: { Vp: 10, forma: 1 }
+    estimar:
+      objetivo: "V_rms"
+      unidad: V
+      min: 0
+      max: 10
+      paso: 0.05
+      inicio: 3
+      tol: 0.02
+      rotulo: "V_{RMS}"
+    exito: "Vₚ/√2 = 10/1,414 = 7,07 V."
+    pistas:
+      - { cuando: { valor: estimacion, menor: 6.93 }, texto: "Se ha quedado corto: el eficaz de la senoide es 0,707 veces el pico." }
+      - { texto: "Se ha pasado: el eficaz es menor que el pico, 0,707 veces." }
+    comprobar:
+      - { V_rms: 7.07 }
+
+  - id: promediador
+    tipo: sorpresa
+    titulo: "El multímetro que se equivoca"
+    texto: "Un multímetro promediador multiplica la media rectificada por 1,11. Cambie la forma y compare con el eficaz de verdad."
+    nota: "Solo acierta con la senoide. Un True RMS calcula la integral."
+    libro: [106]
+    fijar: { Vp: 1 }
+    inicio: { forma: 1 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 12.57, unidad: rad, rotulo: "ωt" }
+      y: { min: -1.2, max: 1.2, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "Vp*(s1*sin(x) + s2*min(max(sin(x)*1000000, -1), 1) + s3*(1 - 4*abs(x/(2*pi) - 0.25 - round(x/(2*pi) - 0.25))))", color: azul, rotulo: "v(t)" }
+        - { expr: "V_rms + 0*x", color: tinta, rotulo: "eficaz de verdad", discontinua: true }
+        - { expr: "V_prom + 0*x", color: naranja, rotulo: "lectura del promediador" }
+      lectura: { valor: V_rms, rotulo: "Eficaz de verdad" }
+      datos:
+        - { valor: V_prom, rotulo: "Promediador: {{V_prom}}" }
+      mandos:
+        - { valor: forma, lista: [1, 2, 3], rotulo: "Forma: 1 senoide, 2 cuadrada, 3 triangular" }
+    requiere: { mover: [forma] }
+
+  - id: por-que-cuadrado
+    tipo: porque
+    titulo: "¿Por qué el cuadrado?"
+    texto: "El valor eficaz eleva la señal al cuadrado antes de promediar. ¿Por qué?"
+    libro: [104]
+    opciones:
+      - texto: "Para que lo negativo cuente: el eficaz disipa en una resistencia lo mismo que una continua"
+        bien: true
+        porque: "La potencia va con el cuadrado de la tensión. Por eso el eficaz es el que importa para la potencia."
+      - texto: "Para que el resultado salga mayor que el pico"
+        porque: "No sale mayor: en la senoide es 0,707·Vₚ, en la triangular 0,577·Vₚ y en la cuadrada, Vₚ."
+      - texto: "Porque la media de una senoide sin elevar es negativa"
+        porque: "La media de una senoide es cero: la mitad positiva cancela la negativa. El cuadrado evita que se cancelen."
+
+  - id: integrales
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "La tabla de integrales"
+    texto: "Una cada función con su integral."
+    libro: [99, 108]
+    emparejar:
+      - ["k", "k · x + C"]
+      - ["1 / x", "ln|x| + C"]
+      - ["eᵃˣ", "(1/a) · eᵃˣ + C"]
+      - ["cos(a·x)", "(1/a) · sen(a·x) + C"]
+    exito: "Eso es. Derivar e integrar son operaciones inversas: derive cada integral y volverá a la función."
+    pistas:
+      - { texto: "Compruebe derivando: la derivada de ln|x| es 1/x, y la de sen(a·x), a·cos(a·x)." }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [101, 102, 105, 106]
+    ideas:
+      - { titulo: "Acumular.", texto: "La carga es la integral de la corriente: 2 A durante 3 s, 6 C." }
+      - { titulo: "Promediar.", texto: "8 mA durante 5 ms cada segundo y 3 µA el resto: 43 µA de media." }
+      - { titulo: "Eficaz.", texto: "Raíz de la media del cuadrado: senoide 0,707·Vp, triangular 0,577·Vp, cuadrada Vp." }
+      - { titulo: "Ojo al multímetro.", texto: "El promediador supone senoide; con otras formas, un True RMS." }

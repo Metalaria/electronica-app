@@ -1,0 +1,230 @@
+# Lección 1.1 de la sección 6.13 «Ampliación: Distorsión y Linealidad» (cap06): el ejemplo numérico del libro
+# (a₁ = 1, a₂ = 0,05, a₃ = −0,02): la onda deformada, HD₂ ∝ A y HD₃ ∝ A² (la tabla de 0,5, 1 y 2), la THD (5,39 % con
+# A = 2), la compresión (A₁dB = 2,692), el IP3 a 3,03 veces (9,64 dB; 8,165), la intermodulación y el dominio de
+# validez. El eje del tiempo va en periodos (t/T). Formato: contenido/lecciones11/GUIA.md.
+leccion: cap06/sec-6.13
+
+libro:
+  397: 'y = a_("1")'
+  398: "El término a₁ es la ganancia; los demás son la distorsión."
+  399: "el segundo armónico, de amplitud a₂A²/2"
+  401: '"HD"_("2")'
+  402: '"THD" = sqrt('
+  403: "HD₂ crece proporcionalmente a la amplitud (1 dB por cada dB de señal) y HD₃ con el cuadrado (2 dB por dB)"
+  404: "Comprobación numérica con a₁ = 1, a₂ = 0,05 y a₃ = −0,02:"
+  405: "5,39 % (−25,4 dB)"
+  406: "Duplicar la amplitud duplica HD₂ y cuadruplica HD₃"
+  408: "Cuando a₃ tiene signo contrario a a₁, la ganancia efectiva disminuye al crecer la señal: es la compresión."
+  413: '"9,64 dB"'
+  414: "A₁dB = 2,692 y AIP3 = 8,165"
+  415: "caen dentro de la banda útil y no se pueden filtrar"
+  416: "Cerca de la saturación aparecen órdenes superiores y el modelo deja de predecir."
+
+modelo:
+  valores:
+    a_1: { sim: "a₁", nombre: "coeficiente lineal, la ganancia", unidad: "", valor: 1 }
+    a_2: { sim: "a₂", nombre: "coeficiente de segundo orden", unidad: "", valor: 0.05 }
+    a_3: { sim: "a₃", nombre: "coeficiente de tercer orden", unidad: "", valor: -0.02 }
+    A: { sim: "A", nombre: "amplitud de la entrada", unidad: "", valor: 0.5 }
+    A_m: { sim: "A_{1dB}", nombre: "amplitud de compresión medida", unidad: "", valor: 2.692 }
+  calculos:
+    HD2: { expr: "abs(a_2*A/(2*a_1))*100", sim: "HD₂", nombre: "segundo armónico", unidad: "%", cifras: 3 }
+    HD3: { expr: "abs(a_3*A^2/(4*a_1))*100", sim: "HD₃", nombre: "tercer armónico", unidad: "%", cifras: 3 }
+    THD: { expr: "sqrt(HD2^2 + HD3^2)", sim: "THD", nombre: "distorsión armónica total", unidad: "%", cifras: 3 }
+    THD_db: { expr: "20*log10(THD/100)", sim: "THD", nombre: "distorsión armónica total en decibelios", unidad: "dB", cifras: 3 }
+    G_db: { expr: "20*log10((a_1 + 0.75*a_3*A^2)/a_1)", sim: "ΔG", nombre: "caída de la ganancia", unidad: "dB", cifras: 2 }
+    A_1db: { expr: "sqrt(0.1449*a_1/abs(a_3))", sim: "A_{1dB}", nombre: "punto de compresión de 1 dB", unidad: "", cifras: 4 }
+    A_ip3: { expr: "sqrt(4*a_1/(3*abs(a_3)))", sim: "A_{IP3}", nombre: "punto de intercepción de tercer orden", unidad: "", cifras: 4 }
+    r_db: { expr: "20*log10(A_ip3/A_1db)", sim: "A_{IP3}/A_{1dB}", nombre: "relación entre IP3 y compresión", unidad: "dB", cifras: 3 }
+    A_ipm: { expr: "A_m*3.03", sim: "A_{IP3}", nombre: "IP3 estimado desde la compresión", unidad: "", cifras: 4 }
+
+tarjetas:
+  - id: explore-distorsion
+    tipo: explorar
+    titulo: "Una característica curva"
+    texto: "Una etapa con y = a₁·x + a₂·x² + a₃·x³, con a₁ = 1, a₂ = 0,05 y a₃ = −0,02. Suba la amplitud A del coseno de entrada y compare la salida con la ideal."
+    libro: [397, 398, 404]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 2, unidad: "", rotulo: "t/T" }
+      y: { min: -3, max: 3, unidad: "", rotulo: "y" }
+      curvas:
+        - { expr: "a_1*A*cos(2*pi*t)", color: azul, rotulo: "ideal, a₁·x", discontinua: true }
+        - { expr: "a_1*A*cos(2*pi*t) + a_2*(A*cos(2*pi*t))^2 + a_3*(A*cos(2*pi*t))^3", color: naranja, rotulo: "real" }
+      lectura: { valor: THD, rotulo: "THD" }
+      datos:
+        - { valor: HD2, rotulo: "HD₂ = {{HD2}}" }
+        - { valor: HD3, rotulo: "HD₃ = {{HD3}}" }
+      mandos:
+        - { valor: A, min: 0.1, max: 2.5, paso: 0.1, rotulo: "Amplitud, A" }
+    requiere: { mover: [A] }
+
+  - id: prediga-doble
+    tipo: predecir
+    titulo: "Doble amplitud"
+    texto: "Una etapa con a₁ = 1, a₂ = 0,05 y a₃ = −0,02 tiene, con A = 1, HD₂ = 2,50 % y HD₃ = 0,50 %. ¿Qué pasa con A = 2?"
+    libro: [403, 405, 406]
+    fijar: { A: 2 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 2, unidad: "", rotulo: "t/T" }
+      y: { min: -3, max: 3, unidad: "", rotulo: "y" }
+      curvas:
+        - { expr: "a_1*A*cos(2*pi*t) + a_2*(A*cos(2*pi*t))^2 + a_3*(A*cos(2*pi*t))^3", color: naranja, rotulo: "real" }
+      lectura: { valor: HD3, rotulo: "HD₃" }
+      datos:
+        - { valor: HD2, rotulo: "HD₂ = {{HD2}}" }
+      ocultar: true
+    opciones:
+      - texto: "HD₂ se duplica, 5 %, y HD₃ se cuadruplica, 2 %"
+        bien: true
+        porque: "HD₂ crece con la amplitud y HD₃ con su cuadrado: la de tercer orden se dispara antes al subir el nivel."
+      - texto: "Las dos se duplican"
+        porque: "HD₂ sí, pero HD₃ = |a₃|·A²/4 va con el cuadrado: se cuadruplica."
+      - texto: "Las dos se cuadruplican"
+        porque: "HD₃ sí, pero HD₂ = a₂·A/2 es proporcional a la amplitud: solo se duplica."
+    comprobar:
+      - { con: { A: 1 }, HD2: 2.5, HD3: 0.5 }
+      - { HD2: 5, HD3: 2 }
+
+  - id: formula-hd
+    tipo: formula
+    titulo: "Las distorsiones armónicas"
+    texto: "Con x = A·cos(ωt), el término cuadrático da el segundo armónico y el cúbico, el tercero. Relativos a la fundamental:"
+    libro: [399, 401]
+    ec: 401
+    sustitucion: "{{a_2}} · {{A}} / 2 = {{HD2}}; {{a_3}} · {{A}}^{2} / 4 = {{HD3}}"
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 2, unidad: "", rotulo: "t/T" }
+      y: { min: -3, max: 3, unidad: "", rotulo: "y" }
+      curvas:
+        - { expr: "a_1*A*cos(2*pi*t)", color: azul, rotulo: "ideal, a₁·x", discontinua: true }
+        - { expr: "a_1*A*cos(2*pi*t) + a_2*(A*cos(2*pi*t))^2 + a_3*(A*cos(2*pi*t))^3", color: naranja, rotulo: "real" }
+      lectura: { valor: THD, rotulo: "THD" }
+      datos:
+        - { valor: HD2, rotulo: "HD₂ = {{HD2}}" }
+        - { valor: HD3, rotulo: "HD₃ = {{HD3}}" }
+      mandos:
+        - { valor: A, min: 0.1, max: 2.5, paso: 0.1, rotulo: "Amplitud, A" }
+
+  - id: estime-thd
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La distorsión total"
+    texto: "Con a₁ = 1, a₂ = 0,05, a₃ = −0,02 y A = 2: HD₂ = 5,00 % y HD₃ = 2,00 %. La THD es la raíz de la suma de sus cuadrados. Estímela."
+    libro: [402, 405]
+    fijar: { A: 2 }
+    estimar:
+      objetivo: "THD"
+      unidad: "%"
+      min: 0
+      max: 10
+      paso: 0.01
+      inicio: 8
+      tol: 0.03
+      rotulo: "THD con A = 2"
+    exito: "√(5² + 2²) = 5,39 %, −25,4 dB. No es la suma: los armónicos se suman en potencia."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 5.55 }, texto: "Se ha pasado. No se suman los porcentajes: es √(25 + 4)." }
+      - { texto: "Se ha quedado corto. La THD nunca es menor que el mayor de los armónicos, 5 %." }
+    comprobar:
+      - { THD: 5.39, THD_db: -25.4 }
+
+  - id: sorpresa-compresion
+    tipo: sorpresa
+    titulo: "La ganancia que se encoge"
+    texto: "En la misma etapa, a₃ tiene signo contrario a a₁. Suba la amplitud y mire cuánto cae la ganancia de la fundamental, a₁ + (3/4)·a₃·A²."
+    libro: [408, 414]
+    inicio: { A: 0.5 }
+    widget:
+      tipo: grafica
+      x: { id: u, min: 0, max: 3, unidad: "", rotulo: "A" }
+      y: { min: -1.6, max: 0.2, unidad: "dB", rotulo: "ΔG" }
+      curvas:
+        - { expr: "20*log10((a_1 + 0.75*a_3*u^2)/a_1)", color: naranja, rotulo: "ganancia, frente a a₁" }
+        - { expr: "-1", color: tinta, rotulo: "−1 dB", discontinua: true }
+      asas:
+        - { mueve: A, x: "A", y: "G_db", rotulo: "Amplitud" }
+      marcas:
+        - { x: "A_1db", y: "-1", rotulo: "A_{1dB}" }
+      lectura: { valor: G_db, rotulo: "Caída de la ganancia" }
+      mandos:
+        - { valor: A, min: 0.1, max: 2.5, paso: 0.1, rotulo: "Amplitud, A" }
+    requiere: { mover: [A] }
+    comprobar:
+      - { A_1db: 2.692 }
+
+  - id: por-que-compresion
+    tipo: porque
+    titulo: "¿Por qué se encoge?"
+    texto: "Con a₃ = −0,02 y a₁ = 1, la ganancia de la fundamental cae 1 dB con A = 2,692. ¿De dónde sale esa caída?"
+    libro: [399, 408]
+    opciones:
+      - texto: "El término cúbico genera también una componente a ω, de signo contrario a a₁"
+        bien: true
+        porque: "cos³ da un término a ω y otro a 3ω. Con a₃ negativa, el de ω resta de la fundamental: (3/4)·a₃·A²."
+      - texto: "El segundo armónico se lleva energía de la fundamental"
+        porque: "El cuadrático da un término constante y otro a 2ω, nada a ω. La fundamental la toca el cúbico."
+      - texto: "El transistor se calienta con más señal"
+        porque: "El modelo no tiene temperatura: la caída sale de la serie, del término de tercer orden."
+
+  - id: estime-ip3
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "IP3 sin medirlo"
+    texto: "La relación entre IP3 y compresión no depende de los coeficientes: A_{IP3}/A_{1dB} = 3,03, es decir, 9,64 dB. Un amplificador comprime 1 dB con A = 2,692. Estime su A_{IP3}."
+    libro: [413, 414]
+    estimar:
+      objetivo: "A_ipm"
+      unidad: ""
+      min: 0
+      max: 20
+      paso: 0.05
+      inicio: 3
+      tol: 0.03
+      rotulo: "A_{IP3}"
+    exito: "2,692 · 3,03 = 8,16: el 8,165 del ejemplo. Con esa constante se estima el IP3 midiendo solo la compresión."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 8.4 }, texto: "Se ha pasado. Multiplique 2,692 por 3,03." }
+      - { texto: "Se ha quedado corto. 9,64 dB son algo más de tres veces en amplitud." }
+    comprobar:
+      - { A_ipm: 8.157, A_ip3: 8.165, r_db: 9.64 }
+
+  - id: intermodulacion
+    tipo: pregunta
+    titulo: "Armónicos o intermodulación"
+    texto: "En un receptor entran dos tonos cercanos, f₁ y f₂. ¿Por qué preocupa más la intermodulación que la distorsión armónica?"
+    libro: [415]
+    opciones:
+      - texto: "Los productos 2f₁ − f₂ y 2f₂ − f₁ caen dentro de la banda útil y no se pueden filtrar"
+        bien: true
+        porque: "Los armónicos caen lejos, a 2f y 3f, y se eliminan. Los productos de tercer orden caen junto a los tonos."
+      - texto: "Porque la intermodulación sale del término cuadrático"
+        porque: "Los productos que caen en banda, 2f₁ − f₂, salen del término cúbico."
+      - texto: "Porque los armónicos no existen con dos tonos"
+        porque: "Existen igual, pero caen lejos y se filtran. Los de intermodulación, no."
+
+  - id: validez
+    tipo: pregunta
+    titulo: "Hasta dónde vale"
+    texto: "El desarrollo en serie truncado en el tercer orden predice HD₂, HD₃ y la compresión. ¿Cuándo deja de valer?"
+    libro: [416]
+    opciones:
+      - texto: "Cerca de la saturación: aparecen órdenes superiores"
+        bien: true
+        porque: "Vale mientras la señal sea pequeña frente al margen del dispositivo."
+      - texto: "Por encima de una frecuencia"
+        porque: "El desarrollo es de la característica estática: su límite es la amplitud, no la frecuencia."
+      - texto: "Nunca: es exacto"
+        porque: "Es una serie truncada. Con señales grandes los términos que se desprecian dejan de ser pequeños."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [398, 403, 408, 413]
+    ideas:
+      - { titulo: "De la serie.", texto: "a₁ es la ganancia; a₂ y a₃, el segundo y el tercer armónico." }
+      - { titulo: "La ley de crecimiento.", texto: "HD₂ crece con la amplitud y HD₃ con su cuadrado: doble A, doble y cuádruple." }
+      - { titulo: "Compresión.", texto: "Con a₃ de signo contrario, la ganancia cae: 1 dB con A = 2,692." }
+      - { titulo: "IP3.", texto: "Siempre 3,03 veces la compresión, 9,64 dB: se estima sin medirlo." }

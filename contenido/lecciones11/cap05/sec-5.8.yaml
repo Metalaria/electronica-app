@@ -1,0 +1,292 @@
+# Lección 1.1 de la sección 5.8 «El Diodo Zener como Regulador y Referencia» (cap05): el regulador con resistencia
+# serie (ej. 5.3 y 5.8), el peor caso sin carga, la resistencia dinámica que decide la calidad (tabla de r_z), las dos
+# físicas de la ruptura y su deriva térmica, el ruido y cuándo sí y cuándo no usarlo. Formato:
+# contenido/lecciones11/GUIA.md.
+leccion: cap05/sec-5.8
+
+libro:
+  242: "la mantiene casi constante aunque varíe mucho la corriente que lo atraviesa"
+  243: "la resistencia absorbe el exceso de tensión y fija una corriente"
+  246: "el mínimo está entre 5 y 7 V"
+  247: "450 mV (14 %)"
+  248: "se usa un Zener de 5,1 o 5,6 V seguido de un divisor o un seguidor"
+  250: "Un Zener de 27 V deriva unos +23 mV/°C"
+  251: "La avalancha es un proceso aleatorio y genera ruido"
+  252: "porque el rendimiento es pésimo"
+  254: "toda la corriente pasa por el Zener y no debe superar su disipación"
+  "cap05#348": "Diseña un regulador Zener que entregue 5,1 V a una carga que consume 20 mA, desde una entrada de 12 V"
+
+modelo:
+  valores:
+    V_zi: { sim: "V_{in}", nombre: "tensión de entrada", unidad: V, valor: 12 }
+    R_zs: { sim: "R_{s}", nombre: "resistencia en serie", unidad: Ω, valor: 270 }
+    V_z: { sim: "V_{Z}", nombre: "tensión Zener", unidad: V, valor: 5.1 }
+    R_zl: { sim: "R_{L}", nombre: "carga de 20 mA", unidad: Ω, valor: 255 }
+    z_on: { tipo: interruptor, nombre: "carga conectada", valor: 1 }
+    I_q: { sim: "I_{Z}", nombre: "corriente del Zener", unidad: A, valor: 0.005 }
+  calculos:
+    V_zd: { si: z_on, entonces: "V_zi*R_zl/(R_zs + R_zl)", sino: "V_zi", sim: "V_{div}", nombre: "salida sin Zener", unidad: V }
+    V_zo: { expr: "min(V_zd, V_z)", sim: "V_{salida}", nombre: "tensión de salida", unidad: V }
+    I_zs: { expr: "(V_zi - V_zo)/R_zs", sim: "I_{s}", nombre: "corriente por R_s", unidad: A }
+    I_zl: { si: z_on, entonces: "V_zo/R_zl", sino: "0", sim: "I_{L}", nombre: "corriente de carga", unidad: A }
+    I_zz: { expr: "I_zs - I_zl", sim: "I_{Z}", nombre: "corriente del Zener", unidad: A }
+    P_z: { expr: "V_zo*I_zz", sim: "P_{Z}", nombre: "potencia en el Zener", unidad: W }
+    P_s: { expr: "(V_zi - V_zo)*I_zs", sim: "P_{R}", nombre: "potencia en R_s", unidad: W }
+    R_53: { expr: "(V_zi - V_z)/(0.005 + 0.02)", sim: "R_{s}", nombre: "resistencia del ejercicio 5.3", unidad: Ω }
+    R_58: { expr: "(V_zi - V_z)/(0.02 + 0.01)", sim: "R_{s}", nombre: "resistencia del ejercicio 5.8", unidad: Ω }
+    d33: { expr: "(I_q - 0.005)*30", sim: "ΔV", nombre: "variación del Zener de 3,3 V", unidad: V }
+    d51: { expr: "(I_q - 0.005)*7", sim: "ΔV", nombre: "variación del Zener de 5,1 V", unidad: V }
+    d27: { expr: "(I_q - 0.005)*25", sim: "ΔV", nombre: "variación del Zener de 27 V", unidad: V }
+    p33: { expr: "d33/3.3*100", sim: "ΔV/V_{Z}", nombre: "variación relativa del Zener de 3,3 V", unidad: "%", cifras: 2 }
+
+tarjetas:
+  - id: explore-regulador
+    tipo: explorar
+    titulo: "El regulador más simple"
+    texto: "Un Zener de 5,1 V con una resistencia en serie alimenta una carga de 20 mA. Mueva la entrada y mire la salida y la corriente del Zener."
+    libro: [242, 243, "cap05#348"]
+    widget:
+      tipo: circuito
+      esquema: zener
+      piezas: { fuente: V_zi, rs: R_zs, vz: V_z, carga: R_zl, interruptor: z_on }
+      lectura: { valor: V_zo, rotulo: "Salida" }
+      datos:
+        - { valor: I_zz, rotulo: "I_{Z} = {{I_zz}}" }
+        - { valor: I_zs, rotulo: "I_{s} = {{I_zs}}" }
+      corriente: I_zs
+      mide: { salida: V_zo, serie: I_zs, iz: I_zz, carga: I_zl }
+      mandos:
+        - { valor: V_zi, min: 12, max: 15, paso: 0.5, rotulo: "Entrada, V_{in}" }
+    requiere: { mover: [V_zi] }
+
+  - id: prediga-entrada
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Un regulador de 5,1 V (Zener y 270 Ω desde la entrada) con una carga de 20 mA. La entrada sube de 12 a 15 V. ¿Qué hace la salida?"
+    libro: [242, 243]
+    fijar: { V_zi: 15 }
+    widget:
+      tipo: circuito
+      esquema: zener
+      piezas: { fuente: V_zi, rs: R_zs, vz: V_z, carga: R_zl, interruptor: z_on }
+      lectura: { valor: V_zo, rotulo: "Salida" }
+      datos:
+        - { valor: I_zz, rotulo: "I_{Z} = {{I_zz}}" }
+      corriente: I_zs
+      mide: { salida: V_zo, serie: I_zs, iz: I_zz }
+      ocultar: true
+    opciones:
+      - texto: "Se queda en 5,1 V: el Zener absorbe la corriente de más"
+        bien: true
+        porque: "La resistencia se queda con el exceso de tensión; la corriente sobrante pasa por el Zener, que clava la salida."
+      - texto: "Sube en proporción, a más de 6 V"
+        porque: "Eso haría un divisor. El Zener mantiene su tensión aunque cambie mucho su corriente."
+      - texto: "Sube los mismos 3 V"
+        porque: "Esos 3 V de más se los queda la resistencia en serie, no la salida."
+    comprobar:
+      - { V_zo: 5.1 }
+
+  - id: reto-rs
+    tipo: reto
+    titulo: "Reto: la resistencia serie"
+    texto: "5,1 V para una carga de 20 mA desde 12 V; el Zener necesita al menos 5 mA. Elija la mayor resistencia E12 que se los deja."
+    libro: ["cap05#348"]
+    fijar: { V_zi: 12, z_on: 1 }
+    inicio: { R_zs: 150 }
+    widget:
+      tipo: circuito
+      esquema: zener
+      piezas: { fuente: V_zi, rs: R_zs, vz: V_z, carga: R_zl, interruptor: z_on }
+      lectura: { valor: I_zz, rotulo: "Corriente del Zener" }
+      datos:
+        - { valor: R_53, rotulo: "Cálculo: {{R_53}}" }
+      corriente: I_zs
+      mide: { salida: V_zo, serie: I_zs, iz: I_zz, carga: I_zl }
+      mandos:
+        - { valor: R_zs, serie: E12, min: 100, max: 1000, rotulo: "R_{s} (E12)" }
+    condiciones:
+      - { valor: I_zz, min: 0.005, rotulo: "Zener: {{I_zz}}" }
+      - { valor: R_zs, min: 270, rotulo: "La mayor que cumple" }
+    exito: "R_{s} = 6,9/0,025 = 276 Ω; la E12 de 270 Ω deja {{I_zz}} al Zener y disipa 0,176 W."
+    pistas:
+      - { cuando: { valor: I_zz, menor: 0.005 }, texto: "El Zener se queda sin su corriente mínima: baje R_{s}." }
+      - { cuando: { valor: R_zs, menor: 270 }, texto: "Cumple, pero hay una E12 mayor que también deja 5 mA." }
+    ayuda: "R_{s} = (12 − 5,1)/(0,005 + 0,020) = 276 Ω. Elija la E12 justo por debajo."
+    comprobar:
+      - { R_53: 276 }
+      - { con: { R_zs: 270 }, P_s: 0.176 }
+
+  - id: sorpresa-sin-carga
+    tipo: sorpresa
+    titulo: "Quite la carga"
+    texto: "El regulador de 270 Ω entrega 5,1 V a una carga de 20 mA. Desconecte la carga y mire el Zener."
+    libro: ["cap05#348"]
+    fijar: { V_zi: 12, R_zs: 270 }
+    inicio: { z_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: zener
+      piezas: { fuente: V_zi, rs: R_zs, vz: V_z, carga: R_zl, interruptor: z_on }
+      lectura: { valor: I_zz, rotulo: "Corriente del Zener" }
+      datos:
+        - { valor: P_z, rotulo: "El Zener disipa {{P_z}}" }
+      corriente: I_zs
+      mide: { salida: V_zo, serie: I_zs, iz: I_zz, carga: I_zl }
+      mandos:
+        - { valor: z_on, tipo: interruptor, rotulo: "Carga" }
+    requiere: { mover: [z_on] }
+    comprobar:
+      - { con: { z_on: 0 }, I_zz: 0.0256, P_z: 0.13 }
+
+  - id: porque-peor-caso
+    tipo: porque
+    titulo: "El peor caso del Zener"
+    texto: "Sin carga, el Zener pasa de 5,6 mA a 25,6 mA y disipa 0,13 W. ¿Por qué es ese su peor caso?"
+    libro: [254, "cap05#348"]
+    opciones:
+      - texto: "R_{s} fija la corriente, y sin carga toda pasa por el Zener"
+        bien: true
+        porque: "Con la entrada máxima y sin carga se elige su potencia. La otra condición es entrada mínima con carga máxima."
+      - texto: "Porque sube la tensión de salida"
+        porque: "La salida se queda en 5,1 V. Lo que sube es la corriente del Zener."
+      - texto: "Porque la resistencia deja pasar más corriente"
+        porque: "La corriente por R_{s} apenas cambia: lo que cambia es adónde va, toda al Zener."
+
+  - id: explore-rz
+    tipo: explorar
+    titulo: "La resistencia dinámica"
+    texto: "La tensión de un Zener crece con su corriente, según su r_{z}. Suba la corriente y compare tres Zener."
+    nota: "r_{z} típicas: 30 Ω a 3,3 V, 7 Ω a 5,1 V y 25 Ω a 27 V."
+    libro: [246, 247]
+    inicio: { I_q: 0.005 }
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0, max: 0.025, unidad: A, rotulo: "I_{Z}" }
+      y: { min: -3, max: 19, unidad: "%", rotulo: "variación de V_{Z}" }
+      curvas:
+        - { expr: "(i - 0.005)*30/3.3*100", color: naranja, rotulo: "3,3 V" }
+        - { expr: "(i - 0.005)*7/5.1*100", color: verde, rotulo: "5,1 V" }
+        - { expr: "(i - 0.005)*25/27*100", color: azul, rotulo: "27 V" }
+      asas:
+        - { mueve: I_q, x: "I_q", y: "p33", rotulo: "Corriente" }
+      lectura: { valor: d33, rotulo: "Zener de 3,3 V" }
+      datos:
+        - { valor: d51, rotulo: "5,1 V: {{d51}}" }
+        - { valor: d27, rotulo: "27 V: {{d27}}" }
+      mandos:
+        - { valor: I_q, min: 0.005, max: 0.02, paso: 0.0025, rotulo: "Corriente del Zener" }
+    requiere: { mover: [I_q] }
+
+  - id: prediga-33
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Un Zener de 3,3 V con r_{z} = 30 Ω pasa de 5 a 20 mA. ¿Cuánto se mueve su tensión?"
+    libro: [247, 248]
+    fijar: { I_q: 0.02 }
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0, max: 0.025, unidad: A, rotulo: "I_{Z}" }
+      y: { min: -3, max: 19, unidad: "%", rotulo: "variación de V_{Z}" }
+      curvas:
+        - { expr: "(i - 0.005)*30/3.3*100", color: naranja, rotulo: "3,3 V" }
+      lectura: { valor: d33, rotulo: "Variación" }
+      ocultar: true
+    opciones:
+      - texto: "450 mV, un 14 %"
+        bien: true
+        porque: "Los 30 Ω por la corriente de más. Un Zener de 3,3 V es un regulador pésimo."
+      - texto: "Nada: la tensión Zener es constante"
+        porque: "Solo en el modelo ideal. La resistencia dinámica la hace crecer con la corriente."
+      - texto: "105 mV, un 2 %"
+        porque: "Eso se mueve uno de 5,1 V, con r_{z} = 7 Ω. El de 3,3 V tiene 30 Ω."
+    comprobar:
+      - { d33: 0.45, p33: 13.6 }
+
+  - id: pregunta-baja-tension
+    tipo: pregunta
+    titulo: "Una tensión baja y estable"
+    texto: "Hace falta una referencia estable de 3,3 V. ¿Qué se hace?"
+    libro: [246, 248]
+    opciones:
+      - texto: "Un Zener de 5,1 o 5,6 V seguido de un divisor o un seguidor"
+        bien: true
+        porque: "El mínimo de r_{z} está entre 5 y 7 V, donde el Zener funciona mejor. O una referencia integrada."
+      - texto: "Un Zener de 3,3 V con más corriente"
+        porque: "Su r_{z} es grande: la salida se mueve un 14 % con la corriente."
+      - texto: "Dos Zener de 3,3 V en paralelo"
+        porque: "Sigue siendo un Zener de baja tensión, con su r_{z} grande. Mejor uno de 5 a 7 V."
+
+  - id: estime-58
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Diez miliamperios para el Zener"
+    texto: "Un regulador de 5,1 V desde 12 V, con una carga de 20 mA, y se quiere que el Zener lleve otros 10 mA. Estime la resistencia serie."
+    libro: ["cap05#348"]
+    fijar: { V_zi: 12 }
+    estimar:
+      objetivo: "R_58"
+      unidad: Ω
+      min: 0
+      max: 500
+      paso: 5
+      inicio: 400
+      tol: 0.03
+      rotulo: "R_{s}"
+    exito: "6,9 V con 30 mA: 230 Ω, comercial 220 Ω. Disipa unos 0,21 W: mejor de 1/2 W."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 237 }, texto: "Se ha pasado: por R_{s} pasan la corriente de la carga y la del Zener, 30 mA." }
+      - { texto: "Se ha quedado corto: R_{s} se queda con 12 − 5,1 = 6,9 V." }
+    comprobar:
+      - { R_58: 230 }
+
+  - id: empareje-temperatura
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Dos físicas de la ruptura"
+    texto: "Por debajo de unos 5 V domina el efecto túnel; por encima, la avalancha. Empareje cada Zener con su deriva térmica."
+    libro: [250]
+    emparejar:
+      - ["3,3 V, efecto Zener", "Unos −2 mV/°C"]
+      - ["5,6 V", "Deriva casi nula"]
+      - ["27 V, avalancha", "Unos +23 mV/°C"]
+    exito: "Eso es. Hacia 5,6 V los dos coeficientes se compensan: por eso las referencias históricas usan esa tensión."
+    pistas:
+      - { texto: "El túnel tiene coeficiente negativo; la avalancha, positivo. En medio se anulan." }
+
+  - id: pregunta-ruido
+    tipo: pregunta
+    titulo: "Un Zener ruidoso"
+    texto: "Un Zener de 27 V con poca corriente genera un ruido apreciable. ¿Por qué, y qué se hace en un regulador?"
+    libro: [251]
+    opciones:
+      - texto: "La avalancha es aleatoria; un condensador de decenas de nF en paralelo lo reduce"
+        bien: true
+        porque: "Tanto más ruido cuanto mayor la tensión. Se usan a propósito como generadores de ruido blanco."
+      - texto: "Porque está mal soldado"
+        porque: "El ruido es la física de la avalancha: un proceso aleatorio."
+      - texto: "Porque tiene poca r_{z}"
+        porque: "La r_{z} decide la regulación; el ruido viene del proceso aleatorio de la avalancha."
+
+  - id: pregunta-cuando-no
+    tipo: pregunta
+    titulo: "Cuándo sí y cuándo no"
+    texto: "¿En cuál de estos casos un Zener con resistencia serie es mala elección?"
+    libro: [252]
+    opciones:
+      - texto: "Alimentar un circuito que consume una corriente grande y variable"
+        bien: true
+        porque: "Lo que no va a la carga se disipa en el Zener: rendimiento pésimo. Un regulador integrado lo hace mucho mejor."
+      - texto: "Fijar el umbral de un comparador"
+        porque: "Es su uso ideal: una referencia de baja corriente con carga fija."
+      - texto: "Proteger una entrada frente a sobretensión"
+        porque: "Es un uso adecuado, como recortador o protección de entrada."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [243, 247, 250, 252, 254]
+    ideas:
+      - { titulo: "R_{s} = (V_{in} − V_{Z})/(I_{Z} + I_{L}).", texto: "La resistencia absorbe el exceso; el Zener clava la salida mientras le quede su corriente mínima." }
+      - { titulo: "Peor caso.", texto: "Sin carga y con la entrada máxima, toda la corriente pasa por el Zener: así se elige su potencia." }
+      - { titulo: "r_{z} manda.", texto: "Mínima entre 5 y 7 V; un Zener de 3,3 V se mueve un 14 % de 5 a 20 mA." }
+      - { titulo: "5,6 V.", texto: "Túnel abajo, avalancha arriba: a 5,6 V la deriva casi se anula." }

@@ -1,0 +1,330 @@
+# Lección 1.1 de la sección 2.13 «Problemas de Diseño» (cap02): 2.A, el divisor de precisión (sensibilidad, peor
+# caso frente a RSS); 2.B, el shunt y su error por autocalentamiento; 2.C, el par E24 para 10 dB y qué término
+# domina. El divisor de 2.A se alimenta con 1 V para que su salida sea la relación k.
+# Formato: contenido/lecciones11/GUIA.md.
+leccion: cap02/sec-2.13
+
+libro:
+  245: "Un divisor 1:2 (relación 0,5) construido con dos resistencias de 10 kΩ"
+  257: "Si las dos resistencias se desvían juntas y en la misma proporción, el divisor no cambia"
+  259: '("Δ" k)/(k) = S_("1") dot.op δ_("1")'
+  261: "Peor caso: δ₂ = +tol y δ₁ = −tol"
+  264: "1,500 %"
+  267: "Cuanto más asimétrico el divisor, peor"
+  268: "Usar RSS para una protección es un error conceptual, no un atajo"
+  269: "las resistencias del 1 % no bastan en peor caso"
+  275: "Hay que medir una corriente de hasta 10 A con un shunt que produzca 50 mV a fondo de escala"
+  282: 'P = I^("2") dot.op R_("sh")'
+  285: "el error crece con el cuadrado de la corriente"
+  287: '"5 mΩ"'
+  291: "400 ppm/°C (chip de película gruesa corriente)"
+  292: "el TCR máximo admisible es 0,2 % / 25 °C = 80 ppm/°C"
+  299: "Una etapa amplificadora debe tener una ganancia de 10 dB exactos"
+  303: '"3,1623"'
+  307: "9,931 dB"
+  308: "El mejor par da un error del 0,79 %"
+  310: "en RSS un 1,41 %"
+  312: '"1,62"'
+  313: "Si fuese «±0,1 dB», ni cambiando de serie se resuelve"
+  314: "Cambiar de E24 a E96 mejora el 0,79 % pero deja intacto el 2 %"
+
+modelo:
+  valores:
+    V_k: { sim: "V", nombre: "tensión del divisor", unidad: V, valor: 1 }
+    R_0: { sim: "R", nombre: "valor nominal", unidad: Ω, valor: 10000 }
+    d_1: { sim: "δ₁", nombre: "desviación de R₁", unidad: "%", valor: 0 }
+    d_2: { sim: "δ₂", nombre: "desviación de R₂", unidad: "%", valor: 0 }
+    tol_k: { sim: "tol", nombre: "tolerancia", unidad: "%", valor: 1 }
+    k_n: { sim: "k", nombre: "relación nominal del divisor", unidad: "", valor: 0.25 }
+    R_sh: { sim: "R_{sh}", nombre: "shunt", unidad: Ω, valor: 0.005 }
+    I_b: { sim: "I", nombre: "corriente medida", unidad: A, valor: 10 }
+    tcr_b: { sim: "TCR", nombre: "coeficiente de temperatura del shunt", unidad: "ppm/°C", valor: 400 }
+    R_th: { sim: "R_{th}", nombre: "resistencia térmica hacia la placa", unidad: "°C/W", valor: 50 }
+    R_f: { sim: "R_{f}", nombre: "resistencia de realimentación", unidad: Ω, valor: 10000 }
+    R_i: { sim: "R_{i}", nombre: "resistencia de entrada", unidad: Ω, valor: 10000 }
+  calculos:
+    R_1: { expr: "R_0*(1 + d_1/100)", sim: "R₁", nombre: "R₁ desviada", unidad: Ω, cifras: 4 }
+    R_2: { expr: "R_0*(1 + d_2/100)", sim: "R₂", nombre: "R₂ desviada", unidad: Ω, cifras: 4 }
+    k: { expr: "R_2/(R_1 + R_2)", sim: "k", nombre: "relación del divisor", unidad: "", cifras: 4 }
+    V_o: { expr: "V_k*k", sim: "V_{salida}", nombre: "salida del divisor", unidad: V, cifras: 4 }
+    I_k: { expr: "V_k/(R_1 + R_2)", sim: "I", nombre: "corriente del divisor", unidad: A }
+    dk: { expr: "(k/0.5 - 1)*100", sim: "Δk/k", nombre: "error relativo de k", unidad: "%", cifras: 3 }
+    dk_lin: { expr: "(1 - 0.5)*(d_2 - d_1)", sim: "Δk/k", nombre: "error de k en primer orden", unidad: "%", cifras: 3 }
+    peor: { expr: "2*(1 - k_n)*tol_k", sim: "peor caso", nombre: "error de peor caso", unidad: "%", cifras: 4 }
+    fac: { expr: "1 - k_n", sim: "1 − k", nombre: "sensibilidad", unidad: "", cifras: 3 }
+    rss: { expr: "sqrt(2)*(1 - k_n)*tol_k", sim: "RSS", nombre: "error estadístico", unidad: "%", cifras: 4 }
+    P_sh: { expr: "I_b^2*R_sh", sim: "P", nombre: "potencia en el shunt", unidad: W, cifras: 3 }
+    dT_b: { expr: "P_sh*R_th", sim: "ΔT", nombre: "calentamiento del shunt", unidad: "°C", cifras: 3 }
+    eps: { expr: "tcr_b*dT_b*1e-4", sim: "ε", nombre: "error por autocalentamiento", unidad: "%", cifras: 3 }
+    V_sh: { expr: "I_b*R_sh", sim: "V_{sh}", nombre: "tensión del shunt", unidad: V }
+    G: { expr: "R_f/R_i", sim: "G", nombre: "ganancia", unidad: "", cifras: 5 }
+    G_dB: { expr: "20*log10(G)", sim: "G", nombre: "ganancia en decibelios", unidad: "dB", cifras: 4 }
+    rss_dB: { expr: "20*log10(1 + sqrt(2)*tol_k/100)", sim: "RSS", nombre: "error RSS de la tolerancia, en decibelios", unidad: "dB", cifras: 2 }
+    err_G: { expr: "(G/3.1623 - 1)*100", sim: "error", nombre: "error de la ganancia", unidad: "%", cifras: 2 }
+
+tarjetas:
+  - id: explore-desvios
+    tipo: explorar
+    titulo: "Problema 2.A: un divisor 1:2"
+    texto: "Dos de 10 kΩ con relación k = 0,5. Desvíe las dos en el mismo sentido y luego en sentidos opuestos. Mire k."
+    libro: [245]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_k, arriba: R_1, abajo: R_2 }
+      lectura: { valor: k, rotulo: "Relación k" }
+      datos:
+        - { valor: dk, rotulo: "Δk/k = {{dk}}" }
+      corriente: I_k
+      mide: { salida: V_o, corriente: I_k }
+      mandos:
+        - { valor: d_1, min: -1, max: 1, paso: 0.5, rotulo: "Desviación de R₁, δ₁" }
+        - { valor: d_2, min: -1, max: 1, paso: 0.5, rotulo: "Desviación de R₂, δ₂" }
+    requiere: { mover: [d_1, d_2] }
+
+  - id: prediga-juntas
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Las dos resistencias salen un 1 % por encima de su valor. ¿Cuánto cambia la relación k?"
+    libro: [257]
+    fijar: { d_1: 1, d_2: 1 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_k, arriba: R_1, abajo: R_2 }
+      lectura: { valor: k, rotulo: "Relación k" }
+      corriente: I_k
+      mide: { salida: V_o, corriente: I_k }
+      ocultar: true
+    opciones:
+      - texto: "Nada"
+        bien: true
+        porque: "Un factor común en R₁ y R₂ se simplifica. Importa el apareamiento, no el valor absoluto."
+      - texto: "Un 1 %"
+        porque: "Cambian las dos a la vez: el cociente, y con él k, se queda igual."
+      - texto: "Un 2 %"
+        porque: "Eso no lo da ni el peor caso con k = 0,5. Y aquí los efectos se cancelan exactamente."
+    comprobar:
+      - { k: 0.5, dk: 0 }
+
+  - id: regla-sensibilidad
+    tipo: formula
+    titulo: "La sensibilidad"
+    texto: "Las dos sensibilidades valen (1 − k), con signo opuesto. Pruebe sentidos opuestos: es el peor caso."
+    libro: [259, 261]
+    ec: 259
+    sustitucion: "(1 − 0,5) · ({{d_2}} − {{d_1}}) = {{dk_lin}};  exacto: {{dk}}"
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_k, arriba: R_1, abajo: R_2 }
+      lectura: { valor: dk, rotulo: "Δk/k" }
+      corriente: I_k
+      mide: { salida: V_o, corriente: I_k }
+      mandos:
+        - { valor: d_1, min: -1, max: 1, paso: 0.5, rotulo: "Desviación de R₁, δ₁" }
+        - { valor: d_2, min: -1, max: 1, paso: 0.5, rotulo: "Desviación de R₂, δ₂" }
+
+  - id: estime-asimetrico
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Un divisor más asimétrico"
+    texto: "Peor caso: 2·(1 − k)·tol. Con resistencias del 1 % y k = 0,25, estime el error del divisor."
+    libro: [261, 264, 267]
+    fijar: { k_n: 0.25, tol_k: 1 }
+    estimar:
+      objetivo: "peor"
+      unidad: "%"
+      min: 0
+      max: 3
+      paso: 0.05
+      inicio: 0.5
+      tol: 0.04
+      rotulo: "Peor caso con k = 0,25"
+    exito: "1,5 %: el error del divisor no es la tolerancia. Cuanto más atenúa, más sensible. En RSS, 1,061 %."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 1.56 }, texto: "Se ha pasado: 2 · 0,75 · 1 %." }
+      - { texto: "Se ha quedado corto: con k = 0,25 el factor (1 − k) es 0,75, y el peor caso lo dobla." }
+    comprobar:
+      - { peor: 1.5, rss: 1.061, fac: 0.75 }
+
+  - id: por-que-peor-caso
+    tipo: pregunta
+    titulo: "¿Peor caso o RSS?"
+    texto: "El peor caso es √2 veces el estadístico. Para el umbral de una protección, ¿cuál se aplica?"
+    libro: [268]
+    opciones:
+      - texto: "El peor caso: un fallo es inadmisible"
+        bien: true
+        porque: "El RSS vale en producción de volumen; para una protección es un error conceptual, no un atajo."
+      - texto: "El RSS, que es más realista"
+        porque: "Describe el porcentaje de unidades dentro de especificación, no el peor ejemplar. En una protección no basta."
+      - texto: "Da igual: los dos dan lo mismo"
+        porque: "No: el peor caso es √2 veces el RSS, sea cual sea k."
+
+  - id: decision
+    tipo: pregunta
+    titulo: "Mejor del 1 %"
+    texto: "La especificación pide un divisor k = 0,5 mejor del 1 %, en peor caso. ¿Qué compra?"
+    libro: [269]
+    opciones:
+      - texto: "Resistencias del 0,5 % o una red apareada"
+        bien: true
+        porque: "Las del 1 % dan justo 1,000 %, sin margen. La red apareada garantiza el apareamiento."
+      - texto: "Resistencias del 1 %"
+        porque: "En peor caso dan exactamente el 1 %: no queda ningún margen."
+      - texto: "Resistencias del 2 %"
+        porque: "Doblarían el error. Hay que ir hacia tolerancias más estrechas o a una red apareada."
+
+  - id: regla-shunt
+    tipo: formula
+    titulo: "Problema 2.B: el shunt que se calienta"
+    texto: "50 mV a 10 A: 5 mΩ. Su error encadena potencia, calentamiento y TCR. Mueva la corriente."
+    libro: [275, 282, 287]
+    ec: 282
+    sustitucion: "{{I_b}}² · {{R_sh}} = {{P_sh}} → {{P_sh}} · {{R_th}} = {{dT_b}} → {{tcr_b}} · {{dT_b}} = {{eps}}"
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0, max: 10, unidad: A, rotulo: "I" }
+      y: { min: 0, max: 1.2, unidad: "%", rotulo: "ε" }
+      curvas:
+        - { expr: "tcr_b*i^2*R_sh*R_th*1e-4", color: naranja, rotulo: "error por autocalentamiento" }
+      asas:
+        - { mueve: I_b, x: "I_b", y: "eps", rotulo: "Corriente" }
+      lectura: { valor: eps, rotulo: "Error" }
+      mandos:
+        - { valor: I_b, min: 1, max: 10, paso: 1, rotulo: "Corriente, I" }
+
+  - id: prediga-media-escala
+    tipo: predecir
+    titulo: "Prediga: a media escala"
+    texto: "A 10 A, el shunt de 400 ppm/°C yerra un 1 %. ¿Y a 5 A?"
+    libro: [285, 291]
+    fijar: { I_b: 5, tcr_b: 400, R_th: 50 }
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0, max: 10, unidad: A, rotulo: "I" }
+      y: { min: 0, max: 1.2, unidad: "%", rotulo: "ε" }
+      curvas:
+        - { expr: "tcr_b*i^2*R_sh*R_th*1e-4", color: naranja, rotulo: "error por autocalentamiento" }
+      lectura: { valor: eps, rotulo: "Error" }
+      ocultar: true
+    opciones:
+      - texto: "La cuarta parte, 0,25 %"
+        bien: true
+        porque: "El error crece con el cuadrado de la corriente, a través de la potencia. No se corrige calibrando un punto."
+      - texto: "La mitad, 0,5 %"
+        porque: "Sería así si creciera con la corriente. Crece con su cuadrado."
+      - texto: "Lo mismo, 1 %"
+        porque: "El calentamiento depende de la potencia, I²·R: a media escala es la cuarta parte."
+    comprobar:
+      - { eps: 0.25 }
+      - { con: { I_b: 10 }, eps: 1 }
+
+  - id: reto-shunt
+    tipo: reto
+    titulo: "Reto: menos del 0,2 %"
+    texto: "A 10 A, elija el TCR del shunt y la resistencia térmica hacia la placa para que el error baje del 0,2 %."
+    libro: [291, 292]
+    fijar: { I_b: 10 }
+    inicio: { tcr_b: 400, R_th: 50 }
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0, max: 10, unidad: A, rotulo: "I" }
+      y: { min: 0, max: 1.2, unidad: "%", rotulo: "ε" }
+      curvas:
+        - { expr: "tcr_b*i^2*R_sh*R_th*1e-4", color: naranja, rotulo: "error por autocalentamiento" }
+        - { expr: "0.2", color: azul, rotulo: "especificación", discontinua: true }
+      lectura: { valor: eps, rotulo: "Error a 10 A" }
+      datos:
+        - { valor: dT_b, rotulo: "ΔT = {{dT_b}}" }
+      mandos:
+        - { valor: tcr_b, lista: [50, 400], rotulo: "TCR del shunt" }
+        - { valor: R_th, lista: [20, 50], rotulo: "R_{th} hacia la placa" }
+    condiciones:
+      - { valor: eps, max: 0.2, rotulo: "Error: {{eps}}" }
+    exito: "Hace falta una aleación de 50 ppm/°C: 0,125 %, y con plano de cobre (20 °C/W), 0,050 %."
+    pistas:
+      - { cuando: { valor: eps, mayor: 0.2 }, texto: "Con 400 ppm/°C no basta ni con el plano de cobre: con 25 °C, el TCR máximo es 80 ppm/°C." }
+    ayuda: "0,2 % / 25 °C = 80 ppm/°C: elija el TCR por debajo de eso."
+    comprobar:
+      - { con: { tcr_b: 50, R_th: 50 }, eps: 0.125, dT_b: 25 }
+      - { con: { tcr_b: 50, R_th: 20 }, eps: 0.05, dT_b: 10 }
+      - { con: { tcr_b: 400, R_th: 20 }, eps: 0.4 }
+
+  - id: reto-e24
+    tipo: reto
+    titulo: "Problema 2.C: 10 dB con la E24"
+    texto: "10 dB son una ganancia de 3,1623. Elija R_{f} y R_{i} de la E24, entre 1 kΩ y 200 kΩ, con un error de ± 0,8 % como mucho."
+    libro: [299, 303, 307]
+    inicio: { R_f: 10000, R_i: 10000 }
+    widget:
+      tipo: grafica
+      x: { id: r, min: 1000, max: 200000, unidad: Ω, rotulo: "R_{i}", escala: log }
+      y: { min: 0.1, max: 100, unidad: "", rotulo: "G", escala: log }
+      curvas:
+        - { expr: "R_f/r", color: naranja, rotulo: "ganancia" }
+        - { expr: "3.1623", color: azul, rotulo: "10 dB", discontinua: true }
+      asas:
+        - { mueve: R_i, x: "R_i", y: "G", rotulo: "R_{i}" }
+      lectura: { valor: G_dB, rotulo: "Ganancia" }
+      datos:
+        - { valor: G, rotulo: "G = {{G}}" }
+      mandos:
+        - { valor: R_f, serie: E24, min: 1000, max: 200000, rotulo: "R_{f} (E24)" }
+        - { valor: R_i, serie: E24, min: 1000, max: 200000, rotulo: "R_{i} (E24)" }
+    condiciones:
+      - { valor: err_G, min: -0.8, max: 0.8, rotulo: "Error: {{err_G}}" }
+    exito: "El libro da 16 kΩ y 5,1 kΩ: 9,931 dB, −0,79 %. Dos valores de una serie gruesa dan una resolución fina."
+    pistas:
+      - { cuando: { valor: err_G, mayor: 0.8 }, texto: "Sobra ganancia: baje R_{f} o suba R_{i}." }
+      - { cuando: { valor: err_G, menor: -0.8 }, texto: "Falta ganancia: suba R_{f} o baje R_{i}." }
+    ayuda: "Busque un par cuyo cociente se acerque a 3,1623: pruebe con R_{i} = 5,1 kΩ."
+    comprobar:
+      - { con: { R_f: 16000, R_i: 5100 }, G: 3.1373, G_dB: 9.931, err_G: -0.79, tol: 0.01 }
+
+  - id: estime-rss
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Sumar la tolerancia"
+    texto: "Al 0,79 % de la serie se suma la tolerancia: con resistencias del 1 %, un 1,41 % en RSS. Estime el total, √(0,79² + 1,41²)."
+    libro: [308, 310, 312]
+    estimar:
+      objetivo: "sqrt(0.79^2 + 1.41^2)"
+      unidad: "%"
+      min: 0
+      max: 3
+      paso: 0.02
+      inicio: 2.5
+      tol: 0.04
+      rotulo: "Error total en RSS"
+    exito: "1,62 %, unos ±0,14 dB: con «10 dB ±0,5 dB», el par E24 vale de sobra."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 1.69 }, texto: "Se ha pasado: en cuadratura, el total es menor que la suma." }
+      - { texto: "Se ha quedado corto: el total no puede ser menor que el mayor de los dos, 1,41 %." }
+
+  - id: por-que-domina
+    tipo: porque
+    titulo: "¿Pasar a la E96?"
+    texto: "Si la especificación fuese de ±0,1 dB, ¿bastaría con pasar de la E24 a la E96?"
+    libro: [313, 314]
+    opciones:
+      - texto: "No: el término dominante es la tolerancia, no la serie"
+        bien: true
+        porque: "La E96 mejora el 0,79 %, pero deja intacto el 2 % de la tolerancia: harían falta componentes del 0,1 % o ajuste."
+      - texto: "Sí: la E96 tiene valores cuatro veces más finos"
+        porque: "Afina la serie, pero el error de las resistencias del 1 % sigue ahí y domina."
+      - texto: "Sí, si se usa el criterio RSS"
+        porque: "Ni en RSS: la tolerancia del 1 % ya da 1,41 %, unos 0,12 dB, algo por encima de los ±0,1 dB."
+    comprobar:
+      - { con: { tol_k: 1 }, rss_dB: 0.122, tol: 0.01 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [257, 261, 268, 285, 308, 314]
+    ideas:
+      - { titulo: "2.A: apareamiento.", texto: "Δk/k = (1 − k)·(δ₂ − δ₁): si se desvían juntas, no cambia; peor caso, √2 veces el RSS." }
+      - { titulo: "Criterio.", texto: "Peor caso para protecciones; RSS en producción de volumen." }
+      - { titulo: "2.B: el shunt.", texto: "Su error crece con el cuadrado de la corriente: el TCR y la resistencia térmica deciden." }
+      - { titulo: "2.C: qué domina.", texto: "Antes de comprar una serie más fina, compruebe qué término domina." }

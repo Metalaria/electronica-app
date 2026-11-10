@@ -1,0 +1,341 @@
+# Lección 1.1 de la sección 5.2 «La Unión P-N y la Barrera de Potencial» (cap05): difusión, zona de agotamiento con
+# carga fija, equilibrio y potencial de contacto V₀ (logarítmico con el dopaje, no medible con un voltímetro), anchura
+# de la zona y su reparto, polarización directa e inversa (I_S y su dependencia térmica), la capacidad de unión y la
+# ruptura (avalancha y efecto Zener). Formato: contenido/lecciones11/GUIA.md.
+leccion: cap05/sec-5.2
+
+libro:
+  41: "Siempre que existe un gradiente de concentración aparece difusión"
+  44: "y se recombinan"
+  46: "Ese ion no se puede mover"
+  47: "Se llama zona de agotamiento"
+  48: "se opone al flujo que lo creó"
+  50: "El proceso se detiene cuando ambas corrientes se igualan exactamente"
+  52: 'V_("0") = V_("T") dot.op op("ln")'
+  53: "con VT = kT/q = 25,85 mV a 300 K"
+  54: "0,833 V"
+  55: "Cien veces más dopaje sube V₀ solo 0,12 V"
+  56: "V₀ no se puede medir con un voltímetro entre los terminales del diodo"
+  59: 'W = sqrt(("2" dot.op ε_("s"))/(q)'
+  60: "W = 332 nm"
+  61: "302 nm en el lado N y 30 nm en el P"
+  63: "La barrera baja de V₀ a V₀ − V"
+  64: "No hay ningún umbral físico en 0,7 V"
+  67: "esa es la corriente de saturación inversa IS"
+  68: "Un diodo que a 25 °C fuga 10 nA, a 85 °C fuga 640 nA"
+  70: "la capacidad disminuye al aumentar la tensión inversa"
+  71: "906 nm"
+  72: "Es la herramienta en el varicap"
+  75: "Con el dopaje del ejemplo, la ruptura ocurre en torno a los 31 V"
+  77: "es el efecto Zener propiamente dicho"
+  80: "Está vacía de portadores móviles, pero llena de carga fija"
+  82: "Si lo fuera, se podría extraer energía de él"
+  "cap05#101": "Con IS = 10⁻¹² A y n = 1"
+
+modelo:
+  valores:
+    N_A: { sim: "N_{A}", nombre: "dopaje del lado P", unidad: "cm⁻³", valor: 1e17 }
+    N_D: { sim: "N_{D}", nombre: "dopaje del lado N", unidad: "cm⁻³", valor: 1e16 }
+    n_i: { sim: "n_{i}", nombre: "concentración intrínseca", unidad: "cm⁻³", valor: 1e10 }
+    V_T: { sim: "V_{T}", nombre: "tensión térmica", unidad: V, valor: 0.02585 }
+    V_R: { sim: "V_{R}", nombre: "tensión inversa", unidad: V, valor: 0 }
+    e_s: { sim: "ε_{s}", nombre: "permitividad del silicio", unidad: "F/m", valor: 1.03592e-10 }
+    T_c: { sim: "T", nombre: "temperatura", unidad: "°C", valor: 25 }
+    V_p: { sim: "V", nombre: "tensión de la pila", unidad: V, valor: 1 }
+    R_p: { sim: "R", nombre: "resistencia", unidad: Ω, valor: 1000 }
+    I_S: { sim: "I_{S}", nombre: "corriente de saturación", unidad: A, valor: 1e-12 }
+    n_d: { sim: "n", nombre: "factor de idealidad", unidad: "", valor: 1 }
+  calculos:
+    V_0: { expr: "V_T*ln(N_A*N_D/n_i^2)", sim: "V₀", nombre: "potencial de contacto", unidad: V }
+    V_tot: { expr: "V_0 + V_R", sim: "V₀ + V_{R}", nombre: "tensión total sobre la zona", unidad: V }
+    W: { expr: "sqrt(2*e_s/1.602177e-19*(1/(N_A*1e6) + 1/(N_D*1e6))*(V_0 + V_R))", sim: "W", nombre: "anchura de la zona de agotamiento", unidad: m }
+    E_m: { expr: "2*(V_0 + V_R)/W", sim: "E_{máx}", nombre: "campo máximo", unidad: "V/m" }
+    C_A: { expr: "e_s/W*1e5", sim: "C/A", nombre: "capacidad por unidad de área", unidad: "nF/cm²" }
+    x_n: { expr: "W*N_A/(N_A + N_D)", sim: "x_{n}", nombre: "penetración en el lado N", unidad: m }
+    x_p: { expr: "W*N_D/(N_A + N_D)", sim: "x_{p}", nombre: "penetración en el lado P", unidad: m }
+    fuga: { expr: "10e-9*2^((T_c - 25)/10)", sim: "I_{fuga}", nombre: "fuga inversa", unidad: A }
+    I_p: { expr: "n_d*V_T/R_p*wright(ln(I_S*R_p/(n_d*V_T)) + (V_p + I_S*R_p)/(n_d*V_T)) - I_S", sim: "I", nombre: "corriente del diodo", unidad: A }
+    V_dp: { expr: "V_p - I_p*R_p", sim: "V_{D}", nombre: "tensión del diodo", unidad: V }
+
+tarjetas:
+  - id: explore-barrera
+    tipo: explorar
+    titulo: "La barrera de la unión"
+    texto: "El lado P lleva N_{A} = 10¹⁷ cm⁻³. Cambie el dopaje del lado N y mire la barrera que se forma, el potencial de contacto V₀."
+    libro: [52, 54]
+    widget:
+      tipo: grafica
+      x: { id: x, min: 1e14, max: 1e18, unidad: "cm⁻³", rotulo: "N_{D}", escala: log }
+      y: { min: 0.6, max: 0.9, unidad: V, rotulo: "V₀" }
+      curvas:
+        - { expr: "V_T*ln(N_A*x/n_i^2)", color: naranja, rotulo: "V₀" }
+      asas:
+        - { mueve: N_D, x: "N_D", y: "V_0", rotulo: "Dopaje del lado N" }
+      lectura: { valor: V_0, rotulo: "Potencial de contacto" }
+      mandos:
+        - { valor: N_D, lista: [1e15, 1e16, 1e17], rotulo: "Dopaje del lado N, N_{D}" }
+    requiere: { mover: [N_D] }
+
+  - id: prediga-cien
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Con N_{A} = 10¹⁷ cm⁻³, el lado N pasa de 10¹⁵ a 10¹⁷ cm⁻³: cien veces más dopaje. ¿Cuánto sube V₀?"
+    libro: [54, 55]
+    fijar: { N_D: 1e17 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 1e14, max: 1e18, unidad: "cm⁻³", rotulo: "N_{D}", escala: log }
+      y: { min: 0.6, max: 0.9, unidad: V, rotulo: "V₀" }
+      curvas:
+        - { expr: "V_T*ln(N_A*x/n_i^2)", color: naranja, rotulo: "V₀" }
+      lectura: { valor: V_0, rotulo: "Potencial de contacto" }
+      ocultar: true
+    opciones:
+      - texto: "Solo 0,12 V: de 0,714 a 0,833 V"
+        bien: true
+        porque: "Va con el logaritmo del dopaje. Por eso todos los diodos de silicio rondan los 0,7 V."
+      - texto: "Cien veces"
+        porque: "El dopaje entra dentro de un logaritmo: cien veces más suma poco."
+      - texto: "Nada: V₀ no depende del dopaje"
+        porque: "Depende, pero poco: con el logaritmo, cien veces más dopaje sube 0,12 V."
+    comprobar:
+      - { V_0: 0.833 }
+      - { con: { N_D: 1e15 }, V_0: 0.714 }
+
+  - id: formula-v0
+    tipo: formula
+    titulo: "El potencial de contacto"
+    texto: "Sale de igualar difusión y arrastre en el equilibrio. El dopaje está dentro del logaritmo."
+    libro: [52, 53]
+    ec: 52
+    sustitucion: "{{V_T}} · ln({{N_A}} · {{N_D}} / {{n_i}}²) = {{V_0}}"
+    widget:
+      tipo: grafica
+      x: { id: x, min: 1e14, max: 1e18, unidad: "cm⁻³", rotulo: "N_{D}", escala: log }
+      y: { min: 0.6, max: 0.9, unidad: V, rotulo: "V₀" }
+      curvas:
+        - { expr: "V_T*ln(N_A*x/n_i^2)", color: naranja, rotulo: "V₀" }
+      asas:
+        - { mueve: N_D, x: "N_D", y: "V_0", rotulo: "Dopaje del lado N" }
+      lectura: { valor: V_0, rotulo: "Potencial de contacto" }
+      mandos:
+        - { valor: N_D, lista: [1e15, 1e16, 1e17], rotulo: "Dopaje del lado N, N_{D}" }
+
+  - id: ordene-equilibrio
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Cómo se forma la barrera"
+    texto: "Al poner en contacto un lado P y un lado N aparece una barrera. Ordene lo que ocurre."
+    libro: [41, 44, 46, 47, 48, 50, 80]
+    ordenar:
+      - "Los electrones se difunden del N al P, y los huecos al revés."
+      - "Al cruzar se recombinan con los portadores contrarios."
+      - "Quedan iones fijos: positivos en el N, negativos en el P."
+      - "Esa carga crea un campo que se opone a la difusión."
+      - "Difusión y campo se igualan: equilibrio dinámico."
+    exito: "Ese es el orden. La corriente neta es cero porque ocurren dos cosas iguales y opuestas."
+    pistas:
+      - { texto: "Primero se mueven los portadores; la carga fija y el campo vienen después." }
+
+  - id: porque-voltimetro
+    tipo: porque
+    titulo: "¿Una pila de 0,77 V?"
+    texto: "Dentro de la unión hay una barrera V₀ de 0,77 V. ¿Por qué un voltímetro entre los terminales del diodo no la mide?"
+    libro: [56, 82]
+    opciones:
+      - texto: "Los contactos de los terminales tienen potenciales que la cancelan"
+        bien: true
+        porque: "En cualquier lazo cerrado en equilibrio la suma es cero. Si no, se podría sacar energía del diodo."
+      - texto: "Porque el voltímetro tiene poca resolución"
+        porque: "No es cuestión de resolución: la suma alrededor del lazo es exactamente cero."
+      - texto: "Porque V₀ solo aparece con corriente"
+        porque: "V₀ existe en equilibrio, sin corriente. Lo que ocurre es que los contactos la cancelan."
+    comprobar:
+      - { con: { N_D: 1e16 }, V_0: 0.774 }
+
+  - id: explore-anchura
+    tipo: explorar
+    titulo: "La anchura de la zona"
+    texto: "Con N_{A} = 10¹⁷ y N_{D} = 10¹⁶ cm⁻³, aplique tensión inversa y mire la anchura W de la zona de agotamiento."
+    nota: "Sin tensión, W = 332 nm: mil veces más delgada que un cabello."
+    libro: [59, 60, 71]
+    fijar: { N_D: 1e16 }
+    widget:
+      tipo: grafica
+      x: { id: v, min: 0, max: 35, unidad: V, rotulo: "V_{R}" }
+      y: { min: 0, max: 0.0000025, unidad: m, rotulo: "W" }
+      curvas:
+        - { expr: "sqrt(2*e_s/1.602177e-19*(1/(N_A*1e6) + 1/(N_D*1e6))*(V_0 + v))", color: azul, rotulo: "W" }
+      asas:
+        - { mueve: V_R, x: "V_R", y: "W", rotulo: "Tensión inversa" }
+      lectura: { valor: W, rotulo: "Anchura" }
+      datos:
+        - { valor: E_m, rotulo: "Campo máximo: {{E_m}}" }
+      mandos:
+        - { valor: V_R, min: 0, max: 30, paso: 1, rotulo: "Tensión inversa, V_{R}" }
+    requiere: { mover: [V_R] }
+    comprobar:
+      - { con: { V_R: 0 }, W: 332e-9 }
+
+  - id: estime-cinco
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Con 5 V inversos"
+    texto: "Una unión con N_{A} = 10¹⁷ y N_{D} = 10¹⁶ cm⁻³ tiene V₀ = 0,77 V y W = 332 nm sin tensión. W crece con la raíz de V₀ + V_{R}. Estime W con 5 V."
+    libro: [59, 60, 71]
+    fijar: { N_D: 1e16, V_R: 5 }
+    estimar:
+      objetivo: "W"
+      unidad: m
+      min: 0
+      max: 0.000002
+      paso: 0.00000001
+      inicio: 0.0000015
+      tol: 0.05
+      rotulo: "W con 5 V"
+    exito: "906 nm. La tensión inversa ensancha la zona: más barrera y menos capacidad."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.00000095 }, texto: "Se ha pasado: V₀ + V_{R} pasa de 0,77 a 5,77 V; la raíz de su cociente es menos de tres." }
+      - { texto: "Se ha quedado corto: multiplique 332 nm por la raíz de 5,77/0,77." }
+    comprobar:
+      - { W: 906e-9, V_0: 0.774, V_tot: 5.774 }
+
+  - id: pregunta-reparto
+    tipo: pregunta
+    titulo: "Un reparto desigual"
+    texto: "La carga descubierta a cada lado debe ser igual. Con el lado P diez veces más dopado, ¿cómo se reparten los 332 nm?"
+    libro: [61]
+    fijar: { N_D: 1e16, V_R: 0 }
+    opciones:
+      - texto: "302 nm en el lado N y 30 nm en el P"
+        bien: true
+        porque: "Penetra más en el lado menos dopado. En potencia se dopa poco un lado para que la zona se ensanche ahí."
+      - texto: "Mitad y mitad"
+        porque: "Solo con dopajes iguales. Aquí hace falta diez veces más anchura en el lado N para descubrir la misma carga."
+      - texto: "30 nm en el lado N y 302 nm en el P"
+        porque: "Al revés: el lado poco dopado necesita más anchura para descubrir la misma carga."
+    comprobar:
+      - { x_n: 302e-9, x_p: 30e-9, tol: 0.02 }
+
+  - id: explore-polarizar
+    tipo: explorar
+    titulo: "Directa e inversa"
+    texto: "La barrera baja a V₀ − V en directa y sube a V₀ + V_{R} en inversa. Cambie el signo de la pila y mire la corriente."
+    nota: "En inversa solo queda I_{S}, un picoamperio: la generación térmica."
+    libro: [63, 64, 67, "cap05#101"]
+    inicio: { V_p: 1 }
+    widget:
+      tipo: circuito
+      esquema: diodo
+      piezas: { fuente: V_p, r: R_p, is: I_S, n: n_d, vt: V_T }
+      lectura: { valor: I_p, rotulo: "Corriente" }
+      datos:
+        - { valor: V_dp, rotulo: "Tensión del diodo: {{V_dp}}" }
+      corriente: I_p
+      mide: { corriente: I_p, vd: V_dp }
+      mandos:
+        - { valor: V_p, min: -5, max: 5, paso: 0.5, rotulo: "Tensión de la pila" }
+    requiere: { mover: [V_p] }
+
+  - id: pregunta-varicap
+    tipo: pregunta
+    titulo: "Un condensador variable"
+    texto: "La zona de agotamiento es un aislante entre dos conductores. Mueva V_{R}: su capacidad baja. ¿Qué diodo lo aprovecha?"
+    libro: [70, 71, 72]
+    fijar: { N_D: 1e16 }
+    widget:
+      tipo: grafica
+      x: { id: v, min: 0, max: 35, unidad: V, rotulo: "V_{R}" }
+      y: { min: 0, max: 35, unidad: "nF/cm²", rotulo: "C/A" }
+      curvas:
+        - { expr: "e_s/sqrt(2*e_s/1.602177e-19*(1/(N_A*1e6) + 1/(N_D*1e6))*(V_0 + v))*1e5", color: verde, rotulo: "C/A" }
+      asas:
+        - { mueve: V_R, x: "V_R", y: "C_A", rotulo: "Tensión inversa" }
+      lectura: { valor: C_A, rotulo: "Capacidad por unidad de área" }
+      mandos:
+        - { valor: V_R, min: 0, max: 30, paso: 1, rotulo: "Tensión inversa, V_{R}" }
+    opciones:
+      - texto: "El varicap, que sintoniza con una tensión"
+        bien: true
+        porque: "C = ε_{s}·A/W y W crece con V_{R}: una tensión de control fija la capacidad, como en un receptor de radio."
+      - texto: "El LED"
+        porque: "El LED aprovecha la recombinación, que emite luz. La capacidad variable la aprovecha el varicap."
+      - texto: "Ninguno: es solo un estorbo"
+        porque: "Es un estorbo en un diodo rápido, pero en el varicap es la herramienta."
+    comprobar:
+      - { con: { V_R: 0 }, C_A: 31.2 }
+
+  - id: reto-ruptura
+    tipo: reto
+    titulo: "Reto: la ruptura"
+    texto: "El campo máximo crece con V_{R}. A unos 3 × 10⁷ V/m empieza la avalancha. Busque la tensión inversa que lo alcanza (± 1 %)."
+    libro: [71, 75]
+    fijar: { N_D: 1e16 }
+    inicio: { V_R: 5 }
+    widget:
+      tipo: grafica
+      x: { id: v, min: 0, max: 40, unidad: V, rotulo: "V_{R}" }
+      y: { min: 0, max: 40000000, unidad: "V/m", rotulo: "E_{máx}" }
+      curvas:
+        - { expr: "2*(V_0 + v)/sqrt(2*e_s/1.602177e-19*(1/(N_A*1e6) + 1/(N_D*1e6))*(V_0 + v))", color: naranja, rotulo: "campo máximo" }
+        - { expr: "30000000", color: tinta, rotulo: "campo crítico", discontinua: true }
+      asas:
+        - { mueve: V_R, x: "V_R", y: "E_m", rotulo: "Tensión inversa" }
+      lectura: { valor: E_m, rotulo: "Campo máximo" }
+      mandos:
+        - { valor: V_R, min: 0, max: 40, paso: 1, rotulo: "Tensión inversa, V_{R}" }
+    condiciones:
+      - { valor: E_m, objetivo: 30000000, tol: 0.01, rotulo: "Campo: {{E_m}}" }
+    exito: "Con {{V_R}} el campo llega al crítico: la ruptura ocurre en torno a los 31 V. Para aguantar más hay que dopar menos."
+    pistas:
+      - { cuando: { valor: E_m, menor: 29700000 }, texto: "Falta campo: suba la tensión inversa." }
+      - { cuando: { valor: E_m, mayor: 30300000 }, texto: "Se ha pasado del campo crítico: baje la tensión inversa." }
+    ayuda: "Con 30 V el campo vale 29,4 MV/m, casi en ruptura. Pruebe un voltio más."
+    comprobar:
+      - { con: { V_R: 30 }, E_m: 29.4e6 }
+      - { con: { V_R: 31 }, E_m: 29.89e6 }
+
+  - id: sorpresa-fuga
+    tipo: sorpresa
+    titulo: "La fuga se dispara"
+    texto: "La fuga inversa no depende de la tensión, sino de cuántos portadores genera el calor. Un diodo fuga 10 nA a 25 °C. Caliéntelo."
+    libro: [68]
+    inicio: { T_c: 25 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 25, max: 85, unidad: "°C", rotulo: "T" }
+      y: { min: 0, max: 0.0000007, unidad: A, rotulo: "fuga" }
+      curvas:
+        - { expr: "10e-9*2^((x - 25)/10)", color: naranja, rotulo: "fuga inversa" }
+      asas:
+        - { mueve: T_c, x: "T_c", y: "fuga", rotulo: "Temperatura" }
+      lectura: { valor: fuga, rotulo: "Fuga inversa" }
+      mandos:
+        - { valor: T_c, min: 25, max: 85, paso: 10, rotulo: "Temperatura" }
+    requiere: { mover: [T_c] }
+    comprobar:
+      - { con: { T_c: 85 }, fuga: 640e-9 }
+
+  - id: pregunta-tunel
+    tipo: pregunta
+    titulo: "Ruptura con pocos voltios"
+    texto: "En una unión muy dopada por los dos lados, la zona mide nanómetros y la ruptura llega con pocos voltios. ¿Por qué mecanismo?"
+    libro: [77]
+    opciones:
+      - texto: "Efecto túnel: el efecto Zener propiamente dicho"
+        bien: true
+        porque: "Domina por debajo de unos 5 V, con coeficiente de temperatura negativo; la avalancha, por encima, positivo."
+      - texto: "Avalancha, como a 31 V"
+        porque: "La avalancha necesita una zona ancha para acelerar portadores. En una tan estrecha, cruzan por efecto túnel."
+      - texto: "Se funde la unión"
+        porque: "No es destructiva: los electrones atraviesan la barrera por efecto túnel, y es reversible."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [50, 55, 56, 68, 70, 75]
+    ideas:
+      - { titulo: "Equilibrio.", texto: "La difusión descubre carga fija; su campo la frena hasta igualarla. Queda una barrera V₀ que ningún voltímetro mide." }
+      - { titulo: "Logaritmo.", texto: "V₀ va con el logaritmo del dopaje: cien veces más sube solo 0,12 V. Por eso todo diodo ronda 0,7 V." }
+      - { titulo: "Directa e inversa.", texto: "En directa la barrera baja y la corriente crece exponencialmente; en inversa queda I_{S}, que se dobla cada 10 °C." }
+      - { titulo: "Inversa útil.", texto: "La zona se ensancha con V_{R}: menos capacidad (el varicap) y, a unos 31 V aquí, la ruptura." }

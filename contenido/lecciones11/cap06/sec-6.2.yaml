@@ -1,0 +1,311 @@
+# Lección 1.1 de la sección 6.2 «Las Regiones de Operación» (cap06): el ejemplo del libro (12 V, 1 kΩ de colector,
+# base desde 5 V, β = 100) en el esquema bjt-interruptor: con 100 kΩ de base, activa y 7,7 V; con 10 kΩ, β·I_B
+# pediría 43 mA pero solo caben 11,8 mA (saturación, factor 3,6); qué fija de verdad I_C, la transconductancia (−182
+# con 4,7 kΩ), el precio de la saturación, la región inversa y cómo se mide la región. Formato:
+# contenido/lecciones11/GUIA.md.
+leccion: cap06/sec-6.2
+
+libro:
+  31: "el circuito exterior decide en cuál está en cada instante"
+  36: "la corriente de colector no la fija el colector, la fija el emisor, y a su vez la fija VBE"
+  37: 'I_("C") = I_("S")'
+  38: "Confundir causa y consecuencia es el error conceptual más extendido"
+  40: "VBE por debajo de unos 0,5 V"
+  47: "A 1 mA, gm = 38,7 mS"
+  50: "Alimentación de 12 V, resistencia de colector de 1 kΩ, resistencia de base desde 5 V, β = 100."
+  52: '"100 kΩ"'
+  54: '"7,7 V"'
+  55: "VCE es holgadamente positiva"
+  57: '"430 µA"'
+  58: "β·IB pediría 43 mA"
+  59: "no pueden circular más de 11,8 mA"
+  61: '"3,6"'
+  62: "se diseña deliberadamente entre 3 y 10 en conmutación"
+  63: "el factor de 10 conmuta peor que el de 3, aunque sature mejor"
+  66: "la ganancia inversa βR vale entre 1 y 5"
+  71: 'V_("CE") = V_("CC") - I_("C")'
+  75: "0,1 – 0,3 V"
+  76: "si la base está más alta que el colector, el transistor está saturado"
+
+modelo:
+  valores:
+    V_cc: { sim: "V_{CC}", nombre: "alimentación", unidad: V, valor: 12 }
+    R_bc: { sim: "R_{C}", nombre: "resistencia de colector", unidad: Ω, valor: 1000 }
+    V_bi: { sim: "V_{in}", nombre: "tensión de mando", unidad: V, valor: 5 }
+    R_bb: { sim: "R_{B}", nombre: "resistencia de base", unidad: Ω, valor: 100000 }
+    beta: { sim: "β", nombre: "ganancia de corriente", unidad: "", valor: 100 }
+    V_BE: { sim: "V_{BE}", nombre: "tensión base-emisor", unidad: V, valor: 0.7 }
+    V_CEs: { sim: "V_{CE(sat)}", nombre: "tensión de saturación", unidad: V, valor: 0.2 }
+    I_q: { sim: "I_{C}", nombre: "corriente de colector en reposo", unidad: A, valor: 0.001 }
+    V_T: { sim: "V_{T}", nombre: "tensión térmica", unidad: V, valor: 0.02585 }
+    R_cg: { sim: "R_{C}", nombre: "resistencia de colector del amplificador", unidad: Ω, valor: 4700 }
+  calculos:
+    I_bb: { expr: "max(0, (V_bi - V_BE)/R_bb)", sim: "I_{B}", nombre: "corriente de base", unidad: A }
+    I_pide: { expr: "beta*I_bb", sim: "β·I_{B}", nombre: "corriente que pide la base", unidad: A }
+    I_csat: { expr: "(V_cc - V_CEs)/R_bc", sim: "I_{C(sat)}", nombre: "corriente máxima que admite el circuito", unidad: A }
+    I_bc: { expr: "min(I_pide, I_csat)", sim: "I_{C}", nombre: "corriente de colector", unidad: A }
+    V_bce: { expr: "V_cc - I_bc*R_bc", sim: "V_{CE}", nombre: "tensión colector-emisor", unidad: V }
+    factor: { expr: "I_pide/I_csat", sim: "β·I_{B}/I_{C(sat)}", nombre: "factor de saturación forzada", unidad: "", cifras: 2 }
+    g_m: { expr: "I_q/V_T", sim: "g_{m}", nombre: "transconductancia", unidad: S }
+    A_v: { expr: "g_m*R_cg", sim: "|A_{v}|", nombre: "ganancia de tensión, en módulo", unidad: "", cifras: 3 }
+    I_b3: { expr: "3*I_csat/beta", sim: "I_{B}", nombre: "corriente de base para un factor de 3", unidad: A }
+    I_b10: { expr: "10*I_csat/beta", sim: "I_{B}", nombre: "corriente de base para un factor de 10", unidad: A }
+    R_b3: { expr: "(V_bi - V_BE)/I_b3", sim: "R_{B}", nombre: "resistencia de base para un factor de 3", unidad: Ω }
+    R_b10: { expr: "(V_bi - V_BE)/I_b10", sim: "R_{B}", nombre: "resistencia de base para un factor de 10", unidad: Ω }
+
+tarjetas:
+  - id: explore-regiones
+    tipo: explorar
+    titulo: "El circuito decide la región"
+    texto: "Base desde 5 V, colector con 1 kΩ desde 12 V, β = 100. Apague y encienda el mando y cambie R_{B}. Mire V_{CE}."
+    libro: [31, 50]
+    widget:
+      tipo: circuito
+      esquema: bjt-interruptor
+      piezas: { vcc: V_cc, rc: R_bc, entrada: V_bi, rb: R_bb, beta: beta, vbe: V_BE, vcesat: V_CEs }
+      lectura: { valor: V_bce, rotulo: "V_{CE}" }
+      datos:
+        - { valor: I_bb, rotulo: "I_{B} = {{I_bb}}" }
+        - { valor: I_bc, rotulo: "I_{C} = {{I_bc}}" }
+      corriente: I_bc
+      mide: { ib: I_bb, ic: I_bc, vce: V_bce }
+      mandos:
+        - { valor: V_bi, lista: [0, 5], nombres: [apagado, encendido], rotulo: "Mando de la base" }
+        - { valor: R_bb, lista: [10000, 22000, 47000, 100000], rotulo: "R_{B}" }
+    requiere: { mover: [V_bi, R_bb] }
+
+  - id: prediga-activa
+    tipo: predecir
+    titulo: "Prediga V_{CE}"
+    texto: "Con 12 V y 1 kΩ en el colector, β = 100 y 100 kΩ de base desde 5 V, entran 43 µA en la base. ¿Cuánto marca V_{CE}?"
+    libro: [50, 52, 54, 55]
+    fijar: { V_bi: 5, R_bb: 100000 }
+    widget:
+      tipo: circuito
+      esquema: bjt-interruptor
+      piezas: { vcc: V_cc, rc: R_bc, entrada: V_bi, rb: R_bb, beta: beta, vbe: V_BE, vcesat: V_CEs }
+      lectura: { valor: V_bce, rotulo: "V_{CE}" }
+      datos:
+        - { valor: I_bc, rotulo: "I_{C} = {{I_bc}}" }
+      corriente: I_bc
+      mide: { ib: I_bb, ic: I_bc, vce: V_bce, vbe: V_BE }
+      ocultar: true
+    opciones:
+      - texto: "7,7 V"
+        bien: true
+        porque: "I_{C} = β·I_{B} = 4,3 mA, que cae 4,3 V en 1 kΩ: quedan 7,7 V. Holgadamente positiva: región activa."
+      - texto: "0,2 V"
+        porque: "Eso sería saturación. Los 4,3 mA que pide la base caben de sobra en 1 kΩ desde 12 V."
+      - texto: "12 V"
+        porque: "Eso es corte, sin corriente de base. Aquí entran 43 µA y el colector conduce."
+    comprobar:
+      - { I_bb: 0.000043, I_bc: 0.0043, V_bce: 7.7 }
+
+  - id: recta-carga
+    tipo: formula
+    titulo: "La recta de carga"
+    texto: "El circuito exterior impone la relación entre V_{CE} e I_{C}. Aquí no hay resistencia de emisor."
+    nota: "Corta el eje horizontal en V_{CC} (corte) y el vertical en V_{CC}/R_{C} (saturación)."
+    libro: [71]
+    ec: 71
+    sustitucion: "{{V_cc}} − {{I_bc}} · {{R_bc}} = {{V_bce}}"
+    widget:
+      tipo: circuito
+      esquema: bjt-interruptor
+      piezas: { vcc: V_cc, rc: R_bc, entrada: V_bi, rb: R_bb, beta: beta, vbe: V_BE, vcesat: V_CEs }
+      lectura: { valor: V_bce, rotulo: "V_{CE}" }
+      datos:
+        - { valor: I_bc, rotulo: "I_{C} = {{I_bc}}" }
+      corriente: I_bc
+      mide: { ib: I_bb, ic: I_bc, vce: V_bce }
+      mandos:
+        - { valor: R_bb, lista: [10000, 22000, 47000, 100000], rotulo: "R_{B}" }
+
+  - id: sorpresa-satura
+    tipo: sorpresa
+    titulo: "Diez veces más base"
+    texto: "Con 100 kΩ de base, I_{C} = 4,3 mA. Baje R_{B} a 10 kΩ: la base entra diez veces más corriente. Mire I_{C}."
+    libro: [57, 58, 59]
+    fijar: { V_bi: 5 }
+    inicio: { R_bb: 100000 }
+    widget:
+      tipo: circuito
+      esquema: bjt-interruptor
+      piezas: { vcc: V_cc, rc: R_bc, entrada: V_bi, rb: R_bb, beta: beta, vbe: V_BE, vcesat: V_CEs }
+      lectura: { valor: I_bc, rotulo: "I_{C}" }
+      datos:
+        - { valor: I_pide, rotulo: "β·I_{B} pediría {{I_pide}}" }
+        - { valor: V_bce, rotulo: "V_{CE} = {{V_bce}}" }
+      corriente: I_bc
+      mide: { ib: I_bb, ic: I_bc, vce: V_bce, vbe: V_BE }
+      mandos:
+        - { valor: R_bb, lista: [10000, 22000, 47000, 100000], rotulo: "R_{B}" }
+    requiere: { mover: [R_bb] }
+    comprobar:
+      - { con: { R_bb: 10000 }, I_bb: 0.00043, I_pide: 0.043, I_bc: 0.0118, V_bce: 0.2 }
+
+  - id: por-que-satura
+    tipo: porque
+    titulo: "¿Por qué no llega a 43 mA?"
+    texto: "Con 10 kΩ de base, β·I_{B} pediría 43 mA, pero I_{C} se queda en 11,8 mA. ¿Por qué?"
+    libro: [59]
+    fijar: { V_bi: 5, R_bb: 10000 }
+    widget:
+      tipo: circuito
+      esquema: bjt-interruptor
+      piezas: { vcc: V_cc, rc: R_bc, entrada: V_bi, rb: R_bb, beta: beta, vbe: V_BE, vcesat: V_CEs }
+      lectura: { valor: I_bc, rotulo: "I_{C}" }
+      datos:
+        - { valor: V_bce, rotulo: "V_{CE} = {{V_bce}}" }
+      corriente: I_bc
+      mide: { ib: I_bb, ic: I_bc, vce: V_bce, vbe: V_BE }
+    opciones:
+      - texto: "Por 1 kΩ desde 12 V no caben más: el transistor conduce todo lo que el circuito permite"
+        bien: true
+        porque: "El colector cae a 0,2 V, por debajo de la base: la unión base-colector pasa a directa. Ha saturado y I_{C} ya no depende de β."
+      - texto: "β baja al subir la corriente"
+        porque: "β varía algo con la corriente, pero no tanto. Lo que manda aquí es el circuito exterior: 1 kΩ desde 12 V."
+      - texto: "La base no puede dar más corriente"
+        porque: "La base sí recibe sus 430 µA. Lo que falta es sitio en el colector para lo que esa base pediría."
+
+  - id: factor-forzada
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Factor de saturación forzada"
+    texto: "Base con 10 kΩ desde 5 V, β = 100, colector con 1 kΩ desde 12 V. Estime el cociente entre lo que pide la base y lo que admite el circuito."
+    libro: [58, 59, 61]
+    fijar: { V_bi: 5, R_bb: 10000 }
+    estimar:
+      objetivo: "factor"
+      unidad: ""
+      min: 0
+      max: 10
+      paso: 0.1
+      inicio: 8
+      tol: 0.06
+      rotulo: "β·I_{B} / I_{C(sat)}"
+    exito: "43 mA entre 11,8 mA: 3,6. En conmutación se diseña entre 3 y 10, para saturar con el β mínimo y la carga máxima."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 3.9 }, texto: "Se ha pasado. La base pide 100 · 430 µA = 43 mA; el circuito admite 11,8 mA." }
+      - { texto: "Se ha quedado corto. Divida los 43 mA que pide la base entre los 11,8 mA que admite el colector." }
+    comprobar:
+      - { factor: 3.644 }
+
+  - id: reto-factor
+    tipo: reto
+    titulo: "Reto: saturar con margen"
+    texto: "Base desde 5 V, β = 100, colector con 1 kΩ desde 12 V. Elija R_{B} de la serie E12 para un factor de saturación forzada entre 3 y 10."
+    libro: [61, 62]
+    fijar: { V_bi: 5 }
+    inicio: { R_bb: 100000 }
+    widget:
+      tipo: circuito
+      esquema: bjt-interruptor
+      piezas: { vcc: V_cc, rc: R_bc, entrada: V_bi, rb: R_bb, beta: beta, vbe: V_BE, vcesat: V_CEs }
+      lectura: { valor: factor, rotulo: "Factor de saturación forzada" }
+      datos:
+        - { valor: I_bb, rotulo: "I_{B} = {{I_bb}}" }
+        - { valor: V_bce, rotulo: "V_{CE} = {{V_bce}}" }
+      corriente: I_bc
+      mide: { ib: I_bb, ic: I_bc, vce: V_bce, vbe: V_BE }
+      mandos:
+        - { valor: R_bb, serie: E12, min: 1000, max: 100000, rotulo: "R_{B} (E12)" }
+    condiciones:
+      - { valor: factor, min: 3, max: 10, rotulo: "Factor: {{factor}}" }
+    exito: "Con su R_{B}, la base pide {{I_pide}} y caben 11,8 mA: factor {{factor}}. Saturado, con margen frente a un β menor."
+    pistas:
+      - { cuando: { valor: factor, menor: 3 }, texto: "Poco margen: con un ejemplar de β menor dejaría de saturar. Baje R_{B} para que entre más corriente de base." }
+      - { cuando: { valor: factor, mayor: 10 }, texto: "Satura de sobra, pero acumula más carga y apaga más despacio. Suba R_{B}." }
+    ayuda: "Factor 3 pide I_{B} = 3 · 11,8 mA / 100 = 354 µA, y 10 pide 1,18 mA. R_{B} = 4,3 V / I_{B}: entre unos 3,6 kΩ y 12 kΩ."
+    comprobar:
+      - { con: { R_bb: 10000 }, factor: 3.644 }
+      - { I_b3: 0.000354, I_b10: 0.00118, R_b3: 12147, R_b10: 3644 }
+
+  - id: almacenamiento
+    tipo: pregunta
+    titulo: "El precio de saturar"
+    texto: "Dos diseños saturan el mismo transistor, uno con factor 3 y otro con factor 10. ¿Cuál tarda más en apagarse?"
+    libro: [63]
+    opciones:
+      - texto: "El de factor 10"
+        bien: true
+        porque: "Más saturación, más portadores en exceso en la base que evacuar antes de cortar: más tiempo de almacenamiento. Satura mejor, pero conmuta peor."
+      - texto: "El de factor 3"
+        porque: "Satura con menos margen, pero acumula menos carga en la base: se apaga antes."
+      - texto: "Los dos igual: ya están saturados"
+        porque: "La carga almacenada crece con lo forzada que esté la saturación, y con ella el retardo al apagar."
+
+  - id: que-fija-ic
+    tipo: pregunta
+    titulo: "Causa y consecuencia"
+    texto: "En la región activa, ¿qué fija de verdad la corriente de colector?"
+    libro: [36, 37, 38]
+    opciones:
+      - texto: "V_{BE}, por la exponencial I_{C} = I_{S}·e^{V_{BE}/V_{T}}"
+        bien: true
+        porque: "El emisor inyecta según V_{BE} y el colector recoge lo que le llega. I_{C} = β·I_{B} es una consecuencia, no la causa."
+      - texto: "La corriente de base, multiplicada por β"
+        porque: "Es la confusión de causa y consecuencia: β·I_{B} sale de que solo una fracción se recombina. Diseñar así hace depender todo de β."
+      - texto: "La tensión colector-emisor"
+        porque: "I_{C} casi no depende de V_{CE}: la curva de salida es casi horizontal. El colector se limita a recoger."
+
+  - id: ganancia-gm
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "De dónde sale la ganancia"
+    texto: "Un transistor en activa con 1 mA de colector tiene g_{m} = I_{C}/V_{T} = 38,7 mS. Con 4,7 kΩ de colector, estime la ganancia de tensión en módulo."
+    libro: [47]
+    estimar:
+      objetivo: "A_v"
+      unidad: ""
+      min: 0
+      max: 400
+      paso: 1
+      inicio: 40
+      tol: 0.05
+      rotulo: "|A_{v}| = g_{m}·R_{C}"
+    exito: "38,7 mS · 4,7 kΩ = 182. La ganancia es −182: el signo negativo es la inversión."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 191 }, texto: "Se ha pasado. Multiplique 0,0387 S por 4,7 kΩ." }
+      - { texto: "Se ha quedado corto. Cada milivoltio mueve 38,7 µA, que en 4,7 kΩ son unos 182 mV." }
+    comprobar:
+      - { g_m: 0.0387, A_v: 182 }
+
+  - id: empareje-medidas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Saber la región, midiendo"
+    texto: "Con el multímetro basta. Empareje cada región con lo que se mide en ella."
+    libro: [40, 66, 75, 76]
+    emparejar:
+      - ["Corte", "V_{BE} por debajo de 0,5 V y V_{CE} casi V_{CC}"]
+      - ["Activa", "V_{BE} de 0,6 a 0,7 V y V_{CE} entre 1 V y V_{CC}"]
+      - ["Saturación", "V_{CE} de 0,1 a 0,3 V: la base más alta que el colector"]
+      - ["Inversa", "El colector inyecta: β_{R} de 1 a 5"]
+    exito: "Eso es. El criterio decisivo de la saturación es V_{BC} positiva: la base por encima del colector."
+    pistas:
+      - { texto: "Mire V_{CE}: casi toda la alimentación, unos voltios o casi nada." }
+
+  - id: se-calienta
+    tipo: pregunta
+    titulo: "Un interruptor que se calienta"
+    texto: "Un transistor de conmutación se calienta, y entre colector y emisor mide varios voltios. ¿Qué le pasa?"
+    libro: [76]
+    opciones:
+      - texto: "Está en activa, no saturado: le falta corriente de base"
+        bien: true
+        porque: "Saturado mediría de 0,1 a 0,3 V. Con varios voltios disipa diez veces más de lo previsto."
+      - texto: "Está en corte"
+        porque: "En corte V_{CE} es casi V_{CC} y no circula corriente: la disipación es prácticamente nula, no se calentaría."
+      - texto: "Es normal en saturación"
+        porque: "En saturación V_{CE} es de 0,1 a 0,3 V. Varios voltios es la región activa."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [36, 59, 62, 76]
+    ideas:
+      - { titulo: "Activa.", texto: "V_{BE} fija I_{C}; β·I_{B} es la consecuencia. Con 100 kΩ de base: 4,3 mA y 7,7 V." }
+      - { titulo: "Saturación.", texto: "Cuando β·I_{B} no cabe en el circuito: con 10 kΩ pediría 43 mA y solo caben 11,8 mA." }
+      - { titulo: "Factor forzado.", texto: "Entre 3 y 10 en conmutación: más satura mejor, pero apaga más despacio." }
+      - { titulo: "Midiendo.", texto: "Si la base está más alta que el colector, está saturado." }

@@ -1,6 +1,6 @@
 // Preparing a «Práctica inteligente» session (0.11, group B): the plan and the items of lib/aprendizaje/seleccion.ts
 // over the reader's mastery, course and progress, and each chosen item's data for its component (practice item,
-// Repaso question, exercise label, flashcard).
+// Repaso question, exercise label, flashcard, or — 1.1 — a card of a hand-authored lesson with its lesson).
 
 import { cargarContexto, cursoActual, estudiada } from '../../lib/aprendizaje/contexto';
 import { conceptosConDominio, dominioDe, ultimasRespuestas } from '../../lib/aprendizaje/dominio.svelte';
@@ -13,6 +13,9 @@ import { cargarBaraja, cargarCuestionario, type Pregunta, type Tarjeta } from '.
 import { barajarCon } from '../practica/azar';
 import { esDeRed } from '../../lib/errores';
 import type { ItemPractica } from '../practica/tipos';
+import { cargarLeccion11 } from '../../lib/leccion11/datos';
+import { esPracticable, idRespuesta } from '../../lib/leccion11/motor';
+import type { Leccion11 } from '../../lib/leccion11/tipos';
 
 export interface ItemSesion extends ItemElegido {
   parte: string;
@@ -23,6 +26,8 @@ export interface ItemSesion extends ItemElegido {
   /** Order of a choice question's options. */
   orden?: number[];
   tarjeta?: Tarjeta;
+  /** A 1.1 lesson card: the lesson and the card's position in it. */
+  leccion11?: { leccion: Leccion11; k: number };
 }
 
 export interface Sesion {
@@ -97,6 +102,12 @@ export async function prepararSesion(alcanceTexto: string, semilla: number, ahor
       const t = baraja?.porId.get(it.id.replace(/~i$/, ''));
       if (!t) continue;
       base.tarjeta = it.id.endsWith('~i') ? { ...t, id: it.id, inversa: true } : t;
+    } else if (it.tipo === 'leccion11') {
+      const l = await cargarLeccion11(parte, it.concepto.slice(parte.length + 1)).catch(() => null);
+      const j = l ? l.tarjetas.findIndex((t) => idRespuesta(l, t) === it.id) : -1;
+      // (a card renamed or removed since the index was written: nothing to ask)
+      if (!l || j < 0 || !esPracticable(l.tarjetas[j]!)) continue;
+      base.leccion11 = { leccion: l, k: j };
     }
     resueltos.push(base);
   }

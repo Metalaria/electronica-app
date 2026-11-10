@@ -1,0 +1,258 @@
+# Lección 1.1 de la sección 5.5 «Tipos de Diodos y sus Aplicaciones» (cap05): rectificador de unión, Schottky (caída
+# baja y sin recuperación, a cambio de fuga y poca tensión inversa), Zener y avalancha, TVS, varicap, LED (la tensión
+# depende del color; el silicio no emite; el blanco es azul con fósforo), PIN y túnel, y la tabla de decisión.
+# Formato: contenido/lecciones11/GUIA.md.
+leccion: cap05/sec-5.5
+
+libro:
+  170: "cada tecnología optimiza un parámetro distinto a costa de los demás"
+  172: "Esa región es precisamente la que lo hace lento"
+  173: "Es la elección para rectificar la red a 50 Hz"
+  175: "no hay inyección de minoritarios"
+  176: "0,4 V sobre 3,3 V ya es el 12 % del rendimiento"
+  177: "la fuga inversa es mucho mayor (microamperios frente a nanoamperios)"
+  180: "hacia 5,6 V se compensan"
+  182: "responde en picosegundos, mucho antes que un varistor"
+  184: "relaciones de 3:1 a 10:1 de capacidad son típicas"
+  185: "Por eso se usan en configuración antiserie o con la señal atenuada"
+  187: "de ahí que la tensión directa dependa del color"
+  188: "Vf típica"
+  189: "su banda prohibida es indirecta"
+  190: "es un LED azul con un fósforo que convierte parte de la luz a amarillo"
+  192: "se usa como conmutador y atenuador de radiofrecuencia"
+  194: "Rueda libre en un convertidor"
+  "cap05#6": "1,12 eV en el silicio"
+  "cap05#121": "El diodo es una fuente de 0,7 V (0,3 en Schottky) cuando conduce"
+  "cap05#133": "Alimentar un LED rojo de 2,0 V nominales a 20 mA desde 5 V."
+  "cap05#348": "Quieres alimentar un LED azul (VF = 3,2 V, IF = 20 mA) desde una fuente de 12 V"
+
+modelo:
+  valores:
+    V_k: { sim: "V_{D}", nombre: "caída del diodo", unidad: V, valor: 0.7 }
+    V_o: { sim: "V_{salida}", nombre: "tensión de salida de la fuente", unidad: V, valor: 3.3 }
+    V_e: { sim: "V", nombre: "tensión de la fuente", unidad: V, valor: 5 }
+    R_e: { sim: "R", nombre: "resistencia del LED", unidad: Ω, valor: 150 }
+    V_fe: { sim: "V_{f}", nombre: "tensión del LED", unidad: V, valor: 2 }
+  calculos:
+    perd: { expr: "V_k/V_o*100", sim: "pérdida", nombre: "parte del rendimiento que se lleva el diodo", unidad: "%", cifras: 2 }
+    I_e: { expr: "(V_e - V_fe)/R_e", sim: "I", nombre: "corriente del LED", unidad: A }
+    R_c: { expr: "(V_e - V_fe)/0.02", sim: "R", nombre: "resistencia para 20 mA", unidad: Ω }
+
+tarjetas:
+  - id: explore-schottky
+    tipo: explorar
+    titulo: "Lo que cuesta la caída"
+    texto: "En el secundario de una fuente conmutada, la caída del diodo se resta a la salida. Elija el diodo y la tensión de salida."
+    nota: "Silicio, 0,7 V; Schottky, unos 0,4 V."
+    libro: [176, "cap05#121"]
+    widget:
+      tipo: grafica
+      x: { id: v, min: 1, max: 12, unidad: V, rotulo: "V_{salida}" }
+      y: { min: 0, max: 50, unidad: "%", rotulo: "pérdida" }
+      curvas:
+        - { expr: "0.7/v*100", color: azul, rotulo: "silicio" }
+        - { expr: "0.4/v*100", color: naranja, rotulo: "Schottky" }
+      asas:
+        - { mueve: V_o, x: "V_o", y: "perd", rotulo: "Tensión de salida" }
+      lectura: { valor: perd, rotulo: "Pérdida por la caída" }
+      mandos:
+        - { valor: V_k, lista: [0.4, 0.7], nombres: [Schottky, silicio], rotulo: "Diodo" }
+        - { valor: V_o, lista: [3.3, 5, 12], rotulo: "Tensión de salida" }
+    requiere: { mover: [V_k, V_o] }
+
+  - id: prediga-33
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Un Schottky que cae 0,4 V en una fuente conmutada de 3,3 V. ¿Qué parte del rendimiento se lleva su caída?"
+    libro: [176]
+    fijar: { V_k: 0.4, V_o: 3.3 }
+    widget:
+      tipo: grafica
+      x: { id: v, min: 1, max: 12, unidad: V, rotulo: "V_{salida}" }
+      y: { min: 0, max: 50, unidad: "%", rotulo: "pérdida" }
+      curvas:
+        - { expr: "0.4/v*100", color: naranja, rotulo: "Schottky" }
+      lectura: { valor: perd, rotulo: "Pérdida por la caída" }
+      ocultar: true
+    opciones:
+      - texto: "El 12 %"
+        bien: true
+        porque: "0,4 V sobre 3,3 V. Con un diodo de silicio sería casi el doble: por eso en baja tensión manda el Schottky."
+      - texto: "Menos del 1 %"
+        porque: "Eso valdría con cientos de voltios. Con 3,3 V de salida, 0,4 V pesan mucho."
+      - texto: "La mitad"
+        porque: "Haría falta una salida de solo el doble de la caída. Con 3,3 V es el 12 %."
+    comprobar:
+      - { perd: 12.1 }
+
+  - id: porque-schottky-rapido
+    tipo: porque
+    titulo: "Metal en lugar de unión"
+    texto: "Un Schottky une un metal con silicio tipo N. Además de caer menos, apenas tiene recuperación inversa. ¿Por qué?"
+    libro: [172, 175]
+    opciones:
+      - texto: "No hay inyección de minoritarios: no hay carga almacenada que evacuar"
+        bien: true
+        porque: "La corriente la llevan solo electrones, mayoritarios a ambos lados. Solo hay que cargar la capacidad de unión."
+      - texto: "Porque el metal conduce mejor"
+        porque: "No es la conductividad: es que no inyecta minoritarios, así que al apagar no hay carga que retirar."
+      - texto: "Porque su región de deriva es más ancha"
+        porque: "Una región de deriva ancha y poco dopada es lo que hace lento al rectificador de unión."
+
+  - id: pregunta-schottky-precio
+    tipo: pregunta
+    titulo: "El precio del Schottky"
+    texto: "¿Qué inconveniente serio tiene un Schottky frente a un rectificador de unión?"
+    libro: [177]
+    opciones:
+      - texto: "Fuga microamperios y aguanta poca tensión inversa"
+        bien: true
+        porque: "De 20 a 100 V típicamente, y la fuga crece con la temperatura: caliente puede embalarse."
+      - texto: "Cae más tensión"
+        porque: "Cae menos: de 0,15 a 0,45 V frente a los 0,7 del silicio."
+      - texto: "Es lento al conmutar"
+        porque: "Al revés: su recuperación es prácticamente nula."
+
+  - id: pregunta-tvs
+    tipo: pregunta
+    titulo: "TVS: el Zener para transitorios"
+    texto: "Un TVS es un diodo de avalancha de área enorme, en paralelo con la entrada que protege. ¿Cuál es su virtud?"
+    libro: [182]
+    opciones:
+      - texto: "Responde en picosegundos, mucho antes que un varistor"
+        bien: true
+        porque: "Se especifica por la energía de un pulso normalizado, no por corriente continua: está para absorber pulsos."
+      - texto: "Regula la tensión de alimentación"
+        porque: "No está pensado para regular, sino para absorber pulsos breves de mucha energía."
+      - texto: "Bloquea cualquier tensión inversa"
+        porque: "Al contrario: entra en avalancha por encima de su tensión de ruptura y se lleva el pulso."
+
+  - id: empareje-led
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "El color fija la tensión"
+    texto: "La energía del fotón es la de la banda prohibida. Empareje cada color de LED con su tensión directa típica."
+    libro: [187, 188]
+    emparejar:
+      - ["Infrarrojo", "1,2 – 1,5 V"]
+      - ["Rojo", "1,8 – 2,2 V"]
+      - ["Verde", "2,0 – 3,0 V"]
+      - ["Azul o blanco", "2,8 – 3,4 V"]
+    exito: "Eso es. Más energía por fotón, hacia el azul, pide más tensión."
+    pistas:
+      - { texto: "El infrarrojo, de menos energía, cae menos; el azul, más." }
+
+  - id: explore-led
+    tipo: explorar
+    titulo: "Rojo y azul"
+    texto: "Un LED desde 5 V con 150 Ω, la resistencia del ejemplo del LED rojo. Cambie el color y mire la corriente."
+    libro: [187, "cap05#133", "cap05#348"]
+    fijar: { V_e: 5, R_e: 150 }
+    inicio: { V_fe: 2 }
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_e, r: R_e, vf: V_fe }
+      lectura: { valor: I_e, rotulo: "Corriente del LED" }
+      corriente: I_e
+      mide: { corriente: I_e, vf: V_fe }
+      mandos:
+        - { valor: V_fe, lista: [2, 3.2], nombres: [rojo, azul], rotulo: "Color del LED" }
+    requiere: { mover: [V_fe] }
+
+  - id: reto-azul
+    tipo: reto
+    titulo: "Reto: el LED azul"
+    texto: "Un LED azul de 3,2 V y 20 mA, desde 12 V. Elija la resistencia de la serie E12 más próxima que no pase de 20 mA."
+    libro: ["cap05#348"]
+    fijar: { V_e: 12, V_fe: 3.2 }
+    inicio: { R_e: 220 }
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_e, r: R_e, vf: V_fe }
+      lectura: { valor: I_e, rotulo: "Corriente del LED" }
+      datos:
+        - { valor: R_c, rotulo: "Para 20 mA justos: {{R_c}}" }
+      corriente: I_e
+      mide: { corriente: I_e, vf: V_fe }
+      mandos:
+        - { valor: R_e, serie: E12, min: 100, max: 1000, rotulo: "R (E12)" }
+    condiciones:
+      - { valor: I_e, min: 0.018, max: 0.02, rotulo: "LED: {{I_e}}" }
+    exito: "440 Ω no existe; el E12 por encima, 470 Ω, da {{I_e}}, aceptable. Disipa 0,165 W: una de 1/4 W basta."
+    pistas:
+      - { cuando: { valor: I_e, mayor: 0.02 }, texto: "Pasa de 20 mA: elija una resistencia mayor." }
+      - { cuando: { valor: I_e, menor: 0.018 }, texto: "Se ha ido demasiado lejos: hay un valor E12 más cerca de 440 Ω." }
+    ayuda: "La resistencia se queda con 12 − 3,2 = 8,8 V: 8,8/0,020 = 440 Ω. Busque el E12 inmediatamente por encima."
+    comprobar:
+      - { con: { R_e: 470 }, I_e: 0.0187 }
+      - { R_c: 440 }
+
+  - id: porque-silicio-led
+    tipo: porque
+    titulo: "No hay LED de silicio"
+    texto: "Los LED se fabrican con arseniuro o nitruro de galio. ¿Por qué no con silicio, que es mucho más barato?"
+    libro: [189, "cap05#6"]
+    opciones:
+      - texto: "Su banda prohibida es indirecta: la recombinación da calor, no luz"
+        bien: true
+        porque: "La energía se va en vibración de la red. Por eso los LED se hacen con compuestos III-V."
+      - texto: "Porque el silicio no conduce en directa"
+        porque: "Conduce perfectamente; lo que no hace es emitir la energía de la recombinación como fotón."
+      - texto: "Porque su banda prohibida es demasiado pequeña"
+        porque: "1,12 eV daría infrarrojo; el problema es que es indirecta, no su tamaño."
+
+  - id: pregunta-blanco
+    tipo: pregunta
+    titulo: "El LED blanco"
+    texto: "El blanco no es un color. ¿Qué es un LED blanco?"
+    libro: [190]
+    opciones:
+      - texto: "Un LED azul con un fósforo que pasa parte de la luz a amarillo"
+        bien: true
+        porque: "La suma se percibe blanca. Por eso el tono depende del fósforo y cambia al envejecer."
+      - texto: "Tres LED, rojo, verde y azul, juntos"
+        porque: "Eso es un LED RGB. El blanco corriente es un azul con fósforo."
+      - texto: "Un LED de silicio"
+        porque: "No hay LED de silicio. El blanco es un azul de nitruro de galio con fósforo."
+
+  - id: empareje-familia
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cada uno, lo suyo"
+    texto: "Cada tecnología optimiza un parámetro a costa de los demás. Empareje cada diodo con lo que aprovecha."
+    libro: [170, 180, 184, 185, 192]
+    emparejar:
+      - ["Varicap", "La capacidad que cambia con la tensión inversa"]
+      - ["Zener de 5,6 V", "Una ruptura de tensión bien controlada"]
+      - ["PIN", "Una resistencia controlable con la corriente"]
+      - ["Túnel", "Resistencia negativa en un tramo de su curva"]
+    exito: "Eso es. El varicap da relaciones de 3:1 a 10:1 de capacidad; el túnel hoy es una curiosidad."
+    pistas:
+      - { texto: "El PIN intercala una región intrínseca: conmuta y atenúa radiofrecuencia." }
+
+  - id: empareje-decision
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "La tabla de decisión"
+    texto: "Empareje cada necesidad con el diodo que elige el libro."
+    libro: [173, 194]
+    emparejar:
+      - ["Rectificar la red", "Unión de silicio, 1N4007"]
+      - ["Rueda libre en un convertidor", "Schottky"]
+      - ["Proteger de un transitorio", "TVS"]
+      - ["Sintonizar con tensión", "Varicap"]
+    exito: "Eso es. A 50 Hz la lentitud no importa y la tensión inversa sí: unión de silicio."
+    pistas:
+      - { texto: "En un convertidor se conmuta deprisa: hace falta un diodo sin recuperación." }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [170, 175, 177, 182, 187, 189]
+    ideas:
+      - { titulo: "Unión de silicio.", texto: "Tensión y corriente altas, pero lento: para la red de 50 Hz." }
+      - { titulo: "Schottky.", texto: "Cae menos y no tiene recuperación; a cambio, fuga más y aguanta poca tensión inversa." }
+      - { titulo: "Especialistas.", texto: "Zener y TVS trabajan en ruptura; el varicap aprovecha la capacidad; el PIN, una resistencia controlable." }
+      - { titulo: "LED.", texto: "La tensión depende del color; el silicio no emite: su banda prohibida es indirecta." }

@@ -1,0 +1,276 @@
+# Lección 1.1 de la sección 3.8 «Corriente de Rizado, ESR y Vida de los Electrolíticos» (cap03): el rizado que
+# calienta desde dentro y la degradación autoacelerada, la ley de vida (dos por cada diez grados) con su tabla, cómo
+# comparar dos cifras nominales, la frecuencia, la fuga y el reformado, la tensión inversa, cómo saber si uno está
+# agotado, los polímeros y el banco. Formato: contenido/lecciones11/GUIA.md.
+leccion: cap03/sec-3.8
+
+libro:
+  124: "disipa I²·ESR dentro del componente, calentando el electrolito desde su interior"
+  125: "Es una degradación autoacelerada"
+  128: "«2 000 h a 105 °C» es típico"
+  129: '"Vida" = "Vida"_("nominal") times "2"'
+  130: "128 000 h (14,6 años)"
+  131: "Cada diez grados menos doblan la vida"
+  132: "un condensador de 105 °C y 2 000 h no es necesariamente mejor que uno de 85 °C y 10 000 h"
+  134: "pero no el doble ni el triple: hay que mirar la tabla"
+  136: "aplicando tensión creciente con límite de corriente durante horas"
+  140: "la prueba que menos detecta"
+  142: "ESR diez veces menor, sin evaporación"
+  145: "Un electrolítico no debería estar caliente"
+
+modelo:
+  valores:
+    L_n: { sim: "Vida_{nominal}", nombre: "vida nominal", unidad: h, valor: 2000 }
+    T_m: { sim: "T_{máx}", nombre: "temperatura de la vida nominal", unidad: "°C", valor: 105 }
+    T_r: { sim: "T_{real}", nombre: "temperatura de trabajo", unidad: "°C", valor: 105 }
+    L_b: { sim: "Vida_{nominal}", nombre: "vida nominal del segundo", unidad: h, valor: 10000 }
+    T_b: { sim: "T_{máx}", nombre: "temperatura nominal del segundo", unidad: "°C", valor: 85 }
+  calculos:
+    vida: { expr: "L_n*2^((T_m - T_r)/10)", sim: "Vida", nombre: "vida estimada", unidad: h, cifras: 3 }
+    anos: { expr: "vida/8760", sim: "Vida", nombre: "vida estimada en años", unidad: "años", cifras: 2 }
+    vida_b: { expr: "L_b*2^((T_b - T_r)/10)", sim: "Vida", nombre: "vida estimada del segundo", unidad: h, cifras: 3 }
+    fac: { expr: "2^((T_m - T_r)/10)", sim: "factor", nombre: "factor de vida", unidad: "veces", cifras: 3 }
+    fac_b: { expr: "2^((T_b - T_r)/10)", sim: "factor", nombre: "factor de vida del segundo", unidad: "veces", cifras: 3 }
+    dT_b: { expr: "T_b - T_r", sim: "ΔT", nombre: "grados por debajo del segundo", unidad: "°C", cifras: 3 }
+
+tarjetas:
+  - id: explore-ley
+    tipo: explorar
+    titulo: "Dos por cada diez grados"
+    texto: "Un electrolítico de 2 000 h a 105 °C, que parecen poco: 83 días. Arrastre la temperatura de trabajo."
+    libro: [128, 130, 131]
+    fijar: { L_n: 2000, T_m: 105 }
+    inicio: { T_r: 105 }
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 45, max: 105, unidad: "°C", rotulo: "T_{real}" }
+      y: { min: 1000, max: 200000, unidad: h, rotulo: "vida", escala: log }
+      curvas:
+        - { expr: "L_n*2^((T_m - tt)/10)", color: naranja, rotulo: "2 000 h a 105 °C" }
+      asas:
+        - { mueve: T_r, x: "T_r", y: "vida", rotulo: "Temperatura de trabajo" }
+      lectura: { valor: vida, rotulo: "Vida estimada" }
+      datos:
+        - { valor: anos, rotulo: "{{anos}}" }
+      mandos:
+        - { valor: T_r, min: 45, max: 105, paso: 5, rotulo: "Temperatura, T_{real}" }
+    requiere: { mover: [T_r] }
+
+  - id: prediga-ochenta-y-cinco
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Un electrolítico de 2 000 h a 105 °C trabaja a 85 °C, veinte grados por debajo. ¿Cuánto vivirá?"
+    libro: [130, 131]
+    fijar: { L_n: 2000, T_m: 105, T_r: 85 }
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 45, max: 105, unidad: "°C", rotulo: "T_{real}" }
+      y: { min: 1000, max: 200000, unidad: h, rotulo: "vida", escala: log }
+      curvas:
+        - { expr: "L_n*2^((T_m - tt)/10)", color: naranja, rotulo: "2 000 h a 105 °C" }
+      marcas:
+        - { x: "T_r", y: "vida", rotulo: "85 °C" }
+      lectura: { valor: vida, rotulo: "Vida estimada" }
+      ocultar: true
+    opciones:
+      - texto: "8 000 h, once meses"
+        bien: true
+        porque: "Veinte grados son dos pasos de diez: la vida se dobla dos veces, ×4."
+      - texto: "4 000 h"
+        porque: "Eso son solo diez grados menos. Con veinte, se dobla dos veces."
+      - texto: "1 000 h"
+        porque: "Al revés: menos temperatura alarga la vida."
+    comprobar:
+      - { vida: 8000 }
+      - { con: { T_r: 95 }, vida: 4000 }
+      - { con: { T_r: 115 }, vida: 1000 }
+
+  - id: regla-vida
+    tipo: formula
+    titulo: "La regla de Arrhenius"
+    texto: "La vida se dobla por cada diez grados por debajo de la temperatura máxima."
+    libro: [129, 131]
+    ec: 129
+    fijar: { L_n: 2000, T_m: 105 }
+    sustitucion: "{{L_n}} × 2 elevado a ({{T_m}} − {{T_r}}) / 10 = {{vida}}"
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 45, max: 105, unidad: "°C", rotulo: "T_{real}" }
+      y: { min: 1000, max: 200000, unidad: h, rotulo: "vida", escala: log }
+      curvas:
+        - { expr: "L_n*2^((T_m - tt)/10)", color: naranja, rotulo: "2 000 h a 105 °C" }
+      asas:
+        - { mueve: T_r, x: "T_r", y: "vida", rotulo: "Temperatura de trabajo" }
+      lectura: { valor: vida, rotulo: "Vida estimada" }
+      mandos:
+        - { valor: T_r, min: 45, max: 105, paso: 5, rotulo: "Temperatura, T_{real}" }
+
+  - id: reto-anos
+    tipo: reto
+    titulo: "Reto: al menos 3,7 años"
+    texto: "El equipo debe durar al menos 32 000 h. ¿Hasta qué temperatura puede trabajar el condensador de 2 000 h a 105 °C?"
+    libro: [130, 131]
+    fijar: { L_n: 2000, T_m: 105 }
+    inicio: { T_r: 85 }
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 45, max: 105, unidad: "°C", rotulo: "T_{real}" }
+      y: { min: 1000, max: 200000, unidad: h, rotulo: "vida", escala: log }
+      curvas:
+        - { expr: "L_n*2^((T_m - tt)/10)", color: naranja, rotulo: "2 000 h a 105 °C" }
+      asas:
+        - { mueve: T_r, x: "T_r", y: "vida", rotulo: "Temperatura de trabajo" }
+      lectura: { valor: vida, rotulo: "Vida estimada" }
+      mandos:
+        - { valor: T_r, min: 45, max: 105, paso: 5, rotulo: "Temperatura, T_{real}" }
+    condiciones:
+      - { valor: vida, min: 32000, rotulo: "Vida: {{vida}}" }
+    exito: "A {{T_r}}, {{vida}}. Por eso se coloca lejos del disipador y nunca encima de un regulador."
+    pistas:
+      - { cuando: { valor: vida, menor: 32000 }, texto: "Demasiado caliente: baje la temperatura de trabajo." }
+    ayuda: "32 000 h son 16 veces 2 000 h: cuatro pasos de diez grados por debajo de 105 °C."
+    comprobar:
+      - { con: { T_r: 65 }, vida: 32000, fac: 16, anos: 3.7, tol: 0.02 }
+
+  - id: sorpresa-comparar
+    tipo: sorpresa
+    titulo: "¿Cuál es mejor?"
+    texto: "105 °C y 2 000 h frente a 85 °C y 10 000 h. Arrastre la temperatura y compare."
+    libro: [132]
+    fijar: { L_n: 2000, T_m: 105, L_b: 10000, T_b: 85 }
+    inicio: { T_r: 85 }
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 45, max: 105, unidad: "°C", rotulo: "T_{real}" }
+      y: { min: 1000, max: 200000, unidad: h, rotulo: "vida", escala: log }
+      curvas:
+        - { expr: "L_n*2^((T_m - tt)/10)", color: naranja, rotulo: "105 °C, 2 000 h" }
+        - { expr: "L_b*2^((T_b - tt)/10)", color: azul, rotulo: "85 °C, 10 000 h" }
+      asas:
+        - { mueve: T_r, x: "T_r", y: "vida", rotulo: "Temperatura de trabajo" }
+      lectura: { valor: vida_b, rotulo: "Vida del de 85 °C" }
+      datos:
+        - { valor: vida, rotulo: "El de 105 °C: {{vida}}" }
+      mandos:
+        - { valor: T_r, min: 45, max: 85, paso: 5, rotulo: "Temperatura, T_{real}" }
+    requiere: { mover: [T_r] }
+    nota: "Hay que llevar los dos a la misma temperatura antes de comparar."
+
+  - id: estime-segundo
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El de 85 °C, a 65 °C"
+    texto: "Estime cuánto vive a 65 °C el condensador de 85 °C y 10 000 h."
+    libro: [129, 132]
+    fijar: { L_b: 10000, T_b: 85, T_r: 65 }
+    estimar:
+      objetivo: "vida_b"
+      unidad: h
+      min: 0
+      max: 100000
+      paso: 1000
+      inicio: 15000
+      tol: 0.05
+      rotulo: "Vida a 65 °C"
+    exito: "40 000 h: veinte grados, dos dobles. El de 105 °C y 2 000 h, a 65 °C, solo llega a 32 000 h."
+    pistas:
+      - { cuando: { valor: estimacion, menor: 38000 }, texto: "Se ha quedado corto: 85 − 65 = 20 °C, dos pasos de diez: ×4." }
+      - { texto: "Se ha pasado: 10 000 h por 4." }
+    comprobar:
+      - { vida_b: 40000, fac_b: 4, dT_b: 20 }
+      - { con: { T_r: 65 }, vida: 32000 }
+
+  - id: por-que-acelera
+    tipo: porque
+    titulo: "Un fallo que se acelera"
+    texto: "El rizado calienta el electrolito desde dentro. ¿Por qué la degradación se acelera sola?"
+    libro: [124, 125]
+    opciones:
+      - texto: "Al evaporarse el electrolito sube la ESR, y con ella el calor"
+        bien: true
+        porque: "Más ESR, más I²·ESR con el mismo rizado, más temperatura, más evaporación."
+      - texto: "Porque la capacidad crece con la edad"
+        porque: "No es la capacidad: es la ESR, que sube al perder electrolito."
+      - texto: "Porque la corriente de rizado aumenta con los años"
+        porque: "El rizado puede ser el mismo; lo que sube es la ESR, y con ella lo que disipa."
+
+  - id: frecuencia
+    tipo: pregunta
+    titulo: "La frecuencia también cuenta"
+    texto: "Un condensador especificado a 120 Hz trabaja en una conmutada a 100 kHz. ¿Qué rizado admite?"
+    libro: [134]
+    opciones:
+      - texto: "Algo más, según el factor del fabricante"
+        bien: true
+        porque: "La ESR baja al subir la frecuencia, hasta cierto punto: admite más, pero no el doble ni el triple."
+      - texto: "El triple, por la frecuencia mayor"
+        porque: "No se puede suponer: hay que mirar la tabla de corrección del fabricante."
+      - texto: "Menos, porque la frecuencia es mayor"
+        porque: "La ESR baja con la frecuencia, así que admite algo más, con el factor del fabricante."
+
+  - id: reformar
+    tipo: pregunta
+    titulo: "Un equipo guardado años"
+    texto: "Un equipo antiguo lleva años sin usarse. ¿Qué conviene hacer con sus electrolíticos antes de encenderlo?"
+    libro: [136]
+    opciones:
+      - texto: "Reformarlos: tensión creciente con límite de corriente, durante horas"
+        bien: true
+        porque: "Su óxido se ha degradado y la fuga ha subido. Reformarlo de golpe puede generar gas y reventarlo."
+      - texto: "Encenderlo directamente: el óxido se reforma solo"
+        porque: "Se reforma, pero hacerlo bruscamente puede generar gas y reventar el condensador."
+      - texto: "Invertir su polaridad un momento para limpiarlos"
+        porque: "Invertirlo, aunque sea con pocos voltios, destruye el óxido: es un fallo espectacular."
+
+  - id: diagnostico
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "¿Está agotado?"
+    texto: "Ordene las pruebas como las da el libro, por facilidad: de la primera a la que menos detecta."
+    libro: [140]
+    ordenar:
+      - "Inspección visual: tapa abombada o ranura abierta."
+      - "Medida de ESR, la prueba definitiva."
+      - "Rizado en el circuito, para despejar la ESR."
+      - "Capacidad con el capacímetro."
+    exito: "Eso es. El capacímetro detecta menos: un condensador seco puede conservar buena parte de su capacidad."
+    pistas:
+      - { texto: "Lo que se ve a simple vista va primero; el capacímetro, que menos detecta, al final." }
+
+  - id: polimero
+    tipo: pregunta
+    titulo: "El sustituto moderno"
+    texto: "En una fuente conmutada moderna, el polímero sólido es la elección por defecto. ¿Qué gana?"
+    libro: [142]
+    opciones:
+      - texto: "ESR diez veces menor y sin evaporación"
+        bien: true
+        porque: "Vive mucho más y es estable en frío. A cambio, cuesta más, su tensión nominal es menor y su fuga mayor."
+      - texto: "Más tensión nominal y menos fuga"
+        porque: "Al contrario: esos son sus inconvenientes. Los híbridos buscan arreglarlos."
+      - texto: "Que es más barato"
+        porque: "Su inconveniente es precisamente el precio."
+
+  - id: banco-tacto
+    tipo: pregunta
+    titulo: "Tres segundos en el banco"
+    texto: "Con el equipo en marcha, un electrolítico está caliente al tacto. ¿Qué indica?"
+    libro: [145]
+    opciones:
+      - texto: "ESR alta o mala ubicación: su vida se consume deprisa"
+        bien: true
+        porque: "Un electrolítico no debería estar caliente. Su rizado, medido en AC, delata la ESR alta."
+      - texto: "Es normal: trabajan calientes"
+        porque: "No deberían: cada diez grados más le quitan la mitad de la vida."
+      - texto: "Que le sobra capacidad"
+        porque: "La capacidad no lo calienta: lo calienta el rizado en la ESR."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [124, 129, 131, 132, 140]
+    ideas:
+      - { titulo: "El rizado mata.", texto: "Disipa I²·ESR dentro; el electrolito se evapora y la degradación se acelera." }
+      - { titulo: "Dos por cada diez grados.", texto: "Cada diez grados menos doblan la vida: baja ESR, lejos del calor, rizado con margen." }
+      - { titulo: "Comparar bien.", texto: "Llevar las dos cifras nominales a la misma temperatura antes de compararlas." }
+      - { titulo: "Diagnóstico.", texto: "Mirar, medir la ESR y el rizado; el capacímetro es lo que menos detecta." }

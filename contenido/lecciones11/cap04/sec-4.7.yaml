@@ -1,0 +1,280 @@
+# Lección 1.1 de la sección 4.7 «Inductores en Circuitos Resonantes» (cap04): el tanque de 100 µH y 100 pF
+# (f₀ = 1,592 MHz, √(L/C) = 1000 Ω), la resonancia serie (corriente máxima, Q veces la tensión en C), el diseño de
+# 1 MHz con 100 pF (ej. 4.5), Q y ancho de banda, serie frente a paralelo, la impedancia característica y la
+# sensibilidad de la sintonía. Formato: contenido/lecciones11/GUIA.md.
+leccion: cap04/sec-4.7
+
+libro:
+  176: "la energía oscila entre el campo magnético del inductor y el campo eléctrico del condensador"
+  177: 'f_("0") = ("1")/("2" π dot.op sqrt(L dot.op C))'
+  178: "Curvas de resonancia de un circuito LC de 100 µH y 100 pF (f₀ = 1,592 MHz)"
+  180: "Con 100 µH y 100 pF, f₀ = 1,592 MHz"
+  181: "En el circuito serie, en resonancia las reactancias se anulan y solo queda la resistencia"
+  182: "una resistencia serie de 10 Ω da Q = 100"
+  183: "el Q de un circuito sintonizado es en la práctica el Q de su bobina"
+  184: "un 1 % de cambio en L o C mueve f₀ un 0,5 %"
+  "cap04#341": "Diseña un circuito resonante LC que resuene a 1 MHz (banda de radio AM) usando un condensador de 100 pF"
+
+modelo:
+  valores:
+    V_p: { sim: "V_{p}", nombre: "amplitud de la fuente", unidad: V, valor: 1 }
+    f_r: { sim: "f", nombre: "frecuencia de la fuente", unidad: Hz, valor: 1400000 }
+    R_r: { sim: "R", nombre: "resistencia en serie", unidad: Ω, valor: 10 }
+    L_r: { sim: "L", nombre: "inductancia", unidad: H, valor: 100e-6 }
+    C_r: { sim: "C", nombre: "capacidad", unidad: F, valor: 100e-12 }
+    R_p: { sim: "R_{p}", nombre: "carga en paralelo del tanque", unidad: Ω, valor: 100000 }
+    d_L: { sim: "ΔL", nombre: "cambio relativo de L", unidad: "%", valor: 1 }
+  calculos:
+    w_r: { expr: "2*pi*f_r", sim: "ω", nombre: "frecuencia angular", unidad: "rad/s" }
+    X_r: { expr: "w_r*L_r - 1/(w_r*C_r)", sim: "X", nombre: "reactancia total", unidad: Ω }
+    Z_r: { expr: "sqrt(R_r^2 + X_r^2)", sim: "|Z|", nombre: "impedancia del serie", unidad: Ω }
+    I_f: { expr: "V_p/Z_r", sim: "|i|", nombre: "amplitud de la corriente", unidad: A }
+    A_c: { expr: "I_f/(w_r*C_r)", sim: "V_{C}", nombre: "amplitud en el condensador", unidad: V }
+    f_0: { expr: "1/(2*pi*sqrt(L_r*C_r))", sim: "f₀", nombre: "frecuencia de resonancia", unidad: Hz }
+    I_0: { expr: "V_p/R_r", sim: "I_{máx}", nombre: "corriente en resonancia", unidad: A }
+    Z_0: { expr: "sqrt(L_r/C_r)", sim: "√(L/C)", nombre: "impedancia característica", unidad: Ω }
+    Q_s: { expr: "Z_0/R_r", sim: "Q", nombre: "factor de calidad del serie", unidad: "", cifras: 3 }
+    B_w: { expr: "f_0/Q_s", sim: "B", nombre: "ancho de banda a −3 dB", unidad: Hz }
+    Z_p: { expr: "1/sqrt((1/R_p)^2 + (w_r*C_r - 1/(w_r*L_r))^2)", sim: "|Z_{p}|", nombre: "impedancia del paralelo", unidad: Ω }
+    d_f: { expr: "100*(1 - 1/sqrt(1 + d_L/100))", sim: "Δf₀", nombre: "cambio relativo de f₀", unidad: "%", cifras: 3 }
+
+tarjetas:
+  - id: explore-resonancia
+    tipo: explorar
+    titulo: "Un tanque LC en serie"
+    texto: "100 µH y 100 pF en serie con 10 Ω. Mueva la frecuencia de la fuente y mire la corriente."
+    libro: [176, 178]
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: I_f, rotulo: "Corriente" }
+      datos:
+        - { valor: Z_r, rotulo: "Impedancia: {{Z_r}}" }
+      mide: { i_amp: I_f, vc_amp: A_c }
+      grafica:
+        x: { id: nu, min: 1300000, max: 1900000, unidad: Hz, rotulo: "f" }
+        y: { min: 0, max: 0.11, unidad: A, rotulo: "|i|" }
+        curvas:
+          - { expr: "V_p/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: naranja, rotulo: "|i|", mide: i_amp }
+      mandos:
+        - { valor: f_r, min: 1300000, max: 1900000, paso: 2000, rotulo: "Frecuencia de la fuente, f" }
+    requiere: { mover: [f_r] }
+
+  - id: prediga-pico
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Justo en la resonancia, ¿qué limita la corriente del circuito serie?"
+    libro: [181]
+    fijar: { f_r: 1591549 }
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: I_f, rotulo: "Corriente" }
+      mide: { i_amp: I_f }
+      grafica:
+        x: { id: nu, min: 1300000, max: 1900000, unidad: Hz, rotulo: "f" }
+        y: { min: 0, max: 0.11, unidad: A, rotulo: "|i|" }
+        curvas:
+          - { expr: "V_p/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: naranja, rotulo: "|i|", mide: i_amp }
+      ocultar: true
+    opciones:
+      - texto: "Solo la resistencia: 100 mA"
+        bien: true
+        porque: "Las reactancias de L y C son iguales y de signo opuesto: se anulan. Queda 1 V / 10 Ω."
+      - texto: "Nada: la corriente es infinita"
+        porque: "Las reactancias se anulan, pero la resistencia sigue ahí: la corriente es máxima, no infinita."
+      - texto: "√(L/C), 1000 Ω: 1 mA"
+        porque: "√(L/C) es la reactancia de cada elemento en resonancia; en serie, las dos se cancelan."
+    comprobar:
+      - { I_f: 0.1, Z_0: 1000 }
+      - { con: { R_r: 1000 }, I_0: 0.001 }
+
+  - id: formula-resonancia
+    tipo: formula
+    titulo: "La frecuencia de resonancia"
+    texto: "Hay una frecuencia, y solo una, en la que X_{L} = X_{C}. Cambie la bobina y siga el pico."
+    libro: [177, 180]
+    ec: 177
+    sustitucion: "1 / (2π · √({{L_r}} · {{C_r}})) = {{f_0}}"
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 500000, max: 3000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0, max: 0.11, unidad: A, rotulo: "|i|" }
+      curvas:
+        - { expr: "V_p/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: naranja, rotulo: "|i|" }
+      marcas:
+        - { x: "f_0", y: "I_0", rotulo: "f₀" }
+      lectura: { valor: f_0, rotulo: "Resonancia" }
+      mandos:
+        - { valor: L_r, min: 0.00005, max: 0.0004, paso: 0.000001, rotulo: "Inductancia, L" }
+
+  - id: reto-am
+    tipo: reto
+    titulo: "Reto: sintonizar 1 MHz"
+    texto: "Con el condensador de 100 pF, elija la bobina que resuene a 1 MHz, en la banda de AM (± 2 %)."
+    libro: ["cap04#341"]
+    inicio: { L_r: 0.0001 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 500000, max: 3000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0, max: 0.11, unidad: A, rotulo: "|i|" }
+      curvas:
+        - { expr: "V_p/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: naranja, rotulo: "|i|" }
+      marcas:
+        - { x: "f_0", y: "I_0", rotulo: "f₀" }
+      lectura: { valor: f_0, rotulo: "Resonancia" }
+      mandos:
+        - { valor: L_r, min: 0.00005, max: 0.0004, paso: 0.000001, rotulo: "Inductancia, L" }
+    condiciones:
+      - { valor: f_0, objetivo: 1000000, tol: 0.02, rotulo: "Resonancia: {{f_0}}" }
+    exito: "Con {{L_r}} resuena a {{f_0}}. El libro despeja L = 1/((2π·f₀)²·C) = 253 µH."
+    pistas:
+      - { cuando: { valor: f_0, mayor: 1020000 }, texto: "Resuena demasiado alto: hace falta más inductancia." }
+      - { cuando: { valor: f_0, menor: 980000 }, texto: "Resuena demasiado bajo: sobra inductancia." }
+    ayuda: "Despeje L = 1/((2π × 10⁶)² × 100 × 10⁻¹²) = 253 µH."
+    comprobar:
+      - { con: { L_r: 0.000253 }, f_0: 1000000, tol: 0.01 }
+
+  - id: estime-ancho
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Q y ancho de banda"
+    texto: "Q = √(L/C)/R: con 1000 Ω y 10 Ω, Q = 100. El ancho de banda a −3 dB es f₀/Q. Estímelo para 1,592 MHz."
+    libro: [182]
+    fijar: { L_r: 100e-6, R_r: 10 }
+    estimar:
+      objetivo: "B_w"
+      unidad: Hz
+      min: 0
+      max: 50000
+      paso: 100
+      inicio: 40000
+      tol: 0.05
+      rotulo: "Ancho de banda"
+    exito: "15,9 kHz. Más Q es más selectividad y menos ancho de banda, las dos cosas a la vez."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 16700 }, texto: "Se ha pasado: divida 1,592 MHz entre 100." }
+      - { texto: "Se ha quedado corto: 1,592 MHz entre 100 son unos dieciséis kilohercios." }
+    comprobar:
+      - { B_w: 15915, Q_s: 100, Z_0: 1000 }
+
+  - id: sorpresa-tension-c
+    tipo: sorpresa
+    titulo: "Más tensión que la fuente"
+    texto: "La fuente da {{V_p}} de pico. Lleve la frecuencia a la resonancia y mire la tensión del condensador."
+    libro: [181]
+    fijar: { L_r: 100e-6, R_r: 10 }
+    inicio: { f_r: 1000000 }
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: A_c, rotulo: "Amplitud en el condensador" }
+      mide: { vc_amp: A_c, i_amp: I_f }
+      mandos:
+        - { valor: f_r, lista: [1000000, 1591549, 2000000], rotulo: "Frecuencia de la fuente, f" }
+    requiere: { mover: [f_r] }
+    comprobar:
+      - { con: { f_r: 1591549 }, A_c: 100 }
+
+  - id: porque-q-veces
+    tipo: porque
+    titulo: "¿De dónde salen 100 V?"
+    texto: "Con Q = 100, un voltio de entrada pone 100 V sobre el condensador. ¿Cómo es posible?"
+    libro: [180, 181]
+    opciones:
+      - texto: "L y C se intercambian la energía; la fuente solo repone las pérdidas"
+        bien: true
+        porque: "Lo que se intercambia, a √(L/C) = 1000 Ω, es Q veces lo aplicado. Es un peligro y también una herramienta."
+      - texto: "El condensador amplifica"
+        porque: "Un condensador no amplifica: la energía va y viene entre los dos depósitos."
+      - texto: "Es un error de medida"
+        porque: "Es real: sobre cada elemento aparece una tensión Q veces la aplicada, y puede perforar un condensador."
+    comprobar:
+      - { Z_0: 1000 }
+
+  - id: explore-paralelo
+    tipo: explorar
+    titulo: "Serie y paralelo, al revés"
+    texto: "La misma L y C, ahora en paralelo con 100 kΩ. Mueva la frecuencia y compare las dos impedancias."
+    nota: "En el paralelo, Q = R/√(L/C): también 100."
+    libro: [181, 182]
+    fijar: { L_r: 100e-6, R_r: 10 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1300000, max: 1900000, unidad: Hz, rotulo: "f" }
+      y: { min: 1, max: 1000000, unidad: Ω, rotulo: "|Z|", escala: log }
+      curvas:
+        - { expr: "sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: naranja, rotulo: "serie" }
+        - { expr: "1/sqrt((1/R_p)^2 + (2*pi*nu*C_r - 1/(2*pi*nu*L_r))^2)", color: azul, rotulo: "paralelo" }
+      asas:
+        - { mueve: f_r, x: "f_r", y: "Z_p", rotulo: "Frecuencia" }
+      lectura: { valor: Z_p, rotulo: "Impedancia del paralelo" }
+      datos:
+        - { valor: Z_r, rotulo: "Serie: {{Z_r}}" }
+      mandos:
+        - { valor: f_r, min: 1300000, max: 1900000, paso: 2000, rotulo: "Frecuencia, f" }
+    requiere: { mover: [f_r] }
+
+  - id: pregunta-sintonizado
+    tipo: pregunta
+    titulo: "El amplificador sintonizado"
+    texto: "Como carga de un amplificador que solo debe amplificar a f₀, ¿qué tanque se usa?"
+    libro: [181]
+    opciones:
+      - texto: "El paralelo: impedancia máxima en f₀"
+        bien: true
+        porque: "En resonancia las corrientes de L y C se anulan fuera: la fuente apenas ve corriente y la carga es alta solo en f₀."
+      - texto: "El serie: impedancia máxima en f₀"
+        porque: "El serie tiene en f₀ su impedancia mínima, solo R: deja pasar la corriente, no la bloquea."
+      - texto: "Da igual: los dos son iguales"
+        porque: "Se comportan al revés: el serie es mínimo en f₀ y el paralelo, máximo."
+
+  - id: estime-sintonia
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Lo sensible de la sintonía"
+    texto: "f₀ va con la raíz de L·C. Si L cambia un 1 %, estime cuánto se mueve f₀."
+    libro: [184]
+    fijar: { d_L: 1 }
+    estimar:
+      objetivo: "d_f"
+      unidad: "%"
+      min: 0
+      max: 2
+      paso: 0.05
+      inicio: 1.5
+      tol: 0.05
+      rotulo: "Δf₀"
+    exito: "0,5 %: en la FI de 10,7 MHz de un receptor de FM, 53 kHz sobre 280 de banda."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.52 }, texto: "Se ha pasado: con la raíz, el cambio se reduce a la mitad." }
+      - { texto: "Se ha quedado corto: la raíz reduce el cambio a la mitad, no a nada." }
+    comprobar:
+      - { d_f: 0.496 }
+
+  - id: pregunta-limita-q
+    tipo: pregunta
+    titulo: "Lo que limita el Q"
+    texto: "En un circuito sintonizado real, ¿qué componente fija casi siempre el Q?"
+    libro: [183]
+    opciones:
+      - texto: "La bobina"
+        bien: true
+        porque: "Su resistencia, el efecto pelicular y el núcleo pierden. Los buenos condensadores tienen Q de miles y no cuentan."
+      - texto: "El condensador"
+        porque: "Los condensadores buenos tienen Q de miles: casi nunca son los que limitan."
+      - texto: "La fuente"
+        porque: "La fuente solo repone las pérdidas; quien las tiene es, casi siempre, la bobina."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [177, 181, 182, 183]
+    ideas:
+      - { titulo: "f₀.", texto: "1/(2π·√(LC)): X_{L} y X_{C} se igualan y la energía va y viene entre los dos." }
+      - { titulo: "Serie y paralelo.", texto: "El serie es mínimo en f₀ y pone Q veces la tensión en cada elemento; el paralelo, máximo." }
+      - { titulo: "Q.", texto: "√(L/C)/R en serie; ancho de banda f₀/Q: más selectividad, menos banda." }
+      - { titulo: "La bobina manda.", texto: "El Q del circuito es, en la práctica, el de su bobina." }

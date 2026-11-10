@@ -1,0 +1,234 @@
+# Lección 1.1 de la sección 1.9 «Transformación Estrella-Triángulo y el Puente de Wheatstone» (cap01). Formato:
+# contenido/lecciones11/GUIA.md. La sección no tiene bloques «ec»: no hay tarjeta de fórmula. El sensor del puente se
+# pone en R₂ (rama izquierda, abajo) para que la salida del esquema, Va − Vb, salga con el signo del libro.
+leccion: cap01/sec-1.9
+
+libro:
+  179: "No toda red de resistencias se reduce con las reglas de serie y paralelo"
+  180: "la tensión entre los puntos medios es exactamente cero"
+  181: "el minúsculo desequilibrio que producen, amplificado, es la señal"
+  183: "Un triángulo con resistencias Ra = 10 Ω, Rb = 20 Ω y Rc = 30 Ω"
+  184: "los dos divisores dan la misma tensión y el detector lee cero, con independencia de la tensión de alimentación"
+  185: "con 5 V de alimentación y una resistencia que pasa de 1000 a 1010 Ω (un 1 %), la salida es 5·(1010/2010 − 0,5) = 12,4 mV"
+  186: "El puente resta antes de amplificar"
+  187: "se resuelve con conexión a tres hilos"
+
+modelo:
+  valores:
+    V_w: { sim: "V", nombre: "alimentación del puente", unidad: V, valor: 5 }
+    R_w1: { sim: "R₁", nombre: "rama izquierda, arriba", unidad: Ω, valor: 1000 }
+    R_w2: { sim: "R₂", nombre: "rama izquierda, abajo (el sensor)", unidad: Ω, valor: 1000 }
+    R_w3: { sim: "R₃", nombre: "rama derecha, arriba", unidad: Ω, valor: 1000 }
+    R_w4: { sim: "R₄", nombre: "rama derecha, abajo", unidad: Ω, valor: 1000 }
+    d_R: { sim: "ΔR/R", nombre: "cambio relativo del sensor", unidad: "%", valor: 1 }
+    R_a: { sim: "R_{a}", nombre: "lado opuesto al vértice 1", unidad: Ω, valor: 10 }
+    R_b: { sim: "R_{b}", nombre: "lado opuesto al vértice 2", unidad: Ω, valor: 20 }
+    R_c: { sim: "R_{c}", nombre: "lado opuesto al vértice 3", unidad: Ω, valor: 30 }
+  calculos:
+    V_wa: { expr: "V_w*R_w2/(R_w1 + R_w2)", sim: "V_{a}", nombre: "punto medio izquierdo", unidad: V }
+    V_wb: { expr: "V_w*R_w4/(R_w3 + R_w4)", sim: "V_{b}", nombre: "punto medio derecho", unidad: V }
+    V_wab: { expr: "V_wa - V_wb", sim: "V_{ab}", nombre: "tensión del detector", unidad: V }
+    I_w: { expr: "V_w/(R_w1 + R_w2) + V_w/(R_w3 + R_w4)", sim: "I", nombre: "corriente de la fuente", unidad: A }
+    R_x: { expr: "R_w1*R_w4/R_w3", sim: "R₂", nombre: "valor del sensor según el equilibrio", unidad: Ω }
+    V_lin: { expr: "V_w/4*(R_w2 - R_w1)/R_w1", sim: "V/4·ΔR/R", nombre: "aproximación lineal", unidad: V }
+    V_ex: { expr: "V_w*((1 + d_R/100)/(2 + d_R/100) - 0.5)", sim: "V_{ab}", nombre: "salida del puente", unidad: V }
+    V_li: { expr: "V_w/4*d_R/100", sim: "lineal", nombre: "salida según la recta", unidad: V }
+    nl: { expr: "(V_li - V_ex)/V_ex*100", sim: "error", nombre: "error de la recta", unidad: "%", cifras: 2 }
+    R_y1: { expr: "R_b*R_c/(R_a + R_b + R_c)", sim: "R₁", nombre: "brazo de la estrella del vértice 1", unidad: Ω }
+    R_y2: { expr: "R_a*R_c/(R_a + R_b + R_c)", sim: "R₂", nombre: "brazo de la estrella del vértice 2", unidad: Ω }
+    R_y3: { expr: "R_a*R_b/(R_a + R_b + R_c)", sim: "R₃", nombre: "brazo de la estrella del vértice 3", unidad: Ω }
+
+tarjetas:
+  - id: explore-puente
+    tipo: explorar
+    titulo: "Dos divisores y un detector"
+    texto: "Mueva R₂ y mire el detector. Luego vuelva al equilibrio y mueva la alimentación: el cero no se mueve."
+    libro: [180, 184]
+    widget:
+      tipo: circuito
+      esquema: wheatstone
+      piezas: { fuente: V_w, r1: R_w1, r2: R_w2, r3: R_w3, r4: R_w4 }
+      lectura: { valor: V_wab, rotulo: "Detector" }
+      datos:
+        - { valor: V_wa, rotulo: "V_{a} = {{V_wa}}" }
+        - { valor: V_wb, rotulo: "V_{b} = {{V_wb}}" }
+      corriente: I_w
+      mide: { salida: V_wab, va: V_wa, vb: V_wb, corriente: I_w }
+      mandos:
+        - { valor: R_w2, min: 990, max: 1010, paso: 1, rotulo: "R₂" }
+        - { valor: V_w, min: 1, max: 10, paso: 1, rotulo: "Alimentación, V" }
+    requiere: { mover: [R_w2, V_w] }
+
+  - id: prediga-equilibrio
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "El puente está en equilibrio, con R₁/R₂ = R₃/R₄. La alimentación sube de 5 a 10 V. ¿Qué lee el detector?"
+    libro: [184, 185]
+    fijar: { V_w: 10, R_w1: 1000, R_w2: 1000, R_w3: 1000, R_w4: 1000 }
+    widget:
+      tipo: circuito
+      esquema: wheatstone
+      piezas: { fuente: V_w, r1: R_w1, r2: R_w2, r3: R_w3, r4: R_w4 }
+      lectura: { valor: V_wab, rotulo: "Detector" }
+      corriente: I_w
+      mide: { salida: V_wab, va: V_wa, vb: V_wb }
+      ocultar: true
+    opciones:
+      - texto: "Cero, igual que antes"
+        bien: true
+        porque: "Los dos divisores dan la misma fracción de la alimentación: suben a la par y su diferencia sigue en cero."
+      - texto: "El doble que antes"
+        porque: "Doble de nada es nada: en equilibrio la diferencia es cero con cualquier alimentación."
+      - texto: "Los 10 V de la alimentación"
+        porque: "El detector está entre los dos puntos medios, no sobre la fuente: mide su diferencia."
+    comprobar:
+      - { V_wab: 0, V_wa: 5, V_wb: 5 }
+
+  - id: reto-rx
+    tipo: reto
+    titulo: "Reto: medir por el cero"
+    texto: "R₂ es una resistencia desconocida. Ajuste R₄ hasta que el detector marque cero; entonces R₂ = R₁·R₄/R₃."
+    libro: [184]
+    fijar: { V_w: 5, R_w1: 1000, R_w2: 1010, R_w3: 1000 }
+    inicio: { R_w4: 990 }
+    widget:
+      tipo: circuito
+      esquema: wheatstone
+      piezas: { fuente: V_w, r1: R_w1, r2: R_w2, r3: R_w3, r4: R_w4 }
+      lectura: { valor: V_wab, rotulo: "Detector" }
+      corriente: I_w
+      mide: { salida: V_wab, va: V_wa, vb: V_wb, corriente: I_w }
+      mandos:
+        - { valor: R_w4, min: 980, max: 1020, paso: 1, rotulo: "R₄" }
+    condiciones:
+      - { valor: V_wab, min: -0.0005, max: 0.0005, rotulo: "Detector: {{V_wab}}" }
+    exito: "Cero con R₄ = 1010 Ω: R₂ = 1000 × 1010 / 1000 = 1010 Ω. No se mide una tensión: se anula."
+    pistas:
+      - { cuando: { valor: V_wab, mayor: 0.0005 }, texto: "V_{a} va por encima: suba R₄ para que V_{b} la alcance." }
+      - { cuando: { valor: V_wab, menor: -0.0005 }, texto: "V_{b} se ha pasado: baje R₄." }
+    ayuda: "En equilibrio R₁/R₂ = R₃/R₄; con R₁ = R₃, R₄ tiene que valer lo mismo que R₂."
+    comprobar:
+      - { con: { R_w4: 1010 }, V_wab: 0, R_x: 1010 }
+
+  - id: prediga-sensor
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Con 5 V, el sensor R₂ pasa de 1000 a 1010 Ω, un 1 %. ¿Qué lee el detector?"
+    libro: [185]
+    fijar: { V_w: 5, R_w1: 1000, R_w2: 1010, R_w3: 1000, R_w4: 1000 }
+    widget:
+      tipo: circuito
+      esquema: wheatstone
+      piezas: { fuente: V_w, r1: R_w1, r2: R_w2, r3: R_w3, r4: R_w4 }
+      lectura: { valor: V_wab, rotulo: "Detector" }
+      datos:
+        - { valor: V_lin, rotulo: "Recta: {{V_lin}}" }
+      corriente: I_w
+      mide: { salida: V_wab, va: V_wa, vb: V_wb }
+      ocultar: true
+    opciones:
+      - texto: "12,4 mV"
+        bien: true
+        porque: "5·(1010/2010 − 0,5) = 12,4 mV, casi los 12,5 mV de la aproximación lineal V/4·ΔR/R."
+      - texto: "El 1 % de los 5 V"
+        porque: "El sensor es la mitad de un divisor: su punto medio se mueve mucho menos que el 1 % de la alimentación."
+      - texto: "2,51 V"
+        porque: "Esa es la tensión del punto medio izquierdo. El detector lee la diferencia con el derecho."
+    comprobar:
+      - { V_wab: 0.0124, V_lin: 0.0125, V_wa: 2.512 }
+
+  - id: no-linealidad
+    tipo: sorpresa
+    titulo: "Cuando el cambio es grande"
+    texto: "Una galga cambia un 0,1 %; otros sensores, mucho más. Aumente el cambio y compare el puente con la recta V/4·ΔR/R."
+    nota: "La no linealidad vale la mitad de ΔR/R."
+    libro: [185]
+    fijar: { V_w: 5 }
+    inicio: { d_R: 1 }
+    widget:
+      tipo: grafica
+      x: { id: dd, min: 0, max: 50, unidad: "%", rotulo: "ΔR/R" }
+      y: { min: 0, max: 0.7, unidad: V, rotulo: "V_{ab}" }
+      curvas:
+        - { expr: "V_w*((1 + dd/100)/(2 + dd/100) - 0.5)", color: naranja, rotulo: "puente" }
+        - { expr: "V_w/4*dd/100", color: tinta, rotulo: "recta", discontinua: true }
+      asas:
+        - { mueve: d_R, x: "d_R", y: "V_ex", rotulo: "Cambio del sensor" }
+      lectura: { valor: nl, rotulo: "Error de la recta" }
+      mandos:
+        - { valor: d_R, min: 1, max: 50, paso: 1, rotulo: "Cambio, ΔR/R" }
+    requiere: { mover: [d_R] }
+
+  - id: por-que-puente
+    tipo: porque
+    titulo: "¿Por qué un puente?"
+    texto: "Una galga cambia un 0,1 %. ¿Por qué se mide con un puente y no con un multímetro?"
+    libro: [181, 186]
+    opciones:
+      - texto: "Porque resta antes de amplificar"
+        bien: true
+        porque: "Convierte el cambio en milivoltios sobre un cero, que se amplifican sin la tensión común."
+      - texto: "Porque convierte la resistencia en frecuencia"
+        porque: "Da una tensión, no una frecuencia: una diferencia de milivoltios sobre un cero."
+      - texto: "Porque no necesita alimentación estable"
+        porque: "Eso es cierto del equilibrio, pero la razón es otra: el multímetro tendría que resolver 1 Ω sobre 1000."
+
+  - id: por-que-estrella
+    tipo: pregunta
+    titulo: "Estrella y triángulo"
+    texto: "Tres resistencias forman un triángulo entre tres vértices. ¿Por qué hace falta transformarlo en estrella?"
+    libro: [179, 183]
+    opciones:
+      - texto: "No están ni en serie ni en paralelo entre sí"
+        bien: true
+        porque: "La estrella equivalente deja a la vista asociaciones serie y paralelo que terminan de simplificar la red."
+      - texto: "Porque la estrella disipa menos potencia"
+        porque: "Lo que ve el resto del circuito es idéntico: también la potencia. Es solo una herramienta de cálculo."
+      - texto: "Porque un triángulo no se puede medir"
+        porque: "Se mide como cualquier red. El problema es reducirlo con las reglas de serie y paralelo."
+
+  - id: estime-estrella
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "De triángulo a estrella"
+    texto: "Un triángulo de 10, 20 y 30 Ω. El brazo del vértice 1 es R₁ = R_{b}·R_{c}/(R_{a} + R_{b} + R_{c}). Estímelo."
+    libro: [183]
+    estimar:
+      objetivo: "R_y1"
+      unidad: Ω
+      min: 0
+      max: 30
+      paso: 0.5
+      inicio: 25
+      tol: 0.03
+      rotulo: "R₁ de la estrella"
+    exito: "600/60 = 10 Ω. Los otros: R₂ = 5 Ω y R₃ = 3,33 Ω. Sale de igualar la resistencia entre cada par de vértices."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 10.3 }, texto: "Se ha pasado: R_{b}·R_{c} = 600, y la suma de las tres, 60." }
+      - { texto: "Se ha quedado corto: 20 × 30 = 600, entre 60." }
+    comprobar:
+      - { R_y1: 10, R_y2: 5, R_y3: 3.33 }
+
+  - id: tres-hilos
+    tipo: pregunta
+    titulo: "El enemigo de los cables"
+    texto: "Un sensor remoto, con cables largos: su resistencia se suma a una rama y desequilibra el puente. ¿Cómo se cancela?"
+    libro: [187]
+    opciones:
+      - texto: "Con conexión a tres hilos"
+        bien: true
+        porque: "Reparte la resistencia del cable entre dos ramas, y en el cociente se cancela."
+      - texto: "Alimentando el puente con más tensión"
+        porque: "El desequilibrio crece en proporción, y además el sensor se calienta y deriva: V²/R."
+      - texto: "Con fijas de otro material"
+        porque: "Las fijas se eligen del mismo material, pero para la deriva térmica, no para los cables."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [179, 184, 185, 186, 187]
+    ideas:
+      - { titulo: "Equilibrio.", texto: "R₁/R₂ = R₃/R₄: el detector lee cero con cualquier alimentación." }
+      - { titulo: "Medir por el cero.", texto: "Se ajusta una rama hasta anular el detector y se despeja la desconocida." }
+      - { titulo: "Sensor.", texto: "Un cambio pequeño da milivoltios sobre un cero: el puente resta antes de amplificar." }
+      - { titulo: "Estrella-triángulo.", texto: "Cambia una configuración por otra sin alterar lo que ve el resto." }

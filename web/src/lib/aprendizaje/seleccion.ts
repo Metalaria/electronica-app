@@ -19,11 +19,11 @@
 //
 // Problem of the day: problemaDelDia() — deterministic per day, course and level (the furthest chapter reached).
 
-/** What can be practised. */
-export type TipoItemSesion = 'practica' | 'pregunta' | 'ejercicio' | 'tarjeta';
+/** What can be practised (1.1: `leccion11`, a card of a hand-authored lesson asked on its own). */
+export type TipoItemSesion = 'practica' | 'pregunta' | 'ejercicio' | 'tarjeta' | 'leccion11';
 
 export interface ItemCatalogo {
-  /** Practice item id, Repaso question id, exercise label or flashcard id. */
+  /** Practice item id, Repaso question id, exercise label, flashcard id or 1.1 card id («cap01-l11-sec-1.4-reto-33»). */
   id: string;
   tipo: TipoItemSesion;
   /** numerico, prediccion…; opcion, numero; auto. */

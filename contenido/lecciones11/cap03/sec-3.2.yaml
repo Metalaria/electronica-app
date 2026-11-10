@@ -1,0 +1,277 @@
+# Lección 1.1 de la sección 3.2 «Comportamiento Dinámico: Carga y Descarga» (cap03): la carga y la descarga
+# exponenciales, τ = R·C y sus puntos (63,2 %, 86,5 %, 95 %, 99,3 %), los dos límites (cortocircuito en t = 0,
+# circuito abierto en t = ∞), el ejemplo de 100 µF, 10 kΩ y 9 V, y la deducción (ln 4096 ≈ 8,3τ, la dualidad con la
+# bobina). Formato: contenido/lecciones11/GUIA.md.
+leccion: cap03/sec-3.2
+
+libro:
+  28: "la tensión entre sus placas no puede cambiar instantáneamente"
+  29: 'v_("C") lr(( t )) = V_("CC")'
+  30: "Y al descargarse, decae exponencialmente"
+  31: 'v_("C") lr(( t )) = V_("0")'
+  32: "Tras un tiempo de 5τ, el condensador se considera prácticamente cargado o descargado por completo (99,3 %)"
+  33: "1τ (63,2 %), 2τ (86,5 %), 3τ (95 %) y 5τ (99,3 %)"
+  34: "cortocircuito en t=0, circuito abierto en t=∞"
+  35: "Tras 1 segundo alcanzará 0,632 × 9 = 5,69 V; tras 2 segundos, 7,78 V"
+  36: "hacen falta ln 4096 ≈ 8,3τ"
+
+modelo:
+  valores:
+    V_c: { sim: "V_{CC}", nombre: "tensión de la fuente", unidad: V, valor: 9 }
+    R_c: { sim: "R", nombre: "resistencia", unidad: Ω, valor: 10000 }
+    C_c: { sim: "C", nombre: "capacidad", unidad: F, valor: 100e-6 }
+    V_c0: { sim: "V₀", nombre: "tensión inicial del condensador", unidad: V, valor: 0 }
+    c_modo: { tipo: interruptor, nombre: "conmutador en carga", valor: 1 }
+    t_1: { sim: "t", nombre: "instante de la lectura", unidad: s, valor: 1 }
+    bits: { sim: "N", nombre: "bits del convertidor", unidad: "", valor: 12 }
+  calculos:
+    tau_c: { expr: "R_c*C_c", sim: "τ", nombre: "constante de tiempo", unidad: s }
+    V_cf: { si: c_modo, entonces: "V_c", sino: "0", sim: "V_{final}", nombre: "tensión final", unidad: V }
+    v_tau: { expr: "V_c0 + 0.632*(V_cf - V_c0)", sim: "v(τ)", nombre: "tensión en un τ", unidad: V }
+    v_t1: { expr: "V_c0 + (V_cf - V_c0)*(1 - exp(-t_1/tau_c))", sim: "v_{C}(t)", nombre: "tensión en el instante t", unidad: V }
+    I_c0: { expr: "(V_cf - V_c0)/R_c", sim: "I(0)", nombre: "corriente en t = 0", unidad: A }
+    falta5: { expr: "100*exp(-5)", sim: "falta", nombre: "lo que falta tras 5τ", unidad: "%", cifras: 3 }
+    n_tau: { expr: "ln(2^bits)", sim: "t/τ", nombre: "constantes de tiempo para un LSB", unidad: "", cifras: 2 }
+
+tarjetas:
+  - id: explore-carga
+    tipo: explorar
+    titulo: "Cargar a través de una resistencia"
+    texto: "100 µF se cargan desde 9 V. Cambie R y C y fíjese en cuánto tarda la curva en subir."
+    libro: [28, 29, 35]
+    fijar: { V_c0: 0, c_modo: 1 }
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_c, r: R_c, c: C_c, v0: V_c0, interruptor: c_modo }
+      lectura: { valor: tau_c, rotulo: "Constante de tiempo" }
+      grafica:
+        x: { id: t, min: 0, max: 5, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 10, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_c0 + (V_cf - V_c0)*(1 - exp(-t/tau_c))", color: naranja, rotulo: "v_{C}", mide: vc }
+          - { expr: "(V_cf - V_c0)*exp(-t/tau_c)", color: azul, rotulo: "v_{R}", mide: vr, discontinua: true }
+        marcas:
+          - { x: "tau_c", y: "v_tau", rotulo: "τ: {{v_tau}}" }
+      mandos:
+        - { valor: R_c, min: 1000, max: 20000, paso: 1000, rotulo: "Resistencia, R" }
+        - { valor: C_c, lista: [47e-6, 100e-6], rotulo: "Capacidad, C" }
+    requiere: { mover: [R_c, C_c] }
+
+  - id: prediga-un-segundo
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "100 µF se cargan desde 9 V a través de 10 kΩ: τ = 1 s. ¿Qué tensión tendrá el condensador tras 1 segundo?"
+    libro: [32, 35]
+    fijar: { R_c: 10000, C_c: 100e-6, V_c0: 0, c_modo: 1, t_1: 1 }
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_c, r: R_c, c: C_c, v0: V_c0, interruptor: c_modo }
+      lectura: { valor: v_t1, rotulo: "v_{C} a 1 s" }
+      grafica:
+        x: { id: t, min: 0, max: 5, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 10, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_c0 + (V_cf - V_c0)*(1 - exp(-t/tau_c))", color: naranja, rotulo: "v_{C}", mide: vc }
+      ocultar: true
+    opciones:
+      - texto: "5,69 V"
+        bien: true
+        porque: "Un τ es el 63,2 % del camino: 0,632 × 9 = 5,69 V."
+      - texto: "La mitad de 9 V"
+        porque: "La curva no es una recta: arranca deprisa y en un τ ya ha hecho el 63,2 %, más de la mitad."
+      - texto: "9 V, cargado"
+        porque: "Hacen falta unos 5τ, 5 segundos, para considerarlo cargado."
+    comprobar:
+      - { v_t1: 5.69, tau_c: 1 }
+      - { con: { t_1: 5 }, v_t1: 8.94 }
+
+  - id: regla-carga
+    tipo: formula
+    titulo: "La carga, una exponencial"
+    texto: "La tensión crece hacia V_{CC} con la constante de tiempo τ = R·C. Mueva el instante t."
+    libro: [29, 32]
+    ec: 29
+    fijar: { V_c0: 0, c_modo: 1 }
+    sustitucion: "{{V_c}} · (1 − exp(−{{t_1}} / {{tau_c}})) = {{v_t1}}"
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_c, r: R_c, c: C_c, v0: V_c0, interruptor: c_modo }
+      lectura: { valor: v_t1, rotulo: "v_{C}(t)" }
+      dibujo: false
+      grafica:
+        x: { id: t, min: 0, max: 5, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 10, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_c0 + (V_cf - V_c0)*(1 - exp(-t/tau_c))", color: naranja, rotulo: "v_{C}", mide: vc }
+        marcas:
+          - { x: "t_1", y: "v_t1", rotulo: "{{v_t1}}" }
+      mandos:
+        - { valor: t_1, min: 0, max: 5, paso: 0.5, rotulo: "Instante, t" }
+
+  - id: reto-mas-rapido
+    tipo: reto
+    titulo: "Reto: cargar más deprisa"
+    texto: "100 µF cargados desde 9 V con 10 kΩ llegan a 7,78 V en 2 s. Elija R para llegar en solo 1 s (± 2 %)."
+    libro: [33, 35]
+    fijar: { C_c: 100e-6, V_c0: 0, c_modo: 1, t_1: 1 }
+    inicio: { R_c: 10000 }
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_c, r: R_c, c: C_c, v0: V_c0, interruptor: c_modo }
+      lectura: { valor: v_t1, rotulo: "v_{C} a 1 s" }
+      grafica:
+        x: { id: t, min: 0, max: 5, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 10, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_c0 + (V_cf - V_c0)*(1 - exp(-t/tau_c))", color: naranja, rotulo: "v_{C}", mide: vc }
+        marcas:
+          - { x: "t_1", y: "v_t1", rotulo: "1 s" }
+      mandos:
+        - { valor: R_c, min: 1000, max: 20000, paso: 500, rotulo: "Resistencia, R" }
+    condiciones:
+      - { valor: v_t1, objetivo: 7.78, tol: 0.02, rotulo: "A 1 s: {{v_t1}}" }
+    exito: "Con {{R_c}}, τ = {{tau_c}}: 1 s son dos τ, el 86,5 %. Para cargar más deprisa se reduce R o C."
+    pistas:
+      - { cuando: { valor: v_t1, menor: 7.62 }, texto: "Le falta tensión a 1 s: reduzca R para que τ sea menor." }
+      - { cuando: { valor: v_t1, mayor: 7.94 }, texto: "Se ha pasado: τ ha quedado demasiado corta. Suba un poco R." }
+    ayuda: "7,78 V son dos τ. Si 1 s han de ser dos τ, τ = 0,5 s: con 100 µF, R = 5 kΩ."
+    comprobar:
+      - { con: { R_c: 5000 }, v_t1: 7.78, tau_c: 0.5 }
+      - { con: { R_c: 10000, t_1: 2 }, v_t1: 7.78 }
+
+  - id: puntos-tau
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los puntos de la curva"
+    texto: "Una cada tiempo con lo que lleva hecho de su carga. Son la base de temporizadores y filtros."
+    libro: [32, 33]
+    emparejar:
+      - ["1τ", "63,2 %"]
+      - ["2τ", "86,5 %"]
+      - ["3τ", "95 %"]
+      - ["5τ", "99,3 %"]
+    exito: "Eso es. Tras 5τ se considera cargado: solo falta el 0,674 %."
+    pistas:
+      - { texto: "El primer τ ya hace más de la mitad del camino; cada τ siguiente, menos." }
+    comprobar:
+      - { falta5: 0.674 }
+
+  - id: sorpresa-descarga
+    tipo: sorpresa
+    titulo: "Ahora, la descarga"
+    texto: "El conmutador pasa a masa con el condensador a 9 V. Cambie R y mire cómo decae."
+    libro: [30, 31, 32]
+    fijar: { V_c0: 9, c_modo: 0, C_c: 100e-6 }
+    inicio: { R_c: 10000 }
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_c, r: R_c, c: C_c, v0: V_c0, interruptor: c_modo }
+      lectura: { valor: v_tau, rotulo: "Le queda en un τ" }
+      grafica:
+        x: { id: t, min: 0, max: 5, unidad: s, rotulo: "t" }
+        y: { min: -10, max: 10, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_c0 + (V_cf - V_c0)*(1 - exp(-t/tau_c))", color: naranja, rotulo: "v_{C}", mide: vc }
+          - { expr: "(V_cf - V_c0)*exp(-t/tau_c)", color: azul, rotulo: "v_{R}", mide: vr, discontinua: true }
+        marcas:
+          - { x: "tau_c", y: "v_tau", rotulo: "τ: {{v_tau}}" }
+      mandos:
+        - { valor: R_c, min: 1000, max: 20000, paso: 1000, rotulo: "Resistencia, R" }
+    requiere: { mover: [R_c] }
+    nota: "La misma τ = R·C: en un τ pierde el 63,2 % y le queda {{v_tau}}."
+    comprobar:
+      - { v_tau: 3.31, tau_c: 1 }
+
+  - id: limite-inicial
+    tipo: pregunta
+    titulo: "En el instante inicial"
+    texto: "Se cierra el interruptor sobre el condensador descargado. ¿Cómo se comporta en t = 0?"
+    libro: [34]
+    fijar: { R_c: 10000, C_c: 100e-6, V_c0: 0, c_modo: 1 }
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_c, r: R_c, c: C_c, v0: V_c0, interruptor: c_modo }
+      lectura: { valor: I_c0, rotulo: "Corriente en t = 0" }
+      grafica:
+        x: { id: t, min: 0, max: 5, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 0.001, unidad: A, rotulo: "i" }
+        curvas:
+          - { expr: "(V_cf - V_c0)/R_c*exp(-t/tau_c)", color: verde, rotulo: "i", mide: i }
+      ocultar: true
+    opciones:
+      - texto: "Como un cortocircuito: pasa toda la corriente, 9 V / 10 kΩ"
+        bien: true
+        porque: "Su tensión no puede saltar: sigue a 0 V y toda la tensión cae en R, 0,9 mA. Luego la corriente decae."
+      - texto: "Como un circuito abierto: no pasa corriente"
+        porque: "Eso es al final, tras muchos τ: cargado, en continua, ya no deja pasar corriente."
+      - texto: "Como una resistencia de 10 kΩ más"
+        porque: "En t = 0 su tensión es cero, así que no se opone: se comporta como un cortocircuito."
+    comprobar:
+      - { I_c0: 0.0009 }
+
+  - id: por-que-no-salta
+    tipo: porque
+    titulo: "¿Por qué no salta de golpe?"
+    texto: "Al conectar 9 V, la tensión del condensador sube poco a poco, sin saltar. ¿Por qué?"
+    libro: [28, 34]
+    opciones:
+      - texto: "Cambiar su tensión exige mover carga, y eso lleva tiempo"
+        bien: true
+        porque: "q = C·V: un salto de tensión pediría una corriente infinita. La resistencia la limita."
+      - texto: "La resistencia consume parte de los 9 V para siempre"
+        porque: "No: al final, sin corriente, R no cae nada y el condensador llega a los 9 V."
+      - texto: "El dieléctrico tarda en polarizarse"
+        porque: "La lentitud la marca τ = R·C, el circuito, no el material: con otra R cambia."
+
+  - id: estime-lsb
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Tras 5τ aún falta algo"
+    texto: "Tras 5τ falta un 0,674 %. Para un convertidor de 12 bits el error debe bajar de 1 LSB, 1/4096. Estime cuántas τ."
+    libro: [36]
+    fijar: { bits: 12 }
+    estimar:
+      objetivo: "n_tau"
+      unidad: ""
+      min: 0
+      max: 15
+      paso: 0.1
+      inicio: 5
+      tol: 0.04
+      rotulo: "Constantes de tiempo"
+    exito: "ln 4096 ≈ 8,3τ; 9τ si se exige medio LSB. El 99,3 % de 5τ no basta para medir fino."
+    pistas:
+      - { cuando: { valor: estimacion, menor: 8 }, texto: "Se ha quedado corto: e^{−t/τ} debe bajar de 1/4096, así que t/τ = ln 4096." }
+      - { texto: "Se ha pasado: t/τ = ln 4096; ln 4096 es algo más de 8." }
+    comprobar:
+      - { n_tau: 8.32, tol: 0.002 }
+
+  - id: dualidad
+    tipo: pregunta
+    titulo: "La misma pareja de ecuaciones"
+    texto: "Las mismas exponenciales describen la bobina, intercambiando tensión por corriente. ¿Cuál es su constante de tiempo?"
+    libro: [36]
+    opciones:
+      - texto: "τ = L/R"
+        bien: true
+        porque: "Es la dualidad: τ = RC en el condensador, τ = L/R en la bobina."
+      - texto: "τ = R·L"
+        porque: "Las unidades no salen: henrios por ohmios no son segundos. En la bobina, τ = L/R."
+      - texto: "τ = R·C, igual"
+        porque: "Una bobina no tiene C. Su constante es τ = L/R."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [29, 31, 32, 34, 36]
+    ideas:
+      - { titulo: "Exponencial.", texto: "Carga v_{C} = V_{CC}·(1 − e^{−t/RC}); descarga v_{C} = V₀·e^{−t/RC}." }
+      - { titulo: "τ = R·C.", texto: "Un τ, el 63,2 %; tras 5τ, prácticamente cargado (99,3 %)." }
+      - { titulo: "Dos límites.", texto: "Descargado en t = 0, un cortocircuito; cargado tras muchos τ, un circuito abierto." }
+      - { titulo: "Más fino.", texto: "Para 1 LSB en 12 bits, 8,3τ. En la bobina, τ = L/R." }

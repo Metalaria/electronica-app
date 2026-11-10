@@ -1,0 +1,280 @@
+# Lección 1.1 de la sección 1.7 «Resonancia en Circuitos RLC» (cap01). Formato: contenido/lecciones11/GUIA.md.
+leccion: cap01/sec-1.7
+
+libro:
+  142: "las reactancias inductiva y capacitiva se cancelan mutuamente"
+  143: 'f_("0") = ("1")/("2" π dot.op sqrt(L dot.op C))'
+  144: "un Q alto indica una resonancia muy selectiva"
+  147: "con 1 mH y 1 µF, 5,03 kHz"
+  148: "impedancia mínima, corriente máxima, y sobre cada elemento reactivo una tensión Q veces la aplicada"
+  149: "Q = 100 y el ancho de banda es 15,9 kHz alrededor de 1,592 MHz"
+  150: "cualquier bobina con cualquier condensador, aunque sean parásitos, resuena"
+  152: "Con L = 10 mH y C = 100 nF la fórmula da f₀ = 5032,92 Hz"
+  153: "no existe ninguna frecuencia con factor de potencia unidad"
+  154: "la palabra «resonancia» encierra tres definiciones distintas"
+
+modelo:
+  valores:
+    V_p: { sim: "V_{p}", nombre: "amplitud de la fuente", unidad: V, valor: 1 }
+    R_r: { sim: "R", nombre: "resistencia", unidad: Ω, valor: 10 }
+    L_r: { sim: "L", nombre: "inductancia", unidad: H, valor: 0.01 }
+    C_r: { sim: "C", nombre: "capacidad", unidad: F, valor: 100e-9 }
+    R_ps: { sim: "R_{s}", nombre: "resistencia en serie de la fuente", unidad: Ω, valor: 1000 }
+    R_pp: { sim: "R_{p}", nombre: "pérdidas del tanque", unidad: Ω, valor: 10000 }
+  calculos:
+    f_0: { expr: "1/(2*pi*sqrt(L_r*C_r))", sim: "f₀", nombre: "frecuencia de resonancia", unidad: Hz, cifras: 4 }
+    I_0: { expr: "V_p/R_r", sim: "I_{máx}", nombre: "corriente en resonancia", unidad: A }
+    raiz_LC: { expr: "sqrt(L_r*C_r)", sim: "√(LC)", nombre: "raíz de L·C", unidad: s }
+    Z_0: { expr: "sqrt(L_r/C_r)", sim: "√(L/C)", nombre: "impedancia característica", unidad: Ω }
+    Q: { expr: "Z_0/R_r", sim: "Q", nombre: "factor de calidad", unidad: "" }
+    B: { expr: "f_0/Q", sim: "B", nombre: "ancho de banda", unidad: Hz }
+    A_L: { expr: "V_p*Q", sim: "V_{L}", nombre: "amplitud en la bobina", unidad: V }
+    w_0: { expr: "2*pi*f_0", sim: "ω₀", nombre: "frecuencia angular de resonancia", unidad: "rad/s" }
+    A_t: { expr: "V_p/(1 + R_ps/R_pp)", sim: "V_{t}", nombre: "amplitud del tanque en resonancia", unidad: V }
+
+tarjetas:
+  - id: explore-resonancia
+    tipo: explorar
+    titulo: "Un pico de corriente"
+    texto: "Una fuente de 1 V barre la frecuencia sobre un RLC en serie. Mueva L y C: el pico se desplaza."
+    libro: [142]
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_0, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: f_0, rotulo: "Resonancia" }
+      mide: { i_amp: I_0 }
+      grafica:
+        x: { id: nu, min: 1000, max: 25000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 0.11, unidad: A, rotulo: "|i|" }
+        curvas:
+          - { expr: "V_p/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: naranja, rotulo: "|i|", mide: i_amp }
+        marcas:
+          - { x: "f_0", y: "I_0", rotulo: "f₀" }
+      mandos:
+        - { valor: L_r, lista: [2.2e-3, 4.7e-3, 10e-3, 22e-3, 47e-3], rotulo: "Inductancia, L" }
+        - { valor: C_r, lista: [47e-9, 100e-9, 220e-9], rotulo: "Capacidad, C" }
+    requiere: { mover: [L_r] }
+
+  - id: prediga-fuente
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "En la resonancia de un RLC en serie, las dos reactancias se cancelan. ¿Qué ve la fuente?"
+    libro: [142, 148]
+    fijar: { L_r: 0.01, C_r: 100e-9, R_r: 10 }
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_0, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: I_0, rotulo: "Corriente en f₀" }
+      mide: { i_amp: I_0 }
+      ocultar: true
+    opciones:
+      - texto: "Solo la resistencia: corriente máxima"
+        bien: true
+        porque: "L y C se anulan entre sí; queda R, la impedancia mínima. Con 1 V y 10 Ω, 100 mA de pico."
+      - texto: "Un circuito abierto: corriente nula"
+        porque: "Se cancelan entre ellas, no bloquean. En serie queda solo R, y la corriente es máxima."
+      - texto: "Una impedancia puramente inductiva"
+        porque: "En f₀ la reactancia de la bobina y la del condensador son iguales y opuestas: no queda ninguna."
+    comprobar:
+      - { I_0: 0.1 }
+
+  - id: regla-f0
+    tipo: formula
+    titulo: "La frecuencia de resonancia"
+    texto: "Las reactancias se igualan, ωL = 1/(ωC), a una sola frecuencia, que solo depende de L y C."
+    nota: "Con 10 mH y 100 nF, 5032,92 Hz."
+    libro: [143, 152]
+    fijar: { C_r: 100e-9 }
+    ec: 143
+    sustitucion: "1 / (2π · √({{L_r}} · {{C_r}})) = {{f_0}}"
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_0, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: f_0, rotulo: "Resonancia" }
+      mide: { i_amp: I_0 }
+      dibujo: false
+      grafica:
+        x: { id: nu, min: 1000, max: 25000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 0.11, unidad: A, rotulo: "|i|" }
+        curvas:
+          - { expr: "V_p/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: naranja, rotulo: "|i|", mide: i_amp }
+        marcas:
+          - { x: "f_0", y: "I_0", rotulo: "f₀" }
+      mandos:
+        - { valor: L_r, lista: [2.2e-3, 4.7e-3, 10e-3, 22e-3, 47e-3], rotulo: "Inductancia, L" }
+    comprobar:
+      - { con: { L_r: 0.01, C_r: 100e-9 }, f_0: 5032.92, tol: 0.0001 }
+
+  - id: estime-f0
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Un milihenrio y un microfaradio"
+    texto: "Estime la frecuencia de resonancia de 1 mH con 1 µF."
+    libro: [143, 147]
+    fijar: { L_r: 1e-3, C_r: 1e-6 }
+    estimar:
+      objetivo: "f_0"
+      unidad: Hz
+      min: 0
+      max: 20000
+      paso: 100
+      inicio: 15000
+      tol: 0.03
+      rotulo: "f₀"
+    exito: "√(LC) = √(10⁻⁹) ≈ 31,6 µs; 1/(2π × 31,6 µs) = 5,03 kHz."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 5180 }, texto: "Se ha pasado: L·C = 10⁻⁹ s²; su raíz, unos 31,6 µs. No olvide el 2π." }
+      - { texto: "Se ha quedado corto: 1/(2π · 31,6 µs) son unos miles de hercios." }
+    comprobar:
+      - { f_0: 5033 }
+      - { raiz_LC: 31.6e-6 }
+
+  - id: explore-q
+    tipo: explorar
+    titulo: "La agudeza: el factor Q"
+    texto: "Mueva R. Con menos pérdidas, el pico sube y se estrecha: Q = √(L/C)/R y el ancho de banda es f₀/Q."
+    libro: [144, 149]
+    fijar: { L_r: 0.01, C_r: 100e-9 }
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_0, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: Q, rotulo: "Factor de calidad, Q" }
+      datos:
+        - { valor: B, rotulo: "Ancho de banda: {{B}}" }
+      mide: { i_amp: I_0 }
+      dibujo: false
+      grafica:
+        x: { id: nu, min: 1000, max: 25000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 0.11, unidad: A, rotulo: "|i|" }
+        curvas:
+          - { expr: "V_p/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: naranja, rotulo: "|i|", mide: i_amp }
+      mandos:
+        - { valor: R_r, lista: [10, 30, 100, 300], rotulo: "Resistencia, R" }
+
+  - id: reto-q100
+    tipo: reto
+    titulo: "Reto: Q = 100"
+    texto: "Un circuito de 100 µH y 100 pF, con √(L/C) = 1000 Ω. Elija las pérdidas R para que Q valga 100 (± 2 %)."
+    libro: [149]
+    fijar: { L_r: 100e-6, C_r: 100e-12 }
+    inicio: { R_r: 40 }
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_0, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: Q, rotulo: "Factor de calidad, Q" }
+      datos:
+        - { valor: B, rotulo: "Ancho de banda: {{B}}" }
+      mide: { i_amp: I_0 }
+      dibujo: false
+      grafica:
+        x: { id: nu, min: 1400000, max: 1800000, unidad: Hz, rotulo: "f" }
+        y: { min: 0, max: 1.1, unidad: "", rotulo: "|i|/I_{máx}" }
+        curvas:
+          - { expr: "R_r/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: naranja, rotulo: "|i|/I_{máx}" }
+      mandos:
+        - { valor: R_r, min: 2, max: 50, paso: 1, rotulo: "Pérdidas, R" }
+    condiciones:
+      - { valor: Q, objetivo: 100, tol: 0.02, rotulo: "Q = {{Q}}" }
+    exito: "Con 10 Ω, Q = 100 y el ancho de banda es 15,9 kHz alrededor de 1,592 MHz."
+    pistas:
+      - { cuando: { valor: Q, mayor: 102 }, texto: "Q demasiado alto: ponga más pérdidas, una R mayor." }
+      - { cuando: { valor: Q, menor: 98 }, texto: "Q demasiado bajo: ponga menos pérdidas, una R menor." }
+    ayuda: "Q = √(L/C)/R = 1000 Ω / R."
+    comprobar:
+      - { Z_0: 1000 }
+      - { con: { R_r: 10 }, Q: 100, B: 15915, f_0: 1591500 }
+
+  - id: tension-q
+    tipo: sorpresa
+    titulo: "Más tensión que la fuente"
+    texto: "La fuente da 1 V de pico en la resonancia. Mire la tensión en la bobina y mueva R."
+    nota: "Sobre cada elemento reactivo, Q veces la tensión aplicada."
+    libro: [148]
+    fijar: { L_r: 0.01, C_r: 100e-9 }
+    inicio: { R_r: 100 }
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_0, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: A_L, rotulo: "Pico en la bobina" }
+      datos:
+        - { valor: Q, rotulo: "Q = {{Q}}" }
+      mide: { i_amp: I_0, vl_amp: A_L, vc_amp: A_L }
+      grafica:
+        x: { id: t, min: 0, max: 0.0004, unidad: s, rotulo: "t" }
+        y: { min: -35, max: 35, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_p*sin(w_0*t)", color: tinta, rotulo: "fuente", mide: entrada, discontinua: true }
+          - { expr: "A_L*cos(w_0*t)", color: naranja, rotulo: "v_{L}", mide: vl }
+      mandos:
+        - { valor: R_r, lista: [10, 30, 100], rotulo: "Resistencia, R" }
+    requiere: { mover: [R_r] }
+
+  - id: por-que-f0
+    tipo: porque
+    titulo: "¿Por qué solo L y C?"
+    texto: "La resistencia apenas cambia la frecuencia de resonancia. ¿Qué la fija?"
+    libro: [147]
+    opciones:
+      - texto: "La energía va y viene entre C y L a su propio ritmo"
+        bien: true
+        porque: "El condensador se descarga por la bobina y la bobina lo recarga al revés. La resistencia solo gasta energía en cada vuelta."
+      - texto: "La frecuencia de la fuente"
+        porque: "La fuente puede barrer cualquier frecuencia; la resonancia está donde está, la dé o no la fuente."
+      - texto: "El valor de la resistencia"
+        porque: "R decide cuánto se gasta en cada ida y vuelta, y con ello Q, pero apenas la frecuencia."
+
+  - id: paralelo-maxima
+    tipo: pregunta
+    titulo: "El mismo intercambio en paralelo"
+    texto: "Ahora L y C están en paralelo, alimentados a través de una resistencia. ¿Qué impedancia ve la fuente en f₀?"
+    libro: [148]
+    fijar: { L_r: 0.01, C_r: 100e-9 }
+    widget:
+      tipo: circuito
+      esquema: rlc-paralelo
+      piezas: { fuente: V_p, f: f_0, rs: R_ps, l: L_r, c: C_r, r: R_pp }
+      lectura: { valor: A_t, rotulo: "Tensión del tanque en f₀" }
+      mide: { vt_amp: A_t }
+      grafica:
+        x: { id: nu, min: 1000, max: 25000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 1, unidad: V, rotulo: "|v_{t}|" }
+        curvas:
+          - { expr: "V_p/sqrt((1 + R_ps/R_pp)^2 + (R_ps*(2*pi*nu*C_r - 1/(2*pi*nu*L_r)))^2)", color: verde, rotulo: "|v_{t}|", mide: vt_amp }
+    opciones:
+      - texto: "Máxima"
+        bien: true
+        porque: "La corriente que circula entre L y C no sale fuera: la fuente solo aporta la de las pérdidas."
+      - texto: "Mínima, como en serie"
+        porque: "En serie se ven las reactancias anularse en el camino de la corriente; en paralelo, la circulante queda dentro."
+      - texto: "Cero: un cortocircuito"
+        porque: "Entonces el tanque no tendría tensión, y es justo en f₀ donde más tiene."
+
+  - id: tres-definiciones
+    tipo: pregunta
+    titulo: "Tres resonancias"
+    texto: "Con una bobina con pérdidas, X_{L} = X_{C}, el máximo de |Z| y el factor de potencia unidad dejan de coincidir. ¿Cuándo vale 1/(2π√(LC))?"
+    libro: [153, 154]
+    opciones:
+      - texto: "Bien mientras la bobina sea de buena calidad"
+        bien: true
+        porque: "Es una primera aproximación, excelente con Q alto. Con muchas pérdidas, puede no haber resonancia."
+      - texto: "Siempre, exactamente"
+        porque: "Solo en el circuito ideal. Con pérdidas en la bobina, las tres definiciones se separan."
+      - texto: "Nunca en un circuito real"
+        porque: "Con una bobina buena el error es pequeño: es una aproximación excelente."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [143, 144, 148, 150, 154]
+    ideas:
+      - { titulo: "Resonancia.", texto: "f₀ = 1/(2π√(LC)): la energía va y viene entre L y C." }
+      - { titulo: "Serie y paralelo.", texto: "En serie, impedancia mínima y Q veces la tensión en L y C; en paralelo, impedancia máxima." }
+      - { titulo: "Q.", texto: "√(L/C)/R en serie; el ancho de banda es f₀/Q." }
+      - { titulo: "En todas partes.", texto: "Cualquier L con cualquier C resuena, también las parásitas." }

@@ -1,0 +1,318 @@
+# Lección 1.1 de la sección 1.12 «Problemas de Diseño» (cap01): los problemas 1.A (referencia con un divisor), 1.B
+# (sección del cable) y 1.C (carga de disipación). Formato: contenido/lecciones11/GUIA.md.
+leccion: cap01/sec-1.12
+
+libro:
+  241: "La entrada que se va a alimentar presenta una resistencia equivalente de 47 kΩ"
+  245: 'R_("Th") = R "1"'
+  247: '"error relativo" = - (R_("Th"))/(R_("L") + R_("Th"))'
+  248: "el error por carga no depende de los valores del divisor, sino de su resistencia equivalente frente a la de la carga"
+  250: "La relación necesaria es R2/(R1+R2) = 3,3/12 = 0,275"
+  251: 'R "1" = "4,7 kΩ" quad R "2" = "1,8 kΩ"'
+  252: "con un consumo de 1,85 mA y RTh = 1,302 kΩ"
+  255: "−RTh/(RL+RTh) = −1302/48302"
+  256: "Si la entrada fuese de 10 kΩ en lugar de 47 kΩ, el error saltaría al −11,5 %"
+  257: "dividir RTh por diez multiplica por diez la corriente en reposo (18,5 mA)"
+  259: "Seguidor de tensión detrás del divisor"
+  265: "Un equipo consume 5 A a 12 V y se alimenta desde una fuente situada a 8 metros"
+  270: "la corriente va y vuelve, así que la longitud efectiva es el doble, 16 m"
+  272: 'A_("min") = (ρ dot.op L_("total") dot.op I)/("0,03" dot.op V_("cc"))'
+  275: '"0,36 V"'
+  276: '"3,82 mm"'
+  279: "68,8 mΩ"
+  280: "un cable a 60 °C dentro de una canaleta tiene un 16 % más de resistencia que a 20 °C"
+  281: "la elección correcta es 6 mm², que a 60 °C sigue dando 0,265 V (2,2 %)"
+  288: "Necesitas una carga fija de 100 Ω capaz de disipar 10 W"
+  293: "la potencia admisible se multiplica por n²"
+  297: "la matriz cuadrada inmediata es 4 × 4 = 16 resistencias"
+  301: '"0,625 W"'
+  302: "queda un 38 % de margen"
+  305: "la resistencia grande dentro de una rama pequeña"
+  306: "es el margen que cubre la tolerancia, la deriva térmica y el reparto desigual"
+
+modelo:
+  valores:
+    V_in: { sim: "V_{cc}", nombre: "alimentación", unidad: V, valor: 12 }
+    R_1: { sim: "R₁", nombre: "resistencia de arriba", unidad: Ω, valor: 4700 }
+    R_2: { sim: "R₂", nombre: "resistencia de abajo", unidad: Ω, valor: 1800 }
+    R_L: { sim: "R_{L}", nombre: "entrada del comparador", unidad: Ω, valor: 47000 }
+    carga: { tipo: interruptor, nombre: "entrada conectada", valor: 0 }
+    A_c: { sim: "A", nombre: "sección del cable", unidad: "mm²", valor: 2.5 }
+    cal: { tipo: interruptor, nombre: "cable a 60 °C", valor: 0 }
+    n_m: { sim: "n", nombre: "resistencias por rama y ramas", unidad: "", valor: 1 }
+  calculos:
+    R_ab: { si: carga, entonces: "par(R_2, R_L)", sino: "R_2", sim: "R_{abajo}", nombre: "rama de abajo", unidad: Ω }
+    V_out: { expr: "V_in*R_ab/(R_1 + R_ab)", sim: "V", nombre: "tensión de referencia", unidad: V, cifras: 4 }
+    V_vac: { expr: "V_in*R_2/(R_1 + R_2)", sim: "V₀", nombre: "tensión en vacío", unidad: V, cifras: 5 }
+    I_d: { expr: "V_in/(R_1 + R_ab)", sim: "I", nombre: "consumo del divisor", unidad: A }
+    I_L: { si: carga, entonces: "V_out/R_L", sino: "0", sim: "I_{L}", nombre: "corriente de la entrada", unidad: A }
+    R2_ideal: { expr: "0.275*R_1/(1 - 0.275)", sim: "R₂", nombre: "R₂ exacta", unidad: Ω }
+    R_th: { expr: "par(R_1, R_2)", sim: "R_{Th}", nombre: "resistencia de Thévenin del divisor", unidad: Ω, cifras: 4 }
+    err_c: { expr: "(V_out - V_vac)/V_vac*100", sim: "error", nombre: "error por la carga", unidad: "%", cifras: 3 }
+    err_v: { expr: "(V_vac - 3.3)/3.3*100", sim: "error", nombre: "error del valor comercial", unidad: "%", cifras: 2 }
+    R_cab: { expr: "1.72e-8*16/(A_c*1e-6)*(1 + 0.00393*40*cal)", sim: "R_{cable}", nombre: "resistencia de los 16 m de cable", unidad: Ω }
+    caida_v: { expr: "5*R_cab", sim: "caída", nombre: "caída en el cable", unidad: V }
+    caida_p: { expr: "caida_v/12*100", sim: "caída", nombre: "caída en % de 12 V", unidad: "%", cifras: 3 }
+    P_cab: { expr: "5^2*R_cab", sim: "P_{cable}", nombre: "potencia perdida en el cable", unidad: W }
+    A_min: { expr: "1.72e-8*16*5/(0.03*12)*1e6", sim: "A_{mín}", nombre: "sección mínima", unidad: "mm²" }
+    R_eq: { expr: "n_m*100/n_m", sim: "R_{eq}", nombre: "resistencia de la matriz", unidad: Ω }
+    N_r: { expr: "n_m^2", sim: "N", nombre: "número de resistencias", unidad: "", recortar: true }
+    P_adm: { expr: "n_m^2*1", sim: "P_{admisible}", nombre: "potencia admisible al 50 %", unidad: W }
+    P_r: { expr: "10/n_m^2", sim: "P_{r}", nombre: "potencia en cada resistencia con 10 W", unidad: W }
+
+tarjetas:
+  - id: explore-referencia
+    tipo: explorar
+    titulo: "1.A · Una referencia con un divisor"
+    texto: "12 V, 4,7 kΩ y 1,8 kΩ dan una referencia de 3,3 V. Conecte la entrada del comparador, de 47 kΩ, y mire la referencia."
+    libro: [241, 251]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: carga }
+      lectura: { valor: V_out, rotulo: "Referencia" }
+      datos:
+        - { valor: err_c, rotulo: "Error por la carga: {{err_c}}" }
+      corriente: I_d
+      mide: { salida: V_out, corriente: I_d, carga: I_L }
+      mandos:
+        - { valor: carga, tipo: conectar, boton: "Conectar el comparador (47 kΩ)" }
+    requiere: { conectar: [carga] }
+
+  - id: reto-e24
+    tipo: reto
+    titulo: "Reto: el par E24"
+    texto: "La relación necesaria es 3,3/12 = 0,275. Con R₁ = 4,7 kΩ, elija R₂ de la serie E24 para que en vacío dé 3,3 V (± 1 %)."
+    libro: [250, 251, 252]
+    fijar: { R_1: 4700, carga: 0 }
+    inicio: { R_2: 1000 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_vac, rotulo: "En vacío" }
+      datos:
+        - { valor: I_d, rotulo: "Consumo: {{I_d}}" }
+      corriente: I_d
+      mide: { salida: V_vac, corriente: I_d }
+      mandos:
+        - { valor: R_2, serie: E24, min: 1000, max: 3000, rotulo: "R₂ (E24)" }
+    condiciones:
+      - { valor: V_vac, objetivo: 3.3, tol: 0.01, rotulo: "En vacío: {{V_vac}}" }
+    exito: "1,8 kΩ: 3,3231 V, un +0,70 %, con 1,85 mA de consumo y R_{Th} = 1,302 kΩ."
+    pistas:
+      - { cuando: { valor: V_vac, mayor: 3.333 }, texto: "Sobra tensión: R₂ más pequeña." }
+      - { cuando: { valor: V_vac, menor: 3.267 }, texto: "Falta tensión: R₂ más grande." }
+    ayuda: "R₂/(4,7 kΩ + R₂) = 0,275 da R₂ ≈ 1,78 kΩ: busque el valor E24 más cercano."
+    comprobar:
+      - { con: { R_2: 1800 }, V_vac: 3.3231, err_v: 0.70, I_d: 0.00185, R_th: 1302 }
+      - { R2_ideal: 1783 }
+
+  - id: prediga-carga
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "El divisor equivale a 3,3231 V con R_{Th} = 1,302 kΩ. ¿Qué error introduce la entrada de 47 kΩ?"
+    libro: [245, 247, 255]
+    fijar: { R_1: 4700, R_2: 1800, R_L: 47000, carga: 1 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: carga }
+      lectura: { valor: err_c, rotulo: "Error por la carga" }
+      corriente: I_d
+      mide: { salida: V_out, corriente: I_d, carga: I_L }
+      ocultar: true
+    opciones:
+      - texto: "−2,69 %"
+        bien: true
+        porque: "−R_{Th}/(R_{L} + R_{Th}) = −1302/48302. Es el error dominante: solo ese se lleva 90 mV."
+      - texto: "Ninguno: 47 kΩ es mucho mayor que 1,8 kΩ"
+        porque: "No cuenta R₂ sola, sino R_{Th} frente a la carga, y 1,302 kΩ no es despreciable ante 47 kΩ."
+      - texto: "−11,5 %"
+        porque: "Ese sería con una entrada de 10 kΩ. Con 47 kΩ, el error es menor."
+    comprobar:
+      - { err_c: -2.695 }
+      - { con: { R_L: 10000 }, err_c: -11.52 }
+
+  - id: regla-error-carga
+    tipo: formula
+    titulo: "El error de carga"
+    texto: "El divisor es una fuente V₀ con R_{Th} = R₁ ‖ R₂; la carga forma un segundo divisor. Cambie la entrada."
+    nota: "Con 10 kΩ, −11,5 %: la referencia sería 2,94 V."
+    libro: [245, 247, 248, 256]
+    ec: 247
+    sustitucion: "−{{R_th}} / ({{R_L}} + {{R_th}}) = {{err_c}}"
+    fijar: { R_1: 4700, R_2: 1800, carga: 1 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: carga }
+      lectura: { valor: V_out, rotulo: "Referencia" }
+      datos:
+        - { valor: err_c, rotulo: "Error: {{err_c}}" }
+      corriente: I_d
+      mide: { salida: V_out, corriente: I_d, carga: I_L }
+      mandos:
+        - { valor: R_L, lista: [10000, 47000, 470000], rotulo: "Entrada, R_{L}" }
+    comprobar:
+      - { con: { R_L: 10000 }, V_out: 2.94, err_c: -11.5 }
+
+  - id: por-que-seguidor
+    tipo: pregunta
+    titulo: "¿Bajar R_{Th} o poner un seguidor?"
+    texto: "Se podría bajar R_{Th} con resistencias diez veces menores. ¿Por qué el libro prefiere un seguidor detrás del divisor?"
+    libro: [257, 259]
+    opciones:
+      - texto: "Bajar R_{Th} cuesta diez veces más consumo"
+        bien: true
+        porque: "18,5 mA en reposo, y aun así queda error. El seguidor, con megaohmios de entrada, borra el término de carga."
+      - texto: "Porque el seguidor corrige también la tolerancia"
+        porque: "La tolerancia y la deriva persisten con el seguidor. Para eso hace falta una referencia integrada."
+      - texto: "Porque resistencias tan pequeñas no existen"
+        porque: "Existen; el problema es la corriente en reposo, que se multiplica por diez."
+
+  - id: ida-y-vuelta
+    tipo: pregunta
+    titulo: "1.B · La sección del cable"
+    texto: "Un equipo de 12 V y 5 A está a 8 metros de la fuente. ¿Qué longitud de cable cuenta para la caída?"
+    libro: [265, 270]
+    opciones:
+      - texto: "16 m"
+        bien: true
+        porque: "La corriente va y vuelve: la longitud efectiva es el doble. Contar solo la ida es el primer error."
+      - texto: "8 m"
+        porque: "Esa es solo la ida. La corriente vuelve por el otro conductor, con su propia caída."
+      - texto: "4 m, porque los dos hilos van en paralelo"
+        porque: "No van en paralelo: van en serie con el equipo, uno de ida y otro de vuelta."
+
+  - id: estime-seccion
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La sección mínima"
+    texto: "El equipo debe recibir al menos el 97 %: caen como mucho 0,36 V. Con cobre, 16 m y 5 A, estime la sección mínima."
+    libro: [272, 275, 276]
+    estimar:
+      objetivo: "A_min"
+      unidad: "mm²"
+      min: 0
+      max: 10
+      paso: 0.05
+      inicio: 8
+      tol: 0.03
+      rotulo: "A_{mín}"
+    exito: "1,72 × 10⁻⁸ × 16 × 5 / 0,36 = 3,82 mm². La comercial inmediatamente superior es de 4 mm²."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 3.94 }, texto: "Se ha pasado: R máxima = 0,36/5 = 72 mΩ; A = ρ·16/R." }
+      - { texto: "Se ha quedado corto: ¿ha contado los 16 m, ida y vuelta?" }
+    comprobar:
+      - { A_min: 3.82 }
+
+  - id: reto-canaleta
+    tipo: reto
+    titulo: "Reto: el cable en la canaleta"
+    texto: "En la canaleta el cable estará a 60 °C, con un 16 % más de resistencia. Elija la sección que siga cumpliendo el 3 % de caída."
+    libro: [279, 280, 281]
+    fijar: { cal: 1 }
+    inicio: { A_c: 2.5 }
+    widget:
+      tipo: grafica
+      x: { id: aa, min: 1, max: 8, unidad: "mm²", rotulo: "A" }
+      y: { min: 0, max: 8, unidad: "%", rotulo: "caída" }
+      curvas:
+        - { expr: "100*5*1.72e-8*16/(aa*1e-6)*(1 + 0.00393*40*cal)/12", color: naranja, rotulo: "caída a 60 °C" }
+        - { expr: "3", color: tinta, rotulo: "límite, 3 %", discontinua: true }
+      asas:
+        - { mueve: A_c, x: "A_c", y: "caida_p", rotulo: "Sección" }
+      lectura: { valor: caida_p, rotulo: "Caída a 60 °C" }
+      datos:
+        - { valor: P_cab, rotulo: "Pierde: {{P_cab}}" }
+      mandos:
+        - { valor: A_c, lista: [2.5, 4, 6], rotulo: "Sección, A" }
+    condiciones:
+      - { valor: caida_p, max: 3, rotulo: "Caída: {{caida_p}}" }
+    exito: "6 mm²: 0,265 V a 60 °C, un 2,2 %. Con 4 mm² se cumplía a 20 °C, pero en caliente la caída pasa a 0,40 V."
+    pistas:
+      - { texto: "Cae demasiado: necesita más sección." }
+    ayuda: "A 20 °C, 4 mm² da 2,87 %; un 16 % más lo saca del 3 %."
+    comprobar:
+      - { con: { A_c: 6 }, caida_v: 0.265, caida_p: 2.21 }
+      - { con: { A_c: 4 }, caida_v: 0.40 }
+      - { con: { A_c: 4, cal: 0 }, R_cab: 0.0688, caida_p: 2.87 }
+
+  - id: explore-matriz
+    tipo: explorar
+    titulo: "1.C · Carga de 100 Ω y 10 W"
+    texto: "Hay resistencias de 100 Ω y 2 W, usadas al 50 %. Monte n en serie por n ramas y mueva n."
+    nota: "El valor no cambia; la potencia admisible crece como n²."
+    libro: [288, 293]
+    widget:
+      tipo: grafica
+      x: { id: nn, min: 1, max: 6, unidad: "", rotulo: "n" }
+      y: { min: 0, max: 36, unidad: W, rotulo: "P" }
+      curvas:
+        - { expr: "nn^2", color: azul, rotulo: "admisible, al 50 %" }
+        - { expr: "10", color: tinta, rotulo: "necesaria", discontinua: true }
+      asas:
+        - { mueve: n_m, x: "n_m", y: "P_adm", rotulo: "Tamaño de la matriz" }
+      lectura: { valor: P_adm, rotulo: "Potencia admisible" }
+      datos:
+        - { valor: R_eq, rotulo: "R_{eq} = {{R_eq}}" }
+        - { valor: N_r, rotulo: "Resistencias: {{N_r}}" }
+      mandos:
+        - { valor: n_m, min: 1, max: 6, paso: 1, rotulo: "n" }
+    requiere: { mover: [n_m] }
+
+  - id: reto-matriz
+    tipo: reto
+    titulo: "Reto: la matriz más pequeña"
+    texto: "Con 10 W en total, cada resistencia disipa 10/n² W y no debe pasar de 1 W. Elija la matriz cuadrada más pequeña que cumpla."
+    libro: [297, 301, 302]
+    inicio: { n_m: 1 }
+    widget:
+      tipo: grafica
+      x: { id: nn, min: 1, max: 6, unidad: "", rotulo: "n" }
+      y: { min: 0, max: 10, unidad: W, rotulo: "P por resistencia" }
+      curvas:
+        - { expr: "10/nn^2", color: naranja, rotulo: "cada resistencia" }
+        - { expr: "1", color: tinta, rotulo: "límite al 50 %", discontinua: true }
+      asas:
+        - { mueve: n_m, x: "n_m", y: "P_r", rotulo: "Tamaño de la matriz" }
+      lectura: { valor: P_r, rotulo: "Cada resistencia" }
+      datos:
+        - { valor: N_r, rotulo: "Resistencias: {{N_r}}" }
+      mandos:
+        - { valor: n_m, min: 1, max: 6, paso: 1, rotulo: "n" }
+    condiciones:
+      - { valor: P_r, max: 1, rotulo: "Cada una: {{P_r}}" }
+      - { valor: N_r, max: 16, rotulo: "Resistencias: {{N_r}}" }
+    exito: "La inmediata es 4 × 4 = 16 resistencias, a 0,625 W cada una: un 38 % de margen. Una mayor también aguantaría, pero sobrarían resistencias."
+    pistas:
+      - { cuando: { valor: N_r, mayor: 16 }, texto: "Cumple, pero sobra: hay una matriz más pequeña que también deja cada resistencia en 1 W o menos." }
+      - { texto: "Cada resistencia disipa demasiado: haga la matriz más grande." }
+    ayuda: "Hacen falta al menos 10 resistencias de 1 W útil: 3 × 3 = 9 no llega."
+    comprobar:
+      - { con: { n_m: 4 }, P_r: 0.625, N_r: 16, R_eq: 100 }
+      - { con: { n_m: 3 }, N_r: 9 }
+
+  - id: por-que-tolerancia
+    tipo: porque
+    titulo: "El peor caso no es el intuitivo"
+    texto: "Con resistencias del 5 %, el reparto deja de ser uniforme. ¿Cuál se calienta más?"
+    libro: [305, 306]
+    opciones:
+      - texto: "Una resistencia grande dentro de una rama pequeña"
+        bien: true
+        porque: "Recibe la corriente alta de una rama de poca resistencia y, además, más tensión que sus compañeras: 0,690 W."
+      - texto: "Cualquiera de la rama entera más baja"
+        porque: "Esa rama lleva más corriente, pero repartida entre resistencias todas pequeñas."
+      - texto: "Todas igual: están en una matriz"
+        porque: "Solo con resistencias iguales. El margen del 50 % existe para cubrir este reparto desigual."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [248, 259, 270, 281, 293, 306]
+    ideas:
+      - { titulo: "1.A.", texto: "Un divisor no es una referencia si la carga consume: el error depende de R_{Th} frente a la carga." }
+      - { titulo: "1.B.", texto: "Ida y vuelta, y en caliente: la sección que cumple a 20 °C puede no cumplir en la canaleta." }
+      - { titulo: "1.C.", texto: "n × n resistencias iguales: el mismo valor y n² veces la potencia, con margen para el reparto." }

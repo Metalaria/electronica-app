@@ -1,0 +1,245 @@
+# Lección 1.1 de la sección 0.8 «Ecuaciones Diferenciales y Circuitos» (cap00): la descarga de un RC, que la ecuación
+# impone como exponencial; la respuesta con fuente; el RLC y sus tres respuestas según ζ (oscila o no), el método
+# general y lo que el orden dice antes de resolver. Formato: contenido/lecciones11/GUIA.md.
+leccion: cap00/sec-0.8
+
+libro:
+  112: "un circuito con una sola reactancia da una ecuación de primer orden cuya solución es siempre una exponencial"
+  113: 'v lr(( t )) = V_("0") dot.op "e"^(- (t)\/(τ))'
+  115: "sobreamortiguada (vuelve al reposo sin oscilar)"
+  117: "Con RC = 1 ms y 5 V iniciales, a los 2 ms quedan 5·e^(−2) = 0,677 V"
+  118: "v(t) = Vf + (V₀ − Vf)·e^(−t/RC)"
+  119: "Con R = 10 Ω, L = 1 mH y C = 1 µF"
+  120: "probar exponenciales, lo que convierte la ecuación diferencial en una polinómica en s"
+  121: "Un elemento reactivo, una exponencial y ninguna oscilación posible"
+  122: "la exponencial (multiplicada por una constante) es la única función con esa propiedad"
+
+modelo:
+  valores:
+    V0: { sim: "V₀", nombre: "tensión inicial", unidad: V, valor: 5 }
+    Vf: { sim: "V_{f}", nombre: "tensión de la fuente", unidad: V, valor: 0 }
+    RC: { sim: "R·C", nombre: "constante de tiempo", unidad: s, valor: 0.001 }
+    t_d: { sim: "t", nombre: "instante", unidad: s, valor: 0.001 }
+    R: { sim: "R", nombre: "resistencia del RLC", unidad: Ω, valor: 10 }
+    L: { sim: "L", nombre: "inductancia", unidad: H, valor: 0.001 }
+    C: { sim: "C", nombre: "capacidad", unidad: F, valor: 0.000001 }
+  calculos:
+    v_d: { expr: "V0*exp(-t_d/RC)", sim: "v(t)", nombre: "tensión del condensador al descargarse", unidad: V }
+    v_f: { expr: "Vf + (V0 - Vf)*exp(-t_d/RC)", sim: "v(t)", nombre: "tensión con fuente", unidad: V }
+    omega0: { expr: "1/sqrt(L*C)", sim: "ω₀", nombre: "frecuencia angular natural", unidad: "rad/s" }
+    f0: { expr: "omega0/(2*pi)", sim: "f₀", nombre: "frecuencia natural", unidad: Hz }
+    zeta: { expr: "R/2*sqrt(C/L)", sim: "ζ", nombre: "factor de amortiguamiento", unidad: "", cifras: 3 }
+    # natural response of the capacitor voltage (from 1 V, no current): oscillating below ζ = 1, two exponentials above
+    a: { expr: "zeta*omega0", nombre: "ritmo de la envolvente", unidad: "1/s" }
+    wd: { expr: "omega0*sqrt(max(1 - zeta^2, 0.000000000001))", nombre: "frecuencia de la oscilación", unidad: "rad/s" }
+    wb: { expr: "omega0*sqrt(max(zeta^2 - 1, 0.000000000001))", nombre: "separación de las dos exponenciales", unidad: "1/s" }
+    s_sub: { expr: "min(max((1 - zeta)*1000000, 0), 1)", nombre: "es subamortiguada", unidad: "" }
+
+tarjetas:
+  - id: explore-descarga
+    tipo: explorar
+    titulo: "Un RC que se descarga"
+    texto: "Un condensador cargado se descarga por una resistencia. Arrastre el instante y cambie R·C. La curva es siempre una exponencial."
+    libro: [112, 113]
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 0.005, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 6, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "V0*exp(-x/RC)", color: azul, rotulo: "v(t)" }
+      asas:
+        - { mueve: t_d, x: "t_d", y: "v_d", rotulo: "Instante" }
+      lectura: { valor: v_d, rotulo: "Tensión" }
+      mandos:
+        - { valor: t_d, min: 0, max: 0.005, paso: 0.00025, rotulo: "Instante, t" }
+        - { valor: RC, lista: [0.0005, 0.001, 0.002], rotulo: "Constante de tiempo, R·C" }
+    requiere: { mover: [t_d, RC] }
+
+  - id: prediga-2ms
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "R·C = 1 ms y 5 V iniciales. ¿Cuánta tensión queda a los 2 ms?"
+    libro: [117]
+    fijar: { V0: 5, RC: 0.001, t_d: 0.002 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 0.005, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 6, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "V0*exp(-x/RC)", color: azul, rotulo: "v(t)" }
+      lectura: { valor: v_d, rotulo: "Tensión" }
+      ocultar: true
+    opciones:
+      - texto: "0,677 V"
+        bien: true
+        porque: "5·e^{−2} = 0,677 V: dos constantes de tiempo."
+      - texto: "1,84 V"
+        porque: "Eso es lo que queda a 1 ms, una sola constante de tiempo: 5·e^{−1}."
+      - texto: "0 V"
+        porque: "La exponencial nunca llega a cero: a los 2 ms aún queda tensión."
+    comprobar:
+      - { v_d: 0.677 }
+      - { con: { t_d: 0.001 }, v_d: 1.84 }
+
+  - id: regla-descarga
+    tipo: formula
+    titulo: "La ecuación y su solución"
+    texto: "La corriente del condensador es la de la resistencia: RC·dv/dt + v = 0. Su solución es la exponencial, con V₀ de la condición inicial."
+    libro: [113, 117]
+    ec: 113
+    sustitucion: "v = {{V0}} · e^(−{{t_d}} / {{RC}}) = {{v_d}}"
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 0.005, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 6, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "V0*exp(-x/RC)", color: azul, rotulo: "v(t)" }
+      asas:
+        - { mueve: t_d, x: "t_d", y: "v_d", rotulo: "Instante" }
+      mandos:
+        - { valor: t_d, min: 0, max: 0.005, paso: 0.00025, rotulo: "Instante, t" }
+
+  - id: explore-forzada
+    tipo: explorar
+    titulo: "Con fuente"
+    texto: "Si el RC se conecta a una fuente, la tensión va de V₀ a la de la fuente, V_{f}. Mueva las dos."
+    nota: "Con V₀ = 0, es la curva de carga 1 − e^{−t/τ}."
+    libro: [118]
+    fijar: { RC: 0.001 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 0.005, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 11, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "Vf + (V0 - Vf)*exp(-x/RC)", color: azul, rotulo: "v(t)" }
+        - { expr: "Vf + 0*x", color: tinta, rotulo: "la fuente, V_{f}", discontinua: true }
+      datos:
+        - { valor: V0, rotulo: "Empieza en {{V0}}" }
+        - { valor: Vf, rotulo: "Tiende a {{Vf}}" }
+      mandos:
+        - { valor: V0, min: 0, max: 10, paso: 1, rotulo: "Tensión inicial, V₀" }
+        - { valor: Vf, min: 0, max: 10, paso: 1, rotulo: "Fuente, V_{f}" }
+    requiere: { mover: [V0, Vf] }
+
+  - id: explore-rlc
+    tipo: explorar
+    titulo: "Segundo orden: el RLC"
+    texto: "Con una bobina y un condensador la ecuación es de segundo orden. L = 1 mH y C = 1 µF: mueva R y mire la forma de la respuesta."
+    libro: [115, 119]
+    fijar: { L: 0.001, C: 0.000001 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 0.001, unidad: s, rotulo: "t" }
+      y: { min: -1, max: 1.2, unidad: V, rotulo: "v_{C}" }
+      curvas:
+        - { expr: "s_sub*exp(-a*x)*(cos(wd*x) + a/wd*sin(wd*x)) + (1 - s_sub)*((exp((wb - a)*x) + exp(-(wb + a)*x))/2 + a/wb*(exp((wb - a)*x) - exp(-(wb + a)*x))/2)", color: azul, rotulo: "respuesta natural" }
+      lectura: { valor: zeta, rotulo: "Amortiguamiento, ζ" }
+      datos:
+        - { valor: f0, rotulo: "f₀ = {{f0}}" }
+      mandos:
+        - { valor: R, min: 5, max: 200, paso: 5, rotulo: "Resistencia, R" }
+    requiere: { mover: [R] }
+
+  - id: prediga-timbre
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "Con R = 10 Ω, L = 1 mH y C = 1 µF, ζ = 0,158. ¿Cómo responde el circuito?"
+    libro: [119, 115]
+    fijar: { R: 10, L: 0.001, C: 0.000001 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 0.001, unidad: s, rotulo: "t" }
+      y: { min: -1, max: 1.2, unidad: V, rotulo: "v_{C}" }
+      curvas:
+        - { expr: "s_sub*exp(-a*x)*(cos(wd*x) + a/wd*sin(wd*x)) + (1 - s_sub)*((exp((wb - a)*x) + exp(-(wb + a)*x))/2 + a/wb*(exp((wb - a)*x) - exp(-(wb + a)*x))/2)", color: azul, rotulo: "respuesta natural" }
+      lectura: { valor: zeta, rotulo: "Amortiguamiento, ζ" }
+      ocultar: true
+    opciones:
+      - texto: "Oscila amortiguándose"
+        bien: true
+        porque: "Con ζ < 1 la respuesta es una senoide envuelta en una exponencial que decrece: subamortiguada, el timbre."
+      - texto: "Vuelve al reposo sin oscilar"
+        porque: "Eso es la sobreamortiguada, con ζ > 1: una suma de dos exponenciales."
+      - texto: "Como un RC: una sola exponencial"
+        porque: "Con dos reactancias la ecuación es de segundo orden; con ζ = 0,158 oscila unas cuantas veces."
+    comprobar:
+      - { zeta: 0.158, f0: 5033 }
+
+  - id: reto-critico
+    tipo: reto
+    titulo: "Reto: amortiguamiento crítico"
+    texto: "Ajuste R hasta ζ = 1: lo más rápido posible sin oscilar."
+    libro: [115, 119]
+    fijar: { L: 0.001, C: 0.000001 }
+    inicio: { R: 10 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 0.001, unidad: s, rotulo: "t" }
+      y: { min: -1, max: 1.2, unidad: V, rotulo: "v_{C}" }
+      curvas:
+        - { expr: "s_sub*exp(-a*x)*(cos(wd*x) + a/wd*sin(wd*x)) + (1 - s_sub)*((exp((wb - a)*x) + exp(-(wb + a)*x))/2 + a/wb*(exp((wb - a)*x) - exp(-(wb + a)*x))/2)", color: azul, rotulo: "respuesta natural" }
+      mandos:
+        - { valor: R, min: 10, max: 150, paso: 1, rotulo: "Resistencia, R" }
+    condiciones:
+      - { valor: zeta, objetivo: 1, tol: 0.02, rotulo: "ζ = {{zeta}}" }
+    exito: "Con unos 63 Ω, ζ = 1: el límite entre oscilar y no oscilar."
+    pistas:
+      - { cuando: { valor: zeta, menor: 0.98 }, texto: "Todavía oscila (ζ < 1): suba R." }
+      - { cuando: { valor: zeta, mayor: 1.02 }, texto: "Sobreamortiguado (ζ > 1): vuelve lento, baje R." }
+    ayuda: "ζ = (R/2)·√(C/L). Con R = 10 Ω vale 0,158; para ζ = 1, R ha de ser unas seis veces mayor."
+    comprobar:
+      - { con: { R: 63 }, zeta: 0.996, tol: 0.001 }
+      - { con: { R: 10 }, zeta: 0.158 }
+
+  - id: por-que-exponencial
+    tipo: porque
+    titulo: "¿Por qué una exponencial?"
+    texto: "Todo transitorio de primer orden es una exponencial. ¿Por qué esa función y no otra?"
+    libro: [122, 117]
+    opciones:
+      - texto: "La ecuación pide una función proporcional a su propia derivada, y solo la exponencial lo es"
+        bien: true
+        porque: "La exponencial no se supone: la impone la ecuación."
+      - texto: "Porque se supone así al plantear el problema"
+        porque: "Se prueba una exponencial, pero la ecuación es la que obliga: ninguna otra función la cumple."
+      - texto: "Porque los condensadores no son lineales"
+        porque: "El RC es lineal. La exponencial sale de que la derivada sea proporcional a la función."
+
+  - id: ordene-metodo
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "El método, en general"
+    texto: "Ordene los pasos para hallar la respuesta de un circuito con reactancias."
+    libro: [120]
+    ordenar:
+      - "Escribir Kirchhoff con la relación de cada componente"
+      - "Probar exponenciales: queda un polinomio en s"
+      - "Resolver el polinomio: sus raíces son los modos naturales"
+      - "Ajustar las constantes con las condiciones iniciales"
+    exito: "Eso es. El polinomio en s es lo que Laplace formaliza; los fasores, el caso s = jω."
+    pistas:
+      - { texto: "Las condiciones iniciales se usan al final, cuando ya hay constantes que ajustar." }
+
+  - id: contar-reactancias
+    tipo: pregunta
+    titulo: "Antes de resolver nada"
+    texto: "Un circuito tiene resistencias y un único condensador. ¿Puede oscilar?"
+    libro: [121]
+    opciones:
+      - texto: "No: un elemento reactivo da una exponencial, sin oscilación posible"
+        bien: true
+        porque: "Contar reactancias dice qué forma puede tener la respuesta: con dos, puede oscilar."
+      - texto: "Sí, si la resistencia es pequeña"
+        porque: "Con una sola reactancia la ecuación es de primer orden: exponencial, sea cual sea R."
+      - texto: "Depende de la tensión inicial"
+        porque: "La tensión inicial fija la constante, no la forma: sigue siendo una exponencial."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [113, 118, 119, 121]
+    ideas:
+      - { titulo: "Primer orden.", texto: "Una reactancia, una exponencial: v = V₀·e^{−t/τ}; con 1 ms y 5 V, a los 2 ms, 0,677 V." }
+      - { titulo: "Con fuente.", texto: "v = V_{f} + (V₀ − V_{f})·e^{−t/RC}: de la inicial a la de la fuente." }
+      - { titulo: "Segundo orden.", texto: "ζ < 1 oscila, ζ > 1 no, ζ = 1 es el límite." }
+      - { titulo: "El método.", texto: "Kirchhoff, probar exponenciales, resolver el polinomio en s, condiciones iniciales." }

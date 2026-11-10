@@ -1,0 +1,235 @@
+# Lección 1.1 de la sección 1.6 «Corriente Alterna y Valores Característicos» (cap01). Formato:
+# contenido/lecciones11/GUIA.md.
+leccion: cap01/sec-1.6
+
+libro:
+  130: "también es continua, aunque no constante"
+  131: 'v lr(( t )) = V_("p")'
+  132: "ω = 2πf es la frecuencia angular en radianes por segundo"
+  134: "es el valor de tensión continua que produciría exactamente la misma disipación de calor en una resistencia"
+  135: 'V_("RMS") = (V_("p"))/(sqrt("2"))'
+  136: "el valor de pico real alcanza 230 × √2 ≈ 325 V"
+  137: "rectifican la señal, toman su valor medio y lo multiplican por 1,11"
+  139: "Vp fija la altura, ω = 2πf el ritmo, y φ el desplazamiento temporal"
+  140: "con una cuadrada simétrica lee 1,11·Vp, un 11 % de más"
+  "cap01#345": "Una señal sinusoidal tiene un valor de pico de 17 V"
+
+modelo:
+  valores:
+    V_p: { sim: "V_{p}", nombre: "valor de pico", unidad: V, valor: 17 }
+    f: { sim: "f", nombre: "frecuencia", unidad: Hz, valor: 50 }
+    phi: { sim: "φ", nombre: "fase inicial", unidad: "°", valor: 0 }
+    R_c: { sim: "R", nombre: "resistencia de carga", unidad: Ω, valor: 100 }
+    V_ef: { sim: "V_{RMS}", nombre: "eficaz de la red", unidad: V, valor: 230 }
+    cuad: { tipo: interruptor, nombre: "onda cuadrada", valor: 0 }
+  calculos:
+    w: { expr: "2*pi*f", sim: "ω", nombre: "frecuencia angular", unidad: "rad/s" }
+    T: { expr: "1/f", sim: "T", nombre: "periodo", unidad: s }
+    V_rms: { expr: "V_p/sqrt(2)", sim: "V_{RMS}", nombre: "valor eficaz", unidad: V, cifras: 4 }
+    V_med: { expr: "2*V_p/pi", sim: "V_{medio}", nombre: "valor medio de la senoide rectificada", unidad: V }
+    P_m: { expr: "V_rms^2/R_c", sim: "P", nombre: "potencia media", unidad: W }
+    P_pico: { expr: "V_p^2/R_c", sim: "P_{pico}", nombre: "potencia calculada con el pico", unidad: W }
+    V_pr: { expr: "V_ef*sqrt(2)", sim: "V_{p}", nombre: "pico de la red", unidad: V }
+    V_mal: { expr: "V_ef/sqrt(2)", sim: "V_{ef}·0,707", nombre: "eficaz por 0,707", unidad: V }
+    V_true: { si: cuad, entonces: "V_p", sino: "V_p/sqrt(2)", sim: "V_{RMS}", nombre: "eficaz verdadero", unidad: V }
+    V_mr: { si: cuad, entonces: "V_p", sino: "2*V_p/pi", sim: "medio", nombre: "valor medio rectificado", unidad: V }
+    V_mult: { expr: "1.11*V_mr", sim: "lectura", nombre: "lectura del multímetro promediador", unidad: V }
+    err_m: { expr: "(V_mult - V_true)/V_true*100", sim: "error", nombre: "error del multímetro", unidad: "%", cifras: 2 }
+    t_cresta: { expr: "(90 - phi - 360*floor((90 - phi)/360))/(360*f)", nombre: "instante de la cresta", unidad: s }
+
+tarjetas:
+  - id: explore-senoide
+    tipo: explorar
+    titulo: "La señal senoidal"
+    texto: "Mueva el pico, la frecuencia y la fase, o arrastre la cresta. Cada uno cambia una sola cosa de la curva."
+    libro: [131, 132, 139]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+      y: { min: -20, max: 20, unidad: V, rotulo: "v(t)" }
+      curvas:
+        - { expr: "V_p*sin(w*t + phi*pi/180)", color: azul, rotulo: "v(t)" }
+      asas:
+        - { mueve: V_p, x: "t_cresta", y: "V_p", rotulo: "Cresta: el pico" }
+      lectura: { valor: T, rotulo: "Periodo" }
+      datos:
+        - { valor: w, rotulo: "ω = {{w}}" }
+      mandos:
+        - { valor: V_p, min: 1, max: 20, paso: 1, rotulo: "Pico, V_{p}" }
+        - { valor: f, min: 25, max: 100, paso: 5, rotulo: "Frecuencia, f" }
+        - { valor: phi, min: -180, max: 180, paso: 15, rotulo: "Fase, φ" }
+    requiere: { mover: [V_p, f, phi] }
+
+  - id: continua-no-constante
+    tipo: pregunta
+    titulo: "¿Continua o alterna?"
+    texto: "Un rectificador sin filtrar da esta tensión: pulsa entre cero y un máximo, siempre en el mismo sentido. ¿Qué es?"
+    libro: [130]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 20, unidad: V, rotulo: "v(t)" }
+      curvas:
+        - { expr: "V_p*abs(sin(w*t))", color: azul, rotulo: "rectificada" }
+        - { expr: "V_med", color: naranja, rotulo: "valor medio", discontinua: true }
+      lectura: { valor: V_med, rotulo: "Componente continua" }
+    opciones:
+      - texto: "Continua, aunque no constante"
+        bien: true
+        porque: "Continua es la que circula siempre en el mismo sentido. El filtro de una fuente la acerca a constante."
+      - texto: "Alterna, porque varía"
+        porque: "Variar no la hace alterna: nunca cambia de sentido. Es su valor medio más una variación."
+      - texto: "No es continua: continua es la constante"
+        porque: "Constante es la de una pila. Continua, en sentido estricto, es la que no cambia de sentido."
+
+  - id: explore-eficaz
+    tipo: explorar
+    titulo: "El mismo calor"
+    texto: "La senoide calienta una resistencia de 100 Ω a ráfagas. Mueva el pico: la línea es la continua que daría el mismo calor medio."
+    libro: [134]
+    fijar: { R_c: 100, f: 50, phi: 0 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 4.5, unidad: W, rotulo: "p(t)" }
+      curvas:
+        - { expr: "(V_p*sin(w*t))^2/R_c", color: azul, rotulo: "potencia instantánea" }
+        - { expr: "P_m", color: naranja, rotulo: "potencia media", discontinua: true }
+      lectura: { valor: V_rms, rotulo: "Continua equivalente" }
+      datos:
+        - { valor: P_m, rotulo: "Potencia media: {{P_m}}" }
+      mandos:
+        - { valor: V_p, min: 1, max: 20, paso: 1, rotulo: "Pico, V_{p}" }
+
+  - id: prediga-red
+    tipo: predecir
+    titulo: "Prediga"
+    texto: "La red europea es de 230 V. Ese número es el valor eficaz. ¿A cuánto llega el pico?"
+    libro: [136]
+    fijar: { V_ef: 230 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+      y: { min: -400, max: 400, unidad: V, rotulo: "v(t)" }
+      curvas:
+        - { expr: "V_pr*sin(2*pi*50*t)", color: azul, rotulo: "red" }
+      lectura: { valor: V_pr, rotulo: "Pico de la red" }
+      ocultar: true
+    opciones:
+      - texto: "Unos 325 V"
+        bien: true
+        porque: "230 × √2 ≈ 325 V. Una distinción vital para la seguridad y el diseño."
+      - texto: "230 V"
+        porque: "Los 230 V son el eficaz. El pico de una senoide es √2 veces mayor."
+      - texto: "Unos 163 V"
+        porque: "Eso es multiplicar por 0,707. Se divide el pico entre √2 para el eficaz, no al revés."
+    comprobar:
+      - { V_pr: 325.27 }
+      - { V_mal: 162.6 }
+
+  - id: regla-eficaz
+    tipo: formula
+    titulo: "El valor eficaz"
+    texto: "Para una senoide pura, el eficaz es el pico dividido por la raíz de dos."
+    nota: "0,707 es un redondeo de 1/√2, no el valor."
+    libro: [135, 139]
+    ec: 135
+    sustitucion: "{{V_p}} / √2 = {{V_rms}}"
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+      y: { min: -20, max: 20, unidad: V, rotulo: "v(t)" }
+      curvas:
+        - { expr: "V_p*sin(w*t + phi*pi/180)", color: azul, rotulo: "v(t)" }
+        - { expr: "V_rms", color: naranja, rotulo: "V_{RMS}", discontinua: true }
+      asas:
+        - { mueve: V_p, x: "t_cresta", y: "V_p", rotulo: "Cresta: el pico" }
+      lectura: { valor: V_rms, rotulo: "Valor eficaz" }
+      mandos:
+        - { valor: V_p, min: 1, max: 20, paso: 1, rotulo: "Pico, V_{p}" }
+
+  - id: estime-potencia
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "17 V de pico en 100 Ω"
+    texto: "Una senoide de 17 V de pico se aplica a 100 Ω. Estime la potencia media que disipa."
+    libro: ["cap01#345"]
+    fijar: { V_p: 17, R_c: 100 }
+    estimar:
+      objetivo: "P_m"
+      unidad: W
+      min: 0
+      max: 3
+      paso: 0.05
+      inicio: 0.2
+      tol: 0.04
+      rotulo: "Potencia media"
+    exito: "El eficaz es 17/1,414 = 12,02 V, y P = 12,02²/100 = 1,45 W."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 1.51 }, texto: "Se ha pasado: con el pico sale 2,89 W, un resultado exagerado. Use el eficaz." }
+      - { texto: "Se ha quedado corto: halle el eficaz, 17/√2, y luego V²/R." }
+    comprobar:
+      - { V_rms: 12.02, P_m: 1.445, P_pico: 2.89 }
+
+  - id: empareje-formas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Solo para la senoide"
+    texto: "El factor 1/√2 solo vale para la senoide pura. Empareje cada forma de onda con su V_{RMS}/Vₚ."
+    libro: [139]
+    emparejar:
+      - ["Senoidal", "0,7071"]
+      - ["Cuadrada simétrica", "1,0000"]
+      - ["Triangular", "0,5774 = 1/√3"]
+    exito: "Usar 0,707 con una cuadrada da un error del −29 %: el eficaz verdadero es el propio pico."
+    pistas:
+      - { texto: "La cuadrada está siempre en su pico; la triangular pasa más tiempo cerca de cero que la senoide." }
+
+  - id: multimetro
+    tipo: sorpresa
+    titulo: "El multímetro promediador"
+    texto: "Un multímetro económico rectifica, promedia y multiplica por 1,11. Cambie a onda cuadrada y compare su lectura con el eficaz verdadero."
+    libro: [137, 140]
+    fijar: { f: 50, phi: 0, V_p: 10 }
+    inicio: { cuad: 0 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+      y: { min: -12, max: 12, unidad: V, rotulo: "v(t)" }
+      curvas:
+        - { expr: "V_p*(cuad*(1 - 2*(floor(2*f*t) - 2*floor(f*t))) + (1 - cuad)*sin(w*t))", color: azul, rotulo: "v(t)" }
+        - { expr: "V_true", color: naranja, rotulo: "eficaz verdadero" }
+        - { expr: "V_mult", color: tinta, rotulo: "lectura", discontinua: true }
+      lectura: { valor: err_m, rotulo: "Error de la lectura" }
+      datos:
+        - { valor: V_true, rotulo: "Eficaz: {{V_true}}" }
+        - { valor: V_mult, rotulo: "Lee: {{V_mult}}" }
+      mandos:
+        - { valor: cuad, tipo: interruptor, rotulo: "Onda cuadrada" }
+    requiere: { mover: [cuad] }
+    comprobar:
+      - { con: { cuad: 1 }, err_m: 11 }
+
+  - id: por-que-true-rms
+    tipo: porque
+    titulo: "¿Por qué acierta el True RMS?"
+    texto: "Un multímetro de verdadero valor eficaz no se equivoca con la cuadrada ni con la triangular. ¿Por qué?"
+    libro: [137, 140]
+    opciones:
+      - texto: "Calcula la raíz de la media del cuadrado"
+        bien: true
+        porque: "Es la definición del eficaz, así que no depende de la forma de onda."
+      - texto: "Mide el pico y lo multiplica por 0,707"
+        porque: "Ese factor solo vale para la senoide: con una cuadrada erraría un 29 %."
+      - texto: "Promedia la señal rectificada con más cuidado"
+        porque: "Promediar y multiplicar por 1,11 presupone una senoide, por cuidadoso que sea."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [130, 131, 134, 135, 137]
+    ideas:
+      - { titulo: "La senoide.", texto: "Vₚ la altura, ω = 2πf el ritmo y φ el desplazamiento." }
+      - { titulo: "Eficaz.", texto: "La continua que daría el mismo calor: Vₚ/√2 en una senoide; la red de 230 V llega a 325 V de pico." }
+      - { titulo: "Solo senoide.", texto: "1/√2 y el 1,11 del multímetro promediador solo valen para la senoide pura." }
+      - { titulo: "Continua.", texto: "La que no cambia de sentido, aunque no sea constante." }
