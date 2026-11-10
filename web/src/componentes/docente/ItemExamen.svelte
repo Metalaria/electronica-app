@@ -26,7 +26,10 @@
   const bloques = $derived(m.k === 'ejercicio' ? libro.bloques(m.ref) : undefined);
   const vr = $derived(varianteDe(m, libro));
   const esp = $derived(vr ? esperadoVariante(vr.item, vr.v) : null);
-  const abierta = $derived(!vr && !!ejercicio && (ejercicio.modo === 'comparar' || (ejercicio.otras?.length ?? 0) > 0));
+  // (review 11a: a 1.0 draft's text for an exercise 1.0 self-assessed stays on show: it is graded as an open part)
+  const abierta = $derived(
+    !vr && !!ejercicio && (ejercicio.modo === 'comparar' || (ejercicio.otras?.length ?? 0) > 0 || (!!ejercicio.comparar10 && !!valores.texto?.trim())),
+  );
 </script>
 
 <div class="item-examen" data-item-examen={m.n} data-ref={m.ref}>

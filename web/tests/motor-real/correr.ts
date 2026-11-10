@@ -15,6 +15,10 @@ if (modo === 'casos') {
   await import('./escenariosBrilliant10.ts');
   // (1.0 exercises, review 10g: drafts against another device's solved state)
   await import('./escenariosEjercicios10.ts');
+  // (1.1: the real modules' stores with their own merge — laboratorio, seguridad — against a stale tab)
+  await import('./escenarios11.ts');
+  // (review 11a: the lessons' store with its merge, and the lab's «Hágalo por mí» mark)
+  await import('./escenarios11a.ts');
   console.log(JSON.stringify(await correrCasos(a1)));
 } else if (modo === 'rendimiento') {
   // … correr.ts rendimiento [circuitos,…] : one autosave of the editor's library (≈ 13 kB per circuit)

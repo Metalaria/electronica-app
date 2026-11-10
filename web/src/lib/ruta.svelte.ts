@@ -31,6 +31,9 @@
 //                                ~10 items chosen for the reader, or focused on a chapter or a section
 //          #/problema[/ayer]     the problem of the day, or yesterday's with its solution (group B, componentes/problema)
 //          #/guia[/<seccion>[/<apartado>]]  the in-app user guide (1.0, componentes/guia, content in lib/guia/contenido.ts)
+//          #/etapas[/<parte>[/<n>]]  1.1 projects by stages (componentes/proyectos11): the four projects, one, a stage
+//          #epa://leccion/<parte>/<label>  1.1: a deep link of the book's QR codes (lib/enlaces.ts), replaced by
+//                                #/leccion/<parte>/<label> (also #/epa://…; invalid → #/leccion, «no encontrada»)
 //
 // Each history entry remembers its scroll position (history.state.y), so «Atrás» (the button,
 // the browser or the Android back button) returns exactly where the reader was. Overlays
@@ -39,8 +42,10 @@
 import { registrar } from './registro';
 import { hayCambiosSinGuardar, olvidarPermiso, preguntandoSalida, puedeSalir } from './salida';
 import { miga, rutaSegura } from './informe-fallos';
+import { rutaDeHashEnlace } from './enlaces';
+import { destinoRetirado } from './datos';
 
-export type Vista = 'inicio' | 'parte' | 'glosario' | 'marcadores' | 'simulador' | 'componentes' | 'conceptos' | 'consolas' | 'instrumentos' | 'fm7303' | 'repaso' | 'ejercicios' | 'calculadoras' | 'proyectos' | 'sincronizacion' | 'diagnostico' | 'leccion' | 'cursos' | 'progreso' | 'practicar' | 'problema' | 'docente' | 'guia';
+export type Vista = 'inicio' | 'parte' | 'glosario' | 'marcadores' | 'simulador' | 'componentes' | 'conceptos' | 'consolas' | 'instrumentos' | 'fm7303' | 'repaso' | 'ejercicios' | 'calculadoras' | 'proyectos' | 'sincronizacion' | 'diagnostico' | 'leccion' | 'cursos' | 'progreso' | 'practicar' | 'problema' | 'docente' | 'guia' | 'etapas';
 
 export interface AnclaLectura {
   /** Index of the top-level block at the top of the screen. */
@@ -80,6 +85,10 @@ function estado(): EstadoHistoria {
 }
 
 function leer(): void {
+  // 1.1: a book QR's deep link opened or pasted as a hash (#epa://leccion/<parte>/<label>, lib/enlaces.ts): replaced by
+  // its lesson route, validated (anything else that starts with «epa:» opens the lesson page's «no encontrada»)
+  const enlace = rutaDeHashEnlace(location.hash);
+  if (enlace !== null) history.replaceState(estado(), '', enlace);
   const h = decodeURIComponent(location.hash.replace(/^#\/?/, ''));
   const [a = '', ...resto] = h.split('/');
   const b = resto.join('/');
@@ -137,9 +146,12 @@ function leer(): void {
   } else if (a === 'leccion') {
     // #/leccion/<parte>/<seccion>[/<pantalla>]: the part in ruta.parte, «<seccion>[/<pantalla>]» in ruta.ancla
     const [parte = '', ...demas] = resto;
+    // 1.1: the lesson of a section a book expansion retired (P02 absorbs 32.13) is the one of where its content went
+    const d = destinoRetirado(parte, demas[0] ?? '');
+    if (d) history.replaceState(estado(), '', `#/leccion/${d.parte}/${encodeURIComponent(d.label)}`);
     ruta.vista = 'leccion';
-    ruta.parte = parte;
-    ruta.ancla = demas.join('/');
+    ruta.parte = d ? d.parte : parte;
+    ruta.ancla = d ? d.label : demas.join('/');
   } else if (a === 'diagnostico') {
     ruta.vista = 'diagnostico';
     ruta.parte = '';
@@ -159,6 +171,11 @@ function leer(): void {
     ruta.ancla = b;
   } else if (a === 'problema') {
     ruta.vista = 'problema';
+    ruta.parte = '';
+    ruta.ancla = b;
+  } else if (a === 'etapas') {
+    // 1.1: the projects by stages; «<parte>[/<n>]» in ruta.ancla (componentes/proyectos11)
+    ruta.vista = 'etapas';
     ruta.parte = '';
     ruta.ancla = b;
   } else if (a === 'guia') {
@@ -188,9 +205,13 @@ function leer(): void {
     ruta.parte = 'glosario';
     ruta.ancla = b;
   } else {
+    // 1.1: a label a book expansion retired (P02 absorbs 32.13: a bookmark, a note, an old link) opens where its
+    // content went (lib/datos.ts destinoRetirado)
+    const d = destinoRetirado(a, b);
+    if (d) history.replaceState(estado(), '', `#/${d.parte}/${encodeURIComponent(d.label)}`);
     ruta.vista = 'parte';
-    ruta.parte = a;
-    ruta.ancla = b;
+    ruta.parte = d ? d.parte : a;
+    ruta.ancla = d ? d.label : b;
   }
   const e = estado();
   ruta.y = typeof e.y === 'number' ? e.y : null;
@@ -299,8 +320,18 @@ export function prepararSalto(desde: { texto: string }): void {
   desdePendiente = desde;
 }
 
-/** The address of the route on screen (the last one read). */
+/** The address of the route on screen (the last one read, or the one the page put in its place). */
 let direccionActual = typeof location === 'undefined' ? '' : location.href;
+
+/**
+ * Review 11c: a page that shows another part of itself replaces its address (a lesson's card, «…/sec-1.4/4») without a
+ * route change; it calls this so a leave question it then cancels puts back THAT address, not the one the router last
+ * read (the lesson's first card: a reload after «Seguir en la lección» had jumped back to it).
+ */
+export function reemplazarDireccion(h: string): void {
+  if (location.hash !== h) history.replaceState(history.state, '', h);
+  direccionActual = location.href;
+}
 
 /**
  * Review 10f: a route change while the page on screen has unsaved changes (lib/salida.ts) — a link, a button that sets

@@ -1067,6 +1067,9 @@ export function sincronizableGuardado<T>(
     unir?: (a: unknown, b: unknown) => unknown;
   },
 ) {
+  // (1.1, enlaces11: a module's Guardado must mark its writes under the store's key — without marks a change of the
+  // reader cannot be told from a stale copy, and another tab's stale copy took it away: scenario e11·1)
+  if (g.o.claveSinc !== o.clave) throw new Error(`sincronizableGuardado «${o.clave}»: the Guardado of «${g.o.claveAlmacen}» marks as «${g.o.claveSinc ?? '(nothing)'}»`);
   return {
     clave: o.clave,
     nombre: o.nombre,

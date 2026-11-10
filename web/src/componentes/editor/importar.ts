@@ -534,7 +534,75 @@ export function documentoDeEditable(texto: string, e: EditableAuto, origen: Docu
   const doc: DocumentoEsquema = { version: 1, titulo, componentes, cables, analisis, directivas: directivas.join('\n'), origen };
   recordarNodos(doc, elems);
   unirRedesPartidas(doc, wid, cid);
+  etiquetarControles(doc, elems, cid);
   return doc;
+}
+
+/**
+ * Nodes a netlist line reads without a terminal of its own in the drawing: the control nodes of a controlled source
+ * (E/G with four nodes, or POLY(n) and its 2n nodes) and the V(a) / V(a, b) of an expression (B, E/G VALUE=…). The
+ * automatic layout draws a controlled source with its output only, so those nodes are not wired to it.
+ */
+export function nodosDeControl(elems: Iterable<{ letra: string; nodos: string[]; resto: string }>): Set<string> {
+  const r = new Set<string>();
+  const nodo = (x: string) => x.toLowerCase().replace(/^gnd$/, '0');
+  for (const l of elems) {
+    if (l.letra !== 'E' && l.letra !== 'G' && l.letra !== 'B') continue;
+    if (l.letra !== 'B' && l.nodos.length >= 4) for (const n of l.nodos.slice(2, 4)) r.add(nodo(n));
+    const poly = /^\s*poly\s*\(\s*(\d+)\s*\)\s*(.*)$/is.exec(l.resto);
+    if (l.letra !== 'B' && poly) {
+      const t = poly[2]!.trim().split(/\s+/);
+      for (const n of t.slice(0, 2 * Number(poly[1]))) if (/^[^=(){}]+$/.test(n)) r.add(nodo(n));
+    }
+    for (const m of l.resto.matchAll(/\bv\s*\(\s*([^\s,()]+)\s*(?:,\s*([^\s,()]+)\s*)?\)/gi)) {
+      r.add(nodo(m[1]!));
+      if (m[2]) r.add(nodo(m[2]));
+    }
+  }
+  return r;
+}
+
+/**
+ * A terminal left alone in the drawing whose node a controlled source or an expression reads (nodosDeControl) is not
+ * loose: a net label with the node's name goes on it, so it is drawn as joined to what reads it and the editor does
+ * not warn of an unconnected terminal (the netlist it writes is the same: the label names the node it already had).
+ */
+function etiquetarControles(doc: DocumentoEsquema, elems: Map<string, LineaElem>, cid: () => string): void {
+  const control = nodosDeControl(elems.values());
+  control.delete('0');
+  if (!control.size) return;
+  const porId = new Map(doc.componentes.map((c) => [c.id, c]));
+  const cablePorId = new Map(doc.cables.map((w) => [w.id, w]));
+  const con = conectividad(doc);
+  const clave = (x: number, y: number) => `${Math.round(x * 1000)},${Math.round(y * 1000)}`;
+  const sueltos = new Set(con.sueltos.map(([x, y]) => clave(x, y)));
+  for (const r of con.redes) {
+    if (r.pines.length !== 1 || r.explicita) continue;
+    const pk = r.pines[0]!;
+    const c = porId.get(pk.slice(0, pk.indexOf('.')));
+    const pin = pk.slice(pk.indexOf('.') + 1);
+    const nodo = c?.redes?.[pin];
+    if (!c || !nodo || !control.has(nodo)) continue;
+    const q = pinesMundo(c).find((x) => x.nombre === pin);
+    if (!q) continue;
+    // at the free end of the lead the layout drew from the terminal (else that end stays loose), or at the terminal
+    let sitio: { x: number; y: number; dir: [number, number] } = { x: q.x, y: q.y, dir: [q.dx, q.dy] };
+    for (const id of r.cables) {
+      const w = cablePorId.get(id);
+      if (!w) continue;
+      for (const [a, b] of [
+        [0, 2],
+        [2, 0],
+      ] as const) {
+        if (!sueltos.has(clave(w.p[a], w.p[a + 1]!))) continue;
+        const dx = w.p[a]! - w.p[b]!;
+        const dy = w.p[a + 1]! - w.p[b + 1]!;
+        const n = Math.hypot(dx, dy) || 1;
+        sitio = { x: w.p[a]!, y: w.p[a + 1]!, dir: [Math.round(dx / n), Math.round(dy / n)] };
+      }
+    }
+    doc.componentes.push({ id: cid(), tipo: 'ETQ', nombre: '', x: sitio.x, y: sitio.y, o: orientacionHacia(sitio.dir, [1, 0]), campos: { red: nodo } });
+  }
 }
 
 /**

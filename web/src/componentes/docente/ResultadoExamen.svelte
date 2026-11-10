@@ -6,7 +6,8 @@
   import { prepararHtml } from '../../lib/datos';
   import { actualizarResultado, cargarDocente, docente, propio, resultado } from '../../lib/docente/estado.svelte';
   import { libro, prepararItems } from '../../lib/docente/fuentes';
-  import { calificarItem, esperadoVariante, letraVariante, montadoDeResultado, preguntaVista, textoPuntos, varianteDe } from '../../lib/docente/examen';
+  import { calificarItem, claveCambiada, esperadoVariante, letraVariante, montadoDeResultado, preguntaVista, recalificarGuardado, textoPuntos, varianteDe } from '../../lib/docente/examen';
+  import { faltaSimular, simularDiseno } from '../../lib/diseno-ejercicio';
   import { respuestaCorrecta } from '../../lib/preguntas-ejercicio';
   import type { EstadoItem } from '../../lib/docente/tipos';
   import { enunciadoDe, textoCorrecto, valorTexto } from '../practica/variantes';
@@ -58,7 +59,8 @@
     try {
       const items = r.items.map((it, k) => {
         if (k !== i) return it;
-        const c = calificarItem(montadoDeResultado(it, k + 1), libro, it.valores, nota);
+        // (review 11a: only the self-assessment moves the grade — never a later change of the book's key)
+        const c = recalificarGuardado(it, k + 1, libro, { autoeval: nota });
         return { ...it, autoeval: nota, puntos: c.puntos, estado: c.estado };
       });
       const puntos = Math.round(items.reduce((a, x) => a + x.puntos, 0) * 100) / 100;
@@ -66,6 +68,32 @@
     } catch (e) {
       // (review 10c: said, not swallowed; the grade shown is still the stored one)
       falloAuto = `No se ha podido guardar la autoevaluación (${e instanceof Error ? e.message : String(e)}). Vuelva a pulsarla.`;
+    } finally {
+      guardando = false;
+    }
+  }
+
+  let falloSimular = $state('');
+
+  /**
+   * Review 11a: a design the hand-in could not simulate (ngspice failed for a moment) is simulated now and the item
+   * graded again with it; the rest of its grade stays as stored.
+   */
+  async function simularAhora(i: number) {
+    if (!r || guardando) return;
+    guardando = true;
+    falloSimular = '';
+    try {
+      const it = r.items[i]!;
+      const e = libro.ejercicio(it.ref);
+      const { medirDiseno } = await import('../../lib/simular-diseno');
+      const valores = { ...it.valores };
+      for (const q of e?.preguntas ?? []) if (q.tipo === 'diseno' && faltaSimular(q, valores[q.id] ?? '')) valores[q.id] = await simularDiseno(q, valores[q.id] ?? '', medirDiseno);
+      const c = recalificarGuardado(it, i + 1, libro, { valores });
+      const items = r.items.map((x, k) => (k === i ? { ...x, valores, puntos: c.puntos, estado: c.estado } : x));
+      await actualizarResultado(id, items, Math.round(items.reduce((a, x) => a + x.puntos, 0) * 100) / 100);
+    } catch (e) {
+      falloSimular = `No se ha podido simular el diseño (${e instanceof Error ? e.message : String(e)}). Vuelva a intentarlo.`;
     } finally {
       guardando = false;
     }
@@ -92,6 +120,7 @@
       </p>
       <p class="meta">Variante {letraVariante(r.variante ?? 0)} · entregado el {fecha(r.t)} · {minutos} min{r.agotado ? ' · se acabó el tiempo' : ''}</p>
       {#if falloAuto}<p class="aviso" role="alert" data-fallo-autoeval>{falloAuto}</p>{/if}
+      {#if falloSimular}<p class="aviso" role="alert" data-fallo-simular>{falloSimular}</p>{/if}
       {#if pendientes}
         <p class="pendiente" data-pendientes>{pendientes === 1 ? 'Una pregunta espera' : `${pendientes} preguntas esperan`} a que la compare con el desarrollo del libro: la nota puede subir.</p>
       {/if}
@@ -116,6 +145,7 @@
         {@const e = it.k === 'ejercicio' ? libro.ejercicio(it.ref) : undefined}
         {@const bl = it.k === 'ejercicio' ? libro.bloques(it.ref) : undefined}
         {@const vr = varianteDe(m, libro)}
+        {@const cambio = claveCambiada(it, i + 1, libro)}
         <li class="t09-tarjeta item" data-item-resultado={i + 1} data-estado={it.estado}>
           <h2>
             <span class="num">{i + 1}.</span>
@@ -125,6 +155,10 @@
             <span class="sello">{ESTADO[it.estado]}</span>
             <span data-puntos-item>{textoPuntos(it.puntos)} de {textoPuntos(it.maximo)}</span>
           </p>
+          {#if cambio}
+            <!-- review 11a: the stored grade stays; the book's key changed after the hand-in -->
+            <p class="nota-clave" data-clave-cambiada>La solución del libro ha cambiado desde que entregó el examen: se mantiene la nota de entonces (con la solución actual serían {textoPuntos(cambio.puntos)} puntos).</p>
+          {/if}
 
           {#if p}
             <p class="enunciado">{@html prepararHtml(p.enunciado)}</p>
@@ -172,6 +206,10 @@
                 <div class="preg">
                   <p class="enunciado-preg">{String.fromCharCode(97 + k)}) {@html prepararHtml(q.enunciado)}</p>
                   <p>{parte?.mensaje} <span class="correcto">Respuesta: {@html prepararHtml(respuestaCorrecta(q))}</span></p>
+                  {#if q0.tipo === 'diseno' && faltaSimular(q0, it.valores[q0.id] ?? '')}
+                    <!-- review 11a: not simulated at the hand-in (ngspice failed): it can be simulated now -->
+                    <button type="button" class="t09-chip" disabled={guardando} onclick={() => void simularAhora(i)} data-simular-ahora={i + 1}>Simular ahora y corregir</button>
+                  {/if}
                   {#if q.explicacion}<p class="cita"><span class="rot">{q.calculo ? 'Desarrollo' : 'Del libro'}:</span> {@html prepararHtml(q.explicacion)}</p>{/if}
                 </div>
               {/each}
@@ -225,7 +263,7 @@
   h1 {
     margin: 0;
     color: var(--titulos);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: 26px;
   }
   .nota {

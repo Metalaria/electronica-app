@@ -7,6 +7,7 @@
 //! (vibration feedback) and notifications (the daily reminder, 0.11). On desktop (0.12)
 //! it keeps a single running instance and provides the signed automatic updates
 //! (updater) and the relaunch after installing one (process).
+//! In 1.1 it opens the book's QR links, epa://leccion/<parte>/<label> (deep-link plugin, module `enlaces`).
 //! In 1.0 a panic of the native side is written, before the process ends, to a small file in the
 //! app's log folder (`fallos`), which the front end reads once at the next start into its local
 //! «Informe de fallos» (no new permission: one command of its own, no file path from the page).
@@ -283,6 +284,101 @@ mod fichero {
     }
 }
 
+/// The book's QR links (1.1): `epa://leccion/<parte>/<label>`. The deep-link plugin registers the scheme (the
+/// bundler reads `plugins.deep-link` of tauri.conf.json) and gives the links: at a cold start (`get_current`: the
+/// command line on Windows/Linux, the launching intent on Android), and later (`on_open_url`: macOS «open URL»
+/// events, Android new intents, and — through the single-instance callback, `handle_cli_arguments` — a second launch
+/// on Windows/Linux). The last one is kept here and the page is told (`epa-enlace`); it takes it with
+/// `enlace_pendiente`, once (a reload of the page does not open it again). Here only a light check (our scheme,
+/// printable ASCII, short); the page validates the link strictly and only ever turns it into one of its own hash
+/// routes (web/src/lib/enlaces.ts): no URL from outside is ever navigated to.
+mod enlaces {
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::Mutex;
+    use tauri::{AppHandle, Emitter, Manager, Runtime};
+    use tauri_plugin_deep_link::DeepLinkExt;
+
+    /// Longer than any real link (web/src/lib/enlaces.ts LONGITUD_MAXIMA).
+    const LONGITUD_MAXIMA: usize = 120;
+
+    #[derive(Default)]
+    pub struct Pendiente {
+        enlace: Mutex<Option<String>>,
+        /// The page has asked once (after that, the cold-start link is not read again).
+        preguntado: AtomicBool,
+    }
+
+    /// A link that may be ours: the scheme `epa://`, printable ASCII only, at most LONGITUD_MAXIMA bytes.
+    pub(crate) fn aceptable(url: &str) -> bool {
+        url.len() <= LONGITUD_MAXIMA
+            && url.get(..6).is_some_and(|p| p.eq_ignore_ascii_case("epa://"))
+            && url.bytes().all(|b| b.is_ascii_graphic())
+    }
+
+    fn guardar<R: Runtime>(app: &AppHandle<R>, url: &str) -> bool {
+        if !aceptable(url) {
+            return false;
+        }
+        let Some(p) = app.try_state::<Pendiente>() else { return false };
+        // (a poisoned lock — a panic elsewhere while holding it — still holds a usable value)
+        *p.enlace.lock().unwrap_or_else(|e| e.into_inner()) = Some(url.to_string());
+        true
+    }
+
+    /// A link that arrived while the app runs: kept, the page told, the window brought forward (desktop).
+    fn recibir<R: Runtime>(app: &AppHandle<R>, url: &str) {
+        if !guardar(app, url) {
+            return;
+        }
+        let _ = app.emit("epa-enlace", ());
+        #[cfg(desktop)]
+        if let Some(w) = app.get_webview_window("main") {
+            let _ = w.unminimize();
+            let _ = w.show();
+            let _ = w.set_focus();
+        }
+    }
+
+    pub fn instalar<R: Runtime>(app: &AppHandle<R>) {
+        app.manage(Pendiente::default());
+        let h = app.clone();
+        app.deep_link().on_open_url(move |ev| {
+            for u in ev.urls() {
+                recibir(&h, u.as_str());
+            }
+        });
+        if let Ok(Some(urls)) = app.deep_link().get_current() {
+            if let Some(u) = urls.iter().find(|u| aceptable(u.as_str())) {
+                guardar(app, u.as_str());
+            }
+        }
+    }
+
+    /// Desktop: the arguments of a second launch (the single-instance callback): a link among them is delivered
+    /// (`on_open_url`) as if the system had opened it here.
+    #[cfg(desktop)]
+    pub fn segunda_instancia<R: Runtime>(app: &AppHandle<R>, args: &[String]) {
+        app.deep_link().handle_cli_arguments(args.iter());
+    }
+
+    /// The link to open, taken once; none when there is none.
+    #[tauri::command]
+    pub fn enlace_pendiente<R: Runtime>(app: AppHandle<R>) -> Option<String> {
+        let p = app.try_state::<Pendiente>()?;
+        let tomado = p.enlace.lock().unwrap_or_else(|e| e.into_inner()).take();
+        let primera = !p.preguntado.swap(true, Ordering::SeqCst);
+        if tomado.is_some() || !primera {
+            return tomado;
+        }
+        // (Android: the launching intent can reach the plugin only once the page has loaded, after `instalar`)
+        app.deep_link()
+            .get_current()
+            .ok()
+            .flatten()
+            .and_then(|urls| urls.into_iter().map(|u| u.to_string()).find(|u| aceptable(u)))
+    }
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let builder = tauri::Builder::default();
@@ -290,12 +386,14 @@ pub fn run() {
     // exits right away and focuses the window of the running instance instead, so two processes
     // never write lector.json at the same time.
     #[cfg(desktop)]
-    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, _args, _cwd| {
+    let builder = builder.plugin(tauri_plugin_single_instance::init(|app, args, _cwd| {
         if let Some(window) = app.get_webview_window("main") {
             let _ = window.unminimize();
             let _ = window.show();
             let _ = window.set_focus();
         }
+        // 1.1: a book QR link opened while the app runs (Windows/Linux start a second process with it)
+        enlaces::segunda_instancia(app, &args);
     }));
     // dialog and fs are used only from Rust (module `fichero`): the webview has no permission for either
     let builder = builder
@@ -303,13 +401,17 @@ pub fn run() {
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_fs::init())
+        // 1.1: the book's QR links (module `enlaces`)
+        .plugin(tauri_plugin_deep_link::init())
         .invoke_handler(tauri::generate_handler![
             fichero::guardar_fichero_elegido,
             fichero::abrir_fichero_elegido,
-            fallos::fallos_nativos
+            fallos::fallos_nativos,
+            enlaces::enlace_pendiente
         ])
         .setup(|app| {
             fallos::instalar(app.handle());
+            enlaces::instalar(app.handle());
             Ok(())
         });
     // The desktop and mobile plugins are target-specific dependencies (see Cargo.toml).
@@ -330,6 +432,21 @@ pub fn run() {
 mod pruebas {
     use super::fichero::{contenido, filtro_permitido, nombre_con_extension};
     use super::fallos::limpiar;
+    use super::enlaces::aceptable;
+
+    #[test]
+    fn solo_enlaces_epa_cortos_y_ascii() {
+        assert!(aceptable("epa://leccion/cap01/sec-1.4"));
+        assert!(aceptable("EPA://leccion/apA/sec-A.1"));
+        // (review 11c: the expansions' new chapters, whose part is not cap<NN>)
+        assert!(aceptable("epa://leccion/cap-new-maquinas/sec-new-maquinas.1"));
+        assert!(!aceptable("https://example.com/"));
+        assert!(!aceptable("epa:/leccion"));
+        assert!(!aceptable("epa://leccion/cap01/sec 1.4"));
+        assert!(!aceptable("epa://lección/cap01"));
+        assert!(!aceptable(&format!("epa://leccion/{}", "a".repeat(200))));
+        assert!(!aceptable(""));
+    }
 
     #[test]
     fn linea_de_fallo_sin_saltos_y_acotada() {

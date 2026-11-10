@@ -9,7 +9,7 @@
 // rounded to hundredths.
 
 import { comprobar, type Esperado } from '../magnitudes';
-import { comprobarPregunta, type Pregunta as PreguntaEjercicio } from '../preguntas-ejercicio';
+import { comprobarPregunta, type PEleccion, type Pregunta as PreguntaEjercicio } from '../preguntas-ejercicio';
 import type { ItemEjercicio } from '../ejercicios.svelte';
 import type { Pregunta as PreguntaRepaso } from '../../componentes/repaso/datos';
 import { leerNumero, numeroCorrecto } from '../../componentes/repaso/numero';
@@ -154,7 +154,17 @@ export function montarExamen(def: DefinicionExamen, ctx: ContextoExamen, variant
 /** A choice question with its options in the order shown (the stored answer is a position in that order). */
 export function preguntaVista(p: PreguntaEjercicio, orden: number[] | undefined): PreguntaEjercicio {
   if (p.tipo !== 'eleccion' || !orden) return p;
-  return { ...p, opciones: orden.map((k) => p.opciones[k]!), correcta: orden.indexOf(p.correcta) };
+  const v: PEleccion = { ...p, opciones: orden.map((k) => p.opciones[k]!), correcta: orden.indexOf(p.correcta) };
+  // 1.1: the explanation of each wrong option follows its option to the new place
+  if (p.porque) {
+    const porque: Record<string, string> = {};
+    orden.forEach((k, i) => {
+      const t = p.porque![String(k)];
+      if (t) porque[String(i)] = t;
+    });
+    v.porque = porque;
+  }
+  return v;
 }
 
 /** The variant of an exercise with changing values that this item shows (null: the book's values). */
@@ -216,6 +226,28 @@ function notaDe(v: ReturnType<typeof comprobar>): ParteCalificada & { tipo: 'cam
   return { id: '', tipo: 'campo', nota: 0, mensaje: v.mensaje };
 }
 
+/** The open part, self-assessed (`autoeval` 1, 0,5 or 0) against the book's development. */
+function parteAbierta(valores: Record<string, string>, autoeval: number | undefined): ParteCalificada {
+  // nothing written and not self-assessed: a blank answer, not one waiting for the comparison
+  const escrito = !!(valores.texto ?? '').trim();
+  const n = autoeval == null ? (escrito ? null : 0) : autoeval >= 1 ? 1 : autoeval >= 0.5 ? 0.5 : 0;
+  const mensaje = n == null ? 'Compárelo con el desarrollo del libro.' : autoeval == null ? SIN_RESPONDER : n === 1 ? 'Bien.' : n === 0.5 ? 'A medias.' : 'Mal.';
+  return { id: 'abierta', tipo: 'abierta', nota: n, mensaje };
+}
+
+/**
+ * Review 11a: an answer of 1.0 to an exercise that 1.0 self-assessed and 1.1 checks by itself (`comparar10`; razonar11:
+ * 181 of them now ask questions p1…): a written text and nothing in any field or question of 1.1. Graded as 1.0 graded it — one
+ * open part, self-assessed — so a stored result or grade reproduces and a 1.0 draft handed in after the update keeps
+ * its text graded. A 1.1 answer to the questions is graded by them (the text, if any, is then the exercise's own open
+ * part when it has one).
+ */
+export function abiertaHeredada(e: ItemEjercicio, valores: Record<string, string>): boolean {
+  if (!e.comparar10 || e.modo !== 'auto' || !(valores.texto ?? '').trim()) return false;
+  const campos = [...e.respuestas.map((r) => r.id), ...(e.preguntas ?? []).map((p) => p.id)];
+  return campos.length > 0 && campos.every((k) => !(valores[k] ?? '').trim());
+}
+
 /**
  * Grades one item from the answers given (`valores`, the same keys as an exercise's panel; a test question: `r`).
  * `autoeval`: the reader's self-assessment of the open part (1, 0,5 or 0), when given.
@@ -244,6 +276,10 @@ export function calificarItem(m: ItemMontado, ctx: ContextoExamen, valores: Reco
       partes.push({ ...notaVariante(valores.r1 ?? '', m.vv.esperado), id: 'r1' });
     } else if (vr) {
       partes.push({ ...notaVariante(valores.r1 ?? '', esperadoVariante(vr.item, vr.v)), id: 'r1' });
+    } else if (e && abiertaHeredada(e, valores)) {
+      // (review 11a, A1/A2: an answer written for an exercise that 1.0 self-assessed and 1.1 checks by itself — a
+      // result or a draft of 1.0 — stays what it was: one open part, self-assessed against the book's development)
+      partes.push(parteAbierta(valores, autoeval));
     } else if (e) {
       for (const r of e.respuestas) partes.push({ ...notaCampo(valores[r.id] ?? '', r, r.alternativas), id: r.id });
       for (const p of e.preguntas ?? []) {
@@ -251,13 +287,7 @@ export function calificarItem(m: ItemMontado, ctx: ContextoExamen, valores: Reco
         const nota = v.tipo === 'bien' ? 1 : v.tipo === 'cerca' ? 0.5 : 0;
         partes.push({ id: p.id, tipo: 'pregunta', nota, mensaje: v.tipo === 'vacio' ? SIN_RESPONDER : v.mensaje });
       }
-      if (e.modo === 'comparar' || (e.otras?.length ?? 0) > 0) {
-        // nothing written and not self-assessed: a blank answer, not one waiting for the comparison
-        const escrito = !!(valores.texto ?? '').trim();
-        const n = autoeval == null ? (escrito ? null : 0) : autoeval >= 1 ? 1 : autoeval >= 0.5 ? 0.5 : 0;
-        const mensaje = n == null ? 'Compárelo con el desarrollo del libro.' : autoeval == null ? SIN_RESPONDER : n === 1 ? 'Bien.' : n === 0.5 ? 'A medias.' : 'Mal.';
-        partes.push({ id: 'abierta', tipo: 'abierta', nota: n, mensaje });
-      }
+      if (e.modo === 'comparar' || (e.otras?.length ?? 0) > 0) partes.push(parteAbierta(valores, autoeval));
     }
   }
   const total = partes.length || 1;
@@ -290,4 +320,43 @@ export function montadoDeResultado(it: ResultadoItem, n: number): ItemMontado {
   if (it.variante != null) m.variante = it.variante;
   if (it.vv) m.vv = it.vv;
   return m;
+}
+
+/**
+ * Review 11a: what the book's current key gives a stored item (with its stored answers and self-assessment), when it is
+ * not the stored grade — an erratum or a new key changed it after the exam was handed in (null: the same). A stored
+ * result is never graded again by later content: the page shows the stored grade and, with this, a short note.
+ */
+export function claveCambiada(it: ResultadoItem, n: number, ctx: ContextoExamen): Calificacion | null {
+  const c = calificarItem(montadoDeResultado(it, n), ctx, it.valores, it.autoeval);
+  return c.puntos === it.puntos && c.estado === it.estado ? null : c;
+}
+
+/**
+ * Review 11a: a stored item graded again after a change of its own — a self-assessment, or a design simulated later
+ * (`valores`, `autoeval`: the new ones). Only that change moves the grade: when the current key still gives the stored
+ * grade, the item is graded as usual; when it does not (claveCambiada), the stored points move by what the change
+ * moves under the current key — the parts it did not touch keep the grade they had when the exam was handed in.
+ */
+export function recalificarGuardado(
+  it: ResultadoItem,
+  n: number,
+  ctx: ContextoExamen,
+  cambio: { valores?: Record<string, string>; autoeval?: number },
+): { puntos: number; estado: EstadoItem } {
+  const m = montadoDeResultado(it, n);
+  const valores = cambio.valores ?? it.valores;
+  const autoeval = 'autoeval' in cambio ? cambio.autoeval : it.autoeval;
+  const despues = calificarItem(m, ctx, valores, autoeval);
+  if (!claveCambiada(it, n, ctx)) return { puntos: despues.puntos, estado: despues.estado };
+  const antes = calificarItem(m, ctx, it.valores, it.autoeval);
+  // (the change in the parts' mean, unrounded: the two grades are rounded to hundredths each)
+  const suma = (c: Calificacion) => c.partes.reduce((x, p) => x + (p.nota ?? 0), 0) / (c.partes.length || 1);
+  const puntos = redondear(Math.min(it.maximo, Math.max(0, it.puntos + it.maximo * (suma(despues) - suma(antes)))));
+  let estado: EstadoItem;
+  if (despues.estado === 'pendiente') estado = 'pendiente';
+  else if (puntos >= it.maximo) estado = 'bien';
+  else if (puntos > 0) estado = 'parcial';
+  else estado = despues.estado === 'blanco' ? 'blanco' : 'mal';
+  return { puntos, estado };
 }

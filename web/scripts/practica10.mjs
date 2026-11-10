@@ -38,6 +38,8 @@ const args = process.argv.slice(2);
 const solo = args.includes('--solo') ? args[args.indexOf('--solo') + 1] : null;
 const sinSimular = args.includes('--sin-simular');
 const detalle = args.includes('--detalle');
+// review 11a: «--registrar-ids» adds this run's «ordenar» ids to the registry (contenido/ids_practica.json)
+const registrarIds = args.includes('--registrar-ids');
 
 const src = (p) => path.join(web, 'src', p);
 const { calcularPasos, finDeSeccion } = await import(src('lib/leccion-pasos.ts'));
@@ -479,6 +481,8 @@ let nEjEnlazados = 0;
 for (const [id, it] of Object.entries(ejercicios.items)) {
   // 1.0: exercises checked only by structured questions have no numeric answer to reproduce
   if (it.modo !== 'auto' || !it.respuestas?.length || (solo && it.parte !== solo)) continue;
+  // 1.1: the new exercises not in the book yet (ejercicios_nuevos) are not the book's: no variants citing them as such
+  if (it.nuevo) continue;
   if (AJUSTES[id]?.excluir) {
     descartar('ejercicio enlazado con una fórmula que no es la suya (revisado a mano)');
     continue;
@@ -899,6 +903,13 @@ if (simularTexto) {
       descartar('netlist con análisis op sin lugar en una sección');
       continue;
     }
+    // 1.1: an expansion's netlist (contenido/ampliaciones.py) placed in a section of the book (a problem it inserts
+    // there, prob-44.D) never competes for that section's items: their ids are the 1.0 ones, so their content stays
+    // the 1.0 one (cap44-pred-sec-44.13 is about prob-44.B, not prob-44.D); in a section of its own it gives new items
+    if (nl.ampliacion && !refs[lugar.seccion]?.ampliacion) {
+      descartar('netlist de una ampliación en una sección del libro');
+      continue;
+    }
     const p = lugar.parte;
     const sec = seccionDe(p, lugar.seccion);
     // A section-level netlist goes after the section's last step; anything else after its block.
@@ -1086,11 +1097,74 @@ for (const f of figurasEsquema) {
   }
 }
 
+// Review 11a: the ids of «ordenar» items were `<parte>-orden-<section>-<index of the list in the part>`: an expansion
+// that inserts blocks before a list (contenido/ampliaciones.py: cap24, cap31, cap33, cap44) changed it, and with it the
+// keys of the reader's progress (store «practica», XP «pr:», mastery, spaced review). Now:
+//   1. the registry contenido/ids_practica.json: the list's fingerprint (part, section, its steps as plain text with each
+//      reference as its label, so a renumbering does not change it) → the id it was published with (seeded with every
+//      id of 1.0 and of 1.1). When the author pastes an expansion into the book, its blocks lose their mark and the
+//      indices after them shift, but the fingerprints do not: the published ids stay;
+//   2. a list not in the registry (new content): a list of the book, the index counting only the book's own blocks —
+//      blocks marked `ampliacion` are skipped, so it keeps its 1.0 index while an expansion is merged; a list of an
+//      expansion (itself marked), its index in the part, as before (registered: it survives the paste). Such an id
+//      (a list added after the registry was last updated) WOULD shift once an insertion before it becomes part of the
+//      book: «node scripts/practica10.mjs --registrar-ids» adds the current ids to the registry (run it whenever new
+//      content is published); the run says how many are not registered;
+//   3. an id already given in the part (two identical lists, or an index id equal to a registered one) gets «-2», «-3»…
+const REGISTRO_IDS = process.env.EPA_IDS_PRACTICA ? path.resolve(process.env.EPA_IDS_PRACTICA) : path.join(web, '..', 'contenido', 'ids_practica.json');
+const registroIds = fs.existsSync(REGISTRO_IDS) ? JSON.parse(fs.readFileSync(REGISTRO_IDS, 'utf8')) : { version: 1, orden: {} };
+const { createHash } = await import('node:crypto');
+const huellaPasos = (pasos) =>
+  pasos.map((x) => plano(String(x).replace(/<a class="ref" data-ref="([^"]+)">[^<]*<\/a>/g, '[$1]')).replace(/\s+/g, ' ').trim()).join('\n');
+function huellaOrden(p, seccion, pasos) {
+  return createHash('sha1').update(`${p}|${seccion}|${huellaPasos(pasos)}`).digest('hex').slice(0, 16);
+}
+/** Block index → its index among the book's own blocks (those without `ampliacion`); an expansion's block, its own. */
+function indicesDelLibro(bl) {
+  const r = [];
+  let n = 0;
+  bl.forEach((b, i) => {
+    r.push(b.ampliacion ? i : n);
+    if (!b.ampliacion) n++;
+  });
+  return r;
+}
+const huellasOrden = new Map(); // id → fingerprint (this run)
+const sinRegistrar = [];
+function idOrden(p, seccion, pasos, indice) {
+  const h = huellaOrden(p, seccion, pasos);
+  let id = registroIds.orden[h];
+  if (!id) {
+    id = `${p}-orden-${seccion}-${indice}`;
+    sinRegistrar.push(h);
+  }
+  huellasOrden.set(id, h);
+  return id;
+}
+/** Rule 3 above, per part: a registered id is never taken by another list. */
+function idsUnicos(lista) {
+  const registrados = new Set(lista.filter((x) => x.tipo === 'ordenar' && registroIds.orden[huellasOrden.get(x.id)] === x.id).map((x) => x.id));
+  const usados = new Set();
+  for (const x of lista) {
+    if (x.tipo !== 'ordenar') continue;
+    const propio = registrados.has(x.id) && !usados.has(x.id);
+    if (!propio && (usados.has(x.id) || registrados.has(x.id))) {
+      let k = 2;
+      while (usados.has(`${x.id}-${k}`) || registrados.has(`${x.id}-${k}`)) k++;
+      const h = huellasOrden.get(x.id);
+      x.id = `${x.id}-${k}`;
+      huellasOrden.set(x.id, h);
+    }
+    usados.add(x.id);
+  }
+}
+
 // ================================================================== 3. ordered lists of the book
 
 for (const p of ordenPartes) {
   if (solo && p !== solo) continue;
   const bl = parte(p).bloques;
+  const delLibro = indicesDelLibro(bl);
   for (const sec of seccionesDe.get(p)) {
     for (let i = sec.h2 + 1; i < sec.fin; i++) {
       const b = bl[i];
@@ -1122,7 +1196,8 @@ for (const p of ordenPartes) {
       }
       const ref = subDe(p, sec, i);
       poner({
-        id: `${p}-orden-${sec.label}-${i}`,
+        // (review 11a: the id stays the one this list had — idOrden: the registry, else the index without expansions)
+        id: idOrden(p, sec.label, b.items, delLibro[i]),
         tipo: 'ordenar',
         parte: p,
         seccion: sec.label,
@@ -1272,9 +1347,38 @@ const contar = { numerico: 0, prediccion: 0, deslizador: 0, toque: 0, ordenar: 0
 const seccionesCon = { numerico: 0, prediccion: 0, deslizador: 0, toque: 0, ordenar: 0, parejas: 0, protoboard: 0, ideas: 0, alguno: 0 };
 const escritas = [];
 const porParte = {};
+// 1.1: the practice items of a run of the book an expansion retired (contenido/ampliaciones.py, pieces «retirar»: P02
+// absorbs 32.13) keep existing with their 1.0 ids while it is merged, so that what the reader answered (store
+// «practica», XP «pr:», mastery, review) still has its item: the expansion's folder keeps them as published
+// (practica-retirada.json); here they get the current numbers and «retirada». Not when the run is back (P02 undone).
+const registroAmp = fs.existsSync(path.join(libro, 'ampliaciones.json')) ? J('ampliaciones.json') : {};
+const AMPLIACIONES11 = process.env.EPA_AMPLIACIONES ? path.resolve(process.env.EPA_AMPLIACIONES) : path.join(web, '..', 'contenido', 'ampliaciones11');
+function retiradosDe(p) {
+  const out = [];
+  for (const r of registroAmp.retiradas ?? []) {
+    const f = path.join(AMPLIACIONES11, r.id, 'practica-retirada.json');
+    if (r.parte !== p || r.solo_alias || !fs.existsSync(f)) continue;
+    for (const x of JSON.parse(fs.readFileSync(f, 'utf8')).items) {
+      if (!refs[x.seccion]?.retirada) continue;
+      const it = structuredClone(x);
+      it.retirada = r.id;
+      it.bloque = r.pos;
+      // («destinos» of the piece may say where an item's topic went: V/f to 34.6; else the alias, the destination)
+      if (r.destinos?.[x.id] && refs[r.destinos[x.id]]) it.ref = r.destinos[x.id];
+      it.verRef = verRef(it.ref);
+      for (const c of it.citas ?? []) if (c.ref && refs[c.ref] && /^Sección /.test(c.donde ?? '')) c.donde = `Sección ${refs[c.ref].num}`;
+      if (it.formula?.seccion && refs[it.formula.seccion.label]) it.formula.seccion.num = refs[it.formula.seccion.label].num;
+      if (it.formula?.cap && refs[`cap-${Number(p.slice(3))}`]) it.formula.cap = refs[`cap-${Number(p.slice(3))}`].num;
+      out.push(it);
+    }
+  }
+  return out;
+}
 for (const p of ordenPartes) {
   if (solo && p !== solo) continue;
-  const lista = (items.get(p) ?? []).sort((a, b) => a.bloque - b.bloque || PRIORIDAD[a.tipo] - PRIORIDAD[b.tipo] || a.id.localeCompare(b.id));
+  const generados = items.get(p) ?? [];
+  const lista = [...generados, ...retiradosDe(p).filter((x) => !generados.some((y) => y.id === x.id))].sort((a, b) => a.bloque - b.bloque || PRIORIDAD[a.tipo] - PRIORIDAD[b.tipo] || a.id.localeCompare(b.id));
+  idsUnicos(lista);
   const secciones = {};
   for (const sec of seccionesDe.get(p)) {
     const suyos = lista.filter((x) => x.seccion === sec.label);
@@ -1311,6 +1415,15 @@ if (!solo) {
   // the later steps' counts (and «alguno», porParte) over the kept items: the same keys, in the same place, as the chain
   recontarIndice(salidaDir, ind, TIPOS_POSTERIORES);
   fs.writeFileSync(path.join(salidaDir, 'indice.json'), JSON.stringify(ind));
+}
+if (registrarIds && !solo) {
+  // (only adds: an id once published is never taken away; written only when it changes)
+  const orden = { ...registroIds.orden };
+  for (const [id, h] of huellasOrden) if (!orden[h]) orden[h] = id;
+  const texto = `${JSON.stringify({ ...registroIds, version: 1, orden: Object.fromEntries(Object.entries(orden).sort(([a], [b]) => (a < b ? -1 : 1))) }, null, 1)}\n`;
+  if (!fs.existsSync(REGISTRO_IDS) || fs.readFileSync(REGISTRO_IDS, 'utf8') !== texto) fs.writeFileSync(REGISTRO_IDS, texto);
+} else if (sinRegistrar.length && !solo) {
+  console.log(`  ids de «ordenar» sin registrar: ${sinRegistrar.length} (node scripts/practica10.mjs --registrar-ids los conserva para siempre)`);
 }
 const total = Object.values(contar).reduce((a, b) => a + b, 0);
 console.log(`practica10: ${total} preguntas en ${escritas.length} partes · ${simulaciones} simulaciones · ejercicios enlazados ${nEjEnlazados}`);

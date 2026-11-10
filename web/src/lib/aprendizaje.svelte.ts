@@ -212,6 +212,10 @@ export function autoevaluar(label: string, bien: boolean): void {
   const antes = e.resuelto;
   e.intentos++;
   if (!bien) e.fallos++;
+  // 1.1 («razonar»): a self-assessment is a comparison with the solution, so it always counts as having seen it —
+  // the owner's rule, self-assessed exercises give no XP, without exceptions. A problem shows its solution in the page
+  // unless hidden, so «¿Lo tenía bien?» could be answered without `verSolucion` and was worth 15 XP (merged by OR)
+  e.solucion = true;
   const ahora = Date.now();
   // review 10j: the self-assessment decides «resuelto» either way, with its own time (key `_r`)
   marcarResuelto(e, bien, ahora);

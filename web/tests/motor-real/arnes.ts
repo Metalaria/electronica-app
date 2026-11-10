@@ -177,7 +177,27 @@ export interface ModDocente {
   guardadoResultados: { volcar(): Promise<void> };
 }
 
-export type Almacen = AlmacenSim | AlmacenG | AlmacenDiario | AlmacenRepaso | AlmacenDocente;
+/**
+ * 1.1: a store of one of the app's REAL modules built on `guardadoDeRegistro` (one per tab), registered as
+ * registro.svelte.ts does: `laboratorio` (lib/laboratorio.svelte.ts, field `practicas`) or `seguridad`
+ * (lib/aprendizaje/seguridad.svelte.ts, field `items`). The module's own Guardado options are used (its `claveSinc`
+ * among them: a module that left it out was not marked, enlaces11).
+ */
+export interface AlmacenModulo {
+  modulo: 'laboratorio' | 'seguridad' | 'lecciones';
+  guardado?: undefined;
+  clave: 'laboratorio' | 'seguridad' | 'lecciones';
+  valido?: (v: unknown) => boolean;
+}
+export const modulo = (m: AlmacenModulo['modulo']): AlmacenModulo => ({ modulo: m, clave: m });
+const MODULOS = {
+  laboratorio: { ruta: 'laboratorio.svelte.ts', puro: 'laboratorio.ts', campo: 'practicas', guardado: 'guardadoLab', cargar: 'cargarLaboratorio', valido: 'registroLabValido', unir: 'unirRegistrosLab' },
+  seguridad: { ruta: 'aprendizaje/seguridad.svelte.ts', puro: 'aprendizaje/seguridad.ts', campo: 'items', guardado: 'guardadoSeguridad', cargar: 'cargarSeguridad', valido: 'seguridadValida', unir: 'unirSeguridad' },
+  // (review 11a: the lessons' progress, stored as a plain Record under its key — no field)
+  lecciones: { ruta: 'lecciones.svelte.ts', puro: 'union-lecciones.ts', campo: '', guardado: 'guardadoLecciones', cargar: 'cargarLecciones', valido: 'progresoLeccionValido', unir: 'unirProgresoLeccion' },
+} as const;
+
+export type Almacen = AlmacenSim | AlmacenG | AlmacenDiario | AlmacenRepaso | AlmacenDocente | AlmacenModulo;
 
 /** The real progreso-diario.svelte.ts of one tab (what the harness uses of it). */
 export interface ModDiario {
@@ -227,6 +247,8 @@ export class Pestana {
   repaso?: ModRepaso;
   /** 1.0: the tab's real teacher-mode module (an `AlmacenDocente` store). */
   docente?: ModDocente;
+  /** 1.1: the tab's real modules of the `AlmacenModulo` stores (by store key). */
+  modulos = new Map<string, Record<string, unknown>>();
   /** The tab's real backup module (loaded on first use). */
   async copia(): Promise<ModCopia> {
     return (await import(sincDe(this.disp.version) + 'copia.ts' + `?d=${this.grafo}`)) as ModCopia;
@@ -267,6 +289,15 @@ export class Disp {
     const s = this.almacenes.find((x) => x.clave === k);
     // (a store this device does not have: empty — the traces ask every device)
     if (!s) return { clave: k, valores: {} };
+    if ('modulo' in s) {
+      const ls = almacenamiento(this);
+      const campo = MODULOS[s.modulo].campo;
+      return { clave: k, get valores() {
+        const v = ls.get(s.clave);
+        if (!v) return {};
+        return campo ? ((JSON.parse(v) as Record<string, Valores>)[campo] ?? {}) : (JSON.parse(v) as Valores);
+      } } as AlmacenSim;
+    }
     if ('docente' in s) {
       const ls = almacenamiento(this);
       const [clave, campo] = s.clave === 'docente-propios' ? ['docente', 'propios'] : ['docente-resultados', 'resultados'];
@@ -372,6 +403,32 @@ async function montarPestana(d: Disp, grafo: string): Promise<Pestana> {
         ...(diario
           ? { valido: (v: unknown) => !!v && typeof v === 'object' && typeof (v as { r?: unknown }).r === 'number', unir: (x: unknown, y: unknown) => mr.unirDiasRepaso(x, y) }
           : { tiempo: (v: unknown) => Number((v as { u?: unknown })?.u) || undefined }),
+      });
+      p.sincronizables.push({
+        ...real,
+        async leer() {
+          contarLectura(d);
+          return real.leer();
+        },
+      });
+      continue;
+    }
+    if ('modulo' in a) {
+      if (d.version !== '0.11') continue;
+      const def = MODULOS[a.modulo];
+      const mm = (await import(LIB + def.ruta + q)) as Record<string, unknown>;
+      const puro = (await import(LIB + def.puro)) as Record<string, (...x: unknown[]) => unknown>;
+      const cargar = mm[def.cargar] as () => Promise<void>;
+      await cargar();
+      p.modulos.set(a.clave, mm);
+      // as registro.svelte.ts registers it
+      const real = mg!.sincronizableGuardado(mm[def.guardado], {
+        clave: a.clave,
+        nombre: a.clave,
+        cargar,
+        tiempo: (v: unknown) => (v as { t: number }).t,
+        valido: puro[def.valido],
+        unir: (x: unknown, y: unknown) => puro[def.unir]!(x, y),
       });
       p.sincronizables.push({
         ...real,

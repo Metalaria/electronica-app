@@ -6,6 +6,9 @@
 //   2. writes gen/android/keystore.properties (keyAlias, storePassword, keyPassword, storeFile);
 //   3. patches gen/android/app/build.gradle.kts so the "release" build type is signed with it,
 //      following the Tauri 2 guide on Android code signing.
+//   4. (1.1) writes the intent filter of the book's QR links (epa://leccion/…, plugins.deep-link.mobile of
+//      tauri.conf.json) into app/src/main/AndroidManifest.xml, as the deep-link plugin's build writes it, and makes
+//      sure the activity is singleTask (web/scripts/android-enlaces.mjs).
 // Idempotent: running it again only refreshes the icons and keystore.properties.
 //
 // Where the signing data comes from:
@@ -18,6 +21,7 @@ import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { prepararEnlacesAndroid } from './android-enlaces.mjs';
 
 const MARKER = 'electronica-firma';
 const web = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -103,6 +107,15 @@ fs.cpSync(resourcesDir, resDir, { recursive: true, force: true });
 // Without it the reminder would fall back to Android's generic «i»: make sure it landed where aapt looks.
 if (!fs.existsSync(path.join(resDir, NOTIFICATION_ICON))) fail(`no se pudo copiar ${NOTIFICATION_ICON} a ${resDir}`);
 console.log('android-preparar: icono de la notificación copiado desde src-tauri/recursos-android.');
+
+// 4. The book's QR links (1.1): the intent filter of the scheme and singleTask (before the signing data: a local run
+// without them still leaves the manifest right).
+try {
+  const e = prepararEnlacesAndroid(androidDir, path.join(tauriDir, 'tauri.conf.json'));
+  console.log(`android-preparar: enlaces ${e.esquemas.map((x) => `${x}://`).join(', ')} ${e.cambiado ? 'añadidos al' : 'ya estaban en el'} manifiesto.`);
+} catch (e) {
+  fail(`no se pudieron preparar los enlaces del libro: ${e instanceof Error ? e.message : String(e)}`);
+}
 
 const signing = signingFromEnv() ?? signingFromFolder();
 const storeFile = path.resolve(signing.storeFile);

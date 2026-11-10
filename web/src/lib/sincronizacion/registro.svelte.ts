@@ -28,7 +28,8 @@ import { cargarDocente, guardadoPropios, guardadoResultados, propioValido, resul
 import { unirResultados } from '../docente/union';
 import type { Resultado } from '../docente/tipos';
 import { OBJETIVO_GUARDADO_DEFECTO, cargarProgresoDiario, diaValido, guardadoDias, guardadoObjetivo } from '../progreso-diario.svelte';
-import { cargarLecciones, guardadoLecciones } from '../lecciones.svelte';
+import { cargarLecciones, guardadoLecciones, progresoValido, type ProgresoGuardado } from '../lecciones.svelte';
+import { unirProgresoLeccion } from '../union-lecciones';
 import { aplicarLogros, aplicarXp, leerLogros, leerXp, premioValido } from '../aprendizaje/progreso.svelte';
 import { aplicarPruebas, aplicarSuperadas, leerPruebas, leerSuperadas, pruebaValida } from '../aprendizaje/cursos-estado.svelte';
 import { aplicarDominio, leerDominio, tiempoRegistro } from '../aprendizaje/dominio.svelte';
@@ -37,6 +38,10 @@ import { preferirDia, type DiaComparable } from '../aprendizaje/seleccion';
 import { aplicarProblemas, diaProblemaValido, leerProblemas, tiempoProblema } from '../aprendizaje/problema-dia.svelte';
 import { cargarSeguridad, guardadoSeguridad } from '../aprendizaje/seguridad.svelte';
 import { seguridadValida, unirSeguridad, type RegistroSeguridad } from '../aprendizaje/seguridad';
+import { cargarLaboratorio, guardadoLab } from '../laboratorio.svelte';
+import { registroLabValido, unirRegistrosLab, type RegistroLab } from '../laboratorio';
+import { cargarProyectos, guardadoProyectos } from '../proyectos11/estado.svelte';
+import { registroEtapaValido, unirRegistrosEtapa, type RegistroEtapa } from '../proyectos11/registro';
 
 export type Valores = Record<string, unknown>;
 
@@ -324,6 +329,34 @@ registrarSincronizable(
   }),
 );
 
+// 1.1: the guided labs of printed chapter 21 — per lab «p<n>» the steps done, their readings, the first completion; two
+// versions of a lab are merged (union of the steps, newer reading per step: laboratorio.ts unirRegistrosLab), in the
+// file and between tabs alike. An older app keeps the store in the file untouched (it does not know it).
+registrarSincronizable(
+  sincronizableGuardado(guardadoLab, {
+    clave: 'laboratorio',
+    nombre: 'Laboratorios guiados (capítulo 21)',
+    cargar: cargarLaboratorio,
+    tiempo: (v) => v.t,
+    valido: registroLabValido,
+    unir: (a, b) => unirRegistrosLab(a as RegistroLab, b as RegistroLab),
+  }),
+);
+
+// 1.1: the projects by stages of printed chapters 48–51 — per stage its circuit, its first pass and the values of its
+// latest pass, the checks; two versions of a stage are merged (proyectos11/registro.ts unirRegistrosEtapa), in the
+// file and between tabs alike. An older app keeps the store in the file untouched (it does not know it).
+registrarSincronizable(
+  sincronizableGuardado(guardadoProyectos, {
+    clave: 'proyectos',
+    nombre: 'Proyectos por etapas (capítulos 48 a 51)',
+    cargar: cargarProyectos,
+    tiempo: (v) => v.t,
+    valido: registroEtapaValido,
+    unir: (a, b) => unirRegistrosEtapa(a as RegistroEtapa, b as RegistroEtapa),
+  }),
+);
+
 registrarSincronizable(
   sincronizableGuardado(guardadoPropios, {
     clave: 'docente-propios',
@@ -374,14 +407,17 @@ registrarSincronizable(
 
 // ------------------------------------------------------------------ lessons «Estudiar por pasos» (0.9)
 
-// «<parte>/<label>» → { h: steps done, u: last screen, n: steps, c: completed (ms), t }.
+// «<parte>/<label>» → { h: steps done, u: last screen, n: steps, c: completed (ms), t }; two versions are merged (union of
+// the steps, first completion: union-lecciones.ts), in the file and between tabs alike.
 registrarSincronizable(
   sincronizableGuardado(guardadoLecciones, {
     clave: 'lecciones',
     nombre: 'Lecciones por pasos',
     cargar: cargarLecciones,
     tiempo: (v) => numero(v.t),
-    valido: (v) => esObjeto(v) && Array.isArray(v.h) && typeof v.u === 'number' && typeof v.n === 'number' && typeof v.t === 'number',
+    valido: progresoValido,
+    // (review 11a: two versions of a lesson merged — union of the cards done, first completion: union-lecciones.ts)
+    unir: (a, b) => unirProgresoLeccion(a as ProgresoGuardado, b as ProgresoGuardado),
   }),
 );
 

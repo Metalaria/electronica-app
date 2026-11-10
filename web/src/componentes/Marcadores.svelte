@@ -3,7 +3,7 @@
   import { app } from '../lib/estado.svelte';
   import { ruta, recordarScroll } from '../lib/ruta.svelte';
   import { usuario, quitarMarcador, quitarNota } from '../lib/usuario.svelte';
-  import { infoParte, ordenLectura, rotuloParte } from '../lib/datos';
+  import { infoParte, numeroImpreso, ordenLectura, rotuloParte } from '../lib/datos';
   import { colorBloque } from '../lib/color';
   import Icono from './Icono.svelte';
   import Insignia from './Insignia.svelte';
@@ -27,7 +27,8 @@
       let m = porParte.get(parte);
       if (!m) porParte.set(parte, (m = new Map()));
       let f = m.get(label);
-      if (!f) m.set(label, (f = { label, num, titulo, marcador: false, nota: null, t }));
+      // (review 11a: the printed number as the book prints it now — an expansion can renumber what was marked)
+      if (!f) m.set(label, (f = { label, num: numeroImpreso(label, num), titulo, marcador: false, nota: null, t }));
       f.t = Math.max(f.t, t);
       return f;
     };
@@ -152,7 +153,7 @@
   h1 {
     margin: 0;
     color: var(--titulos);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: clamp(30px, 5vw, 42px);
     font-weight: 700;
     letter-spacing: -0.015em;

@@ -451,6 +451,7 @@ function autoevaluado(previo: Record<string, unknown> | undefined, bien: boolean
   const e = structuredClone(previo ?? { intentos: 0, fallos: 0, resuelto: false, pistas: 0, solucion: false, t: 0 }) as unknown as EstadoEjercicio;
   e.intentos++;
   if (!bien) e.fallos++;
+  e.solucion = true; // 1.1: a self-assessment always counts as having seen the solution (no XP)
   marcarResuelto(e, bien, t);
   e.t = t;
   return e as unknown as Record<string, unknown>;

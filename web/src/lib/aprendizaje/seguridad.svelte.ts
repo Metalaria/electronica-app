@@ -16,6 +16,9 @@ export const estadoSeguridad = $state({
 
 export const guardadoSeguridad = guardadoDeRegistro<RegistroSeguridad>({
   claveAlmacen: CLAVE_SEGURIDAD,
+  // (the store's key for the marks: without it no write was marked, and another tab's stale copy took the reader's
+  // tap away — enlaces11, scenario e11·2)
+  claveSinc: CLAVE_SEGURIDAD,
   campo: 'items',
   obtener: () => estadoSeguridad.items,
   tiempo: (v) => v.t,

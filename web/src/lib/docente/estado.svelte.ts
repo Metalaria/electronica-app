@@ -246,7 +246,8 @@ export async function actualizarResultado(id: string, items: Resultado['items'],
   if (!r || r.borrado) return;
   // (review 10h: the self-assessments given now are dated, per question — two devices merge them question by question)
   const ahora = Math.max(Date.now(), r.actualizado + 1);
-  items = items.map((it, k) => (it.autoeval !== r.items[k]?.autoeval ? { ...it, autoevalT: ahora } : it));
+  // (review 11a: and an item whose answers changed — a design simulated later — the same way)
+  items = items.map((it, k) => (it.autoeval !== r.items[k]?.autoeval || JSON.stringify(it.valores) !== JSON.stringify(r.items[k]?.valores) ? { ...it, autoevalT: ahora } : it));
   // (review 10c: rejects when it could not be written — the page says so — and memory keeps the stored grade)
   await cambiarAtomico(docente.resultados, guardadoResultados, id, { ...($state.snapshot(r) as Resultado), items: copia(items), puntos, actualizado: Math.max(Date.now(), r.actualizado + 1) });
 }

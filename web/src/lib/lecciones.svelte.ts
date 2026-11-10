@@ -17,6 +17,7 @@ import { calcularPasos, finDeSeccion, type PasoLeccion } from './leccion-pasos';
 import { cargarParte, infoParte, obtenerIndice, rotuloParte, textoPlano } from './datos';
 import { anotarCambio } from './sincronizacion/marcas';
 import { guardadoDeRegistro } from './sincronizacion/guardado';
+import { progresoLeccionValido, unirProgresoLeccion } from './union-lecciones';
 import { corto, pasoVecino } from './navegacion.svelte';
 import type { Pregunta } from '../componentes/repaso/datos';
 
@@ -130,6 +131,9 @@ export interface ProgresoGuardado {
   t: number;
 }
 
+/** A stored lesson progress with the shape the app writes (the synchronisation's `valido` of store `lecciones`). */
+export const progresoValido = (v: unknown): v is ProgresoGuardado => progresoLeccionValido(v);
+
 export const progresoLecciones = $state({
   listo: false,
   secciones: {} as Record<string, ProgresoGuardado>,
@@ -145,6 +149,8 @@ export const guardadoLecciones = guardadoDeRegistro<ProgresoGuardado>({
   claveSinc: 'lecciones',
   obtener: () => progresoLecciones.secciones,
   tiempo: (v) => (typeof v?.t === 'number' ? v.t : undefined),
+  // (review 11a: another tab's or device's version is merged — the cards done and the completion are never lost)
+  unir: (a, b) => (progresoValido(a) && progresoValido(b) ? unirProgresoLeccion(a, b) : progresoValido(a) ? a : b),
 });
 
 function guardar(): void {
@@ -157,7 +163,12 @@ export function cargarLecciones(): Promise<void> {
     // Changes made before the stored data arrived win (they are newer); they differ from what was read, so the next
     // write stores (and marks) them. (Adopted in the load's step: a write queued meanwhile runs after it.)
     const antes = Object.keys(progresoLecciones.secciones).length > 0;
-    await guardadoLecciones.cargar((v) => (progresoLecciones.secciones = { ...v, ...progresoLecciones.secciones }));
+    await guardadoLecciones.cargar((v) => {
+      // (review 11a: merged with the stored version, not over it — the stored cards done and completion stay)
+      const r: Record<string, ProgresoGuardado> = { ...v };
+      for (const [k, x] of Object.entries(progresoLecciones.secciones)) r[k] = r[k] && progresoValido(r[k]) ? (unirProgresoLeccion(r[k]!, x) as ProgresoGuardado) : x;
+      progresoLecciones.secciones = r;
+    });
     progresoLecciones.listo = true;
     cargado = true;
     if (antes) guardar();
