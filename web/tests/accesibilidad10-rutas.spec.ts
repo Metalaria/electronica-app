@@ -34,7 +34,7 @@ const RUTAS: RutaA11y[] = [
   { id: 'marcadores', hash: '#/marcadores' },
   // lessons and the practice types (1.0: predict, slider, breadboard, fault-finding, build, live-figure challenge)
   { id: 'leccion', hash: '#/leccion/cap05/sec-5.1' },
-  { id: 'leccion-explora', hash: '#/leccion/cap01/sec-1.4/5' },
+  { id: 'leccion-explora', hash: '#/leccion/cap01/sec-1.4/clasica/5' }, // 1.1: the 1.0 lesson of 1.4
   { id: 'practica-num', hash: '#/leccion/cap01/sec-1.4/practica-1' },
   { id: 'practica-predice', hash: '#/leccion/cap01/sec-1.4/practica-2' },
   { id: 'practica-desliza', hash: '#/leccion/cap01/sec-1.4/practica-3' },
@@ -105,6 +105,11 @@ const RUTAS: RutaA11y[] = [
   { id: 'copia', hash: '#/sincronizacion/copia' },
   { id: 'diagnostico', hash: '#/diagnostico' },
   { id: 'diagnostico-informe', hash: '#/diagnostico/informe' },
+  // 1.1 (app-wide restyle): the guided lab, the projects by stages (a stage had no h1) and a lesson that does not exist
+  { id: 'laboratorio', hash: '#/instrumentos/laboratorio/1', pesada: true },
+  { id: 'etapas', hash: '#/etapas' },
+  { id: 'etapa', hash: '#/etapas/cap50/1', pesada: true },
+  { id: 'leccion-no-encontrada', hash: '#/leccion/cap99/sec-1' },
 ];
 
 const filtro = process.env.ACC_FILTRO ? new RegExp(process.env.ACC_FILTRO) : null;

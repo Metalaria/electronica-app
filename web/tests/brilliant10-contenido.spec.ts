@@ -353,7 +353,8 @@ test.describe('por qué no (sin navegador)', () => {
         }
       }
     }
-    expect(total).toBe(2697);
+    // 2697 in 1.0; 1.1 adds the review questions of the book expansions (contenido/ampliaciones11/*/repaso.json)
+    expect(total).toBe(2808);
     expect(libroN).toBeGreaterThan(100);
   });
 

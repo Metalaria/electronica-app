@@ -169,7 +169,8 @@ test('el lector enlaza cada figura con su netlist', async ({ page }) => {
   await expect(figura.getByRole('link', { name: 'Simular' })).toBeVisible({ timeout: 30_000 });
   await figura.getByRole('link', { name: 'Simular' }).click();
   await expect(page).toHaveURL(/#\/simulador\/cap42\/fig-42\.5_filtro_rc/);
-  await expect(page.locator('.pagina h1')).toContainText('Figura 41.5');
+  // (label fig-42.5, printed 41.5 in the book and 43.5 in 1.1: the expansions' two new chapters come before it)
+  await expect(page.locator('.pagina h1')).toContainText('Figura 43.5');
   await page.goBack();
   await expect(page.locator('#fig-42\\.5')).toBeInViewport();
 });

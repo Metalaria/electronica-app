@@ -903,8 +903,8 @@ test.describe('figuras vivas en las lecciones', () => {
     await fig.scrollIntoViewIfNeeded();
     await expect(page.locator('.figura:has([data-figura-viva="1.4"]) [data-explora]')).toHaveCount(0);
 
-    // in the lesson, step by step until the figure
-    await page.goto('#/leccion/cap01/sec-1.4');
+    // in the lesson, step by step until the figure (1.1: the 1.0 lesson of 1.4 is at …/clasica)
+    await page.goto('#/leccion/cap01/sec-1.4/clasica');
     let ex = page.locator('[data-explora]').first();
     for (let i = 0; i < 15 && !(await ex.count()); i++) {
       const f = page.locator('[data-figura-viva]');
@@ -984,7 +984,7 @@ test.describe('figuras vivas en las lecciones · sin saltos', () => {
           for (const e of l.getEntries() as (PerformanceEntry & { value: number; hadRecentInput: boolean })[]) if (!e.hadRecentInput) w.__cls += e.value;
         }).observe({ type: 'layout-shift', buffered: true });
       });
-      await page.goto('#/leccion/cap01/sec-1.4/5');
+      await page.goto('#/leccion/cap01/sec-1.4/clasica/5');
       await expect(page.locator('[data-explora]')).toBeVisible({ timeout: 30_000 });
       await page.waitForTimeout(1500);
       expect(await page.evaluate(() => (window as unknown as { __cls: number }).__cls)).toBeLessThan(0.05);
@@ -1193,7 +1193,7 @@ test.describe('capturas y maquetación', () => {
         await page.waitForTimeout(500);
         await foto('lector-dominio');
 
-        await page.goto('#/leccion/cap01/sec-1.4/5');
+        await page.goto('#/leccion/cap01/sec-1.4/clasica/5');
         const ex = page.locator('[data-explora]').first();
         await page.locator('[data-figura-viva]').first().scrollIntoViewIfNeeded();
         await expect(ex).toBeVisible({ timeout: 30_000 });

@@ -257,10 +257,12 @@ test.describe('teléfono', () => {
       }),
     );
     for (const [sel, t] of tamanos) expect(t, sel).toBeGreaterThanOrEqual(44);
-    // and a tap on the edge of the touch area, outside the drawn button, reaches it
+    // and a tap on the edge of the touch area reaches it: outside the drawn button while it is drawn smaller than 44 px
+    // (0.11–1.0), inside its top edge since the 1.1 restyle draws every `.boton` 44 px high (its touch area is itself)
     await page.locator('.mando button.primario').evaluate((el) => el.scrollIntoView({ block: 'center' }));
     const b = await page.locator('.mando button.primario').boundingBox();
-    const arriba = await page.evaluate(([x, y]) => document.elementFromPoint(x!, y!)?.closest('button')?.textContent?.trim() ?? '', [b!.x + b!.width / 2, b!.y - 3]);
+    const y = b!.height < 44 ? b!.y - 3 : b!.y + 2;
+    const arriba = await page.evaluate(([x, y]) => document.elementFromPoint(x!, y!)?.closest('button')?.textContent?.trim() ?? '', [b!.x + b!.width / 2, y]);
     expect(arriba).toContain('Simular');
   });
 });
@@ -554,7 +556,8 @@ test.describe('teléfono: calculadora', () => {
 test.describe('tableta: lección', () => {
   test.use(TABLETA);
   test('lección: un doble toque en «Continuar» avanza una sola pantalla', async ({ page }) => {
-    await page.goto('/#/leccion/cap00/sec-0.1');
+    // (1.1: sec 0.1 has a hand-authored lesson, whose «Continuar» opens on interaction; the 1.0 one is at …/clasica)
+    await page.goto('/#/leccion/cap00/sec-0.1/clasica');
     const c = page.locator('[data-continuar]').first();
     await expect(c).toBeEnabled({ timeout: 30_000 });
     await page.waitForTimeout(500);
@@ -562,7 +565,43 @@ test.describe('tableta: lección', () => {
     await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
     await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
     await page.waitForTimeout(1500);
+    expect(await page.evaluate(() => location.hash)).toBe('#/leccion/cap00/sec-0.1/clasica/2');
+  });
+
+  // The same guard in the 1.1 lesson (Leccion11.svelte `principal`). Cards 3 and 4 of 1.10 are formula cards with no
+  // gating, the only such pair in the course: without the guard the second tap would pass card 4 as well.
+  test('lección 1.1: un doble toque en «Continuar» avanza una sola tarjeta', async ({ page }) => {
+    await page.goto('/#/leccion/cap01/sec-1.10/3');
+    await expect(page.locator('[data-leccion11="cap01/sec-1.10"][data-tarjeta-n="2"]')).toBeVisible({ timeout: 30_000 });
+    const c = page.locator('[data-continuar]').first();
+    await expect(c).toBeEnabled({ timeout: 30_000 });
+    await expect(c).toHaveAttribute('data-accion', 'continuar');
+    await page.waitForTimeout(500);
+    const b = (await c.boundingBox())!;
+    await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
+    await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
+    await page.waitForTimeout(1500);
+    expect(await page.evaluate(() => location.hash)).toBe('#/leccion/cap01/sec-1.10/4');
+    await expect(page.locator('[data-leccion11="cap01/sec-1.10"]')).toHaveAttribute('data-tarjeta-n', '3');
+  });
+
+  // 1.1: the button of a question turns from «Comprobar» into «Continuar» in the same place once the answer is right,
+  // so a double tap on «Comprobar» would also pass the card before its explanation could be read.
+  test('lección 1.1: un doble toque en «Comprobar» comprueba y se queda en la tarjeta', async ({ page }) => {
+    await page.goto('/#/leccion/cap00/sec-0.1/2');
+    await expect(page.locator('[data-leccion11="cap00/sec-0.1"][data-tarjeta-n="1"]')).toBeVisible({ timeout: 30_000 });
+    await page.locator('[data-opcion="0"]').click();
+    const c = page.locator('[data-continuar]').first();
+    await expect(c).toHaveAttribute('data-accion', 'comprobar');
+    await expect(c).toBeEnabled();
+    await page.waitForTimeout(500);
+    const b = (await c.boundingBox())!;
+    await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
+    await page.touchscreen.tap(b.x + b.width / 2, b.y + b.height / 2);
+    await page.waitForTimeout(1500);
     expect(await page.evaluate(() => location.hash)).toBe('#/leccion/cap00/sec-0.1/2');
+    await expect(page.locator('[data-leccion11="cap00/sec-0.1"]')).toHaveAttribute('data-tarjeta-n', '1');
+    await expect(c).toHaveAttribute('data-accion', 'continuar');
   });
 });
 
@@ -1069,17 +1108,55 @@ test.describe('tableta: salir de una lección que carga', () => {
         rs(st, t, u);
       };
     });
-    await page.goto('/#/leccion/cap02/sec-2.1/2');
+    // (1.1: sections 2.1 and 1.2 have hand-authored lessons; the 1.0 ones, whose load is tested here, are at …/clasica)
+    await page.goto('/#/leccion/cap02/sec-2.1/clasica/2');
     await expect(page.locator('.leccion .cargando')).toBeVisible({ timeout: 30_000 });
-    await page.evaluate(() => (location.hash = '#/leccion/cap01/sec-1.2/2'));
+    await page.evaluate(() => (location.hash = '#/leccion/cap01/sec-1.2/clasica/2'));
     await expect(page.locator('[data-leccion="cap01/sec-1.2"]')).toBeVisible({ timeout: 30_000 });
     await expect(page.locator('[data-leccion="cap01/sec-1.2"] .cargando')).toHaveCount(0, { timeout: 30_000 });
     soltar();
     await page.waitForResponse('**/partes/cap02.json').catch(() => {});
     await page.waitForTimeout(1500);
-    expect(await page.evaluate(() => location.hash)).toBe('#/leccion/cap01/sec-1.2/2');
+    expect(await page.evaluate(() => location.hash)).toBe('#/leccion/cap01/sec-1.2/clasica/2');
     expect(await page.evaluate(() => (window as unknown as { __direcciones: string[] }).__direcciones.filter((u) => u.includes('cap02')))).toEqual([]);
     await expect(page.locator('[data-leccion="cap01/sec-1.2"]')).toBeVisible();
+    expect(avisos).toEqual([]);
+  });
+
+  // The same race in the 1.1 lesson: the left lesson's cards file (libro/lecciones11/…) comes after the reader has
+  // gone on to another 1.1 lesson; it must not open its card (replacing the address) or touch its destroyed state.
+  test('lección 1.1: la que se deja a medio cargar no pisa la dirección de la nueva', async ({ page }) => {
+    const avisos: string[] = [];
+    page.on('console', (m) => {
+      if (/derived_inert/.test(m.text())) avisos.push(m.text());
+    });
+    let soltar: () => void = () => {};
+    const llega = new Promise<void>((r) => (soltar = r));
+    await page.route('**/lecciones11/cap02/sec-2.1.json', async (r) => {
+      await llega;
+      await r.continue();
+    });
+    await page.addInitScript(() => {
+      const w = window as unknown as { __direcciones: string[] };
+      w.__direcciones = [];
+      const rs = history.replaceState.bind(history);
+      history.replaceState = (st, t, u) => {
+        w.__direcciones.push(String(u));
+        rs(st, t, u);
+      };
+    });
+    await page.goto('/#/leccion/cap02/sec-2.1/2');
+    await expect(page.locator('[data-leccion11="cap02/sec-2.1"] .cargando')).toBeVisible({ timeout: 30_000 });
+    await page.evaluate(() => (location.hash = '#/leccion/cap01/sec-1.2/2'));
+    await expect(page.locator('[data-leccion11="cap01/sec-1.2"][data-tarjeta-n="1"]')).toBeVisible({ timeout: 30_000 });
+    await expect(page.locator('[data-leccion11="cap01/sec-1.2"] .cargando')).toHaveCount(0, { timeout: 30_000 });
+    soltar();
+    await page.waitForResponse('**/lecciones11/cap02/sec-2.1.json').catch(() => {});
+    await page.waitForTimeout(1500);
+    expect(await page.evaluate(() => location.hash)).toBe('#/leccion/cap01/sec-1.2/2');
+    expect(await page.evaluate(() => (window as unknown as { __direcciones: string[] }).__direcciones.filter((u) => u.includes('cap02')))).toEqual([]);
+    await expect(page.locator('[data-leccion11="cap01/sec-1.2"]')).toHaveAttribute('data-tarjeta-n', '1');
+    await expect(page.locator('[data-leccion11="cap02/sec-2.1"]')).toHaveCount(0);
     expect(avisos).toEqual([]);
   });
 });

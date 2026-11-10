@@ -648,11 +648,15 @@ test.describe('android-preparar.mjs: icono de la notificación del recordatorio'
     const raiz = temporal('android');
     fs.mkdirSync(path.join(raiz, 'web', 'scripts'), { recursive: true });
     fs.copyFileSync(path.join(WEB, 'scripts', 'android-preparar.mjs'), path.join(raiz, 'web', 'scripts', 'android-preparar.mjs'));
+    // 1.1: the script also writes the book's QR links into the manifest (android-enlaces.mjs, from tauri.conf.json)
+    fs.copyFileSync(path.join(WEB, 'scripts', 'android-enlaces.mjs'), path.join(raiz, 'web', 'scripts', 'android-enlaces.mjs'));
     fs.cpSync(path.join(RAIZ, 'src-tauri', 'icons', 'android'), path.join(raiz, 'src-tauri', 'icons', 'android'), { recursive: true });
+    fs.copyFileSync(path.join(RAIZ, 'src-tauri', 'tauri.conf.json'), path.join(raiz, 'src-tauri', 'tauri.conf.json'));
     if (conRecursos) fs.cpSync(path.join(RAIZ, 'src-tauri', 'recursos-android'), path.join(raiz, 'src-tauri', 'recursos-android'), { recursive: true });
     const app = path.join(raiz, 'src-tauri', 'gen', 'android', 'app');
     const res = path.join(app, 'src', 'main', 'res');
     fs.mkdirSync(path.join(res, 'drawable'), { recursive: true });
+    fs.copyFileSync(path.join(WEB, 'tests', 'enlaces11', 'AndroidManifest.plantilla.xml'), path.join(app, 'src', 'main', 'AndroidManifest.xml'));
     fs.writeFileSync(
       path.join(app, 'build.gradle.kts'),
       'plugins {\n    id("com.android.application")\n}\n\nandroid {\n    buildTypes {\n        getByName("release") {\n            isMinifyEnabled = true\n        }\n    }\n}\n',

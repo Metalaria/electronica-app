@@ -68,11 +68,12 @@ test('laboratorio completado entre dos dispositivos (sin `c`) y marcador de una 
   const lab = LABORATORIOS.find((x) => x.n === 1)!;
   await con(page, {
     'epa:laboratorio': { version: 1, practicas: { p1: { h: lab.pasos.map((x) => x.id).sort(), l: {}, c: 0, t: T } } },
-    // marked with 1.0 (printed 33.14); expansion P04 renumbered the section
+    // marked with an old number (33.14); the expansions renumbered the section: 33.15 today (refs.json, after P02
+    // retired 32.13)
     'epa:marcadores': { 'sec-33.14': { parte: 'cap33', label: 'sec-33.14', num: '33.14', titulo: 'Sección marcada', t: T } },
   });
   await page.goto('/#/instrumentos');
   await expect(page.locator('[data-laboratorio-enlace="1"] .avance')).toHaveText('· completado');
   await page.goto('/#/marcadores');
-  await expect(page.locator('a[href="#/cap33/sec-33.14"] .n')).toHaveText('33.16');
+  await expect(page.locator('a[href="#/cap33/sec-33.14"] .n')).toHaveText('33.15');
 });

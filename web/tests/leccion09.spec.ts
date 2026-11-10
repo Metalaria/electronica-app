@@ -82,7 +82,8 @@ test('regresión 1.0: un Intro que llega aún al campo numérico ya respondido (
   const primera = pasos.length + practica.length;
   const total = primera + suyas.length;
   // (a deep link stops at the last step: from there, on to the first question one screen at a time)
-  await page.goto(`#/leccion/cap05/sec-5.2/${pasos.length}`);
+  // (1.1: sec 5.2 has a hand-authored lesson; the 1.0 one is at …/clasica)
+  await page.goto(`#/leccion/cap05/sec-5.2/clasica/${pasos.length}`);
   const cuenta = page.locator('.cab-pasos .cuenta');
   for (let k = pasos.length; k <= primera; k++) {
     await expect(cuenta).toHaveText(`${k}/${total}`);
@@ -120,7 +121,8 @@ test('regresión 1.0 (10i): con el foco en el veredicto de una pregunta, Intro h
   const practica = leerJson<{ secciones: Record<string, { items: string[] }> }>('practica/cap05.json').secciones['sec-5.2']?.items ?? [];
   const primera = pasos.length + practica.length;
   const total = primera + suyas.length;
-  await page.goto(`#/leccion/cap05/sec-5.2/${pasos.length}`);
+  // (1.1: sec 5.2 has a hand-authored lesson; the 1.0 one is at …/clasica)
+  await page.goto(`#/leccion/cap05/sec-5.2/clasica/${pasos.length}`);
   const cuenta = page.locator('.cab-pasos .cuenta');
   for (let k = pasos.length; k <= primera; k++) {
     await expect(cuenta).toHaveText(`${k}/${total}`);
@@ -203,8 +205,14 @@ test('lección de 5.2: del botón del lector al resumen, con figuras vivas, tecl
   const titulo = (await page.locator('h2#sec-5\\.2').boundingBox())!;
   expect(caja.height).toBeLessThanOrEqual(36);
   expect(caja.y).toBeGreaterThanOrEqual(titulo.y - 8);
+  // 1.1: the button opens the hand-authored lesson; the 1.0 lesson tested here is at …/clasica (opened from the reader,
+  // so that Back still returns to it)
   await boton.click();
   await expect(page).toHaveURL(/#\/leccion\/cap05\/sec-5\.2$/);
+  await expect(page.locator('[data-leccion11="cap05/sec-5.2"]')).toBeVisible();
+  await page.goBack();
+  await expect(page.locator('h2#sec-5\\.2')).toBeVisible();
+  await page.goto('#/leccion/cap05/sec-5.2/clasica');
 
   // Full screen: no rail, no index, no top bar
   const leccion = page.locator('[data-leccion="cap05/sec-5.2"]');
@@ -217,7 +225,7 @@ test('lección de 5.2: del botón del lector al resumen, con figuras vivas, tecl
   // Keys: → forward, ← back; each screen replaces the URL (one history entry)
   await page.keyboard.press('ArrowRight');
   await expect(leccion).toHaveAttribute('data-pantalla', '1');
-  await expect(page).toHaveURL(/#\/leccion\/cap05\/sec-5\.2\/2$/);
+  await expect(page).toHaveURL(/#\/leccion\/cap05\/sec-5\.2\/clasica\/2$/);
   await expect(leccion.locator('h1')).toHaveText(pasos[1]!.titulo);
   await page.keyboard.press('ArrowLeft');
   await expect(leccion).toHaveAttribute('data-pantalla', '0');
@@ -266,7 +274,7 @@ test('lección de 5.2: del botón del lector al resumen, con figuras vivas, tecl
   const resumen = page.locator('[data-resumen]');
   await expect(resumen).toBeVisible();
   await expect(resumen.locator('h1')).toHaveText('Sección completada');
-  await expect(page).toHaveURL(/#\/leccion\/cap05\/sec-5\.2\/fin$/);
+  await expect(page).toHaveURL(/#\/leccion\/cap05\/sec-5\.2\/clasica\/fin$/);
   await expect.poll(async () => (await leer<Record<string, { c: number; h: number[] }>>(page, 'lecciones'))?.['cap05/sec-5.2']?.c ?? 0).toBeGreaterThan(0);
   await expect.poll(async () => (await leer<Record<string, Record<string, number>>>(page, 'leidas'))?.cap05?.['sec-5.2'] ?? 0).toBeGreaterThan(0);
   await expect
@@ -276,7 +284,7 @@ test('lección de 5.2: del botón del lector al resumen, con figuras vivas, tecl
   // Next section's lesson, then Back leaves the lessons for the reader
   await page.locator('[data-siguiente-leccion]').click();
   await expect(page).toHaveURL(/#\/leccion\/cap05\/sec-5\.3$/);
-  await expect(page.locator('[data-leccion="cap05/sec-5.3"]')).toBeVisible();
+  await expect(page.locator('[data-leccion11="cap05/sec-5.3"]')).toBeVisible();
   await page.goBack();
   await expect(page).toHaveURL(/#\/cap05\/sec-5\.2$/);
   await expect(page.locator('h2#sec-5\\.2')).toBeVisible();
@@ -285,7 +293,8 @@ test('lección de 5.2: del botón del lector al resumen, con figuras vivas, tecl
 test('sección sin subapartados (5.8): pasos automáticos, recarga en un paso y cierre', async ({ page }) => {
   const pasos = pasosDe('cap05', 'sec-5.8');
   expect(pasos.every((p) => p.tipo === 'parte')).toBe(true);
-  await page.goto('#/leccion/cap05/sec-5.8/2');
+  // (1.1: sec 5.8 has a hand-authored lesson; the 1.0 one is at …/clasica)
+  await page.goto('#/leccion/cap05/sec-5.8/clasica/2');
   const leccion = page.locator('[data-leccion="cap05/sec-5.8"]');
   await expect(leccion).toHaveAttribute('data-pantalla', '1');
   await expect(leccion.locator('[data-paso="1"]')).toContainText('Paso 2');
@@ -305,7 +314,8 @@ test('esquema vivo dentro de una lección (5.3)', async ({ page }) => {
   const bl = bloquesDe('cap05');
   const k = pasos.findIndex((p) => bl.slice(p.desde, p.hasta).some((b) => b.label === 'fig-5.8'));
   expect(k).toBeGreaterThanOrEqual(0);
-  await page.goto(`#/leccion/cap05/sec-5.3/${k + 1}`);
+  // (1.1: sec 5.3 has a hand-authored lesson; the 1.0 one is at …/clasica)
+  await page.goto(`#/leccion/cap05/sec-5.3/clasica/${k + 1}`);
   const fig = page.locator('[data-leccion="cap05/sec-5.3"] figure#fig-5\\.8');
   await fig.scrollIntoViewIfNeeded();
   await expect(fig.locator('.viva.lista')).toBeVisible();

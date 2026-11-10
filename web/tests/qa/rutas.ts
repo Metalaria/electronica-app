@@ -181,7 +181,7 @@ export function todasLasRutas(): Ruta[] {
   r.push({ id: 'problema', hash: '#/problema', grupo: 'aprendizaje', siempre: true, completa: true });
   r.push({ id: 'problema:ayer', hash: '#/problema/ayer', grupo: 'aprendizaje', siempre: true });
   // lesson steps with an explorable live schematic (figuras-vivas/esquema/ExploraEsquema.svelte)
-  r.push({ id: 'leccion-explora:cap01/sec-1.4/5', hash: '#/leccion/cap01/sec-1.4/5', grupo: 'aprendizaje' });
+  r.push({ id: 'leccion-explora:cap01/sec-1.4/5', hash: '#/leccion/cap01/sec-1.4/clasica/5', grupo: 'aprendizaje' }); // 1.1: the 1.0 lesson of 1.4
   r.push({ id: 'leccion-explora:cap22/sec-22.1', hash: '#/leccion/cap22/sec-22.1', grupo: 'aprendizaje' });
 
   // ---- 0.12 (novedades.ts): every state of the new interface, in every profile and layout variant

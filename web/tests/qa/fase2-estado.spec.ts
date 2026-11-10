@@ -150,7 +150,7 @@ test('recargar a mitad: simulación, editor, protoboard e instrumentos', async (
     if (!ok) await reg.anotar({ sev: 'funcional', tipo: 'recarga', firma: 'práctica inteligente', msg: 'Tras recargar a mitad de una práctica inteligente, la página no vuelve a ofrecer una sesión.' });
     await recogerYComprobar(page, reg, { tactil: reg.perfil.tactil, completa: false, accesibilidad: false });
   }
-  for (const h of ['#/problema', '#/leccion/cap01/sec-1.4/5', '#/progreso/dominio']) {
+  for (const h of ['#/problema', '#/leccion/cap01/sec-1.4/clasica/5', '#/progreso/dominio']) {
     reg.ruta = `${h} (recarga)`;
     await page.goto(`/${h}`);
     await esperarCalma(page, 30_000, 500);

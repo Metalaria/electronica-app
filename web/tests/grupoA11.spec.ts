@@ -225,7 +225,10 @@ test.describe('reglas de XP, niveles y cursos (sin navegador)', () => {
       cap51: ['analogica', 'proyectos'],
       cap52: ['senales', 'proyectos'],
     });
-    expect(CURSOS.map((c) => c.partes.length)).toEqual([7, 4, 8, 6, 4, 5, 6, 8, 3, 7]);
+    expect(CURSOS.map((c) => c.partes.length)).toEqual([7, 4, 8, 7, 5, 5, 6, 8, 3, 7]);
+    // 1.1: the expansions' two new chapters, where the book places them
+    expect(CURSOS.find((c) => c.id === 'digital')!.partes).toEqual(['cap09', 'cap29', 'cap-new-automatas', 'cap34', 'cap37', 'cap38', 'cap44']);
+    expect(CURSOS.find((c) => c.id === 'potencia')!.partes).toEqual(['cap10', 'cap33', 'cap-new-maquinas', 'cap39', 'cap50']);
     expect(CURSOS[0]!.partes).toEqual(['cap00', 'cap01', 'cap02', 'cap03', 'cap04', 'cap05', 'cap06']);
     expect(CURSOS.find((c) => c.id === 'taller')!.partes).toEqual(['cap11', 'cap12', 'cap13', 'cap15', 'cap21', 'cap22', 'cap47', 'cap53']);
     expect(CURSOS.find((c) => c.id === 'proyectos')!.partes).toEqual(['cap16', 'cap48', 'cap49', 'cap50', 'cap51', 'cap52', 'cap54']);
@@ -569,7 +572,8 @@ test.describe('cursos y prueba de nivel', () => {
     await expect(page.locator('[data-continuar-curso]')).toHaveAttribute('href', `#/leccion/cap00/${sig.label}`);
     await expect(page.locator('[data-leccion-curso="cap00/sec-0.1"]')).toHaveAttribute('data-estado', 'hecha');
     await page.locator('[data-continuar-curso]').click();
-    await expect(page.locator(`[data-leccion="cap00/${sig.label}"]`)).toBeVisible();
+    // (1.1: chapter 0's sections have their hand-made lesson now; the 1.0 one only where there is none)
+    await expect(page.locator(`[data-leccion="cap00/${sig.label}"], [data-leccion11="cap00/${sig.label}"]`)).toBeVisible();
   });
 
   test('prueba de nivel: saltar, responder, recomendación, marcar como superadas (sin XP), deshacer y repetir', async ({ page }) => {

@@ -83,6 +83,13 @@ test('verificado: el PDF del examen no lleva respuestas ni desarrollos', async (
       const s8 = limpio(s.html).split(' ').slice(0, 8).join(' ');
       const enun = bl!.enunciado.filter((b) => b.t === 'p').map((b) => limpio((b as { html: string }).html)).join(' ');
       if (s8.split(' ').length < 8 || enun.includes(s8)) continue;
+      // (1.1 «razonar»: a choice may offer the book's own words as its right option, e.g. ej-18.7 «El GPIO trabaja a
+      // 3,3 V y no tolera 5 V…»: the exam shows the options, not the solution)
+      const preguntas = (ctx.ejercicio(m.ref)?.preguntas ?? [])
+        .flatMap((p) => { const q = p as { enunciado?: string; opciones?: unknown[] }; return [q.enunciado ?? '', ...(q.opciones ?? []).map(String)]; })
+        .map(limpio)
+        .join(' ');
+      if (preguntas.includes(s8)) continue;
       expect(texto.includes(s8), `${m.ref}: solución en el examen`).toBe(false);
       comprobados++;
     }

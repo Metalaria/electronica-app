@@ -125,7 +125,10 @@ async function crearExamen(page: Page, minutos: string): Promise<string> {
   await page.locator('[data-variantes]').uncheck();
   await page.locator('[data-barajar]').uncheck();
   await page.locator('[data-filtro-parte]').selectOption('cap05');
-  for (const c of ['pregunta:cap05-01', 'ejercicio:ej-5.9']) await page.locator(`li[data-entrada="${c}"] [data-anadir]`).click();
+  await page.locator('li[data-entrada="pregunta:cap05-01"] [data-anadir]').click();
+  // an open exercise (1.1 «razonar»: ej-5.9, used until 1.0, is self-checked now; ej-12.8 is still self-assessed)
+  await page.locator('[data-filtro-parte]').selectOption('cap12');
+  await page.locator('li[data-entrada="ejercicio:ej-12.8"] [data-anadir]').click();
   await page.locator('[data-guardar]').click();
   await expect(page).toHaveURL(/#\/docente\/examen\/x[a-z0-9]+$/);
   return decodeURIComponent(new URL(page.url()).hash).split('/').pop()!;

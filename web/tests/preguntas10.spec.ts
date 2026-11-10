@@ -414,7 +414,8 @@ test('completa el montaje en la protoboard: un arreglo mal y otro bien (por cone
 test('lección con práctica: pantallas intercaladas, objetivo diario, ideas clave y siguiente lección', async ({ page }) => {
   const sec = practica('cap01').secciones['sec-1.4']!;
   const its = sec.items.map((id) => item<ItemPractica>(id));
-  await page.goto('#/leccion/cap01/sec-1.4');
+  // 1.1: sec 1.4 has a hand-authored lesson; the 1.0 one (steps, practice, questions) is at …/clasica
+  await page.goto('#/leccion/cap01/sec-1.4/clasica');
   await page.reload();
   const leccion = page.locator('[data-leccion="cap01/sec-1.4"]');
   await expect(leccion).toBeVisible();

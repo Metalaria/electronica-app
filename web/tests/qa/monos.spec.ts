@@ -36,7 +36,7 @@ const PAGINAS: [string, string][] = [
   ['ejercicios', '#/ejercicios'],
   ['repaso-tarjetas', '#/repaso/tarjetas'],
   ['repaso-test', '#/repaso/test/cap05'],
-  ['leccion', '#/leccion/cap01/sec-1.4'],
+  ['leccion', '#/leccion/cap01/sec-1.4/clasica'], // 1.1: the 1.0 lesson (1.4 has a hand-authored one)
   ['sincronizacion', '#/sincronizacion'],
   // 0.11 group B: the learning loop
   ['practicar', '#/practicar'],

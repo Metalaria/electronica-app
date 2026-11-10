@@ -74,7 +74,7 @@ test('fugas: figuras explorables, práctica inteligente y problema del día', as
   const vueltas: Vuelta[] = [await medir()];
   let movidas = 0;
   for (let v = 1; v <= 3; v++) {
-    for (const h of ['#/leccion/cap01/sec-1.4/5', '#/leccion/cap22/sec-22.1']) {
+    for (const h of ['#/leccion/cap01/sec-1.4/clasica/5', '#/leccion/cap22/sec-22.1']) {
       reg.ruta = `fugas:${h} (vuelta ${v})`;
       await page.evaluate((x) => (location.hash = x), h);
       await esperarCalma(page, 20_000);

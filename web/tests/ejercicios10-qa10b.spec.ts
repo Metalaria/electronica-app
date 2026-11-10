@@ -132,11 +132,16 @@ test('qa10b·a4 «Solo lo que la aplicación corrige sola» deja fuera todo ejer
   });
   expect(conAbierta.map((e) => e.ref)).toEqual([]);
   // the book's 175, plus (1.1 «razonar») the 173 self-assessed ones turned into choices, orders and matchings with no
-  // open part left (tests/razonar11-unidad.spec.ts), plus the 30 new exercises not in the book yet (ejnuevos11-unidad)
+  // open part left (tests/razonar11-unidad.spec.ts), plus the ones not in the book yet («nuevo» in the bank): the 30 new
+  // exercises (ejnuevos11-unidad) and the 55 checkable ones of the book expansions (ampliaciones11-unidad)
   expect(auto.filter((e) => !e.nuevo)).toHaveLength(175 + 173);
-  expect(auto.filter((e) => e.nuevo)).toHaveLength(30);
+  expect(auto.filter((e) => e.nuevo && ctx.ejercicio(e.ref)!.nuevo)).toHaveLength(30);
+  expect(auto.filter((e) => e.nuevo && ctx.ejercicio(e.ref)!.ampliacion)).toHaveLength(55);
+  expect(auto.filter((e) => e.nuevo)).toHaveLength(30 + 55);
   // and each of them is graded without a self-assessment: answering nothing leaves no part pending
-  for (const e of auto.slice(0, 60)) {
+  // (review 11a: a text alone on one that 1.0 self-assessed is a 1.0 answer, graded as 1.0 did — one self-assessed open
+  // part, tests/revision11a-unidad.spec.ts A1–A3 — so those are left out here)
+  for (const e of auto.filter((x) => !ctx.ejercicio(x.ref)!.comparar10).slice(0, 60)) {
     const m = montarExamen({ items: [{ k: 'ejercicio', ref: e.ref, puntos: 1 }], minutos: 0, variantes: false, barajar: false, semilla: 1, espacio: 'no' }, ctx, 0).items[0]!;
     expect(calificarItem(m, ctx, { texto: 'algo' }).estado, e.ref).not.toBe('pendiente');
   }

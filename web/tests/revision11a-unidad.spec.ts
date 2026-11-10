@@ -20,7 +20,17 @@ const L = cargarLibro();
 const ctx: ContextoExamen = L.libro;
 const WEB = path.resolve(LIBRO, '..', '..');
 const REPO = path.resolve(WEB, '..');
-const deHead = <T>(rel: string): T => JSON.parse(execFileSync('git', ['show', `HEAD:${rel}`], { cwd: REPO, encoding: 'utf8', maxBuffer: 256 << 20 })) as T;
+// The published 1.0.0 (its known hash, or the commit whose message starts «Versión 1.0.0:», as tests/fuentes-viejas.ts
+// finds the older ones): the review ran on an uncommitted tree, where HEAD was still 1.0; once 1.1 is committed it is not.
+const V10 = (() => {
+  const git = (...a: string[]) => execFileSync('git', a, { cwd: REPO, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim();
+  try {
+    return git('rev-parse', '--verify', '--quiet', 'e89affc^{commit}');
+  } catch {
+    return git('log', '--format=%H', '-n', '1', '--grep=^Versión 1\\.0\\.0:');
+  }
+})();
+const deHead = <T>(rel: string): T => JSON.parse(execFileSync('git', ['show', `${V10}:${rel}`], { cwd: REPO, encoding: 'utf8', maxBuffer: 256 << 20 })) as T;
 
 // ------------------------------------------------------------------ A. exam results stored by 1.0
 

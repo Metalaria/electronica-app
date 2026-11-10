@@ -194,10 +194,11 @@ test('ejercicios: la figura o el circuito del enunciado, y un hueco cuando no ha
   const v = await visibles(page);
   expect(v.some((x) => x.tipo === 'esquema' && x.estado === 'lista')).toBe(true);
   expect(v.some((x) => x.estado === 'hueco')).toBe(true);
-  // Exercise 39.3 (ej-40.3 of part cap40) links to figure 39.5 (fig/40.5); closed chapters asked for nothing.
+  // Exercise 41.3 (ej-40.3 of part cap40, printed 39.3 in the book: the expansions' two new chapters come before it)
+  // links to figure 41.5 (fig/40.5); closed chapters asked for nothing.
   expect(pedidas.some((p) => p.startsWith('esquemas/cap40'))).toBe(false);
-  await page.locator('button.cap-cab', { hasText: 'Capítulo 39 ·' }).click();
-  const fila = page.locator('.pagina-ej li .fila', { has: page.locator('.num', { hasText: /^39\.3$/ }) });
+  await page.locator('button.cap-cab', { hasText: 'Capítulo 41 ·' }).click();
+  const fila = page.locator('.pagina-ej li .fila', { has: page.locator('.num', { hasText: /^41\.3$/ }) });
   await fila.scrollIntoViewIfNeeded();
   await expect(fila.locator('[data-miniatura="figura"][data-estado="lista"] img')).toHaveAttribute('src', /miniaturas\/fig\/40\.5\.webp$/);
   await expect.poll(() => fila.locator('img').evaluate((i: HTMLImageElement) => i.complete && i.naturalWidth > 0)).toBe(true);
@@ -550,8 +551,8 @@ test('capturas de cada lista: tableta y móvil, claro y oscuro', async ({ browse
       await page.keyboard.press('Escape');
 
       await page.goto('#/ejercicios');
-      await page.locator('button.cap-cab', { hasText: 'Capítulo 39 ·' }).click();
-      await page.locator('button.cap-cab', { hasText: 'Capítulo 39 ·' }).evaluate((e) => window.scrollBy(0, e.getBoundingClientRect().top - 120));
+      await page.locator('button.cap-cab', { hasText: 'Capítulo 41 ·' }).click();
+      await page.locator('button.cap-cab', { hasText: 'Capítulo 41 ·' }).evaluate((e) => window.scrollBy(0, e.getBoundingClientRect().top - 120));
       await esperar(page);
       await foto('ejercicios');
 

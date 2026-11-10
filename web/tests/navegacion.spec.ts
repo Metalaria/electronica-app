@@ -154,7 +154,8 @@ test.describe('escritorio', () => {
     await page.goto('#/cap34/sec-34.9');
     const ind = indice(page);
     const actual = ind.locator('.secciones a[aria-current="location"]');
-    await expect(actual).toContainText('33.9');
+    // (printed 33.9 in the book; 35.9 in 1.1: the expansions' two new chapters come before part cap34)
+    await expect(actual).toContainText('35.9');
     await expect.poll(() => enVista(page, actual)).toBe(true);
     // its volume is open and the others closed
     await expect(ind.locator('.tomo-cab[aria-expanded="true"]')).toHaveCount(1);
@@ -163,7 +164,7 @@ test.describe('escritorio', () => {
     await page.locator('#sec-34\\.10').evaluate((el) => {
       window.scrollTo({ top: el.getBoundingClientRect().top + window.scrollY - 100, behavior: 'instant' });
     });
-    await expect(actual).toContainText('33.10');
+    await expect(actual).toContainText('35.10');
     await expect.poll(() => enVista(page, actual)).toBe(true);
 
     // the reader scrolls the index away: no automatic jump back, but «Ir a la sección actual» appears
@@ -176,7 +177,8 @@ test.describe('escritorio', () => {
 
     // read sections are ticked in chapter 5
     await page.goto('#/cap05/sec-5.6');
-    await expect(ind.locator('.secciones a.leida')).toHaveCount(4);
+    // (only chapter 5's: 34.9, read above, is still listed and ticked while volume V stays open)
+    await expect(ind.locator('.secciones a.leida[href^="#/cap05/"]')).toHaveCount(4);
   });
 
   test('teclado en el índice: flechas, desplegar y abrir', async ({ page }) => {
