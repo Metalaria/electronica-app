@@ -24,9 +24,16 @@ esquemas (fase 5) está en la versión 0.7.
   ↑ ↓ (o `Alt ↑` / `Alt ↓`) van a la sección anterior o siguiente. En el teléfono y la tableta en vertical, una
   **barra inferior** (0.9: Inicio, Libro, Simulador, Ejercicios, Más; una píldora detrás del icono activo):
   «Libro» abre el índice en un cajón y «Más», el resto (Buscar incluido); el botón Atrás de Android los cierra primero.
-- **Lectura** con la tipografía del libro (Source Serif 4 para el texto, Source Sans 3 para títulos e
-  interfaz, Source Code Pro para el código; las fuentes van dentro de la aplicación). El color del
-  capítulo es el acento: apertura, números de sección, ecuaciones, tablas.
+- **Lectura** con la tipografía del libro para el texto corrido (Source Serif 4; Source Code Pro para el código) y
+  el estilo 1.1 en lo demás (Space Grotesk en los títulos, Inter en la interfaz; las fuentes van dentro de la
+  aplicación). El color del capítulo es el acento: apertura, números de sección, ecuaciones, tablas.
+- **Estilo visual 1.1 en toda la aplicación** (el de la maqueta aprobada «Divisor de tensión»): páginas blancas
+  con tarjetas suaves y redondeadas, títulos en Space Grotesk, texto en Inter, azul como acento (el azul marino
+  del primer tomo pasa a ser ese azul; los demás tomos conservan su color), naranja para las lecturas grandes, la
+  racha y el XP, progreso por segmentos (hecho en verde, el actual en azul), tres botones de 44 px (principal
+  relleno, secundario con borde, discreto solo texto), botones desactivados en gris legible, avisos de acierto y
+  de «todavía no» con fondo tintado. Mismo diseño y misma navegación que antes: es un cambio de aspecto. Claro,
+  sepia y oscuro con contraste AA.
 - **Todos los bloques del libro**: cajas de nota, importante, precaución, ejemplo y comprobación;
   deducciones; tarjetas de fórmulas; ecuaciones (imágenes SVG de Typst que toman el color del texto, así
   que se leen bien en tema oscuro); figuras con su pie «Figura 5.3 — …» y créditos; tablas (en el móvil
@@ -347,8 +354,13 @@ libro y lo simula sin escribir la netlist. También abre como dibujo editable cu
 trazado automático y la deja lista para cambiarla; la vuelta es **«Ver como netlist»**, que abre la netlist
 generada en el simulador de texto.
 
+- **Fuentes de control (1.1).** Una fuente cuyo nodo solo lo lee una fuente controlada (los nodos de control de E y G,
+  también con `POLY(n)`) o una expresión (`V(a)`, `V(a,b)` de una fuente B o de `VALUE=`) ya no aparece con un
+  terminal suelto ni con el aviso «un terminal no está conectado a nada»: el dibujo le pone una etiqueta de red con el
+  nombre del nodo. La netlist que genera es la misma (comprobado con las 313 del libro).
 - **Paleta** con buscador: resistencia, potenciómetro, condensador, bobina, transformador, cristal, interruptores y relé, sensores y cargas (0.10, abajo), fuentes
-  de tensión y de corriente (continua, senoidal, pulsos, por tramos o texto SPICE), fuentes controladas E y G,
+  de tensión y de corriente (continua, senoidal, pulsos, por tramos o texto SPICE; una de alterna con fase, como las
+  trifásicas de las ampliaciones, se rotula «AC 231 V ∠−120°» y no con su texto SPICE: revisión 11c), fuentes controladas E y G,
   diodo, Zener, LED, Schottky, transistores NPN y PNP, MOSFET N y P, JFET N y P, operacional (con o sin
   patillas de alimentación), temporizador 555 (0.10, un modelo de comportamiento), masa, alimentación, etiqueta de red, sonda de tensión, voltímetro entre dos
   puntos y amperímetro. Un toque en la paleta y otro en el lienzo coloca la pieza; también se puede arrastrar.
@@ -1063,6 +1075,50 @@ para las tensiones, `ngspice`. Si falta la carpeta de los proyectos o `kicad-cli
 `node tests/proyectos-capturas.mjs`; coste por fotograma al girar la placa: `node tests/proyectos-rendimiento.mjs
 --perfil mac|tableta|movil` (con la web servida en el puerto 4189).
 
+### Proyectos por etapas (1.1)
+
+`#/etapas` monta los cuatro proyectos detallados del libro **por etapas en el editor de esquemas**. Cada etapa es un
+bloque del proyecto con lo que pide el libro (sus cifras y la sección que las da), un circuito de partida que **no
+cumple** y unos valores que elegir; «Comprobar» **simula el esquema** con el ngspice de la aplicación y dice, condición
+por condición, qué se midió y, si no cumple, qué cambiar y hacia dónde. El diseño del libro siempre pasa, y también
+los que cumplen sin ser el suyo (otro valor comercial de la serie, dos piezas en paralelo, otra topología): se juzga lo
+que mide el circuito, no sus valores.
+
+| Proyecto (capítulo impreso) | Etapas: lo que se elige → lo que se comprueba |
+|---|---|
+| Fuente de laboratorio (49) | 1 secundario y C de filtro → valle ≥ 33 V con la red al −10 % y 3 A, rizado ≤ 3 V, ≤ 48 V en vacío con la red al +10 % · 2 divisor de realimentación → 30 V ± 1 % con la consigna al máximo, regulación de carga < 0,1 %, 0 V con la consigna a cero · 3 R sensora (ejercicio 49.5) → unos 2 A en cortocircuito · 4 caída del prerregulador → 5 V sin dropout a 3 A y ≤ 12 W en el transistor de paso |
+| Estación IoT (48) | 1 pull-up del I²C → subida ≤ 300 ns con 50 pF (400 kHz) y ≤ 3 mA · 2 ganancia y referencia del micrófono → 40–60 dB y 1,65 V · 3 R y C del detector de nivel → τ = 125 ms ± 10 % |
+| Amplificador Hi-Fi (50) | 1 preamplificador A1 → 6 dB ± 0,5 y respuesta plana ± 0,5 dB con el tono al centro · 2 ajuste del multiplicador de V<sub>BE</sub> → corriente de reposo de 50 mA (40–60) · 3 raíles → ≥ 50 W sobre 8 Ω y ≤ 19 W por transistor |
+| Radio SDR (51) | 1 atenuador en π → 10 dB ± 0,5 y 50 Ω ± 5 · 2 R<sub>G</sub> → ganancia de 31 ± 0,25 dB · 3 Sallen-Key → −3 dB por encima de 24 kHz y fuga a 7 MHz ≤ −68 dB |
+
+- **Dónde se diseña.** Cada etapa tiene su circuito en «Mis circuitos» (se crea al abrirla por primera vez, con el
+  nombre «Fuente de laboratorio · Etapa 1: …»). En la página de la etapa hay un campo por cada valor que se elige
+  (serie E12, E24 o E96, o valor libre para un trimmer o una tensión), escrito como en el editor («4,7k», «10m», «30»),
+  y el esquema dibujado con los valores actuales; «Abrir en el editor» lleva al mismo circuito, donde se puede cambiar
+  cualquier cosa (y verlo en la protoboard); el editor muestra arriba qué etapa es y «Volver a la etapa y comprobar».
+  «Restaurar la etapa» vuelve a dibujar el circuito de partida.
+- **La teoría.** Cada etapa enlaza su sección del libro y, si la hay, la lección 1.1 de «Fundamentos» en que se apoya
+  (la carga RC, el divisor, el rectificador, el detector de pico, el embalamiento térmico…).
+- **Pistas y referencia.** Antes de simular se dice qué falta o no se entiende (una pieza borrada o renombrada, un valor
+  fuera de su serie). Tras dos comprobaciones fallidas se ofrece «Ver el diseño de referencia» (el del libro, o un
+  diseño que cumple cuando el libro da el requisito pero no los valores) y «Usar estos valores». Verlo ya se pregunta
+  y deja la etapa sin XP (revisión 11c: escribir a mano los valores vistos daba todos los XP). Cuando fallan dos
+  condiciones, cada pista dice también qué le hace su cambio a la otra, así que no se contradicen (el atenuador del
+  SDR pedía a la vez subir y bajar las ramas en paralelo).
+- **Progreso.** Cada comprobación simulada es una respuesta (10 XP la primera vez que se supera a la primera, 5
+  después, una sola vez por etapa); lo superado se guarda en el almacén `proyectos` y se sincroniza. Entradas: una
+  tarjeta al final de cada capítulo de proyecto y del 47 (que los presenta), un botón «Etapa n» junto a las secciones
+  que las explican, un nodo en el camino de los cursos que contienen el capítulo («Proyectos completos» y el del tema)
+  y «Proyectos por etapas» en el editor.
+- **Lo que no se cubre**, porque no es un circuito que simular: el capítulo 47 (sus cuatro diseños son los mapas de
+  bloques de estos proyectos, sin valores), el presupuesto de energía, el firmware y la red de la estación IoT, el lado
+  de red de la fuente, masas y zumbido del amplificador, y el detector en cuadratura (su simulación tarda minutos) y el
+  procesado digital de la SDR.
+
+Pruebas: `EPA_SIN_SERVIDOR=1 npx playwright test -c playwright.proyectos11.config.ts tests/proyectos11-unidad.spec.ts`
+(Node, cada etapa con el ngspice real) y `npx playwright test -c playwright.proyectos11.config.ts
+tests/proyectos11-navegador.spec.ts` (puerto 4685, compilación en `/tmp/claude-0/epa-proyectos11/dist`).
+
 ## Figuras vivas
 
 Las figuras del libro con datos (431 gráficas y 91 esquemas) se pueden leer y tocar sin salir del texto; el
@@ -1152,6 +1208,40 @@ circuito, como dice el libro: la resistencia de la bobina y los 50 Ω del genera
 derivación del amperímetro se suma a la tensión del diodo si se pone en serie con él, la sonda de 10 MΩ deja la
 carga RC con 1 MΩ en el 90,9 %.
 
+**Laboratorio guiado (1.1)** (`#/instrumentos/laboratorio/1` … `12`; «Laboratorio» junto a «Practicar» en cada
+práctica del libro, «Laboratorio guiado» en cada práctica de `#/instrumentos`, «Hacerla como laboratorio guiado» en
+la práctica libre, y un nodo después de cada lección del capítulo 21 en el camino del curso «Taller e instrumentos»,
+y en su lista): la misma práctica, con el circuito ya montado en el banco y los instrumentos **sin preparar**. Cada
+paso pide hacer algo con el instrumento (girar el selector, pasar la roja al borne mA, ponerlo en serie, quitar la
+alimentación para medir Ω, llevar la sonda a un nodo, AC o DC, ×1 o ×10, la base de tiempos, la fuente y el flanco del
+disparo, PRM, cursores, FFT, X-Y, el generador) y, cuando hay lectura, escribir lo que marca. «Comprobar» mira el
+estado del instrumento y compara lo escrito con lo que muestra el instrumento simulado, con una tolerancia que sale de
+su resolución (el Brymen da cinco cifras y bastan tres: ± 0,5 %; el 2C53T tiene 8 bits, un escalón es 1/32 de
+división: ± 3 %; sus cursores saltan 0,04 div; la FFT se lee en una cuadrícula de 10 dB/div: ± 2 dB). Si algo falla,
+la pista nombra el error, también los que el libro avisa: sonda y menú en ×1/×10 distintos, acoplamiento AC o DC
+equivocado, el disparo en el canal o el flanco que no es, la pinza de masa en otro nodo, el amperímetro en paralelo
+(fusible), el óhmetro con el circuito alimentado, la roja en un borne de corriente, puntas cambiadas, un valor diez
+veces desviado, sin su prefijo o con la unidad sin prefijo («100,5 F» por 100,5 µF), o con el signo cambiado (unos dB
+de una atenuación escritos en positivo). El capacímetro del simulador (un modelo de pequeña señal) mide igual con el
+circuito alimentado: su pista lo dice y explica por qué uno real no. «Mostrar dónde» ilumina el mando en el instrumento (cuenta como pista: 5 XP en vez de
+10), «Hágalo por mí» hace el paso (sin XP). Los cursores, que el instrumento solo deja arrastrar, tienen aquí dos
+deslizadores para el teclado, y lo que muestra la pantalla del FNIRSI (un canvas) se lee también en texto. Cada paso es
+una respuesta como una tarjeta de lección (10 XP una sola vez, 5 a la segunda o con pista, nada tras dos fallos o con
+«Hágalo por mí»); el resumen compara cada lectura con el valor que espera el libro. Lo hecho se guarda en el almacén
+`laboratorio` y se sincroniza (unión de los pasos de todos los dispositivos; revisión 11a: también los pasos que hizo
+«Hágalo por mí», que ya no dan XP en otra visita ni en otro dispositivo, y la portada da por completado el laboratorio
+cuando entre los dispositivos se hicieron todos sus pasos); «Repetir» vuelve el banco al principio
+sin borrar nada y prepara cada paso como la primera vez (por dónde va ese repaso se guarda en `sessionStorage`,
+`epa:laboratorio-repaso`, así que una recarga lo continúa: revisión 11c), y al volver a entrar se continúa en el
+primer paso pendiente con el banco como lo dejaron los anteriores. «Hágalo por mí» de un paso que cambia la base de
+tiempos calcula los cursores en segundos y los pasa a divisiones de la base que aplica (la fase de la práctica 5 los
+dejaba a la mitad del tiempo: revisión 11c). En el móvil el paso va arriba, antes del circuito y de los instrumentos, y
+mientras sus botones no se ven una barra fija abajo lleva el paso, la lectura, «Comprobar» y la pista: se lee el paso y
+se maneja el instrumento sin subir y bajar. Al hacer los laboratorios salió un fallo de la 1.0: el montaje «Diodo suelto» de la práctica 3 no tenía
+circuito y el Brymen marcaba OL en la prueba de diodos (corregido, con prueba). En la práctica 12, el laboratorio usa
+la relación de valores eficaces (los dos canales en AC): el ruido de la sonda ×10 infla las medidas de pico de una
+señal de 0,3 Vpp lo bastante para sacar |Z| de la tolerancia.
+
 Simplificaciones: el instrumento no tiene memoria entre sesiones; la persistencia, el modo «rolling», la
 compensación de la sonda, los disparos especiales y el registro por el puerto óptico no están; la temperatura
 se fija en el banco (no hay termopar simulado); el 2C53T muestra a menos de 4 µs/div la reconstrucción
@@ -1174,6 +1264,13 @@ impedancia del rango de mV, tensiones de prueba, umbral de continuidad, respuest
 (sensibilidad 10 mV–10 V/div, base de tiempos 10 ns–20 s, 1 Kpts, ±400 V, multímetro de 19 999 cuentas y su
 exactitud, formas del generador) y el
 [hilo del 2C53T en EEVblog](https://eevblog.com/forum/testgear/new-handheld-scopedmm-fnirsi-2c53t-2ch-50mhz250msps-(aug-2024)).
+
+Pruebas de los laboratorios: `EPA_SIN_SERVIDOR=1 npx playwright test -c playwright.laboratorio11.config.ts
+tests/laboratorio11-unidad.spec.ts` (en Node, sin navegador: cada laboratorio en un banco real con el ngspice de la
+aplicación —cada paso rechazado antes de hacerlo y aceptado al hacerlo, la lectura frente al libro, cada error típico
+con su pista—, el almacén, su fusión y los XP) y `PLAYWRIGHT_BROWSERS_PATH=/tmp/claude-0/pwb npx playwright test -c
+playwright.laboratorio11.config.ts tests/laboratorio11-navegador.spec.ts` (puerto 4684: el laboratorio 1 entero con el
+teclado, axe en claro, sepia y oscuro, 360 px, los enlaces).
 
 Rendimiento: el instrumento lee cinco veces por segundo y el osciloscopio adquiere ocho, solo con la ventana
 visible; la pantalla del 2C53T es un canvas que se redibuja solo cuando cambia lo que muestra. Una simulación del
@@ -1283,6 +1380,56 @@ estructurado, el escritor de `valores`, «usted») y `tests/ejercicios10-navegad
 ordenar con teclado, tabla de verdad, expresión lógica, pareja E12 en la página «Ejercicios», autoevaluación con
 recarga y navegación, práctica inteligente, 44 px en el teléfono y axe en claro, sepia y oscuro).
 
+**1.1: erratas de las soluciones** (tras un recálculo independiente de los 300 autocomprobables). En dos problemas el
+libro imprime un valor que no corresponde a su propio planteamiento, y la aplicación acepta el correcto, no el impreso,
+con un «Aviso» que explica la diferencia: 1.B (pérdida del cable de 6 mm² a 60 °C: 1,33 W; el libro da 1,15 W, que es a
+20 °C) y 3.B (corriente eficaz por diodo: 1,19 A; los 1,68 A del libro son la del secundario). 33.A acepta 12,3 bits
+(log₂ 5000, como el libro) y también 13, el número entero de bits del convertidor. 43.B pregunta «¿Qué velocidad
+recomienda el libro…?» (antes «¿Qué velocidad…?», con dos respuestas defendibles) y una nota recoge que el libro dice
+10⁸ m·bit/s y su tabla usa 1,2·10⁸. En los 34 ejercicios cuya solución usa un dato que el enunciado no da (una
+tolerancia, una resistencia de devanado, ε_r, pF por dispositivo, el reparto de pérdidas…; casi todos de la serie
+«Problema N.X», más el ejercicio 52.12), el panel muestra junto a «Se pide» «Dato que usa la solución del libro:» (por
+ejemplo, 0,4 Ω de devanado en 5.B; 2,4 GHz en 35.B), copiado de la propia solución y comprobado: con él sale el valor
+del libro. En el modo docente, el examen imprime ese dato tras el enunciado, y las soluciones el dato, la nota y el
+aviso antes del desarrollo del libro. Pruebas:
+`playwright.erratas11.config.ts` (puerto 4674, compilación en `/tmp/claude-0/epa-erratas11`):
+`tests/erratas11-unidad.spec.ts` (sin navegador, `EPA_SIN_SERVIDOR=1`: respuestas aceptadas y rechazadas, avisos, la
+calificación del examen y los PDF; los 34 datos, presentes y en el examen y las soluciones) y
+`tests/erratas11-navegador.spec.ts` (aviso y dato con la solución oculta y a la vista, axe en los tres temas; los 34
+datos, cada uno en su panel).
+
+**1.1: ejercicios nuevos, «Aún no en el libro».** Los tres capítulos que el libro deja sin ejercicios —21 «Prácticas de
+laboratorio con el FNIRSI 2C53T» (10), 24 «Cuadripolos, función de transferencia y filtros» (11) y 34 «Sensores y
+acondicionamiento de señal» (9)— tienen 30 ejercicios nuevos, al nivel y con el estilo de los del libro y hechos solo con
+lo que enseña cada capítulo (sus ejemplos, figuras y tablas): enunciado con «Se pide», respuestas numéricas con su
+unidad y tolerancia (80 campos), preguntas de elección con la explicación de cada opción incorrecta («Por qué no…»), una
+de ordenar y una de clasificar, dos pistas (planteamiento y resultado intermedio) y la solución desarrollada. Se ven al
+final de su capítulo como «Ejercicios nuevos», con la marca **«Aún no en el libro»** (también en la página «Ejercicios»,
+la búsqueda y el banco del modo docente; en los PDF, «aún no en el libro»), y funcionan como los demás: práctica
+inteligente, problema del día, dominio, exámenes y sus PDF. Sus explicaciones se rotulan «Desarrollo», nunca «Del
+libro». Cinco del capítulo 21 llevan «Medir en el banco (práctica N)»: lo que se pide se lee en el FNIRSI o el Brymen
+simulados de esa práctica (la sonda ×1 y ×10 sobre el divisor de 1 MΩ, la carga RC con los cursores, la ganancia y el
+retraso del RC, los armónicos en la FFT, la curva del RLC con los 50 Ω del generador), con una tolerancia que cubre lo que
+muestran. Tres del capítulo 24 son **problemas de diseño abiertos** —un paso bajo RC con f<sub>c</sub> = 1 kHz ± 5 %,
+un paso alto de 50 Hz ± 5 % para bloquear la continua y un Sallen-Key de ganancia unidad con el corte a −3 dB en
+1 kHz ± 5 % y Q entre 0,65 y 0,75—: vale cualquier diseño que cumpla. Se escriben los valores (con su serie E12 o E24 y
+su margen; un valor fuera de su serie o de su margen se avisa antes de simular, sin contar como intento ni acercar la
+solución: revisión 11c) y «Comprobar» **simula el circuito con el ngspice de la aplicación** (un análisis de alterna y las medidas
+`meas`, como las netlists del libro) y comprueba cada condición sobre lo medido; si no cumple, dice qué ha medido y qué
+cambiar («El circuito simulado da f<sub>c</sub> = 1,06 kHz, por encima de 1 kHz ± 5 %: para bajarla, aumente R o C»).
+Lo simulado se guarda con los valores, así que al volver se ve el veredicto sin simular otra vez y un examen se califica
+con lo que se simuló al entregarlo. Las etiquetas (`ej-22.1`…, `ej-25.1`…, `ej-35.1`…) son las que tendrán en el libro:
+cuando el autor los pegue y se regenere, el del libro sustituye al de la aplicación y el progreso se conserva. La fuente
+es `contenido/ejercicios_nuevos11/<parte>.yaml` (no el libro); el mismo texto da el HTML de la aplicación y el Typst para
+la próxima edición (`python3 contenido/ejercicios_nuevos.py --typst FICHERO`, con dónde pegar cada bloque y las líneas
+para el curado). Pruebas: `playwright.ejnuevos11.config.ts` (puerto 4683, compilación en `/tmp/claude-0/epa-ejnuevos11`):
+`tests/ejnuevos11-unidad.spec.ts` (sin navegador, `EPA_SIN_SERVIDOR=1`: cada respuesta reproducida desde los datos del
+enunciado por un segundo camino —aritmética compleja, integración numérica, coeficientes de Fourier, el puente exacto…— y
+las del banco simulando el circuito de su práctica; cada respuesta aceptada y otra rechazada; cada opción incorrecta con
+su explicación; la marca; la fusión —el del libro gana, idempotente—; diseños válidos aceptados e inválidos rechazados con
+su pista, simulados con ngspice en Node; el examen y los PDF; el Typst) y `tests/ejnuevos11-navegador.spec.ts` (la marca,
+una respuesta, un diseño mal y luego bien, axe en claro y oscuro).
+
 Desde la revisión 10e, lo que se escribe en los campos y se elige en las preguntas se guarda mientras se hace (sin contar
 como intento) y vuelve al regresar al ejercicio; el veredicto solo se enseña de lo que se comprobó. Se aceptan también
 las grafías equivalentes de una unidad («0,165 m» o «16,5 cm» para mm, «960 g» para kg, «31 °C/W» para K/W, «38,5 mS»
@@ -1327,6 +1474,33 @@ casos nuevos en `tests/ejercicios10-navegador.spec.ts` (sesión con semilla 12, 
 
 Los ejercicios autoevaluados no dan XP al resolverse: abrir la solución (que es como se autoevalúan) anula los XP del
 ejercicio, sin excepción (decisión del dueño); sí cuentan para el progreso y el dominio como siempre.
+
+**1.1: razonar en vez de autoevaluarse («aprender haciendo»).** De los 186 ejercicios que en la 1.0 solo se comparaban con
+la solución, **181 se comprueban ahora solos**, porque su razonamiento clave cabe en una elección, un orden, un
+emparejamiento o un valor: 280 preguntas de elegir (en 162 ejercicios), 54 de emparejar causa y efecto o clasificar (en
+52), 20 de ordenar los pasos de un procedimiento o de una cadena de causas (en 20) y 4 valores numéricos que calcula la
+solución (en 3: la deriva de un día con el 1 % de error en ej-20.8, el muestreo de Nyquist en ej-52.1, las medidas de la
+bisección en ej-14.1). Todo sale del libro: el enunciado de cada pregunta resume lo que se pide, la opción correcta
+justifica con la frase de la solución copiada literalmente («Del libro», o «Desarrollo» en las tres donde el libro lo da
+en una tabla) y **cada opción incorrecta lleva su «Por qué no»**, escrito con lo que dice la solución, y los distractores
+son, siempre que se puede, los errores contra los que avisa el propio libro (un cortocircuito en el nudo de 5,9 V que
+arrastraría el regulador en ej-16.13, el bajo factor de potencia «por desfase» en ej-33.4, el ERC que avisaría de
+RESET/RESET_ en el problema 11.B, desconectar la tierra de protección en ej-32.4…). Ocho conservan, opcional, la parte que
+pide redactar («También se pide», como los 125 de la 1.0); los cinco que siguen autoevaluados piden enumerar o son de
+respuesta abierta (ej-12.8, 40.5, 42.2, 46.4 y 48.5). Un convertido funciona como cualquier autocomprobable: «Comprobar»,
+pistas, «Por qué no», la práctica inteligente, el problema del día, el dominio por concepto y los exámenes del modo
+docente (se califican solos; las soluciones en PDF dicen «Por qué no B): …» de cada opción incorrecta), y da los XP de
+los autocomprobables (15, u 8 con ayuda; ninguno si se abrió la solución). Ninguno tiene «Practicar con otros valores»
+(no hay fórmula que lo reproduzca). El progreso de la 1.0 se conserva: lo autoevaluado sigue resuelto o fallado, sin XP
+(se resolvió viendo la solución), y una respuesta escrita que ya no tiene parte abierta donde verse sigue a la vista bajo
+«Su respuesta». Arreglo: un problema autoevaluado con la solución a la vista (los problemas la enseñan si no se oculta)
+daba 15 XP al decir «Sí» sin haber pulsado «Ver solución»; ahora autoevaluarse cuenta siempre como solución vista. La
+fuente es `contenido/ejercicios_curado.txt` (líneas `?`, `>`, `porque N:` y `=`). Pruebas: `playwright.razonar11.config.ts` (puerto 4687, compilación en
+`/tmp/claude-0/epa-razonar11`): `tests/razonar11-unidad.spec.ts` (sin navegador, `EPA_SIN_SERVIDOR=1`: los 181 y los 5,
+una sola correcta y una explicación por opción, órdenes con una sola solución, categorías usadas, los valores
+recalculados desde el enunciado, la regla de XP, candidatos de la práctica y sin variantes, el examen y el PDF de
+soluciones) y `tests/razonar11-navegador.spec.ts` (ej-4.8 resuelto solo con el teclado, sus XP, el arreglo de los XP de un
+problema autoevaluado, 360 px y axe en claro y oscuro).
 
 **Resolver paso a paso (1.0).** En 45 ejercicios numéricos (116 pasos, todos revisados a mano uno a uno) el panel
 ofrece resolverlo por partes: tras dos comprobaciones fallidas aparece «¿Lo resolvemos por partes…?» con «Resolver
@@ -1500,9 +1674,253 @@ y el teléfono:
 antes de que el navegador quitara el foco del campo ya desactivado, se perdía (el fallo intermitente de la lección de 5.2
 en las pruebas).
 
+Revisión 11a (pendiente de la 1.0): el avance de las lecciones se **une** entre dispositivos y pestañas (las tarjetas
+hechas se suman, la primera compleción se conserva, la última pantalla es la más reciente): abrir en el teléfono una
+lección que ya se completó en el ordenador ya no borra la compleción ni las tarjetas hechas. Pruebas:
+`tests/revision11a-unidad.spec.ts` (con dos dispositivos reales del motor de sincronización, escenario `r11a·1`).
+
 Pruebas: `npx playwright test -c playwright.leccion09.config.ts tests/leccion09.spec.ts` (compilación propia,
 puerto 4311); capturas en el Mac, la tableta y el teléfono, en claro, oscuro y sepia:
 `node tests/leccion09-capturas.mjs` → `tests/capturas/lavado09/leccion/`.
+
+## Ampliaciones del libro (1.1)
+
+Los autores escriben ampliaciones del libro (secciones nuevas, problemas, ejercicios, un capítulo entero) en Typst, con
+sus figuras, netlists, preguntas de repaso y los datos de los que salen sus números. La aplicación las trae ya, marcadas
+con «Aún no en el libro», y deja de traerlas en cuanto el libro las incluye. Hoy son diez (numeración de la app, con
+los dos capítulos nuevos):
+
+| Id | Qué | Dónde (numeración nueva) |
+|---|---|---|
+| P01 | Sistemas trifásicos | sección 23.10 (el resumen pasa a 23.11), figuras 23.17–23.22, ejercicios 23.9–23.16 |
+| P02 | Máquinas eléctricas y accionamientos | **capítulo nuevo 34** tras «Electrónica de Potencia» (33); **absorbe la antigua 32.13** (véase abajo) |
+| P03 | Automatismos y autómatas programables | **capítulo nuevo 31** tras «Control y Comunicaciones» (opción A) |
+| P04 | Inversores y rectificadores controlados | secciones 33.10–33.11, problema 33.D, ejercicios 33.9–33.16, cinco fórmulas en la tarjeta |
+| P05 | Análisis y compensación clásicos del lazo | secciones 30.10–30.12, problema 30.D, ejercicios 30.9–30.17 |
+| P06 | Modelado de sistemas físicos y simulación por diagramas de bloques | sección 30.15 (tras P05), figuras 30.27–30.30, ejercicios 30.18–30.25 |
+| P07 | Instalaciones y protecciones de baja tensión | sección 48.8, figuras 48.14–48.17, ejercicios 48.6–48.13 |
+| P08 | Álgebra lineal y métodos numéricos | final de 0.12 (autovalores, figura 0.13) y **sección nueva 0.13**; las 0.13–0.21 pasan a 0.14–0.22; ejercicios 0.11–0.19 |
+| P09 | Ecuaciones de Maxwell | sección nueva 37.1 al principio del capítulo (las demás suben una), figuras 37.1–37.3, ejercicios 37.6–37.14 |
+| P13 | Comunicaciones industriales | secciones 45.6–45.7, problema 45.D, ejercicios 45.6–45.14 |
+
+Con los dos capítulos nuevos, los impresos 31–32 pasan a 32–33 y los 33–53 a 35–55. Unas citan a otras por etiqueta:
+P02 a P01, P03 y P04; P03 a P13 y P01; P06 a P05; P07 a P02 (si se quita una, hay que quitar las que la citan).
+
+`contenido/ampliaciones.py` convierte cada pieza con el propio conversor de la app (`typst_parser.py` y `convertir.py`,
+sin cambios), la inserta donde dice su `ampliacion.json` y **renumera**: las secciones, figuras y ejercicios que van
+detrás, y todos los capítulos que siguen a un capítulo nuevo, en los títulos, las referencias de todas las partes, el
+índice, la búsqueda, los repasos, el simulador y las fórmulas. Las **claves de almacenamiento no cambian** (los ficheros
+`capNN` y las etiquetas del libro son los de siempre; los capítulos nuevos tienen las suyas, `cap-new-automatas` y
+`cap-new-maquinas`), así que el
+progreso guardado sigue valiendo y no hace falta migración. Además: las figuras (las SVG con la paleta de la identidad,
+convertidas como las del libro, con el texto en trazos), las ecuaciones (Typst), los ejercicios con sus soluciones y sus
+respuestas autocomprobables (sacadas de `datos/` de la ampliación y comprobadas contra el texto de la solución), las
+preguntas de repaso (con las reglas de `repaso.py`), la búsqueda, el glosario (los términos que la ampliación trata
+enlazan a su sección), las netlists (validadas en el ngspice de la aplicación; se abren en el simulador, el editor y la
+protoboard como las del libro) y las lecciones «Estudiar por pasos» de cada sección nueva, que salen solas. Las citas de
+las fuentes curadas que dan un número impreso («sección 31.10») se renumeran por etiqueta (`numeracion.json`).
+
+Cuando el autor pegue una ampliación en el libro y regenere, gana la del libro: cada sección, problema, ejercicio,
+capítulo, línea de tarjeta, pregunta o netlist que el libro ya tenga se omite, sin duplicados (también si solo pega una
+parte). El paso es idempotente y reversible: cada ejecución deshace primero la anterior.
+
+Revisión 11a (lo que el lector ya tiene guardado no se mueve al pegar ni al insertar): los ejercicios de «ordenar los
+pasos» se identificaban por la posición de su lista en la parte, que una ampliación desplaza; ahora su id sale del
+registro `contenido/ids_practica.json` (huella de la lista → el id con el que se publicó: todos los de la 1.0 y la 1.1)
+o, si no está, de la posición contando solo los bloques del libro. Antes de publicar contenido nuevo hay que registrar
+sus ids: `node web/scripts/practica10.mjs --registrar-ids` (la cadena avisa de los que faltan). Los ejercicios nuevos
+de los capítulos 22, 25 y 35 llevan en `ejercicios_nuevos.py --typst` su apartado «Para el curado» completo (los
+«porque N:» de cada opción incorrecta y las preguntas de diseño como `? diseno: {JSON}`): pegado al curado junto con el
+Typst, el ítem del libro es el mismo y las respuestas guardadas siguen valiendo. La página de marcadores muestra el
+número impreso actual de lo marcado. Pruebas: `tests/revision11a-unidad.spec.ts` (Node) y
+`tests/revision11a-navegador.spec.ts` (navegador).
+
+```sh
+python3 contenido/ampliaciones.py               # todo; sin las fuentes del libro, también ejercicios.py, pasos.py y la cadena de Node
+python3 contenido/ampliaciones.py --comprobar   # convierte y comprueba, no escribe nada
+python3 contenido/ampliaciones.py --deshacer    # el libro tal como se generó
+python3 contenido/ampliaciones.py --importar /ruta/P02   # copia una ampliación nueva y escribe el esqueleto del manifiesto
+```
+
+**P02 absorbe la antigua 32.13** («Ampliación: Máquinas Eléctricas y Accionamientos»): todo su contenido está en el
+capítulo 34, con el mismo motor y las mismas cifras. Mientras P02 está fusionada, una pieza `retirar` de su manifiesto
+saca de `cap33` los 26 bloques de esa sección y cinco fórmulas de motores de la tarjeta (la tarjeta se queda, al final
+de 33.14), y lo de detrás vuelve a numerarse. Lo guardado no se pierde ni se reescribe, y todo vuelve al deshacer:
+
+- **La etiqueta sigue existiendo**: `sec-33.13` queda en `refs.json` como alias de `sec-new-maquinas.3` (lleva a 34.3),
+  así que un marcador, una nota, un enlace antiguo, «Continuar» o la ruta de su lección de la 1.0 (`#/cap33/sec-33.13`,
+  `#/leccion/cap33/sec-33.13`) abren donde está ahora su contenido.
+- **Cada referencia a la 32.13 va a su tema**: la del BLDC de 36.5 y el «Motor paso a paso» del glosario, a 34.5; el
+  arranque directo de P03, a 34.4; el variador y la ley V/f de P04, a 34.6; el motor de continua de P06 y la fuerza
+  contraelectromotriz y el par del glosario, a 34.3.
+- **Mismos identificadores**: la pregunta de repaso `cap33-18` (V/f, su historial de repaso sigue) cita 34.6; la netlist
+  `cap33/sec-33.13_motor_cc` (su estado guardado y la figura viva) se ve en 34.3; los cuatro ejercicios de práctica de
+  la 1.0 de esa sección (`cap33-num-velocidad-sincrona`, `cap33-num-ley-v-f`, `cap33-num-ej-33.1`,
+  `cap33-parejas-sec-33.13`) siguen publicados con su id (`contenido/ampliaciones11/P02/practica-retirada.json`, con los
+  números al día), así que lo respondido, los XP y el dominio siguen teniendo su ejercicio. La compleción guardada de
+  la lección de la 1.0 de 32.13 se conserva tal cual, pero ya no cuenta en el curso: la sección no está en el índice.
+- Si el autor pega P02 en el libro y quita la 32.13, la etiqueta desaparece del libro; mientras otra ampliación aún sin
+  pegar la cite (P06), sigue como alias, sin entrada del libro.
+
+**Las lecciones 1.1 citan bloques del libro por su índice** (`libro:` de `contenido/lecciones11/…`), y una ampliación
+que inserta bloques delante los desplaza (P08 mete 41 antes de la 0.13). El generador encuentra cada bloque por su cita
+literal: el índice escrito si aún la contiene; si no, el único bloque (de la sección, para un número suelto) que la
+contiene; si son varios, el que dice el desplazamiento de las demás citas de la lección. Así una lección sigue valiendo
+con la ampliación, sin ella y cuando el autor la pega. Los índices de las lecciones de `cap00` ya son los del libro con
+P08. La lección nueva de la 0.13 (`cap00/sec-new-0-numericos`, 11 tarjetas: el diodo sin fórmula, el primer paso de
+Newton desde 0 V, cada paso un circuito lineal, la matriz de nodos, los picoohmios, el condensador como conductancia
+C/h, el paso más largo de Euler explícito, por qué SPICE limita el paso y los tres métodos anidados) y cuatro tarjetas
+de la 0.12 (los modos de dos etapas RC, 26,2 y 3,82 ms; la salida al 63 %; el arranque de un oscilador; traza y
+determinante) siguen la propuesta de P08. Necesitan P08: sin ella, el generador dice qué citas le faltan y no escribe.
+
+**Pistas** de los ejercicios de las ampliaciones: de su propia solución, la primera sustitución («Empiece por: I₀ =
+10⁻¹²·(e^0,6/0,02585 − 1).») y el primer resultado intermedio, nunca uno de los valores que se comprueban.
+
+**Añadir una ampliación** es un paso de datos: `--importar` la carpeta que entregan los autores (copia
+`<ID>.typ`, `figures/identidad/*.svg` o `figures/*.svg`, `spice/*.cir`, `app/repaso-*.json` y `datos/*.json`; volver a
+importarla actualiza esos ficheros y conserva el manifiesto) y completar su `ampliacion.json` con lo que dice su
+`NOTAS.md` (dónde va cada `PARTE`, el título en español de cada netlist y sus etiquetas, las respuestas de cada
+ejercicio con su clave en `datos/`, los términos del glosario, lo que retira del libro); `--comprobar` dice lo que
+falta. Ojo al reimportar: las correcciones hechas aquí a sus ficheros (tolerancias de repaso de P02, P03 y P09, que
+venían en valor absoluto) hay que repetirlas. El formato está en ESQUEMA.md («Book expansions»). Después, `node
+web/scripts/practica10.mjs --registrar-ids`. Pruebas: `EPA_SIN_SERVIDOR=1 npx playwright test -c
+playwright.ampliaciones11.config.ts tests/ampliaciones11-unidad.spec.ts` (conversión, fusión, numeración con los dos
+capítulos nuevos, P02 retirando la 32.13 y deshaciéndolo, idempotencia, deshacer byte a byte, partes no tocadas
+idénticas, el libro ya las trae —todas, o P01–P04 y P13—, citas, respuestas y pistas, netlists, repaso, las lecciones
+de `cap00` con P08 y sin ella) y, con navegador, `tests/ampliaciones11-navegador.spec.ts` (capítulos y secciones nuevos
+marcados, un ejercicio resuelto, un circuito en el editor, la 32.13 que abre la 34.3, la lección de la 0.13, los números
+de la app al día, axe en claro y oscuro, 360 px); las lecciones de `cap00`, con `EPA_RECORRER='^cap00/'
+tests/lecciones11-recorrido.spec.ts`.
+
+## Lecciones hechas a mano (1.1)
+
+Las secciones del curso «Fundamentos» (capítulos 0–6) pasan a tener lecciones escritas a mano, al estilo de la maqueta
+aprobada («Divisor de tensión»): **una idea por tarjeta**, como mucho 40 palabras, un elemento interactivo en el centro
+y la secuencia explorar → predecir → la regla → reto → sorpresa → por qué → resumen. En la 1.1 la tienen todas
+las secciones de los capítulos 0 a 6: 100 lecciones (las 99 secciones del libro y la sección nueva de la ampliación
+P08 en el capítulo 0). Las dos primeras, de referencia, fueron:
+**1.4 «Asociación de resistencias»** (12 tarjetas: el divisor con R₁ y R₂ que se mueven, la predicción con el
+ejemplo del libro, la fórmula viva, el reto del ejercicio 1.4 con valores E24, la carga que hunde la salida, por qué
+baja, la carga mínima, el paralelo, el divisor de corriente, el método de las redes mixtas y la potencia) y **0.3
+«Trigonometría y la señal senoidal»** (9 tarjetas: una senoide cuya amplitud y fase se arrastran sobre la propia curva,
+el periodo de la red, del eficaz al pico, un cuarto de periodo, seno y coseno, por qué radianes, cada símbolo con su
+papel). Las demás se escribieron después con la guía de autor `contenido/lecciones11/GUIA.md`.
+
+- **Dónde se abren.** En la misma dirección de siempre, `#/leccion/<capítulo>/<sección>[/<n>]`: el icono «Estudiar
+  por pasos» del libro, los nodos del camino del curso, «Continuar», «Siguiente sección» y el repaso abren la lección
+  nueva cuando la sección la tiene, y la de la 1.0 si no. La de la 1.0 (el texto del libro por pasos, con sus
+  prácticas y preguntas) sigue a mano en `…/clasica` (enlace en el resumen de la nueva), y sus pantallas propias
+  (`practica-N`, `pregunta-N`, `fin`) la abren directamente.
+- **Cómo se ve.** Tipografías Space Grotesk (títulos) e Inter (texto), que van con la aplicación (licencia OFL, sin
+  internet); azul y naranja, tarjetas suaves, barra de progreso por tarjetas, lecturas grandes, avisos de acierto y de
+  «por qué no». En claro, sepia y oscuro, todos con contraste AA. Desde la 1.1 el resto de la aplicación usa el
+  mismo estilo (véase «Estilo visual 1.1 en toda la aplicación»).
+- **Qué se hace en cada tarjeta.** Mover deslizadores (valores continuos, series E12 y E24, listas, también con un
+  nombre en cada posición: los colores del código de colores se leen «rojo (2)»), conectar una
+  carga, arrastrar los puntos de una gráfica, elegir una opción (teclas 1–5 o A–E, también con el foco en una opción,
+  como lo deja «Volver a intentarlo»), estimar con un deslizador que
+  puntúa por cercanía, ordenar pasos (arrastrando o con «Subir/Bajar») y emparejar (arrastrando la ficha a su hueco o
+  eligiendo ficha y hueco). «Continuar» se abre al interactuar; cada respuesta, también la incorrecta, se explica; un
+  reto da una pista según hacia dónde falla y, tras dos fallos, una ayuda más y «Saltar». La corriente se mueve más
+  deprisa cuanta más hay, y se queda quieta con «reducir movimiento». Todo con el teclado (→ o Intro sigue, ← vuelve,
+  Esc cierra) y con lector de pantalla (las fórmulas del libro se leen en palabras; las lecturas se anuncian cuando
+  dejan de cambiar).
+- **Circuitos para los capítulos 1–6.** Además del divisor y el paralelo, las lecciones pueden enseñar resistencias
+  en serie, una red mixta, dos fuentes sobre un nodo (Kirchhoff y superposición, con cada fuente apagable), el puente
+  de Wheatstone, el equivalente de Thévenin (o una pila con su resistencia interna) y el de Norton, un transformador
+  con carga, la carga y descarga de un condensador y el transitorio de una bobina, RC, RL y RLC en alterna (tensiones y
+  corriente frente al tiempo, o amplitud y fase frente a la frecuencia en escala logarítmica, con la resonancia), un
+  tanque LC, un diodo con su resistencia (caída constante de 0,7 V o la ecuación de Shockley), un LED que brilla según
+  su corriente, el regulador Zener, los rectificadores de media onda y en puente con su condensador (la forma de onda y
+  el rizado), y el transistor como interruptor y polarizado por divisor. Sus curvas llevan marcas fijas (τ, la
+  frecuencia de corte, f₀) y los rótulos del dibujo, sus subíndices. Todos usan los modelos del libro y todos se
+  comprueban con el simulador antes de publicarse.
+- **Progreso, XP y repaso**, como las lecciones de la 1.0 y con las **mismas claves**: lo completado con la 1.0 sigue
+  completado, y terminar la nueva marca la misma sección. Cada tarjeta pasada cuenta para el objetivo diario; cada
+  respuesta da XP una sola vez (10 a la primera, 5 a la segunda; nada si se falla dos veces) y alimenta el dominio de la
+  sección, que decide el repaso espaciado («Repaso programado en 3 días» en el resumen). Si se sale a medias, la
+  aplicación pregunta antes (y al volver sigue en la misma tarjeta). No se guarda nada nuevo. Revisión 11c: «Seguir en
+  la lección» deja la dirección en la tarjeta que se ve (`reemplazarDireccion` de lib/ruta.svelte.ts); una dirección
+  sin número de tarjeta (el «Estudiar por pasos» del libro, el nodo del camino) abre la tarjeta guardada de una lección
+  a medias, en vez de la 1 (que además pisaba lo guardado); las preguntas pasadas en otra visita se ven respondidas al
+  volver a ellas; y la lectura oculta de una predicción («¿? V») solo se enseña al acertar o al saltar la tarjeta, no
+  con el «Por qué no» de un fallo. Las etiquetas de las gráficas y los rótulos de los esquemas crecen en el móvil hasta
+  verse a 11 px o más (lib/leccion11/ejes.ts `tamMarca`, kit/Lienzo.svelte), y en la esquina del origen la primera
+  etiqueta del eje x ya no pisa la más baja del eje y. Pruebas de la revisión 11c y de su arreglo (también las del
+  laboratorio, los problemas de diseño, las etapas, el editor y los enlaces): `tests/revision11c-unidad.spec.ts` (Node)
+  y `tests/revision11c-navegador.spec.ts` (`playwright.revision11c.config.ts`, puerto 4696).
+- **También en «Práctica inteligente» y en el repaso de la sección.** Las predicciones, preguntas (opciones, estimar,
+  ordenar, emparejar) y retos de cada lección nueva son ejercicios más de la práctica (`#/practicar`, y
+  `#/practicar/<capítulo>/<sección>`, que es lo que abre el repaso espaciado): se responden sueltos, con su circuito o
+  su gráfica, sus explicaciones y pistas, y cuentan con el **mismo id** que en la lección, así que dan XP una sola vez
+  donde se respondan y suman al mismo dominio (responderla otra vez enseguida no cuenta dos veces). Las «¿por qué?»
+  no salen sueltas: preguntan por la sorpresa de la tarjeta anterior. Siete secciones de los capítulos 0–2 que no
+  tenían nada que responder de la 1.0 (0.10, 0.12, 0.14, 0.16, 0.17, 1.13 y 2.2) ya se pueden practicar.
+- **Lector de pantalla con valores pequeños.** Los mandos dicen su valor en palabras («220 nanofaradios», «21
+  nanovoltios por raíz de hercio») y `aria-valuenow` va siempre sin exponente, también al moverlos (antes volvía a
+  «2.2e-7» en cuanto se movía un mando de nF o de ns).
+
+Se escriben en `contenido/lecciones11/<capítulo>/<sección>.yaml` y las genera `node web/scripts/lecciones11.mjs`
+(también `contenido/generar.py`, tras `conceptos11.mjs`), que **comprueba** cada lección y no escribe nada si hay un
+error: palabras por tarjeta, una explicación por opción, que todo lo que se nombra exista en el modelo de la lección,
+que cada número esté en los bloques del libro que la lección cita o lo dé el modelo, que cada cita esté literalmente en
+su bloque, que los retos tengan solución y pista para cada fallo, y que los circuitos dibujados den con el ngspice de
+la aplicación lo mismo que calcula la lección: en continua, en alterna y en el tiempo, en el estado inicial y en los
+extremos de cada mando. Con diodos y transistores en el modelo de caída constante del libro, el simulador usa un
+dispositivo real, lee lo que cae de verdad y corrige la lectura con la sensibilidad del propio modelo, así que un
+error de planteamiento (β en lugar de β + 1) se detecta igual; la caída real no puede alejarse de la del libro más de
+lo que este admite (± 0,1 V un diodo, ± 0,2 V un LED). Cada esquema es una carpeta de
+`web/src/lib/leccion11/esquemas/` (definición y dibujo): añadir uno no toca ningún fichero común. Pruebas: `PLAYWRIGHT_BROWSERS_PATH=/tmp/claude-0/pwb npx playwright test
+-c playwright.lecciones11.config.ts` (puerto 4671, compilación en `/tmp/claude-0/epa-motor11/dist`):
+`tests/lecciones11-unidad.spec.ts` (sin navegador con `EPA_SIN_SERVIDOR=1`: contraste de los colores en los tres
+temas, formato, modelo, cada regla del generador rota a propósito, el motor de las tarjetas, la elección de lección y el
+generador idempotente y al día) y `tests/lecciones11-navegador.spec.ts` (las dos lecciones enteras, solo con el
+teclado, arrastrando, axe en los tres temas, 360 px, movimiento reducido, el progreso de la 1.0 y el aviso al salir);
+`tests/lecciones11-esquemas.spec.ts` (sin navegador: el registro de esquemas, cada esquema frente a ngspice con la
+lección de catálogo `web/tests/lecciones11-catalogo/cap01/sec-1.5.yaml`, ocho modelos equivocados a propósito que el
+simulador detecta, las tolerancias y las reglas nuevas del generador) y `tests/lecciones11-catalogo.spec.ts` (esa
+lección en el navegador, servida desde la prueba: cada dibujo y gráfica, cada mando con el teclado, axe en los tres
+temas, 360 px).
+`tests/lecciones11-practica.spec.ts` (las tarjetas practicables y el índice al día, el estado en que se preguntan, y
+en el navegador una sección practicada solo con su lección: dominio y XP con el id de la tarjeta, una vez).
+`tests/lecciones11-recorrido.spec.ts` recorre **cada lección publicada** a partir de sus datos (paramétrico; filtre
+con `EPA_RECORRER='^cap00/'`): abre cada exploración moviendo lo que pide, responde mal y luego bien cada pregunta
+(con su explicación), falla y resuelve cada reto con el teclado en una posición que el modelo da por buena, estima por
+los dos lados, ordena y empareja, pasa axe en cada tarjeta y repite a 360 px en el tema oscuro sin desplazamiento
+horizontal. Con otra compilación: `EPA_DIST` y `EPA_PUERTO`.
+
+### Enlaces del libro impreso: códigos QR (1.1)
+
+La maquetación nueva del libro imprime un código QR por sección con el enlace `epa://leccion/<parte>/<sección>`
+(por ejemplo `epa://leccion/cap01/sec-1.4`). La aplicación lo abre en la lección de esa sección
+(`#/leccion/cap01/sec-1.4`: la lección hecha a mano si la tiene, la de la 1.0 si no). Un capítulo o una sección que esta
+edición no tiene, o un enlace mal formado, muestran «No se encuentra esa lección» con un botón al índice del libro;
+nunca un error. El enlace se comprueba de forma estricta (solo `epa://leccion/`, un capítulo `capNN`, un apéndice
+`apX` o un capítulo nuevo de las ampliaciones `cap-new-<nombre>`, una sección `sec-…`, letras, cifras, punto y guion): no puede llevar a ninguna otra parte de la aplicación ni a
+ninguna dirección de fuera. Mayúsculas y minúsculas dan igual (`EPA://LECCION/APA/SEC-A.1` abre el apéndice A).
+
+Cómo probarlo en cada equipo (con la aplicación cerrada y también abierta: debe abrir la lección en la ventana que ya
+está, sin abrir otra):
+
+- **Windows.** Instale con el instalador (NSIS o MSI): es el instalador el que registra el esquema `epa` para el
+  usuario; `npm run tauri dev` no lo registra. Pulse Win+R y escriba `epa://leccion/cap01/sec-1.4`, o en PowerShell
+  `Start-Process "epa://leccion/cap01/sec-1.4"`. Con la aplicación abierta, Windows lanza una segunda copia que se
+  cierra sola y pasa el enlace a la primera (instancia única).
+- **macOS.** Copie la aplicación a Aplicaciones y ábrala una vez (así el sistema registra el esquema). En Terminal:
+  `open "epa://leccion/cap01/sec-1.4"`.
+- **Android.** Instale el APK (preparado con `npm run android:preparar`, que escribe el filtro del esquema en el
+  manifiesto generado). Con el móvil conectado: `adb shell am start -a android.intent.action.VIEW -d
+  "epa://leccion/cap01/sec-1.4"`, o escanee un QR del libro con la cámara o Google Lens y toque «Abrir».
+- **Navegador.** No hay esquema propio: la misma dirección va detrás de `#`, `…/#epa://leccion/cap01/sec-1.4` (también
+  `#/epa://…`), y la aplicación la cambia por la ruta de la lección.
+- **Linux (paquete .deb).** `xdg-open "epa://leccion/cap01/sec-1.4"` (el AppImage no registra el esquema).
+
+Pruebas: `tests/enlaces11-unidad.spec.ts` (sin navegador: el analizador con cada sección del libro y una lista de
+enlaces maliciosos, el hash del navegador, el manifiesto de Android a partir de la plantilla de `tauri android init`, la
+configuración de Tauri) y `tests/enlaces11-navegador.spec.ts` (el enlace como hash abre la lección nueva, la clásica y
+un apéndice; «Atrás» no vuelve al enlace; «No se encuentra esa lección» con axe en los tres temas y a 360 px), con
+`playwright.enlaces11.config.ts` (puerto 4686). La parte nativa se comprueba con `cargo check` y `cargo test --lib`
+(`solo_enlaces_epa_cortos_y_ascii`); lo que solo se ve en los equipos es la lista de arriba.
 
 ## Aprender haciendo (0.10)
 
@@ -1575,8 +1993,8 @@ Para que estudiar se parezca más a Brilliant (aprender haciendo, con ganas de v
   | Fundamentos | 0–6 |
   | Análisis de circuitos | 23, 24, 25, 42 |
   | Electrónica analógica | 7, 8, 26, 27, 28, 32, 43 |
-  | Digital y programable | 9, 29, 34, 37, 38, 44 |
-  | Potencia y energía | 10, 33, 39, 50 |
+  | Digital y programable | 9, 29, `cap-new-automatas`, 34, 37, 38, 44 |
+  | Potencia y energía | 10, 33, `cap-new-maquinas`, 39, 50 |
   | Señales, RF y comunicaciones | 30, 31, 36, 45 |
   | Sensores y microcontroladores | 17–20, 35, 49 |
   | Taller e instrumentos | 11–13, 15, 21, 22, 47, 53 |
@@ -1585,7 +2003,10 @@ Para que estudiar se parezca más a Brilliant (aprender haciendo, con ganas de v
 
   Los números son los de los ficheros del contenido: desde `cap15` el capítulo impreso es uno menos (`cap15` es el
   «Capítulo 14», y no existe `cap14`); la aplicación muestra siempre el número impreso. Todos los capítulos están en
-  algún curso; el 49 y el 50 están en dos. Los apéndices no están en ningún curso.
+  algún curso; el 49 y el 50 están en dos. Los apéndices no están en ningún curso. Los dos capítulos nuevos de las
+  ampliaciones (1.1: autómatas programables y máquinas eléctricas) van donde los pone el libro y llevan, en el camino
+  y en la lista, la insignia «Aún no en el libro» (también una sección nueva dentro de un capítulo del libro); el
+  avance se guarda por lección, así que añadirlos no cambia nada de lo guardado.
 - **Prueba de nivel** de cada curso: entre 6 y 10 preguntas de repaso del propio libro, de los primeros capítulos del
   curso a los últimos, con «No lo sé». Al final, el resultado por capítulo, por dónde empezar (el primer capítulo con
   un fallo) y la opción de marcar las lecciones de los capítulos anteriores como **«superadas por la prueba»**: se
@@ -1617,7 +2038,8 @@ teléfono, en claro y oscuro, en `tests/capturas/grupoA11/`.
   siempre; se simula 0,25 s después de soltar el dedo, solo con la figura en pantalla (un cambio hecho fuera de ella
   espera a que vuelva) y nada se mueve en reposo. Su sitio se reserva desde el principio: no empuja el texto.
   Ningún esquema simulable del libro tiene interruptores, así que no hay «accionar un interruptor».
-- **Dominio por concepto.** Cada sección del libro es un concepto (633 tienen algo que responder en la aplicación; los
+- **Dominio por concepto.** Cada sección del libro es un concepto (633 tenían algo que responder en la aplicación
+  en la 1.0; con las preguntas de las lecciones 1.1, más, y crecen con cada lección nueva; los
   capítulos y los cursos suman sus secciones). Cada respuesta cuenta: a la primera y sin pistas 100 puntos, con ayuda
   60, mal 0; repetir la misma pregunta enseguida («Probar otra vez», recargar) no cuenta otra vez. El dominio sube con
   más preguntas acertadas y, sobre todo, con aciertos en días distintos, y baja poco a poco con el tiempo (nunca por
@@ -1632,7 +2054,8 @@ teléfono, en claro y oscuro, en `tests/capturas/grupoA11/`.
   lo que más le cuesta (4) y lo que empieza a olvidar (3), algo nuevo de su curso en orden (2; nunca de un capítulo
   más allá del que lleva, y del siguiente solo cuando ha tocado todo lo anterior) y un repaso de lo que domina (1); lo
   que un grupo no llena lo llenan los otros. Usa todo lo que la aplicación sabe preguntar: las prácticas de «Aprender
-  haciendo», las preguntas de repaso, los ejercicios que se comprueban solos y las **tarjetas del glosario que ya
+  haciendo», las preguntas de repaso, los ejercicios que se comprueban solos, las tarjetas de las lecciones 1.1 (desde
+  sus arreglos del motor) y las **tarjetas del glosario que ya
   tocaban hoy** (como mucho dos, de los mismos conceptos, nunca nuevas): se responden con los mismos botones y el mismo
   planificador que en «Repaso», así que cuentan como repasadas allí y no compiten con él. No repite lo respondido en
   las últimas 20 horas mientras haya otra cosa, vuelve a preguntar lo que se falló días atrás y no pone dos seguidos
@@ -1702,6 +2125,15 @@ diálogo propio, nota por pregunta y autoevaluación; el PDF descargado igual by
 «Elegir al azar» y variantes; el tiempo que se acaba; un curso propio y su índice; editar, duplicar y borrar; la
 entrada en el carril y en «Más»; 44 px y axe en claro, sepia y oscuro). `EPA_PDF_SALIDA=<carpeta>` deja allí los PDF
 de la prueba sin navegador para mirarlos.
+
+**Arreglos de la revisión 11a.** Los 181 ejercicios que la 1.0 autoevaluaba y la 1.1 comprueba sola (marcados
+`comparar10`) siguen calificándose como en la 1.0 cuando la respuesta guardada es el texto escrito de entonces: el
+resultado enseña «Lo que escribió» y «Bien / A medias / Mal», la nota guardada se reproduce y un borrador de la 1.0
+entregado ya con la 1.1 conserva su texto como parte abierta. Una nota guardada ya no se recalcula con una solución
+corregida después (las erratas de los problemas 1.B y 3.B): se enseña la de entonces y, si la clave actual daría otra,
+una nota lo dice; autoevaluar solo mueve esa parte. Un diseño que no se pudo simular al entregar (un fallo pasajero de
+ngspice) se simula después desde el resultado («Simular ahora y corregir»). Pruebas: `tests/revision11a-unidad.spec.ts`
+y `tests/revision11a-navegador.spec.ts`.
 
 **Arreglos de la revisión 10c.** Un examen empezado sigue con la versión con la que se empezó: cambiar el título o las
 notas, pulsar «Guardar» sin cambios (ya no guarda nada) o recibir un cambio por la sincronización no tira las respuestas;
@@ -2199,7 +2631,7 @@ fichero de datos. Quien prefiera dos tokens de permisos mínimos no puede: la ap
 | macOS | `~/Library/Application Support/es.gonzalomejias.electronica/lector.json` |
 | Android | almacenamiento interno de la aplicación (se borra al desinstalarla) |
 | Linux | `~/.local/share/es.gonzalomejias.electronica/lector.json` |
-| Navegador (desarrollo) | `localStorage`, claves `epa:dispositivo-local` (0.12: identificador de este dispositivo para su registro de actividad diaria; no se sincroniza), `epa:prefs`, `epa:posiciones`, `epa:marcadores`, `epa:notas`, `epa:ejercicios`, `epa:leidas`, `epa:deducciones`, `epa:calc-favoritos`, `epa:repaso-tarjetas`, `epa:repaso-diario`, `epa:repaso-ajustes`, `epa:repaso-tests`, `epa:repaso-fallos`, `epa:repaso-examenes`, `epa:progreso-diario`, `epa:progreso-objetivo`, `epa:progreso-xp`, `epa:cursos`, `epa:dominio`, `epa:problema-dia`, `epa:editor-circuitos`, `epa:protoboard-circuitos`, `epa:protoboard-recorrido`, `epa:protoboard-leccion`, `epa:medir-pista`, `epa:sinc-ajustes`, `epa:sinc-estado`, `epa:sinc-marcas`, `epa:sinc-version`, `epa:docente`, `epa:docente-resultados`, `epa:esquemas` (1.0: versión del formato de cada clave; no se sincroniza) y, aparte, `epa-credencial:github` (el token) |
+| Navegador (desarrollo) | `localStorage`, claves `epa:dispositivo-local` (0.12: identificador de este dispositivo para su registro de actividad diaria; no se sincroniza), `epa:prefs`, `epa:posiciones`, `epa:marcadores`, `epa:notas`, `epa:ejercicios`, `epa:leidas`, `epa:deducciones`, `epa:calc-favoritos`, `epa:repaso-tarjetas`, `epa:repaso-diario`, `epa:repaso-ajustes`, `epa:repaso-tests`, `epa:repaso-fallos`, `epa:repaso-examenes`, `epa:progreso-diario`, `epa:progreso-objetivo`, `epa:progreso-xp`, `epa:cursos`, `epa:dominio`, `epa:problema-dia`, `epa:editor-circuitos`, `epa:protoboard-circuitos`, `epa:protoboard-recorrido`, `epa:protoboard-leccion`, `epa:medir-pista`, `epa:sinc-ajustes`, `epa:sinc-estado`, `epa:sinc-marcas`, `epa:sinc-version`, `epa:docente`, `epa:docente-resultados`, `epa:laboratorio` (1.1: los laboratorios guiados), `epa:proyectos` (1.1: los proyectos por etapas; sus circuitos van en `epa:editor-circuitos`), `epa:esquemas` (1.0: versión del formato de cada clave; no se sincroniza) y, aparte, `epa-credencial:github` (el token) |
 
 El token de GitHub va en otro fichero de la misma carpeta, `credenciales.json`, para que copiar `lector.json` no
 lo lleve consigo. `lector.json` guarda además el estado de la sincronización (`sinc-*`: ajustes, última versión
@@ -2230,6 +2662,19 @@ Lee las fuentes de `/home/claude/v3` (sin modificarlas) y escribe `web/public/li
 formato está descrito en `ESQUEMA.md`. Esa carpeta **se versiona** (unos 112 MB): las máquinas de GitHub
 Actions no pueden regenerarla, porque hacen falta las fuentes del libro, las tipografías y las fotos, que
 están en otra máquina.
+
+1.1: los ejercicios nuevos que aún no están en el libro (`contenido/ejercicios_nuevos11/*.yaml`) los añade
+`contenido/ejercicios_nuevos.py` a `ejercicios.json` y `busqueda.json`; lo llama `contenido/ejercicios.py` al terminar
+(también desde `generar.py`), y se puede ejecutar solo (`--comprobar` no escribe nada; `--typst FICHERO`, el texto para el
+libro). Ver «Aprender con el libro».
+
+1.1: las ampliaciones del libro que aún no están en él (`contenido/ampliaciones11/<ID>/`) las convierte y fusiona
+`contenido/ampliaciones.py`; `generar.py` lo llama en dos fases (tras escribir las partes y tras `ejercicios.py`), y
+también se puede ejecutar solo. Ver «Ampliaciones del libro (1.1)».
+
+1.1: las lecciones hechas a mano (`contenido/lecciones11/`) solo necesitan las partes ya generadas: `node
+web/scripts/lecciones11.mjs` las comprueba y escribe `web/public/libro/lecciones11/` (`--comprobar` no escribe nada;
+`--solo cap01/sec-1.4`, una sola). Ver «Lecciones hechas a mano (1.1)».
 
 `contenido/glosario_imagenes.py` (también llamado al final de `generar.py`, o solo) escribe
 `web/public/libro/glosario-imagenes.json`: el símbolo de circuito y el modelo 3D de cada término del glosario,
@@ -3319,11 +3764,15 @@ app/
   ESQUEMA.md                 contrato entre el generador de contenido y la aplicación
   README.md                  este documento
   contenido/                 generador en Python: fuentes Typst → web/public/libro/
+    ampliaciones.py          (1.1) las ampliaciones del libro: conversión, fusión, numeración, deshacer
+    ampliaciones11/          (1.1) una carpeta por ampliación (Typst, figuras, netlists, repaso, datos, ampliacion.json),
+                             numeracion.json (números citados en las fuentes curadas) y fuentes/ (Fira Math e Inter, OFL)
   web/                       aplicación (Svelte 5 + TypeScript + Vite)
     index.html
     package.json             scripts: dev, build, check, tauri, android:preparar
     scripts/tauri.mjs        lanza la CLI de Tauri con src-tauri/ como proyecto nativo
-    scripts/android-preparar.mjs  iconos y firma del proyecto Android generado (npm run android:preparar)
+    scripts/android-preparar.mjs  iconos, firma y (1.1) enlaces epa:// del proyecto Android generado (npm run android:preparar)
+    scripts/android-enlaces.mjs   el filtro de intención del esquema epa en el manifiesto generado (1.1)
     scripts/version-ci.mjs   en GitHub Actions, toma la versión de la etiqueta vX.Y.Z
     scripts/ngspice.mjs      extrae ngspice (WebAssembly) de eecircuit-engine (antes de dev, build y check)
     scripts/validar-spice.mjs  ejecuta todas las netlists en el motor con Node (lo llama contenido/spice.py)
@@ -3349,7 +3798,8 @@ app/
         Ajustes.svelte       tema y tamaño del texto; diagnóstico; sincronización y versión (sincronizacion/GrupoAjustes)
         Inicio.svelte        portada (trozo aparte, 0.9): saludo, «Seguir leyendo», racha, objetivo, repaso, camino del libro
         inicio/              SeguirLeyendo, Racha, Objetivo, RepasoHoy (+ repasoHoy.ts, perezoso), CaminoLibro, destino
-        ui09/                primitivas del lavado de cara 0.9: Tarjeta, BotonPrincipal, BarraSegmentos, Chip, Rotulo (+ ui09.css)
+        ui09/                primitivas del lavado de cara 0.9 (con el estilo 1.1 desde la 1.1): Tarjeta, BotonPrincipal,
+                             BarraSegmentos, Chip, Rotulo (+ ui09.css)
         cursos/              (0.11) página de cursos, un curso, la prueba de nivel y el avance de cada curso
         progreso/            (0.11) «Progreso y logros», insignias, celebración de fin de lección, destello del
                              acierto, contador de XP, avisos flotantes, «Sonido y vibración» y recordatorio en «Aa»
@@ -3397,6 +3847,7 @@ app/
         tipos.ts             tipos del contenido (ESQUEMA.md)
         datos.ts             carga del contenido, rutas de recursos, HTML de las referencias
         ruta.svelte.ts       rutas con almohadilla, historial y posición de cada entrada
+        enlaces.ts           enlaces de los QR del libro, epa://leccion/<parte>/<sección> (1.1); enlaces-app.ts los recibe de Tauri
         foco-ruta.ts         1.0: el foco al título de la página tras cambiar de ruta y «Saltar al contenido»
         habla-matematicas.ts 1.0: las ecuaciones (fuente Typst) y las unidades en palabras para lectores de pantalla
         navegacion.svelte.ts registro HERRAMIENTAS (una entrada por sección), índice oculto por vista,
