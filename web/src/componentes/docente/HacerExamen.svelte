@@ -16,6 +16,7 @@
   import { confirmar } from '../../lib/confirmar';
   import { cargarDocente, docente, guardarResultado, idResultado, propio, resultadoGuardado } from '../../lib/docente/estado.svelte';
   import { ErrorCarga, libro, prepararItems } from '../../lib/docente/fuentes';
+  import { faltaSimular, simularDiseno } from '../../lib/diseno-ejercicio';
   import { calificarExamen, guardarVariante, huellaExamen, montarExamen, numerosDe, textoPuntos, varianteDe, type ExamenMontado } from '../../lib/docente/examen';
   import type { DefinicionExamen } from '../../lib/docente/tipos';
   import { enunciadoDe } from '../practica/variantes';
@@ -236,6 +237,25 @@
 
   const respondida = (n: number) => Object.values(borrador?.respuestas[n] ?? {}).some((v) => String(v).trim());
 
+  async function simularDisenosExamen(e: ExamenMontado, respuestas: Record<number, Record<string, string>>): Promise<void> {
+    const pendientes = e.items.flatMap((m) => {
+      const ej = m.k === 'ejercicio' ? libro.ejercicio(m.ref) : undefined;
+      return (ej?.preguntas ?? []).filter((q) => q.tipo === 'diseno' && faltaSimular(q, respuestas[m.n]?.[q.id] ?? '')).map((q) => ({ m, q }));
+    });
+    if (!pendientes.length) return;
+    try {
+      const { medirDiseno } = await import('../../lib/simular-diseno');
+      for (const { m, q } of pendientes) {
+        if (q.tipo !== 'diseno') continue;
+        const r = (respuestas[m.n] ??= {});
+        r[q.id] = await simularDiseno(q, r[q.id] ?? '', medirDiseno);
+      }
+    } catch (err) {
+      // graded as not simulated («Falta simular este diseño»), never as right
+      console.warn('No se pudo simular un diseño del examen', err);
+    }
+  }
+
   async function entregar(agotado = false) {
     if (!ex || !borrador || entregando) return;
     if (ex.minutos && restante() <= 0) agotado = true;
@@ -245,6 +265,9 @@
     entregando = true;
     falloEntrega = '';
     const b = borrador;
+    // 1.1: the design questions are graded on their simulation: the ones not simulated yet are simulated now, and the
+    // measurements are kept with the answers (the result never depends on simulating again)
+    await simularDisenosExamen(ex, b.respuestas);
     const nota = calificarExamen(ex, libro, b.respuestas);
     const t = Date.now();
     // (review 10h: the items no longer in the book keep their answers with the result, ungraded)
@@ -407,7 +430,7 @@
   h1 {
     margin: 0;
     color: var(--titulos);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: 24px;
   }
   .meta,

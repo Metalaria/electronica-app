@@ -178,8 +178,9 @@ test('navegador: un borrador escrito después de comprobar vuelve sin veredicto;
 
 test('navegador: un ejercicio autoevaluado no dice «después de ver la solución»', async ({ page }) => {
   await limpio(page);
-  await page.goto('#/cap04/ej-4.8');
-  const p = panel(page, 'ej-4.8');
+  // (1.1 «razonar»: ej-4.8 is self-checked now; ej-12.8 is still self-assessed)
+  await page.goto('#/cap12/ej-12.8');
+  const p = panel(page, 'ej-12.8');
   await p.getByRole('button', { name: 'Ver solución' }).click();
   await p.getByRole('group', { name: 'Autoevaluación' }).getByRole('button', { name: 'Sí' }).click();
   await expect(p.locator('.estado')).toContainText('Autoevaluado: lo tenía bien');
@@ -193,10 +194,10 @@ test('navegador: teoría que se mueve, posiciones que se leen distinto y resulta
   await t.scrollIntoViewIfNeeded();
   await t.getByRole('button', { name: 'Mover los valores de esta fórmula' }).click();
   const vth = t.getByRole('slider', { name: /Thévenin del divisor$/ }).first();
-  await expect(vth).toHaveAttribute('aria-valuetext', /^2,105\sV$/);
+  await expect(vth).toHaveAttribute('aria-valuetext', /^2,105 voltios$/); // (1.1 motor fixes: the value in words)
   await vth.focus();
   await page.keyboard.press('ArrowLeft');
-  await expect(vth).toHaveAttribute('aria-valuetext', /^2,1\sV$/);
+  await expect(vth).toHaveAttribute('aria-valuetext', /^2,1 voltios$/);
   await page.goto('#/cap03/sec-3.2');
   const d = page.locator('[data-teoria="descarga-rc-rc"]');
   await d.scrollIntoViewIfNeeded();

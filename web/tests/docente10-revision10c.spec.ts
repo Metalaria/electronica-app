@@ -149,8 +149,9 @@ test('errores de escritura a la vista: guardar en el editor y autoevaluar', asyn
   // the self-assessment: an open exercise answered, then its write fails
   await page.goto('#/docente/nuevo/examen');
   await page.locator('[data-titulo]').fill('Abierto');
-  await page.locator('[data-filtro-parte]').selectOption('cap05');
-  await page.locator('li[data-entrada="ejercicio:ej-5.9"] [data-anadir]').click();
+  // (1.1 «razonar»: ej-5.9, used until 1.0, is self-checked now; ej-12.8 is still self-assessed)
+  await page.locator('[data-filtro-parte]').selectOption('cap12');
+  await page.locator('li[data-entrada="ejercicio:ej-12.8"] [data-anadir]').click();
   await page.locator('[data-guardar]').click();
   await page.locator('[data-empezar]').click();
   await page.locator('[data-item-examen="1"] [data-campo="texto"]').fill('Dos diodos.');

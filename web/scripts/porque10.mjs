@@ -272,6 +272,8 @@ function bloqueEjercicio(label) {
   return hallado;
 }
 for (const [label, ej] of Object.entries(ejercicios)) {
+  // 1.1: a new exercise (not in the book yet) explains each wrong option itself (`porque` in its question)
+  if (ej.nuevo) continue;
   const qs = (ej.preguntas ?? []).filter((q) => q.tipo === 'eleccion');
   if (!qs.length) continue;
   const p = ej.parte;
@@ -291,6 +293,9 @@ for (const [label, ej] of Object.entries(ejercicios)) {
   solucionDe(b?.solucion);
   const cand = [...sol, ...(ej.seccion ? frasesDe(p, ej.seccion) : [])];
   for (const q of qs) {
+    // 1.1 («razonar»): a question whose wrong options are all explained by the curated layer («porque N:» in
+    // ejercicios_curado.txt → q.porque) keeps only those explanations; no automatic book sentence is proposed
+    if (q.porque && q.opciones.every((_, i) => i === q.correcta || q.porque[i])) continue;
     const porOpcion = {};
     q.opciones.forEach((o, i) => {
       if (i === q.correcta) return;

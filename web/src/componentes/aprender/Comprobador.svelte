@@ -30,6 +30,8 @@
   import Seguridad from '../pregunta/Seguridad.svelte';
   import { cargarPasos, type PasoGuiado } from '../../lib/pasos-guiados';
   import ResolverPasos from './ResolverPasos.svelte';
+  import { faltaSimular, simularDiseno } from '../../lib/diseno-ejercicio';
+  import { prepararSalto } from '../../lib/ruta.svelte';
 
   let {
     label,
@@ -113,6 +115,11 @@
   /** 1.0: the reader's written answer to what is not checked automatically, and the checklist marks. */
   let texto = $state('');
   let marcas = $state<Record<string, boolean>>({});
+  /**
+   * 1.1 («razonar»): a written answer saved while this exercise was self-assessed, kept on show (and editable) after it
+   * became fully self-checked with no open part left, so it is never hidden from its owner.
+   */
+  let textoPrevio = $state(false);
   let iniciado = '';
 
   // Restore the last values typed (once per item).
@@ -125,6 +132,7 @@
     for (const r of item.respuestas) if (guardados[r.id] != null) valores[r.id] = guardados[r.id]!;
     for (const q of item.preguntas ?? []) if (guardados[q.id] != null) valores[q.id] = guardados[q.id]!;
     texto = guardados.texto ?? '';
+    textoPrevio = !item.otras?.length && texto.trim() !== '';
     marcas = {};
     (item.otras ?? []).forEach((_, k) => (marcas[`c${k + 1}`] = guardados[`c${k + 1}`] === '1'));
     veredictos = {};
@@ -182,8 +190,43 @@
     return `${nBien} de ${total} ${total === 1 ? 'respuesta correcta' : 'respuestas correctas'}. ${partes.join('. ')}`.replace(/\.\./g, '.');
   }
 
-  function comprobarTodo(ev: SubmitEvent) {
+  /** 1.1: a design question's circuit is being simulated (its check waits for the measurements). */
+  let simulando = $state(false);
+
+  /**
+   * 1.1: before checking, the design questions whose values have not been simulated yet are simulated (the app's
+   * ngspice, lib/simular-diseno.ts); the measurements are stored with the values. False if the simulation failed.
+   */
+  async function simularDisenos(): Promise<boolean> {
+    const pendientes = preguntas.filter((q) => q.tipo === 'diseno' && faltaSimular(q, valores[q.id] ?? ''));
+    if (!pendientes.length) return true;
+    simulando = true;
+    resumenComprobacion = 'Simulando el circuito…';
+    try {
+      const { medirDiseno } = await import('../../lib/simular-diseno');
+      for (const q of pendientes) {
+        if (q.tipo !== 'diseno') continue;
+        const v = await simularDiseno(q, valores[q.id] ?? '', medirDiseno);
+        valores[q.id] = v;
+        guardarRespuestaEscrita(label, { [q.id]: v });
+      }
+      return true;
+    } catch (e) {
+      const cancelada = e instanceof Error && /sustituida|detenida/i.test(e.message);
+      avisoVacio = cancelada
+        ? 'La simulación se ha interrumpido: vuelva a pulsar «Comprobar».'
+        : `No se ha podido simular el circuito (${e instanceof Error ? e.message : String(e)}).`;
+      resumenComprobacion = avisoVacio;
+      return false;
+    } finally {
+      simulando = false;
+    }
+  }
+
+  async function comprobarTodo(ev: SubmitEvent) {
     ev.preventDefault();
+    if (simulando) return;
+    if (!(await simularDisenos())) return;
     const nuevos: Record<string, Veredicto> = {};
     const nuevasP: Record<string, VeredictoPregunta> = {};
     let legibles = 0;
@@ -235,6 +278,7 @@
     veredictos = {};
     vPreguntas = {};
     texto = '';
+    textoPrevio = false;
     marcas = {};
   }
 
@@ -264,6 +308,19 @@
 </script>
 
 <div class="comprobador" class:resuelto={estado?.resuelto} data-label={label}>
+  {#if item.dato}
+    <!-- 1.1: a datum the book's solution uses and its statement leaves out, right under «Se pide» -->
+    <p class="dato-ej" data-dato><strong>Dato que usa la solución del libro:</strong> {@html item.dato}</p>
+  {/if}
+  {#if item.banco}
+    <!-- 1.1: the quantities of this exercise can be read off the simulated instruments of the test bench -->
+    <p class="banco-ej" data-banco>
+      <a class="boton" href={`#/instrumentos/practica/${item.banco.practica}`} onclick={() => prepararSalto({ texto: 'Volver al ejercicio' })}>
+        <Icono nombre="ver" tam={16} /> Medir en el banco (práctica {item.banco.practica})
+      </a>
+      <span>{@html item.banco.texto}</span>
+    </p>
+  {/if}
   {#if auto}
     <form onsubmit={comprobarTodo} novalidate>
       <p class="solo-lector" aria-live="polite" data-resumen-comprobacion>{resumenComprobacion}</p>
@@ -313,6 +370,7 @@
             {idBase}
             porque={porques?.ejercicios[`${label}/${q.id}`] ?? null}
             parte={item.parte}
+            simulando={simulando && q.tipo === 'diseno'}
             alCambiar={(v) => {
               valores[q.id] = v;
               delete vPreguntas[q.id];
@@ -328,12 +386,14 @@
           {#each item.otras as o, k (k)}{@html o.texto}{k < item.otras.length - 1 ? '; ' : '.'}{/each}
         </p>
         {@render escrita()}
+      {:else if textoPrevio}
+        {@render escrita()}
       {/if}
       <!-- (the live line above already announces it; this one is for the eyes) -->
       {#if avisoVacio && !hayRespuesta}<p class="aviso-vacio" aria-hidden="true" data-aviso-vacio>{avisoVacio}</p>{/if}
       <div class="acciones">
-        <button type="submit" class="boton primario">
-          <Icono nombre="hecho" tam={17} /> Comprobar
+        <button type="submit" class="boton primario" aria-disabled={simulando || undefined}>
+          <Icono nombre="hecho" tam={17} /> {simulando ? 'Simulando…' : 'Comprobar'}
         </button>
         {@render botones()}
       </div>
@@ -383,7 +443,7 @@
 
   {#if auto && !solucionVisible && !sinSolucion && (estado?.resuelto || (estado?.fallos ?? 0) >= 2)}
     <p class="desarrollo-aviso">
-      {estado?.resuelto ? 'Resuelto. Compare su desarrollo con el del libro.' : pasos && !guiado ? 'O vea el desarrollo completo del libro.' : 'Vea el desarrollo completo del libro.'}
+      {estado?.resuelto ? `Resuelto. Compare su desarrollo con el ${item.nuevo || item.ampliacion ? 'de la solución' : 'del libro'}.` : pasos && !guiado ? `O vea el desarrollo completo${item.nuevo || item.ampliacion ? '' : ' del libro'}.` : `Vea el desarrollo completo${item.nuevo || item.ampliacion ? '' : ' del libro'}.`}
       <button type="button" class="boton" onclick={mostrarSolucion}>
         <Icono nombre="ver" tam={17} /> Ver el desarrollo
       </button>
@@ -406,7 +466,7 @@
     <p class="nota-ej">{@html item.nota}</p>
   {/if}
   {#if item.errata}
-    <p class="errata"><strong>Aviso:</strong> {@html item.errata}</p>
+    <p class="errata" data-errata><strong>Aviso:</strong> {@html item.errata}</p>
   {/if}
 
   <OtrosValores {label} parte={item.parte} />
@@ -437,7 +497,7 @@
 
 {#snippet criterios()}
   <fieldset class="criterios">
-    <legend>Compare con la solución del libro. Lo que se pide:</legend>
+    <legend>Compare con la solución{item.nuevo || item.ampliacion ? '' : ' del libro'}. Lo que se pide:</legend>
     {#each item.otras ?? [] as o, k (k)}
       <label class="criterio">
         <input type="checkbox" checked={!!marcas[`c${k + 1}`]} onchange={(ev) => marcar(k, (ev.currentTarget as HTMLInputElement).checked)} />
@@ -536,8 +596,8 @@
     display: flex;
     gap: 7px;
     margin: 0;
-    padding: 6px 10px;
-    border-radius: 7px;
+    padding: 8px 12px;
+    border-radius: 10px;
     font-size: 14.5px;
     animation: aparecer 0.16s ease-out;
   }
@@ -546,11 +606,11 @@
     font-weight: 700;
   }
   .fb-bien {
-    background: rgb(from var(--c-ejemplo) r g b / 0.13);
+    background: var(--bien-tinte);
     color: var(--tinta);
   }
   .fb-bien .ic {
-    color: var(--c-ejemplo);
+    color: var(--bien-texto);
   }
   .fb-cerca {
     background: rgb(from var(--c-importante) r g b / 0.15);
@@ -561,12 +621,12 @@
   .fb-mal,
   .fb-unidad,
   .fb-ilegible {
-    background: rgb(from var(--c-precaucion) r g b / 0.11);
+    background: var(--mal-tinte);
   }
   .fb-mal .ic,
   .fb-unidad .ic,
   .fb-ilegible .ic {
-    color: var(--c-precaucion);
+    color: var(--mal-texto);
   }
   @keyframes aparecer {
     from {
@@ -711,8 +771,7 @@
   }
   .pistas li {
     padding: 8px 12px;
-    border-left: 3px solid var(--c-tarjeta);
-    border-radius: 3px 8px 8px 3px;
+    border-radius: var(--radio-boton);
     background: var(--tarjeta-fondo);
     font-size: 15px;
     animation: aparecer 0.18s ease-out;
@@ -726,6 +785,23 @@
     margin: 10px 0 0;
     color: var(--tinta-tenue);
     font-size: 13.5px;
+  }
+  .banco-ej {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px 12px;
+    margin: 0 0 10px;
+    color: var(--tinta-suave);
+    font-size: 14px;
+  }
+  .dato-ej {
+    margin: 0 0 10px;
+    padding: 6px 10px;
+    border-left: 3px solid var(--c-nota);
+    border-radius: 0 7px 7px 0;
+    background: rgb(from var(--c-nota) r g b / 0.1);
+    font-size: 14px;
   }
   .errata {
     margin: 10px 0 0;

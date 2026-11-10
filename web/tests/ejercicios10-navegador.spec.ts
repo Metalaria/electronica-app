@@ -134,22 +134,23 @@ test('tabla de verdad, expresión lógica y pareja E12 en la página «Ejercicio
 
 test('autoevaluación: la respuesta escrita se guarda (recarga y navegación), la lista de lo que se pide y «¿Lo tenía bien?»', async ({ page }) => {
   await limpio(page);
-  await page.goto('#/cap04/ej-4.8');
-  const p = panel(page, 'ej-4.8');
+  // (1.1 «razonar»: ej-4.8, used in this file until 1.0, is self-checked now; ej-12.8 is one of the five left self-assessed)
+  await page.goto('#/cap12/ej-12.8');
+  const p = panel(page, 'ej-12.8');
   await expect(p).toBeVisible();
   const caja = p.getByRole('textbox', { name: /Su respuesta/ });
-  await caja.fill('La inductancia cae y la corriente se dispara.');
-  await expect(p.locator('.cuenta')).toContainText('45 / 4000');
+  await caja.fill('Historial de cambios y trabajo en equipo.');
+  await expect(p.locator('.cuenta')).toContainText('41 / 4000');
   // navigating away at once (before the 800 ms debounced write) stores it: the panel flushes the store when it goes
   await page.goto('#/cap05');
   await expect
-    .poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('epa:ejercicios') ?? '{}')['ej-4.8']?.valores?.texto ?? null), { timeout: 500, intervals: [50] })
-    .toBe('La inductancia cae y la corriente se dispara.');
-  await page.goto('#/cap04/ej-4.8');
-  await expect(panel(page, 'ej-4.8').getByRole('textbox', { name: /Su respuesta/ })).toHaveValue('La inductancia cae y la corriente se dispara.');
+    .poll(() => page.evaluate(() => JSON.parse(localStorage.getItem('epa:ejercicios') ?? '{}')['ej-12.8']?.valores?.texto ?? null), { timeout: 500, intervals: [50] })
+    .toBe('Historial de cambios y trabajo en equipo.');
+  await page.goto('#/cap12/ej-12.8');
+  await expect(panel(page, 'ej-12.8').getByRole('textbox', { name: /Su respuesta/ })).toHaveValue('Historial de cambios y trabajo en equipo.');
   await page.reload();
-  const p2 = panel(page, 'ej-4.8');
-  await expect(p2.getByRole('textbox', { name: /Su respuesta/ })).toHaveValue('La inductancia cae y la corriente se dispara.');
+  const p2 = panel(page, 'ej-12.8');
+  await expect(p2.getByRole('textbox', { name: /Su respuesta/ })).toHaveValue('Historial de cambios y trabajo en equipo.');
   // not an attempt: nothing solved or failed yet
   await expect(p2.locator('.estado')).toHaveCount(0);
   await p2.getByRole('button', { name: 'Ver solución' }).click();
@@ -159,10 +160,10 @@ test('autoevaluación: la respuesta escrita se guarda (recarga y navegación), l
   await p2.getByRole('group', { name: 'Autoevaluación' }).getByRole('button', { name: 'Sí' }).click();
   await expect(p2.locator('.estado')).toContainText('Autoevaluado: lo tenía bien');
   await page.reload();
-  await expect(panel(page, 'ej-4.8').locator('.estado')).toContainText('Autoevaluado: lo tenía bien');
+  await expect(panel(page, 'ej-12.8').locator('.estado')).toContainText('Autoevaluado: lo tenía bien');
   // the stored state: the text and the mark with their own times (vt), the format of 0.12 otherwise
-  const e = await page.evaluate(() => JSON.parse(localStorage.getItem('epa:ejercicios') ?? '{}')['ej-4.8']);
-  expect(e.valores.texto).toBe('La inductancia cae y la corriente se dispara.');
+  const e = await page.evaluate(() => JSON.parse(localStorage.getItem('epa:ejercicios') ?? '{}')['ej-12.8']);
+  expect(e.valores.texto).toBe('Historial de cambios y trabajo en equipo.');
   expect(e.valores.c1).toBe('1');
   expect(typeof e.vt.texto).toBe('number');
   expect(e.resuelto).toBe(true);
@@ -178,7 +179,7 @@ async function tactil(browser: Browser, tema: 'claro' | 'sepia' | 'oscuro') {
 
 test('en una pantalla táctil (teléfono) los controles de las preguntas miden al menos 44 px y no desbordan', async ({ browser }) => {
   const { ctx, page } = await tactil(browser, 'claro');
-  for (const [ruta, label] of [['#/cap01/ej-1.1', 'ej-1.1'], ['#/cap11/ej-11.5', 'ej-11.5'], ['#/cap09/ej-9.1', 'ej-9.1'], ['#/cap02/ej-2.9', 'ej-2.9'], ['#/cap04/ej-4.8', 'ej-4.8']] as const) {
+  for (const [ruta, label] of [['#/cap01/ej-1.1', 'ej-1.1'], ['#/cap11/ej-11.5', 'ej-11.5'], ['#/cap09/ej-9.1', 'ej-9.1'], ['#/cap02/ej-2.9', 'ej-2.9'], ['#/cap12/ej-12.8', 'ej-12.8']] as const) {
     await page.goto(ruta);
     const p = panel(page, label);
     await expect(p).toBeVisible();
@@ -200,12 +201,12 @@ test('en una pantalla táctil (teléfono) los controles de las preguntas miden a
 test('accesibilidad (axe, contraste incluido) de las preguntas, su desarrollo y la autoevaluación en claro, sepia y oscuro', async ({ browser }) => {
   for (const tema of ['claro', 'sepia', 'oscuro'] as const) {
     const { ctx, page } = await tactil(browser, tema);
-    for (const [ruta, label] of [['#/cap11/ej-11.4', 'ej-11.4'], ['#/cap09/ej-9.2', 'ej-9.2'], ['#/cap04/ej-4.8', 'ej-4.8']] as const) {
+    for (const [ruta, label] of [['#/cap11/ej-11.4', 'ej-11.4'], ['#/cap09/ej-9.2', 'ej-9.2'], ['#/cap12/ej-12.8', 'ej-12.8']] as const) {
       await page.goto(ruta);
       const p = panel(page, label);
       await expect(p).toBeVisible();
       // settle the questions (two failed checks show the answer and the development) and open the self-assessment
-      if (label !== 'ej-4.8') {
+      if (label !== 'ej-12.8') {
         // a readable (wrong or right) answer in every question, checked twice
         for (const g of await p.locator('.preg fieldset .fila, .preg fieldset .opciones').all()) await g.locator('input[type=radio]').first().check();
         for (const t of await p.locator('.preg input[type=text]').all()) await t.fill('A');

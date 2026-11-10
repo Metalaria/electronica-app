@@ -54,6 +54,8 @@ export function cargarLibro() {
     bloques: (label) => {
       const it = ejercicios.items[label];
       if (!it) return undefined;
+      // 1.1: a new exercise (not in the book yet) carries its own statement and solution (lib/ejercicios.svelte.ts)
+      if (it.nuevo) return { enunciado: it.enunciado ?? [], solucion: it.solucion ?? [] };
       const B = parte(it.parte).bloques;
       if (it.tipo === 'ej') {
         const b = B[it.pos[0]!] as { items: { bloques: Bloque[]; solucion?: Bloque[] | null }[] };

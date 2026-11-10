@@ -127,7 +127,8 @@ function indiceFiguras() {
   const ejercicios = fs.existsSync(path.join(libro, 'ejercicios.json')) ? leer(path.join(libro, 'ejercicios.json')).items : {};
   for (const [label, it] of Object.entries(ejercicios)) {
     const bs = parte(it.parte).bloques;
-    const enunciado = it.tipo === 'ej' ? bs[it.pos[0]]?.items?.[it.pos[1]]?.bloques ?? [] : bs.slice(it.pos[0] + 1, it.pos[2]);
+    // 1.1: a new exercise (not in the book yet) carries its own statement
+    const enunciado = it.nuevo ? (it.enunciado ?? []) : it.tipo === 'ej' ? bs[it.pos[0]]?.items?.[it.pos[1]]?.bloques ?? [] : bs.slice(it.pos[0] + 1, it.pos[2]);
     const fig = primeraFigura(enunciado) ?? figuras.get(/data-ref="(fig-[^"]+)"/.exec(JSON.stringify(enunciado).replace(/\\"/g, '"'))?.[1] ?? '');
     if (fig) res[label] = fig.src;
   }

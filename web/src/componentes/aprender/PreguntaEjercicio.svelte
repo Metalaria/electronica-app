@@ -14,6 +14,7 @@
   } from '../../lib/preguntas-ejercicio';
   import type { Porque } from '../pregunta/porque';
   import PorQueNo from '../pregunta/PorQueNo.svelte';
+  import CamposDiseno from './CamposDiseno.svelte';
 
   let {
     p,
@@ -24,6 +25,7 @@
     alCambiar,
     porque = null,
     parte = '',
+    simulando = false,
   }: {
     p: Pregunta;
     /** The stored answer (the panel owns it: alCambiar gives the new one). */
@@ -37,6 +39,8 @@
     porque?: Record<string, Porque> | null;
     /** The exercise's part (links of the passages). */
     parte?: string;
+    /** 1.1: a design question whose circuit is being simulated right now. */
+    simulando?: boolean;
   } = $props();
 
   const id = $derived(`${idBase}-${p.id}`);
@@ -160,6 +164,8 @@
         oninput={(ev) => poner((ev.currentTarget as HTMLInputElement).value)}
       />
     </div>
+  {:else if p.tipo === 'diseno'}
+    <CamposDiseno {p} {valor} {id} descrito={marcado ? `${id}-fb` : undefined} alCambiar={poner} {simulando} />
   {:else if p.tipo === 'combinacion'}
     <fieldset aria-describedby={marcado ? `${id}-fb` : undefined}>
       <legend>{@html p.enunciado}</legend>
@@ -200,7 +206,8 @@
       <span>{marcado.mensaje}</span>
     </p>
     {#if marcado.tipo === 'mal' && p.tipo === 'eleccion' && /^\d+$/.test(valor) && Number(valor) !== p.correcta}
-      <PorQueNo opcion={p.opciones[Number(valor)] ?? ''} porque={porque?.[valor] ?? null} {parte} />
+      <!-- 1.1: a new exercise, or a book one turned into choices («razonar»), explains each wrong option in its own words (p.porque); the other book ones come from libro/porque/ -->
+      <PorQueNo opcion={p.opciones[Number(valor)] ?? ''} porque={porque?.[valor] ?? null} {parte} extra={p.porque?.[valor] ?? ''} />
     {/if}
   {/if}
   {#if resuelta}
@@ -413,8 +420,8 @@
     display: flex;
     gap: 7px;
     margin: 0;
-    padding: 6px 10px;
-    border-radius: 7px;
+    padding: 8px 12px;
+    border-radius: 10px;
     font-size: 14.5px;
   }
   .fb .ic {
@@ -422,19 +429,18 @@
     font-weight: 700;
   }
   .fb-bien {
-    background: rgb(from var(--c-ejemplo) r g b / 0.13);
+    background: var(--bien-tinte);
   }
   .fb-cerca {
     background: rgb(from var(--c-importante) r g b / 0.15);
   }
   .fb-mal,
   .fb-ilegible {
-    background: rgb(from var(--c-precaucion) r g b / 0.11);
+    background: var(--mal-tinte);
   }
   .desarrollo {
     padding: 8px 12px;
-    border-left: 3px solid var(--c-tarjeta);
-    border-radius: 3px 8px 8px 3px;
+    border-radius: var(--radio-boton);
     background: var(--tarjeta-fondo);
     font-size: 15px;
   }

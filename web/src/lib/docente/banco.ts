@@ -33,6 +33,8 @@ export interface EntradaBanco {
   orden: number;
   /** A numeric exercise that a formula of the book reproduces: it can take other values. */
   variable: boolean;
+  /** 1.1: a new exercise of the app that the book does not have yet («Aún no en el libro»). */
+  nuevo?: boolean;
 }
 
 export interface DatosBanco {
@@ -102,6 +104,8 @@ export function bancoDe(d: DatosBanco): EntradaBanco[] {
         resumen: plano(it.titulo ? `${it.titulo}. ${it.resumen ?? ''}` : (it.resumen ?? '')),
         orden: base + k++,
         variable: !!d.variables[label],
+        // «Aún no en el libro»: a new exercise (1.1) or one of a book expansion (contenido/ampliaciones11/)
+        ...(it.nuevo || it.ampliacion ? { nuevo: true } : {}),
       });
     }
     for (const p of d.preguntas[parte] ?? []) {

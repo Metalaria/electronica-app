@@ -27,7 +27,11 @@ import type { EstadoEjercicio } from '../src/lib/aprendizaje.svelte';
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
 const LIBRO = join(AQUI, '..', 'public', 'libro');
-const ej = JSON.parse(readFileSync(join(LIBRO, 'ejercicios.json'), 'utf-8'));
+// 1.1: only the book's items; the new exercises that are not in the book yet («nuevo») have their own tests
+// (tests/ejnuevos11-unidad.spec.ts)
+const ej = ((d) => ({ ...d, items: Object.fromEntries(Object.entries(d.items).filter(([, it]) => !(it as { nuevo?: boolean }).nuevo)) }))(
+  JSON.parse(readFileSync(join(LIBRO, 'ejercicios.json'), 'utf-8')) as { items: Record<string, unknown> },
+) as any;
 const partes = new Map<string, { bloques: any[] }>();
 const parte = (id: string) => {
   if (!partes.has(id)) partes.set(id, JSON.parse(readFileSync(join(LIBRO, 'partes', `${id}.json`), 'utf-8')));
@@ -109,7 +113,8 @@ function respuestaMala(p: Pregunta): string {
 // ---------------------------------------------------------------------------------------------------- content
 
 test('cada ejercicio y problema del libro tiene enunciado, comprobación o autoevaluación y desarrollo', () => {
-  const items = Object.entries(ej.items) as [string, any][];
+  // (the book's own: the new exercises and the expansions' ones, «Aún no en el libro», have their own tests)
+  const items = (Object.entries(ej.items) as [string, any][]).filter(([, it]) => !it.nuevo && !it.ampliacion);
   expect(items.length).toBe(486);
   expect(ej.version).toBe(2);
   // every exercise block item and every problem of the parts is in ejercicios.json (none forgotten)

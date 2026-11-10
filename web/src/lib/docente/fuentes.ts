@@ -4,8 +4,8 @@
 // content; nothing is fetched from outside.
 
 import { cargarParte, leerJSON, obtenerIndice, rotuloParte, url } from '../datos';
-import { cargarEjercicios, ejercicios } from '../ejercicios.svelte';
-import type { BEjercicios, Bloque, Parte } from '../tipos';
+import { bloquesEjercicio, cargarEjercicios, ejercicios } from '../ejercicios.svelte';
+import type { Parte } from '../tipos';
 import type { IndiceRepaso, Pregunta } from '../../componentes/repaso/datos';
 import { cargarCuestionario } from '../../componentes/repaso/datos';
 import { cargarIndicePractica, cargarPractica } from '../../componentes/practica/datos';
@@ -115,15 +115,9 @@ export const libro: LibroPdf = {
   },
   bloques: (label) => {
     const it = ejercicios.datos?.items[label];
-    const p = it ? partes.get(it.parte) : undefined;
-    if (!it || !p) return undefined;
-    if (it.tipo === 'ej') {
-      const b = p.bloques[it.pos[0] ?? -1] as BEjercicios | undefined;
-      const e = b?.t === 'ejercicios' ? b.items[it.pos[1] ?? -1] : undefined;
-      return e ? { enunciado: e.bloques, solucion: e.solucion ?? [] } : undefined;
-    }
-    const [h, pide, fin] = it.pos as [number, number, number];
-    return { enunciado: p.bloques.slice(h + 1, pide + 1) as Bloque[], solucion: p.bloques.slice(pide + 1, fin) as Bloque[] };
+    if (!it) return undefined;
+    // 1.1: a new exercise (not in the book yet) carries its own statement and solution
+    return bloquesEjercicio(it, partes.get(it.parte)) ?? undefined;
   },
   rotulo,
   seccion: (parte, label) => {

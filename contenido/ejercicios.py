@@ -27,8 +27,11 @@ import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 APP = os.path.dirname(HERE)
-OUT = os.path.join(APP, 'web/public/libro')
-CURADO = os.path.join(HERE, 'ejercicios_curado.txt')
+# (review 11a: EPA_LIBRO / EPA_CURADO relocate the book folder and the curated file — the tests, on a copy)
+OUT = os.environ.get('EPA_LIBRO') or os.path.join(APP, 'web/public/libro')
+CURADO = os.environ.get('EPA_CURADO') or os.path.join(HERE, 'ejercicios_curado.txt')
+# review 11a: the labels 1.0 graded by comparison (frozen); one now checked automatically gets "comparar10": true
+AUTOEVALUADOS10 = os.path.join(HERE, 'autoevaluados10.json')
 
 VERSION = 2              # 2 (1.0): structured «preguntas» next to the numeric «respuestas»
 TOL_DEFECTO = 0.02          # relative tolerance when the book's rounding is finer than 2 %
@@ -383,7 +386,7 @@ def valor_dsl(t, linea):
 
 # ------------------------------------------------------------------ structured questions (1.0)
 
-TIPOS_PREGUNTA = ('eleccion', 'orden', 'clasificar', 'exacta', 'logica', 'combinacion')
+TIPOS_PREGUNTA = ('eleccion', 'orden', 'clasificar', 'exacta', 'logica', 'combinacion', 'diseno')
 SERIES = {'E12': [1.0, 1.2, 1.5, 1.8, 2.2, 2.7, 3.3, 3.9, 4.7, 5.6, 6.8, 8.2]}
 
 
@@ -528,6 +531,18 @@ def pregunta_dsl(s, donde):
     if not m or m.group(1) not in TIPOS_PREGUNTA:
         raise ValueError(f'{donde}: «? tipo: enunciado | …» con tipo en {list(TIPOS_PREGUNTA)}')
     tipo = m.group(1)
+    if tipo == 'diseno':
+        # 1.1 (review 11a): an open design question checked by simulation, as one line of JSON in the source format of
+        # contenido/ejercicios_nuevos11/ (enunciado, componentes, circuito, control, medidas, condiciones, referencia,
+        # explicacion: the app's own working) — what ejercicios_nuevos.py --typst writes in «Para el curado», so that
+        # the question survives when the author pastes a new exercise into the book (converted by the same code)
+        try:
+            fuente = json.loads(m.group(2))
+        except ValueError as err:
+            raise ValueError(f'{donde}: «? diseno: {{…}}» lleva la pregunta en JSON ({err})')
+        if not isinstance(fuente, dict):
+            raise ValueError(f'{donde}: «? diseno: {{…}}» lleva un objeto JSON')
+        return {'tipo': 'diseno', 'enunciado': '', '_fuente': {**fuente, 'tipo': 'diseno'}, '_donde': donde}
     partes = [p.strip() for p in m.group(2).split(' | ')]
     enun, resto = partes[0], partes[1:]
     q = {'tipo': tipo, 'enunciado': enun, '_donde': donde}
@@ -591,6 +606,14 @@ def preparar_preguntas(label, preguntas, solucion):
     for k, q in enumerate(preguntas):
         q = dict(q)
         pid = f'p{k + 1}'
+        if q['tipo'] == 'diseno':
+            # (converted exactly as the new exercises' own source: the same question, the same stored answers)
+            import ejercicios_nuevos as EJN
+            try:
+                out.append(EJN.pregunta(q['_fuente'], k, label, refs_libro(), q['_donde']))
+            except EJN.Fallo as err:
+                raise ValueError(str(err))
+            continue
         e = {'id': pid, 'tipo': q['tipo'], 'enunciado': marcado(q['enunciado'])}
         if q['tipo'] == 'eleccion':
             # yes/no questions keep their order; the rest are shuffled so the right one is not always first
@@ -598,6 +621,12 @@ def preparar_preguntas(label, preguntas, solucion):
             orden = list(range(len(q['opciones']))) if sino else permutacion(len(q['opciones']), label + pid, False)
             e['opciones'] = [marcado(q['opciones'][i]) for i in orden]
             e['correcta'] = orden.index(q['correcta'])
+            if q.get('_porque'):
+                # 1.1: once one wrong option is explained, every wrong option must be (keyed by shown index)
+                faltan = [i + 1 for i in range(len(q['opciones'])) if i != q['correcta'] and i not in q['_porque']]
+                if faltan:
+                    raise ValueError(f"{q['_donde']}: [{label}] falta «porque» para las opciones {faltan}")
+                e['porque'] = {str(orden.index(i)): marcado(t) for i, t in sorted(q['_porque'].items())}
         elif q['tipo'] == 'orden':
             e['elementos'] = [marcado(x) for x in q['elementos']]
             e['mezcla'] = permutacion(len(q['elementos']), label + pid)
@@ -630,9 +659,20 @@ def preparar_preguntas(label, preguntas, solucion):
     return out
 
 
+_REFS = {}
+
+
+def refs_libro():
+    """refs.json of the book (the references of a design question, «#nr("…")»)."""
+    if OUT not in _REFS:
+        ruta = os.path.join(OUT, 'refs.json')
+        _REFS[OUT] = json.load(open(ruta, encoding='utf-8')) if os.path.exists(ruta) else {}
+    return _REFS[OUT]
+
+
 def leer_curado(ruta):
     """{label: {'respuestas': [...] | None, 'otras': [...], 'pistas': [...], 'clase': str|None, 'nota': str|None,
-    'errata': str|None}}"""
+    'errata': str|None, 'dato': str|None}}"""
     out = {}
     if not os.path.exists(ruta):
         return out
@@ -644,7 +684,8 @@ def leer_curado(ruta):
         m = re.match(r'^\[([\w.\-]+)\]\s*$', s)
         if m:
             actual = out.setdefault(m.group(1), {'respuestas': None, 'otras': [], 'pistas': [], 'clase': None,
-                                                  'nota': None, 'errata': None, '_linea': n, 'preguntas': []})
+                                                  'nota': None, 'errata': None, 'dato': None, '_linea': n,
+                                                  'preguntas': []})
             continue
         if actual is None:
             raise ValueError(f'{ruta}:{n}: línea fuera de un [label]')
@@ -682,16 +723,34 @@ def leer_curado(ruta):
             actual['nota'] = s[5:].strip()
         elif s.startswith('errata:'):
             actual['errata'] = s[7:].strip()
+        elif s.startswith('dato:'):
+            # 1.1: a datum the book's solution uses and the statement does not give (shown next to «Se pide»)
+            actual['dato'] = s[5:].strip()
         elif s == 'sin-respuestas':
             actual['respuestas'] = []
         elif s.startswith('?'):
             actual['preguntas'].append(pregunta_dsl(s, f'{ruta}:{n}'))
+        elif re.match(r'^porque\s+\d+\s*:', s):
+            # 1.1 («razonar»): why a wrong option of the last choice question is wrong, in the app's words but only
+            # from the book's solution; N is the option's place as written in the «?» line (1-based)
+            m = re.match(r'^porque\s+(\d+)\s*:\s*(.+)$', s)
+            q = actual['preguntas'][-1] if actual['preguntas'] else None
+            if not m or q is None or q['tipo'] != 'eleccion':
+                raise ValueError(f'{ruta}:{n}: «porque N: texto» va tras una pregunta «? eleccion»')
+            k = int(m.group(1)) - 1
+            if not 0 <= k < len(q['opciones']) or k == q['correcta']:
+                raise ValueError(f'{ruta}:{n}: «porque {k + 1}» no es una opción incorrecta de la pregunta')
+            if k in q.setdefault('_porque', {}):
+                raise ValueError(f'{ruta}:{n}: «porque {k + 1}» repetido')
+            q['_porque'][k] = m.group(2).strip()
         elif s.startswith('>'):
             # explanation of the last «?» question: «> text» quotes the book's solution literally (checked
             # against it later), «>> text» is the app's own working (only for answers the book does not spell out)
             if not actual['preguntas']:
                 raise ValueError(f'{ruta}:{n}: «>» sin una pregunta «?» antes')
             q = actual['preguntas'][-1]
+            if q['tipo'] == 'diseno':
+                raise ValueError(f'{ruta}:{n}: la explicación de «? diseno» va en su JSON («explicacion»)')
             calculo = s.startswith('>>')
             q.setdefault('_explicacion', []).append((calculo, s[2 if calculo else 1:].strip(), f'{ruta}:{n}'))
         else:
@@ -721,6 +780,7 @@ def resumen(t, largo=150):
 def construir(revisar=None):
     indice, items = items_del_libro()
     curado = leer_curado(CURADO)
+    comparar10 = set(json.load(open(AUTOEVALUADOS10, encoding='utf-8'))['labels']) if os.path.exists(AUTOEVALUADOS10) else set()
     etiquetas = {it['label'] for it in items}
     problemas = []
     for lab, c in curado.items():
@@ -736,7 +796,7 @@ def construir(revisar=None):
         c = curado.get(it['label'])
         origen = 'auto'
         respuestas, otras, pistas, clase = a['respuestas'], a['otras'], a['pistas'], a['clase']
-        nota = errata = None
+        nota = errata = dato = None
         if c:
             estad['curados'] += 1
             if c['respuestas'] is None and (c['otras'] or c['preguntas']):
@@ -749,7 +809,7 @@ def construir(revisar=None):
             if any(c['pistas']):
                 pistas = [p for p in c['pistas'] if p] + []
                 estad['pistas_curadas'] += 1
-            nota, errata = c['nota'], c['errata']
+            nota, errata, dato = c['nota'], c['errata'], c['dato']
             if c['clase']:
                 clase = c['clase']
             elif respuestas:
@@ -761,8 +821,9 @@ def construir(revisar=None):
             respuestas, otras, clase, preguntas = [], [], 'sin-solucion', []
         modo = 'auto' if respuestas or preguntas else 'comparar'
         if modo == 'auto':
-            # numerico: at least one numeric field; eleccion: only structured questions (choice, order…)
-            clase = 'numerico' if respuestas else 'eleccion'
+            # numerico: at least one numeric field; eleccion: only structured questions (choice, order…); diseno (1.1):
+            # with a design question checked by simulation (as contenido/ejercicios_nuevos.py classes it)
+            clase = 'numerico' if respuestas else ('diseno' if any(q['tipo'] == 'diseno' for q in preguntas) else 'eleccion')
         for k, r in enumerate(respuestas):
             r['id'] = f'r{k + 1}'
             r['texto'] = superindices(r.get('texto') or formatear(r['valor'], r['unidad']))
@@ -776,6 +837,9 @@ def construir(revisar=None):
         if it['titulo']:
             entrada['titulo'] = it['titulo']
         entrada['resumen'] = resumen(it['_enun'])
+        if modo == 'auto' and it['label'] in comparar10:
+            # (a 1.0 exam answer — a written text — is still graded as an open part: lib/docente/examen.ts)
+            entrada['comparar10'] = True
         if otras:
             entrada['otras'] = [{'clase': o['clase'], 'texto': marcado(o['texto'])} for o in otras]
         if preguntas:
@@ -795,6 +859,8 @@ def construir(revisar=None):
             entrada['nota'] = marcado(nota)
         if errata:
             entrada['errata'] = marcado(errata)
+        if dato:
+            entrada['dato'] = marcado(dato)
         salida[it['label']] = entrada
         estad['total'] += 1
         estad[it['tipo']] += 1
@@ -843,7 +909,15 @@ def main(argv=None):
           f"en {e.get('con_preguntas', 0)}; con autoevaluación {e.get('autoevaluacion', 0)}")
     for p in problemas:
         print('  ' + p)
-    return 1 if problemas else 0
+    # 1.1: the new exercises that are not in the book yet (contenido/ejercicios_nuevos11/), merged right away so that
+    # running this script alone never leaves them out; the book's own item wins when it has the same label
+    import ejercicios_nuevos
+    nuevos = ejercicios_nuevos.main([], libro=OUT)
+    # 1.1: the exercises of the book's expansions (contenido/ampliaciones11/, already in the parts): their mark and
+    # their answers checked against the expansion's data, so running this script alone never drops them
+    import ampliaciones
+    amp = ampliaciones.anotar_ejercicios(OUT)
+    return 1 if problemas or nuevos or amp else 0
 
 
 if __name__ == '__main__':

@@ -1,12 +1,13 @@
 <script lang="ts">
   // One exercise or problem out of the reader (the «Ejercicios» page and the review of the failed ones):
   // the statement from its part, the answer panel and the book's solution.
-  import type { Bloque, BEjercicios } from '../../lib/tipos';
+  import type { Bloque } from '../../lib/tipos';
   import { cargarParte, rotuloParte } from '../../lib/datos';
-  import { item as itemDe } from '../../lib/ejercicios.svelte';
+  import { bloquesEjercicio, item as itemDe } from '../../lib/ejercicios.svelte';
   import Bloques from '../Bloques.svelte';
   import Icono from '../Icono.svelte';
   import Comprobador from './Comprobador.svelte';
+  import InsigniaNuevo from './InsigniaNuevo.svelte';
 
   let { label, titulo = true }: { label: string; titulo?: boolean } = $props();
 
@@ -22,21 +23,21 @@
     enunciado = null;
     error = '';
     if (!it) return;
+    // 1.1: a new exercise (not in the book yet) carries its own statement and solution
+    const propio = it.nuevo ? bloquesEjercicio(it, null) : null;
+    if (propio) {
+      enunciado = propio.enunciado;
+      solucion = propio.solucion;
+      return;
+    }
     let vivo = true;
     cargarParte(it.parte)
       .then((p) => {
         if (!vivo) return;
-        if (it.tipo === 'ej') {
-          const b = p.bloques[it.pos[0] ?? -1] as BEjercicios | undefined;
-          const e = b?.t === 'ejercicios' ? b.items[it.pos[1] ?? -1] : undefined;
-          if (!e) throw new Error('ejercicio no encontrado');
-          enunciado = e.bloques;
-          solucion = e.solucion ?? [];
-        } else {
-          const [h, pide, fin] = it.pos as [number, number, number];
-          enunciado = p.bloques.slice(h + 1, pide + 1);
-          solucion = p.bloques.slice(pide + 1, fin);
-        }
+        const b = bloquesEjercicio(it, p);
+        if (!b) throw new Error('ejercicio no encontrado');
+        enunciado = b.enunciado;
+        solucion = b.solucion;
       })
       .catch((e: unknown) => {
         if (vivo) error = e instanceof Error ? e.message : String(e);
@@ -55,8 +56,9 @@
           {item.tipo === 'ej' ? `Ejercicio ${item.num}` : `Problema ${item.num}`}
           <span class="donde">· {rotuloParte(item.parte)}</span>
         </span>
+        {#if item.nuevo}<InsigniaNuevo />{:else if item.ampliacion}<InsigniaNuevo titulo="Ejercicio nuevo de la aplicación: estará en la próxima edición del libro" />{/if}
         {#if item.titulo}<span class="tit">{item.titulo}</span>{/if}
-        <a class="boton abrir" href={`#/${item.parte}/${label}`}><Icono nombre="libro" tam={16} /> Abrir en el libro</a>
+        <a class="boton abrir" href={`#/${item.parte}/${label}`}><Icono nombre="libro" tam={16} /> {item.nuevo || item.ampliacion ? 'Abrir en el capítulo' : 'Abrir en el libro'}</a>
       </header>
     {/if}
     {#if error}

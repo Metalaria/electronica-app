@@ -131,11 +131,15 @@ test('qa10b·a4 «Solo lo que la aplicación corrige sola» deja fuera todo ejer
     return it.modo === 'comparar' || (it.otras?.length ?? 0) > 0;
   });
   expect(conAbierta.map((e) => e.ref)).toEqual([]);
-  expect(auto).toHaveLength(175);
+  // the book's 175, plus (1.1 «razonar») the 173 self-assessed ones turned into choices, orders and matchings with no
+  // open part left (tests/razonar11-unidad.spec.ts), plus the 30 new exercises not in the book yet (ejnuevos11-unidad)
+  expect(auto.filter((e) => !e.nuevo)).toHaveLength(175 + 173);
+  expect(auto.filter((e) => e.nuevo)).toHaveLength(30);
   // and each of them is graded without a self-assessment: answering nothing leaves no part pending
   for (const e of auto.slice(0, 60)) {
     const m = montarExamen({ items: [{ k: 'ejercicio', ref: e.ref, puntos: 1 }], minutos: 0, variantes: false, barajar: false, semilla: 1, espacio: 'no' }, ctx, 0).items[0]!;
     expect(calificarItem(m, ctx, { texto: 'algo' }).estado, e.ref).not.toBe('pendiente');
   }
-  expect(banco.filter((e) => e.mixto)).toHaveLength(125);
+  // (1.1 «razonar»: 8 of the converted self-assessed ones keep an optional open part)
+  expect(banco.filter((e) => e.mixto)).toHaveLength(125 + 8);
 });

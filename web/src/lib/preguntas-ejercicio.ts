@@ -4,6 +4,7 @@
 // in EstadoEjercicio.valores) and how it is checked. The rules match contenido/ejercicios.py.
 
 import { leer } from './magnitudes';
+import { comprobarDiseno, textoCondiciones, textoReferencia } from './diseno-ejercicio';
 
 interface Base {
   id: string;
@@ -18,6 +19,12 @@ export interface PEleccion extends Base {
   tipo: 'eleccion';
   opciones: string[];
   correcta: number;
+  /**
+   * 1.1: why each wrong option is wrong (shown index → HTML), the app's own words: the new exercises not in the book yet
+   * (ejercicios_nuevos) and the book's self-assessed exercises turned into choices («razonar», curated `porque N:` lines,
+   * only from the book's solution); the other book exercises take theirs from libro/porque/ instead.
+   */
+  porque?: Record<string, string>;
 }
 export interface POrden extends Base {
   tipo: 'orden';
@@ -53,7 +60,36 @@ export interface PCombinacion extends Base {
   tol: number;
   texto: string;
 }
-export type Pregunta = PEleccion | POrden | PClasificar | PExacta | PLogica | PCombinacion;
+/** A component the reader chooses in a design question (1.1). */
+export interface ComponenteDiseno {
+  /** Placeholder in the netlist: «{R}». */
+  id: string;
+  /** HTML: «R», «C<sub>1</sub>». */
+  nombre: string;
+  unidad: 'Ω' | 'F' | 'H';
+  serie: 'E12' | 'E24';
+  /** Allowed range, in the bare unit. */
+  min: number;
+  max: number;
+}
+/**
+ * 1.1: an open design question — any values that meet the conditions are right, checked by simulating the circuit with
+ * the app's ngspice (lib/diseno-ejercicio.ts). The stored answer keeps the simulated measurements with the values they
+ * belong to, so checking is synchronous and grading never depends on running the simulator again.
+ */
+export interface PDiseno extends Base {
+  tipo: 'diseno';
+  componentes: ComponenteDiseno[];
+  /** Netlist with «{id}» placeholders (SI numbers are put in), without analyses. */
+  circuito: string;
+  /** Lines of the .control block: the analysis, `let` vectors and one `meas` per measurement. */
+  control: string;
+  medidas: { id: string; nombre: string; unidad: string }[];
+  condiciones: { medida: string; min: number; max: number; texto: string; siBaja: string; siAlta: string }[];
+  /** A design that meets every condition (the worked solution's), id → value and text. */
+  referencia: Record<string, { valor: number; texto: string }>;
+}
+export type Pregunta = PEleccion | POrden | PClasificar | PExacta | PLogica | PCombinacion | PDiseno;
 
 export type VeredictoPregunta =
   | { tipo: 'vacio' }
@@ -282,6 +318,8 @@ export function comprobarPregunta(p: Pregunta, valor: string): VeredictoPregunta
       if (err <= 0.1) return { tipo: 'cerca', mensaje: `Casi: dan ${textoOhmios(r)}, a más del ${String(p.tol * 100).replace('.', ',')} % de ${p.texto}.` };
       return { tipo: 'mal', mensaje: `Dan ${textoOhmios(r)}; se piden ${p.texto}.` };
     }
+    case 'diseno':
+      return comprobarDiseno(p, valor);
   }
 }
 
@@ -300,5 +338,7 @@ export function respuestaCorrecta(p: Pregunta): string {
       return p.expresion;
     case 'combinacion':
       return `cualquier pareja ${p.serie} en serie o en paralelo que dé ${p.texto} (±${String(p.tol * 100).replace('.', ',')} %)`;
+    case 'diseno':
+      return `cualquier diseño que cumpla ${textoCondiciones(p)}; por ejemplo, ${textoReferencia(p)}`;
   }
 }

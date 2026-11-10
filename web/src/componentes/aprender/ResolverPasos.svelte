@@ -348,8 +348,8 @@
     display: flex;
     gap: 7px;
     margin: 0;
-    padding: 6px 10px;
-    border-radius: 7px;
+    padding: 8px 12px;
+    border-radius: 10px;
     font-size: 14.5px;
   }
   .fb .ic {
@@ -357,7 +357,7 @@
     font-weight: 700;
   }
   .fb-bien {
-    background: rgb(from var(--c-ejemplo) r g b / 0.13);
+    background: var(--bien-tinte);
   }
   .fb-cerca {
     background: rgb(from var(--c-importante) r g b / 0.15);
@@ -365,14 +365,13 @@
   .fb-mal,
   .fb-unidad,
   .fb-ilegible {
-    background: rgb(from var(--c-precaucion) r g b / 0.11);
+    background: var(--mal-tinte);
   }
   .pista,
   .desarrollo {
     margin: 0;
     padding: 8px 12px;
-    border-left: 3px solid var(--c-tarjeta);
-    border-radius: 3px 8px 8px 3px;
+    border-radius: var(--radio-boton);
     background: var(--tarjeta-fondo);
     font-size: 15px;
   }

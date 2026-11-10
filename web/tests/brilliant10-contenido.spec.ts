@@ -406,11 +406,19 @@ test.describe('por qué no (sin navegador)', () => {
   });
 
   test('preguntas de los ejercicios y predicciones: todas las opciones incorrectas', () => {
-    const ej = J<{ items: Record<string, { parte: string; preguntas?: { id: string; tipo: string; opciones?: string[]; correcta?: number }[] }> }>('ejercicios.json').items;
+    const ej = J<{ items: Record<string, { parte: string; nuevo?: boolean; preguntas?: { id: string; tipo: string; opciones?: string[]; correcta?: number; porque?: Record<string, string> }[] }> }>('ejercicios.json').items;
     let n = 0;
     for (const [label, it] of Object.entries(ej)) {
+      // 1.1: a new exercise not in the book yet explains its wrong options itself (tests/ejnuevos11-unidad.spec.ts)
+      if (it.nuevo) continue;
       for (const q of it.preguntas ?? []) {
         if (q.tipo !== 'eleccion') continue;
+        // 1.1 «razonar»: a converted self-assessed exercise explains every wrong option in its curated layer
+        // (tests/razonar11-unidad.spec.ts); porque10 proposes no book sentence for those
+        if (q.porque) {
+          expect(porque.get(it.parte)?.ejercicios[`${label}/${q.id}`], `${label}/${q.id}`).toBeUndefined();
+          continue;
+        }
         const e = porque.get(it.parte)?.ejercicios[`${label}/${q.id}`];
         expect(e, `${label}/${q.id}`).toBeTruthy();
         expect(Object.keys(e!).map(Number).sort()).toEqual(q.opciones!.map((_, i) => i).filter((i) => i !== q.correcta));

@@ -97,14 +97,14 @@ test('en el lector: botón discreto; teclado y arrastre mueven el valor, el resu
   await t.getByRole('button', { name: 'Mover los valores de esta fórmula' }).click();
   const r2 = t.getByRole('slider', { name: /R2|R₂/ });
   await expect(r2).toHaveAttribute('aria-valuenow', '5000');
-  await expect(r2).toHaveAttribute('aria-valuetext', /^5\skΩ$/);
+  await expect(r2).toHaveAttribute('aria-valuetext', /^5 kiloohmios$/); // (1.1 motor fixes: the value in words)
   await expect(t.locator('output')).toHaveText(/^4\sV$/);
   const punto = async () => t.locator('circle.punto').getAttribute('cx');
   const antes = await punto();
   await r2.focus();
   await page.keyboard.press('ArrowRight'); // 5 k → 5,6 k
   await expect(r2).toHaveAttribute('aria-valuenow', '5600');
-  await expect(r2).toHaveAttribute('aria-valuetext', /5,6\skΩ/);
+  await expect(r2).toHaveAttribute('aria-valuetext', /5,6 kiloohmios/);
   // 12 · 5,6 / 15,6 = 4,31 V
   await expect(t.locator('output')).toHaveText(/4,31\sV/);
   expect(await punto()).not.toBe(antes);
@@ -130,7 +130,8 @@ test('en el lector: botón discreto; teclado y arrastre mueven el valor, el resu
 
 test('en una lección está abierta desde el principio', async ({ page }) => {
   await limpio(page);
-  await page.goto('#/leccion/cap03/sec-3.2');
+  // (the 1.0 lesson «por pasos»: since 1.1 the section also has a hand-authored lesson, the default route)
+  await page.goto('#/leccion/cap03/sec-3.2/clasica');
   await expect(page.locator('.leccion')).toBeVisible();
   let visto = false;
   for (let k = 0; k < 12 && !visto; k++) {
@@ -149,7 +150,7 @@ test('en una lección está abierta desde el principio', async ({ page }) => {
   const ts = t.getByRole('slider', { name: /Tiempo/ });
   await ts.focus();
   await page.keyboard.press('ArrowRight');
-  await expect(ts).toHaveAttribute('aria-valuetext', /1,1\ss/);
+  await expect(ts).toHaveAttribute('aria-valuetext', /1,1 segundos/);
 });
 
 async function tactil(browser: Browser, tema: 'claro' | 'sepia' | 'oscuro') {

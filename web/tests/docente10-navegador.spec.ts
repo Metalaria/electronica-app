@@ -48,7 +48,9 @@ async function crearExamen(page: Page, titulo = 'Examen de diodos'): Promise<str
   await page.locator('[data-variantes]').uncheck();
   await page.locator('[data-barajar]').uncheck();
   await anadir(page, 'cap01', ['ejercicio:ej-1.1']);
-  await anadir(page, 'cap05', ['pregunta:cap05-01', 'pregunta:cap05-02', 'ejercicio:ej-5.9']);
+  await anadir(page, 'cap05', ['pregunta:cap05-01', 'pregunta:cap05-02']);
+  // the open exercise (1.1 «razonar»: ej-5.9, used until 1.0, is self-checked now; ej-12.8 is still self-assessed)
+  await anadir(page, 'cap12', ['ejercicio:ej-12.8']);
   await expect(page.locator('[data-elegido]')).toHaveCount(4);
   await expect(page.locator('#h-elegidos')).toContainText('6 puntos');
   await page.locator('[data-guardar]').click();
@@ -89,7 +91,7 @@ test('examen: crear, hacer (sin pistas, con el borrador tras recargar), entregar
   const dialogo = page.getByRole('alertdialog', { name: '¿Entregar el examen?' });
   await expect(dialogo).toContainText('Hay 1 pregunta sin responder');
   await dialogo.getByRole('button', { name: 'Cancelar' }).click();
-  await item(4).locator('[data-campo="texto"]').fill('Un diodo hacia +3,3 V y otro desde masa.');
+  await item(4).locator('[data-campo="texto"]').fill('Historial de cambios y trabajo en equipo.');
   await page.locator('[data-entregar]').click();
   await expect(page).toHaveURL(/#\/docente\/resultado\/r[a-z0-9]+$/);
   await expect(page.locator('[data-nota-total]')).toContainText('4 de 6 puntos');
@@ -101,7 +103,7 @@ test('examen: crear, hacer (sin pistas, con el borrador tras recargar), entregar
   // the book's development of each item
   await expect(page.locator('[data-item-resultado="1"] .desarrollo-libro')).toContainText('Solución 1.1 del libro');
   await expect(page.locator('[data-item-resultado="2"] .cita')).toContainText('Del libro · Sección 5.1');
-  await expect(page.locator('[data-item-resultado="4"] .escrita')).toContainText('Un diodo hacia +3,3 V');
+  await expect(page.locator('[data-item-resultado="4"] .escrita')).toContainText('Historial de cambios');
   await page.locator('[data-autoeval="4"]').getByRole('button', { name: 'A medias' }).click();
   await expect(page.locator('[data-nota-total]')).toContainText('5 de 6 puntos');
   await page.locator('[data-autoeval="4"]').getByRole('button', { name: 'Bien' }).click();

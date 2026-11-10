@@ -12,6 +12,7 @@
   import Icono from '../Icono.svelte';
   import Insignia from '../Insignia.svelte';
   import TarjetaEjercicio from './TarjetaEjercicio.svelte';
+  import InsigniaNuevo from './InsigniaNuevo.svelte';
   import MiniaturaLibro from '../miniaturas/MiniaturaLibro.svelte';
 
   type Filtro = 'todos' | Estado;
@@ -28,6 +29,9 @@
   const repaso = $derived(ruta.ancla === 'repaso');
 
   const todos = $derived(datos ? Object.keys(datos.items) : []);
+  // 1.1: the new exercises the book does not have yet
+  // 1.1: «nuevos» = not in the book yet: the app's own exercises and those of the book's expansions
+  const nNuevos = $derived(datos ? todos.filter((l) => datos.items[l]?.nuevo || datos.items[l]?.ampliacion).length : 0);
   const cuenta = $derived.by(() => {
     const c = { pendiente: 0, fallado: 0, resuelto: 0 };
     if (!listo) return c;
@@ -131,7 +135,7 @@
     <header class="cabecera">
       <h1>Ejercicios y problemas</h1>
       <p class="sub">
-        {todos.length} en el libro · <strong>{cuenta.resuelto}</strong> resueltos · {cuenta.fallado} fallados
+        {todos.length - nNuevos} en el libro{nNuevos ? ` y ${nNuevos} nuevos` : ''} · <strong>{cuenta.resuelto}</strong> resueltos · {cuenta.fallado} fallados
       </p>
       <div class="barra-total" aria-hidden="true">
         <span class="r" style:width={`${(cuenta.resuelto / Math.max(1, todos.length)) * 100}%`}></span>
@@ -195,7 +199,7 @@
                 <button class="fila" aria-expanded={abierto === l} onclick={() => (abierto = abierto === l ? null : l)}>
                   <span class="num">{it.tipo === 'ej' ? '' : 'P '}{it.num}</span>
                   <MiniaturaLibro clave={l} />
-                  <span class="res">{it.titulo ?? it.resumen ?? ''}</span>
+                  <span class="res">{#if it.nuevo || it.ampliacion}<InsigniaNuevo compacta /> {/if}{it.titulo ?? it.resumen ?? ''}</span>
                   {#if it.modo === 'auto'}
                     {@const n = it.respuestas.length + (it.preguntas?.length ?? 0)}
                     <span class="auto" title="Comprobación automática">{n} {it.preguntas?.length ? (n === 1 ? 'respuesta' : 'respuestas') : n === 1 ? 'valor' : 'valores'}</span>
@@ -235,7 +239,7 @@
   h1 {
     margin: 6px 0 0;
     color: var(--titulos);
-    font-family: var(--serif);
+    font-family: var(--titular);
     font-size: clamp(26px, 4vw, 30px);
     font-weight: 700;
     line-height: 1.15;
@@ -448,9 +452,6 @@
   }
   .navegar .boton {
     min-height: 44px;
-  }
-  .navegar .boton:disabled {
-    opacity: 0.45;
   }
   .vacio,
   .cargando {

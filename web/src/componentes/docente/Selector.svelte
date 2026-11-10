@@ -8,6 +8,7 @@
   import { app } from '../../lib/estado.svelte';
   import { normalizar, rotuloParte } from '../../lib/datos';
   import { filtrar, type EntradaBanco, type TipoEntrada } from '../../lib/docente/banco';
+  import InsigniaNuevo from '../aprender/InsigniaNuevo.svelte';
   import type { FiltrosExamen } from '../../lib/docente/tipos';
 
   let {
@@ -148,6 +149,7 @@
           <span class="marcas">
             <span class="marca">{e.auto ? 'Se corrige solo' : e.mixto ? 'En parte autoevaluado' : 'Autoevaluación'}</span>
             {#if e.variable}<span class="marca">Valores que cambian</span>{/if}
+            {#if e.nuevo}<InsigniaNuevo compacta />{/if}
           </span>
         </div>
         <button type="button" class="t09-boton t09-contorno" disabled={ya} onclick={() => onanadir(e)} data-anadir>

@@ -31,7 +31,14 @@ import { variantes } from '../src/componentes/practica/variantes';
 
 const L = cargarLibro();
 const ctx: ContextoExamen = L.libro;
-const banco = bancoDe(L.banco);
+// 1.1: the book's items; the 30 new exercises not in the book yet (`nuevo`) — including design questions graded on
+// their simulation — have their own tests (tests/ejnuevos11-unidad.spec.ts), and so do the exercises and problems of
+// the book's expansions (`ampliacion`, also «Aún no en el libro» in the bank: tests/ampliaciones11-unidad.spec.ts)
+const deAmpliacion = (ref: string) => !!L.ejercicios.items[ref]?.ampliacion;
+// (an expansion's Repaso question is not marked `nuevo` in the bank: it is left out here by its own mark)
+const banco = bancoDe(L.banco).filter((e) => !e.nuevo && !(e.k === 'pregunta' && ctx.pregunta(e.ref)?.ampliacion));
+// (the expansions' own figure and equation files: ampliaciones.json «ficheros»)
+const FICHEROS_AMPLIACION = (JSON.parse(fs.readFileSync(`${LIBRO}/ampliaciones.json`, 'utf8')) as { ficheros: Record<string, string[]> }).ficheros;
 const SALIDA = process.env.EPA_PDF_SALIDA;
 const O = { titulo: 'Examen de prueba', notas: 'Conteste en el espacio reservado.', fecha: '6 de noviembre de 2026', espacio: 'corto' as const, creado: Date.UTC(2026, 10, 6) };
 
@@ -39,6 +46,8 @@ const O = { titulo: 'Examen de prueba', notas: 'Conteste en el espacio reservado
 
 test('banco: los 486 ejercicios y problemas y las 1028 preguntas, en el orden del libro, con su concepto', () => {
   expect(banco.filter((e) => e.k === 'ejercicio')).toHaveLength(486);
+  expect(bancoDe(L.banco).filter((e) => e.nuevo && !deAmpliacion(e.ref))).toHaveLength(30);
+  expect(bancoDe(L.banco).filter((e) => e.nuevo && deAmpliacion(e.ref)).length).toBe(Object.values(L.ejercicios.items).filter((it) => it.ampliacion).length);
   expect(banco.filter((e) => e.tipo === 'problema')).toHaveLength(113);
   expect(banco.filter((e) => e.k === 'pregunta')).toHaveLength(1028);
   expect(new Set(banco.map((e) => `${e.k}:${e.ref}`)).size).toBe(banco.length);
@@ -47,9 +56,10 @@ test('banco: los 486 ejercicios y problemas y las 1028 preguntas, en el orden de
   expect(banco.filter((e) => e.k === 'ejercicio' && !e.concepto)).toEqual([]);
   expect(banco.filter((e) => !e.concepto).length).toBeLessThan(banco.length * 0.05);
   expect(banco.filter((e) => e.variable).length).toBe(Object.keys(L.banco.variables).length);
-  // final QA 1.0: «auto» = checked by the app entirely (an exercise with a self-assessed part is `mixto`: 125 of 300)
-  expect(banco.filter((e) => e.k === 'ejercicio' && e.auto)).toHaveLength(175);
-  expect(banco.filter((e) => e.k === 'ejercicio' && e.mixto)).toHaveLength(125);
+  // final QA 1.0: «auto» = checked by the app entirely (an exercise with a self-assessed part is `mixto`: 125 of 300);
+  // 1.1 «razonar»: 181 self-assessed ones became self-checked, 173 entirely and 8 with an optional open part
+  expect(banco.filter((e) => e.k === 'ejercicio' && e.auto)).toHaveLength(175 + 173);
+  expect(banco.filter((e) => e.k === 'ejercicio' && e.mixto)).toHaveLength(125 + 8);
 });
 
 test('filtros: capítulo, concepto, tipo y «solo lo que se corrige solo»', () => {
@@ -61,7 +71,7 @@ test('filtros: capítulo, concepto, tipo y «solo lo que se corrige solo»', () 
   expect(porConcepto.length).toBeGreaterThan(0);
   expect(porConcepto.every((e) => e.concepto === conc)).toBe(true);
   expect(filtrar(banco, { ...FILTROS_VACIOS, tipos: ['problema'] })).toHaveLength(113);
-  expect(filtrar(banco, { ...FILTROS_VACIOS, tipos: ['ejercicio', 'problema'], soloAuto: true })).toHaveLength(175);
+  expect(filtrar(banco, { ...FILTROS_VACIOS, tipos: ['ejercicio', 'problema'], soloAuto: true })).toHaveLength(175 + 173);
   expect(filtrar(banco, { ...FILTROS_VACIOS, tipos: ['pregunta'], partes: ['cap05', 'cap09'] }).every((e) => e.k === 'pregunta')).toBe(true);
 });
 
@@ -351,17 +361,21 @@ test('PDF del índice de un curso', async () => {
 test('SVG del libro: las 795 ecuaciones y las 880 figuras se convierten a vectores (las de tramas o máscaras se rasterizan en la aplicación)', () => {
   const aproximadas: string[] = [];
   let n = 0;
+  let deAmpliaciones = 0;
   for (const dir of ['ec', 'fig']) {
     for (const f of fs.readdirSync(`${LIBRO}/${dir}`)) {
       if (!f.endsWith('.svg')) continue;
+      // (an expansion's file is converted too, counted apart: the book's own are 795 + 880)
+      if ((FICHEROS_AMPLIACION[dir] ?? []).includes(f)) deAmpliaciones++;
+      else n++;
       const c = convertirSvg(fs.readFileSync(`${LIBRO}/${dir}/${f}`, 'utf8'), { transparencia: () => 'G', imagen: () => 'I' });
       expect(c.pintados, f).toBeGreaterThan(0);
       expect(c.ops, f).not.toMatch(/NaN|undefined|Infinity/);
-      if (c.noSoportado.length) aproximadas.push(`${dir}/${f}: ${c.noSoportado.join(',')}`);
-      n++;
+      if (c.noSoportado.length && !(FICHEROS_AMPLIACION[dir] ?? []).includes(f)) aproximadas.push(`${dir}/${f}: ${c.noSoportado.join(',')}`);
     }
   }
   expect(n).toBe(795 + 880);
+  expect(deAmpliaciones).toBe(Object.values(FICHEROS_AMPLIACION).flat().length);
   // only figures (never an equation) use patterns or a mask
   expect(aproximadas.every((x) => x.startsWith('fig/'))).toBe(true);
   expect(aproximadas.length).toBeLessThanOrEqual(19);

@@ -114,7 +114,8 @@ function nombreItem(m: Pick<ItemMontado, 'k' | 'ref'>, libro: LibroPdf): { nombr
     return { nombre: `Pregunta de test ${Number(/-(\d+)$/.exec(m.ref)?.[1] ?? 0)}`, donde: `${libro.rotulo(parte)}${p ? ` · ${p.ref_tipo} ${p.ref_num ?? ''}`.trimEnd() : ''}` };
   }
   const e = libro.ejercicio(m.ref);
-  return { nombre: e ? `${e.tipo === 'prob' ? 'Problema' : 'Ejercicio'} ${e.num}` : m.ref, donde: e ? libro.rotulo(e.parte) : '' };
+  // 1.1: a new exercise that the book does not have yet says so wherever it is printed
+  return { nombre: e ? `${e.tipo === 'prob' ? 'Problema' : 'Ejercicio'} ${e.num}` : m.ref, donde: e ? libro.rotulo(e.parte) + (e.nuevo || e.ampliacion ? ' · aún no en el libro' : '') : '' };
 }
 
 const puntos = (p: number) => `${textoPuntos(p)} ${p === 1 ? 'punto' : 'puntos'}`;
@@ -141,11 +142,21 @@ function preguntaImpresa(p: PreguntaEjercicio, n: number): BloquePdf[] {
     case 'combinacion':
       r.push({ k: 'parrafo', trozos: texto(`R₁ = ${linea(10)}   R₂ = ${linea(10)}   ☐ en serie   ☐ en paralelo`), sangria: 16, antes: 4 });
       break;
+    case 'diseno':
+      // 1.1: the values to choose, each with its series and range (on paper there is no simulation: the solutions say
+      // which conditions a design must meet and give one that does)
+      for (const c of p.componentes) {
+        r.push({ k: 'parrafo', trozos: [...deHtml(c.nombre, { ...TEXTO, negrita: true }), ...texto(` = ${linea(12)}${ESPACIO_CAMPO}${c.unidad}   (serie ${c.serie})`)], sangria: 16, antes: 3 });
+      }
+      break;
   }
   return r;
 }
 
 const ESPACIO_CAMPO = ' ';
+
+/** 1.1: a datum the book's solution uses and its statement leaves out (curated `dato:`), printed after the statement. */
+const datoImpreso = (html: string): BloquePdf => ({ k: 'parrafo', trozos: [...texto('Dato que usa la solución del libro: ', { negrita: true }), ...deHtml(html)], antes: 5 });
 
 /** One item of the exam paper. */
 function itemExamen(m: ItemMontado, libro: LibroPdf, espacio: EspacioRespuesta): BloquePdf[] {
@@ -173,6 +184,7 @@ function itemExamen(m: ItemMontado, libro: LibroPdf, espacio: EspacioRespuesta):
     r.push({ k: 'parrafo', trozos: [...deHtml(esp.nombre, { ...TEXTO, negrita: true }), ...texto(`: ${linea(16)}${ESPACIO_CAMPO}${esp.unidad}`)], sangria: 16, antes: 6 });
   } else {
     if (bl) r.push(...deBloques(bl.enunciado));
+    if (e?.dato) r.push(datoImpreso(e.dato));
     if (e) {
       if (e.respuestas.length) r.push(etiquetaSeccion('Resultados'));
       for (const x of e.respuestas)
@@ -257,6 +269,7 @@ function itemSoluciones(m: ItemMontado, libro: LibroPdf): BloquePdf[] {
     r.push(etiquetaSeccion('Desarrollo del libro (con los valores del enunciado original)'));
   } else if (e) {
     if (bl) r.push(...deBloques(bl.enunciado, 0, 9.5).map((b) => (b.k === 'parrafo' ? { ...b, trozos: b.trozos.map((t) => (t.t === 'texto' ? { ...t, e: { ...t.e, color: [0.25, 0.25, 0.25] as [number, number, number] } } : t)) } : b)));
+    if (e.dato) r.push(datoImpreso(e.dato));
     if (e.respuestas.length) r.push(etiquetaSeccion('Resultados'));
     for (const x of e.respuestas) {
       const alt = x.alternativas.length ? ` (también vale: ${x.alternativas.map((a) => a.texto + (a.nota ? `, ${a.nota}` : '')).join('; ')})` : '';
@@ -268,13 +281,22 @@ function itemSoluciones(m: ItemMontado, libro: LibroPdf): BloquePdf[] {
       r.push({ k: 'parrafo', trozos: [...texto(`${String.fromCharCode(97 + k)}) `, { negrita: true }), ...deHtml(p.enunciado, { ...TEXTO, cursiva: true })], antes: 6 });
       r.push({ k: 'parrafo', trozos: [...texto(`Respuesta: ${letra}`, { negrita: true }), ...deHtml(respuestaCorrecta(p))], sangria: 16, antes: 3 });
       if (p.explicacion) r.push({ k: 'parrafo', trozos: [...texto(p.calculo ? 'Desarrollo: ' : 'Del libro: ', { ...SANS, negrita: true, tam: 9.5 }), ...deHtml(p.explicacion)], sangria: 16, antes: 3 });
+      // 1.1: why each wrong option is wrong, when the exercise explains it (curated «porque», new exercises)
+      if (p.tipo === 'eleccion' && p.porque)
+        p.opciones.forEach((_, i) => {
+          const t = i === p.correcta ? '' : p.porque?.[String(i)];
+          if (t) r.push({ k: 'parrafo', trozos: [...texto(`Por qué no ${LETRAS[i]}): `, { ...SANS, negrita: true, tam: 9.5 }), ...deHtml(t)], sangria: 16, antes: 2 });
+        });
     });
     if (e.otras?.length) {
       r.push(etiquetaSeccion('Lo que se pide (para comparar con su respuesta)'));
       for (const o of e.otras) r.push({ k: 'parrafo', trozos: deHtml(o.texto), sangria: 16, etiqueta: texto('•'), antes: 2 });
     }
-    r.push(etiquetaSeccion(e.tipo === 'prob' ? 'Análisis y resultado del libro' : `Solución ${e.num} del libro`));
+    if (e.nota) r.push({ k: 'parrafo', trozos: [...texto('Nota: ', { ...SANS, negrita: true, tam: 9.5 }), ...deHtml(e.nota)], antes: 6 });
+    r.push(etiquetaSeccion(e.tipo === 'prob' ? 'Análisis y resultado del libro' : e.nuevo || e.ampliacion ? `Solución ${e.num} (aún no en el libro)` : `Solución ${e.num} del libro`));
   }
+  // 1.1: a mistake of the book's solution, said before its development (also under a variant, which prints it too)
+  if (e?.errata) r.push({ k: 'parrafo', trozos: [...texto('Aviso sobre el libro: ', { ...SANS, negrita: true, tam: 9.5 }), ...deHtml(e.errata)], antes: 4 });
   if (bl?.solucion.length) r.push(...deBloques(bl.solucion));
   else r.push({ k: 'parrafo', trozos: texto('El libro no trae el desarrollo de este ejercicio.', { cursiva: true }), antes: 4 });
   return r;
