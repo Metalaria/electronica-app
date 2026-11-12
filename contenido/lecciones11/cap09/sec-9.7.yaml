@@ -1,0 +1,226 @@
+# Lección 1.2 de la sección 9.7 «Márgenes de Ruido, Fan-out y Retardo de Propagación» (cap09). Formato: contenido/lecciones11/GUIA.md.
+leccion: cap09/sec-9.7
+
+libro:
+  94: "el colchón de tensión que puede comerse el ruido sin provocar un error"
+  95: "El fan-out es el número de entradas que una salida puede alimentar"
+  97: "Los márgenes son 4,4 − 3,5 = 0,9 V en alto y 1,5 − 0,33 = 1,17 V en bajo"
+  98: "cada entrada toma 1,6 mA en bajo y una salida entrega 16, luego diez entradas"
+  99: "un chip HC a 3 V es el doble de lento que a 5 V"
+  100: "con 100 pF, 5 V y 10 MHz, 25 mW por línea"
+  103: "El margen es de −1,10 V: negativo, es decir, incompatible"
+  "cap09#102": "TTL (2,4 / 2,0 / 0,8 / 0,4 V)"
+
+modelo:
+  valores:
+    V_OH: { sim: "V_{OH}", nombre: "alto garantizado a la salida", unidad: V, valor: 4.4 }
+    V_IH: { sim: "V_{IH}", nombre: "alto exigido a la entrada", unidad: V, valor: 3.5 }
+    V_IL: { sim: "V_{IL}", nombre: "bajo admitido a la entrada", unidad: V, valor: 1.5 }
+    V_OL: { sim: "V_{OL}", nombre: "bajo garantizado a la salida", unidad: V, valor: 0.33 }
+    I_OL: { sim: "I_{OL}", nombre: "corriente que entrega la salida en bajo", unidad: A, valor: 0.016 }
+    I_IL: { sim: "I_{IL}", nombre: "corriente de cada entrada en bajo", unidad: A, valor: 0.0016 }
+    R_o: { sim: "R_{o}", nombre: "impedancia de salida", unidad: Ω, valor: 50 }
+    C_in: { sim: "C_{in}", nombre: "capacidad de cada entrada", unidad: F, valor: 5e-12 }
+    n_e: { sim: "n", nombre: "entradas conectadas", unidad: "", valor: 20 }
+    C_l: { sim: "C", nombre: "capacidad de la línea", unidad: F, valor: 100e-12 }
+    V_s: { sim: "V", nombre: "alimentación", unidad: V, valor: 5 }
+    f_s: { sim: "f", nombre: "frecuencia de conmutación", unidad: Hz, valor: 10000000 }
+  calculos:
+    NM_H: { expr: "V_OH - V_IH", sim: "NM_{H}", nombre: "margen de ruido en alto", unidad: V }
+    NM_L: { expr: "V_IL - V_OL", sim: "NM_{L}", nombre: "margen de ruido en bajo", unidad: V }
+    N_fo: { expr: "I_OL/I_IL", sim: "N", nombre: "fan-out TTL", unidad: "", cifras: 2 }
+    t_r: { expr: "2.2*R_o*n_e*C_in", sim: "t_{r}", nombre: "flanco de subida del 10 al 90 %", unidad: s }
+    P_d: { expr: "C_l*V_s^2*f_s", sim: "P", nombre: "potencia de conmutación", unidad: W }
+
+tarjetas:
+  - id: explore-margen
+    tipo: explorar
+    titulo: "El colchón del ruido"
+    texto: "La salida en alto pierde tensión por el ruido. Mientras quede por encima de V_{IH} no hay error: cambie la familia y mire cuánto ruido aguanta."
+    libro: [94, 97, "cap09#102"]
+    widget:
+      tipo: grafica
+      x: { id: vr, min: 0, max: 2, unidad: V, rotulo: "ruido" }
+      y: { min: 0, max: 5, unidad: V, rotulo: "tensión" }
+      curvas:
+        - { expr: "V_OH - vr", color: azul, rotulo: "alto que llega" }
+        - { expr: "V_IH + 0*vr", color: naranja, rotulo: "V_{IH}", discontinua: true }
+      marcas:
+        - { x: "NM_H", y: "V_IH", rotulo: "margen" }
+      lectura: { valor: NM_H, rotulo: "Margen en alto, NM_{H}" }
+      mandos:
+        - { valor: V_OH, lista: [2.4, 4.4], rotulo: "V_{OH} (TTL o HC)" }
+        - { valor: V_IH, lista: [2, 3.5], rotulo: "V_{IH} (TTL o HC)" }
+    requiere: { mover: [V_OH] }
+
+  - id: estime-nml
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El margen en bajo"
+    texto: "Una CMOS HC a 5 V entrega como mucho 0,33 V en bajo y acepta como bajo hasta 1,5 V. ¿Qué margen tiene en bajo?"
+    libro: [97]
+    fijar: { V_IL: 1.5, V_OL: 0.33 }
+    estimar:
+      objetivo: "NM_L"
+      unidad: V
+      min: 0
+      max: 2
+      paso: 0.01
+      inicio: 0.4
+      tol: 0.02
+      rotulo: "NM_{L}"
+    exito: "1,17 V: un ruido de casi un voltio sobre la línea no produce error."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 1.2 }, texto: "Se ha pasado: reste lo que la salida garantiza (0,33 V) a lo que la entrada admite (1,5 V)." }
+      - { texto: "Se ha quedado corto: esos 0,4 V son los de TTL. La HC tiene más margen." }
+    escalera: ["NM_{L} = V_{IL} − V_{OL}."]
+    solucion: "1,5 − 0,33 = 1,17 V."
+    comprobar:
+      - { NM_L: 1.17 }
+
+  - id: prediga-ttl-hc
+    tipo: predecir
+    titulo: "TTL atacando HC"
+    texto: "Una salida TTL garantiza 2,4 V en alto; una entrada CMOS HC exige 3,5 V. ¿Qué margen en alto queda?"
+    libro: [103, "cap09#102"]
+    fijar: { V_OH: 2.4, V_IH: 3.5 }
+    widget:
+      tipo: grafica
+      x: { id: vr, min: 0, max: 2, unidad: V, rotulo: "ruido" }
+      y: { min: 0, max: 5, unidad: V, rotulo: "tensión" }
+      curvas:
+        - { expr: "V_OH - vr", color: azul, rotulo: "alto que llega" }
+        - { expr: "V_IH + 0*vr", color: naranja, rotulo: "V_{IH}", discontinua: true }
+      lectura: { valor: NM_H, rotulo: "Margen en alto, NM_{H}" }
+      ocultar: true
+    opciones:
+      - { texto: "−1,10 V: incompatible", bien: true, porque: "Negativo: no es que falle a veces, es que el fabricante no garantiza nada. Para eso existe la HCT." }
+      - { texto: "+0,40 V", porque: "Ese es el margen de TTL con TTL. Aquí la entrada es HC y exige 3,5 V." }
+      - { texto: "+0,90 V", porque: "Ese es el de HC con HC, con 4,4 V a la salida. TTL solo garantiza 2,4 V." }
+    escalera: ["NM_{H} = V_{OH} − V_{IH}, con la salida de una familia y la entrada de la otra."]
+    solucion: "2,4 − 3,5 = −1,10 V: incompatible."
+    comprobar:
+      - { NM_H: -1.1 }
+
+  - id: estime-fanout
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El fan-out de TTL"
+    texto: "Una salida TTL entrega 16 mA en bajo y cada entrada toma 1,6 mA. ¿Cuántas entradas puede atacar?"
+    libro: [98]
+    estimar:
+      objetivo: "N_fo"
+      unidad: ""
+      min: 1
+      max: 20
+      paso: 1
+      inicio: 4
+      tol: 0.01
+      rotulo: "Entradas"
+    exito: "Diez: en TTL el fan-out lo limita la corriente."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 10 }, texto: "Se ha pasado: con más entradas la salida no podría absorber su corriente en bajo." }
+      - { texto: "Se ha quedado corto: divida los 16 mA de la salida entre los 1,6 mA de cada entrada." }
+    escalera: ["Fan-out = corriente de la salida / corriente de cada entrada."]
+    solucion: "16 / 1,6 = 10 entradas."
+    comprobar:
+      - { N_fo: 10 }
+
+  - id: ajuste-fanout-cmos
+    tipo: ajuste
+    titulo: "El fan-out de CMOS"
+    texto: "Una salida de 50 Ω ataca entradas de 5 pF a 50 MHz. Deje el máximo de entradas cuyo flanco quepa en medio periodo."
+    libro: [98]
+    inicio: { n_e: 25 }
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 0, max: 30, unidad: "", rotulo: "entradas" }
+      y: { min: 0, max: 0.00000002, unidad: s, rotulo: "t_{r}" }
+      curvas:
+        - { expr: "2.2*R_o*nx*C_in", color: azul, rotulo: "flanco, 2,2 · R · C" }
+        - { expr: "0.00000001 + 0*nx", color: naranja, rotulo: "medio periodo", discontinua: true }
+      asas:
+        - { mueve: n_e, x: "n_e", y: "t_r", rotulo: "Sus entradas" }
+      lectura: { valor: t_r, rotulo: "Flanco de subida" }
+      mandos:
+        - { valor: n_e, min: 1, max: 30, paso: 1, rotulo: "Entradas" }
+    ajuste:
+      valor: t_r
+      min: 0.0000000095
+      max: 0.00000001
+      rotulo: "Flanco"
+      escala: { min: 0, max: 0.00000002 }
+      bajo: "Aún cabe alguna entrada más sin pasar de medio periodo."
+      alto: "El flanco aún es largo: cada entrada añade 5 pF; quite entradas."
+      dentro: "Dentro: el flanco cabe en medio periodo de 20 ns."
+    exito: "En CMOS el límite es la capacidad: con veinte entradas, 11 ns, más de la mitad del periodo."
+
+  - id: estime-potencia
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La corriente de conmutación"
+    texto: "Una salida CMOS carga 100 pF a 5 V y conmuta a 10 MHz. ¿Qué potencia consume esa línea?"
+    libro: [100]
+    estimar:
+      objetivo: "P_d"
+      unidad: W
+      min: 0
+      max: 0.1
+      paso: 0.001
+      inicio: 0.06
+      tol: 0.05
+      rotulo: "Potencia"
+    exito: "25 mW por línea: nula en reposo, y crece con la frecuencia."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.026 }, texto: "Se ha pasado: es C · V² · f, sin factores de más." }
+      - { texto: "Se ha quedado corto: la tensión va al cuadrado." }
+    escalera: ["P = C · V² · f."]
+    solucion: "100 pF · 25 V² · 10 MHz = 25 mW."
+    comprobar:
+      - { P_d: 0.025 }
+
+  - id: pregunta-retardo
+    tipo: pregunta
+    titulo: "El retardo y la alimentación"
+    texto: "Un chip HC pasa de 5 V a 3 V. ¿Qué le pasa al retardo de propagación?"
+    libro: [99]
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 0, max: 30, unidad: "", rotulo: "entradas" }
+      y: { min: 0, max: 0.00000002, unidad: s, rotulo: "t_{r}" }
+      curvas:
+        - { expr: "2.2*R_o*nx*C_in", color: azul, rotulo: "flanco con más carga" }
+    opciones:
+      - { texto: "Se duplica: a 3 V es el doble de lento", bien: true, porque: "El retardo baja con la alimentación alta y sube con la baja; también crece con la carga y la temperatura." }
+      - { texto: "Se reduce, porque hay menos tensión que mover", porque: "Es al revés: con menos alimentación los transistores conducen menos y la puerta es más lenta." }
+      - { texto: "No cambia", porque: "Sí cambia: el libro da el doble de retardo a 3 V que a 5 V." }
+    escalera: ["Piense en cómo conduce un transistor con menos tensión de mando."]
+    solucion: "El doble de lento a 3 V que a 5 V."
+
+  - id: porque-capacidad
+    tipo: porque
+    titulo: "¿Por qué la capacidad?"
+    texto: "En TTL el fan-out lo limita la corriente; en CMOS, la capacidad. ¿Por qué?"
+    libro: [95, 98]
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 0, max: 30, unidad: "", rotulo: "entradas" }
+      y: { min: 0, max: 0.00000002, unidad: s, rotulo: "t_{r}" }
+      curvas:
+        - { expr: "2.2*R_o*nx*C_in", color: azul, rotulo: "flanco, 2,2 · R · C" }
+    opciones:
+      - { texto: "Las entradas CMOS no consumen en continua: solo añaden capacidad, que ralentiza el flanco", bien: true, porque: "Cada entrada suma unos 5 pF: el fan-out se define por el retardo que se admite." }
+      - { texto: "Las salidas CMOS entregan más corriente", porque: "No es la salida: las entradas CMOS no toman corriente en continua, así que la corriente no limita." }
+      - { texto: "La capacidad baja la tensión del nivel alto", porque: "En reposo el nivel llega igual; la capacidad lo que hace es retrasar el flanco." }
+    escalera: ["¿Cuánta corriente toma en continua una entrada CMOS?"]
+    solucion: "Sin corriente en continua, solo queda la capacidad: el límite es el flanco."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [97, 98, 100, 103]
+    ideas:
+      - { titulo: "Margen.", texto: "Lo que la salida garantiza menos lo que la entrada exige: 0,9 y 1,17 V en HC." }
+      - { titulo: "Entre familias.", texto: "TTL atacando HC da −1,10 V: incompatible." }
+      - { titulo: "Fan-out.", texto: "En TTL, la corriente (diez entradas); en CMOS, la capacidad y el flanco." }
+      - { titulo: "Conmutar cuesta.", texto: "C · V² · f: 25 mW por línea a 10 MHz." }

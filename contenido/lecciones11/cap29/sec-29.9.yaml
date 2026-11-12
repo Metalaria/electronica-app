@@ -1,0 +1,258 @@
+# Lección 1.2 de la sección 28.9 «Representación Numérica» (cap29; etiqueta interna sec-29.9). Formato: contenido/lecciones11/GUIA.md.
+leccion: cap29/sec-29.9
+
+libro:
+  273: "ocho bits, que pueden tomar 256 valores (de 0 a 255 sin signo)"
+  274: "El mismo byte es el número 65 en binario natural, la letra «A» en ASCII"
+  276: "escribir 0xB6 es lo mismo, con cada dígito hexadecimal representando exactamente cuatro bits"
+  277: "1000 0000"
+  280: "47 se escribe 0100 0111"
+  283: "un número negativo se obtiene invirtiendo todos los bits y sumando uno"
+  284: "−5 es 1111 1011. El bit más alto indica el signo, y el margen es de −128 a +127"
+  287: "Solo hay un cero"
+  286: "La suma y la resta son la misma operación"
+  289: "127 + 1 con 8 bits da −128, y el hardware no avisa"
+  290: "Un −1 mal extendido se convierte en 255"
+  293: "se guarda como 78 56 34 12 en un procesador little-endian"
+  294: "0x0190 (400) se convierte en 0x9001 (36 865)"
+  298: "un float da unos 7 dígitos significativos"
+
+modelo:
+  valores:
+    u_c: { sim: "código", nombre: "código del byte", unidad: "", valor: 100 }
+    h_a: { sim: "B", nombre: "dígito hexadecimal alto", unidad: "", valor: 11 }
+    h_b: { sim: "6", nombre: "dígito hexadecimal bajo", unidad: "", valor: 6 }
+    n_m: { sim: "n", nombre: "bits efectivos de la mantisa", unidad: "", valor: 24 }
+  calculos:
+    s_c: { expr: "u_c - 256*floor(u_c/128)", sim: "valor", nombre: "valor en complemento a dos", unidad: "", cifras: 3 }
+    d_h: { expr: "16*h_a + h_b", sim: "decimal", nombre: "valor decimal", unidad: "", cifras: 3 }
+    dig: { expr: "log10(2^n_m)", sim: "dígitos", nombre: "dígitos decimales de un float", unidad: "", cifras: 3 }
+
+tarjetas:
+  - id: explore-signo
+    tipo: explorar
+    titulo: "Un byte, dos lecturas"
+    texto: "El mismo byte leído sin signo y en complemento a dos. Mueva el código y cruce de 127 a 128."
+    libro: [273, 284]
+    widget:
+      tipo: grafica
+      x: { id: cx, min: 0, max: 255, unidad: "", rotulo: "código" }
+      y: { min: -128, max: 255, unidad: "", rotulo: "valor" }
+      curvas:
+        - { expr: "cx", color: tinta, rotulo: "sin signo", discontinua: true }
+        - { expr: "cx - 256*floor(cx/128)", color: azul, rotulo: "complemento a dos" }
+      asas:
+        - { mueve: u_c, x: "u_c", y: "s_c", rotulo: "Su byte" }
+      lectura: { valor: s_c, rotulo: "Con signo, en complemento a dos" }
+      datos:
+        - { valor: u_c, rotulo: "Sin signo: {{u_c}}" }
+      mandos:
+        - { valor: u_c, min: 0, max: 255, paso: 1, rotulo: "Código" }
+    requiere: { mover: [u_c] }
+
+  - id: prediga-desborde
+    tipo: predecir
+    titulo: "127 + 1"
+    texto: "Con 8 bits en complemento a dos, ¿cuánto da 127 + 1?"
+    libro: [289]
+    fijar: { u_c: 128 }
+    widget:
+      tipo: grafica
+      x: { id: cx, min: 0, max: 255, unidad: "", rotulo: "código" }
+      y: { min: -128, max: 255, unidad: "", rotulo: "valor" }
+      curvas:
+        - { expr: "cx - 256*floor(cx/128)", color: azul, rotulo: "complemento a dos" }
+      lectura: { valor: s_c, rotulo: "Con signo, en complemento a dos" }
+      ocultar: true
+    opciones:
+      - { texto: "−128, y el hardware no avisa", bien: true, porque: "Solo pone a 1 el indicador de desbordamiento, que el programa tiene que comprobar." }
+      - { texto: "128", porque: "Con signo, 8 bits llegan solo hasta +127: el siguiente código es el −128." }
+      - { texto: "Un error que detiene el programa", porque: "El hardware no avisa: el contador da la vuelta en silencio." }
+    escalera: ["¿Cuál es el mayor número con signo en 8 bits?"]
+    solucion: "0111 1111 + 1 = 1000 0000, que es −128."
+    comprobar:
+      - { s_c: -128 }
+
+  - id: empareje-hex
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Hexadecimal, binario y decimal"
+    texto: "Una cada número hexadecimal con su binario."
+    libro: [276, 277]
+    emparejar:
+      - ["0x0F", "0000 1111 (15)"]
+      - ["0x80", "1000 0000 (128)"]
+      - ["0xFF", "1111 1111 (255)"]
+    exito: "Cada dígito hexadecimal son exactamente cuatro bits: se convierte de cuatro en cuatro sin pasar por decimal."
+    pistas:
+      - { texto: "F es 1111 y 8 es 1000." }
+    escalera: ["Convierta cada dígito por separado."]
+    solucion: "0x0F = 0000 1111; 0x80 = 1000 0000; 0xFF = 1111 1111."
+
+  - id: estime-b6
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "0xB6 en decimal"
+    texto: "0xB6 es 1011 0110. ¿Qué número es en decimal?"
+    libro: [276]
+    fijar: { h_a: 11, h_b: 6 }
+    estimar:
+      objetivo: "d_h"
+      unidad: ""
+      min: 0
+      max: 255
+      paso: 1
+      inicio: 60
+      tol: 0.005
+      rotulo: "Decimal"
+    exito: "182: B vale 11, por 16, más 6."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 182 }, texto: "Se ha pasado: B vale 11 y pesa 16; 6 pesa 1." }
+      - { texto: "Se ha quedado corto: el dígito B (11) pesa 16 veces." }
+    escalera: ["0xB6 = B · 16 + 6, con B = 11."]
+    solucion: "11 · 16 + 6 = 182."
+    comprobar:
+      - { d_h: 182 }
+
+  - id: pregunta-codificacion
+    tipo: pregunta
+    titulo: "¿Qué significa un byte?"
+    texto: "Un byte vale 0100 0001. ¿Qué significa?"
+    libro: [274]
+    widget:
+      tipo: grafica
+      x: { id: cx, min: 0, max: 255, unidad: "", rotulo: "código" }
+      y: { min: -128, max: 255, unidad: "", rotulo: "valor" }
+      curvas:
+        - { expr: "cx", color: tinta, rotulo: "sin signo" }
+    opciones:
+      - { texto: "Depende de la codificación: 65, la «A» en ASCII o 41 en BCD", bien: true, porque: "Los bits no dicen nada solos: el convenio asigna un significado a cada combinación." }
+      - { texto: "Siempre 65", porque: "65 es en binario natural; en ASCII es la «A» y en BCD, 41." }
+      - { texto: "La letra «A»", porque: "Solo en ASCII; en binario natural es 65 y en BCD, 41." }
+    escalera: ["¿Quién decide qué significan los bits?"]
+    solucion: "La codificación: 65, «A» o 41."
+
+  - id: pregunta-bcd
+    tipo: pregunta
+    titulo: "47 en BCD"
+    texto: "¿Cómo se escribe 47 en BCD?"
+    libro: [280]
+    widget:
+      tipo: grafica
+      x: { id: cx, min: 0, max: 255, unidad: "", rotulo: "código" }
+      y: { min: -128, max: 255, unidad: "", rotulo: "valor" }
+      curvas:
+        - { expr: "cx", color: tinta, rotulo: "sin signo" }
+    opciones:
+      - { texto: "0100 0111: cada cifra en cuatro bits", bien: true, porque: "Una cifra en cada grupo de cuatro bits: desperdicia seis de las dieciséis combinaciones, pero facilita mostrar dígitos." }
+      - { texto: "0010 1111", porque: "Ese es el 47 en binario natural. En BCD cada cifra decimal va por separado." }
+      - { texto: "0111 0100", porque: "Ha puesto las cifras al revés: la de las decenas va primero." }
+    escalera: ["Escriba cada cifra decimal por separado, en cuatro bits."]
+    solucion: "Una cifra por grupo de cuatro bits: 0100 0111."
+
+  - id: pregunta-menos-cinco
+    tipo: pregunta
+    titulo: "−5 en complemento a dos"
+    texto: "+5 es 0000 0101. ¿Cómo se escribe −5 con 8 bits en complemento a dos?"
+    libro: [277, 283, 284]
+    widget:
+      tipo: grafica
+      x: { id: cx, min: 0, max: 255, unidad: "", rotulo: "código" }
+      y: { min: -128, max: 255, unidad: "", rotulo: "valor" }
+      curvas:
+        - { expr: "cx - 256*floor(cx/128)", color: azul, rotulo: "complemento a dos" }
+    opciones:
+      - { texto: "1111 1011", bien: true, porque: "Se invierten todos los bits de +5 y se suma uno." }
+      - { texto: "0000 0101", porque: "Ese es +5. Para −5 hay que invertir todos los bits y sumar uno." }
+      - { texto: "1000 0101", porque: "Eso es signo-magnitud: el complemento a dos invierte todo y suma uno." }
+    escalera: ["Invierta todos los bits y sume uno."]
+    solucion: "Invertir 0000 0101 y sumar uno: 1111 1011."
+
+  - id: porque-universal
+    tipo: porque
+    titulo: "¿Por qué se hizo universal?"
+    texto: "Casi todos los procesadores representan los negativos en complemento a dos. ¿Por qué?"
+    libro: [286, 287]
+    widget:
+      tipo: grafica
+      x: { id: cx, min: 0, max: 255, unidad: "", rotulo: "código" }
+      y: { min: -128, max: 255, unidad: "", rotulo: "valor" }
+      curvas:
+        - { expr: "cx - 256*floor(cx/128)", color: azul, rotulo: "complemento a dos" }
+    opciones:
+      - { texto: "Sumar y restar son la misma operación, y solo hay un cero", bien: true, porque: "5 + (−5) da cero descartando el acarreo: el mismo sumador vale para los dos signos." }
+      - { texto: "Porque el bit de signo es más fácil de leer", porque: "Signo-magnitud también tiene bit de signo, y necesita circuitos distintos para sumar y restar, y dos ceros." }
+      - { texto: "Porque amplía el margen hasta +255", porque: "Con signo, 8 bits llegan solo de −128 a +127." }
+    escalera: ["Piense en qué circuito hace falta para restar."]
+    solucion: "Un solo sumador para sumar y restar, y un solo cero."
+
+  - id: pregunta-extension
+    tipo: pregunta
+    titulo: "De 8 a 16 bits"
+    texto: "Un −1 de 8 bits se pasa a 16 bits rellenando con ceros. ¿Qué se obtiene?"
+    libro: [290]
+    widget:
+      tipo: grafica
+      x: { id: cx, min: 0, max: 255, unidad: "", rotulo: "código" }
+      y: { min: -128, max: 255, unidad: "", rotulo: "valor" }
+      curvas:
+        - { expr: "cx", color: tinta, rotulo: "sin signo" }
+        - { expr: "cx - 256*floor(cx/128)", color: azul, rotulo: "complemento a dos" }
+    opciones:
+      - { texto: "255", bien: true, porque: "1111 1111 con ceros delante es un positivo. Un negativo se extiende con unos." }
+      - { texto: "−1", porque: "Solo si se rellena con unos: la extensión de signo copia el bit más alto." }
+      - { texto: "−255", porque: "Con ceros delante el bit de signo pasa a ser 0: el número es positivo." }
+    escalera: ["¿Qué bit queda como signo en los 16 bits?"]
+    solucion: "0000 0000 1111 1111 = 255."
+
+  - id: pregunta-endian
+    tipo: pregunta
+    titulo: "Bytes intercambiados"
+    texto: "Un sensor I²C entrega 400 con el byte alto primero; un micro little-endian copia los dos bytes tal cual. ¿Qué lee?"
+    libro: [293, 294]
+    widget:
+      tipo: grafica
+      x: { id: cx, min: 0, max: 255, unidad: "", rotulo: "código" }
+      y: { min: -128, max: 255, unidad: "", rotulo: "valor" }
+      curvas:
+        - { expr: "cx", color: tinta, rotulo: "sin signo" }
+    opciones:
+      - { texto: "36 865: 0x0190 se convierte en 0x9001", bien: true, porque: "La regla: montar el valor con (alto << 8) | bajo, que da lo mismo en cualquier procesador." }
+      - { texto: "400, porque el procesador lo corrige", porque: "Dentro no se nota; en la frontera, copiar memoria a ciegas intercambia los bytes." }
+      - { texto: "−400", porque: "No cambia el signo: cambia el orden de los dos bytes." }
+    escalera: ["Escriba 400 en hexadecimal e intercambie sus dos bytes."]
+    solucion: "0x0190 → 0x9001 = 36 865."
+
+  - id: estime-float
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Los dígitos de un float"
+    texto: "La mantisa de un float de 32 bits tiene 24 bits efectivos. ¿Cuántos dígitos decimales son?"
+    libro: [298]
+    estimar:
+      objetivo: "dig"
+      unidad: ""
+      min: 0
+      max: 16
+      paso: 0.01
+      inicio: 12
+      tol: 0.02
+      rotulo: "Dígitos"
+    exito: "7,22: por eso un float da unos 7 dígitos significativos, y sumar uno grande y otro pequeño pierde el pequeño."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 7.37 }, texto: "Se ha pasado: es log₁₀ de 2^{24}, no de 2^{32}." }
+      - { texto: "Se ha quedado corto: 24 bits son 24 · log₁₀ 2 dígitos." }
+    escalera: ["Dígitos = log₁₀(2^{24})."]
+    solucion: "log₁₀(2^{24}) = 7,22."
+    comprobar:
+      - { dig: 7.22 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [276, 284, 289, 298]
+    ideas:
+      - { titulo: "Hexadecimal.", texto: "Una abreviatura del binario: cuatro bits por dígito." }
+      - { titulo: "Complemento a dos.", texto: "Invertir y sumar uno; un solo sumador, de −128 a +127, y 127 + 1 da −128." }
+      - { titulo: "En la frontera.", texto: "Extensión de signo y orden de los bytes." }
+      - { titulo: "Coma flotante.", texto: "Unos 7 dígitos en 32 bits; la coma fija es más barata y predecible." }

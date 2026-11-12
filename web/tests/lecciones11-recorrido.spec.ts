@@ -16,6 +16,7 @@ import { textoPlano } from '../src/lib/leccion11/texto.ts';
 import { numeroAria } from '../src/lib/teoria-viva.ts';
 import { falloDeRonda } from '../src/lib/leccion12/averia.ts';
 import type { IndiceLecciones11, Leccion11, Tarjeta, Texto } from '../src/lib/leccion11/tipos.ts';
+import type { ActividadDigital, WidgetFigura, WidgetLogica } from '../src/lib/leccion12/digital/tipos.ts';
 
 const AXE = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
 const web = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -47,15 +48,55 @@ const plano = (t: Texto | undefined) => {
   return textoPlano(k >= 0 ? t!.slice(0, k) : t).split(/\s+/).filter(Boolean).slice(0, 6).join(' ');
 };
 
+// Targets under the sticky header or footer (autor-taller-D, for every card, desktop and 360 px). The walker looks at
+// a card with its last link («Del libro») centred, as the reader does; on a card taller than the screen something
+// then lies under the sticky header (.cab) or footer (.pie), e.g. a figure's zoom buttons, and axe reports it as a
+// target-size failure («partially obscured»). That position alone proves nothing: what WCAG 2.4.11 (focus not
+// obscured) and 2.5.8 (target size) ask is that the control is usable when the reader reaches it. So each target-size
+// node lying under a bar is reached as the reader does — focused (the lesson sets scroll-padding to the bars' heights,
+// Leccion11.svelte), or scrolled into view if it cannot take the focus (a disabled «−») —, must then lie fully in view
+// and clear of both bars, and axe is run again on it alone: a failure that persists there counts. Nothing is exempt.
 async function axe(page: Page, donde: string) {
   // finite animations (the summary's cards rising from transparent, the confetti) end first: axe measured a «días de
   // racha» half faded in as a contrast failure (motor fixes 1.1, a flake of cap04/sec-4.2 at 360 px)
   await page.waitForFunction(() => document.getAnimations().every((a) => a.playState !== 'running' || a.effect?.getTiming().iterations === Infinity), null, { timeout: 5000 }).catch(() => undefined);
   await page.addScriptTag({ path: AXE });
   const fallos = await page.evaluate(async () => {
-    const a = (window as unknown as { axe: { run: (c: unknown, o: unknown) => Promise<{ violations: { id: string; nodes: { target: string[] }[] }[] }> } }).axe;
+    type Violacion = { id: string; nodes: { target: string[] }[] };
+    const a = (window as unknown as { axe: { run: (c: unknown, o: unknown) => Promise<{ violations: Violacion[] }> } }).axe;
     const r = await a.run({ include: [['[data-leccion11]']] }, { runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] }, resultTypes: ['violations'] });
-    return r.violations.map((x) => `${x.id}: ${x.nodes.map((n) => n.target.join(' ')).join(', ')}`);
+    const barras = () => [...document.querySelectorAll('[data-leccion11] .cab, [data-leccion11] .pie')].map((e) => e.getBoundingClientRect());
+    const bajoBarra = (q: DOMRect) => barras().some((f) => q.top < f.bottom && q.bottom > f.top);
+    const salida: string[] = [];
+    const x0 = scrollX;
+    const y0 = scrollY;
+    const foco = document.activeElement as HTMLElement | null;
+    for (const v of r.violations) {
+      const quedan: string[] = [];
+      for (const n of v.nodes) {
+        const sel = n.target.join(' ');
+        const el = document.querySelector<HTMLElement>(sel);
+        if (v.id !== 'target-size' || !el || !bajoBarra(el.getBoundingClientRect())) {
+          quedan.push(sel);
+          continue;
+        }
+        // reached as the reader reaches it
+        el.focus();
+        if (document.activeElement !== el) el.scrollIntoView({ block: 'nearest' });
+        const q = el.getBoundingClientRect();
+        if (bajoBarra(q) || q.top < 0 || q.bottom > innerHeight) {
+          quedan.push(`${sel} (tapado aun al llegar a él)`);
+          continue;
+        }
+        const otra = await a.run({ include: [[sel]] }, { runOnly: { type: 'rule', values: ['target-size'] }, resultTypes: ['violations'] });
+        if (otra.violations.length) quedan.push(`${sel} (también a la vista)`);
+      }
+      if (quedan.length) salida.push(`${v.id}: ${quedan.join(', ')}`);
+    }
+    // (back where the walker left the card)
+    foco?.focus?.({ preventScroll: true });
+    scrollTo(x0, y0);
+    return salida;
   });
   expect(fallos, donde).toEqual([]);
 }
@@ -79,6 +120,132 @@ async function comprobarYVer(page: Page, bien: boolean, contiene?: string) {
   }
 }
 
+// ------------------------------------------------------------------ 1.2 «figura» and «logica» (GUIA §11; autor-digital-A)
+
+const widgetDigital = (t: Tarjeta) => (t.widget?.tipo === 'figura' || t.widget?.tipo === 'logica' ? (t.widget as unknown as WidgetFigura | WidgetLogica) : null);
+const DIGITALES = ['tocar', 'tabla', 'averia-logica', 'diseno-logico', 'dibujar-digital'];
+const esPasoDigital = (a: { tipo: string } | undefined): a is ActividadDigital => !!a && DIGITALES.includes(a.tipo);
+
+/** An explore card on a figure or a logic circuit: touch the zones, flip the switches, pulse the clock, move the cursor. */
+async function explorarDigital(page: Page, t: Tarjeta, w: WidgetFigura | WidgetLogica, donde: string) {
+  await expect(boton(page), donde).toBeDisabled();
+  const todos = w.tipo === 'figura' ? w.zonas.map((z) => z.id) : w.cronograma ? ['tramo'] : w.circuito.entradas.map((e) => e.id);
+  const ids = t.requiere!.mover.length ? t.requiere!.mover : todos.slice(0, Math.max(1, t.requiere!.minimo));
+  for (const id of ids) {
+    if (w.tipo === 'figura') await page.locator(`[data-boton-zona="${id}"]`).click();
+    else if (id === 'tramo') {
+      await page.locator('[data-tramo]').focus();
+      await page.keyboard.press('ArrowRight');
+    } else if (w.circuito.entradas.find((e) => e.id === id)?.reloj) await page.locator('[data-pulso]').click();
+    else await page.locator(`[data-boton-entrada="${id}"]`).click();
+  }
+}
+
+/**
+ * A circuit of `n` gates of the allowed types that gives `objetivo` (the truth table column, binary order of the
+ * inputs): a depth-first search over every circuit of exactly `n` gates, each reading the inputs or earlier gates
+ * (the generator proved that none smaller exists). Gates as [type, inputs]; signals by name (inputs, p1, p2…).
+ */
+function disenar(objetivo: number[], entradas: string[], permitidas: string[], n: number): [string, string[]][] | null {
+  const filas = objetivo.length;
+  const todo = (1 << filas) - 1;
+  const meta = objetivo.reduce((m, v, r) => m | (v << r), 0);
+  const col = entradas.map((_, k) => Array.from({ length: filas }, (_, r) => ((r >> (entradas.length - 1 - k)) & 1) << r).reduce((a, b) => a | b, 0));
+  const op = (tp: string, a: number, b: number) =>
+    ({ and: a & b, or: a | b, nand: todo & ~(a & b), nor: todo & ~(a | b), xor: a ^ b, xnor: todo & ~(a ^ b), not: todo & ~a, buf: a })[tp]!;
+  const nombres = [...entradas];
+  const valores = [...col];
+  const elegidas: [string, string[]][] = [];
+  const buscar = (k: number): boolean => {
+    if (k === n) return valores[valores.length - 1] === meta;
+    const m = valores.length;
+    for (const tp of permitidas) {
+      const uno = tp === 'not' || tp === 'buf';
+      for (let i = 0; i < m; i++)
+        for (let j = uno ? i : i; j < (uno ? i + 1 : m); j++) {
+          valores.push(op(tp, valores[i]!, valores[j]!));
+          nombres.push(`p${k + 1}`);
+          elegidas.push([tp, uno ? [nombres[i]!] : [nombres[i]!, nombres[j]!]]);
+          if (buscar(k + 1)) return true;
+          valores.pop();
+          nombres.pop();
+          elegidas.pop();
+        }
+    }
+    return false;
+  };
+  return buscar(0) ? elegidas : null;
+}
+
+/** The 1.2 steps on a figure or a logic circuit, each wrong first (explained) and then right, as the reader does. */
+async function pasoDigital(page: Page, t: Tarjeta, a: ActividadDigital, donde: string) {
+  if (a.tipo === 'tocar') {
+    // a wrong zone (its own explanation, crossed out), then the right one(s) from the list of zones
+    const mal = (t.widget as unknown as WidgetFigura).zonas.find((z) => !a.bien.includes(z.id))!;
+    await page.locator(`[data-boton-zona="${mal.id}"]`).click();
+    await comprobarYVer(page, false, plano(a.porque[mal.id]));
+    await expect(page.locator(`[data-zona="${mal.id}"]`), donde).toHaveAttribute('data-estado', 'mal');
+    for (const z of a.todas ? a.bien : a.bien.slice(0, 1)) await page.locator(`[data-boton-zona="${z}"]`).click();
+    await comprobarYVer(page, true, plano(t.exito));
+  } else if (a.tipo === 'tabla') {
+    // every cell (a press gives 0, a second one 1), the first row wrong: marked; then put right
+    const pulsar = async (r: number, c: number, veces: number) => {
+      for (let i = 0; i < veces; i++) await page.locator(`[data-celda="${r}-${c}"]`).click();
+    };
+    for (const [r, fila] of a.esperado.entries()) for (const [c, v] of fila.entries()) await pulsar(r, c, (r === 0 ? 1 - v : v) ? 2 : 1);
+    await comprobarYVer(page, false);
+    await expect(page.locator('[data-tabla-verdad] tr.mal'), donde).toHaveCount(1);
+    for (const c of a.esperado[0]!.keys()) await pulsar(0, c, 1);
+    await comprobarYVer(page, true, plano(t.exito));
+  } else if (a.tipo === 'averia-logica') {
+    // (eleccion «fija»: the first round is the first fault) one reading with the probe, a wrong suspect (explained
+    // from the readings), then the right piece
+    expect(a.eleccion, `${donde}: el recorrido sabe la avería de la primera ronda solo con «eleccion: fija»`).toBe('fija');
+    const f = a.fallos[0]!;
+    await page.locator('[data-punto]').selectOption(a.puntos[0]!.id);
+    await page.locator('[data-medir]').click();
+    await expect(page.locator('[data-medidas] li'), donde).toHaveCount(1);
+    const otro = a.sospechosos.find((s) => s.id !== f.pieza)!;
+    await page.locator(`[data-sospechoso="${otro.id}"]`).click();
+    if (a.preguntarTipo) await page.locator(`[data-tipo-averia="${f.tipo}"]`).click();
+    await comprobarYVer(page, false);
+    await page.locator(`[data-sospechoso="${f.pieza}"]`).click();
+    if (a.preguntarTipo) await page.locator(`[data-tipo-averia="${f.tipo}"]`).click();
+    await comprobarYVer(page, true);
+  } else if (a.tipo === 'diseno-logico') {
+    // the LED on an input first (wrong: the row it fails is said), then a circuit with the fewest gates
+    const w = t.widget as unknown as WidgetLogica;
+    const ent = w.circuito.entradas.filter((e) => !e.reloj).map((e) => e.id);
+    const sol = disenar(a.objetivo, ent, a.permitidas, a.minimo);
+    expect(sol, `${donde}: hay un diseño de ${a.minimo} puertas`).not.toBeNull();
+    for (const [k, [tp, es]] of sol!.entries()) {
+      await page.locator('[data-anadir-puerta]').click();
+      const p = page.locator(`[data-puerta="${k + 1}"]`);
+      await p.locator('[data-tipo-puerta]').selectOption(tp);
+      for (const [i, s] of es.entries()) await p.locator(`[data-entrada-puerta="${i + 1}"]`).selectOption(s);
+      if (k === 0) {
+        await page.locator('[data-salida-diseno]').selectOption(ent[0]!);
+        await comprobarYVer(page, false);
+      }
+    }
+    await page.locator('[data-salida-diseno]').selectOption(`p${sol!.length}`);
+    await comprobarYVer(page, true, plano(t.exito));
+  } else if (a.tipo === 'dibujar-digital') {
+    // every slot inverted (all marked), then the right levels with the keyboard
+    const d = page.locator('[data-dibujo-digital]');
+    for (const [pasada, bien] of [[0, false], [1, true]] as const) {
+      await d.focus();
+      await page.keyboard.press('Home');
+      for (const v of a.esperado) {
+        await page.keyboard.press((bien ? v : 1 - v) ? 'ArrowUp' : 'ArrowDown');
+        await page.keyboard.press('ArrowRight');
+      }
+      await comprobarYVer(page, bien, pasada && bien ? plano(t.exito) : undefined);
+    }
+    await expect(page.locator('[data-onda-correcta]'), donde).toBeVisible();
+  }
+}
+
 /** Walks a card to the end; returns the reader's values after it (what the next card starts from). */
 async function recorrerTarjeta(page: Page, l: Leccion11, t: Tarjeta, k: number, propios: Valores): Promise<Valores> {
   const mc = compilarModelo(l.modelo);
@@ -99,12 +266,19 @@ async function recorrerTarjeta(page: Page, l: Leccion11, t: Tarjeta, k: number, 
     await axe(page, donde);
     return mios;
   }
-  if (t.widget?.ocultar) await expect(page.locator('[data-lectura]').first(), donde).toContainText('¿?');
+  // (a hidden logic circuit has no reading: its LEDs say «?», autor-digital-A)
+  if (t.widget?.ocultar && t.widget.tipo === 'logica') await expect(page.locator('[data-led]').first(), donde).toHaveAttribute('data-encendido', 'oculto');
+  else if (t.widget?.ocultar) await expect(page.locator('[data-lectura]').first(), donde).toContainText('¿?');
 
-  if (t.requiere) {
+  const w12 = widgetDigital(t);
+  if (t.requiere && w12) await explorarDigital(page, t, w12, donde);
+  else if (t.requiere) {
     // explore: touch every control it asks for and leave it where it was (a step there and back)
     await expect(boton(page), donde).toBeDisabled();
-    const mover = t.requiere.mover.length ? t.requiere.mover : mandos.filter((m) => m.tipo === 'deslizador').slice(0, t.requiere.minimo).map((m) => m.valor);
+    // (esquemas12: what the card leaves free to touch — its sliders first, then its switches when it has fewer sliders
+    // than it asks to move: a card whose only control is a switch, «neutro cortado» of cap24, was never opened)
+    const tocables = [...mandos.filter((m) => m.tipo === 'deslizador'), ...mandos.filter((m) => m.tipo === 'interruptor')];
+    const mover = t.requiere.mover.length ? t.requiere.mover : tocables.slice(0, t.requiere.minimo).map((m) => m.valor);
     for (const v of mover) {
       const m = mandos.find((x) => x.valor === v)!;
       if (m.tipo === 'interruptor') {
@@ -132,7 +306,9 @@ async function recorrerTarjeta(page: Page, l: Leccion11, t: Tarjeta, k: number, 
 
   // 1.2 learning-by-doing steps (lib/leccion12): the ones lessons use so far, each driven as the reader does
   const act = t.actividad;
-  if (act?.tipo === 'simular') {
+  if (esPasoDigital(act)) {
+    await pasoDigital(page, t, act, donde);
+  } else if (act?.tipo === 'simular') {
     // the right estimate, written as the reader writes it («5 V», «8,1 V»); then the app's own ngspice answers
     const obj = mc.funcion(act.objetivo)(mc.evaluar(estado));
     await expect(boton(page), donde).toBeDisabled();
@@ -161,7 +337,10 @@ async function recorrerTarjeta(page: Page, l: Leccion11, t: Tarjeta, k: number, 
     const r = mc.evaluar(estado);
     const fc = mc.funcion(act.curva);
     for (let k = 0; k < act.puntos; k++) {
-      const x = act.x.min + ((act.x.max - act.x.min) * k) / (act.puntos - 1);
+      // points are evenly spaced in log x on a logarithmic axis (GUIA §10.7), linearly otherwise
+      const x = act.x.escala === 'log'
+        ? act.x.min * Math.pow(act.x.max / act.x.min, k / (act.puntos - 1))
+        : act.x.min + ((act.x.max - act.x.min) * k) / (act.puntos - 1);
       const y = Math.min(act.y.max, Math.max(act.y.min, fc({ ...r, [act.x.id]: x })));
       await page.locator('[data-valor-punto]').evaluate((el, v) => {
         const i = el as HTMLInputElement;
@@ -200,9 +379,19 @@ async function recorrerTarjeta(page: Page, l: Leccion11, t: Tarjeta, k: number, 
     const pos = posicionesEstimar(est);
     const ok = pos.findIndex((p) => puntuarEstimacion(p, obj, est.tol).bien);
     const s = '[data-estimar] [role="slider"]';
-    // a wrong estimate first: the far end of the slider from the target
+    // a wrong estimate first: the position farthest from the target that is not where the slider starts (an estimate
+    // whose «inicio» is that far end was never moved, so «Comprobar» stayed disabled: esquemas12, cap24 «timbre»)
+    const k0 = posicionMasCercana(pos, est.inicio);
+    const mal = pos
+      .map((p, k) => ({ k, d: Math.abs(p - obj) }))
+      .filter(({ k }) => k !== k0 && !puntuarEstimacion(pos[k]!, obj, est.tol).bien)
+      .sort((a, b) => b.d - a.d)[0];
+    expect(mal, `${donde}: la estimación tiene una posición equivocada que no es la inicial`).toBeTruthy();
+    // (from the nearer end: Home or End, then the arrows)
     await page.locator(s).focus();
-    await page.keyboard.press(obj - est.min > est.max - obj ? 'Home' : 'End');
+    const atras = pos.length - 1 - mal!.k;
+    await page.keyboard.press(mal!.k <= atras ? 'Home' : 'End');
+    for (let i = 0; i < Math.min(mal!.k, atras); i++) await page.keyboard.press(mal!.k <= atras ? 'ArrowRight' : 'ArrowLeft');
     await comprobarYVer(page, false);
     await aPosicion(page, s, ok);
     await comprobarYVer(page, true, plano(t.exito));
