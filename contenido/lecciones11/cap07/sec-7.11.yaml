@@ -1,6 +1,8 @@
 # Lección 1.2 de la sección 7.11 «Problemas de Diseño» (cap07): problemas 7.A, 7.B y 7.C. Formato: contenido/lecciones11/GUIA.md.
 # 7.B: la puerta como condensador equivalente C = Q_g/V_g = 6 nF cargado por R_g + 2 Ω del driver (bloque 215), con el
 # esquema carga-rc. 7.C: la corriente con degeneración resuelve ½·k·(V_G − V_th − I·R_S)² = I (raíz menor).
+# 1.2: la fuente de corriente de 7.C es el esquema «mosfet» (con R_S en la degeneración); la carga que alimenta, 6 Ω con
+# 12 V (la de la sección 7.5), es de ejemplo: solo hace falta que el transistor siga en saturación.
 leccion: cap07/sec-7.11
 
 libro:
@@ -25,6 +27,7 @@ libro:
   230: "la corriente varía por un factor nueve entre los extremos de la hoja de datos"
   231: "Con RS = 4 Ω y la puerta a VG = 4 V"
   232: "La solución real es cerrar un lazo"
+  "cap07#93": "la carga resistiva de 6 Ω"
 
 modelo:
   valores:
@@ -44,6 +47,10 @@ modelo:
     k_m: { sim: "k", nombre: "parámetro del transistor", unidad: "A/V²", valor: 0.5 }
     V_th: { sim: "V_{th}", nombre: "tensión umbral del ejemplar", unidad: V, valor: 2 }
     s_d: { tipo: interruptor, nombre: "degeneración de fuente", valor: 0 }
+    V_dd: { sim: "V_{DD}", nombre: "alimentación de la carga", unidad: V, valor: 12 }
+    R_d: { sim: "R_{D}", nombre: "carga de la fuente de corriente", unidad: Ω, valor: 6 }
+    V_gq: { sim: "V_{G}", nombre: "tensión de puerta con degeneración", unidad: V, valor: 3 }
+    R_sq: { sim: "R_{S}", nombre: "resistencia de fuente", unidad: Ω, valor: 4 }
   calculos:
     P_A: { expr: "I_k^2*R_A*D_c + 0.5*V_c*I_k*t_A*f_c", sim: "P_{A}", nombre: "pérdida total del A", unidad: W }
     P_B: { expr: "I_k^2*R_B*D_c + 0.5*V_c*I_k*t_B*f_c", sim: "P_{B}", nombre: "pérdida total del B", unidad: W }
@@ -60,6 +67,12 @@ modelo:
     R_S: { si: s_d, entonces: "4", sino: "0", sim: "R_{S}", nombre: "resistencia de fuente", unidad: Ω }
     x_v: { expr: "max(0, V_G - V_th)", sim: "V_{G} − V_{th}", nombre: "tensión sobre el umbral", unidad: V }
     I_f: { si: s_d, entonces: "((k_m*R_S*x_v + 1) - sqrt(2*k_m*R_S*x_v + 1))/(k_m*R_S^2)", sino: "0.5*k_m*x_v^2", sim: "I_{D}", nombre: "corriente de la fuente de corriente", unidad: A }
+    V_sf: { expr: "I_f*R_S", sim: "V_{S}", nombre: "tensión en R_S", unidad: V }
+    V_gsf: { expr: "V_G - V_sf", sim: "V_{GS}", nombre: "tensión puerta-fuente", unidad: V }
+    V_dsf: { expr: "V_dd - I_f*(R_d + R_S)", sim: "V_{DS}", nombre: "tensión drenador-fuente", unidad: V }
+    x_q: { expr: "max(0, V_gq - V_th)", sim: "V_{G} − V_{th}", nombre: "puerta sobre el umbral", unidad: V }
+    I_q: { expr: "((k_m*R_sq*x_q + 1) - sqrt(2*k_m*R_sq*x_q + 1))/(k_m*R_sq^2)", sim: "I_{D}", nombre: "corriente con degeneración", unidad: A }
+    V_sq: { expr: "I_q*R_sq", sim: "V_{S}", nombre: "tensión en R_S", unidad: V }
 
 tarjetas:
   - id: explore-ab
@@ -243,18 +256,19 @@ tarjetas:
     tipo: sorpresa
     titulo: "Una fuente de corriente que no lo es"
     texto: "Problema 7.C: 250 mA con V_{GS} = 3 V y k = 0,5 A/V². Mueva el umbral entre los extremos de la hoja."
-    libro: [222, 224, 229, 230]
+    nota: "La carga de 6 Ω es de ejemplo."
+    libro: [222, 224, 229, 230, "cap07#93"]
     fijar: { s_d: 0 }
     inicio: { V_th: 2 }
     widget:
-      tipo: grafica
-      x: { id: vt, min: 1.5, max: 2.5, unidad: V, rotulo: "V_{th}" }
-      y: { min: 0, max: 0.6, unidad: A, rotulo: "I_{D}" }
-      curvas:
-        - { expr: "0.5*k_m*(V_G - vt)^2", color: azul, rotulo: "sin degeneración" }
-      asas:
-        - { mueve: V_th, x: "V_th", y: "I_f", rotulo: "Su ejemplar" }
-      lectura: { valor: I_f, rotulo: "Corriente" }
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_dd, rd: R_d, entrada: V_G, k: k_m, vth: V_th }
+      lectura: { valor: I_f, rotulo: "Corriente de la fuente" }
+      datos:
+        - { valor: V_dsf, rotulo: "V_{DS} = {{V_dsf}}" }
+      corriente: I_f
+      mide: { id: I_f, vds: V_dsf, vgs: V_G }
       mandos:
         - { valor: V_th, min: 1.5, max: 2.5, paso: 0.1, rotulo: "Umbral del ejemplar" }
     requiere: { mover: [V_th] }
@@ -286,6 +300,36 @@ tarjetas:
       - { con: { V_th: 1.5 }, I_f: 0.5625, x_v: 1.5 }
       - { con: { V_th: 2.5 }, I_f: 0.0625, x_v: 0.5 }
 
+  - id: ajuste-puerta
+    tipo: ajuste
+    titulo: "La puerta con degeneración"
+    texto: "Con R_{S} = 4 Ω y el ejemplar típico de 2 V, suba la tensión de puerta hasta recuperar los 250 mA."
+    libro: [231, 224]
+    fijar: { V_th: 2, k_m: 0.5 }
+    inicio: { V_gq: 3 }
+    widget:
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_dd, rd: R_d, entrada: V_gq, rs: R_sq, k: k_m, vth: V_th }
+      lectura: { valor: I_q, rotulo: "Corriente de la fuente" }
+      datos:
+        - { valor: V_sq, rotulo: "En R_{S}: {{V_sq}}" }
+      corriente: I_q
+      mide: { id: I_q, vs: V_sq }
+      mandos:
+        - { valor: V_gq, min: 3, max: 5, paso: 0.1, rotulo: "Tensión de puerta" }
+    ajuste:
+      valor: I_q
+      objetivo: 0.25
+      tol: 0.02
+      rotulo: "Corriente"
+      escala: { min: 0, max: 0.5 }
+      bajo: "Falta corriente: parte de la puerta cae ahora en R_{S}. Suba la puerta."
+      alto: "Sobra corriente: baje la puerta."
+      dentro: "4 V: 1 V de sobreexcitación más 1 V en R_{S}, como en el libro."
+    comprobar:
+      - { con: { V_gq: 4 }, I_q: 0.25, V_sq: 1 }
+
   - id: degeneracion
     tipo: pregunta
     titulo: "Con degeneración"
@@ -293,12 +337,16 @@ tarjetas:
     libro: [231, 232]
     fijar: { s_d: 1 }
     widget:
-      tipo: grafica
-      x: { id: vt, min: 1.5, max: 2.5, unidad: V, rotulo: "V_{th}" }
-      y: { min: 0, max: 0.6, unidad: A, rotulo: "I_{D}" }
-      curvas:
-        - { expr: "0.5*k_m*(3 - vt)^2", color: azul, rotulo: "sin degeneración" }
-        - { expr: "((k_m*4*(4 - vt) + 1) - sqrt(2*k_m*4*(4 - vt) + 1))/(k_m*16)", color: naranja, rotulo: "con 4 Ω" }
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_dd, rd: R_d, entrada: V_G, rs: R_S, k: k_m, vth: V_th }
+      lectura: { valor: I_f, rotulo: "Corriente de la fuente" }
+      datos:
+        - { valor: V_gsf, rotulo: "V_{GS} = {{V_gsf}}" }
+      corriente: I_f
+      mide: { id: I_f, vs: V_sf, vgs: V_gsf, vds: V_dsf }
+      mandos:
+        - { valor: V_th, lista: [1.5, 2, 2.5], rotulo: "Umbral del ejemplar" }
     opciones:
       - texto: "No: queda un factor dos; la solución es cerrar un lazo"
         bien: true
@@ -308,7 +356,7 @@ tarjetas:
       - texto: "No cambia nada"
         porque: "Sí mejora: si la corriente sube, V_{GS} baja. Pero no basta."
     escalera:
-      - "Compare la corriente en los dos extremos del umbral con la curva de 4 Ω."
+      - "Cambie el umbral del ejemplar entre los extremos de la hoja y compare la corriente."
     solucion: "Factor dos en lugar de nueve: mejor, pero hace falta un lazo de realimentación."
     comprobar:
       - { con: { V_th: 1.5 }, I_f: 0.335, tol: 0.01 }

@@ -1,6 +1,9 @@
 # Lección 1.2 de la sección 8.3 «El Comparador y la Histéresis» (cap08). Formato: contenido/lecciones11/GUIA.md.
 # Valores del libro: R₁ = 10 kΩ, R₂ = 100 kΩ, ±12 V, ruido de 1 V de pico a pico. La señal lenta (una rampa de −3 a
 # +3 V en 10 ms con 1 V pp de ruido a 1,5 kHz) es un ejemplo para dibujar los umbrales.
+# 1.2: el disparador es el esquema «comparador-schmitt» (la entrada por la −; R₁ a masa y R₂ desde la salida a la +).
+# La senoide de 5 V de pico a 100 Hz que lo hace conmutar y la tolerancia de ± 5 % del diseño son ejemplos míos: el
+# ruido (rampa con ruido) sigue en gráfica porque el esquema no tiene esa señal.
 leccion: cap08/sec-8.3
 
 libro:
@@ -21,7 +24,20 @@ modelo:
     s_h: { tipo: interruptor, nombre: "histéresis", valor: 1 }
     T_r: { sim: "T", nombre: "duración de la rampa", unidad: s, valor: 0.01 }
     A_r: { sim: "V_{ruido}", nombre: "ruido de pico", unidad: V, valor: 0.5 }
+    V_in: { sim: "v_{in}", nombre: "tensión de entrada", unidad: V, valor: 0 }
+    alto: { tipo: interruptor, nombre: "salida en alto antes", valor: 1 }
+    A_s: { sim: "V_{p}", nombre: "amplitud de la senoide", unidad: V, valor: 5 }
+    f_s: { sim: "f", nombre: "frecuencia de la senoide", unidad: Hz, valor: 100 }
+    cero: { sim: "0", nombre: "nivel de continua", unidad: V, valor: 0 }
+    t_r: { sim: "tol", nombre: "tolerancia de las resistencias", unidad: "", valor: 0.05 }
   calculos:
+    V_uh: { expr: "V_sat*R_1/(R_1 + R_2)", sim: "V_{U}", nombre: "umbral del disparador", unidad: V }
+    hi: { expr: "1 - ceil((V_in - V_uh)/1e9)", sim: "a", nombre: "el alto se sostiene", unidad: "" }
+    lo: { expr: "ceil((V_in + V_uh)/1e9)", sim: "b", nombre: "el bajo se sostiene", unidad: "" }
+    V_o: { expr: "V_sat*(2*(alto*hi + (1 - alto)*(1 - lo)) - 1)", sim: "v_{o}", nombre: "tensión de salida", unidad: V }
+    V_p: { expr: "V_o*R_1/(R_1 + R_2)", sim: "v_{+}", nombre: "tensión de la entrada +", unidad: V }
+    th: { expr: "asin(V_uh/A_s)", sim: "θ", nombre: "fase del umbral", unidad: "" }
+    t_p: { expr: "100*t_r", sim: "tol", nombre: "tolerancia en porcentaje", unidad: "%" }
     V_u: { si: s_h, entonces: "V_sat*R_1/(R_1 + R_2)", sino: "0", sim: "V_{umbral}", nombre: "umbral superior", unidad: V }
     V_mal: { expr: "V_sat*R_1/R_2", sim: "V", nombre: "sin el divisor completo", unidad: V }
     V_w: { expr: "2*V_u", sim: "ventana", nombre: "anchura de la ventana", unidad: V }
@@ -51,14 +67,13 @@ tarjetas:
     titulo: "Los umbrales"
     texto: "R₁ = 10 kΩ, R₂ = 100 kΩ y salida de ±12 V. ¿Dónde están los umbrales?"
     libro: [54]
-    fijar: { R_1: 10000, R_2: 100000, V_sat: 12, s_h: 1 }
+    fijar: { R_1: 10000, R_2: 100000, V_sat: 12, s_h: 1, V_in: 0, alto: 1 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.01, unidad: s, rotulo: "t" }
-      y: { min: -4, max: 4, unidad: V, rotulo: "v_{entrada}" }
-      curvas:
-        - { expr: "-3 + 6*t/T_r + A_r*sin(2*pi*1500*t)", color: azul, rotulo: "señal con ruido" }
+      tipo: circuito
+      esquema: comparador-schmitt
+      piezas: { entrada: V_in, r1: R_1, r2: R_2, vsat: V_sat, alto: alto }
       lectura: { valor: V_u, rotulo: "Umbral superior" }
+      mide: { vo: V_o, vmas: V_p }
       ocultar: true
     opciones:
       - texto: "En ±1,09 V"
@@ -74,34 +89,64 @@ tarjetas:
     comprobar:
       - { V_u: 1.09, V_w: 2.18, V_mal: 1.2, tol: 0.01 }
 
+  - id: explore-tiempo
+    tipo: explorar
+    titulo: "Dos umbrales en el tiempo"
+    texto: "Una senoide entra por la −. Cambie R₂ y mire dónde conmuta la salida al subir y al bajar."
+    nota: "Senoide de ejemplo de 5 V de pico."
+    libro: [51, 54, 55]
+    fijar: { R_1: 10000, V_sat: 12, A_s: 5 }
+    inicio: { R_2: 100000 }
+    widget:
+      tipo: circuito
+      esquema: comparador-schmitt
+      piezas: { entrada: cero, amplitud: A_s, f: f_s, r1: R_1, r2: R_2, vsat: V_sat }
+      lectura: { valor: V_uh, rotulo: "Umbral" }
+      grafica:
+        x: { id: t, min: 0, max: 0.03, unidad: s, rotulo: "t" }
+        y: { min: -14, max: 14, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "A_s*sin(2*pi*f_s*t)", color: tinta, rotulo: "v_{in}", mide: entrada, discontinua: true }
+          - { expr: "V_sat*(2*abs(floor((2*pi*f_s*t - 2*pi*floor(f_s*t) - th)/pi)) - 1)", color: naranja, rotulo: "v_{o}", mide: salida }
+          - { expr: "V_uh*(2*abs(floor((2*pi*f_s*t - 2*pi*floor(f_s*t) - th)/pi)) - 1)", color: azul, rotulo: "v_{+}", mide: umbral }
+      mandos:
+        - { valor: R_2, lista: [47000, 100000, 220000], rotulo: "R₂" }
+    requiere: { mover: [R_2] }
+
   - id: reto-ventana
-    tipo: reto
+    tipo: diseno
     titulo: "Más que el ruido"
-    texto: "Con R₁ = 10 kΩ y ±12 V, el ruido es de 1 V de pico a pico. Elija R₂ para que la ventana lo supere."
+    texto: "R₁ = 10 kΩ, ±12 V y 1 V de ruido de pico a pico. Elija R₂ (E12) para que la ventana lo supere."
+    nota: "Resistencias del 5 %: debe cumplir en todas las esquinas."
     libro: [54]
-    fijar: { R_1: 10000, V_sat: 12, s_h: 1 }
+    fijar: { R_1: 10000, V_sat: 12, s_h: 1, V_in: 0, alto: 1 }
     inicio: { R_2: 1000000 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.01, unidad: s, rotulo: "t" }
-      y: { min: -4, max: 4, unidad: V, rotulo: "v_{entrada}" }
-      curvas:
-        - { expr: "-3 + 6*t/T_r + A_r*sin(2*pi*1500*t)", color: azul, rotulo: "señal con ruido" }
-        - { expr: "V_u", color: naranja, rotulo: "umbral al subir", discontinua: true }
-        - { expr: "-V_u", color: tinta, rotulo: "umbral al bajar", discontinua: true }
+      tipo: circuito
+      esquema: comparador-schmitt
+      piezas: { entrada: V_in, r1: R_1, r2: R_2, vsat: V_sat, alto: alto }
       lectura: { valor: V_w, rotulo: "Anchura de la ventana" }
+      mide: { vo: V_o, vmas: V_p }
       mandos:
-        - { valor: R_2, lista: [47000, 100000, 220000, 470000, 1000000], rotulo: "R₂" }
+        - { valor: R_2, serie: E12, min: 47000, max: 1000000, rotulo: "R₂ (E12)" }
     condiciones:
       - { valor: V_w, mayor: 1, rotulo: "Ventana: {{V_w}}" }
+    diseno:
+      tolerancias: { R_1: 0.05, R_2: 0.05 }
+      metodo: esquinas
+      exigir: todas
+      si_tolerancias: "El nominal pasa, pero en la peor esquina la ventana se queda corta: baje R₂ un valor más."
     exito: "Tras cruzar un umbral, el ruido ya no alcanza el otro. Y no más de lo necesario: cada voltio de histéresis es retraso."
     pistas:
       - { texto: "La ventana es más estrecha que el ruido: baje R₂ para que la salida realimente más." }
     escalera:
       - "La ventana va de −V_{umbral} a +V_{umbral}, con V_{umbral} = 12 · R₁/(R₁ + R₂)."
-    solucion: "Con R₂ = 220 kΩ, ventana de 1,04 V; con 100 kΩ, 2,18 V."
+      - "Con 220 kΩ el nominal da 1,04 V: casi nada de margen para las tolerancias."
+    solucion: "180 kΩ: 1,26 V nominal, y más de 1 V en todas las esquinas."
     comprobar:
       - { con: { R_2: 220000 }, V_w: 1.04, tol: 0.01 }
+      - { con: { R_2: 180000 }, V_w: 1.263, tol: 0.01 }
+      - { t_p: 5 }
 
   - id: sorpresa-sin
     tipo: sorpresa
@@ -129,14 +174,18 @@ tarjetas:
     texto: "La histéresis se consigue con realimentación positiva. ¿Por qué estabiliza el estado?"
     libro: [55]
     fijar: { R_1: 10000, R_2: 100000, V_sat: 12, s_h: 1 }
+    inicio: { V_in: 0, alto: 1 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.01, unidad: s, rotulo: "t" }
-      y: { min: -4, max: 4, unidad: V, rotulo: "v_{entrada}" }
-      curvas:
-        - { expr: "-3 + 6*t/T_r + A_r*sin(2*pi*1500*t)", color: azul, rotulo: "señal con ruido" }
-        - { expr: "V_u", color: naranja, rotulo: "umbral al subir", discontinua: true }
-        - { expr: "-V_u", color: tinta, rotulo: "umbral al bajar", discontinua: true }
+      tipo: circuito
+      esquema: comparador-schmitt
+      piezas: { entrada: V_in, r1: R_1, r2: R_2, vsat: V_sat, alto: alto }
+      lectura: { valor: V_o, rotulo: "v_{o}" }
+      datos:
+        - { valor: V_p, rotulo: "Entrada +: {{V_p}}" }
+      mide: { vo: V_o, vmas: V_p }
+      mandos:
+        - { valor: V_in, min: -2, max: 2, paso: 0.25, rotulo: "Entrada" }
+        - { valor: alto, tipo: interruptor, rotulo: "Salida en alto antes" }
     opciones:
       - texto: "Al saltar, la salida aleja el umbral y refuerza el estado"
         bien: true
@@ -154,12 +203,12 @@ tarjetas:
     titulo: "Comparador o operacional"
     texto: "Hay que detectar un umbral con rapidez y atacar una entrada lógica. ¿Qué se usa?"
     libro: [56]
+    fijar: { R_1: 10000, R_2: 100000, V_sat: 12, V_in: 0, alto: 1 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.01, unidad: s, rotulo: "t" }
-      y: { min: -4, max: 4, unidad: V, rotulo: "v_{entrada}" }
-      curvas:
-        - { expr: "-3 + 6*t/T_r + A_r*sin(2*pi*1500*t)", color: azul, rotulo: "señal con ruido" }
+      tipo: circuito
+      esquema: comparador-schmitt
+      piezas: { entrada: V_in, r1: R_1, r2: R_2, vsat: V_sat, alto: alto }
+      mide: { vo: V_o, vmas: V_p }
     opciones:
       - texto: "Un comparador como el LM393, con salida de colector abierto"
         bien: true

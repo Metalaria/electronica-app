@@ -1,7 +1,8 @@
 # Lección 1.2 de la sección 8.4 «Reguladores de Tensión» (cap08). Formato: contenido/lecciones11/GUIA.md.
-# El regulador lineal se dibuja con el esquema «thevenin»: la resistencia en serie es el elemento de paso, cuyo valor
-# (V_in − V_out)/I calcula el modelo para mantener 5 V («un divisor de tensión cuya parte superior se ajusta sola»,
-# bloque 63). Sin esquema de regulador en el kit (petición en scratchpad/peticiones-motor12.md).
+# 1.2: el regulador lineal es el esquema «regulador-lineal» (elemento de paso, referencia y lazo; «un divisor de
+# tensión cuya parte superior se ajusta sola», bloque 63): un regulador fijo de 5 V con el dropout de unos 2 V de los
+# 78xx (bloque 67). El LM317 sigue en gráfica: su referencia va sobre R₁ (terminal de ajuste), no a masa como en el
+# esquema, así que dibujarlo con él cambiaría los papeles de R₁ y R₂.
 leccion: cap08/sec-8.4
 
 libro:
@@ -26,7 +27,12 @@ modelo:
     R_L: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 5 }
     eta: { sim: "η", nombre: "rendimiento del conmutado", unidad: "", valor: 0.9 }
     R_17: { sim: "R₂", nombre: "resistencia de ajuste", unidad: Ω, valor: 1000 }
+    V_do: { sim: "V_{do}", nombre: "dropout del 78xx", unidad: V, valor: 2 }
   calculos:
+    V_rg: { expr: "min(V_o, V_in - V_do)", sim: "V_{out}", nombre: "tensión de salida", unidad: V }
+    I_rg: { expr: "V_rg/R_L", sim: "I", nombre: "corriente de la carga", unidad: A }
+    P_rg: { expr: "(V_in - V_rg)*I_rg", sim: "P_{paso}", nombre: "potencia en el elemento de paso", unidad: W }
+    ren_rg: { expr: "100*V_rg/V_in", sim: "η", nombre: "rendimiento", unidad: "%", cifras: 3 }
     I_r: { expr: "V_o/R_L", sim: "I", nombre: "corriente de la carga", unidad: A }
     R_p: { expr: "(V_in - V_o)/I_r", sim: "R_{paso}", nombre: "elemento de paso", unidad: Ω }
     V_s: { expr: "V_in*R_L/(R_p + R_L)", sim: "V_{out}", nombre: "tensión de salida", unidad: V }
@@ -44,20 +50,21 @@ tarjetas:
     tipo: explorar
     titulo: "Un divisor que se ajusta solo"
     texto: "El elemento de paso cambia para mantener 5 V. Mueva la entrada y la carga, y mire lo que disipa."
-    libro: [63, 65]
-    fijar: { V_o: 5 }
+    nota: "Por debajo de unos 2 V de margen, el 78xx deja de regular."
+    libro: [63, 65, 67]
+    fijar: { V_o: 5, V_do: 2 }
     widget:
       tipo: circuito
-      esquema: thevenin
-      piezas: { fuente: V_in, rth: R_p, carga: R_L }
-      lectura: { valor: P_d, rotulo: "Disipa el elemento de paso" }
+      esquema: regulador-lineal
+      piezas: { entrada: V_in, ref: V_o, dropout: V_do, carga: R_L }
+      lectura: { valor: P_rg, rotulo: "Disipa el elemento de paso" }
       datos:
-        - { valor: V_s, rotulo: "Salida: {{V_s}}" }
-        - { valor: ren, rotulo: "Rendimiento: {{ren}}" }
-      corriente: I_r
-      mide: { salida: V_s, corriente: I_r, interna: V_pa }
+        - { valor: V_rg, rotulo: "Salida: {{V_rg}}" }
+        - { valor: ren_rg, rotulo: "Rendimiento: {{ren_rg}}" }
+      corriente: I_rg
+      mide: { vout: V_rg, iin: I_rg, icarga: I_rg, p_paso: P_rg }
       mandos:
-        - { valor: V_in, min: 7, max: 15, paso: 0.5, rotulo: "Tensión de entrada" }
+        - { valor: V_in, min: 5, max: 15, paso: 0.5, rotulo: "Tensión de entrada" }
         - { valor: R_L, lista: [5, 10, 50], rotulo: "Carga" }
     requiere: { mover: [V_in, R_L] }
 
@@ -66,14 +73,14 @@ tarjetas:
     titulo: "De 12 a 5 V con 1 A"
     texto: "Un regulador lineal entrega 5 V y 1 A desde 12 V. ¿Cuánto disipa?"
     libro: [66]
-    fijar: { V_in: 12, V_o: 5, R_L: 5 }
+    fijar: { V_in: 12, V_o: 5, R_L: 5, V_do: 2 }
     widget:
       tipo: circuito
-      esquema: thevenin
-      piezas: { fuente: V_in, rth: R_p, carga: R_L }
-      lectura: { valor: P_d, rotulo: "Disipa el elemento de paso" }
-      corriente: I_r
-      mide: { salida: V_s, corriente: I_r, interna: V_pa }
+      esquema: regulador-lineal
+      piezas: { entrada: V_in, ref: V_o, dropout: V_do, carga: R_L }
+      lectura: { valor: P_rg, rotulo: "Disipa el elemento de paso" }
+      corriente: I_rg
+      mide: { vout: V_rg, iin: I_rg, p_paso: P_rg }
       ocultar: true
     opciones:
       - texto: "7 W, con un rendimiento del 41,7 %"
@@ -96,14 +103,14 @@ tarjetas:
     libro: [65]
     ec: 65
     sustitucion: "({{V_in}} − {{V_o}}) · {{I_r}} = {{P_d}}"
-    fijar: { V_o: 5 }
+    fijar: { V_o: 5, V_do: 2 }
     widget:
       tipo: circuito
-      esquema: thevenin
-      piezas: { fuente: V_in, rth: R_p, carga: R_L }
+      esquema: regulador-lineal
+      piezas: { entrada: V_in, ref: V_o, dropout: V_do, carga: R_L }
       lectura: { valor: P_d, rotulo: "Potencia disipada" }
-      corriente: I_r
-      mide: { salida: V_s, corriente: I_r, interna: V_pa }
+      corriente: I_rg
+      mide: { vout: V_rg, iin: I_rg, p_paso: P_rg }
       mandos:
         - { valor: V_in, min: 7, max: 15, paso: 0.5, rotulo: "Tensión de entrada" }
 
@@ -112,21 +119,21 @@ tarjetas:
     titulo: "La corriente de entrada"
     texto: "El regulador lineal de 12 a 5 V entrega 1 A. ¿Qué corriente toma de la entrada?"
     libro: [66, 72]
-    fijar: { V_in: 12, V_o: 5, R_L: 5 }
+    fijar: { V_in: 12, V_o: 5, R_L: 5, V_do: 2 }
     widget:
       tipo: circuito
-      esquema: thevenin
-      piezas: { fuente: V_in, rth: R_p, carga: R_L }
-      lectura: { valor: I_r, rotulo: "Corriente" }
-      mide: { salida: V_s, corriente: I_r, interna: V_pa }
+      esquema: regulador-lineal
+      piezas: { entrada: V_in, ref: V_o, dropout: V_do, carga: R_L }
+      lectura: { valor: I_rg, rotulo: "Corriente de entrada" }
+      mide: { vout: V_rg, iin: I_rg }
       ocultar: true
       mandos: []
     simular:
-      objetivo: I_r
+      objetivo: I_rg
       unidad: A
       tol: 0.03
       rotulo: "Corriente de entrada"
-      medida: corriente
+      medida: iin
       errores:
         - { expr: "I_id", texto: "Eso sería conservar la potencia, como un conmutado ideal. En un lineal la corriente atraviesa el elemento de paso: entra la misma que sale." }
     exito: "1 A: la corriente de entrada es igual a la de salida, sea cual sea la diferencia de tensiones."
@@ -134,7 +141,7 @@ tarjetas:
       - "El elemento de paso está en serie con la carga."
     solucion: "La misma que sale: 1 A."
     comprobar:
-      - { I_r: 1, I_id: 0.4167, tol: 0.001 }
+      - { I_r: 1, I_rg: 1, I_id: 0.4167, tol: 0.001 }
 
   - id: estime-conmutado
     tipo: pregunta
@@ -197,14 +204,14 @@ tarjetas:
     titulo: "¿Menos corriente de la que entrega?"
     texto: "El conmutado entrega 1 A a 5 V y toma solo 463 mA de 12 V. ¿Cómo es posible?"
     libro: [71, 72]
-    fijar: { V_in: 12, V_o: 5, R_L: 5 }
+    fijar: { V_in: 12, V_o: 5, R_L: 5, V_do: 2 }
     widget:
       tipo: circuito
-      esquema: thevenin
-      piezas: { fuente: V_in, rth: R_p, carga: R_L }
-      lectura: { valor: I_r, rotulo: "Corriente del lineal" }
-      corriente: I_r
-      mide: { salida: V_s, corriente: I_r, interna: V_pa }
+      esquema: regulador-lineal
+      piezas: { entrada: V_in, ref: V_o, dropout: V_do, carga: R_L }
+      lectura: { valor: I_rg, rotulo: "Corriente del lineal" }
+      corriente: I_rg
+      mide: { vout: V_rg, iin: I_rg, iout: I_rg }
     opciones:
       - texto: "Transfiere energía, no corriente: la potencia de entrada es la de salida más las pérdidas"
         bien: true

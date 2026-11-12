@@ -1,6 +1,7 @@
 # Lección 1.2 de la sección 8.1 «El Amplificador Operacional» (cap08). Formato: contenido/lecciones11/GUIA.md.
-# Sin esquema de operacional en el kit (petición en scratchpad/peticiones-motor12.md): gráficas de transferencia.
-# La salida satura en los raíles de ±15 V (ideal); la señal de 2 V de pico con 10 V de alimentación simple es un ejemplo.
+# La transferencia en lazo abierto sigue en gráfica; 1.2: la predicción es el operacional sin realimentación del esquema
+# «comparador-schmitt» (sin R₁ ni R₂: la entrada + a masa) y la alimentación simple, un seguidor «ao-no-inversor» con
+# raíles de 0 y 10 V. La salida satura en ±15 V (ideal); la señal de 2 V de pico a 1 kHz con 10 V es un ejemplo.
 leccion: cap08/sec-8.1
 
 libro:
@@ -29,7 +30,10 @@ modelo:
     V_cc: { sim: "V_{CC}", nombre: "alimentación simple", unidad: V, valor: 10 }
     V_s: { sim: "V_{p}", nombre: "amplitud de la señal", unidad: V, valor: 2 }
     s_m: { tipo: interruptor, nombre: "masa virtual a la mitad", valor: 0 }
+    f_s: { sim: "f", nombre: "frecuencia de la señal", unidad: Hz, valor: 1000 }
+    V_neg: { sim: "0", nombre: "raíl inferior (masa)", unidad: V, valor: 0 }
   calculos:
+    v_in: { expr: "-v_d", sim: "v_{−}", nombre: "tensión en la entrada − (la + a masa)", unidad: V }
     V_o: { expr: "max(-V_sat, min(V_sat, A_ol*v_d))", sim: "V_{salida}", nombre: "tensión de salida", unidad: V }
     V_pide: { expr: "A_ol*v_d", sim: "A · v", nombre: "salida que pediría sin saturar", unidad: V }
     e_cm: { expr: "V_cm/10^(C_db/20)", sim: "error", nombre: "error referido a la entrada", unidad: V }
@@ -62,12 +66,11 @@ tarjetas:
     libro: [11]
     fijar: { A_ol: 100000, v_d: 0.0001 }
     widget:
-      tipo: grafica
-      x: { id: vx, min: -0.0003, max: 0.0003, unidad: V, rotulo: "v_{+} − v_{−}" }
-      y: { min: -16, max: 16, unidad: V, rotulo: "V_{salida}" }
-      curvas:
-        - { expr: "max(-V_sat, min(V_sat, A_ol*vx))", color: azul, rotulo: "salida" }
+      tipo: circuito
+      esquema: comparador-schmitt
+      piezas: { entrada: v_in, vsat: V_sat, a0: A_ol }
       lectura: { valor: V_o, rotulo: "Tensión de salida con 100 µV" }
+      mide: { vo: V_o }
       ocultar: true
     opciones:
       - texto: "100 µV"
@@ -175,19 +178,22 @@ tarjetas:
   - id: sorpresa-simple
     tipo: sorpresa
     titulo: "Con una sola alimentación"
-    texto: "Una señal de 2 V de pico con 10 V de alimentación simple. Active la masa virtual a la mitad."
+    texto: "Un seguidor con 10 V de alimentación simple recibe 2 V de pico. Active la masa virtual a la mitad."
     nota: "Valores de ejemplo."
     libro: [22]
     fijar: { V_cc: 10, V_s: 2 }
     inicio: { s_m: 0 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
-      y: { min: -3, max: 11, unidad: V, rotulo: "v_{salida}" }
-      curvas:
-        - { expr: "max(0, min(V_cc, V_mv + V_s*sin(2*pi*1000*t)))", color: azul, rotulo: "salida" }
-        - { expr: "V_mv + V_s*sin(2*pi*1000*t)", color: tinta, rotulo: "lo que se quería", discontinua: true }
+      tipo: circuito
+      esquema: ao-no-inversor
+      piezas: { entrada: V_mv, amplitud: V_s, f: f_s, vsat: V_cc, vsatneg: V_neg }
       lectura: { valor: V_mv, rotulo: "Referencia de la señal" }
+      grafica:
+        x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+        y: { min: -3, max: 11, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(0, min(V_cc, V_mv + V_s*sin(2*pi*f_s*t)))", color: naranja, rotulo: "salida", mide: salida }
+          - { expr: "V_mv + V_s*sin(2*pi*f_s*t)", color: tinta, rotulo: "entrada", mide: entrada, discontinua: true }
       mandos:
         - { valor: s_m, tipo: interruptor, rotulo: "Masa virtual a V_{CC}/2" }
     requiere: { mover: [s_m] }
@@ -199,11 +205,14 @@ tarjetas:
     libro: [22]
     fijar: { V_cc: 10, V_s: 2, s_m: 0 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
-      y: { min: -3, max: 11, unidad: V, rotulo: "v_{salida}" }
-      curvas:
-        - { expr: "max(0, min(V_cc, V_mv + V_s*sin(2*pi*1000*t)))", color: azul, rotulo: "salida" }
+      tipo: circuito
+      esquema: ao-no-inversor
+      piezas: { entrada: V_mv, amplitud: V_s, f: f_s, vsat: V_cc, vsatneg: V_neg }
+      grafica:
+        x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+        y: { min: -3, max: 11, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(0, min(V_cc, V_mv + V_s*sin(2*pi*f_s*t)))", color: naranja, rotulo: "salida", mide: salida }
     opciones:
       - texto: "La salida no puede bajar de la masa, que es su raíl inferior"
         bien: true
@@ -221,12 +230,13 @@ tarjetas:
     titulo: "El error más frecuente"
     texto: "Sin realimentación negativa, ¿se puede suponer que las dos entradas están a la misma tensión?"
     libro: [16, 17]
+    fijar: { v_d: 0.001 }
     widget:
-      tipo: grafica
-      x: { id: vx, min: -0.0003, max: 0.0003, unidad: V, rotulo: "v_{+} − v_{−}" }
-      y: { min: -16, max: 16, unidad: V, rotulo: "V_{salida}" }
-      curvas:
-        - { expr: "max(-V_sat, min(V_sat, A_ol*vx))", color: azul, rotulo: "salida" }
+      tipo: circuito
+      esquema: comparador-schmitt
+      piezas: { entrada: v_in, vsat: V_sat, a0: A_ol }
+      lectura: { valor: V_o, rotulo: "Tensión de salida" }
+      mide: { vo: V_o }
     opciones:
       - texto: "No: la salida se va a un extremo"
         bien: true

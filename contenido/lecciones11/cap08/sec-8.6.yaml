@@ -1,6 +1,10 @@
 # Lección 1.2 de la sección 8.6 «Cómo Leer y Elegir un Operacional Real» (cap08). Formato: contenido/lecciones11/GUIA.md.
 # Gráfica del GBW: ganancia en lazo abierto de 10⁵ (sección 8.1) con un solo polo, y GBW = 1 MHz (ejercicio 8.8).
 # La salida limitada por slew rate se dibuja como el triángulo de pendiente SR en que se convierte la senoide.
+# 1.2: el GBW y el slew rate van sobre el esquema «ao-no-inversor» (piezas gbw y sr), simulados con ngspice: la
+# respuesta en frecuencia con 1 V de entrada (la amplitud de salida es la ganancia) y un seguidor de 0,5 V/µs con 10 V
+# de pico. El triángulo en régimen tiene amplitud SR/(4f) y su pico cae donde la entrada, al bajar, vale eso; el eje
+# empieza a los 0,2 ms, cuando el arranque ya se ha asentado. Frecuencias de ejemplo: 4 y 16 kHz.
 leccion: cap08/sec-8.6
 
 libro:
@@ -29,7 +33,15 @@ modelo:
     V_pk: { sim: "V_{pico}", nombre: "amplitud de la senoide", unidad: V, valor: 10 }
     f_s: { sim: "f", nombre: "frecuencia de la señal", unidad: Hz, valor: 2000 }
     V_os: { sim: "V_{os}", nombre: "tensión de offset", unidad: V, valor: 0.003 }
+    R_1g: { sim: "R₁", nombre: "resistencia a masa", unidad: Ω, valor: 1000 }
+    A_p1: { sim: "v_{in}", nombre: "amplitud de entrada", unidad: V, valor: 1 }
+    cero: { sim: "0", nombre: "nivel de continua", unidad: V, valor: 0 }
   calculos:
+    R_2g: { expr: "(G_c - 1)*R_1g", sim: "R₂", nombre: "resistencia de realimentación", unidad: Ω }
+    f_p: { expr: "GBW/A_0", sim: "f_{p}", nombre: "polo en lazo abierto", unidad: Hz }
+    f_n2: { expr: "SR/V_pk", sim: "f", nombre: "sin el 2π", unidad: Hz }
+    f_x10: { expr: "SR/(20*pi*V_pk)", sim: "f", nombre: "con un factor diez de más", unidad: Hz }
+    t_pk: { expr: "(pi - asin(A_t/V_pk))/(2*pi*f_s)", sim: "t_{pico}", nombre: "pico del triángulo", unidad: s }
     B_c: { expr: "GBW/G_c", sim: "B", nombre: "ancho de banda del montaje", unidad: Hz }
     f_mx: { expr: "SR/(2*pi*V_pk)", sim: "f_{máx}", nombre: "frecuencia máxima sin deformar", unidad: Hz }
     s_t: { expr: "min(1, floor(f_s/f_mx))", sim: "limitada", nombre: "limitada por slew rate", unidad: "" }
@@ -43,19 +55,21 @@ tarjetas:
     titulo: "La ganancia que queda a cada frecuencia"
     texto: "La ganancia en lazo abierto cae con la frecuencia. Cambie la ganancia del montaje y mire hasta dónde llega."
     libro: [117, "cap08#11"]
+    nota: "Entrada de 1 V: la amplitud de salida es la ganancia."
     fijar: { GBW: 1000000, A_0: 100000 }
     widget:
-      tipo: grafica
-      x: { id: fx, min: 1, max: 10000000, unidad: Hz, rotulo: "f", escala: log }
-      y: { min: 0.1, max: 1000000, unidad: "", rotulo: "ganancia", escala: log }
-      curvas:
-        - { expr: "min(A_0, GBW/fx)", color: tinta, rotulo: "lazo abierto", discontinua: true }
-        - { expr: "min(G_c, GBW/fx)", color: azul, rotulo: "su montaje" }
-      asas:
-        - { mueve: G_c, x: "B_c", y: "G_c", rotulo: "Su ganancia" }
+      tipo: circuito
+      esquema: ao-no-inversor
+      piezas: { entrada: cero, amplitud: A_p1, f: f_s, r1: R_1g, r2: R_2g, a0: A_0, gbw: GBW }
       lectura: { valor: B_c, rotulo: "Ancho de banda del montaje" }
+      grafica:
+        x: { id: nu, min: 1, max: 10000000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0.1, max: 1000000, unidad: V, rotulo: "v_{o}", escala: log }
+        curvas:
+          - { expr: "min(A_0, GBW/nu)", color: tinta, rotulo: "lazo abierto", discontinua: true }
+          - { expr: "A_p1*A_0/sqrt((1 + A_0/G_c)^2 + (nu/f_p)^2)", color: naranja, rotulo: "su montaje", mide: salida_amp }
       mandos:
-        - { valor: G_c, lista: [1, 10, 100, 1000], rotulo: "Ganancia del montaje" }
+        - { valor: G_c, lista: [10, 100, 1000], rotulo: "Ganancia del montaje" }
 
   - id: estime-banda
     tipo: pregunta
@@ -88,15 +102,19 @@ tarjetas:
     titulo: "Señal grande y rápida"
     texto: "Un operacional de 0,5 V/µs debe dar una senoide de 10 V de pico. ¿Hasta qué frecuencia la reproduce sin deformar?"
     libro: [119, 120]
-    fijar: { SR: 500000, V_pk: 10 }
+    fijar: { SR: 500000, V_pk: 10, f_s: 4000 }
     widget:
-      tipo: grafica
-      x: { id: ph, min: 0, max: 2, unidad: "", rotulo: "ciclos" }
-      y: { min: -12, max: 12, unidad: V, rotulo: "v_{salida}" }
-      curvas:
-        - { expr: "(1 - s_t)*V_pk*sin(2*pi*ph) + s_t*A_t*(4*abs(ph + 0.25 - floor(ph + 0.75)) - 1)", color: azul, rotulo: "salida" }
+      tipo: circuito
+      esquema: ao-no-inversor
+      piezas: { entrada: cero, amplitud: V_pk, f: f_s, sr: SR }
       lectura: { valor: f_mx, rotulo: "Frecuencia máxima" }
       ocultar: true
+      grafica:
+        x: { id: t, min: 0.0002, max: 0.0007, unidad: s, rotulo: "t" }
+        y: { min: -12, max: 12, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_pk*sin(2*pi*f_s*t)", color: tinta, rotulo: "la que se pide", mide: entrada, discontinua: true }
+          - { expr: "(1 - s_t)*V_pk*sin(2*pi*f_s*t) + s_t*A_t*(4*abs((t - t_pk)*f_s - floor((t - t_pk)*f_s) - 0.5) - 1)", color: naranja, rotulo: "salida", mide: salida }
     opciones:
       - texto: "Unos 8 kHz"
         bien: true
@@ -109,9 +127,7 @@ tarjetas:
       - "La pendiente máxima de la senoide, 2π · f · V_{pico}, no puede superar el SR."
     solucion: "f_{máx} = 0,5 · 10⁶ / (2π · 10) ≈ 7960 Hz."
     comprobar:
-      - { f_mx: 7958, tol: 0.001 }
-      - { con: { V_pk: 1.59155 }, f_mx: 50000, tol: 0.001 }
-      - { con: { V_pk: 100 }, f_mx: 796, tol: 0.001 }
+      - { f_mx: 7958, f_n2: 50000, f_x10: 796, tol: 0.001 }
 
   - id: regla-slew
     tipo: formula
@@ -139,19 +155,22 @@ tarjetas:
     texto: "10 V de pico con 0,5 V/µs. Suba la frecuencia por encima de la máxima y mire la salida."
     libro: [120]
     fijar: { SR: 500000, V_pk: 10 }
-    inicio: { f_s: 2000 }
+    inicio: { f_s: 4000 }
     widget:
-      tipo: grafica
-      x: { id: ph, min: 0, max: 2, unidad: "", rotulo: "ciclos" }
-      y: { min: -12, max: 12, unidad: V, rotulo: "v_{salida}" }
-      curvas:
-        - { expr: "(1 - s_t)*V_pk*sin(2*pi*ph) + s_t*A_t*(4*abs(ph + 0.25 - floor(ph + 0.75)) - 1)", color: azul, rotulo: "salida" }
-        - { expr: "V_pk*sin(2*pi*ph)", color: tinta, rotulo: "la que se pide", discontinua: true }
+      tipo: circuito
+      esquema: ao-no-inversor
+      piezas: { entrada: cero, amplitud: V_pk, f: f_s, sr: SR }
       lectura: { valor: A_s, rotulo: "Amplitud de la salida" }
       datos:
         - { valor: f_mx, rotulo: "Máxima sin deformar: {{f_mx}}" }
+      grafica:
+        x: { id: t, min: 0.0002, max: 0.0007, unidad: s, rotulo: "t" }
+        y: { min: -12, max: 12, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_pk*sin(2*pi*f_s*t)", color: tinta, rotulo: "la que se pide", mide: entrada, discontinua: true }
+          - { expr: "(1 - s_t)*V_pk*sin(2*pi*f_s*t) + s_t*A_t*(4*abs((t - t_pk)*f_s - floor((t - t_pk)*f_s) - 0.5) - 1)", color: naranja, rotulo: "salida", mide: salida }
       mandos:
-        - { valor: f_s, lista: [2000, 4000, 8000, 16000, 32000], rotulo: "Frecuencia" }
+        - { valor: f_s, lista: [4000, 16000], rotulo: "Frecuencia" }
     requiere: { mover: [f_s] }
 
   - id: por-que-triangulo
@@ -159,13 +178,17 @@ tarjetas:
     titulo: "¿Por qué un triángulo?"
     texto: "Por encima de la frecuencia máxima, la salida deja de ser senoidal y se vuelve triangular. ¿Por qué?"
     libro: [118, 120]
-    fijar: { SR: 500000, V_pk: 10, f_s: 32000 }
+    fijar: { SR: 500000, V_pk: 10, f_s: 16000 }
     widget:
-      tipo: grafica
-      x: { id: ph, min: 0, max: 2, unidad: "", rotulo: "ciclos" }
-      y: { min: -12, max: 12, unidad: V, rotulo: "v_{salida}" }
-      curvas:
-        - { expr: "(1 - s_t)*V_pk*sin(2*pi*ph) + s_t*A_t*(4*abs(ph + 0.25 - floor(ph + 0.75)) - 1)", color: azul, rotulo: "salida" }
+      tipo: circuito
+      esquema: ao-no-inversor
+      piezas: { entrada: cero, amplitud: V_pk, f: f_s, sr: SR }
+      grafica:
+        x: { id: t, min: 0.0002, max: 0.0007, unidad: s, rotulo: "t" }
+        y: { min: -12, max: 12, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_pk*sin(2*pi*f_s*t)", color: tinta, rotulo: "la que se pide", mide: entrada, discontinua: true }
+          - { expr: "(1 - s_t)*V_pk*sin(2*pi*f_s*t) + s_t*A_t*(4*abs((t - t_pk)*f_s - floor((t - t_pk)*f_s) - 0.5) - 1)", color: naranja, rotulo: "salida", mide: salida }
     opciones:
       - texto: "La salida sube y baja a su velocidad máxima, el SR, y no más"
         bien: true
@@ -229,11 +252,10 @@ tarjetas:
     texto: "Para un sensor de megaohmios se elige el operacional de menor ruido de tensión del catálogo. ¿Es buena idea?"
     libro: [115, 127]
     widget:
-      tipo: grafica
-      x: { id: vx, min: 0.5, max: 15, unidad: V, rotulo: "V_{pico}" }
-      y: { min: 0, max: 160000, unidad: Hz, rotulo: "f_{máx}" }
-      curvas:
-        - { expr: "SR/(2*pi*vx)", color: azul, rotulo: "f_{máx}" }
+      tipo: circuito
+      esquema: ao-no-inversor
+      piezas: { entrada: cero }
+      mide: { vo: cero }
     opciones:
       - texto: "No: suele tener más I_{B}, y sobre megaohmios es peor que uno de entrada FET"
         bien: true
@@ -252,11 +274,10 @@ tarjetas:
     texto: "Un operacional «rail-to-rail de salida» entrega 10 mA a una carga. ¿Llega su salida al raíl?"
     libro: [134]
     widget:
-      tipo: grafica
-      x: { id: vx, min: 0.5, max: 15, unidad: V, rotulo: "V_{pico}" }
-      y: { min: 0, max: 160000, unidad: Hz, rotulo: "f_{máx}" }
-      curvas:
-        - { expr: "SR/(2*pi*vx)", color: azul, rotulo: "f_{máx}" }
+      tipo: circuito
+      esquema: ao-no-inversor
+      piezas: { entrada: cero }
+      mide: { vo: cero }
     opciones:
       - texto: "No: con 10 mA puede quedarse a cientos de milivoltios"
         bien: true

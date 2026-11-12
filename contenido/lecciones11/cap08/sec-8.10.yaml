@@ -1,6 +1,8 @@
 # Lección 1.2 de la sección 8.10 «Problemas de Diseño» (cap08): problemas 8.A, 8.B y 8.C. Formato: contenido/lecciones11/GUIA.md.
 # 8.C: el establecimiento se dibuja con el esquema «carga-rc» (R_on y los 30 pF del muestreador; escalón de fondo de
 # escala de 1 V como ejemplo) y el error estático con «thevenin» (R_on en serie con la entrada de 1 MΩ).
+# 1.2: 8.A empieza con el esquema «regulador-lineal» (12 a 5 V con 1 A: carga de 5 Ω; dropout de 2 V de los 78xx,
+# sección 8.4); 8.C, el muestreador de 30 pF con el esquema «muestreo-retencion» (sin retención dentro del eje).
 leccion: cap08/sec-8.10
 
 libro:
@@ -11,6 +13,7 @@ libro:
   214: "Tj ≤ 110 °C con 40 °C ambiente (derating) 6,50 °C/W"
   215: "exige un radiador un 40 % mejor que el cálculo optimista"
   216: "un convertidor reductor al 90 % disiparía 0,56 W en lugar de 7"
+  "cap08#67": "necesita unos 2 V de diferencia entre entrada y salida para funcionar"
   220: "Problema 8.B"
   222: "exactitud inicial ±0,05 %, deriva 25 ppm/°C, regulación de línea 0,01 %, regulación de carga 0,01 % y envejecimiento 0,02 % al año"
   225: "Deriva en 30 °C 0,0750 %"
@@ -39,7 +42,17 @@ modelo:
     R_on: { sim: "R_{on}", nombre: "resistencia del multiplexor", unidad: Ω, valor: 300 }
     C_s: { sim: "C", nombre: "capacidad del muestreador", unidad: F, valor: 30e-12 }
     R_ad: { sim: "R_{entrada}", nombre: "entrada del ADC", unidad: Ω, valor: 1000000 }
+    V_i8: { sim: "V_{in}", nombre: "tensión de entrada", unidad: V, valor: 12 }
+    V_r8: { sim: "V_{out}", nombre: "salida del regulador", unidad: V, valor: 5 }
+    V_d8: { sim: "V_{do}", nombre: "dropout", unidad: V, valor: 2 }
+    R_l8: { sim: "R_{L}", nombre: "carga de 1 A", unidad: Ω, valor: 5 }
+    on8: { tipo: interruptor, nombre: "carga conectada", valor: 1 }
+    tm_8: { sim: "t_{m}", nombre: "instante de retención (fuera del eje)", unidad: s, valor: 1e-6 }
   calculos:
+    V_o8: { expr: "min(V_r8, V_i8 - V_d8)", sim: "V_{out}", nombre: "tensión de salida", unidad: V }
+    I_8: { si: on8, entonces: "V_o8/R_l8", sino: "0", sim: "I", nombre: "corriente de la carga", unidad: A }
+    P_8: { expr: "(V_i8 - V_o8)*I_8", sim: "P", nombre: "potencia en el regulador", unidad: W }
+    ren8: { expr: "100*V_o8/V_i8", sim: "η", nombre: "rendimiento con carga", unidad: "%", cifras: 3 }
     R_sa: { expr: "(T_j - T_a)/P_r - R_jc - R_cs", sim: "R_{sa}", nombre: "radiador admisible", unidad: "°C/W" }
     e_d: { expr: "25*d_T/10000", sim: "deriva", nombre: "deriva en el margen", unidad: "%" }
     e_wc: { expr: "e_i + e_d + 0.01 + 0.01 + 0.02", sim: "peor caso", nombre: "error en el peor caso", unidad: "%", cifras: 3 }
@@ -55,6 +68,26 @@ modelo:
     e_s: { expr: "100*R_on/(R_on + R_ad)", sim: "error", nombre: "error estático", unidad: "%", cifras: 2 }
 
 tarjetas:
+  - id: explore-regulador
+    tipo: explorar
+    titulo: "8.A: el calor que hay que evacuar"
+    texto: "El regulador del problema: 12 V de entrada, 5 V y 1 A de salida. Conecte la carga y mire lo que disipa."
+    libro: [206, 208, 211, 216, "cap08#67"]
+    fijar: { V_i8: 12, V_r8: 5, R_l8: 5 }
+    inicio: { on8: 0 }
+    widget:
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_i8, ref: V_r8, dropout: V_d8, carga: R_l8, interruptor: on8 }
+      lectura: { valor: P_8, rotulo: "Disipa el regulador" }
+      datos:
+        - { valor: ren8, rotulo: "Rendimiento con carga: {{ren8}}" }
+      corriente: I_8
+      mide: { vout: V_o8, iin: I_8, icarga: I_8, p_paso: P_8 }
+      mandos:
+        - { valor: on8, tipo: interruptor, rotulo: "Carga de 1 A" }
+    requiere: { mover: [on8] }
+
   - id: explore-radiador
     tipo: explorar
     titulo: "8.A: el radiador"
@@ -234,12 +267,12 @@ tarjetas:
     fijar: { V_f: 1, C_s: 30e-12 }
     widget:
       tipo: circuito
-      esquema: carga-rc
-      piezas: { fuente: V_f, r: R_on, c: C_s }
+      esquema: muestreo-retencion
+      piezas: { entrada: V_f, ron: R_on, ch: C_s, tm: tm_8 }
       lectura: { valor: t_e, rotulo: "Establecimiento a 1 LSB" }
       grafica:
         x: { id: t, min: 0, max: 0.0000001, unidad: s, rotulo: "t" }
-        y: { min: 0, max: 1.1, unidad: V, rotulo: "v_{C}" }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "v" }
         curvas:
           - { expr: "V_f*(1 - exp(-t/tau_m))", color: naranja, rotulo: "v_{muestreador}", mide: vc }
         marcas:
@@ -255,13 +288,13 @@ tarjetas:
     fijar: { V_f: 1, C_s: 30e-12, R_on: 300 }
     widget:
       tipo: circuito
-      esquema: carga-rc
-      piezas: { fuente: V_f, r: R_on, c: C_s }
+      esquema: muestreo-retencion
+      piezas: { entrada: V_f, ron: R_on, ch: C_s, tm: tm_8 }
       lectura: { valor: t_e, rotulo: "Establecimiento a 1 LSB" }
       ocultar: true
       grafica:
         x: { id: t, min: 0, max: 0.0000001, unidad: s, rotulo: "t" }
-        y: { min: 0, max: 1.1, unidad: V, rotulo: "v_{C}" }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "v" }
         curvas:
           - { expr: "V_f*(1 - exp(-t/tau_m))", color: naranja, rotulo: "v_{muestreador}", mide: vc }
     opciones:

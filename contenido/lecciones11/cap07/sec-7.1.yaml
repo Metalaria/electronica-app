@@ -1,5 +1,6 @@
 # Lección 1.2 de la sección 7.1 «Estructura y Principio de Funcionamiento» (cap07). Formato: contenido/lecciones11/GUIA.md.
-# Sin esquema de MOSFET en el kit (petición en scratchpad/peticiones-motor12.md): la puerta se estudia con gráficas.
+# 1.2: el canal se ve en el esquema «mosfet» (circuito vivo): la carga de 6 Ω con 12 V es la del ejemplo de la
+# sección 7.5 (cap07#93) y k = 0,5 A/V², V_th = 2 V los de la figura 7.3 (cap07#40). El óxido sigue con gráficas.
 leccion: cap07/sec-7.1
 
 libro:
@@ -17,7 +18,9 @@ libro:
   25: "la RDS(on) crece aproximadamente con VDS elevado a 2,5"
   28: "Conduce solo; VGS negativa lo corta"
   32: "la caída del diodo de cuerpo (0,4 a 0,7 V) en el otro"
+  "cap07#40": "(k = 0,5 A/V², Vth = 2 V)"
   "cap07#43": "RDS(on) ≈ 1/(k·Vov)"
+  "cap07#93": "la carga resistiva de 6 Ω"
   "cap07#162": "Una lectura próxima a cero en ambos sentidos significa que el transistor está en cortocircuito"
 
 modelo:
@@ -29,7 +32,15 @@ modelo:
     t_ox: { sim: "t_{ox}", nombre: "espesor del óxido", unidad: m, valor: 20e-9 }
     E_r: { sim: "E_{ruptura}", nombre: "campo de ruptura del óxido", unidad: "V/m", valor: 1e9 }
     m_v: { sim: "×", nombre: "factor de tensión de ruptura", unidad: "", valor: 2 }
+    V_dd: { sim: "V_{DD}", nombre: "alimentación de la carga", unidad: V, valor: 12 }
+    R_d: { sim: "R_{D}", nombre: "carga", unidad: Ω, valor: 6 }
   calculos:
+    V_ov: { expr: "max(0, V_gs - V_th)", sim: "V_{ov}", nombre: "tensión de sobreexcitación", unidad: V }
+    b_m: { expr: "k_m*V_ov + 1/R_d", sim: "b", nombre: "coeficiente", unidad: "" }
+    V_tri: { expr: "(b_m - sqrt(max(0, b_m^2 - 2*k_m*V_dd/R_d)))/k_m", sim: "V_{tri}", nombre: "V_DS en zona óhmica", unidad: V }
+    V_sat: { expr: "V_dd - R_d*k_m*V_ov^2/2", sim: "V_{sat}", nombre: "V_DS en saturación", unidad: V }
+    V_ds: { expr: "max(V_sat, min(V_ov, V_tri))", sim: "V_{DS}", nombre: "tensión drenador-fuente", unidad: V }
+    I_d: { expr: "(V_dd - V_ds)/R_d", sim: "I_{D}", nombre: "corriente de drenador", unidad: A }
     G_c: { expr: "k_m*max(0, V_gs - V_th)", sim: "G_{canal}", nombre: "conductancia del canal", unidad: S }
     E_ox: { expr: "V_g/t_ox", sim: "E", nombre: "campo en el óxido", unidad: "V/m" }
     E_fr: { expr: "E_ox/E_r*100", sim: "E/E_{ruptura}", nombre: "fracción del campo de ruptura", unidad: "%", cifras: 3 }
@@ -39,18 +50,18 @@ tarjetas:
   - id: explore-canal
     tipo: explorar
     titulo: "La tensión crea el canal"
-    texto: "Suba la tensión de puerta y mire la conductancia del canal. Cambie también el umbral."
-    nota: "La conductancia se dibuja con la aproximación de la sección 7.2: k·(V_{GS} − V_{th})."
-    libro: [3, 12, 13, "cap07#43"]
+    texto: "Suba la tensión de puerta y mire la corriente de la carga. Cambie también el umbral."
+    nota: "Carga de 6 Ω del ejemplo del interruptor; k = 0,5 A/V², el de las curvas del libro."
+    libro: [3, 12, 13, "cap07#40", "cap07#43", "cap07#93"]
     widget:
-      tipo: grafica
-      x: { id: vg, min: 0, max: 10, unidad: V, rotulo: "V_{GS}" }
-      y: { min: 0, max: 5, unidad: S, rotulo: "G_{canal}" }
-      curvas:
-        - { expr: "k_m*max(0, vg - V_th)", color: azul, rotulo: "conductancia" }
-      asas:
-        - { mueve: V_gs, x: "V_gs", y: "G_c", rotulo: "Su puerta" }
-      lectura: { valor: G_c, rotulo: "Conductancia del canal" }
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_dd, rd: R_d, entrada: V_gs, k: k_m, vth: V_th }
+      lectura: { valor: I_d, rotulo: "Corriente de drenador" }
+      datos:
+        - { valor: V_ds, rotulo: "V_{DS} = {{V_ds}}" }
+      corriente: I_d
+      mide: { id: I_d, vds: V_ds, vgs: V_gs, vd: V_ds }
       mandos:
         - { valor: V_gs, min: 0, max: 10, paso: 0.5, rotulo: "Tensión de puerta" }
         - { valor: V_th, lista: [1, 2, 3, 4], rotulo: "Umbral" }
@@ -62,12 +73,12 @@ tarjetas:
     libro: [7, 13]
     fijar: { V_gs: 0, V_th: 2 }
     widget:
-      tipo: grafica
-      x: { id: vg, min: 0, max: 10, unidad: V, rotulo: "V_{GS}" }
-      y: { min: 0, max: 5, unidad: S, rotulo: "G_{canal}" }
-      curvas:
-        - { expr: "k_m*max(0, vg - V_th)", color: azul, rotulo: "conductancia" }
-      lectura: { valor: G_c, rotulo: "Conductancia del canal" }
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_dd, rd: R_d, entrada: V_gs, k: k_m, vth: V_th }
+      lectura: { valor: I_d, rotulo: "Corriente de drenador" }
+      corriente: I_d
+      mide: { id: I_d, vds: V_ds }
       ocultar: true
     opciones:
       - texto: "No: en ningún sentido"
@@ -81,7 +92,7 @@ tarjetas:
       - "¿Qué tipo tiene la superficie del sustrato en reposo?"
     solucion: "No circula: es como dos diodos opuestos entre fuente y drenador."
     comprobar:
-      - { G_c: 0 }
+      - { I_d: 0 }
 
   - id: ordene-inversion
     tipo: pregunta

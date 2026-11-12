@@ -1,6 +1,7 @@
 # Lección 1.2 de la sección 7.4 «Parámetros Clave de los MOSFET de Potencia» (cap07). Formato: contenido/lecciones11/GUIA.md.
 # La subida de R_DS(on) con la temperatura es la lineal del libro (0,7 % por grado, ×1,5 a 100 °C). En la tarjeta del
 # umbral, k = 0,5 A/V² (figura 7.3) es un ejemplo para ver la tendencia, no un dato del transistor.
+# 1.2: el umbral y el Arduino van sobre el esquema «mosfet» con la tira de LED de 12 V y 2 A del ejercicio 7.3 (6 Ω).
 leccion: cap07/sec-7.4
 
 libro:
@@ -28,7 +29,15 @@ modelo:
     V_mc: { sim: "V_{GS}", nombre: "tensión de mando", unidad: V, valor: 3.3 }
     V_th: { sim: "V_{th}", nombre: "umbral de este ejemplar", unidad: V, valor: 2 }
     k_m: { sim: "k", nombre: "parámetro del transistor", unidad: "A/V²", valor: 0.5 }
+    V_dd: { sim: "V_{DD}", nombre: "alimentación de la tira", unidad: V, valor: 12 }
+    R_d: { sim: "R_{D}", nombre: "tira de LED (12 V, 2 A)", unidad: Ω, valor: 6 }
   calculos:
+    V_ov: { expr: "max(0, V_mc - V_th)", sim: "V_{ov}", nombre: "tensión de sobreexcitación", unidad: V }
+    b_m: { expr: "k_m*V_ov + 1/R_d", sim: "b", nombre: "coeficiente", unidad: "" }
+    V_tri: { expr: "(b_m - sqrt(max(0, b_m^2 - 2*k_m*V_dd/R_d)))/k_m", sim: "V_{tri}", nombre: "V_DS en zona óhmica", unidad: V }
+    V_sat: { expr: "V_dd - R_d*k_m*V_ov^2/2", sim: "V_{sat}", nombre: "V_DS en saturación", unidad: V }
+    V_ds: { expr: "max(V_sat, min(V_ov, V_tri))", sim: "V_{DS}", nombre: "tensión drenador-fuente", unidad: V }
+    I_d: { expr: "(V_dd - V_ds)/R_d", sim: "I_{D}", nombre: "corriente de la tira", unidad: A }
     R_T: { expr: "R_25*(1 + 0.007*(T_j - 25))", sim: "R_{DS(on)}", nombre: "resistencia a esa temperatura", unidad: Ω }
     P_c: { expr: "I_c^2*R_T", sim: "P", nombre: "pérdida de conducción", unidad: W }
     P_a: { expr: "I_a^2*R_a", sim: "P", nombre: "pérdida de conducción", unidad: W }
@@ -144,20 +153,20 @@ tarjetas:
   - id: sorpresa-umbral
     tipo: sorpresa
     titulo: "El mismo modelo, otro umbral"
-    texto: "La hoja da un umbral de 2 a 4 V. Con 3,3 V de mando, mueva el umbral del ejemplar dentro de ese intervalo."
-    nota: "Corriente con k = 0,5 A/V², como ejemplo."
-    libro: [82, "cap07#40"]
+    texto: "La hoja da un umbral de 2 a 4 V; el mando es de 3,3 V. Mueva el umbral del ejemplar."
+    nota: "Tira de LED de 12 V y 2 A; k = 0,5 A/V² de ejemplo."
+    libro: [82, "cap07#40", "cap07#236"]
     fijar: { V_mc: 3.3, k_m: 0.5 }
     inicio: { V_th: 2 }
     widget:
-      tipo: grafica
-      x: { id: vt, min: 2, max: 4, unidad: V, rotulo: "V_{th}" }
-      y: { min: 0, max: 0.5, unidad: A, rotulo: "I_{D}" }
-      curvas:
-        - { expr: "0.5*k_m*max(0, V_mc - vt)^2", color: azul, rotulo: "corriente con 3,3 V" }
-      asas:
-        - { mueve: V_th, x: "V_th", y: "I_mc", rotulo: "Su ejemplar" }
-      lectura: { valor: I_mc, rotulo: "Corriente que admite el canal" }
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_dd, rd: R_d, entrada: V_mc, k: k_m, vth: V_th }
+      lectura: { valor: I_d, rotulo: "Corriente de la tira" }
+      datos:
+        - { valor: V_ds, rotulo: "V_{DS} = {{V_ds}}" }
+      corriente: I_d
+      mide: { id: I_d, vds: V_ds, vgs: V_mc }
       mandos:
         - { valor: V_th, min: 2, max: 4, paso: 0.1, rotulo: "Umbral del ejemplar" }
     requiere: { mover: [V_th] }
@@ -167,13 +176,14 @@ tarjetas:
     titulo: "¿Por qué tanta diferencia?"
     texto: "Con la misma tensión de mando, un ejemplar conduce y otro del mismo modelo apenas lo hace. ¿Por qué?"
     libro: [82]
-    fijar: { V_mc: 3.3, k_m: 0.5 }
+    fijar: { V_mc: 3.3, k_m: 0.5, V_th: 4 }
     widget:
-      tipo: grafica
-      x: { id: vt, min: 2, max: 4, unidad: V, rotulo: "V_{th}" }
-      y: { min: 0, max: 0.5, unidad: A, rotulo: "I_{D}" }
-      curvas:
-        - { expr: "0.5*k_m*max(0, V_mc - vt)^2", color: azul, rotulo: "corriente con 3,3 V" }
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_dd, rd: R_d, entrada: V_mc, k: k_m, vth: V_th }
+      lectura: { valor: I_d, rotulo: "Corriente de la tira" }
+      corriente: I_d
+      mide: { id: I_d, vds: V_ds }
     opciones:
       - texto: "Lo que cuenta es la sobreexcitación, V_{GS} − V_{th}, y aquí es pequeña o nula"
         bien: true
@@ -207,13 +217,17 @@ tarjetas:
     tipo: pregunta
     titulo: "Desde un Arduino"
     texto: "Una tira de LED de 12 V y 2 A desde un pin de 5 V. ¿Qué MOSFET hace falta?"
-    libro: [77, "cap07#236"]
+    libro: [77, 82, "cap07#236"]
+    fijar: { V_mc: 5, V_th: 4, k_m: 0.5 }
     widget:
-      tipo: grafica
-      x: { id: vt, min: 2, max: 4, unidad: V, rotulo: "V_{th}" }
-      y: { min: 0, max: 0.5, unidad: A, rotulo: "I_{D}" }
-      curvas:
-        - { expr: "0.5*k_m*max(0, V_mc - vt)^2", color: azul, rotulo: "corriente con 3,3 V" }
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_dd, rd: R_d, entrada: V_mc, k: k_m, vth: V_th }
+      lectura: { valor: I_d, rotulo: "Corriente de la tira" }
+      datos:
+        - { valor: V_ds, rotulo: "V_{DS} = {{V_ds}}" }
+      corriente: I_d
+      mide: { id: I_d, vds: V_ds }
     opciones:
       - texto: "Uno de canal N de nivel lógico, como el IRLZ44N"
         bien: true

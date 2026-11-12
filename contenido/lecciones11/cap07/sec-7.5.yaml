@@ -1,5 +1,9 @@
 # Lección 1.2 de la sección 7.5 «El MOSFET como Interruptor de Potencia» (cap07). Formato: contenido/lecciones11/GUIA.md.
 # El PWM se dibuja a 1 kHz (la frecuencia del ejemplo del libro). La carga es la de 12 V y 2 A (6 Ω) del libro.
+# 1.2: el interruptor es el esquema «mosfet» (PWM, pull-down de 10 kΩ). El transistor es de ejemplo: V_th = 2 V y
+# k = 6,25 A/V², elegido para que R_DS(on) ≈ 1/(k·V_ov) dé los 20 mΩ del libro con 10 V de puerta (sección 7.2).
+# El lineal es el mismo MOSFET en saturación con la V_GS que da la mitad de potencia; «en el osciloscopio», 2,5 V de
+# puerta (ejemplo de puerta insuficiente).
 leccion: cap07/sec-7.5
 
 libro:
@@ -22,7 +26,18 @@ modelo:
     R_L: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 6 }
     R_on: { sim: "R_{DS(on)}", nombre: "resistencia en conducción", unidad: Ω, valor: 0.02 }
     x_p: { sim: "P/P_{máx}", nombre: "fracción de la potencia", unidad: "", valor: 0.5 }
+    V_gx: { sim: "V_{G}", nombre: "nivel alto de la puerta", unidad: V, valor: 10 }
+    V_ts: { sim: "V_{th}", nombre: "tensión umbral (ejemplo)", unidad: V, valor: 2 }
+    k_s: { sim: "k", nombre: "parámetro del transistor (ejemplo)", unidad: "A/V²", valor: 6.25 }
+    R_pd: { sim: "R_{GS}", nombre: "pull-down de puerta", unidad: Ω, valor: 10000 }
   calculos:
+    f_p: { expr: "1/T_p", sim: "f", nombre: "frecuencia del PWM", unidad: Hz }
+    V_ox: { expr: "max(0, V_gx - V_ts)", sim: "V_{ov}", nombre: "sobreexcitación con la puerta alta", unidad: V }
+    b_x: { expr: "k_s*V_ox + 1/R_L", sim: "b", nombre: "coeficiente", unidad: "" }
+    V_trx: { expr: "(b_x - sqrt(max(0, b_x^2 - 2*k_s*V_al/R_L)))/k_s", sim: "V_{tri}", nombre: "V_DS en zona óhmica", unidad: V }
+    V_stx: { expr: "V_al - R_L*k_s*V_ox^2/2", sim: "V_{sat}", nombre: "V_DS en saturación", unidad: V }
+    V_on: { expr: "max(V_stx, min(V_ox, V_trx))", sim: "V_{DS(on)}", nombre: "V_DS con la puerta alta", unidad: V }
+    I_on: { expr: "(V_al - V_on)/R_L", sim: "I_{D}", nombre: "corriente con la puerta alta", unidad: A }
     V_pr: { expr: "D*V_al", sim: "V_{promedio}", nombre: "tensión media", unidad: V }
     t_on: { expr: "D*T_p", sim: "t_{on}", nombre: "tiempo encendido", unidad: s }
     V_lin: { expr: "V_al*sqrt(x_p)", sim: "V_{carga}", nombre: "tensión en la carga con el lineal", unidad: V }
@@ -32,24 +47,28 @@ modelo:
     ren: { expr: "100*x_p*V_al^2/R_L/(x_p*V_al^2/R_L + P_lin)", sim: "η", nombre: "rendimiento del lineal", unidad: "%", cifras: 2 }
     P_rms: { expr: "V_al^2*D/R_L", sim: "P", nombre: "potencia en la carga", unidad: W }
     P_med: { expr: "(D*V_al)^2/R_L", sim: "P", nombre: "con la tensión media", unidad: W }
+    V_gl: { expr: "V_ts + sqrt(2*I_lin/k_s)", sim: "V_{GS}", nombre: "puerta del lineal", unidad: V }
+    V_tl: { expr: "V_al - V_lin", sim: "V_{DS}", nombre: "caída en el transistor lineal", unidad: V }
 
 tarjetas:
   - id: explore-pwm
     tipo: explorar
     titulo: "Encendido o apagado"
-    texto: "Arrastre el flanco de bajada para cambiar el ciclo de trabajo. Mire la tensión media."
-    libro: [89, 90]
-    fijar: { V_al: 12, T_p: 0.001 }
+    texto: "La carga de 6 Ω con PWM a 1 kHz. Cambie el ciclo de trabajo y mire el drenador y la tensión media."
+    nota: "Transistor de ejemplo de 20 mΩ en conducción."
+    libro: [89, 90, 93]
+    fijar: { V_al: 12, T_p: 0.001, R_L: 6, V_gx: 10 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
-      y: { min: 0, max: 14, unidad: V, rotulo: "v_{carga}" }
-      curvas:
-        - { expr: "V_al*floor(1 + D - (t/T_p - floor(t/T_p)))", color: azul, rotulo: "PWM" }
-        - { expr: "D*V_al", color: naranja, rotulo: "media", discontinua: true }
-      asas:
-        - { mueve: D, x: "t_on", y: "V_al", rotulo: "Flanco de bajada" }
-      lectura: { valor: V_pr, rotulo: "Tensión media" }
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_al, rd: R_L, entrada: V_gx, rgs: R_pd, k: k_s, vth: V_ts, f: f_p, ciclo: D }
+      lectura: { valor: V_pr, rotulo: "Tensión media en la carga" }
+      grafica:
+        x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 14, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_al - (1 - ceil(t*f_p - floor(t*f_p) - D))*(V_al - V_on)", color: naranja, rotulo: "v_{D}", mide: drenador }
+          - { expr: "V_gx*(1 - ceil(t*f_p - floor(t*f_p) - D))", color: azul, rotulo: "v_{G}", mide: puerta, discontinua: true }
       mandos:
         - { valor: D, min: 0.05, max: 0.95, paso: 0.05, rotulo: "Ciclo de trabajo" }
 
@@ -110,12 +129,14 @@ tarjetas:
     libro: [93]
     fijar: { V_al: 12, R_L: 6, R_on: 0.02, x_p: 0.5 }
     widget:
-      tipo: grafica
-      x: { id: xf, min: 0, max: 1, unidad: "", rotulo: "fracción de la potencia" }
-      y: { min: 0, max: 7, unidad: W, rotulo: "disipación" }
-      curvas:
-        - { expr: "(V_al - V_al*sqrt(xf))*V_al*sqrt(xf)/R_L", color: azul, rotulo: "lineal" }
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_al, rd: R_L, entrada: V_gl, k: k_s, vth: V_ts }
       lectura: { valor: P_lin, rotulo: "Disipación del transistor lineal" }
+      datos:
+        - { valor: V_tl, rotulo: "V_{DS} = {{V_tl}}" }
+      corriente: I_lin
+      mide: { id: I_lin, vds: V_tl }
       ocultar: true
     opciones:
       - texto: "Unos 5 W"
@@ -245,13 +266,13 @@ tarjetas:
     titulo: "La resistencia de 10 kΩ"
     texto: "¿Para qué se pone una resistencia de unos 10 kΩ entre puerta y fuente?"
     libro: [91]
-    fijar: { V_al: 12, T_p: 0.001 }
+    fijar: { V_al: 12, R_L: 6, V_gx: 10 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
-      y: { min: 0, max: 14, unidad: V, rotulo: "v_{carga}" }
-      curvas:
-        - { expr: "V_al*floor(1 + D - (t/T_p - floor(t/T_p)))", color: azul, rotulo: "PWM" }
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_al, rd: R_L, entrada: V_gx, rgs: R_pd, k: k_s, vth: V_ts }
+      corriente: I_on
+      mide: { id: I_on, vds: V_on, vgs: V_gx }
     opciones:
       - texto: "Para que, sin control, la puerta quede a 0 V y el MOSFET apagado"
         bien: true
@@ -269,13 +290,13 @@ tarjetas:
     titulo: "Sin driver"
     texto: "Un pin de microcontrolador gobierna directamente la puerta de un MOSFET de potencia a cien kilohercios. ¿Qué pasa?"
     libro: [96]
-    fijar: { V_al: 12, T_p: 0.001 }
+    fijar: { V_al: 12, R_L: 6, V_gx: 10 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
-      y: { min: 0, max: 14, unidad: V, rotulo: "v_{carga}" }
-      curvas:
-        - { expr: "V_al*floor(1 + D - (t/T_p - floor(t/T_p)))", color: azul, rotulo: "PWM" }
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_al, rd: R_L, entrada: V_gx, rgs: R_pd, k: k_s, vth: V_ts }
+      corriente: I_on
+      mide: { id: I_on, vds: V_on }
     opciones:
       - texto: "Las transiciones duran microsegundos y el transistor se calienta"
         bien: true
@@ -292,14 +313,18 @@ tarjetas:
     tipo: pregunta
     titulo: "En el osciloscopio"
     texto: "En el drenador, la tensión en conducción no baja de varios voltios. ¿Qué le pasa al MOSFET?"
+    nota: "Puerta de ejemplo de 2,5 V."
     libro: [98]
-    fijar: { V_al: 12, T_p: 0.001 }
+    fijar: { V_al: 12, T_p: 0.001, R_L: 6, D: 0.5, V_gx: 2.5 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
-      y: { min: 0, max: 14, unidad: V, rotulo: "v_{carga}" }
-      curvas:
-        - { expr: "V_al*floor(1 + D - (t/T_p - floor(t/T_p)))", color: azul, rotulo: "PWM" }
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_al, rd: R_L, entrada: V_gx, rgs: R_pd, k: k_s, vth: V_ts, f: f_p, ciclo: D }
+      grafica:
+        x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 14, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_al - (1 - ceil(t*f_p - floor(t*f_p) - D))*(V_al - V_on)", color: naranja, rotulo: "v_{D}", mide: drenador }
     opciones:
       - texto: "Trabaja en saturación por puerta insuficiente"
         bien: true

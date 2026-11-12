@@ -1,6 +1,7 @@
 # Lección 1.2 de la sección 7.3 «Identificación Física y Símbolos» (cap07). Formato: contenido/lecciones11/GUIA.md.
 # Los dos transistores «misteriosos» (umbral de 1,5 V y de 3,5 V, con k = 0,5 A/V² de la figura 7.3) son un ejemplo
 # ilustrativo dentro de los márgenes de la sección 7.1 (de 1 a 2 V los de nivel lógico, de 3 a 4 V los estándar).
+# 1.2: todo sobre el esquema «mosfet» (el diodo de cuerpo dibujado), con la carga de 6 Ω y 12 V de la sección 7.5.
 leccion: cap07/sec-7.3
 
 libro:
@@ -19,32 +20,38 @@ libro:
   70: "si mide kilohmios o menos, la puerta está dañada"
   "cap07#12": "de 1 a 2 V en los de nivel lógico, de 3 a 4 V en los estándar"
   "cap07#40": "(k = 0,5 A/V², Vth = 2 V)"
+  "cap07#93": "la carga resistiva de 6 Ω"
 
 modelo:
   valores:
     V_gs: { sim: "V_{GS}", nombre: "tensión de la fuente de laboratorio", unidad: V, valor: 0 }
     s_t: { tipo: interruptor, nombre: "segundo transistor", valor: 0 }
     k_m: { sim: "k", nombre: "parámetro del transistor", unidad: "A/V²", valor: 0.5 }
+    V_dd: { sim: "V_{DD}", nombre: "alimentación de la carga", unidad: V, valor: 12 }
+    R_d: { sim: "R_{D}", nombre: "carga", unidad: Ω, valor: 6 }
   calculos:
     V_t: { si: s_t, entonces: "3.5", sino: "1.5", sim: "V_{th}", nombre: "tensión umbral del transistor", unidad: V }
-    I_d: { expr: "0.5*k_m*max(0, V_gs - V_t)^2", sim: "I_{D}", nombre: "corriente del canal", unidad: A }
+    V_ov: { expr: "max(0, V_gs - V_t)", sim: "V_{ov}", nombre: "tensión de sobreexcitación", unidad: V }
+    b_m: { expr: "k_m*V_ov + 1/R_d", sim: "b", nombre: "coeficiente", unidad: "" }
+    V_tri: { expr: "(b_m - sqrt(max(0, b_m^2 - 2*k_m*V_dd/R_d)))/k_m", sim: "V_{tri}", nombre: "V_DS en zona óhmica", unidad: V }
+    V_sat: { expr: "V_dd - R_d*k_m*V_ov^2/2", sim: "V_{sat}", nombre: "V_DS en saturación", unidad: V }
+    V_ds: { expr: "max(V_sat, min(V_ov, V_tri))", sim: "V_{DS}", nombre: "tensión drenador-fuente", unidad: V }
+    I_d: { expr: "(V_dd - V_ds)/R_d", sim: "I_{D}", nombre: "corriente del canal", unidad: A }
 
 tarjetas:
   - id: explore-umbral
     tipo: explorar
     titulo: "Busque el umbral"
     texto: "Suba V_{GS} con la fuente de laboratorio y mire cuándo empieza a conducir el canal. Cambie de transistor y repita."
-    nota: "Dos transistores de ejemplo, con k = 0,5 A/V²."
-    libro: ["cap07#40", "cap07#12"]
+    nota: "Dos transistores de ejemplo, con k = 0,5 A/V², sobre una carga de 6 Ω."
+    libro: ["cap07#40", "cap07#12", "cap07#93"]
     widget:
-      tipo: grafica
-      x: { id: vg, min: 0, max: 6, unidad: V, rotulo: "V_{GS}" }
-      y: { min: 0, max: 2, unidad: A, rotulo: "I_{D}" }
-      curvas:
-        - { expr: "0.5*k_m*max(0, vg - V_t)^2", color: azul, rotulo: "corriente del canal" }
-      asas:
-        - { mueve: V_gs, x: "V_gs", y: "I_d", rotulo: "Su fuente" }
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_dd, rd: R_d, entrada: V_gs, k: k_m, vth: V_t }
       lectura: { valor: I_d, rotulo: "Corriente del canal" }
+      corriente: I_d
+      mide: { id: I_d, vds: V_ds, vgs: V_gs }
       mandos:
         - { valor: V_gs, min: 0, max: 6, paso: 0.1, rotulo: "Tensión de la fuente" }
         - { valor: s_t, tipo: interruptor, rotulo: "Segundo transistor" }
@@ -55,14 +62,14 @@ tarjetas:
     titulo: "¿De qué familia es?"
     texto: "Un transistor desconocido empieza a conducir hacia 1,5 V de puerta. ¿De qué familia es?"
     libro: ["cap07#12"]
-    fijar: { s_t: 0 }
+    fijar: { s_t: 0, V_gs: 2 }
     widget:
-      tipo: grafica
-      x: { id: vg, min: 0, max: 6, unidad: V, rotulo: "V_{GS}" }
-      y: { min: 0, max: 2, unidad: A, rotulo: "I_{D}" }
-      curvas:
-        - { expr: "0.5*k_m*max(0, vg - V_t)^2", color: azul, rotulo: "corriente del canal" }
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_dd, rd: R_d, entrada: V_gs, k: k_m, vth: V_t }
       lectura: { valor: V_t, rotulo: "Umbral de este transistor" }
+      corriente: I_d
+      mide: { id: I_d, vgs: V_gs }
       ocultar: true
     opciones:
       - texto: "Nivel lógico"
@@ -103,11 +110,10 @@ tarjetas:
     texto: "En un canal N, el diodo conduce con la punta roja en un terminal. ¿Qué terminal es?"
     libro: [62]
     widget:
-      tipo: grafica
-      x: { id: vg, min: 0, max: 6, unidad: V, rotulo: "V_{GS}" }
-      y: { min: 0, max: 2, unidad: A, rotulo: "I_{D}" }
-      curvas:
-        - { expr: "0.5*k_m*max(0, vg - V_t)^2", color: azul, rotulo: "corriente del canal" }
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_dd, rd: R_d, entrada: V_gs, k: k_m, vth: V_t }
+      mide: { id: I_d, vds: V_ds }
     opciones:
       - texto: "La fuente"
         bien: true
@@ -126,11 +132,10 @@ tarjetas:
     texto: "Entre medida y medida hay que unir la puerta con la fuente. ¿Por qué?"
     libro: [63]
     widget:
-      tipo: grafica
-      x: { id: vg, min: 0, max: 6, unidad: V, rotulo: "V_{GS}" }
-      y: { min: 0, max: 2, unidad: A, rotulo: "I_{D}" }
-      curvas:
-        - { expr: "0.5*k_m*max(0, vg - V_t)^2", color: azul, rotulo: "corriente del canal" }
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_dd, rd: R_d, entrada: V_gs, k: k_m, vth: V_t }
+      mide: { id: I_d, vds: V_ds }
     opciones:
       - texto: "Su capacidad conserva la carga y falsea las lecturas siguientes"
         bien: true
@@ -203,11 +208,10 @@ tarjetas:
     texto: "Un MOSFET recuperado mide unos kilohmios entre puerta y fuente. ¿Qué indica?"
     libro: [70]
     widget:
-      tipo: grafica
-      x: { id: vg, min: 0, max: 6, unidad: V, rotulo: "V_{GS}" }
-      y: { min: 0, max: 2, unidad: A, rotulo: "I_{D}" }
-      curvas:
-        - { expr: "0.5*k_m*max(0, vg - V_t)^2", color: azul, rotulo: "corriente del canal" }
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_dd, rd: R_d, entrada: V_gs, k: k_m, vth: V_t }
+      mide: { id: I_d, vds: V_ds }
     opciones:
       - texto: "La puerta está dañada"
         bien: true

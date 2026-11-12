@@ -1,7 +1,7 @@
 # Lección 1.2 de la sección 8.5 «El Temporizador NE555» (cap08). Formato: contenido/lecciones11/GUIA.md.
-# La carga del condensador del astable (de V_CC/3 hacia V_CC a través de R_a + R_b, hasta 2/3) se dibuja con el esquema
-# «carga-rc», que reproduce ese tramo; los comparadores y el biestable no se dibujan (petición de un esquema del 555 en
-# scratchpad/peticiones-motor12.md). V_CC = 9 V es un ejemplo: el libro subraya que el tiempo no depende de ella.
+# 1.2: el astable es el esquema «ne555-astable» (comparadores a ⅓ y ⅔, biestable y descarga), simulado con su
+# condensador y su salida; las curvas usan ln 2 exacto (el libro redondea a 0,693). V_CC = 9 V es un ejemplo: el libro
+# subraya que el tiempo no depende de ella.
 leccion: cap08/sec-8.5
 
 libro:
@@ -37,28 +37,31 @@ modelo:
     f_44: { expr: "1.44/((R_a + 2*R_b)*C_t)", sim: "f", nombre: "frecuencia del astable", unidad: Hz }
     D_t: { expr: "100*R_ab/(R_a + 2*R_b)", sim: "D", nombre: "ciclo de trabajo", unidad: "%", cifras: 3 }
     T_m: { expr: "1.1*R_m*C_m", sim: "T", nombre: "duración del pulso", unidad: s }
+    th5: { expr: "ln(2)*(R_a + R_b)*C_t", sim: "t_{alto}", nombre: "tiempo en alto (ln 2)", unidad: s }
+    tl5: { expr: "ln(2)*R_b*C_t", sim: "t_{bajo}", nombre: "tiempo en bajo (ln 2)", unidad: s }
+    T5: { expr: "th5 + tl5", sim: "T", nombre: "periodo", unidad: s }
 
 tarjetas:
   - id: explore-carga
     tipo: explorar
     titulo: "Entre un tercio y dos tercios"
-    texto: "En alto, el condensador se carga por R_{a} + R_{b} desde V_{CC}/3 y la salida cae al llegar a 2V_{CC}/3. Cambie las resistencias."
+    texto: "El condensador sube por R_{a} + R_{b} hasta 2V_{CC}/3 y baja por R_{b} hasta V_{CC}/3. Cambie las resistencias."
     nota: "V_{CC} de ejemplo."
-    libro: [99, 100]
+    libro: [99, 100, 101]
     fijar: { V_cc: 9, C_t: 100e-9 }
     widget:
       tipo: circuito
-      esquema: carga-rc
-      piezas: { fuente: V_cc, r: R_ab, c: C_t, v0: V_0 }
+      esquema: ne555-astable
+      piezas: { vcc: V_cc, ra: R_a, rb: R_b, c: C_t }
       lectura: { valor: t_hi, rotulo: "Tiempo en alto" }
+      datos:
+        - { valor: t_lo, rotulo: "En bajo: {{t_lo}}" }
       grafica:
-        x: { id: t, min: 0, max: 0.003, unidad: s, rotulo: "t" }
-        y: { min: 0, max: 10, unidad: V, rotulo: "v_{C}" }
+        x: { id: t, min: 0, max: 0.005, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 10, unidad: V, rotulo: "v" }
         curvas:
-          - { expr: "V_cc - (V_cc - V_0)*exp(-t/tau_t)", color: naranja, rotulo: "v_{C}", mide: vc }
-          - { expr: "V_23", color: tinta, rotulo: "umbral de 2/3", discontinua: true }
-        marcas:
-          - { x: "t_hi", y: "V_23", rotulo: "Cae la salida" }
+          - { expr: "(1 - min(1, floor((t - T5*floor(t/T5))/th5)))*(V_cc - 2*V_cc/3*exp(-(t - T5*floor(t/T5))/((R_a + R_b)*C_t))) + min(1, floor((t - T5*floor(t/T5))/th5))*2*V_cc/3*exp(-(t - T5*floor(t/T5) - th5)/(R_b*C_t))", color: naranja, rotulo: "v_{C}", mide: vc }
+          - { expr: "V_cc*(1 - min(1, floor((t - T5*floor(t/T5))/th5)))", color: azul, rotulo: "v_{o}", mide: salida, discontinua: true }
       mandos:
         - { valor: R_a, lista: [1000, 10000], rotulo: "R_{a}" }
         - { valor: R_b, lista: [4700, 10000, 22000], rotulo: "R_{b}" }
@@ -71,15 +74,16 @@ tarjetas:
     fijar: { R_a: 1000, R_b: 10000, C_t: 100e-9, V_cc: 9 }
     widget:
       tipo: circuito
-      esquema: carga-rc
-      piezas: { fuente: V_cc, r: R_ab, c: C_t, v0: V_0 }
+      esquema: ne555-astable
+      piezas: { vcc: V_cc, ra: R_a, rb: R_b, c: C_t }
       lectura: { valor: f_t, rotulo: "Frecuencia" }
       ocultar: true
       grafica:
         x: { id: t, min: 0, max: 0.003, unidad: s, rotulo: "t" }
-        y: { min: 0, max: 10, unidad: V, rotulo: "v_{C}" }
+        y: { min: 0, max: 10, unidad: V, rotulo: "v" }
         curvas:
-          - { expr: "V_cc - (V_cc - V_0)*exp(-t/tau_t)", color: naranja, rotulo: "v_{C}", mide: vc }
+          - { expr: "(1 - min(1, floor((t - T5*floor(t/T5))/th5)))*(V_cc - 2*V_cc/3*exp(-(t - T5*floor(t/T5))/((R_a + R_b)*C_t))) + min(1, floor((t - T5*floor(t/T5))/th5))*2*V_cc/3*exp(-(t - T5*floor(t/T5) - th5)/(R_b*C_t))", color: naranja, rotulo: "v_{C}", mide: vc }
+          - { expr: "V_cc*(1 - min(1, floor((t - T5*floor(t/T5))/th5)))", color: azul, rotulo: "v_{o}", mide: salida, discontinua: true }
     opciones:
       - texto: "687 Hz"
         bien: true
@@ -119,19 +123,21 @@ tarjetas:
     titulo: "Un astable de 1 kHz"
     texto: "Con R_{a} = 1 kΩ y 100 nF, elija R_{b} de la serie E12 para 1 kHz."
     libro: [92, "cap08#246"]
-    fijar: { R_a: 1000, C_t: 100e-9 }
+    fijar: { R_a: 1000, C_t: 100e-9, V_cc: 9 }
     inicio: { R_b: 10000 }
     widget:
-      tipo: grafica
-      x: { id: rx, min: 1000, max: 30000, unidad: Ω, rotulo: "R_{b}" }
-      y: { min: 0, max: 5000, unidad: Hz, rotulo: "f" }
-      curvas:
-        - { expr: "1.44/((R_a + 2*rx)*C_t)", color: azul, rotulo: "f" }
-      asas:
-        - { mueve: R_b, x: "R_b", y: "f_44", rotulo: "Su R_{b}" }
+      tipo: circuito
+      esquema: ne555-astable
+      piezas: { vcc: V_cc, ra: R_a, rb: R_b, c: C_t }
       lectura: { valor: f_44, rotulo: "Frecuencia" }
+      grafica:
+        x: { id: t, min: 0, max: 0.003, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 10, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "(1 - min(1, floor((t - T5*floor(t/T5))/th5)))*(V_cc - 2*V_cc/3*exp(-(t - T5*floor(t/T5))/((R_a + R_b)*C_t))) + min(1, floor((t - T5*floor(t/T5))/th5))*2*V_cc/3*exp(-(t - T5*floor(t/T5) - th5)/(R_b*C_t))", color: naranja, rotulo: "v_{C}", mide: vc }
+          - { expr: "V_cc*(1 - min(1, floor((t - T5*floor(t/T5))/th5)))", color: azul, rotulo: "v_{o}", mide: salida, discontinua: true }
       mandos:
-        - { valor: R_b, serie: E12, min: 1000, max: 27000, rotulo: "R_{b} (E12)" }
+        - { valor: R_b, serie: E12, min: 3300, max: 27000, rotulo: "R_{b} (E12)" }
     condiciones:
       - { valor: f_44, objetivo: 1000, tol: 0.02, rotulo: "Frecuencia: {{f_44}}" }
     exito: "6,8 kΩ da 986 Hz con la fórmula. El cálculo exacto pide 6700 Ω."
@@ -150,18 +156,20 @@ tarjetas:
     titulo: "Nunca por debajo del 50 %"
     texto: "Con R_{b} = 10 kΩ, baje R_{a} todo lo posible y mire el ciclo de trabajo."
     libro: [101]
-    fijar: { R_b: 10000 }
+    fijar: { R_b: 10000, C_t: 100e-9, V_cc: 9 }
     inicio: { R_a: 10000 }
     widget:
-      tipo: grafica
-      x: { id: ax, min: 0, max: 20000, unidad: Ω, rotulo: "R_{a}" }
-      y: { min: 40, max: 80, unidad: "%", rotulo: "ciclo de trabajo" }
-      curvas:
-        - { expr: "100*(ax + R_b)/(ax + 2*R_b)", color: azul, rotulo: "D" }
-        - { expr: "50", color: tinta, rotulo: "50 %", discontinua: true }
-      asas:
-        - { mueve: R_a, x: "R_a", y: "D_t", rotulo: "Su R_{a}" }
+      tipo: circuito
+      esquema: ne555-astable
+      piezas: { vcc: V_cc, ra: R_a, rb: R_b, c: C_t }
       lectura: { valor: D_t, rotulo: "Ciclo de trabajo" }
+      grafica:
+        x: { id: t, min: 0, max: 0.005, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 10, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "(1 - min(1, floor((t - T5*floor(t/T5))/th5)))*(V_cc - 2*V_cc/3*exp(-(t - T5*floor(t/T5))/((R_a + R_b)*C_t))) + min(1, floor((t - T5*floor(t/T5))/th5))*2*V_cc/3*exp(-(t - T5*floor(t/T5) - th5)/(R_b*C_t))", color: naranja, rotulo: "v_{C}", mide: vc }
+          - { expr: "V_cc*(1 - min(1, floor((t - T5*floor(t/T5))/th5)))", color: azul, rotulo: "v_{o}", mide: salida, discontinua: true }
+
       mandos:
         - { valor: R_a, min: 100, max: 20000, paso: 100, rotulo: "R_{a}" }
     requiere: { mover: [R_a] }
@@ -171,13 +179,17 @@ tarjetas:
     titulo: "¿Por qué siempre más del 50 %?"
     texto: "Por pequeña que sea R_{a}, el tiempo en alto supera al tiempo en bajo. ¿Por qué?"
     libro: [101]
-    fijar: { R_b: 10000 }
+    fijar: { R_b: 10000, R_a: 1000, C_t: 100e-9, V_cc: 9 }
     widget:
-      tipo: grafica
-      x: { id: ax, min: 0, max: 20000, unidad: Ω, rotulo: "R_{a}" }
-      y: { min: 40, max: 80, unidad: "%", rotulo: "ciclo de trabajo" }
-      curvas:
-        - { expr: "100*(ax + R_b)/(ax + 2*R_b)", color: azul, rotulo: "D" }
+      tipo: circuito
+      esquema: ne555-astable
+      piezas: { vcc: V_cc, ra: R_a, rb: R_b, c: C_t }
+      grafica:
+        x: { id: t, min: 0, max: 0.003, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 10, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "(1 - min(1, floor((t - T5*floor(t/T5))/th5)))*(V_cc - 2*V_cc/3*exp(-(t - T5*floor(t/T5))/((R_a + R_b)*C_t))) + min(1, floor((t - T5*floor(t/T5))/th5))*2*V_cc/3*exp(-(t - T5*floor(t/T5) - th5)/(R_b*C_t))", color: naranja, rotulo: "v_{C}", mide: vc }
+          - { expr: "V_cc*(1 - min(1, floor((t - T5*floor(t/T5))/th5)))", color: azul, rotulo: "v_{o}", mide: salida, discontinua: true }
     opciones:
       - texto: "La carga pasa por R_{a} y R_{b}; la descarga, solo por R_{b}"
         bien: true
@@ -220,13 +232,17 @@ tarjetas:
     titulo: "Con otra alimentación"
     texto: "Si se cambia la alimentación del 555, ¿qué le pasa a la frecuencia del astable?"
     libro: [105]
-    fijar: { C_t: 100e-9 }
+    fijar: { C_t: 100e-9, R_a: 1000, R_b: 10000, V_cc: 9 }
     widget:
-      tipo: grafica
-      x: { id: rx, min: 1000, max: 30000, unidad: Ω, rotulo: "R_{b}" }
-      y: { min: 0, max: 5000, unidad: Hz, rotulo: "f" }
-      curvas:
-        - { expr: "1.44/((R_a + 2*rx)*C_t)", color: azul, rotulo: "f" }
+      tipo: circuito
+      esquema: ne555-astable
+      piezas: { vcc: V_cc, ra: R_a, rb: R_b, c: C_t }
+      grafica:
+        x: { id: t, min: 0, max: 0.003, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 10, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "(1 - min(1, floor((t - T5*floor(t/T5))/th5)))*(V_cc - 2*V_cc/3*exp(-(t - T5*floor(t/T5))/((R_a + R_b)*C_t))) + min(1, floor((t - T5*floor(t/T5))/th5))*2*V_cc/3*exp(-(t - T5*floor(t/T5) - th5)/(R_b*C_t))", color: naranja, rotulo: "v_{C}", mide: vc }
+          - { expr: "V_cc*(1 - min(1, floor((t - T5*floor(t/T5))/th5)))", color: azul, rotulo: "v_{o}", mide: salida, discontinua: true }
     opciones:
       - texto: "No cambia: los umbrales son fracciones de la alimentación"
         bien: true

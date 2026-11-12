@@ -2,6 +2,9 @@
 # Los límites son los de la figura 7.13 del libro (sus datos): 100 V, 30 A, recta de 50 mΩ, 600 W en 100 µs y 60 W en
 # continua, con la focalización térmica que la recorta por encima de 20 V (aproximada aquí como I ∝ V^−1,6 hasta los
 # 0,23 A de la figura a 100 V). Son los valores de ejemplo de la figura, no de un transistor concreto.
+# 1.2: la avalancha va sobre el esquema «mosfet» con carga inductiva: 24 V y un transistor de 60 V (sección 7.4), la
+# bobina de 10 mH con 10 Ω (τ = 1 ms, sección 4.3); el transistor (k = 6,25 A/V², V_th = 2 V, 10 V de puerta) es de
+# ejemplo. La avería usa la carga de 6 Ω con 12 V de la sección 7.5, R_G = 100 Ω y el pull-down de 10 kΩ (ejemplo).
 leccion: cap07/sec-7.10
 
 libro:
@@ -17,12 +20,48 @@ libro:
   180: "va desplazando la tensión umbral"
   185: "si la conducción es plena (VDS de milivoltios) o el transistor está trabajando en zona lineal por puerta insuficiente"
   186: "Área de operación segura con sus cinco límites"
+  183: "Puerta gobernada siempre, nunca flotante, con resistencia a fuente"
+  "cap07#79": "para 24 V se elige un transistor de 60 V"
+  "cap07#91": "conviene una resistencia de pull-down (de unos 10 kΩ) entre compuerta y fuente"
+  "cap07#93": "la carga resistiva de 6 Ω"
+  "cap04#74": "Con la misma bobina y 10 Ω, τ sube a 1 ms"
 
 modelo:
   valores:
     V_o: { sim: "V_{DS}", nombre: "tensión del punto de trabajo", unidad: V, valor: 10 }
     I_o: { sim: "I_{D}", nombre: "corriente del punto de trabajo", unidad: A, valor: 1 }
+    Vd_i: { sim: "V_{DD}", nombre: "alimentación", unidad: V, valor: 24 }
+    R_i: { sim: "R", nombre: "resistencia del devanado", unidad: Ω, valor: 10 }
+    L_i: { sim: "L", nombre: "inductancia de la carga", unidad: H, valor: 0.01 }
+    Vg_i: { sim: "V_{G}", nombre: "nivel alto de la puerta", unidad: V, valor: 10 }
+    k_i: { sim: "k", nombre: "parámetro del transistor (ejemplo)", unidad: "A/V²", valor: 6.25 }
+    Vth_i: { sim: "V_{th}", nombre: "tensión umbral (ejemplo)", unidad: V, valor: 2 }
+    f_i: { sim: "f", nombre: "frecuencia de la puerta", unidad: Hz, valor: 100 }
+    D_i: { sim: "D", nombre: "ciclo de trabajo", unidad: "", valor: 0.1 }
+    BV_i: { sim: "BV", nombre: "tensión de avalancha", unidad: V, valor: 60 }
+    Vf_i: { sim: "V_{F}", nombre: "caída del diodo de rueda libre", unidad: V, valor: 0.7 }
+    rueda_i: { tipo: interruptor, nombre: "diodo de rueda libre conectado", valor: 1 }
+    Vdd_a: { sim: "V_{DD}", nombre: "alimentación de la carga", unidad: V, valor: 12 }
+    Rd_a: { sim: "R_{D}", nombre: "carga", unidad: Ω, valor: 6 }
+    Vg_a: { sim: "V_{mando}", nombre: "salida del mando de puerta", unidad: V, valor: 10 }
+    Rg_a: { sim: "R_{G}", nombre: "resistencia de puerta", unidad: Ω, valor: 100 }
+    Rgs_a: { sim: "R_{GS}", nombre: "pull-down de puerta", unidad: Ω, valor: 10000 }
   calculos:
+    Vov_i: { expr: "Vg_i - Vth_i", sim: "V_{ov}", nombre: "sobreexcitación con la puerta alta", unidad: V }
+    b_i: { expr: "k_i*Vov_i + 1/R_i", sim: "b", nombre: "coeficiente", unidad: "" }
+    Von_i: { expr: "(b_i - sqrt(b_i^2 - 2*k_i*Vd_i/R_i))/k_i", sim: "V_{DS(on)}", nombre: "V_DS conduciendo", unidad: V }
+    I0_i: { expr: "(Vd_i - Von_i)/R_i", sim: "I_{0}", nombre: "corriente al apagar", unidad: A }
+    to_i: { expr: "D_i/f_i", sim: "t_{off}", nombre: "instante del apagado", unidad: s }
+    Vx_i: { expr: "rueda_i*Vf_i + (1 - rueda_i)*(BV_i - Vd_i)", sim: "V_{ext}", nombre: "tensión de extinción", unidad: V }
+    tx_i: { expr: "L_i/R_i*ln(1 + I0_i*R_i/Vx_i)", sim: "t_{ext}", nombre: "tiempo de extinción", unidad: s }
+    Vpk_i: { expr: "Vd_i + Vx_i", sim: "v_{D,máx}", nombre: "pico en el drenador al apagar", unidad: V }
+    Vgs_a: { expr: "Vg_a*Rgs_a/(Rg_a + Rgs_a)", sim: "V_{GS}", nombre: "tensión puerta-fuente", unidad: V }
+    Vov_a: { expr: "max(0, Vgs_a - Vth_i)", sim: "V_{ov}", nombre: "sobreexcitación", unidad: V }
+    b_a: { expr: "k_i*Vov_a + 1/Rd_a", sim: "b", nombre: "coeficiente", unidad: "" }
+    Vtri_a: { expr: "(b_a - sqrt(max(0, b_a^2 - 2*k_i*Vdd_a/Rd_a)))/k_i", sim: "V_{tri}", nombre: "V_DS en zona óhmica", unidad: V }
+    Vsat_a: { expr: "Vdd_a - Rd_a*k_i*Vov_a^2/2", sim: "V_{sat}", nombre: "V_DS en saturación", unidad: V }
+    Vds_a: { expr: "max(Vsat_a, min(Vov_a, Vtri_a))", sim: "V_{DS}", nombre: "tensión drenador-fuente", unidad: V }
+    Id_a: { expr: "(Vdd_a - Vds_a)/Rd_a", sim: "I_{D}", nombre: "corriente de la carga", unidad: A }
     P_o: { expr: "V_o*I_o", sim: "P", nombre: "potencia del punto de trabajo", unidad: W }
     I_dc: { expr: "min(30, V_o/0.05, 60/V_o, 3*(V_o/20)^(-1.6))", sim: "I_{máx}", nombre: "límite en continua", unidad: A }
     I_hi: { expr: "min(30, V_o/0.05, 60/V_o)", sim: "I", nombre: "lo que dice la hipérbola", unidad: A }
@@ -172,6 +211,28 @@ tarjetas:
       - "Un transistor excelente conmutando puede ser pésimo como elemento lineal."
     solucion: "Uno especificado para SOA lineal."
 
+  - id: explore-avalancha
+    tipo: explorar
+    titulo: "Avalancha al apagar una bobina"
+    texto: "Una bobina con 24 V y un transistor de 60 V. Quite el diodo de rueda libre y mire el drenador al apagar."
+    nota: "Bobina de 10 mH con 10 Ω de devanado; transistor de ejemplo."
+    libro: [178, "cap07#79", "cap04#74"]
+    widget:
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: Vd_i, rd: R_i, l: L_i, entrada: Vg_i, k: k_i, vth: Vth_i, f: f_i, ciclo: D_i, bv: BV_i, vf: Vf_i, rueda: rueda_i }
+      lectura: { valor: Vpk_i, rotulo: "Pico en el drenador" }
+      datos:
+        - { valor: tx_i, rotulo: "La corriente se extingue en {{tx_i}}" }
+      grafica:
+        x: { id: t, min: 0, max: 0.005, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 70, unidad: V, rotulo: "v_{D}" }
+        curvas:
+          - { expr: "Von_i*(1 - ceil((t - to_i)/1e9)) + ceil((t - to_i)/1e9)*(Vd_i + Vx_i*ceil(max(0, (I0_i + Vx_i/R_i)*exp(-(t - to_i)*R_i/L_i) - Vx_i/R_i)/1e9))", color: naranja, rotulo: "v_{D}", mide: drenador }
+      mandos:
+        - { valor: rueda_i, tipo: interruptor, rotulo: "Diodo de rueda libre" }
+    requiere: { mover: [rueda_i] }
+
   - id: modos-fallo
     tipo: pregunta
     fase: "Empareje"
@@ -213,6 +274,40 @@ tarjetas:
     escalera:
       - "Con tensión y corriente a la vez, el punto se aleja del borde izquierdo."
     solucion: "Zona lineal por puerta insuficiente: fuera de la SOA en continua."
+
+  - id: averia-puerta
+    tipo: averia
+    titulo: "Busque la avería"
+    texto: "La carga de 6 Ω no recibe su potencia. Mida en la placa y señale la pieza averiada."
+    nota: "Mando de 10 V por R_{G} de ejemplo, con el pull-down de 10 kΩ."
+    libro: [176, 183, 185, "cap07#91", "cap07#93"]
+    widget:
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: Vdd_a, rd: Rd_a, entrada: Vg_a, rg: Rg_a, rgs: Rgs_a, k: k_i, vth: Vth_i }
+      mide: { id: Id_a, vds: Vds_a, vgs: Vgs_a }
+      mandos: []
+    averia:
+      pasos: 3
+      eleccion: fija
+      sospechosos:
+        - { id: mando, rotulo: "El mando de puerta" }
+        - { id: rgs, rotulo: "R_{GS} (la puerta)" }
+        - { id: rd, rotulo: "La carga R_{D}" }
+      sondas:
+        - { id: mando, rotulo: "Salida del mando", valor: Vg_a }
+        - { id: puerta, rotulo: "Puerta-fuente", valor: Vgs_a }
+        - { id: drenador, rotulo: "Drenador-fuente", valor: Vds_a }
+        - { id: corriente, rotulo: "Corriente de la carga", valor: Id_a }
+      fallos:
+        - { id: mando-bajo, pieza: mando, tipo: bajo, con: { Vg_a: 2.5 }, texto: "El mando da muy poca tensión: el transistor queda en zona lineal, con voltios en el drenador y corriente a la vez. Es la causa más frecuente de destrucción." }
+        - { id: rgs-corto, pieza: rgs, tipo: corto, con: { Rgs_a: 0.001 }, texto: "Puerta perforada: entre puerta y fuente hay un corto. El mando da su tensión, pero la puerta se queda en cero y el transistor no conduce." }
+        - { id: rd-abierta, pieza: rd, tipo: abierta, con: { Rd_a: 1e9 }, texto: "La carga está abierta: la puerta está bien y el canal conduce, pero no circula corriente y el drenador queda a cero." }
+    exito: "Midiendo el mando y la puerta se separa un mando débil de una puerta perforada."
+    escalera:
+      - "Compare la salida del mando con lo que llega a la puerta."
+      - "Con la puerta alta y el drenador en voltios, el transistor no está en zona óhmica."
+    solucion: "Mida mando, puerta y drenador: cada avería deja una combinación distinta."
 
   - id: resumen
     tipo: resumen

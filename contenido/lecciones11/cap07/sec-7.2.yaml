@@ -1,6 +1,7 @@
 # Lección 1.2 de la sección 7.2 «Las Regiones de Operación» (cap07). Formato: contenido/lecciones11/GUIA.md.
 # Curvas con k = 0,5 A/V² y V_th = 2 V (los de la figura 7.3). La forma de la región óhmica, k·(V_ov·V_DS − V_DS²/2),
 # es la del modelo de canal largo que dibuja la figura: da ½·k·V_ov² en la frontera y 1/(k·V_ov) cerca del origen.
+# 1.2: la predicción va sobre el esquema «mosfet» con la carga de 6 Ω y 12 V del ejemplo de la sección 7.5 (cap07#93).
 leccion: cap07/sec-7.2
 
 libro:
@@ -15,6 +16,7 @@ libro:
   46: "«Saturación» en el MOSFET es la región de amplificación"
   47: "Como interruptor, el MOSFET debe quedar en óhmica con holgura"
   48: "El producto de dos efectos lineales da la ley cuadrática"
+  "cap07#93": "la carga resistiva de 6 Ω"
 
 modelo:
   valores:
@@ -23,7 +25,14 @@ modelo:
     V_th: { sim: "V_{th}", nombre: "tensión umbral", unidad: V, valor: 2 }
     k_m: { sim: "k", nombre: "parámetro del transistor", unidad: "A/V²", valor: 0.5 }
     V_gr: { sim: "V_{GS}", nombre: "tensión de puerta del interruptor", unidad: V, valor: 10 }
+    Vc_dd: { sim: "V_{DD}", nombre: "alimentación de la carga", unidad: V, valor: 12 }
+    Rc_d: { sim: "R_{D}", nombre: "carga", unidad: Ω, valor: 6 }
   calculos:
+    bc_m: { expr: "k_m*V_ov + 1/Rc_d", sim: "b", nombre: "coeficiente", unidad: "" }
+    Vc_tri: { expr: "(bc_m - sqrt(max(0, bc_m^2 - 2*k_m*Vc_dd/Rc_d)))/k_m", sim: "V_{tri}", nombre: "V_DS en zona óhmica", unidad: V }
+    Vc_sat: { expr: "Vc_dd - Rc_d*k_m*V_ov^2/2", sim: "V_{sat}", nombre: "V_DS en saturación", unidad: V }
+    Vc_ds: { expr: "max(Vc_sat, min(V_ov, Vc_tri))", sim: "V_{DS}", nombre: "tensión drenador-fuente del circuito", unidad: V }
+    Ic_d: { expr: "(Vc_dd - Vc_ds)/Rc_d", sim: "I_{D}", nombre: "corriente de la carga", unidad: A }
     V_ov: { expr: "max(0, V_gs - V_th)", sim: "V_{ov}", nombre: "tensión de sobreexcitación", unidad: V }
     m_d: { expr: "min(V_ds, V_ov)", sim: "V_{DS}", nombre: "tensión útil del canal", unidad: V }
     I_d: { expr: "k_m*(V_ov*m_d - m_d^2/2)", sim: "I_{D}", nombre: "corriente de drenador", unidad: A }
@@ -57,16 +66,18 @@ tarjetas:
   - id: prediga-saturacion
     tipo: predecir
     titulo: "Prediga la corriente"
-    texto: "k = 0,5 A/V², V_{th} = 2 V, V_{GS} = 3 V y V_{DS} muy por encima de la frontera. ¿Qué corriente circula?"
-    libro: [40, 45]
+    texto: "k = 0,5 A/V², V_{th} = 2 V y V_{GS} = 3 V, con 12 V sobre una carga de 6 Ω. ¿Qué corriente circula?"
+    libro: [40, 45, "cap07#93"]
     fijar: { V_gs: 3, V_ds: 8 }
     widget:
-      tipo: grafica
-      x: { id: vd, min: 0, max: 10, unidad: V, rotulo: "V_{DS}" }
-      y: { min: 0, max: 4.5, unidad: A, rotulo: "I_{D}" }
-      curvas:
-        - { expr: "k_m*(V_ov*min(vd, V_ov) - min(vd, V_ov)^2/2)", color: azul, rotulo: "I_{D} con su V_{GS}" }
-      lectura: { valor: I_d, rotulo: "Corriente de drenador" }
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: Vc_dd, rd: Rc_d, entrada: V_gs, k: k_m, vth: V_th }
+      lectura: { valor: Ic_d, rotulo: "Corriente de drenador" }
+      datos:
+        - { valor: Vc_ds, rotulo: "V_{DS} = {{Vc_ds}}" }
+      corriente: Ic_d
+      mide: { id: Ic_d, vds: Vc_ds, vgs: V_gs }
       ocultar: true
     opciones:
       - texto: "250 mA"
@@ -74,13 +85,15 @@ tarjetas:
         porque: "En saturación: ½ · 0,5 · (3 − 2)² = 250 mA, sin importar V_{DS}."
       - texto: "500 mA"
         porque: "Ha olvidado el ½ de la ley cuadrática: k · V_{ov}² da el doble."
-      - texto: "Más cuanto mayor sea V_{DS}"
-        porque: "Eso pasa en la región óhmica. Por encima de la frontera, la corriente casi no depende de V_{DS}."
+      - texto: "2 A, lo que pide la carga: 12 V / 6 Ω"
+        porque: "Eso sería con el canal a fondo. Con 1 V de sobreexcitación el canal solo deja pasar ½ · k · V_{ov}²."
     escalera:
-      - "Por encima de la frontera, I_{D} = ½ · k · (V_{GS} − V_{th})²."
-    solucion: "½ · 0,5 · 1² = 0,25 A."
+      - "Quedan voltios de sobra entre drenador y fuente: el transistor está en saturación."
+      - "En saturación, I_{D} = ½ · k · (V_{GS} − V_{th})²."
+    solucion: "½ · 0,5 · 1² = 0,25 A; el drenador queda en 10,5 V, muy por encima de la frontera de 1 V."
     comprobar:
-      - { I_d: 0.25, I_sat: 0.25, I_mal: 0.5 }
+      - { I_d: 0.25, I_sat: 0.25, I_mal: 0.5, Ic_d: 0.25, Vc_ds: 10.5, V_ov: 1 }
+      - { con: { V_gs: 12 }, Ic_d: 2, tol: 0.05 }
 
   - id: ley-cuadratica
     tipo: formula
