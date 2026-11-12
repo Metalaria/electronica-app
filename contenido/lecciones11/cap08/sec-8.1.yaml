@@ -1,0 +1,273 @@
+# Lección 1.2 de la sección 8.1 «El Amplificador Operacional» (cap08). Formato: contenido/lecciones11/GUIA.md.
+# Sin esquema de operacional en el kit (petición en scratchpad/peticiones-motor12.md): gráficas de transferencia.
+# La salida satura en los raíles de ±15 V (ideal); la señal de 2 V de pico con 10 V de alimentación simple es un ejemplo.
+leccion: cap08/sec-8.1
+
+libro:
+  3: "Un amplificador operacional es un amplificador diferencial de ganancia enorme"
+  8: "es el origen del CMRR"
+  9: "el producto ganancia por ancho de banda y el slew rate"
+  10: "Incluye la limitación de corriente que protege ante cortocircuitos"
+  11: "de 10⁵ a 10⁶, es decir, de 100 a 120 dB"
+  14: "10⁶ Ω (bipolar) a 10¹² Ω (FET)"
+  16: "Las dos entradas están a la misma tensión (cortocircuito virtual)"
+  17: "La primera regla solo vale si hay realimentación negativa"
+  19: "con 90 dB (31 623 veces), un voltio de modo común equivale a 31,6 µV de error referido a la entrada"
+  20: "Con 80 dB, 100 mV de rizado en el raíl introducen 10 µV de error referido a la entrada"
+  22: "El operacional clásico se alimenta con ±15 V"
+  25: "se monta el operacional como seguidor con la entrada a masa y se lee la salida con el Brymen"
+
+modelo:
+  valores:
+    A_ol: { sim: "A", nombre: "ganancia en lazo abierto", unidad: "", valor: 100000 }
+    v_d: { sim: "v_{+} − v_{−}", nombre: "diferencia entre las entradas", unidad: V, valor: 0.00002 }
+    V_sat: { sim: "V_{sat}", nombre: "raíl de saturación", unidad: V, valor: 15 }
+    C_db: { sim: "CMRR", nombre: "rechazo de modo común", unidad: dB, valor: 90 }
+    V_cm: { sim: "V_{cm}", nombre: "tensión de modo común", unidad: V, valor: 1 }
+    P_db: { sim: "PSRR", nombre: "rechazo a la alimentación", unidad: dB, valor: 80 }
+    V_riz: { sim: "V_{rizado}", nombre: "rizado en el raíl", unidad: V, valor: 0.1 }
+    V_cc: { sim: "V_{CC}", nombre: "alimentación simple", unidad: V, valor: 10 }
+    V_s: { sim: "V_{p}", nombre: "amplitud de la señal", unidad: V, valor: 2 }
+    s_m: { tipo: interruptor, nombre: "masa virtual a la mitad", valor: 0 }
+  calculos:
+    V_o: { expr: "max(-V_sat, min(V_sat, A_ol*v_d))", sim: "V_{salida}", nombre: "tensión de salida", unidad: V }
+    V_pide: { expr: "A_ol*v_d", sim: "A · v", nombre: "salida que pediría sin saturar", unidad: V }
+    e_cm: { expr: "V_cm/10^(C_db/20)", sim: "error", nombre: "error referido a la entrada", unidad: V }
+    e_ps: { expr: "V_riz/10^(P_db/20)", sim: "error", nombre: "error por el rizado", unidad: V }
+    V_mv: { si: s_m, entonces: "V_cc/2", sino: "0", sim: "V_{ref}", nombre: "referencia de la señal", unidad: V }
+
+tarjetas:
+  - id: explore-ganancia
+    tipo: explorar
+    titulo: "Unos microvoltios bastan"
+    texto: "Arrastre la diferencia entre las entradas y mire la salida. Cambie la ganancia en lazo abierto."
+    libro: [3, 11]
+    widget:
+      tipo: grafica
+      x: { id: vx, min: -0.0003, max: 0.0003, unidad: V, rotulo: "v_{+} − v_{−}" }
+      y: { min: -16, max: 16, unidad: V, rotulo: "V_{salida}" }
+      curvas:
+        - { expr: "max(-V_sat, min(V_sat, A_ol*vx))", color: azul, rotulo: "salida" }
+      asas:
+        - { mueve: v_d, x: "v_d", y: "V_o", rotulo: "Su diferencia" }
+      lectura: { valor: V_o, rotulo: "Tensión de salida" }
+      mandos:
+        - { valor: v_d, min: -0.0003, max: 0.0003, paso: 0.00001, rotulo: "Diferencia de entrada" }
+        - { valor: A_ol, lista: [100000, 1000000], rotulo: "Ganancia en lazo abierto" }
+
+  - id: prediga-diferencia
+    tipo: predecir
+    titulo: "¿Cuánta diferencia?"
+    texto: "Con una ganancia de 10⁵, ¿qué diferencia entre las entradas lleva la salida a 10 V?"
+    libro: [11]
+    fijar: { A_ol: 100000, v_d: 0.0001 }
+    widget:
+      tipo: grafica
+      x: { id: vx, min: -0.0003, max: 0.0003, unidad: V, rotulo: "v_{+} − v_{−}" }
+      y: { min: -16, max: 16, unidad: V, rotulo: "V_{salida}" }
+      curvas:
+        - { expr: "max(-V_sat, min(V_sat, A_ol*vx))", color: azul, rotulo: "salida" }
+      lectura: { valor: V_o, rotulo: "Tensión de salida con 100 µV" }
+      ocultar: true
+    opciones:
+      - texto: "100 µV"
+        bien: true
+        porque: "10 V / 10⁵ = 100 µV. Por eso, con realimentación negativa, las entradas quedan a la misma tensión."
+      - texto: "10 mV"
+        porque: "Con 10 mV la salida pediría 1000 V: se saturaría mucho antes."
+      - texto: "1 V"
+        porque: "Eso sería con ganancia 10. La del operacional es cien mil veces mayor."
+    escalera:
+      - "Diferencia = salida / ganancia."
+    solucion: "10 / 100 000 = 0,0001 V = 100 µV."
+    comprobar:
+      - { V_o: 10 }
+      - { con: { v_d: 0.01 }, V_pide: 1000 }
+
+  - id: real-ideal
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Ideal frente a real"
+    texto: "Una cada parámetro con su valor típico real."
+    libro: [14]
+    emparejar:
+      - ["Ganancia en lazo abierto", "10⁵ – 10⁶"]
+      - ["Impedancia de entrada", "10⁶ Ω (bipolar) a 10¹² Ω (FET)"]
+      - ["Impedancia de salida", "50 – 100 Ω"]
+      - ["Offset de entrada", "0,1 µV a 5 mV"]
+      - ["CMRR", "70 – 120 dB"]
+    exito: "De la ganancia y de la impedancia de entrada salen las dos reglas de oro."
+    pistas:
+      - { texto: "La impedancia de salida es la única que se mide en decenas de ohmios." }
+    escalera:
+      - "El offset se mide en microvoltios o milivoltios."
+    solucion: "Ganancia 10⁵–10⁶, entrada 10⁶–10¹² Ω, salida 50–100 Ω, offset 0,1 µV–5 mV, CMRR 70–120 dB."
+
+  - id: bloques
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los tres bloques"
+    texto: "Una cada etapa interna con lo que aporta."
+    libro: [8, 9, 10]
+    emparejar:
+      - ["Par diferencial de entrada", "La entrada diferencial, el CMRR y el offset"]
+      - ["Etapa de ganancia", "El condensador de compensación: GBW y slew rate"]
+      - ["Seguidor clase AB de salida", "Baja impedancia y limitación de corriente"]
+    exito: "Saber qué hay dentro explica todos los parámetros reales."
+    pistas:
+      - { texto: "El offset sale del desapareamiento entre dos transistores." }
+    escalera:
+      - "El polo dominante lo pone el condensador de la etapa de ganancia."
+    solucion: "Entrada–CMRR y offset, ganancia–compensación, salida–clase AB."
+
+  - id: estime-cmrr
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El rechazo de modo común"
+    texto: "Un operacional de 90 dB de CMRR recibe 1 V común en las dos entradas. ¿Qué error equivale a la entrada?"
+    libro: [19]
+    fijar: { C_db: 90, V_cm: 1 }
+    estimar:
+      objetivo: "e_cm"
+      unidad: V
+      min: 0
+      max: 0.0001
+      paso: 0.0000005
+      inicio: 0.00009
+      tol: 0.05
+      rotulo: "Error referido a la entrada"
+    exito: "90 dB son 31 623 veces: 31,6 µV por voltio de modo común."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.0000332 }, texto: "Se ha pasado: 90 dB son 10^{4,5} veces, más de treinta mil." }
+      - { texto: "Se ha quedado corto: 90 dB no son 10⁹; en tensión, 20 dB por década." }
+    escalera:
+      - "En tensión, 20 dB son un factor 10."
+    solucion: "10^{90/20} = 31 623: 1 V / 31 623 = 31,6 µV."
+    comprobar:
+      - { e_cm: 0.0000316 , tol: 0.01 }
+
+  - id: estime-psrr
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El rizado de la alimentación"
+    texto: "Con 80 dB de PSRR, ¿qué error introducen 100 mV de rizado en el raíl?"
+    libro: [20]
+    fijar: { P_db: 80, V_riz: 0.1 }
+    estimar:
+      objetivo: "e_ps"
+      unidad: V
+      min: 0
+      max: 0.00005
+      paso: 0.0000005
+      inicio: 0.00004
+      tol: 0.05
+      rotulo: "Error referido a la entrada"
+    exito: "10 µV. Pero el PSRR cae a 20 o 40 dB a decenas de kilohercios: el desacoplo no es opcional."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.0000105 }, texto: "Se ha pasado: 80 dB son diez mil veces." }
+      - { texto: "Se ha quedado corto: en tensión, 80 dB son 10⁴, no 10⁸." }
+    escalera:
+      - "80 dB en tensión son 10⁴."
+    solucion: "100 mV / 10⁴ = 10 µV."
+    comprobar:
+      - { e_ps: 0.00001 }
+
+  - id: sorpresa-simple
+    tipo: sorpresa
+    titulo: "Con una sola alimentación"
+    texto: "Una señal de 2 V de pico con 10 V de alimentación simple. Active la masa virtual a la mitad."
+    nota: "Valores de ejemplo."
+    libro: [22]
+    fijar: { V_cc: 10, V_s: 2 }
+    inicio: { s_m: 0 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+      y: { min: -3, max: 11, unidad: V, rotulo: "v_{salida}" }
+      curvas:
+        - { expr: "max(0, min(V_cc, V_mv + V_s*sin(2*pi*1000*t)))", color: azul, rotulo: "salida" }
+        - { expr: "V_mv + V_s*sin(2*pi*1000*t)", color: tinta, rotulo: "lo que se quería", discontinua: true }
+      lectura: { valor: V_mv, rotulo: "Referencia de la señal" }
+      mandos:
+        - { valor: s_m, tipo: interruptor, rotulo: "Masa virtual a V_{CC}/2" }
+    requiere: { mover: [s_m] }
+
+  - id: por-que-recorta
+    tipo: porque
+    titulo: "¿Por qué se recorta la mitad?"
+    texto: "Sin masa virtual, la mitad de la señal desaparece. ¿Por qué?"
+    libro: [22]
+    fijar: { V_cc: 10, V_s: 2, s_m: 0 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+      y: { min: -3, max: 11, unidad: V, rotulo: "v_{salida}" }
+      curvas:
+        - { expr: "max(0, min(V_cc, V_mv + V_s*sin(2*pi*1000*t)))", color: azul, rotulo: "salida" }
+    opciones:
+      - texto: "La salida no puede bajar de la masa, que es su raíl inferior"
+        bien: true
+        porque: "La señal debe oscilar alrededor de una masa virtual a la mitad de la alimentación."
+      - texto: "Porque la ganancia es demasiado alta"
+        porque: "Con menos ganancia seguiría perdiéndose el semiciclo negativo: no hay raíl por debajo de cero."
+      - texto: "Porque falta un condensador de desacoplo"
+        porque: "El desacoplo frena el rizado; aquí falta una referencia a la mitad de la alimentación."
+    escalera:
+      - "¿Entre qué tensiones puede moverse la salida con una alimentación simple?"
+    solucion: "Entre 0 y V_{CC}: sin masa virtual, el semiciclo negativo se recorta."
+
+  - id: sin-realimentacion
+    tipo: pregunta
+    titulo: "El error más frecuente"
+    texto: "Sin realimentación negativa, ¿se puede suponer que las dos entradas están a la misma tensión?"
+    libro: [16, 17]
+    widget:
+      tipo: grafica
+      x: { id: vx, min: -0.0003, max: 0.0003, unidad: V, rotulo: "v_{+} − v_{−}" }
+      y: { min: -16, max: 16, unidad: V, rotulo: "V_{salida}" }
+      curvas:
+        - { expr: "max(-V_sat, min(V_sat, A_ol*vx))", color: azul, rotulo: "salida" }
+    opciones:
+      - texto: "No: la salida se va a un extremo"
+        bien: true
+        porque: "El cortocircuito virtual lo crea la realimentación negativa. Sin ella, el análisis es el del comparador."
+      - texto: "Sí: es una propiedad del operacional"
+        porque: "Es una consecuencia de la realimentación negativa, no del chip."
+      - texto: "Sí, si la ganancia es infinita"
+        porque: "Con ganancia infinita y sin realimentación, cualquier diferencia satura la salida."
+    escalera:
+      - "¿Qué iguala las dos entradas: el chip o el lazo?"
+    solucion: "No: sin realimentación negativa la salida se va a un raíl."
+
+  - id: medir-offset
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "¿Cómo se mide el offset de un operacional con el Brymen?"
+    libro: [25]
+    widget:
+      tipo: grafica
+      x: { id: vx, min: -0.0003, max: 0.0003, unidad: V, rotulo: "v_{+} − v_{−}" }
+      y: { min: -16, max: 16, unidad: V, rotulo: "V_{salida}" }
+      curvas:
+        - { expr: "max(-V_sat, min(V_sat, A_ol*vx))", color: azul, rotulo: "salida" }
+    opciones:
+      - texto: "Como seguidor con la entrada a masa: la salida es el offset"
+        bien: true
+        porque: "Con ganancia 1, la salida reproduce directamente la tensión de offset."
+      - texto: "En lazo abierto, midiendo la salida"
+        porque: "Con 10⁵ de ganancia, cualquier offset satura la salida."
+      - texto: "Midiendo la tensión entre las dos entradas"
+        porque: "Son microvoltios o milivoltios en un nudo sensible; el seguidor los lleva a una salida de baja impedancia."
+    escalera:
+      - "¿Qué montaje tiene ganancia exactamente 1?"
+    solucion: "Seguidor con la entrada a masa: la salida es V_{os}."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [3, 16, 17, 19, 22]
+    ideas:
+      - { titulo: "Ganancia enorme.", texto: "Unos microvoltios llevan la salida a cualquier valor." }
+      - { titulo: "Dos reglas.", texto: "Con realimentación negativa: entradas a la misma tensión y sin corriente." }
+      - { titulo: "Rechazos.", texto: "CMRR y PSRR en dB; el PSRR cae con la frecuencia." }
+      - { titulo: "Alimentación simple.", texto: "Hace falta una masa virtual a la mitad." }

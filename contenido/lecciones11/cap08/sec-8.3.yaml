@@ -1,0 +1,201 @@
+# Lección 1.2 de la sección 8.3 «El Comparador y la Histéresis» (cap08). Formato: contenido/lecciones11/GUIA.md.
+# Valores del libro: R₁ = 10 kΩ, R₂ = 100 kΩ, ±12 V, ruido de 1 V de pico a pico. La señal lenta (una rampa de −3 a
+# +3 V en 10 ms con 1 V pp de ruido a 1,5 kHz) es un ejemplo para dibujar los umbrales.
+leccion: cap08/sec-8.3
+
+libro:
+  50: "si la señal de entrada tiene ruido, la salida conmuta erráticamente cerca del punto de comparación"
+  51: "el umbral de conmutación es distinto al subir que al bajar"
+  53: "no existe una tensión de entrada que produzca una salida intermedia estable"
+  54: "Con R₁ = 10 kΩ, R₂ = 100 kΩ y salida de ±12 V, los umbrales están en +1,09 V y −1,09 V: una ventana de 2,18 V"
+  55: "Un operacional con realimentación positiva no tiene punto de equilibrio intermedio: es biestable"
+  56: "Los comparadores de verdad (LM311, LM393) tienen salida de colector abierto"
+  57: "Detección de nivel (batería baja, sobretemperatura, cruce por cero de la red)"
+  58: "la histéresis de ±1,09 V elimina las conmutaciones falsas"
+
+modelo:
+  valores:
+    R_1: { sim: "R₁", nombre: "resistencia a la referencia", unidad: Ω, valor: 10000 }
+    R_2: { sim: "R₂", nombre: "resistencia de realimentación positiva", unidad: Ω, valor: 100000 }
+    V_sat: { sim: "V_{sat}", nombre: "salida saturada", unidad: V, valor: 12 }
+    s_h: { tipo: interruptor, nombre: "histéresis", valor: 1 }
+    T_r: { sim: "T", nombre: "duración de la rampa", unidad: s, valor: 0.01 }
+    A_r: { sim: "V_{ruido}", nombre: "ruido de pico", unidad: V, valor: 0.5 }
+  calculos:
+    V_u: { si: s_h, entonces: "V_sat*R_1/(R_1 + R_2)", sino: "0", sim: "V_{umbral}", nombre: "umbral superior", unidad: V }
+    V_mal: { expr: "V_sat*R_1/R_2", sim: "V", nombre: "sin el divisor completo", unidad: V }
+    V_w: { expr: "2*V_u", sim: "ventana", nombre: "anchura de la ventana", unidad: V }
+
+tarjetas:
+  - id: explore-ventana
+    tipo: explorar
+    titulo: "Una ventana contra el ruido"
+    texto: "Una señal lenta con 1 V de ruido de pico a pico y los dos umbrales del disparador de Schmitt. Cambie R₂."
+    nota: "Señal de ejemplo."
+    libro: [51, 54]
+    fijar: { R_1: 10000, V_sat: 12, s_h: 1 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.01, unidad: s, rotulo: "t" }
+      y: { min: -4, max: 4, unidad: V, rotulo: "v_{entrada}" }
+      curvas:
+        - { expr: "-3 + 6*t/T_r + A_r*sin(2*pi*1500*t)", color: azul, rotulo: "señal con ruido" }
+        - { expr: "V_u", color: naranja, rotulo: "umbral al subir", discontinua: true }
+        - { expr: "-V_u", color: tinta, rotulo: "umbral al bajar", discontinua: true }
+      lectura: { valor: V_w, rotulo: "Anchura de la ventana" }
+      mandos:
+        - { valor: R_2, lista: [47000, 100000, 220000, 470000, 1000000], rotulo: "R₂" }
+
+  - id: prediga-umbrales
+    tipo: predecir
+    titulo: "Los umbrales"
+    texto: "R₁ = 10 kΩ, R₂ = 100 kΩ y salida de ±12 V. ¿Dónde están los umbrales?"
+    libro: [54]
+    fijar: { R_1: 10000, R_2: 100000, V_sat: 12, s_h: 1 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.01, unidad: s, rotulo: "t" }
+      y: { min: -4, max: 4, unidad: V, rotulo: "v_{entrada}" }
+      curvas:
+        - { expr: "-3 + 6*t/T_r + A_r*sin(2*pi*1500*t)", color: azul, rotulo: "señal con ruido" }
+      lectura: { valor: V_u, rotulo: "Umbral superior" }
+      ocultar: true
+    opciones:
+      - texto: "En ±1,09 V"
+        bien: true
+        porque: "±12 · 10/(10 + 100) = ±1,09 V: la salida, dividida por R₁–R₂, fija la entrada +."
+      - texto: "En ±1,2 V"
+        porque: "Sería 12 · R₁/R₂. El divisor es R₁/(R₁ + R₂)."
+      - texto: "En 0 V"
+        porque: "Ese es el comparador sin histéresis. La realimentación positiva separa los dos umbrales."
+    escalera:
+      - "V_{umbral} = ±V_{sat} · R₁/(R₁ + R₂)."
+    solucion: "12 · 10/(10 + 100) = 1,09 V: ventana de 2,18 V."
+    comprobar:
+      - { V_u: 1.09, V_w: 2.18, V_mal: 1.2, tol: 0.01 }
+
+  - id: reto-ventana
+    tipo: reto
+    titulo: "Más que el ruido"
+    texto: "Con R₁ = 10 kΩ y ±12 V, el ruido es de 1 V de pico a pico. Elija R₂ para que la ventana lo supere."
+    libro: [54]
+    fijar: { R_1: 10000, V_sat: 12, s_h: 1 }
+    inicio: { R_2: 1000000 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.01, unidad: s, rotulo: "t" }
+      y: { min: -4, max: 4, unidad: V, rotulo: "v_{entrada}" }
+      curvas:
+        - { expr: "-3 + 6*t/T_r + A_r*sin(2*pi*1500*t)", color: azul, rotulo: "señal con ruido" }
+        - { expr: "V_u", color: naranja, rotulo: "umbral al subir", discontinua: true }
+        - { expr: "-V_u", color: tinta, rotulo: "umbral al bajar", discontinua: true }
+      lectura: { valor: V_w, rotulo: "Anchura de la ventana" }
+      mandos:
+        - { valor: R_2, lista: [47000, 100000, 220000, 470000, 1000000], rotulo: "R₂" }
+    condiciones:
+      - { valor: V_w, mayor: 1, rotulo: "Ventana: {{V_w}}" }
+    exito: "Tras cruzar un umbral, el ruido ya no alcanza el otro. Y no más de lo necesario: cada voltio de histéresis es retraso."
+    pistas:
+      - { texto: "La ventana es más estrecha que el ruido: baje R₂ para que la salida realimente más." }
+    escalera:
+      - "La ventana va de −V_{umbral} a +V_{umbral}, con V_{umbral} = 12 · R₁/(R₁ + R₂)."
+    solucion: "Con R₂ = 220 kΩ, ventana de 1,04 V; con 100 kΩ, 2,18 V."
+    comprobar:
+      - { con: { R_2: 220000 }, V_w: 1.04, tol: 0.01 }
+
+  - id: sorpresa-sin
+    tipo: sorpresa
+    titulo: "Sin histéresis"
+    texto: "Quite la realimentación positiva y mire dónde queda el umbral frente al ruido."
+    libro: [50, 53, 58]
+    fijar: { R_1: 10000, R_2: 100000, V_sat: 12 }
+    inicio: { s_h: 1 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.01, unidad: s, rotulo: "t" }
+      y: { min: -4, max: 4, unidad: V, rotulo: "v_{entrada}" }
+      curvas:
+        - { expr: "-3 + 6*t/T_r + A_r*sin(2*pi*1500*t)", color: azul, rotulo: "señal con ruido" }
+        - { expr: "V_u", color: naranja, rotulo: "umbral al subir", discontinua: true }
+        - { expr: "-V_u", color: tinta, rotulo: "umbral al bajar", discontinua: true }
+      lectura: { valor: V_w, rotulo: "Anchura de la ventana" }
+      mandos:
+        - { valor: s_h, tipo: interruptor, rotulo: "Histéresis" }
+    requiere: { mover: [s_h] }
+
+  - id: por-que-positiva
+    tipo: porque
+    titulo: "¿Por qué positiva?"
+    texto: "La histéresis se consigue con realimentación positiva. ¿Por qué estabiliza el estado?"
+    libro: [55]
+    fijar: { R_1: 10000, R_2: 100000, V_sat: 12, s_h: 1 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.01, unidad: s, rotulo: "t" }
+      y: { min: -4, max: 4, unidad: V, rotulo: "v_{entrada}" }
+      curvas:
+        - { expr: "-3 + 6*t/T_r + A_r*sin(2*pi*1500*t)", color: azul, rotulo: "señal con ruido" }
+        - { expr: "V_u", color: naranja, rotulo: "umbral al subir", discontinua: true }
+        - { expr: "-V_u", color: tinta, rotulo: "umbral al bajar", discontinua: true }
+    opciones:
+      - texto: "Al saltar, la salida aleja el umbral y refuerza el estado"
+        bien: true
+        porque: "Es biestable: no hay equilibrio intermedio. Es también la base de los osciladores de relajación."
+      - texto: "Porque la realimentación positiva iguala las entradas"
+        porque: "Eso lo hace la negativa. La positiva empuja la salida a un extremo."
+      - texto: "Porque reduce la ganancia"
+        porque: "No la reduce: la salida refuerza la entrada que la produjo."
+    escalera:
+      - "Cuando la salida sube, ¿qué le pasa a la tensión de la entrada +?"
+    solucion: "La salida refuerza la entrada que la produjo: el umbral se aleja."
+
+  - id: comparador-integrado
+    tipo: pregunta
+    titulo: "Comparador o operacional"
+    texto: "Hay que detectar un umbral con rapidez y atacar una entrada lógica. ¿Qué se usa?"
+    libro: [56]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.01, unidad: s, rotulo: "t" }
+      y: { min: -4, max: 4, unidad: V, rotulo: "v_{entrada}" }
+      curvas:
+        - { expr: "-3 + 6*t/T_r + A_r*sin(2*pi*1500*t)", color: azul, rotulo: "señal con ruido" }
+    opciones:
+      - texto: "Un comparador como el LM393, con salida de colector abierto"
+        bien: true
+        porque: "Responde en centenares de nanosegundos y, con un pull-up, da cualquier nivel lógico."
+      - texto: "Un operacional, que tiene más ganancia"
+        porque: "Tarda microsegundos en salir de saturación y su salida no es compatible con lógica."
+      - texto: "Un operacional de precisión"
+        porque: "Es la elección para precisión de umbral en continua, no para rapidez."
+    escalera:
+      - "¿Qué pasa cuando un operacional sale de saturación?"
+    solucion: "Un comparador dedicado: rápido y con salida de colector abierto."
+
+  - id: usos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los dos usos y sus límites"
+    texto: "Una cada idea con su par."
+    libro: [54, 57]
+    emparejar:
+      - ["Detección de nivel", "Batería baja o sobretemperatura"]
+      - ["Señal lenta a digital limpia", "Un sensor magnético o un fotodiodo"]
+      - ["Lo que fija la histéresis", "El ruido de pico a pico esperado"]
+      - ["Lo que la limita", "El retardo que se admite"]
+    exito: "Primero, cuánto ruido hay; después, cuánto retardo se tolera."
+    pistas:
+      - { texto: "Cada voltio de histéresis es un voltio de retraso en la detección." }
+    escalera:
+      - "La histéresis se diseña algo mayor que el ruido."
+    solucion: "Nivel–batería, digital–sensor, ruido–fija, retardo–limita."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [50, 54, 55, 56]
+    ideas:
+      - { titulo: "Sin histéresis.", texto: "El ruido cerca del umbral produce un tren de conmutaciones." }
+      - { titulo: "Schmitt.", texto: "V_{umbral} = ±V_{sat} · R₁/(R₁ + R₂): dos umbrales y una ventana." }
+      - { titulo: "Realimentación positiva.", texto: "Biestable: la salida refuerza su estado." }
+      - { titulo: "Comparador dedicado.", texto: "Rápido y con salida de colector abierto para la lógica." }

@@ -1,0 +1,292 @@
+# Lección 1.2 de la sección 8.4 «Reguladores de Tensión» (cap08). Formato: contenido/lecciones11/GUIA.md.
+# El regulador lineal se dibuja con el esquema «thevenin»: la resistencia en serie es el elemento de paso, cuyo valor
+# (V_in − V_out)/I calcula el modelo para mantener 5 V («un divisor de tensión cuya parte superior se ajusta sola»,
+# bloque 63). Sin esquema de regulador en el kit (petición en scratchpad/peticiones-motor12.md).
+leccion: cap08/sec-8.4
+
+libro:
+  63: "Es un divisor de tensión cuya parte superior se ajusta sola"
+  65: 'P_("disipada") = lr(( V_("in") - V_("out") )) dot.op I'
+  66: "Con 12 V de entrada, 5 V de salida y 1 A: 7 W disipados y un rendimiento del 41,7 %"
+  67: "necesita unos 2 V de diferencia entre entrada y salida para funcionar"
+  68: "sustituir un electrolítico por un cerámico de baja ESR puede hacer que el regulador oscile"
+  69: "mantienen 1,25 V entre su salida y su terminal de ajuste"
+  71: "usa una bobina como depósito de energía"
+  72: "un conmutado del 90 % de rendimiento toma 463 mA de la entrada y disipa solo 0,56 W"
+  76: "Buck (reductor) Menor"
+  80: "Alimentación por batería, donde el rendimiento es autonomía Conmutado"
+  81: "un conmutado hace el trabajo pesado con buen rendimiento, y un LDO detrás limpia el ruido"
+  83: "existen para el accidente, no para el régimen"
+  "cap08#246": "Diseña una fuente ajustable con LM317 que entregue 9 V. Si R₁ = 240 Ω, ¿qué valor debe tener R₂?"
+
+modelo:
+  valores:
+    V_in: { sim: "V_{in}", nombre: "tensión de entrada", unidad: V, valor: 12 }
+    V_o: { sim: "V_{out}", nombre: "tensión regulada", unidad: V, valor: 5 }
+    R_L: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 5 }
+    eta: { sim: "η", nombre: "rendimiento del conmutado", unidad: "", valor: 0.9 }
+    R_17: { sim: "R₂", nombre: "resistencia de ajuste", unidad: Ω, valor: 1000 }
+  calculos:
+    I_r: { expr: "V_o/R_L", sim: "I", nombre: "corriente de la carga", unidad: A }
+    R_p: { expr: "(V_in - V_o)/I_r", sim: "R_{paso}", nombre: "elemento de paso", unidad: Ω }
+    V_s: { expr: "V_in*R_L/(R_p + R_L)", sim: "V_{out}", nombre: "tensión de salida", unidad: V }
+    V_pa: { expr: "V_in - V_s", sim: "V_{paso}", nombre: "caída en el elemento de paso", unidad: V }
+    P_d: { expr: "(V_in - V_o)*I_r", sim: "P_{disipada}", nombre: "potencia disipada", unidad: W }
+    ren: { expr: "100*V_o/V_in", sim: "η", nombre: "rendimiento del lineal", unidad: "%", cifras: 3 }
+    I_sw: { expr: "V_o*I_r/(eta*V_in)", sim: "I_{in}", nombre: "corriente de entrada del conmutado", unidad: A }
+    P_sw: { expr: "V_o*I_r*(1/eta - 1)", sim: "P", nombre: "pérdida del conmutado", unidad: W }
+    P_in: { expr: "V_o*I_r/eta", sim: "P_{in}", nombre: "potencia de entrada del conmutado", unidad: W }
+    I_id: { expr: "V_o*I_r/V_in", sim: "I", nombre: "corriente sin pérdidas", unidad: A }
+    V_17: { expr: "1.25*(1 + R_17/240)", sim: "V_{out}", nombre: "salida del LM317", unidad: V }
+
+tarjetas:
+  - id: explore-lineal
+    tipo: explorar
+    titulo: "Un divisor que se ajusta solo"
+    texto: "El elemento de paso cambia para mantener 5 V. Mueva la entrada y la carga, y mire lo que disipa."
+    libro: [63, 65]
+    fijar: { V_o: 5 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_in, rth: R_p, carga: R_L }
+      lectura: { valor: P_d, rotulo: "Disipa el elemento de paso" }
+      datos:
+        - { valor: V_s, rotulo: "Salida: {{V_s}}" }
+        - { valor: ren, rotulo: "Rendimiento: {{ren}}" }
+      corriente: I_r
+      mide: { salida: V_s, corriente: I_r, interna: V_pa }
+      mandos:
+        - { valor: V_in, min: 7, max: 15, paso: 0.5, rotulo: "Tensión de entrada" }
+        - { valor: R_L, lista: [5, 10, 50], rotulo: "Carga" }
+    requiere: { mover: [V_in, R_L] }
+
+  - id: prediga-disipacion
+    tipo: predecir
+    titulo: "De 12 a 5 V con 1 A"
+    texto: "Un regulador lineal entrega 5 V y 1 A desde 12 V. ¿Cuánto disipa?"
+    libro: [66]
+    fijar: { V_in: 12, V_o: 5, R_L: 5 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_in, rth: R_p, carga: R_L }
+      lectura: { valor: P_d, rotulo: "Disipa el elemento de paso" }
+      corriente: I_r
+      mide: { salida: V_s, corriente: I_r, interna: V_pa }
+      ocultar: true
+    opciones:
+      - texto: "7 W, con un rendimiento del 41,7 %"
+        bien: true
+        porque: "(12 − 5) · 1 = 7 W: más de lo que entrega a la carga."
+      - texto: "5 W"
+        porque: "5 W son los que recibe la carga. El regulador disipa la diferencia de tensión por la corriente."
+      - texto: "Casi nada: es un regulador"
+        porque: "Eso sería un conmutado. El lineal disipa toda la diferencia de tensión."
+    escalera:
+      - "Toda la corriente de la carga atraviesa el elemento de paso."
+    solucion: "(12 − 5) V · 1 A = 7 W; rendimiento 5/12 = 41,7 %."
+    comprobar:
+      - { P_d: 7, ren: 41.7, V_s: 5, tol: 0.001 }
+
+  - id: regla-disipacion
+    tipo: formula
+    titulo: "El defecto aritmético"
+    texto: "La diferencia de tensión por la corriente se convierte en calor. Cambie la entrada."
+    libro: [65]
+    ec: 65
+    sustitucion: "({{V_in}} − {{V_o}}) · {{I_r}} = {{P_d}}"
+    fijar: { V_o: 5 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_in, rth: R_p, carga: R_L }
+      lectura: { valor: P_d, rotulo: "Potencia disipada" }
+      corriente: I_r
+      mide: { salida: V_s, corriente: I_r, interna: V_pa }
+      mandos:
+        - { valor: V_in, min: 7, max: 15, paso: 0.5, rotulo: "Tensión de entrada" }
+
+  - id: simule-entrada
+    tipo: simular
+    titulo: "La corriente de entrada"
+    texto: "El regulador lineal de 12 a 5 V entrega 1 A. ¿Qué corriente toma de la entrada?"
+    libro: [66, 72]
+    fijar: { V_in: 12, V_o: 5, R_L: 5 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_in, rth: R_p, carga: R_L }
+      lectura: { valor: I_r, rotulo: "Corriente" }
+      mide: { salida: V_s, corriente: I_r, interna: V_pa }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: I_r
+      unidad: A
+      tol: 0.03
+      rotulo: "Corriente de entrada"
+      medida: corriente
+      errores:
+        - { expr: "I_id", texto: "Eso sería conservar la potencia, como un conmutado ideal. En un lineal la corriente atraviesa el elemento de paso: entra la misma que sale." }
+    exito: "1 A: la corriente de entrada es igual a la de salida, sea cual sea la diferencia de tensiones."
+    escalera:
+      - "El elemento de paso está en serie con la carga."
+    solucion: "La misma que sale: 1 A."
+    comprobar:
+      - { I_r: 1, I_id: 0.4167, tol: 0.001 }
+
+  - id: estime-conmutado
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Con un conmutado"
+    texto: "El mismo caso, 12 a 5 V con 1 A, con un conmutado del 90 % de rendimiento. ¿Qué corriente toma de la entrada?"
+    libro: [72]
+    fijar: { V_in: 12, V_o: 5, R_L: 5, eta: 0.9 }
+    estimar:
+      objetivo: "I_sw"
+      unidad: A
+      min: 0
+      max: 1.2
+      paso: 0.01
+      inicio: 1.1
+      tol: 0.05
+      rotulo: "Corriente de entrada"
+    exito: "463 mA, menos que la de salida, y solo 0,56 W de pérdidas: trece veces menos calor."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.486 }, texto: "Se ha pasado: el conmutado no deja pasar la corriente, transfiere energía. Iguale potencias." }
+      - { texto: "Se ha quedado corto: la entrada aporta también lo que se pierde, el 10 %." }
+    escalera:
+      - "Potencia de entrada = 5 W / 0,9."
+    solucion: "5,56 W / 12 V = 463 mA."
+    comprobar:
+      - { I_sw: 0.463, P_sw: 0.556, P_in: 5.556, tol: 0.01 }
+
+  - id: reto-lm317
+    tipo: reto
+    titulo: "Un LM317 a 9 V"
+    texto: "El LM317 mantiene 1,25 V sobre R₁ = 240 Ω. Elija R₂ de la serie E12 para 9 V."
+    libro: [69, "cap08#246"]
+    inicio: { R_17: 1000 }
+    widget:
+      tipo: grafica
+      x: { id: rx, min: 0, max: 3000, unidad: Ω, rotulo: "R₂" }
+      y: { min: 0, max: 18, unidad: V, rotulo: "V_{out}" }
+      curvas:
+        - { expr: "1.25*(1 + rx/240)", color: azul, rotulo: "1,25 · (1 + R₂/R₁)" }
+      asas:
+        - { mueve: R_17, x: "R_17", y: "V_17", rotulo: "Su R₂" }
+      lectura: { valor: V_17, rotulo: "Salida" }
+      mandos:
+        - { valor: R_17, serie: E12, min: 470, max: 2700, rotulo: "R₂ (E12)" }
+    condiciones:
+      - { valor: V_17, objetivo: 9, tol: 0.01, rotulo: "Salida: {{V_17}}" }
+    exito: "1,5 kΩ da 9,06 V. El cálculo exacto pide 1488 Ω."
+    pistas:
+      - { cuando: { valor: V_17, menor: 8.91 }, texto: "Falta tensión: R₂ tiene que ser mayor." }
+      - { texto: "Sobra tensión: R₂ tiene que ser menor." }
+    escalera:
+      - "9 = 1,25 · (1 + R₂/240)."
+    solucion: "R₂ = 240 · (9/1,25 − 1) = 1488 Ω: el E12 más próximo, 1,5 kΩ."
+    comprobar:
+      - { con: { R_17: 1500 }, V_17: 9.0625 }
+      - { con: { R_17: 1488 }, V_17: 9 }
+
+  - id: por-que-menos
+    tipo: porque
+    titulo: "¿Menos corriente de la que entrega?"
+    texto: "El conmutado entrega 1 A a 5 V y toma solo 463 mA de 12 V. ¿Cómo es posible?"
+    libro: [71, 72]
+    fijar: { V_in: 12, V_o: 5, R_L: 5 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_in, rth: R_p, carga: R_L }
+      lectura: { valor: I_r, rotulo: "Corriente del lineal" }
+      corriente: I_r
+      mide: { salida: V_s, corriente: I_r, interna: V_pa }
+    opciones:
+      - texto: "Transfiere energía, no corriente: la potencia de entrada es la de salida más las pérdidas"
+        bien: true
+        porque: "La bobina almacena la energía y la entrega a otra tensión: ningún elemento disipa la diferencia."
+      - texto: "Porque su elemento de paso tiene menos resistencia"
+        porque: "No tiene elemento de paso en serie: conmuta y usa una bobina como depósito de energía."
+      - texto: "Es imposible: la corriente se conserva"
+        porque: "Se conserva en un circuito serie como el lineal; el conmutado transforma la tensión."
+    escalera:
+      - "Compare potencias, no corrientes."
+    solucion: "Conserva la energía: 5 W divididos por el 90 % de rendimiento, a 12 V, son 463 mA."
+
+  - id: cuando-cada-uno
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Lineal o conmutado"
+    texto: "Una cada situación con la elección del libro."
+    libro: [76, 80, 81]
+    emparejar:
+      - ["Diferencia pequeña, menos de 1 W disipado", "Lineal, por simplicidad"]
+      - ["Diferencia grande o corriente alta", "Conmutado, por disipación"]
+      - ["ADC de precisión con buen rendimiento", "Conmutado seguido de un LDO"]
+      - ["Salida mayor que la entrada", "Conmutado: el lineal no puede"]
+    exito: "La decisión sale de dos números: la potencia del lineal y el ruido admisible."
+    pistas:
+      - { texto: "Un lineal solo puede bajar la tensión, nunca subirla." }
+    escalera:
+      - "El LDO detrás del conmutado limpia el ruido con una caída pequeña."
+    solucion: "Poca diferencia–lineal, mucha–conmutado, precisión–conmutado y LDO, elevar–conmutado."
+
+  - id: ldo-ceramico
+    tipo: pregunta
+    titulo: "Un LDO que oscila"
+    texto: "Se cambia el electrolítico de salida de un LDO por un cerámico de baja ESR y el regulador empieza a oscilar. ¿Por qué?"
+    libro: [67, 68]
+    widget:
+      tipo: grafica
+      x: { id: rx, min: 0, max: 3000, unidad: Ω, rotulo: "R₂" }
+      y: { min: 0, max: 18, unidad: V, rotulo: "V_{out}" }
+      curvas:
+        - { expr: "1.25*(1 + rx/240)", color: azul, rotulo: "1,25 · (1 + R₂/R₁)" }
+    opciones:
+      - texto: "El condensador de salida forma parte del lazo y su ESR debe estar en un margen"
+        bien: true
+        porque: "Muchos LDO necesitan esa ESR para ser estables; los modernos especifican si admiten cerámicos."
+      - texto: "Porque el cerámico tiene menos capacidad"
+        porque: "La clave no es la capacidad sino la ESR, que entra en la estabilidad del lazo."
+      - texto: "Porque al LDO le falta tensión de entrada"
+        porque: "Eso daría una salida que cae, no una oscilación."
+    escalera:
+      - "En un LDO, el condensador de salida no es un adorno."
+    solucion: "La ESR del condensador de salida decide si el lazo del LDO es estable."
+
+  - id: protecciones
+    tipo: pregunta
+    titulo: "Un 7805 cortocircuitado"
+    texto: "Un 7805 en cortocircuito se calienta y se apaga sin destruirse. ¿Se puede contar con eso en el diseño?"
+    libro: [83]
+    widget:
+      tipo: grafica
+      x: { id: rx, min: 0, max: 3000, unidad: Ω, rotulo: "R₂" }
+      y: { min: 0, max: 18, unidad: V, rotulo: "V_{out}" }
+      curvas:
+        - { expr: "1.25*(1 + rx/240)", color: azul, rotulo: "1,25 · (1 + R₂/R₁)" }
+    opciones:
+      - texto: "No: las protecciones existen para el accidente, no para el régimen"
+        bien: true
+        porque: "Limitación de corriente, protección térmica y de área segura salvan el chip; el diseño no debe apoyarse en ellas."
+      - texto: "Sí: por eso no hace falta radiador"
+        porque: "El radiador se dimensiona para el régimen normal; la protección térmica es el último recurso."
+      - texto: "Sí: la limitación de corriente fija la salida"
+        porque: "La limitación reduce la salida ante un corto; no es una forma de trabajar."
+    escalera:
+      - "¿Para qué situación están pensadas?"
+    solucion: "No: son para el accidente."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [63, 65, 72, 81]
+    ideas:
+      - { titulo: "Lineal.", texto: "Un divisor que se ajusta solo: disipa (V_{in} − V_{out}) · I." }
+      - { titulo: "Misma corriente.", texto: "En un lineal entra la misma corriente que sale." }
+      - { titulo: "Conmutado.", texto: "Transfiere energía en paquetes: menos calor y menos corriente de entrada." }
+      - { titulo: "Lo mejor de los dos.", texto: "Conmutado para el trabajo pesado y un LDO para limpiar." }

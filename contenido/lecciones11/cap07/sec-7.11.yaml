@@ -1,0 +1,324 @@
+# Lección 1.2 de la sección 7.11 «Problemas de Diseño» (cap07): problemas 7.A, 7.B y 7.C. Formato: contenido/lecciones11/GUIA.md.
+# 7.B: la puerta como condensador equivalente C = Q_g/V_g = 6 nF cargado por R_g + 2 Ω del driver (bloque 215), con el
+# esquema carga-rc. 7.C: la corriente con degeneración resuelve ½·k·(V_G − V_th − I·R_S)² = I (raíz menor).
+leccion: cap07/sec-7.11
+
+libro:
+  190: "Un convertidor conmuta 24 V y 8 A con ciclo de trabajo del 50 %"
+  191: "8 mΩ"
+  195: 'P_("cond") = I^("2") dot.op R_("DS" lr(( "on" ))) dot.op D'
+  197: 'f_("cruce") = ("2" dot.op I dot.op R_("DS" lr(( "on" ))) dot.op D)'
+  188: "Problema 7.A"
+  199: "500 kHz 3,14 W 1,52 W B"
+  200: "44 kHz para A y 556 kHz para B"
+  201: "Elegir «el de menor resistencia» sin mirar la frecuencia es el error más común de esta decisión"
+  208: "El MOSFET elegido tiene Qg = 60 nC y se excita a 10 V"
+  212: 'I_("pico") = (V_("g"))/(R_("g") + R_("driver"))'
+  206: "Problema 7.B"
+  214: "22 Ω 0,42 A 144 ns"
+  215: "Si se trata la puerta como un condensador equivalente C = Qg/Vg (6 nF)"
+  216: "pasar de 4,7 a 22 Ω multiplica por 3,6 el tiempo"
+  224: "una tensión umbral especificada entre 1,5 y 2,5 V"
+  222: "Problema 7.C"
+  227: "la dispersión de Vth se amplifica"
+  229: "2,5 V 62,5 mA"
+  230: "la corriente varía por un factor nueve entre los extremos de la hoja de datos"
+  231: "Con RS = 4 Ω y la puerta a VG = 4 V"
+  232: "La solución real es cerrar un lazo"
+
+modelo:
+  valores:
+    f_c: { sim: "f", nombre: "frecuencia de conmutación", unidad: Hz, valor: 20000 }
+    V_c: { sim: "V", nombre: "tensión conmutada", unidad: V, valor: 24 }
+    I_k: { sim: "I", nombre: "corriente conmutada", unidad: A, valor: 8 }
+    D_c: { sim: "D", nombre: "ciclo de trabajo", unidad: "", valor: 0.5 }
+    R_A: { sim: "R_{A}", nombre: "R_{DS(on)} del A", unidad: Ω, valor: 0.008 }
+    t_A: { sim: "t_{A}", nombre: "t_{r} + t_{f} del A", unidad: s, valor: 60e-9 }
+    R_B: { sim: "R_{B}", nombre: "R_{DS(on)} del B", unidad: Ω, valor: 0.025 }
+    t_B: { sim: "t_{B}", nombre: "t_{r} + t_{f} del B", unidad: s, valor: 15e-9 }
+    s_b: { tipo: interruptor, nombre: "transistor B", valor: 0 }
+    V_gd: { sim: "V_{g}", nombre: "tensión del driver", unidad: V, valor: 10 }
+    R_g: { sim: "R_{g}", nombre: "resistencia de puerta", unidad: Ω, valor: 10 }
+    R_dr: { sim: "R_{driver}", nombre: "resistencia interna del driver", unidad: Ω, valor: 2 }
+    C_eq: { sim: "C_{puerta}", nombre: "puerta como condensador", unidad: F, valor: 6e-9 }
+    k_m: { sim: "k", nombre: "parámetro del transistor", unidad: "A/V²", valor: 0.5 }
+    V_th: { sim: "V_{th}", nombre: "tensión umbral del ejemplar", unidad: V, valor: 2 }
+    s_d: { tipo: interruptor, nombre: "degeneración de fuente", valor: 0 }
+  calculos:
+    P_A: { expr: "I_k^2*R_A*D_c + 0.5*V_c*I_k*t_A*f_c", sim: "P_{A}", nombre: "pérdida total del A", unidad: W }
+    P_B: { expr: "I_k^2*R_B*D_c + 0.5*V_c*I_k*t_B*f_c", sim: "P_{B}", nombre: "pérdida total del B", unidad: W }
+    R_s: { si: s_b, entonces: "R_B", sino: "R_A", sim: "R_{DS(on)}", nombre: "resistencia del elegido", unidad: Ω }
+    t_s: { si: s_b, entonces: "t_B", sino: "t_A", sim: "t_{r} + t_{f}", nombre: "tiempos del elegido", unidad: s }
+    f_x: { expr: "2*I_k*R_s*D_c/(V_c*t_s)", sim: "f_{cruce}", nombre: "frecuencia de cruce", unidad: Hz }
+    f_eq: { expr: "I_k^2*D_c*(R_B - R_A)/(0.5*V_c*I_k*(t_A - t_B))", sim: "f", nombre: "frecuencia a la que se igualan", unidad: Hz }
+    R_ser: { expr: "R_g + R_dr", sim: "R", nombre: "resistencia del camino de puerta", unidad: Ω }
+    tau_g: { expr: "R_ser*C_eq", sim: "τ", nombre: "constante de tiempo de la puerta", unidad: s }
+    tau_m: { expr: "R_g*C_eq", sim: "τ", nombre: "sin la resistencia del driver", unidad: s }
+    I_pk: { expr: "V_gd/R_ser", sim: "I_{pico}", nombre: "corriente de pico", unidad: A }
+    v_t: { expr: "0.632*V_gd", sim: "v(τ)", nombre: "tensión de puerta en un τ", unidad: V }
+    V_G: { si: s_d, entonces: "4", sino: "3", sim: "V_{G}", nombre: "tensión de puerta", unidad: V }
+    R_S: { si: s_d, entonces: "4", sino: "0", sim: "R_{S}", nombre: "resistencia de fuente", unidad: Ω }
+    x_v: { expr: "max(0, V_G - V_th)", sim: "V_{G} − V_{th}", nombre: "tensión sobre el umbral", unidad: V }
+    I_f: { si: s_d, entonces: "((k_m*R_S*x_v + 1) - sqrt(2*k_m*R_S*x_v + 1))/(k_m*R_S^2)", sino: "0.5*k_m*x_v^2", sim: "I_{D}", nombre: "corriente de la fuente de corriente", unidad: A }
+
+tarjetas:
+  - id: explore-ab
+    tipo: explorar
+    titulo: "Dos MOSFET que parecen iguales"
+    texto: "24 V y 8 A al 50 %: A tiene 8 mΩ y 60 ns; B, 25 mΩ y 15 ns. Arrastre la frecuencia y compare."
+    libro: [188, 190, 191]
+    widget:
+      tipo: grafica
+      x: { id: fx, min: 10000, max: 1000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0, max: 4, unidad: W, rotulo: "pérdida total" }
+      curvas:
+        - { expr: "I_k^2*R_A*D_c + 0.5*V_c*I_k*t_A*fx", color: azul, rotulo: "A" }
+        - { expr: "I_k^2*R_B*D_c + 0.5*V_c*I_k*t_B*fx", color: naranja, rotulo: "B" }
+      asas:
+        - { mueve: f_c, x: "f_c", y: "P_A", rotulo: "Su frecuencia" }
+      lectura: { valor: P_A, rotulo: "Pérdida del A" }
+      datos:
+        - { valor: P_B, rotulo: "Pérdida del B: {{P_B}}" }
+      mandos:
+        - { valor: f_c, lista: [10000, 20000, 50000, 100000, 200000, 500000, 1000000], rotulo: "Frecuencia" }
+
+  - id: prediga-500k
+    tipo: predecir
+    titulo: "A 500 kHz"
+    texto: "A 20 kHz, A disipa menos de la mitad que B. ¿Y a 500 kHz?"
+    libro: [199, 201]
+    fijar: { f_c: 500000 }
+    widget:
+      tipo: grafica
+      x: { id: fx, min: 10000, max: 1000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0, max: 4, unidad: W, rotulo: "pérdida total" }
+      curvas:
+        - { expr: "I_k^2*R_A*D_c + 0.5*V_c*I_k*t_A*fx", color: azul, rotulo: "A" }
+        - { expr: "I_k^2*R_B*D_c + 0.5*V_c*I_k*t_B*fx", color: naranja, rotulo: "B" }
+      lectura: { valor: P_B, rotulo: "Pérdida del B" }
+      ocultar: true
+    opciones:
+      - texto: "Gana B: 1,52 W frente a 3,14 W"
+        bien: true
+        porque: "La conmutación crece con la frecuencia, y A tarda cuatro veces más en cada flanco."
+      - texto: "Sigue ganando A, por su menor resistencia"
+        porque: "Es el error más común: la resistencia solo manda en la pérdida de conducción, que no depende de f."
+      - texto: "Empatan"
+        porque: "Se igualan hacia 126 kHz; a 500 kHz B disipa la mitad."
+    escalera:
+      - "¿Cuál de las dos pérdidas crece con la frecuencia, y cuál de los dos es más lento?"
+    solucion: "B: 1,52 W frente a 3,14 W."
+    comprobar:
+      - { P_A: 3.14, P_B: 1.52, tol: 0.01 }
+      - { con: { f_c: 20000 }, P_A: 0.37, P_B: 0.83, tol: 0.01 }
+      - { f_eq: 126000, tol: 0.01 }
+
+  - id: regla-cruce
+    tipo: formula
+    titulo: "La frecuencia de cruce de cada uno"
+    texto: "Donde la conducción iguala a la conmutación. Cambie de transistor."
+    libro: [195, 197, 200]
+    ec: 197
+    sustitucion: "2 · {{I_k}} · {{R_s}} · {{D_c}} / ({{V_c}} · {{t_s}}) = {{f_x}}"
+    widget:
+      tipo: grafica
+      x: { id: fx, min: 10000, max: 1000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0, max: 4, unidad: W, rotulo: "pérdida" }
+      curvas:
+        - { expr: "I_k^2*R_s*D_c", color: azul, rotulo: "conducción" }
+        - { expr: "0.5*V_c*I_k*t_s*fx", color: naranja, rotulo: "conmutación" }
+      lectura: { valor: f_x, rotulo: "Frecuencia de cruce" }
+      mandos:
+        - { valor: s_b, tipo: interruptor, rotulo: "Transistor B" }
+
+  - id: estime-empate
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "¿Dónde empatan?"
+    texto: "¿A qué frecuencia disipan lo mismo A y B en total?"
+    libro: [199, 200]
+    estimar:
+      objetivo: "f_eq"
+      unidad: Hz
+      min: 0
+      max: 500000
+      paso: 2000
+      inicio: 400000
+      tol: 0.05
+      rotulo: "Frecuencia de empate"
+    exito: "Hacia 126 kHz. Por debajo, A; por encima, B."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 132000 }, texto: "Se ha pasado: a 100 kHz A todavía gana por poco." }
+      - { texto: "Se ha quedado corto: a 100 kHz A aún disipa menos que B." }
+    escalera:
+      - "A 100 kHz gana A por poco; a 500 kHz, B."
+    solucion: "Unos 126 kHz, con 0,98 W cada uno."
+    comprobar:
+      - { f_eq: 126000, tol: 0.01 }
+
+  - id: explore-puerta
+    tipo: explorar
+    titulo: "La puerta como un RC"
+    texto: "Problema 7.B: la puerta de 60 nC a 10 V equivale a 6 nF, cargados por R_{g} y los 2 Ω del driver. Cambie R_{g}."
+    libro: [206, 208, 212, 215]
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_gd, r: R_ser, c: C_eq }
+      lectura: { valor: tau_g, rotulo: "Q_{g}/I_{pico} = τ" }
+      datos:
+        - { valor: I_pk, rotulo: "Corriente de pico: {{I_pk}}" }
+      grafica:
+        x: { id: t, min: 0, max: 0.000001, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 11, unidad: V, rotulo: "V_{GS}" }
+        curvas:
+          - { expr: "V_gd*(1 - exp(-t/tau_g))", color: naranja, rotulo: "v_{puerta}", mide: vc }
+        marcas:
+          - { x: "tau_g", y: "v_t", rotulo: "τ" }
+      mandos:
+        - { valor: R_g, lista: [4.7, 10, 22], rotulo: "R_{g}" }
+
+  - id: prediga-22
+    tipo: predecir
+    titulo: "Con 22 Ω"
+    texto: "Con R_{g} = 22 Ω, ¿cuánto vale el tiempo de conmutación estimado, Q_{g}/I_{pico}?"
+    libro: [212, 214]
+    fijar: { R_g: 22 }
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_gd, r: R_ser, c: C_eq }
+      lectura: { valor: tau_g, rotulo: "Q_{g}/I_{pico}" }
+      ocultar: true
+      grafica:
+        x: { id: t, min: 0, max: 0.000001, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 11, unidad: V, rotulo: "V_{GS}" }
+        curvas:
+          - { expr: "V_gd*(1 - exp(-t/tau_g))", color: naranja, rotulo: "v_{puerta}", mide: vc }
+    opciones:
+      - texto: "144 ns"
+        bien: true
+        porque: "I_{pico} = 10 V / 24 Ω = 0,42 A, y 60 nC / 0,42 A ≈ 144 ns."
+      - texto: "132 ns"
+        porque: "Ha olvidado los 2 Ω del driver: la corriente de pico la limita la suma."
+      - texto: "72 ns"
+        porque: "Eso es con 10 Ω. Con 22 Ω, la corriente es la mitad y el tiempo el doble."
+    escalera:
+      - "I_{pico} = V_{g}/(R_{g} + R_{driver})."
+    solucion: "10 / 24 = 0,42 A; 60 nC / 0,42 A ≈ 144 ns."
+    comprobar:
+      - { tau_g: 144e-9, I_pk: 0.4167, tau_m: 132e-9, tol: 0.01 }
+
+  - id: por-que-rg
+    tipo: pregunta
+    titulo: "¿Por qué no la menor?"
+    texto: "Con 4,7 Ω conmuta en 40 ns. ¿Por qué el libro parte de 10 Ω?"
+    libro: [214, 216]
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_gd, r: R_ser, c: C_eq }
+      lectura: { valor: tau_g, rotulo: "Q_{g}/I_{pico}" }
+      dibujo: false
+      grafica:
+        x: { id: t, min: 0, max: 0.000001, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 11, unidad: V, rotulo: "V_{GS}" }
+        curvas:
+          - { expr: "V_gd*(1 - exp(-t/tau_g))", color: naranja, rotulo: "v_{puerta}", mide: vc }
+    opciones:
+      - texto: "Flancos más rápidos radian más interferencia"
+        bien: true
+        porque: "Es un compromiso: bajar R_{g} reduce pérdidas y sube la emisión; 10 Ω deja margen hacia los dos lados."
+      - texto: "Porque 4,7 Ω quema el driver"
+        porque: "El driver entrega 1,49 A de pico con 4,7 Ω, dentro de lo normal. El precio es la interferencia."
+      - texto: "Porque con 4,7 Ω el transistor no llega a encenderse"
+        porque: "Se enciende antes, no después: la puerta se carga más deprisa."
+    escalera:
+      - "Los flancos rápidos tienen contenido espectral hasta 1/(π · t_{r})."
+    solucion: "Menos R_{g}, menos pérdidas pero más interferencia: 10 Ω es el punto de partida."
+    comprobar:
+      - { con: { R_g: 4.7 }, I_pk: 1.49, tol: 0.01 }
+
+  - id: sorpresa-umbral
+    tipo: sorpresa
+    titulo: "Una fuente de corriente que no lo es"
+    texto: "Problema 7.C: 250 mA con V_{GS} = 3 V y k = 0,5 A/V². Mueva el umbral entre los extremos de la hoja."
+    libro: [222, 224, 229, 230]
+    fijar: { s_d: 0 }
+    inicio: { V_th: 2 }
+    widget:
+      tipo: grafica
+      x: { id: vt, min: 1.5, max: 2.5, unidad: V, rotulo: "V_{th}" }
+      y: { min: 0, max: 0.6, unidad: A, rotulo: "I_{D}" }
+      curvas:
+        - { expr: "0.5*k_m*(V_G - vt)^2", color: azul, rotulo: "sin degeneración" }
+      asas:
+        - { mueve: V_th, x: "V_th", y: "I_f", rotulo: "Su ejemplar" }
+      lectura: { valor: I_f, rotulo: "Corriente" }
+      mandos:
+        - { valor: V_th, min: 1.5, max: 2.5, paso: 0.1, rotulo: "Umbral del ejemplar" }
+    requiere: { mover: [V_th] }
+
+  - id: por-que-nueve
+    tipo: porque
+    titulo: "¿Por qué un factor nueve?"
+    texto: "El umbral solo varía de 1,5 a 2,5 V, pero la corriente cambia de 62,5 a 562,5 mA. ¿Por qué tanto?"
+    libro: [227, 229]
+    fijar: { s_d: 0 }
+    widget:
+      tipo: grafica
+      x: { id: vt, min: 1.5, max: 2.5, unidad: V, rotulo: "V_{th}" }
+      y: { min: 0, max: 0.6, unidad: A, rotulo: "I_{D}" }
+      curvas:
+        - { expr: "0.5*k_m*(V_G - vt)^2", color: azul, rotulo: "sin degeneración" }
+    opciones:
+      - texto: "La corriente depende del cuadrado de V_{GS} − V_{th}, que va de 0,5 a 1,5 V"
+        bien: true
+        porque: "Esa diferencia se triplica y la corriente, que va con su cuadrado, se multiplica por nueve."
+      - texto: "Porque k también cambia de un ejemplar a otro"
+        porque: "Aquí k es la misma en los tres casos; basta la dispersión del umbral."
+      - texto: "Porque el transistor sale de saturación"
+        porque: "Sigue en saturación: es la ley cuadrática la que amplifica la dispersión."
+    escalera:
+      - "Calcule V_{GS} − V_{th} en los dos extremos."
+    solucion: "De 0,5 a 1,5 V la diferencia se triplica; al cuadrado, un factor nueve."
+    comprobar:
+      - { con: { V_th: 1.5 }, I_f: 0.5625, x_v: 1.5 }
+      - { con: { V_th: 2.5 }, I_f: 0.0625, x_v: 0.5 }
+
+  - id: degeneracion
+    tipo: pregunta
+    titulo: "Con degeneración"
+    texto: "Con R_{S} = 4 Ω y la puerta a 4 V, la corriente pasa a depender de R_{S}. ¿Basta?"
+    libro: [231, 232]
+    fijar: { s_d: 1 }
+    widget:
+      tipo: grafica
+      x: { id: vt, min: 1.5, max: 2.5, unidad: V, rotulo: "V_{th}" }
+      y: { min: 0, max: 0.6, unidad: A, rotulo: "I_{D}" }
+      curvas:
+        - { expr: "0.5*k_m*(3 - vt)^2", color: azul, rotulo: "sin degeneración" }
+        - { expr: "((k_m*4*(4 - vt) + 1) - sqrt(2*k_m*4*(4 - vt) + 1))/(k_m*16)", color: naranja, rotulo: "con 4 Ω" }
+    opciones:
+      - texto: "No: queda un factor dos; la solución es cerrar un lazo"
+        bien: true
+        porque: "De 169 a 335 mA. Con un amplificador de error que mida la corriente, el umbral desaparece del resultado."
+      - texto: "Sí: con degeneración la corriente ya es exacta"
+        porque: "Mejora del factor nueve al factor dos, pero sigue siendo inaceptable, y pierde 1 V en la resistencia."
+      - texto: "No cambia nada"
+        porque: "Sí mejora: si la corriente sube, V_{GS} baja. Pero no basta."
+    escalera:
+      - "Compare la corriente en los dos extremos del umbral con la curva de 4 Ω."
+    solucion: "Factor dos en lugar de nueve: mejor, pero hace falta un lazo de realimentación."
+    comprobar:
+      - { con: { V_th: 1.5 }, I_f: 0.335, tol: 0.01 }
+      - { con: { V_th: 2.5 }, I_f: 0.169, tol: 0.01 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [201, 216, 230, 232]
+    ideas:
+      - { titulo: "7.A.", texto: "No hay ganador absoluto: por debajo del cruce, R_{DS(on)}; por encima, Q_{g} y tiempos." }
+      - { titulo: "7.B.", texto: "La puerta es un RC: R_{g} reparte entre pérdidas e interferencia." }
+      - { titulo: "7.C.", texto: "La ley cuadrática amplifica la dispersión del umbral: hace falta un lazo." }

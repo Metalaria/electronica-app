@@ -1,0 +1,264 @@
+# Lección 1.2 de la sección 7.8 «Carga de Puerta, Conmutación y Gate Drivers» (cap07). Formato: contenido/lecciones11/GUIA.md.
+# La curva de carga de puerta usa los valores de ejemplo de la figura 7.10 (Q_gs = 15 nC hasta 4 V, Q_gd = 20 nC de
+# meseta, Q_g = 60 nC a 10 V), dibujada en tiempo con una corriente de driver constante (aproximación por tramos rectos).
+leccion: cap07/sec-7.8
+
+libro:
+  126: "la tensión de puerta se detiene en una meseta (el Miller plateau)"
+  127: "su tiempo muerto (dead time) para evitar que dos transistores de una rama conduzcan a la vez"
+  129: "Es la meseta de Miller, y su longitud es Qgd"
+  130: "Con un driver que entregue 1 A, 20 nC duran 20 ns; con uno de 0,1 A, 200 ns, diez veces más"
+  131: "60 nC × 10 V × 100 kHz = 60 mW"
+  132: "amortiguar la resonancia entre la inductancia del camino de puerta y Cgs"
+  133: "Cgd inyecta corriente en la puerta"
+  134: "cuya fuente flota a la tensión de salida y necesita una puerta referida a ella"
+  135: "Las cargas parciales, la meseta y la tensión umbral son valores típicos de ejemplo"
+  136: "Comprobación numérica con I = 5 A, RDS(on) = 20 mΩ, D = 0,5, V = 24 V y tr+tf = 50 ns"
+  137: "La frecuencia de cruce sale 83,3 kHz"
+  139: 't_("conmutación") = (Q_("g"))/(I_("driver"))'
+  140: "Con Qg = 30 nC, un driver de 100 mA tarda 300 ns y uno de 1 A tarda 30 ns"
+
+modelo:
+  valores:
+    Q_gs: { sim: "Q_{gs}", nombre: "carga hasta la meseta", unidad: C, valor: 15e-9 }
+    Q_gd: { sim: "Q_{gd}", nombre: "carga de la meseta", unidad: C, valor: 20e-9 }
+    Q_g: { sim: "Q_{g}", nombre: "carga de puerta total", unidad: C, valor: 60e-9 }
+    V_pl: { sim: "V_{meseta}", nombre: "tensión de la meseta", unidad: V, valor: 4 }
+    V_f: { sim: "V_{g}", nombre: "tensión final de puerta", unidad: V, valor: 10 }
+    I_dr: { sim: "I_{driver}", nombre: "corriente del driver", unidad: A, valor: 1 }
+    Q_g2: { sim: "Q_{g}", nombre: "carga de puerta", unidad: C, valor: 30e-9 }
+    I_d2: { sim: "I_{driver}", nombre: "corriente del driver", unidad: A, valor: 0.1 }
+    V_s: { sim: "V", nombre: "tensión conmutada", unidad: V, valor: 24 }
+    I_s: { sim: "I", nombre: "corriente conmutada", unidad: A, valor: 8 }
+    t_s: { sim: "t", nombre: "duración de la transición", unidad: s, valor: 200e-9 }
+    f_s: { sim: "f", nombre: "frecuencia de conmutación", unidad: Hz, valor: 100000 }
+    I_x: { sim: "I", nombre: "corriente", unidad: A, valor: 5 }
+    R_x: { sim: "R_{DS(on)}", nombre: "resistencia en conducción", unidad: Ω, valor: 0.02 }
+    D_x: { sim: "D", nombre: "ciclo de trabajo", unidad: "", valor: 0.5 }
+    t_x: { sim: "t_{r} + t_{f}", nombre: "tiempos de subida y bajada", unidad: s, valor: 50e-9 }
+    f_x: { sim: "f", nombre: "frecuencia de conmutación", unidad: Hz, valor: 20000 }
+  calculos:
+    t_m: { expr: "Q_gd/I_dr", sim: "t_{meseta}", nombre: "duración de la meseta", unidad: s }
+    t_t: { expr: "Q_g/I_dr", sim: "t", nombre: "tiempo hasta la tensión final", unidad: s }
+    t_sw: { expr: "Q_g2/I_d2", sim: "t_{conmutación}", nombre: "tiempo de conmutación", unidad: s }
+    P_e: { expr: "0.5*V_s*I_s*t_s*f_s", sim: "P", nombre: "pérdida en el encendido", unidad: W }
+    P_cd: { expr: "I_x^2*R_x*D_x", sim: "P_{conducción}", nombre: "pérdida de conducción", unidad: W }
+    P_cm: { expr: "0.5*V_s*I_x*t_x*f_x", sim: "P_{conmutación}", nombre: "pérdida de conmutación", unidad: W }
+    P_tx: { expr: "P_cd + P_cm", sim: "P", nombre: "pérdida total", unidad: W }
+    P_dr: { expr: "Q_g*V_f*f_s", sim: "P_{driver}", nombre: "consumo del driver", unidad: W }
+    P_d10: { expr: "10*Q_g*V_f*f_s", sim: "P", nombre: "diez veces más", unidad: W }
+    f_cr: { expr: "2*I_x*R_x*D_x/(V_s*t_x)", sim: "f_{cruce}", nombre: "frecuencia de cruce", unidad: Hz }
+
+tarjetas:
+  - id: explore-meseta
+    tipo: explorar
+    titulo: "La meseta de Miller"
+    texto: "La tensión de puerta mientras el driver la carga. Cambie la corriente del driver y mire cuánto dura la meseta."
+    nota: "Cargas de ejemplo de la figura del libro."
+    libro: [126, 129, 135]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.0000007, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 12, unidad: V, rotulo: "V_{GS}" }
+      curvas:
+        - { expr: "min(I_dr*t/Q_gs, 1)*V_pl + min(max(0, I_dr*t - Q_gs - Q_gd), Q_g - Q_gs - Q_gd)*(V_f - V_pl)/(Q_g - Q_gs - Q_gd)", color: azul, rotulo: "V_{GS}" }
+      lectura: { valor: t_m, rotulo: "Duración de la meseta" }
+      datos:
+        - { valor: t_t, rotulo: "Hasta la tensión final: {{t_t}}" }
+      mandos:
+        - { valor: I_dr, lista: [0.1, 0.2, 0.5, 1], rotulo: "Corriente del driver" }
+
+  - id: prediga-meseta
+    tipo: predecir
+    titulo: "Un driver débil"
+    texto: "La meseta dura lo que tarda el driver en inyectar Q_{gd} = 20 nC. ¿Cuánto dura con un driver de 0,1 A?"
+    libro: [130]
+    fijar: { I_dr: 0.1 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.0000007, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 12, unidad: V, rotulo: "V_{GS}" }
+      curvas:
+        - { expr: "min(I_dr*t/Q_gs, 1)*V_pl + min(max(0, I_dr*t - Q_gs - Q_gd), Q_g - Q_gs - Q_gd)*(V_f - V_pl)/(Q_g - Q_gs - Q_gd)", color: azul, rotulo: "V_{GS}" }
+      lectura: { valor: t_m, rotulo: "Duración de la meseta" }
+      ocultar: true
+    opciones:
+      - texto: "200 ns"
+        bien: true
+        porque: "20 nC / 0,1 A = 200 ns: diez veces más que con 1 A, y diez veces más disipación en la meseta."
+      - texto: "20 ns"
+        porque: "Eso es con un driver de 1 A. Con diez veces menos corriente, tarda diez veces más."
+      - texto: "2 ns"
+        porque: "Ha multiplicado en lugar de dividir: t = Q/I."
+    escalera:
+      - "La puerta se carga con corriente: t = Q/I."
+    solucion: "20 nC / 0,1 A = 200 ns."
+    comprobar:
+      - { t_m: 200e-9 }
+
+  - id: regla-tiempo
+    tipo: formula
+    titulo: "Carga, no tensión"
+    texto: "Lo que carga la puerta es corriente. Con Q_{g} = 30 nC, cambie la corriente del driver."
+    libro: [139, 140]
+    ec: 139
+    sustitucion: "{{Q_g2}} / {{I_d2}} = {{t_sw}}"
+    widget:
+      tipo: grafica
+      x: { id: ix, min: 0.01, max: 10, unidad: A, rotulo: "I_{driver}", escala: log }
+      y: { min: 0.000000001, max: 0.00001, unidad: s, rotulo: "t_{conmutación}", escala: log }
+      curvas:
+        - { expr: "Q_g2/ix", color: azul, rotulo: "Q_{g}/I_{driver}" }
+      asas:
+        - { mueve: I_d2, x: "I_d2", y: "t_sw", rotulo: "Su driver" }
+      lectura: { valor: t_sw, rotulo: "Tiempo de conmutación" }
+      mandos:
+        - { valor: I_d2, lista: [0.02, 0.1, 0.3, 1, 3], rotulo: "Corriente del driver" }
+
+  - id: estime-perdida
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Lo que cuesta la meseta"
+    texto: "Se conmutan 24 V y 8 A a 100 kHz con transiciones de 200 ns. ¿Cuánto se pierde solo en el encendido?"
+    libro: [130]
+    estimar:
+      objetivo: "P_e"
+      unidad: W
+      min: 0
+      max: 5
+      paso: 0.05
+      inicio: 4
+      tol: 0.05
+      rotulo: "Pérdida en el encendido"
+    exito: "½ · 24 · 8 · 200 ns · 100 kHz = 1,9 W, y otro tanto al apagar. El driver decide las pérdidas."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 2.02 }, texto: "Se ha pasado: no olvide el ½, la tensión y la corriente se cruzan en la transición." }
+      - { texto: "Se ha quedado corto: hay cien mil transiciones por segundo." }
+    escalera:
+      - "Energía por transición: ½ · V · I · t; multiplique por la frecuencia."
+    solucion: "½ · 24 · 8 · 2 · 10⁻⁷ · 10⁵ = 1,92 W."
+    comprobar:
+      - { P_e: 1.92 }
+
+  - id: sorpresa-cruce
+    tipo: sorpresa
+    titulo: "La frecuencia manda"
+    texto: "Con 5 A, 20 mΩ, D = 0,5, 24 V y 50 ns, suba la frecuencia. Mire cuándo la conmutación supera a la conducción."
+    libro: [136, 137]
+    inicio: { f_x: 20000 }
+    widget:
+      tipo: grafica
+      x: { id: fx, min: 1000, max: 2000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0, max: 2, unidad: W, rotulo: "pérdida" }
+      curvas:
+        - { expr: "P_cd", color: azul, rotulo: "conducción" }
+        - { expr: "0.5*V_s*I_x*t_x*fx", color: naranja, rotulo: "conmutación" }
+      asas:
+        - { mueve: f_x, x: "f_x", y: "P_cm", rotulo: "Su frecuencia" }
+      lectura: { valor: P_tx, rotulo: "Pérdida total" }
+      datos:
+        - { valor: P_cm, rotulo: "Conmutación: {{P_cm}}" }
+        - { valor: f_cr, rotulo: "Cruce: {{f_cr}}" }
+      mandos:
+        - { valor: f_x, lista: [20000, 50000, 100000, 200000, 500000], rotulo: "Frecuencia" }
+    requiere: { mover: [f_x] }
+
+  - id: por-que-cruce
+    tipo: porque
+    titulo: "Por encima del cruce"
+    texto: "A 500 kHz, ¿por qué es un error elegir el transistor de resistencia bajísima pero puerta enorme?"
+    libro: [136, 137]
+    widget:
+      tipo: grafica
+      x: { id: fx, min: 1000, max: 2000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0, max: 2, unidad: W, rotulo: "pérdida" }
+      curvas:
+        - { expr: "P_cd", color: azul, rotulo: "conducción" }
+        - { expr: "0.5*V_s*I_x*t_x*fx", color: naranja, rotulo: "conmutación" }
+    opciones:
+      - texto: "Ahí manda la conmutación, que crece con la frecuencia y con los tiempos"
+        bien: true
+        porque: "La conducción no depende de la frecuencia. Por encima del cruce se elige por carga de puerta y tiempos."
+      - texto: "Porque a alta frecuencia sube la R_{DS(on)}"
+        porque: "La R_{DS(on)} no depende de la frecuencia. Lo que crece es la pérdida de conmutación."
+      - texto: "No es un error: menos resistencia siempre es menos pérdida"
+        porque: "Solo por debajo del cruce. Una puerta enorme alarga las transiciones y multiplica la conmutación."
+    escalera:
+      - "¿Cuál de las dos pérdidas es proporcional a la frecuencia?"
+    solucion: "Por encima del cruce dominan Q_{g} y los tiempos, no R_{DS(on)}."
+
+  - id: consumo-driver
+    tipo: pregunta
+    titulo: "Lo que gasta el driver"
+    texto: "Mover Q_{g} = 60 nC a 10 V, cien mil veces por segundo. ¿Cuánto consume el driver?"
+    libro: [131]
+    widget:
+      tipo: grafica
+      x: { id: ix, min: 0.01, max: 10, unidad: A, rotulo: "I_{driver}", escala: log }
+      y: { min: 0.000000001, max: 0.00001, unidad: s, rotulo: "t_{conmutación}", escala: log }
+      curvas:
+        - { expr: "Q_g2/ix", color: azul, rotulo: "Q_{g}/I_{driver}" }
+    opciones:
+      - texto: "60 mW"
+        bien: true
+        porque: "Q_{g} · V_{g} · f = 60 nC · 10 V · 100 kHz: poco frente a lo que ahorra en el transistor."
+      - texto: "600 mW"
+        porque: "Sobra un factor diez: revise los prefijos de nano y kilo."
+      - texto: "Nada: la puerta no consume en continua"
+        porque: "En continua no, pero cada ciclo carga y descarga la puerta: Q_{g} · V_{g} · f."
+    escalera:
+      - "Energía por ciclo: Q_{g} · V_{g}."
+    solucion: "60 nC · 10 V · 100 kHz = 60 mW."
+    comprobar:
+      - { P_dr: 0.06, P_d10: 0.6 }
+
+  - id: resistencia-puerta
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "La resistencia de puerta"
+    texto: "Una cada problema con lo que lo resuelve."
+    libro: [132, 133]
+    emparejar:
+      - ["Oscilación en la puerta", "Una R_{g} que amortigüe la resonancia con C_{gs}"]
+      - ["Interferencia radiada", "Subir R_{g}: flancos más suaves"]
+      - ["Encendido parásito por dv/dt", "Driver de baja impedancia de apagado"]
+      - ["Transistor caliente por conmutar lento", "Bajar R_{g}: flancos más rápidos"]
+    exito: "R_{g} es un compromiso: menos pérdidas o menos interferencia."
+    pistas:
+      - { texto: "El encendido parásito lo provoca C_{gd} inyectando corriente en la puerta." }
+    escalera:
+      - "Subir R_{g} suaviza los flancos; bajarla los acelera."
+    solucion: "Oscilación y emisión: subir R_{g}; calor: bajarla; dv/dt: driver de apagado firme."
+
+  - id: bootstrap
+    tipo: pregunta
+    titulo: "El transistor de arriba"
+    texto: "En un puente, ¿por qué el transistor de arriba necesita un driver con bootstrap?"
+    libro: [134]
+    widget:
+      tipo: grafica
+      x: { id: ix, min: 0.01, max: 10, unidad: A, rotulo: "I_{driver}", escala: log }
+      y: { min: 0.000000001, max: 0.00001, unidad: s, rotulo: "t_{conmutación}", escala: log }
+      curvas:
+        - { expr: "Q_g2/ix", color: azul, rotulo: "Q_{g}/I_{driver}" }
+    opciones:
+      - texto: "Su fuente flota a la tensión de salida y la puerta debe ir referida a ella"
+        bien: true
+        porque: "V_{GS} se mide desde la fuente, que sube y baja con la salida: hace falta una alimentación que flote con ella."
+      - texto: "Porque conduce más corriente que el de abajo"
+        porque: "Conducen la misma; el problema es la referencia de su puerta."
+      - texto: "Para conseguir el tiempo muerto"
+        porque: "El tiempo muerto lo pone el controlador; el bootstrap da la puerta flotante."
+    escalera:
+      - "¿Respecto a qué terminal se mide V_{GS}?"
+    solucion: "Su fuente flota: la puerta necesita una tensión referida a ella."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [126, 127, 130, 137, 139]
+    ideas:
+      - { titulo: "Carga, no tensión.", texto: "t = Q_{g}/I_{driver}: un driver débil alarga la transición." }
+      - { titulo: "La meseta.", texto: "Mientras se carga C_{gd}, el transistor tiene tensión y corriente: ahí se pierde." }
+      - { titulo: "El cruce.", texto: "Por debajo manda R_{DS(on)}; por encima, Q_{g} y los tiempos." }
+      - { titulo: "El driver.", texto: "Amperios de pico, tiempo muerto y, arriba, bootstrap." }

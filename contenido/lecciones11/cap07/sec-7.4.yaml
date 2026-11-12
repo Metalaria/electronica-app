@@ -1,0 +1,283 @@
+# Lección 1.2 de la sección 7.4 «Parámetros Clave de los MOSFET de Potencia» (cap07). Formato: contenido/lecciones11/GUIA.md.
+# La subida de R_DS(on) con la temperatura es la lineal del libro (0,7 % por grado, ×1,5 a 100 °C). En la tarjeta del
+# umbral, k = 0,5 A/V² (figura 7.3) es un ejemplo para ver la tendencia, no un dato del transistor.
+leccion: cap07/sec-7.4
+
+libro:
+  75: "Carga necesaria para conmutar (afecta a la velocidad)"
+  76: "determina las pérdidas por conducción (P = I²·RDS(on))"
+  77: "como el IRLZ44N"
+  79: "para 24 V se elige un transistor de 60 V (el doble son 48 V), no de 30"
+  80: "Casi siempre es un valor teórico calculado con la lengüeta a 25 °C"
+  81: "Un transistor de 10 mΩ que conmuta 10 A disipa 1 W en frío y 1,5 W en régimen"
+  82: "Un transistor con umbral de 4 V gobernado desde 3,3 V apenas conduce"
+  83: "conmuta más deprisa y disipa menos en alta frecuencia"
+  85: "del orden de 1 °C/W en un TO-220"
+  "cap07#40": "(k = 0,5 A/V², Vth = 2 V)"
+  "cap07#236": "Un MOSFET con RDS(on) = 20 mΩ conduce 15 A en estado encendido"
+
+modelo:
+  valores:
+    R_25: { sim: "R_{DS(on)}", nombre: "resistencia a 25 °C", unidad: Ω, valor: 0.01 }
+    T_j: { sim: "T_{j}", nombre: "temperatura de unión", unidad: "°C", valor: 25 }
+    I_c: { sim: "I", nombre: "corriente conmutada", unidad: A, valor: 10 }
+    R_a: { sim: "R_{DS(on)}", nombre: "resistencia en conducción", unidad: Ω, valor: 0.02 }
+    I_a: { sim: "I", nombre: "corriente", unidad: A, valor: 15 }
+    V_al: { sim: "V_{alimentación}", nombre: "tensión de alimentación", unidad: V, valor: 24 }
+    V_dss: { sim: "V_{DSS}", nombre: "tensión máxima del transistor", unidad: V, valor: 30 }
+    V_mc: { sim: "V_{GS}", nombre: "tensión de mando", unidad: V, valor: 3.3 }
+    V_th: { sim: "V_{th}", nombre: "umbral de este ejemplar", unidad: V, valor: 2 }
+    k_m: { sim: "k", nombre: "parámetro del transistor", unidad: "A/V²", valor: 0.5 }
+  calculos:
+    R_T: { expr: "R_25*(1 + 0.007*(T_j - 25))", sim: "R_{DS(on)}", nombre: "resistencia a esa temperatura", unidad: Ω }
+    P_c: { expr: "I_c^2*R_T", sim: "P", nombre: "pérdida de conducción", unidad: W }
+    P_a: { expr: "I_a^2*R_a", sim: "P", nombre: "pérdida de conducción", unidad: W }
+    P_b: { expr: "I_a^2*R_a*10", sim: "P", nombre: "con diez veces más resistencia", unidad: W }
+    V_reg: { expr: "0.8*V_dss", sim: "0,8 · V_{DSS}", nombre: "tensión de trabajo admisible", unidad: V }
+    V_pk: { expr: "2*V_al", sim: "V_{pico}", nombre: "picos de conmutación", unidad: V }
+    I_mc: { expr: "0.5*k_m*max(0, V_mc - V_th)^2", sim: "I_{D}", nombre: "corriente que admite el canal", unidad: A }
+
+tarjetas:
+  - id: explore-temperatura
+    tipo: explorar
+    titulo: "R_{DS(on)} se calienta"
+    texto: "Un transistor de 10 mΩ conduce 10 A. Suba la temperatura de unión y mire la pérdida."
+    libro: [76, 81]
+    fijar: { R_25: 0.01, I_c: 10 }
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 25, max: 150, unidad: "°C", rotulo: "T_{j}" }
+      y: { min: 0, max: 0.02, unidad: Ω, rotulo: "R_{DS(on)}" }
+      curvas:
+        - { expr: "R_25*(1 + 0.007*(tx - 25))", color: azul, rotulo: "R_{DS(on)}" }
+      asas:
+        - { mueve: T_j, x: "T_j", y: "R_T", rotulo: "Su unión" }
+      lectura: { valor: P_c, rotulo: "Pérdida de conducción" }
+      datos:
+        - { valor: R_T, rotulo: "R_{DS(on)} = {{R_T}}" }
+      mandos:
+        - { valor: T_j, min: 25, max: 150, paso: 5, rotulo: "Temperatura de unión" }
+
+  - id: prediga-regimen
+    tipo: predecir
+    titulo: "En régimen"
+    texto: "El mismo transistor de 10 mΩ, con 10 A y la unión a 100 °C. ¿Cuánto disipa?"
+    libro: [81]
+    fijar: { R_25: 0.01, I_c: 10, T_j: 100 }
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 25, max: 150, unidad: "°C", rotulo: "T_{j}" }
+      y: { min: 0, max: 0.02, unidad: Ω, rotulo: "R_{DS(on)}" }
+      curvas:
+        - { expr: "R_25*(1 + 0.007*(tx - 25))", color: azul, rotulo: "R_{DS(on)}" }
+      lectura: { valor: P_c, rotulo: "Pérdida de conducción" }
+      ocultar: true
+    opciones:
+      - texto: "Unos 1,5 W"
+        bien: true
+        porque: "R_{DS(on)} sube un 0,7 % por grado: ×1,5 a 100 °C. Es la diferencia que se subestima."
+      - texto: "1 W"
+        porque: "Eso es en frío, con la R_{DS(on)} de catálogo a 25 °C."
+      - texto: "Unos 0,7 W"
+        porque: "La resistencia no baja al calentarse: sube."
+    escalera:
+      - "Primero corrija la resistencia por temperatura; luego, I² · R."
+    solucion: "R ≈ 15 mΩ a 100 °C: 10² · 0,015 ≈ 1,5 W."
+    comprobar:
+      - { P_c: 1.525, R_T: 0.01525, tol: 0.001 }
+
+  - id: estime-conduccion
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Pérdida por conducción"
+    texto: "Un MOSFET de 20 mΩ conduce 15 A. ¿Qué potencia disipa por conducción?"
+    libro: [76, "cap07#236"]
+    estimar:
+      objetivo: "P_a"
+      unidad: W
+      min: 0
+      max: 20
+      paso: 0.1
+      inicio: 15
+      tol: 0.05
+      rotulo: "Pérdida"
+    exito: "15² · 0,020 = 4,5 W. Con 200 mΩ serían 45 W: la diferencia entre calentarse y destruirse."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 4.73 }, texto: "Se ha pasado: es I² · R con R en ohmios, 0,020 Ω." }
+      - { texto: "Se ha quedado corto: la corriente va al cuadrado, 225." }
+    escalera:
+      - "P = I² · R_{DS(on)}."
+    solucion: "225 · 0,020 = 4,5 W."
+    comprobar:
+      - { P_a: 4.5, P_b: 45 }
+
+  - id: reto-vds
+    tipo: reto
+    titulo: "Elija la V_{DSS}"
+    texto: "Se conmutan 24 V con inductancias parásitas. Elija un transistor que trabaje como mucho al 80 % y cubra picos del doble."
+    libro: [79]
+    fijar: { V_al: 24 }
+    inicio: { V_dss: 30 }
+    widget:
+      tipo: grafica
+      x: { id: vx, min: 0, max: 120, unidad: V, rotulo: "V_{DSS}" }
+      y: { min: 0, max: 100, unidad: V, rotulo: "tensión" }
+      curvas:
+        - { expr: "0.8*vx", color: azul, rotulo: "80 % de V_{DSS}" }
+        - { expr: "V_pk", color: tinta, rotulo: "picos: el doble de 24 V", discontinua: true }
+      asas:
+        - { mueve: V_dss, x: "V_dss", y: "V_reg", rotulo: "Su transistor" }
+      lectura: { valor: V_reg, rotulo: "Tensión admisible" }
+      mandos:
+        - { valor: V_dss, lista: [24, 30, 60, 100], rotulo: "V_{DSS}" }
+    condiciones:
+      - { valor: V_reg, mayor: 47.9, rotulo: "80 %: {{V_reg}}" }
+    exito: "Su 80 % cubre los picos de 48 V. El libro elige el menor que cumple: 60 V, no 30."
+    pistas:
+      - { texto: "Se queda corto: los picos llegan al doble de 24 V y el 80 % de este transistor no los cubre." }
+    escalera:
+      - "Los picos llegan a 48 V; busque el transistor cuyo 80 % sea eso."
+    solucion: "48 V es el 80 % de 60 V."
+    comprobar:
+      - { con: { V_dss: 60 }, V_reg: 48, V_pk: 48 }
+
+  - id: sorpresa-umbral
+    tipo: sorpresa
+    titulo: "El mismo modelo, otro umbral"
+    texto: "La hoja da un umbral de 2 a 4 V. Con 3,3 V de mando, mueva el umbral del ejemplar dentro de ese intervalo."
+    nota: "Corriente con k = 0,5 A/V², como ejemplo."
+    libro: [82, "cap07#40"]
+    fijar: { V_mc: 3.3, k_m: 0.5 }
+    inicio: { V_th: 2 }
+    widget:
+      tipo: grafica
+      x: { id: vt, min: 2, max: 4, unidad: V, rotulo: "V_{th}" }
+      y: { min: 0, max: 0.5, unidad: A, rotulo: "I_{D}" }
+      curvas:
+        - { expr: "0.5*k_m*max(0, V_mc - vt)^2", color: azul, rotulo: "corriente con 3,3 V" }
+      asas:
+        - { mueve: V_th, x: "V_th", y: "I_mc", rotulo: "Su ejemplar" }
+      lectura: { valor: I_mc, rotulo: "Corriente que admite el canal" }
+      mandos:
+        - { valor: V_th, min: 2, max: 4, paso: 0.1, rotulo: "Umbral del ejemplar" }
+    requiere: { mover: [V_th] }
+
+  - id: por-que-umbral
+    tipo: porque
+    titulo: "¿Por qué tanta diferencia?"
+    texto: "Con la misma tensión de mando, un ejemplar conduce y otro del mismo modelo apenas lo hace. ¿Por qué?"
+    libro: [82]
+    fijar: { V_mc: 3.3, k_m: 0.5 }
+    widget:
+      tipo: grafica
+      x: { id: vt, min: 2, max: 4, unidad: V, rotulo: "V_{th}" }
+      y: { min: 0, max: 0.5, unidad: A, rotulo: "I_{D}" }
+      curvas:
+        - { expr: "0.5*k_m*max(0, V_mc - vt)^2", color: azul, rotulo: "corriente con 3,3 V" }
+    opciones:
+      - texto: "Lo que cuenta es la sobreexcitación, V_{GS} − V_{th}, y aquí es pequeña o nula"
+        bien: true
+        porque: "Con un umbral alto, 3,3 V apenas superan el umbral: casi no hay canal."
+      - texto: "Porque uno de los dos está averiado"
+        porque: "Ambos cumplen la hoja: el umbral se da como un intervalo, y los dos extremos son legales."
+      - texto: "Porque la puerta consume más corriente en uno"
+        porque: "La puerta no consume corriente en continua; decide la tensión por encima del umbral."
+    escalera:
+      - "¿Cuánto supera 3,3 V a un umbral de 4 V?"
+    solucion: "La sobreexcitación decide: con umbral alto, 3,3 V apenas lo superan."
+
+  - id: extremos-umbral
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los dos extremos"
+    texto: "Una cada extremo del intervalo de umbral con lo que hay que comprobar con él."
+    libro: [82]
+    emparejar:
+      - ["El extremo alto", "Que conduzca con la tensión de mando disponible"]
+      - ["El extremo bajo", "Que corte cuando no debe conducir"]
+      - ["Un umbral de 1 V", "Se enciende con el ruido de una entrada flotante"]
+    exito: "El diseño debe funcionar con los dos extremos de la hoja, no con el típico."
+    pistas:
+      - { texto: "Un umbral alto dificulta encender; uno bajo, apagar." }
+    escalera:
+      - "¿Qué ejemplar cuesta más encender?"
+    solucion: "Alto–conducción, bajo–corte, 1 V–ruido."
+
+  - id: arduino
+    tipo: pregunta
+    titulo: "Desde un Arduino"
+    texto: "Una tira de LED de 12 V y 2 A desde un pin de 5 V. ¿Qué MOSFET hace falta?"
+    libro: [77, "cap07#236"]
+    widget:
+      tipo: grafica
+      x: { id: vt, min: 2, max: 4, unidad: V, rotulo: "V_{th}" }
+      y: { min: 0, max: 0.5, unidad: A, rotulo: "I_{D}" }
+      curvas:
+        - { expr: "0.5*k_m*max(0, V_mc - vt)^2", color: azul, rotulo: "corriente con 3,3 V" }
+    opciones:
+      - texto: "Uno de canal N de nivel lógico, como el IRLZ44N"
+        bien: true
+        porque: "Conduce a fondo, en la región óhmica, con 5 V o menos de puerta."
+      - texto: "Uno estándar de mucha corriente"
+        porque: "Necesita unos 10 V: con 5 V quedaría a medio conducir, con R_{DS(on)} alta y mucho calor."
+      - texto: "Cualquiera: el MOSFET no consume corriente de puerta"
+        porque: "No consumir no basta: la tensión de puerta debe llevarlo a la región óhmica."
+    escalera:
+      - "¿Cuánta tensión de puerta necesita un MOSFET estándar para conducir plenamente?"
+    solucion: "Nivel lógico: los estándar necesitan unos 10 V en la puerta."
+
+  - id: qg-o-ron
+    tipo: pregunta
+    titulo: "Igual R_{DS(on)}"
+    texto: "Dos MOSFET con la misma R_{DS(on)}. ¿Cuál disipa menos conmutando a alta frecuencia?"
+    libro: [75, 83]
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 25, max: 150, unidad: "°C", rotulo: "T_{j}" }
+      y: { min: 0, max: 0.02, unidad: Ω, rotulo: "R_{DS(on)}" }
+      curvas:
+        - { expr: "R_25*(1 + 0.007*(tx - 25))", color: azul, rotulo: "R_{DS(on)}" }
+    opciones:
+      - texto: "El de menor carga de puerta Q_{g}"
+        bien: true
+        porque: "Conmuta más deprisa y disipa menos en alta frecuencia; con igual Q_{g}, mandaría la R_{DS(on)}."
+      - texto: "El de mayor I_{D} máxima"
+        porque: "La I_{D} de portada es teórica, a 25 °C, y no dice nada de la velocidad."
+      - texto: "Disipan lo mismo"
+        porque: "En conducción sí; al conmutar, el de menor Q_{g} pasa menos tiempo en la transición."
+    escalera:
+      - "¿Qué parámetro decide la velocidad de conmutación?"
+    solucion: "El de menor Q_{g}."
+
+  - id: portada
+    tipo: pregunta
+    titulo: "La I_{D} de portada"
+    texto: "Un MOSFET anuncia una corriente máxima enorme. ¿Qué dato sirve de verdad para dimensionarlo?"
+    libro: [80, 85]
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 25, max: 150, unidad: "°C", rotulo: "T_{j}" }
+      y: { min: 0, max: 0.02, unidad: Ω, rotulo: "R_{DS(on)}" }
+      curvas:
+        - { expr: "R_25*(1 + 0.007*(tx - 25))", color: azul, rotulo: "R_{DS(on)}" }
+    opciones:
+      - texto: "La disipación que el montaje puede evacuar"
+        bien: true
+        porque: "Con la resistencia térmica y la unión máxima sale la potencia admisible, y de ella la corriente por I² · R_{DS(on)}."
+      - texto: "La propia I_{D} de portada"
+        porque: "Está calculada con la lengüeta a 25 °C, imposible de mantener."
+      - texto: "La tensión V_{DSS}"
+        porque: "Limita la tensión, no la corriente que el montaje puede disipar."
+    escalera:
+      - "Lo que destruye el transistor es la temperatura de unión."
+    solucion: "La potencia que evacua el montaje, a la temperatura de trabajo."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [76, 79, 81, 82, 83]
+    ideas:
+      - { titulo: "Conducción.", texto: "P = I² · R_{DS(on)}, y R_{DS(on)} sube ×1,5 a 100 °C." }
+      - { titulo: "Tensión.", texto: "Como mucho el 80 %, con picos del doble: para 24 V, 60 V." }
+      - { titulo: "Umbral.", texto: "Diseñe con los dos extremos del intervalo, no con el típico." }
+      - { titulo: "Q_{g} frente a R_{DS(on)}.", texto: "Menos carga de puerta conmuta más deprisa; menos resistencia conduce mejor." }

@@ -1,0 +1,241 @@
+# Lección 1.2 de la sección 7.9 «El Diodo de Cuerpo y la Conmutación Síncrona» (cap07). Formato: contenido/lecciones11/GUIA.md.
+leccion: cap07/sec-7.9
+
+libro:
+  146: "orientado de fuente a drenador en un canal N"
+  149: "un MOSFET de canal N no puede bloquear una tensión que haga el drenador más negativo que la fuente"
+  150: "hacen falta dos MOSFET en antiserie, con las fuentes unidas"
+  152: "Con 20 A, eso son 8 W disipados"
+  153: "Con 5 mΩ y 20 A, la caída es de 0,1 V y la disipación de 2 W: cuatro veces menos"
+  154: "demasiado corto es conducción cruzada; demasiado largo significa más tiempo disipando en el diodo de cuerpo"
+  156: "su trr es de 100 a 500 ns en un MOSFET estándar, frente a los 35 ns de un ultrarrápido"
+  157: "esa carga aparece como un pico de corriente"
+  158: 'P approx "½" dot.op V dot.op Q_("rr") dot.op f'
+  159: "Con 400 V, 200 nC y 100 kHz: 4 W"
+  160: "los MOSFET de carburo de silicio y los HEMT de GaN carecen prácticamente de recuperación inversa"
+  162: "Una lectura próxima a cero en ambos sentidos significa que el transistor está en cortocircuito"
+
+modelo:
+  valores:
+    I_l: { sim: "I", nombre: "corriente de la bobina", unidad: A, valor: 10 }
+    V_sk: { sim: "V_{F}", nombre: "caída del Schottky", unidad: V, valor: 0.4 }
+    R_sy: { sim: "R_{DS(on)}", nombre: "resistencia del MOSFET síncrono", unidad: Ω, valor: 0.005 }
+    V_p: { sim: "V", nombre: "tensión del puente", unidad: V, valor: 400 }
+    Q_rr: { sim: "Q_{rr}", nombre: "carga de recuperación", unidad: C, valor: 200e-9 }
+    f_p: { sim: "f", nombre: "frecuencia de conmutación", unidad: Hz, valor: 100000 }
+  calculos:
+    P_sk: { expr: "V_sk*I_l", sim: "P_{Schottky}", nombre: "pérdida del Schottky", unidad: W }
+    P_sy: { expr: "I_l^2*R_sy", sim: "P_{síncrona}", nombre: "pérdida del MOSFET síncrono", unidad: W }
+    V_sy: { expr: "I_l*R_sy", sim: "V", nombre: "caída del MOSFET síncrono", unidad: V }
+    P_rr: { expr: "0.5*V_p*Q_rr*f_p", sim: "P", nombre: "pérdida por recuperación", unidad: W }
+
+tarjetas:
+  - id: explore-sincrona
+    tipo: explorar
+    titulo: "Un diodo o un MOSFET"
+    texto: "La corriente de la bobina pasa por un Schottky de 0,4 V o por un MOSFET de 5 mΩ. Arrastre la corriente."
+    libro: [152, 153]
+    widget:
+      tipo: grafica
+      x: { id: ix, min: 0, max: 30, unidad: A, rotulo: "I" }
+      y: { min: 0, max: 12, unidad: W, rotulo: "pérdida" }
+      curvas:
+        - { expr: "V_sk*ix", color: azul, rotulo: "Schottky" }
+        - { expr: "ix^2*R_sy", color: naranja, rotulo: "síncrono" }
+      asas:
+        - { mueve: I_l, x: "I_l", y: "P_sk", rotulo: "Su corriente" }
+      lectura: { valor: P_sk, rotulo: "Pérdida del Schottky" }
+      datos:
+        - { valor: P_sy, rotulo: "Síncrono: {{P_sy}}" }
+      mandos:
+        - { valor: I_l, min: 1, max: 30, paso: 1, rotulo: "Corriente" }
+
+  - id: prediga-sincrona
+    tipo: predecir
+    titulo: "Con 20 A"
+    texto: "Con 20 A, el Schottky disipa 8 W. ¿Cuánto disipa un MOSFET síncrono de 5 mΩ?"
+    libro: [152, 153]
+    fijar: { I_l: 20 }
+    widget:
+      tipo: grafica
+      x: { id: ix, min: 0, max: 30, unidad: A, rotulo: "I" }
+      y: { min: 0, max: 12, unidad: W, rotulo: "pérdida" }
+      curvas:
+        - { expr: "V_sk*ix", color: azul, rotulo: "Schottky" }
+        - { expr: "ix^2*R_sy", color: naranja, rotulo: "síncrono" }
+      lectura: { valor: P_sy, rotulo: "Pérdida del síncrono" }
+      ocultar: true
+    opciones:
+      - texto: "2 W"
+        bien: true
+        porque: "Cae 20 A · 5 mΩ = 0,1 V: 2 W, cuatro veces menos que el Schottky."
+      - texto: "0,1 W"
+        porque: "0,1 V es la caída. La potencia es esa caída por los 20 A."
+      - texto: "8 W, como el diodo"
+        porque: "El MOSFET no tiene caída fija: cae I · R_{DS(on)}, mucho menos que 0,4 V."
+    escalera:
+      - "Calcule primero la caída, I · R_{DS(on)}."
+    solucion: "0,1 V · 20 A = 2 W."
+    comprobar:
+      - { P_sy: 2, V_sy: 0.1, P_sk: 8 }
+
+  - id: tiempo-muerto
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "El tiempo muerto"
+    texto: "Una cada ajuste del tiempo muerto con su consecuencia."
+    libro: [154]
+    emparejar:
+      - ["Demasiado corto", "Conducción cruzada: cortocircuito de la alimentación"]
+      - ["Demasiado largo", "Más tiempo disipando en el diodo de cuerpo"]
+      - ["Durante el tiempo muerto", "La corriente pasa por el diodo de cuerpo"]
+    exito: "Hay que ajustarlo: el diodo de cuerpo disipa más que el Schottky."
+    pistas:
+      - { texto: "Si los dos transistores conducen a la vez, cortocircuitan la alimentación." }
+    escalera:
+      - "Durante el tiempo muerto no conduce ningún transistor."
+    solucion: "Corto–conducción cruzada, largo–diodo de cuerpo, durante–diodo de cuerpo."
+
+  - id: estime-recuperacion
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El precio de la recuperación"
+    texto: "En un puente de 400 V, el diodo de cuerpo almacena 200 nC y se conmuta a 100 kHz. ¿Cuánto se pierde?"
+    libro: [158, 159]
+    fijar: { V_p: 400, Q_rr: 200e-9, f_p: 100000 }
+    estimar:
+      objetivo: "P_rr"
+      unidad: W
+      min: 0
+      max: 10
+      paso: 0.1
+      inicio: 9
+      tol: 0.05
+      rotulo: "Pérdida por recuperación"
+    exito: "4 W que no aparecen en ningún cálculo de conducción ni de conmutación normal."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 4.2 }, texto: "Se ha pasado: no olvide el ½." }
+      - { texto: "Se ha quedado corto: revise los prefijos de nano y kilo." }
+    escalera:
+      - "P ≈ ½ · V · Q_{rr} · f."
+    solucion: "½ · 400 · 200 nC · 100 kHz = 4 W."
+    comprobar:
+      - { P_rr: 4 }
+
+  - id: regla-recuperacion
+    tipo: formula
+    titulo: "La pérdida de recuperación"
+    texto: "Cada encendido del transistor opuesto retira Q_{rr} a la tensión completa. Cambie la frecuencia."
+    libro: [157, 158]
+    ec: 158
+    sustitucion: "½ · {{V_p}} · {{Q_rr}} · {{f_p}} = {{P_rr}}"
+    widget:
+      tipo: grafica
+      x: { id: fx, min: 10000, max: 500000, unidad: Hz, rotulo: "f" }
+      y: { min: 0, max: 22, unidad: W, rotulo: "pérdida" }
+      curvas:
+        - { expr: "0.5*V_p*Q_rr*fx", color: azul, rotulo: "½ · V · Q_{rr} · f" }
+      asas:
+        - { mueve: f_p, x: "f_p", y: "P_rr", rotulo: "Su frecuencia" }
+      lectura: { valor: P_rr, rotulo: "Pérdida por recuperación" }
+      mandos:
+        - { valor: f_p, min: 10000, max: 500000, paso: 10000, rotulo: "Frecuencia" }
+
+  - id: por-que-necesidad
+    tipo: porque
+    titulo: "Para un procesador"
+    texto: "En una salida de 1,2 V, la conmutación síncrona no es una mejora sino una necesidad. ¿Por qué?"
+    libro: [153]
+    widget:
+      tipo: grafica
+      x: { id: ix, min: 0, max: 30, unidad: A, rotulo: "I" }
+      y: { min: 0, max: 12, unidad: W, rotulo: "pérdida" }
+      curvas:
+        - { expr: "V_sk*ix", color: azul, rotulo: "Schottky" }
+        - { expr: "ix^2*R_sy", color: naranja, rotulo: "síncrono" }
+    opciones:
+      - texto: "Los 0,4 V del Schottky son un tercio de la salida"
+        bien: true
+        porque: "Con esa caída, buena parte de la energía entregada se perdería en el diodo: el rendimiento sería inaceptable."
+      - texto: "Porque el Schottky no conduce a 1,2 V"
+        porque: "Conduciría; el problema es lo que pierde comparado con la tensión de salida."
+      - texto: "Porque el MOSFET no tiene diodo de cuerpo"
+        porque: "Sí lo tiene, y conduce en el tiempo muerto. La ventaja es su caída de 0,1 V."
+    escalera:
+      - "Compare la caída del diodo con la tensión de salida."
+    solucion: "0,4 V es un tercio de 1,2 V: sin síncrona el rendimiento sería inaceptable."
+
+  - id: alterna
+    tipo: pregunta
+    titulo: "Conmutar alterna"
+    texto: "Un relé de estado sólido debe bloquear los dos semiciclos de la red. ¿Cómo se hace con MOSFET de canal N?"
+    libro: [149, 150]
+    widget:
+      tipo: grafica
+      x: { id: ix, min: 0, max: 30, unidad: A, rotulo: "I" }
+      y: { min: 0, max: 12, unidad: W, rotulo: "pérdida" }
+      curvas:
+        - { expr: "V_sk*ix", color: azul, rotulo: "Schottky" }
+        - { expr: "ix^2*R_sy", color: naranja, rotulo: "síncrono" }
+    opciones:
+      - texto: "Dos MOSFET en antiserie, con las fuentes unidas"
+        bien: true
+        porque: "Así hay siempre un diodo de cuerpo en inversa, uno en cada semiciclo."
+      - texto: "Un solo MOSFET con más tensión de ruptura"
+        porque: "Su diodo de cuerpo conduciría en el semiciclo en que el drenador queda por debajo de la fuente."
+      - texto: "Dos MOSFET en paralelo"
+        porque: "En paralelo, sus dos diodos conducen en el mismo sentido: no bloquean ese semiciclo."
+    escalera:
+      - "Un MOSFET solo no bloquea con el drenador más negativo que la fuente."
+    solucion: "Dos en antiserie: un diodo bloquea en cada semiciclo."
+
+  - id: soluciones
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Contra la recuperación lenta"
+    texto: "Una cada remedio con lo que tiene de bueno o de malo."
+    libro: [156, 160]
+    emparejar:
+      - ["MOSFET con diodo de cuerpo rápido", "El fabricante especifica t_{rr} y Q_{rr}"]
+      - ["Schottky en paralelo", "No almacena carga, pero lo limita la inductancia"]
+      - ["SiC o GaN", "Prácticamente sin recuperación inversa"]
+    exito: "Un diodo de cuerpo estándar tarda de 100 a 500 ns; un ultrarrápido, 35 ns."
+    pistas:
+      - { texto: "Ordene por coste: elegir el transistor, añadir un diodo, cambiar de tecnología." }
+    escalera:
+      - "El Schottky no tiene minoritarios almacenados."
+    solucion: "Diodo rápido–especificado, Schottky–inductancia, SiC/GaN–sin recuperación."
+
+  - id: cortocircuito
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "Con la prueba de diodos, entre drenador y fuente lee casi cero en los dos sentidos. ¿Qué le pasa?"
+    libro: [162]
+    widget:
+      tipo: grafica
+      x: { id: ix, min: 0, max: 30, unidad: A, rotulo: "I" }
+      y: { min: 0, max: 12, unidad: W, rotulo: "pérdida" }
+      curvas:
+        - { expr: "V_sk*ix", color: azul, rotulo: "Schottky" }
+        - { expr: "ix^2*R_sy", color: naranja, rotulo: "síncrono" }
+    opciones:
+      - texto: "Está en cortocircuito, su fallo más frecuente"
+        bien: true
+        porque: "Uno sano da OL en un sentido y la caída del diodo de cuerpo en el otro."
+      - texto: "Es normal: el diodo de cuerpo conduce"
+        porque: "El diodo conduce en un solo sentido y cae unas décimas de voltio, no cero en ambos."
+      - texto: "La puerta está cargada y el canal conduce"
+        porque: "Descargue la puerta y repita; si sigue en cero en ambos sentidos, está en corto."
+    escalera:
+      - "¿Qué leería un diodo sano en los dos sentidos?"
+    solucion: "Cortocircuito drenador-fuente."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [146, 150, 153, 158]
+    ideas:
+      - { titulo: "Un diodo de regalo.", texto: "De fuente a drenador en un canal N: no bloquea en inversa." }
+      - { titulo: "Síncrona.", texto: "Un MOSFET en lugar del Schottky: 2 W en vez de 8 con 20 A." }
+      - { titulo: "Tiempo muerto.", texto: "Ni tan corto que haya conducción cruzada ni tan largo que caliente el diodo." }
+      - { titulo: "Recuperación.", texto: "P ≈ ½ · V · Q_{rr} · f: 4 W en un puente de 400 V." }

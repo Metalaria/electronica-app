@@ -1,0 +1,323 @@
+# Lección 1.2 de la sección 7.5 «El MOSFET como Interruptor de Potencia» (cap07). Formato: contenido/lecciones11/GUIA.md.
+# El PWM se dibuja a 1 kHz (la frecuencia del ejemplo del libro). La carga es la de 12 V y 2 A (6 Ω) del libro.
+leccion: cap07/sec-7.5
+
+libro:
+  89: "o está totalmente apagado (no disipa porque no hay corriente), o totalmente encendido"
+  90: 'V_("promedio") = D dot.op V_("alimentación")'
+  91: "conviene una resistencia de pull-down (de unos 10 kΩ) entre compuerta y fuente"
+  93: "el transistor deja caer 3,5 V y disipa 5 W, con un rendimiento del 71 %"
+  94: "por eso los amplificadores de clase D conmutan por encima de 300 kHz"
+  95: "Los motores se gobiernan entre 1 y 20 kHz"
+  96: "A un kilohercio se puede vivir sin él; a cien, no."
+  98: "un VDS de varios voltios en conducción es un transistor en saturación por puerta insuficiente"
+  100: "la potencia depende del eficaz: P = V²·D/R, no de Vmedia²/R"
+  "cap07#236": "con ciclo de trabajo del 60 % desde una fuente de 24 V"
+
+modelo:
+  valores:
+    V_al: { sim: "V_{alimentación}", nombre: "tensión de alimentación", unidad: V, valor: 12 }
+    D: { sim: "D", nombre: "ciclo de trabajo", unidad: "", valor: 0.5 }
+    T_p: { sim: "T", nombre: "periodo del PWM", unidad: s, valor: 0.001 }
+    R_L: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 6 }
+    R_on: { sim: "R_{DS(on)}", nombre: "resistencia en conducción", unidad: Ω, valor: 0.02 }
+    x_p: { sim: "P/P_{máx}", nombre: "fracción de la potencia", unidad: "", valor: 0.5 }
+  calculos:
+    V_pr: { expr: "D*V_al", sim: "V_{promedio}", nombre: "tensión media", unidad: V }
+    t_on: { expr: "D*T_p", sim: "t_{on}", nombre: "tiempo encendido", unidad: s }
+    V_lin: { expr: "V_al*sqrt(x_p)", sim: "V_{carga}", nombre: "tensión en la carga con el lineal", unidad: V }
+    I_lin: { expr: "V_lin/R_L", sim: "I", nombre: "corriente con el lineal", unidad: A }
+    P_lin: { expr: "(V_al - V_lin)*I_lin", sim: "P_{lineal}", nombre: "disipación del elemento lineal", unidad: W }
+    P_pwm: { expr: "(V_al/R_L)^2*R_on*x_p", sim: "P_{PWM}", nombre: "disipación del MOSFET con PWM", unidad: W }
+    ren: { expr: "100*x_p*V_al^2/R_L/(x_p*V_al^2/R_L + P_lin)", sim: "η", nombre: "rendimiento del lineal", unidad: "%", cifras: 2 }
+    P_rms: { expr: "V_al^2*D/R_L", sim: "P", nombre: "potencia en la carga", unidad: W }
+    P_med: { expr: "(D*V_al)^2/R_L", sim: "P", nombre: "con la tensión media", unidad: W }
+
+tarjetas:
+  - id: explore-pwm
+    tipo: explorar
+    titulo: "Encendido o apagado"
+    texto: "Arrastre el flanco de bajada para cambiar el ciclo de trabajo. Mire la tensión media."
+    libro: [89, 90]
+    fijar: { V_al: 12, T_p: 0.001 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 14, unidad: V, rotulo: "v_{carga}" }
+      curvas:
+        - { expr: "V_al*floor(1 + D - (t/T_p - floor(t/T_p)))", color: azul, rotulo: "PWM" }
+        - { expr: "D*V_al", color: naranja, rotulo: "media", discontinua: true }
+      asas:
+        - { mueve: D, x: "t_on", y: "V_al", rotulo: "Flanco de bajada" }
+      lectura: { valor: V_pr, rotulo: "Tensión media" }
+      mandos:
+        - { valor: D, min: 0.05, max: 0.95, paso: 0.05, rotulo: "Ciclo de trabajo" }
+
+  - id: regla-media
+    tipo: formula
+    titulo: "La tensión media"
+    texto: "Si la tensión vale V una fracción D del periodo y cero el resto, su media es D · V."
+    libro: [90]
+    ec: 90
+    sustitucion: "{{D}} · {{V_al}} = {{V_pr}}"
+    fijar: { V_al: 12, T_p: 0.001 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 14, unidad: V, rotulo: "v_{carga}" }
+      curvas:
+        - { expr: "V_al*floor(1 + D - (t/T_p - floor(t/T_p)))", color: azul, rotulo: "PWM" }
+        - { expr: "D*V_al", color: naranja, rotulo: "media", discontinua: true }
+      asas:
+        - { mueve: D, x: "t_on", y: "V_al", rotulo: "Flanco de bajada" }
+      lectura: { valor: V_pr, rotulo: "Tensión media" }
+      mandos:
+        - { valor: D, min: 0.05, max: 0.95, paso: 0.05, rotulo: "Ciclo de trabajo" }
+
+  - id: ajuste-motor
+    tipo: ajuste
+    titulo: "Un motor a 14,4 V"
+    texto: "Un motor con PWM desde 24 V debe recibir 14,4 V de media. Ajuste el ciclo de trabajo."
+    libro: [90, "cap07#236"]
+    fijar: { V_al: 24, T_p: 0.001 }
+    inicio: { D: 0.3 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 26, unidad: V, rotulo: "v_{motor}" }
+      curvas:
+        - { expr: "V_al*floor(1 + D - (t/T_p - floor(t/T_p)))", color: azul, rotulo: "PWM" }
+        - { expr: "D*V_al", color: naranja, rotulo: "media", discontinua: true }
+      lectura: { valor: V_pr, rotulo: "Tensión media" }
+      mandos:
+        - { valor: D, min: 0.05, max: 0.95, paso: 0.05, rotulo: "Ciclo de trabajo" }
+    ajuste:
+      valor: V_pr
+      objetivo: 14.4
+      tol: 0.01
+      rotulo: "Tensión media"
+      escala: { min: 0, max: 24 }
+      bajo: "Le falta tensión: alargue el tiempo encendido."
+      alto: "Le sobra tensión: acorte el tiempo encendido."
+      dentro: "Ciclo del 60 %: el motor promedia los pulsos por su inercia."
+    comprobar:
+      - { con: { D: 0.6 }, V_pr: 14.4 }
+
+  - id: prediga-lineal
+    tipo: predecir
+    titulo: "Con un transistor lineal"
+    texto: "Una carga de 6 Ω con 12 V debe recibir la mitad de potencia mediante un transistor lineal. ¿Cuánto disipa el transistor?"
+    libro: [93]
+    fijar: { V_al: 12, R_L: 6, R_on: 0.02, x_p: 0.5 }
+    widget:
+      tipo: grafica
+      x: { id: xf, min: 0, max: 1, unidad: "", rotulo: "fracción de la potencia" }
+      y: { min: 0, max: 7, unidad: W, rotulo: "disipación" }
+      curvas:
+        - { expr: "(V_al - V_al*sqrt(xf))*V_al*sqrt(xf)/R_L", color: azul, rotulo: "lineal" }
+      lectura: { valor: P_lin, rotulo: "Disipación del transistor lineal" }
+      ocultar: true
+    opciones:
+      - texto: "Unos 5 W"
+        bien: true
+        porque: "La carga necesita 8,5 V: circulan 1,41 A y el transistor deja caer 3,5 V. Rendimiento del 71 %."
+      - texto: "12 W"
+        porque: "12 W son los que recibe la carga. El transistor solo disipa su caída por la corriente."
+      - texto: "Casi nada"
+        porque: "Eso es con PWM. En zona activa, el transistor tiene a la vez tensión y corriente."
+    escalera:
+      - "Media potencia en 6 Ω pide √(12 · 6) en la carga."
+    solucion: "8,5 V en la carga, 3,5 V en el transistor, 1,41 A: 5 W."
+    comprobar:
+      - { P_lin: 4.97, V_lin: 8.49, I_lin: 1.414, ren: 70.7, tol: 0.01 }
+
+  - id: sorpresa-pwm
+    tipo: sorpresa
+    titulo: "Cien veces menos"
+    texto: "Recorra la potencia de la carga. Compare la disipación del lineal con la del MOSFET de 20 mΩ con PWM."
+    libro: [93]
+    fijar: { V_al: 12, R_L: 6, R_on: 0.02 }
+    inicio: { x_p: 0.5 }
+    widget:
+      tipo: grafica
+      x: { id: xf, min: 0, max: 1, unidad: "", rotulo: "fracción de la potencia" }
+      y: { min: 0, max: 7, unidad: W, rotulo: "disipación" }
+      curvas:
+        - { expr: "(V_al - V_al*sqrt(xf))*V_al*sqrt(xf)/R_L", color: azul, rotulo: "lineal" }
+        - { expr: "(V_al/R_L)^2*R_on*xf", color: naranja, rotulo: "PWM" }
+      asas:
+        - { mueve: x_p, x: "x_p", y: "P_lin", rotulo: "Su punto" }
+      lectura: { valor: P_lin, rotulo: "Disipación del lineal" }
+      datos:
+        - { valor: P_pwm, rotulo: "Con PWM: {{P_pwm}}" }
+      mandos:
+        - { valor: x_p, min: 0.05, max: 1, paso: 0.05, rotulo: "Fracción de la potencia" }
+    requiere: { mover: [x_p] }
+
+  - id: por-que-pwm
+    tipo: porque
+    titulo: "¿Por qué tan eficiente?"
+    texto: "Con PWM el MOSFET disipa más de cien veces menos que el lineal. ¿Por qué?"
+    libro: [89, 93]
+    fijar: { V_al: 12, R_L: 6, R_on: 0.02 }
+    widget:
+      tipo: grafica
+      x: { id: xf, min: 0, max: 1, unidad: "", rotulo: "fracción de la potencia" }
+      y: { min: 0, max: 7, unidad: W, rotulo: "disipación" }
+      curvas:
+        - { expr: "(V_al - V_al*sqrt(xf))*V_al*sqrt(xf)/R_L", color: azul, rotulo: "lineal" }
+        - { expr: "(V_al/R_L)^2*R_on*xf", color: naranja, rotulo: "PWM" }
+    opciones:
+      - texto: "Nunca tiene a la vez tensión y corriente apreciables"
+        bien: true
+        porque: "Apagado no hay corriente; encendido, la caída es mínima. Solo pierde I² · R · D y las conmutaciones."
+      - texto: "Porque la carga recibe menos potencia"
+        porque: "La carga recibe la misma potencia media. Lo que cambia es lo que se pierde en el elemento de control."
+      - texto: "Porque el MOSFET no tiene resistencia"
+        porque: "Tiene sus 20 mΩ. Su pérdida es pequeña porque la caída en conducción es pequeña."
+    escalera:
+      - "Disipación = tensión por corriente. ¿Cuándo son grandes las dos?"
+    solucion: "O está apagado o encendido a fondo: nunca tensión y corriente a la vez."
+
+  - id: estime-calefactor
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Un calefactor con PWM"
+    texto: "Un calefactor de 6 Ω con PWM al 50 % desde 12 V. ¿Qué potencia recibe?"
+    libro: [100]
+    fijar: { V_al: 12, R_L: 6, D: 0.5 }
+    estimar:
+      objetivo: "P_rms"
+      unidad: W
+      min: 0
+      max: 24
+      paso: 0.5
+      inicio: 20
+      tol: 0.05
+      rotulo: "Potencia del calefactor"
+    exito: "P = V² · D/R = 12 W. Con la tensión media, 6 V, saldrían 6 W: el error clásico."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 12.6 }, texto: "Se ha pasado: solo recibe los 24 W de la tensión plena la mitad del tiempo." }
+      - { texto: "Se ha quedado corto: no use la tensión media al cuadrado; la potencia depende del eficaz." }
+    escalera:
+      - "Durante el 50 % del tiempo recibe la potencia plena."
+    solucion: "12² · 0,5 / 6 = 12 W."
+    comprobar:
+      - { P_rms: 12, P_med: 6, V_pr: 6 }
+
+  - id: que-ve-la-carga
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Qué ve la carga"
+    texto: "Una cada carga con cómo responde a los pulsos."
+    libro: [94]
+    emparejar:
+      - ["Motor de continua", "Promedia por su inductancia y su inercia"]
+      - ["LED", "Responde ciclo a ciclo; promedia el ojo"]
+      - ["Resistencia calefactora", "Promedia por su inercia térmica"]
+      - ["Altavoz", "Reproduciría el PWM: clase D por encima de 300 kHz"]
+    exito: "Lo que no promedia es lo que hay que filtrar."
+    pistas:
+      - { texto: "Busque qué inercia tiene cada carga: mecánica, térmica o ninguna." }
+    escalera:
+      - "Un altavoz no tiene inercia suficiente en la banda audible."
+    solucion: "Motor–inercia, LED–ojo, calefactor–térmica, altavoz–clase D."
+
+  - id: frecuencias
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Qué frecuencia"
+    texto: "Una cada aplicación con su frecuencia de PWM habitual."
+    libro: [95]
+    emparejar:
+      - ["Motores", "De 1 a 20 kHz"]
+      - ["LED", "Mejor por encima de 1 kHz"]
+      - ["Fuentes conmutadas", "De 100 kHz en adelante"]
+    exito: "Demasiado baja, la carga no promedia; demasiado alta, mandan las pérdidas de conmutación."
+    pistas:
+      - { texto: "En las fuentes, subir la frecuencia achica la bobina." }
+    escalera:
+      - "El parpadeo de un LED se ve al mover la vista si es lento."
+    solucion: "Motores 1–20 kHz, LED más de 1 kHz, fuentes desde 100 kHz."
+
+  - id: pull-down
+    tipo: pregunta
+    titulo: "La resistencia de 10 kΩ"
+    texto: "¿Para qué se pone una resistencia de unos 10 kΩ entre puerta y fuente?"
+    libro: [91]
+    fijar: { V_al: 12, T_p: 0.001 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 14, unidad: V, rotulo: "v_{carga}" }
+      curvas:
+        - { expr: "V_al*floor(1 + D - (t/T_p - floor(t/T_p)))", color: azul, rotulo: "PWM" }
+    opciones:
+      - texto: "Para que, sin control, la puerta quede a 0 V y el MOSFET apagado"
+        bien: true
+        porque: "Una puerta flotante guarda carga o recoge ruido y puede encender el transistor sin querer."
+      - texto: "Para limitar la corriente de puerta"
+        porque: "Eso lo hace una resistencia en serie con la puerta. Esta va de la puerta a la fuente."
+      - texto: "Para descargar la carga inductiva"
+        porque: "De la carga se ocupa el diodo de rueda libre. Esta resistencia fija la puerta."
+    escalera:
+      - "¿Qué tensión tiene la puerta mientras el microcontrolador arranca?"
+    solucion: "Fija la puerta a 0 V cuando el control está desconectado."
+
+  - id: driver
+    tipo: pregunta
+    titulo: "Sin driver"
+    texto: "Un pin de microcontrolador gobierna directamente la puerta de un MOSFET de potencia a cien kilohercios. ¿Qué pasa?"
+    libro: [96]
+    fijar: { V_al: 12, T_p: 0.001 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 14, unidad: V, rotulo: "v_{carga}" }
+      curvas:
+        - { expr: "V_al*floor(1 + D - (t/T_p - floor(t/T_p)))", color: azul, rotulo: "PWM" }
+    opciones:
+      - texto: "Las transiciones duran microsegundos y el transistor se calienta"
+        bien: true
+        porque: "Con unos 20 mA, mover decenas de nanoculombios cuesta microsegundos de transición disipando."
+      - texto: "Nada: la puerta no consume corriente"
+        porque: "No en continua; pero cada conmutación mueve la carga de puerta, y eso pide amperios de pico."
+      - texto: "El pin se quema por la tensión de drenador"
+        porque: "La puerta está aislada del drenador. El problema es la corriente de pico, no la tensión."
+    escalera:
+      - "Cada conmutación mueve la carga de puerta Q_{g}."
+    solucion: "Conmuta lento y se calienta: a cien kilohercios el driver es imprescindible."
+
+  - id: banco-drenador
+    tipo: pregunta
+    titulo: "En el osciloscopio"
+    texto: "En el drenador, la tensión en conducción no baja de varios voltios. ¿Qué le pasa al MOSFET?"
+    libro: [98]
+    fijar: { V_al: 12, T_p: 0.001 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 14, unidad: V, rotulo: "v_{carga}" }
+      curvas:
+        - { expr: "V_al*floor(1 + D - (t/T_p - floor(t/T_p)))", color: azul, rotulo: "PWM" }
+    opciones:
+      - texto: "Trabaja en saturación por puerta insuficiente"
+        bien: true
+        porque: "No sale a la región óhmica: con tensión y corriente a la vez, disipa como un lineal."
+      - texto: "Es normal: es la caída del canal"
+        porque: "La caída normal es I · R_{DS(on)}: milivoltios, no varios voltios."
+      - texto: "El diodo de rueda libre está al revés"
+        porque: "Eso daría otro síntoma. Varios voltios en conducción señalan una puerta que no lo enciende a fondo."
+    escalera:
+      - "¿En qué región está un MOSFET con varios voltios entre drenador y fuente y corriente?"
+    solucion: "Saturación por puerta insuficiente: no llega a la región óhmica."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [89, 90, 93, 100]
+    ideas:
+      - { titulo: "PWM.", texto: "La media es D · V; la carga promedia si tiene inercia." }
+      - { titulo: "Eficiencia.", texto: "Apagado o encendido a fondo: cien veces menos calor que un lineal." }
+      - { titulo: "Media no es eficaz.", texto: "En una resistencia, P = V² · D/R." }
+      - { titulo: "La puerta.", texto: "Pull-down de 10 kΩ y, a frecuencias altas, un driver." }
