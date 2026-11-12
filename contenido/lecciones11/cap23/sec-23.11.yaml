@@ -1,0 +1,207 @@
+# Lección 1.2 de la sección 22.11 «Fuentes Dependientes en el Análisis» (cap23). Formato: contenido/lecciones11/GUIA.md.
+# Sin esquema de fuente controlada en el catálogo: la VCCS se dibuja con el esquema «norton» (fuente de corriente con
+# su resistencia de salida en paralelo), con su corriente calculada como g_m · v (petición en peticiones-motor12.md).
+leccion: cap23/sec-23.11
+
+libro:
+  256: "Una dependiente —o controlada— tiene un valor que es función de una tensión o una corriente del propio circuito"
+  257: "El transistor en pequeña señal es una fuente de corriente controlada por tensión"
+  260: "Transconductancia: el transistor"
+  261: "gm = IC/VT es exactamente el coeficiente de una VCCS"
+  263: "las fuentes dependientes NO se anulan"
+  265: "hay que usar el método de la fuente de prueba"
+  269: "Añadir una ecuación de restricción"
+  272: "Un circuito con fuentes dependientes puede tener resistencia de entrada negativa."
+  273: "al aumentar la tensión aplicada, la corriente disminuye"
+  275: "una resistencia negativa cancela las pérdidas de un tanque y la oscilación se sostiene"
+
+modelo:
+  valores:
+    v_c: { sim: "v", nombre: "tensión de control", unidad: V, valor: 0.01 }
+    g_m: { sim: "g_{m}", nombre: "transconductancia", unidad: S, valor: 0.04 }
+    r_o: { sim: "r_{o}", nombre: "resistencia de salida", unidad: Ω, valor: 100000 }
+    R_C: { sim: "R_{C}", nombre: "carga", unidad: Ω, valor: 4700 }
+    n_on: { tipo: interruptor, nombre: "carga conectada", valor: 1 }
+    R_in: { sim: "R_{in}", nombre: "resistencia de entrada", unidad: Ω, valor: 100 }
+  calculos:
+    I_n: { expr: "g_m*v_c", sim: "g_{m} · v", nombre: "corriente de la fuente controlada", unidad: A }
+    V_no: { si: n_on, entonces: "I_n*par(r_o, R_C)", sino: "I_n*r_o", sim: "v_{o}", nombre: "tensión de salida", unidad: V }
+    I_nl: { si: n_on, entonces: "V_no/R_C", sino: "0", sim: "I_{L}", nombre: "corriente por la carga", unidad: A }
+    I_nr: { expr: "V_no/r_o", sim: "I_{ro}", nombre: "corriente por r_o", unidad: A }
+    I_1v: { expr: "1/R_in", sim: "I", nombre: "corriente con 1 V aplicado", unidad: A }
+
+tarjetas:
+  - id: explore-controlada
+    tipo: explorar
+    titulo: "Una fuente que obedece"
+    texto: "Esta fuente de corriente vale g_{m} · v: la manda una tensión del propio circuito. Mueva v y mire la corriente y la salida."
+    libro: [256, 257, 261]
+    widget:
+      tipo: circuito
+      esquema: norton
+      piezas: { fuente: I_n, rn: r_o, carga: R_C, interruptor: n_on }
+      lectura: { valor: V_no, rotulo: "Tensión de salida" }
+      datos:
+        - { valor: I_n, rotulo: "g_{m} · v = {{I_n}}" }
+      corriente: I_nl
+      mide: { salida: V_no, carga: I_nl, paralelo: I_nr }
+      mandos:
+        - { valor: v_c, min: 0, max: 0.02, paso: 0.002, rotulo: "Tensión de control, v" }
+
+  - id: cuatro-tipos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los cuatro tipos"
+    texto: "Una cada fuente dependiente con lo que modela."
+    libro: [260]
+    emparejar:
+      - ["VCVS: tensión controlada por tensión", "Amplificador de tensión, operacional"]
+      - ["VCCS: corriente controlada por tensión", "Transconductancia: el transistor"]
+      - ["CCVS: tensión controlada por corriente", "Transimpedancia"]
+      - ["CCCS: corriente controlada por corriente", "Amplificador de corriente, β"]
+    exito: "La VCCS es la más usada en el libro: g_{m} = I_{C}/V_{T} es su coeficiente."
+    pistas:
+      - { texto: "Las dos primeras letras dicen qué la controla; las dos últimas, qué impone." }
+    escalera:
+      - "Un transistor convierte una tensión de entrada en una corriente de salida."
+    solucion: "VCVS–operacional, VCCS–transistor, CCVS–transimpedancia, CCCS–β."
+
+  - id: prediga-rth
+    tipo: predecir
+    titulo: "R_{Th} con dependientes"
+    texto: "Una red con una fuente controlada. ¿Cómo se calcula su R_{Th}?"
+    libro: [263, 265]
+    widget:
+      tipo: circuito
+      esquema: norton
+      piezas: { fuente: I_n, rn: r_o, carga: R_C, interruptor: n_on }
+      lectura: { valor: V_no, rotulo: "Tensión de salida" }
+      corriente: I_nl
+      mide: { salida: V_no, carga: I_nl }
+      ocultar: true
+    opciones:
+      - texto: "Con una fuente de prueba de 1 V, sin anular la dependiente"
+        bien: true
+        porque: "La dependiente sigue actuando y el cociente 1 V/I_{prueba} lo recoge. Es el método de los simuladores."
+      - texto: "Anulando todas las fuentes y mirando la resistencia vista"
+        porque: "Las dependientes no se anulan: su valor depende de una variable que sigue existiendo."
+      - texto: "Anulando solo la dependiente"
+        porque: "Al revés: la dependiente se queda; se anulan las independientes."
+    escalera:
+      - "Una fuente dependiente no es una causa: es una consecuencia del circuito."
+    solucion: "Fuente de prueba de 1 V con las independientes anuladas: R_{Th} = 1 V/I_{prueba}."
+
+  - id: procedimiento
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Cómo se plantean"
+    texto: "Ordene el procedimiento para analizar un circuito con fuentes dependientes."
+    libro: [269]
+    ordenar:
+      - "Plantear nodos o mallas como si la dependiente fuera independiente, con un nombre."
+      - "Añadir la ecuación de restricción de su valor."
+      - "Resolver el sistema completo."
+    exito: "La ecuación de restricción es lo único nuevo, y con ella el análisis vuelve a ser mecánico."
+    pistas:
+      - { texto: "La restricción se escribe cuando la fuente ya tiene nombre en las ecuaciones." }
+    escalera:
+      - "Primero se trata la fuente como si fuera independiente."
+    solucion: "Plantear con su nombre, añadir la restricción y resolver."
+
+  - id: gm
+    tipo: pregunta
+    titulo: "El coeficiente g_{m}"
+    texto: "En la fuente del dibujo, g_{m} = I_{C}/V_{T}. ¿Qué tipo de fuente dependiente define?"
+    libro: [257, 261]
+    widget:
+      tipo: circuito
+      esquema: norton
+      piezas: { fuente: I_n, rn: r_o, carga: R_C, interruptor: n_on }
+      lectura: { valor: I_n, rotulo: "g_{m} · v" }
+      corriente: I_nl
+      mide: { salida: V_no, carga: I_nl }
+      mandos:
+        - { valor: v_c, min: 0, max: 0.02, paso: 0.002, rotulo: "Tensión de control, v" }
+    opciones:
+      - texto: "Una VCCS: corriente controlada por tensión"
+        bien: true
+        porque: "g_{m} multiplica una tensión, v_{be}, y da una corriente: es una transconductancia."
+      - texto: "Una CCCS: corriente controlada por corriente"
+        porque: "Esa es la de β, que multiplica la corriente de base. g_{m} multiplica una tensión."
+      - texto: "Una VCVS: tensión controlada por tensión"
+        porque: "Esa es la del operacional. La salida de g_{m} es una corriente."
+    escalera:
+      - "Mire las unidades: g_{m} se mide en siemens, corriente entre tensión."
+    solucion: "VCCS: g_{m} convierte una tensión en una corriente."
+
+  - id: resistencia-negativa
+    tipo: sorpresa
+    titulo: "Una resistencia negativa"
+    texto: "La recta es la corriente de entrada frente a la tensión aplicada. Lleve R_{in} a valores negativos y suba la tensión."
+    libro: [272, 273]
+    inicio: { R_in: 100 }
+    widget:
+      tipo: grafica
+      x: { id: v, min: 0, max: 1, unidad: V, rotulo: "V aplicada" }
+      y: { min: -0.012, max: 0.012, unidad: A, rotulo: "I de entrada" }
+      curvas:
+        - { expr: "v/R_in", color: azul, rotulo: "I = V/R_{in}" }
+      lectura: { valor: I_1v, rotulo: "Corriente con 1 V" }
+      mandos:
+        - { valor: R_in, lista: [-100, -200, -500, 500, 200, 100], rotulo: "R_{in}" }
+
+  - id: por-que-negativa
+    tipo: porque
+    titulo: "¿Cómo es posible?"
+    texto: "Con R_{in} negativa, al aumentar la tensión aplicada la corriente disminuye. ¿Es un error de cálculo?"
+    libro: [273]
+    widget:
+      tipo: grafica
+      x: { id: v, min: 0, max: 1, unidad: V, rotulo: "V aplicada" }
+      y: { min: -0.012, max: 0.012, unidad: A, rotulo: "I de entrada" }
+      curvas:
+        - { expr: "v/R_in", color: azul, rotulo: "I = V/R_{in}" }
+    opciones:
+      - texto: "No: en un circuito activo es posible, porque la energía sale de la alimentación"
+        bien: true
+        porque: "Las fuentes dependientes modelan dispositivos activos: pueden devolver energía al resto del circuito."
+      - texto: "Sí: una resistencia nunca puede ser negativa"
+        porque: "Un resistor pasivo no, pero la resistencia de entrada de un circuito activo sí puede serlo."
+      - texto: "Sí: hay un signo mal en el convenio"
+        porque: "Con el convenio bien puesto sigue saliendo negativa. Es una propiedad real del circuito."
+    escalera:
+      - "¿De dónde saca energía un circuito con transistores?"
+    solucion: "No es un error: la energía viene de la alimentación."
+
+  - id: oscilador
+    tipo: pregunta
+    titulo: "Sus consecuencias"
+    texto: "¿Qué hace una resistencia de entrada negativa junto a un tanque LC?"
+    libro: [275]
+    widget:
+      tipo: grafica
+      x: { id: v, min: 0, max: 1, unidad: V, rotulo: "V aplicada" }
+      y: { min: -0.012, max: 0.012, unidad: A, rotulo: "I de entrada" }
+      curvas:
+        - { expr: "v/R_in", color: azul, rotulo: "I = V/R_{in}" }
+    opciones:
+      - texto: "Cancela sus pérdidas y la oscilación se sostiene"
+        bien: true
+        porque: "Es lo que hace posible un oscilador; junto a un tanque parásito, es un oscilador involuntario."
+      - texto: "Amortigua el tanque más deprisa"
+        porque: "Amortigua una resistencia positiva. La negativa aporta energía en lugar de quitarla."
+      - texto: "Nada: el tanque no tiene resistencia"
+        porque: "Todo tanque real tiene pérdidas, y la resistencia negativa es justo lo que las compensa."
+    escalera:
+      - "Una resistencia positiva disipa; una negativa, aporta."
+    solucion: "Compensa las pérdidas: la oscilación se mantiene."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [256, 263, 269, 272]
+    ideas:
+      - { titulo: "Controladas.", texto: "Su valor depende de una tensión o corriente del circuito: modelan transistores y operacionales." }
+      - { titulo: "No se anulan.", texto: "Ni en superposición ni para R_{Th}: se usa la fuente de prueba." }
+      - { titulo: "Una ecuación más.", texto: "Se plantea con un nombre y se añade la restricción de su valor." }
+      - { titulo: "Resistencia negativa.", texto: "Posible en un circuito activo: base de los osciladores." }

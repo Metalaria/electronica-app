@@ -1,0 +1,259 @@
+# Lección 1.2 de la sección 22.8 «Transformación de Fuentes» (cap23). Formato: contenido/lecciones11/GUIA.md.
+leccion: cap23/sec-23.8
+
+libro:
+  189: "una fuente de tensión V en serie con una resistencia R es intercambiable por una fuente de corriente I = V/R en paralelo con la misma R"
+  190: "IN = VTh / RTh"
+  192: "una resistencia que cuelga entre dos nodos sin tocar la fuente no participa en la transformación"
+  193: "Cada transformación conserva el comportamiento en los terminales"
+  195: "las dos fuentes de corriente suman 5 A y las resistencias quedan en 4 ‖ 3 = 1,71 Ω"
+  196: "Una fuente de tensión ideal (sin resistencia en serie) no se puede transformar: tendría una fuente de corriente infinita."
+
+modelo:
+  valores:
+    V_t: { sim: "V", nombre: "fuente de tensión", unidad: V, valor: 12 }
+    R_ti: { sim: "R", nombre: "resistencia en serie", unidad: Ω, valor: 4 }
+    R_tl: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 3 }
+    t_on: { tipo: interruptor, nombre: "carga conectada", valor: 1 }
+    I_n: { sim: "I", nombre: "fuente de corriente", unidad: A, valor: 1 }
+    R_n: { sim: "R", nombre: "resistencia en paralelo", unidad: Ω, valor: 4 }
+    R_nl: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 3 }
+    n_on: { tipo: interruptor, nombre: "carga conectada", valor: 1 }
+    I_a: { sim: "I₁", nombre: "fuente que sale de los 12 V", unidad: A, valor: 3 }
+    I_b: { sim: "I₂", nombre: "fuente de 2 A", unidad: A, valor: 2 }
+    R_a: { sim: "R₁", nombre: "resistencia de 4 Ω", unidad: Ω, valor: 4 }
+    R_b: { sim: "R₂", nombre: "resistencia de 3 Ω", unidad: Ω, valor: 3 }
+  calculos:
+    V_to: { si: t_on, entonces: "V_t*R_tl/(R_ti + R_tl)", sino: "V_t", sim: "V_{L}", nombre: "tensión en la carga", unidad: V }
+    I_t: { si: t_on, entonces: "V_t/(R_ti + R_tl)", sino: "0", sim: "I", nombre: "corriente por la carga", unidad: A }
+    V_ti: { expr: "I_t*R_ti", sim: "V_{R}", nombre: "caída en la resistencia en serie", unidad: V }
+    I_tx: { expr: "V_t/R_ti", sim: "V/R", nombre: "corriente de la fuente transformada", unidad: A }
+    V_tn: { si: t_on, entonces: "I_tx*par(R_ti, R_tl)", sino: "I_tx*R_ti", sim: "V_{L}", nombre: "lo que daría la forma de corriente", unidad: V }
+    V_no: { si: n_on, entonces: "I_n*par(R_n, R_nl)", sino: "I_n*R_n", sim: "V", nombre: "tensión en bornes", unidad: V }
+    I_nl: { si: n_on, entonces: "V_no/R_nl", sino: "0", sim: "I_{L}", nombre: "corriente por la carga", unidad: A }
+    I_nr: { expr: "V_no/R_n", sim: "I_{R}", nombre: "corriente por la R de dentro", unidad: A }
+    I_suma: { expr: "I_a + I_b", sim: "I", nombre: "fuentes sumadas", unidad: A }
+    R_p: { expr: "par(R_a, R_b)", sim: "R", nombre: "resistencias combinadas", unidad: Ω }
+    V_fin: { expr: "I_suma*R_p", sim: "V", nombre: "fuente de vuelta a tensión", unidad: V }
+
+tarjetas:
+  - id: explore-cambio
+    tipo: explorar
+    titulo: "Dos formas de la misma fuente"
+    texto: "12 V con 4 Ω en serie. Cambie la carga y compare con lo que daría la fuente de 3 A con los 4 Ω en paralelo."
+    libro: [189]
+    fijar: { V_t: 12, R_ti: 4, t_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_t, rth: R_ti, carga: R_tl, interruptor: t_on }
+      lectura: { valor: V_to, rotulo: "Tensión en la carga" }
+      datos:
+        - { valor: V_tn, rotulo: "Con 3 A ‖ 4 Ω: {{V_tn}}" }
+      corriente: I_t
+      mide: { salida: V_to, corriente: I_t, interna: V_ti }
+      mandos:
+        - { valor: R_tl, lista: [1, 3, 4, 8, 30] }
+
+  - id: prediga-forma
+    tipo: predecir
+    titulo: "Prediga la transformación"
+    texto: "¿Por qué fuente de corriente se sustituye una de 12 V con 4 Ω en serie?"
+    libro: [189, 195]
+    fijar: { I_n: 3, R_n: 4, n_on: 0 }
+    widget:
+      tipo: circuito
+      esquema: norton
+      piezas: { fuente: I_n, rn: R_n, carga: R_nl, interruptor: n_on }
+      lectura: { valor: V_no, rotulo: "Tensión en vacío" }
+      corriente: I_nr
+      mide: { salida: V_no, paralelo: I_nr }
+      ocultar: true
+    opciones:
+      - texto: "3 A en paralelo con los mismos 4 Ω"
+        bien: true
+        porque: "I = V/R = 12/4 = 3 A. La resistencia se queda y pasa de serie a paralelo."
+      - texto: "3 A en serie con 4 Ω"
+        porque: "En serie con una fuente de corriente, la resistencia no cambiaría nada. Pasa a paralelo."
+      - texto: "12 A en paralelo con 4 Ω"
+        porque: "Ha tomado la tensión como corriente. La corriente es V/R: la de cortocircuito de la fuente original."
+    escalera:
+      - "La nueva fuente es la corriente de cortocircuito de la original."
+    solucion: "12/4 = 3 A, en paralelo con los 4 Ω."
+    comprobar:
+      - { V_no: 12, I_tx: 3 }
+
+  - id: cadena
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "La cadena de la figura 22.9"
+    texto: "12 V con 4 Ω en serie, 3 Ω y una fuente de 2 A entre los mismos terminales. Ordene los pasos."
+    libro: [195]
+    ordenar:
+      - "La rama de 12 V pasa a 3 A en paralelo con 4 Ω."
+      - "Las dos fuentes de corriente suman 5 A."
+      - "Las resistencias quedan en 4 ‖ 3 = 1,71 Ω."
+      - "De vuelta a tensión: 8,57 V en serie con 1,71 Ω."
+    exito: "El nodal del circuito de partida, (V − 12)/4 + V/3 = 2, da los mismos 60/7 = 8,57 V."
+    pistas:
+      - { texto: "Primero se convierte a corriente; luego se combina lo que está en paralelo; al final se vuelve a tensión." }
+    escalera:
+      - "Solo se pueden sumar fuentes de corriente en paralelo: antes hay que transformar la de tensión."
+    solucion: "Transformar a 3 A, sumar 5 A, combinar 1,71 Ω y volver a 8,57 V."
+
+  - id: reto-suma
+    tipo: reto
+    titulo: "Reto: una sola fuente"
+    texto: "Las fuentes de 3 A y 2 A quedan en paralelo sobre 4 ‖ 3 = 1,71 Ω. Ajuste la fuente única que las sustituye para obtener los 8,57 V."
+    libro: [195]
+    fijar: { R_n: 1.7142857, n_on: 0 }
+    inicio: { I_n: 1 }
+    widget:
+      tipo: circuito
+      esquema: norton
+      piezas: { fuente: I_n, rn: R_n, carga: R_nl, interruptor: n_on }
+      lectura: { valor: V_no, rotulo: "Tensión entre los terminales" }
+      corriente: I_nr
+      mide: { salida: V_no, paralelo: I_nr }
+      mandos:
+        - { valor: I_n, min: 0.5, max: 8, paso: 0.5, rotulo: "Fuente única" }
+    condiciones:
+      - { valor: V_no, objetivo: 8.57, tol: 0.02, rotulo: "Terminales: {{V_no}}" }
+    exito: "Las fuentes de corriente en paralelo se suman: 3 + 2 = 5 A, y 5 × 1,71 = 8,57 V."
+    pistas:
+      - { cuando: { valor: V_no, mayor: 8.74 }, texto: "Sobra tensión: la fuente única es demasiado grande." }
+      - { cuando: { valor: V_no, menor: 8.4 }, texto: "Falta tensión: las dos fuentes empujan en el mismo sentido." }
+    escalera:
+      - "Dos fuentes de corriente en paralelo equivalen a una con la suma."
+    solucion: "3 A + 2 A = 5 A: 5 × 1,71 = 8,57 V."
+    comprobar:
+      - { con: { I_n: 5 }, V_no: 8.57 }
+
+  - id: estime-final
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "De vuelta a tensión"
+    texto: "5 A en paralelo con 1,71 Ω. ¿Qué fuente de tensión, en serie con 1,71 Ω, la sustituye?"
+    libro: [190, 195]
+    estimar:
+      objetivo: "V_fin"
+      unidad: V
+      min: 0
+      max: 20
+      paso: 0.1
+      inicio: 3
+      tol: 0.03
+      rotulo: "Fuente de tensión"
+    exito: "V_{Th} = I_{N} · R_{Th} = 5 × 1,71 = 8,57 V."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 8.83 }, texto: "Se ha pasado: multiplique la corriente por la resistencia en paralelo." }
+      - { texto: "Se ha quedado corto: es la tensión en vacío, I · R." }
+    escalera:
+      - "La tensión de la nueva fuente es la que daría la de corriente en vacío."
+    solucion: "5 × 1,71 = 8,57 V."
+    comprobar:
+      - { V_fin: 8.57, I_suma: 5, R_p: 1.71 }
+
+  - id: lo-de-dentro
+    tipo: sorpresa
+    titulo: "Lo de dentro cambia"
+    texto: "La fuente de 3 A con 4 Ω en paralelo alimenta 3 Ω. Mire la corriente por los 4 Ω y compárela con la de la forma de 12 V."
+    libro: [196]
+    fijar: { I_n: 3, R_n: 4, R_nl: 3, V_t: 12, R_ti: 4, R_tl: 3, t_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: norton
+      piezas: { fuente: I_n, rn: R_n, carga: R_nl, interruptor: n_on }
+      lectura: { valor: I_nr, rotulo: "Por los 4 Ω de dentro" }
+      datos:
+        - { valor: I_t, rotulo: "En la forma de 12 V: {{I_t}}" }
+        - { valor: I_nl, rotulo: "Por la carga: {{I_nl}}" }
+      corriente: I_nl
+      mide: { salida: V_no, carga: I_nl, paralelo: I_nr }
+      mandos:
+        - { valor: n_on, tipo: interruptor, rotulo: "Carga" }
+    requiere: { mover: [n_on] }
+
+  - id: por-que-dentro
+    tipo: porque
+    titulo: "¿Por qué no coinciden?"
+    texto: "La carga recibe lo mismo en las dos formas, pero la corriente por la resistencia de dentro no. ¿Por qué?"
+    libro: [193, 196]
+    fijar: { I_n: 3, R_n: 4, R_nl: 3, n_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: norton
+      piezas: { fuente: I_n, rn: R_n, carga: R_nl, interruptor: n_on }
+      lectura: { valor: I_nr, rotulo: "Por los 4 Ω de dentro" }
+      corriente: I_nl
+      mide: { salida: V_no, carga: I_nl, paralelo: I_nr }
+    opciones:
+      - texto: "La transformación conserva lo que se ve desde fuera, no lo que ocurre dentro"
+        bien: true
+        porque: "Para la corriente por la resistencia interna original hay que volver al circuito de partida."
+      - texto: "Porque se ha transformado mal"
+        porque: "Está bien: la carga recibe lo mismo. Solo los terminales se conservan."
+      - texto: "Porque la carga es demasiado pequeña"
+        porque: "Con cualquier carga pasa igual: dentro de la red transformada las corrientes no son las originales."
+    escalera:
+      - "¿Qué promete conservar cada transformación?"
+    solucion: "Conserva los terminales, no el interior."
+
+  - id: fuente-ideal
+    tipo: pregunta
+    titulo: "Una fuente sin resistencia"
+    texto: "¿Se puede transformar a fuente de corriente una fuente de tensión ideal, sin resistencia en serie?"
+    libro: [196]
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_t, rth: R_ti, carga: R_tl, interruptor: t_on }
+      lectura: { valor: V_to, rotulo: "Tensión en la carga" }
+      corriente: I_t
+      mide: { salida: V_to, corriente: I_t }
+      mandos:
+        - { valor: R_ti, lista: [0.01, 0.1, 1, 4], rotulo: "Resistencia en serie" }
+    opciones:
+      - texto: "No: tendría una fuente de corriente infinita"
+        bien: true
+        porque: "I = V/R con R nula no tiene valor finito. Ese elemento no admite la transformación y hay que rodearlo."
+      - texto: "Sí, con I = V y sin resistencia"
+        porque: "Tensión y corriente no son intercambiables así: la corriente es V/R, y con R nula no existe."
+      - texto: "Sí, poniendo cualquier resistencia en paralelo"
+        porque: "Añadir una resistencia que no está cambia el circuito. La transformación usa la que está en serie."
+    escalera:
+      - "Calcule V/R cuando R tiende a cero."
+    solucion: "No: V/R con R nula es infinita."
+
+  - id: cual-resistencia
+    tipo: pregunta
+    titulo: "¿Qué resistencia se transforma?"
+    texto: "Al transformar una fuente de tensión, ¿qué resistencia pasa a la fuente de corriente?"
+    libro: [192]
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_t, rth: R_ti, carga: R_tl, interruptor: t_on }
+      lectura: { valor: V_to, rotulo: "Tensión en la carga" }
+      corriente: I_t
+      mide: { salida: V_to, corriente: I_t }
+    opciones:
+      - texto: "Exactamente la que está en serie con la fuente"
+        bien: true
+        porque: "Una resistencia que cuelga entre dos nodos sin tocar la fuente no participa en la transformación."
+      - texto: "Cualquiera del circuito, la que más simplifique"
+        porque: "Solo la que está en serie con esa fuente. Las demás se quedan donde están."
+      - texto: "La carga"
+        porque: "La carga es lo que se mira desde fuera: se queda igual en las dos formas."
+    escalera:
+      - "La transformación sustituye un par fuente-resistencia por otro par."
+    solucion: "La que está en serie con la fuente de tensión, y ninguna otra."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [189, 193, 195, 196]
+    ideas:
+      - { titulo: "El movimiento.", texto: "V en serie con R equivale a V/R en paralelo con la misma R, y al revés." }
+      - { titulo: "En cadena.", texto: "Transformar, combinar lo que está en paralelo o en serie, y repetir hasta una sola fuente." }
+      - { titulo: "Los límites.", texto: "Sin resistencia no se transforma; y dentro, las corrientes no son las originales." }

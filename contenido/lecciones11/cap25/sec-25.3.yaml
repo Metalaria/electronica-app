@@ -1,0 +1,285 @@
+# Lección 1.2 de la sección 24.3 «El Diagrama de Bode» (cap25). Formato: contenido/lecciones11/GUIA.md.
+# El paso bajo es el RC de la práctica de la sección 21.5 (cap22#133-135: 1,6 kΩ y 100 nF, corte en 995 Hz),
+# la misma de la ficha 29 del cuaderno.
+leccion: cap25/sec-25.3
+
+libro:
+  60: "Frecuencia en escala logarítmica"
+  61: "las curvas se convierten en rectas"
+  64: "la curva real pasa 3 dB por debajo de ese punto, con la fase en −45°"
+  66: "cambia de 0° a −90° a lo largo de dos décadas"
+  70: "Dos polos"
+  74: "máximamente plano (Butterworth)"
+  75: "El valor 0,707 es el que separa las respuestas con pico de las que no lo tienen"
+  77: "No dice nada de la respuesta a señales grandes."
+  89: "una década antes, −5,7°; una década después, −84°"
+  90: "Un polo a 10 kHz ya aporta −5,7° a 1 kHz y −11° a 2 kHz"
+  91: "un lazo puede tener margen de ganancia sobrado y margen de fase insuficiente"
+  97: "se recorre la frecuencia en pasos"
+  98: "la frecuencia de corte medida rara vez coincide exactamente con la calculada"
+  "cap22#133": "Con R = 1,6 kΩ y C = 100 nF"
+  "cap22#135": "En el corte, la salida debe ser 0,707 veces la entrada (−3 dB) y estar desfasada −45°."
+
+modelo:
+  valores:
+    V_p: { sim: "V_{p}", nombre: "amplitud de la entrada", unidad: V, valor: 1 }
+    f_f: { sim: "f", nombre: "frecuencia", unidad: Hz, valor: 994.72 }
+    R_f: { sim: "R", nombre: "resistencia", unidad: Ω, valor: 1600 }
+    C_f: { sim: "C", nombre: "capacidad", unidad: F, valor: 100e-9 }
+    zeta: { sim: "ζ", nombre: "factor de amortiguamiento", unidad: "", valor: 1 }
+  calculos:
+    f_c: { expr: "1/(2*pi*R_f*C_f)", sim: "f_{c}", nombre: "frecuencia de corte", unidad: Hz }
+    x_c: { expr: "f_f/f_c", sim: "f/f_{c}", nombre: "frecuencia relativa", unidad: "" }
+    A_c: { expr: "V_p/sqrt(1 + x_c^2)", sim: "V_{salida}", nombre: "amplitud de la salida", unidad: V }
+    D_c: { expr: "20*log10(A_c/V_p)", sim: "|H|", nombre: "ganancia en decibelios", unidad: dB, cifras: 3 }
+    ph_c: { expr: "-atan(x_c)*180/pi", sim: "φ", nombre: "fase", unidad: "°", cifras: 3 }
+    ph_dec: { expr: "-atan(0.1)*180/pi", sim: "φ", nombre: "fase una década antes", unidad: "°" }
+    Q_2: { expr: "1/(2*zeta)", sim: "Q", nombre: "factor de calidad", unidad: "", cifras: 3 }
+
+tarjetas:
+  - id: explore-bode
+    tipo: explorar
+    titulo: "Curvas que son rectas"
+    texto: "El paso bajo de 1,6 kΩ y 100 nF en escala logarítmica y en decibelios. Cambie la resistencia: la curva se desliza, pero su forma no cambia."
+    libro: [60, 61, "cap22#133"]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: f_c, rotulo: "Frecuencia de corte" }
+      grafica:
+        x: { id: nu, min: 10, max: 100000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: -45, max: 5, unidad: dB, rotulo: "|H|" }
+        curvas:
+          - { expr: "-10*log10(1 + (nu/f_c)^2)", color: naranja, rotulo: "|H|", mide: vc_db }
+          - { expr: "min(0, -20*log10(nu/f_c))", color: tinta, rotulo: "asíntotas", discontinua: true }
+        marcas:
+          - { x: "f_c", y: "-3", rotulo: "f_{c}" }
+      mandos:
+        - { valor: R_f, lista: [160, 1600, 16000] }
+
+  - id: prediga-corte
+    tipo: predecir
+    titulo: "En el corte"
+    texto: "Las dos asíntotas se cortan en f_{c}. ¿Cuánto vale ahí la curva real del paso bajo?"
+    libro: [64, "cap22#135"]
+    fijar: { V_p: 1, R_f: 1600, C_f: 100e-9, f_f: 994.72 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: D_c, rotulo: "Ganancia en f_{c}" }
+      datos:
+        - { valor: ph_c, rotulo: "Fase: {{ph_c}}" }
+      mide: { vc_db: D_c, vc_fase: ph_c }
+      ocultar: true
+    opciones:
+      - texto: "−3 dB, con la fase en −45°"
+        bien: true
+        porque: "La salida es 0,707 veces la entrada: 3 dB por debajo del cruce de las asíntotas."
+      - texto: "0 dB, como la asíntota horizontal"
+        porque: "Las asíntotas valen lejos del corte. Justo en el corte, la curva real pasa 3 dB por debajo."
+      - texto: "−20 dB, ya en la pendiente"
+        porque: "−20 dB es lo que cae una década por encima del corte, no en él."
+    escalera:
+      - "En el corte, la potencia se reduce a la mitad."
+    solucion: "−3 dB y −45°: el error de la asíntota justo en el polo."
+    comprobar:
+      - { D_c: -3.01, ph_c: -45 }
+
+  - id: dibuje-bode
+    tipo: dibujar
+    titulo: "Dibuje el Bode"
+    texto: "Dibuje la ganancia de un paso bajo de primer orden, de dos décadas antes del corte a dos después."
+    libro: [61, 64]
+    dibujar:
+      x: { id: u, min: -2, max: 2, unidad: "", rotulo: "décadas desde el corte, log₁₀(f/f_{c})" }
+      y: { min: -45, max: 5, unidad: dB, rotulo: "|H|" }
+      curva: "-10*log10(1 + 10^(2*u))"
+      puntos: 21
+      tol: 0.08
+      holgura: 0.03
+      rotulo: "Ganancia del paso bajo"
+    exito: "Plana en 0 dB, 3 dB por debajo en el corte y luego una recta de −20 dB por década."
+    pistas:
+      - { cuando: { valor: error, mayor: 0.08 }, texto: "Muy por debajo del corte vale 0 dB; muy por encima cae 20 dB por cada década." }
+    escalera:
+      - "Trace primero las dos asíntotas: 0 dB y una recta de −20 dB por década desde el corte."
+      - "Redondee la esquina: en el corte, 3 dB por debajo."
+    solucion: "0 dB, −3 dB en el corte, −20 dB una década después y −40 dB a las dos."
+
+  - id: fase-decada
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La fase, antes del polo"
+    texto: "La fase de un polo recorre sus 90° en dos décadas. Estime cuánto vale una década antes del polo."
+    libro: [66, 89]
+    estimar:
+      objetivo: "ph_dec"
+      unidad: "°"
+      min: -90
+      max: 0
+      paso: 0.5
+      inicio: 0
+      tol: 0.1
+      rotulo: "Fase"
+    exito: "−5,7°: una década antes ya gira; en el polo, −45°; una década después, −84°."
+    pistas:
+      - { cuando: { valor: estimacion, menor: -6.3 }, texto: "Demasiado: en el polo son −45°, y una década antes falta mucho para eso." }
+      - { texto: "No es cero: la fase ya empieza a girar una década antes del polo." }
+    escalera:
+      - "Es −atan(f/f_{c}) con f/f_{c} = 0,1."
+    solucion: "−atan(0,1) = −5,7°."
+    comprobar:
+      - { ph_dec: -5.71 }
+
+  - id: fase-adelanta
+    tipo: sorpresa
+    titulo: "La fase se adelanta"
+    texto: "Lleve el polo a 10 kHz y mire la ganancia y la fase a 1 kHz y a 2 kHz."
+    libro: [90]
+    fijar: { V_p: 1, R_f: 1000, C_f: 15.915e-9 }
+    inicio: { f_f: 100 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: ph_c, rotulo: "Fase" }
+      datos:
+        - { valor: D_c, rotulo: "Ganancia: {{D_c}}" }
+        - { valor: f_c, rotulo: "Polo en {{f_c}}" }
+      mide: { vc_db: D_c, vc_fase: ph_c }
+      mandos:
+        - { valor: f_f, lista: [100, 1000, 2000, 10000] }
+
+  - id: por-que-margen
+    tipo: porque
+    titulo: "¿Por qué importa?"
+    texto: "Con el polo a 10 kHz, a 2 kHz la ganancia apenas ha caído y la fase ya ha girado −11°. ¿Qué consecuencia tiene?"
+    libro: [90, 91]
+    fijar: { V_p: 1, R_f: 1000, C_f: 15.915e-9, f_f: 2000 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: ph_c, rotulo: "Fase" }
+      mide: { vc_fase: ph_c }
+    opciones:
+      - texto: "Un lazo puede tener margen de ganancia sobrado y margen de fase insuficiente"
+        bien: true
+        porque: "Es la situación típica de un amplificador que oscila sin razón aparente."
+      - texto: "Ninguna: lo que cuenta es la ganancia"
+        porque: "La estabilidad depende también de la fase: con 180° de retraso a 0 dB, la realimentación pasa a positiva."
+      - texto: "Que el polo está mal calculado"
+        porque: "Está bien: la fase de un polo empieza a girar una década antes."
+    escalera:
+      - "Un lazo se hace inestable con ganancia 1 y 180° de retraso."
+    solucion: "La fase gira antes que la ganancia: el margen de fase se agota primero."
+
+  - id: segundo-orden
+    tipo: explorar
+    titulo: "Segundo orden: el pico"
+    texto: "Dos polos complejos. Cambie el amortiguamiento y mire cómo crece el pico cerca de la frecuencia natural."
+    libro: [74, 75]
+    widget:
+      tipo: grafica
+      x: { id: u, min: 0.1, max: 10, unidad: "", rotulo: "f/f₀", escala: log }
+      y: { min: -45, max: 20, unidad: dB, rotulo: "|H|" }
+      curvas:
+        - { expr: "-10*log10((1 - u^2)^2 + (2*zeta*u)^2)", color: azul, rotulo: "|H|" }
+      lectura: { valor: Q_2, rotulo: "Q" }
+      mandos:
+        - { valor: zeta, lista: [0.1, 0.3, 0.5, 0.707, 1], rotulo: "ζ" }
+
+  - id: plano
+    tipo: pregunta
+    titulo: "Máximamente plano"
+    texto: "¿Qué factor de amortiguamiento da la respuesta máximamente plana, sin pico?"
+    libro: [74, 75]
+    widget:
+      tipo: grafica
+      x: { id: u, min: 0.1, max: 10, unidad: "", rotulo: "f/f₀", escala: log }
+      y: { min: -45, max: 20, unidad: dB, rotulo: "|H|" }
+      curvas:
+        - { expr: "-10*log10((1 - u^2)^2 + (2*zeta*u)^2)", color: azul, rotulo: "|H|" }
+      mandos:
+        - { valor: zeta, lista: [0.1, 0.3, 0.5, 0.707, 1], rotulo: "ζ" }
+    opciones:
+      - texto: "ζ = 0,707 (Butterworth)"
+        bien: true
+        porque: "Separa las respuestas con pico de las que no lo tienen: es la elección por defecto de un filtro plano."
+      - texto: "ζ = 1"
+        porque: "Sin pico, pero cae antes y la respuesta es lenta. La máximamente plana es 0,707."
+      - texto: "ζ = 0,1"
+        porque: "Con 0,1 hay un pico de +14 dB: muy poco amortiguado."
+    escalera:
+      - "Busque el ζ más pequeño que todavía no levanta la curva."
+    solucion: "0,707: máximamente plano, Butterworth."
+
+  - id: polos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Pendientes y fases"
+    texto: "Una cada configuración con su pendiente y su fase finales."
+    libro: [70]
+    emparejar:
+      - ["Un polo", "−20 dB/dec y −90°"]
+      - ["Dos polos", "−40 dB/dec y −180°"]
+      - ["Tres polos", "−60 dB/dec y −270°"]
+      - ["Un polo y un cero", "0 y 0°: se cancelan"]
+    exito: "Cada polo añade −20 dB/década y −90°; cada cero, lo contrario."
+    pistas:
+      - { texto: "Los efectos se acumulan: cada polo suma −20 dB/década y −90°." }
+    escalera:
+      - "Un cero hace justo lo contrario que un polo."
+    solucion: "Uno: −20 y −90°; dos: −40 y −180°; tres: −60 y −270°; polo y cero: 0 y 0°."
+
+  - id: no-dice
+    tipo: pregunta
+    titulo: "Lo que un Bode no dice"
+    texto: "Un amplificador tiene un Bode impecable medido con señal pequeña. ¿Qué no garantiza?"
+    libro: [77]
+    widget:
+      tipo: grafica
+      x: { id: u, min: 0.1, max: 10, unidad: "", rotulo: "f/f₀", escala: log }
+      y: { min: -45, max: 20, unidad: dB, rotulo: "|H|" }
+      curvas:
+        - { expr: "-10*log10((1 - u^2)^2 + (2*zeta*u)^2)", color: azul, rotulo: "|H|" }
+    opciones:
+      - texto: "Lo que hará con señal grande, si satura o recorta"
+        bien: true
+        porque: "El Bode es una herramienta lineal. Tampoco describe el ruido ni la distorsión."
+      - texto: "Su ganancia a cada frecuencia"
+        porque: "Eso es justo lo que da, para señal pequeña."
+      - texto: "Su desfase a cada frecuencia"
+        porque: "El Bode se traza siempre con sus dos curvas: ganancia y fase."
+    escalera:
+      - "¿Con qué tamaño de señal se mide un Bode?"
+    solucion: "La respuesta a señal grande: saturación, recorte, slew rate."
+
+  - id: banco-bode
+    tipo: banco
+    titulo: "Levántelo en el banco"
+    texto: "Monte el RC de 1,6 kΩ y 100 nF, aplique 1 V de pico en el corte y mida la amplitud de la salida con el FNIRSI."
+    libro: [97, 98, "cap22#133"]
+    fijar: { V_p: 1, R_f: 1600, C_f: 100e-9, f_f: 994.72 }
+    banco:
+      piezas: ["R = 1,6 kΩ y C = 100 nF", "FNIRSI: generador y dos canales"]
+      medir: "La amplitud de pico de la salida, sobre el condensador, en el corte."
+      esperado: A_c
+      unidad: V
+      tol: 0.1
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.1 }, texto: "Sale de más: compruebe la frecuencia y la amplitud de entrada, que algunos generadores cambian con la carga." }
+        - { texto: "Sale de menos: el corte real se desplaza con las tolerancias; mida R y C y recalcule." }
+      ficha: { n: 29, titulo: "Práctica 5 · Filtro RC paso bajo y diagrama de Bode" }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [61, 64, 66, 75]
+    ideas:
+      - { titulo: "Dos escalas.", texto: "Frecuencia logarítmica y ganancia en decibelios: las curvas se vuelven rectas." }
+      - { titulo: "Un polo.", texto: "0 dB, −3 dB y −45° en el corte, y −20 dB por década después." }
+      - { titulo: "La fase.", texto: "Gira en dos décadas y empieza antes que la ganancia: de ahí los márgenes." }
+      - { titulo: "Segundo orden.", texto: "ζ = 0,707 es el máximamente plano; menos amortiguamiento, más pico." }

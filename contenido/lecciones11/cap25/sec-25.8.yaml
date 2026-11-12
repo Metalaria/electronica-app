@@ -1,0 +1,250 @@
+# Lección 1.2 de la sección 24.8 «Filtros de Banda: Paso-Banda, Banda Eliminada y el Factor de Calidad» (cap25).
+# Formato: contenido/lecciones11/GUIA.md. El paso banda es un RLC en serie con la salida en R, con los cortes del
+# ejercicio 24.5 (cap25#312: 1,8 y 2,2 kHz): L = 10 mH, C = 639,66 nF y R = 25,13 Ω.
+leccion: cap25/sec-25.8
+
+libro:
+  257: "la media geométrica de ambos cortes, no la aritmética"
+  258: 'f_("0") = sqrt(f_("1") dot.op f_("2"))'
+  259: "B = f₂ − f₁"
+  260: "Q = f₀/B"
+  263: "falla cuando es estrecho, porque cada filtro atenúa en la banda del otro"
+  267: "Un notch estrecho centrado en 50 Hz elimina el zumbido de red"
+  268: "Un notch de Q 50 a 50 Hz tiene un ancho de 1 Hz, así que un error del 2 % en los componentes lo desplaza fuera del zumbido."
+  275: "Un filtro que elimina una banda elimina también la señal que hubiera en ella."
+  276: "cerca de la frecuencia rechazada la fase gira bruscamente"
+  277: "dejar el notch como último recurso"
+  280: "Con un Q realizable en un tanque LC —unos 100— y una portadora de 1 MHz, el ancho es de 10 kHz"
+  "cap25#312": "Un filtro paso banda tiene sus cortes a −3 dB en 1,8 kHz y en 2,2 kHz"
+
+modelo:
+  valores:
+    V_p: { sim: "V_{p}", nombre: "amplitud de la entrada", unidad: V, valor: 1 }
+    f_r: { sim: "f", nombre: "frecuencia", unidad: Hz, valor: 2000 }
+    R_r: { sim: "R", nombre: "resistencia", unidad: Ω, valor: 25.133 }
+    L_r: { sim: "L", nombre: "inductancia", unidad: H, valor: 0.01 }
+    C_r: { sim: "C", nombre: "capacidad", unidad: F, valor: 639.66e-9 }
+    f_n: { sim: "f₀", nombre: "centro del notch", unidad: Hz, valor: 50 }
+    Q_n: { sim: "Q", nombre: "factor de calidad del notch", unidad: "", valor: 50 }
+    Q_t: { sim: "Q", nombre: "factor de calidad del tanque", unidad: "", valor: 100 }
+    f_p: { sim: "f", nombre: "portadora", unidad: Hz, valor: 1000000 }
+  calculos:
+    w_0: { expr: "1/sqrt(L_r*C_r)", sim: "ω₀", nombre: "frecuencia angular central", unidad: "rad/s" }
+    f_0: { expr: "w_0/(2*pi)", sim: "f₀", nombre: "frecuencia central", unidad: Hz }
+    Q_b: { expr: "w_0*L_r/R_r", sim: "Q", nombre: "factor de calidad", unidad: "", cifras: 3 }
+    B: { expr: "f_0/Q_b", sim: "B", nombre: "ancho de banda", unidad: Hz }
+    f_1: { expr: "f_0*(sqrt(1 + 1/(4*Q_b^2)) - 1/(2*Q_b))", sim: "f₁", nombre: "corte inferior", unidad: Hz }
+    f_2: { expr: "f_0*(sqrt(1 + 1/(4*Q_b^2)) + 1/(2*Q_b))", sim: "f₂", nombre: "corte superior", unidad: Hz }
+    f_ar: { expr: "(f_1 + f_2)/2", sim: "f", nombre: "media aritmética", unidad: Hz }
+    X_l: { expr: "2*pi*f_r*L_r", sim: "X_{L}", nombre: "reactancia de la bobina", unidad: Ω }
+    X_c: { expr: "1/(2*pi*f_r*C_r)", sim: "X_{C}", nombre: "reactancia del condensador", unidad: Ω }
+    I_r: { expr: "V_p/sqrt(R_r^2 + (X_l - X_c)^2)", sim: "I", nombre: "amplitud de la corriente", unidad: A }
+    A_r: { expr: "I_r*R_r", sim: "V_{R}", nombre: "amplitud de la salida", unidad: V }
+    u_50: { expr: "50/f_n", sim: "u", nombre: "50 Hz relativos al centro", unidad: "" }
+    N_50: { expr: "max(-80, 20*log10(abs(1 - u_50^2)/sqrt((1 - u_50^2)^2 + (u_50/Q_n)^2) + 1e-6))", sim: "|H(50 Hz)|", nombre: "rechazo a 50 Hz", unidad: dB, cifras: 3 }
+    B_n: { expr: "f_n/Q_n", sim: "B", nombre: "ancho del notch", unidad: Hz }
+    B_t: { expr: "f_p/Q_t", sim: "B", nombre: "ancho del tanque", unidad: Hz }
+
+tarjetas:
+  - id: explore-banda
+    tipo: explorar
+    titulo: "Dos cortes y un centro"
+    texto: "RLC en serie con la salida en la resistencia: un paso banda. Cambie R y mire cómo se estrecha la banda y sube el Q."
+    libro: [259, 260, 267]
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: Q_b, rotulo: "Q" }
+      datos:
+        - { valor: B, rotulo: "B = {{B}}" }
+        - { valor: f_0, rotulo: "f₀ = {{f_0}}" }
+      grafica:
+        x: { id: nu, min: 200, max: 20000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "v_{R}" }
+        curvas:
+          - { expr: "V_p*R_r/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: azul, rotulo: "v_{R}", mide: vr_amp }
+        marcas:
+          - { x: "f_1", y: "V_p*0.7071", rotulo: "f₁" }
+          - { x: "f_2", y: "V_p*0.7071", rotulo: "f₂" }
+      mandos:
+        - { valor: R_r, lista: [25.133, 62.83, 125.66], rotulo: "R" }
+
+  - id: prediga-centro
+    tipo: predecir
+    titulo: "Prediga el centro"
+    texto: "Un paso banda con los cortes a −3 dB en 1,8 kHz y en 2,2 kHz. ¿Cuál es su frecuencia central?"
+    libro: [257, "cap25#312"]
+    fijar: { R_r: 25.133 }
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: f_0, rotulo: "Frecuencia central" }
+      mide: { vr_amp: A_r }
+      ocultar: true
+    opciones:
+      - texto: "1,99 kHz"
+        bien: true
+        porque: "Es la media geométrica: √(1,8 · 2,2) kHz. La aritmética, 2 000 Hz, se queda un poco alta."
+      - texto: "2 kHz"
+        porque: "Es la media aritmética. En una banda la frecuencia central es la geométrica."
+      - texto: "400 Hz"
+        porque: "400 Hz es el ancho de banda, f₂ − f₁, no el centro."
+    escalera:
+      - "En escala logarítmica, el centro de dos frecuencias es su media geométrica."
+    solucion: "√(1,8 · 2,2) = 1,99 kHz."
+    comprobar:
+      - { f_0: 1990, f_1: 1800, f_2: 2200, f_ar: 2000, B: 400, tol: 0.01 }
+
+  - id: regla-centro
+    tipo: formula
+    titulo: "La media geométrica"
+    texto: "El centro es la media geométrica de los cortes, y Q = f₀/B. Cambie R: el centro no se mueve."
+    libro: [258, 260]
+    ec: 258
+    sustitucion: "√({{f_1}} · {{f_2}}) = {{f_0}};  Q = {{f_0}} / {{B}} = {{Q_b}}"
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: f_0, rotulo: "Frecuencia central" }
+      mide: { vr_amp: A_r }
+      grafica:
+        x: { id: nu, min: 200, max: 20000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "v_{R}" }
+        curvas:
+          - { expr: "V_p*R_r/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: azul, rotulo: "v_{R}", mide: vr_amp }
+      mandos:
+        - { valor: R_r, lista: [25.133, 62.83, 125.66], rotulo: "R" }
+
+  - id: estime-q
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El factor de calidad"
+    texto: "Cortes en 1,8 y 2,2 kHz, centro en 1,99 kHz. Estime su factor de calidad."
+    libro: [260, "cap25#312"]
+    fijar: { R_r: 25.133 }
+    estimar:
+      objetivo: "Q_b"
+      unidad: ""
+      min: 0
+      max: 20
+      paso: 0.1
+      inicio: 15
+      tol: 0.05
+      rotulo: "Q"
+    exito: "B = 400 Hz y Q = 1 990/400 ≈ 5."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 5.2 }, texto: "Se ha pasado: la banda mide 400 Hz, no tan estrecha." }
+      - { texto: "Se ha quedado corto: Q = f₀/B, con B = 2,2 − 1,8 kHz." }
+    escalera:
+      - "Primero el ancho de banda: f₂ − f₁."
+    solucion: "Q = 1 990 Hz / 400 Hz ≈ 5."
+    comprobar:
+      - { Q_b: 4.97, B: 400, tol: 0.01 }
+
+  - id: alto-y-bajo
+    tipo: pregunta
+    titulo: "Un paso alto y un paso bajo"
+    texto: "Se construye un paso banda encadenando un paso alto con corte en f₁ y un paso bajo con corte en f₂. ¿Cuándo falla?"
+    libro: [263]
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: Q_b, rotulo: "Q" }
+      mide: { vr_amp: A_r }
+    opciones:
+      - texto: "Cuando la banda es estrecha: cada filtro atenúa en la banda del otro"
+        bien: true
+        porque: "Funciona bien con banda ancha, Q menor que 1. Para bandas estrechas se usan secciones activas o un tanque."
+      - texto: "Cuando la banda es ancha"
+        porque: "Con banda ancha es justo cuando funciona bien."
+      - texto: "Nunca: es la forma habitual de hacerlo"
+        porque: "Lo habitual en baja frecuencia son las secciones activas de segundo orden."
+    escalera:
+      - "¿Qué pasa en el centro si los dos cortes están muy juntos?"
+    solucion: "Falla con Q alto: los dos filtros se atenúan mutuamente en la banda."
+
+  - id: notch
+    tipo: sorpresa
+    titulo: "Un notch muy fino"
+    texto: "Notch de Q 50 para el zumbido de 50 Hz. Mueva su centro un 2 %, como lo haría un error de los componentes, y mire el rechazo a 50 Hz."
+    libro: [268]
+    fijar: { Q_n: 50 }
+    inicio: { f_n: 50 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 45, max: 55, unidad: Hz, rotulo: "f" }
+      y: { min: -60, max: 5, unidad: dB, rotulo: "|H|" }
+      curvas:
+        - { expr: "max(-60, 20*log10(abs(1 - (nu/f_n)^2)/sqrt((1 - (nu/f_n)^2)^2 + (nu/(f_n*Q_n))^2) + 1e-6))", color: azul, rotulo: "notch" }
+      marcas:
+        - { x: "50", y: "N_50", rotulo: "zumbido" }
+      lectura: { valor: N_50, rotulo: "Rechazo a 50 Hz" }
+      datos:
+        - { valor: B_n, rotulo: "Ancho: {{B_n}}" }
+      mandos:
+        - { valor: f_n, lista: [49, 50, 51], rotulo: "Centro del notch" }
+    comprobar:
+      - { B_n: 1 }
+
+  - id: ultimo-recurso
+    tipo: porque
+    titulo: "¿Por qué como último recurso?"
+    texto: "El libro recomienda quitar el zumbido en origen y dejar el notch de 50 Hz como último recurso. ¿Por qué?"
+    libro: [275, 276, 277]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 45, max: 55, unidad: Hz, rotulo: "f" }
+      y: { min: -60, max: 5, unidad: dB, rotulo: "|H|" }
+      curvas:
+        - { expr: "max(-60, 20*log10(abs(1 - (nu/f_n)^2)/sqrt((1 - (nu/f_n)^2)^2 + (nu/(f_n*Q_n))^2) + 1e-6))", color: azul, rotulo: "notch" }
+    opciones:
+      - texto: "Borra también la señal de esa banda y gira bruscamente la fase cerca de ella"
+        bien: true
+        porque: "El giro de fase deforma la señal aunque su amplitud no se toque: puede ser peor que el zumbido."
+      - texto: "Porque nunca atenúa lo suficiente"
+        porque: "Bien centrado tiene un rechazo profundo. El problema es lo que se lleva y cómo deja la fase."
+      - texto: "Porque solo existe en digital"
+        porque: "Existe en analógico, por ejemplo con doble T, aunque es delicado; en digital es trivial."
+    escalera:
+      - "Piense en una señal que tenga información justo en 50 Hz."
+    solucion: "Quita la señal de esa banda y gira la fase: mejor masas, apantallamiento o entrada diferencial."
+
+  - id: radio
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El paso banda de una radio"
+    texto: "Un tanque LC con Q de unos 100 y una portadora de 1 MHz. ¿Qué ancho de banda deja pasar?"
+    libro: [280]
+    fijar: { Q_t: 100, f_p: 1000000 }
+    estimar:
+      objetivo: "B_t"
+      unidad: Hz
+      min: 0
+      max: 50000
+      paso: 500
+      inicio: 40000
+      tol: 0.05
+      rotulo: "Ancho de banda"
+    exito: "1 MHz/100 = 10 kHz, lo que ocupa una emisora de AM. A frecuencias mayores ese Q no basta: de ahí la frecuencia intermedia."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 10500 }, texto: "Se ha pasado: B = f₀/Q." }
+      - { texto: "Se ha quedado corto: B = f₀/Q, con 1 MHz y 100." }
+    escalera:
+      - "Despeje B de Q = f₀/B."
+    solucion: "B = 1 MHz/100 = 10 kHz."
+    comprobar:
+      - { B_t: 10000 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [257, 260, 268, 277]
+    ideas:
+      - { titulo: "Dos cortes.", texto: "Centro en la media geométrica; B = f₂ − f₁; Q = f₀/B." }
+      - { titulo: "Construirlos.", texto: "Tanque LC en alta frecuencia; secciones activas en baja; paso alto y bajo solo con banda ancha." }
+      - { titulo: "El notch.", texto: "Q alto y frecuencia exacta: un 2 % de error lo saca del zumbido." }
+      - { titulo: "Último recurso.", texto: "Borra la señal de su banda y gira la fase: mejor quitar el zumbido en origen." }
