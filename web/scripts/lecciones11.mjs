@@ -32,8 +32,14 @@ const args = process.argv.slice(2);
 const solo = args.includes('--solo') ? args[args.indexOf('--solo') + 1] : null;
 const comprobarSolo = args.includes('--comprobar');
 
+// 1.2: the SQL cards' reference queries run on the sample database of section 17.10 (sql.js, the same SQLite the
+// app's worker runs; lib/leccion12/sql/muestra.ts builds it), so their expected results are stored with the lesson
+const { sqlNode } = await import(src('lib/leccion12/sql/node.ts'));
+const sql = await sqlNode();
+
 const partes = new Map();
 const contexto = {
+  sql,
   bloques(p) {
     if (!partes.has(p)) {
       const f = path.join(libro, 'partes', `${p}.json`);

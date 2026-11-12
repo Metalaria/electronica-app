@@ -11,20 +11,20 @@
 </script>
 
 <Lienzo {descripcion}>
-  <path class="flujo" d="M50 220 V30 H190 V220 Z" style:animation-duration={`${dur.toFixed(2)}s`}></path>
-  <path class="hilo" d="M50 220 V133"></path>
-  <path class="hilo" d="M50 117 V30 H190"></path>
-  <path class="hilo" d="M34 117 H66"></path>
-  <path class="hilo gordo" d="M42 127 H58"></path>
+  <path class="flujo" d="M50 220 V30 H190 V220 Z" style:animation-duration={`${dur.toFixed(2)}s`} data-medidor="vmed"></path>
+  <path class="hilo" d="M50 220 V133" data-red="0"></path>
+  <path class="hilo" d="M50 117 V30 H190" data-red="fte"></path>
+  <g data-pieza="fuente"><path class="hilo" d="M34 117 H66"></path>
+  <path class="hilo gordo" d="M42 127 H58"></path></g>
   <text x="2" y="150" class="et tinta">{c.val('fuente')}</text>
-  <path class="pieza azul" d={Z1}></path>
+  <path class="pieza azul" d={Z1} data-pieza="arriba"></path>
   <text x="208" y="82" class="et azul">{c.sim('arriba')} {c.val('arriba')}</text>
-  <path class="pieza naranja" d={Z2}></path>
+  <path class="pieza naranja" d={Z2} data-pieza="abajo"></path>
   <text x="208" y="190" class="et naranja">{c.sim('abajo')} {c.val('abajo')}</text>
-  <path class="hilo" d="M190 220 H50"></path>
+  <path class="hilo" d="M190 220 H50" data-red="0"></path>
   {#if c.tiene('carga')}
     <g class:fantasma data-carga={cargada ? 'conectada' : 'suelta'}>
-      <path class="pieza verde" d={ZL}></path>
+      <path class="pieza verde" d={ZL} data-pieza="carga"></path>
       {#if cargada}
         <!-- (the ghost of a load not connected yet has no labels: faded text would be unreadable) -->
         <text x="316" y="172" class="et verde">{c.sim('carga')}</text>
@@ -32,8 +32,8 @@
       {/if}
     </g>
   {/if}
-  <path class="hilo" d="M190 125 H244"></path>
-  <circle cx="190" cy="125" r="4.5" class="nodo"></circle>
+  <path class="hilo" d="M190 125 H244" data-red="salida"></path>
+  <circle cx="190" cy="125" r="4.5" class="nodo" data-red="salida"></circle>
   <circle cx="250" cy="125" r="6" class="salida"></circle>
   <text x="232" y="110" class="et naranja peq">salida</text>
 </Lienzo>

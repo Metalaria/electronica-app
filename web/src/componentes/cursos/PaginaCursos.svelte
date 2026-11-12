@@ -28,7 +28,7 @@
   import BarraDominio from '../dominio/BarraDominio.svelte';
   import MedidorDominio from '../dominio/MedidorDominio.svelte';
   // 1.0: the course as a path of lessons that open one after another, with spaced review
-  import { calcularCamino, repasoDe, saltadas, type EstadoNodo, type NodoEntrada } from '../../lib/aprendizaje/camino';
+  import { calcularCamino, dominadaDe, repasoDe, saltadas, type EstadoNodo, type NodoEntrada } from '../../lib/aprendizaje/camino';
   import { progresoLecciones } from '../../lib/lecciones.svelte';
   import Camino, { type GrupoCamino, type NodoVista } from './Camino.svelte';
   import SaltarHasta from './SaltarHasta.svelte';
@@ -88,6 +88,7 @@
         estado,
         progreso: hecho ? 1 : p?.n ? Math.min(1, p.h.length / p.n) : 0,
         repaso: hecho && estadoDominio.listo ? repasoDe(dominioDe(clave), ahora) : null,
+        dominada: hecho && estadoDominio.listo && dominadaDe(dominioDe(clave), ahora),
         tipo: 'leccion',
         nuevo: !!l.ampliacion && !g.nuevo,
         // offered on the first locked lesson and at the start of each later chapter (not on every node)
@@ -272,7 +273,7 @@
                     </span>
                     <span class="txt">{l.num ? `${l.num} ` : ''}{l.titulo}{#if l.ampliacion && !info?.ampliacion}{' '}<InsigniaNuevo compacta titulo="Sección nueva de la aplicación: estará en la próxima edición del libro" />{/if}</span>
                     {#if estadoDominio.listo}{@const dl = dominioDe(`${l.parte}/${l.label}`)}{#if dl.nivel !== 'nuevo'}<MedidorDominio nivel={dl.nivel} valor={dl.valor} repasar={dl.repasar} />{/if}{/if}
-                    <span class="estado" class:solo-lector={l.estado === 'pendiente'}>{ESTADO[l.estado]}</span>
+                    <span class="estado" class:solo-lector={l.estado === 'pendiente'}>{ESTADO[l.estado]}{#if (l.estado === 'hecha' || l.estado === 'superada') && estadoDominio.listo && dominadaDe(dominioDe(`${l.parte}/${l.label}`), ahora)}{' · '}<span data-dominada-lista>Dominada</span>{/if}</span>
                   </a>
                 </li>
                 {#if l.parte === 'cap22' && PRACTICA_DE_SECCION[l.label]}

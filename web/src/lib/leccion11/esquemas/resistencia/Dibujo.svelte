@@ -11,10 +11,11 @@
 
 <Lienzo {descripcion} alto={250}>
   <Flujo d="M90 230 V50 H270 V230 Z" {dur} />
-  <Pila x={90} y1={230} y2={50} />
+  <Pila x={90} y1={230} y2={50} pieza="fuente" nodos={['0', 'fte']} />
   <Et x={20} y={150} t={c.val('fuente')} />
-  <path class="hilo" d="M90 50 H270 M90 230 H270"></path>
-  <R x1={270} y1={50} x2={270} y2={230} color="naranja" />
+  <path class="hilo" d="M90 50 H270" data-red="fte"></path>
+  <path class="hilo" d="M90 230 H270" data-red="0"></path>
+  <R x1={270} y1={50} x2={270} y2={230} color="naranja" pieza="r" />
   <Et x={286} y={136} t={c.simT('r')} color="naranja" />
   <Et x={286} y={156} t={c.val('r')} color="naranja" peq />
 </Lienzo>

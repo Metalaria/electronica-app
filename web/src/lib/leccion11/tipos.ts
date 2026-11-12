@@ -2,6 +2,8 @@
 // web/public/libro/lecciones11/<parte>/<label>.json from the sources in contenido/lecciones11/<parte>/<label>.yaml
 // (format: contenido/lecciones11/GUIA.md and ESQUEMA.md «Lecciones 1.1»). Types only.
 
+import type { Actividad12, TipoActividad } from '../leccion12/tipos';
+
 /** A run of a short text: plain, subscript, superscript, bold, or the live value of a quantity of the model. */
 export type Trozo =
   | { t: 'txt'; s: string }
@@ -223,7 +225,8 @@ export interface Idea {
   texto: Texto;
 }
 
-export type TipoTarjeta = 'explorar' | 'predecir' | 'pregunta' | 'formula' | 'reto' | 'sorpresa' | 'porque' | 'resumen';
+/** 1.2: the learning-by-doing step types (lib/leccion12/tipos.ts) are card types too. */
+export type TipoTarjeta = 'explorar' | 'predecir' | 'pregunta' | 'formula' | 'reto' | 'sorpresa' | 'porque' | 'resumen' | TipoActividad;
 
 export interface Tarjeta {
   /** Stable id inside the lesson (answers are recorded under it). */
@@ -258,6 +261,11 @@ export interface Tarjeta {
   /** The formula with the current values: «{{V_in}} · {{R_2}} / ({{R_1}} + {{R_2}}) = {{V_out}}». */
   sustitucion?: Texto;
   ideas?: Idea[];
+  /** 1.2: the hint ladder the reader opens one step at a time (pista 1, pista 2), then the solution. */
+  escalera?: Texto[];
+  solucion?: Texto;
+  /** 1.2: the data of a learning-by-doing step (simular, diseno, averia, ajuste, banco, dibujar, sql). */
+  actividad?: Actividad12;
 }
 
 export interface CitaLibro {

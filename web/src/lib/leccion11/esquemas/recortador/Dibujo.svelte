@@ -16,11 +16,11 @@
 </script>
 
 <Lienzo {descripcion} alto={250}>
-  <FuenteCA x={40} y1={230} y2={50} />
+  <FuenteCA x={40} y1={230} y2={50} pieza="fuente" />
   <Et x={2} y={110} t={c.val('fuente')} peq />
   <Et x={2} y={190} t={c.val('f')} peq />
   <path class="hilo" d="M40 50 H70 M170 50 H330 M40 230 H330"></path>
-  <R x1={70} y1={50} x2={170} y2={50} color="azul" />
+  <R x1={70} y1={50} x2={170} y2={50} color="azul" pieza="r" />
   <Et x={120} y={30} t={c.rot('r')} ancla="middle" color="azul" />
   {#if zz}
     <circle class="nodo" cx="240" cy="50" r="4.5"></circle>
@@ -42,7 +42,7 @@
           <path class="hilo" d="M210 110 V170"></path>
         {/if}
         {#if c.tiene('vref')}
-          <Pila x={210} y1={230} y2={170} />
+          <Pila x={210} y1={230} y2={170} pieza="vref" />
           <Et x={196} y={204} t={`ref. ${c.val('vref')}`} color="naranja" peq ancla="end" />
         {:else}
           <path class="hilo" d="M210 170 V230"></path>

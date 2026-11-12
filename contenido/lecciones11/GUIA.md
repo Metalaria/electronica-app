@@ -1436,6 +1436,8 @@ app). Esto no sustituye su revisión: compruebe también que cada afirmación di
   alcanzable y no acertadas al empezar; curvas que dan números en todo el eje.
 - Circuitos: el modelo frente al ngspice de la app en continua, en alterna y en el tiempo (§5.3), en el estado
   inicial, en los extremos de cada mando y en cada `comprobar`.
+- 1.2: los pasos de aprender haciendo, cada uno con sus reglas (§10), y la escalera de pistas (aviso si una pregunta
+  no tiene ninguna).
 
 ## 8. Antes de dar una lección por terminada
 
@@ -1467,3 +1469,231 @@ cada una debe entenderse sola: que su título y su texto digan qué se pregunta 
 lo que el lector movió antes (si depende, `fijar` lo que haga falta). Las `porque` no salen sueltas (preguntan por la
 sorpresa anterior). Se guardan con el mismo `id` que en la lección: XP una sola vez por tarjeta, la responda donde la
 responda, y el mismo dominio. Por eso, otra razón para **no cambiar los `id`** una vez publicada la lección.
+
+## 10. Aprender haciendo (1.2): pistas escalonadas y siete pasos nuevos
+
+### 10.0 Cuándo usarlos
+
+- **Solo donde enseñan algo** que una pregunta no enseña: equivocarse con un número y ver por qué, diseñar con
+  tolerancias, razonar con medidas, ajustar con las manos, medir de verdad. **Nunca de adorno**.
+- Orientativo: **una de cada tres lecciones** lleva uno (rara vez dos). Sustituye a un `reto` o a una `pregunta`, no se
+  suma a ellos. Las secciones de taller, instrumentos y proyectos los piden más; las de teoría pura, menos.
+- Cada paso nuevo es **una tarjeta** con `tipo: <paso>` y un bloque del mismo nombre (`simular:`, `diseno:`…). Lleva
+  sus campos comunes (`id`, `titulo`, `texto`, `libro`, `fijar`, `inicio`, `widget`, `comprobar`) y las mismas reglas
+  de palabras y de números (§6): los números de sus explicaciones salen del libro o del modelo.
+- Ejemplos completos y probados de los siete: `web/tests/lecciones12-catalogo/cap01/sec-1.4.yaml` (lección de prueba;
+  no se publica). Cópielos.
+
+| tipo | Para qué | Cuándo | Cuenta como pregunta |
+|---|---|---|---|
+| `simular` | estimar un número con su unidad y ver lo que da el simulador | el error típico es instructivo (olvidar la carga, pico por eficaz) | sí |
+| `diseno` | elegir valores E12/E24 que cumplan una especificación **con las tolerancias** | la sección da una especificación y una tolerancia | sí |
+| `averia` | medir con el multímetro (y el osciloscopio) y nombrar la pieza averiada | la sección explica síntomas o medidas de diagnóstico | sí |
+| `ajuste` | mover un mando hasta que una medida entre en su banda | polarización, compensación de sonda, polos, periodo de muestreo | no (abre «Continuar») |
+| `banco` | montarlo en casa, medir y comparar (opcional) | hay una ficha del cuaderno de prácticas o un montaje sencillo | no |
+| `dibujar` | dibujar una forma de onda o una curva y compararla | la forma importa más que un número (rectificada, carga RC, Bode) | sí |
+| `sql` | consultar la base de ejemplo de la sección 17.10 | solo en la sección de SQLite y SQL | sí |
+
+Los que cuentan como pregunta van también a «Práctica inteligente» y al repaso (deben entenderse solos: §9) y dan XP
+una vez. `ajuste` y `banco` no se puntúan.
+
+### 10.1 Explicación por opción y pistas escalonadas (todas las preguntas)
+
+Cada opción ya lleva su `porque` (§4): **en la incorrecta, la confusión que lleva a ella y dónde falla**. Además, toda
+tarjeta que se responde (opciones, estimar, ordenar, emparejar, reto y los pasos nuevos) debe llevar su **escalera**:
+
+```yaml
+escalera:                      # una o dos pistas, de la más suave a la más directa (≤ 40 palabras cada una)
+  - "La carga queda en paralelo con R₂."
+  - "Calcule primero R₂ ‖ R_{L} y úsela como resistencia de abajo."
+solucion: "Abajo quedan 5 ‖ 10 = 3,33 kΩ: la salida cae a 3,00 V."   # el último peldaño
+```
+
+El lector las abre con «Pista», «Otra pista» y «Ver la solución»; la solución sale también sola tras dos fallos. Los
+peldaños abiertos cuentan como ayuda en el dominio. El generador **avisa** (no para) de las preguntas sin ninguna pista
+(`escalera`, `solucion`, `pistas` o `ayuda`). En lecciones nuevas, póngala siempre; `solucion` sustituye a `ayuda`.
+
+### 10.2 `simular` — Prediga y simule
+
+El lector escribe un número con su unidad («4,2 V», «4k7», «150 m»), lo fija con «Comprobar» (una sola vez) y la app
+simula el circuito de la tarjeta con su ngspice y enseña su estimación, lo que da el simulador y el error relativo. La
+explicación sale del primer **error típico** que encaja; si ninguno, la app reconoce sola un prefijo equivocado (un
+factor mil), el signo, «cerca» o, si no, la primera `pista`.
+
+```yaml
+  - id: simule-carga
+    tipo: simular
+    titulo: "Prediga con la carga"
+    texto: "Con 12 V, 10 kΩ y 5 kΩ, y la carga de 10 kΩ conectada: ¿cuánto marca la salida?"
+    libro: [83, 84]
+    fijar: { V_in: 12, R_1: 10000, R_2: 5000, R_L: 10000, carga: 1 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: carga }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      mide: { salida: V_out }
+      ocultar: true                      # la lectura sale «¿?» hasta que fija la estimación
+      mandos: []
+    simular:
+      objetivo: V_out                    # expresión del modelo: el valor bueno
+      unidad: V
+      tol: 0.03                          # error relativo que cuenta como acierto
+      rotulo: "Tensión de salida, V_{salida}"
+      medida: salida                     # la medida de «widget.mide» que simula la app (debe ser el objetivo)
+      errores:                           # al menos uno: lo que da la confusión (expr) o una razón estimación/valor
+        - { expr: "V_vacio", texto: "Esos 4,00 V son los del divisor en vacío: ha olvidado la carga, que queda en paralelo con R₂." }
+        - { razon: { min: 1.35, max: 1.48 }, texto: "Ha usado el valor de pico: el eficaz es √2 veces menor." }
+    exito: "La carga baja la rama de abajo y la salida cae a 3,00 V."
+```
+
+El generador comprueba: el objetivo da un número; cada `expr` de error da otro valor **fuera** de la tolerancia (si no,
+no es un error); una `razon` no incluye la respuesta buena; `medida` es una medida de `widget.mide` que vale lo mismo
+que el objetivo (el circuito se comprueba con ngspice como cualquier otro, §5.3).
+
+### 10.3 `diseno` — Diseñe con tolerancias
+
+Mandos de serie E12/E24 (§5.1), `condiciones` como un reto (la especificación) y las tolerancias de las piezas. Al
+comprobar, la app calcula el diseño nominal y el mismo diseño con las tolerancias: **todas las esquinas** (cada pieza
+en sus dos extremos, 2ⁿ placas) o **Monte Carlo** (`muestras` placas con cada pieza al azar, uniforme dentro de su
+tolerancia, siempre las mismas) y enseña la banda, el nominal, la dispersión y cuántas placas cumplen.
+
+```yaml
+    condiciones:
+      - { valor: V_out, objetivo: 3.3, tol: 0.02, rotulo: "Salida: {{V_out}}" }
+    diseno:
+      tolerancias: { R_1: 0.01, R_2: 0.01 }   # valor del modelo → tolerancia (0.01 = ± 1 %)
+      metodo: esquinas                         # o montecarlo (con muestras: 200)
+      exigir: todas                            # nominal | todas | 0.95 (fracción de placas que deben cumplir)
+      si_tolerancias: "El nominal cumple, pero con ± 5 % no siempre: pase a resistencias del 1 %."   # opcional
+    exito: "…"
+    pistas: [ … ]                              # como en un reto: una para cada fallo del nominal
+```
+
+El generador exige al menos una posición de los mandos que **apruebe con las tolerancias**, que no empiece aprobado,
+y las comprobaciones de un reto (§4). Úselo para la lección del libro: con E12 y ± 5 % un divisor de 3,3 V ± 2 % no
+sale; el lector lo descubre.
+
+### 10.4 `averia` — Busque la avería
+
+El circuito de la tarjeta tiene una avería escondida (el dibujo ya muestra la placa averiada: un LED apagado, la
+corriente que no circula). El lector mide en los puntos de `sondas` con un multímetro virtual (cada punto nuevo
+gasta una de las `pasos` medidas; uno con `curva` sale además en un osciloscopio), elige la pieza y comprueba. Un
+sospechoso equivocado se explica **con sus propias medidas** («Si fuera R₁ (abierta), en «Salida» mediría 0 V; usted
+ha medido 12,0 V»). Hallada, puede probar «Otra placa con otra avería» (no se puntúa otra vez).
+
+```yaml
+    fijar: { V_in: 12, R_1: 10000, R_2: 5000, carga: 0 }
+    widget: { tipo: circuito, esquema: divisor, piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }, mide: { salida: V_out, corriente: I }, mandos: [] }
+    averia:
+      pasos: 2                                 # medidas permitidas
+      eleccion: fija                           # fija: por orden, una por ronda; azar: otra al azar cada vez que se abre
+      preguntar_tipo: false                    # true: además, qué le pasa (abierta, corto…)
+      sospechosos:
+        - { id: r1, rotulo: "R₁" }
+        - { id: r2, rotulo: "R₂" }
+      sondas:
+        - { id: salida, rotulo: "Salida", valor: V_out }
+        - { id: corriente, rotulo: "Corriente", valor: I }
+        # osciloscopio: { …, curva: { expr: "…t…", x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }, y: { min: -15, max: 15, unidad: V, rotulo: "v" } } }
+      fallos:                                  # tipo: abierta, corto, alto, bajo, reves, base-abierta o valor
+        - { id: r2-abierta, pieza: r2, tipo: abierta, con: { R_2: 1e9 }, texto: "R₂ abierta: no circula corriente y la salida sube hasta la tensión de la pila." }
+        - { id: r1-abierta, pieza: r1, tipo: abierta, con: { R_1: 1e9 }, texto: "…" }
+        - { id: r2-corto, pieza: r2, tipo: corto, con: { R_2: 0.001 }, texto: "…" }
+```
+
+- Una avería son **valores del modelo** con la pieza rota: abierta `1e9` Ω, corto `1e-3` Ω, otro valor; un diodo al
+  revés o un transistor averiado, con un interruptor del modelo que su cálculo use. Cada avería se simula con ngspice
+  como un estado más (§5.3).
+- El widget no lleva `lectura`, `barras`, `datos` ni mandos (se mide con las sondas). El multímetro tiene la resolución
+  de un milésimo de la mayor lectura de cada punto: por debajo, lee 0.
+- El generador comprueba: cada avería se distingue del circuito sano en alguna sonda; dos averías de piezas distintas
+  se distinguen en alguna (si no, añada una sonda); cada sospechoso tiene al menos una avería (para poder explicar por
+  qué no es él); y avisa si con `pasos` medidas fijas no se distinguen todas.
+
+### 10.5 `ajuste` — Ajuste hasta la banda
+
+Un mando (el deslizador, o la pieza del esquema, que se arrastra) y un medidor con la banda: la aguja se mueve en vivo
+y el texto dice hacia dónde ir. «Continuar» se abre dentro de la banda.
+
+```yaml
+    inicio: { R_2: 500 }                       # que no empiece dentro
+    widget: { tipo: circuito, esquema: divisor, …, mandos: [ { valor: R_2, min: 100, max: 5000, paso: 10 } ] }
+    ajuste:
+      valor: V_out
+      objetivo: 3.3                            # o min / max
+      tol: 0.02
+      rotulo: "Salida"
+      escala: { min: 0, max: 5 }               # opcional (por defecto, la banda ± 3 anchos)
+      bajo: "Falta tensión: suba R₂."
+      alto: "Sobra tensión: baje R₂."
+      dentro: "Dentro de la banda."
+```
+
+El generador comprueba que alguna posición entra en la banda y que no se empieza dentro.
+
+### 10.6 `banco` — En el banco (opcional)
+
+Para montarlo de verdad: lo que hace falta, qué medir, lo que debería leer con su tolerancia; el lector escribe lo
+que ha medido y la app lo compara y aconseja. Siempre se puede seguir sin hacerlo; nada se guarda.
+
+```yaml
+    banco:
+      piezas: ["Fuente de 12 V", "R₁ = 10 kΩ y R₂ = 5 kΩ", "Brymen en V⎓"]
+      medir: "La tensión entre la salida y masa, sin carga."
+      esperado: V_out                          # expresión del modelo
+      unidad: V
+      tol: 0.05                                # tolerancias de las piezas y del instrumento
+      consejos:                                # el primero que se cumple; «desviacion» = medida/esperado − 1, o «medida»
+        - { cuando: { valor: desviacion, mayor: 0.05 }, texto: "Mide de más: compruebe que R₂ es la de abajo." }
+        - { texto: "Mide de menos: ¿queda algo conectado a la salida, como una carga?" }
+      ficha: { n: 1, titulo: "El voltímetro forma parte del circuito" }   # la del cuaderno de prácticas, si la hay
+```
+
+### 10.7 `dibujar` — Dibuje la forma de onda
+
+El lector dibuja la curva sobre los ejes con el dedo o el ratón (o, con el teclado, punto a punto: «◀ ▶» o Mayús + ←/→
+eligen el punto y el deslizador su valor). Al comprobar se compara con la curva del modelo: el error es el valor
+eficaz de la diferencia sobre la altura del eje, perdonando un pequeño desfase en x y un pequeño escalón en y
+(`holgura`). Tras acertar o dos fallos se dibuja la curva buena encima. Las pistas pueden mirar `error`, `amplitud`
+(1 = la buena), `media` (+ = dibujada alta) y `desfase` (+ = tarde).
+
+```yaml
+    dibujar:
+      x: { id: r, min: 0, max: 20000, unidad: Ω, rotulo: "R₂" }   # el id no es del modelo
+      y: { min: 0, max: 12, unidad: V, rotulo: "V_{salida}" }
+      curva: "V_in*r/(R_1 + r)"
+      puntos: 21                               # de 9 a 61
+      tol: 0.08                                # error que cuenta como acierto (8 % de la altura)
+      holgura: 0.03
+      rotulo: "La salida frente a R₂"
+    exito: "…"
+```
+
+El generador exige que la curva quepa en el eje y y avisa si es casi plana.
+
+### 10.8 `sql` — SQL con la base de ejemplo (sección 17.10)
+
+SQLite compilado a WebAssembly, sin red, sobre una **base de ejemplo** con el esquema del libro (`sensores`, `medidas`,
+`horas`) y datos que la app genera (cuatro sensores cada 10 minutos, del 25 de febrero al 3 de abril de 2026: no son
+medidas reales; dígalo si importa). El lector ejecuta, ve la tabla o el error explicado en español y comprueba: se
+compara su resultado con el de la solución (columnas por su número, filas y valores; el orden solo si la solución
+lleva ORDER BY). Tres modos:
+
+```yaml
+    sql:                                       # consulta: la escribe entera
+      modo: consulta
+      inicial: "SELECT s.nombre, count(*) AS n\nFROM medidas AS m JOIN sensores AS s ON s.id = m.sensor\n"
+      solucion: "SELECT s.nombre, count(*) AS n FROM medidas AS m JOIN sensores AS s ON s.id = m.sensor GROUP BY s.id ORDER BY s.id"
+    sql:                                       # rellenar: huecos [[1]], [[2]]… con opciones o texto libre
+      modo: rellenar
+      plantilla: "SELECT date(t, 'unixepoch') AS dia, [[1]](valor) AS maxima FROM medidas WHERE sensor = 1 GROUP BY [[2]] ORDER BY dia;"
+      huecos: [ { solucion: max, opciones: [max, min, avg, count] }, { solucion: dia } ]
+    sql:                                       # ordenar: las cláusulas en su orden (la app las baraja siempre igual)
+      modo: ordenar
+      clausulas: ["SELECT sensor, count(*) AS n", "FROM medidas", "WHERE valor > 0", "GROUP BY sensor", "ORDER BY sensor;"]
+```
+
+El generador ejecuta la solución con el mismo SQLite: debe funcionar, devolver de 1 a 200 filas y **no depender del
+día** (sin `now`, `random`, `current_date`); guarda su resultado en la lección. Las consultas del libro valen tal cual
+salvo las que usan `'now'`: cámbielas por fechas de marzo de 2026.

@@ -12,10 +12,12 @@
 
 <Lienzo {descripcion} alto={250}>
   <Flujo d="M40 230 V50 H280 V230 Z" {dur} />
-  <Pila x={40} y1={230} y2={50} />
+  <Pila x={40} y1={230} y2={50} pieza="fuente" nodos={['0', 'fte']} />
   <Et x={2} y={170} t={c.val('fuente')} />
-  <path class="hilo" d="M40 50 H110 M230 50 H280 M280 230 H40"></path>
-  <R x1={110} y1={50} x2={230} y2={50} color="azul" />
+  <path class="hilo" d="M40 50 H110" data-red="fte"></path>
+  <path class="hilo" d="M230 50 H280" data-red="an"></path>
+  <path class="hilo" d="M280 230 H40" data-red="0"></path>
+  <R x1={110} y1={50} x2={230} y2={50} color="azul" pieza="r" />
   <Et x={170} y={30} t={c.rot('r')} ancla="middle" color="azul" />
   <D x1={280} y1={50} x2={280} y2={230} color="naranja" />
   <Et x={300} y={136} t={c.tiene('vd') ? c.val('vd') : 'Shockley'} color="naranja" peq />

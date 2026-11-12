@@ -1,0 +1,240 @@
+# Catálogo de pruebas de los pasos 1.2 (contenido/lecciones11/GUIA.md §10): una tarjeta de cada tipo nuevo sobre el
+# divisor de la sección 1.4. NO se publica: las pruebas (tests/lecciones12-*.spec.ts) la generan y la sirven en lugar
+# de la lección publicada. Las tarjetas SQL usan la base de ejemplo de la sección 17.10 (aquí, solo para probar).
+leccion: cap01/sec-1.4
+
+libro:
+  78: "Componentes en serie comparten la misma corriente"
+  81: "la tensión se reparte en proporción a las resistencias"
+  83: "Con 12 V, 10 kΩ y 5 kΩ, la salida es 4,00 V"
+  84: "La fórmula solo vale"
+  103: "4,00 V en vacío y 3,00 V con 10 kΩ conectados"
+  "cap01#345": "Diseña un divisor de tensión que entregue 3,3 V a partir de una fuente de 5 V"
+
+modelo:
+  valores:
+    V_in: { sim: "V_{entrada}", nombre: "tensión de la pila", unidad: V, valor: 12 }
+    R_1: { sim: "R₁", nombre: "resistencia de arriba", unidad: Ω, valor: 10000 }
+    R_2: { sim: "R₂", nombre: "resistencia de abajo", unidad: Ω, valor: 5000 }
+    R_L: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 10000 }
+    carga: { tipo: interruptor, nombre: "carga conectada", valor: 0 }
+  calculos:
+    R_ab: { si: carga, entonces: "par(R_2, R_L)", sino: "R_2", sim: "R_{abajo}", nombre: "resistencia de la rama de abajo", unidad: Ω }
+    V_out: { expr: "V_in*R_ab/(R_1 + R_ab)", sim: "V_{salida}", nombre: "tensión de salida", unidad: V }
+    V_1: { expr: "V_in - V_out", sim: "V_{R1}", nombre: "tensión en R₁", unidad: V }
+    I: { expr: "V_in/(R_1 + R_ab)", sim: "I", nombre: "corriente", unidad: A }
+    V_vacio: { expr: "V_in*R_2/(R_1 + R_2)", sim: "V_{vacío}", nombre: "salida sin carga", unidad: V }
+
+tarjetas:
+  - id: explore-serie
+    tipo: explorar
+    titulo: "Dos resistencias, una pila"
+    texto: "Mueva R₂ y mire cómo se reparten los {{V_in}}."
+    libro: [78, 81]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      mide: { salida: V_out, corriente: I }
+      mandos:
+        - { valor: R_2, min: 1000, max: 20000, paso: 1000 }
+
+  - id: simule-carga
+    tipo: simular
+    titulo: "Prediga con la carga"
+    texto: "Con 12 V, 10 kΩ y 5 kΩ, y la carga de 10 kΩ conectada: ¿cuánto marca la salida?"
+    libro: [83, 84]
+    fijar: { V_in: 12, R_1: 10000, R_2: 5000, R_L: 10000, carga: 1 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: carga }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      mide: { salida: V_out }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: V_out
+      unidad: V
+      tol: 0.03
+      rotulo: "Tensión de salida, V_{salida}"
+      medida: salida
+      errores:
+        - { expr: "V_vacio", texto: "Esos 4,00 V son los del divisor en vacío: ha olvidado la carga, que queda en paralelo con R₂." }
+    exito: "La carga baja la rama de abajo y la salida cae a 3,00 V."
+    escalera:
+      - "La carga queda en paralelo con R₂."
+      - "Calcule primero R₂ ‖ R_{L} y úsela como resistencia de abajo."
+    solucion: "Abajo quedan 5 ‖ 10 = 3,33 kΩ: la salida cae a 3,00 V."
+    comprobar:
+      - { V_out: 3.0, V_vacio: 4.0, R_ab: 3333.3 }
+      - { con: { R_L: 1e30 }, V_out: 4.0 }
+
+  - id: disene-33
+    tipo: diseno
+    titulo: "Diseñe con valores E24"
+    texto: "Un divisor que entregue 3,3 V a partir de una fuente de 5 V, con resistencias E24 del 1 %."
+    libro: ["cap01#345"]
+    fijar: { V_in: 5, carga: 0 }
+    inicio: { R_1: 1000, R_2: 1000 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      mide: { salida: V_out }
+      mandos:
+        - { valor: R_1, serie: E24, min: 1000, max: 10000, rotulo: "R₁ (E24)" }
+        - { valor: R_2, serie: E24, min: 1000, max: 10000, rotulo: "R₂ (E24)" }
+    condiciones:
+      - { valor: V_out, objetivo: 3.3, tol: 0.02, rotulo: "Salida: {{V_out}}" }
+    diseno:
+      tolerancias: { R_1: 0.01, R_2: 0.01 }
+      metodo: esquinas
+      exigir: todas
+    exito: "Aprobado: incluso en las peores esquinas de las tolerancias, la salida queda en su banda."
+    pistas:
+      - { cuando: { valor: V_out, mayor: 3.366 }, texto: "Sobra tensión: R₂ tiene que ser menor frente a R₁." }
+      - { cuando: { valor: V_out, menor: 3.234 }, texto: "Falta tensión: R₂ tiene que ser mayor frente a R₁." }
+      - { texto: "Ajuste la relación entre R₁ y R₂." }
+
+  - id: averia-divisor
+    tipo: averia
+    titulo: "Busque la avería"
+    texto: "Este divisor no da lo que debe. Mida donde quiera y diga qué pieza falla."
+    libro: [83]
+    fijar: { V_in: 12, R_1: 10000, R_2: 5000, carga: 0 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      mide: { salida: V_out, corriente: I }
+      mandos: []
+    averia:
+      pasos: 2
+      sospechosos:
+        - { id: r1, rotulo: "R₁" }
+        - { id: r2, rotulo: "R₂" }
+      sondas:
+        - { id: salida, rotulo: "Salida", valor: V_out }
+        - { id: r1, rotulo: "Extremos de R₁", valor: V_1 }
+        - { id: corriente, rotulo: "Corriente", valor: I }
+      fallos:
+        - { id: r2-abierta, pieza: r2, tipo: abierta, con: { R_2: 1e9 }, texto: "R₂ abierta: no circula corriente y la salida sube hasta la tensión de la pila." }
+        - { id: r1-abierta, pieza: r1, tipo: abierta, con: { R_1: 1e9 }, texto: "R₁ abierta: no llega corriente y la salida cae a cero." }
+        - { id: r2-corto, pieza: r2, tipo: corto, con: { R_2: 0.001 }, texto: "R₂ en corto: la salida cae a cero, pero la corriente sigue circulando." }
+    pistas:
+      - { texto: "Compare la tensión de salida y la corriente con las de un divisor sano." }
+    escalera:
+      - "Un divisor sano de 12 V, 10 kΩ y 5 kΩ da 4,00 V."
+    comprobar:
+      - { V_out: 4.0 }
+
+  - id: ajuste-33
+    tipo: ajuste
+    titulo: "Ajuste la salida"
+    texto: "Con 5 V, mueva R₂ hasta que la salida entre en su banda."
+    libro: ["cap01#345"]
+    fijar: { V_in: 5, R_1: 1000, carga: 0 }
+    inicio: { R_2: 500 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      mide: { salida: V_out }
+      mandos:
+        - { valor: R_2, min: 100, max: 5000, paso: 10 }
+    ajuste:
+      valor: V_out
+      objetivo: 3.3
+      tol: 0.02
+      rotulo: "Salida"
+      bajo: "Falta tensión: suba R₂."
+      alto: "Sobra tensión: baje R₂."
+      dentro: "Dentro de la banda."
+
+  - id: banco-divisor
+    tipo: banco
+    titulo: "Mídalo en el banco"
+    texto: "Monte el divisor del libro y mida la salida en vacío."
+    libro: [83, 103]
+    fijar: { V_in: 12, R_1: 10000, R_2: 5000, carga: 0 }
+    banco:
+      piezas: ["Fuente de 12 V", "R₁ = 10 kΩ y R₂ = 5 kΩ", "Brymen en V⎓"]
+      medir: "La tensión entre la salida y masa, sin carga."
+      esperado: V_out
+      unidad: V
+      tol: 0.05
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.05 }, texto: "Mide de más: compruebe que R₂ es la de abajo." }
+        - { texto: "Mide de menos: ¿queda algo conectado a la salida, como una carga?" }
+      ficha: { n: 1, titulo: "El voltímetro forma parte del circuito" }
+
+  - id: dibuje-salida
+    tipo: dibujar
+    titulo: "Dibuje la salida"
+    texto: "Con 12 V y R₁ = 10 kΩ, dibuje cómo cambia la salida al subir R₂."
+    libro: [81, 83]
+    fijar: { V_in: 12, R_1: 10000, carga: 0 }
+    dibujar:
+      x: { id: r, min: 0, max: 20000, unidad: Ω, rotulo: "R₂" }
+      y: { min: 0, max: 12, unidad: V, rotulo: "V_{salida}" }
+      curva: "V_in*r/(R_1 + r)"
+      puntos: 21
+      tol: 0.08
+      rotulo: "La salida frente a R₂"
+    exito: "Crece deprisa al principio y se acerca a la tensión de la pila sin llegar."
+    escalera:
+      - "Con R₂ = 0 la salida es cero; con R₂ muy grande, casi toda la pila."
+
+  - id: sql-cuenta
+    tipo: sql
+    titulo: "Cuente las medidas"
+    texto: "Escriba una consulta que dé el nombre de cada sensor y cuántas medidas tiene, en el orden de su número."
+    libro: [83]
+    sql:
+      modo: consulta
+      inicial: "SELECT s.nombre, count(*) AS n\nFROM medidas AS m JOIN sensores AS s ON s.id = m.sensor\n"
+      solucion: "SELECT s.nombre, count(*) AS n FROM medidas AS m JOIN sensores AS s ON s.id = m.sensor GROUP BY s.id ORDER BY s.id"
+    exito: "GROUP BY junta las filas de cada sensor y count las cuenta."
+    pistas:
+      - { texto: "Falta agrupar por sensor (GROUP BY) y ordenar (ORDER BY)." }
+
+  - id: sql-maxima
+    tipo: sql
+    titulo: "Complete la consulta"
+    texto: "La máxima de cada día de marzo del sensor de temperatura."
+    libro: [83]
+    sql:
+      modo: rellenar
+      plantilla: "SELECT date(t, 'unixepoch') AS dia, [[1]](valor) AS maxima\nFROM medidas\nWHERE sensor = 1\n  AND t >= strftime('%s', '2026-03-01') AND t < strftime('%s', '2026-04-01')\nGROUP BY [[2]]\nORDER BY dia;"
+      huecos:
+        - { solucion: max, opciones: [max, min, avg, count] }
+        - { solucion: dia }
+    exito: "Una fila por día: GROUP BY dia y max(valor)."
+
+  - id: sql-orden
+    tipo: sql
+    titulo: "Ordene las cláusulas"
+    texto: "Ponga en su orden las partes de la consulta."
+    libro: [83]
+    sql:
+      modo: ordenar
+      clausulas:
+        - "SELECT sensor, count(*) AS n"
+        - "FROM medidas"
+        - "WHERE valor > 0"
+        - "GROUP BY sensor"
+        - "ORDER BY sensor;"
+    exito: "SELECT, FROM, WHERE, GROUP BY y ORDER BY: siempre en este orden."
+    pistas:
+      - { texto: "Primero qué columnas (SELECT) y de dónde (FROM); el orden de las filas, lo último." }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Catálogo completado"
+    libro: [81]
+    ideas:
+      - { titulo: "Siete pasos.", texto: "Predecir, diseñar, buscar averías, ajustar, medir, dibujar y consultar." }

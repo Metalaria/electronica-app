@@ -21,6 +21,12 @@ import { barajarFijo, compilarModelo, enRango, objetivoEstimar, posicionMasCerca
 import { esquemaDe, nombresEsquemas } from './esquemas/registro';
 import type { DefinicionEsquema } from './esquemas/tipos';
 import { comprobacionesCircuito, type ComprobacionSpice } from './spice';
+// 1.2: the learning-by-doing step types (their own checks), the one-idea-per-screen warnings (ui12)
+import { actividadDe, esTipoActividad, FASE12, VARIABLES_PISTA } from '../leccion12/generar12';
+import { esComprobable12 } from '../leccion12/motor12';
+import { TIPOS_ACTIVIDAD } from '../leccion12/tipos';
+import type { Ejecucion } from '../leccion12/sql/ejecutar';
+import { avisosUnaIdea } from '../leccion12/una-idea';
 import type {
   Asa, Barra, CalculoModelo, CitaLibro, Color, Condicion, Curva, Ecuacion, Emparejar, Estimar, Grafica, Idea, Leccion11, Lectura, Mando,
   Marca, Modelo, Opcion, Ordenar, Pista, Rango, Tarjeta, Texto, TipoTarjeta, ValorModelo, Widget, WidgetCircuito, WidgetGrafica,
@@ -35,8 +41,9 @@ export const MAX_PALABRAS_ROTULO = 14;
 /** Positions a challenge's search may visit (product of its controls' positions). */
 export const MAX_COMBINACIONES = 250_000;
 
-export const TIPOS: readonly TipoTarjeta[] = ['explorar', 'predecir', 'pregunta', 'formula', 'reto', 'sorpresa', 'porque', 'resumen'];
+export const TIPOS: readonly TipoTarjeta[] = ['explorar', 'predecir', 'pregunta', 'formula', 'reto', 'sorpresa', 'porque', 'resumen', ...TIPOS_ACTIVIDAD];
 export const FASE: Record<TipoTarjeta, string> = {
+  ...FASE12,
   explorar: 'Explorar',
   predecir: 'Predecir',
   pregunta: 'Pregunta',
@@ -51,6 +58,8 @@ const COLORES: readonly string[] = ['azul', 'naranja', 'verde'];
 /** What the generator needs from the book (web/public/libro/partes/*.json). */
 export interface ContextoLibro {
   bloques(parte: string): unknown[] | null;
+  /** 1.2: runs SQL on the sample database of section 17.10 (the script passes sql.js); without it SQL cards fail. */
+  sql?: (consulta: string) => Ejecucion;
 }
 
 export interface ResultadoGeneracion {
@@ -351,7 +360,7 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
     /** No error in this card so far (the checks that evaluate the model need a sound card). */
     const sana = () => errores.length === antes;
     if (!esObjeto(ft)) return e('no es un objeto');
-    const CLAVES = new Set(['id', 'tipo', 'fase', 'titulo', 'texto', 'nota', 'libro', 'fijar', 'inicio', 'widget', 'requiere', 'opciones', 'estimar', 'ordenar', 'emparejar', 'condiciones', 'exito', 'pistas', 'ayuda', 'ec', 'sustitucion', 'ideas', 'comprobar']);
+    const CLAVES = new Set(['id', 'tipo', 'fase', 'titulo', 'texto', 'nota', 'libro', 'fijar', 'inicio', 'widget', 'requiere', 'opciones', 'estimar', 'ordenar', 'emparejar', 'condiciones', 'exito', 'pistas', 'ayuda', 'ec', 'sustitucion', 'ideas', 'comprobar', 'escalera', 'solucion', ...TIPOS_ACTIVIDAD]);
     for (const k of Object.keys(ft)) if (!CLAVES.has(k)) e(`clave desconocida «${k}»`);
     if (!/^[a-z0-9][a-z0-9-]*$/.test(tid)) e('«id» debe ser corto, en minúsculas y con guiones («prediga-salida»)');
     if (ids.has(tid)) e('«id» repetido');
@@ -436,6 +445,8 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
     for (const k of modelo.orden) if (!Number.isFinite(ev0[k]!)) e(`con los valores de esta tarjeta, «${k}» no da un número (${ev0[k]})`);
 
     // gating
+    // (1.2: an «ajuste» opens «Continuar» inside its band, an optional «banco» always: lib/leccion12/motor12.ts)
+    for (const k of TIPOS_ACTIVIDAD) if (ft[k] != null && k !== tipo) e(`«${k}» solo va en una tarjeta «tipo: ${k}»`);
     if (tipo === 'explorar' || tipo === 'sorpresa' || ft.requiere != null) {
       if (!mandos.length) e('una tarjeta para explorar necesita un widget con mandos');
       const rq = esObjeto(ft.requiere) ? ft.requiere : {};
@@ -455,7 +466,8 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
     const pregunta = tipo === 'predecir' || tipo === 'pregunta' || tipo === 'porque';
     if (pregunta && respuestas.filter((k) => k !== 'condiciones').length !== 1) e('una pregunta lleva exactamente una de: opciones, estimar, ordenar, emparejar');
     if (tipo === 'porque' && ft.opciones == null) e('«porque» lleva opciones');
-    if (!pregunta && tipo !== 'reto' && respuestas.length) e(`una tarjeta «${tipo}» no lleva ${respuestas.join(', ')}`);
+    if (esTipoActividad(tipo) && respuestas.filter((k) => !(k === 'condiciones' && tipo === 'diseno')).length) e(`una tarjeta «${tipo}» no lleva ${respuestas.join(', ')} (lleva su bloque «${tipo}»)`);
+    else if (!pregunta && tipo !== 'reto' && !esTipoActividad(tipo) && respuestas.length) e(`una tarjeta «${tipo}» no lleva ${respuestas.join(', ')}`);
     if (Array.isArray(ft.opciones)) {
       const ops: Opcion[] = [];
       ft.opciones.forEach((o: unknown, k: number) => {
@@ -535,7 +547,7 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
         return null;
       }
       // (an estimate's hints may look at the reader's estimate itself: «estimacion»)
-      if (!enModelo(x.valor) && !(x.valor === 'estimacion' && ft.estimar != null)) e(`${d}: «${x.valor}» no está en el modelo`);
+      if (!enModelo(x.valor) && !(x.valor === 'estimacion' && ft.estimar != null) && !(esTipoActividad(tipo) && VARIABLES_PISTA[tipo]?.includes(x.valor))) e(`${d}: «${x.valor}» no está en el modelo`);
       const r: Rango = { valor: x.valor };
       if (esNumero(x.objetivo)) {
         const tol = esNumero(x.tol) ? x.tol : 0.02;
@@ -553,7 +565,7 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
       return r;
     };
     if (ft.condiciones != null) {
-      if (tipo !== 'reto') e('solo un reto lleva «condiciones»');
+      if (tipo !== 'reto' && tipo !== 'diseno') e('solo un reto o un diseño lleva «condiciones»');
       if (!Array.isArray(ft.condiciones) || !ft.condiciones.length) e('«condiciones» es una lista');
       else {
         t.condiciones = [];
@@ -566,7 +578,7 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
       }
     }
     if (tipo === 'reto' && !t.condiciones) e('un reto lleva «condiciones»');
-    const exito = texto(ft.exito, 'exito', tipo === 'reto' || !!t.estimar || !!t.ordenar || !!t.emparejar);
+    const exito = texto(ft.exito, 'exito', tipo === 'reto' || !!t.estimar || !!t.ordenar || !!t.emparejar || tipo === 'diseno' || tipo === 'simular' || tipo === 'dibujar' || tipo === 'sql');
     if (exito) {
       t.exito = exito;
       if (contarPalabras(exito) > MAX_PALABRAS_EXPLICACION) e(`«exito»: más de ${MAX_PALABRAS_EXPLICACION} palabras`);
@@ -585,11 +597,55 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
         });
       }
     }
-    if ((tipo === 'reto' || t.estimar || t.ordenar || t.emparejar) && !t.pistas?.length) e('falta «pistas»: qué decir cuando no está bien');
+    if ((tipo === 'reto' || tipo === 'diseno' || t.estimar || t.ordenar || t.emparejar) && !t.pistas?.length) e('falta «pistas»: qué decir cuando no está bien');
     const ayuda = texto(ft.ayuda, 'ayuda');
     if (ayuda) {
       t.ayuda = ayuda;
       if (contarPalabras(ayuda) > MAX_PALABRAS_EXPLICACION) e(`«ayuda»: más de ${MAX_PALABRAS_EXPLICACION} palabras`);
+    }
+    // 1.2: the hint ladder (pista 1, pista 2, the solution), on any card that is answered
+    if (ft.escalera != null) {
+      const lista = Array.isArray(ft.escalera) ? ft.escalera : [ft.escalera];
+      if (!lista.length || lista.length > 2) e('«escalera»: una o dos pistas, de la más suave a la más directa (la solución va en «solucion»)');
+      t.escalera = lista.map((x: unknown, k: number) => {
+        const p = texto(x, `escalera ${k + 1}`, true) ?? [];
+        if (contarPalabras(p) > MAX_PALABRAS_EXPLICACION) e(`escalera ${k + 1}: más de ${MAX_PALABRAS_EXPLICACION} palabras`);
+        return p;
+      });
+    }
+    const solucion = texto(ft.solucion, 'solucion');
+    if (solucion) {
+      t.solucion = solucion;
+      if (contarPalabras(solucion) > MAX_PALABRAS_EXPLICACION) e(`«solucion»: más de ${MAX_PALABRAS_EXPLICACION} palabras`);
+      if (t.ayuda) aviso(donde, '«ayuda» y «solucion» a la vez: la escalera ya termina en la solución');
+    }
+    // 1.2: the step type's own block and checks (lib/leccion12/generar12.ts)
+    const textos12: [string, Texto][] = [];
+    const estados12: Valores[] = [];
+    if (esTipoActividad(tipo)) {
+      if (ft[tipo] == null) e(`una tarjeta «${tipo}» lleva su bloque «${tipo}:» (GUIA §10)`);
+      else if (sana()) {
+        const r12 = actividadDe(tipo, ft[tipo], {
+          semilla: `${id}/${tid}`,
+          t,
+          mc,
+          inicial,
+          mandos,
+          widget: t.widget,
+          mide: t.widget ? (medidas.get(t.widget) ?? {}) : {},
+          enModelo,
+          texto,
+          variables,
+          rango,
+          e,
+          aviso: (m) => aviso(donde, m),
+          ...(libro.sql ? { sql: libro.sql } : {}),
+        });
+        if (r12.actividad) t.actividad = r12.actividad;
+        textos12.push(...r12.textos);
+        cifrasModelo.push(...r12.cifras);
+        estados12.push(...r12.estados);
+      }
     }
     // formula
     if (ft.ec != null) {
@@ -664,6 +720,9 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
       ...(t.ordenar?.elementos ?? []).map((x, k): [string, Texto] => [`ordenar ${k + 1}`, x]),
       ...(t.emparejar?.parejas ?? []).flatMap((x, k): [string, Texto][] => [[`emparejar ${k + 1}`, x[0]], [`emparejar ${k + 1}`, x[1]]]),
       ...(t.condiciones ?? []).map((x, k): [string, Texto] => [`condicion ${k + 1}`, x.rotulo]),
+      ...(t.escalera ?? []).map((x, k): [string, Texto] => [`escalera ${k + 1}`, x]),
+      ['solucion', t.solucion],
+      ...textos12,
     ];
     for (const [campo, tx] of textos)
       for (const n of numerosDeTexto(tx)) {
@@ -705,6 +764,8 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
       const estados: Valores[] = [inicial];
       for (const x of mandos) for (const v of [x.valores[0]!, x.valores[x.valores.length - 1]!]) estados.push({ ...inicial, [x.valor]: v });
       for (const x of comprobar) if (esObjeto(x) && esObjeto(x.con)) estados.push({ ...inicial, ...(x.con as Valores) });
+      // (1.2: each hidden fault of an «averia» is simulated too: what the probes read is what ngspice reads)
+      estados.push(...estados12);
       spice.push(...comprobacionesCircuito(def, w, medidas.get(w) ?? {}, mc, estados, `${origen}: ${donde}`));
     }
 
@@ -716,7 +777,12 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
   if (tarjetas.length && tarjetas[tarjetas.length - 1]!.tipo !== 'resumen') err('tarjetas', 'la última tarjeta es el resumen');
   if (tarjetas.filter((t) => t.tipo === 'resumen').length > 1) err('tarjetas', 'un solo resumen');
   if (!tarjetas.some((t) => t.tipo === 'explorar')) err('tarjetas', 'falta al menos una tarjeta «explorar»');
-  if (!tarjetas.some((t) => t.opciones || t.estimar || t.ordenar || t.emparejar || t.condiciones)) err('tarjetas', 'falta algo que responder (predecir, pregunta, reto o porque)');
+  if (!tarjetas.some((t) => t.opciones || t.estimar || t.ordenar || t.emparejar || t.condiciones || (t.actividad && esComprobable12(t.actividad)))) err('tarjetas', 'falta algo que responder (predecir, pregunta, reto o porque)');
+  // 1.2: every answered card should carry its hint ladder (warning, so the 1.1 lessons still publish)
+  const sinEscalera = tarjetas.filter((t) => (t.opciones || t.estimar || t.ordenar || t.emparejar || t.condiciones || (t.actividad && esComprobable12(t.actividad))) && !t.escalera?.length && !t.pistas?.length && !t.ayuda && !t.solucion).map((t) => t.id);
+  if (sinEscalera.length) aviso('pistas', `preguntas sin pistas («escalera» y «solucion»): ${sinEscalera.join(', ')}`);
+  // 1.2 (ui12): one idea per screen
+  for (const t of tarjetas) for (const m of avisosUnaIdea(t)) aviso(`tarjeta ${t.id}`, m);
   // the approved sequence: explore → predict → formalise → apply → surprise → why → summary
   const orden = ['explorar', 'predecir', 'formula', 'reto', 'sorpresa', 'porque', 'resumen'];
   const vistos = tarjetas.map((t) => t.tipo).filter((x) => orden.includes(x));

@@ -13,23 +13,26 @@
 
 <Lienzo {descripcion} alto={250}>
   <Flujo d="M40 230 V50 H180 V230 Z" {dur} />
-  <FuenteCA x={40} y1={230} y2={50} />
-  <Et x={2} y={110} t={c.val('fuente')} peq />
-  <Et x={2} y={190} t={c.val('f')} peq />
+  <FuenteCA x={40} y1={230} y2={50} pieza="fuente" />
+  <!-- (fix12: inside the loop, right of the source — at the left edge «50 kHz» ran over the source's wire) -->
+  <Et x={64} y={110} t={c.val('fuente')} peq />
+  <Et x={64} y={190} t={c.val('f')} peq />
   {@const fin = c.tiene('r') ? 340 : 260}
   <path class="hilo" d={`M40 50 H60 M160 50 H${fin} M${fin} 230 H40`}></path>
-  <R x1={60} y1={50} x2={160} y2={50} color="azul" />
+  <R x1={60} y1={50} x2={160} y2={50} color="azul" pieza="rs" />
   <Et x={110} y={30} t={c.rot('rs')} ancla="middle" color="azul" />
   <circle class="nodo" cx="180" cy="50" r="4.5"></circle>
   <circle class="nodo" cx="180" cy="230" r="4.5"></circle>
-  <L x1={180} y1={50} x2={180} y2={230} color="naranja" />
+  <L x1={180} y1={50} x2={180} y2={230} color="naranja" pieza="l" />
   <Et x={192} y={128} t={c.simT('l')} color="naranja" />
   <Et x={192} y={148} t={c.val('l')} color="naranja" peq />
-  <C x1={260} y1={50} x2={260} y2={230} color="verde" />
+  <C x1={260} y1={50} x2={260} y2={230} color="verde" pieza="c" />
   <Et x={272} y={190} t={c.simT('c')} color="verde" />
   <Et x={272} y={210} t={c.val('c')} color="verde" peq />
   {#if c.tiene('r')}
-    <R x1={340} y1={50} x2={340} y2={230} color="azul" />
-    <Et x={330} y={44} t={c.rot('r')} color="azul" peq ancla="end" />
+    <R x1={340} y1={50} x2={340} y2={230} color="azul" pieza="r" />
+    <!-- (fix12: left of the resistor, in two lines — above it, «Rₚ 10 kΩ» sat on the top wire) -->
+    <Et x={330} y={118} t={c.simT('r')} color="azul" ancla="end" />
+    <Et x={330} y={138} t={c.val('r')} color="azul" peq ancla="end" />
   {/if}
 </Lienzo>

@@ -182,6 +182,10 @@ escritorio y en pantallas táctiles (teléfono de 360 px y tableta), solo con el
   acento, contraste de al menos 3:1 en los tres temas), no solo un cambio de color del borde: el buscador de la guía, la
   respuesta del problema del día y de las prácticas numéricas, la búsqueda, los filtros del índice, del glosario, de las
   calculadoras, de la galería y del catálogo 3D, los valores de las calculadoras y el editor de netlists.
+- **Sin anillo en los títulos que reciben el foco** (fix12): tras cambiar de página el foco va al título (para que el
+  lector de pantalla lo lea), pero un título no es un control y no lleva anillo (`app.css`: `h1`…`h6` y `main` con
+  `tabindex="-1"`). Antes, al abrir un curso sin haber tocado la pantalla, su título salía con un recuadro grande. Lo
+  mismo en las etapas de los proyectos y los pasos del laboratorio.
 - **Editor de esquemas y protoboard con el teclado**: el lienzo y la mesa se alcanzan con `Tab`. Al elegir con el
   teclado una pieza de la paleta (o una carta de la bandeja de la protoboard), el foco pasa al lienzo con un cursor.
   Las flechas lo mueven (de punto en punto de la rejilla en el editor, de agujero en agujero en la protoboard;
@@ -1685,6 +1689,19 @@ puerto 4311); capturas en el Mac, la tableta y el teléfono, en claro, oscuro y 
 
 ## Ampliaciones del libro (1.1)
 
+> **1.2: ya están en el libro.** La edición 4.0 trae las diez ampliaciones y la 4.1 da a los dos capítulos nuevos sus
+> identificadores definitivos (`cap55`, `cap56`), así que `generar.py` ya no las fusiona ni las marca «Aún no en el
+> libro»: el contenido sale del libro como el resto. Lo que solo tenía la capa pasó a las fuentes propias de la
+> aplicación (preguntas de repaso a `contenido/repaso/`, respuestas y pistas de sus ejercicios a
+> `ejercicios_curado.txt`, la práctica de la antigua 32.13 a `contenido/practica_retirada.json`) y la renumeración de
+> las citas de las fuentes curadas (`renumerar_fuentes`) la sigue llamando `generar.py`. Lo que sigue describe la capa
+> tal como era (la carpeta `contenido/ampliaciones11/` se conserva como historia). Sus pruebas de la capa
+> (`tests/ampliaciones11-*.spec.ts` y `playwright.ampliaciones11.config.ts`) se han retirado en la 1.2; lo que seguía
+> teniendo sentido está en `tests/sync41-ampliaciones-unidad.spec.ts` (con `playwright.sync41.config.ts`, sin
+> navegador): los 90 ejercicios de las diez ampliaciones y los 31 nuevos de la 4.1 son del libro, se comprueban solos,
+> con dos pistas y sus respuestas aceptadas; las 116 netlists validadas y enlazadas; las preguntas de repaso con su id;
+> las secciones nuevas con su número impreso. Lo que se describe a continuación sobre las pruebas es historia.
+
 Los autores escriben ampliaciones del libro (secciones nuevas, problemas, ejercicios, un capítulo entero) en Typst, con
 sus figuras, netlists, preguntas de repaso y los datos de los que salen sus números. La aplicación las trae ya, marcadas
 con «Aún no en el libro», y deja de traerlas en cuanto el libro las incluye. Hoy son diez (numeración de la app, con
@@ -1887,7 +1904,10 @@ en el navegador una sección practicada solo con su lección: dominio y XP con e
 con `EPA_RECORRER='^cap00/'`): abre cada exploración moviendo lo que pide, responde mal y luego bien cada pregunta
 (con su explicación), falla y resuelve cada reto con el teclado en una posición que el modelo da por buena, estima por
 los dos lados, ordena y empareja, pasa axe en cada tarjeta y repite a 360 px en el tema oscuro sin desplazamiento
-horizontal. Con otra compilación: `EPA_DIST` y `EPA_PUERTO`.
+horizontal. Con otra compilación: `EPA_DIST` y `EPA_PUERTO`. 1.2: también recorre los pasos de aprender haciendo a
+partir del modelo: `simular` (escribe el valor bueno y espera al ngspice de la app), `banco` (compara la lectura
+esperada), `ajuste` (lleva el mando a la banda), `averia` (mide, falla un sospechoso y acierta el de la primera
+ronda), `dibujar` (pone cada punto en la curva con el teclado) y `diseno` (como un reto, en una posición del modelo).
 
 ### Enlaces del libro impreso: códigos QR (1.1)
 
@@ -1898,6 +1918,10 @@ edición no tiene, o un enlace mal formado, muestran «No se encuentra esa lecci
 nunca un error. El enlace se comprueba de forma estricta (solo `epa://leccion/`, un capítulo `capNN`, un apéndice
 `apX` o un capítulo nuevo de las ampliaciones `cap-new-<nombre>`, una sección `sec-…`, letras, cifras, punto y guion): no puede llevar a ninguna otra parte de la aplicación ni a
 ninguna dirección de fuera. Mayúsculas y minúsculas dan igual (`EPA://LECCION/APA/SEC-A.1` abre el apéndice A).
+1.2 (libro 4.1): los capítulos nuevos se llaman `cap55` (31, automatismos), `cap56` (34, máquinas) y `cap57` (54,
+robótica), y el apéndice K, `apK`; un QR impreso en la 4.0 con los nombres provisionales
+(`epa://leccion/cap-new-automatas/sec-new-automatas.3`) abre la misma sección de la 4.1 (`cap55/sec-55.3`). Los 792
+QR del libro 4.1 abren una sección de la aplicación (comprobado en `tests/sync41-unidad.spec.ts`).
 
 Cómo probarlo en cada equipo (con la aplicación cerrada y también abierta: debe abrir la lección en la ventana que ya
 está, sin abrir otra):
@@ -1921,6 +1945,199 @@ configuración de Tauri) y `tests/enlaces11-navegador.spec.ts` (el enlace como h
 un apéndice; «Atrás» no vuelve al enlace; «No se encuentra esa lección» con axe en los tres temas y a 360 px), con
 `playwright.enlaces11.config.ts` (puerto 4686). La parte nativa se comprueba con `cargo check` y `cargo test --lib`
 (`solo_enlaces_epa_cortos_y_ascii`); lo que solo se ve en los equipos es la lista de arriba.
+
+## La forma de las lecciones 1.2: circuito vivo, ritmo e identidad del libro
+
+Vale para todas las lecciones hechas a mano (también las de Fundamentos, que no cambian como datos). Toma los
+principios de diseño de Brilliant (una idea por pantalla, el dibujo que se toca, el ritmo de tarjetas), nunca su aspecto.
+
+- **Circuito vivo** (`componentes/leccion12/CircuitoVivo.svelte`). La corriente son partículas que recorren el circuito
+  (el motor de las figuras vivas, `figuras-vivas/esquema/particulas.ts`): más deprisa con más corriente (escala
+  logarítmica absoluta: 0,1 A a toda velocidad, 10 µA la más lenta), en el sentido de la corriente y de ida y vuelta con
+  una fuente alterna. Los hilos toman el color de la tensión de su nodo (azul negativo, gris 0 V, rojo positivo) con una
+  leyenda en voltios y «Ver valores», que escribe la tensión de cada nodo en el dibujo: el color nunca es la única pista.
+  Las tensiones salen del propio netlist del esquema resuelto en la página (`lib/leccion12/cc.ts`, análisis nodal en
+  continua; en 88 tarjetas de Fundamentos da lo mismo que el modelo de la lección, que el generador comprobó con ngspice);
+  un circuito con diodos o transistores colorea solo los nodos que se saben exactos (las fuentes y masa), y los de
+  alterna o de conmutación no se colorean. Una predicción no da pistas: sin colores ni leyenda, y las partículas a una
+  velocidad neutra. Las partículas van solo por los hilos (fix12): no se dibujan dentro del cuerpo de una pieza (entran
+  por un borne y salen por el otro), ni sobre una etiqueta o un punto de unión, con un hueco de 3 px; los cuerpos los
+  declara el kit (`data-cuerpo`) y, para lo demás, se miden en el propio dibujo. Igual en las figuras vivas del libro
+  (cuerpo de cada pieza entre sus `istart`/`iend`, puntos de unión y anotaciones); y en ellas el color de tensión de un
+  hilo no se pinta sobre el cuerpo de una pieza de dos bornes (en 33.11 y 53.33 el libro trae un hilo a lo largo de
+  toda la pieza: su halo se recorta). Ningún hilo de los 28 esquemas de las lecciones pasa por el cuerpo de una pieza
+  ni bajo una etiqueta (en RLC serie y paralelo la frecuencia y Rₚ pisaban un hilo: se han movido). El LED brilla según su corriente y la lectura grande late al cambiar. Con «reducir movimiento»,
+  flechas quietas en el sentido de la corriente. Solo se anima mientras el dibujo está en pantalla y la página visible;
+  mide su ritmo y, en un equipo lento, dibuja la mitad de partículas a 30 fps y, si aún no llega, pasa a las flechas.
+- **Tocar el esquema** (`lib/leccion12/manipular.ts`). Cada pieza cuyo valor mueve un mando de la tarjeta se arrastra en
+  el dibujo (arriba o a la derecha sube; los valores son los del mando, así que se ajusta a la serie E12/E24), se toca
+  para abrir «−» y «+», o se enfoca con el tabulador y se mueve con las flechas, Re Pág/Av Pág, Inicio y Fin; el lector
+  de pantalla oye el valor como en el mando de abajo. Un interruptor del dibujo se abre y cierra con un toque. Las
+  tarjetas de «ajuste» y «diseño» de la 1.2 lo tienen solo por usar el widget de circuito.
+- **Una idea por pantalla.** Arriba el dibujo (o la fórmula), debajo el texto corto y después lo que se responde. El
+  generador avisa (no para) con `lib/leccion12/una-idea.ts` de una tarjeta de más de 40 palabras, de más de dos frases o
+  sin nada que mirar; en Fundamentos hoy daría 407 avisos en 1149 tarjetas (293 de preguntas solo con opciones): es
+  trabajo de los redactores.
+- **Ritmo** (`lib/leccion12/ritmo.ts`). Barra de progreso por tramos, «Continuar» fijo abajo y abierto al interactuar
+  (como en la 1.1), las tarjetas entran deslizándose (sin movimiento con «reducir movimiento»), un toque corto de
+  vibración y sonido en cada comprobación (también en las que ya no cuentan; en el escritorio no vibra) y **las tarjetas
+  falladas vuelven al final**: las que fallaron a la primera o se saltaron se repiten una vez, frescas, antes del
+  resumen, con sus propios tramos en la barra y «Repaso» como fase. Empiezan con los valores que tenían la primera vez y
+  son una ronda nueva para el repaso espaciado (si en su primera ronda no dieron XP, la dan ahora). No se guarda nada
+  nuevo: al recargar, la visita es normal.
+- **Mapa del curso** (`componentes/cursos/Camino.svelte`). El camino de nodos (con la vista de lista para el teclado y
+  los lectores) muestra cuatro estados con su leyenda: por hacer, en curso, hecha y **dominada**. «Dominada» es una
+  lección hecha cuya sección está en el nivel «Dominado» del dominio y no tiene el repaso pendiente
+  (`dominadaDe`, `lib/aprendizaje/camino.ts`); si se olvida o le toca repaso, vuelve a «hecha» hasta repasarla. El
+  resumen de la lección lo dice («Sección dominada») junto a la celebración de siempre.
+- **Identidad de la edición 4.0/4.1** (`estilos/tokens11.css`, `estilos/fuentes12.css`). Inter para el texto, Space
+  Grotesk para los títulos y JetBrains Mono para el código (OFL, de las fuentes del libro, 400 y 700, recortadas a 11 KB
+  cada una, sin ligaduras); la tinta #1B1F27, los grises de la plantilla y los cinco colores de serie (azul #2457D6, rojo
+  #B3261E, verde #1C7A4B, violeta #6A45C0, naranja #D9661C) en claro, sepia y oscuro; los hilos de los circuitos en el
+  color del bloque del capítulo (un tono oscuro de él, para no confundirse con las piezas). Contraste comprobado por
+  script: cada par de tokens ≥ 4,5:1 (texto) o ≥ 3:1 (gráficos), cada paso de la escala de tensiones ≥ 3,26:1 sobre el
+  panel y los hilos de los seis bloques ≥ 6,98:1.
+
+Pruebas: `tests/lecciones11-ui12-unidad.spec.ts` (sin navegador: ritmo, «dominada», contraste, el solucionador frente a
+cada tarjeta de circuito publicada, manipulación, una idea) y `tests/lecciones11-ui12-navegador.spec.ts` (partículas,
+colores y valores, arrastre, toque y teclado, predicción sin pistas, vibración, leyenda del mapa, axe en oscuro, reducir
+movimiento y el ritmo con la CPU 4× y 6× más lenta), con `playwright.lecciones11.config.ts`. Lo que solo se ve en los
+equipos: la fluidez en el Android (el elemento del circuito dice `data-vivo-fps` y `data-vivo-nivel`) y la vibración.
+
+## Aprender haciendo en las lecciones (1.2)
+
+Las lecciones hechas a mano tienen, además de las tarjetas de la 1.1, **pistas escalonadas** en cada pregunta
+(«Pista», «Otra pista», «Ver la solución»; los peldaños abiertos cuentan como ayuda en el dominio) y **siete pasos
+nuevos** para aprender haciendo, que el autor escribe como datos (guía: `contenido/lecciones11/GUIA.md` §10; ejemplos
+probados: `web/tests/lecciones12-catalogo/cap01/sec-1.4.yaml`):
+
+- **Prediga y simule** (`simular`): se escribe una estimación con su unidad, se fija y el ngspice de la app simula el
+  circuito; se ve el error relativo y su causa (los errores típicos de la tarjeta: olvidar la carga, pico por eficaz;
+  o un prefijo equivocado, el signo).
+- **Diseñe** (`diseno`): valores E12/E24 para una especificación con tolerancia; se comprueba el diseño nominal y con
+  las tolerancias de las piezas (todas las esquinas o placas de Monte Carlo con semilla), con su informe.
+- **Busque la avería** (`averia`): una avería escondida (abierta, corto, otro valor, al revés), un multímetro virtual
+  (y un osciloscopio en alterna) con medidas que cuestan pasos, y nombrar la pieza; un sospechoso equivocado se
+  explica con las propias medidas. El dibujo no delata la avería (fix12): hasta encontrarla (o saltar la tarjeta)
+  enseña los valores nominales de la placa sana («R₂ 5 kΩ», no «1 GΩ»; también en la descripción para lectores de
+  pantalla) y se comporta como una predicción: sin lectura, sin colores de tensión, leyenda ni «Ver valores», y las
+  partículas a velocidad neutra. Al acertar se ve la placa averiada con sus tensiones; «Otra placa» la vuelve a ocultar.
+  Solo las sondas miden la placa averiada.
+- **Ajuste** (`ajuste`): un mando hasta que una medida entre en su banda, con un medidor en vivo.
+- **En el banco** (`banco`, opcional): piezas, qué medir y lo que debería dar; se escribe lo medido y la app compara y
+  aconseja, con la ficha del cuaderno de prácticas.
+- **Dibuje la forma de onda** (`dibujar`): con el dedo, el ratón o el teclado; se compara con la curva del modelo con
+  una medida de error que perdona un pequeño desfase y un pequeño escalón, y se superpone la buena.
+- **SQL** (`sql`, sección 17.10): SQLite en WebAssembly (sql.js 1.14.2, licencia MIT, unos 700 kB que solo se cargan al
+  abrir una tarjeta SQL), una base de ejemplo con el esquema del libro y datos generados por la app; escribir la
+  consulta, rellenar sus huecos u ordenar sus cláusulas, ver la tabla y los errores explicados en español.
+
+Todo se comprueba al generar (una regla rota es un error que dice tarjeta y motivo: retos sin solución con tolerancias,
+averías que no se distinguen, consultas que dependen del día…), y las averías se simulan con ngspice como cualquier
+otro estado. Los números son deterministas (semillas fijas). No cambia nada de lo guardado: ni claves nuevas ni
+migración; el formato de las lecciones sigue en la versión 1 (`ESQUEMA.md`, «Learning-by-doing steps»).
+
+Pruebas: `tests/lecciones12-unidad.spec.ts` (sin navegador) y `tests/lecciones12-navegador.spec.ts` (la lección de
+catálogo de punta a punta, axe y 360 px), con `playwright.lecciones12.config.ts` (puerto 4312).
+
+## El libro 4.1 en la aplicación (1.2)
+
+La aplicación es un espejo de la edición 4.1.0 del libro: todo `web/public/libro/` (y `proyectos/`, `fm7303/`,
+`miniaturas/`) sale de sus fuentes (`EPA_FUENTES`, «Generar el contenido»). Con la 4.1 hay 72 partes (57 capítulos, 11
+apéndices, glosario y tres anexos), 804 secciones, 2 702 etiquetas numeradas, 1 057 figuras (952 dibujos y 105 fotos),
+1 076 ecuaciones, 1 055 términos de glosario, 637 ejercicios y problemas (518 + 119; 632 autocomprobables), 442
+netlists, 1 118 preguntas de repaso y 670 ítems de práctica. La numeración impresa coincide con la del libro etiqueta por
+etiqueta (`figuras/numeros.json`, 0 diferencias). Los tomos (títulos y reparto, con los capítulos que cambiaron de tomo)
+salen de `tomos.json` y `tomos_titulos.json`; la aplicación no los tiene escritos en ningún otro sitio.
+
+- **Identificadores definitivos.** Los capítulos nuevos de la 4.0 dejan los provisionales: `cap-new-automatas` →
+  `cap55` (capítulo 31), `cap-new-maquinas` → `cap56` (34), con sus etiquetas (`sec-55.N`, `fig-`, `ej-`, `prob-55.A`) y
+  las preguntas de repaso (`cap55-01`…). Lo que el lector guardó con la 1.1 se migra al arrancar (`lib/esquemas.ts`,
+  «Data 1.0» de ESQUEMA.md): lectura, marcadores, notas (su texto no se toca), ejercicios, lecciones, XP, dominio,
+  repaso, circuitos del editor, cursos propios y el estado de la sincronización, con copia previa de los originales. El
+  fichero de sincronización pasa al **formato 3**: un equipo con la 1.1 ya no puede escribirlo y pide actualizar.
+  **Sincronice cada equipo justo antes de actualizarlo a la 1.2.** Un QR impreso con los nombres provisionales abre la
+  sección de la 4.1.
+- **Contenido nuevo.** El capítulo 54 de robótica (`cap57`) en «Proyectos completos» (no en «Potencia y energía»: es un
+  sistema entero, no electrónica de potencia); el apéndice K (C para sistemas empotrados, `apK`) cierra «Digital y
+  programable», donde está también la sección 39.16 de ensamblador (`cap38`); las secciones nuevas 17.10 (SQLite), 30.17
+  (control muestreado), 48.4 (GUM), la 30.16 ampliada y lo añadido a 34.5 salen solas en su capítulo. 42 preguntas de
+  autoevaluación del paratexto del libro son ya preguntas de repaso (apK 6, 39.x 2, cap55 6 + 6, cap56 6 + 6, cap57 10;
+  con `"paratexto": true` cuando el número de la respuesta solo lo escribe la solución del paratexto, `repaso.py`).
+- **Lo que hacía la capa de ampliaciones de la 1.1**, ya en las fuentes propias (véase «Ampliaciones del libro»): sus
+  preguntas de repaso, las respuestas y pistas de sus 90 ejercicios (en `ejercicios_curado.txt`, como las de los 30
+  ejercicios nuevos de la 4.0 con su «Para el curado»), el título, las etiquetas y la descripción en español de sus
+  netlists (`contenido/spice_curado.json`, 126, también las 10 nuevas de la 4.0/4.1 sin etiquetas en su cabecera) y las
+  cinco fórmulas de motores (`formulas_cat3.py`, ahora en `cap56`). La pregunta `cap33-18` (V/f) conserva su id y cita la
+  34.6 (`"retirada": "sec-33.13"`).
+- **Ejercicios curados (1.2).** Los 31 ejercicios nuevos de la 4.1 (17.9–17.11, 30.26–30.29, 34.10, 39.6–39.8,
+  48.14–48.16, el capítulo 54 y el apéndice K), que solo tenían lo que sacaba el analizador, y 59 de los 90 de las
+  ampliaciones de la 1.1 que se habían quedado en «comparar con la solución» o con menos de dos pistas, tienen ya su
+  entrada en `ejercicios_curado.txt`: respuestas con unidad y tolerancia, preguntas de elegir o clasificar con el «por
+  qué no» de cada opción, la cita literal de la solución y dos pistas. Cada valor se ha recalculado (NumPy, SciPy para
+  la t de Student, aritmética entera de 16, 32 y 64 bits para el apéndice K). Quedan 632 de 637 autocomprobables (los
+  cinco de la 1.0 que siguen autoevaluados, `tests/razonar11-unidad.spec.ts`). En 30.29 la solución da los
+  coeficientes del diseño sin redondear (K<sub>p</sub> = 1,5993, el de las netlists): se aceptan también los de 1,60.
+- **«Por qué no» de las preguntas nuevas.** Las 46 propuestas de `porque10.mjs` sin revisar (de las preguntas de
+  repaso de las ampliaciones y de la 4.1) se han revisado: 6 frases del libro aprobadas (2 con la anterior) y 40
+  rechazadas que llevan en su lugar una explicación breve del error de esa opción, escrita en la revisión con lo que
+  dice el libro (`"propio"` en `contenido/porque_curado.json`; `PorQueNo` la muestra sin comillas ni «Del libro»).
+- **Lo que el libro ya corrige.** Los 33 «Dato que usa la solución del libro» cuyo dato ya da el enunciado se han
+  quitado del curado (queda el de 45.A: los 3 mA a 0,4 V de la norma I²C), y las dos notas «errata» (1.B y 3.B), que
+  el libro ya resuelve. La lección 2.5 dice «la combinación de dos tolerancias» y la 5.7 cita la tabla nueva («Pérdida
+  (100 V, I<sub>RM</sub> = 2 A)»).
+- **Figuras.** La 4.1 redibujó todas las figuras con guion (Inter y colores por papel); sus datos interactivos
+  (`datos/`, que el libro ya no trae) se llevan al dibujo nuevo con `contenido/datos_figuras_recolocar.py`, que vuelve a
+  ejecutar el guion de cada figura en una copia de trabajo y mide el recorte real: 381 movidos de 1 a 4 puntos, 140
+  iguales y uno retirado (0.11: su gráfica pequeña cambió de sitio; queda como figura sin datos).
+- **Glosario.** 28 entradas de `glosario.typ` siguen a la anterior sin línea en blanco (al ordenarlas en la integración
+  se perdió) y Typst las une en un párrafo: el generador las separa (1 055 términos; el libro dice 1 056 en los créditos y
+  la novedades, y sus fuentes tienen 1 055). **Para el autor**: en el PDF esas 28 entradas salen pegadas a la anterior.
+
+### Paratexto del libro (`contenido/paratexto/`)
+
+El paratexto de los capítulos (objetivos, términos clave, correspondencia con el grado, resumen, normas y lecturas,
+fórmulas, autoevaluación, dificultad, índice de cada tomo) lo genera este paquete a partir de los datos de la aplicación
+(el `paratexto11` de la entrega 1.1, ahora en el repositorio). Desde la 4.0 el libro lo ha cambiado también a mano; para
+que regenerarlo no deshaga esos cambios, se traen al paquete:
+
+```sh
+python3 contenido/paratexto/scripts/importar_libro.py   # lo cambiado a mano en Fuentes/paratexto → redaccion/libro41.yaml, redaccion/libro41/, redaccion/grado.typ, paratexto.typ
+python3 contenido/paratexto/scripts/generar.py          # datos/<parte>.json desde web/public/libro y contenido/repaso
+python3 contenido/paratexto/scripts/generar_typ.py      # el Typst, en contenido/.cache/paratexto (EPA_PARATEXTO_SALIDA para otra carpeta)
+python3 contenido/paratexto/scripts/comparar.py         # frente a Fuentes/paratexto: contenido/paratexto/DIFERENCIAS.md
+```
+
+Traído del libro: las piezas redactadas de cada parte (`objetivos-cap`, `terminos` —los términos clave que añadió la
+4.1, G5—, `grado`, `resumen` y `normas` con las lecturas de cada capítulo y sus ediciones, E8), la página
+«Correspondencia con el grado» con la numeración de la 4.1 y la auditoría CIN/351/2009 (E3, G1–G7), el paratexto entero
+de las partes escritas fuera del paquete (`cap55`, `cap56`, `cap57`, `apK`) y las preguntas de repaso de la aplicación
+que la autoevaluación del libro no recoge (las 42 de las ampliaciones de la 1.1: `autoev_fuera`). Reglas nuevas del
+generador: «Problema N.X» se escribe `Problema #nr("prob-…")` en las preguntas y en las soluciones (E3). Resultado: 43
+de 78 ficheros iguales byte a byte; las diferencias que quedan, todas en piezas que salen de los datos de la
+aplicación (detalle en `DIFERENCIAS.md`):
+
+- **Números de reserva** (`soluciones`, `formulas`): el libro conserva los números impresos de la 3.0.2 como reserva y
+  la aplicación escribe los de la 4.1; la plantilla imprime siempre los de `NUMS`/`PARTES`, así que el PDF no cambia.
+- **Dificultad** (`niveles`, 8 capítulos: 0, 17, 23, 30, 33, 37, 45 y 48). Desde la 1.2 los puntos que el libro
+  imprime mandan (`importar_libro.py` los trae a `libro41.yaml`, `niveles`), así que regenerar ya no cambia ninguno de
+  los 556 que tiene; los 81 ejercicios que imprime sin puntos (los nuevos desde la 4.0) toman los de
+  `redaccion/niveles.yaml`: los 10 que propone G5 (`propuesta`) y 71 de la aplicación (`aplicacion`, con la misma
+  escala: 1 un cálculo directo aunque dé varios valores, 2 varios pasos o un razonamiento, 3 un diseño o una cadena
+  larga); la regla de `generar.py` solo queda de reserva y avisa si la usa. Cada `dificultad` de `datos/<parte>.json`
+  dice su `origen` (`libro`, `propuesta`, `aplicacion` o `regla`) y el nivel de la regla. **Para el autor**: llevar
+  esos 81 niveles a `niveles` de su `Fuentes/paratexto/<parte>.typ`, y el libro los imprimirá.
+- **Fórmulas** de `cap33`: resuelto en el libro (rama `fix-4.1.1`, F4): ha adoptado la línea que genera la aplicación,
+  `cap33-18` cita la 34.6 y el término clave «Fuerza contraelectromotriz» sale del 33 (`importar_libro.py` lo trae);
+  `cap33.typ` solo difiere ya en los niveles y en los números de reserva de las soluciones.
+- **`cap38`**: las dos preguntas nuevas de la 4.1 llevan la unidad como contenido (`[ciclos]`) y sin escapar el guion.
+- **Índice de cada tomo** (`tomo*.typ`): las entradas y sus secciones salen del texto de hoy de la aplicación.
+
+Pruebas (Node, sin navegador): `EPA_SIN_SERVIDOR=1 npx playwright test -c playwright.sync41.config.ts` — los ids frente
+a `Informes/ids_4.1.json`, la migración de un perfil de la 1.1 (`tests/fixtures/perfil-11-capitulos-nuevos.json`: cada
+id renombrado existe en el contenido de la 4.1, notas intactas, copia previa, idempotente), el fichero de formato 2, la
+numeración frente a `numeros.json`, los 792 QR (y los de la 4.0) y los cursos. Con las fuentes del libro ausentes, las
+comprobaciones del libro se saltan.
 
 ## Aprender haciendo (0.10)
 
@@ -2657,11 +2874,25 @@ cd app
 python3 contenido/generar.py
 ```
 
-Lee las fuentes de `/home/claude/v3` (sin modificarlas) y escribe `web/public/libro/`: `indice.json`,
+Lee las fuentes del libro (sin modificarlas) y escribe `web/public/libro/`: `indice.json`,
 `refs.json`, `glosario.json`, `busqueda.json`, `partes/*.json` y las imágenes (`fig/`, `img/`, `ec/`). El
-formato está descrito en `ESQUEMA.md`. Esa carpeta **se versiona** (unos 112 MB): las máquinas de GitHub
+formato está descrito en `ESQUEMA.md`. Esa carpeta **se versiona** (unos 119 MB): las máquinas de GitHub
 Actions no pueden regenerarla, porque hacen falta las fuentes del libro, las tipografías y las fotos, que
 están en otra máquina.
+
+**Dónde está el libro (1.2).** Toda la cadena (`generar.py`, `spice.py`, `repaso.py`, `fm7303.py`,
+`proyectos_kicad*.py`, `formulas_enriquecer.py`, `datos_figuras_recolocar.py`, `paratexto/`) lo busca en un solo sitio,
+`contenido/fuentes.py`: la variable de entorno **`EPA_FUENTES`**, la carpeta `Fuentes/` del repositorio del libro (la
+misma variable que lee su `herramientas/construir.py`); `Complementos/` va a su lado. Sin ella, el libro 4.1 en
+`/home/claude/libro-integra/Fuentes`. También vale la carpeta de trabajo antigua `/home/claude/v3` (con `complementos`
+dentro). En otro equipo, por ejemplo:
+
+```sh
+EPA_FUENTES=~/electronica-libro/Fuentes python3 contenido/generar.py
+```
+
+Las ecuaciones necesitan `typst` (0.15) en el PATH; las figuras, `pdftocairo`; los proyectos KiCad, `kicad-cli`; las
+miniaturas, el Chromium de Playwright.
 
 1.1: los ejercicios nuevos que aún no están en el libro (`contenido/ejercicios_nuevos11/*.yaml`) los añade
 `contenido/ejercicios_nuevos.py` a `ejercicios.json` y `busqueda.json`; lo llama `contenido/ejercicios.py` al terminar

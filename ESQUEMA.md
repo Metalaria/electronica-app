@@ -95,7 +95,12 @@ lesson makes explorable (see «Mastery, smart practice…»).
 Written by `web/scripts/porque10.mjs`: the book sentence for each wrong option of the choice questions (see «Brilliant
 1.0»). `{version: 1, parte, repaso: {<question id>: {<option index>: Porque}}, ejercicios: {"<label>/<question id>":
 {<option index>: Porque}}, prediccion: {<item id>: {sube|baja|igual: Porque}}}`, `Porque = {k: 'libro', html, ref,
-donde} | {k: 'general'}`; the index `{version, partes, libro: {repaso, ejercicios, prediccion}, general: {…}}` counts them.
+donde} | {k: 'propio', html} | {k: 'general'}`; the index `{version, partes, libro: {repaso, ejercicios, prediccion},
+general: {…}, propio: {…}}` counts them. 1.2: `propio` is the hand review's own short explanation of that option's
+misconception (`contenido/porque_curado.json`, a rejected proposal with `"ok": false, "frase", "propio"`: ≤ 320
+characters, only `<sub> <sup> <em> <strong>`; still tied to the proposed sentence's fingerprint, so it goes back to
+`general` when the book's passage changes); `PorQueNo.svelte` shows it as plain text, without «Del libro». Old readers
+of version 1 that do not know `propio` show nothing for it (as for `general`).
 
 ### `glosario.json`
 `[ { "termino": "Acoplador direccional", "html": "…", "ver": ["sec-36.4"] } ]` (alphabetical, as in the book).
@@ -128,6 +133,9 @@ at the top. Glossary entries have `id` = the entry's `id` (`glos-…`).
 `datos/NAME.json` data behind plots and schematics (next section).
 
 ### `spice.json` and `spice/<stem>/<file>.cir` — the book's netlists (phase 2)
+
+1.2: a netlist whose header names no label (the 1.1 expansions', now the book's; ten new ones of 4.0/4.1) takes `titulo`,
+`refs` and `descripcion` from `contenido/spice_curado.json` (`{netlists: {id: {titulo, refs, descripcion}}}`).
 Written by `contenido/spice.py` (run after `generar.py`; `generar.py` calls it at the end). The 309 netlists of
 `complementos/spice/<stem>/*.cir` are copied unchanged to `spice/<stem>/`; the index is:
 ```json
@@ -184,6 +192,16 @@ animated current flow and node voltages on schematics). Written by the book's fi
 (`v3/figuras/exportar_datos.py`, `esquema_datos.py`, `simular_esquema.py`; summary and checks with
 `v3/herramientas/informe_datos_figuras.py`), copied by `contenido/datos_figuras.py`, which also annotates the `figura`
 blocks and validates the files. Nothing in these files has to be drawn: the SVG already shows everything.
+
+**1.2: the published files are the source.** The 3.0.2 and 4.x trees carry no `figuras/datos` (nor
+`exportar_datos.py`), so `datos_figuras.py` reads `web/public/libro/datos/` in place, and `contenido/
+datos_figuras_recolocar.py` (run by `generar.py` first) keeps each file on the book's current drawing: when a file's
+`lienzo.svg` differs from its SVG's viewBox, the figure's own script (`Fuentes/figuras/src`, by its `OUT` line) runs in a
+scratch copy of `Fuentes/` (`contenido/.cache/figuras-trabajo`) with a stand-in `exportar_datos` that records the
+figure size, the PDF backend's tight box and every Axes (insets too) with position and limits; same size and Axes →
+every `*_svg` (`fig_a_svg`, `pos_svg`, `dibujo_a_svg`) moved by the new crop and the canvas set to the SVG's; anything
+else → the file is removed (the figure becomes a `diagrama`, reported). 4.1 redrew every scripted figure (Inter,
+colours by role): 381 of 522 files moved by 1–4 pt, 140 unchanged, 1 removed (0.11: an inset moved).
 
 **Figure block.** `tipo_figura`: `grafica` (at least one Axes with real data and numeric ticks), `esquema`
 (at least one schemdraw schematic; such a figure may also hold plots), `diagrama` (patches and text, timing
@@ -912,7 +930,9 @@ The interaction layer over the book's own figures, from «Datos de figuras». Th
   with `TablaCursores.svelte`. Axes without numeric ticks give no values (qualitative sketches: no readout).
 - Schematics (`esquema/`): `modelo.svelte.ts` (`EstadoEsquema`: SVG geometry of wires, nodes and current paths
   — every `tramo`, two-terminal parts start→end, other parts terminal→centre —, results at the time shown,
-  hit testing), `particulas.ts` (one canvas over the drawings only, ≤ 420 particles per drawing, constant
+  hit testing; 1.2 fix12: every path carries `zonas` = `zonasDeElementos` — a two-terminal part's box between its
+  `istart`/`iend`, other parts' whole box, dots and annotations — and `CapaEsquema` calls `ocultar` with each scale, so
+  no particle is drawn inside a body), `particulas.ts` (one canvas over the drawings only, ≤ 420 particles per drawing, constant
   spacing on screen, speed ∝ log |I| over four decades, still and faint at zero current, conventional current
   amber / electrons blue), `color.ts` (diverging OKLab scale blue–grey–red, the same in every theme because the
   figure plate is light), halos multiplied under the black wires, `Ficha.svelte` (V, I, P, terminal currents,
@@ -2751,6 +2771,17 @@ apartado «Para el curado»: la pregunta de diseño es idéntica y da el mismo v
 
 ### Book expansions, «Aún no en el libro» (1.1, `contenido/ampliaciones.py`, `contenido/ampliaciones11/`)
 
+**1.2: retired.** Book 4.0 took in all ten expansions and 4.1 renamed the two new chapters (`cap55`, `cap56`), so
+`generar.py` no longer merges them (`fase_partes`/`fase_derivados` are not called; `web/public/libro/ampliaciones.json`
+is removed; no item carries `ampliacion` any more, so no «Aún no en el libro» badge is shown). What the layer added that
+the book does not carry moved to the app's own sources: the expansions' review questions → `contenido/repaso/<parte>.json`
+(same ids; `cap-new-automatas-N` → `cap55-0N`), their exercises' checked answers and hints → `ejercicios_curado.txt`
+(`sin-respuestas` + `clase:` for those compared with the solution), the 1.0 practice items of the retired 32.13 →
+`contenido/practica_retirada.json` (read by `practica10.mjs`; `sec-33.13` is now a book alias of `sec-56.3`). Still used:
+`renumerar_fuentes` (the printed numbers the curated sources quote, with `ampliaciones11/numeracion.json`), called by
+`generar.py` after `refs.json`. The folder and the rest of `ampliaciones.py` stay as history (and for an expansion of a
+future edition); the format below is unchanged.
+
 The authors write expansions of the book as Typst (new sections, problems, exercises, a whole new chapter) with their
 figures, netlists, review questions and data. The app shows them now, marked «Aún no en el libro», and drops its copy
 when the book has them. One folder per expansion, `contenido/ampliaciones11/<ID>/`: `<ID>.typ` (with `// ==== PARTE n`
@@ -2862,8 +2893,9 @@ chapter's title and next to its row in the index, next to new sections in «En e
 the first block of a run that is not a section (a problem, card lines; Bloques.svelte, which receives the previous
 chunk's last block), next to an exercise's number (Ejercicios.svelte) and in the exercise lists, in search results,
 review questions (whose quote says «Aún no en el libro · Sección N» instead of «Del libro»), the simulator's list and
-page, and teacher mode (`nuevo` in the bank, «aún no en el libro» in the PDFs). Tests: `tests/ampliaciones11-unidad.spec.ts`
-(Node) and `tests/ampliaciones11-navegador.spec.ts` (`playwright.ampliaciones11.config.ts`, port 4688).
+page, and teacher mode (`nuevo` in the bank, «aún no en el libro» in the PDFs). Tests (1.1): `tests/ampliaciones11-unidad.spec.ts`
+(Node) and `tests/ampliaciones11-navegador.spec.ts` (`playwright.ampliaciones11.config.ts`, port 4688), retired in 1.2
+with the layer; the native 4.1 content they covered is checked by `tests/sync41-ampliaciones-unidad.spec.ts`.
 
 ### Paso a paso (1.0, `pasos.json`, `aprender/ResolverPasos.svelte`)
 
@@ -3077,6 +3109,14 @@ galería de familias de `Calculadoras.svelte`). Pruebas: `tests/calculadoras.spe
 plantillas: `tests/calculadoras-capturas.mjs`.
 
 ## Repaso: tarjetas del glosario y tests (`web/src/componentes/repaso/`, datos en `web/public/libro/repaso/`)
+
+**1.2.** A chapter may hold 10–32 questions (the 1.1 expansions' questions are in their chapters' sources since the book
+took them in). Two optional source fields of `contenido/repaso/<parte>.json`: `"paratexto": true` — `valor_texto` is
+checked against the book's own solution of that self-assessment question (`Fuentes/paratexto/<parte>.typ`) instead of
+the quote (the chapter computes the answer but does not write it), the quote still in the chapter; `"retirada":
+"<label>"` — a question written for a section the book moved out of this part (an alias of the book named after this
+part, `sec-33.13`): its `ref` may then be in the part that took it in (`cap33-18` cites `sec-56.6`). Neither reaches the
+generated files.
 
 **Generación.** `contenido/repaso.py` (llamado por `generar.py`, o solo) lee las preguntas escritas a mano en
 `contenido/repaso/<stem>.json` (una por capítulo o apéndice) y escribe `web/public/libro/repaso/<stem>.json` e
@@ -3330,7 +3370,10 @@ route interception in any build: render, keyboard, axe × 3 themes, 360 px), `te
 (`playwright.lecciones11.config.ts`, port 4671, build in `/tmp/claude-0/epa-motor11/dist`) and
 `tests/lecciones11-recorrido.spec.ts`, a parametric walk of every published lesson from its JSON (`EPA_RECORRER`
 regex filter): explore gating, each question wrong then right, challenges solved at a model-found position, estimates,
-order, match, axe per card, and a 360 px dark-theme pass.
+order, match, axe per card, and a 360 px dark-theme pass. 1.2 steps are walked from the model too: `simular` (the
+right estimate, then the app's ngspice result), `banco` (the expected reading compares within tolerance), `ajuste`
+(first control position inside the band), `averia` (probes, a wrong suspect, then the fault of round 0 from
+`falloDeRonda`), `dibujar` (each point set on the curve through the value slider) and `diseno` (as a challenge).
 
 **Review 11c (fix 11c)** in `Leccion11.svelte`: the cards replace the address through `lib/ruta.svelte.ts`
 `reemplazarDireccion(h)`, which also updates the router's `direccionActual`, so a leave question cancelled («Seguir en
@@ -3397,6 +3440,116 @@ the link's lower case) or `#/leccion` for an invalid link. Never any other route
   plantilla.xml`, idempotent; the Tauri configuration and wiring), `tests/enlaces11-navegador.spec.ts` (hash → 1.1
   lesson, classic lesson, appendix in another case; «Atrás»; «no encontrada» for five links, axe ×3 themes, 360 px),
   `cargo check`, `cargo test --lib`.
+
+## Lesson shell, living circuit and identity (1.2, agent ui12)
+
+Nothing stored changes: no new key, no schema version, no migration. Lesson data (`libro/lecciones11/…`) is read as in
+1.1; the drawings gained attributes only.
+
+- **Rhythm** — `lib/leccion12/ritmo.ts` (pure): `Ritmo { fase: 'normal' | 'vuelta' | 'hecha'; falladas; vuelta; j }`,
+  `anotarFallada` (first check wrong, or «Saltar»; normal round only), `siguiente` / `anterior` (entering the summary with
+  missed cards starts the return round: lesson order, once, `fresca` = shown with a new `nuevoEstado`), `segmentos` /
+  `posicion` (one segment per card plus one per returning card before the summary). Per visit only; the `lecciones`
+  record (`u`, `h`, `n`, `c`) keeps meaning card indexes. `Leccion11.svelte` keeps the values of each card's first showing
+  (`entradas`) and gives them back to a returning card; `respondidas`/`aCuenta` count only the normal round. Every check
+  cues `retro('acierto' | 'fallo')` when `eventoDeComprobacion` returns no event (a closed round); otherwise the event's
+  own cue (`retroDe`). Marks: `[data-leccion11][data-vuelta]`, `.seg[data-seg="vuelta"]`, the label «x de y · Repaso».
+  The card body is keyed by a visit counter (`{#key visita}`) with `in:fly` (0 ms with reduced motion). Body order: title,
+  formula, widget, text, note, conditions, answer chain, then the motor12 slot (`<!-- leccion12: actividad -->`).
+- **Mastery state of the map** — `dominadaDe(d, ahora)` in `lib/aprendizaje/camino.ts`: `d.nivel === 'dominado'` and
+  `repasoDe(d, ahora).k === 'fecha'`. `NodoVista.dominada?` (set by `PaginaCursos.svelte` for done/passed lessons),
+  `li[data-dominada]`, the legend `[data-leyenda-camino]`; the list view adds «· Dominada»; the summary `[data-dominada]`.
+- **Living circuit** — `componentes/leccion12/CircuitoVivo.svelte` wraps each drawing in `CircuitoLeccion.svelte` (prop
+  `manipular`, default true). Drawing contract (all optional, `lib/leccion11/esquemas/<nombre>/Dibujo.svelte` and the kit):
+  `path.flujo[data-medidor="<0 V source>"]` or `[data-i="<A>"]` (kit `Flujo` props `medidor`, `i`; else the widget's
+  `corriente`); wires and node dots `[data-red="<netlist node>"]` (kit `Pila`/`FuenteCA`/`FuenteI` prop
+  `nodos=[y1 end, y2 end]` splits their leads); parts `[data-pieza="<piece>"]` (kit prop `pieza`, a wrapping `<g>`);
+  `FuenteCA` marks `[data-alterna]` (AC: particles swing, no voltages); part bodies `[data-cuerpo="x0 y0 x1 y1"]` (kit
+  R, L, C, D, Pila, Interruptor, Conmutador, Trafo; `kit/geometria.ts` `cajaCuerpo`). fix12, particles only on wires:
+  `zonasDelDibujo` (cached on a geometry signature) collects the declared bodies, every `text` box, every small closed
+  shape (≤ 50 units: dots, terminals, triangles, source circles) and the «ink» of every other shape more than 1,2 units
+  off the `.flujo` paths; `particulas.ts` `ocultar(caminos, k)` turns `Camino.zonas` into arc-length `ocultos`
+  (Liang–Barsky against each zone grown by radius + 3 px) that `recorrer`/`dibujarCon` skip; still arrows use
+  `visibleCerca(c, s, 8)`. Test hook: `[data-vivo].__epaParticulas()` (visible positions, SVG units),
+  `__epaParticulasTodas()`. An «averia» card whose fault is hidden (`!(comprobado && bien)`, not skipped) gets the
+  healthy board's values (`valoresDeTarjeta(t, propios, null)`) and `oculto` (Leccion11 `averiaOculta`). Voltages: `def.netlist(ctx, 'op')` →
+  `resolverCC` (`lib/leccion12/cc.ts`: R, V, I, C open, L short, E, F; 10⁻¹² S gmin; null with any other element) or, for
+  non-linear netlists, `nodosConocidos` (ground, sources to ground, propagated through 0 V meters and coils); none with
+  SIN/PULSE/PWL/IC=, nor in a prediction (`oculto`). Colours: `colorTension` (`lib/leccion12/identidad.ts`, OKLab between
+  `--v11-tension-neg/-cero/-pos`, gamma 0,65 on ±max |V|) as inline `stroke`/`fill` with `[data-tension]`. Particles:
+  `avanzarCon`/`dibujarCon` (generic variants of figuras-vivas' `avanzar`/`dibujar`, which now call them), IREF 0,1 A,
+  AC period 1,6 s, DPR ≤ 2. Measures on `[data-vivo]`: `data-vivo` (`animado` | `quieto`), `data-vivo-nivel` (0 full,
+  1 half particles at 30 fps, 2 still arrows; down a level after two 60-frame windows slower than ~30 fps or over 12 ms
+  of drawing), `data-vivo-fps`, `data-vivo-ms`, `data-vivo-tensiones` (`exactas` | `conocidas` | `no`). Labels
+  `[data-tension-nodo]`, legend `[data-leyenda-tension]`, toggle `[data-ver-tensiones]` (aria-pressed, session only).
+- **Direct manipulation** — `lib/leccion12/manipular.ts` (pure): `mandoDePieza(widget, pieza)`, `piezasManipulables`,
+  `pasoMando(m, actual, delta)` (positions of `m.valores`, clamped), `pasosDeArrastre` (max of right / up, 6–22 px per
+  position), `pasosDeTecla`. On the drawing: `[data-asa="<piece>"]` — `role="slider"` (aria-valuenow via `ariaNumero`,
+  aria-valuetext via `leerUnidades`, as `MandoValor`), ≥ 44 × 44 px, pointer capture; a tap opens `[data-pasos]` (− / +);
+  switches and «conectar» are `role="switch"` buttons. Values go through the card's `alMover`.
+- **One idea per screen** — `avisosUnaIdea(t): string[]` and `contarFrases` (`lib/leccion12/una-idea.ts`, pure): > 40
+  words (title + text + note), > 2 sentences, or no visual (widget, ec, estimar, ordenar, emparejar, actividad); summary
+  exempt. For the generator's warnings.
+- **Identity tokens** — `estilos/tokens11.css`: `--v11-mono` (JetBrains Mono, `estilos/fuentes12.css`, woff2 400/700 in
+  `estilos/fuentes12/` with its OFL), book ink/greys, `--v11-rojo`, `--v11-violeta`, `--v11-bloque` (wires; set per lesson
+  on `.l11` from `hiloDeBloque(part colour, theme)`: 45 % towards ink, 62 % towards white in dark), `--v11-tension-*`.
+  `app.css` `--mono` → `--v11-mono`. Pairs in `lib/leccion11/contraste.ts` (`PARES`), the scale and the six blocks checked
+  by `tests/lecciones11-ui12-unidad.spec.ts`. `.e11 .hilo` / `.nodo` use `--v11-bloque`.
+
+## Learning-by-doing steps of the lessons (1.2, `lib/leccion12/`, `componentes/leccion12/`)
+
+**Schema version.** `Leccion11.version` stays **1**: everything below is optional and additive in the same files
+(`libro/lecciones11/<parte>/<label>.json`, written by `scripts/lecciones11.mjs`), and the app and its data ship
+together. **No stored state changes** (no new storage key, no migration): the activities' state lives in memory
+(`EstadoTarjeta.actividad`, `pistasVistas`), the lesson's progress keeps its `lecciones` record (`u`, `h`, `n`, `c`)
+and answers keep their event (`id` `<parte>-l11-<label>-<card id>`, `subtipo` `leccion11-<tipo>`). Lessons written
+before 1.2 generate byte for byte the same output.
+
+**Card types.** `TipoTarjeta` adds `simular`, `diseno`, `averia`, `ajuste`, `banco`, `dibujar`, `sql`; each carries
+`actividad: Actividad12` (`lib/leccion12/tipos.ts`):
+- `simular` {objetivo (expr), unidad, cifras, tol, rotulo, medida? (an observable of the circuit widget, simulated in
+  the app), errores: [{expr? | razon? {min?, max?}, tol?, texto}]};
+- `diseno` {tolerancias: {valor: fraction}, metodo: esquinas | montecarlo, muestras, semilla (FNV-1a of
+  «parte/label/card»), exigir: nominal | todas | fraction, siTolerancias?} + the card's `condiciones` (the spec);
+- `averia` {fallos: [{id, pieza, tipo: abierta | corto | alto | bajo | reves | base-abierta | valor, con: {valor:
+  number}, texto}], sospechosos: [{id, rotulo}], sondas: [{id, rotulo, valor, curva? {expr, x, y}}], pasos, eleccion:
+  fija | azar, preguntarTipo, sano (the healthy values of everything a fault changes, set by the generator)};
+- `ajuste` {banda {valor, min, max}, rotulo, escala {min, max}, bajo, alto, dentro};
+- `banco` {piezas, medir, esperado (expr), unidad, cifras, tol, consejos: [{cuando? (range on `desviacion` =
+  measured/expected − 1, or `medida`), texto}], ficha? {n, titulo}};
+- `dibujar` {x (with `id`), y, curva (expr of x.id), puntos, tol, holgura, rotulo};
+- `sql` {modo: consulta | rellenar | ordenar, base: 'mediciones', solucion, esperado {columnas, filas} (the reference
+  query's result, computed by the generator with sql.js), ordenado, inicial?, plantilla? + huecos? [{opciones?}],
+  clausulas? + inicio? (derangement)}.
+Every card may also carry `escalera: Texto[]` (1–2 hints) and `solucion: Texto` (the hint ladder).
+
+**Engine** (`lib/leccion12/motor12.ts`, pure; `lib/leccion11/motor.ts` delegates when `t.actividad`):
+`nuevoEstadoActividad` (simular {texto, valor}; averia {fallo, ronda, medidas, sospechoso, tipoElegido, descartados};
+banco {texto, valor, comparado}; dibujar {ys, punto}; sql {texto, huecos, orden, ejecutado}), `puedeComprobar12`,
+`comprobar12` → {bien, textos, resuelta?, estado?} (simular resolves the card whatever the verdict: «Continuar» after
+the one commit), `exploracion12` (ajuste: «Continuar» inside the band; banco: always), `reintentar12`, `otraAveria`.
+`esComprobable`/`esPracticable`: all but `ajuste` and `banco`. `eventoDeComprobacion.pistas` = max(the 1.1 rule, the
+ladder steps opened). `modelo.ts valoresDeTarjeta(t, propios, e?)` lays the hidden fault over the widget's values.
+Numeric checks are deterministic: corners, seeded Monte Carlo (mulberry32), `falloDeRonda` (fija: list order; azar:
+a seeded draw that never repeats the previous round's; the app seeds it afresh each time the card opens and on
+«Otra placa», `azar.ts semillaNueva`, so only the verdicts, not which fault, are fixed), the drawing's metric
+(`lib/leccion12/dibujo.ts`: RMS of the difference / y-axis height, minimised over a shift ≤ holgura·x-range and an
+offset ≤ holgura·y-height), probe readings quantised to 1/1000 of each probe's largest value (`averia.ts lecturas`).
+
+**SQL sandbox** (`lib/leccion12/sql/`): sql.js **1.14.2** (MIT; SQLite compiled to WebAssembly), its browser build
+`sql-wasm-browser.wasm` (658 kB, 326 kB gzip) bundled by Vite as an asset and loaded only by the worker
+`sql.worker.ts`, which `cliente.ts` starts when an SQL card runs its first query (dynamic import: no other screen
+loads it). The worker builds the sample database once (`muestra.ts`: the book's schema of section 17.10 verbatim plus
+`horas`; 21 888 sample rows, 4 sensors every 600 s from 2026-02-25 to 2026-04-04 UTC, seeded) and runs each query on a
+fresh copy (writes never carry over); a query over 5 s is stopped by terminating the worker. Results: at most 500 rows
+come back (`total` says how many). `ejecutar.ts`: `explicarError` (SQLite messages in Spanish),
+`compararResultados` (columns by count, rows, order only when `ordenado`, numbers to 1e-9 relative). `node.ts`: the
+same database in Node for the generator and the tests.
+
+**Generator** (`lib/leccion12/generar12.ts`, called by `lib/leccion11/generar.ts`): each type's checks (GUIA §10),
+its texts through the numbers rule, each fault's state added to the circuit's ngspice cross-check; warnings for
+answered cards without any hint and (ui12) `avisosUnaIdea`. `ContextoLibro.sql` (optional) runs SQL; without it SQL
+cards are an error.
 
 ## Práctica «Aprender haciendo» (0.10, `web/src/componentes/practica/`, data in `web/public/libro/practica/`)
 
@@ -4667,6 +4820,23 @@ originales» (the backup plus the blocked keys' stored values, as a file: `fiche
 `#/sincronizacion` (`pagina`) «Datos anteriores a la actualización» with «Guardarlos en un fichero» and «Restaurarlos…».
 Test hook: `globalThis.__epaFallarMigracion = [keys]` makes those steps throw.
 
+**1.2: the ids of book 4.1** (`FORMATO_DATOS` 3, `VERSION_MINIMA_DATOS` '1.2.0'). One step per key that can hold an id of
+the two chapters new in 4.0 (`posiciones` 1→2, `marcadores` 1→2, `notas` 1→2, `ejercicios` 2→3, `leidas`, `deducciones`,
+`calc-favoritos`, `repaso-tarjetas`, `repaso-tests`, `repaso-fallos`, `repaso-examenes`, `lecciones`, `progreso-diario`
+2→3, `progreso-xp`, `cursos`, `dominio`, `problema-dia`, `seguridad`, `editor-circuitos`, `protoboard-circuitos`,
+`protoboard-leccion`, `docente`, `docente-resultados`, `sinc-estado`, `sinc-marcas`, `sinc-aplicados`, `sinc-enviado`
+1→2), all `renombrarIds41`: every object key and every id-like string (no white space, so never a note's text) through
+`renombrar41` — part `cap-new-automatas` → `cap55` (`cap-new-maquinas` → `cap56`, also inside `cap55/…`, `cap55-pred-…`,
+`l:cap55/…`), labels `sec|fig|ej|prob|tab-new-automatas.N` → `…-55.N`, review questions `cap-new-automatas-N` →
+`cap55-0N`; where a LABEL is stored (keys and `label` of bookmarks and notes, `sec` of a reading position) the chapter's
+own label goes to `cap-55`. Two keys meeting (old and new id of one item): the one already new stays unless the other has
+a strictly larger `t`. `sinc-marcas` also drops the `huellas` of renamed items (their value changed with the ids; a mark
+must still count as a change). Collection-only steps (no version of their own) for the synchronised stores whose name is
+not a storage key: `progreso-logros`, `cursos-superadas`, `cursos-pruebas`, `docente-propios`. The same rules in Python,
+`contenido/ids41.py` (the app's sources: `ids_practica.json`); checked against the book's `Informes/ids_4.1.json` and
+against a profile of 1.1 (`tests/fixtures/perfil-11-capitulos-nuevos.json`) in `tests/sync41-unidad.spec.ts`. A 1.1
+device refuses the format-3 file («actualice la aplicación»): update every device, synchronising each right before.
+
 **Format 2 of the synchronisation file and of the backups** (`fusion.ts VERSION_DOC`, `copia-formato.ts VERSION_COPIA`,
 both `FORMATO_DATOS`). The same document; its stores in the 1.0 schemas. `leerDoc` reads version 1 by migrating its
 collections (a failed step: the run stops, nothing written from a half-migrated file) and refuses versions above 2
@@ -5136,6 +5306,8 @@ Conventions for new components:
   an open dialog, or in the visible index panel (`aside.lateral`), the focus goes — without scrolling — to the reader's
   anchor element (`parte`/`glosario` with an anchor) or the first visible `h1` of `main` (it gets `tabindex="-1"`),
   waiting up to 4 s for lazy pages (`.cargando`). A page that wants another target focuses it in its own mount effect.
+  Such a heading (and `main`) with `tabindex="-1"` draws no focus ring (`app.css`, fix12): browsers match
+  `:focus-visible` on a programmatic focus when there was no pointer input yet.
   Every page has one `h1` (`solo-lector` when it has no visible title); below it, `h2`, `h3`… without skipping levels.
 - **Skip link** `a[data-saltar-contenido]` is the first element of `<body>` content (`App.svelte`), off screen until
   focused; it prevents the default (the hash is the router's) and calls `enfocarContenido()`.

@@ -6,6 +6,9 @@
 import { compilarModelo, enRango, enSuSitio, objetivoEstimar, parejasBien, puntuarEstimacion, type Valores } from './modelo';
 import type { EntradaIndice11, Leccion11, Tarjeta, Texto } from './tipos';
 import type { OrigenRespuesta } from '../aprendizaje/eventos';
+// 1.2: the learning-by-doing step types have their own rules; these functions delegate to them
+import { comprobar12, esComprobable12, exploracion12, falta12, nuevoEstadoActividad, puedeComprobar12, reintentar12 } from '../leccion12/motor12';
+import type { EstadoActividad12 } from '../leccion12/tipos';
 
 export interface EstadoTarjeta {
   /** Values the reader moved on this card. */
@@ -30,6 +33,10 @@ export interface EstadoTarjeta {
   puestas: (number | null)[];
   /** The answer's round already reported its final attempt (later checks report nothing). */
   cerrada: boolean;
+  /** 1.2: the state of a learning-by-doing step (the estimate typed, the probes taken, the drawing, the query). */
+  actividad?: EstadoActividad12;
+  /** 1.2: steps of the hint ladder opened (pista 1, pista 2, the solution). */
+  pistasVistas?: number;
 }
 
 export function nuevoEstado(t: Tarjeta): EstadoTarjeta {
@@ -45,16 +52,19 @@ export function nuevoEstado(t: Tarjeta): EstadoTarjeta {
     orden: t.ordenar ? [...t.ordenar.inicio] : [],
     puestas: t.emparejar ? t.emparejar.parejas.map(() => null) : [],
     cerrada: false,
+    ...(t.actividad ? { actividad: nuevoEstadoActividad(t) } : {}),
+    pistasVistas: 0,
   };
 }
 
 /** Whether the card has something to check (options, an estimate, an order, pairs, a challenge). */
 export function esComprobable(t: Tarjeta): boolean {
-  return !!(t.opciones || t.estimar || t.ordenar || t.emparejar || t.condiciones);
+  return !!(t.opciones || t.estimar || t.ordenar || t.emparejar || t.condiciones || (t.actividad && esComprobable12(t.actividad)));
 }
 
 /** Whether the explore gating is met with the current values. */
 export function exploracionHecha(t: Tarjeta, e: EstadoTarjeta, v: Valores): boolean {
+  if (t.actividad && !exploracion12(t, v)) return false;
   const r = t.requiere;
   if (!r) return true;
   if (r.mover.some((k) => !e.movidos.includes(k))) return false;
@@ -64,6 +74,7 @@ export function exploracionHecha(t: Tarjeta, e: EstadoTarjeta, v: Valores): bool
 
 /** What still has to be done before «Continuar» on an explore card (spoken next to the disabled button). */
 export function faltaPorExplorar(l: Leccion11, t: Tarjeta, e: EstadoTarjeta, v: Valores): string {
+  if (t.actividad && !exploracion12(t, v)) return falta12(t);
   const r = t.requiere;
   if (!r) return '';
   const nombre = (k: string) => l.modelo.valores[k]?.nombre ?? k;
@@ -77,6 +88,7 @@ export function faltaPorExplorar(l: Leccion11, t: Tarjeta, e: EstadoTarjeta, v: 
 
 /** Whether the answer on show can be checked (something chosen, moved, placed). */
 export function puedeComprobar(t: Tarjeta, e: EstadoTarjeta): boolean {
+  if (t.actividad && esComprobable12(t.actividad)) return puedeComprobar12(t, e.actividad);
   if (t.opciones) return e.eleccion !== null;
   if (t.estimar) return e.estimacion !== null;
   if (t.emparejar) return e.puestas.every((x) => x !== null);
@@ -89,7 +101,8 @@ export type Accion = 'continuar' | 'comprobar' | 'reintentar';
 export function botonPrincipal(t: Tarjeta, e: EstadoTarjeta, v: Valores): { texto: string; accion: Accion; bloqueado: boolean } {
   if (t.tipo === 'resumen') return { texto: 'Terminar', accion: 'continuar', bloqueado: false };
   if (esComprobable(t)) {
-    if (e.resuelta && (!e.comprobado || e.bien)) return { texto: 'Continuar', accion: 'continuar', bloqueado: false };
+    // (1.2: a «simular» estimate is committed once: right or wrong, the simulation is shown and the card goes on)
+    if (e.resuelta && (!e.comprobado || e.bien || t.actividad?.tipo === 'simular')) return { texto: 'Continuar', accion: 'continuar', bloqueado: false };
     if (e.comprobado && !e.bien) return { texto: 'Volver a intentarlo', accion: 'reintentar', bloqueado: false };
     return { texto: 'Comprobar', accion: 'comprobar', bloqueado: !puedeComprobar(t, e) };
   }
@@ -115,7 +128,15 @@ export function comprobar(l: Leccion11, t: Tarjeta, e: EstadoTarjeta, v: Valores
   const intentos = e.intentos + 1;
   let bien = false;
   let textos: Texto[] = [];
-  if (t.opciones) {
+  let resuelta12 = false;
+  let actividad = e.actividad;
+  if (t.actividad && esComprobable12(t.actividad)) {
+    const r12 = comprobar12(mc, t, e.actividad, v);
+    bien = r12.bien;
+    textos = r12.textos;
+    resuelta12 = !!r12.resuelta;
+    if (r12.estado) actividad = r12.estado;
+  } else if (t.opciones) {
     const o = t.opciones[e.eleccion ?? -1];
     bien = !!o?.bien;
     if (o) textos = [o.porque];
@@ -137,13 +158,16 @@ export function comprobar(l: Leccion11, t: Tarjeta, e: EstadoTarjeta, v: Valores
     }
   }
   if (!bien && intentos >= 2 && t.ayuda) textos.push(t.ayuda);
+  // 1.2: after two failed checks the ladder's last step, the solution (counted as help, as «ayuda»)
+  if (!bien && intentos >= 2 && t.solucion && !resuelta12) textos.push(t.solucion);
   const titulo = bien ? (t.condiciones ? '¡Conseguido!' : 'Eso es.') : t.opciones ? 'Por qué no.' : 'Todavía no.';
   const estado: EstadoTarjeta = {
     ...e,
     comprobado: true,
     bien,
     intentos,
-    resuelta: e.resuelta || bien,
+    resuelta: e.resuelta || bien || resuelta12,
+    ...(actividad ? { actividad } : {}),
     descartadas: t.opciones && !bien && e.eleccion !== null && !e.descartadas.includes(e.eleccion) ? [...e.descartadas, e.eleccion] : e.descartadas,
   };
   return { estado, aviso: { bien, titulo, textos } };
@@ -171,7 +195,8 @@ export function estadoRespondido(t: Tarjeta): { estado: EstadoTarjeta; aviso: Av
 
 /** «Volver a intentarlo»: the feedback goes, the values stay (a wrong option stays marked and cannot be chosen). */
 export function reintentar(t: Tarjeta, e: EstadoTarjeta): EstadoTarjeta {
-  return { ...e, comprobado: false, bien: null, eleccion: t.opciones ? null : e.eleccion };
+  const actividad = reintentar12(e.actividad);
+  return { ...e, comprobado: false, bien: null, eleccion: t.opciones ? null : e.eleccion, ...(actividad ? { actividad } : {}) };
 }
 
 /** Id under which a card's answers are recorded (XP once per id, mastery of the section). */
@@ -190,7 +215,8 @@ export function idRespuestaDe(parte: string, seccion: string, tarjeta: string): 
  * of the cards before it). A «por qué» card is left out: it asks about the surprise of the card before it.
  */
 export function esPracticable(t: Tarjeta): boolean {
-  return (t.tipo === 'predecir' || t.tipo === 'pregunta' || t.tipo === 'reto') && esComprobable(t);
+  // (1.2: the step types that are answered too; «ajuste» and the optional «banco» are not questions)
+  return (t.tipo === 'predecir' || t.tipo === 'pregunta' || t.tipo === 'reto' || t.tipo === 'simular' || t.tipo === 'diseno' || t.tipo === 'averia' || t.tipo === 'dibujar' || t.tipo === 'sql') && esComprobable(t);
 }
 
 /** A lesson's entry in libro/lecciones11/indice.json: its number of cards and the cards that can be practised. */
@@ -232,7 +258,8 @@ export function eventoDeComprobacion(
       origen,
       correcta,
       intento: despues.intentos,
-      pistas: despues.intentos >= 2 && t.ayuda ? 1 : 0,
+      // (1.2: the steps of the hint ladder opened count as help too)
+      pistas: Math.max(despues.intentos >= 2 && (t.ayuda || t.solucion) ? 1 : 0, despues.pistasVistas ?? 0),
       final,
       parte: l.parte,
       seccion: l.seccion,

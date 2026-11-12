@@ -13,10 +13,10 @@
 
 <Lienzo {descripcion} alto={250}>
   <Flujo d="M40 230 V50 H200 V230 Z" {dur} />
-  <Pila x={40} y1={230} y2={50} />
+  <Pila x={40} y1={230} y2={50} pieza="fuente" nodos={['0', 'fte']} />
   <Et x={2} y={170} t={c.val('fuente')} />
   <path class="hilo" d={c.tiene('carga') ? 'M40 50 H70 M180 50 H300 M40 230 H300' : 'M40 50 H70 M180 50 H244 M40 230 H200'}></path>
-  <R x1={70} y1={50} x2={180} y2={50} color="azul" />
+  <R x1={70} y1={50} x2={180} y2={50} color="azul" pieza="rs" />
   <Et x={125} y={30} t={c.rot('rs')} ancla="middle" color="azul" />
   <circle class="nodo" cx="200" cy="50" r="4.5"></circle>
   <D x1={200} y1={230} x2={200} y2={50} color="naranja" variante="zener" />
@@ -24,7 +24,7 @@
   <Et x={216} y={150} t={c.val('vz')} color="naranja" peq />
   {#if c.tiene('carga')}
     <g class:fantasma={!cargada} data-carga={cargada ? 'conectada' : 'suelta'}>
-      <R x1={300} y1={50} x2={300} y2={230} color="verde" />
+      <R x1={300} y1={50} x2={300} y2={230} color="verde" pieza="carga" />
       {#if cargada}
         <Et x={314} y={130} t={c.simT('carga')} color="verde" />
         <Et x={314} y={150} t={c.val('carga')} color="verde" peq />

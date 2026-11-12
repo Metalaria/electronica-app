@@ -83,6 +83,18 @@ export function repasoDe(d: DominioConcepto | null | undefined, ahora?: number):
   return ahora != null && t <= ahora ? { k: 'ahora' } : { k: 'fecha', t };
 }
 
+/**
+ * 1.2: a section is «dominada» (the fourth state of the course map: por hacer / en curso / hecha / dominada) when its
+ * mastery is at the top level («dominado»: dominio.ts UMBRALES, mastery with forgetting) AND it is not due for review
+ * now (repasoDe gives a future date). Only completed or passed lessons are asked (the caller checks). Nothing new is
+ * stored: it follows the review data, so a mastered section that fades below the level, or falls due, is «hecha»
+ * again until it is reviewed.
+ */
+export function dominadaDe(d: DominioConcepto | null | undefined, ahora: number): boolean {
+  if (!d || d.nivel !== 'dominado') return false;
+  return repasoDe(d, ahora).k === 'fecha';
+}
+
 /** The local calendar day of a time, as a day count. */
 const diaLocal = (x: number) => {
   const f = new Date(x);

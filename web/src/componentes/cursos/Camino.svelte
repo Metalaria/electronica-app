@@ -12,6 +12,8 @@
     /** 0–1: steps done of a lesson (1 when done or passed). */
     progreso: number;
     repaso: Repaso | null;
+    /** 1.2: a completed lesson whose section is mastered and not due for review (lib/aprendizaje/camino.ts dominadaDe). */
+    dominada?: boolean;
     /** 1.1: `laboratorio`, a guided lab of printed chapter 21; `proyecto`, a project by stages (never block the path). */
     tipo: 'leccion' | 'ejercicio' | 'pregunta' | 'laboratorio' | 'proyecto';
     /** The short check that opens a locked node (its route). */
@@ -44,6 +46,7 @@
   import FlaskConical from '@lucide/svelte/icons/flask-conical';
   import InsigniaNuevo from '../aprender/InsigniaNuevo.svelte';
   import Wrench from '@lucide/svelte/icons/wrench';
+  import Award from '@lucide/svelte/icons/award';
   import { cuandoRepaso } from '../../lib/aprendizaje/camino';
 
   let { grupos, siguiente = null, ahora = Date.now() }: { grupos: GrupoCamino[]; siguiente?: string | null; ahora?: number } = $props();
@@ -78,6 +81,7 @@
       return m[n.estado];
     }
     if (n.estado === 'en-curso') return `Empezada · ${Math.round(n.progreso * 100)} %`;
+    if (n.dominada) return `${ESTADO[n.estado]} · Dominada`;
     return ESTADO[n.estado];
   }
 
@@ -93,6 +97,13 @@
 </script>
 
 <div class="camino" data-camino>
+  <!-- 1.2: the four states of a lesson on the map (the icon and the words carry them, not only the colour) -->
+  <ul class="leyenda" aria-label="Estados de las lecciones" data-leyenda-camino>
+    <li><span class="punto" aria-hidden="true"><Play size={13} /></span> Por hacer</li>
+    <li><span class="punto en-curso" aria-hidden="true"></span> En curso</li>
+    <li><span class="punto hecho" aria-hidden="true"><Check size={13} strokeWidth={3} /></span> Hecha</li>
+    <li><span class="punto hecho dominada" aria-hidden="true"><Award size={13} strokeWidth={2.4} /></span> Dominada</li>
+  </ul>
   {#each grupos as g, gi (g.clave)}
     <section class="tramo" data-tramo={g.clave}>
       <h2 class="tit-tramo">{g.titulo}{#if g.nuevo}{' '}<InsigniaNuevo compacta titulo="Capítulo nuevo de la aplicación: estará en la próxima edición del libro" />{/if}</h2>
@@ -100,7 +111,7 @@
         {#each g.nodos as n, k (n.clave)}
           {@const r = repasoTexto(n.repaso)}
           {@const sig = n.clave === siguiente}
-          <li class="nodo {n.estado}" class:sig style:--x={`${x(k) - x(0)}px`} data-nodo={n.clave} data-estado={n.estado} data-repaso={n.repaso?.k}>
+          <li class="nodo {n.estado}" class:sig class:dominada={!!n.dominada} data-dominada={n.dominada ? '' : undefined} style:--x={`${x(k) - x(0)}px`} data-nodo={n.clave} data-estado={n.estado} data-repaso={n.repaso?.k}>
             {#if k > 0 || gi > 0}<svg class="union" width="200" height="26" viewBox="-100 0 200 26" aria-hidden="true"><line x1={k > 0 ? x(k - 1) - x(k) : 0} y1="0" x2="0" y2="26" /></svg>{/if}
             <div class="fila">
               {#if n.estado === 'bloqueado'}
@@ -108,7 +119,7 @@
               {:else}
                 <a class="disco" href={n.href} style:--p={n.progreso} aria-label={`${n.rotulo} ${n.titulo}: ${estadoTexto(n)}${r ? `. ${r}` : ''}`} data-abrir-nodo>
                   <span class="cara" aria-hidden="true">
-                    {#if n.estado === 'hecho'}<Check size={26} strokeWidth={3} />{:else if n.estado === 'superado'}<FastForward size={22} />{:else if n.tipo === 'ejercicio'}<PenLine size={22} />{:else if n.tipo === 'pregunta'}<CircleHelp size={22} />{:else if n.tipo === 'laboratorio'}<FlaskConical size={22} />{:else if n.tipo === 'proyecto'}<Wrench size={22} />{:else}<Play size={22} />{/if}
+                    {#if n.dominada}<Award size={26} strokeWidth={2.4} />{:else if n.estado === 'hecho'}<Check size={26} strokeWidth={3} />{:else if n.estado === 'superado'}<FastForward size={22} />{:else if n.tipo === 'ejercicio'}<PenLine size={22} />{:else if n.tipo === 'pregunta'}<CircleHelp size={22} />{:else if n.tipo === 'laboratorio'}<FlaskConical size={22} />{:else if n.tipo === 'proyecto'}<Wrench size={22} />{:else}<Play size={22} />{/if}
                   </span>
                 </a>
               {/if}
@@ -222,6 +233,45 @@
   }
   .sig .disco {
     box-shadow: 0 0 0 4px var(--fondo), 0 0 0 7px var(--c09, var(--acento));
+  }
+  /* 1.2: «dominada» — a done node with a second ring and the award icon */
+  .dominada .disco {
+    box-shadow: 0 0 0 3px var(--fondo), 0 0 0 6px var(--c09, var(--acento));
+  }
+  .leyenda {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px 16px;
+    margin: 4px 0 0;
+    padding: 0;
+    color: var(--tinta-suave);
+    font-size: 13.5px;
+    list-style: none;
+  }
+  .leyenda li {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+  }
+  .punto {
+    display: inline-grid;
+    place-items: center;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--c09, var(--acento));
+    border-radius: 50%;
+    background: var(--superficie);
+    color: var(--c09-texto, var(--titulos));
+  }
+  .punto.en-curso {
+    background: conic-gradient(var(--c09, var(--acento)) 180deg, var(--superficie) 0);
+  }
+  .punto.hecho {
+    background: var(--c09, var(--acento));
+    color: var(--sobre09, #fff);
+  }
+  .punto.dominada {
+    box-shadow: 0 0 0 2px var(--fondo), 0 0 0 4px var(--c09, var(--acento));
   }
   a.disco:focus-visible {
     outline: 3px solid var(--acento);

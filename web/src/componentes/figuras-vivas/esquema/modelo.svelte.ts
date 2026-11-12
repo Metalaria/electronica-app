@@ -5,6 +5,7 @@
 import { afin, distPolilinea, distRect, trayecto, type Trayecto } from '../geometria';
 import type { Elemento, Esquema, Num, Punto, ResultadoOp, ResultadoTran } from '../tipos';
 import { elementosCircuito } from './netlist.ts';
+import { cuerposDeDosBornes, fueraDeZonas, zonasDeElementos, type Zona } from './particulas';
 
 export type Clave = { k: 'tramo'; id: string } | { k: 'elem'; id: string } | { k: 'term'; id: string; t: string };
 
@@ -18,6 +19,10 @@ export interface Camino {
   fase: number;
   n: number;
   paso: number;
+  /** 1.2: what particles keep out of (parts' bodies, labels, node dots; SVG units) and, worked out from them for the
+   *  current scale (particulas.ts ocultar), the arc-length stretches of this path where they are not drawn. */
+  zonas?: readonly Zona[];
+  ocultos?: [number, number][];
 }
 
 export interface NodoGeo {
@@ -156,6 +161,16 @@ export class EstadoEsquema {
           this.caminos.push({ clave: { k: 'term', id: e.id, t }, tr: trayecto([P(e.anclas[t]!), centro]), nodo: null, elemento: e.id, fase: 0, n: 0, paso: 0 });
       }
     }
+    // 1.2 (fix12): the parts' bodies, the node dots and the annotations keep the particles out (particulas.ts), and
+    // the two-terminal bodies the wires' halos
+    const cajaSvg = (c: [number, number, number, number]): [number, number, number, number] => {
+      const a = P([c[0], c[1]]);
+      const b = P([c[2], c[3]]);
+      return [Math.min(a[0], b[0]), Math.min(a[1], b[1]), Math.max(a[0], b[0]), Math.max(a[1], b[1])];
+    };
+    const conCaja = esq.elementos.map((e) => ({ e, caja: e.caja ? cajaSvg(e.caja) : null }));
+    const zonas = zonasDeElementos(conCaja, P);
+    const cuerpos = cuerposDeDosBornes(conCaja, P);
     // Nodes.
     for (const nd of esq.nodos) {
       const tramos = esq.tramos.filter((t) => t.nodo === nd.id).map((t) => t.puntos.map(P));
@@ -178,8 +193,11 @@ export class EstadoEsquema {
         const a = e?.anclas[t];
         return a ? [{ el, t, p: P(a) }] : [];
       });
-      this.nodos.push({ id: nd.id, tierra: nd.tierra, etiquetas: nd.etiquetas ?? [], tramos, sueltos, terminales });
+      // (fix12: a node's halo is not drawn over a part's body: some schematics have a wire along a whole part)
+      const visibles = tramos.flatMap((t) => fueraDeZonas(t, cuerpos));
+      this.nodos.push({ id: nd.id, tierra: nd.tierra, etiquetas: nd.etiquetas ?? [], tramos: visibles, sueltos, terminales });
     }
+    for (const c of this.caminos) c.zonas = zonas;
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     const ampliar = (p: Punto) => {
       x0 = Math.min(x0, p[0]);

@@ -186,9 +186,43 @@ test('sec 1.4 entera: puertas, fallos y aciertos explicados, reto, carga, estima
   await expect(aviso(page)).toContainText('P = I²·R');
   await boton(page).click();
 
+  // 1.2 · the cards missed at the first check (2, 4, 7 and 10) come back once, fresh, before the summary
+  // (lib/leccion12/ritmo.ts): their own segments in the bar, «Repaso» as the step, the prediction hidden again
+  await tarjeta(page, 'prediga-salida');
+  await expect(page.locator('[data-leccion11]')).toHaveAttribute('data-vuelta', '');
+  await expect(page.locator('.etiqueta')).toHaveText('12 de 16 · Repaso');
+  await expect(page.locator('[data-seg="vuelta"]')).toHaveCount(4);
+  await expect(page.locator('[data-lectura="V_out"]')).toHaveText('¿? V');
+  await page.locator('[data-opcion="0"]').click();
+  await boton(page).click();
+  await expect(aviso(page)).toContainText('Eso es.');
+  await boton(page).click();
+  await tarjeta(page, 'reto-33');
+  await expect(page.locator('[data-condicion="0"]')).toHaveAttribute('data-cumple', 'no');
+  await slider(page, '[data-mando11="R_2"] [role="slider"]', veces('ArrowRight', 7));
+  await boton(page).click();
+  await expect(aviso(page)).toContainText('¡Conseguido!');
+  await boton(page).click();
+  await tarjeta(page, 'carga-minima');
+  await slider(page, '[data-estimar] [role="slider"]', ['Home', ...veces('ArrowRight', 33)]);
+  await boton(page).click();
+  await expect(aviso(page)).toContainText('33,3 kΩ');
+  await boton(page).click();
+  await tarjeta(page, 'ordene-metodo');
+  for (let k = 0; k < 4; k++) {
+    for (let g = 0; g < 4; g++) {
+      const orden = await page.locator('[data-ordenar] li').evaluateAll((xs) => xs.map((x) => Number((x as HTMLElement).dataset.elemento)));
+      if (orden.indexOf(k) <= k) break;
+      await page.locator(`[data-subir="${k}"]`).click();
+    }
+  }
+  await boton(page).click();
+  await expect(aviso(page)).toContainText('Ese es el orden');
+  await boton(page).click();
+
   // 12 · summary: completed with the same key as 1.0, XP once per card, mastery and the review
   await expect(page.locator('[data-resumen]')).toBeVisible();
-  await expect(page.locator('[data-intentos]')).toHaveText('Con 6 intentos fallidos: lo repasará antes.');
+  await expect(page.locator('[data-intentos]')).toHaveText('Con 6 intentos fallidos: lo repasará antes. 4 tarjetas volvieron al final para repasarlas.');
   await expect(page.locator('[data-repaso]')).toContainText(/Repaso programado|Para repasar/);
   await expect(page.locator('[data-repaso]')).toContainText('Siguiente: 1.5');
   await expect.poll(async () => (await leer<Record<string, { n: number; u: number }>>(page, 'lecciones'))?.['cap01/sec-1.4']).toMatchObject({ n: 12, u: 12 });
@@ -196,7 +230,7 @@ test('sec 1.4 entera: puertas, fallos y aciertos explicados, reto, carga, estima
   expect(lec['cap01/sec-1.4']!.c).toBeGreaterThan(0);
   expect(lec['cap01/sec-1.4']!.h).toEqual([...Array(12).keys()]);
   // (the challenge and the load estimate were right only at the third attempt: their round closed at the second failure,
-  // as the 1.0 practice — no XP for them, but their answers count for the mastery)
+  // as the 1.0 practice — no XP then; 1.2: they came back at the end and were right at once, a new round: XP once now)
   await expect.poll(async () => Object.keys((await leer<{ xp: Record<string, unknown> }>(page, 'progreso-xp'))?.xp ?? {}).filter((k) => k.includes('l11') || k === 'l:cap01/sec-1.4').sort()).toEqual(
     [
       'l:cap01/sec-1.4',
@@ -206,6 +240,8 @@ test('sec 1.4 entera: puertas, fallos y aciertos explicados, reto, carga, estima
       'pr:cap01-l11-sec-1.4-por-que-baja',
       'pr:cap01-l11-sec-1.4-potencia-serie',
       'pr:cap01-l11-sec-1.4-prediga-salida',
+      'pr:cap01-l11-sec-1.4-reto-33',
+      'pr:cap01-l11-sec-1.4-carga-minima',
     ].sort(),
   );
   await expect.poll(async () => Object.keys((await leer<{ items: Record<string, unknown> }>(page, 'dominio'))?.items ?? {}).filter((k) => k.includes('-l11-')).length).toBe(8);
@@ -315,6 +351,21 @@ test('sec 0.3 solo con el teclado: mandos, asas de la gráfica, opciones con tec
   await tabHasta(page, '[data-continuar]');
   await page.keyboard.press('Enter');
   await expect(aviso(page)).toContainText('ω = 314 rad/s');
+  await page.keyboard.press('Enter');
+  // 1.2 · the two cards missed at the first check come back before the summary, keyboard only
+  await tarjeta(page, 'pico-red');
+  await expect(page.locator('[data-leccion11]')).toHaveAttribute('data-vuelta', '');
+  await tabHasta(page, '[data-estimar] [role="slider"]');
+  await page.keyboard.press('End');
+  for (let k = 0; k < 15; k++) await page.keyboard.press('ArrowLeft');
+  await tabHasta(page, '[data-continuar]');
+  await page.keyboard.press('Enter');
+  await expect(aviso(page)).toContainText('230 × √2 = 325 V');
+  await page.keyboard.press('Enter');
+  await tarjeta(page, 'por-que-radianes');
+  await page.keyboard.press('a');
+  await page.keyboard.press('Enter');
+  await expect(aviso(page)).toContainText('π/180');
   await page.keyboard.press('Enter');
   await expect(page.locator('[data-resumen]')).toBeVisible();
   await expect(page.locator('[data-resumen] h1')).toBeFocused();
@@ -447,12 +498,12 @@ test('360 px: sin desplazamiento horizontal y objetivos de 44 px en cada tarjeta
       expect(pequenos, `${l}/${k}`).toEqual([]);
     }
   }
-  // the moving current: animated, and still with «reducir movimiento»
+  // the moving current (1.2: the living circuit's particles, componentes/leccion12/CircuitoVivo.svelte): animated, and
+  // still arrows with «reducir movimiento»
   await page.goto('#/leccion/cap01/sec-1.4');
-  await expect(page.locator('.flujo').first()).toBeVisible();
-  expect(await page.locator('.flujo').first().evaluate((e) => getComputedStyle(e).animationName)).not.toBe('none');
+  await expect(page.locator('[data-vivo]').first()).toHaveAttribute('data-vivo', 'animado');
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  expect(await page.locator('.flujo').first().evaluate((e) => getComputedStyle(e).animationName)).toBe('none');
+  await expect(page.locator('[data-vivo]').first()).toHaveAttribute('data-vivo', 'quieto');
   // (the app's own reduced-motion rule leaves 0,01 ms)
   expect(parseFloat(await page.locator('.barra').first().evaluate((e) => getComputedStyle(e).transitionDuration))).toBeLessThan(0.001);
   await ctx.close();

@@ -260,10 +260,11 @@ test('360 px: sin desplazamiento horizontal, objetivos de 44 px; reducir movimie
   }
   const k = leccion.tarjetas.findIndex((t) => t.widget?.tipo === 'circuito' && !!t.widget.corriente && t.widget.dibujo !== false);
   await irA(page, k);
-  const flujo = page.locator('.e11 .flujo').first();
-  await expect(flujo).toBeVisible();
-  expect(await flujo.evaluate((e) => getComputedStyle(e).animationName)).not.toBe('none');
+  // 1.2: the current moves as the living circuit's particles (componentes/leccion12/CircuitoVivo.svelte), still arrows
+  // with «reducir movimiento»
+  const vivo = page.locator('[data-vivo]').first();
+  await expect(vivo).toHaveAttribute('data-vivo', 'animado');
   await page.emulateMedia({ reducedMotion: 'reduce' });
-  expect(await flujo.evaluate((e) => getComputedStyle(e).animationName)).toBe('none');
+  await expect(vivo).toHaveAttribute('data-vivo', 'quieto');
   await ctx.close();
 });

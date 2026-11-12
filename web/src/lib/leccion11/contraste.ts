@@ -52,6 +52,18 @@ export const PARES: readonly (readonly [string, string, Uso])[] = [
   // progress segments that carry state (the «to do» ones are decorative: the bar has a text alternative)
   ['hecho', 'fondo', 'grafico'],
   ['actual', 'fondo', 'grafico'],
+  // 1.2, book 4.0/4.1 identity: the other series hues (labels and strokes), the block colour of the wires (the per-lesson
+  // value of every block is checked by lib/leccion12/identidad.ts) and the ends and middle of the voltage scale
+  ['rojo', 'fondo', 'texto'],
+  ['rojo', 'panel', 'texto'],
+  ['violeta', 'fondo', 'texto'],
+  ['violeta', 'panel', 'texto'],
+  ['bloque', 'panel', 'grafico'],
+  ['bloque', 'fondo', 'grafico'],
+  ['tension-neg', 'panel', 'grafico'],
+  ['tension-cero', 'panel', 'grafico'],
+  ['tension-pos', 'panel', 'grafico'],
+  ['tinta-suave', 'panel', 'grafico'],
 ];
 
 export const MINIMO: Record<Uso, number> = { texto: 4.5, grafico: 3 };
