@@ -12,6 +12,8 @@ import { cobertura, compararDibujo, curvaDe } from './dibujo';
 import { diagnosticar, errorRelativo } from './prediccion';
 import { compararResultados, rellenarPlantilla, unirClausulas } from './sql/ejecutar';
 import { analizarDiseno } from './tolerancias';
+import { comprobarDigital, esActividadDigital, nuevoEstadoDigital, puedeComprobarDigital, reintentarDigital } from './digital/motor-digital';
+import type { EstadoActividadDigital } from './digital/tipos';
 import type { Actividad12, Averia, EstadoActividad12, EstadoAveria, EstadoBanco, EstadoDibujar, EstadoSimular, EstadoSql } from './tipos';
 
 const T = (s: string): Texto => [{ t: 'txt', s }];
@@ -20,6 +22,8 @@ const pc = (x: number) => formatear({ sim: [], nombre: '', unidad: '%', cifras: 
 export function nuevoEstadoActividad(t: Tarjeta): EstadoActividad12 | undefined {
   const a = t.actividad;
   if (!a) return undefined;
+  // motor12c: the steps on a figure or a logic circuit (lib/leccion12/digital/motor-digital.ts)
+  if (esActividadDigital(a)) return nuevoEstadoDigital(t, a);
   switch (a.tipo) {
     case 'simular':
       return { tipo: 'simular', texto: '', valor: null } satisfies EstadoSimular;
@@ -58,6 +62,7 @@ export function consultaDe(a: Actividad12 & { tipo: 'sql' }, e: EstadoSql): stri
 export function puedeComprobar12(t: Tarjeta, e: EstadoActividad12 | undefined): boolean {
   const a = t.actividad;
   if (!a || !e) return false;
+  if (esActividadDigital(a)) return puedeComprobarDigital(a, e as EstadoActividadDigital);
   if (a.tipo === 'simular' && e.tipo === 'simular') return e.valor != null && Number.isFinite(e.valor);
   if (a.tipo === 'averia' && e.tipo === 'averia') return e.sospechoso != null && (!a.preguntarTipo || e.tipoElegido != null);
   if (a.tipo === 'dibujar' && e.tipo === 'dibujar') return cobertura(e.ys) >= 0.5;
@@ -82,6 +87,7 @@ export interface Veredicto12 {
 /** Checks the activity with the card's values `v` (the controls', with the fault of an «averia» NOT applied). */
 export function comprobar12(mc: ModeloCompilado, t: Tarjeta, e: EstadoActividad12 | undefined, v: Valores): Veredicto12 {
   const a = t.actividad!;
+  if (esActividadDigital(a)) return comprobarDigital(t, a, e as EstadoActividadDigital | undefined);
   const exito = t.exito ? [t.exito] : [];
   const pista = (estado: Valores) => (t.pistas ?? []).find((p) => !p.cuando || enRango(p.cuando, estado))?.texto;
   if (a.tipo === 'simular' && e?.tipo === 'simular') {
@@ -172,6 +178,7 @@ export function ladoAjuste(a: Actividad12 & { tipo: 'ajuste' }, r: Valores): 'ba
 /** «Volver a intentarlo»: what stays (the probes taken, the drawing, the query) and what goes. */
 export function reintentar12(e: EstadoActividad12 | undefined): EstadoActividad12 | undefined {
   if (e?.tipo === 'averia') return { ...e, sospechoso: null, tipoElegido: null };
+  if (e && esActividadDigital(e)) return reintentarDigital(e as EstadoActividadDigital);
   return e;
 }
 

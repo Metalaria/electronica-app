@@ -3,13 +3,14 @@
   // the points under the path), or with the keyboard: choose a point (◀ ▶, or the slider's own arrows with Shift) and
   // set its value with the slider. «Comprobar» compares it with the model's curve (lib/leccion12/dibujo.ts: a
   // normalised RMS error that forgives a small shift and offset) and then draws the right curve over the reader's.
+  // 1.2: the x axis may be logarithmic (`escala: log`): the points are evenly spaced in log x, like its ticks.
   import { compilarModelo, formatear, type Valores } from '../../lib/leccion11/modelo';
   import { baseX, bajaY, geometriaGrafica, tamMarca } from '../../lib/leccion11/ejes';
   import type { EstadoTarjeta } from '../../lib/leccion11/motor';
   import { textoPlano } from '../../lib/leccion11/texto';
   import { leerUnidades } from '../../lib/habla-matematicas';
   import type { Leccion11 } from '../../lib/leccion11/tipos';
-  import { curvaDe, rellenar, xsDibujo, yDeFraccion } from '../../lib/leccion12/dibujo';
+  import { curvaDe, rellenar, xEnFraccion, xsDibujo, yDeFraccion } from '../../lib/leccion12/dibujo';
   import type { Dibujar, EstadoDibujar } from '../../lib/leccion12/tipos';
   import TextoSvg from '../leccion11/TextoSvg.svelte';
   import TextoVivo from '../leccion11/TextoVivo.svelte';
@@ -46,7 +47,7 @@
     const n = 200;
     let d = '';
     for (let k = 0; k <= n; k++) {
-      const x = a.x.min + ((a.x.max - a.x.min) * k) / n;
+      const x = xEnFraccion(a.x, k / n);
       d += `${k ? 'L' : 'M'}${g.sx(x).toFixed(1)},${g.sy(f(x)).toFixed(1)}`;
     }
     return d;
@@ -125,7 +126,7 @@
     }
   }
   const idValor = $derived(`${prefijo}-dibujo-valor`);
-  const descripcion = $derived(`${textoPlano(a.rotulo)}. Eje x de ${formatear(magX, a.x.min)} a ${formatear(magX, a.x.max)}; eje y de ${formatear(magY, a.y.min)} a ${formatear(magY, a.y.max)}. ${ea.ys.filter((y) => y != null).length} de ${a.puntos} puntos dibujados.`);
+  const descripcion = $derived(`${textoPlano(a.rotulo)}. Eje x${a.x.escala === 'log' ? ' logarítmico' : ''} de ${formatear(magX, a.x.min)} a ${formatear(magX, a.x.max)}; eje y de ${formatear(magY, a.y.min)} a ${formatear(magY, a.y.max)}. ${ea.ys.filter((y) => y != null).length} de ${a.puntos} puntos dibujados.`);
 </script>
 
 <div class="a12 dibujar" data-dibujar>

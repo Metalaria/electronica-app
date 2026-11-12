@@ -3,6 +3,7 @@
 // (format: contenido/lecciones11/GUIA.md and ESQUEMA.md «Lecciones 1.1»). Types only.
 
 import type { Actividad12, TipoActividad } from '../leccion12/tipos';
+import type { WidgetFigura, WidgetLogica } from '../leccion12/digital/tipos';
 
 /** A run of a short text: plain, subscript, superscript, bold, or the live value of a quantity of the model. */
 export type Trozo =
@@ -156,7 +157,8 @@ export interface WidgetGrafica extends Grafica {
   ocultar: boolean;
 }
 
-export type Widget = WidgetCircuito | WidgetGrafica;
+/** 1.2: a book figure or photo with tappable zones, and a logic circuit (lib/leccion12/digital/tipos.ts). */
+export type Widget = WidgetCircuito | WidgetGrafica | WidgetFigura | WidgetLogica;
 
 /** v ∈ [min, max] (either may be missing). */
 export interface Rango {

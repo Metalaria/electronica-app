@@ -37,9 +37,13 @@ const comprobarSolo = args.includes('--comprobar');
 const { sqlNode } = await import(src('lib/leccion12/sql/node.ts'));
 const sql = await sqlNode();
 
+// 1.2 (motor12c): book figures by label, photo sizes and the consoles' photos for the «figura» widget
+const { recursosLibro } = await import('./recursos11.mjs');
+
 const partes = new Map();
 const contexto = {
   sql,
+  recursos: recursosLibro(libro, path.join(web, 'public')),
   bloques(p) {
     if (!partes.has(p)) {
       const f = path.join(libro, 'partes', `${p}.json`);

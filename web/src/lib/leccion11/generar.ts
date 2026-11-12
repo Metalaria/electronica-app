@@ -27,6 +27,9 @@ import { esComprobable12 } from '../leccion12/motor12';
 import { TIPOS_ACTIVIDAD } from '../leccion12/tipos';
 import type { Ejecucion } from '../leccion12/sql/ejecutar';
 import { avisosUnaIdea } from '../leccion12/una-idea';
+// 1.2 (motor12c): the «figura» and «logica» widgets and their steps (GUIA §11)
+import { widgetFiguraDe, widgetLogicaDe, type ContextoDigital, type RecursosLibro } from '../leccion12/digital/generar-digital';
+import { interactivos } from '../leccion12/digital/motor-digital';
 import type {
   Asa, Barra, CalculoModelo, CitaLibro, Color, Condicion, Curva, Ecuacion, Emparejar, Estimar, Grafica, Idea, Leccion11, Lectura, Mando,
   Marca, Modelo, Opcion, Ordenar, Pista, Rango, Tarjeta, Texto, TipoTarjeta, ValorModelo, Widget, WidgetCircuito, WidgetGrafica,
@@ -60,6 +63,8 @@ export interface ContextoLibro {
   bloques(parte: string): unknown[] | null;
   /** 1.2: runs SQL on the sample database of section 17.10 (the script passes sql.js); without it SQL cards fail. */
   sql?: (consulta: string) => Ejecucion;
+  /** 1.2: figures by label, image sizes and the consoles' data, for the «figura» widget (scripts/recursos11.mjs). */
+  recursos?: RecursosLibro;
 }
 
 export interface ResultadoGeneracion {
@@ -424,14 +429,22 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
 
     // widget
     let mandos: Mando[] = [];
+    // (motor12c: the author texts of a figure's zones go through the numbers rule too)
+    const textosWidget: [string, Texto][] = [];
+    const digital: ContextoDigital = { parte, bloques: (p) => libro.bloques(p), ...(libro.recursos ? { recursos: libro.recursos } : {}), e, aviso: (m) => aviso(donde, m), texto, textos: textosWidget };
     if (ft.widget != null) {
-      const w = widgetDe(ft.widget, t, e);
+      const w = widgetDe(ft.widget, t, e, digital);
       if (w) {
         t.widget = w;
         mandos = w.mandos;
+        // (peticiones motor12, autor-taller-A: a hidden widget without a reading hides nothing; the walker waits for «¿?»)
+        if ((w.tipo === 'circuito' || w.tipo === 'grafica') && w.ocultar && !w.lectura) aviso(donde, '«widget.ocultar: true» sin «lectura»: no hay ninguna lectura que salga «¿?» hasta responder');
       }
     }
     const valoresMando = new Set(mandos.map((x) => x.valor));
+    // (a figure's zones, a logic circuit's switches or its timing diagram's cursor are what an explore card moves)
+    const widget12 = t.widget?.tipo === 'figura' || t.widget?.tipo === 'logica' ? t.widget : null;
+    const movibles = new Set([...valoresMando, ...(widget12 ? interactivos(widget12) : [])]);
     for (const k of Object.keys(t.inicio)) {
       const md = mandos.find((x) => x.valor === k);
       if (!md) e(`«inicio.${k}»: solo se ponen al empezar valores que la tarjeta deja mover`);
@@ -448,12 +461,12 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
     // (1.2: an «ajuste» opens «Continuar» inside its band, an optional «banco» always: lib/leccion12/motor12.ts)
     for (const k of TIPOS_ACTIVIDAD) if (ft[k] != null && k !== tipo) e(`«${k}» solo va en una tarjeta «tipo: ${k}»`);
     if (tipo === 'explorar' || tipo === 'sorpresa' || ft.requiere != null) {
-      if (!mandos.length) e('una tarjeta para explorar necesita un widget con mandos');
+      if (!mandos.length && !widget12) e('una tarjeta para explorar necesita un widget con mandos');
       const rq = esObjeto(ft.requiere) ? ft.requiere : {};
       if (ft.requiere != null && !esObjeto(ft.requiere)) e('«requiere» debe ser { mover: [...], conectar: [...] }');
       const mover = Array.isArray(rq.mover) ? rq.mover.map(String) : [];
       const conectar = Array.isArray(rq.conectar) ? rq.conectar.map(String) : [];
-      for (const k of mover) if (!valoresMando.has(k)) e(`«requiere.mover»: «${k}» no tiene mando en esta tarjeta`);
+      for (const k of mover) if (!movibles.has(k)) e(`«requiere.mover»: «${k}» no tiene mando en esta tarjeta`);
       for (const k of conectar) if (!mandos.some((x) => x.valor === k && x.tipo !== 'deslizador')) e(`«requiere.conectar»: «${k}» no es un interruptor de esta tarjeta`);
       // a «conectar» button is always something to do before going on
       for (const x of mandos) if (x.tipo === 'conectar' && !conectar.includes(x.valor)) conectar.push(x.valor);
@@ -513,6 +526,11 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
             if (obj < est.min || obj > est.max) e(`el objetivo (${obj}) cae fuera del deslizador`);
             if (!pos.some((p) => puntuarEstimacion(p, obj, est.tol).bien)) e('ninguna posición del deslizador cae dentro de la tolerancia');
             if (puntuarEstimacion(est.inicio, obj, est.tol).bien) e('la estimación empieza ya acertada');
+            // (peticiones motor12, autor-analisis-B: from the end farthest from the target the slider cannot move away
+            // from it, so a first wrong try has to cross towards the answer; the lesson walker cannot fail it first)
+            const medio = (est.min + est.max) / 2;
+            if ((Math.abs(est.inicio - est.min) < est.paso * 1e-6 && obj > medio) || (Math.abs(est.inicio - est.max) < est.paso * 1e-6 && obj < medio))
+              aviso(donde, '«estimar.inicio» está en el extremo más alejado del objetivo: póngalo en una posición desde la que se pueda fallar por los dos lados');
             cifrasModelo.push(obj);
           }
         }
@@ -578,7 +596,7 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
       }
     }
     if (tipo === 'reto' && !t.condiciones) e('un reto lleva «condiciones»');
-    const exito = texto(ft.exito, 'exito', tipo === 'reto' || !!t.estimar || !!t.ordenar || !!t.emparejar || tipo === 'diseno' || tipo === 'simular' || tipo === 'dibujar' || tipo === 'sql');
+    const exito = texto(ft.exito, 'exito', tipo === 'reto' || !!t.estimar || !!t.ordenar || !!t.emparejar || tipo === 'diseno' || tipo === 'simular' || tipo === 'dibujar' || tipo === 'sql' || tipo === 'tocar' || tipo === 'tabla');
     if (exito) {
       t.exito = exito;
       if (contarPalabras(exito) > MAX_PALABRAS_EXPLICACION) e(`«exito»: más de ${MAX_PALABRAS_EXPLICACION} palabras`);
@@ -597,7 +615,7 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
         });
       }
     }
-    if ((tipo === 'reto' || tipo === 'diseno' || t.estimar || t.ordenar || t.emparejar) && !t.pistas?.length) e('falta «pistas»: qué decir cuando no está bien');
+    if ((tipo === 'reto' || (tipo === 'diseno' && t.widget?.tipo !== 'logica') || t.estimar || t.ordenar || t.emparejar) && !t.pistas?.length) e('falta «pistas»: qué decir cuando no está bien');
     const ayuda = texto(ft.ayuda, 'ayuda');
     if (ayuda) {
       t.ayuda = ayuda;
@@ -640,6 +658,7 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
           e,
           aviso: (m) => aviso(donde, m),
           ...(libro.sql ? { sql: libro.sql } : {}),
+          digital,
         });
         if (r12.actividad) t.actividad = r12.actividad;
         textos12.push(...r12.textos);
@@ -723,6 +742,7 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
       ...(t.escalera ?? []).map((x, k): [string, Texto] => [`escalera ${k + 1}`, x]),
       ['solucion', t.solucion],
       ...textos12,
+      ...textosWidget,
     ];
     for (const [campo, tx] of textos)
       for (const n of numerosDeTexto(tx)) {
@@ -843,7 +863,9 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
           e(`${d}.nombres: un texto por cada valor de «lista», en el mismo orden`);
         else if (md.valores.length !== o.lista.length) e(`${d}.nombres: «lista» tiene valores repetidos`);
         else if (new Set(nombres.map((x) => (x as string).trim())).size !== nombres.length) e(`${d}.nombres: hay nombres repetidos`);
-        else if (nombres.some((x) => /\d/.test(x as string))) e(`${d}.nombres: sin cifras (el valor ya se ve entre paréntesis: «rojo (2)»)`);
+        // (peticiones motor12, autor-taller-B: names may carry digits — «Sn63Pb37», «SAC305», «0805», «12-0-12» —
+        // but a name that is just its own value says nothing the value in brackets does not)
+        else if (nombres.some((x, k) => Number(String(x).trim().replace(',', '.').replace('−', '-')) === (o.lista as number[])[k])) e(`${d}.nombres: un nombre que no sea su propio valor (el valor ya se ve entre paréntesis: «rojo (2)»)`);
         else if (nombres.some((x) => (x as string).trim().length > 24)) e(`${d}.nombres: como mucho 24 caracteres cada uno`);
         else {
           const de = new Map((o.lista as number[]).map((v, k) => [v, (nombres[k] as string).trim()]));
@@ -879,15 +901,18 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
     return { valor: o.valor, rotulo: typeof o.rotulo === 'string' ? analizarTexto(o.rotulo) : [{ t: 'txt', s: mag.nombre }] };
   }
 
-  function widgetDe(x: unknown, t: Tarjeta, e: (m: string) => void): Widget | null {
+  function widgetDe(x: unknown, t: Tarjeta, e: (m: string) => void, digital: ContextoDigital): Widget | null {
     const antesWidget = errores.length;
     if (!esObjeto(x)) {
-      e('«widget» debe ser { tipo: circuito | grafica, … }');
+      e('«widget» debe ser { tipo: circuito | grafica | figura | logica, … }');
       return null;
     }
+    // 1.2 (motor12c): a book figure or photo with zones, a logic circuit (lib/leccion12/digital/generar-digital.ts)
+    if (x.tipo === 'figura') return widgetFiguraDe(x, digital);
     const mandos = (Array.isArray(x.mandos) ? x.mandos : []).map((m, k) => mandoDe(m, `mando ${k + 1}`, e, t)).filter((m): m is Mando => !!m);
     if (new Set(mandos.map((m) => m.valor)).size !== mandos.length) e('dos mandos para el mismo valor');
     const ocultar = x.ocultar === true;
+    if (x.tipo === 'logica') return widgetLogicaDe(x, digital, ocultar, mandos);
     if (x.tipo === 'circuito') {
       const def = typeof x.esquema === 'string' ? esquemaDe(x.esquema) : undefined;
       if (!def) {
@@ -963,7 +988,7 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
       for (const k of Object.keys(x)) if (!['tipo', 'x', 'y', 'curvas', 'asas', 'marcas', 'mandos', 'lectura', 'datos', 'ocultar'].includes(k)) e(`«widget.${k}»: clave desconocida`);
       return w;
     }
-    e('«widget.tipo» debe ser circuito o grafica');
+    e('«widget.tipo» debe ser circuito, grafica, figura o logica');
     return null;
   }
 

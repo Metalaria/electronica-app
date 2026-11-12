@@ -24,6 +24,7 @@ import { cuerposDeDosBornes, fueraDeZonas, posicionesVisibles, tramosOcultos, zo
 import type { Camino } from '../src/componentes/figuras-vivas/esquema/modelo.svelte.ts';
 import type { Punto } from '../src/componentes/figuras-vivas/tipos.ts';
 import { sqlNode } from '../src/lib/leccion12/sql/node.ts';
+import { nombresEsquemas } from '../src/lib/leccion11/esquemas/registro.ts';
 // @ts-expect-error (a plain .mjs module of the scripts: no types)
 import { cargarEsquemas11 } from '../scripts/esquemas11.mjs';
 
@@ -285,21 +286,42 @@ async function solapes(page: Page): Promise<{ encendidos: number; dentro: string
       const c = cajaDe(el);
       if (Math.max(c[2] - c[0], c[3] - c[1]) <= 50) cajas.push({ que: `${el.tagName}.${el.getAttribute('class') ?? ''}`, c });
     });
-    // every part's body: the box of its outline off the wires that carry the current (its leads lie on them)
+    // every part's ink off the wires that carry the current (its leads lie on them): each stroke, sampled every unit,
+    // with half its stroke width (+ 0,5 of antialiasing); a lit pixel that close to one is on the symbol. The areas
+    // between the strokes are the declared bodies below and the small closed shapes above.
+    // (motor12b: this used to be the bounding box of that ink. A lead that leaves a current-carrying wire at a T joint
+    // — espejo's load, R_L hanging from the top wire at x = 272 — made the box as wide as the zigzag (263…281) and as
+    // high as the wire (y = 23 against y = 20), so a particle passing the joint 7 units from the lead, clear of every
+    // stroke, lit 6–7 px «inside» it: measured over 200 frames, 107 of 8 436 particle positions, none within reach of
+    // the ink. Whether one of the three sampled moments caught one was luck: the flake.)
+    const tinta: { x: number; y: number; r: number; que: string }[] = [];
     svg.querySelectorAll<SVGGraphicsElement>('[data-pieza], .pieza').forEach((g) => {
       const geos = (g instanceof SVGGeometryElement ? [g] : [...g.querySelectorAll<SVGGeometryElement>('path, circle, line, polyline, polygon, rect, ellipse')]).filter((x) => !x.matches('.brillo'));
-      let c: [number, number, number, number] | null = null;
+      const que = `pieza ${g.getAttribute('data-pieza') ?? g.getAttribute('class')}`;
       for (const el of geos) {
         const M = aSvg(el);
         const L = el.getTotalLength();
+        const r = (Number.parseFloat(getComputedStyle(el).strokeWidth) || 0) / 2 + 0.5;
         for (let s = 0; s <= L; s += 1) {
           const q = M.transformPoint(el.getPointAtLength(s));
           if (enHilo(q.x, q.y)) continue;
-          c = c ? [Math.min(c[0], q.x), Math.min(c[1], q.y), Math.max(c[2], q.x), Math.max(c[3], q.y)] : [q.x, q.y, q.x, q.y];
+          tinta.push({ x: q.x, y: q.y, r, que });
         }
       }
-      if (c) cajas.push({ que: `pieza ${g.getAttribute('data-pieza') ?? g.getAttribute('class')}`, c });
     });
+    // (a grid of 4 units, so every lit pixel looks only at the ink near it)
+    const rejilla = new Map<string, typeof tinta>();
+    for (const t of tinta) {
+      const k = `${Math.floor(t.x / 4)},${Math.floor(t.y / 4)}`;
+      rejilla.set(k, [...(rejilla.get(k) ?? []), t]);
+    }
+    const sobreTinta = (x: number, y: number): string | null => {
+      const i = Math.floor(x / 4);
+      const j = Math.floor(y / 4);
+      for (let a = i - 1; a <= i + 1; a++)
+        for (let b = j - 1; b <= j + 1; b++) for (const t of rejilla.get(`${a},${b}`) ?? []) if (Math.hypot(t.x - x, t.y - y) <= t.r) return t.que;
+      return null;
+    };
     // the bodies the kit declares (data-cuerpo «x0 y0 x1 y1»: a coil's turns lie on one side of its wire)
     svg.querySelectorAll<SVGGraphicsElement>('[data-cuerpo]').forEach((el) => {
       const n = (el.getAttribute('data-cuerpo') ?? '').split(' ').map(Number);
@@ -322,6 +344,8 @@ async function solapes(page: Page): Promise<{ encendidos: number; dentro: string
         encendidos++;
         const p = scr.transformPoint(new DOMPoint(r.left + (x + 0.5) * sx, r.top + (y + 0.5) * sy));
         for (const { que, c } of cajas) if (p.x > c[0] && p.x < c[2] && p.y > c[1] && p.y < c[3]) dentro.set(que, (dentro.get(que) ?? 0) + 1);
+        const t = sobreTinta(p.x, p.y);
+        if (t) dentro.set(t, (dentro.get(t) ?? 0) + 1);
       }
     return { encendidos, dentro: [...dentro].map(([q, n]) => `${q}: ${n} px`) };
   });
@@ -332,7 +356,15 @@ const real14 = JSON.parse(fs.readFileSync(path.join(web, 'public', 'libro', 'lec
 const tarjetas = [
   ...['divisor', 'paralelo'].map((e) => ({ id: 'cap01/sec-1.4', lec: null as Leccion11 | null, k: real14.tarjetas.findIndex((t) => t.widget?.tipo === 'circuito' && t.widget.esquema === e), esquema: e })),
   ...cat11.tarjetas.flatMap((t, k) => (t.widget?.tipo === 'circuito' && t.widget.dibujo !== false ? [{ id: CAT11, lec: cat11 as Leccion11 | null, k, esquema: t.widget.esquema }] : [])),
-];
+  // (esquemas12: EPA_ESQUEMAS, a regular expression of schematic names, walks only those — a new schematic's drawing)
+].filter((t) => !process.env.EPA_ESQUEMAS || new RegExp(process.env.EPA_ESQUEMAS).test(t.esquema));
+
+// esquemas12: every registered schematic is drawn by a card here (a new folder without its catalogue card would go
+// unchecked)
+test('circuito vivo: cada esquema registrado tiene una tarjeta con dibujo en la prueba', () => {
+  const dibujados = new Set([...['divisor', 'paralelo'], ...cat11.tarjetas.flatMap((t) => (t.widget?.tipo === 'circuito' && t.widget.dibujo !== false ? [t.widget.esquema] : []))]);
+  expect(nombresEsquemas().filter((n) => !dibujados.has(n))).toEqual([]);
+});
 
 for (const quieto of [false, true]) {
   test(`circuito vivo: ninguna partícula sobre un símbolo, una etiqueta o un punto (${quieto ? 'movimiento reducido' : 'animado'}, móvil)`, async ({ browser }) => {

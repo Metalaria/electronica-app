@@ -104,6 +104,27 @@ test.describe('1.2: piezas puras', () => {
     expect(rellenar([null, null])).toBeNull();
   });
 
+  test('dibujo con el eje x logarítmico (motor12b, el Bode de 24.3): puntos por décadas, desfase en décadas', () => {
+    // a first-order low-pass with f_c = 1 kHz, from 10 Hz to 100 kHz (four decades)
+    const d: Dibujar = { tipo: 'dibujar', x: { id: 'f', min: 10, max: 100000, unidad: 'Hz', rotulo: [], escala: 'log' }, y: { min: -45, max: 5, unidad: 'dB', rotulo: [] }, curva: '', puntos: 17, tol: 0.08, holgura: 0.03, rotulo: [] };
+    const f = (x: number) => -10 * Math.log10(1 + (x / 1000) ** 2);
+    const xs = xsDibujo(d);
+    // evenly spaced in log x: 10, 17,8, 31,6 … 100 000 (four points per decade), the cut-off in the middle
+    expect(xs[0]).toBeCloseTo(10, 9);
+    expect(xs[16]).toBeCloseTo(100000, 6);
+    expect(xs[8]).toBeCloseTo(1000, 6);
+    expect(xs[1]! / xs[0]!).toBeCloseTo(10 ** 0.25, 9);
+    expect(compararDibujo(d, xs.map(f), f).error).toBeLessThan(1e-9);
+    // drawn a tenth of a decade late (a shift of 2,5 % of the axis): forgiven, and told as a positive shift
+    const tarde = compararDibujo(d, xs.map((x) => f(x / 10 ** 0.1)), f);
+    expect(tarde.bien).toBe(true);
+    expect(tarde.desfase).toBeCloseTo(0.1 / 4, 2);
+    // a decade late is not the same curve
+    expect(compararDibujo(d, xs.map((x) => f(x / 10)), f).bien).toBe(false);
+    // the same drawing on a linear axis would put almost every point beyond the cut-off
+    expect(xsDibujo({ ...d, x: { ...d.x, escala: undefined } }).filter((x) => x > 1000)).toHaveLength(16);
+  });
+
   test('SQL: la base de ejemplo, la consulta del libro (31 filas) y los errores en español', () => {
     expect(filasMuestra()).toHaveLength(38 * 144 * 4);
     const r = sql(`SELECT date(t, 'unixepoch') AS dia, time(t, 'unixepoch') AS hora, max(valor) AS maxima FROM medidas WHERE sensor = 1 AND t >= strftime('%s', '2026-03-01') AND t < strftime('%s', '2026-04-01') GROUP BY dia ORDER BY dia;`);
@@ -167,6 +188,11 @@ test.describe('1.2: el generador', () => {
     expect(errores((f) => (tarjetaDe(f, 'ajuste-33').ajuste.objetivo = 6))).toContainEqual(expect.stringMatching(/ninguna posición de los mandos lleva la medida a su banda/));
     expect(errores((f) => delete tarjetaDe(f, 'banco-divisor').banco.consejos)).toContainEqual(expect.stringMatching(/banco\.consejos/));
     expect(errores((f) => (tarjetaDe(f, 'dibuje-salida').dibujar.y.max = 6))).toContainEqual(expect.stringMatching(/se sale del eje y/));
+    // (motor12b) a logarithmic x axis: accepted from above 0; neither 0 nor another scale; the y axis stays linear
+    expect(errores((f) => Object.assign(tarjetaDe(f, 'dibuje-salida').dibujar.x, { min: 100, escala: 'log' }))).toEqual([]);
+    expect(errores((f) => (tarjetaDe(f, 'dibuje-salida').dibujar.x.escala = 'log'))).toContainEqual(expect.stringMatching(/dibujar\.x.*logarítmico empieza por encima de 0/));
+    expect(errores((f) => Object.assign(tarjetaDe(f, 'dibuje-salida').dibujar.x, { min: 100, escala: 'cuadratica' }))).toContainEqual(expect.stringMatching(/dibujar\.x\.escala.*lineal o log/));
+    expect(errores((f) => (tarjetaDe(f, 'dibuje-salida').dibujar.y.escala = 'log'))).toContainEqual(expect.stringMatching(/dibujar\.y\.escala.*clave desconocida/));
     expect(errores((f) => (tarjetaDe(f, 'sql-cuenta').sql.solucion = "SELECT count(*) FROM medidas WHERE t > strftime('%s', 'now')"))).toContainEqual(expect.stringMatching(/fecha de hoy o el azar/));
     expect(errores((f) => (tarjetaDe(f, 'sql-cuenta').sql.solucion = 'SELECT * FROM nada'))).toContainEqual(expect.stringMatching(/no se ejecuta: No existe la tabla «nada»/));
     expect(errores((f) => (tarjetaDe(f, 'sql-cuenta').sql.solucion = 'SELECT * FROM medidas'))).toContainEqual(expect.stringMatching(/máximo 200/));

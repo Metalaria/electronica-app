@@ -14,6 +14,10 @@
   import Banco from './Banco.svelte';
   import Dibujar from './Dibujar.svelte';
   import Sql from './Sql.svelte';
+  // motor12c: the steps on a figure or a logic circuit (GUIA §11)
+  import PasosDigitales from './PasosDigitales.svelte';
+  import { esActividadDigital } from '../../lib/leccion12/digital/motor-digital';
+  import type { EstadoActividadDigital } from '../../lib/leccion12/digital/tipos';
 
   let {
     leccion,
@@ -38,7 +42,9 @@
   } = $props();
 </script>
 
-{#if t.actividad?.tipo === 'simular' && e.actividad?.tipo === 'simular'}
+{#if t.actividad && esActividadDigital(t.actividad) && e.actividad}
+  <PasosDigitales {t} a={t.actividad} {e} ea={e.actividad as EstadoActividadDigital} {prefijo} {cambiar} />
+{:else if t.actividad?.tipo === 'simular' && e.actividad?.tipo === 'simular'}
   <Simular {leccion} {t} a={t.actividad} {e} ea={e.actividad} {efectivos} {prefijo} {valor} {cambiar} />
 {:else if t.actividad?.tipo === 'diseno'}
   <Diseno {leccion} {t} a={t.actividad} {e} {efectivos} />

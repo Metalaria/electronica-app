@@ -117,6 +117,12 @@ export interface DefinicionEsquema {
    */
   tran?: {
     periodos?(c: ContextoNetlist): number;
+    /**
+     * 1.2 (esquemas12): a switching circuit (a comparator, a 555, a sample-and-hold) has edges the model draws as
+     * jumps; the simulator's edge lands within a time step or two of it, and so close to an edge the curve is compared
+     * with the model anywhere within ± this fraction of the axis' width (lib/leccion11/spice.ts). Elsewhere, 1 %.
+     */
+    bordes?(c: ContextoNetlist): number;
   };
   /** The circuit for screen readers («Divisor de tensión: fuente de 12 V, R₁ de 10 kΩ arriba…»), without the reading. */
   describir(c: ContextoDibujo): string;

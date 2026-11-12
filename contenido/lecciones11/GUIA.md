@@ -277,7 +277,7 @@ widget:
 Cuando cada posición de una lista tiene un nombre (los colores del código de colores, un material, una forma de
 onda), póngalos en `nombres`, uno por valor y **en el mismo orden que `lista`**. El mando enseña y lee «rojo (2)»
 (con la unidad del valor si la tiene: «carbón (4,7 kΩ)»); con el teclado se mueve como cualquier deslizador (flechas, Inicio, Fin). Los
-nombres no llevan cifras (el valor ya va entre paréntesis), no se repiten y tienen como mucho 24 caracteres; solo
+nombres pueden llevar cifras («Sn63Pb37», «0805»; 1.2) pero no ser su propio valor (ya va entre paréntesis), no se repiten y tienen como mucho 24 caracteres; solo
 valen con `lista`. Ejemplo probado (tarjeta `codigo-colores` de la lección de catálogo):
 
 ```yaml
@@ -943,6 +943,26 @@ tarjetas:
         - { valor: R_r, lista: [10, 30, 100] }
 ```
 
+**La impedancia (1.2):** `z_amp`, `z_fase` y `z_db` miden Z = R + j(ωL − 1/(ωC)) (en ohmios: la tensión que da 1 A en
+una copia de las tres piezas, que no toca el circuito). Un condensador de desacoplo con su ESR y su ESL (sección 41.8,
+pedido para `cap42`): `r` la ESR, `l` la ESL, y un eje `y` logarítmico (tarjeta `rlc-impedancia` de la lección de
+catálogo):
+
+```yaml
+      esquema: rlc-serie
+      piezas: { fuente: Vp_z, f: f_z, r: R_z, l: L_z, c: C_z }
+      grafica:
+        x: { id: nu, min: 1000, max: 1000000000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0.01, max: 10000, unidad: Ω, rotulo: "|Z|", escala: log }
+        curvas:
+          - { expr: "sqrt(R_z^2 + (2*pi*nu*L_z - 1/(2*pi*nu*C_z))^2)", color: naranja, rotulo: "|Z|", mide: z_amp }
+      mandos:
+        - { valor: L_z, lista: [0.5e-9, 1e-9, 2e-9] }
+```
+
+Con un eje `y` logarítmico, la tolerancia de una curva en alterna es el 0,1 % del valor más el 0,01 % del fondo del eje
+(no de su altura).
+
 #### `rlc-paralelo` — Tanque LC en paralelo
 
 Fuente senoidal con resistencia en serie sobre L ‖ C (‖ R); tensión del tanque y corrientes.
@@ -1393,6 +1413,696 @@ tarjetas:
         - { valor: dV_e, lista: [0, 0.001, 0.005] }
 ```
 
+#### `fuente-controlada` — Fuente controlada por tensión (VCCS o VCVS) con carga (1.2)
+
+Una tensión de control v (el puerto de entrada, a la izquierda) manda una fuente dependiente, dibujada como un rombo:
+con `gm`, una fuente de corriente g_m·v con r_o en paralelo (la forma Norton: el transistor en pequeña señal, sección
+22.11); con `av`, una fuente de tensión A_v·v con r_o en serie (la forma Thévenin: el amplificador de tensión). Una
+carga en los bornes, que conecta un interruptor. El signo es el dibujado: la corriente (o el borne +) hacia la salida,
+así que v_o = +g_m·v·(r_o ∥ R_L); para una etapa inversora escriba el signo menos en el modelo y una v negativa.
+
+Piezas: `control` tensión de control, v (V); `gm`? transconductancia, g_m (S): VCCS; `av`? ganancia, A_v (V/V): VCVS
+(una de las dos, nunca las dos); `ro` resistencia de salida (Ω; obligatoria con `gm`, opcional con `av`); `carga` (Ω);
+`interruptor`? conecta la carga.
+
+Mide (`mide`, continua): `salida` tensión de salida (en los bornes); `carga` corriente por la carga; `controlada`
+corriente que entrega la fuente controlada; `ro` corriente por r_o (con `gm`, la que baja por ella; con `av`, la de la
+carga). Pedido para `cap23/sec-23.11`.
+
+```yaml
+modelo:
+  valores:
+    v_c: { sim: "v", nombre: "tensión de control", unidad: V, valor: 0.01 }
+    g_m: { sim: "g_{m}", nombre: "transconductancia", unidad: S, valor: 0.04 }
+    r_o: { sim: "r_{o}", nombre: "resistencia de salida", unidad: Ω, valor: 100000 }
+    R_C: { sim: "R_{C}", nombre: "carga", unidad: Ω, valor: 4700 }
+    c_on: { tipo: interruptor, nombre: "carga conectada", valor: 1 }
+  calculos:
+    I_g: { expr: "g_m*v_c", sim: "g_{m} · v", nombre: "corriente controlada", unidad: A }
+    V_o: { si: c_on, entonces: "I_g*par(r_o, R_C)", sino: "I_g*r_o", sim: "v_{o}", nombre: "tensión de salida", unidad: V }
+    I_L: { si: c_on, entonces: "V_o/R_C", sino: "0", sim: "I_{L}", nombre: "corriente por la carga", unidad: A }
+    I_ro: { expr: "V_o/r_o", sim: "I_{ro}", nombre: "corriente por r_o", unidad: A }
+tarjetas:
+  - # … id, tipo, titulo, texto, libro
+    widget:
+      tipo: circuito
+      esquema: fuente-controlada
+      piezas: { control: v_c, gm: g_m, ro: r_o, carga: R_C, interruptor: c_on }
+      lectura: { valor: V_o, rotulo: "Tensión de salida" }
+      corriente: I_L
+      mide: { salida: V_o, carga: I_L, controlada: I_g, ro: I_ro }
+      mandos:
+        - { valor: v_c, min: 0, max: 0.02, paso: 0.002, rotulo: "Tensión de control, v" }
+```
+
+Con `av` (VCVS): `piezas: { control: v_c, av: A_v, ro: r_s, carga: R_C, interruptor: c_on }`, con
+`I_L = A_v·v_c/(r_s + R_C)` (0 en vacío) y `V_o = A_v·v_c − I_L·r_s`; `mide: { salida: V_o, carga: I_L, controlada: I_L }`.
+
+#### `fuente-corriente-y-tension` — La figura 22.9: fuente de tensión, resistencia y fuente de corriente (1.2)
+
+El circuito de partida de la figura 22.9 (sección 22.8, transformación de fuentes): una fuente de tensión con su
+resistencia en serie, una resistencia y una fuente de corriente, las tres entre los mismos dos terminales; carga
+opcional con su interruptor. El dibujo es siempre el circuito de partida: la cadena de transformaciones (3 A ∥ 4 Ω,
+5 A ∥ 1,71 Ω, 8,57 V con 1,71 Ω) la cuentan el modelo y las tarjetas, o los esquemas `norton` y `thevenin` paso a paso.
+
+Piezas: `fuente` tensión de la fuente (V); `rs` resistencia en serie con ella (Ω); `rp` resistencia entre los
+terminales (Ω); `corriente` corriente de la fuente de corriente, hacia el terminal de arriba (A); `carga`? (Ω);
+`interruptor`? conecta la carga (solo con `carga`).
+
+Mide (`mide`, continua): `salida` tensión entre los terminales; `rama` corriente que la rama de la fuente de tensión
+lleva al terminal; `paralelo` corriente por `rp`; `fuentei` corriente de la fuente de corriente; `carga` corriente por
+la carga (con `carga`). Pedido para `cap23/sec-23.8`.
+
+```yaml
+modelo:
+  valores:
+    V_f: { sim: "V", nombre: "tensión de la fuente", unidad: V, valor: 12 }
+    R_f1: { sim: "R₁", nombre: "resistencia en serie", unidad: Ω, valor: 4 }
+    R_f2: { sim: "R₂", nombre: "resistencia entre los terminales", unidad: Ω, valor: 3 }
+    I_f: { sim: "I", nombre: "corriente de la fuente de corriente", unidad: A, valor: 2 }
+  calculos:
+    V_fa: { expr: "(V_f/R_f1 + I_f)/(1/R_f1 + 1/R_f2)", sim: "V", nombre: "tensión entre los terminales", unidad: V }
+    I_f1: { expr: "(V_f - V_fa)/R_f1", sim: "I₁", nombre: "corriente de la rama de 12 V", unidad: A }
+    I_f2: { expr: "V_fa/R_f2", sim: "I₂", nombre: "corriente por R₂", unidad: A }
+tarjetas:
+  - # … id, tipo, titulo, texto, libro
+    widget:
+      tipo: circuito
+      esquema: fuente-corriente-y-tension
+      piezas: { fuente: V_f, rs: R_f1, rp: R_f2, corriente: I_f }
+      lectura: { valor: V_fa, rotulo: "Tensión entre los terminales" }
+      corriente: I_f1
+      mide: { salida: V_fa, rama: I_f1, paralelo: I_f2, fuentei: I_f }
+      mandos:
+        - { valor: I_f, lista: [0, 2, 4] }
+```
+
+#### `sallen-key` — Filtro activo Sallen-Key paso bajo de ganancia unidad (1.2)
+
+Fuente senoidal; R₁ y R₂ en serie hasta la entrada +; C₁ de su unión a la salida (la realimentación positiva que crea
+el Q, sección 24.5) y C₂ de la entrada + a masa; el operacional como seguidor. Ideal,
+H = 1/(1 + s·C₂·(R₁ + R₂) + s²·R₁·R₂·C₁·C₂); con R₁ = R₂ = R, f₀ = 1/(2π·R·√(C₁·C₂)) y Q = ½·√(C₁/C₂). En alterna (frente a
+la frecuencia o, a la frecuencia `f` de la fuente, una lectura) o en el tiempo (desde el régimen permanente en t = 0).
+
+Piezas: `fuente` amplitud de pico (V); `f` frecuencia de la fuente (Hz); `fase`? fase inicial (°); `r1` desde la
+fuente (Ω); `r2` hacia la entrada + (Ω); `c1` de la unión a la salida (F); `c2` de la entrada + a masa (F); `gbw`?
+producto ganancia-ancho de banda del operacional (Hz; sin él, ideal); `rsal`? su resistencia de salida en lazo abierto
+(Ω; sin ella, 0).
+
+Mide: `entrada`, `salida` (transitorio); `salida_amp`, `salida_fase` (grados, la de la fuente incluida), `salida_db`
+(alterna). Pedido para `cap25/sec-25.5`.
+
+```yaml
+modelo:
+  valores:
+    V_p: { sim: "V_{p}", nombre: "amplitud de la fuente", unidad: V, valor: 1 }
+    f_s: { sim: "f", nombre: "frecuencia de la fuente", unidad: Hz, valor: 1000 }
+    R_1: { sim: "R₁", nombre: "resistencia desde la fuente", unidad: Ω, valor: 11000 }
+    R_2: { sim: "R₂", nombre: "resistencia hacia la entrada +", unidad: Ω, valor: 11000 }
+    C_1: { sim: "C₁", nombre: "condensador a la salida", unidad: F, valor: 22e-9 }
+    C_2: { sim: "C₂", nombre: "condensador a masa", unidad: F, valor: 10e-9 }
+  calculos:
+    f_0: { expr: "1/(2*pi*sqrt(R_1*R_2*C_1*C_2))", sim: "f_{0}", nombre: "frecuencia propia", unidad: Hz }
+tarjetas:
+  - # … id, tipo, titulo, texto, libro
+    widget:
+      tipo: circuito
+      esquema: sallen-key
+      piezas: { fuente: V_p, f: f_s, r1: R_1, r2: R_2, c1: C_1, c2: C_2 }
+      lectura: { valor: f_0, rotulo: "Frecuencia propia" }
+      grafica:
+        x: { id: nu, min: 10, max: 100000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 1.5, unidad: V, rotulo: "amplitud" }
+        curvas:
+          - { expr: "V_p/sqrt((1 - (2*pi*nu)^2*R_1*R_2*C_1*C_2)^2 + (2*pi*nu*C_2*(R_1 + R_2))^2)", color: naranja, rotulo: "v_{o}", mide: salida_amp }
+      mandos:
+        - { valor: C_1, lista: [10e-9, 22e-9, 47e-9] }
+```
+
+**El operacional real** (lo que deja pasar muy por encima del corte, bloque 147 de `cap25`): con `gbw` el operacional
+tiene un polo, A(s) = A₀/(1 + s/ω_p) con A₀ = 10⁵ y ω_p = 2π·GBW/A₀, y con `rsal` esa resistencia en serie con su
+salida. Entonces H = N(s)/D(s), con R_o = `rsal`:
+
+- n₀ = A₀·ω_p; n₁ = C₁·R_o·ω_p; n₂ = C₁·R_o·(1 + C₂·R₂·ω_p); n₃ = C₁·C₂·R₂·R_o;
+- d₀ = (A₀ + 1)·ω_p; d₁ = 1 + ω_p·((A₀ + 1)·C₂·(R₁ + R₂) + C₁·(R₁ + R_o));
+  d₂ = C₁·(R₁ + R_o) + C₂·(R₁ + R₂) + ω_p·C₁·C₂·((A₀ + 1)·R₁·R₂ + R_o·(R₁ + R₂)); d₃ = C₁·C₂·(R₁·R₂ + R_o·(R₁ + R₂));
+
+y |H(jω)| = √((n₀ − n₂ω²)² + (n₁ω − n₃ω³)²) / √((d₀ − d₂ω²)² + (d₁ω − d₃ω³)²). Muy por encima del corte tiende a
+n₃/d₃ ≈ R_o/R₁: el suelo de la atenuación. Escriba los coeficientes como `calculos` (A₀ = 100000) y la curva con ellos;
+la tarjeta `sallen-key-real` de la lección de catálogo de las pruebas (`web/tests/lecciones11-catalogo/cap01/sec-1.5.yaml`)
+lo hace, comprobada con ngspice de 100 Hz a 10 MHz.
+
+#### `sallen-key-alto` — Filtro activo Sallen-Key paso alto de ganancia unidad (1.2)
+
+El `sallen-key` con resistencias y condensadores cambiados: C₁ y C₂ en serie hasta la entrada +, R₁ de su unión a la
+salida y R₂ de la entrada + a masa. Ideal, H = s²·R₁·R₂·C₁·C₂/(1 + s·R₁·(C₁ + C₂) + s²·R₁·R₂·C₁·C₂); con C₁ = C₂ = C,
+f₀ = 1/(2π·C·√(R₁·R₂)) y Q = ½·√(R₂/R₁). La fase de la salida es π − atan2(ω·R₁·(C₁ + C₂), 1 − ω²·R₁·R₂·C₁·C₂).
+
+Piezas: `fuente`, `f`, `fase`?, `c1` desde la fuente (F), `c2` hacia la entrada + (F), `r1` de la unión a la salida
+(Ω), `r2` de la entrada + a masa (Ω), `gbw`?, `rsal`? (como en `sallen-key`). Mide: lo mismo que `sallen-key`.
+
+```yaml
+      esquema: sallen-key-alto
+      piezas: { fuente: V_p, f: f_s, c1: C_1, c2: C_2, r1: R_1, r2: R_2 }
+      grafica:
+        x: { id: nu, min: 10, max: 100000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 1.5, unidad: V, rotulo: "amplitud" }
+        curvas:
+          - { expr: "V_p*(2*pi*nu)^2*R_1*R_2*C_1*C_2/sqrt((1 - (2*pi*nu)^2*R_1*R_2*C_1*C_2)^2 + (2*pi*nu*R_1*(C_1 + C_2))^2)", color: naranja, rotulo: "v_{o}", mide: salida_amp }
+```
+
+Con `gbw` y `rsal` (paso alto): n₁ = C₁·R_o·ω_p; n₂ = C₁·R_o + ω_p·C₁·C₂·R₂·(A₀·R₁ + R_o); n₃ = C₁·C₂·R₂·R_o (n₀ = 0);
+d₀ = (A₀ + 1)·ω_p; d₁ = 1 + ω_p·((A₀ + 1)·R₁·(C₁ + C₂) + R_o·(C₁ + C₂) + C₂·R₂);
+d₂ = C₁·(R₁ + R_o) + C₂·(R₁ + R₂ + R_o) + ω_p·C₁·C₂·R₂·((A₀ + 1)·R₁ + R_o); d₃ = C₁·C₂·R₂·(R₁ + R_o). Por encima de
+GBW la ganancia del operacional se acaba y la banda de paso también.
+
+### 5.4 bis Los esquemas de 1.2 (esquemas12): MOSFET, operacional, regulador, 555, muestreo, segundo orden, trifásica, fuente simétrica, LM3914
+
+Todos tienen su tarjeta en la lección de catálogo de las pruebas (`web/tests/lecciones11-catalogo/cap01/sec-1.5.yaml`,
+comprobada con ngspice en el estado inicial y en los extremos de cada mando): los ejemplos de aquí son esas tarjetas.
+Las piezas con «?» son opcionales.
+
+#### El operacional de la app (para todos los esquemas con operacional)
+
+El mismo modelo en `ao-no-inversor`, `ao-inversor`, `ao-sumador`, `ao-integrador`, `comparador-schmitt`,
+`muestreo-retencion` y `regulador-lineal` (fichero `esquemas/comun-ao.ts`). Piezas del operacional, todas opcionales:
+
+- `vsat`? y `vsatneg`? — la salida no sale de [−V_sat, +V_sat] (`vsatneg` por defecto −`vsat`; 0 con alimentación
+  simple). Sin ellas, sin límite.
+- `a0`? — ganancia en lazo abierto A₀ (por defecto 10⁵). Con A₀ finito la ganancia de un inversor es
+  −(R₂/R₁)/(1 + (1 + R₂/R₁)/A₀): la fórmula ideal del libro cabe en el 0,1 % hasta una ganancia de unos 100.
+- `gbw`? — producto ganancia-ancho de banda (Hz): un polo, A(s) = A₀/(1 + s·A₀/(2π·GBW)). Sin él, 1 GHz (ideal para
+  cualquier señal de la app). En alterna, el no inversor da |G| = A₀/√((1 + A₀·β)² + (f/f_p)²), con β = R₁/(R₁ + R₂) y
+  f_p = GBW/A₀ (tarjeta `ao-no-inversor`).
+- `sr`? — velocidad de subida (V/s). Sin ella, sin límite.
+
+Cómo lo simula ngspice: en el transitorio, la salida x sigue dx/dt = 2π·GBW·(v₊ − v₋) − (2π·GBW/A₀)·x, recortada a
+±SR, y no sale de los raíles (sin «wind-up»: una salida saturada vuelve en cuanto las entradas se cruzan). En alterna,
+la parte de pequeña señal. En continua, la parte lineal de la región en que está (la fuente de ganancia A₀, o una
+fuente en el raíl): por eso el circuito vivo colorea los hilos por tensión también con operacional. Un comparador con
+realimentación positiva conmuta en el transitorio con un interruptor con memoria sobre v₊ − v₋ (el bucle regenerativo es
+más rápido que cualquier paso de tiempo): `gbw` no se aplica ahí, `sr` sí.
+
+**La entrada** de `ao-*`, `comparador-schmitt` y `muestreo-retencion`: `entrada` (continua, V; con señal, su valor
+medio) y, para una señal, `amplitud` (V de pico), `f` (Hz), `forma`? (0 senoidal, 1 cuadrada, 2 triangular; sin ella,
+senoidal) y `fase`? (°, la senoidal). Cuadrada: `entrada + amplitud` la primera mitad de cada periodo y
+`entrada − amplitud` la segunda; triangular: de `entrada − amplitud` en t = 0 a `entrada + amplitud` en T/2. En continua
+cuenta `entrada`; en alterna, `amplitud`.
+
+Medidas comunes: `vo` (continua), `entrada` y `salida` (frente al tiempo), `salida_amp`, `salida_fase`, `salida_db`
+(alterna).
+
+**Saltos en las curvas.** Un modelo con saltos (una cuadrada, un comparador, un 555, un pedestal) los dibuja en un
+instante exacto; el simulador los da en el paso de tiempo siguiente. Cerca de un salto la curva se compara con lo que
+da el modelo en ± 0,15 % del eje (± 0,4 % en el 555, que acumula un paso por conmutación): elija un eje de unos pocos
+periodos. Para escribir saltos sin condicionales: `floor`, `ceil`, `min`, `max` y `abs` (un escalón en t₀ es
+`ceil((t - t0)/1e9)`, 0 hasta t₀ y 1 después; la fase dentro del periodo, `t - T*floor(t/T)`).
+
+#### `mosfet` — MOSFET de canal N con carga en el drenador (1.2)
+
+V_DD, R_D al drenador, la puerta desde una fuente por R_G (R_GS a masa y R_S en la fuente, opcionales). La ley
+cuadrática del libro (sección 7.2): en saturación I_D = ½·k·(V_GS − V_th)²; en zona óhmica
+I_D = k·((V_GS − V_th)·V_DS − V_DS²/2); nada por debajo de V_th. Es exactamente el LEVEL=1 de ngspice con KP = k y
+VTO = V_th (sustrato unido a la fuente). El diodo interno se dibuja, no se simula. Pedido para `cap07` (7.2 curvas y
+frontera de regiones, 7.4 R_DS(on), 7.5 PWM, 7.10 punto de trabajo, 7.11 problema 7.C con R_S, 7.1 y 7.3) y `cap08`
+(8.8 interruptor analógico).
+
+Piezas: `vdd` (V); `rd` (Ω); `entrada` tensión de la fuente de puerta (V; con `f`, el nivel alto del PWM); `rg`? (Ω);
+`rgs`? de la puerta a masa (Ω); `rs`? resistencia de fuente (Ω); `k` (A/V²); `vth` (V); `lambda`? modulación de la
+longitud del canal (1/V: I_D·(1 + λ·V_DS)); `f`? frecuencia del PWM (Hz); `ciclo`? ciclo de trabajo (0–1, en alto al
+principio de cada periodo; sin él, 0,5).
+
+Mide (continua): `id`, `vds`, `vgs`, `vs`, `vd`. Frente al tiempo: `corriente` (I_D), `drenador` (v_D), `puerta` (v_G).
+
+Sin condicionales, V_DS en las tres regiones (R_S = 0): `V_ov = max(0, V_GS − V_th)`; `b = k·V_ov + 1/R_D`;
+`V_tri = (b − √(max(0, b² − 2·k·V_DD/R_D)))/k`; `V_sat = V_DD − R_D·k·V_ov²/2`; `V_DS = max(V_sat, min(V_ov, V_tri))`.
+
+```yaml
+modelo:
+  valores:
+    VDD_m: { sim: "V_{DD}", nombre: "alimentación", unidad: V, valor: 12 }
+    RD_m: { sim: "R_{D}", nombre: "resistencia de drenador", unidad: Ω, valor: 470 }
+    Vi_m: { sim: "V_{GS}", nombre: "tensión de puerta", unidad: V, valor: 5 }
+    k_m: { sim: "k", nombre: "parámetro de transconductancia", unidad: "A/V²", valor: 0.002 }
+    Vth_m: { sim: "V_{th}", nombre: "tensión umbral", unidad: V, valor: 2 }
+  calculos:
+    Vov_m: { expr: "max(0, Vi_m - Vth_m)", sim: "V_{ov}", nombre: "tensión de saturación", unidad: V }
+    b_m: { expr: "k_m*Vov_m + 1/RD_m", sim: "b", nombre: "coeficiente", unidad: "" }
+    Vtri_m: { expr: "(b_m - sqrt(max(0, b_m^2 - 2*k_m*VDD_m/RD_m)))/k_m", sim: "V_{tri}", nombre: "V_DS en zona óhmica", unidad: V }
+    Vsat_m: { expr: "VDD_m - RD_m*k_m*Vov_m^2/2", sim: "V_{sat}", nombre: "V_DS en saturación", unidad: V }
+    VDS_m: { expr: "max(Vsat_m, min(Vov_m, Vtri_m))", sim: "V_{DS}", nombre: "tensión drenador-fuente", unidad: V }
+    ID_m: { expr: "(VDD_m - VDS_m)/RD_m", sim: "I_{D}", nombre: "corriente de drenador", unidad: A }
+tarjetas:
+  - # … id, tipo, titulo, texto, libro
+    widget:
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: VDD_m, rd: RD_m, entrada: Vi_m, k: k_m, vth: Vth_m }
+      lectura: { valor: ID_m, rotulo: "I_{D}" }
+      corriente: ID_m
+      mide: { id: ID_m, vds: VDS_m, vgs: Vi_m, vd: VDS_m }
+      mandos:
+        - { valor: Vi_m, min: 0, max: 8, paso: 0.5 }
+        - { valor: RD_m, lista: [470, 1000, 2200] }
+```
+
+PWM (tarjeta `mosfet-pwm`): `piezas: { …, f: f_w, ciclo: D_w }` y la curva
+`VDD_m - (1 - ceil(t*f_w - floor(t*f_w) - D_w))*(VDD_m - Von_w)` con `mide: drenador` (V_DS(on) de la zona óhmica con
+la puerta alta).
+
+**Carga inductiva y diodo de rueda libre** (esquemas12b; sección 4.5, el pico al apagar; sección 14.5, el motor con
+PWM). Piezas: `l`? bobina en serie con R_D (H; R_D es entonces la resistencia del devanado); `bv`? tensión de avalancha
+del MOSFET (V; obligatoria con `l`: sin diodo, la corriente de la bobina sigue por la avalancha); `vf`? caída del diodo
+de rueda libre en paralelo con la carga (V; caída constante a 0,1 A, se admiten ± 0,15 V); `rueda`? interruptor que lo
+conecta (sin él, conectado). Mide además `icarga` (la corriente de la bobina frente al tiempo); `corriente` sigue
+siendo la del drenador (avalancha incluida: con diodo cae a cero al apagar). En t = 0 la puerta está alta y la bobina
+lleva ya la corriente de conducción I₀ = (V_DD − V_DS(on))/R_D, así que un PWM de periodo largo (`f`, `ciclo`) muestra
+el apagado desde el reposo, en t_off = ciclo/f. Tras el apagado la corriente cae con V_ext = V_F (con diodo; el drenador
+en V_DD + V_F) o V_ext = BV − V_DD (sin él; el drenador en BV): i = (I₀ + V_ext/R)·e^(−(t − t_off)·R/L) − V_ext/R hasta
+cero, en el tiempo del libro t = (L/R)·ln(1 + I₀·R/V_ext). Luego el drenador vuelve a V_DD.
+
+```yaml
+    rueda_i: { tipo: interruptor, nombre: "diodo de rueda libre conectado", valor: 1 }
+  calculos:   # (con V_DS(on) = Von_i como en el ejemplo de arriba, I0_i = (VDD_i - Von_i)/R_i, to_i = 1/(2*f_i))
+    Vx_i: { expr: "rueda_i*Vf_i + (1 - rueda_i)*(BV_i - VDD_i)", sim: "V_{ext}", nombre: "tensión de extinción", unidad: V }
+    tx_i: { expr: "L_i/R_i*ln(1 + I0_i*R_i/Vx_i)", sim: "t_{ext}", nombre: "tiempo de extinción", unidad: s }
+…
+      esquema: mosfet
+      piezas: { vdd: VDD_i, rd: R_i, l: L_i, entrada: Vg_i, k: k_i, vth: Vth_i, f: f_i, bv: BV_i, vf: Vf_i, rueda: rueda_i }
+      grafica:
+        x: { id: t, min: 0, max: 0.00095, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 70, unidad: V, rotulo: "v_{D}" }
+        curvas:
+          - { expr: "Von_i*(1 - ceil((t - to_i)/1e9)) + ceil((t - to_i)/1e9)*(VDD_i + Vx_i*ceil(max(0, (I0_i + Vx_i/R_i)*exp(-(t - to_i)*R_i/L_i) - Vx_i/R_i)/1e9))", color: naranja, rotulo: "v_{D}", mide: drenador }
+      mandos:
+        - { valor: rueda_i }
+```
+
+(12 V, 10 Ω, 1 mH, k = 20 A/V², V_th = 1,5 V, 5 V en la puerta, 1 kHz, BV = 60 V, V_F = 0,7 V: tarjetas
+`mosfet-inductiva` y `mosfet-inductiva-i`, esta con `icarga` y `corriente`, la segunda multiplicada por `1 - rueda_i`.)
+El eje de tiempo no debe llegar al final del periodo (la puerta vuelve a subir en t = 1/f).
+
+#### `ao-no-inversor` — Amplificador no inversor y seguidor (1.2)
+
+La entrada a la entrada +, R₂ de la salida a la entrada − y R₁ de ella a masa: v_o = (1 + R₂/R₁)·v_in; sin R₁ ni R₂, el
+seguidor. Pedido para `cap08` (8.2; 8.9 seguidor del muestreo).
+
+Piezas: la entrada y el operacional (arriba); `r1`? (Ω), `r2`? (Ω; las dos o ninguna); `carga`? (Ω). Mide además
+`vmenos` (continua), `i1` (por R₁, a masa), `carga`.
+
+**Como bloque de ganancia con recorte (el LM386, sección 14.3; esquemas12b).** «Quitar realimentación sube la
+ganancia»: R₂/R₁ de 19 (ganancia 20) a 199 (ganancia 200, el condensador entre las patillas 1 y 8), y `vsat` la
+excursión de pico (unos 6 V pico a pico con 9 V: `vsat` 3). La salida, sin condicionales:
+`max(-Vs, min(Vs, G*Ap*sin(2*pi*f*t)))` (tarjeta `ao-no-inversor-lm386`: 20 mV de pico a 1 kHz, `mandos: [{ valor:
+R2_386, lista: [19000, 199000] }]`, eje de −4 a 4 V). El modelo no tiene el nivel de continua V_s/2 del LM386 ni su
+condensador de salida: centre la señal en 0 y dígalo en la nota si importa.
+
+```yaml
+      esquema: ao-no-inversor
+      piezas: { entrada: cero_ao, amplitud: Ap_ai, f: f_ai, r1: R1_an, r2: R2_an, gbw: gbw_an }
+      grafica:
+        x: { id: nu, min: 100, max: 10000000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 12, unidad: V, rotulo: "amplitud" }
+        curvas:
+          - { expr: "Ap_ai*100000/sqrt((1 + 100000/G_an)^2 + (nu/fp_an)^2)", color: naranja, rotulo: "v_{o}", mide: salida_amp }
+      mandos:
+        - { valor: R2_an, lista: [0, 9000, 99000] }
+```
+
+(`G_an = 1 + R2_an/R1_an`, `fp_an = gbw_an/100000`.) El seguidor: `piezas: { entrada: Vi_ai, vsat: Vs_ao }`,
+`mide: { vo: Vi_ai, vmenos: Vi_ai }`.
+
+#### `ao-inversor` — Amplificador inversor (1.2)
+
+La entrada por R₁ a la entrada −, R₂ de ella a la salida, la entrada + a masa: v_o = −(R₂/R₁)·v_in hasta saturar.
+Saturado, la entrada − deja de ser masa virtual: v₋ = (v_in·R₂ + v_o·R₁)/(R₁ + R₂). Pedido para `cap08` (8.1, 8.2).
+
+Piezas: la entrada y el operacional; `r1`, `r2` (Ω); `carga`? (Ω). Mide además `vmenos`, `i1` (por R₁, hacia la
+entrada −), `carga`.
+
+```yaml
+modelo:
+  valores:
+    Vi_ai: { sim: "v_{in}", nombre: "tensión de entrada", unidad: V, valor: 1 }
+    R1_ai: { sim: "R₁", nombre: "resistencia de entrada", unidad: Ω, valor: 2200 }
+    R2_ai: { sim: "R₂", nombre: "resistencia de realimentación", unidad: Ω, valor: 11000 }
+    Vs_ao: { sim: "V_{sat}", nombre: "tensión de saturación", unidad: V, valor: 12 }
+  calculos:
+    Vo_ai: { expr: "max(-Vs_ao, min(Vs_ao, -R2_ai/R1_ai*Vi_ai))", sim: "v_{o}", nombre: "tensión de salida", unidad: V }
+    Vn_ai: { expr: "(Vi_ai*R2_ai + Vo_ai*R1_ai)/(R1_ai + R2_ai)", sim: "v_{−}", nombre: "tensión de la entrada −", unidad: V }
+    I1_ai: { expr: "(Vi_ai - Vn_ai)/R1_ai", sim: "I₁", nombre: "corriente por R₁", unidad: A }
+tarjetas:
+  - # … id, tipo, titulo, texto, libro
+    widget:
+      tipo: circuito
+      esquema: ao-inversor
+      piezas: { entrada: Vi_ai, r1: R1_ai, r2: R2_ai, vsat: Vs_ao }
+      lectura: { valor: Vo_ai, rotulo: "v_{o}" }
+      corriente: I1_ai
+      mide: { vo: Vo_ai, i1: I1_ai }
+      mandos:
+        - { valor: Vi_ai, min: -3, max: 3, paso: 0.5 }
+        - { valor: R2_ai, lista: [4700, 11000, 22000] }
+```
+
+En el tiempo (tarjeta `ao-inversor-tiempo`): `piezas: { entrada: cero_ao, amplitud: Ap_ai, f: f_ai, … }` y la curva
+`max(-Vs_ao, min(Vs_ao, -R2_ai/R1_ai*Ap_ai*sin(w_ai*t)))` con `mide: salida`: el recorte.
+
+#### `ao-sumador` — Sumador inversor (1.2)
+
+Dos o tres entradas, cada una por su resistencia a la entrada −, R_f a la salida: v_o = −R_f·(v₁/R₁ + v₂/R₂ + v₃/R₃).
+La entrada 1 puede llevar señal; la 2 y la 3 son continuas. Pedido para `cap08` (8.2).
+
+Piezas: la entrada (la 1) y el operacional; `r1`; `entrada2`, `r2`; `entrada3`?, `r3`? (juntas); `rf`. Mide además
+`vmenos`, `i1`, `i2`, `i3`, `irf`.
+
+```yaml
+      esquema: ao-sumador
+      piezas: { entrada: Vi_as, r1: R_as, entrada2: V2_as, r2: R_as, entrada3: V3_as, r3: R_as, rf: Rf_as }
+      lectura: { valor: Vo_as, rotulo: "v_{o}" }
+      mide: { vo: Vo_as, i1: I1_as, i2: I2_as, i3: I3_as }
+```
+
+(`Vo_as = -Rf_as*(Vi_as/R_as + V2_as/R_as + V3_as/R_as)`, `I1_as = Vi_as/R_as`…)
+
+#### `ao-integrador` — Integrador (1.2)
+
+La entrada por R a la entrada −, C de ella a la salida (y R_f en paralelo, opcional): v_o(t) = v₀ − (1/RC)·∫v_in dt; en
+alterna −1/(jωRC), o −(R_f/R)/(1 + jωR_fC). Con raíles la salida se para en ellos (el modelo del autor vale mientras no
+llegue). Pedido para `cap08` (8.2).
+
+Piezas: la entrada y el operacional; `r` (Ω); `c` (F); `rf`? (Ω); `v0`? salida en t = 0 (V). Mide además `ic`
+(frente al tiempo: la corriente por R).
+
+```yaml
+      esquema: ao-integrador
+      piezas: { entrada: cero_ao, amplitud: Ap_ag, f: f_ag, forma: forma_cuad, r: R_ag, c: C_ag, vsat: Vs_ao }
+      grafica:
+        x: { id: t, min: 0, max: 0.006, unidad: s, rotulo: "t" }
+        y: { min: -4, max: 2, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "Ap_ag*(1 - 2*floor(2*(t/T_ag - floor(t/T_ag))))", color: tinta, rotulo: "v_{in}", mide: entrada, discontinua: true }
+          - { expr: "-Ap_ag/(R_ag*C_ag)*(T_ag/2 - abs(t - T_ag*floor(t/T_ag) - T_ag/2))", color: naranja, rotulo: "v_{o}", mide: salida }
+      mandos:
+        - { valor: C_ag, lista: [47e-9, 100e-9, 220e-9] }
+```
+
+(`forma_cuad` vale 1: cuadrada; `T_ag = 1/f_ag`.)
+
+#### `comparador-schmitt` — Comparador y disparador de Schmitt (1.2)
+
+La entrada a la entrada −; la + por R₁ a una referencia (masa sin ella) y, para el Schmitt, por R₂ a la salida. Umbral
+V₊ = (V_ref·R₂ ± V_sat·R₁)/(R₁ + R₂): con V_ref = 0, ±V_sat·R₁/(R₁ + R₂) (±1,09 V con 10 kΩ, 100 kΩ y ±12 V, sección
+8.3). Sin R₂, comparador simple en V_ref. Pedido para `cap08` (8.1 transferencia en lazo abierto, 8.3, 8.9).
+
+Piezas: la entrada y el operacional, con `vsat` obligatoria; `r1`? (Ω), `r2`? (Ω; con R₁), `ref`? (V), `alto`?
+(interruptor: dónde estaba la salida — en continua, dentro de la ventana valen las dos; en el transitorio, el estado en
+t = 0; sin él, alto). Mide además `vmas` (continua) y `umbral` (frente al tiempo): la tensión de la entrada +.
+
+```yaml
+modelo:
+  valores:
+    Vi_ac: { sim: "v_{in}", nombre: "tensión de entrada", unidad: V, valor: 0 }
+    R1_ac: { sim: "R₁", nombre: "resistencia a masa", unidad: Ω, valor: 10000 }
+    R2_ac: { sim: "R₂", nombre: "realimentación positiva", unidad: Ω, valor: 100000 }
+    Vs_ao: { sim: "V_{sat}", nombre: "tensión de saturación", unidad: V, valor: 12 }
+    alto_ac: { tipo: interruptor, nombre: "salida en alto antes", valor: 1 }
+  calculos:
+    Vh_ac: { expr: "Vs_ao*R1_ac/(R1_ac + R2_ac)", sim: "V_{U}", nombre: "umbral", unidad: V }
+    hi_ac: { expr: "1 - ceil((Vi_ac - Vh_ac)/1e9)", sim: "a", nombre: "el alto se sostiene", unidad: "" }
+    lo_ac: { expr: "ceil((Vi_ac + Vh_ac)/1e9)", sim: "b", nombre: "el bajo se sostiene", unidad: "" }
+    Vo_ac: { expr: "Vs_ao*(2*(alto_ac*hi_ac + (1 - alto_ac)*(1 - lo_ac)) - 1)", sim: "v_{o}", nombre: "tensión de salida", unidad: V }
+    Vp_ac: { expr: "Vo_ac*R1_ac/(R1_ac + R2_ac)", sim: "v_{+}", nombre: "tensión de la entrada +", unidad: V }
+tarjetas:
+  - # … id, tipo, titulo, texto, libro
+    widget:
+      tipo: circuito
+      esquema: comparador-schmitt
+      piezas: { entrada: Vi_ac, r1: R1_ac, r2: R2_ac, vsat: Vs_ao, alto: alto_ac }
+      lectura: { valor: Vo_ac, rotulo: "v_{o}" }
+      mide: { vo: Vo_ac, vmas: Vp_ac }
+      mandos:
+        - { valor: Vi_ac, min: -3, max: 3, paso: 0.5 }
+        - { valor: alto_ac, tipo: interruptor, rotulo: "Salida en alto antes" }
+```
+
+Con una senoidal de amplitud A y frecuencia f (tarjeta `comparador-schmitt-tiempo`), empezando en alto: con
+`th_ac = asin(Vh_ac/A)`, la salida es `Vs_ao*(2*abs(floor((2*pi*f*t - 2*pi*floor(f*t) - th_ac)/pi)) - 1)`.
+
+#### `regulador-lineal` — Regulador lineal: elemento de paso, referencia y lazo (1.2)
+
+«Un divisor de tensión cuya parte superior se ajusta sola» (sección 8.4): un elemento de paso en serie entre la entrada
+y la carga, gobernado por un amplificador de error que compara V_ref con la salida (o con la toma de R₁–R₂):
+V_out = V_ref·(1 + R₁/R₂) mientras V_in − V_out supere el dropout; por debajo, V_out = V_in − V_do. El paso es ideal: la
+corriente de entrada es igual a la de salida (lo dice el libro), así que P = (V_in − V_out)·I. Solo continua; el
+circuito vivo lo colorea entero. Pedido para `cap08` (8.4, 8.10 problema 8.A).
+
+Piezas: `entrada` (V); `ref` (V); `r1`?, `r2`? (Ω, juntas; sin ellas V_out = V_ref); `dropout`? (V; sin él, 0: el 78xx
+pide unos 2 V, un LDO de 0,2 a 0,5 V); `carga` (Ω); `interruptor`? conecta la carga; `a0`?. Mide (continua): `vout`,
+`iin`, `iout` (lo que entrega el paso: carga y divisor), `icarga`, `vpaso` (V_in − V_out), `p_paso` (W), `vb` (salida
+del amplificador de error).
+
+```yaml
+modelo:
+  valores:
+    Vi_rg: { sim: "V_{in}", nombre: "tensión de entrada", unidad: V, valor: 12 }
+    Vr_rg: { sim: "V_{ref}", nombre: "tensión de referencia", unidad: V, valor: 1.25 }
+    R1_rg: { sim: "R₁", nombre: "divisor, arriba", unidad: Ω, valor: 3000 }
+    R2_rg: { sim: "R₂", nombre: "divisor, abajo", unidad: Ω, valor: 1000 }
+    Vd_rg: { sim: "V_{do}", nombre: "dropout", unidad: V, valor: 2 }
+    RL_rg: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 5 }
+    on_rg: { tipo: interruptor, nombre: "carga conectada", valor: 1 }
+  calculos:
+    Vset_rg: { expr: "Vr_rg*(1 + R1_rg/R2_rg)", sim: "V_{nom}", nombre: "salida nominal", unidad: V }
+    Vo_rg: { expr: "min(Vset_rg, Vi_rg - Vd_rg)", sim: "V_{out}", nombre: "tensión de salida", unidad: V }
+    IL_rg: { si: on_rg, entonces: "Vo_rg/RL_rg", sino: "0", sim: "I_{L}", nombre: "corriente de carga", unidad: A }
+    Io_rg: { expr: "IL_rg + Vo_rg/(R1_rg + R2_rg)", sim: "I", nombre: "corriente de salida", unidad: A }
+    P_rg: { expr: "(Vi_rg - Vo_rg)*Io_rg", sim: "P", nombre: "potencia en el paso", unidad: W }
+tarjetas:
+  - # … id, tipo, titulo, texto, libro
+    widget:
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: Vi_rg, ref: Vr_rg, r1: R1_rg, r2: R2_rg, dropout: Vd_rg, carga: RL_rg, interruptor: on_rg }
+      lectura: { valor: Vo_rg, rotulo: "V_{out}" }
+      corriente: Io_rg
+      mide: { vout: Vo_rg, iin: Io_rg, iout: Io_rg, icarga: IL_rg, p_paso: P_rg }
+      mandos:
+        - { valor: Vi_rg, min: 4, max: 15, paso: 0.5 }
+        - { valor: on_rg, tipo: interruptor, rotulo: "Carga" }
+```
+
+#### `ne555-astable` — Temporizador NE555 en modo astable (1.2)
+
+R_a de V_CC a la patilla de descarga, R_b de ella al condensador C, unido a umbral y disparo; dentro, dos comparadores a
+⅓ y ⅔ de V_CC, el biestable y el transistor de descarga. t_alto = ln 2·(R_a + R_b)·C, t_bajo = ln 2·R_b·C (1 kΩ, 10 kΩ y
+100 nF: 0,762 ms, 0,693 ms, 687 Hz; sección 8.5). C empieza en `v0` (por defecto ⅓·V_CC: la oscilación estable desde
+t = 0; 0 V para la primera carga, más larga) con la salida en alto. En ngspice, comparadores y biestable son un
+interruptor con histéresis sobre v_C (exactamente los dos umbrales y la memoria del 555). Pedido para `cap08` (8.5).
+
+Piezas: `vcc` (V); `ra`, `rb` (Ω); `c` (F); `v0`? (V, menos de ⅔·V_CC). Frente al tiempo: `vc`, `salida` (V_CC o 0),
+`i` (por R_b hacia C, positiva al cargar), `descarga` (patilla de descarga).
+
+```yaml
+    calculos:
+      th_5: { expr: "ln(2)*(Ra_5 + Rb_5)*C_5", sim: "t_{alto}", nombre: "tiempo en alto", unidad: s }
+      tl_5: { expr: "ln(2)*Rb_5*C_5", sim: "t_{bajo}", nombre: "tiempo en bajo", unidad: s }
+      T_5: { expr: "th_5 + tl_5", sim: "T", nombre: "periodo", unidad: s }
+    # …
+      esquema: ne555-astable
+      piezas: { vcc: Vcc_5, ra: Ra_5, rb: Rb_5, c: C_5 }
+      grafica:
+        x: { id: t, min: 0, max: 0.005, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 10, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "(1 - min(1, floor((t - T_5*floor(t/T_5))/th_5)))*(Vcc_5 - 2*Vcc_5/3*exp(-(t - T_5*floor(t/T_5))/((Ra_5 + Rb_5)*C_5))) + min(1, floor((t - T_5*floor(t/T_5))/th_5))*2*Vcc_5/3*exp(-(t - T_5*floor(t/T_5) - th_5)/(Rb_5*C_5))", color: naranja, rotulo: "v_{C}", mide: vc }
+          - { expr: "Vcc_5*(1 - min(1, floor((t - T_5*floor(t/T_5))/th_5)))", color: azul, rotulo: "v_{o}", mide: salida, discontinua: true }
+      mandos:
+        - { valor: Rb_5, lista: [4700, 10000, 22000] }
+```
+
+(`min(1, floor(τ/t_alto))` vale 0 cargando y 1 descargando, porque t_bajo < t_alto.)
+
+#### `muestreo-retencion` — Muestreo y retención (1.2)
+
+Interruptor con R_on de la entrada al condensador C_h, leído por un seguidor: cerrado (muestreo) hasta `tm`, abierto
+después (retención). Al abrir, la puerta inyecta la carga `carga`: el pedestal Q/C_h (10 pC en 1 nF, 10 mV); durante la
+retención una fuga `fuga` lo descarga, I/C_h (1 nA en 1 nF, 1 mV por ms; sección 8.9). Con entrada continua V y fuga
+I: v_C = V' + (v₀ − V')·e^(−t/(R_on·C_h)) hasta t_m (V' = V − I·R_on), luego v_C(t_m) + Q/C_h − I·(t − t_m)/C_h. Pedido
+para `cap08` (8.9, 8.10 problema 8.C).
+
+Piezas: la entrada y el operacional (el seguidor); `ron` (Ω); `ch` (F); `tm` (s); `carga`? (C, positiva: sube);
+`fuga`? (A); `v0`? (V). Frente al tiempo: `entrada`, `vc`, `salida`.
+
+```yaml
+      esquema: muestreo-retencion
+      piezas: { entrada: V_sh, ron: Ron_sh, ch: C_sh, tm: tm_sh, carga: Q_sh, fuga: I_sh }
+      grafica:
+        x: { id: t, min: 0, max: 0.000003, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 2.5, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "(1 - ceil((t - tm_sh)/1e9))*Vt_sh*(1 - exp(-t/tau_sh)) + ceil((t - tm_sh)/1e9)*(Vm_sh + Q_sh/C_sh - I_sh*(t - tm_sh)/C_sh)", color: naranja, rotulo: "v_{o}", mide: salida }
+      mandos:
+        - { valor: Ron_sh, lista: [50, 100, 200] }
+```
+
+(`tau_sh = Ron_sh*C_sh`, `Vt_sh = V_sh - I_sh*Ron_sh`, `Vm_sh = Vt_sh*(1 - exp(-tm_sh/tau_sh))`.) Para ver el pedestal y la
+caída, un eje `y` estrecho alrededor de V (tarjeta `muestreo-pedestal`: de 1,98 a 2,03 V).
+
+#### `rlc-escalon` — Escalón en un RLC en serie (1.2)
+
+Un RLC en serie conectado en t = 0 a una fuente continua (con el conmutador de `carga-rc`: 0 lo pone en cortocircuito,
+el timbre de un condensador cargado). ω₀ = 1/√(LC), ζ = (R/2)·√(C/L); sobreamortiguado, crítico o subamortiguado, con
+la sobreoscilación e^(−πζ/√(1−ζ²)) (sección 24.3; 24.6, 24.10, 42.6). Pedido para `cap24` y `cap42`.
+
+Piezas: `fuente` (V); `r` (Ω); `l` (H); `c` (F); `v0`? (V); `i0`? (A); `interruptor`?. Frente al tiempo: `vc`, `i`
+(hacia el condensador), `vl`, `vr`.
+
+```yaml
+    calculos:
+      a_re: { expr: "R_re/(2*L_re)", sim: "α", nombre: "amortiguamiento", unidad: "1/s" }
+      wd_re: { expr: "sqrt(1/(L_re*C_re) - a_re^2)", sim: "ω_{d}", nombre: "pulsación amortiguada", unidad: "rad/s" }
+    # …
+      esquema: rlc-escalon
+      piezas: { fuente: V_re, r: R_re, l: L_re, c: C_re }
+      grafica:
+        x: { id: t, min: 0, max: 0.005, unidad: s, rotulo: "t" }
+        y: { min: -2, max: 20, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_re*(1 - exp(-a_re*t)*(cos(wd_re*t) + a_re/wd_re*sin(wd_re*t)))", color: verde, rotulo: "v_{C}", mide: vc }
+      mandos:
+        - { valor: R_re, lista: [10, 20, 50] }
+```
+
+La corriente subamortiguada: `V_re/(L_re*wd_re)*exp(-a_re*t)*sin(wd_re*t)` con `mide: i`. Crítico (ζ = 1):
+v_C = V·(1 − (1 + α·t)·e^(−αt)); sobreamortiguado, con s₁,₂ = −α ± √(α² − ω₀²):
+v_C = V·(1 + (s₂·e^(s₁t) − s₁·e^(s₂t))/(s₁ − s₂)).
+
+#### `trifasica` — Sistema trifásico con carga en estrella o en triángulo (1.2)
+
+Tres fuentes de la misma amplitud a 0°, −120° y +120° y tres cargas resistivas: en estrella, con el neutro conectado o
+cortado (el punto de estrella flota: 139, 263 y 331 V con 26,45, 52,9 y 264,5 Ω, a 112,7 V del neutro), o en
+triángulo (R₁ de L1 a L2, R₂ de L2 a L3, R₃ de L3 a L1). Eficaces o de pico, igual (es lineal). Pedido para `cap24`
+(sec-new-24-trifasica).
+
+Piezas: `fuente` tensión de fase (V); `f` (Hz); `r1`, `r2`, `r3` (Ω); `neutro`? (interruptor; sin él, conectado);
+`triangulo`? (interruptor; sin él, estrella; no con `neutro`). Mide (en alterna, `_amp`, `_fase`, `_db`): `v1`, `v2`,
+`v3` (las cargas), `i1`, `i2`, `i3` (las líneas), `ir1`, `ir2`, `ir3` (las cargas), `in` (el neutro), `vn` (el punto de
+estrella); frente al tiempo, `t_v1`, `t_v2`, `t_v3`, `t_i1`, `t_in`, `t_vn`.
+
+Millman, sin condicionales: `a = V_f·(1/R₁ + cos(2π/3)/R₂ + cos(2π/3)/R₃)`, `b = V_f·(−sin(2π/3)/R₂ + sin(2π/3)/R₃)`,
+`G = 1/R₁ + 1/R₂ + 1/R₃`; con `n` el interruptor del neutro, el punto de estrella es `x = (1 − n)·a/G`,
+`y = (1 − n)·b/G`, la corriente del neutro `n·√(a² + b²)` y cada carga `|V_k∠θ_k − (x + jy)|`:
+
+```yaml
+      esquema: trifasica
+      piezas: { fuente: Vf_3f, f: f_3f, r1: R1_3f, r2: R2_3f, r3: R3_3f, neutro: n_3f }
+      lectura: { valor: V3_3f, rotulo: "V₃" }
+      mide: { v1_amp: V1_3f, v2_amp: V2_3f, v3_amp: V3_3f, vn_amp: Vn_3f, in_amp: In_3f }
+      mandos:
+        - { valor: n_3f, tipo: interruptor, rotulo: "Neutro" }
+```
+
+(Los cálculos completos, en la lección de catálogo: `sr_3f`, `si_3f`, `xr_3f`, `xi_3f`, `V1_3f`…; estrella y triángulo,
+tarjeta `trifasica-triangulo`.)
+
+#### `transformador-real` — Transformador real en alterna (1.2)
+
+La fuente con R_s, la dispersión L_d en serie (L₁·(1 − k²), referida al primario), la magnetizante L_m en paralelo, un
+transformador ideal de N₁ y N₂ espiras y la carga (con C_p en paralelo, opcional). Su banda: abajo la corta L_m
+(f = (R_s ‖ R'_L)/(2π·L_m), R'_L = (N₁/N₂)²·R_L), arriba L_d (sección 23.9). Solo en alterna. Pedido para `cap24`.
+
+Piezas: `fuente`, `f`, `fase`?; `rs` (Ω); `lm` (H); `ld`? (H); `n1`, `n2`; `carga` (Ω); `cp`? (F). Mide (alterna):
+`salida_*` (el secundario), `primario_*` (tras L_d), `i1_*` (la corriente del primario), `im_*` (la magnetizante).
+
+Sin C_p: |v₂| = (N₂/N₁)·V·ω·L_m·R'_L/√((R_s·R'_L − ω²·L_d·L_m)² + (ω·(L_m·(R_s + R'_L) + L_d·R'_L))²):
+
+```yaml
+      esquema: transformador-real
+      piezas: { fuente: Vp_tr, f: f_tr, rs: Rs_tr, lm: Lm_tr, ld: Ld_tr, n1: N1_tr, n2: N2_tr, carga: RL_tr }
+      grafica:
+        x: { id: nu, min: 1, max: 1000000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: -40, max: 5, unidad: dB, rotulo: "v_{2}" }
+        curvas:
+          - { expr: "20*log10(N2_tr/N1_tr*Vp_tr*2*pi*nu*Lm_tr*Rp_tr/sqrt((Rs_tr*Rp_tr - (2*pi*nu)^2*Ld_tr*Lm_tr)^2 + (2*pi*nu*(Lm_tr*(Rs_tr + Rp_tr) + Ld_tr*Rp_tr))^2))", color: naranja, rotulo: "v_{2}", mide: salida_db }
+      mandos:
+        - { valor: Lm_tr, lista: [0.1, 1, 10] }
+```
+
+(`Rp_tr = RL_tr*(N1_tr/N2_tr)^2`.)
+
+#### `rectificador-toma-media` — Fuente simétrica con secundario de toma media (1.2)
+
+Secundario con toma media a masa (15-0-15: cada mitad da su pico), un puente de cuatro diodos en el que, al ser la toma
+media la masa, cada rama atraviesa un solo diodo (sección 5.6), y un condensador en cada raíl: +V y −V con rizado a 2f.
+Opcionales, un 78xx/79xx en cada raíl como recorte ideal con dropout (sección 8.4): la salida es ±V_reg, o la tensión
+del condensador menos el dropout si no llega, y el regulador toma de su condensador la corriente que da a su carga. La
+carga de cada raíl es una resistencia, una corriente constante (la de un regulador con su carga fija: la descarga
+lineal del libro, ΔV = I/(2f·C)) o las dos. Diodos de caída constante (± 0,2 V, como en `puente`). Solo en el tiempo.
+Pedido para `cap15` (14.2: 21,2 → 20,5 V, 2,27 V de rizado, 18,2 V de mínimo).
+
+Piezas: `fuente` (V de pico de cada mitad), `f` (Hz), `vd` (V); `c`? (F, cada raíl); `carga`? (Ω, cada raíl); `i`? (A,
+cada raíl; necesita `c`); `reg`? (V); `dropout`? (V, con `reg`). Mide (frente al tiempo): `positivo` y `negativo` (los
+condensadores), `salida_pos` y `salida_neg` (con `reg`), `entrada` (la mitad superior), `id_pos` e `id_neg` (los pulsos
+de recarga), `icarga`.
+
+Sin condicionales: tras cada pico el condensador baja en recta a I/C hasta que la senoide lo alcanza,
+`max(abs(Vp*sin(2*pi*f*t)) - Vd, (Vp - Vd) - I/C*(t - 1/(4*f) - floor(2*f*t - 0.5)/(2*f)))` (el tiempo desde el último
+pico). El rizado medido queda algo por debajo del I/(2f·C) del libro, porque la recarga empieza antes del pico
+siguiente (1,9 V frente a 2,27 V con los números de 14.2).
+
+```yaml
+      esquema: rectificador-toma-media
+      piezas: { fuente: Vp_tm, f: f_tm, vd: Vd_tm, c: C_tm, i: I_tm, reg: Vr_tm, dropout: Vdo_tm }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: -22, max: 22, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(abs(Vp_tm*sin(2*pi*f_tm*t)) - Vd_tm, Vpk_tm - I_tm/C_tm*(t - 1/(4*f_tm) - floor(2*f_tm*t - 0.5)/(2*f_tm)))", color: naranja, rotulo: "condensador", mide: positivo }
+          - { expr: "min(Vr_tm, max(abs(Vp_tm*sin(2*pi*f_tm*t)) - Vd_tm, Vpk_tm - I_tm/C_tm*(t - 1/(4*f_tm) - floor(2*f_tm*t - 0.5)/(2*f_tm))) - Vdo_tm)", color: verde, rotulo: "salida", mide: salida_pos }
+      mandos:
+        - { valor: Vdo_tm, lista: [2, 5, 8] }
+```
+
+(`Vpk_tm = Vp_tm - Vd_tm`; 21,21 V, 50 Hz, 0,7 V, 2 200 µF, 0,5 A, 12 V: tarjetas `rectificador-toma-media` y
+`rectificador-toma-media-reg`; con 8 V de dropout la salida cae en los valles.) La curva de `negativo` es la misma con
+el signo cambiado; la de `salida_neg`, `max(-Vr, -(…) + Vdo)`.
+
+#### `lm3914` — Indicador de nivel LM3914 (1.2)
+
+Un convertidor flash en miniatura (sección 14.4): una escalera de diez resistencias iguales entre V_LO y V_HI, diez
+comparadores (el k-ésimo, de 1 a 10, en V_LO + k·(V_HI − V_LO)/10) con la entrada por un buffer, y diez salidas de
+corriente constante a diez LED alimentados desde V_LED. La resistencia R_ref de la salida de referencia a masa fija la
+corriente de cada LED, «unas diez veces» la suya: I_LED = factor·V_ref/R_ref. Modo barra (todos hasta el nivel) o punto
+(solo el último). Cada salida disipa I_LED·(V_LED − V_F) dentro del integrado. Solo en continua. Pedido para `cap15`
+(14.4: 1 kΩ, unos 12 mA; 10 LED a 10 mA con 4 V de exceso, 400 mW).
+
+Piezas: `entrada` (V), `vref` (V), `rref` (Ω), `vhi`? (V; sin ella, V_ref), `vlo`? (V; sin ella, 0), `vled` (V), `vf`
+(V, la caída de un LED a su corriente), `factor`? (sin él, 10), `barra`? (interruptor: 1 barra, 0 punto; sin él,
+barra). Mide (continua): `encendidos` (el número de LED), `iled` (la corriente total), `iref`, `p_chip` (la disipación
+de las salidas), `vsalida` (la salida del primer LED, V_LED − V_F si está encendido).
+
+Justo en un umbral el comparador cuenta como encendido, pero `floor` puede redondear a un lado u otro: ponga los mandos
+fuera de los umbrales (un deslizador de 0,06 a 1,26 V en pasos de 0,1 con escalones de 0,125 V).
+
+```yaml
+    Nb_lm: { expr: "min(10, max(0, floor(10*Vin_lm/Vref_lm)))", sim: "N_{barra}", nombre: "LED encendidos en modo barra", unidad: "" }
+    N_lm: { expr: "barra_lm*Nb_lm + (1 - barra_lm)*min(1, Nb_lm)", sim: "N", nombre: "LED encendidos", unidad: "" }
+    Iref_lm: { expr: "Vref_lm/Rref_lm", sim: "I_{ref}", nombre: "corriente de R_ref", unidad: A }
+    It_lm: { expr: "N_lm*10*Iref_lm", sim: "I_{total}", nombre: "corriente de los LED", unidad: A }
+    P_lm: { expr: "It_lm*(Vled_lm - Vf_lm)", sim: "P", nombre: "disipación en el integrado", unidad: W }
+…
+      esquema: lm3914
+      piezas: { entrada: Vin_lm, vref: Vref_lm, rref: Rref_lm, vled: Vled_lm, vf: Vf_lm, barra: barra_lm }
+      lectura: { valor: N_lm, rotulo: "LED encendidos" }
+      mide: { encendidos: N_lm, iled: It_lm, iref: Iref_lm, p_chip: P_lm }
+      mandos:
+        - { valor: Vin_lm, min: 0.06, max: 1.26, paso: 0.1 }
+        - { valor: barra_lm }
+```
+
+(1,25 V, 1 250 Ω, 6 V y 2 V: 10 mA por LED y 400 mW con los diez; tarjeta `lm3914`.)
+
 ### 5.5 Si hace falta otro esquema
 
 No lo improvise con uno parecido que dibuje otra cosa: haga uno nuevo para ese circuito (el de la figura o el ejemplo
@@ -1672,6 +2382,19 @@ eficaz de la diferencia sobre la altura del eje, perdonando un pequeño desfase 
 
 El generador exige que la curva quepa en el eje y y avisa si es casi plana.
 
+**Eje x logarítmico (1.2).** Para dibujar un Bode frente a la frecuencia, `escala: log` en `x` (como en las gráficas,
+§5.2; el eje empieza por encima de 0, y el eje y es siempre lineal): los puntos van espaciados por igual en log x (con
+`puntos: 17` y cuatro décadas, cuatro por década), las marcas son las de las gráficas y el desfase que se perdona
+(`holgura`) y el que miran las pistas (`desfase`) son fracciones del eje en esa escala (0,25 = una década de cuatro).
+
+```yaml
+    dibujar:
+      x: { id: nu, min: 10, max: 100000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: -45, max: 5, unidad: dB, rotulo: "|H|" }
+      curva: "-10*log10(1 + (nu/f_c)^2)"
+      puntos: 17
+```
+
 ### 10.8 `sql` — SQL con la base de ejemplo (sección 17.10)
 
 SQLite compilado a WebAssembly, sin red, sobre una **base de ejemplo** con el esquema del libro (`sensores`, `medidas`,
@@ -1697,3 +2420,200 @@ lleva ORDER BY). Tres modos:
 El generador ejecuta la solución con el mismo SQLite: debe funcionar, devolver de 1 a 200 filas y **no depender del
 día** (sin `now`, `random`, `current_date`); guarda su resultado en la lección. Las consultas del libro valen tal cual
 salvo las que usan `'now'`: cámbielas por fechas de marzo de 2026.
+
+## 11. Figuras y circuitos lógicos (1.2): `figura`, `logica` y sus pasos
+
+Dos widgets más, para lo que no es un esquema analógico: **`figura`** (una figura o foto del libro, o una foto de
+placa del explorador «Consolas», con zonas que se tocan) y **`logica`** (un circuito digital vivo: puertas,
+biestables, contador, multiplexor, decodificador, interruptores, reloj y LED, con su cronograma y su tabla de verdad).
+Con ellos van dos pasos nuevos (`tocar` y `tabla`) y tres modos de pasos que ya existían (`averia`, `diseno` y
+`dibujar` sobre un circuito lógico). Ejemplos completos y probados de todos:
+`web/tests/lecciones12-catalogo/cap29/sec-29.2.yaml` (lección de prueba; no se publica). Cópielos.
+
+| tipo de tarjeta | widget | Para qué | Cuenta como pregunta |
+|---|---|---|---|
+| `explorar` | `figura` | tocar zonas y leer qué es cada una | no |
+| `explorar` | `logica` | mover interruptores, dar pulsos de reloj, mover el cursor del cronograma | no |
+| `predecir` / `pregunta` | `logica` con `ocultar: true` | prediga la salida: los LED dicen «?» y los interruptores no se mueven | sí |
+| `tocar` | `figura` | «toque el defecto», «toque la pieza»: la zona es la respuesta | sí |
+| `tabla` | `logica` | rellenar la tabla de verdad, comprobada con el circuito | sí |
+| `averia` | `logica` | buscar la avería con la sonda lógica | sí |
+| `diseno` | `logica` | construir una función con el mínimo de puertas | sí |
+| `dibujar` | `logica` con `cronograma` | dibujar una señal tramo a tramo (modo digital, ajustado a los flancos) | sí |
+
+Una lección sin valores numéricos lleva `modelo: { valores: {}, calculos: {} }`. Los números de los textos siguen la
+regla de §6 (los «0» y «1» de los niveles están en las tablas del libro: cítelas).
+
+### 11.1 `figura` — Una figura o foto con zonas
+
+```yaml
+widget:
+  tipo: figura
+  figura: fig-13.5                 # la etiqueta de la figura (de cualquier parte), o el bloque «cap13#64»
+  # imagen: img/foto_nes.jpg       # o una foto del libro sin figura (web/public/libro/img/)
+  # consola: { maquina: nes, foto: cara-a }   # o una foto del explorador (sin «foto»: la principal)
+  zonas:
+    - { id: fria, rotulo: "Arriba en el centro", rect: [159, 2, 136, 126], texto: "Fría: mate y grumosa." }
+    - { id: puente, rotulo: "Abajo en el centro", poligono: [[159, 138], [295, 138], [295, 270], [159, 270]] }
+    - { id: decodificador, hotspot: U3, rotulo: "Chip pequeño, arriba a la izquierda" }   # solo en fotos de consola
+```
+
+- Coordenadas **de la propia figura**: las del `svg_vista` de una figura SVG del libro (la etiqueta y el tamaño se ven
+  en `partes/<parte>.json`), o los píxeles de una foto. `rect: [x, y, ancho, alto]`; `poligono` de 3 a 24 puntos.
+- `hotspot`: la caja de una pieza ya identificada en el explorador (`web/public/consolas/<maquina>.json`, sus
+  `hotspots` con `cajas`): el curso «Consolas por dentro» reutiliza así las piezas identificadas. Sin `rotulo` ni
+  `texto`, toma su nombre y su pieza del explorador.
+- `rotulo`: el nombre de la zona en la **lista de zonas** (teclado y lector de pantalla; ≤ 8 palabras). En una
+  pregunta, **neutro** («Arriba en el centro», «Chip largo, a la izquierda»): un rótulo que dice «Puente» responde la
+  pregunta. `texto`: lo que se lee al tocarla en una tarjeta `explorar` (≤ 40 palabras, números del libro).
+- 1 a 12 zonas. El generador avisa de una zona que en un teléfono mide menos de 24 px (se puede ampliar con «+» o con
+  dos dedos, y está la lista, pero conviene que se pueda tocar) y de dos zonas que se tapan en más de la mitad (un
+  toque elige la más pequeña).
+- `explorar` con figura: `requiere: { mover: [fria, puente] }` pide tocar esas zonas (sin él, una cualquiera).
+- La figura SVG sale sobre la placa de figuras del libro (también en oscuro y sepia); la foto, con su crédito.
+
+### 11.2 `logica` — Un circuito lógico vivo
+
+```yaml
+widget:
+  tipo: logica
+  entradas: [A, B, { id: CLK, reloj: true }, { id: EN, valor: 1, rotulo: "EN" }]   # interruptores (y un reloj)
+  piezas:
+    - { id: n1, tipo: nand, entradas: [A, B] }            # and, or, not, nand, nor, xor, xnor, buf (2–4 entradas)
+    - { id: f1, tipo: d, entradas: [f1.nq, CLK] }        # d [D, CLK] · jk [J, K, CLK] · t [T, CLK]; salidas f1.q, f1.nq
+    - { id: c1, tipo: contador, bits: 4, modulo: 10, entradas: [CLK] }   # [CLK] o [CLK, R]; salidas c1.q0 … c1.q3
+    - { id: m1, tipo: mux, bits: 1, entradas: [A, B, EN] }   # [S0…, D0…]; salida m1
+    - { id: d1, tipo: decodificador, bits: 2, entradas: [A, B, EN] }   # [A0…, EN?]; salidas d1.y0 … d1.y3
+  salidas:
+    - { id: Y, de: n1 }                                   # un LED por salida
+  tabla: true                                             # opcional: su tabla de verdad debajo, con la fila marcada
+  cronograma: { ciclos: 4, estimulo: { A: "0110" }, senales: [CLK, A, Y] }   # opcional (§11.7)
+  ocultar: false                                          # true: LED «?» e interruptores quietos hasta responder
+```
+
+- Una entrada puede leer `0` o `1` fijos (una patilla a masa o a la alimentación). Hasta 6 entradas, 16 piezas y
+  8 LED. Ids de piezas en minúsculas (`n1`, `ff-a`); entradas y LED con letras y cifras (`A`, `CLK`, `Q0`).
+- La simulación es **por eventos, determinista**: cada pieza tarda una unidad; un biestable toma su entrada en el
+  **flanco de subida**, así que dos biestables del mismo reloj desplazan una etapa por flanco (registro) y un D con su
+  Q̄ en su D divide por dos. Al encender, los biestables valen su `inicial` (0) y un cerrojo de dos NAND cae en uno de
+  sus dos estados. El generador rechaza un circuito que **oscila** (un anillo de inversores).
+- El dibujo se hace solo (entradas a la izquierda, LED a la derecha, cada pieza tras su fuente, cables en ángulo recto
+  con puntos de unión). Cada cable lleva el color de su nivel (1 rojo y grueso, 0 azul y fino) y su «1»/«0» escrito.
+- Se toca el interruptor dibujado o su botón (teclado); el reloj, con «Pulso de reloj»; «Reiniciar» vuelve al
+  encendido. El lector de pantalla oye la descripción del circuito y el estado de los LED.
+- `explorar` con circuito: `requiere: { mover: [A, B] }` pide cambiar esas entradas; con cronograma, mover el cursor.
+- **Predecir la salida**: `predecir` (o `pregunta`) con `opciones` y `ocultar: true`; ponga en `entradas` los `valor`
+  de la combinación por la que pregunta (los interruptores no se mueven hasta responder).
+
+### 11.3 `tocar` — Toque la zona
+
+```yaml
+  - id: toque-puente
+    tipo: tocar
+    titulo: "Un cortocircuito"
+    texto: "Toque la unión que cortocircuita dos islas."
+    libro: ["cap13#64"]
+    widget: { tipo: figura, figura: fig-13.5, zonas: [ … ] }
+    tocar:
+      bien: [puente]                 # una o varias zonas buenas
+      todas: false                   # true: hay que tocar todas las buenas (y ninguna mala)
+      porque:                        # cada zona que no es la buena, con su porqué (≤ 40 palabras)
+        fria: "Está mate y grumosa, pero en una sola isla."
+        …
+    exito: "El puente une dos islas vecinas: un cortocircuito."
+    escalera: ["Busque la que toca dos patillas."]
+    solucion: "Abajo en el centro: el estaño une las dos islas."
+```
+
+Se toca en la figura o en la lista. Una zona mala se explica con su `porque` y queda tachada; la buena se marca al
+acertar. Las pistas (`pistas`) pueden mirar `mal` (zonas malas elegidas) y `faltan` (buenas sin tocar).
+
+### 11.4 `tabla` — Rellene la tabla de verdad
+
+```yaml
+    widget: { tipo: logica, entradas: [A, B], piezas: [ … ], salidas: [ { id: Y, de: n3 } ], ocultar: true }
+    tabla:
+      salidas: [Y]                   # las columnas que rellena (por defecto, todos los LED); de 1 a 3
+    exito: "Es la OR: una NAND con las entradas invertidas."
+```
+
+Las filas salen solas del circuito (de 1 a 4 entradas, en orden binario: 00, 01, 10, 11); cada celda se pulsa para
+poner 0 o 1. Al comprobar se marcan las filas mal. Con `ocultar: true` el lector razona sin ver el LED; sin él, puede
+probar en el circuito y anotar (también es aprender). Solo circuitos combinacionales. Pistas: `error` (fracción de
+filas mal), `filas_mal`.
+
+### 11.5 `averia` en un circuito lógico — Con la sonda lógica
+
+```yaml
+    widget: { tipo: logica, entradas: [A, B], piezas: [ { id: n1, tipo: nand, entradas: [A, A], rotulo: "N1" }, … ], salidas: [ { id: Y, de: n3 } ] }
+    averia:
+      sospechosos: [ { id: n1, rotulo: "N1 (invierte A)" }, … ]   # piezas (por defecto, todas)
+      fallos:
+        - { id: n3-al-aire, pieza: n3, tipo: sin-conexion, pin: 1, texto: "…en TTL tiende a leerse como un 1." }
+        - { id: n1-a-cero, pieza: n1, tipo: atascada-0, texto: "…" }    # atascada-0 | atascada-1 (su salida, o `senal`)
+      # puntos: [ { id, rotulo, senal | pieza + pin } ]   # por defecto, cada cable (y cada patilla si hay «sin-conexion»)
+      # pasos: 6                                          # medidas permitidas (por defecto, sin límite)
+      eleccion: fija                                      # o azar
+      preguntar_tipo: false
+```
+
+El lector mueve los interruptores, mide con la **sonda lógica** (un toque en un cable, o el punto elegido en la lista
+y «Medir»: ALTO, BAJO o sin nivel en una patilla al aire) y elige la pieza. Los cables no muestran su nivel (lo dice
+la sonda); los LED sí, son el síntoma. Una entrada sin conectar **se lee como 1** (TTL, sección 9.3). Un sospechoso
+equivocado se explica con una de sus medidas («Si fuera N1 (salida atascada a 0), con A = 0, B = 0 la sonda en
+«Salida de N1» marcaría nivel bajo (0); usted midió nivel alto (1).»). El generador comprueba que cada avería se ve
+con alguna combinación en algún punto y que las de piezas distintas se distinguen. Solo combinacionales; sin `ocultar`
+ni cronograma.
+
+### 11.6 `diseno` en un circuito lógico — Con el mínimo de puertas
+
+```yaml
+    widget: { tipo: logica, entradas: [A, B], piezas: [], salidas: [ { id: Y, de: "0" } ] }   # sin piezas
+    diseno:
+      salida: Y
+      permitidas: [nand]             # las puertas de la paleta
+      referencia:                    # un circuito mínimo (p1, p2… son las puertas anteriores)
+        - { tipo: nand, entradas: [A, A] }
+        - { tipo: nand, entradas: [B, B] }
+        - { tipo: nand, entradas: [p1, p2] }
+      # columna: "0111"              # opcional: la salida fila a fila (debe coincidir con la referencia)
+      exigir_minimo: true            # true: solo vale con el mínimo; false: vale y se le dice que se puede con menos
+      # max_puertas: 6
+    exito: "Dos inversores y una tercera NAND: la OR del banco."
+```
+
+El lector añade puertas, elige su tipo y sus entradas en listas, conecta el LED y prueba moviendo los interruptores;
+al comprobar se compara la tabla de verdad («Con A = 0, B = 0 su circuito da 1 y debe dar 0.») y se cuentan las
+puertas. El generador **busca un circuito más pequeño** con las puertas permitidas (todas las combinaciones hasta el
+mínimo − 1): si existe, es un error; si la búsqueda es demasiado grande, lo avisa. No necesita `pistas` (puede llevar;
+miran `puertas`).
+
+### 11.7 `dibujar` en modo digital y el cronograma
+
+```yaml
+    widget:
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true }]
+      piezas: [ { id: f1, tipo: d, entradas: [f1.nq, CLK] } ]
+      salidas: [ { id: Q, de: f1.q } ]
+      cronograma: { ciclos: 4, senales: [CLK] }   # filas: entradas, reloj, señales o LED
+      dibujo: false                               # solo el cronograma (el circuito se vio antes)
+    dibujar:
+      senal: Q                                    # la señal (o LED) que se dibuja
+```
+
+El **cronograma** tiene dos tramos por ciclo: el reloj bajo (las entradas de `estimulo` cambian ahí, una cifra por
+ciclo) y el reloj alto (el flanco de subida en medio del ciclo, con las entradas quietas). En una tarjeta `explorar`
+el lector mueve el cursor (un deslizador) y el circuito enseña ese momento: compare el reloj con Q. En `dibujar` el
+lector pone el nivel de cada tramo (tocar arriba o abajo, arrastrar; con el teclado ← → y ↑ ↓): el dibujo solo cambia
+en los flancos. Al comprobar se marcan los tramos mal y se dice el primer ciclo con error; tras acertar o dos fallos se
+dibuja la onda buena. Pistas: `error` (fracción de tramos mal), `tramos_mal`.
+
+### 11.8 Otros cambios de 1.2 (motor12c)
+
+- Nombres de un mando de lista con cifras (§5.1): «Sn63Pb37», «SAC305», «0805», «12-0-12» valen; un nombre que es su
+  propio valor, no.
+- `averia` (§10.4): el aviso «hacen falta N medidas fijas» ya no sale cuando `pasos` ≥ log₂(averías + 1) redondeado
+  arriba (una bisección, eligiendo cada medida tras la anterior) o con `adaptativa: true`.
+- Avisos nuevos: un `widget` de circuito o gráfica con `ocultar: true` y sin `lectura` (no oculta nada); un `estimar`
+  cuyo `inicio` está en el extremo del deslizador más alejado del objetivo (no se puede fallar por los dos lados).

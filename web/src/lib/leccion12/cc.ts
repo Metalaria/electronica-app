@@ -4,7 +4,7 @@
 // with the lessons' models — which the generator checked against ngspice).
 //
 // Linear elements only: R, independent V and I sources (their DC value; «0» meters included), C (open), L (short),
-// E (VCVS) and F (CCCS, controlled by a V source). A netlist with anything else (a diode, a transistor…) is not solved:
+// E (VCVS) and F (CCCS, controlled by a V source); a meter «BMED…» (a reading such as a power) is skipped. A netlist with anything else (a diode, a transistor…) is not solved:
 // `resolverCC` returns null and the caller uses only what it knows exactly — the sources to ground and the voltages
 // the card measures (`nodosConocidos`). As in SPICE, every node has 10⁻¹² S to ground, so a node left floating by a
 // capacitor reads 0 V instead of making the system singular.
@@ -50,6 +50,9 @@ function lineas(netlist: readonly string[]): Linea[] {
     const s = raw.replace(/;.*$/, '').trim();
     if (!s || /^[.*+]/.test(s)) continue;
     const t = s.split(/\s+/);
+    // (esquemas12: a meter «BMED…», a behavioural source on a node of its own that only works out a reading — a power,
+    // v·i — loads nothing and is not part of the circuit)
+    if (/^bmed/i.test(t[0]!)) continue;
     out.push({ nombre: t[0]!.toLowerCase(), tipo: t[0]![0]!.toUpperCase(), t: t.slice(1) });
   }
   return out;

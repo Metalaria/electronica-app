@@ -9,6 +9,9 @@ import type { OrigenRespuesta } from '../aprendizaje/eventos';
 // 1.2: the learning-by-doing step types have their own rules; these functions delegate to them
 import { comprobar12, esComprobable12, exploracion12, falta12, nuevoEstadoActividad, puedeComprobar12, reintentar12 } from '../leccion12/motor12';
 import type { EstadoActividad12 } from '../leccion12/tipos';
+// 1.2 (motor12c): the state of a figure or logic widget, and what its interaction counts as «moved»
+import { nombreInteractivo, nuevoEstadoWidget } from '../leccion12/digital/motor-digital';
+import type { EstadoWidget12 } from '../leccion12/digital/tipos';
 
 export interface EstadoTarjeta {
   /** Values the reader moved on this card. */
@@ -37,6 +40,8 @@ export interface EstadoTarjeta {
   actividad?: EstadoActividad12;
   /** 1.2: steps of the hint ladder opened (pista 1, pista 2, the solution). */
   pistasVistas?: number;
+  /** 1.2: the state of a «figura» or «logica» widget (the zone touched, the switches, the flip-flops). */
+  widget12?: EstadoWidget12;
 }
 
 export function nuevoEstado(t: Tarjeta): EstadoTarjeta {
@@ -53,6 +58,7 @@ export function nuevoEstado(t: Tarjeta): EstadoTarjeta {
     puestas: t.emparejar ? t.emparejar.parejas.map(() => null) : [],
     cerrada: false,
     ...(t.actividad ? { actividad: nuevoEstadoActividad(t) } : {}),
+    ...(t.widget?.tipo === 'figura' || t.widget?.tipo === 'logica' ? { widget12: nuevoEstadoWidget(t) } : {}),
     pistasVistas: 0,
   };
 }
@@ -77,10 +83,13 @@ export function faltaPorExplorar(l: Leccion11, t: Tarjeta, e: EstadoTarjeta, v: 
   if (t.actividad && !exploracion12(t, v)) return falta12(t);
   const r = t.requiere;
   if (!r) return '';
-  const nombre = (k: string) => l.modelo.valores[k]?.nombre ?? k;
+  const w12 = t.widget?.tipo === 'figura' || t.widget?.tipo === 'logica' ? t.widget : null;
+  const nombre = (k: string) => l.modelo.valores[k]?.nombre ?? (w12 ? nombreInteractivo(w12, k) : k);
+  const verbo = w12?.tipo === 'figura' ? 'toque' : 'mueva';
   const sin = r.mover.filter((k) => !e.movidos.includes(k));
-  if (sin.length) return `Para seguir, mueva: ${sin.map(nombre).join(', ')}.`;
-  if (e.movidos.length < r.minimo) return 'Para seguir, mueva uno de los mandos.';
+  if (sin.length) return `Para seguir, ${verbo}: ${sin.map(nombre).join(', ')}.`;
+  if (e.movidos.length < r.minimo)
+    return w12?.tipo === 'figura' ? 'Para seguir, toque una zona de la figura.' : w12?.tipo === 'logica' ? (w12.cronograma ? 'Para seguir, mueva el cursor del cronograma.' : 'Para seguir, cambie una entrada del circuito.') : 'Para seguir, mueva uno de los mandos.';
   const abiertos = r.conectar.filter((k) => (v[k] ?? 0) === 0);
   if (abiertos.length) return 'Para seguir, conecte la carga.';
   return '';
@@ -216,7 +225,7 @@ export function idRespuestaDe(parte: string, seccion: string, tarjeta: string): 
  */
 export function esPracticable(t: Tarjeta): boolean {
   // (1.2: the step types that are answered too; «ajuste» and the optional «banco» are not questions)
-  return (t.tipo === 'predecir' || t.tipo === 'pregunta' || t.tipo === 'reto' || t.tipo === 'simular' || t.tipo === 'diseno' || t.tipo === 'averia' || t.tipo === 'dibujar' || t.tipo === 'sql') && esComprobable(t);
+  return (t.tipo === 'predecir' || t.tipo === 'pregunta' || t.tipo === 'reto' || t.tipo === 'simular' || t.tipo === 'diseno' || t.tipo === 'averia' || t.tipo === 'dibujar' || t.tipo === 'sql' || t.tipo === 'tocar' || t.tipo === 'tabla') && esComprobable(t);
 }
 
 /** A lesson's entry in libro/lecciones11/indice.json: its number of cards and the cards that can be practised. */

@@ -6,10 +6,13 @@
 
 import type { Eje, Rango, Texto } from '../leccion11/tipos';
 import type { TipoAveria } from '../../componentes/practica/averias';
+import type { ActividadDigital, EstadoActividadDigital } from './digital/tipos';
 
-export type TipoActividad = 'simular' | 'diseno' | 'averia' | 'ajuste' | 'banco' | 'dibujar' | 'sql';
+// (motor12c: «tocar» on a figure and «tabla» on a logic circuit; «averia», «diseno» and «dibujar» on a logic
+// circuit give the digital activities of lib/leccion12/digital/tipos.ts)
+export type TipoActividad = 'simular' | 'diseno' | 'averia' | 'ajuste' | 'banco' | 'dibujar' | 'sql' | 'tocar' | 'tabla';
 
-export const TIPOS_ACTIVIDAD: readonly TipoActividad[] = ['simular', 'diseno', 'averia', 'ajuste', 'banco', 'dibujar', 'sql'];
+export const TIPOS_ACTIVIDAD: readonly TipoActividad[] = ['simular', 'diseno', 'averia', 'ajuste', 'banco', 'dibujar', 'sql', 'tocar', 'tabla'];
 
 /** A typical wrong estimate and its explanation: the value a misconception gives, or a ratio to the right value. */
 export interface ErrorTipico {
@@ -166,7 +169,7 @@ export interface Sql {
   inicio?: number[];
 }
 
-export type Actividad12 = Simular | Diseno | Averia | Ajuste | Banco | Dibujar | Sql;
+export type Actividad12 = Simular | Diseno | Averia | Ajuste | Banco | Dibujar | Sql | ActividadDigital;
 
 // ------------------------------------------------------------------ the reader's state (in memory only)
 
@@ -216,4 +219,4 @@ export interface EstadoSql {
 }
 
 /** «diseno» and «ajuste» keep nothing of their own: their values are the widget's controls. */
-export type EstadoActividad12 = EstadoSimular | EstadoAveria | EstadoBanco | EstadoDibujar | EstadoSql | { tipo: 'diseno' | 'ajuste' };
+export type EstadoActividad12 = EstadoSimular | EstadoAveria | EstadoBanco | EstadoDibujar | EstadoSql | { tipo: 'diseno' | 'ajuste' } | EstadoActividadDigital;

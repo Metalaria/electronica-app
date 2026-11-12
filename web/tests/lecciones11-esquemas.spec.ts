@@ -91,7 +91,8 @@ test.describe('registro de esquemas', () => {
 });
 
 test.describe('cada esquema frente a ngspice (la lección de catálogo)', () => {
-  test.setTimeout(240_000);
+  // (esquemas12: the catalogue's 272 simulations take about a minute, and the mutations run it eight times)
+  test.setTimeout(900_000);
 
   test('se genera y tiene comprobaciones de cada esquema en el estado inicial y en los extremos de cada mando', () => {
     const r = generar();

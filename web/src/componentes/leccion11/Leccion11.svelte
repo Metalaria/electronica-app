@@ -63,6 +63,8 @@
   import Emparejar from './Emparejar.svelte';
   // 1.2 learning-by-doing steps and the hint ladder (motor12)
   import Actividad12 from '../leccion12/Actividad12.svelte';
+  // motor12c: a book figure with zones, a logic circuit (GUIA §11)
+  import Widget12 from '../leccion12/Widget12.svelte';
   import Escalera from '../leccion12/Escalera.svelte';
   import TextoVivo from './TextoVivo.svelte';
 
@@ -468,7 +470,8 @@
     <div class="hoja">
       <header class="cab" bind:clientHeight={altoCab}>
         <button type="button" class="icono" aria-label="Tarjeta anterior" disabled={pantalla === 0 && !enVuelta(ritmo)} onclick={atras} data-atras><ArrowLeft size={22} strokeWidth={2.2} aria-hidden="true" /></button>
-        <div class="segmentos" role="progressbar" aria-label={`Tarjeta ${pos.x} de ${pos.de}`} aria-valuemin={1} aria-valuemax={pos.de} aria-valuenow={pos.x}>
+        <!-- (motor12b: with many cards the 5 px gaps alone outgrew a 360 px header and pushed «Cerrar» off the screen) -->
+        <div class="segmentos" class:muchos={segs.length > 24} role="progressbar" aria-label={`Tarjeta ${pos.x} de ${pos.de}`} aria-valuemin={1} aria-valuemax={pos.de} aria-valuenow={pos.x}>
           {#each segs as s, i (i)}
             <span class="seg" class:hecho={s.estado === 'hecho'} class:actual={s.estado === 'actual'} class:vuelta={s.vuelta} data-seg={s.vuelta ? 'vuelta' : s.estado}></span>
           {/each}
@@ -519,6 +522,8 @@
               <CircuitoLeccion {leccion} widget={t.widget} valores={evaluadosWidget} propios={nominales} oculto={ocultoWidget} {prefijo} valor={valorWidget} {alMover} />
             {:else if t.widget?.tipo === 'grafica'}
               <GraficaLeccion {leccion} widget={t.widget} valores={evaluadosWidget} propios={nominales} oculto={ocultoWidget} {prefijo} valor={valorWidget} {alMover} />
+            {:else if t.widget?.tipo === 'figura' || t.widget?.tipo === 'logica'}
+              <Widget12 {t} {e} oculto={ocultoWidget} {prefijo} cambiar={cambiarEstado} />
             {/if}
 
             {#if t.texto.length}<p class="texto"><TextoVivo texto={t.texto} {valor} /></p>{/if}
@@ -635,8 +640,12 @@
   }
   .segmentos {
     flex: 1;
+    min-width: 0;
     display: flex;
     gap: 5px;
+  }
+  .segmentos.muchos {
+    gap: 2px;
   }
   .seg {
     flex: 1;

@@ -37,7 +37,7 @@ Iguales byte a byte: 43 de 78.
 | `tomoII.typ` | 169 líneas fuera de las piezas |
 | `tomoIII.typ` | 167 líneas fuera de las piezas |
 | `tomoIV.typ` | 247 líneas fuera de las piezas |
-| `tomoV.typ` | 550 líneas fuera de las piezas |
+| `tomoV.typ` | 549 líneas fuera de las piezas |
 | `tomoVI.typ` | 224 líneas fuera de las piezas |
 | `tomoVII.typ` | 315 líneas fuera de las piezas |
 | `tomoVIII.typ` | 289 líneas fuera de las piezas |

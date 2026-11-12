@@ -203,7 +203,8 @@ test.describe('generador: cada regla, rota a propósito', () => {
     ['una clave mal escrita', (f) => (tarjetaFuente(f, 'explore-serie').txto = 'x'), /clave desconocida «txto»/],
     // motor fixes 1.1: a «lista» control with names
     ['nombres que no casan con la lista', (f) => ((tarjetaFuente(f, 'explore-serie').widget as { mandos: unknown[] }).mandos[0] = { valor: 'R_1', lista: [1000, 2000], nombres: ['uno'] }), /nombres: un texto por cada valor/],
-    ['nombres con cifras', (f) => ((tarjetaFuente(f, 'explore-serie').widget as { mandos: unknown[] }).mandos[0] = { valor: 'R_1', lista: [1000, 2000], nombres: ['rojo', 'marrón 1'] }), /nombres: sin cifras/],
+    // (1.2, peticiones motor12: names may carry digits, «Sn63Pb37», «0805»; one that is only a number may not)
+    ['un nombre que es su propio valor', (f) => ((tarjetaFuente(f, 'explore-serie').widget as { mandos: unknown[] }).mandos[0] = { valor: 'R_1', lista: [1000, 2000], nombres: ['rojo', '2000'] }), /nombres: un nombre que no sea su propio valor/],
     ['nombres repetidos', (f) => ((tarjetaFuente(f, 'explore-serie').widget as { mandos: unknown[] }).mandos[0] = { valor: 'R_1', lista: [1000, 2000], nombres: ['rojo', 'rojo'] }), /nombres repetidos/],
     ['nombres sin lista', (f) => ((tarjetaFuente(f, 'explore-serie').widget as { mandos: unknown[] }).mandos[0] = { valor: 'R_1', min: 1000, max: 2000, paso: 1000, nombres: ['a', 'b'] }), /nombres: solo con «lista»/],
     ['una explicación demasiado larga', (f) => ((tarjetaFuente(f, 'por-que-baja').opciones as Record<string, unknown>[])[1]!.porque = `${'muy '.repeat(41)}larga`), /porque: \d+ palabras/],

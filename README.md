@@ -134,7 +134,7 @@ esquemas (fase 5) está en la versión 0.7.
 - **Calculadoras**: 351 fórmulas del libro listas para calcular cualquiera de sus variables, con un dibujo que
   se mueve con los valores, deslizadores, cuenta paso a paso, «¿Qué pasa si…?» y lo que dice el libro de cada
   una; botón «Calcular» junto a cada ecuación catalogada y tarjetas de fórmulas vivas (ver más abajo).
-- **Repaso**: tarjetas de los 910 términos del glosario con repetición espaciada y 1028 preguntas de test de
+- **Repaso**: tarjetas de los 1 054 términos del glosario con repetición espaciada y 1 118 preguntas de test de
   todos los capítulos y apéndices, cada una con la cita del libro de la que sale (ver más abajo).
 - **Estudiar por pasos** (0.9): cualquier sección del libro como una lección de una pantalla por subapartado, con
   sus figuras vivas, ecuaciones y calculadoras, y después las preguntas de Repaso de esa sección (ver más abajo).
@@ -1621,9 +1621,9 @@ por pantalla (`tests/capturas/calculadoras/`).
 **Página «Repaso»** (carril de iconos, `#/repaso`). Reúne lo que hay para hoy, las aprendidas y los días seguidos de
 repaso, con un mapa de actividad de las últimas cuatro semanas.
 
-**Tarjetas del glosario.** Cada uno de los 910 términos es una tarjeta: delante el término, detrás la definición
+**Tarjetas del glosario.** Cada uno de los 1 054 términos es una tarjeta: delante el término, detrás la definición
 del glosario y los enlaces «En el libro» a sus secciones. Con «Tarjetas inversas» se estudia también al revés (de
-la definición al término: 1820 tarjetas). Mazos: todo el glosario, por tomo, por capítulo o apéndice y por tema.
+la definición al término: 2 108 tarjetas). Mazos: todo el glosario, por tomo, por capítulo o apéndice y por tema.
 Tras ver la respuesta se elige **Otra vez · Difícil · Bien · Fácil**; cada botón dice cuándo volverá la tarjeta
 (1 min, 10 min, 4 d…). El planificador es el de Anki (SM-2): las nuevas pasan por dos pasos cortos (1 y 10 min) y
 después vuelven a intervalos de días que crecen con cada acierto; un fallo las devuelve a un paso corto y baja su
@@ -1631,7 +1631,7 @@ facilidad. Se presentan como mucho las nuevas al día que se elijan (15 por defe
 muestra la respuesta, `1`–`4` califican (`espacio` = Bien), `Ctrl`/`⌘` `Z` deshace la última. En pantalla táctil:
 tocar la tarjeta la gira; deslizar a la derecha es «Bien» y a la izquierda «Otra vez».
 
-**Tests por capítulo.** 1028 preguntas (de 10 a 20 por capítulo y de 5 a 12 por apéndice), de opción múltiple y
+**Tests por capítulo.** 1 118 preguntas (de 10 a 20 por capítulo y de 5 a 12 por apéndice), de opción múltiple y
 numéricas (con coma decimal y tolerancia). Los distractores recogen los errores contra los que el libro previene.
 Cada respuesta se corrige al momento con la explicación, la **cita literal del libro** y el enlace «Ver la
 sección…» (o «Ver el problema…») de donde sale. Al final, la puntuación y la lista «Para repasar»; los fallos
@@ -1907,7 +1907,8 @@ los dos lados, ordena y empareja, pasa axe en cada tarjeta y repite a 360 px en 
 horizontal. Con otra compilación: `EPA_DIST` y `EPA_PUERTO`. 1.2: también recorre los pasos de aprender haciendo a
 partir del modelo: `simular` (escribe el valor bueno y espera al ngspice de la app), `banco` (compara la lectura
 esperada), `ajuste` (lleva el mando a la banda), `averia` (mide, falla un sospechoso y acierta el de la primera
-ronda), `dibujar` (pone cada punto en la curva con el teclado) y `diseno` (como un reto, en una posición del modelo).
+ronda), `dibujar` (pone cada punto en la curva con el teclado, espaciados por igual en log x si el eje es
+logarítmico, como los dibuja la app) y `diseno` (como un reto, en una posición del modelo).
 
 ### Enlaces del libro impreso: códigos QR (1.1)
 
@@ -1965,7 +1966,7 @@ principios de diseño de Brilliant (una idea por pantalla, el dibujo que se toca
   declara el kit (`data-cuerpo`) y, para lo demás, se miden en el propio dibujo. Igual en las figuras vivas del libro
   (cuerpo de cada pieza entre sus `istart`/`iend`, puntos de unión y anotaciones); y en ellas el color de tensión de un
   hilo no se pinta sobre el cuerpo de una pieza de dos bornes (en 33.11 y 53.33 el libro trae un hilo a lo largo de
-  toda la pieza: su halo se recorta). Ningún hilo de los 28 esquemas de las lecciones pasa por el cuerpo de una pieza
+  toda la pieza: su halo se recorta). Ningún hilo de los 32 esquemas de las lecciones pasa por el cuerpo de una pieza
   ni bajo una etiqueta (en RLC serie y paralelo la frecuencia y Rₚ pisaban un hilo: se han movido). El LED brilla según su corriente y la lectura grande late al cambiar. Con «reducir movimiento»,
   flechas quietas en el sentido de la corriente. Solo se anima mientras el dibujo está en pantalla y la página visible;
   mide su ritmo y, en un equipo lento, dibuja la mitad de partículas a 30 fps y, si aún no llega, pasa a las flechas.
@@ -2027,10 +2028,81 @@ probados: `web/tests/lecciones12-catalogo/cap01/sec-1.4.yaml`):
 - **En el banco** (`banco`, opcional): piezas, qué medir y lo que debería dar; se escribe lo medido y la app compara y
   aconseja, con la ficha del cuaderno de prácticas.
 - **Dibuje la forma de onda** (`dibujar`): con el dedo, el ratón o el teclado; se compara con la curva del modelo con
-  una medida de error que perdona un pequeño desfase y un pequeño escalón, y se superpone la buena.
+  una medida de error que perdona un pequeño desfase y un pequeño escalón, y se superpone la buena. El eje x puede ser
+  logarítmico (`escala: log`, un Bode frente a la frecuencia): los puntos van espaciados por décadas y el desfase que se
+  perdona es una fracción del eje en esa escala.
 - **SQL** (`sql`, sección 17.10): SQLite en WebAssembly (sql.js 1.14.2, licencia MIT, unos 700 kB que solo se cargan al
   abrir una tarjeta SQL), una base de ejemplo con el esquema del libro y datos generados por la app; escribir la
   consulta, rellenar sus huecos u ordenar sus cláusulas, ver la tabla y los errores explicados en español.
+- **Figuras con zonas y electrónica digital (1.2, motor12c)** (guía: `contenido/lecciones11/GUIA.md` §11; ejemplos
+  probados: `web/tests/lecciones12-catalogo/cap29/sec-29.2.yaml`):
+  - widget **`figura`**: una figura o foto del libro, o una foto de placa del explorador «Consolas» (sus piezas ya
+    identificadas, `hotspots`, son zonas), con zonas que se tocan; se amplía con «+ / −» o con dos dedos y las zonas son
+    también una lista de botones (teclado y lector de pantalla). Paso nuevo **«Toque»** (`tocar`): toque el defecto o
+    la pieza; cada zona equivocada se explica y queda tachada.
+  - widget **`logica`**: un circuito digital vivo (puertas AND, OR, NOT, NAND, NOR, XOR, XNOR; biestables D, JK y T;
+    contador, multiplexor y decodificador; interruptores, reloj con «Pulso» y LED), simulado en la página por eventos y
+    de forma determinista, dibujado solo y con cada cable del color de su nivel (y su «1»/«0» escrito); con su
+    **tabla de verdad** (fila actual marcada) o su **cronograma** (un cursor que lleva el circuito a cada momento).
+  - pasos sobre el circuito: predecir la salida (LED «?»), **«Tabla de verdad»** (`tabla`, rellenarla), **buscar la
+    avería con la sonda lógica** (salida atascada a 0 o a 1, entrada al aire que el TTL lee como 1), **diseñar** una
+    función con el mínimo de puertas (el generador demuestra que no hay un circuito más pequeño) y **dibujar** una señal
+    en modo digital, tramo a tramo y ajustada a los flancos del reloj.
+  - De paso: los nombres de un mando de lista admiten cifras («Sn63Pb37», «0805»), y el generador avisa de un widget
+    oculto sin lectura y de una estimación que empieza en el extremo más alejado; no avisa de pocas medidas en una
+    avería por bisección (`adaptativa: true`).
+  - Pruebas: `tests/lecciones12-digital-unidad.spec.ts` (simulación, dibujo, generador y motor, en Node) y
+    `tests/lecciones12-digital-navegador.spec.ts` (cada tarjeta con teclado y ratón, axe; 360 px en oscuro y sepia).
+- **Esquemas nuevos (1.2, motor12b)**, a petición de los autores de Análisis de circuitos (catálogo en
+  `contenido/lecciones11/GUIA.md` §5.4): `fuente-controlada` (una tensión de control manda una fuente dependiente,
+  dibujada como un rombo: VCCS g_m·v con r_o en paralelo o VCVS A_v·v con r_o en serie, y su carga; secciones 22.11 y
+  22.8), `fuente-corriente-y-tension` (el circuito de la figura 22.9: 12 V con 4 Ω, 3 Ω y 2 A entre los mismos
+  terminales), `sallen-key` y `sallen-key-alto` (paso bajo y paso alto de ganancia unidad, sección 24.5; el operacional
+  ideal o, con `gbw` y `rsal`, con un polo y resistencia de salida, para ver lo que deja pasar muy por encima del corte).
+  Piezas nuevas del kit: `FuenteDep` (rombo con flecha o ±) y `AO` (operacional). Cada uno tiene su tarjeta en la
+  lección de catálogo de las pruebas, comprobada con ngspice (`tests/lecciones11-esquemas.spec.ts`) y recorrida en el
+  navegador (`tests/lecciones11-catalogo.spec.ts`, `tests/lecciones12-fix12.spec.ts`: ningún hilo bajo una pieza o una
+  etiqueta y ninguna partícula sobre ellas). Con ellas la lección de catálogo pasó de 50 tarjetas y destapó un fallo de
+  la cabecera de las lecciones: a 360 px los huecos de 5 px entre los segmentos de la barra de progreso empujaban
+  «Cerrar la lección» fuera de la pantalla; con más de 24 tarjetas los huecos son de 2 px.
+- **Esquemas nuevos (1.2, esquemas12)**, a petición de los autores de Analógica (cap07, cap08) y de Análisis (cap24,
+  cap42), en `contenido/lecciones11/GUIA.md` §5.4 bis: `mosfet` (canal N con R_D, R_G, R_GS y R_S; la ley cuadrática del
+  libro es el LEVEL=1 de ngspice con KP = k y VTO = V_th; puerta continua o PWM), la familia del operacional
+  (`ao-no-inversor` con el seguidor, `ao-inversor`, `ao-sumador`, `ao-integrador`, `comparador-schmitt`) con un solo
+  modelo de operacional documentado (A₀ = 10⁵, raíles sin «wind-up», un polo de GBW, slew rate; en continua, la parte
+  lineal de su región, así que el circuito vivo colorea los hilos también con operacional), `regulador-lineal`
+  (elemento de paso ideal, referencia, divisor y dropout; mide la potencia del paso), `ne555-astable` (con sus dos
+  comparadores, el biestable y el transistor de descarga dibujados), `muestreo-retencion` (adquisición, pedestal Q/C y
+  caída I/C), `rlc-escalon` (respuesta de segundo orden), `trifasica` (estrella con el neutro conectado o cortado, o
+  triángulo) y `transformador-real` (magnetizante y dispersión: la banda pasante); `rlc-serie` mide además su impedancia
+  (`z_amp`, `z_fase`: un condensador de desacoplo con ESR y ESL). Piezas del kit: `Mosfet` (N o P, con diodo interno),
+  `Entrada` (la fuente de entrada: pila o senoidal), `EtiquetasAO`; `AO` con patillas de alimentación opcionales y
+  `FuenteI` que puede apuntar hacia abajo. La comparación con ngspice admite, en los esquemas de conmutación, que un
+  salto del modelo caiga un paso de tiempo antes o después (± 0,15 % del eje; ± 0,4 % en el 555), y en una curva con eje
+  `y` logarítmico la tolerancia ya no es el 0,01 % de la altura del eje (con una impedancia de 0,01 Ω a 10 kΩ, 1 Ω, más
+  que todo el valle del desacoplo). Pruebas: la lección de catálogo (272 comprobaciones con ngspice),
+  `tests/lecciones12-esquemas12.spec.ts` (cada esquema frente a los valores del libro: 139/263/331 V del neutro cortado,
+  687 Hz del 555, ±1,09 V del Schmitt…), `tests/lecciones12-fix12.spec.ts` (cada esquema registrado tiene su tarjeta
+  dibujada; ningún hilo bajo una pieza y ninguna partícula sobre ella). El recorrido de las lecciones
+  (`tests/lecciones11-recorrido.spec.ts`) toca los interruptores cuando una tarjeta no tiene deslizadores bastantes, y
+  la primera estimación equivocada nunca es la posición de partida.
+- **Esquemas nuevos (1.2, esquemas12b)**, a petición de Taller (cap15), en `contenido/lecciones11/GUIA.md` §5.4 bis:
+  `mosfet` con **carga inductiva** (`l` en serie con R_D, la avalancha `bv` y el diodo de rueda libre `vf` con su
+  interruptor `rueda`: el pico al apagar con y sin diodo, sección 4.5; la bobina parte de la corriente de conducción y
+  se extingue en el t = (L/R)·ln(1 + I·R/V) del libro), `rectificador-toma-media` (secundario 15-0-15 con la toma media
+  a masa, un diodo por rama, un condensador por raíl para ±V, carga resistiva o de corriente constante y 78xx/79xx
+  opcionales con su dropout: los 20,5 V y el rizado de la sección 14.2) y `lm3914` (escalera de diez resistencias, diez
+  comparadores, salidas de corriente 10·V_ref/R_ref, modo barra o punto y la disipación del integrado: los 400 mW de la
+  sección 14.4); y `ao-no-inversor` documentado como bloque de ganancia con recorte (el LM386 de la sección 14.3,
+  ganancia 20 o 200). Sin la bobina, la netlist de `mosfet` es la de antes (las lecciones que ya lo usan no cambian).
+  Pruebas: cinco tarjetas más en la lección de catálogo (292 comprobaciones con ngspice) y tres en
+  `tests/lecciones12-esquemas12.spec.ts`.
+- **Una prueba que fallaba a veces (fix12, «espejo»).** La prueba de las partículas medía cada pieza por la caja que
+  envuelve su trazo fuera de los hilos con corriente; la carga del espejo cuelga del hilo de arriba en una T, así que su
+  caja era tan ancha como el zigzag y llegaba a 3 unidades del hilo, y una partícula que pasaba junto a la T, a 7
+  unidades del trazo, encendía 6–7 px «dentro» (107 de 8 436 posiciones en 200 cuadros, ninguna sobre el trazo): según
+  el momento muestreado, fallaba o no. Ahora la tinta de cada pieza se mide trazo a trazo (media anchura + 0,5); las
+  zonas entre trazos siguen siendo los cuerpos declarados y las formas cerradas. Cinco repeticiones seguidas pasan.
 
 Todo se comprueba al generar (una regla rota es un error que dice tarjeta y motivo: retos sin solución con tolerancias,
 averías que no se distinguen, consultas que dependen del día…), y las averías se simulan con ngspice como cualquier
@@ -2045,7 +2117,7 @@ catálogo de punta a punta, axe y 360 px), con `playwright.lecciones12.config.ts
 La aplicación es un espejo de la edición 4.1.0 del libro: todo `web/public/libro/` (y `proyectos/`, `fm7303/`,
 `miniaturas/`) sale de sus fuentes (`EPA_FUENTES`, «Generar el contenido»). Con la 4.1 hay 72 partes (57 capítulos, 11
 apéndices, glosario y tres anexos), 804 secciones, 2 702 etiquetas numeradas, 1 057 figuras (952 dibujos y 105 fotos),
-1 076 ecuaciones, 1 055 términos de glosario, 637 ejercicios y problemas (518 + 119; 632 autocomprobables), 442
+1 076 ecuaciones, 1 054 términos de glosario, 637 ejercicios y problemas (518 + 119; 632 autocomprobables), 442
 netlists, 1 118 preguntas de repaso y 670 ítems de práctica. La numeración impresa coincide con la del libro etiqueta por
 etiqueta (`figuras/numeros.json`, 0 diferencias). Los tomos (títulos y reparto, con los capítulos que cambiaron de tomo)
 salen de `tomos.json` y `tomos_titulos.json`; la aplicación no los tiene escritos en ningún otro sitio.
@@ -2090,9 +2162,13 @@ salen de `tomos.json` y `tomos_titulos.json`; la aplicación no los tiene escrit
   (`datos/`, que el libro ya no trae) se llevan al dibujo nuevo con `contenido/datos_figuras_recolocar.py`, que vuelve a
   ejecutar el guion de cada figura en una copia de trabajo y mide el recorte real: 381 movidos de 1 a 4 puntos, 140
   iguales y uno retirado (0.11: su gráfica pequeña cambió de sitio; queda como figura sin datos).
-- **Glosario.** 28 entradas de `glosario.typ` siguen a la anterior sin línea en blanco (al ordenarlas en la integración
-  se perdió) y Typst las une en un párrafo: el generador las separa (1 055 términos; el libro dice 1 056 en los créditos y
-  la novedades, y sus fuentes tienen 1 055). **Para el autor**: en el PDF esas 28 entradas salen pegadas a la anterior.
+- **Glosario.** 1 054 términos, los de `glosario.typ` y los que dicen los créditos y las novedades del libro (rama
+  `fix-4.1.1`, F1–F3): el libro ha separado las 28 entradas que iban pegadas a la anterior (lo que hacía el generador
+  para separarlas se queda, ya no encuentra ninguna) y ha fundido «Control vectorial» en «Control vectorial (FOC)»
+  (34.6, también término clave del capítulo 34), como antes «Deslizamiento» en «Deslizamiento (s)».
+- **«sen» para el seno** (F7): las fórmulas y el texto de 30.10, 30.12, 30.D, 33.10 y 34.x dicen «sen» y «arcsen», y
+  también la fórmula de la máquina síncrona del paratexto de `cap56` y la explicación de la pregunta de repaso de
+  `cap31` sobre la red de adelanto.
 
 ### Paratexto del libro (`contenido/paratexto/`)
 
@@ -2129,7 +2205,8 @@ aplicación (detalle en `DIFERENCIAS.md`):
   esos 81 niveles a `niveles` de su `Fuentes/paratexto/<parte>.typ`, y el libro los imprimirá.
 - **Fórmulas** de `cap33`: resuelto en el libro (rama `fix-4.1.1`, F4): ha adoptado la línea que genera la aplicación,
   `cap33-18` cita la 34.6 y el término clave «Fuerza contraelectromotriz» sale del 33 (`importar_libro.py` lo trae);
-  `cap33.typ` solo difiere ya en los niveles y en los números de reserva de las soluciones.
+  `cap33.typ` solo difiere ya en los niveles y en los números de reserva de las soluciones, y `cap56.typ` es igual byte
+  a byte (término clave «Control vectorial (FOC)», «sen» en sus fórmulas).
 - **`cap38`**: las dos preguntas nuevas de la 4.1 llevan la unidad como contenido (`[ciclos]`) y sin escapar el guion.
 - **Índice de cada tomo** (`tomo*.typ`): las entradas y sus secciones salen del texto de hoy de la aplicación.
 
@@ -2910,7 +2987,7 @@ web/scripts/lecciones11.mjs` las comprueba y escribe `web/public/libro/lecciones
 `contenido/glosario_imagenes.py` (también llamado al final de `generar.py`, o solo) escribe
 `web/public/libro/glosario-imagenes.json`: el símbolo de circuito y el modelo 3D de cada término del glosario,
 según una tabla revisada a mano por término (más unas pocas reglas por nombre) e indica la cobertura (hoy 137
-términos con símbolo, 75 con modelo 3D, 54 con ambos y 752 sin imagen, de 910).
+términos con símbolo, 75 con modelo 3D, 54 con ambos y 896 sin imagen, de 1 054).
 
 Al final, `generar.py` llama a `contenido/spice.py`, que también se puede ejecutar solo (más rápido, si
 solo han cambiado las netlists):

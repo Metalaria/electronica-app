@@ -13,6 +13,7 @@ import { xsDibujo } from './dibujo';
 import { errorRelativo } from './prediccion';
 import { NO_DETERMINISTA, rellenarPlantilla, unirClausulas, type Ejecucion } from './sql/ejecutar';
 import { MAX_MUESTRAS, MAX_TOLERANCIAS, analizarDiseno } from './tolerancias';
+import { actividadDigitalDe, type ContextoDigital } from './digital/generar-digital';
 import { TIPOS_ACTIVIDAD, type Actividad12, type Ajuste, type Averia, type Banco, type Dibujar, type Diseno, type ErrorTipico, type Fallo, type Simular, type Sonda, type Sql, type TipoActividad } from './tipos';
 
 export const MAX_PALABRAS_EXPLICACION = 40;
@@ -28,6 +29,8 @@ export const FASE12: Record<TipoActividad, string> = {
   banco: 'En el banco',
   dibujar: 'Dibuje',
   sql: 'SQL',
+  tocar: 'Toque',
+  tabla: 'Tabla de verdad',
 };
 
 export function esTipoActividad(x: unknown): x is TipoActividad {
@@ -37,7 +40,12 @@ export function esTipoActividad(x: unknown): x is TipoActividad {
 /** Variables a hint's «cuando» may look at on each type, besides the model (what the reader did). */
 export const VARIABLES_PISTA: Partial<Record<TipoActividad, string[]>> = {
   simular: ['estimacion'],
-  dibujar: ['error', 'amplitud', 'media', 'desfase'],
+  dibujar: ['error', 'amplitud', 'media', 'desfase', 'tramos_mal'],
+  // (motor12c: the steps on a figure or a logic circuit, lib/leccion12/digital/motor-digital.ts)
+  tocar: ['mal', 'faltan'],
+  tabla: ['error', 'filas_mal'],
+  averia: ['medidas'],
+  diseno: ['puertas'],
 };
 
 /** What the generator gives the step type's checks: the card as built so far and its helpers. */
@@ -60,6 +68,8 @@ export interface Contexto12 {
   aviso(m: string): void;
   /** Runs SQL on the sample database (the script passes sql.js; absent: SQL cards cannot be checked). */
   sql?: (consulta: string) => Ejecucion;
+  /** The figure and logic widgets' context (their steps: GUIA §11). */
+  digital?: ContextoDigital;
 }
 
 export interface Resultado12 {
@@ -81,6 +91,17 @@ export function actividadDe(tipo: TipoActividad, x: unknown, c: Contexto12): Res
   const { e } = c;
   if (!esObjeto(x)) {
     e(`«${tipo}» debe ser un bloque con sus datos (GUIA §10)`);
+    return out;
+  }
+  // motor12c: a step on a figure or a logic circuit (GUIA §11)
+  if (c.digital && (tipo === 'tocar' || tipo === 'tabla' || ((tipo === 'averia' || tipo === 'diseno' || tipo === 'dibujar') && c.widget?.tipo === 'logica'))) {
+    const r = actividadDigitalDe(tipo, x, c.t, { ...c.digital, e, aviso: c.aviso });
+    out.actividad = r.actividad;
+    out.textos.push(...r.textos);
+    return out;
+  }
+  if (tipo === 'tocar' || tipo === 'tabla') {
+    e(`«${tipo}» necesita su widget (figura o logica)`);
     return out;
   }
   const claves = (permitidas: string[], d = tipo) => {
@@ -200,7 +221,8 @@ export function actividadDe(tipo: TipoActividad, x: unknown, c: Contexto12): Res
     }
 
     case 'averia': {
-      claves(['fallos', 'sospechosos', 'sondas', 'pasos', 'eleccion', 'preguntar_tipo']);
+      claves(['fallos', 'sospechosos', 'sondas', 'pasos', 'eleccion', 'preguntar_tipo', 'adaptativa']);
+      if (x.adaptativa != null && typeof x.adaptativa !== 'boolean') e('«averia.adaptativa»: true o false');
       if (c.widget?.tipo === 'circuito') {
         const w = c.widget;
         if (w.lectura || w.barras?.length || w.datos?.length) e('una «averia» no enseña lecturas en el widget (lectura, barras, datos): se mide con las sondas');
@@ -285,7 +307,10 @@ export function actividadDe(tipo: TipoActividad, x: unknown, c: Contexto12): Res
         const r = faltaSeparar(c.mc, a, c.inicial);
         for (const id of r.sano) e(`la avería «${id}» mide lo mismo que el circuito sano en todas las sondas: no se puede encontrar`);
         for (const [p, q] of r.pares) e(`las averías «${p}» y «${q}» (de piezas distintas) miden lo mismo en todas las sondas: añada una sonda que las distinga`);
-        if (!r.pares.length && r.minimo != null && r.minimo > pasos) c.aviso(`hacen falta ${r.minimo} medidas fijas para distinguir todas las averías y solo se permiten ${pasos} (eligiendo bien cada medida puede bastar)`);
+        // (peticiones motor12, autor-taller-A: a bisection, where each probe is chosen after the previous reading, needs
+        // only ceil(log2(faults + 1)) probes; `adaptativa: true` says the lesson means it that way)
+        const biseccion = pasos >= Math.ceil(Math.log2(fallos.length + 1)) || x.adaptativa === true;
+        if (!r.pares.length && r.minimo != null && r.minimo > pasos && !biseccion) c.aviso(`hacen falta ${r.minimo} medidas fijas para distinguir todas las averías y solo se permiten ${pasos} (eligiendo bien cada medida puede bastar)`);
       }
       out.actividad = a;
       break;
@@ -385,7 +410,8 @@ export function actividadDe(tipo: TipoActividad, x: unknown, c: Contexto12): Res
 
     case 'dibujar': {
       claves(['x', 'y', 'curva', 'puntos', 'tol', 'holgura', 'rotulo']);
-      const ex = eje(x.x, 'dibujar.x', true);
+      // (1.2: the x axis may be logarithmic, `escala: log`, as a graph's: a Bode plot against f)
+      const ex = eje(x.x, 'dibujar.x', true, true);
       const ey = eje(x.y, 'dibujar.y', false);
       c.variables('dibujar.curva', x.curva, ex?.id ? [ex.id] : []);
       const puntos = esNumero(x.puntos) ? Math.round(x.puntos) : 25;
@@ -475,16 +501,20 @@ export function actividadDe(tipo: TipoActividad, x: unknown, c: Contexto12): Res
   }
   return out;
 
-  function eje(o: unknown, d: string, conId: boolean): (Eje & { id?: string }) | null {
+  function eje(o: unknown, d: string, conId: boolean, conEscala = false): (Eje & { id?: string }) | null {
     if (!esObjeto(o) || !esNumero(o.min) || !esNumero(o.max) || !(o.min < o.max)) {
       e(`«${d}»: { ${conId ? 'id, ' : ''}min, max, unidad, rotulo } con min < max`);
       return null;
     }
     if (conId && (typeof o.id !== 'string' || !/^[A-Za-z][A-Za-z0-9_]*$/.test(o.id) || c.enModelo(o.id))) e(`«${d}.id»: un nombre que no esté en el modelo («t»)`);
-    for (const k of Object.keys(o)) if (!['id', 'min', 'max', 'unidad', 'rotulo'].includes(k)) e(`«${d}.${k}»: clave desconocida`);
+    const validas = ['id', 'min', 'max', 'unidad', 'rotulo', ...(conEscala ? ['escala'] : [])];
+    for (const k of Object.keys(o)) if (!validas.includes(k)) e(`«${d}.${k}»: clave desconocida`);
+    if (conEscala && o.escala != null && o.escala !== 'log' && o.escala !== 'lineal') e(`«${d}.escala»: lineal o log`);
+    const log = conEscala && o.escala === 'log';
+    if (log && !(o.min > 0)) e(`«${d}»: un eje logarítmico empieza por encima de 0`);
     const rot = c.texto(String(o.rotulo ?? ''), `${d}.rotulo`) ?? [];
     for (const v of valoresDeTexto(rot)) if (!c.enModelo(v)) e(`«${d}.rotulo»: {{${v}}} no está en el modelo`);
-    return { ...(conId ? { id: String(o.id) } : {}), min: o.min, max: o.max, unidad: typeof o.unidad === 'string' ? o.unidad : '', rotulo: rot };
+    return { ...(conId ? { id: String(o.id) } : {}), min: o.min, max: o.max, unidad: typeof o.unidad === 'string' ? o.unidad : '', rotulo: rot, ...(log ? { escala: 'log' as const } : {}) };
   }
 }
 

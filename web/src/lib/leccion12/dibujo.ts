@@ -2,15 +2,25 @@
 // evenly spaced x; the error is the RMS difference over the height of the y axis, after forgiving a small shift along
 // x and a small offset along y (both up to `holgura` of the axis): a hand never draws exactly on the grid, and a
 // curve that is right but a little to one side is right. Features of the drawing (amplitude ratio, mean offset,
-// shift) let the hints say what is wrong. Pure.
+// shift) let the hints say what is wrong. 1.2 (motor12b): a logarithmic x axis (`escala: log`, a Bode plot) spaces the
+// points evenly in log x, and the forgiven shift is a fraction of the axis in that scale too. Pure.
 
 import type { ModeloCompilado, Valores } from '../leccion11/modelo';
 import type { Dibujar } from './tipos';
 
-/** The x of each point of the drawing. */
+/** The x at a fraction `u` (0 … 1) of the axis, in its own scale (linear, or logarithmic: evenly in log x). */
+export function xEnFraccion(x: Pick<Dibujar['x'], 'min' | 'max' | 'escala'>, u: number): number {
+  return x.escala === 'log' ? x.min * (x.max / x.min) ** u : x.min + (x.max - x.min) * u;
+}
+
+/** `x` moved by a fraction `u` of the axis (+ = to the right), in the axis' scale. */
+function desplazar(x: Pick<Dibujar['x'], 'min' | 'max' | 'escala'>, v: number, u: number): number {
+  return x.escala === 'log' ? v * (x.max / x.min) ** u : v + (x.max - x.min) * u;
+}
+
+/** The x of each point of the drawing (evenly spaced along the axis, in its scale). */
 export function xsDibujo(d: Pick<Dibujar, 'x' | 'puntos'>): number[] {
-  const { min, max } = d.x;
-  return Array.from({ length: d.puntos }, (_, k) => min + ((max - min) * k) / (d.puntos - 1));
+  return Array.from({ length: d.puntos }, (_, k) => xEnFraccion(d.x, k / (d.puntos - 1)));
 }
 
 /** The right curve at any x (with the card's values). */
@@ -54,16 +64,16 @@ export function compararDibujo(d: Dibujar, ys: readonly (number | null)[], f: (x
   const u = rellenar(ys) ?? ys.map(() => (d.y.min + d.y.max) / 2);
   const xs = xsDibujo(d);
   const H = d.y.max - d.y.min;
-  const W = d.x.max - d.x.min;
   const ref = xs.map(f);
   const pp = (a: number[]) => Math.max(...a) - Math.min(...a);
   const media = (a: number[]) => a.reduce((s, x) => s + x, 0) / a.length;
   let mejor = { e: Infinity, s: 0 };
   const pasos = 20;
   for (let j = -pasos; j <= pasos; j++) {
-    const s = (d.holgura * W * j) / pasos;
+    // (s: a fraction of the axis, in its scale)
+    const s = (d.holgura * j) / pasos;
     // the drawing at x matched with the curve at x − s (drawn late: s > 0)
-    const r = xs.map((x) => f(x - s));
+    const r = xs.map((x) => f(desplazar(d.x, x, -s)));
     const dif = u.map((y, k) => y - r[k]!);
     const o = Math.max(-d.holgura * H, Math.min(d.holgura * H, media(dif)));
     const e = Math.sqrt(media(dif.map((x) => (x - o) ** 2))) / H;
@@ -74,7 +84,7 @@ export function compararDibujo(d: Dibujar, ys: readonly (number | null)[], f: (x
     error: mejor.e,
     amplitud: ppr > 1e-12 * H ? pp(u) / ppr : pp(u) <= 0.02 * H ? 1 : Infinity,
     media: (media(u) - media(ref)) / H,
-    desfase: mejor.s / W,
+    desfase: mejor.s,
     bien: mejor.e <= d.tol + 1e-12,
   };
 }

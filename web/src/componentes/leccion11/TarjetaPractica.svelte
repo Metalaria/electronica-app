@@ -22,6 +22,7 @@
   import Emparejar from './Emparejar.svelte';
   // 1.2 learning-by-doing steps and the hint ladder (motor12)
   import Actividad12 from '../leccion12/Actividad12.svelte';
+  import Widget12 from '../leccion12/Widget12.svelte';
   import Escalera from '../leccion12/Escalera.svelte';
   import TextoVivo from './TextoVivo.svelte';
 
@@ -126,6 +127,8 @@
     <CircuitoLeccion {leccion} widget={t.widget} valores={evaluados} propios={efectivos} {oculto} {prefijo} {valor} {alMover} />
   {:else if t.widget?.tipo === 'grafica'}
     <GraficaLeccion {leccion} widget={t.widget} valores={evaluados} propios={efectivos} {oculto} {prefijo} {valor} {alMover} />
+  {:else if t.widget?.tipo === 'figura' || t.widget?.tipo === 'logica'}
+    <Widget12 {t} {e} {oculto} {prefijo} cambiar={cambiarEstado} />
   {/if}
 
   {#if t.nota}<p class="nota"><TextoVivo texto={t.nota} {valor} /></p>{/if}

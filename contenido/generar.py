@@ -171,7 +171,8 @@ def main():
         if f == 'glosario.typ':
             # 4.1: 29 entries follow the previous one without a blank line (the sorting of the integration dropped
             # it), so Typst — and the converter — run them into the previous entry's paragraph; each entry is its
-            # own paragraph here (reported to the author: the printed glossary has them run together too)
+            # own paragraph here (reported to the author: the printed glossary has them run together too). The book
+            # fixed them in fix-4.1.1 (F1, its construir.py now checks it): this finds none, and stays as a guard
             text, juntas = re.subn(r'(?m)^(?!\s*$)(.*)\n(?=#strong\[[^\n]*?:\])', r'\1\n\n', text)
             if juntas:
                 print(f'glosario.typ: {juntas} entradas sin línea en blanco delante, separadas')

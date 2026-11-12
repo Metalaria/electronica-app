@@ -111,7 +111,7 @@ Written by `contenido/glosario_imagenes.py` (run alone or at the end of `generar
 { "version": 1,
   "terminos": { "glos-diodo": { "s": "D", "m": "diodo-do41" },
                 "glos-ntc-ptc": { "s": "R", "m": "termistor", "p": { "clase": "ntc" } } },
-  "cobertura": { "total": 910, "simbolo": 137, "modelo": 75, "ambos": 54, "alguno": 158, "ninguno": 752 } }
+  "cobertura": { "total": 1054, "simbolo": 137, "modelo": 75, "ambos": 54, "alguno": 158, "ninguno": 896 } }
 ```
 Only terms with something to show are listed, by glossary `id`. `s`: symbol key drawn by
 `web/src/componentes/glosario/simbolo.ts` from the automatic schematics' symbols (`R POT C CPOL L TRAFO D DZ DS
@@ -3139,7 +3139,7 @@ Salida por parte: `{parte, preguntas: [{id, tipo, enunciado, opciones, correcta 
 valor_texto, explicacion, ref, ref_num, ref_tipo, ref_titulo?, cita}]}`; `indice.json`: `{version, total, partes:
 [{parte, tipo, num, titulo, tomo, color, preguntas, numericas}]}`.
 
-**Tarjetas.** Se construyen en el cliente desde `glosario.json` (910 términos; anverso término, reverso definición
+**Tarjetas.** Se construyen en el cliente desde `glosario.json` (1 054 términos; anverso término, reverso definición
 y enlaces «ver»; inversas opcionales, id `<id>~i`). Mazos: todo, por tomo y por capítulo o apéndice (por las
 partes de sus «ver») y por tema (color de bloque). Planificador SM-2 de Anki (`srs.ts`, funciones puras): pasos de
 aprendizaje 1 y 10 min, reaprendizaje 10 min, graduación 1 d, «Fácil» 4 d, facilidad inicial 2,5 (mínimo 1,3;
@@ -3328,7 +3328,9 @@ values, symbols as runs, formatted values; drawn with `esquemas/kit/` parts and 
 `componentes/leccion11/esquemas11.css`, scoped to `svg.e11`). `registro.ts` keeps the registry; the app fills it with
 `definiciones.ts` / `dibujos.ts` (`import.meta.glob`), Node with `web/scripts/esquemas11.mjs` (reads the folders) —
 no shared list to edit. Shared helpers: `comun.ts` (netlist numbers, the book's VT, calibrated diode/Zener/NPN models),
-`comun-ca.ts` (sine source, phasor, AC observables), `comun-diodo.ts` (constant drop or Shockley). Registered:
+`comun-ca.ts` (sine source, phasor, AC observables), `comun-diodo.ts` (constant drop or Shockley), `comun-ao.ts`
+(1.2: complex arithmetic and the op-amp follower — ideal E with gain 10⁶, or one pole with A₀ = 10⁵ at gbw/A₀ through
+a transconductance into an RC, plus an open-loop output resistance `rsal`). Registered:
 divisor, paralelo, serie, mixto, kirchhoff, wheatstone, thevenin, norton, transformador, carga-rc, carga-rl,
 filtro-rc, filtro-rl, rlc-serie, rlc-paralelo, diodo, led, zener, media-onda, puente, bjt-interruptor,
 bjt-polarizacion, condensadores-serie (two capacitors in series with their leakages and optional balancing resistors,
@@ -3337,7 +3339,38 @@ source in series with Q2's base; DC readings only), recortador (a diode clipper 
 R and, from the output node, a positive-peak branch — diode, optional Zener `vz`, optional reference `vref` — and a
 negative-peak diode, each behind an optional switch, or two Zeners in antiserie `zz`; transient curves of the output,
 the input and the current), fijador (the clamper of sección 5.9, its diode's direction by the `sube` switch, and with
-`c2` the Greinacher doubler of sección 5.10; no load, capacitors start at their steady state). The expression language gained `wright(x)` (Wright ω, `calculadoras/expresion.ts`) to solve a
+`c2` the Greinacher doubler of sección 5.10; no load, capacitors start at their steady state); 1.2 (motor12b):
+fuente-controlada (the input port's v drives a dependent source: `gm` a VCCS `G` with `ro` in parallel, or `av` a
+VCVS `E` with `ro` in series — exactly one of them, `validar`; 0 V meters `vg`, `vr`, `vcarga`; DC readings),
+fuente-corriente-y-tension (figure 22.9: source with `rs`, `rp` and a current source between the same node `a` and
+ground, optional load; meters `vm`, `vr`, `vi`, `vcarga`), sallen-key and sallen-key-alto (unity-gain low-pass and
+high-pass, nodes fte, a, b, out; capacitors start at the ideal follower's steady state; AC and transient readings of
+v(out)); 1.2 (esquemas12): mosfet (LEVEL=1 NMOS, KP = k, VTO = vth, body tied to the source; meters `vmd`; gate
+`VG` DC or PULSE for the PWM), ao-no-inversor, ao-inversor, ao-sumador, ao-integrador and comparador-schmitt (nodes in,
+mn/p, out; the op-amp of `comun-ao.ts`: `lineasAO` — transient: a 1 F capacitor `CAX` charged by a behavioural current
+`BAOI` = clamp(2π·GBW·(v₊ − v₋) − (2π·GBW/A₀)·x, ±SR) with steep rail clamps, output buffer `EAO`; AC: `E` of gain A₀
+or the G–R–C pole; `lineasCC` — DC: the linear netlist of the region, `EAO` of gain A₀ or `VAO` at the rail, chosen by
+solving with `lib/leccion12/cc.ts` (piece `alto` for a bistable circuit); `lineasComparador` — a hysteretic switch
+`SAO` on v₊ − v₋ deciding the rail; input source `VIN` from `fuenteEntrada`: DC, SIN, square or triangle PULSE),
+regulador-lineal (ideal pass element `EP` + `FP` so I_in = I_out; error amplifier rails 0 and V_in − dropout; power
+meter `BMEDP`, skipped by `cc.ts`), ne555-astable (two `SW` switches with VT = V_CC/2, VH = V_CC/6: discharge and
+output; `C1` IC = v0 or V_CC/3), muestreo-retencion (switch `SSH` driven by `VCTL`, pedestal current pulse `IQ` of area
+Q, leakage `IF`, follower), rlc-escalon (carga-rc's switch on a series RLC with IC on L and C), trifasica (`V1..V3` at
+0, −120, +120°, line meters `VM1..3`, load meters `VJ1..3`/`VK1..3` so v(p_k) − v(q_k) is each load in star or delta,
+neutral meter `VMN`), transformador-real (`RS`, `LD`, `LM`, the ideal E/F transformer, `CP`); rlc-serie gained an
+impedance meter (a copy `RZ`, `LZ`, `CZ` fed by `IZ` = 1 A AC: v(zx) = Z); 1.2 (esquemas12b): mosfet with `l` (`RD`
+x–y, `LD` y–d with IC = the on-state current solved by bisection, `corrienteConduccion`; leak `RDX` d–x 1 MΩ;
+`.options method=gear maxord=1`, since the trapezoidal rule rings on the floating drain and order-2 Gear undershoots
+once as the avalanche lets go), `bv` (`DAV` s–d, a Zener at BV: the body diode with its avalanche) and `vf`/`rueda`
+(`DRL` d–x, drop vf at 0,1 A, returning on the supply side of `VMD` so `i(vmd)` stays the drain current; `icarga` =
+i(ld)); without `l` the netlist is unchanged; rectificador-toma-media (`VA` a SIN, `EB` b = −a, diodes `D1`/`D2` to
+`pp`–`VDP`–p and `D3`/`D4` from n–`VDN`–`nn`, `C1`/`C2` with IC = ±(V_p − vd), loads behind meters `VMLP`/`VMLN`: `RC*`,
+current sinks `IC*`; regulators `BRP`/`BRN` = clamp(±reg, v ∓ dropout) and `BIP`/`BIN` drawing their load's current
+from the capacitor), lm3914 (`VIN`, `VREF`–`VMR`–`RREF`, `VLED`–`VML` to the anodes `a`; ten LEDs `DLk` a–ok with the
+drop vf at the LED current, sinks `BLk` = I_LED·u(v(in) + 1e-9 − V_k) — in dot mode minus the next step —, leaks
+`RZk` 10¹³ Ω; meters `BMEDN` (LEDs lit) and `BMEDP` (Σ I·v(ok)), skipped by `cc.ts`). `tipos.ts` `tran.bordes?(c)`: the fraction of
+the axis a model's jump may be off (spice.ts `CurvaEsperada.dx`: the simulated value is compared with the range of the
+model within ± dx). On a log y axis an AC curve's floor is 10⁻⁴ of the axis' bottom. The expression language gained `wright(x)` (Wright ω, `calculadoras/expresion.ts`) to solve a
 Shockley diode in series with a resistor.
 
 **Components** (`componentes/leccion11/`): `Leccion11.svelte` (screen, keys, guard, summary with
@@ -3465,7 +3498,9 @@ Nothing stored changes: no new key, no schema version, no migration. Lesson data
   `corriente`); wires and node dots `[data-red="<netlist node>"]` (kit `Pila`/`FuenteCA`/`FuenteI` prop
   `nodos=[y1 end, y2 end]` splits their leads); parts `[data-pieza="<piece>"]` (kit prop `pieza`, a wrapping `<g>`);
   `FuenteCA` marks `[data-alterna]` (AC: particles swing, no voltages); part bodies `[data-cuerpo="x0 y0 x1 y1"]` (kit
-  R, L, C, D, Pila, Interruptor, Conmutador, Trafo; `kit/geometria.ts` `cajaCuerpo`). fix12, particles only on wires:
+  R, L, C, D, Pila, Interruptor, Conmutador, Trafo, and the 1.2 FuenteDep (a dependent source's diamond, `tipo`
+  corriente|tension, leads split by `nodos`) and AO (an op-amp triangle, inputs at y ∓ 20, its whole box);
+  `kit/geometria.ts` `cajaCuerpo`). fix12, particles only on wires:
   `zonasDelDibujo` (cached on a geometry signature) collects the declared bodies, every `text` box, every small closed
   shape (≤ 50 units: dots, terminals, triangles, source circles) and the «ink» of every other shape more than 1,2 units
   off the `.flujo` paths; `particulas.ts` `ocultar(caminos, k)` turns `Camino.zonas` into arc-length `ocultos`
@@ -3517,7 +3552,7 @@ before 1.2 generate byte for byte the same output.
 - `ajuste` {banda {valor, min, max}, rotulo, escala {min, max}, bajo, alto, dentro};
 - `banco` {piezas, medir, esperado (expr), unidad, cifras, tol, consejos: [{cuando? (range on `desviacion` =
   measured/expected − 1, or `medida`), texto}], ficha? {n, titulo}};
-- `dibujar` {x (with `id`), y, curva (expr of x.id), puntos, tol, holgura, rotulo};
+- `dibujar` {x (with `id`; `escala: 'log'` optional, min > 0), y, curva (expr of x.id), puntos, tol, holgura, rotulo};
 - `sql` {modo: consulta | rellenar | ordenar, base: 'mediciones', solucion, esperado {columnas, filas} (the reference
   query's result, computed by the generator with sql.js), ordenado, inicial?, plantilla? + huecos? [{opciones?}],
   clausulas? + inicio? (derangement)}.
@@ -3533,7 +3568,8 @@ ladder steps opened). `modelo.ts valoresDeTarjeta(t, propios, e?)` lays the hidd
 Numeric checks are deterministic: corners, seeded Monte Carlo (mulberry32), `falloDeRonda` (fija: list order; azar:
 a seeded draw that never repeats the previous round's; the app seeds it afresh each time the card opens and on
 «Otra placa», `azar.ts semillaNueva`, so only the verdicts, not which fault, are fixed), the drawing's metric
-(`lib/leccion12/dibujo.ts`: RMS of the difference / y-axis height, minimised over a shift ≤ holgura·x-range and an
+(`lib/leccion12/dibujo.ts`: points evenly spaced along x in its scale — on a log axis evenly in log x; RMS of the
+difference / y-axis height, minimised over a shift ≤ holgura of the axis (in its scale) and an
 offset ≤ holgura·y-height), probe readings quantised to 1/1000 of each probe's largest value (`averia.ts lecturas`).
 
 **SQL sandbox** (`lib/leccion12/sql/`): sql.js **1.14.2** (MIT; SQLite compiled to WebAssembly), its browser build
@@ -3550,6 +3586,49 @@ same database in Node for the generator and the tests.
 its texts through the numbers rule, each fault's state added to the circuit's ngspice cross-check; warnings for
 answered cards without any hint and (ui12) `avisosUnaIdea`. `ContextoLibro.sql` (optional) runs SQL; without it SQL
 cards are an error.
+
+### Figure and logic widgets and their steps (1.2 motor12c, `lib/leccion12/digital/`, GUIA §11)
+
+Still `Leccion11.version` 1 and **no stored state** (no key, no migration): additive optional data, state in memory.
+- `Widget` adds `WidgetFigura` {tipo 'figura', fuente {origen: libro | consola, src (under `libro/`, or under the
+  public root for a console photo), vista [x, y, w, h] (an SVG figure's `svg_vista`, a photo's pixels), vectorial,
+  alt, num?, credito?}, zonas [{id, rotulo, texto?, rects [[x, y, w, h]…], poligono? [[x, y]…], hotspot?}], mandos [],
+  ocultar false} and `WidgetLogica` {tipo 'logica', circuito `CircuitoLogico` {entradas [{id, rotulo, valor 0|1,
+  reloj}], piezas [{id, tipo (and, or, not, nand, nor, xor, xnor, buf, d, jk, t, contador, mux, decodificador),
+  entradas (signals in pin order, or «0»/«1»), bits?, modulo?, inicial?, rotulo?}], salidas [{id, de, rotulo}]},
+  cronograma? {ciclos, estimulo {input: levels per cycle}, senales}, tabla?, dibujo? false, mandos [], ocultar}.
+  Signals: an input id, a piece id (single output), `id.q`/`id.nq` (flip-flops), `id.qK` (counter), `id.yK` (decoder).
+- `TipoActividad` adds `tocar` and `tabla`; `Actividad12` adds `ActividadDigital` (`lib/leccion12/digital/tipos.ts`):
+  `tocar` {bien, todas, porque {zone: Texto}}; `tabla` {entradas, salidas [{id, rotulo}], esperado [row][col]};
+  `averia-logica` {fallos [{id, pieza, tipo atascada-0 | atascada-1 | sin-conexion, fallo, texto}], sospechosos,
+  puntos [{id, rotulo, punto {senal} | {pieza, pin}}], pasos (null = no limit), eleccion, preguntarTipo};
+  `diseno-logico` {salida, objetivo (column), permitidas, minimo, exigirMinimo, maxPuertas}; `dibujar-digital`
+  {senal, rotulo, esperado (levels per slot)}. A card `averia` / `diseno` / `dibujar` whose widget is `logica` carries
+  the digital activity (card type ≠ activity type: the shell routes on `t.actividad.tipo`).
+- `EstadoTarjeta.widget12?: EstadoWidget12` {zona, niveles {input: 0|1}, logica (the simulation state of a sequential
+  circuit, null until the first action), pulsos, tramo}; touched zones, switched inputs and `tramo` go into `movidos`
+  (an explore card's `requiere.mover` may name them). Activity states: `tocar` {elegidas, descartadas}, `tabla`
+  {celdas, mal}, `averia-logica` {fallo, ronda, medidas [{niveles, punto, lectura 0|1|'aire'}], sospechoso,
+  tipoElegido, descartados}, `diseno-logico` {puertas [{tipo, entradas}], salida}, `dibujar-digital` {niveles, mal}.
+- **Simulation** (`logica.ts`, pure): event-driven, one time unit per piece, pieces affected by a change evaluated in
+  declaration order, outputs applied a unit later; flip-flops sample on the rising edge as the inputs are at that time
+  (delta semantics: a shift register moves one stage per edge); if equal delays race (two cross-coupled NANDs at
+  power-on) the settling falls back to in-order relaxation, and a true oscillator stays `estable: false` (the
+  generator rejects it). Faults: a signal forced to 0/1; an open input pin reads 1 (TTL, book §9.3) and probes as
+  `'aire'`. `cronograma`: two slots per cycle (clock low with the cycle's inputs, then high). `minimoPuertas`:
+  iterative deepening over two-input gate sequences on truth-table bit masks, with a visit budget.
+- **Drawing** (`plano.ts`, pure): columns by longest path from the inputs (feedback ignored), rows by the sources'
+  mean height, orthogonal wires with one lane per signal per channel, a detour under the circuit for feedback or a run
+  that would cross a box, junction dots where three wire pieces of one net meet.
+- **Generator** (`generar-digital.ts`): figure by label (any part, `ContextoLibro.recursos`, `scripts/recursos11.mjs`:
+  figure labels, PNG/JPEG sizes, `consolas/<maquina>.json`) or «parte#n»; zones inside the picture (warnings: under
+  24 px on a phone, overlapping); every pin wired, ids unique, the circuit settles (every truth-table row, every slot);
+  `tocar` explains every other zone; `averia-logica` faults visible and told apart over every input combination and
+  probe point; `diseno-logico` reference circuit = the target and no smaller circuit exists. Zone texts go through
+  the numbers rule.
+- **Components** (`componentes/leccion12/`): `Widget12` (shell slot: `Leccion11.svelte`, `TarjetaPractica.svelte`),
+  `FiguraZonas`, `Logica`, `Cronograma`, `TablaVerdad`, `PasosDigitales` (the step panels, routed by `Actividad12`),
+  `digital12.css`.
 
 ## Práctica «Aprender haciendo» (0.10, `web/src/componentes/practica/`, data in `web/public/libro/practica/`)
 
