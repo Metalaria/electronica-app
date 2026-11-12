@@ -1,0 +1,206 @@
+# Lección 1.2 de la sección 20.18 «Aplicaciones Prácticas de Diagnóstico» (cap21; etiqueta interna sec-21.18).
+# Formato: contenido/lecciones11/GUIA.md. El rizado en porcentaje (ecuación del bloque 525) con un rizado de red
+# dibujado como senoide en acoplamiento AC; la fuente de 5 V y sus rizados son ilustrativos. El PWM es un tren de
+# pulsos con su ciclo de trabajo. Las figuras 20.41 y 20.42 se tocan por cuadrantes y por bandas.
+leccion: cap21/sec-21.18
+
+libro:
+  522: "Cuatro aplicaciones reales"
+  524: "Una fuente bien diseñada tiene un rizado inferior al 1% de la tensión de salida"
+  525: '"Rizado"'
+  527: "Si el ciclo de trabajo no coincide con el programado, puede haber un conflicto en el microcontrolador o una carga excesiva en la salida"
+  529: "La ausencia total de actividad indica un problema de hardware o de alimentación"
+  530: "UART asíncrona, I²C (reloj + datos) y SPI"
+  532: "posibles oscilaciones (ringing) que indicarían un problema en el circuito de gate driver"
+
+modelo:
+  valores:
+    V_rpp: { sim: "V_{rizado}", nombre: "rizado de pico a pico", unidad: V, valor: 0.02 }
+    V_DC: { sim: "V_{DC}", nombre: "tensión de salida", unidad: V, valor: 5 }
+    D_c: { sim: "D", nombre: "ciclo de trabajo", unidad: "", valor: 0.25 }
+  calculos:
+    riz: { expr: "V_rpp/V_DC*100", sim: "rizado", nombre: "rizado", unidad: "%", cifras: 2 }
+    V_max: { expr: "V_DC/100", sim: "V_{máx}", nombre: "rizado máximo aceptable", unidad: V }
+    D_pc: { expr: "100*D_c", sim: "D", nombre: "ciclo de trabajo", unidad: "%" }
+
+tarjetas:
+  - id: explore-aplicaciones
+    tipo: explorar
+    titulo: "Cuatro aplicaciones reales"
+    texto: "Toque cada cuadrante: lo que el 2C53T resuelve en un banco de reparación."
+    libro: [522]
+    widget:
+      tipo: figura
+      figura: fig-21.41
+      zonas:
+        - { id: rizado, rotulo: "Arriba a la izquierda", rect: [0, 0, 222, 163], texto: "El rizado de una fuente, en AC y con la escala ampliada." }
+        - { id: uart, rotulo: "Arriba a la derecha", rect: [222, 0, 222, 163], texto: "Una señal serie UART, leída a ojo." }
+        - { id: tau, rotulo: "Abajo a la izquierda", rect: [0, 163, 222, 163], texto: "La constante de tiempo τ = RC, medida con cursores." }
+        - { id: mosfet, rotulo: "Abajo a la derecha", rect: [222, 163, 222, 163], texto: "El encendido de un MOSFET, con su meseta de Miller." }
+    requiere: { mover: [rizado, mosfet] }
+
+  - id: formula-rizado
+    tipo: formula
+    titulo: "El rizado en porcentaje"
+    texto: "El rizado de pico a pico entre la tensión de salida. Bien diseñada, por debajo del 1 %."
+    libro: [524, 525]
+    ec: 525
+    sustitucion: "{{V_rpp}} / {{V_DC}} · 100 % = {{riz}}"
+    widget:
+      tipo: grafica
+      x: { id: n, min: 0, max: 3, unidad: "", rotulo: "periodos" }
+      y: { min: -0.1, max: 0.1, unidad: V, rotulo: "v (AC)" }
+      curvas:
+        - { expr: "V_rpp/2*sin(2*pi*n)", color: naranja, rotulo: "rizado" }
+      lectura: { valor: riz, rotulo: "Rizado" }
+      mandos:
+        - { valor: V_rpp, lista: [0.01, 0.02, 0.05, 0.1], rotulo: "Rizado de pico a pico" }
+
+  - id: estime-maximo
+    tipo: pregunta
+    titulo: "El límite del 1 %"
+    texto: "Una fuente de 5 V bien diseñada. ¿Cuál es el rizado máximo de pico a pico?"
+    libro: [524, 525]
+    fijar: { V_DC: 5 }
+    widget:
+      tipo: grafica
+      x: { id: n, min: 0, max: 3, unidad: "", rotulo: "periodos" }
+      y: { min: -0.1, max: 0.1, unidad: V, rotulo: "v (AC)" }
+      curvas:
+        - { expr: "V_max/2*sin(2*pi*n)", color: naranja, rotulo: "rizado en el límite" }
+    estimar:
+      objetivo: "V_max"
+      unidad: V
+      min: 0
+      max: 0.2
+      paso: 0.005
+      inicio: 0.15
+      tol: 0.05
+      rotulo: "Rizado máximo"
+    exito: "El 1 % de 5 V son 50 mV de pico a pico."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.0525 }, texto: "Se ha pasado: es el 1 %, una centésima de 5 V." }
+      - { texto: "Se ha quedado corto: una centésima de 5 V." }
+    escalera:
+      - "1 % es una centésima de la tensión de salida."
+    solucion: "5 V / 100 = 50 mV."
+    comprobar:
+      - { V_max: 0.05 }
+
+  - id: explore-pwm
+    tipo: explorar
+    titulo: "Un PWM"
+    texto: "La salida PWM de un microcontrolador. Cambie el ciclo de trabajo y mire el tiempo en alto."
+    libro: [527]
+    widget:
+      tipo: grafica
+      x: { id: n, min: 0, max: 3, unidad: "", rotulo: "periodos" }
+      y: { min: -0.2, max: 1.2, unidad: "", rotulo: "nivel" }
+      curvas:
+        - { expr: "floor(1 + D_c - (n - floor(n)))", color: azul, rotulo: "PWM" }
+      lectura: { valor: D_pc, rotulo: "Duty" }
+      mandos:
+        - { valor: D_c, lista: [0.1, 0.25, 0.5, 0.75, 0.9], rotulo: "Ciclo de trabajo" }
+    requiere: { mover: [D_c] }
+
+  - id: pwm-no-coincide
+    tipo: pregunta
+    titulo: "Un ciclo que no es el programado"
+    texto: "Programó un 75 % y PRM mide un 25 %. ¿Dónde busca?"
+    libro: [527]
+    fijar: { D_c: 0.25 }
+    widget:
+      tipo: grafica
+      x: { id: n, min: 0, max: 3, unidad: "", rotulo: "periodos" }
+      y: { min: -0.2, max: 1.2, unidad: "", rotulo: "nivel" }
+      curvas:
+        - { expr: "floor(1 + D_c - (n - floor(n)))", color: azul, rotulo: "PWM" }
+    opciones:
+      - texto: "Un conflicto en el microcontrolador o una carga excesiva"
+        bien: true
+        porque: "Son las dos causas que da el libro: el programa o lo que cuelga de la salida."
+      - texto: "En la sonda, que está sin compensar"
+        porque: "Una sonda descompensada deforma las esquinas, no cambia el tiempo en alto a un tercio."
+      - texto: "En el disparo"
+        porque: "El disparo estabiliza la imagen; no cambia el ciclo de trabajo medido."
+    escalera:
+      - "Si el instrumento mide bien, ¿qué queda entre el programa y la patilla?"
+    solucion: "El microcontrolador o la carga de la salida."
+    comprobar:
+      - { D_pc: 25 }
+      - { con: { D_c: 0.75 }, D_pc: 75 }
+
+  - id: toque-i2c
+    tipo: tocar
+    titulo: "El bus que contesta"
+    texto: "Toque el bus en el que el esclavo contesta con ACK o NACK en el noveno pulso."
+    libro: [530]
+    widget:
+      tipo: figura
+      figura: fig-21.42
+      zonas:
+        - { id: uart, rotulo: "Arriba", rect: [0, 0, 450, 75] }
+        - { id: i2c, rotulo: "En el centro", rect: [0, 75, 450, 120] }
+        - { id: spi, rotulo: "Abajo", rect: [0, 197, 450, 138] }
+    tocar:
+      bien: [i2c]
+      porque:
+        uart: "UART es asíncrona: no hay reloj ni noveno pulso, solo arranque, datos y parada."
+        spi: "SPI tiene reloj y selección, pero no un pulso de reconocimiento."
+    exito: "I²C: reloj y datos; tras cada byte, el esclavo tira SDA a bajo (ACK) o la deja en alto (NACK)."
+    escalera: ["Busque las dos líneas, reloj y datos, con un pulso más tras cada byte."]
+    solucion: "En el centro: I²C."
+
+  - id: sin-actividad
+    tipo: pregunta
+    titulo: "Una línea muerta"
+    texto: "La línea de datos de un bus no muestra ninguna actividad. ¿Qué indica?"
+    libro: [529]
+    widget:
+      tipo: figura
+      figura: fig-21.42
+      zonas:
+        - { id: buses, rotulo: "Los tres buses", rect: [0, 0, 450, 335] }
+    opciones:
+      - texto: "Un problema de hardware o de alimentación"
+        bien: true
+        porque: "Sin ninguna actividad no hay nada que decodificar: lo primero es la alimentación y el hardware."
+      - texto: "Que el 2C53T no sabe decodificar el bus"
+        porque: "No decodifica, pero sí ve si hay actividad. Si no la hay, no es culpa suya."
+      - texto: "Que la velocidad del bus es muy alta"
+        porque: "Una línea rápida se vería como actividad, aunque comprimida."
+    escalera:
+      - "Ver actividad no exige decodificar."
+    solucion: "Un problema de hardware o de alimentación."
+
+  - id: ringing
+    tipo: porque
+    titulo: "Oscilaciones en la conmutación"
+    texto: "Con la puerta en CH1 y el drenador en CH2, el MOSFET oscila al conmutar. ¿Qué indica?"
+    libro: [532]
+    widget:
+      tipo: figura
+      figura: fig-21.41
+      zonas:
+        - { id: mosfet, rotulo: "El encendido del MOSFET", rect: [222, 163, 222, 163] }
+    opciones:
+      - texto: "Un problema en el circuito de gate driver"
+        bien: true
+        porque: "Los dos canales a la vez muestran control y potencia: las oscilaciones apuntan al excitador de puerta."
+      - texto: "Que el MOSFET está bien y es normal"
+        porque: "El libro las da como síntoma de un problema, no como algo normal."
+      - texto: "Que falta acoplamiento AC"
+        porque: "El acoplamiento no crea ni quita oscilaciones en el circuito."
+    escalera:
+      - "¿Qué parte del circuito mueve la puerta del MOSFET?"
+    solucion: "Un problema en el gate driver."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [524, 527, 529, 532]
+    ideas:
+      - { titulo: "Rizado.", texto: "En AC y ampliado; bien diseñada, menos del 1 % de la salida." }
+      - { titulo: "PWM.", texto: "PRM da frecuencia y ciclo; si no cuadra, el micro o la carga." }
+      - { titulo: "Buses.", texto: "Actividad, niveles y reloj; sin actividad, hardware o alimentación." }
+      - { titulo: "Conmutación.", texto: "Puerta y drenador a la vez: oscilaciones, gate driver." }

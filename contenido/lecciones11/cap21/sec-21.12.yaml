@@ -1,0 +1,224 @@
+# Lección 1.2 de la sección 20.12 «Función Math: FFT y Operaciones» (cap21; etiqueta interna sec-21.12). Formato:
+# contenido/lecciones11/GUIA.md. La resta CH1 − CH2 sobre un componente flotante: CH1 = V_cm + v (la señal de 0,5 V
+# de pico es ilustrativa), CH2 = V_cm. El rechazo de modo común limitado se modela con una ganancia de CH1 un 2 %
+# distinta de la de CH2 (ilustrativo): la resta deja ε·V_cm de error. El espectro de la cuadrada y sus armónicos los
+# trabaja la Práctica 6 (cap22, sec-22.6) y las ventanas la sección 20.13: aquí, solo lo que la sección añade.
+leccion: cap21/sec-21.12
+
+libro:
+  300: "se mide la tensión entre dos puntos que no son masa"
+  301: "Con ella, dos sondas normales bastan"
+  304: "Con una tensión de modo común grande y una señal pequeña, la resta no sirve"
+  307: "50 o 100 Hz apunta a la red, cientos de kilohercios a una fuente conmutada, decenas de megahercios a un reloj digital"
+  309: "El ruido es un fondo continuo; la interferencia son picos discretos"
+  312: "para distinguir dos frecuencias separadas 10 Hz hay que capturar al menos 100 ms"
+  316: "tensión por corriente, cuya media es la potencia real"
+  317: "derivar amplifica el ruido y suele dar resultados poco útiles"
+  319: "Aparecen la fundamental y solo los armónicos impares"
+  321: "Cada pico es un componente de frecuencia"
+
+modelo:
+  valores:
+    V_cm: { sim: "V_{cm}", nombre: "tensión de modo común", unidad: V, valor: 2 }
+    v_d: { sim: "v", nombre: "tensión de pico en el componente", unidad: V, valor: 0.5 }
+    eps: { sim: "ε", nombre: "diferencia de ganancia entre canales", unidad: "", valor: 0 }
+    d_f: { sim: "Δf", nombre: "separación entre dos frecuencias", unidad: Hz, valor: 10 }
+  calculos:
+    e_cm: { expr: "eps*V_cm", sim: "error", nombre: "error de la resta", unidad: V, cifras: 2 }
+    T_cap: { expr: "1/d_f", sim: "T", nombre: "tiempo de captura mínimo", unidad: s }
+
+tarjetas:
+  - id: explore-resta
+    tipo: explorar
+    titulo: "Dos puntos que no son masa"
+    texto: "Un canal en cada extremo de un componente flotante. Suba el modo común y mire CH1 − CH2."
+    libro: [300, 301]
+    fijar: { eps: 0 }
+    widget:
+      tipo: grafica
+      x: { id: n, min: 0, max: 2, unidad: "", rotulo: "periodos" }
+      y: { min: -1, max: 6, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "V_cm + v_d*sin(2*pi*n)", color: azul, rotulo: "CH1" }
+        - { expr: "V_cm", color: verde, rotulo: "CH2" }
+        - { expr: "(1 + eps)*(V_cm + v_d*sin(2*pi*n)) - V_cm", color: naranja, rotulo: "CH1 − CH2" }
+      lectura: { valor: V_cm, rotulo: "Modo común" }
+      mandos:
+        - { valor: V_cm, lista: [0, 2, 5], rotulo: "Modo común" }
+    requiere: { mover: [V_cm] }
+
+  - id: sorpresa-modo-comun
+    tipo: sorpresa
+    titulo: "Dos canales que no son iguales"
+    texto: "Ahora los canales difieren un poco en ganancia, como los de verdad. Suba el modo común y mire la resta."
+    libro: [304]
+    fijar: { eps: 0.02 }
+    inicio: { V_cm: 0 }
+    widget:
+      tipo: grafica
+      x: { id: n, min: 0, max: 2, unidad: "", rotulo: "periodos" }
+      y: { min: -1, max: 2, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "v_d*sin(2*pi*n)", color: tinta, rotulo: "la de verdad", discontinua: true }
+        - { expr: "(1 + eps)*(V_cm + v_d*sin(2*pi*n)) - V_cm", color: naranja, rotulo: "CH1 − CH2" }
+      lectura: { valor: e_cm, rotulo: "Error de la resta" }
+      mandos:
+        - { valor: V_cm, lista: [0, 5, 50], rotulo: "Modo común" }
+    requiere: { mover: [V_cm] }
+
+  - id: porque-modo-comun
+    tipo: porque
+    titulo: "La resta no sirve"
+    texto: "Con mucho modo común y una señal pequeña, la resta da un error mayor que la señal. ¿Por qué?"
+    libro: [304]
+    fijar: { eps: 0.02, V_cm: 50 }
+    widget:
+      tipo: grafica
+      x: { id: n, min: 0, max: 2, unidad: "", rotulo: "periodos" }
+      y: { min: -1, max: 2, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "v_d*sin(2*pi*n)", color: tinta, rotulo: "la de verdad", discontinua: true }
+        - { expr: "(1 + eps)*(V_cm + v_d*sin(2*pi*n)) - V_cm", color: naranja, rotulo: "CH1 − CH2" }
+    opciones:
+      - texto: "El rechazo de modo común es el de dos canales, no el de un diferencial"
+        bien: true
+        porque: "Una pequeña diferencia entre canales, multiplicada por un modo común grande, tapa la señal."
+      - texto: "Porque la función matemática redondea"
+        porque: "No es un redondeo: es la diferencia entre los dos canales aplicada al modo común."
+      - texto: "Porque las sondas cargan el componente"
+        porque: "La carga existiría igual con una sola sonda; el error crece con el modo común."
+    escalera:
+      - "¿Qué pasa con una pequeña diferencia entre canales y 50 V comunes?"
+    solucion: "Los canales no son idénticos: su diferencia por el modo común tapa la señal."
+    comprobar:
+      - { e_cm: 1 }
+
+  - id: origen
+    tipo: pregunta
+    titulo: "¿De dónde viene?"
+    texto: "La FFT enseña un pico. Empareje su frecuencia con su origen probable."
+    libro: [307, 309, 321]
+    widget:
+      tipo: figura
+      figura: fig-21.25
+      zonas:
+        - { id: espectro, rotulo: "El espectro", rect: [0, 0, 439, 298] }
+    emparejar:
+      - ["50 o 100 Hz", "La red"]
+      - ["Cientos de kilohercios", "Una fuente conmutada"]
+      - ["Decenas de megahercios", "Un reloj digital"]
+      - ["Un fondo continuo, sin picos", "Ruido, no interferencia"]
+    exito: "La interferencia son picos discretos; el ruido, un fondo continuo. Esa distinción decide la estrategia."
+    pistas:
+      - { texto: "Lo más lento es la red; lo más rápido, un reloj." }
+    escalera:
+      - "La red va a 50 Hz; una fuente conmutada, mucho más deprisa."
+    solucion: "Red, 50 o 100 Hz; conmutada, cientos de kHz; reloj, decenas de MHz; fondo continuo, ruido."
+
+  - id: estime-captura
+    tipo: pregunta
+    titulo: "Dos frecuencias muy juntas"
+    texto: "Quiere distinguir en la FFT dos frecuencias separadas 10 Hz. ¿Cuánto tiempo tiene que capturar como mínimo?"
+    libro: [312]
+    fijar: { d_f: 10 }
+    widget:
+      tipo: grafica
+      x: { id: s, min: 0.01, max: 1, unidad: s, rotulo: "tiempo capturado", escala: log }
+      y: { min: 0, max: 100, unidad: Hz, rotulo: "resolución" }
+      curvas:
+        - { expr: "1/s", color: azul, rotulo: "resolución = 1/T" }
+    estimar:
+      objetivo: "T_cap"
+      unidad: s
+      min: 0
+      max: 0.5
+      paso: 0.005
+      inicio: 0.4
+      tol: 0.05
+      rotulo: "Tiempo capturado"
+    exito: "1/10 Hz = 100 ms: la resolución es el inverso del tiempo capturado."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.105 }, texto: "Se ha pasado: con el inverso de 10 Hz basta." }
+      - { texto: "Se ha quedado corto: la resolución es 1/T; para 10 Hz, T tiene que ser mayor." }
+    escalera:
+      - "La resolución en frecuencia es el inverso del tiempo capturado."
+    solucion: "T ≥ 1/10 Hz = 100 ms."
+    comprobar:
+      - { T_cap: 0.1 }
+
+  - id: producto
+    tipo: pregunta
+    titulo: "El producto de dos canales"
+    texto: "CH1 mide la tensión de una carga y CH2, su corriente sobre un shunt. ¿Qué da la media del producto?"
+    libro: [316]
+    widget:
+      tipo: figura
+      figura: fig-21.25
+      zonas:
+        - { id: espectro, rotulo: "La figura", rect: [0, 0, 439, 298] }
+    opciones:
+      - texto: "La potencia real"
+        bien: true
+        porque: "Tensión por corriente es la potencia instantánea; su media es la potencia real."
+      - texto: "La impedancia de la carga"
+        porque: "La impedancia sería un cociente, no un producto."
+      - texto: "La potencia aparente"
+        porque: "La aparente es el producto de los valores eficaces; la media del producto instantáneo es la real."
+    escalera:
+      - "Tensión por corriente, en cada instante, es…"
+    solucion: "La potencia real: la media de la potencia instantánea."
+
+  - id: derivada
+    tipo: porque
+    titulo: "La derivada, poco útil"
+    texto: "La función derivada da una traza llena de picos sobre una señal que parecía limpia. ¿Por qué?"
+    libro: [317]
+    widget:
+      tipo: grafica
+      x: { id: n, min: 0, max: 2, unidad: "", rotulo: "periodos" }
+      y: { min: -1.5, max: 1.5, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "sin(2*pi*n) + 0.02*sin(2*pi*n*40)", color: azul, rotulo: "la señal" }
+    opciones:
+      - texto: "Derivar amplifica el ruido"
+        bien: true
+        porque: "El ruido cambia deprisa: su derivada es grande aunque su amplitud sea pequeña."
+      - texto: "La derivada solo funciona con senoides"
+        porque: "Funciona con cualquier señal; el problema es lo que hace con el ruido."
+      - texto: "Falta ancho de banda"
+        porque: "No es el ancho de banda: la derivada agranda justo lo que cambia deprisa."
+    escalera:
+      - "¿Qué cambia más deprisa, la señal o su ruido?"
+    solucion: "Derivar amplifica el ruido: lo rápido y pequeño se hace grande."
+
+  - id: cuadrada
+    tipo: predecir
+    titulo: "El experimento que más enseña"
+    texto: "Va a aplicar una cuadrada y mirar su espectro. ¿Qué aparecerá?"
+    libro: [319]
+    widget:
+      tipo: figura
+      figura: fig-21.26
+      zonas:
+        - { id: cuadrada, rotulo: "La cuadrada y su espectro", rect: [0, 0, 438, 176] }
+    opciones:
+      - texto: "La fundamental y solo los armónicos impares"
+        bien: true
+        porque: "Con amplitudes según 1/n, como predice la serie de Fourier."
+      - texto: "Todos los armónicos, pares e impares"
+        porque: "Una cuadrada simétrica no tiene pares: solo impares."
+      - texto: "Un único pico, en la fundamental"
+        porque: "Eso sería una senoide pura; los flancos de la cuadrada son armónicos."
+    escalera:
+      - "¿Qué predice la serie de Fourier para una cuadrada?"
+    solucion: "La fundamental y los impares, decreciendo según 1/n."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [300, 304, 309, 312]
+    ideas:
+      - { titulo: "CH1 − CH2.", texto: "Tensión entre dos puntos que no son masa, con dos sondas normales." }
+      - { titulo: "Su límite.", texto: "Con mucho modo común y poca señal, la resta no sirve." }
+      - { titulo: "La FFT.", texto: "Picos discretos, interferencia; fondo continuo, ruido." }
+      - { titulo: "Resolución.", texto: "El inverso del tiempo capturado: 10 Hz piden 100 ms." }

@@ -1,0 +1,203 @@
+# Lección 1.2 de la sección 20.16 «El Generador de Señal DDS» (cap21; etiqueta interna sec-21.16). Formato:
+# contenido/lecciones11/GUIA.md. La salida del 2C53T va de 0 a la amplitud ajustada (de 0,1 a 3 V): una senoide con
+# una continua de la mitad de la amplitud (bloque 439). La impedancia de salida de 50 Ω de un generador de
+# laboratorio, con el esquema thevenin: programado para 1 V sobre 50 Ω, en vacío da el doble (bloques 428–429; el
+# voltio programado es ilustrativo). El banco usa una senoide de 2 V (ilustrativa) medida directamente.
+leccion: cap21/sec-21.16
+
+libro:
+  416: "es lo que permite excitar el circuito y medirlo con el mismo aparato"
+  417: "genera la señal calculándola punto a punto desde una tabla"
+  419: "el del 2C53T la ajusta en pasos de 1 Hz"
+  420: "Cambio instantáneo y continuo de frecuencia, sin saltos de fase"
+  423: "La frecuencia máxima está muy por debajo de la de muestreo"
+  424: "sin él, la salida es una escalera con componentes a la frecuencia de muestreo"
+  428: "el 2C53T solo ajusta la amplitud, de 0,1 a 3 V, y no tiene offset"
+  429: "en circuito abierto la tensión es el doble de la programada"
+  431: "con él el Bode se levanta a mano, punto a punto"
+  439: "lleva una continua igual a la mitad de esa amplitud"
+  441: "verificar que la amplitud y la frecuencia mostradas coinciden con las programadas"
+  442: "casi siempre es por la impedancia de carga (el factor dos mencionado)"
+  443: "Algunas de las trece formas de onda del DDS del FNIRSI 2C53T"
+  444: "Salida de un generador DDS antes y después del filtro de reconstrucción"
+
+modelo:
+  valores:
+    A_g: { sim: "A", nombre: "amplitud ajustada", unidad: V, valor: 1 }
+    V_prog: { sim: "V_{prog}", nombre: "tensión programada sobre 50 Ω", unidad: V, valor: 1 }
+    R_o: { sim: "R_{salida}", nombre: "impedancia de salida", unidad: Ω, valor: 50 }
+    R_c: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 50 }
+    V_s: { sim: "V_{pp}", nombre: "senoide de prueba, de pico a pico", unidad: V, valor: 2 }
+  calculos:
+    V_dc: { expr: "A_g/2", sim: "V_{DC}", nombre: "continua que lleva la salida", unidad: V }
+    V_th: { expr: "2*V_prog", sim: "V_{vacío}", nombre: "tensión en vacío", unidad: V }
+    V_out: { expr: "V_th*R_c/(R_o + R_c)", sim: "V_{salida}", nombre: "tensión en la carga", unidad: V }
+    I_o: { expr: "V_th/(R_o + R_c)", sim: "I", nombre: "corriente", unidad: A }
+    V_ri: { expr: "I_o*R_o", sim: "V_{int}", nombre: "caída en la salida", unidad: V }
+
+tarjetas:
+  - id: explore-positiva
+    tipo: explorar
+    titulo: "Siempre positiva"
+    texto: "La salida del 2C53T va de 0 a la amplitud ajustada. Cambie la amplitud y mire su continua."
+    libro: [428, 439]
+    widget:
+      tipo: grafica
+      x: { id: n, min: 0, max: 2, unidad: "", rotulo: "periodos" }
+      y: { min: -1, max: 3.5, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "A_g/2 + A_g/2*sin(2*pi*n)", color: naranja, rotulo: "salida DDS" }
+        - { expr: "V_dc", color: tinta, rotulo: "su continua", discontinua: true }
+      lectura: { valor: V_dc, rotulo: "Continua que lleva" }
+      mandos:
+        - { valor: A_g, lista: [0.1, 0.5, 1, 2, 3], rotulo: "Amplitud" }
+    requiere: { mover: [A_g] }
+
+  - id: prediga-acoplo
+    tipo: predecir
+    titulo: "Una entrada acoplada en continua"
+    texto: "Inyecta la senoide de 3 V del 2C53T en una entrada acoplada en continua. ¿Qué recibe la entrada además de la senoide?"
+    libro: [439]
+    fijar: { A_g: 3 }
+    widget:
+      tipo: grafica
+      x: { id: n, min: 0, max: 2, unidad: "", rotulo: "periodos" }
+      y: { min: -1, max: 3.5, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "A_g/2 + A_g/2*sin(2*pi*n)", color: naranja, rotulo: "salida DDS" }
+      lectura: { valor: V_dc, rotulo: "Continua que lleva" }
+      ocultar: true
+    opciones:
+      - texto: "Una continua de 1,5 V: hay que intercalar un condensador"
+        bien: true
+        porque: "La salida va de 0 a 3 V: lleva la mitad de la amplitud en continua, que polariza mal o carga un condensador."
+      - texto: "Nada: el generador no tiene offset"
+        porque: "No tiene un offset ajustable, pero su salida es siempre positiva: la continua viene de serie."
+      - texto: "Una continua de 3 V"
+        porque: "La continua es la media: la mitad de la amplitud, no toda."
+    escalera:
+      - "¿Cuál es la media de una señal que va de 0 a 3 V?"
+    solucion: "1,5 V de continua: se bloquea con un condensador en serie."
+    comprobar:
+      - { V_dc: 1.5 }
+
+  - id: explore-50
+    tipo: explorar
+    titulo: "Los 50 Ω de un generador de laboratorio"
+    texto: "Un generador de laboratorio programado para 1 V sobre 50 Ω. Cambie la carga y mire lo que sale."
+    libro: [428, 429]
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_th, rth: R_o, carga: R_c }
+      lectura: { valor: V_out, rotulo: "Tensión en la carga" }
+      corriente: I_o
+      mide: { salida: V_out, corriente: I_o, interna: V_ri }
+      mandos:
+        - { valor: R_c, lista: [50, 1000, 1000000], rotulo: "Carga" }
+    requiere: { mover: [R_c] }
+    comprobar:
+      - { V_prog: 1 }
+
+  - id: estime-doble
+    tipo: pregunta
+    titulo: "En alta impedancia"
+    texto: "Programado para 1 V sobre 50 Ω, lo conecta a la entrada de 1 MΩ de un osciloscopio. ¿Cuánto ve?"
+    libro: [429, 442]
+    fijar: { R_c: 1000000, V_prog: 1 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_th, rth: R_o, carga: R_c }
+      mide: { salida: V_out }
+    estimar:
+      objetivo: "V_out"
+      unidad: V
+      min: 0
+      max: 3
+      paso: 0.05
+      inicio: 0.5
+      tol: 0.03
+      rotulo: "Tensión que ve"
+    exito: "Casi 2 V: en circuito abierto la tensión es el doble de la programada. Es el factor dos."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 2.06 }, texto: "Se ha pasado: como mucho, el doble de lo programado." }
+      - { texto: "Se ha quedado corto: sin los 50 Ω de carga no hay divisor, y no se pierde la mitad." }
+    escalera:
+      - "Programado sobre 50 Ω, la mitad de la tensión interna se quedaba en la salida."
+    solucion: "Casi 2 V: el doble de lo programado."
+    comprobar:
+      - { V_out: 2, tol: 0.001 }
+
+  - id: virtudes
+    tipo: pregunta
+    titulo: "Lo que da la síntesis digital"
+    texto: "Empareje cada rasgo del DDS con su causa."
+    libro: [417, 419, 420, 423, 424, 444]
+    widget:
+      tipo: figura
+      figura: fig-21.33
+      zonas:
+        - { id: dds, rotulo: "Antes y después del filtro", rect: [0, 0, 435, 180] }
+    emparejar:
+      - ["Frecuencia exacta y estable", "El cristal de referencia"]
+      - ["Barridos limpios", "Cambios de frecuencia sin saltos de fase"]
+      - ["Salida en escalera", "Falta el filtro de reconstrucción"]
+      - ["Frecuencia máxima baja", "Muy por debajo de la de muestreo"]
+    exito: "Calcula la señal punto a punto desde una tabla: de ahí sus virtudes y sus límites."
+    pistas:
+      - { texto: "La escalera son los puntos de la tabla sin suavizar." }
+    escalera:
+      - "La exactitud la hereda de su referencia."
+    solucion: "Cristal, exactitud; sin saltos de fase, barridos; sin filtro, escalera; muestreo, frecuencia máxima."
+
+  - id: bode
+    tipo: pregunta
+    titulo: "Un Bode con el 2C53T"
+    texto: "Quiere levantar la respuesta en frecuencia de un filtro con el generador del 2C53T. ¿Cómo?"
+    libro: [431, 416, 443]
+    widget:
+      tipo: figura
+      figura: fig-21.32
+      zonas:
+        - { id: formas, rotulo: "Las formas del DDS", rect: [0, 0, 448, 228] }
+    opciones:
+      - texto: "A mano, punto a punto"
+        bien: true
+        porque: "El 2C53T no tiene barrido: se cambia la frecuencia y se mide en cada punto."
+      - texto: "Con su función de barrido"
+        porque: "No la tiene: el barrido es de generadores de laboratorio."
+      - texto: "Con la modulación"
+        porque: "Tampoco tiene modulación, y no sirve para levantar un Bode."
+    escalera:
+      - "¿Tiene barrido el generador del 2C53T?"
+    solucion: "A mano, punto a punto: el 2C53T no tiene barrido."
+
+  - id: banco-generador
+    tipo: banco
+    titulo: "La primera comprobación"
+    texto: "Conecte la salida DDS al osciloscopio, programe una senoide de 2 V de pico a pico y compare."
+    libro: [441, 442]
+    fijar: { V_s: 2 }
+    banco:
+      piezas: ["Salida DDS con su cable BNC de pinzas", "CH1 con la sonda compensada"]
+      medir: "La tensión de pico a pico que muestra el osciloscopio, con PRM."
+      esperado: V_s
+      unidad: V
+      tol: 0.05
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.5 }, texto: "Sale el doble: es la impedancia de carga, el factor dos. ¿Para qué carga se especifica la amplitud?" }
+        - { cuando: { valor: desviacion, mayor: 0.05 }, texto: "Mide de más: compruebe el factor de sonda y la escala." }
+        - { cuando: { valor: desviacion, menor: -0.05 }, texto: "Mide de menos: ¿la sonda compensada? ¿Hay algo cargando la salida?" }
+        - { texto: "Coincide. Compruebe también la frecuencia." }
+      ficha: { n: 24, titulo: "Puesta a punto del FNIRSI: sonda, medidas automáticas y aliasing" }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [416, 428, 429, 439]
+    ideas:
+      - { titulo: "Excitar y medir.", texto: "Con el mismo aparato: la mitad de las prácticas del libro." }
+      - { titulo: "De 0,1 a 3 V, positiva.", texto: "Lleva una continua de la mitad de la amplitud: un condensador la bloquea." }
+      - { titulo: "El factor dos.", texto: "Con 50 Ω de salida, en vacío sale el doble de lo programado." }
+      - { titulo: "Sin barrido.", texto: "El Bode, a mano y punto a punto." }

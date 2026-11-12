@@ -1,0 +1,272 @@
+# Lección 1.2 de la sección 20.9 «El Sistema de Trigger (Disparo)» (cap21; etiqueta interna sec-21.9). Formato:
+# contenido/lecciones11/GUIA.md. Tres barridos superpuestos de una senoide de 1 V de pico (ilustrativa): con el nivel
+# dentro de la señal, cada barrido empieza en el cruce del nivel con el flanco elegido (fase asin(nivel/A), o
+# π − asin(nivel/A) en bajada) y los tres coinciden; fuera, en AUTO cada barrido arranca cuando le toca (fases
+# desplazadas 2,1 rad) y la imagen corre, como en la figura 20.22. «dentro» = (1 + g/|g|)/2 con g = A − |nivel|; los
+# mandos nunca dejan el nivel justo en el pico.
+leccion: cap21/sec-21.9
+
+libro:
+  202: "Sin un trigger bien ajustado, una señal periódica se ve como un borrón en movimiento"
+  206: "Garantiza que siempre veas algo en pantalla"
+  207: "Si la señal no cruza el nivel, la pantalla no se actualiza"
+  208: "Es la herramienta clave para atrapar eventos que ocurren una sola vez"
+  210: "debe estar dentro del rango de la señal (entre su máximo y su mínimo)"
+  212: "Ajústalo con las flechas hasta que la línea de nivel cruce la onda por su parte central"
+  214: "dispara solo por flanco, ascendente o descendente, en Auto, Normal o Single"
+  217: "HF reject: filtra por encima de unos 50 kHz"
+  218: "el disparo se desplaza al ritmo de los 50 Hz"
+  219: "Evita el doble disparo en un flanco con ruido"
+  220: "un disparo inestable casi nunca se arregla moviendo el nivel"
+  223: "Ajustándolo algo mayor que la duración de la ráfaga, dispara siempre en el primero"
+  234: "ante un fallo, la causa está antes del síntoma"
+  238: "hay que ajustar la base de tiempos antes de armar"
+  245: "Poner el nivel de disparo en el centro de la señal, no fuera de ella"
+  250: "Efecto del disparo sobre la superposición de barridos"
+
+modelo:
+  valores:
+    A_t: { sim: "A", nombre: "tensión de pico de la señal", unidad: V, valor: 1 }
+    nivel: { sim: "nivel", nombre: "nivel de disparo", unidad: V, valor: 1.45 }
+    flanco: { sim: "flanco", nombre: "flanco de disparo", unidad: "", valor: 0 }
+  calculos:
+    n_v: { expr: "nivel", sim: "nivel", nombre: "nivel de disparo", unidad: V, cifras: 2 }
+    g_t: { expr: "A_t - abs(nivel)", sim: "g", nombre: "margen del nivel dentro de la señal", unidad: V }
+    dentro: { expr: "(1 + g_t/abs(g_t))/2", sim: "dispara", nombre: "el nivel cruza la señal", unidad: "" }
+    r_t: { expr: "max(-1, min(1, nivel/A_t))", sim: "r", nombre: "nivel respecto al pico", unidad: "" }
+    phi_t: { expr: "asin(r_t)*(1 - flanco) + (pi - asin(r_t))*flanco", sim: "φ", nombre: "fase de arranque", unidad: rad }
+
+tarjetas:
+  - id: explore-disparo
+    tipo: explorar
+    titulo: "Un borrón o una imagen"
+    texto: "Tres barridos de la misma senoide, superpuestos. Mueva el nivel de disparo dentro y fuera de la señal."
+    libro: [202, 210, 250]
+    widget:
+      tipo: grafica
+      x: { id: n, min: 0, max: 2, unidad: "", rotulo: "periodos" }
+      y: { min: -2, max: 2, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "A_t*sin(2*pi*n + phi_t)", color: naranja, rotulo: "barrido 1" }
+        - { expr: "A_t*sin(2*pi*n + phi_t + (1 - dentro)*2.1)", color: azul, rotulo: "barrido 2" }
+        - { expr: "A_t*sin(2*pi*n + phi_t + (1 - dentro)*4.2)", color: verde, rotulo: "barrido 3" }
+        - { expr: "nivel", color: tinta, rotulo: "nivel", discontinua: true }
+      lectura: { valor: n_v, rotulo: "Nivel de disparo" }
+      mandos:
+        - { valor: nivel, min: -1.95, max: 1.95, paso: 0.1, rotulo: "Nivel" }
+        - { valor: flanco, lista: [0, 1], nombres: [subida, bajada], rotulo: "Flanco" }
+    requiere: { mover: [nivel, flanco] }
+
+  - id: ajuste-nivel
+    tipo: ajuste
+    titulo: "La traza corre"
+    texto: "En AUTO, la señal corre por la pantalla. Lleve el nivel hasta que la línea cruce la onda."
+    libro: [206, 212]
+    inicio: { nivel: 1.45 }
+    fijar: { flanco: 0 }
+    widget:
+      tipo: grafica
+      x: { id: n, min: 0, max: 2, unidad: "", rotulo: "periodos" }
+      y: { min: -2, max: 2, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "A_t*sin(2*pi*n + phi_t)", color: naranja, rotulo: "barrido 1" }
+        - { expr: "A_t*sin(2*pi*n + phi_t + (1 - dentro)*2.1)", color: azul, rotulo: "barrido 2" }
+        - { expr: "A_t*sin(2*pi*n + phi_t + (1 - dentro)*4.2)", color: verde, rotulo: "barrido 3" }
+        - { expr: "nivel", color: tinta, rotulo: "nivel", discontinua: true }
+      lectura: { valor: n_v, rotulo: "Nivel de disparo" }
+      mandos:
+        - { valor: nivel, min: -1.95, max: 1.95, paso: 0.1, rotulo: "Nivel" }
+    ajuste:
+      valor: n_v
+      min: -0.5
+      max: 0.5
+      rotulo: "Nivel"
+      escala: { min: -2, max: 2 }
+      bajo: "Por debajo de la parte central: suba el nivel."
+      alto: "Por encima de la parte central: baje el nivel."
+      dentro: "La línea cruza la onda por su parte central: la imagen queda quieta."
+
+  - id: prediga-normal
+    tipo: predecir
+    titulo: "En NORMAL, fuera de la señal"
+    texto: "En modo NORMAL, el nivel queda por encima del pico. ¿Qué ve?"
+    libro: [207, 212]
+    fijar: { nivel: 1.45, flanco: 0 }
+    widget:
+      tipo: grafica
+      x: { id: n, min: 0, max: 2, unidad: "", rotulo: "periodos" }
+      y: { min: -2, max: 2, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "nivel", color: tinta, rotulo: "nivel", discontinua: true }
+      lectura: { valor: n_v, rotulo: "Nivel de disparo" }
+      ocultar: true
+    opciones:
+      - texto: "La pantalla no se actualiza"
+        bien: true
+        porque: "NORMAL solo dispara cuando la señal cruza el nivel; si no lo cruza, la imagen se queda como estaba."
+      - texto: "La traza corre por la pantalla"
+        porque: "Eso es en AUTO, que dispara aunque no haya cruce válido."
+      - texto: "Una imagen estable"
+        porque: "Solo con el nivel dentro del rango de la señal."
+    escalera:
+      - "¿Cuándo dispara el modo NORMAL?"
+    solucion: "No se actualiza: la señal nunca cruza el nivel."
+
+  - id: modos
+    tipo: pregunta
+    titulo: "Los tres modos"
+    texto: "Empareje cada modo con su uso."
+    libro: [206, 207, 208]
+    widget:
+      tipo: figura
+      figura: fig-21.18
+      zonas:
+        - { id: modos, rotulo: "Los tres modos", rect: [0, 0, 395, 311] }
+    emparejar:
+      - ["AUTO", "Ver algo de una señal desconocida"]
+      - ["NORMAL", "La imagen más estable de una periódica"]
+      - ["SINGLE", "Atrapar un evento que ocurre una vez"]
+    exito: "AUTO para empezar, NORMAL para lo periódico y SINGLE para lo único."
+    pistas:
+      - { texto: "Uno dispara siempre; otro solo al cruzar el nivel; otro una sola vez." }
+    escalera:
+      - "SINGLE se congela tras el primer disparo."
+    solucion: "AUTO explora, NORMAL estabiliza, SINGLE captura lo único."
+
+  - id: el-2c53t
+    tipo: pregunta
+    titulo: "Lo que tiene el 2C53T"
+    texto: "¿Qué disparos ofrece el 2C53T?"
+    libro: [214]
+    widget:
+      tipo: figura
+      figura: fig-21.18
+      zonas:
+        - { id: modos, rotulo: "Los tres modos", rect: [0, 0, 395, 311] }
+    opciones:
+      - texto: "Solo por flanco, en Auto, Normal o Single"
+        bien: true
+        porque: "Es todo lo que tiene: basta para una señal periódica."
+      - texto: "Por anchura de pulso y por patrón"
+        porque: "Esos son de los osciloscopios de banco: conviene conocerlos para cuando se use uno."
+      - texto: "Con holdoff y filtros de disparo"
+        porque: "También son de los de banco; el 2C53T dispara solo por flanco."
+    escalera:
+      - "Es un instrumento portátil y sencillo."
+    solucion: "Solo por flanco, de subida o de bajada, en Auto, Normal o Single."
+
+  - id: rechazo
+    tipo: pregunta
+    titulo: "El filtro del disparo"
+    texto: "Empareje cada problema de un osciloscopio de banco con su acoplamiento de disparo."
+    libro: [217, 218, 219, 220]
+    widget:
+      tipo: figura
+      figura: fig-21.22
+      zonas:
+        - { id: barridos, rotulo: "Barridos superpuestos", rect: [0, 0, 445, 234] }
+    emparejar:
+      - ["Señal lenta con ruido de conmutación", "HF reject"]
+      - ["Disparo que se desplaza a 50 Hz", "LF reject"]
+      - ["Doble disparo en un flanco con ruido", "Noise reject"]
+    exito: "Un disparo inestable casi nunca se arregla moviendo el nivel: se arregla con el acoplamiento."
+    pistas:
+      - { texto: "HF quita lo rápido; LF quita lo lento; Noise ensancha la histéresis." }
+    escalera:
+      - "El rizado de red es lento: ¿qué filtro lo quita?"
+    solucion: "Ruido de conmutación, HF reject; rizado de red, LF reject; doble disparo, Noise reject."
+
+  - id: holdoff
+    tipo: porque
+    titulo: "La imagen salta entre pulsos"
+    texto: "Con una ráfaga de pulsos, la imagen salta de uno a otro. ¿Por qué el holdoff lo arregla?"
+    libro: [223]
+    widget:
+      tipo: figura
+      figura: fig-21.22
+      zonas:
+        - { id: barridos, rotulo: "Barridos superpuestos", rect: [0, 0, 445, 234] }
+    opciones:
+      - texto: "Ignora los cruces tras un disparo y dispara siempre en el primero"
+        bien: true
+        porque: "Algo mayor que la ráfaga: el siguiente disparo vuelve a caer en su primer pulso y la imagen se congela."
+      - texto: "Filtra los pulsos más rápidos"
+        porque: "Eso sería un filtro de disparo. El holdoff es un tiempo de espera."
+      - texto: "Sube el nivel por encima de los pulsos"
+        porque: "No toca el nivel: espera un tiempo tras cada disparo."
+    escalera:
+      - "Sin holdoff, cualquier pulso de la ráfaga puede disparar."
+    solucion: "Espera algo más que la ráfaga: siempre dispara en el primer pulso."
+
+  - id: pretrigger
+    tipo: pregunta
+    titulo: "Disparar por la consecuencia"
+    texto: "Un circuito se reinicia a veces: dispara con el reinicio y desplaza la posición horizontal. ¿Para qué?"
+    libro: [234]
+    widget:
+      tipo: figura
+      figura: fig-21.21
+      zonas:
+        - { id: glitch, rotulo: "La captura", rect: [0, 0, 441, 271] }
+    opciones:
+      - texto: "Para ver lo que ocurrió antes: la causa"
+        bien: true
+        porque: "La memoria es circular y el disparo solo decide dónde parar: el pre-trigger enseña lo anterior."
+      - texto: "Para ver mejor el reinicio"
+        porque: "El reinicio ya se ve; lo valioso es lo que pasó antes, porque la causa está antes del síntoma."
+      - texto: "Para muestrear más deprisa"
+        porque: "La posición horizontal no cambia el muestreo; cambia qué parte de la captura queda en pantalla."
+    escalera:
+      - "¿Dónde está la causa de un fallo, antes o después del síntoma?"
+    solucion: "Para ver la causa, que está antes del síntoma."
+
+  - id: single
+    tipo: pregunta
+    titulo: "Antes de armar"
+    texto: "Va a capturar el arranque de una fuente en SINGLE. ¿Qué ajusta antes de armar?"
+    libro: [208, 238]
+    widget:
+      tipo: figura
+      figura: fig-21.18
+      zonas:
+        - { id: modos, rotulo: "Los tres modos", rect: [0, 0, 395, 311] }
+    opciones:
+      - texto: "La base de tiempos"
+        bien: true
+        porque: "No habrá una segunda oportunidad para corregirla: el evento ocurre una vez."
+      - texto: "Nada: se corrige después en STOP"
+        porque: "La captura ya está hecha con la base de tiempos que había; no se puede rehacer."
+      - texto: "El modo AUTO, por si acaso"
+        porque: "AUTO dispararía sin el evento y lo taparía con barridos vacíos."
+    escalera:
+      - "¿Podrá repetir el evento si la escala no era la buena?"
+    solucion: "La base de tiempos, antes: no habrá segunda oportunidad."
+
+  - id: procedimiento
+    tipo: pregunta
+    titulo: "Cuando no hay manera de disparar"
+    texto: "Ordene el procedimiento."
+    libro: [245]
+    ordenar:
+      - "Modo AUTO, para ver algo"
+      - "Escalas hasta media pantalla"
+      - "Nivel en el centro de la señal"
+      - "Comprobar que la fuente es el canal de la señal"
+      - "Pasar a NORMAL y ver que sigue estable"
+      - "Si se superpone, subir el holdoff"
+    exito: "Ordenado, resuelve casi todos los casos."
+    pistas:
+      - { texto: "Primero ver algo; después escalas, nivel y fuente; al final, comprobar en NORMAL." }
+    escalera:
+      - "Sin ver la señal no se puede poner el nivel en su centro."
+    solucion: "AUTO, escalas, nivel al centro, fuente, NORMAL y holdoff."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [207, 210, 214, 234]
+    ideas:
+      - { titulo: "El nivel, dentro.", texto: "Entre el máximo y el mínimo de la señal; mejor en su parte central." }
+      - { titulo: "Tres modos.", texto: "AUTO para empezar, NORMAL para lo periódico, SINGLE para lo único." }
+      - { titulo: "El 2C53T.", texto: "Solo por flanco; holdoff y disparos especiales son de los de banco." }
+      - { titulo: "Pre-trigger.", texto: "La causa está antes del síntoma." }

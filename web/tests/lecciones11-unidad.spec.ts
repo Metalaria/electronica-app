@@ -351,7 +351,9 @@ test.describe('el script del generador', () => {
   /** A book folder that links the real parts and writes its own lessons. */
   function libroTemporal(): string {
     const d = fs.mkdtempSync(path.join(os.tmpdir(), 'epa-l11-'));
-    for (const f of ['indice.json', 'refs.json', 'partes']) fs.symlinkSync(path.join(libro, f), path.join(d, f));
+    // (img: the generator reads the size of the book photos a «figura» widget shows with «imagen», e.g. the FNIRSI
+    // photos of cap21; without it those lessons failed here though they are valid, autor-taller-D)
+    for (const f of ['indice.json', 'refs.json', 'partes', 'img']) fs.symlinkSync(path.join(libro, f), path.join(d, f));
     return d;
   }
   const correr = (env: Record<string, string>, args: string[] = []) => spawnSync('node', [path.join(web, 'scripts', 'lecciones11.mjs'), ...args], { cwd: web, env: { ...process.env, ...env }, encoding: 'utf8' });

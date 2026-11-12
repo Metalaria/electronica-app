@@ -1909,6 +1909,12 @@ partir del modelo: `simular` (escribe el valor bueno y espera al ngspice de la a
 esperada), `ajuste` (lleva el mando a la banda), `averia` (mide, falla un sospechoso y acierta el de la primera
 ronda), `dibujar` (pone cada punto en la curva con el teclado, espaciados por igual en log x si el eje es
 logarítmico, como los dibuja la app) y `diseno` (como un reto, en una posición del modelo).
+axe se pasa con la tarjeta desplazada hasta «Del libro»; en una tarjeta más alta que la pantalla, un control puede
+quedar entonces bajo la cabecera o el pie fijos (los botones de zoom de una figura). Cada control que axe marque por
+tamaño y esté bajo una barra se enfoca, como lo alcanza el lector (la lección pone `scroll-padding` con el alto de las
+barras), tiene que quedar entero a la vista y fuera de ellas, y se vuelve a pasar axe sobre él: si el fallo sigue, cuenta.
+No hay excepciones por tipo de tarjeta. El libro temporal de la prueba «idempotente» de `lecciones11-unidad` enlaza
+también `img/`: el generador lee el tamaño de las fotos del libro que muestra un widget `figura` con `imagen`.
 
 ### Enlaces del libro impreso: códigos QR (1.1)
 
