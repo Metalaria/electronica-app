@@ -9,10 +9,13 @@
 // Validation is strict, so a link can never take the app anywhere else: the whole text must be the scheme `epa://`,
 // the one known prefix `leccion`, and two segments of [a-z0-9.-] (compared in lower case: some readers and platforms
 // change the case of a URL; the index gives back the book's own spelling, apA / sec-A.1). The part must look like a
-// chapter or an appendix (cap<NN>, ap<letter>, or the expansions' new chapters cap-new-<name>: review 11c) and the
+// chapter or an appendix (cap<NN>, ap<letter>, or the provisional ids of 4.0's new chapters, cap-new-<name>: review 11c;
+// 1.2 maps them to cap55/cap56 when it resolves them) and the
 // label like a section (sec-…, or the part's generated labels
 // <parte>-<n>). No query, fragment, escapes, «..» or extra segments; at most LONGITUD_MAXIMA characters. The result
 // is only ever a hash route of this app.
+
+import { renombrar41 } from './esquemas';
 
 export interface EnlaceLeccion {
   parte: string;
@@ -51,10 +54,15 @@ export interface IndiceEnlaces {
  */
 export function resolverEnlace(e: EnlaceLeccion, indice: IndiceEnlaces | null | undefined): EnlaceLeccion | null {
   if (!indice) return null;
-  const parte = Object.keys(indice.partes).find((k) => k.toLowerCase() === e.parte);
-  if (!parte) return null;
-  const s = indice.partes[parte]?.secciones?.find((x) => x.label.toLowerCase() === e.label);
-  return s ? { parte, label: s.label } : null;
+  const buscar = (p: string, l: string): EnlaceLeccion | null => {
+    const parte = Object.keys(indice.partes).find((k) => k.toLowerCase() === p);
+    if (!parte) return null;
+    const s = indice.partes[parte]?.secciones?.find((x) => x.label.toLowerCase() === l);
+    return s ? { parte, label: s.label } : null;
+  };
+  // 1.2: a QR code of edition 4.0 names the two new chapters by their provisional ids (epa://leccion/cap-new-automatas/
+  // sec-new-automatas.3); 4.1 prints cap55/sec-55.3 (lib/esquemas.ts renombrar41, the book's Informes/ids_4.1.json)
+  return buscar(e.parte, e.label) ?? buscar(renombrar41(e.parte), renombrar41(e.label));
 }
 
 /**

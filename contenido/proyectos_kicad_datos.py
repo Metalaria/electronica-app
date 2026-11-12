@@ -8,7 +8,12 @@ fragment comes from the README of the project or from the book. Components not l
 deduced from their connections (marked «deducida» in the app).
 """
 
-KICAD = '/home/claude/v3/complementos/kicad'
+import os as _os
+import sys as _sys
+_sys.path.insert(0, _os.path.dirname(_os.path.abspath(__file__)))
+import fuentes as _fuentes  # noqa: E402
+
+KICAD = _os.path.join(_fuentes.COMPLEMENTOS, 'kicad')
 
 # ------------------------------------------------------------------ projects and boards
 

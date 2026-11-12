@@ -142,7 +142,9 @@ export function escenario(enTauri = false, vieja: Vieja = '0.12.0'): { omitido?:
       const previstas = new Set(['epa:__prueba', 'epa:progreso-xp', 'epa:dominio', 'epa:sinc-marcas', 'epa:progreso-diario', 'epa:ejercicios', 'epa:esquemas', 'epa:copia-migracion', 'epa:migracion']);
       for (const k of ln.escrituras) if (!previstas.has(k)) problemas.push(`${et}: la 1.0 escribe ${k} al cargar`);
       const sello = JSON.parse(ln.despues['epa:esquemas'] ?? 'null') as { almacenes?: Record<string, number> } | null;
-      if (sello?.almacenes?.['progreso-diario'] !== 2 || sello?.almacenes?.ejercicios !== 2) problemas.push(`${et}: las versiones guardadas no dicen progreso-diario 2 (${JSON.stringify(sello)})`);
+      // (1.2: the 4.1 ids rename takes both on to version 3 — lib/esquemas.ts ESQUEMAS; this script runs without the
+      // loader that resolves the app's extensionless imports, so the numbers are written here)
+      if (sello?.almacenes?.['progreso-diario'] !== 3 || sello?.almacenes?.ejercicios !== 3) problemas.push(`${et}: las versiones guardadas no dicen progreso-diario 3 y ejercicios 3 (${JSON.stringify(sello)})`);
       const original = JSON.parse(readFileSync(f(fx), 'utf8')) as Record<string, string>;
       // (when the migration changed something — 0.9–0.11 days: always — the backup holds the original)
       const copia = JSON.parse(ln.despues['epa:copia-migracion'] ?? ln.despues['epa:migracion'] ?? 'null') as { texto?: string } | null;
@@ -189,7 +191,7 @@ export function escenario(enTauri = false, vieja: Vieja = '0.12.0'): { omitido?:
     const rechazada = (paso: string, raiz: string, entrada: string, salida: string, acciones: string, reloj: number) => {
       const antes = textoRepo();
       const r = sesion(`${paso} (se rechaza)`, raiz, entrada, salida, acciones, true, reloj);
-      if (r.ok === true) problemas.push(`${paso}: la versión vieja sincronizó con el fichero del formato 2`);
+      if (r.ok === true) problemas.push(`${paso}: la versión vieja sincronizó con el fichero del formato 3`);
       if (!/actualice la aplicación/.test(r.error)) problemas.push(`${paso}: el aviso no pide actualizar («${r.error}»)`);
       if (textoRepo() !== antes || r.commits) problemas.push(`${paso}: la versión vieja tocó el fichero`);
       return r;
@@ -203,7 +205,7 @@ export function escenario(enTauri = false, vieja: Vieja = '0.12.0'): { omitido?:
     // Y is updated: its first run writes the file in format 2 (nothing else new: the format itself)
     const antes = lapidas(repo);
     commits('5 Y con la 1.0 sincroniza', sesion('5', n, f('Y2.json'), f('Y3.json'), '', true, 1_773_000_000_000), 1);
-    if (formato() !== 2) problemas.push(`5: el fichero no pasó al formato 2 (${formato()})`);
+    if (formato() !== 3) problemas.push(`5: el fichero no pasó al formato 3 (${formato()})`);
     // X, still on the old version, cannot synchronise — before and after more offline edits; nothing it did is lost
     rechazada(`6 X ${vieja}`, v, f('X2.json'), f('X3.json'), '', 1_773_200_000_000);
     rechazada(`6b X ${vieja} estudia`, v, f('X3.json'), f('X3b.json'), vieja === '0.10.1' ? '' : 'estudiar2', 1_773_300_000_000);

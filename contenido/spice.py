@@ -3,7 +3,7 @@
 
     cd /home/claude/app && python3 contenido/spice.py [--sin-validar] [--nativo] [--revalidar]
 
-Reads /home/claude/v3/complementos/spice/<stem>/*.cir (never writes there) and the already generated
+Reads the book's Complementos/spice/<stem>/*.cir (contenido/fuentes.py, env EPA_FUENTES; never writes there) and the already generated
 web/public/libro/indice.json, refs.json and partes/*.json (run contenido/generar.py first). Writes
 web/public/libro/spice/<stem>/*.cir, web/public/libro/spice.json and spice-refs.json (format in ESQUEMA.md).
 
@@ -24,8 +24,11 @@ import sys
 HERE = os.path.dirname(os.path.abspath(__file__))
 APP = os.path.dirname(HERE)
 WEB = os.path.join(APP, 'web')
-V3 = '/home/claude/v3'
-SRC = os.path.join(V3, 'complementos', 'spice')
+sys.path.insert(0, HERE)
+import fuentes  # noqa: E402
+
+V3 = fuentes.FUENTES
+SRC = os.path.join(fuentes.COMPLEMENTOS, 'spice')
 OUT = os.path.join(WEB, 'public', 'libro')
 CACHE = os.path.join(HERE, '.cache', 'spice-validacion.json')
 # A netlist that takes longer than this in the validator is marked as heavy in the app.
@@ -441,6 +444,10 @@ def resumen_motor(v, xspice, motor_xspice):
 
 
 # ------------------------------------------------------------------ main
+CURADO = (load_json(os.path.join(HERE, 'spice_curado.json'))['netlists']
+          if os.path.exists(os.path.join(HERE, 'spice_curado.json')) else {})
+
+
 def main():
     args = sys.argv[1:]
     for p in ('indice.json', 'refs.json'):
@@ -477,11 +484,17 @@ def main():
             desc = cabecera(texto)
             control, analisis = analizar(texto)
             rs = referencias(nombre, desc, refs)
+            # 1.2: a netlist whose header names no label (those of the 1.1 expansions, now the book's, and the new
+            # ones of 4.0/4.1) takes its title, labels and description from contenido/spice_curado.json
+            cur = CURADO.get(nid) if not rs else None
+            if cur:
+                rs = [r for r in cur['refs'] if r in refs]
+                desc = cur.get('descripcion', desc)
             netlists[nid] = {
                 'fichero': f'spice/{stem}/{f}',
                 'parte': stem,
                 'nombre': nombre,
-                'titulo': titulo_de(nombre),
+                'titulo': cur['titulo'] if cur else titulo_de(nombre),
                 'ref': rs[0] if rs else None,
                 'refs': rs,
                 'descripcion': desc,

@@ -171,7 +171,8 @@ test('enlaces: la ruta de cada sección del libro, con la grafía del libro; lo 
     }
   }
   expect(n).toBeGreaterThan(700);
-  expect(rutaDeEnlace('epa://leccion/cap-new-maquinas/sec-new-maquinas.1', indice)).toBe('#/leccion/cap-new-maquinas/sec-new-maquinas.1');
+  // (1.2: book 4.1 calls it cap56; a 4.0 QR with the provisional ids opens the same section)
+  expect(rutaDeEnlace('epa://leccion/cap-new-maquinas/sec-new-maquinas.1', indice)).toBe('#/leccion/cap56/sec-56.1');
   // a valid shape the book does not have: its route (the lesson page says «no encontrada»); not resolved
   expect(rutaDeEnlace('epa://leccion/cap99/sec-99.1', indice)).toBe('#/leccion/cap99/sec-99.1');
   expect(resolverEnlace({ parte: 'cap01', label: 'sec-1.99' }, indice)).toBeNull();

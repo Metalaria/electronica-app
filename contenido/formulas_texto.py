@@ -963,21 +963,21 @@ X('perdida-diodo-libre',
 X('motor-cc-velocidad',
   significa='La tensión aplicada se reparte entre la caída en la resistencia y la fuerza contraelectromotriz, proporcional a la velocidad.',
   valores='Con 24 V, 0,5 Ω y k = 0,05 V·s/rad gira a 4 584 rpm en vacío y a 4 106 con 5 A.',
-  aplica='«La misma constante k aparece en las dos», por la conservación de la energía.')
+  aplica='La recta par-velocidad «corta el eje de velocidades en la velocidad en vacío», ω₀ = V/k.')
 X('motor-cc-par',
   significa='El par es proporcional a la corriente, con la misma constante k que liga la velocidad y la fuerza contraelectromotriz.',
   valores='Con k = 0,05 y 5 A, 0,25 N·m.',
-  aplica='«La misma constante k aparece en las dos»: la potencia eléctrica E·I iguala a la mecánica T·ω.')
+  aplica='«La misma constante para el par y para la tensión»: la potencia eléctrica E·I iguala a la mecánica T·ω.')
 X('velocidad-sincrona',
   significa='El campo giratorio de un motor de alterna da una vuelta cada tantos ciclos de red como pares de polos tiene.',
   valores='Con 4 polos a 50 Hz, 1 500 rpm; a 60 Hz, 1 800 rpm.',
-  aplica='El motor de inducción «no puede girar a la velocidad síncrona»: necesita deslizamiento para que se induzca corriente en el rotor.')
+  aplica='En el motor de inducción «el rotor siempre se queda un poco atrás»: necesita deslizamiento para que se induzca corriente en él.')
 X('deslizamiento',
-  significa='«El rotor debe girar más despacio que el campo para que se induzca corriente en él»: el deslizamiento mide cuánto.',
+  significa='«Si gira más despacio que el campo, las barras cortan sus líneas, se induce en ellas una tensión»: el deslizamiento mide cuánto se queda atrás.',
   valores='Un motor de 4 polos a 1 440 rpm tiene un deslizamiento del 4 %, típico a plena carga.')
-X('ley-v-f',
+X('ley-v-f', ref='sec-56.6',
   significa='El flujo en el hierro es proporcional a V/f: para bajar la frecuencia sin saturar el núcleo hay que bajar la tensión en la misma proporción.',
-  valores='«Un motor de 400 V y 50 Hz alimentado a 25 Hz debe recibir 200 V».',
+  valores='Con 8 V/Hz para el motor de 4 kW: «a 25 Hz recibe 200 V».',
   aplica='Por encima de la frecuencia nominal se entra en la zona de debilitamiento de campo: la velocidad sube pero el par cae.')
 X('buck-vout', ref='sec-33.2',
   significa='Por el balance de voltios-segundo en la bobina, la salida del reductor es la entrada por el ciclo de trabajo.',

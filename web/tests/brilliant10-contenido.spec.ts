@@ -349,12 +349,17 @@ test.describe('por qué no (sin navegador)', () => {
             expect(parteTexto(p).includes(JSON.stringify(x.html).slice(1, -1)) || x.html.split(' ').length > 3, q.id).toBe(true);
             expect(plano(x.html).length).toBeGreaterThanOrEqual(40);
             expect(x.donde).toMatch(/^(Sección|Apartado|Problema|Figura|Tabla)/);
+          } else if (x.k === 'propio') {
+            // 1.2: the review's own explanation of the misconception (contenido/porque_curado.json «propio»)
+            expect(plano(x.html).length, q.id).toBeGreaterThanOrEqual(40);
+            expect(x.html.length, q.id).toBeLessThanOrEqual(320);
           } else expect(x.k).toBe('general');
         }
       }
     }
-    // 2697 in 1.0; 1.1 adds the review questions of the book expansions (contenido/ampliaciones11/*/repaso.json)
-    expect(total).toBe(2808);
+    // 2697 in 1.0; 1.1 adds the review questions of the book expansions (contenido/ampliaciones11/*/repaso.json);
+    // 1.2 (book 4.1): those are the book's own, plus the self-assessment of cap55, cap56, cap57, apK and 39.x
+    expect(total).toBe(2865);
     expect(libroN).toBeGreaterThan(100);
   });
 
@@ -380,9 +385,35 @@ test.describe('por qué no (sin navegador)', () => {
     }
     const aprobadas = Object.values(curado.pares).filter((x) => x.ok).length;
     expect(emitidas).toBe(aprobadas);
-    // review 10d: 10 more rejected (no subject out of context, or arguing for the option); 5 shown with the one before
-    expect(aprobadas).toBe(129);
-    expect(Object.keys(curado.pares).length).toBe(386);
+    // review 10d: 10 more rejected (no subject out of context, or arguing for the option); 5 shown with the one before.
+    // 1.2 (book 4.1): the 46 new proposals reviewed, 6 approved (2 with the sentence before) and 40 rejected with an
+    // own explanation of the misconception («propio»)
+    expect(aprobadas).toBe(135);
+    expect(Object.keys(curado.pares).length).toBe(431);
+  });
+
+  test('1.2: cada explicación propia de la revisión sale tal cual, solo en una frase rechazada', () => {
+    const curado = JSON.parse(fs.readFileSync(path.join(web, '..', 'contenido', 'porque_curado.json'), 'utf8')) as { pares: Record<string, { ok: boolean; frase: string; propio?: string }> };
+    const pref: Record<string, string> = { repaso: 'R', ejercicios: 'E', prediccion: 'P' };
+    let propias = 0;
+    for (const d of porque.values()) {
+      for (const g of ['repaso', 'ejercicios', 'prediccion'] as const) {
+        for (const [q, ops] of Object.entries(d[g])) {
+          for (const [i, x] of Object.entries(ops)) {
+            if (x.k !== 'propio') continue;
+            propias++;
+            const c = curado.pares[`${pref[g]}|${q}|${i}`];
+            expect(c?.ok, `${q} ${i}`).toBe(false);
+            expect(x.html).toBe(c!.propio);
+            // «usted», as the rest of the app (no «tú» forms of the usual verbs)
+            expect(plano(x.html), `${q} ${i}`).not.toMatch(/\b(tienes|puedes|debes|haces|piensa|mira|fíjate|recuerda)\b/i);
+          }
+        }
+      }
+    }
+    expect(propias).toBe(Object.values(curado.pares).filter((x) => x.propio != null).length);
+    expect(propias).toBe(40);
+    expect(J<{ propio: { repaso: number } }>('porque/indice.json').propio.repaso).toBe(40);
   });
 
   test('ninguna frase aprobada empieza por un pronombre sin su sujeto (salvo con la frase anterior)', () => {

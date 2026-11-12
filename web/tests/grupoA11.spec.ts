@@ -225,13 +225,14 @@ test.describe('reglas de XP, niveles y cursos (sin navegador)', () => {
       cap51: ['analogica', 'proyectos'],
       cap52: ['senales', 'proyectos'],
     });
-    expect(CURSOS.map((c) => c.partes.length)).toEqual([7, 4, 8, 7, 5, 5, 6, 8, 3, 7]);
-    // 1.1: the expansions' two new chapters, where the book places them
-    expect(CURSOS.find((c) => c.id === 'digital')!.partes).toEqual(['cap09', 'cap29', 'cap-new-automatas', 'cap34', 'cap37', 'cap38', 'cap44']);
-    expect(CURSOS.find((c) => c.id === 'potencia')!.partes).toEqual(['cap10', 'cap33', 'cap-new-maquinas', 'cap39', 'cap50']);
+    expect(CURSOS.map((c) => c.partes.length)).toEqual([7, 4, 8, 8, 5, 5, 6, 8, 3, 8]);
+    // 1.1: the expansions' two new chapters, where the book places them (1.2: book 4.1's ids, cap55 and cap56, and
+    // appendix K closing the digital course)
+    expect(CURSOS.find((c) => c.id === 'digital')!.partes).toEqual(['cap09', 'cap29', 'cap55', 'cap34', 'cap37', 'cap38', 'cap44', 'apK']);
+    expect(CURSOS.find((c) => c.id === 'potencia')!.partes).toEqual(['cap10', 'cap33', 'cap56', 'cap39', 'cap50']);
     expect(CURSOS[0]!.partes).toEqual(['cap00', 'cap01', 'cap02', 'cap03', 'cap04', 'cap05', 'cap06']);
     expect(CURSOS.find((c) => c.id === 'taller')!.partes).toEqual(['cap11', 'cap12', 'cap13', 'cap15', 'cap21', 'cap22', 'cap47', 'cap53']);
-    expect(CURSOS.find((c) => c.id === 'proyectos')!.partes).toEqual(['cap16', 'cap48', 'cap49', 'cap50', 'cap51', 'cap52', 'cap54']);
+    expect(CURSOS.find((c) => c.id === 'proyectos')!.partes).toEqual(['cap16', 'cap48', 'cap49', 'cap50', 'cap51', 'cap52', 'cap57', 'cap54']);
     for (const c of CURSOS) expect(leccionesDeCurso(c, INDICE).length, c.id).toBeGreaterThan(20);
     // placement test sizes: 6–10 questions, spread over the chapters
     for (const c of CURSOS) {

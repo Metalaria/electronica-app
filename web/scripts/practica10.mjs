@@ -1353,13 +1353,20 @@ const porParte = {};
 // (practica-retirada.json); here they get the current numbers and «retirada». Not when the run is back (P02 undone).
 const registroAmp = fs.existsSync(path.join(libro, 'ampliaciones.json')) ? J('ampliaciones.json') : {};
 const AMPLIACIONES11 = process.env.EPA_AMPLIACIONES ? path.resolve(process.env.EPA_AMPLIACIONES) : path.join(web, '..', 'contenido', 'ampliaciones11');
+// 1.2: the book itself retired the run (4.0: 32.13 is chapter 34, cap56; the 1.1 expansion layer is no longer merged),
+// so the registry is the app's own (contenido/practica_retirada.json) and the retired label is a book alias: it is in
+// refs.json but no longer a section of its part
+const CONTENIDO = path.join(web, '..', 'contenido');
+const retiradasNativas = fs.existsSync(path.join(CONTENIDO, 'practica_retirada.json')) ? JSON.parse(fs.readFileSync(path.join(CONTENIDO, 'practica_retirada.json'), 'utf8')).retiradas : [];
+const enSuParte = (p, label) => (indice.partes[p]?.secciones ?? []).some((s) => s.label === label);
 function retiradosDe(p) {
   const out = [];
-  for (const r of registroAmp.retiradas ?? []) {
-    const f = path.join(AMPLIACIONES11, r.id, 'practica-retirada.json');
+  const nativas = !registroAmp.retiradas;
+  for (const r of registroAmp.retiradas ?? retiradasNativas) {
+    const f = nativas ? path.join(CONTENIDO, r.fichero) : path.join(AMPLIACIONES11, r.id, 'practica-retirada.json');
     if (r.parte !== p || r.solo_alias || !fs.existsSync(f)) continue;
     for (const x of JSON.parse(fs.readFileSync(f, 'utf8')).items) {
-      if (!refs[x.seccion]?.retirada) continue;
+      if (nativas ? !refs[x.seccion] || enSuParte(p, x.seccion) : !refs[x.seccion]?.retirada) continue;
       const it = structuredClone(x);
       it.retirada = r.id;
       it.bloque = r.pos;

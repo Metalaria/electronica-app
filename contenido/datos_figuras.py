@@ -94,6 +94,10 @@ def aplicar(v3, out, partes_bloques, problems):
     src_dir = os.path.join(v3, 'figuras', 'datos')
     dst_dir = os.path.join(out, 'datos')
     os.makedirs(dst_dir, exist_ok=True)
+    if not os.path.isdir(src_dir):
+        # 3.0.2 and 4.x carry no figuras/datos: the published files are the only copy of the data, kept on the
+        # current drawings by datos_figuras_recolocar.py (run before this), and read here in place
+        src_dir = dst_dir
     stats = {'grafica': 0, 'esquema': 0, 'diagrama': 0, 'foto': 0, 'con_datos': 0, 'sin_json': 0}
     wanted = set()
     for bloques in partes_bloques:

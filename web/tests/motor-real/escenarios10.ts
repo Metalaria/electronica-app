@@ -10,6 +10,7 @@ import { claveDia } from '../../src/componentes/repaso/srs.ts';
 import { unirEjercicios } from '../../src/lib/union-ejercicios.ts';
 import { ayudaAlResolver, estadoEjercicio, marcarResuelto, marcarTapada } from '../../src/lib/valores-ejercicio.ts';
 import { xpEjercicio } from '../../src/lib/aprendizaje/niveles.ts';
+import { ESQUEMAS } from '../../src/lib/esquemas.ts';
 import type { EstadoEjercicio } from '../../src/lib/aprendizaje.svelte.ts';
 import { casos } from './escenarios.ts';
 import {
@@ -92,14 +93,15 @@ caso('t10·1 · un dispositivo con la 0.12 y otro con la 1.0: la 0.12 no puede e
   igual(formato(repo), 1);
   // Y is updated: its first run writes the file in format 2 even with nothing new (fusion.ts migradoDe)
   await actualizar(Y);
-  assert.ok(await pasada(Y, repo, T0 + H), 'la 1.0 escribe el formato 2 en su primera pasada');
-  igual(formato(repo), 2);
-  igual(entradaDe(repo, Y)?.datos, 2, 'la 1.0 se anota con el formato que escribe');
+  // (1.2: this tree writes format 3)
+  assert.ok(await pasada(Y, repo, T0 + H), 'la 1.2 escribe el formato 3 en su primera pasada');
+  igual(formato(repo), 3);
+  igual(entradaDe(repo, Y)?.datos, 3, 'la 1.2 se anota con el formato que escribe');
   // X (0.12) is told to update, and writes nothing — before and after editing offline
   const texto = repo.texto;
   for (const t of [T0 + H + M, T0 + 2 * H]) {
     assert.equal(await pasada(X, repo, t), false);
-    assert.match(ultimoError, /tiene la versión 2 del formato; actualice la aplicación/);
+    assert.match(ultimoError, /tiene la versión 3 del formato; actualice la aplicación/);
     igual(repo.texto, texto, 'el fichero no cambia');
     if (t === T0 + H + M) {
       await nota(tab(X), T0 + H + 2 * M, 'n2', 'de X, sin poder sincronizar');
@@ -130,7 +132,7 @@ caso('t10·2 · la 0.12 lee el fichero de la 0.12 y la 1.0 lo convierte entre su
   await asentar([X, Y], repo, T0);
   await actualizar(Y);
   await nota(tab(X), T0 + H, 'n2', 'dos de X');
-  // between X's GET and its PUT, Y writes the file in format 2
+  // between X's GET and its PUT, Y writes the file in format 3 (1.2; format 2 in 1.0)
   repo.antesDePut = async () => {
     await pasada(Y, repo, T0 + H + 1);
   };
@@ -140,7 +142,7 @@ caso('t10·2 · la 0.12 lee el fichero de la 0.12 y la 1.0 lo convierte entre su
   repo.antesDePut = undefined;
   assert.match(ultimoError, /actualice la aplicación/);
   igual(repo.commits, c0 + 1, 'solo el commit de Y');
-  igual(formato(repo), 2);
+  igual(formato(repo), 3);
   igual(Object.keys(repo.vivos('notas')).sort(), ['n1'], 'la nota de X espera en X');
   await actualizar(X);
   await asentar([X, Y], repo, T0 + 2 * H);
@@ -196,7 +198,8 @@ caso('t10·4 · el exceso de una 0.11 en el fichero de la 0.12 (un día sin toca
   // does X once updated
   const Y = await nuevoDisp('Y', almacenes());
   await asentar([Y], repo, T0 + H);
-  igual(formato(repo), 2);
+  // (1.2 writes format 3; it was 2 in 1.0)
+  igual(formato(repo), 3);
   igual(await pasos(tab(Y), T0 + H + M, AYER), 5, 'la 1.0 cuenta el exceso absorbido por la migración del fichero');
   await actualizar(X);
   await asentar([X, Y], repo, T0 + 2 * H);
@@ -219,9 +222,10 @@ caso('t10·5 · copias de seguridad entre versiones: la de la 0.12 (formato 1) s
   igual(textos(Y), { n1: 'de X' });
   igual(await pasos(tab(Y), T0 + 3 * M, AYER), 3, 'el día de la 0.11 dentro de la copia de la 0.12, una vez');
   const copia10 = (await c.crearCopia()).texto;
-  igual((JSON.parse(copia10) as { version: number }).version, 2);
+  // (1.2: this tree writes format 3)
+  igual((JSON.parse(copia10) as { version: number }).version, 3);
   const cx = await tab(X).copia();
-  assert.throws(() => cx.leerFicheroCopia(copia10), /versión más nueva de la aplicación \(formato 2/);
+  assert.throws(() => cx.leerFicheroCopia(copia10), /versión más nueva de la aplicación \(formato 3/);
 });
 
 caso('t10·6 · dos pestañas de la 0.12 abiertas al actualizar: lo pendiente de cada una se guarda antes y nada se pierde', async () => {
@@ -307,10 +311,14 @@ caso('t10·9 · la migración al arrancar: copia previa una sola vez, idempotent
     const copia = JSON.parse(JSON.parse(ls.get('copia-migracion')!).texto) as { formato: string; claves: Record<string, unknown>; hacia: Record<string, number> };
     igual(copia.formato, 'epa-copia-migracion');
     igual(copia.claves['progreso-diario'], viejo, 'la copia guarda el original');
-    igual(copia.hacia, { 'progreso-diario': 2 });
+    // (1.2: the 4.1 ids rename takes «progreso-diario» on to version 3, ESQUEMAS)
+    igual(copia.hacia, { 'progreso-diario': ESQUEMAS['progreso-diario'] });
+    igual(ESQUEMAS['progreso-diario'], 3);
     const sello = JSON.parse(ls.get('esquemas')!) as { almacenes: Record<string, number> };
-    igual(sello.almacenes['progreso-diario'], 2);
-    igual(sello.almacenes.notas, 1);
+    igual(sello.almacenes['progreso-diario'], 3);
+    // (1.2: notes go on to version 2 with the 4.1 ids rename, which leaves these untouched: stamped, not «migradas»)
+    igual(sello.almacenes.notas, ESQUEMAS.notas);
+    igual(ESQUEMAS.notas, 2);
     // a start cut after the data but before the versions: the migration runs again on its own output — no change,
     // and the backup still holds the FIRST original
     const migrado = ls.get('progreso-diario');

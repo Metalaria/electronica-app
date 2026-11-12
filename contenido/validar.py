@@ -42,6 +42,8 @@ def source_counts(lib, files):
     """Independent counts straight from the sources, to compare with what was generated."""
     text = ''.join(open(os.path.join(lib, f), encoding='utf-8').read() for f in files)
     no_raw = re.sub(r'```.*?```', '', text, flags=re.S)
+    # whole-line Typst comments (4.0: cap36.typ keeps the 3.0 formula card commented out after the merged one)
+    no_raw = re.sub(r'(?m)^[ \t]*//.*$', '', no_raw)
     c = {k: len(re.findall(p, no_raw)) for k, p in {
         'figura': r'#figura\(', 'tabla': r'#tabla\(', 'ejercicio': r'#ejercicio\[', 'solucion': r'#solucion\(',
         'codigo': r'#codigo\[', 'deduccion': r'#deduccion\[', 'tarjeta': r'#tarjeta\[', 'centrado': r'#centrado\[',

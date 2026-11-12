@@ -8,12 +8,15 @@
   let { opcion, porque = null, parte, extra = '' }: { opcion: string; porque?: Porque | null; parte: string; extra?: string } = $props();
 
   const libro = $derived(porque?.k === 'libro' ? porque : null);
+  // 1.2: the review's own explanation of the misconception (porque.ts «propio»), shown like `extra`
+  const propio = $derived(porque?.k === 'propio' ? porque.html : '');
   const href = $derived(libro ? (rutaDeRef(libro.ref) ?? `#/${parte}/${encodeURIComponent(libro.ref)}`) : '');
 </script>
 
-{#if libro || extra}
-  <div class="porque" data-porque={libro ? 'libro' : 'simulacion'}>
+{#if libro || propio || extra}
+  <div class="porque" data-porque={libro ? 'libro' : propio ? 'propio' : 'simulacion'}>
     <span class="rot">Por qué no «{@html prepararHtml(opcion)}»</span>
+    {#if propio}<p class="extra">{@html prepararHtml(propio)}</p>{/if}
     {#if extra}<p class="extra">{@html prepararHtml(extra)}</p>{/if}
     {#if libro}
       <blockquote>

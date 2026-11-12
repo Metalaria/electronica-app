@@ -28,10 +28,12 @@ import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 APP = os.path.dirname(HERE)
-V3 = os.environ.get('V3', '/home/claude/v3')
+sys.path.insert(0, HERE)
+import fuentes                    # noqa: E402
+
+V3 = os.environ.get('V3') or fuentes.FUENTES
 OUT = os.path.join(APP, 'web/public/fm7303')
 
-sys.path.insert(0, HERE)
 import fm7303_dibujo as Dib       # noqa: E402
 import fm7303_esquema as Esq      # noqa: E402
 import fm7303_datos as Dat        # noqa: E402
