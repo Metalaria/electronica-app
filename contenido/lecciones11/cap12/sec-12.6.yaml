@@ -1,0 +1,233 @@
+# Lección 1.2 de la sección 12.6 «Bibliotecas, Reutilización y Control de Versiones» (cap12). Formato: GUIA.md.
+# La huella girada (bloque 175) se ve con el LED del libro (sección 5.4: LED rojo de 2,0 V a 20 mA desde 5 V, con
+# 150 Ω): girada respecto a la serigrafía, la pieza queda al revés y no conduce (se simula invirtiendo la tensión que
+# ve el LED).
+leccion: cap12/sec-12.6
+
+libro:
+  170: "con la geometría de las almohadillas y la correspondencia pin-almohadilla"
+  171: "el encapsulado es donde se cometen los errores caros"
+  173: "el orden de las patillas varía entre fabricantes"
+  174: "un contorno que no corresponde al componente real"
+  175: "Orientación del pin 1"
+  178: "Cotejar el patillaje"
+  179: "cinco minutos y una hoja de papel"
+  181: "porque un bloque probado tiene los errores ya encontrados"
+  182: "como hoja jerárquica independiente"
+  185: "qué cambió, cuándo y por qué"
+  186: "etiquetar la versión exacta que se envía a fabricar"
+  189: "Biblioteca propia por encima de las genéricas."
+  193: "un componente descatalogado obliga a rediseñar"
+  195: "colocar los componentes en su sitio sin soldar"
+  "cap05#133": "Alimentar un LED rojo de 2,0 V nominales a 20 mA desde 5 V."
+
+modelo:
+  valores:
+    V_e: { sim: "+5V", nombre: "tensión de la fuente", unidad: V, valor: 5 }
+    R_e: { sim: "R1", nombre: "resistencia del LED", unidad: Ω, valor: 150 }
+    V_fe: { sim: "V_{f}", nombre: "tensión del LED", unidad: V, valor: 2 }
+    s_h: { sim: "huella", nombre: "sentido de la huella del LED", unidad: "", valor: 1 }
+  calculos:
+    V_led: { expr: "s_h*V_e", sim: "V", nombre: "tensión que ve el LED en su sentido", unidad: V }
+    I_e: { expr: "max(0, (V_led - V_fe)/R_e)", sim: "I", nombre: "corriente del LED", unidad: A }
+
+tarjetas:
+  - id: explore-huella
+    tipo: explorar
+    titulo: "Una huella girada"
+    texto: "La huella del LED en la biblioteca está girada respecto a la serigrafía. Móntelo según la huella y mire el LED."
+    nota: "El LED rojo del libro: 2,0 V a 20 mA desde 5 V."
+    libro: [175, "cap05#133"]
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_led, r: R_e, vf: V_fe }
+      lectura: { valor: I_e, rotulo: "Corriente del LED" }
+      corriente: I_e
+      mide: { corriente: I_e }
+      mandos:
+        - { valor: s_h, lista: [-1, 1], nombres: [girada, correcta], rotulo: "Huella" }
+    requiere: { mover: [s_h] }
+
+  - id: tres-cosas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "El componente es tres cosas"
+    texto: "Una cada parte de un componente de biblioteca con lo que lleva."
+    libro: [170]
+    emparejar:
+      - ["El símbolo", "Pines numerados y su tipo eléctrico"]
+      - ["El encapsulado", "Almohadillas y correspondencia pin-almohadilla"]
+      - ["Los metadatos", "Fabricante, referencia, modelo 3D y hoja de datos"]
+    exito: "De las tres, el encapsulado es donde se cometen los errores caros."
+    pistas:
+      - { texto: "La geometría física está en el encapsulado." }
+    escalera:
+      - "Lo que se compra está en los metadatos."
+    solucion: "Símbolo–pines; encapsulado–almohadillas; metadatos–referencia y datos."
+
+  - id: prediga-caro
+    tipo: predecir
+    titulo: "¿Dónde está el error caro?"
+    texto: "Un error en el símbolo frente a uno en el encapsulado. ¿Cuál cuesta más, y por qué?"
+    libro: [171]
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_led, r: R_e, vf: V_fe }
+      lectura: { valor: I_e, rotulo: "Corriente del LED" }
+      mide: { corriente: I_e }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "El del encapsulado: no se ve hasta tener la placa fabricada"
+        bien: true
+        porque: "El del símbolo suele detectarse al dibujar o con el ERC; el del encapsulado cuesta una revisión de la placa."
+      - texto: "El del símbolo: el ERC no lo ve nunca"
+        porque: "Un error de símbolo suele aparecer al dibujar o con el ERC."
+      - texto: "Cuestan lo mismo"
+        porque: "No: uno se corrige en el dibujo y el otro exige fabricar otra placa."
+    escalera:
+      - "¿Cuándo se descubre cada uno?"
+    solucion: "El del encapsulado: aparece con la placa ya fabricada."
+
+  - id: tres-errores
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los tres errores de encapsulado"
+    texto: "Una cada error con su forma típica."
+    libro: [173, 174, 175]
+    emparejar:
+      - ["Correspondencia pin-almohadilla", "TO-92 y TO-220: el orden varía entre fabricantes"]
+      - ["Dimensiones incorrectas", "Almohadillas pequeñas o contornos que se solapan"]
+      - ["Orientación del pin 1", "Integrados montados al revés"]
+    exito: "La biblioteca genérica sin comprobar es la causa número uno de placas inservibles."
+    pistas:
+      - { texto: "El pin 1 girado es la huella del LED que acaba de ver." }
+    escalera:
+      - "Los transistores y reguladores cambian de orden según el fabricante."
+    solucion: "Pin-almohadilla–TO-92 y TO-220; dimensiones–almohadillas y contornos; pin 1–al revés."
+
+  - id: mas-eficaz
+    tipo: pregunta
+    titulo: "La comprobación más eficaz"
+    texto: "Cotejar el patillaje, imprimir la placa 1:1 con las piezas encima, revisar el modelo 3D. ¿Cuál es la más eficaz por su coste?"
+    libro: [178, 179, 195]
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_led, r: R_e, vf: V_fe }
+      lectura: { valor: I_e, rotulo: "Corriente del LED" }
+      mide: { corriente: I_e }
+      mandos: []
+    opciones:
+      - texto: "La impresión 1:1"
+        bien: true
+        porque: "Cinco minutos y una hoja de papel: detecta al instante almohadillas, contornos y conectores que no encajan."
+      - texto: "El modelo 3D"
+        porque: "Sirve para alturas y colisiones con la caja, pero no es la más barata ni la más eficaz."
+      - texto: "Ninguna: basta el ERC"
+        porque: "El ERC no ve los encapsulados."
+    escalera:
+      - "¿Cuál necesita solo papel y las piezas?"
+    solucion: "Imprimir la placa a escala 1:1 y colocar los componentes encima."
+
+  - id: por-que-reutilizar
+    tipo: porque
+    titulo: "Bloques probados"
+    texto: "Reutilizar un bloque que ya funciona ahorra tiempo. ¿Por qué aporta además fiabilidad?"
+    libro: [181, 182]
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_led, r: R_e, vf: V_fe }
+      lectura: { valor: I_e, rotulo: "Corriente del LED" }
+      mide: { corriente: I_e }
+      mandos: []
+    opciones:
+      - texto: "Porque tiene los errores ya encontrados"
+        bien: true
+        porque: "Para poder reutilizarlo, se diseña como hoja jerárquica independiente, con interfaces claras."
+      - texto: "Porque es más sencillo"
+        porque: "No tiene por qué serlo: lo que aporta es que ya se probó."
+      - texto: "Porque lleva componentes más caros"
+        porque: "El precio no tiene que ver: lo valioso es lo que ya se depuró."
+    escalera:
+      - "¿Qué le pasó a ese bloque en el proyecto anterior?"
+    solucion: "Un bloque probado tiene los errores ya encontrados."
+
+  - id: versiones
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Control de versiones"
+    texto: "Una cada aporte con lo que permite."
+    libro: [185]
+    emparejar:
+      - ["Historial", "Qué cambió, cuándo y por qué"]
+      - ["Comparación", "Ver las diferencias entre versiones"]
+      - ["Vuelta atrás", "Cuando un cambio empeora las cosas"]
+      - ["Ramas", "Trabajo en paralelo"]
+    exito: "Los ficheros de las herramientas modernas son texto, y se versionan como el código."
+    pistas:
+      - { texto: "Las ramas permiten trabajar a la vez sin pisarse." }
+    escalera:
+      - "Volver atrás es deshacer un cambio que empeoró las cosas."
+    solucion: "Historial–qué y por qué; comparación–diferencias; vuelta atrás–deshacer; ramas–paralelo."
+
+  - id: etiquetar
+    tipo: pregunta
+    titulo: "La versión que se fabrica"
+    texto: "Envía la placa a fabricar. ¿Qué hace en el control de versiones?"
+    libro: [186]
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_led, r: R_e, vf: V_fe }
+      lectura: { valor: I_e, rotulo: "Corriente del LED" }
+      mide: { corriente: I_e }
+      mandos: []
+    opciones:
+      - texto: "Etiquetar esa versión exacta, con los Gerbers y la BOM usados"
+        bien: true
+        porque: "Y anotar en el esquema la revisión y la fecha: cualquier copia impresa dirá de qué versión es."
+      - texto: "Nada: el historial ya lo guarda"
+        porque: "El historial guarda todo, pero sin etiqueta no se sabe qué versión se fabricó."
+      - texto: "Borrar las versiones anteriores"
+        porque: "Se pierde justo lo que hace falta para comparar y volver atrás."
+    escalera:
+      - "Piense en una segunda tirada dentro de un año."
+    solucion: "Etiquetar la versión exacta con sus Gerbers y su BOM."
+
+  - id: biblioteca-propia
+    tipo: pregunta
+    titulo: "Un componente verificado"
+    texto: "Acaba de cotejar un componente nuevo con su hoja de datos. ¿Qué hace con él?"
+    libro: [189, 193]
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_led, r: R_e, vf: V_fe }
+      lectura: { valor: I_e, rotulo: "Corriente del LED" }
+      mide: { corriente: I_e }
+      mandos: []
+    opciones:
+      - texto: "Copiarlo a la biblioteca propia, con su nombre exacto y sus metadatos"
+        bien: true
+        porque: "La segunda vez que se use ya estará comprobado. Y conviene mirar su disponibilidad antes de cerrar el diseño."
+      - texto: "Dejarlo en la biblioteca genérica"
+        porque: "La genérica es un punto de partida: lo verificado va a la propia."
+      - texto: "Nada: ya está comprobado"
+        porque: "Si no se guarda, la próxima vez habrá que comprobarlo de nuevo."
+    escalera:
+      - "Biblioteca propia por encima de las genéricas."
+    solucion: "A la biblioteca propia, con nombre exacto y metadatos."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [171, 179, 181, 186]
+    ideas:
+      - { titulo: "El error caro.", texto: "Está en el encapsulado: no se ve hasta tener la placa." }
+      - { titulo: "Impresión 1:1.", texto: "Cinco minutos y una hoja de papel." }
+      - { titulo: "Reutilizar.", texto: "Un bloque probado trae los errores ya encontrados." }
+      - { titulo: "Versiones.", texto: "Etiquetar lo que se fabrica, con Gerbers y BOM." }

@@ -1,0 +1,216 @@
+# Lección 1.2 de la sección 12.7 «Ingeniería Inversa de una Placa» (cap12). Formato: GUIA.md.
+# La etapa trazada es la de emisor común del libro (sección 6.5: 12 V, 47 kΩ, 10 kΩ, 3,3 kΩ, 1 kΩ, β = 150; punto Q
+# en 1,324 mA), redibujada con las convenciones y con designadores «impresos en la placa» (R12…R15, de ejemplo).
+# Paso práctico: «simular» (validar el trazado prediciendo la tensión de colector, como pide «En el banco»).
+leccion: cap12/sec-12.7
+
+libro:
+  199: "lo suficiente para el objetivo"
+  200: "un reparador experimentado traza el diez por ciento de la placa"
+  202: "Documentar antes de tocar."
+  203: "Trazar la alimentación."
+  204: "Localizar la masa"
+  205: "Identificar los bloques por sus integrados."
+  206: "Trazar solo la zona de interés"
+  208: "Continuidad, siempre sin alimentación."
+  209: "Con multicapa no hay solución"
+  210: "invertir horizontalmente una de ellas"
+  211: "Es destructivo"
+  213: "redibujarlo según las convenciones"
+  214: "con los designadores impresos en la placa (R12, C5)"
+  216: "rara vez es lo que ha fallado"
+  217: "Reproducir un diseño para fabricarlo y venderlo es otra cosa"
+  219: "se predicen las tensiones de tres o cuatro nodos"
+  "cap06#452": "R₁ = 47 kΩ, R₂ = 10 kΩ, RE = 1 kΩ, RC = 3,3 kΩ"
+  "cap06#184": "Con β = 150 el punto Q está en 1,324 mA y 6,31 V."
+
+modelo:
+  valores:
+    V_cc: { sim: "+12V", nombre: "alimentación", unidad: V, valor: 12 }
+    R_p1: { sim: "R12", nombre: "divisor, arriba", unidad: Ω, valor: 47000 }
+    R_p2: { sim: "R13", nombre: "divisor, abajo", unidad: Ω, valor: 10000 }
+    R_pc: { sim: "R14", nombre: "resistencia de colector", unidad: Ω, valor: 3300 }
+    R_pe: { sim: "R15", nombre: "resistencia de emisor", unidad: Ω, valor: 1000 }
+    beta: { sim: "β", nombre: "ganancia de corriente", unidad: "", valor: 150 }
+    V_BE: { sim: "V_{BE}", nombre: "tensión base-emisor", unidad: V, valor: 0.7 }
+  calculos:
+    V_pth: { expr: "V_cc*R_p2/(R_p1 + R_p2)", sim: "V_{Th}", nombre: "tensión del divisor en vacío", unidad: V }
+    R_pth: { expr: "par(R_p1, R_p2)", sim: "R_{Th}", nombre: "resistencia Thévenin del divisor", unidad: Ω }
+    I_pb: { expr: "(V_pth - V_BE)/(R_pth + (beta + 1)*R_pe)", sim: "I_{B}", nombre: "corriente de base", unidad: A }
+    I_pc: { expr: "beta*I_pb", sim: "I_{C}", nombre: "corriente de colector", unidad: A, cifras: 4 }
+    V_pe: { expr: "(beta + 1)*I_pb*R_pe", sim: "V_{E}", nombre: "tensión de emisor", unidad: V }
+    V_pb: { expr: "V_pe + V_BE", sim: "V_{B}", nombre: "tensión de base", unidad: V }
+    V_pc: { expr: "V_cc - I_pc*R_pc", sim: "V_{C}", nombre: "tensión de colector", unidad: V }
+    V_pce: { expr: "V_pc - V_pe", sim: "V_{CE}", nombre: "tensión colector-emisor", unidad: V }
+
+tarjetas:
+  - id: explore-trazada
+    tipo: explorar
+    titulo: "Lo trazado, redibujado"
+    texto: "Una etapa trazada en una placa, redibujada con alimentación arriba y masa abajo. Cambie el β del ejemplar y lea los nodos."
+    nota: "La etapa del libro; designadores de ejemplo."
+    libro: [213, 214, "cap06#452"]
+    inicio: { beta: 50 }
+    widget:
+      tipo: circuito
+      esquema: bjt-polarizacion
+      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
+      lectura: { valor: V_pc, rotulo: "Colector" }
+      datos:
+        - { valor: V_pb, rotulo: "Base: {{V_pb}}" }
+        - { valor: V_pe, rotulo: "Emisor: {{V_pe}}" }
+      corriente: I_pc
+      mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
+      mandos:
+        - { valor: beta, lista: [50, 100, 150, 300], rotulo: "β del ejemplar" }
+    requiere: { mover: [beta] }
+
+  - id: cinco-fases
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "El método, en cinco fases"
+    texto: "Ordene las fases de la ingeniería inversa de una placa."
+    libro: [202, 203, 204, 205, 206]
+    ordenar:
+      - "Documentar antes de tocar: fotografías de ambas caras"
+      - "Trazar la alimentación desde el conector"
+      - "Localizar la masa y un punto para la pinza"
+      - "Identificar los bloques por sus integrados"
+      - "Trazar solo la zona de interés"
+    exito: "La primera fase parece un trámite y es la que más tiempo ahorra después."
+    pistas:
+      - { texto: "Las fotografías van antes de desoldar nada." }
+    escalera:
+      - "Primero la documentación, luego la energía, luego la referencia."
+    solucion: "Documentar, alimentación, masa, integrados y la zona de interés."
+
+  - id: prediga-alcance
+    tipo: predecir
+    titulo: "¿Cuánto trazar?"
+    texto: "Una placa averiada de doscientos componentes, sin esquema. ¿Qué parte traza un reparador experimentado?"
+    libro: [199, 200]
+    widget:
+      tipo: circuito
+      esquema: bjt-polarizacion
+      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
+      lectura: { valor: V_pc, rotulo: "Colector" }
+      corriente: I_pc
+      mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "Una décima parte: la que rodea al fallo"
+        bien: true
+        porque: "Se extrae lo suficiente para el objetivo. El esquema completo lleva días y casi nunca compensa."
+      - texto: "Toda, para no equivocarse"
+        porque: "Dibujar doscientos componentes lleva días: casi nunca compensa."
+      - texto: "Solo los integrados"
+        porque: "Los integrados dan los bloques, pero hay que trazar la zona del fallo."
+    escalera:
+      - "El objetivo es reparar, no reconstruir la placa."
+    solucion: "El diez por ciento de la placa que rodea al fallo."
+
+  - id: tecnicas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Las técnicas físicas"
+    texto: "Una cada técnica o caso con lo que hay que saber."
+    libro: [208, 209, 210, 211]
+    emparejar:
+      - ["Continuidad", "Siempre sin alimentación"]
+      - ["Doble cara", "Una luz potente por detrás"]
+      - ["Multicapa", "Sin solución: deducir por continuidad"]
+      - ["Fotografía y superposición", "Invertir una cara y superponerlas"]
+      - ["Retirar la máscara", "Destructivo: solo sin alternativa"]
+    exito: "El zumbador de continuidad responde más rápido que los dígitos."
+    pistas:
+      - { texto: "Con luz por detrás, el sustrato se vuelve translúcido." }
+    escalera:
+      - "Las capas internas de una multicapa son inaccesibles."
+    solucion: "Continuidad–sin alimentar; doble cara–luz; multicapa–continuidad; fotos–invertir; máscara–destructivo."
+
+  - id: limites
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los límites"
+    texto: "Una cada caso con lo que dice el libro."
+    libro: [209, 216, 217]
+    emparejar:
+      - ["Capas internas de una multicapa", "Inaccesibles"]
+      - ["Marcaje borrado a propósito", "Suele ser un micro, rara vez lo averiado"]
+      - ["Reparar, interoperar o estudiar", "Amparado, también en Europa"]
+      - ["Copiar para fabricar y vender", "Puede infringir patentes o derechos"]
+    exito: "La distinción legal es clara y conviene tenerla presente."
+    pistas:
+      - { texto: "Lo legal depende del fin: reparar no es lo mismo que vender copias." }
+    escalera:
+      - "Dos límites son técnicos y dos legales."
+    solucion: "Multicapa–inaccesible; marcaje borrado–micro; reparar–amparado; copiar para vender–puede infringir."
+
+  - id: valide-colector
+    tipo: simular
+    titulo: "Valide el trazado"
+    texto: "Con el equipo alimentado, va a comprobar el trazado en el colector. Con β = 150, ¿qué tensión debería medir?"
+    libro: [219, "cap06#184"]
+    fijar: { beta: 150 }
+    widget:
+      tipo: circuito
+      esquema: bjt-polarizacion
+      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
+      lectura: { valor: V_pc, rotulo: "Colector" }
+      corriente: I_pc
+      mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: V_pc
+      unidad: V
+      tol: 0.03
+      rotulo: "Tensión de colector, V_{C}"
+      medida: vc
+      errores:
+        - { expr: "V_pce", texto: "Eso es V_{CE}, entre colector y emisor. El Brymen, con la punta negra en masa, mide V_{C}: súmele V_{E}." }
+        - { expr: "V_cc", texto: "Toda la alimentación: sería el colector sin corriente, con el transistor en corte." }
+    exito: "7,63 V: si coincide con la medida, el trazado es correcto."
+    escalera:
+      - "Por R14 pasa la corriente de colector, 1,324 mA."
+      - "V_{C} = V_{CC} − I_{C}·R14."
+    solucion: "12 V − 1,324 mA · 3,3 kΩ = 7,63 V."
+    comprobar:
+      - { V_pc: 7.63, I_pc: 0.001324, tol: 0.002 }
+      - { V_pce: 6.31, tol: 0.002 }
+
+  - id: por-que-fotos
+    tipo: porque
+    titulo: "Las fotografías anotadas"
+    texto: "El esquema ya está validado. ¿Por qué guardar también las fotografías anotadas?"
+    libro: [219]
+    widget:
+      tipo: circuito
+      esquema: bjt-polarizacion
+      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
+      lectura: { valor: V_pc, rotulo: "Colector" }
+      corriente: I_pc
+      mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
+      mandos: []
+    opciones:
+      - texto: "Porque tienen información que el esquema no lleva"
+        bien: true
+        porque: "Hará falta si el aparato vuelve al banco: dónde está cada pieza, por dónde va cada pista."
+      - texto: "Por si hay que reclamar al fabricante"
+        porque: "No es para reclamar: es para el próximo diagnóstico."
+      - texto: "No hace falta: el esquema lo dice todo"
+        porque: "El esquema es funcional; la foto dice dónde está cada cosa en la placa."
+    escalera:
+      - "El esquema no es un plano de la placa."
+    solucion: "Guardan lo que el esquema no lleva: la disposición física."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [200, 202, 213, 219]
+    ideas:
+      - { titulo: "Alcance.", texto: "Se traza lo suficiente para el objetivo: la zona del fallo." }
+      - { titulo: "Cinco fases.", texto: "Documentar, alimentación, masa, integrados y la zona de interés." }
+      - { titulo: "Redibujar.", texto: "Con las convenciones y los designadores de la placa." }
+      - { titulo: "Validar.", texto: "Predecir tres o cuatro nodos y medirlos con el equipo alimentado." }

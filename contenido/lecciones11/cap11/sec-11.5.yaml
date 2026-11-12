@@ -1,0 +1,266 @@
+# Lección 1.2 de la sección 11.5 «Cómo Leer un Esquema: Método Sistemático» (cap11). Formato: contenido/lecciones11/GUIA.md.
+# El esquema que se lee es la etapa en emisor común del libro (sección 6.5: 12 V, 47 kΩ, 10 kΩ, 3,3 kΩ, 1 kΩ,
+# β = 150, V_E = 1,33 V). La alimentación de 6 V del primer mando es un ejemplo para ver que todo cuelga de ella.
+# Paso práctico: «simular» (predecir una tensión de nodo y comprobarla, como pide «En el banco» de la sección).
+leccion: cap11/sec-11.5
+
+libro:
+  114: "Es la peor forma de abordarlo"
+  117: "identificar de dónde viene la energía"
+  118: "la mayoría de los diagnósticos empiezan y terminan en la alimentación"
+  121: "cada uno define una función"
+  124: "Los condensadores de acoplo en serie marcan el camino de una señal de alterna"
+  127: "Un condensador de 100 nF entre alimentación y masa junto a un chip es desacoplo"
+  129: "ahí está la mitad de la información útil"
+  131: "Dos líneas que se cruzan sin punto"
+  132: "una etiqueta con el mismo nombre conecta puntos"
+  133: "Suponer que la posición implica proximidad física."
+  134: "los números son la única referencia válida"
+  136: "se predice la tensión que debería haber"
+  "cap11#306": "Describe los cinco pasos del método sistemático"
+  "cap06#452": "R₁ = 47 kΩ, R₂ = 10 kΩ, RE = 1 kΩ, RC = 3,3 kΩ"
+  "cap06#182": "Con VE = 1,33 V"
+
+modelo:
+  valores:
+    V_cc: { sim: "V_{CC}", nombre: "alimentación", unidad: V, valor: 12 }
+    R_p1: { sim: "R₁", nombre: "divisor, arriba", unidad: Ω, valor: 47000 }
+    R_p2: { sim: "R₂", nombre: "divisor, abajo", unidad: Ω, valor: 10000 }
+    R_pc: { sim: "R_{C}", nombre: "resistencia de colector", unidad: Ω, valor: 3300 }
+    R_pe: { sim: "R_{E}", nombre: "resistencia de emisor", unidad: Ω, valor: 1000 }
+    beta: { sim: "β", nombre: "ganancia de corriente", unidad: "", valor: 150 }
+    V_BE: { sim: "V_{BE}", nombre: "tensión base-emisor", unidad: V, valor: 0.7 }
+  calculos:
+    V_pth: { expr: "V_cc*R_p2/(R_p1 + R_p2)", sim: "V_{Th}", nombre: "tensión del divisor en vacío", unidad: V }
+    R_pth: { expr: "par(R_p1, R_p2)", sim: "R_{Th}", nombre: "resistencia Thévenin del divisor", unidad: Ω }
+    I_pb: { expr: "(V_pth - V_BE)/(R_pth + (beta + 1)*R_pe)", sim: "I_{B}", nombre: "corriente de base", unidad: A }
+    I_pc: { expr: "beta*I_pb", sim: "I_{C}", nombre: "corriente de colector", unidad: A, cifras: 4 }
+    V_pe: { expr: "(beta + 1)*I_pb*R_pe", sim: "V_{E}", nombre: "tensión de emisor", unidad: V }
+    V_pb: { expr: "V_pe + V_BE", sim: "V_{B}", nombre: "tensión de base", unidad: V }
+    V_pc: { expr: "V_cc - I_pc*R_pc", sim: "V_{C}", nombre: "tensión de colector", unidad: V }
+    V_pce: { expr: "V_pc - V_pe", sim: "V_{CE}", nombre: "tensión colector-emisor", unidad: V }
+    V_eth: { expr: "V_pth - V_BE", sim: "V_{E}", nombre: "emisor con el divisor en vacío", unidad: V }
+
+tarjetas:
+  - id: explore-alimentacion
+    tipo: explorar
+    titulo: "Paso 1: la alimentación"
+    texto: "Antes que nada, de dónde viene la energía. Cambie V_{CC} y mire qué nodos se mueven."
+    nota: "La etapa en emisor común del libro; los 6 V son de ejemplo."
+    libro: [117, 118, "cap06#452"]
+    widget:
+      tipo: circuito
+      esquema: bjt-polarizacion
+      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
+      lectura: { valor: I_pc, rotulo: "Corriente de colector" }
+      datos:
+        - { valor: V_pb, rotulo: "Base: {{V_pb}}" }
+        - { valor: V_pe, rotulo: "Emisor: {{V_pe}}" }
+        - { valor: V_pc, rotulo: "Colector: {{V_pc}}" }
+      corriente: I_pc
+      mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
+      mandos:
+        - { valor: V_cc, lista: [6, 12], rotulo: "Alimentación" }
+    requiere: { mover: [V_cc] }
+    comprobar:
+      - { con: { V_cc: 6 }, V_pth: 1.0526 }
+
+  - id: por-que-primero
+    tipo: predecir
+    titulo: "¿Por qué primero?"
+    texto: "Todos los nodos han cambiado con la alimentación. ¿Por qué el método empieza localizándola?"
+    libro: [118]
+    widget:
+      tipo: circuito
+      esquema: bjt-polarizacion
+      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
+      lectura: { valor: I_pc, rotulo: "Corriente de colector" }
+      corriente: I_pc
+      mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "Porque la mayoría de los diagnósticos empiezan y terminan en ella"
+        bien: true
+        porque: "Saber qué raíles hay y qué alimenta cada uno orienta todo lo demás."
+      - texto: "Porque es lo que está arriba a la izquierda"
+        porque: "El orden no es el de lectura de un texto: la alimentación va primero por su peso en el diagnóstico."
+      - texto: "Porque es el bloque más complicado"
+        porque: "No es por complicada, sino porque de ella depende todo y es donde empiezan casi todas las averías."
+    escalera:
+      - "Piense en dónde empiezan casi todas las averías."
+    solucion: "La mayoría de los diagnósticos empiezan y terminan en la alimentación."
+
+  - id: cinco-pasos
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "El método, en orden"
+    texto: "Ordene los cinco pasos para leer un esquema desconocido."
+    libro: [114, "cap11#306"]
+    ordenar:
+      - "Localizar la alimentación y la masa"
+      - "Identificar los bloques"
+      - "Seguir el camino de la señal"
+      - "Distinguir señal de servicio"
+      - "Leer las notas y lo que no es el dibujo"
+    exito: "Su orden importa: empezar arriba a la izquierda y leerlo como un texto es la peor forma de abordarlo."
+    pistas:
+      - { texto: "La señal se sigue a través de los bloques ya identificados." }
+    escalera:
+      - "Primero la energía, luego los bloques, luego la señal."
+    solucion: "Alimentación, bloques, señal, señal frente a servicio y notas."
+
+  - id: integrados
+    tipo: pregunta
+    titulo: "Paso 2: por los integrados"
+    texto: "¿Por qué los integrados son el mejor punto de partida para identificar los bloques?"
+    libro: [121]
+    widget:
+      tipo: circuito
+      esquema: bjt-polarizacion
+      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
+      lectura: { valor: I_pc, rotulo: "Corriente de colector" }
+      corriente: I_pc
+      mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
+      mandos: []
+    opciones:
+      - texto: "Cada uno define una función, y su hoja de datos se puede buscar"
+        bien: true
+        porque: "Con tres o cuatro hojas de datos se tiene el diagrama de bloques sin trazar una sola conexión de señal."
+      - texto: "Porque son los componentes más caros"
+        porque: "El precio no importa: importa que cada referencia dice qué función cumple."
+      - texto: "Porque nunca fallan"
+        porque: "Pueden fallar; se empieza por ellos porque organizan el resto del esquema."
+    escalera:
+      - "¿Qué se puede buscar a partir del marcaje de un integrado?"
+    solucion: "Cada integrado define una función; su hoja de datos la cuenta."
+
+  - id: camino
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Pistas del camino"
+    texto: "Una cada elemento con lo que le dice al lector."
+    libro: [124, 129]
+    emparejar:
+      - ["Condensadores de acoplo en serie", "El camino de una señal de alterna"]
+      - ["Divisores y redes de realimentación", "Dónde se ajusta el nivel de la señal"]
+      - ["Bloque de título y notas", "La mitad de la información útil"]
+    exito: "Las notas son lo primero que se salta quien tiene prisa."
+    pistas:
+      - { texto: "Un condensador en serie deja pasar la alterna y bloquea la continua." }
+    escalera:
+      - "Los divisores reparten la tensión: ajustan un nivel."
+    solucion: "Acoplo–camino de alterna; divisores–nivel; notas–media información útil."
+
+  - id: servicio
+    tipo: pregunta
+    titulo: "Paso 4: señal o servicio"
+    texto: "Junto a un chip hay un condensador de 100 nF entre alimentación y masa. ¿Qué hace usted con él al leer?"
+    libro: [127]
+    widget:
+      tipo: circuito
+      esquema: bjt-polarizacion
+      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
+      lectura: { valor: I_pc, rotulo: "Corriente de colector" }
+      corriente: I_pc
+      mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
+      mandos: []
+    opciones:
+      - texto: "Lo identifica como desacoplo y lo aparta"
+        bien: true
+        porque: "Es servicio: no hace falta pensarlo. Con esa criba, sesenta componentes se reducen mentalmente a quince que hacen algo."
+      - texto: "Lo analiza como parte de la señal"
+        porque: "No procesa la información: es desacoplo, servicio, y se aparta para ver la estructura."
+      - texto: "Busca a qué etapa acopla la señal"
+        porque: "Un acoplo va en serie con la señal; este va de la alimentación a masa: es desacoplo."
+    escalera:
+      - "Entre alimentación y masa no pasa ninguna señal."
+    solucion: "Es desacoplo: se identifica y se aparta."
+
+  - id: errores-lectura
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Errores de lectura"
+    texto: "Una cada detalle del dibujo con lo que de verdad significa."
+    libro: [131, 132, 133, 134]
+    emparejar:
+      - ["Dos líneas que se cruzan sin punto", "No están conectadas"]
+      - ["Dos etiquetas con el mismo nombre", "Conectadas, sin línea entre ellas"]
+      - ["Dos piezas juntas en el dibujo", "No dice nada de su posición en la placa"]
+      - ["Los números de pin", "La única referencia para llevarlo a la placa"]
+    exito: "El símbolo de un integrado casi nunca sigue el orden físico de sus patillas."
+    pistas:
+      - { texto: "Buscar una línea que no existe es una pérdida de tiempo garantizada." }
+    escalera:
+      - "El esquema no es un plano: la posición no dice proximidad."
+    solucion: "Cruce sin punto–sin conexión; etiquetas–conectadas; posición–nada físico; pines–referencia."
+
+  - id: prediga-emisor
+    tipo: simular
+    titulo: "Prediga y mida"
+    texto: "Antes de medir con el Brymen, prediga la tensión del emisor de esta etapa, con β = 150."
+    libro: [136, "cap06#182"]
+    fijar: { V_cc: 12, beta: 150 }
+    widget:
+      tipo: circuito
+      esquema: bjt-polarizacion
+      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
+      lectura: { valor: V_pe, rotulo: "Tensión de emisor" }
+      corriente: I_pc
+      mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: V_pe
+      unidad: V
+      tol: 0.03
+      rotulo: "Tensión de emisor, V_{E}"
+      medida: ve
+      errores:
+        - { expr: "V_pb", texto: "Esa es la tensión de la base: el emisor queda V_{BE} por debajo." }
+        - { expr: "V_eth", texto: "Ha tomado el divisor en vacío: la corriente de base lo carga a través de R_{Th}." }
+        - { expr: "V_pth", texto: "Esa es la del divisor sin carga, y además falta restar V_{BE}." }
+    exito: "1,33 V: si la medida coincide, el esquema se ha entendido."
+    escalera:
+      - "El emisor queda V_{BE} por debajo de la base."
+      - "La base no llega a la tensión del divisor en vacío: la corriente de base lo carga."
+    solucion: "V_{E} = 1,33 V con β = 150."
+    comprobar:
+      - { V_pe: 1.33, tol: 0.01 }
+
+  - id: discrepancia
+    tipo: porque
+    titulo: "Si no coincide"
+    texto: "Predijo 1,33 V en el emisor y el Brymen marca otra cosa. ¿Ha perdido el tiempo?"
+    libro: [136]
+    widget:
+      tipo: circuito
+      esquema: bjt-polarizacion
+      piezas: { vcc: V_cc, r1: R_p1, r2: R_p2, rc: R_pc, re: R_pe, beta: beta, vbe: V_BE }
+      lectura: { valor: V_pe, rotulo: "Tensión de emisor" }
+      corriente: I_pc
+      mide: { ib: I_pb, ic: I_pc, vb: V_pb, ve: V_pe, vc: V_pc, vce: V_pce }
+      mandos: []
+    opciones:
+      - texto: "No: o el circuito falla o la lectura era equivocada, y ambas cosas enseñan"
+        bien: true
+        porque: "Es el método que convierte la lectura pasiva en comprensión."
+      - texto: "Sí: la predicción no sirve si no acierta"
+        porque: "La discrepancia es información: señala una avería o un error de lectura."
+      - texto: "Sí: hay que medir sin predecir"
+        porque: "Sin predicción no hay con qué comparar la medida."
+    escalera:
+      - "¿Qué dos explicaciones caben cuando la medida no coincide?"
+    solucion: "La discrepancia enseña: o falla el circuito, o falló la lectura."
+    comprobar:
+      - { V_pe: 1.33, tol: 0.01 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [114, 118, 127, 136]
+    ideas:
+      - { titulo: "Bloques, no texto.", texto: "Alimentación, bloques, señal, señal frente a servicio y notas." }
+      - { titulo: "La alimentación primero.", texto: "Casi todos los diagnósticos empiezan y terminan en ella." }
+      - { titulo: "Criba.", texto: "El desacoplo y la polarización se identifican y se apartan." }
+      - { titulo: "Verifique midiendo.", texto: "Prediga tres o cuatro nodos y compruébelos." }

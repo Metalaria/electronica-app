@@ -1,0 +1,249 @@
+# Lección 1.2 de la sección 12.2 «Anatomía de una Fuente de Alimentación Conmutada» (cap12). Formato: GUIA.md.
+# El rectificador y el condensador primario se ven con el esquema «puente» (230 V de red: unos 325 V de pico, del
+# ejercicio del capítulo; carga de 10 kΩ y 100 µF de ejemplo). El electrolítico que pierde capacidad se ve con el
+# mismo puente a 17 V de pico, 100 Ω y 1000 µF frente a 220 µF (valores de ejemplo): más rizado y menos tensión media.
+leccion: cap12/sec-12.2
+
+libro:
+  33: "todas siguen la misma estructura"
+  35: "fusible, varistor, NTC de irrupción"
+  36: "un electrolítico grande, de 400 V"
+  37: "un MOSFET, a veces integrado con su controlador"
+  38: "que es la barrera de seguridad"
+  39: "diodo rápido o rectificación síncrona"
+  40: "el optoacoplador y la referencia TL431"
+  42: "una línea física que separa el primario del secundario"
+  43: "una ranura fresada"
+  44: "incluido el disipador del interruptor"
+  45: "antes de tocar nada, localizar la frontera"
+  48: "Salida baja con rizado alto"
+  52: "Los electrolíticos de salida"
+  53: "El interruptor"
+  54: "La NTC de irrupción"
+  55: "El optoacoplador"
+  57: "solo se mide el secundario"
+  59: "el rizado en acoplamiento AC"
+  "cap12#303": "unos 325 V con red de 230 V, de ahí los condensadores de 400 V"
+
+modelo:
+  valores:
+    V_rp: { sim: "V_{p}", nombre: "pico de la entrada", unidad: V, valor: 16.97 }
+    f_red: { sim: "f", nombre: "frecuencia de la red", unidad: Hz, valor: 50 }
+    V_rd: { sim: "V_{D}", nombre: "caída de cada diodo", unidad: V, valor: 0.7 }
+    C_rf: { sim: "C", nombre: "electrolítico", unidad: F, valor: 1000e-6 }
+    R_rl: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 100 }
+    V_red: { sim: "V_{red}", nombre: "tensión eficaz de la red", unidad: V, valor: 230 }
+    C_pr: { sim: "C", nombre: "condensador primario", unidad: F, valor: 100e-6 }
+    R_pr: { sim: "R_{L}", nombre: "carga del primario", unidad: Ω, valor: 10000 }
+  calculos:
+    V_r2: { expr: "V_rp - 2*V_rd", sim: "V_{pico}", nombre: "pico de la salida", unidad: V }
+    T_red: { expr: "1/f_red", sim: "T", nombre: "periodo de la red", unidad: s }
+    tau_r: { expr: "R_rl*C_rf", sim: "τ", nombre: "constante de descarga", unidad: s }
+    V_pk: { expr: "V_red*sqrt(2)", sim: "V_{p}", nombre: "pico de la red", unidad: V }
+    V_pp: { expr: "V_pk - 2*V_rd", sim: "V_{C}", nombre: "tensión del condensador primario", unidad: V }
+    tau_p: { expr: "R_pr*C_pr", sim: "τ", nombre: "constante de descarga del primario", unidad: s }
+
+tarjetas:
+  - id: explore-rizado
+    tipo: explorar
+    titulo: "Un electrolítico que envejece"
+    texto: "El electrolítico pierde capacidad con el calor y el rizado. Bájela y mire la salida."
+    nota: "Valores de ejemplo."
+    libro: [48, 52]
+    widget:
+      tipo: circuito
+      esquema: puente
+      piezas: { fuente: V_rp, f: f_red, vd: V_rd, c: C_rf, carga: R_rl }
+      lectura: { valor: V_r2, rotulo: "Pico de la salida" }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 18, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(V_rp*abs(sin(2*pi*f_red*t)) - 2*V_rd, V_r2*exp(-(t - T_red/4 - T_red/2*floor((t - T_red/4)/(T_red/2)))/tau_r))", color: naranja, rotulo: "salida", mide: salida }
+      mandos:
+        - { valor: C_rf, lista: [220e-6, 1000e-6], rotulo: "Capacidad que le queda" }
+    requiere: { mover: [C_rf] }
+
+  - id: sintomas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Lo que delata cada síntoma"
+    texto: "Una cada síntoma con la zona probable de la avería."
+    libro: [48]
+    emparejar:
+      - ["No hace nada, sin consumo", "Fusible, entrada, arranque"]
+      - ["Fusible fundido y ennegrecido", "Interruptor en cortocircuito"]
+      - ["Chasquido repetido", "Protección disparando por sobrecarga"]
+      - ["Salida baja con rizado alto", "Electrolíticos de salida"]
+      - ["Silbido audible", "Salto de ciclos o núcleo suelto"]
+      - ["Funciona en vacío y cae con carga", "Secundario o realimentación"]
+    exito: "Esa tabla resuelve buena parte de los diagnósticos antes de medir nada."
+    pistas:
+      - { texto: "El rizado alto es lo que acaba de ver con el electrolítico gastado." }
+    escalera:
+      - "Un fusible ennegrecido indica un cortocircuito franco."
+    solucion: "Sin consumo–entrada; fusible negro–interruptor; chasquido–protección; rizado–electrolíticos; silbido–salto de ciclos; cae con carga–secundario."
+
+  - id: seis-bloques
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Desde la entrada"
+    texto: "Ordene los seis bloques de una fuente conmutada en el orden en que la energía los atraviesa."
+    libro: [33, 35, 36, 37, 38, 39, 40]
+    ordenar:
+      - "Entrada de red y protecciones"
+      - "Rectificador y condensador primario"
+      - "El interruptor"
+      - "El transformador"
+      - "El secundario"
+      - "La realimentación"
+    exito: "Todas siguen la misma estructura: se aprende una vez."
+    pistas:
+      - { texto: "El transformador separa el primario del secundario." }
+    escalera:
+      - "La realimentación es la que vuelve, del secundario al primario."
+    solucion: "Entrada, rectificador, interruptor, transformador, secundario y realimentación."
+
+  - id: prediga-325
+    tipo: predecir
+    titulo: "El condensador primario"
+    texto: "El puente rectifica directamente la red de 230 V. ¿A qué tensión se carga el condensador primario?"
+    libro: [36, "cap12#303"]
+    fijar: { V_red: 230 }
+    widget:
+      tipo: circuito
+      esquema: puente
+      piezas: { fuente: V_pk, f: f_red, vd: V_rd, c: C_pr, carga: R_pr }
+      lectura: { valor: V_pp, rotulo: "Condensador primario" }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 340, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(V_pk*abs(sin(2*pi*f_red*t)) - 2*V_rd, V_pp*exp(-(t - T_red/4 - T_red/2*floor((t - T_red/4)/(T_red/2)))/tau_p))", color: naranja, rotulo: "condensador", mide: salida }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "Unos 325 V: el pico de la red"
+        bien: true
+        porque: "Se carga al pico, no al valor eficaz: de ahí los condensadores de 400 V del primario."
+      - texto: "230 V"
+        porque: "230 V es el valor eficaz; el condensador se carga hasta el pico, √2 veces mayor."
+      - texto: "La tensión baja de la salida"
+        porque: "La tensión baja aparece tras el transformador; el primario trabaja a tensión de red rectificada."
+    escalera:
+      - "El condensador se carga hasta el pico de la senoide."
+    solucion: "230 V · √2 ≈ 325 V."
+    comprobar:
+      - { V_pk: 325, tol: 0.002 }
+
+  - id: frontera
+    tipo: pregunta
+    titulo: "Antes de tocar nada"
+    texto: "Abre una fuente conmutada para medirla. ¿Qué localiza antes de tocar nada?"
+    libro: [42, 43, 45]
+    widget:
+      tipo: circuito
+      esquema: puente
+      piezas: { fuente: V_pk, f: f_red, vd: V_rd, c: C_pr, carga: R_pr }
+      lectura: { valor: V_pp, rotulo: "Condensador primario" }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 340, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(V_pk*abs(sin(2*pi*f_red*t)) - 2*V_rd, V_pp*exp(-(t - T_red/4 - T_red/2*floor((t - T_red/4)/(T_red/2)))/tau_p))", color: naranja, rotulo: "condensador", mide: salida }
+      mandos: []
+    opciones:
+      - texto: "La frontera entre primario y secundario"
+        bien: true
+        porque: "Una ranura fresada o una banda sin cobre, cruzada por el transformador y el optoacoplador."
+      - texto: "El fusible"
+        porque: "El fusible está en el primario: antes hay que saber qué lado está a tensión de red."
+      - texto: "El electrolítico de salida"
+        porque: "Es lo que más falla, pero lo primero es la seguridad: localizar la frontera."
+    escalera:
+      - "Todo lo de un lado está a tensión de red."
+    solucion: "La frontera entre primario y secundario."
+
+  - id: por-que-disipador
+    tipo: porque
+    titulo: "Solo un trozo de metal"
+    texto: "El disipador del interruptor parece inofensivo. ¿Por qué no se toca con la fuente enchufada?"
+    libro: [44]
+    widget:
+      tipo: circuito
+      esquema: puente
+      piezas: { fuente: V_pk, f: f_red, vd: V_rd, c: C_pr, carga: R_pr }
+      lectura: { valor: V_pp, rotulo: "Condensador primario" }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 340, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(V_pk*abs(sin(2*pi*f_red*t)) - 2*V_rd, V_pp*exp(-(t - T_red/4 - T_red/2*floor((t - T_red/4)/(T_red/2)))/tau_p))", color: naranja, rotulo: "condensador", mide: salida }
+      mandos: []
+    opciones:
+      - texto: "Está del lado del primario, a menudo a un potencial peligroso"
+        bien: true
+        porque: "Todo lo que está del lado del primario está a tensión de red, incluido ese disipador."
+      - texto: "Porque quema"
+        porque: "Puede estar caliente, pero el peligro es eléctrico: está a tensión de red."
+      - texto: "Porque se descarga la fuente"
+        porque: "Tocarlo no descarga nada: el riesgo es para usted."
+    escalera:
+      - "¿De qué lado de la frontera está?"
+    solucion: "Está en el primario, a tensión de red."
+
+  - id: medidas
+    tipo: pregunta
+    titulo: "Las medidas seguras"
+    texto: "No tiene transformador de aislamiento. ¿Qué puede medir con el osciloscopio?"
+    libro: [57, 59]
+    widget:
+      tipo: circuito
+      esquema: puente
+      piezas: { fuente: V_rp, f: f_red, vd: V_rd, c: C_rf, carga: R_rl }
+      lectura: { valor: V_r2, rotulo: "Pico de la salida" }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 18, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(V_rp*abs(sin(2*pi*f_red*t)) - 2*V_rd, V_r2*exp(-(t - T_red/4 - T_red/2*floor((t - T_red/4)/(T_red/2)))/tau_r))", color: naranja, rotulo: "salida", mide: salida }
+      mandos: []
+    opciones:
+      - texto: "Solo el secundario, con la masa de la sonda en la masa de salida"
+        bien: true
+        porque: "Y la medida más informativa es el rizado en acoplamiento AC: delata los electrolíticos antes de que se mueva la media."
+      - texto: "El primario, con cuidado"
+        porque: "Sin transformador de aislamiento, el primario no se mide."
+      - texto: "Cualquier punto, con una sonda atenuadora"
+        porque: "La atenuación no aísla: la masa de la sonda sigue unida a tierra."
+    escalera:
+      - "La masa del osciloscopio está unida a tierra."
+    solucion: "Solo el secundario; la medida reina es el rizado en AC."
+
+  - id: mas-fallan
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Lo que más falla"
+    texto: "Ordene los componentes de una conmutada de más a menos frecuentes en las averías."
+    libro: [52, 53, 54, 55]
+    ordenar:
+      - "Los electrolíticos de salida"
+      - "El interruptor"
+      - "La NTC de irrupción"
+      - "El optoacoplador"
+    exito: "El optoacoplador degrada su CTR y la regulación se va con los años."
+    pistas:
+      - { texto: "Lo primero, lo que sufre corriente de rizado y calor." }
+    escalera:
+      - "El interruptor suele fallar en corto y llevarse el fusible."
+    solucion: "Electrolíticos de salida, interruptor, NTC y optoacoplador."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [33, 45, 48, 57]
+    ideas:
+      - { titulo: "Seis bloques.", texto: "Entrada, rectificador, interruptor, transformador, secundario y realimentación." }
+      - { titulo: "La frontera.", texto: "Antes de tocar nada; el primario está a tensión de red." }
+      - { titulo: "Síntomas.", texto: "Rizado alto con salida baja: electrolíticos de salida." }
+      - { titulo: "Medidas seguras.", texto: "Sin aislamiento, solo el secundario, y el rizado en AC." }

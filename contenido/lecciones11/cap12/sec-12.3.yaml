@@ -1,0 +1,233 @@
+# Lección 1.2 de la sección 12.3 «Cómo Leer una Hoja de Datos (Datasheet)» (cap12). Formato: GUIA.md.
+# La gráfica de R_DS(on) frente a V_GS pasa por los tres puntos del libro (20 mΩ a 10 V, 36 mΩ a 4,5 V y unos 70 mΩ a
+# 3,3 V, a 25 °C); entre ellos es una curva de ejemplo, R = a + b/(V_GS − V₀) ajustada a esos tres puntos.
+leccion: cap12/sec-12.3
+
+libro:
+  66: "es un contrato técnico"
+  69: "esos tres números no se dan simultáneamente"
+  70: "sobre todo, en las gráficas"
+  73: "los máximos absolutos no son condiciones de funcionamiento"
+  74: "un microcontrolador con máximo absoluto de 6 V, condiciones recomendadas de 2,7 a 5,5 V, y especificaciones garantizadas solo entre 4,5 y 5,5 V"
+  77: "Valor central de la distribución de producción"
+  78: "el circuito debe funcionar con el mínimo y con el máximo simultáneamente"
+  79: "el fabricante no lo garantiza en absoluto"
+  82: "puede ser de 36 mΩ a 4,5 V"
+  83: "leer siempre la columna de condiciones antes que la de valores."
+  89: "Notas de aplicación"
+  90: "Errata sheets"
+  91: "Modelos SPICE"
+  92: "El paquete de calificación"
+  95: "Parámetros clave solo con valor típico."
+
+modelo:
+  valores:
+    V_g: { sim: "V_{GS}", nombre: "tensión de puerta", unidad: V, valor: 10 }
+  calculos:
+    R_g: { expr: "0.0142789 + 0.0427173/(V_g - 2.533373)", sim: "R_{DS(on)}", nombre: "resistencia en conducción a 25 °C", unidad: Ω }
+
+tarjetas:
+  - id: explore-condiciones
+    tipo: explorar
+    titulo: "La letra pequeña"
+    texto: "La tabla dice 20 mΩ, a V_{GS} = 10 V y 25 °C. Baje la tensión de puerta y lea la resistencia."
+    nota: "Entre los puntos del libro, curva de ejemplo."
+    libro: [70, 82]
+    widget:
+      tipo: grafica
+      x: { id: vg, min: 3, max: 10.5, unidad: V, rotulo: "V_{GS}" }
+      y: { min: 0, max: 0.08, unidad: Ω, rotulo: "R_{DS(on)}" }
+      curvas:
+        - { expr: "0.0142789 + 0.0427173/(vg - 2.533373)", color: azul, rotulo: "a 25 °C" }
+      asas:
+        - { mueve: V_g, x: "V_g", y: "R_g", rotulo: "Su tensión de puerta" }
+      lectura: { valor: R_g, rotulo: "R_{DS(on)}" }
+      mandos:
+        - { valor: V_g, lista: [3.3, 4.5, 10], rotulo: "Tensión de puerta" }
+    requiere: { mover: [V_g] }
+    comprobar:
+      - { R_g: 0.02, tol: 0.001 }
+      - { con: { V_g: 4.5 }, R_g: 0.036, tol: 0.001 }
+      - { con: { V_g: 3.3 }, R_g: 0.07, tol: 0.001 }
+
+  - id: prediga-portada
+    tipo: predecir
+    titulo: "La portada"
+    texto: "La primera página anuncia «100 V, 30 A, 20 mΩ». ¿Puede contar con los tres a la vez?"
+    libro: [69]
+    widget:
+      tipo: grafica
+      x: { id: vg, min: 3, max: 10.5, unidad: V, rotulo: "V_{GS}" }
+      y: { min: 0, max: 0.08, unidad: Ω, rotulo: "R_{DS(on)}" }
+      curvas:
+        - { expr: "0.0142789 + 0.0427173/(vg - 2.533373)", color: azul, rotulo: "a 25 °C" }
+      lectura: { valor: R_g, rotulo: "R_{DS(on)}" }
+      ocultar: true
+    opciones:
+      - texto: "No: se miden en condiciones ideales y no se dan a la vez"
+        bien: true
+        porque: "25 °C de encapsulado, pulsos cortos, puerta al máximo: ninguna aplicación real reúne esas condiciones."
+      - texto: "Sí: es lo que garantiza el fabricante"
+        porque: "La portada es la parte comercial; lo garantizado está en las tablas, con sus condiciones."
+      - texto: "Sí, si hay disipador"
+        porque: "Ni con disipador: los tres números salen de condiciones distintas."
+    escalera:
+      - "Recuerde de qué depende la R_{DS(on)} que acaba de ver."
+    solucion: "No: los tres números no se dan simultáneamente."
+
+  - id: tres-margenes
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Tres márgenes en una hoja"
+    texto: "Un microcontrolador. Una cada margen con lo que significa."
+    libro: [73, 74]
+    emparejar:
+      - ["6 V", "Máximo absoluto: lo que lo destruye"]
+      - ["De 2,7 a 5,5 V", "Condiciones recomendadas de trabajo"]
+      - ["De 4,5 a 5,5 V", "Especificaciones garantizadas a la frecuencia máxima"]
+    exito: "Los máximos absolutos no son condiciones de funcionamiento: el diseño se hace con las recomendadas."
+    pistas:
+      - { texto: "El margen más ancho de los dos de trabajo es el recomendado." }
+    escalera:
+      - "El máximo absoluto es un solo número: el que no hay que ver nunca."
+    solucion: "6 V–máximo absoluto; 2,7 a 5,5 V–recomendadas; 4,5 a 5,5 V–garantizadas."
+
+  - id: maximo-absoluto
+    tipo: porque
+    titulo: "Cerca del máximo"
+    texto: "Un integrado tiene un máximo absoluto de 7 V. ¿Por qué no se diseña para que trabaje a 6,9 V?"
+    libro: [73]
+    widget:
+      tipo: grafica
+      x: { id: vg, min: 3, max: 10.5, unidad: V, rotulo: "V_{GS}" }
+      y: { min: 0, max: 0.08, unidad: Ω, rotulo: "R_{DS(on)}" }
+      curvas:
+        - { expr: "0.0142789 + 0.0427173/(vg - 2.533373)", color: azul, rotulo: "a 25 °C" }
+    opciones:
+      - texto: "Porque el máximo es para no destruirse si los ve por accidente"
+        bien: true
+        porque: "Las condiciones de trabajo están en otra tabla, Recommended Operating Conditions."
+      - texto: "Sí se puede: no lo supera"
+        porque: "No superarlo no basta: el máximo absoluto no es una condición de funcionamiento."
+      - texto: "Sí se puede, con un disipador"
+        porque: "Es un límite eléctrico de daño, no térmico: la tabla de trabajo es otra."
+    escalera:
+      - "«Operation at or beyond these limits is not implied»."
+    solucion: "No: se diseña con las condiciones recomendadas."
+
+  - id: min-max
+    tipo: predecir
+    titulo: "Típico, mínimo y máximo"
+    texto: "La tabla da mínimo, típico y máximo de un parámetro del que depende su circuito. ¿Con cuáles debe funcionar?"
+    libro: [77, 78]
+    widget:
+      tipo: grafica
+      x: { id: vg, min: 3, max: 10.5, unidad: V, rotulo: "V_{GS}" }
+      y: { min: 0, max: 0.08, unidad: Ω, rotulo: "R_{DS(on)}" }
+      curvas:
+        - { expr: "0.0142789 + 0.0427173/(vg - 2.533373)", color: azul, rotulo: "a 25 °C" }
+      lectura: { valor: R_g, rotulo: "R_{DS(on)}" }
+      ocultar: true
+    opciones:
+      - texto: "Con el mínimo y con el máximo a la vez"
+        bien: true
+        porque: "Son los garantizados. Diseñar con el típico es diseñar para la mitad de las unidades."
+      - texto: "Con el típico"
+        porque: "El típico es el centro de la producción y no está garantizado: la mitad de las unidades queda fuera."
+      - texto: "Solo con el máximo"
+        porque: "También con el mínimo: en producción, las dos colas existen."
+    escalera:
+      - "¿Cuáles de las tres columnas garantiza el fabricante?"
+    solucion: "Con el mínimo y el máximo simultáneamente."
+
+  - id: solo-tipico
+    tipo: pregunta
+    titulo: "Solo un valor típico"
+    texto: "Un parámetro clave aparece solo con valor típico, sin mínimo ni máximo. ¿Qué significa?"
+    libro: [79, 95]
+    widget:
+      tipo: grafica
+      x: { id: vg, min: 3, max: 10.5, unidad: V, rotulo: "V_{GS}" }
+      y: { min: 0, max: 0.08, unidad: Ω, rotulo: "R_{DS(on)}" }
+      curvas:
+        - { expr: "0.0142789 + 0.0427173/(vg - 2.533373)", color: azul, rotulo: "a 25 °C" }
+    opciones:
+      - texto: "Que no está garantizado en absoluto: un diseño que dependa de él es frágil"
+        bien: true
+        porque: "Conviene buscar otro componente o rediseñar para no depender de ese parámetro."
+      - texto: "Que es tan bueno que no hace falta acotarlo"
+        porque: "Al revés: es una señal de alarma en una hoja de datos."
+      - texto: "Que el mínimo y el máximo coinciden con él"
+        porque: "Sin mínimo ni máximo, nadie garantiza nada."
+    escalera:
+      - "El típico no lo garantiza nadie."
+    solucion: "No está garantizado: diseño frágil."
+
+  - id: condiciones
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "El número y sus condiciones"
+    texto: "Una cada dato de la tabla con lo que pasa al cambiar sus condiciones."
+    libro: [82, 83]
+    emparejar:
+      - ["R_{DS(on)} de 20 mΩ a 10 V", "Unos 70 mΩ con 3,3 V de puerta"]
+      - ["R_{DS(on)} de 36 mΩ a 4,5 V", "Unos 55 mΩ a 100 °C de unión"]
+      - ["h_{FE} mínima de 100 a 150 mA (2N2222A)", "Se queda en 40 a 500 mA"]
+      - ["1 µA en modo sleep a 25 °C", "Decenas de µA a 85 °C"]
+    exito: "La disciplina que evita el 90 % de las sorpresas: leer las condiciones antes que los valores."
+    pistas:
+      - { texto: "La temperatura sube la R_{DS(on)} y el consumo." }
+    escalera:
+      - "Una puerta más baja abre menos el canal."
+    solucion: "20 mΩ–70 mΩ a 3,3 V; 36 mΩ–55 mΩ en caliente; h_{FE} 100–40; 1 µA–decenas a 85 °C."
+
+  - id: mas-alla
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Más allá de la hoja"
+    texto: "Una cada documento con lo que aporta."
+    libro: [89, 90, 91, 92]
+    emparejar:
+      - ["Notas de aplicación", "Esquemas de referencia, cálculos y errores frecuentes"]
+      - ["Errata sheets", "Erratas conocidas del silicio"]
+      - ["Modelos SPICE", "Simular con el comportamiento real"]
+      - ["Paquete de calificación", "Datos de vida y fiabilidad"]
+    exito: "Buscar la errata del modelo antes de perder días depurando es la primera regla de un sistema empotrado."
+    pistas:
+      - { texto: "La errata es del silicio, no del documento." }
+    escalera:
+      - "Las notas de aplicación a menudo valen más que la propia hoja."
+    solucion: "Notas–referencia; errata–silicio; SPICE–simular; calificación–fiabilidad."
+
+  - id: alarmas
+    tipo: pregunta
+    titulo: "Señales de alarma"
+    texto: "¿Cuál de estas debe hacerle desconfiar de una hoja de datos?"
+    libro: [95]
+    widget:
+      tipo: grafica
+      x: { id: vg, min: 3, max: 10.5, unidad: V, rotulo: "V_{GS}" }
+      y: { min: 0, max: 0.08, unidad: Ω, rotulo: "R_{DS(on)}" }
+      curvas:
+        - { expr: "0.0142789 + 0.0427173/(vg - 2.533373)", color: azul, rotulo: "a 25 °C" }
+    opciones:
+      - texto: "Que no tenga gráficas frente a temperatura"
+        bien: true
+        porque: "Suele indicar que el comportamiento térmico no es bueno. También alarman los típicos sin límites y la hoja «preliminar» durante años."
+      - texto: "Que tenga muchas gráficas"
+        porque: "Las gráficas son donde está lo que las tablas no dicen: tenerlas es buena señal."
+      - texto: "Que dé mínimo y máximo"
+        porque: "Mínimo y máximo son lo garantizado: es lo que debe tener."
+    escalera:
+      - "Lo que falta dice tanto como lo que está."
+    solucion: "La ausencia de gráficas frente a temperatura."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [66, 73, 78, 83]
+    ideas:
+      - { titulo: "Contrato.", texto: "El fabricante garantiza lo que dice la hoja, y solo eso." }
+      - { titulo: "Máximos absolutos.", texto: "Lo que destruye; se diseña con las condiciones recomendadas." }
+      - { titulo: "Mínimo y máximo.", texto: "Garantizados; el típico, no." }
+      - { titulo: "Condiciones primero.", texto: "Leer las condiciones antes que los valores." }

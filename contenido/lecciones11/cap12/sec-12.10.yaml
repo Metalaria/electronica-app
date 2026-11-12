@@ -1,0 +1,290 @@
+# Lección 1.2 de la sección 12.10 «Problemas de Diseño» (cap12): problemas 12.A (el mismo MOSFET con tres
+# resistencias) y 12.B (diseñar con lo garantizado). Formato: GUIA.md.
+# 12.A: el canal en conducción se dibuja como una resistencia R_DS(on) con los 5 A del problema; R_DS(on) frente a
+# V_GS es la curva de ejemplo de la lección 12.3, que pasa por los tres puntos de la tabla (20, 36 y 70 mΩ).
+# 12.B: la gráfica lleva cada contribución del típico (0) al garantizado (1) y dibuja su suma y su combinación
+# cuadrática; solo los extremos son del libro (0,114 %, 0,735 % y 1,200 %).
+# Paso práctico: «simular» (predecir la caída V_DS que medirá en el banco con la puerta a 3,3 V).
+leccion: cap12/sec-12.10
+
+libro:
+  275: "El mismo componente con tres resistencias distintas"
+  277: "Se va a usar excitado desde un microcontrolador de 3,3 V y desde un driver de 10 V."
+  281: "Pérdidas a 5 A"
+  282: "Excitar desde 3,3 V multiplica las pérdidas por 3,5."
+  283: "un ejemplar con umbral alto podría no conducir"
+  286: "los 70 mΩ de 3,3 V pasan a unos 105 mΩ"
+  288: "Diseñar con lo garantizado, no con lo típico"
+  290: "Offset del amplificador: 0,05 % típico y 0,5 % garantizado"
+  294: "combinación de típicos"
+  295: "suma de garantizados"
+  296: "Un factor 10,6 de diferencia."
+  298: "Da 0,735 %, entre ambos extremos"
+  299: "nunca se diseña con valores típicos sin decir explícitamente que se está haciendo y por qué"
+
+modelo:
+  valores:
+    I_d: { sim: "I_{D}", nombre: "corriente de drenador", unidad: A, valor: 5 }
+    V_g: { sim: "V_{GS}", nombre: "tensión de puerta", unidad: V, valor: 10 }
+    e_o: { sim: "offset", nombre: "offset típico", unidad: "%", valor: 0.05 }
+    e_d: { sim: "deriva", nombre: "deriva típica", unidad: "%", valor: 0.02 }
+    e_t: { sim: "divisor", nombre: "tolerancia típica del divisor", unidad: "%", valor: 0.1 }
+    g_o: { sim: "offset", nombre: "offset garantizado", unidad: "%", valor: 0.5 }
+    g_d: { sim: "deriva", nombre: "deriva garantizada", unidad: "%", valor: 0.2 }
+    g_t: { sim: "divisor", nombre: "tolerancia garantizada del divisor", unidad: "%", valor: 0.5 }
+  calculos:
+    R_ds: { expr: "0.0142789 + 0.0427173/(V_g - 2.533373)", sim: "R_{DS(on)}", nombre: "resistencia en conducción a 25 °C", unidad: Ω }
+    V_ds: { expr: "I_d*R_ds", sim: "V_{DS}", nombre: "caída en el canal", unidad: V }
+    P_d: { expr: "I_d^2*R_ds", sim: "P", nombre: "pérdidas en conducción", unidad: W }
+    V_d20: { expr: "I_d*0.02", sim: "V_{DS}", nombre: "caída con los 20 mΩ de la hoja", unidad: V }
+    k_p: { expr: "0.07/0.02", sim: "×", nombre: "pérdidas a 3,3 V frente a 10 V", unidad: "" }
+    R_hot: { expr: "1.5*R_ds", sim: "R_{DS(on)}", nombre: "resistencia a 100 °C de unión", unidad: Ω }
+    e_q: { expr: "sqrt(e_o^2 + e_d^2 + e_t^2)", sim: "cuadrático", nombre: "combinación de típicos", unidad: "%", cifras: 3 }
+    e_w: { expr: "g_o + g_d + g_t", sim: "peor caso", nombre: "suma de garantizados", unidad: "%", cifras: 3 }
+    e_g: { expr: "sqrt(g_o^2 + g_d^2 + g_t^2)", sim: "intermedio", nombre: "garantizados combinados", unidad: "%", cifras: 3 }
+    f_ew: { expr: "e_w/e_q", sim: "factor", nombre: "peor caso frente a típicos", unidad: "", cifras: 3 }
+
+tarjetas:
+  - id: explore-perdidas
+    tipo: explorar
+    titulo: "12.A: las mismas 5 A"
+    texto: "El MOSFET conduce 5 A. Baje la tensión de puerta de 10 V a 3,3 V y mire las pérdidas."
+    nota: "R_{DS(on)} de la tabla del problema; entre puntos, curva de ejemplo."
+    libro: [275, 277, 281]
+    fijar: { I_d: 5 }
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0, max: 6, unidad: A, rotulo: "I_{D}" }
+      y: { min: 0, max: 2.6, unidad: W, rotulo: "P" }
+      curvas:
+        - { expr: "i^2*R_ds", color: naranja, rotulo: "con su V_{GS}" }
+        - { expr: "i^2*0.02", color: azul, rotulo: "a 10 V", discontinua: true }
+      marcas:
+        - { x: "I_d", y: "P_d", rotulo: "A 5 A: {{P_d}}" }
+      lectura: { valor: P_d, rotulo: "Pérdidas a 5 A" }
+      datos:
+        - { valor: R_ds, rotulo: "R_{DS(on)} = {{R_ds}}" }
+      mandos:
+        - { valor: V_g, lista: [3.3, 4.5, 10], rotulo: "Tensión de puerta" }
+    requiere: { mover: [V_g] }
+    comprobar:
+      - { P_d: 0.5, tol: 0.002 }
+      - { con: { V_g: 4.5 }, P_d: 0.9, tol: 0.002 }
+      - { con: { V_g: 3.3 }, P_d: 1.75, tol: 0.002 }
+
+  - id: prediga-factor
+    tipo: predecir
+    titulo: "¿Cuántas veces más?"
+    texto: "A 10 V de puerta, el transistor pierde 0,500 W con 5 A. ¿Cuántas veces más pierde con 3,3 V?"
+    libro: [281, 282]
+    fijar: { I_d: 5, V_g: 3.3 }
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0, max: 6, unidad: A, rotulo: "I_{D}" }
+      y: { min: 0, max: 2.6, unidad: W, rotulo: "P" }
+      curvas:
+        - { expr: "i^2*R_ds", color: naranja, rotulo: "a 3,3 V" }
+        - { expr: "i^2*0.02", color: azul, rotulo: "a 10 V", discontinua: true }
+      lectura: { valor: P_d, rotulo: "Pérdidas a 5 A" }
+      ocultar: true
+    opciones:
+      - texto: "3,5 veces: 1,750 W"
+        bien: true
+        porque: "Unos 70 mΩ en lugar de 20: tres veces y media lo que dice el catálogo, y eso decide si necesita disipador."
+      - texto: "Las mismas: la R_{DS(on)} es la de la hoja"
+        porque: "Los 20 mΩ son a V_{GS} = 10 V; con menos puerta, el canal está menos abierto."
+      - texto: "Tres veces, como la tensión de puerta"
+        porque: "Las pérdidas siguen a la R_{DS(on)}, no a la tensión de puerta: 70 frente a 20 mΩ."
+    escalera:
+      - "P = I²·R_{DS(on)}, y R_{DS(on)} a 3,3 V es de unos 70 mΩ."
+    solucion: "70 / 20 = 3,5: 1,750 W en lugar de 0,500 W."
+    comprobar:
+      - { P_d: 1.75, k_p: 3.5, tol: 0.002 }
+
+  - id: simule-caida
+    tipo: simular
+    titulo: "Mida la caída"
+    texto: "En el banco, con 5 A y la puerta a 3,3 V, medirá V_{DS} para hallar la R_{DS(on)} real. ¿Qué caída espera?"
+    nota: "El canal en conducción, como una resistencia."
+    libro: [281, 286]
+    fijar: { I_d: 5, V_g: 3.3 }
+    widget:
+      tipo: circuito
+      esquema: resistencia
+      piezas: { fuente: V_ds, r: R_ds }
+      lectura: { valor: V_ds, rotulo: "Caída V_{DS}" }
+      corriente: I_d
+      mide: { corriente: I_d, tension: V_ds }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: V_ds
+      unidad: V
+      tol: 0.05
+      rotulo: "Caída en el canal, V_{DS}"
+      medida: tension
+      errores:
+        - { expr: "V_d20", texto: "Ha usado los 20 mΩ de la portada, que son a 10 V de puerta: a 3,3 V son unos 70 mΩ." }
+    exito: "Unos 0,35 V: V_{DS} entre I_{D} da la R_{DS(on)} verdadera, unos 70 mΩ."
+    escalera:
+      - "V_{DS} = I_{D} · R_{DS(on)}."
+      - "Use la R_{DS(on)} a 3,3 V de puerta, no la de la portada."
+    solucion: "5 A · 70 mΩ = 0,35 V."
+    comprobar:
+      - { V_ds: 0.35, V_d20: 0.1, tol: 0.002 }
+
+  - id: estime-caliente
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Y en caliente"
+    texto: "La R_{DS(on)} crece unas 1,5 veces a 100 °C de unión. ¿Qué quedan los 70 mΩ de 3,3 V?"
+    libro: [286]
+    fijar: { V_g: 3.3 }
+    estimar:
+      objetivo: "R_hot"
+      unidad: Ω
+      min: 0
+      max: 0.2
+      paso: 0.005
+      inicio: 0.18
+      tol: 0.03
+      rotulo: "R_{DS(on)} en caliente"
+    exito: "Unos 105 mΩ: en caliente, aún peor."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.108 }, texto: "Se ha pasado: multiplique por 1,5, no por 2." }
+      - { texto: "Se ha quedado corto: 70 mΩ por 1,5." }
+    escalera:
+      - "Multiplique los 70 mΩ por 1,5."
+    solucion: "70 mΩ · 1,5 = 105 mΩ."
+    comprobar:
+      - { R_hot: 0.105, tol: 0.002 }
+
+  - id: nivel-logico
+    tipo: pregunta
+    titulo: "Desde lógica de 3,3 V"
+    texto: "Va a excitar el MOSFET desde un microcontrolador de 3,3 V. ¿Qué transistor necesita?"
+    libro: [283]
+    fijar: { V_g: 3.3 }
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0, max: 6, unidad: A, rotulo: "I_{D}" }
+      y: { min: 0, max: 2.6, unidad: W, rotulo: "P" }
+      curvas:
+        - { expr: "i^2*R_ds", color: naranja, rotulo: "a 3,3 V" }
+        - { expr: "i^2*0.02", color: azul, rotulo: "a 10 V", discontinua: true }
+    opciones:
+      - texto: "De nivel lógico, con R_{DS(on)} garantizada a 2,5 o 2,7 V"
+        bien: true
+        porque: "Una V_{GS} igual o inferior a la disponible. Con umbrales de 2 a 4 V, un ejemplar alto podría no conducir."
+      - texto: "Uno garantizado a 4,5 V"
+        porque: "Sirve para lógica de 5 V, no para la de 3,3 V."
+      - texto: "Cualquiera con 20 mΩ en la portada"
+        porque: "Esos 20 mΩ son a 10 V de puerta: con 3,3 V, ni siquiera está garantizado que conduzca."
+    escalera:
+      - "La hoja debe garantizar la R_{DS(on)} a una V_{GS} que usted tenga."
+    solucion: "Uno de nivel lógico, garantizado a 2,5 o 2,7 V."
+
+  - id: formula-tipicos
+    tipo: formula
+    titulo: "12.B: combinar los típicos"
+    texto: "Offset 0,05 %, deriva 0,02 % y divisor 0,10 %, típicos: su combinación cuadrática."
+    libro: [288, 290, 294]
+    ec: 294
+    sustitucion: "√({{e_o}}² + {{e_d}}² + {{e_t}}²) = {{e_q}}"
+    comprobar:
+      - { e_q: 0.114, tol: 0.01 }
+
+  - id: prediga-peor
+    tipo: predecir
+    titulo: "Con los garantizados"
+    texto: "Los garantizados son 0,5 %, 0,2 % y 0,5 %. Sumados en el peor caso, ¿cuánto dan frente a 0,114 %?"
+    libro: [290, 295, 296]
+    widget:
+      tipo: grafica
+      x: { id: u, min: 0, max: 1, unidad: "", rotulo: "de típicos (0) a garantizados (1)" }
+      y: { min: 0, max: 1.3, unidad: "%", rotulo: "error" }
+      curvas:
+        - { expr: "(e_o + (g_o - e_o)*u) + (e_d + (g_d - e_d)*u) + (e_t + (g_t - e_t)*u)", color: naranja, rotulo: "suma, peor caso" }
+        - { expr: "sqrt((e_o + (g_o - e_o)*u)^2 + (e_d + (g_d - e_d)*u)^2 + (e_t + (g_t - e_t)*u)^2)", color: azul, rotulo: "cuadrática" }
+      marcas:
+        - { x: "0", y: "e_q", rotulo: "típicos: {{e_q}}" }
+      lectura: { valor: e_w, rotulo: "Peor caso" }
+      ocultar: true
+    opciones:
+      - texto: "1,200 %: un factor 10,6"
+        bien: true
+        porque: "Y las dos cifras son correctas: describen cosas distintas."
+      - texto: "0,735 %"
+        porque: "Ese es el punto intermedio: los garantizados combinados de forma cuadrática, no sumados."
+      - texto: "0,114 %, el mismo"
+        porque: "El peor caso suma los máximos: es diez veces mayor."
+    escalera:
+      - "En el peor caso, los errores se suman: 0,5 + 0,2 + 0,5."
+    solucion: "0,5 + 0,2 + 0,5 = 1,200 %, 10,6 veces la combinación de típicos."
+    comprobar:
+      - { e_w: 1.2, f_ew: 10.6, tol: 0.01 }
+
+  - id: estime-intermedio
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El punto intermedio"
+    texto: "Combine los garantizados de forma cuadrática, como si fueran tres sigma. ¿Qué error da?"
+    libro: [298]
+    estimar:
+      objetivo: "e_g"
+      unidad: "%"
+      min: 0
+      max: 1.5
+      paso: 0.005
+      inicio: 1.4
+      tol: 0.02
+      rotulo: "Error combinado"
+    exito: "0,735 %: entre ambos extremos, lo que estima en esencia un análisis de Monte Carlo."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.75 }, texto: "Se ha pasado: la combinación cuadrática es menor que la suma." }
+      - { texto: "Se ha quedado corto: use los garantizados, no los típicos." }
+    escalera:
+      - "√(0,5² + 0,2² + 0,5²)."
+    solucion: "√(0,5² + 0,2² + 0,5²) = 0,735 %."
+    comprobar:
+      - { e_g: 0.735, tol: 0.002 }
+
+  - id: por-que-cual
+    tipo: porque
+    titulo: "¿Cuál usar?"
+    texto: "Un equipo médico que no se puede ajustar unidad a unidad. ¿Por qué se diseña con el peor caso de 1,2 %?"
+    libro: [298, 299]
+    widget:
+      tipo: grafica
+      x: { id: u, min: 0, max: 1, unidad: "", rotulo: "de típicos (0) a garantizados (1)" }
+      y: { min: 0, max: 1.3, unidad: "%", rotulo: "error" }
+      curvas:
+        - { expr: "(e_o + (g_o - e_o)*u) + (e_d + (g_d - e_d)*u) + (e_t + (g_t - e_t)*u)", color: naranja, rotulo: "suma, peor caso" }
+        - { expr: "sqrt((e_o + (g_o - e_o)*u)^2 + (e_d + (g_d - e_d)*u)^2 + (e_t + (g_t - e_t)*u)^2)", color: azul, rotulo: "cuadrática" }
+      marcas:
+        - { x: "0", y: "e_q", rotulo: "típicos: {{e_q}}" }
+        - { x: "1", y: "e_g", rotulo: "intermedio: {{e_g}}" }
+        - { x: "1", y: "e_w", rotulo: "peor caso: {{e_w}}" }
+    opciones:
+      - texto: "Porque el fallo es inaceptable, aunque el peor caso sea improbable"
+        bien: true
+        porque: "Supone todo al máximo y en la misma dirección: pesimista, pero posible. El típico no lo garantiza nadie."
+      - texto: "Porque el típico es siempre mejor"
+        porque: "El típico no está garantizado por nadie: no sirve cuando el fallo es inaceptable."
+      - texto: "Porque es el más fácil de calcular"
+        porque: "No es por facilidad: es que el fallo no se puede aceptar."
+    escalera:
+      - "¿Qué pasa si una unidad sale fuera de especificación?"
+    solucion: "Cuando el fallo es inaceptable, se diseña con el peor caso."
+    comprobar:
+      - { e_w: 1.2, tol: 0.003 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [282, 283, 296, 299]
+    ideas:
+      - { titulo: "12.A.", texto: "Con 3,3 V de puerta, 70 mΩ en lugar de 20 y 1,75 W en lugar de 0,5." }
+      - { titulo: "Nivel lógico.", texto: "R_{DS(on)} garantizada a la V_{GS} que tiene." }
+      - { titulo: "12.B.", texto: "Peor caso 1,2 %, típicos 0,114 %, garantizados combinados 0,735 %." }
+      - { titulo: "Regla firme.", texto: "Nunca diseñar con típicos sin decirlo y explicar por qué." }

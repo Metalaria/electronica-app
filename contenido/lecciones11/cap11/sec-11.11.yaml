@@ -1,0 +1,236 @@
+# Lección 1.2 de la sección 11.11 «Problemas de Diseño» (cap11): problemas 11.A (qué encuentra el ERC) y 11.B
+# (etiquetas de red o hilos dibujados). Formato: contenido/lecciones11/GUIA.md.
+# La etiqueta mal escrita se ve con el divisor del libro y su carga (sección 1.4: 12 V, 10 kΩ, 5 kΩ y 10 kΩ): el
+# interruptor de la carga es la etiqueta «SALIDA» escrita igual o con una errata en el otro extremo.
+leccion: cap11/sec-11.11
+
+libro:
+  280: "Qué encuentra el ERC y qué no"
+  282: "Un esquema pasa la comprobación de reglas eléctricas sin ningún aviso"
+  285: "Dos pines de salida conectados entre sí"
+  286: "cobertura del ERC"
+  287: "Y la mitad que no cubre es la peor"
+  289: "Revisar la asignación de pines"
+  292: "el ERC cubre la mitad de los errores"
+  293: "Etiquetas de red o hilos dibujados"
+  300: "Si cada una tiene dos, el ERC no dice nada"
+  302: "Hilos dibujados para las conexiones locales dentro de un bloque funcional"
+  304: "ordénala por número de nodos"
+  "cap01#103": "4,00 V en vacío y 3,00 V con 10 kΩ conectados"
+
+modelo:
+  valores:
+    V_in: { sim: "V_{entrada}", nombre: "tensión de la pila", unidad: V, valor: 12 }
+    R_1: { sim: "R1", nombre: "resistencia de arriba", unidad: Ω, valor: 10000 }
+    R_2: { sim: "R2", nombre: "resistencia de abajo", unidad: Ω, valor: 5000 }
+    R_L: { sim: "R3", nombre: "carga", unidad: Ω, valor: 10000 }
+    igual: { tipo: interruptor, nombre: "etiqueta escrita igual en los dos extremos", valor: 1 }
+    n_det: { sim: "detectados", nombre: "errores que detecta el ERC", unidad: "", valor: 4 }
+    n_tot: { sim: "total", nombre: "errores habituales", unidad: "", valor: 8 }
+  calculos:
+    R_ab: { si: igual, entonces: "par(R_2, R_L)", sino: "R_2", sim: "R_{abajo}", nombre: "resistencia de la rama de abajo", unidad: Ω }
+    V_out: { expr: "V_in*R_ab/(R_1 + R_ab)", sim: "V_{salida}", nombre: "tensión de salida", unidad: V }
+    I: { expr: "V_in/(R_1 + R_ab)", sim: "I", nombre: "corriente", unidad: A }
+    I_L: { si: igual, entonces: "V_out/R_L", sino: "0", sim: "I_{L}", nombre: "corriente de la carga", unidad: A }
+    cob: { expr: "100*n_det/n_tot", sim: "cobertura", nombre: "cobertura del ERC", unidad: "%" }
+
+tarjetas:
+  - id: explore-errata
+    tipo: explorar
+    titulo: "Una errata en la etiqueta"
+    texto: "La carga R3 se une a la salida con la etiqueta SALIDA. Escríbala SALIDA_ en un extremo y mire la tensión."
+    libro: [300, "cap01#103"]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: igual }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      datos:
+        - { valor: I_L, rotulo: "Corriente de R3: {{I_L}}" }
+      corriente: I
+      mide: { salida: V_out, corriente: I, carga: I_L }
+      mandos:
+        - { valor: igual, tipo: interruptor, rotulo: "SALIDA igual en los dos extremos" }
+    requiere: { mover: [igual] }
+
+  - id: clasifique
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "11.A: ¿lo ve el ERC?"
+    texto: "Una cada error con lo que hace el ERC con él."
+    libro: [280, 285]
+    emparejar:
+      - ["Dos salidas unidas", "Sí: conflicto de tipo de pin"]
+      - ["Entrada sin conectar", "Sí: pin sin conectar"]
+      - ["Red con un solo nodo", "Sí: un cable que no llega a nada"]
+      - ["Valor equivocado", "No: el valor no es una conexión"]
+      - ["Electrolítico invertido", "No: el dibujo sigue siendo coherente"]
+      - ["Pin mal asignado dentro del símbolo", "No: la topología es coherente"]
+    exito: "Tampoco ve un encapsulado incorrecto. Y el símbolo de alimentación sin fuente sí lo detecta."
+    pistas:
+      - { texto: "El ERC solo comprueba conexiones y tipos de pin." }
+    escalera:
+      - "Lo que no es una conexión, el ERC no lo ve."
+    solucion: "Detecta salidas unidas, entradas sueltas y redes de un nodo; no ve valor, polaridad ni patillaje."
+
+  - id: formula-cobertura
+    tipo: formula
+    titulo: "La cobertura"
+    texto: "De los ocho errores habituales del problema, ¿cuántos encuentra el ERC?"
+    libro: [286, 292]
+    ec: 286
+    sustitucion: "{{n_det}} de {{n_tot}} = {{cob}}"
+    comprobar:
+      - { cob: 50 }
+
+  - id: prediga-fabricar
+    tipo: predecir
+    titulo: "Sin ningún aviso"
+    texto: "Un esquema pasa el ERC sin un solo aviso. ¿Se puede fabricar ya la placa?"
+    libro: [282, 292]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: igual }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      mide: { salida: V_out, corriente: I, carga: I_L }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "Todavía no: el ERC cubre solo la mitad de los errores"
+        bien: true
+        porque: "La otra mitad exige una revisión manual estructurada."
+      - texto: "Sí: sin avisos no hay errores"
+        porque: "Valores, polaridades, encapsulados y patillajes equivocados pasan el ERC sin avisos."
+      - texto: "Solo si además pasa el DRC"
+        porque: "El DRC comprueba la geometría de la placa; tampoco ve un valor o un patillaje equivocado."
+    escalera:
+      - "Recuerde qué cuatro errores del problema no ve el ERC."
+    solucion: "No: el ERC cubre el 50 %; el resto exige revisión manual."
+    comprobar:
+      - { cob: 50 }
+
+  - id: por-que-peor
+    tipo: porque
+    titulo: "La mitad peor"
+    texto: "El libro dice que la mitad que el ERC no cubre es la peor. ¿Por qué?"
+    libro: [287]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: igual }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      mide: { salida: V_out, corriente: I, carga: I_L }
+      mandos: []
+    opciones:
+      - texto: "Porque dan una placa que se fabrica y se monta bien, y no funciona"
+        bien: true
+        porque: "O funciona hasta que se enchufa al revés. El pin mal asignado es el más traicionero: el transistor sale cableado al revés."
+      - texto: "Porque son más frecuentes"
+        porque: "No se trata de frecuencia: es que no se ven hasta tener la placa montada."
+      - texto: "Porque el ERC los oculta"
+        porque: "No los oculta: no puede verlos, porque la topología es coherente."
+    escalera:
+      - "¿Cuándo aparece un electrolítico invertido o un patillaje mal asignado?"
+    solucion: "Se descubren con la placa ya fabricada y montada."
+
+  - id: complemento
+    tipo: pregunta
+    titulo: "El complemento"
+    texto: "¿Qué revisión manual atrapa el pin mal asignado dentro de un símbolo?"
+    libro: [289]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: igual }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      mide: { salida: V_out, corriente: I, carga: I_L }
+      mandos: []
+    opciones:
+      - texto: "Revisar la asignación de pines contra la hoja de datos"
+        bien: true
+        porque: "Sobre todo en símbolos nuevos o descargados: es lo que ningún programa hace por usted."
+      - texto: "Volver a pasar el ERC"
+        porque: "El ERC lo da por bueno porque la topología es coherente."
+      - texto: "Comprobar valores contra el cálculo"
+        porque: "Eso atrapa el valor equivocado, no el patillaje."
+    escalera:
+      - "¿Dónde está escrito qué patilla es cada pin?"
+    solucion: "Cotejar cada símbolo con su hoja de datos."
+
+  - id: prediga-silencio
+    tipo: predecir
+    titulo: "11.B: RESET y RESET_"
+    texto: "Una errata deja dos redes, RESET y RESET_, y cada una con dos pines. ¿Avisa el ERC?"
+    libro: [293, 300]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: igual }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      mide: { salida: V_out, corriente: I, carga: I_L }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "No: ninguna de las dos es de un solo nodo"
+        bien: true
+        porque: "El ERC no dice nada y la conexión sencillamente no existe."
+      - texto: "Sí: detecta el nombre parecido"
+        porque: "El ERC no compara nombres: solo cuenta nodos y tipos de pin."
+      - texto: "Sí: siempre avisa de una etiqueta mal escrita"
+        porque: "Solo si una de las redes queda con un único pin."
+    escalera:
+      - "¿Cuándo detecta el ERC una etiqueta mal escrita?"
+    solucion: "No avisa: las dos redes tienen dos pines."
+
+  - id: regla
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "La regla que funciona"
+    texto: "Una cada caso con cómo se conecta."
+    libro: [302]
+    emparejar:
+      - ["Conexiones locales dentro de un bloque", "Hilos dibujados"]
+      - ["Alimentaciones, reloj y reset", "Etiquetas"]
+      - ["Dos pines cercanos", "Nunca etiquetas: solo esconden"]
+      - ["La lista de redes", "Revisarla contando los pines"]
+    exito: "Hilos dentro del bloque, etiquetas entre bloques, y la lista de redes revisada por número de nodos."
+    pistas:
+      - { texto: "Dentro de un bloque importa ver la topología." }
+    escalera:
+      - "Las etiquetas son para lo global y para cruzar entre hojas."
+    solucion: "Locales–hilos; globales–etiquetas; dos pines cercanos–hilo; lista–contar pines."
+
+  - id: dos-nodos
+    tipo: pregunta
+    titulo: "En el banco: la lista de redes"
+    texto: "En la lista de redes ordenada por nodos, una que debería tener cinco tiene dos. ¿Qué busca?"
+    libro: [304]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: igual }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      mide: { salida: V_out, corriente: I, carga: I_L }
+      mandos: []
+    opciones:
+      - texto: "Otra red de nombre parecido: la errata"
+        bien: true
+        porque: "Las redes con nombres parecidos son el síntoma de la errata."
+      - texto: "Un componente averiado"
+        porque: "La lista de redes sale del dibujo: no sabe nada de averías."
+      - texto: "Nada: el número de nodos no importa"
+        porque: "Importa: una red con menos elementos de los que debe delata una conexión perdida."
+    escalera:
+      - "¿Dónde han ido los tres pines que faltan?"
+    solucion: "Una red con nombre parecido, creada por una errata."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [280, 287, 289, 293, 300, 302]
+    ideas:
+      - { titulo: "11.A.", texto: "El ERC cubre la mitad de los errores, y la otra mitad es la peor." }
+      - { titulo: "El complemento.", texto: "Patillaje contra la hoja de datos, recorrido en voz alta, otra persona." }
+      - { titulo: "11.B.", texto: "Hilos dentro del bloque, etiquetas entre bloques." }
+      - { titulo: "La lista de redes.", texto: "Ordenada por nodos, delata las erratas." }

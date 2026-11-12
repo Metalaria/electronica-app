@@ -1,0 +1,261 @@
+# Lección 1.2 de la sección 12.5 «Diseño Jerárquico y Comprobación de Reglas (ERC)» (cap12). Formato: GUIA.md.
+# La alimentación sin fuente (bloque 148) se ve con el LED del libro (sección 5.4: LED rojo de 2,0 V a 20 mA desde
+# 5 V, con 150 Ω): sin el símbolo que une la red VCC a la fuente, nadie entrega tensión a esa red.
+leccion: cap12/sec-12.5
+
+libro:
+  139: "organiza el esquema en niveles"
+  140: "un bloque probado se copia a otro proyecto entero"
+  141: "si no se puede describir en una frase, está mal repartida"
+  143: "es el equivalente al compilador de un programa"
+  145: "Casi siempre es una etiqueta mal escrita"
+  146: "distingue «lo he decidido» de «se me ha olvidado»"
+  147: "Dos salidas conectadas entre sí"
+  148: "una red marcada como VCC a la que ningún componente entrega tensión"
+  149: "Componentes duplicados o sin designador."
+  151: "llegar a cero"
+  152: "el error número cuarenta y uno pasará desapercibido"
+  154: "el ERC no lo detecta"
+  156: "pin 1 en el sitio contrario"
+  157: "verificar contra la hoja de datos"
+  160: "VCC y VCC_A"
+  162: "la única que detecta los conceptuales"
+  165: "siempre con límite de corriente en la fuente"
+  "cap05#133": "Alimentar un LED rojo de 2,0 V nominales a 20 mA desde 5 V."
+
+modelo:
+  valores:
+    V_e: { sim: "VCC", nombre: "tensión de la fuente", unidad: V, valor: 5 }
+    R_e: { sim: "R1", nombre: "resistencia del LED", unidad: Ω, valor: 150 }
+    V_fe: { sim: "V_{f}", nombre: "tensión del LED", unidad: V, valor: 2 }
+    unida: { tipo: interruptor, nombre: "la red VCC está unida a la fuente", valor: 0 }
+  calculos:
+    V_led: { si: unida, entonces: "V_e", sino: "0", sim: "V", nombre: "tensión de la red VCC", unidad: V }
+    I_e: { expr: "max(0, (V_led - V_fe)/R_e)", sim: "I", nombre: "corriente del LED", unidad: A }
+
+tarjetas:
+  - id: explore-sin-fuente
+    tipo: explorar
+    titulo: "Una alimentación sin fuente"
+    texto: "El LED cuelga de la red VCC, pero nada la une a la fuente. Ponga y quite esa unión y mire el LED."
+    nota: "El LED rojo del libro: 2,0 V a 20 mA desde 5 V."
+    libro: [148, "cap05#133"]
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_led, r: R_e, vf: V_fe }
+      lectura: { valor: I_e, rotulo: "Corriente del LED" }
+      corriente: I_e
+      mide: { corriente: I_e }
+      mandos:
+        - { valor: unida, tipo: interruptor, rotulo: "Fuente unida a la red VCC" }
+    requiere: { mover: [unida] }
+
+  - id: aportes
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Lo que aporta la jerarquía"
+    texto: "Una cada ventaja del diseño jerárquico con lo que permite."
+    libro: [139, 140]
+    emparejar:
+      - ["Legibilidad", "La arquitectura en la hoja superior, sin detalle"]
+      - ["Reutilización", "Un bloque probado se copia entero"]
+      - ["Trabajo en paralelo", "Dos personas en bloques distintos"]
+      - ["Depuración por bloques", "Es como se diagnostica"]
+    exito: "Es la misma idea de las funciones en programación, y aporta lo mismo."
+    pistas:
+      - { texto: "La hoja superior solo tiene bloques unidos por buses y señales." }
+    escalera:
+      - "La reutilización copia bloques probados a otro proyecto."
+    solucion: "Legibilidad–arquitectura; reutilización–copiar bloques; paralelo–dos personas; depuración–por bloques."
+
+  - id: una-frase
+    tipo: pregunta
+    titulo: "Una hoja, una función"
+    texto: "¿Cómo sabe si una hoja de un diseño jerárquico está bien repartida?"
+    libro: [141]
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_led, r: R_e, vf: V_fe }
+      lectura: { valor: I_e, rotulo: "Corriente del LED" }
+      mide: { corriente: I_e }
+      mandos: []
+    opciones:
+      - texto: "Si su función se describe en una frase"
+        bien: true
+        porque: "Cada hoja debe tener una función identificable; si no cabe en una frase, está mal repartida."
+      - texto: "Si tiene el mismo número de componentes que las demás"
+        porque: "El reparto es por función, no por número de piezas."
+      - texto: "Si cabe en una hoja A4"
+        porque: "Caber es necesario, pero lo que decide es que tenga una función identificable."
+    escalera:
+      - "Piense en una función de un programa bien escrita."
+    solucion: "Si su función se puede describir en una frase."
+
+  - id: encuentra
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Lo que encuentra el ERC"
+    texto: "Una cada aviso del ERC con lo que suele significar."
+    libro: [145, 146, 147, 148, 149]
+    emparejar:
+      - ["Red de un solo nodo", "Una etiqueta mal escrita"]
+      - ["Pin sin conectar", "Un olvido, si no se marcó como no conectado"]
+      - ["Conflicto de tipo de pin", "Dos salidas conectadas entre sí"]
+      - ["Alimentación sin fuente", "Una red VCC a la que nadie entrega tensión"]
+      - ["Componente duplicado", "O sin designador"]
+    exito: "El ERC no garantiza que el circuito funcione, pero detecta errores mecánicos que el ojo no ve."
+    pistas:
+      - { texto: "La alimentación sin fuente es la del LED apagado." }
+    escalera:
+      - "El error más frecuente e invisible es el de la red de un solo nodo."
+    solucion: "Un nodo–etiqueta; pin suelto–olvido; tipo de pin–salidas unidas; sin fuente–VCC vacía; duplicado–sin designador."
+
+  - id: por-que-no-conectado
+    tipo: porque
+    titulo: "Marcar «no conectado»"
+    texto: "Un pin se deja al aire a propósito. ¿Por qué marcarlo con el símbolo de «no conectado»?"
+    libro: [146]
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_led, r: R_e, vf: V_fe }
+      lectura: { valor: I_e, rotulo: "Corriente del LED" }
+      mide: { corriente: I_e }
+      mandos: []
+    opciones:
+      - texto: "Para distinguir «lo he decidido» de «se me ha olvidado»"
+        bien: true
+        porque: "Esa distinción es todo el valor de la comprobación: no es burocracia."
+      - texto: "Porque si no, el circuito no funciona"
+        porque: "El circuito funciona igual; lo que se pierde es saber si fue deliberado."
+      - texto: "Para que el pin quede a masa"
+        porque: "El símbolo no conecta nada: solo dice que dejarlo libre es intencionado."
+    escalera:
+      - "Para el ERC, un pin libre puede ser un olvido."
+    solucion: "Distingue lo decidido de lo olvidado."
+
+  - id: prediga-avisos
+    tipo: predecir
+    titulo: "Avisos «conocidos»"
+    texto: "Su esquema arrastra cuarenta avisos que ya conoce, y aparece uno nuevo. ¿Qué ocurre?"
+    libro: [151, 152]
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_led, r: R_e, vf: V_fe }
+      lectura: { valor: I_e, rotulo: "Corriente del LED" }
+      mide: { corriente: I_e }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "Que pasa desapercibido entre los demás"
+        bien: true
+        porque: "Por eso la disciplina es la de los avisos de un compilador: llegar a cero, marcando lo intencionado."
+      - texto: "Que el ERC lo destaca en rojo"
+        porque: "Será un aviso más en la lista: entre cuarenta conocidos, nadie lo mira."
+      - texto: "Nada: los avisos no importan"
+        porque: "Cada aviso puede ser un error; ignorarlos en bloque hace inútil el ERC."
+    escalera:
+      - "¿Quién lee una lista de cuarenta y un avisos?"
+    solucion: "Pasa desapercibido: hay que llegar a cero."
+
+  - id: tres-causas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Donde se cuela el error caro"
+    texto: "Una cada causa de un patillaje mal asignado con su explicación."
+    libro: [154, 156]
+    emparejar:
+      - ["Símbolo de biblioteca genérica", "Variantes del mismo chip con patillaje distinto"]
+      - ["Encapsulado mal orientado", "El pin 1 en el sitio contrario"]
+      - ["Patillaje no estándar", "Transistores y reguladores: varía entre fabricantes"]
+    exito: "El ERC no lo detecta: el esquema es coherente consigo mismo y el error aparece en la placa fabricada."
+    pistas:
+      - { texto: "En los transistores, el orden de las patillas cambia de un fabricante a otro." }
+    escalera:
+      - "Una causa es de la biblioteca, otra del dibujo de la huella, otra del componente."
+    solucion: "Genérico–variantes; orientación–pin 1; no estándar–transistores y reguladores."
+
+  - id: defensa
+    tipo: pregunta
+    titulo: "La única defensa"
+    texto: "¿Qué protege de verdad contra un encapsulado con los pines mal asignados?"
+    libro: [157]
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_led, r: R_e, vf: V_fe }
+      lectura: { valor: I_e, rotulo: "Corriente del LED" }
+      mide: { corriente: I_e }
+      mandos: []
+    opciones:
+      - texto: "Verificar el patillaje contra la hoja de datos antes de fabricar"
+        bien: true
+        porque: "Es una comprobación que merece el tiempo que cuesta."
+      - texto: "Pasar el ERC con cero avisos"
+        porque: "El ERC no lo ve: la topología es coherente."
+      - texto: "Usar siempre la biblioteca genérica"
+        porque: "Justo esa es una de las causas: no siempre corresponde al componente comprado."
+    escalera:
+      - "¿Dónde está escrito el patillaje real?"
+    solucion: "Cotejar cada componente nuevo con su hoja de datos."
+
+  - id: revision-otra
+    tipo: pregunta
+    titulo: "Más allá del ERC"
+    texto: "¿Qué comprobación encuentra más errores y es la única que ve los conceptuales?"
+    libro: [160, 162]
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_led, r: R_e, vf: V_fe }
+      lectura: { valor: I_e, rotulo: "Corriente del LED" }
+      mide: { corriente: I_e }
+      mandos: []
+    opciones:
+      - texto: "La revisión por otra persona, o por uno mismo al día siguiente"
+        bien: true
+        porque: "Ninguna herramienta ve un error de concepto."
+      - texto: "La revisión del netlist"
+        porque: "Encuentra redes como VCC y VCC_A que deberían ser una, pero no errores de concepto."
+      - texto: "La revisión de la BOM"
+        porque: "Comprueba valores y referencias, no si el diseño tiene sentido."
+    escalera:
+      - "Los errores conceptuales solo los ve una cabeza."
+    solucion: "La revisión por otra persona."
+
+  - id: antes-de-alimentar
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "Con la placa montada, ya ha medido la continuidad de las redes críticas. ¿Cómo hace la primera alimentación?"
+    libro: [165]
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_led, r: R_e, vf: V_fe }
+      lectura: { valor: I_e, rotulo: "Corriente del LED" }
+      mide: { corriente: I_e }
+      mandos: []
+    opciones:
+      - texto: "Con límite de corriente en la fuente"
+        bien: true
+        porque: "Un cortocircuito por un encapsulado invertido se detecta así sin humo."
+      - texto: "A plena tensión, para ver si funciona"
+        porque: "Si hay un corto por un encapsulado invertido, sale humo."
+      - texto: "Con una pila, que da poca corriente"
+        porque: "Una pila puede dar corriente de sobra; el límite ajustado lo da la fuente."
+    escalera:
+      - "¿Qué evita que un corto destruya componentes?"
+    solucion: "Con límite de corriente."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [139, 143, 151, 157]
+    ideas:
+      - { titulo: "Jerarquía.", texto: "Niveles de hojas, cada una con una función que cabe en una frase." }
+      - { titulo: "ERC.", texto: "Un compilador del esquema: detecta lo mecánico, no que funcione." }
+      - { titulo: "Cero avisos.", texto: "Marcando lo intencionado; si no, el siguiente error se pierde." }
+      - { titulo: "Patillaje.", texto: "El ERC no lo ve: contra la hoja de datos." }

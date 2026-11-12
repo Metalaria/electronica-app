@@ -1,0 +1,218 @@
+# Lección 1.2 de la sección 11.9 «Buenas Prácticas y Errores Frecuentes al Dibujar» (cap11). Formato: GUIA.md.
+# Las etiquetas inconsistentes (VCC en un sitio y +5V en otro, bloque 227) se ven con el LED del libro (sección 5.4:
+# LED rojo de 2,0 V a 20 mA desde 5 V, con 150 Ω): con los nombres distintos, el LED se queda sin alimentación.
+leccion: cap11/sec-11.9
+
+libro:
+  221: "Un esquema que funciona pero no se entiende es un esquema mal hecho"
+  222: "Señales que van de derecha a izquierda"
+  223: "Líneas que se cruzan innecesariamente"
+  224: "Uniones ambiguas"
+  225: "Componentes dispersos"
+  226: "Anotaciones ausentes"
+  227: "que el ERC detectará como dos redes distintas"
+  229: "entradas a la izquierda, salidas a la derecha"
+  230: "Agrupar por función"
+  231: "Una señal etiquetada"
+  232: "Poner el desacoplo junto a su integrado"
+  234: "Incluir un bloque de título"
+  237: "Si necesita preguntar más de dos cosas, el esquema no comunica."
+  240: "Pines de entrada al aire"
+  241: "Salidas conectadas entre sí"
+  242: "Alimentaciones sin fuente"
+  243: "Componentes polarizados sin polaridad indicada"
+  244: "un símbolo con el patillaje equivocado"
+  247: "Primera, de estructura"
+  248: "Segunda, de conexiones"
+  249: "Tercera, de anotaciones"
+  250: "las tres pasadas encuentran lo que el ERC no puede ver"
+  "cap05#133": "Alimentar un LED rojo de 2,0 V nominales a 20 mA desde 5 V."
+
+modelo:
+  valores:
+    V_e: { sim: "+5V", nombre: "tensión de la fuente", unidad: V, valor: 5 }
+    R_e: { sim: "R1", nombre: "resistencia del LED", unidad: Ω, valor: 150 }
+    V_fe: { sim: "V_{f}", nombre: "tensión del LED", unidad: V, valor: 2 }
+    igual: { tipo: interruptor, nombre: "la etiqueta del LED se llama como la de la fuente", valor: 1 }
+  calculos:
+    V_led: { si: igual, entonces: "V_e", sino: "0", sim: "V", nombre: "tensión que llega al LED", unidad: V }
+    I_e: { expr: "max(0, (V_led - V_fe)/R_e)", sim: "I", nombre: "corriente del LED", unidad: A }
+
+tarjetas:
+  - id: explore-etiquetas
+    tipo: explorar
+    titulo: "Dos nombres, dos redes"
+    texto: "La fuente se llama +5V y el LED cuelga de una etiqueta. Llámela VCC en lugar de +5V y mire el LED."
+    nota: "El LED rojo del libro: 2,0 V a 20 mA desde 5 V."
+    libro: [227, "cap05#133"]
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_led, r: R_e, vf: V_fe }
+      lectura: { valor: I_e, rotulo: "Corriente del LED" }
+      corriente: I_e
+      mide: { corriente: I_e }
+      mandos:
+        - { valor: igual, tipo: interruptor, rotulo: "Etiqueta del LED: +5V" }
+    requiere: { mover: [igual] }
+
+  - id: por-que-dos-redes
+    tipo: porque
+    titulo: "¿Por qué se apaga?"
+    texto: "Para quien lo dibujó, VCC y +5V eran la misma señal. ¿Por qué el LED se queda sin alimentación?"
+    libro: [227]
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_led, r: R_e, vf: V_fe }
+      lectura: { valor: I_e, rotulo: "Corriente del LED" }
+      corriente: I_e
+      mide: { corriente: I_e }
+      mandos: []
+    opciones:
+      - texto: "Para la herramienta, dos nombres son dos redes distintas"
+        bien: true
+        porque: "La herramienta conecta por el nombre, no por la intención. El ERC las detectará como dos redes."
+      - texto: "Porque VCC es de bipolares y el LED no lo es"
+        porque: "El nombre no cambia la electricidad: lo que cuenta es que no coincide con el otro."
+      - texto: "Porque el LED está al revés"
+        porque: "El LED está bien; lo que no llega es la alimentación, por la etiqueta."
+    escalera:
+      - "¿Cómo sabe la herramienta que dos puntos están unidos sin línea?"
+    solucion: "Nombres distintos son redes distintas: el LED queda sin fuente."
+
+  - id: gravedad
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "En orden de gravedad"
+    texto: "Ordene estos defectos de legibilidad del más grave al menos grave, como los da el libro."
+    libro: [221, 222, 223, 224, 225, 226, 227]
+    ordenar:
+      - "Señales de derecha a izquierda sin motivo"
+      - "Líneas que se cruzan innecesariamente"
+      - "Uniones ambiguas"
+      - "Componentes dispersos"
+      - "Anotaciones ausentes"
+      - "Etiquetas inconsistentes"
+    exito: "Un esquema que funciona pero no se entiende es un esquema mal hecho: su función es comunicar."
+    pistas:
+      - { texto: "Lo más grave es romper el flujo de la señal." }
+    escalera:
+      - "Primero el flujo, luego los cruces y las uniones; al final, anotaciones y etiquetas."
+    solucion: "Flujo invertido, cruces, uniones ambiguas, dispersión, anotaciones, etiquetas."
+
+  - id: buenas-practicas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "En positivo"
+    texto: "Una cada buena práctica con lo que consigue."
+    libro: [229, 230, 231, 232, 234]
+    emparejar:
+      - ["Flujo de izquierda a derecha", "Entradas a la izquierda, salidas a la derecha"]
+      - ["Agrupar por función", "Etapas separadas, en hojas si es grande"]
+      - ["Usar etiquetas", "RESET en dos sitios en vez de un cable largo"]
+      - ["Desacoplo junto a su integrado", "Recuerda que va pegado en la placa"]
+      - ["Bloque de título", "Nombre, revisión, fecha y autor"]
+    exito: "Y anotar lo que no es evidente: esas notas hacen útil el esquema dentro de dos años."
+    pistas:
+      - { texto: "La etiqueta sustituye a un cable que cruza el dibujo." }
+    escalera:
+      - "El bloque de título lleva la revisión."
+    solucion: "Flujo–entradas y salidas; agrupar–etapas; etiquetas–RESET; desacoplo–pegado; título–revisión."
+
+  - id: dos-preguntas
+    tipo: pregunta
+    titulo: "La prueba, desde el lector"
+    texto: "Da su esquema a alguien que no lo dibujó y, para explicarlo, le pregunta tres cosas. ¿Qué indica?"
+    libro: [237]
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_led, r: R_e, vf: V_fe }
+      lectura: { valor: I_e, rotulo: "Corriente del LED" }
+      corriente: I_e
+      mide: { corriente: I_e }
+      mandos: []
+    opciones:
+      - texto: "Que el esquema no comunica: suelen faltar anotaciones y agrupación"
+        bien: true
+        porque: "Con más de dos preguntas, el esquema no comunica; las preguntas señalan qué falta."
+      - texto: "Que el lector no sabe electrónica"
+        porque: "El problema es del dibujo, no del lector."
+      - texto: "Nada: tres preguntas son normales"
+        porque: "El límite es dos: con tres, al esquema le falta algo."
+    escalera:
+      - "El límite que da el libro es de dos preguntas."
+    solucion: "No comunica: faltan, casi siempre, anotaciones y agrupación."
+
+  - id: rompen
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Errores que rompen el circuito"
+    texto: "Una cada error con su consecuencia o su explicación."
+    libro: [240, 241, 242, 243]
+    emparejar:
+      - ["Pines de entrada al aire", "En CMOS, un fallo grave"]
+      - ["Salidas conectadas entre sí", "Mal, salvo de drenador abierto"]
+      - ["Alimentaciones sin fuente", "Suele ser una etiqueta mal escrita"]
+      - ["Polarizados sin polaridad indicada", "Falta en el símbolo o la anotación"]
+    exito: "Estos afectan al funcionamiento, y el ERC los detecta si se le deja."
+    pistas:
+      - { texto: "La alimentación sin fuente es, casi siempre, una errata en el nombre." }
+    escalera:
+      - "Dos salidas solo pueden unirse si son de drenador abierto."
+    solucion: "Entradas al aire–CMOS; salidas–drenador abierto; sin fuente–etiqueta; polarizados–indicarlo."
+
+  - id: prediga-patillaje
+    tipo: predecir
+    titulo: "Lo que ningún ERC ve"
+    texto: "¿Cuál de estos errores pasa el ERC sin ningún aviso?"
+    libro: [244]
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_led, r: R_e, vf: V_fe }
+      lectura: { valor: I_e, rotulo: "Corriente del LED" }
+      corriente: I_e
+      mide: { corriente: I_e }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "Un símbolo con el patillaje equivocado"
+        bien: true
+        porque: "El esquema es perfectamente coherente consigo mismo, y la placa sale inservible."
+      - texto: "Dos salidas conectadas entre sí"
+        porque: "Ese es un conflicto de tipo de pin: el ERC lo detecta."
+      - texto: "Una entrada sin conectar"
+        porque: "El ERC lo detecta como pin sin conectar."
+    escalera:
+      - "El ERC comprueba la coherencia del dibujo, no la del dibujo con la pieza real."
+    solucion: "El patillaje equivocado en el símbolo."
+
+  - id: tres-pasadas
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "La revisión, en orden"
+    texto: "Ordene la revisión de un esquema propio antes de darlo por bueno."
+    libro: [247, 248, 249, 250]
+    ordenar:
+      - "Estructura: ¿se sigue el flujo, están agrupadas las etapas?"
+      - "Conexiones: cada red llega donde debe"
+      - "Anotaciones: todo lo necesario para comprar y montar"
+      - "El ERC"
+    exito: "El ERC encuentra lo mecánico; las tres pasadas, lo que el ERC no puede ver."
+    pistas:
+      - { texto: "El ERC va al final." }
+    escalera:
+      - "De lo general a lo particular: estructura, conexiones, anotaciones."
+    solucion: "Estructura, conexiones, anotaciones y, después, el ERC."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [221, 227, 244, 250]
+    ideas:
+      - { titulo: "Comunicar.", texto: "Un esquema que no se entiende está mal hecho, aunque funcione." }
+      - { titulo: "Etiquetas coherentes.", texto: "VCC y +5V son dos redes para la herramienta." }
+      - { titulo: "Lo que el ERC no ve.", texto: "Un patillaje equivocado da un esquema coherente y una placa inservible." }
+      - { titulo: "Tres pasadas.", texto: "Estructura, conexiones, anotaciones; después, el ERC." }

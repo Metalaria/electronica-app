@@ -1,0 +1,262 @@
+# Lección 1.2 de la sección 11.8 «Anotaciones: Valores, Encapsulados y Notas de Diseño» (cap11). Formato: GUIA.md.
+# La coma perdida (4,7 kΩ leído como 47 kΩ, bloque 202) se ve con el esquema «resistencia» y 12 V de ejemplo.
+# Paso práctico: «averia» sobre el divisor del libro con su carga (sección 1.4: 12 V, 10 kΩ, 5 kΩ y 10 kΩ de carga,
+# 3,00 V en la salida, que es la tensión anotada en el esquema).
+leccion: cap11/sec-11.8
+
+libro:
+  193: "las anotaciones dicen cuál es exactamente"
+  197: "tensión inversa en diodos"
+  198: "«transistor NPN» no es comprable"
+  201: "4,7 kΩ"
+  202: "confundir 4,7 kΩ con 47 kΩ es un error de un orden de magnitud"
+  206: "C3 crítico para la estabilidad, no aumentar"
+  207: "«optimice» un componente que estaba ahí por una razón"
+  211: "La revisión es la que evita fabricar la versión equivocada"
+  213: "escribir junto a cada nodo la tensión que debe haber"
+  214: "el diagnóstico se convierte en comparar"
+  217: "falta una anotación"
+  "cap01#103": "4,00 V en vacío y 3,00 V con 10 kΩ conectados"
+
+modelo:
+  valores:
+    V_r: { sim: "V", nombre: "tensión aplicada", unidad: V, valor: 12 }
+    R_x: { sim: "R", nombre: "resistencia montada", unidad: Ω, valor: 4700 }
+    V_in: { sim: "V_{entrada}", nombre: "tensión de la pila", unidad: V, valor: 12 }
+    R_1: { sim: "R1", nombre: "resistencia de arriba", unidad: Ω, valor: 10000 }
+    R_2: { sim: "R2", nombre: "resistencia de abajo", unidad: Ω, valor: 5000 }
+    R_L: { sim: "R3", nombre: "carga", unidad: Ω, valor: 10000 }
+  calculos:
+    I_x: { expr: "V_r/R_x", sim: "I", nombre: "corriente", unidad: A }
+    R_ab: { expr: "par(R_2, R_L)", sim: "R_{abajo}", nombre: "resistencia de la rama de abajo", unidad: Ω }
+    V_out: { expr: "V_in*R_ab/(R_1 + R_ab)", sim: "V_{salida}", nombre: "tensión de salida", unidad: V }
+    I: { expr: "V_in/(R_1 + R_ab)", sim: "I", nombre: "corriente de la pila", unidad: A }
+    I_L: { expr: "V_out/R_L", sim: "I_{L}", nombre: "corriente de la carga", unidad: A }
+
+tarjetas:
+  - id: explore-coma
+    tipo: explorar
+    titulo: "Una coma que se pierde"
+    texto: "Si una fotocopia borra la coma de «4,7 kΩ», se monta una de 47 kΩ. Compare la corriente."
+    nota: "Con 12 V de ejemplo."
+    libro: [202]
+    widget:
+      tipo: circuito
+      esquema: resistencia
+      piezas: { fuente: V_r, r: R_x }
+      lectura: { valor: I_x, rotulo: "Corriente" }
+      corriente: I_x
+      mide: { corriente: I_x, tension: V_r }
+      mandos:
+        - { valor: R_x, lista: [4700, 47000], rotulo: "Resistencia montada" }
+    requiere: { mover: [R_x] }
+    comprobar:
+      - { V_r: 12 }
+
+  - id: notacion
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "El prefijo en lugar de la coma"
+    texto: "Una cada anotación con su valor."
+    libro: [201]
+    emparejar:
+      - ["4k7", "4,7 kΩ"]
+      - ["1R5", "1,5 Ω"]
+      - ["2u2", "2,2 µF"]
+      - ["100n", "100 nF"]
+      - ["4M7", "4,7 MΩ"]
+    exito: "El prefijo ocupa el lugar de la coma decimal; la R hace de coma cuando no hay prefijo."
+    pistas:
+      - { texto: "La letra dice el prefijo y dónde va la coma." }
+    escalera:
+      - "1R5: la R hace de coma, en ohmios."
+    solucion: "4k7 = 4,7 kΩ; 1R5 = 1,5 Ω; 2u2 = 2,2 µF; 100n = 100 nF; 4M7 = 4,7 MΩ."
+
+  - id: por-que-prefijo
+    tipo: porque
+    titulo: "¿Por qué «4k7»?"
+    texto: "La corriente cambió diez veces con la coma perdida. ¿Por qué la notación 4k7 lo evita?"
+    libro: [202]
+    widget:
+      tipo: circuito
+      esquema: resistencia
+      piezas: { fuente: V_r, r: R_x }
+      lectura: { valor: I_x, rotulo: "Corriente" }
+      corriente: I_x
+      mide: { corriente: I_x, tension: V_r }
+      mandos: []
+    opciones:
+      - texto: "Porque el prefijo no se borra como una coma o un punto"
+        bien: true
+        porque: "Una coma se pierde en una fotocopia o una impresión mala; con 4k7 ese error de un orden de magnitud no puede ocurrir."
+      - texto: "Porque es más corto de escribir"
+        porque: "Ahorra un carácter, pero la razón es otra: que el valor sobreviva a una mala copia."
+      - texto: "Porque lo exige la norma IEC"
+        porque: "Es una convención práctica de la época del papel, que persiste por lo que evita."
+    escalera:
+      - "¿Qué se pierde en una fotocopia mala?"
+    solucion: "La coma se pierde; el prefijo en su lugar, no."
+    comprobar:
+      - { con: { R_x: 47000 }, I_x: 0.000255, tol: 0.01 }
+
+  - id: parametros
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los parámetros críticos"
+    texto: "Una cada componente con lo que debe anotarse además del valor."
+    libro: [197, 198]
+    emparejar:
+      - ["Resistencia de precisión", "Tolerancia"]
+      - ["Condensador", "Tensión y dieléctrico"]
+      - ["Bobina", "Corriente"]
+      - ["Diodo", "Tensión inversa"]
+      - ["Semiconductor o integrado", "Referencia completa"]
+    exito: "«Transistor NPN» no es comprable: hace falta la referencia completa."
+    pistas:
+      - { texto: "La bobina se satura: lo que hay que anotar es su corriente." }
+    escalera:
+      - "Piense en qué hace fallar a cada pieza."
+    solucion: "Precisión–tolerancia; condensador–tensión y dieléctrico; bobina–corriente; diodo–tensión inversa; integrado–referencia."
+
+  - id: nota-util
+    tipo: pregunta
+    titulo: "Una nota de diseño"
+    texto: "¿Cuál de estas anotaciones sobre C3 es una nota de diseño?"
+    libro: [206, 207]
+    widget:
+      tipo: circuito
+      esquema: resistencia
+      piezas: { fuente: V_r, r: R_x }
+      lectura: { valor: I_x, rotulo: "Corriente" }
+      mide: { corriente: I_x, tension: V_r }
+      mandos: []
+    opciones:
+      - texto: "«C3 crítico para la estabilidad, no aumentar»"
+        bien: true
+        porque: "Dice lo que no es evidente y evita que alguien «optimice» una pieza que estaba ahí por una razón."
+      - texto: "«C3: condensador»"
+        porque: "Eso ya lo dicen el símbolo y la letra C."
+      - texto: "«C3 = 100 nF»"
+        porque: "Es el valor, no una nota: no dice por qué ni qué no debe cambiarse."
+    escalera:
+      - "Una nota de diseño explica un porqué, un margen o una prohibición."
+    solucion: "«C3 crítico para la estabilidad, no aumentar»."
+
+  - id: revision
+    tipo: predecir
+    titulo: "El bloque de título"
+    texto: "Nombre del proyecto, hoja, revisión, fecha y autor. ¿Qué evita sobre todo la revisión?"
+    libro: [211]
+    widget:
+      tipo: circuito
+      esquema: resistencia
+      piezas: { fuente: V_r, r: R_x }
+      lectura: { valor: I_x, rotulo: "Corriente" }
+      mide: { corriente: I_x, tension: V_r }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "Fabricar la versión equivocada"
+        bien: true
+        porque: "En cuanto hay más de una versión, su ausencia es un problema real."
+      - texto: "Que se pierda la hoja"
+        porque: "Para eso está el número de hoja; la revisión dice de qué versión es."
+      - texto: "Que se copie el diseño"
+        porque: "La revisión no protege nada: identifica la versión."
+    escalera:
+      - "¿Qué pasa cuando hay dos versiones de la misma placa?"
+    solucion: "Fabricar la versión equivocada."
+
+  - id: averia-anotada
+    tipo: averia
+    titulo: "Compare con lo anotado"
+    texto: "El esquema anota 3,00 V en la salida de este divisor con carga. Mida, compare y diga qué pieza falla."
+    libro: [213, 214, "cap01#103"]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L }
+      mide: { salida: V_out, corriente: I, carga: I_L }
+      mandos: []
+    averia:
+      pasos: 2
+      sospechosos:
+        - { id: r1, rotulo: "R1" }
+        - { id: r2, rotulo: "R2" }
+        - { id: r3, rotulo: "R3 (carga)" }
+      sondas:
+        - { id: salida, rotulo: "Salida", valor: V_out }
+        - { id: corriente, rotulo: "Corriente de la pila", valor: I }
+      fallos:
+        - { id: r3-abierta, pieza: r3, tipo: abierta, con: { R_L: 1e9 }, texto: "R3 abierta: el divisor queda en vacío y la salida sube a 4,00 V." }
+        - { id: r2-abierta, pieza: r2, tipo: abierta, con: { R_2: 1e9 }, texto: "R2 abierta: solo queda R3 abajo y la salida sube a 6,00 V." }
+        - { id: r1-abierta, pieza: r1, tipo: abierta, con: { R_1: 1e9 }, texto: "R1 abierta: no llega corriente y la salida cae a cero." }
+        - { id: r2-corto, pieza: r2, tipo: corto, con: { R_2: 0.001 }, texto: "R2 en corto: la salida cae a cero, pero la pila entrega más corriente." }
+    pistas:
+      - { texto: "Compare la salida con los 3,00 V anotados, y la corriente con la de un divisor sano." }
+    escalera:
+      - "Sin la carga, el divisor daría 4,00 V."
+      - "Si la salida es cero, la corriente dice si es R1 abierta o R2 en corto."
+    comprobar:
+      - { V_out: 3.0 }
+      - { con: { R_L: 1e9 }, V_out: 4.0 }
+      - { con: { R_2: 1e9 }, V_out: 6.0 }
+
+  - id: por-que-comparar
+    tipo: porque
+    titulo: "¿Por qué tan rápido?"
+    texto: "Con la tensión anotada, la avería salió en dos medidas. ¿Por qué ayuda tanto anotarla?"
+    libro: [214]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L }
+      lectura: { valor: V_out, rotulo: "Salida" }
+      corriente: I
+      mide: { salida: V_out, corriente: I, carga: I_L }
+      mandos: []
+    opciones:
+      - texto: "Porque comparar es mucho más rápido que deducir"
+        bien: true
+        porque: "Un esquema con tensiones anotadas vale, para reparar, varias veces uno sin ellas."
+      - texto: "Porque sustituye a la medida"
+        porque: "No la sustituye: da con qué compararla."
+      - texto: "Porque así no hace falta entender el circuito"
+        porque: "Hace falta igual; lo que se ahorra es deducir cada tensión en el banco."
+    escalera:
+      - "Sin anotación, ¿qué tendría que hacer antes de saber si 4 V está bien?"
+    solucion: "El diagnóstico pasa de deducir a comparar."
+
+  - id: suficiencia
+    tipo: pregunta
+    titulo: "Comprar con el dibujo"
+    texto: "Hace el pedido solo con el esquema y tiene que decidir la tensión de un condensador. ¿Qué significa?"
+    libro: [217]
+    widget:
+      tipo: circuito
+      esquema: resistencia
+      piezas: { fuente: V_r, r: R_x }
+      lectura: { valor: I_x, rotulo: "Corriente" }
+      mide: { corriente: I_x, tension: V_r }
+      mandos: []
+    opciones:
+      - texto: "Que falta una anotación"
+        bien: true
+        porque: "La decisión debía tomarse al diseñar; tomada al comprar es donde se cuelan los errores."
+      - texto: "Que puede elegir la que quiera"
+        porque: "La tensión ya se decidió al diseñar: si no está escrita, se elige a ciegas."
+      - texto: "Que el condensador no importa"
+        porque: "Importa: una tensión insuficiente lo destruye."
+    escalera:
+      - "Cada decisión al comprar es una anotación que falta."
+    solucion: "Falta una anotación en el esquema."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [193, 202, 206, 214]
+    ideas:
+      - { titulo: "Cuál exactamente.", texto: "Designador, valor, parámetros críticos y referencia completa." }
+      - { titulo: "4k7.", texto: "El prefijo sustituye a la coma, que se pierde en una copia." }
+      - { titulo: "Notas.", texto: "Por qué, qué margen, qué no cambiar." }
+      - { titulo: "Tensiones anotadas.", texto: "El diagnóstico se convierte en comparar." }

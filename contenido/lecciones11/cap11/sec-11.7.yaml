@@ -1,0 +1,242 @@
+# Lección 1.2 de la sección 11.7 «Del Esquema al Circuito Físico: Netlist, BOM y Ratsnest» (cap11). Formato: GUIA.md.
+# El esquema es el divisor del libro (sección 1.4: 12 V, 10 kΩ y 5 kΩ) con designadores R1 y R2 y redes de nombre
+# +12V, SALIDA y GND; esos nombres de red y la numeración de pines (R1-1, R1-2…) son míos, al estilo del bloque 166.
+leccion: cap11/sec-11.7
+
+libro:
+  163: "son la única definición formal del circuito"
+  165: "cada red con los pines que la forman"
+  166: "N$12: R14-1, C7-2, U3-5"
+  167: "no tiene ambigüedad"
+  168: "Una línea del ratsnest que queda al final es una conexión sin hacer."
+  169: "cada conexión del netlist existe"
+  170: "se genera del esquema y no se edita a mano"
+  173: "Un 1 % y un 5 % no son lo mismo"
+  174: "obliga a volver a decidir"
+  177: "C1, C4, C9, C12 — 100 nF, X7R, 50 V, 0805 — 4 uds."
+  178: "revela la variedad real"
+  180: "Editar la BOM a mano"
+  181: "deben aparecer marcados como DNP"
+  186: "se generan, no se escriben"
+  "cap01#83": "Con 12 V, 10 kΩ y 5 kΩ, la salida es 4,00 V"
+
+modelo:
+  valores:
+    V_in: { sim: "V_{entrada}", nombre: "tensión de la pila", unidad: V, valor: 12 }
+    R_1: { sim: "R1", nombre: "resistencia de arriba", unidad: Ω, valor: 10000 }
+    R_2: { sim: "R2", nombre: "resistencia de abajo", unidad: Ω, valor: 5000 }
+    n_c: { sim: "n", nombre: "condensadores de la línea", unidad: "", valor: 4 }
+  calculos:
+    V_out: { expr: "V_in*R_2/(R_1 + R_2)", sim: "V_{salida}", nombre: "tensión de salida", unidad: V }
+    I: { expr: "V_in/(R_1 + R_2)", sim: "I", nombre: "corriente", unidad: A }
+
+tarjetas:
+  - id: explore-topologia
+    tipo: explorar
+    titulo: "El netlist no ve los valores"
+    texto: "Cambie el valor de R2. La lectura cambia, pero no las conexiones: el netlist es el mismo."
+    libro: [165, 167, "cap01#83"]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_out, rotulo: "Red SALIDA" }
+      corriente: I
+      mide: { salida: V_out, corriente: I }
+      mandos:
+        - { valor: R_2, lista: [5000, 10000, 20000], rotulo: "Valor de R2" }
+    requiere: { mover: [R_2] }
+
+  - id: netlist-divisor
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Escriba el netlist"
+    texto: "Una cada red del divisor con los pines que la forman."
+    libro: [165, 166]
+    emparejar:
+      - ["+12V", "Positivo de la pila y R1-1"]
+      - ["SALIDA", "R1-2 y R2-1"]
+      - ["GND", "R2-2 y negativo de la pila"]
+    exito: "Topología pura: sin posición, sin dibujo, sin interpretación. Es lo que usa el programa de trazado."
+    pistas:
+      - { texto: "La salida es el nodo entre las dos resistencias." }
+    escalera:
+      - "R1-1 es el pin 1 de R1, el que va a la pila."
+    solucion: "+12V: pila y R1-1; SALIDA: R1-2 y R2-1; GND: R2-2 y pila."
+
+  - id: prediga-ratsnest
+    tipo: predecir
+    titulo: "Una línea que queda"
+    texto: "Ha trazado la placa y aún se ve una línea recta fina entre dos almohadillas. ¿Qué es?"
+    libro: [168, 169]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_out, rotulo: "Red SALIDA" }
+      mide: { salida: V_out, corriente: I }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "Una conexión del netlist sin hacer"
+        bien: true
+        porque: "El ratsnest muestra lo que falta por rutar y desaparece conforme se trazan las pistas."
+      - texto: "Una pista ya trazada"
+        porque: "Las pistas trazadas dejan de mostrarse como ratsnest: la que queda está pendiente."
+      - texto: "Un error del dibujo sin importancia"
+        porque: "Es una conexión del circuito que la placa aún no tiene: sin ella, no funciona."
+    escalera:
+      - "Ratsnest: «nido de ratas», lo pendiente de rutar."
+    solucion: "Una conexión del netlist que aún no tiene pista."
+
+  - id: campos-bom
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Lo que necesita la BOM"
+    texto: "Una cada campo de la lista de materiales con por qué hace falta."
+    libro: [173]
+    emparejar:
+      - ["Designador", "Enlaza con esquema y placa"]
+      - ["Tolerancia", "Un 1 % y un 5 % no son lo mismo"]
+      - ["Tensión o potencia", "Ausente del símbolo"]
+      - ["Encapsulado", "Decide el montaje"]
+      - ["Fabricante y referencia", "Lo único que permite comprar"]
+      - ["Notas", "DNP, alternativas, criticidad"]
+    exito: "La BOM dice qué comprar y dónde va: el valor solo es lo evidente."
+    pistas:
+      - { texto: "Sin referencia del fabricante no se puede hacer el pedido." }
+    escalera:
+      - "La tensión y la potencia no aparecen en el símbolo."
+    solucion: "Designador–enlace; tolerancia–1 % o 5 %; tensión–no está en el símbolo; encapsulado–montaje; referencia–compra; notas–DNP."
+
+  - id: cien-nano
+    tipo: pregunta
+    titulo: "Una BOM que dice «100 nF»"
+    texto: "La lista de materiales solo dice «100 nF». ¿Qué problema crea al comprar?"
+    libro: [174]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_out, rotulo: "Red SALIDA" }
+      mide: { salida: V_out, corriente: I }
+      mandos: []
+    opciones:
+      - texto: "Obliga a decidir otra vez el dieléctrico y la tensión"
+        bien: true
+        porque: "Esa decisión ya se tomó al diseñar; repetirla al comprar es donde entran los errores."
+      - texto: "Ninguno: el valor es lo único que importa"
+        porque: "Dos condensadores de 100 nF con distinto dieléctrico o tensión no son intercambiables."
+      - texto: "Que no se sabe cuántos comprar"
+        porque: "La cantidad sale de la agrupación por línea; lo que falta es dieléctrico y tensión."
+    escalera:
+      - "¿Qué más hay que saber de un condensador además de su capacidad?"
+    solucion: "Hay que volver a decidir dieléctrico y tensión."
+
+  - id: estime-linea
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Una línea de la BOM"
+    texto: "La línea dice: C1, C4, C9, C12 — 100 nF, X7R, 50 V, 0805. ¿Cuántas unidades hay que pedir?"
+    libro: [177, 178]
+    fijar: { n_c: 4 }
+    estimar:
+      objetivo: "n_c"
+      unidad: ""
+      min: 1
+      max: 12
+      paso: 1
+      inicio: 10
+      tol: 0.05
+      rotulo: "Unidades"
+    exito: "4 uds.: una línea con todos sus designadores reduce el pedido y revela la variedad real del diseño."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 4 }, texto: "Se ha pasado: cuente los designadores, no el número del último." }
+      - { texto: "Se ha quedado corto: cada designador es una unidad." }
+    escalera:
+      - "Cuente los designadores de la línea."
+    solucion: "Cuatro designadores: 4 uds."
+    comprobar:
+      - { n_c: 4 }
+
+  - id: por-que-regenerar
+    tipo: porque
+    titulo: "Se regenera siempre"
+    texto: "Tras cambiar el esquema, ¿por qué no se corrige la BOM a mano?"
+    libro: [170, 180]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_out, rotulo: "Red SALIDA" }
+      mide: { salida: V_out, corriente: I }
+      mandos: []
+    opciones:
+      - texto: "Porque se desincroniza y ninguno de los dos documentos es fiable"
+        bien: true
+        porque: "La BOM, como el netlist, se genera del esquema: es la única forma de que coincidan."
+      - texto: "Porque a mano se tarda más"
+        porque: "El problema no es el tiempo: es que los dos documentos dejan de coincidir."
+      - texto: "Porque la herramienta no lo permite"
+        porque: "Lo permite; por eso es un error frecuente."
+    escalera:
+      - "¿Qué pasa la siguiente vez que cambie el esquema?"
+    solucion: "Editada a mano se desincroniza: se regenera siempre."
+
+  - id: no-se-monta
+    tipo: pregunta
+    titulo: "Lo que no se monta"
+    texto: "Una posición no se puebla en esta versión. ¿Cómo aparece en la BOM?"
+    libro: [181]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_out, rotulo: "Red SALIDA" }
+      mide: { salida: V_out, corriente: I }
+      mandos: []
+    opciones:
+      - texto: "Marcada como DNP"
+        bien: true
+        porque: "Debe aparecer y no desaparecer: así se sabe que el hueco es deliberado."
+      - texto: "No aparece"
+        porque: "Olvidarla es uno de los errores frecuentes: debe figurar marcada DNP."
+      - texto: "Con cantidad cero y sin designador"
+        porque: "El designador se mantiene; la marca DNP es la que dice que no se monta."
+    escalera:
+      - "DNP: no poblar."
+    solucion: "Con su designador y la marca DNP."
+
+  - id: salidas
+    tipo: pregunta
+    titulo: "Los otros ficheros"
+    texto: "Gerbers, taladro, fichero de posiciones y notas. ¿Qué tienen en común con el netlist y la BOM?"
+    libro: [186]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_out, rotulo: "Red SALIDA" }
+      mide: { salida: V_out, corriente: I }
+      mandos: []
+    opciones:
+      - texto: "Se generan, no se escriben"
+        bien: true
+        porque: "Cualquiera de ellos editado a mano rompe la coherencia del conjunto."
+      - texto: "Se dibujan a mano después del esquema"
+        porque: "Al revés: todos salen de la herramienta, y editarlos rompe la coherencia."
+      - texto: "Solo los necesita el fabricante"
+        porque: "Es verdad que los usa la fabricación, pero lo que los une es que se generan."
+    escalera:
+      - "Recuerde qué pasa con la BOM editada a mano."
+    solucion: "Todos se generan; ninguno se edita a mano."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [163, 168, 174, 186]
+    ideas:
+      - { titulo: "Netlist.", texto: "Cada red con sus pines: topología pura, sin ambigüedad." }
+      - { titulo: "Ratsnest.", texto: "Lo que falta por rutar; una línea al final es una conexión sin hacer." }
+      - { titulo: "BOM.", texto: "Qué comprar y dónde va: tolerancia, tensión, encapsulado y referencia." }
+      - { titulo: "Se generan.", texto: "Ningún fichero de salida se edita a mano." }

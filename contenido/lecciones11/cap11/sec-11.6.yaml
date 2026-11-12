@@ -1,0 +1,258 @@
+# Lección 1.2 de la sección 11.6 «Nudos, Etiquetas de Red y Símbolos de Alimentación» (cap11). Formato: GUIA.md.
+# El esquema es el divisor del libro con su carga (sección 1.4: 12 V, 10 kΩ y 5 kΩ; 4,00 V en vacío y 3,00 V con
+# 10 kΩ conectados). El interruptor de la carga hace de punto de unión (explorar) y de etiqueta de red bien o mal
+# escrita (sorpresa): con él abierto, la carga cruza el nodo sin conectarse.
+leccion: cap11/sec-11.6
+
+libro:
+  141: "un punto grueso indica conexión; su ausencia, cruce sin contacto"
+  142: "arco de salto"
+  144: "dos puntos con el mismo nombre están conectados"
+  146: "una etiqueta mal escrita crea una red nueva"
+  147: "Una red con un solo nodo es casi siempre una etiqueta mal escrita."
+  149: "todos los símbolos de VCC del esquema están conectados entre sí"
+  150: "VCC es la alimentación de los colectores"
+  152: "Masa de chasis, unida a la caja metálica"
+  154: "puede estar a la tensión de red"
+  156: "D[0..7]"
+  157: "un número mal puesto conecta la línea equivocada"
+  "cap01#103": "4,00 V en vacío y 3,00 V con 10 kΩ conectados"
+
+modelo:
+  valores:
+    V_in: { sim: "V_{entrada}", nombre: "tensión de la pila", unidad: V, valor: 12 }
+    R_1: { sim: "R₁", nombre: "resistencia de arriba", unidad: Ω, valor: 10000 }
+    R_2: { sim: "R₂", nombre: "resistencia de abajo", unidad: Ω, valor: 5000 }
+    R_L: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 10000 }
+    carga: { tipo: interruptor, nombre: "carga unida al nodo de salida", valor: 1 }
+    b_hi: { sim: "último", nombre: "índice de la última línea del bus", unidad: "", valor: 7 }
+  calculos:
+    R_ab: { si: carga, entonces: "par(R_2, R_L)", sino: "R_2", sim: "R_{abajo}", nombre: "resistencia de la rama de abajo", unidad: Ω }
+    V_out: { expr: "V_in*R_ab/(R_1 + R_ab)", sim: "V_{salida}", nombre: "tensión de salida", unidad: V }
+    I: { expr: "V_in/(R_1 + R_ab)", sim: "I", nombre: "corriente", unidad: A }
+    I_L: { si: carga, entonces: "V_out/R_L", sino: "0", sim: "I_{L}", nombre: "corriente de la carga", unidad: A }
+    n_bus: { expr: "b_hi + 1", sim: "líneas", nombre: "líneas del bus", unidad: "" }
+
+tarjetas:
+  - id: explore-punto
+    tipo: explorar
+    titulo: "El punto decide"
+    texto: "La línea de la carga cruza la salida. Ponga y quite el punto de unión del cruce y mire la tensión."
+    libro: [141, "cap01#103"]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: carga }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      datos:
+        - { valor: I_L, rotulo: "Corriente de la carga: {{I_L}}" }
+      corriente: I
+      mide: { salida: V_out, corriente: I, carga: I_L }
+      mandos:
+        - { valor: carga, tipo: interruptor, rotulo: "Punto de unión en el cruce" }
+    requiere: { mover: [carga] }
+
+  - id: prediga-cuatro
+    tipo: predecir
+    titulo: "Uniones de cuatro líneas"
+    texto: "Las herramientas CAD evitan que cuatro segmentos concurran en un punto. ¿Por qué?"
+    libro: [141]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: carga }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      mide: { salida: V_out, corriente: I, carga: I_L }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "Un borrón o una fotocopia puede hacer aparecer o desaparecer el punto"
+        bien: true
+        porque: "Se desplaza una conexión y quedan dos uniones de tres líneas, que son inequívocas."
+      - texto: "Porque cuatro líneas no pueden conectarse"
+        porque: "Pueden; el problema es que el punto deja de leerse con seguridad."
+      - texto: "Porque el ERC no las admite"
+        porque: "No es una regla eléctrica: es para que el dibujo no sea ambiguo al imprimirlo."
+    escalera:
+      - "Piense en una impresión mediocre."
+    solucion: "El punto se puede perder o inventar al imprimir: dos uniones de tres son inequívocas."
+
+  - id: cruces
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cuatro formas de dibujarlo"
+    texto: "Una cada dibujo con lo que significa."
+    libro: [141, 142]
+    emparejar:
+      - ["Punto grueso en el cruce", "Conexión"]
+      - ["Cruce sin punto", "Sin contacto"]
+      - ["Arco de salto", "Sin contacto, en esquemas antiguos"]
+      - ["Dos uniones de tres líneas", "Lo que sustituye a una de cuatro"]
+    exito: "El arco de salto es visualmente clarísimo y sigue siendo válido."
+    pistas:
+      - { texto: "El arco hace un puente de una línea sobre la otra." }
+    escalera:
+      - "Solo el punto indica conexión."
+    solucion: "Punto–conexión; sin punto–sin contacto; arco–sin contacto; dos de tres–en lugar de una de cuatro."
+
+  - id: sorpresa-etiqueta
+    tipo: sorpresa
+    titulo: "Una letra de más"
+    texto: "Ahora la carga se une por una etiqueta de red. Escríbala mal en uno de los dos sitios y mire la salida."
+    libro: [144, 146]
+    inicio: { carga: 1 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: carga }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      datos:
+        - { valor: I_L, rotulo: "Corriente de la carga: {{I_L}}" }
+      corriente: I
+      mide: { salida: V_out, corriente: I, carga: I_L }
+      mandos:
+        - { valor: carga, tipo: interruptor, rotulo: "Etiqueta igual en los dos sitios" }
+    requiere: { mover: [carga] }
+
+  - id: por-que-invisible
+    tipo: porque
+    titulo: "¿Por qué es tan peligrosa?"
+    texto: "Con la etiqueta mal escrita, la carga quedó suelta. ¿Por qué es un error tan frecuente en placas fabricadas?"
+    libro: [146]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: carga }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      mide: { salida: V_out, corriente: I, carga: I_L }
+      mandos: []
+    opciones:
+      - texto: "Porque crea una red nueva y el dibujo parece correcto"
+        bien: true
+        porque: "El error es invisible en el dibujo: las dos etiquetas están ahí, solo que no se llaman igual."
+      - texto: "Porque la herramienta borra la conexión"
+        porque: "La herramienta hace lo que dice el nombre: dos nombres distintos son dos redes."
+      - texto: "Porque las etiquetas no conectan de verdad"
+        porque: "Sí conectan, si el nombre es idéntico: ese es su poder y su peligro."
+    escalera:
+      - "¿Qué ve quien revisa el dibujo?"
+    solucion: "Una red nueva que no se ve en el dibujo."
+
+  - id: un-solo-nodo
+    tipo: pregunta
+    titulo: "Red con un solo nodo"
+    texto: "La comprobación de reglas avisa de una red con un solo nodo. ¿Qué suele ser?"
+    libro: [147]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: carga }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      mide: { salida: V_out, corriente: I, carga: I_L }
+      mandos: []
+    opciones:
+      - texto: "Una etiqueta mal escrita"
+        bien: true
+        porque: "La defensa es doble: nombres significativos, como VCC_ANALOG mejor que N23, y el ERC."
+      - texto: "Un componente averiado"
+        porque: "El ERC no mide nada: comprueba las conexiones del dibujo."
+      - texto: "Una conexión de alimentación correcta"
+        porque: "Una red de alimentación une muchos pines; una con un solo nodo no llega a ningún sitio."
+    escalera:
+      - "Un nodo solo no conecta con nada: ¿qué nombre se escribió?"
+    solucion: "Casi siempre, una etiqueta mal escrita."
+
+  - id: railes
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los nombres de los raíles"
+    texto: "Una cada nombre con el terminal del que viene."
+    libro: [149, 150]
+    emparejar:
+      - ["VCC", "Colectores, de bipolares y TTL"]
+      - ["VEE", "Emisores"]
+      - ["VDD", "Drenadores, de MOS y CMOS"]
+      - ["VSS", "Fuentes (source)"]
+    exito: "Hoy son casi sinónimos: por eso son preferibles nombres como +3V3 o +5V, que dicen la tensión."
+    pistas:
+      - { texto: "C de colector, E de emisor, D de drenador, S de source." }
+    escalera:
+      - "La letra doble es el terminal que alimenta."
+    solucion: "VCC colectores, VEE emisores, VDD drenadores, VSS fuentes."
+
+  - id: masas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los tipos de masa"
+    texto: "Una cada símbolo con su significado."
+    libro: [152]
+    emparejar:
+      - ["Triángulo o líneas decrecientes", "Masa de señal"]
+      - ["Línea con trazos oblicuos", "Masa de chasis, unida a la caja"]
+      - ["Tierra rodeada por un círculo", "Tierra de protección"]
+      - ["Masa marcada AGND o DGND", "Masas separadas unidas en un solo punto"]
+    exito: "Distinguir masa analógica y digital documenta una decisión de trazado que la placa debe respetar."
+    pistas:
+      - { texto: "El rastrillo es la línea con trazos oblicuos." }
+    escalera:
+      - "La del círculo va al conductor de protección de la red."
+    solucion: "Triángulo–señal; rastrillo–chasis; círculo–protección; AGND/DGND–masas separadas."
+
+  - id: seguridad
+    tipo: pregunta
+    titulo: "Antes de la pinza"
+    texto: "Va a medir un equipo con una fuente conmutada sin aislamiento. ¿Qué mira antes de conectar la pinza del osciloscopio?"
+    libro: [154]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: carga }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      mide: { salida: V_out, corriente: I, carga: I_L }
+      mandos: []
+    opciones:
+      - texto: "Si la masa de señal está a la tensión de red"
+        bien: true
+        porque: "Sin transformador, la masa del circuito puede estar a tensión de red. El esquema debe indicarlo."
+      - texto: "Nada: la masa siempre es tierra"
+        porque: "No siempre: con transformador puede no estar a tierra, y sin él puede estar a la tensión de red."
+      - texto: "Solo el color del cable"
+        porque: "El color no dice el potencial: lo dice el esquema."
+    escalera:
+      - "Sin transformador, ¿qué separa el circuito de la red?"
+    solucion: "Comprobar en el esquema si la masa puede estar a tensión de red."
+
+  - id: estime-bus
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Un bus abreviado"
+    texto: "Una línea gruesa lleva la etiqueta D[0..7]. ¿Cuántas señales agrupa?"
+    libro: [156, 157]
+    estimar:
+      objetivo: "n_bus"
+      unidad: ""
+      min: 1
+      max: 16
+      paso: 1
+      inicio: 14
+      tol: 0.05
+      rotulo: "Señales"
+    exito: "Ocho, de D0 a D7. Un número mal puesto conecta la línea equivocada: el ERC comprueba la coherencia del bus."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 8 }, texto: "Se ha pasado: el rango va de 0 a 7." }
+      - { texto: "Se ha quedado corto: cuente también la línea 0." }
+    escalera:
+      - "Cuente de D0 a D7, ambas incluidas."
+    solucion: "De 0 a 7: 8 señales."
+    comprobar:
+      - { n_bus: 8, b_hi: 7 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [141, 146, 150, 152]
+    ideas:
+      - { titulo: "El punto.", texto: "Con punto, conexión; sin él, cruce. Nunca uniones de cuatro líneas." }
+      - { titulo: "Etiquetas.", texto: "Conectan sin línea; mal escritas, crean una red nueva e invisible." }
+      - { titulo: "Raíles.", texto: "Mejor +3V3 o +5V que VCC o VDD: dicen la tensión." }
+      - { titulo: "Masas.", texto: "Señal, chasis y protección son redes distintas." }
