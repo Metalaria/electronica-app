@@ -1,0 +1,244 @@
+# Lección 1.2 de la sección 14.6 «Limitaciones del Protoboard: Parásitos y Alta Frecuencia» (cap15; sec-15.6).
+# Formato: contenido/lecciones11/GUIA.md. La gráfica es v = L·di/dt con los números del libro (bloque 148): 20 mA en
+# 2 ns sobre 10 nH, 100 mV; ocho salidas a la vez, 800 mV. Los flancos de 10 y 20 ns del mando son un EJEMPLO para ver
+# la proporción; los relojes de 8 y 100 MHz son los del bloque 158.
+leccion: cap15/sec-15.6
+
+libro:
+  144: "es un circuito distinto, con componentes parásitos que no están en el esquema"
+  146: "Cada contacto y cada centímetro de cable de puente aportan unos 10 nH."
+  147: 'v = L dot.op (d i)/(d t)'
+  148: "Una salida que conmuta 20 mA en 2 ns produce sobre 10 nH 100 mV. Con ocho salidas conmutando a la vez (un bus de datos), 800 mV"
+  149: "en un protoboard no hay plano"
+  151: "Entre filas adyacentes hay 2 a 5 pF."
+  152: "una etapa de ganancia alta oscila en el protoboard y no lo hace en la placa"
+  157: "Puede oscilar a cualquier frecuencia"
+  158: "un microcontrolador a 8 MHz con flancos de 2 ns produce el mismo rebote que uno a 100 MHz"
+  161: "Llevar el cable de masa paralelo y adyacente al de señal reduce enormemente el área del bucle"
+  163: "Una tira de cobre adhesivo pegada bajo el protoboard"
+  166: "cuando el tiempo dedicado a luchar contra el montaje supera al dedicado al circuito"
+  168: "el problema es el montaje, no el diseño"
+
+modelo:
+  valores:
+    L_b: { sim: "L", nombre: "inductancia del camino de masa", unidad: H, valor: 10e-9 }
+    dI: { sim: "ΔI", nombre: "corriente que conmuta cada salida", unidad: A, valor: 0.02 }
+    t_r: { sim: "Δt", nombre: "duración del flanco", unidad: s, valor: 2e-9 }
+    N_s: { sim: "N", nombre: "salidas que conmutan a la vez", unidad: "", valor: 1 }
+    f_ck: { sim: "f_{reloj}", nombre: "reloj del microcontrolador", unidad: Hz, valor: 8000000 }
+  calculos:
+    v_1: { expr: "L_b*dI/t_r", sim: "v", nombre: "rebote de una salida", unidad: V }
+    I_bus: { expr: "N_s*dI", sim: "I", nombre: "corriente total en la masa", unidad: A }
+    v_b: { expr: "N_s*v_1", sim: "v_{rebote}", nombre: "rebote de masa", unidad: V }
+
+tarjetas:
+  - id: explore-rebote
+    tipo: explorar
+    titulo: "El rebote de masa"
+    texto: "Cada salida conmuta 20 mA sobre los 10 nH del camino de masa. Cambie el flanco y las salidas que conmutan a la vez."
+    nota: "Los flancos de 10 y 20 ns son un ejemplo."
+    libro: [146, 148]
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 1e-9, max: 1e-7, unidad: s, rotulo: "flanco", escala: log }
+      y: { min: 0, max: 1, unidad: V, rotulo: "rebote" }
+      curvas:
+        - { expr: "N_s*L_b*dI/tt", color: naranja, rotulo: "rebote de masa" }
+      marcas:
+        - { x: "t_r", y: "v_b", rotulo: "Su flanco" }
+      lectura: { valor: v_b, rotulo: "Rebote de masa" }
+      mandos:
+        - { valor: t_r, lista: [2e-9, 1e-8, 2e-8], rotulo: "Flanco" }
+        - { valor: N_s, lista: [1, 8], rotulo: "Salidas a la vez" }
+    requiere: { mover: [t_r, N_s] }
+
+  - id: prediga-bus
+    tipo: predecir
+    titulo: "Un bus de ocho salidas"
+    texto: "Una salida da 100 mV de rebote. ¿Cuánto dan ocho salidas de un bus conmutando a la vez?"
+    libro: [148]
+    fijar: { N_s: 8, t_r: 2e-9 }
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 1e-9, max: 1e-7, unidad: s, rotulo: "flanco", escala: log }
+      y: { min: 0, max: 1, unidad: V, rotulo: "rebote" }
+      curvas:
+        - { expr: "N_s*L_b*dI/tt", color: naranja, rotulo: "rebote de masa" }
+      lectura: { valor: v_b, rotulo: "Rebote de masa" }
+      ocultar: true
+    opciones:
+      - texto: "800 mV"
+        bien: true
+        porque: "Las corrientes se suman en la masa común: 160 mA en 2 ns sobre 10 nH."
+      - texto: "100 mV: cada salida tiene su rebote"
+        porque: "Comparten el camino de masa: sus corrientes se suman."
+      - texto: "Menos de 100 mV: se reparte"
+        porque: "No se reparte: se suma."
+    escalera:
+      - "¿Por dónde vuelven las corrientes de las ocho salidas?"
+    solucion: "8 · 100 mV = 800 mV."
+    comprobar:
+      - { v_b: 0.8, v_1: 0.1, I_bus: 0.16 }
+
+  - id: formula-rebote
+    tipo: formula
+    titulo: "La tensión de una inductancia"
+    texto: "La caída depende de lo deprisa que cambia la corriente. Cambie la duración del flanco."
+    libro: [147]
+    ec: 147
+    sustitucion: "{{L_b}} · {{dI}} / {{t_r}} = {{v_1}}"
+    fijar: { N_s: 1 }
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 1e-9, max: 1e-7, unidad: s, rotulo: "flanco", escala: log }
+      y: { min: 0, max: 1, unidad: V, rotulo: "rebote" }
+      curvas:
+        - { expr: "N_s*L_b*dI/tt", color: naranja, rotulo: "rebote de masa" }
+      marcas:
+        - { x: "t_r", y: "v_b", rotulo: "Su flanco" }
+      lectura: { valor: v_1, rotulo: "Rebote" }
+      mandos:
+        - { valor: t_r, lista: [2e-9, 1e-8, 2e-8], rotulo: "Flanco" }
+
+  - id: sorpresa-reloj
+    tipo: sorpresa
+    titulo: "El reloj no importa"
+    texto: "Mismos flancos de 2 ns, otro reloj. Cambie de 8 a 100 MHz y mire el rebote."
+    libro: [158]
+    fijar: { N_s: 8, t_r: 2e-9 }
+    inicio: { f_ck: 8000000 }
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 1e-9, max: 1e-7, unidad: s, rotulo: "flanco", escala: log }
+      y: { min: 0, max: 1, unidad: V, rotulo: "rebote" }
+      curvas:
+        - { expr: "N_s*L_b*dI/tt", color: naranja, rotulo: "rebote de masa" }
+      marcas:
+        - { x: "t_r", y: "v_b", rotulo: "Su flanco" }
+      lectura: { valor: v_b, rotulo: "Rebote de masa" }
+      mandos:
+        - { valor: f_ck, lista: [8000000, 100000000], rotulo: "Reloj" }
+    requiere: { mover: [f_ck] }
+
+  - id: por-que-flancos
+    tipo: porque
+    titulo: "¿Por qué los flancos y no el reloj?"
+    texto: "Un microcontrolador lento con flancos rápidos rebota como uno rápido. ¿Por qué?"
+    libro: [158, 147]
+    fijar: { N_s: 8, t_r: 2e-9 }
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 1e-9, max: 1e-7, unidad: s, rotulo: "flanco", escala: log }
+      y: { min: 0, max: 1, unidad: V, rotulo: "rebote" }
+      curvas:
+        - { expr: "N_s*L_b*dI/tt", color: naranja, rotulo: "rebote de masa" }
+      lectura: { valor: v_b, rotulo: "Rebote de masa" }
+    opciones:
+      - texto: "Porque el rebote depende de di/dt, y eso lo fija el flanco"
+        bien: true
+        porque: "La limitación no es la frecuencia de la señal sino la velocidad de los flancos."
+      - texto: "Porque el reloj no sale del chip"
+        porque: "Aunque saliera, lo que manda en v = L·di/dt es lo rápido del cambio."
+      - texto: "Porque el protoboard filtra el reloj"
+        porque: "No filtra nada: cada flanco produce su pico."
+    escalera:
+      - "En v = L · di/dt, ¿qué fija el di/dt?"
+    solucion: "El di/dt lo fija el flanco."
+
+  - id: ganancia-oscila
+    tipo: pregunta
+    titulo: "Oscila en el protoboard"
+    texto: "Un preamplificador de ganancia alta oscila en el protoboard y no en la placa. ¿Qué lo hace oscilar?"
+    libro: [152, 144, 151]
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 1e-9, max: 1e-7, unidad: s, rotulo: "flanco", escala: log }
+      y: { min: 0, max: 1, unidad: V, rotulo: "rebote" }
+      curvas:
+        - { expr: "N_s*L_b*dI/tt", color: naranja, rotulo: "rebote de masa" }
+    opciones:
+      - texto: "La capacidad entre filas, que realimenta la salida hacia la entrada"
+        bien: true
+        porque: "De 2 a 5 pF bastan para que una etapa de ganancia alta oscile."
+      - texto: "La resistencia de los contactos"
+        porque: "Da caídas en la alimentación; la realimentación viene de la capacidad."
+      - texto: "Un error del esquema"
+        porque: "En la placa no oscila: el esquema está bien, el montaje es otro circuito."
+    escalera:
+      - "¿Qué une, sin cable, dos filas vecinas?"
+    solucion: "La capacidad entre filas."
+
+  - id: limites
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "El límite práctico"
+    texto: "Una cada tipo de circuito con el límite del protoboard."
+    libro: [157]
+    emparejar:
+      - ["Digital con flancos lentos", "Sin problema"]
+      - ["Digital rápido", "Rebote a cualquier frecuencia de reloj"]
+      - ["Analógico de ganancia alta", "Puede oscilar a cualquier frecuencia"]
+      - ["Analógico general", "Unos 10 MHz"]
+      - ["Radiofrecuencia", "Inútil"]
+    exito: "No manda la frecuencia de la señal sino la de los flancos y la ganancia."
+    pistas:
+      - { texto: "La radiofrecuencia queda fuera del todo." }
+    escalera:
+      - "Los dos de «a cualquier frecuencia» son el digital rápido y el de ganancia alta."
+    solucion: "Lentos: sin problema; rápido: rebote; ganancia alta: oscila; general: 10 MHz; RF: inútil."
+
+  - id: mitigar
+    tipo: pregunta
+    titulo: "Llevar la masa junto a la señal"
+    texto: "¿Por qué ayuda llevar el cable de masa paralelo y pegado al de la señal?"
+    libro: [161, 163, 149]
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 1e-9, max: 1e-7, unidad: s, rotulo: "flanco", escala: log }
+      y: { min: 0, max: 1, unidad: V, rotulo: "rebote" }
+      curvas:
+        - { expr: "N_s*L_b*dI/tt", color: naranja, rotulo: "rebote de masa" }
+    opciones:
+      - texto: "Reduce el área del bucle, que fija la inductancia y la captación de ruido"
+        bien: true
+        porque: "Y una tira de cobre bajo el protoboard, a masa en varios puntos, hace de plano improvisado."
+      - texto: "Porque el cable de masa conduce mejor así"
+        porque: "Conduce igual: lo que cambia es el área que encierran ida y vuelta."
+      - texto: "Por estética: el montaje se lee mejor"
+        porque: "Se lee mejor, sí, pero la razón es eléctrica: el área del bucle."
+    escalera:
+      - "La inductancia de un camino depende del área que encierra con su retorno."
+    solucion: "Reduce el área del bucle."
+
+  - id: abandonar
+    tipo: pregunta
+    titulo: "Cuándo dejarlo"
+    texto: "El prototipo oscila, su consumo es errático y cambia al tocar los cables. ¿Qué hace?"
+    libro: [166, 168]
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 1e-9, max: 1e-7, unidad: s, rotulo: "flanco", escala: log }
+      y: { min: 0, max: 1, unidad: V, rotulo: "rebote" }
+      curvas:
+        - { expr: "N_s*L_b*dI/tt", color: naranja, rotulo: "rebote de masa" }
+    opciones:
+      - texto: "Pasar a placa perforada con plano de masa o a una placa fabricada"
+        bien: true
+        porque: "Cuando luchar contra el montaje cuesta más que el circuito, el camino corto es la placa."
+      - texto: "Seguir ajustando el esquema"
+        porque: "El problema es el montaje: ningún cambio en el esquema lo va a resolver."
+      - texto: "Cambiar los integrados"
+        porque: "Funcionan en una placa; el fallo es del soporte."
+    escalera:
+      - "¿El problema está en el diseño o en el montaje?"
+    solucion: "Pasar a placa."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [144, 148, 152, 158]
+    ideas:
+      - { titulo: "Otro circuito.", texto: "El protoboard añade parásitos que no están en el esquema." }
+      - { titulo: "Rebote.", texto: "v = L · di/dt: 20 mA en 2 ns sobre 10 nH dan 100 mV; ocho salidas, 800 mV." }
+      - { titulo: "Flancos, no reloj.", texto: "Manda el di/dt, no la frecuencia." }
+      - { titulo: "Capacidad.", texto: "Entre filas basta para que una etapa de ganancia alta oscile." }

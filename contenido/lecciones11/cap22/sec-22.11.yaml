@@ -1,0 +1,353 @@
+# Lección 1.2 de la sección 21.10 «Práctica 10 — Tiempo de Subida y Ancho de Banda» (cap22; etiqueta interna
+# sec-22.11). Formato: contenido/lecciones11/GUIA.md. El instrumento es el sistema de primer orden del fundamento: un
+# escalón ideal sale como 1 − e^(−t/τ) con τ = 1/(2π·BW), es decir t_r = 2,2·τ = 0,35/BW; con un flanco propio t_s, el
+# flanco visto se dibuja como una exponencial con el t_r combinado √(t_s² + t_i²). La compensación de la sonda es la
+# de la sección 20.5 (cap21): divisor 9 MΩ ‖ C₁ y 1 MΩ ‖ C₂; el escalón inicial vale C₁/(C₁ + C₂) y el final la
+# décima parte, así que su relación es 10·k/(k + 9) con k = R₁C₁/(R₂C₂). La constante de la meseta (50 µs) y los
+# flancos de 1 ns y 20 ns de la combinación son ilustrativos.
+leccion: cap22/sec-22.11
+
+libro:
+  265: "el tiempo de subida, y de él deduce el ancho de banda real del conjunto sonda-osciloscopio"
+  267: "una puerta lógica rápida, como el inversor 74AC04 alimentado a 5 V"
+  269: "Un sistema de primer orden con ancho de banda BW responde a un escalón con una exponencial"
+  270: 't_("r") = ("0,35")/("BW")'
+  271: "se cumple aproximadamente incluso cuando el sistema no es de primer orden"
+  272: "si la señal tiene su propio tiempo de subida, lo que se ve es"
+  273: 't_("medido") = sqrt('
+  274: "un flanco más rápido que el instrumento aparezca con el tiempo de subida del instrumento, no con el suyo"
+  276: "Compensar la sonda (sección 20.5). Sin este paso, la medida es de la sonda y no del sistema."
+  278: "Sonda en ×1"
+  279: "Con el 2C53T, de 50 MHz, la primera fila da unos 7 ns"
+  280: "la posición ×1 de una sonda tiene un ancho de banda de unos pocos megahercios"
+  282: "Si el tr medido no cambia al quitar la sonda, lo que se está midiendo es el generador y no el instrumento"
+  283: "con él, aparece timbre sobre el flanco. Con el muelle de masa, el flanco es limpio."
+  284: "un pequeño rebasamiento del 5 % es normal en un osciloscopio; uno mayor indica sonda mal compensada"
+  286: "El osciloscopio no muestra la realidad: muestra la realidad filtrada por su ancho de banda"
+  288: "el tr del propio osciloscopio con cada sonda que se tenga"
+  "cap21#86": "el producto R·C debe ser igual en ambas ramas"
+  "cap21#90": "Compensada: la parte plana del cuadrado es realmente plana, con esquinas rectas."
+  "cap21#91": "Sobrecompensada: hay un pico al principio de cada semiciclo y luego decae."
+  "cap21#92": "Subcompensada: la esquina es redondeada y el nivel sube lentamente."
+  "cap22#370": "El 2C53T tiene 50 MHz de ancho de banda."
+
+modelo:
+  valores:
+    BW_i: { sim: "BW", nombre: "ancho de banda del instrumento", unidad: Hz, valor: 100000000 }
+    t_s: { sim: "t_{señal}", nombre: "tiempo de subida de la señal", unidad: s, valor: 5e-9 }
+    k_p: { sim: "k", nombre: "ajuste del trimmer, R₁C₁/R₂C₂", unidad: "", valor: 0.6 }
+  calculos:
+    t_ri: { expr: "0.35/BW_i", sim: "t_{r}", nombre: "tiempo de subida del instrumento", unidad: s }
+    tau_i: { expr: "1/(2*pi*BW_i)", sim: "τ", nombre: "constante del instrumento", unidad: s }
+    t_m: { expr: "sqrt(t_s^2 + t_ri^2)", sim: "t_{medido}", nombre: "tiempo de subida medido", unidad: s }
+    tau_m: { expr: "t_m/2.197", sim: "τ_{m}", nombre: "constante del flanco visto", unidad: s }
+    t_10: { expr: "tau_i*ln(10/9)", sim: "t_{10}", nombre: "llegada al 10 %", unidad: s }
+    t_90: { expr: "tau_i*ln(10)", sim: "t_{90}", nombre: "llegada al 90 %", unidad: s }
+    r_0: { expr: "10*k_p/(k_p + 9)*100", sim: "escalón", nombre: "escalón inicial respecto a la meseta", unidad: "%" }
+
+tarjetas:
+  - id: explore-flanco
+    tipo: explorar
+    titulo: "Un escalón visto por el instrumento"
+    texto: "Un escalón perfecto entra en instrumentos de distinto ancho de banda. Mire cuánto tarda del 10 al 90 %."
+    libro: [265, 269]
+    inicio: { BW_i: 100000000 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.0000001, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "fracción del salto" }
+      curvas:
+        - { expr: "1 - exp(-t/tau_i)", color: naranja, rotulo: "lo que se ve" }
+      marcas:
+        - { x: "t_10", y: "0.1", rotulo: "10 %" }
+        - { x: "t_90", y: "0.9", rotulo: "90 %" }
+      lectura: { valor: t_ri, rotulo: "Tiempo de subida" }
+      mandos:
+        - { valor: BW_i, lista: [6000000, 50000000, 100000000], rotulo: "Ancho de banda" }
+    requiere: { mover: [BW_i] }
+
+  - id: formula-tr
+    tipo: formula
+    titulo: "Tiempo de subida y ancho de banda"
+    texto: "Un sistema de primer orden: t_{r} = 0,35/BW. Vale también, aproximadamente, para un osciloscopio."
+    libro: [269, 270, 271]
+    fijar: { BW_i: 100000000 }
+    ec: 270
+    sustitucion: "0,35 / {{BW_i}} = {{t_ri}}"
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.00000002, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "fracción del salto" }
+      curvas:
+        - { expr: "1 - exp(-t/tau_i)", color: naranja, rotulo: "lo que se ve" }
+      marcas:
+        - { x: "t_10", y: "0.1", rotulo: "10 %" }
+        - { x: "t_90", y: "0.9", rotulo: "90 %" }
+      lectura: { valor: t_ri, rotulo: "Tiempo de subida" }
+    comprobar:
+      - { t_ri: 3.5e-9 }
+
+  - id: estime-2c53t
+    tipo: pregunta
+    titulo: "El 2C53T"
+    texto: "El 2C53T tiene 50 MHz de ancho de banda. ¿Cuál es su propio tiempo de subida?"
+    libro: [270, 279, "cap22#370"]
+    estimar:
+      objetivo: "0.35/50000000"
+      unidad: s
+      min: 0
+      max: 0.00000002
+      paso: 0.0000000001
+      inicio: 0.000000015
+      tol: 0.05
+      rotulo: "t_{r} del 2C53T"
+    exito: "0,35 / 50 MHz = 7 ns: el doble que uno de 100 MHz."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.0000000074 }, texto: "Se ha pasado: divida 0,35 entre los 50 MHz." }
+      - { texto: "Se ha quedado corto: con la mitad de ancho de banda que uno de 100 MHz, tarda el doble." }
+    escalera:
+      - "t_{r} = 0,35 / BW, con BW en hercios."
+    solucion: "0,35 / 50 MHz = 7 ns."
+
+  - id: formula-combinacion
+    tipo: formula
+    titulo: "Dos tiempos de subida"
+    texto: "Si la señal tiene su propio flanco, lo que se ve combina los dos. Cambie el flanco de la señal frente al 2C53T."
+    libro: [272, 273, 279]
+    fijar: { BW_i: 50000000 }
+    inicio: { t_s: 5e-9 }
+    ec: 273
+    sustitucion: "√({{t_s}}² + {{t_ri}}²) = {{t_m}}"
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.00000005, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "fracción del salto" }
+      curvas:
+        - { expr: "1 - exp(-t/(t_s/2.197))", color: tinta, rotulo: "la señal", discontinua: true }
+        - { expr: "1 - exp(-t/tau_m)", color: naranja, rotulo: "lo que se ve" }
+      lectura: { valor: t_m, rotulo: "Tiempo medido" }
+      mandos:
+        - { valor: t_s, lista: [1e-9, 5e-9, 20e-9], rotulo: "Flanco de la señal" }
+    comprobar:
+      - { t_ri: 7e-9 }
+
+  - id: estime-combinado
+    tipo: pregunta
+    titulo: "Un flanco de 5 ns"
+    texto: "Con el 2C53T, de 7 ns, se mide un flanco que en realidad dura 5 ns. ¿Qué tiempo de subida muestra?"
+    libro: [273, 279, "cap22#370"]
+    estimar:
+      objetivo: "sqrt(0.000000005^2 + 0.000000007^2)"
+      unidad: s
+      min: 0
+      max: 0.00000002
+      paso: 0.0000000001
+      inicio: 0.000000012
+      tol: 0.04
+      rotulo: "t_{r} que se ve"
+    exito: "√(5² + 7²) ≈ 8,6 ns: más lento de lo que es, porque el instrumento no es mucho más rápido que la señal."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.0000000092 }, texto: "Se ha pasado: los tiempos no se suman; se suman sus cuadrados." }
+      - { texto: "Se ha quedado corto: nunca se ve menos que el más lento de los dos, 7 ns." }
+    escalera:
+      - "Combine en cuadratura: la raíz de la suma de los cuadrados."
+    solucion: "√(5² + 7²) ≈ 8,6 ns."
+
+  - id: prediga-rapido
+    tipo: predecir
+    titulo: "Un flanco más rápido que el instrumento"
+    texto: "La señal tiene un flanco mucho más rápido que el tiempo de subida del 2C53T. ¿Qué tiempo de subida se mide?"
+    libro: [274]
+    fijar: { BW_i: 50000000, t_s: 1e-9 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.00000005, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "fracción del salto" }
+      curvas:
+        - { expr: "1 - exp(-t/tau_m)", color: naranja, rotulo: "lo que se ve" }
+      lectura: { valor: t_m, rotulo: "Tiempo medido" }
+      ocultar: true
+    opciones:
+      - texto: "El del instrumento"
+        bien: true
+        porque: "En la raíz domina el término mayor: el flanco rápido aparece con el tiempo de subida del osciloscopio."
+      - texto: "El de la señal"
+        porque: "Solo si el instrumento fuera mucho más rápido que la señal. Aquí es al revés."
+      - texto: "La suma de los dos"
+        porque: "Se combinan en cuadratura, no se suman: casi todo lo pone el más lento."
+    escalera:
+      - "En √(t_{señal}² + t_{instrumento}²), ¿qué pasa si uno es mucho menor?"
+    solucion: "El del instrumento: la medida no describe la señal."
+
+  - id: sonda-x1
+    tipo: pregunta
+    titulo: "La sonda en ×1"
+    texto: "Con la sonda en ×1, el flanco medido dura unos 60 ns, sea cual sea el osciloscopio. ¿Qué ancho de banda tiene?"
+    libro: [278, 280]
+    fijar: { BW_i: 6000000 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.0000001, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "fracción del salto" }
+      curvas:
+        - { expr: "1 - exp(-t/tau_i)", color: naranja, rotulo: "lo que se ve" }
+      lectura: { valor: t_ri, rotulo: "Tiempo de subida" }
+    opciones:
+      - texto: "Unos 6 MHz"
+        bien: true
+        porque: "0,35 / 60 ns ≈ 6 MHz: la posición ×1 tiene pocos megahercios, y un flanco rápido medido así es de la sonda."
+      - texto: "Unos 70 a 90 MHz"
+        porque: "Eso es la sonda ×10 compensada en un osciloscopio de 100 MHz."
+      - texto: "El mismo que en ×10"
+        porque: "En ×1 la sonda limita mucho más: su ancho de banda es de unos pocos megahercios."
+    escalera:
+      - "BW = 0,35 / t_{r}."
+    solucion: "0,35 / 60 ns ≈ 6 MHz."
+    comprobar:
+      - { t_ri: 6e-8, tol: 0.03 }
+
+  - id: ajuste-compensacion
+    tipo: ajuste
+    titulo: "Compense la sonda"
+    texto: "Primer paso del procedimiento. Gire el trimmer hasta que la meseta de la cuadrada quede plana."
+    libro: [276, "cap21#86", "cap21#90", "cap21#92"]
+    inicio: { k_p: 0.6 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.0005, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.6, unidad: "", rotulo: "meseta" }
+      curvas:
+        - { expr: "r_0/100 + (1 - r_0/100)*(1 - exp(-t/0.00005))", color: naranja, rotulo: "lo que se ve" }
+        - { expr: "1", color: tinta, rotulo: "la cuadrada", discontinua: true }
+      lectura: { valor: r_0, rotulo: "Escalón inicial" }
+      mandos:
+        - { valor: k_p, min: 0.5, max: 1.5, paso: 0.01, rotulo: "Trimmer" }
+    ajuste:
+      valor: r_0
+      objetivo: 100
+      tol: 0.02
+      rotulo: "Escalón inicial"
+      escala: { min: 50, max: 150 }
+      bajo: "Subcompensada: la esquina se redondea y el nivel sube despacio. Gire hacia más."
+      alto: "Sobrecompensada: hay un pico al principio que luego decae. Gire hacia menos."
+      dentro: "Compensada: meseta plana y esquinas rectas. El producto R·C es igual en las dos ramas."
+
+  - id: rebasamiento
+    tipo: pregunta
+    titulo: "Un rebasamiento grande"
+    texto: "Al medir un flanco aparece un rebasamiento bastante mayor del 5 %. ¿Qué indica?"
+    libro: [284, "cap21#91"]
+    fijar: { k_p: 1.3 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.0005, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.6, unidad: "", rotulo: "meseta" }
+      curvas:
+        - { expr: "r_0/100 + (1 - r_0/100)*(1 - exp(-t/0.00005))", color: naranja, rotulo: "lo que se ve" }
+        - { expr: "1", color: tinta, rotulo: "la cuadrada", discontinua: true }
+    opciones:
+      - texto: "Una sonda mal compensada"
+        bien: true
+        porque: "Un 5 % es normal en un osciloscopio; uno mayor delata la sonda, sobrecompensada: pico al principio de cada semiciclo."
+      - texto: "Que la señal tiene ese rebasamiento"
+        porque: "Puede ser, pero antes hay que descartar la sonda: compensarla es el primer paso del procedimiento."
+      - texto: "Que falta ancho de banda"
+        porque: "Un sistema de primer orden con poco ancho de banda redondea el flanco; no lo hace rebasar."
+    escalera:
+      - "¿Qué rebasamiento es normal en un osciloscopio?"
+    solucion: "Sonda mal compensada: un 5 % es normal; más, no."
+
+  - id: procedimiento
+    tipo: pregunta
+    titulo: "El procedimiento"
+    texto: "Ordene los pasos de la práctica."
+    libro: [276]
+    ordenar:
+      - "Compensar la sonda"
+      - "Aplicar la cuadrada y ajustar la base de tiempos a un solo flanco"
+      - "Marcar el 10 % y el 90 % con los cursores"
+      - "Anotar t_{r} y calcular BW = 0,35 / t_{r}"
+      - "Repetir sin sonda, con el cable BNC directo"
+      - "Repetir con la sonda en ×1"
+    exito: "Sin compensar primero, la medida sería de la sonda y no del sistema."
+    pistas:
+      - { texto: "Lo primero es preparar la sonda; lo último, las comparaciones." }
+    escalera:
+      - "El primer paso es el que hace válida la medida."
+    solucion: "Compensar, un flanco en pantalla, cursores al 10 y 90 %, BW = 0,35/t_{r}, BNC directo y sonda en ×1."
+
+  - id: generador-lento
+    tipo: pregunta
+    titulo: "Si no cambia al quitar la sonda"
+    texto: "El t_{r} medido no cambia al quitar la sonda y conectar el BNC directo. ¿Qué se está midiendo?"
+    libro: [282]
+    fijar: { BW_i: 50000000, t_s: 20e-9 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.00000005, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "fracción del salto" }
+      curvas:
+        - { expr: "1 - exp(-t/tau_m)", color: naranja, rotulo: "lo que se ve" }
+      lectura: { valor: t_m, rotulo: "Tiempo medido" }
+    opciones:
+      - texto: "El generador: hace falta un flanco más rápido"
+        bien: true
+        porque: "Si quitar la sonda no cambia nada, el flanco de la señal es el más lento del conjunto."
+      - texto: "La sonda, que sigue limitando"
+        porque: "La sonda ya no está. Si nada cambia, lo que limita es lo que queda: el flanco del generador."
+      - texto: "El osciloscopio, con toda precisión"
+        porque: "Solo si la señal fuera mucho más rápida. Si el número no se mueve, manda el generador."
+    escalera:
+      - "Si se quita una pieza y la medida no cambia, ¿esa pieza era la que limitaba?"
+    solucion: "El generador: su flanco es más lento que el instrumento. Hace falta una fuente de flanco más rápido."
+
+  - id: masa
+    tipo: porque
+    titulo: "El latiguillo de masa"
+    texto: "Con el latiguillo de masa aparece timbre sobre el flanco; con el muelle de masa, no. ¿Por qué?"
+    libro: [283]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.00000005, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "fracción del salto" }
+      curvas:
+        - { expr: "1 - exp(-t/tau_m)", color: naranja, rotulo: "con el muelle" }
+    opciones:
+      - texto: "Por la inductancia del bucle del latiguillo"
+        bien: true
+        porque: "El bucle largo es una inductancia que resuena con la capacidad de la entrada: timbre. La masa corta no es opcional."
+      - texto: "Porque el latiguillo tiene más resistencia"
+        porque: "Unos centímetros de cable tienen resistencia despreciable. Lo que importa es el área del bucle."
+      - texto: "Porque el muelle añade ancho de banda al osciloscopio"
+        porque: "El ancho de banda del osciloscopio no cambia. El muelle quita la inductancia del latiguillo."
+    escalera:
+      - "¿Qué forma el latiguillo junto con la punta?"
+    solucion: "La inductancia del bucle del latiguillo: con el muelle, el bucle desaparece y el flanco es limpio."
+
+  - id: banco-subida
+    tipo: banco
+    titulo: "Mida el t_{r} de su osciloscopio"
+    texto: "Con un 74AC04 a 5 V y el BNC directo, mida el tiempo de subida del 2C53T y anótelo en el cuaderno."
+    libro: [267, 279, 288]
+    fijar: { BW_i: 50000000 }
+    banco:
+      piezas: ["Un 74AC04 a 5 V, excitado por una cuadrada", "Cable BNC y sonda ×10 compensada", "El osciloscopio con sus cursores"]
+      medir: "El tiempo del 10 al 90 % de un flanco."
+      esperado: t_ri
+      unidad: s
+      tol: 0.3
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.3 }, texto: "Sale lento: ¿compensó la sonda? ¿Está en ×1? Si no cambia sin sonda, mide el flanco de la puerta." }
+        - { cuando: { valor: desviacion, menor: -0.3 }, texto: "Sale rápido: compruebe los cursores y que mide el 10 y el 90 % del salto, no del pico." }
+        - { texto: "Ese es el número que fija hasta dónde puede afirmar algo de un flanco. Guárdelo con cada sonda." }
+      ficha: { n: 34, titulo: "Práctica 10 · Tiempo de subida y ancho de banda" }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [270, 273, 280, 286]
+    ideas:
+      - { titulo: "t_{r} = 0,35/BW.", texto: "El 2C53T, de 50 MHz, tiene unos 7 ns propios." }
+      - { titulo: "En cuadratura.", texto: "Se ve √(t_{señal}² + t_{instrumento}²): un flanco más rápido aparece con el del instrumento." }
+      - { titulo: "La sonda.", texto: "Compénsela primero; en ×1 tiene unos pocos megahercios." }
+      - { titulo: "Filtrada.", texto: "El osciloscopio muestra la realidad filtrada por su ancho de banda." }

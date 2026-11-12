@@ -1,0 +1,241 @@
+# Lección 1.2 de la sección 14.8 «Del Protoboard a la Placa Definitiva» (cap15; etiqueta sec-15.8).
+# Formato: contenido/lecciones11/GUIA.md. La gráfica es la corriente que pide una placa al primer encendido, I = V/R,
+# con y sin el límite de corriente de la fuente (bloque 223). Valores de EJEMPLO: 5 V de alimentación, límite de
+# 100 mA (el de la ficha 4), placa sana de 470 Ω («cientos de ohmios o más», bloque 226) y un corto de 3 Ω («unos
+# pocos ohmios»).
+leccion: cap15/sec-15.8
+
+libro:
+  201: "El circuito oscila sin motivo aparente."
+  202: "cualquier cosa conectada a la red y cualquier fuente conmutada"
+  205: "Para un circuito analógico o de audio, es más que suficiente."
+  206: "conviene comprobar con el multímetro todos los cortes antes de montar nada"
+  207: "montados sobre pequeñas placas con patillas al paso de 2,54 mm"
+  210: "el plano de masa es perfecto y los bucles son mínimos"
+  213: "añade inductancia y resistencia de contacto"
+  217: "El jumper es una pequeña pieza con un contacto interior"
+  223: "Primera alimentación con límite de corriente"
+  224: "Ese orden convierte un fallo en un problema localizado"
+  226: "Unos pocos ohmios significan un cortocircuito"
+
+modelo:
+  valores:
+    V_a: { sim: "V", nombre: "tensión de la fuente", unidad: V, valor: 5 }
+    R_r: { sim: "R_{raíl}", nombre: "resistencia entre el raíl y masa", unidad: Ω, valor: 470 }
+    l_on: { tipo: interruptor, nombre: "límite de corriente de la fuente", valor: 0 }
+    I_lim: { sim: "I_{lím}", nombre: "límite de corriente", unidad: A, valor: 0.1 }
+  calculos:
+    I_m: { expr: "l_on*I_lim + (1 - l_on)*100", sim: "I_{máx}", nombre: "lo que la fuente puede dar", unidad: A }
+    I_a: { expr: "min(I_m, V_a/R_r)", sim: "I", nombre: "corriente que entrega la fuente", unidad: A }
+    P_a: { expr: "I_a^2*R_r", sim: "P", nombre: "potencia en la placa", unidad: W }
+
+tarjetas:
+  - id: explore-encendido
+    tipo: explorar
+    titulo: "Lo que pide la placa al encender"
+    texto: "Una placa sana y una con un corto, alimentadas con 5 V. Cambie de placa y mire la corriente y el calor."
+    nota: "Valores de ejemplo."
+    libro: [226]
+    fijar: { l_on: 0 }
+    widget:
+      tipo: grafica
+      x: { id: rr, min: 1, max: 10000, unidad: Ω, rotulo: "R entre raíl y masa", escala: log }
+      y: { min: 0, max: 2, unidad: A, rotulo: "I" }
+      curvas:
+        - { expr: "min(I_m, V_a/rr)", color: naranja, rotulo: "corriente" }
+      marcas:
+        - { x: "R_r", y: "I_a", rotulo: "Su placa" }
+      lectura: { valor: I_a, rotulo: "Corriente" }
+      datos:
+        - { valor: P_a, rotulo: "Calor: {{P_a}}" }
+      mandos:
+        - { valor: R_r, lista: [470, 3], nombres: [sana, con un corto], rotulo: "Placa" }
+    requiere: { mover: [R_r] }
+    comprobar:
+      - { V_a: 5 }
+
+  - id: prediga-tres-ohmios
+    tipo: predecir
+    titulo: "Tres ohmios entre raíl y masa"
+    texto: "Con la placa montada y sin alimentar, mide 3 Ω entre el raíl y masa. ¿Qué significa?"
+    libro: [226]
+    fijar: { R_r: 3, l_on: 0 }
+    widget:
+      tipo: grafica
+      x: { id: rr, min: 1, max: 10000, unidad: Ω, rotulo: "R entre raíl y masa", escala: log }
+      y: { min: 0, max: 2, unidad: A, rotulo: "I" }
+      curvas:
+        - { expr: "min(I_m, V_a/rr)", color: naranja, rotulo: "corriente" }
+      lectura: { valor: I_a, rotulo: "Corriente" }
+      ocultar: true
+    opciones:
+      - texto: "Un cortocircuito: hay que buscarlo antes de enchufar"
+        bien: true
+        porque: "Una placa sana da cientos de ohmios o más. Descubrirlo ahora es corregir una soldadura y no cambiar un integrado."
+      - texto: "Que los condensadores de desacoplo están cargándose"
+        porque: "Eso da una lectura que sube mientras se cargan, no unos pocos ohmios fijos."
+      - texto: "Nada: es la resistencia normal de la placa"
+        porque: "Lo normal son cientos de ohmios o más."
+    escalera:
+      - "¿Qué resistencia da una placa sana entre raíl y masa?"
+    solucion: "Un cortocircuito."
+    comprobar:
+      - { R_r: 3 }
+
+  - id: sorpresa-limite
+    tipo: sorpresa
+    titulo: "Un aviso en lugar de humo"
+    texto: "La placa con el corto, alimentada. Active el límite de corriente de la fuente."
+    libro: [223]
+    fijar: { R_r: 3 }
+    inicio: { l_on: 0 }
+    widget:
+      tipo: grafica
+      x: { id: rr, min: 1, max: 10000, unidad: Ω, rotulo: "R entre raíl y masa", escala: log }
+      y: { min: 0, max: 2, unidad: A, rotulo: "I" }
+      curvas:
+        - { expr: "min(I_m, V_a/rr)", color: naranja, rotulo: "corriente" }
+      marcas:
+        - { x: "R_r", y: "I_a", rotulo: "Su placa" }
+      lectura: { valor: I_a, rotulo: "Corriente" }
+      datos:
+        - { valor: P_a, rotulo: "Calor: {{P_a}}" }
+      mandos:
+        - { valor: l_on, tipo: interruptor, rotulo: "Límite de corriente" }
+    requiere: { mover: [l_on] }
+
+  - id: ordene-puesta
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "El montaje y la primera puesta en marcha"
+    texto: "Ponga en orden los pasos que convierten un fallo en un problema localizado."
+    libro: [223, 224]
+    ordenar:
+      - "Inspeccionar la placa desnuda: alimentaciones y cortos entre planos."
+      - "Montar la alimentación sola y verificarla."
+      - "Poblar por bloques, verificando cada uno."
+      - "Primera alimentación con límite de corriente, mirando el consumo."
+      - "Medir los puntos de prueba frente a lo anotado en el esquema."
+    exito: "Poblar todo y encender de golpe convierte cualquier fallo en una búsqueda."
+    pistas:
+      - { texto: "Lo primero se hace sin ningún componente." }
+    escalera:
+      - "La alimentación se verifica antes de poblar nada más."
+    solucion: "Placa desnuda, alimentación, bloques, límite de corriente y puntos de prueba."
+
+  - id: soportes
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Entre el protoboard y la placa fabricada"
+    texto: "Una cada soporte con lo que lo distingue."
+    libro: [205, 206, 207, 210]
+    emparejar:
+      - ["Placa perforada con islas", "Contactos soldados: suficiente para audio"]
+      - ["Placa de tiras", "Rápida; hay que comprobar los cortes"]
+      - ["Placa de adaptación", "SMD al paso de 2,54 mm"]
+      - ["Dead-bug sobre cobre", "Plano de masa perfecto para RF"]
+    exito: "Opciones intermedias que a menudo se pasan por alto."
+    pistas:
+      - { texto: "La trampa de la placa de tiras es olvidar un corte." }
+    escalera:
+      - "El dead-bug monta el integrado boca arriba sobre una placa de cobre continua."
+    solucion: "Perforada: audio; tiras: cortes; adaptación: SMD; dead-bug: RF."
+
+  - id: sintomas
+    tipo: pregunta
+    titulo: "Cuándo dejar el protoboard"
+    texto: "¿Cuál de estos NO es un síntoma de que el protoboard se ha quedado corto?"
+    libro: [201, 202]
+    fijar: { R_r: 470, l_on: 1 }
+    widget:
+      tipo: grafica
+      x: { id: rr, min: 1, max: 10000, unidad: Ω, rotulo: "R entre raíl y masa", escala: log }
+      y: { min: 0, max: 2, unidad: A, rotulo: "I" }
+      curvas:
+        - { expr: "min(I_m, V_a/rr)", color: naranja, rotulo: "corriente" }
+    opciones:
+      - texto: "Un circuito lento de pocos miliamperios que funciona"
+        bien: true
+        porque: "Eso es lo que el protoboard hace bien."
+      - texto: "Oscila sin motivo aparente"
+        porque: "Es uno de los cinco síntomas."
+      - texto: "Cambia al tocar los cables o acercar la mano"
+        porque: "También es uno de los cinco síntomas."
+    escalera:
+      - "Busque el único que no da ningún problema."
+    solucion: "El circuito lento que funciona."
+
+  - id: por-que-bloques
+    tipo: porque
+    titulo: "¿Por qué poblar por bloques?"
+    texto: "Montar toda la placa y encender de golpe parece más rápido. ¿Por qué no se hace?"
+    libro: [224]
+    fijar: { R_r: 3, l_on: 1 }
+    widget:
+      tipo: grafica
+      x: { id: rr, min: 1, max: 10000, unidad: Ω, rotulo: "R entre raíl y masa", escala: log }
+      y: { min: 0, max: 2, unidad: A, rotulo: "I" }
+      curvas:
+        - { expr: "min(I_m, V_a/rr)", color: naranja, rotulo: "corriente" }
+      lectura: { valor: I_a, rotulo: "Corriente" }
+    opciones:
+      - texto: "Porque así un fallo queda localizado en el bloque recién montado"
+        bien: true
+        porque: "Encender todo de golpe convierte cualquier fallo en una búsqueda."
+      - texto: "Porque los componentes se dañan si se montan juntos"
+        porque: "No se dañan por montarse juntos: el orden sirve para localizar."
+      - texto: "Para ahorrar estaño"
+        porque: "El orden es para diagnosticar, no por material."
+    escalera:
+      - "Si algo falla tras montar un bloque, ¿dónde está el fallo?"
+    solucion: "Localiza el fallo en el bloque nuevo."
+
+  - id: zocalos
+    tipo: pregunta
+    titulo: "Un zócalo en el prototipo"
+    texto: "Un zócalo deja cambiar el integrado en segundos. ¿Qué precio tiene?"
+    libro: [213]
+    widget:
+      tipo: grafica
+      x: { id: rr, min: 1, max: 10000, unidad: Ω, rotulo: "R entre raíl y masa", escala: log }
+      y: { min: 0, max: 2, unidad: A, rotulo: "I" }
+      curvas:
+        - { expr: "min(I_m, V_a/rr)", color: naranja, rotulo: "corriente" }
+    opciones:
+      - texto: "Añade inductancia y resistencia de contacto, y un contacto que puede aflojarse"
+        bien: true
+        porque: "Por eso en un producto se deja solo donde se espera cambiar el chip."
+      - texto: "Ninguno: siempre conviene"
+        porque: "En señales rápidas o en un oscilador se nota."
+      - texto: "Que el integrado se calienta más"
+        porque: "Su precio es eléctrico y mecánico, no térmico."
+    escalera:
+      - "¿Qué es un zócalo, eléctricamente, entre el chip y la placa?"
+    solucion: "Inductancia, resistencia de contacto y un contacto más."
+
+  - id: puentes-config
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Tres formas de un puente configurable"
+    texto: "Una cada puente configurable con cómo se cierra."
+    libro: [217]
+    emparejar:
+      - ["Jumper", "Una pieza que se inserta sobre dos pines"]
+      - ["Puente de soldadura", "Dos pads que se unen con una gota de estaño"]
+      - ["Resistencia de cero ohmios", "Se coloca o no según la variante"]
+    exito: "Previsión de cambios: la primera placa casi nunca es la última."
+    pistas:
+      - { texto: "La de cero ohmios es la versión para montaje automático." }
+    escalera:
+      - "Uno se cierra sin soldar, otro con estaño y otro con un componente."
+    solucion: "Jumper: pieza; puente: gota; cero ohmios: según la variante."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [201, 205, 224, 226]
+    ideas:
+      - { titulo: "Cuándo dejarlo.", texto: "Oscila, cambia al tocarlo, falla a ratos, pasa de cientos de mA o es rápido." }
+      - { titulo: "Pasos intermedios.", texto: "Perforada, de tiras, de adaptación o dead-bug." }
+      - { titulo: "En frío primero.", texto: "Unos pocos ohmios entre raíl y masa son un corto." }
+      - { titulo: "Por bloques.", texto: "Alimentación, bloques y límite de corriente: el fallo queda localizado." }

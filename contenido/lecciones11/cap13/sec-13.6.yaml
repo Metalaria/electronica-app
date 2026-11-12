@@ -1,0 +1,257 @@
+# Lección 1.2 de la sección 13.6 «Con Plomo y Sin Plomo: Aleaciones, RoHS y Temperaturas» (cap13).
+# Formato: contenido/lecciones11/GUIA.md. La gráfica es la fracción líquida de las dos aleaciones (Sn63Pb37: 183 °C;
+# SAC: 217 a 220 °C) con la franja de temperatura de punta de cada una (300 a 330 °C y 350 a 380 °C, bloque 135);
+# el tramo pastoso es esquemático. El bigote de estaño se dibuja en el divisor del libro (sección 1.4: 12 V, 10 kΩ y
+# 5 kΩ) como un corto de 1 mΩ entre la salida y masa (valor de ejemplo).
+leccion: cap13/sec-13.6
+
+libro:
+  132: "funde y solidifica a 183 °C exactos, sin pasar por un estado pastoso"
+  133: "Funden en torno a 217–220 °C, unos 35 °C más arriba"
+  135: "350-380 °C de punta frente a 300-330"
+  136: "Peor mojado"
+  137: "una soldadura sin plomo mate puede estar perfecta"
+  139: "Menos margen de error"
+  141: "provocan cortocircuitos"
+  142: "el riesgo de un cortocircuito espontáneo es inaceptable"
+  146: "Para uso propio y reparación, el plomo sigue siendo legal"
+  147: "La excepción son los BGA"
+  150: "una aleación intermedia con un punto de fusión más bajo y propiedades mecánicas peores"
+  151: "retirar toda la soldadura antigua con malla o desoldador y rehacerla completa con una sola aleación"
+  153: "Sin plomo, sin mezclar"
+  156: "la vía de entrada es la ingestión"
+  "cap01#83": "Con 12 V, 10 kΩ y 5 kΩ, la salida es 4,00 V"
+
+modelo:
+  valores:
+    a_6: { sim: "aleación", nombre: "aleación", unidad: "", valor: 1 }
+    V_in: { sim: "V_{entrada}", nombre: "tensión de la pila", unidad: V, valor: 12 }
+    R_1: { sim: "R₁", nombre: "resistencia de arriba", unidad: Ω, valor: 10000 }
+    R_2: { sim: "R₂", nombre: "resistencia de abajo", unidad: Ω, valor: 5000 }
+    R_b: { sim: "bigote", nombre: "bigote de estaño", unidad: Ω, valor: 0.001 }
+    b_on: { tipo: interruptor, nombre: "bigote de estaño entre la salida y masa", valor: 0 }
+  calculos:
+    T_s: { expr: "183 + 34*(a_6 - 1)", sim: "T_{sólida}", nombre: "sólida hasta", unidad: "°C" }
+    T_l: { expr: "183 + 37*(a_6 - 1)", sim: "T_{líquida}", nombre: "líquida desde", unidad: "°C" }
+    T_lo: { expr: "300 + 50*(a_6 - 1)", sim: "T_{punta,mín}", nombre: "punta, mínima", unidad: "°C" }
+    T_hi: { expr: "330 + 50*(a_6 - 1)", sim: "T_{punta,máx}", nombre: "punta, máxima", unidad: "°C" }
+    R_ab: { si: b_on, entonces: "par(R_2, R_b)", sino: "R_2", sim: "R_{abajo}", nombre: "resistencia de abajo con el bigote", unidad: Ω }
+    V_out: { expr: "V_in*R_ab/(R_1 + R_ab)", sim: "V_{salida}", nombre: "tensión de salida", unidad: V }
+    I: { expr: "V_in/(R_1 + R_ab)", sim: "I", nombre: "corriente", unidad: A }
+
+tarjetas:
+  - id: explore-dos-aleaciones
+    tipo: explorar
+    titulo: "Dos aleaciones, dos formas de trabajar"
+    texto: "Cambie de aleación: mire dónde funde y a qué temperatura hay que llevar la punta."
+    nota: "El tramo pastoso de la SAC es esquemático."
+    libro: [132, 133, 135]
+    widget:
+      tipo: grafica
+      x: { id: th, min: 150, max: 400, unidad: "°C", rotulo: "T" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "fracción líquida" }
+      curvas:
+        - { expr: "min(1, max(0, (th - T_s)/max(0.5, T_l - T_s)))", color: azul, rotulo: "líquida" }
+      marcas:
+        - { x: "T_lo", y: "1", rotulo: "Punta, mínima" }
+        - { x: "T_hi", y: "1", rotulo: "Punta, máxima" }
+      lectura: { valor: T_l, rotulo: "Líquida desde" }
+      datos:
+        - { valor: T_lo, rotulo: "Punta: de {{T_lo}} a {{T_hi}}" }
+      mandos:
+        - { valor: a_6, lista: [1, 2], nombres: [estaño-plomo, sin plomo SAC], rotulo: "Aleación" }
+    requiere: { mover: [a_6] }
+
+  - id: prediga-mate
+    tipo: predecir
+    titulo: "El aspecto de una junta sin plomo"
+    texto: "Una junta sin plomo está perfectamente hecha. ¿Qué aspecto tiene?"
+    libro: [137]
+    fijar: { a_6: 2 }
+    widget:
+      tipo: grafica
+      x: { id: th, min: 150, max: 400, unidad: "°C", rotulo: "T" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "fracción líquida" }
+      curvas:
+        - { expr: "min(1, max(0, (th - T_s)/max(0.5, T_l - T_s)))", color: azul, rotulo: "líquida" }
+      lectura: { valor: T_l, rotulo: "Líquida desde" }
+      ocultar: true
+    opciones:
+      - texto: "Mate y granulada"
+        bien: true
+        porque: "Es su acabado normal. En estaño-plomo ese mismo aspecto indicaría soldadura fría."
+      - texto: "Lisa y brillante, como la de plomo"
+        porque: "Ese es el acabado del estaño-plomo; el sin plomo es mate por naturaleza."
+      - texto: "Con forma de bola"
+        porque: "Una bola es un defecto con cualquier aleación: no ha mojado."
+    escalera:
+      - "¿El criterio del brillo vale igual para las dos aleaciones?"
+    solucion: "Mate y granulada."
+
+  - id: lo-que-cambia
+    tipo: pregunta
+    titulo: "Lo que cambia al quitar el plomo"
+    texto: "¿Cuál de estas NO es una consecuencia de pasar a sin plomo?"
+    libro: [135, 136, 139]
+    widget:
+      tipo: grafica
+      x: { id: th, min: 150, max: 400, unidad: "°C", rotulo: "T" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "fracción líquida" }
+      curvas:
+        - { expr: "min(1, max(0, (th - T_s)/max(0.5, T_l - T_s)))", color: azul, rotulo: "líquida" }
+      marcas:
+        - { x: "T_lo", y: "1", rotulo: "Punta, mínima" }
+      mandos:
+        - { valor: a_6, lista: [1, 2], nombres: [estaño-plomo, sin plomo SAC], rotulo: "Aleación" }
+    opciones:
+      - texto: "Moja mejor y se extiende solo"
+        bien: true
+        porque: "Es al revés: tiende a quedarse donde se puso, y hace falta más flux."
+      - texto: "Temperatura de trabajo más alta"
+        porque: "Sí cambia: 350-380 °C de punta frente a 300-330, con más estrés para placa y componentes."
+      - texto: "Menos margen de error"
+        porque: "Sí cambia: la ventana entre soldar bien y dañar es más estrecha."
+    escalera:
+      - "Busque la única que sería una ventaja."
+    solucion: "Moja peor, no mejor."
+
+  - id: eleccion
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "La elección práctica"
+    texto: "Una cada situación con la aleación que toca."
+    libro: [153, 146]
+    emparejar:
+      - ["Aprender y prototipar", "Estaño-plomo: más fácil y tolerante"]
+      - ["Reparar un equipo antiguo", "La que tuviera, normalmente con plomo"]
+      - ["Reparar un equipo moderno", "Sin plomo, sin mezclar"]
+      - ["Algo que se va a vender", "Sin plomo, obligatorio"]
+    exito: "Para uso propio el plomo sigue siendo legal; para vender, la directiva manda."
+    pistas:
+      - { texto: "Lo que se vende en la Unión Europea debe ser sin plomo, salvo exenciones." }
+    escalera:
+      - "Al reparar, la regla es no mezclar: se sigue con la aleación que ya tiene."
+    solucion: "Aprender: plomo; antiguo: la que tuviera; moderno: sin plomo sin mezclar; vender: sin plomo."
+
+  - id: mezclar
+    tipo: pregunta
+    titulo: "Reparar una junta sin plomo"
+    texto: "Hay que rehacer una junta de una placa sin plomo y solo tiene estaño-plomo. ¿Qué hace?"
+    libro: [150, 151]
+    fijar: { a_6: 2 }
+    widget:
+      tipo: grafica
+      x: { id: th, min: 150, max: 400, unidad: "°C", rotulo: "T" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "fracción líquida" }
+      curvas:
+        - { expr: "min(1, max(0, (th - T_s)/max(0.5, T_l - T_s)))", color: azul, rotulo: "líquida" }
+    opciones:
+      - texto: "Retirar toda la soldadura antigua y rehacerla con una sola aleación"
+        bien: true
+        porque: "Mezclar da una aleación intermedia de fusión más baja y frágil ante el ciclado térmico."
+      - texto: "Añadir estaño-plomo encima: funde antes y es más fácil"
+        porque: "Es el caso que hay que evitar: la mezcla tiene peores propiedades mecánicas."
+      - texto: "Calentar más para que se mezclen bien"
+        porque: "Mezclarse es justo el problema, no la solución."
+    escalera:
+      - "¿Qué sale de mezclar dos aleaciones en la misma junta?"
+    solucion: "Quitar toda la soldadura y rehacer con una sola aleación."
+
+  - id: sorpresa-bigote
+    tipo: sorpresa
+    titulo: "Un bigote de estaño"
+    texto: "El estaño puro puede criar filamentos que crecen solos con el tiempo. Deje crecer uno entre la salida y masa."
+    nota: "El bigote se dibuja como un corto de ejemplo."
+    libro: [141, "cap01#83"]
+    inicio: { b_on: 0 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_b, interruptor: b_on }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      corriente: I
+      mide: { salida: V_out, corriente: I }
+      mandos:
+        - { valor: b_on, tipo: interruptor, rotulo: "Bigote de estaño" }
+    requiere: { mover: [b_on] }
+
+  - id: por-que-militar
+    tipo: porque
+    titulo: "¿Por qué la aeronáutica sigue con plomo?"
+    texto: "La electrónica militar, espacial y aeronáutica queda fuera de RoHS. ¿Por qué?"
+    libro: [142]
+    fijar: { b_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_b, interruptor: b_on }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      mide: { salida: V_out, corriente: I }
+    opciones:
+      - texto: "Porque el plomo inhibe los bigotes, y un corto espontáneo es inaceptable"
+        bien: true
+        porque: "Eliminar el plomo devolvió los bigotes; donde un fallo no se tolera, se sigue usando."
+      - texto: "Porque el plomo es más barato"
+        porque: "La razón es de fiabilidad, no de coste."
+      - texto: "Porque el sin plomo no conduce bien"
+        porque: "Conduce bien; el riesgo son los filamentos que cortocircuitan."
+    escalera:
+      - "¿Qué fenómeno inhibía el plomo?"
+    solucion: "El plomo inhibe los bigotes: un corto espontáneo es inaceptable."
+
+  - id: bga
+    tipo: pregunta
+    titulo: "Componentes sin plomo, estaño con plomo"
+    texto: "Los componentes nuevos son sin plomo. ¿Se pueden soldar con estaño-plomo?"
+    libro: [147]
+    fijar: { a_6: 1 }
+    widget:
+      tipo: grafica
+      x: { id: th, min: 150, max: 400, unidad: "°C", rotulo: "T" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "fracción líquida" }
+      curvas:
+        - { expr: "min(1, max(0, (th - T_s)/max(0.5, T_l - T_s)))", color: azul, rotulo: "líquida" }
+    opciones:
+      - texto: "Sí, salvo los BGA"
+        bien: true
+        porque: "El acabado de los terminales es una capa fina que se disuelve; las bolas de un BGA no llegan a fundir del todo."
+      - texto: "No, nunca"
+        porque: "Esa mezcla funciona bien: el acabado es una capa fina que se disuelve en la junta."
+      - texto: "Sí, también los BGA"
+        porque: "Sus bolas sin plomo no funden del todo con el perfil del estaño-plomo."
+    escalera:
+      - "¿Qué es más grueso: el acabado de una patilla o una bola de BGA?"
+    solucion: "Sí, salvo los BGA."
+
+  - id: seguridad-plomo
+    tipo: pregunta
+    titulo: "Lo que importa del plomo"
+    texto: "Suelda con estaño-plomo. ¿Qué precaución protege de verdad frente al plomo?"
+    libro: [156]
+    widget:
+      tipo: grafica
+      x: { id: th, min: 150, max: 400, unidad: "°C", rotulo: "T" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "fracción líquida" }
+      curvas:
+        - { expr: "min(1, max(0, (th - T_s)/max(0.5, T_l - T_s)))", color: azul, rotulo: "líquida" }
+    opciones:
+      - texto: "Lavarse las manos y no comer en el banco"
+        bien: true
+        porque: "Del plomo, la vía de entrada es la ingestión."
+      - texto: "Una mascarilla contra el vapor de plomo"
+        porque: "El plomo no se evapora a esas temperaturas; el humo es del flux."
+      - texto: "Guantes térmicos"
+        porque: "Protegen de quemaduras, no de la ingestión."
+    escalera:
+      - "¿Por dónde entra el plomo en el cuerpo?"
+    solucion: "Lavarse las manos y no comer en el banco."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [133, 137, 151, 141]
+    ideas:
+      - { titulo: "Unos 35 °C más.", texto: "La SAC funde hacia 217–220 °C: más temperatura de punta y menos margen." }
+      - { titulo: "Otro criterio visual.", texto: "Mate y granulada puede estar perfecta sin plomo." }
+      - { titulo: "No mezclar.", texto: "Al reparar, quitar toda la soldadura y rehacer con una sola aleación." }
+      - { titulo: "Bigotes.", texto: "El estaño puro cría filamentos que cortocircuitan; el plomo los inhibía." }

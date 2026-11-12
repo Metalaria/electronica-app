@@ -1,0 +1,224 @@
+# Lección 1.2 de la sección 13.12 «Problemas de Diseño» (cap13). Formato: contenido/lecciones11/GUIA.md.
+# Problema 13.A con el modelo del libro: R_plano = ln(15)/(2π·400·35 µm) = 30,8 K/W («≈ 31»); el alivio son cuatro
+# brazos de 143 K/W en paralelo más el plano desde 1,5 mm (26 K/W): 61,75 K/W («≈ 62»); dos planos, la mitad del
+# directo (15,4 K/W, «≈ 15»); el pad aislado, ≈ 2400 K/W. Fuga = (220 − T_placa)/R: 0,081, 3,16, 6,33 y 12,7 W
+# (el libro: 0,1, 3,2, 6,3 y 12,7 W). Los radios de 10 y 20 mm del mando de la fórmula son un ejemplo alrededor de
+# los 15 mm del libro. Problema 13.B: la tabla de puntas y el banco de su apartado.
+leccion: cap13/sec-13.12
+
+libro:
+  302: "Cobre de 35 µm (k ≈ 400 W/m·K), pad de 1 mm de radio"
+  305: "el problema deja de ser de energía y pasa a ser de potencia"
+  307: 'R_("plano") = (ln lr(( r_(2) \/ r_(1) ))) / (2 pi dot.op k dot.op e)'
+  308: "unos 143 K/W cada uno, 36 K/W los cuatro en paralelo"
+  309: "6,3 W"
+  310: "la junta nunca alcanza la temperatura de fusión"
+  311: "La solución es de diseño, no de técnica"
+  312: "de 195 a 120 K: casi un 40 % menos"
+  321: "La punta no se elige por el tamaño del componente sino por la masa térmica de la junta."
+  322: "Cincel de 3 mm o cuchara"
+  323: "subir el tamaño de la punta antes que la temperatura"
+  325: "La punta se oxida mucho más rápido por encima de 380 °C"
+  "cap13#297": "rango de 80 a 450 °C"
+  328: "Si tardas más de 5, la punta es pequeña."
+
+modelo:
+  valores:
+    R_c: { sim: "R_{θ}", nombre: "resistencia térmica hacia el plano", unidad: "K/W", valor: 30.79 }
+    T_jn: { sim: "T_{junta}", nombre: "temperatura de la junta", unidad: "°C", valor: 220 }
+    T_b: { sim: "T_{placa}", nombre: "temperatura de la placa", unidad: "°C", valor: 25 }
+    r_1: { sim: "r₁", nombre: "radio del pad", unidad: m, valor: 0.001 }
+    r_2: { sim: "r₂", nombre: "alcance del calor en el plano", unidad: m, valor: 0.015 }
+    k_cu: { sim: "k", nombre: "conductividad del cobre", unidad: "W/(m·K)", valor: 400 }
+    e_cu: { sim: "e", nombre: "espesor del cobre", unidad: m, valor: 0.000035 }
+    t_s: { sim: "t", nombre: "tiempo de una junta bien hecha", unidad: s, valor: 2.5 }
+  calculos:
+    P_f: { expr: "(T_jn - T_b)/R_c", sim: "P_{fuga}", nombre: "fuga térmica", unidad: W, cifras: 3 }
+    R_pl: { expr: "ln(r_2/r_1)/(2*pi*k_cu*e_cu)", sim: "R_{plano}", nombre: "resistencia térmica del plano", unidad: "K/W" }
+
+tarjetas:
+  - id: explore-fuga
+    tipo: explorar
+    titulo: "El pad que se lleva el calor"
+    texto: "La junta está a 220 °C y la placa a 25 °C. Cambie cómo se une el pad al plano y mire la fuga."
+    libro: [302, 309]
+    fijar: { T_b: 25 }
+    widget:
+      tipo: grafica
+      x: { id: rr, min: 10, max: 3000, unidad: "K/W", rotulo: "R_{θ}", escala: log }
+      y: { min: 0, max: 14, unidad: W, rotulo: "fuga" }
+      curvas:
+        - { expr: "(T_jn - T_b)/rr", color: naranja, rotulo: "fuga" }
+      marcas:
+        - { x: "R_c", y: "P_f", rotulo: "Su pad" }
+      lectura: { valor: P_f, rotulo: "Fuga térmica" }
+      mandos:
+        - { valor: R_c, lista: [2400, 61.75, 30.79, 15.39], nombres: [pad aislado, con alivio térmico, directo a un plano, directo a dos planos], rotulo: "Conexión" }
+    requiere: { mover: [R_c] }
+
+  - id: prediga-sesenta-y-cinco
+    tipo: predecir
+    titulo: "¿Bastan 65 W?"
+    texto: "El pad directo al plano pierde unos 6,3 W, y la estación da 65 W. ¿Llega la junta a fundir?"
+    libro: [309, 310]
+    fijar: { R_c: 30.79, T_b: 25 }
+    widget:
+      tipo: grafica
+      x: { id: rr, min: 10, max: 3000, unidad: "K/W", rotulo: "R_{θ}", escala: log }
+      y: { min: 0, max: 14, unidad: W, rotulo: "fuga" }
+      curvas:
+        - { expr: "(T_jn - T_b)/rr", color: naranja, rotulo: "fuga" }
+      lectura: { valor: P_f, rotulo: "Fuga térmica" }
+      ocultar: true
+    opciones:
+      - texto: "No: se queda tibia y sale una soldadura fría"
+        bien: true
+        porque: "Por el contacto punta-junta pasan unos pocos vatios: la fuga es varias veces eso."
+      - texto: "Sí: 65 W es diez veces la fuga"
+        porque: "El límite no es el calefactor sino el contacto, que solo deja pasar unos pocos vatios."
+      - texto: "Sí, si se espera lo bastante"
+        porque: "La junta se estabiliza donde lo que entra iguala lo que se va: por debajo de la fusión."
+    escalera:
+      - "¿Cuánta potencia llega de verdad a una junta por el contacto de la punta?"
+    solucion: "No: nunca alcanza la fusión."
+    comprobar:
+      - { P_f: 6.33, tol: 0.003 }
+
+  - id: formula-plano
+    tipo: formula
+    titulo: "La resistencia del plano"
+    texto: "El calor se extiende en radial por el cobre. Cambie hasta dónde llega en esos segundos."
+    libro: [307, 302]
+    ec: 307
+    sustitucion: "ln({{r_2}} / {{r_1}}) / (2π · {{k_cu}} · {{e_cu}}) = {{R_pl}}"
+    widget:
+      tipo: grafica
+      x: { id: rr, min: 10, max: 3000, unidad: "K/W", rotulo: "R_{θ}", escala: log }
+      y: { min: 0, max: 14, unidad: W, rotulo: "fuga" }
+      curvas:
+        - { expr: "(T_jn - T_b)/rr", color: naranja, rotulo: "fuga" }
+      marcas:
+        - { x: "R_pl", y: "(T_jn - T_b)/R_pl", rotulo: "Plano" }
+      lectura: { valor: R_pl, rotulo: "R del plano" }
+      mandos:
+        - { valor: r_2, lista: [0.01, 0.015, 0.02], rotulo: "Alcance del calor" }
+    nota: "El libro toma 15 mm; los otros son un ejemplo."
+    comprobar:
+      - { con: { r_2: 0.015 }, R_pl: 30.79, tol: 0.003 }
+
+  - id: sorpresa-precalentar
+    tipo: sorpresa
+    titulo: "Precalentar la placa"
+    texto: "La placa ya está fabricada sin alivio. Precaliéntela a 100 °C y mire la fuga."
+    libro: [312]
+    fijar: { R_c: 30.79 }
+    inicio: { T_b: 25 }
+    widget:
+      tipo: grafica
+      x: { id: rr, min: 10, max: 3000, unidad: "K/W", rotulo: "R_{θ}", escala: log }
+      y: { min: 0, max: 14, unidad: W, rotulo: "fuga" }
+      curvas:
+        - { expr: "(T_jn - T_b)/rr", color: naranja, rotulo: "fuga" }
+      marcas:
+        - { x: "R_c", y: "P_f", rotulo: "Su pad" }
+      lectura: { valor: P_f, rotulo: "Fuga térmica" }
+      mandos:
+        - { valor: T_b, lista: [25, 100], rotulo: "Temperatura de la placa" }
+    requiere: { mover: [T_b] }
+
+  - id: por-que-diseno
+    tipo: porque
+    titulo: "¿Por qué es un problema de diseño?"
+    texto: "Una junta imposible en el pad directo se suelda bien con alivio térmico. ¿Por qué la solución es de diseño?"
+    libro: [311, 308]
+    fijar: { R_c: 61.75, T_b: 25 }
+    widget:
+      tipo: grafica
+      x: { id: rr, min: 10, max: 3000, unidad: "K/W", rotulo: "R_{θ}", escala: log }
+      y: { min: 0, max: 14, unidad: W, rotulo: "fuga" }
+      curvas:
+        - { expr: "(T_jn - T_b)/rr", color: naranja, rotulo: "fuga" }
+      marcas:
+        - { x: "R_c", y: "P_f", rotulo: "Con alivio" }
+      lectura: { valor: P_f, rotulo: "Fuga térmica" }
+    opciones:
+      - texto: "El alivio al menos duplica la resistencia hacia el plano y la fuga se reparte"
+        bien: true
+        porque: "De 31 a 62 K/W: la fuga baja a la mitad y los cuatro puentes siguen conduciendo de sobra."
+      - texto: "Porque con más habilidad se suelda igual"
+        porque: "No es cuestión de técnica: es de potencia, y la habilidad no la cambia."
+      - texto: "Porque subir la temperatura lo arregla"
+        porque: "Es la peor salida: daña el componente antes de resolver el problema."
+    escalera:
+      - "Compare la fuga con alivio y sin él."
+    solucion: "El alivio duplica la resistencia térmica: la fuga se reduce a la mitad."
+    comprobar:
+      - { P_f: 3.16, tol: 0.003 }
+
+  - id: elegir-punta
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Punta y temperatura"
+    texto: "Una placa con tres juntas distintas. Una cada una con su punta y temperatura."
+    libro: [321, 322]
+    emparejar:
+      - ["0805", "Cincel de 1,6 mm a 330 °C"]
+      - ["Conector de 2 mm", "Cincel de 2,4 mm a 350 °C"]
+      - ["Pad con vertido de cobre", "Cincel de 3 mm o cuchara, 380 °C y precalentamiento"]
+    exito: "La punta no se elige por el componente sino por la masa térmica de la junta."
+    pistas:
+      - { texto: "Cuanta más masa térmica, mayor la punta." }
+    escalera:
+      - "El pad con vertido es el que más calor se lleva."
+    solucion: "0805: 1,6 mm a 330 °C; conector: 2,4 mm a 350 °C; vertido: 3 mm, 380 °C y precalentar."
+
+  - id: no-subir
+    tipo: pregunta
+    titulo: "Punta grande antes que temperatura alta"
+    texto: "¿Por qué no basta con subir la temperatura de una punta fina?"
+    libro: [323, 325, "cap13#297"]
+    widget:
+      tipo: grafica
+      x: { id: rr, min: 10, max: 3000, unidad: "K/W", rotulo: "R_{θ}", escala: log }
+      y: { min: 0, max: 14, unidad: W, rotulo: "fuga" }
+      curvas:
+        - { expr: "(T_jn - T_b)/rr", color: naranja, rotulo: "fuga" }
+    opciones:
+      - texto: "El componente tiene un límite, la punta se oxida y el flux se evapora antes de actuar"
+        bien: true
+        porque: "Una punta grande a 330 °C transfiere más calor que una fina a 400 °C."
+      - texto: "Sí basta: más temperatura, más calor"
+        porque: "La fina falla por área y masa, no por temperatura; y subirla daña."
+      - texto: "Porque la estación no pasa de 380 °C"
+        porque: "La estación llega a 450 °C; el problema es lo que daña por encima."
+    escalera:
+      - "¿Qué le pasa a una punta por encima de 380 °C?"
+    solucion: "Límite del componente, oxidación de la punta y flux evaporado."
+
+  - id: banco-cronometro
+    tipo: banco
+    titulo: "Cronometre su junta"
+    texto: "Haga una junta y cronometre: una bien hecha se forma en 2 o 3 segundos."
+    libro: [328]
+    banco:
+      piezas: ["Soldador con su punta habitual", "Una placa de práctica", "Hilo de estaño", "Un cronómetro"]
+      medir: "El tiempo desde que la punta toca hasta que la junta queda formada."
+      esperado: t_s
+      unidad: s
+      tol: 0.2
+      consejos:
+        - { cuando: { valor: medida, mayor: 5 }, texto: "Más de 5 s: la punta es pequeña para esa junta. Cambie a una mayor antes de subir la temperatura." }
+        - { cuando: { valor: desviacion, mayor: 0.2 }, texto: "Algo lento: moje la punta antes de tocar; reduce la resistencia de contacto." }
+        - { texto: "Muy rápido: compruebe que el cono moja pad y patilla y que no ha quedado frío." }
+    comprobar:
+      - { t_s: 2.5 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [305, 311, 312, 323]
+    ideas:
+      - { titulo: "Potencia, no energía.", texto: "Con un plano conectado, la fuga continua decide si la junta funde." }
+      - { titulo: "Diseño.", texto: "El alivio térmico al menos duplica la resistencia hacia el plano." }
+      - { titulo: "Si ya está hecha.", texto: "Precalentar a 100 °C quita casi un 40 % de la fuga." }
+      - { titulo: "La punta.", texto: "Por la masa térmica de la junta: punta grande antes que temperatura alta." }

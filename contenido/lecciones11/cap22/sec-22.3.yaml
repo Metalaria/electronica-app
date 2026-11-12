@@ -1,0 +1,318 @@
+# Lección 1.2 de la sección 21.3 «Práctica 3 — Característica I-V de un Diodo» (cap22; etiqueta interna sec-22.3).
+# Formato: contenido/lecciones11/GUIA.md. El diodo de silicio ideal de la tabla (n = 1, 0,57 V a 1 mA: I_S =
+# 2,6527·10⁻¹³ A con V_T = 25,85 mV) con el modelo de Shockley, en serie con 1 kΩ, 330 Ω o 39 Ω y la fuente de 0 a 5 V.
+# El Zener de 3,3 V va con una resistencia limitadora de 1 kΩ (ilustrativa: el libro no da su valor).
+leccion: cap22/sec-22.3
+
+libro:
+  69: "convierte la ecuación de Shockley (sección 5.3) en algo visto"
+  71: "Para cada tensión de la fuente se mide la tensión en el diodo y la caída en la resistencia"
+  72: "Con R = 1 kΩ y barriendo de 0 a 5 V se recorren varias décadas de corriente, hasta unos 4,4 mA"
+  73: "VF (n = 1)"
+  74: "por cada década de corriente, la tensión sube una cantidad fija: 59,5 mV en el diodo ideal"
+  75: "muestra que la caída no es una constante, sino que depende de la corriente"
+  77: "se lleva la tensión del diodo al eje X y la caída de la resistencia (proporcional a la corriente) al eje Y"
+  79: "El osciloscopio referencia ambos canales a la misma masa"
+  81: "la Schottky cae unos 0,3 V a la misma corriente"
+  82: "rojo unos 1,8 V, verde 2,1, azul y blanco 3,0 a 3,4"
+  83: "la caída baja unos 2 mV por grado"
+  85: "la tensión se clava en su valor nominal y ahí no se mueve por mucho que suba la fuente"
+  86: "el de baja tensión es Zener puro y tiene la rodilla más suave"
+  88: "da el coeficiente de emisión n del diodo, que en un diodo real está entre 1 y 2"
+  "cap22#370": "en un diodo real se miden 0,62 V a 1 mA y 0,725 V a 10 mA"
+
+modelo:
+  valores:
+    V_d: { sim: "V", nombre: "tensión de la fuente", unidad: V, valor: 0 }
+    R_d: { sim: "R", nombre: "resistencia en serie", unidad: Ω, valor: 1000 }
+    I_S: { sim: "I_{S}", nombre: "corriente de saturación", unidad: A, valor: 2.6527e-13 }
+    n_d: { sim: "n", nombre: "coeficiente de emisión", unidad: "", valor: 1 }
+    V_T: { sim: "V_{T}", nombre: "tensión térmica", unidad: V, valor: 0.02585 }
+    V_zi: { sim: "V_{in}", nombre: "fuente en inversa", unidad: V, valor: 6 }
+    R_zs: { sim: "R", nombre: "resistencia limitadora", unidad: Ω, valor: 1000 }
+    V_z: { sim: "V_{Z}", nombre: "tensión Zener", unidad: V, valor: 3.3 }
+  calculos:
+    I_ds: { expr: "n_d*V_T/R_d*wright(ln(I_S*R_d/(n_d*V_T)) + (V_d + I_S*R_d)/(n_d*V_T)) - I_S", sim: "I_{D}", nombre: "corriente del diodo", unidad: A }
+    V_ds: { expr: "V_d - I_ds*R_d", sim: "V_{D}", nombre: "tensión del diodo", unidad: V }
+    V_rd: { expr: "I_ds*R_d", sim: "V_{R}", nombre: "caída en la resistencia", unidad: V }
+    dV_dec: { expr: "n_d*V_T*ln(10)", sim: "ΔV", nombre: "subida por década", unidad: V }
+    V_zo: { expr: "min(V_zi, V_z)", sim: "V_{Z}", nombre: "tensión del Zener", unidad: V }
+    I_zs: { expr: "(V_zi - V_zo)/R_zs", sim: "I", nombre: "corriente", unidad: A }
+
+tarjetas:
+  - id: explore-barrido
+    tipo: explorar
+    titulo: "Barra la fuente"
+    texto: "Con R = 1 kΩ, suba la fuente de 0 a 5 V. La corriente recorre décadas; la tensión del diodo apenas se mueve."
+    libro: [69, 71, 72]
+    fijar: { R_d: 1000 }
+    inicio: { V_d: 0.5 }
+    widget:
+      tipo: circuito
+      esquema: diodo
+      piezas: { fuente: V_d, r: R_d, is: I_S, n: n_d, vt: V_T }
+      lectura: { valor: V_ds, rotulo: "Tensión del diodo" }
+      datos:
+        - { valor: I_ds, rotulo: "I = {{I_ds}}" }
+      corriente: I_ds
+      mide: { corriente: I_ds, vd: V_ds, vr: V_rd }
+      mandos:
+        - { valor: V_d, min: 0.5, max: 5, paso: 0.25 }
+    requiere: { mover: [V_d] }
+
+  - id: prediga-final
+    tipo: predecir
+    titulo: "Al final del barrido"
+    texto: "Con la fuente a 5 V y R = 1 kΩ en serie con el diodo, ¿qué corriente circula?"
+    libro: [72]
+    fijar: { V_d: 5, R_d: 1000 }
+    widget:
+      tipo: circuito
+      esquema: diodo
+      piezas: { fuente: V_d, r: R_d, is: I_S, n: n_d, vt: V_T }
+      lectura: { valor: I_ds, rotulo: "Corriente" }
+      corriente: I_ds
+      mide: { corriente: I_ds, vd: V_ds }
+      ocultar: true
+    opciones:
+      - texto: "Unos 4,4 mA"
+        bien: true
+        porque: "El diodo se queda con unos 0,6 V y la resistencia con el resto: 4,4 V entre 1 kΩ."
+      - texto: "5 mA"
+        porque: "Eso sería sin diodo. La resistencia no tiene los 5 V: el diodo se queda con su caída."
+      - texto: "Unos 0,6 mA"
+        porque: "Ha dividido la caída del diodo entre R. La corriente la fija lo que cae en la resistencia."
+    escalera:
+      - "La tensión de la resistencia es la de la fuente menos la del diodo."
+    solucion: "(5 − 0,6) V / 1 kΩ ≈ 4,4 mA."
+    comprobar:
+      - { I_ds: 0.0044, tol: 0.01 }
+      - { V_ds: 0.6, tol: 0.02 }
+
+  - id: decadas
+    tipo: sorpresa
+    titulo: "Una década, la misma subida"
+    texto: "Con 5 V, baje R a 330 Ω y a 39 Ω: la corriente sube una década cada vez. Mire la tensión del diodo."
+    libro: [72, 74]
+    fijar: { V_d: 5 }
+    inicio: { R_d: 1000 }
+    widget:
+      tipo: circuito
+      esquema: diodo
+      piezas: { fuente: V_d, r: R_d, is: I_S, n: n_d, vt: V_T }
+      lectura: { valor: V_ds, rotulo: "Tensión del diodo" }
+      datos:
+        - { valor: I_ds, rotulo: "I = {{I_ds}}" }
+      corriente: I_ds
+      mide: { corriente: I_ds, vd: V_ds }
+      mandos:
+        - { valor: R_d, lista: [1000, 330, 39], rotulo: "R" }
+    requiere: { mover: [R_d] }
+
+  - id: tabla-diodo
+    tipo: pregunta
+    titulo: "Los puntos del diodo ideal"
+    texto: "Empareje cada corriente con la tensión directa del diodo de silicio ideal (n = 1)."
+    libro: [73, 74]
+    emparejar:
+      - ["10 µA", "0,45 V"]
+      - ["100 µA", "0,51 V"]
+      - ["1 mA", "0,57 V"]
+      - ["10 mA", "0,63 V"]
+      - ["100 mA", "0,69 V"]
+    exito: "Cada década, 59,5 mV más: cuatro décadas de corriente en poco más de dos décimas de voltio."
+    pistas:
+      - { texto: "Las tensiones suben en escalones iguales: una por década." }
+    escalera:
+      - "A 1 mA, 0,57 V. Cada década de más o de menos suma o resta 59,5 mV."
+    solucion: "10 µA: 0,45 V; 100 µA: 0,51 V; 1 mA: 0,57 V; 10 mA: 0,63 V; 100 mA: 0,69 V."
+
+  - id: estime-decada
+    tipo: pregunta
+    titulo: "¿Cuánto por década?"
+    texto: "En el diodo ideal de la tabla (n = 1), ¿cuánto sube la tensión directa por cada década de corriente?"
+    libro: [74]
+    fijar: { n_d: 1, V_T: 0.02585 }
+    estimar:
+      objetivo: "dV_dec"
+      unidad: V
+      min: 0
+      max: 0.2
+      paso: 0.0005
+      inicio: 0.15
+      tol: 0.05
+      rotulo: "Subida por década"
+    exito: "59,5 mV por década: en escala logarítmica de corriente, una recta. Es la ecuación de Shockley."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.0625 }, texto: "Se ha pasado: eso es lo de un diodo con n cerca de 2. El ideal sube la mitad." }
+      - { texto: "Se ha quedado corto: de 1 mA a 10 mA la tabla pasa de 0,57 V a 0,63 V." }
+    escalera:
+      - "Compare dos filas seguidas de la tabla, por ejemplo 1 mA y 10 mA."
+    solucion: "59,5 mV por década (n·V_{T}·ln 10 con n = 1)."
+    comprobar:
+      - { dV_dec: 0.0595 }
+
+  - id: estime-n
+    tipo: pregunta
+    titulo: "El coeficiente de un diodo real"
+    texto: "Un diodo real cae 0,62 V a 1 mA y 0,725 V a 10 mA. ¿Cuál es su coeficiente de emisión n?"
+    libro: [74, 88, "cap22#370"]
+    estimar:
+      objetivo: "(0.725 - 0.62)/dV_dec"
+      unidad: ""
+      min: 1
+      max: 2
+      paso: 0.01
+      inicio: 1.2
+      tol: 0.02
+      rotulo: "n"
+    exito: "Sube 105 mV en una década: n = 105/59,5 ≈ 1,76, cerca del 1,75 de un 1N4148."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 1.8 }, texto: "Se ha pasado: divida la subida medida entre los 59,5 mV del diodo ideal." }
+      - { texto: "Se ha quedado corto: la subida medida es casi el doble de los 59,5 mV del ideal." }
+    escalera:
+      - "¿Cuánto sube la tensión entre 1 mA y 10 mA?"
+      - "Divida esa subida entre los 59,5 mV por década del diodo ideal."
+    solucion: "0,725 − 0,62 = 0,105 V por década; n = 105 / 59,5 ≈ 1,76."
+    comprobar:
+      - { con: { n_d: 1 }, dV_dec: 0.0595 }
+
+  - id: no-memorizar
+    tipo: pregunta
+    titulo: "Más que «0,7 V»"
+    texto: "Un diodo trabaja con microamperios. ¿Qué cae, según la curva medida?"
+    libro: [73, 74, 75]
+    fijar: { V_d: 0.5, R_d: 1000 }
+    widget:
+      tipo: circuito
+      esquema: diodo
+      piezas: { fuente: V_d, r: R_d, is: I_S, n: n_d, vt: V_T }
+      lectura: { valor: V_ds, rotulo: "Tensión del diodo" }
+      datos:
+        - { valor: I_ds, rotulo: "I = {{I_ds}}" }
+      corriente: I_ds
+      mide: { corriente: I_ds, vd: V_ds }
+    opciones:
+      - texto: "Bastante menos de 0,7 V"
+        bien: true
+        porque: "La caída depende de la corriente: a 10 µA, 0,45 V en el diodo ideal."
+      - texto: "0,7 V, como siempre"
+        porque: "0,7 V es un punto de la curva, el de unos 100 mA. La caída no es una constante."
+      - texto: "Más de 0,7 V"
+        porque: "Con menos corriente la caída baja, no sube: la curva sube 59,5 mV por década."
+    escalera:
+      - "Mire la tabla: ¿qué tensión corresponde a 10 µA?"
+    solucion: "Mucho menos de 0,7 V: la caída depende de la corriente, 0,45 V a 10 µA."
+
+  - id: xy-masas
+    tipo: pregunta
+    titulo: "La curva en modo XY"
+    texto: "La tensión del diodo va al eje X y la caída de la resistencia al eje Y. ¿Cuál es la trampa del montaje?"
+    libro: [77, 79]
+    fijar: { V_d: 5, R_d: 1000 }
+    widget:
+      tipo: circuito
+      esquema: diodo
+      piezas: { fuente: V_d, r: R_d, is: I_S, n: n_d, vt: V_T }
+      lectura: { valor: V_rd, rotulo: "Caída en la resistencia" }
+      corriente: I_ds
+      mide: { corriente: I_ds, vr: V_rd, vd: V_ds }
+    opciones:
+      - texto: "Las masas: los dos canales comparten la misma"
+        bien: true
+        porque: "Hay que colocar las piezas para que el punto común sea el correcto, o invertir un canal con la función matemática."
+      - texto: "Que el modo XY no admite senoides"
+        porque: "Al contrario: se usa una senoide de baja frecuencia y la curva se dibuja sola en la pantalla."
+      - texto: "Que la caída de la resistencia no es proporcional a la corriente"
+        porque: "Sí lo es: V = I·R. Por eso sirve como eje Y."
+    escalera:
+      - "Diodo y resistencia están en serie: ¿pueden tener los dos un extremo a masa?"
+    solucion: "Las masas: el osciloscopio referencia los dos canales a la misma, así que hay que elegir bien el punto común."
+
+  - id: comparar
+    tipo: pregunta
+    titulo: "Lo que hay que comparar"
+    texto: "Empareje cada comparación con lo que se mide."
+    libro: [81, 82, 83]
+    emparejar:
+      - ["Schottky frente a silicio", "Unos 0,3 V a la misma corriente"]
+      - ["LED rojo", "Unos 1,8 V"]
+      - ["LED azul o blanco", "De 3,0 a 3,4 V"]
+      - ["Diodo calentado con los dedos", "La caída baja unos 2 mV por grado"]
+    exito: "Cuanto más azul el LED, más energía tiene el fotón y más cae."
+    pistas:
+      - { texto: "El LED que más cae es el de fotones de más energía." }
+    escalera:
+      - "La Schottky es la de caída más baja; el azul, la más alta."
+    solucion: "Schottky: 0,3 V; rojo: 1,8 V; azul o blanco: 3,0 a 3,4 V; calentado: −2 mV por grado."
+
+  - id: zener-inversa
+    tipo: sorpresa
+    titulo: "La zona inversa de un Zener"
+    texto: "Un Zener de 3,3 V en inversa, con su resistencia limitadora. Suba la fuente."
+    libro: [85]
+    inicio: { V_zi: 6 }
+    widget:
+      tipo: circuito
+      esquema: zener
+      piezas: { fuente: V_zi, rs: R_zs, vz: V_z }
+      lectura: { valor: V_zo, rotulo: "Tensión del Zener" }
+      datos:
+        - { valor: I_zs, rotulo: "I = {{I_zs}}" }
+      corriente: I_zs
+      mide: { salida: V_zo, serie: I_zs }
+      mandos:
+        - { valor: V_zi, min: 6, max: 15, paso: 1 }
+    requiere: { mover: [V_zi] }
+
+  - id: rodilla
+    tipo: porque
+    titulo: "¿Qué rodilla es más suave?"
+    texto: "Se compara la rodilla de un Zener de 3,3 V con la de uno de 12 V. ¿Cuál es más suave, y por qué?"
+    libro: [85, 86]
+    widget:
+      tipo: circuito
+      esquema: zener
+      piezas: { fuente: V_zi, rs: R_zs, vz: V_z }
+      lectura: { valor: V_zo, rotulo: "Tensión del Zener" }
+      corriente: I_zs
+      mide: { salida: V_zo, serie: I_zs }
+    opciones:
+      - texto: "La del de 3,3 V: es Zener puro"
+        bien: true
+        porque: "Los dos mecanismos de ruptura dan rodillas distintas: el de baja tensión, Zener puro, la tiene más suave."
+      - texto: "La del de 12 V: tiene más tensión"
+        porque: "La tensión no suaviza la rodilla. El de 12 V rompe por otro mecanismo, con la rodilla más nítida."
+      - texto: "Son iguales: los dos se clavan en su valor"
+        porque: "Los dos se clavan, pero la forma de la rodilla cambia con el mecanismo de ruptura."
+    escalera:
+      - "Hay dos mecanismos de ruptura, y el de baja tensión es el Zener puro."
+    solucion: "La del Zener de 3,3 V, de ruptura Zener pura: rodilla más suave."
+
+  - id: banco-diodo
+    tipo: banco
+    titulo: "Levante la curva en el banco"
+    texto: "Con la fuente a 5 V y 1 kΩ, mida la caída en la resistencia y calcule la corriente del diodo."
+    libro: [71, 72, 88]
+    fijar: { V_d: 5, R_d: 1000 }
+    banco:
+      piezas: ["Fuente ajustable de 0 a 5 V", "Un diodo de silicio y R = 1 kΩ", "Multímetro en V⎓"]
+      medir: "La caída en la resistencia dividida entre 1 kΩ: la corriente del diodo."
+      esperado: I_ds
+      unidad: A
+      tol: 0.05
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.05 }, texto: "Sale de más: mida la fuente y la resistencia reales y recalcule." }
+        - { cuando: { valor: desviacion, menor: -0.05 }, texto: "Sale de menos: un diodo real con n mayor que 1 cae algo más. Anote también su tensión." }
+        - { texto: "Dentro de lo esperado. Repita en varios puntos y represéntelos en escala logarítmica." }
+      ficha: { n: 27, titulo: "Práctica 3 · Característica I-V de un diodo" }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [74, 75, 85, 88]
+    ideas:
+      - { titulo: "Por décadas.", texto: "Cada década de corriente sube la caída una cantidad fija: 59,5 mV en el diodo ideal." }
+      - { titulo: "No es 0,7 V.", texto: "La caída depende de la corriente: con microamperios, mucho menos." }
+      - { titulo: "El coeficiente n.", texto: "La pendiente medida entre 59,5 mV da n, entre 1 y 2 en un diodo real." }
+      - { titulo: "En inversa.", texto: "Un Zener clava su tensión por mucho que suba la fuente." }

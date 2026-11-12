@@ -1,0 +1,335 @@
+# Lección 1.2 de la sección 21.4 «Práctica 4 — Rectificación de Media Onda y Rizado» (cap22; etiqueta interna
+# sec-22.4). Formato: contenido/lecciones11/GUIA.md. Secundario de 9 V eficaces (12,7 V de pico), diodo de 0,7 V,
+# 1000 µF y la carga que pide 100 mA: 120 Ω (12,0 V / 100 mA, del modelo). El valor medio sin condensador es el exacto
+# de la media onda con caída constante (3,70 V; el libro: «unos 3,7 V»). La corriente del diodo es la del modelo
+# ideal: i = C·dv/dt + v/R mientras el secundario supera al condensador (una gráfica, sin simular).
+leccion: cap22/sec-22.4
+
+libro:
+  94: "la caída del diodo, el rizado y —el que sorprende— la forma de la corriente"
+  96: "Con un secundario de 9 V eficaces"
+  97: '"12,7 V"'
+  98: "tras el diodo = 12,7 − 0,7 = 12,0 V"
+  99: "el valor medio es Vpico/π = 4,0 V con un diodo ideal y, descontando su caída, unos 3,7 V"
+  100: "la salida se mantiene cerca del pico y aparece el rizado"
+  101: '"Δ" V = (I)/(f dot.op C)'
+  102: "Con 100 mA y 1000 µF en media onda (f = 50 Hz): 2,0 V de rizado"
+  103: "en onda completa, f = 100 Hz y el rizado se reduce a la mitad, con el mismo condensador"
+  105: "La tensión sin carga, que es casi el pico."
+  107: "No son 0,7 V: con corriente de pico alta puede llegar a 1 V"
+  109: "Poniendo una resistencia pequeña en serie con el diodo y mirando la caída en ella"
+  110: "El diodo solo conduce durante el breve instante en que la tensión del secundario supera la del condensador"
+  111: "Con 100 mA de salida, el pico puede ser de 1 A o más, con un ángulo de conducción de unas pocas decenas de grados"
+  112: "El diodo debe soportar esa corriente de pico, mucho mayor que la media."
+  113: "El condensador sufre esa corriente eficaz, que es lo que determina su ESR admisible y su vida"
+  114: "El factor de potencia es pésimo"
+  118: "Cambiar el condensador por uno de la mitad y comprobar que el rizado se dobla"
+  121: "Sin condensador, el multímetro marca unos 3,7 V y la señal real está entre 0 y 12"
+  122: "por qué en cualquier diagnóstico de fuente el osciloscopio es imprescindible"
+  125: "Con secundario de 9 V, la práctica es completamente segura"
+  "cap22#370": "Un rectificador de media onda se alimenta con un secundario de 12 V eficaces a 50 Hz"
+
+modelo:
+  valores:
+    V_rp: { sim: "V_{p}", nombre: "pico del secundario", unidad: V, valor: 12.726 }
+    f_red: { sim: "f", nombre: "frecuencia de la red", unidad: Hz, valor: 50 }
+    V_rd: { sim: "V_{D}", nombre: "caída del diodo", unidad: V, valor: 0.7 }
+    C_rf: { sim: "C", nombre: "condensador de filtro", unidad: F, valor: 1000e-6 }
+    R_rl: { sim: "R_{L}", nombre: "carga de 100 mA", unidad: Ω, valor: 120 }
+  calculos:
+    V_r1: { expr: "V_rp - V_rd", sim: "V_{pico}", nombre: "pico tras el diodo", unidad: V }
+    T_red: { expr: "1/f_red", sim: "T", nombre: "periodo de la red", unidad: s }
+    tau_r: { expr: "R_rl*C_rf", sim: "τ", nombre: "constante de descarga", unidad: s }
+    I_o: { expr: "V_r1/R_rl", sim: "I", nombre: "corriente de salida", unidad: A }
+    dV: { expr: "I_o/(f_red*C_rf)", sim: "ΔV", nombre: "rizado según la fórmula", unidad: V, cifras: 2 }
+    th_0: { expr: "atan2(V_rd, sqrt(V_rp^2 - V_rd^2))", sim: "θ₀", nombre: "ángulo en que empieza a conducir", unidad: rad }
+    V_med: { expr: "(2*V_rp*cos(th_0) - V_rd*(pi - 2*th_0))/(2*pi)", sim: "V_{media}", nombre: "valor medio sin condensador", unidad: V }
+    V_med0: { expr: "V_rp/pi", sim: "V_{media}", nombre: "valor medio con un diodo ideal", unidad: V }
+
+tarjetas:
+  - id: explore-rizado
+    tipo: explorar
+    titulo: "El rizado tras el diodo"
+    texto: "Secundario de 9 V eficaces, un diodo, 1000 µF y una carga de 100 mA. Cambie el condensador por uno de la mitad."
+    libro: [94, 96, 100, 118]
+    inicio: { C_rf: 1000e-6 }
+    widget:
+      tipo: circuito
+      esquema: media-onda
+      piezas: { fuente: V_rp, f: f_red, vd: V_rd, c: C_rf, carga: R_rl }
+      lectura: { valor: dV, rotulo: "Rizado según la fórmula" }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: -14, max: 14, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_rp*sin(2*pi*f_red*t)", color: tinta, rotulo: "secundario", mide: entrada, discontinua: true }
+          - { expr: "max(V_rp*sin(2*pi*f_red*t) - V_rd, V_r1*exp(-(t - T_red/4 - T_red*floor((t - T_red/4)/T_red))/tau_r))", color: naranja, rotulo: "salida", mide: salida }
+      mandos:
+        - { valor: C_rf, lista: [500e-6, 1000e-6], rotulo: "Condensador" }
+    requiere: { mover: [C_rf] }
+
+  - id: formula-rizado
+    tipo: formula
+    titulo: "La fórmula del rizado"
+    texto: "Con 100 mA y 1000 µF a 50 Hz, 2,0 V. Es pesimista: supone que el condensador se descarga el periodo entero."
+    libro: [101, 102]
+    fijar: { C_rf: 1000e-6 }
+    ec: 101
+    sustitucion: "{{I_o}} / ({{f_red}} · {{C_rf}}) = {{dV}}"
+    widget:
+      tipo: circuito
+      esquema: media-onda
+      piezas: { fuente: V_rp, f: f_red, vd: V_rd, c: C_rf, carga: R_rl }
+      lectura: { valor: dV, rotulo: "Rizado según la fórmula" }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: 8, max: 13, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(V_rp*sin(2*pi*f_red*t) - V_rd, V_r1*exp(-(t - T_red/4 - T_red*floor((t - T_red/4)/T_red))/tau_r))", color: naranja, rotulo: "salida", mide: salida }
+    comprobar:
+      - { dV: 2.0, I_o: 0.1, V_r1: 12.0 }
+
+  - id: prediga-media
+    tipo: predecir
+    titulo: "Sin condensador"
+    texto: "Se quita el condensador. ¿Qué marca el multímetro en continua a la salida?"
+    libro: [99, 121]
+    widget:
+      tipo: circuito
+      esquema: media-onda
+      piezas: { fuente: V_rp, f: f_red, vd: V_rd, carga: R_rl }
+      lectura: { valor: V_med, rotulo: "Valor medio" }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: -14, max: 14, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_rp*sin(2*pi*f_red*t)", color: tinta, rotulo: "secundario", mide: entrada, discontinua: true }
+          - { expr: "max(0, V_rp*sin(2*pi*f_red*t) - V_rd)", color: naranja, rotulo: "salida", mide: salida }
+      ocultar: true
+    opciones:
+      - texto: "Unos 3,7 V"
+        bien: true
+        porque: "El valor medio de los semiciclos es V_{pico}/π = 4,0 V con un diodo ideal; descontando su caída, unos 3,7 V."
+      - texto: "12,0 V"
+        porque: "Ese es el pico tras el diodo, que sin condensador solo se alcanza un instante por ciclo."
+      - texto: "9 V"
+        porque: "9 V es el eficaz del secundario. En continua, el multímetro promedia los semiciclos."
+    escalera:
+      - "Sin condensador, la salida son semiciclos y medio ciclo vale cero."
+    solucion: "El valor medio de los semiciclos: unos 3,7 V."
+    comprobar:
+      - { V_med: 3.7 }
+      - { V_med0: 4.0, tol: 0.02 }
+
+  - id: oculta-forma
+    tipo: pregunta
+    titulo: "Lo que el multímetro oculta"
+    texto: "Sin condensador, el multímetro marca unos 3,7 V. ¿Qué hay de verdad en la salida?"
+    libro: [121, 122]
+    widget:
+      tipo: circuito
+      esquema: media-onda
+      piezas: { fuente: V_rp, f: f_red, vd: V_rd, carga: R_rl }
+      lectura: { valor: V_med, rotulo: "Lo que marca el multímetro" }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: -14, max: 14, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(0, V_rp*sin(2*pi*f_red*t) - V_rd)", color: naranja, rotulo: "salida", mide: salida }
+    opciones:
+      - texto: "Semiciclos que van de 0 a 12 V"
+        bien: true
+        porque: "El instrumento promedia y oculta la forma. Por eso en el diagnóstico de una fuente el osciloscopio es imprescindible."
+      - texto: "Una continua de 3,7 V"
+        porque: "El número es el promedio. La señal real sube a 12 V y pasa medio ciclo en cero."
+      - texto: "Una senoide de 3,7 V de pico"
+        porque: "El diodo deja pasar solo un semiciclo; el multímetro da su valor medio, no un pico."
+    escalera:
+      - "¿Qué hace un multímetro en continua con una señal que cambia?"
+    solucion: "Semiciclos de 0 a 12 V: el multímetro solo da su promedio."
+
+  - id: puente
+    tipo: pregunta
+    titulo: "Media onda frente a puente"
+    texto: "Se pasa de media onda a un puente con el mismo condensador. ¿Qué le ocurre al rizado?"
+    libro: [103]
+    fijar: { C_rf: 1000e-6 }
+    widget:
+      tipo: circuito
+      esquema: media-onda
+      piezas: { fuente: V_rp, f: f_red, vd: V_rd, c: C_rf, carga: R_rl }
+      lectura: { valor: dV, rotulo: "Rizado en media onda" }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: -14, max: 14, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(V_rp*sin(2*pi*f_red*t) - V_rd, V_r1*exp(-(t - T_red/4 - T_red*floor((t - T_red/4)/T_red))/tau_r))", color: naranja, rotulo: "salida", mide: salida }
+    opciones:
+      - texto: "Se reduce a la mitad"
+        bien: true
+        porque: "En onda completa el rizado tiene 100 Hz: el condensador se recarga el doble de veces y baja la mitad."
+      - texto: "Se dobla"
+        porque: "El doble es la frecuencia del rizado, no su amplitud: con recargas el doble de seguidas, el rizado baja."
+      - texto: "No cambia"
+        porque: "La f de la fórmula es la del rizado: pasa de 50 a 100 Hz, y el rizado se divide por dos."
+    escalera:
+      - "En la fórmula del rizado, ¿qué f usa un puente?"
+    solucion: "La mitad: con 100 Hz de rizado, I/(f·C) se divide por dos. Es la razón de usar puente."
+
+  - id: estime-rizado
+    tipo: pregunta
+    titulo: "Otro rectificador"
+    texto: "Media onda con 12 V eficaces a 50 Hz, 2200 µF y una carga de 150 mA. ¿Qué rizado da la fórmula?"
+    libro: [101, "cap22#370"]
+    estimar:
+      objetivo: "0.15/(f_red*0.0022)"
+      unidad: V
+      min: 0
+      max: 4
+      paso: 0.01
+      inicio: 3
+      tol: 0.04
+      rotulo: "Rizado, ΔV"
+    exito: "0,15 / (50 · 2200 µF) ≈ 1,36 V. Con un puente, la mitad: 0,682 V."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 1.42 }, texto: "Se ha pasado: con más capacidad que antes, el rizado baja. Divida la corriente entre f·C." }
+      - { texto: "Se ha quedado corto: en media onda, f = 50 Hz, no 100." }
+    escalera:
+      - "ΔV = I / (f·C), con I en amperios y C en faradios."
+    solucion: "ΔV = 0,15 A / (50 Hz · 2200 µF) ≈ 1,36 V."
+    comprobar:
+      - { con: { f_red: 50 }, f_red: 50 }
+
+  - id: corriente-diodo
+    tipo: sorpresa
+    titulo: "La forma de la corriente"
+    texto: "Con 100 mA de salida, mire la corriente del diodo. Cambie el condensador."
+    libro: [109, 110, 111]
+    inicio: { C_rf: 1000e-6 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 2.5, unidad: A, rotulo: "i" }
+      curvas:
+        - { expr: "max(0, min(1, 10000*(V_rp*sin(2*pi*f_red*t) - V_rd - V_r1*exp(-(t - T_red/4 - T_red*floor((t - T_red/4)/T_red))/tau_r))))*max(0, C_rf*2*pi*f_red*V_rp*cos(2*pi*f_red*t) + (V_rp*sin(2*pi*f_red*t) - V_rd)/R_rl)", color: naranja, rotulo: "i_{D}" }
+        - { expr: "I_o", color: tinta, rotulo: "media", discontinua: true }
+      lectura: { valor: I_o, rotulo: "Corriente media" }
+      mandos:
+        - { valor: C_rf, lista: [500e-6, 1000e-6], rotulo: "Condensador" }
+    requiere: { mover: [C_rf] }
+
+  - id: por-que-pulsos
+    tipo: porque
+    titulo: "¿Por qué pulsos?"
+    texto: "La salida da 100 mA constantes, pero el diodo entrega pulsos estrechos de amperios. ¿Por qué?"
+    libro: [110, 111]
+    fijar: { C_rf: 1000e-6 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 2.5, unidad: A, rotulo: "i" }
+      curvas:
+        - { expr: "max(0, min(1, 10000*(V_rp*sin(2*pi*f_red*t) - V_rd - V_r1*exp(-(t - T_red/4 - T_red*floor((t - T_red/4)/T_red))/tau_r))))*max(0, C_rf*2*pi*f_red*V_rp*cos(2*pi*f_red*t) + (V_rp*sin(2*pi*f_red*t) - V_rd)/R_rl)", color: naranja, rotulo: "i_{D}" }
+        - { expr: "I_o", color: tinta, rotulo: "media", discontinua: true }
+    opciones:
+      - texto: "Solo conduce mientras el secundario supera al condensador"
+        bien: true
+        porque: "En ese breve instante repone toda la carga del ciclo: un pulso estrecho y alto, de unas pocas decenas de grados."
+      - texto: "Porque el transformador entrega pulsos"
+        porque: "El secundario da una senoide. Los pulsos los crea el diodo, que solo conduce cerca del pico."
+      - texto: "Porque el condensador tiene ESR"
+        porque: "La ESR sufre los pulsos, pero no los crea: aparecen con un condensador ideal."
+    escalera:
+      - "¿Cuándo está el ánodo del diodo por encima del cátodo, que es el condensador?"
+    solucion: "El diodo solo conduce cuando el secundario supera al condensador, y en ese instante repone la carga de todo el ciclo."
+
+  - id: consecuencias
+    tipo: pregunta
+    titulo: "Lo que traen los pulsos"
+    texto: "Empareje cada pieza con lo que le exigen los pulsos de corriente."
+    libro: [112, 113, 114]
+    emparejar:
+      - ["El diodo", "Soportar una corriente de pico mucho mayor que la media"]
+      - ["El condensador", "Aguantar la corriente eficaz, que fija su ESR y su vida"]
+      - ["La red", "Un factor de potencia pésimo y muchos armónicos"]
+    exito: "Es la carga no lineal: los pulsos se ven con los propios ojos."
+    pistas:
+      - { texto: "El factor de potencia es cosa de lo que ve la red." }
+    escalera:
+      - "Piense en quién deja pasar el pico, quién lo absorbe y quién lo ve desde fuera."
+    solucion: "Diodo: corriente de pico. Condensador: corriente eficaz, ESR y vida. Red: factor de potencia y armónicos."
+
+  - id: caida-real
+    tipo: pregunta
+    titulo: "La caída del diodo real"
+    texto: "Se mide entre los terminales del diodo durante la conducción. ¿Qué se encuentra?"
+    libro: [107]
+    widget:
+      tipo: circuito
+      esquema: media-onda
+      piezas: { fuente: V_rp, f: f_red, vd: V_rd, c: C_rf, carga: R_rl }
+      lectura: { valor: V_r1, rotulo: "Pico con 0,7 V de caída" }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: -14, max: 14, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(V_rp*sin(2*pi*f_red*t) - V_rd, V_r1*exp(-(t - T_red/4 - T_red*floor((t - T_red/4)/T_red))/tau_r))", color: naranja, rotulo: "salida", mide: salida }
+    opciones:
+      - texto: "Más de 0,7 V: con picos altos, hasta 1 V"
+        bien: true
+        porque: "La caída depende de la corriente, y los pulsos de amperios la suben hasta cerca de 1 V."
+      - texto: "Exactamente 0,7 V"
+        porque: "0,7 V es el modelo de caída constante. Con corriente de pico alta, el diodo real cae más."
+      - texto: "Menos de 0,3 V"
+        porque: "Eso es lo de una Schottky. Un diodo de silicio con pulsos de amperios cae más de 0,7 V."
+    escalera:
+      - "¿Cómo cambia la caída de un diodo cuando sube mucho la corriente?"
+    solucion: "Más de 0,7 V: con corriente de pico alta puede llegar a 1 V."
+
+  - id: dibuje-semiciclos
+    tipo: dibujar
+    titulo: "Dibuje la salida sin condensador"
+    texto: "Con 12,7 V de pico y un diodo de 0,7 V, dibuje dos ciclos de la salida sin condensador."
+    libro: [97, 98, 99]
+    dibujar:
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+      y: { min: -2, max: 14, unidad: V, rotulo: "v_{salida}" }
+      curva: "max(0, V_rp*sin(2*pi*f_red*t) - V_rd)"
+      puntos: 41
+      tol: 0.08
+      holgura: 0.03
+      rotulo: "Salida de media onda"
+    exito: "Semiciclos positivos de 12,0 V de pico y medio ciclo en cero: lo que el multímetro promedia en 3,7 V."
+    escalera:
+      - "Cada 20 ms hay un semiciclo positivo; el negativo no pasa."
+      - "El pico no llega a 12,7 V: el diodo se queda con 0,7 V."
+    solucion: "Un semiciclo de 12,0 V de pico cada 20 ms y cero el resto del ciclo."
+    comprobar:
+      - { V_r1: 12.0, V_med: 3.7 }
+
+  - id: banco-rectificador
+    tipo: banco
+    titulo: "Mida en el banco"
+    texto: "Con el secundario de 9 V, la práctica es segura. Mida la salida sin carga, con el condensador."
+    libro: [105, 125]
+    banco:
+      piezas: ["Transformador de 9 V eficaces", "Un diodo y un condensador de 1000 µF", "Multímetro en V⎓ y osciloscopio"]
+      medir: "La tensión del condensador sin carga: casi el pico."
+      esperado: V_r1
+      unidad: V
+      tol: 0.06
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.06 }, texto: "Sale de más: mida el eficaz real del secundario y recalcule su pico." }
+        - { cuando: { valor: desviacion, menor: -0.06 }, texto: "Sale de menos: ¿queda algo de carga conectada? Mida también la caída real del diodo." }
+        - { texto: "Casi el pico. Ahora con carga, mire el rizado en acoplamiento AC." }
+      ficha: { n: 28, titulo: "Práctica 4 · Rectificación de media onda y rizado" }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [99, 102, 103, 110]
+    ideas:
+      - { titulo: "Sin condensador.", texto: "Semiciclos de 12 V de pico; el multímetro solo ve su media, unos 3,7 V." }
+      - { titulo: "El rizado.", texto: "ΔV = I/(f·C): 2,0 V con 100 mA y 1000 µF; el montaje da algo menos. Con puente, la mitad." }
+      - { titulo: "La corriente.", texto: "Pulsos estrechos de amperios: el diodo solo conduce cerca del pico." }
+      - { titulo: "El instrumento.", texto: "El multímetro promedia y oculta la forma: en una fuente, el osciloscopio." }

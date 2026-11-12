@@ -1,0 +1,266 @@
+# Lección 1.2 de la sección 14.1 «El Protoboard: Estructura Interna» (cap15; etiqueta interna sec-15.1).
+# Formato: contenido/lecciones11/GUIA.md. El circuito es el raíl de 3,3 V del bloque 11 que llega al integrado por
+# cinco contactos de 50 mΩ (la tabla del bloque 10); el consumo del integrado se dibuja como la resistencia que da
+# 10 mA, 100 mA o 1 A. El contacto gastado de 1 Ω de la sorpresa es un ejemplo de «puede subir a ohmios» (bloque 8).
+# El banco usa 30 mΩ por contacto, el centro de los 10 a 50 mΩ de una placa nueva (ficha 4 del cuaderno).
+leccion: cap15/sec-15.1
+
+libro:
+  5: "El canal central tiene la anchura exacta de un encapsulado DIP"
+  8: "Cada contacto tiene una resistencia de 10 a 50 mΩ cuando el protoboard es nuevo."
+  10: "Con cinco contactos en el camino"
+  11: "un raíl de 3,3 V que pierde 250 mV por el camino puede dejar de alimentar correctamente"
+  12: "la primera sospecha debe ser el propio protoboard"
+  14: "Capacidad entre filas adyacentes: 2 a 5 pF."
+  16: "por encima de unos 10 MHz un protoboard deja de comportarse como un conjunto de nodos ideales"
+  18: "Cualquier cosa con tensión de red"
+  19: "los contactos están accesibles con el dedo y no hay ninguna barrera de seguridad"
+  24: "abren los clips permanentemente y estropean esa fila para siempre"
+  27: "medir la tensión de alimentación en los pines del integrado, no en el raíl"
+  "cap15#310": "Las columnas centrales están conectadas verticalmente en grupos de cinco orificios"
+
+modelo:
+  valores:
+    V_s: { sim: "V", nombre: "raíl de alimentación", unidad: V, valor: 3.3 }
+    r_c: { sim: "r_{c}", nombre: "resistencia de cada contacto", unidad: Ω, valor: 0.05 }
+    N_c: { sim: "N", nombre: "contactos en el camino", unidad: "", valor: 5 }
+    I_t: { sim: "I", nombre: "consumo del integrado", unidad: A, valor: 0.01 }
+  calculos:
+    R_cc: { expr: "N_c*r_c", sim: "R_{contactos}", nombre: "los contactos del camino", unidad: Ω }
+    R_L: { expr: "V_s/I_t - R_cc", sim: "R_{chip}", nombre: "consumo del integrado", unidad: Ω }
+    I_p: { expr: "V_s/(R_cc + R_L)", sim: "I", nombre: "corriente", unidad: A }
+    V_c: { expr: "I_p*R_cc", sim: "V_{contactos}", nombre: "caída en los contactos", unidad: V }
+    V_chip: { expr: "I_p*R_L", sim: "V_{pines}", nombre: "tensión en los pines del integrado", unidad: V }
+
+tarjetas:
+  - id: explore-contactos
+    tipo: explorar
+    titulo: "Cinco contactos en el camino"
+    texto: "El raíl de 3,3 V llega al integrado por cinco contactos de 50 mΩ. Cambie el consumo y mire la caída."
+    libro: [10, 11]
+    fijar: { r_c: 0.05 }
+    widget:
+      tipo: circuito
+      esquema: serie
+      piezas: { fuente: V_s, r1: R_cc, r2: R_L }
+      lectura: { valor: V_c, rotulo: "Caída en los contactos" }
+      datos:
+        - { valor: V_chip, rotulo: "En los pines: {{V_chip}}" }
+      corriente: I_p
+      mide: { corriente: I_p, v1: V_c, v2: V_chip }
+      mandos:
+        - { valor: I_t, lista: [0.01, 0.1, 1], rotulo: "Consumo" }
+    requiere: { mover: [I_t] }
+
+  - id: prediga-amperio
+    tipo: predecir
+    titulo: "Con un amperio"
+    texto: "El integrado consume 1 A a través de cinco contactos de 50 mΩ. ¿Cuánto se pierde por el camino?"
+    libro: [10]
+    fijar: { r_c: 0.05, I_t: 1 }
+    widget:
+      tipo: circuito
+      esquema: serie
+      piezas: { fuente: V_s, r1: R_cc, r2: R_L }
+      lectura: { valor: V_c, rotulo: "Caída en los contactos" }
+      mide: { corriente: I_p, v1: V_c, v2: V_chip }
+      ocultar: true
+    opciones:
+      - texto: "250 mV"
+        bien: true
+        porque: "Cinco contactos de 50 mΩ suman 0,25 Ω; con 1 A, 250 mV."
+      - texto: "50 mV"
+        porque: "Eso es un solo contacto; en el camino hay cinco."
+      - texto: "2,5 mV"
+        porque: "Esa es la caída con 10 mA. La caída es proporcional a la corriente."
+    escalera:
+      - "Sume los cinco contactos y aplique la ley de Ohm."
+    solucion: "5 · 50 mΩ · 1 A = 250 mV."
+    comprobar:
+      - { V_c: 0.25, R_cc: 0.25 }
+
+  - id: estructura
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Qué hay debajo de los agujeros"
+    texto: "Una cada parte del protoboard con cómo está conectada."
+    libro: [5, "cap15#310"]
+    emparejar:
+      - ["Filas centrales", "Grupos de cinco orificios unidos"]
+      - ["Canal central", "La anchura de un DIP: cada patilla en su fila"]
+      - ["Raíles de los bordes", "Alimentación y masa, a menudo partidos"]
+    exito: "Y el raíl partido es el fallo de montaje más frecuente."
+    pistas:
+      - { texto: "El canal separa las dos mitades: un integrado se coloca a caballo." }
+    escalera:
+      - "Los raíles van a lo largo de los bordes, marcados en rojo y azul."
+    solucion: "Filas: cinco unidos; canal: un DIP a caballo; raíles: alimentación, a veces partidos."
+
+  - id: sorpresa-gastado
+    tipo: sorpresa
+    titulo: "Un contacto gastado"
+    texto: "Con el uso los clips se abren y su resistencia puede subir a ohmios. Desgaste los contactos a 100 mA."
+    nota: "El contacto de 1 Ω es un ejemplo."
+    libro: [8, 11]
+    fijar: { I_t: 0.1 }
+    inicio: { r_c: 0.05 }
+    widget:
+      tipo: circuito
+      esquema: serie
+      piezas: { fuente: V_s, r1: R_cc, r2: R_L }
+      lectura: { valor: V_chip, rotulo: "En los pines del integrado" }
+      datos:
+        - { valor: V_c, rotulo: "Caída: {{V_c}}" }
+      corriente: I_p
+      mide: { corriente: I_p, v1: V_c, v2: V_chip }
+      mandos:
+        - { valor: r_c, lista: [0.05, 1], nombres: [nuevo, gastado], rotulo: "Cada contacto" }
+    requiere: { mover: [r_c] }
+
+  - id: funciona-a-veces
+    tipo: pregunta
+    titulo: "Funciona a veces"
+    texto: "Un montaje en protoboard falla y vuelve a funcionar al tocarlo. ¿Qué sospecha primero?"
+    libro: [12]
+    fijar: { r_c: 0.05, I_t: 0.1 }
+    widget:
+      tipo: circuito
+      esquema: serie
+      piezas: { fuente: V_s, r1: R_cc, r2: R_L }
+      lectura: { valor: V_chip, rotulo: "En los pines del integrado" }
+      mide: { corriente: I_p, v1: V_c, v2: V_chip }
+    opciones:
+      - texto: "El propio protoboard: un contacto intermitente"
+        bien: true
+        porque: "Esas averías consumen horas buscando un fallo de diseño que no existe."
+      - texto: "Un error en el esquema"
+        porque: "Un error de diseño no aparece y desaparece al tocar el montaje."
+      - texto: "Que el integrado está defectuoso"
+        porque: "Antes que el chip, el soporte: es lo que cambia al tocarlo."
+    escalera:
+      - "¿Qué cambia cuando se toca el montaje?"
+    solucion: "El propio protoboard."
+
+  - id: capacidad-filas
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Entre dos filas vecinas"
+    texto: "¿Qué capacidad hay entre dos filas adyacentes de un protoboard?"
+    libro: [14]
+    estimar:
+      objetivo: "3.5e-12"
+      unidad: F
+      min: 0
+      max: 0.00000000005
+      paso: 0.0000000000005
+      inicio: 0.00000000003
+      tol: 0.43
+      rotulo: "Capacidad entre filas"
+    exito: "De 2 a 5 pF: poco, y basta para acoplar señales rápidas o cargar una entrada de alta impedancia."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.000000000005 }, texto: "Menos: son unos pocos picofaradios." }
+      - { texto: "Algo más: entre 2 y 5 pF." }
+    escalera:
+      - "Se mide en picofaradios, y es de un solo dígito."
+    solucion: "De 2 a 5 pF."
+
+  - id: nunca-red
+    tipo: pregunta
+    titulo: "Lo que no se monta nunca"
+    texto: "¿Cuál de estos circuitos no se monta en protoboard bajo ningún concepto?"
+    libro: [18, 16]
+    fijar: { r_c: 0.05, I_t: 0.1 }
+    widget:
+      tipo: circuito
+      esquema: serie
+      piezas: { fuente: V_s, r1: R_cc, r2: R_L }
+      lectura: { valor: V_chip, rotulo: "En los pines del integrado" }
+      mide: { corriente: I_p, v1: V_c, v2: V_chip }
+    opciones:
+      - texto: "Cualquier cosa con tensión de red"
+        bien: true
+        porque: "Ni siquiera «un momento para probar»."
+      - texto: "Un amplificador de audio"
+        porque: "Sí se monta, cuidando el desacoplo."
+      - texto: "Un microcontrolador con sensores"
+        porque: "Sí, sin problema: lógica lenta y sensores."
+    escalera:
+      - "Busque el caso en que el riesgo no es que falle, sino la seguridad."
+    solucion: "Lo conectado a la red."
+
+  - id: por-que-red
+    tipo: porque
+    titulo: "¿Por qué nunca la red?"
+    texto: "Un montaje con tensión de red en protoboard podría funcionar. ¿Por qué no se hace nunca?"
+    libro: [19]
+    fijar: { r_c: 0.05, I_t: 0.1 }
+    widget:
+      tipo: circuito
+      esquema: serie
+      piezas: { fuente: V_s, r1: R_cc, r2: R_L }
+      lectura: { valor: V_chip, rotulo: "En los pines del integrado" }
+      mide: { corriente: I_p, v1: V_c, v2: V_chip }
+    opciones:
+      - texto: "Sin aislamiento entre filas, contactos al alcance del dedo y ninguna barrera"
+        bien: true
+        porque: "Es una cuestión de seguridad, no de prestaciones."
+      - texto: "Porque los contactos se calientan"
+        porque: "El motivo es el aislamiento y el contacto accesible, no la temperatura."
+      - texto: "Porque la red tiene demasiada frecuencia"
+        porque: "Los 50 Hz no son el problema: lo es la tensión con contactos expuestos."
+    escalera:
+      - "¿Qué protege al usuario de tocar un contacto en un protoboard?"
+    solucion: "Sin aislamiento ni barrera: peligro."
+
+  - id: patillas-gruesas
+    tipo: pregunta
+    titulo: "Un TO-220 en el protoboard"
+    texto: "¿Qué le pasa a una fila donde se inserta la patilla gruesa de un transistor de potencia?"
+    libro: [24]
+    fijar: { r_c: 0.05, I_t: 0.1 }
+    widget:
+      tipo: circuito
+      esquema: serie
+      piezas: { fuente: V_s, r1: R_cc, r2: R_L }
+      lectura: { valor: V_chip, rotulo: "En los pines del integrado" }
+      mide: { corriente: I_p, v1: V_c, v2: V_chip }
+    opciones:
+      - texto: "Abre los clips para siempre y estropea la fila"
+        bien: true
+        porque: "Después esa fila da un contacto vencido, intermitente."
+      - texto: "Nada, mientras entre"
+        porque: "Entra forzando el clip, que ya no recupera su fuerza."
+      - texto: "Mejora el contacto por ser más gruesa"
+        porque: "Lo empeora: el clip queda abierto para las patillas normales."
+    escalera:
+      - "Los clips son pinzas de bronce: ¿qué les pasa si se abren de más?"
+    solucion: "Abre los clips y estropea la fila."
+
+  - id: banco-pines
+    tipo: banco
+    titulo: "En los pines, no en el raíl"
+    texto: "Con un consumo de 100 mA, mida la alimentación en el raíl y en los pines del integrado. La diferencia es la caída en los contactos."
+    libro: [27, 8]
+    fijar: { r_c: 0.03, I_t: 0.1, N_c: 5 }
+    banco:
+      piezas: ["Protoboard nueva", "Fuente de 3,3 V con límite de corriente", "Una carga de unos 100 mA", "Brymen en mV⎓"]
+      medir: "La tensión del raíl menos la de los pines del integrado."
+      esperado: V_c
+      unidad: V
+      tol: 0.67
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.67 }, texto: "Cae de más: algún contacto está gastado. Cambie de fila y vuelva a medir." }
+        - { texto: "Cae muy poco: compruebe que mide en los pines del chip y no al lado del raíl." }
+      ficha: { n: 4, titulo: "Comprobar la protoboard: raíles, filas y contactos" }
+    comprobar:
+      - { V_c: 0.015 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [5, 8, 12, 18]
+    ideas:
+      - { titulo: "La estructura.", texto: "Filas de cinco, un canal del ancho de un DIP y raíles a menudo partidos." }
+      - { titulo: "Los contactos.", texto: "De 10 a 50 mΩ nuevos: la caída crece con la corriente." }
+      - { titulo: "Funciona a veces.", texto: "La primera sospecha es el propio protoboard." }
+      - { titulo: "Nunca la red.", texto: "Sin aislamiento ni barrera: nada conectado a la red." }

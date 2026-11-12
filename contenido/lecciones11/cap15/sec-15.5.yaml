@@ -1,0 +1,282 @@
+# Lección 1.2 de la sección 14.5 «Proyecto 4: Control de Motor DC con PWM» (cap15; etiqueta sec-15.5).
+# Formato: contenido/lecciones11/GUIA.md. Circuito del libro con el esquema «mosfet»: puerta desde un pin de 5 V por
+# una resistencia de decenas de ohmios (47 Ω, ejemplo) y 10 kΩ de puerta a fuente; PWM a 20 kHz (ventana del libro,
+# 16 a 25 kHz). EJEMPLO: el motor se dibuja como una resistencia de 10 Ω con 12 V (solo vale en conducción y en
+# régimen: el libro insiste en que el motor no es una resistencia); los dos MOSFET son de ejemplo con la ley
+# cuadrática del libro: nivel lógico k = 20 A/V², V_th = 1,5 V; estándar k = 2 A/V², V_th = 4 V (necesita unos 10 V).
+leccion: cap15/sec-15.5
+
+libro:
+  118: "un MOSFET estándar necesita 10 para conducir bien"
+  119: "Debe ser rápido (Schottky o ultrarrápido)"
+  120: "Una resistencia de puerta de decenas de ohmios"
+  121: "Sin ella, el motor arranca solo al encender."
+  124: "Las pérdidas de conmutación crecen y el driver limita"
+  125: "La ventana práctica está entre 16 y 25 kHz"
+  126: "el ruido audible no lo produce el circuito, lo produce el motor"
+  129: "La corriente de arranque es varias veces la nominal"
+  130: "Un límite de corriente o al menos un fusible es prudente."
+  136: "Con PWM se controla la tensión media, no la velocidad"
+  137: "hay que realimentar midiendo la velocidad"
+  140: "debe ser de decenas de milivoltios en conducción. Si son voltios, el transistor no satura"
+
+modelo:
+  valores:
+    V_DD: { sim: "V_{DD}", nombre: "alimentación del motor", unidad: V, valor: 12 }
+    R_M: { sim: "motor", nombre: "motor visto como resistencia", unidad: Ω, valor: 10 }
+    V_g: { sim: "V_{pin}", nombre: "nivel alto del pin", unidad: V, valor: 5 }
+    R_G: { sim: "R_{G}", nombre: "resistencia de puerta", unidad: Ω, valor: 47 }
+    R_GS: { sim: "R_{GS}", nombre: "resistencia de puerta a fuente", unidad: Ω, valor: 10000 }
+    m_t: { sim: "MOSFET", nombre: "tipo de MOSFET", unidad: "", valor: 1 }
+    k_l: { sim: "k", nombre: "transconductancia del de nivel lógico", unidad: "A/V²", valor: 20 }
+    Vt_l: { sim: "V_{th}", nombre: "umbral del de nivel lógico", unidad: V, valor: 1.5 }
+    k_s: { sim: "k", nombre: "transconductancia del estándar", unidad: "A/V²", valor: 2 }
+    Vt_s: { sim: "V_{th}", nombre: "umbral del estándar", unidad: V, valor: 4 }
+    f_p: { sim: "f", nombre: "frecuencia del PWM", unidad: Hz, valor: 20000 }
+    D_p: { sim: "D", nombre: "ciclo de trabajo", unidad: "", valor: 0.25 }
+  calculos:
+    k_x: { expr: "k_l + (k_s - k_l)*(m_t - 1)", sim: "k", nombre: "transconductancia", unidad: "A/V²" }
+    V_th: { expr: "Vt_l + (Vt_s - Vt_l)*(m_t - 1)", sim: "V_{th}", nombre: "tensión umbral", unidad: V }
+    V_gs: { expr: "V_g*R_GS/(R_G + R_GS)", sim: "V_{GS}", nombre: "tensión de puerta", unidad: V }
+    V_ov: { expr: "max(0, V_gs - V_th)", sim: "V_{ov}", nombre: "sobretensión de puerta", unidad: V }
+    b_x: { expr: "k_x*V_ov + 1/R_M", sim: "b", nombre: "coeficiente", unidad: "" }
+    V_tri: { expr: "(b_x - sqrt(max(0, b_x^2 - 2*k_x*V_DD/R_M)))/k_x", sim: "V_{tri}", nombre: "V_DS en zona óhmica", unidad: V }
+    V_sat: { expr: "V_DD - R_M*k_x*V_ov^2/2", sim: "V_{sat}", nombre: "V_DS en saturación", unidad: V }
+    V_DS: { expr: "max(V_sat, min(V_ov, V_tri))", sim: "V_{DS}", nombre: "tensión drenador-fuente en conducción", unidad: V }
+    I_D: { expr: "(V_DD - V_DS)/R_M", sim: "I_{D}", nombre: "corriente del motor", unidad: A }
+    P_D: { expr: "I_D*V_DS", sim: "P", nombre: "calor en el MOSFET", unidad: W }
+    # the logic-level transistor on its own (the typical error of the «simular» card)
+    b_l: { expr: "k_l*(V_gs - Vt_l) + 1/R_M", sim: "b", nombre: "coeficiente, nivel lógico", unidad: "" }
+    V_ll: { expr: "(b_l - sqrt(b_l^2 - 2*k_l*V_DD/R_M))/k_l", sim: "V_{DS}", nombre: "V_DS del de nivel lógico", unidad: V }
+    V_md: { expr: "D_p*(V_DD - V_DS)", sim: "V_{media}", nombre: "tensión media en el motor", unidad: V }
+
+tarjetas:
+  - id: explore-pwm
+    tipo: explorar
+    titulo: "El PWM fija la tensión media"
+    texto: "El pin conmuta a 20 kHz. Cambie el ciclo de trabajo y mire el drenador y la tensión media en el motor."
+    nota: "El motor se dibuja como una resistencia de ejemplo."
+    libro: [125, 136]
+    fijar: { m_t: 1 }
+    widget:
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_DD, rd: R_M, entrada: V_g, rg: R_G, rgs: R_GS, k: k_x, vth: V_th, f: f_p, ciclo: D_p }
+      lectura: { valor: V_md, rotulo: "Tensión media en el motor" }
+      grafica:
+        x: { id: t, min: 0, max: 0.0002, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 14, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_DD - (1 - ceil(t*f_p - floor(t*f_p) - D_p))*(V_DD - V_DS)", color: naranja, rotulo: "v_{D}", mide: drenador }
+      mandos:
+        - { valor: D_p, lista: [0.25, 0.5, 0.75], rotulo: "Ciclo de trabajo" }
+    requiere: { mover: [D_p] }
+    comprobar:
+      - { f_p: 20000 }
+
+  - id: piezas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cuatro piezas, cuatro razones"
+    texto: "Una cada componente del circuito mínimo con su razón."
+    libro: [118, 119, 120, 121]
+    emparejar:
+      - ["MOSFET de nivel lógico", "Conduce bien con la tensión de un pin"]
+      - ["Diodo de rueda libre rápido", "Da camino al pico inductivo al apagar"]
+      - ["R de puerta de decenas de ohmios", "Limita el pico del driver y amortigua"]
+      - ["10 kΩ de puerta a fuente", "Cortado mientras el pin está en el aire"]
+    exito: "Cuatro componentes que ponen en juego medio libro."
+    pistas:
+      - { texto: "Sin la de 10 kΩ, el motor arranca solo al encender." }
+    escalera:
+      - "Durante el reset, el pin del microcontrolador queda en alta impedancia."
+    solucion: "Nivel lógico: conduce con 5 V; diodo: el pico; R_G: el driver; 10 kΩ: cortado en el reset."
+
+  - id: prediga-silbido
+    tipo: predecir
+    titulo: "¿Quién silba?"
+    texto: "Con un PWM de unos cientos de hercios se oye un silbido. ¿Qué lo produce?"
+    libro: [126, 124]
+    fijar: { m_t: 1, D_p: 0.5 }
+    widget:
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_DD, rd: R_M, entrada: V_g, rg: R_G, rgs: R_GS, k: k_x, vth: V_th, f: f_p, ciclo: D_p }
+      lectura: { valor: V_md, rotulo: "Tensión media en el motor" }
+      grafica:
+        x: { id: t, min: 0, max: 0.0002, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 14, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_DD - (1 - ceil(t*f_p - floor(t*f_p) - D_p))*(V_DD - V_DS)", color: naranja, rotulo: "v_{D}", mide: drenador }
+      ocultar: true
+    opciones:
+      - texto: "El motor: sus bobinados vibran a la frecuencia de conmutación"
+        bien: true
+        porque: "No es el circuito. Subir la frecuencia por encima del oído es la única cura."
+      - texto: "El MOSFET al conmutar"
+        porque: "Lo que se agita mecánicamente son los bobinados del motor."
+      - texto: "El diodo de rueda libre"
+        porque: "El diodo no suena: el ruido audible lo produce el motor."
+    escalera:
+      - "¿Qué parte del montaje tiene piezas que pueden moverse?"
+    solucion: "Los bobinados del motor."
+
+  - id: simule-estandar
+    tipo: simular
+    titulo: "Prediga y simule: un MOSFET estándar"
+    texto: "Monta un MOSFET estándar, que pide unos 10 V, con los 5 V del pin. ¿Qué V_{DS} queda con el motor en marcha?"
+    libro: [118, 140]
+    fijar: { m_t: 2 }
+    widget:
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_DD, rd: R_M, entrada: V_g, rg: R_G, rgs: R_GS, k: k_x, vth: V_th }
+      lectura: { valor: V_DS, rotulo: "V_{DS} en conducción" }
+      mide: { vds: V_DS, id: I_D, vgs: V_gs }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: V_DS
+      unidad: V
+      tol: 0.15
+      rotulo: "V_{DS} en conducción"
+      medida: vds
+      errores:
+        - { expr: "V_ll", texto: "Esos milivoltios son los del MOSFET de nivel lógico. El estándar, con 5 V, no satura." }
+        - { expr: "V_DD", texto: "No está cortado: 5 V superan su umbral, aunque por poco." }
+    exito: "Voltios en lugar de decenas de milivoltios: trabaja en zona lineal y se calienta."
+    pistas:
+      - { texto: "Con poca sobretensión de puerta, la corriente queda limitada y el MOSFET se come la diferencia." }
+    escalera:
+      - "Si son voltios, el transistor no satura."
+    solucion: "Unos 2,5 V: zona lineal."
+    comprobar:
+      - { V_DS: 2.455, tol: 0.003 }
+      - { con: { m_t: 1 }, V_ll: 0.0173, tol: 0.01 }
+
+  - id: sorpresa-calienta
+    tipo: sorpresa
+    titulo: "Funciona, se calienta y muere"
+    texto: "Cambie el MOSFET de nivel lógico por el estándar. El motor sigue girando: mire el calor en el transistor."
+    libro: [118, 140]
+    inicio: { m_t: 1 }
+    widget:
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_DD, rd: R_M, entrada: V_g, rg: R_G, rgs: R_GS, k: k_x, vth: V_th }
+      lectura: { valor: P_D, rotulo: "Calor en el MOSFET" }
+      datos:
+        - { valor: V_DS, rotulo: "V_{DS} = {{V_DS}}" }
+      corriente: I_D
+      mide: { vds: V_DS, id: I_D, vgs: V_gs }
+      mandos:
+        - { valor: m_t, lista: [1, 2], nombres: [nivel lógico, estándar], rotulo: "MOSFET" }
+    requiere: { mover: [m_t] }
+
+  - id: por-que-rapido
+    tipo: porque
+    titulo: "¿Por qué un diodo rápido?"
+    texto: "El diodo de rueda libre debe ser Schottky o ultrarrápido. ¿Por qué no vale un rectificador corriente?"
+    libro: [119]
+    fijar: { m_t: 1, D_p: 0.5 }
+    widget:
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_DD, rd: R_M, entrada: V_g, rg: R_G, rgs: R_GS, k: k_x, vth: V_th, f: f_p, ciclo: D_p }
+      lectura: { valor: V_md, rotulo: "Tensión media en el motor" }
+      grafica:
+        x: { id: t, min: 0, max: 0.0002, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 14, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_DD - (1 - ceil(t*f_p - floor(t*f_p) - D_p))*(V_DD - V_DS)", color: naranja, rotulo: "v_{D}", mide: drenador }
+    opciones:
+      - texto: "A la frecuencia del PWM disiparía en cada ciclo por su recuperación inversa"
+        bien: true
+        porque: "Conmuta miles de veces por segundo: el rápido recupera sin pérdidas apreciables."
+      - texto: "Porque un rectificador no aguanta la corriente"
+        porque: "La corriente sí la aguanta; lo que no soporta bien es conmutar tan deprisa."
+      - texto: "Da igual: el diodo casi nunca conduce"
+        porque: "Conduce en cada apagado, a la frecuencia del PWM."
+    escalera:
+      - "¿Cuántas veces por segundo se apaga el transistor?"
+    solucion: "Por la recuperación inversa a la frecuencia del PWM."
+
+  - id: frecuencias
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "La elección de la frecuencia"
+    texto: "Una cada frecuencia de PWM con su consecuencia."
+    libro: [124, 125]
+    emparejar:
+      - ["Menos de 100 Hz", "Vibra y se mueve a tirones"]
+      - ["De 100 Hz a 15 kHz", "Silbido desagradable"]
+      - ["De 16 a 25 kHz", "Por encima del oído: la habitual"]
+      - ["Más de 50 kHz", "Crecen las pérdidas de conmutación"]
+    exito: "Por encima de lo audible y por debajo de donde las pérdidas pesan."
+    pistas:
+      - { texto: "El oído llega hasta unos 15 kHz en la tabla del libro." }
+    escalera:
+      - "La restricción acota por los dos lados: tirones y silbido abajo, pérdidas arriba."
+    solucion: "Tirones, silbido, la ventana de 16 a 25 kHz y pérdidas."
+
+  - id: bloqueo
+    tipo: pregunta
+    titulo: "El motor bloqueado"
+    texto: "Algo frena el eje del motor hasta pararlo. ¿Qué riesgo corre el montaje?"
+    libro: [129, 130]
+    fijar: { m_t: 1 }
+    widget:
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_DD, rd: R_M, entrada: V_g, rg: R_G, rgs: R_GS, k: k_x, vth: V_th }
+      lectura: { valor: I_D, rotulo: "Corriente del motor" }
+      mide: { vds: V_DS, id: I_D }
+    opciones:
+      - texto: "Pide la corriente de arranque indefinidamente: un límite o un fusible es prudente"
+        bien: true
+        porque: "En reposo no hay fuerza contraelectromotriz: es la causa habitual de destrucción del transistor."
+      - texto: "Ninguno: parado no consume"
+        porque: "Al revés: parado consume más, varias veces la corriente nominal."
+      - texto: "Que el diodo de rueda libre se queme"
+        porque: "El que sufre es el transistor, con la corriente de bloqueo."
+    escalera:
+      - "¿Qué fuerza contraelectromotriz genera un motor parado?"
+    solucion: "Corriente de arranque sin fin: fusible o límite."
+
+  - id: tension-no-velocidad
+    tipo: pregunta
+    titulo: "Tensión media, no velocidad"
+    texto: "Con el ciclo de trabajo fijo, se frena el eje con los dedos y la velocidad baja. ¿Por qué?"
+    libro: [136, 137]
+    fijar: { m_t: 1, D_p: 0.5 }
+    widget:
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_DD, rd: R_M, entrada: V_g, rg: R_G, rgs: R_GS, k: k_x, vth: V_th, f: f_p, ciclo: D_p }
+      lectura: { valor: V_md, rotulo: "Tensión media en el motor" }
+      grafica:
+        x: { id: t, min: 0, max: 0.0002, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 14, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_DD - (1 - ceil(t*f_p - floor(t*f_p) - D_p))*(V_DD - V_DS)", color: naranja, rotulo: "v_{D}", mide: drenador }
+    opciones:
+      - texto: "El PWM fija la tensión media; la velocidad depende además de la carga"
+        bien: true
+        porque: "Para controlar velocidad hay que medirla, con un encoder o la fuerza contraelectromotriz, y cerrar un lazo."
+      - texto: "Porque el MOSFET se calienta"
+        porque: "El transistor no cambia: cambia la carga del motor."
+      - texto: "Porque el PWM baja su frecuencia"
+        porque: "La frecuencia y el ciclo no cambian; cambia la carga."
+    escalera:
+      - "¿Qué fija exactamente el ciclo de trabajo?"
+    solucion: "Fija la tensión media, no la velocidad."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [118, 119, 125, 136]
+    ideas:
+      - { titulo: "Cuatro piezas.", texto: "MOSFET de nivel lógico, diodo rápido, R de puerta y 10 kΩ a fuente." }
+      - { titulo: "V_{DS}.", texto: "Decenas de milivoltios en conducción; si son voltios, no satura y se calienta." }
+      - { titulo: "La frecuencia.", texto: "De 16 a 25 kHz: sin silbido y sin muchas pérdidas." }
+      - { titulo: "El límite.", texto: "El PWM controla la tensión media, no la velocidad." }

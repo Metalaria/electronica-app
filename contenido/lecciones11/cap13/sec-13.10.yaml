@@ -1,0 +1,268 @@
+# Lección 1.2 de la sección 13.10 «Defectos de Soldadura y Cómo Reconocerlos» (cap13). Formato: contenido/lecciones11/GUIA.md.
+# El circuito es un EJEMPLO para llevar los defectos al multímetro: pila de 5 V, R₁ = 220 Ω y R₂ = 330 Ω soldadas en
+# serie, con las juntas J₁ y J₂ de los extremos dibujadas como resistencias (1 mΩ sanas). Una junta abierta (seca,
+# agrietada o con el pad levantado) es 1 GΩ; un puente entre los pads de R₂ es un corto de 1 mΩ. La junta fría del
+# bloque 281 conduce en reposo y se abre al presionar o calentar.
+leccion: cap13/sec-13.10
+
+libro:
+  262: "las juntas de soldadura son el componente más numeroso"
+  265: "Superficie mate, granulada o rugosa, con forma abultada en lugar de cóncava."
+  266: "ángulo de contacto mayor de 90°"
+  267: "Estaño uniendo dos pads contiguos."
+  268: "Estaño escaso que no llena el orificio ni cubre la patilla."
+  269: "Un aro oscuro alrededor de la patilla, visible con lupa."
+  270: "El cobre se ha desprendido del sustrato."
+  271: "Aparecen sobre todo en soldadura por reflujo con humedad en la pasta"
+  272: "queda levantado de un extremo, como una lápida"
+  273: "Textura rugosa por movimiento durante la solidificación."
+  276: "Forma cóncava que sube del pad a la patilla."
+  278: "Muchos defectos (grietas, poros, ángulos) son invisibles con iluminación frontal"
+  281: "no detecta una junta fría, que conduce en reposo y falla con vibración o temperatura"
+  283: "retirar el estaño viejo con malla, limpiar con alcohol, aplicar flux nuevo, y rehacer"
+
+modelo:
+  valores:
+    V_j: { sim: "V", nombre: "tensión de la pila", unidad: V, valor: 5 }
+    R_J1: { sim: "J₁", nombre: "junta del primer extremo", unidad: Ω, valor: 0.001 }
+    R_1: { sim: "R₁", nombre: "primera resistencia", unidad: Ω, valor: 220 }
+    R_2: { sim: "R₂", nombre: "segunda resistencia", unidad: Ω, valor: 330 }
+    R_J2: { sim: "J₂", nombre: "junta del último extremo", unidad: Ω, valor: 0.001 }
+    d_f: { sim: "defecto", nombre: "defecto de la placa", unidad: "", valor: 1 }
+    j_f: { tipo: interruptor, nombre: "J₁ es una junta fría", valor: 0 }
+    g_v: { tipo: interruptor, nombre: "presionar y calentar la placa", valor: 0 }
+  calculos:
+    # defect selector of the first card: 1 none, 2 bridge across R₂, 3 J₂ open
+    s_2: { expr: "(d_f - 1)*(3 - d_f)", sim: "s₂", nombre: "puente elegido", unidad: "" }
+    s_3: { expr: "(d_f - 1)*(d_f - 2)/2", sim: "s₃", nombre: "junta abierta elegida", unidad: "" }
+    R_2e: { expr: "R_2*(1 - s_2) + 0.001*s_2", sim: "R₂", nombre: "R₂ con el puente", unidad: Ω }
+    R_J2e: { expr: "R_J2 + s_3*1000000000", sim: "J₂", nombre: "J₂ con el defecto", unidad: Ω }
+    R_J1e: { expr: "R_J1 + j_f*g_v*1000000000", sim: "J₁", nombre: "J₁, fría o sana", unidad: Ω }
+    I_d: { expr: "V_j/(R_J1e + R_1 + R_2e + R_J2e)", sim: "I", nombre: "corriente", unidad: A }
+    V_d1: { expr: "I_d*R_J1e", sim: "V_{J1}", nombre: "tensión en J₁", unidad: V }
+    V_d2: { expr: "I_d*R_1", sim: "V_{R1}", nombre: "tensión en R₁", unidad: V }
+    V_d3: { expr: "I_d*R_2e", sim: "V_{R2}", nombre: "tensión en R₂", unidad: V }
+    V_d4: { expr: "I_d*R_J2e", sim: "V_{J2}", nombre: "tensión en J₂", unidad: V }
+    # the plain circuit of the fault-finding card (its faults change the values themselves)
+    I_a: { expr: "V_j/(R_J1 + R_1 + R_2 + R_J2)", sim: "I", nombre: "corriente", unidad: A }
+    V_a1: { expr: "I_a*R_J1", sim: "V_{J1}", nombre: "tensión en J₁", unidad: V }
+    V_a2: { expr: "I_a*R_1", sim: "V_{R1}", nombre: "tensión en R₁", unidad: V }
+    V_a3: { expr: "I_a*R_2", sim: "V_{R2}", nombre: "tensión en R₂", unidad: V }
+    V_a4: { expr: "I_a*R_J2", sim: "V_{J2}", nombre: "tensión en J₂", unidad: V }
+
+tarjetas:
+  - id: explore-defectos
+    tipo: explorar
+    titulo: "Un puente o una junta abierta"
+    texto: "Elija el defecto de la placa y mire la corriente y la tensión de cada pieza."
+    nota: "Circuito de ejemplo: las juntas se dibujan como resistencias."
+    libro: [267, 268]
+    fijar: { j_f: 0, g_v: 0 }
+    widget:
+      tipo: circuito
+      esquema: serie
+      piezas: { fuente: V_j, r1: R_J1e, r2: R_1, r3: R_2e, r4: R_J2e }
+      lectura: { valor: I_d, rotulo: "Corriente" }
+      datos:
+        - { valor: V_d3, rotulo: "En R₂: {{V_d3}}" }
+        - { valor: V_d4, rotulo: "En J₂: {{V_d4}}" }
+      corriente: I_d
+      mide: { corriente: I_d, v1: V_d1, v2: V_d2, v3: V_d3, v4: V_d4 }
+      mandos:
+        - { valor: d_f, lista: [1, 2, 3], nombres: [ninguno, puente en R₂, junta J₂ abierta], rotulo: "Defecto" }
+    requiere: { mover: [d_f] }
+
+  - id: aspecto
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Reconocerlos de un vistazo"
+    texto: "Una cada defecto con su aspecto."
+    libro: [265, 266, 267, 269, 270, 272]
+    emparejar:
+      - ["Fría", "Mate, granulada y abultada"]
+      - ["En bola", "Esfera sobre el pad, más de 90°"]
+      - ["Puente", "Estaño entre dos pads contiguos"]
+      - ["Agrietada", "Aro oscuro alrededor de la patilla"]
+      - ["Pad levantado", "Cobre separado del sustrato"]
+      - ["Tombstoning", "SMD levantado de un extremo"]
+    exito: "La inspección visual es el primer paso de cualquier diagnóstico."
+    pistas:
+      - { texto: "El aro oscuro es la firma de la fatiga: la junta agrietada." }
+    escalera:
+      - "La lápida es la de un componente SMD de pie."
+    solucion: "Fría: mate; bola: esfera; puente: entre pads; agrietada: aro; pad: cobre suelto; lápida: SMD de pie."
+
+  - id: causas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Y su causa"
+    texto: "Una cada defecto con lo que lo produce."
+    libro: [266, 269, 270, 271, 273]
+    emparejar:
+      - ["Junta en bola", "Pad oxidado o flux agotado"]
+      - ["Junta agrietada", "Fatiga por ciclos térmicos"]
+      - ["Pad levantado", "Exceso de calor o tirar antes de tiempo"]
+      - ["Bolas de estaño", "Humedad en la pasta de reflujo"]
+      - ["Junta perturbada", "Movimiento al solidificar"]
+    exito: "Conocer la causa dice cómo repararlo y cómo no repetirlo."
+    pistas:
+      - { texto: "La bola nunca se arregla con más estaño: le falta mojado." }
+    escalera:
+      - "Los que aparecen con años de uso vienen de la fatiga."
+    solucion: "Bola: óxido o flux; grieta: fatiga; pad: calor o tirón; bolas: humedad; perturbada: movimiento."
+
+  - id: prediga-continuidad
+    tipo: predecir
+    titulo: "El zumbador y la junta fría"
+    texto: "J₁ es una junta fría y la placa está en reposo. ¿Qué dice la prueba de continuidad?"
+    libro: [281]
+    fijar: { j_f: 1, g_v: 0, d_f: 1 }
+    widget:
+      tipo: circuito
+      esquema: serie
+      piezas: { fuente: V_j, r1: R_J1e, r2: R_1, r3: R_2e, r4: R_J2e }
+      lectura: { valor: I_d, rotulo: "Corriente" }
+      mide: { corriente: I_d, v1: V_d1 }
+      ocultar: true
+    opciones:
+      - texto: "Que hay continuidad: en reposo conduce"
+        bien: true
+        porque: "La continuidad detecta un abierto franco, no una junta fría, que conduce en reposo."
+      - texto: "Que está abierta"
+        porque: "Solo se abre con vibración o temperatura; en reposo conduce."
+      - texto: "Que está en corto"
+        porque: "Una junta fría no une pads vecinos: conduce mal o a ratos."
+    escalera:
+      - "¿Cuándo falla una junta fría: en reposo o al moverla o calentarla?"
+    solucion: "Hay continuidad: en reposo conduce."
+
+  - id: sorpresa-presionar
+    tipo: sorpresa
+    titulo: "Presione y caliente"
+    texto: "Con el circuito funcionando, presione y caliente la placa mientras mira la corriente."
+    libro: [281]
+    fijar: { j_f: 1, d_f: 1 }
+    inicio: { g_v: 0 }
+    widget:
+      tipo: circuito
+      esquema: serie
+      piezas: { fuente: V_j, r1: R_J1e, r2: R_1, r3: R_2e, r4: R_J2e }
+      lectura: { valor: I_d, rotulo: "Corriente" }
+      datos:
+        - { valor: V_d1, rotulo: "En J₁: {{V_d1}}" }
+      corriente: I_d
+      mide: { corriente: I_d, v1: V_d1, v2: V_d2, v3: V_d3, v4: V_d4 }
+      mandos:
+        - { valor: g_v, tipo: interruptor, rotulo: "Presionar y calentar" }
+    requiere: { mover: [g_v] }
+
+  - id: averia-placa
+    tipo: averia
+    titulo: "Busque el defecto"
+    texto: "Esta placa no da lo que debe. Mida con el multímetro y diga qué junta o qué pad falla."
+    libro: [267, 268, 270]
+    fijar: { V_j: 5, R_J1: 0.001, R_1: 220, R_2: 330, R_J2: 0.001 }
+    widget:
+      tipo: circuito
+      esquema: serie
+      piezas: { fuente: V_j, r1: R_J1, r2: R_1, r3: R_2, r4: R_J2 }
+      mide: { corriente: I_a, v1: V_a1, v2: V_a2, v3: V_a3, v4: V_a4 }
+      mandos: []
+    averia:
+      pasos: 2
+      sospechosos:
+        - { id: r1, rotulo: "Junta J₁" }
+        - { id: r3, rotulo: "Pads de R₂" }
+        - { id: r4, rotulo: "Junta J₂" }
+      sondas:
+        - { id: corriente, rotulo: "Corriente", valor: I_a }
+        - { id: v1, rotulo: "Extremos de J₁", valor: V_a1 }
+        - { id: v3, rotulo: "Extremos de R₂", valor: V_a3 }
+        - { id: v4, rotulo: "Extremos de J₂", valor: V_a4 }
+      fallos:
+        - { id: j1-abierta, pieza: r1, tipo: abierta, con: { R_J1: 1000000000 }, texto: "J₁ abierta, seca o con el pad levantado: no circula corriente y toda la tensión de la pila cae en ella." }
+        - { id: r2-puente, pieza: r3, tipo: corto, con: { R_2: 0.001 }, texto: "Un puente de estaño entre los pads de R₂: su tensión cae a cero y la corriente sube." }
+        - { id: j2-abierta, pieza: r4, tipo: abierta, con: { R_J2: 1000000000 }, texto: "J₂ abierta: no circula corriente y la tensión de la pila aparece entre sus extremos." }
+    pistas:
+      - { texto: "Mida primero la corriente: un abierto la anula y un puente la sube." }
+    escalera:
+      - "En un circuito en serie abierto, toda la tensión cae en el punto abierto."
+    solucion: "Corriente nula: una junta abierta, la que tenga la tensión de la pila. Corriente alta: el puente."
+
+  - id: ordene-reparar
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Reparar, no insistir"
+    texto: "Ordene cómo se rehace una junta defectuosa."
+    libro: [283]
+    ordenar:
+      - "Retirar el estaño viejo con malla."
+      - "Limpiar con alcohol."
+      - "Aplicar flux nuevo."
+      - "Rehacer con temperatura adecuada y tiempo corto."
+    exito: "Añadir estaño encima de una fría da una junta más grande e igual de fría."
+    pistas:
+      - { texto: "Antes de soldar de nuevo, la junta vieja tiene que desaparecer." }
+    escalera:
+      - "El flux se pone sobre la superficie ya limpia."
+    solucion: "Malla, alcohol, flux y rehacer."
+
+  - id: criterio
+    tipo: pregunta
+    titulo: "El criterio de inspección"
+    texto: "¿Cuál de estas NO es una de las cuatro comprobaciones esenciales de una junta?"
+    libro: [276]
+    fijar: { j_f: 0, g_v: 0, d_f: 1 }
+    widget:
+      tipo: circuito
+      esquema: serie
+      piezas: { fuente: V_j, r1: R_J1e, r2: R_1, r3: R_2e, r4: R_J2e }
+      lectura: { valor: I_d, rotulo: "Corriente" }
+      mide: { corriente: I_d }
+    opciones:
+      - texto: "Superficie brillante"
+        bien: true
+        porque: "El brillo no es criterio: con sin plomo, el mate es normal."
+      - texto: "Forma cóncava que sube del pad a la patilla"
+        porque: "Sí es una: es la forma del buen mojado."
+      - texto: "Patilla visible dentro del estaño"
+        porque: "Sí es una: también por el otro lado en doble cara metalizada."
+      - texto: "Superficie continua, sin poros ni grietas"
+        porque: "Sí es una de las cuatro."
+    escalera:
+      - "Las cuatro son forma, ángulo, continuidad de la superficie y patilla visible."
+    solucion: "El brillo."
+
+  - id: por-que-rasante
+    tipo: porque
+    titulo: "¿Por qué luz rasante?"
+    texto: "Se inspecciona con lupa y con la luz casi paralela a la placa. ¿Por qué la luz rasante?"
+    libro: [278]
+    fijar: { j_f: 0, g_v: 0, d_f: 1 }
+    widget:
+      tipo: circuito
+      esquema: serie
+      piezas: { fuente: V_j, r1: R_J1e, r2: R_1, r3: R_2e, r4: R_J2e }
+      lectura: { valor: I_d, rotulo: "Corriente" }
+      mide: { corriente: I_d }
+    opciones:
+      - texto: "Da contraste: grietas, poros y ángulos se ven, y con luz frontal no"
+        bien: true
+        porque: "La lupa da resolución; la luz rasante, contraste. Y no cuesta nada."
+      - texto: "Porque calienta menos la placa"
+        porque: "No es cuestión de calor, sino de sombras que delatan el relieve."
+      - texto: "Porque hace brillar el estaño"
+        porque: "Brillar no es el objetivo: el relieve es lo que se busca."
+    escalera:
+      - "¿Qué hace la luz casi paralela con cualquier relieve de la superficie?"
+    solucion: "Da contraste: los defectos aparecen."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [262, 276, 281, 283]
+    ideas:
+      - { titulo: "Lo más numeroso.", texto: "Las juntas son la causa principal de fallo en campo." }
+      - { titulo: "A la vista.", texto: "Cada defecto tiene su aspecto y su causa; lupa y luz rasante." }
+      - { titulo: "El multímetro.", texto: "Un abierto anula la corriente; un puente la sube; la fría pide presionar y calentar." }
+      - { titulo: "Reparar.", texto: "Malla, alcohol, flux nuevo y rehacer: nunca estaño encima." }

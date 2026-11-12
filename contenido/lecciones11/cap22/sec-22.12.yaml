@@ -1,0 +1,311 @@
+# Lección 1.2 de la sección 21.11 «Práctica 11 — Ver y Demodular una Señal Modulada en AM» (cap22; etiqueta interna
+# sec-22.12). Formato: contenido/lecciones11/GUIA.md. En el tiempo se dibujan la portadora de 40 kHz y el tono de 2 kHz
+# del ejercicio 21.10 (la de 100 kHz con 1 kHz del texto daría cien ciclos por pantalla, que la gráfica no puede
+# dibujar), con 2 V de portadora: 3 V de máximo y 1 V de mínimo con m = 0,5, como el texto. El espectro sí es el del
+# texto (100 kHz y 1 kHz), con líneas de 0,08 kHz de anchura. Las constantes del detector (1 µs, 100 µs, 10 ms) son
+# una décima del periodo de la portadora, la media geométrica de los dos periodos y diez periodos de la moduladora.
+leccion: cap22/sec-22.12
+
+libro:
+  292: "reúne el dominio del tiempo, el de la frecuencia y un circuito no lineal"
+  294: "en la pantalla aparece la portadora con su envolvente siguiendo la moduladora"
+  295: "el DDS del 2C53T no pasa de 50 kHz ni modula"
+  296: "El índice de modulación se mide directamente de la pantalla:"
+  297: 'm = (A_(op("max")) - A_("min"))'
+  298: "Con 3 V de máximo y 1 V de mínimo: m = 2/4 = 0,5, es decir, el 50 %."
+  299: "La envolvente se cruza, aparece la sobremodulación, y al demodularla la señal sale distorsionada de forma irrecuperable."
+  301: "aparecen tres líneas: la portadora en 100 kHz y dos bandas laterales en 99 y 101 kHz"
+  303: "El ancho de banda es el doble del de la moduladora. Con un tono de 1 kHz, la señal ocupa 2 kHz."
+  304: "Con modulación al 100 %, las bandas laterales tienen entre las dos un tercio de la potencia total"
+  307: "la información de FM no está en la amplitud, que es lo que le da su inmunidad al ruido"
+  308: "La regla de Carson estima la banda ocupada:"
+  309: 'B approx "2"'
+  310: "Con una desviación de 5 kHz y un tono de 1 kHz: 12 kHz"
+  311: "la FM comercial ocupa 200 kHz por emisora y la AM 9 kHz"
+  313: "Su constante de tiempo tiene que ser mucho mayor que el periodo de la portadora y mucho menor que el de la moduladora"
+  314: "Si es demasiado corta, se filtra mal la portadora; si es demasiado larga, no puede seguir las bajadas rápidas de la envolvente"
+  317: "generar AM y medir su índice en la pantalla"
+  "cap22#370": "una portadora de 40 kHz modulada en AM por un tono de 2 kHz"
+
+modelo:
+  valores:
+    A_c: { sim: "A", nombre: "amplitud de la portadora", unidad: V, valor: 2 }
+    m: { sim: "m", nombre: "índice de modulación", unidad: "", valor: 0.5 }
+    f_p: { sim: "f_{p}", nombre: "portadora en la pantalla", unidad: Hz, valor: 40000 }
+    f_m: { sim: "f_{m}", nombre: "tono en la pantalla", unidad: Hz, valor: 2000 }
+    D_f: { sim: "Δf", nombre: "desviación de FM", unidad: Hz, valor: 5000 }
+    f_t: { sim: "f_{m}", nombre: "tono de FM", unidad: Hz, valor: 1000 }
+  calculos:
+    A_max: { expr: "A_c*(1 + m)", sim: "A_{máx}", nombre: "máximo de la envolvente", unidad: V }
+    A_min: { expr: "A_c*(1 - m)", sim: "A_{mín}", nombre: "mínimo de la envolvente", unidad: V }
+    m_pct: { expr: "m*100", sim: "m", nombre: "índice de modulación", unidad: "%" }
+    P_bl: { expr: "(m^2/2)/(1 + m^2/2)*100", sim: "P_{bandas}", nombre: "potencia en las bandas laterales", unidad: "%" }
+    d_ej: { expr: "2.6 - 1.4", sim: "ΔA", nombre: "diferencia del ejercicio", unidad: V }
+    B_am: { expr: "2*1000", sim: "B", nombre: "banda de la AM", unidad: Hz }
+    B_c: { expr: "2*(D_f + f_t)", sim: "B", nombre: "banda de Carson", unidad: Hz }
+    T_pp: { expr: "1/100000", sim: "T_{p}", nombre: "periodo de la portadora de 100 kHz", unidad: s }
+    T_mm: { expr: "1/1000", sim: "T_{m}", nombre: "periodo del tono de 1 kHz", unidad: s }
+    tau_ok: { expr: "sqrt(T_pp*T_mm)", sim: "τ", nombre: "constante del detector", unidad: s }
+    tau_c: { expr: "T_pp/10", sim: "τ", nombre: "constante demasiado corta", unidad: s }
+    tau_l: { expr: "10*T_mm", sim: "τ", nombre: "constante demasiado larga", unidad: s }
+
+tarjetas:
+  - id: explore-am
+    tipo: explorar
+    titulo: "La envolvente sigue al tono"
+    texto: "Una portadora modulada en amplitud por un tono. Mueva el índice de modulación y mire la envolvente."
+    libro: [292, 294]
+    inicio: { m: 0.5 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.0005, unidad: s, rotulo: "t" }
+      y: { min: -5.5, max: 5.5, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "A_c*(1 + m*sin(2*pi*f_m*t))*sin(2*pi*f_p*t)", color: azul, rotulo: "señal AM" }
+        - { expr: "A_c*(1 + m*sin(2*pi*f_m*t))", color: naranja, rotulo: "envolvente", discontinua: true }
+      lectura: { valor: m_pct, rotulo: "Índice de modulación" }
+      datos:
+        - { valor: A_max, rotulo: "A_{máx} = {{A_max}}" }
+        - { valor: A_min, rotulo: "A_{mín} = {{A_min}}" }
+      mandos:
+        - { valor: m, min: 0, max: 1, paso: 0.05, rotulo: "Índice m" }
+    requiere: { mover: [m] }
+
+  - id: formula-m
+    tipo: formula
+    titulo: "El índice, en la pantalla"
+    texto: "Se lee el máximo y el mínimo de la envolvente. Con 3 V y 1 V, m = 0,5: el 50 %."
+    libro: [296, 297, 298]
+    fijar: { m: 0.5, A_c: 2 }
+    ec: 297
+    sustitucion: "({{A_max}} − {{A_min}}) / ({{A_max}} + {{A_min}}) = {{m}}"
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.0005, unidad: s, rotulo: "t" }
+      y: { min: -3.5, max: 3.5, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "A_c*(1 + m*sin(2*pi*f_m*t))*sin(2*pi*f_p*t)", color: azul, rotulo: "señal AM" }
+        - { expr: "A_c*(1 + m*sin(2*pi*f_m*t))", color: naranja, rotulo: "envolvente", discontinua: true }
+      marcas:
+        - { x: "1/(4*f_m)", y: "A_max", rotulo: "A_{máx}" }
+        - { x: "3/(4*f_m)", y: "A_min", rotulo: "A_{mín}" }
+    comprobar:
+      - { A_max: 3, A_min: 1, m_pct: 50 }
+
+  - id: estime-m
+    tipo: pregunta
+    titulo: "Mida el índice"
+    texto: "Una portadora de 40 kHz modulada por un tono de 2 kHz: la envolvente va de 1,4 V a 2,6 V. ¿Cuánto vale m?"
+    libro: [297, "cap22#370"]
+    estimar:
+      objetivo: "(2.6 - 1.4)/(2.6 + 1.4)"
+      unidad: ""
+      min: 0
+      max: 1
+      paso: 0.01
+      inicio: 0.8
+      tol: 0.04
+      rotulo: "m"
+    exito: "(2,6 − 1,4) / (2,6 + 1,4) = 0,3: un 30 %."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.31 }, texto: "Se ha pasado: divida la diferencia entre la suma, no entre el mínimo." }
+      - { texto: "Se ha quedado corto: la diferencia es 1,2 V y la suma 4 V." }
+    escalera:
+      - "Diferencia entre máximo y mínimo, dividida entre su suma."
+    solucion: "m = 1,2 / 4 = 0,3."
+    comprobar:
+      - { d_ej: 1.2 }
+
+  - id: sobremodulacion
+    tipo: sorpresa
+    titulo: "Por encima del 100 %"
+    texto: "Suba el índice por encima del 100 % y mire la envolvente."
+    libro: [299]
+    inicio: { m: 0.8 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.0005, unidad: s, rotulo: "t" }
+      y: { min: -5.5, max: 5.5, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "A_c*(1 + m*sin(2*pi*f_m*t))*sin(2*pi*f_p*t)", color: azul, rotulo: "señal AM" }
+        - { expr: "A_c*(1 + m*sin(2*pi*f_m*t))", color: naranja, rotulo: "envolvente", discontinua: true }
+        - { expr: "-A_c*(1 + m*sin(2*pi*f_m*t))", color: naranja, rotulo: "envolvente", discontinua: true }
+      lectura: { valor: m_pct, rotulo: "Índice de modulación" }
+      mandos:
+        - { valor: m, lista: [0.8, 1, 1.3], rotulo: "Índice m" }
+    requiere: { mover: [m] }
+
+  - id: por-que-sobremod
+    tipo: porque
+    titulo: "¿Por qué es irrecuperable?"
+    texto: "Con m = 1,3 la envolvente se cruza. ¿Por qué el tono sale distorsionado sin remedio al demodular?"
+    libro: [299, 313]
+    fijar: { m: 1.3 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.0005, unidad: s, rotulo: "t" }
+      y: { min: -5.5, max: 5.5, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "A_c*(1 + m*sin(2*pi*f_m*t))*sin(2*pi*f_p*t)", color: azul, rotulo: "señal AM" }
+        - { expr: "abs(A_c*(1 + m*sin(2*pi*f_m*t)))", color: naranja, rotulo: "lo que sigue el detector" }
+    opciones:
+      - texto: "El detector sigue el tamaño de la envolvente, que ya no es el tono"
+        bien: true
+        porque: "Al cruzarse, la envolvente se dobla hacia arriba: el detector da su valor absoluto y el tono sale deformado."
+      - texto: "Porque la portadora desaparece"
+        porque: "La portadora sigue ahí. Lo que se pierde es la forma del tono en la envolvente."
+      - texto: "Porque el osciloscopio no puede verlo"
+        porque: "Se ve perfectamente en la pantalla: la envolvente se cruza. El problema está en el demodulador."
+    escalera:
+      - "El detector de diodo recupera la amplitud de la portadora, siempre positiva."
+    solucion: "El detector sigue la amplitud, que con la envolvente cruzada ya no reproduce el tono: distorsión irrecuperable."
+
+  - id: espectro
+    tipo: predecir
+    titulo: "AM en la FFT"
+    texto: "Una portadora de 100 kHz modulada por un tono de 1 kHz. ¿Qué ancho de banda ocupa?"
+    libro: [301, 303]
+    fijar: { m: 0.5 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 97000, max: 103000, unidad: Hz, rotulo: "f" }
+      y: { min: 0, max: 2.2, unidad: V, rotulo: "amplitud" }
+      curvas:
+        - { expr: "A_c*exp(-((nu - 100000)/80)^2) + A_c*m/2*(exp(-((nu - 99000)/80)^2) + exp(-((nu - 101000)/80)^2))", color: naranja, rotulo: "FFT" }
+      lectura: { valor: B_am, rotulo: "Banda ocupada" }
+      ocultar: true
+    opciones:
+      - texto: "2 kHz, el doble de la moduladora"
+        bien: true
+        porque: "Tres líneas: la portadora y las bandas laterales en 99 y 101 kHz. De una a otra hay 2 kHz."
+      - texto: "1 kHz, lo que mide el tono"
+        porque: "El tono aparece a los dos lados de la portadora: la banda ocupada es el doble."
+      - texto: "100 kHz, la portadora"
+        porque: "La portadora es una línea. El ancho lo dan las bandas laterales que la rodean."
+    escalera:
+      - "¿Dónde caen las dos bandas laterales?"
+    solucion: "De 99 a 101 kHz: 2 kHz, el doble del tono."
+
+  - id: estime-potencia
+    tipo: pregunta
+    titulo: "Dónde va la potencia"
+    texto: "Con modulación al 100 %, ¿qué parte de la potencia total llevan entre las dos bandas laterales?"
+    libro: [304]
+    fijar: { m: 1 }
+    estimar:
+      objetivo: "P_bl"
+      unidad: "%"
+      min: 0
+      max: 100
+      paso: 1
+      inicio: 80
+      tol: 0.05
+      rotulo: "Potencia en las bandas"
+    exito: "Un tercio: el resto es portadora, que no transporta información. Es el argumento de la banda lateral única."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 35 }, texto: "Se ha pasado: la portadora se lleva la mayor parte de la potencia." }
+      - { texto: "Se ha quedado corto: al 100 %, las bandas no son tan pequeñas." }
+    escalera:
+      - "Cada banda lateral tiene la mitad de la amplitud de la portadora: la cuarta parte de su potencia."
+    solucion: "Un tercio de la potencia total; los otros dos tercios, portadora desperdiciada."
+    comprobar:
+      - { P_bl: 33.3 }
+
+  - id: formula-carson
+    tipo: formula
+    titulo: "La banda de la FM"
+    texto: "La regla de Carson estima la banda ocupada. Con 5 kHz de desviación y un tono de 1 kHz, 12 kHz."
+    libro: [308, 309, 310]
+    ec: 309
+    sustitucion: "2 · ({{D_f}} + {{f_t}}) = {{B_c}}"
+    comprobar:
+      - { B_c: 12000 }
+
+  - id: estime-carson
+    tipo: pregunta
+    titulo: "Carson con otro tono"
+    texto: "La misma portadora, modulada en FM con 6 kHz de desviación por un tono de 2 kHz. ¿Qué banda estima Carson?"
+    libro: [309, "cap22#370"]
+    estimar:
+      objetivo: "2*(6000 + 2000)"
+      unidad: Hz
+      min: 0
+      max: 40000
+      paso: 100
+      inicio: 30000
+      tol: 0.04
+      rotulo: "Banda de Carson"
+    exito: "2 · (6 + 2) = 16 kHz, cuatro veces la AM equivalente: el precio de la inmunidad al ruido."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 16640 }, texto: "Se ha pasado: sume la desviación y el tono, y multiplique por dos." }
+      - { texto: "Se ha quedado corto: la banda es el doble de la suma de la desviación y el tono." }
+    escalera:
+      - "B ≈ 2·(Δf + f_{m})."
+    solucion: "B ≈ 2 · (6 + 2) = 16 kHz."
+
+  - id: fm-amplitud
+    tipo: pregunta
+    titulo: "Dónde va la información en FM"
+    texto: "En FM, en el tiempo se ve la portadora comprimirse y estirarse con amplitud constante. ¿Qué le da su inmunidad al ruido?"
+    libro: [307, 311]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.0005, unidad: s, rotulo: "t" }
+      y: { min: -3, max: 3, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "A_c*sin(2*pi*f_p*t + 4*sin(2*pi*f_m*t))", color: azul, rotulo: "señal FM" }
+    opciones:
+      - texto: "Que la información no está en la amplitud"
+        bien: true
+        porque: "El ruido afecta sobre todo a la amplitud, y en FM la información va en la frecuencia."
+      - texto: "Que ocupa menos banda que la AM"
+        porque: "Ocupa más: 200 kHz por emisora frente a 9 kHz de la AM. Es el precio de la inmunidad."
+      - texto: "Que su portadora es más potente"
+        porque: "La amplitud es constante, pero no es eso lo que la protege: es que no lleva información en ella."
+    escalera:
+      - "¿Qué cambia en la señal de FM, y qué no?"
+    solucion: "La información va en la frecuencia, no en la amplitud: el ruido de amplitud no la toca."
+
+  - id: detector
+    tipo: pregunta
+    titulo: "El detector de diodo"
+    texto: "El diodo rectifica y el RC sigue la envolvente. Empareje cada constante de tiempo con lo que se ve."
+    libro: [313, 314]
+    emparejar:
+      - ["Demasiado corta", "Se filtra mal la portadora: rizado"]
+      - ["Demasiado larga", "No sigue las bajadas: distorsión por corte diagonal"]
+      - ["Mucho mayor que la portadora y mucho menor que el tono", "El tono recuperado"]
+    exito: "Esa doble condición es todo el diseño del detector."
+    pistas:
+      - { texto: "Una constante larga baja despacio; una corta deja pasar la portadora." }
+    escalera:
+      - "El RC debe alisar la portadora sin quedarse atrás cuando la envolvente baja."
+    solucion: "Corta: rizado de portadora. Larga: corte diagonal. Entre las dos: el tono."
+
+  - id: banco-am
+    tipo: banco
+    titulo: "Mida el índice en el banco"
+    texto: "Con un generador de banco en AM al 50 % (el DDS del 2C53T no modula), lea el máximo y el mínimo y calcule m."
+    libro: [295, 298, 317]
+    fijar: { m: 0.5 }
+    banco:
+      piezas: ["Generador de banco con modulación AM", "El osciloscopio en la salida", "Cursores verticales"]
+      medir: "m = (A_{máx} − A_{mín}) / (A_{máx} + A_{mín})."
+      esperado: m
+      unidad: ""
+      tol: 0.1
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.1 }, texto: "Le sale alto: ¿ha leído el mínimo en el centro del valle? Use los cursores y amplíe." }
+        - { cuando: { valor: desviacion, menor: -0.1 }, texto: "Le sale bajo: lea los picos de la envolvente, no de un ciclo cualquiera de la portadora." }
+        - { texto: "Coincide. Mire ahora la FFT y cuente las tres líneas." }
+      ficha: { n: 35, titulo: "Práctica 11 · Ver y demodular una señal de AM" }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [297, 299, 303, 313]
+    ideas:
+      - { titulo: "El índice.", texto: "m = (A_{máx} − A_{mín})/(A_{máx} + A_{mín}), leído en la pantalla. Por encima del 100 %, sobremodulación." }
+      - { titulo: "Tres líneas.", texto: "Portadora y dos bandas laterales: la AM ocupa el doble de la moduladora." }
+      - { titulo: "FM.", texto: "Amplitud constante y más banda (Carson): el precio de la inmunidad al ruido." }
+      - { titulo: "El detector.", texto: "Un diodo y un RC: τ mucho mayor que la portadora y mucho menor que el tono." }

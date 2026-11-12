@@ -1,0 +1,264 @@
+# Lección 1.2 de la sección 21.8 «Práctica 8 — El Transistor BJT como Interruptor» (cap22; etiqueta interna sec-22.8).
+# Formato: contenido/lecciones11/GUIA.md. El montaje del libro (R_B = 10 kΩ, LED con 330 Ω en el colector, 5 V o 9 V)
+# con el esquema «bjt-interruptor», que no tiene LED: el LED conduciendo es su caída constante de 2 V (modelo del libro,
+# sección 5.3), así que la alimentación del colector se dibuja como V_CC − V_LED. Con 9 V eso da los «unos 20 mA» del
+# libro. En corte el LED casi apagado cae menos (el libro lee 3,5 V con 5 V): por eso las tarjetas de corte leen la
+# corriente, no V_CE. β = 100 (el del esquema de referencia); las R_B de 100 kΩ y 150 kΩ son ilustrativas (el libro:
+# «aumentar R_B hasta que no sature, con 1 MΩ, por ejemplo»; con 1 MΩ la base queda fuera del margen del simulador).
+leccion: cap22/sec-22.8
+
+libro:
+  222: "usar un transistor para encender un LED con una señal pequeña, viendo las regiones de corte y saturación"
+  223: "Rb = 10 kΩ, R del LED = 330 Ω, fuente de 5-9 V"
+  225: "en saturación (base con suficiente tensión) conduce a tope y el LED se enciende, con apenas 0,2 V entre colector y emisor"
+  227: "con 9 V el colector pide unos 20 mA y la base solo recibe 0,23 mA, así que conviene bajar Rb a 4,7 kΩ"
+  228: "Si aumentas Rb hasta que el transistor no llega a saturar"
+
+modelo:
+  valores:
+    V_cc: { sim: "V_{CC}", nombre: "alimentación", unidad: V, valor: 5 }
+    V_led: { sim: "V_{LED}", nombre: "caída del LED encendido", unidad: V, valor: 2 }
+    R_bc: { sim: "R_{LED}", nombre: "resistencia del LED", unidad: Ω, valor: 330 }
+    V_bi: { sim: "V_{base}", nombre: "tensión de mando", unidad: V, valor: 0 }
+    R_bb: { sim: "R_{B}", nombre: "resistencia de base", unidad: Ω, valor: 10000 }
+    beta: { sim: "β", nombre: "ganancia de corriente", unidad: "", valor: 100 }
+    V_BE: { sim: "V_{BE}", nombre: "tensión base-emisor", unidad: V, valor: 0.7 }
+    V_CEs: { sim: "V_{CE(sat)}", nombre: "tensión de saturación", unidad: V, valor: 0.2 }
+  calculos:
+    V_eq: { expr: "V_cc - V_led", sim: "V_{CC} − V_{LED}", nombre: "lo que queda para R y el transistor", unidad: V }
+    I_bb: { expr: "max(0, (V_bi - V_BE)/R_bb)", sim: "I_{B}", nombre: "corriente de base", unidad: A }
+    I_bc: { expr: "min(beta*I_bb, (V_eq - V_CEs)/R_bc)", sim: "I_{C}", nombre: "corriente del LED", unidad: A }
+    V_bce: { expr: "V_eq - I_bc*R_bc", sim: "V_{CE}", nombre: "tensión colector-emisor", unidad: V }
+    I_sat: { expr: "(V_eq - V_CEs)/R_bc", sim: "I_{C(sat)}", nombre: "corriente de saturación", unidad: A }
+    I_max: { expr: "beta*I_bb", sim: "β·I_{B}", nombre: "lo que la base permite", unidad: A }
+
+tarjetas:
+  - id: explore-conmutar
+    tipo: explorar
+    titulo: "Corte y saturación"
+    texto: "Una corriente pequeña en la base enciende el LED del colector. Ponga la base a 0 V y a 5 V."
+    libro: [222, 223, 225]
+    fijar: { V_cc: 5, R_bb: 10000 }
+    inicio: { V_bi: 0 }
+    widget:
+      tipo: circuito
+      esquema: bjt-interruptor
+      piezas: { vcc: V_eq, rc: R_bc, entrada: V_bi, rb: R_bb, beta: beta, vbe: V_BE, vcesat: V_CEs }
+      lectura: { valor: I_bc, rotulo: "Corriente del LED" }
+      datos:
+        - { valor: I_bb, rotulo: "I_{B} = {{I_bb}}" }
+      corriente: I_bc
+      mide: { ib: I_bb, ic: I_bc }
+      mandos:
+        - { valor: V_bi, lista: [0, 5], rotulo: "Base" }
+    requiere: { mover: [V_bi] }
+
+  - id: prediga-saturacion
+    tipo: predecir
+    titulo: "Prediga V_{CE}"
+    texto: "Con 5 V en la base a través de 10 kΩ, el LED se enciende. ¿Cuánto marca el voltímetro entre colector y emisor?"
+    libro: [225, 227]
+    fijar: { V_cc: 5, R_bb: 10000, V_bi: 5 }
+    widget:
+      tipo: circuito
+      esquema: bjt-interruptor
+      piezas: { vcc: V_eq, rc: R_bc, entrada: V_bi, rb: R_bb, beta: beta, vbe: V_BE, vcesat: V_CEs }
+      lectura: { valor: V_bce, rotulo: "V_{CE}" }
+      corriente: I_bc
+      mide: { ib: I_bb, ic: I_bc, vce: V_bce }
+      ocultar: true
+    opciones:
+      - texto: "Unos 0,2 V"
+        bien: true
+        porque: "Saturado, conduce a tope: entre colector y emisor queda apenas la tensión de saturación."
+      - texto: "Casi la alimentación"
+        porque: "Eso es en corte, con el LED apagado. Encendido, el transistor es casi un cortocircuito."
+      - texto: "La mitad de la alimentación"
+        porque: "Un valor intermedio es la región activa, la de un amplificador. Con esta base, satura."
+    escalera:
+      - "Con la base a tope, ¿el transistor es un interruptor abierto o cerrado?"
+    solucion: "≈ 0,2 V: saturación."
+    comprobar:
+      - { V_bce: 0.2 }
+
+  - id: corte
+    tipo: pregunta
+    titulo: "Lo que delata el corte"
+    texto: "Base a 0 V y LED apagado: el voltímetro entre colector y emisor no marca toda la alimentación. ¿Qué delata el corte?"
+    libro: [227]
+    fijar: { V_cc: 5, R_bb: 10000, V_bi: 0 }
+    widget:
+      tipo: circuito
+      esquema: bjt-interruptor
+      piezas: { vcc: V_eq, rc: R_bc, entrada: V_bi, rb: R_bb, beta: beta, vbe: V_BE, vcesat: V_CEs }
+      lectura: { valor: I_bc, rotulo: "Corriente del LED" }
+      corriente: I_bc
+      mide: { ib: I_bb, ic: I_bc }
+    opciones:
+      - texto: "Que no circula corriente"
+        bien: true
+        porque: "Con la corriente minúscula del voltímetro, el LED aún cae algo de tensión. Lo que delata el corte es la corriente nula."
+      - texto: "Que V_{CE} es exactamente la alimentación"
+        porque: "No llega a toda: el LED, aun apagado, cae 1 a 1,5 V con la corriente del voltímetro."
+      - texto: "Que V_{CE} es unos 0,2 V"
+        porque: "Eso es la saturación, con el LED encendido."
+    escalera:
+      - "El LED está apagado. ¿Qué magnitud es cero de verdad?"
+    solucion: "La corriente: en corte no circula. V_{CE} es alta, aunque no toda la alimentación."
+
+  - id: activa
+    tipo: sorpresa
+    titulo: "Si R_{B} crece"
+    texto: "Con 5 V en la base, aumente R_{B}. Mire V_{CE}."
+    libro: [228]
+    fijar: { V_cc: 5, V_bi: 5 }
+    inicio: { R_bb: 10000 }
+    widget:
+      tipo: circuito
+      esquema: bjt-interruptor
+      piezas: { vcc: V_eq, rc: R_bc, entrada: V_bi, rb: R_bb, beta: beta, vbe: V_BE, vcesat: V_CEs }
+      lectura: { valor: V_bce, rotulo: "V_{CE}" }
+      datos:
+        - { valor: I_bc, rotulo: "I_{C} = {{I_bc}}" }
+      corriente: I_bc
+      mide: { ib: I_bb, ic: I_bc, vce: V_bce }
+      mandos:
+        - { valor: R_bb, lista: [10000, 100000, 150000], rotulo: "R_{B}" }
+    requiere: { mover: [R_bb] }
+
+  - id: por-que-activa
+    tipo: porque
+    titulo: "¿Qué hace ahora el transistor?"
+    texto: "Con R_{B} grande, V_{CE} se queda en un valor intermedio. ¿Cómo está trabajando el transistor?"
+    libro: [228]
+    fijar: { V_cc: 5, V_bi: 5, R_bb: 150000 }
+    widget:
+      tipo: circuito
+      esquema: bjt-interruptor
+      piezas: { vcc: V_eq, rc: R_bc, entrada: V_bi, rb: R_bb, beta: beta, vbe: V_BE, vcesat: V_CEs }
+      lectura: { valor: V_bce, rotulo: "V_{CE}" }
+      corriente: I_bc
+      mide: { ib: I_bb, ic: I_bc, vce: V_bce }
+    opciones:
+      - texto: "En la región activa: como amplificador, no como interruptor"
+        bien: true
+        porque: "La base ya no basta para saturar: I_{C} = β·I_{B} y V_{CE} queda en medio. Es el régimen de un amplificador."
+      - texto: "En corte, porque la base recibe poca corriente"
+        porque: "En corte no circularía corriente. Aquí circula β·I_{B}, menos que la de saturación."
+      - texto: "Saturado, pero con el LED más débil"
+        porque: "Saturado, V_{CE} sería unos 0,2 V. El valor intermedio delata la región activa."
+    escalera:
+      - "Compare β·I_{B} con la corriente que pediría el colector saturado."
+    solucion: "Región activa: I_{C} = β·I_{B} sin llegar a saturar. Funciona como amplificador."
+
+  - id: simule-base
+    tipo: simular
+    titulo: "Con el DDS en la base"
+    texto: "Alimentación de 9 V y la base excitada por el DDS, que da como mucho 3 V, a través de 10 kΩ. ¿Qué corriente recibe la base?"
+    libro: [227]
+    fijar: { V_cc: 9, V_bi: 3, R_bb: 10000 }
+    widget:
+      tipo: circuito
+      esquema: bjt-interruptor
+      piezas: { vcc: V_eq, rc: R_bc, entrada: V_bi, rb: R_bb, beta: beta, vbe: V_BE }
+      lectura: { valor: I_bb, rotulo: "Corriente de base" }
+      mide: { ib: I_bb }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: I_bb
+      unidad: A
+      tol: 0.04
+      rotulo: "Corriente de base, I_{B}"
+      medida: ib
+      errores:
+        - { expr: "V_bi/R_bb", texto: "Esos 0,30 mA salen de dividir los 3 V entre R_{B}: ha olvidado los 0,7 V de V_{BE}." }
+        - { expr: "(V_cc - V_BE)/R_bb", texto: "Ha usado los 9 V de la alimentación. La base la excita el DDS, con 3 V." }
+    exito: "(3 − 0,7) V / 10 kΩ = 0,23 mA. Con β = 100 da para unos 23 mA: justo lo que pide el colector."
+    escalera:
+      - "R_{B} tiene a un lado el DDS y al otro la base, a unos 0,7 V."
+    solucion: "I_{B} = (3 − 0,7) / 10 kΩ = 0,23 mA."
+    comprobar:
+      - { I_bb: 0.00023, I_sat: 0.0206, I_max: 0.023, tol: 0.01 }
+      - { V_BE: 0.7, beta: 100 }
+      - { con: { V_bi: 3 }, V_bi: 3 }
+
+  - id: holgura
+    tipo: pregunta
+    titulo: "Una saturación holgada"
+    texto: "Con 9 V el colector pide unos 20 mA y la base solo recibe 0,23 mA. ¿Qué conviene hacer?"
+    libro: [227]
+    fijar: { V_cc: 9, V_bi: 3, R_bb: 4700 }
+    widget:
+      tipo: circuito
+      esquema: bjt-interruptor
+      piezas: { vcc: V_eq, rc: R_bc, entrada: V_bi, rb: R_bb, beta: beta, vbe: V_BE, vcesat: V_CEs }
+      lectura: { valor: V_bce, rotulo: "V_{CE} con 4,7 kΩ" }
+      datos:
+        - { valor: I_bb, rotulo: "I_{B} = {{I_bb}}" }
+      corriente: I_bc
+      mide: { ib: I_bb, ic: I_bc, vce: V_bce }
+    opciones:
+      - texto: "Bajar R_{B} a 4,7 kΩ"
+        bien: true
+        porque: "Más del doble de corriente de base: la saturación ya no depende de que β sea justo 100."
+      - texto: "Subir R_{B} para proteger la base"
+        porque: "Con menos corriente de base el transistor saldría de saturación y pasaría a la región activa."
+      - texto: "Subir la tensión del DDS a 9 V"
+        porque: "El DDS del 2C53T da como mucho 3 V. Lo que se puede cambiar es R_{B}."
+    escalera:
+      - "¿Qué hay que cambiar para que la base reciba más corriente con los mismos 3 V?"
+    solucion: "Bajar R_{B} a 4,7 kΩ: la base recibe unos 0,49 mA y la saturación es holgada."
+    comprobar:
+      - { I_bb: 0.00049, tol: 0.01 }
+      - { beta: 100 }
+
+  - id: dibuje-parpadeo
+    tipo: dibujar
+    titulo: "Dibuje el parpadeo"
+    texto: "Con 5 V y una cuadrada de 2 Hz en la base, que empieza en alto, dibuje la corriente del LED durante un segundo."
+    libro: [225, 227]
+    fijar: { V_cc: 5, R_bb: 10000 }
+    dibujar:
+      x: { id: t, min: 0, max: 1, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 0.01, unidad: A, rotulo: "I_{C}" }
+      curva: "I_sat*(1 - floor(2*(2*t - floor(2*t))))"
+      puntos: 41
+      tol: 0.08
+      holgura: 0.03
+      rotulo: "La corriente del LED"
+    exito: "Una cuadrada entre cero (corte) y la corriente de saturación: el LED parpadea al ritmo de la base."
+    escalera:
+      - "Dos periodos en un segundo; en cada uno, medio periodo encendido y medio apagado."
+      - "Encendido, la corriente es la de saturación; apagado, cero."
+    solucion: "Una cuadrada de 2 Hz: la corriente de saturación medio periodo y cero el otro medio."
+    comprobar:
+      - { I_sat: 0.0085, tol: 0.01 }
+
+  - id: banco-bjt
+    tipo: banco
+    titulo: "Mídalo en el banco"
+    texto: "Monte el interruptor con 5 V, ponga la base a 5 V por 10 kΩ y mida V_{CE}."
+    libro: [223, 225]
+    fijar: { V_cc: 5, R_bb: 10000, V_bi: 5 }
+    banco:
+      piezas: ["Un NPN (2N3904 o BC547) y una fuente de 5 V", "R_{B} = 10 kΩ, un LED y 330 Ω", "Multímetro en V⎓"]
+      medir: "La tensión entre colector y emisor con el LED encendido."
+      esperado: V_bce
+      unidad: V
+      tol: 0.5
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.5 }, texto: "Sale alta: el transistor no satura. Compruebe R_{B} y que la base recibe los 5 V." }
+        - { cuando: { valor: desviacion, menor: -0.5 }, texto: "Sale más baja que 0,2 V: es normal con una base muy sobrada. Sigue saturado." }
+        - { texto: "Saturado, con apenas 0,2 V. Ahora ponga la base a 0 V y mida la corriente." }
+      ficha: { n: 32, titulo: "Práctica 8 · El transistor como interruptor" }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [222, 225, 227, 228]
+    ideas:
+      - { titulo: "Corte.", texto: "Base sin tensión: no circula corriente y el LED se apaga." }
+      - { titulo: "Saturación.", texto: "Base sobrada: conduce a tope, con apenas 0,2 V entre colector y emisor." }
+      - { titulo: "Holgura.", texto: "Con el DDS de 3 V y 9 V de alimentación, baje R_{B} a 4,7 kΩ." }
+      - { titulo: "Activa.", texto: "Si R_{B} no deja saturar, V_{CE} queda en medio: un amplificador, no un interruptor." }

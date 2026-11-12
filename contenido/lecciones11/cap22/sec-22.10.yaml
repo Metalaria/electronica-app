@@ -1,0 +1,293 @@
+# Lección 1.2 de la sección 21.13 «Cierre: lo que Demuestran las Prácticas y por qué no Cuadran» (cap22; etiqueta
+# interna sec-22.10). Formato: contenido/lecciones11/GUIA.md. El divisor de la práctica 1 (9 V, 10 kΩ y 4,7 kΩ) con
+# sus resistencias en los extremos del 5 % (9,5/10,5 kΩ y 4465/4935 Ω); la avería es un error de montaje del mismo
+# divisor (un hilo suelto o un puente). El rectificador sin condensador de la práctica 4 ilustra el instrumento
+# equivocado.
+leccion: cap22/sec-22.10
+
+libro:
+  351: "cada una comprueba experimentalmente algo que los capítulos anteriores afirmaron"
+  353: "Oscilador con 555"
+  354: "el número medido casi nunca coincide exactamente con el calculado, y esa diferencia tiene siempre una explicación concreta"
+  357: "con resistencias al 5 %, un cálculo puede desviarse un 10 % sin que nada esté mal"
+  358: "una discrepancia del 10 % se explica por las tres primeras; una del 200 % es un error de montaje"
+  361: "El montaje, con los valores reales de los componentes medidos, no los nominales."
+  362: "Una práctica sin explicación de la discrepancia es una práctica a medias."
+  364: "Un multímetro no ve rizado ni oscilaciones"
+  365: "La pregunta previa a cualquier medida es qué se quiere ver, y de ahí sale el instrumento"
+  367: "repetir una práctica ya hecha, dos meses después, sin mirar las notas"
+  368: "Si coinciden, el método es reproducible."
+  "cap22#10": "Con 9 V, R1 = 10 kΩ y R2 = 4,7 kΩ"
+  "cap22#121": "la señal real está entre 0 y 12"
+  "cap22#270": 't_("r") = ("0,35")'
+
+modelo:
+  valores:
+    V_in: { sim: "V_{in}", nombre: "tensión de la pila", unidad: V, valor: 9 }
+    R_1: { sim: "R₁", nombre: "resistencia de arriba", unidad: Ω, valor: 10000 }
+    R_2: { sim: "R₂", nombre: "resistencia de abajo", unidad: Ω, valor: 4700 }
+    V_rp: { sim: "V_{p}", nombre: "pico del secundario", unidad: V, valor: 12.726 }
+    f_red: { sim: "f", nombre: "frecuencia de la red", unidad: Hz, valor: 50 }
+    V_rd: { sim: "V_{D}", nombre: "caída del diodo", unidad: V, valor: 0.7 }
+    R_rl: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 120 }
+  calculos:
+    V_out: { expr: "V_in*R_2/(R_1 + R_2)", sim: "V_{out}", nombre: "tensión de salida", unidad: V }
+    V_nom: { expr: "9*4700/14700", sim: "V_{calc}", nombre: "salida calculada con los nominales", unidad: V }
+    desv: { expr: "(V_out/V_nom - 1)*100", sim: "Δ", nombre: "desviación", unidad: "%", cifras: 2 }
+    I: { expr: "V_in/(R_1 + R_2)", sim: "I", nombre: "corriente", unidad: A }
+    V_1: { expr: "V_in - V_out", sim: "V_{R1}", nombre: "tensión en R₁", unidad: V }
+    th_0: { expr: "atan2(V_rd, sqrt(V_rp^2 - V_rd^2))", sim: "θ₀", nombre: "ángulo de conducción", unidad: rad }
+    V_med: { expr: "(2*V_rp*cos(th_0) - V_rd*(pi - 2*th_0))/(2*pi)", sim: "V_{media}", nombre: "valor medio", unidad: V }
+
+tarjetas:
+  - id: explore-tolerancias
+    tipo: explorar
+    titulo: "Nada está mal, y no cuadra"
+    texto: "El divisor de la práctica 1 con resistencias del 5 %. Lleve cada una a sus extremos y mire la desviación."
+    libro: [357, "cap22#10"]
+    inicio: { R_1: 10000, R_2: 4700 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: desv, rotulo: "Desviación sobre lo calculado" }
+      datos:
+        - { valor: V_out, rotulo: "Salida: {{V_out}}" }
+      corriente: I
+      mide: { salida: V_out, corriente: I }
+      mandos:
+        - { valor: R_1, lista: [9500, 10000, 10500], rotulo: "R₁" }
+        - { valor: R_2, lista: [4465, 4700, 4935], rotulo: "R₂" }
+    requiere: { mover: [R_1, R_2] }
+
+  - id: prediga-esquinas
+    tipo: predecir
+    titulo: "Prediga el peor caso"
+    texto: "R₁ queda un 5 % baja y R₂ un 5 % alta. ¿Cuánto se aparta la salida de lo calculado?"
+    libro: [357, "cap22#10"]
+    fijar: { V_in: 9, R_1: 9500, R_2: 4935 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: desv, rotulo: "Desviación sobre lo calculado" }
+      corriente: I
+      mide: { salida: V_out, corriente: I }
+      ocultar: true
+    opciones:
+      - texto: "Más del 5 %"
+        bien: true
+        porque: "Los dos errores empujan hacia el mismo lado en la relación R₂/(R₁ + R₂): unos 6,9 %."
+      - texto: "Justo el 5 %"
+        porque: "Sería así con una sola resistencia desviada. Con las dos en contra, los errores se suman."
+      - texto: "Nada: los errores se cancelan"
+        porque: "Se cancelarían si las dos se desviaran hacia el mismo lado. Aquí van en sentidos opuestos."
+    escalera:
+      - "Si R₂ sube y R₁ baja, ¿qué le pasa a la parte de R₂ en el total?"
+    solucion: "Unos 6,9 % de más: las dos tolerancias se suman. Nada está mal y no cuadra."
+    comprobar:
+      - { desv: 6.9, tol: 0.01 }
+
+  - id: causas
+    tipo: pregunta
+    titulo: "Las fuentes de discrepancia"
+    texto: "Ordene las causas de que una medida no cuadre, de la más frecuente a la menos."
+    libro: [357]
+    ordenar:
+      - "Las tolerancias de los componentes"
+      - "El instrumento que carga el circuito"
+      - "Un modelo demasiado simple"
+      - "Los parásitos de cables y protoboard"
+      - "La temperatura"
+      - "Un error de montaje"
+    exito: "El orden sirve para diagnosticar: lo pequeño, por arriba; lo enorme, por abajo."
+    pistas:
+      - { texto: "La primera ya la ha visto: los componentes no valen lo que dicen." }
+    escalera:
+      - "Empiece por lo que pasa siempre, aunque todo esté bien montado."
+    solucion: "Tolerancias, carga del instrumento, modelo simple, parásitos, temperatura y error de montaje."
+
+  - id: doscientos
+    tipo: pregunta
+    titulo: "Una discrepancia del 200 %"
+    texto: "Lo medido se aparta un 200 % de lo calculado. ¿Qué es lo más probable?"
+    libro: [358]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: desv, rotulo: "Desviación" }
+      corriente: I
+      mide: { salida: V_out, corriente: I }
+    opciones:
+      - texto: "Un error de montaje"
+        bien: true
+        porque: "Las tolerancias, la carga del instrumento y un modelo simple explican un 10 %; un 200 %, no."
+      - texto: "La tolerancia de los componentes"
+        porque: "Con el 5 %, la desviación es de unos pocos por ciento: nunca un 200 %."
+      - texto: "La temperatura"
+        porque: "Desplaza casi todo, pero poco. Una diferencia enorme apunta al montaje."
+    escalera:
+      - "¿Cuánto puede explicar, como mucho, la suma de las tres primeras causas?"
+    solucion: "Un error de montaje: las tres primeras causas explican un 10 %, no un 200 %."
+
+  - id: averia-montaje
+    tipo: averia
+    titulo: "Busque el error de montaje"
+    texto: "El divisor de la práctica 1 da una salida que no se parece a la calculada. Mida y diga qué pieza está mal montada."
+    libro: [358, "cap22#10"]
+    fijar: { V_in: 9, R_1: 10000, R_2: 4700 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      mide: { salida: V_out, corriente: I }
+      mandos: []
+    averia:
+      pasos: 2
+      sospechosos:
+        - { id: r1, rotulo: "R₁" }
+        - { id: r2, rotulo: "R₂" }
+      sondas:
+        - { id: salida, rotulo: "Salida", valor: V_out }
+        - { id: r1, rotulo: "Extremos de R₁", valor: V_1 }
+        - { id: corriente, rotulo: "Corriente", valor: I }
+      fallos:
+        - { id: r2-abierta, pieza: r2, tipo: abierta, con: { R_2: 1e9 }, texto: "R₂ con un hilo suelto: no circula corriente y la salida sube a los 9 V de la pila." }
+        - { id: r1-corto, pieza: r1, tipo: corto, con: { R_1: 0.001 }, texto: "R₁ puenteada: la salida sube a 9 V, pero la corriente es la de R₂ sola." }
+        - { id: r1-abierta, pieza: r1, tipo: abierta, con: { R_1: 1e9 }, texto: "R₁ con un hilo suelto: no llega corriente y la salida cae a cero." }
+        - { id: r2-corto, pieza: r2, tipo: corto, con: { R_2: 0.001 }, texto: "R₂ puenteada: la salida cae a cero, pero la corriente sigue circulando por R₁." }
+    pistas:
+      - { texto: "Compare la salida y la corriente con las del divisor bien montado." }
+    escalera:
+      - "Bien montado da 2,88 V. Una salida en 9 V o en cero es un error de montaje."
+      - "La corriente separa un hilo suelto (cero) de un puente (circula)."
+    comprobar:
+      - { V_out: 2.88 }
+
+  - id: confirma
+    tipo: pregunta
+    titulo: "Lo que cada práctica demuestra"
+    texto: "Empareje cada práctica con lo que confirma."
+    libro: [351, 353, "cap22#270"]
+    emparejar:
+      - ["Divisor de tensión", "La ley de Ohm y el efecto de carga"]
+      - ["Carga y descarga RC", "La constante de tiempo"]
+      - ["Curva del diodo", "La exponencial de Shockley"]
+      - ["Oscilador con 555", "Que la frecuencia no depende de la alimentación"]
+      - ["Tiempo de subida", "La relación t_{r} = 0,35/BW"]
+      - ["Resonancia RLC", "El factor Q y la sobretensión"]
+    exito: "Su valor está en esa correspondencia: cada práctica comprueba algo que la teoría afirmó."
+    pistas:
+      - { texto: "El 555 es la práctica de la cancelación entre umbrales y carga." }
+    escalera:
+      - "Recuerde qué se medía en cada una: tensiones, una exponencial, una curva, una frecuencia, un flanco, un máximo."
+    solucion: "Divisor: Ohm y carga. RC: τ. Diodo: Shockley. 555: frecuencia sin V_{CC}. Flanco: 0,35/BW. RLC: Q y sobretensión."
+
+  - id: anotar
+    tipo: pregunta
+    titulo: "Lo que casi nadie escribe"
+    texto: "Al anotar una práctica, ¿qué apartado es el más valioso y el que casi nadie escribe?"
+    libro: [361, 362]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_out, rotulo: "Salida" }
+      corriente: I
+      mide: { salida: V_out }
+    opciones:
+      - texto: "La discrepancia y su explicación"
+        bien: true
+        porque: "Es lo que convierte un experimento en conocimiento. Sin ella, la práctica queda a medias."
+      - texto: "Los valores nominales de los componentes"
+        porque: "Se anotan los valores reales, medidos, no los nominales."
+      - texto: "Solo la medida final, con muchas cifras"
+        porque: "Una medida sin su incertidumbre ni su comparación con lo esperado no enseña nada."
+    escalera:
+      - "¿Qué apartado convierte un número en algo aprendido?"
+    solucion: "La discrepancia y su explicación."
+
+  - id: instrumento
+    tipo: pregunta
+    titulo: "El instrumento equivocado"
+    texto: "Una fuente rectificada sin condensador: el multímetro marca unos 3,7 V. ¿Qué error de medida es este?"
+    libro: [364, 365, "cap22#121"]
+    widget:
+      tipo: circuito
+      esquema: media-onda
+      piezas: { fuente: V_rp, f: f_red, vd: V_rd, carga: R_rl }
+      lectura: { valor: V_med, rotulo: "Lo que marca el multímetro" }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: -14, max: 14, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(0, V_rp*sin(2*pi*f_red*t) - V_rd)", color: naranja, rotulo: "salida", mide: salida }
+    opciones:
+      - texto: "Medir con el instrumento equivocado: el multímetro no ve la forma"
+        bien: true
+        porque: "Un multímetro no ve rizado ni oscilaciones. La pregunta previa es qué se quiere ver."
+      - texto: "Un error de montaje"
+        porque: "El montaje está bien: 3,7 V es justo su valor medio. Lo que falla es elegir el multímetro para ver la forma."
+      - texto: "La tolerancia del diodo"
+        porque: "El diodo no explica nada aquí: el multímetro promedia semiciclos de 12 V."
+    escalera:
+      - "¿Qué ve un multímetro en continua de una señal que cambia?"
+    solucion: "El instrumento equivocado: el multímetro promedia y oculta la forma; hace falta el osciloscopio."
+    comprobar:
+      - { V_med: 3.7 }
+
+  - id: pregunta-previa
+    tipo: porque
+    titulo: "La pregunta previa"
+    texto: "Antes de cualquier medida hay una pregunta. ¿Cuál, y por qué va primero?"
+    libro: [364, 365]
+    widget:
+      tipo: circuito
+      esquema: media-onda
+      piezas: { fuente: V_rp, f: f_red, vd: V_rd, carga: R_rl }
+      lectura: { valor: V_med, rotulo: "Valor medio" }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: -14, max: 14, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(0, V_rp*sin(2*pi*f_red*t) - V_rd)", color: naranja, rotulo: "salida", mide: salida }
+    opciones:
+      - texto: "Qué se quiere ver: de ahí sale el instrumento"
+        bien: true
+        porque: "Un valor medio pide multímetro; una forma, un rizado o un flanco piden osciloscopio y la sonda adecuada."
+      - texto: "Qué escala tiene el multímetro"
+        porque: "La escala va después. Antes hay que saber si el multímetro sirve para lo que se quiere ver."
+      - texto: "Cuánto debería dar"
+        porque: "El valor esperado se anota, pero no elige el instrumento. Lo elige lo que se quiere ver."
+    escalera:
+      - "Un multímetro y un osciloscopio no ven lo mismo."
+    solucion: "Qué se quiere ver: eso elige el instrumento."
+
+  - id: banco-repetir
+    tipo: banco
+    titulo: "Repita una práctica"
+    texto: "Dos meses después, sin mirar las notas, repita la práctica 1 y compare con lo que anotó."
+    libro: [367, 368, "cap22#10"]
+    fijar: { V_in: 9, R_1: 10000, R_2: 4700 }
+    banco:
+      piezas: ["El divisor de 10 kΩ y 4,7 kΩ con la pila de 9 V", "Multímetro en V⎓", "Sus notas de entonces, guardadas hasta el final"]
+      medir: "La tensión de salida."
+      esperado: V_out
+      unidad: V
+      tol: 0.05
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.05 }, texto: "No coincide: ¿la misma pila y las mismas resistencias? La diferencia señala algo que no se controló." }
+        - { cuando: { valor: desviacion, menor: -0.05 }, texto: "No coincide: mida la pila; una usada da menos. Anote qué cambió." }
+        - { texto: "Dentro de lo esperado. Compárelo ahora con lo que anotó: si coincide, el método es reproducible." }
+      ficha: { n: 25, titulo: "Práctica 1 · Ley de Ohm y divisor de tensión" }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [354, 358, 362, 365]
+    ideas:
+      - { titulo: "No cuadra.", texto: "Lo medido casi nunca coincide con lo calculado, y la diferencia siempre tiene explicación." }
+      - { titulo: "Por tamaño.", texto: "Un 10 %: tolerancias, carga o modelo. Un 200 %: un error de montaje." }
+      - { titulo: "Anotar.", texto: "Valores reales, condiciones, medidas con incertidumbre, y la discrepancia explicada." }
+      - { titulo: "Antes de medir.", texto: "Qué se quiere ver: de ahí sale el instrumento." }

@@ -1,0 +1,274 @@
+# Lección 1.2 de la sección 13.1 «Fundamentos: el Mojado y las Aleaciones» (cap13). Formato: contenido/lecciones11/GUIA.md.
+# La gráfica es la fracción líquida de cada aleación frente a la temperatura con las temperaturas del libro
+# (63/37: 183 °C; 60/40: 183 a 190 °C; SAC305: 217 a 220 °C) y el límite de 260 °C de un componente. El tramo
+# entre sólida y líquida se dibuja como una recta: es esquemático (el libro no da su forma), lo dice la nota.
+leccion: cap13/sec-13.1
+
+libro:
+  3: "es una unión metalúrgica"
+  4: "Es la soldadura fría, y es el defecto más traicionero"
+  5: "más calor no es mejor"
+  7: "forma una bola y no se extiende"
+  8: "El ángulo de contacto es, por tanto, el indicador visual"
+  9: "Bola sobre el pad"
+  10: "una gota esférica es siempre un defecto por mucho estaño que tenga"
+  12: "el óxido no reacciona con el estaño: impide el mojado"
+  13: "una junta que no moja tras varios segundos no vaya a mojar por insistir"
+  15: "Es eutéctica: pasa de sólida a líquida a una sola temperatura, 183 °C, sin estado pastoso."
+  16: "funde a 183 °C pero permanece pastosa hasta unos 190 °C"
+  17: "Funde entre 217 y 220 °C, unos 35 °C más alta"
+  18: "con SAC305, una junta mate es lo normal"
+  21: "La punta debe tocar a la vez el pad y la patilla"
+  22: "Una gota de estaño en la punta mejora enormemente la transferencia"
+  25: "tirar suavemente del componente con unas pinzas"
+
+modelo:
+  valores:
+    a_l: { sim: "aleación", nombre: "aleación", unidad: "", valor: 1 }
+    L_c: { sim: "T_{máx}", nombre: "temperatura que tolera un componente", unidad: "°C", valor: 260 }
+  calculos:
+    # solidus and liquidus of the three alloys of the book (positions 1, 2, 3 of the control)
+    T_s: { expr: "183 + 17*(a_l - 1)*(a_l - 2)", sim: "T_{sólida}", nombre: "sólida hasta", unidad: "°C" }
+    T_l: { expr: "183 + 7*(a_l - 1) + 11.5*(a_l - 1)*(a_l - 2)", sim: "T_{líquida}", nombre: "líquida desde", unidad: "°C" }
+    W_p: { expr: "T_l - T_s", sim: "ΔT", nombre: "tramo pastoso", unidad: "°C" }
+    M_c: { expr: "L_c - T_l", sim: "margen", nombre: "margen hasta el límite del componente", unidad: "°C" }
+
+tarjetas:
+  - id: explore-aleaciones
+    tipo: explorar
+    titulo: "Sólida, pastosa, líquida"
+    texto: "Cambie la aleación y fíjese en el tramo entre sólida y líquida."
+    nota: "El tramo intermedio está dibujado como una recta: es esquemático."
+    libro: [15, 16, 17]
+    widget:
+      tipo: grafica
+      x: { id: th, min: 150, max: 280, unidad: "°C", rotulo: "T" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "fracción líquida" }
+      curvas:
+        - { expr: "min(1, max(0, (th - T_s)/max(0.5, T_l - T_s)))", color: azul, rotulo: "líquida" }
+      marcas:
+        - { x: "L_c", y: "1", rotulo: "Límite del componente" }
+      lectura: { valor: W_p, rotulo: "Tramo pastoso" }
+      datos:
+        - { valor: T_s, rotulo: "Sólida hasta {{T_s}}" }
+        - { valor: T_l, rotulo: "Líquida desde {{T_l}}" }
+      mandos:
+        - { valor: a_l, lista: [1, 2, 3], nombres: [eutéctica con plomo, casi eutéctica, sin plomo SAC], rotulo: "Aleación" }
+    requiere: { mover: [a_l] }
+
+  - id: prediga-pastosa
+    tipo: predecir
+    titulo: "La 60/40 entre 183 y 190 °C"
+    texto: "La 60/40 empieza a fundir a 183 °C. ¿Cómo está la junta entre 183 y 190 °C?"
+    libro: [16]
+    fijar: { a_l: 2 }
+    widget:
+      tipo: grafica
+      x: { id: th, min: 150, max: 280, unidad: "°C", rotulo: "T" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "fracción líquida" }
+      curvas:
+        - { expr: "min(1, max(0, (th - T_s)/max(0.5, T_l - T_s)))", color: azul, rotulo: "líquida" }
+      lectura: { valor: W_p, rotulo: "Tramo pastoso" }
+      ocultar: true
+    opciones:
+      - texto: "Pastosa: sólido y líquido a la vez"
+        bien: true
+        porque: "Casi eutéctica: funde a 183 °C pero sigue pastosa hasta unos 190 °C. Un movimiento ahí granula la junta."
+      - texto: "Toda líquida"
+        porque: "Eso es la 63/37, eutéctica: líquida entera a 183 °C. La 60/40 necesita llegar a unos 190 °C."
+      - texto: "Toda sólida"
+        porque: "A 183 °C ya ha empezado a fundir: en ese tramo conviven sólido y líquido."
+    escalera:
+      - "¿Es eutéctica la 60/40?"
+    solucion: "Pastosa: de 183 a unos 190 °C."
+    comprobar:
+      - { T_s: 183, T_l: 190 }
+
+  - id: capa-intermetalica
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La capa que une"
+    texto: "La unión real es una capa de compuesto intermetálico entre el estaño y el cobre. ¿Qué grosor tiene?"
+    libro: [3]
+    estimar:
+      objetivo: "1.5e-6"
+      unidad: m
+      min: 0
+      max: 0.00002
+      paso: 0.0000005
+      inicio: 0.00001
+      tol: 0.34
+      rotulo: "Grosor de la capa"
+    exito: "Uno o dos micrómetros: esa capa es la unión; el resto del estaño solo la rodea."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.000002 }, texto: "Mucho menos: es una capa de micras, no una décima de milímetro." }
+      - { texto: "Algo más: llega a uno o dos micrómetros." }
+    escalera:
+      - "Es una película finísima: se mide en micrómetros."
+    solucion: "De uno a dos micrómetros."
+
+  - id: angulo
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "El ángulo lo dice"
+    texto: "El ángulo de contacto es el indicador visual del mojado. Una cada ángulo con su diagnóstico."
+    libro: [8, 9]
+    emparejar:
+      - ["Menos de 30°", "Cóncavo, se extiende: mojado correcto"]
+      - ["De 30 a 90°", "Forma intermedia: mojado marginal"]
+      - ["Más de 90°", "Bola sobre el pad: junta inservible"]
+    exito: "Cuanto más se extiende el estaño, mejor ha mojado."
+    pistas:
+      - { texto: "Una bola apoyada sobre el pad forma un ángulo mayor que un ángulo recto." }
+    escalera:
+      - "El agua sobre un vidrio limpio se extiende; sobre uno engrasado forma gotas."
+    solucion: "Menos de 30°: correcto; de 30 a 90°: marginal; más de 90°: no ha mojado."
+
+  - id: gota-brillante
+    tipo: pregunta
+    titulo: "Una gota llena y brillante"
+    texto: "Una junta de 63/37 es una gota esférica, brillante y con mucho estaño. ¿Qué es?"
+    libro: [7, 10, 12]
+    widget:
+      tipo: grafica
+      x: { id: th, min: 150, max: 280, unidad: "°C", rotulo: "T" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "fracción líquida" }
+      curvas:
+        - { expr: "min(1, max(0, (th - T_s)/max(0.5, T_l - T_s)))", color: azul, rotulo: "líquida" }
+    fijar: { a_l: 1 }
+    opciones:
+      - texto: "Un defecto: no ha mojado"
+        bien: true
+        porque: "Forma una bola y no se extiende, como el agua en un cristal engrasado: el óxido o la suciedad lo impiden."
+      - texto: "Una junta buena: brilla"
+        porque: "El brillo no basta: la forma manda. Una esfera es siempre un defecto."
+      - texto: "Una junta buena: le sobra estaño"
+        porque: "Más estaño no la arregla: sin mojado no hay capa intermetálica que una."
+    escalera:
+      - "¿Qué ángulo de contacto forma una esfera sobre el pad?"
+    solucion: "No ha mojado: más de 90°, junta inservible."
+
+  - id: transferencia
+    tipo: pregunta
+    titulo: "Dónde apoyar la punta"
+    texto: "Para que funda bien, ¿dónde se apoya la punta del soldador?"
+    libro: [21, 22]
+    widget:
+      tipo: grafica
+      x: { id: th, min: 150, max: 280, unidad: "°C", rotulo: "T" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "fracción líquida" }
+      curvas:
+        - { expr: "min(1, max(0, (th - T_s)/max(0.5, T_l - T_s)))", color: azul, rotulo: "líquida" }
+    opciones:
+      - texto: "Tocando a la vez el pad y la patilla, con una gota de estaño en la punta"
+        bien: true
+        porque: "Los dos deben llegar a la temperatura; la gota hace de puente líquido y conduce el calor mucho mejor."
+      - texto: "Solo en la patilla, que es la que se suelda"
+        porque: "Saldría una junta que ha mojado la patilla y no el pad."
+      - texto: "En el pad, con la punta seca y limpia"
+        porque: "Un contacto seco entre superficies rugosas conduce mal; y la patilla quedaría fría."
+    escalera:
+      - "¿Qué dos superficies tiene que mojar el estaño?"
+    solucion: "Pad y patilla a la vez, con la punta cebada."
+
+  - id: margen-sin-plomo
+    tipo: sorpresa
+    titulo: "El sin plomo deja poco margen"
+    texto: "Pase de la 63/37 a la SAC305 y mire el margen hasta los 260 °C que tolera un componente."
+    libro: [17]
+    inicio: { a_l: 1 }
+    widget:
+      tipo: grafica
+      x: { id: th, min: 150, max: 280, unidad: "°C", rotulo: "T" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "fracción líquida" }
+      curvas:
+        - { expr: "min(1, max(0, (th - T_s)/max(0.5, T_l - T_s)))", color: azul, rotulo: "líquida" }
+      marcas:
+        - { x: "L_c", y: "1", rotulo: "Límite del componente" }
+      lectura: { valor: M_c, rotulo: "Margen hasta 260 °C" }
+      mandos:
+        - { valor: a_l, lista: [1, 2, 3], nombres: [eutéctica con plomo, casi eutéctica, sin plomo SAC], rotulo: "Aleación" }
+    requiere: { mover: [a_l] }
+    nota: "Funde unos 35 °C más alta y obliga a subir la punta."
+
+  - id: por-que-mate
+    tipo: porque
+    titulo: "¿Por qué no rehacer una SAC mate?"
+    texto: "Con 63/37 una junta mate es sospechosa. ¿Por qué con SAC305 no lo es?"
+    libro: [18]
+    fijar: { a_l: 3 }
+    widget:
+      tipo: grafica
+      x: { id: th, min: 150, max: 280, unidad: "°C", rotulo: "T" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "fracción líquida" }
+      curvas:
+        - { expr: "min(1, max(0, (th - T_s)/max(0.5, T_l - T_s)))", color: azul, rotulo: "líquida" }
+    opciones:
+      - texto: "Porque su acabado es mate por naturaleza: se juzga por la forma y el ángulo"
+        bien: true
+        porque: "El criterio del brillo es del estaño-plomo; aplicado al sin plomo lleva a rehacer juntas buenas."
+      - texto: "Porque el sin plomo nunca da juntas frías"
+        porque: "Sí puede darlas; solo que el mate no las delata: hay que mirar la forma."
+      - texto: "Porque el mate indica que se calentó más"
+        porque: "El acabado mate es propio de la aleación, no de la temperatura."
+    escalera:
+      - "¿El acabado mate es un defecto de la junta o una propiedad de la aleación?"
+    solucion: "Es mate por naturaleza: se juzga por forma y ángulo."
+
+  - id: por-que-calor
+    tipo: porque
+    titulo: "¿Por qué más calor no es mejor?"
+    texto: "Si la capa intermetálica es la unión, ¿por qué no conviene calentar más y durante más tiempo?"
+    libro: [5, 13]
+    widget:
+      tipo: grafica
+      x: { id: th, min: 150, max: 280, unidad: "°C", rotulo: "T" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "fracción líquida" }
+      curvas:
+        - { expr: "min(1, max(0, (th - T_s)/max(0.5, T_l - T_s)))", color: azul, rotulo: "líquida" }
+      marcas:
+        - { x: "L_c", y: "1", rotulo: "Límite del componente" }
+    opciones:
+      - texto: "Porque la capa crece gruesa y quebradiza, y la junta se agrieta"
+        bien: true
+        porque: "El objetivo es un par de micras: temperatura suficiente durante poco tiempo."
+      - texto: "Porque el estaño se evapora"
+        porque: "Lo que se agota con el calor es el flux, no el estaño; y la capa crece de más."
+      - texto: "No pasa nada: insistir acaba mojando"
+        porque: "Una junta que no moja tras varios segundos no va a mojar por insistir: limpiar, flux nuevo y repetir."
+    escalera:
+      - "¿Qué le pasa a la capa intermetálica con exceso de temperatura o de tiempo?"
+    solucion: "Crece gruesa y quebradiza: poco tiempo, temperatura suficiente."
+
+  - id: prueba-pinzas
+    tipo: pregunta
+    titulo: "La prueba de las pinzas"
+    texto: "Tira suavemente del componente con unas pinzas y la junta cede. ¿Qué indica?"
+    libro: [25, 4]
+    widget:
+      tipo: grafica
+      x: { id: th, min: 150, max: 280, unidad: "°C", rotulo: "T" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "fracción líquida" }
+      curvas:
+        - { expr: "min(1, max(0, (th - T_s)/max(0.5, T_l - T_s)))", color: azul, rotulo: "líquida" }
+    opciones:
+      - texto: "Una junta fría: hay que rehacerla"
+        bien: true
+        porque: "Una junta correcta no cede. Descubrirlo en el banco es mucho mejor que en el equipo terminado."
+      - texto: "Nada: tirar no dice nada de la junta"
+        porque: "Es la comprobación mecánica que el libro recomienda al aprender: la fría se suelta o se mueve."
+      - texto: "Que falta estaño: basta con añadir"
+        porque: "Si no se formó la capa, añadir estaño encima no la crea."
+    escalera:
+      - "¿Se movería una unión metalúrgica bien formada?"
+    solucion: "Junta fría: rehacerla."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [3, 9, 15, 18]
+    ideas:
+      - { titulo: "Unión metalúrgica.", texto: "Una capa intermetálica de una o dos micras: si no se forma, junta fría." }
+      - { titulo: "El ángulo.", texto: "Menos de 30°, mojado correcto; una bola es siempre un defecto." }
+      - { titulo: "Las aleaciones.", texto: "La 63/37 funde de golpe a 183 °C; la SAC305, entre 217 y 220 °C, con menos margen." }
+      - { titulo: "El brillo engaña.", texto: "Con sin plomo, el mate es normal: se juzga por la forma." }
