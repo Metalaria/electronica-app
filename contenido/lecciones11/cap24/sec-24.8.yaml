@@ -1,0 +1,241 @@
+# Lección 1.2 de la sección 23.8 «Corrección del Factor de Potencia» (cap24). Formato: contenido/lecciones11/GUIA.md.
+# La carga es la del libro (bloque 205, que retoma la de la sección 23.5: 230 V, 10 A, FP = 0,8, 50 Hz; P = 1840 W,
+# Q = 1380 VAr) y su tabla (0,95: 46,6 µF y 8,42 A; 1,00: 83,0 µF y 8,00 A). La sección no tiene ecuación de primer
+# nivel: la fórmula cita la de la 23.5 (cap24#139); la Ec. 4 general está dentro del recuadro de deducción.
+leccion: cap24/sec-24.8
+
+libro:
+  203: "suministrar esa energía reactiva en el propio sitio para que no tenga que viajar desde la central"
+  204: "se les conecta un condensador en paralelo"
+  205: "10,00 → 8,42 A (−15,8 %)"
+  206: "pasar de 0,95 a 1,00 exige casi duplicar el condensador (de 46,6 a 83 µF) para reducir la corriente solo 4 puntos más"
+  "cap24#139": 'C = (Q)/("2" π dot.op f dot.op V^("2"))'
+  "cap24#329": "Una carga consume 1150 VA con un factor de potencia de 0,8"
+
+modelo:
+  valores:
+    V_e: { sim: "V", nombre: "tensión de la red", unidad: V, valor: 230 }
+    f_r: { sim: "f", nombre: "frecuencia de la red", unidad: Hz, valor: 50 }
+    P_a: { sim: "P", nombre: "potencia activa de la carga", unidad: W, valor: 1840 }
+    Q_l: { sim: "Q_{L}", nombre: "reactiva de la carga", unidad: VAr, valor: 1380 }
+    C_k: { sim: "C", nombre: "condensador de corrección", unidad: F, valor: 0 }
+  calculos:
+    Q_k: { expr: "2*pi*f_r*C_k*V_e^2", sim: "Q_{C}", nombre: "reactiva del condensador", unidad: VAr }
+    Q_n: { expr: "Q_l - Q_k", sim: "Q", nombre: "reactiva que da la red", unidad: VAr }
+    S_n: { expr: "sqrt(P_a^2 + Q_n^2)", sim: "S", nombre: "aparente que da la red", unidad: VA }
+    F_n: { expr: "P_a/S_n", sim: "FP", nombre: "factor de potencia", unidad: "", cifras: 3 }
+    I_n: { expr: "S_n/V_e", sim: "I", nombre: "corriente de línea", unidad: A, cifras: 3 }
+    C_1: { expr: "Q_l/(2*pi*f_r*V_e^2)", sim: "C", nombre: "condensador para FP = 1", unidad: F }
+    C_95: { expr: "P_a*(Q_l/P_a - sqrt(1 - 0.95^2)/0.95)/(2*pi*f_r*V_e^2)", sim: "C", nombre: "condensador para FP = 0,95", unidad: F }
+    I_95: { expr: "P_a/(0.95*V_e)", sim: "I", nombre: "corriente con FP = 0,95", unidad: A }
+    I_1: { expr: "P_a/V_e", sim: "I", nombre: "corriente con FP = 1", unidad: A }
+    I_0: { expr: "sqrt(P_a^2 + Q_l^2)/V_e", sim: "I", nombre: "corriente sin corregir", unidad: A }
+    P_red: { expr: "P_a", sim: "P", nombre: "activa que da la red", unidad: W }
+
+tarjetas:
+  - id: explore-corriente
+    tipo: explorar
+    titulo: "Un condensador en paralelo"
+    texto: "La carga de 1840 W con FP = 0,8. Arrastre el punto para añadir capacidad en paralelo y mire cómo baja la corriente de la línea."
+    libro: [203, 204]
+    widget:
+      tipo: grafica
+      x: { id: cc, min: 0, max: 0.00017, unidad: F, rotulo: "C" }
+      y: { min: 0, max: 11, unidad: A, rotulo: "I de línea" }
+      curvas:
+        - { expr: "sqrt(P_a^2 + (Q_l - 2*pi*f_r*cc*V_e^2)^2)/V_e", color: naranja, rotulo: "I" }
+      asas:
+        - { mueve: C_k, x: "C_k", y: "I_n", rotulo: "Condensador elegido" }
+      lectura: { valor: F_n, rotulo: "Factor de potencia" }
+      datos:
+        - { valor: I_n, rotulo: "Corriente: {{I_n}}" }
+      mandos:
+        - { valor: C_k, min: 0, max: 0.00017, paso: 0.0000005, rotulo: "Condensador" }
+
+  - id: prediga-activa
+    tipo: predecir
+    titulo: "¿Y la potencia útil?"
+    texto: "Con el condensador, la corriente de la línea baja. ¿Qué potencia activa toma ahora la carga de la red?"
+    libro: [203, 204]
+    fijar: { C_k: 0.000083 }
+    widget:
+      tipo: grafica
+      x: { id: cc, min: 0, max: 0.00017, unidad: F, rotulo: "C" }
+      y: { min: 0, max: 11, unidad: A, rotulo: "I de línea" }
+      curvas:
+        - { expr: "sqrt(P_a^2 + (Q_l - 2*pi*f_r*cc*V_e^2)^2)/V_e", color: naranja, rotulo: "I" }
+      lectura: { valor: P_red, rotulo: "Potencia activa" }
+      ocultar: true
+    opciones:
+      - texto: "La misma, 1840 W"
+        bien: true
+        porque: "El condensador no aporta ni consume activa: solo da en el sitio la reactiva que antes venía de la central."
+      - texto: "Menos: el condensador ahorra energía"
+        porque: "La reactiva no consumía. Lo que baja es la corriente, no la potencia útil."
+      - texto: "Más, porque llega más tensión"
+        porque: "La tensión es la de la red. La carga sigue consumiendo lo mismo."
+    escalera:
+      - "¿Consume potencia activa un condensador ideal?"
+    solucion: "La misma: 1840 W."
+    comprobar:
+      - { P_red: 1840 }
+
+  - id: formula-c
+    tipo: formula
+    titulo: "Compensar del todo"
+    texto: "El condensador debe aportar toda la reactiva de la carga para llegar a FP = 1."
+    libro: ["cap24#139", 205]
+    ec: "cap24#139"
+    sustitucion: "{{Q_l}} / (2π · {{f_r}} · {{V_e}}²) = {{C_1}}"
+    widget:
+      tipo: grafica
+      x: { id: cc, min: 0, max: 0.00017, unidad: F, rotulo: "C" }
+      y: { min: 0, max: 11, unidad: A, rotulo: "I de línea" }
+      curvas:
+        - { expr: "sqrt(P_a^2 + (Q_l - 2*pi*f_r*cc*V_e^2)^2)/V_e", color: naranja, rotulo: "I" }
+      marcas:
+        - { x: "C_1", y: "I_1", rotulo: "FP = 1" }
+      lectura: { valor: C_1, rotulo: "Condensador para FP = 1" }
+      datos:
+        - { valor: I_1, rotulo: "Corriente: {{I_1}}" }
+    comprobar:
+      - { C_1: 83e-6, I_1: 8 }
+
+  - id: ajuste-095
+    tipo: ajuste
+    titulo: "Corrija hasta 0,95"
+    texto: "Lo habitual es parar en 0,95. Mueva el condensador hasta que el factor de potencia entre en la banda."
+    libro: [205, 206]
+    inicio: { C_k: 0 }
+    widget:
+      tipo: grafica
+      x: { id: cc, min: 0, max: 0.00017, unidad: F, rotulo: "C" }
+      y: { min: 0, max: 11, unidad: A, rotulo: "I de línea" }
+      curvas:
+        - { expr: "sqrt(P_a^2 + (Q_l - 2*pi*f_r*cc*V_e^2)^2)/V_e", color: naranja, rotulo: "I" }
+      asas:
+        - { mueve: C_k, x: "C_k", y: "I_n", rotulo: "Condensador" }
+      lectura: { valor: F_n, rotulo: "Factor de potencia" }
+      datos:
+        - { valor: I_n, rotulo: "Corriente: {{I_n}}" }
+      mandos:
+        - { valor: C_k, min: 0, max: 0.00017, paso: 0.0000005, rotulo: "Condensador" }
+    ajuste:
+      valor: F_n
+      min: 0.95
+      max: 0.96
+      rotulo: "Factor de potencia"
+      escala: { min: 0.7, max: 1 }
+      bajo: "Falta corrección: más capacidad (o se ha pasado de largo y está sobrecompensado)."
+      alto: "Demasiado cerca de 1: quite capacidad, 0,95 basta."
+      dentro: "FP = 0,95: unos 46,6 µF."
+    comprobar:
+      - { C_95: 46.6e-6, I_95: 8.42 }
+
+  - id: estime-corriente
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La corriente con 0,95"
+    texto: "La carga de 1840 W, corregida a FP = 0,95 con 46,6 µF. Estime la corriente de línea que queda."
+    libro: [205]
+    estimar:
+      objetivo: "I_95"
+      unidad: A
+      min: 0
+      max: 12
+      paso: 0.02
+      inicio: 10
+      tol: 0.02
+      rotulo: "Corriente"
+    exito: "1840 W / (0,95 × 230 V) = 8,42 A: un 15,8 % menos que los 10 A."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 8.6 }, texto: "Demasiado: la corriente es P/(FP · V)." }
+      - { texto: "Poco: con FP = 1 serían 8 A, y con 0,95 algo más." }
+    escalera:
+      - "I = P/(V · FP)."
+    solucion: "1840/(230 × 0,95) = 8,42 A."
+    comprobar:
+      - { I_95: 8.42, I_0: 10, I_1: 8 }
+
+  - id: sobrecompensar
+    tipo: sorpresa
+    titulo: "Pasarse también cuesta"
+    texto: "Lleve el condensador al doble, unos 166 µF: el factor de potencia vuelve a 0,8, ahora capacitivo, y la corriente a 10 A."
+    libro: [206]
+    inicio: { C_k: 0.000083 }
+    widget:
+      tipo: grafica
+      x: { id: cc, min: 0, max: 0.00017, unidad: F, rotulo: "C" }
+      y: { min: 0, max: 11, unidad: A, rotulo: "I de línea" }
+      curvas:
+        - { expr: "sqrt(P_a^2 + (Q_l - 2*pi*f_r*cc*V_e^2)^2)/V_e", color: naranja, rotulo: "I" }
+      asas:
+        - { mueve: C_k, x: "C_k", y: "I_n", rotulo: "Condensador" }
+      lectura: { valor: F_n, rotulo: "Factor de potencia" }
+      datos:
+        - { valor: I_n, rotulo: "Corriente: {{I_n}}" }
+        - { valor: Q_n, rotulo: "Reactiva de la red: {{Q_n}}" }
+      mandos:
+        - { valor: C_k, min: 0, max: 0.00017, paso: 0.0000005, rotulo: "Condensador" }
+    comprobar:
+      - { con: { C_k: 0.000166 }, F_n: 0.8, I_n: 10 }
+
+  - id: por-que-095
+    tipo: porque
+    titulo: "¿Por qué parar en 0,95?"
+    texto: "La tabla del libro: 46,6 µF dan 8,42 A y 83 µF dan 8,00 A. ¿Por qué no se corrige hasta 1?"
+    libro: [205, 206]
+    widget:
+      tipo: grafica
+      x: { id: cc, min: 0, max: 0.00017, unidad: F, rotulo: "C" }
+      y: { min: 0, max: 11, unidad: A, rotulo: "I de línea" }
+      curvas:
+        - { expr: "sqrt(P_a^2 + (Q_l - 2*pi*f_r*cc*V_e^2)^2)/V_e", color: naranja, rotulo: "I" }
+      marcas:
+        - { x: "C_95", y: "I_95", rotulo: "0,95" }
+        - { x: "C_1", y: "I_1", rotulo: "1,00" }
+    opciones:
+      - texto: "Casi duplica el condensador para bajar la corriente solo 4 puntos más"
+        bien: true
+        porque: "Además, una carga que baja su consumo quedaría sobrecompensada, y una batería grande puede resonar con la red cerca de un armónico."
+      - texto: "Porque con FP = 1 la carga deja de funcionar"
+        porque: "Funcionaría igual: toma la misma activa. El problema es el coste y el riesgo de pasarse."
+      - texto: "Porque la compañía penaliza el FP = 1"
+        porque: "Lo que se penaliza es el factor de potencia bajo, no el alto."
+    escalera:
+      - "Mire lo plana que es la curva cerca de su mínimo."
+    solucion: "Cerca de 1 la curva es plana: mucho condensador para poca corriente, y riesgo de sobrecompensar."
+    comprobar:
+      - { C_95: 46.6e-6, I_95: 8.42, C_1: 83e-6, I_1: 8 }
+
+  - id: compania
+    tipo: pregunta
+    titulo: "A quién le interesa"
+    texto: "Una carga consume 1150 VA con un factor de potencia de 0,8. ¿Qué se consigue con un condensador en paralelo?"
+    libro: ["cap24#329", 203]
+    widget:
+      tipo: grafica
+      x: { id: cc, min: 0, max: 0.00017, unidad: F, rotulo: "C" }
+      y: { min: 0, max: 11, unidad: A, rotulo: "I de línea" }
+      curvas:
+        - { expr: "sqrt(P_a^2 + (Q_l - 2*pi*f_r*cc*V_e^2)^2)/V_e", color: naranja, rotulo: "I (carga de 1840 W)" }
+    opciones:
+      - texto: "Que la red ya no tenga que aportar la reactiva: menos corriente para la misma potencia útil"
+        bien: true
+        porque: "Sus cables y transformadores transportan menos corriente: por eso le interesa a la compañía tanto como al usuario."
+      - texto: "Que la carga consuma menos energía"
+        porque: "La activa no cambia. Baja la potencia aparente y, con ella, la corriente."
+      - texto: "Que suba la tensión de la red"
+        porque: "El condensador compensa reactiva; la tensión la fija la red."
+    escalera:
+      - "¿Qué deja de viajar desde la central?"
+    solucion: "La reactiva se da en el sitio: el FP sube hacia 1 y la corriente baja."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [203, 204, 205, 206]
+    ideas:
+      - { titulo: "Corregir.", texto: "Un condensador en paralelo da en el sitio la reactiva de la carga inductiva." }
+      - { titulo: "Con números.", texto: "0,95: 46,6 µF y 8,42 A; 1,00: 83 µF y 8 A, de los 10 A de partida." }
+      - { titulo: "Parar en 0,95.", texto: "Pasar a 1 casi duplica el condensador para 4 puntos; pasarse lo vuelve capacitivo." }

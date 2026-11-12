@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { compilarModelo, objetivoEstimar, posicionesEstimar, posicionMasCercana, puntuarEstimacion, enRango, type Valores } from '../src/lib/leccion11/modelo.ts';
 import { textoPlano } from '../src/lib/leccion11/texto.ts';
 import { numeroAria } from '../src/lib/teoria-viva.ts';
+import { falloDeRonda } from '../src/lib/leccion12/averia.ts';
 import type { IndiceLecciones11, Leccion11, Tarjeta, Texto } from '../src/lib/leccion11/tipos.ts';
 
 const AXE = createRequire(import.meta.url).resolve('axe-core/axe.min.js');
@@ -129,7 +130,64 @@ async function recorrerTarjeta(page: Page, l: Leccion11, t: Tarjeta, k: number, 
     }
   }
 
-  if (t.opciones) {
+  // 1.2 learning-by-doing steps (lib/leccion12): the ones lessons use so far, each driven as the reader does
+  const act = t.actividad;
+  if (act?.tipo === 'simular') {
+    // the right estimate, written as the reader writes it («5 V», «8,1 V»); then the app's own ngspice answers
+    const obj = mc.funcion(act.objetivo)(mc.evaluar(estado));
+    await expect(boton(page), donde).toBeDisabled();
+    await page.locator('[data-estimacion]').fill(`${String(Number(obj.toPrecision(4))).replace('.', ',')} ${act.unidad}`);
+    await boton(page).click();
+    await expect(aviso(page), donde).toHaveAttribute('data-veredicto', 'bien');
+    await expect(page.locator('[data-simulado]'), donde).not.toBeEmpty({ timeout: 30_000 });
+  } else if (act?.tipo === 'banco') {
+    // optional: «Continuar» is open from the start; the expected reading itself compares within tolerance
+    await expect(boton(page), donde).toBeEnabled();
+    const esp = mc.funcion(act.esperado)(mc.evaluar(estado));
+    await page.locator('[data-medida-banco]').fill(String(Number(esp.toPrecision(4))).replace('.', ','));
+    await page.locator('[data-comparar]').click();
+    await expect(page.locator('[data-comparacion]'), donde).toHaveAttribute('data-comparacion', 'bien');
+  } else if (act?.tipo === 'ajuste') {
+    // the first control position the model puts inside the band, reached with the keyboard
+    const m = mandos[0]!;
+    const k = m.valores.findIndex((x) => enRango(act.banda, mc.evaluar({ ...estado, [m.valor]: x })));
+    expect(k, `${donde}: el ajuste tiene una posición dentro`).toBeGreaterThanOrEqual(0);
+    await expect(boton(page), donde).toBeDisabled();
+    await aPosicion(page, sel(m.valor), k);
+    await expect(page.locator('[data-ajuste]'), donde).toHaveAttribute('data-lado', 'dentro');
+    mios[m.valor] = m.valores[k]!;
+  } else if (act?.tipo === 'dibujar') {
+    // the right curve, point by point with the keyboard's controls (the value slider of each point, then «▶»)
+    const r = mc.evaluar(estado);
+    const fc = mc.funcion(act.curva);
+    for (let k = 0; k < act.puntos; k++) {
+      const x = act.x.min + ((act.x.max - act.x.min) * k) / (act.puntos - 1);
+      const y = Math.min(act.y.max, Math.max(act.y.min, fc({ ...r, [act.x.id]: x })));
+      await page.locator('[data-valor-punto]').evaluate((el, v) => {
+        const i = el as HTMLInputElement;
+        i.value = String(v);
+        i.dispatchEvent(new Event('input', { bubbles: true }));
+      }, y);
+      if (k < act.puntos - 1) await page.locator('[data-punto-siguiente]').click();
+    }
+    await expect(boton(page), donde).toHaveAttribute('data-accion', 'comprobar');
+    await boton(page).click();
+    await expect(aviso(page), donde).toHaveAttribute('data-veredicto', 'bien');
+  } else if (act?.tipo === 'averia') {
+    // the fault of the first round (lib/leccion12/averia.ts falloDeRonda), measured at every probe it allows, then a
+    // wrong suspect (explained from those measurements) and the right one
+    const f = act.fallos[falloDeRonda(act, t.id, 0)]!;
+    for (const s of act.sondas.slice(0, act.pasos)) await page.locator(`[data-sonda="${s.id}"]`).click();
+    const otro = act.sospechosos.find((s) => s.id !== f.pieza);
+    if (otro) {
+      await page.locator(`[data-sospechoso="${otro.id}"]`).click();
+      await comprobarYVer(page, false);
+    }
+    await page.locator(`[data-sospechoso="${f.pieza}"]`).click();
+    await expect(boton(page), donde).toHaveAttribute('data-accion', 'comprobar');
+    await boton(page).click();
+    await expect(aviso(page), donde).toHaveAttribute('data-veredicto', 'bien');
+  } else if (t.opciones) {
     const mal = t.opciones.findIndex((o) => !o.bien);
     const bien = t.opciones.findIndex((o) => o.bien);
     await page.locator(`[data-opcion="${mal}"]`).click();
@@ -218,7 +276,21 @@ for (const id of lecciones) {
     await page.goto(`#/leccion/${id}`);
     const base: Valores = Object.fromEntries(Object.entries(l.modelo.valores).map(([k, v]) => [k, v.valor]));
     let propios = base;
-    for (const [k, t] of l.tarjetas.entries()) propios = await recorrerTarjeta(page, l, t, k, propios);
+    // 1.2: the cards missed at their first check (here, every question: each is answered wrong first) come back once
+    // before the summary (lib/leccion12/ritmo.ts), from the values they had when first shown
+    const entrada: Valores[] = [];
+    for (const [k, t] of l.tarjetas.entries()) {
+      if (t.tipo === 'resumen') {
+        for (let vuelta = 0; vuelta < l.tarjetas.length; vuelta++) {
+          await expect(page.locator('[data-leccion11][data-vuelta] [data-tarjeta], [data-resumen]').first()).toBeVisible();
+          if (!(await page.locator('[data-leccion11][data-vuelta]').count())) break;
+          const j = Number(await page.locator('[data-leccion11]').getAttribute('data-tarjeta-n'));
+          await recorrerTarjeta(page, l, l.tarjetas[j]!, j, entrada[j]!);
+        }
+      }
+      entrada[k] = propios;
+      propios = await recorrerTarjeta(page, l, t, k, propios);
+    }
     await expect(page.locator('[data-resumen]')).toBeVisible();
 
     // 360 px, dark theme: no horizontal scroll, axe on every card

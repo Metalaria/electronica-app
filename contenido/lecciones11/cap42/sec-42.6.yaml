@@ -1,0 +1,221 @@
+# Lección 1.2 de la sección 43.6 «Convergencia y Trucos del Oficio» (cap42). Formato: contenido/lecciones11/GUIA.md.
+# El circuito no lineal es el diodo de silicio ideal de la práctica 3 (cap22#72: 1 kΩ, hasta 5 V; I_S = 2,66·10⁻¹³ A,
+# n = 1, como en la 43.3). El arranque del oscilador es una gráfica ilustrativa: una oscilación que crece desde una
+# perturbación inicial ε y se limita a 1 (ε, el crecimiento y la frecuencia son ejemplos, la sección no da números).
+# La sección no tiene ecuaciones: sin tarjeta «fórmula».
+leccion: cap42/sec-42.6
+
+libro:
+  158: "SPICE resuelve ecuaciones no lineales por iteración, y a veces no encuentra solución."
+  159: "el problema está en el modelo numérico, no en la electrónica"
+  161: "Nodo flotante: un punto sin camino de continua a masa"
+  162: "interruptores ideales, fuentes con flancos de cero segundos"
+  163: "Realimentación fuerte con ganancia muy alta"
+  164: "resistencias de 10⁻¹² o de 10¹⁵ ohmios, que hacen la matriz mal condicionada"
+  165: "Condiciones iniciales imposibles, en circuitos con dos estados estables."
+  168: "1. Resistencias de fuga"
+  169: "2. Resistencias serie pequeñas"
+  170: "3. Flancos finitos en las fuentes"
+  171: "4. Condiciones iniciales explícitas con .ic"
+  172: "5. Relajar las tolerancias"
+  173: "6. Limitar el paso máximo en transitorio"
+  174: "arrancar el transitorio con uic, saltándose el cálculo del punto de trabajo"
+  179: "Comprobar el punto de trabajo antes de cualquier otra cosa"
+  180: "Desconfiar de los resultados demasiado buenos"
+  182: "un oscilador no arranca en simulación si el circuito es perfectamente simétrico, porque no hay ruido que rompa el equilibrio"
+  183: "una condición inicial en un condensador, un pulso breve al principio, o una pequeña asimetría deliberada"
+  186: "Si al bajar reltol el resultado se mueve apreciablemente"
+  "cap22#72": "Con R = 1 kΩ y barriendo de 0 a 5 V"
+
+modelo:
+  valores:
+    V_d: { sim: "V", nombre: "tensión de la fuente", unidad: V, valor: 5 }
+    R_d: { sim: "R", nombre: "resistencia", unidad: Ω, valor: 1000 }
+    I_S: { sim: "I_{S}", nombre: "corriente de saturación", unidad: A, valor: 2.659e-13 }
+    n_d: { sim: "n", nombre: "factor de idealidad", unidad: "", valor: 1 }
+    V_T: { sim: "V_{T}", nombre: "tensión térmica", unidad: V, valor: 0.02585 }
+    eps: { sim: "ε", nombre: "perturbación inicial", unidad: "", valor: 0.001 }
+    f_o: { sim: "f", nombre: "frecuencia del oscilador (ejemplo)", unidad: Hz, valor: 1000 }
+    s_o: { sim: "σ", nombre: "crecimiento (ejemplo)", unidad: "1/s", valor: 1000 }
+  calculos:
+    I_ds: { expr: "n_d*V_T/R_d*wright(ln(I_S*R_d/(n_d*V_T)) + (V_d + I_S*R_d)/(n_d*V_T)) - I_S", sim: "I_{D}", nombre: "corriente del diodo", unidad: A }
+    V_ds: { expr: "V_d - I_ds*R_d", sim: "V_{D}", nombre: "tensión del diodo", unidad: V, cifras: 3 }
+    A_f: { expr: "min(1, eps*exp(s_o*0.01))", sim: "A", nombre: "amplitud a los 10 ms", unidad: "", cifras: 2 }
+
+tarjetas:
+  - id: explore-iterar
+    tipo: explorar
+    titulo: "Un punto de trabajo que se itera"
+    texto: "Un diodo con 1 kΩ: su ecuación no es lineal y SPICE la resuelve por iteración, partiendo de una estimación. Mueva la fuente."
+    libro: [158, "cap22#72"]
+    widget:
+      tipo: circuito
+      esquema: diodo
+      piezas: { fuente: V_d, r: R_d, is: I_S, n: n_d, vt: V_T }
+      lectura: { valor: V_ds, rotulo: "Tensión del diodo" }
+      datos:
+        - { valor: I_ds, rotulo: "Corriente: {{I_ds}}" }
+      corriente: I_ds
+      mide: { corriente: I_ds, vd: V_ds }
+      mandos:
+        - { valor: V_d, min: 1, max: 5, paso: 0.25 }
+
+  - id: prediga-bueno
+    tipo: predecir
+    titulo: "Demasiado bueno"
+    texto: "Una simulación da una distorsión de 10⁻¹⁵ y un rendimiento del 100 %. ¿Qué hay que pensar?"
+    libro: [180]
+    widget:
+      tipo: circuito
+      esquema: diodo
+      piezas: { fuente: V_d, r: R_d, is: I_S, n: n_d, vt: V_T }
+      lectura: { valor: V_ds, rotulo: "Tensión del diodo" }
+      corriente: I_ds
+      mide: { corriente: I_ds, vd: V_ds }
+      ocultar: true
+    opciones:
+      - texto: "Que casi seguro falta algo en el modelo"
+        bien: true
+        porque: "Distorsión nula, rendimiento perfecto, banda infinita: señales de un modelo incompleto, no de un circuito excelente."
+      - texto: "Que el circuito es excelente"
+        porque: "Ningún circuito real llega ahí: lo que falta son pérdidas, parásitos o no linealidades del modelo."
+      - texto: "Que el simulador no ha convergido"
+        porque: "Ha convergido: da un número. Lo que no da es el circuito real."
+    escalera:
+      - "¿Qué circuito real tiene un rendimiento del 100 %?"
+    solucion: "Falta algo en el modelo."
+
+  - id: causas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Las causas habituales"
+    texto: "Una cada causa de no convergencia con lo que la caracteriza."
+    libro: [161, 162, 163, 164, 165]
+    emparejar:
+      - ["Nodo flotante", "Un punto sin camino de continua a masa"]
+      - ["Discontinuidades", "Interruptores ideales, flancos de cero segundos"]
+      - ["Realimentación fuerte", "Ganancia muy alta: un cambio pequeño da uno enorme"]
+      - ["Valores extremos", "Una matriz mal condicionada"]
+      - ["Condiciones iniciales imposibles", "Circuitos con dos estados estables"]
+    exito: "El problema suele estar en el modelo numérico, no en la electrónica."
+    pistas:
+      - { texto: "El nodo flotante es la causa número uno." }
+    escalera:
+      - "¿Cuál deja al solucionador sin saber qué tensión dar a un punto?"
+    solucion: "Flotante: sin camino a masa; discontinuidad: flancos de cero; realimentación: ganancia; extremos: matriz; iniciales: dos estados."
+
+  - id: remedios
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Los remedios, en orden"
+    texto: "Ordene los remedios como los propone el libro, del que resuelve más deprisa al último recurso."
+    libro: [168, 169, 170, 171, 172, 173]
+    ordenar:
+      - "Resistencias de fuga de 1 GΩ a masa"
+      - "Resistencias serie de miliohmios con fuentes y bobinas"
+      - "Flancos finitos en las fuentes"
+      - "Condiciones iniciales explícitas con .ic"
+      - "Relajar las tolerancias, sabiendo que pierde exactitud"
+      - "Limitar el paso máximo en transitorio"
+    exito: "Primero lo que no altera el circuito; relajar tolerancias, casi al final."
+    pistas:
+      - { texto: "Lo primero ataca la causa número uno: el nodo flotante." }
+    escalera:
+      - "Relajar tolerancias sacrifica exactitud: no va al principio."
+    solucion: "Fuga, serie, flancos, .ic, tolerancias, paso máximo."
+
+  - id: uic
+    tipo: pregunta
+    titulo: "Cuando falla el punto de trabajo"
+    texto: "El transitorio no arranca porque lo que falla es el cálculo del punto de trabajo. ¿Qué truco se olvida y funciona?"
+    libro: [174, 179]
+    widget:
+      tipo: circuito
+      esquema: diodo
+      piezas: { fuente: V_d, r: R_d, is: I_S, n: n_d, vt: V_T }
+      corriente: I_ds
+      mide: { corriente: I_ds, vd: V_ds }
+    opciones:
+      - texto: "Arrancar el transitorio con uic, saltándose ese cálculo"
+        bien: true
+        porque: "Si el fallo está en el punto de trabajo, uic empieza sin calcularlo, desde las condiciones iniciales."
+      - texto: "Pasar a un análisis AC"
+        porque: "El AC necesita el punto de trabajo para linealizar: fallaría igual."
+      - texto: "Quitar las fuentes"
+        porque: "Sin fuentes no hay nada que simular."
+    escalera:
+      - "¿Se puede empezar un transitorio sin resolver antes el reposo?"
+    solucion: "Transitorio con uic."
+
+  - id: no-arranca
+    tipo: sorpresa
+    titulo: "El oscilador que no arranca"
+    texto: "Un oscilador simulado (gráfica de ejemplo). Con ε = 0, perfectamente simétrico, no pasa nada; con una perturbación mínima, la oscilación crece."
+    libro: [182]
+    inicio: { eps: 0 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.01, unidad: s, rotulo: "t" }
+      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "salida relativa" }
+      curvas:
+        - { expr: "min(1, eps*exp(s_o*t))*sin(2*pi*f_o*t)", color: naranja, rotulo: "salida" }
+      lectura: { valor: A_f, rotulo: "Amplitud final" }
+      mandos:
+        - { valor: eps, lista: [0, 0.0001, 0.001, 0.01], rotulo: "Perturbación inicial ε" }
+
+  - id: por-que-arranca
+    tipo: porque
+    titulo: "¿Qué le falta a la simulación?"
+    texto: "El mismo oscilador arranca siempre en el banco y nunca en el simulador. ¿Qué le da el banco que la simulación no tiene?"
+    libro: [182, 183]
+    fijar: { eps: 0 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.01, unidad: s, rotulo: "t" }
+      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "salida relativa" }
+      curvas:
+        - { expr: "min(1, eps*exp(s_o*t))*sin(2*pi*f_o*t)", color: naranja, rotulo: "salida" }
+    opciones:
+      - texto: "El ruido térmico, que rompe el equilibrio: se imita con un .ic, un pulso o una asimetría"
+        bien: true
+        porque: "Cualquiera de las tres da el empujón que en la realidad da el ruido."
+      - texto: "Una fuente de alimentación más potente"
+        porque: "La alimentación no es el problema: el circuito está en un equilibrio del que nada lo saca."
+      - texto: "Un paso de tiempo más pequeño"
+        porque: "Con paso más fino, el equilibrio sigue siendo perfecto: sin perturbación, no arranca."
+    escalera:
+      - "¿Qué hay siempre en un circuito real y nunca en un modelo ideal?"
+    solucion: "Ruido: en simulación, una condición inicial o un pulso."
+
+  - id: reltol
+    tipo: pregunta
+    titulo: "Fiable o solo convergente"
+    texto: "Al bajar reltol, el resultado de una simulación se mueve apreciablemente. ¿Qué significa?"
+    libro: [186]
+    widget:
+      tipo: circuito
+      esquema: diodo
+      piezas: { fuente: V_d, r: R_d, is: I_S, n: n_d, vt: V_T }
+      corriente: I_ds
+      mide: { corriente: I_ds, vd: V_ds }
+    opciones:
+      - texto: "Que no era la solución, sino donde el algoritmo se dio por satisfecho"
+        bien: true
+        porque: "Un resultado fiable no cambia al apretar tolerancias ni al reducir el paso."
+      - texto: "Que ahora es menos exacto"
+        porque: "Al revés: con reltol más bajo es más exigente; si cambia, el anterior no era fiable."
+      - texto: "Nada: es normal que cambie"
+        porque: "Si cambia apreciablemente, el número anterior no resolvía las ecuaciones."
+    escalera:
+      - "¿Qué debería pasar con un resultado bien resuelto si se exige más precisión?"
+    solucion: "El anterior no era la solución."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [159, 168, 179, 182]
+    ideas:
+      - { titulo: "No converger.", texto: "Casi siempre es el modelo numérico: nodos flotantes, discontinuidades, extremos." }
+      - { titulo: "Los remedios.", texto: "Fugas de 1 GΩ, resistencias serie, flancos finitos, .ic… y relajar tolerancias, casi al final." }
+      - { titulo: "Los trucos.", texto: "Por partes, de lo simple a lo complejo, y el punto de trabajo primero." }
+      - { titulo: "Osciladores.", texto: "Sin ruido no arrancan: una condición inicial, un pulso o una asimetría." }

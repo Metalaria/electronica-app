@@ -1,0 +1,277 @@
+# Lección 1.2 de la sección 43.4 «El Netlist» (cap42). Formato: contenido/lecciones11/GUIA.md.
+# El circuito es el netlist del libro (bloque 103: V1 AC 1, R1 1k, C1 100n). Las averías son errores de unidades al
+# escribirlo (R1 «1» sin la k, C1 «100» sin la n, C1 «100u»): ejemplos del error del bloque 112, no casos del libro.
+# El divisor de la resistencia de fuga (10 kΩ y 5 kΩ con 12 V) es el de la sección 1.4 (cap01#83), ilustrativo aquí.
+leccion: cap42/sec-42.4
+
+libro:
+  96: "Cada componente ocupa una línea con el mismo formato"
+  99: "Fuente de tensión"
+  100: "el nodo 0 es la masa, siempre, y todo circuito debe tener un camino de continua a ella"
+  103: "R1 in out 1k"
+  104: "SPICE toma siempre la primera línea del fichero como título y no la simula"
+  107: "los nodos internos de un subcircuito son locales"
+  110: "La cura habitual es una resistencia enorme a masa, de gigaohmios, que no altera el circuito"
+  111: "dos .model con el mismo nombre —lo normal al incluir dos bibliotecas que traen el mismo diodo— pasan en silencio"
+  112: "en SPICE, M significa mili y MEG significa mega"
+  114: "simplemente el resultado es absurdo y cuesta encontrar por qué"
+  117: "mirarlo revela conexiones que el esquema sugería y no existían"
+  "cap22#134": 'f_("c") = ("1")/("2" π dot.op R dot.op C)'
+  "cap01#83": "Con 12 V, 10 kΩ y 5 kΩ"
+
+modelo:
+  valores:
+    V_p: { sim: "V1", nombre: "fuente AC 1", unidad: V, valor: 1 }
+    f_f: { sim: "f", nombre: "frecuencia", unidad: Hz, valor: 1591.55 }
+    R_f: { sim: "R1", nombre: "resistencia", unidad: Ω, valor: 1000 }
+    C_f: { sim: "C1", nombre: "capacidad", unidad: F, valor: 100e-9 }
+    V_in: { sim: "V", nombre: "tensión del divisor", unidad: V, valor: 12 }
+    R_1: { sim: "R₁", nombre: "resistencia de arriba", unidad: Ω, valor: 10000 }
+    R_2: { sim: "R₂", nombre: "resistencia de abajo", unidad: Ω, valor: 5000 }
+    R_g: { sim: "R_{fuga}", nombre: "resistencia de fuga a masa", unidad: Ω, valor: 1e9 }
+    g_on: { tipo: interruptor, nombre: "resistencia de fuga conectada", valor: 0 }
+  calculos:
+    f_c: { expr: "1/(2*pi*R_f*C_f)", sim: "f_{c}", nombre: "frecuencia de corte", unidad: Hz }
+    x_c: { expr: "2*pi*f_f*R_f*C_f", sim: "ωRC", nombre: "ωRC", unidad: "" }
+    A_c: { expr: "V_p/sqrt(1 + x_c^2)", sim: "v(out)", nombre: "amplitud de la salida", unidad: V }
+    A_r: { expr: "V_p*x_c/sqrt(1 + x_c^2)", sim: "v(in, out)", nombre: "amplitud en R1", unidad: V }
+    I_a: { expr: "A_r/R_f", sim: "I", nombre: "amplitud de la corriente", unidad: A }
+    R_ab: { si: g_on, entonces: "par(R_2, R_g)", sino: "R_2", sim: "R_{abajo}", nombre: "rama de abajo", unidad: Ω }
+    V_o: { expr: "V_in*R_ab/(R_1 + R_ab)", sim: "V_{salida}", nombre: "salida del divisor", unidad: V, cifras: 6 }
+    I_g: { si: g_on, entonces: "V_o/R_g", sino: "0", sim: "I_{fuga}", nombre: "corriente por la de fuga", unidad: A }
+
+tarjetas:
+  - id: explore-netlist
+    tipo: explorar
+    titulo: "Cinco líneas, un circuito"
+    texto: "«V1 in 0 AC 1», «R1 in out 1k», «C1 out 0 100n»: nombre, dos nodos y valor, con el nodo 0 de masa. Cambie el valor de R1."
+    libro: [96, 100, 103]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: f_c, rotulo: "Corte" }
+      mide: { vc_amp: A_c }
+      grafica:
+        x: { id: nu, min: 10, max: 1000000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "v(out)" }
+        curvas:
+          - { expr: "V_p/sqrt(1 + (2*pi*nu*R_f*C_f)^2)", color: naranja, rotulo: "v(out)", mide: vc_amp }
+      mandos:
+        - { valor: R_f, lista: [1000, 10000, 100000], rotulo: "R1" }
+
+  - id: letras
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "La primera letra manda"
+    texto: "El primer carácter del nombre decide qué es el componente. Una cada letra con su componente."
+    libro: [99, 107]
+    emparejar:
+      - ["R", "Resistencia"]
+      - ["C", "Condensador"]
+      - ["D", "Diodo"]
+      - ["Q", "Transistor bipolar"]
+      - ["M", "MOSFET"]
+      - ["X", "Subcircuito"]
+    exito: "Por eso «R1» es una resistencia y «X1», un subcircuito."
+    pistas:
+      - { texto: "La M de MOSFET no es la de mega." }
+    escalera:
+      - "Q y M son los dos transistores."
+    solucion: "R resistencia, C condensador, D diodo, Q bipolar, M MOSFET, X subcircuito."
+
+  - id: prediga-1m
+    tipo: predecir
+    titulo: "Un megaohmio, «1M»"
+    texto: "Se quiere R1 de un megaohmio y se escribe «R1 in out 1M». ¿Qué simula SPICE?"
+    libro: [112]
+    fijar: { R_f: 0.001 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: R_f, rotulo: "R1 simulada" }
+      mide: { vc_amp: A_c }
+      ocultar: true
+    opciones:
+      - texto: "Un miliohmio, sin ningún mensaje de error"
+        bien: true
+        porque: "M es mili; mega es MEG. El circuito es otro y nada avisa."
+      - texto: "Un megaohmio"
+        porque: "En SPICE, «M» es mili, no mega: sería «1MEG»."
+      - texto: "Un error de sintaxis"
+        porque: "«1M» es válido: por eso es tan traicionero."
+    escalera:
+      - "¿Qué significa la M en SPICE?"
+    solucion: "1 mΩ, en silencio."
+
+  - id: formula-comprobar
+    tipo: formula
+    titulo: "Comprobar con lápiz"
+    texto: "El resultado de un netlist mal escrito es absurdo sin avisar. El corte esperado lo delata."
+    libro: [114, "cap22#134"]
+    ec: "cap22#134"
+    sustitucion: "1 / (2π · {{R_f}} · {{C_f}}) = {{f_c}}"
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: f_c, rotulo: "Corte" }
+      mide: { vc_amp: A_c }
+      mandos:
+        - { valor: R_f, lista: [1000, 10000, 100000], rotulo: "R1" }
+
+  - id: averia-netlist
+    tipo: averia
+    titulo: "Una línea mal escrita"
+    texto: "Este RC debería dar 0,707 V a 1,59 kHz y no lo da: hay una unidad mal escrita. Mida y diga qué línea es."
+    libro: [112, 114]
+    fijar: { V_p: 1, f_f: 1591.55, R_f: 1000, C_f: 100e-9 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      mide: { vc_amp: A_c, vr_amp: A_r, i_amp: I_a }
+      mandos: []
+    averia:
+      pasos: 2
+      sospechosos:
+        - { id: r1, rotulo: "R1" }
+        - { id: c1, rotulo: "C1" }
+      sondas:
+        - { id: salida, rotulo: "Salida, v(out)", valor: A_c }
+        - { id: r1, rotulo: "Extremos de R1", valor: A_r }
+        - { id: corriente, rotulo: "Corriente", valor: I_a }
+      fallos:
+        - { id: r1-sin-k, pieza: r1, tipo: valor, con: { R_f: 1 }, texto: "R1 escrita «1», sin la k: 1 Ω. El condensador apenas atenúa y la salida sigue a la entrada." }
+        - { id: c1-sin-n, pieza: c1, tipo: valor, con: { C_f: 100 }, texto: "C1 escrita «100», sin la n: 100 F. El condensador es un corto y la salida es nula." }
+        - { id: c1-micro, pieza: c1, tipo: valor, con: { C_f: 100e-6 }, texto: "C1 escrita «100u»: mil veces más capacidad, y la salida casi desaparece." }
+    pistas:
+      - { texto: "Compare la salida con los 0,707 V del corte: ¿sobra o falta?" }
+    escalera:
+      - "Si la salida sale entera, el que falla es el que debía atenuar con R1; si desaparece, el condensador es demasiado grande."
+    comprobar:
+      - { A_c: 0.707, f_c: 1592 }
+
+  - id: mili-mega
+    tipo: sorpresa
+    titulo: "Mili o mega"
+    texto: "Mismo C1 de 100 nF; cambie R1 entre mili y mega: el corte salta de gigahercios a hercios."
+    libro: [112]
+    inicio: { R_f: 1000000 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: f_c, rotulo: "Corte" }
+      mide: { vc_amp: A_c }
+      mandos:
+        - { valor: R_f, rotulo: "R1", lista: [0.001, 1000000], nombres: [mili, mega] }
+    comprobar:
+      - { con: { R_f: 0.001 }, f_c: 1.59e9 }
+      - { con: { R_f: 1000000 }, f_c: 1.59 }
+
+  - id: por-que-leer
+    tipo: porque
+    titulo: "¿Por qué leer el netlist?"
+    texto: "El esquema dibujado parece correcto, pero la simulación da algo raro. ¿Por qué mirar el netlist exportado?"
+    libro: [117]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      mide: { vc_amp: A_c }
+    opciones:
+      - texto: "Porque es lo que de verdad se simula: revela conexiones que el esquema sugería y no existían"
+        bien: true
+        porque: "Un esquema gráfico puede ocultar conexiones fantasma; el netlist dice nodo a nodo qué hay."
+      - texto: "Porque el netlist simula más deprisa"
+        porque: "La velocidad es la misma: el simulador siempre trabaja con el netlist."
+      - texto: "Porque el esquema no tiene valores"
+        porque: "Los tiene; lo que puede engañar son las conexiones."
+    escalera:
+      - "¿Qué lee el simulador: el dibujo o el texto?"
+    solucion: "El netlist es lo que se simula."
+
+  - id: fuga
+    tipo: pregunta
+    titulo: "La cura del nodo flotante"
+    texto: "Un nodo sin camino de continua a masa se cura con 1 GΩ a masa. Conéctela en este divisor: ¿cambia la salida?"
+    libro: [110, "cap01#83"]
+    fijar: { V_in: 12, R_1: 10000, R_2: 5000, R_g: 1e9 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_g, interruptor: g_on }
+      lectura: { valor: V_o, rotulo: "Salida" }
+      mide: { salida: V_o, carga: I_g }
+      mandos:
+        - { valor: g_on, tipo: interruptor, rotulo: "Resistencia de 1 GΩ a masa" }
+    opciones:
+      - texto: "Prácticamente nada: 1 GΩ frente a 5 kΩ no altera el circuito"
+        bien: true
+        porque: "Da al solucionador el camino de continua que le faltaba sin cambiar la solución."
+      - texto: "La baja a cero"
+        porque: "Para eso haría falta una resistencia comparable a R₂, no un millón de veces mayor."
+      - texto: "La duplica"
+        porque: "Una resistencia en paralelo solo puede bajar la tensión, y 1 GΩ casi nada."
+    escalera:
+      - "Calcule 5 kΩ en paralelo con 1 GΩ."
+    solucion: "La salida sigue en 4,00 V."
+    comprobar:
+      - { V_o: 4 }
+      - { con: { g_on: 1 }, V_o: 4, tol: 0.0001 }
+
+  - id: model-repetido
+    tipo: pregunta
+    titulo: "Dos .model iguales"
+    texto: "Se incluyen dos bibliotecas que traen el mismo diodo con el mismo nombre. ¿Qué hace SPICE?"
+    libro: [111]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      mide: { vc_amp: A_c }
+    opciones:
+      - texto: "Se queda con una definición, en silencio, y no necesariamente la que se cree"
+        bien: true
+        porque: "Dos componentes con el mismo nombre detienen la simulación; dos .model iguales, no."
+      - texto: "Se detiene con un error"
+        porque: "Eso pasa con dos componentes de igual nombre, no con dos .model."
+      - texto: "Promedia los dos modelos"
+        porque: "No combina nada: elige uno."
+    escalera:
+      - "¿Avisa de todo lo duplicado?"
+    solucion: "Elige uno sin avisar."
+
+  - id: titulo
+    tipo: pregunta
+    titulo: "La primera línea"
+    texto: "Un netlist empieza directamente por «V1 in 0 AC 1». ¿Qué pasa con esa línea?"
+    libro: [104]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      mide: { vc_amp: A_c }
+    opciones:
+      - texto: "SPICE la toma como título y no la simula: el circuito se queda sin fuente"
+        bien: true
+        porque: "La primera línea es siempre el título. Por eso conviene empezar con un comentario, «* filtro RC paso bajo»."
+      - texto: "Nada: es una línea como las demás"
+        porque: "La primera es especial: título, no circuito."
+      - texto: "SPICE la ejecuta dos veces"
+        porque: "No la ejecuta ninguna: la trata como título."
+    escalera:
+      - "¿Qué hace SPICE siempre con la primera línea del fichero?"
+    solucion: "Es el título: no se simula."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [96, 100, 110, 112, 117]
+    ideas:
+      - { titulo: "Una línea por componente.", texto: "Nombre, nodos y valor; la letra dice el tipo y el nodo 0 es la masa." }
+      - { titulo: "Las unidades.", texto: "M es mili y MEG mega: «1M» es un miliohmio, sin aviso." }
+      - { titulo: "Los errores.", texto: "Nodo flotante: 1 GΩ a masa. Dos .model iguales pasan en silencio." }
+      - { titulo: "Leerlo.", texto: "Es lo que se simula: revela conexiones fantasma." }

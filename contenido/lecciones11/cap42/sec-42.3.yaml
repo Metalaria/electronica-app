@@ -1,0 +1,269 @@
+# Lección 1.2 de la sección 43.3 «Modelos de Componentes» (cap42). Formato: contenido/lecciones11/GUIA.md.
+# El diodo es el «diodo de silicio ideal (n = 1)» de la práctica 3 (cap22#72-74: 1 kΩ, de 0 a 5 V; 0,57 V a 1 mA,
+# 59,5 mV por década), modelado con Shockley e I_S = 2,66·10⁻¹³ A, la que da esa tabla (calculada, no del libro).
+# Es la «validación con tres puntos» del bloque 89. Ficha 27 del cuaderno. La fórmula es la de cap05#107.
+leccion: cap42/sec-42.3
+
+libro:
+  67: "Primitivos con parámetros."
+  68: "Es lo que hay dentro de un .subckt de operacional"
+  69: "Modelos de comportamiento, escritos con ecuaciones o en lenguajes como Verilog-A"
+  71: "reproduce los parámetros que el fabricante considera relevantes"
+  73: "Si la salida supera la alimentación, el modelo no incluye la saturación y todos los resultados cerca del recorte son ficción."
+  76: "el modelo de un MOSFET de potencia debe venir del fabricante"
+  79: "dará el mismo resultado a 25 y a 125 °C, lo cual es evidentemente falso"
+  82: "La web del fabricante, siempre en primer lugar."
+  87: "una captura de pantalla del resultado, no"
+  89: "Para un diodo bastan tres puntos de su curva"
+  90: "seguir simulando con él es peor que no simular, porque da una falsa confianza"
+  "cap05#107": 'V = n dot.op V_("T") dot.op op("ln") (I)/(I_("S"))'
+  "cap22#72": "Con R = 1 kΩ y barriendo de 0 a 5 V"
+  "cap22#73": "1 mA"
+  "cap22#74": "por cada década de corriente, la tensión sube una cantidad fija: 59,5 mV en el diodo ideal de la tabla (n = 1)"
+  "cap22#75": "más valiosa que memorizar «0,7 V»"
+  "cap22#81": "la Schottky cae unos 0,3 V a la misma corriente"
+  "cap22#88": "en torno a 1,75 en un 1N4148"
+
+modelo:
+  valores:
+    V_d: { sim: "V", nombre: "tensión de la fuente", unidad: V, valor: 5 }
+    R_d: { sim: "R", nombre: "resistencia", unidad: Ω, valor: 1000 }
+    I_S: { sim: "I_{S}", nombre: "corriente de saturación", unidad: A, valor: 2.659e-13 }
+    n_d: { sim: "n", nombre: "factor de idealidad", unidad: "", valor: 1 }
+    V_T: { sim: "V_{T}", nombre: "tensión térmica", unidad: V, valor: 0.02585 }
+  calculos:
+    I_ds: { expr: "n_d*V_T/R_d*wright(ln(I_S*R_d/(n_d*V_T)) + (V_d + I_S*R_d)/(n_d*V_T)) - I_S", sim: "I_{D}", nombre: "corriente del diodo", unidad: A }
+    V_ds: { expr: "V_d - I_ds*R_d", sim: "V_{D}", nombre: "tensión del diodo", unidad: V, cifras: 3 }
+    dec: { expr: "n_d*V_T*ln(10)", sim: "ΔV", nombre: "subida por década", unidad: V, cifras: 3 }
+    V_1m: { expr: "n_d*V_T*ln(0.001/I_S)", sim: "V_{D}", nombre: "caída a 1 mA", unidad: V }
+
+tarjetas:
+  - id: explore-diodo
+    tipo: explorar
+    titulo: "Un primitivo con parámetros"
+    texto: "SPICE conoce el diodo por su corriente de saturación y su coeficiente de emisión. Este es el de silicio ideal de la práctica de la curva I-V, con 1 kΩ: mueva la fuente."
+    libro: [67, "cap22#72"]
+    widget:
+      tipo: circuito
+      esquema: diodo
+      piezas: { fuente: V_d, r: R_d, is: I_S, n: n_d, vt: V_T }
+      lectura: { valor: V_ds, rotulo: "Tensión del diodo" }
+      datos:
+        - { valor: I_ds, rotulo: "Corriente: {{I_ds}}" }
+      corriente: I_ds
+      mide: { corriente: I_ds, vd: V_ds }
+      mandos:
+        - { valor: V_d, min: 1, max: 5, paso: 0.25 }
+
+  - id: prediga-1ma
+    tipo: predecir
+    titulo: "¿Cuánto cae a 1 mA?"
+    texto: "El mismo diodo de silicio ideal, con la fuente ajustada para 1 mA. ¿Qué tensión tiene?"
+    libro: ["cap22#73", "cap22#75"]
+    fijar: { V_d: 1.57, R_d: 1000 }
+    widget:
+      tipo: circuito
+      esquema: diodo
+      piezas: { fuente: V_d, r: R_d, is: I_S, n: n_d, vt: V_T }
+      lectura: { valor: V_ds, rotulo: "Tensión del diodo" }
+      datos:
+        - { valor: I_ds, rotulo: "Corriente: {{I_ds}}" }
+      corriente: I_ds
+      mide: { corriente: I_ds, vd: V_ds }
+      ocultar: true
+    opciones:
+      - texto: "0,57 V"
+        bien: true
+        porque: "Es lo que da la tabla del libro para el diodo ideal a 1 mA: la caída depende de la corriente."
+      - texto: "0,7 V, como siempre"
+        porque: "El 0,7 V es un modelo simplificado. Con el de Shockley, a 1 mA cae menos."
+      - texto: "0,45 V"
+        porque: "Esa es la caída a 10 µA, dos décadas por debajo."
+    escalera:
+      - "Cada década de corriente sube 59,5 mV; 100 mA dan 0,69 V."
+    solucion: "0,57 V a 1 mA."
+    comprobar:
+      - { I_ds: 0.001, V_ds: 0.57 }
+
+  - id: formula-shockley
+    tipo: formula
+    titulo: "Lo que el modelo calcula"
+    texto: "Con I_{S} y n, la caída sale del logaritmo de la corriente. Cambie la resistencia."
+    libro: ["cap05#107"]
+    ec: "cap05#107"
+    sustitucion: "{{n_d}} · {{V_T}} · ln({{I_ds}} / {{I_S}}) = {{V_ds}}"
+    fijar: { V_d: 5 }
+    widget:
+      tipo: circuito
+      esquema: diodo
+      piezas: { fuente: V_d, r: R_d, is: I_S, n: n_d, vt: V_T }
+      lectura: { valor: V_ds, rotulo: "Tensión del diodo" }
+      corriente: I_ds
+      mide: { corriente: I_ds, vd: V_ds }
+      mandos:
+        - { valor: R_d, lista: [100000, 10000, 1000, 100] }
+
+  - id: niveles
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Tres niveles de modelo"
+    texto: "Una cada tipo de modelo con cómo se describe."
+    libro: [67, 68, 69]
+    emparejar:
+      - ["Primitivo con parámetros", "Un dispositivo interno ajustado con .model"]
+      - ["Macromodelo", "Un .subckt de fuentes controladas, resistencias y condensadores"]
+      - ["Modelo de comportamiento", "Ecuaciones o Verilog-A"]
+    exito: "Un operacional no se simula transistor a transistor: se usa su macromodelo."
+    pistas:
+      - { texto: "Lo que distribuyen los fabricantes de integrados es un .subckt." }
+    escalera:
+      - "El diodo de esta lección es un primitivo."
+    solucion: "Primitivo: .model; macromodelo: .subckt; comportamiento: ecuaciones."
+
+  - id: supera
+    tipo: pregunta
+    titulo: "Más allá de la alimentación"
+    texto: "Con un macromodelo nuevo de operacional, la salida simulada supera la tensión de alimentación. ¿Qué se concluye?"
+    libro: [71, 73]
+    widget:
+      tipo: circuito
+      esquema: diodo
+      piezas: { fuente: V_d, r: R_d, is: I_S, n: n_d, vt: V_T }
+      corriente: I_ds
+      mide: { corriente: I_ds, vd: V_ds }
+    opciones:
+      - texto: "Que el modelo no incluye la saturación: cerca del recorte, todo es ficción"
+        bien: true
+        porque: "Un macromodelo reproduce solo lo que el fabricante consideró relevante. Hay que probarlo en las condiciones límite."
+      - texto: "Que el amplificador tiene mucha ganancia"
+        porque: "Ninguna ganancia saca la salida de la alimentación en el circuito real."
+      - texto: "Que el simulador ha fallado"
+        porque: "Resuelve bien el modelo que tiene; el modelo es el que no satura."
+    escalera:
+      - "¿Puede un operacional real dar más tensión que su alimentación?"
+    solucion: "Al modelo le falta la saturación."
+    comprobar:
+      - { con: { V_d: 5 }, V_ds: 0.608, tol: 0.01 }
+
+  - id: mosfet
+    tipo: pregunta
+    titulo: "El modelo de un MOSFET de potencia"
+    texto: "¿De dónde debe venir el modelo de un MOSFET de potencia para una fuente conmutada?"
+    libro: [76, 82]
+    widget:
+      tipo: circuito
+      esquema: diodo
+      piezas: { fuente: V_d, r: R_d, is: I_S, n: n_d, vt: V_T }
+      corriente: I_ds
+      mide: { corriente: I_ds, vd: V_ds }
+    opciones:
+      - texto: "Del fabricante, para el componente exacto"
+        bien: true
+        porque: "La R_{DS(on)}, la carga de puerta y el diodo de cuerpo dependen del dispositivo concreto."
+      - texto: "De la biblioteca genérica del simulador"
+        porque: "Un genérico de la familia puede no corresponder al que se compra."
+      - texto: "De cualquier modelo de terceros"
+        porque: "Sin saber quién lo hizo ni cómo se validó, su fiabilidad es desconocida."
+    escalera:
+      - "¿Qué fuente conoce mejor ese dispositivo concreto?"
+    solucion: "El fabricante."
+
+  - id: decadas
+    tipo: sorpresa
+    titulo: "La caída no es constante"
+    texto: "Con 5 V, cambie R de 100 kΩ a 100 Ω: la corriente sube tres décadas y la tensión sube lo mismo en cada una, 59,5 mV."
+    libro: ["cap22#74"]
+    fijar: { V_d: 5 }
+    inicio: { R_d: 100000 }
+    widget:
+      tipo: circuito
+      esquema: diodo
+      piezas: { fuente: V_d, r: R_d, is: I_S, n: n_d, vt: V_T }
+      lectura: { valor: V_ds, rotulo: "Tensión del diodo" }
+      datos:
+        - { valor: I_ds, rotulo: "Corriente: {{I_ds}}" }
+        - { valor: dec, rotulo: "Por década: {{dec}}" }
+      corriente: I_ds
+      mide: { corriente: I_ds, vd: V_ds }
+      mandos:
+        - { valor: R_d, lista: [100000, 10000, 1000, 100] }
+    comprobar:
+      - { dec: 0.0595 }
+
+  - id: por-que-validar
+    tipo: porque
+    titulo: "¿Por qué validar el modelo?"
+    texto: "Un modelo de diodo no coincide con las medidas del componente real en tres puntos de su curva. ¿Por qué no seguir simulando con él?"
+    libro: [89, 90]
+    widget:
+      tipo: circuito
+      esquema: diodo
+      piezas: { fuente: V_d, r: R_d, is: I_S, n: n_d, vt: V_T }
+      lectura: { valor: V_ds, rotulo: "Tensión del diodo" }
+      corriente: I_ds
+      mide: { corriente: I_ds, vd: V_ds }
+      mandos:
+        - { valor: R_d, lista: [100000, 10000, 1000, 100] }
+    opciones:
+      - texto: "Porque da una falsa confianza: es peor que no simular"
+        bien: true
+        porque: "Si no coincide en esas condiciones, el modelo es inservible para ese propósito, y sus resultados parecen fiables sin serlo."
+      - texto: "Porque el simulador irá más lento"
+        porque: "No es cuestión de velocidad: es que el resultado no describe el componente."
+      - texto: "Se puede seguir: el error se compensa"
+        porque: "Nada lo compensa: todo lo que dependa de ese modelo hereda su error."
+    escalera:
+      - "¿Qué vale un resultado que parece correcto y no lo es?"
+    solucion: "Un modelo no validado da una falsa confianza."
+
+  - id: documento
+    tipo: pregunta
+    titulo: "El netlist como documento"
+    texto: "Dentro de un año habrá que revisar esta simulación. ¿Qué conviene haber guardado?"
+    libro: [87]
+    widget:
+      tipo: circuito
+      esquema: diodo
+      piezas: { fuente: V_d, r: R_d, is: I_S, n: n_d, vt: V_T }
+      corriente: I_ds
+      mide: { corriente: I_ds, vd: V_ds }
+    opciones:
+      - texto: "El netlist, los modelos y una nota de qué se quería comprobar"
+        bien: true
+        porque: "El netlist es texto: versionable, comparable y comentable. Así la simulación es reproducible."
+      - texto: "Una captura de pantalla del resultado"
+        porque: "Una captura no se puede volver a simular ni cambiar."
+      - texto: "Solo los valores finales"
+        porque: "Sin el netlist y los modelos no se sabe de dónde salieron."
+    escalera:
+      - "¿Qué permite volver a simular?"
+    solucion: "Netlist, modelos y nota."
+
+  - id: banco-diodo
+    tipo: banco
+    titulo: "Valide el modelo en el banco"
+    texto: "Monte un diodo de silicio con 1 kΩ y 5 V, mida su tensión y compárela con el modelo ideal."
+    libro: [89, "cap22#72", "cap22#81", "cap22#88"]
+    fijar: { V_d: 5, R_d: 1000 }
+    banco:
+      piezas: ["Un diodo de silicio, como el 1N4148", "R = 1 kΩ y fuente de 5 V", "Brymen en V⎓"]
+      medir: "La tensión entre ánodo y cátodo del diodo."
+      esperado: V_ds
+      unidad: V
+      tol: 0.1
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.1 }, texto: "Mide de más: un diodo real tiene n mayor que 1 (unos 1,75 un 1N4148); ajuste n en el modelo." }
+        - { texto: "Mide de menos: compruebe la fuente y la resistencia; un diodo Schottky cae unos 0,3 V menos." }
+      ficha: { n: 27, titulo: "Práctica 3 · Característica I-V de un diodo" }
+    comprobar:
+      - { V_ds: 0.608, tol: 0.01 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [67, 73, 79, 90]
+    ideas:
+      - { titulo: "Tres niveles.", texto: "Primitivos con .model, macromodelos en .subckt y modelos de comportamiento." }
+      - { titulo: "Aproximación deliberada.", texto: "Un macromodelo reproduce lo que eligió su autor: pruébelo en los límites." }
+      - { titulo: "Lo que no incluye.", texto: "Sin coeficientes térmicos, el mismo resultado a 25 y a 125 °C: falso." }
+      - { titulo: "Validar.", texto: "Tres puntos medidos; si no coinciden, el modelo da falsa confianza." }
