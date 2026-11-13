@@ -119,7 +119,10 @@
     return `linear-gradient(to right, ${paradas.join(', ')})`;
   });
 
-  const fmtV = (v: number) => formatear({ unidad: 'V', cifras: 3, recortar: true } as Parameters<typeof formatear>[0], Math.abs(v) < 5e-10 ? 0 : v);
+  // (esquemas12d: the nodes' unit and quantity, from the drawing: volts and «Tensión» but for a thermal chain)
+  let unidadNodos = $state('V');
+  let magnitudNodos = $state('Tensión');
+  const fmtV = (v: number) => formatear({ unidad: unidadNodos, cifras: 3, recortar: true } as Parameters<typeof formatear>[0], Math.abs(v) < 5e-10 ? 0 : v);
 
   // ---------------------------------------------------------------- the drawing's marks
   interface Etiqueta {
@@ -150,6 +153,11 @@
     if (!caja) return;
     svg = caja.querySelector('svg.e11');
     if (!svg) return;
+    // (esquemas12d: a schematic whose nodes are not volts — a thermal chain in °C — says so on its <svg>)
+    const un = svg.getAttribute('data-unidad-nodos') || 'V';
+    if (un !== unidadNodos) unidadNodos = un;
+    const mg = svg.getAttribute('data-magnitud-nodos') || 'Tensión';
+    if (mg !== magnitudNodos) magnitudNodos = mg;
     const ca = !!svg.querySelector('[data-alterna]');
     if (ca !== alternaDibujo) alternaDibujo = ca;
     const rc = caja.getBoundingClientRect();
@@ -634,13 +642,13 @@
 </div>
 {#if hayColor}
   <div class="leyenda" data-leyenda-tension>
-    <span class="tit">Tensión</span>
+    <span class="tit">{magnitudNodos}</span>
     <span class="ext">{fmtV(vMin)}</span>
     <span class="barra" style:background={gradiente} aria-hidden="true"></span>
     <span class="ext">{fmtV(vMax)}</span>
     <button type="button" class="ver" aria-pressed={verValores} onclick={() => (verValores = !verValores)} data-ver-tensiones>{verValores ? 'Ocultar valores' : 'Ver valores'}</button>
     {#if verValores}
-      <ul class="solo-lector" aria-label="Tensión de cada nodo respecto a masa">
+      <ul class="solo-lector" aria-label={magnitudNodos === 'Tensión' ? 'Tensión de cada nodo respecto a masa' : `${magnitudNodos} de cada nodo`}>
         {#each etiquetas as e (e.nodo)}<li>{e.texto}</li>{/each}
       </ul>
     {/if}

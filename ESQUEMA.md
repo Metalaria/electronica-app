@@ -3390,6 +3390,22 @@ drop check reads), mosfet `rdson` (DC: `RDS` d–s or nothing from the gate's vo
 the axis a model's jump may be off (spice.ts `CurvaEsperada.dx`: the simulated value is compared with the range of the
 model within ± dx). On a log y axis an AC curve's floor is 10⁻⁴ of the axis' bottom. The expression language gained `wright(x)` (Wright ω, `calculadoras/expresion.ts`) to solve a
 Shockley diode in series with a resistor.
+1.2 (esquemas12d): tiristor (`VF` SIN, meter `VMI`; each direction `S1`/`S2` (model `swt`, memory: VT 1,25, VH 0,25)
+in series with `VM1`/`VM2` and `D1`/`D2` (`dtir`, IS 10⁻¹² A), controls `B1`/`B2` = gate PULSE `VGP`/`VGN` (2 V at α,
+and α + 180° for a TRIAC) + i(vm·)/1 µA; `RX` 100 kΩ leakage a–k; load `RL` k–0 or `RL` k–q + `LL` q–0), crowbar (`VIN`
+PULSE to `falla` at t0, `RS`, fuse `SF` (`swf`, RON = rf) opened by `BF` = 1 − v(q)/I²t with `BQ` = u(time)·max(i² −
+I_n², 0) into `CQ` 1 F; `VMF`, `RL`; SCR `SC`–`VMS`–`VTS` (on-state drop) driven by `BCS` = 2·u(v(r) − V_Z − V_GT) +
+i(vms)/1 µA), motor-cc (`VA` DC or PWL ramp, `VMI`, `RA`, `LA`, `EFEM` e–0 = k·v(w); mechanics `FPAR` k·i into w, `CJ`
+w–0 = J with IC w0, `ICARGA` (PULSE at tcarga), `RB` 1/b or 10¹⁵ Ω; `FTQ`–`RTQ` 1 Ω: v(tq) = k·i), induccion (`VF` AC,
+`VMI`, `R1`, `L1` = X₁/(2π·f_n), `RFE`, `VMM`–`LM`, `VM2`–`L2`–`R2`–`RMEC` R₂′(1 − s)/s), snubber (`VB`, `ILOAD` bus→d,
+`COSS` IC 0, `DCL` d–x (0,8 V at I₀), `VML`, `LS` y–bus, `RP`, `VMSN`–`RSN` (10¹² Ω when disconnected)–`CSN`), termica
+(`IP` 0→j (PULSE off at duracion), `VMQ`, `RJC`, `RCS` or `VCS`, `RSA` (or `RCA` = R_ja − R_jc), `VTA` = T_a, `CJ`/`CC`/
+`CS` to 0 with IC T_a), rs485 (`VCC`, `VMP`, `RP1`, `RPD1`, `VMT`–`RT1`, `RT2`, `RP2`/`RPD2` with `activa`, `VREF` cm
+and `RU1`/`RU0` = ru/n), wien (`VF` AC, `R1`, `C1`, `R2`, `C2`), desfase (`C1`…`C3`, `R1`…`R3`, unity `E1`/`E2` with
+`separadores`), cristal (`IZ` 1 A AC into zx, `C0`, `VMS`–`R1`–`L1`–`C1`); reductor (`VIN`, `VMIN`, `S1` a–sw by `VG` PULSE high for D·T, low side `DF` lo–sw or `S2` by `VGN` (complement), meter `VMD` 0–lo, `VML`, `RDCR`, `LB` with IC at the CCM valley, `RESR`, `CB` with IC V_out − ΔI(1 − 2D)/(12fC), `RCARGA`; model `swb` RON 1 µΩ; `tran.periodos` = `asentar`); led `etiqueta` (unmatched: `VMED` fa–a, fa
+fed by nothing; `VREVES` reference for the drop check). Kit `Tiristor.svelte`; `Lienzo nodos` → `data-unidad-nodos` /
+`data-magnitud-nodos` on the svg, read by `CircuitoVivo.svelte` (labels, legend, screen-reader list). `unidades.ts`
+SIN_PREFIJO: kg·m², A²·s, cm², dBc/Hz, dBµV/m.
 
 **Components** (`componentes/leccion11/`): `Leccion11.svelte` (screen, keys, guard, summary with
 `progreso/CelebracionLeccion.svelte`; scroll-padding = sticky header/footer heights, so keyboard focus is never under

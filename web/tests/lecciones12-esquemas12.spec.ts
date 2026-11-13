@@ -3,7 +3,8 @@
 // mosfet with an inductive load, rectificador-toma-media and lm3914; esquemas12c: fuente-controlada inverted,
 // bjt-interruptor with a LED and iref, LED/diode reversed, the ramp-and-noise input, comparador-no-inversor,
 // emisor-comun, par-diferencial, etapa-clase-ab, ao-estabilidad, ao-instrumentacion, transimpedancia, mosfet-p,
-// puerta-transmision, mosfet with R_DS(on), lm317, sonda-x10, the divisor's crossing and net label), in Node with
+// puerta-transmision, mosfet with R_DS(on), lm317, sonda-x10, the divisor's crossing and net label; esquemas12d:
+// tiristor, crowbar, motor-cc, induccion, snubber, termica, rs485, wien, desfase, cristal and the LED's net label), in Node with
 // the app's ngspice: each one's netlist against the book's analytic values (DC, AC and transient), the op-amp model
 // (A₀, rails without wind-up, GBW, slew rate, the DC region the living circuit solves), the power meter the living
 // circuit skips, and the edge tolerance of the comparison. The catalogue lesson (lecciones11-esquemas.spec.ts) checks
@@ -536,5 +537,186 @@ test.describe('esquemas12c frente a ngspice', () => {
     cerca(m('v(salida)'), 6, 1e-6);
     m = await op('divisor', { fuente: 12, arriba: 10000, abajo: 10000, carga: 10000, union: 1 });
     cerca(m('v(salida)'), 4, 1e-6);
+  });
+});
+
+// esquemas12d: the power-electronics, machines and oscillator schematics (tiristor, crowbar, motor-cc, induccion,
+// snubber, termica, rs485, wien, desfase, cristal) and the LED's net label, against the book's own figures
+test.describe('esquemas12d frente a ngspice', () => {
+  test.setTimeout(180_000);
+  const fase = (s: Vectores, n: string) => (Math.atan2(s.im(n)[0] ?? 0, s.v(n)[0]!) * 180) / Math.PI;
+
+  test('tiristor (sección 10.1, figura 10.3): potencia 97, 50 y 20 % con α = 30, 90 y 120°; el SCR con carga R-L conduce pasado el cero', async () => {
+    for (const [alfa, p] of [[30, 97], [90, 50], [120, 20]] as const) {
+      const s = await sim('tiristor', 'tran', { fuente: 325, f: 50, r: 100, alfa, triac: 1 }, '.tran 2e-6 0.04 0 2e-6 uic');
+      const v = s.v('v(k)');
+      let e = 0;
+      for (let k = 1; k < s.eje.length; k++) if (s.eje[k]! > 0.02) e += ((v[k]! ** 2 + v[k - 1]! ** 2) / 2) * (s.eje[k]! - s.eje[k - 1]!);
+      cerca((100 * (e / 0.02)) / (325 ** 2 / 2), p, 0, 1);
+    }
+    // the SCR blocks the negative half: nothing on the load there
+    const scr = await sim('tiristor', 'tran', { fuente: 325, f: 50, r: 100, alfa: 30 }, '.tran 2e-6 0.02 0 2e-6 uic');
+    for (const [k, t] of scr.eje.entries()) if (t > 0.0105 && t < 0.0195) cerca(scr.v('v(k)')[k]!, 0, 0, 0.5);
+    // R-L (50 Ω, 0,1 H: φ = 32°) fired at 90°: still conducting at 190°, off by 300°
+    const rl = await sim('tiristor', 'tran', { fuente: 325, f: 50, r: 50, l: 0.1, alfa: 90 }, '.tran 2e-6 0.02 0 2e-6 uic');
+    const en = (g: number) => rl.v('i(vmi)')[rl.eje.findIndex((t) => t >= g / 360 / 50)]!;
+    expect(en(190)).toBeGreaterThan(0.3);
+    // (off, only the 100 kΩ leakage: 3 mA at 300°)
+    cerca(en(300), 0, 0, 4e-3);
+  });
+
+  test('crowbar (sección 10.9): el SCR cortocircuita el raíl y lo mantiene hasta que funde el fusible', async () => {
+    const p = { fuente: 5, falla: 12, t0: 0.001, rs: 0.05, rf: 0.05, i2t: 2, carga: 10, vz: 5.6, rg: 100, vt: 1 };
+    const s = await sim('crowbar', 'tran', p, '.tran 1e-6 0.003 0 1e-6 uic');
+    const i = s.v('i(vmf)');
+    const isc = (12 - 1) / 0.101;
+    const tf = 0.001 + 2 / isc ** 2;
+    const en = (t: number) => s.eje.findIndex((x) => x >= t);
+    cerca(i[en(0.0005)]!, 5 / 10.1, 1e-3);
+    cerca(i[en(0.001 + (tf - 0.001) / 2)]!, isc, 2e-3);
+    cerca(s.v('i(vms)')[en(0.001 + (tf - 0.001) / 2)]!, isc, 5e-3);
+    cerca(i[en(tf + 2e-5)]!, 0, 0, 1e-6);
+    cerca(s.v('v(r)')[en(0.0025)]!, 0, 0, 1e-3);
+  });
+
+  test('motor-cc (sección 34.3, bloques 47 a 53): 46,96 A de pico, 63 % a los 20 ms, 4,80 A con rampa, 4 392,7 y 4 106,2 rpm, −24 A al frenar', async () => {
+    const m = { fuente: 24, r: 0.5, l: 50e-6, k: 0.05, j: 1e-4 };
+    let s = await sim('motor-cc', 'tran', m, '.tran 1e-5 0.15 0 1e-5 uic');
+    cerca(Math.max(...s.v('i(vmi)')), 46.96, 2e-3);
+    cerca(cruces(s.eje, s.v('v(w)'), 0.632 * 480, true)[0]!, 0.02, 1e-2);
+    cerca(s.v('v(w)').at(-1)!, 479.7, 1e-3);
+    s = await sim('motor-cc', 'tran', { ...m, rampa: 0.2 }, '.tran 1e-4 0.25 0 1e-4 uic');
+    cerca(Math.max(...s.v('i(vmi)')), 4.8, 5e-3);
+    for (const [t, rpm, a] of [[0.1, 4392.7, 2], [0.25, 4106.2, 5]] as const) {
+      const o = await op('motor-cc', { ...m, carga: t });
+      cerca((o('v(w)') * 60) / (2 * Math.PI), rpm, 1e-4);
+      cerca(o('i(vmi)'), a, 1e-6);
+      cerca(o('v(tq)'), t, 1e-6);
+    }
+    // turning at 480 rad/s with no load, the bridge drops to 12 V: −24 A and −1,2 N·m at once
+    s = await sim('motor-cc', 'tran', { ...m, fuente: 12, w0: 480 }, '.tran 1e-6 0.001 0 1e-6 uic');
+    // (the coil takes τ_e = 0,1 ms to get there, and the rotor has slowed a little by then: −23,5 A)
+    cerca(Math.min(...s.v('i(vmi)')), -24, 3e-2);
+    cerca(Math.min(...s.v('v(tq)')), -1.2, 3e-2);
+  });
+
+  test('induccion (sección 34.4, bloque 72): 49,84 A y 48,54 N·m parado, 86,51 N·m con s = 0,264, 7,887 A y 26,61 N·m nominal; estrella 16,6 A y 16,2 N·m', async () => {
+    const m = { fuente: 400 / Math.sqrt(3), f: 50, r1: 1.4, x1: 2, xm: 55, rfe: 2500, x2: 2, r2: 1.1 };
+    const par = (i2: number, s: number) => (3 * i2 ** 2 * (1.1 / s)) / (2 * Math.PI * 25);
+    for (const [s, t, i] of [[1, 48.54, 49.84], [0.264, 86.51, null], [0.0339, 26.61, 7.887]] as const) {
+      const a = await sim('induccion', 'ac', { ...m, s }, '.ac lin 1 50 50');
+      cerca(par(amp(a, 'i(vm2)'), s), t, 1e-3);
+      if (i) cerca(amp(a, 'i(vmi)'), i, 1e-3);
+    }
+    // star for the start: a third of the voltage on each winding... 1/√3, a third of the line current and of the torque
+    const y = await sim('induccion', 'ac', { ...m, fuente: 400 / 3, s: 1 }, '.ac lin 1 50 50');
+    cerca(amp(y, 'i(vmi)') / Math.sqrt(3), 16.6, 3e-3);
+    cerca(par(amp(y, 'i(vm2)'), 1), 16.2, 3e-3);
+    // V/f: half the frequency with half the voltage, the reactances given at 50 Hz: the phasor solution with them halved
+    const h = await sim('induccion', 'ac', { ...m, fuente: 400 / Math.sqrt(3) / 2, f: 25, fn: 50, s: 1 }, '.ac lin 1 25 25');
+    type Z = [number, number];
+    const suma = (a: Z, b: Z): Z => [a[0] + b[0], a[1] + b[1]];
+    const por = (a: Z, b: Z): Z => [a[0] * b[0] - a[1] * b[1], a[0] * b[1] + a[1] * b[0]];
+    const inv = (a: Z): Z => [a[0] / (a[0] ** 2 + a[1] ** 2), -a[1] / (a[0] ** 2 + a[1] ** 2)];
+    const zm = inv(suma([1 / 2500, 0], inv([0, 27.5])));
+    const z2: Z = [1.1, 1];
+    const zin = suma([1.4, 1], por(por(zm, z2), inv(suma(zm, z2))));
+    cerca(amp(h, 'i(vmi)'), 400 / Math.sqrt(3) / 2 / Math.hypot(zin[0], zin[1]), 1e-4);
+  });
+
+  test('snubber (sección 10.6, figura 10.11): 585 V de pico sin snubber y 448 V con 20 Ω y 1 nF', async () => {
+    const p = { vb: 400, i0: 10, l: 100e-9, rp: 200, coss: 250e-12 };
+    let s = await sim('snubber', 'tran', p, '.tran 3e-10 3e-7 0 3e-10 uic');
+    cerca(Math.max(...s.v('v(d)')), 585, 3e-3);
+    s = await sim('snubber', 'tran', { ...p, rsn: 20, csn: 1e-9 }, '.tran 3e-10 3e-7 0 3e-10 uic');
+    cerca(Math.max(...s.v('v(d)')), 448, 3e-3);
+    // the snubber's switch open: as without it
+    s = await sim('snubber', 'tran', { ...p, rsn: 20, csn: 1e-9, snubber: 0 }, '.tran 3e-10 3e-7 0 3e-10 uic');
+    cerca(Math.max(...s.v('v(d)')), 585, 3e-3);
+  });
+
+  test('termica (secciones 10.5 y 10.11): 92,5 °C con disipador y 350 °C sin él; problema 10.B 99,5, 106,5 y 124 °C', async () => {
+    let m = await op('termica', { p: 5, ta: 40, rjc: 2, rcs: 0.5, rsa: 8 });
+    cerca(m('v(j)'), 92.5, 1e-6);
+    m = await op('termica', { p: 5, ta: 40, rjc: 2, rcs: 0.5, rsa: 8, rja: 62, disipador: 0 });
+    cerca(m('v(j)'), 350, 1e-6);
+    for (const [rcs, tj] of [[0.5, 99.5], [1.5, 106.5], [4, 124]] as const) {
+      m = await op('termica', { p: 7, ta: 40, rjc: 3, rcs, rsa: 5 });
+      cerca(m('v(j)'), tj, 1e-6);
+    }
+    // the heatsink's capacity: T_s rises with τ = R_sa·C_s
+    const s = await sim('termica', 'tran', { p: 5, ta: 40, rjc: 2, rcs: 0.5, rsa: 8, cs: 20 }, '.tran 1 800 0 1 uic');
+    cerca(cruces(s.eje, s.v('v(s)'), 40 + 40 * 0.632, true)[0]!, 160, 1e-2);
+  });
+
+  test('rs485 (bloques 472 y 221): 211 y 196 mV con 680 Ω; PROFIBUS 1,1 V y 987 mV con 32 cargas', async () => {
+    let m = await op('rs485', { vcc: 5, rp: 680, rt: 120, n: 0 });
+    cerca(m('v(d1)') - m('v(d0)'), 0.211, 2e-3);
+    m = await op('rs485', { vcc: 5, rp: 680, rt: 120, n: 32 });
+    cerca(m('v(d1)') - m('v(d0)'), 0.196, 2e-3);
+    m = await op('rs485', { vcc: 5, rp: 390, rt: 220, n: 0, activa: 1 });
+    cerca(m('v(d1)') - m('v(d0)'), 1.1, 1e-6);
+    m = await op('rs485', { vcc: 5, rp: 390, rt: 220, n: 32, activa: 1 });
+    cerca(m('v(d1)') - m('v(d0)'), 0.987, 1e-3);
+    // a termination's jumper open: one 120 Ω less
+    m = await op('rs485', { vcc: 5, rp: 680, rt: 120, n: 0, t2: 0 });
+    cerca(m('v(d1)') - m('v(d0)'), (5 * 120) / 1480, 1e-6);
+  });
+
+  test('wien, desfase y cristal (secciones 27.1, 27.3 y 27.4): 1/3 a 1 592 Hz; 1/29 y 180°, con seguidores 1/8 y 60° por célula; las dos resonancias', async () => {
+    const f0 = 1 / (2 * Math.PI * 1e4 * 1e-8);
+    let a = await sim('wien', 'ac', { fuente: 1, r1: 1e4, c1: 1e-8 }, `.ac lin 1 ${f0} ${f0}`);
+    cerca(amp(a, 'v(o)'), 1 / 3, 1e-6);
+    cerca(fase(a, 'v(o)'), 0, 0, 1e-6);
+    expect(Math.round(f0)).toBe(1592);
+    const f6 = 1 / (2 * Math.PI * Math.sqrt(6) * 1e4 * 1e-8);
+    a = await sim('desfase', 'ac', { fuente: 1, r: 1e4, c: 1e-8 }, `.ac lin 1 ${f6} ${f6}`);
+    cerca(amp(a, 'v(n3)'), 1 / 29, 1e-6);
+    cerca(Math.abs(fase(a, 'v(n3)')), 180, 0, 1e-6);
+    // what each loaded cell gives: about 56°, 56° and 68° (in some order)
+    const p1 = fase(a, 'v(n1)');
+    const p2 = fase(a, 'v(n2)');
+    const p3 = (fase(a, 'v(n3)') + 360) % 360;
+    expect([p1, p2 - p1, p3 - p2].map((x) => Math.round(x)).sort()).toEqual([56, 56, 68].sort());
+    const f3 = 1 / (2 * Math.PI * Math.sqrt(3) * 1e4 * 1e-8);
+    a = await sim('desfase', 'ac', { fuente: 1, r: 1e4, c: 1e-8, separadores: 1 }, `.ac lin 1 ${f3} ${f3}`);
+    cerca(amp(a, 'v(n3)'), 1 / 8, 1e-6);
+    cerca(fase(a, 'v(n1)'), 60, 0, 1e-6);
+    // a 10 MHz crystal (20 Ω, 20 fF, 5 pF): |Z| = R₁ at f_s, a maximum C₁/(2C₀) higher, 20 kHz
+    const x = { r1: 20, l1: 0.0126651, c1: 20e-15, c0: 5e-12 };
+    const fs = 1 / (2 * Math.PI * Math.sqrt(x.l1 * x.c1));
+    a = await sim('cristal', 'ac', x, `.ac lin 1 ${fs} ${fs}`);
+    cerca(amp(a, 'v(zx)'), 20, 1e-3);
+    const b = await sim('cristal', 'ac', x, `.ac lin 4001 ${fs} ${fs + 40000}`);
+    const z = b.v('v(zx)').map((re, k) => Math.hypot(re, b.im('v(zx)')[k] ?? 0));
+    const fp = b.eje[z.indexOf(Math.max(...z))]!;
+    cerca(fp - fs, (fs * x.c1) / (2 * x.c0), 2e-3);
+  });
+
+  test('led con etiqueta de red: con las dos etiquetas iguales luce; con otra («+5V»), sin alimentación', async () => {
+    let m = await op('led', { fuente: 5, r: 150, vf: 2, etiqueta: 1 });
+    cerca(m('i(vmed)'), 0.02, 0.03);
+    m = await op('led', { fuente: 5, r: 150, vf: 2, etiqueta: 0 });
+    cerca(m('i(vmed)'), 0, 0, 1e-9);
+  });
+});
+
+test.describe('esquemas12d: el reductor frente a ngspice', () => {
+  test.setTimeout(180_000);
+  test('reductor (sección 33.2): 12 V → 5 V con D = 0,417, ΔI = 207 mA con 47 µH a 300 kHz; rizado 0,9 mV por C y unos 10 mV por la ESR; el diodo resta (1 − D)·V_F', async () => {
+    const p = { vin: 12, f: 3e5, ciclo: 0.417, l: 47e-6, c: 100e-6, carga: 2.5 };
+    const pp = (y: number[]) => Math.max(...y) - Math.min(...y);
+    // in steady state from t = 0: ten periods
+    let s = await sim('reductor', 'tran', p, '.tran 1e-9 3.3333e-5 0 1e-9 uic');
+    cerca(pp(s.v('i(vml)')), 0.207, 5e-3);
+    const vo = s.v('v(o)');
+    cerca(vo.reduce((a, b) => a + b, 0) / vo.length, 5.004, 1e-3);
+    cerca(pp(vo), 0.0009, 0.06);
+    s = await sim('reductor', 'tran', { ...p, esr: 0.05, c: 1e-3 }, '.tran 1e-9 3.3333e-5 0 1e-9 uic');
+    cerca(pp(s.v('v(o)')), 0.05 * 0.2068, 0.05);
+    // a 0,5 V freewheel diode: V_out = D·V_in − (1 − D)·V_F
+    s = await sim('reductor', 'tran', { ...p, vf: 0.5 }, '.tran 1e-9 3.3333e-5 0 1e-9 uic');
+    const v2 = s.v('v(o)');
+    cerca(v2.reduce((a, b) => a + b, 0) / v2.length, 0.417 * 12 - 0.583 * 0.5, 3e-3);
   });
 });

@@ -2123,6 +2123,23 @@ probados: `web/tests/lecciones12-catalogo/cap01/sec-1.4.yaml`):
   ngspice), ocho en `tests/lecciones12-esquemas12.spec.ts` frente a los valores del libro (52° de margen y 16 % de
   sobreoscilación con 10 Hz y 1 MHz, G = 101 del amplificador de instrumentación, 5,036 V del LM317, umbrales de
   2,5975 y 2,4025 V del termostato…) y el recorrido geométrico de `tests/lecciones12-fix12.spec.ts` sobre todos.
+- **Esquemas nuevos (1.2, esquemas12d)**, a petición de Potencia (cap10, cap56), Taller (cap11, cap12), Analógica
+  (cap28) y Digital (cap44), en `contenido/lecciones11/GUIA.md` §5.4 quater: `tiristor` (SCR o TRIAC que se enclava
+  con el pulso de puerta a α y se apaga en el cero de su corriente; carga R o R-L: la potencia 97/50/20 % de la figura
+  10.3), `crowbar` (Zener, R_G y SCR sobre un raíl con fusible de I²t), `motor-cc` (inducido R + L con E = k·ω y la
+  mecánica como circuito, la inercia un condensador: 46,96 A de pico, 4,80 A con rampa, −24 A al frenar), `induccion`
+  (el circuito por fase de la figura 34.5 con el deslizamiento como pieza: 49,84 A y 48,54 N·m parado, 7,887 A y
+  26,61 N·m nominal), `snubber` (el apagado de la figura 10.11: 585 V sin snubber, 448 V con él), `termica` (la cadena
+  unión–cápsula–disipador–ambiente con sus capacidades; el circuito vivo rotula los nodos en °C), `rs485` (polarización,
+  terminaciones, cargas unidad y la terminación activa de PROFIBUS: 211/196 mV y 1,1 V/987 mV), `wien`, `desfase` (con
+  o sin seguidores: 1/29 o 1/8) y `cristal` (modelo BVD, sus dos resonancias), y la etiqueta de red en `led`
+  (`etiqueta`/`etiqueta2`, como en `divisor`). El `reductor` (buck: PWM, diodo o síncrono, DCR, ESR, en régimen permanente desde t = 0: 207 mA de rizado de la
+  sección 33.2). Kit: `kit/Tiristor.svelte` (SCR y TRIAC en horizontal o vertical);
+  `Lienzo` acepta `nodos: { magnitud, unidad }` y el circuito vivo usa esa unidad en las etiquetas y la leyenda. Unidades
+  sin prefijo nuevas: kg·m², A²·s, cm², dBc/Hz, dBµV/m (antes «100 µkg·m²»). Sin las piezas nuevas, las netlists que
+  ya existían no cambian. Pruebas: 17 tarjetas más en la lección de catálogo (478 comprobaciones con ngspice), nueve en
+  `tests/lecciones12-esquemas12.spec.ts` frente a las cifras del libro y el recorrido geométrico de
+  `tests/lecciones12-fix12.spec.ts`.
 - **Una prueba que fallaba a veces (fix12, «espejo»).** La prueba de las partículas medía cada pieza por la caja que
   envuelve su trazo fuera de los hilos con corriente; la carga del espejo cuelga del hilo de arriba en una T, así que su
   caja era tan ancha como el zigzag y llegaba a 3 unidades del hilo, y una partícula que pasaba junto a la T, a 7

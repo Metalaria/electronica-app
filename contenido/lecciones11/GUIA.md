@@ -1084,6 +1084,9 @@ Mide (`mide`, continua): `corriente` corriente del LED; `vf` tensión del LED; `
 bloquea (el modelo: corriente 0 y toda la tensión en el LED); un toque en él lo gira. Vale igual en `diodo`. Tarjetas
 `led-reves` y `diodo-reves` (`I = (1 - rev)*max(0, (V - V_F)/R)`).
 
+`etiqueta`? y `etiqueta2`? (1.2, esquemas12d; secciones 11.9, 12.5): la alimentación del LED por etiquetas de red, como en
+`divisor` (§5.4 quater).
+
 Aproximación del libro: `vf` ± 0,2 V (LED de caída vf a 20 mA, n = 2: la dispersión de 1,8 a 2,2 V del libro).
 
 ```yaml
@@ -2312,6 +2315,158 @@ En cada flanco dividen primero los condensadores, K₀ = C₁/(C₁ + C₂), y l
 τ = (R₁ ∥ R₂)·(C₁ + C₂): la primera mitad V·(K∞ + (K₀ − K∞)·e^(−t/τ)); la segunda (v(T/2) − V·K₀)·e^(−(t − T/2)/τ).
 La cuadrada sube en t = 0: multiplique la primera mitad por `ceil(t/1e9)` (tarjeta `sonda-x10`). Compensada
 (R₁·C₁ = R₂·C₂), plana.
+
+### 5.4 quater Los esquemas de 1.2 (esquemas12d): potencia, máquinas, térmica, buses y osciladores
+
+Cada uno tiene su tarjeta probada en la lección de catálogo de las pruebas (`web/tests/lecciones11-catalogo/cap01/
+sec-1.5.yaml`, con el nombre del esquema o el que se diga): copie de allí el modelo. «?» marca una pieza opcional.
+Las cifras del libro que reproducen están comprobadas con ngspice en `web/tests/lecciones12-esquemas12.spec.ts`
+(«esquemas12d frente a ngspice»).
+
+#### `tiristor` — Control por ángulo de fase con SCR o TRIAC (1.2)
+
+La red senoidal, un SCR o un TRIAC en serie y la carga R (con L?). Se enclava como dice el libro (sección 10.1): un
+pulso de puerta a α en cada semiciclo (el positivo con SCR; los dos con TRIAC) lo enciende y conduce sin la puerta
+hasta que su corriente se anula. Secciones 10.1, 56.4 (arrancador suave).
+
+Piezas: `fuente` (V de pico), `f`, `r`, `l`?, `alfa` (°, de 0 a 180), `triac`? (interruptor: cerrado TRIAC; abierto o
+sin la pieza, SCR; un toque en el símbolo lo cambia), `ancho`? (duración del pulso de puerta, °; 10° sin ella).
+
+Mide (frente al tiempo): `red`, `carga` (la tensión de la carga), `corriente`, `tiristor` (la del dispositivo) y
+`resistencia` (la de R, con `l`). Solo transitorio; empieza en el cero de subida de la red, apagado.
+
+En ngspice cada sentido es un interruptor con memoria en serie con un diodo: cae unos 0,7 V, como un tiristor real
+(«una caída de uno o dos voltios»), y 100 kΩ en paralelo hacen de fuga en corte (unos mA): ambas cosas caben en el 1 %
+del eje. Carga resistiva, fase dentro del semiciclo `φ = 360·f·t − 180·floor(2·f·t)`: v = V_p·sen(2πft) cuando φ ≥ α
+(`ceil((φ − α)/1e9)`), y con SCR solo en el semiciclo positivo (`1 − (floor(2·f·t) − 2·floor(f·t))`); la potencia
+relativa con TRIAC, 1 − α/180 + sen(2α)/(2π) (97, 50 y 20 % con 30, 90 y 120°, figura 10.3). Carga R-L con SCR,
+θ = 2πft − α reducido a [0, 2π) (`u − 2π·floor(u/(2π))`): i = (V_p/Z)·(sen(θ + α − φ) − sen(α − φ)·e^(−θ/tan φ)), con
+`max(0, …)` y cortada en θ < 2π + φ − α (después la fórmula vuelve a ser positiva antes del disparo siguiente). Tarjetas
+`tiristor` y `tiristor-inductiva`.
+
+#### `crowbar` — Crowbar con SCR y fusible (1.2)
+
+La entrada (V, y desde `t0` la tensión de la avería, `falla`) con su R_s?, el fusible, la carga y, sobre el raíl, el
+Zener, R_G y el SCR del bloque 210. Pasado V_Z + V_GT el SCR cortocircuita el raíl y, enclavado, lo mantiene hasta
+que el fusible funde. Sección 10.9.
+
+Piezas: `fuente`, `falla`, `t0`, `rs`? (1 mΩ sin ella), `rf`, `i2t` (A²·s), `inom`? (A que aguanta para siempre),
+`carga`, `vz`, `vgt`? (0,7 V), `rg`? (se dibuja; el disparo es el umbral ideal V_Z + V_GT), `vt`? (caída del SCR, 1 V),
+`ron`? (1 mΩ).
+
+Mide: continua `vo`, `ifus` (el estado normal); frente al tiempo `entrada`, `salida` (el raíl), `fusible`, `scr`,
+`energia` (la I²t acumulada). El cortocircuito: I_cc = (V_falla − V_T)/(R_s + R_f + R_on); funde en
+t_f = t₀ + I²t/(I_cc² − I_n²). Compare las **corrientes** (`fusible`, `scr`: en el salto pasan por valores entre los
+del modelo); la tensión del raíl sube un instante hasta el umbral antes de caer y no casa punto a punto con un salto
+del modelo (dibújela sin `mide`). Tarjeta `crowbar`.
+
+#### `motor-cc` — Motor de corriente continua: inducido y mecánica (1.2)
+
+El inducido R + L con E = k·ω y la mecánica como la simula el libro (bloque 49): el par k·I una fuente de corriente
+hacia el nodo de la velocidad, la inercia J un condensador de J faradios, el par de carga otra fuente y el rozamiento
+b? una resistencia de 1/b. Secciones 34.3 (56.3) y 56.8.
+
+Piezas: `fuente` (V), `r`, `l`, `k` (V·s/rad), `j` (kg·m²), `carga`? (N·m), `tcarga`? (s, cuándo entra la carga),
+`b`?, `rampa`? (s: la tensión sube de 0 a V), `w0`? (rad/s: ya gira en vacío en t = 0, para frenar).
+
+Mide: continua `ia`, `omega` (rad/s), `par`, `fem`; frente al tiempo `corriente`, `velocidad`, `par_t`, `fem_t`,
+`inducido`. Continua: I = T/k, ω = V/k − R/k²·T. Arranque desde parado sin carga: s₁,₂ = −a/2 ± √(a²/4 − b) con
+a = R/L, b = k²/(L·J); i = V/L/(s₁ − s₂)·(e^(s₁t) − e^(s₂t)) y ω = ω₀ + ω₀·(s₂e^(s₁t) − s₁e^(s₂t))/(s₁ − s₂)
+(tarjetas `motor-cc`, `motor-cc-arranque`, `motor-cc-velocidad`). Las cifras del libro (46,96 A de pico, el 63 % a los
+20 ms, 4,80 A con la rampa de 0,2 s, 4 392,7 y 4 106,2 rpm, −24 A al bajar a 12 V desde 480 rad/s) salen tal cual.
+No se colorea por tensión (la bobina y la inercia parten de su condición inicial) y la mecánica no lleva `data-red`:
+su «tensión» es una velocidad.
+
+#### `induccion` — Motor de inducción: circuito equivalente por fase (1.2)
+
+La figura 34.5 en alterna: la tensión de fase, R₁ + jX₁, R_Fe? ∥ jX_m en el entrehierro y el rotor jX₂′ + R₂′ +
+R₂′·(1 − s)/s (la carga mecánica, con su flecha: arrastrarla mueve el deslizamiento). Secciones 34.4 (56.4), 56.6
+(V/f) y 56.8.
+
+Piezas: `fuente` (V eficaces de fase: las corrientes salen eficaces), `f`, `fn`? (la frecuencia a la que se dan las
+reactancias: con un variador, X = X_n·f/f_n), `r1`, `x1`, `xm`, `rfe`?, `x2`, `r2`, `s` (0 < s ≤ 1).
+
+Mide (alterna): `linea_*` (I₁), `rotor_*` (I₂′), `magnetizante_*`, `entrehierro_*` (E), `eje_*` (la tensión en la
+carga mecánica). El par no es un fasor: escríbalo en el modelo desde la corriente del rotor que se comprueba,
+T = 3·I₂′²·(R₂′/s)/ω_s (Ec. 2). Las cifras del bloque 72 salen al 0,1 % (49,84 A y 48,54 N·m parado, 86,51 N·m con
+s = 0,264, 7,887 A y 26,61 N·m con s = 0,0339). Tarjeta `induccion` (con `comprobar` de esas cifras y el rendimiento
+interno).
+
+#### `snubber` — Apagado de una carga inductiva con snubber RC (1.2)
+
+El circuito de la figura 10.11: el bus, la corriente de carga I₀ (una bobina grande), el MOSFET que se abre en t = 0
+con su C_oss, el diodo de libre circulación por la inductancia parásita L del lazo (R_p? sus pérdidas) y la red R_s–C_s
+en paralelo con el interruptor. Sección 10.6 (y 15.5).
+
+Piezas: `vb`, `i0`, `l`, `rp`?, `coss`, `rsn`? y `csn`? (las dos), `snubber`? (interruptor que la conecta).
+
+Mide (frente al tiempo): `drenador`, `bobina` (la corriente del diodo), `isnubber`. Sin snubber: hasta t₁ = V_B·C_oss/I₀
+la rampa I₀·t/C_oss; después V_B + I₀/(C_oss·ω_d)·e^(−α·τ)·sen(ω_d·τ), τ = t − t₁, α = 1/(2·R_p·C_oss),
+ω_d = √(1/(L·C_oss) − α²) (tarjeta `snubber`: 585 V de pico con 400 V, 10 A, 100 nH, 250 pF y 200 Ω). **Con el
+snubber conectado** el circuito es de tercer orden y la app no tiene su fórmula cerrada: el pico baja a 448 V con
+20 Ω y 1 nF (comprobado en la prueba de modelo), pero una tarjeta no puede comparar su curva. Para el `ajuste` de la
+sección 10.6 use el criterio del libro como medidor (R_s frente a Z₀ = √(L/C_oss), bloque 140) con el esquema dibujado,
+o el `banco`.
+
+#### `termica` — Cadena térmica: unión, cápsula, disipador y ambiente (1.2)
+
+«La analogía no es una metáfora» (bloque 133): P una fuente de corriente hacia la unión, R_jc, R_cs? y R_sa en serie
+hasta el ambiente T_a (una fuente de tensión); sin disipador (`disipador` abierto, con `rja`), la cápsula va al
+ambiente por R_ja − R_jc. Capacidades térmicas `cj`?, `cc`?, `cs`? (J/°C) a la referencia, que parten de T_a; con
+`duracion`? la potencia se corta. Las tensiones del dibujo son temperaturas: el circuito vivo las rotula y las
+leyenda en °C (`Lienzo nodos`). Secciones 10.5 y 10.11 (10.B).
+
+Mide: continua `tj`, `tc`, `ts` (°C), `flujo` (W); frente al tiempo `union`, `capsula`, `radiador`. T_j = T_a +
+P·(R_jc + R_cs + R_sa) (92,5 °C del bloque 127; 350 °C sin disipador; 99,5, 106,5 y 124 °C del problema 10.B). Con una
+sola capacidad (la del disipador) la subida es exponencial con τ = R_sa·C_s (tarjetas `termica`, `termica-tiempo`).
+
+#### `rs485` — Bus RS-485 en reposo (1.2)
+
+R_p de D1 (B) a V_CC, las terminaciones R_T entre hilos en los dos extremos (`t1`?, `t2`?: el puente de cada una), las
+`n` cargas unidad («12 kΩ de cada hilo a su tensión interna», `ru`?, `ref`? = V_CC/2 sin ella) y R_pd? (R_p sin ella)
+de D0 (A) a masa; `activa`?: la terminación activa de PROFIBUS, la polarización también en el extremo lejano.
+Secciones 45.6 (Modbus), 45.11, 45.14 y el bloque 221.
+
+Mide (continua): `vba` (V_BA = v(D1) − v(D0)), `vd1`, `vd0`, `ipol`, `it`. Con `ref` en V_CC/2 las cargas son
+24 kΩ/n entre hilos y vale el lazo en serie del libro: Z_d = 1/(2/R_T + n/24 kΩ), V_BA = V_CC·Z_d/(2R_p + Z_d) (211 y
+196 mV con 680 Ω; PROFIBUS, 1,1 V y 987 mV con 32 cargas). Tarjetas `rs485` y `rs485-profibus`.
+
+#### `wien`, `desfase` y `cristal` — Redes de los osciladores (1.2)
+
+- `wien`: R₁ y C₁ en serie, R₂? ∥ C₂? (sin ellas, iguales) a masa. Piezas `fuente`, `f`?, `r1`, `c1`, `r2`?, `c2`?.
+  Mide `salida_*`. 1/β = 1 + R₁/R₂ + C₂/C₁ + j(ωR₁C₂ − 1/(ωR₂C₁)): fase nula y 1/3 en 1/(2πRC) (1 592 Hz con 10 kΩ y
+  10 nF). Tarjeta `wien`.
+- `desfase`: tres células con C en serie y R a masa; `separadores`? (interruptor) pone seguidores entre ellas. Piezas
+  `fuente`, `f`?, `r`, `c`. Mide `salida_*`, `celula1_*`, `celula2_*`. Directas, con x = ωRC:
+  |β| = 1/√((1 − 5/x²)² + (1/x³ − 6/x)²), 180° y 1/29 en 1/(2π·√6·RC) (las células dan unos 56°, 56° y 68°); con
+  seguidores (x/√(1 + x²))³, 60° por célula y 1/8 en 1/(2π·√3·RC). Tarjeta `desfase`.
+- `cristal`: el modelo BVD, R₁ L₁ C₁ en serie en paralelo con C₀; se mide su impedancia (`z_*`, con 1 A) y la corriente
+  de la rama serie (`serie_*`). |Z| = √(R₁² + X²)/(ωC₀)/√(R₁² + (X − 1/(ωC₀))²), X = ωL₁ − 1/(ωC₁): R₁ en f_s y el
+  máximo C₁/(2C₀) más arriba. Barra en un eje lineal cerca de f_s (Q de 10⁴ a 10⁵) con el eje y en `escala: log`.
+  Tarjeta `cristal`.
+
+#### `reductor` — Convertidor reductor (buck) (1.2)
+
+V_in, el interruptor S con un PWM de frecuencia `f` y ciclo `ciclo` (cerrado al principio de cada periodo), diodo de
+libre circulación (`vf`?, su caída a la corriente de salida) o rectificador síncrono (sin `vf`, o con `sincrono`?
+cerrado), L con su `dcr`?, C con su `esr`? y la carga. Interruptores ideales (1 µΩ). Secciones 33.2, 33.6, 33.7, 33.13
+y el problema 33.A.
+
+Mide (frente al tiempo): `nodo` (el de conmutación), `il`, `salida`, `entrada` (la corriente de V_in) y `bajo` (la del
+diodo o el síncrono). El transitorio **parte del régimen permanente en conducción continua**: la bobina en su valle
+I − ΔI/2 y el condensador en V_out − ΔI·(1 − 2D)/(12·f·C), con V_out = (D·V_in − (1 − D)·V_F)/(1 + DCR/R) e
+ΔI = (V_in − V_out − I·DCR)·D/(L·f); en conducción discontinua (diodo y poca carga) ese arranque no es periódico: pida
+`asentar` periodos antes del eje (hasta 2 000). Con la fase φ = f·t − floor(f·t): i_L = I − ΔI/2 + ΔI·min(φ/D,
+(1 − φ)/(1 − D)); la salida, la parábola de la carga de C más ESR·(i_L − I) (tarjetas `reductor` y `reductor-rizado`:
+207 mA de rizado con 12 V, D = 0,417, 47 µH y 300 kHz; 0,9 mV por C con 100 µF y unos 10 mV por 50 mΩ de ESR).
+
+#### `led` con etiqueta de red (1.2, esquemas12d)
+
+`etiqueta`? (interruptor) y `etiqueta2`? en `led`, como en `divisor`: el hilo de la fuente acaba en una etiqueta con
+el `sim` de `etiqueta` y R y el LED cuelgan de otra; cerrado, las dos iguales y luce; abierto, la del LED lleva el `sim`
+de `etiqueta2` («+5V» frente a «VCC», sección 11.9; una red VCC sin fuente, 12.5) y el LED queda sin alimentación
+(corriente 0 y 0 V en el LED: `I = et*max(0, (V - V_F)/R)`, `V_LED = et*(V - I*R)`). Un toque en la etiqueta del LED
+la corrige. Tarjeta `led-etiqueta`.
 
 ### 5.5 Si hace falta otro esquema
 
