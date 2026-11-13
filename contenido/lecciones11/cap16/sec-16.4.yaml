@@ -1,0 +1,225 @@
+# Lección 1.2 de la sección 15.4 «La Magia del Estéreo: la Señal MPX y el TA7343AP» (cap16; etiquetas sec-16.N =
+# impresas 15.N).
+# - El espectro de la señal MPX (figura 15.4, fig-16.4, con zonas): L+R de 0 a 15 kHz, piloto de 19 kHz y L−R
+#   alrededor de 38 kHz.
+# - Modelo: la matriz estéreo del bloque 67, (L+R) + (L−R) = 2L y (L+R) − (L−R) = 2R, con L y R entre 0 y 1; el reto
+#   recupera L y R de la comprobación numérica del bloque 499 (suma 1,0 y diferencia 0,6: L = 0,8 y R = 0,2).
+# - El PLL y W3, K3, el LED de estéreo, el de-énfasis y la caja del manual (bloques 66, 68 y 69).
+leccion: cap16/sec-16.4
+
+libro:
+  63: "Para ser compatible con las radios mono"
+  64: "La señal multiplexada estéreo (MPX)"
+  65: "La componente L+R (suma de ambos canales) ocupa la banda base de 0 a 15 kHz"
+  66: "enganchado al piloto de 19 kHz, regenera la subportadora de 38 kHz"
+  67: "lr(( L + R )) + lr(( L - R ))"
+  68: "El interruptor K3 (St/Mon) detiene el VCO"
+  69: "las emisoras débiles dan mal estéreo, con mucho ruido y el indicador parpadeando"
+  "cap16#499": "Comprobación numérica con L = 0,8 y R = 0,2: suma 1,0, diferencia 0,6"
+
+modelo:
+  valores:
+    L_c: { sim: "L", nombre: "canal izquierdo", unidad: "", valor: 0.5 }
+    R_c: { sim: "R", nombre: "canal derecho", unidad: "", valor: 0.5 }
+  calculos:
+    S_c: { expr: "L_c + R_c", sim: "L+R", nombre: "suma de los canales", unidad: "", cifras: 2 }
+    D_c: { expr: "L_c - R_c", sim: "L−R", nombre: "diferencia de los canales", unidad: "", cifras: 2 }
+    L_2: { expr: "S_c + D_c", sim: "2L", nombre: "suma más diferencia", unidad: "", cifras: 2 }
+    R_2: { expr: "S_c - D_c", sim: "2R", nombre: "suma menos diferencia", unidad: "", cifras: 2 }
+
+tarjetas:
+  - id: explore-mpx
+    tipo: explorar
+    titulo: "Una sola señal para dos canales"
+    texto: "La emisión estéreo combina los dos canales en una señal compuesta, la MPX. Toque sus tres partes."
+    libro: [63, 64, 65]
+    widget:
+      tipo: figura
+      figura: fig-16.4
+      zonas:
+        - { id: suma, rotulo: "A la izquierda", rect: [4, 25, 105, 145], texto: "L+R, de 0 a 15 kHz: lo que reproduce una radio mono." }
+        - { id: piloto, rotulo: "La flecha", rect: [112, 105, 46, 65], texto: "El piloto de 19 kHz avisa de que la emisión es estéreo y sirve de referencia." }
+        - { id: inferior, rotulo: "A la derecha, primera mitad", rect: [165, 80, 100, 90], texto: "L−R viaja modulada alrededor de una subportadora de 38 kHz, el doble del piloto." }
+        - { id: superior, rotulo: "A la derecha, segunda mitad", rect: [272, 80, 106, 90], texto: "La otra banda lateral de L−R, por encima de los 38 kHz." }
+    requiere: { mover: [suma, piloto, inferior] }
+
+  - id: toque-mono
+    tipo: tocar
+    titulo: "Lo que oye una radio mono"
+    texto: "Una radio mono reproduce una parte de la MPX y suena perfectamente. Tóquela."
+    libro: [63, 65]
+    widget:
+      tipo: figura
+      figura: fig-16.4
+      zonas:
+        - { id: suma, rotulo: "A la izquierda", rect: [4, 25, 105, 145] }
+        - { id: piloto, rotulo: "La flecha", rect: [112, 105, 46, 65] }
+        - { id: inferior, rotulo: "A la derecha, primera mitad", rect: [165, 80, 100, 90] }
+        - { id: superior, rotulo: "A la derecha, segunda mitad", rect: [272, 80, 106, 90] }
+    tocar:
+      bien: [suma]
+      porque:
+        piloto: "El piloto solo avisa del estéreo; no lleva programa."
+        inferior: "L−R va alrededor de 38 kHz: la radio mono no la usa."
+        superior: "Es la otra banda lateral de L−R, que la radio mono ignora."
+    exito: "L+R en banda base: por eso la emisión estéreo es compatible con las radios mono."
+    escalera:
+      - "La radio mono reproduce la suma de los dos canales."
+    solucion: "A la izquierda: L+R, de 0 a 15 kHz."
+
+  - id: formula-matriz
+    tipo: formula
+    titulo: "La matriz"
+    texto: "Con la suma y la diferencia, sumas y restas devuelven cada canal. Mueva L y R."
+    libro: [66, 67]
+    ec: 67
+    sustitucion: "{{S_c}} + {{D_c}} = {{L_2}}; {{S_c}} − {{D_c}} = {{R_2}}"
+    widget:
+      tipo: grafica
+      x: { id: lx, min: 0, max: 1, unidad: "", rotulo: "L" }
+      y: { min: -1, max: 2, unidad: "", rotulo: "nivel" }
+      curvas:
+        - { expr: "lx + R_c", color: azul, rotulo: "L+R" }
+        - { expr: "lx - R_c", color: naranja, rotulo: "L−R" }
+      marcas:
+        - { x: "L_c", y: "S_c", rotulo: "L+R" }
+        - { x: "L_c", y: "D_c", rotulo: "L−R" }
+      lectura: { valor: L_2, rotulo: "(L+R) + (L−R)" }
+      datos:
+        - { valor: R_2, rotulo: "(L+R) − (L−R) = {{R_2}}" }
+      mandos:
+        - { valor: L_c, min: 0, max: 1, paso: 0.1, rotulo: "Canal izquierdo, L" }
+        - { valor: R_c, min: 0, max: 1, paso: 0.1, rotulo: "Canal derecho, R" }
+
+  - id: reto-canales
+    tipo: reto
+    titulo: "Recupere los canales"
+    texto: "Llegan una suma de 1,0 y una diferencia de 0,6. Ponga L y R que las producen."
+    libro: [67, "cap16#499"]
+    inicio: { L_c: 0.5, R_c: 0.5 }
+    widget:
+      tipo: grafica
+      x: { id: lx, min: 0, max: 1, unidad: "", rotulo: "L" }
+      y: { min: -1, max: 2, unidad: "", rotulo: "nivel" }
+      curvas:
+        - { expr: "lx + R_c", color: azul, rotulo: "L+R" }
+        - { expr: "lx - R_c", color: naranja, rotulo: "L−R" }
+      marcas:
+        - { x: "L_c", y: "S_c", rotulo: "L+R" }
+        - { x: "L_c", y: "D_c", rotulo: "L−R" }
+      lectura: { valor: S_c, rotulo: "L+R" }
+      datos:
+        - { valor: D_c, rotulo: "L−R = {{D_c}}" }
+      mandos:
+        - { valor: L_c, min: 0, max: 1, paso: 0.1, rotulo: "Canal izquierdo, L" }
+        - { valor: R_c, min: 0, max: 1, paso: 0.1, rotulo: "Canal derecho, R" }
+    condiciones:
+      - { valor: S_c, objetivo: 1.0, tol: 0.02, rotulo: "Suma: {{S_c}}" }
+      - { valor: D_c, objetivo: 0.6, tol: 0.02, rotulo: "Diferencia: {{D_c}}" }
+    exito: "L = (1,0 + 0,6)/2 = 0,8 y R = (1,0 − 0,6)/2 = 0,2: la comprobación del libro."
+    pistas:
+      - { cuando: { valor: S_c, mayor: 1.02 }, texto: "La suma pasa de 1,0: baje alguno de los dos canales." }
+      - { cuando: { valor: S_c, menor: 0.98 }, texto: "La suma no llega a 1,0: suba alguno de los dos canales." }
+      - { texto: "La suma ya vale; ahora la diferencia: L tiene que superar a R en 0,6." }
+    escalera:
+      - "Sume suma y diferencia: da 2L."
+    solucion: "L = 0,8 y R = 0,2."
+    comprobar:
+      - { con: { L_c: 0.8, R_c: 0.2 }, S_c: 1.0, D_c: 0.6, L_2: 1.6, R_2: 0.4 }
+
+  - id: empareje-mpx
+    tipo: pregunta
+    titulo: "Dónde va cada cosa"
+    texto: "Empareje cada componente de la MPX con su frecuencia."
+    libro: [65, 66]
+    widget:
+      tipo: figura
+      figura: fig-16.4
+      zonas:
+        - { id: espectro, rotulo: "El espectro", rect: [4, 25, 400, 150] }
+    emparejar:
+      - ["L+R", "Banda base, de 0 a 15 kHz"]
+      - ["Piloto", "19 kHz"]
+      - ["L−R", "Alrededor de la subportadora de 38 kHz"]
+    exito: "La subportadora está justo al doble del piloto: el PLL la regenera enganchándose a él."
+    pistas:
+      - { texto: "Lo que oye la radio mono está abajo; la diferencia, arriba." }
+    escalera:
+      - "38 es el doble de 19."
+    solucion: "L+R, 0 a 15 kHz; piloto, 19 kHz; L−R, alrededor de 38 kHz."
+
+  - id: pregunta-k3
+    tipo: pregunta
+    titulo: "El interruptor K3"
+    texto: "Pone K3 (St/Mon) en ON. ¿Qué hace el decodificador?"
+    libro: [68]
+    widget:
+      tipo: figura
+      figura: fig-16.4
+      zonas:
+        - { id: caja, rotulo: "El recuadro de arriba", rect: [268, 8, 135, 40] }
+    opciones:
+      - texto: "Detiene el VCO y fuerza el modo mono"
+        bien: true
+        porque: "Sin los 38 kHz regenerados no se recupera L−R: solo queda L+R."
+      - texto: "Enciende el LED de estéreo"
+        porque: "El LED se enciende cuando el PLL se engancha al piloto, y con K3 en ON el VCO está parado."
+      - texto: "Ajusta el VCO a 38 kHz"
+        porque: "Eso lo hace W3; K3 solo deja oscilar o detiene el VCO."
+    escalera:
+      - "St/Mon: estéreo o mono."
+    solucion: "Detiene el VCO: mono."
+
+  - id: predecir-debil
+    tipo: predecir
+    titulo: "Una emisora débil"
+    texto: "Sintoniza una emisora débil en estéreo: mucho ruido y el indicador parpadea. ¿Qué conviene hacer?"
+    libro: [69]
+    widget:
+      tipo: figura
+      figura: fig-16.4
+      zonas:
+        - { id: piloto, rotulo: "La flecha", rect: [112, 105, 46, 65] }
+    opciones:
+      - texto: "Apagar el estéreo con K3"
+        bien: true
+        porque: "Las emisoras débiles dan mal estéreo; en mono se gana estabilidad y calidad."
+      - texto: "Retocar W3 hasta que deje de parpadear"
+        porque: "W3 ya está ajustado; el problema es la señal débil, no el VCO."
+      - texto: "Buscar una avería: el estéreo nunca debe sisear"
+        porque: "Un leve siseo en estéreo es inherente a la técnica, no una avería."
+    escalera:
+      - "¿Qué recomienda el manual con emisoras débiles?"
+    solucion: "Apagar el estéreo con K3."
+
+  - id: porque-compatible
+    tipo: porque
+    titulo: "Por qué la suma y la diferencia"
+    texto: "¿Por qué no se transmiten L y R por separado?"
+    libro: [63, 65]
+    widget:
+      tipo: figura
+      figura: fig-16.4
+      zonas:
+        - { id: suma, rotulo: "A la izquierda", rect: [4, 25, 105, 145] }
+    opciones:
+      - texto: "Por compatibilidad: una radio mono reproduce la suma tal cual"
+        bien: true
+        porque: "La suma en banda base es el programa completo para la radio mono; el estéreo añade la diferencia arriba."
+      - texto: "Porque ocupa menos ancho de banda"
+        porque: "La diferencia ocupa espacio por encima del piloto: la razón es la compatibilidad, no el ancho."
+      - texto: "Porque el PLL solo sabe sumar"
+        porque: "El PLL regenera la subportadora; las sumas y restas son la matriz."
+    escalera:
+      - "Piense en las radios que ya existían."
+    solucion: "Compatibilidad con las radios mono."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [65, 66, 67, 69]
+    ideas:
+      - { titulo: "La MPX.", texto: "L+R abajo, piloto de 19 kHz y L−R alrededor de 38 kHz." }
+      - { titulo: "El PLL.", texto: "Se engancha al piloto y regenera los 38 kHz; W3 ajusta el VCO." }
+      - { titulo: "La matriz.", texto: "Suma más diferencia da 2L; suma menos diferencia, 2R." }
+      - { titulo: "Débil, en mono.", texto: "Con ruido y el indicador parpadeando, K3 a mono." }

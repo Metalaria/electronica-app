@@ -1,0 +1,231 @@
+# Lección 1.2 de la sección 15.3 «Cómo Funciona: el Receptor Superheterodino Estéreo» (cap16; etiquetas sec-16.N =
+# impresas 15.N).
+# - Diagrama de bloques del FM7303 (figura 15.3, fig-16.3, con zonas).
+# - Modelo: la condición del superheterodino del bloque 55, f_oscilador = f_emisora + 10,7 MHz, en una gráfica frente
+#   a la emisora (de 88 a 108 MHz).
+# - La entrada (BPF, TA7358, L1, L2, presintonías, buffer 9018), la FI y la detección, y el AFC (15.3.1 a 15.3.3).
+# Paso práctico: «simular» el oscilador local para una emisora de 89,0 MHz (ejercicio 15.2: 99,7 MHz; error típico:
+# restar la FI, 78,3 MHz, con el oscilador por debajo).
+leccion: cap16/sec-16.3
+
+libro:
+  51: "El FM7303 es un receptor superheterodino"
+  52: "Diagrama de bloques del FM7303 V3.0r7 con sus designadores reales"
+  54: "un filtro paso banda (BPF 87108, de 87 a 108 MHz)"
+  55: 'f_("oscilador") - f_("emisora") = "10,7 MHz"'
+  56: "las bobinas de aire L1 (RF, 3,5 espiras) y L2 (oscilador, 2,5 espiras)"
+  57: "D5, L6.5, T3.5, Φ0.6"
+  59: "CF1 entrega la señal al IC2 TA7061BP, y la salida de este pasa por CF2 hasta el IC3 TA7303P"
+  61: "Un oscilador local analógico deriva con la temperatura y el tiempo"
+  "cap16#530": "Una emisora está en 89,0 MHz"
+
+modelo:
+  valores:
+    f_e: { sim: "f_{emisora}", nombre: "frecuencia de la emisora", unidad: Hz, valor: 98000000 }
+    f_I: { sim: "f_{FI}", nombre: "frecuencia intermedia", unidad: Hz, valor: 10700000 }
+  calculos:
+    f_o: { expr: "f_e + f_I", sim: "f_{oscilador}", nombre: "frecuencia del oscilador local", unidad: Hz, cifras: 4 }
+    f_m: { expr: "f_e - f_I", sim: "f_{e} − f_{FI}", nombre: "emisora menos la FI", unidad: Hz, cifras: 3 }
+
+tarjetas:
+  - id: explore-bloques
+    tipo: explorar
+    titulo: "El camino de la señal"
+    texto: "El FM7303 es un superheterodino. Toque la entrada, el front-end y la FI, y siga la señal hasta los altavoces."
+    libro: [51, 52, 54]
+    widget:
+      tipo: figura
+      figura: fig-16.3
+      zonas:
+        - { id: bpf, rotulo: "Segunda fila, el primero", rect: [27, 92, 66, 51], texto: "El BPF 87108 deja pasar solo la banda de FM, de 87 a 108 MHz, y rechaza el resto." }
+        - { id: ic1, rotulo: "Segunda fila, el segundo", rect: [100, 92, 85, 51], texto: "El TA7358AP: amplificador de RF, oscilador local y mezclador en un chip." }
+        - { id: fi, rotulo: "Segunda fila, el tercero", rect: [207, 92, 68, 51], texto: "La FI: B1, CF1 y CF2. Todo lo que pasa por aquí está en la misma frecuencia." }
+        - { id: deteccion, rotulo: "Segunda fila, a la derecha", rect: [293, 92, 154, 51], texto: "TA7061BP y TA7303P: amplifican, limitan y detectan. Sale la señal MPX." }
+        - { id: estereo, rotulo: "Tercera fila, a la derecha", rect: [340, 175, 107, 57], texto: "El TA7343AP separa los dos canales." }
+        - { id: audio, rotulo: "Tercera fila, en el centro", rect: [150, 175, 83, 57], texto: "El TEA2025 lleva los dos canales a los altavoces." }
+        - { id: afc, rotulo: "Arriba, el ancho", rect: [207, 8, 137, 57], texto: "El AFC: K1, el varicap FV1043 y W1." }
+    requiere: { mover: [bpf, ic1, fi] }
+
+  - id: formula-fi
+    tipo: formula
+    titulo: "Siempre 10,7 MHz"
+    texto: "El mezclador entrega la diferencia entre el oscilador y la emisora. Mueva la emisora por la banda."
+    libro: [54, 55]
+    ec: 55
+    sustitucion: "{{f_o}} − {{f_e}} = {{f_I}}"
+    widget:
+      tipo: grafica
+      x: { id: fx, min: 88000000, max: 108000000, unidad: Hz, rotulo: "emisora" }
+      y: { min: 80000000, max: 120000000, unidad: Hz, rotulo: "frecuencia" }
+      curvas:
+        - { expr: "fx + f_I", color: naranja, rotulo: "oscilador local" }
+        - { expr: "fx", color: azul, rotulo: "emisora", discontinua: true }
+      marcas:
+        - { x: "f_e", y: "f_o", rotulo: "{{f_o}}" }
+      lectura: { valor: f_o, rotulo: "Oscilador local" }
+      mandos:
+        - { valor: f_e, min: 88000000, max: 108000000, paso: 100000, rotulo: "Emisora" }
+
+  - id: simule-oscilador
+    tipo: simular
+    titulo: "El oscilador para 89,0 MHz"
+    texto: "Una emisora está en 89,0 MHz y el oscilador va por encima. ¿A qué frecuencia oscila el oscilador local del TA7358?"
+    libro: [55, "cap16#530"]
+    fijar: { f_e: 89000000, f_I: 10700000 }
+    simular:
+      objetivo: f_o
+      unidad: Hz
+      tol: 0.002
+      rotulo: "Oscilador local"
+      errores:
+        - { expr: "f_m", texto: "Ha restado la FI: con el oscilador por encima, se suma. La diferencia oscilador menos emisora es la que vale 10,7 MHz." }
+    exito: "99,7 MHz: el oscilador recorre la banda manteniendo siempre 10,7 MHz de diferencia."
+    escalera:
+      - "El oscilador está por encima de la emisora."
+    solucion: "89,0 + 10,7 = 99,7 MHz."
+    comprobar:
+      - { f_o: 99700000, f_m: 78300000 }
+
+  - id: pregunta-bpf
+    tipo: pregunta
+    titulo: "El filtro de entrada"
+    texto: "¿Qué hace el BPF 87108 antes del front-end?"
+    libro: [54]
+    widget:
+      tipo: figura
+      figura: fig-16.3
+      zonas:
+        - { id: bpf, rotulo: "Segunda fila, el primero", rect: [27, 92, 66, 51] }
+    opciones:
+      - texto: "Deja pasar solo la banda de FM y rechaza el resto"
+        bien: true
+        porque: "Es un paso banda de 87 a 108 MHz: su nombre lo dice."
+      - texto: "Separa la emisora de las vecinas"
+        porque: "Eso es la selectividad, y la dan los filtros cerámicos de la FI."
+      - texto: "Amplifica la señal de la antena"
+        porque: "Amplifica el TA7358AP, después del filtro."
+    escalera:
+      - "Lea su nombre: 87108."
+    solucion: "Paso banda de 87 a 108 MHz: solo la banda de FM."
+
+  - id: empareje-sintonia
+    tipo: pregunta
+    titulo: "La sintonía"
+    texto: "Empareje cada elemento de la entrada con su papel."
+    libro: [56]
+    widget:
+      tipo: figura
+      figura: fig-16.3
+      zonas:
+        - { id: sintonia, rotulo: "Arriba, el segundo", rect: [113, 8, 62, 57] }
+    emparejar:
+      - ["L1, 3,5 espiras", "Bobina de aire de la RF"]
+      - ["L2, 2,5 espiras", "Bobina de aire del oscilador"]
+      - ["C4A y C4A'", "Presintonías de la rama de RF"]
+      - ["C4B y C4B'", "Presintonías de la rama del oscilador"]
+      - ["Transistor 9018", "Buffer: aísla el oscilador"]
+    exito: "El buffer evita que las etapas siguientes carguen el oscilador o lo desestabilicen."
+    pistas:
+      - { texto: "Las letras A van con la RF y las B con el oscilador." }
+    escalera:
+      - "L1 y C4A son la RF; L2 y C4B, el oscilador."
+    solucion: "L1 y C4A, RF; L2 y C4B, oscilador; 9018, buffer."
+
+  - id: pregunta-bobina
+    tipo: pregunta
+    titulo: "Los datos de L1"
+    texto: "El esquema da L1 = «D5, L6.5, T3.5, Φ0.6». ¿Qué significa T3.5?"
+    libro: [57]
+    widget:
+      tipo: figura
+      figura: fig-16.3
+      zonas:
+        - { id: sintonia, rotulo: "Arriba, el segundo", rect: [113, 8, 62, 57] }
+    opciones:
+      - texto: "3,5 espiras"
+        bien: true
+        porque: "D es el diámetro (5 mm), L la longitud (6,5 mm), T las espiras y Φ el hilo (0,6 mm)."
+      - texto: "3,5 mm de longitud"
+        porque: "La longitud es L6.5: 6,5 mm."
+      - texto: "Hilo de 3,5 mm"
+        porque: "El hilo es Φ0.6: 0,6 mm."
+    escalera:
+      - "D, L y Φ son medidas; queda la que cuenta vueltas."
+    solucion: "T3.5: 3,5 espiras."
+
+  - id: ordene-fi
+    tipo: pregunta
+    titulo: "La cadena de FI"
+    texto: "Ordene el camino de los 10,7 MHz hasta el detector."
+    libro: [59]
+    widget:
+      tipo: figura
+      figura: fig-16.3
+      zonas:
+        - { id: fi, rotulo: "Segunda fila, el tercero y el cuarto", rect: [207, 92, 240, 51] }
+    ordenar:
+      - "Transformador de FI B1"
+      - "Filtro cerámico CF1"
+      - "IC2, TA7061BP"
+      - "Filtro cerámico CF2"
+      - "IC3, TA7303P, con el detector"
+    exito: "A la salida del detector, en TP3, está la señal MPX."
+    pistas:
+      - { texto: "Cada filtro cerámico entrega la señal a un integrado." }
+    escalera:
+      - "B1 va primero; el detector, al final."
+    solucion: "B1, CF1, TA7061BP, CF2, TA7303P."
+
+  - id: predecir-afc
+    tipo: predecir
+    titulo: "La mano cerca de la bobina"
+    texto: "Con el AFC activado con K1, acerca la mano a la bobina del oscilador. ¿Qué ocurre?"
+    libro: [61]
+    widget:
+      tipo: figura
+      figura: fig-16.3
+      zonas:
+        - { id: afc, rotulo: "Arriba, el ancho", rect: [207, 8, 137, 57] }
+    opciones:
+      - texto: "La emisora sigue enganchada"
+        bien: true
+        porque: "El varicap corrige el oscilador; a cambio, la sintonía se nota «pegajosa» al cambiar de emisora."
+      - texto: "La emisora se escapa"
+        porque: "Eso pasa sin AFC: el oscilador analógico deriva y nada lo corrige."
+      - texto: "Se apaga el estéreo"
+        porque: "El AFC actúa sobre el oscilador local, no sobre el decodificador."
+    escalera:
+      - "El AFC mantiene la emisora enganchada."
+    solucion: "Sigue enganchada: el AFC resiste la perturbación."
+
+  - id: porque-afc
+    tipo: porque
+    titulo: "Por qué hace falta el AFC"
+    texto: "¿Por qué una radio con sintonía analógica necesita control automático de frecuencia?"
+    libro: [61]
+    widget:
+      tipo: figura
+      figura: fig-16.3
+      zonas:
+        - { id: afc, rotulo: "Arriba, el ancho", rect: [207, 8, 137, 57] }
+    opciones:
+      - texto: "Porque el oscilador local deriva con la temperatura y el tiempo"
+        bien: true
+        porque: "Sin corrección, la emisora tendería a escaparse."
+      - texto: "Porque la emisora cambia de frecuencia"
+        porque: "La emisora es estable; lo que deriva es el oscilador del receptor."
+      - texto: "Para ganar volumen"
+        porque: "El AFC no toca el nivel: modifica ligeramente la frecuencia del oscilador."
+    escalera:
+      - "¿Qué pieza del receptor no es estable?"
+    solucion: "El oscilador analógico deriva: el AFC lo devuelve a la emisora."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [54, 55, 59, 61]
+    ideas:
+      - { titulo: "Superheterodino.", texto: "Oscilador menos emisora: siempre 10,7 MHz, la FI." }
+      - { titulo: "La entrada.", texto: "BPF de la banda, front-end TA7358, L1 y L2 con sus presintonías y el buffer 9018." }
+      - { titulo: "La FI.", texto: "B1, CF1, TA7061BP, CF2 y TA7303P: amplificar, seleccionar y detectar." }
+      - { titulo: "El AFC.", texto: "Corrige la deriva del oscilador con el varicap." }

@@ -1,0 +1,218 @@
+# Lección 1.2 de la sección 15.22 «Herramientas Adicionales y Resumen» (cap16; etiquetas sec-16.N = impresas 15.N).
+# - Modelo: Ec. 1, f_oscilador − f_emisora = 10,7 MHz (bloque 487), y la imagen, f_imagen = f_oscilador + FI =
+#   f_emisora + 2·FI (bloque 490), en una gráfica frente a la emisora; la tabla del bloque 491 (88,0, 98,0 y 108,0 MHz).
+# - Ec. 2, la matriz estéreo y su consecuencia para el ajuste de W3 (bloques 495 a 500); la tarjeta de expresiones y
+#   datos del kit (bloque 501).
+# Paso práctico: «simular» la imagen de una emisora de 98,0 MHz (119,4 MHz; errores típicos: el oscilador, 108,7 MHz,
+# y restar, 76,6 MHz).
+leccion: cap16/sec-16.22
+
+libro:
+  487: 'f_("oscilador") - f_("emisora") = "10,7 MHz"'
+  488: "es la condición de diseño del receptor superheterodino, no una ley física"
+  490: 'f_("imagen") = f_("oscilador") + "FI"'
+  491: "119,4 MHz"
+  492: "La imagen está siempre a 2·FI = 21,4 MHz por encima de la emisora deseada"
+  497: "Transmitiendo la suma (L+R) en banda base, un receptor mono la recibe y reproduce el programa completo"
+  500: "cuanto más lejos de 38 kHz oscila libre el VCO, mayor es el desfase con que queda enganchado"
+  501: "Bobina del discriminador B2: 18 espiras entre las patillas 1 y 3 (7,6 µH)"
+
+modelo:
+  valores:
+    f_e: { sim: "f_{emisora}", nombre: "frecuencia de la emisora", unidad: Hz, valor: 88000000 }
+    f_F: { sim: "FI", nombre: "frecuencia intermedia", unidad: Hz, valor: 10700000 }
+  calculos:
+    f_o: { expr: "f_e + f_F", sim: "f_{oscilador}", nombre: "oscilador local", unidad: Hz, cifras: 4 }
+    f_im: { expr: "f_o + f_F", sim: "f_{imagen}", nombre: "frecuencia imagen", unidad: Hz, cifras: 4 }
+    f_d: { expr: "f_im - f_e", sim: "f_{imagen} − f_{emisora}", nombre: "distancia de la imagen", unidad: Hz, cifras: 3 }
+    f_r: { expr: "f_e - 2*f_F", sim: "f_{e} − 2·FI", nombre: "restando", unidad: Hz, cifras: 3 }
+
+tarjetas:
+  - id: explore-ec1
+    tipo: explorar
+    titulo: "El principio superheterodino"
+    texto: "Mueva la emisora por la banda: el oscilador va siempre 10,7 MHz por encima, y la imagen, otra FI más arriba."
+    libro: [487, 490]
+    widget:
+      tipo: grafica
+      x: { id: fx, min: 88000000, max: 108000000, unidad: Hz, rotulo: "emisora" }
+      y: { min: 80000000, max: 140000000, unidad: Hz, rotulo: "frecuencia" }
+      curvas:
+        - { expr: "fx", color: azul, rotulo: "emisora", discontinua: true }
+        - { expr: "fx + f_F", color: naranja, rotulo: "oscilador" }
+        - { expr: "fx + 2*f_F", color: verde, rotulo: "imagen" }
+      marcas:
+        - { x: "f_e", y: "f_o", rotulo: "{{f_o}}" }
+        - { x: "f_e", y: "f_im", rotulo: "{{f_im}}" }
+      lectura: { valor: f_im, rotulo: "Imagen" }
+      datos:
+        - { valor: f_o, rotulo: "Oscilador: {{f_o}}" }
+      mandos:
+        - { valor: f_e, min: 88000000, max: 108000000, paso: 100000, rotulo: "Emisora" }
+
+  - id: formula-imagen
+    tipo: formula
+    titulo: "La imagen, a 2·FI"
+    texto: "Si lo que importa es la diferencia, dos emisoras dan la misma FI: una por debajo del oscilador y otra por encima."
+    libro: [490, 492]
+    ec: 490
+    sustitucion: "{{f_o}} + {{f_F}} = {{f_im}}"
+    widget:
+      tipo: grafica
+      x: { id: fx, min: 88000000, max: 108000000, unidad: Hz, rotulo: "emisora" }
+      y: { min: 80000000, max: 140000000, unidad: Hz, rotulo: "frecuencia" }
+      curvas:
+        - { expr: "fx + 2*f_F", color: verde, rotulo: "imagen" }
+        - { expr: "fx", color: azul, rotulo: "emisora", discontinua: true }
+      marcas:
+        - { x: "f_e", y: "f_im", rotulo: "{{f_im}}" }
+      lectura: { valor: f_d, rotulo: "Imagen menos emisora" }
+      mandos:
+        - { valor: f_e, min: 88000000, max: 108000000, paso: 100000, rotulo: "Emisora" }
+    comprobar:
+      - { f_d: 21400000 }
+
+  - id: simule-imagen
+    tipo: simular
+    titulo: "La imagen de 98,0 MHz"
+    texto: "El receptor sintoniza una emisora de 98,0 MHz. ¿Dónde está su frecuencia imagen?"
+    libro: [490, 491]
+    fijar: { f_e: 98000000, f_F: 10700000 }
+    simular:
+      objetivo: f_im
+      unidad: Hz
+      tol: 0.002
+      rotulo: "Frecuencia imagen"
+      errores:
+        - { expr: "f_o", texto: "Esos 108,7 MHz son el oscilador local. La imagen está otra FI por encima." }
+        - { expr: "f_r", texto: "Ha restado: en el FM7303 el oscilador va por encima, y la imagen también." }
+    exito: "119,4 MHz: siempre 21,4 MHz por encima de la emisora."
+    escalera:
+      - "Oscilador: emisora + FI. Imagen: oscilador + FI."
+    solucion: "98,0 + 2 · 10,7 = 119,4 MHz."
+    comprobar:
+      - { f_im: 119400000, f_o: 108700000, f_r: 76600000 }
+
+  - id: empareje-tabla
+    tipo: pregunta
+    titulo: "La tabla de la banda"
+    texto: "Empareje cada emisora con su frecuencia imagen."
+    libro: [491, 492]
+    widget:
+      tipo: grafica
+      x: { id: fx, min: 88000000, max: 108000000, unidad: Hz, rotulo: "emisora" }
+      y: { min: 80000000, max: 140000000, unidad: Hz, rotulo: "frecuencia" }
+      curvas:
+        - { expr: "fx + 2*f_F", color: verde, rotulo: "imagen" }
+    emparejar:
+      - ["88,0 MHz", "109,4 MHz"]
+      - ["98,0 MHz", "119,4 MHz"]
+      - ["108,0 MHz", "129,4 MHz"]
+    exito: "Siempre 21,4 MHz por encima: por eso basta un circuito sintonizado antes del mezclador."
+    pistas:
+      - { texto: "Sume dos veces 10,7 MHz." }
+    escalera:
+      - "La imagen está a 2·FI de la emisora."
+    solucion: "88,0 con 109,4; 98,0 con 119,4; 108,0 con 129,4."
+
+  - id: porque-origen
+    tipo: porque
+    titulo: "El origen de la Ec. 1"
+    texto: "f_oscilador − f_emisora = 10,7 MHz. ¿Es una ley física?"
+    libro: [487, 488]
+    widget:
+      tipo: grafica
+      x: { id: fx, min: 88000000, max: 108000000, unidad: Hz, rotulo: "emisora" }
+      y: { min: 80000000, max: 140000000, unidad: Hz, rotulo: "frecuencia" }
+      curvas:
+        - { expr: "fx + f_F", color: naranja, rotulo: "oscilador" }
+    opciones:
+      - texto: "No: es la condición de diseño del superheterodino"
+        bien: true
+        porque: "Se elige convertir cualquier emisora a una FI fija, para amplificar y filtrar siempre a la misma frecuencia."
+      - texto: "Sí: la impone el mezclador"
+        porque: "El mezclador da suma y diferencia; el valor de 10,7 MHz es una elección de diseño."
+      - texto: "Sí: la fija la banda de FM"
+        porque: "La banda va de 88 a 108 MHz; la FI se elige."
+    escalera:
+      - "¿Quién decide cuánto vale la FI?"
+    solucion: "Es una condición de diseño."
+
+  - id: pregunta-fi-alta
+    tipo: pregunta
+    titulo: "Por qué 10,7 MHz"
+    texto: "¿Por qué se eligió 10,7 MHz como FI y no un valor menor?"
+    libro: [492]
+    widget:
+      tipo: grafica
+      x: { id: fx, min: 88000000, max: 108000000, unidad: Hz, rotulo: "emisora" }
+      y: { min: 80000000, max: 140000000, unidad: Hz, rotulo: "frecuencia" }
+      curvas:
+        - { expr: "fx + 2*f_F", color: verde, rotulo: "imagen" }
+        - { expr: "fx", color: azul, rotulo: "emisora", discontinua: true }
+    opciones:
+      - texto: "Porque cuanto mayor la FI, más lejos cae la imagen y más fácil es filtrarla"
+        bien: true
+        porque: "Es un compromiso: la imagen pide FI alta; la selectividad entre vecinas, baja."
+      - texto: "Porque da más selectividad"
+        porque: "Al revés: la selectividad entre emisoras vecinas pide una FI baja."
+      - texto: "Porque coincide con el piloto estéreo"
+        porque: "El piloto está en la señal de audio MPX: no tiene que ver con la FI."
+    escalera:
+      - "¿A qué distancia está la imagen si la FI crece?"
+    solucion: "Aleja la imagen."
+
+  - id: predecir-w3
+    tipo: predecir
+    titulo: "El VCO lejos de 38 kHz"
+    texto: "El VCO del decodificador oscila libre lejos de 38 kHz, pero aun así se engancha al piloto. ¿Qué se degrada?"
+    libro: [500]
+    widget:
+      tipo: grafica
+      x: { id: fx, min: 88000000, max: 108000000, unidad: Hz, rotulo: "emisora" }
+      y: { min: 80000000, max: 140000000, unidad: Hz, rotulo: "frecuencia" }
+      curvas:
+        - { expr: "fx", color: azul, rotulo: "emisora" }
+    opciones:
+      - texto: "La separación entre canales"
+        bien: true
+        porque: "Queda enganchado con más desfase, y L−R se suma con signo o amplitud equivocados."
+      - texto: "Nada, si está enganchado"
+        porque: "Enganchado, la frecuencia es exacta, pero el desfase depende de lo lejos que oscile libre."
+      - texto: "El volumen"
+        porque: "W3 no es un ajuste de nivel."
+    escalera:
+      - "Mire la matriz: ¿qué pasa si L−R llega desfasada?"
+    solucion: "La separación estéreo."
+
+  - id: empareje-datos
+    tipo: pregunta
+    titulo: "Datos del kit"
+    texto: "Empareje cada pieza con sus datos de la tarjeta de repaso."
+    libro: [501]
+    widget:
+      tipo: grafica
+      x: { id: fx, min: 88000000, max: 108000000, unidad: Hz, rotulo: "emisora" }
+      y: { min: 80000000, max: 140000000, unidad: Hz, rotulo: "frecuencia" }
+      curvas:
+        - { expr: "fx + f_F", color: naranja, rotulo: "oscilador" }
+    emparejar:
+      - ["Transformador de FI B1", "11 espiras, 3 µH, con C13 de 75 pF"]
+      - ["Bobina del discriminador B2", "18 espiras, 7,6 µH"]
+      - ["Alimentación del display", "AMS1117-3.3, luego D3: unos 3,1 V"]
+    exito: "Con estos datos, cada pieza crítica se comprueba o se rehace."
+    pistas:
+      - { texto: "B1 es la bobina de la FI, con menos espiras." }
+    escalera:
+      - "El discriminador tiene más espiras que el transformador de FI."
+    solucion: "B1, 11 espiras y 3 µH; B2, 18 espiras y 7,6 µH; display, AMS1117 y D3."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [488, 492, 497, 500]
+    ideas:
+      - { titulo: "Ec. 1.", texto: "Oscilador menos emisora, 10,7 MHz: una condición de diseño." }
+      - { titulo: "La imagen.", texto: "Siempre 21,4 MHz por encima: la rechaza un circuito antes del mezclador." }
+      - { titulo: "Ec. 2.", texto: "Suma y diferencia: compatibles con el mono; se recombinan en L y R." }
+      - { titulo: "W3.", texto: "Centrar el VCO libre: del desfase depende la separación." }
