@@ -1,0 +1,335 @@
+# Lección 1.2 de la sección 55.4 «Medidas sin Alimentar» (cap53; etiqueta interna sec-53.4).
+# Formato: contenido/lecciones11/GUIA.md. Circuitos de EJEMPLO: (1) una resistencia de 10 kΩ medida en circuito, con
+# el resto del circuito como otra resistencia en paralelo (22 kΩ); el óhmetro es una fuente pequeña (1 V, que no se
+# nombra) y lee V/I. (2) La verificación de un electrolítico por su τ (bloque 137: 1000 µF y 1 kΩ, τ = 1 s), cargado
+# desde 10 V de ejemplo. Paso práctico: «averia» con el óhmetro (en circuito y con una patilla levantada) y «banco»
+# del τ de un electrolítico (ficha 26 del cuaderno, la práctica de carga y descarga).
+leccion: cap53/sec-53.4
+
+libro:
+  120: "resistencia entre cada alimentación y masa"
+  124: "la lectura siempre es igual o menor que el valor real, porque el resto del circuito está en paralelo"
+  127: "Es la medida más informativa del multímetro y la más infrautilizada"
+  128: "Silicio (unión PN)"
+  129: "cero voltios en ambos sentidos es un cortocircuito; sobreescala en ambos sentidos es un abierto"
+  131: "Un transistor puede pasar la prueba y no amplificar"
+  132: "su prueba de diodos mide hasta 2 V, así que un LED azul o blanco marca sobreescala sin estar abierto"
+  134: "con la ESR diez veces por encima de lo normal, el capacímetro lo da por bueno y el circuito no funciona"
+  135: "1000 µF"
+  136: "El doble de esos valores ya indica degradación."
+  137: "Con 1000 µF y 1 kΩ, τ = 1 s y la carga completa (5τ) son 5 segundos"
+  141: "Lo que ve el multímetro frente a lo que solo detecta el medidor de ESR."
+  "cap53#468": "se abren, o suben de valor. Casi nunca bajan."
+  "cap53#121": "La prueba de diodos del multímetro"
+
+modelo:
+  valores:
+    V_o: { sim: "V_{Ω}", nombre: "tensión de prueba del óhmetro", unidad: V, valor: 1 }
+    R_1: { sim: "R₁", nombre: "resistencia que se mide", unidad: Ω, valor: 10000 }
+    R_2: { sim: "R_{resto}", nombre: "el resto del circuito, en paralelo", unidad: Ω, valor: 22000 }
+    ESR_t: { sim: "ESR", nombre: "ESR típica máxima de 1000 µF", unidad: Ω, valor: 0.1 }
+    V_c: { sim: "V", nombre: "tensión de la fuente", unidad: V, valor: 10 }
+    R_c: { sim: "R", nombre: "resistencia de carga", unidad: Ω, valor: 1000 }
+    C_c: { sim: "C", nombre: "electrolítico", unidad: F, valor: 1000e-6 }
+    c_modo: { tipo: interruptor, nombre: "conmutador en carga", valor: 1 }
+  calculos:
+    R_eq: { expr: "par(R_1, R_2)", sim: "R_{lee}", nombre: "lo que lee el óhmetro", unidad: Ω }
+    I_t: { expr: "V_o/R_eq", sim: "I", nombre: "corriente del óhmetro", unidad: A }
+    I_1: { expr: "V_o/R_1", sim: "I₁", nombre: "corriente por R₁", unidad: A }
+    I_2: { expr: "V_o/R_2", sim: "I₂", nombre: "corriente por el resto", unidad: A }
+    ESR_d: { expr: "2*ESR_t", sim: "ESR_{deg}", nombre: "ESR que indica degradación", unidad: Ω }
+    tau_c: { expr: "R_c*C_c", sim: "τ", nombre: "constante de tiempo", unidad: s }
+    v_tau: { expr: "0.632*V_c", sim: "v(τ)", nombre: "tensión en un τ", unidad: V }
+    t_5: { expr: "5*tau_c", sim: "5τ", nombre: "carga completa", unidad: s }
+
+tarjetas:
+  - id: explore-en-circuito
+    tipo: explorar
+    titulo: "Una resistencia en circuito"
+    texto: "El óhmetro mide R₁, de 10 kΩ, sin desoldarla. Cambie lo que queda en paralelo y mire lo que lee."
+    nota: "Circuito de ejemplo: el resto de la placa, como una resistencia."
+    libro: [124]
+    fijar: { R_1: 10000 }
+    widget:
+      tipo: circuito
+      esquema: paralelo
+      piezas: { fuente: V_o, r1: R_1, r2: R_2 }
+      lectura: { valor: R_eq, rotulo: "Lee el óhmetro" }
+      corriente: I_t
+      mide: { total: I_t, i1: I_1, i2: I_2 }
+      mandos:
+        - { valor: R_2, lista: [1000, 10000, 22000, 100000], rotulo: "Resto del circuito" }
+    requiere: { mover: [R_2] }
+
+  - id: prediga-menos
+    tipo: predecir
+    titulo: "Lee menos que su valor"
+    texto: "R₁ es de 10 kΩ y, en circuito, el óhmetro lee menos. ¿Está mal?"
+    libro: [124, "cap53#468"]
+    fijar: { R_1: 10000, R_2: 22000 }
+    widget:
+      tipo: circuito
+      esquema: paralelo
+      piezas: { fuente: V_o, r1: R_1, r2: R_2 }
+      lectura: { valor: R_eq, rotulo: "Lee el óhmetro" }
+      mide: { total: I_t, i1: I_1, i2: I_2 }
+      ocultar: true
+    opciones:
+      - texto: "Puede estar bien: el resto del circuito queda en paralelo"
+        bien: true
+        porque: "En circuito, la lectura es igual o menor que el valor real: aquí 6,88 kΩ."
+      - texto: "Está mal: ha bajado de valor"
+        porque: "Las resistencias se abren o suben de valor; casi nunca bajan."
+      - texto: "Está en corto parcial"
+        porque: "Un corto leería casi cero; lo que baja la lectura es el paralelo."
+    escalera:
+      - "¿Qué está conectado entre los mismos dos puntos que R₁?"
+    solucion: "Puede estar bien: lee R₁ en paralelo con el resto."
+    comprobar:
+      - { R_eq: 6875, tol: 0.001 }
+
+  - id: averia-ohmetro
+    tipo: averia
+    titulo: "Más que su valor"
+    texto: "Algo falla alrededor de R₁. Mida con el óhmetro, en circuito y con una patilla levantada, y diga qué pieza es."
+    nota: "Sana, R₁ es de 10 kΩ y el resto equivale a 22 kΩ."
+    libro: [124, "cap53#468"]
+    fijar: { V_o: 1, R_1: 10000, R_2: 22000 }
+    widget:
+      tipo: circuito
+      esquema: paralelo
+      piezas: { fuente: V_o, r1: R_1, r2: R_2 }
+      mide: { total: I_t, i1: I_1, i2: I_2 }
+      mandos: []
+    averia:
+      pasos: 2
+      sospechosos:
+        - { id: r1, rotulo: "R₁" }
+        - { id: r2, rotulo: "El resto del circuito" }
+      sondas:
+        - { id: encircuito, rotulo: "R₁ en circuito", valor: R_eq }
+        - { id: levantada, rotulo: "R₁ con una patilla levantada", valor: R_1 }
+      fallos:
+        - { id: r1-abierta, pieza: r1, tipo: abierta, con: { R_1: 1e9 }, texto: "R₁ abierta: en circuito lee lo del resto, 22 kΩ, más que su valor; levantada, sobreescala." }
+        - { id: r1-alta, pieza: r1, tipo: alto, con: { R_1: 47000 }, texto: "R₁ ha subido a 47 kΩ: en circuito lee más de lo que debería; levantada, se ve su valor." }
+        - { id: resto-corto, pieza: r2, tipo: corto, con: { R_2: 0.001 }, texto: "Un corto en el resto del circuito: en circuito lee casi cero, pero R₁ levantada mide bien." }
+    pistas:
+      - { texto: "Una lectura en circuito mayor que el valor marcado delata a R₁; levantar una patilla lo confirma." }
+    escalera:
+      - "Sana, en circuito lee 6,88 kΩ."
+      - "Con una patilla levantada se mide R₁ sola."
+    solucion: "Si en circuito mide más de lo marcado, R₁ está abierta o ha subido; si lee casi cero y R₁ sola está bien, el corto está en el resto."
+    comprobar:
+      - { R_eq: 6875, tol: 0.001 }
+      - { con: { R_1: 1e9 }, R_eq: 22000, tol: 0.001 }
+      - { con: { R_1: 47000 }, R_eq: 15000, tol: 0.01 }
+
+  - id: ordene-frio
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Las preguntas estructurales"
+    texto: "Con el aparato desconectado y descargado, ordene las medidas."
+    libro: [120]
+    ordenar:
+      - "Resistencia entre cada alimentación y masa."
+      - "Prueba de diodos en los semiconductores de potencia."
+      - "ESR de los electrolíticos."
+      - "Comparación con una placa o un canal igual."
+      - "Encendido con límite de corriente."
+    exito: "Unos pocos ohmios entre un raíl y masa delatan un cortocircuito antes de encender nada."
+    pistas:
+      - { texto: "Lo primero es lo que impediría encender; lo último, el propio encendido." }
+    escalera:
+      - "Los semiconductores de potencia son los que más fallan: van pronto."
+    solucion: "Raíles a masa, diodos, ESR, comparación y encendido con límite."
+
+  - id: lecturas-diodos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "La prueba de diodos"
+    texto: "La medida más informativa del multímetro. Una cada unión con lo que lee, roja en el ánodo."
+    libro: [127, 128]
+    emparejar:
+      - ["Silicio (unión PN)", "0,55 – 0,70 V"]
+      - ["Schottky", "0,15 – 0,45 V"]
+      - ["LED rojo", "1,6 – 2,0 V"]
+      - ["Colector-emisor de un bipolar", "OL en ambos sentidos"]
+      - ["Puerta de un MOSFET", "OL: está aislada"]
+    exito: "Casi todo semiconductor contiene uniones: con esta medida se comprueban diodos, puentes y bipolares."
+    pistas:
+      - { texto: "Entre colector y emisor hay dos uniones en sentidos opuestos: en ninguno conduce." }
+    escalera:
+      - "El Schottky cae menos que el silicio; el LED rojo, mucho más."
+    solucion: "Silicio, 0,55–0,70 V; Schottky, 0,15–0,45 V; LED rojo, 1,6–2,0 V; C-E y puerta, OL."
+
+  - id: interpretar
+    tipo: pregunta
+    titulo: "Cómo interpretar"
+    texto: "Un diodo de un puente rectificador lee cero voltios con las puntas en un sentido y en el otro. ¿Qué le pasa?"
+    libro: [129, "cap53#121"]
+    widget:
+      tipo: figura
+      figura: fig-53.5
+      zonas:
+        - { id: conexion, rotulo: "Cómo se conectan", rect: [0, 0, 140, 250] }
+        - { id: tabla, rotulo: "La tabla", rect: [145, 5, 305, 190] }
+    opciones:
+      - texto: "Está en cortocircuito"
+        bien: true
+        porque: "Cero en ambos sentidos es un corto: el fallo típico de un semiconductor."
+      - texto: "Está abierto"
+        porque: "Un abierto marca sobreescala, OL, en ambos sentidos."
+      - texto: "Está sano"
+        porque: "Una unión sana da su caída en un sentido y OL en el otro."
+    escalera:
+      - "¿Qué lee el multímetro entre dos puntas unidas?"
+    solucion: "En cortocircuito."
+
+  - id: led-azul
+    tipo: pregunta
+    titulo: "Un LED azul que marca OL"
+    texto: "Con el BM869s, un LED azul marca OL en los dos sentidos. ¿Está abierto?"
+    libro: [132, "cap53#121"]
+    widget:
+      tipo: figura
+      figura: fig-53.5
+      zonas:
+        - { id: conexion, rotulo: "Cómo se conectan", rect: [0, 0, 140, 250] }
+        - { id: tabla, rotulo: "La tabla", rect: [145, 5, 305, 190] }
+    opciones:
+      - texto: "No necesariamente: la prueba llega a 2 V y el azul cae de 2,6 a 3,4 V"
+        bien: true
+        porque: "Marca sobreescala sin estar abierto. Se prueba con la fuente y una resistencia en serie."
+      - texto: "Sí: OL en los dos sentidos es un abierto"
+        porque: "Lo sería si la prueba pudiera encenderlo; con 2 V no llega."
+      - texto: "Está en corto"
+        porque: "Un corto lee cero voltios, no OL."
+    escalera:
+      - "Compare la caída de un LED azul con el límite de la prueba de diodos del BM869s."
+    solucion: "No: queda fuera de los 2 V de la prueba."
+
+  - id: no-amplifica
+    tipo: porque
+    titulo: "Pasa la prueba y no amplifica"
+    texto: "Un transistor da sus dos uniones sanas en la prueba de diodos, pero la etapa no amplifica. ¿Cómo puede ser?"
+    libro: [131, 141]
+    widget:
+      tipo: figura
+      figura: fig-14.13
+      zonas:
+        - { id: multimetro, rotulo: "Columna de la izquierda", rect: [5, 18, 215, 162] }
+        - { id: esr, rotulo: "Columna de la derecha", rect: [230, 18, 215, 162] }
+    opciones:
+      - texto: "La prueba ve uniones en corto o abiertas, no la pérdida de ganancia"
+        bien: true
+        porque: "La ganancia se mide aparte, con dos resistencias y la fuente; las fugas, con el trazador de curvas."
+      - texto: "La prueba de diodos estaba mal hecha"
+        porque: "No hace falta un error: la prueba no mide ganancia."
+      - texto: "El transistor está abierto"
+        porque: "Abierto, una unión daría OL en ambos sentidos."
+    escalera:
+      - "¿Qué mide exactamente la prueba de diodos: una caída o una ganancia?"
+    solucion: "La prueba no detecta la pérdida de ganancia."
+
+  - id: estime-esr
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La ESR que delata"
+    texto: "Un electrolítico de 1000 µF sano tiene una ESR máxima típica de 0,10 Ω. ¿A partir de qué ESR indica degradación?"
+    libro: [134, 135, 136]
+    fijar: { ESR_t: 0.1 }
+    estimar:
+      objetivo: "ESR_d"
+      unidad: Ω
+      min: 0
+      max: 1
+      paso: 0.01
+      inicio: 0.8
+      tol: 0.1
+      rotulo: "ESR de 1000 µF"
+    exito: "0,20 Ω: el doble ya indica degradación, aunque el capacímetro lo dé por bueno."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.22 }, texto: "Se ha pasado: no hace falta llegar a diez veces; el doble ya delata." }
+      - { texto: "Se ha quedado corto: un sano puede tener 0,10 Ω." }
+    escalera:
+      - "El libro da un criterio sencillo: un múltiplo pequeño del valor típico."
+    solucion: "El doble: 0,20 Ω."
+    comprobar:
+      - { ESR_d: 0.2 }
+
+  - id: explore-tau
+    tipo: explorar
+    titulo: "El electrolítico, por su τ"
+    texto: "Cargando a través de una resistencia conocida, el tiempo hasta el 63 % es τ = R · C. Cambie el condensador."
+    nota: "Fuente de 10 V de ejemplo."
+    libro: [137]
+    fijar: { R_c: 1000, c_modo: 1 }
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_c, r: R_c, c: C_c, interruptor: c_modo }
+      lectura: { valor: tau_c, rotulo: "Constante de tiempo" }
+      grafica:
+        x: { id: t, min: 0, max: 6, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 11, unidad: V, rotulo: "v_{C}" }
+        curvas:
+          - { expr: "V_c*(1 - exp(-t/tau_c))", color: naranja, rotulo: "v_{C}", mide: vc }
+        marcas:
+          - { x: "tau_c", y: "v_tau", rotulo: "63 %" }
+      mandos:
+        - { valor: C_c, lista: [100e-6, 470e-6, 1000e-6], rotulo: "Electrolítico" }
+    requiere: { mover: [C_c] }
+
+  - id: estime-5tau
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La carga completa"
+    texto: "Con 1000 µF y 1 kΩ, ¿cuánto tarda la carga completa?"
+    libro: [137]
+    fijar: { R_c: 1000, C_c: 1000e-6 }
+    estimar:
+      objetivo: "t_5"
+      unidad: s
+      min: 0
+      max: 10
+      paso: 0.1
+      inicio: 9
+      tol: 0.05
+      rotulo: "5τ"
+    exito: "5 segundos: perfectamente cronometrable con el multímetro."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 5.25 }, texto: "Se ha pasado: τ = R · C = 1 s, y la carga completa son 5τ." }
+      - { texto: "Se ha quedado corto: τ es 1 s y hacen falta cinco." }
+    escalera:
+      - "Calcule τ = 1 kΩ · 1000 µF y multiplique por cinco."
+    solucion: "τ = 1 s; 5τ = 5 s."
+    comprobar:
+      - { tau_c: 1, t_5: 5 }
+
+  - id: banco-tau
+    tipo: banco
+    titulo: "Mídalo en el banco"
+    texto: "Cargue un electrolítico de 1000 µF a través de 1 kΩ y cronometre hasta el 63 % de la tensión de la fuente."
+    libro: [137]
+    fijar: { R_c: 1000, C_c: 1000e-6 }
+    banco:
+      piezas: ["Electrolítico de 1000 µF, descargado", "Resistencia de 1 kΩ", "Fuente de laboratorio", "Brymen en V⎓ y un cronómetro"]
+      medir: "El tiempo desde que conecta hasta que el condensador llega al 63 % de la tensión de la fuente."
+      esperado: tau_c
+      unidad: s
+      tol: 0.2
+      consejos:
+        - { cuando: { valor: desviacion, menor: -0.2 }, texto: "Tarda mucho menos: le falta capacidad. Un electrolítico seco se delata así." }
+        - { cuando: { valor: desviacion, mayor: 0.2 }, texto: "Tarda más: compruebe la resistencia y que el 63 % es de la tensión de la fuente." }
+        - { texto: "Dentro de lo esperado: τ = R · C da el valor del condensador." }
+      ficha: { n: 26, titulo: "Práctica 2 · Carga y descarga de un condensador" }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [120, 124, 129, 134]
+    ideas:
+      - { titulo: "En orden.", texto: "Raíles a masa, prueba de diodos, ESR y, solo después, el encendido con límite." }
+      - { titulo: "En circuito.", texto: "La lectura es igual o menor que el valor: si mide más, está abierta o ha subido." }
+      - { titulo: "Diodos.", texto: "Cero en ambos sentidos, corto; OL en ambos, abierto; caída y OL, sana." }
+      - { titulo: "Electrolíticos.", texto: "La ESR los delata; el capacímetro, no. τ = R · C los verifica." }

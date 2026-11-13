@@ -1,0 +1,250 @@
+# Lección 1.2 de la sección 55.9 «Localizar un Cortocircuito sin Desoldar Nada» (cap53; etiqueta interna sec-53.9).
+# Formato: contenido/lecciones11/GUIA.md. La figura 55.22 (el gradiente sobre el plano) con zonas en su svg_vista
+# (426,17 × 228,85). El gradiente como gráfica: la lectura con REL a cero en el punto de inyección, a lo largo del
+# camino de la corriente hasta el corto, −I · R□ · n, con R□ = 0,491 mΩ (bloque 330) y el corto a 12 cuadros
+# (ejercicio 55.9). Sin tarjeta «formula»: la ecuación del bloque 338 está dentro de una tarjeta de repaso y el motor
+# solo admite ecuaciones de primer nivel (petición en peticiones-motor12.md).
+leccion: cap53/sec-53.9
+
+libro:
+  329: "Hay cincuenta condensadores de desacoplo y varios integrados conectados a él."
+  330: "Una capa de 35 µm presenta 0,491 mΩ por cuadro"
+  332: "Sigue el gradiente descendente."
+  334: "9,8 µV"
+  335: "harían falta dos amperios para obtener la misma información, con riesgo de vaporizar pistas"
+  336: "limita la corriente a lo que el componente en corto pueda soportar"
+  337: "El componente en cortocircuito disipa toda la potencia y se calienta"
+  "cap53#210": "1,05 mV (0,021 %)"
+  "cap53#218": "REL + resolución de microvoltios"
+  "cap53#328": "el gradiente apunta al componente en corto"
+  "cap53#962": "recorres 12 cuadros de cobre de 35 µm"
+
+modelo:
+  valores:
+    I_i: { sim: "I", nombre: "corriente inyectada", unidad: A, valor: 0.02 }
+    R_sq: { sim: "R_{□}", nombre: "resistencia por cuadro, 35 µm", unidad: Ω, valor: 0.000491 }
+    n_c: { sim: "n", nombre: "cuadros hasta el corto", unidad: "", valor: 12 }
+    res: { sim: "res", nombre: "resolución del multímetro", unidad: V, valor: 0.001 }
+  calculos:
+    V_sq: { expr: "I_i*R_sq", sim: "ΔV_{□}", nombre: "caída por cuadro", unidad: V }
+    V_c: { expr: "-I_i*R_sq*n_c", sim: "V_{corto}", nombre: "lectura sobre el corto", unidad: V }
+    I_35: { expr: "res/R_sq", sim: "I", nombre: "corriente para 1 mV por cuadro", unidad: A }
+
+tarjetas:
+  - id: explore-gradiente
+    tipo: explorar
+    titulo: "El gradiente apunta al corto"
+    texto: "Un plano en corto a masa, 20 mA inyectados y el Brymen en relativo. Toque las lecturas desde la inyección."
+    libro: [329, "cap53#328"]
+    widget:
+      tipo: figura
+      figura: fig-53.15
+      zonas:
+        - { id: inyeccion, rotulo: "Punto azul, arriba a la izquierda", rect: [48, 22, 40, 34], texto: "Aquí entra la corriente y aquí se pone el cero con REL." }
+        - { id: l8, rotulo: "Primera lectura", rect: [108, 28, 40, 34], texto: "Un poco negativa: la corriente ya ha recorrido algo de cobre." }
+        - { id: l14, rotulo: "En el centro", rect: [188, 80, 40, 34], texto: "Más negativa: se acerca al corto." }
+        - { id: corto, rotulo: "Recuadro negro, abajo", rect: [235, 115, 40, 34], texto: "El valor más negativo: el condensador en corto." }
+        - { id: l17, rotulo: "Abajo a la derecha", rect: [270, 135, 40, 34], texto: "Más allá del corto el valor absoluto vuelve a bajar." }
+    requiere: { mover: [inyeccion, corto, l17] }
+
+  - id: estime-cuadro
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La caída por cuadro"
+    texto: "El cobre de 35 µm presenta 0,491 mΩ por cuadro. Con 20 mA inyectados, ¿cuánto cae en cada cuadro?"
+    libro: [330, 334]
+    fijar: { I_i: 0.02, R_sq: 0.000491 }
+    estimar:
+      objetivo: "V_sq"
+      unidad: V
+      min: 0
+      max: 0.00005
+      paso: 0.0000002
+      inicio: 0.00004
+      tol: 0.05
+      rotulo: "ΔV = I · R_{□}"
+    exito: "9,8 µV: detectable con 1 µV de resolución."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.0000103 }, texto: "Se ha pasado: 20 mA por 0,491 mΩ son menos de 10 µV." }
+      - { texto: "Se ha quedado corto: 0,02 A · 0,000491 Ω." }
+    escalera:
+      - "ΔV = I · R_{□}, con la corriente en amperios y la resistencia en ohmios."
+    solucion: "20 mA · 0,491 mΩ = 9,8 µV por cuadro."
+    comprobar:
+      - { V_sq: 0.0000098, tol: 0.01 }
+
+  - id: explore-camino
+    tipo: explorar
+    titulo: "Lectura a lo largo del camino"
+    texto: "Desde la inyección hasta el corto, la lectura baja un ΔV por cuadro. Cambie la corriente inyectada."
+    nota: "El corto, a 12 cuadros del punto de inyección."
+    libro: [332, "cap53#962"]
+    fijar: { R_sq: 0.000491, n_c: 12 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 12, unidad: "", rotulo: "cuadros desde la inyección" }
+      y: { min: -0.0003, max: 0, unidad: V, rotulo: "lectura" }
+      curvas:
+        - { expr: "-I_i*R_sq*x", color: naranja, rotulo: "lectura con REL" }
+      marcas:
+        - { x: "n_c", y: "V_c", rotulo: "corto" }
+      lectura: { valor: V_c, rotulo: "Sobre el corto" }
+      datos:
+        - { valor: V_sq, rotulo: "Por cuadro: {{V_sq}}" }
+      mandos:
+        - { valor: I_i, lista: [0.02, 0.05], rotulo: "Corriente inyectada" }
+    requiere: { mover: [I_i] }
+
+  - id: prediga-50
+    tipo: predecir
+    titulo: "Con 50 mA y doce cuadros"
+    texto: "Inyecta 50 mA y recorre 12 cuadros de cobre de 35 µm hasta el corto. ¿Qué lee el Brymen sobre él?"
+    libro: [330, "cap53#962"]
+    fijar: { I_i: 0.05, R_sq: 0.000491, n_c: 12 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 12, unidad: "", rotulo: "cuadros desde la inyección" }
+      y: { min: -0.0003, max: 0, unidad: V, rotulo: "lectura" }
+      curvas:
+        - { expr: "-I_i*R_sq*min(x, 0.5)", color: naranja, rotulo: "lectura con REL" }
+      lectura: { valor: V_c, rotulo: "Sobre el corto" }
+      ocultar: true
+    opciones:
+      - texto: "Unos −295 µV"
+        bien: true
+        porque: "50 mA · 0,491 mΩ son 24,6 µV por cuadro, y doce cuadros, 295 µV."
+      - texto: "Unos −24,6 µV"
+        porque: "Esa es la caída de un solo cuadro: hay doce hasta el corto."
+      - texto: "Unos −9,8 µV"
+        porque: "Eso es un cuadro con 20 mA: aquí la corriente es 50 mA y los cuadros, doce."
+    escalera:
+      - "Calcule la caída de un cuadro y multiplique por doce."
+    solucion: "−50 mA · 0,491 mΩ · 12 ≈ −295 µV."
+    comprobar:
+      - { V_c: -0.000295, V_sq: 0.0000246, tol: 0.01 }
+      - { con: { I_i: 0.02 }, V_sq: 0.0000098, tol: 0.01 }
+
+  - id: ordene-procedimiento
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "El procedimiento"
+    texto: "Ordene cómo se localiza el corto sin desoldar nada."
+    libro: [332]
+    ordenar:
+      - "Inyectar 20 mA con la fuente en CC entre el plano y masa."
+      - "Brymen en continua, una punta en la inyección y REL."
+      - "Recorrer la placa con la otra punta."
+      - "Seguir el gradiente descendente hasta el valor más negativo."
+    exito: "Donde la lectura alcanza su valor más negativo está el cortocircuito."
+    pistas:
+      - { texto: "El cero se pone con REL antes de recorrer la placa." }
+    escalera:
+      - "Primero la corriente, luego el cero, luego el recorrido."
+    solucion: "Inyectar, poner el cero con REL, recorrer y seguir el gradiente."
+
+  - id: tres-digitos
+    tipo: pregunta
+    titulo: "Con un multímetro de 3½ dígitos"
+    texto: "Con 1 mV de resolución, ¿qué corriente haría falta para la misma información?"
+    libro: [335]
+    fijar: { R_sq: 0.000491, res: 0.001, n_c: 12, I_i: 0.02 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 0, max: 12, unidad: "", rotulo: "cuadros desde la inyección" }
+      y: { min: -0.0003, max: 0, unidad: V, rotulo: "lectura" }
+      curvas:
+        - { expr: "-I_i*R_sq*x", color: naranja, rotulo: "lectura con REL, 20 mA" }
+      lectura: { valor: V_sq, rotulo: "Por cuadro con 20 mA" }
+    opciones:
+      - texto: "Unos dos amperios, con riesgo de vaporizar pistas"
+        bien: true
+        porque: "Cada cuadro tendría que dar del orden de 1 mV: 1 mV entre 0,491 mΩ son unos 2 A."
+      - texto: "Los mismos 20 mA"
+        porque: "Con 9,8 µV por cuadro, un instrumento de 1 mV leería cero."
+      - texto: "Unos 100 mA"
+        porque: "Darían 49,1 µV por cuadro: todavía muy por debajo de 1 mV."
+    escalera:
+      - "¿Cuánta corriente da 1 mV en un cuadro de 0,491 mΩ?"
+    solucion: "Unos dos amperios: el BM869s permite hacerlo con veinte miliamperios."
+    comprobar:
+      - { I_35: 2.04, tol: 0.01 }
+      - { con: { I_i: 0.1 }, V_sq: 0.0000491, tol: 0.01 }
+
+  - id: por-que-funciona
+    tipo: porque
+    titulo: "¿Por qué con su instrumento?"
+    texto: "La técnica funciona con el BM869s y no con uno cualquiera. ¿Qué la hace posible?"
+    libro: [334, "cap53#210", "cap53#218"]
+    widget:
+      tipo: figura
+      figura: fig-53.15
+      zonas:
+        - { id: plano, rotulo: "El plano", rect: [40, 5, 290, 175] }
+        - { id: escala, rotulo: "La escala de colores", rect: [345, 15, 40, 155] }
+    opciones:
+      - texto: "REL más la resolución de microvoltios"
+        bien: true
+        porque: "El cero en la inyección y 1 µV de resolución ven caídas de 9,8 µV."
+      - texto: "Su exactitud del 0,021 %"
+        porque: "Aquí importa la resolución sobre una diferencia, no la exactitud absoluta."
+      - texto: "Su prueba de continuidad"
+        porque: "El zumbador sonaría en todo el plano: no distingue microvoltios."
+    escalera:
+      - "¿Qué botón pone el cero en el punto de inyección?"
+    solucion: "REL + resolución de microvoltios."
+
+  - id: precauciones
+    tipo: pregunta
+    titulo: "Precauciones"
+    texto: "¿Cómo se elige la corriente que se inyecta?"
+    libro: [336]
+    widget:
+      tipo: figura
+      figura: fig-53.15
+      zonas:
+        - { id: plano, rotulo: "El plano", rect: [40, 5, 290, 175] }
+        - { id: escala, rotulo: "La escala de colores", rect: [345, 15, 40, 155] }
+    opciones:
+      - texto: "La más baja que dé lectura, limitada a lo que aguante el componente en corto"
+        bien: true
+        porque: "Y no se inyecta en un plano si no se sabe qué hay conectado."
+      - texto: "La máxima de la fuente, para que la lectura sea clara"
+        porque: "Se arriesga a vaporizar pistas o dañar lo que está conectado."
+      - texto: "Da igual, el plano es de cobre"
+        porque: "El componente en corto y lo conectado al plano sí tienen límites."
+    escalera:
+      - "Se empieza por 20 mA y se sube solo si hace falta."
+    solucion: "La más baja que dé lectura, sin pasar de lo que aguante el corto."
+
+  - id: alternativa
+    tipo: pregunta
+    titulo: "El método alternativo"
+    texto: "Con el mismo principio, ¿qué otra cosa delata el componente en corto?"
+    libro: [337]
+    widget:
+      tipo: figura
+      figura: fig-53.15
+      zonas:
+        - { id: plano, rotulo: "El plano", rect: [40, 5, 290, 175] }
+        - { id: escala, rotulo: "La escala de colores", rect: [345, 15, 40, 155] }
+    opciones:
+      - texto: "Que se calienta: disipa toda la potencia"
+        bien: true
+        porque: "Con la temperatura del Brymen, el dorso del dedo si la tensión es baja, o la cámara térmica."
+      - texto: "Que suena con el zumbador"
+        porque: "Todo el plano suena: está en corto a masa en todos sus puntos."
+      - texto: "Que su capacidad mide cero"
+        porque: "No se puede medir capacidad en circuito con un corto en paralelo."
+    escalera:
+      - "¿Adónde va la potencia que entrega la fuente?"
+    solucion: "Se calienta: busque el punto caliente."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [330, 332, 335, 337]
+    ideas:
+      - { titulo: "El cobre tiene resistencia.", texto: "0,491 mΩ por cuadro: con 20 mA, 9,8 µV." }
+      - { titulo: "El gradiente.", texto: "REL en la inyección y seguir la lectura hasta su valor más negativo." }
+      - { titulo: "Su instrumento.", texto: "Con 1 µV basta con 20 mA; con 1 mV harían falta dos amperios." }
+      - { titulo: "O el calor.", texto: "El componente en corto disipa toda la potencia y se calienta." }

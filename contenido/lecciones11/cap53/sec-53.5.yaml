@@ -1,0 +1,262 @@
+# Lección 1.2 de la sección 55.5 «El Primer Encendido: con Límite de Corriente» (cap53; etiqueta interna sec-53.5).
+# Formato: contenido/lecciones11/GUIA.md. La lámpara serie de la figura 55.14 viva (esquema thevenin): la red de
+# 230 V eficaces como continua equivalente, la bombilla incandescente con su resistencia en caliente R = V²/P (como la
+# netlist del libro, fig-53.32_lampara_serie.cir) y el equipo en cortocircuito (1 mΩ): la corriente es la máxima de la
+# tabla (174, 261 y 435 mA). La figura 55.13 (brillo y secuencia) con zonas en las coordenadas de su svg_vista.
+# Paso práctico: «simular» la corriente con la bombilla de 100 W y el equipo en cortocircuito.
+leccion: cap53/sec-53.5
+
+libro:
+  144: "es cuando más cosas se destruyen"
+  146: "Un valor de pocos ohmios indica un problema; unos cientos, normalidad"
+  150: "fijado a poco más del consumo previsto"
+  151: "un cortocircuito no destruye nada"
+  152: "empezar con el límite bajo y subirlo si el circuito lo pide"
+  155: "Si hay un cortocircuito, la lámpara se enciende a pleno brillo, se lleva toda la tensión y limita la corriente a la suya."
+  157: "No se enciende o brilla un instante y se apaga: normal."
+  158: "Brilla y se atenúa lentamente: carga de condensadores, normal en fuentes."
+  159: "Brilla a pleno y se queda: cortocircuito."
+  160: "Brillo intermedio estable: consumo excesivo."
+  162: "261 mA"
+  163: "Para una fuente de 30 W, la de 60 W es la adecuada."
+  165: "Medir el consumo inmediatamente."
+  172: "Lectura del brillo de la lámpara serie y la secuencia del primer encendido."
+  173: "La lámpara en serie con la red"
+
+modelo:
+  valores:
+    V_r: { sim: "V_{red}", nombre: "tensión de red, eficaz", unidad: V, valor: 230 }
+    P_l: { sim: "P", nombre: "potencia de la bombilla", unidad: W, valor: 60 }
+    R_eq: { sim: "R_{equipo}", nombre: "el equipo, en cortocircuito", unidad: Ω, valor: 0.001 }
+    l_on: { tipo: interruptor, nombre: "equipo conectado", valor: 1 }
+  calculos:
+    R_l: { expr: "V_r^2/P_l", sim: "R_{lámpara}", nombre: "resistencia de la bombilla en caliente", unidad: Ω }
+    I_l: { si: l_on, entonces: "V_r/(R_l + R_eq)", sino: "0", sim: "I", nombre: "corriente", unidad: A }
+    V_eq: { si: l_on, entonces: "V_r*R_eq/(R_l + R_eq)", sino: "V_r", sim: "V_{equipo}", nombre: "tensión en el equipo", unidad: V }
+    V_lamp: { expr: "I_l*R_l", sim: "V_{lámpara}", nombre: "tensión en la bombilla", unidad: V }
+
+tarjetas:
+  - id: explore-lampara
+    tipo: explorar
+    titulo: "La lámpara serie"
+    texto: "Una bombilla incandescente en serie con un equipo en cortocircuito. Elija la bombilla y mire la corriente."
+    libro: [155, 162, 173]
+    fijar: { R_eq: 0.001, l_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_r, rth: R_l, carga: R_eq, interruptor: l_on }
+      lectura: { valor: I_l, rotulo: "Corriente" }
+      datos:
+        - { valor: V_lamp, rotulo: "En la bombilla: {{V_lamp}}" }
+      corriente: I_l
+      mide: { salida: V_eq, corriente: I_l, interna: V_lamp }
+      mandos:
+        - { valor: P_l, lista: [40, 60, 100], rotulo: "Bombilla" }
+    requiere: { mover: [P_l] }
+
+  - id: prediga-brillo
+    tipo: predecir
+    titulo: "Un cortocircuito detrás"
+    texto: "El equipo está en cortocircuito. ¿Cómo se comporta la lámpara?"
+    libro: [155, 159]
+    fijar: { P_l: 60, R_eq: 0.001, l_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_r, rth: R_l, carga: R_eq, interruptor: l_on }
+      lectura: { valor: V_lamp, rotulo: "En la bombilla" }
+      mide: { salida: V_eq, corriente: I_l, interna: V_lamp }
+      ocultar: true
+    opciones:
+      - texto: "Se enciende a pleno brillo y limita la corriente a la suya"
+        bien: true
+        porque: "Se lleva toda la tensión, 230 V: con la de 60 W pasan solo 261 mA."
+      - texto: "Se funde, como un fusible"
+        porque: "No se funde: trabaja a su tensión nominal, a pleno brillo."
+      - texto: "No se enciende, porque el corto la puentea"
+        porque: "El corto está en el equipo, no en la lámpara: toda la tensión cae en ella."
+    escalera:
+      - "Si el equipo no tiene resistencia, ¿dónde cae la tensión de la red?"
+    solucion: "A pleno brillo y se queda: cortocircuito. No hay que insistir."
+    comprobar:
+      - { V_lamp: 230, I_l: 0.261, tol: 0.005 }
+
+  - id: simule-100
+    tipo: simular
+    titulo: "Prediga con la de 100 W"
+    texto: "Con una bombilla de 100 W y el equipo en cortocircuito, ¿cuánta corriente pasa?"
+    libro: [155, 162]
+    fijar: { P_l: 100, R_eq: 0.001, l_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_r, rth: R_l, carga: R_eq, interruptor: l_on }
+      lectura: { valor: I_l, rotulo: "Corriente" }
+      mide: { salida: V_eq, corriente: I_l, interna: V_lamp }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: I_l
+      unidad: A
+      tol: 0.03
+      rotulo: "Corriente con el equipo en corto"
+      medida: corriente
+      errores:
+        - { expr: "R_l", texto: "Esos 529 son los ohmios de la bombilla en caliente, V² / P. La corriente es 230 V entre ellos." }
+        - { expr: "V_r/R_eq", texto: "Eso sería sin lámpara: el corto se lo lleva todo. La lámpara limita la corriente a la suya." }
+    exito: "435 mA, la de la bombilla a su potencia: P / V = 100 / 230."
+    pistas:
+      - { texto: "Con el equipo en corto, toda la tensión cae en la bombilla, que trabaja a su potencia nominal." }
+    escalera:
+      - "La bombilla consume sus 100 W a 230 V."
+    solucion: "I = P / V = 100 / 230 = 435 mA."
+    comprobar:
+      - { I_l: 0.435, R_l: 529, tol: 0.005 }
+
+  - id: lectura-brillo
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Leer la bombilla"
+    texto: "Una cada comportamiento de la lámpara con lo que indica."
+    libro: [157, 158, 159, 160, 172]
+    emparejar:
+      - ["Destella un instante y se apaga", "Normal"]
+      - ["Brilla y se atenúa lentamente", "Carga de condensadores"]
+      - ["Brilla a pleno y se queda", "Cortocircuito: no insistir"]
+      - ["Brillo intermedio estable", "Consumo excesivo"]
+    exito: "Es el limitador de corriente más barato y eficaz para un primer encendido."
+    pistas:
+      - { texto: "Atenuarse despacio es lo que hacen los condensadores de una fuente al cargarse." }
+    escalera:
+      - "Cuanto más consume el equipo, más tensión se lleva la lámpara y más brilla."
+    solucion: "Destello: normal; se atenúa: condensadores; pleno: corto; intermedio: consumo excesivo."
+
+  - id: elija-bombilla
+    tipo: pregunta
+    titulo: "Elegir la bombilla"
+    texto: "Va a encender una fuente de 30 W reparada. ¿Qué bombilla pone en serie?"
+    libro: [162, 163]
+    fijar: { R_eq: 0.001, l_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_r, rth: R_l, carga: R_eq, interruptor: l_on }
+      lectura: { valor: I_l, rotulo: "Corriente con el equipo en corto" }
+      mide: { salida: V_eq, corriente: I_l, interna: V_lamp }
+      mandos:
+        - { valor: P_l, lista: [40, 60, 100], rotulo: "Bombilla" }
+    opciones:
+      - texto: "La de 60 W"
+        bien: true
+        porque: "Deja pasar la corriente normal sin encenderse del todo y limita la de fallo a 261 mA."
+      - texto: "La de 40 W"
+        porque: "Da unos 20 W al equipo: se encendería del todo con el consumo normal."
+      - texto: "La de 100 W"
+        porque: "Sirve, pero deja pasar 435 mA en un corto: protege menos."
+    escalera:
+      - "Debe dejar pasar la corriente normal sin encenderse del todo, y limitar la de fallo."
+    solucion: "La de 60 W."
+    comprobar:
+      - { con: { P_l: 60 }, I_l: 0.261, tol: 0.005 }
+      - { con: { P_l: 100 }, I_l: 0.435, tol: 0.005 }
+
+  - id: por-que-incandescente
+    tipo: porque
+    titulo: "¿Por qué incandescente?"
+    texto: "Debe ser incandescente, no LED ni de bajo consumo. ¿Por qué?"
+    libro: [155, 163]
+    fijar: { R_eq: 0.001, l_on: 1, P_l: 60 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_r, rth: R_l, carga: R_eq, interruptor: l_on }
+      lectura: { valor: V_lamp, rotulo: "En la bombilla" }
+      mide: { salida: V_eq, corriente: I_l, interna: V_lamp }
+    opciones:
+      - texto: "Su filamento sube de resistencia al calentarse: eso limita la corriente"
+        bien: true
+        porque: "Con consumo bajo apenas se calienta y deja pasar casi toda la tensión; con un corto se pone a su resistencia en caliente."
+      - texto: "Porque da más luz"
+        porque: "La luz es solo la indicación; la protección es su resistencia."
+      - texto: "Porque las LED se funden con el cortocircuito"
+        porque: "Una LED lleva su propia electrónica: no se comporta como una resistencia que sube con la temperatura."
+    escalera:
+      - "¿Qué le pasa a la resistencia del filamento cuando brilla a pleno?"
+    solucion: "Su resistencia sube al calentarse."
+
+  - id: limite-corriente
+    tipo: pregunta
+    titulo: "Con la fuente de laboratorio"
+    texto: "Con una fuente de límite ajustable, ¿cómo se fija el límite en el primer encendido?"
+    libro: [150, 151, 152]
+    widget:
+      tipo: figura
+      figura: fig-53.6
+      zonas:
+        - { id: grafica, rotulo: "La gráfica", rect: [38, 5, 218, 180] }
+        - { id: secuencia, rotulo: "La secuencia", rect: [272, 20, 180, 140] }
+    opciones:
+      - texto: "Poco por encima del consumo previsto, y se sube si el circuito lo pide"
+        bien: true
+        porque: "Con un cortocircuito, la fuente entra en limitación, la tensión cae y el indicador lo dice."
+      - texto: "Al máximo, y se baja si algo se calienta"
+        porque: "Al revés: cuando algo se calienta ya se ha destruido."
+      - texto: "Da igual: la fuente ya tiene protección"
+        porque: "La protección es el límite fijado a poco más del consumo; al máximo no protege el circuito."
+    escalera:
+      - "El uso correcto empieza por el valor bajo."
+    solucion: "Poco por encima del consumo previsto: empezar bajo y subir."
+
+  - id: antes-de-tension
+    tipo: pregunta
+    titulo: "Antes de aplicar tensión"
+    texto: "Con el óhmetro entre un raíl y masa, ¿qué lectura indica normalidad?"
+    libro: [146]
+    widget:
+      tipo: figura
+      figura: fig-53.6
+      zonas:
+        - { id: grafica, rotulo: "La gráfica", rect: [38, 5, 218, 180] }
+        - { id: secuencia, rotulo: "La secuencia", rect: [272, 20, 180, 140] }
+    opciones:
+      - texto: "Unos cientos de ohmios, que pueden subir despacio"
+        bien: true
+        porque: "Los condensadores del raíl hacen subir la lectura lentamente mientras se cargan."
+      - texto: "Unos pocos ohmios"
+        porque: "Pocos ohmios indican un problema: un cortocircuito en ese raíl."
+      - texto: "Cero exacto"
+        porque: "Cero es un cortocircuito franco."
+    escalera:
+      - "Un cortocircuito da pocos ohmios. ¿Y lo normal?"
+    solucion: "Unos cientos de ohmios."
+
+  - id: ordene-secuencia
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "La secuencia del primer encendido"
+    texto: "Ordene lo que se hace al encender un aparato reparado."
+    libro: [165, 172]
+    ordenar:
+      - "Alimentar con límite o con lámpara serie."
+      - "Medir el consumo inmediatamente."
+      - "Verificar las tensiones de cada raíl."
+      - "Tocar buscando calor anormal, con el dorso del dedo."
+      - "Oler."
+      - "Probar funciones."
+    exito: "Ese orden convierte casi cualquier error en un aviso."
+    pistas:
+      - { texto: "El consumo se mide nada más encender; las funciones, al final." }
+    escalera:
+      - "Las tensiones de los raíles van antes de mirar ninguna señal."
+    solucion: "Límite, consumo, tensiones, calor, olor y funciones."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [144, 151, 155, 163]
+    ideas:
+      - { titulo: "El momento de más riesgo.", texto: "Con límite de corriente, un cortocircuito se convierte en un aviso." }
+      - { titulo: "La lámpara serie.", texto: "Con un corto se lleva toda la tensión y limita la corriente a la suya: 261 mA la de 60 W." }
+      - { titulo: "Leerla.", texto: "Destello, normal; se atenúa, condensadores; pleno, corto; intermedio, consumo excesivo." }
+      - { titulo: "La secuencia.", texto: "Consumo, tensiones, calor y olor, antes de probar funciones." }

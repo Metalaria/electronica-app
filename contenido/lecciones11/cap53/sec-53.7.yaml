@@ -1,0 +1,376 @@
+# Lección 1.2 de la sección 55.7 «Sacarle Todo el Partido al Brymen BM869s» (cap53; etiqueta interna sec-53.7).
+# Formato: contenido/lecciones11/GUIA.md. La foto 55.16 del Brymen con zonas (píxeles de la foto de 836 × 1600).
+# Circuitos vivos: (1) la caída del amperímetro (figura 55.15 y netlist fig-53.8): 3,3 V, el shunt del rango mA
+# (10 Ω) o del rango A (0,01 Ω) y una carga de 56 Ω que da los 50 mA del libro en el rango mA (y 100 Ω para los 30 mA
+# del ejercicio 55.10); con carga resistiva, en el rango A pasa más corriente: la medida cambia el circuito. (2) El
+# error de carga (figura 55.18 y su netlist): 1 V detrás de la impedancia de la fuente, medido con 10 MΩ. (3) La
+# ganancia hFE (figura 55.20): 9 V, 1 MΩ de base, 1 kΩ de colector, V_BE = 0,65 V (esquema bjt-interruptor).
+# Pasos prácticos: «simular» la caída con 30 mA (ejercicio 55.10) y «banco» de la ficha 2 del cuaderno.
+leccion: cap53/sec-53.7
+
+libro:
+  210: "1,05 mV (0,021 %)"
+  211: "el error deja de estar en el multímetro y pasa a estar en el circuito"
+  213: "la caída sobre él se resta del circuito"
+  214: "500 mV"
+  215: "Medio voltio de caída en un circuito de 3,3 V lo falsea por completo, y puede impedir que arranque."
+  220: "Δ (el relativo, que el libro llama REL"
+  226: "El rango de milivoltios no tiene siempre 10 MΩ."
+  236: "Unos 0,7 ms"
+  238: "Un pulso más corto de 0,7 ms no lo captura ni CREST"
+  252: "La roja está en el punto de menor potencial; la medida es válida"
+  271: "Los 10 MΩ parecen infinitos hasta que la fuente también es alta"
+  272: "10 MΩ"
+  273: "El remedio: medir tras un seguidor, o calcular la corrección conociendo la impedancia."
+  281: "las lecturas pueden estar muy fuera de especificación sin que nada más lo indique"
+  286: "La corriente de base es (9 − 0,65)/1 MΩ = 8,35 µA, y es la misma para cualquier transistor."
+  287: "1,67 V"
+  288: "sirve para comparar transistores entre sí y para detectar uno degradado, no como dato absoluto"
+  294: "Mucho menos, o nada: la tierra no está conectada"
+  300: "casi siempre miden cosas distintas con el mismo nombre"
+  "cap53#221": "El Brymen BM869s: pantalla de seis dígitos con barra analógica"
+  "cap53#962": "Mides 30 mA de consumo de un circuito de 3,3 V con el Brymen en el rango mA"
+
+modelo:
+  valores:
+    V_l: { sim: "V", nombre: "lectura", unidad: V, valor: 5 }
+    V_33: { sim: "V", nombre: "raíl de 3,3 V", unidad: V, valor: 3.3 }
+    R_sh: { sim: "R_{shunt}", nombre: "shunt del multímetro", unidad: Ω, valor: 10 }
+    R_L: { sim: "R_{L}", nombre: "el circuito, como carga", unidad: Ω, valor: 56 }
+    a_on: { tipo: interruptor, nombre: "circuito conectado", valor: 1 }
+    V_1: { sim: "V", nombre: "tensión de la fuente medida", unidad: V, valor: 1 }
+    R_s: { sim: "R_{fuente}", nombre: "impedancia de la fuente", unidad: Ω, valor: 10000000 }
+    R_m: { sim: "R_{in}", nombre: "entrada del multímetro", unidad: Ω, valor: 10000000 }
+    m_on: { tipo: interruptor, nombre: "multímetro conectado", valor: 1 }
+    V_9: { sim: "V_{CC}", nombre: "fuente de 9 V", unidad: V, valor: 9 }
+    R_B: { sim: "R_{B}", nombre: "resistencia de base", unidad: Ω, valor: 1000000 }
+    R_C: { sim: "R_{C}", nombre: "resistencia de colector", unidad: Ω, valor: 1000 }
+    beta: { sim: "h_{FE}", nombre: "ganancia del transistor", unidad: "", valor: 100 }
+    V_BE: { sim: "V_{BE}", nombre: "tensión base-emisor", unidad: V, valor: 0.65 }
+    V_CEs: { sim: "V_{CE(sat)}", nombre: "tensión de saturación", unidad: V, valor: 0.2 }
+    V_lee: { sim: "V_{RC}", nombre: "caída que lee el Brymen", unidad: V, valor: 1.25 }
+  calculos:
+    U_l: { expr: "0.00021*V_l", sim: "U", nombre: "incertidumbre", unidad: V }
+    I_a: { si: a_on, entonces: "V_33/(R_sh + R_L)", sino: "0", sim: "I", nombre: "corriente", unidad: A }
+    V_sh: { expr: "I_a*R_sh", sim: "V_{shunt}", nombre: "caída en el instrumento", unidad: V }
+    V_ld: { si: a_on, entonces: "I_a*R_L", sino: "V_33", sim: "V_{circuito}", nombre: "tensión que le queda al circuito", unidad: V }
+    f_sh: { expr: "V_sh/V_33*100", sim: "f", nombre: "fracción de la alimentación", unidad: "%", cifras: 2 }
+    V_m: { si: m_on, entonces: "V_1*R_m/(R_s + R_m)", sino: "V_1", sim: "V_{lee}", nombre: "lo que lee el multímetro", unidad: V }
+    I_m: { si: m_on, entonces: "V_1/(R_s + R_m)", sino: "0", sim: "I", nombre: "corriente que toma el multímetro", unidad: A }
+    V_ms: { expr: "I_m*R_s", sim: "V_{int}", nombre: "caída en la impedancia de la fuente", unidad: V }
+    e_m: { expr: "(V_1 - V_m)/V_1*100", sim: "error", nombre: "error de lectura", unidad: "%", cifras: 3 }
+    I_B: { expr: "max(0, (V_9 - V_BE)/R_B)", sim: "I_{B}", nombre: "corriente de base", unidad: A }
+    I_C: { expr: "min(beta*I_B, (V_9 - V_CEs)/R_C)", sim: "I_{C}", nombre: "corriente de colector", unidad: A }
+    V_RC: { expr: "I_C*R_C", sim: "V_{RC}", nombre: "caída sobre R_C", unidad: V }
+    V_CE: { expr: "V_9 - V_RC", sim: "V_{CE}", nombre: "tensión colector-emisor", unidad: V }
+    h_e: { expr: "V_lee/R_C/I_B", sim: "h_{FE}", nombre: "ganancia medida", unidad: "" }
+
+tarjetas:
+  - id: explore-brymen
+    tipo: explorar
+    titulo: "El Brymen, botón a botón"
+    texto: "Seis botones, el selector y cuatro bornes. Toque los botones y lea qué hace cada uno."
+    libro: [220, "cap53#221"]
+    widget:
+      tipo: figura
+      figura: fig-53.9
+      zonas:
+        - { id: select, rotulo: "Botón amarillo", rect: [125, 520, 125, 65], texto: "SELECT: cambia de función dentro de cada posición; mantenido, enciende la luz." }
+        - { id: range, rotulo: "Segundo botón de arriba", rect: [270, 520, 123, 65], texto: "RANGE: rango manual o automático." }
+        - { id: rel, rotulo: "Tercer botón de arriba", rect: [412, 520, 120, 65], texto: "Δ, el relativo (REL): pone el cero; mantenido, la resolución de 500 000 cuentas." }
+        - { id: hold, rotulo: "Cuarto botón de arriba", rect: [552, 520, 120, 65], texto: "HOLD: congela la lectura." }
+        - { id: crest, rotulo: "Botón de abajo a la izquierda", rect: [125, 610, 125, 65], texto: "CREST: captura los picos." }
+        - { id: rec, rotulo: "Botón de abajo a la derecha", rect: [555, 610, 120, 65], texto: "REC: registra mínimo, máximo y media." }
+        - { id: bornes, rotulo: "Los cuatro bornes", rect: [110, 1235, 600, 110], texto: "A, mA µA, COM y VΩ. La negra, siempre en COM." }
+    requiere: { mover: [rel, crest, rec] }
+
+  - id: estime-incertidumbre
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Exactitud real"
+    texto: "Especifica un 0,021 % a 5 V. ¿Cuál es la incertidumbre de esa lectura?"
+    libro: [210, 211]
+    fijar: { V_l: 5 }
+    estimar:
+      objetivo: "U_l"
+      unidad: V
+      min: 0
+      max: 0.005
+      paso: 0.00005
+      inicio: 0.004
+      tol: 0.05
+      rotulo: "0,021 % de 5 V"
+    exito: "1,05 mV: en casi cualquier medida de banco el error pasa a estar en el circuito."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.0011 }, texto: "Se ha pasado: un 0,021 % es la lectura por 0,021 y entre cien." }
+      - { texto: "Se ha quedado corto: 5 V por 0,021 y entre cien da más de un milivoltio." }
+    escalera:
+      - "Un 0,021 % de una lectura es la lectura por 0,021, dividido entre cien."
+    solucion: "5 V · 0,021 / 100 = 1,05 mV."
+    comprobar:
+      - { U_l: 0.00105 }
+
+  - id: explore-shunt
+    tipo: explorar
+    titulo: "La caída del propio instrumento"
+    texto: "Para medir corriente, el multímetro intercala un shunt. Cambie de rango y mire lo que le queda al circuito de 3,3 V."
+    nota: "El circuito, como una resistencia de ejemplo."
+    libro: [213, 214, 215]
+    fijar: { R_L: 56, a_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_33, rth: R_sh, carga: R_L, interruptor: a_on }
+      lectura: { valor: V_sh, rotulo: "Caída en el instrumento" }
+      datos:
+        - { valor: I_a, rotulo: "Corriente: {{I_a}}" }
+        - { valor: V_ld, rotulo: "Le queda al circuito: {{V_ld}}" }
+      corriente: I_a
+      mide: { salida: V_ld, corriente: I_a, interna: V_sh }
+      mandos:
+        - { valor: R_sh, lista: [0.01, 10], nombres: [rango A, rango mA], rotulo: "Rango del Brymen" }
+    requiere: { mover: [R_sh] }
+
+  - id: simule-30ma
+    tipo: simular
+    titulo: "Prediga la caída"
+    texto: "Un circuito de 3,3 V consume 30 mA y lo mide con el Brymen en el rango mA, de unos 10 Ω. ¿Cuánto cae en el instrumento?"
+    libro: [214, 215, "cap53#962"]
+    fijar: { R_sh: 10, R_L: 100, a_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_33, rth: R_sh, carga: R_L, interruptor: a_on }
+      lectura: { valor: V_sh, rotulo: "Caída en el instrumento" }
+      mide: { salida: V_ld, corriente: I_a, interna: V_sh }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: V_sh
+      unidad: V
+      tol: 0.03
+      rotulo: "Caída en el shunt"
+      medida: interna
+      errores:
+        - { expr: "I_a*0.01", texto: "Eso es con el shunt de 0,01 Ω del rango de amperios. En mA el shunt es del orden de 10 Ω." }
+    exito: "300 mV: un 9 % de la alimentación se queda en el instrumento. Mejor el rango A, o medir la caída en una resistencia del circuito."
+    pistas:
+      - { texto: "La caída es la corriente por el shunt: 30 mA · 10 Ω." }
+    escalera:
+      - "V = I · R con la resistencia del shunt del rango mA."
+    solucion: "30 mA · 10 Ω = 300 mV, el 9 % de 3,3 V."
+    comprobar:
+      - { I_a: 0.03, V_sh: 0.3, f_sh: 9.09, tol: 0.01 }
+
+  - id: prediga-carga
+    tipo: predecir
+    titulo: "Los 10 MΩ no son infinitos"
+    texto: "Mide 1 V que sale de una fuente con 10 MΩ de impedancia, con los 10 MΩ del multímetro. ¿Qué error comete?"
+    libro: [271, 272]
+    fijar: { V_1: 1, R_s: 10000000, R_m: 10000000, m_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_1, rth: R_s, carga: R_m, interruptor: m_on }
+      lectura: { valor: e_m, rotulo: "Error de lectura" }
+      mide: { salida: V_m, corriente: I_m, interna: V_ms }
+      ocultar: true
+    opciones:
+      - texto: "Un 50 %: lee la mitad"
+        bien: true
+        porque: "Las dos impedancias forman un divisor a partes iguales: la medida no significa nada."
+      - texto: "Un 0,10 %, despreciable"
+        porque: "Eso es con una fuente de 10 kΩ, mil veces menor que la entrada del multímetro."
+      - texto: "Ninguno: 10 MΩ es casi infinito"
+        porque: "Parecen infinitos hasta que la fuente también es alta."
+    escalera:
+      - "La fuente y el multímetro forman un divisor de tensión."
+    solucion: "10 MΩ frente a 10 MΩ: lee 0,5 V, un 50 % de error."
+    comprobar:
+      - { e_m: 50, V_m: 0.5 }
+      - { con: { R_s: 10000 }, e_m: 0.10, tol: 0.01 }
+
+  - id: remedio-carga
+    tipo: pregunta
+    titulo: "El remedio"
+    texto: "Un divisor de 1 MΩ da lecturas falsas con el multímetro. Cambie la impedancia de la fuente y elija el remedio."
+    libro: [226, 271, 272, 273]
+    fijar: { V_1: 1, R_m: 10000000, m_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_1, rth: R_s, carga: R_m, interruptor: m_on }
+      lectura: { valor: e_m, rotulo: "Error de lectura" }
+      datos:
+        - { valor: V_m, rotulo: "Lee: {{V_m}}" }
+      mide: { salida: V_m, corriente: I_m, interna: V_ms }
+      mandos:
+        - { valor: R_s, lista: [10000, 100000, 1000000, 10000000], rotulo: "Impedancia de la fuente" }
+    opciones:
+      - texto: "Medir tras un seguidor, o corregir conociendo la impedancia"
+        bien: true
+        porque: "El seguidor presenta una impedancia baja al multímetro; o se calcula la corrección del divisor."
+      - texto: "Cambiar a un rango más alto"
+        porque: "La entrada sigue siendo de 10 MΩ: el divisor no cambia."
+      - texto: "Medir en el rango de milivoltios"
+        porque: "Por encima de unos 3 V su impedancia cae aún más: carga más el circuito."
+    escalera:
+      - "Hay que medir en un punto de impedancia baja, o calcular."
+    solucion: "Un seguidor delante, o la corrección por cálculo."
+    comprobar:
+      - { con: { R_s: 1000000 }, e_m: 9.09, tol: 0.01 }
+
+  - id: rec-crest
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cazar lo que no se ve"
+    texto: "Una cada herramienta con lo que captura."
+    libro: [236, 238]
+    emparejar:
+      - ["REC", "Mínimo, máximo y media, cada unos 350 ms"]
+      - ["CREST", "Picos de unos 0,7 ms"]
+      - ["Disparo único del osciloscopio", "Pulsos de menos de 0,7 ms"]
+    exito: "REC para derivas y caídas lentas; CREST para transitorios; lo más breve, el osciloscopio."
+    pistas:
+      - { texto: "REC mira despacio durante horas; CREST, deprisa." }
+    escalera:
+      - "Un pulso más corto de 0,7 ms no lo captura ni CREST."
+    solucion: "REC: mínimo, máximo y media; CREST: picos; disparo único: lo más breve."
+
+  - id: explore-hfe
+    tipo: explorar
+    titulo: "La ganancia, con dos resistencias"
+    texto: "El BM869s no prueba transistores. Base a 9 V por 1 MΩ, colector por 1 kΩ: cambie el transistor y mire la caída sobre R_{C}."
+    libro: [286, 287]
+    fijar: { V_9: 9, R_B: 1000000, R_C: 1000, V_BE: 0.65 }
+    widget:
+      tipo: circuito
+      esquema: bjt-interruptor
+      piezas: { vcc: V_9, rc: R_C, entrada: V_9, rb: R_B, beta: beta, vbe: V_BE, vcesat: V_CEs }
+      lectura: { valor: V_RC, rotulo: "Lee el Brymen sobre R_{C}" }
+      datos:
+        - { valor: I_B, rotulo: "I_{B} = {{I_B}}" }
+        - { valor: I_C, rotulo: "I_{C} = {{I_C}}" }
+      corriente: I_C
+      mide: { ib: I_B, ic: I_C, vce: V_CE, vbe: V_BE }
+      mandos:
+        - { valor: beta, lista: [100, 200, 300], rotulo: "h_{FE} del transistor" }
+    requiere: { mover: [beta] }
+
+  - id: estime-hfe
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Un transistor desconocido"
+    texto: "En ese montaje, el Brymen lee 1,25 V sobre la resistencia de colector. ¿Qué h_{FE} tiene?"
+    libro: [286, "cap53#962"]
+    fijar: { V_9: 9, R_B: 1000000, R_C: 1000, V_BE: 0.65, V_lee: 1.25 }
+    estimar:
+      objetivo: "h_e"
+      unidad: ""
+      min: 0
+      max: 400
+      paso: 5
+      inicio: 350
+      tol: 0.05
+      rotulo: "1,25 V / 1 kΩ / 8,35 µA"
+    exito: "Unos 150: 1,25 mA de colector entre 8,35 µA de base."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 157 }, texto: "Se ha pasado: I_{C} = 1,25 mA; divídala entre 8,35 µA." }
+      - { texto: "Se ha quedado corto: 1,25 mA entre 8,35 µA es bastante más que cien." }
+    escalera:
+      - "La caída entre 1 kΩ da la corriente de colector; esta entre 8,35 µA, la ganancia."
+    solucion: "1,25 mA / 8,35 µA ≈ 150."
+    comprobar:
+      - { h_e: 150, tol: 0.01 }
+
+  - id: banco-hfe
+    tipo: banco
+    titulo: "Mídalo en el banco"
+    texto: "Monte el medidor de ganancia con un NPN de su caja y mida la caída sobre la resistencia de colector."
+    libro: [286, 287, 288]
+    fijar: { V_9: 9, R_B: 1000000, R_C: 1000, V_BE: 0.65, beta: 200 }
+    banco:
+      piezas: ["NPN 2N3904 o BC547", "R_{B} = 1 MΩ y R_{C} = 1 kΩ", "Pila o fuente de 9 V", "Brymen en V⎓"]
+      medir: "La caída sobre la resistencia de colector; divídala entre 1 kΩ y entre 8,35 µA para la ganancia."
+      esperado: V_RC
+      unidad: V
+      tol: 0.5
+      consejos:
+        - { cuando: { valor: desviacion, menor: -0.5 }, texto: "Ganancia por debajo de 100: compare con otro del mismo modelo; puede estar degradado." }
+        - { cuando: { valor: desviacion, mayor: 0.5 }, texto: "Ganancia alta: compruebe que quedan más de 1 V entre colector y emisor." }
+        - { texto: "Dentro de lo normal. Sirve para comparar ejemplares entre sí, no como dato absoluto." }
+      ficha: { n: 2, titulo: "Medida de la ganancia de corriente β" }
+
+  - id: pantalla
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Leer la pantalla sin confundirse"
+    texto: "Una cada cosa que aparece con lo que significa."
+    libro: [252, 281]
+    emparejar:
+      - ["OL", "Fuera de rango, o abierto"]
+      - ["Signo negativo en continua", "Roja en el punto de menor potencial; válida"]
+      - ["Pitido al girar el selector", "Puntas en los bornes de corriente"]
+      - ["CEr al encender", "Fuera de especificación: a recalibrar"]
+    exito: "CEr no es un aviso menor: las lecturas pueden estar muy fuera de especificación."
+    pistas:
+      - { texto: "El pitido es el BeepJack: avisa de las puntas mal puestas." }
+    escalera:
+      - "Un signo negativo no es un error: es la polaridad."
+    solucion: "OL: fuera de rango; negativo: polaridad; pitido: puntas en corriente; CEr: recalibrar."
+
+  - id: instalacion
+    tipo: pregunta
+    titulo: "Antes de culpar al equipo"
+    texto: "En el enchufe, fase–neutro lee bien, pero fase–tierra lee casi nada. ¿Qué pasa?"
+    libro: [294]
+    widget:
+      tipo: figura
+      figura: fig-53.9
+      zonas:
+        - { id: pantalla, rotulo: "La pantalla", rect: [120, 95, 580, 350] }
+        - { id: bornes, rotulo: "Los cuatro bornes", rect: [110, 1235, 600, 110] }
+    opciones:
+      - texto: "La tierra no está conectada: falla la instalación"
+        bien: true
+        porque: "Fase–tierra debe leer prácticamente lo mismo que fase–neutro."
+      - texto: "El equipo tiene una fuga"
+        porque: "La medida es en el enchufe, sin el equipo: es la instalación."
+      - texto: "El neutro está sobrecargado"
+        porque: "Eso se ve entre neutro y tierra, con más de 2 o 3 V."
+    escalera:
+      - "¿Qué debería leer fase–tierra si la tierra estuviera bien?"
+    solucion: "La tierra no está conectada."
+
+  - id: no-coinciden
+    tipo: porque
+    titulo: "Cuando dos instrumentos no coinciden"
+    texto: "El Brymen y el multímetro del FNIRSI dan lecturas distintas de la misma señal. ¿Qué es lo más probable?"
+    libro: [300]
+    widget:
+      tipo: figura
+      figura: fig-53.9
+      zonas:
+        - { id: pantalla, rotulo: "La pantalla", rect: [120, 95, 580, 350] }
+        - { id: selector, rotulo: "El selector", rect: [230, 750, 370, 330] }
+    opciones:
+      - texto: "Que miden cosas distintas con el mismo nombre"
+        bien: true
+        porque: "AC frente a AC+DC, True RMS frente a promedio, otro ancho de banda u otra carga."
+      - texto: "Que uno de los dos está roto"
+        porque: "Rara vez: antes, comprobar magnitud, ancho de banda, carga y resolución."
+      - texto: "Que la señal cambia sola"
+        porque: "Se puede comprobar midiendo a la vez; casi siempre es la magnitud o el ancho de banda."
+    escalera:
+      - "Con senoides puras coinciden; con cualquier otra forma de onda, no."
+    solucion: "Miden cosas distintas con el mismo nombre."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [211, 215, 271, 286]
+    ideas:
+      - { titulo: "Exactitud.", texto: "0,021 %: el error pasa del multímetro al circuito." }
+      - { titulo: "El shunt.", texto: "En mA, cientos de milivoltios se restan del circuito: rango A o una resistencia conocida." }
+      - { titulo: "La carga.", texto: "10 MΩ sobre una fuente de 10 MΩ: un 50 % de error." }
+      - { titulo: "Lo que no mide.", texto: "La ganancia, con 1 MΩ, 1 kΩ y 9 V: la corriente de colector entre 8,35 µA." }

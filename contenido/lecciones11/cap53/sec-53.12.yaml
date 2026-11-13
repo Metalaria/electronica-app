@@ -1,0 +1,264 @@
+# Lección 1.2 de la sección 55.13 «Averías Típicas por Familia y Cómo Confirmarlas» (cap53; etiqueta interna sec-53.12).
+# Formato: contenido/lecciones11/GUIA.md. La figura 55.30 (familias) con zonas en su svg_vista (450,7 × 258,1); la foto
+# 55.31 (tántalo quemado, 1224 × 900 píxeles). Paso práctico: «averia» de la regla de los reguladores («desconectar la
+# carga: si la salida aparece, el problema está aguas abajo») sobre un regulador sencillo con Zener (el de la lección
+# de catálogo: 12 V, 330 Ω, 5,1 V con 7 Ω y 1 kΩ de carga). La medida «sin carga» la hace el multímetro de 10 MΩ.
+# Averías: la carga aguas abajo que consume de más (47 Ω), R_s abierta (sin entrada) y el Zener abierto (V_Z = 30 V,
+# no llega a conducir). Ejemplo, no un circuito del libro.
+leccion: cap53/sec-53.12
+
+libro:
+  453: "para cada una hay una comprobación que confirma en lugar de sospechar"
+  457: "Es la comprobación más rentable de todas."
+  462: "si hay otro semiconductor en paralelo que pueda ser el culpable, levantar una patilla decide cuál"
+  466: "el trazador de curvas"
+  468: "Casi nunca bajan."
+  469: "si mide más de lo marcado, está mal, incluso en circuito"
+  473: "Si la entrada es correcta y la salida no, desconectar la carga"
+  474: "Esa distinción evita sustituir reguladores sanos."
+  477: "sustituirlo por un oscilador integrado, que descarta el cristal y su circuito de carga a la vez"
+  480: "regulación que se desajusta con los años en una fuente conmutada"
+  486: "Se calienta sin señal"
+  488: "confirmar antes de sustituir"
+  489: "Sustituir por sospecha (sección 55.1) introduce variables nuevas y no enseña nada"
+  490: "Cómo falla cada familia de componentes y la comprobación que lo confirma."
+  491: "Condensador de tántalo quemado en una placa (C334, en el centro)"
+
+modelo:
+  valores:
+    V_zi: { sim: "V_{in}", nombre: "tensión de entrada", unidad: V, valor: 12 }
+    R_zs: { sim: "R_{s}", nombre: "resistencia en serie", unidad: Ω, valor: 330 }
+    V_z: { sim: "V_{Z}", nombre: "tensión Zener", unidad: V, valor: 5.1 }
+    r_z: { sim: "r_{z}", nombre: "resistencia dinámica", unidad: Ω, valor: 7 }
+    R_zl: { sim: "R_{L}", nombre: "lo que cuelga de la salida", unidad: Ω, valor: 1000 }
+    z_on: { tipo: interruptor, nombre: "carga conectada", valor: 1 }
+    R_mm: { sim: "R_{in}", nombre: "entrada del multímetro", unidad: Ω, valor: 10000000 }
+  calculos:
+    V_zd: { si: z_on, entonces: "V_zi*R_zl/(R_zs + R_zl)", sino: "V_zi", sim: "V_{div}", nombre: "salida sin Zener", unidad: V }
+    V_zon: { si: z_on, entonces: "(V_zi/R_zs + V_z/r_z)/(1/R_zs + 1/r_z + 1/R_zl)", sino: "(V_zi/R_zs + V_z/r_z)/(1/R_zs + 1/r_z)", sim: "V_{on}", nombre: "salida con el Zener conduciendo", unidad: V }
+    V_zo: { expr: "min(V_zd, V_zon)", sim: "V_{salida}", nombre: "tensión de salida", unidad: V }
+    I_zs: { expr: "(V_zi - V_zo)/R_zs", sim: "I_{s}", nombre: "corriente por R_s", unidad: A }
+    I_zl: { si: z_on, entonces: "V_zo/R_zl", sino: "0", sim: "I_{L}", nombre: "corriente de carga", unidad: A }
+    I_zz: { expr: "I_zs - I_zl", sim: "I_{Z}", nombre: "corriente del Zener", unidad: A }
+    V_nl: { expr: "min(V_zi*R_mm/(R_zs + R_mm), (V_zi/R_zs + V_z/r_z)/(1/R_zs + 1/r_z + 1/R_mm))", sim: "V_{vacío}", nombre: "salida con la carga desconectada", unidad: V }
+
+tarjetas:
+  - id: explore-familias
+    tipo: explorar
+    titulo: "Cada familia falla a su manera"
+    texto: "Y para cada una hay una comprobación que confirma en lugar de sospechar. Toque las filas."
+    libro: [453, 457, 466, 490]
+    widget:
+      tipo: figura
+      figura: fig-53.20
+      zonas:
+        - { id: f1, rotulo: "Primeras dos filas", rect: [2, 24, 446, 57], texto: "Electrolíticos: ESR en circuito. Semiconductores de potencia: prueba de diodos, cero en ambos sentidos." }
+        - { id: f2, rotulo: "Filas tres y cuatro", rect: [2, 81, 446, 47], texto: "Diodos: prueba de diodos y trazador para las fugas. Resistencias: si mide más de lo marcado, está mal." }
+        - { id: f3, rotulo: "Filas cinco y seis", rect: [2, 128, 446, 57], texto: "Reguladores: desconectar la carga. Cristales: sonda ×10 o un oscilador integrado." }
+        - { id: f4, rotulo: "Últimas dos filas", rect: [2, 186, 446, 45], texto: "Optoacopladores: el CTR frente a uno nuevo. Conectores y soldaduras: continuidad moviendo." }
+    requiere: { mover: [f1, f2, f3, f4] }
+
+  - id: toque-tantalo
+    tipo: tocar
+    titulo: "Un tántalo que falló en corto"
+    texto: "Toque el condensador de tántalo que falló en cortocircuito."
+    libro: [491]
+    widget:
+      tipo: figura
+      figura: fig-53.21
+      zonas:
+        - { id: izquierda-arriba, rotulo: "Grande, a la izquierda, arriba", rect: [85, 365, 240, 140] }
+        - { id: izquierda-abajo, rotulo: "Grande, a la izquierda, abajo", rect: [100, 510, 240, 140] }
+        - { id: centro-arriba, rotulo: "Negro, en el centro, arriba", rect: [545, 350, 245, 125] }
+        - { id: centro-abajo, rotulo: "Negro, en el centro, abajo", rect: [560, 480, 245, 150] }
+    tocar:
+      bien: [centro-abajo]
+      porque:
+        izquierda-arriba: "Está descolorido por el calor, pero entero."
+        izquierda-abajo: "Muestra la decoloración del calor, no la avería."
+        centro-arriba: "Ennegrecido por el hollín del vecino, pero su cuerpo está entero."
+    exito: "C334: el tántalo falla en cortocircuito, y su calor ennegrece a los de alrededor."
+    escalera:
+      - "Busque el cuerpo reventado, no solo el hollín."
+    solucion: "El de abajo del centro, C334."
+
+  - id: fusible-fundido
+    tipo: pregunta
+    titulo: "Fusible fundido"
+    texto: "Dos semiconductores de potencia en paralelo: la prueba de diodos da cero en ambos sentidos. ¿Cuál está en corto?"
+    libro: [462, 490]
+    widget:
+      tipo: figura
+      figura: fig-53.20
+      zonas:
+        - { id: f1, rotulo: "Primeras dos filas", rect: [2, 24, 446, 57] }
+        - { id: f2, rotulo: "Filas tres y cuatro", rect: [2, 81, 446, 47] }
+    opciones:
+      - texto: "No se sabe: los dos leen el corto; levantar una patilla lo decide"
+        bien: true
+        porque: "En paralelo, el corto de uno aparece en los dos. Con una patilla al aire se mide cada uno solo."
+      - texto: "El más caliente de los dos"
+        porque: "Con el aparato apagado no se calienta ninguno: hay que separarlos."
+      - texto: "Los dos: hay que cambiar ambos"
+        porque: "Sería sustituir por sospecha: uno de los dos puede estar sano."
+    escalera:
+      - "¿Qué ve la prueba de diodos entre dos puntos unidos por un corto?"
+    solucion: "Levantar una patilla decide cuál."
+
+  - id: averia-regulador
+    tipo: averia
+    titulo: "Un regulador sin salida correcta"
+    texto: "La entrada está bien y la salida no. Mida con la carga y sin ella, y diga dónde está el fallo."
+    nota: "Regulador sencillo con Zener; sano da unos 5,2 V."
+    libro: [473, 474]
+    fijar: { V_zi: 12, R_zs: 330, V_z: 5.1, r_z: 7, R_zl: 1000, z_on: 1, R_mm: 10000000 }
+    widget:
+      tipo: circuito
+      esquema: zener
+      piezas: { fuente: V_zi, rs: R_zs, vz: V_z, rz: r_z, carga: R_zl, interruptor: z_on }
+      mide: { salida: V_zo, serie: I_zs, iz: I_zz, carga: I_zl }
+      mandos: []
+    averia:
+      pasos: 2
+      sospechosos:
+        - { id: carga, rotulo: "Lo que cuelga de la salida" }
+        - { id: vz, rotulo: "El Zener" }
+        - { id: rs, rotulo: "La resistencia en serie" }
+      sondas:
+        - { id: salida, rotulo: "Salida, con la carga", valor: V_zo }
+        - { id: vacio, rotulo: "Salida, con la carga desconectada", valor: V_nl }
+        - { id: carga, rotulo: "Corriente de la carga", valor: I_zl }
+      fallos:
+        - { id: consumo-excesivo, pieza: carga, tipo: bajo, con: { R_zl: 47 }, texto: "Lo de aguas abajo consume de más: con carga la salida se hunde; desconectada, vuelve. El regulador está sano." }
+        - { id: rs-abierta, pieza: rs, tipo: abierta, con: { R_zs: 1e9 }, texto: "La resistencia en serie está abierta: no llega nada, con carga ni sin ella." }
+        - { id: zener-abierto, pieza: vz, tipo: abierta, con: { V_z: 30 }, texto: "El Zener está abierto: no regula y la salida sube, más aún sin carga." }
+    pistas:
+      - { texto: "Desconectar la carga separa el regulador de lo que alimenta." }
+    escalera:
+      - "Sano, da unos 5,2 V con carga y casi lo mismo sin ella."
+      - "Si sin carga la salida vuelve, el regulador está bien: el problema está aguas abajo."
+    solucion: "Salida baja que vuelve sin carga: aguas abajo. Nada en ningún caso: R_{s}. Salida alta: el Zener."
+    comprobar:
+      - { V_zo: 5.21, tol: 0.01 }
+      - { con: { R_zl: 47 }, V_zo: 1.5, V_nl: 5.24, tol: 0.01 }
+
+  - id: resistencia-sube
+    tipo: pregunta
+    titulo: "Las resistencias"
+    texto: "Una resistencia de 10 kΩ mide en circuito más de 10 kΩ. ¿Qué se concluye?"
+    libro: [468, 469]
+    widget:
+      tipo: figura
+      figura: fig-53.20
+      zonas:
+        - { id: f2, rotulo: "Filas tres y cuatro", rect: [2, 81, 446, 47] }
+        - { id: f3, rotulo: "Filas cinco y seis", rect: [2, 128, 446, 57] }
+    opciones:
+      - texto: "Está mal, aunque esté en circuito"
+        bien: true
+        porque: "En circuito solo puede leer igual o menos; si lee más, se ha abierto o ha subido."
+      - texto: "Puede estar bien: es el paralelo"
+        porque: "El paralelo solo baja la lectura, nunca la sube."
+      - texto: "Ha bajado de valor"
+        porque: "Las resistencias se abren o suben; casi nunca bajan."
+    escalera:
+      - "¿El resto del circuito en paralelo sube o baja la lectura?"
+    solucion: "Está mal: ha subido o está abierta."
+
+  - id: cristal
+    tipo: pregunta
+    titulo: "El cristal que no arranca"
+    texto: "¿Cuál es la prueba definitiva de un oscilador de cristal que no arranca?"
+    libro: [477]
+    widget:
+      tipo: figura
+      figura: fig-53.20
+      zonas:
+        - { id: f3, rotulo: "Filas cinco y seis", rect: [2, 128, 446, 57] }
+        - { id: f4, rotulo: "Últimas dos filas", rect: [2, 186, 446, 45] }
+    opciones:
+      - texto: "Sustituirlo por un oscilador integrado"
+        bien: true
+        porque: "Descarta a la vez el cristal y su circuito de carga."
+      - texto: "Medirlo con la sonda ×1"
+        porque: "La ×1 carga tanto que puede parar un oscilador sano: siempre ×10."
+      - texto: "Medir su continuidad"
+        porque: "Un cristal no conduce en continua: no dice nada."
+    escalera:
+      - "La prueba tiene que descartar el cristal y lo que lo rodea a la vez."
+    solucion: "Un oscilador integrado en su lugar."
+
+  - id: primeras-sospechas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "La tabla de primeras sospechas"
+    texto: "Una cada síntoma con su primer sospechoso."
+    libro: [486]
+    emparejar:
+      - ["Rizado alto", "Electrolíticos"]
+      - ["Fusible fundido", "Semiconductor de potencia"]
+      - ["Intermitente", "Soldaduras y conectores"]
+      - ["No arranca", "Alimentación, reloj, reset"]
+      - ["Se calienta sin señal", "Oscilación"]
+    exito: "Y la deriva con el tiempo: electrolíticos u optoacoplador."
+    pistas:
+      - { texto: "Calentarse sin señal es disipar sin trabajar: algo oscila." }
+    escalera:
+      - "El fusible se funde por un cortocircuito."
+    solucion: "Rizado: electrolíticos; fusible: potencia; intermitente: soldaduras; no arranca: alimentación; calor: oscilación."
+
+  - id: optoacoplador
+    tipo: pregunta
+    titulo: "Una fuente que se desajusta con los años"
+    texto: "La regulación de una fuente conmutada se ha ido desajustando con los años. ¿Qué se sospecha y cómo se confirma?"
+    libro: [480]
+    widget:
+      tipo: figura
+      figura: fig-53.20
+      zonas:
+        - { id: f3, rotulo: "Filas cinco y seis", rect: [2, 128, 446, 57] }
+        - { id: f4, rotulo: "Últimas dos filas", rect: [2, 186, 446, 45] }
+    opciones:
+      - texto: "El optoacoplador: su CTR, comparado con uno nuevo"
+        bien: true
+        porque: "El CTR se degrada con los años y la realimentación pierde ganancia."
+      - texto: "El cristal: con la sonda ×10"
+        porque: "Un cristal no arranca o arranca: no se desajusta poco a poco."
+      - texto: "Las resistencias: con el óhmetro"
+        porque: "Se abren o suben; la deriva lenta de la regulación apunta al optoacoplador."
+    escalera:
+      - "¿Qué componente de la realimentación envejece?"
+    solucion: "El optoacoplador, midiendo su CTR frente a uno nuevo."
+
+  - id: confirmar
+    tipo: porque
+    titulo: "Confirmar antes de sustituir"
+    texto: "Cada familia tiene su comprobación. ¿Por qué hacerla en vez de cambiar la pieza sospechosa?"
+    libro: [488, 489]
+    widget:
+      tipo: figura
+      figura: fig-53.20
+      zonas:
+        - { id: f1, rotulo: "Primeras dos filas", rect: [2, 24, 446, 57] }
+        - { id: f4, rotulo: "Últimas dos filas", rect: [2, 186, 446, 45] }
+    opciones:
+      - texto: "Cuesta menos que desoldar, y confirma o acota"
+        bien: true
+        porque: "Una que confirma cierra el diagnóstico; una que descarta acota la búsqueda."
+      - texto: "Porque el repuesto es caro"
+        porque: "Aunque fuera gratis, sustituir por sospecha introduce variables y no enseña."
+      - texto: "Porque desoldar está prohibido"
+        porque: "Se desuelda cuando hace falta; la cuestión es no hacerlo a ciegas."
+    escalera:
+      - "¿Qué se aprende de un cambio que no se ha confirmado?"
+    solucion: "Cuesta menos que desoldar y cierra o acota el diagnóstico."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [453, 473, 486, 488]
+    ideas:
+      - { titulo: "Cada familia.", texto: "Su forma de fallar y su comprobación: ESR, diodos, valor, CTR." }
+      - { titulo: "Reguladores.", texto: "Desconectar la carga: si la salida vuelve, el problema está aguas abajo." }
+      - { titulo: "Primeras sospechas.", texto: "Rizado: electrolíticos; fusible: potencia; intermitente: soldaduras." }
+      - { titulo: "Confirmar.", texto: "Antes de sustituir: cuesta menos que desoldar." }
