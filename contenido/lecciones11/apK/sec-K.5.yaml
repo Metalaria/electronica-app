@@ -1,0 +1,180 @@
+# Lección 1.2 de la sección K.5 «Coma Fija y Tiempo» (apK). Formato: contenido/lecciones11/GUIA.md (§5.2, §11).
+# Q16.16: el número es el entero entre 65 536 (bloque 52; 1,5 es 98 304 y, del ejercicio K.6, 2,5 es 163 840). La tabla
+# K.2 da los ciclos de cada operación en el ATmega328P (medidos en simavr: Complementos/codigo/apK/costes).
+leccion: apK/sec-K.5
+
+libro:
+  49: "Ciclos de cada operación en el ATmega328P"
+  50: "una de 32 bits cuesta 40 µs a 16 MHz"
+  52: "En Q16.16, un int32_t con 16 bits de fracción, el número es el entero dividido entre 65 536: 1,5 es 98 304"
+  54: "un integrador que se desborda y da la vuelta pasa de su máximo positivo al negativo"
+  55: "1 023 × 5 000 no cabe en un int de 16 bits"
+  57: "un bucle vacío no tiene efectos y el compilador lo elimina, salvo que su contador sea volatile"
+  "apK#70": "2,5 × 65 536 = 163 840"
+
+modelo:
+  valores:
+    n_q: { sim: "n", nombre: "entero guardado", unidad: "", valor: 65536 }
+    esc: { sim: "65 536", nombre: "escala de Q16.16", unidad: "", valor: 65536 }
+    x_q: { sim: "x", nombre: "número que se quiere guardar", unidad: "", valor: 1.5 }
+    # cells of table K.2: the generator reads adjacent table cells as one grouped number («144 146 488»), so these
+    # values are restated here and checked against the table by hand (peticiones-motor12.md)
+    k_fsum: { sim: "ciclos", nombre: "suma de float (tabla K.2)", unidad: "", valor: 144 }
+    k_fdiv: { sim: "ciclos", nombre: "división de float (tabla K.2)", unidad: "", valor: 488 }
+    k_ddiv: { sim: "ciclos", nombre: "división de int32_t (tabla K.2)", unidad: "", valor: 628 }
+  calculos:
+    val_q: { expr: "n_q/esc", sim: "valor", nombre: "número que representa", unidad: "", cifras: 4 }
+    ent_q: { expr: "x_q*esc", sim: "n", nombre: "entero que lo representa", unidad: "" }
+
+tarjetas:
+  - id: explore-q16
+    tipo: explorar
+    titulo: "Un entero que es un número con decimales"
+    texto: "En Q16.16, un int32_t guarda el número multiplicado por 65 536. Elija el entero y lea el número que representa."
+    libro: [52, "apK#70"]
+    widget:
+      tipo: grafica
+      x: { id: nn, min: 0, max: 200000, unidad: "", rotulo: "entero guardado" }
+      y: { min: 0, max: 3.2, unidad: "", rotulo: "número" }
+      curvas:
+        - { expr: "nn/esc", color: azul, rotulo: "n / 65 536" }
+      marcas:
+        - { x: "n_q", y: "val_q", rotulo: "{{val_q}}" }
+      lectura: { valor: val_q, rotulo: "Número representado" }
+      mandos:
+        - { valor: n_q, lista: [65536, 98304, 163840], rotulo: "Entero guardado" }
+    requiere: { mover: [n_q] }
+
+  - id: estime-q16
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "1,5 en Q16.16"
+    texto: "¿Qué entero guarda 1,5 en formato Q16.16?"
+    libro: [52]
+    fijar: { x_q: 1.5 }
+    widget:
+      tipo: grafica
+      x: { id: nn, min: 0, max: 200000, unidad: "", rotulo: "entero guardado" }
+      y: { min: 0, max: 3.2, unidad: "", rotulo: "número" }
+      curvas:
+        - { expr: "nn/esc", color: azul, rotulo: "n / 65 536" }
+    estimar:
+      objetivo: "ent_q"
+      unidad: ""
+      min: 0
+      max: 200704
+      paso: 1024
+      inicio: 163840
+      tol: 0.01
+      rotulo: "Entero en Q16.16"
+    exito: "98 304: resolución de 1/65 536 e intervalo de ± 32 768."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 98304 }, texto: "Se ha pasado: multiplique 1,5 por 65 536." }
+      - { texto: "Se ha quedado corto: multiplique 1,5 por 65 536." }
+    escalera: ["El entero es el número por 65 536."]
+    solucion: "1,5 × 65 536 = 98 304."
+    comprobar:
+      - { ent_q: 98304 }
+
+  - id: empareje-costes
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Lo que cuesta cada operación"
+    texto: "Una cada operación en el ATmega328P con sus ciclos, según la tabla K.2."
+    libro: [49]
+    emparejar:
+      - ["Producto de uint8_t", "10 ciclos"]
+      - ["Suma de float", "144 ciclos"]
+      - ["División de float", "488 ciclos"]
+      - ["División de int32_t", "628 ciclos"]
+    exito: "El AVR multiplica 8 × 8 bits en hardware, pero no divide en ningún tamaño."
+    pistas:
+      - { texto: "La más cara es una división entera de 32 bits." }
+    escalera: ["El multiplicador de 8 bits hace barato el producto corto."]
+    solucion: "Producto uint8_t, 10; suma float, 144; división float, 488; división int32_t, 628."
+    comprobar:
+      - { k_fsum: 144, k_fdiv: 488, k_ddiv: 628 }
+
+  - id: prediga-float-isr
+    tipo: predecir
+    titulo: "float en una interrupción"
+    texto: "Una interrupción del AVR se dispara a decenas de kilohercios y hace varias operaciones float. ¿Es buena idea?"
+    libro: [49, 50]
+    widget:
+      tipo: grafica
+      x: { id: nn, min: 0, max: 200000, unidad: "", rotulo: "entero guardado" }
+      y: { min: 0, max: 3.2, unidad: "", rotulo: "número" }
+      curvas:
+        - { expr: "nn/esc", color: azul, rotulo: "Q16.16" }
+    opciones:
+      - { texto: "No: cada operación float cuesta de cien a ciento cincuenta ciclos", bien: true, porque: "Para cálculos de vez en cuando no es prohibitivo; a decenas de kilohercios, sí." }
+      - { texto: "Sí: el float es tan barato como un entero", porque: "Una suma de uint8_t son 5 ciclos y una de float, 144." }
+      - { texto: "Sí, si se declara double", porque: "En este avr-gcc, double es un float de 32 bits: cuesta lo mismo." }
+    escalera: ["Mire la fila float de la tabla K.2."]
+    solucion: "No: de cien a ciento cincuenta ciclos por operación son demasiado en una interrupción tan frecuente."
+    comprobar:
+      - { k_fsum: 144 }
+
+  - id: porque-saturar
+    tipo: porque
+    titulo: "Saturar, no dar la vuelta"
+    texto: "q16_mul satura en lugar de dejar que el resultado dé la vuelta. ¿Por qué es lo correcto en control?"
+    libro: [54]
+    widget:
+      tipo: grafica
+      x: { id: nn, min: 0, max: 200000, unidad: "", rotulo: "entero guardado" }
+      y: { min: 0, max: 3.2, unidad: "", rotulo: "número" }
+      curvas:
+        - { expr: "nn/esc", color: azul, rotulo: "Q16.16" }
+    opciones:
+      - { texto: "Un integrador que da la vuelta pasa de su máximo positivo al negativo", bien: true, porque: "Mandaría el actuador al otro extremo; saturado, se queda en el máximo." }
+      - { texto: "Porque saturar es más rápido", porque: "Cuesta dos comparaciones más: se hace por seguridad, no por velocidad." }
+      - { texto: "Porque el compilador no permite desbordar", porque: "Lo permite, y con signo es indefinido: por eso se comprueba a mano." }
+    escalera: ["¿Qué hace un motor si su consigna salta de máximo positivo a máximo negativo?"]
+    solucion: "Dar la vuelta invierte el actuador; saturar lo deja en el máximo."
+
+  - id: pregunta-ul
+    tipo: pregunta
+    titulo: "Un convertidor a milivoltios"
+    texto: "mv = (lectura * 5000ul + 512) / 1024 pasa una lectura de 10 bits a milivoltios con 5 V. ¿Por qué el ul?"
+    libro: [55]
+    widget:
+      tipo: grafica
+      x: { id: nn, min: 0, max: 200000, unidad: "", rotulo: "entero guardado" }
+      y: { min: 0, max: 3.2, unidad: "", rotulo: "número" }
+      curvas:
+        - { expr: "nn/esc", color: azul, rotulo: "enteros escalados" }
+    opciones:
+      - { texto: "1 023 × 5 000 no cabe en un int de 16 bits del AVR", bien: true, porque: "Con ul el producto se hace en 32 bits. Y el 512 redondea al más próximo en lugar de truncar." }
+      - { texto: "Para que el resultado tenga decimales", porque: "Sigue siendo entero: ul solo le da 32 bits sin signo." }
+      - { texto: "No hace falta: el resultado cabe en 16 bits", porque: "El resultado cabe, pero el producto intermedio no." }
+    escalera: ["¿Cuánto vale el producto con la lectura máxima?"]
+    solucion: "El producto intermedio se desborda en 16 bits: ul lo hace de 32."
+
+  - id: pregunta-retardo
+    tipo: pregunta
+    titulo: "Un retardo que desaparece"
+    texto: "Un retardo hecho con un bucle vacío funciona sin optimizar y desaparece con -Os. ¿Por qué?"
+    libro: [57]
+    widget:
+      tipo: grafica
+      x: { id: nn, min: 0, max: 200000, unidad: "", rotulo: "entero guardado" }
+      y: { min: 0, max: 3.2, unidad: "", rotulo: "número" }
+      curvas:
+        - { expr: "nn/esc", color: azul, rotulo: "Q16.16" }
+    opciones:
+      - { texto: "El bucle no tiene efectos y el compilador lo elimina", bien: true, porque: "Salvo que su contador sea volatile; y aun así su duración cambia con el compilador. Mejor _delay_us() o un temporizador." }
+      - { texto: "Porque -Os acelera el reloj", porque: "La optimización no toca el reloj: quita el bucle." }
+      - { texto: "Porque el contador se desborda", porque: "No llega a contar: el bucle ya no está." }
+    escalera: ["¿Cambia algo observable que el bucle no se ejecute?"]
+    solucion: "Sin efectos, el compilador lo quita: para medir y esperar, hardware."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [49, 52, 54, 55]
+    ideas:
+      - { titulo: "Lo que cuesta.", texto: "En el AVR, dividir es caro y el float, de cien a ciento cincuenta ciclos." }
+      - { titulo: "Coma fija.", texto: "Q16.16: el número por 65 536; multiplicar con resultado doble y saturar." }
+      - { titulo: "Enteros escalados.", texto: "Con ul en el AVR, y sumando la mitad para redondear." }
+      - { titulo: "Tiempo.", texto: "Restar para comparar; medir con hardware." }

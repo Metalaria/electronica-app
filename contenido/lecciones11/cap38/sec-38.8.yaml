@@ -1,0 +1,222 @@
+# Lección 1.2 de la sección 39.8 «DMA: Mover Datos sin Molestar al Núcleo» (cap38; etiqueta interna sec-38.8).
+# Formato: contenido/lecciones11/GUIA.md (§5.2, §11). La carga del procesador de la figura 39.12: una interrupción por
+# byte de 3 µs frente a una por trama de 64 bytes con DMA, para la UART de 115 200 baudios (11 520 bytes/s) y el ADC de
+# 1 MS/s. Figura 39.12 con svg_vista 445,52 × 220,27.
+leccion: cap38/sec-38.8
+
+libro:
+  230: "Son varias instrucciones por byte, y con un flujo continuo el núcleo no hace otra cosa"
+  231: "un motor de copia independiente que hace ese trabajo sin intervención del núcleo"
+  233: "Una UART a 115 200 baudios entrega unos 11 520 bytes por segundo"
+  234: "hay una sola interrupción por trama en lugar de una por byte"
+  235: "muestrear un ADC a 1 MS/s son un millón de interrupciones por segundo, inviable por software y trivial con DMA"
+  242: "transfiere n elementos y para, avisando con una interrupción"
+  243: "al llegar al final vuelve al principio indefinidamente"
+  244: "mientras el DMA llena un buffer, el programa procesa el otro"
+  248: "el núcleo puede seguir viendo el valor viejo de su caché"
+  249: "Un buffer que el DMA modifica debe declararse volatile"
+  250: "procesar solo la parte que el DMA ya ha completado"
+  253: "para transferencias pequeñas y esporádicas, la configuración cuesta más ciclos que la propia copia"
+  255: "el ciclo de trabajo de esa señal se desploma"
+  257: "Carga del procesador con interrupción por byte frente a DMA, y las tres trampas del DMA"
+
+modelo:
+  valores:
+    tasa: { sim: "bytes/s", nombre: "bytes por segundo", unidad: "B/s", valor: 11520 }
+    t_int: { sim: "t_{int}", nombre: "coste de cada interrupción", unidad: s, valor: 0.000003 }
+    n_trama: { sim: "n", nombre: "bytes por trama", unidad: "", valor: 64 }
+  calculos:
+    carga_int: { expr: "tasa*t_int*100", sim: "carga", nombre: "carga con una interrupción por byte", unidad: "%", cifras: 2 }
+    t_ps: { expr: "tasa*t_int", sim: "t", nombre: "tiempo de interrupciones por segundo", unidad: s }
+    carga_dma: { expr: "tasa/n_trama*t_int*100", sim: "carga", nombre: "carga con DMA por trama", unidad: "%", cifras: 2 }
+
+tarjetas:
+  - id: explore-carga
+    tipo: explorar
+    titulo: "Una interrupción por byte"
+    texto: "Cada interrupción cuesta 3 µs. Elija el flujo de datos y compare la carga del procesador con DMA y sin él."
+    libro: [230, 233, 234, 235, 257]
+    widget:
+      tipo: grafica
+      x: { id: r, min: 100, max: 2000000, unidad: "B/s", rotulo: "bytes por segundo", escala: log }
+      y: { min: 0.001, max: 1000, unidad: "%", rotulo: "carga del procesador", escala: log }
+      curvas:
+        - { expr: "r*t_int*100", color: naranja, rotulo: "una interrupción por byte" }
+        - { expr: "r/n_trama*t_int*100", color: verde, rotulo: "DMA, una por trama de 64 bytes" }
+      marcas:
+        - { x: "tasa", y: "carga_int", rotulo: "{{carga_int}}" }
+        - { x: "tasa", y: "carga_dma", rotulo: "{{carga_dma}}" }
+      lectura: { valor: carga_int, rotulo: "Carga sin DMA" }
+      datos:
+        - { valor: carga_dma, rotulo: "Con DMA: {{carga_dma}}" }
+      mandos:
+        - { valor: tasa, lista: [11520, 1000000], nombres: ["UART a 115 200 baudios", "ADC a 1 MS/s"], rotulo: "Flujo de datos" }
+    requiere: { mover: [tasa] }
+
+  - id: estime-uart
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La UART sin DMA"
+    texto: "11 520 interrupciones por segundo de 3 µs cada una. ¿Qué parte del procesador se va en mover bytes?"
+    libro: [233]
+    fijar: { tasa: 11520 }
+    widget:
+      tipo: figura
+      figura: fig-38.12
+      zonas:
+        - { id: trampas, rotulo: "Recuadros de la derecha", rect: [280, 28, 161, 164], texto: "Las tres trampas del DMA." }
+    estimar:
+      objetivo: "carga_int"
+      unidad: "%"
+      min: 0
+      max: 10
+      paso: 0.1
+      inicio: 8
+      tol: 0.05
+      rotulo: "Carga del procesador"
+    exito: "Un 3,5 %, solo en mover bytes, y cada interrupción añade latencia a todo lo demás."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 3.5 }, texto: "Se ha pasado: 11 520 × 3 µs son unos 35 ms de cada segundo." }
+      - { texto: "Se ha quedado corto: 11 520 × 3 µs son unos 35 ms de cada segundo." }
+    escalera: ["Multiplique las interrupciones por segundo por lo que dura cada una."]
+    solucion: "11 520 × 3 µs ≈ 0,035 s por segundo: un 3,5 %."
+    comprobar:
+      - { carga_int: 3.456, tol: 0.001, t_ps: 0.03456 }
+
+  - id: prediga-adc
+    tipo: predecir
+    titulo: "Un ADC a 1 MS/s"
+    texto: "Un ADC entrega un millón de muestras por segundo, con una interrupción de 3 µs por muestra. ¿Qué pasa?"
+    libro: [235]
+    fijar: { tasa: 1000000 }
+    widget:
+      tipo: grafica
+      x: { id: r, min: 100, max: 2000000, unidad: "B/s", rotulo: "muestras por segundo", escala: log }
+      y: { min: 0.001, max: 1000, unidad: "%", rotulo: "carga del procesador", escala: log }
+      curvas:
+        - { expr: "r*t_int*100", color: naranja, rotulo: "una interrupción por muestra" }
+      lectura: { valor: carga_int, rotulo: "Carga sin DMA" }
+      ocultar: true
+    opciones:
+      - { texto: "Es inviable: haría falta más procesador del que hay", bien: true, porque: "Un millón de interrupciones de 3 µs son el 300 %: imposible por software, trivial con DMA." }
+      - { texto: "Funciona, con el procesador muy cargado", porque: "No cabe: pide tres veces el tiempo que hay." }
+      - { texto: "Funciona igual que la UART", porque: "La UART son once mil bytes por segundo; aquí, cien veces más." }
+    escalera: ["¿Cuánto suman un millón de veces 3 µs?"]
+    solucion: "3 s de trabajo por cada segundo: un 300 %, inviable sin DMA."
+    comprobar:
+      - { carga_int: 300 }
+
+  - id: empareje-modos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los modos del DMA"
+    texto: "Una cada modo con lo que hace."
+    libro: [242, 243, 244]
+    emparejar:
+      - ["Simple", "Transfiere n elementos, para y avisa con una interrupción"]
+      - ["Circular", "Al llegar al final vuelve al principio, indefinidamente"]
+      - ["Doble buffer", "El DMA llena uno mientras el programa procesa el otro"]
+    exito: "El circular sirve para la adquisición continua; el doble buffer, para procesar un flujo sin perder datos."
+    pistas:
+      - { texto: "El que intercambia dos buffers es el ping-pong." }
+    escalera: ["¿Cuál de ellos no termina nunca?"]
+    solucion: "Simple, n y para; circular, vuelve al principio; doble buffer, llena uno y procesa el otro."
+
+  - id: toque-cache
+    tipo: tocar
+    titulo: "El valor viejo"
+    texto: "En un procesador con caché, el núcleo lee un buffer que acaba de escribir el DMA y ve datos viejos. Toque la trampa."
+    libro: [248, 249, 250, 257]
+    widget:
+      tipo: figura
+      figura: fig-38.12
+      zonas:
+        - { id: cache, rotulo: "Primer recuadro de la derecha", rect: [280, 28, 161, 50] }
+        - { id: compilador, rotulo: "Segundo recuadro de la derecha", rect: [280, 86, 161, 49] }
+        - { id: medio, rotulo: "Tercer recuadro de la derecha", rect: [280, 143, 161, 49] }
+    tocar:
+      bien: [cache]
+      porque:
+        compilador: "Esa trampa es no declarar el buffer volatile; aquí el dato viejo está en la caché del núcleo."
+        medio: "Leer a medio transferir mezcla datos nuevos y viejos; aquí la transferencia ya terminó."
+    exito: "Coherencia con la caché: hay que invalidarla o vaciarla, o poner los buffers en zonas no cacheables."
+    escalera: ["¿Dónde guarda el núcleo una copia del dato?"]
+    solucion: "Coherencia con la caché, el primer recuadro."
+
+  - id: pregunta-volatile
+    tipo: pregunta
+    titulo: "El buffer del DMA"
+    texto: "¿Por qué un buffer que modifica el DMA debe declararse volatile?"
+    libro: [249, 257]
+    widget:
+      tipo: figura
+      figura: fig-38.12
+      zonas:
+        - { id: compilador, rotulo: "Segundo recuadro de la derecha", rect: [280, 86, 161, 49], texto: "Coherencia con el compilador." }
+    opciones:
+      - { texto: "El compilador no sabe que algo externo lo cambia", bien: true, porque: "Por la misma razón que en las interrupciones: sin volatile puede leerlo una vez y no ver los cambios." }
+      - { texto: "Para que el DMA pueda escribir en él", porque: "El DMA escribe igual; volatile es para el compilador, no para el DMA." }
+      - { texto: "Para que no se guarde en la caché", porque: "volatile no gobierna la caché: eso se resuelve invalidándola o con zonas no cacheables." }
+    escalera: ["¿Ve el compilador alguna instrucción que escriba en el buffer?"]
+    solucion: "Algo externo lo cambia sin que el compilador lo vea."
+
+  - id: porque-doble
+    tipo: porque
+    titulo: "¿Por qué dos buffers?"
+    texto: "Leer el buffer mientras el DMA lo llena da una mezcla de datos nuevos y viejos. ¿Por qué el doble buffer lo evita?"
+    libro: [244, 250]
+    widget:
+      tipo: figura
+      figura: fig-38.12
+      zonas:
+        - { id: medio, rotulo: "Tercer recuadro de la derecha", rect: [280, 143, 161, 49], texto: "Datos a medio transferir." }
+    opciones:
+      - { texto: "El programa solo procesa el buffer que el DMA ya ha completado", bien: true, porque: "Mientras uno se llena, el otro está quieto: nunca se leen datos a medias." }
+      - { texto: "Porque el DMA va el doble de rápido", porque: "La velocidad es la misma: lo que cambia es que nunca se lee el que se está llenando." }
+      - { texto: "Porque guarda dos copias de cada dato", porque: "No copia nada: alterna dos zonas." }
+    escalera: ["¿Qué buffer está tocando el DMA mientras el programa procesa?"]
+    solucion: "El programa procesa el buffer completo mientras el DMA llena el otro."
+
+  - id: pregunta-cuando-no
+    tipo: pregunta
+    titulo: "¿Siempre DMA?"
+    texto: "¿Cuándo no compensa configurar un DMA?"
+    libro: [253, 257]
+    widget:
+      tipo: figura
+      figura: fig-38.12
+      zonas:
+        - { id: grafica, rotulo: "Gráfica de la izquierda", rect: [38, 4, 227, 187], texto: "Carga del procesador frente a bytes por segundo." }
+    opciones:
+      - { texto: "En transferencias pequeñas y esporádicas", bien: true, porque: "La configuración cuesta más ciclos que la copia: se usa cuando el flujo es continuo, grande o crítico." }
+      - { texto: "En un flujo continuo de un ADC", porque: "Ahí es donde más rinde: es el caso típico." }
+      - { texto: "Al generar señales con temporización exacta", porque: "Es una de sus aplicaciones más elegantes: precisión de ciclos sin software." }
+    escalera: ["¿Qué cuesta más, configurar el DMA o copiar cuatro bytes?"]
+    solucion: "En transferencias pequeñas y esporádicas."
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "Un pin sube al entrar en la rutina de proceso y baja al salir. ¿Qué ve al pasar de interrupción por byte a DMA por trama?"
+    libro: [255, 257]
+    widget:
+      tipo: figura
+      figura: fig-38.12
+      zonas:
+        - { id: grafica, rotulo: "Gráfica de la izquierda", rect: [38, 4, 227, 187], texto: "Carga con y sin DMA." }
+    opciones:
+      - { texto: "El ciclo de trabajo del pin se desploma", bien: true, porque: "Ahí se ve directamente el procesador liberado." }
+      - { texto: "El pin se queda siempre alto", porque: "Al contrario: el procesador pasa mucho menos tiempo en esa rutina." }
+      - { texto: "Nada cambia en el pin", porque: "Cambia: hay una interrupción por trama en vez de una por byte." }
+    escalera: ["¿Cuántas veces entra en la rutina con DMA, frente a antes?"]
+    solucion: "El ciclo de trabajo se desploma: el procesador queda libre."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [231, 234, 244, 248]
+    ideas:
+      - { titulo: "Un motor de copia.", texto: "El DMA mueve datos sin el núcleo: una interrupción por trama." }
+      - { titulo: "Posible o imposible.", texto: "Un ADC a 1 MS/s es inviable por interrupción y trivial con DMA." }
+      - { titulo: "Doble buffer.", texto: "Llenar uno, procesar el otro: sin datos a medias." }
+      - { titulo: "Trampas.", texto: "Caché, volatile y datos a medio transferir." }
