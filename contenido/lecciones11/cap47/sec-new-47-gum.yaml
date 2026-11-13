@@ -1,0 +1,432 @@
+# Lección 1.2 de la sección 48.4 «Evaluar la Incertidumbre: el Método de la GUM» (cap47; etiqueta interna
+# sec-new-47-gum). Formato: contenido/lecciones11/GUIA.md. El paso práctico aprobado por el dueño: el lector estima
+# primero la incertidumbre de la corriente del shunt del libro (bloque 133) y después la app le guía por el balance
+# completo (tipo A, tipo B, certificado, deriva, combinación, Welch-Satterthwaite, k y resultado) y le deja comparar.
+# El modelo reproduce la tabla del bloque 134: s = 0,10232 mV de las cinco lecturas, a = 0,05 % · 100,098 mV + 3 ·
+# 0,01 mV = 0,0801 mV, U = 0,006 mΩ con k = 2 y δ = ± 200 ppm. La gráfica de Monte Carlo dibuja la densidad de la t de
+# Student de 4 grados de libertad (cinco lecturas) o de 19 (veinte) frente a la normal, en escala logarítmica para que
+# se vean las colas (bloque 140); su constante de normalización es Γ((ν+1)/2)/(√(νπ)·Γ(ν/2)): 3/8 y 0,39373.
+leccion: cap47/sec-new-47-gum
+
+libro:
+  111: "El método tiene cinco pasos"
+  113: "Para medir una corriente de unos 10 A con un shunt de 10 mΩ y un multímetro"
+  114: 'I = V / (R_"s" dot.op (1 + δ))'
+  115: "se toma δ = 0 con su incertidumbre"
+  117: "las dos valen lo mismo"
+  118: "Evaluación de tipo A"
+  119: "triangular"
+  120: "contaría 1,73 veces lo que le corresponde"
+  122: "multiplicada por la derivada del modelo respecto a su entrada"
+  123: "c_i = (partial f)/(partial x_i)"
+  124: "los coeficientes relativos valen 1 para V"
+  126: "k = 2 da un intervalo del 95 %"
+  127: "La fórmula de Welch-Satterthwaite da los grados de libertad efectivos del conjunto"
+  128: 'ν_"ef"'
+  129: "Se redondea hacia abajo"
+  130: "4,53"
+  131: "Con más de unos 50 grados de libertad efectivos, k = 2 basta."
+  133: "100,03, 100,21, 100,12, 99,96 y 100,17 mV"
+  134: "rectangular, a = 0,0801 mV"
+  135: "k = 2,11 y U = 15,3 mA"
+  136: "I = 9,998 A ± 0,015 A"
+  137: "La dispersión y la especificación del multímetro pesan lo mismo"
+  138: "El error más común es combinar mezclas"
+  140: "se sortea con una t de Student"
+  142: "aquí difieren 1,6 mA y manda Monte Carlo"
+  143: "El balance"
+  145: "pasar de 7,25 a 6 mA cuesta veinte lecturas"
+
+modelo:
+  valores:
+    n_l: { sim: "n", nombre: "número de lecturas", unidad: "", valor: 5 }
+    s_V: { sim: "s", nombre: "desviación típica de una lectura", unidad: V, valor: 0.00010232 }
+    V_m: { sim: "V", nombre: "media de las lecturas", unidad: V, valor: 0.100098, cifras: 6 }
+    R_s: { sim: "R_{s}", nombre: "resistencia del shunt", unidad: Ω, valor: 0.010012, cifras: 5 }
+    p_a: { sim: "a", nombre: "término proporcional de la especificación", unidad: "", valor: 0.0005 }
+    d_b: { sim: "b", nombre: "término fijo de la especificación, tres dígitos", unidad: V, valor: 0.00003 }
+    U_R: { sim: "U", nombre: "incertidumbre expandida del certificado", unidad: Ω, valor: 0.000006 }
+    k_R: { sim: "k", nombre: "factor de cobertura del certificado", unidad: "", valor: 2 }
+    a_d: { sim: "a_{δ}", nombre: "límite de la deriva térmica", unidad: "", valor: 0.0002 }
+    d_x: { sim: "δ", nombre: "deriva térmica del shunt", unidad: "ppm", valor: 0 }
+    veinte: { tipo: interruptor, nombre: "veinte lecturas en lugar de cinco", valor: 0 }
+  calculos:
+    I_m: { expr: "V_m/R_s", sim: "I", nombre: "corriente medida", unidad: A, cifras: 5 }
+    I_x: { expr: "V_m/(R_s*(1 + d_x/1000000))", sim: "I", nombre: "corriente con la deriva", unidad: A, cifras: 5 }
+    u_A: { expr: "s_V/sqrt(n_l)", sim: "u_{A}", nombre: "incertidumbre de la media", unidad: V }
+    a_V: { expr: "p_a*V_m + d_b", sim: "a", nombre: "límite de la especificación", unidad: V }
+    u_B: { expr: "a_V/sqrt(3)", sim: "u_{B}", nombre: "incertidumbre de la especificación", unidad: V }
+    u_Bm: { expr: "a_V/2", sim: "a/2", nombre: "el límite partido por dos", unidad: V }
+    u_Bt: { expr: "a_V/sqrt(6)", sim: "a/√6", nombre: "el límite con distribución triangular", unidad: V }
+    u_R: { expr: "U_R/k_R", sim: "u(R_{s})", nombre: "incertidumbre del certificado", unidad: Ω }
+    u_d: { expr: "a_d/sqrt(3)", sim: "u(δ)", nombre: "incertidumbre de la deriva", unidad: "" }
+    c_A: { expr: "I_m*u_A/V_m", sim: "c·u_{A}", nombre: "contribución de las lecturas", unidad: A }
+    c_B: { expr: "I_m*u_B/V_m", sim: "c·u_{B}", nombre: "contribución del multímetro", unidad: A }
+    c_R: { expr: "I_m*u_R/R_s", sim: "c·u(R_{s})", nombre: "contribución del certificado", unidad: A }
+    c_D: { expr: "I_m*u_d", sim: "c·u(δ)", nombre: "contribución de la deriva", unidad: A }
+    u_c: { expr: "sqrt(c_A^2 + c_B^2 + c_R^2 + c_D^2)", sim: "u_{c}", nombre: "incertidumbre combinada", unidad: A }
+    u_suelo: { expr: "sqrt(c_B^2 + c_R^2 + c_D^2)", sim: "u_{c,∞}", nombre: "suelo con infinitas lecturas", unidad: A }
+    nu_ef: { expr: "u_c^4/(c_A^4/(n_l - 1))", sim: "ν_{ef}", nombre: "grados de libertad efectivos", unidad: "" }
+    U_e: { expr: "2.11*u_c", sim: "U", nombre: "incertidumbre expandida", unidad: A }
+    suma_lin: { expr: "c_A + c_B + c_R + c_D", sim: "Σ", nombre: "suma lineal de las contribuciones", unidad: A }
+    sin_raiz3: { expr: "sqrt(c_A^2 + (I_m*a_V/V_m)^2 + c_R^2 + c_D^2)", sim: "u'", nombre: "con la especificación sin dividir", unidad: A }
+    sin_raizn: { expr: "sqrt((I_m*s_V/V_m)^2 + c_B^2 + c_R^2 + c_D^2)", sim: "u'", nombre: "con s sin dividir por √n", unidad: A }
+    con_k: { expr: "sqrt(c_A^2 + c_B^2 + (I_m*U_R/R_s)^2 + c_D^2)", sim: "u'", nombre: "con la U del certificado", unidad: A }
+    mezcla: { expr: "sqrt((I_m*s_V/V_m)^2 + (I_m*a_V/V_m)^2 + (I_m*U_R/R_s)^2 + c_D^2)", sim: "u'", nombre: "con las tres mezclas", unidad: A }
+    nu_t: { si: veinte, entonces: "19", sino: "4", sim: "ν", nombre: "grados de libertad de la media", unidad: "" }
+    c_t: { si: veinte, entonces: "0.393730", sino: "0.375", sim: "c", nombre: "constante de la t de Student", unidad: "" }
+
+tarjetas:
+  - id: estime-primero
+    tipo: simular
+    titulo: "Estime antes de calcular"
+    texto: "Corriente de unos 10 A con un shunt de 10 mΩ: las cinco lecturas, el multímetro y el certificado de la gráfica. ¿Cuánto vale la incertidumbre típica combinada, u_{c}?"
+    libro: [113, 133, 138]
+    widget:
+      tipo: grafica
+      x: { id: j, min: 0.5, max: 5.5, unidad: "", rotulo: "lectura" }
+      y: { min: -0.2, max: 0.4, unidad: "", rotulo: "lectura − 100 mV, en mV" }
+      curvas:
+        - { expr: "1000*V_m - 100", color: azul, rotulo: "la media", discontinua: true }
+      marcas:
+        - { x: "1", y: "0.03", rotulo: "100,03 mV", guias: false }
+        - { x: "2", y: "0.21", rotulo: "100,21 mV", guias: false }
+        - { x: "3", y: "0.12", rotulo: "100,12 mV", guias: false }
+        - { x: "4", y: "-0.04", rotulo: "99,96 mV", guias: false }
+        - { x: "5", y: "0.17", rotulo: "100,17 mV", guias: false }
+      datos:
+        - { valor: p_a, rotulo: "Multímetro: ± (0,05 % de la lectura + 3 dígitos), resolución 0,01 mV" }
+        - { valor: R_s, rotulo: "Shunt: 10,012 mΩ, U = 0,006 mΩ (k = 2)" }
+        - { valor: a_d, rotulo: "Deriva térmica: δ entre ±200 ppm" }
+      lectura: { valor: u_c, rotulo: "Incertidumbre combinada" }
+      ocultar: true
+    simular:
+      objetivo: u_c
+      unidad: A
+      tol: 0.1
+      rotulo: "Incertidumbre típica combinada, u_{c}"
+      errores:
+        - { expr: "suma_lin", texto: "Ha sumado las contribuciones: unos 13,3 mA. Si son independientes, se combinan en cuadratura." }
+        - { expr: "mezcla", texto: "Ha mezclado límites y desviaciones: especificación sin √3, s sin √n y la U con su k. Es el error más común." }
+        - { expr: "sin_raizn", texto: "Ha usado s, la dispersión de una lectura. La de la media de cinco es s/√5." }
+        - { expr: "sin_raiz3", texto: "Ha usado la especificación tal cual: es un límite y hay que dividirla por √3." }
+        - { expr: "con_k", texto: "Ha tomado la U del certificado con su k = 2: la típica es U/k." }
+        - { expr: "U_e", texto: "Esa es la expandida, con su factor de cobertura. Se pedía la típica combinada." }
+    exito: "Unos 7,25 mA. Las tarjetas siguientes construyen el balance término a término."
+    escalera:
+      - "Pase cada término a incertidumbre típica antes de sumar nada."
+      - "Lecturas, s/√5; especificación, a/√3; certificado, U/k; deriva, a/√3. Luego, en cuadratura."
+    solucion: "4,57, 4,62, 3,00 y 1,15 mA en cuadratura dan u_{c} = 7,25 mA."
+    comprobar:
+      - { u_c: 0.007246, suma_lin: 0.01334, mezcla: 0.01434, sin_raizn: 0.01166, sin_raiz3: 0.00975, con_k: 0.00891, U_e: 0.01529, tol: 0.01 }
+
+  - id: modelo
+    tipo: formula
+    titulo: "El modelo de la medida"
+    texto: "La corrección δ vale cero, pero su incertidumbre no. Muévala entre sus límites y mire la corriente."
+    libro: [114, 115, 133]
+    ec: 114
+    sustitucion: "{{V_m}} / ({{R_s}} · (1 + {{d_x}})) = {{I_x}}"
+    widget:
+      tipo: grafica
+      x: { id: dd, min: -300, max: 300, unidad: "ppm", rotulo: "δ" }
+      y: { min: -5, max: 1, unidad: "", rotulo: "I − 10 A, en mA" }
+      curvas:
+        - { expr: "1000*(V_m/(R_s*(1 + dd/1000000)) - 10)", color: naranja, rotulo: "la corriente" }
+      marcas:
+        - { x: "d_x", y: "1000*(I_x - 10)", rotulo: "{{I_x}}" }
+      lectura: { valor: I_x, rotulo: "Corriente" }
+      mandos:
+        - { valor: d_x, lista: [-200, -100, 0, 100, 200], rotulo: "Deriva δ, entre ±200 ppm" }
+    requiere: { mover: [d_x] }
+
+  - id: tipo-a
+    tipo: pregunta
+    titulo: "Tipo A: la media de cinco"
+    texto: "Las cinco lecturas tienen s = 0,102 mV. ¿Cuánto vale la incertidumbre típica de su media?"
+    libro: [117, 118, 133]
+    widget:
+      tipo: grafica
+      x: { id: j, min: 0.5, max: 5.5, unidad: "", rotulo: "lectura" }
+      y: { min: -0.2, max: 0.4, unidad: "", rotulo: "lectura − 100 mV, en mV" }
+      curvas:
+        - { expr: "1000*V_m - 100", color: azul, rotulo: "la media" }
+        - { expr: "1000*(V_m + s_V) - 100", color: tinta, rotulo: "media + s", discontinua: true }
+        - { expr: "1000*(V_m - s_V) - 100", color: tinta, rotulo: "media − s", discontinua: true }
+      marcas:
+        - { x: "1", y: "0.03", rotulo: "100,03", guias: false }
+        - { x: "2", y: "0.21", rotulo: "100,21", guias: false }
+        - { x: "3", y: "0.12", rotulo: "100,12", guias: false }
+        - { x: "4", y: "-0.04", rotulo: "99,96", guias: false }
+        - { x: "5", y: "0.17", rotulo: "100,17", guias: false }
+    estimar:
+      objetivo: "u_A"
+      unidad: V
+      min: 0
+      max: 0.00012
+      paso: 0.000001
+      inicio: 0.0001
+      tol: 0.04
+      rotulo: "u de la media"
+    exito: "s/√5 = 0,0458 mV, con ν = 4 grados de libertad: pocas lecturas, s poco segura."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.0000477 }, texto: "Se ha pasado: s es la dispersión de una lectura; la media de cinco dispersa menos." }
+      - { texto: "Se ha quedado corto: divida s entre la raíz de cinco, no entre cinco." }
+    escalera:
+      - "La incertidumbre de la media es s dividida por la raíz del número de lecturas."
+    solucion: "u = 0,102/√5 = 0,0458 mV."
+
+  - id: tipo-b
+    tipo: predecir
+    titulo: "Tipo B: la especificación"
+    texto: "La especificación del multímetro da un límite a = 0,0801 mV, sin más información. ¿Qué incertidumbre típica entra en el balance?"
+    libro: [119, 120, 134]
+    widget:
+      tipo: grafica
+      x: { id: v, min: -0.00012, max: 0.00012, unidad: V, rotulo: "error del multímetro" }
+      y: { min: 0, max: 8000, unidad: "", rotulo: "densidad" }
+      curvas:
+        - { expr: "min(1, max(0, (a_V - abs(v))*1e9))/(2*a_V)", color: azul, rotulo: "rectangular, ± a" }
+      marcas:
+        - { x: "a_V", y: "0", rotulo: "+a" }
+        - { x: "-a_V", y: "0", rotulo: "−a" }
+      lectura: { valor: u_B, rotulo: "Incertidumbre típica de la especificación" }
+      ocultar: true
+    opciones:
+      - texto: "a/√3 = 0,0462 mV"
+        bien: true
+        porque: "Un límite sin preferencia dentro es una rectangular: su desviación típica es a/√3."
+      - texto: "a = 0,0801 mV, tal cual"
+        porque: "Es un límite, no una desviación típica: sumado así contaría 1,73 veces lo que le corresponde."
+      - texto: "a/2 = 0,0400 mV"
+        porque: "Dividir por dos es tratarlo como un certificado con k = 2. Una especificación no tiene k: es un límite."
+      - texto: "a/√6 = 0,0327 mV"
+        porque: "Eso sería una triangular, con el centro más probable. Sin más información no hay preferencia dentro."
+    escalera:
+      - "¿Qué distribución describe unos límites sin preferencia dentro?"
+    solucion: "Rectangular: u = 0,0801/√3 = 0,0462 mV."
+    comprobar:
+      - { a_V: 0.00008005, u_B: 0.00004622, u_Bm: 0.00004002, u_Bt: 0.00003268, tol: 0.003 }
+
+  - id: distribuciones
+    tipo: pregunta
+    titulo: "Qué se sabe y cuánto vale"
+    texto: "Empareje lo que se sabe de cada entrada con su incertidumbre típica."
+    libro: [119]
+    emparejar:
+      - ["Un certificado da U con un factor k", "U/k"]
+      - ["Límites ±a, sin preferencia dentro", "a/√3, rectangular"]
+      - ["Límites ±a, el centro más probable", "a/√6, triangular"]
+      - ["La resolución δr de una lectura digital", "δr/(2·√3)"]
+    exito: "Cada término, pasado a incertidumbre típica antes de entrar en la suma."
+    pistas:
+      - { texto: "Cuanto más probable es el centro, más estrecha la distribución y menor su u." }
+    escalera:
+      - "El certificado ya trae la típica multiplicada por k: basta deshacerlo."
+    solucion: "Certificado, U/k; rectangular, a/√3; triangular, a/√6; resolución, δr/(2·√3)."
+
+  - id: balance
+    tipo: explorar
+    titulo: "El balance, fila a fila"
+    texto: "Toque cada barra del balance y lea de dónde sale su contribución."
+    libro: [134, 137, 143]
+    widget:
+      tipo: figura
+      figura: fig-new-47-gum
+      zonas:
+        - { id: lecturas, rotulo: "Lecturas, tipo A", rect: [0, 13, 186, 33], texto: "s/√5 = 0,0458 mV: 4,57 mA en la corriente, el 40 %, con ν = 4." }
+        - { id: multimetro, rotulo: "Multímetro, tipo B", rect: [0, 44, 186, 33], texto: "Rectangular, a = 0,0801 mV: 0,0462 mV y 4,62 mA, el 41 %." }
+        - { id: certificado, rotulo: "Certificado del shunt", rect: [0, 74, 186, 33], texto: "U/k = 0,006/2 = 0,003 mΩ: 3,00 mA, el 17 %." }
+        - { id: deriva, rotulo: "Deriva térmica", rect: [0, 104, 186, 33], texto: "Rectangular, a = 2·10−4: 1,15 mA, el 2,5 %." }
+    requiere: { mover: [lecturas, multimetro, certificado, deriva] }
+
+  - id: sensibilidad
+    tipo: pregunta
+    titulo: "Los coeficientes de sensibilidad"
+    texto: "En I = V/(R_{s}·(1 + δ)), en relativo, ¿qué coeficiente de sensibilidad tiene R_{s}?"
+    libro: [122, 123, 124]
+    widget:
+      tipo: grafica
+      x: { id: dd, min: -300, max: 300, unidad: "ppm", rotulo: "cambio relativo de R_{s}" }
+      y: { min: -5, max: 1, unidad: "", rotulo: "I − 10 A, en mA" }
+      curvas:
+        - { expr: "1000*(V_m/(R_s*(1 + dd/1000000)) - 10)", color: naranja, rotulo: "la corriente" }
+    opciones:
+      - texto: "−1: la misma incertidumbre relativa, con el signo cambiado"
+        bien: true
+        porque: "En un cociente, un 1 % más de R_{s} es un 1 % menos de I: coeficiente relativo −1."
+      - texto: "+1, como la tensión"
+        porque: "V está en el numerador: +1. R_{s} divide, y su derivada lleva el signo cambiado."
+      - texto: "0, porque R_{s} viene de un certificado"
+        porque: "De dónde salga su valor no cambia cuánto pesa en el modelo: la derivada lo dice."
+    escalera:
+      - "El coeficiente es la derivada del modelo respecto a esa entrada."
+    solucion: "−1 para R_{s} y para δ, +1 para V; la relativa de I es la suma cuadrática de las tres."
+
+  - id: combine
+    tipo: pregunta
+    titulo: "Combine las cuatro"
+    texto: "Las contribuciones a la corriente son 4,57, 4,62, 3,00 y 1,15 mA. ¿Cuánto vale u_{c}?"
+    libro: [123, 134]
+    widget:
+      tipo: figura
+      figura: fig-new-47-gum
+      zonas:
+        - { id: barras, rotulo: "El balance", rect: [0, 10, 200, 128] }
+    estimar:
+      objetivo: "u_c"
+      unidad: A
+      min: 0
+      max: 0.016
+      paso: 0.0001
+      inicio: 0.0133
+      tol: 0.02
+      rotulo: "u_{c} de la corriente"
+    exito: "7,25 mA, el 0,072 %. Compárelo con lo que estimó al empezar la lección."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.0074 }, texto: "Se ha pasado: en cuadratura, la suma es mucho menor que la lineal." }
+      - { texto: "Se ha quedado corto: la combinada nunca es menor que la mayor de las contribuciones." }
+    escalera:
+      - "Eleve cada una al cuadrado, sume y saque la raíz."
+    solucion: "√(4,57² + 4,62² + 3,00² + 1,15²) = 7,25 mA."
+    comprobar:
+      - { u_c: 0.007246, c_A: 0.00457, c_B: 0.00462, c_R: 0.003, c_D: 0.00115, tol: 0.006 }
+
+  - id: welch
+    tipo: pregunta
+    titulo: "Cuánto vale k"
+    texto: "Welch-Satterthwaite da ν_{ef} = 25 grados de libertad efectivos. Con la tabla de la t de Student, ¿qué factor de cobertura toca?"
+    libro: [126, 127, 128, 129, 130, 131, 135]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1, max: 100, unidad: "", rotulo: "ν_{ef}", escala: log }
+      y: { min: 1.8, max: 4.8, unidad: "", rotulo: "k" }
+      curvas:
+        - { expr: "2", color: tinta, rotulo: "k = 2", discontinua: true }
+      marcas:
+        - { x: "2", y: "4.53", rotulo: "4,53", guias: false }
+        - { x: "3", y: "3.31", rotulo: "3,31", guias: false }
+        - { x: "5", y: "2.65", rotulo: "2,65", guias: false }
+        - { x: "10", y: "2.28", rotulo: "2,28", guias: false }
+        - { x: "20", y: "2.13", rotulo: "2,13", guias: false }
+        - { x: "50", y: "2.05", rotulo: "2,05", guias: false }
+    estimar:
+      objetivo: "2.11"
+      unidad: ""
+      min: 1.9
+      max: 2.5
+      paso: 0.01
+      inicio: 2
+      tol: 0.005
+      rotulo: "k"
+    exito: "k = 2,11 y U = 15,3 mA: las cinco lecturas pesan el 40 % y ensanchan el intervalo."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 2.13 }, texto: "Se ha pasado: con 20 grados ya es 2,13; con 25, algo menos." }
+      - { texto: "Se ha quedado corto: k = 2 vale con más de unos 50 grados. Con 25 está entre 2,13 y 2,05." }
+    escalera:
+      - "25 cae entre 20 y 50 en la tabla."
+    solucion: "Entre 2,13 (20) y 2,05 (50), más cerca del primero: k = 2,11."
+
+  - id: resultado
+    tipo: pregunta
+    titulo: "Escribir el resultado"
+    texto: "I = 9,9978 A, U = 15,3 mA con k = 2,11. ¿Cómo se escribe?"
+    libro: [135, 136]
+    widget:
+      tipo: figura
+      figura: fig-new-47-gum
+      zonas:
+        - { id: intervalo, rotulo: "Los intervalos del 95,45 %", rect: [222, 10, 190, 145] }
+    opciones:
+      - texto: "I = 9,998 A ± 0,015 A (k = 2,11, unos 95 %)"
+        bien: true
+        porque: "U con dos cifras significativas y el valor redondeado en la misma posición, con k y el nivel de confianza."
+      - texto: "I = 9,9978 A ± 0,0153 A"
+        porque: "Demasiadas cifras: U va con dos significativas, y sin k ni nivel de confianza no se puede interpretar."
+      - texto: "I = 10 A ± 0,015 A (k = 2,11)"
+        porque: "El valor debe redondearse en la misma posición que U, las milésimas, no en las unidades."
+    escalera:
+      - "Primero se redondea U; después el valor, en la misma posición."
+    solucion: "I = 9,998 A ± 0,015 A (k = 2,11, nivel de confianza del 95 % aproximadamente)."
+    comprobar:
+      - { U_e: 0.01529, I_m: 9.9978, tol: 0.003 }
+
+  - id: colas
+    tipo: explorar
+    titulo: "Las colas de la t"
+    texto: "Monte Carlo sortea la media de pocas lecturas con una t de Student. Compare sus colas con la normal, con cinco y con veinte lecturas."
+    libro: [140, 142]
+    widget:
+      tipo: grafica
+      x: { id: z, min: 0, max: 6, unidad: "", rotulo: "desviación, en múltiplos de u" }
+      y: { min: 0.0001, max: 1, unidad: "", rotulo: "densidad", escala: log }
+      curvas:
+        - { expr: "exp(-z^2/2)/sqrt(2*pi)", color: azul, rotulo: "normal, la de la GUM" }
+        - { expr: "c_t*(1 + z^2/nu_t)^(-(nu_t + 1)/2)", color: naranja, rotulo: "t de Student" }
+      lectura: { valor: nu_t, rotulo: "Grados de libertad de la media" }
+      mandos:
+        - { valor: veinte, tipo: interruptor, rotulo: "Veinte lecturas" }
+    requiere: { mover: [veinte] }
+
+  - id: criterio
+    tipo: porque
+    titulo: "Más ancho con cinco lecturas"
+    texto: "Monte Carlo da ±16,8 mA y la GUM, ±15,3 mA: los extremos difieren 1,6 mA, más que los 0,5 mA del criterio. ¿Por qué?"
+    libro: [135, 142, 143]
+    widget:
+      tipo: figura
+      figura: fig-new-47-gum
+      zonas:
+        - { id: montecarlo, rotulo: "Monte Carlo frente a la GUM", rect: [222, 10, 190, 145] }
+    opciones:
+      - texto: "Las colas de la t de cuatro grados pesan más de lo que recoge k"
+        bien: true
+        porque: "La GUM supone la salida casi normal. Con cinco lecturas manda Monte Carlo: U = 0,017 A."
+      - texto: "Los millones de sorteos añaden ruido al intervalo"
+        porque: "Con 2 millones de resultados el ruido del sorteo es pequeño. La diferencia es la forma de la t."
+      - texto: "La GUM se olvidó de la deriva térmica"
+        porque: "La deriva está en los dos cálculos y pesa un 2,5 %. Lo que difiere es la distribución de la media."
+    escalera:
+      - "¿Qué entrada se sortea con una distribución que no es normal ni rectangular?"
+    solucion: "Las colas de la t de cuatro grados: manda Monte Carlo, U = 0,017 A. Con veinte lecturas valdría la GUM."
+
+  - id: veinte-lecturas
+    tipo: ajuste
+    titulo: "¿Cuántas lecturas?"
+    texto: "El balance se hace antes de medir. Suba el número de lecturas hasta que u_{c} baje a 6 mA."
+    libro: [137, 145]
+    inicio: { n_l: 5 }
+    widget:
+      tipo: grafica
+      x: { id: m, min: 1, max: 40, unidad: "", rotulo: "lecturas" }
+      y: { min: 0, max: 0.012, unidad: A, rotulo: "u_{c}" }
+      curvas:
+        - { expr: "sqrt((I_m*s_V/V_m)^2/m + u_suelo^2)", color: naranja, rotulo: "u_{c} según las lecturas" }
+        - { expr: "u_suelo", color: tinta, rotulo: "el suelo del multímetro y el shunt", discontinua: true }
+      marcas:
+        - { x: "n_l", y: "u_c", rotulo: "{{u_c}}" }
+      lectura: { valor: u_c, rotulo: "Incertidumbre combinada" }
+      mandos:
+        - { valor: n_l, min: 2, max: 30, paso: 1, rotulo: "Número de lecturas" }
+    ajuste:
+      valor: u_c
+      objetivo: 0.006
+      tol: 0.02
+      rotulo: "u_{c} de la corriente"
+      escala: { min: 0.005, max: 0.009 }
+      bajo: "Más de lo necesario."
+      alto: "Aún por encima de 6 mA: haga más lecturas."
+      dentro: "Unas veinte lecturas. Pero el suelo de 5,6 mA no se baja repitiendo: hace falta otro multímetro."
+    comprobar:
+      - { con: { n_l: 20 }, u_c: 0.00607, tol: 0.01 }
+      - { u_suelo: 0.00562, tol: 0.01 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [111, 120, 129, 142]
+    ideas:
+      - { titulo: "El modelo.", texto: "La magnitud se calcula de varias entradas, correcciones incluidas aunque valgan cero." }
+      - { titulo: "Típicas antes de sumar.", texto: "Tipo A, s/√n; tipo B, a/√3 o U/k. Luego, en cuadratura con sus coeficientes." }
+      - { titulo: "El factor k.", texto: "Welch-Satterthwaite da los grados efectivos; con pocas lecturas, k mayor que 2." }
+      - { titulo: "Monte Carlo.", texto: "Propaga las distribuciones enteras; con cinco lecturas da un intervalo más ancho." }

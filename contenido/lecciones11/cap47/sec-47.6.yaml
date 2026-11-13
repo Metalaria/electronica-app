@@ -1,0 +1,323 @@
+# Lección 1.2 de la sección 48.7 «Dimensionar un Disipador» (cap47; etiqueta interna sec-47.6).
+# Formato: contenido/lecciones11/GUIA.md. El caso del libro (bloques 220–222): 5 W, unión a 120 °C por criterio, 40 °C
+# de ambiente y Rjc + Rcs = 1,5 + 1 = 2,5 °C/W: Rsa ≤ 13,5 °C/W (la curva de la figura 48.10). El paso práctico es un
+# «diseno» con tolerancias: elegir un disipador de una lista que mantenga la unión a 120 °C o menos aunque el montaje
+# lo empeore un 30 % (bloque 225, «un disipador montado de lado puede empeorar un 30 %»), modelado como ± 30 % sobre Rsa
+# por esquinas: 13,5 °C/W cumple justo en nominal y falla en la esquina mala; 10 °C/W cumple en las dos.
+leccion: cap47/sec-47.6
+
+libro:
+  218: "se despeja la resistencia térmica que hace falta"
+  219: 'R_("sa") = (T_("unión" , op("máx")) - T_("amb"))/(P) - R_("jc") - R_("cs")'
+  220: "5 W, unión limitada a 120 °C por criterio de diseño, ambiente de 40 °C, Rjc = 1,5 y Rcs = 1"
+  221: '"13,5 °C"'
+  222: "la vida del semiconductor depende exponencialmente de la temperatura"
+  224: "doblar el área no divide por dos la resistencia"
+  225: "Un disipador montado de lado puede empeorar un 30 %"
+  226: "negro anodizado radia mejor que aluminio pulido"
+  229: "un disipador de 5 °C/W en convección natural puede bajar a 1,5 °C/W con un ventilador modesto"
+  230: "el ventilador se para y el sistema se destruye"
+  232: "un tubo de calor"
+  233: "No disipa: solo transporta"
+  236: "más pasta sea peor"
+  237: "la mica con pasta añade alrededor de 1 °C/W"
+  238: "Poco apriete deja aire; demasiado deforma el encapsulado."
+  242: "más allá de unos centímetros cuadrados el rendimiento se estanca"
+  243: "Las vías térmicas bajo el componente conducen a la otra cara y son imprescindibles."
+  244: "El cobre de 2 oz ayuda apreciablemente frente al de 1."
+  247: "La temperatura del disipador con un termopar"
+  248: "Es la única medida que incluye todo lo que el cálculo no contempla."
+  249: "cualquiera por debajo de la curva sirve"
+  250: "dónde se pierde en el montaje"
+  "cap47#600": "Un transistor disipa 4 W. La unión admite 125 °C"
+
+modelo:
+  valores:
+    P: { sim: "P", nombre: "potencia a disipar", unidad: W, valor: 5 }
+    T_jmax: { sim: "T_{j,máx}", nombre: "temperatura máxima de la unión", unidad: "°C", valor: 120 }
+    T_a: { sim: "T_{amb}", nombre: "temperatura ambiente", unidad: "°C", valor: 40 }
+    R_jcs: { sim: "R_{jc} + R_{cs}", nombre: "resistencias fijas", unidad: "°C/W", valor: 2.5 }
+    R_sa: { sim: "R_{sa}", nombre: "disipador elegido", unidad: "°C/W", valor: 20 }
+    R_nat: { sim: "R_{sa}", nombre: "disipador en convección natural", unidad: "°C/W", valor: 5 }
+    R_ven: { sim: "R_{sa}", nombre: "el mismo con ventilador", unidad: "°C/W", valor: 1.5 }
+    P_v: { sim: "P", nombre: "potencia del caso del ventilador", unidad: W, valor: 10 }
+  calculos:
+    R_req: { expr: "(T_jmax - T_a)/P - R_jcs", sim: "R_{sa}", nombre: "resistencia necesaria del disipador", unidad: "°C/W", cifras: 3 }
+    T_j: { expr: "T_a + P*(R_jcs + R_sa)", sim: "T_{j}", nombre: "temperatura de la unión", unidad: "°C" }
+    ahorro: { expr: "P_v*(R_nat - R_ven)", sim: "ΔT", nombre: "lo que baja el disipador con ventilador", unidad: "°C" }
+
+tarjetas:
+  - id: explore-curva
+    tipo: explorar
+    titulo: "A más potencia, menos °C/W"
+    texto: "Cambie la potencia y el criterio de temperatura de la unión. Cualquier disipador por debajo de la curva sirve."
+    libro: [218, 249]
+    widget:
+      tipo: grafica
+      x: { id: p, min: 1, max: 25, unidad: W, rotulo: "potencia a disipar" }
+      y: { min: 0, max: 50, unidad: "°C/W", rotulo: "R_{sa} necesaria" }
+      curvas:
+        - { expr: "max(0, (T_jmax - T_a)/p - R_jcs)", color: naranja, rotulo: "R_{sa} máxima" }
+      marcas:
+        - { x: "P", y: "R_req", rotulo: "{{R_req}}" }
+      lectura: { valor: R_req, rotulo: "Disipador necesario" }
+      mandos:
+        - { valor: P, lista: [2, 5, 10, 20], rotulo: "Potencia" }
+        - { valor: T_jmax, lista: [120, 150], rotulo: "Unión, como mucho" }
+    requiere: { mover: [P, T_jmax] }
+
+  - id: formula-rsa
+    tipo: formula
+    titulo: "Despejar R_{sa}"
+    texto: "La cadena térmica, invertida: la caída total admisible entre la potencia, menos lo que no se elige."
+    libro: [219, 220, 221]
+    ec: 219
+    sustitucion: "({{T_jmax}} − {{T_a}}) / {{P}} − {{R_jcs}} = {{R_req}}"
+    widget:
+      tipo: grafica
+      x: { id: p, min: 1, max: 25, unidad: W, rotulo: "potencia a disipar" }
+      y: { min: 0, max: 50, unidad: "°C/W", rotulo: "R_{sa} necesaria" }
+      curvas:
+        - { expr: "max(0, (T_jmax - T_a)/p - R_jcs)", color: naranja, rotulo: "R_{sa} máxima" }
+      marcas:
+        - { x: "P", y: "R_req", rotulo: "{{R_req}}" }
+      lectura: { valor: R_req, rotulo: "Disipador necesario" }
+      mandos:
+        - { valor: P, lista: [2, 5, 10, 20], rotulo: "Potencia" }
+    comprobar:
+      - { con: { P: 5, T_jmax: 120 }, R_req: 13.5 }
+
+  - id: estime-ejercicio
+    tipo: pregunta
+    titulo: "Un transistor de 4 W"
+    texto: "Disipa 4 W; la unión admite 125 °C, el ambiente es de 40 °C y R_{jc} + R_{cs} suman 2 °C/W. ¿Qué R_{sa} máxima?"
+    libro: ["cap47#600"]
+    fijar: { P: 4, T_jmax: 125, T_a: 40, R_jcs: 2 }
+    widget:
+      tipo: grafica
+      x: { id: p, min: 1, max: 25, unidad: W, rotulo: "potencia a disipar" }
+      y: { min: 0, max: 50, unidad: "°C/W", rotulo: "R_{sa} necesaria" }
+      curvas:
+        - { expr: "max(0, (T_jmax - T_a)/p)", color: tinta, rotulo: "resistencia total admisible", discontinua: true }
+    estimar:
+      objetivo: "R_req"
+      unidad: "°C/W"
+      min: 0
+      max: 30
+      paso: 0.25
+      inicio: 25
+      tol: 0.03
+      rotulo: "R_{sa} máxima"
+    exito: "19,25 °C/W; mejor algo menos, para no trabajar al límite."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 19.83 }, texto: "Se ha pasado: reste los 2 °C/W de la cápsula y la interfaz." }
+      - { texto: "Se ha quedado corto: la total admisible es 85/4 = 21,25 °C/W." }
+    escalera:
+      - "Primero la total: (125 − 40)/4."
+    solucion: "(125 − 40)/4 − 2 = 19,25 °C/W."
+    comprobar:
+      - { R_req: 19.25 }
+
+  - id: por-que-120
+    tipo: porque
+    titulo: "120 °C, no 150"
+    texto: "El máximo absoluto de la unión es 150 °C, pero se dimensiona para unos 120. ¿Por qué?"
+    libro: [222]
+    widget:
+      tipo: figura
+      figura: fig-47.10
+      zonas:
+        - { id: curvas, rotulo: "Las dos curvas", rect: [25, 20, 205, 170] }
+    opciones:
+      - texto: "La vida del semiconductor depende exponencialmente de la temperatura"
+        bien: true
+        porque: "Unos grados menos multiplican su vida: el disipador más grande es el precio."
+      - texto: "Porque a 150 °C el disipador se funde"
+        porque: "Los 150 °C son de la unión, y el aluminio aguanta mucho más: el límite es la vida del silicio."
+      - texto: "Porque el fabricante miente en la hoja de datos"
+        porque: "El máximo es real; trabajar en él acorta la vida."
+    escalera:
+      - "¿Qué le pasa a la vida de un componente con cada grado de más?"
+    solucion: "Porque la vida depende exponencialmente de la temperatura."
+
+  - id: elija-disipador
+    tipo: diseno
+    titulo: "Elija el disipador"
+    texto: "5 W, unión como mucho a 120 °C, 40 °C de ambiente y 2,5 °C/W fijos. Elija un disipador que cumpla aunque el montaje lo empeore un 30 %."
+    libro: [220, 221, 225]
+    fijar: { P: 5, T_jmax: 120, T_a: 40, R_jcs: 2.5 }
+    inicio: { R_sa: 20 }
+    widget:
+      tipo: grafica
+      x: { id: p, min: 1, max: 25, unidad: W, rotulo: "potencia a disipar" }
+      y: { min: 0, max: 50, unidad: "°C/W", rotulo: "R_{sa}" }
+      curvas:
+        - { expr: "max(0, (T_jmax - T_a)/p - R_jcs)", color: naranja, rotulo: "R_{sa} máxima" }
+      marcas:
+        - { x: "P", y: "R_sa", rotulo: "el elegido" }
+      lectura: { valor: T_j, rotulo: "Unión" }
+      mandos:
+        - { valor: R_sa, lista: [20, 15, 13.5, 10, 5], rotulo: "Disipador, R_{sa}" }
+    condiciones:
+      - { valor: T_j, max: 120, rotulo: "Unión: {{T_j}}" }
+    diseno:
+      tolerancias: { R_sa: 0.3 }
+      metodo: esquinas
+      exigir: todas
+      si_tolerancias: "El nominal cumple justo, pero montado de lado empeora un 30 %: elija uno con margen."
+    exito: "Con margen: el nominal se da en condiciones ideales y el montaje real casi siempre es peor."
+    pistas:
+      - { cuando: { valor: T_j, mayor: 120 }, texto: "La unión pasa de 120 °C: hace falta un disipador de menos °C/W." }
+    escalera:
+      - "El límite es 13,5 °C/W en nominal; un 30 % peor tiene que seguir por debajo."
+    solucion: "Uno de 10 °C/W: aun un 30 % peor queda por debajo de 13,5 °C/W."
+    comprobar:
+      - { con: { R_sa: 13.5 }, T_j: 120 }
+      - { con: { R_sa: 10 }, T_j: 102.5 }
+
+  - id: area
+    tipo: predecir
+    titulo: "Lo que decide la resistencia"
+    texto: "¿Qué pasa si dobla el área de un disipador?"
+    libro: [224, 225, 226]
+    widget:
+      tipo: figura
+      figura: fig-47.11
+      zonas:
+        - { id: disipadores, rotulo: "Los disipadores", rect: [0, 0, 1600, 728] }
+    opciones:
+      - texto: "Mejora, pero no divide por dos su resistencia"
+        bien: true
+        porque: "El área rinde cada vez menos; orientación, acabado y espacio libre cuentan también."
+      - texto: "Su resistencia se divide por dos"
+        porque: "Sería así si fuera lineal; el rendimiento del área es decreciente."
+      - texto: "Nada: solo cuenta el color"
+        porque: "El negro anodizado radia mejor, pero el área sigue siendo lo primero."
+    escalera:
+      - "¿Rinde igual cada centímetro cuadrado que se añade?"
+    solucion: "Mejora con rendimiento decreciente: doblar el área no divide por dos la resistencia."
+
+  - id: estime-ventilador
+    tipo: pregunta
+    titulo: "La ventilación forzada"
+    texto: "Un disipador de 5 °C/W baja a 1,5 °C/W con un ventilador modesto. Con 10 W, ¿cuántos grados menos?"
+    libro: [229, 230]
+    fijar: { P_v: 10 }
+    widget:
+      tipo: figura
+      figura: fig-47.11
+      zonas:
+        - { id: disipadores, rotulo: "Los disipadores", rect: [0, 0, 1600, 728] }
+    estimar:
+      objetivo: "ahorro"
+      unidad: "°C"
+      min: 0
+      max: 60
+      paso: 1
+      inicio: 10
+      tol: 0.04
+      rotulo: "Grados menos"
+    exito: "35 grados. Pero si el ventilador se para, el sistema se destruye: hay que vigilarlo."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 36.4 }, texto: "Se ha pasado: son 3,5 °C/W de diferencia por 10 W." }
+      - { texto: "Se ha quedado corto: la diferencia de resistencia, por la potencia." }
+    escalera:
+      - "ΔT = P · (5 − 1,5)."
+    solucion: "10 × (5 − 1,5) = 35 °C menos."
+    comprobar:
+      - { ahorro: 35 }
+
+  - id: tubo-calor
+    tipo: pregunta
+    titulo: "El tubo de calor"
+    texto: "Empareje cada situación con lo que le pasa a un tubo de calor."
+    libro: [232, 233]
+    emparejar:
+      - ["En el extremo frío", "Sigue haciendo falta un disipador"]
+      - ["Con el extremo caliente arriba", "La mecha tiene que subir el líquido: menos potencia"]
+      - ["Doblado o aplastado de más", "Baja su límite de potencia"]
+      - ["Por debajo de 0 °C", "El agua se congela y deja de funcionar"]
+    exito: "No disipa: solo transporta, con un cambio de fase, y con pocos grados entre extremos."
+    pistas:
+      - { texto: "El líquido vuelve por capilaridad: la gravedad puede ayudar o estorbar." }
+    escalera:
+      - "Empiece por lo que pasa con agua por debajo de cero."
+    solucion: "Extremo frío, disipador; caliente arriba, menos potencia; doblado, menos límite; bajo cero, congelado."
+
+  - id: toque-montaje
+    tipo: tocar
+    titulo: "Dónde se pierde"
+    texto: "Toque lo que puede empeorar el disipador hasta un 30 %."
+    libro: [225, 236, 237, 238, 250]
+    widget:
+      tipo: figura
+      figura: fig-47.10
+      zonas:
+        - { id: pasta, rotulo: "Caja roja", rect: [248, 28, 196, 42] }
+        - { id: aislante, rotulo: "Caja naranja", rect: [248, 73, 196, 42] }
+        - { id: apriete, rotulo: "Caja azul", rect: [248, 118, 196, 42] }
+        - { id: orientacion, rotulo: "Caja verde", rect: [248, 163, 196, 42] }
+    tocar:
+      bien: [orientacion]
+      porque:
+        pasta: "La pasta en exceso empeora R_{cs}, pero el 30 % es de otra cosa."
+        aislante: "La mica con pasta añade alrededor de 1 °C/W: un sumando, no un porcentaje del disipador."
+        apriete: "Poco apriete deja aire, pero el 30 % del libro es de la orientación."
+    exito: "Aletas verticales: horizontales estrangulan la convección natural."
+    escalera:
+      - "¿Qué cambia la convección natural alrededor de las aletas?"
+    solucion: "La orientación: montado de lado puede empeorar un 30 %."
+
+  - id: placa
+    tipo: pregunta
+    titulo: "Cuando el disipador es la placa"
+    texto: "En montaje superficial, el calor sale al cobre. ¿Qué es imprescindible?"
+    libro: [242, 243, 244]
+    widget:
+      tipo: figura
+      figura: fig-47.10
+      zonas:
+        - { id: grafica, rotulo: "La gráfica", rect: [25, 20, 205, 170] }
+    opciones:
+      - texto: "Las vías térmicas bajo el componente"
+        bien: true
+        porque: "Conducen el calor a la otra cara. Y el área de cobre rinde hasta unos centímetros cuadrados."
+      - texto: "Cobre de 2 oz"
+        porque: "Ayuda apreciablemente frente al de 1, pero el libro llama imprescindibles a las vías."
+      - texto: "Toda el área de cobre posible"
+        porque: "Más allá de unos centímetros cuadrados el rendimiento se estanca."
+    escalera:
+      - "¿Por dónde llega el calor a la cara de abajo?"
+    solucion: "Las vías térmicas bajo el componente."
+
+  - id: prueba-definitiva
+    tipo: pregunta
+    titulo: "La prueba definitiva"
+    texto: "El cálculo dice que el disipador sirve. ¿Cuál es la única prueba que lo confirma del todo?"
+    libro: [247, 248]
+    widget:
+      tipo: figura
+      figura: fig-47.11
+      zonas:
+        - { id: disipadores, rotulo: "Los disipadores", rect: [0, 0, 1600, 728] }
+    opciones:
+      - texto: "Horas a plena potencia en su caja real, con el ambiente máximo previsto"
+        bien: true
+        porque: "Es la única medida que incluye todo lo que el cálculo no contempla."
+      - texto: "Medirlo unos segundos con el termopar"
+        porque: "En segundos no se llega al régimen, y fuera de la caja falta su ambiente real."
+      - texto: "Comprobar el nominal del catálogo"
+        porque: "El nominal se da en condiciones ideales: es lo que hay que comprobar."
+    escalera:
+      - "¿Qué condiciones no recoge el cálculo?"
+    solucion: "A plena potencia, en su caja, al ambiente máximo, durante horas."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [219, 222, 225, 229]
+    ideas:
+      - { titulo: "Despejar.", texto: "R_{sa} = (T_{j,máx} − T_{amb})/P − R_{jc} − R_{cs}: 13,5 °C/W en el ejemplo." }
+      - { titulo: "Criterio.", texto: "Unos 120 °C, no los 150 del máximo absoluto." }
+      - { titulo: "Margen.", texto: "El montaje real es peor que el nominal: de lado, hasta un 30 %." }
+      - { titulo: "Ventilador.", texto: "Cambia el orden de magnitud, y añade un modo de fallo que hay que vigilar." }

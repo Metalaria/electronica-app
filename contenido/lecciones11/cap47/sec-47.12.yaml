@@ -1,0 +1,220 @@
+# Lección 1.2 de la sección 48.14 «Herramientas Adicionales y Resumen» (cap47; etiqueta interna sec-47.12).
+# Formato: contenido/lecciones11/GUIA.md. La suma en cuadratura de 0,5, 0,2 y 0,1 % (bloques 477–480) y el Brymen
+# BM869s midiendo 5 V (bloques 481–483: 0,02 % + 5 cuentas de 10 µV = 1,05 mV). Duda para el dueño: el bloque 482 llama
+# «u» a ese límite de la especificación, sumado sin dividir por √3, mientras la sección 48.4 (bloque 120) pide tratarlo
+# como un límite rectangular; la lección lo llama «lo que especifica» y no «incertidumbre típica».
+leccion: cap47/sec-47.12
+
+libro:
+  476: "las contribuciones independientes se suman en cuadratura"
+  477: 'u_("total") = sqrt('
+  478: "Con tres contribuciones independientes de 0,5 %, 0,2 % y 0,1 %"
+  479: "cuadrática = 0,548 %"
+  480: "las otras dos juntas solo añaden 0,048 puntos"
+  481: "El Brymen BM869s especifica 0,02 % de la lectura más un número de cuentas"
+  482: '"1,05 mV"'
+  483: "lo dominante pasa a ser el propio circuito"
+  485: "aplicar derating de la temperatura de unión de 150 a 110 °C casi duplica el disipador necesario"
+  488: "La fija la tensión de pico y la rigidez dieléctrica del aire"
+  489: "no se puede reducir con barnices"
+  "cap53#221": "El Brymen BM869s"
+
+modelo:
+  valores:
+    u_1: { sim: "u₁", nombre: "contribución dominante", unidad: "%", valor: 0.5 }
+    u_2: { sim: "u₂", nombre: "segunda contribución", unidad: "%", valor: 0.2 }
+    u_3: { sim: "u₃", nombre: "tercera contribución", unidad: "%", valor: 0.1 }
+    V_l: { sim: "V", nombre: "lectura", unidad: V, valor: 5 }
+    p_b: { sim: "a", nombre: "término proporcional del Brymen", unidad: "", valor: 0.0002 }
+    n_c: { sim: "n", nombre: "cuentas del término fijo", unidad: "", valor: 5 }
+    res: { sim: "resolución", nombre: "resolución en el rango", unidad: V, valor: 0.00001 }
+  calculos:
+    u_t: { expr: "sqrt(u_1^2 + u_2^2 + u_3^2)", sim: "u_{total}", nombre: "combinada en cuadratura", unidad: "%", cifras: 3 }
+    u_peor: { expr: "u_1 + u_2 + u_3", sim: "peor caso", nombre: "peor caso, sumadas", unidad: "%", cifras: 2 }
+    anade: { expr: "u_t - u_1", sim: "Δ", nombre: "lo que añaden las otras dos", unidad: "%", cifras: 2 }
+    e_b: { expr: "p_b*V_l + n_c*res", sim: "e", nombre: "lo que especifica el Brymen", unidad: V }
+    e_bp: { expr: "100*e_b/V_l", sim: "e", nombre: "en porcentaje", unidad: "%", cifras: 2 }
+    e_sin: { expr: "p_b*V_l", sim: "e'", nombre: "sin el término fijo", unidad: V }
+
+tarjetas:
+  - id: simule-cuadratura
+    tipo: simular
+    titulo: "Tres contribuciones"
+    texto: "Tres contribuciones independientes de 0,5 %, 0,2 % y 0,1 %. ¿Cuánto suman en cuadratura?"
+    libro: [476, 478]
+    simular:
+      objetivo: u_t
+      unidad: "%"
+      tol: 0.02
+      rotulo: "Incertidumbre total"
+      errores:
+        - { expr: "u_peor", texto: "0,80 % es el peor caso, sumadas tal cual. Independientes, se suman en cuadratura." }
+        - { expr: "u_1", texto: "Casi: la dominante sola. Las otras dos añaden un poco, 0,048 puntos." }
+    exito: "0,548 %: casi la dominante sola."
+    escalera:
+      - "Raíz de la suma de los cuadrados."
+    solucion: "√(0,5² + 0,2² + 0,1²) = 0,548 %."
+    comprobar:
+      - { u_t: 0.548, u_peor: 0.8, tol: 0.002 }
+      - { anade: 0.048, tol: 0.01 }
+
+  - id: formula-cuadratura
+    tipo: formula
+    titulo: "La dominante manda"
+    texto: "Mejore las dos pequeñas y mire cuánto baja el total."
+    libro: [477, 480]
+    ec: 477
+    sustitucion: "√({{u_1}}² + {{u_2}}² + {{u_3}}²) = {{u_t}}"
+    widget:
+      tipo: grafica
+      x: { id: q, min: 0, max: 1, unidad: "%", rotulo: "contribución dominante" }
+      y: { min: 0, max: 1.2, unidad: "%", rotulo: "total" }
+      curvas:
+        - { expr: "sqrt(q^2 + u_2^2 + u_3^2)", color: naranja, rotulo: "en cuadratura" }
+        - { expr: "q + u_2 + u_3", color: tinta, rotulo: "peor caso", discontinua: true }
+      marcas:
+        - { x: "u_1", y: "u_t", rotulo: "{{u_t}}" }
+      lectura: { valor: u_t, rotulo: "Total" }
+      mandos:
+        - { valor: u_2, lista: [0, 0.1, 0.2], rotulo: "Segunda" }
+        - { valor: u_3, lista: [0, 0.05, 0.1], rotulo: "Tercera" }
+    comprobar:
+      - { con: { u_2: 0, u_3: 0 }, u_t: 0.5 }
+
+  - id: que-mejorar
+    tipo: predecir
+    titulo: "Perder el tiempo"
+    texto: "Con 0,5 %, 0,2 % y 0,1 %, ¿qué mejora de verdad el resultado?"
+    libro: [480]
+    widget:
+      tipo: grafica
+      x: { id: q, min: 0, max: 1, unidad: "%", rotulo: "contribución dominante" }
+      y: { min: 0, max: 1.2, unidad: "%", rotulo: "total" }
+      curvas:
+        - { expr: "sqrt(q^2 + u_2^2 + u_3^2)", color: naranja, rotulo: "en cuadratura" }
+    opciones:
+      - texto: "Atacar la dominante, el 0,5 %"
+        bien: true
+        porque: "Las otras dos juntas solo añaden 0,048 puntos: lo que está tres veces por debajo apenas cuenta."
+      - texto: "Bajar la de 0,2 %"
+        porque: "Es perder el tiempo mientras no se ataque la dominante."
+      - texto: "Bajar las dos pequeñas a la vez"
+        porque: "Aun a cero, el total solo bajaría de 0,548 a 0,5 %."
+    escalera:
+      - "¿Cuánto añaden las dos pequeñas juntas?"
+    solucion: "Atacar la dominante."
+    comprobar:
+      - { u_t: 0.548, tol: 0.002 }
+
+  - id: simule-brymen
+    tipo: simular
+    titulo: "El Brymen midiendo 5 V"
+    texto: "0,02 % de la lectura más 5 cuentas de 10 µV. Midiendo 5 V, ¿cuánto especifica?"
+    libro: [481, 482, "cap53#221"]
+    widget:
+      tipo: figura
+      figura: fig-53.9
+      zonas:
+        - { id: brymen, rotulo: "El Brymen", rect: [0, 0, 836, 1600] }
+    simular:
+      objetivo: e_b
+      unidad: V
+      tol: 0.02
+      rotulo: "Lo que especifica a 5 V"
+      errores:
+        - { expr: "e_sin", texto: "Ha olvidado el término fijo: 5 cuentas de 10 µV son 50 µV más." }
+        - { expr: "n_c*res", texto: "Ese es solo el término fijo. Falta el 0,02 % de 5 V, 1 mV." }
+    exito: "1,05 mV, el 0,021 %: lo dominante pasa a ser el propio circuito."
+    escalera:
+      - "Sume el término proporcional y el fijo."
+    solucion: "0,0002 × 5 V + 5 × 10 µV = 1,05 mV."
+    comprobar:
+      - { e_b: 0.00105, e_bp: 0.021, e_sin: 0.001, tol: 0.003 }
+
+  - id: protagonista
+    tipo: porque
+    titulo: "Cambio de protagonista"
+    texto: "Con un 0,021 %, ¿qué pasa a dominar en casi cualquier medida de banco?"
+    libro: [483]
+    widget:
+      tipo: figura
+      figura: fig-53.9
+      zonas:
+        - { id: brymen, rotulo: "El Brymen", rect: [0, 0, 836, 1600] }
+    opciones:
+      - texto: "El propio circuito: deriva térmica, ruido, resistencia de contactos"
+        bien: true
+        porque: "Ese cambio de protagonista es el que justifica un instrumento así."
+      - texto: "Sigue dominando el instrumento"
+        porque: "Con 0,021 % deja de ser el término dominante."
+      - texto: "La resolución del display"
+        porque: "La resolución es mucho más fina que eso: domina lo que se mide."
+    escalera:
+      - "Si el instrumento casi no aporta, ¿qué queda?"
+    solucion: "El propio circuito: deriva, ruido y contactos."
+
+  - id: derating
+    tipo: pregunta
+    titulo: "Recordatorio térmico"
+    texto: "Limitar la unión a 110 °C en lugar de 150 °C, ¿qué hace con el disipador necesario?"
+    libro: [485]
+    widget:
+      tipo: figura
+      figura: fig-47.10
+      zonas:
+        - { id: curvas, rotulo: "Las dos curvas", rect: [25, 20, 205, 170] }
+    opciones:
+      - texto: "Casi lo duplica"
+        bien: true
+        porque: "Ese factor 2 es la diferencia entre cumplir la hoja de datos y durar años."
+      - texto: "Nada: el disipador es el mismo"
+        porque: "Menos salto admisible pide menos °C/W: un disipador mayor."
+      - texto: "Lo reduce a la mitad"
+        porque: "Al revés: menos margen de temperatura exige más disipador."
+    escalera:
+      - "Con menos grados disponibles, ¿más o menos °C/W admite?"
+    solucion: "Casi lo duplica, y es lo que hace durar años."
+
+  - id: explore-placa
+    tipo: explorar
+    titulo: "Dos distancias en la placa"
+    texto: "Toque el cobre de red, la ranura y el cobre de baja tensión."
+    libro: [488, 489]
+    widget:
+      tipo: figura
+      figura: fig-47.17
+      zonas:
+        - { id: red, rotulo: "Cobre de la izquierda", rect: [25, 175, 75, 50], texto: "El cobre de red: la tensión de pico fija la distancia en aire hasta el otro lado." }
+        - { id: ranura, rotulo: "La ranura del centro", rect: [100, 155, 42, 95], texto: "La ranura alarga la línea de fuga: es la razón de las que se ven junto al transformador." }
+        - { id: selv, rotulo: "Cobre de la derecha", rect: [143, 175, 75, 50], texto: "El cobre de baja tensión. Un barniz no reduce la línea de fuga." }
+    requiere: { mover: [red, ranura, selv] }
+
+  - id: distancias
+    tipo: pregunta
+    titulo: "Su criterio dimensional"
+    texto: "Empareje cada magnitud con lo que la fija."
+    libro: [488, 489]
+    widget:
+      tipo: figura
+      figura: fig-47.17
+      zonas:
+        - { id: placa, rotulo: "La placa", rect: [12, 135, 236, 128] }
+    emparejar:
+      - ["Distancia en aire", "La tensión de pico y la rigidez del aire"]
+      - ["Línea de fuga", "La tensión eficaz y el grado de contaminación"]
+    exito: "La de fuga suele ser mayor, no se reduce con barnices y se alarga con una ranura."
+    pistas:
+      - { texto: "Una falla por ruptura del aire; la otra, por suciedad y humedad en la superficie." }
+    escalera:
+      - "Los transitorios rompen el aire."
+    solucion: "Aire, la tensión de pico; fuga, la tensión eficaz y la contaminación."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [479, 482, 485, 489]
+    ideas:
+      - { titulo: "Cuadratura.", texto: "0,5, 0,2 y 0,1 % dan 0,548 %, no 0,80 %: manda la dominante." }
+      - { titulo: "Un buen multímetro.", texto: "El Brymen a 5 V, 1,05 mV: domina el circuito." }
+      - { titulo: "Derating.", texto: "De 150 a 110 °C casi duplica el disipador." }
+      - { titulo: "Distancias.", texto: "La fuga no se reduce con barnices; se alarga con una ranura." }
