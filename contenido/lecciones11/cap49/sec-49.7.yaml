@@ -1,0 +1,298 @@
+# Lección 1.2 de la sección 50.7 «Lectura del Micrófono Analógico» (cap49; etiquetas sec-49.N = impresas 50.N).
+# - La cadena del electret (figura 50.16, fig-49.13): −44 dB respecto a 1 V/Pa son 6,3 mV/Pa (bloque 232).
+# - El MAX9814 entrega la señal sobre unos 1,25 V, con hasta 2 V de pico a pico (bloque 239), y la figura 50.15
+#   (fig-49.12) la muestra con su ventana de muestreo. El tono de 1 kHz de las gráficas es de ejemplo (rotulado).
+# - Sin referencia a media alimentación (1,65 V en la figura 50.16), el convertidor solo ve media onda (bloque 237):
+#   la gráfica recorta la señal entre 0 y 3,3 V.
+# - Ejercicio 50.3 (bloque 265): una ventana de muestras y su pico a pico, no una sola lectura.
+# Paso práctico: «dibujar» la salida del MAX9814 con un tono fuerte: 2 V de pico a pico sobre 1,25 V (error típico:
+# dibujarla alrededor de cero).
+leccion: cap49/sec-49.7
+
+libro:
+  226: "reúne acondicionamiento, conversión y procesado"
+  228: "un JFET integrado que adapta la impedancia"
+  230: "típicamente 2,2 kΩ a 3,3 V"
+  231: "décimas de milivoltio para una conversación normal a un metro"
+  232: "−44 dB significa 6,3 mV por pascal"
+  235: "Su valor y la impedancia siguiente fijan el corte inferior"
+  236: "Amplificación de 40 a 60 dB"
+  237: "Es el punto que más se olvida y produce que solo se vea media onda"
+  239: "entrega la señal montada sobre unos 1,25 V, con hasta 2 V de pico a pico"
+  242: "responde a los picos, no a la energía"
+  243: "Detector de valor eficaz, que es lo correcto para nivel sonoro"
+  244: "125 ms para la respuesta rápida y 1 s para la lenta"
+  246: "con referencia a 20 µPa"
+  248: "lo que se obtiene es un nivel relativo, útil para detectar cambios y no comparable con un sonómetro"
+  252: "Alimentación sucia, que se cuela directamente por la resistencia de polarización"
+  254: "Saturación con sonidos fuertes, que sin indicación pasa desapercibida"
+  257: "comparar la lectura con la de un sonómetro —o una aplicación de móvil— en varios niveles, y ajustar una recta"
+  258: "La señal del micrófono: audio (AC) montado sobre una tensión de reposo (DC)"
+  259: "La cadena de acondicionamiento de un micrófono de electret y sus unidades"
+  "cap49#265": "calculando la diferencia entre el valor máximo y el mínimo (pico a pico)"
+
+modelo:
+  valores:
+    S_m: { sim: "S", nombre: "sensibilidad del micrófono", unidad: dB, valor: -44 }
+    A_s: { sim: "A", nombre: "amplitud de la señal", unidad: V, valor: 0.5 }
+    r_e: { tipo: interruptor, nombre: "referencia a media alimentación", valor: 1 }
+    f_t: { sim: "f", nombre: "frecuencia del tono", unidad: Hz, valor: 1000 }
+  calculos:
+    s_v: { expr: "10^(S_m/20)", sim: "S", nombre: "sensibilidad en voltios por pascal", unidad: V }
+    o_f: { si: r_e, entonces: "1.65", sino: "0", sim: "V_{reposo}", nombre: "tensión de reposo", unidad: V }
+    p_p: { expr: "min(3.3, o_f + A_s) - max(0, o_f - A_s)", sim: "V_{pp}", nombre: "pico a pico que ve el convertidor", unidad: V }
+
+tarjetas:
+  - id: explore-cadena
+    tipo: explorar
+    titulo: "Una cadena entera"
+    texto: "El micrófono reúne acondicionamiento, conversión y procesado. Toque el electret, la amplificación y la media alimentación."
+    libro: [226, 228, 235, 236, 259]
+    widget:
+      tipo: figura
+      figura: fig-49.13
+      zonas:
+        - { id: electret, rotulo: "Primer recuadro", rect: [30, 5, 75, 106], texto: "Electret polarizado con 2,2 kΩ a 3,3 V: −44 dB, 6,3 mV por pascal." }
+        - { id: acoplo, rotulo: "Segundo recuadro", rect: [116, 5, 75, 106], texto: "El acoplo capacitivo quita la continua y fija el corte inferior." }
+        - { id: amplificacion, rotulo: "Tercer recuadro", rect: [202, 5, 75, 106], texto: "De 40 a 60 dB, con un operacional de bajo ruido." }
+        - { id: media, rotulo: "Cuarto recuadro", rect: [288, 5, 75, 106], texto: "Centra la señal a media alimentación; sin ella, media onda." }
+        - { id: adc, rotulo: "Quinto recuadro", rect: [374, 5, 75, 106], texto: "Paso bajo antialiasing antes del convertidor." }
+    requiere: { mover: [electret, amplificacion, media] }
+
+  - id: estime-sensibilidad
+    tipo: pregunta
+    titulo: "Una sensibilidad negativa"
+    texto: "La sensibilidad de un electret es de −44 dB respecto a 1 V/Pa. ¿Cuántos voltios da por pascal?"
+    libro: [231, 232]
+    widget:
+      tipo: figura
+      figura: fig-49.13
+      zonas:
+        - { id: electret, rotulo: "Primer recuadro", rect: [30, 5, 75, 106] }
+    estimar:
+      objetivo: "s_v"
+      unidad: V
+      min: 0
+      max: 0.02
+      paso: 0.0001
+      inicio: 0.015
+      tol: 0.03
+      rotulo: "Sensibilidad por pascal"
+    exito: "6,3 mV por pascal: décimas de milivoltio para una conversación a un metro."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.0065 }, texto: "Demasiado: −40 dB ya serían 10 mV; −44, algo menos." }
+      - { texto: "Demasiado poco: −40 dB son 10 mV; −44 no baja tanto." }
+    escalera:
+      - "Pase los decibelios a veces: diez elevado a los decibelios entre veinte."
+    solucion: "−44 dB son unos 6,3 mV por pascal."
+    comprobar:
+      - { s_v: 0.0063, tol: 0.01 }
+      - { con: { S_m: -40 }, s_v: 0.01 }
+
+  - id: sorpresa-media-onda
+    tipo: sorpresa
+    titulo: "Sin la referencia"
+    texto: "La señal es bipolar y el convertidor solo admite de 0 a 3,3 V. Quite la referencia a media alimentación."
+    nota: "El tono de 1 kHz es de ejemplo."
+    libro: [237, 259]
+    fijar: { A_s: 0.5, f_t: 1000 }
+    inicio: { r_e: 1 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.003, unidad: s, rotulo: "t" }
+      y: { min: -0.5, max: 3.5, unidad: V, rotulo: "en el pin" }
+      curvas:
+        - { expr: "max(0, min(3.3, o_f + A_s*sin(2*pi*f_t*t)))", color: azul, rotulo: "lo que ve el ADC" }
+        - { expr: "o_f + A_s*sin(2*pi*f_t*t)", color: tinta, rotulo: "la señal", discontinua: true }
+      lectura: { valor: p_p, rotulo: "Pico a pico que ve" }
+      mandos:
+        - { valor: r_e, tipo: interruptor, rotulo: "Referencia a media alimentación" }
+    requiere: { mover: [r_e] }
+
+  - id: porque-media
+    tipo: porque
+    titulo: "Media onda"
+    texto: "Sin referencia a media alimentación, el convertidor solo ve media onda. ¿Por qué?"
+    libro: [237]
+    widget:
+      tipo: figura
+      figura: fig-49.13
+      zonas:
+        - { id: media, rotulo: "Cuarto recuadro", rect: [288, 5, 75, 106] }
+    opciones:
+      - texto: "La señal es bipolar y el convertidor solo admite tensiones positivas"
+        bien: true
+        porque: "Lo negativo se queda en cero: es el punto que más se olvida."
+      - texto: "Porque el acoplo quita la mitad"
+        porque: "El acoplo quita la continua, no media onda: deja la señal centrada en cero."
+      - texto: "Porque el amplificador satura"
+        porque: "No hace falta saturar: lo negativo ya se pierde en el convertidor."
+    escalera:
+      - "¿Qué lee un convertidor de 0 a 3,3 V cuando la entrada es negativa?"
+    solucion: "La mitad negativa se pierde: hay que centrarla a media alimentación."
+
+  - id: dibuje-max9814
+    tipo: dibujar
+    titulo: "La salida del MAX9814"
+    texto: "Un tono fuerte llega al MAX9814, que entrega 2 V de pico a pico sobre su reposo de 1,25 V. Dibuje su salida."
+    nota: "El tono de 1 kHz es de ejemplo."
+    libro: [239, 258]
+    fijar: { f_t: 1000 }
+    dibujar:
+      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 3.3, unidad: V, rotulo: "salida" }
+      curva: "1.25 + 1*sin(2*pi*f_t*t)"
+      puntos: 33
+      tol: 0.1
+      holgura: 0.05
+      rotulo: "La salida del MAX9814"
+    exito: "Una senoide montada sobre 1,25 V: audio en alterna sobre una tensión de reposo."
+    pistas:
+      - { cuando: { valor: media, menor: -0.1 }, texto: "La ha dibujado demasiado baja: no oscila alrededor de cero, sino de su reposo." }
+      - { cuando: { valor: amplitud, menor: 0.7 }, texto: "Le falta amplitud: 2 V de pico a pico, un voltio a cada lado." }
+      - { texto: "Mire la forma: una senoide, dos ciclos en el eje." }
+    escalera:
+      - "Ponga primero la línea de reposo y oscile un voltio arriba y abajo."
+    solucion: "Una senoide de 1,25 V ± 1 V."
+
+  - id: pregunta-ventana
+    tipo: pregunta
+    titulo: "Una sola lectura no basta"
+    texto: "Para medir el nivel del micrófono, ¿por qué no basta una lectura del ADC?"
+    libro: ["cap49#265", 258]
+    widget:
+      tipo: figura
+      figura: fig-49.12
+      zonas:
+        - { id: ventana, rotulo: "Franja sombreada", rect: [155, 5, 125, 165] }
+    opciones:
+      - texto: "Captaría un instante cualquiera de la onda: hay que muestrear una ventana y calcular el pico a pico"
+        bien: true
+        porque: "El micrófono entrega una señal alterna, no un nivel: la amplitud sale del máximo menos el mínimo."
+      - texto: "Porque el ADC es lento"
+        porque: "El problema no es la velocidad: un instante de la onda no dice nada del volumen."
+      - texto: "Porque hay que promediar el ruido"
+        porque: "No es ruido: es la propia señal alterna, que cambia todo el rato."
+    escalera:
+      - "Mire la figura: ¿qué diría una sola muestra en un cruce por el reposo?"
+    solucion: "Una ventana de muestras y su pico a pico."
+
+  - id: pregunta-agc
+    tipo: predecir
+    titulo: "El control automático de ganancia"
+    texto: "El MAX9814 comprime los sonidos por encima de su umbral. Con su ganancia más alta, ¿cómo medirá los sonidos fuertes?"
+    libro: [239, 254]
+    widget:
+      tipo: figura
+      figura: fig-49.4
+      zonas:
+        - { id: max, rotulo: "Foto de la derecha", rect: [540, 0, 1060, 660] }
+    opciones:
+      - texto: "Aplastados: la salida apenas crece con el nivel"
+        bien: true
+        porque: "Más ganancia adelanta el umbral. Para medir nivel conviene la ganancia más baja, que lo retrasa."
+      - texto: "Mejor, con más resolución"
+        porque: "Más señal, sí, pero comprimida: por encima del umbral el nivel ya no se ve."
+      - texto: "Igual que con la más baja"
+        porque: "La ganancia cambia dónde empieza la compresión."
+    escalera:
+      - "¿Qué hace el control automático por encima de su umbral?"
+    solucion: "Comprimidos: para medir, la ganancia más baja."
+
+  - id: empareje-detectores
+    tipo: pregunta
+    titulo: "Detectar el nivel"
+    texto: "Empareje cada detector o constante con su rasgo."
+    libro: [242, 243, 244]
+    widget:
+      tipo: figura
+      figura: fig-49.13
+      zonas:
+        - { id: unidades, rotulo: "Recuadro de abajo", rect: [5, 138, 440, 58] }
+    emparejar:
+      - ["Detector de pico con diodo y RC", "Responde a los picos, no a la energía"]
+      - ["Detector de valor eficaz", "Lo correcto, y más fácil en digital"]
+      - ["125 ms", "Respuesta rápida"]
+      - ["1 s", "Respuesta lenta"]
+    exito: "Respetar esas constantes permite comparar con instrumentos."
+    pistas:
+      - { texto: "El eficaz es elevar al cuadrado, promediar y hacer la raíz." }
+    escalera:
+      - "Para nivel sonoro importa la energía, no los picos."
+    solucion: "Pico, picos; eficaz, lo correcto; 125 ms, rápida; 1 s, lenta."
+
+  - id: pregunta-relativo
+    tipo: pregunta
+    titulo: "Decibelios absolutos"
+    texto: "Sin ponderación A y sin calibrar, ¿qué mide la estación?"
+    libro: [246, 248]
+    widget:
+      tipo: figura
+      figura: fig-49.13
+      zonas:
+        - { id: unidades, rotulo: "Recuadro de abajo", rect: [5, 138, 440, 58] }
+    opciones:
+      - texto: "Un nivel relativo, útil para cambios y no comparable con un sonómetro"
+        bien: true
+        porque: "Decirlo así en la documentación es lo honesto."
+      - texto: "dB SPL exactos"
+        porque: "Pasar a dB SPL exige conocer la sensibilidad y calibrar."
+      - texto: "Una tensión en voltios eficaces"
+        porque: "Mide tensión, pero lo que se presenta es un nivel; sin calibrar, relativo."
+    escalera:
+      - "El dB SPL tiene una referencia de presión, no de tensión."
+    solucion: "Un nivel relativo."
+
+  - id: pregunta-montaje
+    tipo: pregunta
+    titulo: "Un zumbido en la medida"
+    texto: "El micrófono capta un zumbido que sale de la fuente de alimentación. ¿Por dónde entra?"
+    libro: [252, 230]
+    widget:
+      tipo: figura
+      figura: fig-49.13
+      zonas:
+        - { id: electret, rotulo: "Primer recuadro", rect: [30, 5, 75, 106] }
+    opciones:
+      - texto: "Por la resistencia de polarización del electret"
+        bien: true
+        porque: "Una alimentación sucia se cuela directamente por ella, sobre la que aparece la señal."
+      - texto: "Por el aire"
+        porque: "Es eléctrico: la señal se toma sobre la resistencia que va a la alimentación."
+      - texto: "Por el convertidor"
+        porque: "Entra antes, en la propia polarización del micrófono."
+    escalera:
+      - "¿Sobre qué resistencia aparece la señal del electret?"
+    solucion: "Por la resistencia de polarización."
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "Una calibración viable"
+    texto: "Sin un sonómetro de laboratorio, ¿qué calibración del micrófono sí es viable?"
+    libro: [257]
+    widget:
+      tipo: figura
+      figura: fig-49.12
+      zonas:
+        - { id: grafica, rotulo: "La gráfica", rect: [25, 5, 380, 170] }
+    opciones:
+      - texto: "Comparar con un sonómetro o una aplicación de móvil en varios niveles y ajustar una recta"
+        bien: true
+        porque: "No da exactitud de instrumento, pero sí una medida coherente y repetible."
+      - texto: "Ninguna"
+        porque: "Una calibración relativa es viable y basta para vigilar tendencias."
+      - texto: "Ajustar la ganancia hasta que lea 60 dB"
+        porque: "Un solo punto sin referencia no es calibrar: hacen falta varios niveles."
+    escalera:
+      - "Una recta necesita varios puntos de referencia."
+    solucion: "Varios niveles contra una referencia y una recta."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [232, 237, 239, 248]
+    ideas:
+      - { titulo: "Señal pequeña.", texto: "−44 dB son 6,3 mV por pascal: hay que amplificar de 40 a 60 dB." }
+      - { titulo: "Media alimentación.", texto: "Sin ella, el convertidor ve media onda." }
+      - { titulo: "Ventana.", texto: "El nivel sale del pico a pico de muchas muestras." }
+      - { titulo: "Honestidad.", texto: "Sin calibrar ni ponderación A, un nivel relativo." }

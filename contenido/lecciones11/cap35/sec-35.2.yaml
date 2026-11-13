@@ -1,0 +1,304 @@
+# Lección 1.2 de la sección 36.2 «Temperatura: Tres Familias» (cap35, sec-35.2). Formato: GUIA.md.
+# - NTC de 10 kΩ y B = 3 950: R = R₀·e^(B·(1/T − 1/T₀)) (bloque 51); 3,59 kΩ a 50 °C y −4,44 %/°C a 25 °C
+#   (ejercicio 36.3). Pt100: 100 Ω y 0,385 Ω/°C (bloque 39); a dos hilos, 0,4 Ω por hilo leen 2,08 °C de más
+#   (ejercicio 36.2). Termopar K: 41 µV/°C; 300 °C con la unión fría a 25 °C se leen 275 °C sin compensar.
+# - El divisor de la NTC («un divisor y un convertidor A/D bastan», bloque 52) con 3,3 V y 10 kΩ arriba: valores de
+#   ejemplo (rotulados).
+# Paso práctico: «banco» opcional, la NTC en hielo fundente (bloque 62): el modelo da 33,6 kΩ a 0 °C; la tolerancia
+# del ± 5 % es de ejemplo (la dispersión de B entre unidades es la que el libro dice que se ajusta así).
+leccion: cap35/sec-35.2
+
+libro:
+  37: "elegir mal es la causa de la mayoría de las medidas de temperatura mediocres"
+  39: "100 Ω a 0 °C, con un coeficiente de 0,385 Ω/°C"
+  43: "Por eso la excitación se mantiene baja o se aplica en pulsos"
+  44: "un ohmio de cable son 2,6 °C de error"
+  46: "un termopar mide diferencias, no temperaturas absolutas"
+  47: "la compensación de unión fría"
+  49: "cualquier unión con otro metal en el camino crea un termopar parásito"
+  51: "cuya resistencia cae exponencialmente con la temperatura"
+  52: "un NTC de 10 kΩ con B = 3 950 cambia en torno a un 4 % por grado"
+  53: "dispersión entre unidades que a menudo exige calibrar cada una"
+  56: "Sensibilidad"
+  57: "exactitud y estabilidad, RTD; temperatura alta o punto de medida diminuto, termopar; sensibilidad y coste en un margen estrecho, NTC"
+  59: "Para medir entre −40 y 125 °C, un sensor integrado"
+  62: "hielo fundente (0,0 °C)"
+  63: "medir con la excitación normal y después con la mitad"
+  64: "Linealidad del RTD frente a la sensibilidad del NTC"
+  65: "sonda Pt100 de tres hilos"
+  "cap35#345": "0,4 Ω por hilo"
+
+modelo:
+  valores:
+    t_n: { sim: "t", nombre: "temperatura de la NTC", unidad: "°C", valor: 25 }
+    V_d: { sim: "V", nombre: "alimentación del divisor", unidad: V, valor: 3.3 }
+    R_u: { sim: "R_{fija}", nombre: "resistencia fija de arriba", unidad: Ω, valor: 10000 }
+    B_n: { sim: "B", nombre: "constante B de la NTC", unidad: K, valor: 3950 }
+    R_h: { sim: "R_{hilo}", nombre: "resistencia de cada hilo", unidad: Ω, valor: 0.4 }
+    t_m: { sim: "t_{m}", nombre: "unión de medida", unidad: "°C", valor: 300 }
+    t_f: { sim: "t_{f}", nombre: "unión fría", unidad: "°C", valor: 25 }
+  calculos:
+    R_n: { expr: "10000*exp(B_n*(1/(t_n + 273.15) - 1/298.15))", sim: "R_{NTC}", nombre: "resistencia de la NTC", unidad: Ω }
+    V_o: { expr: "V_d*R_n/(R_u + R_n)", sim: "V_{salida}", nombre: "tensión del divisor", unidad: V }
+    I_d: { expr: "V_d/(R_u + R_n)", sim: "I", nombre: "corriente del divisor", unidad: A }
+    s_n: { expr: "100*B_n/(t_n + 273.15)^2", sim: "S_{NTC}", nombre: "sensibilidad relativa de la NTC", unidad: "%" }
+    s_p: { expr: "0.385", sim: "S_{Pt100}", nombre: "sensibilidad relativa de la Pt100", unidad: "%" }
+    R_50: { expr: "10000*exp(B_n*(1/323.15 - 1/298.15))", sim: "R(50 °C)", nombre: "NTC a 50 °C", unidad: Ω }
+    R_0: { expr: "10000*exp(B_n*(1/273.15 - 1/298.15))", sim: "R(0 °C)", nombre: "NTC en hielo fundente", unidad: Ω }
+    e_2: { expr: "2*R_h/0.385", sim: "Δt", nombre: "error a dos hilos", unidad: "°C" }
+    e_1: { expr: "R_h/0.385", sim: "Δt_{1}", nombre: "error de un solo hilo", unidad: "°C" }
+    V_tc: { expr: "41e-6*(t_m - t_f)", sim: "V_{TC}", nombre: "tensión del termopar", unidad: V }
+    t_s: { expr: "t_m + t_f", sim: "t_{m} + t_{f}", nombre: "sumando la unión fría", unidad: "°C" }
+    t_l: { expr: "V_tc/41e-6", sim: "t_{leída}", nombre: "temperatura leída sin compensar", unidad: "°C" }
+
+tarjetas:
+  - id: explore-familias
+    tipo: explorar
+    titulo: "Tres familias y un atajo"
+    texto: "Cada sensor gana claramente en su terreno; elegir mal da medidas mediocres. Toque las tres familias."
+    libro: [37, 64]
+    widget:
+      tipo: figura
+      figura: fig-35.3
+      zonas:
+        - { id: rtd, rotulo: "Recuadro verde", rect: [260, 22, 185, 42], texto: "RTD Pt100: exactitud y estabilidad; 385 µV/°C a 1 mA." }
+        - { id: termopar, rotulo: "Recuadro naranja", rect: [260, 70, 185, 42], texto: "Termopar K: temperatura alta o punto diminuto; 41 µV/°C." }
+        - { id: ntc, rotulo: "Recuadro rojo", rect: [260, 116, 185, 42], texto: "NTC de 10 kΩ: sensibilidad y coste, en margen corto." }
+        - { id: integrado, rotulo: "Recuadro azul", rect: [260, 162, 185, 42], texto: "El integrado: linealizado y calibrado, para −40 a 125 °C." }
+    requiere: { mover: [rtd, termopar, ntc] }
+
+  - id: explore-sensibilidad
+    tipo: explorar
+    titulo: "Sensible o lineal"
+    texto: "La NTC cae exponencialmente; la Pt100 sube casi recta. Mueva la temperatura y compare cuánto cambia cada una por grado."
+    libro: [39, 51, 52]
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 0, max: 120, unidad: "°C", rotulo: "temperatura" }
+      y: { min: 0, max: 3.5, unidad: "", rotulo: "R / R(25 °C)" }
+      curvas:
+        - { expr: "exp(B_n*(1/(tt + 273.15) - 1/298.15))", color: naranja, rotulo: "NTC" }
+        - { expr: "(100 + 0.385*tt)/(100 + 0.385*25)", color: verde, rotulo: "Pt100" }
+      marcas:
+        - { x: "t_n", y: "R_n/10000", rotulo: "{{t_n}}" }
+      lectura: { valor: s_n, rotulo: "La NTC cambia, por grado" }
+      datos:
+        - { valor: s_p, rotulo: "La Pt100: {{s_p}} por grado" }
+      mandos:
+        - { valor: t_n, min: 0, max: 100, paso: 1, rotulo: "Temperatura" }
+    requiere: { mover: [t_n] }
+
+  - id: explore-divisor
+    tipo: explorar
+    titulo: "Con una NTC basta un divisor"
+    texto: "Con esa señal, el circuito es trivial: un divisor y un convertidor A/D. Caliéntela y mire la salida."
+    nota: "3,3 V y 10 kΩ fijos son de ejemplo."
+    libro: [52]
+    fijar: { V_d: 3.3, R_u: 10000 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_d, arriba: R_u, abajo: R_n }
+      lectura: { valor: V_o, rotulo: "Tensión del divisor" }
+      datos:
+        - { valor: R_n, rotulo: "NTC: {{R_n}}" }
+      corriente: I_d
+      mide: { salida: V_o, corriente: I_d }
+      mandos:
+        - { valor: t_n, min: 0, max: 100, paso: 1, rotulo: "Temperatura" }
+    requiere: { mover: [t_n] }
+
+  - id: estime-ntc
+    tipo: pregunta
+    titulo: "La NTC a 50 °C"
+    texto: "Una NTC de 10 kΩ a 25 °C con B = 3 950. ¿Qué resistencia tiene a 50 °C?"
+    libro: [51, 52, "cap35#345"]
+    widget:
+      tipo: figura
+      figura: fig-35.3
+      zonas:
+        - { id: grafica, rotulo: "Gráfica de la izquierda", rect: [25, 20, 215, 175] }
+    estimar:
+      objetivo: "R_50"
+      unidad: Ω
+      min: 0
+      max: 10000
+      paso: 10
+      inicio: 7000
+      tol: 0.03
+      rotulo: "Resistencia a 50 °C"
+    exito: "Unos 3,59 kΩ: en 25 grados ha perdido casi dos tercios."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 3700 }, texto: "Demasiado: a un 4 % por grado, 25 grados la bajan mucho más." }
+      - { texto: "Demasiado poco: la caída es exponencial, pero no tanto." }
+    escalera:
+      - "Las temperaturas en kelvin: 298,15 y 323,15."
+      - "R = 10 kΩ·e^(3950·(1/323,15 − 1/298,15)) = 10 kΩ·e^(−1,025)."
+    solucion: "Unos 3,59 kΩ."
+    comprobar:
+      - { R_50: 3590 }
+
+  - id: pregunta-dos-hilos
+    tipo: pregunta
+    titulo: "La Pt100 a dos hilos"
+    texto: "Una Pt100 se conecta a dos hilos de 0,4 Ω cada uno. ¿Cuánto error añade el cable?"
+    libro: [39, 44, 56, "cap35#345"]
+    widget:
+      tipo: figura
+      figura: fig-35.3
+      zonas:
+        - { id: rtd, rotulo: "Recuadro verde", rect: [260, 22, 185, 42] }
+    opciones:
+      - texto: "Unos 2,08 °C de más"
+        bien: true
+        porque: "Los dos hilos suman 0,8 Ω, y a 0,385 Ω/°C se leen como 2,08 °C. Por eso tres y cuatro hilos."
+      - texto: "Unos 1,04 °C"
+        porque: "Ese es un solo hilo: la corriente va y vuelve, y los dos están en serie con el sensor."
+      - texto: "0,8 °C"
+        porque: "Son 0,8 Ω, no grados: hay que dividir entre 0,385 Ω/°C."
+    escalera:
+      - "Sume los dos hilos y divida entre la sensibilidad en ohmios por grado."
+    solucion: "0,8 Ω / 0,385 Ω/°C ≈ 2,08 °C."
+    comprobar:
+      - { e_2: 2.08, e_1: 1.04 }
+
+  - id: pregunta-termopar
+    tipo: predecir
+    titulo: "Un termopar sin compensar"
+    texto: "Un termopar K tiene la unión de medida a 300 °C y la fría a 25 °C. Sin compensación de unión fría, ¿qué lee?"
+    libro: [46, 47, "cap35#345"]
+    widget:
+      tipo: figura
+      figura: fig-35.3
+      zonas:
+        - { id: termopar, rotulo: "Recuadro naranja", rect: [260, 70, 185, 42] }
+    opciones:
+      - texto: "275 °C"
+        bien: true
+        porque: "Mide la diferencia entre sus uniones: 11,3 mV, que son 275 °C."
+      - texto: "300 °C"
+        porque: "Eso exige sumar la temperatura de la unión fría: es la compensación que falta."
+      - texto: "325 °C"
+        porque: "La unión fría no se suma sola: se resta, porque el termopar mide la diferencia."
+    escalera:
+      - "Un termopar mide diferencias, no temperaturas absolutas."
+    solucion: "300 − 25 = 275 °C: hay que sumar la unión fría."
+    comprobar:
+      - { V_tc: 0.0113, t_l: 275, t_s: 325 }
+
+  - id: porque-cable
+    tipo: porque
+    titulo: "El cable del termopar"
+    texto: "¿Por qué un termopar se alarga con cable de compensación y no con cable de cobre corriente?"
+    libro: [49]
+    widget:
+      tipo: figura
+      figura: fig-35.4
+      zonas:
+        - { id: k, rotulo: "Foto de la izquierda", rect: [0, 0, 490, 424] }
+    opciones:
+      - texto: "Cualquier unión con otro metal crea un termopar parásito"
+        bien: true
+        porque: "El cable de compensación tiene la misma característica termoeléctrica: no añade uniones nuevas."
+      - texto: "Porque el cobre tiene demasiada resistencia"
+        porque: "El problema no es la resistencia: es la tensión termoeléctrica de cada unión."
+      - texto: "Porque el cobre se oxida"
+        porque: "El error viene de la unión de dos metales distintos, que es otro termopar."
+    escalera:
+      - "¿Qué es un termopar, sino la unión de dos metales distintos?"
+    solucion: "Para no crear termopares parásitos en el camino."
+
+  - id: empareje-eleccion
+    tipo: pregunta
+    titulo: "Cuál elegir"
+    texto: "Empareje cada necesidad con el sensor que la resuelve."
+    libro: [57, 59]
+    widget:
+      tipo: figura
+      figura: fig-35.3
+      zonas:
+        - { id: cajas, rotulo: "Los cuatro recuadros", rect: [260, 22, 185, 182] }
+    emparejar:
+      - ["Exactitud y estabilidad", "RTD"]
+      - ["Temperatura alta o punto diminuto", "Termopar"]
+      - ["Sensibilidad y coste en un margen estrecho", "NTC"]
+      - ["De −40 a 125 °C sin complicarse", "Integrado"]
+    exito: "Antes de diseñar para un RTD, conviene preguntarse si un integrado no basta."
+    pistas:
+      - { texto: "El termopar es el que llega más alto; la NTC, la más sensible." }
+    escalera:
+      - "El integrado elimina toda la cadena de acondicionamiento."
+    solucion: "Exactitud, RTD; alta temperatura, termopar; sensibilidad, NTC; sin complicarse, integrado."
+
+  - id: toque-tres-hilos
+    tipo: tocar
+    titulo: "Tres hilos"
+    texto: "Toque la sonda que lleva un hilo de más para cancelar la resistencia del cable."
+    libro: [44, 65]
+    widget:
+      tipo: figura
+      figura: fig-35.4
+      zonas:
+        - { id: termopar, rotulo: "Foto de la izquierda", rect: [0, 0, 490, 424] }
+        - { id: sonda, rotulo: "Foto del centro", rect: [520, 0, 560, 424] }
+        - { id: elementos, rotulo: "Foto de la derecha", rect: [1110, 0, 490, 424] }
+    tocar:
+      bien: [sonda]
+      porque:
+        termopar: "Es un termopar K con su conector: dos hilos de aleación, sin excitación."
+        elementos: "Son elementos Pt100 sueltos, con solo dos patillas."
+    exito: "La sonda Pt100 de tres hilos: reparte el cable entre dos ramas del puente y lo cancela."
+    escalera:
+      - "Cuente los hilos que salen de cada sonda."
+    solucion: "La del centro: la Pt100 de tres hilos."
+
+  - id: pregunta-autocalentamiento
+    tipo: pregunta
+    titulo: "¿Se calienta solo?"
+    texto: "Mide con la excitación normal y después con la mitad, y la lectura cambia. ¿Qué indica?"
+    libro: [43, 63]
+    widget:
+      tipo: figura
+      figura: fig-35.3
+      zonas:
+        - { id: rtd, rotulo: "Recuadro verde", rect: [260, 22, 185, 42] }
+    opciones:
+      - texto: "El sensor se calienta a sí mismo"
+        bien: true
+        porque: "Hay que bajar la corriente o aplicarla en pulsos."
+      - texto: "Que el sensor está roto"
+        porque: "Funciona: lo que cambia es su temperatura, por la potencia de la excitación."
+      - texto: "Nada: es ruido"
+        porque: "Un cambio sistemático al cambiar la excitación es autocalentamiento."
+    escalera:
+      - "La corriente de excitación disipa I²·R en el propio sensor."
+    solucion: "Autocalentamiento: baje la corriente o púlsela."
+
+  - id: banco-hielo
+    tipo: banco
+    titulo: "La NTC en hielo fundente"
+    texto: "Meta una NTC de 10 kΩ en hielo fundente, espere y mida su resistencia."
+    libro: [62, 53]
+    fijar: { B_n: 3950 }
+    banco:
+      piezas: ["NTC de 10 kΩ y B = 3 950", "Vaso con hielo picado y un poco de agua", "Multímetro en Ω"]
+      medir: "La resistencia de la NTC, cuando la lectura deje de cambiar."
+      esperado: R_0
+      unidad: Ω
+      tol: 0.05
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.05 }, texto: "Mide de más: la B real de su ejemplar será algo mayor; anótela, es su calibración." }
+        - { cuando: { valor: desviacion, menor: -0.05 }, texto: "Mide de menos: ¿queda agua sin hielo? Si no, su B real es menor." }
+        - { texto: "Cerca de lo previsto. Con agua hirviendo tendría el segundo punto." }
+    comprobar:
+      - { R_0: 33600 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [44, 46, 52, 57]
+    ideas:
+      - { titulo: "RTD.", texto: "Exacta y estable, poco sensible: cuidado con el cable, tres o cuatro hilos." }
+      - { titulo: "Termopar.", texto: "Mide diferencias: necesita compensación de unión fría." }
+      - { titulo: "NTC.", texto: "Unas diez veces más sensible y muy curva: un divisor basta." }
+      - { titulo: "Integrado.", texto: "Entre −40 y 125 °C, a menudo la respuesta correcta." }

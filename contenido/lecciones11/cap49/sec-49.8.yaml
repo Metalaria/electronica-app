@@ -1,0 +1,204 @@
+# Lección 1.2 de la sección 50.8 «Alimentación y Presupuesto de Corriente» (cap49; etiquetas sec-49.N = impresas 50.N).
+# - La tabla 50.1 (bloque 262): total medio de unos 100 a 155 mA con picos de 250 a 400 mA. Una 18650 de unos
+#   2 500 mAh da de 16 a 25 horas con todo encendido (bloque 263).
+# - La autonomía frente a la fracción del tiempo despierto (figura 50.17, fig-49.14): con el módulo desnudo duerme a
+#   microamperios (10 µA, bloque 142 de la sección 50.4); con un DevKit, el suelo son de 5 a 10 mA (se toma el mejor
+#   caso, 5 mA). La corriente despierta es el total medio más alto de la tabla, 155 mA.
+# - Ejercicio 50.4 (bloque 265): los picos los absorbe el condensador; a la fuente le importa la media.
+# Paso práctico: «simular» la autonomía de la 18650 con 155 mA (16 h; error típico: usar el pico de 400 mA, 6,25 h).
+leccion: cap49/sec-49.8
+
+libro:
+  261: "sumar lo que consume cada parte en el peor caso y comprobar que la fuente lo soporta"
+  262: "Total medio"
+  263: "daría de 16 a 25 horas con todo encendido"
+  264: "acortar la fase activa rinde más que optimizar el consumo de reposo"
+  265: "los picos de transmisión WiFi, de 250 a 400 mA, son muy breves, y el condensador de reserva junto al módulo los absorbe"
+  266: "con un DevKit, el suelo son los 5 a 10 mA de la placa"
+  "cap49#142": "Sueño profundo: unos 10 µA"
+
+modelo:
+  valores:
+    C_a: { sim: "C", nombre: "capacidad de la batería", unidad: "A·h", valor: 2.5 }
+    I_t: { sim: "I", nombre: "consumo medio con todo encendido", unidad: A, valor: 0.155 }
+    f_w: { sim: "despierto", nombre: "tiempo despierto con wifi", unidad: "%", valor: 1 }
+    d_k: { tipo: interruptor, nombre: "placa DevKit en lugar del módulo desnudo", valor: 0 }
+  calculos:
+    h_a: { expr: "C_a/I_t", sim: "t", nombre: "autonomía con todo encendido", unidad: h }
+    h_p: { expr: "C_a/0.4", sim: "t_{pico}", nombre: "autonomía calculada con el pico", unidad: h }
+    I_f: { si: d_k, entonces: "0.005", sino: "10e-6", sim: "I_{suelo}", nombre: "consumo dormido", unidad: A }
+    I_m: { expr: "f_w/100*0.155 + (1 - f_w/100)*I_f", sim: "I_{media}", nombre: "corriente media", unidad: A }
+    D_a: { expr: "C_a/I_m/24", sim: "autonomía", nombre: "autonomía", unidad: "días" }
+
+tarjetas:
+  - id: explore-presupuesto
+    tipo: explorar
+    titulo: "Por el pico y por la media"
+    texto: "La fuente debe aguantar el pico; la batería se gasta con la media. Toque las dos gráficas."
+    libro: [261, 262]
+    widget:
+      tipo: figura
+      figura: fig-49.14
+      zonas:
+        - { id: fuente, rotulo: "Gráfica de la izquierda", rect: [30, 10, 190, 165], texto: "El consumo típico y el pico de cada elemento: en total, de 100 a 155 mA con picos de 250 a 400 mA." }
+        - { id: bateria, rotulo: "Gráfica de la derecha", rect: [280, 10, 160, 165], texto: "La autonomía con 2 500 mAh según el tiempo que pasa despierta con el wifi." }
+    requiere: { mover: [fuente, bateria] }
+
+  - id: pregunta-usb
+    tipo: pregunta
+    titulo: "El USB basta"
+    texto: "Los picos del wifi pasan de 250 mA. ¿Por qué basta la alimentación por USB a través del regulador de la placa?"
+    libro: [263, 265]
+    widget:
+      tipo: figura
+      figura: fig-49.14
+      zonas:
+        - { id: fuente, rotulo: "Gráfica de la izquierda", rect: [30, 10, 190, 165] }
+    opciones:
+      - texto: "Los picos son breves y los absorbe el condensador; a la fuente le importa la media"
+        bien: true
+        porque: "La media, de 100 a 155 mA, la da con holgura el regulador de 1 A."
+      - texto: "Porque el USB da 400 mA de media"
+        porque: "Lo que importa es que la media es baja y los picos los cubre el condensador."
+      - texto: "No basta: hace falta otra fuente"
+        porque: "Basta, con un condensador de reserva junto al módulo."
+    escalera:
+      - "Distinga la corriente media de los picos breves."
+    solucion: "Media baja, picos breves cubiertos por el condensador."
+
+  - id: simule-18650
+    tipo: simular
+    titulo: "Con una 18650"
+    texto: "Una versión portátil con una 18650 de unos 2 500 mAh, todo encendido y 155 mA de media. ¿Cuántas horas dura?"
+    libro: [262, 263]
+    fijar: { C_a: 2.5, I_t: 0.155 }
+    simular:
+      objetivo: h_a
+      unidad: h
+      tol: 0.03
+      rotulo: "Autonomía"
+      errores:
+        - { expr: "h_p", texto: "Ha usado el pico de 400 mA: la batería se gasta con la media." }
+    exito: "Unas 16 horas; con 100 mA de media, 25. Con todo encendido, un día como mucho."
+    escalera:
+      - "Autonomía = capacidad / corriente media."
+    solucion: "2 500 mAh / 155 mA ≈ 16 h."
+    comprobar:
+      - { h_a: 16.1, h_p: 6.25 }
+      - { con: { I_t: 0.1 }, h_a: 25 }
+
+  - id: explore-despierto
+    tipo: explorar
+    titulo: "Cuánto tiempo despierta"
+    texto: "Con el módulo desnudo durmiendo a microamperios, cambie la fracción del tiempo que pasa despierta con el wifi."
+    libro: [266, "cap49#142"]
+    fijar: { d_k: 0, C_a: 2.5 }
+    widget:
+      tipo: grafica
+      x: { id: ff, min: 0.01, max: 100, unidad: "%", rotulo: "despierto con wifi", escala: log }
+      y: { min: 0, max: 1000, unidad: "días", rotulo: "autonomía" }
+      curvas:
+        - { expr: "C_a/(ff/100*0.155 + (1 - ff/100)*I_f)/24", color: naranja, rotulo: "autonomía" }
+      marcas:
+        - { x: "f_w", y: "D_a", rotulo: "{{D_a}}" }
+      lectura: { valor: D_a, rotulo: "Autonomía" }
+      mandos:
+        - { valor: f_w, lista: [0.1, 1, 10, 100], rotulo: "Despierto con wifi" }
+    requiere: { mover: [f_w] }
+
+  - id: sorpresa-devkit
+    tipo: sorpresa
+    titulo: "Con una placa DevKit"
+    texto: "Ahora la estación es una placa DevKit, que duerme con su regulador, su LED y su conversor encendidos. Cámbiela y mire la autonomía."
+    libro: [263, 266]
+    fijar: { C_a: 2.5 }
+    inicio: { d_k: 0, f_w: 1 }
+    widget:
+      tipo: grafica
+      x: { id: ff, min: 0.01, max: 100, unidad: "%", rotulo: "despierto con wifi", escala: log }
+      y: { min: 0, max: 1000, unidad: "días", rotulo: "autonomía" }
+      curvas:
+        - { expr: "C_a/(ff/100*0.155 + (1 - ff/100)*I_f)/24", color: naranja, rotulo: "autonomía" }
+      marcas:
+        - { x: "f_w", y: "D_a", rotulo: "{{D_a}}" }
+      lectura: { valor: D_a, rotulo: "Autonomía" }
+      mandos:
+        - { valor: d_k, tipo: interruptor, rotulo: "Placa DevKit" }
+        - { valor: f_w, lista: [0.1, 1, 10, 100], rotulo: "Despierto con wifi" }
+    requiere: { mover: [d_k] }
+
+  - id: porque-modulo
+    tipo: porque
+    titulo: "El año con pilas"
+    texto: "¿Por qué el año con pilas de la especificación exige el módulo ESP32 desnudo y no una DevKit?"
+    libro: [263, 266]
+    widget:
+      tipo: figura
+      figura: fig-49.14
+      zonas:
+        - { id: bateria, rotulo: "Gráfica de la derecha", rect: [280, 10, 160, 165] }
+    opciones:
+      - texto: "La DevKit sigue gastando de 5 a 10 mA dormida: dormir no la salva"
+        bien: true
+        porque: "El año exige el módulo desnudo con un regulador de 1 o 2 µA en vacío."
+      - texto: "Porque el módulo desnudo transmite menos"
+        porque: "Transmite igual; la diferencia está en lo que gasta durmiendo."
+      - texto: "Porque la DevKit no tiene sueño profundo"
+        porque: "El ESP32 duerme igual; lo que no duerme es el resto de la placa."
+    escalera:
+      - "¿Qué consume la placa cuando el ESP32 duerme?"
+    solucion: "El suelo de la DevKit, de 5 a 10 mA."
+
+  - id: pregunta-18650
+    tipo: pregunta
+    titulo: "El regulador y la celda"
+    texto: "La versión portátil usa una celda 18650. ¿Por qué no basta conectarla a la entrada del AMS1117 de la DevKit?"
+    libro: [263]
+    widget:
+      tipo: figura
+      figura: fig-49.14
+      zonas:
+        - { id: fuente, rotulo: "Gráfica de la izquierda", rect: [30, 10, 190, 165] }
+    opciones:
+      - texto: "El AMS1117 pide algo más de 4,3 V y la celda da menos casi toda la descarga"
+        bien: true
+        porque: "Hace falta un elevador a 5 V o un regulador de baja caída propio."
+      - texto: "Porque la celda da demasiada tensión"
+        porque: "Al revés: se queda corta para ese regulador."
+      - texto: "Porque el AMS1117 no da 1 A"
+        porque: "Da 1 A; el problema es la tensión de entrada que necesita."
+    escalera:
+      - "Compare lo que pide el regulador con lo que da la celda."
+    solucion: "Le falta tensión: elevador o regulador de baja caída."
+
+  - id: predecir-activa
+    tipo: predecir
+    titulo: "Dónde rinde optimizar"
+    texto: "Hay que alargar la autonomía. ¿Qué rinde más: acortar la fase activa u optimizar el consumo de reposo?"
+    libro: [264]
+    widget:
+      tipo: figura
+      figura: fig-49.14
+      zonas:
+        - { id: bateria, rotulo: "Gráfica de la derecha", rect: [280, 10, 160, 165] }
+    opciones:
+      - texto: "Acortar la fase activa"
+        bien: true
+        porque: "Es la que domina la media: la conclusión transferible del capítulo 39."
+      - texto: "Optimizar el reposo"
+        porque: "Con el módulo desnudo el reposo ya es de microamperios: pesa poco en la media."
+      - texto: "Da igual"
+        porque: "La media es la ponderación por ciclo de trabajo: pesa más la fase activa."
+    escalera:
+      - "¿Qué término domina la media ponderada?"
+    solucion: "Acortar la fase activa."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [261, 263, 264, 265]
+    ideas:
+      - { titulo: "Presupuesto.", texto: "Sumar el peor caso de cada parte y comprobar la fuente." }
+      - { titulo: "Pico y media.", texto: "La fuente aguanta el pico con un condensador; la batería, la media." }
+      - { titulo: "Con todo encendido.", texto: "Una 18650 dura de 16 a 25 horas." }
+      - { titulo: "El año.", texto: "Exige el módulo desnudo: una DevKit no baja de 5 mA dormida." }

@@ -1,0 +1,254 @@
+# Lección 1.2 de la sección 36.5 «Campo, Proximidad y Corriente» (cap35, sec-35.5). Formato: GUIA.md.
+# - El shunt como una fuente de corriente sobre una resistencia (esquema «norton», sin carga conectada): la corriente
+#   medida atraviesa el shunt y en él cae V = I·R y se disipan I²·R.
+# - Ejercicio 36.5 (bloque 345): 20 A con 5 mΩ dan 100 mV y 2 W; para no pasar de 0,5 W, 1,25 mΩ y 25 mV. La lista de
+#   shunts del reto es de ejemplo (el reto pide la mayor caída que no pase de 0,5 W: solo 1,25 mΩ).
+# - Shunt frente a Hall (tabla del bloque 150, figura 36.9) y los sensores sin contacto. Sin fórmula de bloque «ec».
+leccion: cap35/sec-35.5
+
+libro:
+  132: "no necesitan contacto con lo que miden"
+  136: "midiéndolo se mide la corriente sin interrumpir el circuito ni disipar nada"
+  138: "offset y deriva apreciables"
+  141: "solo funciona en alterna, porque necesita variación de flujo"
+  142: "nunca debe dejarse el secundario abierto con corriente en el primario"
+  144: "Detecta solo metales, es robusto y su alcance es de milímetros"
+  145: "detecta el cambio de capacidad al acercarse cualquier material"
+  146: "barrera, réflex y difuso"
+  147: "las superficies blandas absorben y las inclinadas desvían el eco"
+  149: "una resistencia de valor bajo en serie, y se mide la caída"
+  150: "Disipación"
+  151: "shunt cuando importe la exactitud y la corriente sea moderada; Hall cuando haga falta aislamiento o la corriente sea grande"
+  153: "produce un pico en la medida que no corresponde a la corriente real"
+  154: "cuatro terminales y geometría de baja inductancia"
+  156: "su offset se mide con corriente cero, que es donde más se aparta"
+  158: "Disipación del shunt frente al efecto Hall"
+  "cap35#345": "Una fuente mide su corriente de salida, de hasta 20 A, con un shunt de 5 mΩ"
+
+modelo:
+  valores:
+    I_m: { sim: "I", nombre: "corriente medida", unidad: A, valor: 10 }
+    R_s: { sim: "R_{shunt}", nombre: "shunt", unidad: Ω, valor: 0.005 }
+    R_c: { sim: "R_{L}", nombre: "carga (desconectada)", unidad: Ω, valor: 10 }
+    s_c: { tipo: interruptor, nombre: "carga conectada", valor: 0 }
+  calculos:
+    V_s: { si: s_c, entonces: "I_m*par(R_s, R_c)", sino: "I_m*R_s", sim: "V_{shunt}", nombre: "caída en el shunt", unidad: V }
+    I_c: { si: s_c, entonces: "V_s/R_c", sino: "0", sim: "I_{L}", nombre: "corriente por la carga", unidad: A }
+    I_s: { expr: "V_s/R_s", sim: "I_{shunt}", nombre: "corriente por el shunt", unidad: A }
+    P_s: { expr: "I_s^2*R_s", sim: "P", nombre: "potencia en el shunt", unidad: W }
+
+tarjetas:
+  - id: explore-sin-contacto
+    tipo: explorar
+    titulo: "Medir sin tocar"
+    texto: "Campo, proximidad y corriente: no necesitan contacto con lo que miden. Toque el efecto Hall y el transformador de intensidad."
+    libro: [132, 158]
+    widget:
+      tipo: figura
+      figura: fig-35.9
+      zonas:
+        - { id: hall, rotulo: "Recuadro verde", rect: [260, 20, 186, 38], texto: "Efecto Hall: el campo da una tensión transversal; corriente y posición, en continua y alterna." }
+        - { id: ti, rotulo: "Recuadro azul", rect: [260, 62, 186, 38], texto: "Transformador de intensidad: no consume y aísla, pero solo en alterna. Nunca con el secundario abierto." }
+        - { id: inductiva, rotulo: "Recuadro naranja", rect: [260, 104, 186, 38], texto: "Proximidad inductiva: solo metales, robusta, de milímetros." }
+        - { id: grafica, rotulo: "Gráfica de la izquierda", rect: [25, 15, 210, 175], texto: "El shunt disipa I²·R; el Hall, nada. El shunt es más exacto y deriva menos." }
+    requiere: { mover: [hall, ti] }
+
+  - id: explore-shunt
+    tipo: explorar
+    titulo: "El shunt, en contraste"
+    texto: "La alternativa clásica: una resistencia baja en serie, y se mide la caída. Suba la corriente y mire la caída y el calor."
+    libro: [149, 150]
+    fijar: { R_s: 0.005, s_c: 0, R_c: 10 }
+    widget:
+      tipo: circuito
+      esquema: norton
+      piezas: { fuente: I_m, rn: R_s, carga: R_c, interruptor: s_c }
+      lectura: { valor: V_s, rotulo: "Caída en el shunt" }
+      datos:
+        - { valor: P_s, rotulo: "Disipa {{P_s}}" }
+      corriente: I_s
+      mide: { salida: V_s, carga: I_c, paralelo: I_s }
+      mandos:
+        - { valor: I_m, min: 0, max: 20, paso: 1, rotulo: "Corriente medida" }
+    requiere: { mover: [I_m] }
+
+  - id: predecir-disipacion
+    tipo: predecir
+    titulo: "A 20 A"
+    texto: "Una fuente mide hasta 20 A con un shunt de 5 mΩ. ¿Cuánto disipa el shunt a 20 A?"
+    libro: ["cap35#345", 150]
+    fijar: { I_m: 20, R_s: 0.005, s_c: 0, R_c: 10 }
+    widget:
+      tipo: circuito
+      esquema: norton
+      piezas: { fuente: I_m, rn: R_s, carga: R_c, interruptor: s_c }
+      lectura: { valor: P_s, rotulo: "Potencia en el shunt" }
+      corriente: I_s
+      mide: { salida: V_s, carga: I_c, paralelo: I_s }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "2 W"
+        bien: true
+        porque: "I²·R: 400 · 5 mΩ = 2 W, sobre una caída de 100 mV."
+      - texto: "0,1 W"
+        porque: "Esos 0,1 son la caída en voltios, 100 mV, no la potencia: falta multiplicar por la corriente."
+      - texto: "Nada: el shunt no disipa"
+        porque: "El que no disipa es el sensor Hall; el shunt disipa I²·R."
+    escalera:
+      - "La potencia crece con el cuadrado de la corriente."
+    solucion: "20² · 0,005 = 2 W."
+    comprobar:
+      - { P_s: 2, V_s: 0.1 }
+
+  - id: reto-shunt
+    tipo: reto
+    titulo: "Un shunt de medio vatio"
+    texto: "Elija el shunt que dé la mayor caída posible a 20 A sin disipar más de 0,5 W."
+    nota: "La lista de valores es de ejemplo."
+    libro: ["cap35#345"]
+    fijar: { I_m: 20, s_c: 0, R_c: 10 }
+    inicio: { R_s: 0.005 }
+    widget:
+      tipo: circuito
+      esquema: norton
+      piezas: { fuente: I_m, rn: R_s, carga: R_c, interruptor: s_c }
+      lectura: { valor: P_s, rotulo: "Potencia en el shunt" }
+      datos:
+        - { valor: V_s, rotulo: "Caída: {{V_s}}" }
+      corriente: I_s
+      mide: { salida: V_s, carga: I_c, paralelo: I_s }
+      mandos:
+        - { valor: R_s, lista: [0.0005, 0.001, 0.00125, 0.0025, 0.005, 0.01], rotulo: "Shunt" }
+    condiciones:
+      - { valor: P_s, max: 0.5, rotulo: "Hasta 0,5 W" }
+      - { valor: V_s, min: 0.025, rotulo: "La mayor caída posible" }
+    exito: "1,25 mΩ: 25 mV de señal. Menos disipación a cambio de menos señal."
+    pistas:
+      - { cuando: { valor: P_s, mayor: 0.5 }, texto: "Disipa demasiado: baje el shunt." }
+      - { texto: "Cumple la potencia, pero hay uno mayor que también cumple y da más señal." }
+    escalera:
+      - "R = P / I² = 0,5 / 400."
+    solucion: "1,25 mΩ, con 25 mV de caída."
+    comprobar:
+      - { con: { R_s: 0.00125 }, P_s: 0.5, V_s: 0.025 }
+
+  - id: pregunta-200a
+    tipo: pregunta
+    titulo: "200 A en continua, aislados"
+    texto: "Hay que medir 200 A en continua con aislamiento galvánico. ¿Qué sensor?"
+    libro: [141, 151, "cap35#345"]
+    widget:
+      tipo: figura
+      figura: fig-35.9
+      zonas:
+        - { id: hall, rotulo: "Recuadro verde", rect: [260, 20, 186, 38] }
+    opciones:
+      - texto: "Un sensor de efecto Hall"
+        bien: true
+        porque: "Aísla, mide continua y no disipa: es el de corriente grande con aislamiento."
+      - texto: "Un shunt"
+        porque: "El shunt no aísla, y a 200 A disiparía mucho."
+      - texto: "Un transformador de intensidad"
+        porque: "Aísla, pero solo funciona en alterna: necesita variación de flujo."
+    escalera:
+      - "Descarte primero el que no aísla y el que no ve la continua."
+    solucion: "Efecto Hall."
+
+  - id: porque-secundario
+    tipo: porque
+    titulo: "El secundario abierto"
+    texto: "¿Por qué nunca se deja abierto el secundario de un transformador de intensidad con corriente en el primario?"
+    libro: [142]
+    widget:
+      tipo: figura
+      figura: fig-35.10
+      zonas:
+        - { id: panel, rotulo: "Foto de la derecha", rect: [800, 0, 800, 756] }
+    opciones:
+      - texto: "Sin carga, la tensión inducida puede ser peligrosa y perforar el aislamiento"
+        bien: true
+        porque: "Por eso los de instalación llevan un puente de cortocircuito."
+      - texto: "Porque se descalibra"
+        porque: "El riesgo es de seguridad: una tensión que se dispara."
+      - texto: "Porque consume del circuito medido"
+        porque: "No consume; el peligro es la tensión del secundario sin carga."
+    escalera:
+      - "El primario impone la corriente: ¿qué hace el secundario si no tiene por dónde cerrarla?"
+    solucion: "La tensión se dispara: siempre cerrado o en corto."
+
+  - id: empareje-proximidad
+    tipo: pregunta
+    titulo: "Sensores de proximidad"
+    texto: "Empareje cada sensor de proximidad con su rasgo."
+    libro: [144, 145, 146, 147]
+    widget:
+      tipo: figura
+      figura: fig-35.9
+      zonas:
+        - { id: inductiva, rotulo: "Recuadro naranja", rect: [260, 104, 186, 38] }
+    emparejar:
+      - ["Inductivo", "Solo metales, alcance de milímetros"]
+      - ["Capacitivo", "Cualquier material, también líquidos"]
+      - ["Óptico", "Barrera, réflex y difuso"]
+      - ["Ultrasónico", "Tiempo de vuelo; lo blando absorbe el eco"]
+    exito: "El capacitivo es el más versátil y el más sensible a la humedad y la suciedad."
+    pistas:
+      - { texto: "El inductivo necesita metal que amortigüe su campo." }
+    escalera:
+      - "Uno mide un eco; otro, una capacidad; otro, un campo amortiguado."
+    solucion: "Inductivo, metales; capacitivo, cualquier material; óptico, tres variantes; ultrasónico, eco."
+
+  - id: pregunta-pico
+    tipo: pregunta
+    titulo: "Un pico que no existe"
+    texto: "Un shunt mide la corriente de un convertidor conmutado y aparece un pico en cada flanco. ¿De dónde sale?"
+    libro: [153, 154]
+    widget:
+      tipo: figura
+      figura: fig-35.9
+      zonas:
+        - { id: grafica, rotulo: "Gráfica de la izquierda", rect: [25, 15, 210, 175] }
+    opciones:
+      - texto: "De la inductancia parásita del shunt"
+        bien: true
+        porque: "Con corrientes rápidas cae tensión en ella; los de precisión tienen cuatro terminales y baja inductancia."
+      - texto: "Es la corriente real"
+        porque: "El pico no corresponde a la corriente: lo pone la inductancia del propio shunt."
+      - texto: "Del offset del shunt"
+        porque: "El shunt no tiene offset apreciable; el pico depende de la velocidad de la corriente."
+    escalera:
+      - "Una resistencia también tiene algo de inductancia: ¿cuándo se nota?"
+    solucion: "La inductancia parásita del shunt."
+
+  - id: pregunta-offset
+    tipo: pregunta
+    titulo: "Verificar un sensor Hall"
+    texto: "Se verifica un sensor de corriente Hall contra un shunt. ¿Dónde se mide su offset?"
+    libro: [138, 156]
+    widget:
+      tipo: figura
+      figura: fig-35.9
+      zonas:
+        - { id: hall, rotulo: "Recuadro verde", rect: [260, 20, 186, 38] }
+    opciones:
+      - texto: "Con corriente cero, que es donde más se aparta"
+        bien: true
+        porque: "El Hall tiene offset y deriva apreciables: sin corriente, cualquier lectura es error."
+      - texto: "A plena escala"
+        porque: "Ahí se ve la ganancia; el offset se separa sin corriente."
+      - texto: "No hace falta: el Hall no tiene offset"
+        porque: "Lo tiene, apreciable, y deriva: es su principal límite."
+    escalera:
+      - "Sin corriente, ¿qué debería leer?"
+    solucion: "Con corriente cero."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [136, 141, 142, 151]
+    ideas:
+      - { titulo: "Shunt.", texto: "Exacto y de poca deriva, pero no aísla y disipa I²·R." }
+      - { titulo: "Hall.", texto: "Aísla y no disipa: corrientes grandes, con offset y deriva." }
+      - { titulo: "Transformador.", texto: "Solo alterna, y nunca con el secundario abierto." }
+      - { titulo: "Proximidad.", texto: "Inductivo, capacitivo, óptico o ultrasónico, según el material." }

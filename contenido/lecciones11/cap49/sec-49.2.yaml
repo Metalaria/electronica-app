@@ -1,0 +1,288 @@
+# Lección 1.2 de la sección 50.2 «Arquitectura del Sistema» (cap49; etiquetas sec-49.N = impresas 50.N).
+# - El ciclo de trabajo (bloques 54 a 57): 150 mA despierto 3 s cada 300 s y 10 µA dormido: un 1 %, I_media ≈ 1,51 mA;
+#   con 2 000 mAh, unas 1 300 horas.
+# - El presupuesto por fases (bloques 61 a 63): 3 000 + 10 000 + 450 000 µA·s = 463 000 µA·s por ciclo; 105 120 ciclos
+#   al año, unos 13 500 mA·h. Transmitiendo cada doce medidas (cada hora): 50 500 µA·s, unos 1 500 mA·h, 0,17 mA de
+#   media: pilas de 3 000 mA·h para unos dos años. La gráfica del ajuste es la carga de un año frente a las medidas
+#   acumuladas por envío, n: (3 000 + 10 000 + 450 000/n) µA·s · 105 120.
+# Pasos prácticos: «simular» la corriente media (error típico: la media sin ponderar, 75 mA) y «ajuste» de las medidas
+# por envío hasta que el año quepa en 3 000 mA·h (desde seis medidas por envío; el libro elige doce).
+leccion: cap49/sec-49.2
+
+libro:
+  46: "su arquitectura sale de la restricción que domina el proyecto: el consumo"
+  53: "cuánto tiempo está despierto frente a cuánto duerme"
+  54: "despierto 3 segundos cada 5 minutos"
+  55: '"ciclo" = ("3")/("300") = "1" \% '
+  56: 'I_("media") = "0,01" times "150 mA" + "0,99" times "0,010 mA" approx "1,51 mA"'
+  57: "Con una batería de 2 000 mAh, eso son unas 1 300 horas, menos de dos meses"
+  61: "Transmitiendo: 150 mA de media durante 3 s = 450 000 µA·s"
+  62: "El total por ciclo son 463 000 µA·s, y en un año hay 105 120 ciclos: unos 13 500 mA·h."
+  63: "las pilas de 3 000 mA·h duran unos dos años"
+  64: "el consumo lo domina la radio, no el procesador ni los sensores"
+  68: "acumular varias medidas y enviarlas juntas, en lugar de una por una"
+  70: "Las fugas: reguladores con corriente de reposo alta, resistencias de pull-up permanentes, LED indicadores"
+  71: "el microcontrolador duerme a 10 µA y el resto de la placa consume 3 mA"
+  73: "Uno solo si la radio está integrada"
+  74: "con la advertencia de que la tarjeta consume y se corrompe"
+  75: "Debe seguir midiendo y guardando, y enviar cuando vuelva"
+  76: "Si está en un tejado, la actualización remota deja de ser un lujo"
+  81: "con un shunt y el osciloscopio en disparo único"
+  82: "Integrando ese perfil sale el consumo medio real"
+  84: "Perfil de corriente de un ciclo y autonomía según la estrategia de envío"
+  85: "Presupuesto de energía por ciclo y el cálculo que obliga a revisar la especificación"
+
+modelo:
+  valores:
+    I_w: { sim: "I_{despierto}", nombre: "corriente despierto", unidad: A, valor: 0.15 }
+    I_z: { sim: "I_{dormido}", nombre: "corriente dormido", unidad: A, valor: 10e-6 }
+    t_w: { sim: "t_{despierto}", nombre: "tiempo despierto por ciclo", unidad: s, valor: 3 }
+    T_c: { sim: "T", nombre: "periodo de medida", unidad: s, valor: 300 }
+    n_e: { sim: "n", nombre: "medidas acumuladas por envío", unidad: "", valor: 1 }
+  calculos:
+    d_c: { expr: "t_w/T_c", sim: "ciclo", nombre: "ciclo de trabajo", unidad: "" }
+    I_a: { expr: "d_c*I_w + (1 - d_c)*I_z", sim: "I_{media}", nombre: "corriente media", unidad: A }
+    I_x: { expr: "(I_w + I_z)/2", sim: "I'", nombre: "media sin ponderar", unidad: A }
+    h_b: { expr: "2/I_a", sim: "t", nombre: "autonomía con 2 000 mAh", unidad: h }
+    Q_c: { expr: "10e-6*300 + 0.025*0.4 + 0.15*3/n_e", sim: "Q", nombre: "carga por ciclo", unidad: "A·s" }
+    Q_y: { expr: "Q_c*105120/3600", sim: "Q_{año}", nombre: "carga de un año", unidad: "A·h", cifras: 3 }
+    I_p: { expr: "Q_c/300", sim: "I_{media}", nombre: "corriente media por fases", unidad: A }
+    a_y: { expr: "3/(I_p*8760)", sim: "autonomía", nombre: "autonomía con 3 000 mA·h", unidad: "años" }
+
+tarjetas:
+  - id: explore-perfil
+    tipo: explorar
+    titulo: "Dormir, medir, transmitir"
+    texto: "La arquitectura sale del consumo. Toque el reposo, la medida y la transmisión en el perfil de un ciclo."
+    libro: [46, 84]
+    widget:
+      tipo: figura
+      figura: fig-49.3
+      zonas:
+        - { id: ciclos, rotulo: "Gráfica de arriba a la izquierda", rect: [5, 5, 210, 125], texto: "Casi todo el ciclo dormido, a 10 µA; un pico breve cada 300 s." }
+        - { id: despierto, rotulo: "Gráfica de arriba a la derecha", rect: [235, 5, 205, 125], texto: "Despierto: medir a 25 mA durante 0,4 s y transmitir a 150 mA de media." }
+        - { id: barras, rotulo: "Gráfica de abajo", rect: [30, 165, 410, 125], texto: "Acumular medidas y enviarlas juntas alarga mucho la autonomía." }
+    requiere: { mover: [ciclos, despierto] }
+
+  - id: simule-media
+    tipo: simular
+    titulo: "La corriente media"
+    texto: "Despierto 3 s cada 5 minutos a 150 mA; dormido, 10 µA. ¿Qué corriente media consume?"
+    libro: [53, 54]
+    fijar: { I_w: 0.15, I_z: 10e-6, t_w: 3, T_c: 300 }
+    simular:
+      objetivo: I_a
+      unidad: A
+      tol: 0.03
+      rotulo: "Corriente media"
+      errores:
+        - { expr: "I_x", texto: "Ha promediado las dos corrientes sin ponderar: cada una pesa lo que dura, un 1 % despierto." }
+    exito: "Unos 1,51 mA: la fase despierta, un 1 % del tiempo, domina la media."
+    escalera:
+      - "Pondere cada corriente por la fracción del tiempo que dura."
+    solucion: "0,01 · 150 mA + 0,99 · 0,010 mA ≈ 1,51 mA."
+    comprobar:
+      - { I_a: 0.00151, I_x: 0.075 }
+
+  - id: formula-media
+    tipo: formula
+    titulo: "La media ponderada"
+    texto: "Cada estado pesa lo que dura. Cambie el tiempo despierto."
+    libro: [55, 56]
+    ec: 56
+    sustitucion: "{{d_c}} × {{I_w}} + (1 − {{d_c}}) × {{I_z}} = {{I_a}}"
+    fijar: { I_w: 0.15, I_z: 10e-6, T_c: 300 }
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 0.5, max: 10, unidad: s, rotulo: "tiempo despierto" }
+      y: { min: 0, max: 0.006, unidad: A, rotulo: "corriente media" }
+      curvas:
+        - { expr: "tt/T_c*I_w + (1 - tt/T_c)*I_z", color: naranja, rotulo: "media" }
+      marcas:
+        - { x: "t_w", y: "I_a", rotulo: "{{I_a}}" }
+      lectura: { valor: I_a, rotulo: "Corriente media" }
+      mandos:
+        - { valor: t_w, min: 0.5, max: 10, paso: 0.5, rotulo: "Tiempo despierto" }
+
+  - id: estime-autonomia
+    tipo: pregunta
+    titulo: "Con 2 000 mAh"
+    texto: "Con esa media de 1,51 mA y una batería de 2 000 mAh, ¿cuántas horas dura?"
+    libro: [56, 57]
+    fijar: { I_w: 0.15, I_z: 10e-6, t_w: 3, T_c: 300 }
+    widget:
+      tipo: figura
+      figura: fig-49.3
+      zonas:
+        - { id: barras, rotulo: "Gráfica de abajo", rect: [30, 165, 410, 125] }
+    estimar:
+      objetivo: "h_b"
+      unidad: h
+      min: 0
+      max: 5000
+      paso: 50
+      inicio: 4000
+      tol: 0.05
+      rotulo: "Autonomía"
+    exito: "Unas 1 300 horas: menos de dos meses. Muy lejos del año."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 1400 }, texto: "Demasiado: divida la capacidad entre la corriente media." }
+      - { texto: "Demasiado poco: 2 000 entre 1,51." }
+    escalera:
+      - "Autonomía = capacidad / corriente media."
+    solucion: "2 000 mAh / 1,51 mA ≈ 1 300 h."
+    comprobar:
+      - { h_b: 1300, tol: 0.03 }
+
+  - id: pregunta-fases
+    tipo: predecir
+    titulo: "Dónde se va la energía"
+    texto: "En el presupuesto por fases de un ciclo que mide y transmite, ¿qué fase domina?"
+    libro: [61, 62, 85]
+    widget:
+      tipo: figura
+      figura: fig-48.2
+      zonas:
+        - { id: barras, rotulo: "Gráfica de la izquierda", rect: [20, 15, 210, 160] }
+    opciones:
+      - texto: "Transmitir: 450 000 de los 463 000 µA·s"
+        bien: true
+        porque: "Conectarse y publicar a 150 mA durante 3 s pesa casi todo el ciclo."
+      - texto: "El reposo, porque dura 300 s"
+        porque: "Dura mucho, pero a 10 µA: solo 3 000 µA·s."
+      - texto: "Medir, con el procesador despierto"
+        porque: "25 mA durante 0,4 s son 10 000 µA·s: poco al lado de la radio."
+    escalera:
+      - "Multiplique cada corriente por lo que dura."
+    solucion: "Transmitir: la radio domina."
+
+  - id: ajuste-envio
+    tipo: ajuste
+    titulo: "Que el año quepa en las pilas"
+    texto: "Las pilas dan 3 000 mA·h. Acumule medidas por envío hasta que el consumo de un año quepa en ellas."
+    libro: [62, 63, 68]
+    inicio: { n_e: 1 }
+    widget:
+      tipo: grafica
+      x: { id: nn, min: 1, max: 12, unidad: "", rotulo: "medidas por envío" }
+      y: { min: 0, max: 15, unidad: "A·h", rotulo: "carga de un año" }
+      curvas:
+        - { expr: "(10e-6*300 + 0.025*0.4 + 0.15*3/nn)*105120/3600", color: naranja, rotulo: "un año" }
+        - { expr: "3", color: tinta, rotulo: "las pilas", discontinua: true }
+      marcas:
+        - { x: "n_e", y: "Q_y", rotulo: "{{Q_y}}" }
+      lectura: { valor: Q_y, rotulo: "Carga de un año" }
+      datos:
+        - { valor: a_y, rotulo: "Autonomía: {{a_y}}" }
+      mandos:
+        - { valor: n_e, min: 1, max: 12, paso: 1, rotulo: "Medidas por envío" }
+    ajuste:
+      valor: Q_y
+      min: 1
+      max: 3
+      rotulo: "Carga de un año"
+      escala: { min: 0, max: 15 }
+      bajo: "Le sobra margen: con menos medidas por envío también cabe."
+      alto: "No llega: la radio sigue dominando. Acumule más medidas por envío."
+      dentro: "Ya cabe. El libro envía cada hora, doce medidas juntas: unos 1 500 mA·h y unos dos años."
+    comprobar:
+      - { Q_y: 13.5, tol: 0.01 }
+      - { con: { n_e: 12 }, Q_y: 1.5, I_p: 0.00017, a_y: 2, tol: 0.03 }
+
+  - id: porque-radio
+    tipo: porque
+    titulo: "Lo que domina el consumo"
+    texto: "¿Por qué acumular medidas y enviarlas juntas es la decisión que más autonomía gana?"
+    libro: [64, 68]
+    widget:
+      tipo: figura
+      figura: fig-48.2
+      zonas:
+        - { id: calculo, rotulo: "Recuadros de la derecha", rect: [245, 40, 190, 140] }
+    opciones:
+      - texto: "Porque el consumo lo domina la radio, no el procesador ni los sensores"
+        bien: true
+        porque: "Transmitir menos veces divide el término dominante."
+      - texto: "Porque el procesador duerme más"
+        porque: "Duerme casi igual; lo que se ahorra son conexiones de la radio."
+      - texto: "Porque los sensores gastan menos"
+        porque: "Los sensores miden igual; se ahorran envíos."
+    escalera:
+      - "¿Qué término del presupuesto se divide al enviar por lotes?"
+    solucion: "La radio domina: se transmite menos veces."
+
+  - id: pregunta-fugas
+    tipo: pregunta
+    titulo: "El microcontrolador duerme; la placa no"
+    texto: "El microcontrolador duerme a 10 µA y la placa consume 3 mA. ¿Qué lo explica?"
+    libro: [70, 71]
+    widget:
+      tipo: figura
+      figura: fig-49.3
+      zonas:
+        - { id: ciclos, rotulo: "Gráfica de arriba a la izquierda", rect: [5, 5, 210, 125] }
+    opciones:
+      - texto: "Las fugas: regulador, pull-ups permanentes y LED"
+        bien: true
+        porque: "Sumadas pueden superar el consumo dormido del microcontrolador: lo que más veces arruina un diseño."
+      - texto: "El microcontrolador no está dormido"
+        porque: "Lo está: el consumo se va en lo que lo rodea."
+      - texto: "La radio transmitiendo"
+        porque: "Dormido no transmite; son fugas constantes del resto de la placa."
+    escalera:
+      - "¿Qué sigue encendido en la placa cuando el micro duerme?"
+    solucion: "Las fugas del resto de la placa."
+
+  - id: empareje-decisiones
+    tipo: pregunta
+    titulo: "Las decisiones de arquitectura"
+    texto: "Empareje cada pregunta de arquitectura con su respuesta."
+    libro: [73, 74, 75, 76]
+    widget:
+      tipo: figura
+      figura: fig-49.3
+      zonas:
+        - { id: barras, rotulo: "Gráfica de abajo", rect: [30, 165, 410, 125] }
+    emparejar:
+      - ["¿Uno o dos microcontroladores?", "Uno, si la radio está integrada"]
+      - ["¿Dónde se guardan muchos datos?", "Flash externa o tarjeta, que consume"]
+      - ["¿Y si falla la red?", "Seguir midiendo y enviar al volver"]
+      - ["¿Cómo se actualiza en un tejado?", "Actualización remota"]
+    exito: "Sin seguir midiendo durante un corte, cada incidencia de red es una pérdida de datos."
+    pistas:
+      - { texto: "Un ordenador de placa no tiene sitio en el nodo de medida." }
+    escalera:
+      - "Piense en la estación instalada lejos, a pilas y con una red que a veces falla."
+    solucion: "Uno; Flash o tarjeta; seguir midiendo; actualización remota."
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "La medida que valida la arquitectura"
+    texto: "¿Cómo se comprueba en el banco que la arquitectura cumplirá su autonomía?"
+    libro: [81, 82]
+    widget:
+      tipo: figura
+      figura: fig-49.3
+      zonas:
+        - { id: despierto, rotulo: "Gráfica de arriba a la derecha", rect: [235, 5, 205, 125] }
+    opciones:
+      - texto: "Con el perfil de corriente de un ciclo: shunt y osciloscopio en disparo único"
+        bien: true
+        porque: "Integrando ese perfil sale el consumo medio real, que se compara con el presupuesto."
+      - texto: "Con el multímetro en mA"
+        porque: "Promedia mal picos de segundos sobre un suelo de microamperios."
+      - texto: "Dejándolo un año a pilas"
+        porque: "Es la prueba final, pero el perfil lo dice en minutos."
+    escalera:
+      - "Se quieren ver los picos, el escalón y el suelo de un ciclo."
+    solucion: "El perfil de un ciclo, integrado."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [56, 62, 63, 64]
+    ideas:
+      - { titulo: "Ciclo de trabajo.", texto: "Cada estado pesa lo que dura: 1,51 mA con un 1 % despierto." }
+      - { titulo: "Por fases.", texto: "463 000 µA·s por ciclo: 13 500 mA·h al año, no llega." }
+      - { titulo: "Por lotes.", texto: "Enviando cada hora, unos 1 500 mA·h: dos años." }
+      - { titulo: "La radio.", texto: "Domina el consumo, no el procesador." }

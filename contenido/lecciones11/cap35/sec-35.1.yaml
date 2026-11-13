@@ -1,0 +1,278 @@
+# Lección 1.2 de la sección 36.1 «La Cadena de Medida» (cap35, sec-35.1). Formato: GUIA.md.
+# - Las seis etapas (bloque 6) y dónde se pierde exactitud (figura 36.1, fig-35.1).
+# - El presupuesto de incertidumbre de la tabla del bloque 19 (sensor ±0,5, deriva ±0,1, acondicionamiento ±0,05,
+#   referencia ±0,1 y convertidor ±0,05 °C, combinadas en cuadratura: ±0,52 °C; el sensor, el 95 % de la varianza).
+#   La gráfica pone la INL del convertidor en el eje: la curva apenas se mueve con él y sube entera con el sensor.
+# - Ejercicio 36.1 (bloque 345): 0,3, 0,2, 0,1, 0,1 y 0,05 °C dan 0,39 °C.
+# Paso práctico: «simular» la combinada del ejercicio 36.1 (error típico: sumarlas en línea, 0,75 °C).
+leccion: cap35/sec-35.1
+
+libro:
+  "cap35#0": "La cadena de medida completa y dónde se pierde la exactitud en cada etapa"
+  4: "su calidad la determina el eslabón más débil"
+  6: "El acondicionamiento: protección, amplificación, filtrado"
+  7: "lo que se pierde en una etapa no se recupera en las siguientes"
+  11: "su montaje"
+  14: "su INL, no su número de bits"
+  15: "Gastar en 24 bits con un sensor del 2 % es un error de asignación de recursos"
+  17: "combinarlas en cuadratura"
+  19: "Combinada"
+  20: "el sensor (tolerancia y deriva) aporta el 95 % de la varianza combinada"
+  24: "Resolución: el escalón más pequeño que se distingue."
+  25: "Exactitud: cuánto se acerca al valor verdadero."
+  26: "Repetibilidad: si mide lo mismo dos veces en las mismas condiciones."
+  27: "un error constante se calibra y una dispersión no"
+  30: "La más lenta manda"
+  32: "aplicar un valor conocido de la magnitud física —no una tensión equivalente— y comprobar el número final"
+  33: "incluidos los de montaje que ningún cálculo predice"
+  34: "Las seis etapas de una cadena de medida y un presupuesto de incertidumbre"
+  "cap35#345": "sensor ±0,3 °C, deriva del sensor ±0,2 °C, acondicionamiento ±0,1 °C, referencia ±0,1 °C y convertidor ±0,05 °C"
+
+modelo:
+  valores:
+    s_t: { sim: "u_{sensor}", nombre: "tolerancia del sensor", unidad: "°C", valor: 0.5 }
+    s_d: { sim: "u_{deriva}", nombre: "deriva del sensor", unidad: "°C", valor: 0.1 }
+    a_c: { sim: "u_{acond}", nombre: "acondicionamiento", unidad: "°C", valor: 0.05 }
+    r_f: { sim: "u_{ref}", nombre: "referencia", unidad: "°C", valor: 0.1 }
+    c_v: { sim: "u_{ADC}", nombre: "convertidor (INL)", unidad: "°C", valor: 0.05 }
+  calculos:
+    u_b: { expr: "sqrt(s_t^2 + s_d^2 + a_c^2 + r_f^2 + c_v^2)", sim: "u", nombre: "incertidumbre combinada", unidad: "°C", cifras: 2 }
+    u_s: { expr: "sqrt(s_t^2 + s_d^2)", sim: "u_{s}", nombre: "lo que aporta el sensor", unidad: "°C", cifras: 2 }
+    u_l: { expr: "s_t + s_d + a_c + r_f + c_v", sim: "u_{suma}", nombre: "suma en línea", unidad: "°C", cifras: 2 }
+    u_r: { expr: "u_b - c_v", sim: "u'", nombre: "restando en línea el convertidor", unidad: "°C", cifras: 2 }
+    f_s: { expr: "100*(s_t^2 + s_d^2)/u_b^2", sim: "f_{s}", nombre: "parte de la varianza del sensor", unidad: "%", cifras: 3 }
+
+tarjetas:
+  - id: explore-cadena
+    tipo: explorar
+    titulo: "Una cadena de etapas"
+    texto: "Un sistema de medida es una cadena, y su calidad la determina el eslabón más débil. Toque el sensor y el convertidor."
+    libro: ["cap35#0", 4, 11, 14]
+    widget:
+      tipo: figura
+      figura: fig-35.1
+      zonas:
+        - { id: magnitud, rotulo: "Arriba a la izquierda", rect: [5, 4, 93, 46], texto: "La magnitud física: temperatura, fuerza, luz." }
+        - { id: sensor, rotulo: "Arriba, la segunda", rect: [121, 4, 93, 46], texto: "El sensor: su exactitud, su deriva y, lo que más se olvida, su montaje." }
+        - { id: convertidor, rotulo: "Abajo, la segunda", rect: [121, 74, 93, 46], texto: "El convertidor: cuenta su INL, no su número de bits." }
+        - { id: recuadro, rotulo: "Recuadro de abajo", rect: [5, 143, 443, 55], texto: "El error total suma en cuadratura las de todas las etapas." }
+    requiere: { mover: [sensor, convertidor] }
+
+  - id: ordene-etapas
+    tipo: pregunta
+    titulo: "Las seis etapas"
+    texto: "Ordene las etapas de una cadena de medida, de la magnitud al resultado."
+    libro: [6, 34]
+    widget:
+      tipo: figura
+      figura: fig-35.2
+      zonas:
+        - { id: etapas, rotulo: "Columna de la izquierda", rect: [14, 4, 123, 188] }
+    ordenar:
+      - "El fenómeno físico"
+      - "El sensor"
+      - "El acondicionamiento"
+      - "La conversión a digital"
+      - "El procesado"
+      - "La presentación o el registro"
+    exito: "Y la regla de toda la cadena: lo que se pierde en una etapa no se recupera en las siguientes."
+    pistas:
+      - { texto: "Antes de convertir hay que amplificar y filtrar; linealizar y calibrar ya es procesado." }
+    escalera:
+      - "El sensor traduce la magnitud; el acondicionamiento la prepara para el convertidor."
+    solucion: "Fenómeno, sensor, acondicionamiento, conversión, procesado y presentación."
+
+  - id: explore-presupuesto
+    tipo: explorar
+    titulo: "Dónde está el error"
+    texto: "El presupuesto del libro, con el convertidor en el eje. Cambie la tolerancia del sensor y compárelo con lo que mueve el convertidor."
+    libro: [17, 19]
+    widget:
+      tipo: grafica
+      x: { id: q, min: 0, max: 0.6, unidad: "°C", rotulo: "INL del convertidor" }
+      y: { min: 0, max: 1.2, unidad: "°C", rotulo: "u combinada" }
+      curvas:
+        - { expr: "sqrt(s_t^2 + s_d^2 + a_c^2 + r_f^2 + q^2)", color: naranja, rotulo: "combinada" }
+        - { expr: "u_s", color: tinta, rotulo: "solo el sensor", discontinua: true }
+      marcas:
+        - { x: "c_v", y: "u_b", rotulo: "Tabla: {{u_b}}" }
+      lectura: { valor: u_b, rotulo: "Incertidumbre combinada" }
+      datos:
+        - { valor: f_s, rotulo: "Varianza del sensor: {{f_s}}" }
+      mandos:
+        - { valor: s_t, min: 0.1, max: 1, paso: 0.05, rotulo: "Tolerancia del sensor" }
+    requiere: { mover: [s_t] }
+
+  - id: predecir-convertidor
+    tipo: predecir
+    titulo: "Un convertidor perfecto"
+    texto: "En el presupuesto de la tabla (±0,52 °C) se cambia el convertidor por uno perfecto. ¿Qué combinada queda?"
+    libro: [19, 20]
+    fijar: { s_t: 0.5 }
+    widget:
+      tipo: figura
+      figura: fig-35.2
+      zonas:
+        - { id: barras, rotulo: "Gráfica de la derecha", rect: [250, 20, 194, 166] }
+    opciones:
+      - texto: "Casi la misma, 0,52 °C"
+        bien: true
+        porque: "Las contribuciones se suman en cuadratura: la pequeña apenas pesa al lado de la del sensor."
+      - texto: "0,47 °C: quita sus 0,05 °C"
+        porque: "Eso sería restar en línea. En cuadratura, 0,05 al cuadrado es casi nada frente a 0,5 al cuadrado."
+      - texto: "La mitad"
+        porque: "El convertidor no es el eslabón débil: el sensor aporta el 95 % de la varianza."
+    escalera:
+      - "Eleve al cuadrado cada contribución y compare la del sensor con la del convertidor."
+    solucion: "Sigue en 0,52 °C: mejorar cualquier otra cosa que el sensor no cambia nada."
+    comprobar:
+      - { u_b: 0.52, u_r: 0.47, tol: 0.01 }
+      - { con: { c_v: 0 }, u_b: 0.52, tol: 0.01 }
+
+  - id: simule-ejercicio
+    tipo: simular
+    titulo: "Combine el presupuesto"
+    texto: "Sensor ±0,3 °C, deriva ±0,2 °C, acondicionamiento ±0,1 °C, referencia ±0,1 °C y convertidor ±0,05 °C. ¿Cuál es la incertidumbre combinada?"
+    libro: ["cap35#345", 17]
+    fijar: { s_t: 0.3, s_d: 0.2, a_c: 0.1, r_f: 0.1, c_v: 0.05 }
+    simular:
+      objetivo: u_b
+      unidad: "°C"
+      tol: 0.03
+      rotulo: "Incertidumbre combinada"
+      errores:
+        - { expr: "u_l", texto: "Ha sumado en línea: las contribuciones independientes se combinan en cuadratura." }
+        - { expr: "s_t", texto: "Es solo la tolerancia del sensor: falta combinar las demás, aunque pesen poco." }
+    exito: "Unos 0,39 °C, y con un convertidor perfecto casi lo mismo: el sensor domina."
+    escalera:
+      - "Raíz de la suma de los cuadrados."
+    solucion: "√0,1525 ≈ 0,39 °C."
+    comprobar:
+      - { u_b: 0.39, u_l: 0.75, s_t: 0.3 }
+
+  - id: estime-varianza
+    tipo: pregunta
+    titulo: "Lo que aporta el sensor"
+    texto: "En el presupuesto de la tabla, ¿qué parte de la varianza combinada aporta el sensor (tolerancia y deriva)?"
+    libro: [19, 20]
+    fijar: { s_t: 0.5, s_d: 0.1, a_c: 0.05, r_f: 0.1, c_v: 0.05 }
+    widget:
+      tipo: figura
+      figura: fig-35.2
+      zonas:
+        - { id: barras, rotulo: "Gráfica de la derecha", rect: [250, 20, 194, 166] }
+    estimar:
+      objetivo: "f_s"
+      unidad: "%"
+      min: 0
+      max: 100
+      paso: 1
+      inicio: 50
+      tol: 0.03
+      rotulo: "Varianza del sensor"
+    exito: "El 95 %: ese cálculo, hecho antes de comprar, evita gastar donde no importa."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 97 }, texto: "Demasiado: la referencia y el resto también aportan algo." }
+      - { texto: "Demasiado poco: compare el cuadrado de 0,5 con los demás cuadrados." }
+    escalera:
+      - "Divida 0,5² + 0,1² entre el cuadrado de la combinada."
+    solucion: "Un 95 % de la varianza."
+    comprobar:
+      - { f_s: 95 }
+
+  - id: empareje-conceptos
+    tipo: pregunta
+    titulo: "Tres cosas distintas"
+    texto: "Empareje cada término con lo que mide."
+    libro: [24, 25, 26]
+    widget:
+      tipo: figura
+      figura: fig-35.2
+      zonas:
+        - { id: etapas, rotulo: "Columna de la izquierda", rect: [14, 4, 123, 188] }
+    emparejar:
+      - ["Resolución", "El escalón más pequeño que se distingue"]
+      - ["Exactitud", "Cuánto se acerca al valor verdadero"]
+      - ["Repetibilidad", "Si mide lo mismo dos veces en las mismas condiciones"]
+    exito: "Se confunden a menudo, y no son lo mismo: muchos bits no dan exactitud."
+    pistas:
+      - { texto: "La que habla del valor verdadero es la exactitud." }
+    escalera:
+      - "Una es un escalón, otra una distancia al valor real, otra una dispersión."
+    solucion: "Resolución, escalón; exactitud, valor verdadero; repetibilidad, medir igual dos veces."
+
+  - id: porque-repetibilidad
+    tipo: porque
+    titulo: "Para un control"
+    texto: "Un sensor con 2 °C de offset constante y 0,05 °C de repetibilidad es mejor, para control, que uno de 0,5 °C de exactitud y 0,3 °C de dispersión. ¿Por qué?"
+    libro: [27]
+    widget:
+      tipo: figura
+      figura: fig-35.2
+      zonas:
+        - { id: barras, rotulo: "Gráfica de la derecha", rect: [250, 20, 194, 166] }
+    opciones:
+      - texto: "Un error constante se calibra; una dispersión no"
+        bien: true
+        porque: "El offset se corrige una vez; la dispersión cambia de lectura a lectura."
+      - texto: "Porque 2 °C es poco"
+        porque: "Es mucho, pero es siempre el mismo: se resta y desaparece."
+      - texto: "Porque la exactitud no importa nunca"
+        porque: "Importa, pero un error fijo se puede corregir y uno aleatorio no."
+    escalera:
+      - "¿Cuál de los dos defectos se puede restar con una calibración?"
+    solucion: "El offset constante se calibra; la dispersión no tiene arreglo."
+
+  - id: pregunta-velocidad
+    tipo: pregunta
+    titulo: "La velocidad de la cadena"
+    texto: "Cada etapa tiene su tiempo. En una medida térmica, ¿qué etapa suele marcar la velocidad?"
+    libro: [30]
+    widget:
+      tipo: figura
+      figura: fig-35.1
+      zonas:
+        - { id: sensor, rotulo: "Arriba, la segunda", rect: [121, 4, 93, 46] }
+    opciones:
+      - texto: "El propio sensor, con segundos o minutos de respuesta"
+        bien: true
+        porque: "La más lenta manda, y en térmica es el sensor."
+      - texto: "El convertidor"
+        porque: "Su latencia es pequeña frente a la constante térmica del sensor."
+      - texto: "El filtro digital"
+        porque: "Tiene su tiempo, pero el sensor térmico es mucho más lento."
+    escalera:
+      - "Piense en cuánto tarda un termómetro en llegar a la temperatura del agua."
+    solucion: "El sensor: la etapa más lenta manda."
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "Comprobar la cadena entera"
+    texto: "¿Cómo se sabe de verdad qué exactitud tiene un sistema de medida?"
+    libro: [32, 33]
+    widget:
+      tipo: figura
+      figura: fig-35.1
+      zonas:
+        - { id: magnitud, rotulo: "Arriba a la izquierda", rect: [5, 4, 93, 46] }
+    opciones:
+      - texto: "Aplicando un valor conocido de la magnitud física y mirando el número final"
+        bien: true
+        porque: "De extremo a extremo: incluye los errores de montaje que ningún cálculo predice."
+      - texto: "Inyectando una tensión equivalente a la entrada"
+        porque: "Se salta el sensor y su montaje, que suelen ser lo que domina."
+      - texto: "Sumando los errores de las hojas de datos"
+        porque: "El presupuesto orienta, pero no ve los errores de montaje."
+    escalera:
+      - "¿Qué medida incluiría también un sensor mal acoplado?"
+    solucion: "Un valor físico conocido a la entrada y el número final a la salida."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [7, 15, 17, 27]
+    ideas:
+      - { titulo: "Una cadena.", texto: "Lo que se pierde en una etapa no se recupera después." }
+      - { titulo: "En cuadratura.", texto: "Las contribuciones se combinan así: domina la mayor, casi siempre el sensor." }
+      - { titulo: "Gastar donde importa.", texto: "24 bits con un sensor del 2 % es un error." }
+      - { titulo: "Repetibilidad.", texto: "Un error constante se calibra; una dispersión no." }
