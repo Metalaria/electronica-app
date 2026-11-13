@@ -1,0 +1,267 @@
+# Lección 1.2 de la sección 42.1 «Cuándo una Pista Deja de Ser un Cable» (cap41, sec-41.1). Formato: GUIA.md.
+# - La longitud crítica del bloque 5, t_subida × velocidad / 6, viva con 15 cm/ns (bloque 6): 1 ns → 2,5 cm.
+# - La figura 42.1 (fig-41.1) con zonas: el bucle con plano continuo y con plano cortado.
+# Paso práctico: «simular» la longitud crítica del microcontrolador de 16 MHz con flancos de 2 ns (bloque 7): 5 cm
+# (errores: el periodo del reloj en lugar del flanco, olvidar dividir por 6).
+leccion: cap41/sec-41.1
+
+libro:
+  3: "Cuando dejan de serlo, la pista es una línea de transmisión"
+  5: '"longitud crítica" approx (t_("subida") times "velocidad")/("6")'
+  6: "Con 15 cm por nanosegundo en FR4 y flancos de 1 ns, la longitud crítica es de 2,5 cm"
+  7: "Un microcontrolador de 16 MHz con salidas de flanco de 2 ns tiene el mismo problema que uno de 200 MHz"
+  10: "la señal rebota donde la impedancia cambia"
+  11: "el acoplamiento entre pistas vecinas"
+  12: "desplaza la referencia interna del chip"
+  13: "atenuación y dispersión, que a frecuencias altas y distancias largas cierran el ojo"
+  15: "la corriente circula por un bucle, y ese bucle tiene inductancia"
+  16: "no hay que pensar en pistas, hay que pensar en bucles"
+  17: "cortar un plano de masa obliga a la corriente de retorno a rodear el corte"
+  20: "Timbre y sobreoscilación en los flancos"
+  23: "porque la mano modifica capacidades"
+  24: "funciona con el osciloscopio conectado, porque la sonda amortigua la línea"
+  27: "Flancos por debajo de unos 2 ns."
+  28: "un buen plano de masa y desacoplo abundante bastan"
+  30: "mirar un flanco con sonda de banda ancha y masa corta"
+  31: "la medida está afectada por el propio montaje"
+  32: "El área del bucle de retorno con plano continuo y con plano cortado"
+
+modelo:
+  valores:
+    t_r: { sim: "t_{subida}", nombre: "tiempo de subida del flanco", unidad: ns, valor: 1 }
+    v_p: { sim: "v", nombre: "velocidad en FR4", unidad: "cm/ns", valor: 15 }
+    f_ck: { sim: "f", nombre: "frecuencia de reloj", unidad: MHz, valor: 16 }
+  calculos:
+    L_cr: { expr: "t_r*v_p/6", sim: "L_{crítica}", nombre: "longitud crítica", unidad: cm }
+    L_reloj: { expr: "1000/f_ck*v_p/6", sim: "L", nombre: "con el periodo del reloj", unidad: cm }
+    L_sin6: { expr: "t_r*v_p", sim: "L", nombre: "sin dividir por 6", unidad: cm }
+
+tarjetas:
+  - id: explore-flanco
+    tipo: explorar
+    titulo: "La frontera del capítulo"
+    texto: "Una pista es un cable mientras el flanco sea lento frente a lo que tarda en recorrerla. Mueva el flanco."
+    libro: [3, 5, 6]
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 0, max: 10, unidad: ns, rotulo: "t_{subida}" }
+      y: { min: 0, max: 26, unidad: cm, rotulo: "L_{crítica}" }
+      curvas:
+        - { expr: "tt*v_p/6", color: naranja, rotulo: "L = t·v/6" }
+      marcas:
+        - { x: "t_r", y: "L_cr", rotulo: "{{L_cr}}" }
+      lectura: { valor: L_cr, rotulo: "Longitud crítica" }
+      mandos:
+        - { valor: t_r, min: 0.5, max: 10, paso: 0.5, rotulo: "Flanco, t_{subida}" }
+
+  - id: formula-critica
+    tipo: formula
+    titulo: "La longitud crítica"
+    texto: "Más larga que esto, la pista es una línea de transmisión. Con 15 cm/ns y flancos de 1 ns, 2,5 cm."
+    libro: [5, 6]
+    ec: 5
+    sustitucion: "{{t_r}} × {{v_p}} / 6 = {{L_cr}}"
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 0, max: 10, unidad: ns, rotulo: "t_{subida}" }
+      y: { min: 0, max: 26, unidad: cm, rotulo: "L_{crítica}" }
+      curvas:
+        - { expr: "tt*v_p/6", color: naranja, rotulo: "L = t·v/6" }
+      marcas:
+        - { x: "t_r", y: "L_cr", rotulo: "{{L_cr}}" }
+      lectura: { valor: L_cr, rotulo: "Longitud crítica" }
+      mandos:
+        - { valor: t_r, min: 0.5, max: 10, paso: 0.5, rotulo: "Flanco, t_{subida}" }
+    comprobar:
+      - { con: { t_r: 1 }, L_cr: 2.5 }
+
+  - id: simule-16mhz
+    tipo: simular
+    titulo: "Prediga con un reloj lento"
+    texto: "Un microcontrolador de 16 MHz con salidas de flanco de 2 ns, en FR4 a 15 cm/ns. ¿Cuál es la longitud crítica?"
+    libro: [5, 6, 7]
+    fijar: { t_r: 2, v_p: 15, f_ck: 16 }
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 0, max: 10, unidad: ns, rotulo: "t_{subida}" }
+      y: { min: 0, max: 26, unidad: cm, rotulo: "L_{crítica}" }
+      curvas:
+        - { expr: "tt*v_p/6", color: naranja, rotulo: "L = t·v/6" }
+      lectura: { valor: L_cr, rotulo: "Longitud crítica" }
+      ocultar: true
+    simular:
+      objetivo: L_cr
+      unidad: cm
+      tol: 0.05
+      rotulo: "Longitud crítica"
+      errores:
+        - { expr: "L_reloj", texto: "Ha usado el periodo del reloj. Lo decide el flanco, no la frecuencia de reloj." }
+        - { expr: "L_sin6", texto: "Ha olvidado dividir por 6." }
+    exito: "5 cm: cualquier pista más larga ya es una línea, con un reloj de 16 MHz."
+    escalera:
+      - "Use los 2 ns del flanco, no el periodo del reloj."
+    solucion: "2 ns × 15 cm/ns / 6 = 5 cm."
+    comprobar:
+      - { L_cr: 5, L_reloj: 156.25, L_sin6: 30 }
+
+  - id: predecir-reloj
+    tipo: predecir
+    titulo: "Lo decide el flanco"
+    texto: "Un microcontrolador de 16 MHz y otro de 200 MHz, los dos con flancos de 2 ns. ¿Cuál tiene problemas de línea?"
+    libro: [7]
+    fijar: { t_r: 2 }
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 0, max: 10, unidad: ns, rotulo: "t_{subida}" }
+      y: { min: 0, max: 26, unidad: cm, rotulo: "L_{crítica}" }
+      curvas:
+        - { expr: "tt*v_p/6", color: naranja, rotulo: "L = t·v/6" }
+      lectura: { valor: L_cr, rotulo: "Longitud crítica" }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "Los dos, igual"
+        bien: true
+        porque: "La longitud crítica depende del flanco: con 2 ns es la misma para ambos."
+      - texto: "Solo el de 200 MHz"
+        porque: "La frecuencia de reloj no entra en la fórmula; el flanco sí."
+      - texto: "Ninguno: 16 MHz es lento"
+        porque: "El reloj es lento, pero sus flancos de 2 ns son rápidos."
+    escalera:
+      - "¿Aparece la frecuencia de reloj en la fórmula?"
+    solucion: "Los dos: lo decide el flanco, no la frecuencia."
+    comprobar:
+      - { L_cr: 5 }
+
+  - id: empareje-fenomenos
+    tipo: pregunta
+    titulo: "Los cuatro fenómenos"
+    texto: "Empareje cada fenómeno del capítulo con lo que es."
+    libro: [10, 11, 12, 13]
+    emparejar:
+      - ["Reflexiones", "La señal rebota donde cambia la impedancia"]
+      - ["Diafonía", "Acoplamiento entre pistas vecinas"]
+      - ["Ruido de conmutación simultánea", "Desplaza la referencia interna del chip"]
+      - ["Pérdidas", "Atenuación y dispersión que cierran el ojo"]
+    exito: "Orígenes distintos, y una causa común: el bucle."
+    pistas:
+      - { texto: "Las reflexiones producen timbre y escalones." }
+    escalera:
+      - "Muchas salidas a la vez mueven la masa interna."
+    solucion: "Reflexiones, rebote; diafonía, vecinas; conmutación, referencia; pérdidas, ojo."
+
+  - id: explore-bucle
+    tipo: explorar
+    titulo: "Pensar en bucles"
+    texto: "Cada señal tiene un camino de ida y uno de vuelta. Compare el bucle con plano continuo y con plano cortado."
+    libro: [15, 16, 17, 32]
+    widget:
+      tipo: figura
+      figura: fig-41.1
+      zonas:
+        - { id: continuo, rotulo: "Panel de la izquierda", rect: [5, 25, 210, 132], texto: "El retorno va justo debajo de la ida: área de bucle mínima." }
+        - { id: corte, rotulo: "Rectángulo vertical", rect: [354, 25, 40, 112], texto: "Un corte en el plano: el retorno tiene que rodearlo." }
+        - { id: area, rotulo: "Zona sombreada", rect: [262, 62, 90, 82], texto: "El área del bucle crece: emite, capta y produce timbre." }
+    requiere: { mover: [continuo, corte] }
+
+  - id: porque-bucle
+    tipo: porque
+    titulo: "Lo que tienen en común"
+    texto: "¿Por qué los cuatro fenómenos se explican por lo mismo?"
+    libro: [15, 16]
+    widget:
+      tipo: figura
+      figura: fig-41.1
+      zonas:
+        - { id: area, rotulo: "Zona sombreada", rect: [262, 62, 90, 82] }
+    opciones:
+      - texto: "La corriente circula por un bucle, y ese bucle tiene inductancia"
+        bien: true
+        porque: "La calidad del camino de vuelta determina casi todo."
+      - texto: "Porque todos dependen de la frecuencia de reloj"
+        porque: "Dependen del flanco y del bucle, no del reloj."
+      - texto: "Porque todos se deben a la resistencia de las pistas"
+        porque: "La resistencia no explica rebotes ni acoplamientos rápidos; la inductancia del bucle sí."
+    escalera:
+      - "Ida y vuelta forman un circuito cerrado."
+    solucion: "El bucle y su inductancia."
+
+  - id: pregunta-sintoma
+    tipo: pregunta
+    titulo: "El síntoma que despista"
+    texto: "Un circuito falla, y deja de fallar en cuanto se conecta el osciloscopio. ¿Por qué?"
+    libro: [20, 23, 24]
+    widget:
+      tipo: figura
+      figura: fig-41.1
+      zonas:
+        - { id: corte, rotulo: "Rectángulo vertical", rect: [354, 25, 40, 112] }
+    opciones:
+      - texto: "La sonda amortigua la línea"
+        bien: true
+        porque: "La sonda forma parte del circuito: su carga atenúa el timbre."
+      - texto: "Era un fallo de software"
+        porque: "Un fallo que cambia al conectar una sonda es del circuito físico."
+      - texto: "El osciloscopio da corriente al circuito"
+        porque: "No la da; lo que hace es cargar y amortiguar la línea."
+    escalera:
+      - "La sonda no es invisible para el circuito."
+    solucion: "La sonda amortigua la línea y esconde el timbre."
+
+  - id: pregunta-cuando
+    tipo: pregunta
+    titulo: "Cuándo preocuparse"
+    texto: "Un circuito con flancos de 10 ns, pistas cortas y pocas señales. ¿Hace falta este capítulo?"
+    libro: [27, 28]
+    fijar: { t_r: 10 }
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 0, max: 10, unidad: ns, rotulo: "t_{subida}" }
+      y: { min: 0, max: 26, unidad: cm, rotulo: "L_{crítica}" }
+      curvas:
+        - { expr: "tt*v_p/6", color: naranja, rotulo: "L = t·v/6" }
+      marcas:
+        - { x: "t_r", y: "L_cr", rotulo: "{{L_cr}}" }
+    opciones:
+      - texto: "No: con un buen plano de masa y desacoplo abundante basta"
+        bien: true
+        porque: "La alarma salta con flancos por debajo de unos 2 ns, pistas largas o muchas señales a la vez."
+      - texto: "Sí, siempre"
+        porque: "No siempre: fuera de esos casos, plano y desacoplo bastan."
+      - texto: "Sí, porque hay flancos"
+        porque: "Todo tiene flancos; 10 ns frente a pistas cortas no es rápido."
+    escalera:
+      - "Compare 10 ns con la frontera de unos 2 ns."
+    solucion: "No: plano de masa y desacoplo abundante bastan."
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "Al mover la sonda o su punto de masa, la traza de un flanco cambia mucho. ¿Qué se concluye?"
+    libro: [30, 31]
+    widget:
+      tipo: figura
+      figura: fig-41.1
+      zonas:
+        - { id: continuo, rotulo: "Panel de la izquierda", rect: [5, 25, 210, 132] }
+    opciones:
+      - texto: "Que la medida está afectada por el montaje: mejorar la técnica primero"
+        bien: true
+        porque: "Sonda de banda ancha y masa corta antes de sacar conclusiones."
+      - texto: "Que hay un problema grave de integridad"
+        porque: "Quizá, pero mientras la traza dependa de la sonda no se puede saber."
+      - texto: "Que el osciloscopio está averiado"
+        porque: "Es el montaje de la sonda, no el instrumento."
+    escalera:
+      - "Una medida que depende de cómo se mide no es fiable."
+    solucion: "Que la medida está afectada por el propio montaje."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [5, 7, 16, 28]
+    ideas:
+      - { titulo: "Longitud crítica.", texto: "t_{subida} × velocidad / 6: 2,5 cm con 1 ns." }
+      - { titulo: "El flanco.", texto: "Lo decide el flanco, no la frecuencia de reloj." }
+      - { titulo: "Bucles.", texto: "Cada señal tiene ida y vuelta; la vuelta lo decide casi todo." }
+      - { titulo: "Sin pánico.", texto: "Sin flancos rápidos ni pistas largas, plano y desacoplo bastan." }

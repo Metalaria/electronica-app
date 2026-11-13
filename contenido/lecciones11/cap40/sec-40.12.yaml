@@ -1,0 +1,295 @@
+# Lección 1.2 de la sección 41.12 «Problemas de Diseño» (cap40, sec-40.12). Formato: contenido/lecciones11/GUIA.md.
+# - 41.A: los apilados A y B (bloque 359) y la tabla de Z₀ (bloque 364): 50 Ω con h = 0,36 mm piden unos 0,65 mm.
+# - 41.B: la corona de la vía, π·d·espesor = 0,0236 mm² con 0,3 mm y 25 µm (bloque 377), con la fórmula IPC de la
+#   sección 41.3 (I = k·ΔT^0,44·A^0,725, A en mils², 1 mil = 0,0254 mm): 1,8 A por fuera, 0,9 A por dentro (bloque 378).
+# - 41.C: la pista que hace de fusible.
+# Paso práctico: «simular» la corriente de la vía con el criterio exterior (1,8 A; errores: el agujero entero, sin π).
+leccion: cap40/sec-40.12
+
+libro:
+  354: "Elegir el apilado de cuatro capas"
+  356: "Una placa mixta (microcontrolador, convertidor conmutado y entradas analógicas) se va a fabricar en cuatro capas"
+  359: "Alimentación"
+  360: "su corriente de retorno debe cruzar entre planos por los condensadores de desacoplo, alargando el bucle"
+  361: "Opción B da a todas las señales un plano de masa contiguo"
+  364: "0,7 mm"
+  365: "con h = 0,36 mm harían falta unos 0,65 mm, casi el doble de espacio"
+  366: "La decisión: apilado B con dieléctrico fino entre las capas 1-2 y 3-4"
+  367: "Hay que poner una vía de masa junto a cada vía de señal que cambie de plano de referencia"
+  371: "Cuántas vías necesita una corriente"
+  373: "Vías de 0,3 mm con 25 µm de metalizado en placa de 1,6 mm"
+  376: "Una vía conduce por la corona de cobre depositada en su pared"
+  377: '"sección" = π dot.op d dot.op "espesor"'
+  378: "eso da 1,8 A con el coeficiente de pista exterior y 0,9 A con el de pista interior"
+  379: "para 5 A: al menos 5 vías, y en la práctica 6 u 8 para dejar margen"
+  381: "En un camino de conmutación (capítulo 33) esta es la que manda, no la corriente"
+  382: "Conduce, pero su inductancia arruina el bucle de conmutación"
+  386: "La pista que se convierte en fusible"
+  393: "el fusible debe fundir antes de que la pista se dañe"
+  394: "una pista estrecha con un fusible generoso"
+  396: "ensanchar los últimos centímetros desde el conector"
+  "cap40#75": 'I = k dot.op "Δ" T^("0,44") dot.op A^("0,725")'
+
+modelo:
+  valores:
+    w_36: { sim: "w", nombre: "anchura para 50 Ω con h = 0,36 mm", unidad: mm, valor: 0.65 }
+    d_t: { sim: "d", nombre: "diámetro del taladro", unidad: mm, valor: 0.3 }
+    e_m: { sim: "e", nombre: "espesor del metalizado", unidad: mm, valor: 0.025 }
+    k_e: { sim: "k", nombre: "coeficiente de pista", unidad: "", valor: 0.048 }
+    dT_v: { sim: "ΔT", nombre: "subida de temperatura", unidad: "°C", valor: 10 }
+  calculos:
+    A_v: { expr: "pi*d_t*e_m", sim: "A", nombre: "sección de la corona", unidad: "mm²" }
+    w_eq: { expr: "A_v/0.035", sim: "w", nombre: "pista equivalente de 35 µm", unidad: mm }
+    I_via: { expr: "k_e*dT_v^0.44*(A_v/0.0254^2)^0.725", sim: "I", nombre: "corriente de la vía", unidad: A }
+    I_int: { expr: "0.024*dT_v^0.44*(A_v/0.0254^2)^0.725", sim: "I", nombre: "con el coeficiente interior", unidad: A }
+    I_agujero: { expr: "k_e*dT_v^0.44*(pi*d_t^2/4/0.0254^2)^0.725", sim: "I", nombre: "con el agujero entero", unidad: A }
+    I_sinpi: { expr: "k_e*dT_v^0.44*(d_t*e_m/0.0254^2)^0.725", sim: "I", nombre: "sin π", unidad: A }
+
+tarjetas:
+  - id: empareje-apilados
+    tipo: pregunta
+    titulo: "Problema 41.A: dos apilados"
+    texto: "Una placa mixta de cuatro capas. Empareje cada apilado con su consecuencia."
+    libro: [354, 356, 359, 360, 361]
+    emparejar:
+      - ["A: señal, masa, alimentación, señal", "La capa 4 tiene de referencia la alimentación"]
+      - ["B: señal, masa, señal, masa", "Todas las señales con masa contigua"]
+    exito: "En A, el retorno de la capa 4 cruza entre planos por los desacoplos y alarga el bucle."
+    pistas:
+      - { texto: "Mire qué plano queda junto a la capa 4 en cada uno." }
+    escalera:
+      - "En A, la capa 3 es la alimentación."
+    solucion: "A, referencia de alimentación en la capa 4; B, masa contigua para todas."
+
+  - id: porque-a
+    tipo: porque
+    titulo: "El problema del apilado A"
+    texto: "¿Por qué la capa 4 del apilado A empeora el retorno?"
+    libro: [360]
+    widget:
+      tipo: figura
+      figura: fig-40.3
+      zonas:
+        - { id: clasico, rotulo: "Apilado de la izquierda", rect: [15, 0, 120, 115] }
+    opciones:
+      - texto: "Su retorno cruza entre planos por los condensadores de desacoplo"
+        bien: true
+        porque: "Su referencia es la alimentación; el bucle se alarga al pasar al plano de masa."
+      - texto: "Porque la alimentación no conduce"
+        porque: "Conduce; el problema es que el retorno tiene que cambiar de plano."
+      - texto: "Porque está más lejos del plano"
+        porque: "Está a la misma distancia; lo que cambia es qué plano tiene al lado."
+    escalera:
+      - "¿Qué plano tiene justo encima la capa 4?"
+    solucion: "Su retorno tiene que cruzar por los desacoplos: el bucle se alarga."
+
+  - id: estime-anchura
+    tipo: pregunta
+    titulo: "50 Ω con el dieléctrico grueso"
+    texto: "Con h = 0,2 mm, 50 Ω piden 0,35 mm de pista. Con h = 0,36 mm, según la tabla, ¿cuánta anchura?"
+    libro: [364, 365]
+    estimar:
+      objetivo: "w_36"
+      unidad: mm
+      min: 0.2
+      max: 1
+      paso: 0.01
+      inicio: 0.3
+      tol: 0.08
+      rotulo: "Anchura para 50 Ω"
+    exito: "Unos 0,65 mm, casi el doble de espacio: de ahí el dieléctrico fino."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.7 }, texto: "Se ha pasado: con 0,7 mm ya baja a 47,4 Ω." }
+      - { texto: "Se ha quedado corto: con 0,5 mm aún son 57,0 Ω." }
+    escalera:
+      - "En la columna de 0,36 mm, 50 Ω cae entre 0,5 y 0,7 mm."
+    solucion: "Unos 0,65 mm."
+
+  - id: pregunta-decision
+    tipo: pregunta
+    titulo: "La decisión"
+    texto: "¿Qué apilado y qué dieléctrico elige el problema?"
+    libro: [366]
+    widget:
+      tipo: figura
+      figura: fig-40.3
+      zonas:
+        - { id: alta, rotulo: "Apilado del centro", rect: [165, 0, 122, 115] }
+    opciones:
+      - texto: "B, con dieléctrico fino entre las capas 1-2 y 3-4"
+        bien: true
+        porque: "Masa para todas las señales, pistas estrechas de 50 Ω y la alimentación en vertidos."
+      - texto: "A, con dieléctrico grueso"
+        porque: "A deja la capa 4 sobre alimentación, y el grueso pide pistas casi el doble de anchas."
+      - texto: "B, con dieléctrico grueso"
+        porque: "B es el bueno, pero con el grueso las pistas de 50 Ω ocupan casi el doble."
+    escalera:
+      - "Masa contigua y pistas estrechas."
+    solucion: "B con 0,2 mm: pistas de 0,35 mm para 50 Ω."
+
+  - id: pregunta-via-masa
+    tipo: pregunta
+    titulo: "El detalle que lo hace funcionar"
+    texto: "En el apilado B una señal pasa de la capa 1 a la 3. ¿Qué hay que añadir?"
+    libro: [367]
+    widget:
+      tipo: figura
+      figura: fig-40.3
+      zonas:
+        - { id: alta, rotulo: "Apilado del centro", rect: [165, 0, 122, 115] }
+    opciones:
+      - texto: "Una vía de masa junto a la vía de señal"
+        bien: true
+        porque: "Su retorno salta del plano 2 al plano 4: sin esa vía, el bucle se dispara."
+      - texto: "Nada: las dos capas tienen masa"
+        porque: "Tienen masas distintas, en planos distintos: el retorno tiene que pasar de uno a otro."
+      - texto: "Un condensador de desacoplo"
+        porque: "Une alimentación y masa; aquí el salto es entre dos planos de masa."
+    escalera:
+      - "¿Qué plano de referencia tiene la capa 1? ¿Y la 3?"
+    solucion: "Una vía de masa junto a cada vía de señal que cambia de plano."
+
+  - id: simule-via
+    tipo: simular
+    titulo: "Problema 41.B: la corriente de una vía"
+    texto: "Vía de 0,3 mm con 25 µm de metalizado. Con el criterio IPC exterior y 10 °C, ¿cuánta corriente admite?"
+    libro: [371, 373, 376, 377, 378, "cap40#75"]
+    fijar: { d_t: 0.3, e_m: 0.025, k_e: 0.048, dT_v: 10 }
+    widget:
+      tipo: grafica
+      x: { id: ss, min: 0, max: 0.08, unidad: "mm²", rotulo: "sección" }
+      y: { min: 0, max: 5, unidad: A, rotulo: "I" }
+      curvas:
+        - { expr: "k_e*dT_v^0.44*(ss/0.0254^2)^0.725", color: naranja, rotulo: "Exterior, 10 °C" }
+      lectura: { valor: I_via, rotulo: "Corriente de la vía" }
+      datos:
+        - { valor: A_v, rotulo: "Sección de la corona: {{A_v}}" }
+      ocultar: true
+    simular:
+      objetivo: I_via
+      unidad: A
+      tol: 0.05
+      rotulo: "Corriente de la vía, I"
+      errores:
+        - { expr: "I_agujero", texto: "Ha usado el agujero entero: la vía conduce por la corona de cobre de su pared." }
+        - { expr: "I_sinpi", texto: "Ha olvidado el π: la corona es el perímetro π·d por el espesor." }
+    exito: "1,8 A por fuera y 0,9 A por dentro: del orden de 1 A por vía."
+    escalera:
+      - "Sección = π × 0,3 mm × 0,025 mm; pásela a mils cuadrados."
+    solucion: "0,0236 mm², como 0,67 mm de pista de 35 µm: 1,8 A."
+    comprobar:
+      - { A_v: 0.0236, w_eq: 0.67, I_via: 1.8, I_int: 0.9, tol: 0.01 }
+      - { I_agujero: 3.99, I_sinpi: 0.79, tol: 0.02 }
+
+  - id: explore-corona
+    tipo: explorar
+    titulo: "La corona de la vía"
+    texto: "Una vía conduce por el cobre de su pared. Cambie el taladro y el criterio, y mire la corriente."
+    libro: [376, 378]
+    widget:
+      tipo: grafica
+      x: { id: ss, min: 0, max: 0.08, unidad: "mm²", rotulo: "sección" }
+      y: { min: 0, max: 5, unidad: A, rotulo: "I" }
+      curvas:
+        - { expr: "k_e*dT_v^0.44*(ss/0.0254^2)^0.725", color: naranja, rotulo: "I(sección)" }
+      marcas:
+        - { x: "A_v", y: "I_via", rotulo: "{{I_via}}" }
+      lectura: { valor: I_via, rotulo: "Corriente de la vía" }
+      datos:
+        - { valor: A_v, rotulo: "Sección de la corona: {{A_v}}" }
+      mandos:
+        - { valor: d_t, lista: [0.2, 0.3, 0.4], rotulo: "Taladro, d" }
+        - { valor: k_e, lista: [0.024, 0.048], nombres: [interior, exterior], rotulo: "Criterio" }
+    requiere: { mover: [d_t, k_e] }
+
+  - id: pregunta-cuantas
+    tipo: pregunta
+    titulo: "Para 5 A"
+    texto: "Con 1 A por vía como regla conservadora, ¿cuántas vías para 5 A?"
+    libro: [379]
+    widget:
+      tipo: figura
+      figura: fig-40.6
+      zonas:
+        - { id: corriente, rotulo: "Recuadro azul", rect: [249, 125, 198, 40] }
+    opciones:
+      - texto: "Al menos 5; en la práctica 6 u 8"
+        bien: true
+        porque: "El margen cuesta poco; y en un camino de conmutación, más aún."
+      - texto: "Una, si es grande"
+        porque: "La solución es poner varias en paralelo, no una mayor."
+      - texto: "Exactamente 5"
+        porque: "Es el mínimo; sin margen, cualquier dispersión las sobrecarga."
+    escalera:
+      - "Divida y añada margen."
+    solucion: "Al menos 5, y 6 u 8 en la práctica."
+
+  - id: empareje-criterios
+    tipo: pregunta
+    titulo: "Los tres criterios a la vez"
+    texto: "Empareje cada criterio con lo que dice para las vías."
+    libro: [381, 382]
+    emparejar:
+      - ["Corriente", "1 A por vía, como regla conservadora"]
+      - ["Resistencia", "Del orden de 1 mΩ por vía: despreciable"]
+      - ["Inductancia", "La que manda en un camino de conmutación"]
+    exito: "Una sola vía conduce, pero su inductancia arruina el bucle de conmutación."
+    pistas:
+      - { texto: "La resistencia de cinco en paralelo es una fracción de miliohmio." }
+    escalera:
+      - "En conmutación importa lo que reacciona a di/dt."
+    solucion: "Corriente, 1 A; resistencia, despreciable; inductancia, la que manda al conmutar."
+
+  - id: pregunta-fusible
+    tipo: predecir
+    titulo: "Problema 41.C: la pista fusible"
+    texto: "Una pista estrecha protegida por un fusible generoso sufre un cortocircuito. ¿Qué pasa?"
+    libro: [386, 393, 394]
+    widget:
+      tipo: figura
+      figura: fig-40.4
+      zonas:
+        - { id: grafica, rotulo: "La gráfica", rect: [0, 0, 342, 210] }
+    opciones:
+      - texto: "La pista hace de fusible: se vaporiza, y puede haber un arco"
+        bien: true
+        porque: "No es una protección limpia: es una placa destruida."
+      - texto: "Funde el fusible"
+        porque: "Un fusible generoso tarda más de lo que aguanta la pista."
+      - texto: "Nada: la pista aguanta"
+        porque: "Es estrecha: su I²t es menor que el del fusible."
+    escalera:
+      - "¿Qué funde antes: la pista o el fusible?"
+    solucion: "Funde la pista: se vaporiza y puede haber un arco."
+
+  - id: pregunta-regla
+    tipo: pregunta
+    titulo: "La regla operativa"
+    texto: "¿Cómo se dimensiona una pista de alimentación protegida por fusible?"
+    libro: [393, 396]
+    widget:
+      tipo: figura
+      figura: fig-40.4
+      zonas:
+        - { id: grafica, rotulo: "La gráfica", rect: [0, 0, 342, 210] }
+    opciones:
+      - texto: "Para la corriente normal, con el fusible coordinado y ensanchando la entrada"
+        bien: true
+        porque: "El fusible funde antes de que la pista se dañe; los últimos centímetros desde el conector, más anchos."
+      - texto: "Para la corriente de cortocircuito, siempre"
+        porque: "Es válido, pero exige pistas anchas; lo habitual es la corriente normal con protección coordinada."
+      - texto: "Lo más estrecha posible, para que haga de fusible"
+        porque: "Solo si se calcula y se documenta; por accidente es suicida."
+    escalera:
+      - "El fusible debe fundir antes que la pista."
+    solucion: "Corriente normal, coordinación con el fusible y entrada ensanchada."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [366, 367, 378, 396]
+    ideas:
+      - { titulo: "Apilado B.", texto: "Masa contigua, 0,2 mm y pistas de 0,35 mm para 50 Ω." }
+      - { titulo: "Vía de masa.", texto: "Junto a cada vía de señal que cambia de plano." }
+      - { titulo: "Vías de potencia.", texto: "1,8 A por fuera, 0,9 por dentro: unos 1 A; 6 u 8 para 5 A." }
+      - { titulo: "Fusible.", texto: "Corriente normal, coordinación y la entrada más ancha." }

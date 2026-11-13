@@ -1,0 +1,220 @@
+# Lección 1.2 de la sección 42.8 «Pérdidas a Alta Velocidad y Ecualización» (cap41, sec-41.8). Formato: GUIA.md.
+# - Las dos pérdidas de la figura 42.12 (fig-41.12) vivas: conductor ∝ √f y dieléctrico ∝ f·tan δ (bloques 226–227),
+#   que en FR4 (tan δ = 0,02) se cruzan hacia 1,1 GHz con 0,032 dB/cm cada una (valores de la figura; el texto dice «en
+#   torno al gigahercio», bloque 228). Con otro tan δ de la tabla del bloque 231, el cruce pasa a f₀·(0,02/tan δ)².
+# - Sin fórmula del libro (la sección no tiene ecuaciones) ni paso práctico numérico: se toca la gráfica.
+leccion: cap41/sec-41.8
+
+libro:
+  224: "esa atenuación crece con la frecuencia"
+  226: "la resistencia crece con la raíz de la frecuencia"
+  227: "Crecen linealmente con la frecuencia"
+  228: "a baja frecuencia domine el conductor y a alta el dieléctrico, con un cruce que en FR4 está en torno al gigahercio"
+  231: "0,002 – 0,004"
+  232: "La diferencia entre FR4 y un material de RF es de un orden de magnitud, y se paga en precio"
+  233: "Se mitiga encaminando en ángulo respecto a la trama"
+  235: "cada componente frecuencial se atenúa de forma distinta, y eso deforma el pulso"
+  242: "la ecualización compensa la atenuación y no crea información que se haya perdido bajo el suelo de ruido"
+  244: "en placas rápidas se especifica cobre de baja rugosidad"
+  246: "cada vía, cada conector, cada cambio de anchura produce una reflexión"
+  248: "proporcional a √f es el conductor; proporcional a f, el dieléctrico"
+  250: "Los dos mecanismos de pérdida en una línea y cuál domina según la frecuencia"
+
+modelo:
+  valores:
+    tand: { sim: "tan δ", nombre: "tangente de pérdidas", unidad: "", valor: 0.02 }
+    f_0: { sim: "f₀", nombre: "cruce en FR4 (figura 42.12)", unidad: Hz, valor: 1.1e9 }
+    a_0: { sim: "α₀", nombre: "atenuación de cada una en el cruce (figura 42.12)", unidad: "dB/cm", valor: 0.032 }
+  calculos:
+    f_x: { expr: "f_0*(0.02/tand)^2", sim: "f_{cruce}", nombre: "frecuencia de cruce", unidad: Hz }
+
+tarjetas:
+  - id: explore-perdidas
+    tipo: explorar
+    titulo: "Dos mecanismos de pérdida"
+    texto: "El conductor pierde con la raíz de la frecuencia; el dieléctrico, con la frecuencia. Cambie el material."
+    libro: [224, 226, 227, 231, 250]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 10000000, max: 30000000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.001, max: 1, unidad: "dB/cm", rotulo: "atenuación", escala: log }
+      curvas:
+        - { expr: "a_0*sqrt(nu/f_0)", color: azul, rotulo: "conductor ∝ √f", discontinua: true }
+        - { expr: "a_0*nu/f_0*tand/0.02", color: naranja, rotulo: "dieléctrico ∝ f", discontinua: true }
+        - { expr: "a_0*sqrt(nu/f_0) + a_0*nu/f_0*tand/0.02", color: tinta, rotulo: "total" }
+      lectura: { valor: f_x, rotulo: "Cruce de los dos" }
+      mandos:
+        - { valor: tand, lista: [0.02, 0.01, 0.002, 0.001], nombres: ["FR4", "FR4 bajas pérdidas", "Rogers", "PTFE"], rotulo: "Material" }
+    requiere: { mover: [tand] }
+
+  - id: empareje-mecanismos
+    tipo: pregunta
+    titulo: "Conductor y dieléctrico"
+    texto: "Empareje cada pérdida con su causa y su ley."
+    libro: [226, 227]
+    emparejar:
+      - ["Pérdidas del conductor", "Efecto pelicular: crecen con √f"]
+      - ["Pérdidas del dieléctrico", "Polarización del aislante: crecen con f"]
+    exito: "Leyes distintas: por eso cada una domina en una zona."
+    pistas:
+      - { texto: "El efecto pelicular concentra la corriente en la superficie." }
+    escalera:
+      - "La polarización del aislante disipa en cada ciclo."
+    solucion: "Conductor, pelicular y √f; dieléctrico, polarización y f."
+
+  - id: predecir-cruce
+    tipo: predecir
+    titulo: "Por encima del gigahercio"
+    texto: "Una línea de FR4 trabaja a varios gigahercios. ¿Qué pérdida domina?"
+    libro: [228]
+    fijar: { tand: 0.02 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 10000000, max: 30000000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.001, max: 1, unidad: "dB/cm", rotulo: "atenuación", escala: log }
+      curvas:
+        - { expr: "a_0*sqrt(nu/f_0) + a_0*nu/f_0*tand/0.02", color: tinta, rotulo: "total en FR4" }
+      lectura: { valor: f_x, rotulo: "Cruce de los dos" }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "La del dieléctrico"
+        bien: true
+        porque: "Por encima del cruce, en torno al gigahercio en FR4, crece más deprisa la del dieléctrico."
+      - texto: "La del conductor"
+        porque: "Domina a baja frecuencia; crece solo con √f."
+      - texto: "Las dos por igual"
+        porque: "Solo son iguales en el cruce, hacia el gigahercio."
+    escalera:
+      - "f crece más deprisa que √f."
+    solucion: "El dieléctrico."
+
+  - id: empareje-materiales
+    tipo: pregunta
+    titulo: "El material importa"
+    texto: "Empareje cada material con su tangente de pérdidas."
+    libro: [231, 232]
+    emparejar:
+      - ["FR4", "0,02: general, hasta unos pocos GHz"]
+      - ["FR4 de bajas pérdidas", "0,01: enlaces rápidos"]
+      - ["Rogers y similares", "0,002 – 0,004: RF y microondas"]
+      - ["PTFE", "0,001: microondas de precisión"]
+    exito: "De FR4 a un material de RF hay un orden de magnitud, y se paga en precio."
+    pistas:
+      - { texto: "El PTFE es el de menos pérdidas." }
+    escalera:
+      - "El FR4 corriente es el de más pérdidas de la tabla."
+    solucion: "FR4, 0,02; bajas pérdidas, 0,01; Rogers, 0,002–0,004; PTFE, 0,001."
+
+  - id: porque-tejido
+    tipo: porque
+    titulo: "El FR4 no es homogéneo"
+    texto: "Las dos pistas de un par diferencial llegan con distinto retardo aunque midan lo mismo. ¿Por qué, en FR4?"
+    libro: [233]
+    widget:
+      tipo: figura
+      figura: fig-41.12
+      zonas:
+        - { id: grafica, rotulo: "La gráfica", rect: [35, 0, 400, 195] }
+    opciones:
+      - texto: "Es un tejido de vidrio en resina: la constante dieléctrica cambia bajo cada pista"
+        bien: true
+        porque: "Efecto de tejido de vidrio; se mitiga encaminando en ángulo respecto a la trama."
+      - texto: "Por el efecto pelicular"
+        porque: "El pelicular atenúa; el retardo distinto viene del dieléctrico bajo cada pista."
+      - texto: "Porque una pista siempre es más ancha"
+        porque: "Pueden ser idénticas: la diferencia está debajo, en el sustrato."
+    escalera:
+      - "¿Qué hay bajo cada pista: fibra o resina?"
+    solucion: "El tejido de vidrio: fibra bajo una, resina bajo otra."
+
+  - id: pregunta-forma
+    tipo: pregunta
+    titulo: "No solo más pequeña"
+    texto: "¿Qué hace la atenuación a un flanco, además de reducirlo?"
+    libro: [235]
+    widget:
+      tipo: figura
+      figura: fig-41.12
+      zonas:
+        - { id: grafica, rotulo: "La gráfica", rect: [35, 0, 400, 195] }
+    opciones:
+      - texto: "Lo redondea: cada frecuencia se atenúa distinto y el pulso se deforma"
+        bien: true
+        porque: "Y como depende de lo transmitido antes, aparece la interferencia entre símbolos."
+      - texto: "Lo retrasa sin cambiarlo"
+        porque: "El retraso es de la propagación; la atenuación deforma."
+      - texto: "Nada más"
+        porque: "Las altas se atenúan más: el flanco pierde sus componentes rápidas."
+    escalera:
+      - "Las componentes altas se atenúan más."
+    solucion: "Lo redondea y produce interferencia entre símbolos."
+
+  - id: porque-limite
+    tipo: porque
+    titulo: "El límite de la ecualización"
+    texto: "Si el canal es conocido, ¿por qué la ecualización no recupera cualquier enlace?"
+    libro: [242]
+    widget:
+      tipo: figura
+      figura: fig-41.12
+      zonas:
+        - { id: grafica, rotulo: "La gráfica", rect: [35, 0, 400, 195] }
+    opciones:
+      - texto: "Al realzar las altas realza también el ruido"
+        bien: true
+        porque: "Compensa la atenuación, pero no crea la información perdida bajo el suelo de ruido."
+      - texto: "Porque el canal no es lineal"
+        porque: "Es LTI: su efecto es una convolución conocida, y se puede deshacer."
+      - texto: "Porque no se puede ecualizar en el receptor"
+        porque: "Se puede, en el emisor y en el receptor."
+    escalera:
+      - "¿Qué más hay en las frecuencias altas además de la señal?"
+    solucion: "Porque realza también el ruido."
+
+  - id: empareje-otras
+    tipo: pregunta
+    titulo: "Las otras pérdidas"
+    texto: "Empareje cada pérdida con lo que la causa o la remedia."
+    libro: [244, 246]
+    emparejar:
+      - ["Rugosidad del cobre", "Cobre de baja rugosidad"]
+      - ["Discontinuidades", "Cada vía, conector o cambio de anchura refleja"]
+    exito: "Las dos se suman a las del conductor y del dieléctrico."
+    pistas:
+      - { texto: "A alta frecuencia la corriente recorre las irregularidades de la superficie." }
+    escalera:
+      - "Una reflexión resta de lo que se transmite."
+    solucion: "Rugosidad, cobre liso; discontinuidades, reflexiones."
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "Se mide S21 en un tramo de línea y la atenuación crece en proporción a la frecuencia. ¿Qué domina?"
+    libro: [248]
+    widget:
+      tipo: figura
+      figura: fig-41.12
+      zonas:
+        - { id: grafica, rotulo: "La gráfica", rect: [35, 0, 400, 195] }
+    opciones:
+      - texto: "El dieléctrico"
+        bien: true
+        porque: "Proporcional a f es el dieléctrico; a √f, el conductor."
+      - texto: "El conductor"
+        porque: "El conductor crece con √f, más despacio."
+      - texto: "Las reflexiones"
+        porque: "Las reflexiones dan rizos, no una pendiente proporcional a f."
+    escalera:
+      - "Compare la pendiente con las dos leyes."
+    solucion: "El dieléctrico."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [228, 232, 235, 242]
+    ideas:
+      - { titulo: "Dos leyes.", texto: "Conductor ∝ √f; dieléctrico ∝ f; se cruzan hacia el gigahercio en FR4." }
+      - { titulo: "Material.", texto: "Un orden de magnitud de FR4 a RF, y se paga." }
+      - { titulo: "Forma.", texto: "La atenuación redondea los flancos y produce ISI." }
+      - { titulo: "Ecualizar.", texto: "Compensa, pero no recupera lo perdido bajo el ruido." }

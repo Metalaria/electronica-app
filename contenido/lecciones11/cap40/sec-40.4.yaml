@@ -1,0 +1,323 @@
+# Lección 1.2 de la sección 41.4 «Vías» (cap40, sec-40.4). Formato: contenido/lecciones11/GUIA.md.
+# - La fórmula del bloque 107, L ≈ 0,2·h·[ln(4h/d) + 1] nH con h y d en mm, en una gráfica viva frente al taladro:
+#   1,6 mm y 0,3 mm dan 1,30 nH (1,21 nH con 0,4 mm y 1,43 nH con 0,2 mm), los del bloque 108.
+# - 1,3 nH a 100 MHz son 0,82 Ω; con 2 ns y 20 mA, 13 mV; ocho salidas, 104 mV (bloque 109).
+# - La figura 41.6 (fig-40.6) con zonas y la foto de la microsección 41.7 (fig-40.7).
+# Paso práctico: «simular» la inductancia de la vía de 1,6 × 0,3 mm (errores: sin el «+ 1», el radio por el diámetro).
+leccion: cap40/sec-40.4
+
+libro:
+  103: "En la placa es un componente con tres propiedades que importan: inductancia, resistencia y capacidad"
+  107: 'L approx 0","2 dot.op h dot.op lr([ ln((4 h)/d) + 1 ]) quad "nH"'
+  108: "En una placa estándar de 1,6 mm con taladro de 0,3 mm da unos 1,3 nH (1,2 nH con 0,4 mm y 1,4 nH con 0,2 mm)"
+  109: "a 100 MHz eso es 0,82 Ω. Con un flanco de 2 ns y 20 mA, desarrolla 13 mV; con ocho salidas conmutando a la vez, 104 mV"
+  111: "dos vías de 1,3 nH suman 2,6 nH, más que la propia inductancia del condensador"
+  112: "necesita una vía de masa cerca por donde hacerlo"
+  113: "toda vía de señal rápida debe tener una vía de masa a menos de un par de milímetros"
+  115: "Una vía de 0,3 mm de taladro con la metalización habitual admite en torno a 1 A"
+  116: "Con cuatro o seis, el problema desaparece"
+  118: "una matriz de vías conduce el calor a las capas internas y a la cara opuesta"
+  119: "una almohadilla sin vías puede tener una resistencia térmica de unos 40 °C/W; con nueve o dieciséis vías, baja a unos 15 °C/W. Con 2 W, eso son 80 °C de diferencia frente a 30"
+  120: "las vías bajo la almohadilla absorben pasta de soldadura por capilaridad"
+  122: "Microvía"
+  123: "En diseño doméstico o de bajo volumen, la respuesta casi siempre es rediseñar para no necesitarlas"
+  126: "ese stub resuena y produce una atenuación acusada a una frecuencia concreta"
+  127: "la solución es el back-drilling"
+  132: "el gris que rellena el agujero y forma los meniscos es la soldadura"
+
+modelo:
+  valores:
+    h_v: { sim: "h", nombre: "espesor de la placa", unidad: mm, valor: 1.6 }
+    d_v: { sim: "d", nombre: "diámetro del taladro", unidad: mm, valor: 0.3 }
+    f_v: { sim: "f", nombre: "frecuencia", unidad: Hz, valor: 100000000 }
+    i_v: { sim: "Δi", nombre: "corriente conmutada por salida", unidad: A, valor: 0.02 }
+    t_v: { sim: "Δt", nombre: "duración del flanco", unidad: s, valor: 2e-9 }
+    n_v: { sim: "N", nombre: "salidas a la vez", unidad: "", valor: 8 }
+  calculos:
+    L_v: { expr: "0.2*h_v*(ln(4*h_v/d_v) + 1)", sim: "L", nombre: "inductancia de la vía", unidad: nH }
+    q_v: { expr: "4*h_v/d_v", sim: "4h/d", nombre: "cociente del logaritmo", unidad: "" }
+    h4_v: { expr: "4*h_v", sim: "4h", nombre: "cuatro veces el espesor", unidad: mm }
+    L_sin1: { expr: "0.2*h_v*ln(4*h_v/d_v)", sim: "L", nombre: "sin el «+ 1»", unidad: nH }
+    L_radio: { expr: "0.2*h_v*(ln(8*h_v/d_v) + 1)", sim: "L", nombre: "con el radio en lugar del diámetro", unidad: nH }
+    X_v: { expr: "2*pi*f_v*L_v*1e-9", sim: "X_{L}", nombre: "reactancia de la vía", unidad: Ω }
+    v_1: { expr: "L_v*1e-9*i_v/t_v", sim: "v", nombre: "tensión con una salida", unidad: V }
+    v_n: { expr: "n_v*v_1", sim: "v", nombre: "tensión con N salidas", unidad: V }
+
+tarjetas:
+  - id: explore-via
+    tipo: explorar
+    titulo: "Una vía es un componente"
+    texto: "En el esquema no existe; en la placa tiene inductancia, resistencia y capacidad. Toque cada recuadro."
+    libro: [103, 111, 113, 115, 120]
+    widget:
+      tipo: figura
+      figura: fig-40.6
+      zonas:
+        - { id: inductancia, rotulo: "Recuadro rojo", rect: [249, 29, 198, 57], texto: "Unos 1,3 nH por vía pasante: en el desacoplo, dos vías suman 2,6 nH." }
+        - { id: retorno, rotulo: "Recuadro naranja", rect: [249, 77, 198, 40], texto: "El retorno también cambia de capa: vía de masa a menos de un par de milímetros." }
+        - { id: corriente, rotulo: "Recuadro azul", rect: [249, 125, 198, 40], texto: "En torno a 1 A por vía de 0,3 mm: para más, varias en paralelo." }
+        - { id: pasta, rotulo: "Recuadro morado", rect: [249, 172, 198, 40], texto: "Bajo la almohadilla absorben pasta de soldadura por capilaridad." }
+    requiere: { mover: [inductancia, retorno, corriente] }
+
+  - id: explore-foto
+    tipo: explorar
+    titulo: "Un taladro metalizado por dentro"
+    texto: "Microsección de una placa a 50 aumentos. Toque la patilla, la soldadura y la placa."
+    libro: [132]
+    widget:
+      tipo: figura
+      figura: fig-40.7
+      zonas:
+        - { id: patilla, rotulo: "Franja clara vertical", rect: [340, 0, 130, 860], texto: "Una patilla que atraviesa su taladro metalizado." }
+        - { id: soldadura, rotulo: "Menisco gris de abajo", rect: [742, 650, 108, 210], texto: "El gris que rellena el agujero y forma los meniscos es la soldadura." }
+        - { id: placa, rotulo: "Bloque oscuro del centro", rect: [515, 385, 285, 315], texto: "El sustrato: las finas líneas claras de sus bordes son el cobre, que continúa por la pared del taladro." }
+    requiere: { mover: [patilla, soldadura, placa] }
+
+  - id: formula-inductancia
+    tipo: formula
+    titulo: "La inductancia de la vía"
+    texto: "Un cilindro de longitud h, el espesor de la placa, y diámetro d, el del taladro, en milímetros."
+    libro: [107, 108]
+    ec: 107
+    sustitucion: "0,2 · {{h_v}} · [ln(4 · {{h_v}} / {{d_v}}) + 1] = {{L_v}}"
+    widget:
+      tipo: grafica
+      x: { id: dd, min: 0.1, max: 0.6, unidad: mm, rotulo: "d" }
+      y: { min: 0, max: 3, unidad: nH, rotulo: "L" }
+      curvas:
+        - { expr: "0.2*h_v*(ln(4*h_v/dd) + 1)", color: naranja, rotulo: "L(d)" }
+      marcas:
+        - { x: "d_v", y: "L_v", rotulo: "{{L_v}}" }
+      lectura: { valor: L_v, rotulo: "Inductancia de la vía" }
+      mandos:
+        - { valor: d_v, lista: [0.2, 0.3, 0.4], rotulo: "Taladro, d" }
+        - { valor: h_v, min: 0.8, max: 3.2, paso: 0.1, rotulo: "Espesor, h" }
+    comprobar:
+      - { con: { h_v: 1.6, d_v: 0.4 }, L_v: 1.2, tol: 0.01 }
+      - { con: { h_v: 1.6, d_v: 0.2 }, L_v: 1.4, tol: 0.03 }
+
+  - id: simule-via
+    tipo: simular
+    titulo: "Prediga la inductancia"
+    texto: "Una vía pasante en una placa estándar de 1,6 mm con taladro de 0,3 mm. ¿Cuántos nanohenrios tiene?"
+    libro: [107, 108]
+    fijar: { h_v: 1.6, d_v: 0.3 }
+    widget:
+      tipo: grafica
+      x: { id: dd, min: 0.1, max: 0.6, unidad: mm, rotulo: "d" }
+      y: { min: 0, max: 3, unidad: nH, rotulo: "L" }
+      curvas:
+        - { expr: "0.2*h_v*(ln(4*h_v/dd) + 1)", color: naranja, rotulo: "L(d)" }
+      lectura: { valor: L_v, rotulo: "Inductancia de la vía" }
+      ocultar: true
+    simular:
+      objetivo: L_v
+      unidad: nH
+      tol: 0.05
+      rotulo: "Inductancia de la vía, L"
+      errores:
+        - { expr: "L_sin1", texto: "Ha olvidado el «+ 1» del corchete: ln(4h/d) + 1." }
+        - { expr: "L_radio", texto: "Ha usado el radio: d es el diámetro del taladro, 0,3 mm." }
+    exito: "Unos 1,3 nH: del orden de 0,8 nH por milímetro de placa."
+    escalera:
+      - "4h/d = 6,4/0,3; tome su logaritmo neperiano y súmele 1."
+    solucion: "0,2 × 1,6 × [ln(21,3) + 1] = 1,30 nH."
+    comprobar:
+      - { L_v: 1.3, L_sin1: 0.98, L_radio: 1.52, q_v: 21.3, h4_v: 6.4, tol: 0.01 }
+
+  - id: estime-reactancia
+    tipo: pregunta
+    titulo: "Parece nada"
+    texto: "Esos 1,3 nH a 100 MHz, ¿cuántos ohmios son?"
+    libro: [109]
+    fijar: { h_v: 1.6, d_v: 0.3, f_v: 100000000 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1000000, max: 1000000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.001, max: 10, unidad: Ω, rotulo: "X", escala: log }
+      curvas:
+        - { expr: "2*pi*nu*L_v*1e-9", color: naranja, rotulo: "X = 2πfL" }
+    estimar:
+      objetivo: "X_v"
+      unidad: Ω
+      min: 0
+      max: 3
+      paso: 0.01
+      inicio: 2
+      tol: 0.05
+      rotulo: "Impedancia de la vía"
+    exito: "0,82 Ω: una vía sola ya pesa en el desacoplo."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.86 }, texto: "Demasiado: multiplique 2π por 100 MHz y por 1,3 nH." }
+      - { texto: "Demasiado poco: lea la curva en 100 MHz." }
+    escalera:
+      - "X = 2π·f·L."
+    solucion: "2π × 100 MHz × 1,3 nH = 0,82 Ω."
+    comprobar:
+      - { X_v: 0.82, tol: 0.01 }
+
+  - id: predecir-ocho
+    tipo: predecir
+    titulo: "Ocho salidas por la misma vía"
+    texto: "Flancos de 2 ns y 20 mA por salida: una da 13 mV sobre la vía. ¿Y ocho a la vez?"
+    libro: [109]
+    fijar: { h_v: 1.6, d_v: 0.3, i_v: 0.02, t_v: 2e-9, n_v: 8 }
+    widget:
+      tipo: grafica
+      x: { id: nn, min: 1, max: 16, unidad: "", rotulo: "salidas" }
+      y: { min: 0, max: 0.25, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "nn*L_v*1e-9*i_v/t_v", color: naranja, rotulo: "v = N·L·Δi/Δt" }
+      lectura: { valor: v_n, rotulo: "Tensión sobre la vía" }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "104 mV"
+        bien: true
+        porque: "Las corrientes se suman en la misma vía: ocho veces 13 mV."
+      - texto: "13 mV"
+        porque: "Esa es la de una salida; con ocho a la vez, la corriente es ocho veces mayor."
+      - texto: "Menos de 13 mV: se reparten"
+        porque: "Comparten la misma vía: no se reparten, se suman."
+    escalera:
+      - "v = L·Δi/Δt, y Δi es la suma de las ocho."
+    solucion: "8 × 13 mV = 104 mV."
+    comprobar:
+      - { v_1: 0.013, v_n: 0.104, tol: 0.01 }
+
+  - id: porque-desacoplo
+    tipo: porque
+    titulo: "Las vías del desacoplo"
+    texto: "¿Por qué las vías de un condensador de desacoplo pesan tanto?"
+    libro: [111]
+    widget:
+      tipo: figura
+      figura: fig-40.6
+      zonas:
+        - { id: inductancia, rotulo: "Recuadro rojo", rect: [249, 29, 198, 57] }
+    opciones:
+      - texto: "Forman parte del bucle: dos de 1,3 nH suman más que el propio condensador"
+        bien: true
+        porque: "Por eso el desacoplo lleva vías cortas y, si se puede, varias en paralelo."
+      - texto: "Porque su resistencia calienta el condensador"
+        porque: "Lo que pesa a alta frecuencia es la inductancia, no la resistencia."
+      - texto: "No pesan: el condensador está en el esquema"
+        porque: "El esquema no dibuja las vías; en la placa están en serie con el condensador."
+    escalera:
+      - "Sume la inductancia de las dos vías."
+    solucion: "Están en el bucle: 2,6 nH, más que el condensador."
+
+  - id: pregunta-retorno
+    tipo: pregunta
+    titulo: "Cuando una señal cambia de capa"
+    texto: "Una señal rápida pasa de una capa a otra por una vía. ¿Qué necesita al lado?"
+    libro: [112, 113]
+    widget:
+      tipo: figura
+      figura: fig-40.6
+      zonas:
+        - { id: retorno, rotulo: "Recuadro naranja", rect: [249, 77, 198, 40] }
+    opciones:
+      - texto: "Una vía de masa a menos de un par de milímetros"
+        bien: true
+        porque: "Su retorno también cambia de capa; sin esa vía rodea y el bucle crece."
+      - texto: "Un condensador en serie"
+        porque: "Cortaría la continua de la señal; lo que falta es el camino de vuelta."
+      - texto: "Nada: la vía ya conecta las capas"
+        porque: "Conecta la ida; el retorno necesita su propio paso entre planos."
+    escalera:
+      - "Piense en la corriente de vuelta, en el plano."
+    solucion: "Una vía de masa a menos de un par de milímetros."
+
+  - id: pregunta-corriente
+    tipo: pregunta
+    titulo: "Un raíl que cambia de capa"
+    texto: "La pista de un raíl de alimentación cambia de capa con una sola vía de 0,3 mm. ¿Qué conviene?"
+    libro: [115, 116]
+    widget:
+      tipo: figura
+      figura: fig-40.6
+      zonas:
+        - { id: corriente, rotulo: "Recuadro azul", rect: [249, 125, 198, 40] }
+    opciones:
+      - texto: "Varias vías en paralelo, cuatro o seis"
+        bien: true
+        porque: "Cada una admite en torno a 1 A; varias reparten corriente y calor."
+      - texto: "Una sola vía, más grande"
+        porque: "La solución no es una vía más grande sino varias en paralelo."
+      - texto: "Una sola basta si la pista es ancha"
+        porque: "La vía sigue siendo el cuello: introduce resistencia y un punto caliente."
+    escalera:
+      - "¿Cuánto admite una vía de 0,3 mm?"
+    solucion: "Cuatro o seis vías en paralelo."
+
+  - id: pregunta-termicas
+    tipo: pregunta
+    titulo: "Las vías térmicas"
+    texto: "Un componente disipa 2 W sobre su almohadilla térmica. ¿Cuánto se calienta sin vías y con nueve?"
+    libro: [118, 119]
+    widget:
+      tipo: figura
+      figura: fig-40.6
+      zonas:
+        - { id: grafica, rotulo: "La gráfica de la izquierda", rect: [25, 20, 200, 175] }
+    opciones:
+      - texto: "80 °C sin vías; 30 °C con nueve"
+        bien: true
+        porque: "40 °C/W frente a 15 °C/W, por 2 W: la diferencia entre un componente que dura y uno que no."
+      - texto: "40 °C sin vías; 15 °C con nueve"
+        porque: "Esos son los °C/W; con 2 W, la subida es el doble."
+      - texto: "Lo mismo: las vías son para la corriente"
+        porque: "Bajo la almohadilla conducen el calor a las capas internas y a la otra cara."
+    escalera:
+      - "Subida = resistencia térmica × potencia."
+    solucion: "40 × 2 = 80 °C sin vías; 15 × 2 = 30 °C con nueve."
+
+  - id: empareje-tipos
+    tipo: pregunta
+    titulo: "Los tipos y su coste"
+    texto: "Empareje cada tipo de vía con lo que conecta."
+    libro: [122, 123]
+    emparejar:
+      - ["Pasante", "De la cara superior a la inferior"]
+      - ["Ciega", "Una cara con una capa interna"]
+      - ["Enterrada", "Dos capas internas"]
+      - ["Microvía", "Capas adyacentes, por láser"]
+    exito: "Las tres últimas multiplican el coste: en bajo volumen, mejor rediseñar para no necesitarlas."
+    pistas:
+      - { texto: "La enterrada no asoma a ninguna cara." }
+    escalera:
+      - "La ciega asoma por una sola cara."
+    solucion: "Pasante, cara a cara; ciega, cara e interna; enterrada, dos internas; microvía, adyacentes por láser."
+
+  - id: pregunta-stub
+    tipo: pregunta
+    titulo: "El stub"
+    texto: "Una vía pasante une la capa 1 con la 2 en un enlace de gigabits. ¿Qué hace el resto de la vía?"
+    libro: [126, 127]
+    widget:
+      tipo: figura
+      figura: fig-40.6
+      zonas:
+        - { id: inductancia, rotulo: "Recuadro rojo", rect: [249, 29, 198, 57] }
+    opciones:
+      - texto: "Es un stub que resuena y atenúa a una frecuencia concreta"
+        bien: true
+        porque: "Donde la velocidad lo exige se quita con back-drilling, que es caro."
+      - texto: "Nada: no lleva corriente"
+        porque: "No conduce, pero es un trozo de línea abierta, y a frecuencias altas resuena."
+      - texto: "Ayuda al retorno"
+        porque: "El retorno necesita una vía de masa; el stub es parte de la vía de señal."
+    escalera:
+      - "Un trozo de línea abierta tiene una resonancia."
+    solucion: "Un stub que resuena; se elimina con back-drilling."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [108, 113, 115, 119]
+    ideas:
+      - { titulo: "Inductancia.", texto: "Unos 1,3 nH una vía pasante de 1,6 mm: 0,82 Ω a 100 MHz." }
+      - { titulo: "Retorno.", texto: "Toda vía de señal rápida, con una vía de masa al lado." }
+      - { titulo: "Corriente.", texto: "En torno a 1 A por vía: varias en paralelo." }
+      - { titulo: "Calor.", texto: "Con vías térmicas, de 40 a 15 °C/W bajo la almohadilla." }

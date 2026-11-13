@@ -1,0 +1,300 @@
+# Lección 1.2 de la sección 42.3 «Reflexiones y Terminación» (cap41, sec-41.3). Formato: contenido/lecciones11/GUIA.md.
+# - Γ = (Z_carga − Z₀)/(Z_carga + Z₀) (bloque 69) viva frente a la carga, con Z₀ = 50 Ω.
+# - El timbre de la figura 42.5 (fig-41.5) como diagrama de rebotes: la onda sale con Z₀/(Z₀ + R_salida + R_s), se
+#   refleja entera en la entrada CMOS (Γ = +1, bloque 74) y vuelve a rebotar en el driver con
+#   Γ_s = (R_salida + R_s − Z₀)/(R_salida + R_s + Z₀). En el receptor, tras n idas y vueltas (n = floor((t − t_d)/2t_d)):
+#   v/V = 2·Z₀/(Z₀ + R)·(1 − Γ_s^(n+1))/(1 − Γ_s). Con el driver de 20 Ω del problema 42.A (cap41#308) y sin
+#   terminación, sube a 1,43 y baja a 0,61; con R_s = 30 Ω, Γ_s = 0 y llega limpio a 1 (bloque 84).
+# - El periodo del timbre, 4·t_d: 4 ns son 1 ns de vuelo y unos 16 cm a 16 cm/ns (bloque 77).
+# Paso práctico: «ajuste» de la resistencia serie hasta los 22–33 Ω del libro (bloque 83), mirando el timbre.
+leccion: cap41/sec-41.3
+
+libro:
+  68: "parte de la energía continúa y parte vuelve"
+  69: 'Γ = (Z_("carga") - Z_("0"))/(Z_("carga") + Z_("0"))'
+  71: "Γ = +1, la señal vuelve entera y en fase, duplicando la tensión en el extremo"
+  72: "Cortocircuito: Γ = −1, vuelve invertida"
+  73: "Adaptado (Z = Z₀): Γ = 0, no vuelve nada"
+  74: "una entrada CMOS es prácticamente un circuito abierto, así que la señal se refleja entera"
+  76: "un timbre amortiguado cuyo periodo es cuatro veces el tiempo de vuelo"
+  77: "Con 4 ns de periodo, el tiempo de vuelo es 1 ns y, a unos 16 cm/ns, la línea mide unos 16 cm"
+  80: "si caen cerca del umbral producen dobles disparos"
+  83: "de valor igual a Z₀ menos la impedancia de salida del driver. Típicamente 22 a 33 Ω"
+  84: "la señal sale con la mitad de amplitud, se refleja entera en el extremo abierto"
+  85: "solo vale con un receptor al final, porque los puntos intermedios ven media amplitud durante el tiempo de vuelo"
+  86: "Funciona con varios receptores y consume permanentemente"
+  87: "Un compromiso, con el inconveniente de añadir un componente y un polo"
+  92: "Ninguna si la línea es corta comparada con el flanco"
+  94: "si el flanco es más lento, la longitud crítica aumenta"
+  96: "Es la primera opción que conviene probar, y la que menos se usa"
+  99: "Y si con ninguno se consigue, el problema no es la terminación: es el camino de retorno"
+  101: "Timbre por reflexión frente a línea terminada, y las tres terminaciones"
+  "cap41#308": "La impedancia de la pista es 50 Ω y la salida del driver tiene 20 Ω"
+
+modelo:
+  valores:
+    Z_0: { sim: "Z₀", nombre: "impedancia de la línea", unidad: Ω, valor: 50 }
+    Z_L: { sim: "Z_{carga}", nombre: "impedancia de la carga", unidad: Ω, valor: 200 }
+    R_o: { sim: "R_{salida}", nombre: "impedancia de salida del driver", unidad: Ω, valor: 20 }
+    R_s: { sim: "R_{s}", nombre: "resistencia serie", unidad: Ω, valor: 0 }
+    t_d: { sim: "t_{d}", nombre: "tiempo de vuelo", unidad: s, valor: 1e-9 }
+    T_tb: { sim: "T", nombre: "periodo del timbre", unidad: s, valor: 4e-9 }
+    v_r: { sim: "v", nombre: "velocidad", unidad: "cm/ns", valor: 16 }
+  calculos:
+    G_L: { expr: "(Z_L - Z_0)/(Z_L + Z_0)", sim: "Γ", nombre: "coeficiente de reflexión", unidad: "", cifras: 3 }
+    G_s: { expr: "(R_o + R_s - Z_0)/(R_o + R_s + Z_0)", sim: "Γ_{s}", nombre: "reflexión en el driver", unidad: "", cifras: 3 }
+    v_1: { expr: "2*Z_0/(Z_0 + R_o + R_s)", sim: "v_{1}", nombre: "primer escalón en el receptor (× V)", unidad: "" }
+    L_t: { expr: "T_tb/4*1e9*v_r", sim: "L", nombre: "longitud de la línea", unidad: cm }
+
+tarjetas:
+  - id: explore-gamma
+    tipo: explorar
+    titulo: "Por qué rebota una señal"
+    texto: "Donde la impedancia cambia, parte de la onda sigue y parte vuelve. Mueva la carga de una línea de 50 Ω."
+    libro: [68, 69]
+    widget:
+      tipo: grafica
+      x: { id: zz, min: 1, max: 10000, unidad: Ω, rotulo: "Z_{carga}", escala: log }
+      y: { min: -1, max: 1, unidad: "", rotulo: "Γ" }
+      curvas:
+        - { expr: "(zz - Z_0)/(zz + Z_0)", color: naranja, rotulo: "Γ" }
+      marcas:
+        - { x: "Z_L", y: "G_L", rotulo: "{{G_L}}" }
+      lectura: { valor: G_L, rotulo: "Coeficiente de reflexión" }
+      mandos:
+        - { valor: Z_L, lista: [1, 10, 25, 50, 100, 200, 1000, 10000], rotulo: "Carga, Z_{carga}" }
+    requiere: { mover: [Z_L] }
+
+  - id: formula-gamma
+    tipo: formula
+    titulo: "El coeficiente de reflexión"
+    texto: "La fracción que vuelve. Con la carga igual a Z₀, no vuelve nada."
+    libro: [69, 73]
+    ec: 69
+    sustitucion: "({{Z_L}} − {{Z_0}}) / ({{Z_L}} + {{Z_0}}) = {{G_L}}"
+    widget:
+      tipo: grafica
+      x: { id: zz, min: 1, max: 10000, unidad: Ω, rotulo: "Z_{carga}", escala: log }
+      y: { min: -1, max: 1, unidad: "", rotulo: "Γ" }
+      curvas:
+        - { expr: "(zz - Z_0)/(zz + Z_0)", color: naranja, rotulo: "Γ" }
+      marcas:
+        - { x: "Z_L", y: "G_L", rotulo: "{{G_L}}" }
+      lectura: { valor: G_L, rotulo: "Coeficiente de reflexión" }
+      mandos:
+        - { valor: Z_L, lista: [1, 10, 25, 50, 100, 200, 1000, 10000], rotulo: "Carga, Z_{carga}" }
+    comprobar:
+      - { con: { Z_L: 50 }, G_L: 0 }
+
+  - id: empareje-casos
+    tipo: pregunta
+    titulo: "Los tres casos límite"
+    texto: "Empareje cada final de línea con lo que vuelve."
+    libro: [71, 72, 73]
+    emparejar:
+      - ["Circuito abierto", "Γ = +1: vuelve entera y duplica la tensión"]
+      - ["Cortocircuito", "Γ = −1: vuelve invertida"]
+      - ["Adaptado, Z = Z₀", "Γ = 0: no vuelve nada"]
+    exito: "El primero es el habitual en digital."
+    pistas:
+      - { texto: "Con Z infinita, Γ tiende a +1." }
+    escalera:
+      - "Ponga Z = 0 y Z = ∞ en la fórmula."
+    solucion: "Abierto, +1; corto, −1; adaptado, 0."
+
+  - id: predecir-cmos
+    tipo: predecir
+    titulo: "Una entrada CMOS al final"
+    texto: "Una línea de 50 Ω acaba en una entrada CMOS. ¿Cuánto de la onda vuelve?"
+    libro: [74]
+    fijar: { Z_L: 10000 }
+    widget:
+      tipo: grafica
+      x: { id: zz, min: 1, max: 10000, unidad: Ω, rotulo: "Z_{carga}", escala: log }
+      y: { min: -1, max: 1, unidad: "", rotulo: "Γ" }
+      curvas:
+        - { expr: "(zz - Z_0)/(zz + Z_0)", color: naranja, rotulo: "Γ" }
+      lectura: { valor: G_L, rotulo: "Coeficiente de reflexión" }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "Casi entera, en fase"
+        bien: true
+        porque: "Una entrada CMOS es prácticamente un circuito abierto: Γ cerca de +1."
+      - texto: "Nada: la entrada no consume"
+        porque: "Precisamente porque no consume es un abierto, y el abierto lo devuelve todo."
+      - texto: "Casi entera, invertida"
+        porque: "Invertida vuelve en un cortocircuito; la entrada CMOS es un abierto."
+    escalera:
+      - "¿A qué se parece una entrada que casi no toma corriente?"
+    solucion: "Casi entera: Γ ≈ +1."
+
+  - id: explore-timbre
+    tipo: explorar
+    titulo: "Lo que se ve en la pantalla"
+    texto: "Una onda reflejada vuelve al driver, rebota invertida y vuelve a ir. Toque el timbre y las tres terminaciones."
+    libro: [76, 101]
+    widget:
+      tipo: figura
+      figura: fig-41.5
+      zonas:
+        - { id: timbre, rotulo: "La gráfica", rect: [25, 25, 230, 225], texto: "Sin terminación, timbre con periodo de cuatro tiempos de vuelo; con terminación serie, el flanco llega limpio." }
+        - { id: serie, rotulo: "Arriba a la derecha", rect: [280, 0, 160, 70], texto: "Serie, en el origen: sin consumo en continua, un solo receptor." }
+        - { id: paralelo, rotulo: "En el centro a la derecha", rect: [280, 75, 160, 75], texto: "Paralelo, en el extremo: varios receptores, consume siempre." }
+        - { id: ac, rotulo: "Abajo a la derecha", rect: [280, 165, 160, 115], texto: "AC, R y C en serie: sin consumo en continua; añade un componente y un polo." }
+    requiere: { mover: [timbre, serie, paralelo] }
+
+  - id: estime-longitud
+    tipo: pregunta
+    titulo: "El timbre dice la longitud"
+    texto: "El timbre tiene 4 ns de periodo y la señal viaja a unos 16 cm/ns. ¿Cuánto mide la línea?"
+    libro: [76, 77]
+    fijar: { T_tb: 4e-9, v_r: 16 }
+    widget:
+      tipo: figura
+      figura: fig-41.5
+      zonas:
+        - { id: timbre, rotulo: "La gráfica", rect: [25, 25, 230, 225] }
+    estimar:
+      objetivo: "L_t"
+      unidad: cm
+      min: 0
+      max: 70
+      paso: 1
+      inicio: 50
+      tol: 0.05
+      rotulo: "Longitud de la línea"
+    exito: "El periodo es cuatro tiempos de vuelo: 1 ns, unos 16 cm."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 17 }, texto: "Demasiado: el periodo son cuatro tiempos de vuelo, no uno." }
+      - { texto: "Demasiado poco: un tiempo de vuelo es la cuarta parte del periodo." }
+    escalera:
+      - "Divida el periodo entre cuatro y multiplíquelo por la velocidad."
+    solucion: "4 ns / 4 = 1 ns; × 16 cm/ns = 16 cm."
+    comprobar:
+      - { L_t: 16 }
+
+  - id: ajuste-serie
+    tipo: ajuste
+    titulo: "Ajuste la terminación serie"
+    texto: "Línea de 50 Ω con driver de 20 Ω y una entrada CMOS al final. Suba la resistencia serie hasta que el timbre desaparezca."
+    libro: [80, 83, 84, "cap41#308"]
+    fijar: { Z_0: 50, R_o: 20, t_d: 1e-9 }
+    inicio: { R_s: 0 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 16e-9, unidad: s, rotulo: "t", muestras: 800 }
+      y: { min: 0, max: 2, unidad: "", rotulo: "v / V_{DD}" }
+      curvas:
+        - { expr: "2*Z_0/(Z_0 + R_o + R_s)*(1 - G_s^(floor((t - t_d)/(2*t_d)) + 1))/(1 - G_s)", color: naranja, rotulo: "En el receptor" }
+        - { expr: "2/3.3 + 0*t", color: tinta, rotulo: "V_{IH}", discontinua: true }
+      lectura: { valor: v_1, rotulo: "Primer escalón (× V_{DD})" }
+      datos:
+        - { valor: G_s, rotulo: "Reflexión en el driver: {{G_s}}" }
+      mandos:
+        - { valor: R_s, min: 0, max: 60, paso: 1, rotulo: "Resistencia serie, R_{s}" }
+    ajuste:
+      valor: R_s
+      min: 22
+      max: 33
+      rotulo: "R_{s}"
+      escala: { min: 0, max: 60 }
+      bajo: "Todavía hay timbre: el driver devuelve la onda invertida. Suba R_{s}."
+      alto: "Ya no rebota, pero el flanco sube a escalones lentos. Baje R_{s}."
+      dentro: "La onda sale a media amplitud, se duplica al reflejarse y el driver la absorbe."
+    exito: "Con 30 Ω, R_{salida} + R_{s} = Z₀: Γ en el driver es 0 y el flanco llega limpio."
+    comprobar:
+      - { con: { R_s: 30 }, G_s: 0, v_1: 1 }
+      - { con: { R_s: 0 }, v_1: 1.43, tol: 0.01 }
+
+  - id: pregunta-varios
+    tipo: pregunta
+    titulo: "Varios receptores"
+    texto: "El bus tiene receptores repartidos a lo largo de la línea. ¿Vale la terminación serie?"
+    libro: [85, 86]
+    widget:
+      tipo: figura
+      figura: fig-41.5
+      zonas:
+        - { id: serie, rotulo: "Arriba a la derecha", rect: [280, 0, 160, 70] }
+    opciones:
+      - texto: "No: los intermedios ven media amplitud durante el tiempo de vuelo"
+        bien: true
+        porque: "Pueden conmutar en falso; ahí hace falta terminación paralelo, que funciona con varios."
+      - texto: "Sí, igual que con uno"
+        porque: "Solo vale con un receptor al final: la amplitud completa solo existe allí."
+      - texto: "Sí, si la resistencia es mayor"
+        porque: "Más resistencia no da amplitud completa a los puntos intermedios."
+    escalera:
+      - "La onda sale a media amplitud: ¿dónde se completa?"
+    solucion: "No: los puntos intermedios ven media amplitud."
+
+  - id: empareje-terminaciones
+    tipo: pregunta
+    titulo: "Las tres terminaciones"
+    texto: "Empareje cada terminación con su balance."
+    libro: [83, 85, 86, 87]
+    emparejar:
+      - ["Serie, en el origen", "No consume; un solo receptor"]
+      - ["Paralelo, en el extremo", "Varios receptores; consume siempre"]
+      - ["AC, R y C en serie", "Sin consumo en continua; un componente y un polo más"]
+    exito: "Casi siempre serie en digital punto a punto; paralelo en buses con varios receptores."
+    pistas:
+      - { texto: "La paralelo tiene una resistencia a masa permanente." }
+    escalera:
+      - "¿Cuál deja pasar corriente continua?"
+    solucion: "Serie, sin consumo y un receptor; paralelo, varios y consume; AC, compromiso."
+
+  - id: pregunta-flanco
+    tipo: pregunta
+    titulo: "El truco de reducir el flanco"
+    texto: "Una línea larga da timbre y no hay sitio para resistencias. ¿Qué conviene probar primero?"
+    libro: [92, 94, 96]
+    widget:
+      tipo: figura
+      figura: fig-41.5
+      zonas:
+        - { id: timbre, rotulo: "La gráfica", rect: [25, 25, 230, 225] }
+    opciones:
+      - texto: "Reducir la velocidad de flanco de la salida"
+        bien: true
+        porque: "Con el flanco más lento la longitud crítica aumenta; muchos microcontroladores lo permiten."
+      - texto: "Bajar la frecuencia de reloj"
+        porque: "Lo decide el flanco, no la frecuencia."
+      - texto: "Ensanchar la pista"
+        porque: "Cambia la impedancia, pero no la adapta a la entrada CMOS."
+    escalera:
+      - "¿Qué aparece en la fórmula de la longitud crítica?"
+    solucion: "Ralentizar el flanco: la primera opción y la que menos se usa."
+
+  - id: pregunta-banco
+    tipo: predecir
+    titulo: "En el banco"
+    texto: "Se prueban resistencias serie mirando el flanco en el receptor, y con ninguna desaparece el timbre. ¿Qué indica?"
+    libro: [99]
+    widget:
+      tipo: figura
+      figura: fig-41.5
+      zonas:
+        - { id: timbre, rotulo: "La gráfica", rect: [25, 25, 230, 225] }
+    opciones:
+      - texto: "Que el problema es el camino de retorno"
+        bien: true
+        porque: "La terminación no arregla un retorno roto."
+      - texto: "Que hace falta una resistencia mayor"
+        porque: "Más allá del valor bueno el flanco se redondea; si ninguno sirve, la causa es otra."
+      - texto: "Que la sonda está mal"
+        porque: "Puede influir, pero el libro apunta al retorno."
+    escalera:
+      - "Si la terminación no lo arregla, ¿qué queda del bucle?"
+    solucion: "El camino de retorno."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [69, 74, 83, 94]
+    ideas:
+      - { titulo: "Γ.", texto: "(Z − Z₀)/(Z + Z₀): un CMOS es un abierto y lo devuelve todo." }
+      - { titulo: "Timbre.", texto: "Periodo de cuatro tiempos de vuelo: dice la longitud." }
+      - { titulo: "Serie.", texto: "Z₀ menos la salida del driver: 22 a 33 Ω, un solo receptor." }
+      - { titulo: "Flanco.", texto: "Más lento, la longitud crítica crece: lo primero que probar." }
