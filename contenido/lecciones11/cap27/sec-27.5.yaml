@@ -1,0 +1,261 @@
+# Lección 1.2 de la sección 26.5 «El Operacional Real» (cap27; etiqueta interna sec-27.5).
+# Formato: contenido/lecciones11/GUIA.md. GBW: esquema «ao-no-inversor» con gbw = 1 MHz y A₀ = 10⁵, entrada de 1 V (la
+# amplitud de salida es la ganancia), ganancias 10, 100 y 1000 (bloque 172). Slew rate: seguidor con sr = 0,5 V/µs a
+# 16 kHz (frecuencia de ejemplo) con 1 V y 10 V de pico (la tabla del bloque 173: 79,6 kHz y 8,0 kHz); la salida
+# limitada es el triángulo de pendiente SR (amplitud SR/(4f)), como en la lección 8.6, con el eje desde 0,2 ms.
+# CMRR: la ecuación del bloque 176 con 5 V de modo común y 80, 100 o 120 dB (tabla del bloque 177).
+leccion: cap27/sec-27.5
+
+libro:
+  169: "Pequeño error en la ganancia de lazo cerrado"
+  170: "si pides más ganancia, obtienes menos ancho de banda"
+  172: "da ganancia 1000 hasta 1 kHz, o ganancia 10 hasta 100 kHz"
+  173: "79,6 kHz"
+  174: "una distorsión característica de forma triangular"
+  176: 'V_("error") = (V_("cm"))/("10"^(("CMRR"_("dB"))\/("20")))'
+  177: "500 µV"
+  178: "con 80 dB de CMRR, el modo común introduce diez veces más error que el offset"
+  "cap27#434": "El mismo circuito se monta con un operacional de producto ganancia-ancho de banda de 1 MHz"
+
+modelo:
+  valores:
+    G_c: { sim: "G", nombre: "ganancia del montaje", unidad: "", valor: 10 }
+    GBW: { sim: "GBW", nombre: "producto ganancia por ancho de banda", unidad: Hz, valor: 1000000 }
+    A_0: { sim: "A_{0}", nombre: "ganancia en lazo abierto", unidad: "", valor: 100000 }
+    R_1g: { sim: "R₁", nombre: "resistencia a masa", unidad: Ω, valor: 1000 }
+    A_p1: { sim: "v_{in}", nombre: "amplitud de entrada", unidad: V, valor: 1 }
+    f_g: { sim: "f", nombre: "frecuencia de prueba", unidad: Hz, valor: 2000 }
+    cero: { sim: "0", nombre: "nivel de continua", unidad: V, valor: 0 }
+    G_e: { sim: "G", nombre: "ganancia del ejercicio", unidad: "", valor: 48 }
+    SR: { sim: "SR", nombre: "slew rate", unidad: "V/s", valor: 500000 }
+    V_pk: { sim: "V_{p}", nombre: "amplitud de la senoide", unidad: V, valor: 1 }
+    f_s: { sim: "f", nombre: "frecuencia de la señal", unidad: Hz, valor: 16000 }
+    V_cm: { sim: "V_{cm}", nombre: "tensión de modo común", unidad: V, valor: 5 }
+    C_db: { sim: "CMRR", nombre: "rechazo en modo común", unidad: dB, valor: 80 }
+    V_off: { sim: "V_{os}", nombre: "offset típico", unidad: V, valor: 0.00005 }
+  calculos:
+    R_2g: { expr: "(G_c - 1)*R_1g", sim: "R₂", nombre: "resistencia de realimentación", unidad: Ω }
+    f_p: { expr: "GBW/A_0", sim: "f_{p}", nombre: "polo en lazo abierto", unidad: Hz }
+    B_c: { expr: "GBW/G_c", sim: "B", nombre: "ancho de banda del montaje", unidad: Hz }
+    B_e: { expr: "GBW/G_e", sim: "B", nombre: "ancho de banda con ganancia 48", unidad: Hz }
+    f_mx: { expr: "SR/(2*pi*V_pk)", sim: "f_{máx}", nombre: "frecuencia máxima sin deformar", unidad: Hz }
+    f_n2: { expr: "SR/V_pk", sim: "f", nombre: "sin el 2π", unidad: Hz }
+    s_t: { expr: "min(1, floor(f_s/f_mx))", sim: "limitada", nombre: "limitada por slew rate", unidad: "" }
+    A_t: { expr: "min(V_pk, SR/(4*f_s))", sim: "V", nombre: "amplitud del triángulo", unidad: V }
+    t_pk: { expr: "(pi - asin(A_t/V_pk))/(2*pi*f_s)", sim: "t_{pico}", nombre: "pico del triángulo", unidad: s }
+    A_s: { expr: "(1 - s_t)*V_pk + s_t*A_t", sim: "V_{salida}", nombre: "amplitud de la salida", unidad: V }
+    V_er: { expr: "V_cm/10^(C_db/20)", sim: "V_{error}", nombre: "error equivalente a la entrada", unidad: V }
+    k_os: { expr: "V_er/V_off", sim: "×", nombre: "veces el offset", unidad: "", cifras: 2 }
+
+tarjetas:
+  - id: explore-gbw
+    tipo: explorar
+    titulo: "Ganancia por ancho de banda"
+    texto: "Un operacional de GBW = 1 MHz con 1 V a la entrada. Cambie la ganancia del montaje y mire hasta dónde llega."
+    nota: "La amplitud de salida es la ganancia."
+    libro: [170, 172]
+    widget:
+      tipo: circuito
+      esquema: ao-no-inversor
+      piezas: { entrada: cero, amplitud: A_p1, f: f_g, r1: R_1g, r2: R_2g, a0: A_0, gbw: GBW }
+      lectura: { valor: B_c, rotulo: "Ancho de banda del montaje" }
+      grafica:
+        x: { id: nu, min: 1, max: 10000000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0.1, max: 1000000, unidad: V, rotulo: "v_{o}", escala: log }
+        curvas:
+          - { expr: "min(A_0, GBW/nu)", color: tinta, rotulo: "lazo abierto", discontinua: true }
+          - { expr: "A_p1*A_0/sqrt((1 + A_0/G_c)^2 + (nu/f_p)^2)", color: naranja, rotulo: "su montaje", mide: salida_amp }
+      mandos:
+        - { valor: G_c, lista: [10, 100, 1000], rotulo: "Ganancia del montaje" }
+    requiere: { mover: [G_c] }
+    comprobar:
+      - { con: { G_c: 1000 }, B_c: 1000 }
+      - { B_c: 100000 }
+
+  - id: estime-banda
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Ganancia 48"
+    texto: "Un no inversor de ganancia 48 con un operacional de GBW = 1 MHz. ¿Qué ancho de banda tiene?"
+    libro: [170, "cap27#434"]
+    estimar:
+      objetivo: "B_e"
+      unidad: Hz
+      min: 0
+      max: 100000
+      paso: 500
+      inicio: 80000
+      tol: 0.05
+      rotulo: "Ancho de banda"
+    exito: "Unos 20,8 kHz: ganancia y banda se reparten el GBW."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 21900 }, texto: "Se ha pasado: es 1 MHz entre 48." }
+      - { texto: "Se ha quedado corto: divida el GBW solo entre la ganancia." }
+    escalera:
+      - "BW = GBW/G."
+    solucion: "1 000 000/48 ≈ 20,8 kHz."
+    comprobar:
+      - { B_e: 20833 }
+
+  - id: prediga-slew
+    tipo: predecir
+    titulo: "Una senoide de 1 V"
+    texto: "Un operacional de 0,5 V/µs da una senoide de 1 V de pico. ¿Hasta qué frecuencia la reproduce sin deformar?"
+    libro: [173]
+    fijar: { V_pk: 1 }
+    widget:
+      tipo: circuito
+      esquema: ao-no-inversor
+      piezas: { entrada: cero, amplitud: V_pk, f: f_s, sr: SR }
+      lectura: { valor: f_mx, rotulo: "Frecuencia máxima" }
+      ocultar: true
+      grafica:
+        x: { id: t, min: 0.0002, max: 0.0007, unidad: s, rotulo: "t" }
+        y: { min: -12, max: 12, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_pk*sin(2*pi*f_s*t)", color: tinta, rotulo: "la que se pide", mide: entrada, discontinua: true }
+          - { expr: "(1 - s_t)*V_pk*sin(2*pi*f_s*t) + s_t*A_t*(4*abs((t - t_pk)*f_s - floor((t - t_pk)*f_s) - 0.5) - 1)", color: naranja, rotulo: "salida", mide: salida }
+    opciones:
+      - texto: "Unos 79,6 kHz"
+        bien: true
+        porque: "SR/(2π · V_{p}) = 0,5 · 10⁶/(2π · 1): la pendiente máxima de la senoide no puede superar el SR."
+      - texto: "500 kHz"
+        porque: "Falta el 2π: la pendiente máxima de una senoide es 2π · f · V_{p}."
+      - texto: "1 MHz, el GBW"
+        porque: "El GBW limita la señal pequeña; con amplitud, manda el slew rate."
+    escalera:
+      - "ω · V_{p} ≤ SR."
+    solucion: "0,5 · 10⁶/(2π · 1) ≈ 79,6 kHz."
+    comprobar:
+      - { f_mx: 79577, f_n2: 500000, tol: 0.001 }
+
+  - id: sorpresa-grande
+    tipo: sorpresa
+    titulo: "La misma senoide, más grande"
+    texto: "A 16 kHz, suba la amplitud de 1 V a 10 V de pico y mire la salida."
+    libro: [173, 174]
+    inicio: { V_pk: 1 }
+    widget:
+      tipo: circuito
+      esquema: ao-no-inversor
+      piezas: { entrada: cero, amplitud: V_pk, f: f_s, sr: SR }
+      lectura: { valor: A_s, rotulo: "Amplitud de la salida" }
+      datos:
+        - { valor: f_mx, rotulo: "Máxima sin deformar: {{f_mx}}" }
+      grafica:
+        x: { id: t, min: 0.0002, max: 0.0007, unidad: s, rotulo: "t" }
+        y: { min: -12, max: 12, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_pk*sin(2*pi*f_s*t)", color: tinta, rotulo: "la que se pide", mide: entrada, discontinua: true }
+          - { expr: "(1 - s_t)*V_pk*sin(2*pi*f_s*t) + s_t*A_t*(4*abs((t - t_pk)*f_s - floor((t - t_pk)*f_s) - 0.5) - 1)", color: naranja, rotulo: "salida", mide: salida }
+      mandos:
+        - { valor: V_pk, lista: [1, 10], rotulo: "Amplitud" }
+    requiere: { mover: [V_pk] }
+    comprobar:
+      - { f_s: 16000 }
+
+  - id: por-que-amplitud
+    tipo: porque
+    titulo: "¿Por qué solo la grande?"
+    texto: "La misma frecuencia sale bien con 1 V y deformada con 10 V. ¿Por qué?"
+    libro: [173, 174]
+    fijar: { V_pk: 10 }
+    widget:
+      tipo: circuito
+      esquema: ao-no-inversor
+      piezas: { entrada: cero, amplitud: V_pk, f: f_s, sr: SR }
+      grafica:
+        x: { id: t, min: 0.0002, max: 0.0007, unidad: s, rotulo: "t" }
+        y: { min: -12, max: 12, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_pk*sin(2*pi*f_s*t)", color: tinta, rotulo: "la que se pide", mide: entrada, discontinua: true }
+          - { expr: "(1 - s_t)*V_pk*sin(2*pi*f_s*t) + s_t*A_t*(4*abs((t - t_pk)*f_s - floor((t - t_pk)*f_s) - 0.5) - 1)", color: naranja, rotulo: "salida", mide: salida }
+    opciones:
+      - texto: "El slew rate limita la pendiente, y la pendiente crece con la amplitud"
+        bien: true
+        porque: "Es un límite de amplitud, no de frecuencia: con 10 V el límite baja a unos 8 kHz, y la salida se vuelve un triángulo."
+      - texto: "Porque el GBW no da ganancia para 10 V"
+        porque: "El GBW no depende de la amplitud; el seguidor tiene ganancia 1 de sobra."
+      - texto: "Porque 10 V satura la salida"
+        porque: "Saturar recortaría las crestas en plano; aquí las rampas son las del slew rate."
+    escalera:
+      - "¿De qué depende la pendiente máxima de una senoide?"
+    solucion: "La pendiente, 2π · f · V_{p}, crece con la amplitud y choca con el slew rate."
+    comprobar:
+      - { f_mx: 7958, tol: 0.01 }
+
+  - id: formula-cmrr
+    tipo: formula
+    titulo: "El modo común como error"
+    texto: "5 V de modo común. Cambie el CMRR y mire el error equivalente a la entrada."
+    libro: [176, 177]
+    ec: 176
+    sustitucion: "{{V_cm}} / 10^({{C_db}}/20) = {{V_er}}"
+    widget:
+      tipo: grafica
+      x: { id: cm, min: 60, max: 130, unidad: dB, rotulo: "CMRR" }
+      y: { min: 0.000001, max: 0.01, unidad: V, rotulo: "V_{error}", escala: log }
+      curvas:
+        - { expr: "V_cm/10^(cm/20)", color: azul, rotulo: "V_{error}" }
+      asas:
+        - { mueve: C_db, x: "C_db", y: "V_er", rotulo: "Su CMRR" }
+      lectura: { valor: V_er, rotulo: "Error equivalente" }
+      mandos:
+        - { valor: C_db, lista: [80, 100, 120], rotulo: "CMRR" }
+    comprobar:
+      - { V_er: 0.0005 }
+
+  - id: offset-o-modo-comun
+    tipo: pregunta
+    titulo: "¿Qué pesa más?"
+    texto: "Un operacional con 50 µV de offset y 80 dB de CMRR, con 5 V de modo común. ¿Qué error domina?"
+    libro: [177, 178]
+    fijar: { C_db: 80 }
+    widget:
+      tipo: grafica
+      x: { id: cm, min: 60, max: 130, unidad: dB, rotulo: "CMRR" }
+      y: { min: 0.000001, max: 0.01, unidad: V, rotulo: "V_{error}", escala: log }
+      curvas:
+        - { expr: "V_cm/10^(cm/20)", color: azul, rotulo: "V_{error}" }
+        - { expr: "V_off", color: tinta, rotulo: "offset", discontinua: true }
+    opciones:
+      - texto: "El modo común: 500 µV, diez veces el offset"
+        bien: true
+        porque: "5 V/10⁴ = 500 µV. Es el parámetro que decide en las medidas de puente."
+      - texto: "El offset: 50 µV es el defecto principal"
+        porque: "Con 80 dB, el modo común introduce 500 µV, mucho más."
+      - texto: "Ninguno: el CMRR anula el modo común"
+        porque: "Lo reduce, no lo anula: lo divide por 10^{CMRR/20}."
+    escalera:
+      - "80 dB son un factor 10⁴."
+    solucion: "5 V/10⁴ = 500 µV, diez veces los 50 µV del offset."
+    comprobar:
+      - { V_er: 0.0005, k_os: 10 }
+
+  - id: empareje-limites
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Las no idealidades"
+    texto: "Una cada limitación con su efecto práctico."
+    libro: [169]
+    emparejar:
+      - ["Ganancia finita", "Pequeño error en la ganancia de lazo cerrado"]
+      - ["Tensión de offset", "Salida distinta de cero con entrada cero"]
+      - ["Corrientes de polarización", "Errores con resistencias muy altas"]
+      - ["Slew rate", "Distorsiona señales rápidas y grandes"]
+      - ["Ancho de banda finito", "Limita la frecuencia de trabajo"]
+    exito: "Elegir el operacional es, en buena parte, elegir el GBW suficiente."
+    pistas:
+      - { texto: "Las corrientes de polarización atraviesan las resistencias de la red." }
+    escalera:
+      - "El slew rate es de señal grande; el ancho de banda, de frecuencia."
+    solucion: "Ganancia–error de lazo, offset–cero, polarización–resistencias altas, SR–grande y rápida, banda–frecuencia."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [170, 173, 176, 178]
+    ideas:
+      - { titulo: "GBW.", texto: "Ganancia por ancho de banda constante: BW = GBW/G." }
+      - { titulo: "Slew rate.", texto: "Límite de amplitud: f_{máx} = SR/(2π · V_{p}); por encima, triángulo." }
+      - { titulo: "CMRR.", texto: "V_{cm}/10^{CMRR/20}: con 80 dB puede pesar más que el offset." }

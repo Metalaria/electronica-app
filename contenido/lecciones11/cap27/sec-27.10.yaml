@@ -1,0 +1,245 @@
+# Lección 1.2 de la sección 26.10 «Compensación en la Práctica y Medida del Margen de Fase» (cap27; sec-27.10).
+# Formato: contenido/lecciones11/GUIA.md. El polo de la carga, f_p = 1/(2π·R_o·C_L) con R_o = 50 Ω (bloque 306).
+# La tabla sobreimpulso–ζ–margen del bloque 321 en un segundo orden normalizado (ζ = 1 se dibuja con 0,99).
+# R_iso: el divisor que forma con la carga (22 Ω y 1 kΩ, bloque 310) en el esquema «divisor», cuya fuente hace de
+# salida del operacional (ideal, 1 V de ejemplo).
+leccion: cap27/sec-27.10
+
+libro:
+  304: "del orden de 20 a 100 Ω"
+  305: 'f_("p") = ("1")/("2" π dot.op R_("o") dot.op C_("L"))'
+  306: "ese polo cae en 3,2 MHz"
+  307: "la carga capacitiva es peor cuanto menor sea la ganancia de lazo cerrado"
+  309: "porque la realimentación se toma antes de la resistencia"
+  310: "y una carga de 1 kΩ, el error es del 2,2 %"
+  317: "Resonancia con cable largo"
+  321: "~59°"
+  322: "Con un 10 %, el margen ronda los 59°"
+  324: "Se abre el lazo en el punto de realimentación intercalando una resistencia de 10 a 50 Ω"
+  325: "Su cociente es la ganancia de lazo"
+  329: "Un cable de un metro son unos 100 pF"
+  331: "Con la ganancia mínima"
+
+modelo:
+  valores:
+    R_o: { sim: "R_{o}", nombre: "impedancia de salida en lazo abierto", unidad: Ω, valor: 50 }
+    C_L: { sim: "C_{L}", nombre: "carga capacitiva", unidad: F, valor: 1e-9 }
+    z: { sim: "ζ", nombre: "amortiguamiento", unidad: "", valor: 0.69 }
+    M_10: { sim: "MF", nombre: "margen con un 10 % de sobreimpulso", unidad: "°", valor: 59 }
+    V_a: { sim: "v_{o}", nombre: "salida del operacional", unidad: V, valor: 1 }
+    R_iso: { sim: "R_{iso}", nombre: "resistencia de aislamiento", unidad: Ω, valor: 22 }
+    R_L: { sim: "R_{L}", nombre: "carga resistiva", unidad: Ω, valor: 1000 }
+  calculos:
+    f_p: { expr: "1/(2*pi*R_o*C_L)", sim: "f_{p}", nombre: "polo de la carga", unidad: Hz }
+    f_n: { expr: "1/(R_o*C_L)", sim: "f", nombre: "sin el 2π", unidad: Hz }
+    O_s: { expr: "100*exp(-pi*z/sqrt(1 - z^2))", sim: "sobreimpulso", nombre: "sobreimpulso", unidad: "%", cifras: 2 }
+    V_c: { expr: "V_a*R_L/(R_iso + R_L)", sim: "v_{carga}", nombre: "tensión en la carga", unidad: V }
+    I_c: { expr: "V_a/(R_iso + R_L)", sim: "I", nombre: "corriente de la carga", unidad: A }
+    R_t: { expr: "R_iso + R_L", sim: "R", nombre: "resistencia total", unidad: Ω }
+    e_i: { expr: "100*R_iso/(R_iso + R_L)", sim: "error", nombre: "error por el divisor", unidad: "%", cifras: 2 }
+
+tarjetas:
+  - id: prediga-polo
+    tipo: predecir
+    titulo: "El polo de la carga"
+    texto: "Un operacional con 50 Ω de salida en lazo abierto ataca 1 nF. ¿Dónde cae el polo que forman?"
+    libro: [304, 305, 306]
+    fijar: { C_L: 1e-9 }
+    widget:
+      tipo: grafica
+      x: { id: cl, min: 1e-11, max: 1e-7, unidad: F, rotulo: "C_{L}", escala: log }
+      y: { min: 10000, max: 1000000000, unidad: Hz, rotulo: "f_{p}", escala: log }
+      curvas:
+        - { expr: "1/(2*pi*R_o*cl)", color: azul, rotulo: "f_{p}" }
+      lectura: { valor: f_p, rotulo: "Polo de la carga" }
+      ocultar: true
+    opciones:
+      - texto: "En unos 3,2 MHz"
+        bien: true
+        porque: "1/(2π · 50 Ω · 1 nF): por debajo del cruce de un operacional de 10 MHz, donde roba fase."
+      - texto: "En 20 MHz"
+        porque: "Falta el 2π: f = 1/(2π · R · C)."
+      - texto: "No hay polo: la salida del operacional es ideal"
+        porque: "En lazo abierto tiene de 20 a 100 Ω, y con la carga forma un polo dentro del lazo."
+    escalera:
+      - "f_{p} = 1/(2π · R_{o} · C_{L})."
+    solucion: "1/(2π · 50 · 10⁻⁹) ≈ 3,2 MHz."
+    comprobar:
+      - { f_p: 3183000, f_n: 20000000, tol: 0.01 }
+
+  - id: formula-polo
+    tipo: formula
+    titulo: "Cuanta más carga, más abajo"
+    texto: "Cambie la carga capacitiva: un cable de un metro son unos 100 pF."
+    libro: [305, 329]
+    ec: 305
+    sustitucion: "1 / (2π · {{R_o}} · {{C_L}}) = {{f_p}}"
+    widget:
+      tipo: grafica
+      x: { id: cl, min: 1e-11, max: 1e-7, unidad: F, rotulo: "C_{L}", escala: log }
+      y: { min: 10000, max: 1000000000, unidad: Hz, rotulo: "f_{p}", escala: log }
+      curvas:
+        - { expr: "1/(2*pi*R_o*cl)", color: azul, rotulo: "f_{p}" }
+      asas:
+        - { mueve: C_L, x: "C_L", y: "f_p", rotulo: "Su carga" }
+      lectura: { valor: f_p, rotulo: "Polo de la carga" }
+      mandos:
+        - { valor: C_L, lista: [1e-10, 1e-9, 1e-8], rotulo: "C_{L}" }
+
+  - id: explore-escalon
+    tipo: explorar
+    titulo: "La tabla del escalón"
+    texto: "Elija un margen de fase y lea el sobreimpulso de la respuesta a un escalón pequeño."
+    nota: "Tiempo en unidades de 1/ω₀."
+    libro: [321, 322]
+    widget:
+      tipo: grafica
+      x: { id: wt, min: 0, max: 15, unidad: "", rotulo: "ω₀t" }
+      y: { min: 0, max: 1.8, unidad: "", rotulo: "salida" }
+      curvas:
+        - { expr: "1 - exp(-z*wt)*(cos(sqrt(1 - z^2)*wt) + z/sqrt(1 - z^2)*sin(sqrt(1 - z^2)*wt))", color: naranja, rotulo: "salida" }
+        - { expr: "1", color: tinta, rotulo: "valor final", discontinua: true }
+      lectura: { valor: O_s, rotulo: "Sobreimpulso" }
+      mandos:
+        - { valor: z, lista: [0.99, 0.69, 0.59, 0.46, 0.32, 0.22], nombres: ["~76°", "~65°", "~59°", "~48°", "~35°", "~24°"], rotulo: "Margen de fase" }
+    requiere: { mover: [z] }
+
+  - id: estime-margen
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Un 10 % de sobreimpulso"
+    texto: "Un escalón pequeño da un 10 % de sobreimpulso. ¿Qué margen de fase tiene, aproximadamente?"
+    libro: [321, 322]
+    estimar:
+      objetivo: "M_10"
+      unidad: "°"
+      min: 0
+      max: 90
+      paso: 1
+      inicio: 80
+      tol: 0.05
+      rotulo: "Margen de fase"
+    exito: "Unos 59°: exactamente el objetivo."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 62 }, texto: "Se ha pasado: sin sobreimpulso serían unos 76°; un 10 % ya resta." }
+      - { texto: "Se ha quedado corto: un 20 % serían unos 48°." }
+    escalera:
+      - "Un 5 % son unos 65°; un 20 %, unos 48°."
+    solucion: "Unos 59°."
+
+  - id: explore-riso
+    tipo: explorar
+    titulo: "El precio de R_{iso}"
+    texto: "R_{iso} saca el polo del lazo, pero queda en serie con la carga. Cambie R_{iso} y mire el error sobre 1 kΩ."
+    nota: "La fuente hace de salida del operacional."
+    libro: [309, 310]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_a, arriba: R_iso, abajo: R_L }
+      lectura: { valor: e_i, rotulo: "Error en la carga" }
+      datos:
+        - { valor: V_c, rotulo: "En la carga: {{V_c}}" }
+      corriente: I_c
+      mide: { salida: V_c, corriente: I_c }
+      mandos:
+        - { valor: R_iso, min: 10, max: 50, paso: 1, rotulo: "R_{iso}" }
+    requiere: { mover: [R_iso] }
+
+  - id: prediga-riso
+    tipo: predecir
+    titulo: "22 Ω sobre 1 kΩ"
+    texto: "Una R_{iso} de 22 Ω con una carga de 1 kΩ. ¿Qué error introduce?"
+    libro: [310]
+    fijar: { R_iso: 22 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_a, arriba: R_iso, abajo: R_L }
+      lectura: { valor: e_i, rotulo: "Error en la carga" }
+      corriente: I_c
+      mide: { salida: V_c, corriente: I_c }
+      ocultar: true
+    opciones:
+      - texto: "Un 2,2 %"
+        bien: true
+        porque: "Un divisor: 22/(22 + 1000). Si la exactitud en continua importa, mejor la realimentación por dos caminos."
+      - texto: "Ninguno: la realimentación lo corrige"
+        porque: "La realimentación se toma antes de R_{iso}: lo que cae en ella queda fuera del lazo."
+      - texto: "Un 22 %"
+        porque: "Son 22 Ω frente a 1000 Ω: un 2,2 %."
+    escalera:
+      - "R_{iso} y la carga forman un divisor fuera del lazo."
+    solucion: "22/1022 ≈ 2,2 %."
+    comprobar:
+      - { e_i: 2.15, R_L: 1000, R_t: 1022, tol: 0.01 }
+
+  - id: empareje-criterio
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "El criterio para elegir"
+    texto: "Una cada situación con su compensación."
+    libro: [317]
+    emparejar:
+      - ["Carga capacitiva y exactitud no crítica", "R_{iso}"]
+      - ["Exactitud en continua y carga capacitiva", "Dos caminos"]
+      - ["Resonancia con cable largo", "Snubber"]
+      - ["Seguidor que oscila", "Ganancia de ruido"]
+    exito: "El snubber amortigua la resonancia; los otros mueven el polo o el cruce."
+    pistas:
+      - { texto: "Si la exactitud en continua importa, R_{iso} sola no vale." }
+    escalera:
+      - "Subir la ganancia de ruido baja el cruce sin cambiar la ganancia de señal."
+    solucion: "R_{iso}–no crítica, dos caminos–exactitud, snubber–cable, ganancia de ruido–seguidor."
+
+  - id: ordene-inyeccion
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Medir el margen por inyección"
+    texto: "Ordene los pasos para medir el Bode del lazo sin analizador de redes."
+    libro: [324, 325]
+    ordenar:
+      - "Abrir el lazo en la realimentación con una resistencia de 10 a 50 Ω."
+      - "Inyectar a través de ella una señal pequeña, con un transformador de aislamiento."
+      - "Medir las tensiones a ambos lados con las dos sondas."
+      - "Barrer la frecuencia: el cociente es la ganancia de lazo."
+      - "Donde vale 1, el desfase restado de 180° es el margen."
+    exito: "El cociente de las dos sondas es la ganancia de lazo."
+    pistas:
+      - { texto: "Primero se prepara el punto de inyección; al final se lee el cruce." }
+    escalera:
+      - "No se puede medir nada antes de inyectar."
+    solucion: "Abrir, inyectar, medir, barrer y leer el cruce."
+
+  - id: comprobar-siempre
+    tipo: porque
+    titulo: "Con qué comprobar"
+    texto: "Su seguidor es estable con una resistencia de prueba. ¿Ya está?"
+    libro: [329, 331]
+    fijar: { C_L: 1e-10 }
+    widget:
+      tipo: grafica
+      x: { id: cl, min: 1e-11, max: 1e-7, unidad: F, rotulo: "C_{L}", escala: log }
+      y: { min: 10000, max: 1000000000, unidad: Hz, rotulo: "f_{p}", escala: log }
+      curvas:
+        - { expr: "1/(2*pi*R_o*cl)", color: azul, rotulo: "f_{p}" }
+    opciones:
+      - texto: "No: hay que probarlo con la carga real, en los dos extremos de temperatura y con la ganancia mínima"
+        bien: true
+        porque: "Un cable de un metro son unos 100 pF; R_{o} y el GBW derivan con la temperatura."
+      - texto: "Sí: si es estable con una carga, lo es con todas"
+        porque: "La carga capacitiva añade un polo que la resistencia de prueba no tiene."
+      - texto: "Sí, si se ha simulado"
+        porque: "La simulación ayuda, pero con la carga y las temperaturas reales."
+    escalera:
+      - "¿Qué añade un cable a la salida que no tenía la resistencia?"
+    solucion: "Con la carga real, en los extremos de temperatura y con la ganancia mínima."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [305, 307, 310, 322]
+    ideas:
+      - { titulo: "El polo de la carga.", texto: "1/(2π · R_{o} · C_{L}): 50 Ω y 1 nF, 3,2 MHz." }
+      - { titulo: "Cuatro técnicas.", texto: "R_{iso}, dos caminos, snubber y ganancia de ruido, según la situación." }
+      - { titulo: "Medir.", texto: "El sobreimpulso del escalón da el margen: un 10 %, unos 59°." }
