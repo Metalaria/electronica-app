@@ -1,0 +1,291 @@
+# Lección 1.2 de la sección 33.9 «Gobernar Motores: Puente en H y Conmutación Electrónica» (cap33). Formato: GUIA.md.
+# - La figura 33.10 (los cinco estados del puente y los cuatro cuadrantes) con zonas.
+# - La tensión media en el motor frente al ciclo de trabajo, en una gráfica del modelo: signo-magnitud D·V; cuatro
+#   cuadrantes (locked antiphase) (2D − 1)·V, cero con el 50 % (bloque 276). V = 12 V es mío (el libro no da números).
+# - Los cuadrantes generadores (II y IV) solapan con cap56/sec-56.6 (la energía que vuelve en el variador); aquí se
+#   preguntan desde el puente en H, con su tabla.
+# Paso práctico: «dibujar» la tensión media frente a D con conmutación en los cuatro cuadrantes.
+leccion: cap33/sec-33.9
+
+libro:
+  266: "cuatro interruptores que permiten aplicar la tensión en ambas polaridades"
+  268: "conducen el superior de una rama y el inferior de la otra"
+  270: "Conviene comprobar qué entiende cada fabricante por cada término"
+  271: "conducen los dos inferiores (o los dos superiores)"
+  272: "destruye el puente al instante"
+  275: "aparece una zona muerta en la que el motor no se mueve"
+  276: "el ciclo del 50 % corresponde a motor parado"
+  277: "un servo"
+  280: "Generador: devuelve energía"
+  282: "la tensión del bus sube hasta que algo se rompe"
+  283: "un variador industrial lleve una resistencia de frenado"
+  285: "en reposo no hay fuerza contraelectromotriz"
+  286: "es la que destruye puentes"
+  287: "se añaden Schottky en paralelo"
+  291: "solo mide durante parte del ciclo"
+  294: "la corriente durante el arranque, en disparo único"
+  295: "Los estados de un puente en H"
+
+modelo:
+  valores:
+    V_b: { sim: "V", nombre: "tensión del puente", unidad: V, valor: 12 }
+    D: { sim: "D", nombre: "ciclo de trabajo", unidad: "", valor: 0.8 }
+    m4: { tipo: interruptor, nombre: "conmutación en los cuatro cuadrantes", valor: 0 }
+  calculos:
+    V_med: { si: m4, entonces: "(2*D - 1)*V_b", sino: "D*V_b", sim: "V_{media}", nombre: "tensión media en el motor", unidad: V }
+
+tarjetas:
+  - id: explore-estados
+    tipo: explorar
+    titulo: "Cuatro interruptores"
+    texto: "El puente en H aplica la tensión en las dos polaridades. Toque cada estado."
+    libro: [266, 268, 271, 295]
+    widget:
+      tipo: figura
+      figura: fig-33.10
+      zonas:
+        - { id: avance, rotulo: "Primer esquema", rect: [8, 18, 82, 100], texto: "Avance: el superior de una rama y el inferior de la otra." }
+        - { id: retroceso, rotulo: "Segundo esquema", rect: [98, 18, 72, 100], texto: "Retroceso: los otros dos." }
+        - { id: libre, rotulo: "Tercer esquema", rect: [176, 18, 74, 100], texto: "Todos abiertos: la corriente decae por los diodos y devuelve energía a la fuente." }
+        - { id: frenado, rotulo: "Cuarto esquema", rect: [262, 18, 74, 100], texto: "Los dos inferiores: el motor en cortocircuito; su fuerza contraelectromotriz lo frena." }
+        - { id: prohibido, rotulo: "Quinto esquema", rect: [342, 18, 72, 100], texto: "Los dos de una rama: cortocircuito de la fuente." }
+    requiere: { mover: [avance, libre, frenado] }
+
+  - id: toque-prohibido
+    tipo: tocar
+    titulo: "El estado prohibido"
+    texto: "Toque el estado que destruye el puente al instante."
+    libro: [272]
+    widget:
+      tipo: figura
+      figura: fig-33.10
+      zonas:
+        - { id: avance, rotulo: "Primer esquema", rect: [8, 18, 82, 100] }
+        - { id: libre, rotulo: "Tercer esquema", rect: [176, 18, 74, 100] }
+        - { id: frenado, rotulo: "Cuarto esquema", rect: [262, 18, 74, 100] }
+        - { id: prohibido, rotulo: "Quinto esquema", rect: [342, 18, 72, 100] }
+    tocar:
+      bien: [prohibido]
+      porque:
+        avance: "Uno de cada rama, en diagonal: la corriente pasa por el motor."
+        libre: "Todos abiertos: no hay camino de la fuente a masa."
+        frenado: "Los dos inferiores cortocircuitan el motor, no la fuente: frenan."
+    exito: "Los dos de una misma rama: la conducción cruzada."
+    escalera:
+      - "Busque los dos interruptores que unen +V con masa sin pasar por el motor."
+    solucion: "El quinto: S1 y S3, de la misma rama, cortocircuitan la fuente."
+
+  - id: terminos
+    tipo: pregunta
+    titulo: "Cuidado con los nombres"
+    texto: "Una hoja de datos llama «rueda libre» a cerrar los dos inferiores. ¿Qué conviene hacer?"
+    libro: [270]
+    widget:
+      tipo: figura
+      figura: fig-33.10
+      zonas:
+        - { id: libre, rotulo: "Tercer esquema", rect: [176, 18, 74, 100] }
+    opciones:
+      - texto: "Comprobar qué entiende ese fabricante por cada término"
+        bien: true
+        porque: "Muchas hojas llaman decaimiento rápido a los cuatro abiertos y rueda libre al decaimiento lento."
+      - texto: "Nada: rueda libre siempre es los cuatro abiertos"
+        porque: "En los controladores de motor «rueda libre» designa a menudo el decaimiento lento."
+      - texto: "Suponer que es el frenado"
+        porque: "Recircular por los dos inferiores se parece al frenado, pero hay que leer qué dice cada fabricante."
+    escalera:
+      - "¿Usan todos los fabricantes las mismas palabras para lo mismo?"
+    solucion: "Comprobar qué entiende cada fabricante por cada término."
+
+  - id: prediga-50
+    tipo: predecir
+    titulo: "Al 50 %"
+    texto: "Conmutación en los cuatro cuadrantes: las dos ramas conmutan en oposición. Con un ciclo del 50 %, ¿qué hace el motor?"
+    libro: [276]
+    widget:
+      tipo: figura
+      figura: fig-33.10
+      zonas:
+        - { id: avance, rotulo: "Primer esquema", rect: [8, 18, 82, 100] }
+        - { id: retroceso, rotulo: "Segundo esquema", rect: [98, 18, 72, 100] }
+    opciones:
+      - texto: "Se queda parado"
+        bien: true
+        porque: "Media periodo en avance y medio en retroceso: la tensión media es cero."
+      - texto: "Gira a media velocidad"
+        porque: "Eso haría el 50 % en signo-magnitud. Aquí las dos polaridades se compensan."
+      - texto: "Gira a toda velocidad"
+        porque: "Toda la velocidad es con un ciclo extremo, todo en una polaridad."
+    escalera:
+      - "Cada periodo pasa la mitad del tiempo en cada polaridad."
+    solucion: "Parado: el 50 % es tensión media cero."
+
+  - id: explore-modos
+    tipo: explorar
+    titulo: "Dos modos de conmutar"
+    texto: "Mueva el ciclo de trabajo en signo-magnitud y en los cuatro cuadrantes, y compare la tensión media."
+    libro: [275, 276]
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 1, unidad: "", rotulo: "D" }
+      y: { min: -13, max: 13, unidad: V, rotulo: "V_{media}" }
+      curvas:
+        - { expr: "d*V_b", color: azul, rotulo: "signo-magnitud", discontinua: true }
+        - { expr: "(2*d - 1)*V_b", color: naranja, rotulo: "cuatro cuadrantes" }
+      marcas:
+        - { x: "D", y: "V_med", rotulo: "{{V_med}}" }
+      lectura: { valor: V_med, rotulo: "Tensión media" }
+      mandos:
+        - { valor: D, min: 0, max: 1, paso: 0.05, rotulo: "Ciclo de trabajo, D" }
+        - { valor: m4, tipo: interruptor, rotulo: "Cuatro cuadrantes" }
+    requiere: { mover: [D, m4] }
+
+  - id: dibuje-media
+    tipo: dibujar
+    titulo: "Dibuje la tensión media"
+    texto: "Puente de 12 V con conmutación en los cuatro cuadrantes. Dibuje la tensión media en el motor frente al ciclo de trabajo."
+    libro: [276]
+    fijar: { V_b: 12, m4: 1 }
+    dibujar:
+      x: { id: d, min: 0, max: 1, unidad: "", rotulo: "D" }
+      y: { min: -13, max: 13, unidad: V, rotulo: "V_{media}" }
+      curva: "(2*d - 1)*V_b"
+      puntos: 21
+      tol: 0.08
+      holgura: 0.03
+      rotulo: "Tensión media"
+    exito: "Una recta de −12 a +12 V que pasa por cero en el 50 %: lineal alrededor de cero."
+    pistas:
+      - { cuando: { valor: media, mayor: 0.1 }, texto: "Demasiado alta: con D pequeño domina la otra polaridad y la media es negativa." }
+      - { texto: "En el 50 % el motor está parado; en los extremos, toda la tensión en un sentido o en el otro." }
+    escalera:
+      - "Tres puntos: los dos extremos y el 50 %, donde el motor está parado."
+    solucion: "Una recta de −12 V a +12 V que cruza el cero en el 50 %."
+    comprobar:
+      - { con: { D: 0 }, V_med: -12 }
+      - { con: { D: 1 }, V_med: 12 }
+
+  - id: por-que-zona-muerta
+    tipo: porque
+    titulo: "La zona muerta"
+    texto: "En signo-magnitud, con ciclos pequeños el motor no se mueve. ¿Por qué?"
+    libro: [275]
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 1, unidad: "", rotulo: "D" }
+      y: { min: -13, max: 13, unidad: V, rotulo: "V_{media}" }
+      curvas:
+        - { expr: "d*V_b", color: azul, rotulo: "signo-magnitud" }
+    opciones:
+      - texto: "La corriente se vuelve discontinua: el par deja de ser proporcional y, con el rozamiento, no arranca"
+        bien: true
+        porque: "Con cuatro cuadrantes la corriente puede invertirse en cada ciclo y no se hace discontinua."
+      - texto: "Porque la tensión media es cero"
+        porque: "En signo-magnitud la media es D·V, pequeña pero no cero; falla la corriente."
+      - texto: "Porque el puente entra en conducción cruzada"
+        porque: "La conducción cruzada destruye el puente; la zona muerta es un problema de control."
+    escalera:
+      - "¿Qué le pasa a la corriente del motor con pulsos muy cortos?"
+    solucion: "Corriente discontinua, par no proporcional al ciclo y rozamiento: zona muerta."
+
+  - id: elegir-modo
+    tipo: pregunta
+    titulo: "Servo o tracción"
+    texto: "Empareje cada modo con su rasgo y su uso."
+    libro: [275, 276, 277]
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 1, unidad: "", rotulo: "D" }
+      y: { min: -13, max: 13, unidad: V, rotulo: "V_{media}" }
+      curvas:
+        - { expr: "d*V_b", color: azul, rotulo: "signo-magnitud", discontinua: true }
+        - { expr: "(2*d - 1)*V_b", color: naranja, rotulo: "cuatro cuadrantes" }
+    emparejar:
+      - ["Signo-magnitud", "Menos pérdidas de conmutación"]
+      - ["Cuatro cuadrantes", "Lineal alrededor de cero, siempre conmutando"]
+      - ["Un servo", "Cuatro cuadrantes, por el control fino cerca de cero"]
+      - ["Tracción", "Signo-magnitud, por el rendimiento"]
+    exito: "La elección depende de qué importe: el control fino o el rendimiento."
+    pistas:
+      - { texto: "El que conmuta siempre pierde más, pero controla mejor cerca de cero." }
+    escalera:
+      - "Un servo vive cerca de velocidad cero."
+    solucion: "Signo-magnitud: rendimiento, tracción. Cuatro cuadrantes: linealidad, servo."
+
+  - id: toque-generador
+    tipo: tocar
+    titulo: "Cuando el motor genera"
+    texto: "Par y velocidad en sentidos opuestos: el motor devuelve energía. Toque los cuadrantes en que ocurre."
+    libro: [280]
+    widget:
+      tipo: figura
+      figura: fig-33.10
+      zonas:
+        - { id: q1, rotulo: "Arriba a la derecha del cruce", rect: [70, 147, 63, 63] }
+        - { id: q2, rotulo: "Arriba a la izquierda del cruce", rect: [7, 147, 63, 63] }
+        - { id: q3, rotulo: "Abajo a la izquierda del cruce", rect: [7, 210, 63, 63] }
+        - { id: q4, rotulo: "Abajo a la derecha del cruce", rect: [70, 210, 63, 63] }
+    tocar:
+      bien: [q2, q4]
+      todas: true
+      porque:
+        q1: "Par y velocidad positivos: el mismo sentido, motor."
+        q3: "Los dos negativos: el mismo sentido, motor en el otro sentido de giro."
+    exito: "II y IV: frenar o bajar una carga devuelve energía al puente."
+    escalera:
+      - "Busque donde el par y la velocidad tienen signo distinto."
+    solucion: "Los cuadrantes II y IV."
+
+  - id: energia-vuelve
+    tipo: pregunta
+    titulo: "Y esa energía, ¿adónde va?"
+    texto: "Un puente alimentado desde un rectificador frena un motor. ¿Qué riesgo hay?"
+    libro: [282, 283]
+    widget:
+      tipo: figura
+      figura: fig-33.10
+      zonas:
+        - { id: cajas, rotulo: "Los recuadros de la derecha", rect: [160, 157, 273, 100] }
+    opciones:
+      - texto: "Que la tensión del bus suba hasta que algo se rompa"
+        bien: true
+        porque: "El rectificador no absorbe energía: hace falta una resistencia de frenado o una fuente regenerativa."
+      - texto: "Ninguno: el rectificador la devuelve a la red"
+        porque: "Un rectificador de diodos solo deja pasar energía hacia la carga."
+      - texto: "Que el motor se invierta"
+        porque: "El sentido de giro no cambia; lo que sube es la tensión del bus."
+    escalera:
+      - "¿Puede un rectificador de diodos llevar energía de vuelta a la red?"
+    solucion: "La tensión del bus sube: resistencia de frenado o fuente que absorba la energía."
+
+  - id: dimensionar
+    tipo: pregunta
+    titulo: "Lo que hay que dimensionar"
+    texto: "Empareje cada cosa a dimensionar con su motivo."
+    libro: [285, 286, 287, 291]
+    widget:
+      tipo: figura
+      figura: fig-33.10
+      zonas:
+        - { id: avance, rotulo: "Primer esquema", rect: [8, 18, 82, 100] }
+    emparejar:
+      - ["Corriente de arranque", "Varias veces la nominal: en reposo no hay fuerza contraelectromotriz"]
+      - ["Corriente de bloqueo", "La que destruye puentes"]
+      - ["Diodos de rueda libre", "Los de cuerpo son lentos: Schottky en paralelo"]
+      - ["Shunt en la rama inferior", "Simple, pero solo mide parte del ciclo"]
+    exito: "Y en el banco, la corriente de arranque en disparo único: casi siempre sorprende."
+    pistas:
+      - { texto: "La de bloqueo es la del motor parado con tensión aplicada." }
+    escalera:
+      - "Sin giro no hay fuerza contraelectromotriz que limite la corriente."
+    solucion: "Arranque: sin fcem. Bloqueo: destruye puentes. Diodos: Schottky. Shunt: parte del ciclo."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [266, 272, 276, 282, 294]
+    ideas:
+      - { titulo: "El puente en H.", texto: "Avance, retroceso, rueda libre y frenado; nunca los dos de una rama." }
+      - { titulo: "Dos modos.", texto: "Signo-magnitud rinde más; los cuatro cuadrantes son lineales en cero." }
+      - { titulo: "Cuadrantes II y IV.", texto: "El motor genera: la energía sube el bus si nadie la absorbe." }
+      - { titulo: "Dimensionar.", texto: "Arranque y bloqueo, varias veces la nominal: mídalo en disparo único." }

@@ -1,0 +1,247 @@
+# Lección 1.2 de la sección 33.13 «El Rectificador Síncrono» (cap33, sec-33.11). Formato: GUIA.md.
+# - Las disipaciones del diodo, V_F·I·(1 − D), y del MOSFET síncrono, I²·R_DS(on)·(1 − D), frente a la corriente, en
+#   una gráfica con los números del libro (0,4 V, 5 mΩ, D = 0,4; cruce en 80 A, como la figura 33.12).
+# - La figura 33.12 con zonas para los tres problemas.
+# Paso práctico: «simular» la pérdida del MOSFET síncrono con 10 A (0,3 W), con sus errores típicos.
+leccion: cap33/sec-33.11
+
+libro:
+  423: 'P = V_("F") dot.op I dot.op lr(( "1" - D ))'
+  424: "Con un Schottky de 0,4 V, 10 A de salida y D = 0,4, eso son 2,4 W perdidos solo en el diodo"
+  425: "con R"
+  426: "ocho veces menos"
+  431: "ese cruce está en 80 A"
+  433: "La tensión de salida sea baja"
+  434: "no compensa con salidas de tensión alta y corriente pequeña"
+  436: "conduce el diodo de cuerpo del MOSFET inferior, que es lento y disipa"
+  437: "ajustan el tiempo muerto de forma adaptativa"
+  438: "el rendimiento en vacío se hunde"
+  439: "detectar el cruce por cero y apagar el MOSFET inferior"
+  440: "uno de ellos con la fuente flotante"
+  443: "detecta la tensión de drenador para saber cuándo conducir"
+  447: "Disipación del diodo frente al MOSFET síncrono"
+
+modelo:
+  valores:
+    V_F: { sim: "V_{F}", nombre: "caída del Schottky", unidad: V, valor: 0.4 }
+    R_on: { sim: "R_{DS(on)}", nombre: "resistencia del MOSFET síncrono", unidad: Ω, valor: 0.005 }
+    D: { sim: "D", nombre: "ciclo de trabajo", unidad: "", valor: 0.4 }
+    I_o: { sim: "I", nombre: "corriente de salida", unidad: A, valor: 10 }
+  calculos:
+    P_d: { expr: "V_F*I_o*(1 - D)", sim: "P_{diodo}", nombre: "disipación del diodo", unidad: W }
+    P_m: { expr: "I_o^2*R_on*(1 - D)", sim: "P_{MOSFET}", nombre: "disipación del MOSFET síncrono", unidad: W }
+    P_m_sin: { expr: "I_o^2*R_on", sim: "P", nombre: "MOSFET sin el factor 1 − D", unidad: W }
+    I_x: { expr: "V_F/R_on", sim: "I_{cruce}", nombre: "corriente de cruce", unidad: A }
+    V_on: { expr: "I_o*R_on", sim: "V", nombre: "caída del MOSFET", unidad: V }
+
+tarjetas:
+  - id: explore-cruce
+    tipo: explorar
+    titulo: "Diodo frente a MOSFET"
+    texto: "Una crece con la corriente y la otra con su cuadrado. Cambie el diodo y el MOSFET y mire dónde se cruzan."
+    libro: [431, 447]
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0, max: 120, unidad: A, rotulo: "corriente de salida" }
+      y: { min: 0, max: 45, unidad: W, rotulo: "disipación" }
+      curvas:
+        - { expr: "V_F*i*(1 - D)", color: naranja, rotulo: "diodo" }
+        - { expr: "i^2*R_on*(1 - D)", color: verde, rotulo: "MOSFET" }
+      marcas:
+        - { x: "I_x", y: "V_F*I_x*(1 - D)", rotulo: "cruce" }
+      lectura: { valor: I_x, rotulo: "Cruce" }
+      mandos:
+        - { valor: V_F, lista: [0.3, 0.4, 0.5], rotulo: "Caída del diodo" }
+        - { valor: R_on, lista: [0.0025, 0.005, 0.01], rotulo: "R_{DS(on)}" }
+    requiere: { mover: [V_F, R_on] }
+
+  - id: formula-diodo
+    tipo: formula
+    titulo: "Lo que se lleva el diodo"
+    texto: "El diodo de rueda libre conduce mientras el interruptor está abierto. Mueva la corriente."
+    libro: [423, 424]
+    fijar: { V_F: 0.4, D: 0.4 }
+    ec: 423
+    sustitucion: "{{V_F}} · {{I_o}} · (1 − {{D}}) = {{P_d}}"
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0, max: 120, unidad: A, rotulo: "corriente de salida" }
+      y: { min: 0, max: 45, unidad: W, rotulo: "disipación" }
+      curvas:
+        - { expr: "V_F*i*(1 - D)", color: naranja, rotulo: "diodo" }
+      marcas:
+        - { x: "I_o", y: "P_d", rotulo: "{{P_d}}" }
+      mandos:
+        - { valor: I_o, min: 1, max: 100, paso: 1, rotulo: "Corriente, I" }
+
+  - id: simule-mosfet
+    tipo: simular
+    titulo: "Con un MOSFET de 5 mΩ"
+    texto: "Mismo reductor, 10 A y D = 0,4, con un MOSFET síncrono de 5 mΩ en lugar del diodo. ¿Cuánto disipa?"
+    libro: [424, 425, 426]
+    fijar: { R_on: 0.005, D: 0.4, I_o: 10, V_F: 0.4 }
+    simular:
+      objetivo: P_m
+      unidad: W
+      tol: 0.03
+      rotulo: "Disipación del MOSFET síncrono"
+      errores:
+        - { expr: "P_m_sin", texto: "0,5 W sería si conduciera todo el periodo. Solo conduce durante 1 − D." }
+        - { expr: "P_d", texto: "2,4 W es lo del diodo. El MOSFET cae I·R_{DS(on)}, 50 mV, no 0,4 V." }
+    exito: "0,3 W: ocho veces menos que los 2,4 W del diodo."
+    escalera:
+      - "I²·R_{DS(on)}·(1 − D)."
+    solucion: "10² × 5 mΩ × (1 − 0,4) = 0,3 W."
+    comprobar:
+      - { P_m: 0.3, P_m_sin: 0.5, P_d: 2.4, V_on: 0.05, tol: 0.002 }
+
+  - id: estime-cruce
+    tipo: pregunta
+    titulo: "Hasta dónde compensa"
+    texto: "Con V_{F} = 0,4 V y R_{DS(on)} = 5 mΩ, ¿a partir de qué corriente deja de compensar el síncrono?"
+    libro: [431]
+    fijar: { V_F: 0.4, R_on: 0.005 }
+    widget:
+      tipo: figura
+      figura: fig-33.12
+      zonas:
+        - { id: grafica, rotulo: "La gráfica de la izquierda", rect: [0, 0, 230, 214] }
+    estimar:
+      objetivo: "I_x"
+      unidad: A
+      min: 0
+      max: 200
+      paso: 1
+      inicio: 150
+      tol: 0.04
+      rotulo: "Corriente de cruce"
+    exito: "80 A: por debajo gana el MOSFET; por encima, el diodo."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 83 }, texto: "Se ha pasado: iguale V_{F}·I con I²·R_{DS(on)}." }
+      - { texto: "Se ha quedado corto: I = V_{F}/R_{DS(on)}." }
+    escalera:
+      - "El factor (1 − D) está en las dos: se va."
+    solucion: "0,4 V/5 mΩ = 80 A."
+    comprobar:
+      - { I_x: 80 }
+
+  - id: cuando-compensa
+    tipo: pregunta
+    titulo: "Dónde no compensa"
+    texto: "¿En cuál de estas fuentes apenas compensa la rectificación síncrona?"
+    libro: [433, 434]
+    widget:
+      tipo: figura
+      figura: fig-33.12
+      zonas:
+        - { id: grafica, rotulo: "La gráfica de la izquierda", rect: [0, 0, 230, 214] }
+    opciones:
+      - texto: "Salida de tensión alta y corriente pequeña"
+        bien: true
+        porque: "La caída del diodo pesa poco frente a una tensión alta, y con poca corriente disipa poco."
+      - texto: "Salida de 5 V y 10 A"
+        porque: "Ahí el diodo se lleva casi el 5 % del rendimiento: es el caso típico del síncrono."
+      - texto: "Salida de tensión baja y corriente alta"
+        porque: "Es justo donde más compensa: la caída del diodo pesa proporcionalmente más."
+    escalera:
+      - "¿Cuándo pesa poco la caída del diodo frente a la salida?"
+    solucion: "Con tensión alta y poca corriente el diodo apenas pesa."
+
+  - id: tres-problemas
+    tipo: pregunta
+    titulo: "Tres problemas, tres soluciones"
+    texto: "Empareje cada problema del síncrono con su solución."
+    libro: [436, 437, 438, 439, 440]
+    widget:
+      tipo: figura
+      figura: fig-33.12
+      zonas:
+        - { id: cruzada, rotulo: "Recuadro de arriba a la derecha", rect: [257, 27, 183, 53] }
+        - { id: inversa, rotulo: "Recuadro del centro a la derecha", rect: [257, 85, 183, 52] }
+        - { id: driver, rotulo: "Recuadro de abajo a la derecha", rect: [257, 143, 183, 47] }
+    emparejar:
+      - ["Conducción cruzada", "Tiempo muerto adaptativo, el mínimo seguro"]
+      - ["Corriente inversa con poca carga", "Detectar el cruce por cero y apagar el inferior"]
+      - ["Driver más complejo", "Dos transistores, uno con la fuente flotante"]
+    exito: "Los controladores modernos resuelven los dos primeros solos."
+    pistas:
+      - { texto: "La corriente inversa se corta devolviendo el comportamiento de diodo." }
+    escalera:
+      - "El tiempo muerto evita que conduzcan los dos a la vez."
+    solucion: "Cruzada: tiempo muerto adaptativo. Inversa: apagar en el cruce por cero. Driver: fuente flotante."
+
+  - id: por-que-tiempo-muerto
+    tipo: porque
+    titulo: "Un tiempo muerto de más"
+    texto: "Un tiempo muerto excesivo anula parte de lo ganado con el síncrono. ¿Por qué?"
+    libro: [436, 437]
+    widget:
+      tipo: figura
+      figura: fig-33.12
+      zonas:
+        - { id: cruzada, rotulo: "Recuadro de arriba a la derecha", rect: [257, 27, 183, 53] }
+    opciones:
+      - texto: "Mientras dura, conduce el diodo de cuerpo, lento y con mucha caída"
+        bien: true
+        porque: "Ese diodo disipa como el Schottky o peor: por eso se busca el mínimo seguro."
+      - texto: "Porque los dos MOSFET conducen a la vez"
+        porque: "Eso pasa con poco tiempo muerto; con mucho, conduce el diodo de cuerpo."
+      - texto: "Porque baja la frecuencia de conmutación"
+        porque: "La frecuencia no cambia; el problema es quién conduce durante el hueco."
+    escalera:
+      - "Si los dos MOSFET están apagados, ¿por dónde sigue la corriente de la bobina?"
+    solucion: "Durante el tiempo muerto conduce el diodo de cuerpo, lento y que disipa."
+
+  - id: prediga-vacio
+    tipo: predecir
+    titulo: "Con muy poca carga"
+    texto: "Un reductor síncrono sin detección del cruce por cero trabaja casi en vacío. ¿Qué pasa?"
+    libro: [438, 439]
+    widget:
+      tipo: figura
+      figura: fig-33.12
+      zonas:
+        - { id: inversa, rotulo: "Recuadro del centro a la derecha", rect: [257, 85, 183, 52] }
+    opciones:
+      - texto: "La corriente de la bobina se hace negativa y el rendimiento en vacío se hunde"
+        bien: true
+        porque: "El MOSFET conduce en los dos sentidos: devuelve energía a la entrada y no entra en modo discontinuo."
+      - texto: "Entra en modo discontinuo, como con diodo"
+        porque: "Con diodo sí; el MOSFET deja pasar corriente negativa y el convertidor sigue en continuo."
+      - texto: "Se apaga solo"
+        porque: "Sigue conmutando a plena frecuencia; por eso pierde rendimiento."
+    escalera:
+      - "¿En qué sentidos conduce un MOSFET cerrado?"
+    solucion: "Corriente negativa, energía devuelta a la entrada y rendimiento en vacío hundido."
+
+  - id: secundario
+    tipo: pregunta
+    titulo: "En el secundario aislado"
+    texto: "En una fuente aislada el controlador está en el primario. ¿Cómo se gobierna el MOSFET síncrono del secundario?"
+    libro: [443]
+    widget:
+      tipo: figura
+      figura: fig-33.12
+      zonas:
+        - { id: driver, rotulo: "Recuadro de abajo a la derecha", rect: [257, 143, 183, 47] }
+    opciones:
+      - texto: "Con un controlador propio que mira su tensión de drenador, o pasando la señal por la barrera"
+        bien: true
+        porque: "Sabe cuándo conducir viendo la tensión de drenador, sin depender del primario."
+      - texto: "Directamente desde el primario, con un cable"
+        porque: "Cruzaría la barrera de aislamiento: justo lo que no se puede hacer."
+      - texto: "No se puede: el secundario lleva siempre diodo"
+        porque: "Se puede, con las dos soluciones del libro."
+    escalera:
+      - "¿Qué señal del propio secundario dice cuándo debe conducir?"
+    solucion: "Un controlador secundario que detecta la tensión de drenador, o una señal que cruce la barrera."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [423, 426, 431, 436, 438]
+    ideas:
+      - { titulo: "Diodo frente a MOSFET.", texto: "V_{F}·I·(1 − D) contra I²·R_{DS(on)}·(1 − D): ocho veces menos con 10 A." }
+      - { titulo: "El cruce.", texto: "I = V_{F}/R_{DS(on)}: 80 A con 0,4 V y 5 mΩ." }
+      - { titulo: "Tiempo muerto.", texto: "El mínimo seguro: si sobra, conduce el diodo de cuerpo." }
+      - { titulo: "Carga ligera.", texto: "Apagar el inferior en el cruce por cero." }

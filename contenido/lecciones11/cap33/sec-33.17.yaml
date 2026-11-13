@@ -1,0 +1,365 @@
+# Lección 1.2 de la sección 33.18 «Problemas de Diseño» (cap33, sec-33.17). Formato: GUIA.md.
+# - Los cuatro problemas del libro: 33.A (reductor de 24 a 12 V, 3 A, 300 kHz: 22 µH y el condensador por su ESR),
+#   33.B (reparto de las pérdidas, 96,98 %), 33.C (el elevador y el límite de D) y 33.D (el inversor de 500 W: el
+#   condensador del bus por la componente de 100 Hz). Gráficas y cálculos con sus números; la pérdida de conmutación
+#   es la de la tabla de la sección 33.2, ½·V·I·t_conm·f_s.
+# Paso práctico: «simular» la bobina de 33.A (22,2 µH) y la pérdida de conmutación de 33.B (0,432 W).
+leccion: cap33/sec-33.17
+
+libro:
+  628: "Problema 33.A"
+  630: "Diseñar un convertidor reductor de 24 V a 12 V, 3 A, conmutando a 300 kHz, con rizado de salida inferior a 25 mV"
+  634: '"22,2 µH"'
+  635: "Con 22 µH: ΔIL = 909 mA (30 %) e Ipico = 3,45 A"
+  637: "220 µF, ESR 10 mΩ"
+  639: "Duplicar la capacidad sin bajar la ESR apenas mejoraría"
+  640: "Un electrolítico de 470 µF con 200 mΩ de ESR daría 183 mV de rizado"
+  644: "Problema 33.B"
+  646: "40 ns de conmutación (subida más bajada)"
+  650: "Conducción del síncrono"
+  652: "seguida de la bobina (37,5 % entre cobre y núcleo)"
+  651: "el rendimiento pasaría del 96,98 al 97,45 %"
+  653: "Reducir el tiempo de conmutación"
+  658: "Problema 33.C"
+  664: "100,0 V"
+  666: "Para 1 A de salida a D = 0,95 hacen falta 20 A de entrada"
+  667: "El límite práctico está en torno a D = 0,8"
+  671: "Problema 33.D"
+  679: "La potencia instantánea de una carga monofásica pulsa al doble de la frecuencia de red"
+  680: 'Delta V_("pp") = (P)/(ω dot.op C_("bus") dot.op V_("dc"))'
+  681: "Con 470 µF, ΔVpp = 500/(314,2 × 470 µF × 400) = 8,5 V"
+  684: "Rizado de alta frecuencia en la salida"
+  685: "casi todo es tercer armónico del tiempo muerto"
+  "cap33#68": "½·V·I·tconm·fs"
+
+modelo:
+  valores:
+    V_ia: { sim: "V_{in}", nombre: "entrada del reductor", unidad: V, valor: 24 }
+    V_oa: { sim: "V_{out}", nombre: "salida del reductor", unidad: V, valor: 12 }
+    D_a: { sim: "D", nombre: "ciclo de trabajo", unidad: "", valor: 0.5 }
+    f_a: { sim: "f_{s}", nombre: "frecuencia de conmutación", unidad: Hz, valor: 300000 }
+    I_a: { sim: "I_{out}", nombre: "corriente de salida", unidad: A, valor: 3 }
+    r_a: { sim: "r", nombre: "rizado de corriente relativo", unidad: "", valor: 0.3 }
+    L_a: { sim: "L", nombre: "bobina comercial", unidad: H, valor: 2.2e-5 }
+    C_o: { sim: "C", nombre: "condensador de salida", unidad: F, valor: 0.00047 }
+    ESR: { sim: "ESR", nombre: "resistencia serie del condensador", unidad: Ω, valor: 0.2 }
+    t_c: { sim: "t_{conm}", nombre: "tiempo de conmutación", unidad: s, valor: 4e-8 }
+    D_c: { sim: "D", nombre: "ciclo de trabajo del elevador", unidad: "", valor: 0.5 }
+    V_ic: { sim: "V_{in}", nombre: "entrada del elevador", unidad: V, valor: 5 }
+    P_d: { sim: "P", nombre: "potencia del inversor", unidad: W, valor: 500 }
+    C_b: { sim: "C_{bus}", nombre: "condensador del bus", unidad: F, valor: 0.00047 }
+    V_dc: { sim: "V_{dc}", nombre: "tensión del bus", unidad: V, valor: 400 }
+  calculos:
+    L_c: { expr: "(V_ia - V_oa)*D_a/(r_a*I_a*f_a)", sim: "L", nombre: "bobina para el 30 % de rizado", unidad: H }
+    L_e1: { expr: "(V_ia - V_oa)*D_a/(I_a*f_a)", sim: "L", nombre: "bobina con el rizado igual a toda la corriente", unidad: H }
+    L_e2: { expr: "(V_ia - V_oa)/(r_a*I_a*f_a)", sim: "L", nombre: "bobina sin el ciclo de trabajo", unidad: H }
+    dI_a: { expr: "(V_ia - V_oa)*D_a/(L_a*f_a)", sim: "ΔI", nombre: "rizado con 22 µH", unidad: A }
+    dV_c: { expr: "dI_a/(8*C_o*f_a)", sim: "ΔV_{C}", nombre: "rizado por la capacidad", unidad: V }
+    dV_e: { expr: "dI_a*ESR", sim: "ΔV_{ESR}", nombre: "rizado por la ESR", unidad: V }
+    dV_t: { expr: "dI_a/(8*C_o*f_a) + dI_a*ESR", sim: "ΔV", nombre: "rizado total, cota", unidad: V }
+    P_sw: { expr: "0.5*V_ia*I_a*t_c*f_a", sim: "P_{conm}", nombre: "pérdida de conmutación", unidad: W }
+    P_sw2: { expr: "V_ia*I_a*t_c*f_a", sim: "P", nombre: "conmutación sin el ½", unidad: W }
+    P_sw3: { expr: "0.5*V_oa*I_a*t_c*f_a", sim: "P", nombre: "conmutación con la tensión de salida", unidad: W }
+    V_oc: { expr: "V_ic/(1 - D_c)", sim: "V_{out}", nombre: "salida del elevador", unidad: V }
+    k_c: { expr: "1/(1 - D_c)", sim: "I_{in}/I_{out}", nombre: "corriente de entrada respecto a la de salida", unidad: "" }
+    dV_b: { expr: "P_d/(2*pi*50*C_b*V_dc)", sim: "ΔV_{pp}", nombre: "rizado de 100 Hz del bus", unidad: V }
+
+tarjetas:
+  - id: simule-bobina
+    tipo: simular
+    titulo: "33.A: la bobina"
+    texto: "Reductor de 24 V a 12 V, 3 A y 300 kHz, con un rizado del 30 % de la corriente de carga. ¿Qué inductancia?"
+    libro: [628, 630, 634]
+    simular:
+      objetivo: L_c
+      unidad: H
+      tol: 0.03
+      rotulo: "Inductancia, L"
+      errores:
+        - { expr: "L_e1", texto: "Ha puesto como rizado los 3 A enteros. El rizado es el 30 %: 0,9 A." }
+        - { expr: "L_e2", texto: "Le falta el ciclo de trabajo: la bobina ve 24 − 12 V solo durante D = 0,5." }
+    exito: "22,2 µH, y la comercial de 22 µH."
+    escalera:
+      - "L = (V_{in} − V_{out})·D/(ΔI·f), con ΔI = 0,3 × 3 A."
+    solucion: "(24 − 12) × 0,5/(0,9 × 300 kHz) = 22,2 µH."
+    comprobar:
+      - { L_c: 2.22e-5, L_e1: 6.67e-6, L_e2: 4.44e-5, tol: 0.003 }
+
+  - id: saturacion
+    tipo: pregunta
+    titulo: "33.A: qué corriente aguanta"
+    texto: "Con 22 µH el rizado es de 909 mA. ¿Por encima de qué corriente debe saturar la bobina?"
+    libro: [628, 635]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.0000066667, unidad: s, rotulo: "t", muestras: 800 }
+      y: { min: 2, max: 4, unidad: A, rotulo: "i_{L}" }
+      curvas:
+        - { expr: "I_a - dI_a/2 + dI_a*min((f_a*t - floor(f_a*t))/D_a, (1 - f_a*t + floor(f_a*t))/(1 - D_a))", color: naranja, rotulo: "corriente de la bobina" }
+        - { expr: "I_a", color: tinta, rotulo: "3 A", discontinua: true }
+    opciones:
+      - texto: "Por encima de 3,45 A, el pico"
+        bien: true
+        porque: "La corriente de pico es la media más medio rizado: 3 A + 909 mA/2."
+      - texto: "Por encima de 3 A, la media"
+        porque: "En cada ciclo la corriente sube medio rizado por encima de la media."
+      - texto: "Por encima de 909 mA"
+        porque: "Eso es solo el rizado, pico a pico; la bobina lleva además los 3 A de la carga."
+    escalera:
+      - "I_{pico} = I_{out} + ΔI/2."
+    solucion: "3,45 A: la de pico, no la media."
+
+  - id: explore-condensador
+    tipo: explorar
+    titulo: "33.A: el condensador"
+    texto: "El rizado de salida tiene dos partes: la capacidad y la ESR. Pruebe capacidades y ESR y mire cuál manda."
+    libro: [628, 637, 639]
+    widget:
+      tipo: grafica
+      x: { id: r, min: 0, max: 0.2, unidad: Ω, rotulo: "ESR" }
+      y: { min: 0, max: 0.2, unidad: V, rotulo: "ΔV" }
+      curvas:
+        - { expr: "dI_a/(8*C_o*f_a) + dI_a*r", color: naranja, rotulo: "rizado total" }
+        - { expr: "0.025", color: tinta, rotulo: "25 mV", discontinua: true }
+      marcas:
+        - { x: "ESR", y: "dV_t", rotulo: "{{dV_t}}" }
+      lectura: { valor: dV_t, rotulo: "Rizado total" }
+      datos:
+        - { valor: dV_c, rotulo: "Por la capacidad: {{dV_c}}" }
+        - { valor: dV_e, rotulo: "Por la ESR: {{dV_e}}" }
+      mandos:
+        - { valor: C_o, lista: [0.0001, 0.00022, 0.00047], rotulo: "Capacidad" }
+        - { valor: ESR, lista: [0.01, 0.02, 0.2], rotulo: "ESR" }
+    requiere: { mover: [C_o, ESR] }
+
+  - id: electrolitico
+    tipo: predecir
+    titulo: "33.A: casi cinco veces más capacidad"
+    texto: "Un electrolítico de 470 µF y 200 mΩ frente a uno de 100 µF y 20 mΩ. ¿Cuál da menos rizado?"
+    libro: [628, 640]
+    fijar: { C_o: 0.00047, ESR: 0.2 }
+    widget:
+      tipo: grafica
+      x: { id: r, min: 0, max: 0.2, unidad: Ω, rotulo: "ESR" }
+      y: { min: 0, max: 0.2, unidad: V, rotulo: "ΔV" }
+      curvas:
+        - { expr: "0.025", color: tinta, rotulo: "25 mV", discontinua: true }
+      lectura: { valor: dV_t, rotulo: "Rizado con 470 µF y 200 mΩ" }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "El de 100 µF y 20 mΩ: el de 470 µF da unos 183 mV"
+        bien: true
+        porque: "Más de ocho veces peor pese a casi cinco veces más capacidad: se elige por la ESR."
+      - texto: "El de 470 µF: tiene más capacidad"
+        porque: "La capacidad apenas cuenta aquí; el rizado lo pone ΔI·ESR."
+      - texto: "Dan lo mismo"
+        porque: "La ESR es diez veces mayor en el electrolítico, y el rizado también."
+    escalera:
+      - "Multiplique el rizado de corriente, 909 mA, por cada ESR."
+    solucion: "El de 100 µF y 20 mΩ: el condensador se elige por su ESR."
+    comprobar:
+      - { dV_t: 0.183, tol: 0.01 }
+
+  - id: ordene-perdidas
+    tipo: pregunta
+    titulo: "33.B: dónde se va el 3 %"
+    texto: "El reductor anterior rinde un 97 %. Ordene sus pérdidas de mayor a menor."
+    libro: [644, 646, 650, 652]
+    widget:
+      tipo: grafica
+      x: { id: r, min: 0, max: 0.2, unidad: Ω, rotulo: "ESR" }
+      y: { min: 0, max: 0.2, unidad: V, rotulo: "ΔV" }
+      curvas:
+        - { expr: "0.025", color: tinta, rotulo: "25 mV", discontinua: true }
+    ordenar:
+      - "Conmutación, 0,432 W"
+      - "Cobre de la bobina, 0,270 W"
+      - "Núcleo de la bobina, 0,150 W"
+      - "Conducción del interruptor, 0,090 W"
+    exito: "La conmutación y la bobina se llevan las tres cuartas partes; la R_{DS(on)}, poco."
+    pistas:
+      - { texto: "La que crece con la frecuencia y el tiempo de conmutación es la mayor." }
+    escalera:
+      - "Cobre y núcleo juntos son el 37,5 %."
+    solucion: "Conmutación, cobre, núcleo y conducción."
+
+  - id: simule-conmutacion
+    tipo: simular
+    titulo: "33.B: la pérdida de conmutación"
+    texto: "24 V, 3 A, 40 ns de conmutación (subida más bajada) y 300 kHz. ¿Cuánto se pierde en conmutación?"
+    libro: [644, 646, 650, "cap33#68"]
+    simular:
+      objetivo: P_sw
+      unidad: W
+      tol: 0.03
+      rotulo: "Pérdida de conmutación"
+      errores:
+        - { expr: "P_sw2", texto: "Le falta el ½: tensión y corriente se cruzan en rampa, no están a pleno a la vez todo el tiempo." }
+        - { expr: "P_sw3", texto: "Ha usado la salida. El interruptor corta la tensión de entrada, 24 V." }
+    exito: "0,432 W: el 38,5 % de las pérdidas, el término mayor."
+    escalera:
+      - "½·V·I·t_{conm}·f_{s}."
+    solucion: "½ × 24 × 3 × 40 ns × 300 kHz = 0,432 W."
+    comprobar:
+      - { P_sw: 0.432, P_sw2: 0.864, P_sw3: 0.216, tol: 0.002 }
+
+  - id: que-optimizar
+    tipo: pregunta
+    titulo: "33.B: qué optimizar primero"
+    texto: "Si la R_{DS(on)} bajara a cero, el rendimiento pasaría del 96,98 al 97,45 %. ¿Qué conviene atacar primero?"
+    libro: [644, 651, 653]
+    widget:
+      tipo: grafica
+      x: { id: r, min: 0, max: 0.2, unidad: Ω, rotulo: "ESR" }
+      y: { min: 0, max: 0.2, unidad: V, rotulo: "ΔV" }
+      curvas:
+        - { expr: "0.025", color: tinta, rotulo: "25 mV", discontinua: true }
+    opciones:
+      - texto: "El tiempo de conmutación: driver más fuerte, menos R_{g}, menos carga de puerta"
+        bien: true
+        porque: "Es el término mayor; bajar la frecuencia o mejorar la bobina vienen después."
+      - texto: "Un MOSFET de menor R_{DS(on)}"
+        porque: "Las dos conducciones son solo el 16 %: medio punto como mucho."
+      - texto: "Un condensador de salida mayor"
+        porque: "El condensador no entra en estas pérdidas."
+    escalera:
+      - "Ataque el término que más pesa."
+    solucion: "Reducir el tiempo de conmutación: el término dominante."
+
+  - id: explore-elevador
+    tipo: explorar
+    titulo: "33.C: el elevador al límite"
+    texto: "Un elevador desde 5 V. Suba D y mire la salida y cuánta corriente toma de la entrada por cada amperio de salida."
+    libro: [658, 664]
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 0.95, unidad: "", rotulo: "D" }
+      y: { min: 0, max: 100, unidad: V, rotulo: "V_{out}" }
+      curvas:
+        - { expr: "V_ic/(1 - d)", color: naranja, rotulo: "salida" }
+      marcas:
+        - { x: "D_c", y: "V_oc", rotulo: "{{V_oc}}" }
+      lectura: { valor: k_c, rotulo: "I_{in}/I_{out}" }
+      mandos:
+        - { valor: D_c, lista: [0.5, 0.8, 0.9, 0.95], rotulo: "Ciclo de trabajo" }
+    requiere: { mover: [D_c] }
+
+  - id: razones-limite
+    tipo: pregunta
+    titulo: "33.C: por qué D no llega a 1"
+    texto: "Empareje cada razón con lo que ocurre cerca de D = 1."
+    libro: [658, 666]
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 0.95, unidad: "", rotulo: "D" }
+      y: { min: 0, max: 100, unidad: V, rotulo: "V_{out}" }
+      curvas:
+        - { expr: "V_ic/(1 - d)", color: naranja, rotulo: "salida" }
+    emparejar:
+      - ["Corriente de entrada", "20 A de entrada por 1 A de salida con D = 0,95"]
+      - ["Tiempo de descarga", "El diodo solo conduce (1 − D)·T"]
+      - ["Lazo de control", "dV_{out}/dD crece como 1/(1 − D)²"]
+    exito: "Tres razones que se acumulan: rendimiento, transferencia y estabilidad."
+    pistas:
+      - { texto: "La sensibilidad enorme es la del lazo." }
+    escalera:
+      - "Con D = 0,95, ¿cuánto dura la descarga de la bobina?"
+    solucion: "Corriente que se dispara, descarga que se agota y lazo hipersensible."
+
+  - id: limite-practico
+    tipo: pregunta
+    titulo: "33.C: más elevación"
+    texto: "El límite práctico del elevador está en D ≈ 0,8. ¿Qué se hace si hace falta elevar más de cinco veces?"
+    libro: [658, 667]
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 0.95, unidad: "", rotulo: "D" }
+      y: { min: 0, max: 100, unidad: V, rotulo: "V_{out}" }
+      curvas:
+        - { expr: "V_ic/(1 - d)", color: naranja, rotulo: "salida" }
+    opciones:
+      - texto: "Una topología con transformador: la relación de espiras aporta la elevación"
+        bien: true
+        porque: "Flyback o push-pull: el ciclo de trabajo se queda en valores razonables."
+      - texto: "Subir D hasta 0,95"
+        porque: "Ahí la corriente de entrada, la descarga y el lazo se vuelven inmanejables."
+      - texto: "Bajar la frecuencia"
+        porque: "No cambia la relación V_{in}/(1 − D); el límite está en D."
+    escalera:
+      - "¿Qué componente puede multiplicar la tensión sin tocar D?"
+    solucion: "Un flyback o un push-pull: la relación de espiras eleva."
+
+  - id: formula-bus
+    tipo: formula
+    titulo: "33.D: el condensador del bus"
+    texto: "Inversor de 500 W con un bus de 400 V: con 470 µF, el bus ondula 8,5 V de pico a pico a 100 Hz. Cambie el condensador."
+    libro: [671, 680, 681]
+    ec: 680
+    sustitucion: "{{P_d}} / (314,2 · {{C_b}} · {{V_dc}}) = {{dV_b}}"
+    widget:
+      tipo: grafica
+      x: { id: c, min: 0.0001, max: 0.0015, unidad: F, rotulo: "C_{bus}" }
+      y: { min: 0, max: 40, unidad: V, rotulo: "ΔV_{pp}" }
+      curvas:
+        - { expr: "P_d/(2*pi*50*c*V_dc)", color: naranja, rotulo: "rizado de 100 Hz" }
+      marcas:
+        - { x: "C_b", y: "dV_b", rotulo: "{{dV_b}}" }
+      mandos:
+        - { valor: C_b, lista: [0.00022, 0.00047, 0.001], rotulo: "Condensador del bus" }
+    comprobar:
+      - { dV_b: 8.46, tol: 0.003 }
+
+  - id: por-que-bus
+    tipo: porque
+    titulo: "33.D: la sorpresa del bus"
+    texto: "¿Por qué el condensador del bus de un inversor monofásico se elige por su corriente a 100 Hz y no por el rizado de conmutación?"
+    libro: [671, 679, 681]
+    widget:
+      tipo: figura
+      figura: fig-new-33-problema
+      zonas:
+        - { id: todo, rotulo: "El inversor simulado", rect: [0, 0, 453, 164] }
+    opciones:
+      - texto: "La potencia de una carga monofásica pulsa al doble de la red, y esa componente sale del condensador"
+        bien: true
+        porque: "Entre 0 y 1 000 W cien veces por segundo: un electrolítico de 450 V con al menos 1 A de rizado admisible."
+      - texto: "Porque el PFC conmuta a 100 Hz"
+        porque: "El PFC conmuta a alta frecuencia; la de 100 Hz viene de la carga monofásica."
+      - texto: "Porque el filtro LC la deja pasar"
+        porque: "El filtro está a la salida; la pulsación de potencia la ve el bus."
+    escalera:
+      - "¿Qué hace la potencia instantánea de una carga monofásica a lo largo de un ciclo?"
+    solucion: "La potencia pulsa a 100 Hz y esa corriente sale del condensador del bus."
+
+  - id: thd-tiempo-muerto
+    tipo: pregunta
+    titulo: "33.D: el THD que queda"
+    texto: "La simulación da un 0,83 % de THD a la salida, muy por debajo del 3 % pedido. ¿De dónde sale casi todo?"
+    libro: [684, 671, 685]
+    widget:
+      tipo: figura
+      figura: fig-new-33-problema
+      zonas:
+        - { id: todo, rotulo: "El inversor simulado", rect: [0, 0, 453, 164] }
+    opciones:
+      - texto: "Del tercer armónico que produce el tiempo muerto"
+        bien: true
+        porque: "El filtro se encarga de la alta frecuencia; el error del tiempo muerto es de baja frecuencia y pasa."
+      - texto: "Del rizado de 40 kHz"
+        porque: "El filtro lo deja en 0,30 V: casi nada."
+      - texto: "Del condensador del bus"
+        porque: "Su rizado de 100 Hz no es lo que aparece en el THD de la salida."
+    escalera:
+      - "¿Qué armónicos deja pasar el filtro LC enteros?"
+    solucion: "Casi todo es tercer armónico del tiempo muerto."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [628, 644, 658, 671, 634, 639, 651, 667, 681]
+    ideas:
+      - { titulo: "33.A.", texto: "22 µH para el 30 %; saturación por encima del pico; el condensador por su ESR." }
+      - { titulo: "33.B.", texto: "Mandan la conmutación y la bobina; la R_{DS(on)} queda en cuarto lugar." }
+      - { titulo: "33.C.", texto: "D ≈ 0,8 como máximo práctico; para más, transformador." }
+      - { titulo: "33.D.", texto: "El bus se elige por la corriente de 100 Hz; el THD que queda es del tiempo muerto." }

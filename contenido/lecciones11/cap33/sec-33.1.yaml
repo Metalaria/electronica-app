@@ -1,0 +1,331 @@
+# Lección 1.2 de la sección 33.1 «El Interruptor como Base de la Eficiencia» (cap33). Formato: GUIA.md.
+# - El regulador lineal es el esquema «regulador-lineal» sin divisor (V_out = V_ref = 5 V) y sin dropout: 12 V → 5 V
+#   con 1 A (R_L = 5 Ω, bloque 31) y con 0,5 A (R_L = 10 Ω, ejercicio 33.7).
+# - El interruptor real es una gráfica normalizada (tensión, corriente y potencia en tanto por uno de V e I) con un
+#   tiempo de transición fijo de 50 ns (valor mío: el libro dice «unos nanosegundos»); la pérdida media en las dos
+#   transiciones es t_c·f/3 de V·I, proporcional a la frecuencia (bloque 11).
+# Paso práctico: «simular» la potencia del paso (ejercicio 33.7) y el «banco» opcional del bloque 30–31.
+leccion: cap33/sec-33.1
+
+libro:
+  3: "con 12 V de entrada y 5 V de salida, el 58 % de la energía se convierte en calor"
+  5: "Cerrado: tensión cero, corriente alta"
+  6: "Abierto: tensión alta, corriente cero"
+  7: "exactamente cero independientemente de la relación entre entrada y salida"
+  10: "En conducción, tiene R"
+  11: "las pérdidas de conmutación sean proporcionales a la frecuencia"
+  14: "Un interruptor solo daría una onda cuadrada"
+  15: "la corriente por una bobina no puede cambiar bruscamente"
+  16: "bobina y condensador no disipan"
+  17: "no tiene ningún elemento de almacenamiento"
+  20: "los flancos rápidos generan interferencia conducida y radiada"
+  21: "Rizado en la salida"
+  22: "Complejidad: control, realimentación, protecciones"
+  23: "la bobina y los condensadores son los que fallan"
+  24: "lineal cuando importa el ruido y la diferencia de tensión es pequeña"
+  27: "El almacenamiento: bobina, transformador o condensador conmutado"
+  30: "medir la corriente de entrada en ambos casos"
+  31: "el lineal toma 1 A de entrada y el conmutado unos 0,45 A"
+  32: "Rendimiento del lineal frente al conmutado"
+  "cap33#690": "Un regulador lineal entra a 12 V y entrega 5 V con 0,5 A"
+
+modelo:
+  valores:
+    V_i: { sim: "V_{in}", nombre: "tensión de entrada", unidad: V, valor: 12 }
+    V_o5: { sim: "V_{ref}", nombre: "tensión de salida fijada", unidad: V, valor: 5 }
+    R_L: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 5 }
+    f_c: { sim: "f", nombre: "frecuencia de conmutación", unidad: Hz, valor: 250000 }
+    t_c: { sim: "t_{conm}", nombre: "duración de cada transición", unidad: s, valor: 5e-8 }
+  calculos:
+    V_o: { expr: "min(V_o5, V_i)", sim: "V_{out}", nombre: "tensión de salida", unidad: V }
+    I_L: { expr: "V_o/R_L", sim: "I", nombre: "corriente de carga", unidad: A }
+    P_paso: { expr: "(V_i - V_o)*I_L", sim: "P_{paso}", nombre: "potencia en el elemento de paso", unidad: W }
+    P_out: { expr: "V_o*I_L", sim: "P_{out}", nombre: "potencia en la carga", unidad: W }
+    P_in: { expr: "V_i*I_L", sim: "P_{in}", nombre: "potencia de entrada", unidad: W }
+    eta: { expr: "V_o/V_i*100", sim: "η", nombre: "rendimiento", unidad: "%" }
+    calor: { expr: "(V_i - V_o)/V_i*100", sim: "calor", nombre: "fracción que se va en calor", unidad: "%" }
+    a_c: { expr: "t_c*f_c", sim: "a", nombre: "fracción del periodo en transición", unidad: "" }
+    p_med: { expr: "t_c*f_c/3*100", sim: "P_{conm}", nombre: "pérdida media en las transiciones, en % de V·I", unidad: "%", cifras: 2 }
+
+tarjetas:
+  - id: explore-lineal
+    tipo: explorar
+    titulo: "El lineal quema la diferencia"
+    texto: "Un regulador lineal de 5 V con 1 A de carga. Mueva la entrada y mire el calor del elemento de paso."
+    libro: [3, 31]
+    widget:
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_i, ref: V_o5, carga: R_L }
+      lectura: { valor: P_paso, rotulo: "Calor en el paso" }
+      datos:
+        - { valor: eta, rotulo: "Rendimiento: {{eta}}" }
+      corriente: I_L
+      mide: { vout: V_o, iin: I_L, iout: I_L, icarga: I_L, p_paso: P_paso }
+      mandos:
+        - { valor: V_i, min: 6, max: 15, paso: 0.5, rotulo: "Entrada, V_{in}" }
+    requiere: { mover: [V_i] }
+
+  - id: estime-calor
+    tipo: pregunta
+    titulo: "De 12 V a 5 V"
+    texto: "Un regulador lineal pasa de 12 V a 5 V. ¿Qué porcentaje de la energía se convierte en calor?"
+    libro: [3]
+    fijar: { V_i: 12 }
+    widget:
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_i, ref: V_o5, carga: R_L }
+      corriente: I_L
+      mide: { vout: V_o, iin: I_L }
+      mandos: []
+    estimar:
+      objetivo: "calor"
+      unidad: "%"
+      min: 0
+      max: 100
+      paso: 1
+      inicio: 20
+      tol: 0.04
+      rotulo: "Se va en calor"
+    exito: "El 58 %: el paso trabaja como una resistencia variable y se queda la diferencia."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 61 }, texto: "Se ha pasado: la carga sí recibe sus 5 V de los 12." }
+      - { texto: "Se ha quedado corto: la misma corriente atraviesa el paso, que cae más tensión que la carga." }
+    escalera:
+      - "La corriente es la misma en el paso y en la carga: reparten la potencia como las tensiones."
+    solucion: "(12 − 5)/12: el 58 % se va en calor."
+    comprobar:
+      - { calor: 58.33, tol: 0.01 }
+
+  - id: interruptor-ideal
+    tipo: predecir
+    titulo: "El interruptor ideal"
+    texto: "Cerrado, tensión cero y corriente alta; abierto, tensión alta y corriente cero. ¿Cuánto disipa?"
+    libro: [5, 6, 7, 32]
+    widget:
+      tipo: figura
+      figura: fig-33.1
+      zonas:
+        - { id: tension, rotulo: "Arriba a la derecha", rect: [257, 18, 185, 55] }
+        - { id: corriente, rotulo: "En medio a la derecha", rect: [257, 78, 185, 55] }
+    opciones:
+      - texto: "Nada, en ninguno de los dos estados"
+        bien: true
+        porque: "El producto de tensión por corriente es cero cerrado y cero abierto."
+      - texto: "Lo mismo que un lineal con la misma entrada y salida"
+        porque: "El lineal tiene tensión y corriente a la vez en el paso; el interruptor ideal, nunca."
+      - texto: "Depende de la relación entre entrada y salida"
+        porque: "Eso le pasa al lineal. La pérdida del ideal es cero sea cual sea esa relación."
+    escalera:
+      - "Potencia = tensión × corriente. ¿Cuál de las dos es cero en cada estado?"
+    solucion: "Cero: cerrado no tiene tensión y abierto no tiene corriente."
+
+  - id: explore-transiciones
+    tipo: explorar
+    titulo: "Donde pierde el real"
+    texto: "En cada transición hay tensión y corriente a la vez. Cambie la frecuencia y mire la pérdida media."
+    libro: [11, 32]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.000004, unidad: s, rotulo: "t", muestras: 2000 }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "tanto por uno" }
+      curvas:
+        - { expr: "max(min(1, max(0, 1 - (f_c*t - floor(f_c*t))/a_c)), min(1, max(0, (f_c*t - floor(f_c*t) - 0.5)/a_c)))", color: naranja, rotulo: "tensión" }
+        - { expr: "1 - max(min(1, max(0, 1 - (f_c*t - floor(f_c*t))/a_c)), min(1, max(0, (f_c*t - floor(f_c*t) - 0.5)/a_c)))", color: azul, rotulo: "corriente", discontinua: true }
+        - { expr: "4*max(min(1, max(0, 1 - (f_c*t - floor(f_c*t))/a_c)), min(1, max(0, (f_c*t - floor(f_c*t) - 0.5)/a_c)))*(1 - max(min(1, max(0, 1 - (f_c*t - floor(f_c*t))/a_c)), min(1, max(0, (f_c*t - floor(f_c*t) - 0.5)/a_c))))", color: verde, rotulo: "potencia ×4" }
+      lectura: { valor: p_med, rotulo: "Pérdida media" }
+      mandos:
+        - { valor: f_c, lista: [250000, 500000, 1000000], rotulo: "Frecuencia de conmutación" }
+    requiere: { mover: [f_c] }
+
+  - id: perdidas-reales
+    tipo: pregunta
+    titulo: "Dos pérdidas"
+    texto: "Empareje cada pérdida del interruptor real con su origen."
+    libro: [10, 11]
+    widget:
+      tipo: figura
+      figura: fig-33.1
+      zonas:
+        - { id: potencia, rotulo: "Abajo a la derecha", rect: [257, 160, 185, 42] }
+    emparejar:
+      - ["En conducción", "I²·R_{DS(on)}"]
+      - ["En cada transición", "Tensión y corriente a la vez unos nanosegundos"]
+      - ["Al doblar la frecuencia", "Se doblan las de conmutación"]
+    exito: "Diseñar una fuente conmutada es minimizar las dos."
+    pistas:
+      - { texto: "La que depende de la frecuencia es la que ocurre en cada conmutación." }
+    escalera:
+      - "Cerrado del todo, el interruptor real es una resistencia."
+    solucion: "Conducción: I²·R_{DS(on)}. Transición: tensión y corriente a la vez. Más frecuencia, más conmutaciones."
+
+  - id: papel-bobina
+    tipo: pregunta
+    titulo: "El papel de la bobina"
+    texto: "Un interruptor solo daría una onda cuadrada. ¿Qué propiedad de la bobina la convierte en continua?"
+    libro: [14, 15]
+    widget:
+      tipo: figura
+      figura: fig-33.1
+      zonas:
+        - { id: tension, rotulo: "Arriba a la derecha", rect: [257, 18, 185, 55] }
+    opciones:
+      - texto: "Su corriente no puede cambiar bruscamente: sigue circulando al abrir"
+        bien: true
+        porque: "Almacena energía y la entrega de forma continua; el condensador de salida suaviza el resto."
+      - texto: "Disipa los picos de la onda cuadrada"
+        porque: "La bobina no disipa: almacena y devuelve."
+      - texto: "Su tensión no puede cambiar bruscamente"
+        porque: "Eso es del condensador. En la bobina lo que no salta es la corriente."
+    escalera:
+      - "Piense en qué pasa con la corriente en el instante en que el interruptor abre."
+    solucion: "La corriente de la bobina no puede cambiar de golpe: sigue circulando cuando el interruptor abre."
+
+  - id: por-que-cien
+    tipo: porque
+    titulo: "El límite del 100 %"
+    texto: "Con interruptor, bobina y condensador se puede, en el ideal, llegar al 100 %. ¿Por qué el lineal no?"
+    libro: [16, 17]
+    widget:
+      tipo: figura
+      figura: fig-33.1
+      zonas:
+        - { id: lineal, rotulo: "La recta roja", poligono: [[42, 172], [52, 188], [212, 38], [202, 22]] }
+    opciones:
+      - texto: "No tiene ningún elemento de almacenamiento: la diferencia cae en algo resistivo"
+        bien: true
+        porque: "Bobina y condensador almacenan y devuelven; el paso del lineal solo puede quemar."
+      - texto: "Porque su amplificador de error consume mucho"
+        porque: "El consumo del control es pequeño; la pérdida es la diferencia de tensión por la corriente."
+      - texto: "Porque trabaja a frecuencia cero"
+        porque: "La frecuencia no es el motivo: sin almacenamiento, la diferencia de tensión tiene que caer en el paso."
+    escalera:
+      - "¿Qué hacen la bobina y el condensador con la energía que reciben?"
+    solucion: "Le falta un elemento que almacene: toda la diferencia aparece sobre un elemento resistivo."
+
+  - id: simule-ejercicio
+    tipo: simular
+    titulo: "Calcule el calor del paso"
+    texto: "Un regulador lineal entra a 12 V y entrega 5 V con 0,5 A. ¿Cuánto disipa?"
+    libro: ["cap33#690"]
+    fijar: { V_i: 12, R_L: 10 }
+    widget:
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_i, ref: V_o5, carga: R_L }
+      lectura: { valor: P_paso, rotulo: "Potencia en el paso" }
+      corriente: I_L
+      mide: { p_paso: P_paso, icarga: I_L }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: P_paso
+      unidad: W
+      tol: 0.03
+      rotulo: "Potencia en el paso, P"
+      medida: p_paso
+      errores:
+        - { expr: "P_out", texto: "2,5 W es lo que recibe la carga. El paso cae 12 − 5 V con la misma corriente." }
+        - { expr: "P_in", texto: "6 W es todo lo que entra. Al paso le toca la diferencia de tensión." }
+    exito: "3,5 W en calor para 2,5 W útiles: rinde un 41,7 %."
+    escalera:
+      - "La caída del paso es la diferencia de tensiones; la corriente, la de la carga."
+    solucion: "(12 − 5) V × 0,5 A = 3,5 W."
+    comprobar:
+      - { P_paso: 3.5, P_out: 2.5, P_in: 6, eta: 41.7, tol: 0.002 }
+
+  - id: precio
+    tipo: pregunta
+    titulo: "El precio de conmutar"
+    texto: "Empareje cada inconveniente de la conmutada con lo que lo causa."
+    libro: [20, 21, 22, 23]
+    widget:
+      tipo: figura
+      figura: fig-33.1
+      zonas:
+        - { id: tension, rotulo: "Arriba a la derecha", rect: [257, 18, 185, 55] }
+    emparejar:
+      - ["Ruido", "Flancos rápidos: interferencia conducida y radiada"]
+      - ["Rizado", "La frecuencia de conmutación y sus armónicos"]
+      - ["Complejidad", "Control, realimentación y protecciones"]
+      - ["Componentes críticos", "La bobina y los condensadores"]
+    exito: "Ese precio explica el resto del capítulo: filtros, trazado y control."
+    pistas:
+      - { texto: "El ruido sale de los flancos; el rizado, de la propia conmutación." }
+    escalera:
+      - "Empiece por los componentes: ¿cuáles fallan y cuestan más?"
+    solucion: "Ruido: flancos. Rizado: la frecuencia. Complejidad: control. Críticos: bobina y condensadores."
+
+  - id: elegir
+    tipo: pregunta
+    titulo: "¿Lineal o conmutada?"
+    texto: "El ruido importa y la diferencia entre entrada y salida es pequeña. ¿Qué elige?"
+    libro: [24]
+    widget:
+      tipo: figura
+      figura: fig-33.1
+      zonas:
+        - { id: lineal, rotulo: "La recta roja", rect: [88, 103, 40, 40] }
+        - { id: conmutado, rotulo: "La recta verde", rect: [47, 20, 120, 40] }
+    opciones:
+      - texto: "Un regulador lineal"
+        bien: true
+        porque: "Con poca diferencia rinde bien y no añade ruido de conmutación."
+      - texto: "Una fuente conmutada"
+        porque: "Se elige cuando importa el rendimiento; aquí sus flancos y su rizado son el problema."
+      - texto: "Da igual: rinden lo mismo"
+        porque: "Rinden parecido solo con poca diferencia; el ruido sí las separa."
+    escalera:
+      - "Mire la recta roja cerca de la entrada: ¿cuánto rinde el lineal ahí?"
+    solucion: "El lineal: poca diferencia de tensión y sin ruido de conmutación."
+
+  - id: tres-bloques
+    tipo: pregunta
+    titulo: "Tres bloques"
+    texto: "Toda fuente conmutada tiene los mismos tres bloques. Empareje cada uno con lo que es."
+    libro: [27]
+    widget:
+      tipo: figura
+      figura: fig-33.1
+      zonas:
+        - { id: tension, rotulo: "Arriba a la derecha", rect: [257, 18, 185, 55] }
+    emparejar:
+      - ["El interruptor", "Con su driver"]
+      - ["El almacenamiento", "Bobina, transformador o condensador conmutado"]
+      - ["El control", "Mide la salida y ajusta el ciclo de trabajo"]
+    exito: "Reconocerlos permite entender una fuente sin haberla visto antes."
+    pistas:
+      - { texto: "El que mide la salida es el que cierra el lazo." }
+    escalera:
+      - "El transformador también almacena: va con la bobina."
+    solucion: "Interruptor con driver; almacenamiento en bobina, transformador o condensador; control del ciclo de trabajo."
+
+  - id: banco-corriente
+    tipo: banco
+    titulo: "Mídalo en el banco"
+    texto: "La misma carga de 5 V y 1 A desde 12 V, primero con un regulador lineal: mida su corriente de entrada."
+    libro: [30, 31]
+    fijar: { V_i: 12, R_L: 5 }
+    banco:
+      piezas: ["Fuente de 12 V", "Un regulador lineal de 5 V y un módulo conmutado de 12 V a 5 V", "Una carga que pida 1 A a 5 V", "Multímetro en amperios"]
+      medir: "La corriente que entra al regulador lineal; después, la del módulo conmutado con la misma carga."
+      esperado: I_L
+      unidad: A
+      tol: 0.05
+      consejos:
+        - { cuando: { valor: medida, menor: 0.6 }, texto: "Eso es lo del conmutado, unos 0,45 A. El lineal toma la misma corriente que da." }
+        - { cuando: { valor: desviacion, mayor: 0.05 }, texto: "Mide de más: compruebe que la carga pide 1 A y no más." }
+        - { texto: "Mide de menos: compruebe que la carga pide 1 A. El conmutado debería dar unos 0,45 A." }
+    comprobar:
+      - { I_L: 1 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [3, 7, 11, 16, 27]
+    ideas:
+      - { titulo: "El lineal quema.", texto: "Disipa la diferencia: de 12 V a 5 V, el 58 % se va en calor." }
+      - { titulo: "El interruptor ideal no disipa.", texto: "Cerrado sin tensión, abierto sin corriente." }
+      - { titulo: "El real pierde.", texto: "En conducción, I²·R; en cada transición, proporcional a la frecuencia." }
+      - { titulo: "Almacenar, no quemar.", texto: "Bobina y condensador almacenan y devuelven: interruptor, almacenamiento y control." }

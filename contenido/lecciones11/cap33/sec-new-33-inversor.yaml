@@ -1,0 +1,356 @@
+# Lección 1.2 de la sección 33.10 «Convertidores CC-CA: el Inversor» (cap33, sec-new-33-inversor). Formato: GUIA.md.
+# - Sin esquema de puente en H ni de inversor (pedido en peticiones-motor12.md): todo son gráficas de las fórmulas del
+#   libro. La onda cuadrada como suma de Fourier hasta el armónico N (ec. del bloque 301); la cuasi cuadrada con su
+#   pulso σ centrado en cada semiciclo y V_n = 4V/(nπ)·sen(nσ/2) (bloque 306); la PWM senoidal unipolar con m_f = 15,
+#   como la figura 33.13 (portadora triangular de −1 a 1 y v_AB/V_dc = rama A − rama B, bloques 311 y 316); el filtro
+#   LC con la carga nominal de 105,8 Ω (bloque 333): |H| = 1/√((1 − ω²LC)² + (ωL/R)²).
+# Paso práctico: «simular» el índice de modulación para 230 V eficaces con 400 V de bus (0,813, bloque 315).
+leccion: cap33/sec-new-33-inversor
+
+libro:
+  297: "es el puente en H"
+  299: "Un inversor es la manera de encadenar esos tres valores"
+  301: 'op("sen") 3 ω t'
+  303: '"0,900" dot.op V_("dc")'
+  304: "Con un bus de 400 V, la fundamental vale 360 V eficaces"
+  306: '(4 V_("dc"))/(n π)'
+  307: "el pulso tiene que durar σ = 90°, y entonces la fundamental es de solo 207 V"
+  310: "si el ciclo de trabajo varía despacio siguiendo una senoide, la media también la sigue"
+  314: 'm_("a") dot.op V_("dc")'
+  315: "ma = 325,3/400 = 0,813"
+  316: "el primer grupo aparece en 2·mf"
+  317: "146 %"
+  318: "La última fila sorprende"
+  320: "Se ha usado mf = 15"
+  323: "Con ma = 1,5 vale 1,17·Vdc, y no 1,5"
+  324: "con ma entre 0,8 y 0,95"
+  325: "Fundamental, tercer y quinto armónico frente al índice de modulación"
+  328: 'lr(( f / f_("0") ))^("2")'
+  332: "es decir, 53,2 dB"
+  333: "la resistencia de 105,8 Ω amortigua el LC"
+  338: "la PWM senoidal solo saca 0,612 × 540 = 331 V de línea"
+  339: "ma puede subir hasta 2/√3 = 1,155 sin sobremodular"
+  340: '"0,707" dot.op V_("dc")'
+  341: "382 V con el bus de 540 V"
+  351: "por rama, de signo contrario al de la corriente"
+  352: "Con td = 1 µs, 20 kHz y 400 V, el tiempo muerto es el 2 % del periodo y el error, 8 V por rama"
+  358: "típicamente entre 5 y 10 µs"
+  359: "si pasa de unos 7 V, el transistor está fuera de saturación"
+
+modelo:
+  valores:
+    V_dc: { sim: "V_{dc}", nombre: "tensión del bus", unidad: V, valor: 400 }
+    f_1: { sim: "f₁", nombre: "frecuencia de la fundamental", unidad: Hz, valor: 50 }
+    N_h: { sim: "N", nombre: "último armónico sumado", unidad: "", valor: 1 }
+    sig: { sim: "σ", nombre: "anchura del pulso", unidad: "°", valor: 180 }
+    V_up: { sim: "V_{dc}", nombre: "bus del SAI barato", unidad: V, valor: 325 }
+    V_ef: { sim: "V_{ef}", nombre: "salida eficaz pedida", unidad: V, valor: 230 }
+    m_a: { sim: "m_{a}", nombre: "índice de modulación", unidad: "", valor: 0.5 }
+    m_f: { sim: "m_{f}", nombre: "índice de frecuencia", unidad: "", valor: 15 }
+    L_f: { sim: "L", nombre: "bobina del filtro", unidad: H, valor: 0.0022 }
+    C_f: { sim: "C", nombre: "condensador del filtro", unidad: F, valor: 1e-6 }
+    R_n: { sim: "R", nombre: "carga nominal", unidad: Ω, valor: 105.8 }
+    f_h: { sim: "f", nombre: "primer grupo de armónicos", unidad: Hz, valor: 40000 }
+    t_d: { sim: "t_{d}", nombre: "tiempo muerto", unidad: s, valor: 1e-6 }
+    f_sw: { sim: "f_{sw}", nombre: "frecuencia de conmutación", unidad: Hz, valor: 20000 }
+  calculos:
+    V1_ef: { expr: "4/(pi*sqrt(2))*V_dc", sim: "V_{1,ef}", nombre: "fundamental eficaz de la cuadrada", unidad: V }
+    V1_q: { expr: "4*V_dc/(pi*sqrt(2))*sin(sig*pi/360)", sim: "V_{1,ef}", nombre: "fundamental eficaz de la cuasi cuadrada", unidad: V }
+    r3: { expr: "abs(sin(3*sig*pi/360))/(3*sin(sig*pi/360))*100", sim: "V₃/V₁", nombre: "tercer armónico frente a la fundamental", unidad: "%", cifras: 2 }
+    V1_u: { expr: "4*V_up/(pi*sqrt(2))*sin(pi/4)", sim: "V_{1,ef}", nombre: "fundamental del SAI con σ = 90°", unidad: V }
+    V_pk: { expr: "m_a*V_dc", sim: "V̂₁", nombre: "pico de la fundamental", unidad: V }
+    ma_obj: { expr: "V_ef*sqrt(2)/V_dc", sim: "m_{a}", nombre: "índice para la salida pedida", unidad: "" }
+    ma_ef: { expr: "V_ef/V_dc", sim: "m_{a}", nombre: "índice tomando el eficaz por pico", unidad: "" }
+    f_0: { expr: "1/(2*pi*sqrt(L_f*C_f))", sim: "f₀", nombre: "frecuencia de corte del filtro", unidad: Hz }
+    A_40: { expr: "(f_h/f_0)^2", sim: "A", nombre: "atenuación a 40 kHz", unidad: "", cifras: 3 }
+    A_db: { expr: "20*log10((f_h/f_0)^2)", sim: "A", nombre: "atenuación a 40 kHz, en dB", unidad: dB }
+    dV: { expr: "t_d*f_sw*V_dc", sim: "ΔV", nombre: "error medio por rama", unidad: V }
+
+tarjetas:
+  - id: explore-fourier
+    tipo: explorar
+    titulo: "La cuadrada, armónico a armónico"
+    texto: "Alternar las dos diagonales del puente da una cuadrada. Sume armónicos impares y mire cómo se forma."
+    libro: [297, 299, 301]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t", muestras: 1200 }
+      y: { min: -600, max: 600, unidad: V, rotulo: "v_{AB}" }
+      curvas:
+        - { expr: "V_dc*(1 - 2*ceil(f_1*t - floor(f_1*t) - 0.5))", color: tinta, rotulo: "cuadrada", discontinua: true }
+        - { expr: "4*V_dc/pi*(sin(2*pi*f_1*t) + min(1, max(0, N_h - 2))*sin(6*pi*f_1*t)/3 + min(1, max(0, N_h - 4))*sin(10*pi*f_1*t)/5 + min(1, max(0, N_h - 6))*sin(14*pi*f_1*t)/7 + min(1, max(0, N_h - 8))*sin(18*pi*f_1*t)/9 + min(1, max(0, N_h - 10))*sin(22*pi*f_1*t)/11 + min(1, max(0, N_h - 12))*sin(26*pi*f_1*t)/13 + min(1, max(0, N_h - 14))*sin(30*pi*f_1*t)/15)", color: naranja, rotulo: "suma de armónicos" }
+      mandos:
+        - { valor: N_h, lista: [1, 3, 5, 7, 15], rotulo: "Hasta el armónico" }
+    requiere: { mover: [N_h] }
+
+  - id: formula-fundamental
+    tipo: formula
+    titulo: "La fundamental de la cuadrada"
+    texto: "Con 400 V de bus, la fundamental vale 360 V eficaces. Cambie el bus."
+    libro: [303, 304]
+    ec: 303
+    sustitucion: "0,900 · {{V_dc}} = {{V1_ef}}"
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t", muestras: 600 }
+      y: { min: -600, max: 600, unidad: V, rotulo: "v_{AB}" }
+      curvas:
+        - { expr: "V_dc*(1 - 2*ceil(f_1*t - floor(f_1*t) - 0.5))", color: tinta, rotulo: "cuadrada", discontinua: true }
+        - { expr: "4*V_dc/pi*sin(2*pi*f_1*t)", color: naranja, rotulo: "fundamental" }
+      mandos:
+        - { valor: V_dc, min: 100, max: 500, paso: 10, rotulo: "Bus, V_{dc}" }
+
+  - id: explore-cuasi
+    tipo: explorar
+    titulo: "La cuasi cuadrada"
+    texto: "Desfasando las dos ramas aparece un cero en cada semiciclo. Mueva el pulso σ y busque dónde desaparece el tercer armónico."
+    libro: [306, 307]
+    fijar: { V_dc: 400 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t", muestras: 1200 }
+      y: { min: -600, max: 600, unidad: V, rotulo: "v_{AB}" }
+      curvas:
+        - { expr: "V_dc*min(1, ceil(max(0, sig/2 - abs(360*(f_1*t - floor(f_1*t)) - 90)))) - V_dc*min(1, ceil(max(0, sig/2 - abs(360*(f_1*t - floor(f_1*t)) - 270))))", color: tinta, rotulo: "cuasi cuadrada" }
+        - { expr: "4*V_dc/pi*sin(sig*pi/360)*sin(2*pi*f_1*t)", color: naranja, rotulo: "fundamental", discontinua: true }
+      lectura: { valor: r3, rotulo: "Tercer armónico" }
+      datos:
+        - { valor: V1_q, rotulo: "Fundamental: {{V1_q}} eficaces" }
+      mandos:
+        - { valor: sig, min: 60, max: 180, paso: 5, rotulo: "Pulso, σ" }
+    requiere: { mover: [sig] }
+
+  - id: estime-sai
+    tipo: pregunta
+    titulo: "La «senoidal modificada»"
+    texto: "Un SAI barato da 325 V de pico con un pulso de σ = 90°. ¿Cuánto vale su fundamental, en eficaces?"
+    libro: [306, 307]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t", muestras: 1200 }
+      y: { min: -400, max: 400, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "V_up*min(1, ceil(max(0, 45 - abs(360*(f_1*t - floor(f_1*t)) - 90)))) - V_up*min(1, ceil(max(0, 45 - abs(360*(f_1*t - floor(f_1*t)) - 270))))", color: tinta, rotulo: "salida del SAI" }
+    estimar:
+      objetivo: "V1_u"
+      unidad: V
+      min: 0
+      max: 330
+      paso: 1
+      inicio: 300
+      tol: 0.03
+      rotulo: "Fundamental eficaz"
+    exito: "Solo 207 V, y el THD vuelve a ser el de la cuadrada, un 48,3 %."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 213 }, texto: "Se ha pasado: el pulso solo dura medio semiciclo, y sen(σ/2) recorta la fundamental." }
+      - { texto: "Se ha quedado corto: aplique 4V/(π·√2)·sen(σ/2)." }
+    escalera:
+      - "V₁ = 4·V_{dc}/π·sen(σ/2) de pico; divida por √2."
+    solucion: "4 × 325/π × sen(90°/2)/√2 ≈ 207 V."
+    comprobar:
+      - { V1_u: 207, tol: 0.003 }
+
+  - id: explore-spwm
+    tipo: explorar
+    titulo: "La PWM senoidal"
+    texto: "Cada rama compara su referencia con la misma portadora triangular. Mueva m_{a} y mire cómo la media de v_{AB} sigue a la senoide."
+    libro: [310, 316, 320]
+    fijar: { V_dc: 400 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.02, unidad: s, rotulo: "t", muestras: 3000 }
+      y: { min: -1.6, max: 1.6, unidad: "", rotulo: "v / V_{dc}" }
+      curvas:
+        - { expr: "min(1, ceil(max(0, m_a*sin(2*pi*f_1*t) - 4*abs(m_f*f_1*t - floor(m_f*f_1*t + 0.5)) + 1)*1e6)) - min(1, ceil(max(0, -m_a*sin(2*pi*f_1*t) - 4*abs(m_f*f_1*t - floor(m_f*f_1*t + 0.5)) + 1)*1e6))", color: naranja, rotulo: "v_{AB}" }
+        - { expr: "4*abs(m_f*f_1*t - floor(m_f*f_1*t + 0.5)) - 1", color: tinta, rotulo: "portadora", discontinua: true }
+        - { expr: "m_a*sin(2*pi*f_1*t)", color: verde, rotulo: "referencia" }
+      lectura: { valor: V_pk, rotulo: "Pico de la fundamental, con 400 V" }
+      mandos:
+        - { valor: m_a, min: 0.1, max: 1, paso: 0.05, rotulo: "Índice, m_{a}" }
+    requiere: { mover: [m_a] }
+
+  - id: simule-ma
+    tipo: simular
+    titulo: "El índice para 230 V"
+    texto: "Un inversor con PWM senoidal y un bus de 400 V debe dar 230 V eficaces. ¿Qué índice de modulación necesita?"
+    libro: [314, 315]
+    simular:
+      objetivo: ma_obj
+      unidad: ""
+      tol: 0.01
+      rotulo: "Índice de modulación, m_{a}"
+      errores:
+        - { expr: "ma_ef", texto: "Ha dividido el eficaz por el bus. La fórmula da el pico: 230 V eficaces son 325,3 V de pico." }
+    exito: "0,813: 325,3 V de pico sobre 400 V, dentro de la zona lineal."
+    escalera:
+      - "En la zona lineal, el pico de la fundamental es m_{a}·V_{dc}."
+    solucion: "m_{a} = 325,3/400 = 0,813."
+    comprobar:
+      - { ma_obj: 0.813, ma_ef: 0.575, tol: 0.002 }
+
+  - id: unipolar
+    tipo: predecir
+    titulo: "Bipolar o unipolar"
+    texto: "Con los mismos transistores y la misma frecuencia de conmutación, ¿por qué los inversores monofásicos prefieren la unipolar?"
+    libro: [316, 318]
+    widget:
+      tipo: figura
+      figura: fig-new-33-spwm
+      zonas:
+        - { id: todo, rotulo: "La PWM unipolar", rect: [0, 0, 453, 260] }
+    opciones:
+      - texto: "Los armónicos alrededor de m_{f} se cancelan: el primer grupo pasa a 2·m_{f}"
+        bien: true
+        porque: "El filtro ve el doble de frecuencia; en la bipolar hay en m_{f} un armónico mayor que la fundamental."
+      - texto: "Porque conmuta a la mitad de frecuencia"
+        porque: "Conmuta a la misma; lo que se dobla es la frecuencia de los armónicos que ve el filtro."
+      - texto: "Porque su THD sin filtrar es nulo"
+        porque: "Es del 76,9 %: menor que el 146 % de la bipolar, pero no nulo."
+    escalera:
+      - "Mire dónde está el primer grupo de armónicos en cada una."
+    solucion: "En la unipolar los armónicos en m_{f} se cancelan y el primer grupo está en 2·m_{f}."
+
+  - id: sobremodulacion
+    tipo: pregunta
+    titulo: "Más allá de m_{a} = 1"
+    texto: "Con m_{a} = 1,5 la referencia supera la portadora en los picos. ¿Qué pasa con la fundamental?"
+    libro: [323, 324, 325]
+    widget:
+      tipo: figura
+      figura: fig-new-33-modulacion
+      zonas:
+        - { id: todo, rotulo: "La gráfica", rect: [0, 0, 328, 175] }
+    opciones:
+      - texto: "Vale 1,17·V_{dc}, no 1,5, y vuelven los armónicos bajos"
+        bien: true
+        porque: "Es la sobremodulación: en los picos degenera en cuadrada. Por eso se diseña entre 0,8 y 0,95."
+      - texto: "Sigue siendo m_{a}·V_{dc} = 1,5·V_{dc}"
+        porque: "La proporcionalidad solo vale con m_{a} ≤ 1; nunca se pasa del límite de la cuadrada."
+      - texto: "Se anula"
+        porque: "No se anula: crece, pero cada vez menos, hacia el límite de la onda cuadrada."
+    escalera:
+      - "Cerca de los picos desaparecen los cruces con la portadora: ¿a qué onda se parece entonces?"
+    solucion: "Crece menos que m_{a}: 1,17·V_{dc}, y vuelven el tercero y el quinto."
+
+  - id: formula-filtro
+    tipo: formula
+    titulo: "El filtro de salida"
+    texto: "Bobina de 2,2 mH y carga nominal de 105,8 Ω. Elija el condensador y mire la atenuación en 40 kHz."
+    libro: [328, 332, 333]
+    ec: 328
+    sustitucion: "({{f_h}} / {{f_0}})² = {{A_40}} → {{A_db}}"
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 10, max: 100000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: -80, max: 20, unidad: dB, rotulo: "|H|" }
+      curvas:
+        - { expr: "-20*log10(sqrt((1 - (2*pi*nu)^2*L_f*C_f)^2 + (2*pi*nu*L_f/R_n)^2))", color: naranja, rotulo: "filtro con la carga" }
+      marcas:
+        - { x: "f_0", y: "0", rotulo: "f₀" }
+      mandos:
+        - { valor: C_f, lista: [1e-6, 2.2e-6, 3.3e-6, 6.8e-6], rotulo: "Condensador, C" }
+
+  - id: por-que-thd
+    tipo: porque
+    titulo: "Más distorsión, y mejor"
+    texto: "Sin filtrar, la PWM unipolar tiene un 76,9 % de THD, más que la cuadrada. ¿Por qué es mejor?"
+    libro: [317, 318]
+    widget:
+      tipo: figura
+      figura: fig-new-33-ondas
+      zonas:
+        - { id: todo, rotulo: "Las tres ondas y su espectro", rect: [0, 0, 453, 277] }
+    opciones:
+      - texto: "Sus armónicos están lejos, hacia 40 kHz: los quita un LC pequeño"
+        bien: true
+        porque: "Los de la cuadrada empiezan en 150 Hz, a octava y media de la fundamental: ningún filtro razonable los separa."
+      - texto: "Porque la carga no nota los armónicos"
+        porque: "Un motor o un transformador sí los nota: corrientes que calientan sin dar par."
+      - texto: "Porque su fundamental es mayor"
+        porque: "Con m_{a} ≤ 1 la fundamental es menor que la de la cuadrada; la ventaja es dónde está la distorsión."
+    escalera:
+      - "No importa cuánta distorsión haya, sino dónde está."
+    solucion: "No importa cuánta haya sino dónde: la de la PWM está muy por encima de 50 Hz y se filtra fácil."
+
+  - id: trifasico
+    tipo: pregunta
+    titulo: "Un motor de 400 V con 540 V de bus"
+    texto: "Con PWM senoidal y m_{a} = 1, un bus de 540 V da 331 V de línea. ¿Qué permite llegar a 382 V?"
+    libro: [338, 339, 340, 341]
+    widget:
+      tipo: figura
+      figura: fig-new-33-trifasico
+      zonas:
+        - { id: todo, rotulo: "El inversor trifásico", rect: [0, 0, 453, 317] }
+    opciones:
+      - texto: "Sumar la secuencia cero a las tres referencias: m_{a} sube a 1,155 sin sobremodular"
+        bien: true
+        porque: "La carga en estrella sin neutro no ve lo que se suma por igual a las tres; es la modulación vectorial."
+      - texto: "Subir m_{a} a 1,155 con la senoide tal cual"
+        porque: "Sin secuencia cero eso ya es sobremodulación, con armónicos bajos."
+      - texto: "Conectar el neutro de la carga al punto medio del bus"
+        porque: "Con neutro, la secuencia cero sí llegaría a la carga; el truco necesita la estrella sin neutro."
+    escalera:
+      - "¿Qué señal desaparece de las tensiones de línea?"
+    solucion: "La secuencia cero (o la modulación vectorial): 0,707·V_{dc} de línea, un 15,5 % más."
+
+  - id: estime-tiempo-muerto
+    tipo: pregunta
+    titulo: "El precio del tiempo muerto"
+    texto: "Un inversor conmuta a 20 kHz, con un bus de 400 V y 1 µs de tiempo muerto. ¿Cuántos voltios de error medio por rama?"
+    libro: [351, 352]
+    fijar: { V_dc: 400 }
+    widget:
+      tipo: figura
+      figura: fig-new-33-tiempo-muerto
+      zonas:
+        - { id: todo, rotulo: "El tiempo muerto", rect: [0, 0, 453, 238] }
+    estimar:
+      objetivo: "dV"
+      unidad: V
+      min: 0
+      max: 40
+      paso: 0.5
+      inicio: 30
+      tol: 0.05
+      rotulo: "Error por rama"
+    exito: "8 V por rama, 16 V en el puente: una cuadrada que sigue el signo de la corriente, con armónicos bajos."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 8.4 }, texto: "Se ha pasado: el tiempo muerto es solo el 2 % del periodo." }
+      - { texto: "Se ha quedado corto: multiplique t_{d}·f_{sw}·V_{dc}." }
+    escalera:
+      - "ΔV = t_{d}·f_{sw}·V_{dc}."
+    solucion: "1 µs × 20 kHz × 400 V = 8 V."
+    comprobar:
+      - { dV: 8 }
+
+  - id: proteccion
+    tipo: pregunta
+    titulo: "Cortocircuito de rama"
+    texto: "El IGBT aguanta un cortocircuito entre 5 y 10 µs. Empareje cada defensa con lo que hace."
+    libro: [358, 359]
+    widget:
+      tipo: figura
+      figura: fig-new-33-tiempo-muerto
+      zonas:
+        - { id: todo, rotulo: "El tiempo muerto", rect: [0, 0, 453, 238] }
+    emparejar:
+      - ["Desaturación", "Vigila V_{CE}: con más de unos 7 V, corriente excesiva"]
+      - ["Apagado suave", "Corta con más resistencia de puerta, sin sobretensión"]
+      - ["Shunt y comparador", "Bloquean el PWM por hardware, sin software"]
+    exito: "Un inversor serio lleva las tres."
+    pistas:
+      - { texto: "El que no pasa por el software es el del shunt en el bus." }
+    escalera:
+      - "La desaturación mira la tensión colector-emisor mientras conduce."
+    solucion: "Desaturación: V_{CE}. Apagado suave: resistencia de puerta. Shunt: bloqueo por hardware."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [304, 314, 316, 318, 340, 351]
+    ideas:
+      - { titulo: "Cuadrada y cuasi cuadrada.", texto: "0,900·V_{dc} de fundamental; con σ = 120° desaparece el tercer armónico." }
+      - { titulo: "PWM senoidal.", texto: "V̂₁ = m_{a}·V_{dc}; la unipolar lleva los armónicos a 2·m_{f}, lejos y fáciles de filtrar." }
+      - { titulo: "Trifásico.", texto: "0,612·m_{a}·V_{dc} de línea; con secuencia cero, 0,707·V_{dc}." }
+      - { titulo: "Tiempo muerto.", texto: "t_{d}·f_{sw}·V_{dc} por rama, contra el signo de la corriente." }

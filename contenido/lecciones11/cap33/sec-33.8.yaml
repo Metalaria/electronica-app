@@ -1,0 +1,272 @@
+# Lección 1.2 de la sección 33.8 «Corrección del Factor de Potencia (PFC)» (cap33). Formato: GUIA.md.
+# - Por qué la corriente va a pulsos: el esquema «puente» con la red de 325 V de pico (bloque 257), 50 Hz, diodos de
+#   0,7 V, carga de 1 kΩ (unos 100 W) y condensador de 47, 100 o 220 µF (carga y condensadores míos). Solo entra
+#   corriente mientras la red rectificada supera al condensador; el ángulo de conducción es aproximado: el valle es
+#   V_pico·e^(−T/(2RC)) y la conducción va de asen(V_valle/V_p) a 90°.
+# - Los pulsos frente a la senoide del PFC, en la figura 33.9.
+# Paso práctico: «simular» el rendimiento de las dos etapas en cascada (0,97 × 0,94 = 0,91, bloque 251).
+leccion: cap33/sec-33.8
+
+libro:
+  239: "consume corriente en pulsos estrechos alrededor del pico de la onda de red"
+  240: "la instalación transporta hasta el doble de corriente"
+  241: "Armónicos inyectados en la red"
+  242: "por encima de unos 75 W es obligatorio corregir"
+  245: "consigue factores de potencia de 0,7 a 0,8"
+  248: "fuerza a que la corriente de entrada siga la forma de la tensión de red"
+  249: "el factor de potencia llega a 0,99"
+  250: "típicamente 400 V"
+  251: "0,97 × 0,94 da 0,91"
+  253: "es lo habitual por encima de unos 300 W"
+  254: "se conmuta justo cuando la corriente llega a cero"
+  255: "ahorrando la caída de dos diodos"
+  257: "su bus está a unos 400 V, no a los 325 del pico de red"
+  258: "el condensador de bus almacena una energía considerable a 400 V y tarda en descargarse"
+  259: "funciona pero se protege con carga"
+  262: "una senoide en fase con la tensión"
+  263: "Corriente de entrada de una fuente sin corrección y con PFC activo"
+
+modelo:
+  valores:
+    V_p: { sim: "V_{p}", nombre: "pico de la red", unidad: V, valor: 325 }
+    f_r: { sim: "f", nombre: "frecuencia de la red", unidad: Hz, valor: 50 }
+    V_d: { sim: "V_{D}", nombre: "caída de cada diodo", unidad: V, valor: 0.7 }
+    C_b: { sim: "C", nombre: "condensador de bus", unidad: F, valor: 4.7e-5 }
+    R_c: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 1000 }
+    eta_1: { sim: "η_{PFC}", nombre: "rendimiento del PFC", unidad: "", valor: 0.97 }
+    eta_2: { sim: "η_{2}", nombre: "rendimiento de la etapa aislada", unidad: "", valor: 0.94 }
+  calculos:
+    V_pk: { expr: "V_p - 2*V_d", sim: "V_{pico}", nombre: "pico en el condensador", unidad: V }
+    T_r: { expr: "1/f_r", sim: "T", nombre: "periodo de la red", unidad: s }
+    tau: { expr: "R_c*C_b", sim: "τ", nombre: "constante de descarga", unidad: s }
+    V_v: { expr: "V_pk*exp(-T_r/(2*tau))", sim: "V_{valle}", nombre: "valle del condensador, aproximado", unidad: V }
+    ang: { expr: "90 - atan2(V_v/V_p, sqrt(1 - (V_v/V_p)^2))*180/pi", sim: "θ", nombre: "ángulo de conducción por semiciclo, aproximado", unidad: "°", cifras: 2 }
+    eta_t: { expr: "eta_1*eta_2", sim: "η", nombre: "rendimiento de la fuente", unidad: "" }
+    eta_m: { expr: "(eta_1 + eta_2)/2", sim: "η", nombre: "media de los dos rendimientos", unidad: "" }
+
+tarjetas:
+  - id: explore-pulsos
+    tipo: explorar
+    titulo: "Solo en los picos"
+    texto: "Red rectificada con condensador: la corriente solo entra mientras la red supera al condensador. Cambie el condensador y mire el ángulo."
+    libro: [239, 257]
+    widget:
+      tipo: circuito
+      esquema: puente
+      piezas: { fuente: V_p, f: f_r, vd: V_d, c: C_b, carga: R_c }
+      lectura: { valor: ang, rotulo: "Conduce, por semiciclo" }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 350, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_p*abs(sin(2*pi*f_r*t)) - 2*V_d", color: tinta, rotulo: "red rectificada", discontinua: true }
+          - { expr: "max(V_p*abs(sin(2*pi*f_r*t)) - 2*V_d, V_pk*exp(-(t - T_r/4 - T_r/2*floor((t - T_r/4)/(T_r/2)))/tau))", color: naranja, rotulo: "condensador", mide: salida }
+      mandos:
+        - { valor: C_b, lista: [4.7e-5, 1e-4, 2.2e-4], rotulo: "Condensador de bus" }
+    requiere: { mover: [C_b] }
+
+  - id: explore-figura
+    tipo: explorar
+    titulo: "Pulsos frente a senoide"
+    texto: "Toque las dos mitades: sin corrección, pulsos estrechos en los picos; con PFC activo, una senoide en fase con la tensión."
+    libro: [262, 263]
+    widget:
+      tipo: figura
+      figura: fig-33.9
+      zonas:
+        - { id: sin, rotulo: "La gráfica de la izquierda", rect: [0, 0, 222, 190], texto: "Pulsos estrechos alrededor del pico: mucha corriente en poco tiempo." }
+        - { id: con, rotulo: "La gráfica de la derecha", rect: [226, 0, 222, 190], texto: "La fuente parece una resistencia: la corriente sigue a la tensión." }
+    requiere: { mover: [sin, con] }
+
+  - id: doble-corriente
+    tipo: pregunta
+    titulo: "Hasta el doble"
+    texto: "Una fuente sin corrección tiene un factor de potencia de 0,5. ¿Qué corriente transporta la instalación?"
+    libro: [240]
+    widget:
+      tipo: figura
+      figura: fig-33.9
+      zonas:
+        - { id: sin, rotulo: "La gráfica de la izquierda", rect: [0, 0, 222, 190] }
+    opciones:
+      - texto: "Hasta el doble de la que corresponde a la potencia consumida"
+        bien: true
+        porque: "Para la misma potencia, la corriente eficaz es inversamente proporcional al factor de potencia."
+      - texto: "La mitad"
+        porque: "Al revés: con factor 0,5 hace falta más corriente para la misma potencia, no menos."
+      - texto: "La misma: la potencia no cambia"
+        porque: "La potencia es la misma, pero los pulsos estrechos llevan más corriente eficaz."
+    escalera:
+      - "P = V·I·FP: con la misma P y la misma V, ¿qué le pasa a I si FP baja a la mitad?"
+    solucion: "Hasta el doble: I = P/(V·FP)."
+
+  - id: consecuencias
+    tipo: pregunta
+    titulo: "Tres consecuencias"
+    texto: "Empareje cada consecuencia de los pulsos con su efecto."
+    libro: [240, 241, 242]
+    widget:
+      tipo: figura
+      figura: fig-33.9
+      zonas:
+        - { id: sin, rotulo: "La gráfica de la izquierda", rect: [0, 0, 222, 190] }
+    emparejar:
+      - ["Factor de potencia", "En torno a 0,5 o 0,6"]
+      - ["Armónicos impares", "Calientan transformadores y se suman en el neutro"]
+      - ["Norma EN 61000-3-2", "Obligatorio corregir por encima de unos 75 W"]
+    exito: "Por eso casi toda fuente de cierta potencia lleva PFC."
+    pistas:
+      - { texto: "Los que se suman en el neutro son los armónicos." }
+    escalera:
+      - "La norma pone un límite de potencia."
+    solucion: "FP de 0,5 a 0,6; armónicos que calientan y se suman; la norma por encima de 75 W."
+
+  - id: pasivo-activo
+    tipo: pregunta
+    titulo: "Pasivo o activo"
+    texto: "Empareje cada PFC con su manera de corregir."
+    libro: [245, 248, 249]
+    widget:
+      tipo: figura
+      figura: fig-33.9
+      zonas:
+        - { id: con, rotulo: "La gráfica de la derecha", rect: [226, 0, 222, 190] }
+    emparejar:
+      - ["PFC pasivo", "Bobina de 50 Hz que ensancha el pulso: de 0,7 a 0,8"]
+      - ["PFC activo", "Un elevador que hace seguir a la corriente la forma de la red: 0,99"]
+    exito: "El activo hace que la fuente parezca una resistencia vista desde la red."
+    pistas:
+      - { texto: "La bobina grande y pesada es la del pasivo: trabaja a 50 Hz." }
+    escalera:
+      - "Solo uno de los dos conmuta."
+    solucion: "Pasivo: bobina de red, 0,7–0,8. Activo: elevador controlado, 0,99."
+
+  - id: prediga-bus
+    tipo: predecir
+    titulo: "La tensión del bus"
+    texto: "Una fuente con PFC activo, conectada a la red de 325 V de pico. ¿A qué tensión está su condensador de bus?"
+    libro: [250, 257]
+    widget:
+      tipo: circuito
+      esquema: puente
+      piezas: { fuente: V_p, f: f_r, vd: V_d, c: C_b, carga: R_c }
+      lectura: { valor: V_pk, rotulo: "Sin PFC, el condensador llega a" }
+      ocultar: true
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 450, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(V_p*abs(sin(2*pi*f_r*t)) - 2*V_d, V_pk*exp(-(t - T_r/4 - T_r/2*floor((t - T_r/4)/(T_r/2)))/tau))", color: tinta, rotulo: "sin PFC", mide: salida, discontinua: true }
+      mandos: []
+    opciones:
+      - texto: "A unos 400 V"
+        bien: true
+        porque: "El PFC es un elevador: su salida, típicamente 400 V, está por encima del pico de red."
+      - texto: "A unos 325 V, el pico de la red"
+        porque: "Eso es sin PFC. El elevador sube el bus por encima del pico."
+      - texto: "A la tensión eficaz de la red"
+        porque: "El bus se carga al menos hasta el pico, y el elevador lo sube por encima."
+    escalera:
+      - "¿Qué topología es el PFC activo, y qué hace con la tensión?"
+    solucion: "Unos 400 V, no los 325 del pico de red."
+
+  - id: simule-cascada
+    tipo: simular
+    titulo: "Dos etapas en cascada"
+    texto: "El PFC rinde 0,97 y la etapa aislada que le sigue, 0,94. ¿Qué rendimiento tiene la fuente?"
+    libro: [251]
+    simular:
+      objetivo: eta_t
+      unidad: ""
+      tol: 0.01
+      rotulo: "Rendimiento de la fuente"
+      errores:
+        - { expr: "eta_m", texto: "Ha promediado. La potencia pasa por las dos etapas: los rendimientos se multiplican." }
+        - { expr: "eta_2", texto: "0,94 es solo la segunda etapa; la primera también pierde un 3 %." }
+    exito: "0,91: dos etapas de conmutación, con los rendimientos multiplicándose."
+    escalera:
+      - "Lo que sale del PFC es lo que entra en la etapa aislada."
+    solucion: "0,97 × 0,94 = 0,91."
+    comprobar:
+      - { eta_t: 0.912, eta_m: 0.955, tol: 0.002 }
+
+  - id: modos
+    tipo: pregunta
+    titulo: "Modos y variantes"
+    texto: "Empareje cada variante del PFC activo con su rasgo."
+    libro: [253, 254, 255]
+    widget:
+      tipo: figura
+      figura: fig-33.9
+      zonas:
+        - { id: con, rotulo: "La gráfica de la derecha", rect: [226, 0, 222, 190] }
+    emparejar:
+      - ["Conducción continua", "Menos rizado; habitual por encima de unos 300 W"]
+      - ["Conducción crítica", "Conmuta a corriente nula, con frecuencia variable"]
+      - ["Sin puente", "Ahorra la caída de dos diodos"]
+    exito: "Cada una gana algo: rizado, conmutación suave o rendimiento."
+    pistas:
+      - { texto: "La que conmuta justo cuando la corriente llega a cero es la crítica." }
+    escalera:
+      - "La que elimina el rectificador es la sin puente."
+    solucion: "Continua: poco rizado, más de 300 W. Crítica: corriente nula. Sin puente: dos diodos menos."
+
+  - id: averia-pfc
+    tipo: pregunta
+    titulo: "Funciona, pero se protege"
+    texto: "Una fuente con PFC funciona en vacío pero se protege con carga, y el bus mide 325 V. ¿Qué falla?"
+    libro: [257, 259]
+    widget:
+      tipo: circuito
+      esquema: puente
+      piezas: { fuente: V_p, f: f_r, vd: V_d, c: C_b, carga: R_c }
+      lectura: { valor: V_pk, rotulo: "Bus sin PFC" }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 450, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(V_p*abs(sin(2*pi*f_r*t)) - 2*V_d, V_pk*exp(-(t - T_r/4 - T_r/2*floor((t - T_r/4)/(T_r/2)))/tau))", color: naranja, rotulo: "bus", mide: salida }
+      mandos: []
+    opciones:
+      - texto: "El PFC no arranca: el bus se queda en el pico de red"
+        bien: true
+        porque: "Sin el elevador, la etapa siguiente trabaja con menos tensión y solo da menos potencia."
+      - texto: "El condensador de bus está abierto"
+        porque: "Sin condensador el bus no se sostendría en 325 V entre picos."
+      - texto: "Todo está bien: 325 V es lo normal"
+        porque: "Con PFC el bus debe estar a unos 400 V; 325 V es el pico de red sin elevar."
+    escalera:
+      - "¿Qué tensión debería tener el bus con el PFC funcionando?"
+    solucion: "El PFC no arranca: bus a 325 V en lugar de 400 V, y la fuente se protege con carga."
+
+  - id: por-que-cuidado
+    tipo: porque
+    titulo: "Antes de tocar"
+    texto: "¿Por qué el bus de una fuente con PFC exige especial cuidado al repararla?"
+    libro: [258]
+    widget:
+      tipo: figura
+      figura: fig-33.9
+      zonas:
+        - { id: con, rotulo: "La gráfica de la derecha", rect: [226, 0, 222, 190] }
+    opciones:
+      - texto: "Su condensador almacena mucha energía a 400 V y tarda en descargarse"
+        bien: true
+        porque: "Aunque la fuente esté desenchufada, el bus puede seguir cargado: hay que comprobarlo antes de tocar."
+      - texto: "Porque el PFC conmuta a alta frecuencia"
+        porque: "La frecuencia no es el riesgo al tocar; lo es la energía guardada a 400 V."
+      - texto: "Porque la bobina del PFC quema"
+        porque: "El peligro es eléctrico: el condensador cargado a 400 V."
+    escalera:
+      - "¿Qué queda en la placa después de desenchufar?"
+    solucion: "El condensador de bus guarda energía a 400 V y tarda en descargarse."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [239, 248, 250, 251, 259]
+    ideas:
+      - { titulo: "Pulsos en los picos.", texto: "Mal factor de potencia, armónicos y la norma por encima de 75 W." }
+      - { titulo: "PFC activo.", texto: "Un elevador que hace que la corriente siga a la tensión: 0,99." }
+      - { titulo: "Bus de 400 V.", texto: "Dos etapas en cascada: los rendimientos se multiplican." }
+      - { titulo: "Al diagnosticar.", texto: "Bus a 325 V: el PFC no arranca. Y el condensador tarda en descargarse." }

@@ -1,0 +1,224 @@
+# Lección 1.2 de la sección 33.12 «Por Qué el FM7303 Renuncia a Todo Esto» (cap33, sec-33.10). Formato: GUIA.md.
+# - El regulador lineal del receptor, de 9 V a 5 V (bloque 403), con el esquema «regulador-lineal» sin divisor ni
+#   dropout; la carga de 50 Ω (100 mA) es mía: el libro solo dice «unos pocos vatios» como mucho.
+# - La figura 33.11 con zonas (criterios, solución mixta, el receptor).
+# Sin paso práctico: el «banco» del libro (pilas frente a adaptador) es de oído, sin un número que comparar.
+leccion: cap33/sec-33.10
+
+libro:
+  401: "Los armónicos de un conmutador a 500 kHz caen dentro de las bandas de recepción"
+  402: "la disipación de un lineal es asumible"
+  403: "de 9 a 5 V es un 56 %"
+  404: "Un regulador lineal son tres componentes"
+  406: "la eficiencia no es el único criterio"
+  407: "Hay que elevar o invertir"
+  408: "conmutada para el grueso, seguida de un LDO para las alimentaciones sensibles"
+  414: "Filtrado de la entrada con una bobina o ferrita"
+  415: "todo el problema de ruido se traslada a ese adaptador"
+  418: "Con pilas, silencio"
+  419: "Criterios para elegir entre regulador lineal y conmutada"
+
+modelo:
+  valores:
+    V_i: { sim: "V_{in}", nombre: "tensión de entrada", unidad: V, valor: 12 }
+    V_o5: { sim: "V_{ref}", nombre: "tensión de salida fijada", unidad: V, valor: 5 }
+    R_L: { sim: "R_{L}", nombre: "carga del receptor", unidad: Ω, valor: 50 }
+  calculos:
+    V_o: { expr: "min(V_o5, V_i)", sim: "V_{out}", nombre: "tensión de salida", unidad: V }
+    I_L: { expr: "V_o/R_L", sim: "I", nombre: "corriente del receptor", unidad: A }
+    P_paso: { expr: "(V_i - V_o)*I_L", sim: "P_{paso}", nombre: "potencia en el elemento de paso", unidad: W }
+    eta: { expr: "V_o/V_i*100", sim: "η", nombre: "rendimiento", unidad: "%" }
+
+tarjetas:
+  - id: explore-receptor
+    tipo: explorar
+    titulo: "Un lineal en el receptor"
+    texto: "El regulador del receptor da 5 V. Baje la entrada hacia 9 V y mire el rendimiento y lo que se disipa."
+    libro: [402, 403]
+    widget:
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_i, ref: V_o5, carga: R_L }
+      lectura: { valor: eta, rotulo: "Rendimiento" }
+      datos:
+        - { valor: P_paso, rotulo: "Disipa {{P_paso}}" }
+      corriente: I_L
+      mide: { vout: V_o, iin: I_L, iout: I_L, icarga: I_L, p_paso: P_paso }
+      mandos:
+        - { valor: V_i, min: 6, max: 15, paso: 0.5, rotulo: "Entrada, V_{in}" }
+    requiere: { mover: [V_i] }
+
+  - id: estime-rendimiento
+    tipo: pregunta
+    titulo: "De 9 V a 5 V"
+    texto: "¿Qué rendimiento tiene un regulador lineal de 9 V a 5 V?"
+    libro: [403]
+    fijar: { V_i: 9 }
+    widget:
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_i, ref: V_o5, carga: R_L }
+      corriente: I_L
+      mide: { vout: V_o, iin: I_L }
+      mandos: []
+    estimar:
+      objetivo: "eta"
+      unidad: "%"
+      min: 0
+      max: 100
+      paso: 1
+      inicio: 90
+      tol: 0.04
+      rotulo: "Rendimiento"
+    exito: "Un 56 %: pobre en abstracto, aceptable con la potencia de un receptor."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 58 }, texto: "Se ha pasado: el rendimiento de un lineal es V_{out}/V_{in}." }
+      - { texto: "Se ha quedado corto: la carga se queda 5 de los 9 V." }
+    escalera:
+      - "η = V_{out}/V_{in}."
+    solucion: "5/9 = 56 %."
+    comprobar:
+      - { eta: 55.6, tol: 0.002 }
+
+  - id: ruido
+    tipo: pregunta
+    titulo: "La razón de fondo"
+    texto: "¿Por qué un receptor de radio no lleva fuente conmutada?"
+    libro: [401]
+    widget:
+      tipo: figura
+      figura: fig-33.11
+      zonas:
+        - { id: receptor, rotulo: "Recuadro de abajo a la derecha", rect: [273, 130, 170, 84] }
+    opciones:
+      - texto: "Los armónicos del conmutador caerían en las bandas de recepción"
+        bien: true
+        porque: "Un receptor está hecho para detectar señales diminutas: los armónicos de 500 kHz crean puntos ciegos."
+      - texto: "Porque el lineal es más eficiente"
+        porque: "Al contrario: de 9 a 5 V rinde un 56 %. Se elige pese a eso, por el ruido."
+      - texto: "Porque un lineal puede elevar la tensión"
+        porque: "Un lineal no eleva: solo puede bajar."
+    escalera:
+      - "¿Qué hace un receptor, y qué genera un conmutador?"
+    solucion: "El ruido: los armónicos de la conmutación caen en las bandas que el receptor quiere oír."
+
+  - id: razones
+    tipo: pregunta
+    titulo: "Cuatro razones"
+    texto: "Empareje cada razón del lineal en el receptor con su explicación."
+    libro: [401, 402, 403, 404]
+    widget:
+      tipo: figura
+      figura: fig-33.11
+      zonas:
+        - { id: lineal, rotulo: "Recuadro de arriba a la izquierda", rect: [3, 3, 141, 118] }
+    emparejar:
+      - ["El ruido", "Incompatible con detectar señales diminutas"]
+      - ["La potencia", "Unos pocos vatios: la disipación es asumible"]
+      - ["La diferencia de tensión", "De 9 a 5 V: un 56 %, aceptable"]
+      - ["La simplicidad", "Tres componentes, nada que pueda oscilar ni radiar"]
+    exito: "La eficiencia no es el único criterio."
+    pistas:
+      - { texto: "Los tres componentes son la simplicidad." }
+    escalera:
+      - "Empiece por el ruido: es la razón de fondo."
+    solucion: "Ruido, poca potencia, poca diferencia de tensión y simplicidad."
+
+  - id: criterios
+    tipo: pregunta
+    titulo: "Lineal o conmutada"
+    texto: "Empareje cada situación con lo que conviene."
+    libro: [406, 407, 419]
+    widget:
+      tipo: figura
+      figura: fig-33.11
+      zonas:
+        - { id: lineal, rotulo: "Recuadro de arriba a la izquierda", rect: [3, 3, 141, 118] }
+        - { id: conmutada, rotulo: "Recuadro de arriba a la derecha", rect: [233, 3, 210, 118] }
+    emparejar:
+      - ["Hay que elevar o invertir", "Conmutada"]
+      - ["Alimentación analógica sensible", "Lineal"]
+      - ["Mucha potencia y mucha diferencia", "Conmutada"]
+      - ["Poca potencia y la simplicidad vale", "Lineal"]
+    exito: "Un lineal no puede elevar ni invertir: ahí no hay elección."
+    pistas:
+      - { texto: "Lo analógico sensible pide poco ruido." }
+    escalera:
+      - "Un lineal solo puede bajar la tensión."
+    solucion: "Elevar o invertir y mucha potencia: conmutada. Analógica sensible y poca potencia: lineal."
+
+  - id: mixta
+    tipo: pregunta
+    titulo: "Lo mejor de los dos"
+    texto: "Un equipo moderno con partes analógicas y digitales. ¿Cómo se alimenta lo analógico sensible?"
+    libro: [408]
+    widget:
+      tipo: figura
+      figura: fig-33.11
+      zonas:
+        - { id: mixta, rotulo: "Abajo a la izquierda", rect: [0, 130, 247, 93] }
+    opciones:
+      - texto: "Conmutada para el grueso, y un LDO detrás para lo sensible"
+        bien: true
+        porque: "Rendimiento del conmutador y ruido bajo del lineal, a costa de una caída pequeña."
+      - texto: "Todo con lineales en paralelo"
+        porque: "Con la potencia de un equipo así, el grueso disiparía demasiado."
+      - texto: "Todo con conmutadas, cada una con su filtro"
+        porque: "Se puede filtrar, pero lo habitual es el LDO detrás de la conmutada."
+    escalera:
+      - "Una caída pequeña en un lineal casi no cuesta rendimiento."
+    solucion: "Conmutada para el grueso y un LDO para las alimentaciones sensibles."
+
+  - id: prediga-pilas
+    tipo: predecir
+    titulo: "Pilas o adaptador"
+    texto: "El receptor se alimenta primero con pilas y luego con un adaptador conmutado barato. ¿Qué se oye?"
+    libro: [415, 418]
+    widget:
+      tipo: figura
+      figura: fig-33.11
+      zonas:
+        - { id: receptor, rotulo: "Recuadro de abajo a la derecha", rect: [273, 130, 170, 84] }
+    opciones:
+      - texto: "Con pilas silencio; con el adaptador, zumbidos o silbidos en frecuencias concretas"
+        bien: true
+        porque: "El problema de ruido se traslada al adaptador, que parece culpa del receptor."
+      - texto: "Lo mismo: el regulador lineal limpia todo"
+        porque: "El lineal ayuda, pero el ruido del adaptador entra igual por la alimentación y por radiación."
+      - texto: "Más ruido con pilas"
+        porque: "Las pilas no conmutan: son la fuente más silenciosa."
+    escalera:
+      - "¿Cuál de las dos fuentes conmuta?"
+    solucion: "Con pilas silencio; con muchos adaptadores, zumbidos y silbidos."
+
+  - id: por-que-ferrita
+    tipo: porque
+    titulo: "Lo que sí lleva"
+    texto: "Sin convertidor conmutado, el receptor filtra su entrada con una bobina o una ferrita. ¿Por qué?"
+    libro: [414, 415]
+    widget:
+      tipo: figura
+      figura: fig-33.11
+      zonas:
+        - { id: receptor, rotulo: "Recuadro de abajo a la derecha", rect: [273, 130, 170, 84] }
+    opciones:
+      - texto: "Para que el ruido de la fuente externa, a menudo conmutada, no entre"
+        bien: true
+        porque: "El adaptador suele ser conmutado: el filtro de entrada es la defensa del receptor."
+      - texto: "Para subir la tensión de entrada"
+        porque: "Una bobina en serie no eleva nada sin interruptor; aquí solo filtra."
+      - texto: "Para limitar la corriente de arranque"
+        porque: "No es su función aquí: está para frenar el ruido."
+    escalera:
+      - "¿De dónde viene el ruido si el receptor no conmuta?"
+    solucion: "Para frenar el ruido de la fuente externa."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [401, 403, 406, 408]
+    ideas:
+      - { titulo: "El ruido manda.", texto: "Un receptor no tolera los armónicos de un conmutador." }
+      - { titulo: "Lineal aceptable.", texto: "De 9 a 5 V, un 56 %, con poca potencia." }
+      - { titulo: "Más de un criterio.", texto: "Ruido, diferencia de tensión, potencia, simplicidad." }
+      - { titulo: "Solución mixta.", texto: "Conmutada para el grueso y LDO para lo sensible." }

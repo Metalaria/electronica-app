@@ -1,0 +1,353 @@
+# Lección 1.2 de la sección 33.17 «Compensación del Lazo: Redes de Tipo II y Tipo III» (cap33, sec-33.16).
+# Formato: GUIA.md.
+# - El ejemplo de tipo II del bloque 596: planta con polo en 300 Hz y cero del ESR en 11 kHz, red con R₁ = 10 kΩ, cero
+#   en 300 Hz y polo en 11 kHz; la ganancia de la zona plana es R₂/R₁ (los condensadores se reajustan para que el
+#   cero y el polo no se muevan, como dice el libro). La ganancia de la planta, K = 5,42, es mía: la que da −12 dB a
+#   8 kHz, de modo que con R₂ = 40 kΩ la red da 10,1 dB y el lazo cruza algo por debajo (bloque 596), y con un 25 %
+#   más de R₂ cruza en 8 kHz. |T| = K·(R₂/R₁)·√(1 + (f/f_z)²)/(f/f_z)/√(1 + (f/f_p)²)·√(1 + (f/f_ESR)²)/√(1 + (f/f_pl)²).
+# Paso práctico: «ajuste» de R₂ hasta que el lazo cruce en 8 kHz (|T(8 kHz)| entre −0,5 y +0,5 dB).
+leccion: cap33/sec-33.16
+
+libro:
+  571: "hay que calcular, no ajustar por tanteo"
+  575: 'f_("LC") = ("1")/("2" π dot.op sqrt(L dot.op C))'
+  576: "con L = 100 µH y C = 470 µF está en 734 Hz"
+  579: "que con 30 mΩ y 470 µF está en 11,3 kHz"
+  580: "en modo corriente el lazo interno cancela un polo"
+  583: "Con 100 kHz, entre 5 y 10 kHz"
+  584: "Margen de fase: 45° a 60°"
+  585: "Ganancia en continua alta"
+  586: "al menos 20 dB"
+  588: "Da hasta 90° de adelanto, suficiente cuando la planta es de primer orden"
+  592: 'f_("z") = ("1")/("2" π dot.op R_("2") dot.op C_("1"))'
+  596: "planta con polo en 300 Hz, ESR en 11 kHz, cruce deseado en 8 kHz, R₁ = 10 kΩ"
+  598: "hacen falta hasta 180° de adelanto"
+  606: "Polo 2"
+  613: "margen ≈ 75°, holgado"
+  614: "Un lazo estable solo con el ESR nominal no es un lazo estable"
+  618: "el cruce no puede pasar de 2 kHz"
+  622: "Sobreoscilación de una o dos ondas y recuperación limpia"
+  623: "Muchas oscilaciones antes de estabilizarse"
+  624: "Recuperación lenta sin sobreoscilación"
+  626: "Ganancia y fase del lazo compensado con una red de tipo III"
+
+modelo:
+  valores:
+    L: { sim: "L", nombre: "bobina de salida", unidad: H, valor: 0.0001 }
+    C: { sim: "C", nombre: "condensador de salida", unidad: F, valor: 0.00047 }
+    ESR: { sim: "ESR", nombre: "resistencia serie del condensador", unidad: Ω, valor: 0.03 }
+    R_1: { sim: "R₁", nombre: "resistencia de entrada de la red", unidad: Ω, valor: 10000 }
+    R_2: { sim: "R₂", nombre: "resistencia de la red", unidad: Ω, valor: 20000 }
+    f_z: { sim: "f_{z}", nombre: "cero de la red", unidad: Hz, valor: 300 }
+    f_p: { sim: "f_{p}", nombre: "polo de la red", unidad: Hz, valor: 11000 }
+    f_pl: { sim: "f_{planta}", nombre: "polo de la planta", unidad: Hz, valor: 300 }
+    f_e: { sim: "f_{ESR}", nombre: "cero del ESR", unidad: Hz, valor: 11000 }
+    K_p: { sim: "K", nombre: "ganancia de la planta", unidad: "", valor: 5.42 }
+    f_c: { sim: "f_{c}", nombre: "cruce deseado", unidad: Hz, valor: 8000 }
+    f_rhz: { sim: "f_{RHZ}", nombre: "cero en el semiplano derecho", unidad: Hz, valor: 6000 }
+  calculos:
+    f_LC: { expr: "1/(2*pi*sqrt(L*C))", sim: "f_{LC}", nombre: "doble polo del filtro", unidad: Hz }
+    f_ESR: { expr: "1/(2*pi*ESR*C)", sim: "f_{ESR}", nombre: "cero del ESR", unidad: Hz }
+    C_1: { expr: "1/(2*pi*R_2*f_z)", sim: "C₁", nombre: "condensador del cero", unidad: F }
+    T_8: { expr: "20*log10(K_p*R_2/R_1*sqrt(1 + (f_c/f_z)^2)/(f_c/f_z)/sqrt(1 + (f_c/f_p)^2)*sqrt(1 + (f_c/f_e)^2)/sqrt(1 + (f_c/f_pl)^2))", sim: "|T|", nombre: "ganancia del lazo en 8 kHz", unidad: dB, cifras: 2 }
+    G_r8: { expr: "20*log10(R_2/R_1*sqrt(1 + (f_c/f_z)^2)/(f_c/f_z)/sqrt(1 + (f_c/f_p)^2))", sim: "|G_{red}|", nombre: "ganancia de la red en 8 kHz", unidad: dB }
+    f_cmax: { expr: "f_rhz/3", sim: "f_{c}", nombre: "cruce máximo", unidad: Hz }
+
+tarjetas:
+  - id: formula-lc
+    tipo: formula
+    titulo: "El doble polo del filtro"
+    texto: "La planta empieza por el filtro de salida: con 100 µH y 470 µF, 734 Hz y 180° de retardo por encima. Cambie la bobina."
+    libro: [575, 576]
+    ec: 575
+    sustitucion: "1 / (2π · √({{L}} · {{C}})) = {{f_LC}}"
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 10, max: 100000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: -80, max: 30, unidad: dB, rotulo: "|H_{LC}|" }
+      curvas:
+        - { expr: "-20*log10(abs(1 - (nu/f_LC)^2) + 0.05*nu/f_LC)", color: naranja, rotulo: "filtro LC" }
+      marcas:
+        - { x: "f_LC", y: "0", rotulo: "f_{LC}" }
+      mandos:
+        - { valor: L, lista: [0.000047, 0.0001, 0.00022], rotulo: "Bobina, L" }
+    comprobar:
+      - { f_LC: 734 }
+
+  - id: estime-esr
+    tipo: pregunta
+    titulo: "El cero del ESR"
+    texto: "El condensador de 470 µF con 30 mΩ de ESR aporta un cero que devuelve 90°. ¿En qué frecuencia?"
+    libro: [579]
+    fijar: { C: 0.00047, ESR: 0.03 }
+    widget:
+      tipo: figura
+      figura: fig-33.18
+      zonas:
+        - { id: bode, rotulo: "El diagrama de Bode", rect: [0, 0, 444, 199] }
+    estimar:
+      objetivo: "f_ESR"
+      unidad: Hz
+      min: 0
+      max: 30000
+      paso: 100
+      inicio: 25000
+      tol: 0.04
+      rotulo: "Cero del ESR"
+    exito: "11,3 kHz: por encima del doble polo, devuelve 90° de fase."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 11800 }, texto: "Se ha pasado: f = 1/(2π·ESR·C)." }
+      - { texto: "Se ha quedado corto: calcule 2π × 30 mΩ × 470 µF e invierta." }
+    escalera:
+      - "f_{ESR} = 1/(2π·ESR·C)."
+    solucion: "1/(2π × 0,03 × 470 µF) = 11,3 kHz."
+    comprobar:
+      - { f_ESR: 11290, tol: 0.003 }
+
+  - id: objetivos
+    tipo: pregunta
+    titulo: "Los objetivos"
+    texto: "Empareje cada objetivo de la compensación con su valor."
+    libro: [583, 584, 585, 586, 626]
+    widget:
+      tipo: figura
+      figura: fig-33.18
+      zonas:
+        - { id: bode, rotulo: "El diagrama de Bode", rect: [0, 0, 444, 199] }
+    emparejar:
+      - ["Frecuencia de cruce", "De f_{conmutación}/20 a f_{conmutación}/10"]
+      - ["Margen de fase", "De 45° a 60°"]
+      - ["Ganancia en continua", "Alta: error estático pequeño"]
+      - ["En la frecuencia de conmutación", "Al menos 20 dB de atenuación"]
+    exito: "Con 100 kHz, el cruce entre 5 y 10 kHz."
+    pistas:
+      - { texto: "Menos de 45° oscila; más de 60° es lento." }
+    escalera:
+      - "El rizado no debe entrar en el lazo: eso pide atenuación en la conmutación."
+    solucion: "Cruce de f/20 a f/10, margen de 45 a 60°, continua alta y 20 dB en la conmutación."
+
+  - id: tipo-ii-iii
+    tipo: predecir
+    titulo: "¿Tipo II o tipo III?"
+    texto: "Un convertidor en modo corriente: el lazo interno cancela un polo. ¿Qué red de compensación basta?"
+    libro: [571, 580, 588, 598]
+    widget:
+      tipo: figura
+      figura: fig-33.18
+      zonas:
+        - { id: bode, rotulo: "El diagrama de Bode", rect: [0, 0, 444, 199] }
+    opciones:
+      - texto: "Tipo II: hasta 90° de adelanto, suficiente para una planta de primer orden"
+        bien: true
+        porque: "El tipo III es para el modo tensión, donde el doble polo LC roba 180°."
+      - texto: "Tipo III: siempre hace falta"
+        porque: "Solo con el doble polo del modo tensión hacen falta hasta 180° de adelanto."
+      - texto: "Ninguna: el modo corriente es estable solo"
+        porque: "El lazo de tensión exterior sigue necesitando su red, aunque más sencilla."
+    escalera:
+      - "¿Cuántos polos deja la planta en modo corriente?"
+    solucion: "Tipo II: la planta es de primer orden."
+
+  - id: explore-tipo-ii
+    tipo: explorar
+    titulo: "El lazo con tipo II"
+    texto: "Polo de la planta en 300 Hz, ESR en 11 kHz; la red con su cero en 300 Hz y su polo en 11 kHz. Mueva R₂ y mire dónde cruza el lazo."
+    libro: [592, 596]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 10, max: 100000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: -40, max: 60, unidad: dB, rotulo: "|T|" }
+      curvas:
+        - { expr: "20*log10(K_p*R_2/R_1*sqrt(1 + (nu/f_z)^2)/(nu/f_z)/sqrt(1 + (nu/f_p)^2)*sqrt(1 + (nu/f_e)^2)/sqrt(1 + (nu/f_pl)^2))", color: naranja, rotulo: "ganancia del lazo" }
+        - { expr: "0", color: tinta, rotulo: "0 dB", discontinua: true }
+      marcas:
+        - { x: "f_c", y: "T_8", rotulo: "8 kHz" }
+      lectura: { valor: T_8, rotulo: "Lazo en 8 kHz" }
+      mandos:
+        - { valor: R_2, min: 10000, max: 80000, paso: 1000, rotulo: "R₂" }
+    requiere: { mover: [R_2] }
+
+  - id: estime-c1
+    tipo: pregunta
+    titulo: "El condensador del cero"
+    texto: "Con R₂ = 40 kΩ, ¿qué C₁ pone el cero de la red en 300 Hz?"
+    libro: [592, 596]
+    fijar: { R_2: 40000 }
+    widget:
+      tipo: figura
+      figura: fig-33.18
+      zonas:
+        - { id: bode, rotulo: "El diagrama de Bode", rect: [0, 0, 444, 199] }
+    estimar:
+      objetivo: "C_1"
+      unidad: F
+      min: 0
+      max: 5e-8
+      paso: 5e-10
+      inicio: 4e-8
+      tol: 0.05
+      rotulo: "C₁"
+    exito: "13 nF; y C₂ = 360 pF pone el polo en 11 kHz."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 1.4e-8 }, texto: "Se ha pasado: con más C₁ el cero baja de 300 Hz." }
+      - { texto: "Se ha quedado corto: C₁ = 1/(2π·R₂·f_{z})." }
+    escalera:
+      - "Despeje C₁ de f_{z} = 1/(2π·R₂·C₁)."
+    solucion: "1/(2π × 40 kΩ × 300 Hz) ≈ 13 nF."
+    comprobar:
+      - { C_1: 1.33e-8, tol: 0.01 }
+
+  - id: ajuste-r2
+    tipo: ajuste
+    titulo: "Clave el cruce"
+    texto: "Con R₂ = 40 kΩ la red da 10,1 dB en 8 kHz y el lazo cruza algo por debajo. Ajuste R₂ hasta cruzar en 8 kHz."
+    libro: [596]
+    inicio: { R_2: 40000 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 10, max: 100000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: -40, max: 60, unidad: dB, rotulo: "|T|" }
+      curvas:
+        - { expr: "20*log10(K_p*R_2/R_1*sqrt(1 + (nu/f_z)^2)/(nu/f_z)/sqrt(1 + (nu/f_p)^2)*sqrt(1 + (nu/f_e)^2)/sqrt(1 + (nu/f_pl)^2))", color: naranja, rotulo: "ganancia del lazo" }
+        - { expr: "0", color: tinta, rotulo: "0 dB", discontinua: true }
+      marcas:
+        - { x: "f_c", y: "T_8", rotulo: "8 kHz" }
+      mandos:
+        - { valor: R_2, min: 10000, max: 80000, paso: 1000, rotulo: "R₂" }
+    ajuste:
+      valor: T_8
+      min: -0.5
+      max: 0.5
+      rotulo: "Ganancia del lazo en 8 kHz"
+      escala: { min: -6, max: 6 }
+      bajo: "Cruza por debajo de 8 kHz: suba R₂."
+      alto: "Cruza por encima: baje R₂."
+      dentro: "Cruza en 8 kHz: un 25 % más de R₂, con C₁ y C₂ reajustados para no mover el cero ni el polo."
+    comprobar:
+      - { G_r8: 10.1, tol: 0.02 }
+
+  - id: tipo-iii
+    tipo: pregunta
+    titulo: "La receta del tipo III"
+    texto: "Modo tensión con f_{LC} = 734 Hz, f_{ESR} = 11,3 kHz y 100 kHz de conmutación. Empareje cada elemento con su sitio."
+    libro: [606]
+    widget:
+      tipo: figura
+      figura: fig-33.18
+      zonas:
+        - { id: bode, rotulo: "El diagrama de Bode", rect: [0, 0, 444, 199] }
+    emparejar:
+      - ["Cero 1", "370 Hz, la mitad de f_{LC}"]
+      - ["Cero 2", "734 Hz, en f_{LC}"]
+      - ["Polo 1", "11,3 kHz, en el cero del ESR"]
+      - ["Polo 2", "50 kHz, la mitad de la conmutación"]
+    exito: "Los ceros cancelan el doble polo; un polo, el cero del ESR; el otro atenúa el rizado."
+    pistas:
+      - { texto: "El polo que atenúa el rizado va en f_{sw}/2." }
+    escalera:
+      - "Los dos ceros van cerca del doble polo LC."
+    solucion: "Ceros en 370 y 734 Hz; polos en 11,3 y 50 kHz."
+
+  - id: sobra-margen
+    tipo: pregunta
+    titulo: "Margen de sobra"
+    texto: "Con la receta, el margen de fase en 8 kHz queda en unos 75°, holgado. ¿Qué se hace si se quiere de 45° a 60°?"
+    libro: [613]
+    widget:
+      tipo: figura
+      figura: fig-33.18
+      zonas:
+        - { id: bode, rotulo: "El diagrama de Bode", rect: [0, 0, 444, 199] }
+    opciones:
+      - texto: "Acercar los ceros al cruce, y se puede subir f_{c}"
+        bien: true
+        porque: "Los ceros dan menos fase en el cruce: el lazo responde más deprisa sin oscilar."
+      - texto: "Alejar los ceros hacia frecuencias más bajas"
+        porque: "Eso es cuando falta margen: da más fase todavía."
+      - texto: "Nada: más margen siempre es mejor"
+        porque: "Más de 60° es innecesariamente lento."
+    escalera:
+      - "Sobra fase: ¿cómo se quita adelanto en el cruce?"
+    solucion: "Acercar los ceros al cruce."
+
+  - id: por-que-esr
+    tipo: porque
+    titulo: "El ESR mínimo y máximo"
+    texto: "¿Por qué hay que repetir el cálculo con el ESR mínimo y máximo del condensador?"
+    libro: [614]
+    widget:
+      tipo: figura
+      figura: fig-33.18
+      zonas:
+        - { id: bode, rotulo: "El diagrama de Bode", rect: [0, 0, 444, 199] }
+    opciones:
+      - texto: "El cero del ESR se mueve con él, y es lo más variable del lazo"
+        bien: true
+        porque: "Un lazo estable solo con el ESR nominal no es un lazo estable."
+      - texto: "Porque el ESR cambia la frecuencia de conmutación"
+        porque: "No la cambia; mueve el cero de la planta."
+      - texto: "Porque el ESR cambia el doble polo LC"
+        porque: "El doble polo depende de L y C; el ESR mueve su propio cero."
+    escalera:
+      - "Mire la fórmula de f_{ESR}: ¿qué parámetro varía mucho entre condensadores?"
+    solucion: "El cero se mueve con el ESR, el parámetro más variable del lazo."
+
+  - id: estime-rhz
+    tipo: pregunta
+    titulo: "El cero en el semiplano derecho"
+    texto: "Un elevador en modo continuo tiene el cero en el semiplano derecho en 6 kHz. ¿Hasta dónde puede llegar el cruce?"
+    libro: [618]
+    widget:
+      tipo: figura
+      figura: fig-33.18
+      zonas:
+        - { id: bode, rotulo: "El diagrama de Bode", rect: [0, 0, 444, 199] }
+    estimar:
+      objetivo: "f_cmax"
+      unidad: Hz
+      min: 0
+      max: 6000
+      paso: 100
+      inicio: 5000
+      tol: 0.05
+      rotulo: "Cruce máximo"
+    exito: "2 kHz: f_{c} ≤ f_{RHZ}/3. Una limitación de la topología, no del diseño."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 2100 }, texto: "Se ha pasado: hay que cruzar muy por debajo del cero, a un tercio." }
+      - { texto: "Se ha quedado corto: la regla es f_{RHZ}/3." }
+    escalera:
+      - "f_{c} ≤ f_{RHZ}/3."
+    solucion: "6 kHz/3 = 2 kHz."
+    comprobar:
+      - { f_cmax: 2000 }
+
+  - id: escalon
+    tipo: pregunta
+    titulo: "El escalón de carga"
+    texto: "La carga salta del 25 al 75 %. Empareje lo que se ve en la salida con su diagnóstico."
+    libro: [622, 623, 624]
+    widget:
+      tipo: figura
+      figura: fig-33.18
+      zonas:
+        - { id: bode, rotulo: "El diagrama de Bode", rect: [0, 0, 444, 199] }
+    emparejar:
+      - ["Una o dos ondas y recuperación limpia", "Margen razonable, de 45 a 60°"]
+      - ["Muchas oscilaciones", "Margen escaso: menos ganancia o mover los ceros"]
+      - ["Recuperación lenta sin sobreoscilación", "Margen excesivo: se puede subir la ganancia"]
+    exito: "Sin analizador de redes: el escalón dice el margen y el cruce."
+    pistas:
+      - { texto: "Oscilar mucho es tener poco margen." }
+    escalera:
+      - "Empiece por la respuesta lenta: le sobra margen."
+    solucion: "Limpia: bien. Muchas oscilaciones: poco margen. Lenta: demasiado margen."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [575, 583, 588, 606, 618]
+    ideas:
+      - { titulo: "La planta.", texto: "Doble polo LC, cero del ESR y, en elevador y flyback, el cero del semiplano derecho." }
+      - { titulo: "Objetivos.", texto: "Cruce de f/20 a f/10, margen de 45 a 60°, 20 dB en la conmutación." }
+      - { titulo: "Tipo II y tipo III.", texto: "Cero en el polo, polo en el ESR; el tipo III añade un par para el LC." }
+      - { titulo: "Comprobar.", texto: "Con el ESR extremo y con un escalón de carga." }
