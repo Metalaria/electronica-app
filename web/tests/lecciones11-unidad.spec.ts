@@ -390,7 +390,8 @@ test.describe('el script del generador', () => {
     // (motor fixes 1.1: each entry lists the cards «Práctica inteligente» asks on their own — no «por qué»)
     expect(JSON.parse(tres['indice.json']!).lecciones).toEqual({
       'cap01/sec-1.4': {
-        tarjetas: 12,
+        // 13 since the 1.2 Fundamentos revision (the home-bench step «banco», ficha 1)
+        tarjetas: 13,
         preguntas: [
           { id: 'prediga-salida', tipo: 'predecir' },
           { id: 'reto-33', tipo: 'reto' },

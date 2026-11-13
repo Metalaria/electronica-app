@@ -42,8 +42,9 @@ const diagrama: Diagrama = {
       info: 'Puerto serie; en doble velocidad también puede ir más rápido.' },
     { id: 'audio', x: 30, y: 200, w: 130, h: 64, titulo: 'Audio', sub: 'U3 AMP MGB · VR1', foto: 'amp', esquema: ['U3', 'VR1'],
       info: 'SO1 y SO2 hacia el amplificador, el altavoz y los auriculares.' },
-    { id: 'alim', x: 820, y: 360, w: 160, h: 62, titulo: 'Alimentación', sub: 'U5 DC-DC · U4 CGB-REG', foto: 'reg', esquema: ['U5', 'U4'],
-      info: 'Dos pilas AA; el convertidor saca +5 V y +3,3 V y el CGB-REG las tensiones de la pantalla.' },
+    { id: 'alim', x: 820, y: 360, w: 160, h: 62, titulo: 'Alimentación', sub: 'U5 DC-DC · U4 CGB-REG', foto: 'reg', esquema: ['U5', 'U7', 'U4'],
+      // the +3V3 net is U7's output (RN5RT33A fed from +5V), not U5's
+      info: 'Dos pilas AA; el convertidor U5 saca +5 V, el regulador U7 baja de ellos los +3,3 V y el CGB-REG da las tensiones de la pantalla.' },
   ],
   conexiones: [
     { id: 'clk', puntos: [[190, 46], [300, 46], [300, 100]], bits: 1, etiqueta: 'XTAL1/XTAL2', pos: [245, 40], clase: 'reloj', pista: 'CLK', nivel: 1, red: 'Net-(U1A-XTAL1)' },

@@ -500,7 +500,9 @@ GBC_B = [
      'cajas': [[62, 232, 145, 305]], 'confianza': 'marca', 'buses': ['power'], 'funcion': 'LED rojo.'},
     {'id': 'b-dcdc', 'nombre': 'Convertidor CC-CC', 'pieza': 'placa U5', 'esquema': ['U5'], 'bloque': 'alim',
      'cajas': [[78, 1178, 322, 1452]], 'confianza': 'marca', 'buses': ['power'],
-     'funcion': 'Placa conmutada que saca +5 V, +3,3 V y las tensiones de la pantalla de las dos pilas AA.'},
+     # 1.2 (regen412): the +3V3 net comes from U7 (RN5RT33A, VIN on +5V) in the schematic, not from U5
+     'funcion': 'Placa conmutada que saca +5 V y las tensiones de la pantalla de las dos pilas AA. Los +3,3 V no salen '
+                'de ella: los da U7, un regulador lineal RN5RT33A de Ricoh alimentado desde +5 V.'},
     {'id': 'b-cart', 'nombre': 'Contactos del cartucho', 'pieza': 'serigrafía 1–32', 'esquema': ['P1'], 'bloque': 'cart',
      'cajas': [[198, 712, 762, 802]], 'confianza': 'marca', 'buses': ['cpu_address', 'cpu_data'], 'funcion': 'Patillas del conector, numeradas.'},
     {'id': 'b-link', 'nombre': 'Puerto de enlace (patillas)', 'pieza': 'serigrafía P3-SOUT, P3-SIN, P3-SCK', 'esquema': ['P3'], 'bloque': 'link',

@@ -2165,7 +2165,7 @@ comparadores (el k-ésimo, de 1 a 10, en V_LO + k·(V_HI − V_LO)/10) con la en
 corriente constante a diez LED alimentados desde V_LED. La resistencia R_ref de la salida de referencia a masa fija la
 corriente de cada LED, «unas diez veces» la suya: I_LED = factor·V_ref/R_ref. Modo barra (todos hasta el nivel) o punto
 (solo el último). Cada salida disipa I_LED·(V_LED − V_F) dentro del integrado. Solo en continua. Pedido para `cap15`
-(14.4: 1 kΩ, unos 12 mA; 10 LED a 10 mA con 4 V de exceso, 400 mW).
+(14.4: I_LED ≈ 10·V_ref/R_ref, 1 kΩ da 12,5 mA; 10 LED a 10 mA con 4 V de exceso, 400 mW).
 
 Piezas: `entrada` (V), `vref` (V), `rref` (Ω), `vhi`? (V; sin ella, V_ref), `vlo`? (V; sin ella, 0), `vled` (V), `vf`
 (V, la caída de un LED a su corriente), `factor`? (sin él, 10), `barra`? (interruptor: 1 barra, 0 punto; sin él,

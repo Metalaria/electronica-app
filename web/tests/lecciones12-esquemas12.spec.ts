@@ -342,7 +342,7 @@ test.describe('esquemas12 frente a ngspice', () => {
     // (the diode's I_S is written with eight digits: 10⁻⁵ of the drop)
     cerca(v('v(pch)'), 0.4, 1e-4);
     cerca(v('v(o1)'), 4, 1e-4);
-    // 1 kΩ: about 12 mA per LED; the chain between V_LO and V_HI moves the thresholds
+    // 1 kΩ: 12,5 mA per LED (book 14.4: 10 × 1,25 V/1 kΩ); the chain between V_LO and V_HI moves the thresholds
     v = await op('lm3914', { ...p, rref: 1000, entrada: 2.55, vlo: 2, vhi: 3 });
     expect(v('v(nled)')).toBeCloseTo(5, 9);
     cerca(v('i(vml)'), 5 * 0.0125, 1e-6);

@@ -808,7 +808,9 @@ pestañas enlazadas entre sí:
 - **Game Boy Color** (CGB-CPU-04): fotos de gbhwdb y el esquema de la placa original redibujado por Natalie the
   Nerd (CC BY-NC-SA 4.0), reconstruido a partir de su PDF y comprobado con la recreación opengbc (los 118 pines
   conectados de la CPU coinciden). Arquitectura: doble velocidad (KEY1), bancos de VRAM y WRAM, HDMA por línea y
-  general, la PPU y las paletas.
+  general, la PPU y las paletas. Alimentación: la placa conmutada U5 saca de las dos pilas AA los +5 V y las tensiones
+  de la pantalla; los +3,3 V los da U7, un regulador lineal RN5RT33A de Ricoh alimentado desde +5 V (en el esquema,
+  VIN en +5V y VOUT en +3V3; hasta la 1.2 el texto los atribuía a U5).
 - **Super Nintendo** (SNSP-CPU-01 PAL, 0.9): esquema y placa de **nonSNES** de stonedDiscord (GPL-3.0, commit
   `cf2e70b`), una recreación «1:1» de la SNSP-CPU-01 Rev5 con el esquema de arzi84; el texto completo de la GPL va
   en «Fuentes» (`web/public/consolas/snes/LICENSE-nonSNES.txt`). Dos fotos de esa misma placa, del propio
@@ -2198,7 +2200,7 @@ catálogo de punta a punta, axe y 360 px), con `playwright.lecciones12.config.ts
 
 ## El libro 4.1 en la aplicación (1.2)
 
-La aplicación es un espejo de la edición 4.1.0 del libro: todo `web/public/libro/` (y `proyectos/`, `fm7303/`,
+La aplicación es un espejo de la edición 4.1.0 del libro, con sus erratas 4.1.1 y 4.1.2: todo `web/public/libro/` (y `proyectos/`, `fm7303/`,
 `miniaturas/`) sale de sus fuentes (`EPA_FUENTES`, «Generar el contenido»). Con la 4.1 hay 72 partes (57 capítulos, 11
 apéndices, glosario y tres anexos), 804 secciones, 2 702 etiquetas numeradas, 1 057 figuras (952 dibujos y 105 fotos),
 1 076 ecuaciones, 1 054 términos de glosario, 637 ejercicios y problemas (518 + 119; 632 autocomprobables), 442
@@ -2232,8 +2234,9 @@ salen de `tomos.json` y `tomos_titulos.json`; la aplicación no los tiene escrit
   entrada en `ejercicios_curado.txt`: respuestas con unidad y tolerancia, preguntas de elegir o clasificar con el «por
   qué no» de cada opción, la cita literal de la solución y dos pistas. Cada valor se ha recalculado (NumPy, SciPy para
   la t de Student, aritmética entera de 16, 32 y 64 bits para el apéndice K). Quedan 632 de 637 autocomprobables (los
-  cinco de la 1.0 que siguen autoevaluados, `tests/razonar11-unidad.spec.ts`). En 30.29 la solución da los
-  coeficientes del diseño sin redondear (K<sub>p</sub> = 1,5993, el de las netlists): se aceptan también los de 1,60.
+  cinco de la 1.0 que siguen autoevaluados, `tests/razonar11-unidad.spec.ts`). En 30.29 la solución del libro usa
+  desde la 4.1.2 el K<sub>p</sub> = 1,60 del enunciado (1,6082 y 1,5918); se aceptan también los del diseño sin
+  redondear (K<sub>p</sub> = 1,5993, el de las netlists: 1,6075 y 1,5911).
 - **«Por qué no» de las preguntas nuevas.** Las 46 propuestas de `porque10.mjs` sin revisar (de las preguntas de
   repaso de las ampliaciones y de la 4.1) se han revisado: 6 frases del libro aprobadas (2 con la anterior) y 40
   rechazadas que llevan en su lugar una explicación breve del error de esa opción, escrita en la revisión con lo que
@@ -2253,6 +2256,16 @@ salen de `tomos.json` y `tomos_titulos.json`; la aplicación no los tiene escrit
 - **«sen» para el seno** (F7): las fórmulas y el texto de 30.10, 30.12, 30.D, 33.10 y 34.x dicen «sen» y «arcsen», y
   también la fórmula de la máquina síncrona del paratexto de `cap56` y la explicación de la pregunta de repaso de
   `cap31` sobre la red de adelanto.
+- **Erratas 4.1.2 y figura 40.19** (libro `integra-4.1` en `b97164c`; `Informes/erratas_4.1.0.md`, apartados G–N, y
+  `decisiones_4.1.md`, R1–R8). Regenerado con `EPA_FUENTES`: cambian los bloques 101 de 14.4 (I<sub>LED</sub> ≈
+  10·V<sub>ref</sub>/R<sub>ref</sub>, 1 kΩ da 12,5 mA), 357 de 21.13 (el divisor de la práctica 1, hasta un 6,9 %),
+  57 de 26.2 (el cambio exacto, 0,011 %, y la sensibilidad lineal, 0,0055 %) y la solución de 30.29; las figuras 20.5
+  (BMP, sin GND), 20.34 (compensar con la salida DDS), 21.22 (6,9 %) y 40.19 (descarte por debajo de 1,5 V) y la foto
+  20.23 con rótulos en español, con sus miniaturas. Ninguna numeración cambia. Lo escrito a mano que citaba el texto
+  viejo sigue al libro: las anclas y las tarjetas de las lecciones 14.4, 21.13 y 26.2, el `[ej-31.29]` del curado, la
+  frase aprobada de la pregunta de repaso `cap22-20` (`porque_curado.json`) y el comentario de la escena
+  «Realimentación». El paratexto no cambia (`DIFERENCIAS.md` igual); el índice de los tomos III y IV que genera la
+  aplicación recoge «Tolerancia» en 21.13 y «Sensibilidad» en 26.2.
 
 ### Paratexto del libro (`contenido/paratexto/`)
 

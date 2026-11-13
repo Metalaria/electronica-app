@@ -2,7 +2,7 @@
 // miniature: a chain of ten equal resistors between V_LO and V_HI, ten comparators with their reference on the chain's
 // taps (comparator k at V_LO + k·(V_HI − V_LO)/10) and the input buffered to all of them, and ten constant-current
 // outputs into the LEDs, fed from their own supply V_LED. The resistor R_ref from the reference output to ground sets
-// the LED current, about ten times its own: I_LED = factor·V_ref/R_ref (1 kΩ and 1,25 V give about 12 mA). Bar mode
+// the LED current, about ten times its own: I_LED = factor·V_ref/R_ref (1 kΩ and 1,25 V give 12,5 mA, book 14.4). Bar mode
 // lights every LED up to the level, dot mode only the top one (`barra`). Each output dissipates its current times
 // V_LED − V_F inside the chip (10 LEDs at 10 mA with 4 V to spare: 400 mW).
 //
