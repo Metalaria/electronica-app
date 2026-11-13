@@ -1,0 +1,272 @@
+# Lección 1.2 de la sección 46.7 «LED Direccionables» (cap45, sec-45.7). Formato: GUIA.md.
+# - Consumo: hasta 60 mA por LED a pleno blanco: 6 A con 100 y 18 A con 300 (bloque 217).
+# Paso práctico: «tocar» el condensador de desacoplo en la foto 46.14.
+leccion: cap45/sec-45.7
+
+libro:
+  198: "integra en el mismo encapsulado tres LED (rojo, verde y azul), sus tres drivers de corriente y un pequeño circuito digital"
+  199: "cada uno mantiene su valor permanentemente y lo único que se comparte es el cable"
+  201: "se queda con los primeros bytes (su color) y retransmite el resto por su salida al siguiente"
+  203: "el último que funciona correctamente es el anterior al culpable"
+  205: "con tiempos de unos 400 ns y tolerancias de ±150 ns"
+  206: "Con cualquier interrupción activa, o con un sistema operativo (sección 17.7), la temporización se rompe"
+  208: "DMA con temporizador"
+  209: "codificando cada bit del protocolo como tres o cuatro bits de SPI"
+  210: "algunos microcontroladores (el ESP32, entre otros) tienen periféricos pensados justamente para esto"
+  211: "los protocolos con requisitos de nanosegundos no se generan por software"
+  213: "la velocidad la marca quien envía, y no hay tiempos críticos"
+  214: "frecuencia de refresco mucho mayor"
+  217: "cada LED puede consumir 60 mA a pleno blanco. Con 100 LED, 6 A; con 300, 18 A"
+  219: "tampoco un puerto USB salvo unas pocas unidades"
+  220: "porque el azul, con más Vf, se apaga antes"
+  221: "la fuente ve un escalón de decenas de amperios"
+  223: "Condensador de desacoplo de 100 nF junto a cada LED"
+  224: "Resistencia serie de unos 300 Ω en la línea de datos"
+  225: "Funciona a menudo y falla a veces, que es lo peor"
+  227: "medir la alimentación en el primer LED y en el último"
+  230: "con la entrada Din, la salida DO, la alimentación y el condensador de desacoplo"
+
+modelo:
+  valores:
+    n_l: { sim: "n", nombre: "número de LED", unidad: "", valor: 300 }
+    I_l: { sim: "I_{LED}", nombre: "corriente por LED a pleno blanco", unidad: A, valor: 0.06 }
+    n_f: { sim: "k", nombre: "primer LED apagado del ejemplo", unidad: "", valor: 40 }
+  calculos:
+    I_t: { expr: "n_l*I_l", sim: "I", nombre: "corriente total", unidad: A }
+    n_ok: { expr: "n_f - 1", sim: "k − 1", nombre: "último que funciona", unidad: "" }
+
+tarjetas:
+  - id: explore-cadena
+    tipo: explorar
+    titulo: "Una sola línea para todos"
+    texto: "Cada LED lleva su controlador y se encadena por una sola línea de datos. Toque las partes de la figura."
+    libro: [198, 199, 201, 217]
+    widget:
+      tipo: figura
+      figura: fig-45.13
+      zonas:
+        - { id: mcu, rotulo: "Bloque de la izquierda", rect: [3, 48, 75, 48], texto: "Un solo pin del microcontrolador, con una resistencia en serie." }
+        - { id: cadena, rotulo: "La fila de LED", rect: [88, 48, 338, 48], texto: "Cada uno mantiene su color permanentemente: solo se comparte el cable." }
+        - { id: trama, rotulo: "Recuadros de colores", rect: [60, 118, 308, 35], texto: "Cada LED se queda con su color y retransmite el resto." }
+        - { id: consumo, rotulo: "Gráfica de abajo", rect: [0, 161, 237, 146], texto: "Hasta 60 mA por LED a pleno blanco: 100 LED, 6 A; 300 LED, 18 A." }
+    requiere: { mover: [cadena, trama, consumo] }
+
+  - id: predecir-averiado
+    tipo: predecir
+    titulo: "Un LED averiado"
+    texto: "En una tira de cien LED, desde el LED 40 hasta el final todos se quedan apagados. ¿Cuál hay que sustituir?"
+    libro: [201, 203]
+    fijar: { n_f: 40 }
+    widget:
+      tipo: figura
+      figura: fig-45.13
+      zonas:
+        - { id: cadena, rotulo: "La fila de LED", rect: [88, 48, 338, 48] }
+    opciones:
+      - texto: "El 40: el primero que falla"
+        bien: true
+        porque: "El último que funciona, el 39, es el anterior al culpable: el 40 corta la cadena."
+      - texto: "El 39"
+        porque: "El 39 funciona y retransmite; el que no deja pasar los datos es el siguiente."
+      - texto: "El último de la tira"
+        porque: "El último no afecta a los anteriores: la cadena se corta antes."
+    escalera:
+      - "Cada LED retransmite al siguiente. ¿Dónde se cortan los datos?"
+    solucion: "El primero que falla, el 40."
+    comprobar:
+      - { n_ok: 39 }
+
+  - id: estime-corriente
+    tipo: pregunta
+    titulo: "La alimentación, que es el problema real"
+    texto: "Una tira de 300 LED a pleno blanco, hasta 60 mA cada uno. ¿Qué corriente pide?"
+    libro: [217, 219]
+    fijar: { n_l: 300, I_l: 0.06 }
+    widget:
+      tipo: figura
+      figura: fig-45.13
+      zonas:
+        - { id: consumo, rotulo: "Gráfica de abajo", rect: [0, 161, 237, 146] }
+    estimar:
+      objetivo: "I_t"
+      unidad: A
+      min: 0
+      max: 40
+      paso: 0.5
+      inicio: 32
+      tol: 0.05
+      rotulo: "Corriente total"
+    exito: "18 A: ni el microcontrolador ni un USB, salvo unas pocas unidades."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 18.9 }, texto: "Demasiado: 300 × 60 mA." }
+      - { texto: "Demasiado poco: 60 mA por 300 LED." }
+    escalera:
+      - "Con 100 LED son 6 A."
+    solucion: "300 × 60 mA = 18 A."
+    comprobar:
+      - { I_t: 18 }
+
+  - id: porque-rojo
+    tipo: porque
+    titulo: "Los últimos, más rojos"
+    texto: "En una tira larga alimentada por un extremo, los últimos LED se ven más oscuros y más rojos. ¿Por qué?"
+    libro: [220, 221]
+    widget:
+      tipo: figura
+      figura: fig-45.13
+      zonas:
+        - { id: inyeccion, rotulo: "Flecha de arriba a la derecha", rect: [297, 3, 75, 35] }
+    opciones:
+      - texto: "La tira cae tensión y el azul, con más V_{f}, se apaga antes"
+        bien: true
+        porque: "La solución es inyectar alimentación cada uno o dos metros."
+      - texto: "Porque los datos llegan tarde"
+        porque: "Los datos llegan bien; lo que falta al final es tensión."
+      - texto: "Porque los últimos son de peor calidad"
+        porque: "Son iguales: lo que cambia es la tensión que les llega."
+    escalera:
+      - "¿Qué color necesita más tensión directa?"
+    solucion: "Caída en la tira: el azul se queda sin tensión primero."
+
+  - id: pregunta-temporizacion
+    tipo: pregunta
+    titulo: "Pulsos de 400 ns"
+    texto: "Los WS2812 codifican cada bit con pulsos de unos 400 ns, ± 150 ns. ¿Se pueden generar por software con interrupciones activas?"
+    libro: [205, 206, 211]
+    widget:
+      tipo: figura
+      figura: fig-45.13
+      zonas:
+        - { id: mcu, rotulo: "Bloque de la izquierda", rect: [3, 48, 75, 48] }
+    opciones:
+      - texto: "No: cualquier interrupción rompe la temporización"
+        bien: true
+        porque: "Solo en un microcontrolador desnudo, bucle contado y sin interrupciones; lo normal es que lo haga el hardware."
+      - texto: "Sí, con un microcontrolador rápido"
+        porque: "La velocidad no basta: una interrupción a destiempo estira un pulso."
+      - texto: "Sí, con un sistema operativo de tiempo real"
+        porque: "Con un sistema operativo la temporización se rompe."
+    escalera:
+      - "¿Cuánto puede retrasar una interrupción a un bucle de software?"
+    solucion: "No: los nanosegundos los genera el hardware."
+
+  - id: empareje-soluciones
+    tipo: pregunta
+    titulo: "Las soluciones reales"
+    texto: "Empareje cada solución con cómo genera la forma de onda."
+    libro: [208, 209, 210]
+    widget:
+      tipo: figura
+      figura: fig-45.13
+      zonas:
+        - { id: mcu, rotulo: "Bloque de la izquierda", rect: [3, 48, 75, 48] }
+    emparejar:
+      - ["DMA con temporizador", "Escribe en un puerto o en un PWM sin el núcleo"]
+      - ["Periférico SPI", "Cada bit del protocolo, tres o cuatro de SPI"]
+      - ["Periférico dedicado", "El hardware pensado para esto, como en el ESP32"]
+    exito: "En todos los casos el trabajo lo hace el hardware."
+    pistas:
+      - { texto: "El SPI codifica cada bit con varios de los suyos." }
+    escalera:
+      - "El DMA mueve datos sin pasar por el núcleo."
+    solucion: "DMA, sin núcleo; SPI, tres o cuatro bits; dedicado, ESP32."
+
+  - id: pregunta-apa102
+    tipo: pregunta
+    titulo: "Dos hilos: APA102"
+    texto: "Los APA102 usan datos y reloj. ¿Qué ganan?"
+    libro: [213, 214]
+    widget:
+      tipo: figura
+      figura: fig-45.13
+      zonas:
+        - { id: cadena, rotulo: "La fila de LED", rect: [88, 48, 338, 48] }
+    opciones:
+      - texto: "Desaparecen los tiempos críticos: la velocidad la marca quien envía"
+        bien: true
+        porque: "Es SPI puro, con refresco mucho mayor: compensa en lo que se mueve o se graba."
+      - texto: "Consumen menos"
+        porque: "Su coste es un pin más y algo de precio; el consumo es el del LED."
+      - texto: "No necesitan alimentación aparte"
+        porque: "La alimentación sigue siendo el problema real."
+    escalera:
+      - "Con reloj, ¿quién marca el ritmo?"
+    solucion: "Sin tiempos críticos y con más refresco."
+
+  - id: empareje-montaje
+    tipo: pregunta
+    titulo: "Tres detalles de montaje"
+    texto: "Empareje cada detalle con su razón."
+    libro: [223, 224, 225]
+    widget:
+      tipo: figura
+      figura: fig-45.14
+      zonas:
+        - { id: tira, rotulo: "Foto de la izquierda", rect: [0, 0, 800, 677] }
+    emparejar:
+      - ["100 nF junto a cada LED", "Cada uno conmuta corriente"]
+      - ["Unos 300 Ω en la línea de datos", "Amortigua reflexiones y protege la entrada"]
+      - ["Traductor de nivel", "Un 3,3 V no siempre alcanza el umbral de 5 V"]
+    exito: "Sin traductor funciona a menudo y falla a veces, que es lo peor."
+    pistas:
+      - { texto: "La resistencia va junto al controlador." }
+    escalera:
+      - "El condensador alimenta los picos de cada LED."
+    solucion: "100 nF, conmutación; 300 Ω, reflexiones; traductor, umbral."
+
+  - id: toque-condensador
+    tipo: tocar
+    titulo: "En la tira"
+    texto: "Toque en la foto el condensador de desacoplo del LED."
+    libro: [223, 230]
+    widget:
+      tipo: figura
+      figura: fig-45.14
+      zonas:
+        - { id: din, rotulo: "Rótulos de la izquierda", rect: [150, 150, 160, 300] }
+        - { id: led, rotulo: "Cuadrado blanco grande", rect: [330, 150, 300, 320] }
+        - { id: condensador, rotulo: "Pieza pequeña a la derecha", rect: [640, 220, 125, 130] }
+        - { id: dout, rotulo: "Rótulos de la derecha", rect: [770, 150, 140, 300] }
+        - { id: dado, rotulo: "Foto de la derecha", rect: [960, 0, 640, 677] }
+    tocar:
+      bien: [condensador]
+      porque:
+        din: "Ahí está la entrada de datos, Din, con la alimentación."
+        led: "Es el propio LED, con sus tres dados y su controlador."
+        dout: "Es la salida de datos, DO, hacia el siguiente."
+        dado: "Es el LED de cerca: los tres dados de color y el controlador."
+    exito: "Junto a cada LED, su condensador de 100 nF."
+    escalera:
+      - "Busque una pieza pequeña entre las pistas de alimentación."
+    solucion: "La pieza pequeña a la derecha del LED."
+
+  - id: ordene-diagnostico
+    tipo: pregunta
+    titulo: "Una tira que no funciona"
+    texto: "Ordene el diagnóstico de una tira que no funciona."
+    libro: [227]
+    widget:
+      tipo: figura
+      figura: fig-45.13
+      zonas:
+        - { id: cadena, rotulo: "La fila de LED", rect: [88, 48, 338, 48] }
+    ordenar:
+      - "Medir la alimentación en el primer LED y en el último."
+      - "Comprobar el nivel de la línea de datos con el osciloscopio."
+      - "Localizar el primer LED que falla y sustituirlo."
+    exito: "La diferencia entre el primero y el último delata la caída."
+    pistas:
+      - { texto: "Primero, lo que más proyectos arruina." }
+    escalera:
+      - "Alimentación, datos, y después el LED culpable."
+    solucion: "Alimentación en los extremos, nivel de datos, primer LED que falla."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [199, 203, 211, 217, 220]
+    ideas:
+      - { titulo: "Una cadena.", texto: "Cada LED toma su color y pasa el resto; uno roto corta los siguientes." }
+      - { titulo: "Nanosegundos.", texto: "Por hardware: DMA, SPI o un periférico; o dos hilos." }
+      - { titulo: "Alimentación.", texto: "60 mA por LED: 18 A con 300; inyectar cada uno o dos metros." }
+      - { titulo: "Montaje.", texto: "100 nF, 300 Ω en datos y traductor de nivel." }

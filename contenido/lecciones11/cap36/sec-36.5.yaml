@@ -1,0 +1,297 @@
+# Lección 1.2 de la sección 37.6 «Redes de Adaptación» (cap36, sec-36.5). Formato: GUIA.md.
+# - Q de la red en L = √(R_mayor/R_menor − 1) y ancho de banda relativo ≈ 1/Q (bloques 210 a 212: 1,0/1,7/3,0/7,0).
+# - Transformador de cuarto de onda: Z = √(Z₁·Z₂) (bloque 220): 22,4 Ω para 50 y 10 Ω (los 22 Ω del problema 37.A).
+# - El ajuste usa la red en L del problema 37.A (bloques 495, 501 y 502): 10 Ω a 100 MHz, L = 31,8 nH en serie con la
+#   carga y C en paralelo en el lado de 50 Ω. Admitancia de la rama serie: G = R/(R² + X²), B = ωC − X/(R² + X²);
+#   y = 50·(G + jB) y |Γ|² = ((1 − 50G)² + (50B)²)/((1 + 50G)² + (50B)²). Con C entre 57,4 y 70 pF el VSWR a 100 MHz
+#   queda por debajo de 1,22 (S11 de −20 dB, «excelente», tabla del bloque 153 de la 37.4).
+# Paso práctico: «ajuste» del condensador midiendo el VSWR (el cuarto paso del procedimiento del libro).
+leccion: cap36/sec-36.5
+
+libro:
+  202: "La adaptación se hace con elementos reactivos, bobinas y condensadores, que no disipan"
+  205: "Con ellos se puede adaptar cualquier resistencia a cualquier otra"
+  206: "El elemento en serie cancela esa reactancia"
+  207: "el Q de la red queda determinado por el salto de impedancia"
+  210: 'Q = sqrt((R_("mayor"))/(R_("menor")) - "1")'
+  211: "Y de él sale el ancho de banda relativo, aproximadamente 1/Q"
+  212: "Salto de impedancia"
+  213: "Adaptar una antena diminuta de 2 Ω a 50 exige un Q alto"
+  216: "Lo que no permiten es bajarlo"
+  217: "adapta y filtra los armónicos a la vez"
+  220: "un tramo de λ/4 con impedancia característica √(Z₁·Z₂) adapta Z₁ a Z₂"
+  221: "Un stub cortocircuitado de menos de λ/4 es una bobina; uno abierto, un condensador"
+  225: "verificar la autorresonancia"
+  227: "Medir la impedancia de la carga a la frecuencia de trabajo"
+  228: "Ese cuarto paso no es un fracaso del cálculo: es la norma en radiofrecuencia"
+  "cap36#495": "una antena que presenta 10 Ω a 100 MHz, con una red en L"
+  "cap36#501": '"31,8 nH"'
+  "cap36#502": '"63,7 pF"'
+  "cap36#153": "−20 dB"
+
+modelo:
+  valores:
+    r_t: { sim: "R_{mayor}/R_{menor}", nombre: "salto de impedancia", unidad: "", valor: 4 }
+    R_l: { sim: "R_{menor}", nombre: "resistencia de la carga", unidad: Ω, valor: 10 }
+    L_m: { sim: "L", nombre: "bobina en serie", unidad: H, valor: 31.83e-9 }
+    C_m: { sim: "C", nombre: "condensador en paralelo", unidad: F, valor: 63.66e-12 }
+    f_0: { sim: "f₀", nombre: "frecuencia de trabajo", unidad: Hz, valor: 100000000 }
+  calculos:
+    Q_l: { expr: "sqrt(r_t - 1)", sim: "Q", nombre: "factor de calidad de la red en L", unidad: "" }
+    B_w: { expr: "100/Q_l", sim: "BW", nombre: "ancho de banda relativo", unidad: "%" }
+    Z_q: { expr: "sqrt(50*R_l)", sim: "Z_{0}", nombre: "impedancia del cuarto de onda", unidad: Ω }
+    Q_2: { expr: "sqrt(50/2 - 1)", sim: "Q", nombre: "Q para adaptar 2 Ω", unidad: "" }
+    X_0: { expr: "2*pi*f_0*L_m", sim: "X_{L}", nombre: "reactancia de la bobina", unidad: Ω }
+    G_0: { expr: "R_l/(R_l^2 + X_0^2)", sim: "G", nombre: "conductancia de la rama serie", unidad: S }
+    B_0: { expr: "2*pi*f_0*C_m - X_0/(R_l^2 + X_0^2)", sim: "B", nombre: "susceptancia total", unidad: S }
+    g_0: { expr: "sqrt(((1 - 50*G_0)^2 + (50*B_0)^2)/((1 + 50*G_0)^2 + (50*B_0)^2))", sim: "|Γ|", nombre: "reflexión a f₀", unidad: "" }
+    S_0: { expr: "(1 + g_0)/(1 - g_0)", sim: "VSWR", nombre: "VSWR a la frecuencia de trabajo", unidad: "" }
+
+tarjetas:
+  - id: explore-q
+    tipo: explorar
+    titulo: "El salto decide la banda"
+    texto: "Una red en L adapta cualquier resistencia a otra con una bobina y un condensador. Cambie el salto de impedancia."
+    libro: [205, 207, 211, 212]
+    widget:
+      tipo: grafica
+      x: { id: r, min: 1.5, max: 60, unidad: "", rotulo: "R_{mayor}/R_{menor}", escala: log }
+      y: { min: 0, max: 8, unidad: "", rotulo: "Q" }
+      curvas:
+        - { expr: "sqrt(r - 1)", color: naranja, rotulo: "Q de la red en L" }
+      marcas:
+        - { x: "r_t", y: "Q_l", rotulo: "Q = {{Q_l}}" }
+      lectura: { valor: B_w, rotulo: "Ancho de banda relativo" }
+      datos:
+        - { valor: Q_l, rotulo: "Q = {{Q_l}}" }
+      mandos:
+        - { valor: r_t, lista: [2, 4, 10, 50], rotulo: "Salto de impedancia" }
+    requiere: { mover: [r_t] }
+
+  - id: formula-q
+    tipo: formula
+    titulo: "El Q de la red en L"
+    texto: "Con dos elementos no queda libertad: el salto impone el Q, y el Q, la banda."
+    libro: [207, 210, 211]
+    ec: 210
+    sustitucion: "√({{r_t}} − 1) = {{Q_l}}"
+    widget:
+      tipo: grafica
+      x: { id: r, min: 1.5, max: 60, unidad: "", rotulo: "R_{mayor}/R_{menor}", escala: log }
+      y: { min: 0, max: 8, unidad: "", rotulo: "Q" }
+      curvas:
+        - { expr: "sqrt(r - 1)", color: naranja, rotulo: "Q de la red en L" }
+      marcas:
+        - { x: "r_t", y: "Q_l", rotulo: "Q = {{Q_l}}" }
+      lectura: { valor: Q_l, rotulo: "Q" }
+      mandos:
+        - { valor: r_t, lista: [2, 4, 10, 50], rotulo: "Salto de impedancia" }
+
+  - id: predecir-antena-diminuta
+    tipo: predecir
+    titulo: "Una antena de 2 Ω"
+    texto: "Hay que adaptar a 50 Ω una antena diminuta de 2 Ω con una red en L. ¿Cómo será la red?"
+    libro: [213]
+    fijar: { r_t: 25 }
+    widget:
+      tipo: grafica
+      x: { id: r, min: 1.5, max: 60, unidad: "", rotulo: "R_{mayor}/R_{menor}", escala: log }
+      y: { min: 0, max: 8, unidad: "", rotulo: "Q" }
+      curvas:
+        - { expr: "sqrt(r - 1)", color: naranja, rotulo: "Q de la red en L" }
+      lectura: { valor: Q_l, rotulo: "Q" }
+      ocultar: true
+    opciones:
+      - texto: "De Q alto: banda estrecha y muy sensible a las tolerancias"
+        bien: true
+        porque: "Un salto de 25 da Q = 4,90: unos 20 % de banda, y cualquier desviación la saca de sitio."
+      - texto: "De banda ancha, porque la antena es pequeña"
+        porque: "Al revés: cuanto mayor el salto de impedancia, más estrecha la banda."
+      - texto: "Igual que para 25 Ω"
+        porque: "25 Ω es un salto de 2, con Q = 1; 2 Ω es un salto de 25."
+    escalera:
+      - "Calcule el salto: 50 entre 2."
+    solucion: "Salto de 25, Q = 4,90: estrecha y delicada."
+    comprobar:
+      - { Q_l: 4.899, B_w: 20.4, Q_2: 4.899 }
+
+  - id: pregunta-dos-pasos
+    tipo: pregunta
+    titulo: "Los dos pasos"
+    texto: "El elemento en paralelo convierte la resistencia mayor en una menor con una reactancia asociada. ¿Qué hace el de serie?"
+    libro: [206]
+    widget:
+      tipo: figura
+      figura: fig-36.6
+      zonas:
+        - { id: todo, rotulo: "Q y las cuatro formas de adaptar", rect: [0, 0, 446, 230] }
+    opciones:
+      - texto: "Cancela esa reactancia"
+        bien: true
+        porque: "Queda la resistencia transformada sola, igual a la de la fuente."
+      - texto: "Disipa la potencia que sobra"
+        porque: "No disipa: bobinas y condensadores almacenan y devuelven."
+      - texto: "Sube el Q a voluntad"
+        porque: "En la L el Q no se elige; para elegirlo hace falta un tercer elemento."
+    escalera:
+      - "Tras el primer paso hay resistencia y reactancia. ¿Qué sobra?"
+    solucion: "Cancela la reactancia que dejó el paralelo."
+
+  - id: empareje-formas
+    tipo: pregunta
+    titulo: "Más formas de adaptar"
+    texto: "Empareje cada red con lo que aporta."
+    libro: [216, 217, 220, 221]
+    widget:
+      tipo: figura
+      figura: fig-36.6
+      zonas:
+        - { id: todo, rotulo: "Q y las cuatro formas de adaptar", rect: [0, 0, 446, 230] }
+    emparejar:
+      - ["T o π", "Subir el Q a voluntad; nunca bajarlo"]
+      - ["Dos L en cascada", "Más banda: dos saltos pequeños"]
+      - ["Cuarto de onda", "Línea de √(Z₁·Z₂), de banda estrecha"]
+      - ["Stub", "Un tramo de línea que hace de bobina o condensador"]
+    exito: "La π, además, filtra los armónicos en los transmisores."
+    pistas:
+      - { texto: "Dividir el salto en dos baja el Q de cada etapa." }
+    escalera:
+      - "La T y la π añaden un tercer elemento."
+    solucion: "T/π, Q a voluntad; dos L, más banda; λ/4, √(Z₁Z₂); stub, reactancia de cobre."
+
+  - id: estime-cuarto
+    tipo: pregunta
+    titulo: "Un transformador de cuarto de onda"
+    texto: "¿Qué impedancia característica debe tener un tramo de cuarto de onda que adapte 50 Ω a 10 Ω?"
+    libro: [220, 202]
+    fijar: { R_l: 10 }
+    widget:
+      tipo: figura
+      figura: fig-36.6
+      zonas:
+        - { id: todo, rotulo: "Q y las cuatro formas de adaptar", rect: [0, 0, 446, 230] }
+    estimar:
+      objetivo: "Z_q"
+      unidad: Ω
+      min: 0
+      max: 60
+      paso: 0.5
+      inicio: 45
+      tol: 0.04
+      rotulo: "Z₀ del tramo"
+    exito: "22,4 Ω: la media geométrica, como el escalón intermedio de dos redes en L."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 23.3 }, texto: "Demasiado: es la media geométrica, no la aritmética (30 Ω)." }
+      - { texto: "Demasiado poco: √(50 × 10)." }
+    escalera:
+      - "Z₀ = √(Z₁·Z₂)."
+    solucion: "√(50 × 10) = 22,4 Ω."
+    comprobar:
+      - { Z_q: 22.36 }
+
+  - id: ajuste-condensador
+    tipo: ajuste
+    titulo: "Ajustar midiendo"
+    texto: "Red en L de 50 a 10 Ω a 100 MHz, con 31,8 nH. Mueva el condensador hasta que el VSWR a 100 MHz sea excelente."
+    libro: [227, 228, "cap36#495", "cap36#501", "cap36#502", "cap36#153"]
+    fijar: { L_m: 31.83e-9, R_l: 10, f_0: 100000000 }
+    inicio: { C_m: 40e-12 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 60000000, max: 140000000, unidad: Hz, rotulo: "f" }
+      y: { min: 1, max: 4, unidad: "", rotulo: "VSWR" }
+      curvas:
+        - { expr: "(1 + sqrt(((1 - 50*R_l/(R_l^2 + (2*pi*nu*L_m)^2))^2 + (50*(2*pi*nu*C_m - 2*pi*nu*L_m/(R_l^2 + (2*pi*nu*L_m)^2)))^2)/((1 + 50*R_l/(R_l^2 + (2*pi*nu*L_m)^2))^2 + (50*(2*pi*nu*C_m - 2*pi*nu*L_m/(R_l^2 + (2*pi*nu*L_m)^2)))^2)))/(1 - sqrt(((1 - 50*R_l/(R_l^2 + (2*pi*nu*L_m)^2))^2 + (50*(2*pi*nu*C_m - 2*pi*nu*L_m/(R_l^2 + (2*pi*nu*L_m)^2)))^2)/((1 + 50*R_l/(R_l^2 + (2*pi*nu*L_m)^2))^2 + (50*(2*pi*nu*C_m - 2*pi*nu*L_m/(R_l^2 + (2*pi*nu*L_m)^2)))^2)))", color: naranja, rotulo: "VSWR" }
+      marcas:
+        - { x: "f_0", y: "S_0", rotulo: "{{S_0}}" }
+      lectura: { valor: S_0, rotulo: "VSWR a 100 MHz" }
+      mandos:
+        - { valor: C_m, min: 40e-12, max: 90e-12, paso: 0.5e-12, rotulo: "Condensador en paralelo, C" }
+    ajuste:
+      valor: S_0
+      min: 0.999
+      max: 1.22
+      rotulo: "VSWR a 100 MHz"
+      escala: { min: 1, max: 3 }
+      bajo: "El VSWR nunca baja de 1."
+      alto: "Aún refleja: el mínimo de la curva no cae en 100 MHz. Mueva C hacia el valor calculado."
+      dentro: "Por debajo de 1,22, un S₁₁ de −20 dB: excelente. El cálculo daba 63,7 pF."
+    comprobar:
+      - { con: { C_m: 63.66e-12 }, S_0: 1.0 }
+      - { con: { C_m: 40e-12 }, S_0: 2.07 }
+
+  - id: ordene-procedimiento
+    tipo: pregunta
+    titulo: "El procedimiento práctico"
+    texto: "Ordene los pasos para adaptar una carga."
+    libro: [227]
+    widget:
+      tipo: figura
+      figura: fig-36.6
+      zonas:
+        - { id: todo, rotulo: "Q y las cuatro formas de adaptar", rect: [0, 0, 446, 230] }
+    ordenar:
+      - "Medir la impedancia de la carga a la frecuencia de trabajo."
+      - "Calcular la red, con la carta de Smith o una herramienta."
+      - "Elegir valores comerciales."
+      - "Ajustar midiendo."
+    exito: "El ajuste casi siempre hace falta: placa, parásitos y tolerancias."
+    pistas:
+      - { texto: "No se puede calcular sin saber qué se adapta." }
+    escalera:
+      - "Primero se mide; al final, también."
+    solucion: "Medir, calcular, valores comerciales, ajustar midiendo."
+
+  - id: porque-ajuste
+    tipo: porque
+    titulo: "Posiciones sin poblar"
+    texto: "Las placas de RF llevan a menudo huecos para componentes sin montar. ¿Por qué?"
+    libro: [228]
+    widget:
+      tipo: figura
+      figura: fig-36.6
+      zonas:
+        - { id: todo, rotulo: "Q y las cuatro formas de adaptar", rect: [0, 0, 446, 230] }
+    opciones:
+      - texto: "Para ajustar tras medir: ajustar es la norma en radiofrecuencia"
+        bien: true
+        porque: "La placa, los parásitos y las tolerancias desplazan el resultado del cálculo."
+      - texto: "Porque el cálculo de la red suele estar mal"
+        porque: "No es un fracaso del cálculo: es lo que el cálculo no puede saber de la placa."
+      - texto: "Para abaratar la placa"
+        porque: "No ahorran nada: están para poder corregir midiendo."
+    escalera:
+      - "¿Qué cosas reales no entran en el cálculo?"
+    solucion: "Para ajustar midiendo, que en RF es lo normal."
+
+  - id: pregunta-componentes
+    tipo: pregunta
+    titulo: "Los componentes reales"
+    texto: "Una red de adaptación con un condensador corriente no hace lo previsto. ¿Qué hay que comprobar?"
+    libro: [225]
+    widget:
+      tipo: figura
+      figura: fig-36.6
+      zonas:
+        - { id: todo, rotulo: "Q y las cuatro formas de adaptar", rect: [0, 0, 446, 230] }
+    opciones:
+      - texto: "Que sea C0G/NP0 y que su autorresonancia quede por encima de la banda"
+        bien: true
+        porque: "Un componente que resuena dentro de la banda no se comporta como lo que dice ser."
+      - texto: "Solo su tensión máxima"
+        porque: "Importa, pero lo que arruina la adaptación son las pérdidas y la autorresonancia."
+      - texto: "Nada: un condensador es un condensador"
+        porque: "En RF los parásitos mandan: hacen falta componentes específicos."
+    escalera:
+      - "¿Qué le pasa a un condensador por encima de su autorresonancia?"
+    solucion: "C0G/NP0 de bajas pérdidas y autorresonancia fuera de la banda."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [202, 207, 211, 216, 220, 228]
+    ideas:
+      - { titulo: "Sin disipar.", texto: "Bobinas y condensadores transforman la impedancia." }
+      - { titulo: "La L no elige.", texto: "Q = √(R_{mayor}/R_{menor} − 1) y banda ≈ 1/Q." }
+      - { titulo: "Más libertad.", texto: "T o π suben el Q; dos L en cascada dan más banda." }
+      - { titulo: "Ajustar midiendo.", texto: "Es la norma en radiofrecuencia." }

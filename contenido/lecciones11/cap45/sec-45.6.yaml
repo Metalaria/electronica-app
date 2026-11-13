@@ -1,0 +1,267 @@
+# Lección 1.2 de la sección 46.6 «Multiplexado: Más Luz con Menos Pines» (cap45, sec-45.6). Formato: GUIA.md.
+# - Corriente de pico para 20 mA medios = 20 mA × n dígitos (tabla del bloque 173: 40, 80 y 160 mA).
+# - El barrido como circuito lógico: un contador de 2 bits y un decodificador encienden los comunes de los cuatro dígitos
+#   uno a uno (cada uno, 1/4 del tiempo, bloque 170).
+# - Refresco: 4 dígitos a 200 Hz son 800 conmutaciones por segundo, una interrupción cada 1,25 ms (bloque 180).
+# Pasos prácticos: «dibujar» el común del segundo dígito en el cronograma y «simular» el periodo de la interrupción
+# (errores: el periodo de un dígito, olvidar los cuatro dígitos).
+leccion: cap45/sec-45.6
+
+libro:
+  164: "Cuatro dígitos son 32 LED, y gobernarlos individualmente exigiría 32 pines"
+  165: "no encender todos a la vez, sino uno cada vez, tan deprisa que el ojo los vea todos encendidos"
+  167: "Los segmentos homólogos de todos los dígitos se conectan entre sí"
+  168: "8 líneas de segmento más 4 de dígito = 12 pines en lugar de 32"
+  170: "Con n dígitos, cada uno está encendido 1/n del tiempo"
+  172: "hay que multiplicar la corriente de pico por cuatro"
+  173: "Corriente de pico para 20 mA medios"
+  175: "80 mA por segmento superan con creces sus 20 mA"
+  177: "el multiplexado tiene un límite práctico en torno a ocho dígitos"
+  180: "Con cuatro dígitos y 200 Hz de refresco, hay que conmutar 800 veces por segundo: una interrupción de temporizador cada 1,25 ms"
+  182: "Una matriz de LED de 8×8 son 64 LED con 16 pines"
+  183: "1/8 del tiempo significa ocho veces la corriente de pico"
+  185: "el común del dígito anterior no se ha desactivado antes de cambiar el patrón de segmentos"
+  186: "la rutina de refresco no es de duración constante"
+  187: "Parpadeo al mover la vista: frecuencia de refresco insuficiente"
+  189: "No hay multiplexado, no hay corriente de pico"
+  192: "el solapamiento que produce ghosting"
+  194: "la persistencia retiniana hace que se perciban todas encendidas"
+
+modelo:
+  valores:
+    n_d: { sim: "n", nombre: "número de dígitos", unidad: "", valor: 4 }
+    I_m: { sim: "I_{media}", nombre: "corriente media por segmento", unidad: A, valor: 0.02 }
+    f_r: { sim: "f_{refresco}", nombre: "refresco de cada dígito", unidad: Hz, valor: 200 }
+  calculos:
+    I_p: { expr: "I_m*n_d", sim: "I_{pico}", nombre: "corriente de pico por segmento", unidad: A }
+    T_i: { expr: "1/(f_r*n_d)", sim: "T", nombre: "periodo de la interrupción", unidad: s }
+    T_f: { expr: "1/f_r", sim: "T", nombre: "periodo de refresco de un dígito", unidad: s }
+    T_x: { expr: "1/(f_r*8)", sim: "T", nombre: "con ocho dígitos", unidad: s }
+    f_c: { expr: "f_r*n_d", sim: "f", nombre: "conmutaciones por segundo", unidad: Hz }
+
+tarjetas:
+  - id: explore-matriz
+    tipo: explorar
+    titulo: "Uno cada vez, muy deprisa"
+    texto: "Una matriz se gobierna encendiendo una fila cada vez con el patrón de sus columnas. Toque las partes de la figura."
+    libro: [165, 182, 194]
+    widget:
+      tipo: figura
+      figura: fig-45.11
+      zonas:
+        - { id: fila, rotulo: "Fila verde", rect: [34, 68, 197, 32], texto: "La fila activa: solo ella está alimentada en este instante." }
+        - { id: columnas, rotulo: "Texto del centro a la derecha", rect: [245, 75, 82, 38], texto: "Las columnas fijan el patrón: deciden qué LED de la fila activa se encienden." }
+        - { id: lineas, rotulo: "Texto de arriba a la derecha", rect: [245, 13, 64, 32], texto: "4 + 4 = 8 líneas para 16 LED." }
+        - { id: persistencia, rotulo: "Texto de abajo a la derecha", rect: [245, 145, 82, 38], texto: "Se recorren las filas muy deprisa: la persistencia retiniana las muestra todas." }
+    requiere: { mover: [fila, columnas, persistencia] }
+
+  - id: predecir-pines
+    tipo: predecir
+    titulo: "Los pines de cuatro dígitos"
+    texto: "Cuatro dígitos de siete segmentos con punto son 32 LED. Multiplexados, ¿cuántos pines hacen falta?"
+    libro: [164, 167, 168]
+    widget:
+      tipo: figura
+      figura: fig-45.11
+      zonas:
+        - { id: lineas, rotulo: "Texto de arriba a la derecha", rect: [245, 13, 64, 32] }
+    opciones:
+      - texto: "12: 8 de segmento y 4 de dígito"
+        bien: true
+        porque: "Los segmentos homólogos van juntos y cada dígito tiene su común."
+      - texto: "32, uno por LED"
+        porque: "Eso es sin multiplexar: más de los que tiene un microcontrolador pequeño."
+      - texto: "8, los de los segmentos"
+        porque: "Faltan los comunes: hay que elegir qué dígito luce."
+    escalera:
+      - "Segmentos compartidos más un común por dígito."
+    solucion: "8 + 4 = 12."
+
+  - id: explore-barrido
+    tipo: explorar
+    titulo: "El barrido de los comunes"
+    texto: "Un contador y un decodificador activan los comunes D1 a D4 por turnos. Dé pulsos de reloj o mueva el cursor."
+    libro: [165, 170]
+    widget:
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true }]
+      piezas:
+        - { id: c1, tipo: contador, bits: 2, entradas: [CLK] }
+        - { id: d1, tipo: decodificador, bits: 2, entradas: [c1.q0, c1.q1] }
+      salidas:
+        - { id: D1, de: d1.y0 }
+        - { id: D2, de: d1.y1 }
+        - { id: D3, de: d1.y2 }
+        - { id: D4, de: d1.y3 }
+      cronograma: { ciclos: 8, senales: [CLK, D1, D2, D3, D4] }
+
+  - id: dibuje-comun
+    tipo: dibujar
+    titulo: "Cuándo luce el segundo dígito"
+    texto: "Con el mismo barrido, dibuje el común D2 durante ocho ciclos de reloj."
+    libro: [170]
+    widget:
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true }]
+      piezas:
+        - { id: c1, tipo: contador, bits: 2, entradas: [CLK] }
+        - { id: d1, tipo: decodificador, bits: 2, entradas: [c1.q0, c1.q1] }
+      salidas:
+        - { id: D1, de: d1.y0 }
+        - { id: D2, de: d1.y1 }
+        - { id: D3, de: d1.y2 }
+        - { id: D4, de: d1.y3 }
+      cronograma: { ciclos: 8, senales: [CLK, D1] }
+      dibujo: false
+    dibujar:
+      senal: D2
+    exito: "Un ciclo de cada cuatro: luce la cuarta parte del tiempo."
+    escalera:
+      - "D2 se activa justo después de D1, durante un ciclo."
+    solucion: "D2 alto un ciclo de cada cuatro, el que sigue a D1."
+
+  - id: explore-pico
+    tipo: explorar
+    titulo: "La corriente de pico"
+    texto: "Si cada dígito luce 1/n del tiempo, para 20 mA medios hay que dar n veces más de pico. Cambie el número de dígitos."
+    libro: [170, 172, 173]
+    fijar: { I_m: 0.02 }
+    widget:
+      tipo: grafica
+      x: { id: n, min: 1, max: 10, unidad: "", rotulo: "dígitos" }
+      y: { min: 0, max: 0.2, unidad: A, rotulo: "I_{pico}" }
+      curvas:
+        - { expr: "I_m*n", color: naranja, rotulo: "pico para 20 mA medios" }
+      marcas:
+        - { x: "n_d", y: "I_p", rotulo: "{{I_p}}" }
+      lectura: { valor: I_p, rotulo: "Corriente de pico por segmento" }
+      mandos:
+        - { valor: n_d, lista: [2, 4, 8], rotulo: "Dígitos" }
+    requiere: { mover: [n_d] }
+
+  - id: pregunta-drivers
+    tipo: pregunta
+    titulo: "El pin no puede"
+    texto: "Cuatro dígitos a 20 mA medios piden 80 mA de pico por segmento. ¿Qué hace falta?"
+    libro: [175]
+    fijar: { n_d: 4, I_m: 0.02 }
+    widget:
+      tipo: figura
+      figura: fig-45.11
+      zonas:
+        - { id: fila, rotulo: "Fila verde", rect: [34, 68, 197, 32] }
+    opciones:
+      - texto: "Transistores o un driver en los segmentos y en los comunes"
+        bien: true
+        porque: "80 mA superan los 20 mA de un pin; el común lleva además la suma de los ocho segmentos."
+      - texto: "Nada: el pin da los 80 mA en pulsos"
+        porque: "Un pin de microcontrolador no da 80 mA, ni en pulsos."
+      - texto: "Solo un transistor en cada común"
+        porque: "Los segmentos también pasan de 20 mA: los dos lados necesitan driver."
+    escalera:
+      - "Compare 80 mA con lo que da un pin."
+    solucion: "Drivers en segmentos y comunes."
+    comprobar:
+      - { I_p: 0.08 }
+
+  - id: simule-refresco
+    tipo: simular
+    titulo: "Cada cuánto conmutar"
+    texto: "Cuatro dígitos refrescados a 200 Hz cada uno. ¿Cada cuánto debe saltar la interrupción del temporizador?"
+    libro: [180]
+    fijar: { n_d: 4, f_r: 200 }
+    simular:
+      objetivo: T_i
+      unidad: s
+      tol: 0.03
+      rotulo: "Periodo de la interrupción"
+      errores:
+        - { expr: "T_f", texto: "Ese es el periodo de refresco de un dígito; en él hay que pasar por los cuatro." }
+        - { expr: "T_x", texto: "Ha contado ocho dígitos; son cuatro." }
+    exito: "1,25 ms: 800 conmutaciones por segundo, por interrupción y no con esperas."
+    escalera:
+      - "Conmutaciones por segundo = 200 × 4."
+    solucion: "1/800 s = 1,25 ms."
+    comprobar:
+      - { T_i: 0.00125, T_f: 0.005, T_x: 0.000625, f_c: 800 }
+
+  - id: empareje-defectos
+    tipo: pregunta
+    titulo: "Los defectos característicos"
+    texto: "Empareje cada defecto con su causa."
+    libro: [185, 186, 187, 192]
+    widget:
+      tipo: figura
+      figura: fig-45.11
+      zonas:
+        - { id: fila, rotulo: "Fila verde", rect: [34, 68, 197, 32] }
+    emparejar:
+      - ["Ghosting", "Se cambia el patrón con el común anterior aún activo"]
+      - ["Brillo desigual entre dígitos", "La rutina de refresco no dura siempre lo mismo"]
+      - ["Parpadeo al mover la vista", "Refresco insuficiente"]
+    exito: "El ghosting se ve en el osciloscopio: segmento y común activos a la vez cuando no deben."
+    pistas:
+      - { texto: "Un dígito tenue con lo del siguiente es un solapamiento." }
+    escalera:
+      - "La cura del ghosting: apagar todo un instante entre dígitos."
+    solucion: "Ghosting, solapamiento; desigual, rutina variable; parpadeo, refresco bajo."
+
+  - id: porque-ocho
+    tipo: porque
+    titulo: "El límite de ocho dígitos"
+    texto: "¿Por qué el multiplexado tiene un límite práctico en torno a ocho dígitos?"
+    libro: [177, 183]
+    fijar: { n_d: 8 }
+    widget:
+      tipo: grafica
+      x: { id: n, min: 1, max: 10, unidad: "", rotulo: "dígitos" }
+      y: { min: 0, max: 0.2, unidad: A, rotulo: "I_{pico}" }
+      curvas:
+        - { expr: "I_m*n", color: naranja, rotulo: "pico para 20 mA medios" }
+      marcas:
+        - { x: "n_d", y: "I_p", rotulo: "{{I_p}}" }
+    opciones:
+      - texto: "La corriente de pico crece con los dígitos y el LED no la admite"
+        bien: true
+        porque: "Con ocho, 160 mA de pico por segmento; más allá, controladores con memoria por dígito."
+      - texto: "Porque se acaban los pines"
+        porque: "Los pines crecen poco: es la corriente de pico la que se dispara."
+      - texto: "Porque el ojo no ve más de ocho"
+        porque: "La persistencia retiniana no tiene ese límite: es la corriente."
+    escalera:
+      - "Cada dígito luce 1/n del tiempo."
+    solucion: "La corriente de pico: 160 mA con ocho dígitos."
+    comprobar:
+      - { I_p: 0.16 }
+
+  - id: pregunta-alternativa
+    tipo: pregunta
+    titulo: "La alternativa moderna"
+    texto: "¿Qué ofrecen los LED direccionables frente al multiplexado?"
+    libro: [189]
+    widget:
+      tipo: figura
+      figura: fig-45.11
+      zonas:
+        - { id: persistencia, rotulo: "Texto de abajo a la derecha", rect: [245, 145, 82, 38] }
+    opciones:
+      - texto: "Sin multiplexado ni corriente de pico, con una sola línea de datos"
+        bien: true
+        porque: "Cada LED lleva su controlador; el precio es una temporización estricta."
+      - texto: "Más brillo con la misma corriente de pico"
+        porque: "No hay corriente de pico: cada LED luce de forma continua."
+      - texto: "Que no necesitan alimentación"
+        porque: "La necesitan, y mucha: es su problema real."
+    escalera:
+      - "¿Quién guarda el valor de cada LED?"
+    solucion: "Cada LED tiene su controlador: nada de barrido ni de picos."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [168, 170, 177, 180, 185]
+    ideas:
+      - { titulo: "Menos pines.", texto: "12 en lugar de 32: segmentos compartidos y un común por dígito." }
+      - { titulo: "Más pico.", texto: "Cada dígito luce 1/n: n veces la corriente; drivers en ambos lados." }
+      - { titulo: "Refresco.", texto: "Con cuatro dígitos a 200 Hz, una interrupción cada 1,25 ms, no esperas." }
+      - { titulo: "Defectos.", texto: "Ghosting, brillo desigual y parpadeo." }

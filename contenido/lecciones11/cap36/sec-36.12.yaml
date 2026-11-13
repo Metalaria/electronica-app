@@ -1,0 +1,324 @@
+# Lección 1.2 de la sección 37.13 «El Balance de Enlace» (cap36, sec-36.12). Formato: GUIA.md.
+# - Pérdida en espacio libre L = 32,44 + 20·log(d_km) + 20·log(f_MHz) (bloque 456): 72,44 dB a 100 MHz y 1 km; 91,2 dB a
+#   868 MHz y 1 km; 80,04 dB a 2,4 GHz y 100 m (la tabla del bloque 447 da 80,05 con la fórmula exacta).
+# - Balance de la tabla del bloque 464: +14 − 1 + 2 − 91,2 + 2 − 1 = −75,2 dBm; con −110 dBm de sensibilidad, 34,8 dB.
+# - Fresnel: r = 8,66·√(d_km/f_GHz) (bloque 478): 9,3 m con 1 km y 868 MHz; el 60 %, 5,6 m.
+# - Sensibilidad: −174 + 10·log(BW) + NF + SNR (bloque 484): −108 dBm con 100 kHz, 6 dB y 10 dB.
+# Pasos prácticos: «simular» el margen del enlace de 868 MHz (errores: sin las pérdidas de cable, sin las antenas) y
+# «ajuste» del ancho de banda hasta ganar 10 dB de sensibilidad.
+leccion: cap36/sec-36.12
+
+libro:
+  444: "toda la cadena se reduce a una cuenta sencilla que da la potencia que llega al receptor"
+  446: "la diferencia entre la potencia recibida y la sensibilidad, el margen"
+  447: "2,4 GHz a 100 m"
+  448: "100 metros a 2,4 GHz pierden más que un kilómetro a 100 MHz"
+  456: '"32,44"'
+  458: "Doblar la distancia cuesta 6 dB"
+  459: "Doblar la frecuencia cuesta otros 6 dB"
+  461: '"91,2 dB"'
+  464: "Pérdida de cable y conector"
+  465: "La sensibilidad del receptor para el modo elegido: −110 dBm"
+  466: "Margen = −75,2 − (−110) = 34,8 dB"
+  469: "En interiores puede llegar a 20 dB de desvanecimiento profundo"
+  472: "dos antenas lineales perpendiculares pierden más de 20 dB"
+  474: "Exterior con visión directa"
+  475: "los 34,8 dB del ejemplo son cómodos en exterior y justos en interior"
+  477: "Un enlace con visión directa aparente puede tener pérdidas grandes si hay obstáculos cerca de la línea"
+  478: '"8,66"'
+  479: "Con 1 km a 868 MHz: 9,3 metros de radio"
+  480: "hay que mantener despejado al menos el 60 % de esa primera zona, es decir, unos 5,6 m"
+  481: "no porque «se vea más», sino para despejar la zona"
+  484: '"174 dBm"'
+  486: '"108 dBm"'
+  487: "Bajar de 100 kHz a 10 kHz gana 10 dB, tanto como multiplicar por diez la potencia"
+
+modelo:
+  valores:
+    d_m: { sim: "d", nombre: "distancia", unidad: m, valor: 1000 }
+    f_h: { sim: "f", nombre: "frecuencia", unidad: Hz, valor: 868000000 }
+    P_t: { sim: "P_{tx}", nombre: "potencia transmitida", unidad: dBm, valor: 14 }
+    L_c: { sim: "L_{cable}", nombre: "pérdida de cable en cada extremo", unidad: dB, valor: 1 }
+    G_a: { sim: "G", nombre: "ganancia de cada antena", unidad: dBi, valor: 2 }
+    S_r: { sim: "S", nombre: "sensibilidad del receptor", unidad: dBm, valor: -110 }
+    B_w: { sim: "BW", nombre: "ancho de banda", unidad: Hz, valor: 100000 }
+    N_f: { sim: "NF", nombre: "figura de ruido", unidad: dB, valor: 6 }
+    S_n: { sim: "SNR", nombre: "relación señal/ruido exigida", unidad: dB, valor: 10 }
+  calculos:
+    L_fs: { expr: "32.44 + 20*log10(d_m/1000) + 20*log10(f_h/1000000)", sim: "L_{fs}", nombre: "pérdida en espacio libre", unidad: dB }
+    P_r: { expr: "P_t - L_c + G_a - L_fs + G_a - L_c", sim: "P_{rx}", nombre: "potencia recibida", unidad: dBm }
+    M_g: { expr: "P_r - S_r", sim: "margen", nombre: "margen del enlace", unidad: dB }
+    M_sc: { expr: "P_t + 2*G_a - L_fs - S_r", sim: "margen", nombre: "margen sin cables", unidad: dB }
+    M_sa: { expr: "P_t - 2*L_c - L_fs - S_r", sim: "margen", nombre: "margen sin antenas", unidad: dB }
+    r_F: { expr: "8.66*sqrt((d_m/1000)/(f_h/1000000000))", sim: "r", nombre: "radio de la primera zona de Fresnel", unidad: m }
+    D_3: { expr: "10*log10(2)", sim: "3 dB", nombre: "la mitad en decibelios", unidad: dB }
+    s_q: { expr: "sqrt((d_m/1000)/(f_h/1000000000))", sim: "√(d/f)", nombre: "raíz del cociente", unidad: "" }
+    P_m: { expr: "-174 + 10*log10(B_w) + N_f + S_n", sim: "P_{mín}", nombre: "sensibilidad", unidad: dBm }
+
+tarjetas:
+  - id: explore-perdida
+    tipo: explorar
+    titulo: "La pérdida de propagación"
+    texto: "En espacio libre la potencia se reparte sobre una esfera. Cambie la distancia y la frecuencia."
+    libro: [444, 456, 458, 459]
+    widget:
+      tipo: grafica
+      x: { id: dd, min: 10, max: 10000, unidad: m, rotulo: "d", escala: log }
+      y: { min: 40, max: 130, unidad: dB, rotulo: "L_{fs}" }
+      curvas:
+        - { expr: "32.44 + 20*log10(dd/1000) + 20*log10(f_h/1000000)", color: naranja, rotulo: "pérdida en espacio libre" }
+      marcas:
+        - { x: "d_m", y: "L_fs", rotulo: "{{L_fs}}" }
+      lectura: { valor: L_fs, rotulo: "Pérdida en espacio libre" }
+      mandos:
+        - { valor: d_m, lista: [100, 500, 1000, 2000], rotulo: "Distancia" }
+        - { valor: f_h, lista: [100000000, 868000000, 2400000000], rotulo: "Frecuencia" }
+    requiere: { mover: [d_m, f_h] }
+
+  - id: formula-friis
+    tipo: formula
+    titulo: "Friis en decibelios"
+    texto: "Distancia en kilómetros y frecuencia en megahercios: todo se suma."
+    libro: [456, 461]
+    ec: 456
+    sustitucion: "32,44 + 20·log({{d_m}}/1 km) + 20·log({{f_h}}/1 MHz) = {{L_fs}}"
+    widget:
+      tipo: grafica
+      x: { id: dd, min: 10, max: 10000, unidad: m, rotulo: "d", escala: log }
+      y: { min: 40, max: 130, unidad: dB, rotulo: "L_{fs}" }
+      curvas:
+        - { expr: "32.44 + 20*log10(dd/1000) + 20*log10(f_h/1000000)", color: naranja, rotulo: "pérdida en espacio libre" }
+      marcas:
+        - { x: "d_m", y: "L_fs", rotulo: "{{L_fs}}" }
+      lectura: { valor: L_fs, rotulo: "Pérdida en espacio libre" }
+      mandos:
+        - { valor: d_m, lista: [100, 500, 1000, 2000], rotulo: "Distancia" }
+        - { valor: f_h, lista: [100000000, 868000000, 2400000000], rotulo: "Frecuencia" }
+
+  - id: predecir-wifi
+    tipo: predecir
+    titulo: "El poco alcance del wifi"
+    texto: "¿Qué pierde más: 100 m a 2,4 GHz o 1 km a 100 MHz?"
+    libro: [447, 448]
+    widget:
+      tipo: figura
+      figura: fig-36.14
+      zonas:
+        - { id: todo, rotulo: "Balance de enlace con su margen", rect: [0, 0, 437, 197] }
+    opciones:
+      - texto: "Los 100 m a 2,4 GHz: 80,05 dB frente a 72,44 dB"
+        bien: true
+        porque: "La pérdida crece con el cuadrado de la frecuencia: bandas bajas para cobertura, altas para capacidad."
+      - texto: "El kilómetro a 100 MHz, porque es diez veces más lejos"
+        porque: "Diez veces más lejos son 20 dB; la frecuencia, mucho mayor, cuesta todavía más."
+      - texto: "Lo mismo"
+        porque: "La frecuencia pesa tanto como la distancia en la fórmula."
+    escalera:
+      - "Cada factor de diez en distancia son 20 dB; en frecuencia, otros 20."
+    solucion: "Los 100 m a 2,4 GHz pierden más: 80,05 dB."
+    comprobar:
+      - { con: { d_m: 100, f_h: 2400000000 }, L_fs: 80.04 }
+      - { con: { d_m: 1000, f_h: 100000000 }, L_fs: 72.44 }
+      - { con: { d_m: 1000, f_h: 2400000000 }, L_fs: 100.04 }
+
+  - id: pregunta-doblar
+    tipo: pregunta
+    titulo: "Doblar la distancia"
+    texto: "Un enlace funciona a 500 m. ¿Cuánto más pierde a 1 km?"
+    libro: [458]
+    widget:
+      tipo: figura
+      figura: fig-36.14
+      zonas:
+        - { id: todo, rotulo: "Balance de enlace con su margen", rect: [0, 0, 437, 197] }
+    opciones:
+      - texto: "6 dB, sea cual sea la distancia de partida"
+        bien: true
+        porque: "20·log(2) = 6 dB: doblar la distancia siempre cuesta lo mismo."
+      - texto: "3 dB"
+        porque: "La pérdida va con el cuadrado de la distancia: 6 dB, no 3."
+      - texto: "Depende de lo lejos que esté ya"
+        porque: "En decibelios el coste de doblar es fijo: 6 dB desde cualquier distancia."
+    escalera:
+      - "La densidad de potencia cae con d²."
+    solucion: "6 dB: la cuarta parte de la potencia."
+    comprobar:
+      - { con: { d_m: 500 }, L_fs: 85.19, D_3: 3.01 }
+
+  - id: simule-margen
+    tipo: simular
+    titulo: "Un enlace de telemetría a 868 MHz"
+    texto: "+14 dBm, 1 dB de cable en cada extremo, antenas de 2 dBi, 1 km a 868 MHz y −110 dBm de sensibilidad. ¿Qué margen queda?"
+    libro: [461, 464, 465, 466]
+    fijar: { d_m: 1000, f_h: 868000000, P_t: 14, L_c: 1, G_a: 2, S_r: -110 }
+    simular:
+      objetivo: M_g
+      unidad: dB
+      tol: 0.02
+      rotulo: "Margen del enlace"
+      errores:
+        - { expr: "M_sc", texto: "Ha olvidado las pérdidas de cable y conector, 1 dB en cada extremo." }
+        - { expr: "M_sa", texto: "Ha olvidado las ganancias de las dos antenas, 2 dBi cada una." }
+    exito: "34,8 dB: cómodos en exterior y justos en interior."
+    escalera:
+      - "Recibida = 14 − 1 + 2 − 91,2 + 2 − 1."
+      - "Margen = recibida − sensibilidad."
+    solucion: "−75,2 − (−110) = 34,8 dB."
+    comprobar:
+      - { L_fs: 91.21, P_r: -75.21, M_g: 34.79, M_sc: 36.79, M_sa: 30.79 }
+
+  - id: empareje-margenes
+    tipo: pregunta
+    titulo: "Qué margen hace falta"
+    texto: "Empareje cada situación con el margen recomendado."
+    libro: [474]
+    widget:
+      tipo: figura
+      figura: fig-36.15
+      zonas:
+        - { id: todo, rotulo: "Lo que consume el margen", rect: [0, 0, 441, 339] }
+    emparejar:
+      - ["Exterior con visión directa", "10 a 15 dB"]
+      - ["Exterior sin visión directa", "20 dB"]
+      - ["Interior", "25 a 30 dB"]
+      - ["Enlace crítico", "30 dB o más"]
+    exito: "El margen se lo comen el multitrayecto, las paredes, la lluvia y el desapuntamiento."
+    pistas:
+      - { texto: "El interior tiene paredes y multitrayecto." }
+    escalera:
+      - "Cuantos más obstáculos, más margen."
+    solucion: "10–15, 20, 25–30 y 30 o más."
+
+  - id: pregunta-consumo
+    tipo: pregunta
+    titulo: "Lo que se come el margen"
+    texto: "Un enlace funciona en el banco y falla montado. ¿Cuál es la causa más común?"
+    libro: [469, 472]
+    widget:
+      tipo: figura
+      figura: fig-36.15
+      zonas:
+        - { id: todo, rotulo: "Lo que consume el margen", rect: [0, 0, 441, 339] }
+    opciones:
+      - texto: "Desapuntamiento y polarización cruzada: más de 20 dB"
+        bien: true
+        porque: "Dos antenas lineales perpendiculares pierden más de 20 dB: girar una lo comprueba."
+      - texto: "La lluvia"
+        porque: "La lluvia es apreciable por encima de 10 GHz e ignorable a 868 MHz."
+      - texto: "La temperatura del módulo"
+        porque: "No está entre lo que consume el margen; la orientación sí."
+    escalera:
+      - "¿Qué cambia entre el banco y el montaje final?"
+    solucion: "La polarización cruzada: más de 20 dB."
+
+  - id: estime-fresnel
+    tipo: pregunta
+    titulo: "La zona de Fresnel"
+    texto: "Un enlace de 1 km a 868 MHz. ¿Qué radio tiene la primera zona de Fresnel en el punto medio?"
+    libro: [477, 478, 479]
+    fijar: { d_m: 1000, f_h: 868000000 }
+    widget:
+      tipo: figura
+      figura: fig-36.15
+      zonas:
+        - { id: todo, rotulo: "Lo que consume el margen", rect: [0, 0, 441, 339] }
+    estimar:
+      objetivo: "r_F"
+      unidad: m
+      min: 0
+      max: 30
+      paso: 0.1
+      inicio: 24
+      tol: 0.05
+      rotulo: "Radio en el punto medio"
+    exito: "9,3 m; hay que despejar al menos el 60 %, unos 5,6 m."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 9.8 }, texto: "Demasiado: 8,66 × √(1/0,868)." }
+      - { texto: "Demasiado poco: la raíz de 1/0,868 es algo mayor que 1." }
+    escalera:
+      - "r ≈ 8,66·√(d_{km}/f_{GHz})."
+    solucion: "8,66 × 1,073 = 9,3 m."
+    comprobar:
+      - { r_F: 9.295, s_q: 1.0733 }
+
+  - id: formula-sensibilidad
+    tipo: formula
+    titulo: "De qué depende la sensibilidad"
+    texto: "Suelo térmico, más ancho de banda, figura de ruido y relación señal/ruido exigida."
+    libro: [484, 486]
+    ec: 484
+    sustitucion: "−174 + 10·log({{B_w}}) + {{N_f}} + {{S_n}} = {{P_m}}"
+    widget:
+      tipo: grafica
+      x: { id: b, min: 100, max: 1000000, unidad: Hz, rotulo: "BW", escala: log }
+      y: { min: -150, max: -80, unidad: dBm, rotulo: "P_{mín}" }
+      curvas:
+        - { expr: "-174 + 10*log10(b) + N_f + S_n", color: naranja, rotulo: "sensibilidad" }
+      marcas:
+        - { x: "B_w", y: "P_m", rotulo: "{{P_m}}" }
+      lectura: { valor: P_m, rotulo: "Sensibilidad" }
+      mandos:
+        - { valor: N_f, lista: [3, 6, 10], rotulo: "Figura de ruido" }
+
+  - id: ajuste-banda
+    tipo: ajuste
+    titulo: "La palanca que más rinde"
+    texto: "Con 6 dB de figura y 10 dB de relación exigida, la sensibilidad es de −108 dBm. Baje el ancho de banda hasta ganar 10 dB."
+    libro: [486, 487]
+    fijar: { N_f: 6, S_n: 10 }
+    inicio: { B_w: 100000 }
+    widget:
+      tipo: grafica
+      x: { id: b, min: 100, max: 1000000, unidad: Hz, rotulo: "BW", escala: log }
+      y: { min: -150, max: -80, unidad: dBm, rotulo: "P_{mín}" }
+      curvas:
+        - { expr: "-174 + 10*log10(b) + N_f + S_n", color: naranja, rotulo: "sensibilidad" }
+      marcas:
+        - { x: "B_w", y: "P_m", rotulo: "{{P_m}}" }
+      lectura: { valor: P_m, rotulo: "Sensibilidad" }
+      mandos:
+        - { valor: B_w, lista: [100000, 50000, 20000, 10000, 5000, 1000], rotulo: "Ancho de banda" }
+    ajuste:
+      valor: P_m
+      min: -119
+      max: -117
+      rotulo: "Sensibilidad"
+      escala: { min: -140, max: -100 }
+      bajo: "Ha ganado más de 10 dB: estrecha de más para el modo pedido. Suba un poco el ancho."
+      alto: "Aún no llega: baje más el ancho de banda."
+      dentro: "−118 dBm con 10 kHz: 10 dB, como multiplicar por diez la potencia."
+    comprobar:
+      - { con: { B_w: 10000 }, P_m: -118 }
+      - { con: { B_w: 100000 }, P_m: -108 }
+
+  - id: porque-altura
+    tipo: porque
+    titulo: "Desde lo alto"
+    texto: "¿Por qué un enlace se monta en lo alto aunque ya haya visión directa?"
+    libro: [477, 480, 481]
+    widget:
+      tipo: figura
+      figura: fig-36.15
+      zonas:
+        - { id: todo, rotulo: "Lo que consume el margen", rect: [0, 0, 441, 339] }
+    opciones:
+      - texto: "Para despejar la zona de Fresnel: un tejado cerca de la línea mete pérdida"
+        bien: true
+        porque: "La onda ocupa un elipsoide; los obstáculos que no tapan la línea también restan."
+      - texto: "Porque desde arriba se ve más lejos"
+        porque: "Es la explicación que el libro descarta: no es «verse», es despejar la zona."
+      - texto: "Para que no le afecte la lluvia"
+        porque: "La altura no quita la lluvia; despeja el volumen por el que viaja la onda."
+    escalera:
+      - "La onda no es una línea: es un volumen."
+    solucion: "Para despejar la primera zona de Fresnel."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [446, 458, 466, 475, 480, 487]
+    ideas:
+      - { titulo: "Sumar en dB.", texto: "Potencia, antenas y pérdidas: lo que llega frente a la sensibilidad." }
+      - { titulo: "Propagación.", texto: "6 dB por cada vez que se dobla la distancia o la frecuencia." }
+      - { titulo: "El margen.", texto: "34,8 dB a 868 MHz: cómodo fuera, justo dentro." }
+      - { titulo: "Las palancas.", texto: "Despejar Fresnel y estrechar la banda: 10 kHz ganan 10 dB." }

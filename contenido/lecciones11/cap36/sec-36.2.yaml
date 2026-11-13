@@ -1,0 +1,285 @@
+# Lección 1.2 de la sección 37.3 «Líneas de Transmisión, Reflexión y VSWR» (cap36, sec-36.2). Formato: GUIA.md.
+# - Γ = (Z_L − Z0)/(Z_L + Z0) con Z0 = 50 Ω (bloque 115); VSWR = (1 + |Γ|)/(1 − |Γ|) (bloque 120); potencia reflejada
+#   |Γ|² (tabla del bloque 121: 4, 11 y 25 % con VSWR 1,5, 2 y 3); pérdida por desadaptación −10·log(1 − |Γ|²).
+# - Reflectometría (bloques 131 y 48): escalón de 1 V por 50 Ω en 1 m de coaxial de 5,00 ns: la entrada se queda en
+#   0,500 V y la reflexión vuelve a los 10 ns; en cortocircuito la anula (Γ = −1).
+# Paso práctico: «dibujar» lo que se ve en el origen de una línea en cortocircuito.
+leccion: cap36/sec-36.2
+
+libro:
+  114: "parte de la energía vuelve"
+  115: 'Γ = (Z_("L") - Z_("0"))/(Z_("L") + Z_("0"))'
+  116: "Se refleja el 4 % de la potencia"
+  117: "un circuito abierto duplica la tensión en el extremo"
+  119: "forman una onda estacionaria"
+  120: '"VSWR" = ("1" + bar.v Γ bar.v)'
+  121: "Aceptable"
+  122: "la tensión reflejada que vuelve a la etapa final y puede destruirla"
+  124: "Elimina la reflexión por completo, a costa de consumo permanente"
+  125: "La onda sale con la mitad de amplitud, se refleja al llegar al extremo abierto y al volver al origen es absorbida"
+  126: "termina para la señal y no consume en continua"
+  129: "Conectarla en un solo extremo"
+  131: "una cortocircuitada, un escalón que vuelve invertido y la anula"
+  132: "Midiendo cuánto tarda en llegar la reflexión se obtiene la longitud de la línea"
+  "cap36#48": "la entrada se queda en 0,500 V (la línea presenta 50 Ω), el escalón llega al extremo 5,00 ns después"
+  "cap36#542": "Una carga de 75 Ω se conecta a una línea de 50 Ω"
+
+modelo:
+  valores:
+    Z_0: { sim: "Z_{0}", nombre: "impedancia de la línea", unidad: Ω, valor: 50 }
+    Z_L: { sim: "Z_{L}", nombre: "impedancia de la carga", unidad: Ω, valor: 75 }
+    S_v: { sim: "VSWR", nombre: "razón de onda estacionaria", unidad: "", valor: 2 }
+    T_l: { sim: "T", nombre: "retardo de la línea", unidad: s, valor: 0.000000005 }
+  calculos:
+    Gam: { expr: "(Z_L - Z_0)/(Z_L + Z_0)", sim: "Γ", nombre: "coeficiente de reflexión", unidad: "" }
+    VSWR: { expr: "(1 + abs(Gam))/(1 - abs(Gam))", sim: "VSWR", nombre: "razón de onda estacionaria", unidad: "" }
+    P_r: { expr: "100*Gam^2", sim: "P_{refl}", nombre: "potencia reflejada", unidad: "%" }
+    G_s: { expr: "(S_v - 1)/(S_v + 1)", sim: "|Γ|", nombre: "módulo de Γ", unidad: "" }
+    P_s: { expr: "100*G_s^2", sim: "P_{refl}", nombre: "potencia reflejada", unidad: "%" }
+    ML_s: { expr: "-10*log10(1 - G_s^2)", sim: "ML", nombre: "pérdida por desadaptación", unidad: dB }
+
+tarjetas:
+  - id: explore-reflexion
+    tipo: explorar
+    titulo: "Lo que vuelve"
+    texto: "Una línea de 50 Ω acaba en una carga. Cámbiela y mire qué parte de la onda vuelve."
+    libro: [114, 115, 116]
+    widget:
+      tipo: grafica
+      x: { id: z, min: 5, max: 500, unidad: Ω, rotulo: "Z_{L}", escala: log }
+      y: { min: -1, max: 1, unidad: "", rotulo: "Γ" }
+      curvas:
+        - { expr: "(z - Z_0)/(z + Z_0)", color: naranja, rotulo: "Γ" }
+      marcas:
+        - { x: "Z_L", y: "Gam", rotulo: "{{Gam}}" }
+      lectura: { valor: Gam, rotulo: "Coeficiente de reflexión" }
+      datos:
+        - { valor: P_r, rotulo: "Potencia reflejada: {{P_r}}" }
+      mandos:
+        - { valor: Z_L, lista: [10, 25, 50, 75, 100, 250], rotulo: "Carga, Z_{L}" }
+    requiere: { mover: [Z_L] }
+
+  - id: predecir-abierto
+    tipo: predecir
+    titulo: "Una línea digital abierta"
+    texto: "Una línea digital acaba en circuito abierto, Γ = +1. ¿Qué tensión aparece en el extremo?"
+    libro: [116, 117]
+    widget:
+      tipo: figura
+      figura: fig-36.2
+      zonas:
+        - { id: tdr, rotulo: "Reflectometría con tres terminaciones", rect: [0, 0, 221, 197] }
+    opciones:
+      - texto: "El doble de la incidente"
+        bien: true
+        porque: "La incidente y la reflejada se suman en fase: el sobreimpulso que lleva una entrada por encima de su máximo."
+      - texto: "Cero"
+        porque: "Eso pasa en cortocircuito, Γ = −1: la reflejada llega invertida y la anula."
+      - texto: "La misma que la incidente"
+        porque: "Así sería solo con la línea adaptada, sin reflexión."
+    escalera:
+      - "Γ = +1: vuelve todo, y en fase."
+    solucion: "Incidente más reflejada: el doble."
+
+  - id: formula-gamma
+    tipo: formula
+    titulo: "El coeficiente de reflexión"
+    texto: "Γ compara la carga con la línea. Cero si son iguales; ±1 en abierto o en corto."
+    libro: [115, 116]
+    ec: 115
+    sustitucion: "({{Z_L}} − {{Z_0}}) / ({{Z_L}} + {{Z_0}}) = {{Gam}}"
+    widget:
+      tipo: grafica
+      x: { id: z, min: 5, max: 500, unidad: Ω, rotulo: "Z_{L}", escala: log }
+      y: { min: -1, max: 1, unidad: "", rotulo: "Γ" }
+      curvas:
+        - { expr: "(z - Z_0)/(z + Z_0)", color: naranja, rotulo: "Γ" }
+      marcas:
+        - { x: "Z_L", y: "Gam", rotulo: "{{Gam}}" }
+      lectura: { valor: Gam, rotulo: "Coeficiente de reflexión" }
+      mandos:
+        - { valor: Z_L, lista: [10, 25, 50, 75, 100, 250], rotulo: "Carga, Z_{L}" }
+
+  - id: estime-vswr
+    tipo: pregunta
+    titulo: "75 Ω sobre 50 Ω"
+    texto: "Una carga de 75 Ω en una línea de 50 Ω da Γ = 0,2. ¿Cuánto vale el VSWR?"
+    libro: [120, "cap36#542"]
+    fijar: { Z_L: 75, Z_0: 50 }
+    widget:
+      tipo: figura
+      figura: fig-36.2
+      zonas:
+        - { id: vswr, rotulo: "VSWR frente a la carga", rect: [221, 0, 222, 197] }
+    estimar:
+      objetivo: "VSWR"
+      unidad: ""
+      min: 1
+      max: 3
+      paso: 0.01
+      inicio: 2.6
+      tol: 0.03
+      rotulo: "VSWR"
+    exito: "1,5: muy bueno. Se refleja el 4 % de la potencia."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 1.545 }, texto: "Demasiado alto: (1 + 0,2)/(1 − 0,2)." }
+      - { texto: "Demasiado bajo: el VSWR nunca baja de 1, y 0,2 de Γ lo sube algo más." }
+    escalera:
+      - "VSWR = (1 + |Γ|)/(1 − |Γ|)."
+    solucion: "1,2 / 0,8 = 1,5."
+    comprobar:
+      - { Gam: 0.2, VSWR: 1.5, P_r: 4 }
+
+  - id: explore-coste
+    tipo: explorar
+    titulo: "Lo que cuesta en potencia"
+    texto: "Mueva el VSWR y mire qué parte de la potencia se refleja."
+    libro: [119, 121, 122]
+    widget:
+      tipo: grafica
+      x: { id: s, min: 1, max: 5, unidad: "", rotulo: "VSWR" }
+      y: { min: 0, max: 50, unidad: "%", rotulo: "P_{refl}" }
+      curvas:
+        - { expr: "100*((s - 1)/(s + 1))^2", color: naranja, rotulo: "potencia reflejada" }
+      marcas:
+        - { x: "S_v", y: "P_s", rotulo: "{{P_s}}" }
+      lectura: { valor: P_s, rotulo: "Potencia reflejada" }
+      datos:
+        - { valor: ML_s, rotulo: "Pérdida: {{ML_s}}" }
+      mandos:
+        - { valor: S_v, lista: [1.5, 2, 3], rotulo: "VSWR" }
+    requiere: { mover: [S_v] }
+    comprobar:
+      - { con: { S_v: 2 }, P_s: 11.1, ML_s: 0.512 }
+
+  - id: porque-transmisor
+    tipo: porque
+    titulo: "El peligro del VSWR alto"
+    texto: "Un VSWR de 2 solo desperdicia el 11 % de la potencia, medio decibelio. ¿Por qué preocupa en un transmisor?"
+    libro: [122]
+    widget:
+      tipo: figura
+      figura: fig-36.3
+      zonas:
+        - { id: todo, rotulo: "Onda estacionaria y su coste", rect: [0, 0, 441, 197] }
+    opciones:
+      - texto: "La tensión reflejada vuelve a la etapa final y puede destruirla"
+        bien: true
+        porque: "La pérdida es pequeña; el riesgo está en lo que vuelve al amplificador."
+      - texto: "Porque medio decibelio es una pérdida enorme"
+        porque: "Medio decibelio apenas se nota en el alcance: no es ahí."
+      - texto: "Porque la antena deja de radiar"
+        porque: "Con VSWR 2 se pierde solo el 11 %: el resto sigue llegando a la antena."
+    escalera:
+      - "¿Adónde va la onda reflejada?"
+    solucion: "Vuelve hacia la etapa final: es ella la que corre peligro."
+    comprobar:
+      - { con: { S_v: 2 }, P_s: 11.1 }
+
+  - id: empareje-terminaciones
+    tipo: pregunta
+    titulo: "Tres formas de terminar"
+    texto: "Empareje cada terminación de una línea digital con su rasgo."
+    libro: [124, 125, 126]
+    widget:
+      tipo: figura
+      figura: fig-36.2
+      zonas:
+        - { id: tdr, rotulo: "Reflectometría con tres terminaciones", rect: [0, 0, 221, 197] }
+    emparejar:
+      - ["Paralelo en el extremo", "Sin reflexión, con consumo permanente"]
+      - ["Serie en el origen", "La de los relojes: no consume en régimen"]
+      - ["AC (R y C en el extremo)", "Termina la señal y no consume en continua"]
+    exito: "La serie en el origen es la más usada en digital."
+    pistas:
+      - { texto: "El condensador es el que corta la continua." }
+    escalera:
+      - "Una resistencia a masa al final consume siempre que la línea está alta."
+    solucion: "Paralelo, consumo permanente; serie, relojes; AC, sin continua."
+
+  - id: pregunta-serie
+    tipo: pregunta
+    titulo: "La terminación serie"
+    texto: "Una resistencia en serie en el driver, y el extremo abierto. ¿Cómo llega la amplitud completa al receptor?"
+    libro: [125]
+    widget:
+      tipo: figura
+      figura: fig-36.2
+      zonas:
+        - { id: tdr, rotulo: "Reflectometría con tres terminaciones", rect: [0, 0, 221, 197] }
+    opciones:
+      - texto: "Sale a media amplitud y se dobla al reflejarse en el extremo abierto"
+        bien: true
+        porque: "La reflexión vuelve al origen, donde la resistencia la absorbe: no rebota más."
+      - texto: "La resistencia amplifica la señal"
+        porque: "Una resistencia no amplifica: divide con la línea y deja la mitad."
+      - texto: "No llega: la serie solo sirve en el origen"
+        porque: "El receptor sí ve la amplitud completa, gracias al extremo abierto."
+    escalera:
+      - "Γ = +1 en el extremo abierto: incidente más reflejada."
+    solucion: "Media amplitud que se dobla en el extremo; la vuelta la absorbe la serie."
+
+  - id: dibuje-corto
+    tipo: dibujar
+    titulo: "Reflectometría en corto"
+    texto: "Escalón de 1 V por 50 Ω en un metro de coaxial de 50 Ω, de 5,00 ns, en cortocircuito. Dibuje la tensión en la entrada."
+    libro: [131, 132, "cap36#48"]
+    fijar: { T_l: 0.000000005 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.00000002, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.2, unidad: V, rotulo: "v_{entrada}" }
+      curvas:
+        - { expr: "1", color: tinta, rotulo: "generador", discontinua: true }
+    dibujar:
+      x: { id: t, min: 0, max: 0.00000002, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.2, unidad: V, rotulo: "v_{entrada}" }
+      curva: "0.5*(1 - max(0, min(1, (t - 2*T_l)*1e11)))"
+      puntos: 41
+      tol: 0.08
+      holgura: 0.03
+      rotulo: "Tensión en la entrada"
+    exito: "0,500 V hasta la ida y vuelta, 10 ns; luego el escalón vuelve invertido y la anula."
+    pistas:
+      - { cuando: { valor: media, mayor: 0.05 }, texto: "Demasiado alta: al principio la línea presenta 50 Ω, la mitad del escalón; y el corto acaba en cero." }
+      - { cuando: { valor: desfase, mayor: 0.05 }, texto: "Cae tarde: la reflexión vuelve tras la ida y la vuelta, dos veces 5 ns." }
+      - { cuando: { valor: desfase, menor: -0.05 }, texto: "Cae pronto: la onda tiene que ir y volver, 10 ns." }
+      - { texto: "Mire la forma: un escalón a media altura y, a la vuelta, cero." }
+    escalera:
+      - "Al principio la línea es una resistencia de 50 Ω frente a los 50 Ω del generador."
+      - "En corto, Γ = −1: lo que vuelve resta lo mismo que había."
+    solucion: "0,500 V durante 10 ns; después, 0 V."
+    comprobar:
+      - { T_l: 0.000000005 }
+
+  - id: pregunta-malla
+    tipo: pregunta
+    titulo: "La malla del coaxial"
+    texto: "Para evitar un bucle de masa, se conecta la malla de un coaxial solo en un extremo. ¿Qué pasa en alta frecuencia?"
+    libro: [129]
+    widget:
+      tipo: figura
+      figura: fig-36.3
+      zonas:
+        - { id: todo, rotulo: "Onda estacionaria y su coste", rect: [0, 0, 441, 197] }
+    opciones:
+      - texto: "Deja de ser una línea de transmisión: la malla era el camino de retorno"
+        bien: true
+        porque: "Sin retorno por la malla, la impedancia y el blindaje se pierden."
+      - texto: "Nada: la malla solo es un blindaje"
+        porque: "Es el error: la malla es el camino de retorno, no solo una pantalla."
+      - texto: "Mejora, porque se rompe el bucle"
+        porque: "Rompe el bucle en baja frecuencia y arruina el comportamiento en alta."
+    escalera:
+      - "¿Por dónde vuelve la corriente de la onda?"
+    solucion: "Por la malla: sin ella conectada, ya no hay línea."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [115, 117, 121, 122, 125, 131]
+    ideas:
+      - { titulo: "Γ.", texto: "(Z_{L} − Z₀)/(Z_{L} + Z₀): 0 adaptada, +1 abierta, −1 en corto." }
+      - { titulo: "VSWR.", texto: "Con 2 se pierde el 11 %; el riesgo es la tensión que vuelve." }
+      - { titulo: "Terminar.", texto: "En paralelo, en serie en el origen (relojes) o en AC." }
+      - { titulo: "Reflectometría.", texto: "El signo dice abierto o corto; el retardo, dónde." }

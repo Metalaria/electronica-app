@@ -1,0 +1,293 @@
+# Lección 1.2 de la sección 37.11 «Intermodulación y la Linealidad del Receptor» (cap36, sec-36.10). Formato: GUIA.md.
+# - Productos de tercer orden en 2f₁ − f₂ y 2f₂ − f₁ (bloque 378): 99,9 y 100,5 MHz con 100,1 y 100,3 MHz (bloque 380).
+# - Nivel del producto = 3·P_entrada − 2·IP3 (bloque 385): −110 dBm con −30 dBm e IP3 de +10 dBm; suelo de −114 dBm
+#   (bloque 386). Todo referido a la entrada (el diagrama del IP3 se dibuja así, con ganancia unidad).
+# - Atenuador a la entrada (bloques 397 y 406): cada dB de atenuación quita 3 dB al producto: 10 dB → 30 dB (−140 dBm).
+# Pasos prácticos: «simular» el nivel del producto (errores: olvidar el 2, olvidar el 3) y «ajuste» del atenuador hasta
+# que el producto baje del suelo de ruido.
+leccion: cap36/sec-36.10
+
+libro:
+  376: "de ahí salen frecuencias que no estaban en la entrada"
+  378: "2·f₁ − f₂ y 2·f₂ − f₁"
+  379: "Ningún filtro posterior las distingue de una señal real"
+  380: "Con dos emisoras en 100,1 y 100,3 MHz, los productos caen en 99,9 MHz y 100,5 MHz"
+  382: "Los productos de tercer orden crecen tres decibelios por cada uno de la señal"
+  383: "El punto donde se cruzarían es el IP3, y cuanto mayor, más lineal es el dispositivo"
+  384: "con el IP3 y el nivel de entrada se calcula directamente el nivel de los productos"
+  385: '"nivel del producto"'
+  386: "Con dos señales de −30 dBm y un IP3 de +10 dBm: −110 dBm de producto. Si el suelo de ruido está en −114"
+  388: "Es el margen entre la señal más débil detectable y el nivel al que los productos de intermodulación asoman"
+  389: "un receptor muy sensible y poco lineal es inservible en una ciudad"
+  392: "Más ganancia en la primera etapa baja la figura de ruido y acerca la saturación"
+  393: "Más linealidad exige más corriente de polarización"
+  394: "el primero optimiza consumo, el segundo linealidad"
+  396: "Filtrar antes de amplificar"
+  397: "paradójicamente, atenuar mejora la recepción cuando hay señales fuertes"
+  398: "reduce la señal deseada y reduce mucho más los productos"
+  399: "Ganancia repartida"
+  401: "donde f₁ − f₂ cae en banda base y es un problema serio"
+  402: "una emisora potente hace desaparecer a las débiles"
+  406: "insertar 10 dB de atenuación reduce los productos en 30 dB"
+
+modelo:
+  valores:
+    P_in: { sim: "P_{entrada}", nombre: "nivel de cada tono", unidad: dBm, valor: -30 }
+    IP_3: { sim: "IP3", nombre: "punto de intercepción", unidad: dBm, valor: 10 }
+    f_1: { sim: "f₁", nombre: "primera emisora", unidad: Hz, valor: 100100000 }
+    f_2: { sim: "f₂", nombre: "segunda emisora", unidad: Hz, valor: 100300000 }
+    A_t: { sim: "A", nombre: "atenuación a la entrada", unidad: dB, valor: 0 }
+  calculos:
+    P_im: { expr: "3*P_in - 2*IP_3", sim: "P_{IM3}", nombre: "nivel de los productos", unidad: dBm }
+    P_sin2: { expr: "3*P_in - IP_3", sim: "P", nombre: "producto sin el 2", unidad: dBm }
+    P_sin3: { expr: "P_in - 2*IP_3", sim: "P", nombre: "producto sin el 3", unidad: dBm }
+    f_a: { expr: "2*f_1 - f_2", sim: "2f₁ − f₂", nombre: "producto de abajo", unidad: Hz }
+    f_b: { expr: "2*f_2 - f_1", sim: "2f₂ − f₁", nombre: "producto de arriba", unidad: Hz }
+    P_at: { expr: "3*(P_in - A_t) - 2*IP_3", sim: "P_{IM3}", nombre: "productos con el atenuador", unidad: dBm }
+    f_s: { expr: "f_1 + f_2", sim: "f₁ + f₂", nombre: "suma", unidad: Hz }
+    f_d: { expr: "f_2 - f_1", sim: "f₂ − f₁", nombre: "diferencia", unidad: Hz }
+    P_3: { expr: "3*P_in", sim: "3P", nombre: "triple del nivel", unidad: dBm }
+    I_2: { expr: "2*IP_3", sim: "2·IP3", nombre: "doble del IP3", unidad: dBm }
+    P_da: { expr: "P_in - A_t", sim: "P", nombre: "nivel de cada tono tras el atenuador", unidad: dBm }
+
+tarjetas:
+  - id: explore-espectro
+    tipo: explorar
+    titulo: "Emisoras fantasma"
+    texto: "Dos emisoras en 100,1 y 100,3 MHz entran a la vez. Suba su nivel y mire los productos de tercer orden."
+    libro: [376, 378, 380, 386]
+    fijar: { IP_3: 10 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 99700000, max: 100700000, unidad: Hz, rotulo: "f" }
+      y: { min: -160, max: 0, unidad: dBm, rotulo: "P" }
+      curvas:
+        - { expr: "-114", color: tinta, rotulo: "suelo de ruido", discontinua: true }
+      marcas:
+        - { x: "f_1", y: "P_in", rotulo: "f₁" }
+        - { x: "f_2", y: "P_in", rotulo: "f₂" }
+        - { x: "f_a", y: "P_im", rotulo: "2f₁ − f₂" }
+        - { x: "f_b", y: "P_im", rotulo: "2f₂ − f₁" }
+      lectura: { valor: P_im, rotulo: "Nivel de los productos" }
+      mandos:
+        - { valor: P_in, lista: [-40, -30, -20], rotulo: "Nivel de cada emisora" }
+    requiere: { mover: [P_in] }
+
+  - id: pregunta-donde
+    tipo: pregunta
+    titulo: "Dónde caen"
+    texto: "Con emisoras en 100,1 y 100,3 MHz, ¿dónde caen los productos de tercer orden?"
+    libro: [378, 379, 380]
+    widget:
+      tipo: figura
+      figura: fig-36.12
+      zonas:
+        - { id: espectro, rotulo: "El producto en banda, a la izquierda", rect: [0, 0, 222, 197] }
+    opciones:
+      - texto: "En 99,9 y 100,5 MHz, dentro de la banda"
+        bien: true
+        porque: "2f₁ − f₂ y 2f₂ − f₁: justo al lado, donde ningún filtro posterior las distingue."
+      - texto: "En 200,4 MHz, lejos"
+        porque: "Esa sería una suma, de segundo orden: cae lejos y se filtra."
+      - texto: "En 0,2 MHz, en banda base"
+        porque: "f₁ − f₂ es de segundo orden; el problema serio es el de tercero, en banda."
+    escalera:
+      - "2 × 100,1 − 100,3."
+    solucion: "99,9 y 100,5 MHz: emisoras fantasma donde no hay nada."
+    comprobar:
+      - { f_a: 99900000, f_b: 100500000, f_s: 200400000, f_d: 200000 }
+
+  - id: explore-ip3
+    tipo: explorar
+    titulo: "El punto de intercepción"
+    texto: "Los productos suben tres decibelios por cada uno de la señal: extrapoladas, las rectas se cruzan en el IP3. Cámbielo."
+    libro: [382, 383]
+    widget:
+      tipo: grafica
+      x: { id: p, min: -60, max: 30, unidad: dBm, rotulo: "P_{entrada}" }
+      y: { min: -160, max: 30, unidad: dBm, rotulo: "P" }
+      curvas:
+        - { expr: "p", color: azul, rotulo: "señal" }
+        - { expr: "3*p - 2*IP_3", color: naranja, rotulo: "productos de tercer orden" }
+      marcas:
+        - { x: "IP_3", y: "IP_3", rotulo: "IP3" }
+      lectura: { valor: IP_3, rotulo: "Punto de intercepción" }
+      mandos:
+        - { valor: IP_3, lista: [0, 10, 20], rotulo: "IP3" }
+    requiere: { mover: [IP_3] }
+
+  - id: formula-producto
+    tipo: formula
+    titulo: "Calcular sin medir"
+    texto: "Con el IP3 y el nivel de entrada sale el nivel de los productos."
+    libro: [384, 385]
+    ec: 385
+    sustitucion: "3 · ({{P_in}}) − 2 · {{IP_3}} = {{P_im}}"
+    widget:
+      tipo: grafica
+      x: { id: p, min: -60, max: 30, unidad: dBm, rotulo: "P_{entrada}" }
+      y: { min: -160, max: 30, unidad: dBm, rotulo: "P" }
+      curvas:
+        - { expr: "p", color: azul, rotulo: "señal" }
+        - { expr: "3*p - 2*IP_3", color: naranja, rotulo: "productos de tercer orden" }
+      marcas:
+        - { x: "P_in", y: "P_im", rotulo: "{{P_im}}" }
+      lectura: { valor: P_im, rotulo: "Nivel de los productos" }
+      mandos:
+        - { valor: P_in, lista: [-40, -30, -20], rotulo: "Nivel de cada tono" }
+        - { valor: IP_3, lista: [0, 10, 20], rotulo: "IP3" }
+
+  - id: simule-producto
+    tipo: simular
+    titulo: "Dos señales de −30 dBm"
+    texto: "Dos señales de −30 dBm en un receptor con IP3 de +10 dBm. ¿A qué nivel salen los productos?"
+    libro: [385, 386]
+    fijar: { P_in: -30, IP_3: 10 }
+    simular:
+      objetivo: P_im
+      unidad: dBm
+      tol: 0.01
+      rotulo: "Nivel de los productos"
+      errores:
+        - { expr: "P_sin2", texto: "Le falta el 2 del IP3: 3·P − 2·IP3." }
+        - { expr: "P_sin3", texto: "Le falta el 3: los productos van al cubo de la señal." }
+    exito: "−110 dBm: con el suelo en −114, el producto se ve."
+    escalera:
+      - "3 × (−30) − 2 × 10."
+    solucion: "−90 − 20 = −110 dBm."
+
+    comprobar:
+      - { P_im: -110, P_sin2: -100, P_sin3: -50, P_3: -90, I_2: 20 }
+
+  - id: predecir-atenuador
+    tipo: predecir
+    titulo: "Atenuar para oír mejor"
+    texto: "Con dos tonos fuertes, se insertan 10 dB de atenuación a la entrada. ¿Cuánto bajan los productos?"
+    libro: [397, 398, 406]
+    widget:
+      tipo: figura
+      figura: fig-36.12
+      zonas:
+        - { id: ip3, rotulo: "El punto de intercepción, a la derecha", rect: [222, 0, 222, 197] }
+    opciones:
+      - texto: "30 dB"
+        bien: true
+        porque: "Tres decibelios por cada uno: la señal deseada baja 10 dB y los productos 30 dB."
+      - texto: "10 dB, como la señal"
+        porque: "Los productos de tercer orden no siguen a la señal: van al cubo."
+      - texto: "Nada"
+        porque: "Bajan, y mucho: el atenuador saca al receptor de la zona no lineal."
+    escalera:
+      - "Los productos crecen tres decibelios por cada uno de la señal; también al bajar."
+    solucion: "30 dB: la señal débil enmascarada aparece."
+
+  - id: ajuste-atenuador
+    tipo: ajuste
+    titulo: "El mando del atenuador"
+    texto: "Tonos de −30 dBm e IP3 de +10 dBm: los productos asoman sobre el suelo de −114 dBm. Suba la atenuación hasta esconderlos."
+    libro: [386, 397, 398, 406]
+    fijar: { P_in: -30, IP_3: 10 }
+    inicio: { A_t: 0 }
+    widget:
+      tipo: grafica
+      x: { id: a, min: 0, max: 20, unidad: dB, rotulo: "A" }
+      y: { min: -180, max: -20, unidad: dBm, rotulo: "P" }
+      curvas:
+        - { expr: "P_in - a", color: azul, rotulo: "cada tono" }
+        - { expr: "3*(P_in - a) - 2*IP_3", color: naranja, rotulo: "productos" }
+        - { expr: "-114", color: tinta, rotulo: "suelo de ruido", discontinua: true }
+      marcas:
+        - { x: "A_t", y: "P_at", rotulo: "{{P_at}}" }
+      lectura: { valor: P_at, rotulo: "Nivel de los productos" }
+      datos:
+        - { valor: P_da, rotulo: "Cada tono: {{P_da}}" }
+      mandos:
+        - { valor: A_t, min: 0, max: 20, paso: 1, rotulo: "Atenuación, A" }
+    ajuste:
+      valor: P_at
+      min: -140
+      max: -114
+      rotulo: "Productos"
+      escala: { min: -180, max: -100 }
+      bajo: "Atenúa de más: los productos ya no se ven y la señal deseada sigue bajando. Quite atenuación."
+      alto: "Los productos aún asoman sobre el suelo de ruido. Suba la atenuación."
+      dentro: "Bajo el suelo de ruido: unos pocos dB de atenuación quitan el triple a los productos."
+    comprobar:
+      - { con: { A_t: 10 }, P_at: -140, P_da: -40 }
+      - { con: { A_t: 2 }, P_at: -116 }
+
+  - id: empareje-defensas
+    tipo: pregunta
+    titulo: "Defensas y otros productos"
+    texto: "Empareje cada caso con lo que hace o provoca."
+    libro: [396, 399, 401, 402]
+    widget:
+      tipo: figura
+      figura: fig-36.12
+      zonas:
+        - { id: espectro, rotulo: "El producto en banda, a la izquierda", rect: [0, 0, 222, 197] }
+    emparejar:
+      - ["Filtrar antes de amplificar", "Lo fuerte fuera de banda no llega al LNA"]
+      - ["Ganancia repartida", "Ninguna etapa cerca de su compresión"]
+      - ["Segundo orden en conversión directa", "f₁ − f₂ cae en banda base"]
+      - ["Compresión cruzada", "Una emisora potente borra a las débiles"]
+    exito: "Filtrar antes de amplificar es la defensa más eficaz."
+    pistas:
+      - { texto: "La conversión directa baja la señal a banda base." }
+    escalera:
+      - "Comprimir es perder ganancia por una señal fuerte."
+    solucion: "Filtrar, protege el LNA; repartir, sin compresión; directa, f₁ − f₂; cruzada, borra débiles."
+
+  - id: porque-ciudad
+    tipo: porque
+    titulo: "Más que la sensibilidad"
+    texto: "¿Por qué el margen dinámico libre de espurios describe un receptor mejor que su sensibilidad?"
+    libro: [388, 389]
+    widget:
+      tipo: figura
+      figura: fig-36.12
+      zonas:
+        - { id: ip3, rotulo: "El punto de intercepción, a la derecha", rect: [222, 0, 222, 197] }
+    opciones:
+      - texto: "Con señales fuertes, lo que limita es cuándo asoman los productos"
+        bien: true
+        porque: "Un receptor muy sensible y poco lineal es inservible en una ciudad."
+      - texto: "Porque la sensibilidad no se puede medir"
+        porque: "Se mide sin problema; el caso es que no dice nada de las señales fuertes."
+      - texto: "Porque los productos mejoran la sensibilidad"
+        porque: "Al revés: los productos son señales falsas que tapan las débiles."
+    escalera:
+      - "¿Qué pasa con un receptor muy sensible cerca de un transmisor?"
+    solucion: "En un entorno con señales fuertes, mandan los espurios."
+
+  - id: pregunta-compromiso
+    tipo: pregunta
+    titulo: "Portátil o estación base"
+    texto: "¿Por qué un receptor portátil y uno de estación base tienen arquitecturas distintas?"
+    libro: [392, 393, 394]
+    widget:
+      tipo: figura
+      figura: fig-36.12
+      zonas:
+        - { id: ip3, rotulo: "El punto de intercepción, a la derecha", rect: [222, 0, 222, 197] }
+    opciones:
+      - texto: "La linealidad exige corriente: el portátil optimiza consumo; la base, linealidad"
+        bien: true
+        porque: "Más corriente de polarización da más IP3, a costa de la batería."
+      - texto: "Porque reciben frecuencias distintas"
+        porque: "La diferencia es de compromiso entre consumo y linealidad, no de banda."
+      - texto: "Porque la base no necesita sensibilidad"
+        porque: "Las dos la necesitan; la base además soporta señales fuertes."
+    escalera:
+      - "¿Qué cuesta la linealidad?"
+    solucion: "Consumo frente a linealidad."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [379, 383, 385, 389, 397]
+    ideas:
+      - { titulo: "Tercer orden.", texto: "2f₁ − f₂ y 2f₂ − f₁ caen en banda: emisoras fantasma." }
+      - { titulo: "El IP3.", texto: "Producto = 3·P − 2·IP3: −110 dBm con −30 dBm y +10 dBm." }
+      - { titulo: "El atenuador.", texto: "10 dB menos de señal, 30 dB menos de productos." }
+      - { titulo: "Compromiso.", texto: "Linealidad cuesta corriente; el SFDR manda en la ciudad." }
