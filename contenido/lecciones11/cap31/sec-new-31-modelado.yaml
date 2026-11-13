@@ -1,0 +1,318 @@
+# Lección 1.2 de la sección 30.15 «Modelado de Sistemas Físicos y Simulación por Diagramas de Bloques»
+# (cap31, sec-new-31-modelado). Formato: GUIA.md.
+# - La masa de la caja de ejemplo (0,5 kg, 200 N/m, 4 N·s/m, escalón de 10 N) como el RLC serie del libro (L = 0,5 H,
+#   R = 4 Ω, C = 5 mF, escalón de 10 V), vivo con el esquema rlc-escalon y comprobado con ngspice: la tensión del
+#   condensador es la posición (x = C·v_C; 10 V son 5 cm).
+# - El motor de la Ec. 9 (R = 0,5 Ω, k = 0,05, L = 1 mH, J = 5·10⁻⁴, B = 2·10⁻⁵): polos de L·J·s² + (L·B + R·J)·s +
+#   (R·B + k²) y ω(t) = K·V·(1 − (p₂·e^(−p₁t) − p₁·e^(−p₂t))/(p₂ − p₁)).
+# - Euler explícito sobre ẋ = −x/τ: x_n = (1 − h/τ)^n, dibujado con floor(t/h) frente a la exponencial exacta.
+# Paso práctico: «simular» hasta dónde llega la masa (7,63 cm; errores típicos: el valor final y el doble).
+leccion: cap31/sec-new-31-modelado
+
+libro:
+  499: "la misma ecuación del RLC de la sección 0.8"
+  500: "Fuerza ↔ corriente (analogía de movilidad, propuesta por Floyd Firestone en 1933)"
+  503: "Cth (J/°C)"
+  504: "el calor no tiene inercia"
+  505: "Una masa de 0,5 kg con un muelle de 200 N/m y un amortiguador de 4 N·s/m recibe un escalón de 10 N"
+  509: 'J (d ω)/(d t) = k dot.op I - B dot.op ω - T_"L"'
+  512: "La ganancia en continua es k/(R·B + k²) = 19,92 rad/s por voltio"
+  513: "la corriente sube hasta 45,1 A a los 8,1 ms (sin L serían los 48 A de la sección 34.3)"
+  522: "una desviación se duplica cada 15,6 ms"
+  527: "G/(1 + G·H)"
+  529: "la fuerza contraelectromotriz es una realimentación negativa interna"
+  532: "el explícito exige h ≤ 2·τ"
+  533: "con 2,2·τ crece, una oscilación que solo existe en el cálculo"
+  535: "Un modelo es rígido cuando sus modos tienen escalas de tiempo muy distintas"
+  537: "SPICE integra con el trapecial o con fórmulas de Gear (BDF), implícitos y de paso variable"
+  549: "el Bode no ve la saturación, el rozamiento seco ni la cuantificación"
+  "cap31#723": "0,75⁴ = 0,316 V"
+
+modelo:
+  valores:
+    V_m: { sim: "V", nombre: "escalón (10 N como 10 V)", unidad: V, valor: 10 }
+    R_m: { sim: "R", nombre: "amortiguador b como resistencia", unidad: Ω, valor: 4 }
+    L_m: { sim: "L", nombre: "masa m como bobina", unidad: H, valor: 0.5 }
+    C_m: { sim: "C", nombre: "1/k como condensador", unidad: F, valor: 0.005 }
+    V_a: { sim: "V", nombre: "tensión del motor", unidad: V, valor: 24 }
+    R_a: { sim: "R", nombre: "resistencia del inducido", unidad: Ω, valor: 0.5 }
+    k_a: { sim: "k", nombre: "constante del motor", unidad: "V·s/rad", valor: 0.05 }
+    L_a: { sim: "L", nombre: "inductancia del inducido", unidad: H, valor: 0.001 }
+    J_a: { sim: "J", nombre: "inercia", unidad: "kg·m²", valor: 0.0005 }
+    B_a: { sim: "B", nombre: "rozamiento viscoso", unidad: "N·m·s/rad", valor: 0.00002 }
+    h_e: { sim: "h/τ", nombre: "paso de Euler en constantes de tiempo", unidad: "", valor: 0.2 }
+    h_x: { sim: "h", nombre: "paso del ejercicio", unidad: s, valor: 0.00025 }
+    tau_x: { sim: "τ", nombre: "constante de tiempo del ejercicio", unidad: s, valor: 0.001 }
+  calculos:
+    a_m: { expr: "R_m/(2*L_m)", sim: "σ", nombre: "amortiguamiento", unidad: "1/s" }
+    w0_m: { expr: "1/sqrt(L_m*C_m)", sim: "ω_{n}", nombre: "frecuencia natural", unidad: "rad/s" }
+    z_m: { expr: "R_m/2*sqrt(C_m/L_m)", sim: "ζ", nombre: "factor de amortiguamiento", unidad: "", cifras: 2 }
+    wd_m: { expr: "sqrt(1/(L_m*C_m) - a_m^2)", sim: "ω_{d}", nombre: "pulsación amortiguada", unidad: "rad/s" }
+    Mp_m: { expr: "100*exp(-pi*z_m/sqrt(1 - z_m^2))", sim: "M_{p}", nombre: "sobreimpulso", unidad: "%" }
+    x_f: { expr: "C_m*V_m*100", sim: "x", nombre: "posición final en cm", unidad: "" }
+    x_p: { expr: "C_m*V_m*100*(1 + exp(-pi*z_m/sqrt(1 - z_m^2)))", sim: "x_{max}", nombre: "posición de pico en cm", unidad: "" }
+    x_2: { expr: "2*C_m*V_m*100", sim: "x", nombre: "doble del final", unidad: "" }
+    a2: { expr: "L_a*J_a", sim: "a₂", nombre: "coeficiente de s²", unidad: "" }
+    a1: { expr: "L_a*B_a + R_a*J_a", sim: "a₁", nombre: "coeficiente de s", unidad: "" }
+    a0: { expr: "R_a*B_a + k_a^2", sim: "a₀", nombre: "término independiente", unidad: "" }
+    p_1: { expr: "(a1 - sqrt(a1^2 - 4*a2*a0))/(2*a2)", sim: "p₁", nombre: "polo lento", unidad: "1/s" }
+    p_2: { expr: "(a1 + sqrt(a1^2 - 4*a2*a0))/(2*a2)", sim: "p₂", nombre: "polo rápido", unidad: "1/s" }
+    K_w: { expr: "k_a/a0", sim: "K", nombre: "ganancia en continua", unidad: "rad/s/V" }
+    w_f: { expr: "k_a/a0*V_a", sim: "ω_{final}", nombre: "velocidad final", unidad: "rad/s" }
+    x_eu: { expr: "(1 - h_x/tau_x)^4", sim: "x₄", nombre: "Euler tras cuatro pasos", unidad: V }
+    x_ex: { expr: "exp(-4*h_x/tau_x)", sim: "x", nombre: "valor exacto", unidad: V }
+
+tarjetas:
+  - id: explore-masa
+    tipo: explorar
+    titulo: "Una masa que es un circuito"
+    texto: "Masa de 0,5 kg, muelle de 200 N/m y amortiguador de 4 N·s/m, como un RLC serie: m es L, b es R y 1/k es C. Cambie b."
+    libro: [499, 505]
+    widget:
+      tipo: circuito
+      esquema: rlc-escalon
+      piezas: { fuente: V_m, r: R_m, l: L_m, c: C_m }
+      lectura: { valor: Mp_m, rotulo: "Sobreimpulso" }
+      datos:
+        - { valor: z_m, rotulo: "ζ = {{z_m}}" }
+      grafica:
+        x: { id: t, min: 0, max: 1.5, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 20, unidad: V, rotulo: "v_{C} (posición)" }
+        curvas:
+          - { expr: "V_m*(1 - exp(-a_m*t)*(cos(wd_m*t) + a_m/wd_m*sin(wd_m*t)))", color: verde, rotulo: "v_{C}", mide: vc }
+      mandos:
+        - { valor: R_m, lista: [2, 4, 8], rotulo: "Amortiguador b, como R" }
+    requiere: { mover: [R_m] }
+
+  - id: simule-pico
+    tipo: simular
+    titulo: "¿Hasta dónde llega la masa?"
+    texto: "En reposo, el muelle de 200 N/m se estira 5 cm con 10 N. Con ζ = 0,2, ¿hasta dónde llega en el primer pico, en cm?"
+    libro: [505]
+    fijar: { R_m: 4 }
+    simular:
+      objetivo: x_p
+      unidad: ""
+      tol: 0.03
+      rotulo: "Posición de pico (cm)"
+      errores:
+        - { expr: "x_f", texto: "Ese es el reposo final; con ζ = 0,2 se pasa un 52,7 %." }
+        - { expr: "x_2", texto: "El doble sería sin amortiguador; con 4 N·s/m se pasa algo menos." }
+    exito: "7,63 cm a los 0,160 s; ngspice da lo mismo con el RLC serie y con el paralelo."
+    escalera:
+      - "M_{p} = e^{−πζ/√(1−ζ²)}; súmelo a los 5 cm."
+    solucion: "5 cm más un 52,7 %: 7,63 cm."
+    comprobar:
+      - { x_p: 7.63, x_f: 5, x_2: 10, Mp_m: 52.7, tol: 0.003 }
+
+  - id: empareje-movilidad
+    tipo: pregunta
+    titulo: "La analogía de movilidad"
+    texto: "La que usa el libro: lo que se mide entre dos puntos es tensión; lo que atraviesa, corriente. Empareje."
+    libro: [500, 503]
+    widget:
+      tipo: figura
+      figura: fig-new-31-analogias
+      zonas:
+        - { id: todo, rotulo: "Masa, muelle y sus circuitos", rect: [0, 0, 457, 263] }
+    emparejar:
+      - ["Velocidad", "Tensión"]
+      - ["Fuerza", "Corriente"]
+      - ["Masa", "Condensador"]
+      - ["1/b, el amortiguador", "Resistencia"]
+      - ["1/k, el muelle", "Bobina"]
+    exito: "El circuito conserva la forma del sistema, y la masa va siempre a masa eléctrica."
+    pistas:
+      - { texto: "La masa guarda energía cinética con la velocidad, como un condensador con la tensión." }
+    escalera:
+      - "La fuerza atraviesa los elementos: corriente."
+    solucion: "Velocidad, tensión; fuerza, corriente; masa, C; 1/b, R; 1/k, L."
+
+  - id: predecir-termico
+    tipo: predecir
+    titulo: "Un disipador que se pasa"
+    texto: "Un transistor calienta un disipador. ¿Puede su temperatura pasarse de la final y volver?"
+    libro: [503, 504]
+    widget:
+      tipo: figura
+      figura: fig-new-31-analogias
+      zonas:
+        - { id: todo, rotulo: "Masa, muelle y sus circuitos", rect: [0, 0, 457, 263] }
+    opciones:
+      - texto: "No: el calor no tiene inercia; una red térmica solo tiene R y C"
+        bien: true
+        porque: "Sus polos son todos reales. Si un horno se pasa, el sobreimpulso lo pone el lazo de control."
+      - texto: "Sí, como la masa con el muelle"
+        porque: "Para oscilar hacen falta dos almacenes distintos; en térmica falta la «bobina»."
+      - texto: "Solo si la capacidad térmica es grande"
+        porque: "Más capacidad lo hace más lento, no oscilante."
+    escalera:
+      - "Mire la tabla de analogías: ¿qué casilla térmica no existe?"
+    solucion: "No: sin inercia térmica no hay sobreimpulso por sí solo."
+
+  - id: explore-motor
+    tipo: explorar
+    titulo: "El motor arranca"
+    texto: "El motor de la Ec. 9 con su volante. Cambie la tensión y mire la velocidad: dos polos, uno eléctrico y uno mecánico."
+    libro: [509, 512]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.5, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 520, unidad: "rad/s", rotulo: "ω" }
+      curvas:
+        - { expr: "K_w*V_a*(1 - (p_2*exp(-p_1*t) - p_1*exp(-p_2*t))/(p_2 - p_1))", color: naranja, rotulo: "velocidad" }
+      lectura: { valor: w_f, rotulo: "Velocidad final" }
+      datos:
+        - { valor: p_1, rotulo: "Polo lento: {{p_1}}" }
+        - { valor: p_2, rotulo: "Polo rápido: {{p_2}}" }
+      mandos:
+        - { valor: V_a, lista: [6, 12, 24], rotulo: "Tensión" }
+    requiere: { mover: [V_a] }
+    comprobar:
+      - { K_w: 19.92, p_1: 10.25, p_2: 489.8, tol: 0.003 }
+
+  - id: corriente-arranque
+    tipo: pregunta
+    titulo: "El pico de arranque"
+    texto: "Sin inductancia, al arrancar a 24 V la corriente saltaría a 48 A. Con L = 1 mH, ¿qué pasa?"
+    libro: [513]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.5, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 520, unidad: "rad/s", rotulo: "ω" }
+      curvas:
+        - { expr: "K_w*V_a*(1 - (p_2*exp(-p_1*t) - p_1*exp(-p_2*t))/(p_2 - p_1))", color: naranja, rotulo: "velocidad" }
+    opciones:
+      - texto: "Sube hasta 45,1 A a los 8,1 ms y cae al crecer la fuerza contraelectromotriz"
+        bien: true
+        porque: "La bobina retrasa la subida y la velocidad ya ha empezado a frenar la corriente."
+      - texto: "Salta igual a 48 A al instante"
+        porque: "La bobina no deja que la corriente salte: sube con su constante de tiempo."
+      - texto: "Se queda en 48 A mientras arranca"
+        porque: "Al girar aparece k·ω, que resta tensión y corriente."
+    escalera:
+      - "¿Qué impide a una corriente cambiar de golpe?"
+    solucion: "45,1 A a los 8,1 ms, y luego baja."
+
+  - id: porque-fcem
+    tipo: porque
+    titulo: "Una realimentación escondida"
+    texto: "La inercia frenada solo por B tendría J/B = 25 s. ¿Por qué el motor responde en unos 100 ms?"
+    libro: [527, 529]
+    widget:
+      tipo: figura
+      figura: fig-new-31-motor
+      zonas:
+        - { id: todo, rotulo: "Diagrama de bloques y circuito del motor", rect: [0, 0, 457, 238] }
+    opciones:
+      - texto: "La fuerza contraelectromotriz es una realimentación negativa interna"
+        bien: true
+        porque: "Cierra un lazo G/(1 + k·G): por ella una carga apenas lo frena, porque sube la corriente."
+      - texto: "Porque la inductancia lo acelera"
+        porque: "La inductancia da el polo rápido, de unos 2 ms; no explica los 100 ms."
+      - texto: "Porque el rozamiento es grande"
+        porque: "B es pequeño: solo resta un 0,4 % a la velocidad."
+    escalera:
+      - "En el diagrama, ¿qué flecha vuelve de la velocidad a la parte eléctrica?"
+    solucion: "La fuerza contraelectromotriz cierra un lazo interno."
+
+  - id: levitador
+    tipo: pregunta
+    titulo: "Linealizar un levitador"
+    texto: "Linealizado, el levitador tiene polos en ±44,3 s⁻¹. ¿Qué dice eso de la bola?"
+    libro: [522]
+    widget:
+      tipo: figura
+      figura: fig-new-31-motor
+      zonas:
+        - { id: todo, rotulo: "Diagrama de bloques y circuito del motor", rect: [0, 0, 457, 238] }
+    opciones:
+      - texto: "Es inestable: una desviación se duplica cada 15,6 ms"
+        bien: true
+        porque: "El polo positivo es un muelle negativo: si la bola se acerca, la fuerza crece y la acerca más."
+      - texto: "Oscila a 44,3 rad/s"
+        porque: "Los polos son reales, no complejos: no oscila, se escapa."
+      - texto: "Es estable, porque uno de los polos es negativo"
+        porque: "Basta un polo en el semiplano derecho para que sea inestable."
+    escalera:
+      - "¿Dónde está el polo +44,3?"
+    solucion: "Inestable: hace falta control, con una ganancia mínima."
+
+  - id: explore-euler
+    tipo: explorar
+    titulo: "Euler explícito"
+    texto: "Cada paso multiplica por 1 − h/τ. Cambie el paso y compare con la exponencial exacta."
+    libro: [532, 533]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 10, unidad: "", rotulo: "t/τ" }
+      y: { min: -3, max: 3, unidad: "", rotulo: "x" }
+      curvas:
+        - { expr: "exp(-t)", color: tinta, rotulo: "exacta", discontinua: true }
+        - { expr: "(1 - h_e)^floor(t/h_e)", color: naranja, rotulo: "Euler explícito" }
+      lectura: { valor: h_e, rotulo: "Paso, h/τ" }
+      mandos:
+        - { valor: h_e, lista: [0.2, 1, 1.9, 2.2], rotulo: "Paso, h/τ" }
+    requiere: { mover: [h_e] }
+
+  - id: estime-euler
+    tipo: pregunta
+    titulo: "Cuatro pasos de Euler"
+    texto: "Un RC con τ = 1 ms se descarga desde 1 V con Euler explícito y h = 0,25 ms. ¿Cuánto vale tras cuatro pasos?"
+    libro: [532, "cap31#723"]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 10, unidad: "", rotulo: "t/τ" }
+      y: { min: -3, max: 3, unidad: "", rotulo: "x" }
+      curvas:
+        - { expr: "exp(-t)", color: tinta, rotulo: "exacta", discontinua: true }
+    estimar:
+      objetivo: "x_eu"
+      unidad: V
+      min: 0
+      max: 1
+      paso: 0.005
+      inicio: 0.7
+      tol: 0.03
+      rotulo: "Tras cuatro pasos"
+    exito: "0,316 V frente a los 0,368 V exactos: un −14,0 %."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.326 }, texto: "Demasiado: cada paso multiplica por 0,75, cuatro veces." }
+      - { texto: "Demasiado poco: 0,75 elevado a cuatro." }
+    escalera:
+      - "1 − h/τ = 0,75."
+    solucion: "0,75⁴ = 0,316 V."
+    comprobar:
+      - { x_eu: 0.316, x_ex: 0.368, tol: 0.003 }
+
+  - id: porque-rigido
+    tipo: porque
+    titulo: "Por qué SPICE no se atasca"
+    texto: "En un modelo rígido, ¿por qué un método implícito avanza con pasos grandes y uno explícito no?"
+    libro: [535, 537]
+    widget:
+      tipo: figura
+      figura: fig-new-31-integracion
+      zonas:
+        - { id: todo, rotulo: "Euler y el paso variable", rect: [0, 0, 456, 177] }
+    opciones:
+      - texto: "El explícito queda limitado por la estabilidad del modo más rápido; el implícito es estable con cualquier paso"
+        bien: true
+        porque: "Por eso SPICE, con el trapecial o Gear, resuelve sin esfuerzo los circuitos rígidos."
+      - texto: "El implícito es menos preciso y por eso va más deprisa"
+        porque: "No es cuestión de precisión: el explícito diverge si alarga el paso."
+      - texto: "Porque el implícito ignora los modos rápidos"
+        porque: "Los integra igual; lo que no hace es volverse inestable con ellos."
+    escalera:
+      - "¿Qué limita el paso de Euler explícito: la precisión o h ≤ 2·τ?"
+    solucion: "El límite de estabilidad del explícito lo marca el modo más rápido."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [500, 504, 512, 529, 532, 549]
+    ideas:
+      - { titulo: "Analogías.", texto: "Masa, muelle y amortiguador son C, L y R; el calor no tiene bobina." }
+      - { titulo: "El motor.", texto: "Dos polos, eléctrico y mecánico; la fuerza contraelectromotriz realimenta." }
+      - { titulo: "Linealizar.", texto: "La tangente en el punto de trabajo, válida para desviaciones pequeñas." }
+      - { titulo: "Simular.", texto: "Euler explícito exige h ≤ 2·τ; los implícitos resuelven lo rígido." }

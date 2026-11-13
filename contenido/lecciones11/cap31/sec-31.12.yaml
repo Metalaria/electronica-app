@@ -1,0 +1,305 @@
+# Lección 1.2 de la sección 30.16 «Ampliación: Control en Espacio de Estados» (cap31, sec-31.12). Formato: GUIA.md.
+# Ampliación CIN/351/2009 aprobada por el dueño: colocación de polos y observador de Luenberger.
+# - El servo del libro, ẋ = (0, 1; 0, −10)·x + (0; 100)·u, con u = N·r − k₁·θ − k₂·θ̇: polinomio
+#   s² + (10 + 100·k₂)·s + 100·k₁, así que ω_n = 10·√k₁ y σ = (10 + 100·k₂)/2. Los polos se dibujan como marcas en el
+#   plano s: −σ ± j√(ω_n² − σ²), o dos reales si ω_n < σ.
+# - El observador con un polo doble en −p: l₁ = 2p − 10, l₂ = p² − 10·l₁; con el brazo en 0,2 rad y el estimado en
+#   cero, el error del ángulo es 0,2·e^(−pt)·(1 + (10 − p)·t) (con p = 100, 0,022 rad a los 20 ms, como el libro).
+# Pasos prácticos: «reto» de colocar los polos en −10 ± j17,3 con k₁ y k₂ (sintonizar los polos hasta el objetivo) y
+# «ajuste» del polo del observador hasta la regla de dos a seis veces más rápido que el lazo.
+leccion: cap31/sec-31.12
+
+libro:
+  557: "dos sistemas con la misma función de transferencia pueden tener comportamientos internos muy distintos"
+  562: "el estado son las variables que almacenan energía"
+  563: "Ese número —cuántas variables de estado hay— es el orden del sistema"
+  571: "ninguna acción puede modificar, y ningún controlador lo arreglará"
+  572: "podrían estar fuera de límites sin que nada lo indique"
+  578: "No compensa en un lazo simple de una entrada y una salida"
+  579: "Sí compensa con varias entradas y salidas acopladas"
+  582: 'mat(0, 1; 0, -10)'
+  586: "si solo se midiera la velocidad, con una dinamo tacométrica y sin encoder, C = (0, 1) y la matriz es (0, 1; 0, −10), con determinante nulo: no observable"
+  589: 'u = N dot.op r - K dot.op x'
+  590: "s² + (10 + 100·k2)·s + 100·k1"
+  591: "Con los polos del diseño por el lugar de las raíces de la sección 30.12, −10 ± j17,3 (s² + 20·s + 400), salen k1 = 4 V/rad y k2 = 0,1 V·s/rad"
+  594: "con los polos en −100 ± j173 pediría 400 V"
+  596: "el ángulo se queda corto en 1/k1 = 0,25 rad (14,3°)"
+  597: "x3 = ∫(r − θ)·dt"
+  600: "Derivar el ángulo para obtener la velocidad multiplica el ruido"
+  602: "la regla habitual es hacer el observador de dos a seis veces más rápido que el lazo"
+  603: "el control y el observador se diseñan por separado"
+  604: "se desvía 0,164 rad en vez de 0,101"
+  606: "El servo 100/(s·(s + 10)) con realimentación del estado"
+
+modelo:
+  valores:
+    k_1: { sim: "k₁", nombre: "ganancia del ángulo", unidad: "V/rad", valor: 1 }
+    k_2: { sim: "k₂", nombre: "ganancia de la velocidad", unidad: "V·s/rad", valor: 0.3 }
+    p_o: { sim: "p", nombre: "polo doble del observador", unidad: "1/s", valor: 20 }
+  calculos:
+    sg: { expr: "(10 + 100*k_2)/2", sim: "σ", nombre: "parte real de los polos", unidad: "1/s" }
+    wn: { expr: "10*sqrt(k_1)", sim: "ω_{n}", nombre: "frecuencia natural", unidad: "rad/s" }
+    re_1: { expr: "-sg + sqrt(max(0, sg^2 - wn^2))", sim: "σ₁", nombre: "primer polo, parte real", unidad: "" }
+    re_2: { expr: "-sg - sqrt(max(0, sg^2 - wn^2))", sim: "σ₂", nombre: "segundo polo, parte real", unidad: "" }
+    im_p: { expr: "sqrt(max(0, wn^2 - sg^2))", sim: "ω_{d}", nombre: "parte imaginaria", unidad: "" }
+    q_1: { expr: "10 + 100*k_2", sim: "a₁", nombre: "coeficiente de s", unidad: "" }
+    q_0: { expr: "100*k_1", sim: "a₀", nombre: "término independiente", unidad: "" }
+    l_1: { expr: "2*p_o - 10", sim: "l₁", nombre: "primera ganancia del observador", unidad: "1/s" }
+    l_2: { expr: "p_o^2 - 10*(2*p_o - 10)", sim: "l₂", nombre: "segunda ganancia del observador", unidad: "1/s²" }
+    r_o: { expr: "p_o/20", sim: "p/ω_{n}", nombre: "veces más rápido que el lazo", unidad: "", cifras: 2 }
+
+tarjetas:
+  - id: oculta-interior
+    tipo: pregunta
+    titulo: "Lo que esconde una función de transferencia"
+    texto: "Dos sistemas tienen la misma función de transferencia. ¿Se comportan igual por dentro?"
+    libro: [557, 562]
+    widget:
+      tipo: figura
+      figura: fig-31.21
+      zonas:
+        - { id: todo, rotulo: "Clásico frente a estados", rect: [0, 0, 450, 270] }
+    opciones:
+      - texto: "No necesariamente: uno puede tener variables que se disparan con la salida controlada"
+        bien: true
+        porque: "La función de transferencia solo relaciona entrada y salida; el estado describe el interior."
+      - texto: "Sí: la función de transferencia lo dice todo"
+        porque: "Oculta el interior; por eso existe el espacio de estados."
+      - texto: "Solo si son de segundo orden"
+        porque: "El orden no tiene que ver: la salida puede esconder lo de dentro en cualquier orden."
+    escalera:
+      - "¿Qué variables ve una función de transferencia?"
+    solucion: "No: la función de transferencia oculta el interior."
+
+  - id: explore-realimentacion
+    tipo: explorar
+    titulo: "Realimentar todo el estado"
+    texto: "El servo tiene dos estados, ángulo y velocidad: orden 2. Realimente los dos y mire cómo cada ganancia mueve los polos."
+    libro: [563, 582, 589, 590]
+    widget:
+      tipo: grafica
+      x: { id: s, min: -45, max: 5, unidad: "", rotulo: "parte real, σ" }
+      y: { min: -30, max: 30, unidad: "", rotulo: "parte imaginaria, ω" }
+      curvas:
+        - { expr: "0", color: tinta, rotulo: "eje real", discontinua: true }
+      marcas:
+        - { x: "re_1", y: "im_p", rotulo: "polo" }
+        - { x: "re_2", y: "-im_p", rotulo: "polo" }
+      mandos:
+        - { valor: k_1, lista: [1, 4, 9], rotulo: "k₁" }
+        - { valor: k_2, lista: [0.1, 0.3], rotulo: "k₂" }
+      lectura: { valor: q_0, rotulo: "Término independiente, 100·k₁" }
+      datos:
+        - { valor: q_1, rotulo: "Coeficiente de s: {{q_1}}" }
+    requiere: { mover: [k_1, k_2] }
+
+  - id: reto-polos
+    tipo: reto
+    titulo: "Coloque los polos"
+    texto: "Lleve los polos del servo a −10 ± j17,3, los del diseño por el lugar de las raíces, moviendo k₁ y k₂."
+    libro: [590, 591]
+    inicio: { k_1: 1, k_2: 0.3 }
+    widget:
+      tipo: grafica
+      x: { id: s, min: -45, max: 5, unidad: "", rotulo: "parte real, σ" }
+      y: { min: -30, max: 30, unidad: "", rotulo: "parte imaginaria, ω" }
+      curvas:
+        - { expr: "0", color: tinta, rotulo: "eje real", discontinua: true }
+      marcas:
+        - { x: "re_1", y: "im_p", rotulo: "polo" }
+        - { x: "re_2", y: "-im_p", rotulo: "polo" }
+        - { x: "-10", y: "17.3", rotulo: "objetivo" }
+        - { x: "-10", y: "-17.3", rotulo: "objetivo" }
+      lectura: { valor: wn, rotulo: "Distancia al origen, ω_{n}" }
+      datos:
+        - { valor: sg, rotulo: "Parte real: −{{sg}}" }
+      mandos:
+        - { valor: k_1, min: 0, max: 10, paso: 0.1, rotulo: "k₁, ganancia del ángulo" }
+        - { valor: k_2, min: 0, max: 0.5, paso: 0.01, rotulo: "k₂, ganancia de la velocidad" }
+    condiciones:
+      - { valor: wn, objetivo: 20, tol: 0.02, rotulo: "ω_{n}: {{wn}}" }
+      - { valor: sg, objetivo: 10, tol: 0.02, rotulo: "σ: {{sg}}" }
+    exito: "k₁ = 4 V/rad y k₂ = 0,1 V·s/rad: un PD cuyo término derivativo se mide con la dinamo."
+    pistas:
+      - { cuando: { valor: wn, menor: 19.6 }, texto: "Los polos están demasiado cerca del origen: suba k₁ (ω_{n} = 10·√k₁)." }
+      - { cuando: { valor: wn, mayor: 20.4 }, texto: "Los polos están demasiado lejos del origen: baje k₁." }
+      - { cuando: { valor: sg, menor: 9.8 }, texto: "Poco amortiguado: suba k₂, que mueve la parte real." }
+      - { cuando: { valor: sg, mayor: 10.2 }, texto: "Demasiado amortiguado: baje k₂." }
+    escalera:
+      - "s² + 20·s + 400: iguale 100·k₁ a 400 y 10 + 100·k₂ a 20."
+    solucion: "k₁ = 4 y k₂ = 0,1."
+    comprobar:
+      - { con: { k_1: 4, k_2: 0.1 }, wn: 20, sg: 10, im_p: 17.3, tol: 0.003 }
+
+  - id: predecir-tacometro
+    tipo: predecir
+    titulo: "Solo la velocidad"
+    texto: "El servo mide solo la velocidad, con una dinamo tacométrica y sin encoder. ¿Se puede estimar el ángulo?"
+    libro: [572, 586]
+    widget:
+      tipo: figura
+      figura: fig-31.21
+      zonas:
+        - { id: todo, rotulo: "Clásico frente a estados", rect: [0, 0, 450, 270] }
+    opciones:
+      - texto: "No: la matriz de observabilidad tiene determinante nulo"
+        bien: true
+        porque: "El ángulo es la integral de la velocidad más una constante que nadie ha medido."
+      - texto: "Sí, integrando la velocidad"
+        porque: "Falta la constante de integración: dónde estaba al empezar."
+      - texto: "Sí, con un observador más rápido"
+        porque: "Ningún observador saca lo que no es observable."
+    escalera:
+      - "¿Qué falta al integrar una velocidad para saber una posición?"
+    solucion: "No observable: hay que medir la posición al menos una vez."
+
+  - id: predecir-driver
+    tipo: predecir
+    titulo: "Polos diez veces más rápidos"
+    texto: "Con k₁ = 4, un escalón de 1 rad pide 4 V al driver al principio. ¿Y con los polos en −100 ± j173?"
+    libro: [591, 594]
+    widget:
+      tipo: figura
+      figura: fig-31.21
+      zonas:
+        - { id: todo, rotulo: "Clásico frente a estados", rect: [0, 0, 450, 270] }
+    opciones:
+      - texto: "400 V: diez veces más rápidos piden ganancias cien veces mayores"
+        bien: true
+        porque: "La asignación de polos no tiene límite en el papel; lo pone el actuador."
+      - texto: "40 V: diez veces más"
+        porque: "k₁ va con ω_{n}², no con ω_{n}: cien veces."
+      - texto: "Lo mismo: la consigna no cambia"
+        porque: "El primer instante pide k₁ por el error, y k₁ crece con el cuadrado."
+    escalera:
+      - "100·k₁ = ω_{n}². ¿Qué pasa si ω_{n} se multiplica por diez?"
+    solucion: "400 V: los polos se eligen mirando lo que el driver puede dar."
+
+  - id: carga-integral
+    tipo: pregunta
+    titulo: "Una carga en el eje"
+    texto: "Un par de carga de 0,1 N·m deja el ángulo 0,25 rad corto. ¿Cómo se corrige con realimentación del estado?"
+    libro: [596, 597]
+    widget:
+      tipo: figura
+      figura: fig-new-31-estados
+      zonas:
+        - { id: todo, rotulo: "Servo con realimentación del estado", rect: [0, 0, 451, 184] }
+    opciones:
+      - texto: "Con un estado más, la integral del error, y su ganancia"
+        bien: true
+        porque: "Como en el PID: el integrador sigue actuando hasta que el error es nulo."
+      - texto: "Subiendo k₁ hasta que el error sea cero"
+        porque: "El error es 1/k₁: baja, pero nunca se anula."
+      - texto: "No hace falta: el servo es de tipo 1"
+        porque: "El tipo 1 corrige la consigna; la carga entra antes del integrador de la planta."
+    escalera:
+      - "¿Qué término del PID elimina un error permanente?"
+    solucion: "Un tercer estado, x₃ = ∫(r − θ)·dt."
+
+  - id: ajuste-observador
+    tipo: ajuste
+    titulo: "Un observador a su ritmo"
+    texto: "Solo hay encoder: la velocidad se estima. Mueva el polo doble del observador hasta la regla del libro, con el lazo a 20 rad/s."
+    libro: [600, 602]
+    inicio: { p_o: 20 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.2, unidad: s, rotulo: "t" }
+      y: { min: -0.1, max: 0.22, unidad: rad, rotulo: "error del ángulo estimado" }
+      curvas:
+        - { expr: "0.2*exp(-p_o*t)*(1 + (10 - p_o)*t)", color: naranja, rotulo: "error de estimación" }
+        - { expr: "0", color: tinta, rotulo: "cero", discontinua: true }
+      lectura: { valor: r_o, rotulo: "Veces más rápido que el lazo" }
+      datos:
+        - { valor: l_1, rotulo: "l₁ = {{l_1}}" }
+        - { valor: l_2, rotulo: "l₂ = {{l_2}}" }
+      mandos:
+        - { valor: p_o, min: 20, max: 200, paso: 5, rotulo: "Polo doble del observador" }
+    ajuste:
+      valor: r_o
+      min: 2
+      max: 6
+      rotulo: "Rapidez del observador"
+      escala: { min: 0, max: 10 }
+      bajo: "Demasiado lento: el estimado tarda en alcanzar al estado real. Aleje el polo."
+      alto: "Demasiado rápido: cuanto mayor es L, más ruido del encoder pasa al estimado. Acérquelo."
+      dentro: "Entre dos y seis veces el lazo; el libro elige −100: l₁ = 190 y l₂ = 8 100."
+    comprobar:
+      - { con: { p_o: 100 }, l_1: 190, l_2: 8100, r_o: 5 }
+
+  - id: porque-separacion
+    tipo: porque
+    titulo: "Diseñar por separado"
+    texto: "¿Por qué se pueden calcular K y L cada una por su lado y juntarlas después?"
+    libro: [603]
+    widget:
+      tipo: figura
+      figura: fig-new-31-estados
+      zonas:
+        - { id: todo, rotulo: "Servo con realimentación del estado", rect: [0, 0, 451, 184] }
+    opciones:
+      - texto: "Los polos del conjunto son los de A − B·K más los de A − L·C: el principio de separación"
+        bien: true
+        porque: "La matriz del conjunto es triangular por bloques; con un modelo exacto, cada diseño conserva sus polos."
+      - texto: "Porque el observador es mucho más rápido que el lazo"
+        porque: "Conviene que lo sea, pero la separación vale con cualquier rapidez."
+      - texto: "Porque K y L son traspuestas"
+        porque: "Los problemas son duales, pero eso no explica que los polos se sumen sin mezclarse."
+    escalera:
+      - "¿De qué depende el error de estimación: de u, de la consigna o de nada de eso?"
+    solucion: "Principio de separación: polos de A − B·K más polos de A − L·C."
+
+  - id: observador-carga
+    tipo: pregunta
+    titulo: "Lo que el observador no sabe"
+    texto: "Con la velocidad medida, la carga desvía el ángulo 0,101 rad; con la estimada, 0,164 rad. ¿Por qué?"
+    libro: [604, 606]
+    widget:
+      tipo: figura
+      figura: fig-new-31-estados
+      zonas:
+        - { id: todo, rotulo: "Servo con realimentación del estado", rect: [0, 0, 451, 184] }
+    opciones:
+      - texto: "El modelo del observador no sabe que hay un par: su estimado queda sesgado"
+        bien: true
+        porque: "Si la carga importa, se añade como un estado más: un observador de perturbación."
+      - texto: "El observador es demasiado lento"
+        porque: "Ante la consigna da exactamente lo mismo que la medida: el problema es el par desconocido."
+      - texto: "El encoder mete ruido"
+        porque: "El ruido no explica una desviación sistemática mayor."
+    escalera:
+      - "¿Qué entradas conoce la copia del modelo?"
+    solucion: "El observador no conoce la carga: estimado sesgado."
+
+  - id: cuando-compensa
+    tipo: pregunta
+    titulo: "¿Merece la pena?"
+    texto: "¿Cuándo compensa el espacio de estados frente a un PID?"
+    libro: [571, 578, 579]
+    widget:
+      tipo: figura
+      figura: fig-31.21
+      zonas:
+        - { id: todo, rotulo: "Clásico frente a estados", rect: [0, 0, 450, 270] }
+    opciones:
+      - texto: "Con varias entradas y salidas acopladas, variables internas críticas sin medir, o un óptimo con restricciones"
+        bien: true
+        porque: "En un lazo simple, un PID bien ajustado hace lo mismo con muchísimo menos trabajo."
+      - texto: "Siempre: es más moderno"
+        porque: "En un lazo de una entrada y una salida no compensa."
+      - texto: "Cuando el sistema no es controlable"
+        porque: "Si no es controlable, ningún controlador lo arreglará, tampoco este."
+    escalera:
+      - "¿Qué no cabe en una función de transferencia?"
+    solucion: "Varias entradas y salidas, estados críticos sin medir u óptimos con restricciones."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [562, 586, 590, 594, 602, 603]
+    ideas:
+      - { titulo: "Estado.", texto: "Las variables que almacenan energía; su número es el orden." }
+      - { titulo: "Colocar polos.", texto: "Cada ganancia mueve un coeficiente; el límite lo pone el actuador." }
+      - { titulo: "Observador.", texto: "Una copia del modelo corregida con la salida, de dos a seis veces más rápida." }
+      - { titulo: "Separación.", texto: "Control y observador se diseñan por separado." }

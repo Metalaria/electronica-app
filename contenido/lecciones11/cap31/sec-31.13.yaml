@@ -1,0 +1,252 @@
+# Lección 1.2 de la sección 30.18 «Ampliación: Detección y Corrección de Errores» (cap31, sec-31.13). Formato: GUIA.md.
+# - Un comprobador de paridad par vivo (widget logica): tres bits de datos y el de paridad recibidos entran en una XOR
+#   de cuatro entradas; el LED se enciende si el número de unos es impar. Es el banco del libro (corromper un bit y
+#   luego dos) hecho con puertas.
+# - La sobrecarga, 1 − k/n = r/(k + r), con los casos del libro (CRC de 16 bits en 100 bytes, Hamming de 4 en 8).
+# Pasos prácticos: «tabla» del generador de paridad (A ⊕ B ⊕ C) y el comprobador vivo de paridad con uno y dos bits
+# cambiados.
+leccion: cap31/sec-31.13
+
+libro:
+  646: "más redundancia, más protección, menos caudal útil"
+  651: "si se puede retransmitir, detectar basta y es mucho más barato"
+  653: "Detecta un número impar de errores y no detecta dos"
+  654: "no detecta reordenaciones ni errores que se compensen"
+  655: "Es lo que usan CAN, Ethernet y cualquier protocolo serio"
+  656: "Es lo que llevan las memorias ECC"
+  657: "Reed-Solomon: corrige ráfagas"
+  658: "se acercan al límite de Shannon"
+  660: "la sobrecarga, la fracción de los bits enviados que es redundancia, 1 − k/n"
+  661: "Un CRC de 16 bits sobre un mensaje de 100 bytes tiene una sobrecarga del 2 %"
+  662: "Un Hamming que corrige un error en 8 bits necesita 4 de redundancia: 33 %"
+  664: "detectar es barato, corregir es caro"
+  666: "los errores en ráfaga —los más comunes— suelen venir en números pares"
+  667: "Un CRC cuesta microsegundos y es la única forma de saber si el dato es el que se envió"
+  669: "corromper deliberadamente los datos, un bit cada vez"
+  670: "corromper dos bits, y ver que la paridad falla donde el CRC no"
+  671: "Sobrecarga de cada técnica de codificación y qué detecta cada una"
+
+modelo:
+  valores:
+    k_d: { sim: "k", nombre: "bits de datos", unidad: "", valor: 8 }
+    r_d: { sim: "r", nombre: "bits de redundancia", unidad: "", valor: 1 }
+  calculos:
+    s_o: { expr: "100*r_d/(k_d + r_d)", sim: "1 − k/n", nombre: "sobrecarga", unidad: "%" }
+    n_t: { expr: "k_d + r_d", sim: "n", nombre: "bits enviados", unidad: "" }
+    r_k: { expr: "100*r_d/k_d", sim: "r/k", nombre: "redundancia sobre los datos", unidad: "%" }
+
+tarjetas:
+  - id: explore-paridad
+    tipo: explorar
+    titulo: "Un bit de paridad"
+    texto: "Llega una palabra con paridad par correcta. Cambie un bit y luego otro, y mire el LED de error."
+    libro: [653, 669, 670]
+    widget:
+      tipo: logica
+      entradas: [{ id: D1, valor: 1 }, { id: D2, valor: 0 }, { id: D3, valor: 1 }, { id: P, valor: 0 }]
+      piezas:
+        - { id: x1, tipo: xor, entradas: [D1, D2, D3, P], rotulo: "Comprobador" }
+      salidas:
+        - { id: ERR, de: x1, rotulo: "Error" }
+    requiere: { mover: [D1, D2] }
+
+  - id: predecir-dos-bits
+    tipo: predecir
+    titulo: "Dos bits cambiados"
+    texto: "El canal cambia dos bits de la palabra. ¿Lo detecta la paridad?"
+    libro: [653, 654, 666]
+    widget:
+      tipo: logica
+      entradas: [{ id: D1, valor: 0 }, { id: D2, valor: 1 }, { id: D3, valor: 1 }, { id: P, valor: 0 }]
+      piezas:
+        - { id: x1, tipo: xor, entradas: [D1, D2, D3, P], rotulo: "Comprobador" }
+      salidas:
+        - { id: ERR, de: x1, rotulo: "Error" }
+      ocultar: true
+    opciones:
+      - texto: "No: dos cambios dejan par el número de unos"
+        bien: true
+        porque: "La paridad detecta un número impar de errores, y las ráfagas suelen venir en números pares."
+      - texto: "Sí: cualquier cambio enciende el LED"
+        porque: "Cada cambio invierte la paridad; dos cambios la dejan como estaba."
+      - texto: "Sí, y además dice qué bits son"
+        porque: "La paridad no localiza nada: eso es un código corrector, como Hamming."
+    escalera:
+      - "¿Cuántas veces se invierte la paridad con dos cambios?"
+    solucion: "No lo detecta: por eso no se confía en la paridad para datos importantes."
+
+  - id: tabla-generador
+    tipo: tabla
+    titulo: "El generador de paridad"
+    texto: "El emisor calcula el bit de paridad par de tres bits con dos XOR. Rellene su tabla."
+    libro: [653]
+    widget:
+      tipo: logica
+      entradas: [A, B, C]
+      piezas:
+        - { id: x1, tipo: xor, entradas: [A, B] }
+        - { id: x2, tipo: xor, entradas: [x1, C] }
+      salidas:
+        - { id: P, de: x2, rotulo: "Paridad" }
+      ocultar: true
+    tabla:
+      salidas: [P]
+    exito: "Vale uno cuando hay un número impar de unos: así el total queda par."
+    escalera:
+      - "Cuente los unos de cada fila: si son impares, la paridad lo completa."
+    solucion: "P es uno en las filas con uno o tres unos."
+
+  - id: explore-sobrecarga
+    tipo: explorar
+    titulo: "Lo que cuesta la redundancia"
+    texto: "Sobrecarga: la fracción de los bits enviados que es redundancia. Cambie los bits de datos y los de redundancia."
+    libro: [646, 660]
+    widget:
+      tipo: grafica
+      x: { id: k, min: 4, max: 1000, unidad: "", rotulo: "bits de datos, k", escala: log }
+      y: { min: 0, max: 100, unidad: "%", rotulo: "sobrecarga" }
+      curvas:
+        - { expr: "100*r_d/(k + r_d)", color: naranja, rotulo: "sobrecarga" }
+      marcas:
+        - { x: "k_d", y: "s_o", rotulo: "{{s_o}}" }
+      lectura: { valor: s_o, rotulo: "Sobrecarga" }
+      mandos:
+        - { valor: k_d, lista: [8, 64, 800], rotulo: "Bits de datos" }
+        - { valor: r_d, lista: [1, 4, 16], rotulo: "Bits de redundancia" }
+    requiere: { mover: [k_d, r_d] }
+
+  - id: estime-crc
+    tipo: pregunta
+    titulo: "Un CRC casi gratis"
+    texto: "Un CRC de 16 bits protege un mensaje de 100 bytes. ¿Qué sobrecarga tiene?"
+    libro: [661]
+    fijar: { k_d: 800, r_d: 16 }
+    widget:
+      tipo: grafica
+      x: { id: k, min: 4, max: 1000, unidad: "", rotulo: "bits de datos, k", escala: log }
+      y: { min: 0, max: 100, unidad: "%", rotulo: "sobrecarga" }
+      curvas:
+        - { expr: "100*r_d/(k + r_d)", color: naranja, rotulo: "sobrecarga" }
+    estimar:
+      objetivo: "s_o"
+      unidad: "%"
+      min: 0
+      max: 20
+      paso: 0.1
+      inicio: 10
+      tol: 0.1
+      rotulo: "Sobrecarga"
+    exito: "Un 2 %: prácticamente gratis."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 2.2 }, texto: "Demasiado: cien bytes son ochocientos bits." }
+      - { texto: "Demasiado poco: dieciséis de algo más de ochocientos." }
+    escalera:
+      - "Cien bytes son ochocientos bits de datos."
+    solucion: "16/(800 + 16): un 2 %."
+    comprobar:
+      - { s_o: 1.96, tol: 0.003 }
+
+  - id: hamming-caro
+    tipo: pregunta
+    titulo: "Corregir cuesta"
+    texto: "Un Hamming que corrige un error en 8 bits añade 4 de redundancia. ¿Qué sobrecarga es?"
+    libro: [662, 664]
+    fijar: { k_d: 8, r_d: 4 }
+    widget:
+      tipo: grafica
+      x: { id: k, min: 4, max: 1000, unidad: "", rotulo: "bits de datos, k", escala: log }
+      y: { min: 0, max: 100, unidad: "%", rotulo: "sobrecarga" }
+      curvas:
+        - { expr: "100*r_d/(k + r_d)", color: naranja, rotulo: "sobrecarga" }
+      marcas:
+        - { x: "k_d", y: "s_o", rotulo: "Hamming" }
+    opciones:
+      - texto: "Un 33 %"
+        bien: true
+        porque: "4 de cada 12 bits enviados: detectar es barato, corregir es caro."
+      - texto: "Un 50 %"
+        porque: "Eso sería dividir 4 entre 8; la sobrecarga se mide sobre los bits enviados, 12."
+      - texto: "Un 2 %, como el CRC"
+        porque: "El CRC reparte 16 bits en un mensaje largo; aquí son 4 entre 8."
+    escalera:
+      - "Sobrecarga = r/(k + r)."
+    solucion: "4/12: un 33 %."
+    comprobar:
+      - { s_o: 33.3, n_t: 12, r_k: 50, tol: 0.003 }
+
+  - id: empareje-tecnicas
+    tipo: pregunta
+    titulo: "Cada técnica, su sitio"
+    texto: "Empareje cada técnica con dónde se usa o qué hace."
+    libro: [653, 655, 656, 657, 658, 671]
+    widget:
+      tipo: figura
+      figura: fig-31.22
+      zonas:
+        - { id: todo, rotulo: "Técnicas de codificación", rect: [0, 0, 446, 256] }
+    emparejar:
+      - ["Paridad", "Lo que lleva un UART"]
+      - ["CRC", "CAN, Ethernet y cualquier protocolo serio"]
+      - ["Hamming", "Las memorias ECC"]
+      - ["Reed-Solomon", "Las ráfagas de un disco rayado"]
+      - ["LDPC y turbo", "Cerca del límite de Shannon"]
+    exito: "De menos a más capacidad: detectar uno, detectar casi todo, corregir uno, corregir ráfagas."
+    pistas:
+      - { texto: "ECC corrige un error por palabra de memoria." }
+    escalera:
+      - "Lo mínimo es un bit; lo serio, una división polinómica."
+    solucion: "Paridad, UART; CRC, CAN y Ethernet; Hamming, ECC; Reed-Solomon, discos; LDPC y turbo, Shannon."
+
+  - id: detectar-o-corregir
+    tipo: pregunta
+    titulo: "¿Detectar o corregir?"
+    texto: "Una sonda espacial envía datos a la Tierra a horas de distancia. ¿Qué conviene?"
+    libro: [651, 664]
+    widget:
+      tipo: figura
+      figura: fig-31.22
+      zonas:
+        - { id: todo, rotulo: "Técnicas de codificación", rect: [0, 0, 446, 256] }
+    opciones:
+      - texto: "Corregir: retransmitir es imposible o carísimo"
+        bien: true
+        porque: "La corrección se justifica cuando no se puede pedir otra vez: un disco, un enlace de un solo sentido."
+      - texto: "Detectar y pedir otra vez, que es más barato"
+        porque: "Lo es en una red; con horas de retardo, cada retransmisión cuesta demasiado."
+      - texto: "Solo paridad, para no gastar banda"
+        porque: "La paridad ni siquiera detecta dos errores."
+    escalera:
+      - "¿Se puede pedir el mensaje otra vez con facilidad?"
+    solucion: "Corregir en el receptor."
+
+  - id: porque-crc
+    tipo: porque
+    titulo: "Un enlace corto y fiable"
+    texto: "¿Por qué comprobar el CRC aunque el enlace sea corto y nunca haya fallado?"
+    libro: [667]
+    widget:
+      tipo: figura
+      figura: fig-31.22
+      zonas:
+        - { id: todo, rotulo: "Técnicas de codificación", rect: [0, 0, 446, 256] }
+    opciones:
+      - texto: "Cuesta microsegundos y es la única forma de saber si el dato es el que se envió"
+        bien: true
+        porque: "Sin comprobar, un dato corrupto pasa por bueno sin que nada lo indique."
+      - texto: "Porque corrige los errores del enlace"
+        porque: "El CRC detecta; no corrige."
+      - texto: "Porque lo exige la paridad del UART"
+        porque: "Son independientes: el CRC protege el mensaje entero."
+    escalera:
+      - "¿Cómo sabría usted que un dato llegó cambiado?"
+    solucion: "Es barato y es la única forma de saberlo."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [646, 651, 653, 664]
+    ideas:
+      - { titulo: "Redundancia.", texto: "Más protección, menos caudal útil." }
+      - { titulo: "Paridad.", texto: "Detecta un número impar de errores; dos se le escapan." }
+      - { titulo: "Coste.", texto: "Un CRC, un 2 %; un Hamming de 8 bits, un 33 %." }
+      - { titulo: "Criterio.", texto: "Si se puede retransmitir, detectar basta." }

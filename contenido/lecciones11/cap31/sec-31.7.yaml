@@ -1,0 +1,240 @@
+# Lección 1.2 de la sección 30.7 «Más Allá del PID: Otras Técnicas de Control» (cap31, sec-31.7). Formato: GUIA.md.
+# - Todo-nada con histéresis sobre la planta térmica del problema 30.B (0,8 °C/W, 120 s): con el calefactor encendido
+#   tiende a T_max = T_a + 0,8·P, apagado a T_a; oscila entre consigna ± banda/2 con t_on = τ·ln((T_max − T_bajo)/
+#   (T_max − T_alto)) y t_off = τ·ln((T_alto − T_a)/(T_bajo − T_a)). La curva es el régimen periódico desde T_bajo.
+#   El calefactor de 100 W, el ambiente de 20 °C y la consigna de 60 °C son de ejemplo (lo dice la tarjeta).
+# Sin paso práctico: sección de criterios (la tabla de decisión se empareja).
+leccion: cap31/sec-31.7
+
+libro:
+  243: "el sistema es muy no lineal, el modelo es desconocido, o las reglas de decisión son cualitativas"
+  246: "Con una banda de histéresis para no conmutar continuamente"
+  247: "la variable oscila dentro de la banda con un periodo que depende de la inercia del sistema"
+  248: "no necesita modelo, no se desestabiliza"
+  249: "su amplitud es al menos la banda de histéresis"
+  252: "no genera armónicos, porque siempre conmuta en el cruce por cero"
+  255: "no necesita modelo matemático"
+  256: "no hay garantías de estabilidad demostrables"
+  258: "Sirve cuando la planta cambia"
+  259: "puede volverse inestable si el algoritmo de adaptación se realimenta con ruido"
+  261: "Es lo mejor cuando hay retardos grandes o restricciones que respetar"
+  263: "Oscilación aceptable, sistema lento"
+  264: "empezar por lo más simple que cumpla la especificación"
+  267: "Con histéresis, la temperatura oscila dentro de la banda y el ajuste es trivial"
+  268: "en muchos casos la conclusión honesta es que la histéresis bastaba"
+  269: "Histéresis frente a PID sobre la misma planta"
+  "cap31#684": "Problema 30.B"
+  "cap31#686": "ganancia 0,8 °C/W y constante de tiempo 120 s"
+
+modelo:
+  valores:
+    K_g: { sim: "K", nombre: "ganancia de la planta", unidad: "°C/W", valor: 0.8 }
+    T_p: { sim: "τ", nombre: "constante de tiempo", unidad: s, valor: 120 }
+    P_h: { sim: "P", nombre: "potencia del calefactor de ejemplo", unidad: W, valor: 100 }
+    T_a: { sim: "T_{a}", nombre: "temperatura ambiente de ejemplo", unidad: "°C", valor: 20 }
+    T_s: { sim: "T_{c}", nombre: "consigna de ejemplo", unidad: "°C", valor: 60 }
+    h_b: { sim: "h", nombre: "banda de histéresis", unidad: "°C", valor: 2 }
+  calculos:
+    T_mx: { expr: "T_a + K_g*P_h", sim: "T_{max}", nombre: "temperatura con el calefactor siempre encendido", unidad: "°C" }
+    T_lo: { expr: "T_s - h_b/2", sim: "T_{bajo}", nombre: "umbral de encendido", unidad: "°C" }
+    T_hi: { expr: "T_s + h_b/2", sim: "T_{alto}", nombre: "umbral de apagado", unidad: "°C" }
+    t_on: { expr: "T_p*ln((T_mx - T_lo)/(T_mx - T_hi))", sim: "t_{on}", nombre: "tiempo encendido", unidad: s }
+    t_of: { expr: "T_p*ln((T_hi - T_a)/(T_lo - T_a))", sim: "t_{off}", nombre: "tiempo apagado", unidad: s }
+    P_o: { expr: "t_on + t_of", sim: "T_{osc}", nombre: "periodo de la oscilación", unidad: s }
+
+tarjetas:
+  - id: explore-histeresis
+    tipo: explorar
+    titulo: "El termostato"
+    texto: "Por debajo de la banda, encender; por encima, apagar. Cambie la banda y mire la oscilación y su periodo."
+    nota: "Planta del problema 30.B; calefactor de 100 W, ambiente de 20 °C y consigna de 60 °C, de ejemplo."
+    libro: [246, 247, "cap31#684", "cap31#686"]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 600, unidad: s, rotulo: "t", muestras: 2000 }
+      y: { min: 50, max: 70, unidad: "°C", rotulo: "T" }
+      curvas:
+        - { expr: "(1 - ceil((t - P_o*floor(t/P_o) - t_on)/1e9))*(T_mx - (T_mx - T_lo)*exp(-(t - P_o*floor(t/P_o))/T_p)) + ceil((t - P_o*floor(t/P_o) - t_on)/1e9)*(T_a + (T_hi - T_a)*exp(-(t - P_o*floor(t/P_o) - t_on)/T_p))", color: naranja, rotulo: "temperatura" }
+        - { expr: "T_hi", color: tinta, rotulo: "apagar", discontinua: true }
+        - { expr: "T_lo", color: tinta, rotulo: "encender", discontinua: true }
+      lectura: { valor: P_o, rotulo: "Periodo de la oscilación" }
+      mandos:
+        - { valor: h_b, lista: [1, 2, 5, 10], rotulo: "Banda de histéresis" }
+    requiere: { mover: [h_b] }
+    comprobar:
+      - { P_h: 100, T_a: 20, T_s: 60, T_mx: 100 }
+
+  - id: predecir-banda
+    tipo: predecir
+    titulo: "Una banda más estrecha"
+    texto: "Se estrecha la banda de histéresis de 10 °C a 1 °C. ¿Qué pasa?"
+    libro: [246, 249]
+    fijar: { h_b: 1 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 600, unidad: s, rotulo: "t", muestras: 2000 }
+      y: { min: 50, max: 70, unidad: "°C", rotulo: "T" }
+      curvas:
+        - { expr: "T_hi", color: tinta, rotulo: "apagar", discontinua: true }
+        - { expr: "T_lo", color: tinta, rotulo: "encender", discontinua: true }
+      lectura: { valor: P_o, rotulo: "Periodo de la oscilación" }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "Oscila menos, pero conmuta mucho más a menudo"
+        bien: true
+        porque: "La banda evita conmutar continuamente; al estrecharla, el periodo cae a unos 6 s."
+      - texto: "Deja de oscilar"
+        porque: "La oscilación es inevitable: su amplitud es al menos la banda."
+      - texto: "Oscila igual, con el mismo periodo"
+        porque: "Con menos banda la temperatura tarda menos en cruzarla: el periodo baja."
+    escalera:
+      - "¿Cuánto tarda la temperatura en recorrer una banda más corta?"
+    solucion: "Menos amplitud y conmutaciones mucho más frecuentes: periodo de unos 6 s."
+    comprobar:
+      - { P_o: 6, tol: 0.01 }
+      - { con: { h_b: 10 }, h_b: 10 }
+
+  - id: virtudes-histeresis
+    tipo: pregunta
+    titulo: "Lo simple, bien elegido"
+    texto: "Una calefacción con termostato oscila un grado alrededor de la consigna, y eso se acepta. ¿Merece un PID?"
+    libro: [248, 249]
+    widget:
+      tipo: figura
+      figura: fig-31.14
+      zonas:
+        - { id: todo, rotulo: "Histéresis frente a PID", rect: [0, 0, 446, 202] }
+    opciones:
+      - texto: "No: si la oscilación es aceptable, la histéresis es la solución correcta"
+        bien: true
+        porque: "No necesita modelo ni se desestabiliza; añadir un PID es complicar sin ganar."
+      - texto: "Sí: un PID siempre es mejor"
+        porque: "Estabiliza sin oscilar, pero cuesta mucho más ajustarlo, y aquí no hace falta."
+      - texto: "Sí, porque la histéresis puede desestabilizarse"
+        porque: "Al contrario: no se desestabiliza y su comportamiento es predecible."
+    escalera:
+      - "¿Pide la aplicación algo que la histéresis no dé?"
+    solucion: "No: calefacción, refrigeración y nivel se resuelven con histéresis."
+
+  - id: ciclos-enteros
+    tipo: pregunta
+    titulo: "Ciclos enteros"
+    texto: "Una resistencia calefactora de red se regula dejando pasar ciclos completos. ¿Qué ventaja tiene frente al ángulo de fase?"
+    libro: [252]
+    widget:
+      tipo: figura
+      figura: fig-31.14
+      zonas:
+        - { id: todo, rotulo: "Histéresis frente a PID", rect: [0, 0, 446, 202] }
+    opciones:
+      - texto: "No genera armónicos: conmuta siempre en el cruce por cero"
+        bien: true
+        porque: "Su límite: la potencia va a escalones de un ciclo, solo para cargas de mucha inercia."
+      - texto: "Regula la potencia con más finura"
+        porque: "Al contrario: va a escalones de un ciclo entero."
+      - texto: "Sirve para cualquier carga, también un motor"
+        porque: "Solo con cargas de inercia grande, como las térmicas."
+    escalera:
+      - "¿En qué instante de la senoide conmuta?"
+    solucion: "Sin armónicos, porque conmuta en el cruce por cero."
+
+  - id: porque-difuso
+    tipo: porque
+    titulo: "La ventaja real del difuso"
+    texto: "«Si el error es grande y crece, actuar fuerte». ¿Cuál es la ventaja real del control difuso?"
+    libro: [243, 255, 256]
+    widget:
+      tipo: figura
+      figura: fig-31.14
+      zonas:
+        - { id: todo, rotulo: "Histéresis frente a PID", rect: [0, 0, 446, 202] }
+    opciones:
+      - texto: "Que no necesita modelo matemático: se diseña con la experiencia de quien conoce el proceso"
+        bien: true
+        porque: "Su límite: no hay garantías de estabilidad y el ajuste es empírico."
+      - texto: "Que es más inteligente que un PID"
+        porque: "No lo es: con un sistema bien modelado, un PID bien ajustado suele ser mejor."
+      - texto: "Que garantiza la estabilidad"
+        porque: "Al revés: no hay garantías de estabilidad demostrables."
+    escalera:
+      - "¿Qué falta en el proceso para que el difuso tenga sentido?"
+    solucion: "No necesita modelo matemático."
+
+  - id: empareje-tecnicas
+    tipo: pregunta
+    titulo: "La tabla de decisión"
+    texto: "Empareje cada situación con la técnica."
+    libro: [258, 261, 263]
+    widget:
+      tipo: figura
+      figura: fig-31.14
+      zonas:
+        - { id: todo, rotulo: "Histéresis frente a PID", rect: [0, 0, 446, 202] }
+    emparejar:
+      - ["Oscilación aceptable, sistema lento", "Todo-nada con histéresis"]
+      - ["Carga térmica de red", "Ciclos enteros"]
+      - ["Sistema modelable", "PID"]
+      - ["Sin modelo, con experiencia del proceso", "Difuso"]
+      - ["Planta que cambia mucho", "Adaptativo"]
+      - ["Retardo grande o restricciones", "Predictivo"]
+    exito: "Las dos primeras filas resuelven la mayoría de los problemas domésticos e industriales."
+    pistas:
+      - { texto: "El predictivo usa un modelo para mirar hacia delante: le sientan bien los retardos." }
+    escalera:
+      - "El adaptativo ajusta sus parámetros mientras la planta cambia."
+    solucion: "Histéresis, ciclos enteros, PID, difuso, adaptativo y predictivo, en ese orden."
+
+  - id: adaptativo-riesgo
+    tipo: pregunta
+    titulo: "El precio del adaptativo"
+    texto: "Un motor cuya carga cambia poco. ¿Se justifica un control adaptativo?"
+    libro: [258, 259]
+    widget:
+      tipo: figura
+      figura: fig-31.14
+      zonas:
+        - { id: todo, rotulo: "Histéresis frente a PID", rect: [0, 0, 446, 202] }
+    opciones:
+      - texto: "No: es complejo y puede desestabilizarse si se adapta al ruido; solo con variación grande"
+        bien: true
+        porque: "Su uso está justificado solo cuando la variación es grande y conocida."
+      - texto: "Sí: siempre mejora el ajuste"
+        porque: "Añade complejidad y un riesgo de inestabilidad que aquí no compensa."
+      - texto: "Sí, porque no necesita modelo"
+        porque: "Ese es el argumento del difuso, no del adaptativo."
+    escalera:
+      - "¿Cuándo dice el libro que está justificado?"
+    solucion: "No: solo con una variación grande y conocida."
+
+  - id: porque-simple
+    tipo: porque
+    titulo: "La conclusión honesta"
+    texto: "La misma planta, con histéresis y con un PID. ¿Por qué el libro dice que muchas veces la histéresis bastaba?"
+    libro: [264, 267, 268, 269]
+    widget:
+      tipo: figura
+      figura: fig-31.14
+      zonas:
+        - { id: todo, rotulo: "Histéresis frente a PID", rect: [0, 0, 446, 202] }
+    opciones:
+      - texto: "Porque se empieza por lo más simple que cumpla la especificación"
+        bien: true
+        porque: "El PID estabiliza sin oscilar, pero su ajuste cuesta bastante más; la sofisticación se justifica si lo simple falla."
+      - texto: "Porque el PID no consigue quitar la oscilación"
+        porque: "La quita; la cuestión es si hacía falta quitarla."
+      - texto: "Porque la histéresis es más precisa"
+        porque: "No lo es: oscila dentro de la banda. Pero el ajuste es trivial."
+    escalera:
+      - "¿Qué cuesta cada uno de ajustar?"
+    solucion: "Lo más simple que cumpla: si la oscilación se acepta, la histéresis basta."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [247, 249, 252, 255, 261, 264]
+    ideas:
+      - { titulo: "Histéresis.", texto: "Oscila dentro de la banda, sin modelo y sin inestabilidad." }
+      - { titulo: "Ciclos enteros.", texto: "Sin armónicos, para cargas de mucha inercia." }
+      - { titulo: "Difuso, adaptativo, predictivo.", texto: "Sin modelo; planta que cambia; retardos y restricciones." }
+      - { titulo: "El criterio.", texto: "Lo más simple que cumpla la especificación." }

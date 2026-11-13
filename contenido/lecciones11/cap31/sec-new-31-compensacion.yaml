@@ -1,0 +1,275 @@
+# Lección 1.2 de la sección 30.12 «Compensación de Adelanto y de Retraso» (cap31, sec-new-31-compensacion).
+# Formato: GUIA.md.
+# - La red de adelanto (1 + s/ω_z)/(1 + s/ω_p), centrada en ω_m = √(ω_z·ω_p) = 46,9 rad/s (el cruce del servo del
+#   libro): fase atan(ω/ω_z) − atan(ω/ω_p); máximo con tan φ_m = (α − 1)/(2√α) (atan2: no hay arcoseno en el modelo).
+# - La red de retraso con β = 11,7 del servo: el retraso de fase a 7 rad/s según dónde se ponga ω_z (ω_p = ω_z/β).
+# Pasos prácticos: «simular» la α que da 42° (5,05; error típico: olvidar los 10° de reserva) y «dibujar» la fase de
+# la red del servo (ω_z = 20,9 y ω_p = 105,4 rad/s) sobre un eje logarítmico.
+leccion: cap31/sec-new-31-compensacion
+
+libro:
+  407: "con el cero por debajo del polo adelanta la fase en el cruce y da margen (adelanto)"
+  409: 'α = (ω_"p")/(ω_"z") > 1'
+  410: "el ruido de alta frecuencia sale multiplicado por α"
+  411: 'ω_"m" = sqrt(ω_"z" dot.op ω_"p")'
+  413: "54,9°"
+  414: "con N = 10, como mucho 56,4°"
+  416: "G(s) = 10/(s·(0,1·s + 1))"
+  417: "φm = 50° − 18,0° + 10°, con 10° de reserva porque el cruce subirá a donde la planta tiene menos fase: 42,0°, y α = (1 + sen φm)/(1 − sen φm) = 5,05"
+  423: "con ωz = 0,700 rad/s y ωp = 0,060 rad/s cruza a 7,03 rad/s con 49,7°"
+  424: "Solo ganancia (K = 1,10)"
+  425: "El retraso es para cuando solo falta ganancia a baja frecuencia; el adelanto, para cuando falta margen o velocidad"
+  426: "el adelanto sube la fase en el cruce y lo lleva más arriba"
+  429: "Un polo inestable no se cancela nunca"
+  431: "Un PI es un retraso con el polo en el origen"
+  433: "su «hasta 90°» es el φm de la Ec. 7 con α → ∞"
+  441: "en un motor se oye como un siseo y calienta el driver"
+
+modelo:
+  valores:
+    al: { sim: "α", nombre: "relación polo/cero del adelanto", unidad: "", valor: 2 }
+    w_m: { sim: "ω_{m}", nombre: "centro de la red", unidad: "rad/s", valor: 46.9 }
+    phi_t: { sim: "φ_{m}", nombre: "adelanto pedido", unidad: "°", valor: 42 }
+    phi_e: { sim: "φ", nombre: "adelanto sin reserva", unidad: "°", valor: 32 }
+    be: { sim: "β", nombre: "relación cero/polo del retraso", unidad: "", valor: 11.7 }
+    w_zr: { sim: "ω_{z}", nombre: "cero del retraso", unidad: "rad/s", valor: 7 }
+  calculos:
+    w_z: { expr: "w_m/sqrt(al)", sim: "ω_{z}", nombre: "cero del adelanto", unidad: "rad/s" }
+    w_p: { expr: "w_m*sqrt(al)", sim: "ω_{p}", nombre: "polo del adelanto", unidad: "rad/s" }
+    phi_m: { expr: "atan2(al - 1, 2*sqrt(al))*180/pi", sim: "φ_{m}", nombre: "adelanto máximo", unidad: "°" }
+    G_m: { expr: "10*log10(al)", sim: "|C|", nombre: "ganancia en ω_m", unidad: dB }
+    al_t: { expr: "(1 + sin(phi_t*pi/180))/(1 - sin(phi_t*pi/180))", sim: "α", nombre: "α para el adelanto pedido", unidad: "" }
+    al_e: { expr: "(1 + sin(phi_e*pi/180))/(1 - sin(phi_e*pi/180))", sim: "α", nombre: "α sin reserva", unidad: "" }
+    w_pr: { expr: "w_zr/be", sim: "ω_{p}", nombre: "polo del retraso", unidad: "rad/s" }
+    lag7: { expr: "(atan(7/w_pr) - atan(7/w_zr))*180/pi", sim: "Δφ", nombre: "retraso de fase a 7 rad/s", unidad: "°" }
+
+tarjetas:
+  - id: explore-adelanto
+    tipo: explorar
+    titulo: "La red de adelanto"
+    texto: "Un cero por debajo de un polo, centrados en 46,9 rad/s. Cambie α y mire cuánta fase adelanta."
+    libro: [407, 409, 417]
+    widget:
+      tipo: grafica
+      x: { id: w, min: 1, max: 10000, unidad: "rad/s", rotulo: "ω", escala: log }
+      y: { min: 0, max: 70, unidad: "°", rotulo: "fase" }
+      curvas:
+        - { expr: "(atan(w/w_z) - atan(w/w_p))*180/pi", color: naranja, rotulo: "adelanto" }
+      marcas:
+        - { x: "w_m", y: "phi_m", rotulo: "{{phi_m}}" }
+      lectura: { valor: phi_m, rotulo: "Adelanto máximo" }
+      datos:
+        - { valor: G_m, rotulo: "Ganancia en ω_{m}: {{G_m}}" }
+      mandos:
+        - { valor: al, lista: [2, 3, 5, 10, 20], rotulo: "α = ω_{p}/ω_{z}" }
+    requiere: { mover: [al] }
+
+  - id: formula-adelanto
+    tipo: formula
+    titulo: "El máximo y dónde está"
+    texto: "El máximo está en el centro logarítmico del tramo, y allí la red sube √α."
+    libro: [411, 413]
+    ec: 411
+    sustitucion: "α = {{al}}: φ_{m} = {{phi_m}}, ganancia {{G_m}}"
+    widget:
+      tipo: grafica
+      x: { id: a, min: 1, max: 25, unidad: "", rotulo: "α" }
+      y: { min: 0, max: 80, unidad: "°", rotulo: "φ_{m}" }
+      curvas:
+        - { expr: "atan2(a - 1, 2*sqrt(a))*180/pi", color: naranja, rotulo: "adelanto máximo" }
+      marcas:
+        - { x: "al", y: "phi_m", rotulo: "{{phi_m}}" }
+      mandos:
+        - { valor: al, lista: [2, 3, 5, 10, 20], rotulo: "α" }
+    comprobar:
+      - { con: { al: 10 }, phi_m: 54.9, tol: 0.002 }
+
+  - id: precio-ruido
+    tipo: predecir
+    titulo: "El precio del adelanto"
+    texto: "Por encima de ω_{p}, la red amplifica α veces. ¿Qué se nota en un servo con motor?"
+    libro: [410, 441]
+    widget:
+      tipo: grafica
+      x: { id: w, min: 1, max: 10000, unidad: "rad/s", rotulo: "ω", escala: log }
+      y: { min: 0, max: 70, unidad: "°", rotulo: "fase" }
+      curvas:
+        - { expr: "(atan(w/w_z) - atan(w/w_p))*180/pi", color: naranja, rotulo: "adelanto" }
+    opciones:
+      - texto: "Un siseo y un driver más caliente: el ruido de alta frecuencia sale multiplicado por α"
+        bien: true
+        porque: "Si molesta, se baja α o se añade un polo por encima del cruce."
+      - texto: "Más error en régimen permanente"
+        porque: "Con K_{c} = 1 el adelanto no toca K_{v}: el error no cambia."
+      - texto: "Un cruce más lento"
+        porque: "Al contrario: el adelanto lleva el cruce más arriba."
+    escalera:
+      - "¿Qué frecuencias sube la red α veces?"
+    solucion: "El ruido de alta frecuencia, multiplicado por α: siseo y calor."
+
+  - id: simule-alfa
+    tipo: simular
+    titulo: "Cuánto adelanto pedir"
+    texto: "El servo sin compensar tiene 18,0° de margen y se piden 50°. Con 10° de reserva, ¿qué α hace falta?"
+    libro: [416, 417]
+    simular:
+      objetivo: al_t
+      unidad: ""
+      tol: 0.03
+      rotulo: "α de la red"
+      errores:
+        - { expr: "al_e", texto: "Ha olvidado la reserva: el cruce subirá a donde la planta tiene menos fase. Pida 42°, no 32°." }
+    exito: "α = 5,05: el cero en 20,9 rad/s y el polo en 105,4 rad/s, centrados en el nuevo cruce."
+    escalera:
+      - "φ_{m} = 50° − 18,0° + 10° = 42°; α = (1 + sen φ_{m})/(1 − sen φ_{m})."
+    solucion: "(1 + sen 42°)/(1 − sen 42°) = 5,05."
+    comprobar:
+      - { al_t: 5.05, al_e: 3.25, phi_e: 32, tol: 0.003 }
+
+  - id: dibuje-adelanto
+    tipo: dibujar
+    titulo: "Dibuje la fase de la red"
+    texto: "Red del servo: cero en 20,9 rad/s y polo en 105,4 rad/s. Dibuje su fase frente a ω."
+    libro: [411, 417]
+    widget:
+      tipo: grafica
+      x: { id: w, min: 1, max: 10000, unidad: "rad/s", rotulo: "ω", escala: log }
+      y: { min: 0, max: 50, unidad: "°", rotulo: "fase" }
+      curvas:
+        - { expr: "0", color: tinta, rotulo: "0°", discontinua: true }
+    dibujar:
+      x: { id: w, min: 1, max: 10000, unidad: "rad/s", rotulo: "ω", escala: log }
+      y: { min: 0, max: 50, unidad: "°", rotulo: "fase" }
+      curva: "(atan(w/20.9) - atan(w/105.4))*180/pi"
+      puntos: 25
+      tol: 0.08
+      holgura: 0.03
+      rotulo: "Fase de la red de adelanto"
+    exito: "Una joroba de 42° centrada en 46,9 rad/s, entre el cero y el polo."
+    pistas:
+      - { cuando: { valor: desfase, menor: -0.05 }, texto: "La joroba va demasiado a la izquierda: su centro es √(ω_{z}·ω_{p})." }
+      - { cuando: { valor: desfase, mayor: 0.05 }, texto: "La joroba va demasiado a la derecha: su centro es √(ω_{z}·ω_{p})." }
+      - { texto: "Mire la altura: con α = 5,05 el máximo es de unos 42°, y a los lados vuelve a cero." }
+    escalera:
+      - "Lejos del cero y del polo, la fase es nula; entre ambos, sube y baja."
+    solucion: "Cero a los lados, máximo de 42° en 46,9 rad/s."
+
+  - id: explore-retraso
+    tipo: explorar
+    titulo: "La red de retraso"
+    texto: "El polo por debajo del cero baja la ganancia β = 11,7 veces. Mueva el cero y mire cuánta fase quita en el cruce, a 7 rad/s."
+    libro: [423]
+    widget:
+      tipo: grafica
+      x: { id: w, min: 0.001, max: 100, unidad: "rad/s", rotulo: "ω", escala: log }
+      y: { min: -25, max: 2, unidad: dB, rotulo: "|C|" }
+      curvas:
+        - { expr: "20*log10(sqrt(1 + (w/w_zr)^2)/sqrt(1 + (w/w_pr)^2))", color: naranja, rotulo: "ganancia del retraso" }
+      lectura: { valor: lag7, rotulo: "Retraso de fase a 7 rad/s" }
+      mandos:
+        - { valor: w_zr, lista: [0.07, 0.7, 7], rotulo: "Cero, ω_{z}" }
+    requiere: { mover: [w_zr] }
+    comprobar:
+      - { con: { w_zr: 0.7 }, w_pr: 0.06, tol: 0.003 }
+
+  - id: empareje-opciones
+    tipo: pregunta
+    titulo: "Cuatro maneras de cumplir"
+    texto: "El servo, con 50° de margen pedidos. Empareje cada opción con su resultado."
+    libro: [424, 425, 426]
+    widget:
+      tipo: figura
+      figura: fig-new-31-servo
+      zonas:
+        - { id: todo, rotulo: "El servo con cuatro opciones", rect: [0, 0, 455, 218] }
+    emparejar:
+      - ["Sin compensar, K = 10", "18,0° y un 60,5 % de sobreimpulso"]
+      - ["Solo ganancia, K = 1,10", "Cumple el margen con K_{v} = 11,0"]
+      - ["Adelanto", "Se establece en 0,13 s"]
+      - ["Retraso", "Cumple, pero tarda 1,97 s"]
+    exito: "El adelanto da margen y velocidad; el retraso cumple, pero cruza casi siete veces más abajo."
+    pistas:
+      - { texto: "Bajar la ganancia cumple el margen a costa del error: K_{v} cae a 11." }
+    escalera:
+      - "¿Qué opción lleva el cruce más arriba?"
+    solucion: "Sin compensar, 18°; solo ganancia, K_{v} = 11; adelanto, 0,13 s; retraso, 1,97 s."
+
+  - id: porque-cual
+    tipo: porque
+    titulo: "Adelanto o retraso"
+    texto: "Un lazo tiene buen margen pero demasiado error en régimen permanente. ¿Por qué se elige un retraso?"
+    libro: [407, 425]
+    widget:
+      tipo: figura
+      figura: fig-new-31-servo
+      zonas:
+        - { id: todo, rotulo: "El servo con cuatro opciones", rect: [0, 0, 455, 218] }
+    opciones:
+      - texto: "Porque sube la ganancia a baja frecuencia sin tocar el cruce"
+        bien: true
+        porque: "El retraso es para cuando solo falta ganancia a baja frecuencia; si falta margen o velocidad, adelanto."
+      - texto: "Porque adelanta la fase en el cruce"
+        porque: "Eso hace el adelanto: cero por debajo del polo."
+      - texto: "Porque hace el lazo más rápido"
+        porque: "Al contrario: el retraso deja una cola lenta cerca del origen."
+    escalera:
+      - "¿Qué falta aquí: margen o ganancia a baja frecuencia?"
+    solucion: "Solo falta ganancia a baja frecuencia: retraso."
+
+  - id: pid-redes
+    tipo: pregunta
+    titulo: "El PID visto como redes"
+    texto: "Un PD con el filtro de la derivada es un adelanto con α = N + 1. Con N = 10, ¿cuánto adelanta como mucho?"
+    libro: [414, 431, 433]
+    fijar: { al: 11 }
+    widget:
+      tipo: grafica
+      x: { id: a, min: 1, max: 25, unidad: "", rotulo: "α" }
+      y: { min: 0, max: 80, unidad: "°", rotulo: "φ_{m}" }
+      curvas:
+        - { expr: "atan2(a - 1, 2*sqrt(a))*180/pi", color: naranja, rotulo: "adelanto máximo" }
+    opciones:
+      - texto: "56,4°"
+        bien: true
+        porque: "α = 11: algo más que los 54,9° de α = 10."
+      - texto: "90°, como una derivada pura"
+        porque: "El filtro limita α: la derivada pura sería α infinita."
+      - texto: "54,9°, el de α = 10"
+        porque: "α es N + 1 = 11, no N."
+    escalera:
+      - "Calcule α = N + 1 y busque su φ_{m} en la curva."
+    solucion: "α = 11: 56,4°."
+    comprobar:
+      - { phi_m: 56.4, tol: 0.002 }
+
+  - id: cancelar-inestable
+    tipo: pregunta
+    titulo: "Cancelar un polo"
+    texto: "Un cero del compensador sobre un polo de la planta lo cancela. ¿Cuándo no vale?"
+    libro: [429]
+    widget:
+      tipo: figura
+      figura: fig-new-31-servo
+      zonas:
+        - { id: todo, rotulo: "El servo con cuatro opciones", rect: [0, 0, 455, 218] }
+    opciones:
+      - texto: "Nunca con un polo inestable: el modo sigue en el lazo aunque no se vea"
+        bien: true
+        porque: "Y con uno estable, solo si se conoce bien: si la planta cambia, queda una cola."
+      - texto: "Nunca: cancelar no sirve"
+        porque: "Con un polo estable y bien conocido es una técnica habitual."
+      - texto: "Siempre vale, si el cero está exactamente encima"
+        porque: "Con un polo inestable, el modo sigue ahí y crece."
+    escalera:
+      - "¿Qué pasa con un modo inestable que no se ve entre consigna y salida?"
+    solucion: "Un polo inestable no se cancela nunca."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [407, 411, 417, 425, 429]
+    ideas:
+      - { titulo: "Adelanto.", texto: "Cero bajo el polo: fase en el cruce, a costa de ruido α veces." }
+      - { titulo: "Diseño.", texto: "Margen pedido menos el que hay, con reserva; α y centrado en el nuevo cruce." }
+      - { titulo: "Retraso.", texto: "Ganancia a baja frecuencia sin tocar el cruce: cero una década por debajo." }
+      - { titulo: "PID.", texto: "PI, un retraso; PD filtrado, un adelanto; nunca cancelar un polo inestable." }

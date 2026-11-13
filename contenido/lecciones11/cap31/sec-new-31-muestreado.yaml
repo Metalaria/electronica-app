@@ -1,0 +1,326 @@
+# Lección 1.2 de la sección 30.17 «El Lazo Muestreado: la Planta y el Controlador en z» (cap31, sec-new-31-muestreado).
+# Formato: GUIA.md. Ampliación CIN/351/2009 aprobada por el dueño: el periodo de muestreo hasta la inestabilidad.
+# - El horno del ejercicio 30.28 (planta 0,8/(120·s + 1), K_p = 5), con retenedor: p = e^(−T/120), polo del lazo
+#   cerrado z_c = p − 5·0,8·(1 − p) = 5p − 4; la respuesta en las muestras, 0,8·(1 − z_c^k), mantenida entre ellas
+#   (k = floor(t/T)). Inestable cuando z_c pasa de −1: p < 0,6, T > 120·ln(5/3) = 61,3 s (cálculo mío con las fórmulas
+#   del ejercicio; el libro da T = 60 s con el polo en −0,967).
+# - El servo 100/(s·(s + 10)) con un proporcional: G(z) del bloque 618, c₀ = p + K·b₀ y K_crít = (1 − p)/b₀.
+# - Los polos −10 ± j17,3 llevados al plano z con z = e^(sT): módulo e^(−10T) y ángulo 17,3·T.
+# - Ejercicio 30.29 con la errata 4.1.2 corregida (1,6082 y 1,5918, los del libro fuente; los datos de la app aún
+#   dicen 1,6075 y 1,5911): los coeficientes salen del modelo.
+# Pasos prácticos: «simular» el periodo con que el horno se vuelve inestable (61,3 s; errores típicos: 60 s, que aún
+# es estable, y 26,8 s, el polo en cero) y después «ajuste» de T hasta el borde (el polo en −1): prediga y deslice.
+leccion: cap31/sec-new-31-muestreado
+
+libro:
+  612: "muestrear de 10 a 30 veces el ancho de banda del lazo y contar medio periodo de muestreo como retardo"
+  614: "es un retenedor de orden cero (ZOH, zero-order hold)"
+  616: "El equivalente discreto de una planta"
+  618: 'G(z) = ((10 T - 1 + p) dot.op z + (1 - p - 10 T p))/((z - 1)(z - p))'
+  619: "No hay que cancelarlo nunca con un polo del controlador"
+  620: "con T = 10 ms, z0 = 0,905 con un ángulo de ±9,9°, y con T = 40 ms, 0,670 con ±39,7°"
+  623: "c0 es el producto de las dos raíces"
+  624: "En continuo, el lazo K·G(s) es estable con cualquier K, porque su fase no llega nunca a −180°"
+  625: "Kcrít con un retardo de T/2"
+  626: "se equivoca menos de un 1 % hasta T = 10 ms y un 10 % con T = 100 ms"
+  631: "39,1 %"
+  632: "Tustin es siempre algo mejor que Euler"
+  634: "el modelo discreto ya incluye el retenedor, y no hay nada que aproximar"
+  635: "el rechazo de perturbaciones empeora con T por bien que se diseñe"
+  643: "el modelo dice que el servo oscila con K = 20,3 a 7,1 Hz"
+  "cap31#686": "ganancia 0,8 °C/W y constante de tiempo 120 s"
+  "cap31#723": "T = 60 s: p = 0,6065, Kcrít = 5,10 y el polo en −0,967"
+
+modelo:
+  valores:
+    T_o: { sim: "T", nombre: "periodo de muestreo del horno", unidad: s, valor: 10 }
+    T_z: { sim: "T", nombre: "periodo de muestreo del servo", unidad: s, valor: 0.01 }
+    K_s: { sim: "K", nombre: "ganancia proporcional del servo", unidad: "", valor: 4 }
+    T_s: { sim: "T", nombre: "periodo del servo", unidad: s, valor: 0.01 }
+    Kp_m: { sim: "K_{p}", nombre: "ganancia del PI del motor", unidad: "V·s/rad", valor: 1.6 }
+    Ti_m: { sim: "T_{i}", nombre: "tiempo integral del PI del motor", unidad: s, valor: 0.0976 }
+    Tm_m: { sim: "T", nombre: "periodo del PI del motor", unidad: s, valor: 0.001 }
+  calculos:
+    p_o: { expr: "exp(-T_o/120)", sim: "p", nombre: "polo de la planta en z", unidad: "" }
+    z_o: { expr: "5*exp(-T_o/120) - 4", sim: "z_{c}", nombre: "polo del lazo cerrado", unidad: "", cifras: 3 }
+    Kc_o: { expr: "(1 + p_o)/(0.8*(1 - p_o))", sim: "K_{crít}", nombre: "ganancia crítica del horno", unidad: "" }
+    T_l: { expr: "120*ln(5/3)", sim: "T_{lím}", nombre: "periodo límite con K_p = 5", unidad: s }
+    T_0: { expr: "120*ln(5/4)", sim: "T", nombre: "periodo con el polo en cero", unidad: s }
+    T_60: { expr: "60", sim: "T", nombre: "periodo del libro", unidad: s }
+    r_z: { expr: "exp(-10*T_z)", sim: "|z₀|", nombre: "módulo de los polos en z", unidad: "", cifras: 3 }
+    a_z: { expr: "17.3*T_z*180/pi", sim: "∠z₀", nombre: "ángulo de los polos en z", unidad: "°" }
+    p_s: { expr: "exp(-10*T_s)", sim: "p", nombre: "polo de la planta en z", unidad: "", cifras: 4 }
+    b0_s: { expr: "1 - p_s - 10*T_s*p_s", sim: "b₀", nombre: "coeficiente b₀", unidad: "" }
+    q0_s: { expr: "p_s + K_s*(1 - p_s - 10*T_s*p_s)", sim: "c₀", nombre: "producto de las raíces", unidad: "", cifras: 3 }
+    Kc_s: { expr: "(1 - p_s)/(1 - p_s - 10*T_s*p_s)", sim: "K_{crít}", nombre: "ganancia crítica del servo", unidad: "" }
+    g_0: { expr: "Kp_m*(1 + Tm_m/(2*Ti_m))", sim: "b₀", nombre: "coeficiente de e[k]", unidad: "", cifras: 5 }
+    g_1: { expr: "Kp_m*(1 - Tm_m/(2*Ti_m))", sim: "b₁", nombre: "coeficiente de e[k − 1]", unidad: "", cifras: 5 }
+
+tarjetas:
+  - id: explore-plano-z
+    tipo: explorar
+    titulo: "Del plano s al plano z"
+    texto: "Los polos −10 ± j17,3 vistos desde el programa: z = e^{sT}. Cambie el periodo y mire dónde caen dentro del círculo unidad."
+    libro: [614, 620]
+    widget:
+      tipo: grafica
+      x: { id: x, min: -1.2, max: 1.2, unidad: "", rotulo: "parte real de z" }
+      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "parte imaginaria de z" }
+      curvas:
+        - { expr: "sqrt(max(0, 1 - x^2))", color: tinta, rotulo: "círculo unidad", discontinua: true }
+        - { expr: "-sqrt(max(0, 1 - x^2))", color: tinta, rotulo: "círculo unidad", discontinua: true }
+      marcas:
+        - { x: "r_z*cos(a_z*pi/180)", y: "r_z*sin(a_z*pi/180)", rotulo: "polo" }
+        - { x: "r_z*cos(a_z*pi/180)", y: "-r_z*sin(a_z*pi/180)", rotulo: "polo" }
+      lectura: { valor: r_z, rotulo: "Módulo de los polos" }
+      datos:
+        - { valor: a_z, rotulo: "Ángulo: ±{{a_z}}" }
+      mandos:
+        - { valor: T_z, lista: [0.01, 0.04], rotulo: "Periodo de muestreo" }
+    requiere: { mover: [T_z] }
+    comprobar:
+      - { r_z: 0.905, a_z: 9.9, tol: 0.003 }
+      - { con: { T_z: 0.04 }, r_z: 0.670, a_z: 39.7, tol: 0.003 }
+
+  - id: predecir-muestreo
+    tipo: predecir
+    titulo: "Estable con cualquier ganancia"
+    texto: "En continuo, el servo con un proporcional es estable con cualquier K. Programado con T = 10 ms, ¿también?"
+    libro: [624, 625]
+    widget:
+      tipo: figura
+      figura: fig-new-31-muestreado
+      zonas:
+        - { id: todo, rotulo: "El servo controlado desde un programa", rect: [0, 0, 450, 179] }
+    opciones:
+      - texto: "No: a partir de una ganancia crítica oscila, porque el muestreo añade retardo"
+        bien: true
+        porque: "Medio periodo de retardo lleva la fase a −180° donde en continuo no llegaba nunca."
+      - texto: "Sí: el muestreo no cambia la estabilidad"
+        porque: "Entre muestras el lazo está abierto: es un retardo, y un retardo desestabiliza."
+      - texto: "Sí, si el periodo es menor que la constante de tiempo"
+        porque: "Ayuda, pero sigue habiendo una ganancia crítica para cualquier T."
+    escalera:
+      - "¿Qué le hace un retardo a la fase?"
+    solucion: "No: con T = 10 ms la ganancia crítica es 20,34."
+    comprobar:
+      - { Kc_s: 20.34, tol: 0.002 }
+
+  - id: formula-jury
+    tipo: formula
+    titulo: "Jury en segundo orden"
+    texto: "Lo que falla primero es c₀, el producto de las dos raíces: debe quedarse por debajo de 1."
+    libro: [618, 623, 625]
+    ec: 618
+    sustitucion: "c₀ = {{p_s}} + {{K_s}} · {{b0_s}} = {{q0_s}}; K_{crít} = {{Kc_s}}"
+    widget:
+      tipo: grafica
+      x: { id: k, min: 0, max: 30, unidad: "", rotulo: "K" }
+      y: { min: 0.8, max: 1.2, unidad: "", rotulo: "c₀" }
+      curvas:
+        - { expr: "p_s + k*b0_s", color: naranja, rotulo: "c₀" }
+        - { expr: "1", color: tinta, rotulo: "límite", discontinua: true }
+      marcas:
+        - { x: "K_s", y: "q0_s", rotulo: "{{q0_s}}" }
+      mandos:
+        - { valor: K_s, lista: [4, 10, 20, 25], rotulo: "Ganancia, K" }
+        - { valor: T_s, lista: [0.01, 0.02], rotulo: "Periodo, T" }
+    comprobar:
+      - { con: { T_s: 0.02 }, Kc_s: 10.34, tol: 0.003 }
+
+  - id: simule-periodo
+    tipo: simular
+    titulo: "Prediga el periodo crítico"
+    texto: "El horno del problema 30.B, con K_{p} = 5 y retenedor: polo del lazo cerrado en 5p − 4, con p = e^{−T/120}. ¿Con qué T llega a −1?"
+    libro: ["cap31#686", "cap31#723"]
+    simular:
+      objetivo: T_l
+      unidad: s
+      tol: 0.01
+      rotulo: "Periodo límite"
+      errores:
+        - { expr: "T_60", texto: "Con 60 s aún es estable, por poco: el polo queda en −0,967. El límite está un poco más allá." }
+        - { expr: "T_0", texto: "Ahí el polo pasa por cero: desde ahí oscila cambiando de signo, pero amortiguado." }
+    exito: "Unos 61,3 s: p = 0,6. Ahora compruébelo deslizando el periodo."
+    escalera:
+      - "5p − 4 = −1 da p = 0,6; despeje T de e^{−T/120} = 0,6."
+    solucion: "T = 120·ln(5/3) = 61,3 s."
+    comprobar:
+      - { T_l: 61.3, T_0: 26.8, tol: 0.003 }
+      - { con: { T_o: 60 }, p_o: 0.6065, z_o: -0.967, Kc_o: 5.10, tol: 0.003 }
+
+  - id: ajuste-periodo
+    tipo: ajuste
+    titulo: "Deslice el periodo hasta la inestabilidad"
+    texto: "Alargue el periodo de muestreo del horno hasta que el polo del lazo cerrado llegue al círculo unidad, en −1."
+    libro: ["cap31#723", 623]
+    inicio: { T_o: 10 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 1200, unidad: s, rotulo: "t", muestras: 2400 }
+      y: { min: -0.5, max: 2, unidad: "", rotulo: "salida / consigna" }
+      curvas:
+        - { expr: "0.8*(1 - (5*exp(-T_o/120) - 4)^floor(t/T_o))", color: naranja, rotulo: "muestreado" }
+        - { expr: "0.8*(1 - exp(-t/24))", color: tinta, rotulo: "analógico", discontinua: true }
+      lectura: { valor: z_o, rotulo: "Polo del lazo cerrado" }
+      datos:
+        - { valor: Kc_o, rotulo: "K_{crít} = {{Kc_o}}" }
+      mandos:
+        - { valor: T_o, min: 1, max: 90, paso: 0.5, rotulo: "Periodo de muestreo" }
+    ajuste:
+      valor: z_o
+      min: -1.02
+      max: -0.98
+      rotulo: "Polo del lazo cerrado"
+      escala: { min: -1.5, max: 1 }
+      bajo: "Ya ha pasado de −1: la oscilación crece. Acorte el periodo."
+      alto: "Todavía dentro del círculo: alargue el periodo."
+      dentro: "En el borde: cambia de signo en cada muestra sin amortiguarse. El analógico es estable con cualquier ganancia."
+    comprobar:
+      - { con: { T_o: 61 }, z_o: -0.992, tol: 0.003 }
+
+  - id: regla-retardo
+    tipo: pregunta
+    titulo: "La regla del medio periodo, justificada"
+    texto: "Sustituir el muestreo por un retardo de medio periodo, ¿qué tal predice la ganancia crítica?"
+    libro: [612, 625, 626]
+    widget:
+      tipo: figura
+      figura: fig-new-31-muestreado
+      zonas:
+        - { id: todo, rotulo: "El servo controlado desde un programa", rect: [0, 0, 450, 179] }
+    opciones:
+      - texto: "Menos de un 1 % de error hasta 10 ms; un 10 % con 100 ms"
+        bien: true
+        porque: "Mientras el muestreo es rápido, solo añade medio periodo de retardo."
+      - texto: "Exacta para cualquier periodo"
+        porque: "Falla cuando el periodo se acerca a la constante de tiempo de la planta."
+      - texto: "Mal siempre: el muestreo no es un retardo"
+        porque: "Con muestreo rápido es casi exactamente un retardo de T/2."
+    escalera:
+      - "Compare las dos columnas de la tabla."
+    solucion: "Buena hasta 10 ms (menos del 1 %); un 10 % con 100 ms."
+
+  - id: cero-muestreo
+    tipo: pregunta
+    titulo: "Un cero que no estaba"
+    texto: "El equivalente discreto del servo tiene un cero en −0,967 que G(s) no tiene. ¿Se cancela con un polo del controlador?"
+    libro: [616, 619]
+    widget:
+      tipo: figura
+      figura: fig-new-31-muestreado
+      zonas:
+        - { id: todo, rotulo: "El servo controlado desde un programa", rect: [0, 0, 450, 179] }
+    opciones:
+      - texto: "Nunca: la salida oscilaría entre muestras mientras las muestras parecen perfectas"
+        bien: true
+        porque: "Es un cero de muestreo; aparece cuando la planta tiene al menos dos polos más que ceros."
+      - texto: "Sí, así el lazo queda de primer orden"
+        porque: "Las muestras se verían bien, pero entre ellas la salida oscilaría."
+      - texto: "Da igual: un cero no afecta"
+        porque: "Cancelarlo con un polo en −0,967 mete un modo que cambia de signo en cada muestra."
+    escalera:
+      - "¿Qué pasa entre muestras, donde el programa no mira?"
+    solucion: "Nunca se cancela."
+
+  - id: emulacion-lenta
+    tipo: predecir
+    titulo: "Emular con poco muestreo"
+    texto: "El adelanto del servo, diseñado en continuo, se discretiza con Tustin y se muestrea a solo 6 veces el ancho de banda. ¿Qué pasa?"
+    libro: [631, 632]
+    widget:
+      tipo: figura
+      figura: fig-new-31-muestreado
+      zonas:
+        - { id: todo, rotulo: "El servo controlado desde un programa", rect: [0, 0, 450, 179] }
+    opciones:
+      - texto: "Se pasa un 39,1 % en vez de un 16,3 %: el diseño es otro"
+        bien: true
+        porque: "Entre 25 y 50 veces apenas cambia; con 12 ya se nota; con 6, no se parece."
+      - texto: "Igual que el analógico, porque Tustin es exacto"
+        porque: "Tustin es una aproximación de segundo orden; con poco muestreo se nota."
+      - texto: "Se vuelve más lento, sin pasarse más"
+        porque: "El retardo del muestreo resta margen: más sobreimpulso."
+    escalera:
+      - "Cada milisegundo de periodo resta margen de fase."
+    solucion: "Un 39,1 %: con 6 veces el ancho de banda, se diseña directamente en z."
+    comprobar:
+      - { con: { T_z: 0.04 }, r_z: 0.670, tol: 0.003 }
+
+  - id: tustin-pi
+    tipo: pregunta
+    titulo: "Un PI con Tustin"
+    texto: "El PI del motor (K_{p} = 1,60, T_{i} = 97,6 ms) se programa con Tustin y T = 1 ms: u[k] = u[k − 1] + b₀·e[k] − b₁·e[k − 1]. ¿Cuánto vale b₀?"
+    libro: ["cap31#723"]
+    widget:
+      tipo: figura
+      figura: fig-new-31-muestreado
+      zonas:
+        - { id: todo, rotulo: "El servo controlado desde un programa", rect: [0, 0, 450, 179] }
+    opciones:
+      - texto: "1,6082, y b₁ = 1,5918"
+        bien: true
+        porque: "K_{p}·(1 ± T/(2·T_{i})), con T/(2·T_{i}) = 0,00512."
+      - texto: "1,60, el mismo K_{p}"
+        porque: "Tustin reparte la integral entre e[k] y e[k − 1]: K_{p} se multiplica por 1 ± T/(2·T_{i})."
+      - texto: "1,5918"
+        porque: "Ese es b₁, el de e[k − 1]: lleva el signo menos dentro."
+    escalera:
+      - "b₀ = K_{p}·(1 + T/(2·T_{i}))."
+    solucion: "1,60 × (1 + 0,00512) = 1,6082; b₁ = 1,60 × (1 − 0,00512) = 1,5918."
+    comprobar:
+      - { g_0: 1.6082, g_1: 1.5918, tol: 0.0001 }
+
+  - id: porque-directo
+    tipo: porque
+    titulo: "Diseñar directamente en z"
+    texto: "Con T = 40 ms, la realimentación del estado diseñada en z sigue al diseño continuo, y la emulación no. ¿Por qué?"
+    libro: [634, 635]
+    widget:
+      tipo: figura
+      figura: fig-new-31-muestreado
+      zonas:
+        - { id: todo, rotulo: "El servo controlado desde un programa", rect: [0, 0, 450, 179] }
+    opciones:
+      - texto: "El modelo discreto ya incluye el retenedor: no hay nada que aproximar"
+        bien: true
+        porque: "Pero no es gratis: depende del modelo, y el rechazo de perturbaciones empeora con T."
+      - texto: "Porque el diseño en z no tiene retardo"
+        porque: "El retardo sigue: entre muestras la planta va en lazo abierto. Lo que cambia es que el modelo lo incluye."
+      - texto: "Porque usa Euler en vez de Tustin"
+        porque: "No usa ninguna aproximación de s: diseña sobre la planta discreta exacta."
+    escalera:
+      - "¿Qué aproxima la emulación que el modelo discreto calcula exacto?"
+    solucion: "El modelo discreto incluye el retenedor."
+
+  - id: banco-critica
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "Con un proporcional y T = 10 ms, el modelo dice que el servo oscila con K = 20,3 a 7,1 Hz, y el real oscila con menos. ¿Qué indica?"
+    libro: [643]
+    widget:
+      tipo: figura
+      figura: fig-new-31-muestreado
+      zonas:
+        - { id: todo, rotulo: "El servo controlado desde un programa", rect: [0, 0, 450, 179] }
+    opciones:
+      - texto: "Hay más retardo que el del muestreo: un filtro, el PWM o el cálculo"
+        bien: true
+        porque: "Su valor sale de la diferencia de fase: así se mide el retardo que hay que contar."
+      - texto: "El modelo de la planta tiene demasiada ganancia"
+        porque: "Más ganancia en el modelo daría una K_{crít} menor en el papel, no en el banco."
+      - texto: "Nada: el banco siempre oscila antes"
+        porque: "Si oscila antes, algo falta en el modelo; casi siempre, retardo."
+    escalera:
+      - "¿Qué reduce la ganancia crítica de un lazo muestreado?"
+    solucion: "Hay retardo de más."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [614, 620, 624, 626, 634]
+    ideas:
+      - { titulo: "Retenedor.", texto: "Desde el programa la planta es discreta: su G(z) es exacta en las muestras." }
+      - { titulo: "z = e^{sT}.", texto: "El semiplano izquierdo cae dentro del círculo unidad." }
+      - { titulo: "Muestrear despacio.", texto: "Un lazo estable con cualquier ganancia en continuo tiene K_{crít} al muestrear." }
+      - { titulo: "Diseñar.", texto: "Emular con Tustin si se muestrea deprisa; si no, directamente en z." }

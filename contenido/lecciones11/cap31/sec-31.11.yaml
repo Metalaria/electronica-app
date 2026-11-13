@@ -1,0 +1,251 @@
+# Lección 1.2 de la sección 30.14 «Sintonía del PID: el Método de Ziegler-Nichols» (cap31, sec-31.11). Formato: GUIA.md.
+# - La tabla de la ganancia crítica (bloque 475) con los K_u y T_u del problema 30.A (6,0 y 1,5 s). El mando elige la
+#   fila con un índice c = 0, 1, 2 (P, PI, PID); el modelo usa los pesos (1 − c)(2 − c)/2, c(2 − c) y c(c − 1)/2,
+#   que valen 1 en su fila y 0 en las otras (el lenguaje del modelo no tiene condicionales).
+# Paso práctico: «simular» el T_i del PI del problema 30.A (1,25 s; errores típicos: la fila del PID, multiplicar).
+leccion: cap31/sec-31.11
+
+libro:
+  471: "el de Ziegler-Nichols, publicado en 1942"
+  472: "es una receta empírica que da un punto de partida, no un óptimo"
+  474: "Anular las acciones integral y derivativa: solo control proporcional"
+  475: "0,45·Ku"
+  476: "a menudo del 40 al 60 %"
+  478: "el retardo aparente L (lo que tarda en empezar a responder) y la pendiente máxima R de la subida"
+  479: "si el retardo es grande comparado con la constante de tiempo, el sistema será difícil de controlar"
+  482: "Error permanente que no desaparece"
+  484: "Mejora (si no hay ruido)"
+  486: "un PWM al 100 %"
+  487: "explica un lazo que «funciona mal solo al arrancar»"
+  488: "un PI bien ajustado es mejor que un PID con la derivada nerviosa"
+  491: "Cohen-Coon (para sistemas con retardo dominante)"
+  492: "un lazo debe ajustarse buscando un margen de estabilidad suficiente (sección 30.9), no la respuesta más rápida posible"
+  494: "conviene probar además la respuesta a una perturbación"
+  495: "Efecto de la ganancia proporcional en un control P"
+  "cap31#673": "Problema 30.A"
+  "cap31#675": "Ku = 6,0 y periodo Tu = 1,5 s"
+  "cap31#678": "1,250 s"
+  "cap31#679": "El PI baja la ganancia proporcional respecto al P (2,70 frente a 3,00) porque la acción integral añade retardo de fase"
+
+modelo:
+  valores:
+    K_u: { sim: "K_{u}", nombre: "ganancia crítica", unidad: "", valor: 6 }
+    T_u: { sim: "T_{u}", nombre: "periodo de la oscilación", unidad: s, valor: 1.5 }
+    c_t: { sim: "c", nombre: "controlador", unidad: "", valor: 0 }
+  calculos:
+    Kp_t: { expr: "K_u*(0.5*(1 - c_t)*(2 - c_t)/2 + 0.45*c_t*(2 - c_t) + 0.6*c_t*(c_t - 1)/2)", sim: "K_{p}", nombre: "ganancia proporcional", unidad: "", cifras: 3 }
+    Ti_t: { expr: "T_u*(c_t*(2 - c_t)/1.2 + c_t*(c_t - 1)/4)", sim: "T_{i}", nombre: "tiempo integral (0: sin integral)", unidad: s }
+    Td_t: { expr: "T_u*c_t*(c_t - 1)/16", sim: "T_{d}", nombre: "tiempo derivativo (0: sin derivada)", unidad: s }
+    Ti_pi: { expr: "T_u/1.2", sim: "T_{i}", nombre: "T_i del PI", unidad: s }
+    Ti_e1: { expr: "T_u/2", sim: "T_{i}", nombre: "T_i de la fila del PID", unidad: s }
+    Ti_e2: { expr: "T_u*1.2", sim: "T_{i}", nombre: "T_i multiplicando", unidad: s }
+
+tarjetas:
+  - id: explore-tabla
+    tipo: explorar
+    titulo: "La tabla de la ganancia crítica"
+    texto: "El problema 30.A oscila con K_{u} = 6,0 y T_{u} = 1,5 s. Elija el controlador y mire sus constantes."
+    libro: ["cap31#673", "cap31#675", 475]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 4, unidad: s, rotulo: "t" }
+      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "oscilación con K_{u}" }
+      curvas:
+        - { expr: "sin(2*pi*t/T_u)", color: naranja, rotulo: "oscilación mantenida" }
+      lectura: { valor: Kp_t, rotulo: "K_{p}" }
+      datos:
+        - { valor: Ti_t, rotulo: "T_{i} = {{Ti_t}}" }
+        - { valor: Td_t, rotulo: "T_{d} = {{Td_t}}" }
+      mandos:
+        - { valor: c_t, lista: [0, 1, 2], nombres: [P, PI, PID], rotulo: "Controlador" }
+    requiere: { mover: [c_t] }
+    comprobar:
+      - { Kp_t: 3 }
+      - { con: { c_t: 1 }, Kp_t: 2.7, Ti_t: 1.25 }
+      - { con: { c_t: 2 }, Kp_t: 3.6, Ti_t: 0.75, Td_t: 0.1875 }
+
+  - id: ordene-procedimiento
+    tipo: pregunta
+    titulo: "El método, paso a paso"
+    texto: "Ordene el método de la ganancia crítica."
+    libro: [471, 474]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 4, unidad: s, rotulo: "t" }
+      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "oscilación con K_{u}" }
+      curvas:
+        - { expr: "sin(2*pi*t/T_u)", color: naranja, rotulo: "oscilación mantenida" }
+    ordenar:
+      - "Anular las acciones integral y derivativa"
+      - "Subir K_{p} hasta una oscilación mantenida: K_{u}"
+      - "Medir el periodo de esa oscilación, T_{u}"
+      - "Aplicar la tabla"
+    exito: "No necesita modelo; a cambio, hay que llevar el sistema a oscilar."
+    pistas:
+      - { texto: "El periodo solo se puede medir cuando ya oscila." }
+    escalera:
+      - "Primero se deja solo el proporcional."
+    solucion: "Solo P, subir hasta K_{u}, medir T_{u}, tabla."
+
+  - id: simule-ti
+    tipo: simular
+    titulo: "El tiempo integral del PI"
+    texto: "Con K_{u} = 6,0 y T_{u} = 1,5 s, ¿qué T_{i} da la tabla para un PI?"
+    libro: [475, "cap31#675", "cap31#678"]
+    simular:
+      objetivo: Ti_pi
+      unidad: s
+      tol: 0.03
+      rotulo: "Tiempo integral, T_{i}"
+      errores:
+        - { expr: "Ti_e1", texto: "Esa es la fila del PID, T_{u}/2. El PI pone T_{u}/1,2." }
+        - { expr: "Ti_e2", texto: "Ha multiplicado: la tabla divide T_{u} entre 1,2." }
+    exito: "1,250 s, con K_{p} = 2,70."
+    escalera:
+      - "Fila del PI: T_{i} = T_{u}/1,2."
+    solucion: "1,5/1,2 = 1,25 s."
+    comprobar:
+      - { Ti_pi: 1.25, Ti_e1: 0.75, Ti_e2: 1.8 }
+
+  - id: porque-pi-baja
+    tipo: porque
+    titulo: "Gastar y reponer margen"
+    texto: "El PI baja K_{p} respecto al P (2,70 frente a 3,00) y el PID la sube a 3,60. ¿Por qué?"
+    libro: ["cap31#678", "cap31#679"]
+    widget:
+      tipo: figura
+      figura: fig-31.20
+      zonas:
+        - { id: todo, rotulo: "Control P y windup", rect: [0, 0, 450, 229] }
+    opciones:
+      - texto: "La integral añade retardo de fase y gasta margen; la derivada aporta adelanto y lo repone"
+        bien: true
+        porque: "Cada término gasta o repone margen de estabilidad: esa es la lógica de la tabla."
+      - texto: "Porque el PI ya elimina el error y no necesita tanta ganancia"
+        porque: "La integral quita el error, pero la razón de bajar K_{p} es la fase que añade."
+      - texto: "Porque la tabla es empírica y no hay razón"
+        porque: "Es empírica, pero sigue una lógica: la fase que quita o añade cada término."
+    escalera:
+      - "¿Qué hace cada término con la fase en el cruce?"
+    solucion: "La integral retrasa la fase (menos K_{p}); la derivada la adelanta (más K_{p})."
+
+  - id: empareje-ajuste
+    tipo: pregunta
+    titulo: "El ajuste fino"
+    texto: "Tras la receta, se afina con un escalón de consigna. Empareje cada síntoma con su corrección."
+    libro: [482]
+    widget:
+      tipo: figura
+      figura: fig-31.20
+      zonas:
+        - { id: todo, rotulo: "Control P y windup", rect: [0, 0, 450, 229] }
+    emparejar:
+      - ["Respuesta lenta", "Subir K_{p}"]
+      - ["Oscilación mantenida", "Bajar K_{p} claramente"]
+      - ["Error permanente que no desaparece", "Bajar T_{i}: más integral"]
+      - ["Oscilación lenta que no cesa", "Subir T_{i}: menos integral"]
+      - ["Salida nerviosa por el ruido", "Bajar T_{d} o filtrar la derivada"]
+    exito: "Es donde se gana: la receta solo da el punto de partida."
+    pistas:
+      - { texto: "Bajar T_{i} es más integral, no menos." }
+    escalera:
+      - "La integral manda en el error permanente y en las oscilaciones lentas."
+    solucion: "Lenta, más K_{p}; oscila, menos K_{p}; error, menos T_{i}; oscilación lenta, más T_{i}; ruido, menos T_{d}."
+
+  - id: predecir-kd
+    tipo: predecir
+    titulo: "Más derivada"
+    texto: "En un lazo sin apenas ruido de medida se sube K_{d}. ¿Qué le pasa a la respuesta al escalón?"
+    libro: [484, 488]
+    widget:
+      tipo: figura
+      figura: fig-31.20
+      zonas:
+        - { id: todo, rotulo: "Control P y windup", rect: [0, 0, 450, 229] }
+    opciones:
+      - texto: "Baja la sobreoscilación y mejora la estabilidad; el tiempo de subida apenas cambia"
+        bien: true
+        porque: "Con ruido sería otra cosa: un PI bien ajustado es mejor que un PID con la derivada nerviosa."
+      - texto: "Desaparece el error permanente"
+        porque: "Eso lo hace la integral; la derivada no tiene efecto sobre él."
+      - texto: "Se vuelve más rápida y oscila más"
+        porque: "Eso es subir K_{p}."
+    escalera:
+      - "La derivada responde a la tendencia: frena."
+    solucion: "Menos sobreoscilación y más estabilidad, si no hay ruido."
+
+  - id: curva-reaccion
+    tipo: pregunta
+    titulo: "Sin llevarlo a oscilar"
+    texto: "Un proceso no admite oscilar. ¿Qué método se usa y qué avisa su curva?"
+    libro: [476, 478, 479]
+    widget:
+      tipo: figura
+      figura: fig-31.20
+      zonas:
+        - { id: todo, rotulo: "Control P y windup", rect: [0, 0, 450, 229] }
+    opciones:
+      - texto: "La curva de reacción: un escalón en lazo abierto; un retardo grande frente a τ avisa de que será difícil"
+        bien: true
+        porque: "De ella salen el retardo aparente L y la pendiente máxima R, y otra tabla."
+      - texto: "La ganancia crítica con poca ganancia"
+        porque: "Sin llegar a oscilar no hay K_{u} ni T_{u}."
+      - texto: "Ninguno: sin oscilar no se puede sintonizar"
+        porque: "La curva de reacción existe precisamente para eso."
+    escalera:
+      - "¿Qué ensayo no cierra el lazo?"
+    solucion: "La curva de reacción, en lazo abierto."
+
+  - id: windup-arranque
+    tipo: pregunta
+    titulo: "Funciona mal solo al arrancar"
+    texto: "Un lazo bien sintonizado se pasa mucho de la consigna solo en cada arranque, con el actuador al 100 %. ¿Qué es?"
+    libro: [486, 487, 495]
+    widget:
+      tipo: figura
+      figura: fig-31.20
+      zonas:
+        - { id: todo, rotulo: "Control P y windup", rect: [0, 0, 450, 229] }
+    opciones:
+      - texto: "Windup: la integral acumula mientras el actuador satura"
+        bien: true
+        porque: "Limitar, congelar o back-calculation: el problema práctico más frecuente."
+      - texto: "Demasiada derivada"
+        porque: "La derivada amplifica ruido; el síntoma del arranque con saturación es la integral."
+      - texto: "K_{p} demasiado baja"
+        porque: "Con poca K_{p} sería lenta, no se pasaría."
+    escalera:
+      - "¿Qué hace la integral mientras la salida está al 100 %?"
+    solucion: "Windup del integrador."
+
+  - id: porque-margen
+    tipo: porque
+    titulo: "No al límite"
+    texto: "¿Por qué se sintoniza buscando margen de estabilidad y no la respuesta más rápida posible?"
+    libro: [491, 492, 494]
+    widget:
+      tipo: figura
+      figura: fig-31.20
+      zonas:
+        - { id: todo, rotulo: "Control P y windup", rect: [0, 0, 450, 229] }
+    opciones:
+      - texto: "El proceso cambia con el tiempo, la carga y la temperatura; un ajuste al límite deja de serlo"
+        bien: true
+        porque: "Y además conviene probar perturbaciones: suelen importar más que la consigna."
+      - texto: "Porque los métodos no saben dar respuestas rápidas"
+        porque: "Ziegler-Nichols es deliberadamente agresivo: rapidez sí sabe dar."
+      - texto: "Porque un lazo lento consume menos"
+        porque: "El consumo no es el criterio; lo es la robustez frente a cambios."
+    escalera:
+      - "¿Se queda la planta igual que el día del ajuste?"
+    solucion: "La planta cambia: hace falta margen."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [472, 475, 478, 482, 492]
+    ideas:
+      - { titulo: "Ganancia crítica.", texto: "Solo P hasta oscilar: K_{u} y T_{u} a la tabla." }
+      - { titulo: "Curva de reacción.", texto: "Un escalón en lazo abierto, si no se puede oscilar." }
+      - { titulo: "Ajuste fino.", texto: "Cada síntoma tiene su corrección; la receta es el punto de partida." }
+      - { titulo: "Margen.", texto: "Sintonizar con margen, no al límite." }

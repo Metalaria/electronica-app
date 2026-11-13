@@ -1,0 +1,342 @@
+# Lección 1.2 de la sección 30.3 «Sintonía del PID, Forma Discreta y Anti-windup» (cap31, sec-31.3). Formato: GUIA.md.
+# - P frente a PI en la planta térmica del problema 30.B (0,8 °C/W, 120 s): con solo P, la salida se queda en
+#   K_p·K/(1 + K_p·K) con constante de tiempo τ/(1 + K_p·K); el PI con T_i = τ cancela el polo de la planta y el lazo
+#   cerrado es de primer orden, 1 − e^(−t·K_p·K/τ), sin error (la idea del método lambda, bloque 97).
+# - El filtro de la derivada: |K_d·jω/(1 + jω·T_f)| frente a la derivada pura, con el ejemplo del libro (K_p = 1,
+#   K_d = 0,05 s, N = 10, T_s = 10 ms: T_f = 5 ms y n = 1,5).
+# Paso práctico: «simular» la K_p de Ziegler-Nichols en lazo abierto del ejemplo del libro (6; errores típicos: la
+# fila del P o la del PI, y la razón invertida).
+leccion: cap31/sec-31.3
+
+libro:
+  83: "Solo con él queda error permanente, porque si el error fuera cero la salida sería cero"
+  84: "Integral: acumula el error pasado y elimina el error permanente"
+  85: "Derivativo: responde a la tendencia y amortigua"
+  87: "La tabla supone la planta normalizada a ganancia estática unidad"
+  88: "1,2·T/L"
+  89: "Con L = 2 s, T = 10 s y K = 1: Kp = 6, Ti = 4 s, Td = 1 s"
+  90: "se pasa más de un 60 %"
+  91: "se sube Kp hasta que el sistema oscila de forma sostenida"
+  92: 'T_("d") = (T_("u"))/("8")'
+  93: "exige llevar el sistema a oscilar"
+  94: "Método del relé"
+  96: "Es lo que hacen los controladores con autosintonía"
+  97: "Da respuestas suaves y sin sobreoscilación, a costa de ser más lento"
+  101: "Ts entre 10 y 20 veces menor que la constante de tiempo dominante"
+  103: "Si el actuador satura, el integrador sigue acumulando aunque la salida no pueda crecer más"
+  104: "la integración condicional"
+  105: "El término derivativo se implementa siempre con un polo"
+  107: "Con N entre 8 y 20"
+  108: "Derivando la medida (con signo cambiado)"
+  111: "con N = 10, Kp = 1, Kd = 0,05 s y Ts = 10 ms sale Tf = 5 ms y n = 1,5"
+  113: "Llamarlo con periodo irregular"
+  115: "con el signo equivocado el lazo es realimentación positiva"
+  120: "Aportación de cada término del PID y las tres correcciones imprescindibles"
+  "cap31#673": "Problema 30.A"
+  "cap31#675": "Ku = 6,0 y periodo Tu = 1,5 s"
+  "cap31#678": "0,750 s"
+  "cap31#686": "ganancia 0,8 °C/W y constante de tiempo 120 s"
+
+modelo:
+  valores:
+    K_g: { sim: "K", nombre: "ganancia de la planta", unidad: "°C/W", valor: 0.8 }
+    T_p: { sim: "τ", nombre: "constante de tiempo de la planta", unidad: s, valor: 120 }
+    Kp_c: { sim: "K_{p}", nombre: "ganancia proporcional", unidad: "W/°C", valor: 1 }
+    K_u: { sim: "K_{u}", nombre: "ganancia crítica", unidad: "", valor: 6 }
+    T_u: { sim: "T_{u}", nombre: "periodo de la oscilación", unidad: s, valor: 1.5 }
+    L_z: { sim: "L", nombre: "retardo", unidad: s, valor: 2 }
+    T_z: { sim: "T", nombre: "constante de tiempo", unidad: s, valor: 10 }
+    K_z: { sim: "K", nombre: "ganancia estática", unidad: "", valor: 1 }
+    Kp_f: { sim: "K_{p}", nombre: "ganancia proporcional", unidad: "", valor: 1 }
+    Kd_f: { sim: "K_{d}", nombre: "ganancia derivativa", unidad: s, valor: 0.05 }
+    N_f: { sim: "N", nombre: "factor del filtro", unidad: "", valor: 10 }
+    Ts_f: { sim: "T_{s}", nombre: "periodo de muestreo", unidad: s, valor: 0.01 }
+  calculos:
+    y_P: { expr: "Kp_c*K_g/(1 + Kp_c*K_g)", sim: "y_{P}", nombre: "salida final con solo P", unidad: "" }
+    e_P: { expr: "100/(1 + Kp_c*K_g)", sim: "e", nombre: "error permanente con solo P", unidad: "%" }
+    lam: { expr: "T_p/(Kp_c*K_g)", sim: "λ", nombre: "constante de tiempo con el PI", unidad: s }
+    Kp_zn: { expr: "0.6*K_u", sim: "K_{p}", nombre: "ganancia proporcional", unidad: "" }
+    Ti_zn: { expr: "T_u/2", sim: "T_{i}", nombre: "tiempo integral", unidad: s }
+    Td_zn: { expr: "T_u/8", sim: "T_{d}", nombre: "tiempo derivativo", unidad: s }
+    Kp_ol: { expr: "1.2*T_z/L_z/K_z", sim: "K_{p}", nombre: "K_p del PID en lazo abierto", unidad: "" }
+    Kp_olP: { expr: "T_z/L_z/K_z", sim: "K_{p}", nombre: "K_p de la fila del P", unidad: "" }
+    Kp_olPI: { expr: "0.9*T_z/L_z/K_z", sim: "K_{p}", nombre: "K_p de la fila del PI", unidad: "" }
+    Kp_inv: { expr: "1.2*L_z/T_z", sim: "K_{p}", nombre: "K_p con la razón invertida", unidad: "" }
+    Tf_f: { expr: "Kd_f/(N_f*Kp_f)", sim: "T_{f}", nombre: "constante de tiempo del filtro", unidad: s }
+    n_f: { expr: "1 + Tf_f/Ts_f", sim: "n", nombre: "filtro en muestras", unidad: "" }
+
+tarjetas:
+  - id: explore-p-pi
+    tipo: explorar
+    titulo: "Lo que añade la integral"
+    texto: "La planta del horno con solo P y con PI. Suba K_{p}: ¿alguna vez llega el P a la consigna?"
+    nota: "El PI tiene aquí T_{i} = τ."
+    libro: ["cap31#686", 83, 84]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 600, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.1, unidad: "", rotulo: "salida / consigna" }
+      curvas:
+        - { expr: "y_P*(1 - exp(-t*(1 + Kp_c*K_g)/T_p))", color: azul, rotulo: "solo P" }
+        - { expr: "1 - exp(-t/lam)", color: naranja, rotulo: "PI" }
+        - { expr: "1", color: tinta, rotulo: "consigna", discontinua: true }
+      lectura: { valor: e_P, rotulo: "Error permanente con solo P" }
+      mandos:
+        - { valor: Kp_c, lista: [1, 2, 5, 20], rotulo: "Ganancia proporcional" }
+    requiere: { mover: [Kp_c] }
+
+  - id: porque-p-error
+    tipo: porque
+    titulo: "Siempre un poco por debajo"
+    texto: "¿Por qué un control solo proporcional nunca llega a la consigna?"
+    libro: [83, 84]
+    widget:
+      tipo: figura
+      figura: fig-31.5
+      zonas:
+        - { id: todo, rotulo: "Los términos y las correcciones", rect: [0, 0, 441, 227] }
+    opciones:
+      - texto: "Si el error fuera cero, la salida del controlador sería cero y el calefactor no calentaría"
+        bien: true
+        porque: "Hace falta error para tener mando. La integral acumula el error pasado y sostiene el mando con error nulo."
+      - texto: "Porque la ganancia está mal ajustada"
+        porque: "Subirla reduce el error, pero no lo anula: es estructural."
+      - texto: "Porque el sensor tiene error"
+        porque: "Con un sensor perfecto pasaría igual: es el controlador."
+    escalera:
+      - "Con solo P, el mando vale K_{p} por el error. ¿Y con error cero?"
+    solucion: "Mando = K_{p}·error: sin error no hay mando. La integral elimina el error permanente."
+
+  - id: toque-termino
+    tipo: tocar
+    titulo: "Cada término, su papel"
+    texto: "Abajo, la salida del controlador por términos. Toque el que sostiene la salida final."
+    libro: [83, 84, 85, 120]
+    widget:
+      tipo: figura
+      figura: fig-31.5
+      zonas:
+        - { id: p, rotulo: "Curva azul", rect: [30, 84, 75, 36] }
+        - { id: i, rotulo: "Curva naranja", rect: [150, 110, 70, 36] }
+        - { id: d, rotulo: "Curva violeta", rect: [40, 165, 95, 36] }
+    tocar:
+      bien: [i]
+      porque:
+        p: "El proporcional responde al error presente: se apaga cuando el error se apaga."
+        d: "El derivativo responde a la tendencia: frena la subida y vuelve a cero."
+    exito: "La integral acumula el error pasado y sostiene la salida final."
+    escalera:
+      - "¿Cuál sigue valiendo algo cuando el error ya es cero?"
+    solucion: "La naranja, la integral."
+
+  - id: simule-zn
+    tipo: simular
+    titulo: "Ziegler-Nichols en lazo abierto"
+    texto: "Una planta con L = 2 s, T = 10 s y K = 1. ¿Qué K_{p} da la tabla para un PID?"
+    libro: [87, 88, 89]
+    simular:
+      objetivo: Kp_ol
+      unidad: ""
+      tol: 0.03
+      rotulo: "K_{p} del PID"
+      errores:
+        - { expr: "Kp_olP", texto: "Esa es la fila del P, T/L. El PID pone 1,2·T/L." }
+        - { expr: "Kp_olPI", texto: "Esa es la fila del PI, 0,9·T/L. El PID pone 1,2·T/L." }
+        - { expr: "Kp_inv", texto: "Ha invertido la razón: es T/L, la constante de tiempo entre el retardo." }
+    exito: "K_{p} = 6, con T_{i} = 4 s y T_{d} = 1 s."
+    escalera:
+      - "Fila del PID: K_{p} = 1,2·T/L."
+    solucion: "1,2 × 10/2 = 6."
+    comprobar:
+      - { Kp_ol: 6, Kp_olP: 5, Kp_olPI: 4.5, Kp_inv: 0.24 }
+
+  - id: zn-agresivo
+    tipo: pregunta
+    titulo: "Un punto de partida"
+    texto: "Con esa planta y el PID de la tabla, ¿cómo es la respuesta al escalón de consigna?"
+    libro: [89, 90]
+    widget:
+      tipo: figura
+      figura: fig-31.5
+      zonas:
+        - { id: todo, rotulo: "Los términos y las correcciones", rect: [0, 0, 441, 227] }
+    opciones:
+      - texto: "Se pasa más de un 60 %: sintoniza agresivo"
+        bien: true
+        porque: "Busca que cada pico sea la cuarta parte del anterior: es un punto de partida, no un resultado."
+      - texto: "Llega sin pasarse: la tabla está optimizada"
+        porque: "Esa respuesta suave es la del método lambda, no la de Ziegler-Nichols."
+      - texto: "Oscila sin parar"
+        porque: "Oscila amortiguado: cada pico, la cuarta parte del anterior."
+    escalera:
+      - "¿Qué busca el método entre un pico y el siguiente?"
+    solucion: "Más de un 60 % de sobreoscilación: luego se afina."
+
+  - id: formula-zn-cerrado
+    tipo: formula
+    titulo: "Ziegler-Nichols en lazo cerrado"
+    texto: "Se sube K_{p} hasta la oscilación sostenida y se anotan K_{u} y T_{u}. Pruebe los del problema 30.A."
+    libro: [91, 92, "cap31#673", "cap31#675", "cap31#678"]
+    ec: 92
+    sustitucion: "0,6 · {{K_u}} = {{Kp_zn}}; {{T_u}}/2 = {{Ti_zn}}; {{T_u}}/8 = {{Td_zn}}"
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 4, unidad: s, rotulo: "t" }
+      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "oscilación" }
+      curvas:
+        - { expr: "sin(2*pi*t/T_u)", color: naranja, rotulo: "oscilación sostenida" }
+      lectura: { valor: Kp_zn, rotulo: "K_{p} del PID" }
+      datos:
+        - { valor: Ti_zn, rotulo: "T_{i} = {{Ti_zn}}" }
+        - { valor: Td_zn, rotulo: "T_{d} = {{Td_zn}}" }
+      mandos:
+        - { valor: K_u, lista: [4, 6, 8], rotulo: "Ganancia crítica, K_{u}" }
+        - { valor: T_u, lista: [1, 1.5, 2], rotulo: "Periodo, T_{u}" }
+    comprobar:
+      - { Kp_zn: 3.6, Ti_zn: 0.75, Td_zn: 0.1875, tol: 0.002 }
+
+  - id: empareje-metodos
+    tipo: pregunta
+    titulo: "Cuatro métodos de sintonía"
+    texto: "Empareje cada método con su rasgo."
+    libro: [87, 93, 94, 96, 97]
+    widget:
+      tipo: figura
+      figura: fig-31.5
+      zonas:
+        - { id: todo, rotulo: "Los términos y las correcciones", rect: [0, 0, 441, 227] }
+    emparejar:
+      - ["Ziegler-Nichols en lazo abierto", "Un escalón en manual: L y T"]
+      - ["Ziegler-Nichols en lazo cerrado", "Llevar el sistema a oscilar"]
+      - ["Método del relé", "Oscilación acotada: la autosintonía"]
+      - ["Lambda (IMC)", "Suave, sin sobreoscilación y más lento"]
+    exito: "El relé es la versión segura del lazo cerrado; lambda, el preferido si pasarse es inaceptable."
+    pistas:
+      - { texto: "Los controladores con autosintonía usan un relé con histéresis." }
+    escalera:
+      - "¿Cuál no exige una oscilación libre pero sí la provoca, acotada?"
+    solucion: "Abierto, el escalón; cerrado, oscilar; relé, autosintonía; lambda, suave."
+
+  - id: predecir-windup
+    tipo: predecir
+    titulo: "Una consigna inalcanzable"
+    texto: "El calefactor satura un buen rato pidiendo una temperatura imposible, y luego se baja la consigna. ¿Qué pasa sin protección?"
+    libro: [103, 104]
+    widget:
+      tipo: figura
+      figura: fig-31.5
+      zonas:
+        - { id: todo, rotulo: "Los términos y las correcciones", rect: [0, 0, 441, 227] }
+    opciones:
+      - texto: "Se pasa muchísimo: la integral acumuló mientras saturaba y tarda en descargarse"
+        bien: true
+        porque: "Es el windup, el fallo más común de un PID. Se evita con la integración condicional."
+      - texto: "Baja enseguida a la nueva consigna"
+        porque: "La integral sigue cargada de todo el error acumulado y mantiene el mando alto."
+      - texto: "Se queda por debajo de la consigna"
+        porque: "Eso le pasa a un P sin integral; aquí sobra integral, no falta."
+    escalera:
+      - "¿Qué hizo la integral mientras la salida no podía crecer más?"
+    solucion: "Sobrepasa enormemente: windup. No integrar mientras esté saturado."
+
+  - id: explore-filtro-d
+    tipo: explorar
+    titulo: "La derivada, siempre con un polo"
+    texto: "Ganancia de la derivada pura y de la filtrada frente a la frecuencia. Cambie N y mire dónde deja de crecer."
+    libro: [105, 107, 111]
+    widget:
+      tipo: grafica
+      x: { id: w, min: 1, max: 100000, unidad: "rad/s", rotulo: "ω", escala: log }
+      y: { min: 0.01, max: 10000, unidad: "", rotulo: "|D|", escala: log }
+      curvas:
+        - { expr: "Kd_f*w", color: azul, rotulo: "derivada pura", discontinua: true }
+        - { expr: "Kd_f*w/sqrt(1 + (w*Tf_f)^2)", color: naranja, rotulo: "con filtro" }
+      lectura: { valor: Tf_f, rotulo: "T_{f} = K_{d}/(N·K_{p})" }
+      mandos:
+        - { valor: N_f, lista: [8, 10, 20], rotulo: "N" }
+    requiere: { mover: [N_f] }
+
+  - id: estime-n
+    tipo: pregunta
+    titulo: "No es el mismo N"
+    texto: "Con N = 10, K_{p} = 1, K_{d} = 0,05 s y T_{s} = 10 ms, el código usa n = 1 + T_{f}/T_{s}. ¿Cuánto vale n?"
+    libro: [111]
+    fijar: { N_f: 10 }
+    widget:
+      tipo: grafica
+      x: { id: w, min: 1, max: 100000, unidad: "rad/s", rotulo: "ω", escala: log }
+      y: { min: 0.01, max: 10000, unidad: "", rotulo: "|D|", escala: log }
+      curvas:
+        - { expr: "Kd_f*w/sqrt(1 + (w*Tf_f)^2)", color: naranja, rotulo: "con filtro" }
+    estimar:
+      objetivo: "n_f"
+      unidad: ""
+      min: 0
+      max: 12
+      paso: 0.1
+      inicio: 6
+      tol: 0.05
+      rotulo: "n"
+    exito: "T_{f} = 5 ms y n = 1,5: la constante del filtro medida en muestras, no el N de la fórmula."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 1.6 }, texto: "Demasiado: ¿ha puesto N? Calcule primero T_{f} = K_{d}/(N·K_{p})." }
+      - { texto: "Se ha quedado corto: n es 1 más T_{f}/T_{s}." }
+    escalera:
+      - "T_{f} = 0,05/(10 × 1)."
+    solucion: "T_{f} = 5 ms; n = 1 + 5/10 = 1,5."
+    comprobar:
+      - { Tf_f: 0.005, n_f: 1.5 }
+
+  - id: derivative-kick
+    tipo: pregunta
+    titulo: "Un pico al cambiar la consigna"
+    texto: "Cada escalón de consigna produce un pico enorme en la salida del controlador. ¿Qué se cambia?"
+    libro: [108, 120]
+    widget:
+      tipo: figura
+      figura: fig-31.5
+      zonas:
+        - { id: todo, rotulo: "Los términos y las correcciones", rect: [0, 0, 441, 227] }
+    opciones:
+      - texto: "Derivar la medida, con el signo cambiado, en lugar del error"
+        bien: true
+        porque: "Ante perturbaciones se comporta igual y el derivative kick desaparece."
+      - texto: "Filtrar más la derivada, con N mayor"
+        porque: "Un N mayor filtra menos; y el filtro va contra el ruido, no contra el salto de consigna."
+      - texto: "Quitar el anti-windup"
+        porque: "El anti-windup protege la integral; el pico es de la derivada del error."
+    escalera:
+      - "¿Qué señal salta de golpe al cambiar la consigna: el error o la medida?"
+    solucion: "Derivar la medida, no el error."
+
+  - id: muestreo-irregular
+    tipo: pregunta
+    titulo: "Un error fuera del código"
+    texto: "El PID va en el bucle principal y en el equipo la sintonía cambia sola. ¿Por qué?"
+    libro: [101, 113, 115]
+    widget:
+      tipo: figura
+      figura: fig-31.5
+      zonas:
+        - { id: todo, rotulo: "Los términos y las correcciones", rect: [0, 0, 441, 227] }
+    opciones:
+      - texto: "El periodo es irregular, y las ganancias I y D dependen de T_{s}"
+        bien: true
+        porque: "Por eso el PID va en una interrupción de temporizador."
+      - texto: "El periodo es demasiado corto para la planta"
+        porque: "Más rápido no mejora y amplifica el ruido, pero no cambia la sintonía de una vez a otra."
+      - texto: "Tiene el sentido de la acción al revés"
+        porque: "Con el signo equivocado el lazo es realimentación positiva: no funcionaría nunca."
+    escalera:
+      - "¿Qué cambia cada vez que el bucle principal tarda distinto?"
+    solucion: "T_{s} irregular: la sintonía cambia sola. Va en una interrupción de temporizador."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [83, 84, 85, 89, 92, 103, 105, 108, 113]
+    ideas:
+      - { titulo: "P, I y D.", texto: "Presente, pasado y tendencia; la integral quita el error permanente." }
+      - { titulo: "Sintonía.", texto: "Ziegler-Nichols da un punto de partida agresivo; lambda, suave y lento." }
+      - { titulo: "Tres añadidos.", texto: "Anti-windup, filtro en la derivada y derivada sobre la medida." }
+      - { titulo: "El periodo.", texto: "T_{s} fijo, en una interrupción: I y D dependen de él." }

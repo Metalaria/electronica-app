@@ -1,0 +1,229 @@
+# Lección 1.2 de la sección 30.5 «El Control Digital: Muestreo, Cuantificación y Windup» (cap31, sec-31.5).
+# Formato: GUIA.md.
+# - La fase que quita el muestreo en el cruce: el retardo medio de T/2 (bloque 175) a la frecuencia de cruce f_c da
+#   ω_c·T/2 = π·f_c/f_s rad, es decir 180°/(f_s/f_c). Con la regla del libro (f_s de 10 a 30 veces el ancho de banda
+#   del lazo) son de 18° a 6°.
+# - El windup sobre la figura 30.10 (zonas).
+# Paso práctico: «ajuste» de la razón f_s/f_c hasta que la fase perdida entre en la banda de la regla (6° a 18°);
+# «tocar» en la figura 30.10 el tramo del windup.
+leccion: cap31/sec-31.5
+
+libro:
+  175: "Eso equivale a un retardo medio de medio periodo de muestreo"
+  176: "de 10 a 30 veces el ancho de banda del lazo"
+  177: "un lazo digital lento no es simplemente peor, es potencialmente inestable"
+  179: "por debajo de un LSB el lazo no ve el error"
+  180: "el sistema oscila entre dos códigos adyacentes"
+  181: "Ciclos límite: con integrador"
+  182: "La defensa es una banda muerta"
+  185: "el término integral sigue acumulando aunque no sirva de nada"
+  186: "un horno con la puerta abierta"
+  188: "Limitar el término integral a un valor razonable"
+  189: "Congelarlo mientras la salida esté saturada"
+  190: "Recalcularlo hacia atrás a partir de la salida real (back-calculation)"
+  191: "funciona en simulación y se comporta de forma inexplicable en el equipo"
+  195: "en coma fija, el integrador necesita más bits que las demás variables porque acumula"
+  196: "Un periodo irregular equivale a un ruido en los coeficientes del controlador"
+  198: "cambiar el controlador sin tocar el hardware"
+  199: "Es la razón de que prácticamente todo control moderno sea digital"
+  203: "El windup del integrador tras una saturación del actuador, con y sin protección"
+
+modelo:
+  valores:
+    r_s: { sim: "f_{s}/f_{c}", nombre: "razón entre muestreo y ancho de banda", unidad: "", valor: 10 }
+  calculos:
+    phi_s: { expr: "180/r_s", sim: "Δφ", nombre: "fase perdida por el muestreo", unidad: "°" }
+
+tarjetas:
+  - id: explore-windup
+    tipo: explorar
+    titulo: "Un horno con la puerta abierta"
+    texto: "Toque cada parte de la figura: la saturación, lo que pasa después y el actuador."
+    libro: [185, 186, 203]
+    widget:
+      tipo: figura
+      figura: fig-31.10
+      zonas:
+        - { id: puerta, rotulo: "Zona sombreada, arriba", rect: [41, 5, 100, 50], texto: "Puerta abierta: el actuador está a tope, la temperatura no sube y el integrador sigue acumulando." }
+        - { id: pico, rotulo: "Pico de la curva roja", rect: [200, 5, 120, 36], texto: "Sin protección: al cerrar la puerta, el acumulado tarda en descargarse y el horno se pasa de largo." }
+        - { id: verde, rotulo: "Curva verde, arriba", rect: [160, 50, 120, 36], texto: "Con anti-windup (integración condicional): llega a la consigna sin pasarse." }
+        - { id: actuador, rotulo: "Gráfica de abajo", rect: [41, 150, 400, 45], texto: "El actuador: a tope durante la saturación y, sin protección, mucho después." }
+    requiere: { mover: [puerta, pico, actuador] }
+
+  - id: toque-windup
+    tipo: tocar
+    titulo: "La firma del windup"
+    texto: "En la gráfica del actuador, toque el tramo en que sigue a tope aunque la temperatura ya pasó de la consigna."
+    libro: [185, 203]
+    widget:
+      tipo: figura
+      figura: fig-31.10
+      zonas:
+        - { id: sombra, rotulo: "Abajo, zona sombreada", rect: [41, 150, 98, 40] }
+        - { id: roja, rotulo: "Abajo, línea roja de en medio", rect: [145, 140, 95, 36] }
+        - { id: final, rotulo: "Abajo, a la derecha", rect: [300, 160, 140, 40] }
+    tocar:
+      bien: [roja]
+      porque:
+        sombra: "Ahí estar a tope es lo esperable: la puerta está abierta y falta temperatura."
+        final: "Ahí ya se ha descargado y el actuador da lo justo para la consigna."
+    exito: "Es el acumulado de la integral: mantiene el mando a tope mientras se descarga, y el horno se dispara."
+    escalera:
+      - "Busque el actuador rojo a tope después de cerrar la puerta."
+    solucion: "La línea roja a tope entre el cierre de la puerta y el pico."
+
+  - id: empareje-defensas
+    tipo: pregunta
+    titulo: "Tres defensas"
+    texto: "Empareje cada defensa contra el windup con lo que hace."
+    libro: [188, 189, 190, 191]
+    widget:
+      tipo: figura
+      figura: fig-31.10
+      zonas:
+        - { id: todo, rotulo: "El windup con y sin protección", rect: [0, 0, 445, 241] }
+    emparejar:
+      - ["Limitar", "El término integral, a un valor razonable"]
+      - ["Congelar", "La integral, mientras la salida esté saturada"]
+      - ["Back-calculation", "Recalcular la integral desde la salida real"]
+    exito: "Ninguna es complicada; omitirlas da un lazo que funciona en simulación y no en el equipo."
+    pistas:
+      - { texto: "«Hacia atrás»: parte de lo que el actuador da de verdad." }
+    escalera:
+      - "Una pone un techo, otra para el reloj y otra corrige el valor."
+    solucion: "Limitar con un techo, congelar durante la saturación, recalcular desde la salida real."
+
+  - id: ajuste-muestreo
+    tipo: ajuste
+    titulo: "Cuánto muestrear"
+    texto: "Entre muestras el lazo queda abierto: un retardo medio de medio periodo, que resta fase en el cruce. Mueva la razón hasta cumplir la regla del libro."
+    libro: [175, 176]
+    inicio: { r_s: 4 }
+    widget:
+      tipo: grafica
+      x: { id: r, min: 2, max: 60, unidad: "", rotulo: "f_{s}/f_{c}" }
+      y: { min: 0, max: 90, unidad: "°", rotulo: "Δφ" }
+      curvas:
+        - { expr: "180/r", color: naranja, rotulo: "fase perdida" }
+      marcas:
+        - { x: "r_s", y: "phi_s", rotulo: "{{phi_s}}" }
+      lectura: { valor: phi_s, rotulo: "Fase perdida en el cruce" }
+      mandos:
+        - { valor: r_s, min: 2, max: 60, paso: 1, rotulo: "Razón f_{s}/f_{c}" }
+    ajuste:
+      valor: r_s
+      min: 10
+      max: 30
+      rotulo: "Razón de muestreo"
+      escala: { min: 0, max: 60 }
+      bajo: "Muestrea poco: el retardo se come margen de fase. Suba la razón."
+      alto: "Muestrea de más: se gasta procesador sin ganar nada. Bájela."
+      dentro: "De 10 a 30 veces: el muestreo cuesta entre 18° y 6° de margen."
+    comprobar:
+      - { con: { r_s: 10 }, phi_s: 18 }
+      - { con: { r_s: 30 }, phi_s: 6 }
+
+  - id: predecir-lento
+    tipo: predecir
+    titulo: "Un lazo digital lento"
+    texto: "Un lazo analógico lento solo es lento. ¿Y uno digital que muestrea demasiado despacio?"
+    libro: [175, 177]
+    fijar: { r_s: 4 }
+    widget:
+      tipo: grafica
+      x: { id: r, min: 2, max: 60, unidad: "", rotulo: "f_{s}/f_{c}" }
+      y: { min: 0, max: 90, unidad: "°", rotulo: "Δφ" }
+      curvas:
+        - { expr: "180/r", color: naranja, rotulo: "fase perdida" }
+      lectura: { valor: phi_s, rotulo: "Fase perdida en el cruce" }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "Puede volverse inestable: el retardo resta margen de fase"
+        bien: true
+        porque: "El retardo de medio periodo se suma al de la planta; con poco margen, oscila."
+      - texto: "Solo responde más despacio, como el analógico"
+        porque: "Al analógico le pasa eso; el digital además pierde fase por el retardo del muestreo."
+      - texto: "Gana estabilidad, porque actúa menos veces"
+        porque: "Actuar menos veces deja el lazo más tiempo abierto: más retardo, menos margen."
+    escalera:
+      - "¿Qué le hace un retardo al margen de fase?"
+    solucion: "Potencialmente inestable: con una razón de 4 se pierden 45° de margen."
+    comprobar:
+      - { phi_s: 45 }
+
+  - id: cuantificacion
+    tipo: pregunta
+    titulo: "Un suelo de un LSB"
+    texto: "Un lazo con integrador queda oscilando entre dos códigos adyacentes del convertidor, sin parar. ¿Qué se hace?"
+    libro: [179, 180, 181, 182]
+    widget:
+      tipo: figura
+      figura: fig-31.10
+      zonas:
+        - { id: todo, rotulo: "El windup con y sin protección", rect: [0, 0, 445, 241] }
+    opciones:
+      - texto: "Una banda muerta de unos pocos LSB, o dither"
+        bien: true
+        porque: "Por debajo de un LSB el lazo no ve el error; no actuar ahí corta el ciclo límite."
+      - texto: "Subir la ganancia integral"
+        porque: "La integral acumula el error de signo contrario de cada código: es la que mantiene el ciclo."
+      - texto: "Muestrear más deprisa"
+        porque: "El problema es la resolución del convertidor, no el periodo."
+    escalera:
+      - "¿Qué ve el lazo por debajo de un LSB?"
+    solucion: "Banda muerta o dither: es un ciclo límite de la cuantificación."
+
+  - id: coma-fija
+    tipo: pregunta
+    titulo: "La aritmética"
+    texto: "En coma fija, ¿qué variable del controlador necesita más bits?"
+    libro: [195]
+    widget:
+      tipo: figura
+      figura: fig-31.10
+      zonas:
+        - { id: todo, rotulo: "El windup con y sin protección", rect: [0, 0, 445, 241] }
+    opciones:
+      - texto: "El integrador, porque acumula"
+        bien: true
+        porque: "Suma el error muestra tras muestra: crece mucho más que las demás variables."
+      - texto: "El error, porque es una resta"
+        porque: "El error está acotado por el rango de la medida."
+      - texto: "La derivada, porque amplifica el ruido"
+        porque: "Amplifica el ruido, pero no acumula: su tamaño no crece con el tiempo."
+    escalera:
+      - "¿Cuál suma algo en cada ciclo?"
+    solucion: "El integrador."
+
+  - id: porque-digital
+    tipo: porque
+    titulo: "Lo que compensa todo"
+    texto: "Con tantas complicaciones, ¿por qué prácticamente todo control moderno es digital?"
+    libro: [196, 198, 199]
+    widget:
+      tipo: figura
+      figura: fig-31.10
+      zonas:
+        - { id: todo, rotulo: "El windup con y sin protección", rect: [0, 0, 445, 241] }
+    opciones:
+      - texto: "Porque se puede cambiar el controlador sin tocar el hardware"
+        bien: true
+        porque: "Ajustar, registrar, autoajustar, cambiar de parámetros según el punto de trabajo: imposible en analógico."
+      - texto: "Porque el muestreo mejora el margen de fase"
+        porque: "Al revés: el muestreo es un retardo que resta margen."
+      - texto: "Porque elimina el windup"
+        porque: "El windup es precisamente el problema más característico del control digital."
+    escalera:
+      - "¿Qué hace falta para cambiar un PID analógico? ¿Y uno digital?"
+    solucion: "Cambiar el controlador sin tocar el hardware."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [175, 176, 181, 185, 188, 198]
+    ideas:
+      - { titulo: "Muestrear es retrasar.", texto: "Medio periodo de retardo: de 10 a 30 veces el ancho de banda del lazo." }
+      - { titulo: "Cuantificar.", texto: "Por debajo de un LSB no se ve el error: banda muerta o dither." }
+      - { titulo: "Windup.", texto: "Limitar, congelar o recalcular la integral mientras se satura." }
+      - { titulo: "La ventaja.", texto: "Cambiar el controlador sin tocar el hardware." }
