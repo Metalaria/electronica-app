@@ -1572,8 +1572,10 @@ The four newer machines (entries of `MAQUINAS` in `consolas.py`, hotspots and te
   that machine (`main(ids)`).
   1.2 (consolas-A): a photo entry may list `sin_marcador` (refs that get no `posiciones` marker: parts nonSNES adds,
   footprints empty on that board; `SN.SIN_MARCADOR`), and a photo without `alineacion` takes its hotspots with pixel
-  `cajas` as given (`SN.CARA_NTSC`, the owner's NTSC photo `ntsc`, no schematic refs: `esquema: []`). Photo order:
-  `cara-a` (main), `ntsc`, `cara-b`.
+  `cajas` as given (`SN.CARA_NTSC`, the owner's NTSC photo `ntsc`, no schematic refs: `esquema: []`). Photo order
+  (owner 13-11, consolas-B): `ntsc` (main: `foto`/`hotspots`, the tab the explorer opens on), `cara-a`, `cara-b`.
+  The schematic links live on `cara-a`, not on the main photo, so the schematic and the architecture look a photo
+  hotspot up in every photo (`hotspotsDe(datos)` in `componentes/consolas/datos.ts`), never only in `datos.hotspots`.
 
 New optional fields of `<maquina>.json`: `fotos` [{id, titulo, src, ancho, alto, credito, revision, nota, hotspots,
 posiciones {ref: [x, y]}, posiciones_nota, trazas (file), trazas_redes [net names]}] (extra photos; the main one stays
@@ -3457,7 +3459,10 @@ the slot column keeps ≥ 50 % of the row),
 `habla-matematicas`). Tests: `tests/lecciones11-unidad.spec.ts`, `tests/lecciones11-esquemas.spec.ts` (registry, every
 schematic against ngspice through the catalogue lesson `web/tests/lecciones11-catalogo/cap01/sec-1.5.yaml`, model
 mutations that must fail, spice.ts, new generator rules), `tests/lecciones11-catalogo.spec.ts` (that lesson served by
-route interception in any build: render, keyboard, axe × 3 themes, 360 px), `tests/lecciones11-navegador.spec.ts`
+route interception in any build: render, keyboard, axe × 3 themes, 360 px; the slider walk is split in three parts
+and checks that each slider keeps the focus after every key — a schematic whose drawing drops a piece at some value
+must keep a stand-in with its `data-pieza`, as «rs485» does at 0 loads, or the piece's handle vanishes under the
+keyboard user), `tests/lecciones11-navegador.spec.ts`
 (`playwright.lecciones11.config.ts`, port 4671, build in `/tmp/claude-0/epa-motor11/dist`) and
 `tests/lecciones11-recorrido.spec.ts`, a parametric walk of every published lesson from its JSON (`EPA_RECORRER`
 regex filter): explore gating, each question wrong then right, challenges solved at a model-found position, estimates,

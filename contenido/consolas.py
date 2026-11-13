@@ -188,6 +188,14 @@ MAQUINAS = [
         'huellas': 'snes/pcb/SNSP-CPU-01_huellas.json',
         'licencia_texto': ('snes/original/LICENSE', 'snes/LICENSE-nonSNES.txt'),
         'fotos': [
+            # the owner's NTSC photo (another board, with its chips): boxes given in pixels (SN.CARA_NTSC), no alignment.
+            # (owner 13-11: it is the MAIN photo, the tab the explorer opens on; the bare PAL face goes second and keeps
+            # its «where the part goes» boxes and its link to the PAL schematic)
+            {'id': 'ntsc', 'titulo': 'Cara de componentes · NTSC', 'origen': 'snes/fotos/usuario/placa-componentes-1.jpg',
+             'ancho': 1600, 'calidad': 78, 'credito': 'Foto: Yaca2671, Wikimedia Commons, CC BY-SA 3.0',
+             'revision': 'SNS-CPU-RGB-01 NTSC, otra placa (no la del esquema)', 'hotspots': SN.CARA_NTSC,
+             'nota': 'Una placa NTSC con todos sus chips (CIC F411A, cristal D21G4, S-RGB). Recomprimida, sin recortar; los '
+                     'recuadros, colocados por las marcas y la serigrafía que se leen en la foto.'},
             # (1.2, consolas-A: the two nonSNES photos relabelled as what they are — a bare board and a solder side with
             # some empty footprints — and without markers for the parts they do not show, SN.SIN_MARCADOR)
             {'id': 'cara-a', 'titulo': 'Cara de componentes · PAL, sin piezas', 'origen': 'snes/fotos/nonSNES_front.jpg',
@@ -196,12 +204,6 @@ MAQUINAS = [
              'sin_marcador': SN.SIN_MARCADOR['cara-a'],
              'nota': 'Escaneo de la placa desnuda: en esta cara no hay ninguna pieza montada. Se ven los pads y la serigrafía '
                      '(U1, U2…); cada recuadro marca dónde va una pieza, no la pieza.'},
-            # the owner's NTSC photo (another board, with its chips): boxes given in pixels (SN.CARA_NTSC), no alignment
-            {'id': 'ntsc', 'titulo': 'Cara de componentes · NTSC', 'origen': 'snes/fotos/usuario/placa-componentes-1.jpg',
-             'ancho': 1600, 'calidad': 78, 'credito': 'Foto: Yaca2671, Wikimedia Commons, CC BY-SA 3.0',
-             'revision': 'SNS-CPU-RGB-01 NTSC, otra placa (no la del esquema)', 'hotspots': SN.CARA_NTSC,
-             'nota': 'Una placa NTSC con todos sus chips (CIC F411A, cristal D21G4, S-RGB). Recomprimida, sin recortar; los '
-                     'recuadros, colocados por las marcas y la serigrafía que se leen en la foto.'},
             {'id': 'cara-b', 'titulo': 'Cara de soldadura · PAL, incompleta', 'origen': 'snes/fotos/nonSNES_back.jpg',
              'alineacion': 'snes/fotos/nonSNES_back.alineacion.json', 'ancho': 1600, 'calidad': 78,
              'credito': 'nonSNES · GPL-3.0', 'revision': 'SNSP-CPU-01 PAL', 'hotspots': SN.CARA_B,

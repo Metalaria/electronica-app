@@ -1,0 +1,202 @@
+# «Consolas por dentro» · Neo Geo AES 4: el mapa del 68000 y el bus P. El decodificador del explorador (arquitectura
+# neogeo.ts sobre sus direcciones de ejemplo: «Neo-Geo Hardware Specification» de SNK y esquemas MV4), el mapa partido
+# por A23 y A22 (circuito lógico y su tabla: los cuartos son los del mapa del explorador, no el circuito del PRO-C0),
+# el espejo de la RAM, la VRAM vista solo por los registros del LSPC y el buzón de sonido en $320000. Fuentes: neogeo#n
+# y el libro (decodificador, 28.3; los espejos, 38.11).
+leccion: consola-neogeo/neogeo-buses
+
+libro:
+  "neogeo#7": "Decodifica las direcciones del 68000 (A1–A4, A17–A23, /AS, /UDS, /LDS, R/W)"
+  "neogeo#67": "Bus de 24 bits de dirección (A1–A23 más /UDS y /LDS para los bytes) y 16 de datos"
+  "neogeo#3": "lee el programa de la ROM M1 del cartucho"
+  "neogeo#11": "64 KB de RAM de trabajo en $100000–$10FFFF"
+  "neogeo#83": "Sus registros se escriben por los puertos $04–$07 del Z80"
+  "neogeo#19": "Doble conector de 2 × 120 contactos"
+  "neogeo#84": "Escribir en $320000 deja el código y dispara la NMI del Z80"
+  "neogeo#87": "Decodificador, lectura en $000100: ROM P, banco fijo (1 MB)"
+  "neogeo#88": "Decodificador, escritura en $10FD80: RAM de usuario (64 KB, espejada)"
+  "neogeo#89": "Solo se decodifican A1–A15: el resto de la zona son espejos"
+  "neogeo#90": "deja el código para el Z80 en el latch del PRO-B0 y le provoca una NMI"
+  "neogeo#91": "El 68000 solo ve la VRAM por ellos, por palabras y sin esperas"
+  "neogeo#92": "RAM de paleta ($400000–$401FFF, espejada)"
+  "neogeo#93": "Tarjeta de 8 bits: una de 2 KB ocupa $800000–$800FFF"
+  "neogeo#94": "ROM del sistema NEO-EP0, $C00000–$C1FFFF"
+  "cap29#76": "Decodificador: de n entradas a 2ⁿ salidas, con una sola activa"
+  "cap37#359": "aparecen porque la decodificación de direcciones es incompleta"
+
+modelo:
+  valores: {}
+  calculos: {}
+
+tarjetas:
+  - id: explore-buses
+    tipo: explorar
+    titulo: "Un bus de 16 bits"
+    texto: "Toque el 68000, la ranura de cartucho y el chip que decodifica sus direcciones."
+    libro: ["neogeo#67", "neogeo#19", "neogeo#7"]
+    requiere: { mover: [m68k, cart, proc0] }
+    widget:
+      tipo: figura
+      consola: { maquina: neogeo }
+      zonas:
+        - { id: m68k, hotspot: 68k, rotulo: "68000", texto: "A1–A23 y 16 bits de datos." }
+        - { id: cart, hotspot: cart, rotulo: "Ranura de cartucho", texto: "Doble conector de 2 × 120 contactos." }
+        - { id: proc0, hotspot: proc0, rotulo: "PRO-C0", texto: "Decodifica las direcciones del 68000." }
+
+  - id: prediga-ram
+    tipo: predecir
+    titulo: "Escribir en $10FD80"
+    texto: "El 68000 escribe en $10FD80. ¿Quién contesta?"
+    libro: ["neogeo#88", "neogeo#87", "neogeo#94", "neogeo#11"]
+    widget:
+      tipo: figura
+      consola: { maquina: neogeo }
+      zonas:
+        - { id: wram, hotspot: wram, rotulo: "RAM de usuario" }
+        - { id: bios, hotspot: bios, rotulo: "BIOS" }
+    opciones:
+      - texto: "La RAM de usuario, de 64 KB."
+        bien: true
+        porque: "$10FD80 está en la zona de la RAM de usuario: el PRO-C0 baja su /WE."
+      - texto: "La BIOS."
+        porque: "La BIOS está en $C00000–$C1FFFF, y es una ROM: no se escribe."
+      - texto: "La ROM P del cartucho."
+        porque: "La ROM P está en $000000. $10FD80 es RAM."
+    escalera:
+      - "La RAM de usuario empieza en $100000."
+    solucion: "La RAM de usuario: $10FD80 está en su zona."
+
+  - id: explore-mapa
+    tipo: explorar
+    titulo: "El mapa en cuatro cuartos"
+    texto: "Los dos bits altos, A23 y A22, dicen en qué cuarto del mapa cae la dirección. Muévalos."
+    libro: ["neogeo#87", "neogeo#92", "neogeo#93", "neogeo#94", "cap29#76"]
+    requiere: { mover: [A23, A22] }
+    widget:
+      tipo: logica
+      entradas: [{ id: A23, rotulo: "A23" }, { id: A22, rotulo: "A22" }]
+      piezas:
+        - { id: dec, tipo: decodificador, bits: 2, entradas: [A22, A23] }
+      salidas:
+        - { id: PROG, de: dec.y0, rotulo: "ROM, RAM y puertos" }
+        - { id: PAL, de: dec.y1, rotulo: "Paleta" }
+        - { id: TARJ, de: dec.y2, rotulo: "Tarjeta" }
+        - { id: BIOS, de: dec.y3, rotulo: "BIOS" }
+
+  - id: tabla-mapa
+    tipo: tabla
+    titulo: "La tabla del mapa"
+    texto: "Rellene cuándo quedan elegidas (1) la tarjeta de memoria y la BIOS."
+    libro: ["neogeo#93", "neogeo#94", "cap29#76"]
+    widget:
+      tipo: logica
+      entradas: [{ id: A23, rotulo: "A23" }, { id: A22, rotulo: "A22" }]
+      piezas:
+        - { id: dec, tipo: decodificador, bits: 2, entradas: [A22, A23] }
+      salidas:
+        - { id: TARJ, de: dec.y2, rotulo: "Tarjeta" }
+        - { id: BIOS, de: dec.y3, rotulo: "BIOS" }
+      ocultar: true
+    tabla:
+      salidas: [TARJ, BIOS]
+    exito: "La tarjeta en $800000 y la BIOS en $C00000: los dos cuartos con A23 = 1."
+    escalera:
+      - "$800000 tiene A23 = 1 y A22 = 0."
+      - "$C00000 tiene los dos a 1."
+    solucion: "Tarjeta: solo en la fila A23 = 1, A22 = 0. BIOS: solo con los dos a 1."
+
+  - id: empareje-direcciones
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cada dirección, quien contesta"
+    texto: "Empareje cada acceso del 68000 con quien contesta."
+    libro: ["neogeo#87", "neogeo#88", "neogeo#90", "neogeo#94"]
+    emparejar:
+      - ["Leer $000100", "La ROM P del cartucho"]
+      - ["Escribir $10FD80", "La RAM de usuario"]
+      - ["Escribir $320000", "El buzón del Z80"]
+      - ["Leer $C00402", "La BIOS"]
+    exito: "El PRO-C0 baja una sola selección por zona."
+    pistas:
+      - { texto: "$320000 está en la zona de puertos; $C00402, en la de la BIOS." }
+    escalera:
+      - "Lo más bajo es el cartucho; lo más alto, la BIOS."
+    solucion: "$000100: ROM P. $10FD80: RAM. $320000: buzón del Z80. $C00402: BIOS."
+
+  - id: por-que-espejo
+    tipo: porque
+    titulo: "La misma RAM, dos direcciones"
+    texto: "Leer $1FF000 da lo mismo que leer $10F000. ¿Por qué?"
+    libro: ["neogeo#89", "cap37#359"]
+    widget:
+      tipo: figura
+      consola: { maquina: neogeo }
+      zonas:
+        - { id: wram, hotspot: wram, rotulo: "RAM de usuario" }
+    opciones:
+      - texto: "Solo se decodifican A1–A15: el resto de la zona son espejos."
+        bien: true
+        porque: "La RAM no mira los bits que distinguen $1FF000 de $10F000: llegan a la misma celda."
+      - texto: "Hay dos RAM con el mismo contenido."
+        porque: "Las dos SRAM son el byte alto y el bajo de una sola RAM. El espejo sale del decodificador."
+      - texto: "El 68000 copia los datos de una zona a la otra."
+        porque: "Nadie copia nada: las dos direcciones llegan a la misma celda."
+    escalera:
+      - "Compare las dos direcciones: ¿en qué bits se diferencian?"
+    solucion: "Es un espejo: solo se decodifican A1–A15."
+
+  - id: prediga-vram
+    tipo: predecir
+    titulo: "¿Dónde está la VRAM?"
+    texto: "El 68000 quiere escribir en la VRAM. ¿A qué dirección escribe?"
+    libro: ["neogeo#91"]
+    widget:
+      tipo: figura
+      consola: { maquina: neogeo }
+      zonas:
+        - { id: lspc, hotspot: lspc, rotulo: "LSPC-A0" }
+        - { id: svram, hotspot: svram, rotulo: "VRAM lenta" }
+    opciones:
+      - texto: "A los registros del LSPC: dirección en $3C0000 y dato en $3C0002."
+        bien: true
+        porque: "El 68000 solo ve la VRAM por esos registros, por palabras y sin esperas."
+      - texto: "Directamente a la VRAM, que está en el mapa."
+        porque: "La VRAM no está en el mapa del 68000: la ve solo por los registros del LSPC."
+      - texto: "A la RAM de usuario, que el LSPC copia."
+        porque: "El LSPC no copia la RAM de usuario: el 68000 le da la dirección y el dato por sus registros."
+    escalera:
+      - "Lea el ejemplo del decodificador en $3C0002."
+    solucion: "Por los registros del LSPC: $3C0000 (dirección) y $3C0002 (dato)."
+
+  - id: prediga-sonido
+    tipo: predecir
+    titulo: "Pedir un sonido"
+    texto: "El juego quiere un efecto de sonido. ¿Cómo se lo pide el 68000 al Z80?"
+    libro: ["neogeo#90", "neogeo#84", "neogeo#3", "neogeo#83"]
+    widget:
+      tipo: figura
+      consola: { maquina: neogeo }
+      zonas:
+        - { id: prob0, hotspot: prob0, rotulo: "PRO-B0" }
+        - { id: z80, hotspot: z80, rotulo: "Z80" }
+    opciones:
+      - texto: "Escribe un código en $320000: queda en un buzón y el Z80 recibe una NMI."
+        bien: true
+        porque: "El latch del PRO-B0 guarda el código y le dispara la NMI al Z80, que lo lee."
+      - texto: "Escribe directamente en el YM2610."
+        porque: "El YM2610 está en los puertos del Z80; el 68000 solo deja un código en el buzón."
+      - texto: "Le copia el programa de sonido en su RAM."
+        porque: "El programa del Z80 está en la ROM M1 del cartucho; el 68000 solo le pasa un código."
+    escalera:
+      - "Hay un chip con un buzón de un byte entre las dos CPU."
+    solucion: "Escribe el código en $320000: el PRO-B0 lo guarda y dispara la NMI del Z80."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["neogeo#7", "neogeo#89", "neogeo#91", "neogeo#90"]
+    ideas:
+      - { titulo: "El mapa.", texto: "Programa, RAM y puertos abajo; paleta, tarjeta y BIOS arriba." }
+      - { titulo: "Espejos.", texto: "La RAM solo mira A1–A15." }
+      - { titulo: "La VRAM, aparte.", texto: "El 68000 la ve solo por los registros del LSPC." }
+      - { titulo: "Un buzón.", texto: "Un código en $320000 y una NMI para el Z80." }

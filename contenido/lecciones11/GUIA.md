@@ -3262,6 +3262,9 @@ EPA_RECORRER='^consola-' … npx playwright test … tests/lecciones11-recorrido
 EPA_SIN_SERVIDOR=1 … npx playwright test … tests/lecciones11-unidad.spec.ts -g "lecciones de consola"
 ```
 
-Hechas en la 1.2: las siete de la Super Nintendo y las siete de la NES. Para otra consola: escriba sus siete entradas
+Hechas en la 1.2: las siete de la Super Nintendo, la NES, la Mega Drive, el Master System II y la Neo Geo AES (las
+21 últimas, consolas-B: `-bloqueo` explica lo que hay en vez de un CIC —TMSS y puentes de región, la cabecera
+«TMR SEGA», la BIOS con región y modo— y un `estimar` del «clic de la muerte» del watchdog en `neogeo-averias`; la
+`tabla` de un circuito `logica` con tres columnas de rótulos largos desborda a 360 px: dos columnas). Para otra consola: escriba sus siete entradas
 en el manifiesto (con sus `externas`), mire sus bloques, escriba las lecciones con el mismo patrón y añada la consola a
 la lista de `tests/grupoA11.spec.ts` si cambia el número mínimo de lecciones.

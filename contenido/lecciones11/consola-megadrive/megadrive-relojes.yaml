@@ -1,0 +1,207 @@
+# «Consolas por dentro» · Mega Drive 3: un oscilador, tres relojes. MCLK de 53,203424 MHz en PAL (12 × la subportadora
+# PAL) y 53,693175 MHz en NTSC (15 × la NTSC), dividido entre 7 para el 68000 y entre 15 para el Z80, las líneas por
+# cuadro (313 de 64,28 µs en PAL) y el cristal como causa de una imagen sin color. Fuentes: los datos de la consola
+# (megadrive#n: explorador, arquitectura, genvdp.txt), la guía de Retro Tech Wiki (manual PAL-G de Sega) y el libro
+# (el divisor como contador, 37.5; la Q del cristal, 28.3).
+leccion: consola-megadrive/megadrive-relojes
+
+libro:
+  "megadrive#2": "68000 a MCLK ÷ 7 = 7,60 MHz en esta placa PAL (7,67 MHz en NTSC)"
+  "megadrive#5": "Z80 a MCLK ÷ 15 = 3,55 MHz en PAL (3,58 MHz en NTSC)"
+  "megadrive#11": "MCLK de 53,203424 MHz: 12 × la subportadora PAL (4,43361875 MHz)"
+  "megadrive#36": "MCLK de 53,693175 MHz (15 × la subportadora NTSC)"
+  "megadrive#65": "Lo reciben el VDP y el 315-5402/5433, que lo dividen para todo lo demás"
+  "megadrive#79": "313 líneas de 64,28 µs (49,70 Hz)"
+  "megadrive#80": "262 líneas de 63,70 µs (59,92 Hz)"
+  "megadrive#97": "OSC1 es un oscilador de 53,203424 MHz ±20 ppm"
+  "megadrive#3": "Recibe MCLK, saca el reloj del Z80 (÷ 15)"
+  "megadrive#4": "divide MCLK entre 7 para el 68000 (VCLK)"
+  "cap37#133": "Un contador que incrementa en cada flanco del reloj"
+  "cap28#64": "lo que separa una exactitud del 1 % de una de partes por millón"
+
+modelo:
+  valores:
+    MCLKp: { sim: "MCLK_{PAL}", nombre: "reloj maestro PAL", unidad: Hz, valor: 53203424 }
+    MCLKn: { sim: "MCLK_{NTSC}", nombre: "reloj maestro NTSC", unidad: Hz, valor: 53693175 }
+    n: { sim: "n", nombre: "divisor", unidad: "", valor: 7 }
+    t_lin: { sim: "t_{línea}", nombre: "duración de una línea PAL", unidad: s, valor: 64.28e-6 }
+    L: { sim: "L", nombre: "líneas por cuadro", unidad: "", valor: 262 }
+  calculos:
+    f_div: { expr: "MCLKp/n", sim: "MCLK / n", nombre: "reloj dividido (PAL)", unidad: Hz, cifras: 3 }
+    f_68k: { expr: "MCLKp/7", sim: "f_{68000}", nombre: "reloj del 68000 en PAL", unidad: Hz, cifras: 3 }
+    f_cuadro: { expr: "1/(L*t_lin)", sim: "f_{cuadro}", nombre: "cuadros por segundo (PAL)", unidad: Hz, cifras: 4 }
+
+tarjetas:
+  - id: explore-osc
+    tipo: explorar
+    titulo: "Un solo oscilador"
+    texto: "Toque el oscilador maestro y los dos chips que lo dividen."
+    libro: ["megadrive#11", "megadrive#65", "megadrive#3", "megadrive#4"]
+    requiere: { mover: [osc, vdp, io] }
+    widget:
+      tipo: figura
+      consola: { maquina: megadrive }
+      zonas:
+        - { id: osc, hotspot: osc, rotulo: "Oscilador OSC1", texto: "MCLK de 53,203424 MHz en esta placa PAL." }
+        - { id: vdp, hotspot: vdp, rotulo: "VDP", texto: "Saca el reloj del Z80: MCLK ÷ 15." }
+        - { id: io, hotspot: io, rotulo: "315-5433", texto: "Saca el del 68000: MCLK ÷ 7." }
+
+  - id: por-que-cristal
+    tipo: porque
+    titulo: "Un número raro"
+    texto: "¿Por qué el oscilador PAL es de 53,203424 MHz y no de un valor redondo?"
+    libro: ["megadrive#11", "megadrive#97", "cap28#64"]
+    widget:
+      tipo: figura
+      consola: { maquina: megadrive }
+      zonas:
+        - { id: osc, hotspot: osc, rotulo: "OSC1" }
+    opciones:
+      - texto: "Es 12 veces la subportadora de color PAL."
+        bien: true
+        porque: "El color PAL necesita una subportadora exacta: 12 × 4,43361875 MHz. Por eso el oscilador es de ±20 ppm."
+      - texto: "Es la frecuencia máxima del 68000."
+        porque: "El 68000 recibe MCLK ÷ 7. El valor de MCLK lo fija el color del vídeo."
+      - texto: "Da igual: cualquier valor cercano serviría."
+        porque: "No serviría: un error de partes por millón ya se nota en el color. Por eso es un oscilador de cristal."
+    escalera:
+      - "Divida 53,203424 MHz entre 12."
+    solucion: "53,203424 MHz = 12 × 4,43361875 MHz, la subportadora de color PAL."
+
+  - id: simule-68000
+    tipo: simular
+    titulo: "El reloj del 68000"
+    texto: "El 315-5433 divide MCLK entre 7 para el 68000. En esta placa PAL, ¿a qué frecuencia va?"
+    libro: ["megadrive#2", "megadrive#4", "cap37#133"]
+    widget:
+      tipo: grafica
+      ocultar: curvas
+      x: { id: k, min: 4, max: 16, unidad: "", rotulo: "divisor" }
+      y: { min: 0, max: 14000000, unidad: Hz, rotulo: "f" }
+      curvas:
+        - { expr: "MCLKp/k", color: azul, rotulo: "MCLK ÷ divisor", palitos: true }
+    simular:
+      objetivo: f_68k
+      unidad: Hz
+      tol: 0.005
+      rotulo: "Reloj del 68000, f_{68000}"
+      errores:
+        - { expr: "MCLKp/15", texto: "Ese es el reloj del Z80, MCLK ÷ 15. El 68000 divide entre 7." }
+        - { expr: "MCLKn/7", texto: "Ha usado el MCLK NTSC, de 53,693175 MHz. Esta placa es PAL." }
+        - { expr: "MCLKp", texto: "Ese es MCLK sin dividir: el 68000 va a la séptima parte." }
+    exito: "53,203424 MHz ÷ 7 = 7,60 MHz: un contador reparte un solo reloj."
+    escalera:
+      - "Divida el MCLK PAL entre 7."
+    solucion: "53,203424 MHz ÷ 7 = 7,60 MHz."
+    comprobar:
+      - { f_68k: 7600489 }
+
+  - id: ajuste-z80
+    tipo: ajuste
+    titulo: "El reloj del Z80"
+    texto: "Ajuste el divisor hasta el reloj del Z80 en PAL: 3,55 MHz."
+    libro: ["megadrive#5", "megadrive#3"]
+    inicio: { n: 7 }
+    widget:
+      tipo: grafica
+      x: { id: k, min: 4, max: 16, unidad: "", rotulo: "divisor" }
+      y: { min: 0, max: 14000000, unidad: Hz, rotulo: "f" }
+      curvas:
+        - { expr: "MCLKp/k", color: azul, rotulo: "MCLK ÷ divisor", palitos: true }
+      marcas:
+        - { x: "n", y: "f_div", rotulo: "{{f_div}}" }
+      mandos: [ { valor: n, min: 4, max: 16, paso: 1, rotulo: "Divisor, n" } ]
+    ajuste:
+      valor: f_div
+      objetivo: 3550000
+      tol: 0.005
+      rotulo: "Reloj del Z80"
+      bajo: "Demasiado lento: baje el divisor."
+      alto: "Demasiado rápido: suba el divisor."
+      dentro: "MCLK ÷ 15: el reloj del Z80."
+    exito: "El VDP divide MCLK entre 15: 3,55 MHz para el Z80."
+    escalera:
+      - "Es un divisor mayor que el del 68000."
+    solucion: "n = 15: 53,203424 MHz ÷ 15 = 3,55 MHz."
+    comprobar:
+      - { con: { n: 15 }, f_div: 3546895 }
+
+  - id: ajuste-lineas
+    tipo: ajuste
+    titulo: "Cincuenta cuadros, casi"
+    texto: "Cada línea PAL dura 64,28 µs. Ajuste las líneas por cuadro hasta los 49,70 Hz de esta placa."
+    libro: ["megadrive#79"]
+    inicio: { L: 262 }
+    widget:
+      tipo: grafica
+      x: { id: l, min: 200, max: 340, unidad: "", rotulo: "líneas por cuadro" }
+      y: { min: 40, max: 80, unidad: Hz, rotulo: "f_{cuadro}" }
+      curvas:
+        - { expr: "1/(l*t_lin)", color: azul, rotulo: "1 ÷ (líneas · t_{línea})" }
+      marcas:
+        - { x: "L", y: "f_cuadro", rotulo: "{{f_cuadro}}" }
+      mandos: [ { valor: L, min: 200, max: 340, paso: 1, rotulo: "Líneas por cuadro, L" } ]
+    ajuste:
+      valor: f_cuadro
+      objetivo: 49.70
+      tol: 0.001
+      rotulo: "Cuadros por segundo"
+      bajo: "Demasiado lento: quite líneas."
+      alto: "Demasiado rápido: añada líneas."
+      dentro: "49,70 Hz: el televisor PAL engancha."
+    exito: "313 líneas de 64,28 µs: 49,70 Hz."
+    escalera:
+      - "Con 262 líneas sale casi 60 Hz: hacen falta unas 50 más."
+    solucion: "L = 313: 1 ÷ (313 × 64,28 µs) = 49,70 Hz."
+    comprobar:
+      - { con: { L: 313 }, f_cuadro: 49.70 }
+
+  - id: empareje-normas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "PAL frente a NTSC"
+    texto: "Empareje cada cifra con su norma."
+    libro: ["megadrive#11", "megadrive#36", "megadrive#79", "megadrive#80"]
+    emparejar:
+      - ["MCLK de una PAL", "53,203424 MHz"]
+      - ["MCLK de una NTSC", "53,693175 MHz"]
+      - ["Cuadro de una PAL", "313 líneas, 49,70 Hz"]
+      - ["Cuadro de una NTSC", "262 líneas, 59,92 Hz"]
+    exito: "Relojes casi iguales; lo que cambia de verdad son las líneas por cuadro."
+    pistas:
+      - { texto: "La PAL va a 50 Hz: necesita más líneas por cuadro que la NTSC." }
+    escalera:
+      - "El MCLK NTSC es 15 veces la subportadora NTSC."
+    solucion: "PAL: 53,203424 MHz y 313 líneas (49,70 Hz). NTSC: 53,693175 MHz y 262 líneas (59,92 Hz)."
+
+  - id: toque-sin-color
+    tipo: tocar
+    titulo: "Una imagen sin color"
+    texto: "La consola da imagen, pero en blanco y negro. Toque la pieza que manda cambiar el manual de Sega."
+    libro: ["megadrive#97", "megadrive#11"]
+    widget:
+      tipo: figura
+      consola: { maquina: megadrive }
+      zonas:
+        - { id: osc, hotspot: osc, rotulo: "Pieza metálica, en el centro" }
+        - { id: vdp, hotspot: vdp, rotulo: "Chip cuadrado, en el centro" }
+        - { id: enc, hotspot: enc, rotulo: "Chip pequeño, a la izquierda" }
+    tocar:
+      bien: [osc]
+      porque:
+        vdp: "El VDP hace la imagen, y la hay: lo que falla es el color, que pide una subportadora exacta."
+        enc: "El codificador hace el compuesto, pero ante una imagen sin color el manual de Sega manda cambiar el cristal."
+    exito: "El oscilador: el color depende de que MCLK sea exactamente 12 × la subportadora."
+    escalera:
+      - "¿De qué pieza sale la subportadora de color?"
+    solucion: "OSC1, el oscilador de 53,203424 MHz."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["megadrive#11", "megadrive#2", "megadrive#5", "megadrive#79"]
+    ideas:
+      - { titulo: "Un reloj maestro.", texto: "MCLK: 12 × la subportadora PAL, o 15 × la NTSC." }
+      - { titulo: "Dividir.", texto: "El 68000 va a MCLK ÷ 7 y el Z80 a MCLK ÷ 15." }
+      - { titulo: "El cuadro.", texto: "313 líneas de 64,28 µs: 49,70 Hz en PAL." }
+      - { titulo: "El color.", texto: "Sin el cristal exacto, la imagen pierde el color." }

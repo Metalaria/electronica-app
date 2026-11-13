@@ -16,7 +16,7 @@
   import { factor, hex, muestrear, tiempo, type Escenario } from './modelo';
   import type { Decodificacion, Maquina, Opciones } from './diagrama';
   import Analizador from './Analizador.svelte';
-  import type { DatosMaquina } from '../datos';
+  import { hotspotsDe, type DatosMaquina } from '../datos';
   import type { Seleccion } from '../estado.svelte';
 
   let {
@@ -75,10 +75,11 @@
   const elegido = $derived.by((): string | null => {
     if (!sel) return null;
     if (sel.tipo === 'bloque') return sel.id;
-    if (sel.tipo === 'foto') return datos.hotspots.find((h) => h.id === sel.id)?.bloque ?? null;
+    // (any photo's hotspot, not only the main photo's)
+    if (sel.tipo === 'foto') return hotspotsDe(datos).find((h) => h.id === sel.id)?.bloque ?? null;
     if (sel.tipo === 'componente') {
       const b = diagrama.bloques.find((x) => x.esquema?.includes(sel.id));
-      return b?.id ?? datos.hotspots.find((h) => h.esquema.includes(sel.id))?.bloque ?? null;
+      return b?.id ?? hotspotsDe(datos).find((h) => h.esquema.includes(sel.id))?.bloque ?? null;
     }
     return null;
   });

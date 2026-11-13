@@ -1,0 +1,175 @@
+# «Consolas por dentro» · Master System II 7: averías y diagnóstico. Lo simple primero (libro, capítulo 55), una
+# consola que no enciende medida a lo largo del camino del esquema (adaptador de 9 V, interruptor, 7805: búsqueda con
+# el multímetro sobre la foto), el botón de pausa con su resistencia a +5 V, la línea de un mando y lo que no es avería
+# (cartucho japonés, juego sin cabecera, 50 Hz, juego integrado). Fuentes: los datos de la consola (sms#n: el esquema
+# del manual de servicio de Sega), ConsoleMods («Comparison of Power Supplies», «Master System:Region Information»),
+# SMS Power y el libro.
+leccion: consola-sms/sms-averias
+
+libro:
+  "sms#3": "con el juego integrado"
+  "sms#12": "con filtros EMI (EM11–EM18) y 330 Ω en TR y TH"
+  "sms#14": "Filtros de tres terminales (condensador a masa) en cada línea de los puertos de mando"
+  "sms#16": "Regulador lineal de +5 V atornillado al blindaje"
+  "sms#17": "Pasa por la ferrita JV, el interruptor y el diodo D2 antes del regulador"
+  "sms#18": "Lleva /NMI-IN del VDP a masa (R9 de 4,7 kΩ a +5 V)"
+  "sms#73": "El 315-5237 las pone en el bus de datos al leer $DC o $DD"
+  "sms#88": "piden la cabecera para dar los datos por válidos"
+  "sms#93": "Los cartuchos japoneses tienen 44 contactos y los occidentales 50"
+  "sms#94": "Los juegos no optimizados para 50 Hz van más lentos en una consola PAL"
+  "sms#96": "Sega Master System: 9 V de continua, 1 A, punta negativa"
+  "cap53#30": "Con el circuito apagado: cortocircuitos entre raíles y masa, continuidad de fusibles"
+  "cap53#39": "Casi siempre es lo simple: alimentación, conector, soldadura, fusible"
+  "cap53#92": "conviene confirmarlos con el óhmetro"
+
+modelo:
+  valores:
+    V_ad: { sim: "V_{adaptador}", nombre: "tensión del adaptador", unidad: V, valor: 9 }
+    V_o: { sim: "V_{salida}", nombre: "salida del 7805", unidad: V, valor: 5 }
+    ad: { tipo: interruptor, nombre: "adaptador sano", valor: 1 }
+    sw: { tipo: interruptor, nombre: "interruptor sano", valor: 1 }
+    re: { tipo: interruptor, nombre: "7805 sano", valor: 1 }
+  calculos:
+    V_clav: { expr: "V_ad*ad", sim: "V_{clavija}", nombre: "tensión en la clavija del adaptador", unidad: V, cifras: 3 }
+    R_sw: { si: sw, entonces: "0", sino: "1e9", sim: "R_{SW}", nombre: "resistencia del interruptor cerrado, con la consola desenchufada", unidad: Ω }
+    V_5: { expr: "V_o*ad*sw*re", sim: "V_{5}", nombre: "salida del 7805", unidad: V, cifras: 3 }
+
+tarjetas:
+  - id: explore-primero
+    tipo: explorar
+    titulo: "Lo primero, lo simple"
+    texto: "Casi siempre es lo simple: alimentación, conector, soldadura. Toque esas piezas en la placa."
+    libro: ["cap53#39", "sms#17", "sms#16"]
+    requiere: { mover: [dc, power, reg, cart] }
+    widget:
+      tipo: figura
+      consola: { maquina: sms }
+      zonas:
+        - { id: dc, hotspot: dc, rotulo: "Toma CN4", texto: "Entran los 9 V del adaptador." }
+        - { id: power, hotspot: power, rotulo: "Interruptor", texto: "Corta la entrada antes del diodo y el regulador." }
+        - { id: reg, hotspot: reg, rotulo: "Regulador 7805", texto: "Da los 5 V de toda la placa." }
+        - { id: cart, hotspot: cart, rotulo: "Ranura de cartucho", texto: "50 contactos por los que pasa todo el bus." }
+
+  - id: averia-no-enciende
+    tipo: averia
+    titulo: "No enciende"
+    texto: "La consola no enciende. Mida a lo largo del camino y señale la pieza: el adaptador, el interruptor o el 7805."
+    libro: ["sms#96", "sms#17", "sms#16", "cap53#92"]
+    widget:
+      tipo: figura
+      consola: { maquina: sms }
+      zonas:
+        - { id: power, hotspot: power, rotulo: "Interruptor" }
+        - { id: reg, hotspot: reg, rotulo: "Regulador 7805" }
+    averia:
+      pasos: 2
+      eleccion: fija
+      sospechosos:
+        - { id: adaptador, rotulo: "Adaptador" }
+        - { id: interruptor, rotulo: "Interruptor" }
+        - { id: regulador, rotulo: "Regulador 7805" }
+      sondas:
+        - { id: clavija, rotulo: "Clavija del adaptador", valor: V_clav }
+        - { id: interruptor, rotulo: "Interruptor cerrado, desenchufada", valor: R_sw }
+        - { id: salida, rotulo: "Salida del 7805", valor: V_5 }
+      fallos:
+        - { id: interruptor-abierto, pieza: interruptor, tipo: abierta, con: { sw: 0 }, texto: "El interruptor no cierra: sin continuidad, no llegan los 9 V al diodo y al 7805." }
+        - { id: regulador-muerto, pieza: regulador, tipo: abierta, con: { re: 0 }, texto: "El 7805 recibe la entrada pero no da sus 5 V." }
+        - { id: adaptador-muerto, pieza: adaptador, tipo: abierta, con: { ad: 0 }, texto: "El adaptador no da sus 9 V: la consola no tiene la culpa." }
+    exito: "Medir a lo largo del camino separa el adaptador, el interruptor y el regulador."
+    escalera:
+      - "Empiece por la clavija: si el adaptador no da tensión, la placa no tiene la culpa."
+      - "Desenchufada y con el interruptor en «encendido», debe marcar 0 Ω."
+    solucion: "Clavija sin tensión: el adaptador. Interruptor sin continuidad: el interruptor. Las dos bien y 0 V a la salida: el 7805."
+    comprobar:
+      - { V_clav: 9, R_sw: 0, V_5: 5 }
+
+  - id: por-que-pausa
+    tipo: porque
+    titulo: "El botón de pausa"
+    texto: "Sin pulsar la pausa, /NMI-IN mide +5 V. ¿Por qué, y qué debería medir al pulsar?"
+    libro: ["sms#18"]
+    widget:
+      tipo: figura
+      consola: { maquina: sms }
+      zonas:
+        - { id: pausa, hotspot: pausa, rotulo: "Botón de pausa" }
+        - { id: vdp, hotspot: vdp, rotulo: "VDP" }
+    opciones:
+      - texto: "R9 la sube a +5 V; al pulsar, el botón la lleva a masa: 0 V."
+        bien: true
+        porque: "R9, de 4,7 kΩ, va a +5 V y el botón, a masa. Si no baja a 0 V al pulsar, falla el botón o su soldadura."
+      - texto: "El VDP la pone a +5 V y al pulsar sube más."
+        porque: "La línea la sube R9, y el botón la lleva a masa: al pulsar baja a 0 V."
+      - texto: "El botón la lleva a +5 V; sin pulsar debería estar a 0 V."
+        porque: "Al revés: el botón lleva /NMI-IN a masa; en reposo, R9 la tiene a +5 V."
+    escalera:
+      - "R9 va a +5 V. ¿Y el botón, adónde la lleva?"
+    solucion: "R9 la sube a +5 V en reposo; al pulsar, el botón la lleva a masa (0 V)."
+
+  - id: toque-mando
+    tipo: tocar
+    titulo: "La línea de un mando"
+    texto: "Un botón del mando 1 no responde. Toque las piezas por las que pasa cada línea antes del 315-5237."
+    libro: ["sms#12", "sms#14", "sms#73"]
+    widget:
+      tipo: figura
+      consola: { maquina: sms }
+      zonas:
+        - { id: emi, hotspot: emi, rotulo: "Fila de piezas sobre los conectores" }
+        - { id: osc, hotspot: osc, rotulo: "Pieza metálica, abajo a la derecha" }
+        - { id: ra1, hotspot: ra1, rotulo: "Red de resistencias, a la derecha" }
+    tocar:
+      bien: [emi]
+      porque:
+        osc: "Es el oscilador: no está en el camino de los mandos."
+        ra1: "Son pull-ups de A0, A6, A7 y /CSRAM, no de los mandos."
+    exito: "Los filtros EMI: cada línea del mando pasa por uno, con un condensador a masa."
+    escalera:
+      - "Están justo encima de los dos conectores DB9."
+    solucion: "Los filtros EMI (EM11–EM18 para el mando 1)."
+
+  - id: empareje-no-averias
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Lo que no es avería"
+    texto: "Empareje cada síntoma con su explicación: ninguno es una pieza rota."
+    libro: ["sms#93", "sms#88", "sms#94", "sms#3"]
+    emparejar:
+      - ["Un cartucho japonés no entra", "44 contactos, no 50"]
+      - ["Un juego sin cabecera no arranca", "La ROM de arranque la pide"]
+      - ["Un juego va lento", "No está optimizado para 50 Hz"]
+      - ["Sin cartucho sale un juego", "El juego integrado"]
+    exito: "Antes de abrir, descarte lo que es así por diseño."
+    pistas:
+      - { texto: "Repase la lección del bloqueo: cabecera, contactos y 50 Hz." }
+    escalera:
+      - "La ROM de arranque trae un juego dentro."
+    solucion: "Japonés: 44 contactos. Sin cabecera: ROM de arranque. Lento: 50 Hz. Sin cartucho: juego integrado."
+
+  - id: ordene-apagada
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Antes de enchufar"
+    texto: "Una consola que no enciende. Ordene las medidas, de lo primero a lo último."
+    libro: ["cap53#30", "cap53#39"]
+    ordenar:
+      - "Desenchufada: continuidad del interruptor."
+      - "Desenchufada: cortocircuitos entre los 5 V y masa."
+      - "Enchufada: tensión a la salida del 7805."
+    exito: "Primero lo que se mide sin tensión; luego, las tensiones."
+    pistas:
+      - { texto: "Con el circuito apagado se buscan los cortos y las continuidades." }
+    escalera:
+      - "Lo que se mide desenchufado va antes."
+    solucion: "Interruptor, cortos a masa y, por último, la salida del 7805."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["cap53#39", "sms#17", "sms#18", "sms#88"]
+    ideas:
+      - { titulo: "Lo simple.", texto: "Adaptador, interruptor y 7805, por ese orden." }
+      - { titulo: "Medir el camino.", texto: "Donde se corta la tensión está la pieza." }
+      - { titulo: "Pull-up.", texto: "La pausa: +5 V en reposo, 0 V al pulsar." }
+      - { titulo: "Por diseño.", texto: "Cartucho japonés, cabecera y 50 Hz no son averías." }

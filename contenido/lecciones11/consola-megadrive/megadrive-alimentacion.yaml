@@ -1,0 +1,184 @@
+# «Consolas por dentro» · Mega Drive 2: la alimentación. El camino del manual PAL-G de Sega (adaptador de 10 V → FB1
+# → SW1 → dos 1SR35-100A → IC15), la polaridad del modelo 1, la potencia que disipa un 7805 y su dropout (libro,
+# sección 8.4) y qué alimenta cada 7805 según las redes VCC y VCCQ del esquema. Fuentes: los datos de la consola
+# (megadrive#n), la guía de Retro Tech Wiki basada en el manual de Sega, ConsoleMods «Genesis:Buying Guide» y el libro.
+leccion: consola-megadrive/megadrive-alimentacion
+
+libro:
+  "megadrive#2": "Bus de 23 bits de dirección (VA1–VA23 con /UDS y /LDS) y 16 de datos"
+  "megadrive#4": "Decodifica el mapa del 68000"
+  "megadrive#22": "Dos reguladores lineales de +5 V sobre el blindaje"
+  "megadrive#23": "Interruptor deslizante"
+  "megadrive#92": "La clavija del adaptador del modelo 1 tiene el centro negativo"
+  "megadrive#93": "da 10 V de continua y 1,2 A"
+  "megadrive#94": "La entrada de continua pasa por la ferrita FB1, el interruptor SW1 y dos diodos 1SR35-100A hasta IC15"
+  "megadrive#95": "Vcc1 y Vcc2 deben dar +5 V"
+  "megadrive#96": "un IC17 averiado"
+  "megadrive#115": "toma de 5,5 × 2,1 mm con la punta negativa"
+  "megadrive#116": "Modelo 2: toma EIAJ-03 (4,75 × 1,7 mm) con la punta positiva"
+  "megadrive#126": "Red VCC del esquema (alimentación)"
+  "megadrive#127": "Red VCCQ del esquema (alimentación)"
+  "cap08#65": "P_(\"disipada\")"
+  "cap08#66": "Más de la mitad de la energía se convierte en calor"
+  "cap08#67": "necesita unos 2 V de diferencia entre entrada y salida para funcionar"
+
+modelo:
+  valores:
+    V_in: { sim: "V_{entrada}", nombre: "tensión en la entrada del 7805", unidad: V, valor: 5 }
+    V_ad: { sim: "V_{adaptador}", nombre: "tensión del adaptador", unidad: V, valor: 10 }
+    V_o: { sim: "V_{salida}", nombre: "salida del 7805", unidad: V, valor: 5 }
+    I: { sim: "I", nombre: "corriente del regulador", unidad: A, valor: 0.5 }
+  calculos:
+    V_reg: { expr: "min(V_o, max(0, V_in - 2))", sim: "V_{salida}", nombre: "tensión de salida del 7805 (modelo)", unidad: V, cifras: 3 }
+    P_d: { expr: "(V_ad - V_o)*I", sim: "P_{disipada}", nombre: "potencia que disipa el 7805", unidad: W, cifras: 3 }
+
+tarjetas:
+  - id: explore-alim
+    tipo: explorar
+    titulo: "La alimentación en la foto"
+    texto: "Toque los dos reguladores 7805 y el interruptor de encendido."
+    libro: ["megadrive#22", "megadrive#23", "megadrive#95"]
+    requiere: { mover: [reg, sw1] }
+    widget:
+      tipo: figura
+      consola: { maquina: megadrive }
+      zonas:
+        - { id: reg, hotspot: reg, rotulo: "Reguladores 7805", texto: "IC15 e IC17: cada uno da +5 V a media placa." }
+        - { id: sw1, hotspot: sw1, rotulo: "Interruptor SW1", texto: "Un interruptor deslizante en la entrada." }
+
+  - id: ordene-camino
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "El camino de la corriente"
+    texto: "Ordene el camino desde el adaptador hasta el primer regulador, según el manual de Sega."
+    libro: ["megadrive#94", "megadrive#93"]
+    ordenar:
+      - "Adaptador: 10 V de continua."
+      - "Ferrita FB1."
+      - "Interruptor SW1."
+      - "Dos diodos 1SR35-100A."
+      - "Regulador IC15 (7805)."
+    exito: "Filtrar, encender, proteger y regular: en ese orden."
+    pistas:
+      - { texto: "La ferrita está nada más entrar; los diodos, justo antes del regulador." }
+    escalera:
+      - "El regulador es lo último: da los 5 V."
+      - "Entre el interruptor y el regulador van los dos diodos."
+    solucion: "Adaptador, FB1, SW1, los dos 1SR35-100A e IC15."
+
+  - id: empareje-clavijas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cada modelo, su clavija"
+    texto: "¿Sirve el adaptador de una Mega Drive 2 en el modelo 1? Empareje cada uno con su clavija."
+    libro: ["megadrive#92", "megadrive#115", "megadrive#116"]
+    emparejar:
+      - ["Modelo 1", "5,5 × 2,1 mm, punta negativa"]
+      - ["Modelo 2", "EIAJ-03, punta positiva"]
+    exito: "Polaridad contraria: el del modelo 2 no se debe usar en el modelo 1."
+    pistas:
+      - { texto: "El manual de Sega avisa: los adaptadores del modelo 2 y de la 32X tienen el centro positivo." }
+    escalera:
+      - "El modelo 1 tiene el centro negativo."
+    solucion: "Modelo 1: 5,5 × 2,1 mm, punta negativa. Modelo 2: EIAJ-03, punta positiva. No son intercambiables."
+
+  - id: prediga-vcc
+    tipo: predecir
+    titulo: "Dos salidas"
+    texto: "Con la consola sana, ¿qué mide a la salida de IC15 (Vcc1) y de IC17 (Vcc2)?"
+    libro: ["megadrive#95", "megadrive#93"]
+    widget:
+      tipo: figura
+      consola: { maquina: megadrive }
+      zonas:
+        - { id: reg, hotspot: reg, rotulo: "IC15 e IC17" }
+    opciones:
+      - texto: "+5 V en las dos."
+        bien: true
+        porque: "Los dos son 7805: el manual de Sega pide +5 V en Vcc1 y en Vcc2."
+      - texto: "10 V en IC15 y 5 V en IC17."
+        porque: "Los 10 V son los del adaptador, en la entrada. A la salida de los dos 7805 hay 5 V."
+      - texto: "La mitad de 5 V en cada una: se reparten la tensión."
+        porque: "No se reparten la tensión: cada 7805 da sus 5 V a su red."
+    escalera:
+      - "«05» en 7805 son los voltios de salida."
+    solucion: "+5 V en Vcc1 (IC15) y +5 V en Vcc2 (IC17)."
+
+  - id: formula-disipa
+    tipo: formula
+    titulo: "Lo que sobra, en calor"
+    texto: "Sin contar lo que caen los diodos, un 7805 quema la diferencia entre 10 V y 5 V por su corriente. Mueva la corriente."
+    libro: ["cap08#65", "cap08#66", "megadrive#93"]
+    ec: "cap08#65"
+    sustitucion: "({{V_ad}} − {{V_o}}) · {{I}} = {{P_d}}"
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0, max: 1.2, unidad: A, rotulo: "I" }
+      y: { min: 0, max: 7, unidad: W, rotulo: "P_{disipada}" }
+      curvas:
+        - { expr: "(V_ad - V_o)*i", color: naranja, rotulo: "P_{disipada}" }
+      marcas:
+        - { x: "I", y: "P_d", rotulo: "{{P_d}}" }
+      mandos: [ { valor: I, min: 0.05, max: 1.2, paso: 0.05, rotulo: "Corriente, I" } ]
+
+  - id: ajuste-dropout
+    tipo: ajuste
+    titulo: "¿Cuánta entrada necesita?"
+    texto: "El 78xx necesita unos 2 V más en la entrada que en la salida. Suba la entrada hasta que regule."
+    libro: ["cap08#67", "megadrive#22"]
+    inicio: { V_in: 5 }
+    widget:
+      tipo: grafica
+      x: { id: v, min: 0, max: 10, unidad: V, rotulo: "V_{entrada}" }
+      y: { min: 0, max: 6, unidad: V, rotulo: "V_{salida}" }
+      curvas:
+        - { expr: "min(V_o, max(0, v - 2))", color: azul, rotulo: "salida del 7805 (modelo)" }
+      marcas:
+        - { x: "V_in", y: "V_reg", rotulo: "{{V_reg}}" }
+      mandos: [ { valor: V_in, min: 5, max: 10, paso: 0.5, rotulo: "Entrada, V_{entrada}" } ]
+    ajuste:
+      valor: V_reg
+      min: 4.99
+      rotulo: "Salida del 7805"
+      bajo: "Todavía no regula: le faltan voltios en la entrada. Súbala."
+      dentro: "Ya da sus 5 V: la entrada supera la salida en unos 2 V."
+    exito: "Con unos 2 V de margen, el 7805 da sus 5 V."
+    escalera:
+      - "Súmele a los 5 V de salida el margen que pide el 78xx."
+    solucion: "Unos 7 V en la entrada: 5 V de salida más unos 2 V de margen."
+    comprobar:
+      - { con: { V_in: 7 }, V_reg: 5 }
+
+  - id: por-que-ic17
+    tipo: porque
+    titulo: "Media placa sin 5 V"
+    texto: "IC17 se ha averiado, pero el 68000 sigue con sus 5 V. ¿Por qué?"
+    libro: ["megadrive#126", "megadrive#127", "megadrive#96", "megadrive#2", "megadrive#4"]
+    widget:
+      tipo: figura
+      consola: { maquina: megadrive }
+      zonas:
+        - { id: reg, hotspot: reg, rotulo: "IC15 e IC17" }
+        - { id: z80, hotspot: z80, rotulo: "Z80" }
+        - { id: m68k, hotspot: m68k, rotulo: "68000" }
+    opciones:
+      - texto: "El 68000 cuelga de la red VCC, la de IC15; IC17 da la VCCQ."
+        bien: true
+        porque: "Cada 7805 tiene su red. La VCCQ llega a las RAM, al 315-5433, al Z80 y su RAM, al YM2612 y al mezclador: eso es lo que se apaga."
+      - texto: "Porque el 68000 tiene su propio regulador dentro."
+        porque: "No lo tiene: recibe los 5 V de la red VCC, que da IC15."
+      - texto: "Porque los dos 7805 están en paralelo y IC15 lo cubre todo."
+        porque: "No están en paralelo: sin IC17, la red VCCQ se queda sin sus 5 V."
+    escalera:
+      - "Busque en qué red está el 68000 (U1) y en cuál el Z80 (U6)."
+    solucion: "El 68000 está en la VCC (IC15). IC17 solo alimenta la VCCQ: RAM de trabajo, 315-5433, Z80, YM2612 y mezclador."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["megadrive#94", "megadrive#92", "cap08#67", "megadrive#127"]
+    ideas:
+      - { titulo: "El camino.", texto: "Adaptador, FB1, SW1, dos diodos y los 7805." }
+      - { titulo: "La polaridad.", texto: "El modelo 1 quiere el centro negativo." }
+      - { titulo: "El 78xx.", texto: "Unos 2 V de margen y la diferencia, en calor." }
+      - { titulo: "Dos redes.", texto: "IC15 da la VCC e IC17 la VCCQ: cada uno, media placa." }

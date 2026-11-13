@@ -1,0 +1,185 @@
+# «Consolas por dentro» · Master System II 2: la alimentación. El camino del esquema del manual de Sega (CN4 → ferrita
+# JV → interruptor → diodo D2 → 7805 IC8 → red VCC), el adaptador de 9 V, el 7805 atornillado al blindaje, la potencia
+# que disipa y su dropout (libro, sección 8.4). Fuentes: los datos de la consola (sms#n), ConsoleMods «Comparison of
+# Power Supplies» y el libro.
+leccion: consola-sms/sms-alimentacion
+
+libro:
+  "sms#16": "Regulador lineal de +5 V atornillado al blindaje, que hace de disipador"
+  "sms#17": "Pasa por la ferrita JV, el interruptor y el diodo D2 antes del regulador"
+  "sms#19": "Corta la entrada de continua antes del diodo y el regulador"
+  "sms#76": "el regulador 7805 (IC8) da los +5 V de toda la placa"
+  "sms#96": "Sega Master System: 9 V de continua, 1 A, punta negativa, clavija de 5,5 × 2,1 mm"
+  "sms#101": "Red VCC del esquema (alimentación)"
+  "sms#104": "Red VIN del esquema (alimentación): llega a C41, CP4, D2, IC8"
+  "cap08#65": "P_(\"disipada\")"
+  "cap08#66": "Más de la mitad de la energía se convierte en calor"
+  "cap08#67": "necesita unos 2 V de diferencia entre entrada y salida para funcionar"
+
+modelo:
+  valores:
+    V_in: { sim: "V_{entrada}", nombre: "tensión en la entrada del 7805", unidad: V, valor: 5 }
+    V_ad: { sim: "V_{adaptador}", nombre: "tensión del adaptador", unidad: V, valor: 9 }
+    V_o: { sim: "V_{salida}", nombre: "salida del 7805", unidad: V, valor: 5 }
+    I: { sim: "I", nombre: "corriente de la consola", unidad: A, valor: 0.5 }
+  calculos:
+    V_reg: { expr: "min(V_o, max(0, V_in - 2))", sim: "V_{salida}", nombre: "tensión de salida del 7805 (modelo)", unidad: V, cifras: 3 }
+    P_d: { expr: "(V_ad - V_o)*I", sim: "P_{disipada}", nombre: "potencia que disipa el 7805", unidad: W, cifras: 3 }
+
+tarjetas:
+  - id: explore-alim
+    tipo: explorar
+    titulo: "La alimentación en la foto"
+    texto: "Toque la toma de corriente, el interruptor y el regulador 7805."
+    libro: ["sms#17", "sms#19", "sms#16"]
+    requiere: { mover: [dc, power, reg] }
+    widget:
+      tipo: figura
+      consola: { maquina: sms }
+      zonas:
+        - { id: dc, hotspot: dc, rotulo: "Toma CN4", texto: "Entran 9 V de continua." }
+        - { id: power, hotspot: power, rotulo: "Interruptor", texto: "Corta la entrada antes del diodo y el regulador." }
+        - { id: reg, hotspot: reg, rotulo: "Regulador 7805", texto: "Atornillado al blindaje, que hace de disipador." }
+
+  - id: ordene-camino
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "El camino de la corriente"
+    texto: "Ordene el camino desde la toma hasta los 5 V de la placa, según el esquema del manual."
+    libro: ["sms#17", "sms#104", "sms#76"]
+    ordenar:
+      - "Toma CN4: 9 V de continua."
+      - "Ferrita JV."
+      - "Interruptor."
+      - "Diodo D2."
+      - "Regulador 7805 (IC8)."
+    exito: "Un solo regulador da los 5 V de toda la placa."
+    pistas:
+      - { texto: "El interruptor corta la entrada antes del diodo y el regulador." }
+    escalera:
+      - "El regulador es lo último; la toma, lo primero."
+      - "La ferrita va nada más entrar."
+    solucion: "CN4, ferrita JV, interruptor, D2 e IC8."
+
+  - id: prediga-adaptador
+    tipo: predecir
+    titulo: "El adaptador"
+    texto: "¿Qué adaptador pide el Master System?"
+    libro: ["sms#96", "sms#17"]
+    widget:
+      tipo: figura
+      consola: { maquina: sms }
+      zonas:
+        - { id: dc, hotspot: dc, rotulo: "Toma CN4" }
+    opciones:
+      - texto: "9 V de continua, 1 A, punta negativa."
+        bien: true
+        porque: "Lo dice la tabla de ConsoleMods: 9 V, 1 A, punta negativa y clavija de 5,5 × 2,1 mm."
+      - texto: "5 V de continua: los que usa la placa."
+        porque: "Los 5 V los hace el 7805 dentro; necesita más tensión en la entrada: 9 V."
+      - texto: "9 V de alterna."
+        porque: "Es de continua: la toma pasa directamente por la ferrita, el interruptor y un diodo hasta el 7805."
+    escalera:
+      - "El regulador necesita más tensión en la entrada que los 5 V que da."
+    solucion: "9 V de continua, 1 A, punta negativa."
+
+  - id: formula-disipa
+    tipo: formula
+    titulo: "Lo que sobra, en calor"
+    texto: "Sin contar lo que cae en el diodo, el 7805 quema la diferencia entre 9 V y 5 V por la corriente. Mueva la corriente."
+    libro: ["cap08#65", "cap08#66", "sms#96"]
+    ec: "cap08#65"
+    sustitucion: "({{V_ad}} − {{V_o}}) · {{I}} = {{P_d}}"
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0, max: 1, unidad: A, rotulo: "I" }
+      y: { min: 0, max: 5, unidad: W, rotulo: "P_{disipada}" }
+      curvas:
+        - { expr: "(V_ad - V_o)*i", color: naranja, rotulo: "P_{disipada}" }
+      marcas:
+        - { x: "I", y: "P_d", rotulo: "{{P_d}}" }
+      mandos: [ { valor: I, min: 0.05, max: 1, paso: 0.05, rotulo: "Corriente, I" } ]
+
+  - id: por-que-blindaje
+    tipo: porque
+    titulo: "Atornillado al blindaje"
+    texto: "¿Por qué el 7805 va atornillado a la chapa del blindaje?"
+    libro: ["sms#16", "cap08#66"]
+    widget:
+      tipo: figura
+      consola: { maquina: sms }
+      zonas:
+        - { id: reg, hotspot: reg, rotulo: "Regulador 7805" }
+    opciones:
+      - texto: "La chapa le hace de disipador: saca el calor que produce."
+        bien: true
+        porque: "Un regulador lineal convierte en calor lo que sobra: el blindaje hace de disipador."
+      - texto: "Para que no se mueva con los golpes."
+        porque: "Lo sujeta, sí, pero el motivo es el calor: el blindaje hace de disipador."
+      - texto: "Para conectarlo a los 9 V."
+        porque: "La entrada le llega por la placa, por el diodo D2. La chapa es para el calor."
+    escalera:
+      - "¿Qué hace un regulador lineal con la tensión que le sobra?"
+    solucion: "El blindaje es su disipador: saca el calor de lo que sobra."
+
+  - id: ajuste-dropout
+    tipo: ajuste
+    titulo: "¿Cuánta entrada necesita?"
+    texto: "El 78xx necesita unos 2 V más en la entrada que en la salida. Suba la entrada hasta que regule."
+    libro: ["cap08#67", "sms#16"]
+    inicio: { V_in: 5 }
+    widget:
+      tipo: grafica
+      x: { id: v, min: 0, max: 10, unidad: V, rotulo: "V_{entrada}" }
+      y: { min: 0, max: 6, unidad: V, rotulo: "V_{salida}" }
+      curvas:
+        - { expr: "min(V_o, max(0, v - 2))", color: azul, rotulo: "salida del 7805 (modelo)" }
+      marcas:
+        - { x: "V_in", y: "V_reg", rotulo: "{{V_reg}}" }
+      mandos: [ { valor: V_in, min: 5, max: 10, paso: 0.5, rotulo: "Entrada, V_{entrada}" } ]
+    ajuste:
+      valor: V_reg
+      min: 4.99
+      rotulo: "Salida del 7805"
+      bajo: "Todavía no regula: le faltan voltios en la entrada. Súbala."
+      dentro: "Ya da sus 5 V: la entrada supera la salida en unos 2 V."
+    exito: "Con unos 2 V de margen, el 7805 da sus 5 V."
+    escalera:
+      - "Súmele a los 5 V de salida el margen que pide el 78xx."
+    solucion: "Unos 7 V en la entrada: 5 V de salida más unos 2 V de margen."
+    comprobar:
+      - { con: { V_in: 7 }, V_reg: 5 }
+
+  - id: prediga-vcc
+    tipo: predecir
+    titulo: "Un solo regulador"
+    texto: "En el esquema, la red VCC del 7805 llega a IC1–IC9. Si el 7805 muere, ¿qué se apaga?"
+    libro: ["sms#101", "sms#76"]
+    widget:
+      tipo: figura
+      consola: { maquina: sms }
+      zonas:
+        - { id: reg, hotspot: reg, rotulo: "Regulador 7805" }
+        - { id: z80, hotspot: z80, rotulo: "Z80" }
+        - { id: vdp, hotspot: vdp, rotulo: "VDP" }
+    opciones:
+      - texto: "Toda la placa: todos los chips cuelgan de la red VCC."
+        bien: true
+        porque: "IC8 da los +5 V de toda la placa: la CPU, el VDP, las memorias y el codificador."
+      - texto: "Solo el sonido."
+        porque: "El sonido está dentro del VDP, que también cuelga de VCC. Se apaga todo."
+      - texto: "Media placa: hay otro regulador."
+        porque: "El SMS II tiene un solo 7805, IC8, para toda la placa."
+    escalera:
+      - "¿Cuántos reguladores hay en la placa?"
+    solucion: "Toda la placa: el único 7805 alimenta IC1–IC9."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["sms#17", "sms#96", "sms#16", "cap08#67"]
+    ideas:
+      - { titulo: "El camino.", texto: "CN4, ferrita, interruptor, diodo y 7805." }
+      - { titulo: "El adaptador.", texto: "9 V de continua y punta negativa." }
+      - { titulo: "El calor.", texto: "El blindaje hace de disipador del 7805." }
+      - { titulo: "Un regulador.", texto: "IC8 da los 5 V de toda la placa." }

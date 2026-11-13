@@ -28,7 +28,10 @@ test('Super Nintendo: sus pestañas, con «Un fotograma»', async ({ page }) => 
 });
 
 test('Super Nintendo: un chip de la foto salta al esquema y a la arquitectura', async ({ page }) => {
+  // (owner 13-11: the NTSC photo opens first; the PAL cara A, second, keeps the links to the PAL schematic)
   await page.goto('#/consolas/snes/foto');
+  await page.locator('button[data-foto="cara-a"]').click();
+  await expect(page.locator('button[data-foto="cara-a"]')).toHaveAttribute('aria-selected', 'true');
   await page.locator('button[data-hotspot="cpu"]').click();
   const ficha = page.locator('.foto-vista .ficha');
   await expect(ficha).toContainText('5A22');
@@ -61,8 +64,21 @@ test('Super Nintendo: cualquier componente se marca en la foto de su cara por su
 test('Super Nintendo: las fotos PAL dicen lo que son y la NTSC tiene sus chips y su crédito', async ({ page }) => {
   await page.goto('#/consolas/snes/foto');
   const tabs = page.getByRole('tablist', { name: 'Foto' });
-  await expect(tabs.getByRole('tab')).toHaveText(['Cara de componentes · PAL, sin piezas', 'Cara de componentes · NTSC', 'Cara de soldadura · PAL, incompleta']);
+  // (owner 13-11) the NTSC photo with its chips is the main tab and opens by default; the bare PAL face comes second
+  await expect(tabs.getByRole('tab')).toHaveText(['Cara de componentes · NTSC', 'Cara de componentes · PAL, sin piezas', 'Cara de soldadura · PAL, incompleta']);
+  await expect(page.locator('button[data-foto="ntsc"]')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('.foto-vista img')).toHaveAttribute('src', /foto-ntsc\.jpg$/);
+  await page.locator('button[data-foto="cara-a"]').click();
   await expect(page.locator('.foto-vista .credito')).toContainText('placa desnuda');
+  // the schematic's U1 still finds its PAL footprint on cara A, the second tab
+  await page.goto('#/consolas/snes/esquema/U1');
+  // (the button names the hotspot of the second photo: before the fix it looked only at the main photo's)
+  await page.locator('.esquema .ficha').getByRole('button', { name: 'Ver en la foto: CPU 5A22 (S-CPU)' }).click();
+  await expect(page.locator('button[data-foto="cara-a"]')).toHaveAttribute('aria-selected', 'true');
+  await expect(page.locator('.foto-vista .ficha')).toContainText('5A22');
+  // and the architecture finds the block of a cara A hotspot
+  await page.goto('#/consolas/snes/arquitectura/foto%3Acpu');
+  await expect(page.locator('.arquitectura .ficha').last()).toContainText('65C816');
   // no marker for a part nonSNES adds (P6) nor for an empty footprint of the solder side (R4); R30 keeps its marker
   for (const ref of ['P6', 'SW1', 'J3', 'R4', 'R109', 'C69']) {
     await page.goto(`#/consolas/snes/foto/${ref}`);

@@ -1,0 +1,154 @@
+# «Consolas por dentro» · Neo Geo AES 6: la BIOS, la región y el modo. La AES no lleva chip de bloqueo: el cartucho
+# trae los datos de las tres regiones y de las versiones AES y MVS, y es la BIOS (NEO-EP0, una TC531024P) la que dice
+# cuál usar; tras el reset los vectores vienen de la BIOS y el programa los pasa al cartucho escribiendo en $3A0013.
+# UniBIOS cambia región y modo. Fuentes: los datos de la consola (neogeo#n), The Cutting Room Floor «Neo Geo» y
+# ConsoleMods «Neo Geo:UNIVERSE BIOS (UniBIOS)».
+leccion: consola-neogeo/neogeo-bloqueo
+
+libro:
+  "neogeo#8": "ROM de máscara de 64K × 16 (128 KB) en $C00000: arranque, pantalla de SNK, pruebas y la tabla de vectores mientras el sistema no la cede al cartucho"
+  "neogeo#9": "Toshiba TC531000CP «000-L0»"
+  "neogeo#19": "Doble conector de 2 × 120 contactos"
+  "neogeo#87": "Los vectores ($000000–$00007F) vienen de la BIOS tras el reset y del cartucho cuando el programa escribe en $3A0013"
+  "neogeo#108": "El motivo principal para instalar UniBIOS es cambiar al arrancar la región y el modo, recreativa o consola"
+  "neogeo#109": "Con la región de EE. UU. algunos juegos quitan la sangre, y el modo recreativa activa opciones de juego extra en algunos juegos"
+  "neogeo#110": "El chip de la BIOS suele llevar escrito «531024»"
+  "neogeo#111": "El MVS es la recreativa y el AES, la consola doméstica"
+  "neogeo#112": "Todo juego de Neo Geo lleva los datos de sus versiones AES y MVS, y los de las tres regiones están en el cartucho"
+  "neogeo#113": "Un juego puesto en una región en la que no salió puede mostrar opciones sin usar, diferencias de juego o una traducción a medias"
+
+modelo:
+  valores: {}
+  calculos: {}
+
+tarjetas:
+  - id: explore-bios
+    tipo: explorar
+    titulo: "Sin chip de bloqueo"
+    texto: "La AES no lleva un CIC. Toque la BIOS y la ranura de cartucho."
+    libro: ["neogeo#8", "neogeo#19", "neogeo#112"]
+    requiere: { mover: [bios, cart] }
+    widget:
+      tipo: figura
+      consola: { maquina: neogeo }
+      zonas:
+        - { id: bios, hotspot: bios, rotulo: "BIOS NEO-EP0", texto: "128 KB: arranque, pantalla de SNK y pruebas." }
+        - { id: cart, hotspot: cart, rotulo: "Ranura de cartucho", texto: "El cartucho trae los datos de las tres regiones." }
+
+  - id: toque-531024
+    tipo: tocar
+    titulo: "Buscar la BIOS"
+    texto: "El chip de la BIOS suele llevar escrito «531024». Tóquelo."
+    libro: ["neogeo#110", "neogeo#8", "neogeo#9"]
+    widget:
+      tipo: figura
+      consola: { maquina: neogeo }
+      zonas:
+        - { id: bios, hotspot: bios, rotulo: "Chip largo, arriba a la derecha del centro" }
+        - { id: l0, hotspot: l0, rotulo: "Chip largo, en el centro" }
+        - { id: m68k, hotspot: 68k, rotulo: "Chip largo, arriba en el centro" }
+    tocar:
+      bien: [bios]
+      porque:
+        l0: "Es la ROM L0, una TC531000: la tabla de reducción de los sprites."
+        m68k: "Es el 68000, la CPU."
+    exito: "Toshiba TC531024P «NEO-EP0»: la BIOS."
+    escalera:
+      - "Hay dos ROM Toshiba parecidas: busque la que lleva «531024»."
+    solucion: "Arriba: Toshiba TC531024P «NEO-EP0»."
+
+  - id: prediga-region
+    tipo: predecir
+    titulo: "¿Quién decide la región?"
+    texto: "Un cartucho japonés en una AES europea. ¿Quién decide en qué región se juega?"
+    libro: ["neogeo#112", "neogeo#113"]
+    widget:
+      tipo: figura
+      consola: { maquina: neogeo }
+      zonas:
+        - { id: bios, hotspot: bios, rotulo: "BIOS" }
+        - { id: cart, hotspot: cart, rotulo: "Ranura de cartucho" }
+    opciones:
+      - texto: "La consola: el cartucho trae las tres regiones y la BIOS elige."
+        bien: true
+        porque: "Los datos de las tres regiones están en el cartucho: se juega en la región que dice la consola."
+      - texto: "Un chip de bloqueo, que no lo deja arrancar."
+        porque: "La AES no tiene chip de bloqueo: el cartucho trae los datos de todas las regiones."
+      - texto: "El cartucho: solo trae su región."
+        porque: "No: todo juego trae los datos de las tres regiones."
+    escalera:
+      - "¿Qué datos de región trae el cartucho?"
+    solucion: "La consola: el cartucho trae las tres regiones y se usa la de la BIOS."
+
+  - id: empareje-efectos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Región y modo"
+    texto: "Empareje cada ajuste con lo que puede cambiar en un juego."
+    libro: ["neogeo#109", "neogeo#113", "neogeo#108"]
+    emparejar:
+      - ["Región de EE. UU.", "Algunos quitan la sangre"]
+      - ["Modo recreativa", "Opciones de juego extra"]
+      - ["Una región en la que no salió", "Opciones sin usar"]
+      - ["UniBIOS", "Elegir región y modo al arrancar"]
+    exito: "La región y el modo no bloquean: cambian el juego."
+    pistas:
+      - { texto: "UniBIOS es una BIOS de recambio para cambiar región y modo." }
+    escalera:
+      - "El modo recreativa es el del MVS."
+    solucion: "EE. UU.: sin sangre. Recreativa: opciones extra. Otra región: opciones sin usar. UniBIOS: elegir al arrancar."
+
+  - id: prediga-vectores
+    tipo: predecir
+    titulo: "Al encender"
+    texto: "Tras el reset, el 68000 lee sus vectores en $000000. ¿De dónde salen?"
+    libro: ["neogeo#87", "neogeo#8"]
+    widget:
+      tipo: figura
+      consola: { maquina: neogeo }
+      zonas:
+        - { id: bios, hotspot: bios, rotulo: "BIOS" }
+        - { id: cart, hotspot: cart, rotulo: "Cartucho" }
+    opciones:
+      - texto: "De la BIOS; el cartucho los toma cuando el programa escribe en $3A0013."
+        bien: true
+        porque: "La BIOS arranca, enseña la pantalla de SNK y luego cede los vectores al cartucho."
+      - texto: "Del cartucho, siempre."
+        porque: "Tras el reset vienen de la BIOS; el cartucho solo los toma después."
+      - texto: "De la RAM de usuario."
+        porque: "La RAM se borra al apagar: los vectores vienen de la BIOS y luego del cartucho."
+    escalera:
+      - "¿Quién enseña la pantalla de SNK al encender?"
+    solucion: "De la BIOS tras el reset; del cartucho tras escribir en $3A0013."
+
+  - id: por-que-un-cartucho
+    tipo: porque
+    titulo: "Un cartucho, dos máquinas"
+    texto: "¿Por qué el mismo juego puede comportarse como de recreativa o de consola?"
+    libro: ["neogeo#112", "neogeo#111", "neogeo#108"]
+    widget:
+      tipo: figura
+      consola: { maquina: neogeo }
+      zonas:
+        - { id: bios, hotspot: bios, rotulo: "BIOS" }
+    opciones:
+      - texto: "El juego trae las dos versiones; la BIOS dice si es MVS o AES."
+        bien: true
+        porque: "Todo juego lleva los datos AES y MVS. Por eso UniBIOS puede cambiar el modo al arrancar."
+      - texto: "El cartucho tiene dos ROM y un interruptor."
+        porque: "No hace falta interruptor: el programa mira lo que dice la BIOS."
+      - texto: "No puede: son juegos distintos."
+        porque: "El mismo juego trae las dos versiones: el modo lo decide la BIOS."
+    escalera:
+      - "¿Qué versiones trae cada juego?"
+    solucion: "Cada juego lleva las versiones AES y MVS; la BIOS dice cuál."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["neogeo#112", "neogeo#8", "neogeo#87", "neogeo#108"]
+    ideas:
+      - { titulo: "Sin bloqueo.", texto: "La AES no comprueba el cartucho con un chip." }
+      - { titulo: "Todo dentro.", texto: "El cartucho trae tres regiones y dos modos." }
+      - { titulo: "La BIOS manda.", texto: "Dice la región y el modo, y arranca antes que el juego." }
+      - { titulo: "UniBIOS.", texto: "Cambiar la BIOS cambia la región y el modo." }

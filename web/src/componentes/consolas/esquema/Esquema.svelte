@@ -3,7 +3,7 @@
   // layer); a selected net stays highlighted when moving to another sheet.
   import { untrack } from 'svelte';
   import { app } from '../../../lib/estado.svelte';
-  import { cargarCapa, cargarDibujo, htmlKicad, nombreRed, normalizar, textoKicad, type CapaHoja, type DatosMaquina } from '../datos';
+  import { cargarCapa, cargarDibujo, hotspotsDe, htmlKicad, nombreRed, normalizar, textoKicad, type CapaHoja, type DatosMaquina } from '../datos';
   import { decodificar, type Dibujo } from './dibujo';
   import type { Impacto } from './capa';
   import type { Seleccion } from '../estado.svelte';
@@ -48,8 +48,9 @@
   // a photo hotspot or a diagram block selected in another tab becomes its schematic component
   const selE = $derived.by((): Seleccion | null => {
     if (sel?.tipo === 'foto' || sel?.tipo === 'bloque') {
-      const h = datos.hotspots.find((x) => (sel.tipo === 'foto' ? x.id === sel.id : x.bloque === sel.id));
-      const ref = h?.esquema.find((r) => datos.componentes[r]?.h.length);
+      // (any photo's hotspot: the one with the schematic link may not be on the main photo)
+      const hs = hotspotsDe(datos).filter((x) => (sel.tipo === 'foto' ? x.id === sel.id : x.bloque === sel.id));
+      const ref = hs.flatMap((h) => h.esquema).find((r) => datos.componentes[r]?.h.length);
       return ref ? { tipo: 'componente', id: ref } : null;
     }
     return sel;
@@ -192,8 +193,8 @@
     return out;
   });
   const fotoDe = $derived(comp ? datos.componentes[comp]?.f : undefined);
-  const hotspotNombre = $derived(fotoDe ? datos.hotspots.find((h) => h.id === fotoDe)?.nombre : undefined);
-  const bloqueDe = $derived(fotoDe ? datos.hotspots.find((h) => h.id === fotoDe)?.bloque : undefined);
+  const hotspotNombre = $derived(fotoDe ? hotspotsDe(datos).find((h) => h.id === fotoDe)?.nombre : undefined);
+  const bloqueDe = $derived(fotoDe ? hotspotsDe(datos).find((h) => h.id === fotoDe)?.bloque : undefined);
   const grupoRedes = $derived(redSel?.g ? datos.redes.filter((r) => r.g === redSel.g) : []);
   // photos that can show this net's copper (Game Boy traces) or this part's footprint (Mega Drive PCB)
   const conPista = $derived(redSel ? (datos.fotos ?? []).some((f) => f.trazas_redes?.includes(redSel.n)) : false);

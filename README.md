@@ -833,7 +833,7 @@ pestañas enlazadas entre sí:
   sin piezas» (un escaneo de la placa desnuda: sus recuadros marcan dónde va cada pieza) y «Cara de soldadura · PAL,
   incompleta»; no llevan marcador las piezas que no están en ellas (P6 y SW1, que añade nonSNES, en la cara A; J3 y
   las 15 huellas vacías de la cara B: R4–R6, R24, R32, R42, R45, R47, R108–R111, C4, C5 y C69, comprobadas en la
-  foto). Tercera pestaña, **«Cara de componentes · NTSC»**: la foto del propietario de una SNS-CPU-RGB-01 con todos sus
+  foto). Pestaña **«Cara de componentes · NTSC»** (la primera y la que se abre desde el 13-11; antes, la segunda): la foto del propietario de una SNS-CPU-RGB-01 con todos sus
   chips (Wikimedia Commons, File:SNES-CPU-RGB01_01.jpg, Yaca2671, CC BY-SA 3.0; en «Fuentes», con el enlace, la
   licencia y los cambios: recomprimida a calidad 78, 1206 × 1046 px, sin recortar), con 22 piezas colocadas a mano
   por las marcas y la serigrafía que se leen (S-CPU B, S-PPU1, S-PPU2 C, S-WRAM, S-DSP A, F411A, D21G4, S-RGB,
@@ -1914,7 +1914,8 @@ teclado, arrastrando, axe en los tres temas, 360 px, movimiento reducido, el pro
 lección de catálogo `web/tests/lecciones11-catalogo/cap01/sec-1.5.yaml`, ocho modelos equivocados a propósito que el
 simulador detecta, las tolerancias y las reglas nuevas del generador) y `tests/lecciones11-catalogo.spec.ts` (esa
 lección en el navegador, servida desde la prueba: cada dibujo y gráfica, cada mando con el teclado, axe en los tres
-temas, 360 px).
+temas, 360 px; la prueba de los mandos va en tres partes y comprueba que el deslizador conserva el foco tras cada
+tecla: un asa del esquema que desaparecía con su pieza, «rs485» con 0 cargas, dejaba la prueba esperando).
 `tests/lecciones11-practica.spec.ts` (las tarjetas practicables y el índice al día, el estado en que se preguntan, y
 en el navegador una sección practicada solo con su lección: dominio y XP con el id de la tarjeta, una vez).
 `tests/lecciones11-recorrido.spec.ts` recorre **cada lección publicada** a partir de sus datos (paramétrico; filtre
@@ -2002,8 +2003,9 @@ principios de diseño de Brilliant (una idea por pantalla, el dibujo que se toca
   tarjetas de «ajuste» y «diseño» de la 1.2 lo tienen solo por usar el widget de circuito.
 - **Una idea por pantalla.** Arriba el dibujo (o la fórmula), debajo el texto corto y después lo que se responde. El
   generador avisa (no para) con `lib/leccion12/una-idea.ts` de una tarjeta de más de 40 palabras, de más de dos frases o
-  sin nada que mirar; en Fundamentos hoy daría 407 avisos en 1149 tarjetas (293 de preguntas solo con opciones): es
-  trabajo de los redactores.
+  sin nada que mirar. Fundamentos (capítulos 0–6) está revisado para la 1.2: 0 avisos en 1168 tarjetas, cada opción
+  con su `porque`, cada pregunta con `escalera` y `solucion`, y 22 de sus 100 lecciones con un paso práctico (simular,
+  diseño, ajuste, avería, dibujar o banco con su ficha del cuaderno).
 - **Ritmo** (`lib/leccion12/ritmo.ts`). Barra de progreso por tramos, «Continuar» fijo abajo y abierto al interactuar
   (como en la 1.1), las tarjetas entran deslizándose (sin movimiento con «reducir movimiento»), un toque corto de
   vibración y sonido en cada comprobación (también en las que ya no cuentan; en el escritorio no vibra) y **las tarjetas
@@ -2343,13 +2345,18 @@ averías que se buscan con el multímetro). Sus datos no salen de una sección d
 fotos y piezas identificadas, la arquitectura y el decodificador, las fuentes), de los capítulos del libro con los que
 se relacionan y, en las averías, de fuentes externas citadas en cada tarjeta (ConsoleMods, Fabien Sanglard, SNESdev…),
 con su título y su enlace. Cada tarjeta enseña sus fuentes debajo; no hay lección «por pasos» ni prueba de nivel, y
-el lector del libro no las lista. Hechas en la 1.2: las siete de la Super Nintendo y las siete de la NES; las demás
-consolas siguen el mismo patrón (contenido/lecciones11/GUIA.md §12).
+el lector del libro no las lista. Hechas en la 1.2: las siete de la Super Nintendo, la NES, la Mega Drive, el Master
+System II y la Neo Geo AES (35); las de la Game Boy y la Game Boy Color siguen el mismo patrón
+(contenido/lecciones11/GUIA.md §12). Las consolas sin bloqueo regional por chip lo explican con lo que tienen: el TMSS
+y los puentes de región de la Mega Drive, la cabecera «TMR SEGA» que pide la ROM de arranque del Master System y la
+BIOS que fija región y modo en la Neo Geo.
 
 La foto NTSC de la Super Nintendo (placa SNS-CPU-RGB-01 con todos sus chips; Yaca2671, Wikimedia Commons, CC BY-SA 3.0)
 está también en el explorador, como «Cara de componentes · NTSC», con 22 piezas colocadas por las marcas que se leen
 en ella. Las dos fotos PAL de nonSNES dicen ahora lo que son (la placa desnuda y una cara de soldadura con huellas
-vacías) y no marcan piezas que no se ven en ellas.
+vacías) y no marcan piezas que no se ven en ellas. Desde el 13-11 (propietario) la foto NTSC es la principal: el
+explorador abre en ella; la cara A PAL desnuda es la segunda pestaña, con sus recuadros de «dónde va la pieza» y su
+enlace al esquema PAL (desde el esquema, «Ver en la foto» abre la cara A).
 
 ## Cursos, XP y logros (0.11)
 
