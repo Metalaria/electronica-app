@@ -18,6 +18,16 @@
   const lado = $derived(ladoAjuste(a, valores));
   const pos = (v: number) => Math.max(0, Math.min(100, ((v - a.escala.min) / (a.escala.max - a.escala.min)) * 100));
   const texto = $derived(lado === 'dentro' ? a.dentro : lado === 'bajo' ? a.bajo : a.alto);
+  // (motor12e: a band open on one side reaches the meter's end on that side)
+  const desde = $derived(a.banda.min ?? a.escala.min);
+  const hasta = $derived(a.banda.max ?? a.escala.max);
+  const banda = $derived(
+    a.banda.min != null && a.banda.max != null
+      ? `banda de ${formatear(mag, a.banda.min)} a ${formatear(mag, a.banda.max)}`
+      : a.banda.min != null
+        ? `banda: desde ${formatear(mag, a.banda.min)} hacia arriba`
+        : `banda: hasta ${formatear(mag, a.banda.max)}`,
+  );
 </script>
 
 <div class="a12 ajuste" data-ajuste data-lado={lado}>
@@ -25,8 +35,8 @@
     <span class="a12-suave"><TextoVivo texto={a.rotulo} {valor} /></span>
     <strong class={lado === 'dentro' ? 'a12-ok' : ''} data-medida-ajuste>{formatear(mag, x)}</strong>
   </div>
-  <div class="escala" role="img" aria-label={`${textoPlano(a.rotulo, valor)}: ${formatear(mag, x)}; banda de ${formatear(mag, a.banda.min)} a ${formatear(mag, a.banda.max)}`}>
-    <span class="banda" style:left={`${pos(a.banda.min)}%`} style:width={`${Math.max(1, pos(a.banda.max) - pos(a.banda.min))}%`}></span>
+  <div class="escala" role="img" aria-label={`${textoPlano(a.rotulo, valor)}: ${formatear(mag, x)}; ${banda}`} data-banda-abierta={a.banda.min == null ? 'abajo' : a.banda.max == null ? 'arriba' : null}>
+    <span class="banda" class:sin-min={a.banda.min == null} class:sin-max={a.banda.max == null} style:left={`${pos(desde)}%`} style:width={`${Math.max(1, pos(hasta) - pos(desde))}%`}></span>
     <span class="aguja" class:dentro={lado === 'dentro'} style:left={`${pos(x)}%`}></span>
   </div>
   <div class="extremos a12-suave" aria-hidden="true">
@@ -62,6 +72,12 @@
     background: var(--v11-bien-tinte);
     border-left: 2px solid var(--v11-bien);
     border-right: 2px solid var(--v11-bien);
+  }
+  .banda.sin-min {
+    border-left: none;
+  }
+  .banda.sin-max {
+    border-right: none;
   }
   .aguja {
     position: absolute;

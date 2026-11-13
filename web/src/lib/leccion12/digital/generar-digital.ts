@@ -9,6 +9,7 @@ import type { Mando, Tarjeta, Texto } from '../../leccion11/tipos';
 import { circuitoSecuencial, cronograma, entradasTabla, iniciar, mascaraDe, minimoPuertas, pinesEntrada, pinesPermitidos, PUERTAS, salidasDe, senales, sondear, tablaVerdad, TIPOS_PIEZA, type CircuitoLogico, type EntradaLogica, type FalloLogico, type Lectura, type Nivel, type PiezaLogica, type Punto, type SalidaLogica, type TipoPieza, type TipoPuerta } from './logica';
 import { esperadoTabla, NOMBRE_FALLO_LOGICO, nombrePieza, ondaDe } from './motor-digital';
 import type { ActividadDigital, AveriaLogica, CronogramaLogica, DibujarDigital, DisenoLogico, FalloLogicoPaso, FuenteFigura, PuntoSonda, TablaPaso, Tocar, WidgetFigura, WidgetLogica, ZonaFigura } from './tipos';
+import { CODIGO_COL, CODIGO_LINEA, CODIGO_MARGEN } from './tipos';
 
 /** What the generator gets from the book and the app's public folder to resolve a figure (the script passes it). */
 export interface RecursosLibro {
@@ -49,16 +50,60 @@ const planoHtml = (h: string) => h.replace(/<[^>]+>/g, '').replace(/&nbsp;/g, ' 
 
 export function widgetFiguraDe(x: Record<string, unknown>, c: ContextoDigital): WidgetFigura | null {
   const { e } = c;
-  for (const k of Object.keys(x)) if (!['tipo', 'figura', 'imagen', 'consola', 'zonas', 'mandos'].includes(k)) e(`«widget.${k}»: clave desconocida`);
+  for (const k of Object.keys(x)) if (!['tipo', 'figura', 'imagen', 'consola', 'codigo', 'resaltar', 'zonas', 'mandos'].includes(k)) e(`«widget.${k}»: clave desconocida`);
   if (Array.isArray(x.mandos) && x.mandos.length) e('«widget.mandos»: una figura no lleva mandos (se tocan sus zonas)');
-  const fuentes = ['figura', 'imagen', 'consola'].filter((k) => x[k] != null);
+  const fuentes = ['figura', 'imagen', 'consola', 'codigo'].filter((k) => x[k] != null);
   if (fuentes.length !== 1) {
-    e('«widget»: una figura lleva una de figura (fig-13.5 o «cap13#64»), imagen (img/x.jpg) o consola ({ maquina, foto })');
+    e('«widget»: una figura lleva una de figura (fig-13.5 o «cap13#64»), imagen (img/x.jpg), consola ({ maquina, foto }) o codigo («apK#10» o { lenguaje, texto })');
     return null;
   }
+  if (x.resaltar != null && x.codigo == null) e('«widget.resaltar»: solo con «codigo» (las líneas resaltadas de un listado)');
   let fuente: FuenteFigura | null = null;
   let hotspots: Record<string, unknown>[] = [];
-  if (x.figura != null) {
+  if (x.codigo != null) {
+    // 1.2 (motor12e, autor-digital-C, autor-digital-D): a code listing — a book «codigo» block («apK#10») or the
+    // author's own text — drawn in monospace, with highlighted lines and zones of whole lines
+    let lenguaje = '';
+    let texto = '';
+    let alt = 'Listado de código';
+    if (typeof x.codigo === 'string') {
+      const m = /^([a-zA-Z0-9-]+)#(\d+)$/.exec(x.codigo);
+      const bl = m ? c.bloques(m[1]!)?.[Number(m[2])] : null;
+      if (!esObjeto(bl) || bl.t !== 'codigo') {
+        e(`«widget.codigo»: «${x.codigo}» no es un bloque de código del libro («apK#10»)`);
+        return null;
+      }
+      lenguaje = String(bl.lenguaje ?? '');
+      texto = String(bl.texto ?? '');
+      alt = `Listado del libro${lenguaje ? ` (${lenguaje})` : ''}`;
+    } else if (esObjeto(x.codigo)) {
+      for (const k of Object.keys(x.codigo)) if (!['lenguaje', 'texto'].includes(k)) e(`«widget.codigo.${k}»: clave desconocida`);
+      lenguaje = typeof x.codigo.lenguaje === 'string' ? x.codigo.lenguaje : '';
+      texto = typeof x.codigo.texto === 'string' ? x.codigo.texto : '';
+      if (lenguaje) alt = `Listado (${lenguaje})`;
+    }
+    const lineas = texto.replace(/\t/g, '    ').replace(/\s+$/, '').split('\n').map((l) => l.replace(/\s+$/, ''));
+    if (!texto.trim()) {
+      e('«widget.codigo»: un bloque del libro («apK#10») o { lenguaje, texto } con el listado');
+      return null;
+    }
+    if (lineas.length > 40) e(`«widget.codigo»: ${lineas.length} líneas (como mucho 40: cite el trozo que importa con { lenguaje, texto })`);
+    const cols = Math.max(...lineas.map((l) => [...l].length), 1);
+    if (cols > 72) c.aviso(`«widget.codigo»: una línea de ${cols} caracteres; en un teléfono el listado sale muy pequeño (ámplielo o pártala)`);
+    const resaltar: number[] = [];
+    if (x.resaltar != null) {
+      if (!Array.isArray(x.resaltar) || !x.resaltar.every((n) => Number.isInteger(n) && (n as number) >= 1 && (n as number) <= lineas.length)) e(`«widget.resaltar»: números de línea, de 1 a ${lineas.length}`);
+      else resaltar.push(...[...new Set(x.resaltar as number[])].sort((p, q) => p - q));
+    }
+    fuente = {
+      origen: 'codigo',
+      src: '',
+      vista: [0, 0, cols * CODIGO_COL + 2 * CODIGO_MARGEN, lineas.length * CODIGO_LINEA + 2 * CODIGO_MARGEN],
+      vectorial: false,
+      alt,
+      codigo: { lenguaje, lineas, resaltar },
+    };
+  } else if (x.figura != null) {
     const ref = String(x.figura);
     let b: Record<string, unknown> | null = null;
     const m = /^([a-zA-Z0-9-]+)#(\d+)$/.exec(ref);
@@ -137,21 +182,37 @@ export function widgetFiguraDe(x: Record<string, unknown>, c: ContextoDigital): 
   }
   const [vx, vy, vw, vh] = fuente.vista;
   const zonas: ZonaFigura[] = [];
-  if (!Array.isArray(x.zonas) || !x.zonas.length || x.zonas.length > MAX_ZONAS) e(`«widget.zonas»: de 1 a ${MAX_ZONAS} { id, rotulo, rect | poligono | hotspot }`);
+  const cod = fuente.codigo;
+  // (a code listing may have no zones: it is then the visual of a question, with its highlighted lines)
+  if (cod && (x.zonas == null || (Array.isArray(x.zonas) && !x.zonas.length))) {
+    if (!cod.resaltar.length) c.aviso('«widget.codigo» sin zonas ni «resaltar»: ¿qué líneas importan?');
+  } else if (!Array.isArray(x.zonas) || !x.zonas.length || x.zonas.length > MAX_ZONAS) e(`«widget.zonas»: de 1 a ${MAX_ZONAS} { id, rotulo, ${cod ? 'lineas' : 'rect | poligono | hotspot'} }`);
   else
     x.zonas.forEach((z: unknown, k: number) => {
       const d = `widget.zonas ${k + 1}`;
       const o = esObjeto(z) ? z : {};
-      for (const q of Object.keys(o)) if (!['id', 'rotulo', 'texto', 'rect', 'poligono', 'hotspot'].includes(q)) e(`«${d}.${q}»: clave desconocida`);
+      for (const q of Object.keys(o)) if (!['id', 'rotulo', 'texto', 'rect', 'poligono', 'hotspot', 'lineas'].includes(q)) e(`«${d}.${q}»: clave desconocida`);
       const id = String(o.id ?? o.hotspot ?? '');
       if (!ID_ZONA.test(id)) e(`«${d}.id»: minúsculas, cifras y guiones`);
       if (zonas.some((y) => y.id === id)) e(`«${d}.id»: «${id}» repetido`);
-      const formas = ['rect', 'poligono', 'hotspot'].filter((q) => o[q] != null);
-      if (formas.length !== 1) return e(`«${d}»: una de rect [x, y, ancho, alto], poligono [[x, y], …] u hotspot (de la consola)`);
+      const formas = ['rect', 'poligono', 'hotspot', 'lineas'].filter((q) => o[q] != null);
+      if (cod ? formas.join() !== 'lineas' : formas.length !== 1 || formas[0] === 'lineas')
+        return e(cod ? `«${d}»: en un listado, una zona son líneas: lineas [primera, última] (o [una])` : `«${d}»: una de rect [x, y, ancho, alto], poligono [[x, y], …] u hotspot (de la consola)`);
       const zona: ZonaFigura = { id, rotulo: [], rects: [] };
       let rotuloDefecto = '';
       let textoDefecto = '';
-      if (o.rect != null) {
+      if (cod) {
+        const l = o.lineas;
+        const ls = Array.isArray(l) ? l : [l];
+        if (!(ls.length === 1 || ls.length === 2) || !ls.every((n) => Number.isInteger(n) && (n as number) >= 1 && (n as number) <= cod.lineas.length) || (ls.length === 2 && (ls[1] as number) < (ls[0] as number)))
+          e(`«${d}.lineas»: [primera, última] (o [una]) entre 1 y ${cod.lineas.length}`);
+        else {
+          const a0 = ls[0] as number;
+          const a1 = (ls[1] ?? ls[0]) as number;
+          zona.lineas = [a0, a1];
+          zona.rects.push([CODIGO_MARGEN / 2, CODIGO_MARGEN + (a0 - 1) * CODIGO_LINEA, vw - CODIGO_MARGEN, (a1 - a0 + 1) * CODIGO_LINEA]);
+        }
+      } else if (o.rect != null) {
         const r = o.rect;
         if (!Array.isArray(r) || r.length !== 4 || !r.every(esNumero) || !((r[2] as number) > 0 && (r[3] as number) > 0)) e(`«${d}.rect»: [x, y, ancho, alto] en las coordenadas de la figura`);
         else zona.rects.push(r as [number, number, number, number]);
@@ -175,8 +236,8 @@ export function widgetFiguraDe(x: Record<string, unknown>, c: ContextoDigital): 
       // inside the picture
       const puntos = [...zona.rects.flatMap((r) => [[r[0], r[1]], [r[0] + r[2], r[1] + r[3]]]), ...(zona.poligono ?? [])];
       if (puntos.some(([px, py]) => px! < vx - 1e-6 || py! < vy - 1e-6 || px! > vx + vw + 1e-6 || py! > vy + vh + 1e-6)) e(`«${d}»: se sale de la figura (${vx}…${vx + vw} × ${vy}…${vy + vh})`);
-      // big enough to touch on a phone (the list of zones is the alternative: a warning)
-      if (puntos.length) {
+      // big enough to touch on a phone (the list of zones is the alternative: a warning; not for a listing's lines)
+      if (puntos.length && !cod) {
         const xs = puntos.map((p) => p[0]!);
         const ys = puntos.map((p) => p[1]!);
         const lado = Math.min(Math.max(...xs) - Math.min(...xs), Math.max(...ys) - Math.min(...ys));
@@ -269,7 +330,7 @@ export function widgetLogicaDe(x: Record<string, unknown>, c: ContextoDigital, o
       else p.modulo = o.modulo as number;
     }
     if (o.inicial != null) {
-      if (!['d', 'jk', 't', 'contador'].includes(tipo) || !Number.isInteger(o.inicial) || (o.inicial as number) < 0 || (o.inicial as number) >= (tipo === 'contador' ? (p.modulo ?? 2 ** (p.bits ?? 4)) : 2)) e(`«${d}.inicial»: el estado al encender de un biestable (0 o 1) o de un contador`);
+      if (!['d', 'jk', 't', 'contador', 'latch'].includes(tipo) || !Number.isInteger(o.inicial) || (o.inicial as number) < 0 || (o.inicial as number) >= (tipo === 'contador' ? (p.modulo ?? 2 ** (p.bits ?? 4)) : 2)) e(`«${d}.inicial»: el estado al encender de un biestable (0 o 1) o de un contador`);
       else p.inicial = o.inicial as number;
     }
     if (o.rotulo != null) p.rotulo = c.texto(o.rotulo, `${d}.rotulo`, true) ?? [];
@@ -333,7 +394,7 @@ function cronogramaDe(x: unknown, circuito: CircuitoLogico, c: ContextoDigital):
     e('«widget.cronograma»: { ciclos, estimulo, senales }');
     return null;
   }
-  for (const k of Object.keys(x)) if (!['ciclos', 'estimulo', 'senales'].includes(k)) e(`«widget.cronograma.${k}»: clave desconocida`);
+  for (const k of Object.keys(x)) if (!['ciclos', 'estimulo', 'senales', 'etiquetas'].includes(k)) e(`«widget.cronograma.${k}»: clave desconocida`);
   const ciclos = Number.isInteger(x.ciclos) ? (x.ciclos as number) : 0;
   if (ciclos < 2 || ciclos > 16) e('«widget.cronograma.ciclos»: de 2 a 16');
   const estimulo: Record<string, Nivel[]> = {};
@@ -354,7 +415,14 @@ function cronogramaDe(x: unknown, circuito: CircuitoLogico, c: ContextoDigital):
   for (const s of sen) if (!validas.has(s)) e(`«widget.cronograma.senales»: «${s}» no es una señal del circuito`);
   if (!circuito.entradas.some((y) => y.reloj) && !Object.keys(estimulo).length) e('«widget.cronograma»: sin reloj ni estímulo no cambia nada');
   if (ciclos >= 2 && !cronograma(circuito, ciclos, estimulo).estable) e('«widget.cronograma»: el circuito no se asienta en algún tramo');
-  return { ciclos, estimulo, senales: sen };
+  // (motor12e, autor-digital-E: the cycles' names — one bit per cycle of a UART frame, a CAN arbitration)
+  let etiquetas: string[] | undefined;
+  if (x.etiquetas != null) {
+    const xs = Array.isArray(x.etiquetas) ? x.etiquetas.map((q) => (typeof q === 'number' ? String(q) : q)) : null;
+    if (!xs || xs.length !== ciclos || !xs.every((q) => typeof q === 'string' && q.trim() !== '' && q.trim().length <= 6)) e(`«widget.cronograma.etiquetas»: ${ciclos} nombres de hasta 6 caracteres, uno por ciclo`);
+    else etiquetas = xs.map((q) => (q as string).trim());
+  }
+  return { ciclos, estimulo, senales: sen, ...(etiquetas ? { etiquetas } : {}) };
 }
 
 // ------------------------------------------------------------------ step types

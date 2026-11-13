@@ -56,6 +56,7 @@ function tamano(p: PiezaLogica): { w: number; h: number; ent: number[]; sal: num
   switch (p.tipo) {
     case 'd':
     case 't':
+    case 'latch':
       return { w: 60, h: 60, ent: [16, 44], sal: [16, 44] };
     case 'jk':
       return { w: 60, h: 60, ent: [14, 46, 30], sal: [16, 44] };

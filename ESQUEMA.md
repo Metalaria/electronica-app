@@ -3666,6 +3666,29 @@ Still `Leccion11.version` 1 and **no stored state** (no key, no migration): addi
   `FiguraZonas`, `Logica`, `Cronograma`, `TablaVerdad`, `PasosDigitales` (the step panels, routed by `Actividad12`),
   `digital12.css`.
 
+### Engine additions of 1.2 motor12e (GUIA §3.2, §5.2, §10.5, §11.9)
+
+Still `Leccion11.version` 1 and **no stored state**: optional fields only, every earlier lesson's JSON is unchanged.
+- `Curva` adds `x?` (expression) and `param?` {id, min, max (expressions, as strings), muestras} — a parametric curve
+  whose `expr` is y; `palitos?` {paso} — stems at x = k·paso; `oculta?: true` — hidden while the widget hides its
+  readings. `Marca` adds `oculta?: true`. `Grafica` (and so `WidgetGrafica` and a circuit's `grafica`) adds
+  `aspecto?: 'igual'`. A source `ocultar: curvas` is stored as `ocultar: true` with every curve and mark `oculta`.
+- `CronogramaLogica` adds `etiquetas?: string[]` (one name per cycle, ≤ 6 characters). `TipoPieza` adds `latch`
+  (pins D, EN; outputs `id.q`, `id.nq`; level-sensitive, sequential).
+- `FuenteFigura.origen` may be `'codigo'` (src '', `codigo` {lenguaje, lineas, resaltar}; `vista` in units of
+  `CODIGO_COL` per character and `CODIGO_LINEA` per line plus `CODIGO_MARGEN`); `ZonaFigura` adds `lineas?` [first,
+  last] (its `rects` cover those lines); a listing may have no zones.
+- `Ajuste.banda` is a `Rango` whose `min` or `max` may be missing (an open band); the open side's advice (`bajo` or
+  `alto`) is then `[]`; `escala` defaults to what the controls reach (open band) or the band ± 3 widths (closed).
+- Expression language (`componentes/calculadoras/expresion.ts`, lessons only like `wright`): `erfc` (Chebyshev fit,
+  relative error < 1,2 × 10⁻⁷), `erf`, `ruido(x, semilla)` (a hash of the double's bits and the seed, Box–Muller:
+  standard normal, deterministic).
+- Generator: book numbers are scanned with the pieces of each cited block joined by « | » (`textoDeBloque(b, sep)`),
+  quotes still with a space; `ec: "parte#n.k"` takes the k-th equation nested in block n; `Contexto12.listas` (the
+  values a card's `lista` controls move). Axis ticks (`lib/leccion11/ejes.ts`): `cifrasEje` raises the significant
+  figures until neighbouring labels differ; `geometriaGrafica(x, y, tam, aspecto)` returns the axes as drawn (`x`,
+  `y`, one widened for `aspecto: 'igual'`).
+
 ## Práctica «Aprender haciendo» (0.10, `web/src/componentes/practica/`, data in `web/public/libro/practica/`)
 
 Interactive items placed in the lessons (and in Repaso's «Aprender haciendo» and under exercises), generated only

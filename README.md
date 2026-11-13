@@ -2061,6 +2061,26 @@ probados: `web/tests/lecciones12-catalogo/cap01/sec-1.4.yaml`):
     avería por bisección (`adaptativa: true`).
   - Pruebas: `tests/lecciones12-digital-unidad.spec.ts` (simulación, dibujo, generador y motor, en Node) y
     `tests/lecciones12-digital-navegador.spec.ts` (cada tarjeta con teclado y ratón, axe; 360 px en oscuro y sepia).
+- **Peticiones del motor que no son esquemas (1.2, motor12e)** (guía: `contenido/lecciones11/GUIA.md` §3.2, §5.2,
+  §10.2–10.5, §11.7 y §11.9; ejemplos probados: `web/tests/lecciones12-catalogo/cap01/sec-1.12.yaml`):
+  - gráficas: **curvas paramétricas** x(p), y(p) (Nyquist, lugar de las raíces, círculo unidad, XY de I y Q, carta de
+    Smith) con **`aspecto: igual`** (un círculo sale redondo), **secuencias en palitos** y, en una predicción,
+    **`ocultar: curvas`** (u `oculta` por curva o marca): las curvas no salen hasta responder. Las marcas de los ejes
+    llevan las cifras que hagan falta para no repetirse (99,8–100,4 mV ya no da «100 mV» en todas).
+  - `ajuste` con **banda abierta** (solo `max` o solo `min`) y con **varios mandos**.
+  - lenguaje del modelo: `erfc`, `erf` y **`ruido(x, semilla)`** (normal, determinista); `asin`, `acos` y `log2`
+    ya existían y ahora están en la guía.
+  - números de las tablas del libro, **celda a celda** (las celdas vecinas ya no se juntan en «5 100»); `formula` con
+    una ecuación de dentro de una «tarjeta» de repaso (`ec: "cap53#338.1"`); nombres de los ciclos en el cronograma;
+    `simular` sin circuito dice «se calcula con el modelo»; `diseno` con un mando de `lista` no avisa de serie E; la
+    coma decimal que parte unos `nombres` se explica en el error.
+  - recorrido (`tests/lecciones11-recorrido.spec.ts`): un `diseno` se resuelve con una posición que aprueba con las
+    tolerancias, una `averia` al azar se sigue por lo que mide el multímetro, un `ajuste` busca entre todos sus mandos,
+    y `EPA_RECORRER_CATALOGO=1` recorre las lecciones de catálogo de 1.2.
+  - un **listado de código** como figura (un bloque `codigo` del libro o un trozo propio, con líneas resaltadas y
+    zonas de líneas que se tocan) y el **cerrojo D** (`latch`) en los circuitos lógicos.
+  - Pruebas: `tests/lecciones12-motor12e.spec.ts` (en Node) y `tests/lecciones12-motor12e-navegador.spec.ts`
+    (dibujo, curvas ocultas y su salida, banda abierta, ciclos con nombre, listado; axe a 360 px en oscuro).
 - **Esquemas nuevos (1.2, motor12b)**, a petición de los autores de Análisis de circuitos (catálogo en
   `contenido/lecciones11/GUIA.md` §5.4): `fuente-controlada` (una tensión de control manda una fuente dependiente,
   dibujada como un rombo: VCCS g_m·v con r_o en paralelo o VCVS A_v·v con r_o en serie, y su carga; secciones 22.11 y

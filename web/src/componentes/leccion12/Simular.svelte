@@ -99,7 +99,7 @@
   </div>
   <p class="a12-suave" id={`${id}-ayuda`}>
     {#if malo}<span class="a12-no">No es un número.</span>{/if}
-    Escriba su estimación en {a.unidad || 'la unidad'}; puede usar prefijos (4,7 k; 150 m). Después, «Comprobar» la fija y se simula.
+    Escriba su estimación en {a.unidad || 'la unidad'}; puede usar prefijos (4,7 k; 150 m). Después, «Comprobar» la fija y {a.medida && t.widget?.tipo === 'circuito' ? 'se simula' : 'se calcula con el modelo'}.
   </p>
 
   {#if cerrada && ea.valor != null}

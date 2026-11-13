@@ -44,12 +44,15 @@ export function marcasEje(e: Pick<Eje, 'min' | 'max' | 'escala'>): number[] {
   return out;
 }
 
-/** Label of a tick: the value with its unit; on a log axis a bare power of ten («10¹⁰», not «1 × 10¹⁰»). */
-export function etiquetaMarca(v: number, e: Pick<Eje, 'unidad' | 'escala'>): string {
+/**
+ * Label of a tick: the value with its unit, to `cifras` significant figures (2 unless the axis needs more: see
+ * `cifrasEje`); on a log axis a bare power of ten («10¹⁰», not «1 × 10¹⁰»).
+ */
+export function etiquetaMarca(v: number, e: Pick<Eje, 'unidad' | 'escala'>, cifras = 2): string {
   if (v === 0) return '0';
   // (review 11c: «1 veces» on the axis of cap04/sec-4.9)
   if (e.unidad === 'veces' && Math.abs(v - 1) < 1e-12) return '1 vez';
-  const t = formatoValor(v, e.unidad, 2, true);
+  const t = formatoValor(v, e.unidad, cifras, true);
   return e.escala === 'log' ? t.replace(/^1\s×\s10(?=[⁰¹²³⁴⁵⁶⁷⁸⁹⁻])/u, '10') : t;
 }
 
@@ -64,6 +67,18 @@ export function anchoEtiqueta(t: string, tam: number = TAM_MARCA): number {
     else w += 0.62;
   }
   return w * tam;
+}
+
+/**
+ * Significant figures the tick labels of an axis need: 2, or more until two neighbouring ticks never read the same
+ * (motor12e, autor-taller-E: 99,8–100,4 mV gave «100 mV» on every tick; with 4 figures, «99,8 mV», «100,0 mV»…).
+ */
+export function cifrasEje(e: Pick<Eje, 'min' | 'max' | 'unidad' | 'escala'>, vs: readonly number[] = marcasEje(e)): number {
+  for (let c = 2; c < 7; c++) {
+    const t = vs.map((v) => etiquetaMarca(v, e, c));
+    if (t.every((x, k) => k === 0 || x !== t[k - 1])) return c;
+  }
+  return 7;
 }
 
 export interface EtiquetaEje {
@@ -93,7 +108,8 @@ export function etiquetasEje(
   tam: number = TAM_MARCA,
 ): EtiquetaEje[] {
   const vs = marcasEje(e);
-  const out: EtiquetaEje[] = vs.map((v) => ({ v, texto: etiquetaMarca(v, e), visible: false, ancla: 'middle' }));
+  const cifras = cifrasEje(e, vs);
+  const out: EtiquetaEje[] = vs.map((v) => ({ v, texto: etiquetaMarca(v, e, cifras), visible: false, ancla: 'middle' }));
   const tramo = out.map((et): [number, number] => {
     const p = pos(et.v);
     if (vertical) return [p - tam / 2, p + tam / 2];
@@ -153,7 +169,37 @@ export const fraccionEje = (e: Pick<Eje, 'min' | 'max' | 'escala'>, v: number) =
  * Margins, scales and tick labels of a plot. The left margin grows with the widest drawn y label (up to `izqMax`), so a
  * long unit («10²⁰ cm⁻³») is not cut by the drawing's edge; the x labels are thinned with the resulting width.
  */
-export function geometriaGrafica(x: Pick<Eje, 'min' | 'max' | 'unidad' | 'escala'>, y: Pick<Eje, 'min' | 'max' | 'unidad' | 'escala'>, tam: number = TAM_MARCA) {
+export function geometriaGrafica<X extends Pick<Eje, 'min' | 'max' | 'unidad' | 'escala'>, Y extends Pick<Eje, 'min' | 'max' | 'unidad' | 'escala'>>(
+  x: X,
+  y: Y,
+  tam: number = TAM_MARCA,
+  aspecto?: 'igual',
+) {
+  if (aspecto !== 'igual' || x.escala === 'log' || y.escala === 'log') return { ...geometriaBase(x, y, tam), x, y };
+  // 1.2 (motor12e): the same length per unit on both axes — the axis with fewer units per pixel is widened about its
+  // centre (the y labels set the left margin and so the width: a few passes settle it)
+  let gx: X = x;
+  let gy: Y = y;
+  for (let k = 0; k < 4; k++) {
+    const g = geometriaBase(gx, gy, tam);
+    const ux = (x.max - x.min) / g.ancho;
+    const uy = (y.max - y.min) / g.alto;
+    if (ux >= uy) {
+      const c = (y.min + y.max) / 2;
+      const h = (ux * g.alto) / 2;
+      gx = x;
+      gy = { ...y, min: c - h, max: c + h };
+    } else {
+      const c = (x.min + x.max) / 2;
+      const h = (uy * g.ancho) / 2;
+      gx = { ...x, min: c - h, max: c + h };
+      gy = y;
+    }
+  }
+  return { ...geometriaBase(gx, gy, tam), x: gx, y: gy };
+}
+
+function geometriaBase(x: Pick<Eje, 'min' | 'max' | 'unidad' | 'escala'>, y: Pick<Eje, 'min' | 'max' | 'unidad' | 'escala'>, tam: number) {
   const { W, H, der, arr, izqMin, izqMax } = LIENZO;
   const aba = abajo(tam);
   const alto = H - arr - aba;

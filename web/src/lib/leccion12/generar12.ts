@@ -70,6 +70,8 @@ export interface Contexto12 {
   sql?: (consulta: string) => Ejecucion;
   /** The figure and logic widgets' context (their steps: GUIA §11). */
   digital?: ContextoDigital;
+  /** The values the card's «lista» controls move (motor12e: a catalogue, not an E series). */
+  listas?: string[];
 }
 
 export interface Resultado12 {
@@ -173,7 +175,8 @@ export function actividadDe(tipo: TipoActividad, x: unknown, c: Contexto12): Res
     case 'diseno': {
       claves(['tolerancias', 'metodo', 'muestras', 'exigir', 'si_tolerancias']);
       if (!c.t.condiciones?.length) e('un «diseno» lleva «condiciones» (la especificación, con su tolerancia)');
-      if (!c.mandos.some((m) => m.serie)) c.aviso('«diseno» sin un mando de serie E12/E24: ¿no se eligen valores normalizados?');
+      // (motor12e, autor-taller-E, autor-potencia-A: a «lista» control is a catalogue of its own — heatsinks)
+      if (!c.mandos.some((m) => m.serie || c.listas?.includes(m.valor))) c.aviso('«diseno» sin un mando de serie E6/E12/E24 ni de «lista»: ¿no se eligen valores normalizados?');
       const tol: Record<string, number> = {};
       if (!esObjeto(x.tolerancias) || !Object.keys(x.tolerancias).length) e('«diseno.tolerancias»: { valor: tolerancia } (R_1: 0.05 = ± 5 %)');
       else
@@ -320,22 +323,27 @@ export function actividadDe(tipo: TipoActividad, x: unknown, c: Contexto12): Res
       claves(['valor', 'objetivo', 'tol', 'min', 'max', 'rotulo', 'escala', 'bajo', 'alto', 'dentro']);
       if (!c.mandos.length) e('un «ajuste» necesita un widget con mandos');
       const r = c.rango(x, 'ajuste');
-      if (r && (r.min == null || r.max == null)) e('«ajuste»: una banda cerrada (objetivo + tol, o min y max)');
-      const banda = { valor: r?.valor ?? '', min: r?.min ?? 0, max: r?.max ?? 0 };
-      const ancho = banda.max - banda.min;
-      let escala = { min: banda.min - 3 * ancho, max: banda.max + 3 * ancho };
-      if (esObjeto(x.escala) && esNumero(x.escala.min) && esNumero(x.escala.max) && x.escala.min < x.escala.max) escala = { min: x.escala.min, max: x.escala.max };
-      else if (x.escala != null) e('«ajuste.escala»: { min, max } con min < max');
+      // (motor12e: a band open on one side, only min or only max, as GUIA §10.5 says: «cabe en 3 000 mA·h», «al menos
+      // 10 años»; the open side's advice is never shown, so it is optional)
+      const banda: Rango = { valor: r?.valor ?? '' };
+      if (r?.min != null) banda.min = r.min;
+      if (r?.max != null) banda.max = r.max;
+      const abierta = banda.min == null || banda.max == null;
       const a: Ajuste = {
         tipo,
         banda,
-        escala,
+        escala: { min: 0, max: 1 },
         rotulo: c.texto(x.rotulo, 'ajuste.rotulo', true) ?? [],
-        bajo: explicacion(x.bajo, 'ajuste.bajo') ?? [],
-        alto: explicacion(x.alto, 'ajuste.alto') ?? [],
+        bajo: explicacion(x.bajo, 'ajuste.bajo', banda.min != null) ?? [],
+        alto: explicacion(x.alto, 'ajuste.alto', banda.max != null) ?? [],
         dentro: explicacion(x.dentro, 'ajuste.dentro') ?? [],
       };
-      if (r && c.mandos.length && r.min != null && r.max != null) {
+      if (banda.min == null && x.bajo != null) c.aviso('«ajuste.bajo»: la banda no tiene «min», así que nunca se dice (quítelo)');
+      if (banda.max == null && x.alto != null) c.aviso('«ajuste.alto»: la banda no tiene «max», así que nunca se dice (quítelo)');
+      // what the controls reach (an open band's meter scale, when the card gives none)
+      let lo = Infinity;
+      let hi = -Infinity;
+      if (r && c.mandos.length && (r.min != null || r.max != null)) {
         const total = c.mandos.reduce((s, m) => s * m.valores.length, 1);
         if (total > 250_000) e(`el ajuste tiene ${total} posiciones (máximo 250000)`);
         else {
@@ -344,7 +352,13 @@ export function actividadDe(tipo: TipoActividad, x: unknown, c: Contexto12): Res
           for (let n = 0; n < total; n++) {
             const v: Valores = { ...c.inicial };
             c.mandos.forEach((m, k) => (v[m.valor] = m.valores[pos[k]!]!));
-            if (enRango(banda, c.mc.evaluar(v))) dentro++;
+            const ev = c.mc.evaluar(v);
+            if (enRango(banda, ev)) dentro++;
+            const y = ev[banda.valor];
+            if (y != null && Number.isFinite(y)) {
+              lo = Math.min(lo, y);
+              hi = Math.max(hi, y);
+            }
             for (let k = 0; k < pos.length; k++) {
               pos[k]!++;
               if (pos[k]! < c.mandos[k]!.valores.length) break;
@@ -353,7 +367,22 @@ export function actividadDe(tipo: TipoActividad, x: unknown, c: Contexto12): Res
           }
           if (!dentro) e('ninguna posición de los mandos lleva la medida a su banda');
           if (enRango(banda, r0)) e('el ajuste empieza ya dentro de la banda (ponga «inicio»)');
+          if (dentro === total && abierta) e('el ajuste está dentro de la banda en todas las posiciones de los mandos: no hay nada que ajustar');
         }
+      }
+      if (esObjeto(x.escala) && esNumero(x.escala.min) && esNumero(x.escala.max) && x.escala.min < x.escala.max) a.escala = { min: x.escala.min, max: x.escala.max };
+      else if (x.escala != null) e('«ajuste.escala»: { min, max } con min < max');
+      else if (!abierta) {
+        const ancho = banda.max! - banda.min!;
+        a.escala = { min: banda.min! - 3 * ancho, max: banda.max! + 3 * ancho };
+      } else {
+        // an open band: from what the controls reach to the band's edge, with some room on both sides
+        const borde = (banda.min ?? banda.max)!;
+        const a0 = Math.min(Number.isFinite(lo) ? lo : borde, borde);
+        const b0 = Math.max(Number.isFinite(hi) ? hi : borde, borde);
+        const m = (b0 - a0 || Math.abs(borde) || 1) * 0.1;
+        // (a quantity that never goes negative — a voltage, a current — does not get a negative end, nor the reverse)
+        a.escala = { min: a0 >= 0 && a0 - m < 0 ? 0 : a0 - m, max: b0 <= 0 && b0 + m > 0 ? 0 : b0 + m };
       }
       out.actividad = a;
       break;

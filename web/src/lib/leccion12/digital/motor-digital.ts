@@ -154,7 +154,9 @@ export function comprobarDigital(t: Tarjeta, a: ActividadDigital, e: EstadoActiv
     if (!mal.length) return { bien: true, textos: exito, estado: { ...e, mal: [] } };
     const p = pistaDe(t, { error: mal.length / a.esperado.length, tramos_mal: mal.length });
     const ciclo = Math.floor(mal[0]! / 2) + 1;
-    return { bien: false, textos: [T(`${mal.length} de ${a.esperado.length} tramos no coinciden (marcados); el primero, en el ciclo ${ciclo}.`), ...(p ? [p] : [])], estado: { ...e, mal } };
+    // (motor12e: a named cycle is said by its name too, «el ciclo 3 (D0)»)
+    const nombre = t.widget?.tipo === 'logica' ? (t.widget as WidgetLogica).cronograma?.etiquetas?.[ciclo - 1] : undefined;
+    return { bien: false, textos: [T(`${mal.length} de ${a.esperado.length} tramos no coinciden (marcados); el primero, en el ciclo ${ciclo}${nombre ? ` (${nombre})` : ''}.`), ...(p ? [p] : [])], estado: { ...e, mal } };
   }
   return { bien: false, textos: [] };
 }

@@ -11,10 +11,11 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
-import { compilarModelo, objetivoEstimar, posicionesEstimar, posicionMasCercana, puntuarEstimacion, enRango, type Valores } from '../src/lib/leccion11/modelo.ts';
+import { compilarModelo, formatear, objetivoEstimar, posicionesEstimar, posicionMasCercana, puntuarEstimacion, enRango, type Valores } from '../src/lib/leccion11/modelo.ts';
 import { textoPlano } from '../src/lib/leccion11/texto.ts';
 import { numeroAria } from '../src/lib/teoria-viva.ts';
-import { falloDeRonda } from '../src/lib/leccion12/averia.ts';
+import { falloDeRonda, lecturas } from '../src/lib/leccion12/averia.ts';
+import { analizarDiseno } from '../src/lib/leccion12/tolerancias.ts';
 import type { IndiceLecciones11, Leccion11, Tarjeta, Texto } from '../src/lib/leccion11/tipos.ts';
 import type { ActividadDigital, WidgetFigura, WidgetLogica } from '../src/lib/leccion12/digital/tipos.ts';
 
@@ -23,12 +24,51 @@ const web = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const DIR = path.join(web, 'public', 'libro', 'lecciones11');
 const indice = JSON.parse(fs.readFileSync(path.join(DIR, 'indice.json'), 'utf8')) as IndiceLecciones11;
 const filtro = process.env.EPA_RECORRER ? new RegExp(process.env.EPA_RECORRER) : null;
-const lecciones = Object.keys(indice.lecciones).filter((id) => !filtro || filtro.test(id));
-const cargar = (id: string) => JSON.parse(fs.readFileSync(path.join(DIR, `${id}.json`), 'utf8')) as Leccion11;
+
+// motor12e: EPA_RECORRER_CATALOGO=1 walks the engine's catalogue lessons of the 1.2 steps instead
+// (tests/lecciones12-catalogo/<parte>/<label>.yaml, generated here in Node and served in place of the published ones,
+// as the catalogue specs do): the walker's own hard cases live there (a design whose first nominal solution fails
+// with the tolerances, a fault drawn «al azar», open-band and two-control «ajuste» cards).
+const CATALOGO = new Map<string, Leccion11>();
+if (process.env.EPA_RECORRER_CATALOGO) {
+  const { parse } = await import('yaml');
+  const { generarLeccion } = await import('../src/lib/leccion11/generar.ts');
+  const { sqlNode } = await import('../src/lib/leccion12/sql/node.ts');
+  // @ts-expect-error (a plain .mjs module of the scripts: no types)
+  await (await import('../scripts/esquemas11.mjs')).cargarEsquemas11();
+  // @ts-expect-error (a plain .mjs module of the scripts: no types)
+  const { recursosLibro } = await import('../scripts/recursos11.mjs');
+  const contexto = {
+    bloques: (p: string) => {
+      const f = path.join(web, 'public', 'libro', 'partes', `${p}.json`);
+      return fs.existsSync(f) ? (JSON.parse(fs.readFileSync(f, 'utf8')) as { bloques: unknown[] }).bloques : null;
+    },
+    sql: await sqlNode(),
+    recursos: recursosLibro(path.join(web, 'public', 'libro'), path.join(web, 'public')),
+  };
+  const raiz = path.join(web, 'tests', 'lecciones12-catalogo');
+  for (const p of fs.readdirSync(raiz).sort())
+    for (const f of fs.readdirSync(path.join(raiz, p)).filter((x) => x.endsWith('.yaml')).sort()) {
+      const r = generarLeccion(parse(fs.readFileSync(path.join(raiz, p, f), 'utf8')), contexto, 'catalogo-recorrido');
+      if (r.errores.length) throw new Error(`${p}/${f}: ${r.errores.join('; ')}`);
+      CATALOGO.set(r.leccion!.id, r.leccion!);
+    }
+}
+const lecciones = (CATALOGO.size ? [...CATALOGO.keys()] : Object.keys(indice.lecciones)).filter((id) => !filtro || filtro.test(id));
+const cargar = (id: string) => CATALOGO.get(id) ?? (JSON.parse(fs.readFileSync(path.join(DIR, `${id}.json`), 'utf8')) as Leccion11);
 
 type Tema = 'claro' | 'sepia' | 'oscuro';
 async function limpio(page: Page, tema: Tema): Promise<void> {
   await page.context().route('https://api.github.com/**', (r) => r.fulfill({ status: 404, body: '{}' }));
+  if (CATALOGO.size) {
+    // (motor12e) the catalogue lessons, served in place of the published ones
+    await page.context().route('**/libro/lecciones11/indice.json', async (x) => {
+      const real = await x.fetch().then((y) => y.json()).catch(() => ({ version: 1, total: 0, lecciones: {} }));
+      const lecciones = { ...(real.lecciones ?? {}), ...Object.fromEntries([...CATALOGO].map(([id, l]) => [id, { tarjetas: l.tarjetas.length }])) };
+      await x.fulfill({ contentType: 'application/json', body: JSON.stringify({ version: 1, total: Object.keys(lecciones).length, lecciones }) });
+    });
+    for (const [id, l] of CATALOGO) await page.context().route(`**/libro/lecciones11/${id}.json`, (x) => x.fulfill({ contentType: 'application/json', body: JSON.stringify(l) }));
+  }
   await page.addInitScript((t) => {
     if (!sessionStorage.getItem('preparado')) {
       sessionStorage.setItem('preparado', '1');
@@ -107,6 +147,39 @@ async function aPosicion(page: Page, sel: string, k: number) {
   await s.focus();
   await page.keyboard.press('Home');
   for (let i = 0; i < k; i++) await page.keyboard.press('ArrowRight');
+}
+
+type MandoT = NonNullable<Tarjeta['widget']>['mandos'][number];
+const selMando = (v: string) => `[data-mando11="${v}"] [role="slider"]`;
+
+/**
+ * The first positions of the card's controls (every combination, the first control turning fastest) at which `ok`
+ * holds for the values `v`: a challenge's solution, a design that also passes with its tolerances, a tuning inside
+ * its band (motor12e: every control of the card, not only the first).
+ */
+function buscarPosiciones(mandos: readonly MandoT[], estado: Valores, ok: (v: Valores) => boolean): number[] | null {
+  const idx = mandos.map(() => 0);
+  const total = mandos.reduce((a, m) => a * m.valores.length, 1);
+  for (let n = 0; n < total; n++) {
+    const v: Valores = { ...estado };
+    mandos.forEach((m, j) => (v[m.valor] = m.valores[idx[j]!]!));
+    if (ok(v)) return [...idx];
+    for (let j = 0; j < idx.length; j++) {
+      idx[j]!++;
+      if (idx[j]! < mandos[j]!.valores.length) break;
+      idx[j] = 0;
+    }
+  }
+  return null;
+}
+
+/** Puts the controls at those positions as the reader does: sliders with the keyboard, a switch clicked if needed. */
+async function ponerMandos(page: Page, mandos: readonly MandoT[], sol: number[], mios: Valores) {
+  for (const [j, m] of mandos.entries()) {
+    if (m.tipo === 'deslizador') await aPosicion(page, selMando(m.valor), sol[j]!);
+    else if ((mios[m.valor] ?? 0) !== m.valores[sol[j]!]) await page.locator(`[data-mando11="${m.valor}"] button, [data-conectar="${m.valor}"], [data-interruptor="${m.valor}"]`).first().click();
+    mios[m.valor] = m.valores[sol[j]!]!;
+  }
 }
 
 async function comprobarYVer(page: Page, bien: boolean, contiene?: string) {
@@ -268,7 +341,12 @@ async function recorrerTarjeta(page: Page, l: Leccion11, t: Tarjeta, k: number, 
   }
   // (a hidden logic circuit has no reading: its LEDs say «?», autor-digital-A)
   if (t.widget?.ocultar && t.widget.tipo === 'logica') await expect(page.locator('[data-led]').first(), donde).toHaveAttribute('data-encendido', 'oculto');
-  else if (t.widget?.ocultar) await expect(page.locator('[data-lectura]').first(), donde).toContainText('¿?');
+  else if (t.widget?.ocultar) {
+    // (motor12e: a graph's hidden curves say so in the plot; a widget without a reading may hide only those)
+    const g = t.widget.tipo === 'grafica' ? t.widget : t.widget.tipo === 'circuito' ? t.widget.grafica : undefined;
+    if (g?.curvas.some((c) => c.oculta) || g?.marcas?.some((m) => m.oculta)) await expect(page.locator('[data-curva-oculta]').first(), donde).toBeVisible();
+    if (t.widget.lectura || !g) await expect(page.locator('[data-lectura]').first(), donde).toContainText('¿?');
+  }
 
   const w12 = widgetDigital(t);
   if (t.requiere && w12) await explorarDigital(page, t, w12, donde);
@@ -324,14 +402,13 @@ async function recorrerTarjeta(page: Page, l: Leccion11, t: Tarjeta, k: number, 
     await page.locator('[data-comparar]').click();
     await expect(page.locator('[data-comparacion]'), donde).toHaveAttribute('data-comparacion', 'bien');
   } else if (act?.tipo === 'ajuste') {
-    // the first control position the model puts inside the band, reached with the keyboard
-    const m = mandos[0]!;
-    const k = m.valores.findIndex((x) => enRango(act.banda, mc.evaluar({ ...estado, [m.valor]: x })));
-    expect(k, `${donde}: el ajuste tiene una posición dentro`).toBeGreaterThanOrEqual(0);
+    // the first positions of the controls (all of them: a two-control tuning, motor12e) the model puts inside the
+    // band — open on one side or closed —, reached with the keyboard
+    const sol = buscarPosiciones(mandos, estado, (v) => enRango(act.banda, mc.evaluar(v)));
+    expect(sol, `${donde}: el ajuste tiene una posición dentro`).not.toBeNull();
     await expect(boton(page), donde).toBeDisabled();
-    await aPosicion(page, sel(m.valor), k);
+    await ponerMandos(page, mandos, sol!, mios);
     await expect(page.locator('[data-ajuste]'), donde).toHaveAttribute('data-lado', 'dentro');
-    mios[m.valor] = m.valores[k]!;
   } else if (act?.tipo === 'dibujar') {
     // the right curve, point by point with the keyboard's controls (the value slider of each point, then «▶»)
     const r = mc.evaluar(estado);
@@ -353,19 +430,49 @@ async function recorrerTarjeta(page: Page, l: Leccion11, t: Tarjeta, k: number, 
     await boton(page).click();
     await expect(aviso(page), donde).toHaveAttribute('data-veredicto', 'bien');
   } else if (act?.tipo === 'averia') {
-    // the fault of the first round (lib/leccion12/averia.ts falloDeRonda), measured at every probe it allows, then a
-    // wrong suspect (explained from those measurements) and the right one
-    const f = act.fallos[falloDeRonda(act, t.id, 0)]!;
-    for (const s of act.sondas.slice(0, act.pasos)) await page.locator(`[data-sonda="${s.id}"]`).click();
-    const otro = act.sospechosos.find((s) => s.id !== f.pieza);
-    if (otro) {
+    // measured at every probe it allows, then a wrong suspect (explained from those measurements) and the right one.
+    // Which board is shown: «fija», the first fault of the list (lib/leccion12/averia.ts falloDeRonda); «azar», a fresh
+    // draw each time the card opens (motor12e, autor-potencia-C), so the walker works it out as the reader does —
+    // the faults whose readings are what the meter shows at each probe (lib/leccion12/averia.ts lecturas).
+    let posibles = act.eleccion === 'fija' ? [falloDeRonda(act, t.id, 0)] : act.fallos.map((_, i) => i);
+    for (const s of act.sondas.slice(0, act.pasos)) {
+      await page.locator(`[data-sonda="${s.id}"]`).click();
+      await expect(page.locator(`[data-sonda="${s.id}"]`), donde).toHaveAttribute('aria-pressed', 'true');
+      const leido = ((await page.locator('[data-lectura-multimetro]').textContent()) ?? '').trim();
+      const mag = mc.magnitud(s.valor);
+      const igual = posibles.filter((i) => formatear(mag, lecturas(mc, act, estado, act.fallos[i]!)[s.id]) === leido);
+      expect(igual.length, `${donde}: la lectura «${leido}» en «${s.id}» es la de alguna avería`).toBeGreaterThan(0);
+      posibles = igual;
+    }
+    // what the reader names: the part (and its kind of fault, if asked); faults that still read alike are candidates
+    const nombre = (i: number) => `${act.fallos[i]!.pieza}${act.preguntarTipo ? `/${act.fallos[i]!.tipo}` : ''}`;
+    const candidatos = [...new Map(posibles.map((i) => [nombre(i), i])).values()];
+    expect(candidatos.length, `${donde}: con ${act.pasos} medidas quedan como mucho dos averías posibles`).toBeLessThanOrEqual(2);
+    const nombrar = async (i: number) => {
+      const f = act.fallos[i]!;
+      await page.locator(`[data-sospechoso="${f.pieza}"]`).click();
+      if (act.preguntarTipo) await page.locator(`[data-tipo-averia="${f.tipo}"]`).click();
+    };
+    const otro = act.sospechosos.find((s) => !posibles.some((i) => act.fallos[i]!.pieza === s.id));
+    if (candidatos.length === 1 && otro) {
       await page.locator(`[data-sospechoso="${otro.id}"]`).click();
+      if (act.preguntarTipo) await page.locator('[data-tipo-averia]').first().click();
       await comprobarYVer(page, false);
     }
-    await page.locator(`[data-sospechoso="${f.pieza}"]`).click();
-    await expect(boton(page), donde).toHaveAttribute('data-accion', 'comprobar');
-    await boton(page).click();
-    await expect(aviso(page), donde).toHaveAttribute('data-veredicto', 'bien');
+    // (two boards that read alike: the first guess may be wrong — explained — and the second is then the one)
+    for (const [n, i] of candidatos.entries()) {
+      await nombrar(i);
+      await expect(boton(page), donde).toHaveAttribute('data-accion', 'comprobar');
+      await boton(page).click();
+      await expect(aviso(page), donde).toHaveAttribute('data-veredicto', /^(bien|mal)$/);
+      const v = await aviso(page).getAttribute('data-veredicto');
+      if (v === 'bien' || n === candidatos.length - 1) {
+        await expect(aviso(page), donde).toHaveAttribute('data-veredicto', 'bien');
+        break;
+      }
+      await expect(boton(page), donde).toHaveAttribute('data-accion', 'reintentar');
+      await boton(page).click();
+    }
   } else if (act?.tipo === 'sql') {
     // the reference query as the reader would give it (written whole; a fill-in card gets its blanks back by matching
     // the template against the solution; an order card is put right with «Subir»), run in the app's SQLite worker and
@@ -452,28 +559,16 @@ async function recorrerTarjeta(page: Page, l: Leccion11, t: Tarjeta, k: number, 
     }
     await comprobarYVer(page, true, plano(t.exito));
   } else if (t.condiciones) {
-    // the challenge: wrong as it starts (a hint), then a solution the model finds among the controls' positions
+    // the challenge: wrong as it starts (a hint), then a solution the model finds among the controls' positions — for
+    // a «diseno», one that also passes with the parts' tolerances, as the app checks it (corners or Monte Carlo:
+    // lib/leccion12/tolerancias.ts; motor12e, autor-digital-E, autor-potencia-A, autor-senales-C), not merely the
+    // first nominal one
     await comprobarYVer(page, false);
-    const idx = mandos.map(() => 0);
-    let sol: number[] | null = null;
-    const total = mandos.reduce((a, m) => a * m.valores.length, 1);
-    for (let n = 0; n < total && !sol; n++) {
-      const v: Valores = { ...estado };
-      mandos.forEach((m, j) => (v[m.valor] = m.valores[idx[j]!]!));
-      const r = mc.evaluar(v);
-      if (t.condiciones.every((c) => enRango(c, r))) sol = [...idx];
-      for (let j = 0; j < idx.length; j++) {
-        idx[j]!++;
-        if (idx[j]! < mandos[j]!.valores.length) break;
-        idx[j] = 0;
-      }
-    }
+    const conds = t.condiciones;
+    const cumple = act?.tipo === 'diseno' ? (v: Valores) => analizarDiseno(mc, act, conds, v).pasa : (v: Valores) => conds.every((c) => enRango(c, mc.evaluar(v)));
+    const sol = buscarPosiciones(mandos, estado, cumple);
     expect(sol, `${donde}: el reto tiene solución`).not.toBeNull();
-    for (const [j, m] of mandos.entries()) {
-      if (m.tipo === 'deslizador') await aPosicion(page, sel(m.valor), sol![j]!);
-      else if ((mios[m.valor] ?? 0) !== m.valores[sol![j]!]) await page.locator(`[data-mando11="${m.valor}"] button, [data-conectar="${m.valor}"], [data-interruptor="${m.valor}"]`).first().click();
-      mios[m.valor] = m.valores[sol![j]!]!;
-    }
+    await ponerMandos(page, mandos, sol!, mios);
     for (let c = 0; c < t.condiciones.length; c++) await expect(page.locator(`[data-condicion="${c}"]`), donde).toHaveAttribute('data-cumple', 'si');
     await comprobarYVer(page, true, plano(t.exito));
   }

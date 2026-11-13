@@ -9,7 +9,8 @@ import type { CircuitoLogico, EstadoLogico, FalloLogico, Lectura, Nivel, Punto, 
 
 /** Where the picture comes from: a figure or photo of the book (web/public/libro/…) or a console photo (web/public/consolas/…). */
 export interface FuenteFigura {
-  origen: 'libro' | 'consola';
+  /** (motor12e: «codigo», a listing drawn by the app: `src` is empty and `codigo` has its lines) */
+  origen: 'libro' | 'consola' | 'codigo';
   /** Path under web/public/libro (origen libro: «fig/13.5.svg», «img/x.jpg») or under web/public («consolas/snes/foto-cara-a.jpg»). */
   src: string;
   /** The picture's own coordinates: an SVG figure's viewBox [x, y, w, h], a photo's pixels [0, 0, w, h]. */
@@ -22,7 +23,17 @@ export interface FuenteFigura {
   num?: string;
   /** Credit and licence of a photo (shown under it). */
   credito?: string;
+  /**
+   * 1.2 (motor12e): a read-only code listing (a book «codigo» block or the author's text), drawn in monospace; `vista`
+   * is then [0, 0, CODIGO_COL·columns + 2·CODIGO_MARGEN, CODIGO_LINEA·lines + 2·CODIGO_MARGEN] and a zone covers whole lines.
+   */
+  codigo?: { lenguaje: string; lineas: string[]; resaltar: number[] };
 }
+
+/** A code listing's units (motor12e): one character is CODIGO_COL wide, one line CODIGO_LINEA high. */
+export const CODIGO_COL = 6;
+export const CODIGO_LINEA = 15;
+export const CODIGO_MARGEN = 6;
 
 export interface ZonaFigura {
   id: string;
@@ -36,6 +47,8 @@ export interface ZonaFigura {
   poligono?: [number, number][];
   /** The explorer's hotspot it reuses (console photos). */
   hotspot?: string;
+  /** The lines of a code listing it covers, first and last (1-based; motor12e). */
+  lineas?: [number, number];
 }
 
 export interface WidgetFigura {
@@ -56,6 +69,8 @@ export interface CronogramaLogica {
   estimulo: Record<string, Nivel[]>;
   /** Rows of the timing diagram, top to bottom (inputs, the clock, any signal or LED id). */
   senales: string[];
+  /** 1.2 (motor12e): a name per cycle instead of 1…N on its axis (a UART frame: reposo, inicio, D0…, parada). */
+  etiquetas?: string[];
 }
 
 export interface WidgetLogica {

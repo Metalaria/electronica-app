@@ -172,7 +172,8 @@ export function falta12(t: Tarjeta): string {
 export function ladoAjuste(a: Actividad12 & { tipo: 'ajuste' }, r: Valores): 'bajo' | 'dentro' | 'alto' {
   const x = r[a.banda.valor] ?? NaN;
   if (enRango(a.banda, r)) return 'dentro';
-  return x < a.banda.min ? 'bajo' : 'alto';
+  // (an open band has one side only: motor12e)
+  return a.banda.min != null && x < a.banda.min ? 'bajo' : 'alto';
 }
 
 /** «Volver a intentarlo»: what stays (the probes taken, the drawing, the query) and what goes. */

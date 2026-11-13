@@ -97,12 +97,15 @@ export interface Averia {
 /** «Ajuste»: a control until a measured quantity enters a band, with live feedback. */
 export interface Ajuste {
   tipo: 'ajuste';
-  /** The quantity and its band. */
-  banda: Rango & { min: number; max: number };
+  /**
+   * The quantity and its band: closed (min and max), or open on one side (motor12e: only `max`, «fits in 3 000 mA·h»;
+   * only `min`, «at least 10 years»).
+   */
+  banda: Rango;
   rotulo: Texto;
-  /** The meter's scale (default: the band ± three times its width). */
+  /** The meter's scale (default: the band ± three times its width; an open band, the values its controls reach). */
   escala: { min: number; max: number };
-  /** Live feedback below, above and inside the band. */
+  /** Live feedback below, above and inside the band (the open side's is empty: it is never shown). */
   bajo: Texto;
   alto: Texto;
   dentro: Texto;

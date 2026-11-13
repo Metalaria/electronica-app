@@ -13,8 +13,11 @@
     tramo,
     prefijo,
     mover,
+    etiquetas,
   }: {
     filas: { id: string; rotulo: Texto; niveles: Nivel[] | null }[];
+    /** A name per cycle under its rising edge (motor12e); absent, 1…N. */
+    etiquetas?: string[];
     tramo: number;
     prefijo: string;
     /** Moves the cursor (absent: no cursor). */
@@ -38,14 +41,15 @@
     return d;
   }
   const ciclo = $derived(Math.floor(tramo / 2) + 1);
-  const texto = $derived(`Ciclo ${ciclo}, reloj ${tramo % 2 ? 'alto' : 'bajo'}: ${filas.map((f) => `${textoPlano(f.rotulo)} ${f.niveles ? f.niveles[tramo] : 'oculta'}`).join(', ')}`);
+  const nombreCiclo = (k: number) => etiquetas?.[k - 1] ?? String(k);
+  const texto = $derived(`Ciclo ${ciclo}${etiquetas?.[ciclo - 1] ? ` (${etiquetas[ciclo - 1]})` : ''}, reloj ${tramo % 2 ? 'alto' : 'bajo'}: ${filas.map((f) => `${textoPlano(f.rotulo)} ${f.niveles ? f.niveles[tramo] : 'oculta'}`).join(', ')}`);
 </script>
 
 <div class="d12-crono" data-cronograma>
   <svg viewBox={`0 0 ${ancho} ${alto}`} role="img" aria-label={`Cronograma de ${n / 2} ciclos de reloj: ${filas.map((f) => textoPlano(f.rotulo)).join(', ')}`}>
     {#each Array.from({ length: n / 2 }, (_, k) => k) as k (k)}
       <line class="d12-flanco" x1={xs(2 * k + 1)} x2={xs(2 * k + 1)} y1="2" y2={alto - 14} />
-      <text x={xs(2 * k + 1)} y={alto - 3} text-anchor="middle">{k + 1}</text>
+      <text x={xs(2 * k + 1)} y={alto - 3} text-anchor="middle" class:d12-nombre-ciclo={!!etiquetas} data-ciclo={k + 1}>{nombreCiclo(k + 1)}</text>
     {/each}
     {#if mover}<rect class="d12-cursor" x={xs(tramo)} y="0" width={PASO} height={alto - 14} />{/if}
     {#each filas as f, i (f.id)}

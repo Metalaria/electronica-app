@@ -16,11 +16,12 @@ import type { Texto } from '../../leccion11/tipos';
 
 export type Nivel = 0 | 1;
 export type TipoPuerta = 'and' | 'or' | 'not' | 'nand' | 'nor' | 'xor' | 'xnor' | 'buf';
-export type TipoSecuencial = 'd' | 'jk' | 't' | 'contador';
+// (motor12e: «latch», the level-sensitive D latch — transparent while EN is 1 — to set beside a flip-flop)
+export type TipoSecuencial = 'd' | 'jk' | 't' | 'contador' | 'latch';
 export type TipoPieza = TipoPuerta | TipoSecuencial | 'mux' | 'decodificador';
 
 export const PUERTAS: readonly TipoPuerta[] = ['and', 'or', 'not', 'nand', 'nor', 'xor', 'xnor', 'buf'];
-export const SECUENCIALES: readonly TipoSecuencial[] = ['d', 'jk', 't', 'contador'];
+export const SECUENCIALES: readonly TipoSecuencial[] = ['d', 'jk', 't', 'contador', 'latch'];
 export const TIPOS_PIEZA: readonly TipoPieza[] = [...PUERTAS, ...SECUENCIALES, 'mux', 'decodificador'];
 
 /** How each piece is named in Spanish (labels, screen readers, messages). */
@@ -37,6 +38,7 @@ export const NOMBRE_PIEZA: Record<TipoPieza, string> = {
   jk: 'biestable JK',
   t: 'biestable T',
   contador: 'contador',
+  latch: 'cerrojo D (latch)',
   mux: 'multiplexor',
   decodificador: 'decodificador',
 };
@@ -119,6 +121,8 @@ export function pinesEntrada(p: PiezaLogica): string[] {
       return ['1'];
     case 'd':
       return ['D', 'CLK'];
+    case 'latch':
+      return ['D', 'EN'];
     case 'jk':
       return ['J', 'K', 'CLK'];
     case 't':
@@ -143,6 +147,7 @@ export function pinesPermitidos(p: Pick<PiezaLogica, 'tipo' | 'bits'>): [number,
       return [1, 1];
     case 'd':
     case 't':
+    case 'latch':
       return [2, 2];
     case 'jk':
       return [3, 3];
@@ -164,6 +169,7 @@ export function salidasDe(p: PiezaLogica): string[] {
     case 'd':
     case 'jk':
     case 't':
+    case 'latch':
       return [`${p.id}.q`, `${p.id}.nq`];
     case 'contador':
       return Array.from({ length: b }, (_, k) => `${p.id}.q${k}`);
@@ -270,6 +276,16 @@ function evaluar(p: PiezaLogica, s: EstadoLogico, f: FalloLogico | null | undefi
     for (let k = 0; k < b; k++) a |= v[k]! << k;
     const en = v.length > b ? v[b]! : 1;
     return salidasDe(p).map((y, k) => [y, en === 1 && k === a ? 1 : 0]);
+  }
+  // the D latch: transparent while EN is 1 (Q follows D), holds while EN is 0 — level, not edge
+  if (p.tipo === 'latch') {
+    let q = s.internos[p.id] ?? 0;
+    if (v[1] === 1) q = v[0]!;
+    s.internos[p.id] = q;
+    return [
+      [`${p.id}.q`, q as Nivel],
+      [`${p.id}.nq`, (1 - q) as Nivel],
+    ];
   }
   // sequential: rising edge of CLK
   const iClk = p.tipo === 'd' || p.tipo === 't' ? 1 : p.tipo === 'jk' ? 2 : 0;
@@ -380,7 +396,7 @@ export function iniciar(c: CircuitoLogico, f?: FalloLogico | null, entradas?: Re
       const iClk = p.tipo === 'd' || p.tipo === 't' ? 1 : p.tipo === 'jk' ? 2 : 0;
       s.relojes[p.id] = pin(p, iClk, s, f);
     }
-  return asentar(c, s, new Map(), new Set(c.piezas.map((_, i) => i).filter((i) => !esSecuencial(c.piezas[i]!) || c.piezas[i]!.tipo === 'contador')), f);
+  return asentar(c, s, new Map(), new Set(c.piezas.map((_, i) => i).filter((i) => !esSecuencial(c.piezas[i]!) || c.piezas[i]!.tipo === 'contador' || c.piezas[i]!.tipo === 'latch')), f);
 }
 
 /** Sets inputs to new levels and settles. */

@@ -135,7 +135,7 @@
   const titulo = (p: PiezaPlano) => {
     const q = pieza(p.id);
     if (q.rotulo) return textoPlano(q.rotulo);
-    return { d: 'D', jk: 'JK', t: 'T', contador: 'CTR', mux: 'MUX', decodificador: 'DEC' }[p.tipo as string] ?? '';
+    return { d: 'D', jk: 'JK', t: 'T', latch: 'L', contador: 'CTR', mux: 'MUX', decodificador: 'DEC' }[p.tipo as string] ?? '';
   };
   const etiquetaPuerta = (p: PiezaPlano) => (pieza(p.id).rotulo ? textoPlano(pieza(p.id).rotulo) : '');
 
@@ -242,7 +242,7 @@
   {/if}
 
   {#if cron && w.cronograma}
-    <Cronograma filas={filasCron} {tramo} {prefijo} mover={moverTramo} />
+    <Cronograma filas={filasCron} {tramo} {prefijo} mover={moverTramo} etiquetas={w.cronograma.etiquetas} />
   {/if}
   {#if tabla}
     <TablaVerdad entradas={tabla.tv.entradas} salidas={c.salidas.map((s) => ({ id: s.id, rotulo: s.rotulo }))} filas={tabla.tv.filas.map((f) => ({ e: f.e, s: oculto ? null : f.s }))} actual={tabla.actual} />

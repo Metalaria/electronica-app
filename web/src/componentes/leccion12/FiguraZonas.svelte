@@ -4,11 +4,14 @@
   // card it is the answer (one zone, or several with `todas`), marked right or wrong after the check. The zones are
   // also a labelled list of buttons (keyboard and screen reader); the picture zooms with «+ / −» and with two fingers
   // (the frame then scrolls), and keeps the book's figure plate in the three themes.
+  // 1.2 (motor12e): a code listing instead of a picture (`fuente.origen` «codigo»): drawn in monospace with its
+  // highlighted lines and its comments dimmed, read whole to a screen reader (a hidden <pre>); its zones are lines.
   import './digital12.css';
   import { url } from '../../lib/datos';
   import type { EstadoTarjeta } from '../../lib/leccion11/motor';
   import type { Tarjeta } from '../../lib/leccion11/tipos';
   import type { EstadoTocar, Tocar, WidgetFigura, ZonaFigura } from '../../lib/leccion12/digital/tipos';
+  import { CODIGO_COL, CODIGO_LINEA, CODIGO_MARGEN } from '../../lib/leccion12/digital/tipos';
   import TextoVivo from '../leccion11/TextoVivo.svelte';
 
   let {
@@ -127,10 +130,19 @@
     if (dedos.size < 2) distancia0 = 0;
   }
   const puntosPoligono = (p: [number, number][]) => p.map((q) => q.join(',')).join(' ');
-  const etiquetaLista = $derived(a ? (a.todas ? 'Zonas de la figura (puede elegir varias)' : 'Zonas de la figura: elija una') : 'Zonas de la figura');
+  // a listing's line split into code and its comment (dimmed): //, /* (C, AVR, Verilog), # (Python), -- (VHDL), ; (asm)
+  const marcasComentario = (l: string): string[] => (/^(vhdl|sql|ada)$/i.test(l) ? ['--'] : /^(python|py|sh|bash|yaml)$/i.test(l) ? ['#'] : /^(asm|ensamblador)$/i.test(l) ? [';'] : ['//', '/*']);
+  function trozos(linea: string): [string, string] {
+    const cod = w.fuente.codigo;
+    if (!cod) return [linea, ''];
+    const k = Math.min(...marcasComentario(cod.lenguaje).map((m) => linea.indexOf(m)).filter((i) => i >= 0), Infinity);
+    return Number.isFinite(k) ? [linea.slice(0, k), linea.slice(k)] : [linea, ''];
+  }
+  const deQue = $derived(w.fuente.codigo ? 'del listado' : 'de la figura');
+  const etiquetaLista = $derived(a ? (a.todas ? `Zonas ${deQue} (puede elegir varias)` : `Zonas ${deQue}: elija una`) : `Zonas ${deQue}`);
 </script>
 
-<div class="d12 d12-figura" data-figura={w.fuente.src}>
+<div class="d12 d12-figura" data-figura={w.fuente.src || w.fuente.origen}>
   <div class="d12-zoom a12-fila" role="group" aria-label="Tamaño de la figura">
     <button type="button" class="a12-boton" onclick={() => cambiarZoom(1 / 1.5)} disabled={zoom <= 1} aria-label="Reducir la figura" data-reducir>−</button>
     <button type="button" class="a12-boton" onclick={() => cambiarZoom(1.5)} disabled={zoom >= ZOOM_MAX} aria-label="Ampliar la figura" data-ampliar>+</button>
@@ -149,8 +161,23 @@
     aria-label={zoom > 1 ? 'Figura ampliada: desplácela con las flechas o con el dedo' : 'Figura'}
     tabindex={zoom > 1 ? 0 : undefined}
   >
-    <div class="d12-lienzo" class:vectorial={w.fuente.vectorial} style:width={`${zoom * 100}%`} style:aspect-ratio={`${vw} / ${vh}`}>
-      <img {src} alt={w.fuente.alt} draggable="false" />
+    <div class="d12-lienzo" class:vectorial={w.fuente.vectorial} class:codigo={!!w.fuente.codigo} style:width={`${zoom * 100}%`} style:aspect-ratio={`${vw} / ${vh}`}>
+      {#if w.fuente.codigo}
+        {@const cod = w.fuente.codigo}
+        <pre class="a12-solo-lector" data-listado>{w.fuente.alt}:
+{cod.lineas.map((l, k) => `${k + 1}${cod.resaltar.includes(k + 1) ? ' (resaltada)' : ''}: ${l}`).join('\n')}</pre>
+        <svg class="d12-codigo" viewBox={`${vx} ${vy} ${vw} ${vh}`} preserveAspectRatio="none" aria-hidden="true" data-codigo={cod.lenguaje}>
+          {#each cod.resaltar as n (n)}
+            <rect class="resalte" x="0" y={CODIGO_MARGEN + (n - 1) * CODIGO_LINEA} width={vw} height={CODIGO_LINEA} data-resaltada={n} />
+          {/each}
+          {#each cod.lineas as l, k (k)}
+            {@const [c0, c1] = trozos(l)}
+            <text x={CODIGO_MARGEN} y={CODIGO_MARGEN + k * CODIGO_LINEA + CODIGO_LINEA * 0.72} textLength={l.length ? [...l].length * CODIGO_COL : undefined} lengthAdjust="spacingAndGlyphs" xml:space="preserve">{c0}<tspan class="comentario">{c1}</tspan></text>
+          {/each}
+        </svg>
+      {:else}
+        <img {src} alt={w.fuente.alt} draggable="false" />
+      {/if}
       <!-- the zones: pointer targets over the picture (the list below is the keyboard and screen reader way) -->
       <svg bind:this={svg} viewBox={`${vx} ${vy} ${vw} ${vh}`} preserveAspectRatio="none" aria-hidden="true" onclick={tocarEn} data-zonas>
         {#each w.zonas as z (z.id)}

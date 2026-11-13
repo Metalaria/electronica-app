@@ -95,9 +95,16 @@ modelo:
   («10 kΩ», «20,0 ms»).
 - `cifras` (3 por defecto) y `recortar`: los valores se muestran sin ceros de más («12 V»); los cálculos con sus
   cifras («4,00 V»).
-- Expresiones: el lenguaje de las calculadoras (`+ - * / ^`, `sqrt exp ln log10 sin cos tan atan2 abs floor round
-  min max`, `par(a, b, …)` = paralelo, `wright(x)` = ω de Wright, para un diodo de Shockley (§5.3), `pi`). No hay `?:`: para elegir use `si / entonces / sino` con un interruptor.
-  Los ángulos de `sin`/`cos` van en radianes (`phi*pi/180`).
+- Expresiones: el lenguaje de las calculadoras (`+ - * / ^`, `sqrt exp ln log10 log2 sin cos tan asin acos atan
+  atan2 sinh cosh tanh abs floor ceil round min max`, `par(a, b, …)` = paralelo, `wright(x)` = ω de Wright, para un
+  diodo de Shockley (§5.3), `pi`). No hay `?:`: para elegir use `si / entonces / sino` con un interruptor.
+  Los ángulos de `sin`/`cos` van en radianes (`phi*pi/180`); `asin`/`acos` los dan en radianes (`asin(x)*180/pi`).
+- 1.2 (motor12e): `erfc(x)` y `erf(x)` (la función de error, exacta también en las colas: la BER de BPSK,
+  Q(√(2·E_b/N₀)) = `0.5*erfc(sqrt(EbN0))`), y `ruido(x, semilla)`: un ruido pseudoaleatorio **con semilla**, normal de
+  media 0 y desviación 1, distinto para cada x y siempre el mismo (en el generador y en cada dispositivo). Es ruido
+  blanco a lo largo de cualquier eje: `0.1*ruido(t, 7)` son 0,1 V eficaces sobre una señal; `x0 + s*ruido(n, 3)`, una
+  secuencia con ruido (tarjeta `explore-palitos` del catálogo de motor12e,
+  `web/tests/lecciones12-catalogo/cap01/sec-1.12.yaml`). Cambie la semilla para otro ruido.
 - Nombres: letras, cifras y `_` (`R_1`, `V_out`). No use `pi`, `t` si la gráfica usa `t`, ni `estimacion`.
 
 ### 3.3 El texto de las tarjetas
@@ -125,7 +132,7 @@ publicada la lección), `tipo`, `titulo`, `texto`, `libro`, y opcionales `fase` 
 | tipo | Para qué | Necesita |
 |---|---|---|
 | `explorar` | mover y notar | `widget` con mandos; `requiere` (si no, basta mover uno) |
-| `predecir` | apostar antes de ver | `opciones`; `widget` con `ocultar: true` (las lecturas salen «¿?» hasta acertar o saltar la tarjeta: un fallo no las enseña) |
+| `predecir` | apostar antes de ver | `opciones`; `widget` con `ocultar: true` (las lecturas salen «¿?» hasta acertar o saltar la tarjeta: un fallo no las enseña), o `ocultar: curvas` (también las curvas y marcas de la gráfica: §5.2) |
 | `formula` | formalizar | `ec` (el bloque `ec` del libro) y `sustitucion`; un `widget` para moverla |
 | `reto` | aplicar | `widget` con mandos, `condiciones`, `exito`, `pistas`, `ayuda` |
 | `sorpresa` | lo inesperado | como explorar (p. ej. `requiere: { conectar: [carga] }` con un mando `conectar`) |
@@ -156,6 +163,11 @@ sustitucion: "{{V_in}} · {{R_2}} / ({{R_1}} + {{R_2}}) = {{V_out}}"
 
 La ecuación es el dibujo del libro (se lee en voz alta con `habla-matematicas`); la sustitución usa los valores
 actuales y se lee con su unidad.
+
+Una ecuación que está **dentro** de otro bloque (las «tarjetas» de repaso que juntan las expresiones clave de una
+sección, una caja) se cita con el bloque y su número de orden entre las ecuaciones de dentro, **entre comillas**:
+`ec: "cap53#338.1"` es la primera ecuación del bloque 338 (en la lista `libro` va el bloque, `"cap53#338"`, con una
+cita de su texto). 1.2 (motor12e; tarjeta `formula-cuadro` del catálogo de motor12e).
 
 ### Reto
 
@@ -252,7 +264,7 @@ widget:
   dibujo: false                                      # opcional: solo la gráfica y los mandos (el circuito ya se vio)
   mandos:
     - { valor: R_1, min: 1000, max: 20000, paso: 100 }            # deslizador lineal
-    - { valor: R_2, serie: E24, min: 1000, max: 10000, rotulo: "R₂ (E24)" }   # selector E12/E24
+    - { valor: R_2, serie: E24, min: 1000, max: 10000, rotulo: "R₂ (E24)" }   # selector E12/E24 (o E6, 1.2: los electrolíticos al ± 20 %)
     - { valor: R_L, lista: [1000, 10000, 100000] }                # lista de valores
     - { valor: c_1, lista: [1, 2, 3], nombres: [marrón, rojo, naranja] }   # lista con un nombre por posición
     - { valor: carga, tipo: conectar, boton: "Conectar la carga (10 kΩ)" }    # botón que cierra un interruptor
@@ -278,7 +290,8 @@ Cuando cada posición de una lista tiene un nombre (los colores del código de c
 onda), póngalos en `nombres`, uno por valor y **en el mismo orden que `lista`**. El mando enseña y lee «rojo (2)»
 (con la unidad del valor si la tiene: «carbón (4,7 kΩ)»); con el teclado se mueve como cualquier deslizador (flechas, Inicio, Fin). Los
 nombres pueden llevar cifras («Sn63Pb37», «0805»; 1.2) pero no ser su propio valor (ya va entre paréntesis), no se repiten y tienen como mucho 24 caracteres; solo
-valen con `lista`. Ejemplo probado (tarjeta `codigo-colores` de la lección de catálogo):
+valen con `lista`. En una lista entre corchetes, un nombre con coma decimal se parte en dos (`[2 m de 0,5 mm², …]` son
+tres textos): póngalo entre comillas (`["2 m de 0,5 mm²", …]`); el error lo dice (1.2). Ejemplo probado (tarjeta `codigo-colores` de la lección de catálogo):
 
 ```yaml
 modelo:
@@ -358,6 +371,41 @@ widget:
 
 Las asas son expresiones del modelo (no del eje): defina en `calculos` dónde está el punto (p. ej. `t_cresta`). Cada
 asa necesita un deslizador de su valor en la misma tarjeta. Con el teclado, el asa es un deslizador más.
+
+**Curvas paramétricas, palitos, misma escala y curvas ocultas (1.2, motor12e).** Ejemplos probados en el catálogo de
+motor12e (`web/tests/lecciones12-catalogo/cap01/sec-1.12.yaml`, tarjetas `explore-lissajous`, `explore-palitos`,
+`explore-erfc` y `prediga-curva`):
+
+```yaml
+widget:
+  tipo: grafica
+  aspecto: igual                               # la misma longitud por unidad en x y en y (un círculo sale redondo)
+  x: { id: u, min: -1.2, max: 1.2, unidad: V, rotulo: "x" }
+  y: { min: -1.2, max: 1.2, unidad: V, rotulo: "y" }
+  curvas:
+    # paramétrica: x(th) e y(th) de un parámetro que no es el eje; min y max, números o expresiones («2*pi»)
+    - { param: { id: th, min: 0, max: "2*pi" }, x: "cos(th)", y: "cos(th - phi*pi/180)", rotulo: "x frente a y" }
+    - { param: { id: th, min: 0, max: "2*pi", muestras: 120 }, x: "cos(th)", y: "sin(th)", color: tinta, discontinua: true, rotulo: "círculo unidad" }
+```
+
+- **Paramétrica** (`param` con `x` e `y`): el diagrama de Nyquist (Re G(jω) e Im G(jω) escritas con ω como parámetro: para K/(1 + jωτ),
+  `x: "K/(1 + (w*tau)^2)"`, `y: "-K*w*tau/(1 + (w*tau)^2)"`),
+  las ramas del lugar de las raíces (el parámetro es la ganancia), el círculo unidad del plano z, la figura XY de I y Q,
+  los círculos de la carta de Smith. `param.muestras` (2–4000; 240 por defecto) son los puntos de la curva. Lo que se
+  sale de los ejes no se dibuja; el generador exige números en todo el recorrido del parámetro y algo de la curva
+  dentro de los ejes. Una curva paramétrica no lleva `mide` ni `palitos`.
+- **`aspecto: igual`** (en `grafica` o en la gráfica de un circuito): los dos ejes lineales y con la misma unidad; el
+  eje con menos unidades por píxel se ensancha alrededor de su centro (no se recorta nada).
+- **Palitos** (`palitos: true`, y `paso` si no es 1): una secuencia x[n], h[n], y[n] dibujada como en el libro, un
+  palito con su punto en cada x = k·paso del eje (como mucho 400), desde y = 0. Eje x lineal; sin `discontinua`.
+  Con `ruido(n, semilla)` (§3.2) se ve una secuencia con ruido:
+  `- { expr: "a^n + s*ruido(n, 3)", palitos: true, color: naranja, rotulo: "con ruido" }`.
+- **`ocultar: curvas`** en una predicción: además de las lecturas, **las curvas y las marcas** no se dibujan hasta
+  responder (en su lugar, «¿? La curva sale al responder» y la leyenda con «(¿?)»); al responder salen. Ya no hace falta
+  recortar el eje para no dar la respuesta. Para ocultar solo una curva (o una marca) y dejar las de referencia (la
+  entrada, una asíntota), `ocultar: true` en el widget y `oculta: true` en esa curva o marca.
+- **Marcas de los ejes**: llevan las cifras que hagan falta para que dos vecinas no se lean igual (de 99,8 a 100,4 mV:
+  «99,8 mV», «99,9 mV», «100 mV», «100,1 mV»…, no «100 mV» en todas); un eje corriente sigue con dos cifras.
 
 ### 5.3 Cómo se comprueba con el simulador
 
@@ -2482,7 +2530,8 @@ lección de catálogo de las pruebas (la prueba de navegador exige que cada esqu
 
 Cada número escrito en una tarjeta (título, texto, nota, opciones, explicaciones, pistas, ideas, rótulos) debe:
 
-1. estar en el texto de **algún bloque citado** en `libro` (también tablas, listas, ejercicios y su solución), o
+1. estar en el texto de **algún bloque citado** en `libro` (también tablas, celda a celda; listas, ejercicios y su
+   solución), o
 2. ser lo que da el modelo en un `comprobar` **de esa tarjeta** (o un valor de su `fijar`/`inicio`).
 
 ```yaml
@@ -2626,9 +2675,13 @@ El generador comprueba: el objetivo da un número; cada `expr` de error da otro 
 no es un error); una `razon` no incluye la respuesta buena; `medida` es una medida de `widget.mide` que vale lo mismo
 que el objetivo (el circuito se comprueba con ngspice como cualquier otro, §5.3).
 
+Sin circuito (sin `medida`, o con una gráfica: un presupuesto de incertidumbre, una fórmula) no se simula nada: la app
+compara con el modelo y la ayuda bajo el campo dice «“Comprobar” la fija y se calcula con el modelo» (1.2, motor12e;
+tarjeta `simule-modelo` del catálogo de motor12e).
+
 ### 10.3 `diseno` — Diseñe con tolerancias
 
-Mandos de serie E12/E24 (§5.1), `condiciones` como un reto (la especificación) y las tolerancias de las piezas. Al
+Mandos de serie E12/E24 (o E6 para electrolíticos; §5.1), `condiciones` como un reto (la especificación) y las tolerancias de las piezas. Al
 comprobar, la app calcula el diseño nominal y el mismo diseño con las tolerancias: **todas las esquinas** (cada pieza
 en sus dos extremos, 2ⁿ placas) o **Monte Carlo** (`muestras` placas con cada pieza al azar, uniforme dentro de su
 tolerancia, siempre las mismas) y enseña la banda, el nominal, la dispersión y cuántas placas cumplen.
@@ -2648,6 +2701,13 @@ tolerancia, siempre las mismas) y enseña la banda, el nominal, la dispersión y
 El generador exige al menos una posición de los mandos que **apruebe con las tolerancias**, que no empiece aprobado,
 y las comprobaciones de un reto (§4). Úselo para la lección del libro: con E12 y ± 5 % un divisor de 3,3 V ± 2 % no
 sale; el lector lo descubre.
+
+- Un mando de `lista` (un catálogo de disipadores, de cables) vale como valores normalizados: no sale el aviso «sin un
+  mando de serie» (1.2, motor12e). Los electrolíticos (± 20 %) se eligen en `serie: E6` (1, 1,5, 2,2, 3,3, 4,7, 6,8).
+- El recorrido (`tests/lecciones11-recorrido.spec.ts`) resuelve el diseño con una posición que **aprueba con las
+  tolerancias** (esquinas o Monte Carlo, como la app), no con la primera que cumple en nominal: no hace falta ordenar
+  las listas ni empezar los mandos lejos para que el recorrido pase (tarjeta `disene-tolerancias` del catálogo de
+  motor12e: 2,7 kΩ y 1 kΩ cumplen en nominal y no con el 1 %; 3,9 kΩ y 1,5 kΩ sí).
 
 ### 10.4 `averia` — Busque la avería
 
@@ -2685,10 +2745,13 @@ ha medido 12,0 V»). Hallada, puede probar «Otra placa con otra avería» (no s
 - El generador comprueba: cada avería se distingue del circuito sano en alguna sonda; dos averías de piezas distintas
   se distinguen en alguna (si no, añada una sonda); cada sospechoso tiene al menos una avería (para poder explicar por
   qué no es él); y avisa si con `pasos` medidas fijas no se distinguen todas.
+- `eleccion: azar` se puede recorrer (1.2, motor12e): el recorrido mide como el lector y deduce la avería de lo que
+  marca el multímetro en cada sonda. Ponga primero las sondas que separan las averías (con las `pasos` primeras deben
+  quedar como mucho dos posibles); tarjeta `averia-azar` del catálogo de motor12e.
 
 ### 10.5 `ajuste` — Ajuste hasta la banda
 
-Un mando (el deslizador, o la pieza del esquema, que se arrastra) y un medidor con la banda: la aguja se mueve en vivo
+Un mando o varios (el deslizador, o la pieza del esquema, que se arrastra) y un medidor con la banda: la aguja se mueve en vivo
 y el texto dice hacia dónde ir. «Continuar» se abre dentro de la banda.
 
 ```yaml
@@ -2706,6 +2769,27 @@ y el texto dice hacia dónde ir. «Continuar» se abre dentro de la banda.
 ```
 
 El generador comprueba que alguna posición entra en la banda y que no se empieza dentro.
+
+**Banda abierta (1.2, motor12e).** Una especificación de un solo lado («el año cabe en 3 000 mA·h», «la vida, al menos
+10 años», «no pasar de 110 °C») es una banda con solo `max` o solo `min`; el consejo del lado que no existe no hace
+falta (si lo pone, avisa). La escala del medidor, si no la da, va de lo que alcanzan los mandos al borde de la banda
+(sin pasar de 0 si la magnitud no cambia de signo). El generador comprueba además que no se esté dentro en todas las
+posiciones (no habría nada que ajustar). Tarjetas `ajuste-consumo` y `ajuste-minimo` del catálogo de motor12e:
+
+```yaml
+    ajuste:
+      valor: I
+      max: 0.002                               # solo un máximo: dentro por debajo de 2 mA
+      rotulo: "Consumo"
+      alto: "Consume demasiado: suba R₁."      # (sin «bajo»: nunca se diría)
+      dentro: "Por debajo de 2 mA."
+```
+
+**Dos mandos (1.2, motor12e).** Un `ajuste` puede llevar varios mandos en su widget (colocar dos polos con k₁ y k₂, un
+divisor con R₁ y R₂): el medidor sigue a la medida, que depende de todos, y el generador recorre todas sus
+combinaciones (hasta 250 000) buscando una dentro de la banda. Los consejos `bajo`/`alto` deben decir qué mover
+(«suba R₂ o baje R₁»). Tarjeta `ajuste-dos` del catálogo de motor12e. Para dos condiciones a la vez (ω_n y σ), sigue
+siendo un `reto` con dos `condiciones`.
 
 ### 10.6 `banco` — En el banco (opcional)
 
@@ -2837,6 +2921,22 @@ widget:
 - `explorar` con figura: `requiere: { mover: [fria, puente] }` pide tocar esas zonas (sin él, una cualquiera).
 - La figura SVG sale sobre la placa de figuras del libro (también en oscuro y sepia); la foto, con su crédito.
 
+**Un listado de código (1.2, motor12e).** En lugar de una figura, `codigo`: un bloque de código del libro
+(`codigo: "apK#20"`) o uno propio (`codigo: { lenguaje: c, texto: "…" }`, para citar solo el trozo que importa; como
+mucho 40 líneas). Sale en letra de ancho fijo, con los comentarios atenuados y las líneas de `resaltar` marcadas; el
+lector de pantalla lo lee entero, línea a línea. Sin zonas, es el visual de una pregunta («¿qué hace este
+fragmento?»); con zonas, cada una son **líneas enteras** (`lineas: [5]` o `[5, 7]`) y vale para `explorar` y `tocar`
+como las de una figura. Tarjetas `pregunta-relleno` y `toque-campo` del catálogo de motor12e:
+
+```yaml
+widget:
+  tipo: figura
+  codigo: "apK#20"                 # el bloque «codigo» del libro (o { lenguaje: c, texto: "…" })
+  resaltar: [3, 4, 5, 6, 7]        # opcional: líneas marcadas (1 = la primera)
+  zonas:                           # opcional: para tocar líneas
+    - { id: instante, lineas: [5], rotulo: "Segundo campo" }
+```
+
 ### 11.2 `logica` — Un circuito lógico vivo
 
 ```yaml
@@ -2847,6 +2947,7 @@ widget:
     - { id: n1, tipo: nand, entradas: [A, B] }            # and, or, not, nand, nor, xor, xnor, buf (2–4 entradas)
     - { id: f1, tipo: d, entradas: [f1.nq, CLK] }        # d [D, CLK] · jk [J, K, CLK] · t [T, CLK]; salidas f1.q, f1.nq
     - { id: c1, tipo: contador, bits: 4, modulo: 10, entradas: [CLK] }   # [CLK] o [CLK, R]; salidas c1.q0 … c1.q3
+    - { id: l1, tipo: latch, entradas: [D, EN] }         # cerrojo D (1.2, motor12e): copia D mientras EN = 1; l1.q, l1.nq
     - { id: m1, tipo: mux, bits: 1, entradas: [A, B, EN] }   # [S0…, D0…]; salida m1
     - { id: d1, tipo: decodificador, bits: 2, entradas: [A, B, EN] }   # [A0…, EN?]; salidas d1.y0 … d1.y3
   salidas:
@@ -2974,6 +3075,14 @@ lector pone el nivel de cada tramo (tocar arriba o abajo, arrastrar; con el tecl
 en los flancos. Al comprobar se marcan los tramos mal y se dice el primer ciclo con error; tras acertar o dos fallos se
 dibuja la onda buena. Pistas: `error` (fracción de tramos mal), `tramos_mal`.
 
+**Nombres de los ciclos (1.2, motor12e).** `etiquetas` en el cronograma, uno por ciclo y de hasta 6 caracteres,
+sustituye 1…N bajo los flancos: una trama UART bit a bit, un arbitraje CAN. El cursor y el aviso de un dibujo mal
+también los dicen («ciclo 2 (inicio)»). Tarjeta `explore-ciclos` del catálogo de motor12e:
+
+```yaml
+      cronograma: { ciclos: 4, senales: [CLK, Q], etiquetas: [reposo, inicio, dato, fin] }
+```
+
 ### 11.8 Otros cambios de 1.2 (motor12c)
 
 - Nombres de un mando de lista con cifras (§5.1): «Sn63Pb37», «SAC305», «0805», «12-0-12» valen; un nombre que es su
@@ -2982,3 +3091,26 @@ dibuja la onda buena. Pistas: `error` (fracción de tramos mal), `tramos_mal`.
   arriba (una bisección, eligiendo cada medida tras la anterior) o con `adaptativa: true`.
 - Avisos nuevos: un `widget` de circuito o gráfica con `ocultar: true` y sin `lectura` (no oculta nada); un `estimar`
   cuyo `inicio` está en el extremo del deslizador más alejado del objetivo (no se puede fallar por los dos lados).
+
+### 11.9 Otros cambios de 1.2 (motor12e)
+
+- **Números de las tablas** (§6): las celdas de una tabla citada se leen una a una. Antes «4», «5», «5», «100» de
+  celdas vecinas se leían como «5 100» (un número con separador de miles) y el 4, el 5 o el 100 de la tabla no se
+  podían escribir. Las citas literales siguen buscándose en el texto seguido.
+- Funciones nuevas del modelo: `erfc`, `erf` y `ruido(x, semilla)` (§3.2); `asin`, `acos` y `log2` ya existían.
+- Gráficas (§5.2): curvas paramétricas, palitos, `aspecto: igual`, `ocultar: curvas` y `oculta`, y marcas de los ejes
+  con las cifras que hacen falta.
+- Pasos (§10): `ajuste` de banda abierta y de varios mandos; `simular` sin circuito dice «se calcula con el modelo»;
+  `diseno` con un mando de `lista` sin aviso de serie E; `formula` con una ecuación de dentro de un bloque (§4,
+  «Fórmula»); nombres de ciclo en el cronograma (§11.7); el aviso de una coma decimal en `nombres` (§5.1).
+- Recorrido (`tests/lecciones11-recorrido.spec.ts`): un `diseno` se resuelve con una posición que aprueba con las
+  tolerancias; una `averia` con `eleccion: azar` se sigue por lo que mide el multímetro; un `ajuste` busca entre todos
+  sus mandos; con `EPA_RECORRER_CATALOGO=1` recorre las lecciones de catálogo de `web/tests/lecciones12-catalogo/`
+  (generadas al vuelo) en lugar de las publicadas.
+- Listados de código como figura (`codigo`, `resaltar`, zonas de `lineas`: §11.1) y el **cerrojo D** (`tipo: latch`,
+  sensible al nivel: §11.2). Con la habilitación del cerrojo en el reloj invertido y el estímulo cambiando con el reloj
+  bajo, el cronograma enseña la diferencia con el biestable: el cerrojo cambia medio ciclo antes (tarjeta
+  `explore-latch` del catálogo de motor12e).
+- No hechos (pedirlos de nuevo si hacen falta): las salidas de colector abierto y tri-estado (necesitan un nivel «Z»
+  y redes con varios conductores en la simulación y en el dibujo) y el perro guardián; véase el estado de motor12e en
+  las peticiones.
