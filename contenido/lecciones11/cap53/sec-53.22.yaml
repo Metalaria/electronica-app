@@ -1,0 +1,334 @@
+# Lección 1.2 de la sección 55.23 «Fuentes de Alimentación: Procedimiento Específico» (cap53; etiqueta interna
+# sec-53.22). Formato: contenido/lecciones11/GUIA.md. La figura 55.44 (fig-14.10, 440,9 × 241,9) con los cinco bloques y
+# el arranque cíclico; la foto 55.43 de la fuente ATX (fig-53.33, 1600 × 1572 píxeles) para «tocar» dónde se verifica la
+# descarga; el puente vivo para el rizado de 100 Hz. Paso práctico: «averia» de la tabla de fuentes lineales (bloque
+# 746) sobre un LM317: filtro seco (la entrada se hunde con carga), regulador degradado (más caída mínima con carga) o
+# cortocircuito parcial en la carga (el regulador se calienta). Los valores (9 V a la entrada, 5 V a la salida con
+# 240 Ω y 720 Ω, 2 V de caída mínima, carga de 10 Ω; averías: 6 V, 5 V de caída, 3 Ω) son de ejemplo. El rizado a
+# 50 Hz de un diodo del puente abierto no se puede simular aún (petición al motor): va como pregunta.
+leccion: cap53/sec-53.22
+
+libro:
+  727: "unos 320 V de continua en Europa"
+  729: "el bloque que más falla en un equipo electrónico"
+  732: "Arranque: una resistencia de valor alto"
+  734: "la resistencia de arranque está abierta"
+  735: "significa que el controlador arranca correctamente y algo lo detiene"
+  736: "El bobinado auxiliar no entrega tensión"
+  737: "una rampa de carga seguida de una caída"
+  738: "la capacidad medida es correcta y el capacímetro los da por buenos"
+  740: "Verificar con el Brymen que ha bajado por debajo de 30 V antes de tocar"
+  742: "Poner uno «de la misma capacidad» pero estándar produce una fuente que funciona en el banco y falla en semanas"
+  743: "si un electrolítico ha fallado, conviene revisar sus vecinos"
+  746: "Salida correcta en vacío y hundida con carga"
+  747: "si aparece a 50 Hz, un diodo del puente está abierto"
+  750: "a 1 ms/div el muestreo real baja a unos 83 kS/s"
+  751: "B, condensadores de filtro de entrada"
+  752: "Los cinco bloques de una fuente conmutada con sus fallos típicos"
+  "cap53#962": "La salida de una fuente conmutada muestra 240 mV de rizado con un rizado de corriente en la bobina de 0,8 A"
+
+modelo:
+  valores:
+    V_ic: { sim: "V_{in}", nombre: "entrada del regulador con carga", unidad: V, valor: 9 }
+    V_iv: { sim: "V_{in,vacío}", nombre: "entrada del regulador en vacío", unidad: V, valor: 9 }
+    d_c: { sim: "V_{do}", nombre: "caída mínima con carga", unidad: V, valor: 2 }
+    d_v: { sim: "V_{do,vacío}", nombre: "caída mínima en vacío", unidad: V, valor: 2 }
+    R_a: { sim: "R₁", nombre: "resistencia de OUT a ADJ", unidad: Ω, valor: 240 }
+    R_b: { sim: "R₂", nombre: "resistencia de ADJ a masa", unidad: Ω, valor: 720 }
+    R_L: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 10 }
+    on_l: { tipo: interruptor, nombre: "carga conectada", valor: 1 }
+    V_rp: { sim: "V_{p}", nombre: "pico de la entrada", unidad: V, valor: 16.97 }
+    f_red: { sim: "f", nombre: "frecuencia de la red", unidad: Hz, valor: 50 }
+    V_rd: { sim: "V_{D}", nombre: "caída de cada diodo", unidad: V, valor: 0.7 }
+    C_rf: { sim: "C", nombre: "condensador de filtro", unidad: F, valor: 1000e-6 }
+    R_rl: { sim: "R_{L}", nombre: "carga del rectificador", unidad: Ω, valor: 100 }
+    V_rz: { sim: "V_{rizado}", nombre: "rizado de salida", unidad: V, valor: 0.24 }
+    I_rz: { sim: "I_{rizado}", nombre: "rizado de corriente en la bobina", unidad: A, valor: 0.8 }
+    n_m: { sim: "N", nombre: "puntos de memoria", unidad: "", valor: 1000 }
+    n_d: { sim: "div", nombre: "divisiones de la pantalla", unidad: "", valor: 12 }
+    t_d: { sim: "t/div", nombre: "base de tiempos", unidad: s, valor: 0.001 }
+  calculos:
+    V_in: { si: on_l, entonces: "V_ic", sino: "V_iv", sim: "V_{in}", nombre: "entrada del regulador", unidad: V }
+    V_dd: { si: on_l, entonces: "d_c", sino: "d_v", sim: "V_{do}", nombre: "caída mínima", unidad: V }
+    V_nom: { expr: "1.25*(1 + R_b/R_a)", sim: "V_{nom}", nombre: "salida nominal", unidad: V }
+    V_o: { expr: "min(V_nom, V_in - V_dd)", sim: "V_{out}", nombre: "tensión de salida", unidad: V }
+    I_L: { si: on_l, entonces: "V_o/R_L", sino: "0", sim: "I_{L}", nombre: "corriente de carga", unidad: A }
+    I_in: { expr: "I_L + V_o/(R_a + R_b)", sim: "I_{in}", nombre: "corriente de entrada", unidad: A }
+    P_r: { expr: "(V_in - V_o)*I_in", sim: "P", nombre: "potencia en el regulador", unidad: W }
+    V_vac: { expr: "min(V_nom, V_iv - d_v)", sim: "V_{vacío}", nombre: "salida en vacío", unidad: V }
+    V_r2: { expr: "V_rp - 2*V_rd", sim: "V_{pico}", nombre: "pico de la salida, puente", unidad: V }
+    T_red: { expr: "1/f_red", sim: "T", nombre: "periodo de la red", unidad: s }
+    tau_r: { expr: "R_rl*C_rf", sim: "τ", nombre: "constante de descarga", unidad: s }
+    f_rz: { expr: "2*f_red", sim: "f_{rizado}", nombre: "frecuencia del rizado", unidad: Hz }
+    ESR: { expr: "V_rz/I_rz", sim: "ESR", nombre: "resistencia serie equivalente estimada", unidad: Ω }
+    f_s: { expr: "n_m/(n_d*t_d)", sim: "f_{s}", nombre: "muestreo real", unidad: "S/s" }
+
+tarjetas:
+  - id: explore-bloques
+    tipo: explorar
+    titulo: "El mapa antes de medir"
+    texto: "Una fuente conmutada en cinco bloques, cada uno con su fallo típico. Toque los bloques y la gráfica."
+    libro: [729, 732, 752]
+    widget:
+      tipo: figura
+      figura: fig-14.10
+      zonas:
+        - { id: entrada, rotulo: "Primer cuadro de la izquierda", rect: [2, 3, 216, 45], texto: "Entrada: fusible, varistor, filtro, puente y condensador de alta tensión." }
+        - { id: arranque, rotulo: "Segundo cuadro", rect: [2, 50, 216, 45], texto: "Arranque: una resistencia de cientos de kΩ; se abre porque disipa siempre." }
+        - { id: conmutacion, rotulo: "Tercer cuadro", rect: [2, 97, 216, 45], texto: "Conmutación: controlador, MOSFET y transformador; fallan en corto." }
+        - { id: auxiliar, rotulo: "Cuarto cuadro", rect: [2, 144, 216, 45], texto: "Auxiliar: el bobinado que releva a la resistencia de arranque." }
+        - { id: realimentacion, rotulo: "Quinto cuadro", rect: [2, 191, 216, 46], texto: "Realimentación: el TL431 y el optoacoplador, que cruza la barrera de aislamiento." }
+        - { id: hipo, rotulo: "La gráfica de la derecha", rect: [236, 10, 204, 230], texto: "El arranque cíclico: una rampa de carga seguida de una caída, una y otra vez." }
+    requiere: { mover: [entrada, arranque, hipo] }
+
+  - id: toque-descarga
+    tipo: tocar
+    titulo: "Antes de tocar"
+    texto: "Desenchufada la fuente, ¿dónde verifica con el Brymen que la tensión ha bajado de 30 V?"
+    libro: [727, 740, 751]
+    widget:
+      tipo: figura
+      figura: fig-53.33
+      zonas:
+        - { id: a, rotulo: "A, abajo a la izquierda", rect: [170, 700, 190, 240] }
+        - { id: b, rotulo: "B, arriba a la izquierda", rect: [130, 240, 220, 420] }
+        - { id: c, rotulo: "C, en el centro", rect: [510, 470, 260, 300] }
+        - { id: d, rotulo: "D, arriba a la derecha", rect: [960, 390, 170, 210] }
+        - { id: e, rotulo: "E, a la derecha", rect: [1130, 500, 230, 300] }
+    tocar:
+      bien: [b]
+      porque:
+        a: "El puente rectificador: no almacena energía."
+        c: "El transformador: la energía peligrosa está antes, en el primario."
+        d: "La bobina del filtro de salida, en el secundario de baja tensión."
+        e: "Los condensadores de salida, de baja tensión; el riesgo está en el primario."
+    exito: "Los condensadores de entrada: unos 320 V que pueden guardar decenas de julios."
+    escalera:
+      - "Busque el condensador que guarda la red rectificada."
+    solucion: "B: los condensadores de filtro de entrada, en el primario."
+
+  - id: empareje-sintomas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los tres síntomas"
+    texto: "Una cada síntoma con lo que significa."
+    libro: [734, 735, 738]
+    emparejar:
+      - ["Muerta, sin nada", "Fusible, 320 V o la tensión del controlador"]
+      - ["Hipa: arranca y se para", "El controlador arranca y algo lo detiene"]
+      - ["Rizado excesivo o inestable", "Electrolíticos de salida con ESR alta"]
+    exito: "El hipo es el más informativo: el controlador funciona."
+    pistas:
+      - { texto: "Arrancar y pararse necesita un controlador que arranca." }
+    escalera:
+      - "La ESR alta no cambia la capacidad: el rizado la delata."
+    solucion: "Muerta: fusible, 320 V, controlador; hipa: algo lo detiene; rizado: ESR."
+
+  - id: hipo-auxiliar
+    tipo: pregunta
+    titulo: "Rampa y caída, una y otra vez"
+    texto: "En el pin de alimentación del controlador ve una rampa de carga seguida de una caída, repetida. ¿Qué causa típica encaja?"
+    libro: [736, 737]
+    widget:
+      tipo: figura
+      figura: fig-14.10
+      zonas:
+        - { id: hipo, rotulo: "La gráfica de la derecha", rect: [236, 10, 204, 230] }
+        - { id: auxiliar, rotulo: "Cuarto cuadro", rect: [2, 144, 216, 45] }
+    opciones:
+      - texto: "El bobinado auxiliar no entrega tensión"
+        bien: true
+        porque: "La fuente vive solo del arranque, se queda sin alimentación y se apaga; el condensador se recarga y vuelve a intentarlo."
+      - texto: "La resistencia de arranque está abierta"
+        porque: "Entonces no habría rampa: la tensión del controlador no llegaría nunca."
+      - texto: "El fusible está fundido"
+        porque: "Sin fusible no llega nada: la fuente estaría muerta, sin rampa."
+    escalera:
+      - "La rampa demuestra que el arranque funciona; ¿quién debía relevarlo?"
+    solucion: "El bobinado auxiliar no entrega tensión."
+
+  - id: ordene-secuencia
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "La secuencia"
+    texto: "Ordene los pasos del diagnóstico de una fuente conmutada."
+    libro: [740]
+    ordenar:
+      - "Descargar el condensador de primario y verificarlo"
+      - "Inspección visual"
+      - "Medidas sin alimentar"
+      - "Encendido con la lámpara en serie"
+      - "Tensión de arranque del controlador"
+      - "Rizado de salida con el FNIRSI"
+      - "Optoacoplador, si la salida es alta o inestable"
+    exito: "Primero la seguridad, luego lo que se ve, después lo que se mide en frío y por último en marcha."
+    pistas:
+      - { texto: "Nada se alimenta hasta haber medido en frío." }
+    escalera:
+      - "Empieza por lo que protege su vida: el condensador de 320 V."
+    solucion: "Descargar, inspeccionar, medir en frío, lámpara, arranque, rizado y optoacoplador."
+
+  - id: estime-esr
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El rizado delata la ESR"
+    texto: "La salida muestra 240 mV de rizado con un rizado de corriente en la bobina de 0,8 A. Estime la ESR del condensador de salida."
+    libro: ["cap53#962", 738]
+    fijar: { V_rz: 0.24, I_rz: 0.8 }
+    widget:
+      tipo: figura
+      figura: fig-14.10
+      zonas:
+        - { id: entrada, rotulo: "Primer cuadro de la izquierda", rect: [2, 3, 216, 45] }
+    estimar:
+      objetivo: "ESR"
+      unidad: Ω
+      min: 0
+      max: 1
+      paso: 0.01
+      inicio: 0.8
+      tol: 0.05
+      rotulo: "ESR = ΔV / ΔI"
+    exito: "0,3 Ω: demasiado para un condensador de salida sano."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.32 }, texto: "Se ha pasado: 0,24 V entre 0,8 A es menos de medio ohmio." }
+      - { texto: "Se ha quedado corto: divida el rizado de tensión entre el de corriente." }
+    escalera:
+      - "El rizado de tensión es el de corriente por la ESR."
+    solucion: "0,24 V / 0,8 A = 0,3 Ω."
+    comprobar:
+      - { ESR: 0.3 }
+
+  - id: sustitucion
+    tipo: porque
+    titulo: "La sustitución que hay que hacer bien"
+    texto: "Uno «de la misma capacidad» pero estándar funciona en el banco y falla en semanas. ¿Qué hay que poner, y por qué?"
+    libro: [742, 743]
+    widget:
+      tipo: figura
+      figura: fig-53.33
+      zonas:
+        - { id: e, rotulo: "E, a la derecha", rect: [1130, 500, 230, 300] }
+        - { id: b, rotulo: "B, arriba a la izquierda", rect: [130, 240, 220, 420] }
+    opciones:
+      - texto: "Baja ESR, tensión y temperatura al menos iguales; y revisar sus vecinos"
+        bien: true
+        porque: "Los vecinos han sufrido la misma temperatura; uno estándar falla en semanas."
+      - texto: "Uno de la misma capacidad, estándar"
+        porque: "Funciona en el banco y falla en semanas: la ESR es la que fija el rizado."
+      - texto: "Uno de más capacidad y menos tensión"
+        porque: "La tensión debe ser igual o mayor; y lo que importa en la salida es la baja ESR."
+    escalera:
+      - "¿Qué parámetro del condensador fija el rizado de salida?"
+    solucion: "Baja ESR, tensión y temperatura al menos iguales, y revisar los vecinos."
+
+  - id: averia-lineal
+    tipo: averia
+    titulo: "Una fuente lineal que falla con carga"
+    texto: "Mida con carga y en vacío, y diga qué falla: el filtro de antes del regulador, el regulador o la carga."
+    nota: "Fuente lineal de ejemplo con LM317; sana da 5,00 V."
+    libro: [746]
+    fijar: { V_ic: 9, V_iv: 9, d_c: 2, d_v: 2, R_a: 240, R_b: 720, R_L: 10, on_l: 1 }
+    widget:
+      tipo: circuito
+      esquema: lm317
+      piezas: { entrada: V_in, r1: R_a, r2: R_b, dropout: V_dd, carga: R_L, interruptor: on_l }
+      mide: { vout: V_o, iin: I_in, icarga: I_L, p_paso: P_r }
+      mandos: []
+    averia:
+      pasos: 2
+      sospechosos:
+        - { id: entrada, rotulo: "El filtro antes del regulador" }
+        - { id: regulador, rotulo: "El regulador" }
+        - { id: carga, rotulo: "La carga" }
+      sondas:
+        - { id: salida, rotulo: "Salida, con carga", valor: V_o }
+        - { id: vacio, rotulo: "Salida, en vacío", valor: V_vac }
+        - { id: entrada, rotulo: "Entrada del regulador, con carga", valor: V_in }
+        - { id: potencia, rotulo: "Calor del regulador (potencia)", valor: P_r }
+      fallos:
+        - { id: filtro-seco, pieza: entrada, tipo: bajo, con: { V_ic: 6 }, texto: "Condensador de filtro seco: con carga la entrada se hunde y el regulador se queda sin margen. En vacío, la salida es correcta." }
+        - { id: regulador-degradado, pieza: regulador, tipo: valor, con: { d_c: 5 }, texto: "Regulador degradado: con la entrada bien, con carga necesita más caída y la salida se hunde." }
+        - { id: carga-corto, pieza: carga, tipo: bajo, con: { R_L: 3 }, texto: "Cortocircuito parcial en la carga: la salida se sostiene, pero el regulador se calienta." }
+    pistas:
+      - { texto: "Compare la salida con carga y en vacío, y luego mire la entrada o el calor." }
+    escalera:
+      - "Sana, da 5,00 V con carga y en vacío, con 9 V a la entrada."
+      - "Si la salida cae con carga, mire la entrada: si también cae, es el filtro."
+    solucion: "Entrada hundida: filtro seco. Entrada bien y salida hundida: regulador. Salida bien y regulador caliente: carga."
+    comprobar:
+      - { V_o: 5.0, V_in: 9, V_vac: 5.0, P_r: 2.02, tol: 0.01 }
+      - { con: { V_ic: 6 }, V_o: 4.0 }
+      - { con: { R_L: 3 }, V_o: 5.0, P_r: 6.69, tol: 0.01 }
+
+  - id: rizado-50
+    tipo: pregunta
+    titulo: "El rizado dice qué diodo falla"
+    texto: "Este puente rectifica con rizado de 100 Hz. Si el rizado apareciera a 50 Hz, ¿qué le pasaría?"
+    libro: [747]
+    fijar: { V_rp: 16.97, f_red: 50, V_rd: 0.7, C_rf: 1000e-6, R_rl: 100 }
+    widget:
+      tipo: circuito
+      esquema: puente
+      piezas: { fuente: V_rp, f: f_red, vd: V_rd, c: C_rf, carga: R_rl }
+      lectura: { valor: f_rz, rotulo: "Frecuencia del rizado" }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 18, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(V_rp*abs(sin(2*pi*f_red*t)) - 2*V_rd, V_r2*exp(-(t - T_red/4 - T_red/2*floor((t - T_red/4)/(T_red/2)))/tau_r))", color: naranja, rotulo: "salida", mide: salida }
+      mandos: []
+    opciones:
+      - texto: "Un diodo del puente está abierto"
+        bien: true
+        porque: "Solo se rectifica medio ciclo: el condensador se recarga una vez por periodo de la red."
+      - texto: "El condensador de filtro está seco"
+        porque: "Con el condensador seco el rizado crece, pero sigue a 100 Hz."
+      - texto: "Un diodo del puente está en corto"
+        porque: "Un diodo en corto suele llevarse el fusible: se queda sin salida."
+    escalera:
+      - "Con onda completa, el condensador se recarga dos veces por periodo."
+    solucion: "Un diodo abierto: solo medio ciclo, rizado a 50 Hz."
+    comprobar:
+      - { f_rz: 100 }
+
+  - id: estime-muestreo
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La conmutación con la base de tiempos larga"
+    texto: "El FNIRSI reparte 1 000 puntos de memoria en 12 divisiones. A 1 ms/div, ¿a cuánto muestrea de verdad?"
+    libro: [750]
+    fijar: { n_m: 1000, n_d: 12, t_d: 0.001 }
+    widget:
+      tipo: figura
+      figura: fig-14.10
+      zonas:
+        - { id: conmutacion, rotulo: "Tercer cuadro", rect: [2, 97, 216, 45] }
+    estimar:
+      objetivo: "f_s"
+      unidad: "S/s"
+      min: 0
+      max: 200000
+      paso: 1000
+      inicio: 180000
+      tol: 0.05
+      rotulo: "puntos / (divisiones · t/div)"
+    exito: "Unos 83 kS/s: una fuente de 300 kHz se ve aliasada, con una forma que parece real y no lo es."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 87500 }, texto: "Se ha pasado: la pantalla dura 12 ms y en ellos caben 1 000 puntos." }
+      - { texto: "Se ha quedado corto: 1 000 puntos en 12 ms." }
+    escalera:
+      - "La pantalla entera dura 12 divisiones por 1 ms."
+    solucion: "1 000 / 12 ms = 83 kS/s: hay que bajar a µs por división."
+    comprobar:
+      - { f_s: 83333 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [729, 735, 746, 747]
+    ideas:
+      - { titulo: "Primero, la seguridad.", texto: "Unos 320 V en el condensador de primario: descargar y verificar." }
+      - { titulo: "Tres síntomas.", texto: "Muerta, hipa o rizado: el hipo dice que el controlador arranca." }
+      - { titulo: "Fuentes lineales.", texto: "Con carga y en vacío, la entrada y el calor separan filtro, regulador y carga." }
+      - { titulo: "El rizado.", texto: "A 100 Hz, condensador; a 50 Hz, un diodo del puente abierto." }

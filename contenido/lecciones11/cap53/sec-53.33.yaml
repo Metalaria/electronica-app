@@ -1,0 +1,228 @@
+# Lección 1.2 de la sección 55.34 «Tarjeta de Referencia Rápida» (cap53; etiqueta interna sec-53.33).
+# Formato: contenido/lecciones11/GUIA.md. La figura 55.57 (fig-14.17, 453,6 × 198,0) con zonas; las dos tablas de la
+# tarjeta como emparejar. Paso práctico: «simular» la tensión fantasma del ejercicio 55.16 (220 pF de acoplamiento con
+# un cable de 230 V, el Brymen de 10 MΩ) con `filtro-rc` como paso alto (la tensión en R a 50 Hz), y predecir la
+# lectura con 10 kΩ en paralelo (10 kΩ ∥ 10 MΩ = 9 990 Ω). El esquema toma la amplitud de la fuente; aquí se usan los
+# 230 V eficaces directamente y las lecturas salen eficaces (el circuito es lineal: la proporción es la misma).
+# El ejercicio 55.20 (UART, 26 µs) como estimación.
+leccion: cap53/sec-53.33
+
+libro:
+  956: "consultarla es más rápido que dudar"
+  957: "Cae a milivoltios: fantasma"
+  959: "Rizado en una alimentación digital"
+  960: "una medida aislada no dice nada; comparada con lo esperado, lo dice todo"
+  961: "Dónde suelen estar las averías, por orden de frecuencia"
+  "cap53#962": "Un cable desconectado que discurre junto a otro de 230 V presenta 220 pF de acoplamiento"
+
+modelo:
+  valores:
+    V_g: { sim: "V_{red}", nombre: "tensión del cable vecino, eficaz", unidad: V, valor: 230 }
+    f_g: { sim: "f", nombre: "frecuencia de la red", unidad: Hz, valor: 50 }
+    C_ac: { sim: "C_{acoplo}", nombre: "acoplamiento entre los cables", unidad: F, valor: 220e-12 }
+    R_m: { sim: "R_{in}", nombre: "lo que carga el cable: el multímetro", unidad: Ω, valor: 10000000 }
+    t_b: { sim: "t_{bit}", nombre: "duración del pulso más corto", unidad: s, valor: 26e-6 }
+  calculos:
+    x_g: { expr: "2*pi*f_g*R_m*C_ac", sim: "ωRC", nombre: "ωRC", unidad: "" }
+    V_f: { expr: "V_g*x_g/sqrt(1 + x_g^2)", sim: "V", nombre: "lectura del multímetro", unidad: V }
+    X_c: { expr: "1/(2*pi*f_g*C_ac)", sim: "X_{C}", nombre: "reactancia del acoplamiento", unidad: Ω }
+    A_c: { expr: "V_g/sqrt(1 + x_g^2)", sim: "V_{C}", nombre: "tensión en el acoplamiento", unidad: V }
+    baud: { expr: "1/t_b", sim: "baudios", nombre: "velocidad de la línea", unidad: "" }
+
+tarjetas:
+  - id: explore-tarjeta
+    tipo: explorar
+    titulo: "La hoja que se consulta"
+    texto: "El criterio es de memoria y se olvida: consultarla es más rápido que dudar. Toque dónde están las averías y lo normal."
+    libro: [956, 961]
+    widget:
+      tipo: figura
+      figura: fig-14.17
+      zonas:
+        - { id: alimentacion, rotulo: "Primer cuadro de la izquierda", rect: [2, 22, 198, 38], texto: "La alimentación y sus condensadores: la mayor parte de las averías." }
+        - { id: conectores, rotulo: "Segundo cuadro", rect: [2, 60, 198, 36], texto: "Conectores y soldaduras: la siguiente." }
+        - { id: potencia, rotulo: "Tercer cuadro", rect: [2, 96, 198, 36], texto: "Semiconductores de potencia: menos frecuentes." }
+        - { id: senal, rotulo: "Cuarto y quinto cuadro", rect: [2, 132, 198, 65], texto: "Integrados de señal, relativamente raros; pasivos de señal, excepcionales." }
+        - { id: tabla, rotulo: "La tabla de la derecha", rect: [218, 4, 234, 180], texto: "Lo normal y lo sospechoso: rizado, caídas, ESR, temperatura y uniones." }
+    requiere: { mover: [alimentacion, conectores, tabla] }
+
+  - id: empareje-instrumento
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Qué instrumento responde"
+    texto: "Una cada pregunta con el instrumento y su ajuste."
+    libro: [957]
+    emparejar:
+      - ["¿Hay cortocircuito?", "Brymen, continuidad"]
+      - ["¿Dónde está el corto?", "Fuente en CC y Brymen con REL, µV"]
+      - ["¿Hay rizado excesivo?", "FNIRSI en AC, masa de muelle"]
+      - ["¿De dónde viene el zumbido?", "FNIRSI, FFT"]
+      - ["¿Falla al calentarse?", "Aire caliente y Brymen MIN/MAX"]
+      - ["¿La soldadura es buena?", "Luz rasante y lupa"]
+    exito: "Cada pregunta del diagnóstico tiene su instrumento y su ajuste."
+    pistas:
+      - { texto: "El gradiente de un corto se busca con microvoltios." }
+    escalera:
+      - "El zumbido se identifica por su frecuencia."
+    solucion: "Corto: continuidad; dónde: REL y µV; rizado: AC y muelle; zumbido: FFT; calor: MIN/MAX; soldadura: lupa."
+
+  - id: simule-fantasma
+    tipo: simular
+    titulo: "Una tensión que no existe"
+    texto: "Un cable desconectado corre junto a otro de 230 V, con 220 pF de acoplamiento. ¿Qué lee el Brymen, con sus 10 MΩ?"
+    libro: ["cap53#962"]
+    fijar: { V_g: 230, f_g: 50, C_ac: 220e-12, R_m: 10000000 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_g, f: f_g, r: R_m, c: C_ac }
+      lectura: { valor: V_f, rotulo: "Lectura del Brymen" }
+      mide: { vr_amp: V_f, vc_amp: A_c }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: V_f
+      unidad: V
+      tol: 0.03
+      rotulo: "Lectura del Brymen, V"
+      medida: vr_amp
+      errores:
+        - { expr: "V_g", texto: "Eso sería un cable conectado a la red. Este solo se acopla por 220 pF: la lectura es menor." }
+    exito: "Unos 131 V en un cable desconectado: con 10 MΩ, el acoplamiento parece una tensión de verdad."
+    escalera:
+      - "Los 220 pF y los 10 MΩ forman un paso alto a 50 Hz."
+      - "La reactancia de 220 pF a 50 Hz ronda los 14 MΩ: comparable a los 10 MΩ."
+    solucion: "Con 10 MΩ frente a unos 14 MΩ de reactancia, el Brymen lee unos 131 V."
+    comprobar:
+      - { V_f: 130.8, tol: 0.005 }
+      - { con: { R_m: 1e30 }, V_f: 230, tol: 0.001 }
+      - { X_c: 14470000, tol: 0.005 }
+
+  - id: prediga-10k
+    tipo: predecir
+    titulo: "Con 10 kΩ en paralelo"
+    texto: "Pone 10 kΩ en paralelo con el Brymen, sobre el mismo cable. ¿Qué lee ahora?"
+    libro: ["cap53#962", 957]
+    fijar: { V_g: 230, f_g: 50, C_ac: 220e-12, R_m: 9990 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_g, f: f_g, r: R_m, c: C_ac }
+      lectura: { valor: V_f, rotulo: "Lectura del Brymen" }
+      mide: { vr_amp: V_f }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "Unos 160 mV: cae a milivoltios"
+        bien: true
+        porque: "Una tensión real aguantaría 10 kΩ; la fantasma no tiene corriente que dar: fantasma."
+      - texto: "Los mismos 131 V"
+        porque: "Eso haría una tensión real, con fuerza para mantenerse. Esta no puede."
+      - texto: "La mitad de los 131 V"
+        porque: "No es un divisor a partes iguales: 10 kΩ frente a 14 MΩ de reactancia se queda casi nada."
+    escalera:
+      - "¿Cuánta corriente puede dar un acoplamiento de 220 pF?"
+    solucion: "Cae a unos 160 mV: es una tensión fantasma."
+    comprobar:
+      - { V_f: 0.1588, tol: 0.005 }
+
+  - id: estime-uart
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "¿Qué velocidad tiene esta UART?"
+    texto: "El pulso más corto que ve en el osciloscopio dura 26 µs. ¿A cuántos baudios está la línea?"
+    libro: ["cap53#962", 957]
+    fijar: { t_b: 26e-6 }
+    estimar:
+      objetivo: "baud"
+      unidad: ""
+      min: 0
+      max: 120000
+      paso: 100
+      inicio: 100000
+      tol: 0.05
+      rotulo: "1 / duración del bit"
+    exito: "38 400 baudios: el pulso más corto es un bit."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 40400 }, texto: "Se ha pasado: 1 entre 26 µs son unas decenas de miles." }
+      - { texto: "Se ha quedado corto: 1 / 0,000026 s." }
+    escalera:
+      - "El pulso más corto es un bit: la velocidad es 1 / su duración."
+    solucion: "1 / 26 µs ≈ 38 462: la velocidad normalizada de 38 400 baudios."
+    comprobar:
+      - { baud: 38462 }
+
+  - id: empareje-normal
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Lo normal"
+    texto: "Una cada medida con su valor normal."
+    libro: [959]
+    emparejar:
+      - ["Rizado, alimentación digital", "Menos de 50 mV"]
+      - ["ESR de un electrolítico de 1000 µF", "Menos de 0,1 Ω"]
+      - ["Temperatura de un integrado", "Menos de 60 °C"]
+      - ["V_{BE} en activa", "0,6–0,7 V"]
+      - ["V_{CE} en saturación", "0,1–0,3 V"]
+      - ["Caída de un Schottky", "0,2–0,4 V"]
+    exito: "Y lo sospechoso: rizado de más de 100 mV, ESR de más de 0,5 Ω, más de 85 °C."
+    pistas:
+      - { texto: "El Schottky cae menos que una unión de silicio." }
+    escalera:
+      - "Una unión de silicio en directa cae unos 0,6–0,7 V."
+    solucion: "Rizado: < 50 mV; ESR: < 0,1 Ω; integrado: < 60 °C; V_{BE}: 0,6–0,7; V_{CE}: 0,1–0,3; Schottky: 0,2–0,4 V."
+
+  - id: ack
+    tipo: pregunta
+    titulo: "¿Responde en el bus?"
+    texto: "Dos canales del FNIRSI en SCL y SDA, con disparo en SDA mientras SCL está alto. ¿Qué dice que el dispositivo responde?"
+    libro: [957]
+    widget:
+      tipo: figura
+      figura: fig-14.17
+      zonas:
+        - { id: tabla, rotulo: "La tabla de la derecha", rect: [218, 4, 234, 180] }
+    opciones:
+      - texto: "SDA en bajo en el noveno pulso: el ACK"
+        bien: true
+        porque: "El dispositivo reconoce su dirección bajando SDA en el noveno pulso de reloj."
+      - texto: "SDA en alto en el noveno pulso"
+        porque: "SDA en alto ahí es que nadie ha respondido."
+      - texto: "SCL plantada en bajo"
+        porque: "Una línea plantada sin actividad es un bus bloqueado, no una respuesta."
+    escalera:
+      - "Tras ocho bits de dirección, el que la reconoce contesta en el noveno."
+    solucion: "SDA en bajo en el noveno pulso: ACK."
+
+  - id: por-que-propias
+    tipo: porque
+    titulo: "Las referencias más valiosas"
+    texto: "La tarjeta da valores generales. ¿Por qué valen más las referencias propias?"
+    libro: [960]
+    widget:
+      tipo: figura
+      figura: fig-14.17
+      zonas:
+        - { id: tabla, rotulo: "La tabla de la derecha", rect: [218, 4, 234, 180] }
+        - { id: alimentacion, rotulo: "Primer cuadro de la izquierda", rect: [2, 22, 198, 38] }
+    opciones:
+      - texto: "Están tomadas en aparatos que funcionan, de los que uno repara"
+        bien: true
+        porque: "Una medida aislada no dice nada; comparada con lo esperado de ese aparato, lo dice todo."
+      - texto: "Porque los valores de la tarjeta están mal"
+        porque: "Son buenas referencias generales; las propias son más precisas para sus aparatos."
+      - texto: "Porque la memoria no falla"
+        porque: "Al contrario: el criterio se olvida; por eso se anotan en el cuaderno."
+    escalera:
+      - "¿Con qué se compara mejor una medida de un aparato?"
+    solucion: "Son de aparatos que funcionan: la mejor comparación."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [956, 957, 959, 960]
+    ideas:
+      - { titulo: "Dónde.", texto: "Alimentación, conectores y soldaduras, potencia; integrados y pasivos de señal, rara vez." }
+      - { titulo: "Con qué.", texto: "Cada pregunta del diagnóstico tiene su instrumento y su ajuste." }
+      - { titulo: "Lo normal.", texto: "Rizado, caídas, ESR, temperatura y uniones: la medida se compara." }
+      - { titulo: "Fantasmas.", texto: "Una tensión que cae a milivoltios con 10 kΩ en paralelo no existe." }

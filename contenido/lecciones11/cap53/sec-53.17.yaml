@@ -1,0 +1,267 @@
+# Lección 1.2 de la sección 55.18 «Medir Corriente con el Osciloscopio» (cap53; etiqueta interna sec-53.17).
+# Formato: contenido/lecciones11/GUIA.md. El shunt en el retorno a masa (figura 55.36, svg_vista 450,7 × 169,9) con el
+# esquema `serie`: una fuente de 12 V, la carga y el shunt. Los 12 V y las cargas (600, 24 y 6 Ω, que dan unos 20 mA,
+# 500 mA y 2 A como la tabla del bloque 607) son de ejemplo: el libro no da el circuito. Paso práctico: «simular» la
+# corriente con el shunt de 1 Ω y la carga pesada (el error típico es olvidar que el shunt también está en serie).
+# El ejercicio 55.13 (shunt de 0,1 Ω, 35 mV) como estimación y pregunta.
+leccion: cap53/sec-53.17
+
+libro:
+  604: "el osciloscopio muestra cómo es la corriente"
+  605: "Montaje del shunt en el retorno a masa"
+  606: "la corriente es esa tensión dividida entre la resistencia"
+  607: "despreciable"
+  608: "más resistencia da más señal pero se come tensión del circuito y disipa"
+  609: "hay que usar los dos canales en modo resta"
+  611: "La saturación de una bobina se ve como una curva que se dobla hacia arriba en los picos"
+  613: "Shunt de baja inductancia"
+  "cap53#962": "Con un shunt de 0,1 Ω en el retorno a masa, el FNIRSI muestra 35 mV de caída"
+
+modelo:
+  valores:
+    V_f: { sim: "V", nombre: "tensión de la fuente", unidad: V, valor: 12 }
+    R_c: { sim: "R_{carga}", nombre: "resistencia de la carga", unidad: Ω, valor: 24 }
+    R_sh: { sim: "R_{shunt}", nombre: "resistencia del shunt", unidad: Ω, valor: 0.1 }
+    V_ej: { sim: "V", nombre: "caída del ejercicio", unidad: V, valor: 0.035 }
+  calculos:
+    I_c: { expr: "V_f/(R_c + R_sh)", sim: "I", nombre: "corriente de la carga", unidad: A }
+    V_sh: { expr: "I_c*R_sh", sim: "V_{shunt}", nombre: "caída en el shunt", unidad: V }
+    V_cg: { expr: "I_c*R_c", sim: "V_{carga}", nombre: "tensión que le queda a la carga", unidad: V }
+    P_sh: { expr: "I_c^2*R_sh", sim: "P_{shunt}", nombre: "disipación del shunt", unidad: W }
+    I_sin: { expr: "V_f/R_c", sim: "I_{sin shunt}", nombre: "corriente sin el shunt", unidad: A }
+    I_ej: { expr: "V_ej/R_sh", sim: "I", nombre: "corriente del ejercicio", unidad: A }
+    P_ej: { expr: "V_ej^2/R_sh", sim: "P", nombre: "disipación del ejercicio", unidad: W }
+    P_diez: { expr: "P_ej/10", sim: "P", nombre: "disipación con un factor diez de menos", unidad: W }
+
+tarjetas:
+  - id: explore-shunt
+    tipo: explorar
+    titulo: "Una resistencia pequeña en serie"
+    texto: "La corriente es la caída en el shunt dividida entre su resistencia. Cambie la carga y el shunt, y mire la caída."
+    libro: [604, 605, 606, 607]
+    widget:
+      tipo: circuito
+      esquema: serie
+      piezas: { fuente: V_f, r1: R_c, r2: R_sh }
+      lectura: { valor: V_sh, rotulo: "Caída en el shunt" }
+      datos:
+        - { valor: I_c, rotulo: "Corriente: {{I_c}}" }
+        - { valor: P_sh, rotulo: "Disipación del shunt: {{P_sh}}" }
+      corriente: I_c
+      mide: { corriente: I_c, v1: V_cg, v2: V_sh }
+      mandos:
+        - { valor: R_c, rotulo: "Carga", lista: [600, 24, 6], nombres: [ligera, media, pesada] }
+        - { valor: R_sh, rotulo: "Shunt", lista: [0.1, 1] }
+
+  - id: prediga-caida
+    tipo: predecir
+    titulo: "Medio amperio por 0,1 Ω"
+    texto: "Por el shunt de 0,1 Ω pasan 500 mA. ¿Cuánto marca el osciloscopio?"
+    libro: [606, 607]
+    fijar: { V_f: 12, R_c: 23.9, R_sh: 0.1 }
+    widget:
+      tipo: circuito
+      esquema: serie
+      piezas: { fuente: V_f, r1: R_c, r2: R_sh }
+      lectura: { valor: V_sh, rotulo: "Caída en el shunt" }
+      mide: { corriente: I_c, v2: V_sh }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "50 mV"
+        bien: true
+        porque: "0,5 A por 0,1 Ω: 50 mV, cinco divisiones a 10 mV/div."
+      - texto: "5 mV"
+        porque: "Sería con 50 mA. La caída es la corriente por la resistencia: 0,5 · 0,1."
+      - texto: "500 mV"
+        porque: "Eso caería en un shunt de 1 Ω. Con 0,1 Ω es diez veces menos."
+    escalera:
+      - "V = I · R, con la corriente en amperios."
+    solucion: "0,5 A · 0,1 Ω = 50 mV."
+    comprobar:
+      - { V_sh: 0.05, I_c: 0.5 }
+
+  - id: estime-ejercicio
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "35 mV en el retorno a masa"
+    texto: "Con un shunt de 0,1 Ω en el retorno a masa, el FNIRSI muestra 35 mV de caída. ¿Qué corriente circula?"
+    libro: ["cap53#962", 605, 606]
+    fijar: { R_sh: 0.1, V_ej: 0.035 }
+    widget:
+      tipo: figura
+      figura: fig-53.26
+      zonas:
+        - { id: shunt, rotulo: "El shunt", rect: [172, 62, 50, 50] }
+        - { id: punta, rotulo: "La punta del canal 1", rect: [222, 20, 90, 44] }
+    estimar:
+      objetivo: "I_ej"
+      unidad: A
+      min: 0
+      max: 1
+      paso: 0.01
+      inicio: 0.8
+      tol: 0.05
+      rotulo: "I = V / R_{shunt}"
+    exito: "350 mA: la caída entre la resistencia del shunt."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.37 }, texto: "Se ha pasado: 0,035 V entre 0,1 Ω son menos de 0,4 A." }
+      - { texto: "Se ha quedado corto: dividir entre 0,1 multiplica por diez." }
+    escalera:
+      - "I = V / R, con la caída en voltios."
+    solucion: "0,035 V / 0,1 Ω = 350 mA."
+    comprobar:
+      - { I_ej: 0.35, V_ej: 0.035 }
+
+  - id: disipacion-ejercicio
+    tipo: pregunta
+    titulo: "Lo que calienta el shunt"
+    texto: "Esos 35 mV sobre 0,1 Ω, ¿cuánto disipa el shunt?"
+    libro: ["cap53#962", 607]
+    fijar: { R_sh: 0.1, V_ej: 0.035 }
+    widget:
+      tipo: figura
+      figura: fig-53.26
+      zonas:
+        - { id: shunt, rotulo: "El shunt", rect: [172, 62, 50, 50] }
+        - { id: carga, rotulo: "La carga", rect: [88, 20, 76, 44] }
+    opciones:
+      - texto: "12,3 mW"
+        bien: true
+        porque: "P = V² / R = 0,035² / 0,1, o 0,35 A por 35 mV: despreciable."
+      - texto: "350 mW"
+        porque: "Es la corriente leída como potencia. Falta multiplicarla por la caída: 0,35 A · 0,035 V."
+      - texto: "1,2 mW"
+        porque: "Se ha perdido un factor diez: la corriente es 0,35 A, no 0,035 A."
+    escalera:
+      - "P = V · I, con la corriente que acaba de calcular."
+    solucion: "0,35 A · 35 mV = 12,3 mW."
+    comprobar:
+      - { P_ej: 0.01225, I_ej: 0.35, V_ej: 0.035, P_diez: 0.001225, tol: 0.005 }
+
+  - id: simule-shunt-grande
+    tipo: simular
+    titulo: "El shunt de 1 Ω con la carga pesada"
+    texto: "Con 12 V, una carga de 6 Ω y el shunt de 1 Ω en serie, ¿qué corriente circula?"
+    libro: [607, 608]
+    fijar: { V_f: 12, R_c: 6, R_sh: 1 }
+    widget:
+      tipo: circuito
+      esquema: serie
+      piezas: { fuente: V_f, r1: R_c, r2: R_sh }
+      lectura: { valor: I_c, rotulo: "Corriente" }
+      mide: { corriente: I_c, v2: V_sh }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: I_c
+      unidad: A
+      tol: 0.03
+      rotulo: "Corriente de la carga, I"
+      medida: corriente
+      errores:
+        - { expr: "I_sin", texto: "Esos 2 A son los de la carga sola. El shunt de 1 Ω también está en serie y se come tensión." }
+    exito: "Con el shunt la corriente cae a 1,71 A: el instrumento cambia lo que mide."
+    escalera:
+      - "La fuente ve la carga y el shunt en serie."
+      - "I = V / (R_{carga} + R_{shunt})."
+    solucion: "12 V / (6 + 1) Ω = 1,71 A; sin shunt serían 2 A."
+    comprobar:
+      - { I_c: 1.714, I_sin: 2.0, V_sh: 1.714, tol: 0.002 }
+
+  - id: por-que-pequeno
+    tipo: porque
+    titulo: "Más resistencia, más señal"
+    texto: "Con 1 Ω la señal es diez veces mayor que con 0,1 Ω. ¿Por qué no se usa siempre el de 1 Ω?"
+    libro: [607, 608]
+    widget:
+      tipo: figura
+      figura: fig-53.26
+      zonas:
+        - { id: shunt, rotulo: "El shunt", rect: [172, 62, 50, 50] }
+        - { id: carga, rotulo: "La carga", rect: [88, 20, 76, 44] }
+    opciones:
+      - texto: "Se come tensión del circuito y disipa: 2 V y 4 W con 2 A"
+        bien: true
+        porque: "Es el compromiso de la tabla: a corrientes altas, 1 Ω cambia el circuito y se calienta."
+      - texto: "El osciloscopio no ve 2 V"
+        porque: "Los ve sin problema; el inconveniente es lo que el shunt le hace al circuito."
+      - texto: "Un shunt de 1 Ω no existe"
+        porque: "Existe y es el de la última fila de la tabla; sirve con corrientes pequeñas."
+    escalera:
+      - "Mire la última fila de la tabla: 1 Ω con 2 A."
+    solucion: "Con 2 A cae 2 V y disipa 4 W: altera el circuito y se calienta."
+
+  - id: lado-positivo
+    tipo: pregunta
+    titulo: "Si el shunt va en el lado positivo"
+    texto: "El shunt tiene que ir en el positivo. ¿Cómo se ve su caída con el FNIRSI?"
+    libro: [609]
+    widget:
+      tipo: figura
+      figura: fig-53.26
+      zonas:
+        - { id: punta, rotulo: "La punta del canal 1", rect: [222, 20, 90, 44] }
+        - { id: pinza, rotulo: "La pinza de masa", rect: [222, 116, 90, 40] }
+    opciones:
+      - texto: "Un canal en cada extremo y la función CH1 − CH2"
+        bien: true
+        porque: "Es una sonda diferencial improvisada, válida mientras el modo común quepa en el rango."
+      - texto: "La pinza de masa en un extremo del shunt"
+        porque: "La masa de la sonda ya está unida a la del circuito: ese extremo quedaría cortocircuitado a masa."
+      - texto: "No se puede: hay que moverlo al retorno"
+        porque: "Es lo preferible, pero con los dos canales en modo resta también se mide."
+    escalera:
+      - "Los dos canales comparten masa: mida cada extremo respecto de ella."
+    solucion: "CH1 en un extremo, CH2 en el otro y CH1 − CH2."
+
+  - id: empareje-corriente
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Lo que solo se ve en la corriente"
+    texto: "Una cada fenómeno con su firma en la pantalla."
+    libro: [611]
+    emparejar:
+      - ["Saturación de una bobina", "Curva que se dobla hacia arriba en los picos"]
+      - ["Arranque de un motor", "Pico de diez veces la nominal"]
+      - ["Microcontrolador que despierta", "Un escalón y su duración"]
+      - ["Recuperación inversa de un diodo", "Pico negativo breve en cada conmutación"]
+    exito: "En tensión, la saturación de la bobina no se ve; en corriente, salta a la vista."
+    pistas:
+      - { texto: "El escalón del microcontrolador es el consumo que sube al despertar." }
+    escalera:
+      - "La bobina saturada deja crecer la corriente de golpe en los picos."
+    solucion: "Bobina: se dobla arriba; motor: diez veces; micro: escalón; diodo: pico negativo."
+
+  - id: shunt-bobinado
+    tipo: pregunta
+    titulo: "Un pico en cada flanco"
+    texto: "Con un shunt bobinado aparece un pico en cada flanco que no está en la corriente real. ¿Qué se pone en su lugar?"
+    libro: [613]
+    widget:
+      tipo: figura
+      figura: fig-53.26
+      zonas:
+        - { id: shunt, rotulo: "El shunt", rect: [172, 62, 50, 50] }
+        - { id: pinza, rotulo: "La pinza de masa", rect: [222, 116, 90, 40] }
+    opciones:
+      - texto: "Una de película, o varias SMD en paralelo"
+        bien: true
+        porque: "Son de baja inductancia: no añaden el pico de la bobina del shunt."
+      - texto: "Otra bobinada de más valor"
+        porque: "Más bobinado, más inductancia: el pico crece."
+      - texto: "Un latiguillo de masa más largo"
+        porque: "Al revés: el latiguillo largo capta ruido; sobre el shunt, masa de muelle."
+    escalera:
+      - "El pico sale de la inductancia del propio shunt."
+    solucion: "Un shunt de baja inductancia: película o varias SMD en paralelo."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [606, 608, 609, 611]
+    ideas:
+      - { titulo: "El shunt.", texto: "Una resistencia pequeña en serie: la corriente es su caída entre su valor." }
+      - { titulo: "El compromiso.", texto: "Más resistencia da más señal, pero se come tensión del circuito y disipa." }
+      - { titulo: "Dónde.", texto: "En el retorno a masa; en el positivo, dos canales en modo resta." }
+      - { titulo: "Lo que enseña.", texto: "Saturación, arranques, consumos y recuperación inversa: invisibles en tensión." }
