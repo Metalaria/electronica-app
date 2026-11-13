@@ -366,6 +366,37 @@ async function recorrerTarjeta(page: Page, l: Leccion11, t: Tarjeta, k: number, 
     await expect(boton(page), donde).toHaveAttribute('data-accion', 'comprobar');
     await boton(page).click();
     await expect(aviso(page), donde).toHaveAttribute('data-veredicto', 'bien');
+  } else if (act?.tipo === 'sql') {
+    // the reference query as the reader would give it (written whole; a fill-in card gets its blanks back by matching
+    // the template against the solution; an order card is put right with «Subir»), run in the app's SQLite worker and
+    // checked against the expected result
+    if (act.modo === 'ordenar') {
+      const n = act.clausulas!.length;
+      for (let i = 0; i < n; i++) {
+        for (let k = 0; k < n; k++) {
+          if ((await page.locator('[data-ordenar] li').nth(i).getAttribute('data-elemento')) === String(i)) break;
+          await page.locator(`[data-subir="${i}"]`).click();
+        }
+      }
+    } else if (act.modo === 'rellenar') {
+      const plantilla = act.plantilla!;
+      const trozos = plantilla.split(/\[\[\d+\]\]/).map((p) => p.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+      const m = new RegExp(`^${trozos.join('([\\s\\S]*?)')}$`).exec(act.solucion);
+      expect(m, `${donde}: la solución encaja en la plantilla`).not.toBeNull();
+      const huecos = [...plantilla.matchAll(/\[\[(\d+)\]\]/g)].map((x) => Number(x[1]) - 1);
+      for (const [j, h] of huecos.entries()) {
+        const campo = page.locator(`[data-sql] [data-hueco="${h}"]`);
+        if (act.huecos?.[h]?.opciones) await campo.selectOption(m![j + 1]!);
+        else await campo.fill(m![j + 1]!);
+      }
+    } else {
+      await page.locator('[data-editor-sql]').fill(act.solucion);
+    }
+    await page.locator('[data-ejecutar]').click();
+    await expect(page.locator('[data-salida-sql] [data-filas]'), donde).toHaveAttribute('data-filas', String(act.esperado.filas.length), { timeout: 30_000 });
+    await expect(boton(page), donde).toHaveAttribute('data-accion', 'comprobar');
+    await boton(page).click();
+    await expect(aviso(page), donde).toHaveAttribute('data-veredicto', 'bien');
   } else if (t.opciones) {
     const mal = t.opciones.findIndex((o) => !o.bien);
     const bien = t.opciones.findIndex((o) => o.bien);

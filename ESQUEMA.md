@@ -3440,7 +3440,9 @@ regex filter): explore gating, each question wrong then right, challenges solved
 order, match, axe per card, and a 360 px dark-theme pass. 1.2 steps are walked from the model too: `simular` (the
 right estimate, then the app's ngspice result), `banco` (the expected reading compares within tolerance), `ajuste`
 (first control position inside the band), `averia` (probes, a wrong suspect, then the fault of round 0 from
-`falloDeRonda`), `dibujar` (each point set on the curve through the value slider) and `diseno` (as a challenge).
+`falloDeRonda`), `dibujar` (each point set on the curve through the value slider), `diseno` (as a challenge) and
+`sql` (the reference query typed, its blanks recovered by matching the template, or its clauses moved up into place;
+run in the app's SQLite worker and checked).
 
 **Review 11c (fix 11c)** in `Leccion11.svelte`: the cards replace the address through `lib/ruta.svelte.ts`
 `reemplazarDireccion(h)`, which also updates the router's `direccionActual`, so a leave question cancelled («Seguir en

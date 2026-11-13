@@ -1908,7 +1908,9 @@ horizontal. Con otra compilación: `EPA_DIST` y `EPA_PUERTO`. 1.2: también reco
 partir del modelo: `simular` (escribe el valor bueno y espera al ngspice de la app), `banco` (compara la lectura
 esperada), `ajuste` (lleva el mando a la banda), `averia` (mide, falla un sospechoso y acierta el de la primera
 ronda), `dibujar` (pone cada punto en la curva con el teclado, espaciados por igual en log x si el eje es
-logarítmico, como los dibuja la app) y `diseno` (como un reto, en una posición del modelo).
+logarítmico, como los dibuja la app), `diseno` (como un reto, en una posición del modelo) y `sql` (escribe la
+consulta de la solución, rellena los huecos que saca de la plantilla o sube las cláusulas a su sitio, la ejecuta en el
+SQLite de la app y comprueba).
 axe se pasa con la tarjeta desplazada hasta «Del libro»; en una tarjeta más alta que la pantalla, un control puede
 quedar entonces bajo la cabecera o el pie fijos (los botones de zoom de una figura). Cada control que axe marque por
 tamaño y esté bajo una barra se enfoca, como lo alcanza el lector (la lección pone `scroll-padding` con el alto de las

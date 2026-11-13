@@ -1,0 +1,235 @@
+# Lección 1.2 de la sección 16.4 «Entradas y Salidas Digitales» (cap17; etiquetas sec-17.N = impresas 16.N).
+# - El LED de 20 mA desde un pin de 5 V (bloque 97) en el esquema vivo «led»: pin en alto como fuente de 5 V,
+#   caída de 2 V y la resistencia en serie (150 Ω). El pin se modela como fuente ideal: el libro advierte de que no lo es
+#   (a 20 mA garantiza al menos 4,2 V), y eso es lo que se mide en el banco.
+# - Los límites por pin, por puerto y del chip, y las soluciones por tipo de carga, sobre la figura 16.7 (fig-17.7).
+# Paso práctico: «banco» de la ficha 19 del cuaderno (tensión del pin en alto con el LED conectado).
+leccion: cap17/sec-17.4
+
+libro:
+  94: "No es una fuente ideal"
+  95: "Corriente por pin, recomendada"
+  96: "ocho pines a 20 mA suman 160 mA, que superan los 100 mA por puerto"
+  97: "un LED de 20 mA desde 5 V con caída de 2 V necesita 150 Ω"
+  99: "a 20 mA la hoja de datos garantiza como mucho 0,9 V en bajo y al menos 4,2 V en alto"
+  101: "Un LED entre el pin y +5 V se enciende con un cero"
+  103: "una entrada sin conectar no lee cero: lee ruido"
+  105: "Pull-up interno, que casi todos los microcontroladores incorporan"
+  109: "Transistor con diodo de rueda libre"
+  111: "todos los pines son entradas de alta impedancia"
+  117: "Si una salida en alto mide 3 V en lugar de 5, está sobrecargada"
+  118: "Los límites de corriente de las salidas del ATmega328P"
+
+modelo:
+  valores:
+    V_e: { sim: "V_{pin}", nombre: "tensión del pin en alto", unidad: V, valor: 5 }
+    R_e: { sim: "R", nombre: "resistencia del LED", unidad: Ω, valor: 470 }
+    V_fe: { sim: "V_{f}", nombre: "caída del LED", unidad: V, valor: 2 }
+  calculos:
+    I_e: { expr: "(V_e - V_fe)/R_e", sim: "I", nombre: "corriente del LED", unidad: A }
+    I_8: { expr: "8*0.02", sim: "I_{8}", nombre: "ocho pines a 20 mA", unidad: A }
+
+tarjetas:
+  - id: explore-led
+    tipo: explorar
+    titulo: "Un LED en un pin"
+    texto: "El pin en alto da 5 V a un LED con su resistencia. Cambie la resistencia y mire la corriente que sale del pin."
+    libro: [94, 97]
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_e, r: R_e, vf: V_fe }
+      lectura: { valor: I_e, rotulo: "Corriente del pin" }
+      corriente: I_e
+      mide: { corriente: I_e, vf: V_fe }
+      mandos:
+        - { valor: R_e, serie: E24, min: 100, max: 1000, rotulo: "R (E24)" }
+    requiere: { mover: [R_e] }
+
+  - id: reto-150
+    tipo: reto
+    titulo: "Los 20 mA recomendados"
+    texto: "Elija la resistencia E24 que deja el LED en 20 mA, lo recomendado por pin."
+    libro: [95, 97]
+    inicio: { R_e: 1000 }
+    widget:
+      tipo: circuito
+      esquema: led
+      piezas: { fuente: V_e, r: R_e, vf: V_fe }
+      lectura: { valor: I_e, rotulo: "Corriente del pin" }
+      corriente: I_e
+      mide: { corriente: I_e }
+      mandos:
+        - { valor: R_e, serie: E24, min: 100, max: 1000, rotulo: "R (E24)" }
+    condiciones:
+      - { valor: I_e, objetivo: 0.02, tol: 0.02, rotulo: "LED: {{I_e}}" }
+    exito: "150 Ω: los 3 V que sobran entre 5 V y la caída de 2 V, a 20 mA."
+    pistas:
+      - { cuando: { valor: I_e, mayor: 0.0204 }, texto: "Demasiada corriente para el pin: suba la resistencia." }
+      - { cuando: { valor: I_e, menor: 0.0196 }, texto: "Le falta corriente: baje la resistencia." }
+    escalera:
+      - "En la resistencia caen 5 − 2 V."
+    solucion: "R = 3 V / 20 mA = 150 Ω."
+    comprobar:
+      - { con: { R_e: 150 }, I_e: 0.02 }
+
+  - id: pregunta-40-20
+    tipo: pregunta
+    titulo: "Dos cifras por pin"
+    texto: "La hoja de datos da 40 mA y 20 mA por pin. ¿Qué es cada una?"
+    libro: [95, 118]
+    widget:
+      tipo: figura
+      figura: fig-17.7
+      zonas:
+        - { id: pin, rotulo: "Los dos recuadros de la izquierda", rect: [3, 18, 215, 47] }
+    opciones:
+      - texto: "40 mA destruye; 20 mA es lo que se usa"
+        bien: true
+        porque: "El máximo absoluto es lo que destruye; el recomendado, lo que se puede usar."
+      - texto: "40 mA en bajo y 20 mA en alto"
+        porque: "En el ATmega328P alto y bajo son casi simétricos; las cifras son máximo y recomendado."
+      - texto: "Las dos se pueden usar sin problema"
+        porque: "40 mA es el máximo absoluto: lo que destruye, no lo que se usa."
+    escalera:
+      - "Una es el máximo absoluto."
+    solucion: "40 mA es lo que destruye; 20 mA, lo que se usa."
+
+  - id: predecir-ocho
+    tipo: predecir
+    titulo: "Ocho LED"
+    texto: "Ocho pines del mismo puerto dan 20 mA cada uno, dentro del límite por pin. ¿Qué pasa?"
+    libro: [96, 118]
+    widget:
+      tipo: figura
+      figura: fig-17.7
+      zonas:
+        - { id: barra, rotulo: "La barra del centro", rect: [70, 75, 290, 40] }
+    opciones:
+      - texto: "Superan los 100 mA del puerto y la salida se degrada"
+        bien: true
+        porque: "Suman 160 mA: el límite de grupo manda sobre el individual."
+      - texto: "Nada: cada pin está en su límite"
+        porque: "Los límites de grupo mandan sobre los individuales: 160 mA superan los 100 del puerto."
+      - texto: "Se destruye el chip al instante"
+        porque: "160 mA no llegan a los 200 mA del chip; la tensión de salida se degrada."
+    escalera:
+      - "Sume las ocho corrientes y compare con el límite del puerto."
+    solucion: "Ocho por 20 mA son 160 mA, más que los 100 mA del puerto: baje la corriente o use un driver."
+    comprobar:
+      - { I_8: 0.16 }
+
+  - id: pregunta-sumidero
+    tipo: pregunta
+    titulo: "Fuente o sumidero"
+    texto: "Un LED va entre el pin y +5 V, con su resistencia. ¿Con qué nivel se enciende?"
+    libro: [101]
+    widget:
+      tipo: figura
+      figura: fig-17.7
+      zonas:
+        - { id: pin, rotulo: "Los dos recuadros de la izquierda", rect: [3, 18, 215, 47] }
+    opciones:
+      - texto: "Con un cero"
+        bien: true
+        porque: "El pin en bajo hace de sumidero: la corriente entra desde +5 V camino de masa."
+      - texto: "Con un uno"
+        porque: "Con el pin en alto, los dos extremos quedan a 5 V y no circula corriente."
+      - texto: "Con los dos"
+        porque: "En alto no hay diferencia de tensión: solo luce con el pin en bajo."
+    escalera:
+      - "Para que circule corriente hace falta diferencia de tensión."
+    solucion: "Con un cero: el pin trabaja como sumidero."
+
+  - id: predecir-flotante
+    tipo: predecir
+    titulo: "Una entrada al aire"
+    texto: "Configura un pin como entrada y no lo conecta a nada. ¿Qué lee?"
+    libro: [103, 105]
+    widget:
+      tipo: figura
+      figura: fig-17.7
+      zonas:
+        - { id: tabla, rotulo: "La tabla de abajo", rect: [3, 125, 445, 77] }
+    opciones:
+      - texto: "Ruido: su valor cambia al azar"
+        bien: true
+        porque: "Alta impedancia: capta la red, el circuito y la mano. Necesita un pull-up o un pull-down."
+      - texto: "Siempre cero"
+        porque: "Una entrada sin conectar no lee cero: lee ruido."
+      - texto: "Siempre uno, por el pull-up interno"
+        porque: "El pull-up interno hay que activarlo por software; sin él, flota."
+    escalera:
+      - "Una entrada digital tiene alta impedancia."
+    solucion: "Ruido. Active el pull-up interno o ponga uno externo."
+
+  - id: empareje-cargas
+    tipo: pregunta
+    titulo: "Cargas que exceden el pin"
+    texto: "Empareje cada carga con la forma de gobernarla desde un pin."
+    libro: [109, 118]
+    widget:
+      tipo: figura
+      figura: fig-17.7
+      zonas:
+        - { id: tabla, rotulo: "La tabla de abajo", rect: [3, 125, 445, 77] }
+    emparejar:
+      - ["LED de indicación", "Directamente, con resistencia"]
+      - ["Relé", "Transistor con diodo de rueda libre"]
+      - ["Motor o solenoide", "MOSFET de nivel lógico y driver"]
+      - ["Carga de red", "Relé o SSR con aislamiento"]
+    exito: "Con carga inductiva, el diodo de rueda libre no es opcional."
+    pistas:
+      - { texto: "Ordénelas por la corriente que piden." }
+    escalera:
+      - "Solo el LED cabe en los 20 mA del pin."
+    solucion: "LED, directo; relé, transistor y diodo; motor, MOSFET; red, relé o SSR."
+
+  - id: porque-arranque
+    tipo: porque
+    titulo: "Un motor que arranca solo"
+    texto: "Al encender la placa, el motor gobernado por un MOSFET desde un pin gira un instante antes de que el programa mande. ¿Por qué?"
+    libro: [111]
+    widget:
+      tipo: figura
+      figura: fig-17.7
+      zonas:
+        - { id: tabla, rotulo: "La tabla de abajo", rect: [3, 125, 445, 77] }
+    opciones:
+      - texto: "Hasta pinMode() los pines son entradas y la puerta flota"
+        bien: true
+        porque: "Durante el reset todo pin es entrada de alta impedancia. Una resistencia de 10 kΩ entre puerta y fuente fija el estado seguro."
+      - texto: "El pin sale en alto durante el reset"
+        porque: "No sale en alto: queda como entrada de alta impedancia, y la puerta flota."
+      - texto: "El MOSFET no es de nivel lógico"
+        porque: "Eso impediría encenderlo bien, no que se active solo al arrancar."
+    escalera:
+      - "¿Qué son los pines antes de que setup() ejecute pinMode()?"
+    solucion: "Flota: una resistencia de 10 kΩ entre puerta y fuente lo evita."
+
+  - id: banco-pin
+    tipo: banco
+    titulo: "En el banco: el pin con carga"
+    texto: "Monte el LED con 150 Ω entre un pin y masa, ponga el pin en alto y mida su tensión."
+    libro: [97, 99, 117]
+    fijar: { R_e: 150 }
+    banco:
+      piezas: ["Arduino UNO", "LED y resistencia de 150 Ω", "Brymen en V⎓"]
+      medir: "La tensión entre el pin y GND, con el LED encendido."
+      esperado: V_e
+      unidad: V
+      tol: 0.16
+      consejos:
+        - { cuando: { valor: medida, menor: 4.2 }, texto: "Por debajo de 4,2 V el pin está sobrecargado: revise la resistencia, y si mide 3 V, lo está de sobra." }
+        - { texto: "Correcto: a 20 mA la hoja de datos garantiza al menos 4,2 V en alto. El pin no es una fuente ideal." }
+      ficha: { n: 19, titulo: "Entradas y salidas digitales, y tiempo de bucle" }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [96, 97, 103, 109]
+    ideas:
+      - { titulo: "20 mA por pin.", texto: "40 mA destruye; y los límites de puerto y chip mandan sobre los del pin." }
+      - { titulo: "Fuente o sumidero.", texto: "LED a +5 V se enciende con un cero; a masa, con un uno." }
+      - { titulo: "Ninguna entrada al aire.", texto: "Pull-up interno, o uno externo: la que flota lee ruido." }
+      - { titulo: "Cargas mayores.", texto: "Transistor, MOSFET o relé, con diodo si es inductiva." }

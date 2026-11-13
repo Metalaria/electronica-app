@@ -1,0 +1,214 @@
+# Lección 1.2 de la sección 16.11 «Depuración y Buenas Prácticas» (cap17; etiquetas sec-17.N = impresas 16.N).
+# - El orden de depuración sin depurador de la figura 16.16 (fig-17.16).
+# - La Ec. 1 del convertidor, V = analogRead·5 V/1023, como gráfica frente al código (0 a 1023), y la forma centrada
+#   (k + 0,5)·V_ref/1024 del libro: difieren media LSB (±2,44 mV) en los extremos y nada en 512.
+leccion: cap17/sec-17.11
+
+libro:
+  280: "el trazador serie (Serial Plotter) dibuja los valores como una gráfica en el tiempo"
+  281: "La masa debe ser común a todo lo conectado"
+  283: 'V_("entrada") = "analogRead" space lr(( "pin" )) times ("5 V")/("1023")'
+  285: "Un ADC de 10 bits divide el margen de referencia en 1024 escalones, no 1023"
+  288: 'V approx (lr(( k + "0,5" )) dot.op V_("ref"))/("1024")'
+  290: "2,50244 V"
+  291: "La diferencia es de ±2,44 mV, es decir, media LSB"
+  292: "cerca del fondo de escala son unos 200 mV, ochenta veces más que la media LSB"
+  294: "El orden de depuración sin depurador y el límite de la depuración por impresión."
+  "cap17#342": "(512 × 5)/1023 = 2560/1023 = 2,50 V"
+
+modelo:
+  valores:
+    k_a: { sim: "k", nombre: "código leído", unidad: "", valor: 300 }
+    V_rf: { sim: "V_{ref}", nombre: "referencia", unidad: V, valor: 5 }
+  calculos:
+    V_a: { expr: "k_a*V_rf/1023", sim: "V_{entrada}", nombre: "tensión con /1023", unidad: V, cifras: 4 }
+    V_c: { expr: "(k_a + 0.5)*V_rf/1024", sim: "V_{centrada}", nombre: "tensión centrada", unidad: V, cifras: 4 }
+    d_v: { expr: "V_a - V_c", sim: "ΔV", nombre: "diferencia entre las dos", unidad: V, cifras: 3 }
+
+tarjetas:
+  - id: explore-orden
+    tipo: explorar
+    titulo: "Depurar sin depurador"
+    texto: "Un orden de preguntas, de la alimentación al bus, y el límite de imprimir por serie. Toque las dos partes."
+    libro: [280, 294]
+    widget:
+      tipo: figura
+      figura: fig-17.16
+      zonas:
+        - { id: orden, rotulo: "Los seis pasos de la izquierda", rect: [0, 5, 190, 220], texto: "Alimentación y reset, arranque, por dónde pasa, cuánto tarda, qué valen las variables y qué sale por el bus." }
+        - { id: limite, rotulo: "La gráfica de la derecha", rect: [262, 28, 184, 105], texto: "Enviar una línea por serie roba muchísimo más tiempo que poner un pin en alto." }
+        - { id: aviso, rotulo: "Recuadro rojo, abajo a la derecha", rect: [280, 186, 150, 40], texto: "Si el fallo cambia al añadir una impresión, la impresión es parte del problema: use un pin de depuración." }
+    requiere: { mover: [orden, aviso] }
+
+  - id: ordene-depuracion
+    tipo: pregunta
+    titulo: "El orden"
+    texto: "Ordene las preguntas de la depuración, de la primera a la última."
+    libro: [294]
+    widget:
+      tipo: figura
+      figura: fig-17.16
+      zonas:
+        - { id: limite, rotulo: "La gráfica de la derecha", rect: [262, 28, 184, 105] }
+    ordenar:
+      - "¿Llega la alimentación y el reset está bien?"
+      - "¿Arranca el programa?"
+      - "¿Por dónde pasa?"
+      - "¿Qué valen las variables?"
+      - "¿Qué sale por el bus?"
+    exito: "De lo más básico a lo más fino: sin alimentación, nada de lo demás importa."
+    pistas:
+      - { texto: "Antes de mirar variables hay que saber que el programa corre." }
+    escalera:
+      - "Lo primero, que el chip tenga tensión."
+    solucion: "Alimentación, arranque, recorrido, variables y bus."
+
+  - id: pregunta-trazador
+    tipo: pregunta
+    titulo: "Ver evolucionar un sensor"
+    texto: "Quiere ver cómo cambia la lectura de un sensor con el tiempo. ¿Qué usa?"
+    libro: [280]
+    widget:
+      tipo: figura
+      figura: fig-17.16
+      zonas:
+        - { id: orden, rotulo: "Los seis pasos de la izquierda", rect: [0, 5, 190, 220] }
+    opciones:
+      - texto: "El trazador serie"
+        bien: true
+        porque: "Dibuja los valores de Serial.print como una gráfica en el tiempo."
+      - texto: "El monitor serie"
+        porque: "Muestra texto: sirve, pero el trazador lo dibuja como gráfica."
+      - texto: "Un analizador lógico"
+        porque: "Ve niveles y tramas del bus, no la evolución de un valor."
+    escalera:
+      - "Una herramienta muestra texto; la otra, gráficas."
+    solucion: "El trazador serie (Serial Plotter)."
+
+  - id: pregunta-masa
+    tipo: pregunta
+    titulo: "Buenas prácticas"
+    texto: "Un sensor alimentado aparte da lecturas sin sentido aunque el programa está bien. ¿Qué falta?"
+    libro: [281]
+    widget:
+      tipo: figura
+      figura: fig-17.16
+      zonas:
+        - { id: orden, rotulo: "Los seis pasos de la izquierda", rect: [0, 5, 190, 220] }
+    opciones:
+      - texto: "Unir las masas"
+        bien: true
+        porque: "La masa debe ser común a todo lo conectado, o las señales no tendrán referencia."
+      - texto: "Más Serial.print"
+        porque: "Imprimir no da referencia a una señal: hace falta masa común."
+      - texto: "Activar INPUT_PULLUP"
+        porque: "Eso evita entradas al aire, pero sin masa común la señal sigue sin referencia."
+    escalera:
+      - "Una tensión siempre se mide respecto a algo."
+    solucion: "Masa común."
+
+  - id: formula-adc
+    tipo: formula
+    titulo: "Del código a la tensión"
+    texto: "La conversión que usan casi todos los programas de Arduino. Mueva el código leído."
+    libro: [283]
+    ec: 283
+    sustitucion: "{{k_a}} · 5 V / 1023 = {{V_a}}"
+    widget:
+      tipo: grafica
+      x: { id: cod, min: 0, max: 1023, unidad: "", rotulo: "analogRead" }
+      y: { min: 0, max: 5, unidad: V, rotulo: "V_{entrada}" }
+      curvas:
+        - { expr: "cod*V_rf/1023", color: azul, rotulo: "/1023" }
+      marcas:
+        - { x: "k_a", y: "V_a", rotulo: "{{V_a}}" }
+      lectura: { valor: V_a, rotulo: "Tensión de entrada" }
+      mandos:
+        - { valor: k_a, min: 0, max: 1023, paso: 1, rotulo: "Código, analogRead" }
+
+  - id: estime-512
+    tipo: pregunta
+    titulo: "Lee 512"
+    texto: "analogRead() devuelve 512 con referencia de 5 V. ¿Qué tensión hay en la entrada?"
+    libro: ["cap17#342"]
+    fijar: { k_a: 512 }
+    estimar:
+      objetivo: "V_a"
+      unidad: V
+      min: 0
+      max: 5
+      paso: 0.01
+      inicio: 4
+      tol: 0.01
+      rotulo: "Tensión de entrada"
+    exito: "2,50 V: la mitad del rango, la mitad de la referencia."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 2.53 }, texto: "Demasiado: 512 es la mitad de 1023." }
+      - { texto: "Se ha quedado corto: 512 es la mitad de 1023." }
+    escalera:
+      - "512 es casi la mitad del rango."
+    solucion: "512 · 5 / 1023 = 2,50 V."
+    comprobar:
+      - { V_a: 2.5024 }
+
+  - id: pregunta-1024
+    tipo: pregunta
+    titulo: "¿1023 o 1024?"
+    texto: "El convertidor tiene 1024 escalones, y la forma centrada usa (k + 0,5)/1024. Frente a la de /1023, ¿cuánto difiere?"
+    libro: [285, 288, 290, 291]
+    widget:
+      tipo: grafica
+      x: { id: cod, min: 0, max: 1023, unidad: "", rotulo: "analogRead" }
+      y: { min: -0.003, max: 0.003, unidad: V, rotulo: "ΔV" }
+      curvas:
+        - { expr: "cod*V_rf/1023 - (cod + 0.5)*V_rf/1024", color: naranja, rotulo: "/1023 menos centrada" }
+      marcas:
+        - { x: "k_a", y: "d_v", rotulo: "{{d_v}}" }
+      lectura: { valor: d_v, rotulo: "Diferencia" }
+      mandos:
+        - { valor: k_a, min: 0, max: 1023, paso: 1, rotulo: "Código, analogRead" }
+    opciones:
+      - texto: "Como mucho ±2,44 mV, media LSB"
+        bien: true
+        porque: "Del orden del error de cuantificación: en la práctica da igual cuál se use."
+      - texto: "Lo mismo en todo el rango"
+        porque: "En 512 coinciden; la diferencia crece hacia los extremos, hasta media LSB."
+      - texto: "Unos 200 mV en el fondo de escala"
+        porque: "Eso es lo que hace una referencia de 4,8 V en lugar de 5, no la fórmula."
+    escalera:
+      - "Mueva el código a 0, 512 y 1023 y mire la diferencia."
+    solucion: "±2,44 mV en los extremos y nada en 512: media LSB."
+
+  - id: porque-referencia
+    tipo: porque
+    titulo: "Lo que ninguna arregla"
+    texto: "Si VCC vale 4,8 V en lugar de 5,0, ¿por qué da igual qué fórmula use?"
+    libro: [292]
+    widget:
+      tipo: grafica
+      x: { id: cod, min: 0, max: 1023, unidad: "", rotulo: "analogRead" }
+      y: { min: 0, max: 5, unidad: V, rotulo: "V" }
+      curvas:
+        - { expr: "cod*5/1023", color: azul, rotulo: "con 5 V" }
+        - { expr: "cod*4.8/1023", color: naranja, rotulo: "con 4,8 V reales" }
+    opciones:
+      - texto: "El error de la referencia es ochenta veces mayor"
+        bien: true
+        porque: "Un 4 % de escala: cerca del fondo, unos 200 mV frente a media LSB."
+      - texto: "Porque las dos fórmulas fallan igual"
+        porque: "Difieren media LSB; el problema es otro: la referencia, que es un 4 % menor."
+      - texto: "Porque el ADC corrige la referencia"
+        porque: "No la corrige: mide respecto a lo que valga VCC. Use una referencia interna o externa."
+    escalera:
+      - "Compare 200 mV con 2,44 mV."
+    solucion: "La referencia domina: un 4 %, unos 200 mV en el fondo de escala."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [280, 281, 291, 292]
+    ideas:
+      - { titulo: "Serial.print.", texto: "Mensajes en el monitor y gráficas en el trazador; y un orden para depurar." }
+      - { titulo: "Buenas prácticas.", texto: "INPUT_PULLUP, masa común y aislar el fallo comentando código." }
+      - { titulo: "/1023 o /1024.", texto: "Difieren media LSB: en la práctica, da igual." }
+      - { titulo: "La referencia manda.", texto: "Con 4,8 V en vez de 5, un 4 %: unos 200 mV." }

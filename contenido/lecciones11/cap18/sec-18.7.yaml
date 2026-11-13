@@ -1,0 +1,215 @@
+# Lección 1.2 de la sección 17.7 «Los Límites Eléctricos del GPIO» (cap18; etiquetas sec-18.N = impresas 17.N).
+# - Por qué 5 V daña un GPIO de 3,3 V y los límites de corriente, sobre la figura 17.11 (fig-18.11, fichero 18.10.svg).
+# - La adaptación de 5 V hacia la Pi con un divisor resistivo (bloque 184) en el esquema vivo «divisor»; el ejercicio
+#   17.2 da 1 kΩ y 2 kΩ. El diseño pide 3,3 V ± 2 % (la tolerancia por defecto de la app: el libro no da otra) con
+#   resistencias E24 del 1 % en todas las esquinas.
+# Pasos prácticos: «diseno» del divisor de 5 V a 3,3 V; «banco» de la ficha 22 (los 5 V del conector bajo carga).
+leccion: cap18/sec-18.7
+
+libro:
+  174: "aplicar 5 V a un pin GPIO hace conducir su diodo de protección interno hacia el raíl de 3,3 V"
+  175: "esa corriente inyectada lo sube por encima de su valor nominal"
+  177: "Corriente total de todos los GPIO"
+  178: "tres LED a 16 mA (48 mA) lo agotan casi por completo"
+  179: "la salida es una fuente de tensión y entrega lo que le pida la carga, así que el LED necesita siempre su resistencia"
+  180: "un fallo en un pin daña un chip que no se puede cambiar"
+  183: "3,3 V supera el umbral de una entrada TTL o HCT"
+  184: "un divisor resistivo (solo para señales lentas y unidireccionales)"
+  194: "la placa lo dispara por debajo de unos 4,63 V"
+  196: "Sin ellos, el precio es la placa entera"
+  197: "Por qué 5 V daña un GPIO de 3,3 V"
+  "cap18#333": "un divisor de tensión resistivo (por ejemplo 1 kΩ y 2 kΩ) que reduzca los 5 V a 3,3 V"
+
+modelo:
+  valores:
+    V_in: { sim: "V_{5V}", nombre: "señal de 5 V", unidad: V, valor: 5 }
+    R_1: { sim: "R₁", nombre: "resistencia de arriba", unidad: Ω, valor: 1000 }
+    R_2: { sim: "R₂", nombre: "resistencia de abajo", unidad: Ω, valor: 1000 }
+  calculos:
+    V_out: { expr: "V_in*R_2/(R_1 + R_2)", sim: "V_{GPIO}", nombre: "tensión en el GPIO", unidad: V }
+    I_d: { expr: "V_in/(R_1 + R_2)", sim: "I", nombre: "corriente del divisor", unidad: A }
+    I_3: { expr: "3*0.016", sim: "I_{3}", nombre: "tres LED a 16 mA", unidad: A }
+
+tarjetas:
+  - id: explore-diodo
+    tipo: explorar
+    titulo: "No perdona"
+    texto: "Una señal de 5 V en un GPIO de 3,3 V. Toque el diodo que conduce y el raíl."
+    libro: [174, 175, 197]
+    widget:
+      tipo: figura
+      figura: fig-18.11
+      zonas:
+        - { id: diodo, rotulo: "Diodo de arriba, en el SoC", rect: [85, 40, 36, 36], texto: "El diodo de protección conduce: la corriente pasa del pin al raíl de 3,3 V." }
+        - { id: rail, rotulo: "Línea roja de arriba", rect: [120, 12, 80, 36], texto: "Si el raíl consume poco, esa corriente lo sube por encima de 3,3 V: funcionamiento errático." }
+        - { id: limites, rotulo: "La gráfica de la derecha", rect: [255, 5, 195, 175], texto: "16 mA por pin y 50 mA entre todos los GPIO, frente a los 20 mA por pin del Arduino." }
+    requiere: { mover: [diodo, rail] }
+
+  - id: predecir-rail
+    tipo: predecir
+    titulo: "Un efecto que sorprende"
+    texto: "Aplica 5 V a un GPIO y el sistema empieza a comportarse de forma errática, sin ningún error de software. ¿Qué pasa?"
+    libro: [174, 175]
+    widget:
+      tipo: figura
+      figura: fig-18.11
+      zonas:
+        - { id: esquema, rotulo: "El esquema de la izquierda", rect: [5, 12, 205, 150] }
+    opciones:
+      - texto: "La corriente inyectada sube el raíl de 3,3 V"
+        bien: true
+        porque: "Alimenta parcialmente el sistema por una entrada; según la corriente, el pin se daña o se degrada."
+      - texto: "Nada: el diodo lo protege del todo"
+        porque: "El diodo conduce hacia el raíl: según la corriente, se daña o se degrada."
+      - texto: "Un fallo del programa"
+        porque: "No hay error de software: es eléctrico, la corriente que entra por el pin."
+    escalera:
+      - "¿Adónde va la corriente que conduce el diodo de arriba?"
+    solucion: "Sube el raíl de 3,3 V por encima de su valor."
+
+  - id: predecir-tres
+    tipo: predecir
+    titulo: "Tres LED"
+    texto: "Tres GPIO encienden un LED a 16 mA cada uno, el máximo recomendado por pin. ¿Está bien?"
+    libro: [177, 178]
+    widget:
+      tipo: figura
+      figura: fig-18.11
+      zonas:
+        - { id: limites, rotulo: "La gráfica de la derecha", rect: [255, 5, 195, 175] }
+    opciones:
+      - texto: "Casi agota los 50 mA de todos los GPIO"
+        bien: true
+        porque: "48 mA de 50: es el límite que más se incumple. Para cualquier carga apreciable, un transistor."
+      - texto: "Sí: cada pin está en su límite"
+        porque: "Cada pin sí, pero el total de los GPIO es de 50 mA."
+      - texto: "No: un pin no puede dar 16 mA"
+        porque: "Sí puede: 16 mA por pin es lo recomendado. El problema es la suma."
+    escalera:
+      - "Sume y compare con el total."
+    solucion: "48 mA de 50: casi todo el presupuesto."
+    comprobar:
+      - { I_3: 0.048 }
+
+  - id: pregunta-limitador
+    tipo: pregunta
+    titulo: "16 mA no es un limitador"
+    texto: "¿Puede conectar un LED directamente a un GPIO, confiando en que el pin limita a 16 mA?"
+    libro: [179, 180]
+    widget:
+      tipo: figura
+      figura: fig-18.11
+      zonas:
+        - { id: limites, rotulo: "La gráfica de la derecha", rect: [255, 5, 195, 175] }
+    opciones:
+      - texto: "No: el LED necesita siempre su resistencia"
+        bien: true
+        porque: "La salida es una fuente de tensión y entrega lo que pida la carga."
+      - texto: "Sí: el pin no da más de 16 mA"
+        porque: "16 mA es lo que no daña, no un limitador: entregaría lo que pidiera el LED."
+      - texto: "Sí, configurando la intensidad a 8 mA"
+        porque: "Esa intensidad es la corriente hasta la que garantiza niveles lógicos, no un límite."
+    escalera:
+      - "¿Qué es una salida digital: una fuente de tensión o de corriente?"
+    solucion: "No: siempre con su resistencia. Un pin dañado es un chip que no se cambia."
+
+  - id: explore-divisor
+    tipo: explorar
+    titulo: "De 5 V hacia la Pi"
+    texto: "Para señales lentas y en un solo sentido basta un divisor resistivo. Cambie R₂ y mire lo que llega al GPIO."
+    libro: [184]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_out, rotulo: "Tensión en el GPIO" }
+      corriente: I_d
+      mide: { salida: V_out, corriente: I_d }
+      mandos:
+        - { valor: R_2, serie: E24, min: 1000, max: 10000, rotulo: "R₂ (E24)" }
+    requiere: { mover: [R_2] }
+
+  - id: disene-divisor
+    tipo: diseno
+    titulo: "Diseñe el divisor"
+    texto: "Una salida de 5 V va a un GPIO. Diseñe con valores E24 del 1 % un divisor que dé 3,3 V."
+    libro: [184, "cap18#333"]
+    fijar: { V_in: 5 }
+    inicio: { R_1: 1000, R_2: 1000 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_out, rotulo: "Tensión en el GPIO" }
+      mide: { salida: V_out }
+      mandos:
+        - { valor: R_1, serie: E24, min: 1000, max: 10000, rotulo: "R₁ (E24)" }
+        - { valor: R_2, serie: E24, min: 1000, max: 10000, rotulo: "R₂ (E24)" }
+    condiciones:
+      - { valor: V_out, objetivo: 3.3, tol: 0.02, rotulo: "GPIO: {{V_out}}" }
+    diseno:
+      tolerancias: { R_1: 0.01, R_2: 0.01 }
+      metodo: esquinas
+      exigir: todas
+    exito: "Aprobado en todas las esquinas. El libro propone 1 kΩ y 2 kΩ."
+    pistas:
+      - { cuando: { valor: V_out, mayor: 3.366 }, texto: "Demasiada tensión para el GPIO: R₂ debe ser menor frente a R₁." }
+      - { cuando: { valor: V_out, menor: 3.234 }, texto: "Falta tensión: R₂ debe ser mayor frente a R₁." }
+      - { texto: "Ajuste la relación entre R₁ y R₂." }
+    escalera:
+      - "R₂ debe quedarse con dos tercios de los 5 V."
+      - "R₂ el doble que R₁."
+    solucion: "1 kΩ arriba y 2 kΩ abajo."
+    comprobar:
+      - { con: { R_1: 1000, R_2: 2000 }, V_out: 3.333 }
+
+  - id: pregunta-direccion
+    tipo: pregunta
+    titulo: "La dirección importa"
+    texto: "Ahora es la Pi la que manda una señal a una entrada TTL de 5 V. ¿Hace falta adaptar?"
+    libro: [183, 184]
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_out, rotulo: "Tensión en el GPIO" }
+      mide: { salida: V_out }
+      mandos: []
+    opciones:
+      - texto: "Normalmente no: 3,3 V supera el umbral TTL"
+        bien: true
+        porque: "Con entradas CMOS puras de 5 V, de umbral 3,5 V, sí haría falta."
+      - texto: "Sí, siempre, con un divisor"
+        porque: "Un divisor solo baja la tensión: aquí no hace falta bajarla."
+      - texto: "Sí, con un divisor al revés"
+        porque: "Un divisor no sube la tensión; y con TTL, 3,3 V ya basta."
+    escalera:
+      - "Compare 3,3 V con el umbral de una entrada TTL."
+    solucion: "Normalmente no; de 5 V hacia la Pi, siempre."
+
+  - id: banco-5v
+    tipo: banco
+    titulo: "En el banco: los 5 V bajo carga"
+    texto: "Con el sistema trabajando, mida los 5 V en los pines del propio conector, no en el cargador."
+    libro: [194, 196]
+    fijar: { V_in: 5 }
+    banco:
+      piezas: ["Raspberry Pi con su fuente", "La aplicación funcionando", "Brymen en V⎓"]
+      medir: "La tensión entre un pin de 5 V y una masa del conector."
+      esperado: V_in
+      unidad: V
+      tol: 0.074
+      consejos:
+        - { cuando: { valor: medida, menor: 4.63 }, texto: "Por debajo de unos 4,63 V la placa da el aviso de baja tensión: fuente o cable insuficientes." }
+        - { texto: "Correcto. Antes de conectar nada a un GPIO, mida también la señal externa y sume las corrientes." }
+      ficha: { n: 22, titulo: "Los GPIO de la Raspberry Pi" }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [174, 178, 179, 184]
+    ideas:
+      - { titulo: "No tolera 5 V.", texto: "Conduce el diodo de protección hacia el raíl de 3,3 V, y lo sube." }
+      - { titulo: "16 y 50 mA.", texto: "Por pin y en total; tres LED a 16 mA casi lo agotan." }
+      - { titulo: "No es un limitador.", texto: "El LED necesita siempre su resistencia." }
+      - { titulo: "De 5 V hacia la Pi.", texto: "Siempre adaptar: divisor, traductor con MOSFET o integrado." }

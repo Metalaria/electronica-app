@@ -1,0 +1,213 @@
+# Lección 1.2 de la sección 17.8 «Interfaces de Alto Nivel: Cámara, Pantalla, Red y Buses» (cap18; sec-18.N = 17.N).
+# - Las cuatro interfaces con lo que resuelven y lo que cuestan, sobre la figura 17.12 (fig-18.12, fichero 18.11.svg).
+# - El ancho de banda de 1080p a 30 fotogramas sin comprimir (bloque 203: unos 750 Mbit/s en YUV 4:2:0, casi
+#   1,5 Gbit/s en RGB) como estimación: 1920 × 1080 píxeles × 30 × 12 bits (4:2:0) o 24 bits (RGB). Los 1920 píxeles
+#   y los 12/24 bits por píxel no los escribe el libro: son los que dan sus dos cifras.
+leccion: cap18/sec-18.8
+
+libro:
+  200: "Las interfaces de alto nivel son la razón principal para usar un ordenador de placa"
+  203: "unos 750 Mbit/s en YUV 4:2:0 (casi 1,5 Gbit/s en RGB)"
+  205: "si el objeto se mueve, el rodante deforma"
+  209: "lo razonable es una aplicación a pantalla completa sin escritorio"
+  212: "Ethernet es lo fiable"
+  213: "Wifi es cómodo y trae tres complicaciones"
+  217: "un micrófono digital I²S o un convertidor USB"
+  222: "si es un añadido, quizá un microcontrolador con una pantalla pequeña resuelva lo mismo"
+  225: "mucho software funciona con red y se cuelga cuando desaparece"
+  226: "Las cuatro interfaces de alto nivel con lo que traen resuelto y lo que cuestan."
+
+modelo:
+  valores:
+    p_an: { sim: "ancho", nombre: "píxeles por línea", unidad: "", valor: 1920 }
+    p_al: { sim: "alto", nombre: "líneas", unidad: "", valor: 1080 }
+    fps: { sim: "f", nombre: "fotogramas por segundo", unidad: "", valor: 30 }
+    bpp: { sim: "b", nombre: "bits por píxel en YUV 4:2:0", unidad: "", valor: 12 }
+  calculos:
+    caudal: { expr: "p_an*p_al*fps*bpp", sim: "caudal", nombre: "caudal sin comprimir", unidad: "bit/s" }
+    b_rgb: { expr: "2*bpp", sim: "b_{RGB}", nombre: "bits por píxel en RGB", unidad: "" }
+    c_rgb: { expr: "p_an*p_al*fps*b_rgb", sim: "caudal_{RGB}", nombre: "caudal en RGB", unidad: "bit/s" }
+
+tarjetas:
+  - id: explore-interfaces
+    tipo: explorar
+    titulo: "Lo que aporta un ordenador de placa"
+    texto: "Cámara, pantalla, red y audio: cada una resuelve algo y cuesta algo. Toque las cuatro."
+    libro: [200, 226]
+    widget:
+      tipo: figura
+      figura: fig-18.12
+      zonas:
+        - { id: camara, rotulo: "Recuadro de arriba a la izquierda", rect: [4, 4, 218, 74], texto: "Cámara por CSI o USB: ancho de banda, iluminación, obturador y CPU." }
+        - { id: pantalla, rotulo: "Recuadro de arriba a la derecha", rect: [229, 4, 218, 74], texto: "Pantalla por HDMI, DSI o SPI: con escritorio o sin él." }
+        - { id: red, rotulo: "Recuadro de abajo a la izquierda", rect: [4, 86, 218, 76], texto: "Red: Ethernet, lo fiable; wifi, cómodo y con complicaciones." }
+        - { id: audio, rotulo: "Recuadro de abajo a la derecha", rect: [229, 86, 218, 76], texto: "Audio: la salida integrada es mediocre y no hay entrada analógica." }
+    requiere: { mover: [camara, pantalla, red, audio] }
+
+  - id: estime-caudal
+    tipo: pregunta
+    titulo: "Una cámara sin comprimir"
+    texto: "1080p (1920 × 1080 píxeles) a 30 fotogramas, en YUV 4:2:0 con 12 bits por píxel. ¿Cuántos bits por segundo?"
+    libro: [203]
+    fijar: { p_an: 1920, p_al: 1080, fps: 30, bpp: 12 }
+    estimar:
+      objetivo: "caudal"
+      unidad: "bit/s"
+      min: 0
+      max: 2000000000
+      paso: 10000000
+      inicio: 1800000000
+      tol: 0.05
+      rotulo: "Caudal sin comprimir"
+    exito: "Unos 750 Mbit/s: hay que comprimir antes de guardar o enviar."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 1400000000 }, texto: "Eso se acerca a RGB: en 4:2:0 son 12 bits por píxel, no 24." }
+      - { cuando: { valor: estimacion, mayor: 784000000 }, texto: "Demasiado: multiplique píxeles, fotogramas y 12 bits." }
+      - { texto: "Se ha quedado corto: multiplique píxeles, fotogramas y 12 bits." }
+    escalera:
+      - "Píxeles por fotograma, por 30 fotogramas, por 12 bits."
+    solucion: "1920 × 1080 × 30 × 12 ≈ 750 Mbit/s; en RGB, casi 1,5 Gbit/s."
+    comprobar:
+      - { caudal: 746496000, c_rgb: 1492992000, b_rgb: 24 }
+
+  - id: predecir-obturador
+    tipo: predecir
+    titulo: "Un objeto que se mueve"
+    texto: "La cámara fotografía piezas en una cinta que se mueve. ¿Qué pasa con un obturador rodante?"
+    libro: [205]
+    widget:
+      tipo: figura
+      figura: fig-18.12
+      zonas:
+        - { id: camara, rotulo: "Recuadro de arriba a la izquierda", rect: [4, 4, 218, 74] }
+    opciones:
+      - texto: "La imagen se deforma"
+        bien: true
+        porque: "Si el objeto se mueve, el rodante deforma: hace falta un obturador global."
+      - texto: "Sale más oscura"
+        porque: "La luz decide la calidad, pero el movimiento con rodante deforma."
+      - texto: "Nada: el obturador no importa"
+        porque: "Con objetos en movimiento, sí importa: el rodante deforma."
+    escalera:
+      - "Un obturador rodante no captura todas las líneas a la vez."
+    solucion: "Se deforma: hace falta un obturador global."
+
+  - id: pregunta-pantalla
+    tipo: pregunta
+    titulo: "Una pantalla fija"
+    texto: "Un aparato con una pantalla que siempre enseña lo mismo. ¿Con escritorio o sin él?"
+    libro: [209]
+    widget:
+      tipo: figura
+      figura: fig-18.12
+      zonas:
+        - { id: pantalla, rotulo: "Recuadro de arriba a la derecha", rect: [229, 4, 218, 74] }
+    opciones:
+      - texto: "Sin escritorio: la aplicación a pantalla completa"
+        bien: true
+        porque: "Un escritorio consume memoria, alarga el arranque y trae actualizaciones que pueden romper la aplicación."
+      - texto: "Con escritorio completo, por comodidad"
+        porque: "Cuesta memoria, arranque y actualizaciones que pueden romper la aplicación."
+      - texto: "Da igual"
+        porque: "Es la decisión que más condiciona."
+    escalera:
+      - "¿Qué cuesta un escritorio?"
+    solucion: "Sin escritorio, a pantalla completa."
+
+  - id: pregunta-red
+    tipo: pregunta
+    titulo: "Ethernet o wifi"
+    texto: "Un equipo fijo debe estar conectado sin fallos. ¿Qué red elige?"
+    libro: [212, 213]
+    widget:
+      tipo: figura
+      figura: fig-18.12
+      zonas:
+        - { id: red, rotulo: "Recuadro de abajo a la izquierda", rect: [4, 86, 218, 76] }
+    opciones:
+      - texto: "Ethernet"
+        bien: true
+        porque: "Sin configuración, sin interferencias y con aislamiento por transformador."
+      - texto: "Wifi"
+        porque: "Es cómodo, pero trae configuración inicial, cobertura variable y consumo."
+      - texto: "Bluetooth"
+        porque: "Para lo fiable, Ethernet."
+    escalera:
+      - "Lo fiable frente a lo cómodo."
+    solucion: "Ethernet."
+
+  - id: pregunta-audio
+    tipo: pregunta
+    titulo: "Grabar sonido"
+    texto: "Quiere grabar con un micrófono desde la placa. ¿Cómo?"
+    libro: [217]
+    widget:
+      tipo: figura
+      figura: fig-18.12
+      zonas:
+        - { id: audio, rotulo: "Recuadro de abajo a la derecha", rect: [229, 86, 218, 76] }
+    opciones:
+      - texto: "Con un micrófono digital I²S o un convertidor USB"
+        bien: true
+        porque: "Estas placas no tienen entrada analógica."
+      - texto: "Por el conector de audio analógico"
+        porque: "Es solo salida, y en la Pi 5 ni siquiera existe."
+      - texto: "Por un GPIO"
+        porque: "Los GPIO no llegan a ningún convertidor A/D."
+    escalera:
+      - "¿Hay alguna entrada analógica en la placa?"
+    solucion: "Micrófono I²S o convertidor USB."
+
+  - id: porque-anadido
+    tipo: porque
+    titulo: "La pregunta de cada caso"
+    texto: "Si la pantalla es solo un añadido del proyecto, ¿por qué replantearse el ordenador de placa?"
+    libro: [222, 226]
+    widget:
+      tipo: figura
+      figura: fig-18.12
+      zonas:
+        - { id: criterio, rotulo: "Recuadro naranja, abajo", rect: [4, 169, 443, 54] }
+    opciones:
+      - texto: "Un microcontrolador con pantalla pequeña quizá baste"
+        bien: true
+        porque: "Con la décima parte de complicaciones: sin el arranque, el consumo ni la imprevisibilidad."
+      - texto: "Porque un microcontrolador no admite pantallas"
+        porque: "Sí las admite; lo que no da es un sistema operativo, que aquí no hace falta."
+      - texto: "Porque la pantalla consume demasiado"
+        porque: "El coste es el sistema operativo completo, no la pantalla."
+    escalera:
+      - "¿Es la interfaz la razón del proyecto?"
+    solucion: "Si es un añadido, quizá baste un microcontrolador."
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "¿Qué prueba de la red revela más fallos?"
+    libro: [225]
+    widget:
+      tipo: figura
+      figura: fig-18.12
+      zonas:
+        - { id: red, rotulo: "Recuadro de abajo a la izquierda", rect: [4, 86, 218, 76] }
+    opciones:
+      - texto: "Desconectarla y reconectarla en marcha"
+        bien: true
+        porque: "Mucho software funciona con red y se cuelga cuando desaparece."
+      - texto: "Medir la velocidad máxima"
+        porque: "No revela lo que pasa cuando la red falta."
+      - texto: "Dejarla siempre conectada"
+        porque: "Así no se ve el fallo típico: colgarse cuando la red desaparece."
+    escalera:
+      - "¿Qué le pasa al software cuando la red desaparece?"
+    solucion: "Desconectarla y reconectarla en marcha."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [203, 209, 212, 222]
+    ideas:
+      - { titulo: "Cámara.", texto: "Unos 750 Mbit/s sin comprimir: codificador, luz y obturador." }
+      - { titulo: "Pantalla y red.", texto: "Sin escritorio si es fija; Ethernet si debe ser fiable." }
+      - { titulo: "Audio.", texto: "Salida mediocre y sin entrada analógica: I²S o USB." }
+      - { titulo: "¿Razón o añadido?", texto: "Si es un añadido, quizá baste un microcontrolador." }
