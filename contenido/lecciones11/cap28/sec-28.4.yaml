@@ -1,0 +1,301 @@
+# Lección 1.2 de la sección 27.4 «Osciladores RC y Senoidales de Baja Frecuencia» (cap28). Formato: GUIA.md.
+# La red de Wien con R y C iguales: β = 1/(3 + j(f/f₀ − f₀/f)), |β| = 1/3 y fase cero en f₀ = 1/(2πRC) (bloque 91).
+# El amplificador es el esquema ao-no-inversor con R₁ = 10 kΩ y R₂ = 20 kΩ (ganancia 3, la Rf = 2·R₁ del problema
+# 27.A), en continua con 0,1 V de prueba. La red de desplazamiento de fase es la de condensadores en serie y
+# resistencias a masa (bloque 103): directa, β = 1/(1 − 5/x² − j(6/x − 1/x³)) con x = ωRC, 1/29 en x = 1/√6; con
+# seguidores, (x/√(1 + x²))³ por célula de 60°, 1/8 en x = 1/√3.
+leccion: cap28/sec-28.4
+
+libro:
+  89: "Un oscilador LC no sirve por debajo de unos cientos de kilohercios"
+  91: "tiene desfase cero y atenuación de exactamente"
+  92: 'f_("0") = ("1")/("2" π dot.op R dot.op C)'
+  93: "el amplificador debe ser"
+  94: "Con menos, no arranca; con más, la amplitud crece hasta saturar y la salida se recorta"
+  97: "Es el circuito original de Hewlett"
+  98: "su ajuste es delicado: si el lazo de control es rápido, distorsiona"
+  99: "Simple y con más distorsión"
+  100: "todo oscilador senoidal necesita un mecanismo no lineal que fije la amplitud"
+  102: "Tres o más células RC en cascada"
+  103: "Como cada célula carga a la anterior, no aportan 60° cada una"
+  106: "Dos integradores en lazo producen seno y coseno simultáneamente"
+  108: "Senoide de audio de calidad"
+  112: "que coincide bien porque solo dependen de R y C"
+  113: "Con diodos aparecen armónicos claramente; con un control suave, apenas"
+  "cap28#206": "no arranca: la oscilación se apaga"
+  "cap28#247": "Un oscilador de puente de Wien usa R = 10 kΩ y C = 10 nF"
+
+modelo:
+  valores:
+    R_w: { sim: "R", nombre: "resistencia de la red", unidad: Ω, valor: 10000 }
+    C_w: { sim: "C", nombre: "capacidad de la red", unidad: F, valor: 10e-9 }
+    V_e: { sim: "v_{in}", nombre: "tensión de prueba", unidad: V, valor: 0.1 }
+    R_1: { sim: "R₁", nombre: "resistencia a masa", unidad: Ω, valor: 10000 }
+    R_2: { sim: "R_{f}", nombre: "resistencia de realimentación", unidad: Ω, valor: 20000 }
+    G_w: { sim: "G", nombre: "ganancia del amplificador", unidad: "", valor: 3 }
+    v_0: { sim: "v₀", nombre: "perturbación inicial, relativa", unidad: "", valor: 0.1 }
+    s_b: { tipo: interruptor, nombre: "células separadas con seguidores", valor: 0 }
+  calculos:
+    f_0: { expr: "1/(2*pi*R_w*C_w)", sim: "f₀", nombre: "frecuencia de oscilación", unidad: Hz }
+    G_a: { expr: "1 + R_2/R_1", sim: "G", nombre: "ganancia del no inversor", unidad: "" }
+    V_o: { expr: "G_a*V_e", sim: "v_{o}", nombre: "tensión de salida", unidad: V }
+    L_w: { expr: "G_w/3", sim: "|A·β|", nombre: "ganancia de lazo", unidad: "", cifras: 3 }
+    x_d: { expr: "1/sqrt(6)", sim: "ωRC", nombre: "180° sin seguidores", unidad: "" }
+    x_b: { expr: "1/sqrt(3)", sim: "ωRC", nombre: "180° con seguidores", unidad: "" }
+    x_1: { si: s_b, entonces: "x_b", sino: "x_d", sim: "ωRC", nombre: "punto de 180°", unidad: "" }
+    A_d: { expr: "sqrt((1 - 5/x_d^2)^2 + (6/x_d - 1/x_d^3)^2)", sim: "1/|β|", nombre: "atenuación sin seguidores", unidad: "" }
+    A_b: { expr: "(sqrt(1 + x_b^2)/x_b)^3", sim: "1/|β|", nombre: "atenuación con seguidores", unidad: "" }
+    A_n: { si: s_b, entonces: "A_b", sino: "A_d", sim: "1/|β|", nombre: "atenuación en 180°", unidad: "" }
+    b_n: { expr: "1/A_n", sim: "|β|", nombre: "módulo de la red en 180°", unidad: "" }
+
+tarjetas:
+  - id: explore-red
+    tipo: explorar
+    titulo: "La red de Wien"
+    texto: "Una RC en serie y otra en paralelo forman un divisor selectivo. Cambie R y C y mire dónde está su máximo."
+    libro: [89, 91]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 10, max: 100000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0, max: 0.4, unidad: "", rotulo: "|β|" }
+      curvas:
+        - { expr: "1/sqrt(9 + (nu/f_0 - f_0/nu)^2)", color: azul, rotulo: "|β| de la red" }
+      marcas:
+        - { x: "f_0", y: "1/3", rotulo: "1/3 y desfase cero" }
+      lectura: { valor: f_0, rotulo: "Frecuencia característica" }
+      mandos:
+        - { valor: R_w, lista: [1000, 10000, 100000], rotulo: "R" }
+        - { valor: C_w, lista: [1e-9, 10e-9, 100e-9], rotulo: "C" }
+    requiere: { mover: [R_w] }
+
+  - id: formula-wien
+    tipo: formula
+    titulo: "Solo R y C"
+    texto: "La frecuencia de oscilación depende solo de R y C."
+    libro: [92, "cap28#247"]
+    ec: 92
+    sustitucion: "1 / (2π · {{R_w}} · {{C_w}}) = {{f_0}}"
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 10, max: 100000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0, max: 0.4, unidad: "", rotulo: "|β|" }
+      curvas:
+        - { expr: "1/sqrt(9 + (nu/f_0 - f_0/nu)^2)", color: azul, rotulo: "|β| de la red" }
+      marcas:
+        - { x: "f_0", y: "1/3", rotulo: "f₀" }
+      lectura: { valor: f_0, rotulo: "f₀" }
+      mandos:
+        - { valor: R_w, lista: [1000, 10000, 100000], rotulo: "R" }
+        - { valor: C_w, lista: [1e-9, 10e-9, 100e-9], rotulo: "C" }
+    comprobar:
+      - { con: { R_w: 10000, C_w: 10e-9 }, f_0: 1592 }
+
+  - id: prediga-amplificador
+    tipo: predecir
+    titulo: "El amplificador del Wien"
+    texto: "La red no desfasa y atenúa a 1/3. ¿Qué amplificador cierra el lazo con ganancia de lazo igual a uno?"
+    libro: [91, 93]
+    fijar: { R_1: 10000, R_2: 20000, V_e: 0.1 }
+    widget:
+      tipo: circuito
+      esquema: ao-no-inversor
+      piezas: { entrada: V_e, r1: R_1, r2: R_2 }
+      lectura: { valor: G_a, rotulo: "Ganancia" }
+      mide: { vo: V_o }
+      ocultar: true
+    opciones:
+      - texto: "No inversor, de ganancia 3"
+        bien: true
+        porque: "Sin desfase en la red, el amplificador tampoco debe desfasar; y 3 · 1/3 = 1."
+      - texto: "Inversor, de ganancia 3"
+        porque: "El inversor añade media vuelta de fase: el lazo dejaría de estar en fase."
+      - texto: "No inversor, de ganancia 1"
+        porque: "La red atenúa a 1/3: con ganancia 1, el lazo se queda en 1/3 y la oscilación se apaga."
+    escalera:
+      - "Barkhausen: |A·β| = 1 y fase cero."
+    solucion: "No inversor de ganancia 3: R_{f} = 2 · R₁."
+    comprobar:
+      - { G_a: 3, V_o: 0.3 }
+
+  - id: sorpresa-exacta
+    tipo: sorpresa
+    titulo: "Exactamente 3"
+    texto: "Y ahí está el problema: la ganancia debe ser exactamente 3. Pruebe un 1 % por debajo y por encima."
+    libro: [94, "cap28#206"]
+    inicio: { G_w: 3 }
+    widget:
+      tipo: grafica
+      x: { id: nv, min: 0, max: 300, unidad: vueltas, rotulo: "periodos" }
+      y: { min: 0, max: 1.2, unidad: "", rotulo: "amplitud, relativa" }
+      curvas:
+        - { expr: "min(1, v_0*(G_w/3)^nv)", color: azul, rotulo: "amplitud de la salida" }
+      lectura: { valor: L_w, rotulo: "|A·β|" }
+      mandos:
+        - { valor: G_w, lista: [2.97, 3, 3.03], rotulo: "Ganancia" }
+    requiere: { mover: [G_w] }
+
+  - id: empareje-control
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "El control de amplitud"
+    texto: "Todo oscilador senoidal necesita un mecanismo no lineal que fije la amplitud. Una cada uno con su rasgo."
+    libro: [97, 98, 99, 100]
+    emparejar:
+      - ["Lámpara incandescente", "El original de Hewlett: suave y sin distorsión"]
+      - ["JFET con detector de pico", "Moderno; si su lazo es rápido, distorsiona"]
+      - ["Diodos", "Simple y con más distorsión"]
+    exito: "La calidad de la senoide depende de lo suave que sea el mecanismo: del 0,01 % al 3 % de THD."
+    pistas:
+      - { texto: "La inercia térmica del filamento hace la regulación suave." }
+    escalera:
+      - "¿Cuál es el más simple? ¿Cuál necesita un detector?"
+    solucion: "Lámpara–Hewlett sin distorsión; JFET–moderno y delicado; diodos–simple con distorsión."
+
+  - id: prediga-desfase
+    tipo: predecir
+    titulo: "Tres células RC"
+    texto: "Tres células RC iguales, conectadas directamente, suman 180° a una frecuencia. ¿Qué ganancia necesita el amplificador inversor?"
+    libro: [102, 103]
+    fijar: { s_b: 0 }
+    widget:
+      tipo: grafica
+      x: { id: wx, min: 1, max: 10, unidad: "", rotulo: "ωRC", escala: log }
+      y: { min: 0, max: 1, unidad: "", rotulo: "|β|" }
+      curvas:
+        - { expr: "1/sqrt((1 - 5/wx^2)^2 + (6/wx - 1/wx^3)^2)", color: azul, rotulo: "sin seguidores" }
+      lectura: { valor: A_n, rotulo: "Ganancia necesaria" }
+      ocultar: true
+    opciones:
+      - texto: "29"
+        bien: true
+        porque: "La red atenúa a 1/29 en ese punto: esa es la ganancia necesaria."
+      - texto: "8"
+        porque: "Sería con seguidores entre las células, cada una de 60° y 1/2: (1/2)³ = 1/8."
+      - texto: "3"
+        porque: "Ese es el Wien. Tres células RC en cascada atenúan mucho más."
+    escalera:
+      - "Cada célula carga a la anterior: atenúan más que si estuvieran separadas."
+    solucion: "Ganancia 29: la red atenúa a 1/29 en el punto de 180°."
+    comprobar:
+      - { A_n: 29 }
+      - { con: { s_b: 1 }, A_n: 8 }
+
+  - id: explore-seguidores
+    tipo: explorar
+    titulo: "Con y sin seguidores"
+    texto: "Separe las células con seguidores y mire cómo cambia la atenuación en el punto de 180°."
+    libro: [103]
+    widget:
+      tipo: grafica
+      x: { id: wx, min: 0.1, max: 10, unidad: "", rotulo: "ωRC", escala: log }
+      y: { min: 0, max: 1, unidad: "", rotulo: "|β|" }
+      curvas:
+        - { expr: "s_b*(wx/sqrt(1 + wx^2))^3 + (1 - s_b)*1/sqrt((1 - 5/wx^2)^2 + (6/wx - 1/wx^3)^2)", color: azul, rotulo: "|β| de la red" }
+      marcas:
+        - { x: "x_1", y: "b_n", rotulo: "180°" }
+      lectura: { valor: A_n, rotulo: "Ganancia necesaria" }
+      mandos:
+        - { valor: s_b, tipo: interruptor, rotulo: "Seguidores entre células" }
+    requiere: { mover: [s_b] }
+
+  - id: por-que-29
+    tipo: porque
+    titulo: "¿Por qué no 60° cada una?"
+    texto: "Sin seguidores, las tres células no aportan 60° cada una, y la red atenúa mucho más. ¿Por qué?"
+    libro: [103]
+    fijar: { s_b: 0 }
+    widget:
+      tipo: grafica
+      x: { id: wx, min: 0.1, max: 10, unidad: "", rotulo: "ωRC", escala: log }
+      y: { min: 0, max: 1, unidad: "", rotulo: "|β|" }
+      curvas:
+        - { expr: "1/sqrt((1 - 5/wx^2)^2 + (6/wx - 1/wx^3)^2)", color: azul, rotulo: "sin seguidores" }
+        - { expr: "(wx/sqrt(1 + wx^2))^3", color: naranja, rotulo: "con seguidores", discontinua: true }
+    opciones:
+      - texto: "Cada célula carga a la anterior: aportan unos 56°, 56° y 68°"
+        bien: true
+        porque: "Al cargarse, el punto de 180° cae donde la red atenúa a 1/29, no a 1/8."
+      - texto: "Porque los condensadores van en serie"
+        porque: "Esa es solo la versión del circuito; con seguidores, la misma versión da 60° por célula."
+      - texto: "Porque el amplificador inversor añade desfase"
+        porque: "El inversor aporta su media vuelta en los dos casos; la diferencia está en la red."
+    escalera:
+      - "¿Qué hace un seguidor entre dos células?"
+    solucion: "Sin separadores cada célula carga a la anterior: 56°, 56° y 68°, y 1/29."
+
+  - id: cuadratura
+    tipo: pregunta
+    titulo: "Seno y coseno"
+    texto: "Un sistema necesita a la vez un seno y un coseno de la misma frecuencia. ¿Qué oscilador lo da?"
+    libro: [106, 108]
+    widget:
+      tipo: grafica
+      x: { id: nv, min: 0, max: 2, unidad: vueltas, rotulo: "t, en periodos" }
+      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "salidas" }
+      curvas:
+        - { expr: "sin(2*pi*nv)", color: azul, rotulo: "seno" }
+        - { expr: "cos(2*pi*nv)", color: naranja, rotulo: "coseno" }
+    opciones:
+      - texto: "Dos integradores en lazo: el oscilador en cuadratura"
+        bien: true
+        porque: "Da seno y coseno simultáneamente, lo que hace falta para señales I/Q. Su amplitud también necesita control."
+      - texto: "Un Wien con potenciómetro doble"
+        porque: "Ese sirve para ajustar la frecuencia en un amplio margen, con una sola salida."
+      - texto: "Un oscilador de relajación"
+        porque: "Da cuadrada y triangular; sirve cuando basta con que oscile."
+    escalera:
+      - "Integrar un seno da un coseno."
+    solucion: "El oscilador en cuadratura: dos integradores en lazo."
+
+  - id: empareje-uso
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cuándo usar cada cosa"
+    texto: "Una cada necesidad con su solución."
+    libro: [108]
+    emparejar:
+      - ["Senoide de audio de calidad", "Wien con control suave"]
+      - ["Frecuencia ajustable en amplio margen", "Wien con potenciómetro doble"]
+      - ["Solo hace falta que oscile", "Relajación"]
+      - ["Frecuencia estable", "Cristal, aunque sea alta y se divida"]
+    exito: "Para una senoide de frecuencia exacta, hoy se sintetiza desde un cristal y se filtra."
+    pistas:
+      - { texto: "La estabilidad de frecuencia es cosa del cuarzo." }
+    escalera:
+      - "¿Cuál ajusta R a la vez en las dos ramas de la red?"
+    solucion: "Calidad–Wien suave; ajustable–potenciómetro doble; que oscile–relajación; estable–cristal."
+
+  - id: banco-wien
+    tipo: banco
+    titulo: "En el banco"
+    texto: "Un Wien se monta en media hora. Mida su frecuencia y compárela con 1/(2πRC)."
+    libro: [112, 113, "cap28#247"]
+    fijar: { R_w: 10000, C_w: 10e-9 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 10, max: 100000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0, max: 0.4, unidad: "", rotulo: "|β|" }
+      curvas:
+        - { expr: "1/sqrt(9 + (nu/f_0 - f_0/nu)^2)", color: azul, rotulo: "|β| de la red" }
+    banco:
+      piezas: ["Operacional no inversor con R₁ = 10 kΩ y R_{f} algo mayor que 20 kΩ", "Red de Wien con R = 10 kΩ y C = 10 nF", "Control de amplitud: lámpara o diodos", "Osciloscopio con sonda ×10"]
+      medir: "La frecuencia de la salida."
+      esperado: f_0
+      unidad: Hz
+      tol: 0.1
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.1 }, texto: "Mide de más: compruebe con el medidor que las dos R y los dos C son los previstos e iguales." }
+        - { cuando: { valor: desviacion, menor: -0.1 }, texto: "Mide de menos: compruebe C con el medidor; sume las capacidades parásitas de la protoboard." }
+        - { texto: "Coincide: la frecuencia solo depende de R y C. Mire ahora la distorsión con la FFT: con diodos aparecen armónicos." }
+    comprobar:
+      - { f_0: 1592 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [91, 94, 100, 103]
+    ideas:
+      - { titulo: "Wien.", texto: "En f₀ = 1/(2πRC) la red no desfasa y atenúa a 1/3: no inversor de ganancia 3." }
+      - { titulo: "Exactamente 3.", texto: "Con menos no arranca; con más, recorta. Lo arregla un control de amplitud." }
+      - { titulo: "El control.", texto: "Lámpara, JFET o diodos: cuanto más suave, más limpia la senoide." }
+      - { titulo: "Desplazamiento de fase.", texto: "Tres células directas atenúan a 1/29; con seguidores, a 1/8." }

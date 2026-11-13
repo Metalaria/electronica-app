@@ -1,0 +1,335 @@
+# Lección 1.2 de la sección 27.6 «Ruido de Fase y Jitter» (cap28). Formato: contenido/lecciones11/GUIA.md.
+# Las faldas se dibujan con el modelo de Leeson, L(f) = L_suelo + 10·log(1 + (f₀/2Qf)²)·(1 + f_k/f): −30 dB/década por
+# debajo de la esquina 1/f, −20 dB/década hasta f₀/2Q y plano después (la tabla del bloque 166). El suelo (−160 dBc/Hz)
+# y la esquina 1/f (20 Hz) son de ejemplo; f₀ = 10 MHz y Q = 50 son los del bloque 167 (Q = 1000 es otro ejemplo).
+# El techo de SNR es la ecuación del bloque 161; los bits efectivos, (SNR − 1,76)/6,02.
+leccion: cap28/sec-28.6
+
+libro:
+  147: "esa fluctuación ensancha la raya"
+  148: "la potencia de ruido en 1 Hz de banda a una distancia dada de la portadora"
+  149: "−100 dBc/Hz a 10 kHz de la portadora"
+  150: "hay 100 dB menos potencia que en la portadora"
+  152: "unos llegan un poco antes y otros un poco después"
+  153: "la misma cosa"
+  155: "su amplitud sigue una distribución gaussiana"
+  156: "se puede eliminar"
+  157: "si el jitter medido es acotado y periódico, hay un agresor concreto que encontrar"
+  159: "Las faldas de ruido del oscilador, mezcladas con la emisora fuerte, caen encima de la débil y la tapan"
+  160: "El error es proporcional a la pendiente de la señal"
+  161: '"SNR"_(op("max")) = - "20" dot.op op("log")_("10")'
+  162: "Con 1 ps de jitter y una señal de 100 MHz, el techo es de"
+  166: "Ruido blanco filtrado por el resonador"
+  167: "Con un LC de 10 MHz y Q = 50 ese punto está a 100 kHz"
+  169: "es la medida más eficaz con diferencia"
+  172: "la anchura de la banda difusa"
+
+modelo:
+  valores:
+    f_o: { sim: "f₀", nombre: "frecuencia del oscilador", unidad: Hz, valor: 10000000 }
+    Q_l: { sim: "Q", nombre: "factor de calidad del resonador", unidad: "", valor: 50 }
+    L_f: { sim: "L_{suelo}", nombre: "suelo de ruido, dBc/Hz", unidad: dB, valor: -160 }
+    f_k: { sim: "f_{1/f}", nombre: "esquina del ruido 1/f", unidad: Hz, valor: 20 }
+    t_j: { sim: "t_{jitter}", nombre: "jitter del reloj", unidad: s, valor: 1e-12 }
+    f_g: { sim: "f_{señal}", nombre: "frecuencia de la señal", unidad: Hz, valor: 100000000 }
+  calculos:
+    f_q: { expr: "f_o/(2*Q_l)", sim: "f₀/2Q", nombre: "fin de las faldas en pendiente", unidad: Hz }
+    snr: { expr: "-20*log10(2*pi*f_g*t_j)", sim: "SNR_{máx}", nombre: "techo de SNR", unidad: dB }
+    enob: { expr: "(snr - 1.76)/6.02", sim: "bits", nombre: "bits efectivos", unidad: "", cifras: 2 }
+    f_xq: { expr: "f_o/(2*100000)", sim: "f₀/2Q", nombre: "esquina del cristal", unidad: Hz }
+
+tarjetas:
+  - id: explore-faldas
+    tipo: explorar
+    titulo: "Las faldas"
+    texto: "Alrededor de la portadora, el ruido de fase cae por tramos. Cambie el Q del resonador y mire dónde se vuelve plano."
+    nota: "Suelo y esquina 1/f de ejemplo."
+    libro: [147, 166, 167]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1, max: 10000000, unidad: Hz, rotulo: "distancia a la portadora", escala: log }
+      y: { min: -170, max: -20, unidad: dB, rotulo: "ruido de fase, dBc/Hz" }
+      curvas:
+        - { expr: "L_f + 10*log10((1 + (f_o/(2*Q_l*nu))^2)*(1 + f_k/nu))", color: azul, rotulo: "ruido de fase" }
+      marcas:
+        - { x: "f_q", y: "L_f + 3", rotulo: "f₀/2Q" }
+      lectura: { valor: f_q, rotulo: "Fin de las faldas" }
+      mandos:
+        - { valor: Q_l, lista: [50, 1000], rotulo: "Q del resonador" }
+    requiere: { mover: [Q_l] }
+    comprobar:
+      - { f_q: 100000 }
+
+  - id: lea-dbc
+    tipo: pregunta
+    titulo: "Cómo se lee"
+    texto: "Un oscilador especifica −100 dBc/Hz a 10 kHz de la portadora. ¿Qué dice?"
+    libro: [148, 149, 150]
+    fijar: { Q_l: 50 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1, max: 10000000, unidad: Hz, rotulo: "distancia a la portadora", escala: log }
+      y: { min: -170, max: -20, unidad: dB, rotulo: "ruido de fase, dBc/Hz" }
+      curvas:
+        - { expr: "L_f + 10*log10((1 + (f_o/(2*Q_l*nu))^2)*(1 + f_k/nu))", color: azul, rotulo: "ruido de fase" }
+    opciones:
+      - texto: "A 10 kHz de la portadora, en 1 Hz de banda, hay 100 dB menos potencia que en ella"
+        bien: true
+        porque: "Es una potencia de ruido por hercio de banda, relativa a la portadora: por eso dBc/Hz."
+      - texto: "El ruido total es 100 dB menor que la portadora"
+        porque: "Es por hercio de banda y a una distancia concreta, no el total."
+      - texto: "La frecuencia se desvía 10 kHz"
+        porque: "Los 10 kHz son dónde se mide el ruido, no una desviación de la frecuencia."
+    escalera:
+      - "¿Qué significan la «c» y el «/Hz» de dBc/Hz?"
+    solucion: "100 dB por debajo de la portadora, en 1 Hz de banda, a 10 kHz de ella."
+
+  - id: jitter
+    tipo: pregunta
+    titulo: "El mismo fenómeno en el tiempo"
+    texto: "En el tiempo, esa fluctuación de fase mueve los flancos de un reloj. ¿Qué relación tiene el jitter con el ruido de fase?"
+    libro: [152, 153]
+    widget:
+      tipo: grafica
+      x: { id: xt, min: 0, max: 2, unidad: "", rotulo: "t, en periodos" }
+      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "reloj" }
+      curvas:
+        - { expr: "sin(2*pi*xt)", color: azul, rotulo: "flanco ideal" }
+        - { expr: "sin(2*pi*xt - 0.25)", color: naranja, rotulo: "llega tarde", discontinua: true }
+        - { expr: "sin(2*pi*xt + 0.25)", color: verde, rotulo: "llega pronto", discontinua: true }
+    opciones:
+      - texto: "Son la misma cosa vista desde dos dominios"
+        bien: true
+        porque: "Se convierten uno en otro integrando el ruido de fase sobre la banda de interés."
+      - texto: "Son ruidos independientes que se suman"
+        porque: "No son dos ruidos: es una sola fluctuación de fase, en frecuencia o en el tiempo."
+      - texto: "El jitter solo existe en circuitos digitales"
+        porque: "Los dos nombres vienen de dos comunidades, radio y digital; el fenómeno es uno."
+    escalera:
+      - "¿Qué es un flanco que llega antes o después, sino una fase que fluctúa?"
+    solucion: "La misma fluctuación de fase: ruido de fase en frecuencia, jitter en el tiempo."
+
+  - id: empareje-tipos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los dos tipos de jitter"
+    texto: "Una cada rasgo con su tipo de jitter."
+    libro: [155, 156]
+    emparejar:
+      - ["Distribución gaussiana, sin cota", "Aleatorio"]
+      - ["Acoplo de otra señal o ruido de alimentación", "Determinista"]
+      - ["Se especifica con una probabilidad asociada", "Aleatorio, otra vez"]
+      - ["Se elimina localizando su causa", "Determinista, otra vez"]
+    exito: "El aleatorio sale del ruido térmico y 1/f; el determinista, de causas identificables y acotadas."
+    pistas:
+      - { texto: "Lo que tiene una causa concreta se puede quitar." }
+    escalera:
+      - "¿Cuál siempre tiene una posibilidad de desviación grande?"
+    solucion: "Gaussiano y con probabilidad: aleatorio. Agresor concreto y eliminable: determinista."
+
+  - id: diagnostico
+    tipo: pregunta
+    titulo: "El diagnóstico"
+    texto: "El jitter medido de un reloj es acotado y periódico. ¿Qué hace?"
+    libro: [157]
+    widget:
+      tipo: grafica
+      x: { id: xt, min: 0, max: 20, unidad: "", rotulo: "ciclo" }
+      y: { min: -1.5, max: 1.5, unidad: "", rotulo: "desvío del flanco, relativo" }
+      curvas:
+        - { expr: "sin(2*pi*xt/5)", color: azul, rotulo: "jitter medido" }
+    opciones:
+      - texto: "Buscar el agresor concreto que lo provoca"
+        bien: true
+        porque: "Acotado y periódico es determinista: tiene una causa que se puede localizar y eliminar."
+      - texto: "Nada: se ha llegado al suelo del oscilador"
+        porque: "Eso diría un jitter gaussiano. Este tiene un patrón."
+      - texto: "Cambiar el cristal por uno de más Q"
+        porque: "El Q baja el jitter aleatorio; un agresor periódico seguiría ahí."
+    escalera:
+      - "¿Qué tipo de jitter tiene cota y se repite?"
+    solucion: "Es determinista: hay un agresor concreto que encontrar."
+
+  - id: prediga-adc
+    tipo: predecir
+    titulo: "El reloj del convertidor"
+    texto: "Un convertidor muestrea una señal de 100 MHz con un reloj de 1 ps de jitter. ¿Cuál es el techo de su SNR?"
+    libro: [160, 162]
+    fijar: { t_j: 1e-12, f_g: 100000000 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1000, max: 1000000, unidad: Hz, rotulo: "f_{señal}", escala: log }
+      y: { min: 0, max: 200, unidad: dB, rotulo: "SNR máxima" }
+      curvas:
+        - { expr: "-20*log10(2*pi*nu*t_j)", color: azul, rotulo: "techo por jitter" }
+      lectura: { valor: snr, rotulo: "Techo de SNR" }
+      ocultar: true
+    opciones:
+      - texto: "64 dB: unos 10 bits efectivos"
+        bien: true
+        porque: "Por bueno que sea el convertidor: el reloj manda más que la resolución nominal."
+      - texto: "Lo que dé la resolución nominal del convertidor"
+        porque: "La resolución nominal no sirve si el reloj muestrea en el instante equivocado."
+      - texto: "Más de 100 dB: 1 ps es despreciable"
+        porque: "A 100 MHz la señal cambia muy deprisa: 1 ps de error de instante ya es mucho."
+    escalera:
+      - "SNR = −20 · log₁₀(2π · f · t_{jitter})."
+    solucion: "−20 · log₁₀(2π · 100 MHz · 1 ps) = 64 dB, unos 10 bits."
+    comprobar:
+      - { snr: 64, enob: 10, tol: 0.04 }
+
+  - id: formula-snr
+    tipo: formula
+    titulo: "Un límite duro"
+    texto: "El techo cae 20 dB por cada década de frecuencia de la señal. Cambie el jitter."
+    libro: [161, 162]
+    ec: 161
+    sustitucion: "−20 · log₁₀(2π · {{f_g}} · {{t_j}}) = {{snr}}"
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1000, max: 1000000000, unidad: Hz, rotulo: "f_{señal}", escala: log }
+      y: { min: 0, max: 200, unidad: dB, rotulo: "SNR máxima" }
+      curvas:
+        - { expr: "-20*log10(2*pi*nu*t_j)", color: azul, rotulo: "techo por jitter" }
+      marcas:
+        - { x: "f_g", y: "snr", rotulo: "{{snr}}" }
+      lectura: { valor: snr, rotulo: "Techo a la frecuencia de la señal" }
+      datos:
+        - { valor: enob, rotulo: "Bits efectivos: {{enob}}" }
+      mandos:
+        - { valor: t_j, lista: [1e-13, 1e-12, 1e-11], rotulo: "Jitter" }
+    comprobar:
+      - { snr: 64, tol: 0.01 }
+      - { con: { f_g: 10000000 }, snr: 84, tol: 0.01 }
+
+  - id: por-que-pendiente
+    tipo: porque
+    titulo: "¿Por qué la pendiente?"
+    texto: "El error que produce el jitter crece con la frecuencia de la señal. ¿Por qué?"
+    libro: [160]
+    widget:
+      tipo: grafica
+      x: { id: xt, min: 0, max: 1, unidad: "", rotulo: "t, en periodos" }
+      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "señal" }
+      curvas:
+        - { expr: "sin(2*pi*xt)", color: azul, rotulo: "señal lenta" }
+        - { expr: "sin(8*pi*xt)", color: naranja, rotulo: "señal rápida", discontinua: true }
+    opciones:
+      - texto: "Muestrear en el instante equivocado da un error proporcional a la pendiente, y la señal rápida cambia más deprisa"
+        bien: true
+        porque: "El mismo desvío de tiempo, por una pendiente mayor, da un error de amplitud mayor."
+      - texto: "Porque el jitter del reloj crece con la frecuencia de la señal"
+        porque: "El jitter es del reloj y no depende de la señal; lo que crece es la pendiente."
+      - texto: "Porque el convertidor pierde resolución a alta frecuencia"
+        porque: "La resolución nominal no cambia: el límite viene del instante de muestreo."
+    escalera:
+      - "¿Cuánto cambia la señal en 1 ps si es lenta? ¿Y si es rápida?"
+    solucion: "Error = pendiente × desvío de tiempo: más frecuencia, más pendiente, más error."
+
+  - id: radio
+    tipo: pregunta
+    titulo: "Una emisora débil junto a una fuerte"
+    texto: "Un receptor con buen filtro pero oscilador local ruidoso no oye una emisora débil junto a una fuerte. ¿Por qué?"
+    libro: [159]
+    fijar: { Q_l: 50 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1, max: 10000000, unidad: Hz, rotulo: "distancia a la portadora", escala: log }
+      y: { min: -170, max: -20, unidad: dB, rotulo: "ruido de fase, dBc/Hz" }
+      curvas:
+        - { expr: "L_f + 10*log10((1 + (f_o/(2*Q_l*nu))^2)*(1 + f_k/nu))", color: azul, rotulo: "faldas del oscilador" }
+    opciones:
+      - texto: "Las faldas del oscilador, mezcladas con la fuerte, caen encima de la débil: bloqueo recíproco"
+        bien: true
+        porque: "Ningún filtro lo arregla: el ruido ya está dentro del canal deseado."
+      - texto: "Porque el filtro es demasiado ancho"
+        porque: "El filtro es bueno; el ruido entra mezclado en el propio canal."
+      - texto: "Porque la emisora fuerte satura la antena"
+        porque: "La antena no satura; el problema es el oscilador local."
+    escalera:
+      - "¿Qué se mezcla con la emisora fuerte en el mezclador?"
+    solucion: "Bloqueo recíproco: las faldas del oscilador trasladan la fuerte sobre la débil."
+
+  - id: estime-cristal
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Las faldas del cuarzo"
+    texto: "Con un LC de 10 MHz y Q = 50, las faldas en pendiente acaban a 100 kHz. ¿Dónde acaban con un cristal de Q = 10⁵?"
+    libro: [167]
+    estimar:
+      objetivo: "f_xq"
+      unidad: Hz
+      min: 0
+      max: 200
+      paso: 1
+      inicio: 150
+      tol: 0.06
+      rotulo: "Fin de las faldas"
+    exito: "A solo 50 Hz: las faldas del cuarzo son mucho más estrechas y bajas cerca de la portadora."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 53 }, texto: "Se ha pasado: con un Q dos mil veces mayor, f₀/2Q es dos mil veces menor." }
+      - { texto: "Se ha quedado corto: calcule f₀/2Q con 10 MHz y 10⁵." }
+    escalera:
+      - "Las faldas acaban en f₀/2Q."
+    solucion: "10 MHz/(2 · 10⁵) = 50 Hz."
+    comprobar:
+      - { f_xq: 50 }
+
+  - id: mejora
+    tipo: pregunta
+    titulo: "Cómo se mejora"
+    texto: "Quiere bajar el ruido de fase de un oscilador. ¿Qué medida es la más eficaz con diferencia?"
+    libro: [169]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1, max: 10000000, unidad: Hz, rotulo: "distancia a la portadora", escala: log }
+      y: { min: -170, max: -20, unidad: dB, rotulo: "ruido de fase, dBc/Hz" }
+      curvas:
+        - { expr: "L_f + 10*log10((1 + (f_o/(2*Q_l*nu))^2)*(1 + f_k/nu))", color: azul, rotulo: "su Q" }
+        - { expr: "L_f + 10*log10((1 + (f_o/(2*100000*nu))^2)*(1 + f_k/nu))", color: verde, rotulo: "Q de un cristal", discontinua: true }
+    opciones:
+      - texto: "Un resonador de Q alto"
+        bien: true
+        porque: "Es la más eficaz. Ayudan también el amplificador de bajo ruido 1/f, la alimentación limpia, aislarlo y no cargarlo."
+      - texto: "Cargar el resonador para sacar más señal"
+        porque: "Cargarlo baja su Q: se extrae con un buffer de alta impedancia."
+      - texto: "Un MOSFET en el lazo"
+        porque: "Al contrario: el bajo ruido 1/f favorece a los bipolares sobre los MOSFET."
+    escalera:
+      - "¿Qué fija el ancho de las faldas?"
+    solucion: "Más Q: es, con diferencia, lo que más baja el ruido de fase."
+
+  - id: banco-persistencia
+    tipo: pregunta
+    titulo: "Verlo con el osciloscopio"
+    texto: "Dispare con el propio reloj y mire, en modo persistencia, un flanco varios ciclos después. ¿Qué mide la banda difusa?"
+    libro: [172]
+    widget:
+      tipo: grafica
+      x: { id: xt, min: 0, max: 1, unidad: "", rotulo: "t, en periodos" }
+      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "reloj" }
+      curvas:
+        - { expr: "sin(2*pi*xt)", color: azul, rotulo: "flanco" }
+        - { expr: "sin(2*pi*xt - 0.2)", color: azul, rotulo: "flanco tardío", discontinua: true }
+        - { expr: "sin(2*pi*xt + 0.2)", color: azul, rotulo: "flanco temprano", discontinua: true }
+    opciones:
+      - texto: "El jitter acumulado"
+        bien: true
+        porque: "Su anchura es el jitter. Compare un reloj de cristal con uno RC interno: no cuesta nada."
+      - texto: "El ruido de fase en dBc/Hz"
+        porque: "Ese lo da un analizador de espectro de calidad; el osciloscopio ve el tiempo."
+      - texto: "El ruido de la sonda"
+        porque: "La sonda añade poco; la banda es la de los flancos que llegan antes y después."
+    escalera:
+      - "Los flancos que llegan antes y después se superponen."
+    solucion: "La anchura de la banda difusa es el jitter acumulado."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [150, 153, 157, 162, 167]
+    ideas:
+      - { titulo: "Ruido de fase.", texto: "Potencia de las faldas en 1 Hz de banda, relativa a la portadora: dBc/Hz a una distancia." }
+      - { titulo: "Jitter.", texto: "La misma fluctuación en el tiempo. Aleatorio, el suelo; determinista, un agresor que encontrar." }
+      - { titulo: "El techo del convertidor.", texto: "SNR = −20 · log₁₀(2π · f · t_{jitter}): 1 ps a 100 MHz, 64 dB." }
+      - { titulo: "Más Q.", texto: "Las faldas acaban en f₀/2Q: el cristal, mucho más cerca de la portadora." }

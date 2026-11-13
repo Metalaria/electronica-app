@@ -1,0 +1,263 @@
+# Lección 1.2 de la sección 32.8 «Interferencia Electromagnética: las Cuatro Vías de Acoplo» (cap32). GUIA.md.
+# Capacitivo: i = C·dv/dt con el flanco de 3,3 V en 2 ns y 1 pF del bloque 241. Radiación: E ≈ 1,3·10⁻¹⁴·f²·A·I/r con
+# el bucle del bloque 253 (1 cm² = 100 mm², 40 mA, 100 MHz, 3 m) frente al límite de clase B a 3 m (100 µV/m).
+leccion: cap32/sec-32.8
+
+libro:
+  231: "normalmente el camino es el más barato de romper"
+  235: "por debajo de unos 30 MHz"
+  236: "El caso típico es la impedancia común"
+  240: "i = C dot.op (d v)/(d t)"
+  241: "Un flanco de 3,3 V en 2 ns tiene dv/dt de 1,65 V/ns"
+  242: "Un nodo de alta impedancia es vulnerable"
+  246: "v = M dot.op (d i)/(d t)"
+  247: "empeora con la impedancia baja de la fuente"
+  248: "que es la razón de ser del par trenzado y del plano de masa"
+  249: "la capacidad acopla tensiones y la inductancia acopla corrientes"
+  252: 'E approx "1,3" times "10"^(- "14")'
+  253: "frente al límite de clase B a 3 m de 100 µV/m"
+  255: "el armónico décimo de un reloj radia cien veces más que la fundamental"
+  258: "Radiación, con los cables como antenas"
+  262: "si al separar las masas el problema cambia, es conducción"
+
+modelo:
+  valores:
+    V_f: { sim: "ΔV", nombre: "salto del flanco", unidad: V, valor: 3.3 }
+    t_f: { sim: "t_{flanco}", nombre: "duración del flanco", unidad: s, valor: 2e-9 }
+    C_p: { sim: "C", nombre: "capacidad parásita", unidad: F, valor: 1e-12 }
+    A_b: { sim: "A", nombre: "área del bucle", unidad: "mm²", valor: 100 }
+    I_b: { sim: "I", nombre: "corriente del bucle", unidad: A, valor: 0.04 }
+    f_b: { sim: "f", nombre: "frecuencia", unidad: Hz, valor: 100000000 }
+    r_d: { sim: "r", nombre: "distancia", unidad: m, valor: 3 }
+    E_l: { sim: "E_{lím}", nombre: "límite de clase B a 3 m", unidad: "V/m", valor: 0.0001 }
+  calculos:
+    i_c: { expr: "C_p*V_f/t_f", sim: "i", nombre: "corriente inyectada", unidad: A }
+    q_c: { expr: "C_p*V_f", sim: "q", nombre: "carga", unidad: C }
+    E_b: { expr: "1.3e-14*f_b^2*A_b*1e-6*I_b/r_d", sim: "E", nombre: "campo radiado", unidad: "V/m" }
+    E_db: { expr: "20*log10(E_b/0.000001)", sim: "E", nombre: "campo en dBµV/m", unidad: dB, cifras: 3 }
+    r_10: { expr: "(10*f_b)^2/f_b^2", sim: "(10f)²/f²", nombre: "cociente de emisión del décimo armónico", unidad: "" }
+
+tarjetas:
+  - id: explore-capacitivo
+    tipo: explorar
+    titulo: "Acoplamiento capacitivo"
+    texto: "Dos conductores próximos forman un condensador. Cambie la duración del flanco y mire la corriente que inyecta en el vecino."
+    libro: [240, 241]
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 0.5e-9, max: 20e-9, unidad: s, rotulo: "duración del flanco" }
+      y: { min: 0, max: 0.008, unidad: A, rotulo: "corriente inyectada" }
+      curvas:
+        - { expr: "C_p*V_f/tt", color: azul, rotulo: "C · dv/dt" }
+      marcas:
+        - { x: "t_f", y: "i_c", rotulo: "{{i_c}}" }
+      lectura: { valor: i_c, rotulo: "Corriente inyectada" }
+      mandos:
+        - { valor: t_f, lista: [1e-9, 2e-9, 10e-9], rotulo: "Flanco" }
+        - { valor: C_p, lista: [1e-12, 2e-12], rotulo: "Capacidad parásita" }
+    requiere: { mover: [t_f] }
+
+  - id: prediga-flanco
+    tipo: predecir
+    titulo: "Un flanco de 3,3 V en 2 ns"
+    texto: "Sobre una capacidad parásita de 1 pF, ¿cuánta corriente inyecta en el conductor vecino?"
+    libro: [240, 241]
+    fijar: { V_f: 3.3, t_f: 2e-9, C_p: 1e-12 }
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 10e-9, max: 20e-9, unidad: s, rotulo: "duración del flanco" }
+      y: { min: 0, max: 0.008, unidad: A, rotulo: "corriente inyectada" }
+      curvas:
+        - { expr: "C_p*V_f/tt", color: azul, rotulo: "C · dv/dt" }
+      lectura: { valor: i_c, rotulo: "Corriente" }
+      ocultar: true
+    opciones:
+      - texto: "1,65 mA"
+        bien: true
+        porque: "dv/dt = 1,65 V/ns; por 1 pF, 1,65 mA."
+      - texto: "3,3 pA"
+        porque: "Ha multiplicado la tensión por la capacidad: eso es carga, no corriente. Falta dividir por el tiempo."
+      - texto: "Nada: la frecuencia del reloj es baja"
+        porque: "Acopla la velocidad del flanco, no su frecuencia ni su amplitud."
+    escalera:
+      - "i = C · dv/dt."
+    solucion: "1 pF · 3,3 V / 2 ns = 1,65 mA."
+    comprobar:
+      - { i_c: 0.00165 }
+      - { q_c: 3.3e-12 }
+
+  - id: por-que-impedancia
+    tipo: porque
+    titulo: "El nodo vulnerable"
+    texto: "La misma corriente inyectada molesta mucho en un nodo de alta impedancia y casi nada en uno de baja. ¿Por qué?"
+    libro: [242]
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 0.5e-9, max: 20e-9, unidad: s, rotulo: "duración del flanco" }
+      y: { min: 0, max: 0.008, unidad: A, rotulo: "corriente inyectada" }
+      curvas:
+        - { expr: "C_p*V_f/tt", color: azul, rotulo: "C · dv/dt" }
+    opciones:
+      - texto: "La corriente cae sobre la impedancia del nodo: poca resistencia, poca tensión"
+        bien: true
+        porque: "Por eso se combate bajando la impedancia del receptor, además de separar o interponer un conductor a masa."
+      - texto: "Porque el nodo de baja impedancia tiene más capacidad"
+        porque: "La capacidad parásita es la misma; lo que cambia es la tensión que produce la corriente."
+      - texto: "Porque en baja impedancia la corriente no entra"
+        porque: "Entra igual: C · dv/dt no depende del receptor. Lo que cambia es su efecto."
+    escalera:
+      - "Tensión = corriente × impedancia."
+    solucion: "Misma corriente, menos impedancia: menos tensión de ruido."
+
+  - id: inductivo
+    tipo: pregunta
+    titulo: "Acoplamiento inductivo"
+    texto: "Dos bucles próximos se acoplan magnéticamente: v = M · di/dt. ¿Qué lo reduce más?"
+    libro: [246, 247, 248]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 10000000, max: 1000000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.000001, max: 0.1, unidad: "V/m", rotulo: "campo a 3 m", escala: log }
+      curvas:
+        - { expr: "1.3e-14*nu^2*A_b*1e-6*I_b/r_d", color: azul, rotulo: "bucle" }
+    opciones:
+      - texto: "Reducir el área de los bucles, con el retorno pegado a la ida"
+        bien: true
+        porque: "Es la razón de ser del par trenzado y del plano de masa."
+      - texto: "Una lámina de cobre entre ellos"
+        porque: "El blindaje magnético es difícil y caro: hace falta material de alta permeabilidad."
+      - texto: "Subir la impedancia del receptor"
+        porque: "Eso es para el capacitivo, y al revés. El inductivo empeora con corrientes grandes y rápidas."
+    escalera:
+      - "¿Qué importa en un acoplamiento magnético entre bucles?"
+    solucion: "Menos área: retorno pegado a la ida, par trenzado, plano de masa."
+
+  - id: explore-radiacion
+    tipo: explorar
+    titulo: "El bucle que radia"
+    texto: "Por encima de unos 30 MHz los conductores son antenas. Un bucle de 40 mA a 3 m: cambie su área y compare con el límite de clase B."
+    libro: [252, 253]
+    fijar: { I_b: 0.04, r_d: 3, f_b: 100000000 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 10000000, max: 1000000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.000001, max: 0.1, unidad: "V/m", rotulo: "campo a 3 m", escala: log }
+      curvas:
+        - { expr: "1.3e-14*nu^2*A_b*1e-6*I_b/r_d", color: azul, rotulo: "campo del bucle" }
+        - { expr: "E_l", color: tinta, rotulo: "límite de clase B", discontinua: true }
+      marcas:
+        - { x: "f_b", y: "E_b", rotulo: "{{E_b}}" }
+      lectura: { valor: E_b, rotulo: "Campo a 100 MHz" }
+      datos:
+        - { valor: E_db, rotulo: "En dBµV/m: {{E_db}}" }
+      mandos:
+        - { valor: A_b, lista: [25, 100, 400], rotulo: "Área del bucle" }
+    requiere: { mover: [A_b] }
+    comprobar:
+      - { con: { A_b: 100 }, E_b: 0.000173, E_db: 44.8, tol: 0.003 }
+
+  - id: prediga-armonico
+    tipo: predecir
+    titulo: "El armónico décimo"
+    texto: "Con la misma corriente, ¿cuánto más radia el armónico décimo de un reloj que su fundamental?"
+    libro: [252, 255]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 10000000, max: 20000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.000001, max: 0.1, unidad: "V/m", rotulo: "campo a 3 m", escala: log }
+      curvas:
+        - { expr: "1.3e-14*nu^2*A_b*1e-6*I_b/r_d", color: azul, rotulo: "campo del bucle" }
+      lectura: { valor: r_10, rotulo: "Cociente" }
+      ocultar: true
+    opciones:
+      - texto: "Cien veces"
+        bien: true
+        porque: "La emisión va con el cuadrado de la frecuencia. Por eso importan los flancos y no los relojes."
+      - texto: "Diez veces"
+        porque: "Iría con la frecuencia; va con su cuadrado."
+      - texto: "Menos: los armónicos son débiles"
+        porque: "Con la misma corriente, a más frecuencia, mucho más campo."
+    escalera:
+      - "E es proporcional a f²."
+    solucion: "10² = 100 veces más."
+    comprobar:
+      - { r_10: 100 }
+
+  - id: ajuste-area
+    tipo: ajuste
+    titulo: "Bajo el límite"
+    texto: "El bucle de 40 mA a 100 MHz supera el límite de clase B a 3 m. Reduzca su área hasta cumplirlo."
+    libro: [253, 255]
+    fijar: { I_b: 0.04, r_d: 3, f_b: 100000000 }
+    inicio: { A_b: 100 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 10000000, max: 1000000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.000001, max: 0.1, unidad: "V/m", rotulo: "campo a 3 m", escala: log }
+      curvas:
+        - { expr: "1.3e-14*nu^2*A_b*1e-6*I_b/r_d", color: azul, rotulo: "campo del bucle" }
+        - { expr: "E_l", color: tinta, rotulo: "límite de clase B", discontinua: true }
+      marcas:
+        - { x: "f_b", y: "E_b", rotulo: "{{E_b}}" }
+      lectura: { valor: E_b, rotulo: "Campo a 100 MHz" }
+      mandos:
+        - { valor: A_b, lista: [100, 75, 50, 25], rotulo: "Área del bucle" }
+    ajuste:
+      valor: E_b
+      min: 0
+      max: 0.0001
+      rotulo: "Campo a 100 MHz"
+      escala: { min: 0, max: 0.0002 }
+      bajo: "Por debajo de cero no se puede."
+      alto: "Aún lo supera: reduzca el área."
+      dentro: "Reducir el área a la mitad son 6 dB menos: la medida más barata que existe."
+
+  - id: empareje-frecuencias
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Qué vía domina"
+    texto: "Una cada intervalo de frecuencia con su vía dominante."
+    libro: [235, 236, 258]
+    emparejar:
+      - ["Continua – 100 kHz", "Conducción, impedancia común"]
+      - ["100 kHz – 30 MHz", "Conducción y acoplamiento capacitivo o inductivo"]
+      - ["30 MHz – 1 GHz", "Radiación, con los cables como antenas"]
+      - ["Más de 1 GHz", "Radiación, con la placa y las ranuras como antenas"]
+    exito: "Por eso los ensayos conducidos llegan a 30 MHz y los radiados empiezan ahí."
+    pistas:
+      - { texto: "Cuanto más alta la frecuencia, más pequeñas las antenas que bastan." }
+    escalera:
+      - "¿Por debajo de qué frecuencia domina la conducción?"
+    solucion: "Conducción abajo; capacitivo e inductivo en medio; radiación por cables y luego por placa y ranuras."
+
+  - id: diagnostico
+    tipo: pregunta
+    titulo: "Conducción o radiación"
+    texto: "Una interferencia cambia al mover un cable, pero no al separar las masas. ¿Por dónde llega?"
+    libro: [231, 262]
+    widget:
+      tipo: figura
+      figura: fig-32.9
+      zonas:
+        - { id: todo, rotulo: "Las cuatro vías", rect: [0, 0, 448, 241] }
+    opciones:
+      - texto: "Por radiación o acoplamiento"
+        bien: true
+        porque: "Si cambiara al separar las masas, sería conducción."
+      - texto: "Por conducción, a través de la masa"
+        porque: "Separar las masas no la cambia: no viaja por ahí."
+      - texto: "No se puede saber sin cámara anecoica"
+        porque: "Basta esa regla de diagnóstico, o una espira de campo cercano."
+    escalera:
+      - "¿Qué cambia si la vía es un conductor compartido?"
+    solucion: "Radiación o acoplamiento: cambia con el cable, no con las masas."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [231, 241, 249, 255]
+    ideas:
+      - { titulo: "Fuente, camino, receptor.", texto: "Se ataca cualquiera; el camino suele ser el más barato." }
+      - { titulo: "C y M.", texto: "La capacidad acopla tensiones, C · dv/dt; la inductancia, corrientes, M · di/dt." }
+      - { titulo: "Radiación.", texto: "Va con f² y con el área: el armónico décimo radia cien veces más." }
+      - { titulo: "Según la frecuencia.", texto: "Conducción abajo, radiación por encima de unos 30 MHz." }

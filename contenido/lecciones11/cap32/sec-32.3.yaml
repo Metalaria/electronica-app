@@ -1,0 +1,341 @@
+# Lección 1.2 de la sección 32.3 «Cuantificar y Sumar Ruido» (cap32). Formato: contenido/lecciones11/GUIA.md.
+# Suma en cuadratura de dos fuentes de 10 µV y 10, 3,33 o 1 µV (las relaciones 1:1, 1:3 y 1:10 del bloque 73).
+# El filtro de primer orden es el esquema filtro-rc con R = 1 kΩ y C = 159,15 nF (f_c ≈ 1 kHz): su banda de ruido es
+# (π/2)·f_c = 1,57·f_c (bloque 84), dibujada como la pared ideal equivalente. El ejemplo completo es el del bloque 90.
+leccion: cap32/sec-32.3
+
+libro:
+  70: "Fuentes de ruido independientes se suman en potencia"
+  71: 'V_("total") = sqrt(V_("1")^("2") + V_("2")^("2") + dots.h)'
+  73: "+0,04 dB"
+  74: "Con dos fuentes de 10 y 3 µV, el total es 10,4"
+  78: 'V_("total") = "densidad" times sqrt(B)'
+  80: "reducir la banda a la cuarta parte lo divida por dos"
+  82: "el ancho de banda de ruido no es el de −3 dB"
+  84: "Segundo orden Butterworth"
+  85: "el real es √1,57 = 1,25 veces mayor"
+  88: "un amplificador de bajo ruido en la tercera posición no sirve de nada"
+  90: "Un amplificador con fuente de 1 kΩ, operacional de 5 nV/√Hz y 1 pA/√Hz, ganancia 100, banda de 10 kHz"
+  91: "1 pA × 1 kΩ = 1 nV/√Hz"
+  92: "Suma en cuadratura"
+  93: "referidos a la entrada, y 81 µV a la salida"
+  96: "terminada en la impedancia real de la fuente"
+  97: "si es mucho mayor, lo que hay es interferencia y no ruido"
+
+modelo:
+  valores:
+    a_1: { sim: "V₁", nombre: "fuente mayor", unidad: V, valor: 10e-6 }
+    a_2: { sim: "V₂", nombre: "fuente menor", unidad: V, valor: 10e-6 }
+    V_p: { sim: "V_{p}", nombre: "amplitud de prueba", unidad: V, valor: 1 }
+    f_f: { sim: "f", nombre: "frecuencia de prueba", unidad: Hz, valor: 1000 }
+    R_f: { sim: "R", nombre: "resistencia del filtro", unidad: Ω, valor: 1000 }
+    C_f: { sim: "C", nombre: "capacidad del filtro", unidad: F, valor: 159.15e-9 }
+    e_r: { sim: "e_{R}", nombre: "ruido térmico de la fuente", unidad: "V/√Hz", valor: 4.1e-9 }
+    e_o: { sim: "e_{n}", nombre: "ruido de tensión del operacional", unidad: "V/√Hz", valor: 5e-9 }
+    e_i: { sim: "i_{n}·R", nombre: "ruido de corriente por la fuente", unidad: "V/√Hz", valor: 1e-9 }
+    B_e: { sim: "B", nombre: "banda", unidad: Hz, valor: 10000 }
+    G_e: { sim: "G", nombre: "ganancia", unidad: "", valor: 100 }
+    e_b: { sim: "e_{total}", nombre: "densidad total, redondeada", unidad: "V/√Hz", valor: 6.5e-9 }
+  calculos:
+    V_t: { expr: "sqrt(a_1^2 + a_2^2)", sim: "V_{total}", nombre: "ruido total", unidad: V }
+    d_b: { expr: "20*log10(V_t/a_1)", sim: "Δ", nombre: "lo que añade la menor", unidad: dB, cifras: 2 }
+    f_c: { expr: "1/(2*pi*R_f*C_f)", sim: "f_{c}", nombre: "frecuencia de corte", unidad: Hz }
+    B_r: { expr: "pi/2*f_c", sim: "B_{ruido}", nombre: "banda de ruido", unidad: Hz }
+    A_c: { expr: "V_p/sqrt(1 + (2*pi*f_f*R_f*C_f)^2)", sim: "V_{C}", nombre: "amplitud en C", unidad: V }
+    k_r: { expr: "sqrt(1.57)", sim: "√1,57", nombre: "factor de ruido", unidad: "" }
+    e_t: { expr: "sqrt(e_r^2 + e_o^2 + e_i^2)", sim: "e_{total}", nombre: "densidad total", unidad: "V/√Hz" }
+    s_13: { expr: "a_1 + a_2", sim: "V₁ + V₂", nombre: "suma directa", unidad: V }
+    s_7: { expr: "a_1 - a_2", sim: "V₁ − V₂", nombre: "resta", unidad: V }
+    s_65: { expr: "G_e*e_b*sqrt(B_e)", sim: "v", nombre: "salida sin el factor de banda", unidad: V }
+    v_in: { expr: "e_b*sqrt(1.57*B_e)", sim: "v_{n}", nombre: "ruido referido a la entrada", unidad: V }
+    v_out: { expr: "G_e*v_in", sim: "v_{n,salida}", nombre: "ruido a la salida", unidad: V }
+
+tarjetas:
+  - id: explore-cuadratura
+    tipo: explorar
+    titulo: "Se suman en potencia"
+    texto: "Dos fuentes de ruido independientes no se suman como señales. Cambie la menor y mire lo que añade al total."
+    libro: [70, 73]
+    widget:
+      tipo: grafica
+      x: { id: vv, min: 0, max: 12e-6, unidad: V, rotulo: "fuente menor, V₂" }
+      y: { min: 0, max: 24e-6, unidad: V, rotulo: "total" }
+      curvas:
+        - { expr: "sqrt(a_1^2 + vv^2)", color: azul, rotulo: "en cuadratura" }
+        - { expr: "a_1 + vv", color: naranja, rotulo: "suma directa (mal)", discontinua: true }
+      marcas:
+        - { x: "a_2", y: "V_t", rotulo: "{{V_t}}" }
+      lectura: { valor: d_b, rotulo: "Lo que añade la menor" }
+      datos:
+        - { valor: V_t, rotulo: "Total: {{V_t}}" }
+      mandos:
+        - { valor: a_2, lista: [10e-6, 3.333e-6, 1e-6], nombres: ["1 : 1", "1 : 3", "1 : 10"], rotulo: "Relación" }
+    requiere: { mover: [a_2] }
+
+  - id: prediga-diez-tres
+    tipo: predecir
+    titulo: "10 y 3 µV"
+    texto: "Dos fuentes de ruido independientes de 10 y 3 µV. ¿Cuánto vale el total?"
+    libro: [74]
+    fijar: { a_2: 3e-6 }
+    widget:
+      tipo: grafica
+      x: { id: vv, min: 0, max: 2e-6, unidad: V, rotulo: "fuente menor, V₂" }
+      y: { min: 0, max: 24e-6, unidad: V, rotulo: "total" }
+      curvas:
+        - { expr: "sqrt(a_1^2 + vv^2)", color: azul, rotulo: "en cuadratura" }
+      lectura: { valor: V_t, rotulo: "Total" }
+      ocultar: true
+    opciones:
+      - texto: "10,4 µV"
+        bien: true
+        porque: "√(10² + 3²) = 10,4: una fuente tres veces menor apenas cuenta."
+      - texto: "13 µV"
+        porque: "Eso es sumarlas como señales. Independientes, se suman en potencia."
+      - texto: "7 µV"
+        porque: "El ruido no se resta: dos fuentes independientes siempre suman algo."
+    escalera:
+      - "V_{total} = √(V₁² + V₂²)."
+    solucion: "√(10² + 3²) ≈ 10,4 µV."
+    comprobar:
+      - { V_t: 10.4e-6, tol: 0.005 }
+      - { con: { a_2: 3e-6 }, a_1: 10e-6 }
+      - { s_13: 13e-6, s_7: 7e-6, tol: 0.001 }
+
+  - id: formula-cuadratura
+    tipo: formula
+    titulo: "La suma en cuadratura"
+    texto: "Por eso el diseño de bajo ruido identifica la fuente dominante y la ataca."
+    libro: [71, 74]
+    ec: 71
+    sustitucion: "√({{a_1}}² + {{a_2}}²) = {{V_t}}"
+    widget:
+      tipo: grafica
+      x: { id: vv, min: 0, max: 12e-6, unidad: V, rotulo: "fuente menor, V₂" }
+      y: { min: 0, max: 24e-6, unidad: V, rotulo: "total" }
+      curvas:
+        - { expr: "sqrt(a_1^2 + vv^2)", color: azul, rotulo: "en cuadratura" }
+      asas:
+        - { mueve: a_2, x: "a_2", y: "V_t", rotulo: "Su V₂" }
+      lectura: { valor: V_t, rotulo: "Total" }
+      mandos:
+        - { valor: a_2, min: 0, max: 12e-6, paso: 0.5e-6, rotulo: "V₂" }
+
+  - id: por-que-dominante
+    tipo: porque
+    titulo: "Atacar la dominante"
+    texto: "Un diseño tiene una fuente de ruido dominante y otras menores. ¿Por qué mejorar las menores no cambia nada?"
+    libro: [74]
+    widget:
+      tipo: grafica
+      x: { id: vv, min: 0, max: 12e-6, unidad: V, rotulo: "fuente menor, V₂" }
+      y: { min: 0, max: 24e-6, unidad: V, rotulo: "total" }
+      curvas:
+        - { expr: "sqrt(a_1^2 + vv^2)", color: azul, rotulo: "en cuadratura" }
+    opciones:
+      - texto: "En cuadratura, una fuente pequeña apenas suma: el total lo fija la dominante"
+        bien: true
+        porque: "Con la menor pequeña la curva es casi plana: bajarla casi no mueve el total."
+      - texto: "Porque las menores no son independientes"
+        porque: "Lo son; precisamente por eso se suman en potencia y la pequeña pesa tan poco."
+      - texto: "Sí cambia: cualquier mejora baja el total en proporción"
+        porque: "Solo si se sumaran como señales. En potencia, la menor cuenta muy poco."
+    escalera:
+      - "Mire la pendiente de la curva cuando la menor es pequeña."
+    solucion: "La suma en potencia deja casi todo el total a la dominante."
+
+  - id: cuarta-parte
+    tipo: pregunta
+    titulo: "La raíz de la banda"
+    texto: "El ruido total es la densidad por √B. Si reduce la banda a la cuarta parte, ¿qué le pasa al ruido?"
+    libro: [78, 80]
+    widget:
+      tipo: grafica
+      x: { id: bb, min: 0, max: 10, unidad: "", rotulo: "banda, relativa" }
+      y: { min: 0, max: 4, unidad: "", rotulo: "ruido, relativo" }
+      curvas:
+        - { expr: "sqrt(bb)", color: azul, rotulo: "√B" }
+    opciones:
+      - texto: "Se divide por dos"
+        bien: true
+        porque: "√(1/4) = 1/2."
+      - texto: "Se divide por cuatro"
+        porque: "Sería así si el ruido fuera proporcional a la banda; va con su raíz."
+      - texto: "No cambia"
+        porque: "Con menos banda entra menos ruido: por eso es la mejora más barata."
+    escalera:
+      - "¿Cuánto vale la raíz de un cuarto?"
+    solucion: "√(1/4) = 1/2: el ruido se reduce a la mitad."
+
+  - id: explore-banda-ruido
+    tipo: explorar
+    titulo: "La banda de ruido no es la de −3 dB"
+    texto: "Un filtro RC deja pasar algo por encima de su corte. Cambie R y mire la banda de ruido equivalente."
+    libro: [82, 84]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: B_r, rotulo: "Banda de ruido" }
+      datos:
+        - { valor: f_c, rotulo: "Corte a −3 dB: {{f_c}}" }
+      mide: { vc_amp: A_c }
+      grafica:
+        x: { id: nu, min: 10, max: 100000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "amplitud" }
+        curvas:
+          - { expr: "V_p/sqrt(1 + (2*pi*nu*R_f*C_f)^2)", color: naranja, rotulo: "v_{C}", mide: vc_amp }
+          - { expr: "V_p*(1 - ceil((nu - pi/2/(2*pi*R_f*C_f))/1e9))", color: tinta, rotulo: "pared equivalente", discontinua: true }
+        marcas:
+          - { x: "f_c", y: "V_p*0.7071", rotulo: "f_{c}" }
+      mandos:
+        - { valor: R_f, lista: [330, 1000, 3300] }
+    requiere: { mover: [R_f] }
+
+  - id: subestima
+    tipo: pregunta
+    titulo: "Con un simple RC"
+    texto: "Calcula el ruido tras un RC usando f_{c} en lugar de 1,57 · f_{c}. ¿Cuánto se equivoca?"
+    libro: [85]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_f, c: C_f }
+      lectura: { valor: k_r, rotulo: "√1,57" }
+      mide: { vc_amp: A_c }
+    opciones:
+      - texto: "Subestima: el real es 1,25 veces mayor"
+        bien: true
+        porque: "El ruido va con √B: √1,57 = 1,25. Subestima un 20 %."
+      - texto: "Sobrestima: el real es menor"
+        porque: "Se queda corto, no largo: la banda de ruido es mayor que la de −3 dB."
+      - texto: "Nada: −3 dB es la banda de ruido"
+        porque: "Es justo el matiz: el filtro deja pasar algo por encima de su corte."
+    escalera:
+      - "El ruido va con la raíz de la banda."
+    solucion: "√1,57 = 1,25: el ruido real es 1,25 veces el calculado."
+    comprobar:
+      - { k_r: 1.25, tol: 0.003 }
+
+  - id: empareje-filtros
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cada filtro, su banda"
+    texto: "Una cada filtro con su banda de ruido equivalente."
+    libro: [84, 85]
+    emparejar:
+      - ["Primer orden", "1,57 × f_{c}"]
+      - ["Segundo orden Butterworth", "1,11 × f_{c}"]
+      - ["Cuarto orden", "1,03 × f_{c}"]
+    exito: "Cuanto mayor el orden, más se acerca al filtro ideal."
+    pistas:
+      - { texto: "El de orden alto corta casi como una pared." }
+    escalera:
+      - "¿Cuál deja pasar más por encima de su corte?"
+    solucion: "1,57 el primer orden; 1,11 el Butterworth de segundo; 1,03 el de cuarto."
+
+  - id: estime-densidad
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Un cálculo completo"
+    texto: "Fuente de 1 kΩ (4,1 nV/√Hz), operacional de 5 nV/√Hz y 1 pA/√Hz, que por la fuente dan 1 nV/√Hz. ¿Densidad total?"
+    libro: [90, 91, 92]
+    estimar:
+      objetivo: "e_t"
+      unidad: "V/√Hz"
+      min: 0
+      max: 12e-9
+      paso: 0.1e-9
+      inicio: 11e-9
+      tol: 0.03
+      rotulo: "Densidad total"
+    exito: "6,5 nV/√Hz: domina el operacional, pero la fuente no es despreciable."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 6.7e-9 }, texto: "Se ha pasado: no las sume directamente; súmelas en cuadratura." }
+      - { texto: "Se ha quedado corto: el total no puede ser menor que la mayor, 5 nV/√Hz." }
+    escalera:
+      - "√(4,1² + 5² + 1²)."
+    solucion: "√(4,1² + 5² + 1²) = 6,5 nV/√Hz."
+    comprobar:
+      - { e_t: 6.5e-9, tol: 0.01 }
+
+  - id: a-la-salida
+    tipo: pregunta
+    titulo: "Referido a la entrada y a la salida"
+    texto: "Con esos 6,5 nV/√Hz, 10 kHz de banda tras un primer orden y ganancia 100, ¿cuánto ruido hay a la salida?"
+    libro: [90, 93]
+    widget:
+      tipo: grafica
+      x: { id: bb, min: 100, max: 100000, unidad: Hz, rotulo: "banda", escala: log }
+      y: { min: 0, max: 0.0002, unidad: V, rotulo: "ruido a la salida" }
+      curvas:
+        - { expr: "G_e*e_b*sqrt(1.57*bb)", color: azul, rotulo: "a la salida" }
+    opciones:
+      - texto: "Unos 81 µV"
+        bien: true
+        porque: "6,5 nV · √15 700 = 0,81 µV a la entrada; por 100, 81 µV."
+      - texto: "Unos 65 µV"
+        porque: "Ha usado los 10 kHz sin el factor 1,57 de la banda de ruido."
+      - texto: "Unos 0,81 µV"
+        porque: "Eso es el ruido referido a la entrada; falta multiplicar por la ganancia."
+    escalera:
+      - "Banda de ruido: 1,57 · 10 kHz. Luego, la ganancia."
+    solucion: "6,5 nV/√Hz · √15 700 = 0,81 µV; × 100 = 81 µV."
+    comprobar:
+      - { v_out: 81e-6, v_in: 0.81e-6, s_65: 65e-6, tol: 0.01 }
+
+  - id: friis-tercera
+    tipo: pregunta
+    titulo: "El amplificador de bajo ruido"
+    texto: "Una cadena de tres amplificadores. ¿Dónde pondría el único de bajo ruido que tiene?"
+    libro: [88]
+    widget:
+      tipo: grafica
+      x: { id: bb, min: 100, max: 100000, unidad: Hz, rotulo: "banda", escala: log }
+      y: { min: 0, max: 0.0002, unidad: V, rotulo: "ruido a la salida" }
+      curvas:
+        - { expr: "G_e*e_t*sqrt(1.57*bb)", color: azul, rotulo: "a la salida" }
+    opciones:
+      - texto: "En la primera etapa"
+        bien: true
+        porque: "Lo que se genera después queda dividido por la ganancia de la primera: apenas cuenta."
+      - texto: "En la tercera, donde la señal es mayor"
+        porque: "En la tercera posición no sirve de nada: su ruido ya llega dividido por las ganancias anteriores."
+      - texto: "Da igual: la realimentación lo corrige"
+        porque: "La realimentación no reduce el ruido de entrada: la primera etapa tiene que ser buena por sí misma."
+    escalera:
+      - "Refiera el ruido de cada etapa a la entrada: ¿por qué se divide?"
+    solucion: "En la primera: lo que va detrás queda dividido por su ganancia."
+
+  - id: banco-comprobacion
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "Mide el ruido de salida, lo divide por la ganancia y le sale mucho mayor que su cálculo. ¿Qué hay?"
+    libro: [96, 97]
+    widget:
+      tipo: grafica
+      x: { id: bb, min: 100, max: 100000, unidad: Hz, rotulo: "banda", escala: log }
+      y: { min: 0, max: 0.0002, unidad: V, rotulo: "ruido a la salida" }
+      curvas:
+        - { expr: "G_e*e_t*sqrt(1.57*bb)", color: azul, rotulo: "calculado" }
+    opciones:
+      - texto: "Interferencia, no ruido"
+        bien: true
+        porque: "Si coincide dentro de un factor razonable, es ruido; si es mucho mayor, algo entra de fuera."
+      - texto: "Que el cálculo olvidó el ruido térmico"
+        porque: "El térmico ya está en el cálculo; un exceso grande no lo explica."
+      - texto: "Que la entrada debía quedar al aire"
+        porque: "Al contrario: se mide terminada en la impedancia real de la fuente."
+    escalera:
+      - "¿Qué se suma al ruido cuando el resultado es mucho mayor de lo previsto?"
+    solucion: "Mucho mayor que el cálculo: es interferencia."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [71, 78, 84, 88]
+    ideas:
+      - { titulo: "En cuadratura.", texto: "√(V₁² + V₂² + …): una fuente tres veces menor apenas cuenta." }
+      - { titulo: "Densidad por √B.", texto: "Doblar la banda multiplica el ruido por 1,41; un cuarto, lo divide por dos." }
+      - { titulo: "Banda de ruido.", texto: "1,57 · f_{c} en un RC: usar f_{c} lo subestima un 20 %." }
+      - { titulo: "La primera etapa.", texto: "Referido a la entrada, lo de detrás se divide por su ganancia." }

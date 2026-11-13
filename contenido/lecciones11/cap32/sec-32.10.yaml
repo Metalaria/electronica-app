@@ -1,0 +1,305 @@
+# Lección 1.2 de la sección 32.10 «Masas, Planos y Bucles de Tierra» (cap32). Formato: contenido/lecciones11/GUIA.md.
+# Tensión inducida en el bucle: V = ω·B·A con B = 1 µT (bloques 305 a 307); el suelo de comparación es el ruido
+# térmico de 1 kΩ en 10 kHz, 0,407 µV (bloque 308). Las zonas son las de la figura 32.11 (svg_vista 453,6 × 219,6).
+leccion: cap32/sec-32.10
+
+libro:
+  297: "el retorno tiene dos caminos posibles, la malla y la tierra del edificio"
+  298: "esa corriente aparece como tensión en serie con la señal"
+  299: "El resultado es el zumbido a 50 Hz de los equipos de audio"
+  302: "el problema empeore con cables largos, con corrientes de tierra grandes y con señales pequeñas"
+  305: "V = (d Φ)/(d t) = ω dot.op B dot.op A"
+  306: "Con un campo de 1 µT"
+  307: "62,8 µV"
+  308: "el de una resistencia de 1 kΩ en 10 kHz de banda es de 0,407 µV eficaces"
+  309: "Contra este mecanismo una pantalla no sirve de nada"
+  311: "no se puede desconectar la tierra de protección de un equipo de clase I"
+  312: "Es la solución profesional en audio, en instrumentación y en RS-485"
+  313: "un CMRR de 90 dB reduce un voltio de tensión de tierra a 32 µV"
+  314: "la única cuando la diferencia de potencial es grande o hay riesgo de sobretensión"
+  315: "Es una solución barata que reduce el problema sin eliminarlo"
+  319: "deja de funcionar por encima de unos megahercios"
+  324: "La segunda es concluyente y suele estar al alcance"
+  326: "décimas de voltio o más en instalaciones normales"
+  327: "50 Hz con armónicos, sincronizado con la red"
+
+modelo:
+  valores:
+    A_b: { sim: "A", nombre: "área del bucle", unidad: "cm²", valor: 100 }
+    f_b: { sim: "f", nombre: "frecuencia del campo", unidad: Hz, valor: 50 }
+    B_c: { sim: "B", nombre: "campo magnético", unidad: T, valor: 1e-6 }
+    V_g: { sim: "ΔV", nombre: "tensión entre tierras", unidad: V, valor: 1 }
+    c_r: { sim: "CMRR", nombre: "rechazo de modo común", unidad: dB, valor: 90 }
+  calculos:
+    V_i: { expr: "2*pi*f_b*B_c*A_b*1e-4", sim: "V", nombre: "tensión inducida", unidad: V }
+    V_t: { expr: "0.407e-6", sim: "v_{n}", nombre: "ruido térmico de 1 kΩ en 10 kHz", unidad: V }
+    r_f: { expr: "f_b/50", sim: "f/50 Hz", nombre: "cociente de frecuencias", unidad: "" }
+    V_c: { expr: "V_g*10^(-c_r/20)", sim: "v", nombre: "tensión de tierra tras el CMRR", unidad: V }
+
+tarjetas:
+  - id: explore-bucle
+    tipo: explorar
+    titulo: "Un bucle de tierra"
+    texto: "Dos equipos con toma de tierra unidos por un cable apantallado. Toque la malla y la tierra del edificio."
+    libro: [297, 298, 299]
+    widget:
+      tipo: figura
+      figura: fig-32.11
+      zonas:
+        - { id: malla, rotulo: "Malla del cable", rect: [90, 22, 274, 36], texto: "Retorno de la señal. La corriente del bucle, sobre su impedancia, se suma a la señal." }
+        - { id: tierra, rotulo: "Tierra del edificio", rect: [50, 112, 353, 44], texto: "Entre las dos tomas hay casi siempre una diferencia de potencial, por las corrientes de otros equipos." }
+        - { id: equipo-b, rotulo: "Equipo B", rect: [364, 2, 79, 53], texto: "Mide entre el conductor central y la malla: ve la señal más el zumbido de 50 Hz." }
+    requiere: { mover: [malla, tierra] }
+
+  - id: cables-largos
+    tipo: pregunta
+    titulo: "Cuándo empeora"
+    texto: "El zumbido de un bucle de tierra es la corriente del bucle por la impedancia de la malla. ¿Cuándo empeora?"
+    libro: [298, 302]
+    widget:
+      tipo: figura
+      figura: fig-32.11
+      zonas:
+        - { id: malla, rotulo: "Malla del cable", rect: [90, 22, 274, 36] }
+    opciones:
+      - texto: "Con cables largos, corrientes de tierra grandes y señales pequeñas"
+        bien: true
+        porque: "Más malla, más impedancia común; más corriente, más caída; y una señal pequeña la nota más."
+      - texto: "Solo con cables sin pantalla"
+        porque: "Es justo con pantalla: la malla es el camino de la corriente del bucle."
+      - texto: "Con señales grandes"
+        porque: "La caída en la malla es la misma; con señal grande pesa menos, no más."
+    escalera:
+      - "Tensión de ruido = corriente del bucle × impedancia de la malla."
+    solucion: "Cables largos, corrientes grandes, señales pequeñas."
+
+  - id: formula-espira
+    tipo: formula
+    titulo: "El bucle también es una espira"
+    texto: "Un campo magnético variable que la atraviese induce una tensión proporcional al área y a la frecuencia. Con 1 µT:"
+    libro: [305, 306, 307]
+    ec: 305
+    sustitucion: "2π · {{f_b}} · {{B_c}} · {{A_b}} = {{V_i}}"
+    widget:
+      tipo: grafica
+      x: { id: aa, min: 1, max: 200, unidad: "cm²", rotulo: "área del bucle" }
+      y: { min: 0, max: 8e-6, unidad: V, rotulo: "tensión inducida" }
+      curvas:
+        - { expr: "2*pi*f_b*B_c*aa*1e-4", color: azul, rotulo: "inducida" }
+        - { expr: "V_t", color: verde, rotulo: "térmico de 1 kΩ en 10 kHz", discontinua: true }
+      marcas:
+        - { x: "A_b", y: "V_i", rotulo: "{{V_i}}" }
+      lectura: { valor: V_i, rotulo: "Tensión inducida" }
+      mandos:
+        - { valor: A_b, lista: [10, 100], rotulo: "Área" }
+    comprobar:
+      - { con: { A_b: 100, f_b: 50 }, V_i: 3.14e-6 }
+      - { con: { A_b: 10, f_b: 50 }, V_i: 0.31e-6, tol: 0.02 }
+
+  - id: prediga-kilohercio
+    tipo: predecir
+    titulo: "A 1 kHz"
+    texto: "Un bucle de 100 cm² capta 3,14 µV de un campo de 1 µT a 50 Hz. ¿Cuánto capta si el campo es de 1 kHz?"
+    libro: [307, 308]
+    fijar: { A_b: 100, f_b: 1000 }
+    widget:
+      tipo: grafica
+      x: { id: aa, min: 1, max: 20, unidad: "cm²", rotulo: "área del bucle" }
+      y: { min: 0, max: 8e-6, unidad: V, rotulo: "tensión inducida" }
+      curvas:
+        - { expr: "V_t", color: verde, rotulo: "térmico de 1 kΩ en 10 kHz", discontinua: true }
+      lectura: { valor: V_i, rotulo: "Tensión inducida" }
+      ocultar: true
+    opciones:
+      - texto: "62,8 µV, unas 150 veces el ruido térmico"
+        bien: true
+        porque: "Va con la frecuencia: veinte veces más frecuencia, veinte veces más tensión."
+      - texto: "Los mismos 3,14 µV"
+        porque: "V = ω · B · A: la frecuencia entra directamente."
+      - texto: "0,157 µV, porque la frecuencia es alta"
+        porque: "Ha dividido en lugar de multiplicar: a más frecuencia, más tensión inducida."
+    escalera:
+      - "V es proporcional a f."
+    solucion: "3,14 µV × 20 = 62,8 µV."
+    comprobar:
+      - { V_i: 62.8e-6, r_f: 20, tol: 0.002 }
+      - { con: { f_b: 2.5 }, V_i: 0.157e-6, tol: 0.002 }
+
+  - id: ajuste-area
+    tipo: ajuste
+    titulo: "Reducir el área"
+    texto: "A 50 Hz, un bucle de 100 cm² supera el ruido térmico de 1 kΩ en 10 kHz. Reduzca su área hasta quedar por debajo."
+    libro: [308, 309]
+    fijar: { f_b: 50 }
+    inicio: { A_b: 100 }
+    widget:
+      tipo: grafica
+      x: { id: aa, min: 1, max: 200, unidad: "cm²", rotulo: "área del bucle" }
+      y: { min: 0, max: 8e-6, unidad: V, rotulo: "tensión inducida" }
+      curvas:
+        - { expr: "2*pi*f_b*B_c*aa*1e-4", color: azul, rotulo: "inducida" }
+        - { expr: "V_t", color: verde, rotulo: "térmico", discontinua: true }
+      marcas:
+        - { x: "A_b", y: "V_i", rotulo: "{{V_i}}" }
+      lectura: { valor: V_i, rotulo: "Tensión inducida" }
+      mandos:
+        - { valor: A_b, lista: [100, 50, 25, 10, 5], rotulo: "Área" }
+    ajuste:
+      valor: V_i
+      min: 0
+      max: 0.407e-6
+      rotulo: "Tensión inducida"
+      escala: { min: 0, max: 4e-6 }
+      bajo: "No puede ser negativa."
+      alto: "Aún supera el suelo térmico: reduzca el área."
+      dentro: "De 100 a 10 cm² el ruido se divide por diez. Trenzar el par la reduce casi a cero."
+
+  - id: por-que-pantalla
+    tipo: porque
+    titulo: "Dos problemas distintos"
+    texto: "Contra la tensión que induce un campo en el bucle, una pantalla no sirve de nada. ¿Por qué?"
+    libro: [309]
+    widget:
+      tipo: figura
+      figura: fig-14.18
+      zonas:
+        - { id: bucle, rotulo: "Recuadro de la derecha", rect: [227, 5, 219, 130] }
+    opciones:
+      - texto: "El blindaje quiere la malla conectada; el bucle, que no se cierre la espira"
+        bien: true
+        porque: "Son problemas distintos con soluciones que parecen opuestas: al bucle se le reduce el área."
+      - texto: "Porque la pantalla debería ser de cobre más grueso"
+        porque: "No es cuestión de material: el bucle lo forma la propia malla conectada por los dos extremos."
+      - texto: "Sí sirve, si se conecta por los dos extremos"
+        porque: "Conectada por los dos extremos es justo lo que cierra la espira."
+    escalera:
+      - "¿Qué cierra la espira del bucle de masa?"
+    solucion: "La malla por los dos extremos cierra la espira: el remedio es menos área o romper el bucle."
+
+  - id: toque-solucion
+    tipo: tocar
+    titulo: "La solución robusta"
+    texto: "Entre dos equipos hay una diferencia de potencial grande y riesgo de sobretensión. Toque la única solución que sirve."
+    libro: [311, 312, 314, 315]
+    widget:
+      tipo: figura
+      figura: fig-32.11
+      zonas:
+        - { id: s1, rotulo: "Primera caja de abajo", rect: [3, 170, 86, 46] }
+        - { id: s2, rotulo: "Segunda caja de abajo", rect: [93, 170, 86, 46] }
+        - { id: s3, rotulo: "Tercera caja de abajo", rect: [184, 170, 86, 46] }
+        - { id: s4, rotulo: "Cuarta caja de abajo", rect: [275, 170, 86, 46] }
+        - { id: s5, rotulo: "Quinta caja de abajo", rect: [366, 170, 83, 46] }
+    tocar:
+      bien: [s3]
+      porque:
+        s1: "Un solo punto de tierra no puede quitar la tierra de protección de un equipo de clase I, y no aguanta sobretensiones."
+        s2: "La entrada diferencial rechaza la tensión de tierra según su CMRR, pero no rompe el camino ni soporta una sobretensión."
+        s4: "El choke es barato y reduce el problema sin eliminarlo."
+        s5: "La topología de masas evita bucles internos de una placa, no la diferencia entre dos equipos."
+    exito: "El aislamiento galvánico rompe el camino de corriente por completo: es la solución más robusta."
+    escalera:
+      - "¿Cuál rompe el camino de corriente del todo?"
+    solucion: "La tercera: aislamiento galvánico con transformador, optoacoplador o aislador digital."
+
+  - id: cmrr
+    tipo: pregunta
+    titulo: "La entrada diferencial"
+    texto: "Una entrada diferencial con CMRR de 90 dB reduce 1 V de tensión de tierra a 32 µV. ¿Cuál es su punto débil?"
+    libro: [312, 313]
+    fijar: { V_g: 1, c_r: 90 }
+    widget:
+      tipo: figura
+      figura: fig-32.11
+      zonas:
+        - { id: s2, rotulo: "Entrada diferencial", rect: [93, 170, 86, 46] }
+    opciones:
+      - texto: "El CMRR se degrada con la frecuencia: rechaza bien el zumbido y mal los transitorios rápidos"
+        bien: true
+        porque: "Por eso, con transitorios o sobretensiones, se recurre al aislamiento galvánico."
+      - texto: "No rechaza nada a 50 Hz"
+        porque: "A 50 Hz es donde mejor rechaza: el CMRR cae al subir la frecuencia."
+      - texto: "Necesita quitar la tierra de protección"
+        porque: "No: la tensión de tierra afecta igual a los dos conductores y se cancela."
+    escalera:
+      - "¿Cómo cambia el CMRR con la frecuencia?"
+    solucion: "Su CMRR cae con la frecuencia: los transitorios rápidos pasan."
+    comprobar:
+      - { V_c: 32e-6, tol: 0.02 }
+
+  - id: estrella
+    tipo: pregunta
+    titulo: "La trampa de la estrella"
+    texto: "Una placa con masa en estrella funciona bien en continua y falla por encima de unos megahercios. ¿Por qué?"
+    libro: [319]
+    widget:
+      tipo: figura
+      figura: fig-32.11
+      zonas:
+        - { id: s5, rotulo: "Topología de masas", rect: [366, 170, 83, 46] }
+    opciones:
+      - texto: "Los radios largos tienen inductancia y el retorno busca el camino de menor área"
+        bien: true
+        porque: "Por eso el criterio moderno es plano continuo, con particionado por colocación."
+      - texto: "Porque la estrella tiene demasiada resistencia"
+        porque: "En continua funciona: el problema aparece con la frecuencia, por la inductancia."
+      - texto: "Porque en alta frecuencia no hay corrientes de retorno"
+        porque: "Las hay; simplemente no siguen los radios de la estrella."
+    escalera:
+      - "¿Qué impedancia de un cable largo crece con la frecuencia?"
+    solucion: "Inductancia de los radios: en alta frecuencia, plano continuo."
+
+  - id: diagnostico
+    tipo: pregunta
+    titulo: "¿Es un bucle de tierra?"
+    texto: "Tres pruebas: desconectar la señal, alimentar un equipo con batería y tocar las carcasas con un cable grueso. ¿Cuál es concluyente?"
+    libro: [324]
+    widget:
+      tipo: figura
+      figura: fig-14.18
+      zonas:
+        - { id: abajo, rotulo: "Texto de abajo", rect: [60, 140, 330, 80] }
+    opciones:
+      - texto: "Alimentar uno de los equipos con batería o transformador de aislamiento"
+        bien: true
+        porque: "Si el zumbido se va, el bucle de tierra queda confirmado. Suele estar al alcance."
+      - texto: "Desconectar la señal"
+        porque: "Dice si el zumbido entra por el cable, no si es un bucle de tierra."
+      - texto: "Tocar las carcasas entre sí"
+        porque: "Dice si hay diferencia de potencial entre ellas, no que el zumbido venga del bucle."
+    escalera:
+      - "¿Cuál rompe el bucle sin tocar nada más?"
+    solucion: "Batería o transformador de aislamiento: si el zumbido se va, es bucle."
+
+  - id: banco-tierras
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "Mide con el multímetro en alterna entre las masas de dos equipos de una instalación normal. ¿Qué espera?"
+    libro: [326, 327]
+    widget:
+      tipo: grafica
+      x: { id: xt, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "zumbido, relativo" }
+      curvas:
+        - { expr: "max(-0.8, min(0.8, sin(2*pi*50*xt)))", color: azul, rotulo: "zumbido" }
+    opciones:
+      - texto: "Décimas de voltio o más, con 50 Hz recortados y sus armónicos"
+        bien: true
+        porque: "Las corrientes de tierra vienen de cargas no lineales: por eso la forma no es senoidal pura."
+      - texto: "Cero: las tierras están unidas"
+        porque: "Las corrientes de otros equipos producen caídas en el conductor de protección."
+      - texto: "Microvoltios de ruido térmico"
+        porque: "Es sorprendentemente alta: décimas de voltio."
+    escalera:
+      - "Por el conductor de protección circulan las corrientes de otros equipos."
+    solucion: "Décimas de voltio: 50 Hz con armónicos y forma recortada."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [298, 305, 309, 314, 319]
+    ideas:
+      - { titulo: "El bucle.", texto: "La diferencia entre tierras empuja corriente por la malla, y su caída se suma a la señal." }
+      - { titulo: "Una espira.", texto: "V = ω · B · A: se reduce el área o se trenza; la pantalla no sirve." }
+      - { titulo: "Soluciones.", texto: "Un punto de tierra, entrada diferencial, aislamiento galvánico, choke y topología de masas." }
+      - { titulo: "Diagnóstico.", texto: "Alimentar un equipo con batería: si el zumbido se va, es bucle." }
