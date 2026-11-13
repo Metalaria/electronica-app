@@ -1,9 +1,12 @@
 # Lección 1.2 de la sección 14.2 «Proyecto 1: Fuente de Alimentación Simétrica ±12 V» (cap15; etiqueta sec-15.2).
 # Formato: contenido/lecciones11/GUIA.md. La cadena de tensiones del libro: 15-0-15 V eficaces → pico 21,2 V, tras un
 # diodo 20,5 V (0,7 V); rizado ΔV = I/(f·C) = 0,5/(100 · 2200 µF) = 2,27 V; mínimo 18,2 V; el 7812 pide 14 V (2 V de
-# dropout): margen 4,2 V; disipación (20,5 − 12)·0,5 = 4,3 W. Con 12-0-12: 16,3 V y 14,0 V. La forma de onda es la
-# aproximación del libro (descarga lineal entre picos a 100 Hz). Los condensadores de 1000 y 4700 µF del mando son un
-# ejemplo alrededor de los 2200 µF del libro; la red al −10 % es la del bloque 40.
+# dropout): margen 4,2 V; disipación (20,5 − 12)·0,5 = 4,3 W. Con 12-0-12: 16,3 V y 14,0 V. La exploración y la
+# sorpresa usan el esquema «rectificador-toma-media» (dos raíles, 7812/7912 con 2 V de dropout); su valle simulado
+# queda algo por encima del del libro (la recarga empieza antes del pico; el libro da el peor caso). El reto y las
+# demás gráficas siguen la aproximación del libro (descarga lineal en todo el periodo de 100 Hz), con la que diseña.
+# Los condensadores de 1000 y 4700 µF del mando son un ejemplo alrededor de los 2200 µF del libro; la red al −10 % es
+# la del bloque 40.
 leccion: cap15/sec-15.2
 
 libro:
@@ -31,8 +34,10 @@ modelo:
     V_o: { sim: "V_{salida}", nombre: "salida del regulador", unidad: V, valor: 12 }
     V_do: { sim: "V_{dropout}", nombre: "diferencia mínima del 7812", unidad: V, valor: 2 }
     red: { tipo: interruptor, nombre: "red al −10 %", valor: 0 }
+    f_red: { sim: "f", nombre: "frecuencia de la red", unidad: Hz, valor: 50 }
   calculos:
-    V_pk: { expr: "V_ef*(1 - 0.1*red)*sqrt(2) - V_d", sim: "V_{pico}", nombre: "pico a la entrada del regulador", unidad: V }
+    V_sec: { expr: "V_ef*(1 - 0.1*red)*sqrt(2)", sim: "V_{p}", nombre: "pico de cada mitad del secundario", unidad: V }
+    V_pk: { expr: "V_sec - V_d", sim: "V_{pico}", nombre: "pico a la entrada del regulador", unidad: V }
     dV: { expr: "I_o/(f_r*C_f)", sim: "ΔV", nombre: "rizado", unidad: V }
     V_min: { expr: "V_pk - dV", sim: "V_{mín}", nombre: "tensión mínima entre pulsos", unidad: V }
     V_nec: { expr: "V_o + V_do", sim: "V_{necesaria}", nombre: "lo que necesita el 7812", unidad: V }
@@ -44,18 +49,21 @@ tarjetas:
   - id: explore-cadena
     tipo: explorar
     titulo: "La cadena de tensiones"
-    texto: "Pico, rizado y mínimo a la entrada del 7812. Cambie el transformador y el condensador."
-    nota: "Descarga lineal entre picos, como la aproxima el libro."
+    texto: "Los dos raíles antes de los reguladores y la salida del 7812. Cambie transformador y condensador."
+    nota: "La simulación recarga antes del pico: su valle queda algo por encima del que calcula el libro, el peor caso."
     libro: [36, 39]
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
-      y: { min: 0, max: 24, unidad: V, rotulo: "v" }
-      curvas:
-        - { expr: "V_pk - dV*(t*f_r - floor(t*f_r))", color: naranja, rotulo: "entrada del 7812" }
-        - { expr: "V_nec", color: tinta, rotulo: "lo que necesita", discontinua: true }
-        - { expr: "V_o", color: azul, rotulo: "salida", discontinua: true }
-      lectura: { valor: V_min, rotulo: "Mínimo entre pulsos" }
+      tipo: circuito
+      esquema: rectificador-toma-media
+      piezas: { fuente: V_sec, f: f_red, vd: V_d, c: C_f, i: I_o, reg: V_o, dropout: V_do }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: -24, max: 24, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(abs(V_sec*sin(2*pi*f_red*t)) - V_d, V_pk - I_o/C_f*(t - 1/(4*f_red) - floor(2*f_red*t - 0.5)/(2*f_red)))", color: naranja, rotulo: "entrada del 7812", mide: positivo }
+          - { expr: "min(V_o, max(abs(V_sec*sin(2*pi*f_red*t)) - V_d, V_pk - I_o/C_f*(t - 1/(4*f_red) - floor(2*f_red*t - 0.5)/(2*f_red))) - V_do)", color: verde, rotulo: "salida del 7812", mide: salida_pos }
+          - { expr: "-(max(abs(V_sec*sin(2*pi*f_red*t)) - V_d, V_pk - I_o/C_f*(t - 1/(4*f_red) - floor(2*f_red*t - 0.5)/(2*f_red))))", color: azul, rotulo: "entrada del 7912", mide: negativo }
+      lectura: { valor: V_min, rotulo: "Mínimo según el libro" }
       datos:
         - { valor: dV, rotulo: "Rizado: {{dV}}" }
         - { valor: P_r, rotulo: "Disipación: {{P_r}}" }
@@ -148,12 +156,16 @@ tarjetas:
     fijar: { C_f: 0.0022, red: 0 }
     inicio: { V_ef: 15 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
-      y: { min: 0, max: 24, unidad: V, rotulo: "v" }
-      curvas:
-        - { expr: "V_pk - dV*(t*f_r - floor(t*f_r))", color: naranja, rotulo: "entrada del 7812" }
-        - { expr: "V_nec", color: tinta, rotulo: "lo que necesita", discontinua: true }
+      tipo: circuito
+      esquema: rectificador-toma-media
+      piezas: { fuente: V_sec, f: f_red, vd: V_d, c: C_f, i: I_o, reg: V_o, dropout: V_do }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 24, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(abs(V_sec*sin(2*pi*f_red*t)) - V_d, V_pk - I_o/C_f*(t - 1/(4*f_red) - floor(2*f_red*t - 0.5)/(2*f_red)))", color: naranja, rotulo: "entrada del 7812", mide: positivo }
+          - { expr: "min(V_o, max(abs(V_sec*sin(2*pi*f_red*t)) - V_d, V_pk - I_o/C_f*(t - 1/(4*f_red) - floor(2*f_red*t - 0.5)/(2*f_red))) - V_do)", color: verde, rotulo: "salida del 7812", mide: salida_pos }
+          - { expr: "V_nec", color: tinta, rotulo: "lo que necesita", discontinua: true }
       lectura: { valor: P_r, rotulo: "Disipación del regulador" }
       datos:
         - { valor: V_min, rotulo: "Valle: {{V_min}}" }

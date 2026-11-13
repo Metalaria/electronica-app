@@ -1,6 +1,8 @@
 # Lección 1.2 de la sección 24.5 «Filtros Activos» (cap25). Formato: contenido/lecciones11/GUIA.md.
-# Sin esquema de Sallen-Key en el catálogo: su respuesta se dibuja con una gráfica (ganancia unidad, R₁ = R₂ = R,
-# Q = √(C₁/C₂)/2 y f₀ = 1/(2π·R·√(C₁·C₂)), del ejercicio 24.11, cap25#312). Petición en peticiones-motor12.md.
+# El filtro es el Sallen-Key paso bajo de ganancia unidad del ejercicio 24.11 (cap25#312: R₁ = R₂ = 11 kΩ, C₁ = 22 nF,
+# C₂ = 10 nF, operacional de 1 MHz de GBW), con el esquema «sallen-key». Q = √(C₁/C₂)/2, f₀ = 1/(2π·R·√(C₁·C₂)). Lo
+# que deja pasar muy por encima del corte (bloque 147) sale del operacional real del esquema (gbw y rsal), con la
+# resistencia de salida en lazo abierto «de 20 a 100 Ω» de la sección 26.7 (cap27#304).
 leccion: cap25/sec-25.5
 
 libro:
@@ -16,20 +18,36 @@ libro:
   164: "Ordenar las secciones de menor a mayor Q"
   "cap25#312": "Se quiere un filtro activo paso bajo Sallen-Key de ganancia unidad"
   "cap25#75": "El valor 0,707 es el que separa las respuestas con pico de las que no lo tienen"
+  "cap27#304": "del orden de 20 a 100 Ω"
 
 modelo:
   valores:
-    R_s: { sim: "R", nombre: "resistencias iguales", unidad: Ω, valor: 10000 }
+    R_s: { sim: "R", nombre: "resistencias iguales", unidad: Ω, valor: 11000 }
     C_1: { sim: "C₁", nombre: "condensador a la salida", unidad: F, valor: 22e-9 }
     C_2: { sim: "C₂", nombre: "condensador a masa", unidad: F, valor: 10e-9 }
     f_g: { sim: "f_{c}", nombre: "frecuencia de corte", unidad: Hz, valor: 20000 }
     Q_g: { sim: "Q", nombre: "factor de calidad", unidad: "", valor: 2 }
+    V_p: { sim: "V_{p}", nombre: "amplitud de la entrada", unidad: V, valor: 1 }
+    f_s: { sim: "f", nombre: "frecuencia de la entrada", unidad: Hz, valor: 1000 }
+    G_bw: { sim: "GBW", nombre: "producto ganancia-ancho de banda del operacional", unidad: Hz, valor: 1000000 }
+    R_o: { sim: "R_{o}", nombre: "resistencia de salida en lazo abierto", unidad: Ω, valor: 100 }
   calculos:
     Q_s: { expr: "sqrt(C_1/C_2)/2", sim: "Q", nombre: "factor de calidad", unidad: "", cifras: 3 }
     f_0: { expr: "1/(2*pi*R_s*sqrt(C_1*C_2))", sim: "f₀", nombre: "frecuencia natural", unidad: Hz }
     k_q: { expr: "1 - 1/(2*Q_s^2)", sim: "k", nombre: "término auxiliar", unidad: "" }
     f_3: { expr: "f_0*sqrt(k_q + sqrt(k_q^2 + 1))", sim: "f_{−3 dB}", nombre: "corte a −3 dB", unidad: Hz }
     GBW: { expr: "100*f_g*Q_g", sim: "GBW", nombre: "producto ganancia por ancho de banda mínimo", unidad: Hz }
+    # the real op amp (one pole, A₀ = 10⁵, output resistance R_o): H = N(s)/D(s), coefficients of GUIA.md §5.4
+    wp: { expr: "2*pi*G_bw/100000", sim: "ω_{p}", nombre: "polo del operacional", unidad: "rad/s" }
+    n0: { expr: "100000*wp", sim: "n₀", nombre: "coeficiente n₀", unidad: "" }
+    n1: { expr: "C_1*R_o*wp", sim: "n₁", nombre: "coeficiente n₁", unidad: "" }
+    n2: { expr: "C_1*R_o*(1 + C_2*R_s*wp)", sim: "n₂", nombre: "coeficiente n₂", unidad: "" }
+    n3: { expr: "C_1*C_2*R_s*R_o", sim: "n₃", nombre: "coeficiente n₃", unidad: "" }
+    d0: { expr: "100001*wp", sim: "d₀", nombre: "coeficiente d₀", unidad: "" }
+    d1: { expr: "1 + wp*(100001*C_2*2*R_s + C_1*(R_s + R_o))", sim: "d₁", nombre: "coeficiente d₁", unidad: "" }
+    d2: { expr: "C_1*(R_s + R_o) + C_2*2*R_s + wp*C_1*C_2*(100001*R_s^2 + R_o*2*R_s)", sim: "d₂", nombre: "coeficiente d₂", unidad: "" }
+    d3: { expr: "C_1*C_2*(R_s^2 + R_o*2*R_s)", sim: "d₃", nombre: "coeficiente d₃", unidad: "" }
+    D_suelo: { expr: "20*log10(n3/d3)", sim: "suelo", nombre: "suelo de la atenuación", unidad: dB, cifras: 3 }
 
 tarjetas:
   - id: explore-q
@@ -38,11 +56,14 @@ tarjetas:
     texto: "Paso bajo Sallen-Key de ganancia unidad. Cambie C₁, el que realimenta desde la salida: con él crece el Q y aparece el pico."
     libro: [140, "cap25#312"]
     widget:
-      tipo: grafica
-      x: { id: nu, min: 10, max: 100000, unidad: Hz, rotulo: "f", escala: log }
-      y: { min: -60, max: 15, unidad: dB, rotulo: "|H|" }
-      curvas:
-        - { expr: "-10*log10((1 - (nu/f_0)^2)^2 + (nu/(f_0*Q_s))^2)", color: azul, rotulo: "|H|" }
+      tipo: circuito
+      esquema: sallen-key
+      piezas: { fuente: V_p, f: f_s, r1: R_s, r2: R_s, c1: C_1, c2: C_2 }
+      grafica:
+        x: { id: nu, min: 10, max: 100000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: -60, max: 15, unidad: dB, rotulo: "|H|" }
+        curvas:
+          - { expr: "20*log10(V_p) - 10*log10((1 - (nu/f_0)^2)^2 + (nu/(f_0*Q_s))^2)", color: azul, rotulo: "|H|", mide: salida_db }
       lectura: { valor: Q_s, rotulo: "Q" }
       datos:
         - { valor: f_0, rotulo: "f₀ = {{f_0}}" }
@@ -74,6 +95,37 @@ tarjetas:
       - "Dos polos reales: ¿puede haber pico?"
     solucion: "Como mucho Q = 0,5."
 
+  - id: ajuste-q
+    tipo: ajuste
+    titulo: "Casi Butterworth"
+    texto: "Con C₂ = 10 nF, elija C₁ de la serie E12 hasta que Q quede entre 0,65 y 0,75, sin pico apreciable."
+    libro: ["cap25#312", "cap25#75"]
+    fijar: { R_s: 11000, C_2: 10e-9 }
+    inicio: { C_1: 10e-9 }
+    widget:
+      tipo: circuito
+      esquema: sallen-key
+      piezas: { fuente: V_p, f: f_s, r1: R_s, r2: R_s, c1: C_1, c2: C_2 }
+      grafica:
+        x: { id: nu, min: 10, max: 100000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: -60, max: 15, unidad: dB, rotulo: "|H|" }
+        curvas:
+          - { expr: "20*log10(V_p) - 10*log10((1 - (nu/f_0)^2)^2 + (nu/(f_0*Q_s))^2)", color: azul, rotulo: "|H|", mide: salida_db }
+      mandos:
+        - { valor: C_1, lista: [10e-9, 12e-9, 15e-9, 18e-9, 22e-9, 27e-9, 33e-9, 47e-9], rotulo: "C₁ (E12)" }
+    ajuste:
+      valor: Q_s
+      min: 0.65
+      max: 0.75
+      rotulo: "Factor de calidad Q"
+      escala: { min: 0.4, max: 1.2 }
+      bajo: "Q bajo: la caída empieza pronto. Suba C₁."
+      alto: "Q alto: aparece el pico. Baje C₁."
+      dentro: "Dentro: 18 o 22 nF. El libro elige 22 nF, Q ≈ 0,74."
+    comprobar:
+      - { con: { C_1: 18e-9 }, Q_s: 0.671, tol: 0.002 }
+      - { con: { C_1: 22e-9 }, Q_s: 0.742, tol: 0.002 }
+
   - id: reto-sallen
     tipo: reto
     titulo: "Reto: el corte en 1 kHz"
@@ -82,13 +134,16 @@ tarjetas:
     fijar: { C_1: 22e-9, C_2: 10e-9 }
     inicio: { R_s: 1000 }
     widget:
-      tipo: grafica
-      x: { id: nu, min: 10, max: 100000, unidad: Hz, rotulo: "f", escala: log }
-      y: { min: -60, max: 15, unidad: dB, rotulo: "|H|" }
-      curvas:
-        - { expr: "-10*log10((1 - (nu/f_0)^2)^2 + (nu/(f_0*Q_s))^2)", color: azul, rotulo: "|H|" }
-      marcas:
-        - { x: "f_3", y: "-3", rotulo: "−3 dB" }
+      tipo: circuito
+      esquema: sallen-key
+      piezas: { fuente: V_p, f: f_s, r1: R_s, r2: R_s, c1: C_1, c2: C_2 }
+      grafica:
+        x: { id: nu, min: 10, max: 100000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: -60, max: 15, unidad: dB, rotulo: "|H|" }
+        curvas:
+          - { expr: "20*log10(V_p) - 10*log10((1 - (nu/f_0)^2)^2 + (nu/(f_0*Q_s))^2)", color: azul, rotulo: "|H|", mide: salida_db }
+        marcas:
+          - { x: "f_3", y: "-3", rotulo: "−3 dB" }
       lectura: { valor: f_3, rotulo: "Corte a −3 dB" }
       mandos:
         - { valor: R_s, serie: E24, min: 1000, max: 100000, rotulo: "R (E24)" }
@@ -133,17 +188,44 @@ tarjetas:
     comprobar:
       - { GBW: 4000000 }
 
+  - id: fuga-arriba
+    tipo: sorpresa
+    titulo: "Muy por encima del corte"
+    texto: "El mismo filtro con el operacional real del ejercicio, de 1 MHz de GBW. Cambie su resistencia de salida y mire la atenuación arriba."
+    libro: [147, "cap25#312", "cap27#304"]
+    fijar: { R_s: 11000, C_1: 22e-9, C_2: 10e-9, G_bw: 1000000 }
+    inicio: { R_o: 100 }
+    widget:
+      tipo: circuito
+      esquema: sallen-key
+      piezas: { fuente: V_p, f: f_s, r1: R_s, r2: R_s, c1: C_1, c2: C_2, gbw: G_bw, rsal: R_o }
+      grafica:
+        x: { id: nu, min: 100, max: 10000000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: -80, max: 10, unidad: dB, rotulo: "|H|" }
+        curvas:
+          - { expr: "20*log10(V_p*sqrt((n0 - n2*(2*pi*nu)^2)^2 + (n1*2*pi*nu - n3*(2*pi*nu)^3)^2)/sqrt((d0 - d2*(2*pi*nu)^2)^2 + (d1*2*pi*nu - d3*(2*pi*nu)^3)^2))", color: naranja, rotulo: "operacional real", mide: salida_db }
+          - { expr: "20*log10(V_p) - 10*log10((1 - (nu/f_0)^2)^2 + (nu/(f_0*Q_s))^2)", color: tinta, rotulo: "ideal", discontinua: true }
+      lectura: { valor: D_suelo, rotulo: "Donde se detiene la atenuación" }
+      mandos:
+        - { valor: R_o, lista: [20, 50, 100], rotulo: "R_{o} del operacional" }
+    comprobar:
+      - { D_suelo: -40.9, tol: 0.01 }
+
   - id: alta-frecuencia
     tipo: porque
     titulo: "¿Por qué deja de filtrar?"
     texto: "Un paso bajo Sallen-Key deja pasar señales muy por encima de su corte. ¿Por qué?"
     libro: [147, 150]
+    fijar: { R_s: 11000, C_1: 22e-9, C_2: 10e-9, G_bw: 1000000 }
     widget:
-      tipo: grafica
-      x: { id: nu, min: 10, max: 100000, unidad: Hz, rotulo: "f", escala: log }
-      y: { min: -60, max: 15, unidad: dB, rotulo: "|H|" }
-      curvas:
-        - { expr: "-10*log10((1 - (nu/f_0)^2)^2 + (nu/(f_0*Q_s))^2)", color: azul, rotulo: "|H| con un operacional ideal" }
+      tipo: circuito
+      esquema: sallen-key
+      piezas: { fuente: V_p, f: f_s, r1: R_s, r2: R_s, c1: C_1, c2: C_2, gbw: G_bw, rsal: R_o }
+      grafica:
+        x: { id: nu, min: 100, max: 10000000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: -80, max: 10, unidad: dB, rotulo: "|H|" }
+        curvas:
+          - { expr: "20*log10(V_p*sqrt((n0 - n2*(2*pi*nu)^2)^2 + (n1*2*pi*nu - n3*(2*pi*nu)^3)^2)/sqrt((d0 - d2*(2*pi*nu)^2)^2 + (d1*2*pi*nu - d3*(2*pi*nu)^3)^2))", color: naranja, rotulo: "operacional real", mide: salida_db }
     opciones:
       - texto: "Por encima del ancho de banda del operacional, C₁ acopla la entrada a la salida"
         bien: true

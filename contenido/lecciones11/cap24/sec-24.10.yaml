@@ -1,6 +1,7 @@
 # Lección 1.2 de la sección 23.11 «Resumen del Capítulo» (cap24, etiqueta sec-24.10). Formato: GUIA.md.
 # Repaso del capítulo con sus propios ejemplos: el RC de 1 kΩ y 100 nF a 1 kHz (23.4), el RLC de 50 Ω, 10 mH y
-# 100 nF (23.6, ζ = 0,079) y el transformador ideal con el altavoz de 8 Ω (23.9).
+# 100 nF (23.6, ζ = 0,079) y el transformador ideal con el altavoz de 8 Ω (23.9). El escalón del RLC, con el esquema
+# «rlc-escalon» y 1 V (EJEMPLO: el libro no da tensión).
 leccion: cap24/sec-24.10
 
 libro:
@@ -28,6 +29,7 @@ modelo:
     R_r: { sim: "R", nombre: "resistencia del RLC", unidad: Ω, valor: 50 }
     L_r: { sim: "L", nombre: "inductancia del RLC", unidad: H, valor: 0.01 }
     C_r: { sim: "C", nombre: "capacidad del RLC", unidad: F, valor: 100e-9 }
+    V_e: { sim: "V", nombre: "escalón de la fuente", unidad: V, valor: 1 }
     V_1: { sim: "V₁", nombre: "tensión del primario", unidad: V, valor: 230 }
     N_1: { sim: "N₁", nombre: "espiras del primario", unidad: "", valor: 1000 }
     N_2: { sim: "N₂", nombre: "espiras del secundario", unidad: "", valor: 100 }
@@ -46,6 +48,8 @@ modelo:
     Q_r: { expr: "sqrt(L_r/C_r)/R_r", sim: "Q", nombre: "factor de calidad", unidad: "", cifras: 3 }
     z_r: { expr: "1/(2*Q_r)", sim: "ζ", nombre: "amortiguamiento", unidad: "", cifras: 2 }
     OS: { expr: "100*exp(-pi*z_r/sqrt(1 - z_r^2))", sim: "SO", nombre: "sobreimpulso", unidad: "%" }
+    a_r: { expr: "R_r/(2*L_r)", sim: "α", nombre: "amortiguamiento del escalón", unidad: "1/s" }
+    wd_r: { expr: "sqrt(max(1/(L_r*C_r) - a_r^2, 1))", sim: "ω_{d}", nombre: "pulsación amortiguada", unidad: "rad/s" }
     BW: { expr: "f_0/Q_r", sim: "BW", nombre: "ancho de banda", unidad: Hz }
     f_1: { expr: "sqrt(f_0^2 + (BW/2)^2) - BW/2", sim: "f₁", nombre: "corte inferior", unidad: Hz, cifras: 6 }
     f_2: { expr: "sqrt(f_0^2 + (BW/2)^2) + BW/2", sim: "f₂", nombre: "corte superior", unidad: Hz, cifras: 6 }
@@ -80,14 +84,19 @@ tarjetas:
     titulo: "El RLC del capítulo"
     texto: "El RLC de 50 Ω, 10 mH y 100 nF tiene Q = 6,32. Ante un escalón, ¿cuánto se pasa la tensión del condensador?"
     libro: [320, "cap24#160"]
+    nota: "Solo la subida: el pico llega después."
     widget:
       tipo: circuito
-      esquema: rlc-serie
-      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
+      esquema: rlc-escalon
+      piezas: { fuente: V_e, r: R_r, l: L_r, c: C_r }
       lectura: { valor: OS, rotulo: "Sobreimpulso" }
       datos:
         - { valor: z_r, rotulo: "ζ = {{z_r}}" }
-      mide: { i_amp: I_r }
+      grafica:
+        x: { id: t, min: 0, max: 0.00004, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 2, unidad: V, rotulo: "v_{C}" }
+        curvas:
+          - { expr: "V_e*(1 - exp(-a_r*t)*(cos(wd_r*t) + a_r/wd_r*sin(wd_r*t)))", color: verde, rotulo: "v_{C} tras un escalón de 1 V", mide: vc }
       ocultar: true
     opciones:
       - texto: "Un 78 %"

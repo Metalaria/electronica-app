@@ -1,4 +1,6 @@
 # Lección 1.2 de la sección 22.8 «Transformación de Fuentes» (cap23). Formato: contenido/lecciones11/GUIA.md.
+# El circuito de partida de la figura 22.9 (12 V con 4 Ω en serie, 3 Ω y 2 A entre los terminales, bloque 195) se
+# dibuja con el esquema «fuente-corriente-y-tension»; cada paso de la cadena, con «thevenin» y «norton».
 leccion: cap23/sec-23.8
 
 libro:
@@ -23,6 +25,10 @@ modelo:
     I_b: { sim: "I₂", nombre: "fuente de 2 A", unidad: A, valor: 2 }
     R_a: { sim: "R₁", nombre: "resistencia de 4 Ω", unidad: Ω, valor: 4 }
     R_b: { sim: "R₂", nombre: "resistencia de 3 Ω", unidad: Ω, valor: 3 }
+    V_f: { sim: "V", nombre: "fuente de tensión", unidad: V, valor: 12 }
+    R_f1: { sim: "R₁", nombre: "resistencia en serie", unidad: Ω, valor: 4 }
+    R_f2: { sim: "R₂", nombre: "resistencia entre los terminales", unidad: Ω, valor: 3 }
+    I_f: { sim: "I", nombre: "fuente de corriente", unidad: A, valor: 2 }
   calculos:
     V_to: { si: t_on, entonces: "V_t*R_tl/(R_ti + R_tl)", sino: "V_t", sim: "V_{L}", nombre: "tensión en la carga", unidad: V }
     I_t: { si: t_on, entonces: "V_t/(R_ti + R_tl)", sino: "0", sim: "I", nombre: "corriente por la carga", unidad: A }
@@ -35,6 +41,11 @@ modelo:
     I_suma: { expr: "I_a + I_b", sim: "I", nombre: "fuentes sumadas", unidad: A }
     R_p: { expr: "par(R_a, R_b)", sim: "R", nombre: "resistencias combinadas", unidad: Ω }
     V_fin: { expr: "I_suma*R_p", sim: "V", nombre: "fuente de vuelta a tensión", unidad: V }
+    V_fa: { expr: "(V_f/R_f1 + I_f)/(1/R_f1 + 1/R_f2)", sim: "V", nombre: "tensión entre los terminales", unidad: V }
+    I_f1: { expr: "(V_f - V_fa)/R_f1", sim: "I₁", nombre: "corriente por los 4 Ω del circuito de partida", unidad: A }
+    I_f2: { expr: "V_fa/R_f2", sim: "I₂", nombre: "corriente por los 3 Ω", unidad: A }
+    I_fx: { expr: "V_fa/R_f1", sim: "I₄", nombre: "corriente por los 4 Ω de la forma transformada", unidad: A }
+    I_fs: { expr: "V_f/(R_f1 + R_f2)", sim: "I", nombre: "corriente sin la fuente de 2 A", unidad: A }
 
 tarjetas:
   - id: explore-cambio
@@ -89,6 +100,12 @@ tarjetas:
     titulo: "La cadena de la figura 22.9"
     texto: "12 V con 4 Ω en serie, 3 Ω y una fuente de 2 A entre los mismos terminales. Ordene los pasos."
     libro: [195]
+    widget:
+      tipo: circuito
+      esquema: fuente-corriente-y-tension
+      piezas: { fuente: V_f, rs: R_f1, rp: R_f2, corriente: I_f }
+      corriente: I_f1
+      mide: { salida: V_fa, rama: I_f1, paralelo: I_f2, fuentei: I_f }
     ordenar:
       - "La rama de 12 V pasa a 3 A en paralelo con 4 Ω."
       - "Las dos fuentes de corriente suman 5 A."
@@ -154,50 +171,89 @@ tarjetas:
     comprobar:
       - { V_fin: 8.57, I_suma: 5, R_p: 1.71 }
 
+  - id: simule-rama
+    tipo: simular
+    titulo: "Prediga y simule: la rama de 12 V"
+    texto: "En el circuito de la figura 22.9, entre los terminales hay 8,57 V. ¿Qué corriente lleva la rama de 12 V y 4 Ω?"
+    libro: [195, 196]
+    fijar: { V_f: 12, R_f1: 4, R_f2: 3, I_f: 2 }
+    widget:
+      tipo: circuito
+      esquema: fuente-corriente-y-tension
+      piezas: { fuente: V_f, rs: R_f1, rp: R_f2, corriente: I_f }
+      lectura: { valor: I_f1, rotulo: "Corriente de la rama de 12 V" }
+      corriente: I_f1
+      mide: { salida: V_fa, rama: I_f1 }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: I_f1
+      unidad: A
+      tol: 0.03
+      rotulo: "Corriente de la rama de 12 V"
+      medida: rama
+      errores:
+        - { expr: "V_f/R_f1", texto: "Esos 3 A son la fuente de la forma transformada, no una corriente del circuito de partida." }
+        - { expr: "I_fx", texto: "Esos 2,14 A cruzan los 4 Ω de la forma transformada. En el circuito de partida caen 12 − 8,57 V." }
+        - { expr: "I_fs", texto: "Ha olvidado la fuente de 2 A: sin ella saldrían 12/7 A." }
+    exito: "(12 − 8,57)/4 = 0,857 A: para lo de dentro hay que volver al circuito de partida."
+    escalera:
+      - "La resistencia de 4 Ω está entre los 12 V de la fuente y el terminal."
+      - "Su caída es 12 − 8,57 V."
+    solucion: "(12 − 8,57)/4 = 0,857 A."
+    comprobar:
+      - { V_fa: 8.5714, I_f1: 0.857, I_fx: 2.143, I_fs: 1.714 }
+
   - id: lo-de-dentro
     tipo: sorpresa
     titulo: "Lo de dentro cambia"
-    texto: "La fuente de 3 A con 4 Ω en paralelo alimenta 3 Ω. Mire la corriente por los 4 Ω y compárela con la de la forma de 12 V."
+    texto: "Cambie la fuente de corriente y compare la corriente por los 4 Ω en el circuito de partida y en la forma de 3 A ‖ 4 Ω."
     libro: [196]
-    fijar: { I_n: 3, R_n: 4, R_nl: 3, V_t: 12, R_ti: 4, R_tl: 3, t_on: 1 }
+    fijar: { V_f: 12, R_f1: 4, R_f2: 3 }
+    inicio: { I_f: 2 }
     widget:
       tipo: circuito
-      esquema: norton
-      piezas: { fuente: I_n, rn: R_n, carga: R_nl, interruptor: n_on }
-      lectura: { valor: I_nr, rotulo: "Por los 4 Ω de dentro" }
+      esquema: fuente-corriente-y-tension
+      piezas: { fuente: V_f, rs: R_f1, rp: R_f2, corriente: I_f }
+      lectura: { valor: I_f1, rotulo: "Por los 4 Ω del circuito de partida" }
       datos:
-        - { valor: I_t, rotulo: "En la forma de 12 V: {{I_t}}" }
-        - { valor: I_nl, rotulo: "Por la carga: {{I_nl}}" }
-      corriente: I_nl
-      mide: { salida: V_no, carga: I_nl, paralelo: I_nr }
+        - { valor: I_fx, rotulo: "En la forma transformada: {{I_fx}}" }
+        - { valor: V_fa, rotulo: "Entre los terminales: {{V_fa}}" }
+      corriente: I_f1
+      mide: { salida: V_fa, rama: I_f1, paralelo: I_f2, fuentei: I_f }
       mandos:
-        - { valor: n_on, tipo: interruptor, rotulo: "Carga" }
-    requiere: { mover: [n_on] }
+        - { valor: I_f, lista: [0, 2, 4], rotulo: "Fuente de corriente" }
+    comprobar:
+      - { con: { I_f: 0 }, I_f1: 1.714, I_fx: 1.286 }
 
   - id: por-que-dentro
     tipo: porque
     titulo: "¿Por qué no coinciden?"
-    texto: "La carga recibe lo mismo en las dos formas, pero la corriente por la resistencia de dentro no. ¿Por qué?"
+    texto: "Los terminales ven 8,57 V en las dos formas, pero por los 4 Ω pasan 0,857 A o 2,14 A. ¿Por qué?"
     libro: [193, 196]
-    fijar: { I_n: 3, R_n: 4, R_nl: 3, n_on: 1 }
+    fijar: { V_f: 12, R_f1: 4, R_f2: 3, I_f: 2 }
     widget:
       tipo: circuito
-      esquema: norton
-      piezas: { fuente: I_n, rn: R_n, carga: R_nl, interruptor: n_on }
-      lectura: { valor: I_nr, rotulo: "Por los 4 Ω de dentro" }
-      corriente: I_nl
-      mide: { salida: V_no, carga: I_nl, paralelo: I_nr }
+      esquema: fuente-corriente-y-tension
+      piezas: { fuente: V_f, rs: R_f1, rp: R_f2, corriente: I_f }
+      lectura: { valor: I_f1, rotulo: "Por los 4 Ω del circuito de partida" }
+      datos:
+        - { valor: I_fx, rotulo: "En la forma transformada: {{I_fx}}" }
+      corriente: I_f1
+      mide: { salida: V_fa, rama: I_f1 }
     opciones:
       - texto: "La transformación conserva lo que se ve desde fuera, no lo que ocurre dentro"
         bien: true
         porque: "Para la corriente por la resistencia interna original hay que volver al circuito de partida."
       - texto: "Porque se ha transformado mal"
-        porque: "Está bien: la carga recibe lo mismo. Solo los terminales se conservan."
-      - texto: "Porque la carga es demasiado pequeña"
-        porque: "Con cualquier carga pasa igual: dentro de la red transformada las corrientes no son las originales."
+        porque: "Está bien: los terminales ven lo mismo. Solo eso se conserva."
+      - texto: "Porque la fuente de 2 A estropea la transformación"
+        porque: "Con 0 o 4 A pasa igual: dentro de la red transformada las corrientes no son las originales."
     escalera:
       - "¿Qué promete conservar cada transformación?"
     solucion: "Conserva los terminales, no el interior."
+    comprobar:
+      - { V_fa: 8.57, I_f1: 0.857, I_fx: 2.14 }
 
   - id: fuente-ideal
     tipo: pregunta

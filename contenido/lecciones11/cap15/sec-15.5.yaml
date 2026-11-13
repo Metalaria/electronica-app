@@ -4,6 +4,8 @@
 # 16 a 25 kHz). EJEMPLO: el motor se dibuja como una resistencia de 10 Ω con 12 V (solo vale en conducción y en
 # régimen: el libro insiste en que el motor no es una resistencia); los dos MOSFET son de ejemplo con la ley
 # cuadrática del libro: nivel lógico k = 20 A/V², V_th = 1,5 V; estándar k = 2 A/V², V_th = 4 V (necesita unos 10 V).
+# El pico al apagar (bloque 119, sección 4.5) se ve con la carga inductiva del esquema «mosfet»: EJEMPLO, el motor
+# como 10 Ω en serie con 1 mH, la avalancha del MOSFET en 60 V y el diodo de rueda libre con 0,7 V.
 leccion: cap15/sec-15.5
 
 libro:
@@ -34,6 +36,11 @@ modelo:
     Vt_s: { sim: "V_{th}", nombre: "umbral del estándar", unidad: V, valor: 4 }
     f_p: { sim: "f", nombre: "frecuencia del PWM", unidad: Hz, valor: 20000 }
     D_p: { sim: "D", nombre: "ciclo de trabajo", unidad: "", valor: 0.25 }
+    L_M: { sim: "L", nombre: "inductancia del motor (ejemplo)", unidad: H, valor: 0.001 }
+    B_V: { sim: "BV", nombre: "tensión de avalancha del MOSFET (ejemplo)", unidad: V, valor: 60 }
+    V_F: { sim: "V_{F}", nombre: "caída del diodo de rueda libre", unidad: V, valor: 0.7 }
+    rueda: { tipo: interruptor, nombre: "diodo de rueda libre conectado", valor: 1 }
+    D_i: { sim: "D", nombre: "ciclo de trabajo del apagado", unidad: "", valor: 0.5 }
   calculos:
     k_x: { expr: "k_l + (k_s - k_l)*(m_t - 1)", sim: "k", nombre: "transconductancia", unidad: "A/V²" }
     V_th: { expr: "Vt_l + (Vt_s - Vt_l)*(m_t - 1)", sim: "V_{th}", nombre: "tensión umbral", unidad: V }
@@ -49,6 +56,10 @@ modelo:
     b_l: { expr: "k_l*(V_gs - Vt_l) + 1/R_M", sim: "b", nombre: "coeficiente, nivel lógico", unidad: "" }
     V_ll: { expr: "(b_l - sqrt(b_l^2 - 2*k_l*V_DD/R_M))/k_l", sim: "V_{DS}", nombre: "V_DS del de nivel lógico", unidad: V }
     V_md: { expr: "D_p*(V_DD - V_DS)", sim: "V_{media}", nombre: "tensión media en el motor", unidad: V }
+    # the turn-off of the inductive load (GUIA.md §5.4 bis, «Carga inductiva y diodo de rueda libre»)
+    t_o: { expr: "D_i/f_p", sim: "t_{off}", nombre: "instante del apagado", unidad: s }
+    V_x: { expr: "rueda*V_F + (1 - rueda)*(B_V - V_DD)", sim: "V_{ext}", nombre: "tensión de extinción", unidad: V }
+    V_pi: { expr: "V_DD + V_x", sim: "v_{D, máx}", nombre: "pico del drenador al apagar", unidad: V }
 
 tarjetas:
   - id: explore-pwm
@@ -91,6 +102,91 @@ tarjetas:
     escalera:
       - "Durante el reset, el pin del microcontrolador queda en alta impedancia."
     solucion: "Nivel lógico: conduce con 5 V; diodo: el pico; R_G: el driver; 10 kΩ: cortado en el reset."
+
+  - id: prediga-pico
+    tipo: predecir
+    titulo: "El apagado sin diodo"
+    texto: "El motor, con su inductancia, lleva 1,2 A y no hay diodo de rueda libre. ¿Qué hace el drenador cuando el MOSFET se apaga?"
+    nota: "La gráfica acaba antes del apagado."
+    libro: [119]
+    fijar: { m_t: 1, rueda: 0 }
+    widget:
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_DD, rd: R_M, l: L_M, entrada: V_g, rg: R_G, rgs: R_GS, k: k_x, vth: V_th, f: f_p, ciclo: D_i, bv: B_V, vf: V_F, rueda: rueda }
+      lectura: { valor: V_pi, rotulo: "Pico del drenador" }
+      grafica:
+        x: { id: t, min: 0, max: 0.00002, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 70, unidad: V, rotulo: "v_{D}" }
+        curvas:
+          - { expr: "V_DS*(1 - ceil((t - t_o)/1e9)) + ceil((t - t_o)/1e9)*(V_DD + V_x*ceil(max(0, (I_D + V_x/R_M)*exp(-(t - t_o)*R_M/L_M) - V_x/R_M)/1e9))", color: naranja, rotulo: "v_{D}", mide: drenador }
+      ocultar: true
+    opciones:
+      - texto: "Salta muy por encima de 12 V"
+        bien: true
+        porque: "La bobina no deja cambiar su corriente de golpe: la empuja hasta la avalancha del transistor. Es el pico inductivo."
+      - texto: "Se queda en 12 V, como sin corriente"
+        porque: "Eso haría una resistencia. Una bobina mantiene su corriente y la tensión sube hasta encontrarle camino."
+      - texto: "Cae a 0 V"
+        porque: "Cero es con el MOSFET conduciendo. Al cortar, la bobina empuja el drenador hacia arriba."
+    escalera:
+      - "La corriente de una bobina no puede cambiar instantáneamente."
+    solucion: "Salta hasta que algo conduce: sin diodo, la avalancha del MOSFET."
+    comprobar:
+      - { I_D: 1.198, V_DD: 12, tol: 0.003 }
+
+  - id: pico-rueda
+    tipo: sorpresa
+    titulo: "El diodo de rueda libre"
+    texto: "Quite y ponga el diodo. Sin él, cada apagado lleva el drenador a la avalancha; con él, a solo 0,7 V sobre la alimentación."
+    nota: "Ejemplo: 1 mH y avalancha en 60 V."
+    libro: [119]
+    fijar: { m_t: 1 }
+    inicio: { rueda: 1 }
+    widget:
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_DD, rd: R_M, l: L_M, entrada: V_g, rg: R_G, rgs: R_GS, k: k_x, vth: V_th, f: f_p, ciclo: D_i, bv: B_V, vf: V_F, rueda: rueda }
+      lectura: { valor: V_pi, rotulo: "Pico del drenador al apagar" }
+      grafica:
+        x: { id: t, min: 0, max: 0.000045, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 70, unidad: V, rotulo: "v_{D}" }
+        curvas:
+          - { expr: "V_DS*(1 - ceil((t - t_o)/1e9)) + ceil((t - t_o)/1e9)*(V_DD + V_x*ceil(max(0, (I_D + V_x/R_M)*exp(-(t - t_o)*R_M/L_M) - V_x/R_M)/1e9))", color: naranja, rotulo: "v_{D}", mide: drenador }
+          - { expr: "V_DD", color: tinta, rotulo: "alimentación", discontinua: true }
+      mandos:
+        - { valor: rueda, tipo: interruptor, rotulo: "Diodo de rueda libre" }
+    comprobar:
+      - { V_pi: 12.7, V_F: 0.7 }
+      - { con: { rueda: 0 }, V_pi: 60 }
+
+  - id: por-que-rapido
+    tipo: porque
+    titulo: "¿Por qué un diodo rápido?"
+    texto: "El diodo de rueda libre debe ser Schottky o ultrarrápido. ¿Por qué no vale un rectificador corriente?"
+    libro: [119]
+    fijar: { m_t: 1, D_p: 0.5 }
+    widget:
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_DD, rd: R_M, entrada: V_g, rg: R_G, rgs: R_GS, k: k_x, vth: V_th, f: f_p, ciclo: D_p }
+      lectura: { valor: V_md, rotulo: "Tensión media en el motor" }
+      grafica:
+        x: { id: t, min: 0, max: 0.0002, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 14, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_DD - (1 - ceil(t*f_p - floor(t*f_p) - D_p))*(V_DD - V_DS)", color: naranja, rotulo: "v_{D}", mide: drenador }
+    opciones:
+      - texto: "A la frecuencia del PWM disiparía en cada ciclo por su recuperación inversa"
+        bien: true
+        porque: "Conmuta miles de veces por segundo: el rápido recupera sin pérdidas apreciables."
+      - texto: "Porque un rectificador no aguanta la corriente"
+        porque: "La corriente sí la aguanta; lo que no soporta bien es conmutar tan deprisa."
+      - texto: "Da igual: el diodo casi nunca conduce"
+        porque: "Conduce en cada apagado, a la frecuencia del PWM."
+    escalera:
+      - "¿Cuántas veces por segundo se apaga el transistor?"
+    solucion: "Por la recuperación inversa a la frecuencia del PWM."
 
   - id: prediga-silbido
     tipo: predecir
@@ -172,34 +268,6 @@ tarjetas:
       mandos:
         - { valor: m_t, lista: [1, 2], nombres: [nivel lógico, estándar], rotulo: "MOSFET" }
     requiere: { mover: [m_t] }
-
-  - id: por-que-rapido
-    tipo: porque
-    titulo: "¿Por qué un diodo rápido?"
-    texto: "El diodo de rueda libre debe ser Schottky o ultrarrápido. ¿Por qué no vale un rectificador corriente?"
-    libro: [119]
-    fijar: { m_t: 1, D_p: 0.5 }
-    widget:
-      tipo: circuito
-      esquema: mosfet
-      piezas: { vdd: V_DD, rd: R_M, entrada: V_g, rg: R_G, rgs: R_GS, k: k_x, vth: V_th, f: f_p, ciclo: D_p }
-      lectura: { valor: V_md, rotulo: "Tensión media en el motor" }
-      grafica:
-        x: { id: t, min: 0, max: 0.0002, unidad: s, rotulo: "t" }
-        y: { min: 0, max: 14, unidad: V, rotulo: "v" }
-        curvas:
-          - { expr: "V_DD - (1 - ceil(t*f_p - floor(t*f_p) - D_p))*(V_DD - V_DS)", color: naranja, rotulo: "v_{D}", mide: drenador }
-    opciones:
-      - texto: "A la frecuencia del PWM disiparía en cada ciclo por su recuperación inversa"
-        bien: true
-        porque: "Conmuta miles de veces por segundo: el rápido recupera sin pérdidas apreciables."
-      - texto: "Porque un rectificador no aguanta la corriente"
-        porque: "La corriente sí la aguanta; lo que no soporta bien es conmutar tan deprisa."
-      - texto: "Da igual: el diodo casi nunca conduce"
-        porque: "Conduce en cada apagado, a la frecuencia del PWM."
-    escalera:
-      - "¿Cuántas veces por segundo se apaga el transistor?"
-    solucion: "Por la recuperación inversa a la frecuencia del PWM."
 
   - id: frecuencias
     tipo: pregunta

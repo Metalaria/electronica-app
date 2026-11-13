@@ -2,7 +2,8 @@
 # Todos los números son del libro: 230 V, 10 A y φ = 30° por fase (bloque 246); 400/230,9 V (254); las tres
 # resistencias de 53,3 Ω (262); la estufa, el radiador y las lámparas del neutro cortado (269, 270, 316); el motor de
 # 11 kW (280-282); la tabla de los dos vatímetros (298). El desfase de 90° y 150° de la primera tarjeta es solo para
-# ver que la suma se anula con 120°. No hay esquema trifásico: gráficas con las fórmulas (petición al motor).
+# ver que la suma se anula con 120°. Estrella o triángulo y el neutro cortado, con el esquema «trifasica» (fuentes de
+# pico √2·230,94 V: las lecturas de las tarjetas son eficaces y las medidas, de pico).
 leccion: cap24/sec-new-24-trifasica
 
 libro:
@@ -33,7 +34,7 @@ modelo:
     V_p: { sim: "V", nombre: "tensión por fase de la carga", unidad: V, valor: 230 }
     I_p: { sim: "I", nombre: "corriente por fase", unidad: A, valor: 10 }
     ph_c: { sim: "φ", nombre: "ángulo de la carga", unidad: "°", valor: 30 }
-    V_r: { sim: "V", nombre: "tensión sobre cada resistencia", unidad: V, valor: 230.94 }
+    tri: { tipo: interruptor, nombre: "conexión en triángulo", valor: 0 }
     R_y: { sim: "R", nombre: "resistencia de cada rama", unidad: Ω, valor: 53.3 }
     P_1: { sim: "P₁", nombre: "carga de L1", unidad: W, valor: 2000 }
     P_2: { sim: "P₂", nombre: "carga de L2", unidad: W, valor: 1000 }
@@ -60,7 +61,12 @@ modelo:
     p_max: { expr: "V_p*I_p*(cos(phr) + 1)", sim: "p_{máx}", nombre: "máximo de cada fase", unidad: W }
     p_min: { expr: "V_p*I_p*(cos(phr) - 1)", sim: "p_{mín}", nombre: "mínimo de cada fase", unidad: W }
     p_tot: { expr: "3*p_med", sim: "p", nombre: "potencia total", unidad: W }
+    V_r: { si: tri, entonces: "VLL", sino: "V_f", sim: "V", nombre: "tensión sobre cada resistencia", unidad: V }
     I_r: { expr: "V_r/R_y", sim: "I", nombre: "corriente de cada resistencia", unidad: A }
+    I_lin: { si: tri, entonces: "sqrt(3)*I_r", sino: "I_r", sim: "I_{L}", nombre: "corriente de línea", unidad: A }
+    Vr_p: { expr: "sqrt(2)*V_r", sim: "V_{pico}", nombre: "pico de la tensión de cada resistencia", unidad: V }
+    Ir_p: { expr: "sqrt(2)*I_r", sim: "I_{pico}", nombre: "pico de la corriente de cada resistencia", unidad: A }
+    Il_p: { expr: "sqrt(2)*I_lin", sim: "I_{L, pico}", nombre: "pico de la corriente de línea", unidad: A }
     P_r: { expr: "V_r^2/R_y", sim: "P", nombre: "potencia de cada resistencia", unidad: W }
     I_1: { expr: "P_1/V_f", sim: "I₁", nombre: "corriente de L1", unidad: A }
     I_2: { expr: "P_2/V_f", sim: "I₂", nombre: "corriente de L2", unidad: A }
@@ -74,6 +80,10 @@ modelo:
     U_1: { expr: "sqrt((V_f - s_re)^2 + s_im^2)", sim: "V₁", nombre: "tensión de la estufa", unidad: V }
     U_2: { expr: "sqrt((-V_f/2 - s_re)^2 + (-0.8660254*V_f - s_im)^2)", sim: "V₂", nombre: "tensión del radiador", unidad: V }
     U_3: { expr: "sqrt((-V_f/2 - s_re)^2 + (0.8660254*V_f - s_im)^2)", sim: "V₃", nombre: "tensión de las lámparas", unidad: V }
+    Up_1: { expr: "sqrt(2)*U_1", sim: "V₁", nombre: "pico de la tensión de la estufa", unidad: V }
+    Up_2: { expr: "sqrt(2)*U_2", sim: "V₂", nombre: "pico de la tensión del radiador", unidad: V }
+    Up_3: { expr: "sqrt(2)*U_3", sim: "V₃", nombre: "pico de la tensión de las lámparas", unidad: V }
+    Vs_p: { expr: "sqrt(2)*V_s", sim: "V_{NN′}", nombre: "pico del desplazamiento del punto de estrella", unidad: V }
     P_m: { expr: "P_e/eta", sim: "P", nombre: "potencia que toma de la red", unidad: W }
     I_m: { expr: "P_m/(sqrt(3)*V_LL*c_m)", sim: "I_{L}", nombre: "corriente de línea del motor", unidad: A, cifras: 4 }
     phm: { expr: "atan2(sqrt(1 - c_m^2), c_m)", sim: "φ", nombre: "ángulo del motor", unidad: "rad" }
@@ -182,21 +192,23 @@ tarjetas:
   - id: estrella-triangulo
     tipo: explorar
     titulo: "Estrella o triángulo"
-    texto: "Una de las tres resistencias de 53,3 Ω: en estrella recibe la tensión de fase y en triángulo, la de línea. Cambie la conexión."
-    libro: [261, 262]
+    texto: "Tres resistencias de 53,3 Ω: en estrella cada una recibe la tensión de fase; en triángulo, la de línea. Cambie la conexión."
+    libro: [261, 262, 263]
+    inicio: { tri: 0 }
     widget:
       tipo: circuito
-      esquema: resistencia
-      piezas: { fuente: V_r, r: R_y }
+      esquema: trifasica
+      piezas: { fuente: Vpk, f: f_r, r1: R_y, r2: R_y, r3: R_y, triangulo: tri }
       lectura: { valor: P_r, rotulo: "Potencia de cada resistencia" }
       datos:
         - { valor: I_r, rotulo: "Corriente de rama: {{I_r}}" }
-      corriente: I_r
-      mide: { corriente: I_r, tension: V_r }
+        - { valor: I_lin, rotulo: "Corriente de línea: {{I_lin}}" }
+      mide: { v1_amp: Vr_p, ir1_amp: Ir_p, i1_amp: Il_p }
       mandos:
-        - { valor: V_r, rotulo: "Conexión", lista: [230.94, 400], nombres: [estrella, triángulo] }
+        - { valor: tri, tipo: interruptor, rotulo: "En triángulo" }
     comprobar:
-      - { con: { V_r: 400 }, I_r: 7.5 }
+      - { I_r: 4.333, I_lin: 4.333, tol: 0.003 }
+      - { con: { tri: 1 }, I_r: 7.505, I_lin: 13.0, tol: 0.003 }
 
   - id: formula-motor
     tipo: formula
@@ -242,20 +254,23 @@ tarjetas:
     libro: [270]
     fijar: { R_1: 26.45, R_2: 52.9, R_3: 264.5 }
     inicio: { n_on: 1 }
-    requiere: { mover: [n_on] }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
-      y: { min: -600, max: 600, unidad: V, rotulo: "v de cada carga" }
-      curvas:
-        - { expr: "Vpk*cos(w_r*t) - sqrt(2)*(s_re*cos(w_r*t) - s_im*sin(w_r*t))", color: azul, rotulo: "estufa" }
-        - { expr: "Vpk*cos(w_r*t - 2*pi/3) - sqrt(2)*(s_re*cos(w_r*t) - s_im*sin(w_r*t))", color: naranja, rotulo: "radiador" }
-        - { expr: "Vpk*cos(w_r*t + 2*pi/3) - sqrt(2)*(s_re*cos(w_r*t) - s_im*sin(w_r*t))", color: verde, rotulo: "lámparas" }
+      tipo: circuito
+      esquema: trifasica
+      piezas: { fuente: Vpk, f: f_r, r1: R_1, r2: R_2, r3: R_3, neutro: n_on }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: -600, max: 600, unidad: V, rotulo: "v de cada carga" }
+        curvas:
+          - { expr: "Vpk*sin(w_r*t) - sqrt(2)*(s_re*sin(w_r*t) + s_im*cos(w_r*t))", color: azul, rotulo: "estufa", mide: t_v1 }
+          - { expr: "Vpk*sin(w_r*t - 2*pi/3) - sqrt(2)*(s_re*sin(w_r*t) + s_im*cos(w_r*t))", color: naranja, rotulo: "radiador", mide: t_v2 }
+          - { expr: "Vpk*sin(w_r*t + 2*pi/3) - sqrt(2)*(s_re*sin(w_r*t) + s_im*cos(w_r*t))", color: verde, rotulo: "lámparas", mide: t_v3 }
       lectura: { valor: U_3, rotulo: "Tensión de las lámparas" }
       datos:
         - { valor: U_1, rotulo: "Estufa: {{U_1}}" }
         - { valor: U_2, rotulo: "Radiador: {{U_2}}" }
         - { valor: V_s, rotulo: "Punto de estrella: {{V_s}}" }
+      mide: { v1_amp: Up_1, v2_amp: Up_2, v3_amp: Up_3, vn_amp: Vs_p }
       mandos:
         - { valor: n_on, tipo: interruptor, rotulo: "Neutro conectado" }
     comprobar:

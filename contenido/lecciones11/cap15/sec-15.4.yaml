@@ -1,9 +1,10 @@
 # Lección 1.2 de la sección 14.4 «Proyecto 3: Indicador de Nivel con LM3914» (cap15; etiqueta sec-15.4).
-# Formato: contenido/lecciones11/GUIA.md. La gráfica es la escalera del convertidor flash: diez comparadores sobre una
-# cadena de diez resistencias iguales; el LED k se enciende con la entrada por encima de V_LO + k·ΔV/10 (ficha 7). La
-# escala de 0 a 5 V es un EJEMPLO (el libro no fija una). La corriente por LED sale del bloque 101: 1 kΩ entre la
-# referencia y masa da unos 12 mA, con un factor de unas diez veces sobre la corriente de la referencia, que es
-# inversamente proporcional a esa resistencia (I_LED = 12 mA · 1 kΩ / R). El exceso de 4 V es el del bloque 97.
+# Formato: contenido/lecciones11/GUIA.md. El integrado se dibuja con el esquema «lm3914» (diez comparadores sobre una
+# cadena de diez resistencias iguales; el LED k se enciende con la entrada por encima de V_LO + k·ΔV/10, ficha 7); la
+# gráfica de las preguntas es su escalera. La escala de 0 a 5 V es un EJEMPLO (el libro no fija una). La corriente por
+# LED es la del bloque 101: unas diez veces la de la referencia, I_LED = 10·V_ref/R_ref; con V_ref = 1,25 V (EJEMPLO,
+# la del integrado: el libro no la da), 1 kΩ da 12,5 mA, los «unos 12 mA» del libro. El exceso de 4 V del bloque 97 se
+# reparte en 6 V de alimentación de los LED y 2 V de caída (EJEMPLO).
 leccion: cap15/sec-15.4
 
 libro:
@@ -24,16 +25,20 @@ libro:
 
 modelo:
   valores:
-    v_in: { sim: "V_{entrada}", nombre: "tensión de entrada", unidad: V, valor: 0.5 }
+    v_in: { sim: "V_{entrada}", nombre: "tensión de entrada", unidad: V, valor: 0.55 }
     V_LO: { sim: "V_{LO}", nombre: "extremo inferior de la cadena", unidad: V, valor: 0 }
     V_HI: { sim: "V_{HI}", nombre: "extremo superior de la cadena", unidad: V, valor: 5 }
     m_b: { tipo: interruptor, nombre: "modo barra", valor: 1 }
     R_ref: { sim: "R_{ref}", nombre: "resistencia de la referencia a masa", unidad: Ω, valor: 1000 }
-    V_ex: { sim: "V_{exceso}", nombre: "alimentación menos la caída del LED", unidad: V, valor: 4 }
+    V_ref: { sim: "V_{ref}", nombre: "tensión de la referencia", unidad: V, valor: 1.25 }
+    V_led: { sim: "V_{LED}", nombre: "alimentación de los LED", unidad: V, valor: 6 }
+    V_fl: { sim: "V_{F}", nombre: "caída de un LED", unidad: V, valor: 2 }
   calculos:
     d_v: { expr: "(V_HI - V_LO)/10", sim: "ΔV/10", nombre: "escalón de la cadena", unidad: V }
     n_on: { expr: "min(10, max(0, floor(10*(v_in - V_LO)/(V_HI - V_LO))))", sim: "n", nombre: "nivel de la entrada", unidad: "" }
-    I_led: { expr: "0.012*1000/R_ref", sim: "I_{LED}", nombre: "corriente por LED", unidad: A }
+    V_ex: { expr: "V_led - V_fl", sim: "V_{exceso}", nombre: "alimentación menos la caída del LED", unidad: V }
+    I_ref: { expr: "V_ref/R_ref", sim: "I_{ref}", nombre: "corriente de la referencia", unidad: A }
+    I_led: { expr: "10*I_ref", sim: "I_{LED}", nombre: "corriente por LED", unidad: A }
     n_i: { expr: "m_b*n_on + (1 - m_b)*min(n_on, 1)", sim: "LED", nombre: "LED encendidos", unidad: "" }
     I_tot: { expr: "n_i*I_led", sim: "I_{LED total}", nombre: "corriente de los LED", unidad: A }
     P_c: { expr: "I_tot*V_ex", sim: "P", nombre: "disipación en el chip", unidad: W }
@@ -46,16 +51,13 @@ tarjetas:
     nota: "Escala de ejemplo, de 0 a 5 V."
     libro: [90, 91, 87]
     widget:
-      tipo: grafica
-      x: { id: vv, min: 0, max: 5.5, unidad: V, rotulo: "entrada" }
-      y: { min: 0, max: 11, unidad: "", rotulo: "LED" }
-      curvas:
-        - { expr: "min(10, max(0, floor(10*(vv - V_LO)/(V_HI - V_LO))))", color: azul, rotulo: "nivel" }
-      marcas:
-        - { x: "v_in", y: "n_on", rotulo: "Su entrada" }
+      tipo: circuito
+      esquema: lm3914
+      piezas: { entrada: v_in, vref: V_ref, rref: R_ref, vhi: V_HI, vlo: V_LO, vled: V_led, vf: V_fl, barra: m_b }
       lectura: { valor: n_i, rotulo: "LED encendidos" }
+      mide: { encendidos: n_i, iled: I_tot, iref: I_ref, p_chip: P_c }
       mandos:
-        - { valor: v_in, min: 0, max: 5.5, paso: 0.1, rotulo: "Entrada" }
+        - { valor: v_in, min: 0.05, max: 5.45, paso: 0.1, rotulo: "Entrada" }
     requiere: { mover: [v_in] }
     comprobar:
       - { V_LO: 0, V_HI: 5 }
@@ -122,14 +124,13 @@ tarjetas:
     fijar: { v_in: 5.5, R_ref: 1000 }
     inicio: { m_b: 1 }
     widget:
-      tipo: grafica
-      x: { id: vv, min: 0, max: 5.5, unidad: V, rotulo: "entrada" }
-      y: { min: 0, max: 11, unidad: "", rotulo: "LED" }
-      curvas:
-        - { expr: "min(10, max(0, floor(10*(vv - V_LO)/(V_HI - V_LO))))", color: azul, rotulo: "nivel" }
+      tipo: circuito
+      esquema: lm3914
+      piezas: { entrada: v_in, vref: V_ref, rref: R_ref, vhi: V_HI, vlo: V_LO, vled: V_led, vf: V_fl, barra: m_b }
       lectura: { valor: I_tot, rotulo: "Corriente de los LED" }
       datos:
         - { valor: n_i, rotulo: "LED encendidos: {{n_i}}" }
+      mide: { encendidos: n_i, iled: I_tot, iref: I_ref, p_chip: P_c }
       mandos:
         - { valor: m_b, tipo: interruptor, rotulo: "Modo barra" }
     requiere: { mover: [m_b] }
@@ -139,14 +140,13 @@ tarjetas:
     titulo: "¿Por qué se calienta en barra?"
     texto: "Diez LED a 10 mA con 4 V de exceso: 400 mW dentro del chip. ¿Por qué ahí y no en los LED?"
     libro: [97, 98]
-    fijar: { v_in: 5.5, m_b: 1, R_ref: 1200 }
+    fijar: { v_in: 5.5, m_b: 1, R_ref: 1250 }
     widget:
-      tipo: grafica
-      x: { id: vv, min: 0, max: 5.5, unidad: V, rotulo: "entrada" }
-      y: { min: 0, max: 11, unidad: "", rotulo: "LED" }
-      curvas:
-        - { expr: "min(10, max(0, floor(10*(vv - V_LO)/(V_HI - V_LO))))", color: azul, rotulo: "nivel" }
+      tipo: circuito
+      esquema: lm3914
+      piezas: { entrada: v_in, vref: V_ref, rref: R_ref, vhi: V_HI, vlo: V_LO, vled: V_led, vf: V_fl, barra: m_b }
       lectura: { valor: P_c, rotulo: "Disipación en el chip" }
+      mide: { encendidos: n_i, iled: I_tot, iref: I_ref, p_chip: P_c }
     opciones:
       - texto: "Sus salidas son fuentes de corriente: disipan lo que sobra entre la alimentación y el LED"
         bien: true
@@ -169,11 +169,11 @@ tarjetas:
     inicio: { R_ref: 1000 }
     fijar: { v_in: 5.5, m_b: 0 }
     widget:
-      tipo: grafica
-      x: { id: vv, min: 0, max: 5.5, unidad: V, rotulo: "entrada" }
-      y: { min: 0, max: 11, unidad: "", rotulo: "LED" }
-      curvas:
-        - { expr: "min(10, max(0, floor(10*(vv - V_LO)/(V_HI - V_LO))))", color: azul, rotulo: "nivel" }
+      tipo: circuito
+      esquema: lm3914
+      piezas: { entrada: v_in, vref: V_ref, rref: R_ref, vhi: V_HI, vlo: V_LO, vled: V_led, vf: V_fl, barra: m_b }
+      lectura: { valor: I_led, rotulo: "Corriente por LED" }
+      mide: { encendidos: n_i, iled: I_tot, iref: I_ref, p_chip: P_c }
       mandos:
         - { valor: R_ref, serie: E12, min: 470, max: 2200, rotulo: "R de la referencia (E12)" }
     ajuste:
@@ -192,12 +192,11 @@ tarjetas:
     libro: [101]
     fijar: { v_in: 5.5, m_b: 1 }
     widget:
-      tipo: grafica
-      x: { id: vv, min: 0, max: 5.5, unidad: V, rotulo: "entrada" }
-      y: { min: 0, max: 11, unidad: "", rotulo: "LED" }
-      curvas:
-        - { expr: "min(10, max(0, floor(10*(vv - V_LO)/(V_HI - V_LO))))", color: azul, rotulo: "nivel" }
+      tipo: circuito
+      esquema: lm3914
+      piezas: { entrada: v_in, vref: V_ref, rref: R_ref, vhi: V_HI, vlo: V_LO, vled: V_led, vf: V_fl, barra: m_b }
       lectura: { valor: I_led, rotulo: "Corriente por LED" }
+      mide: { encendidos: n_i, iled: I_tot, iref: I_ref, p_chip: P_c }
     opciones:
       - texto: "El brillo: la misma resistencia fija la corriente de los LED"
         bien: true
@@ -273,7 +272,7 @@ tarjetas:
         - { texto: "Mide de menos: ¿está en modo punto? Compruebe la patilla 9." }
       ficha: { n: 7, titulo: "Indicador de nivel con LM3914" }
     comprobar:
-      - { I_tot: 0.12 }
+      - { I_tot: 0.125 }
 
   - id: resumen
     tipo: resumen

@@ -1,7 +1,7 @@
 # Lección 1.2 de la sección 23.3 «Respuesta de Segundo Orden (RLC)» (cap24). Formato: contenido/lecciones11/GUIA.md.
-# El RLC es el del ejercicio 23.2 (cap24#329: R = 220 Ω, L = 10 mH, C = 1 µF, ζ = 1,1). La respuesta al escalón es
-# la normalizada v_C/V de un RLC serie (no hay esquema de transitorio RLC: petición al motor), con una sola expresión
-# para los tres casos (cos·cosh y sen/ω + senh/ω, y el término t del caso crítico).
+# El RLC es el del ejercicio 23.2 (cap24#329: R = 220 Ω, L = 10 mH, C = 1 µF, ζ = 1,1), con el esquema «rlc-escalon»
+# y un escalón de 1 V (EJEMPLO: el libro no da la tensión; así v_C se lee en tanto por uno). Una sola expresión para
+# los tres casos (cos·cosh y sen/ω + senh/ω, y el término t del caso crítico).
 leccion: cap24/sec-24.3
 
 libro:
@@ -27,8 +27,7 @@ libro:
 
 modelo:
   valores:
-    V_s: { sim: "V_{p}", nombre: "amplitud de la fuente", unidad: V, valor: 1 }
-    f_s: { sim: "f", nombre: "frecuencia de la fuente", unidad: Hz, valor: 1591.55 }
+    V_e: { sim: "V", nombre: "escalón de la fuente", unidad: V, valor: 1 }
     R_s: { sim: "R", nombre: "resistencia", unidad: Ω, valor: 220 }
     L_s: { sim: "L", nombre: "inductancia", unidad: H, valor: 0.01 }
     C_s: { sim: "C", nombre: "capacidad", unidad: F, valor: 1e-6 }
@@ -42,7 +41,6 @@ modelo:
     wa: { expr: "w0*sqrt(max(1 - z^2, 0))", sim: "ω_{d}", nombre: "frecuencia de la oscilación amortiguada", unidad: "rad/s" }
     wb: { expr: "w0*sqrt(max(z^2 - 1, 0))", sim: "ω_{b}", nombre: "separación de las dos exponenciales", unidad: "rad/s" }
     OS: { expr: "100*exp(-pi*z/sqrt(max(1 - z^2, 1e-12)))", sim: "SO", nombre: "sobreimpulso", unidad: "%", cifras: 3 }
-    I_s: { expr: "V_s/sqrt(R_s^2 + (2*pi*f_s*L_s - 1/(2*pi*f_s*C_s))^2)", sim: "I", nombre: "amplitud de la corriente", unidad: A }
     OSu: { expr: "OS/100", sim: "SO", nombre: "sobreimpulso en tanto por uno", unidad: "" }
     ex_o: { expr: "pi*z/sqrt(max(1 - z^2, 1e-12))", sim: "πζ/√(1−ζ²)", nombre: "exponente del sobreimpulso", unidad: "" }
     tau_c: { expr: "R_c*C_c", sim: "τ", nombre: "constante de tiempo del RC", unidad: s }
@@ -51,16 +49,19 @@ tarjetas:
   - id: explore-tres
     tipo: explorar
     titulo: "Tres maneras de llegar"
-    texto: "La tensión del condensador de un RLC serie tras un escalón, en tanto por uno del valor final. Cambie R: se pasa y oscila, o llega despacio."
+    texto: "La tensión del condensador de un RLC serie tras un escalón de 1 V. Cambie R: se pasa y oscila, o llega despacio."
     libro: [61, 62, 63]
     fijar: { L_s: 0.01, C_s: 1e-6 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.003, unidad: s, rotulo: "t" }
-      y: { min: 0, max: 2, unidad: "", rotulo: "v_{C}/V" }
-      curvas:
-        - { expr: "1 - exp(-z*w0*t)*(cos(wa*t)*(exp(wb*t) + exp(-wb*t))/2 + z*w0*(sin(wa*t)/max(wa, 1e-9) + (exp(wb*t) - exp(-wb*t))/(2*max(wb, 1e-9)) + t*max(0, 1 - (wa + wb)*1e9)))", color: naranja, rotulo: "v_{C}/V" }
-        - { expr: "1", color: tinta, rotulo: "valor final", discontinua: true }
+      tipo: circuito
+      esquema: rlc-escalon
+      piezas: { fuente: V_e, r: R_s, l: L_s, c: C_s }
+      grafica:
+        x: { id: t, min: 0, max: 0.003, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 2, unidad: V, rotulo: "v_{C}" }
+        curvas:
+          - { expr: "V_e*(1 - exp(-z*w0*t)*(cos(wa*t)*(exp(wb*t) + exp(-wb*t))/2 + z*w0*(sin(wa*t)/max(wa, 1e-9) + (exp(wb*t) - exp(-wb*t))/(2*max(wb, 1e-9)) + t*max(0, 1 - (wa + wb)*1e9))))", color: naranja, rotulo: "v_{C}", mide: vc }
+          - { expr: "V_e", color: tinta, rotulo: "valor final", discontinua: true }
       lectura: { valor: z, rotulo: "Amortiguamiento ζ" }
       datos:
         - { valor: OS, rotulo: "Sobreimpulso: {{OS}}" }
@@ -72,13 +73,18 @@ tarjetas:
     titulo: "El RLC del ejercicio"
     texto: "Un RLC serie con R = 220 Ω, L = 10 mH y C = 1 µF recibe un escalón. ¿Cómo responde?"
     libro: [60, 61, "cap24#329"]
+    nota: "Solo los primeros 100 µs: el resto, en la tarjeta siguiente."
     fijar: { R_s: 220, L_s: 0.01, C_s: 1e-6 }
     widget:
       tipo: circuito
-      esquema: rlc-serie
-      piezas: { fuente: V_s, f: f_s, r: R_s, l: L_s, c: C_s }
+      esquema: rlc-escalon
+      piezas: { fuente: V_e, r: R_s, l: L_s, c: C_s }
+      grafica:
+        x: { id: t, min: 0, max: 0.0001, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 1, unidad: V, rotulo: "v_{C}" }
+        curvas:
+          - { expr: "V_e*(1 - exp(-z*w0*t)*(cos(wa*t)*(exp(wb*t) + exp(-wb*t))/2 + z*w0*(sin(wa*t)/max(wa, 1e-9) + (exp(wb*t) - exp(-wb*t))/(2*max(wb, 1e-9)) + t*max(0, 1 - (wa + wb)*1e9))))", color: naranja, rotulo: "v_{C}", mide: vc }
       lectura: { valor: z, rotulo: "Amortiguamiento ζ" }
-      mide: { i_amp: I_s }
       ocultar: true
     opciones:
       - texto: "Sobreamortiguado: dos exponenciales, sin oscilar"
@@ -105,11 +111,14 @@ tarjetas:
     sustitucion: "Q = (1/{{R_s}}) · √({{L_s}} / {{C_s}}) = {{Q_s}}; ζ = {{z}}"
     fijar: { L_s: 0.01, C_s: 1e-6 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.003, unidad: s, rotulo: "t" }
-      y: { min: 0, max: 2, unidad: "", rotulo: "v_{C}/V" }
-      curvas:
-        - { expr: "1 - exp(-z*w0*t)*(cos(wa*t)*(exp(wb*t) + exp(-wb*t))/2 + z*w0*(sin(wa*t)/max(wa, 1e-9) + (exp(wb*t) - exp(-wb*t))/(2*max(wb, 1e-9)) + t*max(0, 1 - (wa + wb)*1e9)))", color: naranja, rotulo: "v_{C}/V" }
+      tipo: circuito
+      esquema: rlc-escalon
+      piezas: { fuente: V_e, r: R_s, l: L_s, c: C_s }
+      grafica:
+        x: { id: t, min: 0, max: 0.003, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 2, unidad: V, rotulo: "v_{C}" }
+        curvas:
+          - { expr: "V_e*(1 - exp(-z*w0*t)*(cos(wa*t)*(exp(wb*t) + exp(-wb*t))/2 + z*w0*(sin(wa*t)/max(wa, 1e-9) + (exp(wb*t) - exp(-wb*t))/(2*max(wb, 1e-9)) + t*max(0, 1 - (wa + wb)*1e9))))", color: naranja, rotulo: "v_{C}", mide: vc }
       lectura: { valor: Q_s, rotulo: "Factor de calidad Q" }
       mandos:
         - { valor: R_s, lista: [10, 40, 100, 200, 220, 400], rotulo: "R" }
@@ -122,12 +131,15 @@ tarjetas:
     fijar: { L_s: 0.01, C_s: 1e-6 }
     inicio: { R_s: 40 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.003, unidad: s, rotulo: "t" }
-      y: { min: 0, max: 2, unidad: "", rotulo: "v_{C}/V" }
-      curvas:
-        - { expr: "1 - exp(-z*w0*t)*(cos(wa*t)*(exp(wb*t) + exp(-wb*t))/2 + z*w0*(sin(wa*t)/max(wa, 1e-9) + (exp(wb*t) - exp(-wb*t))/(2*max(wb, 1e-9)) + t*max(0, 1 - (wa + wb)*1e9)))", color: naranja, rotulo: "v_{C}/V" }
-        - { expr: "1", color: tinta, rotulo: "valor final", discontinua: true }
+      tipo: circuito
+      esquema: rlc-escalon
+      piezas: { fuente: V_e, r: R_s, l: L_s, c: C_s }
+      grafica:
+        x: { id: t, min: 0, max: 0.003, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 2, unidad: V, rotulo: "v_{C}" }
+        curvas:
+          - { expr: "V_e*(1 - exp(-z*w0*t)*(cos(wa*t)*(exp(wb*t) + exp(-wb*t))/2 + z*w0*(sin(wa*t)/max(wa, 1e-9) + (exp(wb*t) - exp(-wb*t))/(2*max(wb, 1e-9)) + t*max(0, 1 - (wa + wb)*1e9))))", color: naranja, rotulo: "v_{C}", mide: vc }
+          - { expr: "V_e", color: tinta, rotulo: "valor final", discontinua: true }
       lectura: { valor: z, rotulo: "Amortiguamiento ζ" }
       mandos:
         - { valor: R_s, min: 10, max: 400, paso: 2, rotulo: "R" }
@@ -223,11 +235,14 @@ tarjetas:
     fijar: { L_s: 0.01, C_s: 1e-6 }
     inicio: { R_s: 220 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.003, unidad: s, rotulo: "t" }
-      y: { min: 0, max: 2, unidad: "", rotulo: "v_{C}/V" }
-      curvas:
-        - { expr: "1 - exp(-z*w0*t)*(cos(wa*t)*(exp(wb*t) + exp(-wb*t))/2 + z*w0*(sin(wa*t)/max(wa, 1e-9) + (exp(wb*t) - exp(-wb*t))/(2*max(wb, 1e-9)) + t*max(0, 1 - (wa + wb)*1e9)))", color: naranja, rotulo: "v_{C}/V" }
+      tipo: circuito
+      esquema: rlc-escalon
+      piezas: { fuente: V_e, r: R_s, l: L_s, c: C_s }
+      grafica:
+        x: { id: t, min: 0, max: 0.003, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 2, unidad: V, rotulo: "v_{C}" }
+        curvas:
+          - { expr: "V_e*(1 - exp(-z*w0*t)*(cos(wa*t)*(exp(wb*t) + exp(-wb*t))/2 + z*w0*(sin(wa*t)/max(wa, 1e-9) + (exp(wb*t) - exp(-wb*t))/(2*max(wb, 1e-9)) + t*max(0, 1 - (wa + wb)*1e9))))", color: naranja, rotulo: "v_{C}", mide: vc }
       lectura: { valor: Q_s, rotulo: "Factor de calidad Q" }
       datos:
         - { valor: z, rotulo: "ζ = {{z}}" }
@@ -243,12 +258,15 @@ tarjetas:
     libro: [48, 70]
     fijar: { R_s: 40, L_s: 0.01, C_s: 1e-6 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.003, unidad: s, rotulo: "t" }
-      y: { min: 0, max: 2, unidad: "", rotulo: "v_{C}/V" }
-      curvas:
-        - { expr: "1 - exp(-z*w0*t)*(cos(wa*t)*(exp(wb*t) + exp(-wb*t))/2 + z*w0*(sin(wa*t)/max(wa, 1e-9) + (exp(wb*t) - exp(-wb*t))/(2*max(wb, 1e-9)) + t*max(0, 1 - (wa + wb)*1e9)))", color: naranja, rotulo: "v_{C}/V" }
-        - { expr: "1", color: tinta, rotulo: "permanente", discontinua: true }
+      tipo: circuito
+      esquema: rlc-escalon
+      piezas: { fuente: V_e, r: R_s, l: L_s, c: C_s }
+      grafica:
+        x: { id: t, min: 0, max: 0.003, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 2, unidad: V, rotulo: "v_{C}" }
+        curvas:
+          - { expr: "V_e*(1 - exp(-z*w0*t)*(cos(wa*t)*(exp(wb*t) + exp(-wb*t))/2 + z*w0*(sin(wa*t)/max(wa, 1e-9) + (exp(wb*t) - exp(-wb*t))/(2*max(wb, 1e-9)) + t*max(0, 1 - (wa + wb)*1e9))))", color: naranja, rotulo: "v_{C}", mide: vc }
+          - { expr: "V_e", color: tinta, rotulo: "permanente", discontinua: true }
       lectura: { valor: OS, rotulo: "Sobreimpulso" }
     opciones:
       - texto: "Porque los picos de tensión y de corriente solo aparecen durante el cambio"

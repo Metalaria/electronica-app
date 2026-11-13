@@ -1,6 +1,7 @@
 # Lección 1.2 de la sección 23.6 «Resonancia y Factor de Calidad» (cap24). Formato: contenido/lecciones11/GUIA.md.
 # El RLC es el del recuadro de deducción (bloque 160: 50 Ω, 10 mH, 100 nF); el de la radio, el del bloque 158
 # (100 µH, 100 pF, 10 Ω, Q = 100); el del banco, el de la práctica 9 (cap22#235: 100 Ω, 10 mH, 100 nF), ficha 33.
+# El sobreimpulso del 78 % se ve con el esquema «rlc-escalon» y un escalón de 1 V (EJEMPLO: el libro no da tensión).
 leccion: cap24/sec-24.6
 
 libro:
@@ -24,6 +25,7 @@ modelo:
     R_r: { sim: "R", nombre: "resistencia", unidad: Ω, valor: 50 }
     L_r: { sim: "L", nombre: "inductancia", unidad: H, valor: 0.01 }
     C_r: { sim: "C", nombre: "capacidad", unidad: F, valor: 100e-9 }
+    V_e: { sim: "V", nombre: "escalón de la fuente", unidad: V, valor: 1 }
     f_m: { sim: "f", nombre: "frecuencia de la emisora", unidad: Hz, valor: 1591549 }
     R_m: { sim: "R", nombre: "resistencia del sintonizado", unidad: Ω, valor: 10 }
     L_m: { sim: "L", nombre: "inductancia del sintonizado", unidad: H, valor: 100e-6 }
@@ -41,6 +43,8 @@ modelo:
     I_1: { expr: "I_0*0.7071", sim: "I", nombre: "corriente en los cortes", unidad: A }
     z_r: { expr: "R_r/2*sqrt(C_r/L_r)", sim: "ζ", nombre: "amortiguamiento", unidad: "", cifras: 3 }
     OS: { expr: "100*exp(-pi*z_r/sqrt(max(1 - z_r^2, 1e-12)))", sim: "SO", nombre: "sobreimpulso ante un escalón", unidad: "%" }
+    a_r: { expr: "R_r/(2*L_r)", sim: "α", nombre: "amortiguamiento del escalón", unidad: "1/s" }
+    wd_r: { expr: "sqrt(max(1/(L_r*C_r) - a_r^2, 1))", sim: "ω_{d}", nombre: "pulsación amortiguada", unidad: "rad/s" }
     f_0m: { expr: "1/(2*pi*sqrt(L_m*C_m))", sim: "f₀", nombre: "resonancia del sintonizado", unidad: Hz }
     Q_m: { expr: "sqrt(L_m/C_m)/R_m", sim: "Q", nombre: "factor de calidad del sintonizado", unidad: "" }
     BW_m: { expr: "f_0m/Q_m", sim: "BW", nombre: "ancho de banda del sintonizado", unidad: Hz }
@@ -266,17 +270,17 @@ tarjetas:
     fijar: { R_r: 50, L_r: 0.01, C_r: 100e-9 }
     widget:
       tipo: circuito
-      esquema: rlc-serie
-      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
+      esquema: rlc-escalon
+      piezas: { fuente: V_e, r: R_r, l: L_r, c: C_r }
       lectura: { valor: z_r, rotulo: "Amortiguamiento ζ" }
       datos:
         - { valor: OS, rotulo: "Sobreimpulso: {{OS}}" }
-      mide: { i_amp: I_f }
       grafica:
-        x: { id: nu, min: 1000, max: 25000, unidad: Hz, rotulo: "f", escala: log }
-        y: { min: 0, max: 0.11, unidad: A, rotulo: "|i|" }
+        x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 2, unidad: V, rotulo: "v_{C}" }
         curvas:
-          - { expr: "V_p/sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: naranja, rotulo: "|i|", mide: i_amp }
+          - { expr: "V_e*(1 - exp(-a_r*t)*(cos(wd_r*t) + a_r/wd_r*sin(wd_r*t)))", color: verde, rotulo: "v_{C} tras un escalón de 1 V", mide: vc }
+          - { expr: "V_e", color: tinta, rotulo: "valor final", discontinua: true }
     opciones:
       - texto: "Porque Q alto es ζ bajo: ζ = 1/(2Q) = 0,079"
         bien: true

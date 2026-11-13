@@ -1,7 +1,8 @@
 # Lección 1.2 de la sección 43.6 «Convergencia y Trucos del Oficio» (cap42). Formato: contenido/lecciones11/GUIA.md.
 # El circuito no lineal es el diodo de silicio ideal de la práctica 3 (cap22#72: 1 kΩ, hasta 5 V; I_S = 2,66·10⁻¹³ A,
-# n = 1, como en la 43.3). El arranque del oscilador es una gráfica ilustrativa: una oscilación que crece desde una
-# perturbación inicial ε y se limita a 1 (ε, el crecimiento y la frecuencia son ejemplos, la sección no da números).
+# n = 1, como en la 43.3). El equilibrio que nada rompe se ve con el esquema «rlc-escalon»: el RLC de la práctica 9
+# (cap22#235: 100 Ω, 10 mH, 100 nF) sin fuente (conmutador a cortocircuito) y una condición inicial v₀ en el
+# condensador, como un .ic (los valores de v₀ son EJEMPLOS). Un tanque con pérdidas timbra y se apaga.
 # La sección no tiene ecuaciones: sin tarjeta «fórmula».
 leccion: cap42/sec-42.6
 
@@ -26,6 +27,7 @@ libro:
   183: "una condición inicial en un condensador, un pulso breve al principio, o una pequeña asimetría deliberada"
   186: "Si al bajar reltol el resultado se mueve apreciablemente"
   "cap22#72": "Con R = 1 kΩ y barriendo de 0 a 5 V"
+  "cap22#235": "L = 10 mH, C = 100 nF, R = 100 Ω"
 
 modelo:
   valores:
@@ -34,13 +36,17 @@ modelo:
     I_S: { sim: "I_{S}", nombre: "corriente de saturación", unidad: A, valor: 2.659e-13 }
     n_d: { sim: "n", nombre: "factor de idealidad", unidad: "", valor: 1 }
     V_T: { sim: "V_{T}", nombre: "tensión térmica", unidad: V, valor: 0.02585 }
-    eps: { sim: "ε", nombre: "perturbación inicial", unidad: "", valor: 0.001 }
-    f_o: { sim: "f", nombre: "frecuencia del oscilador (ejemplo)", unidad: Hz, valor: 1000 }
-    s_o: { sim: "σ", nombre: "crecimiento (ejemplo)", unidad: "1/s", valor: 1000 }
+    V_e: { sim: "V", nombre: "fuente desconectada", unidad: V, valor: 1 }
+    s_e: { tipo: interruptor, nombre: "conmutador a la fuente", valor: 0 }
+    R_t: { sim: "R", nombre: "resistencia", unidad: Ω, valor: 100 }
+    L_t: { sim: "L", nombre: "inductancia", unidad: H, valor: 0.01 }
+    C_t: { sim: "C", nombre: "capacidad", unidad: F, valor: 100e-9 }
+    v_0: { sim: "v₀", nombre: "condición inicial del condensador", unidad: V, valor: 1 }
   calculos:
     I_ds: { expr: "n_d*V_T/R_d*wright(ln(I_S*R_d/(n_d*V_T)) + (V_d + I_S*R_d)/(n_d*V_T)) - I_S", sim: "I_{D}", nombre: "corriente del diodo", unidad: A }
     V_ds: { expr: "V_d - I_ds*R_d", sim: "V_{D}", nombre: "tensión del diodo", unidad: V, cifras: 3 }
-    A_f: { expr: "min(1, eps*exp(s_o*0.01))", sim: "A", nombre: "amplitud a los 10 ms", unidad: "", cifras: 2 }
+    a_t: { expr: "R_t/(2*L_t)", sim: "α", nombre: "amortiguamiento", unidad: "1/s" }
+    wd_t: { expr: "sqrt(1/(L_t*C_t) - a_t^2)", sim: "ω_{d}", nombre: "pulsación amortiguada", unidad: "rad/s" }
 
 tarjetas:
   - id: explore-iterar
@@ -150,31 +156,38 @@ tarjetas:
   - id: no-arranca
     tipo: sorpresa
     titulo: "El oscilador que no arranca"
-    texto: "Un oscilador simulado (gráfica de ejemplo). Con ε = 0, perfectamente simétrico, no pasa nada; con una perturbación mínima, la oscilación crece."
-    libro: [182]
-    inicio: { eps: 0 }
+    texto: "Un RLC sin fuente y en reposo: el simulador no ve nada que mover. Dé al condensador un .ic."
+    nota: "100 Ω, 10 mH y 100 nF: con pérdidas, timbra y se apaga."
+    libro: [182, 183, "cap22#235"]
+    inicio: { v_0: 0 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.01, unidad: s, rotulo: "t" }
-      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "salida relativa" }
-      curvas:
-        - { expr: "min(1, eps*exp(s_o*t))*sin(2*pi*f_o*t)", color: naranja, rotulo: "salida" }
-      lectura: { valor: A_f, rotulo: "Amplitud final" }
+      tipo: circuito
+      esquema: rlc-escalon
+      piezas: { fuente: V_e, r: R_t, l: L_t, c: C_t, v0: v_0, interruptor: s_e }
+      grafica:
+        x: { id: t, min: 0, max: 0.001, unidad: s, rotulo: "t" }
+        y: { min: -1.2, max: 1.2, unidad: V, rotulo: "v_{C}" }
+        curvas:
+          - { expr: "v_0*exp(-a_t*t)*(cos(wd_t*t) + a_t/wd_t*sin(wd_t*t))", color: naranja, rotulo: "v_{C}", mide: vc }
+      lectura: { valor: v_0, rotulo: "Condición inicial, v₀" }
       mandos:
-        - { valor: eps, lista: [0, 0.0001, 0.001, 0.01], rotulo: "Perturbación inicial ε" }
+        - { valor: v_0, lista: [0, 0.1, 1], rotulo: "Condición inicial, v₀" }
 
   - id: por-que-arranca
     tipo: porque
     titulo: "¿Qué le falta a la simulación?"
     texto: "El mismo oscilador arranca siempre en el banco y nunca en el simulador. ¿Qué le da el banco que la simulación no tiene?"
     libro: [182, 183]
-    fijar: { eps: 0 }
+    fijar: { v_0: 0 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.01, unidad: s, rotulo: "t" }
-      y: { min: -1.2, max: 1.2, unidad: "", rotulo: "salida relativa" }
-      curvas:
-        - { expr: "min(1, eps*exp(s_o*t))*sin(2*pi*f_o*t)", color: naranja, rotulo: "salida" }
+      tipo: circuito
+      esquema: rlc-escalon
+      piezas: { fuente: V_e, r: R_t, l: L_t, c: C_t, v0: v_0, interruptor: s_e }
+      grafica:
+        x: { id: t, min: 0, max: 0.001, unidad: s, rotulo: "t" }
+        y: { min: -1.2, max: 1.2, unidad: V, rotulo: "v_{C}" }
+        curvas:
+          - { expr: "v_0*exp(-a_t*t)*(cos(wd_t*t) + a_t/wd_t*sin(wd_t*t))", color: naranja, rotulo: "v_{C}", mide: vc }
     opciones:
       - texto: "El ruido térmico, que rompe el equilibrio: se imita con un .ic, un pulso o una asimetría"
         bien: true

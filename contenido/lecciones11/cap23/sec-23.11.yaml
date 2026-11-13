@@ -1,6 +1,6 @@
 # Lección 1.2 de la sección 22.11 «Fuentes Dependientes en el Análisis» (cap23). Formato: contenido/lecciones11/GUIA.md.
-# Sin esquema de fuente controlada en el catálogo: la VCCS se dibuja con el esquema «norton» (fuente de corriente con
-# su resistencia de salida en paralelo), con su corriente calculada como g_m · v (petición en peticiones-motor12.md).
+# La VCCS se dibuja con el esquema «fuente-controlada» (rombo g_m·v con r_o en paralelo). Sus valores son los del
+# transistor a 1 mA de la sección 6.1 (cap06#44 y #47): g_m = 38,7 mS, r_o = 100 kΩ y 4,7 kΩ de colector.
 leccion: cap23/sec-23.11
 
 libro:
@@ -14,11 +14,13 @@ libro:
   272: "Un circuito con fuentes dependientes puede tener resistencia de entrada negativa."
   273: "al aumentar la tensión aplicada, la corriente disminuye"
   275: "una resistencia negativa cancela las pérdidas de un tanque y la oscilación se sostiene"
+  "cap06#44": "a 1 mA con VA = 100 V vale 100 kΩ"
+  "cap06#47": "cada milivoltio de entrada mueve 38,7 µA de colector"
 
 modelo:
   valores:
-    v_c: { sim: "v", nombre: "tensión de control", unidad: V, valor: 0.01 }
-    g_m: { sim: "g_{m}", nombre: "transconductancia", unidad: S, valor: 0.04 }
+    v_c: { sim: "v", nombre: "tensión de control", unidad: V, valor: 0.001 }
+    g_m: { sim: "g_{m}", nombre: "transconductancia", unidad: S, valor: 0.038685 }
     r_o: { sim: "r_{o}", nombre: "resistencia de salida", unidad: Ω, valor: 100000 }
     R_C: { sim: "R_{C}", nombre: "carga", unidad: Ω, valor: 4700 }
     n_on: { tipo: interruptor, nombre: "carga conectada", valor: 1 }
@@ -29,24 +31,28 @@ modelo:
     I_nl: { si: n_on, entonces: "V_no/R_C", sino: "0", sim: "I_{L}", nombre: "corriente por la carga", unidad: A }
     I_nr: { expr: "V_no/r_o", sim: "I_{ro}", nombre: "corriente por r_o", unidad: A }
     I_1v: { expr: "1/R_in", sim: "I", nombre: "corriente con 1 V aplicado", unidad: A }
+    V_sr: { expr: "I_n*R_C", sim: "v_{o}", nombre: "salida sin contar r_o", unidad: V }
+    V_sc: { expr: "I_n*r_o", sim: "v_{o}", nombre: "salida sin la carga", unidad: V }
+    R_par: { expr: "par(r_o, R_C)", sim: "r_{o} ‖ R_{C}", nombre: "resistencia vista por la fuente", unidad: Ω }
 
 tarjetas:
   - id: explore-controlada
     tipo: explorar
     titulo: "Una fuente que obedece"
-    texto: "Esta fuente de corriente vale g_{m} · v: la manda una tensión del propio circuito. Mueva v y mire la corriente y la salida."
-    libro: [256, 257, 261]
+    texto: "Esta fuente vale g_{m} · v: la manda una tensión del propio circuito. Mueva v y mire la salida."
+    nota: "El transistor a 1 mA: g_{m} = 38,7 mS, r_{o} = 100 kΩ y 4,7 kΩ de colector."
+    libro: [256, 257, 261, "cap06#44", "cap06#47"]
     widget:
       tipo: circuito
-      esquema: norton
-      piezas: { fuente: I_n, rn: r_o, carga: R_C, interruptor: n_on }
+      esquema: fuente-controlada
+      piezas: { control: v_c, gm: g_m, ro: r_o, carga: R_C, interruptor: n_on }
       lectura: { valor: V_no, rotulo: "Tensión de salida" }
       datos:
         - { valor: I_n, rotulo: "g_{m} · v = {{I_n}}" }
       corriente: I_nl
-      mide: { salida: V_no, carga: I_nl, paralelo: I_nr }
+      mide: { salida: V_no, carga: I_nl, controlada: I_n, ro: I_nr }
       mandos:
-        - { valor: v_c, min: 0, max: 0.02, paso: 0.002, rotulo: "Tensión de control, v" }
+        - { valor: v_c, min: 0, max: 0.005, paso: 0.0005, rotulo: "Tensión de control, v" }
 
   - id: cuatro-tipos
     tipo: pregunta
@@ -73,8 +79,8 @@ tarjetas:
     libro: [263, 265]
     widget:
       tipo: circuito
-      esquema: norton
-      piezas: { fuente: I_n, rn: r_o, carga: R_C, interruptor: n_on }
+      esquema: fuente-controlada
+      piezas: { control: v_c, gm: g_m, ro: r_o, carga: R_C, interruptor: n_on }
       lectura: { valor: V_no, rotulo: "Tensión de salida" }
       corriente: I_nl
       mide: { salida: V_no, carga: I_nl }
@@ -108,6 +114,38 @@ tarjetas:
       - "Primero se trata la fuente como si fuera independiente."
     solucion: "Plantear con su nombre, añadir la restricción y resolver."
 
+  - id: simule-salida
+    tipo: simular
+    titulo: "Prediga y simule: la salida"
+    texto: "Con v = 1 mV, la fuente da g_{m} · v = 38,7 µA sobre r_{o} = 100 kΩ en paralelo con 4,7 kΩ. ¿Cuánto vale v_{o}?"
+    libro: [269, "cap06#44", "cap06#47"]
+    fijar: { v_c: 0.001, g_m: 0.038685, r_o: 100000, R_C: 4700, n_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: fuente-controlada
+      piezas: { control: v_c, gm: g_m, ro: r_o, carga: R_C, interruptor: n_on }
+      lectura: { valor: V_no, rotulo: "Tensión de salida" }
+      corriente: I_nl
+      mide: { salida: V_no, controlada: I_n }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: V_no
+      unidad: V
+      tol: 0.02
+      rotulo: "Tensión de salida, v_{o}"
+      medida: salida
+      errores:
+        - { expr: "V_sr", texto: "Esos 182 mV olvidan r_{o}: la corriente también se reparte por los 100 kΩ." }
+        - { expr: "V_sc", texto: "Así sería sin carga: toda la corriente por r_{o}. La carga de 4,7 kΩ está en paralelo." }
+    exito: "La restricción I = g_{m} · v y un solo nodo: 38,7 µA × (100 k ‖ 4,7 k) = 174 mV."
+    escalera:
+      - "La corriente controlada se reparte entre r_{o} y la carga, que están en paralelo."
+      - "Calcule 100 kΩ ‖ 4,7 kΩ y multiplique por 38,7 µA."
+    solucion: "100 k ‖ 4,7 k = 4,49 kΩ; 38,7 µA × 4,49 kΩ = 174 mV."
+    comprobar:
+      - { I_n: 38.7e-6, V_no: 0.1737, V_sr: 0.1818, V_sc: 3.8685, R_par: 4489 }
+
   - id: gm
     tipo: pregunta
     titulo: "El coeficiente g_{m}"
@@ -115,13 +153,13 @@ tarjetas:
     libro: [257, 261]
     widget:
       tipo: circuito
-      esquema: norton
-      piezas: { fuente: I_n, rn: r_o, carga: R_C, interruptor: n_on }
+      esquema: fuente-controlada
+      piezas: { control: v_c, gm: g_m, ro: r_o, carga: R_C, interruptor: n_on }
       lectura: { valor: I_n, rotulo: "g_{m} · v" }
       corriente: I_nl
-      mide: { salida: V_no, carga: I_nl }
+      mide: { salida: V_no, carga: I_nl, controlada: I_n }
       mandos:
-        - { valor: v_c, min: 0, max: 0.02, paso: 0.002, rotulo: "Tensión de control, v" }
+        - { valor: v_c, min: 0, max: 0.005, paso: 0.0005, rotulo: "Tensión de control, v" }
     opciones:
       - texto: "Una VCCS: corriente controlada por tensión"
         bien: true
