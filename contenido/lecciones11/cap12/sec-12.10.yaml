@@ -32,9 +32,13 @@ modelo:
     g_o: { sim: "offset", nombre: "offset garantizado", unidad: "%", valor: 0.5 }
     g_d: { sim: "deriva", nombre: "deriva garantizada", unidad: "%", valor: 0.2 }
     g_t: { sim: "divisor", nombre: "tolerancia garantizada del divisor", unidad: "%", valor: 0.5 }
+    R_c: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 2.4 }
+    k_m: { sim: "k", nombre: "parámetro de transconductancia", unidad: "A/V²", valor: 20 }
+    Vt_m: { sim: "V_{th}", nombre: "tensión umbral", unidad: V, valor: 2 }
   calculos:
     R_ds: { expr: "0.0142789 + 0.0427173/(V_g - 2.533373)", sim: "R_{DS(on)}", nombre: "resistencia en conducción a 25 °C", unidad: Ω }
     V_ds: { expr: "I_d*R_ds", sim: "V_{DS}", nombre: "caída en el canal", unidad: V }
+    V_dd: { expr: "I_d*(R_c + R_ds)", sim: "V_{DD}", nombre: "alimentación que da esa corriente", unidad: V }
     P_d: { expr: "I_d^2*R_ds", sim: "P", nombre: "pérdidas en conducción", unidad: W }
     V_d20: { expr: "I_d*0.02", sim: "V_{DS}", nombre: "caída con los 20 mΩ de la hoja", unidad: V }
     k_p: { expr: "0.07/0.02", sim: "×", nombre: "pérdidas a 3,3 V frente a 10 V", unidad: "" }
@@ -53,17 +57,14 @@ tarjetas:
     libro: [275, 277, 281]
     fijar: { I_d: 5 }
     widget:
-      tipo: grafica
-      x: { id: i, min: 0, max: 6, unidad: A, rotulo: "I_{D}" }
-      y: { min: 0, max: 2.6, unidad: W, rotulo: "P" }
-      curvas:
-        - { expr: "i^2*R_ds", color: naranja, rotulo: "con su V_{GS}" }
-        - { expr: "i^2*0.02", color: azul, rotulo: "a 10 V", discontinua: true }
-      marcas:
-        - { x: "I_d", y: "P_d", rotulo: "A 5 A: {{P_d}}" }
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: V_dd, rd: R_c, entrada: V_g, k: k_m, vth: Vt_m, rdson: R_ds }
       lectura: { valor: P_d, rotulo: "Pérdidas a 5 A" }
       datos:
         - { valor: R_ds, rotulo: "R_{DS(on)} = {{R_ds}}" }
+      corriente: I_d
+      mide: { id: I_d, vds: V_ds }
       mandos:
         - { valor: V_g, lista: [3.3, 4.5, 10], rotulo: "Tensión de puerta" }
     requiere: { mover: [V_g] }
@@ -105,16 +106,16 @@ tarjetas:
     tipo: simular
     titulo: "Mida la caída"
     texto: "En el banco, con 5 A y la puerta a 3,3 V, medirá V_{DS} para hallar la R_{DS(on)} real. ¿Qué caída espera?"
-    nota: "El canal en conducción, como una resistencia."
+    nota: "El canal en conducción, con la R_{DS(on)} de la tabla."
     libro: [281, 286]
     fijar: { I_d: 5, V_g: 3.3 }
     widget:
       tipo: circuito
-      esquema: resistencia
-      piezas: { fuente: V_ds, r: R_ds }
+      esquema: mosfet
+      piezas: { vdd: V_dd, rd: R_c, entrada: V_g, k: k_m, vth: Vt_m, rdson: R_ds }
       lectura: { valor: V_ds, rotulo: "Caída V_{DS}" }
       corriente: I_d
-      mide: { corriente: I_d, tension: V_ds }
+      mide: { id: I_d, vds: V_ds }
       ocultar: true
       mandos: []
     simular:
@@ -122,7 +123,7 @@ tarjetas:
       unidad: V
       tol: 0.05
       rotulo: "Caída en el canal, V_{DS}"
-      medida: tension
+      medida: vds
       errores:
         - { expr: "V_d20", texto: "Ha usado los 20 mΩ de la portada, que son a 10 V de puerta: a 3,3 V son unos 70 mΩ." }
     exito: "Unos 0,35 V: V_{DS} entre I_{D} da la R_{DS(on)} verdadera, unos 70 mΩ."

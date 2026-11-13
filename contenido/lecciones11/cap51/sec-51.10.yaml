@@ -28,10 +28,32 @@ libro:
   366: "potenciómetro sucio"
   370: "cualquier diferencia entre canales idénticos es una avería"
   371: "Localización del ruido por sustracción"
+  342: "Un componente derivado, típicamente una resistencia de polarización"
+  "cap51#168": "esas caídas bajan 2 mV/°C"
+  "cap51#172": "su VBE baja con la temperatura al mismo ritmo"
+  "cap51#177": "Con resistencias de 0,22 Ω y una corriente de reposo objetivo de 50 mA, la caída es de 11 mV"
 
 modelo:
-  valores: {}
-  calculos: {}
+  valores:
+    Vcc: { sim: "V_{CC}", nombre: "alimentación simétrica", unidad: V, valor: 35 }
+    Ib: { sim: "I_{B}", nombre: "corriente de la fuente de bias", unidad: A, valor: 0.005 }
+    R1: { sim: "R₁", nombre: "resistencia de ajuste del multiplicador", unidad: Ω, valor: 1037 }
+    R2: { sim: "R₂", nombre: "resistencia fija del multiplicador", unidad: Ω, valor: 1000 }
+    Re: { sim: "R_{E}", nombre: "resistencia de emisor", unidad: Ω, valor: 0.22 }
+    RL: { sim: "R_{L}", nombre: "carga resistiva", unidad: Ω, valor: 8 }
+    b: { sim: "β", nombre: "ganancia de corriente", unidad: "", valor: 100 }
+    dT: { sim: "ΔT", nombre: "calentamiento del disipador", unidad: "°C", valor: 30 }
+    Vbe: { sim: "V_{BE}", nombre: "caída base-emisor de los transistores de salida", unidad: V, valor: 0.6 }
+    Vbem: { sim: "V_{BE3}", nombre: "caída base-emisor del multiplicador", unidad: V, valor: 0.6 }
+  calculos:
+    Vbb: { expr: "Vbem*(1 + R1/R2)", sim: "V_{BB}", nombre: "tensión entre las bases", unidad: V }
+    Ie: { expr: "max(0, (Vbb - 2*Vbe)/(2*Re))", sim: "I_{E}", nombre: "corriente de reposo de emisor", unidad: A }
+    Iq: { expr: "b/(b + 1)*Ie", sim: "I_{Q}", nombre: "corriente de reposo", unidad: A }
+    Ir: { expr: "max(Iq, 0.0001)", sim: "I_{ref}", nombre: "corriente de referencia de V_BE", unidad: A }
+    Vin: { expr: "-Vbb/2", sim: "V_{driver}", nombre: "nivel del driver", unidad: V }
+    Vre: { expr: "Ie*Re", sim: "V_{RE}", nombre: "caída en la resistencia de emisor", unidad: V }
+    Vr1: { expr: "Vbb - Vbem", sim: "V_{R1}", nombre: "tensión en R₁", unidad: V }
+    Vcal: { expr: "0.6 - 0.002*dT", sim: "V_{BE}", nombre: "caída en caliente", unidad: V }
 
 tarjetas:
   - id: explore-sustraccion
@@ -147,6 +169,40 @@ tarjetas:
     escalera:
       - "Sin señal, ¿qué corriente calienta la etapa de salida?"
     solucion: "Bias descompensado entre canales, lo más frecuente."
+
+  - id: averia-canal-caliente
+    tipo: averia
+    titulo: "El canal que se calienta en reposo"
+    texto: "Tras media hora en reposo, con el disipador 30 °C más caliente, este canal está más caliente que el otro. Mida y diga qué falla."
+    libro: [340, 342, 345, "cap51#168", "cap51#172", "cap51#177"]
+    fijar: { dT: 30, Vbe: 0.54, Vbem: 0.54 }
+    widget:
+      tipo: circuito
+      esquema: etapa-clase-ab
+      piezas: { vcc: Vcc, entrada: Vin, ib: Ib, r1: R1, r2: R2, re: Re, carga: RL, beta: b, vbe: Vbe, vbem: Vbem, iref: Ir }
+      mide: { iq: Iq, vbb: Vbb }
+      mandos: []
+    averia:
+      pasos: 2
+      sospechosos:
+        - { id: q3, rotulo: "Q₃, el multiplicador" }
+        - { id: r1, rotulo: "R₁" }
+        - { id: r2, rotulo: "R₂" }
+      sondas:
+        - { id: caida, rotulo: "Caída en R_{E}", valor: Vre }
+        - { id: vbe3, rotulo: "V_{BE} de Q₃, en R₂", valor: Vbem }
+        - { id: r1, rotulo: "Tensión en R₁", valor: Vr1 }
+        - { id: bases, rotulo: "Tensión entre las bases", valor: Vbb }
+      fallos:
+        - { id: q3-suelto, pieza: q3, tipo: valor, con: { Vbem: 0.6 }, texto: "Q₃ suelto en la placa: su V_{BE} sigue en frío, el bias no baja con el disipador y la corriente de reposo se dispara." }
+        - { id: r1-alta, pieza: r1, tipo: alto, con: { R1: 1141 }, texto: "R₁ derivada hacia arriba: Q₃ sigue la temperatura, pero multiplica más y sobra bias." }
+        - { id: r2-baja, pieza: r2, tipo: bajo, con: { R2: 820 }, texto: "R₂ derivada hacia abajo: Q₃ sigue la temperatura, pero R₁/R₂ crece y sobra bias." }
+    escalera:
+      - "En caliente, cada V_{BE} baja 2 mV/°C: la de Q₃ también, si toca el disipador."
+      - "Mida la V_{BE} de Q₃: dice si sigue la temperatura. Luego, la tensión en R₁."
+    solucion: "Sano y caliente: 0,54 V en Q₃ y unos 10 mV en R_{E}. Si Q₃ marca lo de frío, está suelto; si no, mire qué resistencia multiplica de más."
+    comprobar:
+      - { Vcal: 0.54, Vre: 0.0099, tol: 0.01 }
 
   - id: predecir-escalones
     tipo: predecir

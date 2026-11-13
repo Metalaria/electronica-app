@@ -1,7 +1,9 @@
 # Lección 1.2 de la sección 52.5 «La Distorsión de Cruce y el Bias» (cap51; etiqueta sec-51.5). Proyecto detallado III.
 # Formato: contenido/lecciones11/GUIA.md.
-# - El cruce en una gráfica del modelo: cada transistor empieza a conducir a 0,6 V (bloque 159) menos la mitad de la
-#   tensión de bias entre bases; con 1,2 V (dos caídas, bloque 167) no queda hueco. La senoide de 1 V es de ejemplo.
+# - El cruce: cada transistor empieza a conducir a 0,6 V (bloque 159) menos la mitad de la tensión de bias entre bases;
+#   con 1,2 V (dos caídas, bloque 167) no queda hueco. 1.2 (esquemas12c): «explore-cruce», «ajuste-bias» y
+#   «sorpresa-termica» sobre la «etapa-clase-ab» viva (±35 V, 0,22 Ω, 8 Ω; bias de 50 mA, β = 100 y senoide de 2 V de
+#   ejemplo; iref = I_Q para que la corriente de reposo del simulador sea la del libro). Las otras gráficas, senoide de 1 V.
 # - El multiplicador de V_BE de la figura 52.11 (fig-51.11): V_bias = V_BE·(1 + R₁/R₂), ≈ 1,2 V con R₁ ≈ R₂ (la
 #   fórmula y el valor son de la figura); R₂ = 1 kΩ de ejemplo.
 # - La deriva con la temperatura: 2 mV/°C por unión (bloque 168); el bias fijo frente al multiplicador en el disipador.
@@ -35,17 +37,31 @@ modelo:
     V_be: { sim: "V_{BE}", nombre: "caída de cada unión", unidad: V, valor: 0.6 }
     R_1: { sim: "R₁", nombre: "resistencia de ajuste del multiplicador", unidad: Ω, valor: 0 }
     R_2: { sim: "R₂", nombre: "resistencia fija del multiplicador", unidad: Ω, valor: 1000 }
-    d_T: { sim: "ΔT", nombre: "calentamiento del disipador", unidad: "°C", valor: 0 }
-    k_T: { sim: "dV_{BE}/dT", nombre: "deriva de cada unión", unidad: "V/°C", valor: 0.002 }
+    Vbe_t: { sim: "V_{BE}", nombre: "caída de los transistores de salida al calentarse", unidad: V, valor: 0.6 }
     en_d: { tipo: interruptor, nombre: "multiplicador atornillado al disipador", valor: 0 }
     R_e: { sim: "R_{E}", nombre: "resistencia de emisor", unidad: Ω, valor: 0.22 }
     I_q: { sim: "I_{Q}", nombre: "corriente de reposo objetivo", unidad: A, valor: 0.05 }
+    Vcc_s: { sim: "V_{CC}", nombre: "alimentación simétrica", unidad: V, valor: 35 }
+    Ib_s: { sim: "I_{B}", nombre: "corriente de la fuente de bias", unidad: A, valor: 0.05 }
+    RL_s: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 8 }
+    b_s: { sim: "β", nombre: "ganancia de corriente", unidad: "", valor: 100 }
+    bm_s: { sim: "β_{3}", nombre: "ganancia de corriente del multiplicador (sin corriente de base)", unidad: "", valor: 1e9 }
+    A_v: { sim: "A", nombre: "amplitud de la senoide en la etapa", unidad: V, valor: 2 }
   calculos:
     V_b: { expr: "V_be*(1 + R_1/R_2)", sim: "V_{bias}", nombre: "tensión entre las bases", unidad: V }
     V_on: { expr: "max(0, V_be - V_b/2)", sim: "V_{hueco}", nombre: "semiancho del hueco de cruce", unidad: V }
-    V_nec: { expr: "2*(V_be - k_T*d_T)", sim: "V_{necesaria}", nombre: "bias que piden los transistores calientes", unidad: V }
-    V_ap: { expr: "2*(V_be - k_T*d_T*en_d)", sim: "V_{bias}", nombre: "bias que da el circuito", unidad: V }
-    V_ex: { expr: "V_ap - V_nec", sim: "ΔV", nombre: "bias de sobra", unidad: V }
+    Ie_s: { expr: "max(0, (V_b - 2*V_be)/(2*R_e))", sim: "I_{E}", nombre: "corriente de reposo de emisor", unidad: A }
+    Iq_s: { expr: "b_s/(b_s + 1)*Ie_s", sim: "I_{Q}", nombre: "corriente de reposo", unidad: A }
+    Ir_s: { expr: "max(Iq_s, 0.01)", sim: "I_{ref}", nombre: "corriente de referencia de V_BE", unidad: A }
+    Vin_s: { expr: "-V_b/2", sim: "V_{driver}", nombre: "nivel del driver", unidad: V }
+    k_s: { expr: "R_e/RL_s", sim: "k", nombre: "R_E/R_L", unidad: "" }
+    sab_s: { expr: "ceil(max(0, V_b - 2*V_be)/1e9)", sim: "AB", nombre: "las dos ramas conducen en reposo", unidad: "" }
+    Vbm_t: { expr: "en_d*Vbe_t + (1 - en_d)*V_be", sim: "V_{BE3}", nombre: "caída del multiplicador", unidad: V }
+    Vbb_t: { expr: "Vbm_t*(1 + R_1/R_2)", sim: "V_{BB}", nombre: "tensión entre las bases", unidad: V }
+    Ie_t: { expr: "max(0, (Vbb_t - 2*Vbe_t)/(2*R_e))", sim: "I_{E}", nombre: "corriente de reposo de emisor", unidad: A }
+    Iq_t: { expr: "b_s/(b_s + 1)*Ie_t", sim: "I_{Q}", nombre: "corriente de reposo", unidad: A }
+    Ir_t: { expr: "max(Iq_t, 0.01)", sim: "I_{ref}", nombre: "corriente de referencia de V_BE", unidad: A }
+    Vin_t: { expr: "-Vbb_t/2", sim: "V_{driver}", nombre: "nivel del driver", unidad: V }
     V_re: { expr: "R_e*I_q", sim: "V_{RE}", nombre: "caída en la resistencia de emisor", unidad: V }
 
 tarjetas:
@@ -55,15 +71,19 @@ tarjetas:
     texto: "Sin bias, ningún transistor conduce hasta 0,6 V. Suba R₁ del multiplicador y mire el hueco de la salida."
     libro: [159, 167, 171, 189]
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
-      y: { min: -1.2, max: 1.2, unidad: V, rotulo: "v" }
-      curvas:
-        - { expr: "A_s*sin(2*pi*f_s*t)", color: tinta, rotulo: "entrada", discontinua: true }
-        - { expr: "max(0, A_s*sin(2*pi*f_s*t) - V_on) + min(0, A_s*sin(2*pi*f_s*t) + V_on)", color: naranja, rotulo: "salida" }
+      tipo: circuito
+      esquema: etapa-clase-ab
+      piezas: { vcc: Vcc_s, entrada: Vin_s, amplitud: A_v, f: f_s, ib: Ib_s, r1: R_1, r2: R_2, re: R_e, carga: RL_s, beta: b_s, vbe: V_be, iref: Ir_s, betam: bm_s }
       lectura: { valor: V_b, rotulo: "Tensión entre las bases" }
       datos:
         - { valor: V_on, rotulo: "Hueco: ±{{V_on}}" }
+      mide: { vbb: V_b }
+      grafica:
+        x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+        y: { min: -2.4, max: 2.4, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "A_v*sin(2*pi*f_s*t)", color: tinta, rotulo: "señal", discontinua: true }
+          - { expr: "sab_s*max((A_v*sin(2*pi*f_s*t) - V_b/2 + V_be)/(1 + k_s), min((A_v*sin(2*pi*f_s*t) + V_b/2 - V_be)/(1 + k_s), (2*A_v*sin(2*pi*f_s*t))/(2 + k_s))) + (1 - sab_s)*(max((A_v*sin(2*pi*f_s*t) + V_b/2 - V_be)/(1 + k_s), 0) + min((A_v*sin(2*pi*f_s*t) - V_b/2 + V_be)/(1 + k_s), 0))", color: naranja, rotulo: "salida", mide: salida }
       mandos:
         - { valor: R_1, min: 0, max: 1500, paso: 50, rotulo: "R₁ del multiplicador" }
     requiere: { mover: [R_1] }
@@ -99,16 +119,19 @@ tarjetas:
     titulo: "Ajuste el bias mirando"
     texto: "Mientras mira la salida, suba R₁ hasta que el escalón desaparezca, sin pasarse."
     libro: [167, 181, 185]
-    fijar: { A_s: 1 }
     inicio: { R_1: 0 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
-      y: { min: -1.2, max: 1.2, unidad: V, rotulo: "v" }
-      curvas:
-        - { expr: "A_s*sin(2*pi*f_s*t)", color: tinta, rotulo: "entrada", discontinua: true }
-        - { expr: "max(0, A_s*sin(2*pi*f_s*t) - V_on) + min(0, A_s*sin(2*pi*f_s*t) + V_on)", color: naranja, rotulo: "salida" }
+      tipo: circuito
+      esquema: etapa-clase-ab
+      piezas: { vcc: Vcc_s, entrada: Vin_s, amplitud: A_v, f: f_s, ib: Ib_s, r1: R_1, r2: R_2, re: R_e, carga: RL_s, beta: b_s, vbe: V_be, iref: Ir_s, betam: bm_s }
       lectura: { valor: V_b, rotulo: "Tensión entre las bases" }
+      mide: { vbb: V_b }
+      grafica:
+        x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+        y: { min: -2.4, max: 2.4, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "A_v*sin(2*pi*f_s*t)", color: tinta, rotulo: "señal", discontinua: true }
+          - { expr: "sab_s*max((A_v*sin(2*pi*f_s*t) - V_b/2 + V_be)/(1 + k_s), min((A_v*sin(2*pi*f_s*t) + V_b/2 - V_be)/(1 + k_s), (2*A_v*sin(2*pi*f_s*t))/(2 + k_s))) + (1 - sab_s)*(max((A_v*sin(2*pi*f_s*t) + V_b/2 - V_be)/(1 + k_s), 0) + min((A_v*sin(2*pi*f_s*t) - V_b/2 + V_be)/(1 + k_s), 0))", color: naranja, rotulo: "salida", mide: salida }
       mandos:
         - { valor: R_1, min: 0, max: 1500, paso: 50, rotulo: "R₁ del multiplicador" }
     ajuste:
@@ -147,23 +170,25 @@ tarjetas:
   - id: sorpresa-termica
     tipo: sorpresa
     titulo: "Caliente el disipador"
-    texto: "Las caídas bajan 2 mV/°C. Caliente el disipador y compare el bias que dan los diodos fijos con el del multiplicador atornillado."
-    libro: [168, 169, 172]
-    inicio: { d_T: 0 }
+    texto: "Las caídas bajan 2 mV/°C. Caliente los transistores de salida y mire la corriente de reposo; luego, atornille el multiplicador al disipador."
+    libro: [168, 169, 172, 174]
+    fijar: { R_1: 1037 }
+    inicio: { Vbe_t: 0.6, en_d: 0 }
     widget:
-      tipo: grafica
-      x: { id: c, min: 0, max: 60, unidad: "°C", rotulo: "ΔT" }
-      y: { min: 0.8, max: 1.3, unidad: V, rotulo: "bias" }
-      curvas:
-        - { expr: "2*(V_be - k_T*c)", color: tinta, rotulo: "lo que piden", discontinua: true }
-        - { expr: "2*(V_be - k_T*c*en_d)", color: naranja, rotulo: "lo que da el circuito" }
-      marcas:
-        - { x: "d_T", y: "V_ap", rotulo: "{{V_ap}}" }
-      lectura: { valor: V_ex, rotulo: "Bias de sobra" }
+      tipo: circuito
+      esquema: etapa-clase-ab
+      piezas: { vcc: Vcc_s, entrada: Vin_t, ib: Ib_s, r1: R_1, r2: R_2, re: R_e, carga: RL_s, beta: b_s, vbe: Vbe_t, vbem: Vbm_t, iref: Ir_t, betam: bm_s }
+      lectura: { valor: Iq_t, rotulo: "Corriente de reposo" }
+      datos:
+        - { valor: Vbb_t, rotulo: "V_{BB} = {{Vbb_t}}" }
+      corriente: Iq_t
+      mide: { iq: Iq_t, vbb: Vbb_t }
       mandos:
-        - { valor: d_T, min: 0, max: 60, paso: 5, rotulo: "Calentamiento, ΔT" }
+        - { valor: Vbe_t, lista: [0.6, 0.57, 0.54], nombres: [en frío, templados, calientes], rotulo: "Transistores de salida" }
         - { valor: en_d, tipo: interruptor, rotulo: "Multiplicador en el disipador" }
-    requiere: { mover: [d_T, en_d] }
+    requiere: { mover: [Vbe_t, en_d] }
+    comprobar:
+      - { con: { Vbe_t: 0.54, en_d: 1 }, Iq_t: 0.0446, tol: 0.01 }
 
   - id: porque-lazo
     tipo: porque

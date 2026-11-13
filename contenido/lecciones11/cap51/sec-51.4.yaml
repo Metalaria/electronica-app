@@ -13,6 +13,7 @@ libro:
   126: "un NPN y un PNP, ambos como seguidores de emisor"
   128: "La ganancia la aporta el driver anterior"
   129: "Impedancia de salida baja"
+  130: "con la corriente de reposo circulando por ambos alrededor del cero"
   133: "con dos caídas base-emisor —1,4 V—"
   134: "Solo una caída y mejor linealidad"
   135: "permite usar dos transistores de potencia del mismo tipo"
@@ -32,8 +33,27 @@ libro:
   "cap51#377": "¿Por qué la etapa de potencia necesita alimentación doble y simétrica"
 
 modelo:
-  valores: {}
-  calculos: {}
+  valores:
+    Vcc: { sim: "V_{CC}", nombre: "alimentación simétrica", unidad: V, valor: 35 }
+    Ib: { sim: "I_{B}", nombre: "corriente de la fuente de bias", unidad: A, valor: 0.05 }
+    R1: { sim: "R₁", nombre: "resistencia de ajuste del multiplicador", unidad: Ω, valor: 1037 }
+    R2: { sim: "R₂", nombre: "resistencia fija del multiplicador", unidad: Ω, valor: 1000 }
+    pu: { tipo: interruptor, nombre: "multiplicador puenteado", valor: 0 }
+    Re: { sim: "R_{E}", nombre: "resistencia de emisor", unidad: Ω, valor: 0.22 }
+    RL: { sim: "R_{L}", nombre: "altavoz", unidad: Ω, valor: 8 }
+    b: { sim: "β", nombre: "ganancia de corriente", unidad: "", valor: 100 }
+    bm: { sim: "β_{3}", nombre: "ganancia de corriente del multiplicador (sin corriente de base)", unidad: "", valor: 1e9 }
+    Vbe: { sim: "V_{BE}", nombre: "caída base-emisor", unidad: V, valor: 0.6 }
+    A: { sim: "A", nombre: "amplitud de la señal del driver", unidad: V, valor: 1 }
+    f: { sim: "f", nombre: "frecuencia de la señal", unidad: Hz, valor: 1000 }
+  calculos:
+    Vbb: { expr: "(1 - pu)*Vbe*(1 + R1/R2)", sim: "V_{BB}", nombre: "tensión entre las bases", unidad: V }
+    Ie: { expr: "max(0, (Vbb - 2*Vbe)/(2*Re))", sim: "I_{E}", nombre: "corriente de reposo de emisor", unidad: A }
+    Iq: { expr: "b/(b + 1)*Ie", sim: "I_{Q}", nombre: "corriente de reposo", unidad: A }
+    Ir: { expr: "max(Iq, 0.01)", sim: "I_{ref}", nombre: "corriente de referencia de V_BE", unidad: A }
+    Vin: { expr: "-Vbb/2", sim: "V_{driver}", nombre: "nivel del driver", unidad: V }
+    k: { expr: "Re/RL", sim: "k", nombre: "R_E/R_L", unidad: "" }
+    sab: { expr: "ceil(max(0, Vbb - 2*Vbe)/1e9)", sim: "AB", nombre: "las dos ramas conducen en reposo", unidad: "" }
 
 tarjetas:
   - id: explore-etapa
@@ -52,6 +72,29 @@ tarjetas:
         - { id: driver, rotulo: "Transistor de la izquierda, abajo", rect: [78, 208, 40, 38], texto: "Q₃, el driver: aporta la ganancia de tensión." }
         - { id: altavoz, rotulo: "A la derecha", rect: [245, 130, 40, 38], texto: "El altavoz de 8 Ω, entre la salida y masa." }
     requiere: { mover: [q1, q2, bias, driver] }
+
+  - id: explore-seguidor
+    tipo: explorar
+    titulo: "Clase B y clase AB"
+    texto: "Puentee el multiplicador: sin bias, ningún transistor conduce en la zona de ±0,6 V. Cambie también la amplitud."
+    libro: [122, 123, 130]
+    widget:
+      tipo: circuito
+      esquema: etapa-clase-ab
+      piezas: { vcc: Vcc, entrada: Vin, amplitud: A, f: f, ib: Ib, r1: R1, r2: R2, puente: pu, re: Re, carga: RL, beta: b, vbe: Vbe, iref: Ir, betam: bm }
+      lectura: { valor: Iq, rotulo: "Corriente de reposo" }
+      corriente: Iq
+      mide: { iq: Iq, vbb: Vbb }
+      grafica:
+        x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+        y: { min: -4.5, max: 4.5, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "A*sin(2*pi*f*t)", color: tinta, rotulo: "señal del driver", discontinua: true }
+          - { expr: "sab*max((A*sin(2*pi*f*t) - Vbb/2 + Vbe)/(1 + k), min((A*sin(2*pi*f*t) + Vbb/2 - Vbe)/(1 + k), (2*A*sin(2*pi*f*t))/(2 + k))) + (1 - sab)*(max((A*sin(2*pi*f*t) + Vbb/2 - Vbe)/(1 + k), 0) + min((A*sin(2*pi*f*t) - Vbb/2 + Vbe)/(1 + k), 0))", color: naranja, rotulo: "salida", mide: salida }
+      mandos:
+        - { valor: pu, tipo: interruptor, rotulo: "Multiplicador puenteado (clase B)" }
+        - { valor: A, lista: [1, 2, 4], rotulo: "Amplitud de la señal" }
+    requiere: { mover: [pu] }
 
   - id: empareje-clases
     tipo: pregunta
@@ -75,11 +118,18 @@ tarjetas:
     titulo: "El seguidor complementario"
     texto: "Q₁ y Q₂ son seguidores de emisor. ¿Quién da entonces la ganancia de tensión?"
     libro: [126, 128, 129]
+    fijar: { pu: 0, A: 2 }
     widget:
-      tipo: figura
-      figura: fig-51.7
-      zonas:
-        - { id: driver, rotulo: "Transistor de la izquierda, abajo", rect: [78, 208, 40, 38] }
+      tipo: circuito
+      esquema: etapa-clase-ab
+      piezas: { vcc: Vcc, entrada: Vin, amplitud: A, f: f, ib: Ib, r1: R1, r2: R2, puente: pu, re: Re, carga: RL, beta: b, vbe: Vbe, iref: Ir, betam: bm }
+      mide: { iq: Iq }
+      grafica:
+        x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+        y: { min: -4.5, max: 4.5, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "A*sin(2*pi*f*t)", color: tinta, rotulo: "señal del driver", discontinua: true }
+          - { expr: "sab*max((A*sin(2*pi*f*t) - Vbb/2 + Vbe)/(1 + k), min((A*sin(2*pi*f*t) + Vbb/2 - Vbe)/(1 + k), (2*A*sin(2*pi*f*t))/(2 + k))) + (1 - sab)*(max((A*sin(2*pi*f*t) + Vbb/2 - Vbe)/(1 + k), 0) + min((A*sin(2*pi*f*t) - Vbb/2 + Vbe)/(1 + k), 0))", color: naranja, rotulo: "salida", mide: salida }
     opciones:
       - texto: "El driver anterior"
         bien: true

@@ -1,8 +1,9 @@
 # Lección 1.2 de la sección 44.3 «Las Tres Configuraciones Básicas» (cap43; etiqueta sec-43.3).
 # Formato: contenido/lecciones11/GUIA.md. La etapa de ejemplo del libro (bloque 67: 12 V, 47 kΩ y 10 kΩ, R_C = 3,3 kΩ,
 # R_E = 1 kΩ, β = 150, I_C = 1,324 mA, g_m = 51,2 mS, r_e = 19,5 Ω):
-# - emisor común en pequeña señal con «fuente-controlada» (g_m·v con r_o = 75 kΩ del bloque 74 y R_C de carga): el
-#   esquema da la corriente hacia la salida, así que la lectura es el módulo; la inversión la dicen el texto y el libro;
+# - la etapa viva «emisor-comun» (1.2, esquemas12c; C_E = 100 µF de ejemplo) para la ganancia y la medida de Z_in con la
+#   resistencia en serie; el emisor común en pequeña señal con «fuente-controlada» invertida (g_m·v con r_o = 75 kΩ del
+#   bloque 74 y R_C de carga: la salida sale con su signo);
 # - Z_in del emisor común (ecuación del bloque 72) sobre «bjt-polarizacion», con g_m = I_C/V_T de su punto de trabajo
 #   (V_T = 25,86 mV: la que da los 51,2 mS del libro con 1,324 mA);
 # - el seguidor como fuente de tensión controlada (Thévenin): A_v = R_E/(r_e + R_E) y r_o = Z_out = r_e + R_fuente/β
@@ -56,6 +57,11 @@ modelo:
     V_g: { sim: "v_{g}", nombre: "señal del generador", unidad: V, valor: 1 }
     R_x: { sim: "R_{serie}", nombre: "resistencia en serie", unidad: Ω, valor: 1000 }
     V_t1: { sim: "v", nombre: "tensión de prueba", unidad: V, valor: 1 }
+    inv: { tipo: interruptor, nombre: "fuente invertida (emisor común)", valor: 1 }
+    C_E: { sim: "C_{E}", nombre: "condensador de desvío", unidad: F, valor: 100e-6 }
+    des: { tipo: interruptor, nombre: "R_E desviada", valor: 1 }
+    A_e: { sim: "v_{s}", nombre: "amplitud de la señal", unidad: V, valor: 0.005 }
+    f_e: { sim: "f", nombre: "frecuencia de la señal", unidad: Hz, valor: 1000 }
   calculos:
     V_th: { expr: "V_cc*R_2/(R_1 + R_2)", sim: "V_{Th}", nombre: "tensión del divisor en vacío", unidad: V }
     I_B: { expr: "(V_th - V_BE)/(par(R_1, R_2) + (beta + 1)*R_E)", sim: "I_{B}", nombre: "corriente de base", unidad: A }
@@ -68,11 +74,11 @@ modelo:
     r_q: { expr: "1/g_q", sim: "r_{e}", nombre: "resistencia de emisor intrínseca", unidad: Ω }
     b_re: { expr: "beta*r_q", sim: "β · r_{e}", nombre: "lo que presenta la base", unidad: Ω }
     Z_q: { expr: "par(R_1, R_2, b_re)", sim: "Z_{in}", nombre: "impedancia de entrada", unidad: Ω }
-    I_g: { expr: "g_0*v_c", sim: "g_{m} · v", nombre: "corriente controlada", unidad: A }
-    V_o: { expr: "I_g*par(r_o, R_C)", sim: "v_{o}", nombre: "señal de salida (módulo)", unidad: V }
+    I_g: { expr: "(1 - 2*inv)*g_0*v_c", sim: "−g_{m} · v", nombre: "corriente controlada (hacia la salida)", unidad: A }
+    V_o: { expr: "I_g*par(r_o, R_C)", sim: "v_{o}", nombre: "señal de salida", unidad: V }
     I_Lc: { expr: "V_o/R_C", sim: "i_{C}", nombre: "corriente por R_C", unidad: A }
     I_ro: { expr: "V_o/r_o", sim: "i_{ro}", nombre: "corriente por r_o", unidad: A }
-    A_ce: { expr: "V_o/v_c", sim: "|A_{v}|", nombre: "ganancia en módulo", unidad: "", cifras: 3 }
+    A_ce: { expr: "abs(V_o/v_c)", sim: "|A_{v}|", nombre: "ganancia en módulo", unidad: "", cifras: 3 }
     A_id: { expr: "g_0*R_C", sim: "g_{m} · R_{C}", nombre: "ganancia sin r_o", unidad: "", cifras: 3 }
     Z_qq: { expr: "par(r_o, R_C)", sim: "r_{o} ‖ R_{C}", nombre: "salida del emisor común", unidad: Ω }
     Z_sum: { expr: "R_d + Z_b", sim: "R", nombre: "suma en serie equivocada", unidad: Ω }
@@ -88,9 +94,18 @@ modelo:
     I_d1: { expr: "V_t1/R_d", sim: "I_{divisor}", nombre: "corriente por el divisor", unidad: A }
     I_b1: { expr: "V_t1/Z_b", sim: "I_{base}", nombre: "corriente por la base", unidad: A }
     Z_ce: { expr: "par(R_1, R_2, beta*r_e)", sim: "Z_{in}", nombre: "impedancia de entrada del emisor común", unidad: Ω }
-    V_m: { expr: "V_g*Z_ce/(R_x + Z_ce)", sim: "v_{entrada}", nombre: "señal que queda en la entrada", unidad: V }
-    I_m: { expr: "V_g/(R_x + Z_ce)", sim: "i", nombre: "corriente de señal", unidad: A }
-    k_m: { expr: "V_m/V_g", sim: "v/v_{g}", nombre: "fracción que queda", unidad: "", cifras: 3 }
+    g_e: { expr: "I_C/0.02585", sim: "g_{m}", nombre: "transconductancia (V_T = 25,85 mV)", unidad: S }
+    rpi_e: { expr: "beta/g_e", sim: "r_{π}", nombre: "resistencia de entrada de la base", unidad: Ω }
+    B_e: { expr: "(beta + 1)*R_E", sim: "(β + 1)·R_{E}", nombre: "R_E vista desde la base", unidad: Ω }
+    wt_e: { expr: "2*pi*f_e*des*R_E*C_E", sim: "ωτ", nombre: "ωτ del desvío", unidad: "" }
+    G_e: { expr: "beta*R_C*sqrt(1 + wt_e^2)/sqrt((rpi_e + B_e)^2 + (wt_e*rpi_e)^2)", sim: "|A_{v}|", nombre: "ganancia de la etapa", unidad: "" }
+    Vo_e: { expr: "A_e*G_e", sim: "v_{o}", nombre: "amplitud de salida", unidad: V }
+    Ph_e: { expr: "180 + (atan(wt_e) - atan(wt_e*rpi_e/(rpi_e + B_e)))*180/pi", sim: "φ", nombre: "fase de la salida", unidad: "°" }
+    D_e: { expr: "(rpi_e + B_e)^2 + (wt_e*rpi_e)^2", sim: "D", nombre: "denominador", unidad: "" }
+    Yr_e: { expr: "1/R_d + (rpi_e + B_e + wt_e^2*rpi_e)/D_e", sim: "Re Y", nombre: "parte real de la admitancia de entrada", unidad: S }
+    Yi_e: { expr: "wt_e*B_e/D_e", sim: "Im Y", nombre: "parte imaginaria de la admitancia de entrada", unidad: S }
+    k_m: { expr: "1/sqrt((1 + R_x*Yr_e)^2 + (R_x*Yi_e)^2)", sim: "v_{b}/v_{s}", nombre: "fracción que queda en la base", unidad: "", cifras: 3 }
+    V_m: { expr: "A_e*k_m", sim: "v_{b}", nombre: "señal que queda en la base", unidad: V }
 
 tarjetas:
   - id: explore-tres
@@ -110,22 +125,22 @@ tarjetas:
   - id: explore-emisor-comun
     tipo: explorar
     titulo: "La ganancia del emisor común"
-    texto: "En pequeña señal el transistor es una fuente g_{m}·v. Mueva la señal y R_{C}: la salida es g_{m}·v·R_{C}, invertida."
-    libro: [67, 70, 74]
+    texto: "La etapa del libro, con R_{E} desviada. Mueva la señal y R_{C}: la salida es g_{m}·R_{C} veces mayor, e invertida."
+    libro: [67, 69, 70]
     widget:
       tipo: circuito
-      esquema: fuente-controlada
-      piezas: { control: v_c, gm: g_0, ro: r_o, carga: R_C }
-      lectura: { valor: V_o, rotulo: "Señal de salida (módulo)" }
+      esquema: emisor-comun
+      piezas: { vcc: V_cc, r1: R_1, r2: R_2, rc: R_C, re: R_E, ce: C_E, desvio: des, beta: beta, vbe: V_BE, fuente: A_e, f: f_e }
+      lectura: { valor: Vo_e, rotulo: "Amplitud de salida" }
       datos:
-        - { valor: A_ce, rotulo: "|A_{v}| = {{A_ce}}" }
-        - { valor: A_id, rotulo: "g_{m} · R_{C} = {{A_id}}" }
-      corriente: I_Lc
-      mide: { salida: V_o, carga: I_Lc, controlada: I_g, ro: I_ro }
+        - { valor: G_e, rotulo: "|A_{v}| = {{G_e}}" }
+        - { valor: Ph_e, rotulo: "Fase: {{Ph_e}}" }
+      corriente: I_C
+      mide: { ic: I_C, vc: V_C, salida_amp: Vo_e, salida_fase: Ph_e }
       mandos:
-        - { valor: v_c, min: 0, max: 0.01, paso: 0.001, rotulo: "Señal en la base, v" }
+        - { valor: A_e, min: 0.001, max: 0.01, paso: 0.001, rotulo: "Señal, v_{s}" }
         - { valor: R_C, lista: [1000, 2200, 3300, 4700] }
-    requiere: { mover: [v_c, R_C] }
+    requiere: { mover: [A_e, R_C] }
 
   - id: pregunta-ro
     tipo: pregunta
@@ -136,8 +151,8 @@ tarjetas:
     widget:
       tipo: circuito
       esquema: fuente-controlada
-      piezas: { control: v_c, gm: g_0, ro: r_o, carga: R_C }
-      lectura: { valor: V_o, rotulo: "Señal de salida (módulo)" }
+      piezas: { control: v_c, gm: g_0, ro: r_o, carga: R_C, invierte: inv }
+      lectura: { valor: V_o, rotulo: "Señal de salida" }
       datos:
         - { valor: A_ce, rotulo: "|A_{v}| = {{A_ce}}" }
       corriente: I_Lc
@@ -345,15 +360,15 @@ tarjetas:
     titulo: "Mida la impedancia de entrada"
     texto: "Intercale una resistencia en serie con el generador. La que deja la mitad de la señal es la impedancia de entrada."
     libro: [102]
-    fijar: { beta: 150 }
+    fijar: { beta: 150, R_C: 3300, des: 1 }
     inicio: { R_x: 1000 }
     widget:
       tipo: circuito
-      esquema: divisor
-      piezas: { fuente: V_g, arriba: R_x, abajo: Z_ce }
-      lectura: { valor: V_m, rotulo: "Señal en la entrada" }
-      corriente: I_m
-      mide: { salida: V_m, corriente: I_m }
+      esquema: emisor-comun
+      piezas: { vcc: V_cc, r1: R_1, r2: R_2, rc: R_C, re: R_E, ce: C_E, desvio: des, beta: beta, vbe: V_BE, fuente: A_e, f: f_e, rs: R_x }
+      lectura: { valor: V_m, rotulo: "Señal en la base" }
+      corriente: I_C
+      mide: { ic: I_C, base_amp: V_m }
       mandos:
         - { valor: R_x, serie: E24, min: 1000, max: 4700, rotulo: "R_{serie} (E24)" }
     condiciones:

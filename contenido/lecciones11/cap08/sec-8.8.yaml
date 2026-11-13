@@ -30,6 +30,8 @@ modelo:
     k_n: { sim: "k", nombre: "parámetro del canal N (ejemplo)", unidad: "A/V²", valor: 0.01 }
     Vth_n: { sim: "V_{th}", nombre: "umbral del canal N (ejemplo)", unidad: V, valor: 1 }
     R_dn: { sim: "R_{fuente}", nombre: "resistencia de la fuente de señal", unidad: Ω, valor: 1 }
+    V_gp: { sim: "V_{G}", nombre: "puerta del canal P", unidad: V, valor: 0 }
+    on_t: { tipo: interruptor, nombre: "puerta de transmisión cerrada", valor: 1 }
   calculos:
     a_n: { expr: "V_gn - Vth_n", sim: "V_{G} − V_{th}", nombre: "puerta sobre el umbral", unidad: V }
     Rt_n: { expr: "R_dn + R_in", sim: "R", nombre: "resistencia del lazo", unidad: Ω }
@@ -48,6 +50,19 @@ modelo:
     G_n: { expr: "0.01*max(0, 4 - V_x)", sim: "G_{N}", nombre: "conductancia del canal N", unidad: S }
     G_p: { si: s_p, entonces: "0.01*max(0, V_x - 1)", sino: "0", sim: "G_{P}", nombre: "conductancia del canal P", unidad: S }
     R_tg: { expr: "1/max(0.0001, G_n + G_p)", sim: "R_{on}", nombre: "resistencia del interruptor", unidad: Ω }
+    Vov_p: { expr: "max(0, V_x - V_gp - Vth_n)", sim: "V_{ov}", nombre: "puerta del canal P sobre el umbral", unidad: V }
+    b_p: { expr: "k_n*Vov_p + 1/R_in", sim: "b", nombre: "coeficiente", unidad: "" }
+    Vtri_p: { expr: "(b_p - sqrt(max(0, b_p^2 - 2*k_n*V_x/R_in)))/k_n", sim: "V_{tri}", nombre: "V_SD en zona óhmica", unidad: V }
+    Vsat_p: { expr: "V_x - R_in*k_n*Vov_p^2/2", sim: "V_{sat}", nombre: "V_SD en saturación", unidad: V }
+    VSD_p: { expr: "max(Vsat_p, min(Vov_p, Vtri_p))", sim: "V_{SD}", nombre: "caída en el canal P", unidad: V }
+    ID_p: { expr: "(V_x - VSD_p)/R_in", sim: "I", nombre: "corriente por el canal P", unidad: A }
+    Vd_p: { expr: "V_x - VSD_p", sim: "V_{salida}", nombre: "tensión en la entrada del convertidor", unidad: V }
+    Ron_p: { expr: "VSD_p/max(ID_p, 1e-12)", sim: "R_{on}", nombre: "resistencia del canal P", unidad: Ω }
+    Bn_t: { expr: "max(0, V_gn - V_x - Vth_n)", sim: "V_{ov,n}", nombre: "sobretensión del NMOS", unidad: V }
+    Ap_t: { expr: "max(0, V_x - Vth_n)", sim: "V_{ov,p}", nombre: "sobretensión del PMOS", unidad: V }
+    Ron_t: { expr: "1/(k_n*(Bn_t + Ap_t))", sim: "R_{on}", nombre: "resistencia de la puerta de transmisión", unidad: Ω }
+    Vo_t: { expr: "on_t*V_x*R_in/(R_in + Ron_t)", sim: "V_{salida}", nombre: "tensión en la entrada del convertidor", unidad: V }
+    I_t: { expr: "Vo_t/R_in", sim: "I", nombre: "corriente por la puerta", unidad: A }
     V_q: { expr: "Q_i/C_h", sim: "ΔV", nombre: "escalón por inyección de carga", unidad: V }
 
 tarjetas:
@@ -119,6 +134,25 @@ tarjetas:
         - { valor: V_x, min: 0, max: 3.5, paso: 0.25, rotulo: "Nivel de la señal" }
     requiere: { mover: [V_x] }
 
+  - id: explore-canal-p
+    tipo: explorar
+    titulo: "Un canal P, al revés"
+    texto: "Ahora un canal P con la puerta a 0 V: la señal entra por la fuente. Baje la señal y mire R_{on}."
+    nota: "Transistor de ejemplo; entrada de 100 kΩ."
+    libro: [173]
+    fijar: { V_gp: 0, R_in: 100000 }
+    inicio: { V_x: 4.5 }
+    widget:
+      tipo: circuito
+      esquema: mosfet-p
+      piezas: { vdd: V_x, rd: R_in, entrada: V_gp, k: k_n, vth: Vth_n }
+      lectura: { valor: Ron_p, rotulo: "R_{on} del canal P" }
+      corriente: ID_p
+      mide: { id: ID_p, vsd: VSD_p, vd: Vd_p }
+      mandos:
+        - { valor: V_x, min: 1.5, max: 5, paso: 0.25, rotulo: "Nivel de la señal" }
+    requiere: { mover: [V_x] }
+
   - id: sorpresa-transmision
     tipo: sorpresa
     titulo: "Un canal N no basta"
@@ -163,6 +197,27 @@ tarjetas:
     escalera:
       - "¿Cómo cambia la V_{GS} efectiva de cada canal al subir la señal?"
     solucion: "Las dos conducciones son complementarias: su suma se mantiene."
+
+  - id: explore-puerta-transmision
+    tipo: explorar
+    titulo: "La puerta de transmisión, viva"
+    texto: "Los dos canales en paralelo, con las puertas en contrafase. Recorra la señal y abra y cierre el control."
+    libro: [173]
+    fijar: { V_gn: 5, R_in: 100000 }
+    inicio: { V_x: 0.5 }
+    widget:
+      tipo: circuito
+      esquema: puerta-transmision
+      piezas: { vdd: V_gn, entrada: V_x, carga: R_in, kn: k_n, vtn: Vth_n, kp: k_n, vtp: Vth_n, ctrl: on_t }
+      lectura: { valor: Ron_t, rotulo: "R_{on}" }
+      datos:
+        - { valor: Vo_t, rotulo: "Al convertidor: {{Vo_t}}" }
+      corriente: I_t
+      mide: { vout: Vo_t, corriente: I_t }
+      mandos:
+        - { valor: V_x, min: 0.5, max: 4.5, paso: 0.25, rotulo: "Nivel de la señal" }
+        - { valor: on_t, tipo: interruptor, rotulo: "Control" }
+    requiere: { mover: [V_x, on_t] }
 
   - id: estime-inyeccion
     tipo: pregunta

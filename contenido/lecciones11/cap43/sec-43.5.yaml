@@ -30,12 +30,31 @@ modelo:
     R_s: { sim: "R_{fuente}", nombre: "resistencia de la fuente", unidad: Ω, valor: 1000 }
     C_mu: { sim: "C_{µ}", nombre: "capacidad base-colector", unidad: F, valor: 4e-12 }
     A_g: { sim: "|A|", nombre: "ganancia de la etapa", unidad: "", valor: 169 }
+    Vcc5: { sim: "V_{CC}", nombre: "alimentación", unidad: V, valor: 12 }
+    R15: { sim: "R₁", nombre: "divisor, arriba", unidad: Ω, valor: 47000 }
+    R25: { sim: "R₂", nombre: "divisor, abajo", unidad: Ω, valor: 10000 }
+    Rc5: { sim: "R_{C}", nombre: "resistencia de colector", unidad: Ω, valor: 3300 }
+    Re5: { sim: "R_{E}", nombre: "resistencia de emisor", unidad: Ω, valor: 1000 }
+    Ce5: { sim: "C_{E}", nombre: "condensador de desvío", unidad: F, valor: 100e-6 }
+    des5: { tipo: interruptor, nombre: "C_E conectado", valor: 1 }
+    b5: { sim: "β", nombre: "ganancia de corriente", unidad: "", valor: 150 }
+    Vbe5: { sim: "V_{BE}", nombre: "tensión base-emisor", unidad: V, valor: 0.7 }
+    a5: { sim: "v_{s}", nombre: "amplitud de la señal", unidad: V, valor: 0.01 }
+    f5: { sim: "f", nombre: "frecuencia de la señal", unidad: Hz, valor: 1000 }
   calculos:
     C_ef: { expr: "C_mu*(1 + A_g)", sim: "C_{Miller}", nombre: "capacidad efectiva de entrada", unidad: F }
     f_c: { expr: "1/(2*pi*R_s*C_ef)", sim: "f_{c}", nombre: "frecuencia de corte", unidad: Hz }
     x_c: { expr: "2*pi*f_f*R_s*C_ef", sim: "ωRC", nombre: "ωRC", unidad: "" }
     A_b: { expr: "V_p/sqrt(1 + x_c^2)", sim: "v_{base}", nombre: "señal en la base", unidad: V }
     A_r: { expr: "V_p*x_c/sqrt(1 + x_c^2)", sim: "v_{R}", nombre: "caída en la fuente", unidad: V }
+    Vth5: { expr: "Vcc5*R25/(R15 + R25)", sim: "V_{Th}", nombre: "tensión de Thévenin de la base", unidad: V }
+    Ib5: { expr: "(Vth5 - Vbe5)/(par(R15, R25) + (b5 + 1)*Re5)", sim: "I_{B}", nombre: "corriente de base", unidad: A }
+    Ic5: { expr: "b5*Ib5", sim: "I_{C}", nombre: "corriente de colector", unidad: A }
+    rpi5: { expr: "b5*0.02585/Ic5", sim: "r_{π}", nombre: "resistencia de entrada de la base", unidad: Ω }
+    B5: { expr: "(b5 + 1)*Re5", sim: "(β + 1)·R_{E}", nombre: "R_E vista desde la base", unidad: Ω }
+    tau5: { expr: "des5*Re5*Ce5", sim: "τ_{E}", nombre: "constante de tiempo del desvío", unidad: s }
+    G5: { expr: "b5*Rc5*sqrt(1 + (2*pi*f5*tau5)^2)/sqrt((rpi5 + B5)^2 + (2*pi*f5*tau5*rpi5)^2)", sim: "|A_{v}|", nombre: "ganancia a la frecuencia de la señal", unidad: "" }
+    Vo5: { expr: "a5*G5", sim: "v_{o}", nombre: "amplitud de salida", unidad: V }
     C_sin: { expr: "C_mu*A_g", sim: "C · A", nombre: "sin el uno", unidad: F }
 
 tarjetas:
@@ -225,6 +244,26 @@ tarjetas:
     escalera:
       - "El corte es 1/(2π·R_{fuente}·C_{Miller}): hay que bajar uno de los dos."
     solucion: "Cascodo–ganancia ≈ −1, base común–sin Miller, fuente baja–sube el corte."
+
+  - id: explore-borde-inferior
+    tipo: explorar
+    titulo: "El borde de abajo"
+    texto: "En la etapa del libro, el condensador de emisor fija el corte inferior. Quítelo y vuelva a ponerlo: mire la ganancia a frecuencias bajas."
+    libro: [159]
+    widget:
+      tipo: circuito
+      esquema: emisor-comun
+      piezas: { vcc: Vcc5, r1: R15, r2: R25, rc: Rc5, re: Re5, ce: Ce5, desvio: des5, beta: b5, vbe: Vbe5, fuente: a5, f: f5 }
+      lectura: { valor: G5, rotulo: "Ganancia a 1 kHz" }
+      corriente: Ic5
+      mide: { ic: Ic5, salida_amp: Vo5 }
+      grafica:
+        x: { id: nu, min: 1, max: 100000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 2, unidad: V, rotulo: "amplitud" }
+        curvas:
+          - { expr: "a5*b5*Rc5*sqrt(1 + (2*pi*nu*tau5)^2)/sqrt((rpi5 + B5)^2 + (2*pi*nu*tau5*rpi5)^2)", color: naranja, rotulo: "v_{o}", mide: salida_amp }
+      mandos:
+        - { valor: des5, tipo: interruptor, rotulo: "Condensador de emisor" }
 
   - id: empareje-banda
     tipo: pregunta

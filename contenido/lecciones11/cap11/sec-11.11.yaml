@@ -24,7 +24,12 @@ modelo:
     R_1: { sim: "R1", nombre: "resistencia de arriba", unidad: Ω, valor: 10000 }
     R_2: { sim: "R2", nombre: "resistencia de abajo", unidad: Ω, valor: 5000 }
     R_L: { sim: "R3", nombre: "carga", unidad: Ω, valor: 10000 }
-    igual: { tipo: interruptor, nombre: "etiqueta escrita igual en los dos extremos", valor: 1 }
+    igual: { tipo: interruptor, sim: "SALIDA", nombre: "etiqueta escrita igual en los dos extremos", valor: 1 }
+    et2: { sim: "SALIDA_", nombre: "etiqueta con la errata", unidad: "", valor: 0 }
+    V_l: { sim: "+5V", nombre: "tensión de la fuente del LED", unidad: V, valor: 5 }
+    R_l: { sim: "R4", nombre: "resistencia del LED", unidad: Ω, valor: 150 }
+    Vf_l: { sim: "V_{f}", nombre: "caída del LED", unidad: V, valor: 2 }
+    rev_l: { tipo: interruptor, nombre: "ánodo y cátodo cambiados en el símbolo", valor: 1 }
     n_det: { sim: "detectados", nombre: "errores que detecta el ERC", unidad: "", valor: 4 }
     n_tot: { sim: "total", nombre: "errores habituales", unidad: "", valor: 8 }
   calculos:
@@ -32,6 +37,7 @@ modelo:
     V_out: { expr: "V_in*R_ab/(R_1 + R_ab)", sim: "V_{salida}", nombre: "tensión de salida", unidad: V }
     I: { expr: "V_in/(R_1 + R_ab)", sim: "I", nombre: "corriente", unidad: A }
     I_L: { si: igual, entonces: "V_out/R_L", sino: "0", sim: "I_{L}", nombre: "corriente de la carga", unidad: A }
+    I_l: { expr: "(1 - rev_l)*max(0, (V_l - Vf_l)/R_l)", sim: "I", nombre: "corriente del LED", unidad: A }
     cob: { expr: "100*n_det/n_tot", sim: "cobertura", nombre: "cobertura del ERC", unidad: "%" }
 
 tarjetas:
@@ -43,7 +49,7 @@ tarjetas:
     widget:
       tipo: circuito
       esquema: divisor
-      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: igual }
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, etiqueta: igual, etiqueta2: et2 }
       lectura: { valor: V_out, rotulo: "Tensión de salida" }
       datos:
         - { valor: I_L, rotulo: "Corriente de R3: {{I_L}}" }
@@ -91,7 +97,7 @@ tarjetas:
     widget:
       tipo: circuito
       esquema: divisor
-      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: igual }
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, etiqueta: igual, etiqueta2: et2 }
       lectura: { valor: V_out, rotulo: "Tensión de salida" }
       mide: { salida: V_out, corriente: I, carga: I_L }
       ocultar: true
@@ -118,7 +124,7 @@ tarjetas:
     widget:
       tipo: circuito
       esquema: divisor
-      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: igual }
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, etiqueta: igual, etiqueta2: et2 }
       lectura: { valor: V_out, rotulo: "Tensión de salida" }
       mide: { salida: V_out, corriente: I, carga: I_L }
       mandos: []
@@ -137,14 +143,15 @@ tarjetas:
   - id: complemento
     tipo: pregunta
     titulo: "El complemento"
-    texto: "¿Qué revisión manual atrapa el pin mal asignado dentro de un símbolo?"
+    texto: "El símbolo de este LED tiene el ánodo y el cátodo cambiados, y el ERC no dice nada. ¿Qué revisión manual lo atrapa?"
     libro: [289]
     widget:
       tipo: circuito
-      esquema: divisor
-      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: igual }
-      lectura: { valor: V_out, rotulo: "Tensión de salida" }
-      mide: { salida: V_out, corriente: I, carga: I_L }
+      esquema: led
+      piezas: { fuente: V_l, r: R_l, vf: Vf_l, reves: rev_l }
+      lectura: { valor: I_l, rotulo: "Corriente del LED" }
+      corriente: I_l
+      mide: { corriente: I_l }
       mandos: []
     opciones:
       - texto: "Revisar la asignación de pines contra la hoja de datos"
@@ -166,7 +173,7 @@ tarjetas:
     widget:
       tipo: circuito
       esquema: divisor
-      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: igual }
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, etiqueta: igual, etiqueta2: et2 }
       lectura: { valor: V_out, rotulo: "Tensión de salida" }
       mide: { salida: V_out, corriente: I, carga: I_L }
       ocultar: true
@@ -209,7 +216,7 @@ tarjetas:
     widget:
       tipo: circuito
       esquema: divisor
-      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, interruptor: igual }
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2, carga: R_L, etiqueta: igual, etiqueta2: et2 }
       lectura: { valor: V_out, rotulo: "Tensión de salida" }
       mide: { salida: V_out, corriente: I, carga: I_L }
       mandos: []

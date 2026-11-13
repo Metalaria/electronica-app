@@ -3,8 +3,8 @@
 # valores de ejemplo con los modelos del libro, V_BE = 0,7 V y V_CE(sat) = 0,2 V).
 # La β frente a I_C, sobre la figura 25.5 del libro (fig-26.5: 100 a 0,1 mA, 200 a 10 mA, 25 a 500 mA, bloque 95).
 # La R_B del interruptor de potencia (estimación): β = 25 a 500 mA (bloque 95), con un mando de 5 V de ejemplo y el
-# modelo de 0,7 V. No va en el circuito vivo: con 20 a 40 mA de base el transistor del simulador cae más de 0,8 V y se
-# sale de los ± 0,1 V que admite el modelo de caída constante.
+# modelo de 0,7 V. 1.2 (esquemas12c): la sorpresa «sorpresa-hoja» lo monta vivo en «bjt-interruptor» con `iref` de
+# 500 mA (V_BE = 0,7 V a esa corriente); la carga de 24 Ω a 12 V es de ejemplo.
 leccion: cap26/sec-26.3
 
 libro:
@@ -35,6 +35,9 @@ modelo:
     b_p: { sim: "β", nombre: "β a 500 mA", unidad: "", valor: 25 }
     I_o: { sim: "I_{C}", nombre: "corriente del interruptor", unidad: A, valor: 0.5 }
     dT: { sim: "ΔT", nombre: "calentamiento", unidad: "°C", valor: 75 }
+    R_lp: { sim: "R_{L}", nombre: "carga de potencia", unidad: Ω, valor: 24 }
+    R_bp: { sim: "R_{B}", nombre: "resistencia de base del interruptor", unidad: Ω, valor: 860 }
+    I_rp: { sim: "I_{ref}", nombre: "corriente de referencia de V_BE", unidad: A, valor: 0.5 }
   calculos:
     I_b: { expr: "max(0, (V_b - V_BE)/R_b)", sim: "I_{B}", nombre: "corriente de base", unidad: A }
     I_cm: { expr: "(V_cc - V_CEs)/R_c", sim: "I_{C,máx}", nombre: "corriente de saturación", unidad: A }
@@ -46,6 +49,10 @@ modelo:
     n_2: { expr: "dT/10", sim: "N", nombre: "duplicaciones", unidad: "" }
     R_lim: { expr: "(V_p - V_BE)/I_bn", sim: "R_{B,máx}", nombre: "R_B máxima que satura", unidad: Ω }
     R_hoja: { expr: "(V_p - V_BE)*100/I_o", sim: "R_{B}", nombre: "R_B con la β de la hoja", unidad: Ω }
+    I_bp: { expr: "max(0, (V_p - V_BE)/R_bp)", sim: "I_{B}", nombre: "corriente de base", unidad: A }
+    I_cp: { expr: "min(b_p*I_bp, (V_cc - V_CEs)/R_lp)", sim: "I_{C}", nombre: "corriente por la carga", unidad: A }
+    V_cep: { expr: "V_cc - I_cp*R_lp", sim: "V_{CE}", nombre: "tensión colector-emisor", unidad: V }
+    P_tp: { expr: "V_cep*I_cp", sim: "P", nombre: "potencia en el transistor", unidad: W }
     V_d: { expr: "V_p - V_BE", sim: "V_{R_B}", nombre: "tensión en R_B", unidad: V }
 
 tarjetas:
@@ -156,6 +163,29 @@ tarjetas:
     solucion: "R_{B} = 4,3/0,02 = {{R_lim}}. Con la β de la hoja saldría {{R_hoja}}: no saturaría."
     comprobar:
       - { R_lim: 215, R_hoja: 860, I_bn: 0.02, V_d: 4.3, tol: 0.01 }
+
+  - id: sorpresa-hoja
+    tipo: sorpresa
+    titulo: "Diseñada con la β de la hoja"
+    texto: "Con β = 100 saldría R_{B} = 860 Ω. Pruébela con una carga de 500 mA y luego baje R_{B}."
+    libro: [91, 95]
+    fijar: { V_cc: 12, V_p: 5, V_BE: 0.7, b_p: 25 }
+    inicio: { R_bp: 860 }
+    widget:
+      tipo: circuito
+      esquema: bjt-interruptor
+      piezas: { vcc: V_cc, rc: R_lp, entrada: V_p, rb: R_bp, beta: b_p, vbe: V_BE, vcesat: V_CEs, iref: I_rp }
+      lectura: { valor: I_cp, rotulo: "Corriente por la carga" }
+      datos:
+        - { valor: V_cep, rotulo: "V_{CE} = {{V_cep}}" }
+        - { valor: P_tp, rotulo: "En el transistor: {{P_tp}}" }
+      corriente: I_cp
+      mide: { ib: I_bp, ic: I_cp, vce: V_cep, vbe: V_BE }
+      mandos:
+        - { valor: R_bp, lista: [860, 470, 200], rotulo: "R_{B}" }
+    requiere: { mover: [R_bp] }
+    comprobar:
+      - { R_hoja: 860, tol: 0.01 }
 
   - id: por-que-lento
     tipo: porque

@@ -1,6 +1,7 @@
 # Lección 1.2 de la sección 26.7 «El Amplificador de Instrumentación» (cap27; etiqueta interna sec-27.7).
-# Formato: contenido/lecciones11/GUIA.md. No hay esquema de amplificador de instrumentación en el kit: las tarjetas usan
-# gráficas con las fórmulas del libro. Error por modo común: 2,5 V comunes y 10 mV de señal (bloque 194). Ganancia
+# Formato: contenido/lecciones11/GUIA.md. 1.2 (esquemas12c): la ganancia, el reto de 100 y la sorpresa del CMRR van
+# sobre el «ao-instrumentacion» vivo (R₃ = R₄ = 10 kΩ de ejemplo; el desajuste de R₄ que da 80 dB); el error frente al
+# CMRR sigue en gráficas con las fórmulas del libro. Error por modo común: 2,5 V comunes y 10 mV de señal (bloque 194). Ganancia
 # A = 1 + 2R/R_G con R = 25 kΩ (la del problema 26.A). El CMRR total = CMRR del diferencial de salida + 20·log₁₀ de la
 # ganancia de la primera etapa (bloque 206); los 80 dB del diferencial de salida son un ejemplo (red apareada, bloque
 # 198). El seguidor del pin de referencia, en «ao-no-inversor» sin resistencias, con 2,5 V (media alimentación).
@@ -32,11 +33,19 @@ modelo:
     V_e: { sim: "V_{cm}", nombre: "modo común del ejercicio", unidad: V, valor: 2 }
     C_e: { sim: "CMRR", nombre: "CMRR del ejercicio", unidad: dB, valor: 100 }
     V_rf: { sim: "V_{ref}", nombre: "media alimentación", unidad: V, valor: 2.5 }
+    R_3: { sim: "R₃", nombre: "resistencia de entrada del diferencial", unidad: Ω, valor: 10000 }
+    R_4: { sim: "R₄", nombre: "resistencia de realimentación del diferencial", unidad: Ω, valor: 10000 }
+    f_c: { sim: "f", nombre: "frecuencia del modo común", unidad: Hz, valor: 50 }
   calculos:
     e_v: { expr: "V_cm/10^(C_db/20)", sim: "V_{error}", nombre: "error referido a la entrada", unidad: V }
     e_p: { expr: "100*e_v/V_d", sim: "error", nombre: "error frente a la señal", unidad: "%", cifras: 2 }
     A_g: { expr: "1 + 2*R_i/R_G", sim: "A", nombre: "ganancia", unidad: "", cifras: 3 }
     C_t: { expr: "C_s + 20*log10(A_g)", sim: "CMRR_{total}", nombre: "CMRR total", unidad: dB, cifras: 3 }
+    V_2: { expr: "V_cm + V_d", sim: "v₂", nombre: "entrada +", unidad: V }
+    V_o: { expr: "A_g*V_d", sim: "v_{o}", nombre: "tensión de salida", unidad: V }
+    k_s: { expr: "10^(-C_s/20)", sim: "A_{cm}", nombre: "ganancia de modo común del diferencial", unidad: "" }
+    eps: { expr: "2*k_s/(1 - k_s)", sim: "ε", nombre: "desajuste de R₄ que da ese rechazo", unidad: "" }
+    V_oc: { expr: "k_s*V_cm", sim: "v_{o,cm}", nombre: "salida por el modo común", unidad: V }
     e_x: { expr: "V_e/10^(C_e/20)", sim: "V_{error}", nombre: "error del ejercicio", unidad: V }
 
 tarjetas:
@@ -122,14 +131,13 @@ tarjetas:
     ec: 204
     sustitucion: "1 + 2 · {{R_i}} / {{R_G}} = {{A_g}}"
     widget:
-      tipo: grafica
-      x: { id: rg, min: 50, max: 50000, unidad: Ω, rotulo: "R_{G}", escala: log }
-      y: { min: 1, max: 2000, unidad: "", rotulo: "A", escala: log }
-      curvas:
-        - { expr: "1 + 2*R_i/rg", color: azul, rotulo: "A" }
-      asas:
-        - { mueve: R_G, x: "R_G", y: "A_g", rotulo: "Su R_{G}" }
+      tipo: circuito
+      esquema: ao-instrumentacion
+      piezas: { v1: V_cm, v2: V_2, r: R_i, rg: R_G, r3: R_3, r4: R_4 }
       lectura: { valor: A_g, rotulo: "Ganancia" }
+      datos:
+        - { valor: V_o, rotulo: "Salida con 10 mV: {{V_o}}" }
+      mide: { vo: V_o }
       mandos:
         - { valor: R_G, lista: [100, 510, 1000, 5100, 50000], rotulo: "R_{G}" }
 
@@ -140,14 +148,13 @@ tarjetas:
     libro: [204, "cap27#341"]
     inicio: { R_G: 1000 }
     widget:
-      tipo: grafica
-      x: { id: rg, min: 50, max: 50000, unidad: Ω, rotulo: "R_{G}", escala: log }
-      y: { min: 1, max: 2000, unidad: "", rotulo: "A", escala: log }
-      curvas:
-        - { expr: "1 + 2*R_i/rg", color: azul, rotulo: "A" }
-      marcas:
-        - { x: "R_G", y: "A_g", rotulo: "{{A_g}}" }
+      tipo: circuito
+      esquema: ao-instrumentacion
+      piezas: { v1: V_cm, v2: V_2, r: R_i, rg: R_G, r3: R_3, r4: R_4 }
       lectura: { valor: A_g, rotulo: "Ganancia" }
+      datos:
+        - { valor: V_o, rotulo: "Salida: {{V_o}}" }
+      mide: { vo: V_o }
       mandos:
         - { valor: R_G, serie: E24, min: 100, max: 10000, rotulo: "R_{G} (E24)" }
     condiciones:
@@ -170,16 +177,14 @@ tarjetas:
     libro: [206]
     inicio: { R_G: 50000 }
     widget:
-      tipo: grafica
-      x: { id: rg, min: 50, max: 50000, unidad: Ω, rotulo: "R_{G}", escala: log }
-      y: { min: 70, max: 150, unidad: dB, rotulo: "CMRR_{total}" }
-      curvas:
-        - { expr: "C_s + 20*log10(1 + 2*R_i/rg)", color: verde, rotulo: "CMRR total" }
-      marcas:
-        - { x: "R_G", y: "C_t", rotulo: "{{C_t}}" }
+      tipo: circuito
+      esquema: ao-instrumentacion
+      piezas: { v1: V_cm, v2: V_cm, acm: V_cm, f: f_c, r: R_i, rg: R_G, r3: R_3, r4: R_4, desajuste: eps }
       lectura: { valor: C_t, rotulo: "CMRR total" }
       datos:
         - { valor: A_g, rotulo: "Ganancia: {{A_g}}" }
+        - { valor: V_oc, rotulo: "Salida por el modo común: {{V_oc}}" }
+      mide: { salida_amp: V_oc }
       mandos:
         - { valor: R_G, lista: [100, 510, 1000, 5100, 50000], rotulo: "R_{G}" }
     requiere: { mover: [R_G] }

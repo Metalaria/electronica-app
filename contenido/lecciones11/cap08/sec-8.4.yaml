@@ -27,6 +27,8 @@ modelo:
     R_L: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 5 }
     eta: { sim: "η", nombre: "rendimiento del conmutado", unidad: "", valor: 0.9 }
     R_17: { sim: "R₂", nombre: "resistencia de ajuste", unidad: Ω, valor: 1000 }
+    R_1l: { sim: "R₁", nombre: "resistencia de OUT a ADJ", unidad: Ω, valor: 240 }
+    RL_l: { sim: "R_{L}", nombre: "carga del LM317", unidad: Ω, valor: 100 }
     V_do: { sim: "V_{do}", nombre: "dropout del 78xx", unidad: V, valor: 2 }
   calculos:
     V_rg: { expr: "min(V_o, V_in - V_do)", sim: "V_{out}", nombre: "tensión de salida", unidad: V }
@@ -43,7 +45,8 @@ modelo:
     P_sw: { expr: "V_o*I_r*(1/eta - 1)", sim: "P", nombre: "pérdida del conmutado", unidad: W }
     P_in: { expr: "V_o*I_r/eta", sim: "P_{in}", nombre: "potencia de entrada del conmutado", unidad: W }
     I_id: { expr: "V_o*I_r/V_in", sim: "I", nombre: "corriente sin pérdidas", unidad: A }
-    V_17: { expr: "1.25*(1 + R_17/240)", sim: "V_{out}", nombre: "salida del LM317", unidad: V }
+    V_17: { expr: "min(1.25*(1 + R_17/R_1l), V_in - V_do)", sim: "V_{out}", nombre: "salida del LM317", unidad: V }
+    IL_l: { expr: "V_17/RL_l", sim: "I_{L}", nombre: "corriente por la carga", unidad: A }
 
 tarjetas:
   - id: explore-lineal
@@ -174,16 +177,15 @@ tarjetas:
     titulo: "Un LM317 a 9 V"
     texto: "El LM317 mantiene 1,25 V sobre R₁ = 240 Ω. Elija R₂ de la serie E12 para 9 V."
     libro: [69, "cap08#246"]
+    fijar: { V_in: 12, V_do: 2 }
     inicio: { R_17: 1000 }
     widget:
-      tipo: grafica
-      x: { id: rx, min: 0, max: 3000, unidad: Ω, rotulo: "R₂" }
-      y: { min: 0, max: 18, unidad: V, rotulo: "V_{out}" }
-      curvas:
-        - { expr: "1.25*(1 + rx/240)", color: azul, rotulo: "1,25 · (1 + R₂/R₁)" }
-      asas:
-        - { mueve: R_17, x: "R_17", y: "V_17", rotulo: "Su R₂" }
+      tipo: circuito
+      esquema: lm317
+      piezas: { entrada: V_in, r1: R_1l, r2: R_17, dropout: V_do, carga: RL_l }
       lectura: { valor: V_17, rotulo: "Salida" }
+      corriente: IL_l
+      mide: { vout: V_17, icarga: IL_l }
       mandos:
         - { valor: R_17, serie: E12, min: 470, max: 2700, rotulo: "R₂ (E12)" }
     condiciones:

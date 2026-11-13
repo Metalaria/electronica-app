@@ -30,6 +30,10 @@ modelo:
     f_s: { sim: "f", nombre: "frecuencia de la senoide", unidad: Hz, valor: 100 }
     cero: { sim: "0", nombre: "nivel de continua", unidad: V, valor: 0 }
     t_r: { sim: "tol", nombre: "tolerancia de las resistencias", unidad: "", valor: 0.05 }
+    a_rp: { sim: "A", nombre: "amplitud de la rampa", unidad: V, valor: 3 }
+    f_rp: { sim: "f", nombre: "frecuencia de la rampa", unidad: Hz, valor: 100 }
+    fm_rp: { sim: "forma", nombre: "forma de la entrada (rampa)", unidad: "", valor: 3 }
+    ru: { sim: "ruido", nombre: "amplitud del ruido", unidad: V, valor: 0.5 }
   calculos:
     V_uh: { expr: "V_sat*R_1/(R_1 + R_2)", sim: "V_{U}", nombre: "umbral del disparador", unidad: V }
     hi: { expr: "1 - ceil((V_in - V_uh)/1e9)", sim: "a", nombre: "el alto se sostiene", unidad: "" }
@@ -151,22 +155,24 @@ tarjetas:
   - id: sorpresa-sin
     tipo: sorpresa
     titulo: "Sin histéresis"
-    texto: "Quite la realimentación positiva y mire dónde queda el umbral frente al ruido."
+    texto: "Sin realimentación positiva queda un solo umbral, en cero. Suba el ruido de la rampa y mire la salida al cruzarlo."
     libro: [50, 53, 58]
-    fijar: { R_1: 10000, R_2: 100000, V_sat: 12 }
-    inicio: { s_h: 1 }
+    fijar: { R_1: 10000, V_sat: 12 }
+    inicio: { ru: 0 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.01, unidad: s, rotulo: "t" }
-      y: { min: -4, max: 4, unidad: V, rotulo: "v_{entrada}" }
-      curvas:
-        - { expr: "-3 + 6*t/T_r + A_r*sin(2*pi*1500*t)", color: azul, rotulo: "señal con ruido" }
-        - { expr: "V_u", color: naranja, rotulo: "umbral al subir", discontinua: true }
-        - { expr: "-V_u", color: tinta, rotulo: "umbral al bajar", discontinua: true }
-      lectura: { valor: V_w, rotulo: "Anchura de la ventana" }
+      tipo: circuito
+      esquema: comparador-schmitt
+      piezas: { entrada: cero, amplitud: a_rp, f: f_rp, forma: fm_rp, ruido: ru, r1: R_1, ref: cero, vsat: V_sat }
+      dibujo: false
+      grafica:
+        x: { id: t, min: 0, max: 0.01, unidad: s, rotulo: "t" }
+        y: { min: -14, max: 14, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "cero - a_rp + 2*a_rp*(t*f_rp - floor(t*f_rp)) + ru*(sin(2*pi*37*f_rp*t) + sin(2*pi*61*f_rp*t) + sin(2*pi*97*f_rp*t))/3", color: tinta, rotulo: "v_{in}", mide: entrada }
+          - { expr: "V_sat*(1 - 2*ceil((cero - a_rp + 2*a_rp*(t*f_rp - floor(t*f_rp)) + ru*(sin(2*pi*37*f_rp*t) + sin(2*pi*61*f_rp*t) + sin(2*pi*97*f_rp*t))/3 - cero)/1e9))", color: naranja, rotulo: "v_{o}", mide: salida }
       mandos:
-        - { valor: s_h, tipo: interruptor, rotulo: "Histéresis" }
-    requiere: { mover: [s_h] }
+        - { valor: ru, lista: [0, 0.25, 0.5], rotulo: "Ruido" }
+    requiere: { mover: [ru] }
 
   - id: por-que-positiva
     tipo: porque

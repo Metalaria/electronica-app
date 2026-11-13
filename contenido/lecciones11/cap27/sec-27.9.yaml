@@ -28,6 +28,10 @@ modelo:
     C_c: { sim: "C", nombre: "condensador de compensación", unidad: F, valor: 30e-12 }
     A_e: { sim: "A_{etapa}", nombre: "ganancia de la etapa", unidad: "", valor: 300 }
     z: { sim: "ζ", nombre: "amortiguamiento", unidad: "", valor: 0.2 }
+    e_9: { sim: "V_{in}", nombre: "nivel medio de la entrada", unidad: V, valor: 0 }
+    a_9: { sim: "A", nombre: "amplitud del escalón", unidad: V, valor: 0.5 }
+    f_9: { sim: "f", nombre: "frecuencia de la cuadrada", unidad: Hz, valor: 10000 }
+    sq_9: { sim: "forma", nombre: "forma de la entrada (cuadrada)", unidad: "", valor: 1 }
   calculos:
     a_q: { expr: "1/(f_1^2*f_2^2)", sim: "a", nombre: "coeficiente", unidad: "" }
     b_q: { expr: "1/f_1^2 + 1/f_2^2", sim: "b", nombre: "coeficiente", unidad: "" }
@@ -36,6 +40,16 @@ modelo:
     P_m: { expr: "180 - (atan(f_c/f_1) + atan(f_c/f_2))*180/pi", sim: "MF", nombre: "margen de fase", unidad: "°", cifras: 3 }
     G_db: { expr: "20*log10(G)", sim: "1/β", nombre: "ganancia del montaje en dB", unidad: dB }
     C_m: { expr: "C_c*(1 + A_e)", sim: "C_{Miller}", nombre: "capacidad equivalente", unidad: F }
+    gbw_9: { expr: "A_0*f_1", sim: "GBW", nombre: "producto ganancia-ancho de banda", unidad: Hz }
+    w1_9: { expr: "2*pi*gbw_9/A_0", sim: "ω₁", nombre: "primer polo", unidad: "rad/s" }
+    w2_9: { expr: "2*pi*f_2", sim: "ω₂", nombre: "segundo polo", unidad: "rad/s" }
+    be_9: { expr: "1", sim: "β", nombre: "fracción realimentada", unidad: "" }
+    wn_9: { expr: "sqrt(w1_9*w2_9*(1 + A_0*be_9))", sim: "ω_{n}", nombre: "pulsación propia", unidad: "rad/s" }
+    z_9: { expr: "(w1_9 + w2_9)/(2*wn_9)", sim: "ζ", nombre: "amortiguamiento", unidad: "" }
+    G0_9: { expr: "A_0/(1 + A_0*be_9)", sim: "G₀", nombre: "ganancia en continua", unidad: "" }
+    wd_9: { expr: "wn_9*sqrt(1 - z_9^2)", sim: "ω_{d}", nombre: "pulsación amortiguada", unidad: "rad/s" }
+    so_9: { expr: "100*exp(-pi*z_9/sqrt(1 - z_9^2))", sim: "sobreoscilación", nombre: "sobreoscilación", unidad: "%", cifras: 2 }
+    t0_9: { expr: "1/(2*f_9)", sim: "t₀", nombre: "instante del escalón", unidad: s }
     O_s: { expr: "100*exp(-pi*z/sqrt(1 - z^2))", sim: "sobreimpulso", nombre: "sobreimpulso", unidad: "%", cifras: 2 }
 
 tarjetas:
@@ -68,12 +82,17 @@ tarjetas:
     libro: [283]
     fijar: { G: 1 }
     widget:
-      tipo: grafica
-      x: { id: nu, min: 1, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
-      y: { min: -40, max: 110, unidad: dB, rotulo: "ganancia" }
-      curvas:
-        - { expr: "20*log10(A_0/(sqrt(1 + (nu/f_1)^2)*sqrt(1 + (nu/f_2)^2)))", color: azul, rotulo: "lazo abierto" }
+      tipo: circuito
+      esquema: ao-estabilidad
+      piezas: { entrada: e_9, amplitud: a_9, f: f_9, forma: sq_9, a0: A_0, gbw: gbw_9, polo2: f_2 }
       lectura: { valor: P_m, rotulo: "Margen como seguidor" }
+      datos:
+        - { valor: so_9, rotulo: "Sobreoscilación: {{so_9}}" }
+      grafica:
+        x: { id: t, min: 0.0000495, max: 0.000052, unidad: s, rotulo: "t" }
+        y: { min: -1, max: 1, unidad: V, rotulo: "v_{o}" }
+        curvas:
+          - { expr: "G0_9*(e_9 + a_9) - 2*a_9*G0_9*ceil((t - t0_9)/1e9)*(1 - exp(-z_9*wn_9*max(0, t - t0_9))*(cos(wd_9*max(0, t - t0_9)) + z_9*wn_9/wd_9*sin(wd_9*max(0, t - t0_9))))", color: naranja, rotulo: "v_{o}", mide: salida }
       ocultar: true
     opciones:
       - texto: "Se queda casi sin margen y oscila o timbra"

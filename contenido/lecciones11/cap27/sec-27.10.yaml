@@ -29,10 +29,19 @@ modelo:
     V_a: { sim: "v_{o}", nombre: "salida del operacional", unidad: V, valor: 1 }
     R_iso: { sim: "R_{iso}", nombre: "resistencia de aislamiento", unidad: Ω, valor: 22 }
     R_L: { sim: "R_{L}", nombre: "carga resistiva", unidad: Ω, valor: 1000 }
+    A_0: { sim: "A₀", nombre: "ganancia en lazo abierto", unidad: "", valor: 100000 }
+    gbw: { sim: "GBW", nombre: "producto ganancia-ancho de banda", unidad: Hz, valor: 1000000 }
+    p_2: { sim: "f_{p2}", nombre: "segundo polo", unidad: Hz, valor: 1000000 }
+    e_l: { sim: "V_{in}", nombre: "nivel de la entrada", unidad: V, valor: 0 }
+    a_l: { sim: "A", nombre: "amplitud de la entrada", unidad: V, valor: 0.5 }
+    f_l: { sim: "f", nombre: "frecuencia de la entrada", unidad: Hz, valor: 10000 }
   calculos:
     f_p: { expr: "1/(2*pi*R_o*C_L)", sim: "f_{p}", nombre: "polo de la carga", unidad: Hz }
     f_n: { expr: "1/(R_o*C_L)", sim: "f", nombre: "sin el 2π", unidad: Hz }
     O_s: { expr: "100*exp(-pi*z/sqrt(1 - z^2))", sim: "sobreimpulso", nombre: "sobreimpulso", unidad: "%", cifras: 2 }
+    w1_l: { expr: "2*pi*gbw/A_0", sim: "ω₁", nombre: "primer polo", unidad: "rad/s" }
+    w2_l: { expr: "2*pi*p_2", sim: "ω₂", nombre: "segundo polo", unidad: "rad/s" }
+    wp_l: { expr: "1/(R_o*C_L)", sim: "ω_{p}", nombre: "polo de la carga", unidad: "rad/s" }
     V_c: { expr: "V_a*R_L/(R_iso + R_L)", sim: "v_{carga}", nombre: "tensión en la carga", unidad: V }
     I_c: { expr: "V_a/(R_iso + R_L)", sim: "I", nombre: "corriente de la carga", unidad: A }
     R_t: { expr: "R_iso + R_L", sim: "R", nombre: "resistencia total", unidad: Ω }
@@ -75,14 +84,15 @@ tarjetas:
     ec: 305
     sustitucion: "1 / (2π · {{R_o}} · {{C_L}}) = {{f_p}}"
     widget:
-      tipo: grafica
-      x: { id: cl, min: 1e-11, max: 1e-7, unidad: F, rotulo: "C_{L}", escala: log }
-      y: { min: 10000, max: 1000000000, unidad: Hz, rotulo: "f_{p}", escala: log }
-      curvas:
-        - { expr: "1/(2*pi*R_o*cl)", color: azul, rotulo: "f_{p}" }
-      asas:
-        - { mueve: C_L, x: "C_L", y: "f_p", rotulo: "Su carga" }
+      tipo: circuito
+      esquema: ao-estabilidad
+      piezas: { entrada: e_l, amplitud: a_l, f: f_l, a0: A_0, gbw: gbw, polo2: p_2, rsal: R_o, cl: C_L }
       lectura: { valor: f_p, rotulo: "Polo de la carga" }
+      grafica:
+        x: { id: nu, min: 1000, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0.001, max: 1000, unidad: "", rotulo: "|T|", escala: log }
+        curvas:
+          - { expr: "A_0/sqrt((1 + (2*pi*nu/w1_l)^2)*(1 + (2*pi*nu/w2_l)^2)*(1 + (2*pi*nu/wp_l)^2))", color: naranja, rotulo: "ganancia de lazo", mide: lazo_amp }
       mandos:
         - { valor: C_L, lista: [1e-10, 1e-9, 1e-8], rotulo: "C_{L}" }
 

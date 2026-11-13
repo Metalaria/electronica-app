@@ -33,6 +33,12 @@ modelo:
     z: { sim: "ζ", nombre: "amortiguamiento", unidad: "", valor: 0.7 }
     R_x: { sim: "R", nombre: "resistencia de realimentación", unidad: Ω, valor: 1000000 }
     C_x: { sim: "C", nombre: "capacidad del nodo de entrada", unidad: F, valor: 10e-12 }
+    e_8: { sim: "V_{in}", nombre: "nivel medio de la entrada", unidad: V, valor: 0 }
+    a_8: { sim: "A", nombre: "amplitud del escalón", unidad: V, valor: 0.5 }
+    f_8: { sim: "f", nombre: "frecuencia de la cuadrada", unidad: Hz, valor: 10000 }
+    sq_8: { sim: "forma", nombre: "forma de la entrada (cuadrada)", unidad: "", valor: 1 }
+    G_8: { sim: "G", nombre: "ganancia del montaje en vivo", unidad: "", valor: 1 }
+    R1_8: { sim: "R₁", nombre: "resistencia a masa", unidad: Ω, valor: 1000 }
   calculos:
     a_q: { expr: "1/(f_1^2*f_2^2)", sim: "a", nombre: "coeficiente", unidad: "" }
     b_q: { expr: "1/f_1^2 + 1/f_2^2", sim: "b", nombre: "coeficiente", unidad: "" }
@@ -41,6 +47,17 @@ modelo:
     P_m: { expr: "180 - (atan(f_c/f_1) + atan(f_c/f_2))*180/pi", sim: "MF", nombre: "margen de fase", unidad: "°", cifras: 3 }
     G_db: { expr: "20*log10(G)", sim: "1/β", nombre: "ganancia del montaje en dB", unidad: dB }
     O_s: { expr: "100*exp(-pi*z/sqrt(1 - z^2))", sim: "sobreimpulso", nombre: "sobreimpulso", unidad: "%", cifras: 2 }
+    gbw_8: { expr: "A_0*f_1", sim: "GBW", nombre: "producto ganancia-ancho de banda", unidad: Hz }
+    R2_8: { expr: "(G_8 - 1)*R1_8", sim: "R₂", nombre: "resistencia de realimentación", unidad: Ω }
+    w1_8: { expr: "2*pi*gbw_8/A_0", sim: "ω₁", nombre: "primer polo", unidad: "rad/s" }
+    w2_8: { expr: "2*pi*f_2", sim: "ω₂", nombre: "segundo polo", unidad: "rad/s" }
+    be_8: { expr: "R1_8/(R1_8 + R2_8)", sim: "β", nombre: "fracción realimentada", unidad: "" }
+    wn_8: { expr: "sqrt(w1_8*w2_8*(1 + A_0*be_8))", sim: "ω_{n}", nombre: "pulsación propia", unidad: "rad/s" }
+    z_8: { expr: "(w1_8 + w2_8)/(2*wn_8)", sim: "ζ", nombre: "amortiguamiento", unidad: "" }
+    G0_8: { expr: "A_0/(1 + A_0*be_8)", sim: "G₀", nombre: "ganancia en continua", unidad: "" }
+    wd_8: { expr: "wn_8*sqrt(1 - z_8^2)", sim: "ω_{d}", nombre: "pulsación amortiguada", unidad: "rad/s" }
+    so_8: { expr: "100*exp(-pi*z_8/sqrt(1 - z_8^2))", sim: "sobreoscilación", nombre: "sobreoscilación", unidad: "%", cifras: 2 }
+    t0_8: { expr: "1/(2*f_8)", sim: "t₀", nombre: "instante del escalón", unidad: s }
     f_x: { expr: "1/(2*pi*R_x*C_x)", sim: "f_{p}", nombre: "polo de la entrada", unidad: Hz }
 
 tarjetas:
@@ -95,6 +112,25 @@ tarjetas:
     comprobar:
       - { P_m: 52, f_c: 786000, tol: 0.01 }
       - { con: { G: 100 }, P_m: 89.5, tol: 0.01 }
+
+  - id: explore-seguidor-vivo
+    tipo: explorar
+    titulo: "El seguidor, en vivo"
+    texto: "El operacional de la tabla como seguidor y con ganancia 2. Cambie la ganancia y mire el timbre tras el escalón."
+    libro: [240, 242, 243]
+    widget:
+      tipo: circuito
+      esquema: ao-estabilidad
+      piezas: { entrada: e_8, amplitud: a_8, f: f_8, forma: sq_8, r1: R1_8, r2: R2_8, a0: A_0, gbw: gbw_8, polo2: f_2 }
+      lectura: { valor: so_8, rotulo: "Sobreoscilación" }
+      grafica:
+        x: { id: t, min: 0.0000495, max: 0.000052, unidad: s, rotulo: "t" }
+        y: { min: -1.4, max: 1.4, unidad: V, rotulo: "v_{o}" }
+        curvas:
+          - { expr: "G0_8*(e_8 + a_8) - 2*a_8*G0_8*ceil((t - t0_8)/1e9)*(1 - exp(-z_8*wn_8*max(0, t - t0_8))*(cos(wd_8*max(0, t - t0_8)) + z_8*wn_8/wd_8*sin(wd_8*max(0, t - t0_8))))", color: naranja, rotulo: "v_{o}", mide: salida }
+      mandos:
+        - { valor: G_8, lista: [1, 2], rotulo: "Ganancia del montaje" }
+    requiere: { mover: [G_8] }
 
   - id: por-que-seguidor
     tipo: porque

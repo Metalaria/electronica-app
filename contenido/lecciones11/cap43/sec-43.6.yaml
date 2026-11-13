@@ -2,7 +2,8 @@
 # Formato: contenido/lecciones11/GUIA.md.
 # - Etapas que se cargan: el emisor común de la sección 44.3 (ganancia 169, Z_out ≈ R_C = 3,3 kΩ) como fuente de
 #   tensión controlada (Thévenin) en «fuente-controlada», y la entrada de una segunda etapa igual (Z_in = 2,16 kΩ) como
-#   su carga: 169 · 2,16/(3,3 + 2,16) ≈ 67.
+#   su carga: 169 · 2,16/(3,3 + 2,16) ≈ 67 (invertida, `invierte` 1.2). «prediga-comun» va sobre el «par-diferencial»
+#   vivo (cola ideal de 2 mA, R_C = 10 kΩ y ±12 V de ejemplo).
 # - La banda de n etapas iguales (bloque 178): gráfica normalizada a f/f_c de cada etapa.
 # - El CMRR frente a la impedancia de la fuente de cola: la gráfica de la figura 44.12 (fig-43.10, bloque 206), con su
 #   fórmula CMRR ≈ g_m·R_EE a 1 mA por transistor (g_m = 1 mA / 25,9 mV, sección 44.4); sus tres puntos (5,6 kΩ, 50 kΩ y
@@ -43,10 +44,23 @@ modelo:
     n_e: { sim: "n", nombre: "número de etapas iguales", unidad: "", valor: 1 }
     g_d: { sim: "g_{m}", nombre: "transconductancia a 1 mA", unidad: S, valor: 0.0386 }
     R_EE: { sim: "R_{EE}", nombre: "impedancia de la fuente de cola", unidad: Ω, valor: 5000000 }
+    inv: { tipo: interruptor, nombre: "fuente invertida (emisor común)", valor: 1 }
+    Vcc6: { sim: "V_{CC}", nombre: "alimentación positiva", unidad: V, valor: 12 }
+    Vee6: { sim: "V_{EE}", nombre: "alimentación negativa", unidad: V, valor: 12 }
+    Rc6: { sim: "R_{C}", nombre: "resistencia de colector", unidad: Ω, valor: 10000 }
+    I6: { sim: "I", nombre: "corriente de la fuente de cola", unidad: A, valor: 0.002 }
+    b6: { sim: "β", nombre: "ganancia de corriente", unidad: "", valor: 100 }
+    Vbe6: { sim: "V_{BE}", nombre: "tensión base-emisor", unidad: V, valor: 0.7 }
+    v06: { sim: "V_{B}", nombre: "continua de las bases", unidad: V, valor: 0 }
+    acm6: { sim: "v_{cm}", nombre: "lo que suben a la vez las dos bases", unidad: V, valor: 0.1 }
+    f6: { sim: "f", nombre: "frecuencia", unidad: Hz, valor: 1000 }
   calculos:
-    I_L: { si: c_on, entonces: "A_1*v_1/(R_o1 + Z_2)", sino: "0", sim: "i", nombre: "corriente hacia la segunda etapa", unidad: A }
-    V_o: { expr: "A_1*v_1 - I_L*R_o1", sim: "v_{o}", nombre: "salida de la primera etapa", unidad: V }
-    A_t: { expr: "V_o/v_1", sim: "A_{v}", nombre: "ganancia real de la primera etapa", unidad: "", cifras: 3 }
+    I_L: { si: c_on, entonces: "(1 - 2*inv)*A_1*v_1/(R_o1 + Z_2)", sino: "0", sim: "i", nombre: "corriente hacia la segunda etapa", unidad: A }
+    V_o: { expr: "(1 - 2*inv)*A_1*v_1 - I_L*R_o1", sim: "v_{o}", nombre: "salida de la primera etapa", unidad: V }
+    A_t: { expr: "abs(V_o/v_1)", sim: "|A_{v}|", nombre: "ganancia real de la primera etapa", unidad: "", cifras: 3 }
+    Ic6: { expr: "b6/(b6 + 1)*I6/2", sim: "I_{C}", nombre: "corriente de cada colector", unidad: A }
+    Vc6: { expr: "Vcc6 - Ic6*Rc6", sim: "V_{C}", nombre: "tensión de colector", unidad: V }
+    Vcm6: { expr: "0*acm6", sim: "v_{c}", nombre: "señal de modo común en cada colector", unidad: V }
     k_n: { expr: "sqrt(2^(1/n_e) - 1)", sim: "f_{c,total}/f_{c}", nombre: "fracción del corte que queda", unidad: "", cifras: 3 }
     f_40: { expr: "Z_2/(R_o1 + Z_2)*100", sim: "fracción", nombre: "parte de la tensión en vacío que llega", unidad: "%", cifras: 2 }
     r_3: { expr: "2^(1/n_e)", sim: "2^{1/n}", nombre: "raíz n-ésima de dos", unidad: "", cifras: 3 }
@@ -62,7 +76,7 @@ tarjetas:
     widget:
       tipo: circuito
       esquema: fuente-controlada
-      piezas: { control: v_1, av: A_1, ro: R_o1, carga: Z_2, interruptor: c_on }
+      piezas: { control: v_1, av: A_1, ro: R_o1, carga: Z_2, interruptor: c_on, invierte: inv }
       lectura: { valor: A_t, rotulo: "Ganancia de la primera etapa" }
       corriente: I_L
       mide: { salida: V_o, carga: I_L, controlada: I_L }
@@ -91,7 +105,7 @@ tarjetas:
     widget:
       tipo: circuito
       esquema: fuente-controlada
-      piezas: { control: v_1, av: A_1, ro: R_o1, carga: Z_2, interruptor: c_on }
+      piezas: { control: v_1, av: A_1, ro: R_o1, carga: Z_2, interruptor: c_on, invierte: inv }
       lectura: { valor: V_o, rotulo: "Salida de la primera etapa" }
       datos:
         - { valor: A_t, rotulo: "Ganancia: {{A_t}}" }
@@ -110,7 +124,7 @@ tarjetas:
     widget:
       tipo: circuito
       esquema: fuente-controlada
-      piezas: { control: v_1, av: A_1, ro: R_o1, carga: Z_2, interruptor: c_on }
+      piezas: { control: v_1, av: A_1, ro: R_o1, carga: Z_2, interruptor: c_on, invierte: inv }
       lectura: { valor: V_o, rotulo: "Salida de la primera etapa" }
       corriente: I_L
       mide: { salida: V_o, carga: I_L, controlada: I_L }
@@ -209,12 +223,15 @@ tarjetas:
     tipo: predecir
     titulo: "Las dos bases a la vez"
     texto: "Las dos bases suben a la vez lo mismo. ¿Qué hace la salida?"
-    libro: [187]
+    libro: [185, 187]
     widget:
-      tipo: figura
-      figura: fig-43.10
-      zonas:
-        - { id: fuente, rotulo: "Fuente de abajo", rect: [70, 168, 45, 40] }
+      tipo: circuito
+      esquema: par-diferencial
+      piezas: { vcc: Vcc6, vee: Vee6, rc: Rc6, icola: I6, beta: b6, vbe: Vbe6, v1: v06, v2: v06, acm: acm6, f: f6 }
+      lectura: { valor: Vcm6, rotulo: "Señal en cada colector" }
+      corriente: Ic6
+      mide: { ic1: Ic6, ic2: Ic6, vc1: Vc6, vc2: Vc6, salida1_amp: Vcm6, salida2_amp: Vcm6 }
+      ocultar: true
     opciones:
       - texto: "No cambia: el reparto de la corriente es el mismo"
         bien: true

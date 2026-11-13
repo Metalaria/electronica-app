@@ -1,10 +1,10 @@
 # Lección 1.2 de la sección 21.8 «Práctica 8 — El Transistor BJT como Interruptor» (cap22; etiqueta interna sec-22.8).
 # Formato: contenido/lecciones11/GUIA.md. El montaje del libro (R_B = 10 kΩ, LED con 330 Ω en el colector, 5 V o 9 V)
-# con el esquema «bjt-interruptor», que no tiene LED: el LED conduciendo es su caída constante de 2 V (modelo del libro,
-# sección 5.3), así que la alimentación del colector se dibuja como V_CC − V_LED. Con 9 V eso da los «unos 20 mA» del
-# libro. En corte el LED casi apagado cae menos (el libro lee 3,5 V con 5 V): por eso las tarjetas de corte leen la
-# corriente, no V_CE. β = 100 (el del esquema de referencia); las R_B de 100 kΩ y 150 kΩ son ilustrativas (el libro:
-# «aumentar R_B hasta que no sature, con 1 MΩ, por ejemplo»; con 1 MΩ la base queda fuera del margen del simulador).
+# con el esquema «bjt-interruptor» y su LED en el colector (pieza `vf`, 1.2 esquemas12c): el LED conduciendo es su caída
+# constante de 2 V (modelo del libro, sección 5.3). Con 9 V eso da los «unos 20 mA» del libro. En corte el LED casi
+# apagado cae menos (el libro lee 3,5 V con 5 V): por eso las tarjetas de corte leen la corriente, no V_CE. β = 100 (el
+# del esquema de referencia); la R_B de 100 kΩ es ilustrativa y la de 1 MΩ es la del libro («con 1 MΩ, por ejemplo»),
+# con `iref` = I_C para que la V_BE del simulador sea la del modelo a esa corriente.
 leccion: cap22/sec-22.8
 
 libro:
@@ -30,6 +30,7 @@ modelo:
     I_bc: { expr: "min(beta*I_bb, (V_eq - V_CEs)/R_bc)", sim: "I_{C}", nombre: "corriente del LED", unidad: A }
     V_bce: { expr: "V_eq - I_bc*R_bc", sim: "V_{CE}", nombre: "tensión colector-emisor", unidad: V }
     I_sat: { expr: "(V_eq - V_CEs)/R_bc", sim: "I_{C(sat)}", nombre: "corriente de saturación", unidad: A }
+    I_rf: { expr: "max(I_bc, 0.0001)", sim: "I_{ref}", nombre: "corriente de referencia de V_BE", unidad: A }
     I_max: { expr: "beta*I_bb", sim: "β·I_{B}", nombre: "lo que la base permite", unidad: A }
 
 tarjetas:
@@ -43,7 +44,7 @@ tarjetas:
     widget:
       tipo: circuito
       esquema: bjt-interruptor
-      piezas: { vcc: V_eq, rc: R_bc, entrada: V_bi, rb: R_bb, beta: beta, vbe: V_BE, vcesat: V_CEs }
+      piezas: { vcc: V_cc, rc: R_bc, vf: V_led, entrada: V_bi, rb: R_bb, beta: beta, vbe: V_BE, vcesat: V_CEs }
       lectura: { valor: I_bc, rotulo: "Corriente del LED" }
       datos:
         - { valor: I_bb, rotulo: "I_{B} = {{I_bb}}" }
@@ -62,7 +63,7 @@ tarjetas:
     widget:
       tipo: circuito
       esquema: bjt-interruptor
-      piezas: { vcc: V_eq, rc: R_bc, entrada: V_bi, rb: R_bb, beta: beta, vbe: V_BE, vcesat: V_CEs }
+      piezas: { vcc: V_cc, rc: R_bc, vf: V_led, entrada: V_bi, rb: R_bb, beta: beta, vbe: V_BE, vcesat: V_CEs }
       lectura: { valor: V_bce, rotulo: "V_{CE}" }
       corriente: I_bc
       mide: { ib: I_bb, ic: I_bc, vce: V_bce }
@@ -90,7 +91,7 @@ tarjetas:
     widget:
       tipo: circuito
       esquema: bjt-interruptor
-      piezas: { vcc: V_eq, rc: R_bc, entrada: V_bi, rb: R_bb, beta: beta, vbe: V_BE, vcesat: V_CEs }
+      piezas: { vcc: V_cc, rc: R_bc, vf: V_led, entrada: V_bi, rb: R_bb, beta: beta, vbe: V_BE, vcesat: V_CEs }
       lectura: { valor: I_bc, rotulo: "Corriente del LED" }
       corriente: I_bc
       mide: { ib: I_bb, ic: I_bc }
@@ -109,21 +110,21 @@ tarjetas:
   - id: activa
     tipo: sorpresa
     titulo: "Si R_{B} crece"
-    texto: "Con 5 V en la base, aumente R_{B}. Mire V_{CE}."
+    texto: "Con 5 V en la base, aumente R_{B} hasta 1 MΩ. Mire V_{CE}."
     libro: [228]
     fijar: { V_cc: 5, V_bi: 5 }
     inicio: { R_bb: 10000 }
     widget:
       tipo: circuito
       esquema: bjt-interruptor
-      piezas: { vcc: V_eq, rc: R_bc, entrada: V_bi, rb: R_bb, beta: beta, vbe: V_BE, vcesat: V_CEs }
+      piezas: { vcc: V_cc, rc: R_bc, vf: V_led, entrada: V_bi, rb: R_bb, beta: beta, vbe: V_BE, vcesat: V_CEs, iref: I_rf }
       lectura: { valor: V_bce, rotulo: "V_{CE}" }
       datos:
         - { valor: I_bc, rotulo: "I_{C} = {{I_bc}}" }
       corriente: I_bc
-      mide: { ib: I_bb, ic: I_bc, vce: V_bce }
+      mide: { ib: I_bb, ic: I_bc, vce: V_bce, vled: V_led }
       mandos:
-        - { valor: R_bb, lista: [10000, 100000, 150000], rotulo: "R_{B}" }
+        - { valor: R_bb, lista: [10000, 100000, 1000000], rotulo: "R_{B}" }
     requiere: { mover: [R_bb] }
 
   - id: por-que-activa
@@ -131,11 +132,11 @@ tarjetas:
     titulo: "¿Qué hace ahora el transistor?"
     texto: "Con R_{B} grande, V_{CE} se queda en un valor intermedio. ¿Cómo está trabajando el transistor?"
     libro: [228]
-    fijar: { V_cc: 5, V_bi: 5, R_bb: 150000 }
+    fijar: { V_cc: 5, V_bi: 5, R_bb: 1000000 }
     widget:
       tipo: circuito
       esquema: bjt-interruptor
-      piezas: { vcc: V_eq, rc: R_bc, entrada: V_bi, rb: R_bb, beta: beta, vbe: V_BE, vcesat: V_CEs }
+      piezas: { vcc: V_cc, rc: R_bc, vf: V_led, entrada: V_bi, rb: R_bb, beta: beta, vbe: V_BE, vcesat: V_CEs, iref: I_rf }
       lectura: { valor: V_bce, rotulo: "V_{CE}" }
       corriente: I_bc
       mide: { ib: I_bb, ic: I_bc, vce: V_bce }
@@ -160,7 +161,7 @@ tarjetas:
     widget:
       tipo: circuito
       esquema: bjt-interruptor
-      piezas: { vcc: V_eq, rc: R_bc, entrada: V_bi, rb: R_bb, beta: beta, vbe: V_BE }
+      piezas: { vcc: V_cc, rc: R_bc, vf: V_led, entrada: V_bi, rb: R_bb, beta: beta, vbe: V_BE }
       lectura: { valor: I_bb, rotulo: "Corriente de base" }
       mide: { ib: I_bb }
       ocultar: true
@@ -192,7 +193,7 @@ tarjetas:
     widget:
       tipo: circuito
       esquema: bjt-interruptor
-      piezas: { vcc: V_eq, rc: R_bc, entrada: V_bi, rb: R_bb, beta: beta, vbe: V_BE, vcesat: V_CEs }
+      piezas: { vcc: V_cc, rc: R_bc, vf: V_led, entrada: V_bi, rb: R_bb, beta: beta, vbe: V_BE, vcesat: V_CEs }
       lectura: { valor: V_bce, rotulo: "V_{CE} con 4,7 kΩ" }
       datos:
         - { valor: I_bb, rotulo: "I_{B} = {{I_bb}}" }

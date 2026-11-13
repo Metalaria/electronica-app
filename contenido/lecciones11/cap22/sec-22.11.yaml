@@ -36,6 +36,11 @@ modelo:
     BW_i: { sim: "BW", nombre: "ancho de banda del instrumento", unidad: Hz, valor: 100000000 }
     t_s: { sim: "t_{señal}", nombre: "tiempo de subida de la señal", unidad: s, valor: 5e-9 }
     k_p: { sim: "k", nombre: "ajuste del trimmer, R₁C₁/R₂C₂", unidad: "", valor: 0.6 }
+    f_s: { sim: "f", nombre: "frecuencia de la cuadrada", unidad: Hz, valor: 1000 }
+    V_c: { sim: "V", nombre: "amplitud de la cuadrada de calibración", unidad: V, valor: 3 }
+    R1_s: { sim: "R₁", nombre: "resistencia de la punta", unidad: Ω, valor: 9000000 }
+    C1_s: { sim: "C₁", nombre: "condensador de la punta", unidad: F, valor: 11e-12 }
+    R2_s: { sim: "R₂", nombre: "resistencia de entrada del osciloscopio", unidad: Ω, valor: 1000000 }
   calculos:
     t_ri: { expr: "0.35/BW_i", sim: "t_{r}", nombre: "tiempo de subida del instrumento", unidad: s }
     tau_i: { expr: "1/(2*pi*BW_i)", sim: "τ", nombre: "constante del instrumento", unidad: s }
@@ -44,6 +49,12 @@ modelo:
     t_10: { expr: "tau_i*ln(10/9)", sim: "t_{10}", nombre: "llegada al 10 %", unidad: s }
     t_90: { expr: "tau_i*ln(10)", sim: "t_{90}", nombre: "llegada al 90 %", unidad: s }
     r_0: { expr: "10*k_p/(k_p + 9)*100", sim: "escalón", nombre: "escalón inicial respecto a la meseta", unidad: "%" }
+    V_s: { expr: "V_c", sim: "V", nombre: "cuadrada de calibración", unidad: V }
+    C2_s: { expr: "R1_s*C1_s/(R2_s*k_p)", sim: "C₂", nombre: "capacidad de entrada con el trimmer", unidad: F }
+    K0_s: { expr: "C1_s/(C1_s + C2_s)", sim: "K₀", nombre: "división en el flanco", unidad: "" }
+    Ki_s: { expr: "R2_s/(R1_s + R2_s)", sim: "K_{∞}", nombre: "división en la meseta", unidad: "" }
+    tau_s: { expr: "par(R1_s, R2_s)*(C1_s + C2_s)", sim: "τ", nombre: "constante de tiempo", unidad: s }
+    vh_s: { expr: "V_s*(Ki_s + (K0_s - Ki_s)*exp(-1/(2*f_s*tau_s)))", sim: "v(T/2)", nombre: "salida al final de la primera mitad", unidad: V }
 
 tarjetas:
   - id: explore-flanco
@@ -213,13 +224,16 @@ tarjetas:
     libro: [276, "cap21#86", "cap21#90", "cap21#92"]
     inicio: { k_p: 0.6 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.0005, unidad: s, rotulo: "t" }
-      y: { min: 0, max: 1.6, unidad: "", rotulo: "meseta" }
-      curvas:
-        - { expr: "r_0/100 + (1 - r_0/100)*(1 - exp(-t/0.00005))", color: naranja, rotulo: "lo que se ve" }
-        - { expr: "1", color: tinta, rotulo: "la cuadrada", discontinua: true }
+      tipo: circuito
+      esquema: sonda-x10
+      piezas: { entrada: V_s, f: f_s, r1: R1_s, c1: C1_s, r2: R2_s, c2: C2_s }
       lectura: { valor: r_0, rotulo: "Escalón inicial" }
+      grafica:
+        x: { id: t, min: 0, max: 0.00099, unidad: s, rotulo: "t" }
+        y: { min: -0.2, max: 0.6, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "(ceil(t/1e9) - ceil((t - 1/(2*f_s))/1e9))*V_s*Ki_s", color: tinta, rotulo: "la señal real ÷ 10", discontinua: true }
+          - { expr: "(ceil(t/1e9) - ceil((t - 1/(2*f_s))/1e9))*V_s*(Ki_s + (K0_s - Ki_s)*exp(-t/tau_s)) + ceil((t - 1/(2*f_s))/1e9)*(vh_s - V_s*K0_s)*exp(-max(0, t - 1/(2*f_s))/tau_s)", color: naranja, rotulo: "lo que se ve", mide: salida }
       mandos:
         - { valor: k_p, min: 0.5, max: 1.5, paso: 0.01, rotulo: "Trimmer" }
     ajuste:

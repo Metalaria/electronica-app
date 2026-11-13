@@ -47,6 +47,12 @@ modelo:
     V_r: { sim: "V_{CC}", nombre: "tensión de cada raíl", unidad: V, valor: 21 }
     P_A: { sim: "P", nombre: "potencia del clase A", unidad: W, valor: 10 }
     e_A: { sim: "η", nombre: "rendimiento del clase A con condensador", unidad: "%", valor: 25 }
+    Ib7: { sim: "I_{B}", nombre: "corriente de la fuente de bias", unidad: A, valor: 0.05 }
+    R17: { sim: "R₁", nombre: "resistencia de ajuste del multiplicador", unidad: Ω, valor: 1019 }
+    R27: { sim: "R₂", nombre: "resistencia fija del multiplicador", unidad: Ω, valor: 1000 }
+    Re7: { sim: "R_{E}", nombre: "resistencia de emisor", unidad: Ω, valor: 0.22 }
+    b7: { sim: "β", nombre: "ganancia de corriente", unidad: "", valor: 100 }
+    bm7: { sim: "β_{3}", nombre: "ganancia de corriente del multiplicador (sin corriente de base)", unidad: "", valor: 1e9 }
   calculos:
     k_m: { expr: "2/pi*asin(min(1, V_BE/A_s))*clB*100", sim: "t_{muerto}", nombre: "parte del ciclo sin conducir", unidad: "%", cifras: 2 }
     V_pk: { expr: "sqrt(2*P_o*R_L)", sim: "V_{pico}", nombre: "tensión de pico", unidad: V }
@@ -59,6 +65,13 @@ modelo:
     V_rec: { expr: "A_s - V_BE", sim: "V_{p}", nombre: "pico de salida en clase B", unidad: V }
     V_dob: { expr: "2*V_pk", sim: "2·V_{pico}", nombre: "el doble del pico", unidad: V }
     P_cA: { expr: "P_A/(e_A/100)", sim: "P_{consumo}", nombre: "consumo del clase A", unidad: W }
+    Vbb7: { expr: "(1 - clB)*V_BE*(1 + R17/R27)", sim: "V_{BB}", nombre: "tensión entre las bases", unidad: V }
+    Ie7: { expr: "max(0, (Vbb7 - 2*V_BE)/(2*Re7))", sim: "I_{E}", nombre: "corriente de reposo de emisor", unidad: A }
+    Iq7: { expr: "b7/(b7 + 1)*Ie7", sim: "I_{Q}", nombre: "corriente de reposo", unidad: A }
+    Ir7: { expr: "max(Iq7, 0.01)", sim: "I_{ref}", nombre: "corriente de referencia de V_BE", unidad: A }
+    Vin7: { expr: "-Vbb7/2", sim: "V_{driver}", nombre: "nivel del driver", unidad: V }
+    k7: { expr: "Re7/R_L", sim: "k", nombre: "R_E/R_L", unidad: "" }
+    sab7: { expr: "ceil(max(0, Vbb7 - 2*V_BE)/1e9)", sim: "AB", nombre: "las dos ramas conducen en reposo", unidad: "" }
 
 tarjetas:
   - id: explore-cruce
@@ -67,13 +80,19 @@ tarjetas:
     texto: "En clase B ninguno conduce hasta superar 0,7 V. Cambie la amplitud y dé corriente de reposo."
     libro: [215, 217, 219]
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
-      y: { min: -5.5, max: 5.5, unidad: V, rotulo: "v" }
-      curvas:
-        - { expr: "A_s*sin(2*pi*f_s*t)", color: tinta, rotulo: "entrada", discontinua: true }
-        - { expr: "clB*(max(0, A_s*sin(2*pi*f_s*t) - V_BE) + min(0, A_s*sin(2*pi*f_s*t) + V_BE)) + (1 - clB)*A_s*sin(2*pi*f_s*t)", color: naranja, rotulo: "salida" }
+      tipo: circuito
+      esquema: etapa-clase-ab
+      piezas: { vcc: V_r, entrada: Vin7, amplitud: A_s, f: f_s, ib: Ib7, r1: R17, r2: R27, puente: clB, re: Re7, carga: R_L, beta: b7, vbe: V_BE, iref: Ir7, betam: bm7 }
       lectura: { valor: k_m, rotulo: "Ciclo sin conducir" }
+      datos:
+        - { valor: Iq7, rotulo: "Corriente de reposo: {{Iq7}}" }
+      mide: { iq: Iq7, vbb: Vbb7 }
+      grafica:
+        x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+        y: { min: -5.5, max: 5.5, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "A_s*sin(2*pi*f_s*t)", color: tinta, rotulo: "entrada", discontinua: true }
+          - { expr: "sab7*max((A_s*sin(2*pi*f_s*t) - Vbb7/2 + V_BE)/(1 + k7), min((A_s*sin(2*pi*f_s*t) + Vbb7/2 - V_BE)/(1 + k7), (2*A_s*sin(2*pi*f_s*t))/(2 + k7))) + (1 - sab7)*(max((A_s*sin(2*pi*f_s*t) + Vbb7/2 - V_BE)/(1 + k7), 0) + min((A_s*sin(2*pi*f_s*t) - Vbb7/2 + V_BE)/(1 + k7), 0))", color: naranja, rotulo: "salida", mide: salida }
       mandos:
         - { valor: A_s, min: 0.5, max: 5, paso: 0.5, rotulo: "Amplitud de la señal" }
         - { valor: clB, tipo: interruptor, rotulo: "Sin corriente de reposo (clase B)" }
@@ -132,13 +151,17 @@ tarjetas:
     libro: [217]
     fijar: { clB: 1, A_s: 1 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
-      y: { min: -5.5, max: 5.5, unidad: V, rotulo: "v" }
-      curvas:
-        - { expr: "A_s*sin(2*pi*f_s*t)", color: tinta, rotulo: "entrada", discontinua: true }
-        - { expr: "clB*(max(0, A_s*sin(2*pi*f_s*t) - V_BE) + min(0, A_s*sin(2*pi*f_s*t) + V_BE)) + (1 - clB)*A_s*sin(2*pi*f_s*t)", color: naranja, rotulo: "salida" }
+      tipo: circuito
+      esquema: etapa-clase-ab
+      piezas: { vcc: V_r, entrada: Vin7, amplitud: A_s, f: f_s, ib: Ib7, r1: R17, r2: R27, puente: clB, re: Re7, carga: R_L, beta: b7, vbe: V_BE, iref: Ir7, betam: bm7 }
       lectura: { valor: k_m, rotulo: "Ciclo sin conducir" }
+      mide: { iq: Iq7, vbb: Vbb7 }
+      grafica:
+        x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+        y: { min: -5.5, max: 5.5, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "A_s*sin(2*pi*f_s*t)", color: tinta, rotulo: "entrada", discontinua: true }
+          - { expr: "sab7*max((A_s*sin(2*pi*f_s*t) - Vbb7/2 + V_BE)/(1 + k7), min((A_s*sin(2*pi*f_s*t) + Vbb7/2 - V_BE)/(1 + k7), (2*A_s*sin(2*pi*f_s*t))/(2 + k7))) + (1 - sab7)*(max((A_s*sin(2*pi*f_s*t) + Vbb7/2 - V_BE)/(1 + k7), 0) + min((A_s*sin(2*pi*f_s*t) - Vbb7/2 + V_BE)/(1 + k7), 0))", color: naranja, rotulo: "salida", mide: salida }
       ocultar: true
     opciones:
       - texto: "Con una pequeña: el escalón es una parte mayor de la señal"
@@ -257,11 +280,12 @@ tarjetas:
     libro: [220, 221]
     fijar: { clB: 0 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
-      y: { min: -5.5, max: 5.5, unidad: V, rotulo: "v" }
-      curvas:
-        - { expr: "clB*(max(0, A_s*sin(2*pi*f_s*t) - V_BE) + min(0, A_s*sin(2*pi*f_s*t) + V_BE)) + (1 - clB)*A_s*sin(2*pi*f_s*t)", color: naranja, rotulo: "salida" }
+      tipo: circuito
+      esquema: etapa-clase-ab
+      piezas: { vcc: V_r, entrada: Vin7, amplitud: A_s, f: f_s, ib: Ib7, r1: R17, r2: R27, puente: clB, re: Re7, carga: R_L, beta: b7, vbe: V_BE, iref: Ir7, betam: bm7 }
+      lectura: { valor: Iq7, rotulo: "Corriente de reposo" }
+      corriente: Iq7
+      mide: { iq: Iq7, vbb: Vbb7 }
     opciones:
       - texto: "Al calentarse reduce la polarización en la misma proporción: frena el embalamiento"
         bien: true

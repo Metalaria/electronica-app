@@ -31,9 +31,19 @@ modelo:
     c_t: { sim: "C₂/C₂ideal", nombre: "capacidad del trimmer respecto a la que compensa", unidad: "", valor: 1.4 }
     T_c: { sim: "T", nombre: "periodo de la cuadrada", unidad: s, valor: 0.001 }
     V_cal: { sim: "V", nombre: "amplitud de la cuadrada de calibración", unidad: V, valor: 3 }
+    R1_s: { sim: "R₁", nombre: "resistencia de la punta", unidad: Ω, valor: 9000000 }
+    C1_s: { sim: "C₁", nombre: "condensador de la punta", unidad: F, valor: 11e-12 }
+    R2_s: { sim: "R₂", nombre: "resistencia de entrada del osciloscopio", unidad: Ω, valor: 1000000 }
   calculos:
     k_p: { expr: "1/c_t", sim: "k", nombre: "R₁C₁/R₂C₂", unidad: "", cifras: 2 }
     r_0: { expr: "10*k_p/(k_p + 9)*100", sim: "escalón", nombre: "escalón inicial respecto a la meseta", unidad: "%" }
+    f_s: { expr: "1/T_c", sim: "f", nombre: "frecuencia de la cuadrada", unidad: Hz }
+    V_s: { expr: "V_cal", sim: "V", nombre: "cuadrada de calibración", unidad: V }
+    C2_s: { expr: "c_t*R1_s*C1_s/R2_s", sim: "C₂", nombre: "capacidad de entrada con el trimmer", unidad: F }
+    K0_s: { expr: "C1_s/(C1_s + C2_s)", sim: "K₀", nombre: "división en el flanco", unidad: "" }
+    Ki_s: { expr: "R2_s/(R1_s + R2_s)", sim: "K_{∞}", nombre: "división en la meseta", unidad: "" }
+    tau_s: { expr: "par(R1_s, R2_s)*(C1_s + C2_s)", sim: "τ", nombre: "constante de tiempo", unidad: s }
+    vh_s: { expr: "V_s*(Ki_s + (K0_s - Ki_s)*exp(-1/(2*f_s*tau_s)))", sim: "v(T/2)", nombre: "salida al final de la primera mitad", unidad: V }
 
 tarjetas:
   - id: explore-divisor
@@ -55,16 +65,19 @@ tarjetas:
   - id: explore-trimmer
     tipo: explorar
     titulo: "Gire el trimmer"
-    texto: "La cuadrada de 1 kHz vista con la sonda. Mueva el trimmer y mire las esquinas."
+    texto: "La cuadrada de 1 kHz, un periodo desde el reposo, vista con la sonda. Mueva el trimmer y mire las esquinas."
     libro: [86, 90, 91, 92]
     inicio: { c_t: 1.4 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
-      y: { min: -0.6, max: 1.6, unidad: "", rotulo: "fracción de la meseta" }
-      curvas:
-        - { expr: "(1 - floor(2*t/T_c) + 2*floor(t/T_c))*(1 - (1 - r_0/100)*exp(-(t - T_c/2*floor(2*t/T_c))/0.0001)) + (floor(2*t/T_c) - 2*floor(t/T_c))*(1 - r_0/100)*exp(-(t - T_c/2*floor(2*t/T_c))/0.0001)", color: naranja, rotulo: "lo que se ve" }
+      tipo: circuito
+      esquema: sonda-x10
+      piezas: { entrada: V_s, f: f_s, r1: R1_s, c1: C1_s, r2: R2_s, c2: C2_s }
       lectura: { valor: r_0, rotulo: "Escalón inicial" }
+      grafica:
+        x: { id: t, min: 0, max: 0.00099, unidad: s, rotulo: "t" }
+        y: { min: -0.2, max: 0.6, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "(ceil(t/1e9) - ceil((t - 1/(2*f_s))/1e9))*V_s*(Ki_s + (K0_s - Ki_s)*exp(-t/tau_s)) + ceil((t - 1/(2*f_s))/1e9)*(vh_s - V_s*K0_s)*exp(-max(0, t - 1/(2*f_s))/tau_s)", color: naranja, rotulo: "lo que se ve", mide: salida }
       mandos:
         - { valor: c_t, lista: [0.6, 0.8, 1, 1.2, 1.4], rotulo: "Trimmer, C₂" }
     requiere: { mover: [c_t] }
@@ -76,12 +89,15 @@ tarjetas:
     libro: [86, 91, 106]
     fijar: { c_t: 0.6 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
-      y: { min: -0.6, max: 1.6, unidad: "", rotulo: "fracción de la meseta" }
-      curvas:
-        - { expr: "(1 - floor(2*t/T_c) + 2*floor(t/T_c))*(1 - (1 - r_0/100)*exp(-(t - T_c/2*floor(2*t/T_c))/0.0001)) + (floor(2*t/T_c) - 2*floor(t/T_c))*(1 - r_0/100)*exp(-(t - T_c/2*floor(2*t/T_c))/0.0001)", color: naranja, rotulo: "lo que se ve" }
+      tipo: circuito
+      esquema: sonda-x10
+      piezas: { entrada: V_s, f: f_s, r1: R1_s, c1: C1_s, r2: R2_s, c2: C2_s }
       lectura: { valor: r_0, rotulo: "Escalón inicial" }
+      grafica:
+        x: { id: t, min: 0, max: 0.00099, unidad: s, rotulo: "t" }
+        y: { min: -0.2, max: 0.6, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "(ceil(t/1e9) - ceil((t - 1/(2*f_s))/1e9))*V_s*(Ki_s + (K0_s - Ki_s)*exp(-t/tau_s)) + ceil((t - 1/(2*f_s))/1e9)*(vh_s - V_s*K0_s)*exp(-max(0, t - 1/(2*f_s))/tau_s)", color: naranja, rotulo: "lo que se ve", mide: salida }
       ocultar: true
     opciones:
       - texto: "Un pico al principio de cada semiciclo"
@@ -123,12 +139,15 @@ tarjetas:
     libro: [97, 107]
     inicio: { c_t: 1.4 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
-      y: { min: -0.6, max: 1.6, unidad: "", rotulo: "fracción de la meseta" }
-      curvas:
-        - { expr: "(1 - floor(2*t/T_c) + 2*floor(t/T_c))*(1 - (1 - r_0/100)*exp(-(t - T_c/2*floor(2*t/T_c))/0.0001)) + (floor(2*t/T_c) - 2*floor(t/T_c))*(1 - r_0/100)*exp(-(t - T_c/2*floor(2*t/T_c))/0.0001)", color: naranja, rotulo: "lo que se ve" }
+      tipo: circuito
+      esquema: sonda-x10
+      piezas: { entrada: V_s, f: f_s, r1: R1_s, c1: C1_s, r2: R2_s, c2: C2_s }
       lectura: { valor: r_0, rotulo: "Escalón inicial" }
+      grafica:
+        x: { id: t, min: 0, max: 0.00099, unidad: s, rotulo: "t" }
+        y: { min: -0.2, max: 0.6, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "(ceil(t/1e9) - ceil((t - 1/(2*f_s))/1e9))*V_s*(Ki_s + (K0_s - Ki_s)*exp(-t/tau_s)) + ceil((t - 1/(2*f_s))/1e9)*(vh_s - V_s*K0_s)*exp(-max(0, t - 1/(2*f_s))/tau_s)", color: naranja, rotulo: "lo que se ve", mide: salida }
       mandos:
         - { valor: c_t, min: 0.5, max: 1.5, paso: 0.01, rotulo: "Trimmer, C₂" }
     ajuste:
@@ -147,13 +166,16 @@ tarjetas:
     texto: "Ya compensada, desajústela a propósito mientras mira. La cuadrada real es la misma en todo momento."
     libro: [104, 105]
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
-      y: { min: -0.6, max: 1.6, unidad: "", rotulo: "fracción de la meseta" }
-      curvas:
-        - { expr: "1 - floor(2*t/T_c) + 2*floor(t/T_c)", color: tinta, rotulo: "la señal real", discontinua: true }
-        - { expr: "(1 - floor(2*t/T_c) + 2*floor(t/T_c))*(1 - (1 - r_0/100)*exp(-(t - T_c/2*floor(2*t/T_c))/0.0001)) + (floor(2*t/T_c) - 2*floor(t/T_c))*(1 - r_0/100)*exp(-(t - T_c/2*floor(2*t/T_c))/0.0001)", color: naranja, rotulo: "lo que se ve" }
+      tipo: circuito
+      esquema: sonda-x10
+      piezas: { entrada: V_s, f: f_s, r1: R1_s, c1: C1_s, r2: R2_s, c2: C2_s }
       lectura: { valor: r_0, rotulo: "Escalón inicial" }
+      grafica:
+        x: { id: t, min: 0, max: 0.00099, unidad: s, rotulo: "t" }
+        y: { min: -0.2, max: 0.6, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "(ceil(t/1e9) - ceil((t - 1/(2*f_s))/1e9))*V_s*Ki_s", color: tinta, rotulo: "la señal real ÷ 10", discontinua: true }
+          - { expr: "(ceil(t/1e9) - ceil((t - 1/(2*f_s))/1e9))*V_s*(Ki_s + (K0_s - Ki_s)*exp(-t/tau_s)) + ceil((t - 1/(2*f_s))/1e9)*(vh_s - V_s*K0_s)*exp(-max(0, t - 1/(2*f_s))/tau_s)", color: naranja, rotulo: "lo que se ve", mide: salida }
       mandos:
         - { valor: c_t, lista: [0.6, 0.8, 1, 1.2, 1.4], rotulo: "Trimmer, C₂" }
     requiere: { mover: [c_t] }
