@@ -1,0 +1,195 @@
+# «Consolas por dentro» · Super Nintendo 4: los buses A y B y la decodificación de direcciones. El decodificador del
+# explorador (arquitectura snes.ts sobre sus direcciones de ejemplo: memmap.txt de anomie), la elección del chip del
+# bus B con PA7 y PA6 (circuito lógico y su tabla), los espejos y las velocidades. Fuentes: snes#n y el libro
+# (decodificador, 28.3; un bus compartido, 9.6; los espejos de la NES, 38.11).
+leccion: consola-snes/snes-buses
+
+libro:
+  "snes#2": "Gobierna dos buses: el A (CA0–CA23, /ROMSEL, /RAMSEL, /CPURD, /CPUWR) y el B (PA0–PA7, /PARD, /PAWR)"
+  "snes#17": "Todo el bus A (CA0–CA23, D0–D7, /ROMSEL, /CPURD, /CPUWR), el bus B (PA0–PA7, /PARD, /PAWR)"
+  "snes#18": "Bus B con D0–D7, /PARD, /PAWR"
+  "snes#101": "/ROMSEL baja y el cartucho decide qué chip contesta"
+  "snes#102": "la CPU baja /RAMSEL y la WRAM recibe CA0–CA16"
+  "snes#103": "Los primeros 8 KB de la WRAM se ven en todos los bancos bajos: $801234 es $7E1234"
+  "snes#104": "PA7 = PA6 = 0 eligen las dos PPU"
+  "snes#105": "PA7 = 0 y PA6 = 1 eligen el S-SMP"
+  "snes#106": "Registro dentro de la CPU, el más lento: 12 ciclos maestros (1,77 MHz)"
+  "snes#107": "Velocidad: 6 ciclos maestros (3,55 MHz)"
+  "cap29#76": "Decodificador: de n entradas a 2ⁿ salidas, con una sola activa"
+  "cap09#72": "si dos se habilitan a la vez se produce contención de bus"
+  "cap37#359": "aparecen porque la decodificación de direcciones es incompleta"
+
+modelo:
+  valores: {}
+  calculos: {}
+
+tarjetas:
+  - id: explore-buses
+    tipo: explorar
+    titulo: "Dos buses"
+    texto: "La CPU gobierna dos buses que comparten los datos. Toque la CPU, la ranura y el puerto de expansión."
+    libro: ["snes#2", "snes#17", "snes#18"]
+    requiere: { mover: [n-cpu, n-cart, n-exp] }
+    widget:
+      tipo: figura
+      consola: { maquina: snes, foto: ntsc }
+      zonas:
+        - { id: n-cpu, hotspot: n-cpu, rotulo: "CPU", texto: "Bus A: CA0–CA23. Bus B: PA0–PA7. Los dos, con los datos D0–D7." }
+        - { id: n-cart, hotspot: n-cart, rotulo: "Ranura de cartucho", texto: "Llega todo el bus A y también el bus B." }
+        - { id: n-exp, hotspot: n-exp, rotulo: "Puerto de expansión", texto: "Solo el bus B, con D0–D7, /PARD y /PAWR." }
+
+  - id: prediga-wram
+    tipo: predecir
+    titulo: "Escribir en $7E0010"
+    texto: "La CPU escribe en $7E0010, en el bus A. ¿Qué selección baja?"
+    libro: ["snes#102", "snes#101"]
+    widget:
+      tipo: figura
+      consola: { maquina: snes, foto: ntsc }
+      zonas:
+        - { id: n-wram, hotspot: n-wram, rotulo: "WRAM" }
+        - { id: n-cart, hotspot: n-cart, rotulo: "Ranura de cartucho" }
+    opciones:
+      - texto: "/RAMSEL: contesta la WRAM."
+        bien: true
+        porque: "$7E0000–$7FFFFF es la WRAM: la CPU baja /RAMSEL y la WRAM recibe CA0–CA16."
+      - texto: "/ROMSEL: contesta el cartucho."
+        porque: "/ROMSEL es para las zonas de ROM del cartucho, como $008000. El banco $7E es de la WRAM."
+      - texto: "/PAWR: es una escritura del bus B."
+        porque: "/PAWR es la escritura del bus B, la de registros como $2118 de las PPU. $7E0010 es una dirección del bus A."
+    escalera:
+      - "El banco $7E es el primero de la WRAM."
+    solucion: "/RAMSEL: $7E0010 es la WRAM, en el bus A."
+
+  - id: explore-bus-b
+    tipo: explorar
+    titulo: "Quién contesta en el bus B"
+    texto: "Dos bits altos de la dirección del bus B, PA7 y PA6, eligen el chip. Muévalos."
+    libro: ["snes#104", "snes#105", "cap29#76"]
+    requiere: { mover: [PA7, PA6] }
+    widget:
+      tipo: logica
+      entradas: [{ id: PA7, rotulo: "PA7" }, { id: PA6, rotulo: "PA6" }]
+      piezas:
+        - { id: dec, tipo: decodificador, bits: 2, entradas: [PA6, PA7] }
+      salidas:
+        - { id: PPU, de: dec.y0 }
+        - { id: SMP, de: dec.y1 }
+      tabla: true
+
+  - id: tabla-bus-b
+    tipo: tabla
+    titulo: "La tabla del bus B"
+    texto: "Rellene qué chip queda elegido (1) con cada pareja de PA7 y PA6."
+    libro: ["snes#104", "snes#105", "cap29#76"]
+    widget:
+      tipo: logica
+      entradas: [{ id: PA7, rotulo: "PA7" }, { id: PA6, rotulo: "PA6" }]
+      piezas:
+        - { id: dec, tipo: decodificador, bits: 2, entradas: [PA6, PA7] }
+      salidas:
+        - { id: PPU, de: dec.y0 }
+        - { id: SMP, de: dec.y1 }
+      ocultar: true
+    tabla:
+      salidas: [PPU, SMP]
+    exito: "PA7 = PA6 = 0 elige las PPU; PA7 = 0 y PA6 = 1, el S-SMP. Nunca los dos a la vez."
+    escalera:
+      - "Con PA7 = 1 no contesta ninguno de los dos."
+      - "Las PPU, solo con PA7 = PA6 = 0; el S-SMP, solo con PA7 = 0 y PA6 = 1."
+    solucion: "PPU: 1 solo en la fila 00. S-SMP: 1 solo en la fila 01."
+
+  - id: empareje-direcciones
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cada dirección, su selección"
+    texto: "Empareje cada acceso con lo que decide el decodificador."
+    libro: ["snes#101", "snes#102", "snes#104", "snes#106"]
+    emparejar:
+      - ["Leer $008000", "/ROMSEL: el cartucho"]
+      - ["Escribir $7E0010", "/RAMSEL: la WRAM"]
+      - ["Escribir $002118", "Bus B: las PPU"]
+      - ["Leer $004016", "Registro de la CPU: el mando"]
+    exito: "Un decodificador: cada zona de direcciones baja una sola selección."
+    pistas:
+      - { texto: "$2118 va por el bus B, a las PPU; $004016 es un registro dentro de la CPU." }
+    escalera:
+      - "$7E es la WRAM y $8000 en el banco 0, la ROM."
+    solucion: "$008000: /ROMSEL. $7E0010: /RAMSEL. $002118: bus B (PPU). $004016: registro de la CPU."
+
+  - id: por-que-espejo
+    tipo: porque
+    titulo: "La misma memoria, dos direcciones"
+    texto: "Leer $801234 da lo mismo que leer $7E1234. ¿Por qué?"
+    libro: ["snes#103", "cap37#359"]
+    widget:
+      tipo: figura
+      consola: { maquina: snes, foto: ntsc }
+      zonas:
+        - { id: n-wram, hotspot: n-wram, rotulo: "WRAM" }
+    opciones:
+      - texto: "Los primeros 8 KB de la WRAM se ven también en los bancos bajos: es un espejo."
+        bien: true
+        porque: "El decodificador baja /RAMSEL en esa zona de todos los bancos bajos: la WRAM no distingue $801234 de $7E1234."
+      - texto: "Hay dos memorias con el mismo contenido."
+        porque: "Solo hay una WRAM. Los espejos salen del decodificador, no de copiar datos."
+      - texto: "La CPU copia los datos de una zona a la otra."
+        porque: "Nadie copia nada: las dos direcciones llegan a la misma celda."
+    escalera:
+      - "Piense en qué selección baja el decodificador con cada dirección."
+    solucion: "Es un espejo: los primeros 8 KB de la WRAM se ven en todos los bancos bajos."
+
+  - id: mas-lento
+    tipo: pregunta
+    titulo: "El acceso más lento"
+    texto: "¿Cuál de estos accesos tarda 12 ciclos maestros?"
+    libro: ["snes#106", "snes#107", "snes#102"]
+    widget:
+      tipo: figura
+      consola: { maquina: snes, foto: ntsc }
+      zonas:
+        - { id: n-cpu, hotspot: n-cpu, rotulo: "CPU" }
+        - { id: n-mandos, hotspot: n-mandos, rotulo: "Conector de los mandos" }
+    opciones:
+      - texto: "Leer el puerto de mandos, $004016."
+        bien: true
+        porque: "Es un registro de la CPU, el más lento: 12 ciclos maestros, 1,77 MHz en PAL."
+      - texto: "Arrancar la DMA en $00420B."
+        porque: "Ese registro de la CPU va rápido: 6 ciclos maestros (3,55 MHz)."
+      - texto: "Escribir en la WRAM, $7E0010."
+        porque: "La WRAM va en 8 ciclos maestros: ni el más rápido ni el más lento."
+    escalera:
+      - "El puerto serie de los mandos es especial."
+    solucion: "$004016, el puerto de mandos: 12 ciclos maestros."
+
+  - id: toque-buses
+    tipo: tocar
+    titulo: "Por dónde salen los dos buses"
+    texto: "Toque el conector que lleva hacia fuera el bus A y el bus B."
+    libro: ["snes#17", "snes#18", "cap09#72"]
+    widget:
+      tipo: figura
+      consola: { maquina: snes, foto: ntsc }
+      zonas:
+        - { id: ranura, hotspot: n-cart, rotulo: "Conector largo, en el centro" }
+        - { id: exp, hotspot: n-exp, rotulo: "Dos filas de patillas, arriba a la izquierda" }
+        - { id: mandos, hotspot: n-mandos, rotulo: "Conector pequeño, a la derecha" }
+    tocar:
+      bien: [ranura]
+      porque:
+        exp: "El puerto de expansión solo lleva el bus B, con D0–D7, /PARD y /PAWR."
+        mandos: "Es el conector de los mandos: su reloj, su latch y sus datos."
+    exito: "La ranura: todo el bus A (CA0–CA23) y el bus B (PA0–PA7)."
+    escalera:
+      - "Es por donde la CPU lee la ROM del juego."
+    solucion: "La ranura de cartucho, en el centro."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["snes#2", "snes#104", "snes#103", "snes#106"]
+    ideas:
+      - { titulo: "Dos buses.", texto: "El A, de 24 bits, y el B, de 8, con los mismos datos." }
+      - { titulo: "Decodificar.", texto: "Cada zona baja una sola selección: /ROMSEL, /RAMSEL o el bus B." }
+      - { titulo: "Bits altos.", texto: "En el bus B, PA7 y PA6 eligen las PPU o el S-SMP." }
+      - { titulo: "Espejos.", texto: "La WRAM baja se ve en todos los bancos bajos." }

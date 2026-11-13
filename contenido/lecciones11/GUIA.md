@@ -3114,3 +3114,154 @@ también los dicen («ciclo 2 (inicio)»). Tarjeta `explore-ciclos` del catálog
 - No hechos (pedirlos de nuevo si hacen falta): las salidas de colector abierto y tri-estado (necesitan un nivel «Z»
   y redes con varios conductores en la simulación y en el dibujo) y el perro guardián; véase el estado de motor12e en
   las peticiones.
+
+## 12. Lecciones que no son secciones del libro: «Consolas por dentro» (1.2)
+
+El curso 11, «Consolas por dentro» (`cursos.ts`, id `consolas`), recorre las placas de las siete consolas del
+explorador «Consolas», en su orden (NES, Neo Geo AES, Master System II, Mega Drive, Game Boy, Game Boy Color, Super
+Nintendo). Sus lecciones no son secciones del libro, pero se escriben, se comprueban y se publican igual que las demás:
+el mismo YAML, las mismas tarjetas y pasos, el mismo generador, el mismo recorrido. Solo cambia de dónde salen los
+bloques que se citan.
+
+### 12.1 Dónde va
+
+```
+contenido/lecciones11/consolas.yaml                    # el manifiesto: partes, lecciones (label y título) y fuentes externas
+contenido/lecciones11/consola-<maquina>/<label>.yaml   # una lección, p. ej. consola-snes/snes-relojes.yaml
+```
+
+- Cada consola es una **parte** `consola-<maquina>` (`nes`, `neogeo`, `sms`, `megadrive`, `gb`, `gbc`, `snes`). Sus
+  lecciones son las de su entrada del manifiesto, **en ese orden** y con ese **título** (el YAML no lleva `titulo`).
+  Una lección que no esté en el manifiesto da «no existe la sección». El `label` (`snes-relojes`) es la clave del
+  progreso: no lo cambie una vez publicada.
+- Siete lecciones por consola, siempre las mismas ideas: `<m>-placa` (la placa de un vistazo, sobre la foto),
+  `<m>-alimentacion`, `<m>-relojes` (cristales y divisores, PAL y NTSC), `<m>-buses` (buses y decodificación),
+  `<m>-video-audio`, `<m>-bloqueo` (bloqueo regional) y `<m>-averias` (averías típicas y reparación).
+- Se publican en `web/public/libro/lecciones11/consola-<maquina>/<label>.json`, con su entrada en `indice.json`, y el
+  generador escribe además `lecciones11/partes.json`: las siete partes (tipo `consola`, solo con las lecciones ya
+  escritas). La app las añade al índice del libro al arrancar (`lib/partes-extra.ts`, `lib/datos.ts`) y
+  `conceptos11.mjs` también, así que el curso, el mapa del curso, el progreso, el dominio, el repaso y «Práctica
+  inteligente» las tratan como capítulos. No están en ningún tomo: el lector del libro no las enseña.
+
+### 12.2 Qué se cita: los datos de la consola, sus fuentes y el libro
+
+La regla de §1 (nunca inventar) se cumple con otra fuente, aprobada por el propietario (12-11): **los datos del
+explorador de la consola**, **los capítulos del libro** con los que se relaciona y, en las lecciones de averías y
+reparación, **fuentes externas** (manuales de servicio, ConsoleMods…), cada hecho con su fuente. El generador
+(`scripts/consolas11.mjs`) los convierte en bloques que se citan como los del libro:
+
+| Clave | Qué es |
+|---|---|
+| `"snes#26": "un 65C816 que gobierna el bus A y el bus B"` | un bloque de los datos de la consola: aviso, fotos y cada zona de cada foto (`hotspots`), equivalencias, notas, revisiones, fuentes, buses, los bloques del diagrama de arquitectura, el decodificador sobre las direcciones de ejemplo del explorador, los hechos externos del manifiesto y las redes de alimentación del esquema |
+| `"cap37#331": "1,789773 MHz"` | un bloque del libro, como siempre (de cualquier parte) |
+
+Para ver los bloques de una consola y su número:
+
+```sh
+cd web && node --input-type=module -e "
+const { src } = await import('./scripts/libro-node.mjs');
+const { consolas11 } = await import('./scripts/consolas11.mjs');
+const c = await consolas11({ fuentes: '../contenido/lecciones11', publico: 'public', src });
+c.bloques('snes').forEach((b, i) => console.log(i, b.html.slice(0, 140)));"
+```
+
+Los números siguen la regla de §6: cada cifra de una tarjeta está en un bloque citado (datos de la consola, libro o
+hecho externo) o la da el modelo. Si el índice de un bloque se mueve (se añade una foto o un hecho), el generador lo
+encuentra por su cita, como con el libro.
+
+**Fuentes externas.** Van en el manifiesto, en la entrada de la consola, con su título y su dirección; cada `hechos`
+es lo que **dice la página**, en español, y se convierte en un bloque citable de la consola. Escriba solo lo que la
+página dice (léala antes); lo que no pueda apoyar en una fuente, déjelo fuera.
+
+```yaml
+  consola-snes:
+    maquina: snes
+    titulo: "Super Nintendo"
+    lecciones:
+      - { label: snes-placa, titulo: "La placa de la Super Nintendo de un vistazo" }
+    externas:
+      - titulo: "ConsoleMods, «SNES:Power Supply Fuse»"
+        url: "https://consolemods.org/wiki/SNES:Power_Supply_Fuse"
+        hechos:
+          - "Fusible de la SNES y la Super Famicom originales: axial, rápido, de 125 V y 1,5 A; no se debe poner uno lento."
+```
+
+**Lo que ve el lector.** Bajo cada tarjeta de una lección de consola, en lugar de «Del libro: sección…», salen sus
+fuentes: «Fuente: Explorador «Consolas» · Super Nintendo: …» (la vista del explorador del primer dato que cita),
+«Fuente: ConsoleMods, …» (la página externa, que se abre fuera) y «Del libro: sección 8.4» (la sección de cada bloque
+del libro que cita). No hay lección por pasos de la 1.0; «Cerrar» y «Volver al curso» llevan al curso.
+
+### 12.3 Las fotos de las placas: `figura` con `consola`
+
+Las tarjetas de estas lecciones ponen casi siempre la foto de la placa encima (§11.1): `widget: { tipo: figura,
+consola: { maquina, foto }, zonas }`, con zonas `hotspot` (las piezas ya identificadas en el explorador). Las fotos de
+cada consola están en `web/public/consolas/<maquina>.json` (`foto`, la principal, y `fotos`); por ejemplo, la NES tiene
+solo la principal (la de la figura 38.16 del libro: sin `foto`), y la Super Nintendo `cara-a` (la placa PAL desnuda, la
+principal), `ntsc` (la placa NTSC con sus chips) y `cara-b` (la cara de soldadura PAL). Use la foto que **enseñe la
+pieza**: una zona sobre una placa desnuda marca el sitio de la pieza, no la pieza.
+
+Tarjeta de catálogo probada (la `toque-cpu` de `consola-snes/snes-placa.yaml`, recorrida por
+`tests/lecciones11-recorrido.spec.ts`):
+
+```yaml
+  - id: toque-cpu
+    tipo: tocar
+    titulo: "¿Cuál es la CPU?"
+    texto: "Toque el chip que gobierna los dos buses de la consola."
+    libro: ["snes#26", "snes#27", "snes#28", "snes#30"]
+    widget:
+      tipo: figura
+      consola: { maquina: snes, foto: ntsc }
+      zonas:
+        - { id: cpu, hotspot: n-cpu, rotulo: "Chip cuadrado, abajo a la derecha" }   # rótulo neutro en una pregunta
+        - { id: ppu1, hotspot: n-ppu1, rotulo: "Chip cuadrado, en el centro a la derecha" }
+        - { id: ppu2, hotspot: n-ppu2, rotulo: "Chip cuadrado, en el centro" }
+        - { id: wram, hotspot: n-wram, rotulo: "Chip alargado, abajo en el centro" }
+    tocar:
+      bien: [cpu]
+      porque:
+        ppu1: "Es la PPU1: lee la memoria de vídeo, no gobierna los buses."
+        ppu2: "Es la PPU2: mezcla las capas y saca el vídeo."
+        wram: "Es la WRAM, la memoria de trabajo: contesta a la CPU, no la gobierna."
+    exito: "La S-CPU B, un 65C816: gobierna el bus A y el bus B."
+    escalera: ["Lea las marcas: busque «S-CPU».", "Es el chip cuadrado de abajo a la derecha, junto a la WRAM."]
+    solucion: "Abajo a la derecha: Nintendo S-CPU B, 5A22-02."
+```
+
+Las zonas pequeñas de una placa entera dan el aviso «en un teléfono mide menos de 24 px» (§11.1): se ve con «+» y
+está la lista de zonas; no es un error.
+
+**Una avería sobre la foto.** Un paso `averia` (§10.4) puede llevar la foto de la placa como widget en lugar de un
+circuito: el multímetro mide los valores del modelo en las `sondas` y la foto enseña dónde está cada pieza (tarjeta
+`averia-no-enciende` de `consola-snes/snes-averias.yaml`: adaptador, fusible o 7805, con la tensión de la clavija, la
+continuidad del fusible y la salida del regulador; `averia-vias` de `consola-nes/nes-alimentacion.yaml`: dos
+condensadores de desacoplo en dos vías). Cada valor del modelo sale de una fuente citada (10 V del adaptador SNS-002,
+5 V del 7805…).
+
+### 12.4 Qué paso para qué idea
+
+- **La placa**: `explorar` y `tocar` sobre la foto, `emparejar` marca ↔ papel.
+- **Alimentación**: `ordenar` el camino de la corriente, `ajuste` del dropout del 78xx (§8.4 del libro), `formula`
+  de la potencia disipada, `averia` en las vías.
+- **Relojes**: `simular` (prediga el reloj de un acceso: XIN ÷ ciclos), `ajuste` de un divisor o de las líneas por
+  cuadro hasta la frecuencia de la norma, `formula` con la ecuación del libro cuando la hay (sección 38.11 para la NES).
+- **Buses**: un circuito `logica` con el decodificador de la placa (las mitades del 74LS139, los bits altos del bus B)
+  y su `tabla`, `emparejar` dirección ↔ selección, los espejos por la decodificación incompleta.
+- **Vídeo y sonido**: `ordenar` el camino, `tocar` la etapa.
+- **Bloqueo**: `logica` y `tabla` de cuándo sale del reset, `estimar` el periodo del bucle de reset.
+- **Averías**: lo simple primero (capítulo 55 del libro), síntoma ↔ causa con fuentes externas, `averia` cuando los
+  valores están en las fuentes. `banco` solo con medidas seguras y con fuente (ninguna de las catorce primeras lo usa).
+
+### 12.5 Comprobar
+
+```sh
+cd web
+node scripts/lecciones11.mjs --solo consola-snes/snes-relojes      # una lección (y partes.json, el índice y conceptos)
+node scripts/lecciones11.mjs --comprobar                           # todas
+EPA_RECORRER='^consola-' … npx playwright test … tests/lecciones11-recorrido.spec.ts
+EPA_SIN_SERVIDOR=1 … npx playwright test … tests/lecciones11-unidad.spec.ts -g "lecciones de consola"
+```
+
+Hechas en la 1.2: las siete de la Super Nintendo y las siete de la NES. Para otra consola: escriba sus siete entradas
+en el manifiesto (con sus `externas`), mire sus bloques, escriba las lecciones con el mismo patrón y añada la consola a
+la lista de `tests/grupoA11.spec.ts` si cambia el número mínimo de lecciones.

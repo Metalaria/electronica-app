@@ -19,7 +19,8 @@ import { XP, nivelDe, nombreNivel, umbralNivel, xpEjercicio, xpObjetivo, xpRespu
 import { CURSOS, leccionesDeCurso, preguntasPrueba, repartoPrueba, verificarCursos } from '../src/lib/aprendizaje/cursos.ts';
 import { LOGROS } from '../src/lib/aprendizaje/logros.ts';
 import { grupoDe, totalDia, type DiaProgreso } from '../src/lib/progreso-dias.ts';
-import type { Indice } from '../src/lib/tipos.ts';
+import type { Indice, InfoParte } from '../src/lib/tipos.ts';
+import { mezclarPartes } from '../src/lib/partes-extra.ts';
 
 const LIBRO = new URL('../public/libro/', import.meta.url);
 const leerJson = <T>(ruta: string): T => JSON.parse(readFileSync(new URL(ruta, LIBRO), 'utf8')) as T;
@@ -225,7 +226,8 @@ test.describe('reglas de XP, niveles y cursos (sin navegador)', () => {
       cap51: ['analogica', 'proyectos'],
       cap52: ['senales', 'proyectos'],
     });
-    expect(CURSOS.map((c) => c.partes.length)).toEqual([7, 4, 8, 8, 5, 5, 6, 8, 3, 8]);
+    // (1.2, consolas-A: the 11th course, «Consolas por dentro», one part per console of the explorer)
+    expect(CURSOS.map((c) => c.partes.length)).toEqual([7, 4, 8, 8, 5, 5, 6, 8, 3, 8, 7]);
     // 1.1: the expansions' two new chapters, where the book places them (1.2: book 4.1's ids, cap55 and cap56, and
     // appendix K closing the digital course)
     expect(CURSOS.find((c) => c.id === 'digital')!.partes).toEqual(['cap09', 'cap29', 'cap55', 'cap34', 'cap37', 'cap38', 'cap44', 'apK']);
@@ -233,7 +235,21 @@ test.describe('reglas de XP, niveles y cursos (sin navegador)', () => {
     expect(CURSOS[0]!.partes).toEqual(['cap00', 'cap01', 'cap02', 'cap03', 'cap04', 'cap05', 'cap06']);
     expect(CURSOS.find((c) => c.id === 'taller')!.partes).toEqual(['cap11', 'cap12', 'cap13', 'cap15', 'cap21', 'cap22', 'cap47', 'cap53']);
     expect(CURSOS.find((c) => c.id === 'proyectos')!.partes).toEqual(['cap16', 'cap48', 'cap49', 'cap50', 'cap51', 'cap52', 'cap57', 'cap54']);
-    for (const c of CURSOS) expect(leccionesDeCurso(c, INDICE).length, c.id).toBeGreaterThan(20);
+    for (const c of CURSOS) if (!c.unidades) expect(leccionesDeCurso(c, INDICE).length, c.id).toBeGreaterThan(20);
+    // its parts are not in the book: they come from lecciones11/partes.json (lib/partes-extra.ts), each section with its
+    // published lesson, in the explorer's order
+    const consolas = CURSOS.find((c) => c.id === 'consolas')!;
+    expect(consolas.partes).toEqual(['consola-nes', 'consola-neogeo', 'consola-sms', 'consola-megadrive', 'consola-gb', 'consola-gbc', 'consola-snes']);
+    const extra = leerJson<{ partes: Record<string, InfoParte> }>('lecciones11/partes.json').partes;
+    const conConsolas = mezclarPartes(INDICE, extra);
+    expect(leccionesDeCurso(consolas, INDICE)).toEqual([]);
+    const ls = leccionesDeCurso(consolas, conConsolas);
+    expect(ls.length).toBeGreaterThanOrEqual(14);
+    for (const l of ls) expect(readFileSync(new URL(`lecciones11/${l.parte}/${l.label}.json`, LIBRO), 'utf8'), `${l.parte}/${l.label}`).toContain('"consola":');
+    expect(conConsolas.partes['consola-snes']!.tipo).toBe('consola');
+    // (a book part is never replaced, and the book's volumes do not list the console parts)
+    expect(mezclarPartes(INDICE, { cap00: { tipo: 'consola', titulo: 'x', secciones: [] } }).partes.cap00).toBe(INDICE.partes.cap00);
+    expect(INDICE.tomos.flatMap((t) => t.partes).some((p) => p.startsWith('consola-'))).toBe(false);
     // placement test sizes: 6–10 questions, spread over the chapters
     for (const c of CURSOS) {
       const r = repartoPrueba(c.partes.length);
@@ -554,11 +570,11 @@ test.describe('sincronización de XP, logros y lecciones superadas', () => {
 test.describe('cursos y prueba de nivel', () => {
   test.use({ viewport: TABLETA });
 
-  test('la página de cursos: los diez cursos, sus capítulos con el título del libro y «Continuar»', async ({ page }) => {
+  test('la página de cursos: los once cursos, sus capítulos con el título del libro y «Continuar»', async ({ page }) => {
     await preparar(page, { lecciones: { 'cap00/sec-0.1': { h: [0], u: 1, n: 1, c: 1761400000000, t: 1761400000000 } } });
     await page.goto('#/');
     await page.locator('[data-ir-cursos]').click();
-    await expect(page.locator('[data-curso-tarjeta]')).toHaveCount(10);
+    await expect(page.locator('[data-curso-tarjeta]')).toHaveCount(11);
     await expect(page.locator('[data-continuar-curso="fundamentos"]')).toHaveText(/Continuar/);
     await expect(page.locator('[data-continuar-curso="analisis"]')).toHaveText(/Empezar/);
     await page.locator('[data-curso-tarjeta="taller"] h2 a').click();
@@ -842,7 +858,7 @@ test.describe('capturas', () => {
         await page.waitForTimeout(1200);
         await foto('inicio-nivel');
         await page.goto('#/cursos');
-        await expect(page.locator('[data-curso-tarjeta]')).toHaveCount(10);
+        await expect(page.locator('[data-curso-tarjeta]')).toHaveCount(11);
         await page.waitForTimeout(300);
         await foto('cursos');
         await page.goto('#/cursos/analisis');

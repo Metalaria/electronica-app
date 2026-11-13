@@ -13,6 +13,11 @@ const LIBRO = process.env.EPA_LIBRO || join(dirname(fileURLToPath(import.meta.ur
 const leer = (r) => JSON.parse(readFileSync(join(LIBRO, r), 'utf8'));
 
 const indice = leer('indice.json');
+// 1.2 (consolas-A): the parts that are not in the book (the «Consolas por dentro» course), as the app merges them
+// (lib/datos.ts): their lessons' questions make their sections practicable
+if (existsSync(join(LIBRO, 'lecciones11', 'partes.json'))) {
+  for (const [p, info] of Object.entries(leer(join('lecciones11', 'partes.json')).partes ?? {})) if (!indice.partes[p]) indice.partes[p] = info;
+}
 const ejercicios = existsSync(join(LIBRO, 'ejercicios.json')) ? leer('ejercicios.json').items : {};
 
 /** Same as catalogo.ts conceptoDeRef. */

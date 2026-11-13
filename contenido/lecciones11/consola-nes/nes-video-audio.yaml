@@ -1,0 +1,170 @@
+# «Consolas por dentro» · NES 5: el camino del vídeo (la PPU genera ya el compuesto; Q1 lo separa hacia el modulador y
+# las RCA) y del sonido (las dos salidas de la APU, mezcladas con R7–R9 y amplificadas con un inversor de U9). Fuentes:
+# nes#n (explorador y arquitectura) y la sección 38.11 del libro (los 64 colores, los cinco canales, la mezcla).
+leccion: consola-nes/nes-video-audio
+
+libro:
+  "nes#3": "genera el vídeo compuesto NTSC punto a punto"
+  "nes#10": "amplificador lineal de audio (realimentado con R6, 47 kΩ) que mezcla SOUND-1/SOUND-2"
+  "nes#22": "Seguidor de emisor PNP que separa la salida de vídeo compuesto de la PPU"
+  "nes#24": "Suman las dos salidas de la APU (SOUND-1: pulsos; SOUND-2: triángulo, ruido y DPCM)"
+  "nes#26": "FC2 es la ferrita de la salida de vídeo"
+  "nes#27": "los saca también por las dos tomas RCA"
+  "nes#39": "La PPU entrega vídeo compuesto ya generado; Q1 lo separa"
+  "cap37#367": "los 64 colores fijos que la PPU sabe generar directamente en señal compuesta"
+  "cap37#392": "El generador de audio tiene cinco canales"
+  "cap37#394": "La mezcla no es lineal"
+
+modelo:
+  valores: {}
+  calculos: {}
+
+tarjetas:
+  - id: explore-av
+    tipo: explorar
+    titulo: "Vídeo y sonido en la placa"
+    texto: "Toque la PPU, el transistor de vídeo, el mezclador y el modulador."
+    libro: ["nes#3", "nes#22", "nes#24", "nes#27"]
+    requiere: { mover: [ppu, q1, mezcla, mod] }
+    widget:
+      tipo: figura
+      consola: { maquina: nes }
+      zonas:
+        - { id: ppu, hotspot: U5, rotulo: "PPU", texto: "Genera el vídeo compuesto punto a punto." }
+        - { id: q1, hotspot: Q1, rotulo: "Transistor Q1", texto: "Seguidor de emisor que separa la salida de vídeo de la PPU." }
+        - { id: mezcla, hotspot: R7, rotulo: "Mezclador R7–R9", texto: "Suman las dos salidas de sonido de la CPU." }
+        - { id: mod, hotspot: P3, rotulo: "Modulador", texto: "Señal de antena y las dos tomas RCA." }
+
+  - id: prediga-compuesto
+    tipo: predecir
+    titulo: "Lo que sale de la PPU"
+    texto: "¿Qué entrega la PPU de la NES al resto de la placa?"
+    libro: ["nes#39", "cap37#367"]
+    widget:
+      tipo: figura
+      consola: { maquina: nes }
+      zonas:
+        - { id: ppu, hotspot: U5, rotulo: "PPU" }
+    opciones:
+      - texto: "Vídeo compuesto ya generado."
+        bien: true
+        porque: "La PPU genera directamente en compuesto sus 64 colores fijos: no hay codificador aparte."
+      - texto: "RGB, que otro chip convierte en compuesto."
+        porque: "Así lo hace la Super Nintendo. La PPU de la NES ya saca el compuesto."
+      - texto: "Los píxeles en digital, para la memoria de vídeo."
+        porque: "La memoria de vídeo guarda mapas y patrones; la salida de la PPU es ya la señal compuesta."
+    escalera:
+      - "Busque en la placa un codificador de vídeo: no lo hay."
+    solucion: "Vídeo compuesto ya generado: Q1 solo lo separa."
+
+  - id: ordene-video
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Del punto al televisor"
+    texto: "Ordene el camino del vídeo en la NES."
+    libro: ["nes#3", "nes#22", "nes#26", "nes#27"]
+    ordenar:
+      - "La PPU genera el compuesto punto a punto."
+      - "Q1 separa la salida, como seguidor de emisor."
+      - "La ferrita FC2 filtra la salida de vídeo."
+      - "El modulador la saca por antena y por RCA."
+    exito: "Una PPU que ya hace el compuesto, un transistor y el modulador."
+    pistas:
+      - { texto: "Q1 va justo detrás de la PPU; el modulador, al final." }
+    escalera:
+      - "La señal nace en la PPU."
+    solucion: "PPU, Q1, FC2 y modulador."
+
+  - id: toque-q1
+    tipo: tocar
+    titulo: "El seguidor de vídeo"
+    texto: "Toque el transistor que separa la salida de vídeo de la PPU."
+    libro: ["nes#22"]
+    widget:
+      tipo: figura
+      consola: { maquina: nes }
+      zonas:
+        - { id: q1, hotspot: Q1, rotulo: "Transistor pequeño, a la derecha" }
+        - { id: osc, hotspot: Q2, rotulo: "Dos transistores, arriba a la izquierda" }
+        - { id: inv, hotspot: U9, rotulo: "Chip pequeño, a la derecha" }
+    tocar:
+      bien: [q1]
+      porque:
+        osc: "Son los transistores del oscilador del cristal."
+        inv: "Son los inversores 74HCU04: uno amplifica el audio, no el vídeo."
+    exito: "Q1 (2SA937): un seguidor de emisor PNP hacia el modulador y la expansión."
+    escalera:
+      - "Está cerca del modulador, a la derecha."
+    solucion: "Q1, el transistor pequeño de la derecha."
+
+  - id: empareje-sonido
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "El sonido de la NES"
+    texto: "Empareje cada pieza del sonido con su papel."
+    libro: ["nes#24", "nes#10", "cap37#392"]
+    emparejar:
+      - ["SOUND-1", "Los dos canales de pulso"]
+      - ["SOUND-2", "Triángulo, ruido y DPCM"]
+      - ["R7, R8 y R9", "Suman las salidas"]
+      - ["Un inversor de U9", "Amplifica la mezcla"]
+    exito: "Cinco canales en dos salidas, sumadas con resistencias y amplificadas con un inversor."
+    pistas:
+      - { texto: "Los pulsos van juntos en una salida; los otros tres canales, en la otra." }
+    escalera:
+      - "Los canales son cinco: dos de pulso, triángulo, ruido y DPCM."
+    solucion: "SOUND-1: pulsos. SOUND-2: triángulo, ruido y DPCM. R7–R9: suman. U9: amplifica."
+
+  - id: por-que-no-lineal
+    tipo: porque
+    titulo: "Suena distinto"
+    texto: "Una recreación que suma los canales sin más suena distinta a la consola. ¿Por qué?"
+    libro: ["cap37#394", "nes#24"]
+    widget:
+      tipo: figura
+      consola: { maquina: nes }
+      zonas:
+        - { id: mezcla, hotspot: R7, rotulo: "Mezclador R7–R9" }
+    opciones:
+      - texto: "La mezcla original no es lineal: la hacían resistencias."
+        bien: true
+        porque: "Los canales se combinan con una función no lineal: una suma simple cambia el timbre de forma audible."
+      - texto: "Le falta el modulador de RF."
+        porque: "El timbre cambia también por las RCA: la diferencia está en cómo se mezclan los canales."
+      - texto: "La NES tiene más canales de los que se suman."
+        porque: "Son cinco y se suman todos: lo que cambia es la forma de mezclarlos."
+    escalera:
+      - "Mire qué hace el mezclador de resistencias."
+    solucion: "La mezcla original es no lineal: sumar sin más cambia el timbre."
+
+  - id: toque-mezcla
+    tipo: tocar
+    titulo: "Dónde se mezcla"
+    texto: "Toque las resistencias que suman las dos salidas de sonido de la CPU."
+    libro: ["nes#24"]
+    widget:
+      tipo: figura
+      consola: { maquina: nes }
+      zonas:
+        - { id: mezcla, hotspot: R7, rotulo: "Resistencias, arriba en el centro" }
+        - { id: ra2, hotspot: RA2, rotulo: "Red de resistencias, junto a la CPU" }
+        - { id: tc1, hotspot: TC1, rotulo: "Pieza pequeña, arriba a la izquierda" }
+    tocar:
+      bien: [mezcla]
+      porque:
+        ra2: "Es RA2, las resistencias de pull-up de los mandos y de PA13."
+        tc1: "Es el trimmer del oscilador."
+    exito: "R7, R8 y R9: suman SOUND-1, SOUND-2 y el audio de la expansión."
+    escalera:
+      - "Están entre la CPU y el cristal, arriba."
+    solucion: "R7–R9, arriba en el centro."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["nes#39", "nes#22", "nes#24", "cap37#394"]
+    ideas:
+      - { titulo: "Compuesto directo.", texto: "La PPU genera el compuesto; Q1 lo separa." }
+      - { titulo: "Al televisor.", texto: "Por el modulador: antena y dos RCA." }
+      - { titulo: "Cinco canales.", texto: "En dos salidas, sumadas con R7–R9 y amplificadas con U9." }
+      - { titulo: "No lineal.", texto: "La mezcla de resistencias da el timbre propio." }

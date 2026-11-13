@@ -1,0 +1,200 @@
+# «Consolas por dentro» · Super Nintendo 7: averías típicas y reparación. Una consola que no enciende (adaptador,
+# fusible o 7805: búsqueda con el multímetro), el fusible como síntoma, medir en la carga, la pantalla negra que es el
+# bloqueo de región y el balance del audio de las primeras placas. Fuentes externas citadas en el manifiesto
+# (ConsoleMods «SNES:Power Supply Fuse», «SNES:Region Information», «SNES:Buying Guide»; Chromagi SNS-002), los datos
+# de la consola (snes#n) y el libro (reparación, capítulo 55; fusibles, 10.3; reguladores, 8.4).
+leccion: consola-snes/snes-averias
+
+libro:
+  "snes#43": "Un 7805, que según Fabien Sanglard está en todas las versiones de la SNES"
+  "snes#45": "Rápido, de 1,5 A en las SNES originales"
+  "snes#111": "Un fusible fundido es la causa más común de que una SNES o una Super Famicom no enciendan"
+  "snes#112": "El fusible protege la consola de una fuente de alimentación inadecuada o de un cortocircuito a masa"
+  "snes#114": "mantiene el sistema en reset y el juego no arranca"
+  "snes#121": "Un juego PAL no arranca en otra consola por el chip de bloqueo distinto"
+  "snes#122": "da 10 V de continua y 850 mA"
+  "snes#123": "tienen un problema de balance del audio"
+  "snes#34": "la SNS-CPU-RGB-01 entre ellas, llevan el NEC µPD6376"
+  "cap53#30": "Con el circuito apagado: cortocircuitos entre raíles y masa, continuidad de fusibles"
+  "cap53#39": "Casi siempre es lo simple: alimentación, conector, soldadura, fusible"
+  "cap53#92": "conviene confirmarlos con el óhmetro"
+  "cap53#179": "medir en la carga, no en la fuente"
+  "cap10#81": "Un fusible fundido es casi siempre un SÍNTOMA, no la causa de la avería"
+
+modelo:
+  valores:
+    V_ad: { sim: "V_{adaptador}", nombre: "tensión del adaptador", unidad: V, valor: 10 }
+    V_o: { sim: "V_{salida}", nombre: "salida del 7805", unidad: V, valor: 5 }
+    ad: { tipo: interruptor, nombre: "adaptador sano", valor: 1 }
+    fu: { tipo: interruptor, nombre: "fusible sano", valor: 1 }
+    re: { tipo: interruptor, nombre: "7805 sano", valor: 1 }
+  calculos:
+    V_clav: { expr: "V_ad*ad", sim: "V_{clavija}", nombre: "tensión en la clavija del adaptador", unidad: V, cifras: 3 }
+    R_fu: { si: fu, entonces: "0", sino: "1e9", sim: "R_{F1}", nombre: "resistencia del fusible F1", unidad: Ω }
+    V_5: { expr: "V_o*ad*fu*re", sim: "V_{5}", nombre: "salida del 7805", unidad: V, cifras: 3 }
+
+tarjetas:
+  - id: explore-primero
+    tipo: explorar
+    titulo: "Lo primero, lo simple"
+    texto: "Casi siempre es lo simple: alimentación, conector, soldadura, fusible. Toque esas piezas en la placa."
+    libro: ["cap53#39", "snes#43", "snes#45"]
+    requiere: { mover: [n-fusible, n-reg] }
+    widget:
+      tipo: figura
+      consola: { maquina: snes, foto: ntsc }
+      zonas:
+        - { id: n-fusible, hotspot: n-fusible, rotulo: "Fusible F1", texto: "Rápido, de 1,5 A en las SNES originales." }
+        - { id: n-reg, hotspot: n-reg, rotulo: "Regulador 7805", texto: "Da los 5 V de toda la lógica." }
+        - { id: n-cart, hotspot: n-cart, rotulo: "Ranura de cartucho", texto: "El conector por el que pasa el juego entero." }
+
+  - id: ordene-apagada
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Antes de encender"
+    texto: "Una consola que no enciende. Ordene los pasos, de lo primero a lo último."
+    libro: ["cap53#30", "cap53#179"]
+    ordenar:
+      - "Apagada: continuidad del fusible."
+      - "Apagada: cortocircuitos entre los 5 V y masa."
+      - "Encendida: tensión a la salida del 7805."
+      - "Encendida: los 5 V en el chip que los usa."
+    exito: "Primero lo que se mide apagado; luego las tensiones, y al final en la carga."
+    pistas:
+      - { texto: "Lo que se mide con la consola apagada va antes que lo que se mide encendida." }
+    escalera:
+      - "Con el circuito apagado se buscan los cortos y los fusibles."
+    solucion: "Fusible, cortos a masa, salida del 7805 y, por último, en la carga."
+
+  - id: averia-no-enciende
+    tipo: averia
+    titulo: "No enciende"
+    texto: "La consola no enciende. Mida y señale la pieza averiada: el adaptador SNS-002, el fusible o el 7805."
+    libro: ["snes#122", "snes#43", "cap53#92", "snes#111"]
+    widget:
+      tipo: figura
+      consola: { maquina: snes, foto: ntsc }
+      zonas:
+        - { id: n-fusible, hotspot: n-fusible, rotulo: "Fusible F1" }
+        - { id: n-reg, hotspot: n-reg, rotulo: "Regulador 7805" }
+    averia:
+      pasos: 2
+      eleccion: fija
+      sospechosos:
+        - { id: adaptador, rotulo: "Adaptador SNS-002" }
+        - { id: fusible, rotulo: "Fusible F1" }
+        - { id: regulador, rotulo: "Regulador 7805" }
+      sondas:
+        - { id: clavija, rotulo: "Clavija del adaptador", valor: V_clav }
+        - { id: fusible, rotulo: "Fusible F1, apagada", valor: R_fu }
+        - { id: salida, rotulo: "Salida del 7805", valor: V_5 }
+      fallos:
+        - { id: fusible-abierto, pieza: fusible, tipo: abierta, con: { fu: 0 }, texto: "F1 abierto: sin continuidad, no llegan los 10 V al 7805. Es la causa más común de que no encienda." }
+        - { id: regulador-muerto, pieza: regulador, tipo: abierta, con: { re: 0 }, texto: "El 7805 recibe la entrada pero no da sus 5 V: está muerto." }
+        - { id: adaptador-muerto, pieza: adaptador, tipo: abierta, con: { ad: 0 }, texto: "El adaptador no da sus 10 V: la consola no tiene la culpa." }
+    exito: "Medir a lo largo del camino separa el adaptador, el fusible y el regulador."
+    escalera:
+      - "Empiece por la clavija: si el adaptador no da tensión, la placa no tiene la culpa."
+      - "Con la consola apagada, el fusible sano marca 0 Ω."
+    solucion: "Clavija sin tensión: el adaptador. Fusible sin continuidad: F1. Las dos bien y 0 V a la salida: el 7805."
+    comprobar:
+      - { V_clav: 10, R_fu: 0, V_5: 5 }
+
+  - id: por-que-sintoma
+    tipo: porque
+    titulo: "Cambiar el fusible y ya"
+    texto: "Era el fusible. ¿Basta con poner otro?"
+    libro: ["cap10#81", "snes#112"]
+    widget:
+      tipo: figura
+      consola: { maquina: snes, foto: ntsc }
+      zonas:
+        - { id: n-fusible, hotspot: n-fusible, rotulo: "Fusible F1" }
+    opciones:
+      - texto: "No: primero hay que buscar por qué se fundió."
+        bien: true
+        porque: "Un fusible fundido es casi siempre un síntoma: una fuente inadecuada o un corto a masa. Sin quitar la causa, el nuevo se funde también."
+      - texto: "Sí, si es uno más grande para que no vuelva a fundirse."
+        porque: "Uno más grande deja sin protección la placa: el corto que lo fundió dañaría otras piezas."
+      - texto: "Sí: los fusibles se gastan con los años."
+        porque: "Pueden degradarse, pero en la SNES protege de una fuente inadecuada o de un corto a masa: hay que buscar la causa."
+    escalera:
+      - "¿De qué protege el fusible?"
+    solucion: "No: el fusible es el síntoma. Busque la fuente inadecuada o el corto a masa antes de cambiarlo."
+
+  - id: toque-carga
+    tipo: tocar
+    titulo: "Dónde medir los 5 V"
+    texto: "El 7805 da 5 V, pero la CPU falla. Toque dónde mediría la tensión que de verdad recibe."
+    libro: ["cap53#179", "snes#43"]
+    widget:
+      tipo: figura
+      consola: { maquina: snes, foto: ntsc }
+      zonas:
+        - { id: cpu, hotspot: n-cpu, rotulo: "Chip cuadrado, abajo a la derecha" }
+        - { id: reg, hotspot: n-reg, rotulo: "Pieza con disipador, abajo a la izquierda" }
+        - { id: fusible, hotspot: n-fusible, rotulo: "Pieza alargada, abajo del todo" }
+    tocar:
+      bien: [cpu]
+      porque:
+        reg: "Ahí ya sabe que hay 5 V: la caída en pistas y conectores no se ve en la fuente."
+        fusible: "El fusible está antes del regulador: no dice qué recibe la CPU."
+    exito: "Medir en la carga, no en la fuente: en las patillas de alimentación de la CPU."
+    escalera:
+      - "La tensión buena en el regulador puede llegar baja al integrado que la usa."
+    solucion: "En la CPU, la carga: no en el 7805."
+
+  - id: pantalla-negra
+    tipo: predecir
+    titulo: "Un juego no arranca"
+    texto: "Una SNES PAL arranca sus juegos, pero uno norteamericano se queda en negro. ¿Avería?"
+    libro: ["snes#121", "snes#114"]
+    widget:
+      tipo: figura
+      consola: { maquina: snes, foto: ntsc }
+      zonas:
+        - { id: n-cic, hotspot: n-cic, rotulo: "CIC" }
+    opciones:
+      - texto: "No: es el bloqueo de región del CIC."
+        bien: true
+        porque: "Con otro chip de bloqueo, el CIC mantiene el sistema en reset y el juego no arranca. La consola está sana."
+      - texto: "Sí: el 7805 no da bastante corriente."
+        porque: "Los juegos de su región arrancan: la alimentación está bien. Lo que cambia es el CIC del cartucho."
+      - texto: "Sí: la ranura está sucia."
+        porque: "Una ranura sucia fallaría también con los juegos de su región, que arrancan."
+    escalera:
+      - "¿Qué cambia entre un juego que arranca y el que no?"
+    solucion: "No es avería: el CIC del cartucho es de otra región y el de la consola la deja en reset."
+
+  - id: balance-audio
+    tipo: pregunta
+    titulo: "Un canal suena más"
+    texto: "En una SNS-CPU-RGB-01, un canal de audio suena algo más que el otro. ¿Qué es?"
+    libro: ["snes#123", "snes#34"]
+    widget:
+      tipo: figura
+      consola: { maquina: snes, foto: ntsc }
+      zonas:
+        - { id: n-dac, hotspot: n-dac, rotulo: "DAC" }
+        - { id: n-mix, hotspot: n-mix, rotulo: "Mezclador" }
+    opciones:
+      - texto: "Un problema conocido de las placas de la SHVC-CPU-01 a la SNS-CPU-RGB-01."
+        bien: true
+        porque: "ConsoleMods lo da como un problema de balance de esas revisiones: no es una pieza estropeada de esa consola."
+      - texto: "El S-DSP se ha estropeado."
+        porque: "Un S-DSP estropeado no daría un leve desequilibrio: esas revisiones tienen un problema de balance conocido."
+      - texto: "El adaptador da poca tensión."
+        porque: "Una alimentación baja no desequilibra un canal frente al otro."
+    escalera:
+      - "Esa placa lleva el DAC NEC µPD6376."
+    solucion: "Un problema de balance conocido de las revisiones SHVC-CPU-01 a SNS-CPU-RGB-01."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["cap53#39", "snes#111", "cap10#81", "cap53#179"]
+    ideas:
+      - { titulo: "Lo simple.", texto: "Alimentación, conector, soldadura y fusible, antes que nada." }
+      - { titulo: "El camino.", texto: "Clavija, fusible y 7805: la medida dice dónde se corta." }
+      - { titulo: "El síntoma.", texto: "Un fusible fundido avisa de otra cosa: busque la causa." }
+      - { titulo: "En la carga.", texto: "Mida donde se usa la tensión, no donde se genera." }

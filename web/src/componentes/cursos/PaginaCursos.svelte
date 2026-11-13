@@ -58,7 +58,8 @@
 
   const porCapitulo = $derived.by(() => {
     if (!curso || !avance) return [];
-    return curso.partes.map((p) => ({ parte: p, lecciones: avance.lecciones.filter((l) => l.parte === p) }));
+    // (1.2: a console of «Consolas por dentro» without lessons yet is not listed; a book chapter always has sections)
+    return curso.partes.map((p) => ({ parte: p, lecciones: avance.lecciones.filter((l) => l.parte === p) })).filter((x) => x.lecciones.length || !curso.unidades);
   });
 
   // ---------------------------------------------------------------- 1.0: the path
@@ -220,7 +221,8 @@
         {:else}
           <span class="terminado"><Check size={18} aria-hidden="true" /> Curso terminado</span>
         {/if}
-        <a class="t09-boton t09-contorno" href={`#/cursos/${curso.id}/prueba`} data-prueba-nivel><Compass size={18} aria-hidden="true" /> Prueba de nivel</a>
+        <!-- (1.2: a course whose parts are not book chapters has no Repaso questions to test with) -->
+        {#if !curso.unidades}<a class="t09-boton t09-contorno" href={`#/cursos/${curso.id}/prueba`} data-prueba-nivel><Compass size={18} aria-hidden="true" /> Prueba de nivel</a>{/if}
       </div>
       {#if dominioPartes(curso.partes)}
         {@const dc = dominioPartes(curso.partes)!}
@@ -318,7 +320,7 @@
         <li class="t09-tarjeta t09-banda curso" style:--c09={tono.relleno} style:--sobre09={tono.sobre} data-curso-tarjeta={c.id}>
           <h2><a class="toque-44" href={`#/cursos/${c.id}`}>{c.nombre}</a></h2>
           <p class="desc">{c.descripcion}</p>
-          <p class="meta">{c.partes.length} capítulos · {a.total} lecciones</p>
+          <p class="meta">{c.partes.length} {c.unidades ?? 'capítulos'} · {a.total} lecciones</p>
           <div class="avance-curso">
             <span class="barra" aria-hidden="true"><span style:transform={`scaleX(${a.fraccion})`}></span></span>
             <span class="cifras">{pct(a.fraccion)}</span>

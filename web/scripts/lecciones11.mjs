@@ -40,11 +40,17 @@ const sql = await sqlNode();
 // 1.2 (motor12c): book figures by label, photo sizes and the consoles' photos for the «figura» widget
 const { recursosLibro } = await import('./recursos11.mjs');
 
+// 1.2 (consolas-A): the «Consolas por dentro» lessons (parts consola-<maquina>, contenido/lecciones11/consolas.yaml):
+// their sections and the consoles' sourced data as synthetic book blocks (scripts/consolas11.mjs, GUIA §12)
+const consolas = await (await import('./consolas11.mjs')).consolas11({ fuentes: FUENTES, publico: path.join(web, 'public'), src });
+
 const partes = new Map();
 const contexto = {
   sql,
   recursos: recursosLibro(libro, path.join(web, 'public')),
   bloques(p) {
+    const c = consolas.bloques(p);
+    if (c !== undefined) return c;
     if (!partes.has(p)) {
       const f = path.join(libro, 'partes', `${p}.json`);
       partes.set(p, fs.existsSync(f) ? J(`partes/${p}.json`).bloques : null);
@@ -64,7 +70,8 @@ function fuentes() {
   }
   const posParte = (p) => {
     const k = ordenPartes.indexOf(p);
-    return k < 0 ? 1e6 : k;
+    // (the console parts after the book, in the course's order)
+    return k < 0 ? 1e6 + Math.max(0, consolas.orden(p)) : k;
   };
   const posSeccion = (p, l) => {
     const b = contexto.bloques(p);
@@ -81,7 +88,7 @@ function escribir(f, texto) {
   return true;
 }
 
-const errores = [];
+const errores = [...consolas.errores];
 const avisos = [];
 const hechas = [];
 const lista = fuentes().filter((x) => !solo || `${x.parte}/${x.label}` === solo);
@@ -102,7 +109,8 @@ for (const x of lista) {
   avisos.push(...r.avisos);
   if (r.leccion && r.leccion.id !== `${x.parte}/${x.label}`) errores.push(`${origen}: «leccion: ${r.leccion.id}» no coincide con el nombre del fichero (${x.parte}/${x.label})`);
   comprobaciones.push(...r.spice);
-  if (r.leccion) hechas.push(r.leccion);
+  // (a console lesson carries its machine and the source of each citation: consolas11.mjs)
+  if (r.leccion) hechas.push(consolas.completar(r.leccion, (p) => contexto.bloques(p)));
 }
 
 // the circuits against the app's ngspice (only when everything else is right: it takes a few seconds)
@@ -163,6 +171,16 @@ if (!solo) {
   const claves = Object.keys(viejo).sort((a, b) => (orden.indexOf(a) + 1 || 1e9) - (orden.indexOf(b) + 1 || 1e9));
   const indice = { version: 1, total: claves.length, lecciones: Object.fromEntries(claves.map((k) => [k, viejo[k]])) };
   if (escribir(f, `${JSON.stringify(indice)}\n`)) {
+    cambios++;
+    indiceCambiado = true;
+  }
+}
+// 1.2 (consolas-A): the parts that are not in the book (the consoles), merged into the book's index by the app and by
+// conceptos11.mjs; no file when there are none
+{
+  const f = path.join(SALIDA, 'partes.json');
+  const p = consolas.partes();
+  if (p ? escribir(f, `${JSON.stringify(p)}\n`) : fs.existsSync(f) && (fs.rmSync(f), true)) {
     cambios++;
     indiceCambiado = true;
   }

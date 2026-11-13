@@ -14,6 +14,11 @@ export interface Curso {
   descripcion: string;
   /** Part ids, in the order they are studied (easy → hard). */
   partes: string[];
+  /**
+   * 1.2 (consolas-A): what its parts are called in the course list («consolas»); by default «capítulos». A course whose
+   * parts are not book chapters has no placement test either (its questions are the book's Repaso).
+   */
+  unidades?: string;
 }
 
 const cap = (...ns: (number | [number, number])[]): string[] =>
@@ -37,6 +42,16 @@ export const CURSOS: Curso[] = [
   // (1.2: the robotics chapter of 4.1, cap57, printed 54 after the SDR, only here: it is a whole system — arms and
   // mobile robots, kinematics, drives, sensors and programming — rather than power electronics)
   { id: 'proyectos', nombre: 'Proyectos completos', descripcion: 'El receptor de radio, los cuatro proyectos detallados, la electrónica de un robot y la ingeniería inversa.', partes: cap(16, [48, 52], 57, 54) },
+  // 1.2 (owner 12-11 19:40): the boards of the «Consolas» explorer, one part per console in the explorer's order. Its
+  // lessons are not book sections: parts consola-<maquina> (contenido/lecciones11/consolas.yaml, scripts/consolas11.mjs),
+  // merged into the index by lib/datos.ts (tipo «consola»)
+  {
+    id: 'consolas',
+    nombre: 'Consolas por dentro',
+    descripcion: 'Las placas de siete consolas: alimentación, relojes, buses y decodificación, vídeo y sonido, bloqueo regional y averías típicas.',
+    partes: ['nes', 'neogeo', 'sms', 'megadrive', 'gb', 'gbc', 'snes'].map((m) => `consola-${m}`),
+    unidades: 'consolas',
+  },
 ];
 
 export const CURSO = new Map(CURSOS.map((c) => [c.id, c]));
@@ -89,7 +104,9 @@ export interface Verificacion {
 /** Checks the table against the content's index. */
 export function verificarCursos(indice: Indice): Verificacion {
   const usados = new Map<string, string[]>();
-  for (const c of CURSOS) for (const p of c.partes) usados.set(p, [...(usados.get(p) ?? []), c.id]);
+  // (1.2: a course of parts that are not book chapters, «Consolas por dentro», is checked against its own parts
+  // file — lib/partes-extra.ts — not against the book's index)
+  for (const c of CURSOS) if (!c.unidades) for (const p of c.partes) usados.set(p, [...(usados.get(p) ?? []), c.id]);
   const capitulos = Object.entries(indice.partes)
     .filter(([, i]) => i.tipo === 'capitulo')
     .map(([id]) => id);

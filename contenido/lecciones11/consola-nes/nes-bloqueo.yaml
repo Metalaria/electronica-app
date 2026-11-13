@@ -1,0 +1,177 @@
+# «Consolas por dentro» · NES 6: el CIC 3193A (10NES). Lo que hace (datos del explorador), el bucle de reset de 1 Hz, la
+# patilla 4 y sus advertencias (ConsoleMods, «NES:Disabling CIC Chip», en los hechos externos del manifiesto) y lo que
+# cambia entre la NES-CPU-07 de la foto y las -09 a -11 (aviso del explorador).
+leccion: consola-nes/nes-bloqueo
+
+libro:
+  "nes#0": "La NES-CPU-07 de la foto es eléctricamente la misma placa sin R17 (2,2 kΩ en el reloj de la CIC)"
+  "nes#11": "si no coinciden, reinicia la consola una vez por segundo"
+  "nes#15": "Su reloj también va al cartucho (CIC-CLK)"
+  "nes#40": "mantiene /RST mientras no se entienden"
+  "nes#52": "busca su pareja en el cartucho"
+  "nes#53": "la consola entra en un bucle de reset de 1 Hz"
+  "nes#54": "Llevando a masa la patilla 4 de la «cerradura» se desactiva el bloqueo"
+  "nes#55": "el 10NES lleva la marca 3193A"
+  "nes#56": "Cortar la patilla 4 sin llevarla a masa no se recomienda del todo"
+  "nes#57": "Algunos cartuchos de Nintendo necesitan la señal de reset del cartucho que genera el CIC"
+  "nes#58": "puede corromper las partidas de los juegos con SRAM mapeada directamente"
+
+modelo:
+  valores:
+    T_r: { sim: "T", nombre: "periodo del reset", unidad: s, valor: 1 }
+  calculos: {}
+
+tarjetas:
+  - id: explore-cic
+    tipo: explorar
+    titulo: "La cerradura"
+    texto: "El CIC de la consola busca su pareja en el cartucho. Toque el CIC, su cristal y el conector del cartucho."
+    libro: ["nes#52", "nes#11", "nes#15"]
+    requiere: { mover: [cic, x2, cart] }
+    widget:
+      tipo: figura
+      consola: { maquina: nes }
+      zonas:
+        - { id: cic, hotspot: U10, rotulo: "CIC 3193A", texto: "Un microcontrolador de 4 bits que dialoga en serie con el del cartucho." }
+        - { id: x2, hotspot: X2, rotulo: "Cristal del CIC", texto: "4 MHz; su reloj va también al cartucho." }
+        - { id: cart, hotspot: P1, rotulo: "Conector de cartucho", texto: "Por él dialogan los dos CIC." }
+
+  - id: prediga-sin-llave
+    tipo: predecir
+    titulo: "Sin llave"
+    texto: "Un cartucho sin su CIC en la NES. ¿Qué hace la consola?"
+    libro: ["nes#53", "nes#11"]
+    widget:
+      tipo: figura
+      consola: { maquina: nes }
+      zonas:
+        - { id: cic, hotspot: U10, rotulo: "CIC 3193A" }
+    opciones:
+      - texto: "Se reinicia una y otra vez, y el juego no arranca."
+        bien: true
+        porque: "Sin pareja, el CIC deja la consola en un bucle de reset de 1 Hz."
+      - texto: "Arranca el juego, pero sin sonido."
+        porque: "No llega a arrancar: el CIC genera el /RST de la CPU y de la PPU."
+      - texto: "No hace nada: se queda apagada."
+        porque: "Está encendida: el CIC la reinicia una vez por segundo."
+    escalera:
+      - "El CIC genera el reset de la CPU y de la PPU."
+    solucion: "Entra en un bucle de reset de 1 Hz y el juego no arranca."
+
+  - id: estime-periodo
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Cada cuánto"
+    texto: "Si los CIC no coinciden, el reset se repite. ¿Cada cuántos segundos?"
+    libro: ["nes#11", "nes#53"]
+    estimar:
+      objetivo: T_r
+      unidad: s
+      min: 0
+      max: 5
+      paso: 0.1
+      inicio: 3
+      tol: 0.15
+      rotulo: "Periodo del reset"
+    exito: "Una vez por segundo: un bucle de 1 Hz."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 1.15 }, texto: "Más deprisa: el reset se repite en cuanto el diálogo falla." }
+      - { texto: "Más despacio: no es un parpadeo rápido." }
+    escalera:
+      - "La consola se reinicia una vez por segundo."
+    solucion: "Cada segundo: 1 Hz."
+
+  - id: toque-cic
+    tipo: tocar
+    titulo: "Encuentre el CIC"
+    texto: "En las NTSC, el 10NES lleva la marca 3193A. Tóquelo."
+    libro: ["nes#55", "nes#11"]
+    widget:
+      tipo: figura
+      consola: { maquina: nes }
+      zonas:
+        - { id: cic, hotspot: U10, rotulo: "Chip pequeño, en el centro a la derecha" }
+        - { id: inv, hotspot: U9, rotulo: "Chip pequeño, más a la derecha" }
+        - { id: dec, hotspot: U3, rotulo: "Chip pequeño, arriba a la izquierda" }
+    tocar:
+      bien: [cic]
+      porque:
+        inv: "Es U9, los inversores 74HCU04: uno hace el oscilador del CIC, pero no es el CIC."
+        dec: "Es U3, el decodificador de direcciones."
+    exito: "U10: Nintendo 3193A, el 10NES."
+    escalera:
+      - "Está entre la PPU y el modulador, junto a su cristal de 4 MHz."
+    solucion: "U10, en el centro a la derecha: 3193A."
+
+  - id: empareje-patilla
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Anular el bloqueo"
+    texto: "Empareje cada maniobra con lo que dice ConsoleMods."
+    libro: ["nes#54", "nes#56", "nes#58", "nes#57"]
+    emparejar:
+      - ["Patilla 4 a masa", "Desactiva el bloqueo"]
+      - ["Cortarla sin llevarla a masa", "Puede dañar el 10NES"]
+      - ["Juegos con SRAM mapeada", "Sus partidas se pueden corromper"]
+      - ["Algunos cartuchos de Nintendo", "Necesitan el reset que da el CIC"]
+    exito: "Anular el CIC tiene un precio: hacerlo bien y saber qué juegos lo notan."
+    pistas:
+      - { texto: "La patilla 4 se corta en su base y se suelda a un hilo a masa." }
+    escalera:
+      - "La recomendación es llevar la patilla a masa, no dejarla cortada al aire."
+    solucion: "Patilla 4 a masa: anula. Sin masa: puede dañarlo. SRAM mapeada: partidas en riesgo. Algunos cartuchos: necesitan su reset."
+
+  - id: por-que-reset-cartucho
+    tipo: porque
+    titulo: "Un cartucho que no arranca"
+    texto: "Con el CIC anulado, algunos cartuchos de Nintendo no funcionan. ¿Por qué?"
+    libro: ["nes#57", "nes#40"]
+    widget:
+      tipo: figura
+      consola: { maquina: nes }
+      zonas:
+        - { id: cart, hotspot: P1, rotulo: "Conector de cartucho" }
+    opciones:
+      - texto: "Necesitan la señal de reset del cartucho que genera el CIC."
+        bien: true
+        porque: "El CIC no solo bloquea: también da el reset del cartucho, y algunos lo necesitan."
+      - texto: "Detectan que la consola es de otra región."
+        porque: "No es la región: es una señal del CIC que esos cartuchos usan."
+      - texto: "El CIC anulado deja la consola sin reloj."
+        porque: "El reloj maestro no pasa por el CIC: lo que falta es su señal de reset del cartucho."
+    escalera:
+      - "¿Qué más genera el CIC, además del bloqueo?"
+    solucion: "Necesitan la señal de reset del cartucho que genera el CIC."
+
+  - id: revision-07
+    tipo: pregunta
+    titulo: "La placa de la foto"
+    texto: "En la NES-CPU-11 hay R17, de 2,2 kΩ, en el reloj del CIC. ¿Y en la NES-CPU-07 de la foto?"
+    libro: ["nes#0"]
+    widget:
+      tipo: figura
+      consola: { maquina: nes }
+      zonas:
+        - { id: cic, hotspot: U10, rotulo: "CIC 3193A" }
+        - { id: x2, hotspot: X2, rotulo: "Cristal del CIC" }
+    opciones:
+      - texto: "No la lleva: esos puntos van unidos directamente."
+        bien: true
+        porque: "Nintendo añadió R17, R18 y R19 en las -09 a -11; en la -07 van unidos directamente."
+      - texto: "Lleva la misma R17 de 2,2 kΩ."
+        porque: "La R17 llegó en las -09 a -11: la -07 no la tiene."
+      - texto: "Lleva un condensador en su lugar."
+        porque: "No hay nada en su lugar: los puntos van unidos directamente."
+    escalera:
+      - "Lea el aviso del explorador sobre las revisiones."
+    solucion: "No la lleva: en la -07 van unidos directamente."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["nes#52", "nes#53", "nes#54", "nes#57"]
+    ideas:
+      - { titulo: "Cerradura y llave.", texto: "El CIC de la consola busca su pareja en el cartucho." }
+      - { titulo: "Sin pareja.", texto: "Un bucle de reset de 1 Hz: el juego no arranca." }
+      - { titulo: "La patilla 4.", texto: "A masa anula el bloqueo; sin masa puede dañarlo." }
+      - { titulo: "Con efectos.", texto: "Algunos cartuchos necesitan el reset del CIC." }

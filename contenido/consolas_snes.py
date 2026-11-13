@@ -171,6 +171,39 @@ CARA_B = [
      'funcion': 'La tensión de la patilla 3 del Multi Out en las PAL, que pide al televisor el modo 4:3.'},
 ]
 
+# NTSC photo (owner's, Wikimedia Commons File:SNES-CPU-RGB01_01.jpg, Yaca2671, CC BY-SA 3.0): another board, the
+# SNS-CPU-RGB-01, with all its chips. Not aligned with the PCB (the layout differs): the boxes are given in pixels of the
+# output photo (1206 × 1046, the original size), placed by hand on the markings and silkscreen legible in it
+# (consolas-A, 1.2). No schematic references: the schematic is the PAL board's.
+CARA_NTSC = [
+    {'id': 'n-cpu', 'nombre': 'CPU 5A22 (S-CPU B)', 'pieza': 'Nintendo S-CPU B · 5A22-02 (marca legible)', 'esquema': [], 'bloque': 'cpu', 'confianza': 'marca', 'buses': ['cpu_address', 'cpu_data', 'b_bus', 'cpu_control', 'controllers'], 'funcion': 'La misma CPU que la U1 de la placa PAL del esquema: un 65C816 que gobierna el bus A y el bus B. Aquí el reloj maestro es el NTSC, de 21,477 MHz, sin S-CLK.', 'cajas': [[880, 748, 1048, 878]]},
+    {'id': 'n-ppu1', 'nombre': 'PPU1 (S-PPU1)', 'pieza': 'Nintendo S-PPU1 · 5C77-01 (marca legible)', 'esquema': [], 'bloque': 'ppu1', 'confianza': 'marca', 'buses': ['vram', 'b_bus', 'cpu_data', 'ppu_link'], 'funcion': 'Lee los fondos y los sprites de la VRAM y pasa a la PPU2, píxel a píxel, el color, la paleta y la prioridad. En una NTSC su patilla PALMODE va al revés que en la PAL.', 'cajas': [[945, 575, 1095, 690]]},
+    {'id': 'n-ppu2', 'nombre': 'PPU2 (S-PPU2 C)', 'pieza': 'Nintendo S-PPU2 C · 5C78-03 (marca legible)', 'esquema': [], 'bloque': 'ppu2', 'confianza': 'marca', 'buses': ['ppu_link', 'b_bus', 'cpu_data', 'video', 'reset'], 'funcion': 'Mezcla las capas, aplica la paleta y saca el RGB analógico con su sincronismo: en NTSC, 262 líneas (60 Hz) en vez de las 312 (50 Hz) de la PAL.', 'cajas': [[752, 575, 900, 690]]},
+    {'id': 'n-vram', 'nombre': 'VRAM (64 KB)', 'pieza': '2 × GoldStar GM76C256ALLFW70 (marca legible)', 'esquema': [], 'bloque': 'vram', 'confianza': 'marca', 'buses': ['vram'], 'funcion': 'Dos memorias en paralelo, como la U4 y la U5 de la placa PAL (2 × SRAM de 32K × 8): la PPU1 lee 16 bits en cada acceso.', 'cajas': [[884, 342, 943, 460], [993, 342, 1052, 460]]},
+    {'id': 'n-wram', 'nombre': 'WRAM 128 KB (S-WRAM)', 'pieza': 'Nintendo S-WRAM (marca legible)', 'esquema': [], 'bloque': 'wram', 'confianza': 'marca', 'buses': ['cpu_address', 'cpu_data', 'b_bus', 'cpu_control'], 'funcion': 'La DRAM de 128 KB de la consola: responde en el bus A a /RAMSEL y en el bus B tiene su propio contador de direcciones ($2180–$2183).', 'cajas': [[758, 740, 846, 906]]},
+    {'id': 'n-smp', 'nombre': 'CPU de sonido (S-SMP)', 'pieza': 'QFP de 64 patas junto al S-DSP, con la serigrafía U13; su marca no se lee', 'esquema': [], 'bloque': 'smp', 'confianza': 'posicion', 'buses': ['smp_bus', 'b_bus', 'cpu_data'], 'funcion': 'En ese sitio va el S-SMP (núcleo SPC700): es la U13 de la placa PAL y Fabien Sanglard da «U13 Sony SPC-700» en las NTSC. Habla con la CPU por cuatro puertos.', 'cajas': [[392, 151, 537, 259]]},
+    {'id': 'n-dsp', 'nombre': 'Generador de sonido S-DSP', 'pieza': 'Nintendo S-DSP A · ©Sony ’89 (marca legible)', 'esquema': [], 'bloque': 'dsp', 'confianza': 'marca', 'buses': ['smp_bus', 'aram', 'audio', 'clocks'], 'funcion': 'Ocho voces de muestras leídas de la ARAM, con eco, en estéreo de 16 bits a 32 kHz hacia el DAC. Su resonador de 24,576 MHz no depende del reloj de vídeo.', 'cajas': [[398, 302, 537, 416]]},
+    {'id': 'n-aram', 'nombre': 'ARAM (64 KB)', 'pieza': '2 × HM9453100FP, U16 y U15 (marca legible)', 'esquema': [], 'bloque': 'aram', 'confianza': 'marca', 'buses': ['aram'], 'funcion': 'La memoria del sonido, que el S-DSP reparte con el S-SMP: el programa del SPC700, las muestras y el búfer de eco.', 'cajas': [[372, 452, 486, 522], [547, 455, 620, 572]]},
+    {'id': 'n-dac', 'nombre': 'DAC estéreo', 'pieza': 'SOIC de 16 patas con la serigrafía U17; su marca no se lee', 'esquema': [], 'bloque': 'dac', 'confianza': 'posicion', 'buses': ['audio'], 'funcion': 'Las placas NTSC de 1990 a 1994, la SNS-CPU-RGB-01 entre ellas, llevan el NEC µPD6376 (SNESdev). Convierte la serie del S-DSP en las tensiones izquierda y derecha.', 'cajas': [[310, 562, 378, 622]]},
+    {'id': 'n-mix', 'nombre': 'Mezclador de audio (S-MIX)', 'pieza': 'Nintendo S-MIX A, serigrafía U10 (marca legible)', 'esquema': [], 'bloque': 'dac', 'confianza': 'marca', 'buses': ['audio'], 'funcion': 'Fabien Sanglard llama al S-MIX «Sound mixer» (U10) en las placas posteriores. En la placa PAL del esquema, U10 es un LM324 con sus transistores.', 'cajas': [[450, 562, 508, 620]]},
+    {'id': 'n-rgb', 'nombre': 'Codificador de vídeo (S-RGB)', 'pieza': 'S-RGB · BA6595F (marca legible)', 'esquema': [], 'bloque': 'enc', 'confianza': 'marca', 'buses': ['video'], 'funcion': 'Del RGB de la PPU2 saca el S-vídeo y el compuesto, como el S-ENC (U7) de la placa PAL. Fabien Sanglard da el S-RGB como U7 de las placas NTSC posteriores.', 'cajas': [[805, 122, 903, 172]]},
+    {'id': 'n-cic', 'nombre': 'CIC (bloqueo)', 'pieza': 'Nintendo F411A · SOIC de 18 patas (marca legible)', 'esquema': [], 'bloque': 'cic', 'confianza': 'marca', 'buses': ['cic', 'reset'], 'funcion': 'El chip de bloqueo: todas las NTSC llevan el F411 y las PAL el F413 (ConsoleMods). Si no se entiende con el del cartucho, mantiene la consola en reset.', 'cajas': [[993, 235, 1051, 315]]},
+    {'id': 'n-x1', 'nombre': 'Cristal de 21,477 MHz', 'pieza': 'X1 · marca D21G4', 'esquema': [], 'bloque': 'clk', 'confianza': 'marca', 'buses': ['clocks'], 'funcion': 'En una NTSC el reloj maestro sale de este cristal de 21,477 MHz, sin S-CLK; la PAL usa un cristal de 17,734 MHz y el S-CLK.', 'cajas': [[1116, 835, 1156, 908]]},
+    {'id': 'n-cart', 'nombre': 'Ranura de cartucho', 'pieza': 'El conector del cartucho, en el centro', 'esquema': [], 'bloque': 'cart', 'confianza': 'posicion', 'buses': ['cpu_address', 'cpu_data', 'b_bus', 'cpu_control', 'cic', 'clocks', 'audio'], 'funcion': 'Lleva al cartucho el bus A, el bus B, el CIC y una entrada de audio, como la P1 de la placa PAL.', 'cajas': [[626, 18, 726, 978]]},
+    {'id': 'n-exp', 'nombre': 'Puerto de expansión', 'pieza': 'P5 (serigrafía legible)', 'esquema': [], 'bloque': 'exp', 'confianza': 'marca', 'buses': ['b_bus', 'cpu_data', 'cpu_control', 'audio', 'clocks'], 'funcion': 'El bus B, los datos y el audio hacia el puerto de debajo de la consola, como en la placa PAL.', 'cajas': [[248, 128, 340, 400]]},
+    {'id': 'n-av', 'nombre': 'Multi Out', 'pieza': 'P4 (serigrafía legible)', 'esquema': [], 'bloque': 'enc', 'confianza': 'marca', 'buses': ['video', 'audio', 'power'], 'funcion': 'RGB, S-vídeo, compuesto, audio estéreo y 5 V. En una NTSC la patilla 3 lleva el sincronismo compuesto; en las PAL, 12 V.', 'cajas': [[45, 445, 250, 690]]},
+    {'id': 'n-rf', 'nombre': 'Modulador de RF', 'pieza': 'Etiqueta «SHVC-LC», junto a J2', 'esquema': [], 'bloque': 'enc', 'confianza': 'marca', 'buses': ['video', 'audio'], 'funcion': 'Vídeo compuesto y audio mono modulados para la entrada de antena del televisor.', 'cajas': [[110, 722, 332, 868]]},
+    {'id': 'n-reg', 'nombre': 'Regulador de 5 V', 'pieza': 'U12 (serigrafía legible), con su disipador', 'esquema': [], 'bloque': 'alim', 'confianza': 'marca', 'buses': ['power'], 'funcion': 'Un 7805, que según Fabien Sanglard está en todas las versiones de la SNES. Da los 5 V de toda la lógica.', 'cajas': [[425, 862, 495, 922]]},
+    {'id': 'n-filtro', 'nombre': 'Condensador de filtrado', 'pieza': 'C58 (serigrafía legible)', 'esquema': [], 'bloque': 'alim', 'confianza': 'marca', 'buses': ['power'], 'funcion': 'El electrolítico grande de la alimentación, junto al regulador. En la placa PAL del esquema, el de filtrado es C67, de 2200 µF.', 'cajas': [[410, 705, 482, 792]]},
+    {'id': 'n-fusible', 'nombre': 'Fusible', 'pieza': 'F1 (serigrafía legible)', 'esquema': [], 'bloque': 'alim', 'confianza': 'marca', 'buses': ['power'], 'funcion': 'Rápido, de 1,5 A en las SNES originales: protege de una fuente inadecuada o de un corto a masa, y fundido es la causa más común de que no encienda (ConsoleMods).', 'cajas': [[355, 955, 482, 1005]]},
+    {'id': 'n-reset', 'nombre': 'Botón de reset', 'pieza': 'El pulsador de la placa; su marca no se lee', 'esquema': [], 'bloque': 'cic', 'confianza': 'posicion', 'buses': ['reset'], 'funcion': 'Entra en la patilla RES del CIC, que reinicia la consola a través de la PPU2, como el SW2 de la placa PAL.', 'cajas': [[1053, 150, 1136, 230]]},
+    {'id': 'n-mandos', 'nombre': 'Conector de los mandos', 'pieza': 'Hacia la placa de los puertos del frente', 'esquema': [], 'bloque': 'mandos', 'confianza': 'posicion', 'buses': ['controllers'], 'funcion': 'Los dos puertos de mando están en una placa aparte: por aquí llegan su reloj, el latch y los datos ($4016/$4017).', 'cajas': [[1115, 452, 1192, 562]]},
+]
+
+# Footprints without a marker on the PAL photos: parts nonSNES adds (not on the original board) and, on the solder
+# side, the footprints that are empty on the photographed board (consolas-A, 1.2, checked on the photo).
+SIN_MARCADOR = {'cara-a': ['P6', 'SW1'], 'cara-b': ['J3', 'R4', 'R5', 'R6', 'R24', 'R32', 'R42', 'R45', 'R47', 'R108', 'R109', 'R110', 'R111', 'C4', 'C5', 'C69']}
+
 # ------------------------------------------------------------------ sources and tables
 
 LICENCIA_GPL = 'GPL-3.0 (GNU General Public License, versión 3)'
@@ -186,8 +219,9 @@ FUENTES = [
     {'titulo': 'Fotos de una placa SNSP-CPU-01 PAL por las dos caras (photo/front.jpg y photo/back.jpg de nonSNES)',
      'autor': 'Repositorio nonSNES (no indica el autor de estas dos fotos)',
      'url': NONSNES + '/photo', 'licencia': LICENCIA_GPL + ', la del repositorio',
-     'uso': 'Cara de componentes (escaneo a 300 ppp con los chips quitados: se ven los pads y la serigrafía) y cara de '
-            'soldadura con sus componentes de montaje superficial. Se han alineado con la PCB de nonSNES por las vías.'},
+     'uso': 'Cara de componentes (escaneo a 300 ppp de la placa desnuda: sin ninguna pieza, se ven los pads y la '
+            'serigrafía) y cara de soldadura con sus componentes de montaje superficial, salvo algunas huellas vacías. Se '
+            'han alineado con la PCB de nonSNES por las vías.'},
     {'titulo': 'Rodrigo Copetti, «Super Nintendo Architecture. A practical analysis»',
      'autor': 'Rodrigo Copetti', 'url': 'https://www.copetti.org/writings/consoles/super-nintendo/',
      'licencia': 'Solo consulta: no se copia texto',
@@ -202,12 +236,21 @@ FUENTES = [
      'uso': 'Cifras de la animación: 21,28137 MHz en PAL, 1364 ciclos maestros por línea, 312 líneas, refresco de 40 '
             'ciclos hacia el ciclo 536, DMA de 8 ciclos por byte, HDMA desde el punto 278, NMI al empezar el borrado '
             '(línea 225 o 240), lectura automática de los mandos de 4224 ciclos, APU a 24,576 MHz.'},
+    # the NTSC photo and the sources of its hotspots (consolas-A, 1.2)
+    {'titulo': 'Foto de una placa NTSC SNS-CPU-RGB-01 (Wikimedia Commons, File:SNES-CPU-RGB01_01.jpg)', 'autor': 'Yaca2671 (usuario de Wikimedia Commons)', 'url': 'https://commons.wikimedia.org/wiki/File:SNES-CPU-RGB01_01.jpg', 'licencia': 'CC BY-SA 3.0 (https://creativecommons.org/licenses/by-sa/3.0/); el autor la ofrece también con la GNU FDL 1.2 o posterior', 'uso': 'Pestaña «Cara de componentes · NTSC». Foto: Yaca2671, Wikimedia Commons, CC BY-SA 3.0. Cambios: recomprimida en JPEG (calidad 78) a su tamaño de 1206 × 1046 px, sin recortar ni enderezar; los recuadros que dibuja la app encima se han colocado a mano por las marcas y la serigrafía legibles.'},
+    {'titulo': 'Fabien Sanglard, «SNES motherboards»', 'autor': 'Fabien Sanglard', 'url': 'https://fabiensanglard.net/snes_mobos/', 'licencia': 'Solo consulta: no se copia texto', 'uso': 'Piezas de las placas NTSC de la foto: el regulador 7805 (U12) de todas las versiones, el SPC-700 (U13), el CIC F411A, el S-RGB como codificador (U7) y el S-MIX como mezclador (U10).'},
+    {'titulo': '«Version differences» (wiki de SNESdev)', 'autor': 'Comunidad SNESdev', 'url': 'https://snes.nesdev.org/wiki/Version_differences', 'licencia': 'Solo consulta', 'uso': 'El DAC NEC µPD6376 de las placas NTSC de 1990 a 1994, la SNS-CPU-RGB-01 entre ellas.'},
+    {'titulo': 'ConsoleMods, «SNES:Region Information»', 'autor': 'Wiki de ConsoleMods', 'url': 'https://consolemods.org/wiki/SNES:Region_Information', 'licencia': 'Solo consulta', 'uso': 'El CIC F411 de todas las NTSC y el F413 de todas las PAL; las pestañas de la ranura de las consolas norteamericanas.'},
+    {'titulo': 'ConsoleMods, «SNES:Disabling CIC»', 'autor': 'Wiki de ConsoleMods', 'url': 'https://consolemods.org/wiki/SNES:Disabling_CIC', 'licencia': 'Solo consulta', 'uso': 'Qué hace el CIC cuando no se entiende con el del cartucho y cómo se desactiva (la patilla 4).'},
+    {'titulo': 'ConsoleMods, «SNES:Power Supply Fuse»', 'autor': 'Wiki de ConsoleMods', 'url': 'https://consolemods.org/wiki/SNES:Power_Supply_Fuse', 'licencia': 'Solo consulta', 'uso': 'El fusible F1: rápido, de 1,5 A, dónde está y por qué se funde.'},
 ]
 
 EXTRA = {
     'revisiones': [
-        {'vista': 'Foto', 'revision': 'SNSP-CPU-01 PAL (© 1992 Nintendo): cara de componentes con los chips quitados y cara de '
-                                      'soldadura con sus componentes', 'fuente': 'nonSNES (photo/)'},
+        {'vista': 'Foto', 'revision': 'SNSP-CPU-01 PAL (© 1992 Nintendo): cara de componentes de la placa desnuda (sin piezas) y '
+                                      'cara de soldadura con algunas huellas vacías', 'fuente': 'nonSNES (photo/)'},
+        {'vista': 'Foto NTSC', 'revision': 'SNS-CPU-RGB-01 NTSC (CIC F411A, cristal D21G4, S-RGB): otra placa, con sus chips; '
+                                           'no es la del esquema', 'fuente': 'Wikimedia Commons (Yaca2671)'},
         {'vista': 'Esquema y placa', 'revision': 'Recreación «1:1» de la SNSP-CPU-01 Rev5 con algunos cambios de nonSNES '
                                                  '(tabla de abajo)', 'fuente': 'nonSNES; esquema de arzi84'},
         {'vista': 'Arquitectura', 'revision': 'PAL (21,28137 MHz, 312 líneas, 50 Hz) como la placa; NTSC a elegir',

@@ -1570,6 +1570,10 @@ The four newer machines (entries of `MAQUINAS` in `consolas.py`, hotspots and te
   and 44 vias. `licencia_texto` copies the GPL into `public/consolas/snes/LICENSE-nonSNES.txt`; `Fuente.texto`
   points at it and «Fuentes» loads it in a `<details>` on demand. `python3 contenido/consolas.py snes` rebuilds only
   that machine (`main(ids)`).
+  1.2 (consolas-A): a photo entry may list `sin_marcador` (refs that get no `posiciones` marker: parts nonSNES adds,
+  footprints empty on that board; `SN.SIN_MARCADOR`), and a photo without `alineacion` takes its hotspots with pixel
+  `cajas` as given (`SN.CARA_NTSC`, the owner's NTSC photo `ntsc`, no schematic refs: `esquema: []`). Photo order:
+  `cara-a` (main), `ntsc`, `cara-b`.
 
 New optional fields of `<maquina>.json`: `fotos` [{id, titulo, src, ancho, alto, credito, revision, nota, hotspots,
 posiciones {ref: [x, y]}, posiciones_nota, trazas (file), trazas_redes [net names]}] (extra photos; the main one stays
@@ -3272,6 +3276,26 @@ within the documented deviation (0.1 V diode/Zener/VBE, 0.2 V LED/VCE(sat)); cur
 Shockley pieces (`is`, `n`, `vt`) simulate exactly that equation at T = VT·q/k. Any error: exit 1, nothing written. Outputs are rewritten only when they change, outputs without a
 source are deleted, and the index keeps the book's order (idempotent, order-stable; the unit test compares a fresh run
 with the committed output).
+
+**Lessons that are not book sections (1.2, consolas-A; GUIA §12).** The «Consolas por dentro» course (`cursos.ts`
+id `consolas`, `unidades: 'consolas'`: no placement test, verificarCursos skips it) has one part `consola-<maquina>`
+per console of the explorer. Sources: `contenido/lecciones11/consolas.yaml` (manifest: parts in the explorer's order,
+each with its lessons {label, titulo} and `externas` {titulo, url, hechos[]}) and
+`contenido/lecciones11/consola-<maquina>/<label>.yaml`. `scripts/consolas11.mjs` gives the generator synthetic blocks:
+part `consola-<m>` = one h2 per manifest lesson (title from the manifest); part `<m>` (`nes`, `snes`…) = the console's
+data as `{t: 'p', html}` blocks (the explorer JSON: notice, photos and every hotspot, equivalences, notes, revisions,
+sources, bus groups; the architecture model's diagram blocks and its decoder on the example addresses; the manifest's
+external facts; the supply nets of the schematic, last), cited as `"snes#26"`; book citations as usual. After
+generation `completar` adds `Leccion11.consola` (the machine) and, per citation, `fuente` {titulo, url} (console data:
+an explorer route `#/consolas/<m>/…` or the external page) or `seccion` (the h2 label of a cited book block).
+`lecciones11.mjs` also writes **`libro/lecciones11/partes.json`** `{version: 1, partes: {"consola-<m>": {tipo:
+'consola', titulo, color, maquina, secciones: [{num: null, label, titulo}]}}}` (only lessons whose YAML exists; the
+file is removed when there is no console part). `lib/partes-extra.ts` `mezclarPartes` merges it into the book index
+at start (`lib/datos.ts iniciar`; optional file, a book part is never replaced) and `conceptos11.mjs` does the same;
+the console parts are in no tome: `ordenLectura` and the reader's progress skip them, `navegacion.svelte.ts`
+`pasoVecino` walks them in a sequence of their own (lesson routes), `catalogo.ts ordenConceptos` puts them after the
+book, `rotuloParte` says «Consola». `Leccion11.svelte` shows a console card's sources (one explorer link, each
+external page, each cited book section) instead of «Del libro», closes to the course and has no 1.0 lesson link.
 
 **Data** `libro/lecciones11/indice.json` `{version: 1, total, lecciones: {"parte/label": {tarjetas, preguntas: [{id,
 tipo}]}}}` (motor fixes 1.1: `preguntas` = the cards «Práctica inteligente» asks on their own, `motor.ts`

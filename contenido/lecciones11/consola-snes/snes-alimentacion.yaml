@@ -1,0 +1,210 @@
+# «Consolas por dentro» · Super Nintendo 2: la alimentación. El camino de la placa PAL del esquema (J1 → T1 → DB1 → F1 →
+# C67 → 7805), el dropout del 78xx y la potencia que disipa (libro, sección 8.4), los +9 V del audio, y lo que se ve en
+# la foto NTSC. Fuentes: los datos de la consola (snes#n), el adaptador SNS-002 (Chromagi) y el libro.
+leccion: consola-snes/snes-alimentacion
+
+libro:
+  "snes#22": "Toma de corriente, filtro (T1), puente rectificador (DB1: acepta continua o alterna)"
+  "snes#23": "El interruptor de encendido corta la entrada entre el fusible y el regulador"
+  "snes#43": "Un 7805, que según Fabien Sanglard está en todas las versiones de la SNES"
+  "snes#44": "El electrolítico grande de la alimentación, junto al regulador"
+  "snes#45": "Rápido, de 1,5 A en las SNES originales"
+  "snes#54": "saca de la entrada sin regular unos +9 V limpios"
+  "snes#122": "da 10 V de continua y 850 mA"
+  "cap08#65": "P_(\"disipada\")"
+  "cap08#66": "Más de la mitad de la energía se convierte en calor"
+  "cap08#67": "necesita unos 2 V de diferencia entre entrada y salida para funcionar"
+  "cap08#83": "protección térmica (que los apaga por encima de unos 150 °C de unión)"
+  "snes#110": "axial, rápido, de 125 V y 1,5 A; no se debe poner uno lento"
+  "cap10#83": "Uno lento (temporizado) de la misma corriente aguanta diez veces su valor"
+
+modelo:
+  valores:
+    V_in: { sim: "V_{entrada}", nombre: "tensión en la entrada del 7805", unidad: V, valor: 5 }
+    V_ad: { sim: "V_{adaptador}", nombre: "tensión del adaptador", unidad: V, valor: 10 }
+    V_o: { sim: "V_{salida}", nombre: "salida del 7805", unidad: V, valor: 5 }
+    I: { sim: "I", nombre: "corriente de la consola", unidad: A, valor: 0.5 }
+  calculos:
+    V_reg: { expr: "min(V_o, max(0, V_in - 2))", sim: "V_{salida}", nombre: "tensión de salida del 7805 (modelo)", unidad: V, cifras: 3 }
+    P_d: { expr: "(V_ad - V_o)*I", sim: "P_{disipada}", nombre: "potencia que disipa el 7805", unidad: W, cifras: 3 }
+
+tarjetas:
+  - id: explore-alim
+    tipo: explorar
+    titulo: "La alimentación en la foto"
+    texto: "Toque el fusible, el condensador de filtrado y el regulador de la placa NTSC."
+    libro: ["snes#43", "snes#44", "snes#45"]
+    requiere: { mover: [n-fusible, n-filtro, n-reg] }
+    widget:
+      tipo: figura
+      consola: { maquina: snes, foto: ntsc }
+      zonas:
+        - { id: n-fusible, hotspot: n-fusible, rotulo: "Fusible F1", texto: "Rápido, de 1,5 A en las SNES originales." }
+        - { id: n-filtro, hotspot: n-filtro, rotulo: "Condensador C58", texto: "El electrolítico grande de la alimentación, junto al regulador." }
+        - { id: n-reg, hotspot: n-reg, rotulo: "Regulador U12", texto: "Un 7805: da los 5 V de toda la lógica." }
+
+  - id: ordene-camino
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "El camino de la corriente"
+    texto: "Ordene las piezas de la placa PAL del esquema, de la toma de corriente al regulador."
+    libro: ["snes#22", "snes#23"]
+    ordenar:
+      - "Toma de corriente (J1)"
+      - "Filtro (T1)"
+      - "Puente rectificador (DB1)"
+      - "Fusible (F1)"
+      - "Condensador de filtrado (C67)"
+      - "Regulador 7805 (U12)"
+    exito: "Toma, filtro, puente, fusible, condensador y regulador: el interruptor corta entre el fusible y el regulador."
+    pistas:
+      - { texto: "El regulador es lo último: da los 5 V. El puente va antes que el fusible." }
+    escalera:
+      - "Lo primero es la toma; lo último, el regulador de 5 V."
+      - "Después de la toma viene el filtro T1 y después el puente DB1."
+    solucion: "J1, T1, DB1, F1, C67 y U12."
+
+  - id: por-que-disipador
+    tipo: predecir
+    titulo: "El disipador del 7805"
+    texto: "A los 850 mA del adaptador, ¿cuánto calor tendría que evacuar el 7805?"
+    libro: ["cap08#65", "snes#122", "cap08#83"]
+    fijar: { I: 0.85, V_ad: 10, V_o: 5 }
+    widget:
+      tipo: figura
+      consola: { maquina: snes, foto: ntsc }
+      zonas:
+        - { id: n-reg, hotspot: n-reg, rotulo: "Regulador U12, con su disipador" }
+    opciones:
+      - texto: "4,25 W"
+        bien: true
+        porque: "(10 − 5) V · 0,85 A = 4,25 W: por eso lleva disipador."
+      - texto: "8,5 W"
+        porque: "Eso sería multiplicar los 10 V enteros por la corriente. El 7805 solo quema la diferencia entre entrada y salida."
+      - texto: "Nada: un regulador no se calienta."
+        porque: "Un regulador lineal disipa (entrada − salida) · corriente. Sin disipador se calienta hasta su protección térmica."
+    escalera:
+      - "Use la fórmula de la tarjeta anterior."
+      - "La diferencia es 10 − 5 = 5 V."
+    solucion: "(10 − 5) V · 0,85 A = 4,25 W."
+    comprobar:
+      - { P_d: 4.25 }
+      - { con: { V_o: 0 }, P_d: 8.5 }
+
+  - id: formula-disipa
+    tipo: formula
+    titulo: "Lo que sobra, en calor"
+    texto: "Con el adaptador de 10 V, el 7805 quema la diferencia por la corriente. Mueva la corriente."
+    libro: ["cap08#65", "cap08#66", "snes#122"]
+    ec: "cap08#65"
+    sustitucion: "({{V_ad}} − {{V_o}}) · {{I}} = {{P_d}}"
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0, max: 0.85, unidad: A, rotulo: "I" }
+      y: { min: 0, max: 5, unidad: W, rotulo: "P_{disipada}" }
+      curvas:
+        - { expr: "(V_ad - V_o)*i", color: naranja, rotulo: "P_{disipada}" }
+      marcas:
+        - { x: "I", y: "P_d", rotulo: "{{P_d}}" }
+      mandos: [ { valor: I, min: 0.05, max: 0.85, paso: 0.05, rotulo: "Corriente, I" } ]
+
+  - id: ajuste-dropout
+    tipo: ajuste
+    titulo: "¿Cuánta entrada necesita?"
+    texto: "El 78xx necesita unos 2 V más en la entrada que en la salida. Suba la entrada hasta que regule."
+    libro: ["cap08#67", "snes#43"]
+    inicio: { V_in: 5 }
+    widget:
+      tipo: grafica
+      x: { id: v, min: 0, max: 10, unidad: V, rotulo: "V_{entrada}" }
+      y: { min: 0, max: 6, unidad: V, rotulo: "V_{salida}" }
+      curvas:
+        - { expr: "min(V_o, max(0, v - 2))", color: azul, rotulo: "salida del 7805 (modelo)" }
+      marcas:
+        - { x: "V_in", y: "V_reg", rotulo: "{{V_reg}}" }
+      mandos: [ { valor: V_in, min: 5, max: 10, paso: 0.5, rotulo: "Entrada, V_{entrada}" } ]
+    ajuste:
+      valor: V_reg
+      min: 4.99
+      rotulo: "Salida del 7805"
+      bajo: "Todavía no regula: le faltan voltios en la entrada. Súbala."
+      dentro: "Ya da sus 5 V: la entrada supera la salida en unos 2 V."
+    exito: "Con unos 2 V de margen, el 7805 da sus 5 V."
+    comprobar:
+      - { con: { V_in: 7 }, V_reg: 5 }
+
+  - id: toque-9v
+    tipo: tocar
+    titulo: "El segundo raíl"
+    texto: "El audio va con +9 V sacados de la entrada sin regular. Toque el transistor que los da, en la cara de soldadura."
+    libro: ["snes#54"]
+    widget:
+      tipo: figura
+      consola: { maquina: snes, foto: cara-b }
+      zonas:
+        - { id: nueve, hotspot: b-9v, rotulo: "Abajo, en el centro a la derecha" }
+        - { id: rgb, hotspot: b-rgb, rotulo: "En el centro, a la izquierda" }
+        - { id: mandos, hotspot: b-mandos, rotulo: "Abajo a la izquierda" }
+    tocar:
+      bien: [nueve]
+      porque:
+        rgb: "Son los amplificadores RGB del vídeo."
+        mandos: "Son los diodos que protegen los puertos de mando."
+    exito: "Q18: con la base filtrada, saca de la entrada sin regular unos +9 V limpios para el audio."
+    escalera:
+      - "Busque un transistor solo, cerca de la etapa de audio."
+    solucion: "Q18 (2SC5658), con R76, C64 y DA11."
+
+  - id: por-que-puente
+    tipo: porque
+    titulo: "Un puente con continua"
+    texto: "¿Para qué lleva un puente rectificador una consola cuyo adaptador ya da continua?"
+    libro: ["snes#22", "snes#122"]
+    widget:
+      tipo: figura
+      consola: { maquina: snes, foto: cara-a }
+      zonas:
+        - { id: alim, hotspot: alim, rotulo: "Alimentación (J1, T1, DB1, F1, C67, U12)" }
+    opciones:
+      - texto: "Para aceptar continua o alterna, sin importar cómo llegue."
+        bien: true
+        porque: "El puente DB1 deja pasar la entrada sea cual sea su forma: la consola acepta continua o alterna."
+      - texto: "Para subir la tensión del adaptador."
+        porque: "Un puente rectificador no sube la tensión: la rectifica. Lo que llega al regulador nunca es mayor que lo que entra."
+      - texto: "Para filtrar el ruido de la red."
+        porque: "De filtrar se encargan el filtro T1 y el condensador C67; el puente no filtra."
+    escalera:
+      - "Piense en qué pasa si llega alterna en vez de continua."
+    solucion: "DB1 acepta continua o alterna: la placa funciona con cualquiera de las dos."
+
+  - id: fusible-rapido
+    tipo: pregunta
+    titulo: "El fusible"
+    texto: "El fusible F1 de las SNES originales es rápido, de 1,5 A. ¿Qué pasa si se pone uno lento?"
+    libro: ["snes#45", "snes#110", "cap10#83"]
+    widget:
+      tipo: figura
+      consola: { maquina: snes, foto: ntsc }
+      zonas:
+        - { id: n-fusible, hotspot: n-fusible, rotulo: "Fusible F1" }
+    opciones:
+      - texto: "Un cortocircuito tarda más en abrirlo y la placa sufre más."
+        bien: true
+        porque: "Uno lento aguanta muchas veces su corriente durante más tiempo: deja pasar el corto mientras se calienta lo que no debe."
+      - texto: "Nada: la corriente nominal es la misma."
+        porque: "La corriente nominal es la misma, pero el tiempo en fundir ante un corto no: el lento tarda mucho más."
+      - texto: "Se funde antes y la consola se apaga sin motivo."
+        porque: "Es al revés: el lento tarda más en fundir. Por eso no protege igual."
+    escalera:
+      - "Compare cuánto tarda cada tipo en fundir con diez veces su corriente."
+    solucion: "No se debe poner uno lento: tarda más en abrir un corto y no protege la placa."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["snes#22", "cap08#67", "cap08#65", "snes#54"]
+    ideas:
+      - { titulo: "El camino.", texto: "Toma, filtro, puente, fusible, condensador y regulador 7805." }
+      - { titulo: "El margen.", texto: "El 78xx necesita unos 2 V más en la entrada que en la salida." }
+      - { titulo: "El calor.", texto: "Disipa (entrada − salida) · corriente: por eso lleva disipador." }
+      - { titulo: "Dos raíles.", texto: "5 V regulados para la lógica y +9 V para el audio." }

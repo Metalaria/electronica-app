@@ -141,6 +141,9 @@ esquemas (fase 5) está en la versión 0.7.
 - **Cursos, XP, niveles y logros** (0.11): diez cursos temáticos con su prueba de nivel, sonidos y vibración al
   acertar y fallar, celebración al terminar cada lección, XP, niveles con nombre, 28 logros y un recordatorio
   diario en Android (ver «Cursos, XP y logros» más abajo).
+- **Consolas por dentro** (1.2): el curso 11, con lecciones hechas a mano sobre las placas del explorador «Consolas»
+  (la placa en la foto, alimentación, relojes PAL y NTSC, buses y decodificación, vídeo y sonido, bloqueo regional y
+  averías). Hechas: las siete de la Super Nintendo y las siete de la NES (ver «Consolas por dentro» más abajo).
 - **Modo docente** (1.0): cursos y exámenes propios con las preguntas y los problemas del libro, que se hacen en la
   aplicación (con nota y el desarrollo del libro) o se exportan a PDF, con variantes y soluciones (ver más abajo).
 - **Guía de uso** (1.0): cómo se usa cada parte de la aplicación, dentro de ella y sin conexión, con su propio buscador y
@@ -825,6 +828,20 @@ pestañas enlazadas entre sí:
   `origen` y `alineacion` de la foto en `MAQUINAS` (`contenido/consolas.py`, entrada `snes`) y ejecutar
   `python3 contenido/consolas.py snes`. Los recuadros y las marcas salen solos; los textos de cada pieza están en
   `contenido/consolas_snes.py`.
+
+  **1.2 (propietario, 12-11).** Las dos fotos de nonSNES se llaman ahora por lo que son: «Cara de componentes · PAL,
+  sin piezas» (un escaneo de la placa desnuda: sus recuadros marcan dónde va cada pieza) y «Cara de soldadura · PAL,
+  incompleta»; no llevan marcador las piezas que no están en ellas (P6 y SW1, que añade nonSNES, en la cara A; J3 y
+  las 15 huellas vacías de la cara B: R4–R6, R24, R32, R42, R45, R47, R108–R111, C4, C5 y C69, comprobadas en la
+  foto). Tercera pestaña, **«Cara de componentes · NTSC»**: la foto del propietario de una SNS-CPU-RGB-01 con todos sus
+  chips (Wikimedia Commons, File:SNES-CPU-RGB01_01.jpg, Yaca2671, CC BY-SA 3.0; en «Fuentes», con el enlace, la
+  licencia y los cambios: recomprimida a calidad 78, 1206 × 1046 px, sin recortar), con 22 piezas colocadas a mano
+  por las marcas y la serigrafía que se leen (S-CPU B, S-PPU1, S-PPU2 C, S-WRAM, S-DSP A, F411A, D21G4, S-RGB,
+  S-MIX A…; las que no se leen, como el S-SMP y el DAC, en discontinuo). Sus textos, en `CARA_NTSC` de
+  `contenido/consolas_snes.py`, con sus fuentes (Fabien Sanglard, SNESdev, ConsoleMods). La carpeta de
+  investigación de esta máquina solo tiene ahora la foto del propietario, así que `consolas.py snes` no se pudo
+  volver a ejecutar: `snes.json` se cambió a mano, igual que lo escribiría el generador (lo mismo está en
+  `consolas.py` y `consolas_snes.py`).
 
 Los datos se generan con `python3 contenido/consolas.py` (también desde `generar.py`) a partir de la carpeta
 de investigación `/home/claude/consolas`; si falta, se conservan los de `web/public/consolas/`.
@@ -2316,6 +2333,23 @@ inventado más allá de frases fijas alrededor de nombres y valores del libro.
 Se generan con `node web/scripts/practica10.mjs` (unos 60 s; también lo llama `contenido/generar.py` al final) en
 `web/public/libro/practica/`. Pruebas: `npx playwright test -c playwright.preguntas10.config.ts
 tests/preguntas10.spec.ts` (puerto 4391); capturas en `tests/capturas/preguntas10/`.
+
+## Consolas por dentro (1.2)
+
+El curso 11 (`#/cursos/consolas`) tiene una parte por consola del explorador «Consolas», en su orden (NES, Neo Geo AES,
+Master System II, Mega Drive, Game Boy, Game Boy Color y Super Nintendo) y unas siete lecciones por consola, del mismo
+estilo que las del libro (una idea por tarjeta, la foto de la placa encima, tocar piezas, circuitos lógicos, ajustes,
+averías que se buscan con el multímetro). Sus datos no salen de una sección del libro sino de los del explorador (sus
+fotos y piezas identificadas, la arquitectura y el decodificador, las fuentes), de los capítulos del libro con los que
+se relacionan y, en las averías, de fuentes externas citadas en cada tarjeta (ConsoleMods, Fabien Sanglard, SNESdev…),
+con su título y su enlace. Cada tarjeta enseña sus fuentes debajo; no hay lección «por pasos» ni prueba de nivel, y
+el lector del libro no las lista. Hechas en la 1.2: las siete de la Super Nintendo y las siete de la NES; las demás
+consolas siguen el mismo patrón (contenido/lecciones11/GUIA.md §12).
+
+La foto NTSC de la Super Nintendo (placa SNS-CPU-RGB-01 con todos sus chips; Yaca2671, Wikimedia Commons, CC BY-SA 3.0)
+está también en el explorador, como «Cara de componentes · NTSC», con 22 piezas colocadas por las marcas que se leen
+en ella. Las dos fotos PAL de nonSNES dicen ahora lo que son (la placa desnuda y una cara de soldadura con huellas
+vacías) y no marcan piezas que no se ven en ellas.
 
 ## Cursos, XP y logros (0.11)
 

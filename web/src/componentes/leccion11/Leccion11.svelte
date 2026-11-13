@@ -29,6 +29,7 @@
   import { app } from '../../lib/estado.svelte';
   import { ruta, hayCapas, reemplazarDireccion } from '../../lib/ruta.svelte';
   import { pasoVecino } from '../../lib/navegacion.svelte';
+  import { cursosDeParte } from '../../lib/aprendizaje/cursos';
   import { cargarAprendizaje, marcarLeida } from '../../lib/aprendizaje.svelte';
   import { registrarActividad } from '../../lib/progreso-diario.svelte';
   import { anotarPaso, cargarLecciones, completarLeccion, completarPaso, progresoLecciones, rutaLeccion } from '../../lib/lecciones.svelte';
@@ -121,6 +122,29 @@
   const pos = $derived(leccion ? posicion(ritmo, n, pantalla) : { x: 1, de: 1 });
   /** The wires of the circuits in the block colour of the lesson's chapter (lib/leccion12/identidad.ts). */
   const hilo = $derived(hiloDeBloque(app.indice?.partes[parte]?.color, app.tema));
+  // 1.2 (consolas-A): a lesson of the «Consolas por dentro» course is not a book section: no page to read nor 1.0
+  // lesson; it closes to its course, and each card links the sources it cites (the console's data and external pages,
+  // and the book sections it relates to: scripts/consolas11.mjs adds them to each citation)
+  const deConsola = $derived(app.indice?.partes[parte]?.tipo === 'consola');
+  const salida = $derived(deConsola ? `#/cursos/${cursosDeParte(parte)[0]?.id ?? ''}` : `#/${parte}/${encodeURIComponent(seccion)}`);
+  const fuentesTarjeta = $derived.by(() => {
+    const out: { href: string; texto: string; externo: boolean }[] = [];
+    if (!leccion?.consola || !t) return out;
+    for (const k of t.libro) {
+      const c = leccion.libro[k];
+      let x: (typeof out)[number] | null = null;
+      // (the explorer's own data: one link to the first view the card cites; an external page: each one)
+      if (c?.fuente && c.fuente.url.startsWith('#/consolas/')) {
+        if (!out.some((y) => y.href.startsWith('#/consolas/'))) x = { href: c.fuente.url, texto: `Fuente: ${c.fuente.titulo}`, externo: false };
+      } else if (c?.fuente) x = { href: c.fuente.url, texto: `Fuente: ${c.fuente.titulo}`, externo: /^https?:/.test(c.fuente.url) };
+      else if (c?.seccion) {
+        const s = app.indice?.partes[c.parte]?.secciones?.find((y) => y.label === c.seccion);
+        x = { href: `#/${c.parte}/${encodeURIComponent(c.seccion)}`, texto: `Del libro: sección ${s?.num ?? s?.titulo ?? c.seccion}`, externo: false };
+      }
+      if (x && !out.some((y) => y.href === x.href)) out.push(x);
+    }
+    return out;
+  });
   const t = $derived(leccion ? leccion.tarjetas[Math.min(pantalla, n - 1)]! : null);
   const e = $derived(estados[pantalla] ?? null);
   const aviso = $derived(avisos[pantalla] ?? null);
@@ -326,7 +350,7 @@
 
   function cerrar() {
     if (habiaEntrada) history.back();
-    else location.replace(`#/${parte}/${encodeURIComponent(seccion)}`);
+    else location.replace(salida);
   }
 
   function irSiguiente() {
@@ -462,7 +486,7 @@
     <div class="aviso-error">
       <h1>No se pudo abrir la lección</h1>
       <p>{error}</p>
-      <p><a href={rutaClasica(parte, seccion)}>Abrir la lección por pasos del libro</a></p>
+      {#if !deConsola}<p><a href={rutaClasica(parte, seccion)}>Abrir la lección por pasos del libro</a></p>{/if}
     </div>
   {:else if !leccion || !t || !e}
     <div class="cargando" aria-live="polite">Preparando la lección…</div>
@@ -498,7 +522,7 @@
                 {#if repaso}{repaso}{/if}{#if repaso && siguiente} · {/if}{#if siguiente}Siguiente: {siguiente.num ? `${siguiente.num} ` : ''}{siguiente.titulo}{/if}
               </p>
               <div class="enlaces">
-                <a href={rutaClasica(parte, seccion)} data-clasica>Ver la sección por pasos, con el texto del libro y más práctica</a>
+                {#if !deConsola}<a href={rutaClasica(parte, seccion)} data-clasica>Ver la sección por pasos, con el texto del libro y más práctica</a>{/if}
                 <button type="button" class="enlace" onclick={repetir} data-repetir>Repasar la lección desde el principio</button>
               </div>
             </section>
@@ -553,7 +577,15 @@
             {/if}
             {#if esComprobable(t)}<Escalera {t} {e} {valor} cambiar={cambiarEstado} />{/if}
 
-            <a class="libro" href={`#/${parte}/${encodeURIComponent(seccion)}`} data-libro={t.libro.join(' ')}>Del libro: sección {leccion.num || leccion.titulo}</a>
+            {#if leccion.consola}
+              <ul class="fuentes-tarjeta" data-libro={t.libro.join(' ')} data-fuentes>
+                {#each fuentesTarjeta as f (f.href)}
+                  <li><a class="libro" href={f.href} target={f.externo ? '_blank' : undefined} rel={f.externo ? 'noopener noreferrer' : undefined}>{f.texto}</a></li>
+                {/each}
+              </ul>
+            {:else}
+              <a class="libro" href={`#/${parte}/${encodeURIComponent(seccion)}`} data-libro={t.libro.join(' ')}>Del libro: sección {leccion.num || leccion.titulo}</a>
+            {/if}
           {/if}
           </div>
         {/key}
@@ -569,7 +601,7 @@
         {#if falta}<p class="falta" id="l11-falta">{falta}</p>{/if}
         <div class="botones">
           {#if t.tipo === 'resumen'}
-            <button type="button" class="secundario" onclick={cerrar} data-volver-libro>Volver al libro</button>
+            <button type="button" class="secundario" onclick={cerrar} data-volver-libro>{deConsola ? 'Volver al curso' : 'Volver al libro'}</button>
             {#if siguiente}
               <button type="button" class="primario" onclick={irSiguiente} data-siguiente-leccion>Siguiente sección</button>
             {:else}
@@ -767,6 +799,13 @@
   .chip.ok {
     background: var(--v11-bien-tinte);
     color: var(--v11-bien-texto);
+  }
+  .fuentes-tarjeta {
+    display: flex;
+    flex-direction: column;
+    margin: 0;
+    padding: 0;
+    list-style: none;
   }
   .libro {
     display: inline-flex;
