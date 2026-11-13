@@ -10,6 +10,7 @@ libro:
   478: "Tiene 32 registros de trabajo, r0 a r31"
   481: "Indirecto con post-incremento o pre-decremento"
   482: "leer un byte de una tabla en Flash cuesta un ciclo más que de la RAM, y que una variable global cuesta dos"
+  485: "uint8_t bandera;"
   487: "lds   r24, bandera  ; read ONCE, before the loop"
   488: "Su bucle cuesta 9 ciclos por byte"
   492: "la primera instrucción de la rutina se ejecuta siete ciclos después de que llegue el evento"
@@ -99,13 +100,20 @@ tarjetas:
   - id: prediga-espera
     tipo: predecir
     titulo: "Una bandera sin volatile"
-    texto: "uint8_t bandera; (no volatile) y while (!bandera) { }. Con -Os, ¿qué escribe el compilador?"
-    libro: [487, 488]
+    texto: "bandera no es volatile. Con -Os, ¿qué escribe el compilador para este bucle?"
+    libro: [485, 488]
     widget:
       tipo: figura
-      figura: fig-new-38-asm
-      zonas:
-        - { id: sram, rotulo: "Datos, abajo", rect: [37, 100, 66, 62], texto: "bandera vive en la SRAM." }
+      codigo:
+        lenguaje: c
+        texto: |
+          uint8_t bandera;
+
+          void espera(void)
+          {
+              while (!bandera) { }
+          }
+      resaltar: [1, 5]
     opciones:
       - { texto: "Lee la bandera una vez antes del bucle; si vale 0, salta sobre sí mismo para siempre", bien: true, porque: "Un rjmp a sí mismo: cambie lo que cambie la interrupción, no sale. Con volatile, el lds pasa dentro del bucle." }
       - { texto: "Lee la bandera de memoria en cada vuelta", porque: "Eso hace con volatile; sin él, la lee una sola vez." }
@@ -120,9 +128,13 @@ tarjetas:
     libro: [487, 488]
     widget:
       tipo: figura
-      figura: fig-new-38-asm
-      zonas:
-        - { id: registros, rotulo: "Datos, arriba", rect: [37, 38, 66, 60], texto: "Las primeras direcciones de E/S." }
+      codigo:
+        lenguaje: asm
+        texto: |
+          led_on:                     ; PORTB |= (1u << PB5);
+                  sbi   0x05, 5       ; one instruction, 2 cycles
+                  ret
+      resaltar: [2]
     opciones:
       - { texto: "sbi es una sola instrucción atómica: una interrupción no puede colarse", bien: true, porque: "Solo porque PORTB está entre las 32 primeras de E/S y el bit es constante; si no, salen in, or y out." }
       - { texto: "Porque PORTB es volatile", porque: "volatile no hace atómico nada: lo atómico es que sea una sola instrucción." }

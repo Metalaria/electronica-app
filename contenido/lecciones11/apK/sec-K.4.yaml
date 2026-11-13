@@ -10,6 +10,7 @@ libro:
   39: "fast to the switch, back off"
   40: "Los tiempos se comparan restando, ahora - r->inicio, que funciona aunque el contador de milisegundos se desborde"
   42: "la cabeza, donde escribe el que produce los datos"
+  43: "static volatile uint8_t cabeza;"
   44: "cabeza - cola es siempre el número de datos guardados, incluso cuando el contador ha dado la vuelta"
   45: "24 263 bytes llegan en orden y sin errores"
   "apK#69": "la cabeza va 5 posiciones por delante de la cola"
@@ -115,9 +116,18 @@ tarjetas:
     libro: [39, 40]
     widget:
       tipo: figura
-      figura: fig-K.1
-      zonas:
-        - { id: text, rotulo: "Flash, arriba", rect: [9, 37, 62, 50], texto: "La función referencia(), en la Flash." }
+      codigo:
+        lenguaje: c
+        texto: |
+          int16_t referencia(referencia_t *r, bool final_carrera, uint32_t ahora)
+          {
+              switch (r->fase) {
+              case BUSCA_RAPIDO:
+                  if (final_carrera) { r->fase = RETROCEDE; r->inicio = ahora; }
+                  else if (ahora - r->inicio > 15000u) r->fase = FALLO;
+                  else return -800;
+                  return 0;
+      resaltar: [6]
     opciones:
       - { texto: "Pasado su tiempo máximo, va a FALLO y devuelve velocidad 0", bien: true, porque: "Cada estado tiene un tiempo máximo: un final de carrera roto no deja el motor girando para siempre." }
       - { texto: "Sigue devolviendo -800 para siempre", porque: "Eso haría sin tiempo máximo; la comprobación con ahora - r->inicio lo impide." }
@@ -146,12 +156,11 @@ tarjetas:
     tipo: porque
     titulo: "Sin sección crítica"
     texto: "La interrupción de la UART mete bytes y el bucle los saca, sin deshabilitar interrupciones. ¿Por qué es seguro?"
-    libro: [44, 45]
+    libro: [43, 44, 45]
     widget:
       tipo: figura
-      figura: fig-K.1
-      zonas:
-        - { id: bufer, rotulo: "Anillo de la derecha", rect: [195, 30, 120, 135], texto: "Cabeza y cola, cada una con su dueño." }
+      codigo: "apK#43"
+      resaltar: [10, 11, 18, 27]
     opciones:
       - { texto: "Cada índice lo escribe un solo lado, es de un byte y se actualiza tras el dato", bien: true, porque: "En simavr, 24 263 bytes llegan en orden y sin errores. Con varios productores harían falta secciones críticas." }
       - { texto: "Porque los índices son volatile", porque: "volatile hace falta, pero no basta: la clave es que cada índice tiene un solo escritor." }

@@ -3,7 +3,8 @@
 #   5,9 % con 20).
 # - 30.D: Ziegler-Nichols desde Routh (K_u = 572, T_u = 0,958 s) y la tabla de los tres PID; la forma paralela del
 #   diseño por colocación de ceros, K_p = K_c·(1 + T′_d/T′_i) con K_c = 133,7, T′_i = 1 s y T′_d = 1/3 s.
-# - 30.C: cuatro decibelios son multiplicar la potencia por 10^0,4 = 2,5.
+# - 30.C: cuatro decibelios son multiplicar la potencia por 10^0,4 = 2,5. La curva de BPSK, Q(√(2·E_b/N₀)) =
+#   erfc(√(E_b/N₀))/2 (motor12e: `erfc`), en explore-ber (los tres puntos de la tabla) y en margen-enlace.
 # Paso práctico: «simular» la K_p de Ziegler-Nichols del problema 30.D (343; errores típicos: las filas del P y del PI).
 leccion: cap31/sec-31.14
 
@@ -17,6 +18,9 @@ libro:
   692: "Subir Kp lo reduce pero no lo anula, y a cambio acerca la inestabilidad"
   693: "el integrador añade 90° de retardo de fase"
   697: "Problema 30.C — Cuánta potencia necesita un enlace digital"
+  699: "Un enlace digital debe alcanzar una tasa de error de 10⁻⁶ con modulación BPSK"
+  702: "Para BPSK, la probabilidad de error es Q(√(2·Eb/N₀))"
+  703: "7,7 × 10⁻⁴"
   704: "Entre 7 y 11 dB, cuatro decibelios, la tasa de error mejora en tres órdenes de magnitud"
   705: "Cuatro decibelios son multiplicar la potencia por 2,5"
   706: "margen de enlace de al menos 6 a 10 dB sobre el mínimo teórico"
@@ -36,6 +40,7 @@ modelo:
     Ti_s: { sim: "T′_{i}", nombre: "tiempo integral serie", unidad: s, valor: 1 }
     Td_s: { sim: "T′_{d}", nombre: "tiempo derivativo serie", unidad: s, valor: 0.33333 }
     dB_c: { sim: "Δ", nombre: "decibelios de más", unidad: dB, valor: 4 }
+    Eb_c: { sim: "E_{b}/N_{0}", nombre: "energía por bit frente al ruido", unidad: dB, valor: 7 }
   calculos:
     e_b: { expr: "100/(1 + Kp_b*K_g)", sim: "e", nombre: "error permanente", unidad: "%" }
     Kp_zn: { expr: "0.6*K_ud", sim: "K_{p}", nombre: "K_p de Ziegler-Nichols", unidad: "" }
@@ -46,6 +51,9 @@ modelo:
     Ti_p: { expr: "Ti_s + Td_s", sim: "T_{i}", nombre: "T_i paralelo", unidad: s }
     Td_p: { expr: "Ti_s*Td_s/(Ti_s + Td_s)", sim: "T_{d}", nombre: "T_d paralelo", unidad: s }
     g_c: { expr: "10^(dB_c/10)", sim: "P₂/P₁", nombre: "razón de potencias", unidad: "" }
+    # (motor12e: erfc) BPSK, Q(√(2·E_b/N₀)) = erfc(√(E_b/N₀))/2, with E_b/N₀ in dB
+    ber: { expr: "0.5*erfc(sqrt(10^(Eb_c/10)))", sim: "BER", nombre: "tasa de error", unidad: "", cifras: 2 }
+    n_err: { expr: "1/ber", sim: "N", nombre: "bits por cada error", unidad: "", cifras: 4 }
 
 tarjetas:
   - id: explore-30b
@@ -260,6 +268,30 @@ tarjetas:
       - "Recuerde la tabla de margen y sobreimpulso de la sección 30.9."
     solucion: "Menos de 30°: baje K_{p}."
 
+  - id: explore-ber
+    tipo: explorar
+    titulo: "30.C: una curva muy vertical"
+    texto: "BPSK: la tasa de error es Q(√(2·E_{b}/N_{0})). Recorra los tres puntos de la tabla y mire cuánto cambia la tasa de error con cada paso de 2 dB."
+    libro: [699, 702, 703, 704]
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 12, unidad: dB, rotulo: "E_{b}/N_{0}" }
+      y: { min: 1e-8, max: 1, unidad: "", rotulo: "tasa de error", escala: log }
+      curvas:
+        - { expr: "0.5*erfc(sqrt(10^(d/10)))", color: naranja, rotulo: "BPSK" }
+      marcas:
+        - { x: "Eb_c", y: "ber", rotulo: "{{ber}}" }
+      lectura: { valor: ber, rotulo: "Tasa de error" }
+      datos:
+        - { valor: n_err, rotulo: "Un error cada {{n_err}} bits" }
+      mandos:
+        - { valor: Eb_c, lista: [7, 9, 11], rotulo: "E_{b}/N_{0}" }
+    requiere: { mover: [Eb_c] }
+    comprobar:
+      - { ber: 0.00077, n_err: 1294, tol: 0.005 }
+      - { con: { Eb_c: 9 }, ber: 0.0000336, n_err: 29738, tol: 0.01 }
+      - { con: { Eb_c: 11 }, ber: 0.00000026, n_err: 3826919, tol: 0.01 }
+
   - id: estime-30c
     tipo: pregunta
     titulo: "30.C: cuatro decibelios"
@@ -294,13 +326,13 @@ tarjetas:
     tipo: porque
     titulo: "30.C: margen de enlace"
     texto: "¿Por qué un enlace digital se diseña con 6 a 10 dB por encima del mínimo teórico?"
-    libro: [704, 705, 706]
+    libro: [702, 704, 705, 706]
     widget:
       tipo: grafica
-      x: { id: d, min: 0, max: 10, unidad: dB, rotulo: "decibelios" }
-      y: { min: 0, max: 10, unidad: "", rotulo: "razón de potencias" }
+      x: { id: d, min: 0, max: 12, unidad: dB, rotulo: "E_{b}/N_{0}" }
+      y: { min: 1e-8, max: 1, unidad: "", rotulo: "tasa de error", escala: log }
       curvas:
-        - { expr: "10^(d/10)", color: naranja, rotulo: "10^{dB/10}" }
+        - { expr: "0.5*erfc(sqrt(10^(d/10)))", color: naranja, rotulo: "BPSK" }
     opciones:
       - texto: "La curva es tan vertical que perder 4 dB multiplica los errores por miles"
         bien: true

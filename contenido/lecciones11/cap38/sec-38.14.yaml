@@ -8,6 +8,7 @@ libro:
   431: "el planificador ejecuta siempre la tarea lista de mayor prioridad"
   432: "Wrong: burns the CPU and starves lower-priority tasks."
   434: "una interrupción avisa a una tarea de que hay trabajo"
+  435: "xSemaphoreGiveFromISR(sem_dato, &woken);"
   437: "Desde una interrupción se usan las funciones FromISR, y solo esas"
   438: "Sin él, la latencia pasa de microsegundos a hasta un tick entero"
   439: "Un Take que espera indefinidamente convierte cualquier fallo externo en un bloqueo permanente"
@@ -83,12 +84,20 @@ tarjetas:
     tipo: porque
     titulo: "portYIELD_FROM_ISR"
     texto: "¿Por qué se llama a portYIELD_FROM_ISR(woken) al final de la interrupción?"
-    libro: [438]
+    libro: [435, 438]
     widget:
       tipo: figura
-      figura: fig-38.18
-      zonas:
-        - { id: con, rotulo: "Diagrama de abajo", rect: [38, 120, 380, 90], texto: "La tarea despertada empieza en cuanto puede." }
+      codigo:
+        lenguaje: c
+        texto: |
+          void EXTI0_IRQHandler(void)
+          {
+              BaseType_t woken = pdFALSE;
+              EXTI->PR1 = EXTI_PR1_PIF0;    /* clear the pending flag first */
+              xSemaphoreGiveFromISR(sem_dato, &woken);
+              portYIELD_FROM_ISR(woken);
+          }
+      resaltar: [5, 6]
     opciones:
       - { texto: "Para ejecutar ya la tarea despertada, sin esperar al siguiente tick", bien: true, porque: "Sin él, la latencia pasa de microsegundos a hasta un tick entero." }
       - { texto: "Para borrar la bandera del periférico", porque: "La bandera se borra antes, con EXTI->PR1; esto decide qué tarea sigue." }
@@ -100,12 +109,21 @@ tarjetas:
     tipo: pregunta
     titulo: "Esperar para siempre"
     texto: "¿Qué pasa si una tarea espera su semáforo sin tiempo de expiración y el sensor deja de responder?"
-    libro: [439]
+    libro: [435, 439]
     widget:
       tipo: figura
-      figura: fig-38.18
-      zonas:
-        - { id: sin, rotulo: "Diagrama de arriba", rect: [38, 8, 380, 90], texto: "Una espera sin fin." }
+      codigo:
+        lenguaje: c
+        texto: |
+          /* Task side: block until signalled, with a timeout. */
+          for (;;) {
+              if (xSemaphoreTake(sem_dato, pdMS_TO_TICKS(500)) == pdTRUE) {
+                  procesar();
+              } else {
+                  registrar_fallo();      /* the timeout is not optional */
+              }
+          }
+      resaltar: [3]
     opciones:
       - { texto: "Se queda bloqueada para siempre", bien: true, porque: "Un Take sin expiración convierte cualquier fallo externo en un bloqueo permanente; con expiración, registra el fallo y sigue." }
       - { texto: "El RTOS la despierta al cabo de un tick", porque: "Sin expiración, nadie la despierta: el semáforo nunca llega." }

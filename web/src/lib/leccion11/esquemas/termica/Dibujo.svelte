@@ -16,7 +16,8 @@
   const disip = $derived(conDisipador(c));
 </script>
 
-<Lienzo {descripcion} ancho={460} alto={262} nodos={{ magnitud: 'Temperatura', unidad: '°C' }}>
+<!-- (480 wide: «ambiente», right of the ambient source at x = 414, ends near x = 472) -->
+<Lienzo {descripcion} ancho={480} alto={262} nodos={{ magnitud: 'Temperatura', unidad: '°C' }}>
   <Flujo d="M40 240 V60 H400 V240 Z" {dur} medidor="vmq" />
   <FuenteI x={40} y1={240} y2={60} pieza="p" nodos={['0', 'j']} />
   <Et x={34} y={100} t={c.simT('p')} ancla="end" />

@@ -705,6 +705,8 @@
     display: flex;
     flex-direction: column;
     padding: 4px 20px 20px;
+    /* the card enters with a horizontal fly; clip it so the page never gets wider than the screen meanwhile */
+    overflow-x: clip;
   }
   .pantalla {
     display: flex;

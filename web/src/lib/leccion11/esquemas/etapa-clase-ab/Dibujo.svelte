@@ -24,7 +24,8 @@
   <!-- +V rail, the bias source and the base node of Q₁ -->
   <path class="hilo" d="M150 20 H276" data-red="vcc"></path>
   <circle class="borne" cx="213" cy="20" r="5"></circle>
-  <Et x={213} y={10} t={`+${c.val('vcc')}`} ancla="middle" peq />
+  <!-- (below the rail, right of the terminal: above it the label rose out of the drawing's top edge) -->
+  <Et x={221} y={40} t={`+${c.val('vcc')}`} peq />
   <FuenteI x={150} y1={20} y2={100} pieza="ib" nodos={['vcc', 'b1']} />
   <Et x={174} y={56} t={sub('I', 'B')} color="azul" />
   <Et x={174} y={74} t={c.val('ib')} color="azul" peq />

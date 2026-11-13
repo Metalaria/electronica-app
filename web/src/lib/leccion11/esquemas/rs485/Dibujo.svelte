@@ -53,6 +53,10 @@
     <R x1={260} y1={170} x2={260} y2={226} color="verde" />
     <circle class="borne" cx="260" cy="231" r="5"></circle>
     <Et x={272} y={235} t="ref" color="verde" peq />
+  {:else}
+    <!-- (no loads: an empty, transparent stand-in keeps the piece «n» on the drawing, so its handle stays where the
+    loads were — dragging it adds them back — and a keyboard user moving it to 0 keeps the focus) -->
+    <g data-pieza="n"><rect x="248" y="44" width="24" height="52" fill="transparent" stroke="none"></rect></g>
   {/if}
   <Et x={274} y={204} t={`${n} ${n === 1 ? 'carga unidad' : 'cargas unidad'}`} color="verde" peq />
   {@render terminacion(xf, 't2')}

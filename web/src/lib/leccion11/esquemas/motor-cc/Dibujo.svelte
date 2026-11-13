@@ -43,7 +43,9 @@
   <Et x={246} y={160} t={`k ${c.val('k')}`} ancla="end" peq />
   <path class="hilo" d="M270 240 H40" data-red="0"></path>
   <!-- the mechanics -->
-  <Et x={312} y={22} t="mecánica: ω como una tensión" peq />
+  <!-- (two lines: on one, the label ran past the drawing's right edge, to x = 504 of 480) -->
+  <Et x={312} y={16} t="mecánica:" peq />
+  <Et x={312} y={32} t="ω como una tensión" peq />
   <FuenteDep x={330} y1={240} y2={60} tipo="corriente" />
   <Et x={348} y={118} t="k·I" />
   <path class="hilo" d={`M330 60 H${xfin}`}></path>

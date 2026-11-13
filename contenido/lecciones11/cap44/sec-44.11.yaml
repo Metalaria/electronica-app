@@ -2,8 +2,8 @@
 # Formato: contenido/lecciones11/GUIA.md (§11). Dos cálculos del libro: la ventana del pull-up de I²C (t_r =
 # 0,8473·R·C con 300 ns a 400 kHz como máximo, ecuación del bloque 408; R_min = (V_DD − 0,4)/3 mA, bloque 412) y la
 # longitud máxima de un bus CAN (bloque 417 con 5 ns/m, 120 ns de lazo y un segmento de propagación del 40 %, bloque
-# 418): L = (0,4·T_bit/2 − 120 ns)/(5 ns/m). El diseño de la ventana usa resistencias del 1 % para que todas las de la
-# ventana nominal cumplan también con su tolerancia.
+# 418): L = (0,4·T_bit/2 − 120 ns)/(5 ns/m). El diseño de la ventana usa E24 con su ± 5 % (tabla de la sección 2.4,
+# cap02#96): el valor más bajo de la ventana nominal se sale por abajo con la tolerancia (la trampa del diseño).
 leccion: cap44/sec-44.11
 
 libro:
@@ -13,6 +13,7 @@ libro:
   411: "la norma exige que sea capaz de absorber 3 mA"
   412: 'R_("min") = (V_("DD") - "0,4")/("3 mA")'
   413: "967 Ω"
+  "cap02#96": "±5 %"
   414: "con un bus cargado a 400 pF, VDD de 5 V y 400 kHz, la ventana es de 1533 a 885 Ω, es decir, está vacía"
   416: "el arbitraje exige que todos los nodos vean el mismo bit a la vez"
   417: '"2" dot.op lr(( L dot.op t_("línea") + t_("lazo" , "transceptor") )) lt.eq T_("bit") dot.op f_("propagación")'
@@ -133,8 +134,8 @@ tarjetas:
   - id: diseno-ventana
     tipo: diseno
     titulo: "Dentro de la ventana"
-    texto: "Bus de 200 pF a 3,3 V y 400 kHz. Elija un pull-up E24 del 1 % que cumpla los dos límites a la vez."
-    libro: [408, 411, 413]
+    texto: "Bus de 200 pF a 3,3 V y 400 kHz. Elija un pull-up E24 (± 5 %) que cumpla los dos límites a la vez, también con su tolerancia."
+    libro: [408, 411, 413, "cap02#96"]
     fijar: { C_bus: 200e-12, V_dd: 3.3, t_rmax: 3e-7 }
     inicio: { R_pu: 4700 }
     widget:
@@ -153,15 +154,16 @@ tarjetas:
       - { valor: t_r, max: 3e-7, rotulo: "Subida: {{t_r}}" }
       - { valor: I_baja, max: 0.003, rotulo: "Corriente: {{I_baja}}" }
     diseno:
-      tolerancias: { R_pu: 0.01 }
+      tolerancias: { R_pu: 0.05 }
       metodo: esquinas
       exigir: todas
+      si_tolerancias: "En nominal cumple, pero con su ± 5 % no siempre: cerca de 967 Ω el esclavo puede tener que absorber más de 3 mA. Suba un escalón."
     exito: "La ventana va de 967 a 1770 Ω: grande para no forzar al esclavo, pequeño para que el flanco llegue."
     pistas:
       - { cuando: { valor: t_r, mayor: 3e-7 }, texto: "El flanco tarda demasiado: baje el pull-up." }
       - { texto: "El esclavo tendría que absorber más de 3 mA: suba el pull-up." }
-    escalera: ["La ventana es de 967 a 1770 Ω."]
-    solucion: "Cualquier E24 entre 967 y 1770 Ω."
+    escalera: ["La ventana es de 967 a 1770 Ω.", "Con ± 5 %, el valor más bajo de la ventana se sale por abajo."]
+    solucion: "Un E24 de la ventana de 967 a 1770 Ω con sitio para su ± 5 % por los dos lados."
     comprobar:
       - { R_min: 967, R_max: 1770 }
 

@@ -11,6 +11,7 @@ libro:
   6: "uint8_t, int16_t, uint32_t"
   7: "1u << 15 vale 32 768 y 1ul << 20, 1 048 576"
   9: "reg |= 1u << n, reg &= ~(1u << n), reg ^= 1u << n y if (reg & (1u << n))"
+  10: "static inline uint32_t campo_lee(uint32_t reg, unsigned pos, unsigned ancho)"
   11: "campo_lee(0xB5, 4, 3) vale 3, y escribir 6 (110) en ese campo da 0xE5"
   12: "sirven para guardar banderas en la memoria propia, no para describir un registro o una trama"
 
@@ -145,14 +146,21 @@ tarjetas:
     fase: "Estime"
     titulo: "Leer un campo"
     texto: "0xB5 es 1011 0101 en binario. ¿Cuánto vale campo_lee(0xB5, 4, 3), los bits 6 a 4?"
-    libro: [11]
+    libro: [10, 11]
     widget:
-      tipo: logica
-      entradas: [{ id: R, rotulo: "Bit del registro" }, { id: M, rotulo: "Bit de la máscara" }]
-      piezas:
-        - { id: a1, tipo: and, entradas: [R, M] }
-      salidas:
-        - { id: P, de: a1, rotulo: "reg & m" }
+      tipo: figura
+      codigo:
+        lenguaje: c
+        texto: |
+          /* Field of 'ancho' bits starting at bit 'pos' of a 32-bit register. */
+          static inline uint32_t campo_lee(uint32_t reg, unsigned pos,
+                                           unsigned ancho)
+          {
+              uint32_t mascara = (ancho < 32u)
+                                 ? ((1ul << ancho) - 1u) : 0xFFFFFFFFul;
+              return (reg >> pos) & mascara;
+          }
+      resaltar: [6, 7, 8]
     estimar:
       objetivo: "campo"
       unidad: ""
@@ -194,14 +202,21 @@ tarjetas:
     tipo: porque
     titulo: "La comprobación de ancho"
     texto: "campo_lee comprueba ancho < 32 antes de calcular 1ul << ancho. ¿Por qué no es un adorno?"
-    libro: [11]
+    libro: [10, 11]
     widget:
-      tipo: logica
-      entradas: [{ id: R, rotulo: "Bit del registro" }, { id: M, rotulo: "Bit de la máscara" }]
-      piezas:
-        - { id: a1, tipo: and, entradas: [R, M] }
-      salidas:
-        - { id: P, de: a1, rotulo: "reg & m" }
+      tipo: figura
+      codigo:
+        lenguaje: c
+        texto: |
+          /* Field of 'ancho' bits starting at bit 'pos' of a 32-bit register. */
+          static inline uint32_t campo_lee(uint32_t reg, unsigned pos,
+                                           unsigned ancho)
+          {
+              uint32_t mascara = (ancho < 32u)
+                                 ? ((1ul << ancho) - 1u) : 0xFFFFFFFFul;
+              return (reg >> pos) & mascara;
+          }
+      resaltar: [6, 7]
     opciones:
       - { texto: "Desplazar tantos bits como tiene el tipo es comportamiento indefinido", bien: true, porque: "Cada procesador da una cosa: en un PC lo deja como estaba y en un ARM da cero." }
       - { texto: "Porque un campo de 32 bits no existe", porque: "Puede existir: es el registro entero, y para él la máscara se escribe aparte." }

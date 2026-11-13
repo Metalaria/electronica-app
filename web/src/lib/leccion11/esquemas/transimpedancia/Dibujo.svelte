@@ -32,7 +32,8 @@
     <path class="hilo" d="M190 75 V30 H230" data-red="m"></path>
     <circle class="nodo" cx="190" cy="75" r="4.5" data-red="m"></circle>
     <C x1={230} y1={30} x2={300} y2={30} color="naranja" pieza="cf" />
-    <Et x={265} y={10} t={c.rot('cf')} ancla="middle" color="naranja" peq />
+    <!-- (between the plates and R_f: above the plates the label rose out of the drawing's top edge) -->
+    <Et x={265} y={60} t={c.rot('cf')} ancla="middle" color="naranja" peq />
     <path class="hilo" d="M300 30 H340 V75" data-red="out"></path>
   {/if}
   <path class="hilo" d="M320 75 H340 V170" data-red="out"></path>

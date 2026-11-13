@@ -127,7 +127,23 @@ test('cada tarjeta: dibujo y gráfica sin salirse, mandos con el teclado, «Cont
 // Motor fixes 1.1: aria-valuenow went back to «2.2e-7» as soon as a control moved (an action corrected it on the
 // first render only); the estimate's slider and the graph handles too. Every slider of every card, moved with
 // every key: min / max / now are plain decimals, and the value text is in words (no «nF», no exponent).
-test('cada mando, al moverse: aria-valuenow decimal y aria-valuetext en palabras', async ({ browser }) => {
+// (13-11) This walk went past its 240 s at «rs485»: not the catalogue's size but a lost focus (see below), which left
+// it waiting for a slider of a card it had already left. The walk itself takes about 2 min for 123 cards and grows
+// with every batch of schematics, so the cards are also split into consecutive parts of about the same number of
+// sliders (eight key presses each), each its own test with its own page: a part stays well inside the time limit, a
+// failure names its part, and with several workers they run side by side.
+const PARTES_MANDOS = 3;
+const conMandos = leccion.tarjetas.flatMap((t, k) => (t.tipo === 'resumen' ? [] : [{ k, n: Math.max(1, t.widget?.mandos?.length ?? 0) }]));
+const totalMandos = conMandos.reduce((s, x) => s + x.n, 0);
+const partesMandos: number[][] = Array.from({ length: PARTES_MANDOS }, () => []);
+{
+  let acumulado = 0;
+  for (const x of conMandos) {
+    partesMandos[Math.min(PARTES_MANDOS - 1, Math.floor((acumulado * PARTES_MANDOS) / totalMandos))]!.push(x.k);
+    acumulado += x.n;
+  }
+}
+for (const [p, indices] of partesMandos.entries()) test(`cada mando, al moverse: aria-valuenow decimal y aria-valuetext en palabras (parte ${p + 1} de ${PARTES_MANDOS})`, async ({ browser }) => {
   test.setTimeout(240_000);
   const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
   await servir(ctx);
@@ -135,16 +151,21 @@ test('cada mando, al moverse: aria-valuenow decimal y aria-valuetext en palabras
   await preparar(page);
   const decimal = /^-?\d+(\.\d+)?$/;
   let vistos = 0;
-  for (const [k, t] of leccion.tarjetas.entries()) {
-    if (t.tipo === 'resumen') continue;
+  for (const k of indices) {
+    const t = leccion.tarjetas[k]!;
     await irA(page, k);
     const deslizadores = page.locator(`[data-tarjeta="${t.id}"] [role="slider"]`);
     const n = await deslizadores.count();
     for (let j = 0; j < n; j++) {
+      // (each slider by its own element: «nth» would slide to the next one if this one left the page)
       const s = deslizadores.nth(j);
       await s.focus();
+      await s.evaluate((x) => x.setAttribute('data-prueba-mando', ''));
       for (const tecla of ['', 'ArrowRight', 'ArrowLeft', 'Home', 'ArrowRight', 'End', 'ArrowLeft', 'Home']) {
         if (tecla) await page.keyboard.press(tecla);
+        // Regression (rs485, 13-11): the schematic's handle of «n» vanished with its piece at 0 loads; the focus fell
+        // to the page and the next arrow turned the card, so this loop waited for its slider until the time ran out.
+        expect(await page.evaluate(() => !!document.activeElement?.hasAttribute('data-prueba-mando')), `${t.id} mando ${j + 1} tras «${tecla || 'entrar'}»: conserva el foco`).toBe(true);
         const a = await s.evaluate((x) => ({ ahora: x.getAttribute('aria-valuenow'), min: x.getAttribute('aria-valuemin'), max: x.getAttribute('aria-valuemax'), texto: x.getAttribute('aria-valuetext') ?? '' }));
         const donde = `${t.id} mando ${j + 1} tras «${tecla || 'entrar'}»: ${JSON.stringify(a)}`;
         expect(a.ahora, donde).toMatch(decimal);
@@ -155,11 +176,20 @@ test('cada mando, al moverse: aria-valuenow decimal y aria-valuetext en palabras
         // a unit symbol after a number is said in words («220 nanofaradios», «1 microsegundo»)
         expect(a.texto, donde).not.toMatch(/\d\s?[pnµmkMG]?(F|H|Ω|V|A|s|Hz)(?![\p{L}])/u);
       }
+      await s.evaluate((x) => x.removeAttribute('data-prueba-mando'));
       vistos++;
     }
   }
-  // the small ones that broke: a capacitance list, a handle in µs and the estimate in nF
-  expect(vistos).toBeGreaterThan(20);
+  expect(vistos, `parte ${p + 1}`).toBeGreaterThan(5);
+  await ctx.close();
+});
+
+// the small ones that broke: a capacitance list, a handle in µs and the estimate in nF
+test('cada mando, al moverse: los valores pequeños (lista en nF, asa en µs, estimación en nF)', async ({ browser }) => {
+  const ctx = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+  await servir(ctx);
+  const page = await ctx.newPage();
+  await preparar(page);
   await irA(page, leccion.tarjetas.findIndex((t) => t.id === 'grafica-log'));
   const c = page.locator('[data-mando11="C_f"] [role="slider"]');
   await c.focus();

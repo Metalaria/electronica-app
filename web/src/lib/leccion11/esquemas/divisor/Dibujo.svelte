@@ -14,7 +14,8 @@
   const ZL = 'M190 125 H300 V146 l9 3.5 l-18 7 l18 7 l-18 7 l18 7 l-18 7 l18 7 l-18 7 l9 3.5 V220 H190';
 </script>
 
-<Lienzo {descripcion}>
+<!-- (the load under its own label: the flag at x = 330 reaches x = 394 with «SALIDA», past the usual 380) -->
+<Lienzo {descripcion} ancho={c.tiene('carga') && modo === 'etiqueta' ? 400 : 380}>
   <path class="flujo" d="M50 220 V30 H190 V220 Z" style:animation-duration={`${dur.toFixed(2)}s`} data-medidor="vmed"></path>
   <path class="hilo" d="M50 220 V133" data-red="0"></path>
   <path class="hilo" d="M50 117 V30 H190" data-red="fte"></path>

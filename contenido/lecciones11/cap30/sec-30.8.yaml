@@ -1,10 +1,11 @@
 # Lección 1.2 de la sección 29.8 «Correlación y el Filtro Adaptado» (cap30, sec-30.8). Formato: GUIA.md.
 # - La correlación con una forma conocida (bloques 247 y 248): un pulso rectangular de 1 ms que llega con un retardo de
-#   3 ms y «ruido» (tres senoides de frecuencias sin relación, de ejemplo: la app no tiene ruido aleatorio). La réplica
+#   3 ms y ruido de ejemplo (motor12e: `ruido(t, 7)`, normal con semilla fija, 0,4 eficaces). La réplica
 #   desplazada τ; su parecido con el pulso, el solape normalizado ρ = max(0, 1 − |τ − d|/W): el pico de la correlación
 #   en el retardo. Pulso, retardo y ruido son de ejemplo.
 # - Ganancia del filtro adaptado: 10·log₁₀(T·B), 30 dB con 1 ms y 1 MHz (bloque 251). GPS: −130 dBm frente a −111 dBm
-#   (19 dB por debajo) y 43 dB de ganancia de proceso (bloque 254). Promediado: el ruido baja con √N (bloque 273).
+#   (19 dB por debajo) y 43 dB de ganancia de proceso (bloque 254). Promediado: el ruido baja con √N (bloque 273);
+#   explore-promedio lo enseña con `ruido`: la media de N capturas de ruido blanco es ruido blanco con σ/√N.
 # Paso práctico: «ajuste» de la réplica hasta alinearla con el pulso escondido (correlar a mano).
 leccion: cap30/sec-30.8
 
@@ -57,7 +58,7 @@ tarjetas:
       x: { id: t, min: 0, max: 0.008, unidad: s, rotulo: "t", muestras: 2000 }
       y: { min: -2.6, max: 2.2, unidad: "", rotulo: "señal" }
       curvas:
-        - { expr: "min(max((t - d_0)*1000000, 0), 1) - min(max((t - d_0 - W_p)*1000000, 0), 1) + 0.5*sin(2*pi*1130*t) + 0.4*sin(2*pi*2370*t + 1) + 0.4*sin(2*pi*3910*t + 2)", color: azul, rotulo: "recibido" }
+        - { expr: "min(max((t - d_0)*1000000, 0), 1) - min(max((t - d_0 - W_p)*1000000, 0), 1) + 0.4*ruido(t, 7)", color: azul, rotulo: "recibido" }
         - { expr: "min(max((t - t_r)*1000000, 0), 1) - min(max((t - t_r - W_p)*1000000, 0), 1) - 2", color: naranja, rotulo: "réplica" }
       lectura: { valor: rho, rotulo: "Parecido con el pulso" }
       mandos:
@@ -65,11 +66,9 @@ tarjetas:
     ajuste:
       valor: rho
       min: 0.95
-      max: 1
       rotulo: "Parecido"
       escala: { min: 0, max: 1 }
       bajo: "Aún no coinciden: el ruido no se parece a la réplica. Siga deslizando hasta que el parecido suba."
-      alto: "Coincide de lleno: no se puede parecer más."
       dentro: "Ahí está: el ruido no se correlaciona con la réplica, y el pulso sí, de lleno. Ese desplazamiento es el retardo."
 
   - id: explore-pico
@@ -261,6 +260,24 @@ tarjetas:
     solucion: "√100 = 10."
     comprobar:
       - { r_n: 10, N_p: 100 }
+
+  - id: explore-promedio
+    tipo: explorar
+    titulo: "El ruido baja con √N"
+    texto: "La misma señal repetitiva, promediando N capturas. Suba N: la señal se queda y el ruido baja por la raíz del número de promedios."
+    nota: "Pulso y ruido de ejemplo."
+    libro: [273]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.008, unidad: s, rotulo: "t", muestras: 2000 }
+      y: { min: -1.5, max: 2.5, unidad: "", rotulo: "señal" }
+      curvas:
+        # (motor12e) the mean of N captures of white noise is white noise with σ/√N
+        - { expr: "min(max((t - d_0)*1000000, 0), 1) - min(max((t - d_0 - W_p)*1000000, 0), 1) + 0.4*ruido(t, 11)/sqrt(N_p)", color: azul, rotulo: "promedio de N capturas" }
+      lectura: { valor: r_n, rotulo: "El ruido baja (veces)" }
+      mandos:
+        - { valor: N_p, lista: [1, 4, 16, 100], rotulo: "Capturas promediadas, N" }
+    requiere: { mover: [N_p] }
 
   - id: resumen
     tipo: resumen
