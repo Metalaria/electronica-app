@@ -1,0 +1,332 @@
+# Lección 1.2 de la sección 45.15 «Problemas de Diseño» (cap44; etiqueta interna sec-44.13).
+# Formato: contenido/lecciones11/GUIA.md (§11). Los cuatro problemas del capítulo, en corto: 45.A (el bus I²C que
+# crece: 10 pF por dispositivo y 1 pF/cm, R_máx = 300 ns/(0,8473·C)), 45.B (la polarización de 720 Ω por lado y la
+# velocidad), 45.C (SPI por 2 m de cable: ida y vuelta de 20 ns frente a 50 ns) y 45.D (el nodo Modbus: polarización
+# con 26 cargas unidad y 1/8 en el lazo serie R_p–Z_d–R_p de la sección 45.6; el DE; los tiempos). El ejercicio 45.6
+# (bloque 513) da la duración de una trama a 9 600 bit/s.
+leccion: cap44/sec-44.13
+
+libro:
+  452: "Estima 10 pF por dispositivo y 1 pF por centímetro de pista; el bus va a 3,3 V."
+  456: "2724 Ω"
+  458: "esos 4,7 kΩ cumplían con 4 dispositivos (por debajo de 7081) y dejaron de cumplir al llegar a 8 (por encima de 2724)"
+  459: "nadie tocó los pull-up, pero el margen se consumió al añadir dispositivos y alargar pistas"
+  460: "La corrección: bajar los pull-up a 1,5 kΩ"
+  466: "Hay que conectar dos equipos separados 100 metros con RS-485 a 1 Mbit/s"
+  470: "Hay que forzar una diferencia mínima de 200 mV con resistencias de polarización. Las dos terminaciones en paralelo dan 60 Ω"
+  471: 'R = "720 Ω" space "a cada lado"'
+  472: "Con el valor comercial de 680 Ω resulta una diferencia de 211 mV"
+  474: "120 m"
+  475: "Con 100 metros, 1 Mbit/s está cerca del límite (100 m frente a 120 m) y funcionará, pero con muy poco margen."
+  476: "Si las masas de los dos equipos difieren más que eso, hace falta un tercer hilo de referencia o aislamiento galvánico."
+  482: "Un SPI que funciona perfectamente a 20 MHz dentro de la placa falla al llevarlo por un cable de 2 metros."
+  485: "Con un retardo de propagación de 5 ns por metro"
+  488: "El maestro muestrea después de un retardo de ida y vuelta, es decir, 20 ns con 2 metros, casi medio periodo."
+  490: "A 1 MHz el retardo es el 1 % del periodo y el problema desaparece."
+  493: "a 2 m y 20 MHz el retardo de ida y vuelta es del 40 % del periodo"
+  496: "a 19 200 bit/s y 8E1, polarizado con 680 Ω a 5 V"
+  502: "un transceptor de 3,3 V y 1/8 de carga unidad, con DE y REn unidos a una salida del microcontrolador"
+  503: "con 680 Ω quedan 198,8 mV en reposo, justo por debajo de los 200 mV"
+  506: "desactiva DE en la interrupción de transmisión completa, cuando ha salido el bit de parada del último byte"
+  507: "16,2 ms por nodo y 422 ms por vuelta con 26 nodos: cabe en los 500 ms"
+  509: "ninguna; el contador pasa a 1"
+  511: "con el consejo de subir a 38 400 bit/s para tener margen con un nodo caído"
+  512: "La interfaz del nodo del problema"
+  "cap44#513": "La trama tiene 8 bytes de 11 bits: 88 bits, que a 9 600 bit/s duran 9,17 ms."
+
+modelo:
+  valores:
+    n_disp: { sim: "n", nombre: "dispositivos", valor: 4 }
+    cm_pista: { sim: "l", nombre: "centímetros de pista", valor: 10 }
+    V_th: { sim: "V_{mín}", nombre: "diferencia mínima en reposo", unidad: V, valor: 0.2 }
+    R_T2: { sim: "R_{T}/2", nombre: "las dos terminaciones en paralelo", unidad: Ω, valor: 60 }
+    L_spi: { sim: "L", nombre: "longitud del cable", unidad: m, valor: 2 }
+    f_spi: { sim: "f", nombre: "reloj del SPI", unidad: Hz, valor: 20000000 }
+    V_d: { sim: "V_{CC}", nombre: "alimentación de la polarización", unidad: V, valor: 5 }
+    R_pd: { sim: "R_{p}", nombre: "polarización del maestro", unidad: Ω, valor: 470 }
+    n_cud: { sim: "n", nombre: "cargas unidad", valor: 26.125 }
+    bytes_t: { sim: "bytes", nombre: "bytes de la trama", valor: 8 }
+    v_t: { sim: "v", nombre: "velocidad", unidad: "bit/s", valor: 9600 }
+  calculos:
+    C_i2c: { expr: "(10*n_disp + cm_pista)*1e-12", sim: "C", nombre: "capacidad del bus", unidad: F, cifras: 3 }
+    Rmax_i2c: { expr: "3e-7/(0.8473*(10*n_disp + cm_pista)*1e-12)", sim: "R_{máx}", nombre: "pull-up máximo a 400 kHz", unidad: Ω, cifras: 4 }
+    I_pol: { expr: "V_th/R_T2", sim: "I", nombre: "corriente de polarización", unidad: A, cifras: 3 }
+    R_lado: { expr: "(V_d - V_th)/(V_th/R_T2)/2", sim: "R", nombre: "resistencia a cada lado", unidad: Ω, cifras: 3 }
+    rel_spi: { expr: "2*L_spi*5e-9*f_spi*100", sim: "retardo", nombre: "ida y vuelta frente al periodo", unidad: "%", cifras: 2 }
+    Z_dd: { expr: "1/(2/120 + n_cud/24000)", sim: "Z_{d}", nombre: "bus visto entre hilos", unidad: Ω, cifras: 3 }
+    I_d: { expr: "V_d/(2*R_pd + Z_dd)", sim: "I", nombre: "corriente de polarización", unidad: A }
+    V_rd: { expr: "I_d*R_pd", nombre: "tensión en cada resistencia de polarización", unidad: V }
+    V_BAd: { expr: "I_d*Z_dd", sim: "V_{BA}", nombre: "tensión diferencial en reposo", unidad: V, cifras: 4 }
+    V_680: { expr: "V_d*Z_dd/(2*680 + Z_dd)", nombre: "con 680 Ω", unidad: V, cifras: 4 }
+    t_trama: { expr: "bytes_t*11/v_t", sim: "t", nombre: "duración de la trama", unidad: s, cifras: 3 }
+    bits_t: { expr: "bytes_t*11", nombre: "bits de la trama", cifras: 2 }
+
+tarjetas:
+  - id: explore-crece
+    tipo: explorar
+    titulo: "45.A: un bus I²C que crece"
+    texto: "Con 10 pF por dispositivo y 1 pF por centímetro de pista, el bus pasa de 4 dispositivos y 10 cm a 8 y 50 cm. Mire el pull-up máximo a 400 kHz."
+    libro: [452, 456]
+    widget:
+      tipo: grafica
+      x: { id: cc, min: 2e-11, max: 2e-10, unidad: F, rotulo: "C" }
+      y: { min: 0, max: 16000, unidad: Ω, rotulo: "R_{máx}" }
+      curvas:
+        - { expr: "3e-7/(0.8473*cc)", color: azul, rotulo: "R_{máx} a 400 kHz" }
+        - { expr: "4700", color: naranja, rotulo: "4,7 kΩ", discontinua: true }
+      asas:
+        - { mueve: n_disp, x: "C_i2c", y: "Rmax_i2c", rotulo: "Su bus" }
+      lectura: { valor: Rmax_i2c, rotulo: "Pull-up máximo" }
+      datos:
+        - { valor: C_i2c, rotulo: "Capacidad: {{C_i2c}}" }
+      mandos:
+        - { valor: n_disp, lista: [4, 8], rotulo: "Dispositivos" }
+        - { valor: cm_pista, lista: [10, 50], rotulo: "Pista (cm)" }
+    requiere: { mover: [n_disp, cm_pista] }
+    comprobar:
+      - { C_i2c: 5e-11, Rmax_i2c: 7081 }
+      - { con: { n_disp: 8, cm_pista: 50 }, C_i2c: 1.3e-10, Rmax_i2c: 2724 }
+
+  - id: pregunta-solo
+    tipo: pregunta
+    titulo: "Dejó de funcionar solo"
+    texto: "Con los 4,7 kΩ habituales, el bus I²C deja de funcionar al pasar de 4 a 8 dispositivos, sin que nadie tocara los pull-ups. ¿Qué pasó?"
+    libro: [458, 459, 460]
+    fijar: { n_disp: 8, cm_pista: 50 }
+    widget:
+      tipo: grafica
+      x: { id: cc, min: 2e-11, max: 2e-10, unidad: F, rotulo: "C" }
+      y: { min: 0, max: 16000, unidad: Ω, rotulo: "R_{máx}" }
+      curvas:
+        - { expr: "3e-7/(0.8473*cc)", color: azul, rotulo: "R_{máx} a 400 kHz" }
+        - { expr: "4700", color: naranja, rotulo: "4,7 kΩ", discontinua: true }
+      lectura: { valor: Rmax_i2c, rotulo: "Pull-up máximo" }
+      mandos: []
+    opciones:
+      - { texto: "La capacidad subió a 130 pF y el máximo bajó a 2724 Ω", bien: true, porque: "El margen se consumió al añadir dispositivos y alargar pistas. La corrección: 1,5 kΩ." }
+      - { texto: "Hay direcciones duplicadas", porque: "Eso falla siempre, no al crecer; aquí el flanco ya no llega a tiempo." }
+      - { texto: "Los pull-ups se han degradado", porque: "Las resistencias son las mismas; lo que cambió fue la capacidad del bus." }
+    escalera: ["Compare los 4,7 kΩ con el pull-up máximo de cada bus."]
+    solucion: "Con 130 pF, el máximo es 2724 Ω: los 4,7 kΩ ya no cumplen. Baje a 1,5 kΩ."
+    comprobar:
+      - { C_i2c: 1.3e-10, Rmax_i2c: 2724 }
+
+  - id: estime-polarizacion
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "45.B: la polarización a prueba de fallo"
+    texto: "Las dos terminaciones dan 60 Ω, y en reposo deben quedar al menos 200 mV con 5 V. ¿Qué resistencia de polarización va a cada lado?"
+    libro: [466, 470, 471, 472]
+    fijar: { V_th: 0.2, R_T2: 60, V_d: 5 }
+    estimar:
+      objetivo: "R_lado"
+      unidad: Ω
+      min: 0
+      max: 2000
+      paso: 10
+      inicio: 1700
+      tol: 0.03
+      rotulo: "Resistencia a cada lado"
+    exito: "720 Ω; con el valor comercial de 680 Ω quedan 211 mV."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 742 }, texto: "Ha puesto toda la resistencia en un lado: los 1440 Ω se reparten entre dos." }
+      - { texto: "Se queda corto: la corriente es 200 mV / 60 Ω = 3,33 mA." }
+    escalera: ["Con 200 mV sobre 60 Ω circulan 3,33 mA; el resto de los 5 V cae en las dos resistencias."]
+    solucion: "(5 − 0,2) V / 3,33 mA = 1440 Ω: 720 Ω a cada lado."
+    comprobar:
+      - { R_lado: 720, I_pol: 0.00333 }
+
+  - id: pregunta-velocidad
+    tipo: pregunta
+    titulo: "100 m a 1 Mbit/s"
+    texto: "RS-485 admite unos 120 m a 1 Mbit/s y el enlace mide 100 m. ¿Qué se hace?"
+    libro: [474, 475, 476]
+    widget:
+      tipo: figura
+      figura: fig-new-44-nodo
+      zonas:
+        - { id: bus, rotulo: "Bus, a la derecha", rect: [235, 50, 90, 50], texto: "D1 y D0." }
+    opciones:
+      - { texto: "Bajar a 500 kbit/s, que duplica la holgura a un coste despreciable", bien: true, porque: "A 1 Mbit/s funcionará, pero cerca del límite: 100 m frente a 120 m." }
+      - { texto: "Nada: 100 m es menos que 120 m", porque: "Funciona con muy poco margen; en un entorno ruidoso conviene ganar holgura." }
+      - { texto: "Cambiar a SPI", porque: "SPI no está pensado para salir de la placa." }
+    escalera: ["¿Cuánto margen queda entre 100 y 120 m?"]
+    solucion: "Bajar a 500 kbit/s: duplica la holgura."
+
+  - id: estime-spi
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "45.C: SPI fuera de la placa"
+    texto: "Un SPI a 20 MHz por un cable de 2 m, a 5 ns por metro: el maestro muestrea MISO tras la ida y vuelta. ¿Qué parte del periodo se come?"
+    libro: [482, 485, 488]
+    fijar: { L_spi: 2, f_spi: 20000000 }
+    estimar:
+      objetivo: "rel_spi"
+      unidad: "%"
+      min: 0
+      max: 100
+      paso: 1
+      inicio: 80
+      tol: 0.05
+      rotulo: "Ida y vuelta / periodo"
+    exito: "El 40 %: 20 ns de 50 ns, casi medio periodo."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 42 }, texto: "Demasiado: 20 ns de ida y vuelta en un periodo de 50 ns." }
+      - { texto: "Se queda corto: cuente la ida y la vuelta, 10 ns cada una." }
+    escalera: ["Ida: 2 m × 5 ns/m = 10 ns; vuelta, otros 10."]
+    solucion: "20 ns / 50 ns = 40 %."
+    comprobar:
+      - { rel_spi: 40 }
+
+  - id: prediga-1mhz
+    tipo: predecir
+    titulo: "La solución más sencilla"
+    texto: "Se baja el reloj del SPI de 20 MHz a 1 MHz con el mismo cable de 2 m. ¿Qué pasa con el problema?"
+    libro: [490, 493]
+    fijar: { L_spi: 2, f_spi: 1000000 }
+    widget:
+      tipo: grafica
+      x: { id: ff, min: 1000000, max: 20000000, unidad: Hz, rotulo: "f" }
+      y: { min: 0, max: 50, unidad: "%", rotulo: "ida y vuelta / periodo" }
+      curvas:
+        - { expr: "2*L_spi*5e-9*ff*100", color: azul, rotulo: "retardo relativo" }
+      lectura: { valor: rel_spi, rotulo: "A 1 MHz" }
+      ocultar: true
+    opciones:
+      - { texto: "Desaparece: el retardo baja a un pequeño porcentaje del periodo", bien: true, porque: "A 1 MHz el retardo de ida es el 1 % del periodo: lo más sencillo y casi siempre suficiente." }
+      - { texto: "Sigue igual: el cable es el mismo", porque: "El retardo es el mismo, pero el periodo es veinte veces más largo." }
+      - { texto: "Empeora: el reloj lento timbra más", porque: "El retardo pesa en proporción al periodo, que ahora es mucho mayor." }
+    escalera: ["El retardo no cambia; ¿qué le pasa al periodo?"]
+    solucion: "Desaparece: el retardo pasa a ser una parte mínima del periodo."
+    comprobar:
+      - { rel_spi: 2 }
+
+  - id: explore-nodo
+    tipo: explorar
+    titulo: "45.D: el nodo Modbus"
+    texto: "Un equipo de medida se une a un bus RS-485 de 600 m. Toque las partes de su interfaz."
+    libro: [502, 512]
+    widget:
+      tipo: figura
+      figura: fig-new-44-nodo
+      zonas:
+        - { id: micro, rotulo: "Bloque de la izquierda", rect: [2, 22, 78, 108], texto: "UART 8E1 a 19 200 bit/s y un temporizador para t_{3,5}; una sola salida gobierna DE y RE." }
+        - { id: transceptor, rotulo: "Bloque del centro", rect: [118, 22, 64, 108], texto: "Un transceptor de 3,3 V y 1/8 de carga unidad." }
+        - { id: tvs, rotulo: "Diodos de abajo", rect: [185, 108, 40, 40], texto: "Diodos supresores en los dos hilos." }
+        - { id: puente, rotulo: "Resistencia de la derecha", rect: [235, 55, 30, 45], texto: "Terminación de 120 Ω con un puente: solo si el nodo queda en un extremo." }
+        - { id: maestro, rotulo: "Recuadro de arriba a la derecha", rect: [186, 4, 140, 40], texto: "La polarización, en el maestro, una sola vez por bus. El nodo no polariza." }
+    requiere: { mover: [transceptor, puente] }
+
+  - id: simule-nodo
+    tipo: simular
+    titulo: "La polarización existente"
+    texto: "El bus tiene 26 cargas unidad más 1/8 y lo polariza el maestro. Con 470 Ω a cada lado y 5 V, ¿cuánto vale V_{BA} en reposo?"
+    libro: [496, 503]
+    fijar: { V_d: 5, R_pd: 470, n_cud: 26.125 }
+    widget:
+      tipo: circuito
+      esquema: serie
+      piezas: { fuente: V_d, r1: R_pd, r2: Z_dd, r3: R_pd }
+      lectura: { valor: V_BAd, rotulo: "V_{BA} en reposo" }
+      mide: { corriente: I_d, v1: V_rd, v2: V_BAd, v3: V_rd }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: V_BAd
+      unidad: V
+      tol: 0.03
+      rotulo: "Tensión en reposo, V_{BA}"
+      medida: v2
+      errores:
+        - { expr: "V_680", texto: "Esos 198,8 mV son con los 680 Ω de antes: justo por debajo de 200 mV." }
+    exito: "282,6 mV: con 680 Ω quedaban 198,8 mV, y el bus funcionaba por el margen de los receptores reales, no por diseño."
+    escalera: ["Las cargas suman 2 × 12 kΩ / n entre hilos, en paralelo con los 60 Ω: Z_{d} = 56,3 Ω."]
+    solucion: "5 × 56,3 / (2 × 470 + 56,3) = 282,6 mV."
+    comprobar:
+      - { V_BAd: 0.2826, V_680: 0.1988, Z_dd: 56.3 }
+
+  - id: porque-de
+    tipo: porque
+    titulo: "Soltar el bus a tiempo"
+    texto: "El nodo desactiva DE cuando ha salido el bit de parada del último byte, no en la interrupción de registro vacío. ¿Por qué?"
+    libro: [506]
+    widget:
+      tipo: figura
+      figura: fig-new-44-nodo
+      zonas:
+        - { id: micro, rotulo: "Bloque de la izquierda", rect: [2, 22, 78, 108], texto: "La salida que gobierna DE." }
+    opciones:
+      - { texto: "El registro vacío llega un carácter antes: soltar ahí corta el final del CRC", bien: true, porque: "Y el autómata ve de vez en cuando una respuesta errónea." }
+      - { texto: "Para ahorrar energía", porque: "Es cuestión de no cortar el último byte, no de consumo." }
+      - { texto: "Porque el registro vacío no existe en 8E1", porque: "Existe; el problema es que llega antes de que salga el último carácter." }
+    escalera: ["Cuando el registro de transmisión se vacía, ¿ha salido ya el último carácter por la línea?"]
+    solucion: "La interrupción de registro vacío llega un carácter antes: soltar DE ahí corta el CRC."
+
+  - id: pregunta-ciclo
+    tipo: pregunta
+    titulo: "El caso malo"
+    texto: "Con 26 nodos a 19 200 bit/s la vuelta dura 422 ms y cabe en los 500 ms pedidos. Pero si un nodo no contesta y el autómata espera 100 ms…"
+    libro: [507, 511]
+    widget:
+      tipo: figura
+      figura: fig-new-44-nodo
+      zonas:
+        - { id: micro, rotulo: "Bloque de la izquierda", rect: [2, 22, 78, 108], texto: "19 200 bit/s." }
+    opciones:
+      - { texto: "La vuelta sube a 511 ms: conviene subir a 38 400 bit/s", bien: true, porque: "El ciclo lo fija el caso malo: a 38 400 bit/s, con 50 ms de espera, la vuelta con un nodo caído baja a 295 ms." }
+      - { texto: "Nada: sigue cabiendo", porque: "La espera de 100 ms pasa la vuelta de 500 ms." }
+      - { texto: "Se pierde el bus entero", porque: "Solo se alarga la vuelta; los demás nodos siguen contestando." }
+    escalera: ["Sume a la vuelta la espera del nodo caído, en lugar de su transacción."]
+    solucion: "511 ms, por encima de los 500 ms: subir a 38 400 bit/s."
+
+  - id: pregunta-pruebas
+    tipo: pregunta
+    titulo: "Las pruebas del nodo"
+    texto: "En el banco se le envía al nodo una lectura válida con el CRC alterado. ¿Qué debe hacer?"
+    libro: [509]
+    widget:
+      tipo: figura
+      figura: fig-new-44-nodo
+      zonas:
+        - { id: transceptor, rotulo: "Bloque del centro", rect: [118, 22, 64, 108], texto: "Lo que llega del bus." }
+    opciones:
+      - { texto: "No responder y contar el error: el contador pasa a 1", bien: true, porque: "Una trama con el CRC mal se descarta en silencio; el contador de tramas erróneas es diagnóstico." }
+      - { texto: "Responder con una excepción", porque: "Una excepción es para una petición recibida bien que no se puede atender." }
+      - { texto: "Responder con los datos igualmente", porque: "La trama puede venir dañada: no debe ejecutarse." }
+    escalera: ["¿Qué significa el silencio en Modbus?"]
+    solucion: "Ninguna respuesta; el contador de tramas erróneas pasa a 1."
+
+  - id: estime-trama
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Un ejercicio del capítulo"
+    texto: "Un autómata envía la trama de 8 bytes 05 06 00 01 03 E8 D9 30 a 9 600 bit/s con 8E1. ¿Cuánto dura?"
+    libro: ["cap44#513"]
+    fijar: { bytes_t: 8, v_t: 9600 }
+    estimar:
+      objetivo: "t_trama"
+      unidad: s
+      min: 0
+      max: 0.02
+      paso: 0.0001
+      inicio: 0.016
+      tol: 0.03
+      rotulo: "Duración de la trama"
+    exito: "9,17 ms: 88 bits. Va al servidor 5, función 06, escribir el registro de dirección 1."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.0095 }, texto: "Demasiado: son 8 caracteres de 11 bits." }
+      - { texto: "Se queda corto: en 8E1 cada carácter son 11 bits, no 8." }
+    escalera: ["8 bytes de 11 bits a 9 600 bit/s."]
+    solucion: "88 bits / 9 600 bit/s = 9,17 ms."
+    comprobar:
+      - { t_trama: 0.00917, bits_t: 88 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [459, 475, 490, 503]
+    ideas:
+      - { titulo: "I²C que crece.", texto: "Más capacidad baja el pull-up máximo: el margen se consume solo." }
+      - { titulo: "RS-485.", texto: "Polarización para 200 mV, y holgura en la longitud." }
+      - { titulo: "SPI con cable.", texto: "El retardo de ida y vuelta: bajar la frecuencia." }
+      - { titulo: "Nodo Modbus.", texto: "Polarizar con el bus lleno, soltar DE a tiempo y medir el caso malo." }

@@ -1,0 +1,293 @@
+# Lección 1.2 de la sección 45.13 «Herramientas Adicionales y Resumen» (cap44; etiqueta interna sec-44.11).
+# Formato: contenido/lecciones11/GUIA.md (§11). Dos cálculos del libro: la ventana del pull-up de I²C (t_r =
+# 0,8473·R·C con 300 ns a 400 kHz como máximo, ecuación del bloque 408; R_min = (V_DD − 0,4)/3 mA, bloque 412) y la
+# longitud máxima de un bus CAN (bloque 417 con 5 ns/m, 120 ns de lazo y un segmento de propagación del 40 %, bloque
+# 418): L = (0,4·T_bit/2 − 120 ns)/(5 ns/m). El diseño de la ventana usa resistencias del 1 % para que todas las de la
+# ventana nominal cumplan también con su tolerancia.
+leccion: cap44/sec-44.11
+
+libro:
+  407: "La norma especifica el tiempo entre el 30 % y el 70 % de VDD"
+  408: 't_("r") = R dot.op C dot.op op("ln") ("0,7")/("0,3") = "0,8473" dot.op R dot.op C'
+  410: "1770 Ω"
+  411: "la norma exige que sea capaz de absorber 3 mA"
+  412: 'R_("min") = (V_("DD") - "0,4")/("3 mA")'
+  413: "967 Ω"
+  414: "con un bus cargado a 400 pF, VDD de 5 V y 400 kHz, la ventana es de 1533 a 885 Ω, es decir, está vacía"
+  416: "el arbitraje exige que todos los nodos vean el mismo bit a la vez"
+  417: '"2" dot.op lr(( L dot.op t_("línea") + t_("lazo" , "transceptor") )) lt.eq T_("bit") dot.op f_("propagación")'
+  418: "Con tlínea ≈ 5 ns/m, un lazo de transceptor (de la entrada TXD a la salida RXD) de 120 ns"
+  419: "56 m"
+  420: "Las cifras habituales de los manuales (40 m a 1 Mbit/s, sección 45.5) suponen un segmento de propagación mucho mayor"
+
+modelo:
+  valores:
+    R_pu: { sim: "R", nombre: "pull-up", unidad: Ω, valor: 4700 }
+    C_bus: { sim: "C", nombre: "capacidad del bus", unidad: F, valor: 200e-12 }
+    V_dd: { sim: "V_{DD}", nombre: "alimentación", unidad: V, valor: 3.3 }
+    t_rmax: { sim: "t_{r,máx}", nombre: "tiempo de subida máximo a 400 kHz", unidad: s, valor: 3e-7 }
+    v_can: { sim: "v", nombre: "velocidad del bus CAN", unidad: "bit/s", valor: 1000000 }
+  calculos:
+    t_r: { expr: "0.8473*R_pu*C_bus", sim: "t_{r}", nombre: "tiempo de subida", unidad: s, cifras: 3 }
+    R_max: { expr: "t_rmax/(0.8473*C_bus)", sim: "R_{máx}", nombre: "pull-up máximo", unidad: Ω, cifras: 4 }
+    R_min: { expr: "(V_dd - 0.4)/0.003", sim: "R_{mín}", nombre: "pull-up mínimo", unidad: Ω, cifras: 4 }
+    I_baja: { expr: "(V_dd - 0.4)/R_pu", sim: "I", nombre: "corriente que debe absorber el esclavo", unidad: A, cifras: 3 }
+    T_bit: { expr: "1/v_can", sim: "T_{bit}", nombre: "duración de un bit", unidad: s }
+    L_can: { expr: "(0.4/v_can/2 - 120e-9)/5e-9", sim: "L_{máx}", nombre: "longitud máxima del bus", unidad: m, cifras: 3 }
+    t_30: { expr: "R_pu*C_bus*ln(1/0.7)", sim: "t_{30}", nombre: "instante del 30 %", unidad: s }
+    t_70: { expr: "R_pu*C_bus*ln(1/0.3)", sim: "t_{70}", nombre: "instante del 70 %", unidad: s }
+    t_trans: { expr: "2*120e-9", sim: "2 t_{lazo}", nombre: "lazo de los transceptores, ida y vuelta", unidad: s }
+    t_pres: { expr: "0.4/v_can", sim: "T_{bit}·f", nombre: "presupuesto del segmento de propagación", unidad: s }
+
+tarjetas:
+  - id: explore-subida
+    tipo: explorar
+    titulo: "Del 30 % al 70 %"
+    texto: "La norma mide el tiempo de subida entre el 30 % y el 70 % de V_{DD}. Cambie el pull-up y mire cuánto tarda la línea entre las dos marcas."
+    libro: [407]
+    fijar: { C_bus: 200e-12 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.000003, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.1, rotulo: "v / V_{DD}" }
+      curvas:
+        - { expr: "1 - exp(-t/(R_pu*C_bus))", color: azul, rotulo: "SDA" }
+      marcas:
+        - { x: "t_30", y: "0.3", rotulo: "30 %" }
+        - { x: "t_70", y: "0.7", rotulo: "70 %" }
+      lectura: { valor: t_r, rotulo: "Tiempo de subida" }
+      mandos:
+        - { valor: R_pu, lista: [1000, 1500, 2200, 4700], rotulo: "Pull-up, R" }
+    requiere: { mover: [R_pu] }
+
+  - id: formula-subida
+    tipo: formula
+    titulo: "El límite superior"
+    texto: "El flanco de subida es la carga de la capacidad del bus a través del pull-up, del 30 % al 70 % de V_{DD}. Mueva R y la capacidad."
+    libro: [407, 408]
+    ec: 408
+    sustitucion: "0,8473 × {{R_pu}} × {{C_bus}} = {{t_r}}"
+    widget:
+      tipo: grafica
+      x: { id: rr, min: 500, max: 10000, unidad: Ω, rotulo: "R" }
+      y: { min: 0, max: 0.000002, unidad: s, rotulo: "t_{r}" }
+      curvas:
+        - { expr: "0.8473*rr*C_bus", color: azul, rotulo: "t_{r}" }
+        - { expr: "t_rmax", color: naranja, rotulo: "máximo a 400 kHz", discontinua: true }
+      asas:
+        - { mueve: R_pu, x: "R_pu", y: "t_r", rotulo: "Su pull-up" }
+      lectura: { valor: t_r, rotulo: "Tiempo de subida" }
+      mandos:
+        - { valor: R_pu, lista: [1000, 1500, 2200, 4700, 10000], rotulo: "Pull-up, R" }
+        - { valor: C_bus, lista: [200e-12, 400e-12], rotulo: "Capacidad del bus" }
+    comprobar:
+      - { t_r: 0.000000796, tol: 0.01 }
+
+  - id: estime-rmax
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El pull-up máximo"
+    texto: "A 400 kHz, el tiempo de subida máximo de la norma es de 300 ns. Con 200 pF de bus, ¿cuál es el mayor pull-up?"
+    libro: [408, 410]
+    fijar: { C_bus: 200e-12, t_rmax: 3e-7 }
+    estimar:
+      objetivo: "R_max"
+      unidad: Ω
+      min: 0
+      max: 5000
+      paso: 10
+      inicio: 4000
+      tol: 0.03
+      rotulo: "R máxima"
+    exito: "1770 Ω. A 100 kHz, con 1000 ns, serían 5901 Ω."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 1825 }, texto: "Demasiado: con esa R el flanco tarda más de 300 ns." }
+      - { texto: "Se queda corto: esa R aún deja margen en el flanco." }
+    escalera: ["Despeje R de 300 ns = 0,8473 · R · 200 pF."]
+    solucion: "R = 300 ns / (0,8473 × 200 pF) = 1770 Ω."
+    comprobar:
+      - { R_max: 1770 }
+
+  - id: formula-rmin
+    tipo: formula
+    titulo: "El límite inferior"
+    texto: "Para garantizar el nivel bajo, el esclavo hunde la línea a 0,4 V absorbiendo como mucho 3 mA. Elija la alimentación."
+    libro: [411, 412, 413]
+    ec: 412
+    sustitucion: "({{V_dd}} − 0,4) / 3 mA = {{R_min}}"
+    widget:
+      tipo: grafica
+      x: { id: vv, min: 2, max: 6, unidad: V, rotulo: "V_{DD}" }
+      y: { min: 0, max: 2000, unidad: Ω, rotulo: "R_{mín}" }
+      curvas:
+        - { expr: "(vv - 0.4)/0.003", color: azul, rotulo: "R_{mín}" }
+      asas:
+        - { mueve: V_dd, x: "V_dd", y: "R_min", rotulo: "Su alimentación" }
+      lectura: { valor: R_min, rotulo: "Pull-up mínimo" }
+      mandos:
+        - { valor: V_dd, lista: [3.3, 5], rotulo: "Alimentación" }
+    comprobar:
+      - { R_min: 967 }
+      - { con: { V_dd: 5 }, R_min: 1533 }
+
+  - id: diseno-ventana
+    tipo: diseno
+    titulo: "Dentro de la ventana"
+    texto: "Bus de 200 pF a 3,3 V y 400 kHz. Elija un pull-up E24 del 1 % que cumpla los dos límites a la vez."
+    libro: [408, 411, 413]
+    fijar: { C_bus: 200e-12, V_dd: 3.3, t_rmax: 3e-7 }
+    inicio: { R_pu: 4700 }
+    widget:
+      tipo: grafica
+      x: { id: rr, min: 500, max: 10000, unidad: Ω, rotulo: "R" }
+      y: { min: 0, max: 0.000002, unidad: s, rotulo: "t_{r}" }
+      curvas:
+        - { expr: "0.8473*rr*C_bus", color: azul, rotulo: "t_{r}" }
+        - { expr: "t_rmax", color: naranja, rotulo: "máximo a 400 kHz", discontinua: true }
+      lectura: { valor: t_r, rotulo: "Tiempo de subida" }
+      datos:
+        - { valor: I_baja, rotulo: "El esclavo absorbe {{I_baja}}" }
+      mandos:
+        - { valor: R_pu, serie: E24, min: 820, max: 10000, rotulo: "Pull-up (E24)" }
+    condiciones:
+      - { valor: t_r, max: 3e-7, rotulo: "Subida: {{t_r}}" }
+      - { valor: I_baja, max: 0.003, rotulo: "Corriente: {{I_baja}}" }
+    diseno:
+      tolerancias: { R_pu: 0.01 }
+      metodo: esquinas
+      exigir: todas
+    exito: "La ventana va de 967 a 1770 Ω: grande para no forzar al esclavo, pequeño para que el flanco llegue."
+    pistas:
+      - { cuando: { valor: t_r, mayor: 3e-7 }, texto: "El flanco tarda demasiado: baje el pull-up." }
+      - { texto: "El esclavo tendría que absorber más de 3 mA: suba el pull-up." }
+    escalera: ["La ventana es de 967 a 1770 Ω."]
+    solucion: "Cualquier E24 entre 967 y 1770 Ω."
+    comprobar:
+      - { R_min: 967, R_max: 1770 }
+
+  - id: prediga-vacia
+    tipo: predecir
+    titulo: "Un bus cargado"
+    texto: "Ahora el bus tiene 400 pF, va a 5 V y a 400 kHz. ¿Qué pull-up sirve?"
+    libro: [414]
+    fijar: { C_bus: 400e-12, V_dd: 5, t_rmax: 3e-7 }
+    widget:
+      tipo: grafica
+      x: { id: vv, min: 2, max: 6, unidad: V, rotulo: "V_{DD}" }
+      y: { min: 0, max: 2000, unidad: Ω, rotulo: "R_{mín}" }
+      curvas:
+        - { expr: "(vv - 0.4)/0.003", color: azul, rotulo: "R_{mín}" }
+      lectura: { valor: R_max, rotulo: "Pull-up máximo con 400 pF" }
+      ocultar: true
+    opciones:
+      - { texto: "Ninguno: la ventana va de 1533 a 885 Ω y está vacía", bien: true, porque: "El diseño es imposible con pull-ups pasivos. Con 3,3 V también está vacía: 967 frente a 885 Ω." }
+      - { texto: "Uno de 1,5 kΩ", porque: "No llega al mínimo de 1533 Ω, y además pasa del máximo de 885 Ω." }
+      - { texto: "Cualquiera entre 885 y 1533 Ω", porque: "Al revés: el mínimo pasa del máximo, así que no queda ninguno." }
+    escalera: ["Calcule los dos límites: ¿el mínimo queda por debajo del máximo?"]
+    solucion: "Ninguno: de 1533 a 885 Ω, una ventana vacía."
+    comprobar:
+      - { R_min: 1533, R_max: 885 }
+
+  - id: pregunta-remedio
+    tipo: pregunta
+    titulo: "Qué hacer entonces"
+    texto: "La ventana está vacía. ¿Qué se puede hacer?"
+    libro: [414]
+    widget:
+      tipo: grafica
+      x: { id: rr, min: 500, max: 10000, unidad: Ω, rotulo: "R" }
+      y: { min: 0, max: 0.000002, unidad: s, rotulo: "t_{r}" }
+      curvas:
+        - { expr: "0.8473*rr*C_bus", color: azul, rotulo: "t_{r}" }
+        - { expr: "t_rmax", color: naranja, rotulo: "máximo a 400 kHz", discontinua: true }
+      lectura: { valor: R_max, rotulo: "Pull-up máximo" }
+      mandos:
+        - { valor: C_bus, lista: [200e-12, 400e-12], rotulo: "Capacidad del bus" }
+    opciones:
+      - { texto: "Reducir la capacidad, bajar la velocidad o usar un acelerador activo de flanco", bien: true, porque: "Este conflicto explica por qué los buses I²C largos fallan de forma intermitente." }
+      - { texto: "Elegir el pull-up del medio", porque: "No hay medio: el mínimo pasa del máximo." }
+      - { texto: "Subir la tensión", porque: "Sube el mínimo: con 5 V la ventana está aún más lejos." }
+    escalera: ["¿Qué magnitudes fijan el máximo? Cambie alguna."]
+    solucion: "Menos capacidad, menos velocidad o un acelerador activo de flanco."
+
+  - id: formula-can
+    tipo: formula
+    titulo: "La longitud de un bus CAN"
+    texto: "Durante el segmento de propagación, el 40 % del bit, la señal va al nodo más lejano y vuelve, con 5 ns/m y 120 ns por transceptor. Elija la velocidad."
+    libro: [416, 417, 418]
+    ec: 417
+    sustitucion: "L = (0,4 × {{T_bit}} / 2 − 120 ns) / 5 ns/m = {{L_can}}"
+    widget:
+      tipo: grafica
+      x: { id: vb, min: 100000, max: 1000000, unidad: "bit/s", rotulo: "v", escala: log }
+      y: { min: 10, max: 1000, unidad: m, rotulo: "L_{máx}", escala: log }
+      curvas:
+        - { expr: "(0.4/vb/2 - 120e-9)/5e-9", color: azul, rotulo: "L_{máx}" }
+      asas:
+        - { mueve: v_can, x: "v_can", y: "L_can", rotulo: "Su velocidad" }
+      lectura: { valor: L_can, rotulo: "Longitud máxima" }
+      mandos:
+        - { valor: v_can, lista: [125000, 500000, 1000000], rotulo: "Velocidad" }
+    comprobar:
+      - { L_can: 16 }
+      - { con: { v_can: 125000 }, L_can: 296 }
+
+  - id: estime-can
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "A 500 kbit/s"
+    texto: "Con 5 ns/m, 120 ns de lazo de transceptor y un segmento de propagación del 40 %, ¿qué longitud máxima admite un bus CAN a 500 kbit/s?"
+    libro: [418, 419]
+    fijar: { v_can: 500000 }
+    estimar:
+      objetivo: "L_can"
+      unidad: m
+      min: 0
+      max: 200
+      paso: 1
+      inicio: 150
+      tol: 0.03
+      rotulo: "Longitud máxima"
+    exito: "56 m. La relación es inversa entre velocidad y longitud: por eso las tablas las dan emparejadas."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 58 }, texto: "Demasiado: no olvide restar los 120 ns del transceptor antes de dividir." }
+      - { texto: "Se queda corto: el bit dura 2 µs, y el 40 % son 800 ns de ida y vuelta." }
+    escalera: ["El 40 % de 2 µs son 800 ns; la mitad, 400 ns de ida."]
+    solucion: "(400 − 120) ns / 5 ns/m = 56 m."
+    comprobar:
+      - { L_can: 56, t_pres: 8e-7 }
+
+  - id: porque-manuales
+    tipo: porque
+    titulo: "Los 40 m de los manuales"
+    texto: "La cuenta da 16 m a 1 Mbit/s, pero los manuales dicen 40 m. ¿Por qué?"
+    libro: [420]
+    fijar: { v_can: 1000000 }
+    widget:
+      tipo: grafica
+      x: { id: vb, min: 100000, max: 1000000, unidad: "bit/s", rotulo: "v", escala: log }
+      y: { min: 10, max: 1000, unidad: m, rotulo: "L_{máx}", escala: log }
+      curvas:
+        - { expr: "(0.4/vb/2 - 120e-9)/5e-9", color: azul, rotulo: "L_{máx} con el 40 %" }
+      lectura: { valor: L_can, rotulo: "Con un segmento del 40 %" }
+      datos:
+        - { valor: t_trans, rotulo: "Transceptores, ida y vuelta: {{t_trans}}" }
+      mandos: []
+    opciones:
+      - { texto: "Suponen un segmento de propagación mucho mayor, con el muestreo hacia el final del bit", bien: true, porque: "40 m exigen 640 ns, el 64 % del bit. Conviene saber de qué depende la longitud." }
+      - { texto: "Usan cables más rápidos", porque: "La velocidad del cable es parecida; cambia el porcentaje del bit que se reserva." }
+      - { texto: "La cuenta está mal", porque: "Está bien con un segmento del 40 %; los manuales suponen otro." }
+    escalera: ["¿Qué parte del bit se ha supuesto para la ida y vuelta?"]
+    solucion: "Un segmento de propagación mayor: 40 m piden el 64 % del bit."
+    comprobar:
+      - { L_can: 16, t_trans: 2.4e-7, t_pres: 4e-7 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [408, 412, 414, 419]
+    ideas:
+      - { titulo: "Máximo.", texto: "El flanco: t_{r} = 0,8473 · R · C dentro de la norma." }
+      - { titulo: "Mínimo.", texto: "La corriente del esclavo: (V_{DD} − 0,4)/3 mA." }
+      - { titulo: "Ventana vacía.", texto: "400 pF a 400 kHz no admite pull-ups pasivos." }
+      - { titulo: "CAN.", texto: "Ida y vuelta dentro del segmento de propagación: 56 m a 500 kbit/s." }

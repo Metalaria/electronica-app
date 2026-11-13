@@ -1,0 +1,226 @@
+# Lección 1.2 de la sección 45.12 «Terminación y Longitud: los Límites Físicos de un Bus» (cap44; etiqueta interna
+# sec-44.10). Formato: contenido/lecciones11/GUIA.md (§11). La longitud crítica de la figura 45.16 (L = t_r·v/2) va en
+# una gráfica log-log del modelo con v = 16 cm/ns, dentro de la banda de 15 a 20 cm/ns del bloque 379, que da los
+# 40 cm con 5 ns y los 8 cm con 1 ns del libro; el ramal máximo es el 10 % (bloque 386). Figura 45.16 (44.13.svg,
+# svg_vista 442,37 × 227,52): la gráfica a la izquierda y los cuatro síntomas a la derecha.
+leccion: cap44/sec-44.10
+
+libro:
+  374: "La capacidad, que domina en buses lentos de drenador abierto como I²C"
+  375: "El tiempo de propagación, que domina en buses rápidos"
+  378: "si el tiempo de ida y vuelta por el bus supera el tiempo de subida de la señal, hay que tratarlo como línea de transmisión"
+  379: "Con un flanco de 5 ns, la longitud crítica ronda los 40 cm; con uno de 1 ns, baja a 8 cm."
+  380: "Un bus SPI a 1 MHz con flancos de 2 ns necesita las mismas precauciones que uno a 50 MHz"
+  382: "Resistencia serie en el origen"
+  383: "la terminación va en los extremos físicos del cable, no en los nodos que uno considere importantes, y solo dos"
+  384: "la terminación no puede estar en un nodo extraíble: debe estar en el cableado"
+  386: "el viaje de ida y vuelta por el ramal no pase del 10 % del tiempo de subida"
+  387: "Con un flanco de 5 ns, eso son unos 4 cm de ramal máximo."
+  388: "una topología de estrella que funciona a baja velocidad y falla al subirla"
+  392: "Esa es la razón de su tabla velocidad-longitud, y no la atenuación."
+  395: "doble cruce del umbral que produce bits duplicados"
+  396: "En CAN, la diferencia en dominante cae por debajo de 1,5 V."
+  398: "un pequeño replano a mitad de subida que corresponde a la reflexión del ramal"
+  399: "ninguno lo es en el software, que solo ve errores de CRC ocasionales"
+  402: "mirar el flanco de subida en el nodo más alejado del emisor"
+  403: "Longitud crítica según el tiempo de subida"
+
+modelo:
+  valores:
+    t_r: { sim: "t_{r}", nombre: "tiempo de subida del flanco", unidad: s, valor: 5e-9 }
+    v_p: { sim: "v", nombre: "velocidad de la señal", unidad: "m/s", valor: 160000000 }
+  calculos:
+    L_crit: { expr: "t_r*v_p/2", sim: "L", nombre: "longitud crítica", unidad: m, cifras: 2 }
+    L_ramal: { expr: "0.1*t_r*v_p/2", sim: "L_{ramal}", nombre: "ramal máximo", unidad: m, cifras: 2 }
+
+tarjetas:
+  - id: explore-longitud
+    tipo: explorar
+    titulo: "La longitud crítica"
+    texto: "Si la ida y vuelta por el bus supera el tiempo de subida, es una línea de transmisión. Arrastre el flanco y mire la longitud crítica."
+    libro: [378, 379, 403]
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 3e-10, max: 5e-8, unidad: s, rotulo: "t_{r}", escala: log }
+      y: { min: 0.01, max: 20, unidad: m, rotulo: "L", escala: log }
+      curvas:
+        - { expr: "tt*v_p/2", color: azul, rotulo: "longitud crítica" }
+        - { expr: "0.1*tt*v_p/2", color: naranja, rotulo: "ramal máximo", discontinua: true }
+      asas:
+        - { mueve: t_r, x: "t_r", y: "L_crit", rotulo: "Su flanco" }
+      lectura: { valor: L_crit, rotulo: "Longitud crítica" }
+      datos:
+        - { valor: L_ramal, rotulo: "Ramal máximo: {{L_ramal}}" }
+      mandos:
+        - { valor: t_r, lista: [1e-9, 2e-9, 5e-9, 2e-8], rotulo: "Tiempo de subida" }
+    nota: "Por encima de la recta, hay que terminar."
+    comprobar:
+      - { L_crit: 0.4, L_ramal: 0.04 }
+      - { con: { t_r: 1e-9 }, L_crit: 0.08 }
+
+  - id: prediga-flanco
+    tipo: predecir
+    titulo: "Lo que decide"
+    texto: "Un SPI a 1 MHz y otro a 50 MHz, los dos con flancos de 2 ns. ¿Cuál necesita precauciones de línea de transmisión?"
+    libro: [380]
+    fijar: { t_r: 2e-9 }
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 3e-10, max: 5e-8, unidad: s, rotulo: "t_{r}", escala: log }
+      y: { min: 0.01, max: 20, unidad: m, rotulo: "L", escala: log }
+      curvas:
+        - { expr: "tt*v_p/2", color: azul, rotulo: "longitud crítica" }
+      lectura: { valor: L_crit, rotulo: "Longitud crítica con 2 ns" }
+      ocultar: true
+    opciones:
+      - { texto: "Los dos por igual", bien: true, porque: "Lo que decide es el flanco, no la velocidad de datos: el transceptor conmuta igual de rápido." }
+      - { texto: "Solo el de 50 MHz", porque: "Es el error que se malinterpreta: a 1 MHz los flancos siguen siendo de 2 ns." }
+      - { texto: "Ninguno: SPI es de placa", porque: "Con flancos de 2 ns, unos centímetros de pista ya son una línea de transmisión." }
+    escalera: ["¿Qué magnitud aparece en el eje horizontal de la longitud crítica?"]
+    solucion: "Los dos por igual: decide el flanco, no la velocidad de datos."
+
+  - id: estime-ramal
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El ramal máximo"
+    texto: "Cada ramal es una línea sin terminar que refleja, y su ida y vuelta no debe pasar del 10 % del tiempo de subida. Con flancos de 5 ns, ¿cuánto puede medir?"
+    libro: [386, 387]
+    fijar: { t_r: 5e-9 }
+    estimar:
+      objetivo: "L_ramal"
+      unidad: m
+      min: 0
+      max: 0.4
+      paso: 0.005
+      inicio: 0.3
+      tol: 0.15
+      rotulo: "Ramal máximo"
+    exito: "Unos 4 cm. Por eso, en buses rápidos, el cable entra y sale de cada nodo en cadena."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.046 }, texto: "Demasiado: es la décima parte de los 40 cm de la longitud crítica." }
+      - { texto: "Se queda corto: la décima parte de 40 cm." }
+    escalera: ["La longitud crítica con 5 ns ronda los 40 cm; el ramal, el 10 %."]
+    solucion: "10 % de 40 cm: unos 4 cm."
+    comprobar:
+      - { L_ramal: 0.04, L_crit: 0.4 }
+
+  - id: pregunta-estrella
+    tipo: pregunta
+    titulo: "Una estrella que falla al subir"
+    texto: "Una instalación RS-485 en estrella, con ramales largos, funciona a baja velocidad y falla al subirla. ¿Qué se cambia?"
+    libro: [387, 388]
+    widget:
+      tipo: figura
+      figura: fig-44.13
+      zonas:
+        - { id: ramales, rotulo: "Cuarto recuadro de la derecha", rect: [243, 158, 196, 42], texto: "Ramales largos." }
+    opciones:
+      - { texto: "Conectar los nodos en cadena: el cable entra y sale de cada uno", bien: true, porque: "Cada ramal es una línea sin terminar que refleja; en cadena casi desaparecen." }
+      - { texto: "Poner una terminación en cada nodo", porque: "Solo dos, en los extremos físicos: con más, la señal se atenúa demasiado." }
+      - { texto: "Subir la tensión del transmisor", porque: "Las reflexiones de los ramales no se arreglan con amplitud." }
+    escalera: ["¿Qué tiene una estrella que no tiene una cadena?"]
+    solucion: "Pasar a cadena: el error de cableado más común en CAN y RS-485."
+
+  - id: empareje-terminaciones
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "La terminación de cada bus"
+    texto: "Una cada bus con su terminación."
+    libro: [382]
+    emparejar:
+      - ["I²C", "Pull-up, que no es terminación, en cualquier punto"]
+      - ["SPI", "Resistencia serie en el origen, junto al maestro"]
+      - ["CAN y RS-485", "120 Ω solo en los dos extremos"]
+      - ["Ethernet", "Integrada en el transformador"]
+    exito: "Las dos filas centrales concentran los errores de montaje."
+    pistas:
+      - { texto: "La resistencia serie va junto a quien conduce el reloj." }
+    escalera: ["¿Cuál de ellos no tiene terminación propiamente dicha?"]
+    solucion: "I²C, pull-up; SPI, serie en el origen; CAN y RS-485, 120 Ω en los extremos; Ethernet, transformador."
+
+  - id: pregunta-extraible
+    tipo: pregunta
+    titulo: "Nodos que se conectan y desconectan"
+    texto: "En un bus CAN los nodos de los extremos se quitan a veces para mantenimiento. ¿Dónde va la terminación?"
+    libro: [383, 384]
+    widget:
+      tipo: figura
+      figura: fig-44.13
+      zonas:
+        - { id: sitio, rotulo: "Tercer recuadro de la derecha", rect: [243, 112, 196, 42], texto: "En el sitio equivocado." }
+    opciones:
+      - { texto: "En el cableado, en sus extremos físicos", bien: true, porque: "Si va en un nodo extraíble, al quitarlo el bus queda sin terminar." }
+      - { texto: "En los nodos más importantes", porque: "Va en los extremos físicos del cable, no en los nodos que uno considere importantes." }
+      - { texto: "En cada nodo, por si acaso", porque: "Solo dos: con más, la señal se atenúa demasiado." }
+    escalera: ["¿Qué pasa con la terminación si se quita el nodo que la lleva?"]
+    solucion: "En el cableado, en los dos extremos físicos."
+
+  - id: toque-sintoma
+    tipo: tocar
+    titulo: "Leer el síntoma"
+    texto: "En un CAN, la diferencia en dominante cae por debajo de 1,5 V. Toque el diagnóstico."
+    libro: [395, 396, 398]
+    widget:
+      tipo: figura
+      figura: fig-44.13
+      zonas:
+        - { id: sin, rotulo: "Primer recuadro de la derecha", rect: [243, 22, 196, 42] }
+        - { id: demas, rotulo: "Segundo recuadro de la derecha", rect: [243, 67, 196, 42] }
+        - { id: sitio, rotulo: "Tercer recuadro de la derecha", rect: [243, 112, 196, 42] }
+        - { id: ramales, rotulo: "Cuarto recuadro de la derecha", rect: [243, 158, 196, 42] }
+    tocar:
+      bien: [demas]
+      porque:
+        sin: "Sin terminación hay timbre y bits duplicados, y el paso a recesivo se alarga; la amplitud no cae."
+        sitio: "La terminación mal puesta da asimetría entre nodos, no un dominante bajo en todos."
+        ramales: "Los ramales dan un escalón a mitad de subida, no una amplitud baja."
+    exito: "Terminación de más: amplitud reducida con flancos correctos."
+    escalera: ["¿Qué hace una resistencia de más entre los hilos con la amplitud?"]
+    solucion: "Terminación de más: el segundo recuadro."
+
+  - id: porque-can
+    tipo: porque
+    titulo: "La tabla de CAN"
+    texto: "¿Por qué CAN baja tanto la velocidad al alargar el bus?"
+    libro: [392]
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 3e-10, max: 5e-8, unidad: s, rotulo: "t_{r}", escala: log }
+      y: { min: 0.01, max: 20, unidad: m, rotulo: "L", escala: log }
+      curvas:
+        - { expr: "tt*v_p/2", color: azul, rotulo: "longitud crítica" }
+      lectura: { valor: L_crit, rotulo: "Longitud crítica" }
+      mandos: []
+    opciones:
+      - { texto: "La señal debe recorrer el bus y volver dentro de un bit, para arbitrar", bien: true, porque: "Todos los nodos deben ver el mismo estado a la vez: es una restricción más severa." }
+      - { texto: "Por la atenuación del cable", porque: "El libro lo dice expresamente: la razón es el arbitraje, no la atenuación." }
+      - { texto: "Por la capacidad, como en I²C", porque: "La capacidad manda en buses lentos de drenador abierto; en CAN, el arbitraje." }
+    escalera: ["¿Qué exige el arbitraje no destructivo a todos los nodos?"]
+    solucion: "El arbitraje: ida y vuelta dentro de un bit."
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "Dónde mirar"
+    texto: "Para comprobar la terminación con el osciloscopio, ¿dónde se mira el flanco de subida?"
+    libro: [399, 402]
+    widget:
+      tipo: figura
+      figura: fig-44.13
+      zonas:
+        - { id: sin, rotulo: "Primer recuadro de la derecha", rect: [243, 22, 196, 42], texto: "Timbre y bits duplicados." }
+    opciones:
+      - { texto: "En el nodo más alejado del emisor", bien: true, porque: "Ahí las reflexiones son peores: si allí es limpio, lo es en todo el bus." }
+      - { texto: "Junto al emisor", porque: "Puede dar una impresión engañosamente buena." }
+      - { texto: "En el software, por los errores de CRC", porque: "El software solo ve errores de CRC ocasionales; los síntomas se ven en el osciloscopio." }
+    escalera: ["¿Dónde se suman más reflexiones?"]
+    solucion: "En el nodo más alejado del emisor."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [374, 375, 380, 383]
+    ideas:
+      - { titulo: "Dos límites.", texto: "Capacidad en los buses lentos; propagación en los rápidos." }
+      - { titulo: "El flanco.", texto: "Decide el tiempo de subida, no la velocidad de datos." }
+      - { titulo: "Terminar.", texto: "Solo en los dos extremos físicos, en el cableado." }
+      - { titulo: "Ramales.", texto: "Cortos, o en cadena." }

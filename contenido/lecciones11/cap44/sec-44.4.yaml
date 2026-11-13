@@ -1,0 +1,302 @@
+# Lección 1.2 de la sección 45.4 «I²C: Dos Hilos para Muchos» (cap44; etiqueta interna sec-44.4).
+# Formato: contenido/lecciones11/GUIA.md (§11). El drenador abierto (bloques 112–113) es una Y cableada: cada
+# dispositivo solo puede bajar la línea (su interruptor a 0) y el pull-up la sube si todos la sueltan (a 1); se dibuja
+# con una AND de tres entradas, una por dispositivo, tras el «buf» de su salida. El bus bloqueado (bloque 127) es la
+# salida de un esclavo atascada a 0. El flanco de subida (bloque 122, figura 45.7) es la carga RC del modelo con 200 pF;
+# el nivel alto válido del 70 % de VDD es el de la norma citada en la sección 45.13 (bloque 407).
+leccion: cap44/sec-44.4
+
+libro:
+  112: "ambas en drenador abierto con resistencias de pull-up"
+  113: "cualquiera puede poner un cero forzando la línea a masa, nadie puede forzar un uno"
+  115: "Condición de inicio: SDA baja mientras SCL está alto."
+  116: "Dirección de 7 bits más el bit de lectura/escritura."
+  117: "el esclavo baja SDA durante el noveno pulso"
+  118: "Bytes de datos, cada uno con su ACK."
+  119: "Condición de parada: SDA sube con SCL alto."
+  122: "Con 10 kΩ y 200 pF, la constante es de 2 µs, inservible a 400 kHz."
+  123: "el dispositivo no consigue bajar la línea por debajo del nivel bajo válido"
+  124: "El margen práctico: 2,2 a 4,7 kΩ a 100 kHz, y 1 a 2,2 kΩ a 400 kHz."
+  125: "la capacidad total no debe superar los 400 pF"
+  127: "puede estar manteniendo SDA bajo, y entonces ninguna transferencia posterior funciona"
+  128: "generar hasta nueve pulsos de reloj manualmente hasta que SDA se libere, y después una condición de parada"
+  129: "la solución es un multiplexor de I²C o un segundo bus"
+  130: "Ausencia de ACK: dirección equivocada, dispositivo sin alimentar, o pull-ups ausentes."
+  131: "un esclavo lento mantiene SCL bajo para pedir tiempo"
+  133: "un bus a 3,3 V puede hablar con dispositivos de 5 V si sus entradas admiten 3,3 V como nivel alto"
+  136: "el reloj llega a 12,5 MHz en el modo normal (SDR)"
+  140: "Con el multímetro, sin actividad: ambas líneas deben estar en alto."
+  141: "mirar la forma del flanco de subida"
+  142: "decodificar la trama y comprobar si hay ACK"
+  143: "condiciones de START y STOP marcadas por transiciones de SDA mientras SCL está alto"
+  144: "Flanco de subida de I²C según los pull-ups"
+  "cap44#407": "La norma especifica el tiempo entre el 30 % y el 70 % de VDD"
+
+modelo:
+  valores:
+    R_p: { sim: "R_{p}", nombre: "resistencia de pull-up", unidad: Ω, valor: 4700 }
+    C_bus: { sim: "C", nombre: "capacidad del bus", unidad: F, valor: 200e-12 }
+    V_dd: { sim: "V_{DD}", nombre: "alimentación del bus", unidad: V, valor: 3.3 }
+  calculos:
+    tau_i2c: { expr: "R_p*C_bus", sim: "τ", nombre: "constante de tiempo", unidad: s, cifras: 2 }
+    v_alto: { expr: "0.7*V_dd", sim: "V_{IH}", nombre: "nivel alto válido", unidad: V, cifras: 3 }
+    t_alto: { expr: "R_p*C_bus*ln(1/0.3)", sim: "t", nombre: "tiempo hasta el nivel alto válido", unidad: s, cifras: 2 }
+
+tarjetas:
+  - id: prediga-drenador
+    tipo: predecir
+    titulo: "Uno suelta, otro baja"
+    texto: "En I²C el maestro suelta SDA, quiere un uno, mientras el sensor la baja. ¿Qué hay en la línea?"
+    libro: [112, 113]
+    widget:
+      tipo: logica
+      entradas: [{ id: M, valor: 1, rotulo: "Maestro" }, { id: S, valor: 0, rotulo: "Sensor" }, { id: E, valor: 1, rotulo: "EEPROM" }]
+      piezas:
+        - { id: linea, tipo: and, entradas: [M, S, E], rotulo: "Línea con pull-up" }
+      salidas:
+        - { id: SDA, de: linea }
+      ocultar: true
+    opciones:
+      - { texto: "Un cero", bien: true, porque: "Cualquiera puede poner un cero forzando la línea a masa; el uno del maestro es solo soltarla." }
+      - { texto: "Un uno", porque: "Nadie puede forzar un uno: el maestro solo suelta la línea y el pull-up no puede con el sensor." }
+      - { texto: "Un cortocircuito entre los dos", porque: "Con drenador abierto no hay conflicto eléctrico: nadie empuja hacia arriba." }
+    escalera: ["En drenador abierto, ¿qué hace un dispositivo para poner un uno?"]
+    solucion: "Un cero: basta un dispositivo que baje la línea."
+
+  - id: explore-drenador
+    tipo: explorar
+    titulo: "Nadie fuerza un uno"
+    texto: "Cada dispositivo solo puede bajar la línea; el pull-up la sube cuando todos la sueltan. Ponga un interruptor a cero."
+    libro: [112, 113]
+    widget:
+      tipo: logica
+      entradas: [{ id: M, valor: 1, rotulo: "Maestro" }, { id: S, valor: 1, rotulo: "Sensor" }, { id: E, valor: 1, rotulo: "EEPROM" }]
+      piezas:
+        - { id: linea, tipo: and, entradas: [M, S, E], rotulo: "Línea con pull-up" }
+      salidas:
+        - { id: SDA, de: linea }
+    requiere: { mover: [M] }
+    nota: "Un uno es soltar: no hay conflicto eléctrico por muchos dispositivos que haya."
+
+  - id: explore-trama
+    tipo: explorar
+    titulo: "La trama"
+    texto: "SDA solo cambia con SCL bajo; un cambio con SCL alto es inicio si baja y parada si sube. Toque las partes."
+    libro: [115, 119, 143]
+    widget:
+      tipo: figura
+      figura: fig-44.6
+      zonas:
+        - { id: pullups, rotulo: "Arriba a la izquierda", rect: [25, 5, 60, 55], texto: "Los pull-ups: el nivel alto lo dan ellos." }
+        - { id: start, rotulo: "Cronograma, a la izquierda", rect: [85, 120, 40, 95], texto: "Inicio: SDA baja con SCL alto. Es inconfundible." }
+        - { id: datos, rotulo: "Cronograma, en el centro", rect: [130, 120, 240, 95], texto: "Los datos se leen con SCL alto." }
+        - { id: stop, rotulo: "Cronograma, a la derecha", rect: [368, 120, 45, 95], texto: "Parada: SDA sube con SCL alto." }
+    requiere: { mover: [start, stop] }
+
+  - id: ordene-trama
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Una transferencia"
+    texto: "Ordene las partes de una trama I²C."
+    libro: [115, 116, 117, 118, 119]
+    ordenar:
+      - "Inicio: SDA baja con SCL alto."
+      - "Dirección de 7 bits y el bit de lectura o escritura."
+      - "ACK: el esclavo baja SDA en el noveno pulso."
+      - "Bytes de datos, cada uno con su ACK."
+      - "Parada: SDA sube con SCL alto."
+    exito: "Sin ACK tras la dirección, no hay nadie en ella: lo primero que dice un diagnóstico."
+    pistas:
+      - { texto: "El esclavo confirma justo después de oír su dirección." }
+    escalera: ["Empieza y acaba con un cambio de SDA con SCL alto."]
+    solucion: "Inicio, dirección y R/W, ACK, datos con su ACK y parada."
+
+  - id: explore-flanco
+    tipo: explorar
+    titulo: "El flanco lo dan los pull-ups"
+    texto: "La línea se carga a través del pull-up contra los 200 pF del bus. Cambie R_{p} y mire cuándo cruza el nivel alto válido, el 70 % de 3,3 V."
+    libro: [122, 144, "cap44#407"]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.000006, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 3.6, unidad: V, rotulo: "v_{SDA}" }
+      curvas:
+        - { expr: "V_dd*(1 - exp(-t/(R_p*C_bus)))", color: azul, rotulo: "SDA" }
+        - { expr: "v_alto", color: naranja, rotulo: "nivel alto válido", discontinua: true }
+      marcas:
+        - { x: "t_alto", y: "v_alto", rotulo: "{{t_alto}}" }
+      lectura: { valor: tau_i2c, rotulo: "Constante de tiempo" }
+      datos:
+        - { valor: t_alto, rotulo: "Llega al nivel alto en {{t_alto}}" }
+      mandos:
+        - { valor: R_p, lista: [1500, 2200, 4700, 10000], rotulo: "Pull-up, R_{p}" }
+    comprobar:
+      - { v_alto: 2.31 }
+
+  - id: estime-tau
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Un pull-up demasiado grande"
+    texto: "Pull-up de 10 kΩ y 200 pF de bus. ¿Cuánto vale la constante de tiempo?"
+    libro: [122]
+    fijar: { R_p: 10000, C_bus: 200e-12 }
+    estimar:
+      objetivo: "tau_i2c"
+      unidad: s
+      min: 0
+      max: 0.000005
+      paso: 0.0000001
+      inicio: 0.0000004
+      tol: 0.03
+      rotulo: "Constante de tiempo"
+    exito: "2 µs: inservible a 400 kHz, donde medio bit dura mucho menos."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.00000206 }, texto: "Demasiado: multiplique 10 kΩ por 200 pF." }
+      - { texto: "Se queda corto: 10 kΩ × 200 pF." }
+    escalera: ["τ = R · C, con R en ohmios y C en faradios."]
+    solucion: "10 kΩ × 200 pF = 2 µs."
+    comprobar:
+      - { tau_i2c: 0.000002 }
+
+  - id: porque-pequeno
+    tipo: porque
+    titulo: "Y si es demasiado pequeño"
+    texto: "Un pull-up pequeño da flancos rápidos. ¿Por qué no se pone siempre el menor posible?"
+    libro: [123, 124]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.000006, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 3.6, unidad: V, rotulo: "v_{SDA}" }
+      curvas:
+        - { expr: "V_dd*(1 - exp(-t/(R_p*C_bus)))", color: azul, rotulo: "SDA" }
+      lectura: { valor: tau_i2c, rotulo: "Constante de tiempo" }
+      mandos:
+        - { valor: R_p, lista: [1500, 2200, 4700, 10000], rotulo: "Pull-up, R_{p}" }
+    opciones:
+      - { texto: "El dispositivo no consigue bajar la línea al nivel bajo válido", bien: true, porque: "Su transistor de salida tiene una corriente máxima. Por eso el margen práctico es de 1 a 2,2 kΩ a 400 kHz." }
+      - { texto: "Nada: cuanto más pequeño, mejor", porque: "El flanco de subida mejora, pero el de bajada exige hundir más corriente." }
+      - { texto: "El flanco de subida se vuelve lento", porque: "Eso pasa con el pull-up demasiado grande." }
+    escalera: ["Con la línea a cero, ¿quién absorbe la corriente del pull-up?"]
+    solucion: "El dispositivo no la baja al nivel bajo válido: su transistor tiene una corriente máxima."
+
+  - id: averia-bloqueado
+    tipo: averia
+    titulo: "El bus bloqueado"
+    texto: "Tras un reinicio del maestro, SDA se queda bajo con todos soltando la línea. Mida con la sonda y diga qué esclavo la retiene."
+    libro: [127, 140]
+    widget:
+      tipo: logica
+      entradas: [{ id: M, valor: 1, rotulo: "Maestro" }, { id: S, valor: 1, rotulo: "Sensor" }, { id: E, valor: 1, rotulo: "EEPROM" }]
+      piezas:
+        - { id: sal-m, tipo: buf, entradas: [M], rotulo: "Salida del maestro" }
+        - { id: sal-s, tipo: buf, entradas: [S], rotulo: "Salida del sensor" }
+        - { id: sal-e, tipo: buf, entradas: [E], rotulo: "Salida de la EEPROM" }
+        - { id: linea, tipo: and, entradas: [sal-m, sal-s, sal-e], rotulo: "Línea con pull-up" }
+      salidas:
+        - { id: SDA, de: linea }
+    averia:
+      sospechosos:
+        - { id: sal-s, rotulo: "El sensor" }
+        - { id: sal-e, rotulo: "La EEPROM" }
+      fallos:
+        - { id: sensor-bajo, pieza: sal-s, tipo: atascada-0, texto: "El sensor quedó a mitad de una transferencia y mantiene SDA bajo: ninguna transferencia posterior funciona." }
+        - { id: eeprom-baja, pieza: sal-e, tipo: atascada-0, texto: "La EEPROM quedó a mitad de una transferencia y mantiene SDA bajo." }
+      eleccion: fija
+      preguntar_tipo: false
+    exito: "Con el multímetro, sin actividad, ambas líneas deben estar en alto: una baja delata un bus bloqueado."
+    escalera:
+      - "Con todos los interruptores a uno, mida la salida de cada dispositivo."
+      - "La que está a cero sin que su dispositivo baje la línea es la culpable."
+    solucion: "La salida que mide cero con su interruptor a uno: ese esclavo retiene SDA."
+
+  - id: pregunta-recuperar
+    tipo: pregunta
+    titulo: "Recuperar el bus"
+    texto: "Un esclavo mantiene SDA bajo tras un reinicio del maestro. ¿Cómo se libera, sin tocar el hardware?"
+    libro: [128]
+    widget:
+      tipo: figura
+      figura: fig-44.7
+      zonas:
+        - { id: bloqueado, rotulo: "Recuadro rojo, arriba a la derecha", rect: [255, 25, 195, 55], texto: "El bus bloqueado y su recuperación." }
+    opciones:
+      - { texto: "Hasta nueve pulsos de SCL y después una parada", bien: true, porque: "Así el esclavo termina su byte y suelta SDA. Diez líneas de código que salvan un producto en campo." }
+      - { texto: "Esperar: se libera solo", porque: "No: el esclavo espera los pulsos que le faltan, y ninguna transferencia funciona." }
+      - { texto: "Una condición de inicio", porque: "Con SDA retenida a cero no se puede generar: hay que dar antes los pulsos de reloj." }
+    escalera: ["El esclavo se quedó esperando pulsos de reloj de su transferencia."]
+    solucion: "Hasta nueve pulsos de reloj hasta que SDA se libere, y luego una parada."
+
+  - id: empareje-problemas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los problemas característicos"
+    texto: "Una cada problema con su causa o su remedio."
+    libro: [129, 130, 131]
+    emparejar:
+      - ["Direcciones duplicadas", "Un multiplexor de I²C o un segundo bus"]
+      - ["Sin ACK", "Dirección equivocada, sin alimentar o sin pull-ups"]
+      - ["Estiramiento del reloj", "Un esclavo lento retiene SCL bajo para pedir tiempo"]
+    exito: "El estiramiento es estándar, pero muchos maestros por software no lo implementan."
+    pistas:
+      - { texto: "Dos sensores de dirección fija iguales no pueden compartir un bus." }
+    escalera: ["¿Cuál de ellos es parte del estándar y no un fallo?"]
+    solucion: "Duplicadas, multiplexor o segundo bus; sin ACK, dirección, alimentación o pull-ups; estiramiento, esclavo lento."
+
+  - id: pregunta-niveles
+    tipo: pregunta
+    titulo: "Un bus a 3,3 V con un dispositivo de 5 V"
+    texto: "¿Cuándo puede un bus I²C a 3,3 V hablar con un dispositivo de 5 V sin traductor?"
+    libro: [133]
+    widget:
+      tipo: figura
+      figura: fig-44.6
+      zonas:
+        - { id: pullups, rotulo: "Arriba a la izquierda", rect: [25, 5, 60, 55], texto: "Pull-ups a 3,3 V." }
+    opciones:
+      - { texto: "Si sus entradas admiten 3,3 V como nivel alto", bien: true, porque: "El pull-up va a la tensión que se quiera: nadie fuerza un uno de 5 V." }
+      - { texto: "Nunca", porque: "El drenador abierto lo permite si la entrada admite 3,3 V como alto; si no, traductores bidireccionales." }
+      - { texto: "Siempre", porque: "Si la entrada no admite 3,3 V como nivel alto, hace falta un traductor bidireccional." }
+    escalera: ["¿Quién fija la tensión del nivel alto en un bus de drenador abierto?"]
+    solucion: "Si sus entradas admiten 3,3 V como nivel alto: el pull-up fija el nivel."
+
+  - id: empareje-i3c
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "I3C, el sucesor"
+    texto: "Una cada limitación del I²C con la solución del I3C, con los mismos dos hilos."
+    libro: [136]
+    emparejar:
+      - ["Velocidad", "Datos en push-pull: 12,5 MHz en SDR"]
+      - ["Interrupciones", "El esclavo pide atención por el propio SDA"]
+      - ["Direcciones", "Dinámicas, asignadas al arrancar"]
+    exito: "El flanco ya no es la exponencial del pull-up y las direcciones duplicadas desaparecen."
+    pistas:
+      - { texto: "Push-pull quita la exponencial lenta del pull-up." }
+    escalera: ["¿Qué limitación resuelve no depender del pull-up?"]
+    solucion: "Velocidad, push-pull; interrupciones, en banda por SDA; direcciones, dinámicas."
+
+  - id: ordene-banco
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Diagnosticar un I²C"
+    texto: "Ordene el diagnóstico que resuelve la mayoría."
+    libro: [140, 141, 142]
+    ordenar:
+      - "Multímetro, sin actividad: ambas líneas en alto."
+      - "Osciloscopio: la forma del flanco de subida."
+      - "Analizador lógico: decodificar y ver si hay ACK."
+    exito: "Un flanco que apenas llega al nivel alto es el problema más frecuente, y se ve a simple vista."
+    pistas:
+      - { texto: "Primero lo estático, luego la forma de onda, al final el contenido." }
+    escalera: ["¿Qué se mira sin que haya actividad en el bus?"]
+    solucion: "Multímetro sin actividad, osciloscopio en el flanco y analizador con el ACK."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [113, 122, 124, 125, 128]
+    ideas:
+      - { titulo: "Drenador abierto.", texto: "Cualquiera pone un cero, nadie fuerza un uno: el pull-up da el alto." }
+      - { titulo: "Pull-ups.", texto: "Grandes, flanco lento; pequeños, no baja. De 1 a 2,2 kΩ a 400 kHz." }
+      - { titulo: "Bloqueo.", texto: "Hasta nueve pulsos de reloj y una parada liberan SDA." }
+      - { titulo: "Capacidad.", texto: "No más de 400 pF: un bus de placa." }
