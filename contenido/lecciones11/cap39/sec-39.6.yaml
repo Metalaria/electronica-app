@@ -1,0 +1,279 @@
+# Lección 1.2 de la sección 40.6 «El Sistema de Gestión de Batería (BMS)» (cap39; sec-39.N = impresas 40.N).
+# - Las cinco protecciones y el desequilibrio de la figura 40.12 (fig-39.12) con zonas; la foto 40.14 (fig-39.14) con
+#   zonas en los MOSFET de corte, el integrado y una isla de celda.
+# - El equilibrado pasivo del bloque 199 (100 mAh a 100 mA: una hora; 4 V × 0,1 A = 0,4 W por celda; doce celdas, casi
+#   5 W) y la deriva del contador del bloque 208 (1 mA: 24 mAh al día, el 1,2 % de 2 Ah).
+# Paso práctico: «simular» el calor de doce celdas equilibrando a la vez (4,8 W; error típico: los 0,4 W de una).
+leccion: cap39/sec-39.6
+
+libro:
+  171: "Corta si alguna celda supera 4,25 V"
+  172: "Corta por debajo de unos 2,5 V"
+  173: "un pack cuyo BMS ha cortado por subtensión parece muerto"
+  174: "uno de sobrecorriente con retardo"
+  175: "el margen de carga (0 a 45 °C) es más estrecho que el de descarga"
+  179: "el pack se da por cargado cuando la celda más adelantada lo está"
+  180: "la capacidad utilizable del pack la fija su peor celda"
+  182: "se disipa el exceso de la celda más cargada en una resistencia"
+  195: "Las cinco protecciones de un BMS"
+  199: "equilibrar 100 mAh de desviación a 100 mA lleva una hora, y disipa 4 V × 0,1 A = 0,4 W por celda"
+  201: "No disipa: mueve energía con un rendimiento del 80 al 90 %."
+  205: "por debajo de unos 10 Ah, pasivo"
+  208: "1 mA de offset son 24 mAh al día, que en un pack de 2 Ah es un 1,2 % diario de deriva"
+  210: "al terminar la carga —donde el estado de carga es 100 % por definición— y en el codo de descarga"
+  211: "es fiable durante días y no durante meses"
+  213: "los MOSFET de corte son los encapsulados grandes"
+
+modelo:
+  valores:
+    I_bal: { sim: "I_{eq}", nombre: "corriente de equilibrado", unidad: A, valor: 0.1 }
+    dQ: { sim: "ΔQ", nombre: "desviación de carga", unidad: Ah, valor: 0.1 }
+    V_cel: { sim: "V", nombre: "tensión de la celda", unidad: V, valor: 4 }
+    N_cel: { sim: "N", nombre: "celdas equilibrando a la vez", unidad: "", valor: 12 }
+    I_off: { sim: "I_{off}", nombre: "offset del sensor de corriente", unidad: A, valor: 0.001 }
+    C_p: { sim: "C", nombre: "capacidad del pack", unidad: Ah, valor: 2 }
+  calculos:
+    t_bal: { expr: "dQ/I_bal", sim: "t", nombre: "tiempo de equilibrado", unidad: h, cifras: 2 }
+    P_cel: { expr: "V_cel*I_bal", sim: "P", nombre: "calor por celda", unidad: W }
+    P_tot: { expr: "N_cel*P_cel", sim: "P_{total}", nombre: "calor en la caja", unidad: W }
+    Q_der: { expr: "I_off*24", sim: "Q", nombre: "carga contada de más al día", unidad: Ah }
+    der: { expr: "Q_der/C_p*100", sim: "deriva", nombre: "deriva diaria", unidad: "%" }
+
+tarjetas:
+  - id: explore-protecciones
+    tipo: explorar
+    titulo: "El vigilante"
+    texto: "Salirse de los márgenes no da un mal funcionamiento: da un daño irreversible o un incendio. Toque las protecciones."
+    libro: [171, 172, 174, 175, 195]
+    widget:
+      tipo: figura
+      figura: fig-39.12
+      zonas:
+        - { id: sobre, rotulo: "Primer recuadro", rect: [5, 24, 192, 36], texto: "Sobretensión: corta si una celda supera 4,25 V. La más crítica." }
+        - { id: sub, rotulo: "Segundo recuadro", rect: [5, 64, 192, 36], texto: "Subtensión: corta por debajo de unos 2,5 V." }
+        - { id: corriente, rotulo: "Tercer recuadro", rect: [5, 104, 192, 36], texto: "Sobrecorriente: un umbral con retardo, para los picos de arranque, y otro de cortocircuito casi instantáneo." }
+        - { id: temperatura, rotulo: "Cuarto recuadro", rect: [5, 145, 192, 36], texto: "Temperatura: la ventana de carga, de 0 a 45 °C, es más estrecha que la de descarga." }
+        - { id: propia, rotulo: "Quinto recuadro", rect: [5, 186, 192, 36], texto: "La propia electrónica: MOSFET de corte dimensionados para la corriente máxima." }
+    requiere: { mover: [sobre, temperatura] }
+
+  - id: parece-muerto
+    tipo: pregunta
+    titulo: "Un pack que parece muerto"
+    texto: "Un pack no da tensión en sus bornes y el cargador no lo reconoce. ¿Qué puede haber pasado?"
+    libro: [173]
+    widget:
+      tipo: figura
+      figura: fig-39.12
+      zonas:
+        - { id: sub, rotulo: "Segundo recuadro", rect: [5, 64, 192, 36] }
+    opciones:
+      - texto: "El BMS ha cortado por subtensión: está protegido"
+        bien: true
+        porque: "No está roto necesariamente; muchos cargadores tienen un modo de recuperación para ese caso."
+      - texto: "Las celdas están en cortocircuito"
+        porque: "Puede ser, pero lo habitual es la protección por subtensión, que lo deja sin tensión en bornes."
+      - texto: "Está roto sin remedio"
+        porque: "Parece muerto, pero puede estar solo protegido."
+    escalera:
+      - "¿Qué protección deja los bornes sin tensión al descargarse?"
+    solucion: "Corte por subtensión: protegido, no necesariamente roto."
+
+  - id: prediga-serie
+    tipo: predecir
+    titulo: "Celdas en serie"
+    texto: "Un pack en serie con una celda degradada. Al cargarlo, ¿cuándo se da el pack por cargado?"
+    libro: [179]
+    widget:
+      tipo: figura
+      figura: fig-39.12
+      zonas:
+        - { id: desequilibrio, rotulo: "Gráfica de la derecha", rect: [250, 20, 195, 190] }
+    opciones:
+      - texto: "Cuando la celda más adelantada llega a 4,2 V"
+        bien: true
+        porque: "El BMS debe cortar entonces, aunque las demás no estén llenas."
+      - texto: "Cuando todas llegan a 4,2 V"
+        porque: "La adelantada pasaría de 4,25 V esperando a las demás: el BMS corta antes."
+      - texto: "Cuando la tensión total llega a la nominal del pack"
+        porque: "Se vigila cada celda: corta la primera que llega a su límite."
+    escalera:
+      - "Todas llevan la misma corriente; la degradada se llena antes."
+    solucion: "Cuando la más adelantada llega a 4,2 V: las demás quedan sin llenar."
+
+  - id: por-que-peor
+    tipo: porque
+    titulo: "La peor celda manda"
+    texto: "¿Por qué la capacidad utilizable de un pack en serie la fija su peor celda?"
+    libro: [179, 180]
+    widget:
+      tipo: figura
+      figura: fig-39.12
+      zonas:
+        - { id: desequilibrio, rotulo: "Gráfica de la derecha", rect: [250, 20, 195, 190] }
+    opciones:
+      - texto: "Llega antes al corte al cargar y al descargar"
+        bien: true
+        porque: "Al cargar, la adelantada corta la carga; al descargar, la más débil llega primero al corte."
+      - texto: "Porque arrastra a las demás a su capacidad"
+        porque: "Las demás no pierden capacidad: no se aprovecha porque la débil corta antes."
+      - texto: "Porque se calienta más"
+        porque: "No es el calor: son los cortes por tensión de la celda que llega primero."
+    escalera:
+      - "Piense en los dos extremos: el final de carga y el de descarga."
+    solucion: "La débil llega primero a los dos cortes y fija lo que se puede usar."
+
+  - id: explore-pasivo
+    tipo: explorar
+    titulo: "Equilibrado pasivo"
+    texto: "La celda más cargada se descarga en una resistencia. Cambie la corriente de equilibrado y mire el tiempo y el calor."
+    libro: [182, 199]
+    widget:
+      tipo: grafica
+      x: { id: qx, min: 0, max: 0.2, unidad: Ah, rotulo: "ΔQ" }
+      y: { min: 0, max: 4, unidad: h, rotulo: "t" }
+      curvas:
+        - { expr: "qx/I_bal", color: naranja, rotulo: "tiempo de equilibrado" }
+      marcas:
+        - { x: "dQ", y: "t_bal", rotulo: "{{t_bal}}" }
+      lectura: { valor: t_bal, rotulo: "Tiempo para 100 mAh" }
+      datos:
+        - { valor: P_cel, rotulo: "Calor por celda: {{P_cel}}" }
+      mandos:
+        - { valor: I_bal, lista: [0.05, 0.1, 0.2], rotulo: "Corriente de equilibrado" }
+    requiere: { mover: [I_bal] }
+    comprobar:
+      - { con: { I_bal: 0.1 }, t_bal: 1, P_cel: 0.4 }
+
+  - id: simule-doce
+    tipo: simular
+    titulo: "Doce celdas a la vez"
+    texto: "Un pack de doce celdas equilibra todas a la vez, a 100 mA y unos 4 V. ¿Cuánto calor queda dentro de la caja?"
+    libro: [199]
+    fijar: { I_bal: 0.1, N_cel: 12 }
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 0, max: 12, unidad: "", rotulo: "celdas" }
+      y: { min: 0, max: 6, unidad: W, rotulo: "P" }
+      curvas:
+        - { expr: "nx*P_cel", color: naranja, rotulo: "calor" }
+      lectura: { valor: P_tot, rotulo: "Calor en la caja" }
+      ocultar: true
+    simular:
+      objetivo: P_tot
+      unidad: W
+      tol: 0.03
+      rotulo: "Calor dentro de la caja"
+      errores:
+        - { expr: "P_cel", texto: "Esos 0,4 W son de una celda. Equilibrando las doce a la vez, se suman." }
+    exito: "Casi 5 W dentro de la caja, que hay que evacuar."
+    escalera:
+      - "Calor por celda: 4 V × 0,1 A. Luego, por doce."
+    solucion: "12 × 0,4 W = 4,8 W."
+    comprobar:
+      - { P_tot: 4.8, P_cel: 0.4 }
+
+  - id: pasivo-activo
+    tipo: pregunta
+    titulo: "Un pack de tracción"
+    texto: "Un pack de tracción, de muchos amperios-hora. ¿Equilibrado pasivo o activo?"
+    libro: [201, 205]
+    widget:
+      tipo: figura
+      figura: fig-39.12
+      zonas:
+        - { id: desequilibrio, rotulo: "Gráfica de la derecha", rect: [250, 20, 195, 190] }
+    opciones:
+      - texto: "Activo: por encima de unos 10 Ah el pasivo no da abasto"
+        bien: true
+        porque: "Mueve energía en lugar de disiparla, con amperios: equilibra en minutos."
+      - texto: "Pasivo: es lo que llevan casi todos"
+        porque: "Lo llevan los packs de consumo; por encima de unos 10 Ah el tiempo y el calor lo hacen impracticable."
+      - texto: "Ninguno: en paralelo se igualan solas"
+        porque: "Eso es en paralelo; aquí las celdas van en serie."
+    escalera:
+      - "El criterio es la capacidad del pack."
+    solucion: "Activo: por encima de unos 10 Ah."
+
+  - id: estime-deriva
+    tipo: pregunta
+    titulo: "El contador que deriva"
+    texto: "El sensor de corriente tiene 1 mA de offset y el pack es de 2 Ah. ¿Cuánto deriva el estado de carga al día?"
+    libro: [208]
+    widget:
+      tipo: grafica
+      x: { id: dx, min: 0, max: 30, unidad: "", rotulo: "días" }
+      y: { min: 0, max: 40, unidad: "%", rotulo: "deriva" }
+      curvas:
+        - { expr: "dx*der", color: naranja, rotulo: "deriva acumulada" }
+    estimar:
+      objetivo: "der"
+      unidad: "%"
+      min: 0
+      max: 10
+      paso: 0.1
+      inicio: 8
+      tol: 0.05
+      rotulo: "Deriva diaria"
+    exito: "1,2 % al día: fiable durante días, no durante meses."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 1.26 }, texto: "Se ha pasado: 1 mA durante 24 h son 24 mAh." }
+      - { texto: "Se ha quedado corto: compare 24 mAh con los 2 Ah del pack." }
+    escalera:
+      - "El offset se integra sin límite: 1 mA por 24 h."
+    solucion: "24 mAh / 2 Ah = 1,2 % diario."
+    comprobar:
+      - { Q_der: 0.024, der: 1.2 }
+
+  - id: recalibrar
+    tipo: pregunta
+    titulo: "Dónde recalibrar"
+    texto: "¿En qué puntos recalibra un sistema serio su contador de culombios?"
+    libro: [210, 211]
+    widget:
+      tipo: figura
+      figura: fig-39.12
+      zonas:
+        - { id: desequilibrio, rotulo: "Gráfica de la derecha", rect: [250, 20, 195, 190] }
+    opciones:
+      - texto: "Al terminar la carga y en el codo de descarga"
+        bien: true
+        porque: "Ahí la tensión sí informa: al final de la carga es el 100 % por definición."
+      - texto: "A mitad de descarga, donde la curva es más plana"
+        porque: "Justo ahí la tensión dice menos: la meseta es casi plana."
+      - texto: "No hace falta: integrar la corriente es exacto"
+        porque: "El offset y la eficiencia culómbica se integran sin límite."
+    escalera:
+      - "Busque los puntos donde la tensión deja de ser plana."
+    solucion: "Al terminar la carga y en el codo de descarga."
+
+  - id: toque-mosfet
+    tipo: tocar
+    titulo: "Una placa BMS"
+    texto: "En la placa de la derecha, toque los MOSFET que cortan la corriente del pack."
+    libro: [213]
+    widget:
+      tipo: figura
+      figura: fig-39.14
+      zonas:
+        - { id: mosfet, rotulo: "Cuatro piezas negras grandes", rect: [1185, 540, 175, 215] }
+        - { id: chip, rotulo: "Chip alargado en el centro", rect: [1050, 765, 130, 130] }
+        - { id: isla, rotulo: "Isla plateada abajo a la izquierda", rect: [970, 920, 130, 130] }
+    tocar:
+      bien: [mosfet]
+      porque:
+        chip: "Es la electrónica de vigilancia; los de corte son los encapsulados grandes."
+        isla: "Es una isla B: se suelda a un punto intermedio de la batería para vigilar cada celda."
+    exito: "Los encapsulados grandes: dimensionados para la corriente máxima y su disipación."
+    escalera:
+      - "Los que cortan toda la corriente del pack son los más grandes."
+    solucion: "Las cuatro piezas negras grandes: los MOSFET de corte."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [171, 180, 199, 208]
+    ideas:
+      - { titulo: "Cinco protecciones.", texto: "Sobretensión, subtensión, corriente, temperatura y la propia electrónica." }
+      - { titulo: "La peor celda.", texto: "En serie, fija la capacidad utilizable: hace falta equilibrar." }
+      - { titulo: "Pasivo o activo.", texto: "Pasivo, lento y con calor, hasta unos 10 Ah; activo, por encima." }
+      - { titulo: "Culombios.", texto: "El contador deriva y se recalibra donde la tensión informa." }

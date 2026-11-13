@@ -1,0 +1,296 @@
+# Lección 1.2 de la sección 51.12 «Regulación de Carga y de Línea: Cómo se Mide una Fuente» (cap50; sec-50.N = 51.N).
+# - El ejemplo del bloque 386 (3 A por cables de 50 mΩ: 150 mV, un 3 % de 5 V) en el esquema «thevenin» vivo: una
+#   fuente que regula 5 V en sus bornes, la resistencia de los cables y una carga que pide 3 A (1,617 Ω). Con el
+#   sensado remoto (bloques 388–389) la fuente sube sus bornes lo que caen los cables y la carga recibe 5 V: en el
+#   modelo, la tensión de la fuente pasa a 5·(R_L + R_cables)/R_L.
+# - La regulación de carga del bloque 383 (dividida por la tensión con carga: 3,09 %).
+# Paso práctico: «simular» la tensión en la carga con ngspice (4,85 V; error típico: los 5 V ajustados, olvidando los
+# cables).
+leccion: cap50/sec-50.12
+
+libro:
+  374: "ambas se miden con lo que hay en cualquier banco"
+  377: '"reg"_("línea")'
+  378: "típicamente ±10 %"
+  379: "unos pocos milivoltios sobre varios voltios de variación de entrada"
+  383: '"reg"_("carga") = (V_("vacío") - V_("carga"))/(V_("carga"))'
+  385: "Si se mide en la carga, incluye además la de los cables externos."
+  386: "Con 3 A y unos cables de 50 mΩ, la caída es de 150 mV, que en una salida de 5 V es un 3 %"
+  388: "con dos hilos adicionales que llevan la información al lazo de realimentación sin transportar corriente"
+  389: "el lazo compensa la caída de los cables y la tensión es exacta en la carga"
+  391: "si los hilos de sensado se desconectan, el lazo pierde la referencia y la salida puede dispararse"
+  397: "Rizado: periódico, a la frecuencia de red"
+  398: "Ruido: aleatorio y de banda ancha."
+  399: "con latiguillo largo se mide sobre todo la captación de la sonda"
+  402: "Escalón de carga con el osciloscopio"
+  404: "Efecto de la caída en los cables y del sensado remoto"
+
+modelo:
+  valores:
+    V_set: { sim: "V_{ajustada}", nombre: "tensión ajustada", unidad: V, valor: 5 }
+    R_c: { sim: "R_{cables}", nombre: "resistencia de los cables", unidad: Ω, valor: 0.05 }
+    R_L: { sim: "R_{L}", nombre: "carga de 3 A", unidad: Ω, valor: 1.6167 }
+    on: { tipo: interruptor, nombre: "carga conectada", valor: 1 }
+    sens: { tipo: interruptor, nombre: "sensado remoto", valor: 0 }
+  calculos:
+    V_f: { si: sens, entonces: "V_set*(R_L + R_c)/R_L", sino: "V_set", sim: "V_{bornes}", nombre: "tensión en los bornes de la fuente", unidad: V }
+    I_c: { si: on, entonces: "V_f/(R_c + R_L)", sino: "0", sim: "I", nombre: "corriente", unidad: A }
+    V_c: { si: on, entonces: "V_f*R_L/(R_c + R_L)", sino: "V_f", sim: "V_{carga}", nombre: "tensión en la carga", unidad: V }
+    V_cab: { expr: "I_c*R_c", sim: "ΔV", nombre: "caída en los cables", unidad: V }
+    reg: { expr: "(V_set - V_c)/V_c*100", sim: "reg", nombre: "regulación de carga", unidad: "%", cifras: 3 }
+
+tarjetas:
+  - id: explore-cables
+    tipo: explorar
+    titulo: "Los cables también cuentan"
+    texto: "La fuente da 5 V en sus bornes y la carga pide 3 A por cables de 50 mΩ. Conecte y desconecte la carga y mire lo que le llega."
+    libro: [374, 385, 386, 404]
+    fijar: { sens: 0 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_f, rth: R_c, carga: R_L, interruptor: on }
+      lectura: { valor: V_c, rotulo: "Tensión en la carga" }
+      datos:
+        - { valor: V_cab, rotulo: "Caída en los cables: {{V_cab}}" }
+      corriente: I_c
+      mide: { salida: V_c, corriente: I_c, interna: V_cab }
+      mandos:
+        - { valor: on, tipo: interruptor, rotulo: "Carga conectada" }
+    requiere: { mover: [on] }
+    comprobar:
+      - { con: { on: 1 }, I_c: 3, V_cab: 0.15, V_c: 4.85, tol: 0.002 }
+
+  - id: formula-carga
+    tipo: formula
+    titulo: "La regulación de carga"
+    texto: "Lo que cae de vacío a plena carga, sobre la tensión con carga."
+    libro: [383]
+    fijar: { on: 1, sens: 0 }
+    ec: 383
+    sustitucion: "({{V_set}} − {{V_c}}) / {{V_c}} × 100 = {{reg}}"
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_f, rth: R_c, carga: R_L, interruptor: on }
+      lectura: { valor: reg, rotulo: "Regulación de carga" }
+      corriente: I_c
+      mide: { salida: V_c, corriente: I_c }
+      mandos: []
+    comprobar:
+      - { reg: 3.09, tol: 0.01 }
+
+  - id: simule-carga
+    tipo: simular
+    titulo: "Lo que llega a la carga"
+    texto: "La fuente regula 5 V en sus bornes; la carga pide 3 A por cables de 50 mΩ. ¿Qué tensión tiene la carga?"
+    libro: [386]
+    fijar: { on: 1, sens: 0 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_f, rth: R_c, carga: R_L, interruptor: on }
+      lectura: { valor: V_c, rotulo: "Tensión en la carga" }
+      corriente: I_c
+      mide: { salida: V_c, corriente: I_c }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: V_c
+      unidad: V
+      tol: 0.01
+      rotulo: "Tensión en la carga"
+      medida: salida
+      errores:
+        - { expr: "V_set", texto: "Esos 5 V son los de los bornes. Por los cables caen 3 A × 50 mΩ." }
+    exito: "4,85 V: un 3 % menos, por buena que sea la electrónica."
+    escalera:
+      - "Caída en los cables: 3 A × 50 mΩ."
+    solucion: "5 V − 3 A × 50 mΩ = 4,85 V."
+    comprobar:
+      - { V_c: 4.85, V_set: 5, tol: 0.002 }
+
+  - id: prediga-donde
+    tipo: predecir
+    titulo: "Dónde se mide"
+    texto: "Se mide la regulación de carga en los bornes de la fuente y después en la carga. ¿Cuál da peor resultado?"
+    libro: [385]
+    widget:
+      tipo: figura
+      figura: fig-50.17
+      zonas:
+        - { id: cables, rotulo: "La gráfica de la izquierda", rect: [0, 0, 226, 216] }
+    opciones:
+      - texto: "En la carga: incluye además los cables externos"
+        bien: true
+        porque: "En los bornes ya entran los cables internos y los bornes; en la carga, también los de fuera."
+      - texto: "En los bornes"
+        porque: "Los bornes no ven la caída de los cables externos: dan un número mejor."
+      - texto: "Igual: la fuente es la misma"
+        porque: "La fuente sí, pero en medio hay cables con resistencia."
+    escalera:
+      - "¿Qué resistencias quedan entre la fuente y cada punto de medida?"
+    solucion: "En la carga: suma la caída de los cables externos."
+
+  - id: sorpresa-sensado
+    tipo: sorpresa
+    titulo: "El sensado remoto"
+    texto: "Dos hilos más llevan la tensión de la carga al lazo, sin transportar corriente. Actívelo y mire la carga."
+    libro: [388, 389]
+    fijar: { on: 1 }
+    widget:
+      tipo: circuito
+      esquema: thevenin
+      piezas: { fuente: V_f, rth: R_c, carga: R_L, interruptor: on }
+      lectura: { valor: V_c, rotulo: "Tensión en la carga" }
+      datos:
+        - { valor: V_f, rotulo: "Bornes de la fuente: {{V_f}}" }
+      corriente: I_c
+      mide: { salida: V_c, corriente: I_c }
+      mandos:
+        - { valor: sens, tipo: interruptor, rotulo: "Sensado remoto" }
+    requiere: { mover: [sens] }
+    nota: "El lazo sube los bornes lo que caen los cables: la tensión es exacta en la carga."
+    comprobar:
+      - { con: { sens: 1 }, V_c: 5, V_f: 5.155, tol: 0.002 }
+
+  - id: por-que-hilos
+    tipo: porque
+    titulo: "Hilos que no caen"
+    texto: "Los hilos de sensado también tienen resistencia. ¿Por qué su lectura es exacta?"
+    libro: [388]
+    widget:
+      tipo: figura
+      figura: fig-50.17
+      zonas:
+        - { id: cables, rotulo: "La gráfica de la izquierda", rect: [0, 0, 226, 216] }
+    opciones:
+      - texto: "No transportan corriente: no cae tensión en ellos"
+        bien: true
+        porque: "Es la misma idea que la medida a cuatro hilos de una resistencia."
+      - texto: "Porque son más gruesos"
+        porque: "No hace falta: sin corriente no hay caída, sean como sean."
+      - texto: "Porque el lazo corrige también su caída"
+        porque: "No tienen caída que corregir: no llevan corriente."
+    escalera:
+      - "Caída en un hilo: I·R. ¿Cuánto vale I en un hilo de sensado?"
+    solucion: "No llevan corriente, así que no cae tensión en ellos."
+
+  - id: sensado-suelto
+    tipo: pregunta
+    titulo: "Si se sueltan"
+    texto: "Durante una medida se desconectan los hilos de sensado. ¿Qué puede pasar?"
+    libro: [391]
+    widget:
+      tipo: figura
+      figura: fig-50.17
+      zonas:
+        - { id: cables, rotulo: "La gráfica de la izquierda", rect: [0, 0, 226, 216] }
+    opciones:
+      - texto: "El lazo pierde la referencia y la salida puede dispararse"
+        bien: true
+        porque: "Por eso llevan resistencias que mantienen una realimentación degradada si eso ocurre."
+      - texto: "Vuelve a regular en los bornes, sin más"
+        porque: "Solo si hay resistencias que lo prevean; sin ellas, la salida se dispara."
+      - texto: "La salida cae a cero"
+        porque: "Sin realimentación, el lazo sube la salida, no la baja."
+    escalera:
+      - "¿Qué ve el amplificador de error si su realimentación queda al aire?"
+    solucion: "La salida puede dispararse: por eso hay resistencias de seguridad."
+
+  - id: empareje-ruido
+    tipo: pregunta
+    titulo: "Rizado y ruido"
+    texto: "Empareje cada uno con lo que es."
+    libro: [397, 398]
+    widget:
+      tipo: figura
+      figura: fig-50.17
+      zonas:
+        - { id: procedimiento, rotulo: "La parte de la derecha", rect: [226, 0, 227, 216] }
+    emparejar:
+      - ["Rizado", "Periódico, a 100 Hz en un lineal o a la de conmutación"]
+      - ["Ruido", "Aleatorio y de banda ancha"]
+    exito: "Se miden juntos en alterna, y con la masa corta."
+    pistas:
+      - { texto: "Uno se repite con la red." }
+    escalera:
+      - "¿Cuál tiene una frecuencia fija?"
+    solucion: "Rizado, periódico; ruido, aleatorio."
+
+  - id: latiguillo
+    tipo: pregunta
+    titulo: "El latiguillo largo"
+    texto: "Se mide el rizado con la pinza de masa larga de la sonda. ¿Qué se ve sobre todo?"
+    libro: [399]
+    widget:
+      tipo: figura
+      figura: fig-50.17
+      zonas:
+        - { id: procedimiento, rotulo: "La parte de la derecha", rect: [226, 0, 227, 216] }
+    opciones:
+      - texto: "La captación de la sonda"
+        bien: true
+        porque: "Es el error más frecuente al medir fuentes: hace falta masa corta."
+      - texto: "El rizado, mejor que con masa corta"
+        porque: "Al revés: el latiguillo largo capta más de lo que mide."
+      - texto: "Solo el ruido"
+        porque: "Lo que domina es lo que capta el lazo de la masa."
+    escalera:
+      - "Un latiguillo largo forma un lazo: ¿qué hace un lazo cerca de campos?"
+    solucion: "Sobre todo la captación de la sonda."
+
+  - id: linea
+    tipo: pregunta
+    titulo: "La regulación de línea"
+    texto: "Se varía la entrada un ±10 % con la carga fija. ¿Qué cabe esperar de un regulador con amplificador de ganancia alta?"
+    libro: [377, 378, 379]
+    widget:
+      tipo: figura
+      figura: fig-50.17
+      zonas:
+        - { id: procedimiento, rotulo: "La parte de la derecha", rect: [226, 0, 227, 216] }
+    opciones:
+      - texto: "Unos pocos milivoltios sobre varios voltios de variación"
+        bien: true
+        porque: "Su origen es el PSRR del regulador y la ganancia del lazo."
+      - texto: "Que la salida varíe también un 10 %"
+        porque: "Eso haría un regulador sin lazo; con ganancia alta casi no se mueve."
+      - texto: "Nada en absoluto"
+        porque: "Algo se mueve: unos pocos milivoltios."
+    escalera:
+      - "¿Cuánto corrige un lazo con mucha ganancia?"
+    solucion: "Unos pocos milivoltios."
+
+  - id: ordene-procedimiento
+    tipo: pregunta
+    titulo: "El procedimiento completo"
+    texto: "Ordene la caracterización de una fuente con una carga electrónica o con resistencias."
+    libro: [402]
+    widget:
+      tipo: figura
+      figura: fig-50.17
+      zonas:
+        - { id: procedimiento, rotulo: "La parte de la derecha", rect: [226, 0, 227, 216] }
+    ordenar:
+      - "Vacío: anotar la tensión"
+      - "Plena carga: anotar y calcular la regulación de carga"
+      - "Repetir con la entrada al mínimo y al máximo"
+      - "Rizado en alterna a plena carga"
+      - "Escalón de carga con el osciloscopio"
+    exito: "Los cinco pasos caracterizan la fuente por completo."
+    pistas:
+      - { texto: "La regulación de carga necesita primero la tensión en vacío." }
+    escalera:
+      - "De lo estático a lo dinámico: el escalón, al final."
+    solucion: "Vacío, plena carga, entrada mínima y máxima, rizado y escalón."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [383, 386, 389, 399]
+    ideas:
+      - { titulo: "Dos números.", texto: "Regulación de línea y de carga: cuánto se mueve la salida." }
+      - { titulo: "Los cables.", texto: "Con 3 A y 50 mΩ, 150 mV: un 3 % de 5 V." }
+      - { titulo: "Sensado remoto.", texto: "Dos hilos sin corriente llevan la carga al lazo." }
+      - { titulo: "Rizado y ruido.", texto: "En alterna y con masa corta." }

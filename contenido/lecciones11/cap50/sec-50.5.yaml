@@ -1,0 +1,303 @@
+# Lección 1.2 de la sección 51.5 «De la Red a la Continua: Rectificador y Filtro» (cap50; sec-50.N = impresas 51.N).
+# - El ejemplo de los bloques 145–146 (secundario de 18 V eficaces, puente, 2 V de rizado: 23,1 V) en el esquema
+#   «puente» vivo: pico de 18 × 1,414 V, diodos de 0,7 V, carga de 23 Ω (1 A) y el condensador de 5 000 µF del
+#   bloque 162 (las posiciones de 2 200 y 10 000 µF del mando son de ejemplo). La red baja (−10 %: 20,5 V) y la alta
+#   en vacío (+10 %: 26,6 V) con un factor de red del modelo.
+# - La curva del condensador es la del catálogo: el pico menos la descarga exponencial con τ = R·C (sección 5.6).
+# Paso práctico: «simular» el condensador de filtro de C = I/(f·ΔV) (5 000 µF; error típico: 50 Hz en lugar de los
+# 100 Hz del puente, 10 000 µF).
+leccion: cap50/sec-50.5
+
+libro:
+  140: "transformador, rectificador y condensador— condicionan todo lo que viene después"
+  144: '"1,414"'
+  145: "Con un secundario de 18 V eficaces, un puente y 2 V de rizado"
+  146: '"23,1 V"'
+  148: "esos 23,1 V se quedan en 20,5 V"
+  150: "la tensión sube a 26,6 V"
+  153: "con dos caídas de diodo y frecuencia de rizado de 100 Hz"
+  154: "una sola caída, mejor rendimiento a baja tensión, y exige un secundario con toma central"
+  158: "al menos 1,414 veces la eficaz del secundario"
+  157: "Corriente de pico repetitiva, que es mucho mayor por los pulsos de carga"
+  161: 'C = (I)/(f times "Δ" V)'
+  162: "Con 1 A de salida, 100 Hz y 2 V de rizado: 5 000 µF"
+  164: "para 26,6 V, uno de 35 V"
+  165: "se calienta y se seca"
+  168: "puede ser de decenas de amperios"
+  170: "fusible lento, NTC de irrupción en serie con el primario, o un circuito de arranque suave con relé"
+  176: "El condensador de filtro convierte el rectificado pulsante en continua con rizado."
+
+modelo:
+  valores:
+    V_sec: { sim: "V_{sec}", nombre: "secundario, eficaz", unidad: V, valor: 18 }
+    red: { sim: "red", nombre: "tensión de red relativa", unidad: "", valor: 1 }
+    f_r: { sim: "f", nombre: "frecuencia de la red", unidad: Hz, valor: 50 }
+    V_d: { sim: "V_{D}", nombre: "caída de cada diodo", unidad: V, valor: 0.7 }
+    C_f: { sim: "C", nombre: "condensador de filtro", unidad: F, valor: 0.005 }
+    R_L: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 23 }
+    I_c: { sim: "I", nombre: "corriente de salida", unidad: A, valor: 1 }
+    dV_o: { sim: "ΔV", nombre: "rizado admisible", unidad: V, valor: 2 }
+  calculos:
+    V_p: { expr: "V_sec*1.414*red", sim: "V_{p}", nombre: "pico del secundario", unidad: V }
+    V_pk: { expr: "V_p - 2*V_d", sim: "V_{pico}", nombre: "pico en el condensador", unidad: V }
+    T_r: { expr: "1/f_r", sim: "T", nombre: "periodo de la red", unidad: s }
+    tau: { expr: "R_L*C_f", sim: "τ", nombre: "constante de descarga", unidad: s }
+    dV: { expr: "I_c/(2*f_r*C_f)", sim: "ΔV", nombre: "rizado, aproximado", unidad: V }
+    V_cc: { expr: "V_pk - dV/2", sim: "V_{cc}", nombre: "continua tras el filtro", unidad: V }
+    V_vac: { expr: "V_pk", sim: "V", nombre: "continua en vacío", unidad: V }
+    C_n: { expr: "I_c/(2*f_r*dV_o)", sim: "C", nombre: "condensador necesario", unidad: F }
+    C_50: { expr: "I_c/(f_r*dV_o)", sim: "C", nombre: "con 50 Hz", unidad: F }
+    f_riz: { expr: "2*f_r", sim: "f", nombre: "frecuencia del rizado", unidad: Hz }
+
+tarjetas:
+  - id: explore-filtro
+    tipo: explorar
+    titulo: "El condensador de filtro"
+    texto: "Secundario de 18 V eficaces, puente y 1 A de carga. Cambie el condensador y mire el rizado."
+    libro: [140, 145, 176]
+    widget:
+      tipo: circuito
+      esquema: puente
+      piezas: { fuente: V_p, f: f_r, vd: V_d, c: C_f, carga: R_L }
+      lectura: { valor: dV, rotulo: "Rizado, aproximado" }
+      datos:
+        - { valor: V_cc, rotulo: "Continua: {{V_cc}}" }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 30, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_p*abs(sin(2*pi*f_r*t)) - 2*V_d", color: tinta, rotulo: "rectificada", discontinua: true }
+          - { expr: "max(V_p*abs(sin(2*pi*f_r*t)) - 2*V_d, V_pk*exp(-(t - T_r/4 - T_r/2*floor((t - T_r/4)/(T_r/2)))/tau))", color: naranja, rotulo: "salida", mide: salida }
+      mandos:
+        - { valor: C_f, lista: [0.0022, 0.005, 0.01], rotulo: "Condensador de filtro" }
+    requiere: { mover: [C_f] }
+    comprobar:
+      - { con: { C_f: 0.005 }, dV: 2.0, V_cc: 23.1, f_riz: 100, tol: 0.02 }
+
+  - id: formula-vcc
+    tipo: formula
+    titulo: "La continua tras el filtro"
+    texto: "El pico del secundario, menos dos diodos, menos medio rizado."
+    libro: [144, 146]
+    fijar: { C_f: 0.005, red: 1 }
+    ec: 144
+    sustitucion: "{{V_sec}} × 1,414 − 2 × {{V_d}} − {{dV}}/2 = {{V_cc}}"
+    widget:
+      tipo: circuito
+      esquema: puente
+      piezas: { fuente: V_p, f: f_r, vd: V_d, c: C_f, carga: R_L }
+      lectura: { valor: V_cc, rotulo: "Continua" }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 30, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(V_p*abs(sin(2*pi*f_r*t)) - 2*V_d, V_pk*exp(-(t - T_r/4 - T_r/2*floor((t - T_r/4)/(T_r/2)))/tau))", color: naranja, rotulo: "salida", mide: salida }
+      mandos: []
+    comprobar:
+      - { V_cc: 23.1, tol: 0.02 }
+
+  - id: prediga-red-baja
+    tipo: predecir
+    titulo: "La red baja"
+    texto: "La red cae un 10 %. ¿Dónde se quedan los 23,1 V tras el filtro?"
+    libro: [146, 148]
+    fijar: { C_f: 0.005, red: 0.9 }
+    widget:
+      tipo: circuito
+      esquema: puente
+      piezas: { fuente: V_p, f: f_r, vd: V_d, c: C_f, carga: R_L }
+      lectura: { valor: V_cc, rotulo: "Continua" }
+      ocultar: true
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 30, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(V_p*abs(sin(2*pi*f_r*t)) - 2*V_d, V_pk*exp(-(t - T_r/4 - T_r/2*floor((t - T_r/4)/(T_r/2)))/tau))", color: naranja, rotulo: "salida", mide: salida }
+      mandos: []
+    opciones:
+      - texto: "En unos 20,5 V"
+        bien: true
+        porque: "El pico baja un 10 %, y los diodos y el rizado restan lo mismo. El regulador debe funcionar ahí."
+      - texto: "En 23,1 V: el filtro lo compensa"
+        porque: "El condensador se carga al pico: si el pico baja, baja con él."
+      - texto: "Exactamente un 10 % menos"
+        porque: "Las caídas de los diodos y el medio rizado no bajan con la red: baja algo más."
+    escalera:
+      - "Baje el pico un 10 % y reste otra vez los diodos y el medio rizado."
+    solucion: "0,9 × 25,45 − 1,4 − 1 ≈ 20,5 V."
+    comprobar:
+      - { V_cc: 20.5, tol: 0.01 }
+      - { con: { red: 1 }, V_cc: 23.1, V_p: 25.45, tol: 0.02 }
+
+  - id: red-alta
+    tipo: pregunta
+    titulo: "La red alta, en vacío"
+    texto: "Con la red un 10 % alta y sin carga, ya sin rizado, la continua sube. ¿Para qué sirve esa cifra?"
+    libro: [150]
+    fijar: { red: 1.1 }
+    widget:
+      tipo: grafica
+      x: { id: rx, min: 0.85, max: 1.15, unidad: "", rotulo: "red relativa" }
+      y: { min: 15, max: 30, unidad: V, rotulo: "V" }
+      curvas:
+        - { expr: "V_sec*1.414*rx - 2*V_d", color: naranja, rotulo: "en vacío" }
+      marcas:
+        - { x: "red", y: "V_vac", rotulo: "{{V_vac}}" }
+    opciones:
+      - texto: "Fija la disipación y la tensión que soportan los componentes"
+        bien: true
+        porque: "Unos 26,6 V, y algo más por la regulación del transformador: es el extremo alto del margen."
+      - texto: "Es la que debe dar la fuente a la salida"
+        porque: "La salida la fija el regulador; esta es la tensión que soporta todo lo demás."
+      - texto: "No importa: en vacío no hay corriente"
+        porque: "La disipación se calcula con este extremo alto, y los componentes deben soportarlo."
+    escalera:
+      - "¿Qué pasa con lo que sobra entre la entrada y la salida del regulador?"
+    solucion: "Unos 26,6 V: fija la disipación y la tensión de los componentes."
+    comprobar:
+      - { V_vac: 26.6, tol: 0.01 }
+
+  - id: simule-c
+    tipo: simular
+    titulo: "El condensador que hace falta"
+    texto: "1 A de salida con un puente en red de 50 Hz y 2 V de rizado admisible. ¿Qué condensador hace falta?"
+    libro: [153, 161, 162]
+    widget:
+      tipo: grafica
+      x: { id: dx, min: 0.5, max: 5, unidad: V, rotulo: "ΔV" }
+      y: { min: 0, max: 0.012, unidad: F, rotulo: "C" }
+      curvas:
+        - { expr: "I_c/(2*f_r*dx)", color: naranja, rotulo: "C = I/(f·ΔV)" }
+      lectura: { valor: C_n, rotulo: "Condensador" }
+      ocultar: true
+    simular:
+      objetivo: C_n
+      unidad: F
+      tol: 0.03
+      rotulo: "Condensador de filtro"
+      errores:
+        - { expr: "C_50", texto: "Ha usado 50 Hz: con un puente el rizado es de 100 Hz, el doble de la red." }
+    exito: "5 000 µF, y se elige el valor comercial superior."
+    escalera:
+      - "C = I/(f·ΔV), con la frecuencia del rizado, no la de la red."
+    solucion: "1 A / (100 Hz × 2 V) = 5 000 µF."
+    comprobar:
+      - { C_n: 0.005, C_50: 0.01, f_riz: 100, f_r: 50 }
+
+  - id: tension-c
+    tipo: pregunta
+    titulo: "La tensión del condensador"
+    texto: "El peor caso alto son 26,6 V. ¿De qué tensión se elige el condensador?"
+    libro: [146, 164]
+    widget:
+      tipo: figura
+      figura: fig-50.8
+      zonas:
+        - { id: grafica, rotulo: "La figura", rect: [0, 0, 448, 223] }
+    opciones:
+      - texto: "De 35 V"
+        bien: true
+        porque: "Con margen sobre el peor caso alto."
+      - texto: "Uno justo por encima de los 23,1 V nominales"
+        porque: "Con la red alta y en vacío llegan 26,6 V: no basta."
+      - texto: "De 26,6 V justos"
+        porque: "Sin margen: hace falta uno por encima, de 35 V."
+    escalera:
+      - "Mire el extremo alto, no el nominal."
+    solucion: "De 35 V."
+
+  - id: pico-diodos
+    tipo: pregunta
+    titulo: "Dimensionar el puente"
+    texto: "La corriente media de salida es 1 A. ¿Qué corriente hay que respetar al elegir los diodos?"
+    libro: [157, 158]
+    widget:
+      tipo: figura
+      figura: fig-50.7
+      zonas:
+        - { id: grafica, rotulo: "La figura", rect: [0, 0, 435, 184] }
+    opciones:
+      - texto: "La de pico repetitiva, mucho mayor por los pulsos de carga"
+        bien: true
+        porque: "Los diodos solo conducen al recargar el condensador, en pulsos cortos e intensos."
+      - texto: "La media, 1 A"
+        porque: "La media es la de salida, pero los diodos la entregan en pulsos mucho más altos."
+      - texto: "La eficaz del secundario"
+        porque: "Lo que hay que respetar en los diodos es la de pico repetitiva."
+    escalera:
+      - "¿Cuánto tiempo conduce cada diodo en cada ciclo?"
+    solucion: "La de pico repetitiva; y una tensión inversa de al menos 1,414 veces la eficaz."
+
+  - id: empareje-rect
+    tipo: pregunta
+    titulo: "Puente o toma media"
+    texto: "Empareje cada rectificador con lo que lo distingue."
+    libro: [153, 154]
+    widget:
+      tipo: figura
+      figura: fig-50.7
+      zonas:
+        - { id: grafica, rotulo: "La figura", rect: [0, 0, 435, 184] }
+    emparejar:
+      - ["Puente completo", "Dos caídas de diodo; la opción normal"]
+      - ["Doble onda con toma media", "Una caída; exige toma central en el secundario"]
+    exito: "Los dos dan rizado de 100 Hz."
+    pistas:
+      - { texto: "El de una sola caída rinde mejor a baja tensión." }
+    escalera:
+      - "Cuente cuántos diodos conducen a la vez en cada uno."
+    solucion: "Puente, dos caídas; toma media, una caída y toma central."
+
+  - id: por-que-rizado
+    tipo: porque
+    titulo: "La vida del condensador"
+    texto: "Dos condensadores de 5 000 µF y 35 V. ¿Por qué uno dura años y el otro se seca?"
+    libro: [165]
+    widget:
+      tipo: figura
+      figura: fig-50.8
+      zonas:
+        - { id: grafica, rotulo: "La figura", rect: [0, 0, 448, 223] }
+    opciones:
+      - texto: "Por su corriente de rizado eficaz admisible"
+        bien: true
+        porque: "Los pulsos la hacen mucho mayor que la media; infradimensionado, se calienta y se seca."
+      - texto: "Por la marca"
+        porque: "Lo que decide es un parámetro de la hoja: la corriente de rizado eficaz."
+      - texto: "Por su capacidad real"
+        porque: "La capacidad es la misma; lo que difiere es cuánto rizado eficaz aguanta."
+    escalera:
+      - "¿Qué calienta el condensador por dentro?"
+    solucion: "La corriente de rizado eficaz que admite: es lo que decide su vida."
+
+  - id: irrupcion
+    tipo: pregunta
+    titulo: "Al enchufar"
+    texto: "Al conectar, el condensador descargado es un cortocircuito y la corriente puede ser de decenas de amperios. ¿Cómo se defiende la fuente?"
+    libro: [168, 170]
+    widget:
+      tipo: figura
+      figura: fig-50.7
+      zonas:
+        - { id: grafica, rotulo: "La figura", rect: [0, 0, 435, 184] }
+    opciones:
+      - texto: "Fusible lento, NTC de irrupción o arranque suave con relé"
+        bien: true
+        porque: "Sin ellas, fusibles que se funden al encender, contactos picados y diodos que sufren."
+      - texto: "Con un fusible rápido"
+        porque: "Un rápido se fundiría en cada encendido."
+      - texto: "Con un condensador más pequeño"
+        porque: "Subiría el rizado; la irrupción se limita, no se evita así."
+    escalera:
+      - "Hay que limitar el pico o tolerarlo sin fundir nada."
+    solucion: "Fusible lento, NTC de irrupción o arranque suave con relé."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [144, 148, 150, 161]
+    ideas:
+      - { titulo: "La continua.", texto: "Pico menos dos diodos menos medio rizado: 23,1 V con 18 V eficaces." }
+      - { titulo: "El margen.", texto: "De 20,5 V con la red baja a 26,6 V con la alta en vacío." }
+      - { titulo: "El condensador.", texto: "C = I/(f·ΔV) a 100 Hz; con su tensión y su corriente de rizado." }
+      - { titulo: "Los picos.", texto: "Diodos y condensador sufren pulsos mucho mayores que la media." }

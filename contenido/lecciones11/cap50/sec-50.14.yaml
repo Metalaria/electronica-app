@@ -1,0 +1,397 @@
+# Lección 1.2 de la sección 51.14 «Proyecto Ampliado: Fuente de Laboratorio Completa» (cap50; sec-50.N = 51.N).
+# - El punto 1 (V_raw = 40 V, 5 A: 50, 125 y 200 W en el paso; con 3 V de headroom, 15 W, 13,3 veces menos) en el
+#   esquema «regulador-lineal» vivo: la carga pide siempre 5 A (R_L = V_out/5) y el prerregulador lleva la entrada a
+#   la salida más 3 V. La salida de 5 V del mando es de ejemplo.
+# - El punto 2 (15 W, R_jc = 1,0 y R_cs = 0,3 °C/W, 110 °C con 40 °C: R_sa ≤ 3,37 °C/W y la tabla del bloque 451).
+#   En el esquema «termica» vivo (esquemas12d): la cadena en °C con la potencia como fuente de corriente.
+# - El punto 3 (referencia de 2,5 V, R₂ = 10 kΩ: R₁ = 110 kΩ; con el diferencial del sensado remoto, 120 kΩ) en el
+#   regulador-lineal vivo con R₁ de la serie E24.
+# - El punto 7 (ΔV = ΔI·t/C) con los 470 µF de la lista de materiales (bloques 482 y 509): 0,53 V; 211 mJ.
+# Pasos prácticos: «ajuste» del disipador hasta 110 °C de unión; «simular» la caída del transitorio con 470 µF
+# (error típico: la cifra de 1000 µF de la tabla, 250 mV).
+leccion: cap50/sec-50.14
+
+libro:
+  441: "desde una tensión fija disipa la diferencia"
+  442: "0 V (cortocircuito)"
+  443: "El caso peor no es a plena potencia sino en cortocircuito"
+  445: '"3 V" times "5 A" = "15 W"'
+  446: "Una reducción de 13,3 veces respecto al peor caso"
+  448: "la del TIP35C: 125 W con 150 °C de unión y 25 °C de cápsula"
+  449: 'R_("sa") lt.eq'
+  450: "Aplicando derating"
+  451: "74,5 °C"
+  452: "el ventilador debe gobernarse por la temperatura del disipador"
+  454: "Para 30 V a fondo de escala con R₂ = 10 kΩ"
+  455: '"110 kΩ"'
+  456: "la carga recibiría unos 27,5 V en vez de 30 V"
+  457: '"120 kΩ"'
+  459: '"10 000" lr(( "80 dB" ))'
+  461: "regulación y exactitud son cosas distintas"
+  464: "1,25 W"
+  465: "el offset del amplificador pasa a importar"
+  478: '"Δ" V = "Δ" I dot.op (t_("respuesta"))/(C_("out"))'
+  479: "250 mV"
+  480: "almacena energía que se descarga violentamente sobre un cortocircuito"
+  482: "211 mJ con los 470 µF de la lista de materiales"
+  484: "7,32 mV"
+  485: "16 bits no es lujo sino requisito"
+  488: "lo que limita es la resolución de 100 µV"
+  "cap50#509": "470 µF / 63 V"
+
+modelo:
+  valores:
+    V_raw: { sim: "V_{raw}", nombre: "continua bruta", unidad: V, valor: 40 }
+    V_s: { sim: "V_{out}", nombre: "salida ajustada", unidad: V, valor: 30 }
+    I_s: { sim: "I", nombre: "corriente de la carga", unidad: A, valor: 5 }
+    V_hr: { sim: "V_{headroom}", nombre: "caída que deja el prerregulador", unidad: V, valor: 3 }
+    pre: { tipo: interruptor, nombre: "prerregulador", valor: 0 }
+    T_a: { sim: "T_{amb}", nombre: "ambiente", unidad: "°C", valor: 40 }
+    R_jc: { sim: "R_{jc}", nombre: "unión-cápsula", unidad: "°C/W", valor: 1 }
+    R_cs: { sim: "R_{cs}", nombre: "cápsula-disipador", unidad: "°C/W", valor: 0.3 }
+    R_sa: { sim: "R_{sa}", nombre: "disipador", unidad: "°C/W", valor: 6 }
+    V_ref: { sim: "V_{ref}", nombre: "referencia", unidad: V, valor: 2.5 }
+    R_1: { sim: "R₁", nombre: "divisor, arriba", unidad: Ω, valor: 100000 }
+    R_2: { sim: "R₂", nombre: "divisor, abajo", unidad: Ω, valor: 10000 }
+    R_Lr: { sim: "R_{L}", nombre: "carga de prueba", unidad: Ω, valor: 100 }
+    dI: { sim: "ΔI", nombre: "escalón de carga", unidad: A, valor: 5 }
+    t_r: { sim: "t_{respuesta}", nombre: "tiempo de respuesta", unidad: s, valor: 50e-6 }
+    C_o: { sim: "C_{out}", nombre: "condensador de salida", unidad: F, valor: 470e-6 }
+  calculos:
+    V_in: { si: pre, entonces: "V_s + V_hr", sino: "V_raw", sim: "V_{in}", nombre: "entrada del paso", unidad: V }
+    R_L: { expr: "V_s/I_s", sim: "R_{L}", nombre: "carga de 5 A", unidad: Ω }
+    I_o: { expr: "V_s/R_L", sim: "I", nombre: "corriente de salida", unidad: A }
+    P_q: { expr: "(V_in - V_s)*I_o", sim: "P", nombre: "potencia en el paso", unidad: W }
+    P_cc: { expr: "V_raw*I_s", sim: "P", nombre: "potencia en cortocircuito", unidad: W }
+    P_hr: { expr: "V_hr*I_s", sim: "P", nombre: "potencia con prerregulador", unidad: W }
+    k_red: { expr: "P_cc/P_hr", sim: "×", nombre: "reducción", unidad: "", cifras: 3 }
+    T_j: { expr: "T_a + P_hr*(R_jc + R_cs + R_sa)", sim: "T_{unión}", nombre: "unión", unidad: "°C" }
+    R_sa_max: { expr: "(110 - T_a)/P_hr - R_jc - R_cs", sim: "R_{sa}", nombre: "disipador máximo", unidad: "°C/W" }
+    T_c: { expr: "T_a + P_hr*(R_cs + R_sa)", sim: "T_{cápsula}", nombre: "cápsula", unidad: "°C" }
+    T_s: { expr: "T_a + P_hr*R_sa", sim: "T_{disipador}", nombre: "disipador", unidad: "°C" }
+    V_dv: { expr: "V_ref*(1 + R_1/R_2)", sim: "V_{out}", nombre: "salida del divisor", unidad: V }
+    I_dv: { expr: "V_dv/R_Lr + V_dv/(R_1 + R_2)", sim: "I", nombre: "corriente de salida", unidad: A }
+    dV_t: { expr: "dI*t_r/C_o", sim: "ΔV", nombre: "caída en el transitorio", unidad: V }
+    dV_1000: { expr: "dI*t_r/0.001", sim: "ΔV", nombre: "con 1000 µF", unidad: V }
+    E_c: { expr: "0.5*C_o*30^2", sim: "E", nombre: "energía en el condensador a 30 V", unidad: J }
+
+tarjetas:
+  - id: explore-raw
+    tipo: explorar
+    titulo: "40 V y 5 A"
+    texto: "Paso serie desde 40 V con 5 A. Baje la salida y active el prerregulador, que deja 3 V de headroom."
+    libro: [441, 442]
+    widget:
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_in, ref: V_s, carga: R_L }
+      lectura: { valor: P_q, rotulo: "Calor en el paso" }
+      datos:
+        - { valor: V_in, rotulo: "Entrada del paso: {{V_in}}" }
+      corriente: I_o
+      mide: { vout: V_s, iin: I_o, p_paso: P_q }
+      mandos:
+        - { valor: V_s, lista: [5, 15, 30], rotulo: "Salida ajustada" }
+        - { valor: pre, tipo: interruptor, rotulo: "Prerregulador" }
+    requiere: { mover: [V_s, pre] }
+    comprobar:
+      - { con: { V_s: 30, pre: 0 }, P_q: 50 }
+      - { con: { V_s: 15, pre: 0 }, P_q: 125 }
+      - { con: { pre: 1 }, P_q: 15 }
+
+  - id: prediga-peor
+    tipo: predecir
+    titulo: "El caso peor"
+    texto: "Sin prerregulador, desde 40 V y con 5 A, ¿en qué caso disipa más el paso serie?"
+    libro: [442, 443]
+    widget:
+      tipo: grafica
+      x: { id: vx, min: 0, max: 30, unidad: V, rotulo: "V_{out}" }
+      y: { min: 0, max: 220, unidad: W, rotulo: "P" }
+      curvas:
+        - { expr: "(V_raw - vx)*I_s", color: naranja, rotulo: "paso serie a 5 A" }
+      lectura: { valor: P_cc, rotulo: "En cortocircuito" }
+      ocultar: true
+    opciones:
+      - texto: "En cortocircuito: 200 W"
+        bien: true
+        porque: "Lo que sobra es toda la entrada: como en el clase B, el calor máximo no coincide con la potencia máxima."
+      - texto: "A 30 V, plena potencia: 50 W"
+        porque: "A plena potencia sobran solo 10 V: es el caso que menos calienta."
+      - texto: "A 15 V: 125 W"
+        porque: "Más que a 30 V, pero menos que en corto, donde sobra toda la entrada."
+    escalera:
+      - "El paso disipa la tensión que sobra por la corriente."
+    solucion: "En cortocircuito: 40 V × 5 A = 200 W."
+    comprobar:
+      - { P_cc: 200 }
+
+  - id: formula-headroom
+    tipo: formula
+    titulo: "Headroom constante"
+    texto: "El prerregulador sigue a la salida y deja siempre unos 3 V sobre el paso lineal."
+    libro: [445, 446]
+    fijar: { pre: 1 }
+    ec: 445
+    sustitucion: "{{V_hr}} × {{I_s}} = {{P_hr}}"
+    widget:
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_in, ref: V_s, carga: R_L }
+      lectura: { valor: P_q, rotulo: "Calor en el paso" }
+      datos:
+        - { valor: k_red, rotulo: "Reducción frente al corto: ×{{k_red}}" }
+      corriente: I_o
+      mide: { vout: V_s, p_paso: P_q }
+      mandos:
+        - { valor: V_s, lista: [5, 15, 30], rotulo: "Salida ajustada" }
+    comprobar:
+      - { P_hr: 15, k_red: 13.3 }
+
+  - id: ajuste-disipador
+    tipo: ajuste
+    titulo: "El disipador, con derating"
+    texto: "15 W, R_{jc} de 1,0 y R_{cs} de 0,3 °C/W, 40 °C de ambiente. Ajuste el disipador hasta que la unión no pase de 110 °C."
+    libro: [448, 449, 450, 451]
+    fijar: { T_a: 40 }
+    inicio: { R_sa: 6 }
+    widget:
+      tipo: circuito
+      esquema: termica
+      piezas: { p: P_hr, ta: T_a, rjc: R_jc, rcs: R_cs, rsa: R_sa }
+      lectura: { valor: T_j, rotulo: "Unión" }
+      corriente: P_hr
+      mide: { tj: T_j, tc: T_c, ts: T_s, flujo: P_hr }
+      mandos:
+        - { valor: R_sa, min: 0.5, max: 6, paso: 0.05, rotulo: "Disipador, R_{sa}" }
+    ajuste:
+      valor: T_j
+      min: 50
+      max: 110
+      rotulo: "Unión"
+      escala: { min: 40, max: 160 }
+      bajo: "Muy por debajo: le sobra disipador."
+      alto: "Pasa de 110 °C: hace falta un disipador de menos °C/W."
+      dentro: "Con R_{sa} ≤ 3,37 °C/W: un disipador modesto, alcanzable con convección natural."
+    comprobar:
+      - { R_sa_max: 3.37, tol: 0.01 }
+      - { con: { R_sa: 1 }, T_j: 74.5 }
+      - { con: { R_sa: 0.5, T_a: 25 }, T_j: 52 }
+
+  - id: ventilador
+    tipo: pregunta
+    titulo: "El ventilador"
+    texto: "La fuente lleva ventilador. ¿Cómo debe gobernarse?"
+    libro: [452]
+    widget:
+      tipo: figura
+      figura: fig-50.19
+      zonas:
+        - { id: grafica, rotulo: "La gráfica de la izquierda", rect: [0, 0, 226, 216] }
+    opciones:
+      - texto: "Por la temperatura del disipador"
+        bien: true
+        porque: "Casi siempre entrega poca corriente: un ventilador siempre encendido es la queja más habitual de los equipos baratos."
+      - texto: "Siempre encendido, por seguridad"
+        porque: "El ruido acústico continuo es la queja más habitual; basta con que lo gobierne la temperatura."
+      - texto: "Por la tensión de salida"
+        porque: "El calor depende de la tensión que sobra y la corriente: lo que hay que mirar es la temperatura."
+    escalera:
+      - "¿Cuánto tiempo pasa una fuente de laboratorio a plena carga?"
+    solucion: "Por la temperatura del disipador."
+
+  - id: reto-divisor
+    tipo: reto
+    titulo: "El divisor de 30 V"
+    texto: "Referencia de 2,5 V y R₂ de 10 kΩ. Elija R₁ de la serie E24 para 30 V a fondo de escala."
+    libro: [454, 455]
+    inicio: { R_1: 100000 }
+    widget:
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_raw, ref: V_ref, r1: R_1, r2: R_2, carga: R_Lr }
+      lectura: { valor: V_dv, rotulo: "V_{out}" }
+      corriente: I_dv
+      mide: { vout: V_dv, iout: I_dv }
+      mandos:
+        - { valor: R_1, lista: [91000, 100000, 110000, 120000, 130000], rotulo: "R₁ (E24)" }
+    condiciones:
+      - { valor: V_dv, objetivo: 30, tol: 0.02, rotulo: "Salida: {{V_dv}}" }
+    exito: "110 kΩ: 2,5 × (1 + 110/10) = 30 V."
+    pistas:
+      - { cuando: { valor: V_dv, mayor: 30.6 }, texto: "Se pasa: R₁ más pequeña." }
+      - { texto: "Se queda corta: R₁ más grande." }
+    escalera:
+      - "R₁ = R₂ · (V_{máx}/V_{ref} − 1)."
+    solucion: "10 kΩ × (30/2,5 − 1) = 110 kΩ."
+    comprobar:
+      - { con: { R_1: 110000 }, V_dv: 30 }
+
+  - id: sensado-120
+    tipo: pregunta
+    titulo: "Con sensado remoto"
+    texto: "Con sensado remoto, S− está en la carga, unos 0,2 V por encima de la masa. ¿Qué pasa si se deja el divisor de 110 kΩ?"
+    libro: [456, 457]
+    widget:
+      tipo: figura
+      figura: fig-50.19
+      zonas:
+        - { id: bloques, rotulo: "La parte de la derecha", rect: [226, 0, 227, 216] }
+    opciones:
+      - texto: "Esos 0,2 V entran multiplicados por 12: la carga recibe unos 27,5 V"
+        bien: true
+        porque: "Peor que sin sensado: hay que medir S+ − S− con un diferencial de ganancia R₂/R₁, con R₁ = 120 kΩ."
+      - texto: "Nada: el sensado lo compensa"
+        porque: "Solo si se mide la diferencia S+ − S−; con el divisor a masa, no."
+      - texto: "La salida se dispara"
+        porque: "Eso pasa si se sueltan los hilos de sensado; aquí la carga recibe menos de lo pedido."
+    escalera:
+      - "El divisor mide respecto a masa, pero S− no está en masa."
+    solucion: "La carga recibiría unos 27,5 V; con el diferencial, R₁ pasa a 120 kΩ."
+
+  - id: ganancia-80
+    tipo: pregunta
+    titulo: "La ganancia que hace falta"
+    texto: "La regulación sigue el error 1/(1 + T). Para cumplir el 0,01 %, ¿qué ganancia de lazo hace falta?"
+    libro: [459]
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 10, max: 100000, unidad: "", rotulo: "T", escala: log }
+      y: { min: 0.0001, max: 10, unidad: "%", rotulo: "error", escala: log }
+      curvas:
+        - { expr: "100/(1 + tx)", color: naranja, rotulo: "1/(1 + T)" }
+        - { expr: "0.01", color: tinta, rotulo: "0,01 %", discontinua: true }
+    opciones:
+      - texto: "Más de 10 000, 80 dB"
+        bien: true
+        porque: "Y 80 dB con un paso de potencia lento es una receta de oscilación: hay que compensar con cuidado."
+      - texto: "Más de 1 000"
+        porque: "Con 1 000 el error es del 0,1 %: diez veces más de lo pedido."
+      - texto: "Más de 100"
+        porque: "Con 100, un 1 %: muy lejos del 0,01 %."
+    escalera:
+      - "0,01 % es 10⁻⁴: despeje T de 1/(1 + T) < 10⁻⁴."
+    solucion: "T > 10 000, es decir, 80 dB."
+
+  - id: por-que-deriva
+    tipo: porque
+    titulo: "Regulación no es exactitud"
+    texto: "Las resistencias apareadas derivan 15 mV sobre 30 V, cinco veces la especificación de regulación. ¿Cómo puede cumplirla?"
+    libro: [461]
+    widget:
+      tipo: figura
+      figura: fig-50.19
+      zonas:
+        - { id: grafica, rotulo: "La gráfica de la izquierda", rect: [0, 0, 226, 216] }
+    opciones:
+      - texto: "La regulación mide cuánto se mueve la salida; la exactitud, cuánto se parece a lo pedido"
+        bien: true
+        porque: "La primera la da el lazo; la segunda, la referencia y el divisor."
+      - texto: "No puede: la fuente no cumple"
+        porque: "La deriva afecta a la exactitud, no a la regulación ante cambios de carga o de red."
+      - texto: "Porque la deriva se corrige sola con la ganancia"
+        porque: "La ganancia corrige lo de dentro del lazo; la deriva del divisor fija dónde regula."
+    escalera:
+      - "¿Qué se mide en la regulación: una diferencia o un valor absoluto?"
+    solucion: "Son cosas distintas: el lazo da la regulación; la referencia y el divisor, la exactitud."
+
+  - id: empareje-shunt
+    tipo: pregunta
+    titulo: "Dos shunts"
+    texto: "Empareje cada shunt, a 5 A, con lo que supone."
+    libro: [464, 465]
+    widget:
+      tipo: figura
+      figura: fig-50.19
+      zonas:
+        - { id: bloques, rotulo: "La parte de la derecha", rect: [226, 0, 227, 216] }
+    emparejar:
+      - ["0,05 Ω", "250 mV y 1,25 W: señal cómoda, se pierde margen"]
+      - ["0,01 Ω", "50 mV y 0,25 W: hay que amplificar y el offset importa"]
+    exito: "Los instrumentos eligen el segundo, con un amplificador de corriente dedicado."
+    pistas:
+      - { texto: "El de menos resistencia disipa menos, pero da menos señal." }
+    escalera:
+      - "Caída I·R y potencia I²·R con 5 A."
+    solucion: "0,05 Ω, cómodo y caro en margen; 0,01 Ω, eficiente pero exige amplificar."
+
+  - id: simule-transitorio
+    tipo: simular
+    titulo: "El escalón de 5 A"
+    texto: "Un escalón de 5 A, un lazo que tarda 50 µs y los 470 µF de salida de la lista de materiales. ¿Cuánto cae la tensión?"
+    libro: [478, 479, 480, 482, "cap50#509"]
+    widget:
+      tipo: grafica
+      x: { id: cx, min: 0.0001, max: 0.001, unidad: F, rotulo: "C_{out}" }
+      y: { min: 0, max: 3, unidad: V, rotulo: "ΔV" }
+      curvas:
+        - { expr: "dI*t_r/cx", color: naranja, rotulo: "caída" }
+      lectura: { valor: dV_t, rotulo: "Caída" }
+      ocultar: true
+    simular:
+      objetivo: dV_t
+      unidad: V
+      tol: 0.03
+      rotulo: "Caída en el escalón"
+      errores:
+        - { expr: "dV_1000", texto: "Esos 250 mV son con 1000 µF. Con 470 µF cae más del doble." }
+    exito: "Algo más de medio voltio: más capacidad mejora el transitorio, pero desestabiliza el lazo y almacena energía."
+    escalera:
+      - "ΔV = ΔI · t / C."
+    solucion: "5 A × 50 µs / 470 µF ≈ 0,53 V."
+    comprobar:
+      - { dV_t: 0.532, dV_1000: 0.25, E_c: 0.2115, tol: 0.01 }
+
+  - id: dac-16
+    tipo: pregunta
+    titulo: "12 o 16 bits"
+    texto: "Con un DAC de 12 bits, el escalón de consigna es de 7,32 mV y la regulación pedida, 3 mV. ¿Qué implica?"
+    libro: [484, 485]
+    widget:
+      tipo: figura
+      figura: fig-50.19
+      zonas:
+        - { id: bloques, rotulo: "La parte de la derecha", rect: [226, 0, 227, 216] }
+    opciones:
+      - texto: "16 bits no es lujo sino requisito"
+        bien: true
+        porque: "Con 12 bits la fuente mantendría la salida con más finura de la que permite fijarla."
+      - texto: "Basta con 12 bits: 7,32 mV es poco"
+        porque: "Es más del doble de los 3 mV de regulación."
+      - texto: "Da igual: la regulación no depende del DAC"
+        porque: "La regulación no, pero fijar la salida con esa finura sí."
+    escalera:
+      - "Compare el escalón de consigna con la regulación."
+    solucion: "16 bits: 0,46 mV por escalón."
+
+  - id: brymen
+    tipo: pregunta
+    titulo: "Medir 3 mV sobre 30 V"
+    texto: "El multímetro tiene unos 6,5 mV de incertidumbre a 30 V. ¿Sirve para medir una regulación de 3 mV?"
+    libro: [488]
+    widget:
+      tipo: figura
+      figura: fig-50.20
+      zonas:
+        - { id: secuencia, rotulo: "La figura", rect: [0, 0, 453, 205] }
+    opciones:
+      - texto: "Sí: es una diferencia en el mismo rango; limita la resolución de 100 µV"
+        bien: true
+        porque: "El desplazamiento fijo se cancela y el término proporcional se aplica solo a lo que cambia."
+      - texto: "No: 6,5 mV es más que 3 mV"
+        porque: "Esa incertidumbre es de una medida absoluta; la regulación es una diferencia entre dos lecturas."
+      - texto: "Solo en un rango más alto"
+        porque: "Al revés: se mide en el mismo rango, y lo que cuenta es la resolución."
+    escalera:
+      - "¿La regulación es un valor absoluto o la diferencia entre dos lecturas?"
+    solucion: "Sí: en una diferencia lo que limita es la resolución, de 100 µV."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [443, 446, 450, 461]
+    ideas:
+      - { titulo: "El prerregulador.", texto: "De 200 W en corto a 15 W constantes: 13,3 veces menos." }
+      - { titulo: "Térmica.", texto: "R_{sa} ≤ 3,37 °C/W con derating a 110 °C." }
+      - { titulo: "El lazo.", texto: "T > 10 000 para el 0,01 %; regulación no es exactitud." }
+      - { titulo: "Transitorio.", texto: "ΔV = ΔI·t/C: más capacidad, mejor escalón y peor estabilidad." }

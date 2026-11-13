@@ -1,0 +1,328 @@
+# Lección 1.2 de la sección 40.4 «Recolección de Energía: Alimentar sin Cables» (cap39; sec-39.N = impresas 40.N).
+# - Las fuentes de la figura 40.8 (fig-39.8) con zonas; el presupuesto del bloque 99 (50 µW/cm² × 10 cm² = 500 µW,
+#   43 J al día) y el del bloque 100 (1,5 J por envío WiFi: 29 al día; 100 mJ: unas 430).
+# - La célula solar del bloque 95 con un modelo de ejemplo: la corriente de la luz menos la de un diodo (sección 5.3),
+#   I = I_sc − I₀·(e^{V/(n·V_T)} − 1), con I_sc = 30 mA, n = 1,5 y V_oc = 0,6 V a pleno sol. Da el codo con el máximo
+#   de potencia en 0,50 V, el 83 % de V_oc («hacia el 80 %», bloque 95), y V_oc = 0,51 V con la décima parte de luz
+#   («baja poco con poca luz»).
+# Paso práctico: «ajuste» del punto de trabajo al de máxima potencia (lo que hace el MPPT, bloque 105).
+leccion: cap39/sec-39.4
+
+libro:
+  92: "10–100 µW/cm²"
+  93: "entre solar exterior e interior hay un factor de cien a mil"
+  95: "hacia el 80 %"
+  98: "se parte de la energía disponible"
+  99: "Con 50 µW/cm² de luz interior y 10 cm² de panel: 500 µW medios, es decir, 43 julios al día."
+  100: "solo caben unas 29 transmisiones diarias"
+  103: "El transductor: panel, Peltier, piezoeléctrico o antena."
+  104: "debe arrancar con microvatios y seguir el punto de máxima potencia del transductor"
+  105: "trabajar lejos de él puede desperdiciar la mitad o más"
+  107: "El almacenamiento, que absorbe la irregularidad de la fuente"
+  109: "con el almacenamiento completamente descargado, no hay energía para que el convertidor funcione"
+  112: "Batería primaria de respaldo solo para el arranque."
+  123: "El recolector carga un condensador lentamente."
+  124: "con más luz, mide más a menudo"
+  126: "sensores inaccesibles, donde cambiar una pila cuesta más que el sensor"
+  127: "No: cuando una pila de litio dura diez años"
+  134: "Potencia disponible de cada fuente ambiental y el problema del arranque en frío"
+  135: "el almacenamiento se carga hasta el umbral de activación"
+
+modelo:
+  valores:
+    D_luz: { sim: "S", nombre: "densidad de potencia interior", unidad: "W/cm²", valor: 50e-6 }
+    A_p: { sim: "A", nombre: "área del panel", unidad: "cm²", valor: 10 }
+    E_tx: { sim: "E_{tx}", nombre: "energía por envío WiFi", unidad: J, valor: 1.5 }
+    E_lp: { sim: "E_{tx}", nombre: "energía por envío de bajo consumo", unidad: J, valor: 0.1 }
+    I_sc0: { sim: "I_{sc}", nombre: "corriente de cortocircuito a pleno sol", unidad: A, valor: 0.03 }
+    luz: { sim: "luz", nombre: "fracción de la luz", unidad: "", valor: 1 }
+    n_d: { sim: "n", nombre: "factor de idealidad", unidad: "", valor: 1.5 }
+    V_T: { sim: "V_{T}", nombre: "tensión térmica", unidad: V, valor: 0.02585 }
+    V_oc0: { sim: "V_{oc}", nombre: "tensión en circuito abierto a pleno sol", unidad: V, valor: 0.6 }
+    V_w: { sim: "V", nombre: "tensión de trabajo", unidad: V, valor: 0.3 }
+  calculos:
+    P_med: { expr: "D_luz*A_p", sim: "P", nombre: "potencia media", unidad: W }
+    E_dia: { expr: "P_med*86400", sim: "E_{día}", nombre: "energía al día", unidad: J }
+    n_wifi: { expr: "E_dia/E_tx", sim: "n", nombre: "envíos WiFi al día", unidad: "", cifras: 3 }
+    n_lp: { expr: "E_dia/E_lp", sim: "n", nombre: "envíos de bajo consumo al día", unidad: "", cifras: 3 }
+    I_0: { expr: "I_sc0/(exp(V_oc0/(n_d*V_T)) - 1)", sim: "I_{0}", nombre: "corriente de saturación", unidad: A }
+    I_sc: { expr: "I_sc0*luz", sim: "I_{sc}", nombre: "corriente de cortocircuito", unidad: A }
+    V_oc: { expr: "n_d*V_T*ln(I_sc/I_0 + 1)", sim: "V_{oc}", nombre: "tensión en circuito abierto", unidad: V }
+    I_w: { expr: "I_sc - I_0*(exp(V_w/(n_d*V_T)) - 1)", sim: "I", nombre: "corriente de trabajo", unidad: A }
+    P_w: { expr: "V_w*I_w", sim: "P", nombre: "potencia entregada", unidad: W }
+    r_oc: { expr: "V_w/V_oc*100", sim: "V/V_{oc}", nombre: "tensión de trabajo sobre V_oc", unidad: "%" }
+
+tarjetas:
+  - id: explore-fuentes
+    tipo: explorar
+    titulo: "Las fuentes y sus números"
+    texto: "Toque las fuentes: la potencia disponible es minúscula, y el eje va de diez en diez."
+    libro: [92, 134]
+    widget:
+      tipo: figura
+      figura: fig-39.8
+      zonas:
+        - { id: exterior, rotulo: "Primera columna", rect: [35, 42, 37, 36], texto: "Solar exterior: 10 a 15 mW/cm²." }
+        - { id: interior, rotulo: "Segunda columna", rect: [73, 72, 37, 50], texto: "Solar interior: 10 a 100 µW/cm²." }
+        - { id: termica, rotulo: "Tercera columna", rect: [110, 85, 37, 40], texto: "Térmica, con 5 °C de diferencia: 20 a 60 µW/cm²." }
+        - { id: vibracion, rotulo: "Cuarta columna", rect: [150, 85, 37, 40], texto: "Vibración: 10 a 100 µW por centímetro cúbico." }
+        - { id: rf, rotulo: "Quinta columna", rect: [188, 125, 37, 36], texto: "Radiofrecuencia ambiental: 0,1 a 1 µW/cm²." }
+    requiere: { mover: [exterior, interior] }
+
+  - id: dentro-fuera
+    tipo: pregunta
+    titulo: "Junto a la ventana"
+    texto: "Un panel sobra para el sensor a pleno sol. ¿Qué pasa si el sensor se instala dentro?"
+    libro: [93]
+    widget:
+      tipo: figura
+      figura: fig-39.8
+      zonas:
+        - { id: exterior, rotulo: "Primera columna", rect: [35, 42, 37, 36] }
+        - { id: interior, rotulo: "Segunda columna", rect: [73, 72, 37, 50] }
+    opciones:
+      - texto: "Probablemente no basta: dentro hay de cien a mil veces menos"
+        bien: true
+        porque: "Es el error de dimensionado más común: lo que sobra fuera es insuficiente dentro."
+      - texto: "Basta igual, con la mitad de margen"
+        porque: "La diferencia no es de la mitad sino de un factor de cien a mil."
+      - texto: "Basta mejor, porque dentro no hay nubes"
+        porque: "Las nubes cuentan poco frente a la diferencia entre el sol y la luz interior."
+    escalera:
+      - "Compare las dos primeras columnas: el eje es logarítmico."
+    solucion: "Dentro llega de cien a mil veces menos: el panel se queda corto."
+
+  - id: estime-julios
+    tipo: pregunta
+    titulo: "El presupuesto al revés"
+    texto: "Luz interior de 50 µW/cm² sobre un panel de 10 cm². ¿Cuánta energía recoge al día?"
+    libro: [98, 99]
+    widget:
+      tipo: grafica
+      x: { id: ax, min: 0, max: 20, unidad: "cm²", rotulo: "A" }
+      y: { min: 0, max: 100, unidad: J, rotulo: "E_{día}" }
+      curvas:
+        - { expr: "D_luz*ax*86400", color: naranja, rotulo: "energía al día" }
+    estimar:
+      objetivo: "E_dia"
+      unidad: J
+      min: 0
+      max: 100
+      paso: 1
+      inicio: 80
+      tol: 0.05
+      rotulo: "Energía al día"
+    exito: "500 µW medios son 43 julios al día: de ahí sale todo lo demás."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 45 }, texto: "Se ha pasado: son 500 µW durante los segundos de un día." }
+      - { texto: "Se ha quedado corto: multiplique los 500 µW por los segundos de un día." }
+    escalera:
+      - "Primero la potencia: densidad por área."
+    solucion: "50 µW/cm² × 10 cm² = 500 µW; por los segundos de un día, unos 43 J."
+    comprobar:
+      - { P_med: 500e-6, E_dia: 43.2 }
+
+  - id: cuantas-tx
+    tipo: pregunta
+    titulo: "¿Cuántos envíos caben?"
+    texto: "Con esos 43 J al día y 1,5 J por cada transmisión WiFi, ¿cuántas caben?"
+    libro: [100]
+    widget:
+      tipo: grafica
+      x: { id: ex, min: 0.05, max: 2, unidad: J, rotulo: "E_{tx}" }
+      y: { min: 0, max: 900, unidad: "", rotulo: "envíos al día" }
+      curvas:
+        - { expr: "E_dia/ex", color: azul, rotulo: "envíos al día" }
+    opciones:
+      - texto: "Unas 29: poco más de una por hora"
+        bien: true
+        porque: "43 J entre 1,5 J por envío; con una radio de unos 100 mJ serían unas 430."
+      - texto: "Unas 430"
+        porque: "Esas son con una radio de bajo consumo de unos 100 mJ por envío."
+      - texto: "Las que haga falta: el panel se recarga"
+        porque: "El presupuesto es fijo: lo que no cabe en los 43 J del día no se puede hacer."
+    escalera:
+      - "Divida la energía del día entre la de un envío."
+    solucion: "43 J / 1,5 J ≈ 29 envíos al día."
+    comprobar:
+      - { n_wifi: 28.8, n_lp: 432 }
+
+  - id: explore-celula
+    tipo: explorar
+    titulo: "La célula solar"
+    texto: "Una célula es un fotodiodo de gran área. Mueva la tensión de trabajo y mire la potencia que entrega."
+    libro: [95]
+    nota: "Modelo de ejemplo: la corriente de la luz menos la de un diodo."
+    widget:
+      tipo: grafica
+      x: { id: vx, min: 0, max: 0.65, unidad: V, rotulo: "V" }
+      y: { min: 0, max: 0.035, unidad: A, rotulo: "I" }
+      curvas:
+        - { expr: "max(0, I_sc - I_0*(exp(vx/(n_d*V_T)) - 1))", color: azul, rotulo: "corriente" }
+      marcas:
+        - { x: "V_w", y: "max(0, I_w)", rotulo: "{{P_w}}" }
+      lectura: { valor: P_w, rotulo: "Potencia entregada" }
+      datos:
+        - { valor: V_oc, rotulo: "V_{oc} = {{V_oc}}" }
+      mandos:
+        - { valor: V_w, min: 0.05, max: 0.6, paso: 0.01, rotulo: "Tensión de trabajo" }
+    requiere: { mover: [V_w] }
+
+  - id: ajuste-mppt
+    tipo: ajuste
+    titulo: "El punto de máxima potencia"
+    texto: "Haga de MPPT: mueva la tensión de trabajo hasta que la célula entregue la máxima potencia."
+    libro: [95, 105]
+    fijar: { luz: 1 }
+    inicio: { V_w: 0.3 }
+    widget:
+      tipo: grafica
+      x: { id: vx, min: 0, max: 0.65, unidad: V, rotulo: "V" }
+      y: { min: 0, max: 0.016, unidad: W, rotulo: "P" }
+      curvas:
+        - { expr: "max(0, vx*(I_sc - I_0*(exp(vx/(n_d*V_T)) - 1)))", color: naranja, rotulo: "potencia" }
+      marcas:
+        - { x: "V_w", y: "max(0, P_w)", rotulo: "{{P_w}}" }
+      lectura: { valor: P_w, rotulo: "Potencia entregada" }
+      datos:
+        - { valor: r_oc, rotulo: "V/V_{oc}: {{r_oc}}" }
+      mandos:
+        - { valor: V_w, min: 0.05, max: 0.6, paso: 0.01, rotulo: "Tensión de trabajo" }
+    ajuste:
+      valor: P_w
+      min: 0.0136
+      max: 0.014
+      rotulo: "Potencia"
+      escala: { min: 0, max: 0.016 }
+      bajo: "Lejos del codo: busque la tensión donde la potencia deja de subir."
+      alto: "Ya está en el máximo."
+      dentro: "En el codo, hacia el 80 % de V_{oc}. Lejos de él se puede desperdiciar la mitad o más."
+    comprobar:
+      - { con: { V_w: 0.5 }, P_w: 0.01386, r_oc: 83.3, tol: 0.01 }
+      - { con: { V_w: 0.3 }, P_w: 0.009, tol: 0.01 }
+      - { V_oc: 0.6 }
+
+  - id: prediga-poca-luz
+    tipo: predecir
+    titulo: "Con poca luz"
+    texto: "La luz baja a la décima parte. ¿Qué le pasa a la tensión en circuito abierto de la célula?"
+    libro: [95]
+    fijar: { luz: 0.1 }
+    widget:
+      tipo: grafica
+      x: { id: vx, min: 0, max: 0.65, unidad: V, rotulo: "V" }
+      y: { min: 0, max: 0.035, unidad: A, rotulo: "I" }
+      curvas:
+        - { expr: "max(0, I_sc - I_0*(exp(vx/(n_d*V_T)) - 1))", color: azul, rotulo: "corriente" }
+      lectura: { valor: V_oc, rotulo: "V_{oc}" }
+      ocultar: true
+    opciones:
+      - texto: "Baja poco"
+        bien: true
+        porque: "Crece con el logaritmo de la corriente, como la tensión de un diodo: con la décima parte de luz pasa a {{V_oc}}."
+      - texto: "Baja a la décima parte"
+        porque: "Eso le pasa a la corriente de cortocircuito, proporcional a la luz; la tensión sigue al logaritmo."
+      - texto: "No cambia nada"
+        porque: "Baja algo: el logaritmo de la décima parte no es cero."
+    escalera:
+      - "¿Cómo depende la tensión de un diodo de su corriente?"
+    solucion: "Baja poco, de 0,6 V a unos 0,51 V: la corriente, en cambio, cae a la décima parte."
+    comprobar:
+      - { V_oc: 0.511, I_sc: 0.003 }
+
+  - id: empareje-bloques
+    tipo: pregunta
+    titulo: "Los tres bloques"
+    texto: "Empareje cada bloque de un recolector con lo que tiene que hacer."
+    libro: [103, 104, 107]
+    widget:
+      tipo: figura
+      figura: fig-39.9
+      zonas:
+        - { id: ciclos, rotulo: "La gráfica", rect: [30, 0, 415, 170] }
+    emparejar:
+      - ["Transductor", "Convertir luz, calor, vibración o radio"]
+      - ["Convertidor", "Arrancar con microvatios y seguir la máxima potencia"]
+      - ["Almacenamiento", "Absorber la irregularidad de la fuente"]
+    exito: "El convertidor es lo delicado: algunos integrados arrancan con unos 20 mV."
+    pistas:
+      - { texto: "El que sigue el punto de máxima potencia es el que convierte." }
+    escalera:
+      - "Uno capta, otro convierte, otro guarda."
+    solucion: "Transductor, capta; convertidor, arranca y sigue el máximo; almacenamiento, absorbe la irregularidad."
+
+  - id: arranque-frio
+    tipo: pregunta
+    titulo: "El arranque en frío"
+    texto: "El almacenamiento está completamente descargado y el convertidor no arranca sin energía. ¿Qué lo resuelve?"
+    libro: [109, 112]
+    widget:
+      tipo: figura
+      figura: fig-39.8
+      zonas:
+        - { id: arranque, rotulo: "Gráfica de la derecha", rect: [250, 0, 196, 191] }
+    opciones:
+      - texto: "Una batería primaria de respaldo solo para el arranque"
+        bien: true
+        porque: "Es una de las soluciones; otras: un circuito de umbral bajo o un transformador elevador."
+      - texto: "Un panel más grande, sin más"
+        porque: "Sin convertidor funcionando no se acumula nada, por grande que sea el panel."
+      - texto: "Esperar: el convertidor acaba arrancando solo"
+        porque: "Sin un circuito que funcione con muy poca tensión, queda bloqueado sin arrancar."
+    escalera:
+      - "Hace falta algo que funcione antes de que haya energía acumulada."
+    solucion: "Una primaria de respaldo para el arranque (o arranque de umbral bajo, o un elevador de relación alta)."
+
+  - id: ordene-ciclo
+    tipo: pregunta
+    titulo: "Acumular hasta poder"
+    texto: "Ordene el ciclo de un sistema de recolección."
+    libro: [123, 124, 135]
+    widget:
+      tipo: figura
+      figura: fig-39.9
+      zonas:
+        - { id: ciclos, rotulo: "La gráfica", rect: [30, 0, 415, 170] }
+    ordenar:
+      - "El recolector carga un condensador lentamente."
+      - "Al llegar al umbral, se activa el circuito."
+      - "Hace su trabajo y se apaga."
+      - "Vuelve a empezar."
+    exito: "El sistema se autorregula: con más luz, mide más a menudo."
+    pistas:
+      - { texto: "Primero hay que juntar energía." }
+    escalera:
+      - "Nada puede hacerse antes de llegar al umbral."
+    solucion: "Cargar, llegar al umbral, trabajar y apagarse, y otra vez."
+
+  - id: cuando-sentido
+    tipo: pregunta
+    titulo: "¿Recolectar o pila?"
+    texto: "Un sensor accesible al que una pila de litio daría diez años. ¿Recolección de energía?"
+    libro: [126, 127]
+    widget:
+      tipo: figura
+      figura: fig-39.8
+      zonas:
+        - { id: fuentes, rotulo: "Gráfica de la izquierda", rect: [0, 0, 245, 191] }
+    opciones:
+      - texto: "No: la pila es más simple, más barata y más fiable"
+        bien: true
+        porque: "La recolección compite con una pila de larga duración, no con nada."
+      - texto: "Sí: siempre es mejor no cambiar pilas"
+        porque: "Compensa donde cambiar la pila cuesta más que el sensor; aquí el acceso es razonable."
+      - texto: "Sí, si el panel es grande"
+        porque: "El tamaño no cambia la comparación: diez años de pila ganan en sencillez."
+    escalera:
+      - "¿Cuándo cuesta más cambiar la pila que el propio sensor?"
+    solucion: "No: con diez años de pila y buen acceso, la pila gana."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [93, 99, 105, 109]
+    ideas:
+      - { titulo: "Microvatios.", texto: "Dentro llega de cien a mil veces menos que fuera." }
+      - { titulo: "Al revés.", texto: "Se parte de la energía disponible: 43 J al día dan unos 29 envíos WiFi." }
+      - { titulo: "MPPT.", texto: "La célula entrega el máximo en el codo, hacia el 80 % de V_{oc}." }
+      - { titulo: "Arranque en frío.", texto: "Sin energía no arranca el convertidor: hay que preverlo y probarlo." }

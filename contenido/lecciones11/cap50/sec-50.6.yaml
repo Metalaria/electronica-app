@@ -1,0 +1,289 @@
+# Lección 1.2 de la sección 51.6 «El Lazo de Regulación de Tensión» (cap50; etiquetas sec-50.N = impresas 51.N).
+# - El lazo en el esquema «regulador-lineal» vivo con la ganancia del amplificador de error como mando: referencia de
+#   2,5 V y divisor de 110 kΩ y 10 kΩ (los de la sección 51.14, bloque 455: 30 V), entrada de 39,5 V (bloque 279) y
+#   carga de 10 Ω. La ganancia de lazo es T = A·β con β = 1/12, y la salida queda en 30·T/(1 + T): el error 1/(1 + T)
+#   del bloque 458. Las ganancias del mando (120 a 120 000, T de 10 a 10 000) son de ejemplo.
+# - La fórmula del bloque 188 con 1 V de variación en lazo abierto (bloque 189: 1 mV con T = 1 000).
+# Paso práctico: «ajuste» de la compensación de un lazo de segundo orden de ejemplo (amortiguamiento ζ) hasta el
+# sobreimpulso del 9,5 %, el de 60° de margen de fase (criterio del capítulo 30 citado en el bloque 487); el modelo es
+# la respuesta normalizada a un escalón, 1 − e^{−ζt}(cos(ω_d t) + ζ/√(1 − ζ²)·sin(ω_d t)), con ω_d = √(1 − ζ²).
+leccion: cap50/sec-50.6
+
+libro:
+  180: "compara la salida con una referencia y ajusta el elemento de paso para corregir el error"
+  182: "la exactitud de la fuente no puede ser mejor que la suya"
+  183: "El divisor de realimentación, que escala la salida para compararla."
+  184: "El amplificador de error, que amplifica la diferencia."
+  185: "El elemento de paso, un transistor que disipa la diferencia entre entrada y salida"
+  188: '"variación real" = ("variación en lazo abierto")/("1" + A dot.op β)'
+  189: "Con una ganancia de lazo de 1 000, una variación de 1 V en lazo abierto queda en 1 mV."
+  190: "donde la ganancia de lazo es prácticamente uno"
+  192: "más ganancia regula mejor y acerca la inestabilidad"
+  196: "tiene que ser estable con cualquier carga"
+  198: "sustituir su condensador de tántalo por un cerámico moderno de ESR bajísima los hace oscilar"
+  202: "un hueco seguido de sobreoscilación indica margen escaso"
+  206: "Un arranque suave —cargando la referencia lentamente— lo evita."
+  207: "Es el mismo windup del integrador"
+  212: "la única que detecta un margen de fase escaso antes de que el aparato oscile en manos del usuario"
+  213: "Respuesta a un escalón de carga según el margen de fase"
+  "cap50#455": '"110 kΩ"'
+  "cap50#279": "39,5 V"
+  "cap50#487": "60° de margen de fase equivalen a un 9,5 %"
+
+modelo:
+  valores:
+    V_in: { sim: "V_{in}", nombre: "entrada", unidad: V, valor: 39.5 }
+    V_ref: { sim: "V_{ref}", nombre: "referencia", unidad: V, valor: 2.5 }
+    R_1: { sim: "R₁", nombre: "divisor, arriba", unidad: Ω, valor: 110000 }
+    R_2: { sim: "R₂", nombre: "divisor, abajo", unidad: Ω, valor: 10000 }
+    R_L: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 10 }
+    A_0: { sim: "A", nombre: "ganancia del amplificador de error", unidad: "", valor: 12000 }
+    dV_ol: { sim: "ΔV_{abierto}", nombre: "variación en lazo abierto", unidad: V, valor: 1 }
+    T_z: { sim: "T", nombre: "ganancia de lazo de un seguidor con Zener", unidad: "", valor: 1 }
+    zeta: { sim: "ζ", nombre: "amortiguamiento del lazo", unidad: "", valor: 0.2 }
+  calculos:
+    beta: { expr: "R_2/(R_1 + R_2)", sim: "β", nombre: "fracción realimentada", unidad: "", cifras: 3 }
+    T: { expr: "A_0*beta", sim: "A·β", nombre: "ganancia de lazo", unidad: "", cifras: 3 }
+    V_set: { expr: "V_ref/beta", sim: "V_{nom}", nombre: "salida nominal", unidad: V }
+    V_o: { expr: "V_set*T/(1 + T)", sim: "V_{out}", nombre: "tensión de salida", unidad: V }
+    err: { expr: "100/(1 + T)", sim: "error", nombre: "error de la salida", unidad: "%", cifras: 2 }
+    I_o: { expr: "V_o/R_L + V_o/(R_1 + R_2)", sim: "I", nombre: "corriente de salida", unidad: A }
+    dV_cl: { expr: "dV_ol/(1 + T)", sim: "ΔV", nombre: "variación real", unidad: V }
+    dV_z: { expr: "dV_ol/(1 + T_z)", sim: "ΔV", nombre: "variación con el Zener", unidad: V }
+    OS: { expr: "100*exp(-pi*zeta/sqrt(1 - zeta^2))", sim: "sobreimpulso", nombre: "sobreimpulso", unidad: "%", cifras: 2 }
+
+tarjetas:
+  - id: explore-ganancia
+    tipo: explorar
+    titulo: "Un lazo de control"
+    texto: "El amplificador compara la salida escalada con la referencia y gobierna el paso. Suba su ganancia y mire cuánto se acerca la salida a 30 V."
+    libro: [180, 183, 184, "cap50#455", "cap50#279"]
+    widget:
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_in, ref: V_ref, r1: R_1, r2: R_2, carga: R_L, a0: A_0 }
+      lectura: { valor: V_o, rotulo: "V_{out}" }
+      datos:
+        - { valor: T, rotulo: "Ganancia de lazo: {{T}}" }
+        - { valor: err, rotulo: "Error: {{err}}" }
+      corriente: I_o
+      mide: { vout: V_o, iout: I_o }
+      mandos:
+        - { valor: A_0, lista: [120, 1200, 12000, 120000], rotulo: "Ganancia del amplificador de error" }
+    requiere: { mover: [A_0] }
+    comprobar:
+      - { con: { A_0: 12000 }, T: 1000, V_set: 30, beta: 0.0833 }
+
+  - id: formula-lazo
+    tipo: formula
+    titulo: "Lo que corrige el lazo"
+    texto: "Una variación que en lazo abierto sería de 1 V queda dividida por 1 + A·β."
+    libro: [188, 189]
+    fijar: { dV_ol: 1 }
+    ec: 188
+    sustitucion: "{{dV_ol}} / (1 + {{T}}) = {{dV_cl}}"
+    widget:
+      tipo: circuito
+      esquema: regulador-lineal
+      piezas: { entrada: V_in, ref: V_ref, r1: R_1, r2: R_2, carga: R_L, a0: A_0 }
+      lectura: { valor: dV_cl, rotulo: "Variación real" }
+      corriente: I_o
+      mide: { vout: V_o }
+      mandos:
+        - { valor: A_0, lista: [120, 1200, 12000, 120000], rotulo: "Ganancia del amplificador de error" }
+    comprobar:
+      - { con: { A_0: 12000 }, dV_cl: 0.001, tol: 0.002 }
+
+  - id: prediga-zener
+    tipo: predecir
+    titulo: "Un seguidor con Zener"
+    texto: "En un seguidor con Zener la ganancia de lazo es prácticamente uno. ¿Qué queda de 1 V de variación en lazo abierto?"
+    libro: [188, 190]
+    fijar: { dV_ol: 1 }
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 0.5, max: 10000, unidad: "", rotulo: "A·β", escala: log }
+      y: { min: 0.0001, max: 1, unidad: V, rotulo: "ΔV", escala: log }
+      curvas:
+        - { expr: "dV_ol/(1 + tx)", color: naranja, rotulo: "variación real" }
+      lectura: { valor: dV_z, rotulo: "Variación real con el Zener" }
+      ocultar: true
+    opciones:
+      - texto: "La mitad, 0,5 V"
+        bien: true
+        porque: "1/(1 + 1): por eso el amplificador de error de ganancia alta regula mucho mejor."
+      - texto: "1 mV"
+        porque: "Eso es con una ganancia de lazo de 1 000."
+      - texto: "Nada: el Zener la fija"
+        porque: "Con ganancia de lazo uno, el lazo solo corrige la mitad."
+    escalera:
+      - "Ponga A·β = 1 en la fórmula."
+    solucion: "1 V / (1 + 1) = 0,5 V."
+    comprobar:
+      - { dV_z: 0.5 }
+
+  - id: empareje-bloques
+    tipo: pregunta
+    titulo: "Los cuatro bloques"
+    texto: "Empareje cada bloque del lazo con lo que hace."
+    libro: [182, 183, 184, 185]
+    widget:
+      tipo: figura
+      figura: fig-50.9
+      zonas:
+        - { id: bloques, rotulo: "La parte de la derecha", rect: [250, 0, 196, 220] }
+    emparejar:
+      - ["Referencia", "El patrón: fija la exactitud"]
+      - ["Divisor de realimentación", "Escala la salida para compararla"]
+      - ["Amplificador de error", "Amplifica la diferencia"]
+      - ["Elemento de paso", "Disipa la diferencia entre entrada y salida"]
+    exito: "La exactitud no puede ser mejor que la de la referencia."
+    pistas:
+      - { texto: "El que se calienta es el que está en el camino de la potencia." }
+    escalera:
+      - "Uno da el patrón, otro mide, otro compara, otro actúa."
+    solucion: "Referencia, patrón; divisor, escala; amplificador, diferencia; paso, disipa."
+
+  - id: carga-polo
+    tipo: pregunta
+    titulo: "El polo que no se controla"
+    texto: "Los polos del lazo vienen del condensador de salida, del amplificador y de la carga. ¿Cuál es lo más difícil?"
+    libro: [192, 196]
+    widget:
+      tipo: figura
+      figura: fig-50.9
+      zonas:
+        - { id: escalon, rotulo: "La gráfica de la izquierda", rect: [0, 0, 250, 220] }
+    opciones:
+      - texto: "La carga: la fuente no controla lo que le conectan"
+        bien: true
+        porque: "Tiene que ser estable con cualquier carga: capacitiva, inductiva o con escalones."
+      - texto: "El amplificador de error"
+        porque: "Ese se elige; la carga, no."
+      - texto: "El condensador de salida"
+        porque: "Se especifica en el diseño; lo que no se sabe es qué se conectará."
+    escalera:
+      - "¿Qué parte no elige quien diseña la fuente?"
+    solucion: "La carga: la fuente debe ser estable con cualquiera."
+
+  - id: tantalo
+    tipo: pregunta
+    titulo: "Una reparación que oscila"
+    texto: "Al reparar un equipo antiguo se cambia el tántalo de salida de un LDO por un cerámico moderno. ¿Qué puede pasar?"
+    libro: [198]
+    widget:
+      tipo: figura
+      figura: fig-50.9
+      zonas:
+        - { id: escalon, rotulo: "La gráfica de la izquierda", rect: [0, 0, 250, 220] }
+    opciones:
+      - texto: "Que oscile: necesitaba una ESR mínima"
+        bien: true
+        porque: "El condensador y su ESR son una condición de estabilidad, no una recomendación."
+      - texto: "Que regule mejor"
+        porque: "Los LDO antiguos necesitan ESR mínima: con la bajísima del cerámico oscilan."
+      - texto: "Nada: la capacidad es la misma"
+        porque: "La capacidad no basta: la ESR también entra en el lazo."
+    escalera:
+      - "¿Qué parámetro del condensador pedían esos reguladores además de la capacidad?"
+    solucion: "Puede oscilar: esos LDO necesitan una ESR mínima."
+
+  - id: explore-escalon
+    tipo: explorar
+    titulo: "La respuesta al escalón"
+    texto: "Así se recupera un lazo tras un escalón, según su margen de fase. Cambie el amortiguamiento y mire la sobreoscilación."
+    libro: [202, 213]
+    nota: "Modelo de ejemplo: un lazo de segundo orden."
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 0, max: 15, unidad: "", rotulo: "t (normalizado)" }
+      y: { min: 0, max: 1.8, unidad: "", rotulo: "salida (relativa)" }
+      curvas:
+        - { expr: "1 - exp(-zeta*tx)*(cos(sqrt(1 - zeta^2)*tx) + zeta/sqrt(1 - zeta^2)*sin(sqrt(1 - zeta^2)*tx))", color: naranja, rotulo: "recuperación" }
+        - { expr: "1", color: tinta, rotulo: "consigna", discontinua: true }
+      lectura: { valor: OS, rotulo: "Sobreimpulso" }
+      mandos:
+        - { valor: zeta, lista: [0.2, 0.6, 0.9], nombres: ["margen escaso", "unos 60°", "holgado"], rotulo: "Margen de fase" }
+    requiere: { mover: [zeta] }
+
+  - id: ajuste-compensacion
+    tipo: ajuste
+    titulo: "Compense el lazo"
+    texto: "Mueva la compensación hasta el sobreimpulso del 9,5 %, el que corresponde a 60° de margen de fase."
+    libro: ["cap50#487"]
+    inicio: { zeta: 0.2 }
+    widget:
+      tipo: grafica
+      x: { id: tx, min: 0, max: 15, unidad: "", rotulo: "t (normalizado)" }
+      y: { min: 0, max: 1.8, unidad: "", rotulo: "salida (relativa)" }
+      curvas:
+        - { expr: "1 - exp(-zeta*tx)*(cos(sqrt(1 - zeta^2)*tx) + zeta/sqrt(1 - zeta^2)*sin(sqrt(1 - zeta^2)*tx))", color: naranja, rotulo: "recuperación" }
+        - { expr: "1", color: tinta, rotulo: "consigna", discontinua: true }
+      lectura: { valor: OS, rotulo: "Sobreimpulso" }
+      mandos:
+        - { valor: zeta, min: 0.1, max: 0.95, paso: 0.01, rotulo: "Compensación (amortiguamiento)" }
+    ajuste:
+      valor: OS
+      objetivo: 9.5
+      tol: 0.1
+      rotulo: "Sobreimpulso"
+      escala: { min: 0, max: 60 }
+      bajo: "Demasiado amortiguado: margen holgado, pero lento. Quite compensación."
+      alto: "Sobreoscila: margen escaso. Añada compensación."
+      dentro: "Unos 60° de margen: una recuperación rápida con una sobreoscilación pequeña."
+    comprobar:
+      - { con: { zeta: 0.6 }, OS: 9.48, tol: 0.01 }
+
+  - id: arranque
+    tipo: pregunta
+    titulo: "Al encender"
+    texto: "Al encender, el lazo parte de cero y la salida puede pasarse. ¿Qué lo evita?"
+    libro: [206]
+    widget:
+      tipo: figura
+      figura: fig-50.9
+      zonas:
+        - { id: escalon, rotulo: "La gráfica de la izquierda", rect: [0, 0, 250, 220] }
+    opciones:
+      - texto: "Un arranque suave, cargando la referencia lentamente"
+        bien: true
+        porque: "La consigna sube despacio y el lazo la sigue sin pasarse."
+      - texto: "Más ganancia en el amplificador de error"
+        porque: "Más ganancia acerca la inestabilidad: no evita el sobrepaso."
+      - texto: "Un condensador de salida enorme"
+        porque: "Añade un polo y almacena energía; el remedio es una referencia que suba despacio."
+    escalera:
+      - "¿Qué pasa si la consigna aparece de golpe?"
+    solucion: "Un arranque suave: la referencia se carga lentamente."
+
+  - id: windup
+    tipo: pregunta
+    titulo: "Tras una sobrecarga"
+    texto: "Una sobrecarga impide alcanzar la consigna; al desaparecer, la salida tarda en recuperarse. ¿Por qué?"
+    libro: [207]
+    widget:
+      tipo: figura
+      figura: fig-50.9
+      zonas:
+        - { id: bloques, rotulo: "La parte de la derecha", rect: [250, 0, 196, 220] }
+    opciones:
+      - texto: "El amplificador de error se ha saturado: el windup del integrador"
+        bien: true
+        porque: "Salir de la saturación lleva tiempo, como en un integrador con windup."
+      - texto: "Porque el transformador se ha calentado"
+        porque: "No es térmico: es la saturación del amplificador de error."
+      - texto: "Porque la referencia se ha descargado"
+        porque: "La referencia no cambia; el que se satura es el amplificador."
+    escalera:
+      - "¿Qué hace el amplificador cuando no consigue corregir el error?"
+    solucion: "El amplificador de error se satura y tarda en recuperarse (windup)."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [180, 188, 192, 212]
+    ideas:
+      - { titulo: "Un lazo.", texto: "Referencia, divisor, amplificador de error y elemento de paso." }
+      - { titulo: "Ganancia.", texto: "La variación se divide por 1 + A·β: con 1 000, de 1 V a 1 mV." }
+      - { titulo: "Estabilidad.", texto: "Más ganancia acerca la inestabilidad; la carga no se controla." }
+      - { titulo: "El escalón.", texto: "Su recuperación dice el margen de fase: 60° son un 9,5 % de sobreimpulso." }
