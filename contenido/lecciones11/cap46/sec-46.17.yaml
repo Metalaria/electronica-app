@@ -1,0 +1,297 @@
+# Lección 1.2 de la sección 47.17 «Herramientas Adicionales y Resumen» (cap46; etiquetas sec-46.N = impresas 47.N).
+# - λ_total = Σλ_i y MTBF = 1/λ_total (bloque 588) con la tabla del bloque 590: 200 a 1 FIT, 200 FIT, 5,0·10⁶ h = 571
+#   años (8 760 h/año).
+# - El factor de aceleración de Arrhenius (bloque 594) con Ea = 0,7 eV y las constantes de la app (k_B, q_e): 55 → 125 °C,
+#   77,7; 25 → 125 °C, 937; mil horas a 125 °C, unos 9 años a 55 °C (bloque 597).
+# - «Solo el disipador» (bloque 597) en la cadena térmica viva del ejemplo de la sección 10.5 (TO-220, 5 W, 40 °C,
+#   R_jc = 2, pasta 0,5 y disipador de 8 °C/W: 92,5 °C), con la vida relativa a esa unión por Arrhenius. Los otros
+#   disipadores del mando (4, 6 y 10 °C/W) son valores de ejemplo.
+# Paso práctico: «simular» el factor de aceleración de 55 a 125 °C (errores típicos: temperaturas en °C en lugar de
+# kelvin; la regla de ×2 cada 10 °C, 128).
+leccion: cap46/sec-46.17
+
+libro:
+  587: "Para componentes en serie —donde el fallo de cualquiera hace fallar el conjunto— las tasas se suman"
+  588: 'λ_("total") = "Σ" λ_(i)'
+  590: "200 componentes a 1 FIT 200 FIT"
+  591: "en una flota de 571 equipos, cabe esperar un fallo al año"
+  594: '"AF" = op("exp")'
+  595: "con Ea la energía de activación (0,7 eV es un valor típico) y las temperaturas en kelvin"
+  596: "55 °C → 125 °C 77,7"
+  597: "Mil horas a 125 °C equivalen a unos 9 años de uso a 55 °C."
+  598: "Un condensador especificado para 2000 h a 105 °C dura 16 veces más a 65 °C, es decir, unas 32 000 h."
+  600: "condensadores al 50 % de su tensión nominal, resistencias al 50 % de su potencia"
+  "cap10#127": "Con un disipador de 8 °C/W, pasta térmica (0,5) y Rjc de 2, la unión queda a 40 + 5 × 10,5 = 92,5 °C"
+
+modelo:
+  valores:
+    n_c: { sim: "n", nombre: "número de componentes", unidad: "", valor: 200 }
+    F_c: { sim: "λ_{i}", nombre: "tasa de cada componente", unidad: "FIT", valor: 1 }
+    T_u: { sim: "T_{uso}", nombre: "temperatura de uso", unidad: "°C", valor: 55 }
+    T_e: { sim: "T_{ensayo}", nombre: "temperatura de ensayo", unidad: "°C", valor: 125 }
+    E_a: { sim: "E_{a}", nombre: "energía de activación", unidad: eV, valor: 0.7 }
+    t_e: { sim: "t_{ensayo}", nombre: "horas de ensayo", unidad: h, valor: 1000 }
+    P: { sim: "P", nombre: "potencia disipada", unidad: W, valor: 5 }
+    T_a: { sim: "T_{amb}", nombre: "temperatura ambiente", unidad: "°C", valor: 40 }
+    R_jc: { sim: "R_{jc}", nombre: "unión-cápsula", unidad: "°C/W", valor: 2 }
+    R_cs: { sim: "R_{cs}", nombre: "cápsula-disipador", unidad: "°C/W", valor: 0.5 }
+    R_sa: { sim: "R_{sa}", nombre: "disipador-ambiente", unidad: "°C/W", valor: 8 }
+    T_0: { sim: "T_{j0}", nombre: "unión con el disipador de 8 °C/W", unidad: "°C", valor: 92.5 }
+    L_0: { sim: "L_{105}", nombre: "vida especificada a 105 °C", unidad: h, valor: 2000 }
+    T_w: { sim: "T", nombre: "temperatura del electrolítico", unidad: "°C", valor: 65 }
+    h_a: { sim: "t_{año}", nombre: "horas de un año", unidad: h, valor: 8760 }
+  calculos:
+    L_t: { expr: "n_c*F_c", sim: "λ_{total}", nombre: "tasa del sistema", unidad: "FIT", cifras: 3 }
+    M_h: { expr: "1000000000/L_t", sim: "MTBF", nombre: "MTBF en horas", unidad: h, cifras: 2 }
+    M_y: { expr: "M_h/h_a", sim: "MTBF", nombre: "MTBF en años", unidad: "años", cifras: 3 }
+    AF: { expr: "exp(E_a*q_e/k_B*(1/(T_u + 273.15) - 1/(T_e + 273.15)))", sim: "AF", nombre: "factor de aceleración", unidad: "", cifras: 3 }
+    AF_c: { expr: "exp(E_a*q_e/k_B*(1/T_u - 1/T_e))", sim: "AF", nombre: "factor con las temperaturas en °C", unidad: "", cifras: 3 }
+    AF_r: { expr: "2^((T_e - T_u)/10)", sim: "AF", nombre: "factor con la regla de los 10 °C", unidad: "", cifras: 3 }
+    H_e: { expr: "t_e*AF", sim: "t", nombre: "horas de uso equivalentes", unidad: h, cifras: 3 }
+    EK: { expr: "E_a*q_e/k_B", sim: "E_{a}/k", nombre: "energía de activación entre k", unidad: K, cifras: 2 }
+    K_u: { expr: "T_u + 273.15", sim: "T_{uso}", nombre: "uso en kelvin", unidad: K, cifras: 3 }
+    K_e: { expr: "T_e + 273.15", sim: "T_{ensayo}", nombre: "ensayo en kelvin", unidad: K, cifras: 3 }
+    Y_e: { expr: "t_e*AF/h_a", sim: "t", nombre: "años de uso equivalentes", unidad: "años", cifras: 2 }
+    T_j: { expr: "T_a + P*(R_jc + R_cs + R_sa)", sim: "T_{j}", nombre: "temperatura de la unión", unidad: "°C" }
+    T_c: { expr: "T_j - P*R_jc", sim: "T_{c}", nombre: "temperatura de la cápsula", unidad: "°C" }
+    T_s: { expr: "T_c - P*R_cs", sim: "T_{s}", nombre: "temperatura del disipador", unidad: "°C" }
+    V_r: { expr: "exp(E_a*q_e/k_B*(1/(T_j + 273.15) - 1/(T_0 + 273.15)))", sim: "V", nombre: "vida frente al disipador de 8 °C/W", unidad: "", cifras: 2 }
+    L_e: { expr: "L_0*2^((105 - T_w)/10)", sim: "L", nombre: "vida del electrolítico", unidad: h, cifras: 3 }
+
+tarjetas:
+  - id: explore-tasas
+    tipo: explorar
+    titulo: "Las tasas se suman"
+    texto: "En serie, la tasa del sistema es la suma de las de sus componentes. Cambie cuántos son y su tasa."
+    libro: [587, 590]
+    widget:
+      tipo: grafica
+      x: { id: nn, min: 100, max: 2000, unidad: "", rotulo: "componentes", escala: log }
+      y: { min: 10, max: 100000, unidad: "años", rotulo: "MTBF", escala: log }
+      curvas:
+        - { expr: "1000000000/(nn*F_c)/8760", color: azul, rotulo: "MTBF del sistema" }
+      marcas:
+        - { x: "n_c", y: "M_y", rotulo: "{{M_y}}" }
+      lectura: { valor: M_y, rotulo: "MTBF" }
+      datos:
+        - { valor: L_t, rotulo: "Tasa del sistema: {{L_t}}" }
+      mandos:
+        - { valor: n_c, lista: [200, 1000], rotulo: "Componentes" }
+        - { valor: F_c, lista: [0.1, 0.5, 1], rotulo: "Tasa de cada uno" }
+    requiere: { mover: [n_c, F_c] }
+
+  - id: formula-mtbf
+    tipo: formula
+    titulo: "Del FIT al MTBF"
+    texto: "Se suman las tasas, en fallos por cada 10⁹ horas, y el MTBF es su inversa."
+    libro: [587, 588]
+    fijar: { n_c: 200, F_c: 1 }
+    ec: 588
+    sustitucion: "{{n_c}} × {{F_c}} = {{L_t}}; MTBF = {{M_h}} = {{M_y}}"
+    widget:
+      tipo: grafica
+      x: { id: nn, min: 100, max: 2000, unidad: "", rotulo: "componentes", escala: log }
+      y: { min: 10, max: 100000, unidad: "años", rotulo: "MTBF", escala: log }
+      curvas:
+        - { expr: "1000000000/(nn*F_c)/8760", color: azul, rotulo: "MTBF del sistema" }
+      marcas:
+        - { x: "n_c", y: "M_y", rotulo: "{{M_y}}" }
+      lectura: { valor: M_y, rotulo: "MTBF" }
+    comprobar:
+      - { L_t: 200, M_y: 571 }
+
+  - id: prediga-571
+    tipo: predecir
+    titulo: "Un MTBF de 571 años"
+    texto: "Un equipo de 200 componentes a 1 FIT tiene un MTBF de 571 años. ¿Qué significa?"
+    libro: [590, 591]
+    fijar: { n_c: 200, F_c: 1 }
+    widget:
+      tipo: grafica
+      x: { id: nn, min: 100, max: 2000, unidad: "", rotulo: "componentes", escala: log }
+      y: { min: 10, max: 100000, unidad: "años", rotulo: "MTBF", escala: log }
+      curvas:
+        - { expr: "1000000000/(nn*F_c)/8760", color: azul, rotulo: "MTBF del sistema" }
+      marcas:
+        - { x: "n_c", y: "M_y", rotulo: "{{M_y}}" }
+    opciones:
+      - texto: "En una flota de 571 equipos, cabe esperar un fallo al año"
+        bien: true
+        porque: "Es una tasa, no una vida útil: la vida la fijan los componentes que se desgastan."
+      - texto: "Que el equipo durará 571 años"
+        porque: "Es el error más común: el MTBF no es una vida útil."
+      - texto: "Que ninguno fallará en 571 años"
+        porque: "Cualquier unidad puede fallar; el MTBF describe la tasa de una población."
+    escalera:
+      - "¿Habla el MTBF de un equipo o de una flota?"
+    solucion: "Una tasa: en una flota de 571 equipos, un fallo al año."
+    comprobar:
+      - { M_y: 571 }
+
+  - id: explore-aceleracion
+    tipo: explorar
+    titulo: "Ensayar en semanas"
+    texto: "Las temperaturas, en kelvin. Mueva la de uso y mire cuánto acelera un ensayo a 125 °C."
+    libro: [594, 595, 596]
+    fijar: { T_e: 125 }
+    widget:
+      tipo: grafica
+      x: { id: te, min: 60, max: 150, unidad: "°C", rotulo: "T_{ensayo}" }
+      y: { min: 1, max: 10000, unidad: "", rotulo: "AF", escala: log }
+      curvas:
+        - { expr: "exp(E_a*q_e/k_B*(1/(T_u + 273.15) - 1/(te + 273.15)))", color: naranja, rotulo: "Arrhenius, 0,7 eV" }
+      marcas:
+        - { x: "T_e", y: "AF", rotulo: "{{AF}}" }
+      lectura: { valor: AF, rotulo: "Factor de aceleración a 125 °C" }
+      mandos:
+        - { valor: T_u, lista: [25, 55], rotulo: "Temperatura de uso" }
+    requiere: { mover: [T_u] }
+
+  - id: simule-af
+    tipo: simular
+    titulo: "De 55 a 125 °C"
+    texto: "Con Ea = 0,7 eV, ¿qué factor de aceleración tiene un ensayo a 125 °C para un uso a 55 °C?"
+    libro: [594, 595, 596]
+    fijar: { T_u: 55, T_e: 125, E_a: 0.7 }
+    simular:
+      objetivo: AF
+      unidad: ""
+      tol: 0.05
+      rotulo: "Factor de aceleración"
+      errores:
+        - { expr: "AF_c", texto: "Ha usado grados Celsius: la ley va con las temperaturas en kelvin." }
+        - { expr: "AF_r", texto: "Eso es la regla de duplicar cada 10 °C; con 0,7 eV la ley da algo menos a estas temperaturas." }
+    exito: "Unas 77,7 veces: mil horas de ensayo son años de uso."
+    escalera:
+      - "Pase las dos temperaturas a kelvin antes de restar sus inversas."
+      - "E_{a}/k con 0,7 eV son unos 8 100 K."
+    solucion: "AF = 77,7 con 328 y 398 K."
+    comprobar:
+      - { AF: 77.7, AF_r: 128, EK: 8100, K_u: 328, K_e: 398 }
+
+  - id: estime-anos
+    tipo: pregunta
+    titulo: "Mil horas a 125 °C"
+    texto: "Con un factor de 77,7, ¿a cuántos años de uso a 55 °C equivalen mil horas de ensayo a 125 °C?"
+    libro: [596, 597]
+    fijar: { T_u: 55, T_e: 125, t_e: 1000, h_a: 8760 }
+    estimar:
+      objetivo: "Y_e"
+      unidad: "años"
+      min: 0
+      max: 30
+      paso: 0.1
+      inicio: 20
+      tol: 0.05
+      rotulo: "Años de uso"
+    exito: "Unos 9 años: el ensayo reproduce en semanas lo que ocurriría en años."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 9.4 }, texto: "Demasiado: 77 700 horas entre las 8 760 de un año." }
+      - { texto: "Demasiado poco: mil horas por 77,7, y luego a años de 8 760 horas." }
+    escalera:
+      - "Multiplique las horas de ensayo por el factor."
+      - "Divida entre las 8 760 horas de un año."
+    solucion: "1 000 × 77,7 = 77 700 h, unos 9 años."
+    comprobar:
+      - { Y_e: 8.87, AF: 77.7, H_e: 77700 }
+
+  - id: explore-disipador
+    tipo: explorar
+    titulo: "Solo el disipador"
+    texto: "El TO-220 de la sección 10.5: 5 W, 40 °C y 92,5 °C con 8 °C/W. Cambie el disipador y mire la vida."
+    libro: [597, "cap10#127"]
+    fijar: { P: 5, T_a: 40, R_jc: 2, R_cs: 0.5, T_0: 92.5, E_a: 0.7 }
+    widget:
+      tipo: circuito
+      esquema: termica
+      piezas: { p: P, ta: T_a, rjc: R_jc, rcs: R_cs, rsa: R_sa }
+      lectura: { valor: T_j, rotulo: "Unión" }
+      datos:
+        - { valor: V_r, rotulo: "Vida frente a 8 °C/W: ×{{V_r}}" }
+      corriente: P
+      mide: { tj: T_j, tc: T_c, ts: T_s, flujo: P }
+      mandos:
+        - { valor: R_sa, lista: [4, 6, 8, 10], rotulo: "Disipador, R_{sa}" }
+    requiere: { mover: [R_sa] }
+
+  - id: porque-rentable
+    tipo: porque
+    titulo: "La medida más rentable"
+    texto: "Con un disipador de 4 °C/W, la misma pieza vive bastante más. ¿Por qué bajar la temperatura es la medida de fiabilidad más rentable?"
+    libro: [597, "cap10#127"]
+    fijar: { P: 5, T_a: 40, R_jc: 2, R_cs: 0.5, R_sa: 4, T_0: 92.5, E_a: 0.7 }
+    widget:
+      tipo: circuito
+      esquema: termica
+      piezas: { p: P, ta: T_a, rjc: R_jc, rcs: R_cs, rsa: R_sa }
+      lectura: { valor: T_j, rotulo: "Unión" }
+      datos:
+        - { valor: V_r, rotulo: "Vida frente a 8 °C/W: ×{{V_r}}" }
+      mide: { tj: T_j, flujo: P }
+      mandos: []
+    opciones:
+      - texto: "No hace falta cambiar ningún componente, solo el disipador"
+        bien: true
+        porque: "Y alarga la vida de todos los componentes a la vez, por Arrhenius."
+      - texto: "Porque los disipadores son gratis"
+        porque: "No lo son; pero no exigen cambiar ninguna pieza del circuito."
+      - texto: "Porque el calor no afecta a los componentes buenos"
+        porque: "Afecta a todos: la degradación química sigue a Arrhenius en cualquier componente."
+    escalera:
+      - "¿Qué hay que cambiar en el circuito para bajar la temperatura?"
+    solucion: "No exige cambiar ningún componente: solo el disipador."
+
+  - id: pregunta-electrolitico
+    tipo: pregunta
+    titulo: "La regla del electrolítico"
+    texto: "Un electrolítico de 2000 h a 105 °C trabaja a 65 °C. Con la vida doblando cada 10 °C, ¿cuánto dura?"
+    libro: [598]
+    fijar: { L_0: 2000, T_w: 65 }
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 45, max: 105, unidad: "°C", rotulo: "T" }
+      y: { min: 1000, max: 200000, unidad: h, rotulo: "vida", escala: log }
+      curvas:
+        - { expr: "L_0*2^((105 - tt)/10)", color: naranja, rotulo: "×2 cada 10 °C menos" }
+      lectura: { valor: L_e, rotulo: "Vida a 65 °C" }
+      ocultar: true
+    opciones:
+      - texto: "Unas 32 000 h: 16 veces más"
+        bien: true
+        porque: "40 °C son cuatro saltos de 10 °C: 2 × 2 × 2 × 2 = 16."
+      - texto: "Unas 8 000 h: cuatro veces más"
+        porque: "Cuatro es el número de saltos; cada uno duplica, así que el factor es 16."
+      - texto: "Las mismas 2000 h"
+        porque: "Esas horas son a 105 °C; a 65 °C dura mucho más."
+    escalera:
+      - "¿Cuántos saltos de 10 °C hay de 105 a 65 °C?"
+    solucion: "Cuatro saltos: ×16, unas 32 000 h."
+    comprobar:
+      - { L_e: 32000 }
+      - { con: { T_w: 85 }, L_e: 8000 }
+
+  - id: empareje-derating
+    tipo: pregunta
+    titulo: "El derating, en cifras"
+    texto: "Empareje cada componente con su margen recomendado."
+    libro: [600]
+    emparejar:
+      - ["Condensadores", "Al 50 % de su tensión nominal"]
+      - ["Resistencias", "Al 50 % de su potencia"]
+      - ["Semiconductores", "Unión 40 °C por debajo del máximo"]
+    exito: "Cada margen se traduce, vía Arrhenius, en un multiplicador de vida que se puede calcular."
+    pistas:
+      - { texto: "Para los semiconductores el margen es de temperatura, no un porcentaje." }
+    escalera:
+      - "Una resistencia se limita por lo que disipa."
+    solucion: "Condensadores, 50 % de tensión; resistencias, 50 % de potencia; semiconductores, 40 °C por debajo."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [588, 591, 596, 598]
+    ideas:
+      - { titulo: "Tasas en FIT.", texto: "En serie se suman; el MTBF es su inversa y es una tasa." }
+      - { titulo: "Arrhenius.", texto: "AF de 77,7 de 55 a 125 °C, con las temperaturas en kelvin." }
+      - { titulo: "Solo el disipador.", texto: "Bajar la temperatura alarga la vida sin cambiar ningún componente." }
+      - { titulo: "Electrolíticos.", texto: "La vida se duplica cada 10 °C menos: 2000 h a 105 °C, 32 000 h a 65 °C." }
