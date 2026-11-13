@@ -1,0 +1,231 @@
+# Lección 1.2 de la sección 10.10 «Resumen del Capítulo» (cap10). Formato: contenido/lecciones11/GUIA.md.
+# - «La medida que enseña el capítulo» (bloques 242–244): el pico de desconexión de una carga inductiva, con y sin
+#   diodo de rueda libre, en el esquema «mosfet» con carga inductiva (los valores de la tarjeta probada del catálogo:
+#   12 V, devanado de 10 Ω y 1 mH, puerta de 5 V a 1 kHz, BV = 60 V, V_F = 0,7 V). El libro lo mide con un relé; la
+#   ficha 8 del cuaderno, con un MOSFET de nivel lógico: es la que enlaza el «banco».
+# - V_DS de la zona óhmica con las fórmulas sin condicionales de GUIA §5.4 bis (valen también con la puerta a 0 V,
+#   la avería del driver).
+# Pasos prácticos: «averia» del montaje (diodo abierto, devanado abierto o puerta sin señal; tres sondas, una con el
+#   drenador en el osciloscopio) y el «banco» opcional de la ficha 8.
+leccion: cap10/sec-10.10
+
+libro:
+  228: "Los tiristores conducen hasta que la corriente cae, no hasta que se retira el disparo."
+  229: "Y su energía se especifica en julios, no en voltios."
+  230: "varistor para la energía, TVS para la velocidad, y el filtro para lo que queda"
+  231: "Un snubber no elimina el transitorio: lo reparte en el tiempo"
+  233: "un varistor degradado puede quedar conductor"
+  235: "Cada protección tiene que ser más rápida que el daño que evita, y más lenta que el funcionamiento normal."
+  236: "una protección demasiado sensible dispara con transitorios normales, y una demasiado lenta no llega a tiempo"
+  238: "Olvidar el diodo de rueda libre en una carga inductiva"
+  240: "Tolera irrupción; tarda en actuar"
+  243: "al abrir el circuito aparece un pico de decenas o cientos de voltios sobre una alimentación de 12 V"
+  244: "Y añadiendo el diodo de rueda libre, desaparece."
+  245: "El pico de una carga inductiva con y sin diodo"
+
+modelo:
+  valores:
+    VDD_i: { sim: "V_{DD}", nombre: "alimentación", unidad: V, valor: 12 }
+    R_i: { sim: "R", nombre: "resistencia del devanado", unidad: Ω, valor: 10 }
+    L_i: { sim: "L", nombre: "inductancia de la carga", unidad: H, valor: 0.001 }
+    Vg_i: { sim: "V_{G}", nombre: "nivel alto de la puerta", unidad: V, valor: 5 }
+    k_i: { sim: "k", nombre: "parámetro de transconductancia", unidad: "A/V²", valor: 20 }
+    Vth_i: { sim: "V_{th}", nombre: "tensión umbral", unidad: V, valor: 1.5 }
+    f_i: { sim: "f", nombre: "frecuencia de la puerta", unidad: Hz, valor: 1000 }
+    BV_i: { sim: "BV", nombre: "tensión de avalancha", unidad: V, valor: 60 }
+    Vf_i: { sim: "V_{F}", nombre: "caída del diodo de rueda libre", unidad: V, valor: 0.7 }
+    rueda_i: { tipo: interruptor, nombre: "diodo de rueda libre conectado", valor: 1 }
+  calculos:
+    Vov_i: { expr: "max(0, Vg_i - Vth_i)", sim: "V_{ov}", nombre: "sobretensión de puerta", unidad: V }
+    b_i: { expr: "k_i*Vov_i + 1/R_i", sim: "b", nombre: "coeficiente", unidad: "" }
+    Vtri_i: { expr: "(b_i - sqrt(max(0, b_i^2 - 2*k_i*VDD_i/R_i)))/k_i", sim: "V_{tri}", nombre: "V_DS en zona óhmica", unidad: V }
+    Vsat_i: { expr: "VDD_i - R_i*k_i*Vov_i^2/2", sim: "V_{sat}", nombre: "V_DS en saturación", unidad: V }
+    Von_i: { expr: "max(Vsat_i, min(Vov_i, Vtri_i))", sim: "V_{DS(on)}", nombre: "drenador con la puerta alta", unidad: V }
+    I0_i: { expr: "(VDD_i - Von_i)/R_i", sim: "I_{0}", nombre: "corriente de la bobina al apagar", unidad: A }
+    to_i: { expr: "1/(2*f_i)", sim: "t_{off}", nombre: "instante del apagado", unidad: s }
+    Vx_i: { expr: "rueda_i*Vf_i + (1 - rueda_i)*(BV_i - VDD_i)", sim: "V_{ext}", nombre: "tensión de extinción", unidad: V }
+    Vpk_i: { expr: "VDD_i + Vx_i*ceil(max(0, I0_i - 0.001)/1e9)", sim: "V_{pico}", nombre: "pico del drenador al apagar", unidad: V }
+    Vban_i: { expr: "VDD_i + Vf_i", sim: "V_{pico}", nombre: "drenador al apagar, con diodo", unidad: V }
+
+tarjetas:
+  - id: explore-pico
+    tipo: explorar
+    titulo: "La medida del capítulo"
+    texto: "Apague la carga inductiva sin diodo y luego con él. Dos capturas explican el capítulo entero."
+    libro: [243, 244, 245]
+    widget:
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: VDD_i, rd: R_i, l: L_i, entrada: Vg_i, k: k_i, vth: Vth_i, f: f_i, bv: BV_i, vf: Vf_i, rueda: rueda_i }
+      lectura: { valor: Vpk_i, rotulo: "Pico del drenador" }
+      grafica:
+        x: { id: t, min: 0, max: 0.00095, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 70, unidad: V, rotulo: "v_{D}" }
+        curvas:
+          - { expr: "Von_i*(1 - ceil((t - to_i)/1e9)) + ceil((t - to_i)/1e9)*(VDD_i + Vx_i*ceil(max(0, (I0_i + Vx_i/R_i)*exp(-max(0, t - to_i)*R_i/L_i) - Vx_i/R_i)/1e9))", color: naranja, rotulo: "v_{D}", mide: drenador }
+      mandos:
+        - { valor: rueda_i, tipo: interruptor, rotulo: "Diodo de rueda libre" }
+    requiere: { mover: [rueda_i] }
+
+  - id: prediga-diodo
+    tipo: predecir
+    titulo: "Con el diodo"
+    texto: "Sin diodo, el drenador salta muy por encima de la alimentación. ¿Qué hace el diodo de rueda libre?"
+    libro: [238, 244]
+    fijar: { rueda_i: 1 }
+    widget:
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: VDD_i, rd: R_i, l: L_i, entrada: Vg_i, k: k_i, vth: Vth_i, f: f_i, bv: BV_i, vf: Vf_i, rueda: rueda_i }
+      lectura: { valor: Vpk_i, rotulo: "Pico del drenador" }
+      ocultar: true
+      grafica:
+        x: { id: t, min: 0, max: 0.0004, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 70, unidad: V, rotulo: "v_{D}" }
+        curvas:
+          - { expr: "Von_i*(1 - ceil((t - to_i)/1e9)) + ceil((t - to_i)/1e9)*(VDD_i + Vx_i*ceil(max(0, (I0_i + Vx_i/R_i)*exp(-max(0, t - to_i)*R_i/L_i) - Vx_i/R_i)/1e9))", color: naranja, rotulo: "v_{D}", mide: drenador }
+    opciones:
+      - texto: "Da camino a la corriente de la bobina: el pico desaparece"
+        bien: true
+        porque: "La corriente se extingue por el diodo y el drenador se queda en la alimentación más una caída de diodo."
+      - texto: "Reduce el pico a la mitad"
+        porque: "No lo reparte: lo elimina, porque la corriente ya tiene por dónde seguir."
+      - texto: "Nada: el pico lo fija el transistor"
+        porque: "Sin diodo lo fija la avalancha del transistor, que sufre; con diodo, ya no hay pico."
+    escalera:
+      - "La bobina no deja que su corriente se corte de golpe: ¿por dónde puede seguir?"
+    solucion: "El pico desaparece: la corriente sigue por el diodo."
+
+  - id: por-que-dificil
+    tipo: porque
+    titulo: "El principio del capítulo"
+    texto: "Cada protección tiene que ser más rápida que el daño que evita. ¿Por qué eso no basta para diseñarla?"
+    libro: [235, 236]
+    widget:
+      tipo: figura
+      figura: fig-10.16
+      zonas:
+        - { id: grafica, rotulo: "La figura", rect: [0, 0, 450, 220] }
+    opciones:
+      - texto: "También debe ser más lenta que el funcionamiento normal, o dispara con transitorios normales"
+        bien: true
+        porque: "Esa doble condición es lo que hace difícil su diseño."
+      - texto: "Porque la más rápida es siempre la más cara"
+        porque: "El libro no habla de coste: habla de dispararse sin motivo."
+      - texto: "Porque una protección rápida se degrada"
+        porque: "Se degrada el varistor, pero la razón general es la doble condición."
+    escalera:
+      - "¿Qué pasa con una protección demasiado sensible?"
+    solucion: "Debe ser más rápida que el daño y más lenta que el funcionamiento normal."
+
+  - id: numeros
+    tipo: pregunta
+    titulo: "Los números de referencia"
+    texto: "Empareje cada elemento con su dato clave."
+    libro: [229, 230, 240]
+    widget:
+      tipo: figura
+      figura: fig-10.16
+      zonas:
+        - { id: grafica, rotulo: "La figura", rect: [0, 0, 450, 220] }
+    emparejar:
+      - ["Varistor", "Energía en J; se degrada con cada disparo"]
+      - ["TVS", "Responde en picosegundos"]
+      - ["Fusible lento", "Tolera irrupción; tarda en actuar"]
+      - ["NTC de irrupción", "Trabaja caliente: no protege en rearranques"]
+    exito: "Y la energía de una sobretensión se especifica en julios, no en voltios."
+    pistas:
+      - { texto: "El varistor es el de la energía." }
+    escalera:
+      - "Empiece por el que responde en picosegundos."
+    solucion: "Varistor: julios. TVS: picosegundos. Fusible lento: irrupción. NTC: rearranques."
+
+  - id: modos-fallo
+    tipo: pregunta
+    titulo: "Cada protección falla a su manera"
+    texto: "¿Qué modo de fallo es el de un varistor degradado?"
+    libro: [233]
+    widget:
+      tipo: figura
+      figura: fig-10.16
+      zonas:
+        - { id: grafica, rotulo: "La figura", rect: [0, 0, 450, 220] }
+    opciones:
+      - texto: "Puede quedar conductor"
+        bien: true
+        porque: "Su umbral baja con cada actuación: acaba conduciendo, se calienta y puede arder."
+      - texto: "Se abre y deja la entrada sin protección, sin más"
+        porque: "El libro advierte de lo contrario: queda conductor."
+      - texto: "Necesita alimentación para funcionar"
+        porque: "Ese es el modo de fallo del eFuse."
+    escalera:
+      - "¿Qué le pasa a su tensión de umbral con cada evento?"
+    solucion: "Puede quedar conductor."
+
+  - id: averia-pico
+    tipo: averia
+    titulo: "El montaje que falla"
+    texto: "Este interruptor de una carga inductiva no se comporta como debe. Mida y diga qué pieza falla."
+    libro: [238, 243]
+    widget:
+      tipo: circuito
+      esquema: mosfet
+      piezas: { vdd: VDD_i, rd: R_i, l: L_i, entrada: Vg_i, k: k_i, vth: Vth_i, f: f_i, bv: BV_i, vf: Vf_i, rueda: rueda_i }
+      grafica:
+        x: { id: t, min: 0, max: 0.00095, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 70, unidad: V, rotulo: "v_{D}" }
+        curvas:
+          - { expr: "Von_i*(1 - ceil((t - to_i)/1e9)) + ceil((t - to_i)/1e9)*(VDD_i + Vx_i*ceil(max(0, (I0_i + Vx_i/R_i)*exp(-max(0, t - to_i)*R_i/L_i) - Vx_i/R_i)/1e9))", color: naranja, rotulo: "v_{D}", mide: drenador }
+      mandos: []
+    averia:
+      pasos: 3
+      sospechosos:
+        - { id: diodo, rotulo: "Diodo de rueda libre" }
+        - { id: carga, rotulo: "La carga (bobina)" }
+        - { id: driver, rotulo: "El driver de puerta" }
+      sondas:
+        - { id: corriente, rotulo: "Corriente de la carga", valor: I0_i }
+        - { id: conduciendo, rotulo: "Drenador, puerta alta", valor: Von_i }
+        - id: pico
+          rotulo: "Drenador al apagar"
+          valor: Vpk_i
+          curva:
+            expr: "Von_i*(1 - ceil((t - to_i)/1e9)) + ceil((t - to_i)/1e9)*(VDD_i + Vx_i*ceil(max(0, (I0_i + Vx_i/R_i)*exp(-max(0, t - to_i)*R_i/L_i) - Vx_i/R_i)/1e9))"
+            x: { id: t, min: 0, max: 0.00095, unidad: s, rotulo: "t" }
+            y: { min: 0, max: 70, unidad: V, rotulo: "v_{D}" }
+      fallos:
+        - { id: diodo-abierto, pieza: diodo, tipo: abierta, con: { rueda_i: 0 }, texto: "Diodo abierto: al apagar, la corriente de la bobina solo puede seguir por la avalancha del transistor, y el drenador salta." }
+        - { id: carga-abierta, pieza: carga, tipo: abierta, con: { R_i: 1e9 }, texto: "Devanado abierto: no circula corriente; con la puerta alta el drenador cae a cero y al apagar no hay pico." }
+        - { id: driver-mudo, pieza: driver, tipo: valor, con: { Vg_i: 0 }, texto: "Puerta sin señal: el transistor no conduce nunca y el drenador se queda en la alimentación." }
+    escalera:
+      - "Empiece por el drenador al apagar: ¿hay pico?"
+      - "Si no lo hay, compare el drenador con la puerta alta y la corriente."
+    solucion: "Sano: corriente de conducción, drenador casi a cero con la puerta alta y, al apagar, la alimentación más una caída de diodo."
+    comprobar:
+      - { Vpk_i: 12.7, I0_i: 1.198, tol: 0.01 }
+
+  - id: banco-pico
+    tipo: banco
+    titulo: "Mídalo en el banco"
+    texto: "Monte un motor pequeño con un MOSFET de nivel lógico y su diodo, y capture el drenador al apagar."
+    libro: [243, 244]
+    banco:
+      piezas: ["Motor de continua pequeño", "MOSFET N de nivel lógico", "Diodo Schottky o ultrarrápido", "Fuente de 12 V", "FNIRSI en disparo único"]
+      medir: "La tensión de drenador al apagar, con el diodo puesto."
+      esperado: Vban_i
+      unidad: V
+      tol: 0.1
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.1 }, texto: "Mucho más que la alimentación: el diodo no está actuando. Compruebe su sentido y que va en paralelo con el motor." }
+        - { texto: "Por debajo de la alimentación: compruebe la masa de la sonda y su atenuación." }
+      ficha: { n: 8, titulo: "Control de un motor de continua con PWM" }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [228, 230, 231, 235]
+    ideas:
+      - { titulo: "Tiristores.", texto: "Conducen hasta que la corriente cae, no hasta que se retira el disparo." }
+      - { titulo: "En cascada.", texto: "Varistor para la energía, TVS para la velocidad, filtro para lo que queda." }
+      - { titulo: "Snubber.", texto: "Reparte el transitorio en el tiempo, a costa de disipar." }
+      - { titulo: "El principio.", texto: "Más rápida que el daño, más lenta que el funcionamiento normal." }

@@ -1,0 +1,265 @@
+# Lección 1.2 de la sección 34.7 «Elegir y Proteger un Motor: la Placa de Características» (cap56; sec-56.7).
+# Formato: contenido/lecciones11/GUIA.md.
+# - La placa del motor de 4 kW (tabla del bloque 121) y lo que sale de ella (bloque 122: 4 488 W absorbidos, 89,1 %,
+#   26,4 N·m, los polos por la síncrona más próxima) en el modelo.
+# - La conexión en estrella o triángulo en el esquema «trifasica» con tres cargas iguales en el papel de los devanados
+#   (con cargas equilibradas la tensión de cada una no depende de su impedancia): 230,9 V en estrella, 400 V en
+#   triángulo, en la red de 400 V.
+# Paso práctico: «simular» (sin circuito) la potencia absorbida; los errores típicos olvidan √3 o usan 3.
+leccion: cap56/sec-56.7
+
+libro:
+  121: "Cada devanado es de 400 V: en la red de 400 V, en triángulo"
+  122: "la potencia absorbida, √3 × 400 × 7,9 × 0,82 = 4 488 W, y el rendimiento, 4 000/4 488 = 89,1 % (la placa redondea); el par nominal, 4 000/(2π × 1 449/60) = 26,4 N·m"
+  124: "su factor de potencia cae a 0,62, porque la corriente magnetizante es la misma con cualquier carga"
+  126: "un relé térmico ajustado a la corriente de placa"
+  127: "El condensador del bus de un variador sigue cargado a más de 500 V minutos después de desconectarlo de la red"
+  128: "hace falta un multímetro con filtro paso bajo"
+  "cap56#58": 'n_("s") = ("120" dot.op f)/(p)'
+  "cap56#59": "3 000 rpm con 2 polos a 50 Hz, 1 500 con 4, 1 000 con 6"
+
+modelo:
+  valores:
+    Vf: { sim: "V_{f}", nombre: "tensión de fase de la red", unidad: V, valor: 230.9 }
+    f_r: { sim: "f", nombre: "frecuencia", unidad: Hz, valor: 50 }
+    R_d: { sim: "Z", nombre: "cada devanado", unidad: Ω, valor: 100 }
+    tri: { tipo: interruptor, nombre: "conexión en triángulo", valor: 0 }
+    P_n: { sim: "P", nombre: "potencia en el eje", unidad: W, valor: 4000 }
+    V_l: { sim: "V_{L}", nombre: "tensión de línea", unidad: V, valor: 400 }
+    I_l: { sim: "I_{L}", nombre: "corriente de línea de placa", unidad: A, valor: 7.9 }
+    cphi: { sim: "cos φ", nombre: "factor de potencia", unidad: "", valor: 0.82 }
+    n_n: { sim: "n", nombre: "velocidad de placa", unidad: rpm, valor: 1449 }
+  calculos:
+    V_dev: { expr: "Vf*(1 + (sqrt(3) - 1)*tri)", sim: "V_{devanado}", nombre: "tensión de cada devanado", unidad: V }
+    I_dev: { expr: "V_dev/R_d", sim: "I", nombre: "corriente de cada devanado", unidad: A }
+    I_lin: { expr: "I_dev*(1 + (sqrt(3) - 1)*tri)", sim: "I_{L}", nombre: "corriente de línea", unidad: A }
+    P_abs: { expr: "sqrt(3)*V_l*I_l*cphi", sim: "P_{abs}", nombre: "potencia absorbida", unidad: W }
+    P_sin3: { expr: "V_l*I_l*cphi", sim: "P", nombre: "sin √3 (error)", unidad: W }
+    P_con3: { expr: "3*V_l*I_l*cphi", sim: "P", nombre: "con 3 (error)", unidad: W }
+    eta: { expr: "100*P_n/P_abs", sim: "η", nombre: "rendimiento", unidad: "%", cifras: 3 }
+    T_n: { expr: "P_n/(2*pi*n_n/60)", sim: "T", nombre: "par nominal", unidad: "N·m" }
+
+tarjetas:
+  - id: explore-conexion
+    tipo: explorar
+    titulo: "400 V Δ / 690 V Y"
+    texto: "Cada devanado de este motor es de 400 V. Pruebe las dos conexiones en la red de 400 V y mire la tensión de cada devanado."
+    libro: [121]
+    widget:
+      tipo: circuito
+      esquema: trifasica
+      piezas: { fuente: Vf, f: f_r, r1: R_d, r2: R_d, r3: R_d, triangulo: tri }
+      lectura: { valor: V_dev, rotulo: "Tensión de cada devanado" }
+      mide: { v1_amp: V_dev, ir1_amp: I_dev, i1_amp: I_lin }
+      mandos:
+        - { valor: tri, tipo: interruptor, rotulo: "Triángulo" }
+    requiere: { mover: [tri] }
+
+  - id: prediga-230
+    tipo: predecir
+    titulo: "Un motor de 230/400 V"
+    texto: "La placa de otro motor dice 230/400 V: cada devanado es de 230 V. ¿Cómo se conecta a la red de 400 V?"
+    libro: [121, 122]
+    fijar: { tri: 0 }
+    widget:
+      tipo: circuito
+      esquema: trifasica
+      piezas: { fuente: Vf, f: f_r, r1: R_d, r2: R_d, r3: R_d, triangulo: tri }
+      lectura: { valor: V_dev, rotulo: "Tensión de cada devanado" }
+      mide: { v1_amp: V_dev, ir1_amp: I_dev }
+      ocultar: true
+    opciones:
+      - texto: "En estrella"
+        bien: true
+        porque: "En estrella cada devanado recibe 230,9 V, los suyos. Y no admite arranque estrella-triángulo."
+      - texto: "En triángulo"
+        porque: "Cada devanado recibiría los 400 V de línea: más de lo que admite."
+      - texto: "Da igual"
+        porque: "En triángulo cada devanado ve √3 veces más tensión que en estrella."
+    escalera:
+      - "¿Qué tensión ve cada devanado en estrella en la red de 400 V?"
+    solucion: "En estrella: 230,9 V por devanado."
+    comprobar:
+      - { V_dev: 230.9 }
+      - { con: { tri: 1 }, V_dev: 400 }
+
+  - id: simule-absorbida
+    tipo: simular
+    titulo: "Lo que toma de la red"
+    texto: "La placa dice 4,0 kW, 400 V Δ, 7,9 A y cos φ 0,82. ¿Qué potencia absorbe de la red a plena carga?"
+    libro: [122]
+    widget:
+      tipo: grafica
+      x: { id: ix, min: 0, max: 10, unidad: A, rotulo: "I_{L}" }
+      y: { min: 0, max: 8000, unidad: W, rotulo: "P" }
+      curvas:
+        - { expr: "P_n", color: tinta, rotulo: "en el eje", discontinua: true }
+      lectura: { valor: P_abs, rotulo: "Potencia absorbida" }
+      ocultar: true
+    simular:
+      objetivo: P_abs
+      unidad: W
+      tol: 0.02
+      rotulo: "Potencia absorbida"
+      errores:
+        - { expr: "P_sin3", texto: "Ha olvidado √3: en trifásica, P = √3·V_{L}·I_{L}·cos φ con las tensiones y corrientes de línea." }
+        - { expr: "P_con3", texto: "Ha multiplicado por 3 con la tensión de línea: el 3 va con la de fase; con la de línea es √3." }
+        - { razon: { min: 0.88, max: 0.9 }, texto: "Esos 4,0 kW son la potencia en el eje, no la eléctrica: la placa da la mecánica." }
+    exito: "4 488 W: el rendimiento es 4 000/4 488 = 89,1 % (la placa redondea a 89,0 %)."
+    escalera:
+      - "P = √3 · V_{L} · I_{L} · cos φ."
+    solucion: "√3 × 400 × 7,9 × 0,82 = 4 488 W."
+    comprobar:
+      - { P_abs: 4488, P_sin3: 2591, P_con3: 7774, eta: 89.1 }
+
+  - id: estime-par
+    tipo: pregunta
+    titulo: "El par nominal"
+    texto: "4,0 kW en el eje a 1 449 rpm. ¿Qué par nominal da?"
+    libro: [122]
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 0, max: 1500, unidad: rpm, rotulo: "n" }
+      y: { min: 0, max: 100, unidad: "N·m", rotulo: "T" }
+      curvas:
+        - { expr: "P_n/(2*pi*max(1, nx)/60)", color: naranja, rotulo: "T = P/ω" }
+    estimar:
+      objetivo: "T_n"
+      unidad: "N·m"
+      min: 0
+      max: 60
+      paso: 0.2
+      inicio: 50
+      tol: 0.02
+      rotulo: "Par nominal"
+    exito: "26,4 N·m. Un motor se elige por el par y la velocidad que pide la carga, no por la potencia a secas."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 27 }, texto: "Se ha pasado: pase las rpm a rad/s antes de dividir." }
+      - { texto: "Se ha quedado corto: ω = 2π × 1 449/60 rad/s." }
+    escalera:
+      - "T = P/ω, con ω en rad/s."
+    solucion: "4 000/(2π × 1 449/60) = 26,4 N·m."
+    comprobar:
+      - { T_n: 26.4 }
+
+  - id: polos
+    tipo: pregunta
+    titulo: "Los polos, por la velocidad"
+    texto: "La placa dice 1 449 min⁻¹ a 50 Hz. ¿Cuántos polos tiene?"
+    libro: [121, 122, "cap56#58", "cap56#59"]
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 0, max: 1500, unidad: rpm, rotulo: "n" }
+      y: { min: 0, max: 100, unidad: "N·m", rotulo: "T" }
+      curvas:
+        - { expr: "P_n/(2*pi*max(1, nx)/60)", color: naranja, rotulo: "T = P/ω" }
+    opciones:
+      - texto: "4: la síncrona más próxima por encima es 1 500 rpm"
+        bien: true
+        porque: "s = 3,4 %: el rotor se queda un poco por debajo de la síncrona."
+      - texto: "2"
+        porque: "Con 2 polos la síncrona es 3 000 rpm: giraría cerca de esa velocidad."
+      - texto: "6"
+        porque: "Con 6 polos la síncrona es 1 000 rpm: no podría girar a 1 449."
+    escalera:
+      - "Busque la síncrona, 120·f/p, justo por encima de 1 449 rpm."
+    solucion: "4 polos: síncrona de 1 500 rpm y s = 3,4 %."
+
+  - id: sobredimensionar
+    tipo: porque
+    titulo: "Por si acaso"
+    texto: "El motor de 4 kW a media carga mantiene el rendimiento. ¿Qué coste tiene sobredimensionarlo «por si acaso»?"
+    libro: [124]
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 0, max: 1500, unidad: rpm, rotulo: "n" }
+      y: { min: 0, max: 100, unidad: "N·m", rotulo: "T" }
+      curvas:
+        - { expr: "P_n/(2*pi*max(1, nx)/60)", color: naranja, rotulo: "T = P/ω" }
+    opciones:
+      - texto: "Su factor de potencia cae: la corriente magnetizante es la misma con cualquier carga"
+        bien: true
+        porque: "A media carga, 0,62; en vacío toma la mitad de la nominal, casi toda reactiva."
+      - texto: "Su rendimiento cae a la mitad"
+        porque: "A media carga mantiene el 89,2 %: el coste es el factor de potencia."
+      - texto: "Ninguno: un motor grande solo cuesta más al comprarlo"
+        porque: "El coste no se ve en la compra: es la reactiva que toma siempre."
+    escalera:
+      - "¿Qué corriente no depende de la carga?"
+    solucion: "El factor de potencia cae: 0,62 a media carga."
+
+  - id: protecciones
+    tipo: pregunta
+    titulo: "Proteger el motor"
+    texto: "Empareje cada amenaza con su protección."
+    libro: [126]
+    widget:
+      tipo: circuito
+      esquema: trifasica
+      piezas: { fuente: Vf, f: f_r, r1: R_d, r2: R_d, r3: R_d, triangulo: tri }
+      mide: { v1_amp: V_dev }
+    emparejar:
+      - ["Cortocircuito", "Fusibles, automático de curva adecuada o guardamotor"]
+      - ["Sobrecarga", "Relé térmico ajustado a la corriente de placa"]
+      - ["Trabajo prolongado despacio con variador", "Sondas PTC en el bobinado"]
+      - ["Fuga a tierra tras un variador", "Diferencial de tipo B"]
+    exito: "Y la falta de fase: el motor sigue girando con mucha más corriente en las otras dos; guardamotores y variadores la detectan."
+    pistas:
+      - { texto: "Detrás de un variador la fuga puede tener componente continua." }
+    escalera:
+      - "¿Qué protección imita el calentamiento del bobinado?"
+    solucion: "Cortocircuito: fusible o guardamotor. Sobrecarga: térmico. Despacio: PTC. Fuga con variador: diferencial tipo B."
+
+  - id: precaucion
+    tipo: pregunta
+    titulo: "Antes de tocar un variador"
+    texto: "Acaba de desconectar de la red un variador. ¿Qué hace antes de tocar nada?"
+    libro: [127]
+    widget:
+      tipo: circuito
+      esquema: trifasica
+      piezas: { fuente: Vf, f: f_r, r1: R_d, r2: R_d, r3: R_d, triangulo: tri }
+      mide: { v1_amp: V_dev }
+    opciones:
+      - texto: "Esperar el tiempo de su placa y comprobar la tensión del bus"
+        bien: true
+        porque: "El condensador del bus sigue a más de 500 V minutos después."
+      - texto: "Nada: desconectado de la red no hay tensión"
+        porque: "El condensador del bus guarda la carga minutos."
+      - texto: "Cortocircuitar el bus con un destornillador"
+        porque: "Es una descarga brutal y peligrosa: se espera y se mide."
+    escalera:
+      - "¿Qué queda cargado dentro de un variador?"
+    solucion: "Esperar lo que indica su placa y medir el bus."
+
+  - id: medir-vfd
+    tipo: pregunta
+    titulo: "Medir la salida de un variador"
+    texto: "¿Con qué se mide la tensión que da un variador a su motor?"
+    libro: [128]
+    widget:
+      tipo: circuito
+      esquema: trifasica
+      piezas: { fuente: Vf, f: f_r, r1: R_d, r2: R_d, r3: R_d, triangulo: tri }
+      mide: { v1_amp: V_dev }
+    opciones:
+      - texto: "Con un multímetro con filtro paso bajo, la posición «VFD»"
+        bien: true
+        porque: "Sin él, el multímetro lee los armónicos de la PWM."
+      - texto: "Con cualquier multímetro en alterna"
+        porque: "Leería los armónicos de la PWM, no la tensión que ve el motor."
+      - texto: "Con el multímetro en continua"
+        porque: "La salida es alterna, de frecuencia variable y troceada por la PWM."
+    escalera:
+      - "¿Qué lleva superpuesta la salida de un variador?"
+    solucion: "Con un multímetro con filtro paso bajo (VFD)."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [121, 122, 124, 126]
+    ideas:
+      - { titulo: "La placa.", texto: "Potencia en el eje, tensiones Δ/Y, corrientes, cos φ, velocidad, clase IE." }
+      - { titulo: "Conexión.", texto: "Cada devanado a su tensión: 400 V Δ en la red de 400 V va en triángulo." }
+      - { titulo: "Elegir.", texto: "Por el par y la velocidad; sobredimensionar hunde el cos φ." }
+      - { titulo: "Proteger.", texto: "Cortocircuito, sobrecarga, falta de fase y personas." }

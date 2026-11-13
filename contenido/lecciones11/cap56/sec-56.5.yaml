@@ -1,0 +1,419 @@
+# Lección 1.2 de la sección 34.5 «La Máquina Síncrona y los Motores de Imanes Permanentes» (cap56; sec-56.5).
+# Formato: contenido/lecciones11/GUIA.md. Incluye lo nuevo de la edición 4.1: el diagrama fasorial, las curvas en V
+# y el acoplamiento de un alternador a la red.
+# - La máquina del libro (230,9 V por fase, E = 250 o 300 V, Xs = 10 Ω) en el modelo, sin condicionales:
+#   a = P·Xs/(3V) = E·sen δ (144,3 V con 10 kW), E·cos δ = √(E² − a²), δ = atan2(a, E·cos δ),
+#   I = √((V − E·cos δ)² + a²)/Xs, Q = 3V·(V − E·cos δ)/Xs. Reproduce 17,3 kW y 110,3 N·m de máximo, δ = 35,3°,
+#   14,7 A, cos φ = 0,983 y 1 858 var con 250 V; 28,8°, 14,8 A y −2 221 var con 300 V; mínimo de la curva en V en
+#   272,3 V y 14,43 A; límite de estabilidad en 144,3 V y 27,2 A (bloques 81, 87, 89).
+# - El acoplamiento (bloques 93–94): la tensión entre los contactos de cada polo, |V_a − V·e^{jΔθ}|, que con la
+#   misma amplitud es 2·V·sen(Δθ/2) (40,3 V con 10°); late con la diferencia de frecuencias.
+# Pasos prácticos: «ajuste» de la excitación al mínimo de la curva en V (cos φ = 1) y un «reto» de sincronización
+# con las tres condiciones que se ajustan (frecuencia algo por encima, tensión entre la de la red y un 5 % más, fase
+# dentro de ±10°; la secuencia de fases se comprueba una vez al montar).
+leccion: cap56/sec-56.5
+
+libro:
+  79: "se engancha al campo giratorio y gira exactamente a ns, sin deslizamiento"
+  80: 'P = ("3" dot.op V dot.op E)/(X_("s")) dot.op op("sen") δ'
+  81: "Con V = 230,9 V por fase, E = 250 V y Xs = 10 Ω, la potencia máxima, con δ = 90°, es 17,3 kW (110,3 N·m a 1 500 rpm); para dar 10 kW trabaja con δ = 35,3°, 14,7 A y cos φ = 0,983"
+  85: "Proyectado sobre los dos ejes da las dos potencias"
+  86: 'Q = ("3" dot.op V dot.op ( V - E dot.op cos δ ))/(X_("s"))'
+  87: "Que E sea mayor que V no basta para que la máquina esté sobreexcitada: lo que decide es E·cos δ frente a V."
+  88: "con E = 250 V (1), subexcitada, la corriente se retrasa 10,5° respecto a la tensión"
+  89: "Su mínimo, con cos φ = 1, está donde E·cos δ = V, en E = √(V² + (P·Xs/3V)²): 272,3 V y 14,43 A para 10 kW"
+  92: "la misma tensión eficaz, con la excitación"
+  93: "con 10° de desfase, 40,3 V en una red de 400 V (230,9 V por fase)"
+  94: "piden un desfase de no más de ±10°, una tensión del alternador entre la de la red y un 5 % más, y una diferencia de frecuencias de no más de 0,067 Hz"
+  95: "subir la excitación aumenta E y la reactiva que entrega, sin cambiar la activa"
+  98: "Como esa tensión es nula con el motor parado, los BLDC sin sensores arrancan en lazo abierto."
+  99: "1 0 1"
+  100: "un motor de 920 KV tiene k = 60/(2π × 920) = 0,01038 V·s/rad (1,087 V por cada 1 000 rpm). Con una batería de 11,1 V giraría en vacío, idealmente, a 10 212 rpm"
+  102: "pierde pasos sin avisar"
+
+modelo:
+  valores:
+    V: { sim: "V", nombre: "tensión de fase de la red", unidad: V, valor: 230.9 }
+    E: { sim: "E", nombre: "fuerza electromotriz (excitación)", unidad: V, valor: 250 }
+    X_s: { sim: "X_{s}", nombre: "reactancia síncrona", unidad: Ω, valor: 10 }
+    P_w: { sim: "P", nombre: "potencia activa", unidad: W, valor: 10000 }
+    f_red: { sim: "f_{red}", nombre: "frecuencia de la red", unidad: Hz, valor: 50 }
+    f_alt: { sim: "f_{alt}", nombre: "frecuencia del alternador", unidad: Hz, valor: 49.9 }
+    V_alt: { sim: "V_{alt}", nombre: "tensión de fase del alternador", unidad: V, valor: 220 }
+    dth: { sim: "Δθ", nombre: "desfase al cerrar", unidad: "°", valor: 20 }
+    KV: { sim: "KV", nombre: "constante del BLDC", unidad: "rpm/V", valor: 920 }
+    V_b: { sim: "V", nombre: "batería", unidad: V, valor: 11.1 }
+  calculos:
+    a_p: { expr: "P_w*X_s/(3*V)", sim: "E·sen δ", nombre: "componente de la potencia activa", unidad: V }
+    E_c: { expr: "sqrt(max(0, E^2 - a_p^2))", sim: "E·cos δ", nombre: "componente de la reactiva", unidad: V }
+    delta: { expr: "atan2(a_p, E_c)*180/pi", sim: "δ", nombre: "ángulo de carga", unidad: "°", cifras: 3 }
+    s_d: { expr: "a_p/E", sim: "sen δ", nombre: "seno del ángulo de carga", unidad: "", cifras: 3 }
+    I_s: { expr: "sqrt((V - E_c)^2 + a_p^2)/X_s", sim: "I", nombre: "corriente de línea", unidad: A }
+    Q_s: { expr: "3*V*(V - E_c)/X_s", sim: "Q", nombre: "potencia reactiva que toma de la red", unidad: var }
+    cphi: { expr: "a_p/sqrt((V - E_c)^2 + a_p^2)", sim: "cos φ", nombre: "factor de potencia", unidad: "", cifras: 3 }
+    P_max: { expr: "3*V*E/X_s", sim: "P_{máx}", nombre: "potencia máxima", unidad: W }
+    T_max: { expr: "P_max/(2*pi*1500/60)", sim: "T_{máx}", nombre: "par máximo a 1 500 rpm", unidad: "N·m", cifras: 4 }
+    E_opt: { expr: "sqrt(V^2 + a_p^2)", sim: "E", nombre: "excitación de cos φ = 1", unidad: V, cifras: 4 }
+    I_lim: { expr: "sqrt(V^2 + a_p^2)/X_s", sim: "I", nombre: "corriente en el límite de estabilidad", unidad: A }
+    df: { expr: "f_alt - f_red", sim: "Δf", nombre: "diferencia de frecuencias", unidad: Hz }
+    dth_a: { expr: "abs(dth)", sim: "|Δθ|", nombre: "desfase al cerrar", unidad: "°" }
+    V_c: { expr: "sqrt(V_alt^2 + V^2 - 2*V_alt*V*cos(dth*pi/180))", sim: "V_{contactos}", nombre: "tensión entre los contactos al cerrar", unidad: V }
+    V_10: { expr: "2*V*sin(10*pi/360)", sim: "V", nombre: "entre contactos con 10°", unidad: V }
+    k_b: { expr: "60/(2*pi*KV)", sim: "k", nombre: "constante del BLDC", unidad: "V·s/rad" }
+    n_b: { expr: "KV*V_b", sim: "n_{0}", nombre: "velocidad en vacío ideal", unidad: rpm, cifras: 5 }
+
+tarjetas:
+  - id: explore-potencia
+    tipo: explorar
+    titulo: "Potencia y ángulo de carga"
+    texto: "Pida más potencia y suba la excitación. El ángulo δ entre E y V crece con la carga; con 90° está el máximo."
+    libro: [79, 80, 81]
+    widget:
+      tipo: grafica
+      x: { id: dx, min: 0, max: 180, unidad: "°", rotulo: "δ" }
+      y: { min: 0, max: 25000, unidad: W, rotulo: "P" }
+      curvas:
+        - { expr: "3*V*E/X_s*sin(dx*pi/180)", color: naranja, rotulo: "P = 3VE/X_{s}·sen δ" }
+      marcas:
+        - { x: "delta", y: "P_w", rotulo: "δ = {{delta}}" }
+      lectura: { valor: delta, rotulo: "Ángulo de carga" }
+      datos:
+        - { valor: P_max, rotulo: "Máximo: {{P_max}}" }
+      mandos:
+        - { valor: P_w, lista: [5000, 10000, 15000], rotulo: "Potencia" }
+        - { valor: E, lista: [250, 300], rotulo: "Excitación, E" }
+    requiere: { mover: [P_w, E] }
+    comprobar:
+      - { con: { E: 250 }, P_max: 17300, T_max: 110.3, tol: 0.003 }
+
+  - id: estime-delta
+    tipo: pregunta
+    titulo: "El ángulo con 10 kW"
+    texto: "V = 230,9 V, E = 250 V y X_{s} = 10 Ω. ¿Con qué ángulo de carga da 10 kW?"
+    libro: [80, 81]
+    fijar: { E: 250, P_w: 10000 }
+    widget:
+      tipo: grafica
+      x: { id: dx, min: 0, max: 180, unidad: "°", rotulo: "δ" }
+      y: { min: 0, max: 25000, unidad: W, rotulo: "P" }
+      curvas:
+        - { expr: "3*V*E/X_s*sin(dx*pi/180)", color: naranja, rotulo: "P" }
+        - { expr: "P_w", color: tinta, rotulo: "10 kW", discontinua: true }
+    estimar:
+      objetivo: "delta"
+      unidad: "°"
+      min: 0
+      max: 90
+      paso: 0.5
+      inicio: 70
+      tol: 0.02
+      rotulo: "Ángulo de carga"
+    exito: "35,3°, con 14,7 A y cos φ = 0,983. Si la carga pidiera más que el máximo, se descolgaría."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 36 }, texto: "Se ha pasado: sen δ = 10 000·10/(3 × 230,9 × 250)." }
+      - { texto: "Se ha quedado corto: sen δ vale algo más de la mitad." }
+    escalera:
+      - "Despeje sen δ = P·X_{s}/(3·V·E)."
+    solucion: "sen δ = 0,577: δ = 35,3°."
+    comprobar:
+      - { delta: 35.3, I_s: 14.7, cphi: 0.983, s_d: 0.577, tol: 0.003 }
+
+  - id: prediga-sobre
+    tipo: predecir
+    titulo: "¿E mayor que V es sobreexcitada?"
+    texto: "Con 10 kW y E = 250 V, mayor que los 230,9 V de la red. ¿La máquina entrega reactiva o la toma?"
+    libro: [86, 87]
+    fijar: { E: 250, P_w: 10000 }
+    widget:
+      tipo: figura
+      figura: fig-new-56-sincrona
+      zonas:
+        - { id: fasores, rotulo: "El diagrama fasorial", rect: [0, 20, 230, 160] }
+    opciones:
+      - texto: "La toma: está subexcitada"
+        bien: true
+        porque: "E·cos δ = 204,1 V, menos que V: absorbe 1 858 var y la corriente se retrasa 10,5°."
+      - texto: "La entrega: E es mayor que V"
+        porque: "No basta con que E sea mayor que V: decide E·cos δ frente a V."
+      - texto: "Ni una cosa ni otra: cos φ = 1"
+        porque: "cos φ = 1 pide E·cos δ = V, con unos 272,3 V de excitación."
+    escalera:
+      - "Calcule E·cos δ con δ = 35,3° y compárelo con V."
+    solucion: "La toma: E·cos δ = 204,1 V < 230,9 V."
+    comprobar:
+      - { E_c: 204.1, Q_s: 1858, tol: 0.003 }
+
+  - id: toque-subexcitada
+    tipo: tocar
+    titulo: "En el diagrama fasorial"
+    texto: "Toque la corriente de la máquina subexcitada, la que se retrasa respecto a V."
+    libro: [85, 88]
+    widget:
+      tipo: figura
+      figura: fig-new-56-sincrona
+      zonas:
+        - { id: i1, rotulo: "Flecha corta de abajo", rect: [78, 62, 46, 36] }
+        - { id: i2, rotulo: "Flecha corta de arriba", rect: [78, 26, 46, 36] }
+        - { id: v, rotulo: "Flecha horizontal", rect: [138, 44, 46, 36] }
+    tocar:
+      bien: [i1]
+      porque:
+        i2: "Esa va por delante de V: es la de 300 V, sobreexcitada, que entrega reactiva."
+        v: "Es la tensión de la red, la referencia horizontal."
+    exito: "I₁, con E = 250 V: retrasada 10,5°. La punta de E recorre la recta de potencia constante."
+    escalera:
+      - "Retrasada es por debajo de V, girando en sentido horario."
+    solucion: "I₁, la flecha corta de abajo."
+
+  - id: formula-q
+    tipo: formula
+    titulo: "La reactiva"
+    texto: "La proyección horizontal del diagrama da la reactiva: positiva cuando la máquina la toma de la red."
+    libro: [86, 87]
+    fijar: { P_w: 10000 }
+    ec: 86
+    sustitucion: "3 · {{V}} · ({{V}} − {{E_c}}) / {{X_s}} = {{Q_s}}"
+    widget:
+      tipo: grafica
+      x: { id: ex, min: 140, max: 350, unidad: V, rotulo: "E" }
+      y: { min: -10000, max: 10000, unidad: var, rotulo: "Q" }
+      curvas:
+        - { expr: "3*V*(V - sqrt(max(0, ex^2 - a_p^2)))/X_s", color: naranja, rotulo: "Q" }
+      marcas:
+        - { x: "E", y: "Q_s", rotulo: "{{Q_s}}" }
+      lectura: { valor: Q_s, rotulo: "Reactiva que toma" }
+      mandos:
+        - { valor: E, lista: [250, 300], rotulo: "Excitación, E" }
+    comprobar:
+      - { con: { E: 300 }, delta: 28.8, E_c: 263.0, I_s: 14.8, Q_s: -2221, tol: 0.003 }
+
+  - id: ajuste-v
+    tipo: ajuste
+    titulo: "El fondo de la curva en V"
+    texto: "Con 10 kW, cambie la excitación hasta la menor corriente de línea: ahí cos φ = 1."
+    libro: [89, 95]
+    fijar: { P_w: 10000 }
+    inicio: { E: 200 }
+    widget:
+      tipo: grafica
+      x: { id: ex, min: 140, max: 350, unidad: V, rotulo: "E" }
+      y: { min: 0, max: 30, unidad: A, rotulo: "I" }
+      curvas:
+        - { expr: "sqrt((V - sqrt(max(0, ex^2 - a_p^2)))^2 + a_p^2)/X_s", color: naranja, rotulo: "10 kW" }
+        - { expr: "abs(V - ex)/X_s", color: tinta, rotulo: "0 kW", discontinua: true }
+      marcas:
+        - { x: "E", y: "I_s", rotulo: "{{I_s}}" }
+      lectura: { valor: I_s, rotulo: "Corriente de línea" }
+      datos:
+        - { valor: cphi, rotulo: "cos φ = {{cphi}}" }
+      mandos:
+        - { valor: E, min: 150, max: 350, paso: 2, rotulo: "Excitación, E" }
+    ajuste:
+      valor: I_s
+      objetivo: 14.43
+      tol: 0.005
+      rotulo: "Corriente de línea"
+      escala: { min: 14, max: 20 }
+      bajo: "Por debajo del mínimo no se puede."
+      alto: "Sobra corriente reactiva: mueva la excitación hacia el fondo de la V."
+      dentro: "En el fondo: E = 272,3 V, 14,43 A y cos φ = 1. A la izquierda toma reactiva; a la derecha la entrega."
+    comprobar:
+      - { E_opt: 272.3, con: { E: 272 }, I_s: 14.43, tol: 0.003 }
+
+  - id: limite
+    tipo: pregunta
+    titulo: "Con poca excitación"
+    texto: "Siga bajando la excitación con 10 kW. ¿Qué pasa por debajo de unos 144,3 V?"
+    libro: [89]
+    fijar: { P_w: 10000 }
+    widget:
+      tipo: figura
+      figura: fig-new-56-sincrona
+      zonas:
+        - { id: curvas, rotulo: "Las curvas en V", rect: [240, 0, 212, 199] }
+    opciones:
+      - texto: "Pierde el sincronismo: ahí δ llega a 90°, el límite de estabilidad"
+        bien: true
+        porque: "Con 144,3 V, E·sen δ ya no puede crecer: 27,2 A en el borde."
+      - texto: "Entrega más reactiva"
+        porque: "Al revés: con menos excitación toma cada vez más reactiva, hasta el límite."
+      - texto: "La corriente vuelve a bajar"
+        porque: "Sube hasta 27,2 A en el límite de estabilidad."
+    escalera:
+      - "E·sen δ debe valer 144,3 V. ¿Qué pasa si E vale eso?"
+    solucion: "Llega a δ = 90° y se descuelga."
+    comprobar:
+      - { a_p: 144.3, I_lim: 27.2, tol: 0.003 }
+
+  - id: reto-sincronizar
+    tipo: reto
+    titulo: "Acople el alternador"
+    texto: "Ajuste la velocidad, la excitación y el instante de cierre para acoplar el alternador a la red de 230,9 V por fase."
+    libro: [92, 94]
+    inicio: { f_alt: 49.9, V_alt: 220, dth: 20 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 30, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 500, unidad: V, rotulo: "v_{contactos}" }
+      curvas:
+        - { expr: "sqrt(V_alt^2 + V^2 - 2*V_alt*V*cos((dth + 360*df*t)*pi/180))", color: naranja, rotulo: "entre contactos" }
+      marcas:
+        - { x: "0", y: "V_c", rotulo: "cierre" }
+      lectura: { valor: V_c, rotulo: "Entre contactos al cerrar" }
+      mandos:
+        - { valor: f_alt, lista: [49.9, 49.95, 50, 50.05, 50.1], rotulo: "Frecuencia del alternador" }
+        - { valor: V_alt, lista: [220, 230.9, 240, 250], rotulo: "Tensión del alternador" }
+        - { valor: dth, lista: [-20, -5, 20], rotulo: "Desfase al cerrar" }
+    condiciones:
+      - { valor: df, min: 0.01, max: 0.067, rotulo: "Δf: {{df}}" }
+      - { valor: V_alt, min: 230.9, max: 242.4, rotulo: "Tensión: {{V_alt}}" }
+      - { valor: dth_a, max: 10, rotulo: "Desfase: {{dth_a}}" }
+    exito: "Acoplado: apenas circula corriente al cerrar. Desde ahora la velocidad es la de la red."
+    pistas:
+      - { cuando: { valor: df, mayor: 0.067 }, texto: "La diferencia de frecuencias pasa de 0,067 Hz: el batido va demasiado deprisa." }
+      - { cuando: { valor: df, menor: 0.01 }, texto: "Que vaya un poco más rápido que la red, para que tome carga como generador." }
+      - { cuando: { valor: V_alt, menor: 230.8 }, texto: "Le falta tensión: suba la excitación hasta la de la red." }
+      - { cuando: { valor: V_alt, mayor: 242.5 }, texto: "Pasa de un 5 % sobre la red: baje la excitación." }
+      - { texto: "Fuera de la ventana de ±10°: cierre más cerca de las doce del sincronoscopio." }
+    escalera:
+      - "Las normas piden ±10°, de la tensión de la red a un 5 % más y no más de 0,067 Hz."
+    solucion: "50,05 Hz, 230,9 V y cierre a −5°: un instante antes de las doce, con el alternador algo más rápido."
+    comprobar:
+      - { con: { f_alt: 50.05, V_alt: 230.9, dth: -5 }, df: 0.05, V_c: 20.1, tol: 0.01 }
+
+  - id: estime-contactos
+    tipo: pregunta
+    titulo: "Diez grados de desfase"
+    texto: "Alternador y red con la misma tensión, 230,9 V por fase, y 10° de desfase. ¿Qué tensión queda entre los contactos de cada polo?"
+    libro: [93]
+    fijar: { V_alt: 230.9, dth: 10 }
+    widget:
+      tipo: grafica
+      x: { id: ax, min: 0, max: 180, unidad: "°", rotulo: "Δθ" }
+      y: { min: 0, max: 500, unidad: V, rotulo: "v_{contactos}" }
+      curvas:
+        - { expr: "2*V*sin(ax*pi/360)", color: naranja, rotulo: "2·V·sen(Δθ/2)" }
+    estimar:
+      objetivo: "V_c"
+      unidad: V
+      min: 0
+      max: 200
+      paso: 0.5
+      inicio: 120
+      tol: 0.03
+      rotulo: "Entre contactos"
+    exito: "40,3 V; con 20°, 80,2 V. Si las frecuencias difieren, late entre cero y 461,8 V."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 41.5 }, texto: "Se ha pasado: 2 × 230,9 × sen 5°." }
+      - { texto: "Se ha quedado corto: 2 × 230,9 × sen 5°." }
+    escalera:
+      - "Dos tensiones iguales desfasadas Δθ: 2·V·sen(Δθ/2)."
+    solucion: "2 × 230,9 × sen 5° = 40,3 V."
+    comprobar:
+      - { V_c: 40.3, V_10: 40.3 }
+
+  - id: por-que-rapido
+    tipo: porque
+    titulo: "Un poco más rápido"
+    texto: "Se cierra con la aguja girando despacio hacia «rápido». ¿Por qué con el alternador algo más rápido que la red?"
+    libro: [94, 95]
+    widget:
+      tipo: figura
+      figura: fig-new-56-sincrona
+      zonas:
+        - { id: fasores, rotulo: "El diagrama fasorial", rect: [0, 20, 230, 160] }
+    opciones:
+      - texto: "Para que tome algo de carga como generador, en lugar de tomarla de la red como motor"
+        bien: true
+        porque: "Al engancharse, el rotor adelantado da δ y potencia activa a la red."
+      - texto: "Para que el batido sea más rápido"
+        porque: "Al contrario: se busca un batido lento, para cerrar con calma dentro de la ventana."
+      - texto: "Porque más velocidad sube la tensión"
+        porque: "La tensión se ajusta con la excitación; la velocidad decide quién da potencia."
+    escalera:
+      - "Tras cerrar, ¿quién da potencia si el rotor va adelantado?"
+    solucion: "Para que entregue algo de potencia al acoplarse, y no la tome de la red."
+
+  - id: estime-kv
+    tipo: pregunta
+    titulo: "El KV de un BLDC"
+    texto: "Un BLDC de modelismo de 920 KV con una batería de 11,1 V. ¿A cuánto giraría en vacío, idealmente?"
+    libro: [100]
+    widget:
+      tipo: grafica
+      x: { id: vx, min: 0, max: 15, unidad: V, rotulo: "V" }
+      y: { min: 0, max: 15000, unidad: rpm, rotulo: "n_{0}" }
+      curvas:
+        - { expr: "KV*vx", color: naranja, rotulo: "n₀ = KV·V" }
+    estimar:
+      objetivo: "n_b"
+      unidad: rpm
+      min: 0
+      max: 15000
+      paso: 50
+      inicio: 3000
+      tol: 0.02
+      rotulo: "Velocidad en vacío"
+    exito: "10 212 rpm. Lo que el KV no dice es la resistencia: con 0,1 Ω, 10 A ya le quitan 1 V."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 10420 }, texto: "Se ha pasado: KV por voltios." }
+      - { texto: "Se ha quedado corto: 920 rpm por cada voltio." }
+    escalera:
+      - "KV son rpm por voltio."
+    solucion: "920 × 11,1 = 10 212 rpm."
+    comprobar:
+      - { n_b: 10212, k_b: 0.01038 }
+
+  - id: hall
+    tipo: pregunta
+    titulo: "Seis pasos con sensores Hall"
+    texto: "Empareje cada código de los sensores con las fases que conducen, según la tabla del libro."
+    libro: [98, 99]
+    widget:
+      tipo: grafica
+      x: { id: vx, min: 0, max: 15, unidad: V, rotulo: "V" }
+      y: { min: 0, max: 15000, unidad: rpm, rotulo: "n_{0}" }
+      curvas:
+        - { expr: "KV*vx", color: naranja, rotulo: "n₀ = KV·V" }
+    emparejar:
+      - ["H = 1 0 1", "A al +, B al −; C al aire"]
+      - ["H = 1 0 0", "A al +, C al −; B al aire"]
+      - ["H = 0 1 0", "B al +, A al −; C al aire"]
+    exito: "Cada 60° cambia el código y conmutan dos fases; la tercera queda al aire."
+    pistas:
+      - { texto: "Con 1 0 1 conducen A y B." }
+    escalera:
+      - "La que queda al aire es la que no aparece en el par."
+    solucion: "1 0 1: A+ B−. 1 0 0: A+ C−. 0 1 0: B+ A−."
+
+  - id: paso-a-paso
+    tipo: pregunta
+    titulo: "El paso a paso"
+    texto: "Un motor paso a paso trabaja en lazo abierto. ¿Qué pasa si la carga pide más par del que puede dar?"
+    libro: [102]
+    widget:
+      tipo: figura
+      figura: fig-new-56-sincrona
+      zonas:
+        - { id: fasores, rotulo: "El diagrama fasorial", rect: [0, 20, 230, 160] }
+    opciones:
+      - texto: "Pierde pasos sin avisar, y el controlador cree que está donde no está"
+        bien: true
+        porque: "Sin sensor no hay forma de saberlo: esa es su ventaja y su límite."
+      - texto: "El controlador lo detecta y reintenta"
+        porque: "En lazo abierto no hay sensor que lo detecte."
+      - texto: "Sigue la consigna con más corriente"
+        porque: "Su par está limitado: pasado ese límite pierde pasos."
+    escalera:
+      - "¿Qué mide el controlador de un paso a paso en lazo abierto?"
+    solucion: "Pierde pasos sin avisar."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [80, 87, 89, 94]
+    ideas:
+      - { titulo: "Síncrona.", texto: "P = 3VE/X_{s}·sen δ; con δ = 90°, el máximo." }
+      - { titulo: "Excitación.", texto: "Decide la reactiva: E·cos δ frente a V, no E frente a V." }
+      - { titulo: "Curva en V.", texto: "Mínima corriente con cos φ = 1; a la derecha entrega reactiva." }
+      - { titulo: "Acoplar.", texto: "Misma secuencia, frecuencia, tensión y fase al cerrar." }

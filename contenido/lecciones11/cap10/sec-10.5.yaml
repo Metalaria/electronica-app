@@ -1,0 +1,283 @@
+# Lección 1.2 de la sección 10.5 «Gestión Térmica y Disipadores» (cap10). Formato: contenido/lecciones11/GUIA.md.
+# - La cadena térmica del ejemplo del bloque 127 (TO-220, 5 W, 40 °C, R_jc = 2, pasta 0,5, disipador 8 °C/W:
+#   92,5 °C; sin disipador, 62 °C/W y 350 °C) en una gráfica del modelo; la figura 10.10 (fig-10.9) con zonas en las
+#   tres resistencias.
+# - Ejercicio 10.3 (10 W, 1,5 + 0,3 + 2 °C/W, 35 °C: 73 °C) como «estimar».
+# Paso práctico: «diseno» del disipador para 110 °C de unión en el peor caso (bloque 129) aunque montado tumbado rinda
+# un 30 % peor (bloque 128): R_sa ≤ 11,5 °C/W; 10 °C/W cumple en nominal (102,5 °C) y falla con +30 % (117,5 °C);
+# 8 °C/W cumple en las dos. La lista va de menor a mayor R_sa (el recorrido toma la primera solución nominal).
+leccion: cap10/sec-10.5
+
+libro:
+  121: "típicamente 150 °C para el silicio"
+  123: 'T_("unión") = T_("ambiente") + P dot.op lr(( R_("jc") + R_("cs") + R_("sa") ))'
+  125: "Demasiada pasta, en cambio, es contraproducente: actúa como aislante."
+  127: "Con un disipador de 8 °C/W, pasta térmica (0,5) y Rjc de 2, la unión queda a 40 + 5 × 10,5 = 92,5 °C"
+  128: "un disipador tumbado rinde un 20 o 30 % peor"
+  129: "Diseñar para 100 o 110 °C de unión en el peor caso es la práctica sensata"
+  130: "Olvidar la Rcs de una arandela aislante de mica, de unos 1,5 °C/W aun con pasta"
+  132: "La cadena de resistencias térmicas de un TO-220 con 5 W"
+  133: "La analogía no es una metáfora: las ecuaciones son literalmente las mismas."
+  "cap10#285": "Un transistor de potencia disipa 10 W. Su resistencia térmica unión-cápsula es 1,5 °C/W"
+
+modelo:
+  valores:
+    P: { sim: "P", nombre: "potencia disipada", unidad: W, valor: 5 }
+    T_a: { sim: "T_{amb}", nombre: "temperatura ambiente", unidad: "°C", valor: 40 }
+    R_jc: { sim: "R_{jc}", nombre: "unión-cápsula", unidad: "°C/W", valor: 2 }
+    R_cs: { sim: "R_{cs}", nombre: "cápsula-disipador", unidad: "°C/W", valor: 0.5 }
+    R_sa: { sim: "R_{sa}", nombre: "disipador-ambiente", unidad: "°C/W", valor: 8 }
+    R_ja: { sim: "R_{ja}", nombre: "unión-ambiente sin disipador", unidad: "°C/W", valor: 62 }
+    T_lim: { sim: "T_{j}", nombre: "unión en el peor caso, como mucho", unidad: "°C", valor: 110 }
+  calculos:
+    R_tot: { expr: "R_jc + R_cs + R_sa", sim: "R_{total}", nombre: "resistencia térmica total", unidad: "°C/W" }
+    T_j: { expr: "T_a + P*R_tot", sim: "T_{unión}", nombre: "temperatura de la unión", unidad: "°C" }
+    T_sin: { expr: "T_a + P*R_ja", sim: "T_{unión}", nombre: "unión sin disipador", unidad: "°C" }
+    dT_sin: { expr: "P*R_ja", sim: "ΔT", nombre: "calentamiento sin disipador", unidad: "°C" }
+    dT_tot: { expr: "P*R_tot", sim: "ΔT", nombre: "calentamiento total", unidad: "°C" }
+    dT_jc: { expr: "P*R_jc", sim: "ΔT_{jc}", nombre: "caída en R_jc", unidad: "°C" }
+    dT_cs: { expr: "P*R_cs", sim: "ΔT_{cs}", nombre: "caída en R_cs", unidad: "°C" }
+    dT_sa: { expr: "P*R_sa", sim: "ΔT_{sa}", nombre: "caída en el disipador", unidad: "°C" }
+    R_req: { expr: "(T_lim - T_a)/P - R_jc - R_cs", sim: "R_{sa}", nombre: "disipador necesario", unidad: "°C/W" }
+
+tarjetas:
+  - id: explore-cadena
+    tipo: explorar
+    titulo: "Una cadena en serie"
+    texto: "Cambie la potencia, el disipador y el montaje. Las resistencias térmicas se suman como en serie."
+    libro: [123, 127, 133]
+    widget:
+      tipo: grafica
+      x: { id: p, min: 0, max: 10, unidad: W, rotulo: "P" }
+      y: { min: 0, max: 200, unidad: "°C", rotulo: "T_{unión}" }
+      curvas:
+        - { expr: "T_a + p*R_tot", color: naranja, rotulo: "con disipador" }
+        - { expr: "150", color: tinta, rotulo: "límite del silicio", discontinua: true }
+      marcas:
+        - { x: "P", y: "T_j", rotulo: "{{T_j}}" }
+      lectura: { valor: T_j, rotulo: "Unión" }
+      mandos:
+        - { valor: P, min: 1, max: 10, paso: 1, rotulo: "Potencia" }
+        - { valor: R_sa, lista: [2, 5, 8], rotulo: "Disipador, R_{sa}" }
+        - { valor: R_cs, lista: [0.5, 1.5], nombres: ["con pasta", "mica con pasta"], rotulo: "Montaje, R_{cs}" }
+    requiere: { mover: [P, R_sa] }
+
+  - id: formula-cadena
+    tipo: formula
+    titulo: "La temperatura de la unión"
+    texto: "El ambiente más la potencia por la resistencia total: la ley de Ohm térmica."
+    libro: [123, 127]
+    fijar: { P: 5, R_sa: 8, R_cs: 0.5 }
+    ec: 123
+    sustitucion: "{{T_a}} + {{P}} · ({{R_jc}} + {{R_cs}} + {{R_sa}}) = {{T_j}}"
+    widget:
+      tipo: grafica
+      x: { id: p, min: 0, max: 10, unidad: W, rotulo: "P" }
+      y: { min: 0, max: 200, unidad: "°C", rotulo: "T_{unión}" }
+      curvas:
+        - { expr: "T_a + p*R_tot", color: naranja, rotulo: "con disipador" }
+      marcas:
+        - { x: "P", y: "T_j", rotulo: "{{T_j}}" }
+      lectura: { valor: T_j, rotulo: "Unión" }
+    comprobar:
+      - { T_j: 92.5, R_tot: 10.5 }
+
+  - id: prediga-sin
+    tipo: predecir
+    titulo: "Sin disipador"
+    texto: "El mismo TO-220 con 5 W y sin disipador: la unión-ambiente del encapsulado es de unos 62 °C/W. ¿Dónde queda la unión?"
+    libro: [121, 127]
+    fijar: { P: 5 }
+    widget:
+      tipo: grafica
+      x: { id: p, min: 0, max: 1, unidad: W, rotulo: "P" }
+      y: { min: 0, max: 400, unidad: "°C", rotulo: "T_{unión}" }
+      curvas:
+        - { expr: "T_a + p*R_ja", color: azul, rotulo: "sin disipador" }
+      lectura: { valor: T_sin, rotulo: "Unión sin disipador" }
+      ocultar: true
+    opciones:
+      - texto: "A unos 350 °C: destruido"
+        bien: true
+        porque: "40 + 5 × 62 = 350 °C, muy por encima de los 150 °C del silicio."
+      - texto: "A unos 150 °C, justo en el límite"
+        porque: "62 °C/W por 5 W son 310 grados sobre el ambiente: muy por encima."
+      - texto: "Igual que con disipador, porque el encapsulado ya disipa"
+        porque: "Sin disipador la resistencia al ambiente es seis veces mayor."
+    escalera:
+      - "Multiplique la potencia por la resistencia unión-ambiente y sume el ambiente."
+    solucion: "40 + 5 × 62 = 350 °C."
+    comprobar:
+      - { T_sin: 350, dT_sin: 310 }
+
+  - id: toque-caida
+    tipo: tocar
+    titulo: "Dónde cae más"
+    texto: "En la cadena de 5 W, toque la resistencia térmica en la que cae más temperatura."
+    libro: [132]
+    fijar: { P: 5, R_sa: 8, R_cs: 0.5 }
+    widget:
+      tipo: figura
+      figura: fig-10.9
+      zonas:
+        - { id: jc, rotulo: "Primera flecha", rect: [70, 27, 55, 40] }
+        - { id: cs, rotulo: "Segunda flecha", rect: [197, 27, 55, 40] }
+        - { id: sa, rotulo: "Tercera flecha", rect: [325, 27, 55, 40] }
+    tocar:
+      bien: [sa]
+      porque:
+        jc: "R_{jc} cae 10 °C: la fija el fabricante y es pequeña."
+        cs: "La pasta, bien puesta, solo 2,5 °C."
+    exito: "El disipador: 40 °C de los 52,5. Cada término tiene su remedio, y el disipador es el mayor."
+    escalera:
+      - "La caída de cada una es P por su resistencia."
+    solucion: "La del disipador: 5 × 8 = 40 °C."
+    comprobar:
+      - { dT_jc: 10, dT_cs: 2.5, dT_sa: 40, T_j: 92.5, dT_tot: 52.5 }
+
+  - id: estime-10w
+    tipo: pregunta
+    titulo: "Un transistor de 10 W"
+    texto: "Disipa 10 W con R_{jc} = 1,5, pasta 0,3 y disipador 2 °C/W, a 35 °C de ambiente. ¿Temperatura de la unión?"
+    libro: ["cap10#285"]
+    fijar: { P: 10, R_jc: 1.5, R_cs: 0.3, R_sa: 2, T_a: 35 }
+    widget:
+      tipo: grafica
+      x: { id: p, min: 0, max: 10, unidad: W, rotulo: "P" }
+      y: { min: 0, max: 200, unidad: "°C", rotulo: "T_{unión}" }
+      curvas:
+        - { expr: "150", color: tinta, rotulo: "límite", discontinua: true }
+    estimar:
+      objetivo: "T_j"
+      unidad: "°C"
+      min: 0
+      max: 200
+      paso: 1
+      inicio: 150
+      tol: 0.03
+      rotulo: "Unión"
+    exito: "73 °C, holgadamente por debajo de 150 °C."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 75 }, texto: "Se ha pasado: la total es 3,8 °C/W; por 10 W, 38 °C sobre el ambiente." }
+      - { texto: "Se ha quedado corto: sume las tres resistencias antes de multiplicar." }
+    escalera:
+      - "Primero la resistencia total: 1,5 + 0,3 + 2."
+    solucion: "35 + 10 × 3,8 = 73 °C."
+    comprobar:
+      - { T_j: 73, R_tot: 3.8 }
+
+  - id: por-que-pasta
+    tipo: porque
+    titulo: "Ni sin pasta ni con mucha"
+    texto: "La pasta térmica baja la resistencia de contacto a la mitad o a la tercera parte. ¿Por qué empeora si se pone de más?"
+    libro: [125]
+    widget:
+      tipo: figura
+      figura: fig-10.9
+      zonas:
+        - { id: cs, rotulo: "Segunda flecha", rect: [197, 27, 55, 40] }
+    opciones:
+      - texto: "Rellena las irregularidades; una capa gruesa separa las superficies y aísla"
+        bien: true
+        porque: "Sustituye al aire de los huecos; de más, ella misma es la capa que el calor tiene que cruzar."
+      - texto: "Porque la pasta conduce la electricidad"
+        porque: "El problema del libro es térmico: el exceso actúa como aislante del calor."
+      - texto: "Porque el exceso se evapora"
+        porque: "No es eso: una capa gruesa, sin más, aísla."
+    escalera:
+      - "¿Qué rellena la pasta, y qué hace una capa gruesa?"
+    solucion: "Rellena los huecos de aire; en exceso, separa las superficies y aísla."
+
+  - id: disene-disipador
+    tipo: diseno
+    titulo: "Elija el disipador"
+    texto: "5 W, 40 °C, R_{jc} = 2 y pasta 0,5. Unión a 110 °C como mucho, aunque montado tumbado rinda un 30 % peor."
+    libro: [127, 128, 129]
+    fijar: { P: 5, T_a: 40, R_jc: 2, R_cs: 0.5, T_lim: 110 }
+    inicio: { R_sa: 20 }
+    widget:
+      tipo: grafica
+      x: { id: p, min: 0, max: 10, unidad: W, rotulo: "P" }
+      y: { min: 0, max: 200, unidad: "°C", rotulo: "T_{unión}" }
+      curvas:
+        - { expr: "T_a + p*R_tot", color: naranja, rotulo: "con el elegido" }
+        - { expr: "T_lim", color: tinta, rotulo: "criterio", discontinua: true }
+      marcas:
+        - { x: "P", y: "T_j", rotulo: "{{T_j}}" }
+      lectura: { valor: T_j, rotulo: "Unión" }
+      mandos:
+        - { valor: R_sa, lista: [5, 8, 10, 15, 20], rotulo: "Disipador, R_{sa}" }
+    condiciones:
+      - { valor: T_j, max: 110, rotulo: "Unión: {{T_j}}" }
+    diseno:
+      tolerancias: { R_sa: 0.3 }
+      metodo: esquinas
+      exigir: todas
+      si_tolerancias: "En nominal cumple, pero tumbado rinde un 30 % peor y la unión pasa de 110 °C: elija uno con margen."
+    exito: "Con margen: el peor caso es plena carga, ambiente máximo y caja cerrada, no la mesa del laboratorio."
+    pistas:
+      - { cuando: { valor: T_j, mayor: 110 }, texto: "La unión pasa de 110 °C: hace falta un disipador de menos °C/W." }
+    escalera:
+      - "Despeje: (110 − 40)/5 − 2,5 es el disipador nominal máximo."
+      - "Un 30 % peor tiene que seguir por debajo de ese máximo."
+    solucion: "8 °C/W: un 30 % peor son 10,4 °C/W, todavía bajo los 11,5 °C/W que hacen falta."
+    comprobar:
+      - { R_req: 11.5 }
+      - { con: { R_sa: 10 }, T_j: 102.5 }
+      - { con: { R_sa: 13 }, T_j: 117.5 }
+      - { con: { R_sa: 10.4 }, T_j: 104.5 }
+
+  - id: derating
+    tipo: pregunta
+    titulo: "Para qué temperatura diseñar"
+    texto: "El silicio aguanta 150 °C de unión. ¿Para cuánto conviene diseñar, y en qué condiciones?"
+    libro: [121, 129]
+    widget:
+      tipo: figura
+      figura: fig-10.9
+      zonas:
+        - { id: cadena, rotulo: "La cadena", rect: [0, 25, 453, 50] }
+    opciones:
+      - texto: "Para 100 o 110 °C, con plena carga, ambiente máximo y caja cerrada"
+        bien: true
+        porque: "150 °C es un límite de destrucción; cada 10 °C por debajo duplican aproximadamente la vida."
+      - texto: "Para 150 °C, con la potencia media"
+        porque: "Es el límite de destrucción, no de diseño, y el peor caso no es la media."
+      - texto: "Para 100 °C en la mesa del laboratorio"
+        porque: "El laboratorio no es el peor caso: falta el ambiente máximo y la caja cerrada."
+    escalera:
+      - "¿Es 150 °C un límite de diseño o de destrucción?"
+    solucion: "100 o 110 °C en el peor caso: plena carga, ambiente máximo y caja cerrada."
+
+  - id: mica
+    tipo: pregunta
+    titulo: "La arandela olvidada"
+    texto: "En el ejemplo de 5 W se monta una arandela de mica con pasta y se olvida en el cálculo. ¿Cuánto más caliente queda la unión?"
+    libro: [130]
+    fijar: { P: 5 }
+    widget:
+      tipo: figura
+      figura: fig-10.9
+      zonas:
+        - { id: cs, rotulo: "Segunda flecha", rect: [197, 27, 55, 40] }
+    opciones:
+      - texto: "7,5 °C"
+        bien: true
+        porque: "La mica suma unos 1,5 °C/W aun con pasta: por 5 W, 7,5 °C más de lo calculado."
+      - texto: "1,5 °C"
+        porque: "Eso es su resistencia térmica en °C/W; hay que multiplicarla por la potencia."
+      - texto: "Nada, con pasta"
+        porque: "La pasta ayuda, pero la mica sigue sumando unos 1,5 °C/W."
+    escalera:
+      - "ΔT = P · R."
+    solucion: "5 W × 1,5 °C/W = 7,5 °C."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [123, 128, 129, 133]
+    ideas:
+      - { titulo: "Ley de Ohm térmica.", texto: "T_{unión} = T_{amb} + P·(R_{jc} + R_{cs} + R_{sa}): resistencias en serie." }
+      - { titulo: "Cada término.", texto: "R_{jc}, el fabricante; R_{cs}, el montaje; R_{sa}, el disipador y el aire." }
+      - { titulo: "Peor caso.", texto: "Diseñe para 100 o 110 °C, no para el límite de 150 °C." }
+      - { titulo: "Margen.", texto: "Tumbado, el disipador rinde hasta un 30 % peor." }

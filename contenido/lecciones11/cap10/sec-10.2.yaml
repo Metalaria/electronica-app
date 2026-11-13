@@ -1,0 +1,233 @@
+# Lección 1.2 de la sección 10.2 «El IGBT» (cap10). Formato: contenido/lecciones11/GUIA.md.
+# - La comparación del bloque 59 en una gráfica del modelo: pérdida de conducción del IGBT de 2 V (V·I) frente a la
+#   del MOSFET de 20 mΩ (I²·R); se cruzan a 100 A (200 W) y a 300 A son 600 W frente a 1 800 W (figura 10.4).
+# - No hay esquema de IGBT en la app: un MOSFET o un bipolar dibujarían otro dispositivo, así que va con gráficas y
+#   la figura 10.4 (fig-10.3).
+# Paso práctico: «simular» (sin circuito) la pérdida del MOSFET a 300 A; el error típico es escalarla en proporción.
+leccion: cap10/sec-10.2
+
+libro:
+  54: "el control sencillo por tensión del MOSFET"
+  56: "entre colector y emisor caen de 1,5 a 2,5 V casi fijos"
+  59: "A 100 A, un IGBT de 2 V disipa 200 W, lo mismo que un MOSFET de 20 mΩ"
+  60: "Peor (los 2 V están siempre)"
+  61: "MOSFET por debajo de unos 250 V y a frecuencia alta; IGBT por encima de 600 V y a frecuencia moderada"
+  63: "Es la cola de corriente, energía perdida en cada apagado"
+  64: "multiplicadas por la frecuencia dan directamente la potencia de conmutación"
+  66: "es el plazo del que dispone la protección para actuar"
+  68: "con 10 V puede quedar en zona lineal"
+  70: "se apaga la puerta de forma controlada, típicamente en unos microsegundos"
+  75: "Un IGBT con 5 V de caída está en zona lineal por puerta insuficiente"
+  76: "el cruce en alta potencia"
+  "cap10#285": "Un MOSFET de 600 V tendría una RDS(on) muy alta"
+
+modelo:
+  valores:
+    I_c: { sim: "I", nombre: "corriente", unidad: A, valor: 50 }
+    V_ce: { sim: "V_{CE(sat)}", nombre: "caída del IGBT", unidad: V, valor: 2 }
+    R_on: { sim: "R_{DS(on)}", nombre: "resistencia del MOSFET", unidad: Ω, valor: 0.02 }
+  calculos:
+    P_igbt: { expr: "V_ce*I_c", sim: "P_{IGBT}", nombre: "pérdida de conducción del IGBT", unidad: W }
+    P_mos: { expr: "I_c^2*R_on", sim: "P_{MOSFET}", nombre: "pérdida de conducción del MOSFET", unidad: W }
+    P_lin: { expr: "I_c/100*100^2*R_on", sim: "P", nombre: "lo de 100 A escalado en proporción (error)", unidad: W }
+
+tarjetas:
+  - id: explore-cruce
+    tipo: explorar
+    titulo: "Caída fija frente a resistencia"
+    texto: "Suba la corriente. El IGBT pierde siempre sus 2 V por la corriente; el MOSFET, I²·R."
+    libro: [56, 59, 76]
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0, max: 300, unidad: A, rotulo: "I" }
+      y: { min: 0, max: 2000, unidad: W, rotulo: "P" }
+      curvas:
+        - { expr: "V_ce*i", color: azul, rotulo: "IGBT" }
+        - { expr: "i^2*R_on", color: naranja, rotulo: "MOSFET" }
+      marcas:
+        - { x: "I_c", y: "P_mos", rotulo: "MOSFET: {{P_mos}}" }
+        - { x: "I_c", y: "P_igbt", rotulo: "IGBT: {{P_igbt}}" }
+      lectura: { valor: P_mos, rotulo: "Pérdida del MOSFET" }
+      datos:
+        - { valor: P_igbt, rotulo: "IGBT: {{P_igbt}}" }
+      mandos:
+        - { valor: I_c, min: 0, max: 300, paso: 25, rotulo: "Corriente" }
+    requiere: { mover: [I_c] }
+
+  - id: prediga-baja
+    tipo: predecir
+    titulo: "Con poca corriente"
+    texto: "Con 10 A, ¿cuál de los dos pierde menos en conducción?"
+    libro: [60]
+    fijar: { I_c: 10 }
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0, max: 10, unidad: A, rotulo: "I" }
+      y: { min: 0, max: 30, unidad: W, rotulo: "P" }
+      curvas:
+        - { expr: "V_ce*i", color: azul, rotulo: "IGBT" }
+      lectura: { valor: P_mos, rotulo: "Pérdida del MOSFET" }
+      datos:
+        - { valor: P_igbt, rotulo: "IGBT: {{P_igbt}}" }
+      ocultar: true
+    opciones:
+      - texto: "El MOSFET"
+        bien: true
+        porque: "Su caída es proporcional a la corriente: 2 W frente a 20 W del IGBT."
+      - texto: "El IGBT"
+        porque: "Sus 2 V están siempre: con poca corriente es el peor de los dos."
+      - texto: "Igual, los dos"
+        porque: "Solo se igualan en el cruce, a 100 A."
+    escalera:
+      - "Calcule I²·R con 10 A y 20 mΩ, y compárelo con 2 V por 10 A."
+    solucion: "El MOSFET: 2 W frente a 20 W."
+    comprobar:
+      - { P_mos: 2, P_igbt: 20 }
+
+  - id: simule-300
+    tipo: simular
+    titulo: "Prediga a 300 A"
+    texto: "A 100 A los dos disipan 200 W. ¿Cuánto disipa el MOSFET de 20 mΩ con 300 A?"
+    libro: [59]
+    fijar: { I_c: 300 }
+    widget:
+      tipo: grafica
+      x: { id: i, min: 0, max: 100, unidad: A, rotulo: "I" }
+      y: { min: 0, max: 2000, unidad: W, rotulo: "P" }
+      curvas:
+        - { expr: "i^2*R_on", color: naranja, rotulo: "MOSFET" }
+      lectura: { valor: P_mos, rotulo: "Pérdida del MOSFET" }
+      ocultar: true
+    simular:
+      objetivo: P_mos
+      unidad: W
+      tol: 0.03
+      rotulo: "Pérdida del MOSFET a 300 A"
+      errores:
+        - { expr: "P_lin", texto: "Ha escalado los 200 W en proporción: esos 600 W son los del IGBT. La pérdida del MOSFET crece con el cuadrado." }
+    exito: "1 800 W, tres veces lo del IGBT: con mucha corriente gana la caída fija."
+    escalera:
+      - "Triplicar la corriente multiplica I²·R por nueve."
+    solucion: "300² × 20 mΩ = 1 800 W, frente a 2 × 300 = 600 W del IGBT."
+    comprobar:
+      - { P_mos: 1800, P_igbt: 600, P_lin: 600 }
+
+  - id: inversor-600
+    tipo: pregunta
+    titulo: "Un inversor de 600 V"
+    texto: "Un equipo industrial usa IGBT en su inversor de 600 V. ¿Qué ventaja le dan frente a un MOSFET?"
+    libro: [61, "cap10#285"]
+    widget:
+      tipo: figura
+      figura: fig-10.3
+      zonas:
+        - { id: grafica, rotulo: "La gráfica", rect: [0, 0, 444, 205] }
+    opciones:
+      - texto: "Una caída casi fija, mucho menor que la de un MOSFET de 600 V"
+        bien: true
+        porque: "La R_{DS(on)} crece mucho con la tensión de ruptura; la caída del IGBT, no."
+      - texto: "Conmuta más deprisa"
+        porque: "Al revés: el IGBT se queda en decenas de kilohercios; el MOSFET llega a cientos."
+      - texto: "Su puerta no consume, y la del MOSFET sí"
+        porque: "Las dos puertas son aisladas: el IGBT copia la del MOSFET."
+    escalera:
+      - "¿Qué le pasa a la R_{DS(on)} de un MOSFET al subir su tensión de ruptura?"
+    solucion: "Su caída casi fija: un MOSFET de 600 V tendría una R_{DS(on)} muy alta."
+
+  - id: por-que-cola
+    tipo: porque
+    titulo: "Decenas de kilohercios"
+    texto: "¿Por qué un IGBT no pasa de unas decenas de kilohercios, cuando un MOSFET llega a cientos?"
+    libro: [63, 64]
+    widget:
+      tipo: figura
+      figura: fig-10.3
+      zonas:
+        - { id: grafica, rotulo: "La gráfica", rect: [0, 0, 444, 205] }
+    opciones:
+      - texto: "Al apagar, la corriente sigue un tramo con la tensión ya alta: energía perdida en cada apagado"
+        bien: true
+        porque: "Es la cola de corriente: E_{off} por la frecuencia da la potencia de conmutación."
+      - texto: "Porque su puerta necesita 15 V"
+        porque: "La tensión de puerta decide si conduce bien, no lo deprisa que se apaga."
+      - texto: "Porque su caída de conducción es fija"
+        porque: "La caída fija pesa en conducción; el límite de frecuencia viene del apagado."
+    escalera:
+      - "¿Qué se multiplica por la frecuencia?"
+    solucion: "Por la cola de corriente al apagar: cada apagado pierde energía, y la frecuencia la multiplica."
+
+  - id: hoja-datos
+    tipo: pregunta
+    titulo: "La hoja de datos"
+    texto: "Empareje cada dato del IGBT con para qué sirve."
+    libro: [64, 66]
+    widget:
+      tipo: figura
+      figura: fig-10.3
+      zonas:
+        - { id: grafica, rotulo: "La gráfica", rect: [0, 0, 444, 205] }
+    emparejar:
+      - ["V_{CES}", "Margen sobre el bus y sus picos"]
+      - ["V_{CE(sat)}", "Por la corriente, pérdidas de conducción"]
+      - ["E_{on} y E_{off}", "Por la frecuencia, pérdidas de conmutación"]
+      - ["t_{sc}", "El plazo de la protección"]
+    exito: "Y la I_{C} que cuenta es la de 100 °C de cápsula; aun así manda el cálculo térmico."
+    pistas:
+      - { texto: "Las energías se convierten en potencia con la frecuencia." }
+    escalera:
+      - "Empiece por el que lleva «sc», de cortocircuito."
+    solucion: "V_{CES}: margen; V_{CE(sat)}: conducción; E_{on}/E_{off}: conmutación; t_{sc}: plazo de la protección."
+
+  - id: desaturacion
+    tipo: pregunta
+    titulo: "La desaturación"
+    texto: "La protección estándar de un IGBT vigila la tensión colector-emisor en conducción. Si sube de lo normal, ¿qué hace?"
+    libro: [70]
+    widget:
+      tipo: figura
+      figura: fig-10.3
+      zonas:
+        - { id: grafica, rotulo: "La gráfica", rect: [0, 0, 444, 205] }
+    opciones:
+      - texto: "Apaga la puerta de forma controlada, en unos microsegundos"
+        bien: true
+        porque: "Suave, porque cortar de golpe una corriente de cortocircuito daría un pico inductivo destructivo."
+      - texto: "Corta la puerta de golpe, lo más rápido posible"
+        porque: "Ese corte brusco produce el pico inductivo que destruiría el dispositivo."
+      - texto: "Sube la tensión de puerta para que sature"
+        porque: "La tensión sube porque la corriente es excesiva: hay que apagar, no forzar."
+    escalera:
+      - "¿Qué pasa al cortar de golpe una corriente grande en un circuito con inductancia?"
+    solucion: "Lo apaga de forma controlada en unos microsegundos."
+
+  - id: banco-5v
+    tipo: pregunta
+    titulo: "Cinco voltios de caída"
+    texto: "En el banco, un IGBT conduciendo cae 5 V entre colector y emisor. ¿Qué le pasa?"
+    libro: [68, 75]
+    widget:
+      tipo: figura
+      figura: fig-10.3
+      zonas:
+        - { id: grafica, rotulo: "La gráfica", rect: [0, 0, 444, 205] }
+    opciones:
+      - texto: "Está en zona lineal por puerta insuficiente"
+        bien: true
+        porque: "Necesita 15 V de puerta, no 10: así se calienta y acabará destruido."
+      - texto: "Nada: la caída sube con la corriente"
+        porque: "Su caída es casi fija, en torno a 2 V: 5 V no es normal."
+      - texto: "Ha perdido el diodo en antiparalelo"
+        porque: "El diodo conduce en inverso; no cambia la caída en directo."
+    escalera:
+      - "¿Cuánto debería caer un IGBT bien gobernado?"
+    solucion: "Zona lineal: le falta tensión de puerta (15 V, no 10)."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [54, 59, 61, 63]
+    ideas:
+      - { titulo: "Dos mundos.", texto: "Puerta de MOSFET y camino de potencia de bipolar, con 2 V casi fijos." }
+      - { titulo: "El cruce.", texto: "Con mucha corriente y alta tensión gana el IGBT; con poca, el MOSFET." }
+      - { titulo: "La cola.", texto: "La energía de cada apagado lo limita a decenas de kilohercios." }
+      - { titulo: "Protección.", texto: "Desaturación: apagado suave, dentro del plazo t_{sc}." }

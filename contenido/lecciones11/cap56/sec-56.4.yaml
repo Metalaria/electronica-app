@@ -1,0 +1,307 @@
+# Lección 1.2 de la sección 34.4 «El Motor de Inducción» (cap56; etiqueta sec-56.4). Formato: GUIA.md.
+# - El motor de 4 kW del bloque 68 (400 V, 50 Hz, 4 polos; R1 = 1,4, R2′ = 1,1, X1 = X2′ = 2,0, Xm = 55 y
+#   RFe = 2 500 Ω por fase) en el modelo: el estátor y la rama paralelo reducidos a su Thévenin (Rth + jXth, Vth),
+#   T = 3·Vth²·(R2′/s)/(ωs·((Rth + R2′/s)² + (Xth + X2′)²)) y T_máx = 3·Vth²/(2·ωs·(Rth + √(Rth² + (Xth + X2′)²)));
+#   la corriente de línea con la impedancia de entrada completa. Reproduce las cifras del libro (bloque 72):
+#   48,54 N·m y 49,84 A parado, 86,51 N·m a 1 104 rpm, 26,61 N·m y 7,887 A en el nominal (s = 3,39 %).
+# - En estrella (arranque estrella-triángulo) cada devanado recibe 1/√3 de la tensión: 16,2 N·m y 16,6 A (bloque 76).
+# Paso práctico: «simular» (sin circuito) el ejercicio 56.5, las pérdidas del cobre del rotor (s·P_ent).
+leccion: cap56/sec-56.4
+
+libro:
+  58: 'n_("s") = ("120" dot.op f)/(p) quad lr([ "rpm" ])'
+  59: "3 000 rpm con 2 polos a 50 Hz, 1 500 con 4, 1 000 con 6 (a 60 Hz, 3 600, 1 800 y 1 200)"
+  60: "El rotor siempre se queda un poco atrás"
+  61: 's = (n_("s") - n)/(n_("s"))'
+  64: "R2′·(1 − s)/s, una resistencia ficticia cuya potencia es la mecánica"
+  66: "Por eso el rendimiento de un motor de inducción no puede pasar de 1 − s."
+  68: "Da los 4 kW a 1 449 rpm (s = 3,39 %, 1,70 Hz en el rotor)"
+  70: "si la carga pide más, la velocidad se hunde y el motor se para"
+  72: "con s = 1, 49,84 A y 48,54 N·m; con s = 0,264, 86,51 N·m"
+  73: "Los motores reales arrancan con más par que este modelo"
+  76: "En este motor, 16,6 A y 16,2 N·m, el 61 % del nominal: arranca un ventilador, pero no una cinta cargada al 60 %."
+  "cap56#149": "Un motor de 4 polos a 50 Hz gira a 1 455 rpm y por su entrehierro cruzan 8 kW"
+
+modelo:
+  valores:
+    V_l: { sim: "V_{L}", nombre: "tensión de línea", unidad: V, valor: 400 }
+    f_r: { sim: "f", nombre: "frecuencia", unidad: Hz, valor: 50 }
+    p_m: { sim: "p", nombre: "polos", unidad: "", valor: 4 }
+    R_1: { sim: "R₁", nombre: "resistencia del estátor", unidad: Ω, valor: 1.4 }
+    R_2: { sim: "R₂′", nombre: "resistencia del rotor", unidad: Ω, valor: 1.1 }
+    X_1: { sim: "X₁", nombre: "reactancia del estátor", unidad: Ω, valor: 2 }
+    X_2: { sim: "X₂′", nombre: "reactancia del rotor", unidad: Ω, valor: 2 }
+    X_m: { sim: "X_{m}", nombre: "reactancia magnetizante", unidad: Ω, valor: 55 }
+    R_fe: { sim: "R_{Fe}", nombre: "pérdidas del hierro", unidad: Ω, valor: 2500 }
+    n_m: { sim: "n", nombre: "velocidad", unidad: rpm, valor: 1450 }
+    est: { tipo: interruptor, nombre: "conectado en estrella para arrancar", valor: 0 }
+    T_c: { sim: "T_{carga}", nombre: "par de la cinta, 60 % del nominal", unidad: "N·m", valor: 15.84 }
+    n_5: { sim: "n", nombre: "velocidad del ejercicio", unidad: rpm, valor: 1455 }
+    P_e5: { sim: "P_{ent}", nombre: "potencia que cruza el entrehierro", unidad: W, valor: 8000 }
+  calculos:
+    V_f: { expr: "V_l/sqrt(3)/(1 + (sqrt(3) - 1)*est)", sim: "V", nombre: "tensión de cada devanado", unidad: V }
+    n_s: { expr: "120*f_r/p_m", sim: "n_{s}", nombre: "velocidad síncrona", unidad: rpm, cifras: 4 }
+    w_s: { expr: "2*pi*n_s/60", sim: "ω_{s}", nombre: "velocidad síncrona", unidad: "rad/s" }
+    s_m: { expr: "(n_s - n_m)/n_s", sim: "s", nombre: "deslizamiento", unidad: "" }
+    s_pct: { expr: "100*s_m", sim: "s", nombre: "deslizamiento", unidad: "%", cifras: 3 }
+    f_rot: { expr: "s_m*f_r", sim: "f_{rotor}", nombre: "frecuencia del rotor", unidad: Hz }
+    a_m: { expr: "R_fe*X_m^2/(R_fe^2 + X_m^2)", sim: "R_{m}", nombre: "rama paralelo, parte real", unidad: Ω }
+    b_m: { expr: "R_fe^2*X_m/(R_fe^2 + X_m^2)", sim: "X_{m}", nombre: "rama paralelo, parte imaginaria", unidad: Ω }
+    d_s: { expr: "(R_1 + a_m)^2 + (X_1 + b_m)^2", sim: "|Z₁ + Z_{m}|²", nombre: "módulo al cuadrado", unidad: "" }
+    R_th: { expr: "((R_1*a_m - X_1*b_m)*(R_1 + a_m) + (R_1*b_m + X_1*a_m)*(X_1 + b_m))/d_s", sim: "R_{th}", nombre: "resistencia de Thévenin", unidad: Ω }
+    X_th: { expr: "((R_1*b_m + X_1*a_m)*(R_1 + a_m) - (R_1*a_m - X_1*b_m)*(X_1 + b_m))/d_s", sim: "X_{th}", nombre: "reactancia de Thévenin", unidad: Ω }
+    V_th2: { expr: "V_f^2*(a_m^2 + b_m^2)/d_s", sim: "V_{th}²", nombre: "tensión de Thévenin al cuadrado", unidad: "" }
+    T_m: { expr: "3*V_th2*R_2/s_m/(w_s*((R_th + R_2/s_m)^2 + (X_th + X_2)^2))", sim: "T", nombre: "par electromagnético", unidad: "N·m" }
+    T_max: { expr: "3*V_th2/(2*w_s*(R_th + sqrt(R_th^2 + (X_th + X_2)^2)))", sim: "T_{máx}", nombre: "par máximo", unidad: "N·m" }
+    c_2: { expr: "R_2/s_m", sim: "R₂′/s", nombre: "resistencia del rotor vista", unidad: Ω }
+    q_n: { expr: "(a_m*c_2 - b_m*X_2)*(a_m + c_2) + (a_m*X_2 + b_m*c_2)*(b_m + X_2)", sim: "q", nombre: "auxiliar", unidad: "" }
+    q_i: { expr: "(a_m*X_2 + b_m*c_2)*(a_m + c_2) - (a_m*c_2 - b_m*X_2)*(b_m + X_2)", sim: "q", nombre: "auxiliar", unidad: "" }
+    q_d: { expr: "(a_m + c_2)^2 + (b_m + X_2)^2", sim: "q", nombre: "auxiliar", unidad: "" }
+    I_1: { expr: "V_f/sqrt((R_1 + q_n/q_d)^2 + (X_1 + q_i/q_d)^2)", sim: "I", nombre: "corriente de línea", unidad: A }
+    I_L: { expr: "I_1/(1 + (sqrt(3) - 1)*est)", sim: "I_{L}", nombre: "corriente de línea", unidad: A }
+    dn: { expr: "n_s - n_m", sim: "Δn", nombre: "lo que se queda atrás", unidad: rpm }
+    s_5: { expr: "(n_s - n_5)/n_s", sim: "s", nombre: "deslizamiento del ejercicio", unidad: "" }
+    Pcu_5: { expr: "s_5*P_e5", sim: "P_{Cu2}", nombre: "pérdidas del cobre del rotor", unidad: W }
+    Pmec_5: { expr: "(1 - s_5)*P_e5", sim: "P_{mec}", nombre: "potencia mecánica interna", unidad: W }
+
+tarjetas:
+  - id: formula-ns
+    tipo: formula
+    titulo: "La velocidad síncrona"
+    texto: "Tres bobinas a 120° crean un campo que gira. Cambie la frecuencia y los polos."
+    libro: [58, 59]
+    ec: 58
+    sustitucion: "120 · {{f_r}} / {{p_m}} = {{n_s}}"
+    widget:
+      tipo: grafica
+      x: { id: fx, min: 0, max: 60, unidad: Hz, rotulo: "f" }
+      y: { min: 0, max: 4000, unidad: rpm, rotulo: "n_{s}" }
+      curvas:
+        - { expr: "120*fx/p_m", color: naranja, rotulo: "n_{s}" }
+      marcas:
+        - { x: "f_r", y: "n_s", rotulo: "{{n_s}}" }
+      lectura: { valor: n_s, rotulo: "Velocidad síncrona" }
+      mandos:
+        - { valor: f_r, lista: [50, 60], rotulo: "Frecuencia" }
+        - { valor: p_m, lista: [2, 4, 6], rotulo: "Polos" }
+    comprobar:
+      - { n_s: 1500 }
+      - { con: { p_m: 2 }, n_s: 3000 }
+      - { con: { f_r: 60, p_m: 6 }, n_s: 1200 }
+
+  - id: explore-curva
+    tipo: explorar
+    titulo: "La curva par-velocidad"
+    texto: "Lea la curva de derecha a izquierda: cerca de la síncrona, una recta empinada; luego el par máximo y la zona del arranque."
+    libro: [70, 72, 73]
+    nota: "Los motores reales arrancan con más par que este modelo."
+    fijar: { f_r: 50, p_m: 4, est: 0 }
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 0, max: 1500, unidad: rpm, rotulo: "n" }
+      y: { min: 0, max: 100, unidad: "N·m", rotulo: "T" }
+      curvas:
+        - { expr: "3*V_th2*R_2/max(0.000001, (n_s - nx)/n_s)/(w_s*((R_th + R_2/max(0.000001, (n_s - nx)/n_s))^2 + (X_th + X_2)^2))", color: naranja, rotulo: "par del motor" }
+        - { expr: "T_c", color: verde, rotulo: "cinta al 60 %", discontinua: true }
+      marcas:
+        - { x: "n_m", y: "T_m", rotulo: "{{T_m}}" }
+      lectura: { valor: T_m, rotulo: "Par" }
+      datos:
+        - { valor: I_L, rotulo: "Corriente: {{I_L}}" }
+        - { valor: s_pct, rotulo: "Deslizamiento: {{s_pct}}" }
+      mandos:
+        - { valor: n_m, min: 0, max: 1475, paso: 25, rotulo: "Velocidad" }
+    requiere: { mover: [n_m] }
+    comprobar:
+      - { con: { n_m: 0 }, T_m: 48.54, I_L: 49.84 }
+      - { con: { n_m: 1104 }, T_m: 86.51 }
+      - { T_max: 86.51 }
+
+  - id: estime-s
+    tipo: pregunta
+    titulo: "El deslizamiento nominal"
+    texto: "El motor de 4 polos a 50 Hz da sus 4 kW a 1 449 rpm. ¿Qué deslizamiento tiene?"
+    libro: [60, 61, 68]
+    fijar: { n_m: 1449, f_r: 50, p_m: 4 }
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 1300, max: 1500, unidad: rpm, rotulo: "n" }
+      y: { min: 0, max: 100, unidad: "N·m", rotulo: "T" }
+      curvas:
+        - { expr: "3*V_th2*R_2/max(0.000001, (n_s - nx)/n_s)/(w_s*((R_th + R_2/max(0.000001, (n_s - nx)/n_s))^2 + (X_th + X_2)^2))", color: naranja, rotulo: "par del motor" }
+    estimar:
+      objetivo: "s_pct"
+      unidad: "%"
+      min: 0
+      max: 10
+      paso: 0.05
+      inicio: 8
+      tol: 0.03
+      rotulo: "Deslizamiento"
+    exito: "3,39 %: las corrientes del rotor tienen 1,70 Hz."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 3.5 }, texto: "Se ha pasado: la síncrona es 1 500 rpm; le faltan 51 rpm." }
+      - { texto: "Se ha quedado corto: 51 rpm de 1 500." }
+    escalera:
+      - "s = (n_{s} − n)/n_{s}, con n_{s} = 1 500 rpm."
+    solucion: "(1 500 − 1 449)/1 500 = 3,39 %."
+    comprobar:
+      - { s_pct: 3.39, f_rot: 1.70, T_m: 26.61, I_L: 7.887, dn: 51, tol: 0.003 }
+
+  - id: prediga-sobrecarga
+    tipo: predecir
+    titulo: "Más que el par máximo"
+    texto: "La carga pide más que los 86,5 N·m del par máximo. ¿Qué hace el motor?"
+    libro: [70]
+    fijar: { n_m: 1104 }
+    widget:
+      tipo: figura
+      figura: fig-56.6
+      zonas:
+        - { id: curvas, rotulo: "Las curvas", rect: [30, 15, 260, 120] }
+    opciones:
+      - texto: "La velocidad se hunde y el motor se para"
+        bien: true
+        porque: "A la izquierda del máximo el par baja al frenar: no hay equilibrio."
+      - texto: "Baja un poco la velocidad y da el par"
+        porque: "Pasado el máximo no puede dar más: cuanto más frena, menos par."
+      - texto: "Sube la corriente y acelera"
+        porque: "Sube la corriente, pero el par cae: se para."
+    escalera:
+      - "¿Qué hace el par a la izquierda del máximo?"
+    solucion: "Se para: la velocidad se hunde."
+    comprobar:
+      - { T_m: 86.51 }
+
+  - id: toque-rotor
+    tipo: tocar
+    titulo: "La pérdida del rotor"
+    texto: "En el circuito equivalente, toque la resistencia cuya potencia es la pérdida real del cobre del rotor."
+    libro: [64]
+    widget:
+      tipo: figura
+      figura: fig-56.5
+      zonas:
+        - { id: r1, rotulo: "Primera resistencia de arriba", rect: [38, 10, 36, 30] }
+        - { id: rfe, rotulo: "Resistencia vertical del centro", rect: [108, 42, 28, 34] }
+        - { id: r2, rotulo: "Segunda resistencia de arriba", rect: [208, 10, 36, 30] }
+        - { id: rmec, rotulo: "Resistencia vertical de la derecha", rect: [236, 40, 30, 34] }
+    tocar:
+      bien: [r2]
+      porque:
+        r1: "Es el cobre del estátor."
+        rfe: "Representa las pérdidas del hierro."
+        rmec: "Es la ficticia: su potencia es la mecánica, no una pérdida."
+    exito: "R₂′: s·P_{ent}. La ficticia R₂′·(1 − s)/s se lleva el resto, la potencia mecánica."
+    escalera:
+      - "R₂′/s se parte en dos: la real y la ficticia."
+    solucion: "R₂′, la de arriba a la derecha."
+
+  - id: simule-ej
+    tipo: simular
+    titulo: "Prediga las pérdidas del rotor"
+    texto: "Un motor de 4 polos a 50 Hz gira a 1 455 rpm y por su entrehierro cruzan 8 kW. ¿Cuánto pierde el cobre del rotor?"
+    libro: [61, "cap56#149"]
+    fijar: { f_r: 50, p_m: 4 }
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 1400, max: 1500, unidad: rpm, rotulo: "n" }
+      y: { min: 0, max: 8000, unidad: W, rotulo: "P" }
+      curvas:
+        - { expr: "P_e5*(n_s - nx)/n_s", color: naranja, rotulo: "s·P_{ent}" }
+      lectura: { valor: Pcu_5, rotulo: "Pérdidas del rotor" }
+      ocultar: true
+    simular:
+      objetivo: Pcu_5
+      unidad: W
+      tol: 0.03
+      rotulo: "Pérdidas del cobre del rotor"
+      errores:
+        - { expr: "Pmec_5", texto: "Esos 7 760 W son la potencia mecánica interna, (1 − s)·P_{ent}. La pérdida es la otra parte, s·P_{ent}." }
+    exito: "240 W con s = 3 %: un motor que desliza mucho calienta el rotor en proporción."
+    escalera:
+      - "s = (1 500 − 1 455)/1 500; la pérdida es s·P_{ent}."
+    solucion: "0,03 × 8 000 = 240 W."
+    comprobar:
+      - { Pcu_5: 240, Pmec_5: 7760, s_5: 0.03 }
+
+  - id: por-que-rendimiento
+    tipo: porque
+    titulo: "Un techo para el rendimiento"
+    texto: "¿Por qué el rendimiento de un motor de inducción no puede pasar de 1 − s?"
+    libro: [66]
+    widget:
+      tipo: figura
+      figura: fig-56.5
+      zonas:
+        - { id: rotor, rotulo: "El rotor", rect: [160, 0, 165, 96] }
+    opciones:
+      - texto: "De la potencia que cruza el entrehierro, s·P_{ent} se pierde siempre en el cobre del rotor"
+        bien: true
+        porque: "Solo (1 − s)·P_{ent} sale al eje, y aún faltan las demás pérdidas."
+      - texto: "Porque el deslizamiento es una pérdida mecánica de rozamiento"
+        porque: "El rozamiento va aparte; s·P_{ent} es cobre del rotor."
+      - texto: "Porque el hierro pierde s veces la potencia"
+        porque: "El hierro está en la rama paralelo; lo que escala con s es el cobre del rotor."
+    escalera:
+      - "Parta R₂′/s en R₂′ y R₂′·(1 − s)/s."
+    solucion: "Porque s·P_{ent} se pierde siempre en el rotor."
+
+  - id: prediga-estrella
+    tipo: predecir
+    titulo: "Estrella-triángulo con una cinta"
+    texto: "Una cinta pide desde parada el 60 % del par nominal. ¿Arranca el motor de 4 kW en estrella?"
+    libro: [76]
+    fijar: { est: 1, n_m: 0 }
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 0, max: 100, unidad: rpm, rotulo: "n" }
+      y: { min: 0, max: 60, unidad: "N·m", rotulo: "T" }
+      curvas:
+        - { expr: "T_c", color: verde, rotulo: "cinta al 60 %", discontinua: true }
+      lectura: { valor: T_m, rotulo: "Par de arranque en estrella" }
+      ocultar: true
+    opciones:
+      - texto: "No en la práctica: su par queda justo por encima del de la cinta"
+        bien: true
+        porque: "Un tercio de 48,5 N·m son 16,2, el 61 %: arranca un ventilador, pero no una cinta cargada al 60 %."
+      - texto: "Sí, con holgura"
+        porque: "En estrella el par cae a un tercio: queda casi igual al de la cinta."
+      - texto: "Sí, porque la corriente también baja a un tercio"
+        porque: "Baja la corriente, y el par con ella: ese es el problema."
+    escalera:
+      - "En estrella, corriente y par bajan a un tercio."
+    solucion: "Da 16,2 N·m, el 61 %: no es aceptable para una cinta al 60 %."
+    comprobar:
+      - { T_m: 16.2, I_L: 16.6, tol: 0.01 }
+
+  - id: arranques
+    tipo: pregunta
+    titulo: "Tres maneras de arrancar"
+    texto: "Empareje cada método con lo que cuesta."
+    libro: [76]
+    widget:
+      tipo: figura
+      figura: fig-56.6
+      zonas:
+        - { id: curvas, rotulo: "Las curvas", rect: [30, 15, 260, 120] }
+    emparejar:
+      - ["Estrella-triángulo", "Un tercio de corriente y de par"]
+      - ["Arrancador suave a media tensión", "24,9 A y 12,1 N·m"]
+      - ["Variador de frecuencia", "El único que no pierde par"]
+    exito: "Como la corriente es proporcional a la tensión y el par a su cuadrado, reducir la tensión siempre cuesta par."
+    pistas:
+      - { texto: "El par va con el cuadrado de la tensión." }
+    escalera:
+      - "¿Cuál cambia la frecuencia y no solo la tensión?"
+    solucion: "Estrella: un tercio. Suave a media tensión: 24,9 A y 12,1 N·m. Variador: sin perder par."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [58, 61, 66, 70]
+    ideas:
+      - { titulo: "Síncrona.", texto: "n_{s} = 120·f/p; el rotor se queda atrás el deslizamiento s." }
+      - { titulo: "Curva.", texto: "Casi a velocidad constante; pasado el par máximo, se para." }
+      - { titulo: "Rotor.", texto: "Pierde s·P_{ent}: el rendimiento no pasa de 1 − s." }
+      - { titulo: "Arranque.", texto: "Bajar la tensión baja la corriente y, con su cuadrado, el par." }

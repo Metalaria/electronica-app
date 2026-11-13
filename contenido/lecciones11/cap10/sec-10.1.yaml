@@ -1,0 +1,291 @@
+# Lección 1.2 de la sección 10.1 «Tiristores: SCR, TRIAC y DIAC» (cap10). Formato: contenido/lecciones11/GUIA.md.
+# - El control por ángulo de fase en una gráfica del modelo: la senoide de 325 V de pico recortada hasta α en cada
+#   semiciclo; la potencia relativa en una carga resistiva, 1 − α/180 + sen(2α)/(2π), reproduce las cifras de la
+#   figura 10.3 (97, 50 y 20 % con 30, 90 y 120°).
+# - La app no tiene un esquema de tiristor (enclavamiento): el SCR y el TRIAC se ven en la figura 10.2 (fig-20.1).
+# Paso práctico: «dibujar» la tensión en la carga con disparo a 90° (la forma recortada es la idea de la sección).
+leccion: cap10/sec-10.1
+
+libro:
+  3: "una vez encendidos, no se apagan con la señal de control"
+  9: "La puerta ya no pinta nada; se puede retirar el pulso."
+  10: "la corriente de enclavamiento (latching), algo mayor"
+  12: "dos SCR en antiparalelo integrados en la misma pastilla"
+  13: "Lo seguro es disparar con pulsos de puerta negativos respecto a MT1"
+  16: "el DIAC dispara al alcanzar su umbral, y el TRIAC conduce el resto del semiciclo"
+  18: "Retrasando el disparo dentro de cada semiciclo se controla la fracción de onda que llega a la carga"
+  19: "Cuanto más recorte, peor."
+  20: "solo sirve para calefacción y hornos"
+  35: "la puerta del TRIAC no puede colgar directamente de un pin"
+  37: "De fase aleatoria: disparan en cuanto se enciende el LED."
+  41: "Por dv/dt."
+  42: "Por temperatura."
+  43: "Por exceso de tensión."
+  49: "si conduce siempre, el TRIAC está en cortocircuito"
+  51: "Tiristor (SCR) y TRIAC, y el control de potencia por ángulo de fase."
+  52: "los armónicos que genera el corte brusco de la onda"
+  "cap10#285": "Un TRIAC para regular la potencia por control de fase"
+
+modelo:
+  valores:
+    V_p: { sim: "V_{p}", nombre: "pico de la red", unidad: V, valor: 325 }
+    f_r: { sim: "f", nombre: "frecuencia de la red", unidad: Hz, valor: 50 }
+    alpha: { sim: "α", nombre: "ángulo de disparo", unidad: "°", valor: 30 }
+  calculos:
+    P_rel: { expr: "100*(1 - alpha/180 + sin(2*alpha*pi/180)/(2*pi))", sim: "P", nombre: "potencia en la carga, en % de la onda entera", unidad: "%", cifras: 2 }
+
+tarjetas:
+  - id: explore-angulo
+    tipo: explorar
+    titulo: "Recortar cada semiciclo"
+    texto: "Retrase el disparo. La carga solo recibe el resto de cada semiciclo, y con él cae la potencia."
+    libro: [18, 51]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+      y: { min: -400, max: 400, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "V_p*sin(2*pi*f_r*t)", color: tinta, rotulo: "red", discontinua: true }
+        - { expr: "V_p*sin(2*pi*f_r*t)*ceil((360*f_r*t - 180*floor(2*f_r*t) - alpha)/1e9)", color: naranja, rotulo: "carga" }
+      lectura: { valor: P_rel, rotulo: "Potencia en la carga" }
+      mandos:
+        - { valor: alpha, min: 0, max: 180, paso: 15, rotulo: "Ángulo de disparo, α" }
+
+  - id: prediga-pulso
+    tipo: predecir
+    titulo: "Se retira el pulso"
+    texto: "Un pulso en la puerta enciende el SCR. ¿Qué pasa al retirarlo?"
+    libro: [3, 9]
+    widget:
+      tipo: figura
+      figura: fig-20.1
+      zonas:
+        - { id: simbolos, rotulo: "Los dos símbolos", rect: [0, 15, 128, 135] }
+    opciones:
+      - texto: "Sigue conduciendo hasta que la corriente cae por debajo de la de mantenimiento"
+        bien: true
+        porque: "El lazo de los dos transistores se sostiene solo: la puerta ya no pinta nada."
+      - texto: "Se apaga, como un MOSFET al quitarle la puerta"
+        porque: "Eso es lo que lo distingue: no se apaga con la señal de control."
+      - texto: "Se apaga al cabo de un tiempo fijo"
+        porque: "No hay temporizador: conduce mientras la corriente sostenga el lazo."
+    escalera:
+      - "El SCR equivale a dos transistores, cada uno alimentando la base del otro."
+    solucion: "Sigue conduciendo: se apaga cuando la corriente de ánodo cae por debajo de la de mantenimiento."
+
+  - id: estime-90
+    tipo: pregunta
+    titulo: "Disparo a 90°"
+    texto: "Con el disparo a 90°, en mitad de cada semiciclo, ¿qué parte de la potencia de la onda entera llega a una carga resistiva?"
+    libro: [18, 51]
+    fijar: { alpha: 90 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+      y: { min: -400, max: 400, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "V_p*sin(2*pi*f_r*t)*ceil((360*f_r*t - 180*floor(2*f_r*t) - alpha)/1e9)", color: naranja, rotulo: "carga" }
+    estimar:
+      objetivo: "P_rel"
+      unidad: "%"
+      min: 0
+      max: 100
+      paso: 5
+      inicio: 80
+      tol: 0.05
+      rotulo: "Potencia en la carga"
+    exito: "El 50 %: las dos mitades de cada semiciclo son simétricas y llevan la misma energía."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 52.5 }, texto: "Se ha pasado: la carga recibe solo la segunda mitad de cada semiciclo." }
+      - { texto: "Se ha quedado corto: la segunda mitad lleva tanta energía como la primera." }
+    escalera:
+      - "Compare la parte que llega con la que se recorta."
+    solucion: "El 50 %: la segunda mitad de la senoide es la imagen de la primera."
+    comprobar:
+      - { P_rel: 50 }
+      - { con: { alpha: 30 }, P_rel: 97 }
+      - { con: { alpha: 120 }, P_rel: 20, tol: 0.03 }
+
+  - id: dibuje-carga
+    tipo: dibujar
+    titulo: "Dibuje la tensión en la carga"
+    texto: "Disparo a 90°: dibuje la tensión que recibe la carga durante un periodo de la red."
+    libro: [16, 18]
+    fijar: { alpha: 90 }
+    dibujar:
+      x: { id: t, min: 0, max: 0.02, unidad: s, rotulo: "t" }
+      y: { min: -400, max: 400, unidad: V, rotulo: "v" }
+      curva: "V_p*sin(2*pi*f_r*t)*ceil((360*f_r*t - 180*floor(2*f_r*t) - alpha)/1e9)"
+      puntos: 41
+      tol: 0.1
+      holgura: 0.03
+      rotulo: "Tensión en la carga"
+    exito: "Cero hasta el disparo, y el resto de cada semiciclo, positivo y negativo: el TRIAC conduce en los dos sentidos."
+    pistas:
+      - { cuando: { valor: amplitud, menor: 0.7 }, texto: "Tras el disparo la carga recibe la red entera: sube de golpe hasta el pico." }
+      - { texto: "Hasta el disparo no llega nada; luego, la senoide hasta el cruce por cero." }
+    escalera:
+      - "A 90° la red está en su pico: el salto es máximo."
+    solucion: "Cero en la primera mitad de cada semiciclo; en la segunda, la senoide desde el pico hasta cero."
+
+  - id: toque-triac
+    tipo: tocar
+    titulo: "En los dos sentidos"
+    texto: "Toque el dispositivo que gobierna los dos semiciclos con un solo componente."
+    libro: [12, 13, 51]
+    widget:
+      tipo: figura
+      figura: fig-20.1
+      zonas:
+        - { id: scr, rotulo: "Símbolo de la izquierda", rect: [0, 15, 60, 135] }
+        - { id: triac, rotulo: "Símbolo del centro", rect: [68, 15, 62, 135] }
+        - { id: grafica, rotulo: "La gráfica", rect: [150, 0, 286, 181] }
+    tocar:
+      bien: [triac]
+      porque:
+        scr: "El SCR conduce en un solo sentido: en alterna gobierna un solo semiciclo."
+        grafica: "La gráfica es lo que se obtiene; el dispositivo es uno de los símbolos."
+    exito: "El TRIAC: dos SCR en antiparalelo en la misma pastilla. Sus terminales son MT1 y MT2, no ánodo y cátodo."
+    escalera:
+      - "Busque el símbolo con dos triángulos opuestos."
+    solucion: "El del centro, el TRIAC."
+
+  - id: parametros
+    tipo: pregunta
+    titulo: "Tres corrientes"
+    texto: "Empareje cada corriente del SCR con lo que significa."
+    libro: [10]
+    widget:
+      tipo: figura
+      figura: fig-20.1
+      zonas:
+        - { id: simbolos, rotulo: "Los dos símbolos", rect: [0, 15, 128, 135] }
+    emparejar:
+      - ["De puerta", "La necesaria para dispararlo"]
+      - ["De mantenimiento", "Por debajo de ella se apaga"]
+      - ["De enclavamiento", "Algo mayor; hay que superarla para que siga sin pulso"]
+    exito: "Disparo, enclavamiento y mantenimiento: los tres parámetros clave."
+    pistas:
+      - { texto: "La de enclavamiento es algo mayor que la de mantenimiento." }
+    escalera:
+      - "Empiece por la que se aplica en la puerta."
+    solucion: "Puerta: disparar. Mantenimiento: por debajo se apaga. Enclavamiento: la que hay que superar al retirar el pulso."
+
+  - id: por-que-sucio
+    tipo: porque
+    titulo: "Un control sucio"
+    texto: "El ángulo de fase es simple, barato y eficiente. ¿Por qué lo limita cada vez más la normativa?"
+    libro: [19, 52]
+    widget:
+      tipo: figura
+      figura: fig-10.2
+      zonas:
+        - { id: armonicos, rotulo: "Las barras", rect: [228, 20, 217, 190] }
+    opciones:
+      - texto: "El corte brusco en mitad de la onda genera armónicos e interferencia conducida"
+        bien: true
+        porque: "Cuanto más recorte, peor: de ahí el filtro de red de un regulador de intensidad."
+      - texto: "Porque el tiristor disipa mucho"
+        porque: "Apenas disipa: conduce o no conduce. Su problema es la forma de la onda."
+      - texto: "Porque no deja ajustar la potencia"
+        porque: "Sí la ajusta, retrasando el disparo; lo que molesta es el recorte."
+    escalera:
+      - "Mire cómo crecen las barras de la figura al recortar más."
+    solucion: "Por los armónicos del corte brusco: cuanto más recorte, peor."
+
+  - id: horno
+    tipo: pregunta
+    titulo: "Un horno"
+    texto: "Para un horno, ¿qué control de potencia elegiría?"
+    libro: [20]
+    widget:
+      tipo: figura
+      figura: fig-10.2
+      zonas:
+        - { id: ondas, rotulo: "Las tres ondas", rect: [0, 0, 205, 212] }
+    opciones:
+      - texto: "Ciclos completos, disparando en el cruce por cero"
+        bien: true
+        porque: "Sin armónicos apreciables; el parpadeo no importa en una carga térmica lenta."
+      - texto: "Ángulo de fase"
+        porque: "Funciona, pero ensucia la red sin necesidad: la inercia térmica no pide un control fino."
+      - texto: "Ciclos completos, también para una lámpara"
+        porque: "En una lámpara produce parpadeo: solo sirve para calefacción y hornos."
+    escalera:
+      - "Un horno tarda mucho en notar un ciclo de más o de menos."
+    solucion: "Ciclos completos (burst), disparando siempre en el cruce por cero."
+
+  - id: micro-lampara
+    tipo: pregunta
+    titulo: "Desde un microcontrolador"
+    texto: "Quiere regular el brillo de una lámpara de red con un microcontrolador. ¿Qué une el pin con la puerta del TRIAC?"
+    libro: [35, 37, "cap10#285"]
+    widget:
+      tipo: figura
+      figura: fig-20.1
+      zonas:
+        - { id: triac, rotulo: "Símbolo del centro", rect: [68, 15, 62, 135] }
+    opciones:
+      - texto: "Un optotriac de fase aleatoria"
+        bien: true
+        porque: "Aísla el micro de la red y dispara cuando se le ordena; el micro cuenta el retardo desde el cruce."
+      - texto: "Un optotriac con detección de cruce por cero"
+        porque: "Espera al cruce para disparar: solo sirve para ciclos completos, no para regular brillo."
+      - texto: "Un cable directo del pin a la puerta"
+        porque: "El TRIAC está referido a la red: la puerta no puede colgar de un pin."
+    escalera:
+      - "El brillo se regula con el ángulo de fase."
+    solucion: "Un optotriac de fase aleatoria: aislamiento y disparo en el instante que decide el micro."
+
+  - id: disparos-indeseados
+    tipo: pregunta
+    titulo: "Encendidos sin puerta"
+    texto: "Empareje cada mecanismo de disparo indeseado con lo que lo provoca."
+    libro: [41, 42, 43]
+    widget:
+      tipo: figura
+      figura: fig-20.1
+      zonas:
+        - { id: simbolos, rotulo: "Los dos símbolos", rect: [0, 15, 128, 135] }
+    emparejar:
+      - ["Por dv/dt", "Una subida rápida inyecta corriente por la capacidad interna"]
+      - ["Por temperatura", "Las fugas crecen y cierran el lazo"]
+      - ["Por exceso de tensión", "La avalancha, a menudo destructiva"]
+    exito: "Los tres son la causa de la mayoría de las averías con tiristores; contra el primero, el snubber RC."
+    pistas:
+      - { texto: "Una capacidad conduce cuando la tensión cambia deprisa." }
+    escalera:
+      - "Empiece por el que nombra una derivada."
+    solucion: "dv/dt: corriente por la capacidad. Temperatura: fugas. Tensión: avalancha."
+
+  - id: banco-triac
+    tipo: pregunta
+    titulo: "Un TRIAC que siempre conduce"
+    texto: "Un regulador de luz deja la lámpara siempre a plena potencia, sin recorte. ¿Qué es lo más probable?"
+    libro: [49]
+    widget:
+      tipo: figura
+      figura: fig-20.1
+      zonas:
+        - { id: grafica, rotulo: "La gráfica", rect: [150, 0, 286, 181] }
+    opciones:
+      - texto: "El TRIAC está en cortocircuito"
+        bien: true
+        porque: "Es su modo de fallo más frecuente: conduce siempre, la onda llega entera."
+      - texto: "Un dv/dt excesivo"
+        porque: "Ese da un disparo errático de un semiciclo a otro, no conducción permanente."
+      - texto: "Falta el pulso de puerta"
+        porque: "Sin pulso no conduciría nunca: la lámpara estaría apagada."
+    escalera:
+      - "¿Qué síntoma daría cada fallo en la onda de la carga?"
+    solucion: "Un TRIAC en cortocircuito, su fallo más frecuente."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [3, 12, 18, 19]
+    ideas:
+      - { titulo: "Enclavamiento.", texto: "Un tiristor no se apaga con la puerta: conduce hasta que su corriente cae por sí sola." }
+      - { titulo: "TRIAC.", texto: "Dos SCR en antiparalelo: gobierna los dos semiciclos de la alterna." }
+      - { titulo: "Ángulo de fase.", texto: "Retrasar el disparo reduce la potencia, a costa de armónicos." }
+      - { titulo: "Ciclos completos.", texto: "Sin armónicos, pero solo para cargas térmicas lentas." }
