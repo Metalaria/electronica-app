@@ -1,0 +1,310 @@
+# Lección 1.2 de la sección 54.5 «El Robot Móvil Diferencial: Odometría con Encoders e IMU» (cap57; etiquetas
+# sec-57.N = impresas 54.N).
+# - La cinemática de dos ruedas (ecuación del bloque 97) y la inversa del ejemplo (bloque 98: 0,3 m/s y 1 rad/s con
+#   150 mm de vía, 0,375 y 0,225 m/s, 110 y 66 rpm con ruedas de 65 mm). La gráfica dibuja el recorrido de 2 s con una
+#   curva paramétrica: un arco de radio v/ω (con ω + 10⁻⁹ para que la recta no divida por cero).
+# - La odometría y su resolución (bloque 102: 0,155 mm por cuenta y 0,059° por cuenta de diferencia).
+# - La deriva (bloque 104): rueda derecha un 0,5 % mayor con las dos cuentas iguales; el robot gira s·ε/b = 0,333 rad,
+#   19,1°, sobre un arco de radio b/ε, y queda a 1,66 m de donde cree estar (el modelo del arco reproduce la cifra y la
+#   figura 54.8b).
+# - El giróscopo (bloque 106): 0,05 °/s residuales, 1° en 20 s; el error lateral de una orientación que crece en recta
+#   hasta 1° en 10 m es s·Δθ/2 = 87 mm, la cifra del libro. Las calibraciones (bloque 108).
+# Pasos prácticos: «simular» la velocidad de la rueda derecha (0,375 m/s; errores: sin la mitad de la vía, 0,45 m/s, o
+# la velocidad del robot) y estimar la deriva de la orientación (19,1°).
+leccion: cap57/sec-57.5
+
+libro:
+  96: "el robot avanza a la media y gira a la diferencia dividida por la vía"
+  97: 'v = (v_("d") + v_("i"))/"2"'
+  98: "la rueda derecha debe ir a 0,375 m/s y la izquierda a 0,225 m/s, 110 y 66 rpm con ruedas de 65 mm"
+  100: "el avance se proyecta con la orientación a mitad del giro"
+  102: "cada cuenta es un avance de 0,155 mm, y una cuenta de diferencia entre las ruedas es un giro de 0,059°. La resolución sobra"
+  104: "tras 10 m el robot ha girado 10 × 0,005/0,15 = 0,333 rad, 19,1°, y está a 1,66 m del sitio donde cree estar"
+  106: "con 0,05 °/s residuales, 3° por minuto. En los 20 s que dura el recorrido de 10 m a 0,5 m/s eso es 1°, y la posición final queda a 87 mm de la real"
+  107: "Un recorrido de 10 m con la rueda derecha un 0,5 % mayor que la izquierda"
+  108: "haciéndolo girar diez vueltas sobre sí mismo"
+
+modelo:
+  valores:
+    b_v: { sim: "b", nombre: "vía", unidad: m, valor: 0.15 }
+    D_r: { sim: "D", nombre: "diámetro de las ruedas", unidad: m, valor: 0.065 }
+    N_c: { sim: "N", nombre: "cuentas por vuelta de rueda", unidad: cuentas, valor: 1320 }
+    v_d: { sim: "v_{d}", nombre: "velocidad de la rueda derecha", unidad: "m/s", valor: 0.375 }
+    v_i: { sim: "v_{i}", nombre: "velocidad de la rueda izquierda", unidad: "m/s", valor: 0.2 }
+    T_p: { sim: "T", nombre: "tiempo del recorrido dibujado", unidad: s, valor: 2 }
+    v_c: { sim: "v", nombre: "avance pedido", unidad: "m/s", valor: 0.3 }
+    w_c: { sim: "ω", nombre: "giro pedido", unidad: "rad/s", valor: 1 }
+    s_r: { sim: "s", nombre: "recorrido", unidad: m, valor: 10 }
+    eps: { sim: "ε", nombre: "diferencia de diámetros", unidad: "", valor: 0.005 }
+    g_d: { sim: "Ω_{0}", nombre: "desplazamiento residual del giróscopo", unidad: "°/s", valor: 0.05 }
+    t_r: { sim: "t", nombre: "duración del recorrido", unidad: s, valor: 20 }
+  calculos:
+    v_r: { expr: "(v_d + v_i)/2", sim: "v", nombre: "avance del robot", unidad: "m/s" }
+    w_r: { expr: "(v_d - v_i)/b_v", sim: "ω", nombre: "giro del robot", unidad: "rad/s" }
+    w_e: { expr: "w_r + 1e-9", sim: "ω", nombre: "giro (sin cero)", unidad: "rad/s" }
+    vd_c: { expr: "v_c + w_c*b_v/2", sim: "v_{d}", nombre: "rueda derecha", unidad: "m/s" }
+    vi_c: { expr: "v_c - w_c*b_v/2", sim: "v_{i}", nombre: "rueda izquierda", unidad: "m/s" }
+    vd_mal: { expr: "v_c + w_c*b_v", sim: "v_{d}", nombre: "rueda derecha sin la mitad", unidad: "m/s" }
+    nd_c: { expr: "vd_c/(pi*D_r)*60", sim: "n_{d}", nombre: "rueda derecha", unidad: rpm }
+    ni_c: { expr: "vi_c/(pi*D_r)*60", sim: "n_{i}", nombre: "rueda izquierda", unidad: rpm }
+    s_c: { expr: "pi*D_r/N_c", sim: "Δs", nombre: "avance por cuenta", unidad: m }
+    g_c: { expr: "s_c/b_v*180/pi", sim: "Δθ", nombre: "giro por cuenta de diferencia", unidad: "°" }
+    phi: { expr: "s_r*eps/b_v", sim: "φ", nombre: "giro real", unidad: rad }
+    phi_g: { expr: "phi*180/pi", sim: "φ", nombre: "giro real", unidad: "°" }
+    R_a: { expr: "b_v/eps", sim: "R", nombre: "radio del arco real", unidad: m }
+    x_a: { expr: "R_a*sin(phi)", sim: "x", nombre: "posición real en x", unidad: m }
+    y_a: { expr: "R_a*(1 - cos(phi))", sim: "y", nombre: "posición real en y", unidad: m }
+    e_d: { expr: "sqrt((s_r - x_a)^2 + y_a^2)", sim: "e", nombre: "distancia a donde cree estar", unidad: m }
+    th_g: { expr: "g_d*t_r", sim: "Δθ", nombre: "deriva del giróscopo", unidad: "°" }
+    g_min: { expr: "g_d*60", sim: "Δθ", nombre: "deriva por minuto", unidad: "°" }
+    e_g: { expr: "s_r*th_g*pi/180/2", sim: "e", nombre: "error con el giróscopo", unidad: m }
+
+tarjetas:
+  - id: explore-diferencial
+    tipo: explorar
+    titulo: "Dos ruedas y una vía"
+    texto: "Cambie la velocidad de cada rueda y mire el camino de 2 s: el robot avanza a la media y gira a la diferencia dividida por la vía."
+    libro: [96, 107]
+    widget:
+      tipo: grafica
+      aspecto: igual
+      x: { id: xx, min: -0.8, max: 0.8, unidad: m, rotulo: "x" }
+      y: { min: -0.8, max: 0.8, unidad: m, rotulo: "y" }
+      curvas:
+        - { param: { id: s, min: 0, max: "T_p" }, x: "v_r/w_e*sin(w_e*s)", y: "v_r/w_e*(1 - cos(w_e*s))", color: azul, rotulo: "recorrido de 2 s" }
+      lectura: { valor: v_r, rotulo: "Avance del robot" }
+      datos:
+        - { valor: w_r, rotulo: "Giro: {{w_r}}" }
+      mandos:
+        - { valor: v_d, min: -0.4, max: 0.4, paso: 0.025, rotulo: "Rueda derecha, v_{d}" }
+        - { valor: v_i, min: -0.4, max: 0.4, paso: 0.025, rotulo: "Rueda izquierda, v_{i}" }
+    requiere: { mover: [v_d, v_i] }
+
+  - id: formula-diferencial
+    tipo: formula
+    titulo: "La media y la diferencia"
+    texto: "El avance es la media de las ruedas; el giro, su diferencia entre la vía. Con v_{d} = −v_{i} gira sobre sí mismo."
+    libro: [97]
+    ec: 97
+    sustitucion: "({{v_d}} + {{v_i}})/2 = {{v_r}}"
+    widget:
+      tipo: grafica
+      aspecto: igual
+      x: { id: xx, min: -0.8, max: 0.8, unidad: m, rotulo: "x" }
+      y: { min: -0.8, max: 0.8, unidad: m, rotulo: "y" }
+      curvas:
+        - { param: { id: s, min: 0, max: "T_p" }, x: "v_r/w_e*sin(w_e*s)", y: "v_r/w_e*(1 - cos(w_e*s))", color: azul, rotulo: "recorrido de 2 s" }
+      lectura: { valor: v_r, rotulo: "Avance del robot" }
+      datos:
+        - { valor: w_r, rotulo: "Giro: {{w_r}}" }
+      mandos:
+        - { valor: v_d, min: -0.4, max: 0.4, paso: 0.025, rotulo: "Rueda derecha, v_{d}" }
+        - { valor: v_i, min: -0.4, max: 0.4, paso: 0.025, rotulo: "Rueda izquierda, v_{i}" }
+
+  - id: simule-inversa
+    tipo: simular
+    titulo: "Un círculo de 0,3 m"
+    texto: "El robot debe avanzar a 0,3 m/s girando a 1 rad/s, con 150 mm de vía. ¿A qué velocidad va la rueda derecha?"
+    libro: [97, 98]
+    fijar: { v_c: 0.3, w_c: 1, b_v: 0.15 }
+    widget:
+      tipo: figura
+      figura: fig-57.8
+      zonas:
+        - { id: geometria, rotulo: "La geometría, a la izquierda", rect: [0, 10, 95, 145] }
+    simular:
+      objetivo: vd_c
+      unidad: "m/s"
+      tol: 0.02
+      rotulo: "Velocidad de la rueda derecha"
+      errores:
+        - { expr: "vd_mal", texto: "Ha sumado ω·b entero: cada rueda está a media vía del centro, ω·b/2." }
+        - { expr: "v_c", texto: "0,3 m/s es el avance del centro; la rueda de fuera de la curva va más deprisa." }
+    exito: "0,375 m/s la derecha y 0,225 m/s la izquierda: 110 y 66 rpm con ruedas de 65 mm."
+    escalera:
+      - "v_{d} = v + ω·b/2."
+    solucion: "0,3 + 1 × 0,15/2 = 0,375 m/s."
+    comprobar:
+      - { vd_c: 0.375, vi_c: 0.225, vd_mal: 0.45, nd_c: 110, ni_c: 66, tol: 0.01 }
+
+  - id: porque-deriva
+    tipo: porque
+    titulo: "Lo que limita la odometría"
+    texto: "Con ruedas de 65 mm y 1 320 cuentas por vuelta, cada cuenta es 0,155 mm. ¿Por qué deriva entonces la odometría?"
+    libro: [100, 102, 104]
+    widget:
+      tipo: figura
+      figura: fig-57.8
+      zonas:
+        - { id: recorrido, rotulo: "Los 10 m, a la derecha", rect: [165, 10, 160, 140] }
+    opciones:
+      - texto: "Porque el modelo no es el robot: diámetros distintos y una vía mal medida"
+        bien: true
+        porque: "Son errores sistemáticos: el error de orientación se convierte en error de posición que crece con el recorrido."
+      - texto: "Porque los encoders no tienen bastante resolución"
+        porque: "0,155 mm por cuenta y 0,059° por cuenta de diferencia: la resolución sobra."
+      - texto: "Porque el microcontrolador no da abasto"
+        porque: "La cuenta se hace sin problema; lo que falla es suponer que las ruedas son como dice el modelo."
+    escalera:
+      - "¿Qué pasa si una rueda es algo mayor que la otra?"
+    solucion: "Por los errores sistemáticos, sobre todo la diferencia de diámetros."
+    comprobar:
+      - { s_c: 0.000155, g_c: 0.059, tol: 0.005 }
+
+  - id: estime-deriva
+    tipo: pregunta
+    titulo: "Medio por ciento"
+    texto: "La rueda derecha es un 0,5 % mayor y el controlador mantiene iguales las cuentas, creyendo ir recto. Tras 10 m, ¿cuánto ha girado el robot?"
+    libro: [104]
+    fijar: { s_r: 10, eps: 0.005, b_v: 0.15 }
+    widget:
+      tipo: figura
+      figura: fig-57.8
+      zonas:
+        - { id: geometria, rotulo: "La geometría, a la izquierda", rect: [0, 10, 95, 145] }
+    estimar:
+      objetivo: "phi_g"
+      unidad: "°"
+      min: 0
+      max: 45
+      paso: 0.1
+      inicio: 3
+      tol: 0.05
+      rotulo: "Giro tras 10 m"
+    exito: "0,333 rad, 19,1°: un error de orientación que se convierte en error de posición."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 20.1 }, texto: "Se ha pasado: el giro es s·ε/b, en radianes." }
+      - { texto: "Se ha quedado corto: la diferencia se divide por la vía, 0,15 m, que es pequeña." }
+    escalera:
+      - "Giro = recorrido × diferencia / vía."
+    solucion: "10 × 0,005/0,15 = 0,333 rad = 19,1°."
+    comprobar:
+      - { phi: 0.333, phi_g: 19.1, tol: 0.003 }
+
+  - id: explore-arco
+    tipo: explorar
+    titulo: "Diez metros «en línea recta»"
+    texto: "La odometría cree que el robot va por el eje x. Cambie la diferencia de diámetros y mire dónde acaba de verdad."
+    libro: [104, 107]
+    fijar: { s_r: 10, b_v: 0.15 }
+    inicio: { eps: 0.0025 }
+    widget:
+      tipo: grafica
+      x: { id: xx, min: 0, max: 11, unidad: m, rotulo: "x" }
+      y: { min: -0.5, max: 3.5, unidad: m, rotulo: "y" }
+      curvas:
+        - { param: { id: p, min: 0, max: "phi" }, x: "R_a*sin(p)", y: "R_a*(1 - cos(p))", color: naranja, rotulo: "real" }
+        - { expr: "0*xx", color: tinta, rotulo: "odometría", discontinua: true }
+      marcas:
+        - { x: "x_a", y: "y_a", rotulo: "{{e_d}}" }
+      lectura: { valor: e_d, rotulo: "Distancia a donde cree estar" }
+      mandos:
+        - { valor: eps, lista: [0.0025, 0.005, 0.01], nombres: ["0,25 %", "0,5 %", "1 %"], rotulo: "Rueda derecha mayor en" }
+    requiere: { mover: [eps] }
+    comprobar:
+      - { con: { eps: 0.005 }, e_d: 1.66, tol: 0.003 }
+
+  - id: empareje-errores
+    tipo: pregunta
+    titulo: "Dos clases de errores"
+    texto: "Empareje cada causa con su clase de error."
+    libro: [104]
+    widget:
+      tipo: figura
+      figura: fig-57.8
+      zonas:
+        - { id: recorrido, rotulo: "Los 10 m, a la derecha", rect: [165, 10, 160, 140] }
+    emparejar:
+      - ["Una rueda que desliza", "No sistemático: no se puede predecir"]
+      - ["Una alfombra o un bache", "No sistemático: no se puede predecir"]
+      - ["Diámetros distintos", "Sistemático: se calibra"]
+      - ["La vía real no es la medida", "Sistemático: se calibra"]
+    exito: "Los sistemáticos se calibran recorriendo un cuadrado en los dos sentidos: el método UMBmark."
+    pistas:
+      - { texto: "Lo sistemático está en el modelo: se repite igual en cada recorrido." }
+    escalera:
+      - "¿Se repite el error igual cada vez que el robot hace el mismo camino?"
+    solucion: "Deslizar y baches: no sistemáticos. Diámetros y vía: sistemáticos."
+
+  - id: estime-giroscopo
+    tipo: pregunta
+    titulo: "Lo que deriva el giróscopo"
+    texto: "Tras calibrar el cero, quedan 0,05 °/s de desplazamiento. ¿Cuánto se equivoca la orientación en los 20 s del recorrido?"
+    libro: [106]
+    fijar: { g_d: 0.05, t_r: 20 }
+    widget:
+      tipo: figura
+      figura: fig-57.8
+      zonas:
+        - { id: recorrido, rotulo: "Los 10 m, a la derecha", rect: [165, 10, 160, 140] }
+    estimar:
+      objetivo: "th_g"
+      unidad: "°"
+      min: 0
+      max: 5
+      paso: 0.05
+      inicio: 3
+      tol: 0.05
+      rotulo: "Deriva de la orientación"
+    exito: "1°, 3° por minuto: la posición final queda a 87 mm de la real, frente a 1,66 m con la odometría sola."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 1.05 }, texto: "Se ha pasado: eso sería en un minuto; el recorrido dura 20 s." }
+      - { texto: "Se ha quedado corto: 0,05 grados cada segundo, durante 20 segundos." }
+    escalera:
+      - "Deriva = desplazamiento × tiempo."
+    solucion: "0,05 × 20 = 1°."
+    comprobar:
+      - { th_g: 1, g_min: 3, e_g: 0.087, tol: 0.005 }
+
+  - id: prediga-reparto
+    tipo: predecir
+    titulo: "Encoders e IMU"
+    texto: "Lo que la odometría mide mal es justo lo que un giróscopo mide bien. ¿Cuál es el reparto habitual?"
+    libro: [106]
+    widget:
+      tipo: figura
+      figura: fig-57.8
+      zonas:
+        - { id: recorrido, rotulo: "Los 10 m, a la derecha", rect: [165, 10, 160, 140] }
+    opciones:
+      - texto: "Encoders para la distancia, giróscopo para la orientación"
+        bien: true
+        porque: "El giróscopo mide la velocidad de giro; los encoders, el avance."
+      - texto: "Giróscopo para todo"
+        porque: "Un giróscopo da el giro, no la distancia recorrida."
+      - texto: "Encoders para todo, con más líneas"
+        porque: "La resolución ya sobra; el problema es la orientación."
+    escalera:
+      - "¿Qué magnitud deriva en la odometría?"
+    solucion: "Distancia con los encoders y orientación con la IMU."
+
+  - id: empareje-calibrar
+    tipo: pregunta
+    titulo: "En el banco: calibrar"
+    texto: "Empareje cada calibración con cómo se hace."
+    libro: [108]
+    widget:
+      tipo: figura
+      figura: fig-57.8
+      zonas:
+        - { id: geometria, rotulo: "La geometría, a la izquierda", rect: [0, 10, 95, 145] }
+    emparejar:
+      - ["Diámetro efectivo de las ruedas", "10 m medidos con cinta frente a los encoders"]
+      - ["Vía efectiva", "Diez vueltas sobre sí mismo"]
+      - ["Cero del giróscopo", "Robot quieto, promediando unos segundos"]
+    exito: "Si el cero cambia mucho entre arranques, la IMU está cerca de un motor o de un regulador que la calienta."
+    pistas:
+      - { texto: "Girar sobre sí mismo solo depende de la vía." }
+    escalera:
+      - "Cada parámetro se mide con el movimiento que solo depende de él."
+    solucion: "Diámetro: 10 m con cinta. Vía: diez vueltas. Giróscopo: quieto, promediando."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [97, 104, 106, 108]
+    ideas:
+      - { titulo: "Diferencial.", texto: "Avance, la media de las ruedas; giro, la diferencia entre la vía." }
+      - { titulo: "Odometría.", texto: "La resolución sobra; los errores sistemáticos no." }
+      - { titulo: "Deriva.", texto: "Un 0,5 % de diámetro: 19,1° y 1,66 m tras 10 m." }
+      - { titulo: "Giróscopo.", texto: "Orientación con la IMU, distancia con los encoders: 87 mm." }

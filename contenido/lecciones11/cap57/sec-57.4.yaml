@@ -1,0 +1,382 @@
+# Lección 1.2 de la sección 54.4 «Control de un Eje: Encoder, Servo de Posición y Perfiles» (cap57; etiquetas
+# sec-57.N = impresas 54.N).
+# - El encoder de 11 líneas en el motor, ×4 y 1:30: 1 320 cuentas por vuelta de salida, 0,273° (bloque 74); la máquina
+#   de estados (75) y su coste: 7 260 cuentas/s × 60 ciclos = el 2,7 % de un ATmega328P a 16 MHz (77).
+# - Estimar la velocidad: el escalón del método M, Δn = 60/(N·T) (bloque 79; 45,5 rpm con 1 ms, 4,5 rpm con 10 ms y
+#   medio periodo de retraso, bloque 80; figura 54.6).
+# - El servo de posición con anticipación (ecuación del bloque 84): la inercia del plato dividida por 30² (85) y el
+#   ejemplo del bloque 90 (k·ω = 1,39 V a 120 rad/s; 0,32 A acelerando). La gráfica de la fórmula es u frente a ω_ref.
+# - El perfil trapezoidal (ecuación del bloque 88): 90° con 4 rad/s y 20 rad/s², 0,2 + 0,193 + 0,2 = 0,593 s; 30°, un
+#   triángulo de 0,324 s con pico de 3,24 rad/s (bloque 89). El error con y sin anticipación (91, figura 54.7).
+# - La sintonía en el banco (93).
+# Pasos prácticos: «simular» la carga del procesador con un encoder (2,7 %; errores: la velocidad de salida en lugar de
+# la del motor, 0,09 %, o sin el ×4, 0,68 %), «dibujar» la velocidad del perfil trapezoidal de 90° y «ordenar» la
+# sintonía de un eje.
+# Duda del libro (no la usa ninguna tarjeta): bloque 90, «k·ω = 1,39 V más la caída del rozamiento, 2,18 V en total»;
+# la caída del rozamiento es R·T_roz/k = 6 × 1,5 mN·m / 11,58 mN·m/A = 0,777 V, y la suma da 2,17 V.
+leccion: cap57/sec-57.4
+
+libro:
+  74: "Contando los cuatro flancos de cada ciclo (decodificación ×4) son 44 cuentas por vuelta del motor y, con la reductora 1:30, 1 320 por vuelta de la salida: 0,273° por cuenta"
+  75: "Las cuatro transiciones en las que cambian los dos bits a la vez son imposibles en un encoder en cuadratura: significan que se ha perdido un flanco"
+  77: "a 330 rpm de salida el motor gira a 9 900 rpm, y el encoder da 9 900/60 × 44 = 7 260 cuentas por segundo. Con una rutina de unos 60 ciclos"
+  79: "una cuenta por periodo son 60/(1 320 × 0,001) = 45,5 rpm"
+  80: "contar durante 10 ms da escalones de 4,5 rpm, a cambio de un retraso de medio periodo, 5 ms"
+  81: "Velocidad estimada del eje de salida mientras sube de 0 a 60 rpm en 1 s"
+  83: "para que el eje se mueva, primero tiene que quedarse atrás"
+  84: 'u = k dot.op ω_("ref")'
+  85: "un plato giratorio de 2·10−3 kg·m² se ve como 2,22·10−6 kg·m² a través de la reductora 1:30"
+  88: 't_("a") = v_("máx")/a_("máx")'
+  89: "Con 4 rad/s (229 °/s) y 20 rad/s², un giro de 90° acelera 0,2 s, sigue 0,193 s y frena 0,2 s: 0,593 s en total"
+  90: "La anticipación pide entonces k·ω = 1,39 V"
+  91: "Sin ella, el error llega a 2,18° (8 cuentas) mientras acelera"
+  92: "Error de seguimiento simulado con el encoder de 1 320 cuentas por vuelta"
+  93: "Primero se ajusta la anticipación con el PID a cero"
+
+modelo:
+  valores:
+    N_l: { sim: "N_{líneas}", nombre: "líneas del encoder", unidad: "", valor: 11 }
+    i_r: { sim: "i", nombre: "reducción", unidad: "", valor: 30 }
+    n_mo: { sim: "n_{motor}", nombre: "velocidad del motor", unidad: rpm, valor: 9900 }
+    c_i: { sim: "c", nombre: "ciclos de la rutina", unidad: ciclos, valor: 60 }
+    f_c: { sim: "f_{reloj}", nombre: "reloj del procesador", unidad: Hz, valor: 16000000 }
+    T_w: { sim: "T_{s}", nombre: "ventana del método M", unidad: s, valor: 0.001 }
+    k_m: { sim: "k", nombre: "constante del motor", unidad: "V·s/rad", valor: 0.01158 }
+    R_m: { sim: "R", nombre: "resistencia del motor", unidad: Ω, valor: 6 }
+    J_t: { sim: "J", nombre: "inercia total vista desde el motor", unidad: "kg·m²", valor: 0.00000372 }
+    T_r: { sim: "T_{roz}", nombre: "par de rozamiento", unidad: "N·m", valor: 0.0015 }
+    w_r: { sim: "ω_{ref}", nombre: "velocidad de la consigna en el motor", unidad: "rad/s", valor: 120 }
+    a_l: { sim: "α_{ref}", nombre: "aceleración de la consigna en el motor", unidad: "rad/s²", valor: 600 }
+    J_p: { sim: "J_{plato}", nombre: "inercia del plato", unidad: "kg·m²", valor: 0.002 }
+    th: { sim: "θ", nombre: "recorrido", unidad: rad, valor: 1.5708 }
+    v_x: { sim: "v_{máx}", nombre: "velocidad máxima", unidad: "rad/s", valor: 4 }
+    a_x: { sim: "a_{máx}", nombre: "aceleración máxima", unidad: "rad/s²", valor: 20 }
+  calculos:
+    N_c: { expr: "4*N_l*i_r", sim: "N", nombre: "cuentas por vuelta de salida", unidad: cuentas }
+    res: { expr: "360/N_c", sim: "Δθ", nombre: "resolución", unidad: "°" }
+    f_e: { expr: "n_mo/60*4*N_l", sim: "f", nombre: "cuentas por segundo", unidad: "cuentas/s" }
+    carga: { expr: "100*f_e*c_i/f_c", sim: "carga", nombre: "parte del procesador", unidad: "%" }
+    carga_s: { expr: "100*(n_mo/i_r)/60*4*N_l*c_i/f_c", sim: "carga", nombre: "carga con la velocidad de salida", unidad: "%" }
+    carga_1: { expr: "100*n_mo/60*N_l*c_i/f_c", sim: "carga", nombre: "carga sin el ×4", unidad: "%" }
+    dn: { expr: "60/(N_c*T_w)", sim: "Δn_{M}", nombre: "escalón del método M", unidad: rpm }
+    ret: { expr: "T_w/2", sim: "retraso", nombre: "retraso de medio periodo", unidad: s }
+    J_v: { expr: "J_p/i_r^2", sim: "J′", nombre: "inercia del plato vista desde el motor", unidad: "kg·m²" }
+    i_2: { expr: "i_r^2", sim: "i²", nombre: "cuadrado de la reducción", unidad: "" }
+    t_ac: { expr: "t_a + t_c", sim: "t", nombre: "fin de la meseta", unidad: s }
+    u_v: { expr: "k_m*w_r", sim: "k·ω", nombre: "tensión de la velocidad", unidad: V }
+    I_a: { expr: "(J_t*a_l + T_r)/k_m", sim: "I", nombre: "corriente acelerando", unidad: A }
+    u_ff: { expr: "k_m*w_r + R_m*I_a", sim: "u", nombre: "tensión de la anticipación", unidad: V }
+    t_a: { expr: "v_x/a_x", sim: "t_{a}", nombre: "tiempo de aceleración", unidad: s }
+    T_tr: { expr: "th/v_x + v_x/a_x", sim: "T", nombre: "duración del movimiento", unidad: s }
+    t_c: { expr: "th/v_x - v_x/a_x", sim: "t_{c}", nombre: "tiempo a velocidad constante", unidad: s }
+    th_u: { expr: "v_x^2/a_x", sim: "θ_{umbral}", nombre: "umbral del triángulo", unidad: rad }
+    T_tri: { expr: "2*sqrt(th/a_x)", sim: "T", nombre: "duración del triángulo", unidad: s }
+    v_tri: { expr: "sqrt(th*a_x)", sim: "v_{pico}", nombre: "pico del triángulo", unidad: "rad/s" }
+
+tarjetas:
+  - id: explore-encoder
+    tipo: explorar
+    titulo: "El encoder del motor"
+    texto: "Once líneas, cuatro flancos por ciclo y la reductora 1:30. Cambie las líneas y mire la resolución a la salida."
+    libro: [74]
+    inicio: { N_l: 11 }
+    widget:
+      tipo: grafica
+      x: { id: lx, min: 1, max: 50, unidad: "", rotulo: "N_{líneas}" }
+      y: { min: 0, max: 7000, unidad: cuentas, rotulo: "N" }
+      curvas:
+        - { expr: "4*lx*i_r", color: azul, rotulo: "cuentas por vuelta de salida" }
+      marcas:
+        - { x: "N_l", y: "N_c", rotulo: "{{N_c}}" }
+      lectura: { valor: res, rotulo: "Resolución a la salida" }
+      datos:
+        - { valor: N_c, rotulo: "Cuentas por vuelta de salida: {{N_c}}" }
+      mandos:
+        - { valor: N_l, lista: [11, 24, 48], rotulo: "Líneas del encoder" }
+    comprobar:
+      - { N_c: 1320, res: 0.273, tol: 0.003 }
+
+  - id: simule-carga
+    tipo: simular
+    titulo: "Lo que cuesta un encoder"
+    texto: "A 330 rpm de salida el motor gira a 9 900 rpm. Con una rutina de unos 60 ciclos por cuenta, ¿qué parte de un ATmega328P a 16 MHz se come?"
+    libro: [77]
+    fijar: { N_l: 11, n_mo: 9900, c_i: 60 }
+    widget:
+      tipo: grafica
+      x: { id: nx, min: 0, max: 10000, unidad: rpm, rotulo: "n_{motor}" }
+      y: { min: 0, max: 5, unidad: "%", rotulo: "carga" }
+      curvas:
+        - { expr: "100*nx/60*4*N_l*c_i/f_c", color: naranja, rotulo: "parte del procesador" }
+      lectura: { valor: carga, rotulo: "Parte del procesador" }
+      ocultar: curvas
+    simular:
+      objetivo: carga
+      unidad: "%"
+      tol: 0.05
+      rotulo: "Parte del procesador"
+      errores:
+        - { expr: "carga_s", texto: "Ha usado las 330 rpm de la salida: el encoder está en el motor, que gira treinta veces más." }
+        - { expr: "carga_1", texto: "Ha contado una cuenta por línea: con ×4 son 44 cuentas por vuelta del motor." }
+    exito: "7 260 cuentas por segundo y 0,44 millones de ciclos: el 2,7 % para un eje. Con tres, o 500 líneas, hace falta hardware."
+    escalera:
+      - "Cuentas por segundo = 9 900/60 × 44."
+      - "Ciclos por segundo = cuentas × 60; divida entre 16 millones."
+    solucion: "7 260 × 60 = 0,44·10⁶ ciclos/s: el 2,7 % del procesador."
+    comprobar:
+      - { f_e: 7260, carga: 2.72, carga_s: 0.0908, carga_1: 0.681, tol: 0.003 }
+
+  - id: prediga-transicion
+    tipo: predecir
+    titulo: "Los dos bits a la vez"
+    texto: "La máquina de estados del encoder ve cambiar los dos bits a la vez. ¿Qué significa?"
+    libro: [75]
+    widget:
+      tipo: figura
+      figura: fig-57.6
+      zonas:
+        - { id: grafica, rotulo: "La gráfica", rect: [25, 10, 295, 105] }
+    opciones:
+      - texto: "Que se ha perdido un flanco"
+        bien: true
+        porque: "En cuadratura nunca cambian los dos bits a la vez; si se ve, falta un flanco, y conviene contarlo."
+      - texto: "Que el motor ha cambiado de sentido"
+        porque: "El cambio de sentido es una transición normal de un solo bit, que resta en lugar de sumar."
+      - texto: "Que el motor va el doble de rápido"
+        porque: "A más velocidad llegan más flancos, pero de uno en uno."
+    escalera:
+      - "En cuadratura, ¿cuántos bits cambian en cada flanco?"
+    solucion: "Un flanco perdido: transición imposible."
+
+  - id: estime-escalon
+    tipo: pregunta
+    titulo: "Contar cuentas en 1 ms"
+    texto: "Con 1 320 cuentas por vuelta y una ventana de 1 ms, ¿cuántas rpm vale una cuenta por periodo?"
+    libro: [79, 81]
+    fijar: { N_l: 11, T_w: 0.001 }
+    widget:
+      tipo: figura
+      figura: fig-57.6
+      zonas:
+        - { id: grafica, rotulo: "La gráfica", rect: [25, 10, 295, 105] }
+    estimar:
+      objetivo: "dn"
+      unidad: rpm
+      min: 0
+      max: 100
+      paso: 0.5
+      inicio: 80
+      tol: 0.05
+      rotulo: "Escalón del método M"
+    exito: "45,5 rpm: la estimación solo puede valer 0, 45,5, 91… A baja velocidad, el derivador del PID amplifica ese ruido."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 47.8 }, texto: "Se ha pasado: una cuenta es 1/1 320 de vuelta en 1 ms." }
+      - { texto: "Se ha quedado corto: pase a vueltas por minuto, multiplicando por 60." }
+    escalera:
+      - "Δn = 60/(N·T)."
+    solucion: "60/(1 320 × 0,001) = 45,5 rpm."
+    comprobar:
+      - { dn: 45.5, tol: 0.002 }
+
+  - id: explore-ventana
+    tipo: explorar
+    titulo: "Una ventana más larga"
+    texto: "Alargue la ventana del método M: el escalón baja, pero el retraso de medio periodo sube y resta fase al lazo."
+    libro: [80, 81]
+    fijar: { N_l: 11 }
+    inicio: { T_w: 0.001 }
+    widget:
+      tipo: grafica
+      x: { id: tw, min: 0.001, max: 0.02, unidad: s, rotulo: "T_{s}" }
+      y: { min: 0, max: 50, unidad: rpm, rotulo: "Δn_{M}" }
+      curvas:
+        - { expr: "60/(N_c*tw)", color: azul, rotulo: "escalón" }
+      marcas:
+        - { x: "T_w", y: "dn", rotulo: "{{dn}}" }
+      lectura: { valor: dn, rotulo: "Escalón del método M" }
+      datos:
+        - { valor: ret, rotulo: "Retraso: {{ret}}" }
+      mandos:
+        - { valor: T_w, lista: [0.001, 0.002, 0.005, 0.01, 0.02], rotulo: "Ventana" }
+    requiere: { mover: [T_w] }
+    comprobar:
+      - { con: { T_w: 0.01 }, dn: 4.5, ret: 0.005, tol: 0.012 }
+
+  - id: empareje-metodos
+    tipo: pregunta
+    titulo: "Tres remedios"
+    texto: "Empareje cada manera de estimar la velocidad con su rasgo."
+    libro: [80]
+    widget:
+      tipo: figura
+      figura: fig-57.6
+      zonas:
+        - { id: grafica, rotulo: "La gráfica", rect: [25, 10, 295, 105] }
+    emparejar:
+      - ["Ventana más larga", "Escalones finos, con retraso"]
+      - ["Método T: tiempo entre flancos", "Excelente a baja velocidad, peor a alta"]
+      - ["Un observador", "Un modelo del motor corregido con el encoder"]
+    exito: "Los métodos M y T son buenos en extremos opuestos: los controladores buenos combinan los dos."
+    pistas:
+      - { texto: "A baja velocidad los flancos llegan espaciados: medir el tiempo entre ellos es muy fino." }
+    escalera:
+      - "¿Qué se mide en cada uno: cuentas, tiempos o un modelo?"
+    solucion: "Ventana larga: finos con retraso. Método T: bueno a baja velocidad. Observador: modelo y encoder."
+
+  - id: prediga-inercia
+    tipo: predecir
+    titulo: "El plato a través de la reductora"
+    texto: "Un plato giratorio de 2·10⁻³ kg·m² va tras una reductora 1:30. ¿Qué inercia ve el motor?"
+    libro: [85]
+    widget:
+      tipo: figura
+      figura: fig-57.7
+      zonas:
+        - { id: perfil, rotulo: "El perfil, a la izquierda", rect: [5, 10, 160, 125] }
+    opciones:
+      - texto: "2,22·10⁻⁶ kg·m²: dividida por 30²"
+        bien: true
+        porque: "La inercia se ve dividida por el cuadrado de la reducción: algo más que el propio rotor, 1,5·10⁻⁶."
+      - texto: "Dividida por 30"
+        porque: "El par se divide por la reducción y la aceleración se multiplica: la inercia, por el cuadrado."
+      - texto: "La misma: la reductora no cambia la inercia"
+        porque: "Sí la cambia: es la gran ventaja de las reductoras para el lazo."
+    escalera:
+      - "El par se divide por 30 y la aceleración del motor es 30 veces la del plato."
+    solucion: "2·10⁻³/900 = 2,22·10⁻⁶ kg·m²."
+    comprobar:
+      - { J_v: 0.00000222, i_2: 900, tol: 0.003 }
+
+  - id: formula-anticipacion
+    tipo: formula
+    titulo: "La acción anticipativa"
+    texto: "Un PID solo reacciona al error. Con el modelo del motor, la consigna ya dice qué tensión hace falta; el PID corrige lo demás."
+    libro: [83, 84, 90]
+    fijar: { w_r: 120, J_t: 0.00000372, T_r: 0.0015 }
+    ec: 84
+    sustitucion: "{{k_m}} · {{w_r}} + {{R_m}}/{{k_m}} · ({{J_t}} · {{a_l}} + {{T_r}}) = {{u_ff}}"
+    widget:
+      tipo: grafica
+      x: { id: wx, min: 0, max: 300, unidad: "rad/s", rotulo: "ω_{ref}" }
+      y: { min: 0, max: 6, unidad: V, rotulo: "u" }
+      curvas:
+        - { expr: "k_m*wx + R_m*(J_t*a_l + T_r)/k_m", color: naranja, rotulo: "anticipación" }
+      marcas:
+        - { x: "w_r", y: "u_ff", rotulo: "{{u_ff}}" }
+      lectura: { valor: u_ff, rotulo: "Tensión de la anticipación" }
+      datos:
+        - { valor: I_a, rotulo: "Corriente: {{I_a}}" }
+      mandos:
+        - { valor: a_l, lista: [0, 600], nombres: [crucero, acelerando], rotulo: "Tramo del perfil" }
+    comprobar:
+      - { u_v: 1.39, tol: 0.003 }
+      - { con: { a_l: 600 }, I_a: 0.32, tol: 0.01 }
+
+  - id: porque-anticipacion
+    tipo: porque
+    titulo: "Con anticipación"
+    texto: "Girando el plato 90°, el PID solo deja 2,18° de error al acelerar; con anticipación, no pasa de 0,38°. ¿Por qué?"
+    libro: [91, 92]
+    widget:
+      tipo: figura
+      figura: fig-57.7
+      zonas:
+        - { id: error, rotulo: "La gráfica de la derecha", rect: [170, 10, 155, 125] }
+    opciones:
+      - texto: "El modelo pone la tensión que pide la consigna sin esperar a que haya error"
+        bien: true
+        porque: "Un PID solo, para empujar, necesita que el eje se quede atrás; con anticipación solo corrige lo que el modelo no sabe."
+      - texto: "Porque la anticipación sube la ganancia del PID"
+        porque: "Las ganancias son las mismas en las dos simulaciones; lo que cambia es la tensión que llega antes."
+      - texto: "Porque el encoder mide mejor"
+        porque: "Es el mismo encoder de 1 320 cuentas en las dos."
+    escalera:
+      - "¿Qué necesita un PID solo para empezar a empujar?"
+    solucion: "La anticipación da la tensión antes de que haya error; el PID se queda con el trabajo pequeño."
+
+  - id: dibuje-trapecio
+    tipo: dibujar
+    titulo: "Dibuje el perfil de 90°"
+    texto: "Dibuje la velocidad de la consigna para girar 90° con 4 rad/s de velocidad máxima y 20 rad/s² de aceleración."
+    libro: [88, 89]
+    fijar: { th: 1.5708, v_x: 4, a_x: 20 }
+    dibujar:
+      x: { id: tt, min: 0, max: 0.7, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 5, unidad: "rad/s", rotulo: "v" }
+      curva: "max(0, min(a_x*tt, v_x, a_x*(T_tr - tt)))"
+      puntos: 29
+      tol: 0.08
+      holgura: 0.03
+      rotulo: "Velocidad de la consigna"
+    exito: "Acelera 0,2 s, sigue 0,193 s a 4 rad/s y frena 0,2 s: 0,593 s en total."
+    pistas:
+      - { cuando: { valor: media, mayor: 0.1 }, texto: "La ha dibujado alta: la meseta está en 4 rad/s." }
+      - { texto: "Es un trapecio: rampa de 0,2 s, meseta y rampa de bajada simétrica." }
+    escalera:
+      - "t_{a} = v/a = 0,2 s; T = θ/v + v/a."
+    solucion: "Rampa a 4 rad/s en 0,2 s, meseta hasta 0,393 s y bajada a cero en 0,593 s."
+    comprobar:
+      - { t_a: 0.2, t_c: 0.193, T_tr: 0.593, t_ac: 0.393, tol: 0.003 }
+
+  - id: estime-triangulo
+    tipo: pregunta
+    titulo: "Un giro corto"
+    texto: "Con los mismos límites, un giro de 30° no llega al umbral de 45,8°: es un triángulo. ¿Cuánto dura?"
+    libro: [89]
+    fijar: { th: 0.5236, v_x: 4, a_x: 20 }
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 0, max: 0.7, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 5, unidad: "rad/s", rotulo: "v" }
+      curvas:
+        - { expr: "max(0, min(a_x*tt, v_x, a_x*(1.5708/v_x + v_x/a_x - tt)))", color: tinta, rotulo: "el de 90°", discontinua: true }
+    estimar:
+      objetivo: "T_tri"
+      unidad: s
+      min: 0
+      max: 0.7
+      paso: 0.005
+      inicio: 0.55
+      tol: 0.04
+      rotulo: "Duración del giro de 30°"
+    exito: "0,324 s, con un pico de 3,24 rad/s: no llega a la velocidad máxima."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 0.34 }, texto: "Se ha pasado: sin meseta, solo sube y baja." }
+      - { texto: "Se ha quedado corto: t_{a} = √(θ/a), y son dos rampas." }
+    escalera:
+      - "t_{a} = √(θ/a_{máx}); el total es el doble."
+    solucion: "2 × √(0,5236/20) = 0,324 s."
+    comprobar:
+      - { T_tri: 0.324, v_tri: 3.24, tol: 0.003 }
+
+  - id: ordene-sintonia
+    tipo: pregunta
+    titulo: "Sintonizar un eje"
+    texto: "Con el error de seguimiento a la vista, ordene la sintonía del eje."
+    libro: [93]
+    widget:
+      tipo: figura
+      figura: fig-57.7
+      zonas:
+        - { id: error, rotulo: "La gráfica de la derecha", rect: [170, 10, 155, 125] }
+    ordenar:
+      - "Ajustar la anticipación con el PID a cero"
+      - "Subir K_{p} hasta que oscile y dejarla en la mitad"
+      - "Añadir K_{d} para amortiguar"
+      - "Por último, K_{i} con su anti-windup"
+    exito: "Con k y R bien medidos, la anticipación casi sigue la consigna ella sola."
+    pistas:
+      - { texto: "Lo primero no es el PID: es lo que el modelo ya sabe." }
+    escalera:
+      - "Del trabajo grande al pequeño: el modelo, la proporcional, la derivada y la integral."
+    solucion: "Anticipación, K_{p} a la mitad de la oscilación, K_{d} y K_{i} con anti-windup."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [74, 79, 84, 88]
+    ideas:
+      - { titulo: "Encoder.", texto: "4·N·i cuentas por vuelta de salida; contarlas cuesta procesador." }
+      - { titulo: "Velocidad.", texto: "Método M con escalones, método T fino a baja velocidad, o un observador." }
+      - { titulo: "Anticipación.", texto: "El modelo pone la tensión; el PID corrige lo que no sabe." }
+      - { titulo: "Perfil.", texto: "Trapecio, o triángulo si el giro es corto: T = θ/v + v/a." }

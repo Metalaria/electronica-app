@@ -1,0 +1,300 @@
+# Lección 1.2 de la sección 56.6 «Ingeniería Inversa de Protocolos Digitales» (cap54; etiquetas sec-54.N = impresas
+# 56.N).
+# - Identificar el bus (bloques 225 a 231), capturar bien (233 a 237), deducir el formato (239 a 243; figura 56.7,
+#   fig-54.7), la suma de comprobación (245 a 248), correlacionar con el comportamiento (250 a 252), buses lentos y
+#   rápidos (254 a 256), el cifrado (258, 259) y el banco (261 a 263). Los analizadores de la figura 56.8 (foto
+#   img/foto_analizador.jpg; zonas en píxeles de la foto).
+# - Modelo: la frecuencia de muestreo, de cuatro a cinco veces la del reloj (bloque 234), con el I²C a 100 kHz del
+#   bloque 254: la estimación acierta entre 400 y 500 kHz (objetivo 450 kHz ± 12 %).
+# Pasos prácticos: «ordenar» la identificación de la suma de comprobación y «tocar» en la foto el microcontrolador USB
+# del analizador comercial.
+leccion: cap54/sec-54.6
+
+libro:
+  223: "esa conversación es la parte más informativa de todo el sistema"
+  226: "Una línea con pulsos y silencios: puede ser una UART, un bus de un hilo, o una señal modulada."
+  227: "Dos líneas, una de ellas periódica y con resistencias de pull-up visibles: I²C"
+  228: "Tres o cuatro, una periódica y una de selección que baja antes de cada ráfaga: SPI"
+  229: "Dos líneas diferenciales con nivel de reposo: CAN, RS-485 o USB."
+  231: "Si hay una línea con una periodicidad estricta, el bus es síncrono"
+  234: "Frecuencia de muestreo de al menos cuatro o cinco veces la del reloj del bus, o los flancos se colocan mal."
+  237: "Una sola transacción no permite deducir el formato; veinte, comparadas, sí."
+  240: "Lo que no cambia nunca es cabecera, dirección o preámbulo."
+  241: "Lo que cambia con el valor medido son los datos."
+  242: "suele ser un contador de secuencia o una suma de comprobación"
+  243: "Lo que cambia solo al final es, casi siempre, la suma de comprobación"
+  246: "Si cambian dos, es de 16 bits, y casi siempre un CRC-16"
+  247: "Si ninguna encaja, probar incluyendo o excluyendo la cabecera"
+  248: "para escuchar no hace falta la suma de comprobación; solo hace falta si se quiere transmitir"
+  251: "La trama que aparece siempre que se pulsa ese botón y nunca en otro caso es el mensaje de ese botón"
+  254: "Lentos —I²C a 100 kHz, UART a 9 600 baudios, un mando a distancia— se capturan con cualquier analizador barato"
+  255: "Medios —SPI a unos megahercios, CAN— necesitan un analizador decente"
+  256: "Rápidos —USB a alta velocidad, Ethernet, memoria— quedan fuera del alcance de un banco doméstico"
+  258: "Si las tramas de la misma acción son distintas cada vez y no hay contador visible que lo explique, puede haber cifrado o un código variable."
+  263: "Practicarlo así, sabiendo el resultado, es lo que prepara para hacerlo cuando no se sabe."
+  264: "Deducción del formato de trama comparando capturas conocidas."
+  265: "placa de un Saleae Logic comercial de primera generación (8 canales), con el microcontrolador USB Cypress FX2 que hace casi todo el trabajo"
+
+modelo:
+  valores:
+    f_b: { sim: "f_{bus}", nombre: "reloj del bus", unidad: Hz, valor: 100000 }
+    k_m: { sim: "k", nombre: "veces la frecuencia del reloj", unidad: "", valor: 4.5 }
+  calculos:
+    f_m: { expr: "k_m*f_b", sim: "f_{muestreo}", nombre: "frecuencia de muestreo", unidad: Hz }
+    f_4: { expr: "4*f_b", sim: "4·f", nombre: "cuatro veces el reloj", unidad: Hz }
+    f_5: { expr: "5*f_b", sim: "5·f", nombre: "cinco veces el reloj", unidad: Hz }
+
+tarjetas:
+  - id: explore-tramas
+    tipo: explorar
+    titulo: "Comparar capturas"
+    texto: "Una sola trama no dice nada; veinte, comparadas, sí. Toque lo que no cambia nunca y lo que cambia con la sonda."
+    libro: [223, 237, 264]
+    widget:
+      tipo: figura
+      figura: fig-54.7
+      zonas:
+        - { id: cabecera, rotulo: "La primera columna", rect: [72, 32, 42, 130], texto: "Cabecera: no cambia nunca, como la dirección." }
+        - { id: direccion, rotulo: "La segunda columna", rect: [118, 32, 42, 130], texto: "Dirección: fija." }
+        - { id: boton, rotulo: "La tercera columna", rect: [165, 32, 42, 130], texto: "Cambia al pulsar un botón: el byte del botón." }
+        - { id: dato, rotulo: "La cuarta columna", rect: [212, 32, 42, 130], texto: "Cambia con la temperatura de la sonda: el dato." }
+        - { id: suma, rotulo: "La quinta columna", rect: [258, 32, 42, 130], texto: "Cambia con todo, al final: la suma de comprobación." }
+    requiere: { mover: [cabecera, dato] }
+
+  - id: empareje-buses
+    tipo: pregunta
+    titulo: "Identificar el bus"
+    texto: "Antes de decodificar, el número de líneas activas casi dice qué se mira. Empareje cada observación con su bus."
+    libro: [226, 227, 228, 229, 231]
+    widget:
+      tipo: figura
+      figura: fig-54.8
+      zonas:
+        - { id: pinzas, rotulo: "Las pinzas, a la izquierda", rect: [30, 190, 300, 200] }
+    emparejar:
+      - ["Una línea con pulsos y silencios", "UART, un hilo o señal modulada"]
+      - ["Dos líneas, una periódica, con pull-ups", "I²C"]
+      - ["Tres o cuatro, con una de selección que baja", "SPI"]
+      - ["Dos diferenciales con nivel de reposo", "CAN, RS-485 o USB"]
+    exito: "Y una comprobación previa: una línea con periodicidad estricta es un reloj, y el bus es síncrono."
+    pistas:
+      - { texto: "La línea de selección que baja antes de cada ráfaga es la firma del SPI." }
+    escalera:
+      - "Cuente líneas y busque cuál es periódica."
+    solucion: "Una línea: UART o un hilo. Dos con pull-ups: I²C. Con selección: SPI. Diferenciales: CAN, RS-485 o USB."
+
+  - id: estime-muestreo
+    tipo: pregunta
+    titulo: "Muestrear un I²C de 100 kHz"
+    texto: "Va a capturar un bus I²C a 100 kHz. ¿A qué frecuencia de muestreo, como mínimo, debe trabajar el analizador?"
+    libro: [234, 254]
+    widget:
+      tipo: figura
+      figura: fig-54.8
+      zonas:
+        - { id: pinzas, rotulo: "Las pinzas, a la izquierda", rect: [30, 190, 300, 200] }
+    estimar:
+      objetivo: "f_m"
+      unidad: Hz
+      min: 0
+      max: 2000000
+      paso: 10000
+      inicio: 150000
+      tol: 0.12
+      rotulo: "Frecuencia de muestreo"
+    exito: "De 400 a 500 kHz como mínimo: cuatro o cinco veces el reloj, o los flancos se colocan mal."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 504000 }, texto: "Se ha pasado del mínimo: más no estorba, pero bastan cuatro o cinco veces el reloj." }
+      - { texto: "Se ha quedado corto: con menos de cuatro muestras por periodo los flancos se colocan mal." }
+    escalera:
+      - "Cuatro o cinco veces la frecuencia del reloj del bus."
+    solucion: "Cuatro a cinco veces 100 kHz: de 400 a 500 kHz."
+    comprobar:
+      - { f_4: 400000, f_5: 500000 }
+
+  - id: ordene-suma
+    tipo: pregunta
+    titulo: "Identificar la suma de comprobación"
+    texto: "Es lo que más atasca. Ordene el procedimiento."
+    libro: [246, 247]
+    widget:
+      tipo: figura
+      figura: fig-54.7
+      zonas:
+        - { id: recuadro, rotulo: "El recuadro de la derecha", rect: [312, 4, 135, 186] }
+    ordenar:
+      - "Capturar dos tramas que difieran en un solo byte"
+      - "Ver cuántos bytes cambian al final"
+      - "Probar suma módulo 256, XOR y los CRC estándar"
+      - "Si nada encaja, incluir o excluir la cabecera"
+    exito: "El rango que cubre la suma es la otra incógnita: por eso se prueba con y sin cabecera."
+    pistas:
+      - { texto: "Primero se averigua cuántos bits tiene; después, cuál es." }
+    escalera:
+      - "Dos tramas casi iguales, contar bytes, probar candidatas y, si falla, cambiar el rango."
+    solucion: "Dos tramas, contar bytes del final, probar candidatas, y con o sin cabecera."
+
+  - id: prediga-crc
+    tipo: predecir
+    titulo: "Cambian dos bytes al final"
+    texto: "Dos tramas difieren en un solo byte de datos, y al final cambian dos bytes. ¿Qué comprobación es, casi siempre?"
+    libro: [246, 243]
+    widget:
+      tipo: figura
+      figura: fig-54.7
+      zonas:
+        - { id: recuadro, rotulo: "El recuadro de la derecha", rect: [312, 4, 135, 186] }
+    opciones:
+      - texto: "Un CRC-16"
+        bien: true
+        porque: "Dos bytes son 16 bits; una suma de 16 bits suele cambiar solo su byte bajo."
+      - texto: "Una suma módulo 256"
+        porque: "Esa es de 8 bits: cambiaría un solo byte."
+      - texto: "Un contador de secuencia"
+        porque: "El contador cambia en cada trama sin patrón; aquí cambian por el byte de datos."
+    escalera:
+      - "¿Cuántos bits tienen dos bytes, y qué hace una suma de 16 bits con un cambio pequeño?"
+    solucion: "16 bits, y casi siempre un CRC-16."
+
+  - id: empareje-formato
+    tipo: pregunta
+    titulo: "Deducir el formato"
+    texto: "Con varias capturas de situaciones conocidas, se compara. Empareje cada comportamiento de un byte con lo que suele ser."
+    libro: [240, 241, 242, 243]
+    widget:
+      tipo: figura
+      figura: fig-54.7
+      zonas:
+        - { id: columnas, rotulo: "Las cinco columnas", rect: [72, 32, 228, 130] }
+    emparejar:
+      - ["No cambia nunca", "Cabecera, dirección o preámbulo"]
+      - ["Cambia con el valor medido", "Datos"]
+      - ["Cambia en cada trama sin patrón", "Contador de secuencia o suma de comprobación"]
+      - ["Cambia solo al final", "Casi siempre, la suma de comprobación"]
+    exito: "La posición de los datos se localiza haciendo variar a propósito la magnitud: tapar el sensor, calentar la sonda."
+    pistas:
+      - { texto: "Lo que sigue a la temperatura de la sonda son datos." }
+    escalera:
+      - "Compare la misma posición en tramas de situaciones distintas."
+    solucion: "Fijo: cabecera. Con la medida: datos. Sin patrón: contador o suma. Al final: suma."
+
+  - id: porque-boton
+    tipo: porque
+    titulo: "Correlacionar"
+    texto: "Se pulsa un botón concreto, se captura, se repite y se compara. ¿Por qué basta para documentar su mensaje?"
+    libro: [251, 248]
+    widget:
+      tipo: figura
+      figura: fig-54.7
+      zonas:
+        - { id: boton, rotulo: "La tercera columna", rect: [165, 32, 42, 130] }
+    opciones:
+      - texto: "La trama que aparece siempre con ese botón y nunca en otro caso es su mensaje"
+        bien: true
+        porque: "Se documenta el protocolo por partes, sin entender el resto. Para escuchar no hace falta ni la suma."
+      - texto: "Porque el botón manda siempre el mismo byte en todos los equipos"
+        porque: "Cada protocolo es distinto: por eso se deduce provocando acciones conocidas."
+      - texto: "No basta: hay que decodificar todo el protocolo antes"
+        porque: "No hace falta: se empieza por lo que se puede provocar a voluntad."
+    escalera:
+      - "¿Qué relación hay entre pulsar el botón y la trama capturada?"
+    solucion: "Porque la trama que acompaña siempre a esa acción, y solo a ella, es su mensaje."
+
+  - id: prediga-cifrado
+    tipo: predecir
+    titulo: "Tramas que nunca se repiten"
+    texto: "La misma acción produce tramas distintas cada vez, y no hay contador visible que lo explique. ¿Qué indica?"
+    libro: [258]
+    widget:
+      tipo: figura
+      figura: fig-54.7
+      zonas:
+        - { id: aviso, rotulo: "La franja de abajo", rect: [4, 195, 443, 40] }
+    opciones:
+      - texto: "Cifrado o un código variable: ahí acaba el análisis del tráfico"
+        bien: true
+        porque: "La vía sería el firmware, si es accesible. Reconocerlo pronto evita semanas de comparaciones."
+      - texto: "Ruido en la captura"
+        porque: "El ruido no da tramas válidas distintas con la misma acción, cada vez."
+      - texto: "Que hay que capturar más"
+        porque: "Más capturas no ayudan si cada una es distinta sin patrón: es la señal para parar."
+    escalera:
+      - "¿Qué haría distinta cada vez una trama que dice lo mismo?"
+    solucion: "Cifrado o código variable: el tráfico ya no basta."
+
+  - id: toque-fx2
+    tipo: tocar
+    titulo: "El analizador por dentro"
+    texto: "En la placa del Saleae Logic, un microcontrolador USB hace casi todo el trabajo. Tóquelo."
+    libro: [265]
+    widget:
+      tipo: figura
+      figura: fig-54.8
+      zonas:
+        - { id: fx2, rotulo: "El integrado grande", rect: [1140, 210, 225, 125] }
+        - { id: usb, rotulo: "El conector de la derecha", rect: [1385, 215, 125, 125] }
+        - { id: conector, rotulo: "La fila de patillas", rect: [1015, 150, 125, 270] }
+        - { id: cristal, rotulo: "El componente plateado de arriba", rect: [1185, 85, 125, 125] }
+    tocar:
+      bien: [fx2]
+      porque:
+        usb: "Es el conector USB hacia el ordenador."
+        conector: "Son las patillas de los ocho canales, donde van las pinzas."
+        cristal: "Es el cristal del reloj del microcontrolador, no el microcontrolador."
+    exito: "El Cypress FX2: toma las muestras y las envía por USB; el ordenador hace la decodificación."
+    escalera:
+      - "Busque el integrado con más patillas."
+    solucion: "El integrado grande del centro: el Cypress FX2."
+
+  - id: empareje-velocidad
+    tipo: pregunta
+    titulo: "Lentos, medios y rápidos"
+    texto: "Empareje cada clase de bus con lo que hace falta para capturarlo."
+    libro: [254, 255, 256]
+    widget:
+      tipo: figura
+      figura: fig-54.8
+      zonas:
+        - { id: pinzas, rotulo: "Las pinzas, a la izquierda", rect: [30, 190, 300, 200] }
+    emparejar:
+      - ["I²C a 100 kHz, UART a 9 600 baudios", "Cualquier analizador barato"]
+      - ["SPI a unos megahercios, CAN", "Un analizador decente y cuidado con las puntas"]
+      - ["USB a alta velocidad, Ethernet, memoria", "Fuera del banco doméstico"]
+    exito: "Es una de las fronteras honestas del principio del capítulo."
+    pistas:
+      - { texto: "Un mando a distancia es de los lentos." }
+    escalera:
+      - "Cuanto más rápido el bus, más instrumento hace falta."
+    solucion: "Lentos: cualquiera. Medios: uno decente. Rápidos: instrumentación específica."
+
+  - id: porque-practicar
+    tipo: porque
+    titulo: "Practicar sabiendo la respuesta"
+    texto: "El ejercicio: capturar el I²C entre un microcontrolador y un sensor conocido, y soplar sobre el sensor. ¿Para qué, si ya se sabe el resultado?"
+    libro: [263]
+    widget:
+      tipo: figura
+      figura: fig-54.8
+      zonas:
+        - { id: pinzas, rotulo: "Las pinzas, a la izquierda", rect: [30, 190, 300, 200] }
+    opciones:
+      - texto: "Practicarlo sabiendo el resultado prepara para cuando no se sabe"
+        bien: true
+        porque: "Se ve la dirección, el registro y el dato, y qué bytes cambian al soplar: el método de la sección."
+      - texto: "Para comprobar que el sensor está bien"
+        porque: "Es un ejercicio de método, no de diagnóstico."
+      - texto: "Para aprender el protocolo I²C de memoria"
+        porque: "Se aprende a deducir formatos, no un protocolo concreto."
+    escalera:
+      - "¿Qué ventaja tiene practicar un método donde ya se conoce la respuesta?"
+    solucion: "Porque practicar con la respuesta conocida prepara para cuando no se conoce."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [231, 237, 243, 251]
+    ideas:
+      - { titulo: "El bus.", texto: "Cuente líneas y busque el reloj." }
+      - { titulo: "Capturar.", texto: "Cuatro o cinco veces el reloj, buen disparo y muchas tramas." }
+      - { titulo: "Comparar.", texto: "Lo fijo es cabecera; lo que cambia con la medida, datos; al final, la suma." }
+      - { titulo: "Correlacionar.", texto: "La trama de cada acción es su mensaje; si nunca se repite, hay cifrado." }

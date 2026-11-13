@@ -1,0 +1,353 @@
+# Lección 1.2 de la sección 54.8 «Proyecto por Etapas: un Brazo de Tres Ejes» (cap57; etiquetas sec-57.N = impresas
+# 54.N).
+# - El objetivo y el esquema de bloques (bloques 140, 141; figura 54.10, fig-57.10).
+# - Etapa 1 (bloques 143 a 145): dos servos bloqueados, 2 × 2,5 A a 6 V = 30 W; con un reductor del 88 %, 2,84 A de la
+#   línea de 12 V; con el paso a paso, 3,2 A en el peor caso. La parada de emergencia abre K1; el UNO va del USB.
+# - Etapa 2 (147, 148): el PCA9685, preescalador round(25 MHz/(4 096 × 50 Hz)) − 1 = 121, pasos de 4,88 µs y 307
+#   cuentas para 1 500 µs.
+# - Etapa 3 (150, 152, 154): 12 800 micropasos por vuelta de la base; 90 °/s en la base son 3 200 micropasos/s; la
+#   coma fija Q8 y el referenciado.
+# - Etapa 4 (158): la cinemática inversa tarda 1,08 ms y se hace cada 20 ms. Etapa 5 (160): las pruebas.
+# Pasos prácticos: «ordenar» las etapas y el referenciado, «simular» la corriente de 12 V de los dos servos bloqueados
+# (2,84 A; errores: 5 A sin convertir a 12 V, 2,5 A sin el rendimiento), «tocar» K1 en la figura y «banco» opcional de
+# la etapa 1 (el reductor con 2,4 Ω, entre 5,8 y 6,0 V; la cota superior de la banda, 6,2 V, es de ejemplo: el libro
+# solo dice «no baja de 5,8 V»).
+leccion: cap57/sec-57.8
+
+libro:
+  140: "que lleve una pinza a puntos de un volumen de trabajo con una repetibilidad de unos 2 mm, gobernado por un Arduino UNO"
+  141: "La fuente de 12 V llega a los motores a través de K1, el contactor (o relé de potencia) que abren la seta de emergencia y su rearme"
+  143: "Dos servos bloqueados a la vez toman 2 × 2,5 = 5 A a 6 V, 30 W, que un reductor del 88 % saca de la línea de 12 V como 2,84 A"
+  144: "El UNO se alimenta aparte, del USB, para que la emergencia no lo reinicie y no pierda la posición"
+  145: "ajustar el reductor a 6,0 V sin carga y comprobar que con una resistencia de 2,4 Ω (2,5 A) no baja de 5,8 V"
+  147: "round(25 MHz/(4 096 × 50 Hz)) − 1 = 121, que da 50,03 Hz y pasos de 4,88 µs: el pulso central de 1 500 µs son 307 cuentas"
+  148: "Cada servo se calibra por separado"
+  150: "La base tiene 200 × 16 × 4 = 12 800 micropasos por vuelta. Para girarla a 90 °/s con 180 °/s² el motor tiene que ir a 360 °/s (60 rpm, muy lejos de la caída de par de la figura 54.5) y dar 3 200 micropasos por segundo, uno cada 312,5 µs"
+  152: "porque la recurrencia resta cantidades menores que una cuenta y en enteros puros se quedaría parada"
+  154: "gira hacia el final de carrera hasta que se activa, retrocede unos pasos y vuelve a buscarlo más despacio todavía, y esa posición es el cero"
+  158: "cada llamada tarda 17 229 ciclos, 1,08 ms a 16 MHz (medidos en simavr): demasiado para hacerla en cada milisegundo junto con todo lo demás, y de sobra para hacerla cada 20 ms"
+  160: "Repetibilidad: llevar la punta cien veces al mismo punto desde puntos distintos"
+
+modelo:
+  valores:
+    I_s: { sim: "I_{servo}", nombre: "corriente de bloqueo de un servo", unidad: A, valor: 2.5 }
+    n_s: { sim: "n", nombre: "servos bloqueados a la vez", unidad: "", valor: 2 }
+    V_s: { sim: "V_{servos}", nombre: "tensión de los servos", unidad: V, valor: 6 }
+    V_b: { sim: "V_{bus}", nombre: "línea de los motores", unidad: V, valor: 12 }
+    e_r: { sim: "η", nombre: "rendimiento del reductor", unidad: "", valor: 0.88 }
+    V_o: { sim: "V_{reductor}", nombre: "salida del reductor sin carga", unidad: V, valor: 6 }
+    R_c: { sim: "R", nombre: "resistencia de prueba", unidad: Ω, valor: 2.4 }
+    f_o: { sim: "f_{osc}", nombre: "oscilador del PCA9685", unidad: Hz, valor: 25000000 }
+    f_s: { sim: "f", nombre: "frecuencia de los servos", unidad: Hz, valor: 50 }
+    t_p: { sim: "t", nombre: "anchura del pulso", unidad: s, valor: 0.0015 }
+    p_m: { sim: "p", nombre: "pasos por vuelta del motor", unidad: "", valor: 200 }
+    u_m: { sim: "m", nombre: "micropasos por paso", unidad: "", valor: 16 }
+    i_c: { sim: "i", nombre: "relación de la correa", unidad: "", valor: 4 }
+    w_b: { sim: "ω_{base}", nombre: "velocidad de la base", unidad: "°/s", valor: 90 }
+  calculos:
+    P_s: { expr: "n_s*I_s*V_s", sim: "P", nombre: "potencia de los servos bloqueados", unidad: W }
+    I_12: { expr: "P_s/e_r/V_b", sim: "I_{12 V}", nombre: "corriente de la línea de 12 V", unidad: A }
+    I_6: { expr: "n_s*I_s", sim: "I_{6 V}", nombre: "corriente a 6 V", unidad: A }
+    I_sinr: { expr: "P_s/V_b", sim: "I", nombre: "corriente sin el rendimiento", unidad: A }
+    I_r: { expr: "V_o/R_c", sim: "I", nombre: "corriente de prueba", unidad: A }
+    P_r: { expr: "V_o^2/R_c", sim: "P", nombre: "potencia en la resistencia de prueba", unidad: W }
+    V_hi: { expr: "V_o + 0.2", sim: "V", nombre: "cota de arriba del banco", unidad: V }
+    pre: { expr: "round(f_o/(4096*f_s)) - 1", sim: "PRE_SCALE", nombre: "preescalador", unidad: "" }
+    f_r: { expr: "f_o/(4096*(pre + 1))", sim: "f", nombre: "frecuencia real", unidad: Hz }
+    t_q: { expr: "1/(f_r*4096)", sim: "Δt", nombre: "paso del PCA9685", unidad: s }
+    N_p: { expr: "round(t_p/t_q)", sim: "N", nombre: "cuentas del pulso", unidad: cuentas }
+    N_t1: { expr: "t_p/0.0000005", sim: "N", nombre: "pasos de 0,5 µs del Timer1", unidad: "" }
+    N_v: { expr: "p_m*u_m*i_c", sim: "N", nombre: "micropasos por vuelta de la base", unidad: "" }
+    f_mp: { expr: "w_b*i_c/360*p_m*u_m", sim: "f", nombre: "micropasos por segundo", unidad: "1/s" }
+    f_sin: { expr: "w_b/360*p_m*u_m", sim: "f", nombre: "micropasos sin la correa", unidad: "1/s" }
+    T_mp: { expr: "1/f_mp", sim: "T", nombre: "intervalo entre micropasos", unidad: s }
+
+tarjetas:
+  - id: explore-bloques
+    tipo: explorar
+    titulo: "El brazo por bloques"
+    texto: "Base con paso a paso y correa 1:4; hombro, codo y pinza con servos; todo desde un Arduino UNO. Toque K1 y el PCA9685."
+    libro: [140, 141]
+    widget:
+      tipo: figura
+      figura: fig-57.10
+      zonas:
+        - { id: fuente, rotulo: "Arriba a la izquierda", rect: [5, 22, 52, 30], texto: "La fuente de 12 V y 5 A." }
+        - { id: k1, rotulo: "Arriba, la segunda caja", rect: [74, 22, 46, 30], texto: "K1: el contactor que abren la seta de emergencia y su rearme." }
+        - { id: drv, rotulo: "Arriba en el centro", rect: [170, 4, 62, 30], texto: "El DRV8825 del paso a paso de la base." }
+        - { id: reductor, rotulo: "En el centro", rect: [170, 56, 62, 30], texto: "El reductor: 6 V para los servos." }
+        - { id: pca, rotulo: "Abajo en el centro", rect: [170, 101, 62, 30], texto: "El PCA9685: genera los pulsos de los servos, mandado por I²C." }
+        - { id: uno, rotulo: "La caja grande de la izquierda", rect: [5, 90, 85, 86], texto: "El Arduino UNO, alimentado del USB: manda los pasos y lee el final de carrera y la seta." }
+    requiere: { mover: [k1, pca] }
+
+  - id: ordene-etapas
+    tipo: pregunta
+    titulo: "Las cinco etapas"
+    texto: "Ordene las etapas del proyecto."
+    libro: [141, 148, 150, 158, 160]
+    widget:
+      tipo: figura
+      figura: fig-57.10
+      zonas:
+        - { id: todo, rotulo: "Los bloques", rect: [5, 4, 310, 172] }
+    ordenar:
+      - "Alimentación y parada de emergencia"
+      - "Los servos por I²C"
+      - "La base con el paso a paso"
+      - "Cinemática y trayectorias"
+      - "Pruebas"
+    exito: "Primero lo que protege, después cada eje por separado, y la cinemática cuando todos responden."
+    pistas:
+      - { texto: "La parada de emergencia va antes de conectar ningún motor." }
+    escalera:
+      - "¿Qué hace falta para probar un eje sin peligro? ¿Y para coordinar los tres?"
+    solucion: "Alimentación y emergencia, servos, base, cinemática y pruebas."
+
+  - id: simule-presupuesto
+    tipo: simular
+    titulo: "El peor caso de los servos"
+    texto: "Dos servos bloqueados a la vez toman 2,5 A cada uno a 6 V, y el reductor del 88 % los alimenta de la línea de 12 V. ¿Qué corriente sacan de ella?"
+    libro: [143]
+    fijar: { I_s: 2.5, n_s: 2, V_s: 6, V_b: 12, e_r: 0.88 }
+    widget:
+      tipo: figura
+      figura: fig-57.10
+      zonas:
+        - { id: reductor, rotulo: "En el centro", rect: [170, 56, 62, 30] }
+    simular:
+      objetivo: I_12
+      unidad: A
+      tol: 0.02
+      rotulo: "Corriente de la línea de 12 V"
+      errores:
+        - { expr: "I_6", texto: "5 A es la corriente a 6 V. El reductor convierte potencia: a 12 V hace falta menos corriente." }
+        - { expr: "I_sinr", texto: "2,5 A sería con un reductor perfecto: con el 88 %, algo más." }
+    exito: "30 W / 0,88 / 12 V = 2,84 A. Con el paso a paso, 3,2 A en el peor caso: la fuente de 5 A tiene margen."
+    escalera:
+      - "Potencia de los servos: 2 × 2,5 A × 6 V."
+      - "Divídala entre el rendimiento y entre 12 V."
+    solucion: "30 W / 0,88 / 12 V = 2,84 A."
+    comprobar:
+      - { I_12: 2.84, P_s: 30, I_6: 5, I_sinr: 2.5, tol: 0.003 }
+
+  - id: toque-k1
+    tipo: tocar
+    titulo: "Lo que abre la seta"
+    texto: "La seta de emergencia corta los 12 V de los dos motores por hardware. Toque lo que abre."
+    libro: [141, 144]
+    widget:
+      tipo: figura
+      figura: fig-57.10
+      zonas:
+        - { id: fuente, rotulo: "Arriba a la izquierda", rect: [5, 22, 52, 30] }
+        - { id: k1, rotulo: "Arriba, la segunda caja", rect: [74, 22, 46, 30] }
+        - { id: reductor, rotulo: "En el centro", rect: [170, 56, 62, 30] }
+        - { id: uno, rotulo: "La caja grande de la izquierda", rect: [5, 90, 85, 86] }
+    tocar:
+      bien: [k1]
+      porque:
+        fuente: "La fuente sigue encendida: lo que se abre está entre ella y los motores."
+        reductor: "El reductor queda sin entrada cuando se abre lo que hay antes de él."
+        uno: "El UNO solo se entera por una entrada; va del USB para no reiniciarse."
+    exito: "K1, con la seta en serie con su bobina y un rearme con autorretención: corta el driver y el reductor."
+    escalera:
+      - "Busque el contactor entre la fuente y los dos motores."
+    solucion: "K1, arriba, la segunda caja."
+
+  - id: porque-usb
+    tipo: porque
+    titulo: "El UNO, aparte"
+    texto: "La emergencia corta los motores, pero el UNO se alimenta del USB, aparte. ¿Por qué?"
+    libro: [144]
+    widget:
+      tipo: figura
+      figura: fig-57.10
+      zonas:
+        - { id: uno, rotulo: "La caja grande de la izquierda", rect: [5, 90, 85, 86] }
+    opciones:
+      - texto: "Para que la emergencia no lo reinicie y no pierda la posición"
+        bien: true
+        porque: "Un segundo contacto de la seta le avisa para que deje de mandar movimientos."
+      - texto: "Porque el USB da más corriente"
+        porque: "No es cuestión de corriente: es que la emergencia no le afecte."
+      - texto: "Para que la emergencia no funcione si el UNO está conectado"
+        porque: "La emergencia corta los motores por hardware, esté como esté el UNO."
+    escalera:
+      - "¿Qué pierde un microcontrolador que se reinicia?"
+    solucion: "Para que no se reinicie con la emergencia y conserve la posición."
+
+  - id: banco-reductor
+    tipo: banco
+    titulo: "Etapa 1 en el banco"
+    texto: "Antes de conectar los motores, ajuste el reductor a 6,0 V sin carga y mida con una resistencia de 2,4 Ω."
+    nota: "La cota de arriba, 6,2 V, es de ejemplo."
+    libro: [145]
+    fijar: { V_o: 6, R_c: 2.4 }
+    banco:
+      piezas: ["Fuente de 12 V y el reductor", "Resistencia de 2,4 Ω que aguante unos 15 W", "Brymen en V⎓"]
+      medir: "La salida del reductor con la resistencia de 2,4 Ω conectada (2,5 A)."
+      esperado: V_o
+      unidad: V
+      tol: 0.034
+      consejos:
+        - { cuando: { valor: medida, menor: 5.8 }, texto: "Baja de 5,8 V: el reductor no aguanta un servo bloqueado. Compruebe cables y su corriente máxima." }
+        - { cuando: { valor: medida, mayor: 6.2 }, texto: "Mide de más: ajuste antes el reductor a 6,0 V sin carga." }
+        - { texto: "Dentro: no baja de 5,8 V. Compruebe también que la seta abre los dos ramales." }
+    comprobar:
+      - { I_r: 2.5, V_o: 6, P_r: 15, V_hi: 6.2 }
+
+  - id: estime-pca
+    tipo: pregunta
+    titulo: "El pulso central en el PCA9685"
+    texto: "Con el preescalador en 121, el PCA9685 da 50,03 Hz en 4 096 pasos. ¿Cuántas cuentas son 1 500 µs?"
+    libro: [147]
+    widget:
+      tipo: figura
+      figura: fig-57.10
+      zonas:
+        - { id: pca, rotulo: "Abajo en el centro", rect: [170, 101, 62, 30] }
+    estimar:
+      objetivo: "N_p"
+      unidad: cuentas
+      min: 0
+      max: 1000
+      paso: 1
+      inicio: 600
+      tol: 0.01
+      rotulo: "Cuentas para 1 500 µs"
+    exito: "307 cuentas de 4,88 µs: diez veces peor que el Timer1, pero por debajo de la banda muerta del servo."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 310 }, texto: "Se ha pasado: cada cuenta es de 4,88 µs, no de 1 µs." }
+      - { texto: "Se ha quedado corto: 20 ms entre 4 096 son 4,88 µs por cuenta." }
+    escalera:
+      - "Paso = periodo / 4 096 = 4,88 µs."
+    solucion: "1 500 / 4,88 = 307 cuentas."
+    comprobar:
+      - { pre: 121, f_r: 50.03, N_p: 307, tol: 0.003 }
+
+  - id: estime-base
+    tipo: pregunta
+    titulo: "Micropasos de la base"
+    texto: "La base tiene 200 × 16 × 4 = 12 800 micropasos por vuelta. Para girarla a 90 °/s, ¿cuántos micropasos por segundo da el motor?"
+    libro: [150]
+    widget:
+      tipo: figura
+      figura: fig-57.10
+      zonas:
+        - { id: drv, rotulo: "Arriba en el centro", rect: [170, 4, 62, 30] }
+    estimar:
+      objetivo: "f_mp"
+      unidad: "1/s"
+      min: 0
+      max: 6000
+      paso: 50
+      inicio: 5000
+      tol: 0.03
+      rotulo: "Micropasos por segundo"
+    exito: "3 200 por segundo, uno cada 312,5 µs: el motor va a 360 °/s, muy lejos de la caída de par."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 3300 }, texto: "Se ha pasado: 90 °/s es un cuarto de vuelta por segundo." }
+      - { texto: "Se ha quedado corto: no olvide la correa 1:4." }
+    escalera:
+      - "Un cuarto de vuelta de base por segundo × 12 800 micropasos por vuelta."
+    solucion: "12 800 / 4 = 3 200 micropasos por segundo."
+    comprobar:
+      - { N_v: 12800, f_mp: 3200, T_mp: 0.0003125, f_sin: 800 }
+
+  - id: porque-q8
+    tipo: porque
+    titulo: "Coma fija Q8"
+    texto: "El intervalo entre pasos de la rampa se guarda como un entero con ocho bits de fracción. ¿Por qué no en enteros puros?"
+    libro: [152]
+    widget:
+      tipo: figura
+      figura: fig-57.10
+      zonas:
+        - { id: uno, rotulo: "La caja grande de la izquierda", rect: [5, 90, 85, 86] }
+    opciones:
+      - texto: "La recurrencia resta menos de una cuenta: en enteros se quedaría parada"
+        bien: true
+        porque: "Las fracciones se acumulan en los ocho bits de abajo hasta que cambian la cuenta."
+      - texto: "Para usar la unidad de coma flotante"
+        porque: "El ATmega328P no la tiene; justo por eso se usa coma fija."
+      - texto: "Para que el pulso STEP dure más"
+        porque: "El pulso ya dura lo que tarda la rutina, muy por encima de lo que pide el DRV8825."
+    escalera:
+      - "¿Qué le pasa a un entero si cada vez se le resta menos de una unidad?"
+    solucion: "Porque los decrementos son menores que una cuenta y en enteros no se acumularían."
+
+  - id: ordene-referenciado
+    tipo: pregunta
+    titulo: "El cero de la base"
+    texto: "Al arrancar se referencia la base contra el final de carrera. Ordene el procedimiento."
+    libro: [154]
+    widget:
+      tipo: figura
+      figura: fig-57.10
+      zonas:
+        - { id: final, rotulo: "Abajo a la izquierda", rect: [5, 189, 40, 26] }
+    ordenar:
+      - "Girar hacia el final de carrera hasta que se active"
+      - "Retroceder unos pasos"
+      - "Volver a buscarlo más despacio todavía"
+      - "Tomar esa posición como el cero"
+    exito: "La repetibilidad del cero es la del final de carrera a baja velocidad, no la de su rebote."
+    pistas:
+      - { texto: "La segunda aproximación es la lenta." }
+    escalera:
+      - "Primero deprisa para encontrarlo, después despacio para medirlo."
+    solucion: "Buscar, retroceder, buscar despacio y tomar el cero."
+
+  - id: prediga-ik
+    tipo: predecir
+    titulo: "Cada cuánto la cinemática inversa"
+    texto: "En el ATmega328P, sin coma flotante en hardware, la cinemática inversa tarda 17 229 ciclos, 1,08 ms. ¿Cada cuánto conviene calcularla?"
+    libro: [158]
+    widget:
+      tipo: figura
+      figura: fig-57.10
+      zonas:
+        - { id: uno, rotulo: "La caja grande de la izquierda", rect: [5, 90, 85, 86] }
+    opciones:
+      - texto: "Cada 20 ms, el periodo de los servos"
+        bien: true
+        porque: "El generador interpola en el espacio de los ejes, con perfiles sincronizados."
+      - texto: "Cada milisegundo, con el lazo"
+        porque: "1,08 ms no cabe en cada milisegundo junto con todo lo demás."
+      - texto: "Una vez al arrancar"
+        porque: "Hace falta en cada punto de destino y en los intermedios de una recta."
+    escalera:
+      - "¿Cada cuánto aceptan los servos una posición nueva?"
+    solucion: "Cada 20 ms, que es el periodo de los servos."
+
+  - id: empareje-pruebas
+    tipo: pregunta
+    titulo: "Etapa 5: pruebas"
+    texto: "Empareje cada prueba con cómo se hace."
+    libro: [160]
+    widget:
+      tipo: figura
+      figura: fig-57.10
+      zonas:
+        - { id: todo, rotulo: "Los bloques", rect: [5, 4, 310, 172] }
+    emparejar:
+      - ["Repetibilidad", "Cien veces al mismo punto desde puntos distintos"]
+      - ["Exactitud", "Puntos de una rejilla y medir el error"]
+      - ["Emergencia", "La seta con el brazo en movimiento, en todas las posiciones"]
+      - ["Vigilancia", "El perro guardián reinicia y no se mueve nada sin orden"]
+    exito: "La exactitud suele ser mucho peor que la repetibilidad; con una tabla de corrección se reduce."
+    pistas:
+      - { texto: "La rejilla mide lo lejos que acaba de cada punto pedido." }
+    escalera:
+      - "Repetir el mismo punto o pedir muchos puntos distintos: ¿qué mide cada cosa?"
+    solucion: "Repetibilidad: cien veces. Exactitud: rejilla. Emergencia: seta en marcha. Vigilancia: perro guardián."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [143, 147, 154, 160]
+    ideas:
+      - { titulo: "Por etapas.", texto: "Alimentación y emergencia, servos, base, cinemática y pruebas." }
+      - { titulo: "Peor caso.", texto: "Dos servos bloqueados: 2,84 A de 12 V; 3,2 A con el paso a paso." }
+      - { titulo: "Servos y base.", texto: "PCA9685 a 50 Hz; base de 12 800 micropasos por vuelta, referenciada." }
+      - { titulo: "Pruebas.", texto: "Repetibilidad, exactitud, emergencia y vigilancia." }

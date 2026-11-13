@@ -1,0 +1,335 @@
+# Lección 1.2 de la sección 54.9 «Problemas de Diseño» (cap57; etiquetas sec-57.N = impresas 54.N).
+# - El problema 54.A, un robot móvil de 2 kg (bloques 165 a 175): fuerzas en la rampa de 10° (3,41 + 0,39 + 1,0 =
+#   4,79 N), 0,078 N·m y 147 rpm por rueda, 3,71 mN·m y 0,32 A en el motor, 277 rpm a la salida; el TB6612FNG (51 mW,
+#   13,5 V con 12,6 V de batería llena: TVS); la autonomía (1,74 W, 22,2 Wh, 12,8 h).
+# - El motorreductor del capítulo en el esquema `motor-cc` (k = 0,01158 V·s/rad, R = 6 Ω, bloque 165), con el par de la
+#   rueda llevado al motor por la reductora 1:30 del 70 %. J = 1,5·10⁻⁶ kg·m² es el rotor (cap57#85); la inductancia,
+#   1 mH, es de ejemplo (rotulado): en régimen no cambia ninguna lectura.
+# - El ajuste de la tensión que todavía sube la rampa a 0,5 m/s (147 rpm a la salida): el modelo da unos 7,3 V; el libro
+#   dice que con la batería descargada, unos 9 V, hay margen.
+# - Los ejercicios 54.2 (36 % del procesador) y 54.3 (0,967 s), cap57#176.
+# Pasos prácticos: «simular» la corriente de cada motor en la rampa con el motor-cc (0,32 A; errores: sin la
+# reductora, 6,7 A, o sin su rendimiento, 0,22 A), «ajuste» de la tensión de la batería y «banco» opcional (la corriente
+# subiendo la rampa, ± 25 % de ejemplo; ficha 8 del cuaderno).
+leccion: cap57/sec-57.9
+
+libro:
+  165: "Un robot diferencial de 2 kg con ruedas de 65 mm y 150 mm de vía debe llegar a 0,5 m/s, acelerar a 1 m/s² en llano y subir una rampa de 10° acelerando a la mitad. El coeficiente de rodadura es 0,02"
+  167: "En la rampa, el peso tira hacia atrás con m·g·sen 10° = 2 × 9,81 × 0,174 = 3,41 N, la rodadura añade 0,02 × 2 × 9,81 × cos 10° = 0,39 N y acelerar a 0,5 m/s², 1,0 N: 4,79 N en total"
+  168: "cada una da 4,79 × 0,0325/2 = 0,078 N·m (0,79 kg·cm). Para 0,5 m/s, ω = 0,5/0,0325 = 15,4 rad/s, 147 rpm"
+  169: "En el motor son 0,078/(30 × 0,7) = 3,71 mN·m, y la corriente, 3,71/11,58 = 0,32 A. Sobre la recta par-velocidad de 12 V (sección 34.3), con ese par el motor gira a 277 rpm a la salida"
+  170: "Su tensión de motor admite hasta 13,5 V en funcionamiento (15 V como máximo absoluto), y los 12,6 V de la batería llena caben, con poco margen"
+  172: "1,74 W en total. La batería da 11,1 × 2,5 = 27,8 Wh, de los que conviene usar el 80 %, 22,2 Wh: unas 12,8 horas rodando sin parar"
+  174: "Medir la corriente de cada motor subiendo la rampa a la velocidad pedida (debe salir en torno a 0,32 A)"
+  175: "Resultado: 0,078 N·m y 147 rpm por rueda en la rampa"
+  "cap57#85": "algo más que el propio rotor, 1,5·10−6"
+  "cap57#176": "Un motorreductor 1:10 lleva un encoder óptico de 500 líneas en el eje del motor"
+  "cap57#77": "el 2,7 % del procesador para un eje"
+
+modelo:
+  valores:
+    m_r: { sim: "m", nombre: "masa del robot", unidad: kg, valor: 2 }
+    g_0: { sim: "g", nombre: "gravedad", unidad: "m/s²", valor: 9.81 }
+    c_r: { sim: "c_{r}", nombre: "coeficiente de rodadura", unidad: "", valor: 0.02 }
+    a_r: { sim: "a", nombre: "aceleración en la rampa", unidad: "m/s²", valor: 0.5 }
+    ang: { sim: "β", nombre: "pendiente de la rampa", unidad: "°", valor: 10 }
+    r_w: { sim: "r", nombre: "radio de la rueda", unidad: m, valor: 0.0325 }
+    v_r: { sim: "v", nombre: "velocidad pedida", unidad: "m/s", valor: 0.5 }
+    V_b: { sim: "V", nombre: "tensión de la batería", unidad: V, valor: 12 }
+    k_m: { sim: "k", nombre: "constante del motor", unidad: "V·s/rad", valor: 0.01158 }
+    R_m: { sim: "R", nombre: "resistencia del motor", unidad: Ω, valor: 6 }
+    L_m: { sim: "L", nombre: "inductancia del motor", unidad: H, valor: 0.001 }
+    J_m: { sim: "J", nombre: "inercia del rotor", unidad: "kg·m²", valor: 0.0000015 }
+    N_r: { sim: "N", nombre: "reducción", unidad: "", valor: 30 }
+    e_r: { sim: "η", nombre: "rendimiento de la reductora", unidad: "", valor: 0.7 }
+    R_T: { sim: "R_{TB6612}", nombre: "resistencia del puente", unidad: Ω, valor: 0.5 }
+    P_e: { sim: "P_{electrónica}", nombre: "consumo de la electrónica", unidad: W, valor: 1.5 }
+    P_mo: { sim: "P_{motores}", nombre: "consumo eléctrico de los motores en llano", unidad: W, valor: 0.24 }
+    C_b: { sim: "C", nombre: "capacidad de la batería", unidad: "A·h", valor: 2.5 }
+    V_n: { sim: "V_{nom}", nombre: "tensión nominal de la batería", unidad: V, valor: 11.1 }
+    N_l: { sim: "N_{líneas}", nombre: "líneas del encoder del ejercicio", unidad: "", valor: 500 }
+    i_e: { sim: "i", nombre: "reducción del ejercicio", unidad: "", valor: 10 }
+    n_e: { sim: "n", nombre: "velocidad del motor del ejercicio", unidad: rpm, valor: 3000 }
+    c_i: { sim: "c", nombre: "ciclos por cuenta", unidad: ciclos, valor: 57 }
+    f_c: { sim: "f_{reloj}", nombre: "reloj del procesador", unidad: Hz, valor: 16000000 }
+    th_e: { sim: "θ", nombre: "giro del ejercicio", unidad: "°", valor: 120 }
+    v_e: { sim: "v_{máx}", nombre: "velocidad máxima del ejercicio", unidad: "°/s", valor: 180 }
+    a_e: { sim: "a_{máx}", nombre: "aceleración del ejercicio", unidad: "°/s²", valor: 600 }
+    tol_b: { sim: "tol", nombre: "tolerancia del banco", unidad: "%", valor: 25 }
+  calculos:
+    F_g: { expr: "m_r*g_0*sin(ang*pi/180)", sim: "F_{peso}", nombre: "componente del peso", unidad: N }
+    F_c: { expr: "c_r*m_r*g_0*cos(ang*pi/180)", sim: "F_{rodadura}", nombre: "rodadura", unidad: N }
+    F_a: { expr: "m_r*a_r", sim: "F_{a}", nombre: "fuerza para acelerar", unidad: N }
+    F_t: { expr: "F_g + F_c + F_a", sim: "F", nombre: "fuerza total en la rampa", unidad: N }
+    T_w: { expr: "F_t*r_w/2", sim: "T_{rueda}", nombre: "par de cada rueda", unidad: "N·m" }
+    T_m: { expr: "T_w/(N_r*e_r)", sim: "T_{motor}", nombre: "par en el motor", unidad: "N·m" }
+    I_m: { expr: "T_m/k_m", sim: "I", nombre: "corriente del motor", unidad: A }
+    I_sinr: { expr: "T_w/k_m", sim: "I", nombre: "corriente sin la reductora", unidad: A }
+    I_sine: { expr: "T_w/N_r/k_m", sim: "I", nombre: "corriente sin el rendimiento", unidad: A }
+    w_m: { expr: "V_b/k_m - R_m/k_m^2*T_m", sim: "ω", nombre: "velocidad del motor", unidad: "rad/s" }
+    E_m: { expr: "k_m*w_m", sim: "E", nombre: "fuerza electromotriz", unidad: V }
+    n_o: { expr: "w_m*60/(2*pi)/N_r", sim: "n", nombre: "velocidad a la salida", unidad: rpm, cifras: 3 }
+    n_w: { expr: "v_r/r_w*60/(2*pi)", sim: "n_{rueda}", nombre: "velocidad pedida a la rueda", unidad: rpm, cifras: 3 }
+    v_o: { expr: "n_o*2*pi/60*r_w", sim: "v", nombre: "velocidad del robot", unidad: "m/s" }
+    P_tb: { expr: "R_T*I_m^2", sim: "P", nombre: "disipación del puente por canal", unidad: W }
+    P_t: { expr: "P_mo + P_e", sim: "P", nombre: "consumo total", unidad: W }
+    E_b: { expr: "V_n*C_b", sim: "E", nombre: "energía de la batería", unidad: "W·h" }
+    t_a: { expr: "0.8*E_b/P_t", sim: "t", nombre: "autonomía", unidad: h }
+    t_100: { expr: "E_b/P_t", sim: "t", nombre: "autonomía usando toda la batería", unidad: h }
+    t_sine: { expr: "0.8*E_b/P_mo", sim: "t", nombre: "autonomía sin la electrónica", unidad: h }
+    f_ex: { expr: "n_e/60*4*N_l", sim: "f", nombre: "cuentas por segundo del ejercicio", unidad: "cuentas/s" }
+    q_ex: { expr: "100*f_ex*c_i/f_c", sim: "carga", nombre: "parte del procesador del ejercicio", unidad: "%" }
+    T_ex: { expr: "th_e/v_e + v_e/a_e", sim: "T", nombre: "duración del giro del ejercicio", unidad: s }
+
+tarjetas:
+  - id: explore-motor
+    tipo: explorar
+    titulo: "El motorreductor en la rampa"
+    texto: "El motor del capítulo, de 12 V. Suba la pendiente de la rampa y mire la corriente y la velocidad a la salida."
+    nota: "La inductancia del dibujo, 1 mH, es de ejemplo."
+    libro: [165, 169, "cap57#85"]
+    inicio: { ang: 0 }
+    widget:
+      tipo: circuito
+      esquema: motor-cc
+      piezas: { fuente: V_b, r: R_m, l: L_m, k: k_m, j: J_m, carga: T_m }
+      corriente: I_m
+      mide: { ia: I_m, omega: w_m, par: T_m, fem: E_m }
+      lectura: { valor: n_o, rotulo: "Velocidad a la salida" }
+      datos:
+        - { valor: I_m, rotulo: "Corriente del motor: {{I_m}}" }
+        - { valor: T_w, rotulo: "Par de cada rueda: {{T_w}}" }
+      mandos:
+        - { valor: ang, min: 0, max: 15, paso: 1, rotulo: "Pendiente de la rampa" }
+    requiere: { mover: [ang] }
+    comprobar:
+      - { con: { ang: 10 }, n_o: 277, I_m: 0.32, T_w: 0.078, tol: 0.01 }
+
+  - id: estime-fuerza
+    tipo: pregunta
+    titulo: "Las fuerzas en la rampa"
+    texto: "Robot de 2 kg en una rampa de 10°, acelerando a 0,5 m/s²: el peso tira con 3,41 N y la rodadura con 0,39 N. ¿Fuerza total que deben dar las ruedas?"
+    libro: [165, 167]
+    fijar: { ang: 10 }
+    widget:
+      tipo: figura
+      figura: fig-57.8
+      zonas:
+        - { id: geometria, rotulo: "La geometría, a la izquierda", rect: [0, 10, 95, 145] }
+    estimar:
+      objetivo: "F_t"
+      unidad: N
+      min: 0
+      max: 10
+      paso: 0.05
+      inicio: 8
+      tol: 0.03
+      rotulo: "Fuerza total"
+    exito: "4,79 N: 3,41 de peso, 0,39 de rodadura y 1,0 para acelerar. En llano, con 1 m/s², solo 2,39 N."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 4.94 }, texto: "Se ha pasado: en la rampa acelera a la mitad, 0,5 m/s²." }
+      - { texto: "Se ha quedado corto: falta la fuerza para acelerar, m·a = 1,0 N." }
+    escalera:
+      - "Sume peso, rodadura y m·a."
+    solucion: "3,41 + 0,39 + 1,0 = 4,79 N."
+    comprobar:
+      - { F_t: 4.79, F_g: 3.41, F_a: 1, tol: 0.005 }
+
+  - id: simule-corriente
+    tipo: simular
+    titulo: "La corriente de cada motor"
+    texto: "Cada rueda pide 0,078 N·m en la rampa. A través de la reductora 1:30 del 70 %, ¿qué corriente toma cada motor?"
+    libro: [168, 169]
+    fijar: { ang: 10, V_b: 12 }
+    widget:
+      tipo: circuito
+      esquema: motor-cc
+      piezas: { fuente: V_b, r: R_m, l: L_m, k: k_m, j: J_m, carga: T_m }
+      corriente: I_m
+      mide: { ia: I_m, omega: w_m, par: T_m, fem: E_m }
+      lectura: { valor: I_m, rotulo: "Corriente del motor" }
+      ocultar: true
+      mandos: []
+    simular:
+      objetivo: I_m
+      unidad: A
+      tol: 0.03
+      rotulo: "Corriente del motor"
+      medida: ia
+      errores:
+        - { expr: "I_sinr", texto: "Ha dividido el par de la rueda entre k sin pasar por la reductora: en el motor es treinta veces menor." }
+        - { expr: "I_sine", texto: "Ha olvidado el rendimiento de la reductora: el motor tiene que dar más, 0,078/(30 × 0,7)." }
+    exito: "0,32 A: 3,71 mN·m en el motor. Sobre la recta de 12 V gira a 277 rpm a la salida: 0,94 m/s, casi el doble de lo pedido."
+    escalera:
+      - "Par en el motor = 0,078/(30 × 0,7)."
+      - "I = T/k, con k = 11,58 mN·m/A."
+    solucion: "3,71 mN·m / 11,58 mN·m/A = 0,32 A."
+    comprobar:
+      - { I_m: 0.32, T_m: 0.00371, I_sinr: 6.73, I_sine: 0.224, n_o: 277, v_o: 0.94, tol: 0.01 }
+
+  - id: ajuste-bateria
+    tipo: ajuste
+    titulo: "La batería que se descarga"
+    texto: "La rueda debe dar 147 rpm para subir la rampa a 0,5 m/s. Baje la tensión hasta el límite en que todavía las da."
+    libro: [168, 169]
+    fijar: { ang: 10 }
+    inicio: { V_b: 12.6 }
+    widget:
+      tipo: circuito
+      esquema: motor-cc
+      piezas: { fuente: V_b, r: R_m, l: L_m, k: k_m, j: J_m, carga: T_m }
+      corriente: I_m
+      mide: { ia: I_m, omega: w_m, par: T_m, fem: E_m }
+      datos:
+        - { valor: v_o, rotulo: "Velocidad del robot: {{v_o}}" }
+      mandos:
+        - { valor: V_b, min: 6, max: 12.6, paso: 0.1, rotulo: "Tensión de la batería" }
+    ajuste:
+      valor: n_o
+      objetivo: 147
+      tol: 0.02
+      rotulo: "Velocidad a la salida"
+      bajo: "Ya no llega a 0,5 m/s: suba la tensión."
+      alto: "Aún sobra velocidad: baje la tensión."
+      dentro: "Por debajo de la tensión de la batería descargada, unos 9 V: el motor tiene margen, y el lazo de velocidad, tensión con la que corregir."
+    comprobar:
+      - { con: { V_b: 7.3 }, n_o: 147.8, tol: 0.01 }
+      - { n_w: 147 }
+
+  - id: porque-tvs
+    tipo: porque
+    titulo: "El TB6612FNG con la batería llena"
+    texto: "El puente admite hasta 13,5 V en funcionamiento y la batería llena da 12,6 V: cabe. ¿Por qué conviene aun así un diodo TVS en la entrada?"
+    libro: [170]
+    widget:
+      tipo: figura
+      figura: fig-57.8
+      zonas:
+        - { id: geometria, rotulo: "La geometría, a la izquierda", rect: [0, 10, 95, 145] }
+    opciones:
+      - texto: "Con tan poco margen no cabe la energía que devuelve un frenado brusco"
+        bien: true
+        porque: "Al frenar, los motores trabajan como generadores y suben la tensión de la entrada."
+      - texto: "Porque 0,32 A es demasiada corriente para el puente"
+        porque: "0,32 A está muy por debajo de los 1,2 A del TB6612FNG; disipa solo unos 51 mW por canal."
+      - texto: "No hace falta: 12,6 V es menos que 13,5 V"
+        porque: "Cabe en reposo, pero no queda sitio para lo que devuelven los motores al frenar."
+    escalera:
+      - "¿Qué hacen los motores al frenar?"
+    solucion: "Un TVS en la entrada, y el firmware vigilando el bloqueo."
+    comprobar:
+      - { con: { ang: 10 }, P_tb: 0.0512, tol: 0.01 }
+
+  - id: banco-rampa
+    tipo: banco
+    titulo: "Subir la rampa en el banco"
+    texto: "Mida la corriente de cada motor mientras el robot sube la rampa a la velocidad pedida."
+    nota: "La tolerancia del ± 25 % es de ejemplo."
+    libro: [174]
+    fijar: { ang: 10, V_b: 12 }
+    banco:
+      piezas: ["El robot con su batería", "Una rampa de 10°", "Brymen en serie con un motor, o shunt y osciloscopio"]
+      medir: "La corriente de un motor subiendo la rampa a 0,5 m/s."
+      esperado: I_m
+      unidad: A
+      tol: 0.25
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.25 }, texto: "Mide de más: ¿roza algo, o el robot pesa más de 2 kg? Compruebe también la pendiente." }
+        - { cuando: { valor: desviacion, menor: -0.25 }, texto: "Mide de menos: ¿está acelerando de verdad, o la rampa es más suave?" }
+        - { texto: "Dentro. Ahora pruebe con la batería a 9 V y recorra 10 m en recta para calibrar las ruedas." }
+      ficha: { n: 8, titulo: "Control de un motor de continua con PWM" }
+    comprobar:
+      - { I_m: 0.32, tol_b: 25, tol: 0.01 }
+
+  - id: estime-autonomia
+    tipo: pregunta
+    titulo: "Horas rodando"
+    texto: "En llano, los motores toman 0,24 W y la electrónica 1,5 W, de una batería de 11,1 V y 2,5 Ah usada al 80 %. ¿Autonomía?"
+    libro: [172]
+    widget:
+      tipo: figura
+      figura: fig-57.8
+      zonas:
+        - { id: geometria, rotulo: "La geometría, a la izquierda", rect: [0, 10, 95, 145] }
+    estimar:
+      objetivo: "t_a"
+      unidad: h
+      min: 0
+      max: 40
+      paso: 0.1
+      inicio: 30
+      tol: 0.04
+      rotulo: "Autonomía"
+    exito: "Unas 12,8 h: 22,2 Wh entre 1,74 W. La electrónica, que no para nunca, pesa más que los motores."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 13.3 }, texto: "Se ha pasado: ¿ha usado toda la batería, o ha olvidado la electrónica?" }
+      - { texto: "Se ha quedado corto: 27,8 Wh × 0,8 = 22,2 Wh, entre 1,74 W." }
+    escalera:
+      - "Energía útil = 11,1 × 2,5 × 0,8 Wh."
+    solucion: "22,2 Wh / 1,74 W = 12,8 h."
+    comprobar:
+      - { t_a: 12.8, E_b: 27.8, P_t: 1.74, tol: 0.005 }
+
+  - id: prediga-encoder
+    tipo: predecir
+    titulo: "Un encoder de 500 líneas"
+    texto: "Un motorreductor 1:10 con un encoder de 500 líneas en el motor, ×4, gira a 3 000 rpm. Con 57 ciclos por cuenta, ¿cuánto procesador se come?"
+    libro: ["cap57#176", "cap57#77"]
+    widget:
+      tipo: figura
+      figura: fig-57.8
+      zonas:
+        - { id: geometria, rotulo: "La geometría, a la izquierda", rect: [0, 10, 95, 145] }
+    opciones:
+      - texto: "El 36 %: hace falta un contador por hardware"
+        bien: true
+        porque: "100 000 cuentas por segundo por 57 ciclos son 5,7 millones de ciclos de 16."
+      - texto: "Un 2,7 %, como el del capítulo"
+        porque: "El del capítulo tiene 11 líneas; con 500 llegan muchas más cuentas."
+      - texto: "Más del cien por cien"
+        porque: "No llega: son 5,7 millones de ciclos de 16 millones."
+    escalera:
+      - "Cuentas por segundo = 3 000/60 × 4 × 500."
+    solucion: "100 000 × 57 = 5,7·10⁶ ciclos/s: el 36 %."
+    comprobar:
+      - { f_ex: 100000, q_ex: 35.6, tol: 0.01 }
+
+  - id: estime-giro
+    tipo: pregunta
+    titulo: "Un giro de 120°"
+    texto: "Un eje gira 120° con 180 °/s de velocidad máxima y 600 °/s² de aceleración, por encima del umbral del triángulo, 54°. ¿Cuánto dura?"
+    libro: ["cap57#176"]
+    widget:
+      tipo: grafica
+      x: { id: tt, min: 0, max: 1.2, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 200, unidad: "°/s", rotulo: "v" }
+      curvas:
+        - { expr: "max(0, min(a_e*tt, v_e, a_e*(T_ex - tt)))", color: azul, rotulo: "velocidad" }
+    estimar:
+      objetivo: "T_ex"
+      unidad: s
+      min: 0
+      max: 1.2
+      paso: 0.005
+      inicio: 0.4
+      tol: 0.03
+      rotulo: "Duración del giro"
+    exito: "Trapecio: 0,3 s acelerando, 0,367 s a velocidad constante y 0,3 s frenando: 0,967 s."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 1 }, texto: "Se ha pasado: T = θ/v + v/a." }
+      - { texto: "Se ha quedado corto: 120° es más que el umbral, y tiene meseta." }
+    escalera:
+      - "T = θ/v_{máx} + v_{máx}/a_{máx}."
+    solucion: "120/180 + 180/600 = 0,967 s."
+    comprobar:
+      - { T_ex: 0.967, tol: 0.003 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [167, 169, 172, 175]
+    ideas:
+      - { titulo: "Fuerzas.", texto: "Peso, rodadura y aceleración: 4,79 N en la rampa." }
+      - { titulo: "El motor.", texto: "0,078 N·m por rueda son 0,32 A en el motor, y 277 rpm a la salida." }
+      - { titulo: "El puente.", texto: "TB6612FNG con vigilancia del bloqueo y un TVS en la entrada." }
+      - { titulo: "Autonomía.", texto: "Unas 12,8 h; la electrónica pesa más que los motores." }
