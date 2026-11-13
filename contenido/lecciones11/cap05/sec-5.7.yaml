@@ -34,7 +34,7 @@ tarjetas:
   - id: explore-frecuencia
     tipo: explorar
     titulo: "Cada conmutación cuesta"
-    texto: "Un 1N4007, t_{rr} = 2 µs, bloquea 100 V con 2 A de pico inverso. Cada vez que se apaga pierde ½·V·I_{RM}·t_{rr}. Suba la frecuencia."
+    texto: "Un 1N4007, t_{rr} = 2 µs, bloquea 100 V con 2 A de pico inverso y en cada apagado pierde ½·V·I_{RM}·t_{rr}. Suba la frecuencia."
     libro: [229, 230]
     fijar: { t_rr: 2e-6 }
     inicio: { f_c: 50 }
@@ -79,6 +79,9 @@ tarjetas:
         porque: "Al contrario: su t_{rr} de 2 µs es ya una buena parte del periodo de 10 µs."
     comprobar:
       - { P_rr: 20, T_c: 10e-6 }
+    escalera:
+      - "Pierde lo mismo en cada conmutación: ¿cuántas veces más conmuta a 100 kHz que a 50 Hz?"
+    solucion: "Dos mil veces más: 10 mW × 2000 = 20 W, y se destruye en segundos."
 
   - id: empareje-trr
     tipo: pregunta
@@ -94,29 +97,39 @@ tarjetas:
     exito: "Eso es. El 1N4007 es mil veces más lento que un diodo de señal: perfecto a 50 Hz, nada más."
     pistas:
       - { texto: "El rectificador de red es el lento, en microsegundos; el de señal, en nanosegundos." }
+    escalera:
+      - "El rectificador de red es el lento, en microsegundos; el de señal, en nanosegundos."
+    solucion: "1N4007: 2 – 30 µs. Ultrarrápido: 25 – 75 ns. 1N4148: 4 ns. Schottky: casi cero."
 
   - id: estime-ultrarrapido
-    tipo: pregunta
-    fase: "Estime"
+    tipo: simular
     titulo: "Un ultrarrápido"
-    texto: "Un ultrarrápido de t_{rr} = 35 ns, en una conmutada de 100 kHz, bloqueando 100 V con 2 A de pico inverso. Estime su pérdida por recuperación."
+    texto: "Un ultrarrápido de t_{rr} = 35 ns, en una conmutada de 100 kHz, bloquea 100 V con 2 A de pico inverso. ¿Cuánto pierde por recuperación?"
     libro: [229, 230]
     fijar: { t_rr: 35e-9, f_c: 100000 }
-    estimar:
-      objetivo: "P_rr"
+    widget:
+      tipo: grafica
+      x: { id: x, min: 30, max: 600000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.000001, max: 300, unidad: W, rotulo: "pérdida", escala: log }
+      curvas:
+        - { expr: "0.5*V_c*I_c*35e-9*x", color: azul, rotulo: "ultrarrápido" }
+      marcas:
+        - { x: "f_c", y: "P_rr", rotulo: "100 kHz" }
+      ocultar: curvas
+    simular:
+      objetivo: P_rr
       unidad: W
-      min: 0
-      max: 2
-      paso: 0.01
-      inicio: 1.5
-      tol: 0.05
-      rotulo: "Pérdida"
+      tol: 0.03
+      rotulo: "Pérdida por recuperación, P"
+      errores:
+        - { expr: "E_rr", texto: "Esa es la energía de una sola conmutación, en julios: multiplíquela por las cien mil conmutaciones de cada segundo." }
+        - { expr: "V_c*I_c*t_rr*f_c", texto: "Ha olvidado el ½: la pérdida es ½·V·I_{RM}·t_{rr} por cada conmutación." }
     exito: "350 mW frente a 20 W: es la diferencia entre un diodo que funciona y uno que se destruye."
-    pistas:
-      - { cuando: { valor: estimacion, mayor: 0.37 }, texto: "Se ha pasado: ½ × 100 V × 2 A × 35 ns, por cien mil veces por segundo." }
-      - { texto: "Se ha quedado corto: ½ × 100 × 2 × 35 ns son 3,5 µJ por conmutación." }
+    escalera:
+      - "Cada apagado pierde ½·V·I_{RM}·t_{rr}; multiplíquelo por la frecuencia."
+    solucion: "½ × 100 × 2 × 35 ns = 3,5 µJ por conmutación, por 100 000 cada segundo: 350 mW."
     comprobar:
-      - { E_rr: 3.5e-6 }
+      - { E_rr: 3.5e-6, P_rr: 0.35 }
 
   - id: sorpresa-sustitucion
     tipo: sorpresa
@@ -153,6 +166,14 @@ tarjetas:
         porque: "Esa es la única que tiene un Schottky, y es pequeña. En el de unión manda la carga de minoritarios."
       - texto: "Porque el diodo está averiado"
         porque: "Lo hace todo diodo de unión sano: es la física de la carga almacenada."
+    widget:
+      tipo: figura
+      figura: fig-5.16
+      zonas:
+        - { id: recuperacion, rotulo: "La corriente que sigue al invertir", rect: [0, 0, 439, 259] }
+    escalera:
+      - "En directa, el diodo de unión inyecta minoritarios. ¿Qué hay que hacer con ellos antes de bloquear?"
+    solucion: "Evacuarlos: hasta que no salen no se forma la zona de agotamiento, y mientras tanto conduce al revés."
 
   - id: porque-schottky
     tipo: porque
@@ -167,6 +188,21 @@ tarjetas:
         porque: "Eso reduce la pérdida de conducción. La de recuperación desaparece por otra razón: no almacena minoritarios."
       - texto: "Porque aguanta más tensión inversa"
         porque: "Aguanta menos, de 20 a 100 V típicamente. Lo que no tiene es carga almacenada."
+    fijar: { f_c: 100000 }
+    inicio: { t_rr: 35e-9 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 30, max: 600000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.000001, max: 300, unidad: W, rotulo: "pérdida", escala: log }
+      curvas:
+        - { expr: "0.5*V_c*I_c*2e-6*x", color: naranja, rotulo: "1N4007" }
+        - { expr: "0.5*V_c*I_c*35e-9*x", color: azul, rotulo: "ultrarrápido" }
+      lectura: { valor: P_rr, rotulo: "Pérdida por recuperación" }
+      mandos:
+        - { valor: t_rr, lista: [35e-9, 2e-6], nombres: [ultrarrápido, rectificador estándar], rotulo: "Diodo" }
+    escalera:
+      - "La pérdida va con t_{rr}, y t_{rr} con la carga de minoritarios almacenada."
+    solucion: "Lo llevan mayoritarios: no hay carga que evacuar, solo la pequeña capacidad de la unión."
 
   - id: pregunta-suavidad
     tipo: pregunta
@@ -181,6 +217,14 @@ tarjetas:
         porque: "No es estético: un corte brusco con la inductancia del circuito produce sobretensiones."
       - texto: "Porque así el diodo conduce menos en directa"
         porque: "La suavidad es del apagado, no de la conducción directa."
+    widget:
+      tipo: figura
+      figura: fig-5.16
+      zonas:
+        - { id: final, rotulo: "El final de la recuperación", rect: [0, 0, 439, 259] }
+    escalera:
+      - "v = L·di/dt: ¿qué hace la inductancia parásita con un corte brusco?"
+    solucion: "Un corte abrupto excita la inductancia parásita: sobretensiones y radiación. Por eso existen los diodos «soft recovery»."
 
   - id: empareje-donde
     tipo: pregunta
@@ -195,6 +239,9 @@ tarjetas:
     exito: "Eso es. En el puente es el diodo de cuerpo del MOSFET el que recupera."
     pistas:
       - { texto: "En el puente, el diodo que aún conduce cortocircuita un instante la alimentación." }
+    escalera:
+      - "En el puente, el diodo que aún conduce cortocircuita un instante la alimentación."
+    solucion: "Puente de transistores: pico en el transistor opuesto: tiempos muertos. Rectificador de red: timbre de radiofrecuencia: 10 nF en paralelo con cada diodo. Elevador (boost): la carga del diodo se suma a la corriente del transistor."
 
   - id: pregunta-banco
     tipo: pregunta
@@ -209,6 +256,14 @@ tarjetas:
         porque: "La recuperación es del apagado: el diodo sigue conduciendo al revés tras el flanco."
       - texto: "No se ve: dura picosegundos"
         porque: "En un 1N4007 son microsegundos, bien visibles en cualquier osciloscopio."
+    widget:
+      tipo: figura
+      figura: fig-5.16
+      zonas:
+        - { id: excursion, rotulo: "La excursión negativa tras el flanco", rect: [0, 0, 439, 259] }
+    escalera:
+      - "Tras el flanco, el diodo conduce al revés durante t_{rr}. ¿Hacia dónde va la corriente?"
+    solucion: "Una excursión negativa breve justo tras el flanco: su anchura es t_{rr}."
 
   - id: resumen
     tipo: resumen

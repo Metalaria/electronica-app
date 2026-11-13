@@ -26,10 +26,12 @@ modelo:
     f_n: { sim: "f", nombre: "frecuencia de trabajo", unidad: Hz, valor: 50 }
     b_h: { sim: "B/B₀", nombre: "excursión de flujo, en veces la inicial", unidad: "", valor: 1 }
     n_h: { sim: "n", nombre: "exponente de Steinmetz", unidad: "", valor: 2 }
+    e_l: { sim: "e/e₀", nombre: "espesor de la chapa, en veces el inicial", unidad: "", valor: 1 }
   calculos:
     r_h: { expr: "f_n/50", sim: "P_{hist}", nombre: "pérdidas por histéresis, en veces las de 50 Hz", unidad: "veces", cifras: 3 }
     r_F: { expr: "(f_n/50)^2", sim: "P_{Foucault}", nombre: "pérdidas por Foucault, en veces las de 50 Hz", unidad: "veces", cifras: 3 }
     P_b: { expr: "b_h^n_h", sim: "P/P₀", nombre: "pérdidas por histéresis, en veces las iniciales", unidad: "veces", cifras: 3 }
+    P_e: { expr: "e_l^2", sim: "P/P₀", nombre: "pérdidas por Foucault, en veces las de la chapa inicial", unidad: "veces", cifras: 3 }
 
 tarjetas:
   - id: explore-frecuencia
@@ -79,6 +81,9 @@ tarjetas:
         porque: "Dependen del material, pero también, y mucho, de la frecuencia: con su cuadrado."
     comprobar:
       - { r_F: 4e6, r_h: 2000 }
+    escalera:
+      - "Las de Foucault van con el cuadrado de la frecuencia."
+    solucion: "Dos mil al cuadrado: cuatro millones de veces."
 
   - id: porque-frontera
     tipo: porque
@@ -93,6 +98,21 @@ tarjetas:
         porque: "La frontera no la marca la permeabilidad, sino las corrientes de Foucault del metal."
       - texto: "Porque la histéresis crece con f²"
         porque: "Es al revés: la histéresis crece con f y Foucault con f²."
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 10, max: 1000000, unidad: Hz, rotulo: "f", escala: log }
+      y: { min: 0.1, max: 1000000000, unidad: "veces", rotulo: "pérdidas", escala: log }
+      curvas:
+        - { expr: "nu/50", color: azul, rotulo: "histéresis, ∝ f" }
+        - { expr: "(nu/50)^2", color: naranja, rotulo: "Foucault, ∝ f²" }
+      lectura: { valor: r_F, rotulo: "Foucault, frente a 50 Hz" }
+      datos:
+        - { valor: r_h, rotulo: "Histéresis: {{r_h}}" }
+      mandos:
+        - { valor: f_n, lista: [50, 500, 5000, 100000], rotulo: "Frecuencia, f" }
+    escalera:
+      - "¿Qué crece más deprisa al subir la frecuencia, f o f²?"
+    solucion: "Foucault, con f²: a alta frecuencia manda, y solo un núcleo aislante como la ferrita lo evita."
 
   - id: prediga-flujo
     tipo: predecir
@@ -119,6 +139,9 @@ tarjetas:
     comprobar:
       - { P_b: 4 }
       - { con: { b_h: 2, n_h: 1 }, P_b: 2 }
+    escalera:
+      - "Con n = 2, las pérdidas van con B²."
+    solucion: "El doble de flujo, al cuadrado: cuatro veces."
 
   - id: formula-steinmetz
     tipo: formula
@@ -154,6 +177,9 @@ tarjetas:
     exito: "Eso es. Un material blando, de lazo estrecho, pierde poco por ciclo."
     pistas:
       - { texto: "Un imán debe conservar su magnetización: lazo ancho." }
+    escalera:
+      - "Un imán debe conservar su magnetización: lazo ancho."
+    solucion: "Remanencia: flujo que queda. Coercitividad: campo que lo anula. Lazo estrecho: transformadores. Lazo ancho: imanes permanentes."
 
   - id: pregunta-chapa
     tipo: pregunta
@@ -168,6 +194,18 @@ tarjetas:
         porque: "Sería así si fueran con el espesor. Van con su cuadrado."
       - texto: "Igual: el hierro es el mismo"
         porque: "Laminar corta los caminos de la corriente inducida: cuanto más fino, menos pérdidas."
+    widget:
+      tipo: grafica
+      x: { id: e, min: 0, max: 1, unidad: "", rotulo: "e/e₀" }
+      y: { min: 0, max: 1, unidad: "veces", rotulo: "P/P₀" }
+      curvas:
+        - { expr: "e^2", color: naranja, rotulo: "P_{Foucault} ∝ e²" }
+      lectura: { valor: P_e, rotulo: "Pérdidas, frente a la chapa inicial" }
+      mandos:
+        - { valor: e_l, lista: [1, 0.5], nombres: ["chapa inicial", "la mitad de espesor"], rotulo: "Espesor de la chapa" }
+    escalera:
+      - "Las pérdidas van con el cuadrado del espesor."
+    solucion: "La mitad al cuadrado: la cuarta parte."
 
   - id: empareje-soluciones
     tipo: pregunta
@@ -182,12 +220,19 @@ tarjetas:
     exito: "Eso es. Y contra la histéresis, un material de lazo estrecho."
     pistas:
       - { texto: "La ferrita es aislante: las corrientes no tienen por dónde circular." }
+    escalera:
+      - "La ferrita es aislante: las corrientes no tienen por dónde circular."
+    solucion: "Laminar: corta sus caminos. Material aislante: casi las elimina. Polvo aglomerado: las encierra en cada grano."
 
   - id: porque-vacio
     tipo: porque
     titulo: "Caliente sin carga"
     texto: "Un transformador de red enchufado y sin carga se calienta. ¿Por qué?"
-    libro: [213, 214]
+    libro: [213, 214, 203]
+    ec: 203
+    escalera:
+      - "En la ecuación de Steinmetz, ¿aparece la corriente de carga?"
+    solucion: "No: las pérdidas de hierro dependen de f y de B, y B de la tensión. En vacío siguen completas."
     opciones:
       - texto: "Sus pérdidas de hierro dependen del flujo, no de la carga"
         bien: true
@@ -202,6 +247,14 @@ tarjetas:
     titulo: "Un mínimo peligroso"
     texto: "Las pérdidas de muchas ferritas de potencia tienen un mínimo hacia 80-100 °C y luego vuelven a crecer. ¿Qué riesgo trae?"
     libro: [219, 220]
+    widget:
+      tipo: figura
+      figura: fig-4.15
+      zonas:
+        - { id: perdidas, rotulo: "Lazos y pérdidas frente a la frecuencia", rect: [0, 0, 445, 206] }
+    escalera:
+      - "Por encima del mínimo, ¿qué hacen las pérdidas al calentarse el núcleo?"
+    solucion: "Crecen, calientan más y vuelven a crecer: embalamiento térmico si el diseño está al límite."
     opciones:
       - texto: "Embalamiento térmico"
         bien: true
@@ -215,7 +268,11 @@ tarjetas:
     tipo: pregunta
     titulo: "El ensayo en vacío"
     texto: "Para medir solo las pérdidas de hierro de un transformador, ¿qué se mide?"
-    libro: [222]
+    libro: [222, 203]
+    ec: 203
+    escalera:
+      - "Sin carga, las pérdidas de cobre son casi nulas; las de hierro, completas."
+    solucion: "La potencia activa en vacío: la corriente magnetizante es reactiva y no suma potencia media."
     opciones:
       - texto: "La potencia activa que toma en vacío"
         bien: true

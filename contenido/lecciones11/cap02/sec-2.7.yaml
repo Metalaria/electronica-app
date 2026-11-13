@@ -11,6 +11,7 @@ libro:
   142: "La medición de un cambio relativo respecto al equilibrio es mucho más precisa que la medición absoluta"
   144: "la entrada lee nivel alto en reposo y nivel bajo al pulsar"
   "cap02#342": "Diseña un divisor de tensión 12 V → 5 V"
+  "cap02#28": "Ofrecen tolerancias ajustadas"
 
 modelo:
   valores:
@@ -42,7 +43,7 @@ tarjetas:
   - id: explore-carga
     tipo: explorar
     titulo: "Un divisor con carga"
-    texto: "Dos de 10 kΩ a 10 V, con una carga conectada. Cambie su valor y desconéctela. Fíjese en cuándo se hunde la salida."
+    texto: "Dos de 10 kΩ a 10 V, con una carga conectada: cambie su valor y desconéctela. Fíjese en cuándo se hunde la salida."
     libro: [136, "cap02#342"]
     fijar: { V_in: 10, R_1: 10000, R_2: 10000 }
     inicio: { carga: 1, R_L: 10000 }
@@ -86,6 +87,9 @@ tarjetas:
     comprobar:
       - { V_out: 3.333, R_ab: 5000 }
       - { con: { carga: 0 }, V_out: 5 }
+    escalera:
+      - "La carga queda en paralelo con R₂."
+    solucion: "R₂ en paralelo con la carga son 5 kΩ: 10 · 5 / (10 + 5) = 3,33 V."
 
   - id: reto-carga-minima
     tipo: reto
@@ -108,7 +112,9 @@ tarjetas:
     exito: "Con {{R_L}}, el error es {{error}}. La regla: al menos diez veces R₂, aquí 100 kΩ."
     pistas:
       - { cuando: { valor: error, mayor: 10 }, texto: "La salida aún se hunde: la carga debe ser mucho mayor que R₂." }
-    ayuda: "Con la carga diez veces mayor que R₂ el error queda por debajo del 10 %."
+    escalera:
+      - "La salida se hunde menos cuanto mayor es la carga frente a R₂."
+    solucion: "Con la carga diez veces mayor que R₂, 100 kΩ, el error queda por debajo del 10 %."
     comprobar:
       - { con: { R_L: 100000 }, error: 4.76, tol: 0.01 }
       - { con: { R_L: 33000 }, error: 13.2, tol: 0.01 }
@@ -136,10 +142,49 @@ tarjetas:
     pistas:
       - { cuando: { valor: V_out, mayor: 5.15 }, texto: "Sobra tensión: R₂ tiene que ser menor frente a R₁." }
       - { cuando: { valor: V_out, menor: 4.85 }, texto: "Falta tensión: R₂ tiene que ser mayor frente a R₁." }
-    ayuda: "Busque R₂/(R₁ + R₂) = 5/12 = 0,4167: R₂ algo menor que R₁."
+    escalera:
+      - "Busque R₂/(R₁ + R₂) = 5/12 = 0,4167."
+    solucion: "R₂ algo menor que R₁: 2,2 kΩ y 1,5 kΩ dan 4,86 V; 4,7 kΩ y 3,3 kΩ, 4,95 V."
     comprobar:
       - { con: { R_1: 2200, R_2: 1500 }, V_out: 4.865 }
       - { con: { R_1: 4700, R_2: 3300 }, V_out: 4.95 }
+
+  - id: disene-12-a-5
+    tipo: diseno
+    titulo: "Diseñe con tolerancias"
+    texto: "El mismo divisor de 12 V a 5 V (± 3 %), con resistencias E12 de película metálica al 1 %. Debe cumplir en todas las placas."
+    libro: ["cap02#342", "cap02#28"]
+    fijar: { V_in: 12, carga: 0 }
+    inicio: { R_1: 1000, R_2: 1000 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_in, arriba: R_1, abajo: R_2 }
+      lectura: { valor: V_out, rotulo: "Tensión de salida" }
+      corriente: I
+      mide: { salida: V_out, corriente: I }
+      mandos:
+        - { valor: R_1, serie: E12, min: 1000, max: 10000, rotulo: "R₁ (E12)" }
+        - { valor: R_2, serie: E12, min: 1000, max: 10000, rotulo: "R₂ (E12)" }
+    condiciones:
+      - { valor: V_out, objetivo: 5, tol: 0.03, rotulo: "Salida: {{V_out}}" }
+    diseno:
+      tolerancias: { R_1: 0.01, R_2: 0.01 }
+      metodo: esquinas
+      exigir: todas
+      si_tolerancias: "El nominal cumple, pero queda tan cerca del borde que en alguna esquina se sale: busque un par más centrado."
+    exito: "Su par cumple en todas las esquinas. Con 4,7 kΩ y 3,3 kΩ, 4,95 V nominales, sobra margen; con 2,2 kΩ y 1,5 kΩ, 4,86 V, no."
+    pistas:
+      - { cuando: { valor: V_out, mayor: 5.15 }, texto: "Sobra tensión: R₂ tiene que ser menor frente a R₁." }
+      - { cuando: { valor: V_out, menor: 4.85 }, texto: "Falta tensión: R₂ tiene que ser mayor frente a R₁." }
+      - { texto: "El nominal está dentro, pero cerca del borde: con el 1 % alguna placa se sale." }
+    escalera:
+      - "Busque R₂/(R₁ + R₂) = 5/12 = 0,4167."
+      - "Con el 1 %, el nominal debe quedar lejos de los bordes de la banda, no solo dentro."
+    solucion: "4,7 kΩ arriba y 3,3 kΩ abajo: 4,95 V, y en sus peores esquinas sigue dentro del 3 %."
+    comprobar:
+      - { con: { R_1: 4700, R_2: 3300 }, V_out: 4.95 }
+      - { con: { R_1: 2200, R_2: 1500 }, V_out: 4.865 }
 
   - id: sorpresa-desplome
     tipo: sorpresa
@@ -186,6 +231,9 @@ tarjetas:
         porque: "Más tensión subiría todo, pero la salida seguiría dependiendo de la carga."
     comprobar:
       - { V_out: 2.571 }
+    escalera:
+      - "Compare la carga de 1 kΩ con R₂."
+    solucion: "Un divisor no alimenta cargas que consumen corriente: para eso hay reguladores."
 
   - id: explore-puente
     tipo: explorar
@@ -226,7 +274,7 @@ tarjetas:
   - id: prediga-sensor
     tipo: predecir
     titulo: "Prediga"
-    texto: "R₁ = R₂ = R₃ = R₄ = 1 kΩ: equilibrado. El sensor R₄ pasa a 1010 Ω. ¿Qué ocurre?"
+    texto: "Con R₁ = R₂ = R₃ = R₄ = 1 kΩ el puente está equilibrado. Si el sensor R₄ pasa a 1010 Ω, ¿qué ocurre?"
     libro: [140, "cap02#342"]
     fijar: { R_w1: 1000, R_w2: 1000, R_w3: 1000, R_w4: 1010 }
     widget:
@@ -247,6 +295,9 @@ tarjetas:
         porque: "Es una tensión pequeña: cada punto medio se mueve muy poco."
     comprobar:
       - { V_wab: -0.01244, q_34: 0.990, tol: 0.002 }
+    escalera:
+      - "¿Siguen siendo iguales los dos cocientes, R₁/R₂ y R₃/R₄?"
+    solucion: "1000/1000 ya no es 1000/1010: aparece una pequeña tensión, proporcional al cambio."
 
   - id: reto-equilibrio
     tipo: reto
@@ -270,7 +321,9 @@ tarjetas:
     pistas:
       - { cuando: { valor: V_wab, mayor: 0.001 }, texto: "El punto medio derecho está más bajo: suba R₄." }
       - { cuando: { valor: V_wab, menor: -0.001 }, texto: "El punto medio derecho está más alto: baje R₄." }
-    ayuda: "Despeje R₄ de R₁/R₂ = R₃/R₄."
+    escalera:
+      - "En equilibrio, R₁/R₂ = R₃/R₄."
+    solucion: "Despeje R₄ de R₁/R₂ = R₃/R₄: R₄ = R₂·R₃/R₁ = 1 kΩ."
     comprobar:
       - { con: { R_w4: 1000 }, V_wab: 0 }
 
@@ -287,6 +340,14 @@ tarjetas:
         porque: "Eso haría una pull-down, conectada a masa, con el pulsador hacia la alimentación."
       - texto: "Un nivel indefinido en reposo"
         porque: "Eso pasaría sin la resistencia: la entrada quedaría flotante, susceptible al ruido."
+    widget:
+      tipo: figura
+      figura: fig-9.6
+      zonas:
+        - { id: pulsador, rotulo: "Un pulsador con su resistencia", rect: [0, 0, 445, 249] }
+    escalera:
+      - "Con el pulsador abierto, ¿qué une la entrada a algún sitio?"
+    solucion: "Nivel alto en reposo, por la pull-up; al pulsar, el pulsador la lleva a masa: nivel bajo."
 
   - id: resumen
     tipo: resumen

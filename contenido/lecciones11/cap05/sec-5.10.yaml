@@ -92,6 +92,9 @@ tarjetas:
         porque: "El condensador retiene el máximo, no la media: el diodo solo conduce en los picos."
     comprobar:
       - { V_pk: 16.27, V_p: 16.97 }
+    escalera:
+      - "Para cargar el condensador, el diodo tiene que conducir, y conduciendo cae 0,7 V."
+    solucion: "16,97 − 0,7 = 16,27 V: el pico menos la caída del diodo."
 
   - id: pregunta-am
     tipo: pregunta
@@ -106,6 +109,22 @@ tarjetas:
         porque: "Seguiría cada ciclo de la portadora en lugar de su envolvente."
       - texto: "Mucho mayor que el periodo de la moduladora"
         porque: "Tardaría demasiado en bajar: no seguiría las bajadas de la envolvente."
+    fijar: { V_ef: 12 }
+    widget:
+      tipo: circuito
+      esquema: media-onda
+      piezas: { fuente: V_p, f: f_r, vd: V_D, c: C_d, carga: R_d }
+      lectura: { valor: tau_d, rotulo: "Constante R·C" }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: -18, max: 18, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(V_p*sin(2*pi*f_r*t) - V_D, V_pk*exp(-(t - T_r/4 - T_r*floor((t - T_r/4)/T_r))/tau_d))", color: naranja, rotulo: "salida", mide: salida }
+      mandos:
+        - { valor: R_d, lista: [10000, 100000, 1000000], rotulo: "Resistencia en paralelo" }
+    escalera:
+      - "Debe ignorar cada ciclo de la portadora, pero bajar cuando baja la envolvente."
+    solucion: "R·C mucho mayor que el periodo de la portadora y mucho menor que el de la moduladora."
 
   - id: pregunta-errores
     tipo: pregunta
@@ -120,6 +139,21 @@ tarjetas:
         porque: "Un condensador mayor retiene mejor el pico, pero la caída del diodo sigue ahí."
       - texto: "Con una resistencia en paralelo menor"
         porque: "Eso acorta R·C: más rizado, y la caída del diodo sigue sin corregir."
+    fijar: { V_ef: 12, R_d: 100000 }
+    widget:
+      tipo: circuito
+      esquema: media-onda
+      piezas: { fuente: V_p, f: f_r, vd: V_D, c: C_d, carga: R_d }
+      lectura: { valor: V_pk, rotulo: "Tensión guardada" }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: -18, max: 18, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(V_p*sin(2*pi*f_r*t) - V_D, V_pk*exp(-(t - T_r/4 - T_r*floor((t - T_r/4)/T_r))/tau_d))", color: naranja, rotulo: "salida", mide: salida }
+      mandos: []
+    escalera:
+      - "La caída del diodo es el error. ¿Qué la divide por un factor grande?"
+    solucion: "Un detector activo: con el diodo dentro del lazo de un operacional, el error se divide por la ganancia del lazo."
 
   - id: explore-doblador
     tipo: explorar
@@ -171,6 +205,9 @@ tarjetas:
       - { V_out: 32.5, V_p: 16.97 }
       - { con: { V_D: 0 }, V_out: 33.9 }
       - { V_e2: 24 }
+    escalera:
+      - "El pico de 12 V eficaces es 16,97 V; el doblador da dos picos menos dos caídas de diodo."
+    solucion: "2 × 16,97 − 1,4 = 32,5 V."
 
   - id: formula-doblador
     tipo: formula
@@ -241,6 +278,9 @@ tarjetas:
         porque: "Eso es lo que crece el rizado, con N². La caída va con N³."
     comprobar:
       - { k_c: 1000, k_r: 100 }
+    escalera:
+      - "La caída va con N³: con diez etapas, 10³."
+    solucion: "Mil veces más: por eso una cascada solo entrega microamperios."
 
   - id: porque-no-universal
     tipo: porque
@@ -255,6 +295,22 @@ tarjetas:
         porque: "Funciona precisamente con alterna: la fija y la guarda en sus condensadores."
       - texto: "Porque da menos tensión que un transformador"
         porque: "Puede dar mucha tensión; lo que no puede es entregar corriente sin que se hunda."
+    fijar: { V_ef: 12 }
+    inicio: { n_et: 5 }
+    widget:
+      tipo: grafica
+      x: { id: x, min: 1, max: 10, unidad: "", rotulo: "etapas" }
+      y: { min: 0, max: 350, unidad: V, rotulo: "salida en vacío" }
+      curvas:
+        - { expr: "x*(2*V_p - 2*V_D)", color: verde, rotulo: "salida" }
+      lectura: { valor: V_n, rotulo: "Salida en vacío" }
+      datos:
+        - { valor: k_c, rotulo: "Caída con carga: ×{{k_c}}" }
+      mandos:
+        - { valor: n_et, min: 1, max: 10, paso: 1, rotulo: "Etapas, n" }
+    escalera:
+      - "Mire la caída con carga al añadir etapas: ¿qué le pasa a la salida en cuanto se le pide corriente?"
+    solucion: "Su impedancia de salida crece muy deprisa con las etapas: la tensión se hunde con cualquier carga."
 
   - id: pregunta-donde
     tipo: pregunta
@@ -269,12 +325,20 @@ tarjetas:
         porque: "Con carga su tensión se hunde. Ahí la respuesta es un convertidor conmutado."
       - texto: "Sustituir un regulador de tensión"
         porque: "No regula: su salida cae con la carga."
+    widget:
+      tipo: figura
+      figura: fig-5.19
+      zonas:
+        - { id: multiplicadores, rotulo: "Salida e impedancia frente a las etapas", rect: [0, 0, 441, 200] }
+    escalera:
+      - "Da mucha tensión, pero se hunde con la carga. ¿Qué caso pide poca corriente?"
+    solucion: "El ionizador: alta tensión, muy poca corriente, de una alterna que ya existe."
 
   - id: pregunta-bomba
     tipo: pregunta
     titulo: "La bomba de carga"
     texto: "El MAX232 genera ±10 V desde 5 V sin bobina ni transformador. ¿Cómo?"
-    libro: [288]
+    libro: [288, 280]
     opciones:
       - texto: "Carga un condensador en paralelo con la alimentación y lo conecta en serie con ella"
         bien: true
@@ -283,6 +347,10 @@ tarjetas:
         porque: "No lleva bobina ni transformador: solo condensadores e interruptores."
       - texto: "Con un Zener de 10 V"
         porque: "Un Zener no puede dar más tensión que la que recibe. La bomba suma la de un condensador cargado."
+    ec: 280
+    escalera:
+      - "El doblador suma a la entrada la tensión de un condensador cargado. ¿Se puede hacer con interruptores?"
+    solucion: "Carga un condensador en paralelo con la alimentación y lo conecta en serie con ella, al ritmo de un reloj."
 
   - id: pregunta-seguridad
     tipo: pregunta
@@ -297,6 +365,21 @@ tarjetas:
         porque: "Los condensadores guardan la carga: siguen a alta tensión mucho tiempo."
       - texto: "Cortocircuitarlos con un destornillador"
         porque: "La descarga brusca es peligrosa. Se descargan con una resistencia."
+    fijar: { V_ef: 12, R_d: 1000000 }
+    widget:
+      tipo: circuito
+      esquema: media-onda
+      piezas: { fuente: V_p, f: f_r, vd: V_D, c: C_d, carga: R_d }
+      lectura: { valor: tau_d, rotulo: "Constante R·C" }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: -18, max: 18, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(V_p*sin(2*pi*f_r*t) - V_D, V_pk*exp(-(t - T_r/4 - T_r*floor((t - T_r/4)/T_r))/tau_d))", color: naranja, rotulo: "salida", mide: salida }
+      mandos: []
+    escalera:
+      - "Mire cuánto tarda en descargarse el condensador del detector. ¿Y los de una cascada de alta tensión?"
+    solucion: "Retienen la carga mucho tiempo: se descargan con una resistencia antes de tocar."
 
   - id: resumen
     tipo: resumen

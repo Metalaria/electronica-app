@@ -86,6 +86,9 @@ tarjetas:
     comprobar:
       - { v_t1: 5.69, tau_c: 1 }
       - { con: { t_1: 5 }, v_t1: 8.94 }
+    escalera:
+      - "τ = R·C = 1 s, y en un τ se completa el 63,2 % del camino."
+    solucion: "0,632 × 9 = 5,69 V."
 
   - id: regla-carga
     tipo: formula
@@ -138,10 +141,36 @@ tarjetas:
     pistas:
       - { cuando: { valor: v_t1, menor: 7.62 }, texto: "Le falta tensión a 1 s: reduzca R para que τ sea menor." }
       - { cuando: { valor: v_t1, mayor: 7.94 }, texto: "Se ha pasado: τ ha quedado demasiado corta. Suba un poco R." }
-    ayuda: "7,78 V son dos τ. Si 1 s han de ser dos τ, τ = 0,5 s: con 100 µF, R = 5 kΩ."
+    escalera:
+      - "7,78 V son dos τ."
+    solucion: "Si 1 s han de ser dos τ, τ = 0,5 s: con 100 µF, R = 5 kΩ."
     comprobar:
       - { con: { R_c: 5000 }, v_t1: 7.78, tau_c: 0.5 }
       - { con: { R_c: 10000, t_1: 2 }, v_t1: 7.78 }
+
+  - id: dibuje-carga
+    tipo: dibujar
+    titulo: "Dibuje la carga"
+    texto: "100 µF se cargan desde 0 V hacia 9 V a través de 10 kΩ. Dibuje v_{C} durante los primeros 5 s."
+    libro: [29, 33, 35]
+    fijar: { V_c: 9, R_c: 10000, C_c: 0.0001, V_c0: 0, c_modo: 1 }
+    dibujar:
+      x: { id: tt, min: 0, max: 5, unidad: s, rotulo: t }
+      y: { min: 0, max: 10, unidad: V, rotulo: "v_{C}" }
+      curva: "V_c*(1 - exp(-tt/(R_c*C_c)))"
+      puntos: 21
+      tol: 0.06
+      holgura: 0.03
+      rotulo: "Tensión del condensador"
+    exito: "Sube deprisa al principio: 5,69 V en 1 s, 7,78 V en 2 s y casi los 9 V a los 5 s."
+    pistas:
+      - { cuando: { valor: media, menor: -0.03 }, texto: "Su curva va baja: en un τ, 1 s, ya está al 63,2 %." }
+      - { cuando: { valor: media, mayor: 0.03 }, texto: "Su curva va alta: no llega a los 9 V hasta unos 5τ." }
+      - { texto: "Repase la forma: empieza en 0 con la pendiente máxima y se curva hacia 9 V." }
+    escalera:
+      - "τ = R·C = 1 s."
+      - "1τ, el 63,2 %; 2τ, el 86,5 %; 3τ, el 95 %; 5τ, el 99,3 %."
+    solucion: "0 V al empezar, 5,69 V a 1 s, 7,78 V a 2 s y casi 9 V a 5 s."
 
   - id: puntos-tau
     tipo: pregunta
@@ -159,6 +188,9 @@ tarjetas:
       - { texto: "El primer τ ya hace más de la mitad del camino; cada τ siguiente, menos." }
     comprobar:
       - { falta5: 0.674 }
+    escalera:
+      - "Cada τ deja por recorrer una fracción e^{−1} de lo que faltaba."
+    solucion: "1τ: 63,2 %. 2τ: 86,5 %. 3τ: 95 %. 5τ: 99,3 %."
 
   - id: sorpresa-descarga
     tipo: sorpresa
@@ -214,6 +246,9 @@ tarjetas:
         porque: "En t = 0 su tensión es cero, así que no se opone: se comporta como un cortocircuito."
     comprobar:
       - { I_c0: 0.0009 }
+    escalera:
+      - "La tensión del condensador no puede saltar: en t = 0 sigue a 0 V."
+    solucion: "Como un cortocircuito: toda la tensión cae en R y la corriente es 9 V / 10 kΩ."
 
   - id: por-que-no-salta
     tipo: porque
@@ -228,12 +263,28 @@ tarjetas:
         porque: "No: al final, sin corriente, R no cae nada y el condensador llega a los 9 V."
       - texto: "El dieléctrico tarda en polarizarse"
         porque: "La lentitud la marca τ = R·C, el circuito, no el material: con otra R cambia."
+    fijar: { V_c0: 0, c_modo: 1 }
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_c, r: R_c, c: C_c, v0: V_c0, interruptor: c_modo }
+      lectura: { valor: tau_c, rotulo: "Constante de tiempo" }
+      grafica:
+        x: { id: t, min: 0, max: 5, unidad: s, rotulo: t }
+        y: { min: 0, max: 10, unidad: V, rotulo: v }
+        curvas:
+          - { expr: "V_c0 + (V_cf - V_c0)*(1 - exp(-t/tau_c))", color: naranja, rotulo: "v_{C}", mide: vc }
+      mandos:
+        - { valor: R_c, min: 1000, max: 20000, paso: 1000, rotulo: "Resistencia, R" }
+    escalera:
+      - "q = C·V: ¿qué corriente pediría un salto de tensión?"
+    solucion: "Cambiar su tensión exige mover carga, y la resistencia limita la corriente: lleva tiempo."
 
   - id: estime-lsb
     tipo: pregunta
     fase: "Estime"
     titulo: "Tras 5τ aún falta algo"
-    texto: "Tras 5τ falta un 0,674 %. Para un convertidor de 12 bits el error debe bajar de 1 LSB, 1/4096. Estime cuántas τ."
+    texto: "Tras 5τ falta un 0,674 %, y un convertidor de 12 bits pide bajar de 1 LSB, 1/4096. Estime cuántas τ."
     libro: [36]
     fijar: { bits: 12 }
     estimar:
@@ -251,6 +302,9 @@ tarjetas:
       - { texto: "Se ha pasado: t/τ = ln 4096; ln 4096 es algo más de 8." }
     comprobar:
       - { n_tau: 8.32, tol: 0.002 }
+    escalera:
+      - "Iguale lo que falta, e^{−t/τ}, a 1/4096."
+    solucion: "ln 4096 ≈ 8,3τ; 9τ si se exige medio LSB. El 99,3 % de 5τ no basta para medir fino."
 
   - id: dualidad
     tipo: pregunta
@@ -265,6 +319,14 @@ tarjetas:
         porque: "Las unidades no salen: henrios por ohmios no son segundos. En la bobina, τ = L/R."
       - texto: "τ = R·C, igual"
         porque: "Una bobina no tiene C. Su constante es τ = L/R."
+    widget:
+      tipo: figura
+      figura: fig-3.4
+      zonas:
+        - { id: curvas, rotulo: "Curvas de carga y descarga", rect: [0, 0, 373, 265] }
+    escalera:
+      - "Compruebe las unidades: ¿qué combinación de henrios y ohmios da segundos?"
+    solucion: "τ = L/R: la dualidad con el τ = R·C del condensador."
 
   - id: resumen
     tipo: resumen

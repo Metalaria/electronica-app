@@ -106,6 +106,9 @@ tarjetas:
       - { Z_z: 0.66 }
       - { con: { f_z: 1000000 }, Z_z: 0.21 }
       - { f_srf: 159155 }
+    escalera:
+      - "Por encima de su autorresonancia, manda la ESL."
+    solucion: "Sube con la frecuencia: a 10 MHz ya es una bobina, 0,66 Ω."
 
   - id: regla-srf
     tipo: formula
@@ -156,6 +159,9 @@ tarjetas:
       - { texto: "Se ha pasado: 1/(2π·√(0,8 nH · 100 pF)), algo más de medio gigahercio." }
     comprobar:
       - { f_srf: 563e6, tol: 0.002 }
+    escalera:
+      - "Sustituya 0,8 nH y 100 pF en f_{SRF} = 1/(2π·√(ESL·C))."
+    solucion: "563 MHz: el pequeño llega mucho más arriba. Por eso se ponen valores muy distintos en paralelo."
 
   - id: donde-esl
     tipo: pregunta
@@ -170,6 +176,14 @@ tarjetas:
         porque: "La capacidad no baja la ESL. Si el trazado es malo, mejorar el componente no sirve de nada."
       - texto: "En un encapsulado más grande, 0805 en vez de 0402"
         porque: "Es al revés: cuanto más pequeño el encapsulado, menos ESL."
+    widget:
+      tipo: figura
+      figura: fig-3.8
+      zonas:
+        - { id: impedancia, rotulo: "Impedancia real de tres condensadores", rect: [0, 0, 438, 216] }
+    escalera:
+      - "¿Qué es más largo: el condensador o el camino de pistas y vías hasta él?"
+    solucion: "En el camino de la corriente: pistas y vías cortas. Dos vías de 1 mm ya añaden más que el propio condensador."
 
   - id: antirresonancia
     tipo: pregunta
@@ -184,6 +198,14 @@ tarjetas:
         porque: "Sin ESR el pico de antirresonancia es más alto: algo de ESR lo amortigua."
       - texto: "Con un grande y uno muy pequeño, cuanto más distintos mejor"
         porque: "Saltar muchas décadas agrava la antirresonancia. Se escalonan."
+    widget:
+      tipo: figura
+      figura: fig-3.8
+      zonas:
+        - { id: impedancia, rotulo: "Impedancia real de tres condensadores", rect: [0, 0, 438, 216] }
+    escalera:
+      - "¿Qué amortigua un pico de resonancia?"
+    solucion: "Escalonando los valores, sin saltar más de dos décadas, y con algo de ESR que amortigüe el pico."
 
   - id: estime-calor
     tipo: pregunta
@@ -207,6 +229,9 @@ tarjetas:
       - { texto: "Se ha quedado corto: la corriente va al cuadrado." }
     comprobar:
       - { P_esr: 0.8 }
+    escalera:
+      - "P = I²·ESR, con la corriente eficaz."
+    solucion: "0,8 W dentro del condensador: sube su temperatura y, en un electrolítico, consume su vida."
 
   - id: sorpresa-rizado
     tipo: sorpresa
@@ -257,7 +282,9 @@ tarjetas:
     exito: "Con {{ESR_s}}, {{dV}}. Por eso se sustituye siempre por uno de baja ESR, nunca por «la misma capacidad»."
     pistas:
       - { cuando: { valor: dV, mayor: 0.03 }, texto: "Aún sobra rizado: ΔV ≈ ΔI·ESR. Baje la ESR: baja ESR, polímero o cerámico." }
-    ayuda: "La décima parte de 300 mV son 30 mV: con 0,6 A, una ESR de 0,05 Ω o menos."
+    escalera:
+      - "El rizado por la ESR es ΔV ≈ ΔI·ESR."
+    solucion: "La décima parte de 300 mV son 30 mV: con 0,6 A, una ESR de 0,05 Ω o menos."
     comprobar:
       - { con: { ESR_s: 0.05 }, dV: 0.03 }
 
@@ -274,6 +301,21 @@ tarjetas:
         porque: "El rizado depende sobre todo de la ESR, y la ESR crece al envejecer aunque la capacidad aguante."
       - texto: "Le sobra capacidad"
         porque: "Más capacidad bajaría el rizado. El culpable es la ESR, que el capacímetro no ve."
+    widget:
+      tipo: grafica
+      x: { id: esr, min: 0.001, max: 2, unidad: Ω, rotulo: ESR, escala: log }
+      y: { min: 0.0001, max: 2, unidad: V, rotulo: rizado, escala: log }
+      curvas:
+        - { expr: "dI*esr", color: naranja, rotulo: "por la ESR" }
+        - { expr: "dV_c + 0*esr", color: azul, rotulo: "por la capacidad", discontinua: true }
+      asas:
+        - { mueve: ESR_s, x: ESR_s, y: dV, rotulo: "ESR del condensador" }
+      lectura: { valor: dV, rotulo: "Rizado por la ESR" }
+      mandos:
+        - { valor: ESR_s, lista: [0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2], rotulo: ESR }
+    escalera:
+      - "¿Qué mide un capacímetro, y qué decide el rizado?"
+    solucion: "Está seco: la ESR ha subido, y el capacímetro no la mide."
 
   - id: arranque-frio
     tipo: pregunta
@@ -288,6 +330,18 @@ tarjetas:
         porque: "Lo que cambia mucho con el frío es la ESR, no la capacidad."
       - texto: "Los diodos dejan de conducir con el frío"
         porque: "El culpable habitual es el condensador: su ESR se dispara con el frío."
+    widget:
+      tipo: grafica
+      x: { id: esr, min: 0.001, max: 2, unidad: Ω, rotulo: ESR, escala: log }
+      y: { min: 0.0001, max: 2, unidad: V, rotulo: rizado, escala: log }
+      curvas:
+        - { expr: "dI*esr", color: naranja, rotulo: "por la ESR" }
+      lectura: { valor: dV, rotulo: "Rizado por la ESR" }
+      mandos:
+        - { valor: ESR_s, lista: [0.002, 0.005, 0.01, 0.02, 0.05, 0.1, 0.2, 0.5, 1, 2], rotulo: ESR }
+    escalera:
+      - "¿Qué le pasa al electrolito con el frío?"
+    solucion: "La ESR del electrolítico crece mucho con el frío: a −25 °C puede ser diez veces la de 20 °C."
 
   - id: banco-esr
     tipo: pregunta
@@ -311,6 +365,9 @@ tarjetas:
       - { texto: "Se ha quedado corto: calcule 1/(2π · 100 kHz · 100 µF)." }
     comprobar:
       - { X_z: 0.0159 }
+    escalera:
+      - "Calcule X_{C} = 1/(2π·f·C) con 100 kHz y 100 µF."
+    solucion: "16 mΩ: despreciable frente a la ESR de un electrolítico. La caída que se mide es la ESR."
 
   - id: factor-calidad
     tipo: pregunta
@@ -325,6 +382,14 @@ tarjetas:
         porque: "Su ESR es grande: su Q es de unidades."
       - texto: "Todos parecido: Q depende solo de la bobina"
         porque: "En un resonante suele limitar la bobina, pero el Q del condensador varía mucho con el tipo."
+    widget:
+      tipo: figura
+      figura: fig-3.8
+      zonas:
+        - { id: impedancia, rotulo: "Impedancia real de tres condensadores", rect: [0, 0, 438, 216] }
+    escalera:
+      - "Un Q alto es poca resistencia frente a la reactancia."
+    solucion: "Un cerámico C0G: sus pérdidas son minúsculas frente a su reactancia."
 
   - id: resumen
     tipo: resumen

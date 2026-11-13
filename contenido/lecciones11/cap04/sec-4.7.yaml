@@ -90,6 +90,9 @@ tarjetas:
     comprobar:
       - { I_f: 0.1, Z_0: 1000 }
       - { con: { R_r: 1000 }, I_0: 0.001 }
+    escalera:
+      - "En resonancia, las reactancias de L y C se anulan."
+    solucion: "Solo la resistencia: 100 mA."
 
   - id: formula-resonancia
     tipo: formula
@@ -133,7 +136,9 @@ tarjetas:
     pistas:
       - { cuando: { valor: f_0, mayor: 1020000 }, texto: "Resuena demasiado alto: hace falta más inductancia." }
       - { cuando: { valor: f_0, menor: 980000 }, texto: "Resuena demasiado bajo: sobra inductancia." }
-    ayuda: "Despeje L = 1/((2π × 10⁶)² × 100 × 10⁻¹²) = 253 µH."
+    escalera:
+      - "Despeje L de f₀ = 1/(2π·√(L·C))."
+    solucion: "L = 1/((2π × 10⁶)² × 100 × 10⁻¹²) = 253 µH."
     comprobar:
       - { con: { L_r: 0.000253 }, f_0: 1000000, tol: 0.01 }
 
@@ -141,7 +146,7 @@ tarjetas:
     tipo: pregunta
     fase: "Estime"
     titulo: "Q y ancho de banda"
-    texto: "Q = √(L/C)/R: con 1000 Ω y 10 Ω, Q = 100. El ancho de banda a −3 dB es f₀/Q. Estímelo para 1,592 MHz."
+    texto: "Q = √(L/C)/R: con 1000 Ω y 10 Ω, Q = 100. Estime el ancho de banda a −3 dB, f₀/Q, para 1,592 MHz."
     libro: [182]
     fijar: { L_r: 100e-6, R_r: 10 }
     estimar:
@@ -159,6 +164,9 @@ tarjetas:
       - { texto: "Se ha quedado corto: 1,592 MHz entre 100 son unos dieciséis kilohercios." }
     comprobar:
       - { B_w: 15915, Q_s: 100, Z_0: 1000 }
+    escalera:
+      - "Divida f₀ entre Q."
+    solucion: "15,9 kHz. Más Q es más selectividad y menos ancho de banda, las dos cosas a la vez."
 
   - id: sorpresa-tension-c
     tipo: sorpresa
@@ -194,6 +202,19 @@ tarjetas:
         porque: "Es real: sobre cada elemento aparece una tensión Q veces la aplicada, y puede perforar un condensador."
     comprobar:
       - { Z_0: 1000 }
+    fijar: { L_r: 100e-6, R_r: 10 }
+    inicio: { f_r: 1591549 }
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: A_c, rotulo: "Amplitud en el condensador" }
+      mide: { vc_amp: A_c, i_amp: I_f }
+      mandos:
+        - { valor: f_r, lista: [1000000, 1591549, 2000000], rotulo: "Frecuencia de la fuente, f" }
+    escalera:
+      - "¿De dónde sale la energía que va y viene entre L y C?"
+    solucion: "L y C se intercambian la energía y la fuente solo repone las pérdidas: sobre cada uno aparece Q veces lo aplicado."
 
   - id: explore-paralelo
     tipo: explorar
@@ -231,6 +252,20 @@ tarjetas:
         porque: "El serie tiene en f₀ su impedancia mínima, solo R: deja pasar la corriente, no la bloquea."
       - texto: "Da igual: los dos son iguales"
         porque: "Se comportan al revés: el serie es mínimo en f₀ y el paralelo, máximo."
+    fijar: { L_r: 100e-6, R_r: 10 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 1300000, max: 1900000, unidad: Hz, rotulo: f }
+      y: { min: 1, max: 1000000, unidad: Ω, rotulo: "|Z|", escala: log }
+      curvas:
+        - { expr: "sqrt(R_r^2 + (2*pi*nu*L_r - 1/(2*pi*nu*C_r))^2)", color: naranja, rotulo: serie }
+        - { expr: "1/sqrt((1/R_p)^2 + (2*pi*nu*C_r - 1/(2*pi*nu*L_r))^2)", color: azul, rotulo: paralelo }
+      lectura: { valor: Z_p, rotulo: "Impedancia del paralelo" }
+      mandos:
+        - { valor: f_r, min: 1300000, max: 1900000, paso: 2000, rotulo: "Frecuencia, f" }
+    escalera:
+      - "¿Cuál de los dos tiene impedancia máxima en f₀?"
+    solucion: "El paralelo: en f₀ su impedancia es máxima y la fuente apenas aporta corriente."
 
   - id: estime-sintonia
     tipo: pregunta
@@ -254,6 +289,9 @@ tarjetas:
       - { texto: "Se ha quedado corto: la raíz reduce el cambio a la mitad, no a nada." }
     comprobar:
       - { d_f: 0.496 }
+    escalera:
+      - "f₀ va con 1/√(L·C): la raíz reduce el cambio."
+    solucion: "0,5 %: en la FI de 10,7 MHz de un receptor de FM, 53 kHz sobre 280 de banda."
 
   - id: pregunta-limita-q
     tipo: pregunta
@@ -268,6 +306,38 @@ tarjetas:
         porque: "Los condensadores buenos tienen Q de miles: casi nunca son los que limitan."
       - texto: "La fuente"
         porque: "La fuente solo repone las pérdidas; quien las tiene es, casi siempre, la bobina."
+    widget:
+      tipo: figura
+      figura: fig-4.13
+      zonas:
+        - { id: resonancia, rotulo: "Curvas de resonancia según Q", rect: [0, 0, 444, 195] }
+    escalera:
+      - "¿Quién tiene más pérdidas: la bobina o un buen condensador?"
+    solucion: "La bobina: su resistencia, el efecto pelicular y el núcleo pierden."
+
+  - id: banco-resonancia
+    tipo: banco
+    titulo: "Mídalo en el banco"
+    texto: "Monte un RLC serie con 10 mH, 100 nF y 100 Ω. Barra el generador y busque la frecuencia en la que la tensión sobre R y la de entrada quedan en fase."
+    libro: [177, 183]
+    fijar: { L_r: 0.01, C_r: 100e-9, R_r: 100, f_r: 5033 }
+    widget:
+      tipo: circuito
+      esquema: rlc-serie
+      piezas: { fuente: V_p, f: f_r, r: R_r, l: L_r, c: C_r }
+      lectura: { valor: A_c, rotulo: "Amplitud en el condensador" }
+      mide: { vc_amp: A_c, i_amp: I_f }
+      mandos: []
+    banco:
+      piezas: ["Bobina de 10 mH y condensador de 100 nF", "Resistencia de 100 Ω", "Generador y osciloscopio de dos canales", "Protoboard"]
+      medir: "La frecuencia de resonancia: CH1 en la salida del generador, CH2 sobre R, desfase cero entre los dos."
+      esperado: f_0
+      unidad: Hz
+      tol: 0.1
+      consejos:
+        - { cuando: { valor: desviacion, menor: -0.1 }, texto: "Sale baja: L o C son mayores que lo marcado. Mida C con el multímetro y recalcule f₀." }
+        - { texto: "Sale alta: L o C son menores que lo marcado, o mide el máximo de amplitud en lugar del desfase cero, que es más preciso." }
+      ficha: { n: 33, titulo: "Práctica 9 · Resonancia de un RLC y factor Q" }
 
   - id: resumen
     tipo: resumen

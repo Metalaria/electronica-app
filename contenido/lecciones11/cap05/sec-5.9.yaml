@@ -47,7 +47,7 @@ tarjetas:
   - id: explore-recortador
     tipo: explorar
     titulo: "Un techo y un suelo"
-    texto: "Una señal de 8 V de pico pasa por 1 kΩ. Del nodo de salida a masa hay dos diodos. Conecte y desconecte cada uno y mire la salida."
+    texto: "Una señal de 8 V de pico pasa por 1 kΩ, y del nodo de salida a masa hay dos diodos. Conecte y desconecte cada uno y mire la salida."
     libro: [257, 258, 270]
     fijar: { V_p: 8, R_c: 1000 }
     widget:
@@ -92,6 +92,9 @@ tarjetas:
         porque: "Los diodos no dejan subir la salida más allá de su caída: la resistencia se queda con el resto."
     comprobar:
       - { V_a: 0.7, V_b: -0.7 }
+    escalera:
+      - "Cada diodo conduce en un sentido en cuanto la salida pasa de su caída."
+    solucion: "De −0,7 a +0,7 V: el limitador de diodos en antiparalelo."
 
   - id: explore-referencia
     tipo: explorar
@@ -140,7 +143,9 @@ tarjetas:
     pistas:
       - { cuando: { valor: V_cz, menor: 5.74 }, texto: "Recorta demasiado bajo: el recorte es V_{Z} más la caída del diodo. Suba V_{Z}." }
       - { cuando: { valor: V_cz, mayor: 5.86 }, texto: "Recorta demasiado alto: no olvide sumar los 0,7 V del diodo. Baje V_{Z}." }
-    ayuda: "Recorte = V_{Z} + 0,7 V. Para 5,8 V, V_{Z} = 5,1 V."
+    escalera:
+      - "El recorte es V_{Z} más la caída del diodo en serie."
+    solucion: "Recorte = V_{Z} + 0,7 V: para 5,8 V, V_{Z} = 5,1 V."
     comprobar:
       - { con: { V_z: 5.1 }, V_cz: 5.8 }
 
@@ -171,6 +176,9 @@ tarjetas:
         porque: "Los dos están enfrentados: cada uno rompe en un semiciclo. El recorte es simétrico."
     comprobar:
       - { V_az: 5.8 }
+    escalera:
+      - "Conducen siempre por parejas: uno en ruptura y el otro en directa."
+    solucion: "En ±5,8 V: 5,1 V de ruptura más 0,7 V en directa, simétrico."
 
   - id: porque-oposicion
     tipo: porque
@@ -185,6 +193,21 @@ tarjetas:
         porque: "En directa un Zener cae como un diodo. Lo que añade es la tensión de ruptura del que bloquea."
       - texto: "Porque en antiserie la corriente se reparte"
         porque: "En serie la corriente es la misma; la clave es que uno de los dos está en inversa."
+    fijar: { V_p: 8, R_c: 1000, p_on: 1, n_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: recortador
+      piezas: { fuente: V_p, f: f_s, r: R_c, vd: V_D, positivo: p_on, negativo: n_on }
+      lectura: { valor: V_a, rotulo: "Recorte positivo" }
+      grafica:
+        x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+        y: { min: -10, max: 10, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(min(V_p*sin(2*pi*f_s*t), V_a), V_b)", color: naranja, rotulo: "salida", mide: salida }
+      mandos: []
+    escalera:
+      - "En antiparalelo, con cualquier signo hay un diodo en directa. ¿Y en antiserie?"
+    solucion: "En antiserie siempre hay uno bloqueando hasta que llega a su ruptura: no conducen antes de ±5,8 V."
 
   - id: pregunta-proteccion
     tipo: pregunta
@@ -199,6 +222,21 @@ tarjetas:
         porque: "Sin resistencia, el diodo que conduce dejaría pasar la corriente que quisiera la fuente."
       - texto: "La alimentación, que absorbe la tensión"
         porque: "Absorbe la corriente del diodo de arriba, pero quien la limita es la resistencia."
+    fijar: { V_p: 8, R_c: 1000, p_on: 1, n_on: 1 }
+    widget:
+      tipo: circuito
+      esquema: recortador
+      piezas: { fuente: V_p, f: f_s, r: R_c, vd: V_D, positivo: p_on, negativo: n_on }
+      lectura: { valor: V_b, rotulo: "Recorte negativo" }
+      grafica:
+        x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+        y: { min: -10, max: 10, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "max(min(V_p*sin(2*pi*f_s*t), V_a), V_b)", color: naranja, rotulo: "salida", mide: salida }
+      mandos: []
+    escalera:
+      - "Cuando un diodo conduce, ¿qué limita la corriente que entra por el pin?"
+    solucion: "La resistencia en serie: los diodos conducen al pasar de los raíles, pero ella limita la corriente."
 
   - id: pregunta-limite
     tipo: pregunta
@@ -213,11 +251,19 @@ tarjetas:
         porque: "La caída sigue la exponencial en cualquier diodo. Hace falta meterlo en un lazo de realimentación."
       - texto: "Con más resistencia en serie"
         porque: "La fuga y la capacidad pesarían más. La solución es el recortador activo."
+    widget:
+      tipo: figura
+      figura: fig-5.18
+      zonas:
+        - { id: recortador, rotulo: "Recortador, fijador y doblador", rect: [0, 0, 437, 183] }
+    escalera:
+      - "La caída del diodo sigue la exponencial. ¿Qué la divide por un factor grande?"
+    solucion: "Un recortador activo: con el diodo dentro del lazo de un operacional, su caída se divide por la ganancia del lazo."
 
   - id: explore-fijador
     tipo: explorar
     titulo: "Trasladar sin deformar"
-    texto: "Un condensador en serie y un diodo a masa. En régimen el condensador se queda cargado y suma un desplazamiento. Cambie el sentido del diodo."
+    texto: "Con un condensador en serie y un diodo a masa, el condensador se queda cargado y suma un desplazamiento. Cambie el sentido del diodo."
     libro: [265, 266, 267]
     widget:
       tipo: circuito
@@ -261,6 +307,9 @@ tarjetas:
         porque: "Eso sería recortar. El fijador no recorta: conserva la forma y la amplitud."
     comprobar:
       - { V_min: -15.3, V_max: 0.7, V_sh: -7.3, V_pp: 16, V_neg: -8 }
+    escalera:
+      - "El fijador no recorta: traslada la señal entera, y la amplitud de pico a pico sigue siendo 16 V."
+    solucion: "El máximo baja de 8 a 0,7 V, 7,3 V; el mínimo, igual: de −8 a −15,3 V."
 
   - id: pregunta-complementario
     tipo: pregunta
@@ -275,6 +324,14 @@ tarjetas:
         porque: "Solo el recortador limita. El fijador conserva la amplitud y mueve la señal."
       - texto: "El fijador corta más, porque tiene condensador"
         porque: "El condensador no corta: se carga y suma un desplazamiento constante, como una batería."
+    widget:
+      tipo: figura
+      figura: fig-5.18
+      zonas:
+        - { id: comparacion, rotulo: "Cortar, trasladar y multiplicar", rect: [0, 0, 437, 183] }
+    escalera:
+      - "Compare las salidas: ¿cuál conserva la forma y la amplitud?"
+    solucion: "El fijador: traslada la señal entera. El recortador corta los picos."
 
   - id: pregunta-rc
     tipo: pregunta
@@ -289,6 +346,20 @@ tarjetas:
         porque: "Se descargaría mucho entre picos y la señal se deformaría."
       - texto: "Cuanto más corta, mejor"
         porque: "Corta, el condensador se descarga entre picos y la señal se deforma."
+    widget:
+      tipo: circuito
+      esquema: fijador
+      piezas: { fuente: V_p, f: f_s, c: C_c, vd: V_D, sube: s_on }
+      lectura: { valor: V_sh, rotulo: "Desplazamiento" }
+      grafica:
+        x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+        y: { min: -18, max: 18, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_p*sin(2*pi*f_s*t) + V_sh", color: naranja, rotulo: "salida", mide: salida }
+      mandos: []
+    escalera:
+      - "Entre picos, el condensador se descarga por R. ¿Cuánto debe durar esa descarga frente al periodo?"
+    solucion: "Al menos diez veces el periodo: así apenas se descarga entre picos y la señal no se deforma."
 
   - id: resumen
     tipo: resumen

@@ -92,6 +92,9 @@ tarjetas:
     comprobar:
       - { V_out: 4.762, err_v: 4.76, R_ab: 909091 }
       - { con: { volt: 0 }, V_out: 5.0 }
+    escalera:
+      - "El voltímetro de 10 MΩ queda en paralelo con la rama de abajo."
+    solucion: "1 MΩ ‖ 10 MΩ = 0,909 MΩ: lee 4,762 V, un 4,8 % menos."
 
   - id: estime-cien
     tipo: pregunta
@@ -114,6 +117,9 @@ tarjetas:
       - { texto: "Se ha quedado corto: 10 MΩ entre cien son cien mil ohmios." }
     comprobar:
       - { R_max: 100000 }
+    escalera:
+      - "Divida la impedancia del instrumento entre cien."
+    solucion: "10 MΩ / 100 = 100 kΩ. Por encima: corregir por cálculo, otro instrumento de más impedancia o un seguidor."
 
   - id: explore-amperimetro
     tipo: explorar
@@ -157,6 +163,9 @@ tarjetas:
       - { texto: "Se ha quedado corto: 10 Ω más sobre 110 Ω en total." }
     comprobar:
       - { err_a: 9.09, R_tot: 110 }
+    escalera:
+      - "Con el amperímetro dentro, el circuito pasa de 100 a 110 Ω."
+    solucion: "La resistencia pasa de 100 a 110 Ω: la corriente baja a 100/110, un 9,1 % menos."
 
   - id: por-que-falla
     tipo: porque
@@ -171,6 +180,20 @@ tarjetas:
         porque: "No inyecta nada: se suma en serie y su caída resta tensión al circuito."
       - texto: "El amperímetro está estropeado"
         porque: "Funciona bien. Es su resistencia en serie, inevitable, la que altera el circuito."
+    widget:
+      tipo: circuito
+      esquema: serie
+      piezas: { fuente: V_s, r1: R_c, r2: R_A }
+      lectura: { valor: I_s, rotulo: "Lo que lee" }
+      datos:
+        - { valor: V_A, rotulo: "Cae en el amperímetro: {{V_A}}" }
+      corriente: I_s
+      mide: { corriente: I_s, v1: V_R, v2: V_A }
+      mandos:
+        - { valor: R_A, lista: [0.1, 1, 10], rotulo: "Amperímetro, R_{A}" }
+    escalera:
+      - "El amperímetro va en serie: ¿qué le quita al circuito?"
+    solucion: "Su tensión de carga: en un circuito de 3,3 V, 300 mV son el 9 %."
 
   - id: sin-abrir
     tipo: pregunta
@@ -185,6 +208,14 @@ tarjetas:
         porque: "El voltímetro va en paralelo; en serie, con 10 MΩ, cortaría la corriente."
       - texto: "Con el amperímetro en paralelo"
         porque: "Con su baja resistencia en paralelo haría un cortocircuito y fundiría su fusible."
+    widget:
+      tipo: figura
+      figura: fig-1.12
+      zonas:
+        - { id: conexiones, rotulo: "Tensión en paralelo, corriente en serie", rect: [0, 0, 448, 146] }
+    escalera:
+      - "La ley de Ohm da la corriente si conoce la tensión de una resistencia."
+    solucion: "Midiendo la caída en una resistencia del circuito y dividiendo por su valor."
 
   - id: explore-sonda
     tipo: explorar
@@ -222,6 +253,9 @@ tarjetas:
     exito: "El del método no lo detecta ninguna calibración: solo el criterio de quien mide."
     pistas:
       - { texto: "Uno es del instrumento, otro de su conexión y otro de quien mide." }
+    escalera:
+      - "El error del método es el que ninguna calibración detecta."
+    solucion: "De carga: el instrumento altera el circuito. De exactitud: la especificación del fabricante. Del método: medir la magnitud equivocada."
 
   - id: rango
     tipo: pregunta
@@ -236,6 +270,39 @@ tarjetas:
         porque: "Medir 0,5 V en el rango de 1000 V da un error enorme aunque el instrumento sea excelente."
       - texto: "Da igual: la exactitud es la misma"
         porque: "No: el término de dígitos pesa más cuanto más pequeña es la lectura frente al rango."
+    widget:
+      tipo: figura
+      figura: fig-0.14
+      zonas:
+        - { id: especificacion, rotulo: "Error de una especificación", rect: [0, 0, 443, 203] }
+    escalera:
+      - "Con una lectura pequeña, ¿qué término de la exactitud domina?"
+    solucion: "El más bajo que no desborde: así los dígitos pesan menos frente a la lectura."
+
+  - id: banco-megaohmio
+    tipo: banco
+    titulo: "Mídalo en el banco"
+    texto: "Monte dos resistencias de 1 MΩ desde 10 V y mida el punto medio con el multímetro en V⎓."
+    libro: [216, 234]
+    fijar: { V_d: 10, R_d: 1000000, volt: 1 }
+    widget:
+      tipo: circuito
+      esquema: divisor
+      piezas: { fuente: V_d, arriba: R_d, abajo: R_d, carga: R_V, interruptor: volt }
+      lectura: { valor: V_out, rotulo: "Lo que lee" }
+      corriente: I_d
+      mide: { salida: V_out, corriente: I_d, carga: I_V }
+      mandos: []
+    banco:
+      piezas: ["Fuente de 10 V", "Dos resistencias de 1 MΩ y dos de 1 kΩ", "Multímetro en V⎓", "Protoboard"]
+      medir: "La tensión del punto medio respecto a masa. Luego repita con las dos de 1 kΩ."
+      esperado: V_out
+      unidad: V
+      tol: 0.02
+      consejos:
+        - { cuando: { valor: desviacion, menor: -0.02 }, texto: "Lee aún menos: su multímetro carga más que 10 MΩ. Con las de 1 kΩ debe leer 5,000 V." }
+        - { texto: "Lee de más: mida la tensión real de la fuente y las dos resistencias; un 1 % de diferencia entre ellas ya se nota." }
+      ficha: { n: 1, titulo: "El voltímetro forma parte del circuito" }
 
   - id: resumen
     tipo: resumen
