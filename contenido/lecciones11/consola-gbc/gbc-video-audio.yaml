@@ -1,0 +1,198 @@
+# «Consolas por dentro» · Game Boy Color 5: la imagen y el sonido, por lo que cambia respecto a la Game Boy. Colores de
+# 15 bits (5 por canal: 32 768), 8 paletas de fondo y 8 de sprites de 4 colores y 2 bytes por color (64 bytes cada
+# grupo, índice 00–3F), 18 bits de color en el conector del panel (6 por canal, con el bit bajo repetido), el camino
+# hasta el panel TFT con el CGB-REG, y un sonido que no cambia con la doble velocidad. Fuentes: los datos de la consola
+# (gbc#n) y Pan Docs «Video Display» y «CGB Registers».
+leccion: consola-gbc/gbc-video-audio
+
+libro:
+  "gbc#2": "PPU con paletas de 15 bits, 16 KB de VRAM dentro del chip"
+  "gbc#5": "Altavoz y auriculares"
+  "gbc#6": "Genera las tensiones de la pantalla TFT a partir de la alimentación"
+  "gbc#7": "18 bits de color (LDR/LDG/LDB 0–5, con el bit bajo repetido)"
+  "gbc#44": "Por el conector de 50 vías salen 18 bits de color (LDR, LDG, LDB 0–5)"
+  "gbc#52": "VRAM interna del CPU CGB (banco de VBK, $FF4F)"
+  "gbc#62": "todos los tiempos y frecuencias del sonido"
+  "gbc#70": "Hay 8 paletas de fondo (BGP0–7) y 8 de sprites (OBP0–7), de 4 colores cada una; cada color ocupa 2 bytes"
+  "gbc#71": "Cada color: bits 0–4 el rojo, 5–9 el verde y 10–14 el azul, de 00 a 1F"
+  "gbc#72": "El índice de las paletas va de 00 a 3F"
+
+modelo:
+  valores:
+    b: { sim: "b", nombre: "bits por canal", unidad: "", valor: 5 }
+    NP: { sim: "N_{paletas}", nombre: "paletas de fondo", unidad: "", valor: 8 }
+    NC: { sim: "N_{colores}", nombre: "colores por paleta", unidad: "", valor: 4 }
+    NB: { sim: "N_{bytes}", nombre: "bytes por color", unidad: "", valor: 2 }
+    N18: { sim: "N_{panel}", nombre: "bits de color del conector", unidad: "", valor: 18 }
+  calculos:
+    colores: { expr: "(2^b)^3", sim: "N", nombre: "colores posibles", unidad: "", cifras: 5 }
+    niveles: { expr: "3*2^b", sim: "3 · 2^b", nombre: "niveles sumados (error)", unidad: "", cifras: 3 }
+    bytes: { expr: "NP*NC*NB", sim: "bytes", nombre: "bytes de las paletas de fondo", unidad: "", cifras: 3 }
+    bpc: { expr: "N18/3", sim: "bits por canal", nombre: "bits por canal en el conector", unidad: "", cifras: 2 }
+
+tarjetas:
+  - id: explore-video
+    tipo: explorar
+    titulo: "El color, en la placa"
+    texto: "Toque el chip que hace la imagen, el conector del panel y el regulador del panel."
+    libro: ["gbc#2", "gbc#7", "gbc#6"]
+    requiere: { mover: [soc, ffc, reg] }
+    widget:
+      tipo: figura
+      consola: { maquina: gbc }
+      zonas:
+        - { id: soc, hotspot: soc, rotulo: "CPU CGB", texto: "PPU con paletas de 15 bits y la VRAM dentro." }
+        - { id: ffc, hotspot: ffc, rotulo: "Conector P2", texto: "50 vías: 18 bits de color y los pulsos del panel." }
+        - { id: reg, hotspot: reg, rotulo: "CGB-REG", texto: "Las tensiones del panel TFT." }
+
+  - id: prediga-colores
+    tipo: predecir
+    titulo: "Cinco bits por canal"
+    texto: "Cada color usa 5 bits de rojo, 5 de verde y 5 de azul. ¿Cuántos colores hay?"
+    libro: ["gbc#71", "gbc#2"]
+    widget:
+      tipo: grafica
+      x: { id: k, min: 1, max: 6, unidad: "", rotulo: "bits por canal" }
+      y: { min: 0, max: 40000, unidad: "", rotulo: "colores" }
+      curvas:
+        - { expr: "(2^k)^3", color: azul, rotulo: "(2^{bits})^3", palitos: true }
+      marcas:
+        - { x: "b", y: "colores", rotulo: "{{colores}}" }
+    opciones:
+      - texto: "32 768"
+        bien: true
+        porque: "32 niveles por canal, multiplicados: 32 × 32 × 32 = 2¹⁵."
+      - texto: "96"
+        porque: "Eso es sumar los niveles: los canales se combinan, así que se multiplican."
+      - texto: "15"
+        porque: "15 son los bits; las combinaciones son 2¹⁵."
+    escalera:
+      - "Con 5 bits hay 32 niveles de cada color."
+    solucion: "2¹⁵ = 32 768 colores."
+    comprobar:
+      - { colores: 32768, niveles: 96 }
+
+  - id: simule-paletas
+    tipo: simular
+    titulo: "La memoria de las paletas"
+    texto: "Hay 8 paletas de fondo de 4 colores, y cada color ocupa 2 bytes. ¿Cuántos bytes son?"
+    libro: ["gbc#70", "gbc#72"]
+    widget:
+      tipo: grafica
+      ocultar: curvas
+      x: { id: p, min: 1, max: 8, unidad: "", rotulo: "paletas" }
+      y: { min: 0, max: 80, unidad: "", rotulo: "bytes" }
+      curvas:
+        - { expr: "p*NC*NB", color: azul, rotulo: "paletas · 4 · 2", palitos: true }
+    simular:
+      objetivo: bytes
+      unidad: ""
+      tol: 0.001
+      rotulo: "Bytes de las paletas de fondo"
+      errores:
+        - { expr: "NP*NC", texto: "Ha contado un byte por color: son 2, por los 15 bits." }
+        - { expr: "NC*NB", texto: "Esa es una sola paleta: hay 8." }
+        - { expr: "2*NP*NC*NB", texto: "Ha sumado las de sprites: la pregunta es solo de las de fondo." }
+    exito: "8 × 4 × 2 = 64 bytes: por eso el índice va de 00 a 3F."
+    escalera:
+      - "Multiplique paletas, colores y bytes."
+    solucion: "64 bytes."
+    comprobar:
+      - { bytes: 64 }
+
+  - id: por-que-18
+    tipo: porque
+    titulo: "15 bits dentro, 18 fuera"
+    texto: "Los colores son de 15 bits, pero por el conector del panel salen 18. ¿Por qué?"
+    libro: ["gbc#7", "gbc#44", "gbc#71"]
+    widget:
+      tipo: figura
+      consola: { maquina: gbc }
+      zonas:
+        - { id: ffc, hotspot: ffc, rotulo: "Conector P2" }
+    opciones:
+      - texto: "El panel tiene 6 bits por canal: se repite el bit bajo."
+        bien: true
+        porque: "LDR, LDG y LDB 0–5: 6 bits por canal, con el bit bajo repetido para completar los 5 del color."
+      - texto: "Los 3 bits que sobran son de brillo."
+        porque: "No hay bits de brillo: cada canal se completa repitiendo su bit bajo."
+      - texto: "El panel tiene más colores que la consola."
+        porque: "El panel acepta 6 bits por canal, pero la consola solo da 5: el sexto es una copia."
+    escalera:
+      - "18 entre 3 canales: ¿cuántos bits por canal?"
+    solucion: "6 bits por canal en el panel; el bit bajo se repite."
+    comprobar:
+      - { bpc: 6 }
+
+  - id: ordene-imagen
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "El camino del color"
+    texto: "Ordene el camino de un píxel en color."
+    libro: ["gbc#52", "gbc#2", "gbc#44"]
+    ordenar:
+      - "La VRAM interna, con su banco de VBK."
+      - "La PPU, que aplica la paleta."
+      - "18 bits por el conector de 50 vías."
+      - "El panel TFT."
+    exito: "Todo pasa dentro del CPU CGB hasta el conector."
+    pistas:
+      - { texto: "La VRAM ya no está fuera: el primer tramo es interno." }
+    escalera:
+      - "La paleta convierte un número de color en 15 bits."
+    solucion: "VRAM interna, PPU con la paleta, conector de 50 vías y panel."
+
+  - id: toque-regulador
+    tipo: tocar
+    titulo: "Las tensiones del panel"
+    texto: "Toque el chip que genera las tensiones de la pantalla TFT."
+    libro: ["gbc#6", "gbc#5"]
+    widget:
+      tipo: figura
+      consola: { maquina: gbc }
+      zonas:
+        - { id: reg, hotspot: reg, rotulo: "Chip pequeño, arriba del todo a la izquierda" }
+        - { id: amp, hotspot: amp, rotulo: "Chip pequeño, debajo del grande" }
+        - { id: ffc, hotspot: ffc, rotulo: "Conector largo, arriba" }
+    tocar:
+      bien: [reg]
+      porque:
+        amp: "Es el amplificador de audio."
+        ffc: "Es el conector: lleva las tensiones al panel, pero no las genera."
+    exito: "El CGB-REG, un IR3E09N."
+    escalera:
+      - "Busque la marca «CGB-REG»."
+    solucion: "El CGB-REG."
+
+  - id: prediga-sonido
+    tipo: predecir
+    titulo: "¿Música más aguda?"
+    texto: "Un juego pasa a doble velocidad. ¿Suena su música más aguda?"
+    libro: ["gbc#62", "gbc#5"]
+    widget:
+      tipo: figura
+      consola: { maquina: gbc }
+      zonas:
+        - { id: amp, hotspot: amp, rotulo: "Amplificador" }
+        - { id: ls, hotspot: ls, rotulo: "Altavoz" }
+    opciones:
+      - texto: "No: el sonido no cambia con la doble velocidad."
+        bien: true
+        porque: "Todos los tiempos y frecuencias del sonido se quedan igual."
+      - texto: "Sí, una octava más aguda."
+        porque: "Solo la CPU y lo que la sirve van al doble; el sonido, no."
+      - texto: "Sí, y además más rápida."
+        porque: "Ni más aguda ni más rápida: el sonido mantiene sus tiempos."
+    escalera:
+      - "¿Qué partes van al doble en doble velocidad?"
+    solucion: "No: el sonido no cambia."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["gbc#71", "gbc#70", "gbc#7", "gbc#62"]
+    ideas:
+      - { titulo: "15 bits.", texto: "5 por canal: 2¹⁵ colores." }
+      - { titulo: "Paletas.", texto: "8 de fondo y 8 de sprites, de 4 colores." }
+      - { titulo: "18 bits al panel.", texto: "Cada canal repite su bit bajo." }
+      - { titulo: "Sonido.", texto: "No cambia con la doble velocidad." }

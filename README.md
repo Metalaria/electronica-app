@@ -143,7 +143,7 @@ esquemas (fase 5) está en la versión 0.7.
   diario en Android (ver «Cursos, XP y logros» más abajo).
 - **Consolas por dentro** (1.2): el curso 11, con lecciones hechas a mano sobre las placas del explorador «Consolas»
   (la placa en la foto, alimentación, relojes PAL y NTSC, buses y decodificación, vídeo y sonido, bloqueo regional y
-  averías). Hechas: las siete de la Super Nintendo y las siete de la NES (ver «Consolas por dentro» más abajo).
+  averías). Hechas las 49: siete por consola (ver «Consolas por dentro» más abajo).
 - **Modo docente** (1.0): cursos y exámenes propios con las preguntas y los problemas del libro, que se hacen en la
   aplicación (con nota y el desarrollo del libro) o se exportan a PDF, con variantes y soluciones (ver más abajo).
 - **Guía de uso** (1.0): cómo se usa cada parte de la aplicación, dentro de ella y sin conexión, con su propio buscador y
@@ -2346,10 +2346,17 @@ fotos y piezas identificadas, la arquitectura y el decodificador, las fuentes), 
 se relacionan y, en las averías, de fuentes externas citadas en cada tarjeta (ConsoleMods, Fabien Sanglard, SNESdev…),
 con su título y su enlace. Cada tarjeta enseña sus fuentes debajo; no hay lección «por pasos» ni prueba de nivel, y
 el lector del libro no las lista. Hechas en la 1.2: las siete de la Super Nintendo, la NES, la Mega Drive, el Master
-System II y la Neo Geo AES (35); las de la Game Boy y la Game Boy Color siguen el mismo patrón
-(contenido/lecciones11/GUIA.md §12). Las consolas sin bloqueo regional por chip lo explican con lo que tienen: el TMSS
-y los puentes de región de la Mega Drive, la cabecera «TMR SEGA» que pide la ROM de arranque del Master System y la
-BIOS que fija región y modo en la Neo Geo.
+System II, la Neo Geo AES, la Game Boy y la Game Boy Color (49; contenido/lecciones11/GUIA.md §12). Las consolas sin
+bloqueo regional por chip lo explican con lo que tienen: el TMSS y los puentes de región de la Mega Drive, la cabecera
+«TMR SEGA» que pide la ROM de arranque del Master System, la BIOS que fija región y modo en la Neo Geo y el logotipo
+de Nintendo que compara la ROM de arranque de la Game Boy (la Game Boy Color solo compara la mitad, lee el indicador
+CGB de la cabecera y sus cartuchos «solo Color» llevan un bloqueo de plástico). Las siete de la Game Boy Color tratan
+solo lo que cambia: doble velocidad, paletas de 15 bits, bancos de VRAM y WRAM, infrarrojos y el convertidor que
+eleva de dos pilas a 5 V. En las averías de la Game Boy, sus fuentes son iFixit, el blog de nitro2k01 y ConsoleMods.
+
+El explorador ya no escribe a mano el número de las figuras del libro de la NES y la Neo Geo: la nota de la foto y
+«Fuentes» lo sacan de `refs.json` por su etiqueta (`fig-37.16`, `fig-37.22`), así que hoy dicen 38.16 y 38.22, los
+números del libro 4.1, y seguirán bien si el libro se vuelve a numerar.
 
 La foto NTSC de la Super Nintendo (placa SNS-CPU-RGB-01 con todos sus chips; Yaca2671, Wikimedia Commons, CC BY-SA 3.0)
 está también en el explorador, como «Cara de componentes · NTSC», con 22 piezas colocadas por las marcas que se leen

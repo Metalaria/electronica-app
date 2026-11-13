@@ -3287,7 +3287,7 @@ each with its lessons {label, titulo} and `externas` {titulo, url, hechos[]}) an
 part `consola-<m>` = one h2 per manifest lesson (title from the manifest); part `<m>` (`nes`, `snes`…) = the console's
 data as `{t: 'p', html}` blocks (the explorer JSON: notice, photos and every hotspot, equivalences, notes, revisions,
 sources, bus groups; the architecture model's diagram blocks and its decoder on the example addresses; the manifest's
-external facts; the supply nets of the schematic, last), cited as `"snes#26"`; book citations as usual. After
+external facts; the supply nets of the schematic, last), cited as `"snes#26"`; book citations as usual. A console-data text may cite the book as `{{num:<label>}}` (`Fuente.uso` «Figura {{num:fig-37.16}} del libro.», consolas-C): «Fuentes» shows it through `conNumerosImpresos`, the photo note takes `foto.figura` (a label) through `numeroImpreso`, and `consolas11.mjs` resolves it from `libro/refs.json` in the blocks, so no printed book number is ever written by hand in the explorer. After
 generation `completar` adds `Leccion11.consola` (the machine) and, per citation, `fuente` {titulo, url} (console data:
 an explorer route `#/consolas/<m>/…` or the external page) or `seccion` (the h2 label of a cited book block).
 `lecciones11.mjs` also writes **`libro/lecciones11/partes.json`** `{version: 1, partes: {"consola-<m>": {tipo:

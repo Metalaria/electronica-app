@@ -1,0 +1,190 @@
+# «Consolas por dentro» · Game Boy Color 2: la alimentación, por lo que cambia respecto a la Game Boy: dos pilas AA (y
+# una toma de 3 V) en vez de cuatro, así que el convertidor U5 tiene que subir la tensión hasta +5 V (un elevador:
+# libro, sección 33.3, Vout = Vin / (1 − D); la corriente de entrada es mayor que la de salida), y las redes del
+# esquema de Natalie the Nerd: VCC tras el interruptor, +5V, +3V3 y las tensiones de la pantalla. Fuentes: los datos de
+# la consola (gbc#n, gb#n) y el libro.
+leccion: consola-gbc/gbc-alimentacion
+
+libro:
+  "gbc#6": "Genera las tensiones de la pantalla TFT a partir de la alimentación"
+  "gbc#11": "Interruptor deslizante"
+  "gbc#15": "Entrada externa de 3 V"
+  "gbc#21": "Placa conmutada que saca +5 V, +3,3 V y las tensiones de la pantalla de las dos pilas AA"
+  "gbc#50": "Dos pilas AA; el convertidor saca +5 V y +3,3 V"
+  "gbc#89": "Red +3V3 del esquema (alimentación)"
+  "gbc#90": "Red +5V del esquema (alimentación)"
+  "gbc#91": "Red -14.6v del esquema (alimentación): llega a C22, D1, P2, R22, U5"
+  "gbc#97": "Red VCC del esquema (alimentación): llega a C13, C31, R7, SW1, U3, U5"
+  "gb#60": "Cuatro pilas AA o la toma de 6 V"
+  "cap08#67": "necesita unos 2 V de diferencia entre entrada y salida para funcionar"
+  "cap33#79": "El elevador funciona de otro modo"
+  "cap33#84": "Vout = Vin / (1 − D)"
+  "cap33#85": "Con 3,7 V de batería y 5 V de salida, D = 0,26"
+  "cap33#87": "La corriente de entrada es mayor que la de salida"
+
+modelo:
+  valores:
+    V_in: { sim: "V_{in}", nombre: "tensión de las pilas", unidad: V, valor: 3 }
+    V_n: { sim: "V_{out}", nombre: "tensión de la lógica", unidad: V, valor: 5 }
+    D: { sim: "D", nombre: "ciclo de trabajo", unidad: "", valor: 0.2 }
+  calculos:
+    V_out: { expr: "V_in/(1 - D)", sim: "V_{out}", nombre: "salida de un elevador ideal", unidad: V, cifras: 3 }
+    D_5: { expr: "1 - V_in/V_n", sim: "D", nombre: "ciclo de trabajo para 5 V", unidad: "", cifras: 2 }
+
+tarjetas:
+  - id: explore-alim
+    tipo: explorar
+    titulo: "Menos pilas"
+    texto: "Toque el interruptor, la toma de corriente y el regulador de la pantalla."
+    libro: ["gbc#11", "gbc#15", "gbc#6", "gbc#50"]
+    requiere: { mover: [sw, dcj, reg] }
+    widget:
+      tipo: figura
+      consola: { maquina: gbc }
+      zonas:
+        - { id: sw, hotspot: sw, rotulo: "Interruptor SW1", texto: "Deslizante." }
+        - { id: dcj, hotspot: dcj, rotulo: "Toma P4", texto: "Entrada externa de 3 V: lo que dan dos pilas AA." }
+        - { id: reg, hotspot: reg, rotulo: "CGB-REG", texto: "Las tensiones de la pantalla TFT." }
+
+  - id: prediga-elevador
+    tipo: predecir
+    titulo: "De 3 V a 5 V"
+    texto: "Dos pilas AA dan 3 V y la lógica pide +5 V. ¿Qué convertidor hace falta?"
+    libro: ["gbc#21", "gbc#15", "cap33#79", "cap08#67"]
+    widget:
+      tipo: figura
+      consola: { maquina: gbc, foto: dorso }
+      zonas:
+        - { id: dcdc, hotspot: b-dcdc, rotulo: "Convertidor U5" }
+    opciones:
+      - texto: "Uno que eleve la tensión."
+        bien: true
+        porque: "La salida es mayor que la entrada: un regulador lineal o un reductor no pueden subirla."
+      - texto: "Un 78xx, como en las consolas de sobremesa."
+        porque: "Un 78xx necesita unos 2 V más en la entrada que en la salida; aquí la entrada es menor."
+      - texto: "Ninguno: la lógica funciona a 3 V."
+        porque: "La placa necesita +5 V; U5 los saca de las dos pilas."
+    escalera:
+      - "¿La salida es mayor o menor que la entrada?"
+    solucion: "Un elevador: subir de 3 V a 5 V."
+
+  - id: ajuste-ciclo
+    tipo: ajuste
+    titulo: "El ciclo de trabajo"
+    texto: "Un elevador ideal da Vout = Vin / (1 − D). Con 3 V de pilas, ajuste D hasta 5 V."
+    libro: ["cap33#84", "cap33#85", "gbc#15"]
+    inicio: { D: 0.2 }
+    widget:
+      tipo: grafica
+      x: { id: d, min: 0, max: 0.8, unidad: "", rotulo: "D" }
+      y: { min: 0, max: 16, unidad: V, rotulo: "V_{out}" }
+      curvas:
+        - { expr: "V_in/(1 - d)", color: azul, rotulo: "V_{in} / (1 − D)" }
+      marcas:
+        - { x: "D", y: "V_out", rotulo: "{{V_out}}" }
+      mandos: [ { valor: D, min: 0, max: 0.8, paso: 0.01, rotulo: "Ciclo de trabajo, D" } ]
+    ajuste:
+      valor: V_out
+      objetivo: 5
+      tol: 0.01
+      rotulo: "Salida del elevador"
+      bajo: "Falta tensión: suba D."
+      alto: "Se ha pasado: baje D."
+      dentro: "5 V con D = 0,40."
+    exito: "D = 1 − 3/5 = 0,40: más que los 0,26 de una batería de 3,7 V."
+    escalera:
+      - "Despeje D: 1 − V_{in}/V_{out}."
+    solucion: "D = 0,40."
+    comprobar:
+      - { con: { D: 0.4 }, V_out: 5 }
+      - { D_5: 0.4 }
+
+  - id: por-que-corriente
+    tipo: porque
+    titulo: "Más corriente en las pilas"
+    texto: "Las pilas dan más corriente de la que sale por los +5 V. ¿Por qué?"
+    libro: ["cap33#87", "gbc#21"]
+    widget:
+      tipo: figura
+      consola: { maquina: gbc, foto: dorso }
+      zonas:
+        - { id: dcdc, hotspot: b-dcdc, rotulo: "U5" }
+    opciones:
+      - texto: "En un elevador, la corriente de entrada es mayor que la de salida."
+        bien: true
+        porque: "La potencia se conserva, como mucho: con menos tensión a la entrada, hace falta más corriente."
+      - texto: "Porque U5 está averiado."
+        porque: "Es lo normal en un elevador: entra más corriente de la que sale."
+      - texto: "Porque las pilas cargan el condensador de salida."
+        porque: "Eso solo pasa al arrancar. En marcha, entra más corriente porque la tensión de entrada es menor."
+    escalera:
+      - "Compare la potencia que entra y la que sale."
+    solucion: "Menos tensión a la entrada: más corriente."
+
+  - id: ordene-camino
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "El camino de la corriente"
+    texto: "Ordene el camino desde las pilas hasta los +5 V."
+    libro: ["gbc#21", "gbc#97", "gbc#90"]
+    ordenar:
+      - "Las dos pilas AA."
+      - "El interruptor SW1."
+      - "VCC, hasta el convertidor U5."
+      - "U5 saca los +5 V."
+    exito: "Encender y elevar: el convertidor hace todo el trabajo."
+    pistas:
+      - { texto: "La red VCC une el interruptor con U5." }
+    escalera:
+      - "Lo último es la conversión."
+    solucion: "Pilas, SW1, VCC hasta U5 y los +5 V."
+
+  - id: empareje-redes
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Cada red, su papel"
+    texto: "Empareje cada red del esquema con dónde llega."
+    libro: ["gbc#89", "gbc#90", "gbc#91", "gbc#97"]
+    emparejar:
+      - ["VCC", "Del interruptor a U5"]
+      - ["+5V", "U5, el cartucho y el amplificador"]
+      - ["+3V3", "La CPU, la WRAM y la pantalla"]
+      - ["-14.6v", "De U5 a la pantalla"]
+    exito: "Una entrada y varias salidas: lógica, memoria y pantalla."
+    pistas:
+      - { texto: "La red +5V llega a P1, el cartucho, y a U3, el amplificador." }
+    escalera:
+      - "El nombre de la red negativa ya dice su tensión."
+    solucion: "VCC: de SW1 a U5. +5V: U5, cartucho y amplificador. +3V3: CPU, WRAM y pantalla. -14.6v: pantalla."
+
+  - id: prediga-comparar
+    tipo: predecir
+    titulo: "Cuatro pilas o dos"
+    texto: "La Game Boy usaba cuatro pilas AA; la Game Boy Color, dos. ¿Qué cambia para su convertidor?"
+    libro: ["gb#60", "gbc#50", "gbc#15"]
+    widget:
+      tipo: figura
+      consola: { maquina: gbc, foto: dorso }
+      zonas:
+        - { id: dcdc, hotspot: b-dcdc, rotulo: "U5" }
+    opciones:
+      - texto: "Con dos pilas tiene que subir la tensión; con cuatro, mantenerla."
+        bien: true
+        porque: "Cuatro pilas o la toma de 6 V superan los 5 V; dos pilas o la toma de 3 V se quedan por debajo."
+      - texto: "Nada: los dos dan los mismos 5 V del mismo modo."
+        porque: "Dan los mismos 5 V, pero desde una entrada por encima o por debajo."
+      - texto: "Con dos pilas ya no hace falta convertidor."
+        porque: "3 V no bastan para los +5 V: el convertidor tiene que elevar."
+    escalera:
+      - "Compare la toma de cada consola: 6 V y 3 V."
+    solucion: "La Color eleva de 3 V a 5 V."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: ["gbc#21", "cap33#84", "cap33#87", "gbc#90"]
+    ideas:
+      - { titulo: "Dos pilas.", texto: "3 V: por debajo de los 5 V de la lógica." }
+      - { titulo: "Elevar.", texto: "Vout = Vin / (1 − D): el ciclo de trabajo fija la subida." }
+      - { titulo: "Más corriente.", texto: "Las pilas dan más corriente de la que sale." }
+      - { titulo: "Varias redes.", texto: "+5V, +3V3 y las tensiones de la pantalla." }

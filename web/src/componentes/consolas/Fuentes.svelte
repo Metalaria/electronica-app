@@ -2,6 +2,8 @@
   // «Fuentes» tab: credits, licences and how the data were obtained and checked.
   import { onMount, untrack, type Component } from 'svelte';
   import { htmlKicad, type DatosMaquina, type IdMaquina } from './datos';
+  // a source's «uso» may cite the book as «Figura {{num:fig-37.16}}»: shown with the current printed number
+  import { conNumerosImpresos } from '../../lib/datos';
   import PlacaFuentes from './placa/PlacaFuentes.svelte';
   import { cargarIndicePlacas } from './placa/datos';
   import { cargarFotograma } from './fotograma/maquinas';
@@ -53,7 +55,7 @@
           <p class="titulo"><strong>{f.titulo}</strong></p>
           <p>{f.autor} · <a href={f.url} target="_blank" rel="noopener noreferrer">{f.url.replace(/^https?:\/\//, '')}</a></p>
           <p class="licencia">Licencia: {f.licencia}</p>
-          <p class="uso">{f.uso}</p>
+          <p class="uso">{conNumerosImpresos(f.uso)}</p>
           {#if f.texto}
             {@const ruta = f.texto}
             <details class="texto-licencia" ontoggle={(e) => abrirTexto(ruta, e)}>

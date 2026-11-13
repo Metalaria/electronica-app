@@ -244,8 +244,9 @@ test.describe('reglas de XP, niveles y cursos (sin navegador)', () => {
     const conConsolas = mezclarPartes(INDICE, extra);
     expect(leccionesDeCurso(consolas, INDICE)).toEqual([]);
     const ls = leccionesDeCurso(consolas, conConsolas);
-    // (14 of the NES and the SNES, consolas-A; + 21 of the Mega Drive, the Master System II and the Neo Geo, consolas-B)
-    expect(ls.length).toBeGreaterThanOrEqual(35);
+    // (14 of the NES and the SNES, consolas-A; + 21 of the Mega Drive, the Master System II and the Neo Geo, consolas-B;
+    // + 14 of the Game Boy and the Game Boy Color, consolas-C: all seven consoles)
+    expect(ls.length).toBeGreaterThanOrEqual(49);
     for (const l of ls) expect(readFileSync(new URL(`lecciones11/${l.parte}/${l.label}.json`, LIBRO), 'utf8'), `${l.parte}/${l.label}`).toContain('"consola":');
     expect(conConsolas.partes['consola-snes']!.tipo).toBe('consola');
     // (a book part is never replaced, and the book's volumes do not list the console parts)

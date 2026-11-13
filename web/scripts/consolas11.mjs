@@ -77,6 +77,15 @@ export async function consolas11({ fuentes, publico, src }) {
     }
   }
 
+  // ---- the book's printed numbers (libro/refs.json), read once when a console block cites one
+  let refsLibro = null;
+  const refs = () => {
+    if (refsLibro) return refsLibro;
+    const r = path.join(publico, 'libro', 'refs.json');
+    refsLibro = fs.existsSync(r) ? JSON.parse(fs.readFileSync(r, 'utf8')) : {};
+    return refsLibro;
+  };
+
   // ---- the citeable blocks of a console (built once, on demand)
   const cache = new Map();
   async function datosMaquina(maq) {
@@ -84,6 +93,8 @@ export async function consolas11({ fuentes, publico, src }) {
     const bloques = [];
     const fuentesB = [];
     const poner = (html, fuente) => {
+      // «{{num:fig-37.16}}» in the console data: the book's printed number, as the app shows it (conNumerosImpresos)
+      html = html.replace(/\{\{num:([^}\s]+)\}\}/g, (_, label) => refs()[label]?.num ?? label);
       bloques.push({ t: 'p', html });
       fuentesB.push(fuente);
     };

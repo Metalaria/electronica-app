@@ -552,6 +552,12 @@ test.describe('lecciones de consola (consolas11.mjs)', () => {
     expect(textos.some((t) => t.includes('Nintendo F411A'))).toBe(true);
     expect(textos.some((t) => t.startsWith('Decodificador, escritura en $7E0010'))).toBe(true);
     expect(textos.some((t) => t.includes('1,5 A; no se debe poner uno lento'))).toBe(true);
+    // (consolas-C) a book number in the console data («Figura {{num:fig-37.16}}») is the printed one of refs.json,
+    // as the explorer shows it: never a hard-coded number that a renumbering of the book leaves stale
+    const nes = (c.bloques('nes') as unknown[]).map((b) => textoDeBloque(b));
+    const refs = JSON.parse(fs.readFileSync(path.join(libro, 'refs.json'), 'utf8')) as Record<string, { num: string }>;
+    expect(nes.some((t) => t.includes(`Figura ${refs['fig-37.16'].num} del libro`))).toBe(true);
+    expect(nes.some((t) => t.includes('{{num:'))).toBe(false);
     // a book part or an unknown id is not the console module's
     expect(c.bloques('cap01')).toBeUndefined();
     // the parts file: the seven consoles in the explorer's order, tipo «consola», only the lessons already written

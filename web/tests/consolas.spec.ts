@@ -106,6 +106,24 @@ test('la Neo Geo cita los documentos de SNK en la foto y en las fuentes', async 
   await expect(page.locator('.fuentes')).toContainText('Multi Video System (MV4)');
 });
 
+// 1.2 (consolas-C): the photo note and «Fuentes» printed «Figura 36.16/36.22», hard-coded, while book 4.1 prints
+// 38.16 and 38.22. Both now come from refs.json (the labels fig-37.16 and fig-37.22), so a renumbering follows.
+test('NES y Neo Geo: el número de la figura del libro sale de refs.json', async ({ page, request }) => {
+  const refs = (await (await request.get('libro/refs.json')).json()) as Record<string, { num: string }>;
+  for (const [maq, label] of [
+    ['nes', 'fig-37.16'],
+    ['neogeo', 'fig-37.22'],
+  ] as const) {
+    const num = refs[label].num;
+    await page.goto(`#/consolas/${maq}/foto`);
+    await expect(page.locator('.foto-vista')).toContainText(`Figura ${num} del libro.`);
+    await page.goto(`#/consolas/${maq}/fuentes`);
+    const uso = page.locator('.fuentes .uso', { hasText: /^Figura / });
+    await expect(uso).toHaveText(`Figura ${num} del libro.`);
+  }
+  await expect(page.locator('body')).not.toContainText('{{num:');
+});
+
 test('Game Boy: cambiar de foto y resaltar las pistas de una red', async ({ page }) => {
   await page.goto('#/consolas/gb/foto');
   const pestana = page.locator('button[data-foto="pistas"]');
