@@ -1,0 +1,251 @@
+# Lección 1.2 de la sección 53.2 «La Idea: la Radio Hecha Cálculo» (cap52, sec-52.2). Formato: GUIA.md.
+# - El problema de la imagen en conversión directa (bloques 60 a 62, figura 53.6 izquierda): una señal 10 kHz por
+#   encima del oscilador da I = cos(2π·10 kHz·t) y Q = sen(2π·10 kHz·t); 10 kHz por debajo, la misma I y la Q cambiada
+#   de signo. Se dibuja I y, si se conecta, Q.
+# - El margen dinámico del bloque 75: 6,02·ENOB + 1,76 dB, 44 dB con un ENOB de 7. La ganancia de proceso del bloque 76:
+#   10·log₁₀(N), 30 dB con una FFT compleja de 1 024 puntos (27 dB con N/2 casillas si la señal fuera real).
+# Paso práctico: «simular» la ganancia de proceso de la FFT compleja (30 dB; error típico: los 27 dB de la real).
+leccion: cap52/sec-52.2
+
+libro:
+  54: "digitaliza lo antes posible y hace el resto con matemáticas"
+  55: "dónde se pone esa frontera"
+  56: "Muestreo directo de la antena"
+  57: "Es el superheterodino de siempre con la parte final digital"
+  58: "que es la arquitectura dominante"
+  60: "una señal por encima de la portadora y otra por debajo caen en el mismo sitio tras la mezcla"
+  61: "con osciladores desfasados 90° entre sí"
+  62: "Con un solo canal, +10 kHz y −10 kHz son indistinguibles; con dos, no"
+  63: "permite representar una banda de fs de anchura"
+  66: "derivada de la fase"
+  67: "cambiar de modo de demodulación es cambiar de fórmula, no de circuito"
+  70: "aparece una señal fantasma reflejada respecto a la portadora"
+  71: "produciendo un pico en el centro exacto del espectro"
+  72: "Componente continua de los propios convertidores"
+  73: "no son emisiones: son el hardware"
+  75: "tiene un ENOB de unos 7, es decir, unos 44 dB de margen"
+  76: "aporta unos 30 dB de ganancia de proceso (27 dB si la señal fuera real"
+  81: "lo que ocurre antes del convertidor no se puede arreglar después"
+  83: "Un receptor SDR se caracteriza con tres medidas"
+  85: "Las señales I y Q, y los artefactos característicos"
+  "cap30#123": '"SNR" = "6,02" dot.op n + "1,76 dB"'
+
+modelo:
+  valores:
+    f_d: { sim: "Δf", nombre: "distancia al oscilador local", unidad: Hz, valor: 10000 }
+    v_q: { sim: "Q", nombre: "canal Q conectado", unidad: "", valor: 0 }
+    E_b: { sim: "ENOB", nombre: "bits efectivos", unidad: "", valor: 7 }
+    N_f: { sim: "N", nombre: "puntos de la FFT compleja", unidad: "", valor: 1024 }
+  calculos:
+    M_d: { expr: "6.02*E_b + 1.76", sim: "margen", nombre: "margen dinámico", unidad: dB }
+    G_c: { expr: "10*log10(N_f)", sim: "G", nombre: "ganancia de proceso compleja", unidad: dB }
+    G_r: { expr: "10*log10(N_f/2)", sim: "G", nombre: "ganancia de proceso real", unidad: dB }
+    G_l: { expr: "20*log10(N_f)", sim: "G", nombre: "veinte veces el logaritmo", unidad: dB }
+
+tarjetas:
+  - id: empareje-frontera
+    tipo: pregunta
+    titulo: "Dónde poner la frontera"
+    texto: "Una SDR digitaliza lo antes posible. Empareje cada arquitectura con lo que la define."
+    libro: [54, 55, 56, 57, 58]
+    widget:
+      tipo: figura
+      figura: fig-52.3
+      zonas:
+        - { id: todo, rotulo: "Captar, muestrear y procesar", rect: [0, 0, 450, 178] }
+    emparejar:
+      - ["Muestreo directo", "Sin mezclar: convertidores rapidísimos"]
+      - ["Frecuencia intermedia", "El superheterodino con el final digital"]
+      - ["Conversión directa (Zero-IF)", "La dominante: banda base centrada en cero"]
+    exito: "La conversión directa es la que conviene entender bien: es la del proyecto."
+    pistas:
+      - { texto: "Zero-IF: frecuencia intermedia cero." }
+    escalera:
+      - "¿Cuál no tiene mezclador?"
+    solucion: "Directo, sin mezclar; FI, superheterodino; Zero-IF, a banda base."
+
+  - id: explore-signo
+    tipo: explorar
+    titulo: "Arriba o abajo del oscilador"
+    texto: "Una señal 10 kHz por encima o por debajo del oscilador local, ya mezclada. Cambie de lado mirando solo I; después conecte Q."
+    libro: [60, 61, 62]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.0002, unidad: s, rotulo: "t" }
+      y: { min: -1.3, max: 1.3, unidad: "", rotulo: "amplitud" }
+      curvas:
+        - { expr: "cos(2*pi*10000*t)", color: azul, rotulo: "I" }
+        - { expr: "v_q*sin(2*pi*f_d*t)", color: naranja, rotulo: "Q" }
+      lectura: { valor: f_d, rotulo: "Señal respecto al oscilador" }
+      mandos:
+        - { valor: f_d, lista: [10000, -10000], nombres: [por encima, por debajo], rotulo: "Lado del oscilador" }
+        - { valor: v_q, lista: [0, 1], nombres: [desconectado, conectado], rotulo: "Canal Q" }
+    requiere: { mover: [f_d, v_q] }
+
+  - id: pregunta-complejo
+    tipo: predecir
+    titulo: "Por qué dos canales"
+    texto: "Con un solo canal, +10 kHz y −10 kHz son indistinguibles. ¿Qué aporta el segundo canal, desfasado 90°?"
+    libro: [62, 63]
+    widget:
+      tipo: figura
+      figura: fig-52.4
+      zonas:
+        - { id: todo, rotulo: "Las señales I y Q y los artefactos", rect: [0, 0, 444, 188] }
+    opciones:
+      - texto: "El par (I, Q) es un número complejo: conserva el signo de la frecuencia"
+        bien: true
+        porque: "Q cambia de signo según el lado; con dos canales a f_{s} se representa una banda de f_{s} de anchura."
+      - texto: "El doble de amplitud"
+        porque: "No suma amplitud: añade la información del signo de la frecuencia."
+      - texto: "Una copia de seguridad del primero"
+        porque: "No es una copia: va desfasada 90°, y esa diferencia es la que distingue los dos lados."
+    escalera:
+      - "Mire qué hace Q al pasar de un lado al otro del oscilador."
+    solucion: "Un número complejo: amplitud y signo de la frecuencia."
+
+  - id: empareje-operaciones
+    tipo: pregunta
+    titulo: "Todo se vuelve aritmética"
+    texto: "Empareje cada operación con lo que se hace con I y Q."
+    libro: [66, 67]
+    widget:
+      tipo: figura
+      figura: fig-52.4
+      zonas:
+        - { id: todo, rotulo: "Las señales I y Q y los artefactos", rect: [0, 0, 444, 188] }
+    emparejar:
+      - ["Amplitud (AM)", "√(I² + Q²)"]
+      - ["Fase", "arctan(Q/I)"]
+      - ["Frecuencia (FM)", "La derivada de la fase"]
+      - ["Desplazar en frecuencia", "Multiplicar por una exponencial compleja"]
+    exito: "Cambiar de modo de demodulación es cambiar de fórmula, no de circuito."
+    pistas:
+      - { texto: "La amplitud de un número complejo es su módulo; la fase, su ángulo." }
+    escalera:
+      - "Piense en I + jQ como un vector."
+    solucion: "Amplitud, el módulo; fase, el arcotangente; FM, la derivada de la fase; desplazar, la exponencial."
+
+  - id: empareje-defectos
+    tipo: pregunta
+    titulo: "Lo que no son emisiones"
+    texto: "Empareje cada defecto de la conversión directa con lo que se ve en el espectro."
+    libro: [70, 71, 72, 73, 85]
+    widget:
+      tipo: figura
+      figura: fig-52.4
+      zonas:
+        - { id: todo, rotulo: "Las señales I y Q y los artefactos", rect: [0, 0, 444, 188] }
+    emparejar:
+      - ["Desequilibrio I/Q", "Una señal fantasma reflejada respecto a la portadora"]
+      - ["Fuga del oscilador local", "Un pico en el centro exacto"]
+      - ["Continua de los convertidores", "El mismo pico central"]
+    exito: "Una raya en el centro y señales espejo no son emisiones: son el hardware."
+    pistas:
+      - { texto: "El oscilador mezclado consigo mismo da frecuencia cero." }
+    escalera:
+      - "¿Cuál de los tres depende de que I y Q sean iguales?"
+    solucion: "Desequilibrio, el espejo; fuga del oscilador y continua, el pico central."
+
+  - id: estime-margen
+    tipo: pregunta
+    titulo: "El margen de un SDR barato"
+    texto: "Un receptor SDR con convertidor de 8 bits y un ENOB de unos 7. ¿Cuánto margen dinámico tiene?"
+    libro: [75, "cap30#123"]
+    widget:
+      tipo: figura
+      figura: fig-52.4
+      zonas:
+        - { id: todo, rotulo: "Las señales I y Q y los artefactos", rect: [0, 0, 444, 188] }
+    estimar:
+      objetivo: "M_d"
+      unidad: dB
+      min: 0
+      max: 100
+      paso: 1
+      inicio: 80
+      tol: 0.05
+      rotulo: "Margen dinámico"
+    exito: "Unos 44 dB: poquísimo para radio. Una emisora local fuerte satura el convertidor y borra todo lo demás."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 46 }, texto: "Demasiado: cuente con el ENOB, 7, no con los 8 bits nominales." }
+      - { texto: "Corto: SNR = 6,02·n + 1,76 dB, con n = 7." }
+    escalera:
+      - "6,02 dB por bit efectivo más 1,76 dB."
+    solucion: "6,02 × 7 + 1,76 ≈ 44 dB."
+    comprobar:
+      - { M_d: 43.9 }
+
+  - id: simule-ganancia
+    tipo: simular
+    titulo: "Lo que salva al sistema"
+    texto: "Una FFT compleja de 1 024 puntos reparte el ruido de la banda capturada entre sus casillas. ¿Cuánta ganancia de proceso aporta?"
+    libro: [76]
+    fijar: { N_f: 1024 }
+    simular:
+      objetivo: G_c
+      unidad: dB
+      tol: 0.03
+      rotulo: "Ganancia de proceso"
+      errores:
+        - { expr: "G_r", texto: "Esos 27 dB serían con N/2 casillas, si la señal fuera real. Con I y Q, las 1 024 casillas son útiles." }
+        - { expr: "G_l", texto: "Ha usado el logaritmo de una amplitud: el ruido se reparte en potencia, así que son 10·log₁₀(1 024)." }
+    exito: "Unos 30 dB: por eso se ven señales por debajo del suelo de ruido aparente."
+    escalera:
+      - "El ruido se reparte entre N casillas: la ganancia es N veces, en decibelios."
+    solucion: "10·log₁₀(1 024) ≈ 30 dB."
+    comprobar:
+      - { G_c: 30.1, G_r: 27.1, G_l: 60.2, tol: 0.003 }
+
+  - id: porque-antes
+    tipo: porque
+    titulo: "El límite de siempre"
+    texto: "La SDR relaja el problema analógico y lo resuelve en digital. ¿Por qué no puede prescindir del filtro y del control de ganancia analógicos?"
+    libro: [75, 81]
+    widget:
+      tipo: figura
+      figura: fig-52.3
+      zonas:
+        - { id: todo, rotulo: "Captar, muestrear y procesar", rect: [0, 0, 450, 178] }
+    opciones:
+      - texto: "Lo que ocurre antes del convertidor no se puede arreglar después"
+        bien: true
+        porque: "El ruido de la primera etapa, la saturación y el aliasing son definitivos: la SDR reduce el hardware analógico, no lo elimina."
+      - texto: "Porque el software aún es lento"
+        porque: "No es la velocidad: una saturación ya ocurrida no la deshace ningún cálculo."
+      - texto: "Porque el filtro digital no es selectivo"
+        porque: "Lo es mucho más que el analógico; el problema es que actúa después del convertidor."
+    escalera:
+      - "Una emisora fuerte satura el convertidor. ¿Puede el programa des-saturarlo?"
+    solucion: "Antes del convertidor, lo perdido no se recupera."
+
+  - id: empareje-banco
+    tipo: pregunta
+    titulo: "Tres medidas que lo dicen todo"
+    texto: "Empareje cada medida de un receptor SDR con lo que caracteriza."
+    libro: [83]
+    widget:
+      tipo: figura
+      figura: fig-52.3
+      zonas:
+        - { id: todo, rotulo: "Captar, muestrear y procesar", rect: [0, 0, 450, 178] }
+    emparejar:
+      - ["Suelo de ruido con la entrada en 50 Ω", "La sensibilidad"]
+      - ["Subir una señal hasta la intermodulación", "El punto de saturación"]
+      - ["Una señal en la frecuencia espejo", "El rechazo de imagen"]
+    exito: "Esas tres cifras dicen más que cualquier especificación de portada."
+    pistas:
+      - { texto: "La frecuencia espejo es la de la imagen." }
+    escalera:
+      - "¿Qué se mide sin ninguna señal en la entrada?"
+    solucion: "Suelo de ruido, sensibilidad; intermodulación, saturación; espejo, rechazo de imagen."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [54, 62, 67, 76, 81]
+    ideas:
+      - { titulo: "La frontera.", texto: "Digitalizar lo antes posible; la conversión directa es la dominante." }
+      - { titulo: "I y Q.", texto: "Un número complejo: distingue arriba y abajo del oscilador." }
+      - { titulo: "Aritmética.", texto: "Demodular es cambiar de fórmula; los artefactos son del hardware." }
+      - { titulo: "Los límites.", texto: "Margen dinámico y lo que pasa antes del convertidor." }

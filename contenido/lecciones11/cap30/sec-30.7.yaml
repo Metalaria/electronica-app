@@ -1,0 +1,276 @@
+# Lección 1.2 de la sección 29.7 «Del Circuito al Algoritmo» (cap30, sec-30.7). Formato: GUIA.md.
+# - El RC del bloque 218 (RC = 1 ms) como circuito vivo «carga-rc» con un escalón de 1 V: R = 10 kΩ y C = 100 nF son de
+#   ejemplo (dan ese 1 ms). Encima, el filtro digital y[n] = a·x[n] + (1 − a)·y[n − 1] con a = Δt/(RC + Δt): ante el
+#   escalón, y = 1 − (1 − a)^k tras k muestras, k = floor(t/Δt), de modo que tras 10 muestras (1 ms) vale 0,614 frente a
+#   0,632 del RC, como dice el libro. Constante equivalente: −Δt/ln(1 − a), 1,05 ms.
+# - El banco (bloques 242 y 243): el corte de −3 dB del filtro digital, |H| = a/|1 − (1 − a)·e^(−jωT)| = 1/√2, da
+#   cos ωT = (1 + (1 − a)² − 2a²)/(2(1 − a)): 151,8 Hz a 10 kHz, algo por debajo de los 159 Hz del RC (cálculo mío).
+# - El coste del bloque 239: N·f_s multiplicaciones por segundo (64 × 48 kHz, unos 3 millones).
+# Paso práctico: «simular» el coeficiente a con RC = 1 ms y 10 kHz (0,0909; errores típicos: Δt/RC y 1 − a).
+leccion: cap30/sec-30.7
+
+libro:
+  216: "esa ecuación se convierte en una ecuación en diferencias"
+  217: 'a = ("Δ" t)/(R C + "Δ" t)'
+  218: "tras 10 muestras (1 ms) la salida al escalón vale 0,614 frente al 0,632 del RC"
+  219: "explica de dónde salen los coeficientes de cualquier filtro digital"
+  221: "Conserva bien la forma en el tiempo"
+  222: "comprime la escala de frecuencias"
+  223: "omitirlo produce un filtro que corta donde no debe"
+  224: "Diseño directo en digital"
+  226: "la condición equivalente es que los polos estén dentro del círculo unidad"
+  227: "redondeado al cuantificar, puede quedar fuera"
+  229: "Descomponer en secciones de segundo orden"
+  232: "envolver produce una discontinuidad brutal"
+  233: "desplaza los polos como se ha dicho"
+  234: "se resuelve con dither"
+  237: "actuar antes del convertidor, ni recuperar lo que el aliasing destruyó"
+  239: "A 48 kHz con 64 coeficientes son unos 3 millones de multiplicaciones por segundo"
+  240: "la misma selectividad con diez veces menos operaciones"
+  242: "levantar su Bode como si fuera un filtro analógico"
+  243: "La curva debe coincidir con la del RC físico"
+
+modelo:
+  valores:
+    V_c: { sim: "V", nombre: "escalón de entrada", unidad: V, valor: 1 }
+    R_c: { sim: "R", nombre: "resistencia de ejemplo", unidad: Ω, valor: 10000 }
+    C_c: { sim: "C", nombre: "capacidad de ejemplo", unidad: F, valor: 100e-9 }
+    d_t: { sim: "Δt", nombre: "periodo de muestreo", unidad: s, valor: 0.0005 }
+    N_c: { sim: "N", nombre: "coeficientes del FIR", unidad: "", valor: 64 }
+    f_m: { sim: "f_{s}", nombre: "frecuencia de muestreo del audio", unidad: Hz, valor: 48000 }
+  calculos:
+    tau_c: { expr: "R_c*C_c", sim: "RC", nombre: "constante de tiempo", unidad: s }
+    f_d: { expr: "1/d_t", sim: "f_{s}", nombre: "frecuencia de muestreo", unidad: Hz }
+    a_d: { expr: "d_t/(tau_c + d_t)", sim: "a", nombre: "coeficiente del filtro", unidad: "", cifras: 3 }
+    a_x: { expr: "d_t/tau_c", sim: "a", nombre: "Δt/RC", unidad: "", cifras: 3 }
+    a_y: { expr: "tau_c/(tau_c + d_t)", sim: "1 − a", nombre: "uno menos a", unidad: "", cifras: 3 }
+    y_d: { expr: "1 - (1 - a_d)^floor(tau_c/d_t + 0.000001)", sim: "y", nombre: "salida digital en t = RC", unidad: V, cifras: 3 }
+    v_a: { expr: "1 - exp(-1)", sim: "v_{C}", nombre: "salida del RC en t = RC", unidad: V, cifras: 3 }
+    t_e: { expr: "-d_t/ln(1 - a_d)", sim: "τ_{eq}", nombre: "constante de tiempo equivalente", unidad: s }
+    c_w: { expr: "(1 + (1 - a_d)^2 - 2*a_d^2)/(2*(1 - a_d))", sim: "cos ω_{c}T", nombre: "coseno del corte digital", unidad: "" }
+    f_cd: { expr: "atan2(sqrt(1 - c_w^2), c_w)/(2*pi*d_t)", sim: "f_{c}", nombre: "corte de −3 dB del filtro digital", unidad: Hz }
+    m_s: { expr: "N_c*f_m", sim: "MAC/s", nombre: "multiplicaciones por segundo", unidad: "" }
+
+tarjetas:
+  - id: explore-rc-codigo
+    tipo: explorar
+    titulo: "Un RC hecho código"
+    texto: "El RC de 1 ms ante un escalón y, encima, su ecuación en diferencias. Muestree más deprisa y compare las dos curvas."
+    nota: "R y C de ejemplo."
+    libro: [216, 217, 218]
+    widget:
+      tipo: circuito
+      esquema: carga-rc
+      piezas: { fuente: V_c, r: R_c, c: C_c }
+      lectura: { valor: a_d, rotulo: "Coeficiente, a" }
+      datos:
+        - { valor: y_d, rotulo: "Digital en t = RC: {{y_d}}" }
+        - { valor: v_a, rotulo: "RC en t = RC: {{v_a}}" }
+      grafica:
+        x: { id: t, min: 0, max: 0.005, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_c*(1 - exp(-t/tau_c))", color: naranja, rotulo: "v_{C} del RC", mide: vc }
+          - { expr: "V_c*(1 - (1 - a_d)^floor(t/d_t))", color: azul, rotulo: "y[n] digital" }
+      mandos:
+        - { valor: d_t, lista: [0.0005, 0.00025, 0.0001], rotulo: "Periodo de muestreo, Δt" }
+    requiere: { mover: [d_t] }
+    comprobar:
+      - { tau_c: 0.001 }
+
+  - id: formula-coeficiente
+    tipo: formula
+    titulo: "De dónde sale el coeficiente"
+    texto: "Dos multiplicaciones y una suma por muestra. El coeficiente sale de la constante de tiempo y del periodo de muestreo."
+    libro: [217, 219]
+    ec: 217
+    sustitucion: "a = {{d_t}} / ({{tau_c}} + {{d_t}}) = {{a_d}}"
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.005, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.1, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "V_c*(1 - exp(-t/tau_c))", color: naranja, rotulo: "RC" }
+        - { expr: "V_c*(1 - (1 - a_d)^floor(t/d_t))", color: azul, rotulo: "y[n] digital" }
+      lectura: { valor: a_d, rotulo: "Coeficiente, a" }
+      datos:
+        - { valor: t_e, rotulo: "Constante equivalente: {{t_e}}" }
+      mandos:
+        - { valor: d_t, lista: [0.0005, 0.00025, 0.0001], rotulo: "Periodo de muestreo, Δt" }
+
+  - id: simule-a
+    tipo: simular
+    titulo: "El coeficiente del libro"
+    texto: "RC = 1 ms y muestreo a 10 kHz. ¿Cuánto vale a?"
+    libro: [217, 218]
+    fijar: { d_t: 0.0001 }
+    simular:
+      objetivo: a_d
+      unidad: ""
+      tol: 0.02
+      rotulo: "Coeficiente, a"
+      errores:
+        - { expr: "a_x", texto: "Ha dividido Δt entre RC: el denominador es RC + Δt, y a sale algo menor, 0,0909." }
+        - { expr: "a_y", texto: "Eso es 1 − a, el peso de la salida anterior, no el de la entrada." }
+    exito: "0,0909: tras 10 muestras (1 ms) la salida vale 0,614 frente al 0,632 del RC."
+    escalera:
+      - "Δt = 1/10 kHz = 0,1 ms."
+    solucion: "a = 0,1/(1 + 0,1) = 0,0909."
+    comprobar:
+      - { a_d: 0.0909, a_x: 0.1, a_y: 0.909, f_d: 10000, y_d: 0.614, v_a: 0.632, t_e: 0.00105, tol: 0.003 }
+
+  - id: pregunta-mas-deprisa
+    tipo: predecir
+    titulo: "La constante equivalente"
+    texto: "A 10 kHz, el filtro digital se comporta como un RC de 1,05 ms en lugar de 1 ms. ¿Qué pasa si se muestrea más deprisa?"
+    libro: [218]
+    fijar: { d_t: 0.0001 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.005, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 1.1, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "V_c*(1 - exp(-t/tau_c))", color: naranja, rotulo: "RC" }
+        - { expr: "V_c*(1 - (1 - a_d)^floor(t/d_t))", color: azul, rotulo: "y[n] digital" }
+    opciones:
+      - texto: "La diferencia con el RC se reduce"
+        bien: true
+        porque: "Con Δt mucho menor que RC, a se acerca a Δt/RC y la constante equivalente, a RC."
+      - texto: "La diferencia crece: hay más muestras que redondear"
+        porque: "Al contrario: cada paso se parece más a la evolución continua del condensador."
+      - texto: "No cambia: depende solo de RC"
+        porque: "Depende de Δt a través de a = Δt/(RC + Δt)."
+    escalera:
+      - "Compare la escalera digital con la curva cuando los peldaños se hacen más finos."
+    solucion: "Se reduce: la diferencia baja al muestrear más deprisa."
+    comprobar:
+      - { t_e: 0.00105, tol: 0.003 }
+
+  - id: empareje-metodos
+    tipo: pregunta
+    titulo: "Tres métodos de conversión"
+    texto: "Empareje cada método para pasar un filtro analógico a digital con lo que lo caracteriza."
+    libro: [221, 222, 223, 224, 237]
+    widget:
+      tipo: figura
+      figura: fig-30.13
+      zonas:
+        - { id: todo, rotulo: "Plano z y trampas de la coma fija", rect: [0, 0, 453, 210] }
+    emparejar:
+      - ["Invarianza al impulso", "Conserva la forma en el tiempo y sufre aliasing"]
+      - ["Transformación bilineal", "Sin aliasing, pero comprime las frecuencias"]
+      - ["Preajuste", "Corrige esa compresión en la frecuencia de corte"]
+      - ["Diseño directo en digital", "Lo habitual hoy, con herramientas"]
+    exito: "Omitir el preajuste da un filtro que corta donde no debe."
+    pistas:
+      - { texto: "La bilineal mapea todo el semiplano izquierdo dentro del círculo: no hay solape posible." }
+    escalera:
+      - "¿Cuál de ellos muestrea la respuesta al impulso analógica?"
+    solucion: "Invarianza, forma y aliasing; bilineal, warping; preajuste, lo corrige; directo, lo habitual."
+
+  - id: empareje-coma-fija
+    tipo: pregunta
+    titulo: "Las trampas de la coma fija"
+    texto: "Empareje cada problema de un filtro en coma fija con su remedio."
+    libro: [226, 229, 232, 233, 234]
+    widget:
+      tipo: figura
+      figura: fig-30.13
+      zonas:
+        - { id: todo, rotulo: "Plano z y trampas de la coma fija", rect: [0, 0, 453, 210] }
+    emparejar:
+      - ["Desbordamiento", "Acumular en 32 bits y saturar"]
+      - ["Coeficientes cuantificados", "Secciones de segundo orden o más bits"]
+      - ["Ciclos límite", "Dither o más bits"]
+    exito: "Los ciclos límite: uno o dos LSB de oscilación con la entrada a cero, porque el redondeo realimenta."
+    pistas:
+      - { texto: "Un acumulador de 16 bits se desborda al sumar productos." }
+    escalera:
+      - "Los coeficientes redondeados mueven los polos: ¿qué los hace menos sensibles?"
+    solucion: "Desbordamiento, 32 bits y saturar; coeficientes, secciones de segundo orden; ciclos límite, dither."
+
+  - id: porque-saturar
+    tipo: porque
+    titulo: "Saturar en lugar de envolver"
+    texto: "Al desbordarse, un acumulador puede envolver (del máximo salta al mínimo) o saturar. ¿Por qué se prefiere saturar?"
+    libro: [232]
+    widget:
+      tipo: figura
+      figura: fig-30.13
+      zonas:
+        - { id: todo, rotulo: "Plano z y trampas de la coma fija", rect: [0, 0, 453, 210] }
+    opciones:
+      - texto: "Envolver produce una discontinuidad brutal; saturar, solo distorsión"
+        bien: true
+        porque: "Un salto de fondo de escala a fondo de escala es mucho peor que recortar la cresta."
+      - texto: "Saturar es más rápido de calcular"
+        porque: "No es cuestión de velocidad: es lo que le pasa a la señal."
+      - texto: "Saturar evita los ciclos límite"
+        porque: "Los ciclos límite son otro problema, del redondeo: se combaten con dither o más bits."
+    escalera:
+      - "Imagine la salida al pasar del máximo positivo al máximo negativo."
+    solucion: "Envolver salta de un extremo al otro; saturar solo recorta."
+
+  - id: estime-coste
+    tipo: pregunta
+    titulo: "Si el diseño cabe"
+    texto: "Un FIR de 64 coeficientes a 48 kHz. ¿Cuántas multiplicaciones por segundo y por canal?"
+    libro: [239, 240]
+    widget:
+      tipo: figura
+      figura: fig-30.13
+      zonas:
+        - { id: todo, rotulo: "Plano z y trampas de la coma fija", rect: [0, 0, 453, 210] }
+    estimar:
+      objetivo: "m_s"
+      unidad: ""
+      min: 0
+      max: 10000000
+      paso: 100000
+      inicio: 7000000
+      tol: 0.05
+      rotulo: "Multiplicaciones por segundo"
+    exito: "Unos 3 millones: un microcontrolador moderno sin dificultad; uno de 8 bits, no. El IIR lo haría con diez veces menos."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 3230000 }, texto: "Demasiado: son N multiplicaciones por muestra, 64 por cada una de las 48 000 muestras." }
+      - { texto: "Corto: cada muestra pide 64 multiplicaciones, y hay 48 000 muestras por segundo." }
+    escalera:
+      - "Multiplique coeficientes por muestras por segundo."
+    solucion: "64 × 48 000 ≈ 3 millones."
+    comprobar:
+      - { m_s: 3072000, f_m: 48000 }
+
+  - id: banco-bode
+    tipo: banco
+    titulo: "El RC digital, medido"
+    texto: "Programe el filtro con RC = 1 ms a 10 kHz en un microcontrolador, con el ADC y el DAC. Levante su Bode: ¿dónde cae el corte?"
+    libro: [242, 243]
+    fijar: { d_t: 0.0001 }
+    widget:
+      tipo: figura
+      figura: fig-30.13
+      zonas:
+        - { id: todo, rotulo: "Plano z y trampas de la coma fija", rect: [0, 0, 453, 210] }
+    banco:
+      piezas: ["Microcontrolador con ADC y DAC o PWM", "Generador", "Osciloscopio"]
+      medir: "La frecuencia de corte de −3 dB del Bode."
+      esperado: f_cd
+      unidad: Hz
+      tol: 0.1
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.1 }, texto: "Corta alto: compruebe el periodo de muestreo real de su bucle y el coeficiente a." }
+        - { cuando: { valor: desviacion, menor: -0.1 }, texto: "Corta bajo: ¿mide tras el filtro de reconstrucción del PWM? Ese añade su propio paso bajo." }
+        - { texto: "Como el RC físico: la ecuación en diferencias, medida." }
+      ficha: { n: 29, titulo: "Práctica 5 · Filtro RC paso bajo y diagrama de Bode" }
+    comprobar:
+      - { tau_c: 0.001, f_cd: 151.8, tol: 0.005 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [217, 222, 227, 232, 239]
+    ideas:
+      - { titulo: "Del RC al código.", texto: "y[n] = a·x[n] + (1 − a)·y[n − 1], con a = Δt/(RC + Δt)." }
+      - { titulo: "Conversión.", texto: "Invarianza al impulso, bilineal con preajuste o diseño directo." }
+      - { titulo: "Coma fija.", texto: "Desbordamiento, polos desplazados y ciclos límite: 32 bits, saturar, secciones y dither." }
+      - { titulo: "Coste.", texto: "N multiplicaciones por muestra: decide si el diseño cabe." }

@@ -1,0 +1,208 @@
+# Lección 1.2 de la sección 53.3 «Muestrear la Radio: Nyquist Otra Vez» (cap52, sec-52.3). Formato: GUIA.md.
+# Sección corta (un párrafo, una deducción, la figura 53.7 y los ejercicios 53.1 a 53.5).
+# - Las zonas de Nyquist de la figura 53.7: con f_s = 200 MS/s, una señal en f cae en la zona floor(f/(f_s/2)) + 1 y
+#   aparece en |f − k·f_s| (k el múltiplo más próximo), invertida en las zonas pares. Los 200 MS/s y los 250 MHz son
+#   los de la figura (el texto no los da: van como datos del modelo).
+# - El jitter de la deducción del bloque 88: SNR = −20·log₁₀(2π·f·t_j), 64 dB con 100 MHz y 1 ps, y sus bits
+#   efectivos (SNR − 1,76)/6,02 = 10,3.
+# Paso práctico: «simular» el techo que pone el jitter (64 dB; errores típicos: 10·log en lugar de 20·log, y olvidar el
+# 2π).
+leccion: cap52/sec-52.3
+
+libro:
+  87: "exigiría un conversor de más de 200 millones de muestras por segundo"
+  88: "con 1 ps de jitter y entrada de 100 MHz, la relación señal a ruido no pasa de"
+  89: "la SDR traslada primero la banda de interés a frecuencias bajas"
+  90: "el aliasing usado como herramienta"
+
+modelo:
+  valores:
+    f_x: { sim: "f", nombre: "frecuencia de la señal", unidad: Hz, valor: 50000000 }
+    f_m: { sim: "f_{s}", nombre: "frecuencia de muestreo de la figura", unidad: Hz, valor: 200000000 }
+    f_r: { sim: "f", nombre: "frecuencia de la entrada", unidad: Hz, valor: 100000000 }
+    t_j: { sim: "t_{j}", nombre: "jitter del reloj", unidad: s, valor: 1e-12 }
+  calculos:
+    f_a: { expr: "abs(f_x - f_m*round(f_x/f_m))", sim: "f_{zona 1}", nombre: "dónde aparece", unidad: Hz }
+    z_n: { expr: "floor(f_x/(f_m/2)) + 1", sim: "zona", nombre: "zona de Nyquist", unidad: "" }
+    f_2: { expr: "2*f_r", sim: "2·f", nombre: "muestreo mínimo directo", unidad: Hz }
+    s_j: { expr: "-20*log10(2*pi*f_r*t_j)", sim: "SNR", nombre: "techo por jitter", unidad: dB }
+    s_10: { expr: "-10*log10(2*pi*f_r*t_j)", sim: "SNR", nombre: "techo con 10·log", unidad: dB }
+    s_p: { expr: "-20*log10(f_r*t_j)", sim: "SNR", nombre: "techo sin el 2π", unidad: dB }
+    b_j: { expr: "(-20*log10(2*pi*f_r*t_j) - 1.76)/6.02", sim: "ENOB", nombre: "bits efectivos", unidad: "", cifras: 3 }
+
+tarjetas:
+  - id: explore-zonas
+    tipo: explorar
+    titulo: "Zonas de Nyquist"
+    texto: "Muestreando a 200 MS/s, cada señal aparece en la primera zona, entre 0 y f_{s}/2. Mueva la señal de zona en zona."
+    nota: "Los valores de la figura 53.7."
+    libro: [87, 90]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 0, max: 500000000, unidad: Hz, rotulo: "f real" }
+      y: { min: 0, max: 120000000, unidad: Hz, rotulo: "f en la zona 1" }
+      curvas:
+        - { expr: "abs(nu - f_m*round(nu/f_m))", color: naranja, rotulo: "dónde aparece" }
+      marcas:
+        - { x: "f_x", y: "f_a", rotulo: "zona {{z_n}}" }
+      lectura: { valor: f_a, rotulo: "Aparece en" }
+      datos:
+        - { valor: z_n, rotulo: "Zona de Nyquist: {{z_n}}" }
+      mandos:
+        - { valor: f_x, lista: [50000000, 150000000, 250000000, 350000000], rotulo: "Frecuencia de la señal, f" }
+    requiere: { mover: [f_x] }
+    comprobar:
+      - { con: { f_x: 250000000 }, f_a: 50000000, z_n: 3 }
+      - { con: { f_x: 150000000 }, f_a: 50000000, z_n: 2 }
+
+  - id: predecir-zona3
+    tipo: predecir
+    titulo: "El aliasing como herramienta"
+    texto: "Una señal estrecha en la zona 3, tras un filtro paso banda que solo deja pasar esa zona, muestreada a 200 MS/s. ¿Qué se obtiene?"
+    libro: [87, 90]
+    fijar: { f_x: 250000000 }
+    widget:
+      tipo: figura
+      figura: fig-52.5
+      zonas:
+        - { id: todo, rotulo: "Zonas de Nyquist y muestreo en banda", rect: [0, 0, 430, 251] }
+    opciones:
+      - texto: "Una réplica limpia en la primera zona, que es la que se procesa"
+        bien: true
+        porque: "Es el muestreo en banda: por debajo de Nyquist, usando el aliasing a propósito tras el filtro."
+      - texto: "Basura: muestrea por debajo de Nyquist"
+        porque: "Sin filtro lo sería; con el paso banda, la réplica cae sola y limpia en la zona 1."
+      - texto: "Nada: la señal está por encima de f_{s}"
+        porque: "Lo que pasa de f_{s}/2 no desaparece: se pliega a la primera zona."
+    escalera:
+      - "¿Dónde aparece algo que está por encima de f_{s}/2?"
+    solucion: "Una réplica en la zona 1."
+    comprobar:
+      - { f_a: 50000000, z_n: 3 }
+
+  - id: estime-directo
+    tipo: pregunta
+    titulo: "Muestrear la FM directamente"
+    texto: "Una emisora de FM a 100 MHz, muestreada directamente. ¿Qué frecuencia de muestreo exige, como mínimo?"
+    libro: [87, 89]
+    fijar: { f_r: 100000000 }
+    widget:
+      tipo: figura
+      figura: fig-52.5
+      zonas:
+        - { id: todo, rotulo: "Zonas de Nyquist y muestreo en banda", rect: [0, 0, 430, 251] }
+    estimar:
+      objetivo: "f_2"
+      unidad: Hz
+      min: 0
+      max: 500000000
+      paso: 10000000
+      inicio: 450000000
+      tol: 0.03
+      rotulo: "Muestreo mínimo"
+    exito: "Más de 200 millones de muestras por segundo: caro y exigente. La SDR traslada antes la banda a frecuencias bajas."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 206000000 }, texto: "Demasiado: Nyquist pide más del doble de la frecuencia máxima, no más." }
+      - { texto: "Corto: hace falta más del doble de 100 MHz." }
+    escalera:
+      - "Nyquist: más de 2·f_{máx}."
+    solucion: "Más de 200 MS/s."
+    comprobar:
+      - { f_2: 200000000 }
+
+  - id: pregunta-alternativa
+    tipo: pregunta
+    titulo: "Lo que se hace en la práctica"
+    texto: "En lugar de muestrear 100 MHz directamente, ¿qué hace lo habitual en una SDR?"
+    libro: [87, 89]
+    widget:
+      tipo: figura
+      figura: fig-52.5
+      zonas:
+        - { id: todo, rotulo: "Zonas de Nyquist y muestreo en banda", rect: [0, 0, 430, 251] }
+    opciones:
+      - texto: "Trasladar primero la banda a frecuencias bajas y muestrearla después"
+        bien: true
+        porque: "La idea del superheterodino, al servicio del muestreo: una velocidad manejable."
+      - texto: "Muestrear a menos y filtrar el aliasing después"
+        porque: "El aliasing no se filtra después: o se evita antes, o se usa a propósito con un paso banda."
+      - texto: "Bajar la frecuencia de la emisora"
+        porque: "La emisora no se toca: lo que se traslada es la banda dentro del receptor."
+    escalera:
+      - "Recuerde el superheterodino del FM7303."
+    solucion: "Trasladar a frecuencias bajas y muestrear después."
+
+  - id: porque-dos-canales
+    tipo: porque
+    titulo: "¿Datos duplicados?"
+    texto: "Muestrear I y Q parece duplicar los datos. ¿Por qué no es un desperdicio?"
+    libro: [88, 89]
+    widget:
+      tipo: figura
+      figura: fig-52.5
+      zonas:
+        - { id: todo, rotulo: "Zonas de Nyquist y muestreo en banda", rect: [0, 0, 430, 251] }
+    opciones:
+      - texto: "Cada canal va a B en lugar de 2B: las mismas muestras, y se conserva el signo de la frecuencia"
+        bien: true
+        porque: "Por eso la cuadratura separa la banda lateral superior de la inferior y una real no."
+      - texto: "Porque los dos canales llevan la misma información y se promedian"
+        porque: "No llevan lo mismo: van en cuadratura, y juntos forman el número complejo I + jQ."
+      - texto: "Sí lo es, pero simplifica el hardware"
+        porque: "No sobra nada: el total de muestras por segundo es el mismo que con una señal real."
+    escalera:
+      - "Una señal real de ancho B pide 2B. ¿Y cada componente compleja?"
+    solucion: "Mismo total de muestras y, además, el signo de la frecuencia."
+
+  - id: simule-jitter
+    tipo: simular
+    titulo: "El techo del reloj"
+    texto: "Un reloj de muestreo con 1 ps de jitter y una entrada de 100 MHz. ¿Qué relación señal a ruido no se puede superar?"
+    libro: [88]
+    fijar: { f_r: 100000000, t_j: 1e-12 }
+    simular:
+      objetivo: s_j
+      unidad: dB
+      tol: 0.03
+      rotulo: "Techo de la SNR"
+      errores:
+        - { expr: "s_10", texto: "Con 10·log se queda en la mitad: el jitter es un error de amplitud, y va con 20·log." }
+        - { expr: "s_p", texto: "Le falta el 2π: la pendiente de una senoide es 2π·f por su amplitud." }
+    exito: "64 dB, unos 10,3 bits efectivos, sea cual sea el convertidor: el número que decide la arquitectura de una SDR."
+    escalera:
+      - "SNR = −20·log(2π·f·t_{j})."
+    solucion: "−20·log(2π·100 MHz·1 ps) = 64 dB."
+    comprobar:
+      - { s_j: 64, s_10: 32, s_p: 80, b_j: 10.3, tol: 0.005 }
+
+  - id: empareje-ejercicios
+    tipo: pregunta
+    titulo: "La radio por cálculo"
+    texto: "Empareje cada pregunta de los ejercicios del capítulo con su respuesta."
+    libro: [89]
+    widget:
+      tipo: figura
+      figura: fig-52.5
+      zonas:
+        - { id: todo, rotulo: "Zonas de Nyquist y muestreo en banda", rect: [0, 0, 430, 251] }
+    emparejar:
+      - ["I y Q, juntos", "Un número complejo, como los fasores"]
+      - ["Sintonizar la emisora", "Un oscilador numérico que desplaza la señal"]
+      - ["Cambiar de modo", "Imposible en el FM7303; un ajuste en la SDR"]
+      - ["El waterfall", "Espectros por FFT apilados en el tiempo"]
+    exito: "Sintonía y modo se cambian en el software, sin tocar ningún componente."
+    pistas:
+      - { texto: "El NCO es el equivalente por software del oscilador local y el mezclador." }
+    escalera:
+      - "Empiece por la que habla de amplitud y fase en cada instante."
+    solucion: "I/Q, complejo; sintonizar, NCO; modo, software; waterfall, FFT."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [87, 88, 89, 90]
+    ideas:
+      - { titulo: "Nyquist otra vez.", texto: "100 MHz directos pedirían más de 200 MS/s." }
+      - { titulo: "Dos salidas.", texto: "Trasladar antes a frecuencias bajas, o muestrear en banda usando el aliasing." }
+      - { titulo: "Cuadratura.", texto: "Las mismas muestras y el signo de la frecuencia." }
+      - { titulo: "El jitter.", texto: "1 ps a 100 MHz pone el techo en 64 dB, 10,3 bits." }

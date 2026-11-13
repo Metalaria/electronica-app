@@ -1,0 +1,234 @@
+# Lección 1.2 de la sección 53.4 «El Muestreo en Cuadratura (I/Q)» (cap52, sec-52.4). Formato: GUIA.md.
+# - s(t) = I·cos ωt − Q·sen ωt (bloque 94), con amplitud √(I² + Q²) y fase atan2(Q, I) (bloques 96 y 97). La portadora
+#   se dibuja con un periodo de 1 ms de ejemplo; I y Q son valores de ejemplo.
+# - El par I/Q en el plano complejo (figura 53.9 izquierda): una marca en (I, Q) y el círculo de radio uno.
+# Pasos prácticos: «tocar» en la figura 53.9 las dos emisiones reales del espectro con desequilibrio, y «banco»
+# opcional: medir el rechazo de imagen de un receptor (bloque 121: unos 40 dB en una SDR barata).
+leccion: cap52/sec-52.4
+
+libro:
+  93: "muestrear una única señal real pierde la fase"
+  94: 's lr(( t )) = I lr(( t )) dot.op op("cos")'
+  95: "contienen conjuntamente toda la información"
+  96: '"amplitud" = sqrt(I^("2") + Q^("2"))'
+  97: '"fase" = op("arctan") (Q)/(I)'
+  98: "cualquier modulación (sección"
+  100: "Dos mezcladores alimentados por el mismo oscilador local, uno de ellos desfasado 90°"
+  101: "distingue las frecuencias por encima y por debajo del oscilador local"
+  102: "el signo de la diferencia se conserva en la relación de fase entre ambos canales"
+  103: "cada canal solo necesita muestrearse a la mitad de frecuencia"
+  105: "si los dos canales no son exactamente iguales, aparece la imagen"
+  107: "Error de ganancia entre I y Q"
+  108: "el desfase no es exactamente 90°"
+  109: "no produce imagen sino un pico en el centro del espectro"
+  110: "una réplica espejada de cada señal al otro lado del centro"
+  111: "se estima el desequilibrio y se compensa"
+  114: "Con eso no hay desequilibrio, porque la rotación digital es exacta"
+  116: "Un par I/Q se representa como un punto en el plano complejo"
+  117: "la calidad del enlace se ve directamente en cuánto se dispersan"
+  119: "dos observaciones enseñan la sección"
+  120: "es el offset de continua de los convertidores"
+  121: "en una SDR barata ronda los 40 dB frente a los 70 u 80 de una buena"
+  123: "El par I/Q en el plano complejo y la firma de una SDR con desequilibrio"
+
+modelo:
+  valores:
+    I_v: { sim: "I", nombre: "componente en fase", unidad: "", valor: 1 }
+    Q_v: { sim: "Q", nombre: "componente en cuadratura", unidad: "", valor: 0 }
+    I_r: { sim: "IRR", nombre: "rechazo de imagen", unidad: dB, valor: 40 }
+  calculos:
+    A_v: { expr: "sqrt(I_v^2 + Q_v^2)", sim: "amplitud", nombre: "amplitud", unidad: "", cifras: 3 }
+    p_v: { expr: "atan2(Q_v, I_v)*180/pi", sim: "φ", nombre: "fase", unidad: "°" }
+
+tarjetas:
+  - id: explore-iq
+    tipo: explorar
+    titulo: "Dos números, una señal"
+    texto: "La señal es I·cos ωt − Q·sen ωt. Cambie I y Q: cambian a la vez la amplitud y la fase de la portadora."
+    nota: "Portadora de ejemplo."
+    libro: [93, 94, 95]
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.003, unidad: s, rotulo: "t" }
+      y: { min: -1.6, max: 1.6, unidad: "", rotulo: "s(t)" }
+      curvas:
+        - { expr: "I_v*cos(2*pi*1000*t) - Q_v*sin(2*pi*1000*t)", color: naranja, rotulo: "s(t)" }
+        - { expr: "cos(2*pi*1000*t)", color: tinta, rotulo: "referencia, cos ωt", discontinua: true }
+      lectura: { valor: A_v, rotulo: "Amplitud" }
+      datos:
+        - { valor: p_v, rotulo: "Fase: {{p_v}}" }
+      mandos:
+        - { valor: I_v, lista: [1, 0.6, 0, -0.6], rotulo: "I" }
+        - { valor: Q_v, lista: [0, 0.8, 1, -0.8], rotulo: "Q" }
+    requiere: { mover: [I_v, Q_v] }
+
+  - id: formula-amplitud
+    tipo: formula
+    titulo: "Amplitud y fase"
+    texto: "El par (I, Q) es un punto del plano complejo: su distancia al origen es la amplitud y su ángulo, la fase."
+    libro: [96, 97, 116]
+    ec: 96
+    sustitucion: "√({{I_v}}² + {{Q_v}}²) = {{A_v}}; φ = {{p_v}}"
+    widget:
+      tipo: grafica
+      x: { id: x, min: -1.3, max: 1.3, unidad: "", rotulo: "I" }
+      y: { min: -1.3, max: 1.3, unidad: "", rotulo: "Q" }
+      curvas:
+        - { expr: "sqrt(max(0, 1 - x^2))", color: tinta, rotulo: "radio uno", discontinua: true }
+        - { expr: "-sqrt(max(0, 1 - x^2))", color: tinta, rotulo: "radio uno", discontinua: true }
+      marcas:
+        - { x: "I_v", y: "Q_v", rotulo: "I + jQ" }
+      lectura: { valor: A_v, rotulo: "Amplitud" }
+      datos:
+        - { valor: p_v, rotulo: "Fase: {{p_v}}" }
+      mandos:
+        - { valor: I_v, lista: [1, 0.6, 0, -0.6], rotulo: "I" }
+        - { valor: Q_v, lista: [0, 0.8, 1, -0.8], rotulo: "Q" }
+    comprobar:
+      - { con: { I_v: 0.6, Q_v: 0.8 }, A_v: 1 }
+
+  - id: pregunta-obtener
+    tipo: pregunta
+    titulo: "Cómo se obtienen I y Q"
+    texto: "¿Qué hace falta para sacar I y Q de la señal de antena?"
+    libro: [98, 100]
+    widget:
+      tipo: figura
+      figura: fig-52.6
+      zonas:
+        - { id: todo, rotulo: "La señal como número complejo", rect: [0, 0, 450, 173] }
+    opciones:
+      - texto: "Dos mezcladores con el mismo oscilador, uno desfasado 90°, y dos paso bajo"
+        bien: true
+        porque: "Cada mezclador multiplica la entrada; los filtros dejan la banda base de cada canal."
+      - texto: "Dos osciladores locales de frecuencias distintas"
+        porque: "Es el mismo oscilador: lo que cambia entre los dos canales es la fase, 90°."
+      - texto: "Un solo mezclador y un filtro que separa I de Q"
+        porque: "Un solo producto da una sola señal real: la fase se pierde."
+    escalera:
+      - "I va en fase y Q en cuadratura: ¿respecto a qué?"
+    solucion: "Dos mezcladores con el mismo oscilador, uno desfasado 90°, y sus paso bajo."
+
+  - id: predecir-signo
+    tipo: predecir
+    titulo: "10 kHz por encima o por debajo"
+    texto: "Dos señales, una 10 kHz por encima del oscilador local y otra 10 kHz por debajo. ¿Qué las distingue tras el muestreo en cuadratura?"
+    libro: [101, 102, 103]
+    widget:
+      tipo: figura
+      figura: fig-52.6
+      zonas:
+        - { id: todo, rotulo: "La señal como número complejo", rect: [0, 0, 450, 173] }
+    opciones:
+      - texto: "La relación de fase entre I y Q, que cambia de signo"
+        bien: true
+        porque: "Un muestreo real da la misma frecuencia para las dos; con I/Q el signo se conserva."
+      - texto: "La amplitud de I"
+        porque: "I es igual en los dos casos: lo que cambia es el signo de Q respecto a I."
+      - texto: "Nada: caen en la misma frecuencia"
+        porque: "Eso pasa con un solo canal real; la cuadratura las separa."
+    escalera:
+      - "Una de las dos gira en un sentido en el plano complejo; la otra, en el contrario."
+    solucion: "El signo del desfase entre I y Q."
+
+  - id: empareje-desequilibrio
+    tipo: pregunta
+    titulo: "El defecto característico"
+    texto: "Empareje cada defecto de una SDR de bajo coste con su síntoma en la pantalla."
+    libro: [105, 107, 108, 109, 110]
+    widget:
+      tipo: figura
+      figura: fig-52.7
+      zonas:
+        - { id: todo, rotulo: "Plano complejo y la firma del desequilibrio", rect: [0, 0, 446, 187] }
+    emparejar:
+      - ["Error de ganancia entre I y Q", "Réplicas espejadas: la imagen"]
+      - ["Desfase distinto de 90°", "También la imagen"]
+      - ["Offset de continua", "Un pico fijo en el centro"]
+    exito: "Se corrigen en digital: se estima el desequilibrio y se compensa."
+    pistas:
+      - { texto: "El offset de continua no produce imagen." }
+    escalera:
+      - "Los dos primeros son desequilibrios entre los canales; el tercero, no."
+    solucion: "Ganancia y fase, la imagen; offset, el pico central."
+
+  - id: toque-reales
+    tipo: tocar
+    titulo: "Las emisiones de verdad"
+    texto: "Espectro de una SDR con desequilibrio. Toque las dos rayas que son emisiones reales."
+    libro: [110, 120, 123]
+    widget:
+      tipo: figura
+      figura: fig-52.7
+      zonas:
+        - { id: img17, rotulo: "Primera raya por la izquierda", rect: [226, 30, 36, 106] }
+        - { id: img8, rotulo: "Segunda raya por la izquierda", rect: [269, 30, 36, 106] }
+        - { id: centro, rotulo: "Raya del centro", rect: [307, 30, 36, 106] }
+        - { id: real8, rotulo: "Segunda raya por la derecha", rect: [346, 30, 36, 106] }
+        - { id: real17, rotulo: "Primera raya por la derecha", rect: [389, 30, 36, 106] }
+    tocar:
+      bien: [real8, real17]
+      todas: true
+      porque:
+        img17: "Es el espejo de la raya de la derecha del todo, mucho más débil: la imagen."
+        img8: "Es el espejo de la raya fuerte, al otro lado del centro y mucho más débil: la imagen."
+        centro: "El pico central es el offset de continua: fijo y sin información."
+    exito: "Las fuertes de la derecha: cada una tiene su espejo débil al otro lado del centro."
+    escalera:
+      - "Una imagen está al otro lado del centro, a la misma distancia, y mucho más débil."
+    solucion: "Las dos rayas de la derecha, las fuertes."
+
+  - id: porque-directo
+    tipo: porque
+    titulo: "El muestreo directo"
+    texto: "Las SDR de gama alta digitalizan la señal de radio y hacen la cuadratura en digital. ¿Por qué no tienen desequilibrio?"
+    libro: [111, 114]
+    widget:
+      tipo: figura
+      figura: fig-52.7
+      zonas:
+        - { id: todo, rotulo: "Plano complejo y la firma del desequilibrio", rect: [0, 0, 446, 187] }
+    opciones:
+      - texto: "La rotación digital es exacta: no hay dos ramas analógicas que igualar"
+        bien: true
+        porque: "Su precio es un convertidor mucho más rápido y con jitter muy bajo."
+      - texto: "Porque usan componentes de mucha precisión"
+        porque: "Sin ramas analógicas no hay componentes que aparear: la cuadratura es un cálculo."
+      - texto: "Porque corrigen la imagen en el programa"
+        porque: "Eso hacen las de cuadratura analógica; con muestreo directo no hay nada que corregir."
+    escalera:
+      - "¿Dónde nace el desequilibrio en una SDR de cuadratura analógica?"
+    solucion: "La cuadratura digital es exacta."
+
+  - id: banco-imagen
+    tipo: banco
+    titulo: "El rechazo de imagen, medido"
+    texto: "Sintonice una emisora fuerte y busque su réplica simétrica respecto al centro. ¿Cuántos dB por debajo está?"
+    libro: [119, 121]
+    widget:
+      tipo: figura
+      figura: fig-52.7
+      zonas:
+        - { id: todo, rotulo: "Plano complejo y la firma del desequilibrio", rect: [0, 0, 446, 187] }
+    banco:
+      piezas: ["Un receptor SDR económico o el del capítulo", "Un programa de SDR con espectro"]
+      medir: "La diferencia de nivel entre la emisora y su imagen."
+      esperado: I_r
+      unidad: dB
+      tol: 0.25
+      consejos:
+        - { cuando: { valor: desviacion, mayor: 0.5 }, texto: "Rechazo de receptor bueno, de 70 u 80 dB: o su SDR corrige muy bien, o no ha encontrado la imagen." }
+        - { cuando: { valor: desviacion, menor: -0.25 }, texto: "Imagen muy fuerte: active la corrección de I/Q del programa y vuelva a medir." }
+        - { texto: "Unos 40 dB: lo típico de una SDR barata." }
+    comprobar:
+      - { I_r: 40 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [95, 102, 105, 114, 117]
+    ideas:
+      - { titulo: "I y Q.", texto: "Juntas, amplitud y fase: √(I² + Q²) y arctan(Q/I)." }
+      - { titulo: "El signo.", texto: "Distinguen lo que está por encima y por debajo del oscilador." }
+      - { titulo: "Desequilibrio.", texto: "Ganancia o fase distintas dan la imagen; la continua, el pico central." }
+      - { titulo: "Muestreo directo.", texto: "Cuadratura digital exacta, a cambio de un convertidor rápido." }
