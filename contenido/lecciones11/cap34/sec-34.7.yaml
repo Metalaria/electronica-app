@@ -1,0 +1,235 @@
+# Lección 1.2 de la sección 35.7 «Acondicionar antes de Convertir» (cap34; etiqueta interna sec-34.7).
+# Formato: contenido/lecciones11/GUIA.md. El RC junto al pin es el «filtro-rc» con 470 Ω (el libro dice «unos cientos
+# de ohmios»; el valor es de ejemplo) y de 1 a 100 nF. La diafonía del multiplexado es el «muestreo-retencion» del ADC
+# del Arduino (14 pF y 12 µs, sección 35.2) con el condensador cargado a 5 V por el canal anterior y el nuevo canal a 0 V,
+# a través de 10 kΩ o de 200 kΩ: el residuo, en LSB de 10 bits, es 2^10 · e^(−12 µs/τ).
+leccion: cap34/sec-34.7
+
+libro:
+  185: "Es la exigencia que más se incumple y produce lecturas sistemáticamente bajas"
+  186: "Usar solo la mitad del margen desperdicia un bit"
+  187: "Ancho de banda limitado por debajo de la mitad de la frecuencia de muestreo"
+  188: "Ruido menor que un LSB, o los bits de más no aportan nada"
+  191: "Operacional en no inversor para señales referidas a masa y de impedancia alta"
+  192: "Amplificador de instrumentación para señales diferenciales o con modo común"
+  193: "Amplificador de ganancia programable cuando el margen de señal es muy amplio"
+  194: "al cambiar la ganancia hay que esperar a que se estabilice antes de convertir"
+  197: "el condensador del filtro también ayuda al convertidor, presentando una fuente de baja impedancia en alta frecuencia"
+  198: "de 1 nF a 100 nF en serie con unos cientos de ohmios"
+  201: "un error del 0,5 % en la referencia es un 0,5 % en todas las medidas"
+  204: "la medida ratiométrica"
+  206: "la carga residual del condensador de muestreo del canal anterior afecta a la lectura del siguiente"
+  207: "Es peor cuando se pasa de un canal con señal alta a uno con señal baja y de impedancia alta"
+  208: "descartar la primera lectura tras cambiar de canal"
+  "cap34#59": "con el ADC del Arduino (14 pF y 12 µs de adquisición)"
+  "cap34#372": "un divisor con dos resistencias de 200 kΩ"
+
+modelo:
+  valores:
+    V_p: { sim: "V_{p}", nombre: "amplitud de prueba", unidad: V, valor: 1 }
+    f_t: { sim: "f", nombre: "frecuencia de prueba", unidad: Hz, valor: 100000 }
+    R_rc: { sim: "R", nombre: "resistencia del filtro", unidad: Ω, valor: 470 }
+    C_rc: { sim: "C", nombre: "condensador del filtro", unidad: F, valor: 10e-9 }
+    A_m: { sim: "A/A_{FS}", nombre: "fracción del margen usada", unidad: "", valor: 1 }
+    V_n: { sim: "V", nombre: "tensión del canal nuevo", unidad: V, valor: 0 }
+    V_0: { sim: "v₀", nombre: "carga del canal anterior", unidad: V, valor: 5 }
+    R_m: { sim: "R_{fuente}", nombre: "impedancia del canal nuevo", unidad: Ω, valor: 10000 }
+    C_m: { sim: "C_{m}", nombre: "condensador de muestreo", unidad: F, valor: 14e-12 }
+    t_m: { sim: "t_{adq}", nombre: "tiempo de adquisición", unidad: s, valor: 12e-6 }
+  calculos:
+    f_c: { expr: "1/(2*pi*R_rc*C_rc)", sim: "f_{c}", nombre: "frecuencia de corte", unidad: Hz }
+    b_p: { expr: "-log10(A_m)/log10(2)", sim: "bits", nombre: "bits desperdiciados", unidad: "", cifras: 2 }
+    tau_m: { expr: "R_m*C_m", sim: "τ", nombre: "constante de tiempo", unidad: s }
+    v_r: { expr: "V_0*exp(-t_m/tau_m)", sim: "v_{residuo}", nombre: "residuo del canal anterior", unidad: V }
+    e_r: { expr: "1024*exp(-t_m/tau_m)", sim: "residuo", nombre: "residuo en LSB de 10 bits", unidad: LSB, cifras: 2 }
+
+tarjetas:
+  - id: explore-rc
+    tipo: explorar
+    titulo: "El RC junto al pin"
+    texto: "Junto al pin del convertidor va un RC de unos cientos de ohmios y de 1 nF a 100 nF. Cambie el condensador y mire el corte."
+    libro: [187, 198]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_t, r: R_rc, c: C_rc }
+      lectura: { valor: f_c, rotulo: "Frecuencia de corte" }
+      grafica:
+        x: { id: nu, min: 1000, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "amplitud" }
+        curvas:
+          - { expr: "V_p/sqrt(1 + (2*pi*nu*R_rc*C_rc)^2)", color: naranja, rotulo: "al convertidor", mide: vc_amp }
+        marcas:
+          - { x: "f_c", y: "V_p*0.7071", rotulo: "f_{c}" }
+      mandos:
+        - { valor: C_rc, lista: [1e-9, 10e-9, 100e-9], rotulo: "C" }
+    requiere: { mover: [C_rc] }
+
+  - id: empareje-exigencias
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Las cuatro exigencias"
+    texto: "Una cada exigencia del convertidor con lo que pasa si no se cumple."
+    libro: [185, 186, 187, 188]
+    emparejar:
+      - ["Impedancia de fuente baja", "Lecturas sistemáticamente bajas"]
+      - ["Señal dentro del margen", "Usar la mitad desperdicia un bit"]
+      - ["Banda bajo fs/2", "Aliasing, salvo submuestreo deliberado"]
+      - ["Ruido menor que un LSB", "Los bits de más no aportan nada"]
+    exito: "La impedancia de fuente es la que más se incumple."
+    pistas:
+      - { texto: "Un condensador de muestreo que no se carga del todo da lecturas bajas." }
+    escalera: ["La de la banda viene de la frecuencia de Nyquist."]
+    solucion: "Impedancia, lecturas bajas; margen, un bit; banda, aliasing; ruido, bits inútiles."
+
+  - id: prediga-margen
+    tipo: predecir
+    titulo: "La mitad del margen"
+    texto: "Un sensor solo llega a la mitad del margen de entrada del convertidor. ¿Qué se pierde?"
+    libro: [186]
+    fijar: { A_m: 0.5 }
+    widget:
+      tipo: grafica
+      x: { id: ax, min: 0.1, max: 1, unidad: "", rotulo: "fracción del margen", escala: log }
+      y: { min: 0, max: 4, unidad: bits, rotulo: "bits perdidos" }
+      curvas:
+        - { expr: "-log10(ax)/log10(2)", color: azul, rotulo: "Bits perdidos" }
+      lectura: { valor: b_p, rotulo: "Bits perdidos" }
+      ocultar: true
+    opciones:
+      - { texto: "Un bit", bien: true, porque: "La señal usa la mitad de los códigos: es como tener un bit menos." }
+      - { texto: "Nada: la resolución es la misma", porque: "El escalón es el mismo, pero la señal recorre la mitad de los códigos." }
+      - { texto: "La mitad de los bits", porque: "Cada bit duplica los códigos: la mitad de los códigos es un solo bit menos." }
+    escalera: ["¿Cuántos códigos se usan? ¿Cuántos bits son la mitad de los códigos?"]
+    solucion: "Un bit: por eso hay que amplificar hasta llenar el margen."
+    comprobar:
+      - { b_p: 1 }
+
+  - id: empareje-amplificadores
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Qué amplificador"
+    texto: "Una cada señal con el amplificador que le corresponde."
+    libro: [191, 192, 193]
+    emparejar:
+      - ["Referida a masa, de impedancia alta", "Operacional en no inversor"]
+      - ["Diferencial o con modo común", "Amplificador de instrumentación"]
+      - ["Con un margen de señal muy amplio", "Amplificador de ganancia programable"]
+    exito: "Entre el sensor y el convertidor casi siempre hace falta amplificar."
+    pistas:
+      - { texto: "El de ganancia programable cambia la ganancia según el nivel." }
+    escalera: ["El modo común pide una entrada diferencial."]
+    solucion: "No inversor, instrumentación y ganancia programable."
+
+  - id: pregunta-referencia
+    tipo: pregunta
+    titulo: "Una referencia del 0,5 %"
+    texto: "Un convertidor de muchos bits usa una referencia con un error del 0,5 %. ¿Qué error tienen las medidas?"
+    libro: [201, 204]
+    widget:
+      tipo: grafica
+      x: { id: ax, min: 0.1, max: 1, unidad: "", rotulo: "fracción del margen", escala: log }
+      y: { min: 0, max: 4, unidad: bits, rotulo: "bits perdidos" }
+      curvas:
+        - { expr: "-log10(ax)/log10(2)", color: azul, rotulo: "Bits perdidos" }
+    opciones:
+      - { texto: "Un 0,5 % en todas, por muchos bits que haya", bien: true, porque: "La exactitud del sistema es la de su referencia; la medida ratiométrica elimina el problema." }
+      - { texto: "Despreciable, con tantos bits", porque: "Los bits dan resolución; la referencia multiplica a toda la escala." }
+      - { texto: "Medio LSB", porque: "Medio LSB es el error de cuantificación; el de la referencia pasa entero." }
+    escalera: ["Cada código se compara con la referencia."]
+    solucion: "Un 0,5 % en todas: salvo medida ratiométrica."
+
+  - id: sorpresa-multiplexado
+    tipo: sorpresa
+    titulo: "El canal anterior se cuela"
+    texto: "El canal anterior dejó el condensador de muestreo a 5 V y el nuevo está a 0 V. Con el ADC del Arduino, suba la impedancia del canal nuevo."
+    libro: [206, 207, "cap34#59", "cap34#372"]
+    inicio: { R_m: 10000 }
+    widget:
+      tipo: circuito
+      esquema: muestreo-retencion
+      piezas: { entrada: V_n, ron: R_m, ch: C_m, tm: t_m, v0: V_0 }
+      lectura: { valor: e_r, rotulo: "Residuo del canal anterior" }
+      grafica:
+        x: { id: t, min: 0, max: 0.000015, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 5.5, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "(1 - ceil((t - t_m)/1e9))*V_0*exp(-t/tau_m) + ceil((t - t_m)/1e9)*v_r", color: naranja, rotulo: "v_{o}", mide: salida }
+      mandos:
+        - { valor: R_m, lista: [10000, 200000], rotulo: "R_{fuente}" }
+    requiere: { mover: [R_m] }
+    comprobar:
+      - { V_0: 5, V_n: 0 }
+
+  - id: pregunta-defensas
+    tipo: pregunta
+    titulo: "Defenderse de la diafonía"
+    texto: "Al conmutar de un canal alto a uno bajo de impedancia alta, ¿qué no sirve como defensa?"
+    libro: [208]
+    fijar: { R_m: 200000 }
+    widget:
+      tipo: circuito
+      esquema: muestreo-retencion
+      piezas: { entrada: V_n, ron: R_m, ch: C_m, tm: t_m, v0: V_0 }
+      lectura: { valor: e_r, rotulo: "Residuo del canal anterior" }
+      grafica:
+        x: { id: t, min: 0, max: 0.000015, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 5.5, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "(1 - ceil((t - t_m)/1e9))*V_0*exp(-t/tau_m) + ceil((t - t_m)/1e9)*v_r", color: naranja, rotulo: "v_{o}", mide: salida }
+    opciones:
+      - { texto: "Promediar muchas lecturas del canal nuevo", bien: true, porque: "No sirve: el residuo es sistemático, viene del canal anterior. Las defensas son las otras tres." }
+      - { texto: "Descartar la primera lectura tras cambiar de canal", porque: "Sí sirve: la segunda lectura parte ya de la tensión del canal nuevo." }
+      - { texto: "Dar tiempo de establecimiento suficiente", porque: "Sí sirve: más tiempo deja descargar el condensador." }
+      - { texto: "Convertir masa entre canales", porque: "Sí sirve: vacía el condensador antes del canal nuevo." }
+    escalera: ["¿El residuo es aleatorio o siempre del mismo signo?"]
+    solucion: "Promediar no corrige un error sistemático; las otras tres, sí."
+
+  - id: pregunta-condensador
+    tipo: pregunta
+    titulo: "Un RC aunque la señal sea lenta"
+    texto: "El ancho de banda no lo exige. ¿Por qué el RC de entrada casi siempre debe estar?"
+    libro: [197]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_t, r: R_rc, c: C_rc }
+      lectura: { valor: f_c, rotulo: "Frecuencia de corte" }
+      grafica:
+        x: { id: nu, min: 1000, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "amplitud" }
+        curvas:
+          - { expr: "V_p/sqrt(1 + (2*pi*nu*R_rc*C_rc)^2)", color: naranja, rotulo: "al convertidor", mide: vc_amp }
+    opciones:
+      - { texto: "Su condensador es una fuente de baja impedancia en alta frecuencia para el convertidor", bien: true, porque: "Entrega la carga que pide el condensador de muestreo al cerrarse, sin que la fuente tenga que darla." }
+      - { texto: "Para atenuar la señal", porque: "En la banda útil no la atenúa; su papel extra es servir de depósito de carga." }
+      - { texto: "Para proteger de sobretensiones", porque: "Eso es otro asunto; el libro le da este papel de fuente de baja impedancia." }
+    escalera: ["¿Quién da la carga al condensador de muestreo cuando se cierra el interruptor?"]
+    solucion: "Presenta una fuente de baja impedancia en alta frecuencia."
+
+  - id: porque-pga
+    tipo: porque
+    titulo: "Cambiar la ganancia sobre la marcha"
+    texto: "Tras cambiar la ganancia de un amplificador programable, ¿por qué no se convierte enseguida?"
+    libro: [194]
+    widget:
+      tipo: grafica
+      x: { id: ax, min: 0.1, max: 1, unidad: "", rotulo: "fracción del margen", escala: log }
+      y: { min: 0, max: 4, unidad: bits, rotulo: "bits perdidos" }
+      curvas:
+        - { expr: "-log10(ax)/log10(2)", color: azul, rotulo: "Bits perdidos" }
+    opciones:
+      - { texto: "Hay que esperar a que se estabilice, y suele tardar más de lo que parece", bien: true, porque: "Convertir durante el transitorio da una lectura que no es ni la ganancia vieja ni la nueva." }
+      - { texto: "Porque el convertidor se reinicia", porque: "El convertidor no cambia; es el amplificador el que tarda en asentarse." }
+      - { texto: "No hace falta esperar", porque: "Sí: el libro lo advierte expresamente." }
+    escalera: ["¿Qué le pasa a la salida de un amplificador justo después de cambiar su ganancia?"]
+    solucion: "La salida tarda en asentarse: hay que esperar antes de convertir."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [185, 186, 201, 207]
+    ideas:
+      - { titulo: "Cuatro exigencias.", texto: "Fuente de baja impedancia, margen lleno, banda limitada y ruido bajo un LSB." }
+      - { titulo: "La referencia.", texto: "Su error es el de todas las medidas, salvo en medida ratiométrica." }
+      - { titulo: "Multiplexar.", texto: "El canal anterior se cuela si la fuente es alta: descartar, esperar o convertir masa." }

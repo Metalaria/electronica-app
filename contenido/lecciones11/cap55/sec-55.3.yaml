@@ -1,0 +1,220 @@
+# Lección 1.2 de la sección 31.3 «El Autómata Programable: Arquitectura y Cableado» (cap55; etiqueta interna sec-55.3).
+# Formato: contenido/lecciones11/GUIA.md. El detector de dos hilos en reposo es una fuente de corriente (su corriente
+# residual) sobre la entrada (una resistencia) y Rp en paralelo: el esquema «norton» (circuito (c) de la figura 31.3).
+# El diseño es el ejercicio 31.4 (entrada de 3,9 kΩ): con ± 5 %, 22 kΩ queda sin margen y 18 kΩ cumple.
+leccion: cap55/sec-55.3
+
+libro:
+  38: "Un autómata es un ordenador hecho para el armario eléctrico"
+  41: "hasta 5 V, o hasta 15 V con 0,5 mA como máximo"
+  42: "el 3 lo hace sin el consumo del 2: es el más usado hoy"
+  43: "el detector PNP es una fuente y va a una entrada sumidero"
+  45: "Con 10 kΩ la entrada queda a 4,80 V en reposo"
+  46: "en reposo, 7,05 V sin Rp y 4,80 V con 10 kΩ"
+  48: "lenta (unos 10 ms), vida limitada en maniobras"
+  49: "una bobina grande conmutada a menudo necesita su propio diodo o varistor"
+  "cap55#138": "Una entrada de tipo 1 se comporta como 3,9 kΩ"
+
+modelo:
+  valores:
+    I_r: { sim: "I_{res}", nombre: "corriente residual del detector", unidad: A, valor: 0.0015 }
+    R_e: { sim: "R_{ent}", nombre: "resistencia de la entrada", unidad: Ω, valor: 4700 }
+    R_p: { sim: "R_{p}", nombre: "resistencia en paralelo", unidad: Ω, valor: 10000 }
+    p_on: { tipo: interruptor, nombre: "Rp conectada", valor: 0 }
+  calculos:
+    V_e: { si: p_on, entonces: "I_r*par(R_e, R_p)", sino: "I_r*R_e", sim: "V_{ent}", nombre: "tensión en la entrada", unidad: V }
+    I_p: { si: p_on, entonces: "V_e/R_p", sino: "0", sim: "I_{p}", nombre: "corriente por Rp", unidad: A }
+    I_e: { expr: "V_e/R_e", sim: "I_{ent}", nombre: "corriente por la entrada", unidad: A }
+
+tarjetas:
+  - id: explore-cableado
+    tipo: explorar
+    titulo: "Tres maneras de cablear"
+    texto: "Toque los detectores y las entradas de la figura. Fíjese en hacia dónde va la corriente."
+    libro: [38, 43]
+    widget:
+      tipo: figura
+      figura: fig-55.3
+      zonas:
+        - { id: pnp, rotulo: "Detector de la izquierda", rect: [25, 38, 48, 58], texto: "Detector PNP: conmuta el positivo y entrega corriente. Es una fuente." }
+        - { id: sumidero, rotulo: "Entrada de la izquierda", rect: [110, 62, 42, 74], texto: "Entrada sumidero: absorbe corriente, con su común a 0 V. Es la lógica positiva, la de Europa." }
+        - { id: npn, rotulo: "Detector del centro", rect: [178, 38, 48, 58], texto: "Detector NPN: une la salida a 0 V y absorbe corriente." }
+        - { id: fuente, rotulo: "Entrada del centro", rect: [262, 62, 42, 74], texto: "Entrada fuente, con el común a +24 V: la lógica negativa." }
+        - { id: dos-hilos, rotulo: "Detector de la derecha", rect: [340, 32, 42, 50], texto: "Detector de dos hilos: en serie con la entrada, deja pasar una corriente residual en reposo." }
+        - { id: rp, rotulo: "Resistencia de la derecha", rect: [344, 94, 40, 40], texto: "Rp en paralelo con la entrada: se lleva parte de la corriente residual." }
+    requiere: { mover: [pnp, sumidero] }
+
+  - id: empareje-tipos
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Los tres tipos de entrada"
+    texto: "La IEC 61131-2 define tres tipos de entrada de 24 V. Una cada uno con su rasgo."
+    libro: [41, 42]
+    emparejar:
+      - ["Tipo 1", "Lee 1 de 15 a 30 V; para contactos y detectores de tres hilos"]
+      - ["Tipo 2", "Admite dos hilos, con 6 a 30 mA para leer 1"]
+      - ["Tipo 3", "Admite dos hilos sin el consumo del 2: el más usado"]
+    exito: "Cada tipo tiene una zona de 1, una de 0 y una de transición donde puede leer cualquier cosa."
+    pistas:
+      - { texto: "El que pide más corriente para leer 1 es el que más consume." }
+    escalera: ["El tipo 1 solo garantiza el 1 desde 15 V."]
+    solucion: "Tipo 1: desde 15 V, tres hilos; tipo 2: de 6 a 30 mA; tipo 3: dos hilos sin ese consumo."
+
+  - id: toque-fuente
+    tipo: tocar
+    titulo: "¿Quién da la corriente?"
+    texto: "Una entrada que absorbe corriente necesita a alguien que se la dé. Toque el detector que es una fuente de corriente."
+    libro: [43]
+    widget:
+      tipo: figura
+      figura: fig-55.3
+      zonas:
+        - { id: pnp, rotulo: "Detector de la izquierda", rect: [25, 38, 48, 58] }
+        - { id: sumidero, rotulo: "Entrada de la izquierda", rect: [110, 62, 42, 74] }
+        - { id: npn, rotulo: "Detector del centro", rect: [178, 38, 48, 58] }
+        - { id: fuente, rotulo: "Entrada del centro", rect: [262, 62, 42, 74] }
+    tocar:
+      bien: [pnp]
+      porque:
+        sumidero: "Es la entrada sumidero: la que absorbe la corriente del detector, no la que la da."
+        npn: "El NPN une su salida a 0 V: absorbe corriente, y va con una entrada fuente."
+        fuente: "Es una entrada, la de la lógica negativa: aquí la corriente la absorbe el detector NPN."
+    exito: "El PNP es una fuente y va a una entrada sumidero: cada nombre dice lo que hace su lado."
+    escalera: ["P de positivo: conmuta el positivo y entrega corriente."]
+    solucion: "El detector PNP de la izquierda."
+
+  - id: explore-reposo
+    tipo: explorar
+    titulo: "Dos hilos en reposo"
+    texto: "Sin pieza, el detector de dos hilos deja pasar 1,5 mA por la entrada de 4,7 kΩ. Conecte Rp y compare."
+    libro: [45, 46]
+    fijar: { I_r: 0.0015, R_e: 4700 }
+    widget:
+      tipo: circuito
+      esquema: norton
+      piezas: { fuente: I_r, rn: R_e, carga: R_p, interruptor: p_on }
+      lectura: { valor: V_e, rotulo: "Tensión en la entrada" }
+      corriente: I_e
+      mide: { salida: V_e, carga: I_p, paralelo: I_e }
+      mandos:
+        - { valor: p_on, tipo: interruptor, rotulo: "Rp conectada" }
+        - { valor: R_p, lista: [10000, 11460], rotulo: "R_{p}" }
+    requiere: { mover: [p_on] }
+
+  - id: prediga-transicion
+    tipo: predecir
+    titulo: "¿Qué lee la entrada?"
+    texto: "Entrada de tipo 1 de 4,7 kΩ, detector de dos hilos con 1,5 mA residuales, sin Rp y sin pieza. ¿Qué lee?"
+    libro: [41, 45]
+    fijar: { I_r: 0.0015, R_e: 4700, p_on: 0 }
+    widget:
+      tipo: circuito
+      esquema: norton
+      piezas: { fuente: I_r, rn: R_e, carga: R_p, interruptor: p_on }
+      lectura: { valor: V_e, rotulo: "Tensión en la entrada" }
+      corriente: I_e
+      mide: { salida: V_e, paralelo: I_e }
+      ocultar: true
+    opciones:
+      - { texto: "Cualquier cosa: está en la zona de transición", bien: true, porque: "Le quedan 7,05 V: más de 5 V con más de 0,5 mA. Puede leer 1 sin pieza." }
+      - { texto: "Un 0: no hay pieza", porque: "El tipo 1 solo garantiza el 0 hasta 5 V, o hasta 15 V con 0,5 mA; aquí pasan 1,5 mA." }
+      - { texto: "Un 1 seguro", porque: "Para un 1 seguro hacen falta de 15 a 30 V; con 7,05 V no se garantiza nada." }
+    escalera: ["Calcule 1,5 mA × 4,7 kΩ y mire la tabla del tipo 1."]
+    solucion: "1,5 mA × 4,7 kΩ = 7,05 V: zona de transición."
+    comprobar:
+      - { V_e: 7.05 }
+
+  - id: diseno-rp
+    tipo: diseno
+    titulo: "Rp con margen"
+    texto: "Ahora la entrada se comporta como 3,9 kΩ. Elija una Rp de la serie E12 que la deje en 5 V o menos, también con ± 5 %."
+    libro: ["cap55#138", 41]
+    fijar: { I_r: 0.0015, R_e: 3900, p_on: 1 }
+    inicio: { R_p: 47000 }
+    widget:
+      tipo: circuito
+      esquema: norton
+      piezas: { fuente: I_r, rn: R_e, carga: R_p, interruptor: p_on }
+      lectura: { valor: V_e, rotulo: "Tensión en la entrada" }
+      corriente: I_e
+      mide: { salida: V_e, carga: I_p, paralelo: I_e }
+      mandos:
+        - { valor: R_p, serie: E12, min: 10000, max: 47000, rotulo: "R_{p} (E12)" }
+    condiciones:
+      - { valor: V_e, max: 5, rotulo: "Entrada: {{V_e}}" }
+    diseno:
+      tolerancias: { R_p: 0.05 }
+      metodo: esquinas
+      exigir: todas
+      si_tolerancias: "El nominal cumple, pero sin margen: con un 5 % más de Rp la entrada pasa de 5 V. Baje un valor."
+    exito: "Con 18 kΩ quedan 4,81 V, con margen. 22 kΩ daba 4,97 V: justo en el límite."
+    pistas:
+      - { cuando: { valor: V_e, mayor: 5 }, texto: "Sobra tensión: Rp tiene que llevarse más corriente; baje su valor." }
+    escalera:
+      - "El máximo sale de R_{p} ≤ 5 · 3 900/(5,85 − 5)."
+      - "Ese máximo es 22,9 kΩ: el E12 justo por debajo no deja margen."
+    solucion: "R_{p} ≤ 22,9 kΩ; 22 kΩ se queda en el límite y 18 kΩ deja 4,81 V con margen."
+    comprobar:
+      - { con: { R_p: 18000 }, V_e: 4.81 }
+      - { con: { R_p: 22000 }, V_e: 4.97 }
+      - { con: { p_on: 0 }, V_e: 5.85 }
+
+  - id: porque-21v
+    tipo: porque
+    titulo: "Con la fuente a 21 V"
+    texto: "Con Rp la entrada lee 0 en reposo, pero con la fuente a 21 V, conduciendo, la de tipo 1 no lee 1. ¿Por qué?"
+    libro: [45]
+    widget:
+      tipo: figura
+      figura: fig-55.3
+      zonas:
+        - { id: dos-hilos, rotulo: "Detector de la derecha", rect: [340, 32, 42, 50] }
+        - { id: entrada, rotulo: "Entrada de la derecha", rect: [404, 84, 44, 56] }
+    opciones:
+      - { texto: "Al detector le caen 7 V: la entrada recibe 14 V, menos de los 15 V del tipo 1", bien: true, porque: "Rp arregla la corriente residual, no la caída: hace falta una fuente de 22 V o más, o una entrada de tipo 3." }
+      - { texto: "Porque Rp se lleva la corriente de la entrada", porque: "Conduciendo, la entrada recibe tensión directa de la fuente menos la caída: Rp no la reduce." }
+      - { texto: "Porque la corriente residual sube con la fuente", porque: "La residual importa en reposo. Conduciendo, lo que falta es tensión: 21 − 7 = 14 V." }
+    escalera: ["Reste la caída del detector a la tensión de la fuente."]
+    solucion: "21 − 7 = 14 V < 15 V: no llega al 1 del tipo 1."
+
+  - id: empareje-salidas
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Las salidas"
+    texto: "Una cada tipo de salida con su principal inconveniente."
+    libro: [48]
+    emparejar:
+      - ["Relé", "Lenta, unos 10 ms, y vida limitada en maniobras"]
+      - ["Transistor", "Solo continua y una polaridad"]
+      - ["Triac", "Corriente de fuga"]
+    exito: "El relé aísla y admite cualquier carga; el transistor es rápido y sin desgaste; el triac, para alterna."
+    pistas:
+      - { texto: "Solo una tiene piezas que se mueven." }
+    escalera: ["El triac conmuta alterna sin desgaste, pero no corta del todo."]
+    solucion: "Relé, lenta; transistor, solo continua; triac, fuga."
+
+  - id: pregunta-bobina
+    tipo: pregunta
+    titulo: "Una bobina grande, a menudo"
+    texto: "Una salida de transistor conmuta muchas veces una bobina grande. ¿Qué le falta?"
+    libro: [49]
+    widget:
+      tipo: figura
+      figura: fig-55.3
+      zonas:
+        - { id: entrada, rotulo: "Entrada de la izquierda", rect: [110, 62, 42, 74] }
+    opciones:
+      - { texto: "Su propio diodo o varistor", bien: true, porque: "El Zener de la salida descarga la bobina, pero con un límite de energía por maniobra." }
+      - { texto: "Nada: el Zener interno basta siempre", porque: "Basta para cargas pequeñas: su energía por maniobra está limitada." }
+      - { texto: "Una salida de triac", porque: "El triac es para alterna; la bobina de 24 V en continua necesita absorber su pico." }
+    escalera: ["¿Qué limita al Zener interno?"]
+    solucion: "Un diodo o un varistor propio: el Zener tiene un límite de energía por maniobra."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [41, 43, 45, 48]
+    ideas:
+      - { titulo: "Lógica positiva.", texto: "Detector PNP, entrada sumidero y común a 0 V." }
+      - { titulo: "Zona de transición.", texto: "Entre el 0 y el 1 la entrada puede leer cualquier cosa." }
+      - { titulo: "Dos hilos.", texto: "Rp arregla la corriente residual; la caída pide más tensión o una entrada de tipo 3." }

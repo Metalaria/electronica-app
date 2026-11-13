@@ -1,0 +1,267 @@
+# Lección 1.2 de la sección 31.9 «Problemas de Diseño» (cap55; etiqueta interna sec-55.9): el problema 31.A, la
+# estación de marcado. Formato: contenido/lecciones11/GUIA.md (§11). La divergencia en O tras la etapa 4 son las dos
+# transiciones del programa en ST (T41 y T40) como puertas: su tabla muestra que nunca valen 1 a la vez. El ciclo, la
+# producción y el recorrido tras B1 son los del cálculo del libro (transistor de 0,1 ms, contactor de 15 ms al abrir).
+leccion: cap55/sec-55.9
+
+libro:
+  123: "lleva piezas de 40 mm a 0,2 m/s, separadas unos 250 mm"
+  126: "%IX0.0 S0 (paro, cerrado: vale 1 sin pulsar)"
+  127: "el flanco y no el nivel, porque al volver a la etapa 1 la pieza recién marcada sigue delante del detector"
+  129: "T41 := X4 AND B11 AND NOT FIN;  T40 := X4 AND B11 AND FIN;"
+  130: "el cilindro tarda 0,4 s en bajar y 0,3 s en subir"
+  131: "1 043"
+  132: "de 3 + 10 + 0,1 + 15 = 28,1 ms a 38,1 ms"
+  133: "así que al rearmar no se mueve nada hasta pulsar marcha"
+  135: "Soltar el cable de S0 con la estación en marcha: debe terminar la pieza y pararse arriba"
+  136: "2 mm de dispersión en la parada"
+  "cap55#94": "varias transiciones franqueables a la vez se franquean a la vez"
+
+modelo:
+  valores:
+    v_c: { sim: "v", nombre: "velocidad de la cinta", unidad: "m/s", valor: 0.2 }
+    L_p: { sim: "L", nombre: "separación entre piezas", unidad: m, valor: 0.25 }
+    t_b: { sim: "t_{baja}", nombre: "bajada del cilindro", unidad: s, valor: 0.4 }
+    t_m: { sim: "t_{marca}", nombre: "marcado", unidad: s, valor: 1.5 }
+    t_u: { sim: "t_{sube}", nombre: "subida del cilindro", unidad: s, valor: 0.3 }
+    T_c: { sim: "T_{c}", nombre: "tiempo de ciclo", unidad: s, valor: 0.01 }
+    t_e: { sim: "t_{e}", nombre: "filtro de entrada", unidad: s, valor: 0.003 }
+    t_s: { sim: "t_{s}", nombre: "salida de transistor", unidad: s, valor: 0.0001 }
+    t_k: { sim: "t_{KM1}", nombre: "apertura del contactor", unidad: s, valor: 0.015 }
+    h_s: { sim: "h", nombre: "segundos en una hora", unidad: s, valor: 3600 }
+  calculos:
+    T_p: { expr: "L_p/v_c + t_b + t_m + t_u", sim: "T_{pieza}", nombre: "tiempo de ciclo por pieza", unidad: s }
+    N_h: { expr: "h_s/T_p", sim: "N", nombre: "producción", unidad: "piezas/h", cifras: 4 }
+    x_1: { expr: "v_c*(t_e + T_c + t_s + t_k)", sim: "x_{mín}", nombre: "recorrido mínimo tras B1", unidad: m }
+    x_2: { expr: "v_c*(t_e + 2*T_c + t_s + t_k)", sim: "x_{máx}", nombre: "recorrido máximo tras B1", unidad: m }
+    d_x: { expr: "v_c*T_c", sim: "Δx", nombre: "dispersión de la parada", unidad: m }
+
+tarjetas:
+  - id: explore-estacion
+    tipo: explorar
+    titulo: "La estación de marcado"
+    texto: "A la izquierda, su GRAFCET; a la derecha, las tres primeras piezas simuladas. Toque las etapas y el cronograma."
+    libro: [123, 127]
+    widget:
+      tipo: figura
+      figura: fig-55.8
+      zonas:
+        - { id: e0, rotulo: "Etapa de arriba", rect: [55, 12, 90, 37], texto: "Etapa 0: espera la marcha con el cilindro arriba y la emergencia rearmada. Enciende H1 al terminar el lote." }
+        - { id: e1, rotulo: "Segunda etapa", rect: [55, 52, 70, 37], texto: "Etapa 1: la cinta (KM1) avanza hasta el flanco de subida de B1." }
+        - { id: e23, rotulo: "Etapas centrales", rect: [55, 96, 55, 60], texto: "Etapas 2 y 3: la válvula 1Y1 baja el cilindro hasta 1B2 y lo mantiene 1,5 s." }
+        - { id: e4, rotulo: "Etapa de abajo", rect: [55, 166, 85, 37], texto: "Etapa 4: sube el cilindro y cuenta la pieza." }
+        - { id: div, rotulo: "Bifurcación final", rect: [10, 200, 150, 37], texto: "Divergencia en O: a la 1 si no hay FIN, a la 0 si lo hay. Excluyentes." }
+        - { id: crono, rotulo: "A la derecha", rect: [210, 15, 240, 205], texto: "La marcha S1, la cinta KM1, el detector B1, la válvula 1Y1 y los detectores del cilindro." }
+    requiere: { mover: [e1, div] }
+
+  - id: empareje-es
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "La lista de E/S"
+    texto: "Una cada dirección del autómata con lo que lleva conectado."
+    libro: [126]
+    emparejar:
+      - ["%IX0.0", "S0, el paro: vale 1 sin pulsar"]
+      - ["%IX0.2", "B1: pieza en posición"]
+      - ["%IX0.5", "SEG: 1 si la emergencia está rearmada"]
+      - ["%QX0.0", "KM1, la cinta"]
+      - ["%QX0.1", "1Y1, la válvula del cilindro"]
+    exito: "Seis entradas y tres salidas, en lógica positiva y con entradas de tipo 3."
+    pistas:
+      - { texto: "Las direcciones con Q son salidas." }
+    escalera: ["%IX es una entrada; %QX, una salida."]
+    solucion: "%IX0.0 S0, %IX0.2 B1, %IX0.5 SEG, %QX0.0 KM1, %QX0.1 1Y1."
+
+  - id: pregunta-flanco
+    tipo: pregunta
+    titulo: "↑B1 y no B1"
+    texto: "La etapa 1 mueve la cinta hasta ↑B1, el flanco de subida del detector. ¿Por qué no basta con B1 = 1?"
+    libro: [127]
+    widget:
+      tipo: figura
+      figura: fig-55.8
+      zonas:
+        - { id: e1, rotulo: "Segunda etapa", rect: [55, 52, 70, 37] }
+    opciones:
+      - { texto: "Al volver a la etapa 1, la pieza recién marcada sigue delante del detector", bien: true, porque: "Con el nivel, la transición se franquearía al instante y la cinta no arrancaría." }
+      - { texto: "Porque el detector rebota", porque: "Es un fotoeléctrico, sin contactos; el problema es la pieza que sigue ahí." }
+      - { texto: "Para contar las piezas", porque: "La cuenta se hace en la etapa 4, con el contador C1." }
+    escalera: ["¿Qué ve B1 justo después de marcar una pieza?"]
+    solucion: "La pieza marcada sigue tapando B1: hay que esperar a que llegue la siguiente, el flanco."
+
+  - id: tabla-divergencia
+    tipo: tabla
+    titulo: "Las dos salidas de la etapa 4"
+    texto: "T41 vuelve a la etapa 1 y T40 a la 0, como en el programa. Rellene las dos columnas."
+    libro: [129]
+    widget:
+      tipo: logica
+      entradas: [{ id: X4, rotulo: "X4" }, { id: B11, rotulo: "1B1 (arriba)" }, { id: FIN, rotulo: "FIN" }]
+      piezas:
+        - { id: nf, tipo: not, entradas: [FIN] }
+        - { id: t41, tipo: and, entradas: [X4, B11, nf], rotulo: "T41" }
+        - { id: t40, tipo: and, entradas: [X4, B11, FIN], rotulo: "T40" }
+      salidas:
+        - { id: T41, de: t41 }
+        - { id: T40, de: t40 }
+      ocultar: true
+    tabla:
+      salidas: [T41, T40]
+    exito: "Nunca valen 1 a la vez: la receptividad de una lleva FIN y la de la otra su negación."
+    escalera:
+      - "Las dos necesitan X4 = 1 y el cilindro arriba."
+      - "Con esas dos a 1, FIN decide cuál."
+    solucion: "Solo valen 1 con X4 = 1 y 1B1 = 1: T41 sin FIN, T40 con FIN."
+
+  - id: porque-excluyentes
+    tipo: porque
+    titulo: "¿Por qué excluyentes?"
+    texto: "¿Qué pasaría si las dos receptividades tras la etapa 4 pudieran valer 1 a la vez?"
+    libro: [127, "cap55#94"]
+    widget:
+      tipo: figura
+      figura: fig-55.8
+      zonas:
+        - { id: div, rotulo: "Bifurcación final", rect: [10, 200, 150, 37] }
+    opciones:
+      - { texto: "Se franquearían las dos: se activarían a la vez la etapa 1 y la 0", bien: true, porque: "Las transiciones franqueables a la vez se franquean a la vez: la estación seguiría y se pararía al mismo tiempo." }
+      - { texto: "Ganaría la de la izquierda", porque: "Eso admite el SFC; el GRAFCET franquea las dos." }
+      - { texto: "No pasaría nada: el contador decide", porque: "El contador solo entra en FIN; si las dos se cumplen, se franquean las dos." }
+    escalera: ["Mire la regla de los franqueos simultáneos."]
+    solucion: "Las dos etapas a la vez: por eso una lleva FIN y la otra su negación."
+
+  - id: estime-ciclo
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El ciclo por pieza"
+    texto: "Transporte de 250 mm a 0,2 m/s, bajada de 0,4 s, marcado de 1,5 s y subida de 0,3 s. ¿Cuánto dura cada pieza?"
+    libro: [123, 130, 131]
+    estimar:
+      objetivo: "T_p"
+      unidad: s
+      min: 0
+      max: 6
+      paso: 0.01
+      inicio: 5.5
+      tol: 0.01
+      rotulo: "Ciclo por pieza"
+    exito: "3,45 s; la simulación da 3,47 s, porque suma lecturas, el contactor y una vuelta del temporizador."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 3.49 }, texto: "Se ha pasado: el transporte son 250 mm entre 0,2 m/s." }
+      - { texto: "Se ha quedado corto: sume el transporte, la bajada, el marcado y la subida." }
+    escalera: ["El transporte: 250 mm a 0,2 m/s son 1,25 s."]
+    solucion: "1,25 + 0,4 + 1,5 + 0,3 = 3,45 s."
+    comprobar:
+      - { T_p: 3.45 }
+
+  - id: estime-produccion
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "Piezas por hora"
+    texto: "Con 3,45 s por pieza, ¿cuántas piezas marca la estación en una hora?"
+    libro: [131]
+    estimar:
+      objetivo: "N_h"
+      unidad: "piezas/h"
+      min: 500
+      max: 2000
+      paso: 1
+      inicio: 1800
+      tol: 0.01
+      rotulo: "Producción"
+    exito: "1 043 piezas/h; la simulación, 1 036."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 1054 }, texto: "Se ha pasado: divida los 3 600 s de una hora entre 3,45 s." }
+      - { texto: "Se ha quedado corto: una hora son 3 600 s." }
+    escalera: ["3 600 s entre el ciclo por pieza."]
+    solucion: "3 600/3,45 = 1 043 piezas por hora."
+    comprobar:
+      - { N_h: 1043.5, h_s: 3600, tol: 0.001 }
+
+  - id: explore-recorrido
+    tipo: explorar
+    titulo: "Dónde se para la pieza"
+    texto: "Tras llegar a B1, la pieza recorre la velocidad por la cadena de respuesta y el contactor. Cambie el ciclo del autómata."
+    libro: [132]
+    widget:
+      tipo: grafica
+      x: { id: xr, min: 0, max: 0.012, unidad: m, rotulo: "recorrido" }
+      y: { min: 0, max: 1.2, unidad: "", rotulo: "reparto" }
+      curvas:
+        - { expr: "ceil((xr - x_1)/1e9)*(1 - ceil((xr - x_2)/1e9))", color: azul, rotulo: "Paradas" }
+      marcas:
+        - { x: "x_1", y: "1", rotulo: "Mínimo" }
+        - { x: "x_2", y: "1", rotulo: "Máximo" }
+      lectura: { valor: d_x, rotulo: "Dispersión" }
+      datos:
+        - { valor: x_1, rotulo: "Mínimo: {{x_1}}" }
+        - { valor: x_2, rotulo: "Máximo: {{x_2}}" }
+      mandos:
+        - { valor: T_c, lista: [0.002, 0.01], rotulo: "Tiempo de ciclo" }
+    requiere: { mover: [T_c] }
+
+  - id: prediga-dispersion
+    tipo: predecir
+    titulo: "Con 10 ms de ciclo"
+    texto: "Cinta a 0,2 m/s y ciclo de 10 ms. ¿Cuánto varía el punto de parada de una pieza a otra?"
+    libro: [132, 136]
+    fijar: { T_c: 0.01 }
+    widget:
+      tipo: grafica
+      x: { id: xr, min: 0, max: 0.012, unidad: m, rotulo: "recorrido" }
+      y: { min: 0, max: 1.2, unidad: "", rotulo: "reparto" }
+      curvas:
+        - { expr: "ceil((xr - x_1)/1e9)*(1 - ceil((xr - x_2)/1e9))", color: azul, rotulo: "Paradas" }
+      lectura: { valor: d_x, rotulo: "Dispersión" }
+      ocultar: true
+    opciones:
+      - { texto: "2 mm", bien: true, porque: "De 5,62 a 7,62 mm: varía un ciclo por la velocidad. Lo fijo se compensa montando B1 6,6 mm antes." }
+      - { texto: "7,62 mm", porque: "Ese es el recorrido máximo; lo que varía es la diferencia entre máximo y mínimo." }
+      - { texto: "5,62 mm", porque: "Ese es el mínimo, fijo: se compensa colocando el detector." }
+    escalera: ["La respuesta varía un ciclo entero."]
+    solucion: "0,2 m/s × 10 ms = 2 mm, entre 5,62 y 7,62 mm."
+    comprobar:
+      - { d_x: 0.002, x_1: 0.00562, x_2: 0.00762 }
+
+  - id: pregunta-paro
+    tipo: pregunta
+    titulo: "El paro con la estación en marcha"
+    texto: "Con la estación marcando, se suelta el cable de S0. ¿Qué debe hacer?"
+    libro: [126, 135]
+    widget:
+      tipo: figura
+      figura: fig-55.8
+      zonas:
+        - { id: e4, rotulo: "Etapa de abajo", rect: [55, 166, 85, 37] }
+    opciones:
+      - { texto: "Terminar la pieza y pararse con el cilindro arriba", bien: true, porque: "Un cable suelto es como pulsar el paro: PARO se recuerda y la divergencia lleva a la etapa 0 tras la etapa 4." }
+      - { texto: "Pararse al instante, a mitad de marcado", porque: "Eso haría la emergencia. El paro termina el ciclo en curso." }
+      - { texto: "Seguir: el paro no está pulsado", porque: "S0 está cableado cerrado: un cable suelto pone su entrada a 0, como pulsarlo." }
+    escalera: ["¿Cuánto vale %IX0.0 con el cable suelto?"]
+    solucion: "Termina la pieza y se para arriba, en la etapa 0."
+
+  - id: pregunta-emergencia
+    tipo: pregunta
+    titulo: "Tras la emergencia"
+    texto: "La seta corta KM1 y 1Y1, y después se rearma. ¿Qué hace la estación?"
+    libro: [133]
+    widget:
+      tipo: figura
+      figura: fig-55.8
+      zonas:
+        - { id: e0, rotulo: "Etapa de arriba", rect: [55, 12, 90, 37] }
+    opciones:
+      - { texto: "Nada hasta pulsar marcha: el GRAFCET está en la etapa 0", bien: true, porque: "El autómata ve SEG a 0 y lleva el GRAFCET a la etapa 0." }
+      - { texto: "Sigue en la etapa en que estaba", porque: "La inicialización se repite tras una emergencia: vuelve a la etapa 0." }
+      - { texto: "Vuelve a bajar el cilindro", porque: "El cilindro subió por el muelle de la válvula al cortar; nada se mueve sin marcha." }
+    escalera: ["Mire el bloque de inicialización: FIRST_SCAN OR NOT SEG."]
+    solucion: "Espera la marcha en la etapa 0."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [127, 131, 132, 136]
+    ideas:
+      - { titulo: "De la especificación al programa.", texto: "E/S, un GRAFCET de cinco etapas y su traducción en ST." }
+      - { titulo: "Flancos y excluyentes.", texto: "↑B1 para no franquear con la pieza vieja; FIN y su negación en la divergencia." }
+      - { titulo: "Los números.", texto: "3,45 s por pieza, unas mil por hora y 2 mm de dispersión en la parada." }
