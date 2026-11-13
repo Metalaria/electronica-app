@@ -6,6 +6,8 @@
 # Paso práctico: «diseno» del disipador para 110 °C de unión en el peor caso (bloque 129) aunque montado tumbado rinda
 # un 30 % peor (bloque 128): R_sa ≤ 11,5 °C/W; 10 °C/W cumple en nominal (102,5 °C) y falla con +30 % (117,5 °C);
 # 8 °C/W cumple en las dos. La lista va de menor a mayor R_sa (el recorrido toma la primera solución nominal).
+# - 1.2 (esquemas12d): el esquema `termica` vivo (las temperaturas rotuladas en sus nodos) en explore-cadena,
+#   prediga-sin (el interruptor del disipador abierto, R_ja), estime-10w y disene-disipador.
 leccion: cap10/sec-10.5
 
 libro:
@@ -29,6 +31,7 @@ modelo:
     R_sa: { sim: "R_{sa}", nombre: "disipador-ambiente", unidad: "°C/W", valor: 8 }
     R_ja: { sim: "R_{ja}", nombre: "unión-ambiente sin disipador", unidad: "°C/W", valor: 62 }
     T_lim: { sim: "T_{j}", nombre: "unión en el peor caso, como mucho", unidad: "°C", valor: 110 }
+    dis: { tipo: interruptor, nombre: "con disipador", valor: 1 }
   calculos:
     R_tot: { expr: "R_jc + R_cs + R_sa", sim: "R_{total}", nombre: "resistencia térmica total", unidad: "°C/W" }
     T_j: { expr: "T_a + P*R_tot", sim: "T_{unión}", nombre: "temperatura de la unión", unidad: "°C" }
@@ -39,6 +42,9 @@ modelo:
     dT_cs: { expr: "P*R_cs", sim: "ΔT_{cs}", nombre: "caída en R_cs", unidad: "°C" }
     dT_sa: { expr: "P*R_sa", sim: "ΔT_{sa}", nombre: "caída en el disipador", unidad: "°C" }
     R_req: { expr: "(T_lim - T_a)/P - R_jc - R_cs", sim: "R_{sa}", nombre: "disipador necesario", unidad: "°C/W" }
+    T_u: { expr: "T_a + P*(dis*R_tot + (1 - dis)*R_ja)", sim: "T_{j}", nombre: "temperatura de la unión", unidad: "°C" }
+    T_c: { expr: "T_u - P*R_jc", sim: "T_{c}", nombre: "temperatura de la cápsula", unidad: "°C" }
+    T_s: { expr: "T_c - dis*P*R_cs", sim: "T_{s}", nombre: "temperatura del disipador", unidad: "°C" }
 
 tarjetas:
   - id: explore-cadena
@@ -46,16 +52,14 @@ tarjetas:
     titulo: "Una cadena en serie"
     texto: "Cambie la potencia, el disipador y el montaje. Las resistencias térmicas se suman como en serie."
     libro: [123, 127, 133]
+    fijar: { dis: 1 }
     widget:
-      tipo: grafica
-      x: { id: p, min: 0, max: 10, unidad: W, rotulo: "P" }
-      y: { min: 0, max: 200, unidad: "°C", rotulo: "T_{unión}" }
-      curvas:
-        - { expr: "T_a + p*R_tot", color: naranja, rotulo: "con disipador" }
-        - { expr: "150", color: tinta, rotulo: "límite del silicio", discontinua: true }
-      marcas:
-        - { x: "P", y: "T_j", rotulo: "{{T_j}}" }
-      lectura: { valor: T_j, rotulo: "Unión" }
+      tipo: circuito
+      esquema: termica
+      piezas: { p: P, ta: T_a, rjc: R_jc, rcs: R_cs, rsa: R_sa, rja: R_ja, disipador: dis }
+      lectura: { valor: T_u, rotulo: "Unión" }
+      corriente: P
+      mide: { tj: T_u, tc: T_c, ts: T_s, flujo: P }
       mandos:
         - { valor: P, min: 1, max: 10, paso: 1, rotulo: "Potencia" }
         - { valor: R_sa, lista: [2, 5, 8], rotulo: "Disipador, R_{sa}" }
@@ -87,15 +91,16 @@ tarjetas:
     titulo: "Sin disipador"
     texto: "El mismo TO-220 con 5 W y sin disipador: la unión-ambiente del encapsulado es de unos 62 °C/W. ¿Dónde queda la unión?"
     libro: [121, 127]
-    fijar: { P: 5 }
+    fijar: { P: 5, dis: 0 }
     widget:
-      tipo: grafica
-      x: { id: p, min: 0, max: 1, unidad: W, rotulo: "P" }
-      y: { min: 0, max: 400, unidad: "°C", rotulo: "T_{unión}" }
-      curvas:
-        - { expr: "T_a + p*R_ja", color: azul, rotulo: "sin disipador" }
-      lectura: { valor: T_sin, rotulo: "Unión sin disipador" }
+      tipo: circuito
+      esquema: termica
+      piezas: { p: P, ta: T_a, rjc: R_jc, rcs: R_cs, rsa: R_sa, rja: R_ja, disipador: dis }
+      lectura: { valor: T_u, rotulo: "Unión sin disipador" }
+      corriente: P
+      mide: { tj: T_u, tc: T_c, flujo: P }
       ocultar: true
+      mandos: []
     opciones:
       - texto: "A unos 350 °C: destruido"
         bien: true
@@ -108,7 +113,7 @@ tarjetas:
       - "Multiplique la potencia por la resistencia unión-ambiente y sume el ambiente."
     solucion: "40 + 5 × 62 = 350 °C."
     comprobar:
-      - { T_sin: 350, dT_sin: 310 }
+      - { T_sin: 350, dT_sin: 310, T_u: 350 }
 
   - id: toque-caida
     tipo: tocar
@@ -140,13 +145,16 @@ tarjetas:
     titulo: "Un transistor de 10 W"
     texto: "Disipa 10 W con R_{jc} = 1,5, pasta 0,3 y disipador 2 °C/W, a 35 °C de ambiente. ¿Temperatura de la unión?"
     libro: ["cap10#285"]
-    fijar: { P: 10, R_jc: 1.5, R_cs: 0.3, R_sa: 2, T_a: 35 }
+    fijar: { P: 10, R_jc: 1.5, R_cs: 0.3, R_sa: 2, T_a: 35, dis: 1 }
     widget:
-      tipo: grafica
-      x: { id: p, min: 0, max: 10, unidad: W, rotulo: "P" }
-      y: { min: 0, max: 200, unidad: "°C", rotulo: "T_{unión}" }
-      curvas:
-        - { expr: "150", color: tinta, rotulo: "límite", discontinua: true }
+      tipo: circuito
+      esquema: termica
+      piezas: { p: P, ta: T_a, rjc: R_jc, rcs: R_cs, rsa: R_sa }
+      lectura: { valor: T_u, rotulo: "Unión" }
+      corriente: P
+      mide: { tj: T_u, tc: T_c, ts: T_s, flujo: P }
+      ocultar: true
+      mandos: []
     estimar:
       objetivo: "T_j"
       unidad: "°C"
@@ -193,18 +201,15 @@ tarjetas:
     titulo: "Elija el disipador"
     texto: "5 W, 40 °C, R_{jc} = 2 y pasta 0,5. Unión a 110 °C como mucho, aunque montado tumbado rinda un 30 % peor."
     libro: [127, 128, 129]
-    fijar: { P: 5, T_a: 40, R_jc: 2, R_cs: 0.5, T_lim: 110 }
+    fijar: { P: 5, T_a: 40, R_jc: 2, R_cs: 0.5, T_lim: 110, dis: 1 }
     inicio: { R_sa: 20 }
     widget:
-      tipo: grafica
-      x: { id: p, min: 0, max: 10, unidad: W, rotulo: "P" }
-      y: { min: 0, max: 200, unidad: "°C", rotulo: "T_{unión}" }
-      curvas:
-        - { expr: "T_a + p*R_tot", color: naranja, rotulo: "con el elegido" }
-        - { expr: "T_lim", color: tinta, rotulo: "criterio", discontinua: true }
-      marcas:
-        - { x: "P", y: "T_j", rotulo: "{{T_j}}" }
-      lectura: { valor: T_j, rotulo: "Unión" }
+      tipo: circuito
+      esquema: termica
+      piezas: { p: P, ta: T_a, rjc: R_jc, rcs: R_cs, rsa: R_sa }
+      lectura: { valor: T_u, rotulo: "Unión" }
+      corriente: P
+      mide: { tj: T_u, tc: T_c, ts: T_s, flujo: P }
       mandos:
         - { valor: R_sa, lista: [5, 8, 10, 15, 20], rotulo: "Disipador, R_{sa}" }
     condiciones:

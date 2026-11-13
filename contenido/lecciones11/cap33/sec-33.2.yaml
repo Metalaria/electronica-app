@@ -5,6 +5,10 @@
 #   de I_out. En el modo discontinuo la gráfica solo recorta la corriente en cero (con diodo) o la deja negativa (con
 #   síncrono), como dicen los bloques 60 y 62; no recalcula la nueva V_out del modo discontinuo.
 # Pasos prácticos: «ajuste» de L hasta un rizado del 20–40 % de 2 A (bloques 55–57) y «dibujar» la corriente.
+# - 1.2 (esquemas12d): el esquema `reductor` vivo (rectificador síncrono ideal, la carga R = V_out/I_out) en
+#   explore-nodo, prediga-carga, explore-corriente, ajuste-bobina, pico-saturacion y rizado-salida (la parábola de C
+#   más la ESR: 207 mA; 0,9 mV por los 100 µF y unos 10 mV por los 50 mΩ). El modo discontinuo sigue en gráficas: el
+#   esquema arranca del régimen continuo y la curva recortada de esas tarjetas no es la del circuito.
 leccion: cap33/sec-33.2
 
 libro:
@@ -55,6 +59,9 @@ modelo:
     D_obj: { expr: "V_set/V_in", sim: "D", nombre: "ciclo de trabajo para la salida pedida", unidad: "" }
     dV_esr: { expr: "dI*ESR", sim: "ΔV_{ESR}", nombre: "rizado por la ESR", unidad: V }
     dV_c: { expr: "dI/(8*C_o*f_s)", sim: "ΔV_{C}", nombre: "rizado por la capacidad", unidad: V }
+    R_cg: { expr: "V_out/I_o", sim: "R", nombre: "carga", unidad: Ω }
+    I_ent: { expr: "D*I_o", sim: "I_{in}", nombre: "corriente media de entrada", unidad: A }
+    V_c0: { expr: "V_out - dI*(1 - 2*D)/(12*f_s*C_o)", sim: "v_{C}(0)", nombre: "tensión del condensador al empezar el periodo", unidad: V }
 
 tarjetas:
   - id: explore-nodo
@@ -62,14 +69,19 @@ tarjetas:
     titulo: "El nodo de conmutación"
     texto: "El interruptor pone la entrada en el nodo durante t_{on} y lo deja a cero el resto. Mueva D y mire la salida."
     libro: [35, 48, 75]
+    fijar: { I_o: 2 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.00001, unidad: s, rotulo: "t", muestras: 1200 }
-      y: { min: 0, max: 13, unidad: V, rotulo: "nodo" }
-      curvas:
-        - { expr: "V_in*(1 - ceil(f_s*t - floor(f_s*t) - D))", color: naranja, rotulo: "nodo de conmutación" }
-        - { expr: "V_out", color: verde, rotulo: "V_{out}", discontinua: true }
+      tipo: circuito
+      esquema: reductor
+      piezas: { vin: V_in, f: f_s, ciclo: D, l: L, c: C_o, carga: R_cg }
+      corriente: I_o
       lectura: { valor: V_out, rotulo: "Salida, V_{out}" }
+      grafica:
+        x: { id: t, min: 0, max: 0.00001, unidad: s, rotulo: "t", muestras: 1200 }
+        y: { min: 0, max: 13, unidad: V, rotulo: "nodo" }
+        curvas:
+          - { expr: "V_in*(1 - ceil(f_s*t - floor(f_s*t) - D))", color: naranja, rotulo: "nodo de conmutación", mide: nodo }
+          - { expr: "V_out", color: verde, rotulo: "V_{out}", discontinua: true }
       mandos:
         - { valor: D, min: 0.05, max: 0.95, paso: 0.01, rotulo: "Ciclo de trabajo, D" }
     requiere: { mover: [D] }
@@ -98,13 +110,17 @@ tarjetas:
     libro: [49, 57]
     fijar: { D: 0.41667 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.00001, unidad: s, rotulo: "t", muestras: 1200 }
-      y: { min: 0, max: 3, unidad: A, rotulo: "i_{L}" }
-      curvas:
-        - { expr: "I_mn + dI*min((f_s*t - floor(f_s*t))/D, (1 - f_s*t + floor(f_s*t))/(1 - D))", color: naranja, rotulo: "corriente de la bobina" }
+      tipo: circuito
+      esquema: reductor
+      piezas: { vin: V_in, f: f_s, ciclo: D, l: L, c: C_o, carga: R_cg }
+      corriente: I_o
       lectura: { valor: V_out, rotulo: "Salida, V_{out}" }
       ocultar: true
+      grafica:
+        x: { id: t, min: 0, max: 0.00001, unidad: s, rotulo: "t", muestras: 1200 }
+        y: { min: 0, max: 3, unidad: A, rotulo: "i_{L}" }
+        curvas:
+          - { expr: "I_mn + dI*min((f_s*t - floor(f_s*t))/D, (1 - f_s*t + floor(f_s*t))/(1 - D))", color: naranja, rotulo: "corriente de la bobina", mide: il }
       mandos:
         - { valor: I_o, lista: [1, 2], rotulo: "Corriente de salida" }
     opciones:
@@ -156,13 +172,17 @@ tarjetas:
     libro: [38, 41, 52]
     fijar: { D: 0.41667, I_o: 2 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.00001, unidad: s, rotulo: "t", muestras: 1200 }
-      y: { min: 0, max: 3, unidad: A, rotulo: "i_{L}" }
-      curvas:
-        - { expr: "I_mn + dI*min((f_s*t - floor(f_s*t))/D, (1 - f_s*t + floor(f_s*t))/(1 - D))", color: naranja, rotulo: "corriente de la bobina" }
-        - { expr: "I_o", color: tinta, rotulo: "I_{out}", discontinua: true }
+      tipo: circuito
+      esquema: reductor
+      piezas: { vin: V_in, f: f_s, ciclo: D, l: L, c: C_o, carga: R_cg }
+      corriente: I_o
       lectura: { valor: dI, rotulo: "Rizado, ΔI" }
+      grafica:
+        x: { id: t, min: 0, max: 0.00001, unidad: s, rotulo: "t", muestras: 1200 }
+        y: { min: 0, max: 3, unidad: A, rotulo: "i_{L}" }
+        curvas:
+          - { expr: "I_mn + dI*min((f_s*t - floor(f_s*t))/D, (1 - f_s*t + floor(f_s*t))/(1 - D))", color: naranja, rotulo: "corriente de la bobina", mide: il }
+          - { expr: "I_o", color: tinta, rotulo: "I_{out}", discontinua: true }
       mandos:
         - { valor: L, lista: [1e-5, 2.2e-5, 4.7e-5, 1e-4], rotulo: "Bobina, L" }
     requiere: { mover: [L] }
@@ -192,12 +212,16 @@ tarjetas:
     fijar: { D: 0.41667, I_o: 2 }
     inicio: { L: 4.7e-5 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.00001, unidad: s, rotulo: "t", muestras: 1200 }
-      y: { min: 0, max: 3, unidad: A, rotulo: "i_{L}" }
-      curvas:
-        - { expr: "I_mn + dI*min((f_s*t - floor(f_s*t))/D, (1 - f_s*t + floor(f_s*t))/(1 - D))", color: naranja, rotulo: "corriente de la bobina" }
+      tipo: circuito
+      esquema: reductor
+      piezas: { vin: V_in, f: f_s, ciclo: D, l: L, c: C_o, carga: R_cg }
+      corriente: I_o
       lectura: { valor: frac, rotulo: "ΔI / I_{out}" }
+      grafica:
+        x: { id: t, min: 0, max: 0.00001, unidad: s, rotulo: "t", muestras: 1200 }
+        y: { min: 0, max: 3, unidad: A, rotulo: "i_{L}" }
+        curvas:
+          - { expr: "I_mn + dI*min((f_s*t - floor(f_s*t))/D, (1 - f_s*t + floor(f_s*t))/(1 - D))", color: naranja, rotulo: "corriente de la bobina", mide: il }
       mandos:
         - { valor: L, min: 5e-6, max: 6e-5, paso: 1e-6, rotulo: "Bobina, L" }
     ajuste:
@@ -217,12 +241,17 @@ tarjetas:
     libro: [58]
     fijar: { D: 0.41667, I_o: 2 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.00001, unidad: s, rotulo: "t", muestras: 1200 }
-      y: { min: 0, max: 3, unidad: A, rotulo: "i_{L}" }
-      curvas:
-        - { expr: "I_mn + dI*min((f_s*t - floor(f_s*t))/D, (1 - f_s*t + floor(f_s*t))/(1 - D))", color: naranja, rotulo: "corriente de la bobina" }
-        - { expr: "I_o", color: tinta, rotulo: "media", discontinua: true }
+      tipo: circuito
+      esquema: reductor
+      piezas: { vin: V_in, f: f_s, ciclo: D, l: L, c: C_o, carga: R_cg }
+      corriente: I_o
+      grafica:
+        x: { id: t, min: 0, max: 0.00001, unidad: s, rotulo: "t", muestras: 1200 }
+        y: { min: 0, max: 3, unidad: A, rotulo: "i_{L}" }
+        curvas:
+          - { expr: "I_mn + dI*min((f_s*t - floor(f_s*t))/D, (1 - f_s*t + floor(f_s*t))/(1 - D))", color: naranja, rotulo: "corriente de la bobina", mide: il }
+          - { expr: "I_o", color: tinta, rotulo: "media", discontinua: true }
+      mandos: []
     opciones:
       - texto: "La de pico, I_{out} + ΔI/2"
         bien: true
@@ -307,16 +336,21 @@ tarjetas:
     titulo: "El rizado de tensión"
     texto: "ΔI = 207 mA, condensador de 100 µF con ESR de 50 mΩ. ¿Qué fija el rizado de salida?"
     libro: [65, 66]
-    fijar: { D: 0.41667, L: 4.7e-5, I_o: 2 }
+    fijar: { D: 0.41667, L: 4.7e-5, I_o: 2, C_o: 1e-4 }
+    inicio: { ESR: 0.05 }
     widget:
-      tipo: grafica
-      x: { id: r, min: 0, max: 0.1, unidad: Ω, rotulo: "ESR" }
-      y: { min: 0, max: 0.025, unidad: V, rotulo: "ΔV" }
-      curvas:
-        - { expr: "dI*r", color: naranja, rotulo: "por la ESR" }
-        - { expr: "dV_c", color: azul, rotulo: "por la capacidad", discontinua: true }
-      marcas:
-        - { x: "ESR", y: "dV_esr", rotulo: "{{dV_esr}}" }
+      tipo: circuito
+      esquema: reductor
+      piezas: { vin: V_in, f: f_s, ciclo: D, l: L, c: C_o, esr: ESR, carga: R_cg }
+      corriente: I_o
+      lectura: { valor: dV_esr, rotulo: "Rizado por la ESR" }
+      grafica:
+        x: { id: t, min: 0, max: 0.00001, unidad: s, rotulo: "t", muestras: 1200 }
+        y: { min: 4.98, max: 5.03, unidad: V, rotulo: "v_{o}" }
+        curvas:
+          - { expr: "V_c0 + (dI/C_o)*(min((f_s*t - floor(f_s*t)), D)/f_s*(-1/2) + min((f_s*t - floor(f_s*t)), D)^2/(2*D*f_s) + max(0, (f_s*t - floor(f_s*t)) - D)/(2*f_s) - max(0, (f_s*t - floor(f_s*t)) - D)^2/(2*(1 - D)*f_s)) + ESR*dI*(min((f_s*t - floor(f_s*t))/D, (1 - (f_s*t - floor(f_s*t)))/(1 - D)) - 1/2)", color: verde, rotulo: "v_{o}", mide: salida }
+      mandos:
+        - { valor: ESR, lista: [0.01, 0.05, 0.1], rotulo: "ESR" }
     opciones:
       - texto: "La ESR del condensador"
         bien: true

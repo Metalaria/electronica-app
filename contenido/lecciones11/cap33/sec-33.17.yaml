@@ -4,6 +4,8 @@
 #   condensador del bus por la componente de 100 Hz). Gráficas y cálculos con sus números; la pérdida de conmutación
 #   es la de la tabla de la sección 33.2, ½·V·I·t_conm·f_s.
 # Paso práctico: «simular» la bobina de 33.A (22,2 µH) y la pérdida de conmutación de 33.B (0,432 W).
+# - 1.2 (esquemas12d): 33.A con el esquema `reductor` vivo (rectificador síncrono ideal; la carga, 12 V/3 A = 4 Ω) en
+#   «saturacion» (el triángulo de 909 mA) y explore-condensador (la salida, parábola de C más la ESR, con D = 0,5).
 leccion: cap33/sec-33.17
 
 libro:
@@ -63,6 +65,8 @@ modelo:
     V_oc: { expr: "V_ic/(1 - D_c)", sim: "V_{out}", nombre: "salida del elevador", unidad: V }
     k_c: { expr: "1/(1 - D_c)", sim: "I_{in}/I_{out}", nombre: "corriente de entrada respecto a la de salida", unidad: "" }
     dV_b: { expr: "P_d/(2*pi*50*C_b*V_dc)", sim: "ΔV_{pp}", nombre: "rizado de 100 Hz del bus", unidad: V }
+    R_la: { expr: "V_oa/I_a", sim: "R", nombre: "carga", unidad: Ω }
+    Vc_a: { expr: "D_a*V_ia - dI_a*(1 - 2*D_a)/(12*f_a*C_o)", sim: "v_{C}(0)", nombre: "tensión del condensador al empezar el periodo", unidad: V }
 
 tarjetas:
   - id: simule-bobina
@@ -91,12 +95,17 @@ tarjetas:
     texto: "Con 22 µH el rizado es de 909 mA. ¿Por encima de qué corriente debe saturar la bobina?"
     libro: [628, 635]
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.0000066667, unidad: s, rotulo: "t", muestras: 800 }
-      y: { min: 2, max: 4, unidad: A, rotulo: "i_{L}" }
-      curvas:
-        - { expr: "I_a - dI_a/2 + dI_a*min((f_a*t - floor(f_a*t))/D_a, (1 - f_a*t + floor(f_a*t))/(1 - D_a))", color: naranja, rotulo: "corriente de la bobina" }
-        - { expr: "I_a", color: tinta, rotulo: "3 A", discontinua: true }
+      tipo: circuito
+      esquema: reductor
+      piezas: { vin: V_ia, f: f_a, ciclo: D_a, l: L_a, c: C_o, carga: R_la }
+      corriente: I_a
+      grafica:
+        x: { id: t, min: 0, max: 0.0000066667, unidad: s, rotulo: "t", muestras: 800 }
+        y: { min: 2, max: 4, unidad: A, rotulo: "i_{L}" }
+        curvas:
+          - { expr: "I_a - dI_a/2 + dI_a*min((f_a*t - floor(f_a*t))/D_a, (1 - f_a*t + floor(f_a*t))/(1 - D_a))", color: naranja, rotulo: "corriente de la bobina", mide: il }
+          - { expr: "I_a", color: tinta, rotulo: "3 A", discontinua: true }
+      mandos: []
     opciones:
       - texto: "Por encima de 3,45 A, el pico"
         bien: true
@@ -115,15 +124,16 @@ tarjetas:
     texto: "El rizado de salida tiene dos partes: la capacidad y la ESR. Pruebe capacidades y ESR y mire cuál manda."
     libro: [628, 637, 639]
     widget:
-      tipo: grafica
-      x: { id: r, min: 0, max: 0.2, unidad: Ω, rotulo: "ESR" }
-      y: { min: 0, max: 0.2, unidad: V, rotulo: "ΔV" }
-      curvas:
-        - { expr: "dI_a/(8*C_o*f_a) + dI_a*r", color: naranja, rotulo: "rizado total" }
-        - { expr: "0.025", color: tinta, rotulo: "25 mV", discontinua: true }
-      marcas:
-        - { x: "ESR", y: "dV_t", rotulo: "{{dV_t}}" }
+      tipo: circuito
+      esquema: reductor
+      piezas: { vin: V_ia, f: f_a, ciclo: D_a, l: L_a, c: C_o, esr: ESR, carga: R_la }
+      corriente: I_a
       lectura: { valor: dV_t, rotulo: "Rizado total" }
+      grafica:
+        x: { id: t, min: 0, max: 0.0000061, unidad: s, rotulo: "t", muestras: 800 }
+        y: { min: 11.75, max: 12.25, unidad: V, rotulo: "v_{o}" }
+        curvas:
+          - { expr: "Vc_a + (dI_a/C_o)*(min((f_a*t - floor(f_a*t)), D_a)/f_a*(-1/2) + min((f_a*t - floor(f_a*t)), D_a)^2/(2*D_a*f_a) + max(0, (f_a*t - floor(f_a*t)) - D_a)/(2*f_a) - max(0, (f_a*t - floor(f_a*t)) - D_a)^2/(2*(1 - D_a)*f_a)) + ESR*dI_a*(min((f_a*t - floor(f_a*t))/D_a, (1 - (f_a*t - floor(f_a*t)))/(1 - D_a)) - 1/2)", color: verde, rotulo: "v_{o}", mide: salida }
       datos:
         - { valor: dV_c, rotulo: "Por la capacidad: {{dV_c}}" }
         - { valor: dV_e, rotulo: "Por la ESR: {{dV_e}}" }

@@ -3,6 +3,9 @@
 #   una gráfica con los números del libro (0,4 V, 5 mΩ, D = 0,4; cruce en 80 A, como la figura 33.12).
 # - La figura 33.12 con zonas para los tres problemas.
 # Paso práctico: «simular» la pérdida del MOSFET síncrono con 10 A (0,3 W), con sus errores típicos.
+# - 1.2 (esquemas12d): nueva explore-negativa con el esquema `reductor` síncrono (el de la sección 33.2: 12 V,
+#   D = 0,417, 47 µH, 300 kHz, 100 µF; la carga, de ejemplo): con poca carga el triángulo baja de cero, porque el
+#   MOSFET conduce en los dos sentidos (bloques 438 y 439). Va después de prediga-vacio, que no la desvela.
 leccion: cap33/sec-33.11
 
 libro:
@@ -27,7 +30,17 @@ modelo:
     R_on: { sim: "R_{DS(on)}", nombre: "resistencia del MOSFET síncrono", unidad: Ω, valor: 0.005 }
     D: { sim: "D", nombre: "ciclo de trabajo", unidad: "", valor: 0.4 }
     I_o: { sim: "I", nombre: "corriente de salida", unidad: A, valor: 10 }
+    V_ib: { sim: "V_{in}", nombre: "entrada del reductor", unidad: V, valor: 12 }
+    D_b: { sim: "D", nombre: "ciclo de trabajo del reductor", unidad: "", valor: 0.41667 }
+    L_b: { sim: "L", nombre: "bobina", unidad: H, valor: 47e-6 }
+    f_b: { sim: "f_{s}", nombre: "frecuencia de conmutación", unidad: Hz, valor: 300000 }
+    C_b: { sim: "C", nombre: "condensador de salida", unidad: F, valor: 100e-6 }
+    R_b: { sim: "R", nombre: "carga (ejemplo)", unidad: Ω, valor: 2.5 }
   calculos:
+    Vo_b: { expr: "D_b*V_ib", sim: "V_{out}", nombre: "salida del reductor", unidad: V }
+    Io_b: { expr: "Vo_b/R_b", sim: "I_{out}", nombre: "corriente de salida del reductor", unidad: A }
+    dI_b: { expr: "Vo_b*(1 - D_b)/(L_b*f_b)", sim: "ΔI", nombre: "rizado de la corriente", unidad: A }
+    Imn_b: { expr: "Io_b - dI_b/2", sim: "I_{mín}", nombre: "mínimo de la corriente de la bobina", unidad: A }
     P_d: { expr: "V_F*I_o*(1 - D)", sim: "P_{diodo}", nombre: "disipación del diodo", unidad: W }
     P_m: { expr: "I_o^2*R_on*(1 - D)", sim: "P_{MOSFET}", nombre: "disipación del MOSFET síncrono", unidad: W }
     P_m_sin: { expr: "I_o^2*R_on", sim: "P", nombre: "MOSFET sin el factor 1 − D", unidad: W }
@@ -213,6 +226,27 @@ tarjetas:
     escalera:
       - "¿En qué sentidos conduce un MOSFET cerrado?"
     solucion: "Corriente negativa, energía devuelta a la entrada y rendimiento en vacío hundido."
+
+  - id: explore-negativa
+    tipo: explorar
+    titulo: "Corriente al revés"
+    texto: "Un reductor síncrono: quite carga. El triángulo baja entero y cruza el cero: el MOSFET inferior deja pasar la corriente al revés."
+    libro: [438, 439]
+    widget:
+      tipo: circuito
+      esquema: reductor
+      piezas: { vin: V_ib, f: f_b, ciclo: D_b, l: L_b, c: C_b, carga: R_b }
+      lectura: { valor: Imn_b, rotulo: "Mínimo de la corriente" }
+      corriente: Io_b
+      grafica:
+        x: { id: t, min: 0, max: 0.00001, unidad: s, rotulo: "t", muestras: 1200 }
+        y: { min: -0.3, max: 2.3, unidad: A, rotulo: "i_{L}" }
+        curvas:
+          - { expr: "Io_b - dI_b/2 + dI_b*min((f_b*t - floor(f_b*t))/D_b, (1 - (f_b*t - floor(f_b*t)))/(1 - D_b))", color: naranja, rotulo: "i_{L}", mide: il }
+          - { expr: "0", color: tinta, rotulo: "cero", discontinua: true }
+      mandos:
+        - { valor: R_b, lista: [2.5, 25, 100], nombres: ["2 A", "0,2 A", "50 mA"], rotulo: "Carga" }
+    requiere: { mover: [R_b] }
 
   - id: secundario
     tipo: pregunta

@@ -5,6 +5,8 @@
 # mitad de cada resistencia; las n cargas unidad (2 × 12 kΩ/n entre hilos, como en la sección 45.6) quedan en paralelo
 # con la del medio. EtherCAT: la trama del ejemplo (852 bytes, 68,2 µs) más 1 µs de paso por esclavo, la cifra de
 # Beckhoff que da el libro 4.1.
+# 1.2 (esquemas12d): la terminación activa con el esquema `rs485` (`activa`: la polarización en los dos extremos,
+# 390 Ω, 220 Ω entre hilos en cada uno) en simule-profibus, explore-cargas-profibus y pregunta-banco: 1,1 V y 0,99 V.
 leccion: cap44/sec-new-44-campo
 
 libro:
@@ -33,6 +35,7 @@ modelo:
     R_ba: { sim: "R_{BA}", nombre: "resistencia entre B y A", unidad: Ω, valor: 220 }
     R_dn: { sim: "R_{abajo}", nombre: "resistencia de A a masa", unidad: Ω, valor: 390 }
     n_pb: { sim: "n", nombre: "cargas unidad", valor: 0 }
+    act: { tipo: interruptor, nombre: "terminación activa en los dos extremos", valor: 1 }
     bytes_ec: { sim: "bytes", nombre: "bytes de la trama EtherCAT", valor: 852 }
     n_esc: { sim: "n", nombre: "esclavos", valor: 40 }
     t_paso: { sim: "t_{paso}", nombre: "paso por esclavo", unidad: s, valor: 0.000001 }
@@ -53,6 +56,7 @@ modelo:
     V_up2: { expr: "I_t2*R_up2", nombre: "tensión arriba", unidad: V }
     V_ba2: { expr: "I_t2*Z_pb", sim: "V_{BA}", nombre: "tensión entre B y A", unidad: V, cifras: 3 }
     V_dn2: { expr: "I_t2*R_dn2", nombre: "tensión abajo", unidad: V }
+    V_bp: { expr: "V_5*Z_pb/(2*R_up/(1 + act) + Z_pb)", sim: "V_{BA}", nombre: "tensión entre B y A de PROFIBUS", unidad: V, cifras: 3 }
     t_trama_ec: { expr: "bytes_ec*8/100000000", sim: "t_{trama}", nombre: "trama EtherCAT en la línea", unidad: s, cifras: 3 }
     t_vuelta: { expr: "bytes_ec*8/100000000 + n_esc*t_paso", sim: "t_{vuelta}", nombre: "vuelta de la trama", unidad: s, cifras: 3 }
     t_iol: { expr: "5*11/v_io", sim: "t", nombre: "ciclo IO-Link en COM2", unidad: s, cifras: 3 }
@@ -104,13 +108,13 @@ tarjetas:
     titulo: "La terminación activa de PROFIBUS"
     texto: "Cada extremo lleva 390 Ω de B a 5 V, 220 Ω entre B y A y 390 Ω de A a masa. Sin estaciones, ¿qué tensión hay entre B y A?"
     libro: [220, 221]
-    fijar: { V_5: 5, R_up: 390, R_ba: 220, R_dn: 390 }
+    fijar: { V_5: 5, R_up: 390, R_ba: 220, R_dn: 390, n_pb: 0, act: 1 }
     widget:
       tipo: circuito
-      esquema: serie
-      piezas: { fuente: V_5, r1: R_up, r2: R_ba, r3: R_dn }
-      lectura: { valor: V_ba1, rotulo: "V_{BA} en reposo" }
-      mide: { corriente: I_t1, v1: V_up1, v2: V_ba1, v3: V_dn1 }
+      esquema: rs485
+      piezas: { vcc: V_5, rp: R_up, rt: R_ba, n: n_pb, activa: act }
+      lectura: { valor: V_bp, rotulo: "V_{BA} en reposo" }
+      mide: { vba: V_bp }
       ocultar: true
       mandos: []
     simular:
@@ -118,7 +122,7 @@ tarjetas:
       unidad: V
       tol: 0.03
       rotulo: "Tensión entre B y A, V_{BA}"
-      medida: v2
+      medida: vba
       errores:
         - { expr: "V_mal", texto: "Ha dejado fuera la resistencia de A a masa: la corriente pasa por las tres, 1 000 Ω en total." }
         - { expr: "V_5", texto: "Esos son los 5 V de la alimentación; entre B y A solo cae la parte de los 220 Ω." }
@@ -126,28 +130,28 @@ tarjetas:
     escalera: ["Las tres resistencias están en serie entre 5 V y masa."]
     solucion: "5 × 220 / 1 000 = 1,1 V."
     comprobar:
-      - { V_ba1: 1.1, V_mal: 1.80 }
+      - { V_ba1: 1.1, V_mal: 1.80, V_bp: 1.1 }
 
   - id: explore-cargas-profibus
     tipo: explorar
     titulo: "Con las estaciones"
     texto: "Las dos terminaciones en paralelo son el mismo divisor con la mitad de cada resistencia. Añada cargas unidad y mire V_{BA}."
     libro: [221]
-    fijar: { V_5: 5, R_up: 390, R_ba: 220, R_dn: 390 }
+    fijar: { V_5: 5, R_up: 390, R_ba: 220, R_dn: 390, act: 1 }
     widget:
       tipo: circuito
-      esquema: serie
-      piezas: { fuente: V_5, r1: R_up2, r2: Z_pb, r3: R_dn2 }
-      lectura: { valor: V_ba2, rotulo: "V_{BA} en reposo" }
+      esquema: rs485
+      piezas: { vcc: V_5, rp: R_up, rt: R_ba, n: n_pb, activa: act }
+      lectura: { valor: V_bp, rotulo: "V_{BA} en reposo" }
       corriente: I_t2
-      mide: { corriente: I_t2, v1: V_up2, v2: V_ba2, v3: V_dn2 }
+      mide: { vba: V_bp }
       mandos:
         - { valor: n_pb, lista: [0, 8, 16, 32], rotulo: "Cargas unidad" }
     requiere: { mover: [n_pb] }
     nota: "Terminación y polarización van juntas."
     comprobar:
-      - { V_ba2: 1.1 }
-      - { con: { n_pb: 32 }, V_ba2: 0.99, tol: 0.005 }
+      - { V_ba2: 1.1, V_bp: 1.1 }
+      - { con: { n_pb: 32 }, V_ba2: 0.99, V_bp: 0.987, tol: 0.005 }
 
   - id: empareje-acceso
     tipo: pregunta
@@ -316,12 +320,12 @@ tarjetas:
     libro: [241]
     widget:
       tipo: circuito
-      esquema: serie
-      piezas: { fuente: V_5, r1: R_up, r2: R_ba, r3: R_dn }
-      lectura: { valor: V_ba1, rotulo: "V_{BA} esperada" }
-      mide: { corriente: I_t1, v1: V_up1, v2: V_ba1, v3: V_dn1 }
+      esquema: rs485
+      piezas: { vcc: V_5, rp: R_up, rt: R_ba, n: n_pb, activa: act }
+      lectura: { valor: V_bp, rotulo: "V_{BA} esperada" }
+      mide: { vba: V_bp }
       mandos: []
-    fijar: { V_5: 5, R_up: 390, R_ba: 220, R_dn: 390 }
+    fijar: { V_5: 5, R_up: 390, R_ba: 220, R_dn: 390, n_pb: 0, act: 1 }
     opciones:
       - { texto: "La estación que alimenta la terminación está apagada, o el interruptor del conector mal puesto", bien: true, porque: "La terminación toma los 5 V de la estación del extremo: sin ellos no hay 1,1 V." }
       - { texto: "Nada: en reposo debe dar cero", porque: "En reposo la terminación activa deja unos 1,1 V entre B y A." }

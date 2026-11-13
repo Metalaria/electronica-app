@@ -3,7 +3,7 @@
 # - 10.A (12 V, 470 µF, 0,1 Ω de cables y ESR: 120 A y τ = 47 µs; NTC de 5 y 10 Ω: 2,40 y 1,20 A, 33,8 mJ las dos)
 #   en el esquema «carga-rc»; la energía de la NTC, ½·C·V², con un «simular» sin circuito (el esquema no mide energía).
 # - 10.B (7 W, R_jc = 3, radiador de 5 °C/W, 40 °C; R_cs 0,5 con pasta, 1,5 sin ella, unos 4 con mica sin pasta:
-#   99,5, 106,5 y 124 °C) en una gráfica del modelo.
+#   99,5, 106,5 y 124 °C) en el esquema `termica` vivo (1.2, esquemas12d), con las temperaturas en sus nodos.
 # - 10.C (24 V, 4700 µF, 10 Ω: τ = 47 ms, 5τ = 235 ms, 2,4 A, 1,35 J; relé a los 300 ms) en «carga-rc».
 # Pasos prácticos: «simular» la energía de la NTC de 10 Ω (el error típico, que se reparte con R) y «ajuste» del
 # retardo del relé hasta que el condensador pase de 5τ (99,3 % de la carga) antes de cerrar.
@@ -53,6 +53,8 @@ modelo:
     Rt_b: { expr: "Rjc_b + Rcs_b + Rsa_b", sim: "R_{total}", nombre: "resistencia térmica total", unidad: "°C/W" }
     dT_b: { expr: "P_b*Rt_b", sim: "ΔT", nombre: "calentamiento sobre el ambiente", unidad: "°C" }
     Tj_b: { expr: "Ta_b + P_b*(Rjc_b + Rcs_b + Rsa_b)", sim: "T_{j}", nombre: "temperatura de la unión", unidad: "°C" }
+    Tc_b: { expr: "Tj_b - P_b*Rjc_b", sim: "T_{c}", nombre: "temperatura de la cápsula", unidad: "°C" }
+    Ts_b: { expr: "Tc_b - P_b*Rcs_b", sim: "T_{s}", nombre: "temperatura del radiador", unidad: "°C" }
     tau_c: { expr: "R_c*C_c", sim: "τ", nombre: "constante de tiempo", unidad: s }
     I_c: { expr: "V_c/R_c", sim: "I_{pico}", nombre: "pico de arranque", unidad: A }
     E_c: { expr: "C_c*V_c^2/2", sim: "E", nombre: "energía", unidad: J, cifras: 3 }
@@ -177,11 +179,14 @@ tarjetas:
     libro: [263, 266]
     fijar: { Rcs_b: 1.5 }
     widget:
-      tipo: grafica
-      x: { id: r, min: 0, max: 5, unidad: "°C/W", rotulo: "R_{cs}" }
-      y: { min: 80, max: 140, unidad: "°C", rotulo: "T_{j}" }
-      curvas:
-        - { expr: "110", color: tinta, rotulo: "límite de diseño", discontinua: true }
+      tipo: circuito
+      esquema: termica
+      piezas: { p: P_b, ta: Ta_b, rjc: Rjc_b, rcs: Rcs_b, rsa: Rsa_b }
+      lectura: { valor: Tj_b, rotulo: "Unión" }
+      corriente: P_b
+      mide: { tj: Tj_b, tc: Tc_b, ts: Ts_b, flujo: P_b }
+      ocultar: true
+      mandos: []
     estimar:
       objetivo: "Tj_b"
       unidad: "°C"
@@ -209,14 +214,14 @@ tarjetas:
     libro: [268]
     fijar: { Rcs_b: 4 }
     widget:
-      tipo: grafica
-      x: { id: r, min: 0, max: 1, unidad: "°C/W", rotulo: "R_{cs}" }
-      y: { min: 80, max: 140, unidad: "°C", rotulo: "T_{j}" }
-      curvas:
-        - { expr: "Ta_b + P_b*(Rjc_b + r + Rsa_b)", color: naranja, rotulo: "T_{j}" }
-        - { expr: "110", color: tinta, rotulo: "límite de diseño", discontinua: true }
+      tipo: circuito
+      esquema: termica
+      piezas: { p: P_b, ta: Ta_b, rjc: Rjc_b, rcs: Rcs_b, rsa: Rsa_b }
       lectura: { valor: Tj_b, rotulo: "Unión" }
+      corriente: P_b
+      mide: { tj: Tj_b, tc: Tc_b, ts: Ts_b, flujo: P_b }
       ocultar: true
+      mandos: []
     opciones:
       - texto: "No: la unión sube a unos 124 °C"
         bien: true
@@ -237,12 +242,16 @@ tarjetas:
     titulo: "Siete grados"
     texto: "Sin pasta la unión solo sube siete grados. ¿Por qué importa?"
     libro: [267, 270]
+    inicio: { Rcs_b: 1.5 }
     widget:
-      tipo: grafica
-      x: { id: r, min: 0, max: 5, unidad: "°C/W", rotulo: "R_{cs}" }
-      y: { min: 80, max: 140, unidad: "°C", rotulo: "T_{j}" }
-      curvas:
-        - { expr: "Ta_b + P_b*(Rjc_b + r + Rsa_b)", color: naranja, rotulo: "T_{j}" }
+      tipo: circuito
+      esquema: termica
+      piezas: { p: P_b, ta: Ta_b, rjc: Rjc_b, rcs: Rcs_b, rsa: Rsa_b }
+      lectura: { valor: Tj_b, rotulo: "Unión" }
+      corriente: P_b
+      mide: { tj: Tj_b, tc: Tc_b, ts: Ts_b, flujo: P_b }
+      mandos:
+        - { valor: Rcs_b, lista: [0.5, 1.5, 4], nombres: ["con pasta", "sin pasta", "mica sin pasta"], rotulo: "Montaje, R_{cs}" }
     opciones:
       - texto: "Con Arrhenius, esos 7 °C acortan la vida en torno a un 33 %"
         bien: true

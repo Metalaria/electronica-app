@@ -4,6 +4,10 @@
 # velocidad), 45.C (SPI por 2 m de cable: ida y vuelta de 20 ns frente a 50 ns) y 45.D (el nodo Modbus: polarización
 # con 26 cargas unidad y 1/8 en el lazo serie R_p–Z_d–R_p de la sección 45.6; el DE; los tiempos). El ejercicio 45.6
 # (bloque 513) da la duración de una trama a 9 600 bit/s.
+# 1.2 (esquemas12d): el esquema `rs485` en simule-nodo (45.D) y en dos tarjetas nuevas de los ejercicios del bloque
+# 513: ajuste-45-11 (63 transceptores de 1/4 y un maestro, n = 16,75: 244,5 mV con 560 Ω; R_p máxima 691 Ω) y
+# pregunta-45-14 (PROFIBUS con las dos terminaciones activas y 32 cargas: 0,99 V; con un extremo apagado, 0,49 V, que
+# el esquema no dibuja: su terminación sin alimentar sigue en el bus con 0 V, y por eso la tarjeta no la simula).
 leccion: cap44/sec-44.13
 
 libro:
@@ -47,6 +51,13 @@ modelo:
     n_cud: { sim: "n", nombre: "cargas unidad", valor: 26.125 }
     bytes_t: { sim: "bytes", nombre: "bytes de la trama", valor: 8 }
     v_t: { sim: "v", nombre: "velocidad", unidad: "bit/s", valor: 9600 }
+    R_T: { sim: "R_{T}", nombre: "terminación", unidad: Ω, valor: 120 }
+    R_p11: { sim: "R_{p}", nombre: "polarización del ejercicio 45.11", unidad: Ω, valor: 560 }
+    n_11: { sim: "n", nombre: "cargas unidad del ejercicio 45.11", valor: 16.75 }
+    R_pp: { sim: "R_{p}", nombre: "polarización de PROFIBUS", unidad: Ω, valor: 390 }
+    R_tp: { sim: "R_{T}", nombre: "terminación de PROFIBUS", unidad: Ω, valor: 220 }
+    n_pp: { sim: "n", nombre: "cargas unidad en PROFIBUS", valor: 32 }
+    act: { tipo: interruptor, nombre: "terminación activa en los dos extremos", valor: 1 }
   calculos:
     C_i2c: { expr: "(10*n_disp + cm_pista)*1e-12", sim: "C", nombre: "capacidad del bus", unidad: F, cifras: 3 }
     Rmax_i2c: { expr: "3e-7/(0.8473*(10*n_disp + cm_pista)*1e-12)", sim: "R_{máx}", nombre: "pull-up máximo a 400 kHz", unidad: Ω, cifras: 4 }
@@ -58,6 +69,14 @@ modelo:
     V_rd: { expr: "I_d*R_pd", nombre: "tensión en cada resistencia de polarización", unidad: V }
     V_BAd: { expr: "I_d*Z_dd", sim: "V_{BA}", nombre: "tensión diferencial en reposo", unidad: V, cifras: 4 }
     V_680: { expr: "V_d*Z_dd/(2*680 + Z_dd)", nombre: "con 680 Ω", unidad: V, cifras: 4 }
+    V_d1: { expr: "V_d - V_rd", sim: "V_{D1}", nombre: "tensión de D1", unidad: V }
+    I_tt: { expr: "V_BAd/R_T", sim: "I_{T}", nombre: "corriente de una terminación", unidad: A }
+    Z_11: { expr: "1/(2/R_T + n_11/24000)", sim: "Z_{d}", nombre: "bus del ejercicio 45.11 entre hilos", unidad: Ω, cifras: 3 }
+    I_11: { expr: "V_d/(2*R_p11 + Z_11)", sim: "I", nombre: "corriente de polarización", unidad: A }
+    V_11: { expr: "I_11*Z_11", sim: "V_{BA}", nombre: "tensión de reposo del ejercicio 45.11", unidad: V, cifras: 4 }
+    Rmax_11: { expr: "(V_d*Z_11/0.2 - Z_11)/2", sim: "R_{p}", nombre: "mayor polarización para 200 mV", unidad: Ω, cifras: 3 }
+    Z_pp: { expr: "1/(2/R_tp + n_pp/24000)", sim: "Z_{d}", nombre: "bus de PROFIBUS entre hilos", unidad: Ω, cifras: 3 }
+    V_pp: { expr: "V_d*Z_pp/(2*R_pp/(1 + act) + Z_pp)", sim: "V_{BA}", nombre: "tensión de reposo de PROFIBUS", unidad: V, cifras: 3 }
     t_trama: { expr: "bytes_t*11/v_t", sim: "t", nombre: "duración de la trama", unidad: s, cifras: 3 }
     bits_t: { expr: "bytes_t*11", nombre: "bits de la trama", cifras: 2 }
 
@@ -222,13 +241,13 @@ tarjetas:
     titulo: "La polarización existente"
     texto: "El bus tiene 26 cargas unidad más 1/8 y lo polariza el maestro. Con 470 Ω a cada lado y 5 V, ¿cuánto vale V_{BA} en reposo?"
     libro: [496, 503]
-    fijar: { V_d: 5, R_pd: 470, n_cud: 26.125 }
+    fijar: { V_d: 5, R_pd: 470, n_cud: 26.125, R_T: 120 }
     widget:
       tipo: circuito
-      esquema: serie
-      piezas: { fuente: V_d, r1: R_pd, r2: Z_dd, r3: R_pd }
+      esquema: rs485
+      piezas: { vcc: V_d, rp: R_pd, rt: R_T, n: n_cud }
       lectura: { valor: V_BAd, rotulo: "V_{BA} en reposo" }
-      mide: { corriente: I_d, v1: V_rd, v2: V_BAd, v3: V_rd }
+      mide: { vba: V_BAd, vd1: V_d1, vd0: V_rd, ipol: I_d, it: I_tt }
       ocultar: true
       mandos: []
     simular:
@@ -236,7 +255,7 @@ tarjetas:
       unidad: V
       tol: 0.03
       rotulo: "Tensión en reposo, V_{BA}"
-      medida: v2
+      medida: vba
       errores:
         - { expr: "V_680", texto: "Esos 198,8 mV son con los 680 Ω de antes: justo por debajo de 200 mV." }
     exito: "282,6 mV: con 680 Ω quedaban 198,8 mV, y el bus funcionaba por el margen de los receptores reales, no por diseño."
@@ -295,6 +314,65 @@ tarjetas:
       - { texto: "Responder con los datos igualmente", porque: "La trama puede venir dañada: no debe ejecutarse." }
     escalera: ["¿Qué significa el silencio en Modbus?"]
     solucion: "Ninguna respuesta; el contador de tramas erróneas pasa a 1."
+
+  - id: ajuste-45-11
+    tipo: ajuste
+    titulo: "Ejercicio 45.11: la mayor polarización"
+    texto: "63 transceptores de 1/4 de carga unidad y un maestro: 16,75 cargas unidad, 120 Ω en cada extremo y 5 V. Suba R_{p} hasta el límite de 200 mV."
+    libro: ["cap44#513"]
+    fijar: { V_d: 5, n_11: 16.75, R_T: 120 }
+    inicio: { R_p11: 560 }
+    widget:
+      tipo: circuito
+      esquema: rs485
+      piezas: { vcc: V_d, rp: R_p11, rt: R_T, n: n_11 }
+      lectura: { valor: V_11, rotulo: "V_{BA} en reposo" }
+      corriente: I_11
+      mide: { vba: V_11, ipol: I_11 }
+      mandos:
+        - { valor: R_p11, min: 470, max: 1000, paso: 1, rotulo: "R_{p}" }
+    ajuste:
+      valor: V_11
+      objetivo: 0.2
+      tol: 0.01
+      rotulo: "V_{BA} en reposo"
+      escala: { min: 0.1, max: 0.3 }
+      bajo: "Por debajo de 200 mV: se ha pasado de resistencia. Bájela."
+      alto: "Todavía sobra margen: puede subir R_{p}."
+      dentro: "En el límite de 200 mV."
+    exito: "691 Ω. Con los 560 Ω del enunciado quedan 244,5 mV: las cargas reducidas dejan margen a la polarización."
+    escalera:
+      - "Z_{d} = 57,6 Ω: las 16,75 cargas en paralelo con los 60 Ω de las terminaciones."
+    solucion: "200 mV = 5 × 57,6/(2R_{p} + 57,6): R_{p} = 691 Ω."
+    comprobar:
+      - { V_11: 0.2445, Z_11: 57.6, Rmax_11: 691, tol: 0.003 }
+
+  - id: pregunta-45-14
+    tipo: pregunta
+    titulo: "PROFIBUS con un extremo apagado"
+    texto: "Un PROFIBUS con las dos terminaciones activas y 32 cargas unidad queda a 0,99 V en reposo. ¿Y si se apaga la estación de un extremo?"
+    libro: ["cap44#513"]
+    fijar: { V_d: 5, R_pp: 390, R_tp: 220, n_pp: 32, act: 1 }
+    widget:
+      tipo: circuito
+      esquema: rs485
+      piezas: { vcc: V_d, rp: R_pp, rt: R_tp, n: n_pp, activa: act }
+      lectura: { valor: V_pp, rotulo: "V_{BA} con las dos" }
+      mide: { vba: V_pp }
+      mandos: []
+    opciones:
+      - texto: "Baja a unos 0,49 V, pero sigue por encima de 200 mV: el bus funciona"
+        bien: true
+        porque: "La terminación apagada sigue en el bus con 0 V: la polarización se reduce a la mitad."
+      - texto: "Cae a cero: el reposo queda indefinido"
+        porque: "Eso pasa si se apagan las dos; con una, la otra sigue polarizando."
+      - texto: "No cambia: la otra terminación polariza igual"
+        porque: "La apagada no desaparece: sus resistencias a 0 V tiran del reposo hacia abajo."
+    escalera:
+      - "La terminación del extremo apagado sigue conectada, pero su contacto de 5 V queda a 0 V."
+    solucion: "0,49 V: la polarización baja a la mitad, pero sigue por encima de los 200 mV del umbral."
+    comprobar:
+      - { V_pp: 0.987, Z_pp: 95.9, tol: 0.003 }
 
   - id: estime-trama
     tipo: pregunta

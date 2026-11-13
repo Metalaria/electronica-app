@@ -7,6 +7,11 @@
 #   bloque 141, la apertura del freno a 2 Hz) se cita, no se recalcula.
 # Paso práctico: «simular» (sin circuito) la potencia del motor; el error típico es olvidar el rendimiento de la
 # reductora o aplicarlo al revés.
+# - 1.2 (esquemas12d): «freno» con el esquema `induccion` a 2 Hz y parado (ley V/f con refuerzo de 16,5 V, fn = 50 Hz):
+#   25,1 N·m y 8,03 A del bloque 139 salen con R_Fe proporcional a f (100 Ω a 2 Hz); con R_Fe fija, 25,3 N·m y
+#   8,00 A (duda anotada en revision12/cap56.md). Nuevo «ajuste» del ejercicio 34.3 con el esquema `motor-cc` (180 V,
+#   10 A, 1 500 rpm, 1,2 Ω: 124,0 V para 1 000 rpm con el par nominal); L y J de ese motor son de ejemplo (no
+#   intervienen en continua).
 leccion: cap56/sec-56.8
 
 libro:
@@ -21,6 +26,7 @@ libro:
   143: "la resistencia no puede pasar de 780²/2 870 = 212 Ω"
   146: "El variador no sustituye al freno mecánico ni es una función de seguridad: si falla, la carga cae."
   148: "Al bajar, la potencia es negativa: el motor genera."
+  149: "Un motor de continua de imanes tiene en su placa 180 V, 10 A y 1 500 rpm, y su inducido mide 1,2 Ω"
 
 modelo:
   valores:
@@ -38,7 +44,46 @@ modelo:
     P_fr: { sim: "P", nombre: "potencia de frenado máxima", unidad: W, valor: 2870 }
     E_b: { sim: "E", nombre: "energía de cada bajada", unidad: J, valor: 41000 }
     t_c: { sim: "t", nombre: "una bajada cada", unidad: s, valor: 120 }
+    f_2: { sim: "f", nombre: "frecuencia al abrir el freno", unidad: Hz, valor: 2 }
+    f_n: { sim: "f_{n}", nombre: "frecuencia de las reactancias", unidad: Hz, valor: 50 }
+    R_1: { sim: "R₁", nombre: "resistencia del estátor", unidad: Ω, valor: 1.4 }
+    R_2: { sim: "R₂′", nombre: "resistencia del rotor", unidad: Ω, valor: 1.1 }
+    X_1: { sim: "X₁", nombre: "reactancia del estátor a 50 Hz", unidad: Ω, valor: 2 }
+    X_2: { sim: "X₂′", nombre: "reactancia del rotor a 50 Hz", unidad: Ω, valor: 2 }
+    X_m: { sim: "X_{m}", nombre: "magnetizante a 50 Hz", unidad: Ω, valor: 55 }
+    R_fe: { sim: "R_{Fe}", nombre: "pérdidas del hierro a 50 Hz", unidad: Ω, valor: 2500 }
+    s_0: { sim: "s", nombre: "deslizamiento parado", unidad: "", valor: 1 }
+    V_c: { sim: "V", nombre: "tensión del inducido", unidad: V, valor: 180 }
+    R_c: { sim: "R", nombre: "resistencia del inducido", unidad: Ω, valor: 1.2 }
+    k_c: { sim: "k", nombre: "constante del motor", unidad: "V·s/rad", valor: 1.07 }
+    I_n: { sim: "I_{n}", nombre: "corriente nominal", unidad: A, valor: 10 }
+    L_c: { sim: "L", nombre: "inductancia del inducido (ejemplo)", unidad: H, valor: 0.01 }
+    J_c: { sim: "J", nombre: "inercia (ejemplo)", unidad: "kg·m²", valor: 0.01 }
   calculos:
+    V_2: { expr: "(16.5 + 383.5*f_2/50)/sqrt(3)", sim: "V", nombre: "tensión de fase a 2 Hz con refuerzo", unidad: V }
+    w_2: { expr: "pi*f_2", sim: "ω_{s}", nombre: "velocidad síncrona a 2 Hz", unidad: "rad/s" }
+    rf_2: { expr: "R_fe*f_2/f_n", sim: "R_{Fe}", nombre: "pérdidas del hierro a 2 Hz", unidad: Ω }
+    x1_2: { expr: "X_1*f_2/f_n", sim: "X₁", nombre: "reactancia del estátor a 2 Hz", unidad: Ω }
+    x2_2: { expr: "X_2*f_2/f_n", sim: "X₂′", nombre: "reactancia del rotor a 2 Hz", unidad: Ω }
+    xm_2: { expr: "X_m*f_2/f_n", sim: "X_{m}", nombre: "magnetizante a 2 Hz", unidad: Ω }
+    am_2: { expr: "rf_2*xm_2^2/(rf_2^2 + xm_2^2)", sim: "R_{m}", nombre: "rama paralelo, parte real", unidad: Ω }
+    bm_2: { expr: "rf_2^2*xm_2/(rf_2^2 + xm_2^2)", sim: "X_{m}", nombre: "rama paralelo, parte imaginaria", unidad: Ω }
+    c2_2: { expr: "R_2/s_0", sim: "R₂′/s", nombre: "resistencia del rotor vista", unidad: Ω }
+    pr_2: { expr: "am_2*c2_2 - bm_2*x2_2", sim: "p", nombre: "auxiliar", unidad: "" }
+    pi_2: { expr: "am_2*x2_2 + bm_2*c2_2", sim: "p", nombre: "auxiliar", unidad: "" }
+    qd_2: { expr: "(am_2 + c2_2)^2 + (bm_2 + x2_2)^2", sim: "q", nombre: "auxiliar", unidad: "" }
+    zr_2: { expr: "(pr_2*(am_2 + c2_2) + pi_2*(bm_2 + x2_2))/qd_2", sim: "R_{p}", nombre: "rotor y rama paralelo, parte real", unidad: Ω }
+    zi_2: { expr: "(pi_2*(am_2 + c2_2) - pr_2*(bm_2 + x2_2))/qd_2", sim: "X_{p}", nombre: "rotor y rama paralelo, parte imaginaria", unidad: Ω }
+    I1_2: { expr: "V_2/sqrt((R_1 + zr_2)^2 + (x1_2 + zi_2)^2)", sim: "I₁", nombre: "corriente de línea a 2 Hz", unidad: A, cifras: 3 }
+    E_2: { expr: "I1_2*sqrt(zr_2^2 + zi_2^2)", sim: "E", nombre: "tensión del entrehierro", unidad: V }
+    I2_2: { expr: "E_2/sqrt(c2_2^2 + x2_2^2)", sim: "I₂′", nombre: "corriente del rotor", unidad: A }
+    Im_2: { expr: "E_2/xm_2", sim: "I_{m}", nombre: "corriente magnetizante", unidad: A }
+    T_2: { expr: "3*I2_2^2*c2_2/w_2", sim: "T", nombre: "par a 2 Hz, parado", unidad: "N·m" }
+    T_n3: { expr: "k_c*I_n", sim: "T_{n}", nombre: "par nominal", unidad: "N·m" }
+    w_c: { expr: "(V_c - R_c*I_n)/k_c", sim: "ω", nombre: "velocidad con el par nominal", unidad: "rad/s" }
+    n_c: { expr: "w_c*60/(2*pi)", sim: "n", nombre: "velocidad con el par nominal", unidad: rpm, cifras: 4 }
+    E_c: { expr: "k_c*w_c", sim: "E", nombre: "fuerza electromotriz", unidad: V }
+    w_1000: { expr: "2*pi*1000/60", sim: "ω", nombre: "1 000 rpm", unidad: "rad/s", cifras: 4 }
     P_c: { expr: "m*g*v", sim: "P_{carga}", nombre: "potencia de la carga", unidad: W, cifras: 4 }
     P_mot: { expr: "m*g*v/eta", sim: "P_{motor}", nombre: "potencia en el motor", unidad: W, cifras: 4 }
     P_mal: { expr: "m*g*v*eta", sim: "P", nombre: "con el rendimiento al revés (error)", unidad: W, cifras: 4 }
@@ -208,10 +253,15 @@ tarjetas:
     texto: "El polipasto lleva un freno mecánico de muelle. ¿Cuándo debe abrirlo el variador?"
     libro: [139]
     widget:
-      tipo: figura
-      figura: fig-56.9
-      zonas:
-        - { id: subida, rotulo: "Mitad izquierda", rect: [0, 0, 162, 187] }
+      tipo: circuito
+      esquema: induccion
+      piezas: { fuente: V_2, f: f_2, fn: f_n, r1: R_1, x1: X_1, xm: X_m, rfe: rf_2, x2: X_2, r2: R_2, s: s_0 }
+      lectura: { valor: T_2, rotulo: "Par a 2 Hz, parado" }
+      datos:
+        - { valor: I1_2, rotulo: "Corriente: {{I1_2}}" }
+      corriente: I1_2
+      mide: { linea_amp: I1_2, rotor_amp: I2_2, entrehierro_amp: E_2, magnetizante_amp: Im_2 }
+      mandos: []
     opciones:
       - texto: "Cuando el motor ya da par para sostener la carga: a 2 Hz, 25,1 N·m"
         bien: true
@@ -223,6 +273,8 @@ tarjetas:
     escalera:
       - "¿Qué tiene que poder hacer el motor en el instante en que se suelta el freno?"
     solucion: "Cuando ya sostiene la carga: a 2 Hz da 25,1 N·m, más que 21,5."
+    comprobar:
+      - { T_2: 25.1, I1_2: 8.03, T_sub: 21.5 }
 
   - id: por-que-baja-rapido
     tipo: porque
@@ -325,6 +377,38 @@ tarjetas:
     escalera:
       - "¿Qué pasa con la carga si el variador se apaga?"
     solucion: "No: el freno mecánico sigue haciendo falta."
+
+  - id: ajuste-34-3
+    tipo: ajuste
+    titulo: "Ejercicio 34.3: a 1 000 rpm"
+    texto: "Motor de imanes de 180 V, 10 A y 1 500 rpm, con 1,2 Ω (k = 1,070 V·s/rad). Con el par nominal, baje la tensión hasta 1 000 rpm."
+    libro: [149]
+    fijar: { I_n: 10 }
+    inicio: { V_c: 180 }
+    widget:
+      tipo: circuito
+      esquema: motor-cc
+      piezas: { fuente: V_c, r: R_c, l: L_c, k: k_c, j: J_c, carga: T_n3 }
+      lectura: { valor: n_c, rotulo: "Velocidad" }
+      corriente: I_n
+      mide: { ia: I_n, omega: w_c, par: T_n3, fem: E_c }
+      mandos:
+        - { valor: V_c, min: 60, max: 180, paso: 1, rotulo: "Tensión del inducido" }
+    ajuste:
+      valor: n_c
+      objetivo: 1000
+      tol: 0.01
+      rotulo: "Velocidad"
+      bajo: "Va despacio: suba la tensión."
+      alto: "Va deprisa: baje la tensión."
+      dentro: "La corriente sigue en 10 A: el par nominal no depende de la tensión."
+    exito: "124,0 V: V = k·ω + R·I = 1,070 × 104,7 + 12. La caída en R no baja con la velocidad."
+    escalera:
+      - "Con el par nominal la corriente es 10 A: la caída en R son 12 V."
+    solucion: "1,070 × 104,7 + 12 = 124,0 V."
+    comprobar:
+      - { con: { V_c: 124 }, n_c: 999.6, w_1000: 104.7, tol: 0.002 }
+      - { T_n3: 10.7, n_c: 1500, tol: 0.003 }
 
   - id: resumen
     tipo: resumen

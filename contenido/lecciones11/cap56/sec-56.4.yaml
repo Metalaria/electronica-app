@@ -6,6 +6,10 @@
 #   48,54 N·m y 49,84 A parado, 86,51 N·m a 1 104 rpm, 26,61 N·m y 7,887 A en el nominal (s = 3,39 %).
 # - En estrella (arranque estrella-triángulo) cada devanado recibe 1/√3 de la tensión: 16,2 N·m y 16,6 A (bloque 76).
 # Paso práctico: «simular» (sin circuito) el ejercicio 56.5, las pérdidas del cobre del rotor (s·P_ent).
+# - 1.2 (esquemas12d): el esquema `induccion` (figura 34.5 por fase) en la nueva explore-equivalente, con las cifras
+#   del bloque 72 comprobadas desde la corriente del rotor (T = 3·I₂′²·(R₂′/s)/ω_s); el arrancador suave del bloque 76
+#   con el esquema `tiristor` (un TRIAC = dos tiristores en antiparalelo) en el nuevo ajuste-suave: la tensión eficaz
+#   a la mitad. La carga del dibujo del TRIAC es una resistencia de ejemplo (100 Ω), no el motor.
 leccion: cap56/sec-56.4
 
 libro:
@@ -38,6 +42,11 @@ modelo:
     T_c: { sim: "T_{carga}", nombre: "par de la cinta, 60 % del nominal", unidad: "N·m", valor: 15.84 }
     n_5: { sim: "n", nombre: "velocidad del ejercicio", unidad: rpm, valor: 1455 }
     P_e5: { sim: "P_{ent}", nombre: "potencia que cruza el entrehierro", unidad: W, valor: 8000 }
+    s_i: { sim: "s", nombre: "deslizamiento", unidad: "", valor: 1 }
+    Vp_t: { sim: "V_{p}", nombre: "pico de la tensión de fase", unidad: V, valor: 325 }
+    R_t: { sim: "R", nombre: "carga resistiva (ejemplo)", unidad: Ω, valor: 100 }
+    al_t: { sim: "α", nombre: "ángulo de disparo", unidad: "°", valor: 30 }
+    tr_t: { tipo: interruptor, nombre: "TRIAC", valor: 1 }
   calculos:
     V_f: { expr: "V_l/sqrt(3)/(1 + (sqrt(3) - 1)*est)", sim: "V", nombre: "tensión de cada devanado", unidad: V }
     n_s: { expr: "120*f_r/p_m", sim: "n_{s}", nombre: "velocidad síncrona", unidad: rpm, cifras: 4 }
@@ -63,6 +72,20 @@ modelo:
     s_5: { expr: "(n_s - n_5)/n_s", sim: "s", nombre: "deslizamiento del ejercicio", unidad: "" }
     Pcu_5: { expr: "s_5*P_e5", sim: "P_{Cu2}", nombre: "pérdidas del cobre del rotor", unidad: W }
     Pmec_5: { expr: "(1 - s_5)*P_e5", sim: "P_{mec}", nombre: "potencia mecánica interna", unidad: W }
+    c2_i: { expr: "R_2/s_i", sim: "R₂′/s", nombre: "resistencia del rotor vista", unidad: Ω }
+    pr_i: { expr: "a_m*c2_i - b_m*X_2", sim: "p", nombre: "auxiliar", unidad: "" }
+    pi_i: { expr: "a_m*X_2 + b_m*c2_i", sim: "p", nombre: "auxiliar", unidad: "" }
+    qd_i: { expr: "(a_m + c2_i)^2 + (b_m + X_2)^2", sim: "q", nombre: "auxiliar", unidad: "" }
+    zr_i: { expr: "(pr_i*(a_m + c2_i) + pi_i*(b_m + X_2))/qd_i", sim: "R_{p}", nombre: "rotor y rama paralelo, parte real", unidad: Ω }
+    zi_i: { expr: "(pi_i*(a_m + c2_i) - pr_i*(b_m + X_2))/qd_i", sim: "X_{p}", nombre: "rotor y rama paralelo, parte imaginaria", unidad: Ω }
+    I1_i: { expr: "V_f/sqrt((R_1 + zr_i)^2 + (X_1 + zi_i)^2)", sim: "I₁", nombre: "corriente de línea", unidad: A }
+    E_i: { expr: "I1_i*sqrt(zr_i^2 + zi_i^2)", sim: "E", nombre: "tensión del entrehierro", unidad: V }
+    I2_i: { expr: "E_i/sqrt(c2_i^2 + X_2^2)", sim: "I₂′", nombre: "corriente del rotor", unidad: A }
+    Im_i: { expr: "E_i/X_m", sim: "I_{m}", nombre: "corriente magnetizante", unidad: A }
+    Ve_i: { expr: "I2_i*R_2*(1 - s_i)/s_i", sim: "V_{eje}", nombre: "tensión en la carga mecánica", unidad: V }
+    T_i: { expr: "3*I2_i^2*c2_i/w_s", sim: "T", nombre: "par electromagnético", unidad: "N·m" }
+    Pr_t: { expr: "100*(1 + tr_t)/2*(1 - al_t/180 + sin(2*al_t*pi/180)/(2*pi))", sim: "P/P_{máx}", nombre: "potencia relativa", unidad: "%", cifras: 3 }
+    Vr_t: { expr: "10*sqrt(Pr_t)", sim: "V_{ef}/V_{red}", nombre: "tensión eficaz relativa", unidad: "%", cifras: 3 }
 
 tarjetas:
   - id: formula-ns
@@ -116,6 +139,28 @@ tarjetas:
       - { con: { n_m: 0 }, T_m: 48.54, I_L: 49.84 }
       - { con: { n_m: 1104 }, T_m: 86.51 }
       - { T_max: 86.51 }
+
+  - id: explore-equivalente
+    tipo: explorar
+    titulo: "El circuito por fase"
+    texto: "La carga mecánica es la resistencia R₂′·(1 − s)/s. Llévela del arranque al nominal: el par sale de la corriente del rotor."
+    libro: [64, 72]
+    fijar: { f_r: 50, p_m: 4, est: 0 }
+    widget:
+      tipo: circuito
+      esquema: induccion
+      piezas: { fuente: V_f, f: f_r, r1: R_1, x1: X_1, xm: X_m, rfe: R_fe, x2: X_2, r2: R_2, s: s_i }
+      lectura: { valor: T_i, rotulo: "Par" }
+      datos:
+        - { valor: I1_i, rotulo: "Corriente de línea: {{I1_i}}" }
+      corriente: I1_i
+      mide: { linea_amp: I1_i, rotor_amp: I2_i, entrehierro_amp: E_i, magnetizante_amp: Im_i, eje_amp: Ve_i }
+      mandos:
+        - { valor: s_i, lista: [1, 0.264, 0.0339], nombres: ["parado", "par máximo", "nominal"], rotulo: "Deslizamiento" }
+    comprobar:
+      - { T_i: 48.54, I1_i: 49.84 }
+      - { con: { s_i: 0.264 }, T_i: 86.51 }
+      - { con: { s_i: 0.0339 }, T_i: 26.61, I1_i: 7.887 }
 
   - id: estime-s
     tipo: pregunta
@@ -274,6 +319,42 @@ tarjetas:
     solucion: "Da 16,2 N·m, el 61 %: no es aceptable para una cinta al 60 %."
     comprobar:
       - { T_m: 16.2, I_L: 16.6, tol: 0.01 }
+
+  - id: ajuste-suave
+    tipo: ajuste
+    titulo: "El arrancador suave"
+    texto: "Un arrancador suave pone tiristores en antiparalelo en cada fase. Retrase el disparo hasta dejar la tensión eficaz en la mitad."
+    libro: [76]
+    fijar: { tr_t: 1 }
+    inicio: { al_t: 30 }
+    widget:
+      tipo: circuito
+      esquema: tiristor
+      piezas: { fuente: Vp_t, f: f_r, r: R_t, alfa: al_t, triac: tr_t }
+      lectura: { valor: Vr_t, rotulo: "Tensión eficaz" }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: -350, max: 350, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "Vp_t*sin(2*pi*f_r*t)", color: tinta, rotulo: "red", discontinua: true, mide: red }
+          - { expr: "Vp_t*sin(2*pi*f_r*t)*ceil((360*f_r*t - 180*floor(2*f_r*t) - al_t)/1e9)", color: naranja, rotulo: "v_{fase}", mide: carga }
+      mandos:
+        - { valor: al_t, min: 0, max: 150, paso: 1, rotulo: "Ángulo de disparo, α" }
+    ajuste:
+      valor: Vr_t
+      objetivo: 50
+      tol: 0.04
+      rotulo: "Tensión eficaz"
+      escala: { min: 0, max: 100 }
+      bajo: "Ha recortado de más: adelante el disparo."
+      alto: "Todavía pasa demasiada onda: retrase el disparo."
+      dentro: "La mitad de la tensión: la mitad de la corriente y la cuarta parte del par."
+    exito: "Con la mitad de la tensión, 24,9 A y 12,1 N·m: el par va con el cuadrado de la tensión."
+    escalera:
+      - "El TRIAC recorta el principio de cada semiciclo."
+    solucion: "Un disparo hacia los 114°: la tensión eficaz queda en la mitad."
+    comprobar:
+      - { con: { al_t: 114 }, Vr_t: 49.84, tol: 0.005 }
 
   - id: arranques
     tipo: pregunta

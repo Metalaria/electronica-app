@@ -6,6 +6,11 @@
 # - El coste del snubber RC, P = C·V²·f (bloque 141: 1 nF, 400 V, 100 kHz → 16 W), en una gráfica del modelo con
 #   la frecuencia en escala logarítmica, como la figura 10.11 (fig-10.10).
 # Paso práctico: «simular» (sin circuito) esos 16 W; el error típico es usar ½·C·V²·f.
+# - 1.2 (esquemas12d): el esquema `snubber` (figura 10.11) en la nueva explore-oscila: 400 V, 10 A y 100 nH del bloque
+#   137, con C_oss = 250 pF y R_p = 200 Ω de ejemplo (no del libro): 585 V de pico sin snubber. Con el snubber
+#   conectado el circuito es de tercer orden y no tiene curva cerrada: no se compara. El nuevo «ajuste» de R_s usa el
+#   criterio del bloque 140 (R = Z₀ = √(L/C_oss) = 20 Ω; C de dos a cuatro veces C_oss: 1 nF) sobre la curva sin
+#   snubber, la que hay que domar.
 leccion: cap10/sec-10.6
 
 libro:
@@ -40,7 +45,19 @@ modelo:
     C_s: { sim: "C", nombre: "condensador del snubber", unidad: F, valor: 1e-9 }
     V_s: { sim: "V", nombre: "tensión conmutada", unidad: V, valor: 400 }
     f_s: { sim: "f", nombre: "frecuencia de conmutación", unidad: Hz, valor: 100000 }
+    Vb_sn: { sim: "V_{B}", nombre: "tensión del bus", unidad: V, valor: 400 }
+    I0_sn: { sim: "I₀", nombre: "corriente cortada", unidad: A, valor: 10 }
+    Co_sn: { sim: "C_{oss}", nombre: "capacidad de salida del transistor (ejemplo)", unidad: F, valor: 250e-12 }
+    Rp_sn: { sim: "R_{p}", nombre: "pérdidas del lazo (ejemplo)", unidad: Ω, valor: 200 }
+    Rs_sn: { sim: "R_{s}", nombre: "resistencia del snubber", unidad: Ω, valor: 60 }
   calculos:
+    t1_sn: { expr: "Vb_sn*Co_sn/I0_sn", sim: "t₁", nombre: "carga de C_oss hasta el bus", unidad: s }
+    Z0_sn: { expr: "sqrt(L_p/Co_sn)", sim: "Z₀", nombre: "impedancia característica", unidad: Ω }
+    al_sn: { expr: "1/(2*Rp_sn*Co_sn)", sim: "α", nombre: "amortiguamiento", unidad: "1/s" }
+    wd_sn: { expr: "sqrt(1/(L_p*Co_sn) - al_sn^2)", sim: "ω_{d}", nombre: "pulsación de la oscilación", unidad: "rad/s" }
+    tp_sn: { expr: "atan(wd_sn/al_sn)/wd_sn", sim: "t_{p}", nombre: "del bus al pico", unidad: s }
+    Vpk_sn: { expr: "Vb_sn + I0_sn/(Co_sn*wd_sn)*exp(-al_sn*tp_sn)*sin(wd_sn*tp_sn)", sim: "V_{pico}", nombre: "pico del drenador sin snubber", unidad: V }
+    Cr_sn: { expr: "C_s/Co_sn", sim: "C_{s}/C_{oss}", nombre: "condensador del snubber frente a C_oss", unidad: "" }
     b_i: { expr: "k_i*(Vg_i - Vth_i) + 1/R_i", sim: "b", nombre: "coeficiente", unidad: "" }
     Von_i: { expr: "(b_i - sqrt(b_i^2 - 2*k_i*VDD_i/R_i))/k_i", sim: "V_{DS(on)}", nombre: "V_DS conduciendo", unidad: V }
     I0_i: { expr: "(VDD_i - Von_i)/R_i", sim: "I_{0}", nombre: "corriente al apagar", unidad: A }
@@ -99,6 +116,28 @@ tarjetas:
     solucion: "100 nH × 10 A / 50 ns = 20 V."
     comprobar:
       - { V_pico: 20 }
+
+  - id: explore-oscila
+    tipo: explorar
+    titulo: "Oscila al abrir"
+    texto: "Al abrirse el transistor, la corriente carga su capacidad de salida y después oscila con la inductancia del lazo. Cambie la corriente cortada."
+    libro: [137]
+    fijar: { L_p: 100e-9 }
+    widget:
+      tipo: circuito
+      esquema: snubber
+      piezas: { vb: Vb_sn, i0: I0_sn, l: L_p, rp: Rp_sn, coss: Co_sn }
+      lectura: { valor: Vpk_sn, rotulo: "Pico del drenador" }
+      corriente: I0_sn
+      grafica:
+        x: { id: t, min: 0, max: 3e-7, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 740, unidad: V, rotulo: "v_{DS}" }
+        curvas:
+          - { expr: "(1 - ceil((t - t1_sn)/1e9))*I0_sn*t/Co_sn + ceil((t - t1_sn)/1e9)*(Vb_sn + I0_sn/(Co_sn*wd_sn)*exp(-al_sn*max(0, t - t1_sn))*sin(wd_sn*max(0, t - t1_sn)))", color: naranja, rotulo: "v_{DS}", mide: drenador }
+      mandos:
+        - { valor: I0_sn, min: 2, max: 10, paso: 2, rotulo: "Corriente cortada, I₀" }
+    comprobar:
+      - { Vpk_sn: 585, tol: 0.01 }
 
   - id: antes-despues
     tipo: explorar
@@ -225,6 +264,37 @@ tarjetas:
     escalera:
       - "¿Cuál quita el problema en lugar de tratarlo?"
     solucion: "Acortar el lazo: la mejor. Resistencia de puerta: cuesta pérdidas de conmutación. Sujeción activa: recupera la energía."
+
+  - id: ajuste-rs
+    tipo: ajuste
+    titulo: "Ajuste la resistencia"
+    texto: "Para domar esta oscilación, C_{s} = 1 nF, cuatro veces C_{oss}. Lleve R_{s} a la impedancia característica √(L/C_{oss}) del lazo."
+    libro: [140]
+    fijar: { L_p: 100e-9, I0_sn: 10, C_s: 1e-9, Co_sn: 250e-12 }
+    inicio: { Rs_sn: 60 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 3e-7, unidad: s, rotulo: "t" }
+      y: { min: 0, max: 740, unidad: V, rotulo: "v_{DS}" }
+      curvas:
+          - { expr: "(1 - ceil((t - t1_sn)/1e9))*I0_sn*t/Co_sn + ceil((t - t1_sn)/1e9)*(Vb_sn + I0_sn/(Co_sn*wd_sn)*exp(-al_sn*max(0, t - t1_sn))*sin(wd_sn*max(0, t - t1_sn)))", color: naranja, rotulo: "sin snubber", discontinua: true }
+      mandos:
+        - { valor: Rs_sn, min: 2, max: 100, paso: 2, rotulo: "Resistencia del snubber, R_{s}" }
+    ajuste:
+      valor: Rs_sn
+      objetivo: 20
+      tol: 0.1
+      rotulo: "R_{s}"
+      escala: { min: 0, max: 100 }
+      bajo: "Por debajo de √(L/C_{oss}): el condensador apenas amortigua. Suba R_{s}."
+      alto: "Por encima de √(L/C_{oss}): casi desconecta el condensador. Baje R_{s}."
+      dentro: "R_{s} igual a Z₀: amortiguamiento crítico, el punto de partida del banco."
+    exito: "√(100 nH / 250 pF) = 20 Ω. En el banco se prueba alrededor, mirando la oscilación y la temperatura de R_{s}."
+    escalera:
+      - "Z₀ = √(L/C_{oss}), con 100 nH y 250 pF."
+    solucion: "20 Ω, la impedancia característica del lazo."
+    comprobar:
+      - { Z0_sn: 20, Cr_sn: 4 }
 
   - id: banco-ajuste
     tipo: pregunta

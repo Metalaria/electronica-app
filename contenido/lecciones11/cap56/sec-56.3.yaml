@@ -2,7 +2,9 @@
 # - El motor del libro (24 V, R = 0,5 Ω, k = 0,05 V·s/rad: 4 584 rpm en vacío, 2,4 N·m y 48 A bloqueado; 4 393 y
 #   4 106 rpm con 2 y 5 A) en una gráfica del modelo: la recta par-velocidad ω = V/k − R/k²·T (ecuación del bloque
 #   41), con la tensión del inducido como mando, como la figura 34.3b.
-# - No hay esquema de motor en la app (una fuerza electromotriz que depende de la velocidad): va con gráficas.
+# - 1.2 (esquemas12d): el esquema `motor-cc` vivo (L = 50 µH y J = 10⁻⁴ kg·m² del bloque 47) en explore-recta,
+#   la nueva explore-arranque (46,96 A de pico, bloque 49), ajuste-2000 y frenado (ya gira a 480 rad/s y el puente
+#   baja a 12 V: la velocidad cae despacio hacia 240 rad/s).
 # Pasos prácticos: «dibujar» la recta de 24 V y «ajuste» de la tensión (el PWM del puente) para 2 000 rpm con
 # 0,25 N·m: 13,0 V, el 54,0 % (bloque 51).
 leccion: cap56/sec-56.3
@@ -16,6 +18,7 @@ libro:
   44: "La potencia mecánica es máxima a media velocidad y medio par, V²/(4·R) = 288 W, pero con un rendimiento del 50 %"
   47: "Con una rampa de 0 a 24 V en 0,2 s el rotor sigue a la tensión con una aceleración de 480/0,2 = 2 400 rad/s², que pide J·α = 0,24 N·m: 4,8 A durante toda la rampa"
   48: "47,0 A de pico"
+  49: "en directo, 46,96 A de pico, el 63 % de la velocidad final a los 20,0 ms"
   51: "para 2 000 rpm con 0,25 N·m hacen falta 13,0 V, un ciclo de trabajo del 54,0 %"
   52: "un par de arranque enorme y una velocidad que se dispara en vacío"
   53: "bajar el puente a 12 V da al instante −24 A y −1,2 N·m de par de frenado"
@@ -31,7 +34,17 @@ modelo:
     a_r: { sim: "α", nombre: "aceleración de la rampa", unidad: "rad/s²", valor: 2400 }
     w_0: { sim: "ω", nombre: "velocidad antes de frenar", unidad: "rad/s", valor: 480 }
     V_f: { sim: "V", nombre: "tensión del puente al frenar", unidad: V, valor: 12 }
+    L_r: { sim: "L", nombre: "inductancia del inducido", unidad: H, valor: 50e-6 }
   calculos:
+    E_m: { expr: "k_m*w_m", sim: "E", nombre: "fuerza electromotriz", unidad: V }
+    a_m: { expr: "R_a/L_r", sim: "a", nombre: "R/L", unidad: "1/s" }
+    b_m: { expr: "k_m^2/(L_r*J_r)", sim: "b", nombre: "k²/(L·J)", unidad: "1/s²" }
+    s1_m: { expr: "-a_m/2 + sqrt(a_m^2/4 - b_m)", sim: "s₁", nombre: "polo mecánico", unidad: "1/s" }
+    s2_m: { expr: "-a_m/2 - sqrt(a_m^2/4 - b_m)", sim: "s₂", nombre: "polo eléctrico", unidad: "1/s" }
+    w0_m: { expr: "V_a/k_m", sim: "ω_{0}", nombre: "velocidad en vacío", unidad: "rad/s" }
+    Ip_m: { expr: "V_a/L_r/(s1_m - s2_m)*(exp(s1_m*ln(s2_m/s1_m)/(s1_m - s2_m)) - exp(s2_m*ln(s2_m/s1_m)/(s1_m - s2_m)))", sim: "I_{pico}", nombre: "pico de corriente en directo", unidad: A }
+    dw_f: { expr: "(V_f - k_m*w_0)/k_m", sim: "Δω", nombre: "cambio de velocidad al frenar", unidad: "rad/s" }
+    wf_f: { expr: "V_f/k_m", sim: "ω", nombre: "velocidad final tras frenar", unidad: "rad/s" }
     w_m: { expr: "V_a/k_m - R_a/k_m^2*T_l", sim: "ω", nombre: "velocidad", unidad: "rad/s" }
     n_m: { expr: "w_m*60/(2*pi)", sim: "n", nombre: "velocidad", unidad: rpm, cifras: 4 }
     I_m: { expr: "T_l/k_m", sim: "I", nombre: "corriente", unidad: A }
@@ -50,13 +63,11 @@ tarjetas:
     texto: "Cargue el eje y baje la tensión. La velocidad cae en recta con el par; bajar la tensión desplaza la recta sin cambiar su pendiente."
     libro: [42, 43]
     widget:
-      tipo: grafica
-      x: { id: tx, min: 0, max: 2.5, unidad: "N·m", rotulo: "T" }
-      y: { min: 0, max: 5000, unidad: rpm, rotulo: "n" }
-      curvas:
-        - { expr: "max(0, (V_a/k_m - R_a/k_m^2*tx)*60/(2*pi))", color: naranja, rotulo: "recta" }
-      marcas:
-        - { x: "T_l", y: "n_m", rotulo: "{{n_m}}" }
+      tipo: circuito
+      esquema: motor-cc
+      piezas: { fuente: V_a, r: R_a, l: L_r, k: k_m, j: J_r, carga: T_l }
+      corriente: I_m
+      mide: { ia: I_m, omega: w_m, par: T_l, fem: E_m }
       lectura: { valor: n_m, rotulo: "Velocidad" }
       datos:
         - { valor: I_m, rotulo: "Corriente: {{I_m}}" }
@@ -113,6 +124,29 @@ tarjetas:
     comprobar:
       - { I_b: 48, T_b: 2.4 }
 
+  - id: explore-arranque
+    tipo: explorar
+    titulo: "El arranque en directo"
+    texto: "Parado, E = 0: la corriente sube casi a la de bloqueo antes de que el rotor se mueva, y cae mientras acelera."
+    libro: [47, 48, 49]
+    inicio: { V_a: 24 }
+    widget:
+      tipo: circuito
+      esquema: motor-cc
+      piezas: { fuente: V_a, r: R_a, l: L_r, k: k_m, j: J_r }
+      lectura: { valor: Ip_m, rotulo: "Pico de corriente" }
+      corriente: Ip_m
+      grafica:
+        x: { id: t, min: 0, max: 0.1, unidad: s, rotulo: "t" }
+        y: { min: -5, max: 50, unidad: A, rotulo: "i" }
+        curvas:
+          - { expr: "V_a/L_r/(s1_m - s2_m)*(exp(s1_m*t) - exp(s2_m*t))", color: naranja, rotulo: "i", mide: corriente }
+          - { expr: "(w0_m + w0_m*(s2_m*exp(s1_m*t) - s1_m*exp(s2_m*t))/(s1_m - s2_m))/12", color: azul, rotulo: "ω/12", discontinua: true }
+      mandos:
+        - { valor: V_a, min: 6, max: 24, paso: 1, rotulo: "Tensión del inducido" }
+    comprobar:
+      - { Ip_m: 46.96, tol: 0.002 }
+
   - id: dibuje-recta
     tipo: dibujar
     titulo: "Dibuje la recta de 24 V"
@@ -166,13 +200,11 @@ tarjetas:
     fijar: { T_l: 0.25 }
     inicio: { V_a: 24 }
     widget:
-      tipo: grafica
-      x: { id: tx, min: 0, max: 2.5, unidad: "N·m", rotulo: "T" }
-      y: { min: 0, max: 5000, unidad: rpm, rotulo: "n" }
-      curvas:
-        - { expr: "max(0, (V_a/k_m - R_a/k_m^2*tx)*60/(2*pi))", color: naranja, rotulo: "recta" }
-      marcas:
-        - { x: "T_l", y: "n_m", rotulo: "{{n_m}}" }
+      tipo: circuito
+      esquema: motor-cc
+      piezas: { fuente: V_a, r: R_a, l: L_r, k: k_m, j: J_r, carga: T_l }
+      corriente: I_m
+      mide: { ia: I_m, omega: w_m, par: T_l, fem: E_m }
       lectura: { valor: n_m, rotulo: "Velocidad" }
       datos:
         - { valor: ciclo, rotulo: "Ciclo de trabajo: {{ciclo}}" }
@@ -223,12 +255,17 @@ tarjetas:
     titulo: "Bajar la tensión de golpe"
     texto: "El motor gira en vacío a 480 rad/s (E = 24 V) y el puente baja de golpe a 12 V. ¿Qué pasa en ese instante?"
     libro: [53]
+    fijar: { V_f: 12, w_0: 480 }
     widget:
-      tipo: grafica
-      x: { id: tx, min: 0, max: 2.5, unidad: "N·m", rotulo: "T" }
-      y: { min: 0, max: 5000, unidad: rpm, rotulo: "n" }
-      curvas:
-        - { expr: "max(0, (V_a/k_m - R_a/k_m^2*tx)*60/(2*pi))", color: naranja, rotulo: "recta" }
+      tipo: circuito
+      esquema: motor-cc
+      piezas: { fuente: V_f, r: R_a, l: L_r, k: k_m, j: J_r, w0: w_0 }
+      grafica:
+        x: { id: t, min: 0, max: 0.1, unidad: s, rotulo: "t" }
+        y: { min: 0, max: 500, unidad: "rad/s", rotulo: "ω" }
+        curvas:
+          - { expr: "w_0 + dw_f*(1 + (s2_m*exp(s1_m*t) - s1_m*exp(s2_m*t))/(s1_m - s2_m))", color: azul, rotulo: "ω", mide: velocidad }
+      mandos: []
     opciones:
       - texto: "La corriente se invierte, −24 A, y frena con −1,2 N·m devolviendo energía"
         bien: true
@@ -241,7 +278,7 @@ tarjetas:
       - "I = (V − E)/R."
     solucion: "(12 − 24)/0,5 = −24 A: frena con −1,2 N·m."
     comprobar:
-      - { I_fr: -24, T_fr: -1.2 }
+      - { I_fr: -24, T_fr: -1.2, wf_f: 240 }
 
   - id: tipos
     tipo: pregunta

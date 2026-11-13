@@ -6,6 +6,11 @@
 #   a 25, 10 y 5 Hz, 31,8 N·m a 5 Hz con refuerzo (el libro: 31,9) y 42,9 N·m a 75 Hz (bloques 108–109).
 # Paso práctico: «simular» (sin circuito) el ejercicio 56.7, la velocidad a 30 Hz con 50 rpm de deslizamiento; el
 # error típico es dar la síncrona.
+# - 1.2 (esquemas12d): el esquema `induccion` con `fn` = 50 Hz (X = X_n·f/f_n) en la nueva explore-flujo y el nuevo
+#   ajuste-refuerzo: el punto de trabajo con el par nominal (26,61 N·m, sec-56.4) a cada frecuencia, con R₂′/s de la
+#   raíz mayor de la cuadrática del par sobre el Thévenin. La corriente magnetizante E/X_m mide el flujo: 3,87 A a
+#   50 Hz; con V/f puro cae a frecuencia baja (a 5 Hz ni siquiera llega al par nominal) y el refuerzo de 16,5 V la
+#   devuelve a 3,87 A a 5 Hz, lo que dice el bloque 108. El deslizamiento a 25 Hz sale 55,9 rpm (el libro: 55 rpm).
 leccion: cap56/sec-56.6
 
 libro:
@@ -32,8 +37,12 @@ modelo:
     R_fe: { sim: "R_{Fe}", nombre: "pérdidas del hierro", unidad: Ω, valor: 2500 }
     T_50: { sim: "T_{máx,50}", nombre: "par máximo a 50 Hz", unidad: "N·m", valor: 86.51 }
     n_desl: { sim: "Δn", nombre: "deslizamiento con el par nominal", unidad: rpm, valor: 50 }
+    V_b: { sim: "V_{refuerzo}", nombre: "tensión de refuerzo a 0 Hz", unidad: V, valor: 16.5 }
+    f_n: { sim: "f_{n}", nombre: "frecuencia de las reactancias", unidad: Hz, valor: 50 }
+    T_n: { sim: "T_{n}", nombre: "par nominal", unidad: "N·m", valor: 26.61 }
   calculos:
-    V_v: { expr: "min(400, (1 - bst)*8*f_v + bst*(16.5 + 383.5*f_v/50))", sim: "V", nombre: "tensión de línea", unidad: V, cifras: 4 }
+    V_v: { expr: "min(400, (1 - bst)*8*f_v + bst*(V_b + (400 - V_b)*f_v/50))", sim: "V", nombre: "tensión de línea", unidad: V, cifras: 4 }
+    V_ph: { expr: "V_v/sqrt(3)", sim: "V", nombre: "tensión de fase", unidad: V }
     k_f: { expr: "f_v/50", sim: "f/50", nombre: "frecuencia relativa", unidad: "" }
     n_s: { expr: "30*f_v", sim: "n_{s}", nombre: "velocidad síncrona", unidad: rpm, cifras: 4 }
     w_s: { expr: "pi*f_v", sim: "ω_{s}", nombre: "velocidad síncrona", unidad: "rad/s" }
@@ -49,6 +58,21 @@ modelo:
     T_max: { expr: "3*V_th2/(2*w_s*(R_th + sqrt(R_th^2 + (X_th + x_2)^2)))", sim: "T_{máx}", nombre: "par máximo", unidad: "N·m" }
     T_rel: { expr: "100*T_max/T_50", sim: "T_{máx}", nombre: "par máximo frente al de 50 Hz", unidad: "%", cifras: 3 }
     n_30: { expr: "n_s - n_desl", sim: "n", nombre: "velocidad con el par nominal", unidad: rpm, cifras: 3 }
+    K_d: { expr: "3*V_th2/(T_n*w_s)", sim: "K", nombre: "auxiliar", unidad: Ω }
+    B_d: { expr: "2*R_th - K_d", sim: "B", nombre: "auxiliar", unidad: Ω }
+    c2_d: { expr: "(-B_d + sqrt(max(0, B_d^2 - 4*(R_th^2 + (X_th + x_2)^2))))/2", sim: "R₂′/s", nombre: "resistencia del rotor vista con el par nominal", unidad: Ω }
+    s_d: { expr: "R_2/c2_d", sim: "s", nombre: "deslizamiento con el par nominal", unidad: "" }
+    pr_d: { expr: "a_m*c2_d - b_m*x_2", sim: "p", nombre: "auxiliar", unidad: "" }
+    pi_d: { expr: "a_m*x_2 + b_m*c2_d", sim: "p", nombre: "auxiliar", unidad: "" }
+    qd_d: { expr: "(a_m + c2_d)^2 + (b_m + x_2)^2", sim: "q", nombre: "auxiliar", unidad: "" }
+    zr_d: { expr: "(pr_d*(a_m + c2_d) + pi_d*(b_m + x_2))/qd_d", sim: "R_{p}", nombre: "rotor y rama paralelo, parte real", unidad: Ω }
+    zi_d: { expr: "(pi_d*(a_m + c2_d) - pr_d*(b_m + x_2))/qd_d", sim: "X_{p}", nombre: "rotor y rama paralelo, parte imaginaria", unidad: Ω }
+    I1_d: { expr: "V_ph/sqrt((R_1 + zr_d)^2 + (x_1 + zi_d)^2)", sim: "I₁", nombre: "corriente de línea", unidad: A }
+    E_d: { expr: "I1_d*sqrt(zr_d^2 + zi_d^2)", sim: "E", nombre: "tensión del entrehierro", unidad: V }
+    I2_d: { expr: "E_d/sqrt(c2_d^2 + x_2^2)", sim: "I₂′", nombre: "corriente del rotor", unidad: A }
+    Im_d: { expr: "E_d/x_m", sim: "I_{m}", nombre: "corriente magnetizante", unidad: A, cifras: 3 }
+    T_d: { expr: "3*I2_d^2*c2_d/w_s", sim: "T", nombre: "par con ese deslizamiento", unidad: "N·m" }
+    dn_d: { expr: "s_d*n_s", sim: "Δn", nombre: "deslizamiento con el par nominal", unidad: rpm, cifras: 3 }
 
 tarjetas:
   - id: explore-ley
@@ -152,6 +176,29 @@ tarjetas:
     comprobar:
       - { T_rel: 19.6, T_max: 16.9, V_v: 40, T_50: 86.5 }
 
+  - id: explore-flujo
+    tipo: explorar
+    titulo: "El flujo a cada frecuencia"
+    texto: "Con el par nominal, la corriente magnetizante sigue al flujo. Baje la frecuencia con V/f puro y después ponga el refuerzo."
+    libro: [106, 108]
+    inicio: { f_v: 50, bst: 0 }
+    widget:
+      tipo: circuito
+      esquema: induccion
+      piezas: { fuente: V_ph, f: f_v, fn: f_n, r1: R_1, x1: X_1, xm: X_m, rfe: R_fe, x2: X_2, r2: R_2, s: s_d }
+      lectura: { valor: Im_d, rotulo: "Corriente magnetizante" }
+      corriente: I1_d
+      mide: { linea_amp: I1_d, rotor_amp: I2_d, entrehierro_amp: E_d, magnetizante_amp: Im_d }
+      datos:
+        - { valor: dn_d, rotulo: "Deslizamiento: {{dn_d}}" }
+      mandos:
+        - { valor: f_v, lista: [10, 25, 50, 75], rotulo: "Frecuencia" }
+        - { valor: bst, tipo: interruptor, rotulo: "Refuerzo" }
+    requiere: { mover: [f_v, bst] }
+    comprobar:
+      - { T_d: 26.61, Im_d: 3.873, s_d: 0.0339, tol: 0.003 }
+      - { con: { f_v: 25, bst: 0 }, T_d: 26.61, Im_d: 3.696, tol: 0.003 }
+
   - id: por-que-refuerzo
     tipo: porque
     titulo: "El refuerzo"
@@ -178,6 +225,38 @@ tarjetas:
     solucion: "Compensa la caída en R₁; en exceso, satura en vacío."
     comprobar:
       - { T_max: 31.9, tol: 0.005 }
+
+  - id: ajuste-refuerzo
+    tipo: ajuste
+    titulo: "Ajuste el refuerzo a 5 Hz"
+    texto: "A 5 Hz y con el par nominal, suba el refuerzo hasta que la corriente magnetizante vuelva a la de 50 Hz: el flujo nominal."
+    libro: [108]
+    fijar: { f_v: 5, bst: 1 }
+    inicio: { V_b: 12 }
+    widget:
+      tipo: circuito
+      esquema: induccion
+      piezas: { fuente: V_ph, f: f_v, fn: f_n, r1: R_1, x1: X_1, xm: X_m, rfe: R_fe, x2: X_2, r2: R_2, s: s_d }
+      lectura: { valor: Im_d, rotulo: "Corriente magnetizante" }
+      corriente: I1_d
+      mide: { linea_amp: I1_d, rotor_amp: I2_d, entrehierro_amp: E_d, magnetizante_amp: Im_d }
+      mandos:
+        - { valor: V_b, min: 12, max: 30, paso: 0.5, rotulo: "Refuerzo a 0 Hz" }
+    ajuste:
+      valor: Im_d
+      objetivo: 3.873
+      tol: 0.02
+      rotulo: "Corriente magnetizante"
+      bajo: "Falta flujo: la caída en R₁ se come la tensión. Suba el refuerzo."
+      alto: "Sobra flujo: demasiado refuerzo satura el motor en vacío. Bájelo."
+      dentro: "El flujo nominal a 5 Hz con el par nominal."
+    exito: "Unos 16,5 V, el 4,1 % de la nominal: compensan la caída en R₁, que no depende de la frecuencia."
+    escalera:
+      - "Con 12 V la corriente magnetizante se queda corta: hace falta más tensión."
+    solucion: "16,5 V de refuerzo: 3,87 A de corriente magnetizante, como a 50 Hz."
+    comprobar:
+      - { con: { V_b: 16.5 }, Im_d: 3.873, T_d: 26.61, tol: 0.003 }
+      - { con: { V_b: 16.5, f_v: 50 }, Im_d: 3.873, tol: 0.003 }
 
   - id: simule-30
     tipo: simular

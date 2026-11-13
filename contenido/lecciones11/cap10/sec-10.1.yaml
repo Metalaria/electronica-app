@@ -2,7 +2,8 @@
 # - El control por ángulo de fase en una gráfica del modelo: la senoide de 325 V de pico recortada hasta α en cada
 #   semiciclo; la potencia relativa en una carga resistiva, 1 − α/180 + sen(2α)/(2π), reproduce las cifras de la
 #   figura 10.3 (97, 50 y 20 % con 30, 90 y 120°).
-# - La app no tiene un esquema de tiristor (enclavamiento): el SCR y el TRIAC se ven en la figura 10.2 (fig-20.1).
+# - 1.2 (esquemas12d): el esquema `tiristor` vivo en explore-angulo, estime-90 y la nueva sorpresa-scr (un SCR solo
+#   gobierna el semiciclo positivo: la mitad de la potencia); R = 100 Ω es un valor de ejemplo, no del libro.
 # Paso práctico: «dibujar» la tensión en la carga con disparo a 90° (la forma recortada es la idea de la sección).
 leccion: cap10/sec-10.1
 
@@ -31,8 +32,10 @@ modelo:
     V_p: { sim: "V_{p}", nombre: "pico de la red", unidad: V, valor: 325 }
     f_r: { sim: "f", nombre: "frecuencia de la red", unidad: Hz, valor: 50 }
     alpha: { sim: "α", nombre: "ángulo de disparo", unidad: "°", valor: 30 }
+    R_c: { sim: "R", nombre: "resistencia de la carga (ejemplo)", unidad: Ω, valor: 100 }
+    tr: { tipo: interruptor, nombre: "TRIAC (abierto: SCR)", valor: 1 }
   calculos:
-    P_rel: { expr: "100*(1 - alpha/180 + sin(2*alpha*pi/180)/(2*pi))", sim: "P", nombre: "potencia en la carga, en % de la onda entera", unidad: "%", cifras: 2 }
+    P_rel: { expr: "100*(1 + tr)/2*(1 - alpha/180 + sin(2*alpha*pi/180)/(2*pi))", sim: "P", nombre: "potencia en la carga, en % de la onda entera", unidad: "%", cifras: 3 }
 
 tarjetas:
   - id: explore-angulo
@@ -40,16 +43,20 @@ tarjetas:
     titulo: "Recortar cada semiciclo"
     texto: "Retrase el disparo. La carga solo recibe el resto de cada semiciclo, y con él cae la potencia."
     libro: [18, 51]
+    fijar: { tr: 1 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
-      y: { min: -400, max: 400, unidad: V, rotulo: "v" }
-      curvas:
-        - { expr: "V_p*sin(2*pi*f_r*t)", color: tinta, rotulo: "red", discontinua: true }
-        - { expr: "V_p*sin(2*pi*f_r*t)*ceil((360*f_r*t - 180*floor(2*f_r*t) - alpha)/1e9)", color: naranja, rotulo: "carga" }
+      tipo: circuito
+      esquema: tiristor
+      piezas: { fuente: V_p, f: f_r, r: R_c, alfa: alpha, triac: tr }
       lectura: { valor: P_rel, rotulo: "Potencia en la carga" }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: -400, max: 400, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_p*sin(2*pi*f_r*t)", color: tinta, rotulo: "red", discontinua: true, mide: red }
+          - { expr: "V_p*sin(2*pi*f_r*t)*ceil((360*f_r*t - 180*floor(2*f_r*t) - alpha)/1e9)", color: naranja, rotulo: "carga", mide: carga }
       mandos:
-        - { valor: alpha, min: 0, max: 180, paso: 15, rotulo: "Ángulo de disparo, α" }
+        - { valor: alpha, min: 15, max: 165, paso: 15, rotulo: "Ángulo de disparo, α" }
 
   - id: prediga-pulso
     tipo: predecir
@@ -78,13 +85,17 @@ tarjetas:
     titulo: "Disparo a 90°"
     texto: "Con el disparo a 90°, en mitad de cada semiciclo, ¿qué parte de la potencia de la onda entera llega a una carga resistiva?"
     libro: [18, 51]
-    fijar: { alpha: 90 }
+    fijar: { alpha: 90, tr: 1 }
     widget:
-      tipo: grafica
-      x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
-      y: { min: -400, max: 400, unidad: V, rotulo: "v" }
-      curvas:
-        - { expr: "V_p*sin(2*pi*f_r*t)*ceil((360*f_r*t - 180*floor(2*f_r*t) - alpha)/1e9)", color: naranja, rotulo: "carga" }
+      tipo: circuito
+      esquema: tiristor
+      piezas: { fuente: V_p, f: f_r, r: R_c, alfa: alpha, triac: tr }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: -400, max: 400, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_p*sin(2*pi*f_r*t)*ceil((360*f_r*t - 180*floor(2*f_r*t) - alpha)/1e9)", color: naranja, rotulo: "carga", mide: carga }
+      mandos: []
     estimar:
       objetivo: "P_rel"
       unidad: "%"
@@ -105,6 +116,43 @@ tarjetas:
       - { P_rel: 50 }
       - { con: { alpha: 30 }, P_rel: 97 }
       - { con: { alpha: 120 }, P_rel: 20, tol: 0.03 }
+
+  - id: sorpresa-scr
+    tipo: pregunta
+    titulo: "Con un SCR"
+    texto: "El mismo disparo a 30°, pero con un SCR en lugar del TRIAC. ¿Qué parte de la potencia llega a la carga?"
+    libro: [12, 18]
+    fijar: { alpha: 30, tr: 0 }
+    widget:
+      tipo: circuito
+      esquema: tiristor
+      piezas: { fuente: V_p, f: f_r, r: R_c, alfa: alpha, triac: tr }
+      grafica:
+        x: { id: t, min: 0, max: 0.04, unidad: s, rotulo: "t" }
+        y: { min: -400, max: 400, unidad: V, rotulo: "v" }
+        curvas:
+          - { expr: "V_p*sin(2*pi*f_r*t)", color: tinta, rotulo: "red", discontinua: true, mide: red }
+          - { expr: "V_p*sin(2*pi*f_r*t)*ceil((360*f_r*t - 180*floor(2*f_r*t) - alpha)/1e9)*(1 - (1 - tr)*(floor(2*f_r*t) - 2*floor(f_r*t)))", color: naranja, rotulo: "carga", mide: carga }
+      mandos: []
+    estimar:
+      objetivo: "P_rel"
+      unidad: "%"
+      min: 0
+      max: 100
+      paso: 5
+      inicio: 90
+      tol: 0.05
+      rotulo: "Potencia en la carga"
+    exito: "Un 48,5 %, la mitad del 97 %: el SCR conduce en un solo sentido y deja fuera todo el semiciclo negativo."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 51 }, texto: "Se ha pasado: mire la gráfica, el semiciclo negativo no llega nunca." }
+      - { texto: "Se ha quedado corto: del semiciclo positivo llega casi todo." }
+    escalera:
+      - "Un SCR es medio TRIAC: solo conduce de ánodo a cátodo."
+    solucion: "La mitad del 97 % del TRIAC: un 48,5 %."
+    comprobar:
+      - { P_rel: 48.5 }
+      - { con: { tr: 1 }, P_rel: 97 }
 
   - id: dibuje-carga
     tipo: dibujar

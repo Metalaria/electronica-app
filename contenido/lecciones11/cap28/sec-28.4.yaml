@@ -4,6 +4,9 @@
 # 27.A), en continua con 0,1 V de prueba. La red de desplazamiento de fase es la de condensadores en serie y
 # resistencias a masa (bloque 103): directa, β = 1/(1 − 5/x² − j(6/x − 1/x³)) con x = ωRC, 1/29 en x = 1/√6; con
 # seguidores, (x/√(1 + x²))³ por célula de 60°, 1/8 en x = 1/√3.
+# 1.2 (esquemas12d): las redes vivas, con 1 V de prueba: `wien` en explore-red (medida en f₀, fase nula y 1/3) y
+# `desfase` en prediga-desfase, explore-seguidores y por-que-29 (medida en la frecuencia de 180°: 1/29 directa, 1/8
+# con seguidores), con el eje en hercios (R = 10 kΩ, C = 10 nF del problema del bloque 247).
 leccion: cap28/sec-28.4
 
 libro:
@@ -35,7 +38,13 @@ modelo:
     G_w: { sim: "G", nombre: "ganancia del amplificador", unidad: "", valor: 3 }
     v_0: { sim: "v₀", nombre: "perturbación inicial, relativa", unidad: "", valor: 0.1 }
     s_b: { tipo: interruptor, nombre: "células separadas con seguidores", valor: 0 }
+    V_1: { sim: "v_{in}", nombre: "amplitud de prueba de la red", unidad: V, valor: 1 }
   calculos:
+    B_w: { expr: "V_1/3", sim: "|v_{o}|", nombre: "salida de la red de Wien en f₀", unidad: V }
+    P_w: { expr: "0*R_w", sim: "φ", nombre: "fase de la red de Wien en f₀", unidad: "°" }
+    f_d: { expr: "(1 - s_b)/(2*pi*sqrt(6)*R_w*C_w) + s_b/(2*pi*sqrt(3)*R_w*C_w)", sim: "f_{180}", nombre: "frecuencia de 180°", unidad: Hz, cifras: 4 }
+    B_d: { expr: "V_1*((1 - s_b)/29 + s_b/8)", sim: "|v_{o}|", nombre: "salida de la red a 180°", unidad: V }
+    P_d: { expr: "180 + 0*s_b", sim: "φ", nombre: "fase de la red", unidad: "°" }
     f_0: { expr: "1/(2*pi*R_w*C_w)", sim: "f₀", nombre: "frecuencia de oscilación", unidad: Hz }
     G_a: { expr: "1 + R_2/R_1", sim: "G", nombre: "ganancia del no inversor", unidad: "" }
     V_o: { expr: "G_a*V_e", sim: "v_{o}", nombre: "tensión de salida", unidad: V }
@@ -55,14 +64,18 @@ tarjetas:
     texto: "Una RC en serie y otra en paralelo forman un divisor selectivo. Cambie R y C y mire dónde está su máximo."
     libro: [89, 91]
     widget:
-      tipo: grafica
-      x: { id: nu, min: 10, max: 100000, unidad: Hz, rotulo: "f", escala: log }
-      y: { min: 0, max: 0.4, unidad: "", rotulo: "|β|" }
-      curvas:
-        - { expr: "1/sqrt(9 + (nu/f_0 - f_0/nu)^2)", color: azul, rotulo: "|β| de la red" }
-      marcas:
-        - { x: "f_0", y: "1/3", rotulo: "1/3 y desfase cero" }
+      tipo: circuito
+      esquema: wien
+      piezas: { fuente: V_1, f: f_0, r1: R_w, c1: C_w }
       lectura: { valor: f_0, rotulo: "Frecuencia característica" }
+      mide: { salida_amp: B_w, salida_fase: P_w }
+      grafica:
+        x: { id: nu, min: 10, max: 100000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 0.4, unidad: V, rotulo: "|v_{o}|" }
+        curvas:
+          - { expr: "V_1/sqrt(9 + (nu/f_0 - f_0/nu)^2)", color: azul, rotulo: "|β|·v_{in}", mide: salida_amp }
+        marcas:
+          - { x: "f_0", y: "V_1/3", rotulo: "1/3 y desfase cero" }
       mandos:
         - { valor: R_w, lista: [1000, 10000, 100000], rotulo: "R" }
         - { valor: C_w, lista: [1e-9, 10e-9, 100e-9], rotulo: "C" }
@@ -156,15 +169,15 @@ tarjetas:
     titulo: "Tres células RC"
     texto: "Tres células RC iguales, conectadas directamente, suman 180° a una frecuencia. ¿Qué ganancia necesita el amplificador inversor?"
     libro: [102, 103]
-    fijar: { s_b: 0 }
+    fijar: { s_b: 0, R_w: 10000, C_w: 10e-9 }
     widget:
-      tipo: grafica
-      x: { id: wx, min: 1, max: 10, unidad: "", rotulo: "ωRC", escala: log }
-      y: { min: 0, max: 1, unidad: "", rotulo: "|β|" }
-      curvas:
-        - { expr: "1/sqrt((1 - 5/wx^2)^2 + (6/wx - 1/wx^3)^2)", color: azul, rotulo: "sin seguidores" }
+      tipo: circuito
+      esquema: desfase
+      piezas: { fuente: V_1, f: f_d, r: R_w, c: C_w, separadores: s_b }
+      mide: { salida_amp: B_d, salida_fase: P_d }
       lectura: { valor: A_n, rotulo: "Ganancia necesaria" }
       ocultar: true
+      mandos: []
     opciones:
       - texto: "29"
         bien: true
@@ -185,15 +198,20 @@ tarjetas:
     titulo: "Con y sin seguidores"
     texto: "Separe las células con seguidores y mire cómo cambia la atenuación en el punto de 180°."
     libro: [103]
+    fijar: { R_w: 10000, C_w: 10e-9 }
     widget:
-      tipo: grafica
-      x: { id: wx, min: 0.1, max: 10, unidad: "", rotulo: "ωRC", escala: log }
-      y: { min: 0, max: 1, unidad: "", rotulo: "|β|" }
-      curvas:
-        - { expr: "s_b*(wx/sqrt(1 + wx^2))^3 + (1 - s_b)*1/sqrt((1 - 5/wx^2)^2 + (6/wx - 1/wx^3)^2)", color: azul, rotulo: "|β| de la red" }
-      marcas:
-        - { x: "x_1", y: "b_n", rotulo: "180°" }
+      tipo: circuito
+      esquema: desfase
+      piezas: { fuente: V_1, f: f_d, r: R_w, c: C_w, separadores: s_b }
+      mide: { salida_amp: B_d, salida_fase: P_d }
       lectura: { valor: A_n, rotulo: "Ganancia necesaria" }
+      grafica:
+        x: { id: nu, min: 100, max: 100000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "|v_{o}|" }
+        curvas:
+          - { expr: "V_1*((1 - s_b)/sqrt((1 - 5/(2*pi*nu*R_w*C_w)^2)^2 + (1/(2*pi*nu*R_w*C_w)^3 - 6/(2*pi*nu*R_w*C_w))^2) + s_b*((2*pi*nu*R_w*C_w)/sqrt(1 + (2*pi*nu*R_w*C_w)^2))^3)", color: azul, rotulo: "|v_{o}|", mide: salida_amp }
+        marcas:
+          - { x: "f_d", y: "B_d", rotulo: "180°" }
       mandos:
         - { valor: s_b, tipo: interruptor, rotulo: "Seguidores entre células" }
     requiere: { mover: [s_b] }
@@ -203,14 +221,19 @@ tarjetas:
     titulo: "¿Por qué no 60° cada una?"
     texto: "Sin seguidores, las tres células no aportan 60° cada una, y la red atenúa mucho más. ¿Por qué?"
     libro: [103]
-    fijar: { s_b: 0 }
+    fijar: { s_b: 0, R_w: 10000, C_w: 10e-9 }
     widget:
-      tipo: grafica
-      x: { id: wx, min: 0.1, max: 10, unidad: "", rotulo: "ωRC", escala: log }
-      y: { min: 0, max: 1, unidad: "", rotulo: "|β|" }
-      curvas:
-        - { expr: "1/sqrt((1 - 5/wx^2)^2 + (6/wx - 1/wx^3)^2)", color: azul, rotulo: "sin seguidores" }
-        - { expr: "(wx/sqrt(1 + wx^2))^3", color: naranja, rotulo: "con seguidores", discontinua: true }
+      tipo: circuito
+      esquema: desfase
+      piezas: { fuente: V_1, f: f_d, r: R_w, c: C_w, separadores: s_b }
+      mide: { salida_amp: B_d, salida_fase: P_d }
+      grafica:
+        x: { id: nu, min: 100, max: 100000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "|v_{o}|" }
+        curvas:
+          - { expr: "V_1/sqrt((1 - 5/(2*pi*nu*R_w*C_w)^2)^2 + (1/(2*pi*nu*R_w*C_w)^3 - 6/(2*pi*nu*R_w*C_w))^2)", color: azul, rotulo: "sin seguidores", mide: salida_amp }
+          - { expr: "V_1*((2*pi*nu*R_w*C_w)/sqrt(1 + (2*pi*nu*R_w*C_w)^2))^3", color: naranja, rotulo: "con seguidores", discontinua: true }
+      mandos: []
     opciones:
       - texto: "Cada célula carga a la anterior: aportan unos 56°, 56° y 68°"
         bien: true
