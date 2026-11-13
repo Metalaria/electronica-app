@@ -7,7 +7,8 @@
   import type { Texto } from '../../tipos';
   let { c, x, y, ao = false, ancla = 'start' }: { c: ContextoDibujo; x: number; y: number; ao?: boolean; ancla?: 'start' | 'middle' | 'end' } = $props();
   const lineas = $derived.by((): (string | Texto)[] => {
-    if (!ao) return c.tiene('amplitud') && c.tiene('f') && c.p('f') > 0 ? [`${c.val('amplitud')} pico`, c.val('f'), ...(c.p('entrada') ? [`+ ${c.val('entrada')}`] : [])] : [c.val('entrada')];
+    // (esquemas12c: and the «noise» it carries)
+    if (!ao) return c.tiene('amplitud') && c.tiene('f') && c.p('f') > 0 ? [`${c.val('amplitud')} pico`, c.val('f'), ...(c.p('entrada') ? [`+ ${c.val('entrada')}`] : []), ...(c.tiene('ruido') && c.p('ruido') ? [`ruido ${c.val('ruido')}`] : [])] : [c.val('entrada')];
     const out: (string | Texto)[] = [];
     if (c.tiene('vsat')) out.push(c.tiene('vsatneg') ? `${c.val('vsatneg')} … ${c.val('vsat')}` : `± ${c.val('vsat')}`);
     if (c.tiene('a0')) out.push([{ t: 'txt', s: 'A' }, { t: 'sub', s: '0' }, { t: 'txt', s: ` ${c.val('a0')}` }]);

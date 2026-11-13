@@ -1,6 +1,9 @@
 // esquemas12 (1.2): the schematics the lesson authors asked for (mosfet, the op-amp family, regulador-lineal,
 // ne555-astable, muestreo-retencion, rlc-escalon, trifasica, transformador-real and the |Z| of rlc-serie; esquemas12b:
-// mosfet with an inductive load, rectificador-toma-media and lm3914), in Node with
+// mosfet with an inductive load, rectificador-toma-media and lm3914; esquemas12c: fuente-controlada inverted,
+// bjt-interruptor with a LED and iref, LED/diode reversed, the ramp-and-noise input, comparador-no-inversor,
+// emisor-comun, par-diferencial, etapa-clase-ab, ao-estabilidad, ao-instrumentacion, transimpedancia, mosfet-p,
+// puerta-transmision, mosfet with R_DS(on), lm317, sonda-x10, the divisor's crossing and net label), in Node with
 // the app's ngspice: each one's netlist against the book's analytic values (DC, AC and transient), the op-amp model
 // (A₀, rails without wind-up, GBW, slew rate, the DC region the living circuit solves), the power meter the living
 // circuit skips, and the edge tolerance of the comparison. The catalogue lesson (lecciones11-esquemas.spec.ts) checks
@@ -363,4 +366,175 @@ test('la comparación admite un borde a ± dx del salto del modelo, y nada más'
   expect(c()).toHaveLength(1);
   expect(c(0.003)).toEqual([]);
   expect(c(0.001)).toHaveLength(1);
+});
+
+// ------------------------------------------------------------------------------------------------ esquemas12c
+test.describe('esquemas12c frente a ngspice', () => {
+  test.setTimeout(180_000);
+  // the book's V_T at 300 K, the simulator's temperature (comun.ts VT_LIBRO)
+  const VT = (1.380649e-23 * 300) / 1.602176634e-19;
+
+  test('fuente-controlada invertida, bjt-interruptor con LED e iref, LED y diodo al revés', async () => {
+    // the common emitter's sign: v_o = −g_m·v·(r_o ∥ R_L)
+    let m = await op('fuente-controlada', { control: 0.01, gm: 0.04, ro: 100000, carga: 4700, invierte: 1 });
+    cerca(m('v(s)'), -0.04 * 0.01 * ((100000 * 4700) / 104700), 1e-9);
+    m = await op('fuente-controlada', { control: 0.01, av: 50, carga: 4700, invierte: 1 });
+    cerca(m('v(s)'), -0.5, 1e-9);
+    // Práctica 8 (sección 22.8): saturated, the LED drops about 2 V at 8,5 mA and V_CE(sat) is small
+    m = await op('bjt-interruptor', { vcc: 5, rc: 330, vf: 2, entrada: 5, rb: 10000, beta: 100, vbe: 0.7, vcesat: 0.2 });
+    const vled = m('v(k)') - m('v(c)');
+    expect(Math.abs(vled - 2)).toBeLessThan(0.1);
+    expect(m('v(c)')).toBeLessThan(0.2);
+    cerca(m('i(vcm)'), (5 - vled - m('v(c)')) / 330, 1e-6);
+    // a power switch (sección 26.3): V_BE = 0,7 V at iref = 0,5 A, so within ± 0,1 V at 30 mA of base current
+    m = await op('bjt-interruptor', { vcc: 12, rc: 24, entrada: 5, rb: 150, beta: 25, vbe: 0.7, iref: 0.5 });
+    expect(Math.abs(m('v(b)') - 0.7)).toBeLessThan(0.1);
+    // the default (1 mA) would have been 0,1 V above at those currents
+    const sin = await op('bjt-interruptor', { vcc: 12, rc: 24, entrada: 5, rb: 150, beta: 25, vbe: 0.7 });
+    expect(sin('v(b)') - 0.7).toBeGreaterThan(0.1);
+    // reversed: it blocks, the whole source across it
+    m = await op('led', { fuente: 5, r: 150, vf: 2, reves: 1 });
+    expect(Math.abs(m('i(vmed)'))).toBeLessThan(1e-9);
+    cerca(m('v(an)'), 5, 1e-6);
+    cerca(m('v(zrev)'), 2, 0);
+    m = await op('diodo', { fuente: 5, r: 150, vd: 0.7, reves: 0 });
+    expect(m('i(vmed)')).toBeGreaterThan(0.025);
+  });
+
+  test('entrada en rampa con ruido: e − A + 2A·(f·t − ⌊f·t⌋) más las tres senoidales a 37, 61 y 97·f', async () => {
+    const p = { entrada: 0, amplitud: 2, f: 10, forma: 3, ruido: 0.3, r1: 10000, ref: 0.5, vsat: 12 };
+    const s = await sim('comparador-schmitt', 'tran', p, '.tran 1e-5 0.1 0 1e-5 uic');
+    const v = s.v('v(in)');
+    for (const t of [0.013, 0.037, 0.061, 0.088]) {
+      const k = s.eje.findIndex((x) => x >= t);
+      const x = s.eje[k]!;
+      const w = 2 * Math.PI * 10 * x;
+      const esperado = -2 + 4 * (10 * x - Math.floor(10 * x)) + (0.3 * (Math.sin(37 * w) + Math.sin(61 * w) + Math.sin(97 * w))) / 3;
+      cerca(v[k]!, esperado, 0, 2e-3);
+    }
+    // without hysteresis the noise makes the output chatter near the threshold: more than one edge per ramp
+    expect(cruces(s.eje, s.v('v(out)'), 0, false).length).toBeGreaterThan(1);
+  });
+
+  test('comparador-no-inversor (problema 26.C): sube en 2,5975 V y baja en 2,4025 V', async () => {
+    const s = await sim('comparador-no-inversor', 'tran', { entrada: 2.5, amplitud: 0.3, f: 1, forma: 2, r1: 3900, r2: 100000, ref: 2.5, vsat: 5, vsatneg: 0, alto: 0 }, '.tran 1e-4 2 0 1e-4 uic');
+    const vin = s.v('v(in)');
+    const en = (t: number) => vin[s.eje.findIndex((x) => x >= t)]!;
+    const sube = cruces(s.eje, s.v('v(out)'), 2.5, true);
+    const baja = cruces(s.eje, s.v('v(out)'), 2.5, false);
+    expect(sube.length).toBe(2);
+    expect(baja.length).toBe(2);
+    for (const t of sube) cerca(en(t), 2.5975, 0, 2e-3);
+    for (const t of baja) cerca(en(t), 2.4025, 0, 2e-3);
+  });
+
+  test('emisor-comun (sección 6.5 en alterna): I_C del libro, ganancia g_m·(R_C ∥ R_L) con C_E y ≈ (R_C ∥ R_L)/R_E sin él', async () => {
+    const p = { vcc: 12, r1: 47000, r2: 10000, rc: 3300, re: 1000, ce: 100e-6, desvio: 1, beta: 100, vbe: 0.7, fuente: 0.01, f: 100000, carga: 10000 };
+    const m = await op('emisor-comun', p);
+    const ib = (12 * 10 / 57 - 0.7) / ((47000 * 10000) / 57000 + 101 * 1000);
+    // (ngspice's own convergence: some 10⁻⁵)
+    cerca(m('i(vcm)'), 100 * ib, 1e-4);
+    cerca(m('v(b)') - m('v(e)'), 0.7, 0, 1e-4);
+    const gm = (100 * ib) / VT;
+    const rl = (3300 * 10000) / 13300;
+    let ac = await sim('emisor-comun', 'ac', p, '.ac lin 1 100000 100000');
+    // mid-band: |Z_E| of C_E is 16 mΩ, so the gain is g_m·R_L' within 0,1 %
+    cerca(amp(ac, 'v(out)') / 0.01, gm * rl, 1e-3);
+    ac = await sim('emisor-comun', 'ac', { ...p, desvio: 0 }, '.ac lin 1 100000 100000');
+    cerca(amp(ac, 'v(out)') / 0.01, (100 * rl) / (100 / gm + 101 * 1000), 1e-4);
+    // and inverting: 180°
+    const fase = (Math.atan2(ac.im('v(out)')[0]!, ac.v('v(out)')[0]!) * 180) / Math.PI;
+    expect(Math.abs(Math.abs(fase) - 180)).toBeLessThan(0.01);
+  });
+
+  test('par-diferencial: A_d = g_m·R_C/2, A_cm = β·R_C/(r_π + 2(β + 1)·R_EE) y el reparto tanh de la cola', async () => {
+    const p = { vcc: 12, vee: 12, rc: 10000, ree: 10000, beta: 100, vbe: 0.7, v1: 0, v2: 0, ad: 0.01, f: 1000 };
+    const ic = (100 / 101) * ((12 - 0.7) / 10000 / 2);
+    const gm = ic / VT;
+    let ac = await sim('par-diferencial', 'ac', p, '.ac lin 1 1000 1000');
+    cerca(amp(ac, 'v(c2)'), (gm * 10000 * 0.01) / 2, 1e-6);
+    ac = await sim('par-diferencial', 'ac', { ...p, ad: 0, acm: 1 }, '.ac lin 1 1000 1000');
+    const acm = (100 * 10000) / (100 / gm + 2 * 101 * 10000);
+    cerca(amp(ac, 'v(c1)'), acm, 1e-6);
+    // CMRR ≈ g_m·R_EE (figura 44.12)
+    cerca((gm * 10000) / 2 / acm, gm * 10000, 0.02);
+    // an ideal tail: I_C1 = α·I/(1 + e^(−Δv/V_T))
+    const m = await op('par-diferencial', { vcc: 12, vee: 12, rc: 1000, icola: 0.001, beta: 100, vbe: 0.7, v1: 0.03, v2: 0 });
+    cerca(m('i(vcm1)'), ((100 / 101) * 0.001) / (1 + Math.exp(-0.03 / VT)), 1e-6);
+  });
+
+  test('etapa-clase-ab: reposo del libro con V_BB = V_BE·(1 + R₁/R₂), zona muerta de ±V_BE puenteado y la deriva térmica', async () => {
+    const vbb = 0.65 * (1 + 659 / 650);
+    const ie = (vbb - 1.3) / 0.44;
+    const iq = (100 / 101) * ie;
+    const p = { vcc: 35, entrada: -vbb / 2, ib: 0.015, r1: 659, r2: 650, re: 0.22, carga: 8, beta: 100, vbe: 0.65, iref: iq };
+    let m = await op('etapa-clase-ab', p);
+    cerca(m('v(b1)') - m('v(b2)'), vbb, 1e-5);
+    cerca(m('i(vc1)'), iq, 2e-3);
+    expect(Math.abs(m('v(out)'))).toBeLessThan(1e-3);
+    // heated output transistors (−2 mV/°C, 30 °C: 60 mV less) with the multiplier off the heatsink: I_Q climbs
+    m = await op('etapa-clase-ab', { ...p, vbe: 0.59, vbem: 0.65 });
+    expect(m('i(vc1)')).toBeGreaterThan(3 * iq);
+    // bridged (class B): nothing comes out while |v_in| < V_BE
+    const s = await sim('etapa-clase-ab', 'tran', { ...p, entrada: 0, puente: 1, amplitud: 2, f: 1000 }, '.tran 1e-6 1e-3 0 1e-6 uic');
+    const vo = s.v('v(out)');
+    const vin = s.v('v(b2)');
+    for (const [k, x] of vin.entries()) if (Math.abs(x) < 0.45) expect(Math.abs(vo[k]!), `v_in = ${x}`).toBeLessThan(0.02);
+    expect(Math.max(...vo)).toBeGreaterThan(1.1);
+  });
+
+  test('ao-estabilidad (sección 27.8): 10 Hz y 1 MHz, seguidor con 52° de margen y un 16 % de sobreoscilación; C_L con R_o', async () => {
+    const p = { entrada: 0, amplitud: 0.5, f: 10000, forma: 1, gbw: 1e6, polo2: 1e6 };
+    const s = await sim('ao-estabilidad', 'tran', p, '.tran 2e-9 6e-5 0 2e-9 uic');
+    const tras = s.eje.map((t, k) => [t, s.v('v(out)')[k]!] as const).filter(([t]) => t > 5e-5);
+    const minimo = Math.min(...tras.map(([, v]) => v));
+    // the step of −1 V from +0,5: overshoot below −0,5
+    const z = (2 * Math.PI * 1e6 + 2 * Math.PI * 10) / (2 * Math.sqrt(2 * Math.PI * 10 * 2 * Math.PI * 1e6 * 100001));
+    cerca((-0.5 - minimo) / 1, Math.exp((-Math.PI * z) / Math.sqrt(1 - z * z)), 0.01);
+    // the loop gain: |T| = 1 near 786 kHz, phase margin 180° + arg T ≈ 52°
+    const ac = await sim('ao-estabilidad', 'ac', p, '.ac dec 200 1e5 1e7');
+    const mags = ac.eje.map((_, k) => Math.hypot(-ac.v('v(m_l)')[k]!, -(ac.im('v(m_l)')[k] ?? 0)));
+    const k1 = mags.findIndex((x) => x < 1);
+    const fase = (Math.atan2(-(ac.im('v(m_l)')[k1] ?? 0), -ac.v('v(m_l)')[k1]!) * 180) / Math.PI;
+    cerca(180 + fase, 51.8, 0, 0.5);
+    // R_o = 50 Ω with C_L = 1 nF: a third pole at 3,2 MHz (sección 27.10) that takes margin away
+    const ac2 = await sim('ao-estabilidad', 'ac', { ...p, rsal: 50, cl: 1e-9 }, '.ac lin 1 3183098.86 3183098.86');
+    const T = (f: number) => 1e5 / Math.sqrt((1 + (f / 10) ** 2) * (1 + (f / 1e6) ** 2) * 2);
+    cerca(amp(ac2, 'v(m_l)'), T(3183098.86), 1e-3);
+  });
+
+  test('ao-instrumentacion, transimpedancia, mosfet-p, puerta-transmision, R_DS(on), lm317, sonda ×10 y la etiqueta de red', async () => {
+    // G = 1 + 2R/R_G = 101 (sección 27.7), and ε/(2 + ε) of the common mode with a mismatch
+    let m = await op('ao-instrumentacion', { v1: 2.5, v2: 2.51, r: 25000, rg: 500, r3: 10000, r4: 10000 });
+    cerca(m('v(out)'), 1.01, 1e-4);
+    const ac = await sim('ao-instrumentacion', 'ac', { v1: 0, v2: 0, acm: 1, f: 50, r: 25000, rg: 500, r3: 10000, r4: 10000, desajuste: 0.01 }, '.ac lin 1 50 50');
+    cerca(amp(ac, 'v(out)'), 0.01 / 2.01, 1e-4);
+    // transimpedance: −R_f·I
+    m = await op('transimpedancia', { entrada: 1e-5, rf: 100000, cin: 1e-10, gbw: 1e6 });
+    cerca(m('v(out)'), -1, 1e-4);
+    // P channel: |V_GS| = 5 V, 2 mA/V², |V_th| = 2 V: 9 mA in saturation
+    m = await op('mosfet-p', { vdd: 12, rd: 470, entrada: 7, k: 0.002, vth: 2 });
+    cerca(m('i(vmd)'), 0.009, 1e-6);
+    // the transmission gate's R_on with k_n = k_p: 1/(k·(V_DD − 2V_t)) wherever both conduct
+    for (const vin of [1.5, 2.5, 3.5]) {
+      m = await op('puerta-transmision', { vdd: 5, entrada: vin, carga: 10000, kn: 0.001, vtn: 1, kp: 0.001, vtp: 1 });
+      cerca((vin - m('v(o)')) / m('i(vmi)'), 1 / (0.001 * 3), 1e-6);
+    }
+    // R_DS(on) from the table: 12 V, 10 Ω, 36 mΩ
+    m = await op('mosfet', { vdd: 12, rd: 10, entrada: 4.5, k: 20, vth: 2, rdson: 0.036 });
+    cerca(m('v(d)'), (12 * 0.036) / 10.036, 1e-6);
+    // LM317: 1,25·(1 + 720/240) + 50 µA·720 Ω = 5,036 V; in dropout, V_in − 2 V
+    m = await op('lm317', { entrada: 9, r1: 240, r2: 720, iadj: 5e-5, dropout: 2, carga: 50 });
+    cerca(m('v(out)'), 5.036, 1e-4);
+    m = await op('lm317', { entrada: 6, r1: 240, r2: 720, iadj: 5e-5, dropout: 2, carga: 50 });
+    cerca(m('v(out)'), 4, 1e-4);
+    // the ×10 probe compensated (R₁·C₁ = R₂·C₂): a flat 0,1 V right after the edge
+    const s = await sim('sonda-x10', 'tran', { entrada: 1, f: 1000, r1: 9e6, c1: 11e-12, r2: 1e6, c2: 99e-12 }, '.tran 1e-7 4e-4 0 1e-7 uic');
+    for (const [k, t] of s.eje.entries()) if (t > 1e-6) cerca(s.v('v(out)')[k]!, 0.1, 0, 1e-3);
+    // a misspelt net label leaves the load out
+    m = await op('divisor', { fuente: 12, arriba: 10000, abajo: 10000, carga: 10000, etiqueta: 0 });
+    cerca(m('v(salida)'), 6, 1e-6);
+    m = await op('divisor', { fuente: 12, arriba: 10000, abajo: 10000, carga: 10000, union: 1 });
+    cerca(m('v(salida)'), 4, 1e-6);
+  });
 });

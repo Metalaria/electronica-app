@@ -43,6 +43,21 @@ export function corrienteConduccion(c: ContextoNetlist): number {
   return (a + b) / 2;
 }
 
+/**
+ * 1.2 (esquemas12c; secciones 12.3, 12.10, tabla 12.A: 20 / 36 / 70 mΩ at 10 / 4,5 / 3,3 V): with «rdson», the channel
+ * is that resistance while V_GS ≥ V_th (and off below), not the square law — a datasheet's R_DS(on)(V_GS) fits no single
+ * k and V_th, so the model looks it up (a list control with the table's gate voltages) or scales it with temperature
+ * and gives the piece the value. DC: a resistor or nothing, from the gate's voltage (the divider R_G–R_GS, minus R_S's
+ * drop at the on-state current), so the living circuit solves it; transient (a PWM): a voltage-controlled switch.
+ */
+function canal(c: ContextoNetlist): string[] {
+  if (!c.tiene('rdson')) return ['M1 d g s s NM W=1 L=1'];
+  if (c.tiene('f') && c.p('f') > 0) return ['S1 d s g s SWDS', `.model SWDS SW(VT=${num(c.p('vth'))} VH=0 RON=${ng(c.p('rdson'))} ROFF=1e12)`];
+  const vg = c.tiene('rgs') ? (c.p('entrada') * c.p('rgs')) / (c.p('rgs') + c.p('rg')) : c.p('entrada');
+  const ion = c.p('vdd') / (c.p('rd') + c.p('rdson') + c.p('rs'));
+  return vg - ion * c.p('rs') >= c.p('vth') ? [`RDS d s ${ng(c.p('rdson'))}`] : [];
+}
+
 const d: DefinicionEsquema = {
   nombre: 'mosfet',
   titulo: 'MOSFET de canal N con carga en el drenador',
@@ -63,6 +78,7 @@ const d: DefinicionEsquema = {
     bv: { descripcion: 'tensión de avalancha del MOSFET, BV_DSS (V): adonde sube el drenador al apagar sin diodo (obligatoria con «l»)' },
     vf: { descripcion: 'caída del diodo de rueda libre en paralelo con la carga (V; sin ella, no hay diodo)', color: 'verde' },
     rueda: { interruptor: true, descripcion: 'conecta el diodo de rueda libre (sin él, conectado si hay «vf»)', color: 'verde' },
+    rdson: { descripcion: 'canal como una resistencia R_DS(on) cuando V_GS ≥ V_th (Ω; la tabla de la hoja de datos o su valor a una temperatura: el modelo la calcula), en lugar de la ley cuadrática' },
   },
   observables: {
     id: { medida: 'i(vmd)', analisis: 'op', unidad: 'A', descripcion: 'corriente de drenador' },
@@ -116,7 +132,7 @@ const d: DefinicionEsquema = {
       vg,
       `RG in g ${ng(c.p('rg'))}`,
       ...(c.tiene('rgs') ? [`RGS g 0 ${ng(c.p('rgs'))}`] : []),
-      'M1 d g s s NM W=1 L=1',
+      ...canal(c),
       `RS s 0 ${ng(c.p('rs'))}`,
       `.model NM NMOS(LEVEL=1 KP=${ng(c.p('k'))} VTO=${num(c.p('vth'))} LAMBDA=${num(c.p('lambda'))})`,
     ];

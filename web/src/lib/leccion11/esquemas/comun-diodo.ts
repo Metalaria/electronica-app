@@ -33,6 +33,25 @@ export function noLinealDiodo(caida: string, desviacion: number, porque: string,
   return (tiene: (p: string) => boolean): NoLineal[] => (tiene(caida) ? [{ pieza: caida, desviacion, porque, medida: () => medida }] : []);
 }
 
+/**
+ * 1.2 (esquemas12c): a diode or LED mounted the wrong way round (the switch piece «reves», closed): it blocks, so the
+ * book's model is I = 0 and the constant drop does not apply — its deviation is read from a 0 V reference at the drop
+ * itself (`lineasReves`), so the approximation's check passes and the readings are compared as with a resistor.
+ */
+export const alReves = (c: ContextoNetlist): boolean => c.tiene('reves') && c.cerrado('reves');
+
+export const piezaReves = (): Pieza => ({ interruptor: true, descripcion: 'montado al revés (1: el cátodo hacia la fuente; bloquea)', color: 'naranja' });
+
+/** The reference the constant drop's check reads while reversed (see above). */
+export function lineasReves(c: ContextoNetlist, caida: string): string[] {
+  return alReves(c) && c.tiene(caida) ? [`VREVES zrev 0 DC ${c.p(caida)}`] : [];
+}
+
+/** noLinealDiodo with the reversed case: `medida` forward, the reference above reversed. */
+export function noLinealDiodoReves(caida: string, desviacion: number, porque: string, medida: string) {
+  return (tiene: (p: string) => boolean): NoLineal[] => (tiene(caida) ? [{ pieza: caida, desviacion, porque, medida: (c) => (alReves(c) ? 'v(zrev)' : medida) }] : []);
+}
+
 /** «.options» and «.model» lines of the diode `nombre` as the widget models it. */
 export function modeloDiodo(c: ContextoNetlist, nombre: string, caida: string, iRef: number, nCaida: number): string[] {
   if (c.tiene(caida)) return [temperatura(), diodoCaida(nombre, c.p(caida), iRef, nCaida)];

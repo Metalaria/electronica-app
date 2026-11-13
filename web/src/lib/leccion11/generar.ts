@@ -1006,8 +1006,10 @@ export function generarLeccion(fuente: unknown, libro: ContextoLibro, origen = '
       if (conId && (typeof o.id !== 'string' || !ID.test(o.id) || enModelo(o.id))) e(`«${d}.${de}.id»: un nombre que no esté en el modelo («t»)`);
       if (o.escala != null && o.escala !== 'log' && o.escala !== 'lineal') e(`«${d}.${de}.escala»: lineal o log`);
       if (o.escala === 'log' && !(o.min > 0)) e(`«${d}.${de}»: un eje logarítmico empieza por encima de 0`);
-      for (const k of Object.keys(o)) if (!['id', 'min', 'max', 'unidad', 'rotulo', 'escala'].includes(k)) e(`«${d}.${de}.${k}»: clave desconocida`);
-      return { id: conId ? String(o.id) : undefined, min: o.min, max: o.max, unidad: typeof o.unidad === 'string' ? o.unidad : '', rotulo: analizarTexto(String(o.rotulo ?? '')), ...(o.escala === 'log' ? { escala: 'log' as const } : {}) };
+      for (const k of Object.keys(o)) if (!['id', 'min', 'max', 'unidad', 'rotulo', 'escala', 'muestras'].includes(k)) e(`«${d}.${de}.${k}»: clave desconocida`);
+      // (esquemas12c: «muestras», the points a curve is drawn with — a carrier of a hundred cycles needs thousands)
+      if (o.muestras != null && !(typeof o.muestras === 'number' && Number.isInteger(o.muestras) && o.muestras >= 2 && o.muestras <= 4000)) e(`«${d}.${de}.muestras»: un entero de 2 a 4000`);
+      return { id: conId ? String(o.id) : undefined, min: o.min, max: o.max, unidad: typeof o.unidad === 'string' ? o.unidad : '', rotulo: analizarTexto(String(o.rotulo ?? '')), ...(o.escala === 'log' ? { escala: 'log' as const } : {}), ...(o.muestras != null ? { muestras: Number(o.muestras) } : {}) };
     };
     const ex = eje(x.x, 'x', true);
     const ey = eje(x.y, 'y', false);

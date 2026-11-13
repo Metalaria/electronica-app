@@ -15,8 +15,11 @@
   const cerrado = $derived(c.cerrado('interruptor'));
   const vccs = $derived(c.tiene('gm'));
   const k = $derived(vccs ? 'gm' : 'av');
+  // (esquemas12c: «invierte» turns the diamond round — its arrow, or its + terminal, towards ground — and the law
+  // carries the minus sign)
+  const inv = $derived(c.tiene('invierte') && c.cerrado('invierte'));
   // «g_m · v» or «A_v · v»: the source's law
-  const ley = $derived<Texto>([...c.simT(k), { t: 'txt', s: ' · ' }, ...c.simT('control')]);
+  const ley = $derived<Texto>([...(inv ? [{ t: 'txt' as const, s: '−' }] : []), ...c.simT(k), { t: 'txt', s: ' · ' }, ...c.simT('control')]);
 </script>
 
 <Lienzo {descripcion} ancho={470} alto={250}>
@@ -34,7 +37,7 @@
   <circle class="borne" cx="90" cy="230" r="5"></circle>
   <!-- the controlled source and its output resistance (the dashed box) -->
   <rect class="cuerpo" x="112" y="18" width="194" height="226" rx="10" stroke-dasharray="6 5"></rect>
-  <FuenteDep x={150} y1={230} y2={50} tipo={vccs ? 'corriente' : 'tension'} color="naranja" pieza={k} nodos={['0', vccs ? 's' : 'e']} />
+  <FuenteDep x={150} y1={inv ? 50 : 230} y2={inv ? 230 : 50} tipo={vccs ? 'corriente' : 'tension'} color="naranja" pieza={k} nodos={inv ? [vccs ? 's' : 'e', '0'] : ['0', vccs ? 's' : 'e']} />
   <Et x={176} y={136} t={ley} color="naranja" />
   <Et x={176} y={156} t={c.val(k)} color="naranja" peq />
   {#if vccs}

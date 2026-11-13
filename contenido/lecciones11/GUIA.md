@@ -332,7 +332,11 @@ Los `{{c_1}}` del texto siguen dando el número; el nombre solo lo dice el mando
   (`media-onda`, `puente`) se comparan tras cuatro periodos, cuando el rizado ya se ha asentado.
 - **Frente a la frecuencia**: `x: { id: nu, min: 10, max: 100000, unidad: Hz, escala: log }`. El eje `y` también
   admite `escala: log` (una reactancia). Use un `id` que no sea del modelo (`nu`, no `f`).
-- Las marcas son expresiones del modelo (como las asas): defina en `calculos` dónde están (`tau_c`, `v_tau`, `f_c`).
+- Las marcas son expresiones del modelo (como las asas): defina en `calculos` dónde están (`tau_c`, `v_tau`, `f_c`),
+  o escríbalas en la propia marca: el 90 % de una carga es `{ x: "-tau_c*ln(1 - 0.9)", y: "v0 + 0.9*(V - v0)",
+  rotulo: "90 %" }` (tarjeta `carga-rc-marca`).
+- `muestras` en el eje `x` (1.2, esquemas12c): los puntos con que se dibujan las curvas, de 2 a 4000 (sin él, 240). Una
+  portadora de 100 kHz modulada a 1 kHz en 2 ms son 200 ciclos: `muestras: 4000` (tarjeta `grafica-portadora`).
 - `grafica` como widget propio (sin circuito) admite lo mismo salvo `mide`, y además asas que se arrastran:
 
 ```yaml
@@ -366,6 +370,8 @@ extremos de cada mando y en cada `comprobar` con `con`**, y compara:
 | Una lectura en alterna (`…_amp`, `…_fase`, `…_db`) a la frecuencia de la pieza `f` | `.ac` en un punto | 0,1 %; fase 0,1°; 0,01 dB |
 | Una curva frente al tiempo | `.tran` (paso = eje/1000) | 1 % de la altura del eje `y` |
 | Una curva frente a la frecuencia | `.ac` (40 puntos por década) | 0,1 % (+ 0,01 % del eje); fase 0,1°; 0,01 dB |
+
+Una lectura de fase da la vuelta como una curva (1.2): 184,6° y −175,4° son la misma fase.
 
 Siempre con un mínimo de 1 nA y 1 µV: ngspice pone 10⁻¹² S en paralelo con cada unión y un diodo en inversa «pierde»
 picoamperios.
@@ -407,6 +413,12 @@ corrientes van como las dibuja el esquema: §5.4).
 - `divisor` — fuente y dos resistencias en serie; carga opcional en paralelo con la de abajo. Piezas `fuente`,
   `arriba`, `abajo`, `carga`?, `interruptor`? (conecta la carga; sin él, siempre conectada). Mide `salida` (tensión
   del nodo), `corriente` (de la fuente), `abajo` (por la de abajo), `carga` (por la carga; 0 si está desconectada).
+  (1.2, esquemas12c; sección 11.6) Cómo se dibuja la unión de la carga: `union`? (interruptor: la carga cuelga de un
+  cruce con el hilo de salida; cerrado, con punto de unión y conectada; abierto, cruce sin punto, no conectada) o
+  `etiqueta`? (interruptor: la carga va aparte, unida por una **etiqueta de red** con el nombre que es el `sim` de su
+  valor; cerrado, conectada; abierto, la etiqueta de la carga lleva el `sim` de `etiqueta2`?, la mal escrita, y no
+  conecta). Un toque en el cruce o en la etiqueta la cambia. Tarjetas `divisor-union` y `divisor-etiqueta`:
+  `et_dr: { tipo: interruptor, sim: "SALIDA", … }`, `et2_dr: { sim: "SALDA", … }`.
 - `paralelo` — fuente y dos resistencias en paralelo. Piezas `fuente`, `r1`, `r2`. Mide `total`, `i1`, `i2`.
 - `resistencia` — fuente y una sola resistencia (ley de Ohm, potencia). Piezas `fuente`, `r`. Mide `corriente`,
   `tension` (la de la resistencia). Ejemplo: `cap01/sec-1.1` (220 Ω con 12 V).
@@ -1068,6 +1080,10 @@ Piezas: `fuente` tensión de la fuente (V); `r` resistencia en serie (Ω); `vf`?
 
 Mide (`mide`, continua): `corriente` corriente del LED; `vf` tensión del LED; `vr` tensión de la resistencia.
 
+`reves`? (1.2, esquemas12c; secciones 11.2, 12.6): interruptor, el LED montado al revés: se dibuja girado, no luce y
+bloquea (el modelo: corriente 0 y toda la tensión en el LED); un toque en él lo gira. Vale igual en `diodo`. Tarjetas
+`led-reves` y `diodo-reves` (`I = (1 - rev)*max(0, (V - V_F)/R)`).
+
 Aproximación del libro: `vf` ± 0,2 V (LED de caída vf a 20 mA, n = 2: la dispersión de 1,8 a 2,2 V del libro).
 
 ```yaml
@@ -1302,6 +1318,13 @@ Mide (`mide`, continua): `ib` corriente de base; `ic` corriente de colector; `vc
 
 Aproximación del libro: `vbe` ± 0,1 V (transistor de V_BE = vbe a 1 mA: ± 0,1 V entre 20 µA y 50 mA); `vcesat` ± 0,2 V (V_CE(sat) real de 0,05 a 0,15 V con β forzada de 3 a 10).
 
+(1.2, esquemas12c) `vf`? un LED en el colector, en serie con R_C (su caída constante, como `led`: ± 0,2 V de 0,4 mA a
+1 A; luce con la `corriente` del widget), y entonces mide además `vled`; en corte el LED casi no conduce y cae mucho
+menos que V_F: lea las corrientes (sección 22.8, Práctica 8). `iref`? la corriente de colector a la que V_BE vale `vbe`
+(sin ella, 1 mA): la banda de ± 0,1 V va de iref/50 a 50·iref, así que un interruptor de potencia (sección 26.3: 0,5 A
+con 20 a 40 mA de base, `iref: 0.5`) o una base con R_B = 1 MΩ (unos µA: `iref: 0.0001`) se simulan vivos. Tarjetas
+`bjt-interruptor-led` y `bjt-interruptor-potencia`.
+
 ```yaml
 modelo:
   valores:
@@ -1420,6 +1443,9 @@ con `gm`, una fuente de corriente g_m·v con r_o en paralelo (la forma Norton: e
 22.11); con `av`, una fuente de tensión A_v·v con r_o en serie (la forma Thévenin: el amplificador de tensión). Una
 carga en los bornes, que conecta un interruptor. El signo es el dibujado: la corriente (o el borne +) hacia la salida,
 así que v_o = +g_m·v·(r_o ∥ R_L); para una etapa inversora escriba el signo menos en el modelo y una v negativa.
+(1.2, esquemas12c; secciones 43.3, 43.4, 43.6) O `invierte`? (interruptor): el rombo girado, la flecha hacia masa (o el
+borne + abajo), y la salida con su signo: v_o = −g_m·v·(r_o ∥ R_L), el emisor común; `controlada` lee entonces la
+corriente negativa. Tarjeta `fuente-controlada-invertida`: `I_fi = (1 - 2*inv_fi)*gm_fi*v_fi`.
 
 Piezas: `control` tensión de control, v (V); `gm`? transconductancia, g_m (S): VCCS; `av`? ganancia, A_v (V/V): VCVS
 (una de las dos, nunca las dos); `ro` resistencia de salida (Ω; obligatoria con `gm`, opcional con `av`); `carga` (Ω);
@@ -1609,6 +1635,13 @@ senoidal) y `fase`? (°, la senoidal). Cuadrada: `entrada + amplitud` la primera
 `entrada − amplitud` la segunda; triangular: de `entrada − amplitud` en t = 0 a `entrada + amplitud` en T/2. En continua
 cuenta `entrada`; en alterna, `amplitud`.
 
+(1.2, esquemas12c; sección 8.3, la ventana del comparador) `forma: 3`, una **rampa** en diente de sierra:
+`entrada − amplitud + 2·amplitud·(f·t − floor(f·t))`, de `entrada − amplitud` en t = 0 a `entrada + amplitud` en T y
+vuelta de golpe. `ruido`? (V): un «ruido» repetible que se suma a la entrada solo en el transitorio, tres senoidales a
+37, 61 y 97 veces `f` que valen 0 en t = 0: `ruido*(sin(2*pi*37*f*t) + sin(2*pi*61*f*t) + sin(2*pi*97*f*t))/3`;
+escriba la misma suma en el modelo y el simulador comprueba flanco a flanco cómo «rebota» un comparador sin histéresis
+(tarjeta `comparador-rampa-ruido`).
+
 Medidas comunes: `vo` (continua), `entrada` y `salida` (frente al tiempo), `salida_amp`, `salida_fase`, `salida_db`
 (alterna).
 
@@ -1633,6 +1666,12 @@ longitud del canal (1/V: I_D·(1 + λ·V_DS)); `f`? frecuencia del PWM (Hz); `ci
 principio de cada periodo; sin él, 0,5).
 
 Mide (continua): `id`, `vds`, `vgs`, `vs`, `vd`. Frente al tiempo: `corriente` (I_D), `drenador` (v_D), `puerta` (v_G).
+
+**R_DS(on) de tabla** (1.2, esquemas12c; secciones 12.3, 12.10, tabla 12.A): con `rdson`? (Ω) el canal es esa
+resistencia mientras V_GS ≥ V_th (y nada por debajo), sin ley cuadrática: la tabla de la hoja de datos (20, 36 y 70 mΩ
+a 10, 4,5 y 3,3 V) no cabe en una sola k y V_th. El modelo elige el valor (una lista con las filas de la tabla, o la
+resistencia a una temperatura, R_DS(on)·(1 + α·ΔT)) y la pieza lo recibe; `k` se da pero no se usa. Tarjeta
+`mosfet-rdson`: `I = V_DD/(R_L + R_DS(on))`, `V_DS = I·R_DS(on)`.
 
 Sin condicionales, V_DS en las tres regiones (R_S = 0): `V_ov = max(0, V_GS − V_th)`; `b = k·V_ov + 1/R_D`;
 `V_tri = (b − √(max(0, b² − 2·k·V_DD/R_D)))/k`; `V_sat = V_DD − R_D·k·V_ov²/2`; `V_DS = max(V_sat, min(V_ov, V_tri))`.
@@ -2102,6 +2141,177 @@ fuera de los umbrales (un deslizador de 0,06 a 1,26 V en pasos de 0,1 con escalo
 ```
 
 (1,25 V, 1 250 Ω, 6 V y 2 V: 10 mA por LED y 400 mW con los diez; tarjeta `lm3914`.)
+
+### 5.4 ter Los esquemas de 1.2 (esquemas12c): etapas con transistores, estabilidad, instrumentación y más
+
+Cada uno tiene su tarjeta probada en la lección de catálogo de las pruebas (`web/tests/lecciones11-catalogo/cap01/
+sec-1.5.yaml`, con el mismo nombre que el esquema salvo que se diga otro): copie de allí el modelo. «?» marca una pieza
+opcional. **Los transistores de pequeña señal** (`emisor-comun`, `par-diferencial`) caen exactamente `vbe` en el punto
+de trabajo que el esquema calcula con el modelo del libro (V_BE constante, I_C = β·I_B): sus lecturas en continua son
+las del libro y las de alterna las del modelo en π con g_m = I_C/V_T (V_T = 25,85 mV), r_π = β/g_m y sin r_o, al 0,1 %.
+
+#### `emisor-comun` — Etapa en emisor común en alterna (1.2)
+
+Divisor R₁–R₂ en la base, R_C, R_E con su condensador de desvío C_E (un interruptor lo conecta), R_E1? sin desacoplar
+encima, acoplo de entrada C_in desde una fuente senoidal con R_S, acoplo de salida C_out a la carga R_L. Secciones
+43.3 a 43.5 (ganancia, Z_in con resistencia en serie, corte inferior).
+
+Piezas: `vcc`, `r1`, `r2`, `rc`, `re` (Ω), `re1`?, `ce`? (F), `desvio`? (interruptor), `beta`, `vbe`, `fuente` (V de
+pico), `f` (Hz), `fase`?, `rs`?, `cin`? y `cout`? (F; sin ellos, acoplo ideal), `carga`? (Ω).
+
+Mide: continua `ib`, `ic`, `vb`, `ve`, `vc`; frente al tiempo `entrada`, `base`, `colector`, `salida` (tras C_out); en
+alterna `salida_amp|fase|db`, `base_amp|…` y `ientrada_amp|…` (la corriente de la fuente: Z_in = v/i).
+
+Con acoplos ideales, v_o/v_s = −β·(R_C ∥ R_L)/(r_π + (β + 1)·Z_E), Z_E = R_E1 + R_E ∥ 1/(jω·C_E): con a = r_π +
+(β + 1)·R_E1, b = (β + 1)·R_E y τ = R_E·C_E, |A| = β·R_L'·√(1 + (ωτ)²)/√((a + b)² + (ωτ·a)²) y la fase
+180° + atan(ωτ) − atan(ωτ·a/(a + b)). El transitorio empieza en el punto de trabajo y simula antes los periodos que
+asientan los acoplos (diez veces su constante de tiempo, como mucho 400): la curva es la del régimen permanente.
+Tarjetas `emisor-comun` (ganancia frente a la frecuencia, con y sin C_E; Z_in) y `emisor-comun-tiempo` (la salida
+invertida con C_in y C_out). Sin desacoplar no se nota la curvatura del transistor; desacoplado, una entrada de más de
+unos milivoltios ya se deforma (el libro lo dice: la ganancia depende de I_C).
+
+#### `par-diferencial` — Par diferencial con fuente de cola (1.2)
+
+Dos NPN con los emisores unidos a una cola: R_EE a −V_EE o una fuente de corriente I con su r_o?; R_C en cada colector.
+Sección 43.6 y figura 44.12.
+
+Piezas: `vcc`, `vee` (el valor absoluto del raíl negativo), `rc`, `drc`? (R_C2 = R_C·(1 + drc)), `ree` o `icola` (y
+`ro`?), `beta`, `vbe`, `v1`, `v2` (continua de las bases), `ad`? (diferencial: +ad/2 en la base 1 y −ad/2 en la 2),
+`acm`? (modo común) y `f` con ellas.
+
+Mide: continua `ic1`, `ic2`, `icola`, `vc1`, `vc2`, `ve`; frente al tiempo `salida1`, `salida2`, `dif`, `entrada1`,
+`entrada2`; en alterna `salida1_*`, `salida2_*`, `dif_*`, `cola_*`.
+
+v_c2 = +g_m·R_C·ad/2; en modo común v_c = −β·R_C·acm/(r_π + 2(β + 1)·R_EE) (con fuente, r_o; ideal, 0); CMRR =
+(r_π + 2(β + 1)·R_EE)/(2r_π) ≈ g_m·R_EE. Con cola ideal y bases a distinta tensión, el reparto del libro:
+I_C1 = α·I/(1 + e^(−(v₁ − v₂)/V_T)). Tarjetas `par-diferencial`, `par-diferencial-comun`, `par-diferencial-reparto`.
+
+#### `etapa-clase-ab` — Etapa de salida complementaria con multiplicador de V_BE (1.2)
+
+Q₁ (NPN) desde +V y Q₂ (PNP) desde −V como seguidores, R_E en cada emisor hasta la salida y la carga a masa; como en la
+figura 52.12, una fuente de bias I_B de +V a la base de Q₁ y el multiplicador de V_BE (Q₃, R₁ de colector a base y R₂
+de base a emisor) entre las bases; el driver (la etapa anterior, aquí una fuente) fija la base de Q₂. Un interruptor
+`puente` cortocircuita el multiplicador: clase B, la zona muerta de ± V_BE. Secciones 43.7, 51.4, 51.5; averías de
+51.9 y 51.10.
+
+Piezas: `vcc` (±), las de la entrada del operacional (`entrada` el nivel del driver, `amplitud`, `f`, …), `ib` (A),
+`r1`, `r2`, `puente`?, `re`, `re2`? (la de Q₂; sin ella, `re`), `carga`, `beta`, `vbe` (la de los transistores de
+salida a `iref`), `iref`? (A), `vbem`? (la del multiplicador; sin ella, `vbe`), `betam`? (sin ella, 10⁶).
+
+Mide: continua `iq`, `iq2`, `vbb`, `vo`, `il`, `vbe1`; frente al tiempo `entrada` (la base de Q₂), `salida`, `ic1`,
+`ic2`, `carga`.
+
+El modelo del libro: V_BB = V_BE·(1 + R₁/R₂) (Q₃ sin corriente de base: β de 10⁶ salvo `betam`), I_E de reposo
+(V_BB − 2·V_BE)/(R_E1 + R_E2) e I_Q = β/(β + 1)·I_E de colector. **Dé a `iref` la I_Q del modelo (un cálculo)**: los
+transistores caen entonces exactamente `vbe` en reposo y la corriente de reposo del simulador es la del libro (es
+4,5 A/V de sensible a V_BB con 0,22 Ω: unos milivoltios la cambian mucho); con señal se admiten ± 0,1 V de V_BE entre
+iref/50 y 50·iref. Centre la salida con `entrada = −V_BB/2`. Sin la señal, con el multiplicador puenteado, Q₁ no
+conduce y su caída no se comprueba. La curva de salida, con E₁ = v + V_BB/2 − V_BE, E₂ = v − V_BB/2 + V_BE y k = R_E/R_L:
+`max(E₂/(1 + k), min(E₁/(1 + k), (E₁ + E₂)/(2 + k)))` en clase AB y `max(E₁/(1 + k), 0) + min(E₂/(1 + k), 0)` en clase B
+(tarjeta `etapa-clase-ab`). La deriva térmica: los transistores de salida calientes bajan `vbe` 2 mV/°C; el multiplicador
+sobre el disipador baja `vbem` con ellos. Para una avería (§10.4) se rompen `re` o `re2` (abiertas, `1e9`: falta medio
+ciclo), `r1` o `r2` (el bias se dispara o desaparece) y el `puente` (cerrado: cruce); la lección de catálogo aún no tiene
+una tarjeta `averia` con esta etapa, así que compruebe la suya con el generador: en cada estado averiado el modelo debe
+dar el punto de trabajo roto, y un transistor que en reposo deja de conducir solo se compara por sus corrientes.
+
+#### `ao-estabilidad` — Segundo polo, carga capacitiva, R_iso y snubber (1.2)
+
+Seguidor (o no inversor con `r1` y `r2`) con un operacional de dos polos, A(s) = A₀/((1 + s/ω₁)(1 + s/ω₂)), ω₁ =
+2π·GBW/A₀, ω₂ = 2π·polo2, y resistencia de salida R_o, con carga C_L, R_iso entre la salida y C_L (la realimentación
+antes de R_iso, fuera del lazo, o después con `dentro`) y una red snubber R_s–C_s. Lineal (sin raíles ni slew rate).
+Secciones 27.8 a 27.10.
+
+Piezas: las de la entrada (`entrada`, `amplitud`, `f`, `forma`), `r1`?, `r2`?, `a0`?, `gbw`, `polo2`?, `rsal`?, `cl`?,
+`riso`?, `dentro`?, `rsn`? y `csn`?.
+
+Mide: continua `vo`; frente al tiempo `entrada`, `salida` (en la carga), `patilla` (antes de R_iso); en alterna
+`salida_*` y **`lazo_amp|fase|db`, la ganancia de lazo T(jω)**, medida en una copia del circuito con el lazo abierto en
+la entrada − (exacto: no entra corriente). El margen de fase es 180° + arg T donde |T| = 1.
+
+Con dos polos y sin R_o el lazo cerrado es de segundo orden: ω_n² = ω₁ω₂(1 + A₀β), 2ζω_n = ω₁ + ω₂ (β = R₁/(R₁ + R₂));
+10 Hz y 1 MHz con A₀ = 10⁵: un seguidor con ζ = 0,5, 16 % de sobreoscilación y 52° de margen. R_o y C_L añaden a T un
+polo en 1/(2π·R_o·C_L) (50 Ω y 1 nF: 3,2 MHz). Tarjetas `ao-estabilidad` (el escalón de una cuadrada que empieza en
+alto: `G₀·(e + a) − 2a·G₀·ceil((t − t₀)/1e9)·(1 − e^(−ζω_n·τ)·(cos ω_d·τ + ζω_n/ω_d·sen ω_d·τ))`, τ = max(0, t − t₀)) y
+`ao-estabilidad-lazo` (|T| con C_L: `A₀/√((1 + (ω/ω₁)²)(1 + (ω/ω₂)²)(1 + (ω·R_o·C_L)²))`).
+
+#### `ao-instrumentacion` — Amplificador de instrumentación de tres operacionales (1.2)
+
+U₁ y U₂ seguidores con ganancia (R de cada salida a su entrada −, R_G entre las dos entradas −), U₃ diferencial (R₃ y
+R₄, la patilla de referencia). v_o = (1 + 2R/R_G)·(R₄/R₃)·(v₂ − v₁) + V_ref. Operacionales lineales de A₀ = 10⁷ (`a0`?).
+Sección 27.7 y problema 26.A.
+
+Piezas: `v1`, `v2` (continua), `ad`?, `acm`?, `f`?, `r`, `rg`, `r3`, `r4`, `desajuste`? (la R₄ de la referencia,
+R₄·(1 + ε)), `ref`?, `a0`?.
+
+Mide: continua `vo`, `vo1`, `vo2`, `irg`; frente al tiempo `salida`, `entrada1`, `entrada2`; en alterna `salida_*`.
+
+Con desajuste, la ganancia de modo común es R₄(1 + ε)(R₃ + R₄)/(R₃(R₃ + R₄(1 + ε))) − R₄/R₃ (con R₃ = R₄, ε/(2 + ε)).
+Tarjetas `ao-instrumentacion` y `ao-instrumentacion-cm`.
+
+#### `transimpedancia` — Amplificador de transimpedancia (1.2)
+
+Una fuente de corriente (el fotodiodo) con su capacidad C_in a la entrada −, la + a masa, R_f ∥ C_f de realimentación,
+el operacional de la app (§ «El operacional de la app»). Problema 26.B y la fila TIA de 27.3.
+
+Piezas: las de la entrada del operacional **en amperios** (`entrada`, `amplitud`, `f`, `forma`), `rf`, `cf`?, `cin`?,
+las del operacional (`gbw`, `vsat`, …).
+
+Mide: continua `vo`; frente al tiempo `entrada` (la corriente) y `salida`; en alterna `salida_*` (V por la amplitud de
+la corriente). Ideal v_o = −R_f·i; con un polo, v_o/i = −1/(Y_f + (s·C_in + Y_f)/A(s)), Y_f = 1/R_f + s·C_f: con ω = 2πf y
+ω_p = 2π·GBW/A₀, Re = 1/R_f + (1/R_f − ω²(C_in + C_f)/ω_p)/A₀, Im = ω·C_f + (ω(C_in + C_f) + ω/(R_f·ω_p))/A₀ y
+|v_o| = i/√(Re² + Im²); sin bastante C_f, un pico cerca de √(GBW/(2π·R_f·C_in)). No use 0 F en una lista: un condensador
+de 0 se simula como 1 nF; ponga 0,1 pF.
+
+#### `comparador-no-inversor` — Comparador no inversor con histéresis (1.2)
+
+La señal por R₁ a la entrada +, R₂ de la salida a ella, la referencia en la entrada −. Problema 26.C (el termostato:
+3,9 kΩ, 100 kΩ y 2,5 V). Sube cuando la entrada pasa de V_ref·(1 + R₁/R₂) − V_bajo·R₁/R₂ y baja bajo
+V_ref·(1 + R₁/R₂) − V_alto·R₁/R₂ (2,5975 y 2,4025 V con salida de 0 a 5 V). No invierte, a diferencia de
+`comparador-schmitt`.
+
+Piezas: las de la entrada, `r1`, `r2`, `ref`?, `alto`?, las del operacional (`vsat` obligatoria).
+
+Mide: `vo`, `vmas` (continua), `entrada`, `salida`, `mas` (frente al tiempo). Con una triangular de `e ± a`, la salida
+está alta entre las fases φ₁ = (V_alto − e + a)/(4a) y φ₂ = ½ + (e + a − V_bajo)/(4a) de cada periodo (tarjeta
+`comparador-no-inversor`).
+
+#### `mosfet-p` — MOSFET de canal P en el lado alto (1.2)
+
+Fuente en V_DD, la carga del drenador a masa, la puerta desde V_G por R_G?, R_GS? de la puerta a la fuente. La ley
+cuadrática con V_SG = V_DD − V_G y |V_th| (`vth` positiva): conduce con la puerta baja. Sección 8.8.
+
+Piezas: `vdd`, `rd`, `entrada` (V_G respecto de masa), `rg`?, `rgs`?, `k`, `vth`, `lambda`?. Mide (continua): `id`,
+`vsd`, `vsg`, `vd`. Las fórmulas de `mosfet` con V_ov = max(0, V_DD − V_G − |V_th|) y V_SD en lugar de V_DS.
+
+#### `puerta-transmision` — Puerta de transmisión CMOS (1.2)
+
+NMOS y PMOS en paralelo entre la entrada y la salida, carga a masa; `ctrl` (interruptor) pone la puerta del NMOS a V_DD
+y la del PMOS a 0 (conduce) o al revés; un toque en las puertas lo cambia. Sección 8.8 y figura 44.17.
+
+Piezas: `vdd`, `entrada`, `carga`, `kn`, `vtn`, `kp`, `vtp` (valor absoluto), `ctrl`?. Mide (continua): `vout`,
+`corriente`, `caida`. Con k_n = k_p y los dos conduciendo, los términos en V_DS² se anulan: R_on = 1/(k·(V_DD − V_tn −
+|V_tp|)), sin depender de la entrada; cerca de un raíl conduce uno solo. Tarjeta: R_on = 1/(k·(max(0, V_DD − V_in − V_tn)
++ max(0, V_in − |V_tp|))) y V_out = V_in·R_L/(R_L + R_on) (exacta al 0,1 % en V_out).
+
+#### `lm317` — Regulador ajustable LM317 (1.2)
+
+La referencia V_ref (1,25 V) entre OUT y ADJ, R₁ de OUT a ADJ, R₂ de ADJ a masa, la corriente I_adj de la patilla:
+V_out = V_ref·(1 + R₂/R₁) + I_adj·R₂, mientras V_in − V_out pase del dropout (si no, V_in − V_do). Sección 8.4.
+
+Piezas: `entrada`, `r1`, `r2`, `ref`?, `iadj`?, `dropout`?, `carga`, `interruptor`?, `a0`?. Mide (continua): `vout`,
+`vadj`, `vref`, `iin` (la de la carga, la del divisor y I_adj), `ir1`, `icarga`, `p_paso`. Tarjeta `lm317`.
+
+#### `sonda-x10` — La sonda ×10 y su compensación (1.2)
+
+9 MΩ ∥ C₁ en la punta y 1 MΩ ∥ C₂ en la entrada del osciloscopio (C₂ con el trimmer, dibujado con su flecha); una
+cuadrada de calibración de `entrada` voltios (alta la primera mitad, desde el reposo en t = 0). Secciones 20.5 y 22.11.
+
+Piezas: `entrada`, `f`, `r1`, `c1`, `r2`, `c2`. Mide: `entrada`, `salida` (frente al tiempo), `salida_*` (alterna).
+
+En cada flanco dividen primero los condensadores, K₀ = C₁/(C₁ + C₂), y luego las resistencias, K∞ = R₂/(R₁ + R₂), con
+τ = (R₁ ∥ R₂)·(C₁ + C₂): la primera mitad V·(K∞ + (K₀ − K∞)·e^(−t/τ)); la segunda (v(T/2) − V·K₀)·e^(−(t − T/2)/τ).
+La cuadrada sube en t = 0: multiplique la primera mitad por `ceil(t/1e9)` (tarjeta `sonda-x10`). Compensada
+(R₁·C₁ = R₂·C₂), plana.
 
 ### 5.5 Si hace falta otro esquema
 

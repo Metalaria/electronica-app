@@ -3368,7 +3368,25 @@ i(ld)); without `l` the netlist is unchanged; rectificador-toma-media (`VA` a SI
 current sinks `IC*`; regulators `BRP`/`BRN` = clamp(±reg, v ∓ dropout) and `BIP`/`BIN` drawing their load's current
 from the capacitor), lm3914 (`VIN`, `VREF`–`VMR`–`RREF`, `VLED`–`VML` to the anodes `a`; ten LEDs `DLk` a–ok with the
 drop vf at the LED current, sinks `BLk` = I_LED·u(v(in) + 1e-9 − V_k) — in dot mode minus the next step —, leaks
-`RZk` 10¹³ Ω; meters `BMEDN` (LEDs lit) and `BMEDP` (Σ I·v(ok)), skipped by `cc.ts`). `tipos.ts` `tran.bordes?(c)`: the fraction of
+`RZk` 10¹³ Ω; meters `BMEDN` (LEDs lit) and `BMEDP` (Σ I·v(ok)), skipped by `cc.ts`). 1.2 (esquemas12c): emisor-comun (`VF` s0 SIN, `RS`/`VRS`, meter `VMI`, `CIN` i–b, divider `R1`/`R2`, `VBM`, `VCM`,
+`RC`, `Q1`, `RE1`?, `RE` with `CE`, `COUT` c–out, `RL`; every capacitor IC at the DC point `puntoEC`; the NPN from
+`comun.ts bjtEn`, IS calibrated so V_BE = vbe at that I_C; `tran.periodos` = 10 coupling time constants, ≤ 400),
+par-diferencial (`V1`/`V2` DC + AC + SIN, `VCM1`/`VCM2`–`RC1`/`RC2`, `Q1`/`Q2` to e, `VCOLA` e–t, `REE` or `ICOLA`+`RO` to
+vee; bjtEn at α·I_cola/2), etapa-clase-ab (`IB` vcc→b1, multiplier `Q3` with `R1`/`R2` or `VPUENTE`, driver `VIN` at b2,
+`VC1`–`Q1`–`RE1`–out–`RE2`–`Q2`–`VC2`, `VL`–`RL`; QN/QP at iref, QM at ib − vbem/r2 − iref/β with β 10⁶; `VZBE` reference
+when Q₁ is off at rest), ao-estabilidad (the amplifier as `EAX`–`RX1`–`CX1` (pole 1), `EX2`–`RX2`–`CX2` (pole 2), `EAO`,
+`RO`, `RISO`, `CL`, `RSN`–`CSN`, `R2`/`R1` or `VFB`; AC adds the loop-gain copy (suffix `_l`) driven by `VTEST` at its −
+input: lazo = −v(m_l); transient ICs from `cc.ts` at the input's initial value), ao-instrumentacion (`E1`/`E2`/`E3` of
+gain 10⁷, `RA`/`RB`, `VRG`–`RG`, `R3A`/`R4A`, `R3B`/`R4B`·(1 + ε), `VREF`), transimpedancia (the op-amp family's input as
+`IIN` 0→mi, meter `VMI`, `RF`, `CF`, `CIN`; ICs from `cc.ts`), comparador-no-inversor (`R1` in–p, `R2` p–out, `VREF`
+at the − input; bistable comparator), mosfet-p (LEVEL=1 PMOS, VTO = −vth, body at the source vdd; `VMD` d–y–`RD`),
+puerta-transmision (`MN`/`MP` between a and o, bodies 0/vdd, gates `VGN`/`VGP` from `ctrl`), lm317 (as
+regulador-lineal with `VREF` rp–adj, `VMR`–`R1` out–adj, `R2`, `IADJ` inx→adj), sonda-x10 (`VIN` PULSE 0→V, `R1`∥`C1`
+in–out, `R2`∥`C2` out–0, ICs 0); options: fuente-controlada `invierte` (gain negated), bjt-interruptor `vf` (`DL` k–c,
+LED at 20 mA, n = 2) and `iref` (IS at that I_C), led/diodo `reves` (the diode turned, a 0 V-referenced `VREVES` the
+drop check reads), mosfet `rdson` (DC: `RDS` d–s or nothing from the gate's voltage; PWM: `S1` switch), divisor
+`union`/`etiqueta`/`etiqueta2` (the load connected only when closed), comun-ao `forma` 3 (sawtooth PULSE) and `ruido`
+(transient only: `B…R` in series, three sines at 37, 61, 97·f); `Eje.muestras` (2–4000 points a curve is drawn with). `tipos.ts` `tran.bordes?(c)`: the fraction of
 the axis a model's jump may be off (spice.ts `CurvaEsperada.dx`: the simulated value is compared with the range of the
 model within ± dx). On a log y axis an AC curve's floor is 10⁻⁴ of the axis' bottom. The expression language gained `wright(x)` (Wright ω, `calculadoras/expresion.ts`) to solve a
 Shockley diode in series with a resistor.

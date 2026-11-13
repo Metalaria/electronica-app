@@ -2103,6 +2103,26 @@ probados: `web/tests/lecciones12-catalogo/cap01/sec-1.4.yaml`):
   ganancia 20 o 200). Sin la bobina, la netlist de `mosfet` es la de antes (las lecciones que ya lo usan no cambian).
   Pruebas: cinco tarjetas más en la lección de catálogo (292 comprobaciones con ngspice) y tres en
   `tests/lecciones12-esquemas12.spec.ts`.
+- **Esquemas nuevos (1.2, esquemas12c)**, a petición de Analógica (cap23, cap26, cap27, cap43, cap51, cap07, cap08),
+  Taller (cap11, cap12, cap22) y del revisor, en `contenido/lecciones11/GUIA.md` §5.4 ter: `emisor-comun` (la etapa
+  completa en alterna con desvío y acoplos: ganancia, Z_in y corte inferior), `par-diferencial` (cola R_EE o fuente
+  con r_o; ganancia diferencial, de modo común, CMRR y el reparto tanh), `etapa-clase-ab` (par complementario con
+  multiplicador de V_BE, puente a clase B con la zona muerta, deriva térmica y averías de 51.9/51.10),
+  `ao-estabilidad` (dos polos, R_o, C_L, R_iso dentro o fuera del lazo, snubber; la ganancia de lazo T medida con el
+  lazo abierto), `ao-instrumentacion` (tres operacionales, desajuste y modo común), `transimpedancia` (C_in, R_f ∥ C_f
+  y el pico con el GBW), `comparador-no-inversor` (el termostato del problema 26.C), `mosfet-p`, `puerta-transmision`,
+  `lm317` y `sonda-x10` (con el trimmer). Opciones nuevas: `invierte` en `fuente-controlada` (el signo del emisor
+  común), `vf` (LED en el colector) e `iref` (la corriente de V_BE: interruptores de potencia y bases de µA) en
+  `bjt-interruptor`, `reves` en `led` y `diodo`, `rdson` (R_DS(on) de tabla) en `mosfet`, la entrada en rampa
+  (`forma: 3`) y el `ruido` repetible de los operacionales, `union` y `etiqueta` (punto de unión y etiqueta de red,
+  pieza nueva `kit/EtiquetaRed.svelte`) en `divisor`, `muestras` en el eje x de las gráficas (una portadora) y el
+  `Npn` del kit espejado y PNP, el `C` variable (trimmer). Los transistores de pequeña señal caen exactamente V_BE en el
+  punto de trabajo que el esquema calcula (`comun.ts bjtEn`), así que la alterna se compara al 0,1 % con el modelo en π
+  del libro; una lectura de fase da la vuelta como una curva (`spice.ts`). Sin las piezas nuevas, las netlists de los
+  esquemas que ya existían no cambian. Pruebas: 30 tarjetas más en la lección de catálogo (403 comprobaciones con
+  ngspice), ocho en `tests/lecciones12-esquemas12.spec.ts` frente a los valores del libro (52° de margen y 16 % de
+  sobreoscilación con 10 Hz y 1 MHz, G = 101 del amplificador de instrumentación, 5,036 V del LM317, umbrales de
+  2,5975 y 2,4025 V del termostato…) y el recorrido geométrico de `tests/lecciones12-fix12.spec.ts` sobre todos.
 - **Una prueba que fallaba a veces (fix12, «espejo»).** La prueba de las partículas medía cada pieza por la caja que
   envuelve su trazo fuera de los hilos con corriente; la carga del espejo cuelga del hilo de arriba en una T, así que su
   caja era tan ancha como el zigzag y llegaba a 3 unidades del hilo, y una partícula que pasaba junto a la T, a 7

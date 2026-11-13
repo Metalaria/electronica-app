@@ -64,7 +64,8 @@
   const trazos = $derived(
     widget.curvas.map((c) => {
       const f = mc.funcion(c.expr);
-      const n = 240;
+      // (esquemas12c: the x axis' «muestras», for a carrier; 240 by default)
+      const n = widget.x.muestras ?? 240;
       let d = '';
       for (let k = 0; k <= n; k++) {
         const x = enX(k, n);

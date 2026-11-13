@@ -136,6 +136,8 @@ export interface Eje {
   rotulo: Texto;
   /** Logarithmic axis (frequency, impedance): absent means linear. */
   escala?: 'log';
+  /** 1.2 (esquemas12c): points the curves are drawn with along this axis (2 to 4000; absent, 240) — a carrier. */
+  muestras?: number;
 }
 
 /** The plot itself: axes, curves, handles and marks (a `grafica` widget, or a circuit's graph). */

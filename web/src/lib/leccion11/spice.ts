@@ -147,7 +147,9 @@ export function compararSimulacion(c: ComprobacionSpice, graficas: readonly Graf
       }
     }
     if (roto) continue;
-    if (Math.abs(real - esperado) > v.tol)
+    // (esquemas12c: a phase reading wraps round like a curve's — an inverting stage's 184,6° is the simulator's −175,4°)
+    const dif = v.ac === 'fase' ? Math.abs(((esperado - real + 540) % 360) - 180) : Math.abs(real - esperado);
+    if (dif > v.tol)
       out.push(`${c.donde}: el modelo da ${v.esperado}${esperado !== v.esperado ? ` (${p4(esperado)} con la caída real del simulador)` : ''} y el simulador ${etiqueta(v.medida, v.ac)} = ${real}`);
   }
   const escala = g.vectores[0];

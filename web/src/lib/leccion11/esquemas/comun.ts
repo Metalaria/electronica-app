@@ -53,3 +53,15 @@ export function zener(nombre: string, vz: number, rz: number): string {
 export function npn(nombre: string, beta: number, vbe: number): string {
   return `.model ${nombre} NPN(BF=${num(beta)} BR=1 IS=${isCalibrada(Math.max(vbe, 0.3), 1e-3).toPrecision(8)})`;
 }
+
+/**
+ * 1.2 (esquemas12c): a transistor of the book's (β, BR = 1, no Early effect) that drops exactly `vbe` at the collector
+ * current `ic` — the operating point a small-signal schematic works out from its own pieces (emisor-comun,
+ * par-diferencial, etapa-clase-ab), so its DC point is the constant-drop model's exactly and its small-signal
+ * parameters are g_m = I_C/V_T, r_π = β/g_m at the book's V_T (with `temperatura()`): its AC readings are compared at
+ * 0,1 % like a resistor's. `tipo` NPN or PNP (for a PNP, vbe is V_EB).
+ */
+export function bjtEn(nombre: string, tipo: 'NPN' | 'PNP', beta: number, vbe: number, ic: number): string {
+  const i = Number.isFinite(ic) && ic > 1e-12 ? ic : 1e-3;
+  return `.model ${nombre} ${tipo}(BF=${num(beta)} BR=1 IS=${isCalibrada(Math.max(vbe, 0.3), i).toPrecision(10)})`;
+}

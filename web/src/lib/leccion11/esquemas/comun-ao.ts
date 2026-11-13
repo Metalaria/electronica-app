@@ -185,7 +185,7 @@ export function netlistAO(
   ao: Operacional,
   opciones: { biestable?: boolean; inicio?: number; comparador?: boolean } = {},
 ): string[] {
-  const fuente = fuenteEntrada(c);
+  const fuente = fuenteEntrada(c, 'VIN', 'in', analisis);
   if (analisis === 'op') return lineasCC(c, resto(fuente), ao, opciones.biestable).lineas;
   if (analisis === 'ac') return [...resto(fuente), ...lineasAO(c, 'ac', ao, 0)];
   const inicio = opciones.inicio ?? salidaCC(c, resto(`VIN in 0 DC ${num(entradaInicial(c))}`), ao, opciones.biestable);
@@ -215,26 +215,43 @@ export function observablesAO(): Record<string, Observable> {
  *   - square: entrada + amplitud during the first half period, entrada − amplitud during the second;
  *   - triangle: from entrada − amplitud at t = 0 up to entrada + amplitud at T/2 and back at T.
  * DC (.op) sees `entrada`; AC (.ac) sees `amplitud` with phase `fase`.
+ * 1.2 (esquemas12c, the comparator's window of sección 8.3):
+ *   - forma 3, a ramp (sawtooth): from entrada − amplitud at t = 0 up to entrada + amplitud at T, then back at once:
+ *     entrada − amplitud + 2·amplitud·(f·t − floor(f·t));
+ *   - «ruido»: a repeatable «noise» added in the transient only, three sines at 37, 61 and 97 times f, zero at t = 0:
+ *     ruido·(sen(2π·37·f·t) + sen(2π·61·f·t) + sen(2π·97·f·t))/3 — the model writes the same sum, so the chatter of a
+ *     comparator without hysteresis is checked edge by edge.
  */
 export function piezasEntrada(): Record<string, Pieza> {
   return {
     entrada: { obligatoria: true, descripcion: 'tensión de entrada en continua (V; con una señal, su valor medio)' },
     amplitud: { descripcion: 'amplitud de pico de la señal de entrada (V); sin ella, solo continua' },
     f: { descripcion: 'frecuencia de la señal de entrada (Hz)' },
-    forma: { descripcion: 'forma de la señal: 0 senoidal, 1 cuadrada, 2 triangular (sin ella, senoidal)' },
+    forma: { descripcion: 'forma de la señal: 0 senoidal, 1 cuadrada, 2 triangular, 3 rampa en diente de sierra (sin ella, senoidal)' },
+    ruido: { descripcion: 'amplitud del «ruido» sumado a la señal en el transitorio (V): tres senoidales a 37, 61 y 97 veces f, divididas entre 3' },
     fase: { descripcion: 'fase inicial de la senoidal, φ (grados)' },
   };
 }
 
-/** The input source line (`nombre`, from `nodo` to ground) for every analysis. */
-export function fuenteEntrada(c: ContextoNetlist, nombre = 'VIN', nodo = 'in'): string {
+/**
+ * The input source line (`nombre`, from `nodo` to ground) for every analysis. (esquemas12c: in a transient with
+ * «ruido», two lines in one string — the source to `nodo`_r and the noise in series up to `nodo`; only the transient,
+ * which nothing parses line by line, gets it.)
+ */
+export function fuenteEntrada(c: ContextoNetlist, nombre = 'VIN', nodo = 'in', analisis?: Analisis): string {
+  const f = c.p('f');
+  if (analisis === 'tran' && c.tiene('ruido') && c.p('ruido') !== 0 && f > 0) {
+    const w = 2 * Math.PI * f;
+    const r = c.p('ruido') / 3;
+    return `${fuenteEntrada(c, nombre, `${nodo}_r`)}\nB${nombre}R ${nodo} ${nodo}_r V = ${num(r)}*(sin(${num(37 * w)}*time) + sin(${num(61 * w)}*time) + sin(${num(97 * w)}*time))`;
+  }
   const e = c.p('entrada');
   const a = c.p('amplitud');
-  const f = c.p('f');
   const base = `${nombre} ${nodo} 0 DC ${num(e)}`;
   if (!c.tiene('amplitud') || !(f > 0)) return base;
   const T = 1 / f;
   const forma = Math.round(c.p('forma'));
+  if (forma === 3) return `${base} AC ${num(a)} PULSE(${num(e - a)} ${num(e + a)} 0 ${num(T * (1 - 1e-4))} ${num(T * 1e-4)} 0 ${num(T)})`;
   if (forma === 1) return `${base} AC ${num(a)} PULSE(${num(e + a)} ${num(e - a)} ${num(T / 2 - T * 5e-5)} ${num(T * 1e-4)} ${num(T * 1e-4)} ${num(T / 2 - T * 1e-4)} ${num(T)})`;
   if (forma === 2) return `${base} AC ${num(a)} PULSE(${num(e - a)} ${num(e + a)} 0 ${num(T / 2)} ${num(T / 2)} ${num(T * 1e-9)} ${num(T)})`;
   return `${base} AC ${num(a)} ${num(c.p('fase'))} SIN(${num(e)} ${num(a)} ${num(f)} 0 0 ${num(c.p('fase'))})`;
@@ -246,15 +263,15 @@ export function entradaInicial(c: ContextoNetlist): number {
   if (!c.tiene('amplitud') || !(c.p('f') > 0)) return e;
   const forma = Math.round(c.p('forma'));
   if (forma === 1) return e + c.p('amplitud');
-  if (forma === 2) return e - c.p('amplitud');
+  if (forma === 2 || forma === 3) return e - c.p('amplitud');
   return e + c.p('amplitud') * Math.sin((c.p('fase') * Math.PI) / 180);
 }
 
 /** The input described for screen readers. */
 export function describirEntrada(c: ContextoDibujo): string {
   if (!c.tiene('amplitud') || !c.tiene('f')) return `entrada de ${c.val('entrada')}`;
-  const forma = ['senoidal', 'cuadrada', 'triangular'][Math.round(c.p('forma'))] ?? 'senoidal';
-  return `entrada ${forma} de ${c.val('amplitud')} de pico y ${c.val('f')}${c.p('entrada') ? ` sobre ${c.val('entrada')}` : ''}`;
+  const forma = ['senoidal', 'cuadrada', 'triangular', 'en rampa'][Math.round(c.p('forma'))] ?? 'senoidal';
+  return `entrada ${forma} de ${c.val('amplitud')} de pico y ${c.val('f')}${c.p('entrada') ? ` sobre ${c.val('entrada')}` : ''}${c.tiene('ruido') && c.p('ruido') ? ` con ruido de ${c.val('ruido')}` : ''}`;
 }
 
 /** The amplifier described for screen readers («operacional ideal», «… saturado a ±12 V, …»). */
@@ -268,4 +285,4 @@ export function describirAO(c: ContextoDibujo): string {
 }
 
 /** A square input has jumps the model draws at the half periods (tipos.ts tran.bordes: ± 0,15 % of the axis, a step and a half). */
-export const bordesEntrada = (c: ContextoNetlist): number => (c.tiene('amplitud') && Math.round(c.p('forma')) === 1 ? 0.0015 : 0);
+export const bordesEntrada = (c: ContextoNetlist): number => (c.tiene('amplitud') && [1, 3].includes(Math.round(c.p('forma'))) ? 0.0015 : 0);
