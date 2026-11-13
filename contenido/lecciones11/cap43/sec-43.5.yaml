@@ -1,0 +1,325 @@
+# Lección 1.2 de la sección 44.5 «Respuesta en Frecuencia y Efecto Miller» (cap43; etiqueta sec-43.5).
+# Formato: contenido/lecciones11/GUIA.md. La entrada de la etapa como paso bajo: la resistencia de la fuente y la
+# capacidad de Miller C_µ·(1 + |A|) en el esquema «filtro-rc» (la tensión del condensador es la señal que llega a la
+# base), con los números del libro: 4 pF, ganancia 169 → 680 pF, fuente de 1 kΩ → 234 kHz; ganancia 100 → 404 pF;
+# cascodo (ganancia ≈ −1, la capacidad solo se duplica) → unos 20 MHz.
+leccion: cap43/sec-43.5
+
+libro:
+  144: "sino cómo las ve el circuito"
+  147: 'C_("efectiva") = C dot.op lr(( "1" + bar.v A bar.v ))'
+  148: "la tensión sobre el condensador cambia (1 + A) voltios"
+  149: "con una fuente de 1 kΩ el corte cae en 1/(2π·1 kΩ·680 pF) = 234 kHz"
+  150: "subir la ganancia baja el ancho de banda"
+  152: "el corte pasa de 234 kHz a unos 20 MHz"
+  155: "su impedancia de entrada es muy baja"
+  156: "una fuente de baja impedancia sube el corte aunque la capacidad siga ahí"
+  159: "El condensador de emisor suele ser el que fija el corte inferior"
+  160: "la limitan Miller y las capacidades parásitas"
+  161: "se puede repartir, no aumentar"
+  164: "la primera etapa debe tener ganancia alta"
+  165: "la primera etapa debe tener ganancia baja, por Miller"
+  166: "da ganancia alta sin pagar Miller"
+  168: "es un límite de gran señal"
+  172: "el ancho de banda mejora en la misma proporción"
+
+modelo:
+  valores:
+    V_p: { sim: "v_{g}", nombre: "amplitud de la señal", unidad: V, valor: 1 }
+    f_f: { sim: "f", nombre: "frecuencia de la señal", unidad: Hz, valor: 100000 }
+    R_s: { sim: "R_{fuente}", nombre: "resistencia de la fuente", unidad: Ω, valor: 1000 }
+    C_mu: { sim: "C_{µ}", nombre: "capacidad base-colector", unidad: F, valor: 4e-12 }
+    A_g: { sim: "|A|", nombre: "ganancia de la etapa", unidad: "", valor: 169 }
+  calculos:
+    C_ef: { expr: "C_mu*(1 + A_g)", sim: "C_{Miller}", nombre: "capacidad efectiva de entrada", unidad: F }
+    f_c: { expr: "1/(2*pi*R_s*C_ef)", sim: "f_{c}", nombre: "frecuencia de corte", unidad: Hz }
+    x_c: { expr: "2*pi*f_f*R_s*C_ef", sim: "ωRC", nombre: "ωRC", unidad: "" }
+    A_b: { expr: "V_p/sqrt(1 + x_c^2)", sim: "v_{base}", nombre: "señal en la base", unidad: V }
+    A_r: { expr: "V_p*x_c/sqrt(1 + x_c^2)", sim: "v_{R}", nombre: "caída en la fuente", unidad: V }
+    C_sin: { expr: "C_mu*A_g", sim: "C · A", nombre: "sin el uno", unidad: F }
+
+tarjetas:
+  - id: explore-miller
+    tipo: explorar
+    titulo: "La ganancia agranda la capacidad"
+    texto: "Una C_{µ} de 4 pF une la entrada y la salida. Suba la ganancia y mire el corte de la señal que llega a la base."
+    libro: [144, 149]
+    inicio: { A_g: 1 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_s, c: C_ef }
+      lectura: { valor: f_c, rotulo: "Corte" }
+      datos:
+        - { valor: C_ef, rotulo: "C_{Miller} = {{C_ef}}" }
+      grafica:
+        x: { id: nu, min: 10000, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "en la base" }
+        curvas:
+          - { expr: "V_p/sqrt(1 + (2*pi*nu*R_s*C_ef)^2)", color: naranja, rotulo: "v_{base}", mide: vc_amp }
+        marcas:
+          - { x: "f_c", y: "V_p*0.7071", rotulo: "f_{c}" }
+      mide: { vc_amp: A_b, vr_amp: A_r }
+      mandos:
+        - { valor: A_g, lista: [1, 10, 100, 169], rotulo: "Ganancia de la etapa" }
+    requiere: { mover: [A_g] }
+
+  - id: prediga-404
+    tipo: predecir
+    titulo: "Ganancia 100"
+    texto: "Una C_{µ} de 4 pF en una etapa inversora de ganancia 100. ¿Qué capacidad ve la entrada?"
+    libro: [149]
+    fijar: { A_g: 100 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_s, c: C_ef }
+      lectura: { valor: C_ef, rotulo: "C_{Miller}" }
+      mide: { vc_amp: A_b, vr_amp: A_r }
+      ocultar: true
+    opciones:
+      - texto: "404 pF"
+        bien: true
+        porque: "4 pF por (1 + 100) = 404 pF."
+      - texto: "400 pF"
+        porque: "Falta el uno: el condensador ve la subida de la entrada más la bajada de la salida."
+      - texto: "4 pF"
+        porque: "Esa es la capacidad física. Vista desde la entrada, la ganancia la multiplica."
+    escalera:
+      - "Use C·(1 + |A|)."
+    solucion: "4 pF × (1 + 100) = 404 pF."
+    comprobar:
+      - { C_ef: 404e-12, C_sin: 400e-12, C_mu: 4e-12, A_g: 100, tol: 0.001 }
+
+  - id: formula-miller
+    tipo: formula
+    titulo: "El efecto Miller"
+    texto: "Vista desde la entrada, la capacidad se multiplica por uno más la ganancia."
+    libro: [147, 149]
+    ec: 147
+    sustitucion: "{{C_mu}} · (1 + {{A_g}}) = {{C_ef}}"
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_s, c: C_ef }
+      lectura: { valor: C_ef, rotulo: "C_{Miller}" }
+      mide: { vc_amp: A_b, vr_amp: A_r }
+      mandos:
+        - { valor: A_g, lista: [1, 10, 100, 169], rotulo: "Ganancia de la etapa" }
+
+  - id: estime-corte
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "El corte del emisor común"
+    texto: "La etapa de ganancia 169: 4 pF se vuelven 680 pF. Con una fuente de 1 kΩ, ¿dónde cae el corte?"
+    libro: [149]
+    fijar: { A_g: 169, R_s: 1000 }
+    estimar:
+      objetivo: "f_c"
+      unidad: Hz
+      min: 0
+      max: 1000000
+      paso: 1000
+      inicio: 800000
+      tol: 0.05
+      rotulo: "Frecuencia de corte"
+    exito: "234 kHz: la peor banda de las tres configuraciones, y la culpa es de la ganancia, no de la capacidad."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 246000 }, texto: "Se ha pasado: con 680 pF y 1 kΩ, 1/(2π·R·C)." }
+      - { texto: "Se ha quedado corto: 1/(2π · 1 kΩ · 680 pF)." }
+    escalera:
+      - "f_{c} = 1/(2π·R_{fuente}·C_{Miller})."
+    solucion: "1/(2π · 1 kΩ · 680 pF) = 234 kHz."
+    comprobar:
+      - { f_c: 234050, C_ef: 680e-12, tol: 0.005 }
+
+  - id: sorpresa-fuente
+    tipo: sorpresa
+    titulo: "La fuente también cuenta"
+    texto: "La capacidad sigue ahí. Baje la resistencia de la fuente y mire el corte."
+    libro: [156]
+    fijar: { A_g: 169 }
+    inicio: { R_s: 10000 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_s, c: C_ef }
+      lectura: { valor: f_c, rotulo: "Corte" }
+      grafica:
+        x: { id: nu, min: 10000, max: 100000000, unidad: Hz, rotulo: "f", escala: log }
+        y: { min: 0, max: 1.1, unidad: V, rotulo: "en la base" }
+        curvas:
+          - { expr: "V_p/sqrt(1 + (2*pi*nu*R_s*C_ef)^2)", color: naranja, rotulo: "v_{base}", mide: vc_amp }
+        marcas:
+          - { x: "f_c", y: "V_p*0.7071", rotulo: "f_{c}" }
+      mide: { vc_amp: A_b, vr_amp: A_r }
+      mandos:
+        - { valor: R_s, lista: [100, 1000, 10000], rotulo: "Resistencia de la fuente" }
+    nota: "Por eso un seguidor delante de un emisor común mejora su banda."
+    requiere: { mover: [R_s] }
+
+  - id: porque-miller
+    tipo: porque
+    titulo: "¿Por qué uno más A?"
+    texto: "¿Por qué el condensador parece (1 + A) veces mayor desde la entrada?"
+    libro: [148]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_s, c: C_ef }
+      lectura: { valor: C_ef, rotulo: "C_{Miller}" }
+      mide: { vc_amp: A_b, vr_amp: A_r }
+    opciones:
+      - texto: "Si la entrada sube un voltio, la salida baja A: el condensador ve (1 + A) voltios"
+        bien: true
+        porque: "Y la corriente que hay que darle es (1 + A) veces mayor: como un condensador más grande."
+      - texto: "Porque la ganancia carga más el condensador con el tiempo"
+        porque: "No es acumulación: en cada instante la tensión sobre él es (1 + A) veces la variación de entrada."
+      - texto: "Porque el transistor añade su propia capacidad A veces"
+        porque: "La capacidad es la misma C_{µ}; lo que crece es la tensión que la recorre."
+    escalera:
+      - "La etapa invierte. ¿Cuánto cambia la tensión entre los dos extremos del condensador?"
+    solucion: "Sube la entrada 1 V y baja la salida A voltios: el condensador cambia (1 + A) voltios."
+
+  - id: prediga-cascodo
+    tipo: predecir
+    titulo: "El cascodo"
+    texto: "Encima del emisor común, un base común sujeta su colector: Q1 trabaja con ganancia ≈ −1. ¿Dónde queda el corte?"
+    libro: [152]
+    fijar: { A_g: 1, R_s: 1000 }
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_s, c: C_ef }
+      lectura: { valor: f_c, rotulo: "Corte" }
+      mide: { vc_amp: A_b, vr_amp: A_r }
+      ocultar: true
+    opciones:
+      - texto: "Hacia 20 MHz: la capacidad solo se duplica"
+        bien: true
+        porque: "Con ganancia unidad, 4 pF pasan a 8 pF. La ganancia total la da el base común, sin Miller."
+      - texto: "En 234 kHz, como antes"
+        porque: "La ganancia total es la misma, pero Q1 ya no la tiene: su capacidad no se multiplica por 170."
+      - texto: "No hay corte: el cascodo elimina C_{µ}"
+        porque: "C_{µ} sigue ahí, solo que duplicada en lugar de multiplicada."
+    escalera:
+      - "Con |A| = 1, ¿cuánto vale C·(1 + |A|)?"
+    solucion: "8 pF con 1 kΩ: unos 20 MHz."
+    nota: "Con las otras capacidades del montaje real, unos 6 MHz: aun así casi veinte veces más banda."
+    comprobar:
+      - { f_c: 19890000, C_ef: 8e-12, tol: 0.005 }
+
+  - id: empareje-remedios
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "Tres formas de vencer a Miller"
+    texto: "Una cada remedio con cómo actúa."
+    libro: [152, 155, 156]
+    emparejar:
+      - ["Cascodo", "El primer transistor trabaja con ganancia ≈ −1"]
+      - ["Base común", "Sin Miller, pero con entrada muy baja"]
+      - ["Fuente de baja impedancia", "Sube el corte con la misma capacidad"]
+    exito: "No multiplicar la capacidad, no acoplarla, o atacarla con poca resistencia."
+    pistas:
+      - { texto: "El seguidor delante del emisor común es una fuente de baja impedancia." }
+    escalera:
+      - "El corte es 1/(2π·R_{fuente}·C_{Miller}): hay que bajar uno de los dos."
+    solucion: "Cascodo–ganancia ≈ −1, base común–sin Miller, fuente baja–sube el corte."
+
+  - id: empareje-banda
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "La respuesta completa"
+    texto: "Con acoplamiento capacitivo, la banda pasante tiene dos bordes. Una cada uno con lo que lo fija."
+    libro: [159, 160, 161]
+    emparejar:
+      - ["Corte inferior", "Condensadores de acoplo y de desvío, sobre todo el de emisor"]
+      - ["Corte superior", "Miller y las capacidades parásitas"]
+      - ["Ganancia por ancho de banda", "Aproximadamente constante: se reparte, no se aumenta"]
+    exito: "Pasos altos por abajo, Miller por arriba y un producto que no se puede aumentar."
+    pistas:
+      - { texto: "El condensador de emisor ve una resistencia pequeña: fija el corte inferior." }
+    escalera:
+      - "Los condensadores grandes actúan a frecuencias bajas; las capacidades diminutas, a las altas."
+    solucion: "Inferior–acoplo y desvío; superior–Miller y parásitas; ganancia por banda–constante."
+
+  - id: pregunta-banco
+    tipo: pregunta
+    titulo: "En el banco"
+    texto: "Deja R_{E} sin puentear y la ganancia baja. ¿Qué hace el ancho de banda?"
+    libro: [150, 172]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_s, c: C_ef }
+      lectura: { valor: f_c, rotulo: "Corte" }
+      mide: { vc_amp: A_b, vr_amp: A_r }
+      mandos:
+        - { valor: A_g, lista: [1, 10, 100, 169], rotulo: "Ganancia de la etapa" }
+    opciones:
+      - texto: "Mejora en la misma proporción en que baja la ganancia"
+        bien: true
+        porque: "Es la prueba experimental del producto ganancia por ancho de banda."
+      - texto: "No cambia: depende solo del transistor"
+        porque: "El corte depende de la ganancia, que multiplica C_{µ}: menos ganancia, menos C_{Miller}."
+      - texto: "Empeora, porque R_{E} añade resistencia"
+        porque: "R_{E} baja la ganancia, y con ella la capacidad de Miller: el corte sube."
+    escalera:
+      - "Menos ganancia, ¿más o menos capacidad de Miller?"
+    solucion: "Mejora en la misma proporción: ganancia por ancho de banda casi constante."
+
+  - id: porque-primera-etapa
+    tipo: porque
+    titulo: "El compromiso de la primera etapa"
+    texto: "Para poco ruido, la primera etapa debe ganar mucho; para banda ancha, poco. ¿Qué lo resuelve?"
+    libro: [164, 165, 166]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_s, c: C_ef }
+      lectura: { valor: f_c, rotulo: "Corte" }
+      mide: { vc_amp: A_b, vr_amp: A_r }
+    opciones:
+      - texto: "El cascodo: ganancia alta sin pagar Miller"
+        bien: true
+        porque: "Por eso es la entrada de casi todo amplificador de bajo ruido y banda ancha."
+      - texto: "Un emisor común con más corriente"
+        porque: "Más corriente da más ganancia, y más Miller: el conflicto sigue."
+      - texto: "Una base común sola"
+        porque: "No tiene Miller, pero su entrada muy baja no sirve como primera etapa salvo en RF."
+    escalera:
+      - "¿Qué topología da la ganancia sin que el primer transistor amplifique tensión?"
+    solucion: "El cascodo."
+
+  - id: pregunta-slew
+    tipo: pregunta
+    titulo: "Los otros límites"
+    texto: "Un amplificador con una banda de pequeña señal excelente deforma una señal grande y rápida. ¿Qué lo limita?"
+    libro: [168]
+    widget:
+      tipo: circuito
+      esquema: filtro-rc
+      piezas: { fuente: V_p, f: f_f, r: R_s, c: C_ef }
+      lectura: { valor: f_c, rotulo: "Corte" }
+      mide: { vc_amp: A_b, vr_amp: A_r }
+    opciones:
+      - texto: "El slew rate, un límite de gran señal"
+        bien: true
+        porque: "El ancho de banda es de pequeña señal; una señal grande y rápida choca antes con la velocidad de subida."
+      - texto: "El efecto Miller"
+        porque: "Miller fija la banda de pequeña señal, que aquí es excelente."
+      - texto: "El condensador de emisor"
+        porque: "Ese fija el corte inferior, no lo que pasa con señales rápidas."
+    escalera:
+      - "¿Qué límite depende del tamaño de la señal y no solo de su frecuencia?"
+    solucion: "El slew rate."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [147, 149, 152, 161]
+    ideas:
+      - { titulo: "Efecto Miller.", texto: "La capacidad entre entrada y salida se ve multiplicada por (1 + |A|)." }
+      - { titulo: "El emisor común.", texto: "4 pF se vuelven 680 pF: con 1 kΩ, corte en 234 kHz." }
+      - { titulo: "Tres remedios.", texto: "Cascodo, base común o una fuente de baja impedancia." }
+      - { titulo: "Se reparte.", texto: "Ganancia por ancho de banda casi constante: más ganancia, menos banda." }

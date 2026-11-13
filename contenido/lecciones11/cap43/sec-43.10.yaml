@@ -1,0 +1,295 @@
+# Lección 1.2 de la sección 44.10 «Herramientas Adicionales y Resumen» (cap43; etiqueta sec-43.10).
+# Formato: contenido/lecciones11/GUIA.md. Los rendimientos de las clases deducidos (bloques 342–353), sobre una gráfica
+# del modelo frente a la amplitud de pico V_p con los números de la comprobación del libro (V_CC = 15 V, R_L = 8 Ω):
+# P_salida = V_p²/(2R_L), P_consumida = 2V_CC·V_p/(πR_L) y la disipación de cada transistor, la mitad de su diferencia.
+# La distorsión de cruce del bloque 355 sobre la zona muerta de ±0,7 V.
+# Paso práctico: «dibujar» la disipación de un transistor frente a la amplitud (el máximo en medio).
+leccion: cap43/sec-43.10
+
+libro:
+  342: "Operando resulta un máximo del 25 %"
+  343: "lo que duplica el rendimiento hasta el 50 %"
+  344: "Cada transistor conduce medio ciclo"
+  345: 'P_("salida") = (V_("p")^("2"))/("2" dot.op R_("L"))'
+  346: 'η = (P_("salida"))/(P_("consumida")) = (π)/("4") dot.op (V_("p"))/(V_("CC"))'
+  347: "dando ηmax = π/4 = 78,54 %"
+  348: "Psalida = 12,25 W, Pconsumida = 16,71 W, η = 73,3 %"
+  350: "el máximo no está a plena potencia"
+  351: 'P_("disipada" lr(( op("max") ))) = (V_("CC")^("2"))/(π^("2") dot.op R_("L"))'
+  352: "cada transistor disipa como máximo 2,85 W, y eso ocurre con Vp = 9,55 V"
+  353: "un amplificador de clase B calienta más a volumen medio que a máximo volumen"
+  355: "con 1 V de pico, más de la mitad, y una señal de medio voltio no llega a la salida"
+  356: "una pérdida de rendimiento respecto al π/4 teórico"
+
+modelo:
+  valores:
+    V_cc: { sim: "V_{CC}", nombre: "tensión de cada raíl", unidad: V, valor: 15 }
+    R_L: { sim: "R_{L}", nombre: "carga", unidad: Ω, valor: 8 }
+    V_p: { sim: "V_{p}", nombre: "amplitud de pico de la salida", unidad: V, valor: 14 }
+    A_s: { sim: "V_{p}", nombre: "amplitud de la señal", unidad: V, valor: 10 }
+    f_s: { sim: "f", nombre: "frecuencia de la señal", unidad: Hz, valor: 1000 }
+    V_BE: { sim: "V_{BE}", nombre: "tensión de codo", unidad: V, valor: 0.7 }
+  calculos:
+    P_o: { expr: "V_p^2/(2*R_L)", sim: "P_{salida}", nombre: "potencia de salida", unidad: W }
+    P_i: { expr: "2*V_cc*V_p/(pi*R_L)", sim: "P_{consumida}", nombre: "potencia consumida", unidad: W }
+    eta: { expr: "P_o/P_i*100", sim: "η", nombre: "rendimiento", unidad: "%", cifras: 3 }
+    P_t: { expr: "(P_i - P_o)/2", sim: "P_{disipada}", nombre: "disipación de cada transistor", unidad: W }
+    P_dm: { expr: "V_cc^2/(pi^2*R_L)", sim: "P_{disipada(máx)}", nombre: "disipación máxima por transistor", unidad: W }
+    V_dm: { expr: "2/pi*V_cc", sim: "V_{p}", nombre: "amplitud de la disipación máxima", unidad: V }
+    k_dm: { expr: "2/pi*100", sim: "V_{p}/V_{CC}", nombre: "fracción de la excursión", unidad: "%", cifras: 3 }
+    eta_m: { expr: "pi/4*100", sim: "η_{máx}", nombre: "rendimiento máximo", unidad: "%", cifras: 4 }
+    k_z: { expr: "min(100, V_BE/A_s*100)", sim: "zona muerta", nombre: "parte de la amplitud que se come el codo", unidad: "%", cifras: 2 }
+    P_full: { expr: "(2*V_cc*V_cc/(pi*R_L) - V_cc^2/(2*R_L))/2", sim: "P_{disipada}", nombre: "disipación a plena excursión", unidad: W }
+
+tarjetas:
+  - id: explore-potencias
+    tipo: explorar
+    titulo: "La clase B, con números"
+    texto: "Con ±15 V y 8 Ω, mueva la amplitud de salida y mire la potencia útil, la consumida y el rendimiento."
+    libro: [344, 345, 348]
+    inicio: { V_p: 4 }
+    widget:
+      tipo: grafica
+      x: { id: u, min: 0, max: 15, unidad: V, rotulo: "V_{p}" }
+      y: { min: 0, max: 20, unidad: W, rotulo: "P" }
+      curvas:
+        - { expr: "u^2/(2*R_L)", color: azul, rotulo: "P_{salida}" }
+        - { expr: "2*V_cc*u/(pi*R_L)", color: tinta, rotulo: "P_{consumida}", discontinua: true }
+      marcas:
+        - { x: "V_p", y: "P_o", rotulo: "{{P_o}}" }
+        - { x: "V_p", y: "P_i", rotulo: "{{P_i}}" }
+      lectura: { valor: eta, rotulo: "Rendimiento" }
+      mandos:
+        - { valor: V_p, min: 0.5, max: 15, paso: 0.5, rotulo: "Amplitud de pico, V_{p}" }
+    requiere: { mover: [V_p] }
+
+  - id: formula-eta
+    tipo: formula
+    titulo: "El rendimiento de la clase B"
+    texto: "Dividiendo las dos potencias, R_{L} desaparece: solo cuenta lo cerca que llega la salida del raíl."
+    libro: [346]
+    ec: 346
+    sustitucion: "π/4 · {{V_p}} / {{V_cc}} = {{eta}}"
+    widget:
+      tipo: grafica
+      x: { id: u, min: 0, max: 15, unidad: V, rotulo: "V_{p}" }
+      y: { min: 0, max: 100, unidad: "%", rotulo: "η" }
+      curvas:
+        - { expr: "pi/4*u/V_cc*100", color: naranja, rotulo: "η" }
+      marcas:
+        - { x: "V_p", y: "eta", rotulo: "{{eta}}" }
+      lectura: { valor: eta, rotulo: "Rendimiento" }
+      mandos:
+        - { valor: V_p, min: 0.5, max: 15, paso: 0.5, rotulo: "Amplitud de pico, V_{p}" }
+
+  - id: prediga-maximo
+    tipo: predecir
+    titulo: "El rendimiento máximo"
+    texto: "¿Cuál es el máximo teórico de la clase B, con la salida llegando al raíl?"
+    libro: [347, 356]
+    fijar: { V_p: 15 }
+    widget:
+      tipo: grafica
+      x: { id: u, min: 0, max: 15, unidad: V, rotulo: "V_{p}" }
+      y: { min: 0, max: 100, unidad: "%", rotulo: "η" }
+      curvas:
+        - { expr: "pi/4*u/V_cc*100", color: naranja, rotulo: "η" }
+      lectura: { valor: eta, rotulo: "Rendimiento" }
+      ocultar: true
+    opciones:
+      - texto: "π/4: un 78,54 %"
+        bien: true
+        porque: "Con V_{p} = V_{CC}, π/4 · 1. La clase AB pierde algo respecto a ese π/4."
+      - texto: "Todo: sin pérdidas"
+        porque: "Los transistores siempre disipan algo: entre la salida y el raíl cae tensión mientras conducen."
+      - texto: "Un 50 %"
+        porque: "Ese es el de la clase A con transformador."
+    escalera:
+      - "Ponga V_{p} = V_{CC} en η = π/4 · V_{p}/V_{CC}."
+    solucion: "η_{máx} = π/4 = 78,54 %."
+    comprobar:
+      - { eta: 78.54, eta_m: 78.54, tol: 0.001 }
+
+  - id: estime-comprobacion
+    tipo: pregunta
+    fase: "Estime"
+    titulo: "La comprobación del libro"
+    texto: "Con V_{CC} = 15 V, V_{p} = 14 V y 8 Ω, ¿qué rendimiento tiene la etapa?"
+    libro: [345, 348]
+    fijar: { V_p: 14 }
+    estimar:
+      objetivo: "eta"
+      unidad: "%"
+      min: 0
+      max: 100
+      paso: 0.5
+      inicio: 30
+      tol: 0.02
+      rotulo: "Rendimiento"
+    exito: "73,3 %: 12,25 W de salida con 16,71 W consumidos."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 74.8 }, texto: "Se ha pasado: la salida no llega al raíl, así que no alcanza el 78,54 %." }
+      - { texto: "Se ha quedado corto: π/4 · 14/15." }
+    escalera:
+      - "P_{salida} = 14²/(2·8) = 12,25 W; P_{consumida} = 2·15·14/(π·8)."
+    solucion: "12,25/16,71 = 73,3 %, igual que π/4 · 14/15."
+    comprobar:
+      - { eta: 73.3, P_o: 12.25, P_i: 16.71, tol: 0.002 }
+
+  - id: prediga-disipacion
+    tipo: predecir
+    titulo: "¿Cuándo calienta más?"
+    texto: "Con ±15 V y 8 Ω, ¿a qué amplitud disipa más cada transistor?"
+    libro: [350, 352]
+    fijar: { V_p: 9.5 }
+    widget:
+      tipo: grafica
+      x: { id: u, min: 0, max: 15, unidad: V, rotulo: "V_{p}" }
+      y: { min: 0, max: 20, unidad: W, rotulo: "P" }
+      curvas:
+        - { expr: "u^2/(2*R_L)", color: azul, rotulo: "P_{salida}" }
+        - { expr: "2*V_cc*u/(pi*R_L)", color: tinta, rotulo: "P_{consumida}", discontinua: true }
+      lectura: { valor: V_dm, rotulo: "Amplitud de máxima disipación" }
+      ocultar: true
+    opciones:
+      - texto: "A 9,55 V, el 63,7 % de la excursión: 2,85 W"
+        bien: true
+        porque: "Derivando la disipación respecto de V_{p}, el máximo cae en 2V_{CC}/π, no a plena potencia."
+      - texto: "A plena excursión, 15 V"
+        porque: "A plena potencia disipa menos: la salida se lleva casi toda la potencia consumida."
+      - texto: "Sin señal"
+        porque: "En clase B, sin señal no conduce ninguno: disipación nula."
+    escalera:
+      - "Disipada = consumida − salida. Una crece como V_{p} y la otra como V_{p}²."
+    solucion: "A V_{p} = 2V_{CC}/π = 9,55 V: 2,85 W por transistor."
+    comprobar:
+      - { V_dm: 9.55, P_dm: 2.85, k_dm: 63.7, tol: 0.005 }
+
+  - id: dibuje-disipacion
+    tipo: dibujar
+    titulo: "Dibuje la disipación"
+    texto: "Con ±15 V y 8 Ω, dibuje la potencia que disipa cada transistor desde cero hasta la excursión completa."
+    libro: [350, 352]
+    dibujar:
+      x: { id: u, min: 0, max: 15, unidad: V, rotulo: "V_{p}" }
+      y: { min: 0, max: 4, unidad: W, rotulo: "P_{disipada}" }
+      curva: "V_cc*u/(pi*R_L) - u^2/(4*R_L)"
+      puntos: 16
+      tol: 0.08
+      holgura: 0.03
+      rotulo: "Disipación de un transistor"
+    exito: "Sube, tiene su máximo de 2,85 W hacia 9,55 V y baja a plena excursión."
+    pistas:
+      - { cuando: { valor: amplitud, mayor: 1.2 }, texto: "Demasiado alta: el máximo por transistor es V_{CC}²/(π²·R_{L})." }
+      - { texto: "No crece hasta el final: a plena excursión la salida se lleva casi todo y el transistor disipa menos." }
+    escalera:
+      - "Sin señal, cero. El máximo, al 63,7 % de la excursión."
+      - "A plena excursión baja hasta {{P_full}}."
+    solucion: "Una campana: 0 W, máximo de 2,85 W en 9,55 V y {{P_full}} a 15 V."
+    comprobar:
+      - { P_full: 1.92, P_dm: 2.85, V_dm: 9.55, tol: 0.01 }
+
+  - id: formula-disipacion
+    tipo: formula
+    titulo: "La disipación máxima"
+    texto: "Es la cifra que dimensiona el disipador. Cambie la tensión de los raíles."
+    libro: [351, 352]
+    ec: 351
+    sustitucion: "{{V_cc}}² / (π² · {{R_L}}) = {{P_dm}}"
+    widget:
+      tipo: grafica
+      x: { id: u, min: 0, max: 25, unidad: V, rotulo: "V_{p}" }
+      y: { min: 0, max: 10, unidad: W, rotulo: "P_{disipada}" }
+      curvas:
+        - { expr: "max(0, V_cc*u/(pi*R_L) - u^2/(4*R_L))*ceil((V_cc - u)/1e9)", color: naranja, rotulo: "un transistor" }
+      marcas:
+        - { x: "V_dm", y: "P_dm", rotulo: "{{P_dm}}" }
+      lectura: { valor: P_dm, rotulo: "Disipación máxima" }
+      mandos:
+        - { valor: V_cc, lista: [12, 15, 21, 24], rotulo: "Raíles, V_{CC}" }
+
+  - id: pregunta-consecuencia
+    tipo: pregunta
+    titulo: "La prueba que engaña"
+    texto: "Se prueba un amplificador de clase B solo a plena potencia y no se calienta demasiado. ¿Está bien dimensionado el disipador?"
+    libro: [353]
+    widget:
+      tipo: grafica
+      x: { id: u, min: 0, max: 15, unidad: V, rotulo: "V_{p}" }
+      y: { min: 0, max: 4, unidad: W, rotulo: "P_{disipada}" }
+      curvas:
+        - { expr: "V_cc*u/(pi*R_L) - u^2/(4*R_L)", color: naranja, rotulo: "un transistor" }
+    opciones:
+      - texto: "No se sabe: calienta más a volumen medio"
+        bien: true
+        porque: "Probar solo a plena potencia da una falsa sensación de seguridad: hay que dimensionar para el punto intermedio."
+      - texto: "Sí: a plena potencia es el peor caso"
+        porque: "En clase B el peor caso está hacia el 63,7 % de la excursión, no al máximo."
+      - texto: "Sí, si además se prueba sin señal"
+        porque: "Sin señal la clase B no disipa: es el mejor caso, no el peor."
+    escalera:
+      - "¿Dónde está el máximo de la campana?"
+    solucion: "No: el máximo está a volumen medio; el disipador se dimensiona para él."
+
+  - id: porque-clase-a
+    tipo: porque
+    titulo: "La clase A con transformador"
+    texto: "Con acoplo resistivo, la clase A llega al 25 %. ¿Por qué el transformador lo duplica hasta el 50 %?"
+    libro: [342, 343]
+    widget:
+      tipo: grafica
+      x: { id: u, min: 0, max: 15, unidad: V, rotulo: "V_{p}" }
+      y: { min: 0, max: 20, unidad: W, rotulo: "P" }
+      curvas:
+        - { expr: "u^2/(2*R_L)", color: azul, rotulo: "P_{salida}" }
+    opciones:
+      - texto: "La salida puede llegar a V_{CC} de pico, sin caída de continua"
+        bien: true
+        porque: "Con acoplo resistivo no pasa de V_{CC}/2: el transformador dobla la excursión útil."
+      - texto: "Porque el transformador no disipa"
+        porque: "No disipar es útil, pero la razón es que la salida alcanza V_{CC} de pico."
+      - texto: "Porque deja de conducir medio ciclo"
+        porque: "Sigue en clase A, conduciendo todo el ciclo; lo que cambia es la excursión."
+    escalera:
+      - "¿Hasta dónde llega la salida con acoplo resistivo? ¿Y con transformador?"
+    solucion: "La salida alcanza V_{CC} de pico en lugar de V_{CC}/2."
+
+  - id: prediga-cruce
+    tipo: predecir
+    titulo: "El codo frente a la amplitud"
+    texto: "La zona muerta de unos ±0,7 V se come un 7 % de una señal de 10 V de pico. ¿Y de una de 1 V?"
+    libro: [355]
+    fijar: { A_s: 1 }
+    widget:
+      tipo: grafica
+      x: { id: t, min: 0, max: 0.002, unidad: s, rotulo: "t" }
+      y: { min: -1.2, max: 1.2, unidad: V, rotulo: "v" }
+      curvas:
+        - { expr: "A_s*sin(2*pi*f_s*t)", color: tinta, rotulo: "entrada", discontinua: true }
+        - { expr: "max(0, A_s*sin(2*pi*f_s*t) - V_BE) + min(0, A_s*sin(2*pi*f_s*t) + V_BE)", color: naranja, rotulo: "salida" }
+      lectura: { valor: k_z, rotulo: "Amplitud perdida" }
+      ocultar: true
+    opciones:
+      - texto: "Más de la mitad"
+        bien: true
+        porque: "El escalón es fijo y la señal no; con medio voltio, la señal ni llega a la salida."
+      - texto: "Un 7 %, igual"
+        porque: "Los 0,7 V no se escalan con la señal: frente a 1 V son mucho más."
+      - texto: "Un 0,7 %"
+        porque: "Al revés: con menos señal, el mismo escalón pesa más."
+    escalera:
+      - "Compare 0,7 V con 1 V."
+    solucion: "0,7 de 1 V: más de la mitad."
+    comprobar:
+      - { k_z: 70, tol: 0.001 }
+      - { con: { A_s: 10 }, k_z: 7, tol: 0.001 }
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [342, 347, 351, 353]
+    ideas:
+      - { titulo: "Clase A.", texto: "25 % con acoplo resistivo, 50 % con transformador." }
+      - { titulo: "Clase B.", texto: "η = π/4 · V_{p}/V_{CC}: como máximo 78,54 %." }
+      - { titulo: "Disipación.", texto: "Máxima al 63,7 % de la excursión, V_{CC}²/(π²R_{L}): calienta más a volumen medio." }
+      - { titulo: "Cruce.", texto: "El escalón fijo pesa más cuanto menor es la señal." }
