@@ -1,0 +1,206 @@
+# Lección 1.2 de la sección 38.1 «Hardware Configurable: Otra Forma de Pensar» (cap37; etiqueta interna sec-37.1).
+# Formato: contenido/lecciones11/GUIA.md (§11). Figura 38.2 (svg_vista 453,6 × 246,96) para el cambio de paradigma,
+# figura 38.1 (450,72 × 241,86) para el interior y la foto de la MAX1000 (figura 38.3, 1200 × 512 px). El experimento
+# del banco (bloque 35, dos divisores independientes) se ve como dos divisores del mismo reloj en zonas distintas:
+# un biestable D con Q̄ en su D y un contador de dos bits.
+leccion: cap37/sec-37.1
+
+libro:
+  4: "una FPGA no ejecuta nada: se convierte en el circuito que se ha descrito"
+  5: "dos tareas ocupan zonas distintas del silicio y funcionan a la vez, sin interferirse"
+  9: "Bloques lógicos: cada uno con una tabla de consulta (LUT)"
+  10: "Interconexión programable, que es la que ocupa la mayor parte del área"
+  12: "Una FPGA sin configurar no hace nada"
+  15: "Escribir HDL «como si fuera un programa» es el error de partida de casi todo el mundo"
+  16: "Un bucle no itera en el tiempo: se despliega en el espacio"
+  17: "Diez multiplicaciones simultáneas necesitan diez multiplicadores, y se hacen en un ciclo"
+  20: "Paralelismo masivo"
+  21: "Temporización estricta, de nanosegundos"
+  22: "Interfaces raros o muy rápidos"
+  25: "una FPGA es mala ejecutando algoritmos secuenciales"
+  26: "la solución habitual sea mixta"
+  29: "Consumo apreciable, incluso sin hacer nada"
+  31: "minutos u horas donde un compilador de C tarda segundos"
+  32: "hay que instrumentar el diseño para ver lo que ocurre dentro"
+  35: "instanciar dos divisores independientes con frecuencias distintas"
+  36: "Ejecución secuencial frente a lógica concurrente"
+  37: "Placa de desarrollo con FPGA (MAX1000)"
+
+modelo:
+  valores: {}
+  calculos: {}
+
+tarjetas:
+  - id: explore-ejecutar-o-ser
+    tipo: explorar
+    titulo: "Ejecutar o ser el circuito"
+    texto: "Toque las dos mitades de arriba: un procesador reparte el tiempo; una FPGA reparte el silicio."
+    libro: [4, 5, 36]
+    widget:
+      tipo: figura
+      figura: fig-37.2
+      zonas:
+        - { id: cpu, rotulo: "Arriba a la izquierda", rect: [4, 2, 220, 124], texto: "Procesador: las tareas por turnos. Compiten por el tiempo, y añadir una retrasa a las demás." }
+        - { id: fpga, rotulo: "Arriba a la derecha", rect: [229, 2, 220, 124], texto: "FPGA: cada tarea en su propia zona del silicio, todas a la vez y sin interferirse." }
+    requiere: { mover: [cpu, fpga] }
+
+  - id: explore-dos-divisores
+    tipo: explorar
+    titulo: "Dos divisores a la vez"
+    texto: "Dos divisores del mismo reloj, cada uno en su zona. Mueva el cursor: Q1 y Q2 cambian a su ritmo, sin esperarse."
+    libro: [5, 35]
+    widget:
+      tipo: logica
+      entradas: [{ id: CLK, reloj: true }]
+      piezas:
+        - { id: f1, tipo: d, entradas: [f1.nq, CLK] }
+        - { id: c1, tipo: contador, bits: 2, entradas: [CLK] }
+      salidas:
+        - { id: Q1, de: f1.q }
+        - { id: Q2, de: c1.q1 }
+      cronograma: { ciclos: 8, senales: [CLK, Q1, Q2] }
+
+  - id: prediga-segunda-tarea
+    tipo: predecir
+    titulo: "Añadir un segundo divisor"
+    texto: "A un divisor que ya funciona en una FPGA se le añade otro, independiente y de otra frecuencia. ¿Qué le pasa al primero?"
+    libro: [5, 9, 10, 35]
+    widget:
+      tipo: figura
+      figura: fig-37.1
+      zonas:
+        - { id: celdas, rotulo: "Recuadro de arriba a la izquierda", rect: [5, 10, 218, 160], texto: "Celdas LUT + FF: cada divisor ocupa las suyas." }
+    opciones:
+      - { texto: "Funciona exactamente igual que si estuviera solo", bien: true, porque: "El segundo ocupa otras celdas del silicio: no comparten nada que se tengan que repartir." }
+      - { texto: "Va más lento, porque comparten el tiempo", porque: "Eso pasa en un microcontrolador, donde las tareas se turnan. En la FPGA no hay turnos." }
+      - { texto: "Se para mientras el segundo trabaja", porque: "No hay un procesador que alterne entre ellos: los dos circuitos existen a la vez." }
+    escalera: ["¿Comparten algo los dos divisores, si cada uno es un circuito distinto?"]
+    solucion: "Funciona igual: en el microcontrolador la segunda tarea afecta a la primera; en la FPGA, no."
+
+  - id: pregunta-bucle
+    tipo: pregunta
+    titulo: "Un bucle en HDL"
+    texto: "Viniendo del software, se escribe en HDL un bucle de mil iteraciones. ¿Qué genera?"
+    libro: [16, 36]
+    widget:
+      tipo: figura
+      figura: fig-37.2
+      zonas:
+        - { id: bucle, rotulo: "Abajo en el centro", rect: [154, 142, 146, 101], texto: "Un bucle de cuatro vueltas: cuatro copias del circuito." }
+    opciones:
+      - { texto: "Tantas copias del circuito como vueltas", bien: true, porque: "No itera en el tiempo: se despliega en el espacio. Un bucle de mil iteraciones puede no caber." }
+      - { texto: "Un circuito que repite mil veces, una tras otra", porque: "Así lo haría un procesador. En HDL el bucle describe hardware, no pasos." }
+      - { texto: "Nada: en HDL no hay bucles", porque: "Los hay, pero generan copias del circuito, una por vuelta." }
+    escalera: ["Un HDL describe circuitos. ¿Qué significa repetir algo en un circuito?"]
+    solucion: "Mil copias del circuito, una por vuelta: puede no caber en el dispositivo."
+
+  - id: empareje-cambio-mental
+    tipo: pregunta
+    fase: "Empareje"
+    titulo: "El cambio mental"
+    texto: "Una cada idea del HDL con lo que significa en el silicio."
+    libro: [15, 16, 17]
+    emparejar:
+      - ["Varias sentencias de HDL", "Circuitos concurrentes, no pasos sucesivos"]
+      - ["Un bucle", "Copias del circuito en el espacio"]
+      - ["Diez multiplicaciones simultáneas", "Diez multiplicadores y un ciclo"]
+      - ["Las mismas diez en un procesador", "Un multiplicador y diez ciclos"]
+    exito: "Todo ocurre a la vez, el bucle se despliega y multiplicar cuesta área, no tiempo."
+    pistas:
+      - { texto: "En la FPGA, lo que se repite ocupa espacio; en el procesador, tiempo." }
+    escalera: ["En una FPGA, más operaciones a la vez significa más hardware, no más ciclos."]
+    solucion: "Sentencias: concurrentes. Bucle: copias. Diez productos: diez multiplicadores, un ciclo; en el procesador, uno y diez ciclos."
+
+  - id: explore-placa
+    tipo: explorar
+    titulo: "Una placa con FPGA"
+    texto: "Toque los tres chips grandes de la MAX1000: la FPGA, su memoria y el puente USB."
+    libro: [12, 37]
+    widget:
+      tipo: figura
+      figura: fig-37.3
+      zonas:
+        - { id: fpga, rotulo: "Chip grande, en el centro", rect: [597, 173, 209, 213], texto: "La FPGA Intel MAX 10. Sin configurar no hace nada." }
+        - { id: sdram, rotulo: "Chip a la derecha", rect: [840, 171, 163, 163], texto: "La memoria SDRAM." }
+        - { id: usb, rotulo: "Chip a la izquierda", rect: [187, 160, 157, 160], texto: "El puente USB: la alimenta y la programa desde el ordenador." }
+    requiere: { mover: [fpga, usb] }
+
+  - id: pregunta-sin-configurar
+    tipo: pregunta
+    titulo: "Recién encendida"
+    texto: "Se alimenta una FPGA y todavía no se ha cargado su configuración. ¿Qué hace?"
+    libro: [12, 37]
+    widget:
+      tipo: figura
+      figura: fig-37.3
+      zonas:
+        - { id: fpga, rotulo: "Chip grande, en el centro", rect: [597, 173, 209, 213], texto: "La FPGA: su función es la configuración que se le carga." }
+    opciones:
+      - { texto: "Nada", bien: true, porque: "Su función es la configuración que se carga al arrancar; sin ella no es ningún circuito." }
+      - { texto: "Ejecuta un programa de arranque", porque: "Una FPGA no ejecuta instrucciones: se convierte en el circuito que se le carga." }
+      - { texto: "Repite el circuito de la última vez", porque: "La configuración se carga al arrancar, normalmente desde una memoria externa: hay que cargarla otra vez." }
+    escalera: ["¿De dónde sale la función de una FPGA?"]
+    solucion: "Nada: la configuración se carga al arrancar, y una FPGA sin configurar no hace nada."
+
+  - id: pregunta-para-que-no
+    tipo: pregunta
+    titulo: "Para qué no"
+    texto: "¿Cuál de estos trabajos encaja peor en una FPGA?"
+    libro: [20, 21, 22, 25]
+    widget:
+      tipo: figura
+      figura: fig-37.2
+      zonas:
+        - { id: fpga, rotulo: "Arriba a la derecha", rect: [229, 2, 220, 124], texto: "Todo a la vez: ahí está su fuerza." }
+    opciones:
+      - { texto: "Un algoritmo secuencial", bien: true, porque: "Es lo que un procesador hace bien y una FPGA hace mal." }
+      - { texto: "Procesar muchos canales a la vez", porque: "Es paralelismo masivo: el primer caso donde una FPGA es la respuesta correcta." }
+      - { texto: "Una temporización de nanosegundos", porque: "En una FPGA está garantizada por construcción: es uno de sus casos." }
+      - { texto: "Un protocolo serie propio muy rápido", porque: "Interfaces raros o muy rápidos: otro de sus cuatro casos." }
+    escalera: ["¿Qué hace bien un procesador que a la FPGA no le sale?"]
+    solucion: "El algoritmo secuencial: es lo que un procesador hace bien."
+
+  - id: porque-mixta
+    tipo: porque
+    titulo: "La solución mixta"
+    texto: "¿Por qué lo habitual es un procesador dentro de la FPGA, o al lado, junto a la lógica dedicada?"
+    libro: [25, 26]
+    widget:
+      tipo: figura
+      figura: fig-37.2
+      zonas:
+        - { id: cpu, rotulo: "Arriba a la izquierda", rect: [4, 2, 220, 124], texto: "Una tras otra: lo que un procesador hace bien." }
+        - { id: fpga, rotulo: "Arriba a la derecha", rect: [229, 2, 220, 124], texto: "Todas a la vez: lo que hace bien la FPGA." }
+    opciones:
+      - { texto: "Cada uno hace lo que hace bien: control y comunicación uno, paralelismo y temporización la otra", bien: true, porque: "La FPGA es mala en lo secuencial; el procesador, en el paralelismo." }
+      - { texto: "Porque una FPGA sola no puede comunicarse", porque: "Puede: interfaces raros o rápidos son uno de sus casos. El reparto es por lo que hace bien cada uno." }
+      - { texto: "Porque el procesador acelera la lógica", porque: "La lógica dedicada ya es lo rápido; el procesador se encarga del control." }
+    escalera: ["¿En qué es mala una FPGA, y en qué es bueno un procesador?"]
+    solucion: "El procesador lleva el control y la comunicación; la lógica dedicada, el paralelismo y la temporización."
+
+  - id: pregunta-coste-depurar
+    tipo: pregunta
+    titulo: "El coste real"
+    texto: "Un diseño en FPGA falla. ¿Qué no tiene a mano, a diferencia del firmware?"
+    libro: [29, 31, 32]
+    widget:
+      tipo: figura
+      figura: fig-37.1
+      zonas:
+        - { id: flujo, rotulo: "Columna de la derecha", rect: [248, 10, 134, 205], texto: "Un flujo largo: minutos u horas por compilación." }
+    opciones:
+      - { texto: "Puntos de ruptura: hay que instrumentar el diseño para ver dentro", bien: true, porque: "La depuración es difícil: no hay puntos de ruptura." }
+      - { texto: "Un compilador", porque: "Lo tiene, pero tarda minutos u horas donde uno de C tarda segundos." }
+      - { texto: "Un consumo bajo en reposo", porque: "Cierto que consume incluso sin hacer nada, pero no es lo que falta para depurar." }
+    escalera: ["¿Cómo se detiene un circuito que funciona todo a la vez?"]
+    solucion: "No hay puntos de ruptura: hay que instrumentar el diseño para ver lo que ocurre dentro."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [4, 16, 17, 26]
+    ideas:
+      - { titulo: "Ser, no ejecutar.", texto: "La FPGA se convierte en el circuito descrito: las tareas ocupan silicio, no turnos." }
+      - { titulo: "Cambio mental.", texto: "Todo a la vez; el bucle se despliega; multiplicar cuesta área, no tiempo." }
+      - { titulo: "Para qué.", texto: "Paralelismo, temporización estricta e interfaces raros; para lo secuencial, un procesador." }
+      - { titulo: "Coste.", texto: "Consumo, desarrollo largo y depuración difícil." }

@@ -1,0 +1,209 @@
+# Lección 1.2 de la sección 38.9 «Una SDR en FPGA: el Círculo, Otra Vez» (cap37; etiqueta interna sec-37.9).
+# Formato: contenido/lecciones11/GUIA.md (§11). Figura 38.11 (svg_vista 450,72 × 220,32): la cadena dentro de la
+# FPGA y el CORDIC. El reto reparte el FIR de 64 coeficientes del bloque 269 en el tiempo: multiplicadores =
+# coeficientes / ciclos por muestra.
+leccion: cap37/sec-37.9
+
+libro:
+  250: "cada bloque del capítulo 53 se convierte aquí en hardware concreto"
+  255: "CIC: diezmado grueso sin multiplicadores."
+  257: "con 100 megamuestras por segundo y dos canales, un procesador tendría que hacer cientos de millones de operaciones complejas por segundo solo para el diezmado"
+  258: "con la aritmética repartida en el silicio"
+  259: "el diezmado y el filtrado grueso en la FPGA, donde el caudal es enorme"
+  261: "usando solo sumas y desplazamientos, sin un solo multiplicador"
+  262: "los multiplicadores son un recurso escaso"
+  263: "en FPGA se optimiza el recurso, no el número de operaciones"
+  266: "uno por coeficiente si se calcula en un ciclo"
+  269: "Un FIR de 64 coeficientes puede usar 64 multiplicadores en un ciclo, o 8 durante 8 ciclos."
+  272: "El NCO solo, comprobando su salida con el analizador integrado o sacándola por un DAC."
+  273: "El CIC, con una señal conocida"
+  274: "La cadena completa, comparando su salida con la del mismo procesado hecho en el ordenador"
+  275: "si el hardware da lo mismo que el modelo en coma flotante, dentro del error de la aritmética entera, la implementación es correcta"
+  276: "La cadena de una SDR implementada en FPGA y el papel del CORDIC."
+
+modelo:
+  valores:
+    n_coef: { nombre: "coeficientes del FIR", valor: 64 }
+    k_ciclos: { nombre: "ciclos por muestra", valor: 1 }
+  calculos:
+    n_mult: { expr: "n_coef/k_ciclos", nombre: "multiplicadores", cifras: 2 }
+
+tarjetas:
+  - id: explore-cadena
+    tipo: explorar
+    titulo: "La cadena, en hardware"
+    texto: "Cada bloque de la SDR es aquí hardware concreto. Toque el NCO, el CIC y el demodulador."
+    libro: [250, 255, 276]
+    widget:
+      tipo: figura
+      figura: fig-37.11
+      zonas:
+        - { id: nco, rotulo: "Recuadro de arriba", rect: [76, 14, 119, 38], texto: "NCO: seno y coseno por tabla o por CORDIC." }
+        - { id: mezclador, rotulo: "Primer bloque de la fila", rect: [76, 74, 62, 57], texto: "Mezclador digital: multiplicaciones complejas para trasladar en frecuencia." }
+        - { id: cic, rotulo: "Segundo bloque de la fila", rect: [146, 74, 46, 57], texto: "CIC: diezmado grueso sin multiplicadores." }
+        - { id: fir, rotulo: "Tercer bloque de la fila", rect: [200, 74, 42, 57], texto: "FIR: filtrado de canal fino." }
+        - { id: demod, rotulo: "Cuarto bloque de la fila", rect: [250, 74, 71, 57], texto: "Demodulador, según el modo: el CORDIC da el módulo (AM) o el ángulo (FM)." }
+    requiere: { mover: [nco, cic, demod] }
+
+  - id: ordene-cadena
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "Dentro de la FPGA"
+    texto: "Ponga en orden la cadena que va dentro de la FPGA."
+    libro: [255]
+    ordenar:
+      - "NCO: seno y coseno."
+      - "Mezclador digital: trasladar en frecuencia."
+      - "CIC: diezmado grueso."
+      - "FIR: filtrado de canal fino."
+      - "Demodulador, según el modo."
+      - "Interfaz con el ordenador o un procesador."
+    exito: "Primero se traslada, luego se diezma en grueso y se filtra fino; al final, se demodula."
+    pistas:
+      - { texto: "El mezclador necesita el seno y el coseno del NCO." }
+    escalera: ["El diezmado grueso va antes que el filtrado fino."]
+    solucion: "NCO, mezclador, CIC, FIR, demodulador e interfaz."
+
+  - id: prediga-por-que-fpga
+    tipo: predecir
+    titulo: "Por qué FPGA"
+    texto: "Con 100 megamuestras por segundo y dos canales, ¿qué le pasaría a un procesador solo con el diezmado?"
+    libro: [257, 258]
+    widget:
+      tipo: figura
+      figura: fig-37.11
+      zonas:
+        - { id: cic, rotulo: "Segundo bloque de la fila", rect: [146, 74, 46, 57], texto: "El diezmado, al reloj completo." }
+    opciones:
+      - { texto: "Tendría que hacer cientos de millones de operaciones complejas por segundo", bien: true, porque: "La FPGA lo hace en paralelo y en tiempo real, con la aritmética repartida en el silicio." }
+      - { texto: "Nada: el diezmado no necesita operaciones", porque: "Diezmar es filtrar y quedarse con menos muestras: hay que operar con todas." }
+      - { texto: "Le bastaría con una interrupción por muestra", porque: "Cien millones de interrupciones por segundo no caben en ningún procesador." }
+    escalera: ["Multiplique las muestras por segundo por los canales."]
+    solucion: "Cientos de millones de operaciones complejas por segundo: la FPGA las reparte en el silicio."
+
+  - id: toque-reloj-completo
+    tipo: tocar
+    titulo: "Al reloj completo"
+    texto: "Toque los dos bloques que trabajan al reloj completo, antes de que el caudal se reduzca."
+    libro: [259, 276]
+    widget:
+      tipo: figura
+      figura: fig-37.11
+      zonas:
+        - { id: mezclador, rotulo: "Primer bloque de la fila", rect: [76, 74, 62, 57] }
+        - { id: cic, rotulo: "Segundo bloque de la fila", rect: [146, 74, 46, 57] }
+        - { id: fir, rotulo: "Tercer bloque de la fila", rect: [200, 74, 42, 57] }
+        - { id: demod, rotulo: "Cuarto bloque de la fila", rect: [250, 74, 71, 57] }
+    tocar:
+      bien: [mezclador, cic]
+      todas: true
+      porque:
+        fir: "El FIR ya recibe el caudal diezmado por el CIC: le sobran ciclos."
+        demod: "Trabaja con el caudal ya diezmado; por eso puede ir incluso a un procesador."
+    exito: "Mezclador y CIC, al reloj completo; tras el diezmado sobran ciclos."
+    escalera: ["¿Qué bloque reduce el caudal? Lo de antes va al reloj completo."]
+    solucion: "El mezclador y el CIC: el CIC diezma, y lo de después ya va sobrado."
+
+  - id: reto-fir
+    tipo: reto
+    titulo: "Reutilizar en el tiempo"
+    texto: "Un FIR de 64 coeficientes y el caudal permite repartir cada muestra en varios ciclos. Haga que use 8 multiplicadores."
+    libro: [266, 269]
+    widget:
+      tipo: grafica
+      x: { id: kk, min: 1, max: 64, rotulo: "ciclos por muestra", escala: log }
+      y: { min: 1, max: 64, rotulo: "multiplicadores", escala: log }
+      curvas:
+        - { expr: "n_coef/kk", color: azul, rotulo: "multiplicadores" }
+      asas:
+        - { mueve: k_ciclos, x: "k_ciclos", y: "n_mult", rotulo: "Su reparto" }
+      lectura: { valor: n_mult, rotulo: "Multiplicadores" }
+      mandos:
+        - { valor: k_ciclos, lista: [1, 2, 4, 8, 16, 32, 64], rotulo: "Ciclos por muestra" }
+    condiciones:
+      - { valor: n_mult, objetivo: 8, tol: 0.01, rotulo: "Multiplicadores: {{n_mult}}" }
+    exito: "8 multiplicadores durante 8 ciclos hacen el trabajo de 64 en uno."
+    pistas:
+      - { cuando: { valor: n_mult, mayor: 8.1 }, texto: "Gasta demasiados: reparta cada muestra en más ciclos." }
+      - { cuando: { valor: n_mult, menor: 7.9 }, texto: "Se ha pasado: con tantos ciclos por muestra, quizá el caudal ya no lo permita. Vuelva atrás." }
+    escalera: ["Multiplicadores × ciclos = coeficientes."]
+    solucion: "64 coeficientes / 8 multiplicadores = 8 ciclos por muestra."
+    comprobar:
+      - { con: { k_ciclos: 8 }, n_mult: 8 }
+
+  - id: pregunta-cordic
+    tipo: pregunta
+    titulo: "El CORDIC"
+    texto: "¿Qué tiene de especial el algoritmo CORDIC para una FPGA?"
+    libro: [261, 262]
+    widget:
+      tipo: figura
+      figura: fig-37.11
+      zonas:
+        - { id: demod, rotulo: "Cuarto bloque de la fila", rect: [250, 74, 71, 57], texto: "CORDIC: módulo (AM) o ángulo (FM)." }
+    opciones:
+      - { texto: "Calcula senos, cosenos, arcotangentes y módulos solo con sumas y desplazamientos", bien: true, porque: "Sin un solo multiplicador, que es el recurso escaso." }
+      - { texto: "Necesita un multiplicador por iteración", porque: "Justo lo contrario: no gasta ninguno." }
+      - { texto: "Solo calcula raíces cuadradas", porque: "Da senos, cosenos, arcotangentes y módulos: la conversión a polares." }
+    escalera: ["¿Qué recurso de la FPGA es escaso?"]
+    solucion: "Solo sumas y desplazamientos, sin multiplicadores."
+
+  - id: porque-recurso
+    tipo: porque
+    titulo: "Optimizar el recurso"
+    texto: "El CORDIC hace más operaciones que una tabla con multiplicador. ¿Por qué compensa en FPGA?"
+    libro: [262, 263]
+    widget:
+      tipo: figura
+      figura: fig-37.11
+      zonas:
+        - { id: cordic, rotulo: "Recuadro de abajo", rect: [4, 166, 443, 50], texto: "En FPGA se optimiza el recurso, no el número de operaciones." }
+    opciones:
+      - { texto: "En FPGA se optimiza el recurso, no el número de operaciones", bien: true, porque: "Las sumas se hacen a la vez en el silicio; los multiplicadores escasean." }
+      - { texto: "Porque es más exacto", porque: "La razón que da el libro es el recurso: no gastar multiplicadores." }
+      - { texto: "No compensa: se usa por costumbre", porque: "Compensa: permite la conversión a polares sin un solo multiplicador." }
+    escalera: ["En un procesador, menos operaciones es más rápido. ¿Y en una FPGA?"]
+    solucion: "En FPGA cuenta el recurso: el CORDIC no gasta multiplicadores."
+
+  - id: ordene-banco
+    tipo: pregunta
+    fase: "Ordene"
+    titulo: "En el banco, por partes"
+    texto: "Ordene las comprobaciones con que se aborda el proyecto."
+    libro: [272, 273, 274]
+    ordenar:
+      - "El NCO solo, con el analizador integrado o un DAC."
+      - "El CIC, con una señal conocida."
+      - "La cadena completa frente al mismo procesado en el ordenador."
+    exito: "Cada parte es verificable por separado antes de juntarlas."
+    pistas:
+      - { texto: "La cadena completa es lo último." }
+    escalera: ["El NCO alimenta al mezclador: va antes que el CIC."]
+    solucion: "NCO, CIC y la cadena completa."
+
+  - id: pregunta-validacion
+    tipo: pregunta
+    titulo: "La validación definitiva"
+    texto: "La cadena completa se compara con el mismo procesado en coma flotante en el ordenador. ¿Cuándo es correcta?"
+    libro: [274, 275]
+    widget:
+      tipo: figura
+      figura: fig-37.11
+      zonas:
+        - { id: ordenador, rotulo: "Recuadro de la derecha", rect: [390, 74, 57, 57], texto: "El ordenador o procesador integrado." }
+    opciones:
+      - { texto: "Si da lo mismo dentro del error de la aritmética entera", bien: true, porque: "El hardware trabaja con enteros: la diferencia debe quedarse en ese error." }
+      - { texto: "Solo si coincide bit a bit", porque: "La FPGA usa aritmética entera y el modelo coma flotante: siempre habrá un error pequeño." }
+      - { texto: "Si suena bien", porque: "Eso no valida nada: la comparación es con los mismos datos y el modelo." }
+    escalera: ["¿Qué aritmética usa el hardware, y cuál el modelo?"]
+    solucion: "Si da lo mismo que el modelo en coma flotante, dentro del error de la aritmética entera."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [255, 259, 263, 269]
+    ideas:
+      - { titulo: "La cadena.", texto: "NCO, mezclador, CIC, FIR y demodulador, como hardware." }
+      - { titulo: "Reparto.", texto: "Diezmado en la FPGA; demodulación e interfaz en un procesador." }
+      - { titulo: "CORDIC.", texto: "Sin multiplicadores: se optimiza el recurso." }
+      - { titulo: "Reutilizar.", texto: "Un FIR de 64 coeficientes: 64 multiplicadores en un ciclo u 8 en 8." }
