@@ -1,0 +1,303 @@
+# Lección 1.2 de la sección 18.9 «Criterios Cuantitativos» (cap19; sec-19.N = impresas 18.N).
+# - El caudal (bloques 229 a 232): n·f_s·m·factor, 25,6 kbit/s con 8 canales a 100 Hz, 16 bits y factor 2; 2,6 Mbit/s
+#   a 10 kHz. Gráfica log-log como la figura 18.9, con las líneas de la UART a 115 200 bit/s y a 1 Mbit/s (fig-19.10).
+# - La tolerancia de reloj de la UART (bloques 239 a 241): el último muestreo se desplaza 9,5·Δ bits y no debe pasar
+#   de 0,5: Δ < 5,26 % en total, 2,63 % por equipo. El ATmega328P a 16 MHz da 117 647 baudios (+2,1 %).
+# - El almacenamiento de una hora de corte (bloque 244): 8 canales a 100 Hz y 16 bits, 5,8 MB.
+# Paso práctico: «simular» el caudal de 8 canales a 10 kHz (2,56 Mbit/s; errores típicos: sin el factor 2, en bytes).
+leccion: cap19/sec-19.9
+
+libro:
+  223: "hay que dimensionar la comunicación, los tiempos y el consumo"
+  225: "hasta 115 kbit/s"
+  226: "UART para lo simple, USB con un ordenador de placa, RS-485 o Ethernet si hay distancia"
+  228: "Con n canales muestreados a fs y m bits por muestra"
+  229: '"caudal" approx n times f_("s") times m times "factor"'
+  231: '8 times 100 times 16 times 2 = "25 600 bit/s"'
+  232: "Y el mismo cálculo con 8 canales a 10 kHz da 2,6 Mbit/s, que ya no cabe."
+  233: "evita descubrir a mitad del proyecto que el enlace no da"
+  239: "el último muestreo, el del bit de parada, cae a 9,5 bits del flanco"
+  240: '"9,5" dot.op Delta < "0,5"'
+  241: "±2,63 % por equipo"
+  244: "una hora son 5,8 MB, que exige memoria externa"
+  247: "Debe funcionar sin el otro"
+  249: "saturar el enlace con datos de prueba a la velocidad prevista, durante horas"
+  250: "el enlace está al límite"
+  251: "Caudal necesario según canales y frecuencia, y los criterios de reparto."
+
+modelo:
+  valores:
+    n_c: { sim: "n", nombre: "canales", unidad: "", valor: 8 }
+    f_m: { sim: "f_{s}", nombre: "frecuencia de muestreo", unidad: Hz, valor: 100 }
+    m_b: { sim: "m", nombre: "bits por muestra", unidad: "", valor: 16 }
+    k_p: { sim: "factor", nombre: "factor de sobrecarga y codificación", unidad: "", valor: 2 }
+    d_x: { sim: "Δ", nombre: "diferencia entre los dos relojes", unidad: "%", valor: 1 }
+    b_n: { sim: "b", nombre: "velocidad nominal", unidad: "bit/s", valor: 115200 }
+    t_h: { sim: "t", nombre: "segundos de una hora", unidad: s, valor: 3600 }
+    b_r: { sim: "b_{real}", nombre: "velocidad real del ATmega328P a 16 MHz", unidad: "bit/s", valor: 117647 }
+  calculos:
+    R_b: { expr: "n_c*f_m*m_b*k_p", sim: "caudal", nombre: "caudal necesario", unidad: "bit/s" }
+    R_s: { expr: "n_c*f_m*m_b", sim: "caudal", nombre: "caudal sin el factor", unidad: "bit/s" }
+    R_y: { expr: "n_c*f_m*m_b*k_p/8", sim: "caudal", nombre: "caudal en bytes por segundo", unidad: "bit/s" }
+    s_d: { expr: "9.5*d_x/100", sim: "desplazamiento", nombre: "desplazamiento del último muestreo", unidad: "", cifras: 3 }
+    D_m: { expr: "0.5/9.5*100", sim: "Δ_{máx}", nombre: "error total máximo", unidad: "%", cifras: 3 }
+    D_e: { expr: "D_m/2", sim: "Δ", nombre: "error máximo por equipo", unidad: "%", cifras: 3 }
+    e_b: { expr: "(b_r/b_n - 1)*100", sim: "error", nombre: "error de velocidad", unidad: "%", cifras: 2 }
+    B_s: { expr: "n_c*f_m*m_b/8", sim: "bytes/s", nombre: "bytes por segundo", unidad: "B" }
+    S_h: { expr: "n_c*f_m*m_b*t_h/8", sim: "memoria", nombre: "memoria para una hora", unidad: "B" }
+    S_b: { expr: "n_c*f_m*m_b*t_h", sim: "bits", nombre: "una hora contada en bits", unidad: "B" }
+
+tarjetas:
+  - id: explore-caudal
+    tipo: explorar
+    titulo: "Lo que pide el enlace"
+    texto: "El caudal necesario crece con los canales y con la frecuencia de muestreo. Muévalos y compare con las dos líneas de la UART."
+    libro: [223, 228, 251]
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 10, max: 20000, unidad: Hz, rotulo: "f_{s}", escala: log }
+      y: { min: 1000, max: 10000000, unidad: "bit/s", rotulo: "caudal", escala: log }
+      curvas:
+        - { expr: "n_c*nu*m_b*k_p", color: naranja, rotulo: "caudal necesario" }
+        - { expr: "115200", color: azul, rotulo: "UART a 115 200 bit/s", discontinua: true }
+        - { expr: "1000000", color: tinta, rotulo: "UART a 1 Mbit/s", discontinua: true }
+      marcas:
+        - { x: "f_m", y: "R_b", rotulo: "{{R_b}}" }
+      lectura: { valor: R_b, rotulo: "Caudal necesario" }
+      mandos:
+        - { valor: n_c, lista: [4, 8, 16], rotulo: "Canales, n" }
+        - { valor: f_m, lista: [100, 1000, 10000], rotulo: "Muestreo, f_{s}" }
+    requiere: { mover: [n_c, f_m] }
+
+  - id: formula-caudal
+    tipo: formula
+    titulo: "El dimensionado del caudal"
+    texto: "Canales por muestreo por bits, y un factor por la sobrecarga del protocolo y la codificación. Con 8 canales a 100 Hz y 16 bits:"
+    libro: [229, 231]
+    ec: 229
+    sustitucion: "{{n_c}} · {{f_m}} · {{m_b}} · {{k_p}} = {{R_b}}"
+    fijar: { m_b: 16, k_p: 2 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 10, max: 20000, unidad: Hz, rotulo: "f_{s}", escala: log }
+      y: { min: 1000, max: 10000000, unidad: "bit/s", rotulo: "caudal", escala: log }
+      curvas:
+        - { expr: "n_c*nu*m_b*k_p", color: naranja, rotulo: "caudal necesario" }
+        - { expr: "115200", color: azul, rotulo: "UART a 115 200 bit/s", discontinua: true }
+      marcas:
+        - { x: "f_m", y: "R_b", rotulo: "{{R_b}}" }
+      lectura: { valor: R_b, rotulo: "Caudal necesario" }
+      mandos:
+        - { valor: n_c, lista: [4, 8, 16], rotulo: "Canales, n" }
+        - { valor: f_m, lista: [100, 1000, 10000], rotulo: "Muestreo, f_{s}" }
+    comprobar:
+      - { con: { n_c: 8, f_m: 100 }, R_b: 25600 }
+
+  - id: prediga-cabe
+    tipo: predecir
+    titulo: "¿Cabe en la UART?"
+    texto: "8 canales a 100 Hz y 16 bits, con factor 2, por una UART a 115 200 baudios. ¿Cabe?"
+    libro: [225, 231, 233]
+    fijar: { n_c: 8, f_m: 100, m_b: 16, k_p: 2 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 10, max: 20000, unidad: Hz, rotulo: "f_{s}", escala: log }
+      y: { min: 1000, max: 10000000, unidad: "bit/s", rotulo: "caudal", escala: log }
+      curvas:
+        - { expr: "n_c*nu*m_b*k_p", color: naranja, rotulo: "caudal necesario" }
+        - { expr: "115200", color: azul, rotulo: "UART a 115 200 bit/s", discontinua: true }
+      lectura: { valor: R_b, rotulo: "Caudal necesario" }
+      ocultar: true
+      mandos: []
+    opciones:
+      - texto: "Sí, holgadamente"
+        bien: true
+        porque: "Pide 25,6 kbit/s: menos de la cuarta parte de lo que da la UART."
+      - texto: "Justo en el límite"
+        porque: "Ni de lejos: 25,6 kbit/s frente a 115 200."
+      - texto: "No cabe"
+        porque: "No cabría a 10 kHz; a 100 Hz sobra enlace."
+    escalera:
+      - "Multiplique 8 · 100 · 16 · 2."
+    solucion: "25 600 bit/s: cabe holgadamente en 115 200 baudios."
+    comprobar:
+      - { R_b: 25600 }
+
+  - id: simule-caudal
+    tipo: simular
+    titulo: "A 10 kHz"
+    texto: "Ahora, 8 canales a 10 kHz, 16 bits y factor 2. ¿Qué caudal necesita el enlace?"
+    libro: [229, 232]
+    fijar: { n_c: 8, f_m: 10000, m_b: 16, k_p: 2 }
+    simular:
+      objetivo: R_b
+      unidad: "bit/s"
+      tol: 0.03
+      rotulo: "Caudal necesario"
+      errores:
+        - { expr: "R_s", texto: "Le falta el factor 2 de la sobrecarga del protocolo y la codificación." }
+        - { expr: "R_y", texto: "Eso son bytes por segundo: el caudal se cuenta en bits." }
+    exito: "2,56 Mbit/s: ya no cabe ni en una UART a 1 Mbit/s. Hecho antes, el cálculo evita sorpresas."
+    escalera:
+      - "Es el mismo cálculo que a 100 Hz con una frecuencia cien veces mayor."
+    solucion: "8 · 10 000 · 16 · 2 = 2 560 000 bit/s, unos 2,6 Mbit/s."
+    comprobar:
+      - { R_b: 2560000, R_s: 1280000, R_y: 320000 }
+
+  - id: formula-tolerancia
+    tipo: formula
+    titulo: "La tolerancia de reloj"
+    texto: "La UART muestrea cada bit con su propio reloj: si los dos relojes difieren Δ, el bit de parada se muestrea 9,5·Δ bits desplazado. Suba Δ."
+    libro: [239, 240]
+    ec: 240
+    sustitucion: "9,5 · {{d_x}} = {{s_d}} bits; el límite es 0,5"
+    widget:
+      tipo: grafica
+      x: { id: u, min: 0, max: 8, unidad: "%", rotulo: "Δ" }
+      y: { min: 0, max: 0.8, unidad: "", rotulo: "desplazamiento (bits)" }
+      curvas:
+        - { expr: "9.5*u/100", color: naranja, rotulo: "desplazamiento del último muestreo" }
+        - { expr: "0.5", color: verde, rotulo: "medio bit", discontinua: true }
+      marcas:
+        - { x: "d_x", y: "s_d", rotulo: "{{s_d}}" }
+      lectura: { valor: s_d, rotulo: "Desplazamiento (bits)" }
+      mandos:
+        - { valor: d_x, lista: [1, 2, 3, 5, 6], rotulo: "Diferencia de relojes, Δ" }
+    comprobar:
+      - { D_m: 5.26, D_e: 2.63 }
+      - { con: { d_x: 6 }, s_d: 0.57 }
+
+  - id: reloj-practico
+    tipo: pregunta
+    titulo: "Qué reloj sirve"
+    texto: "En la práctica se exige menos del 2 % en total entre los dos extremos. ¿Qué reloj queda descartado?"
+    libro: [241]
+    widget:
+      tipo: grafica
+      x: { id: u, min: 0, max: 8, unidad: "%", rotulo: "Δ" }
+      y: { min: 0, max: 0.8, unidad: "", rotulo: "desplazamiento (bits)" }
+      curvas:
+        - { expr: "9.5*u/100", color: naranja, rotulo: "desplazamiento del último muestreo" }
+        - { expr: "0.5", color: verde, rotulo: "medio bit", discontinua: true }
+    opciones:
+      - texto: "Un oscilador RC interno del 3 %"
+        bien: true
+        porque: "Él solo ya supera el 2 % total que se exige en la práctica."
+      - texto: "Un resonador cerámico de ±0,5 % en cada lado"
+        porque: "Sirve: dos resonadores suman como mucho un 1 %, dentro del 2 %."
+      - texto: "Un cristal de cuarzo"
+        porque: "Un cristal es mucho más exacto que un resonador: sobra."
+    escalera:
+      - "¿Cuál de los tres pasa del 2 % él solo?"
+    solucion: "El oscilador RC interno del 3 %."
+
+  - id: estime-atmega
+    tipo: pregunta
+    titulo: "115 200 con un UNO"
+    texto: "El UART del ATmega328P a 16 MHz no da 115 200 baudios exactos, sino 117 647. ¿Qué error es?"
+    libro: [241]
+    widget:
+      tipo: grafica
+      x: { id: u, min: 0, max: 8, unidad: "%", rotulo: "Δ" }
+      y: { min: 0, max: 0.8, unidad: "", rotulo: "desplazamiento (bits)" }
+      curvas:
+        - { expr: "9.5*u/100", color: naranja, rotulo: "desplazamiento del último muestreo" }
+        - { expr: "0.5", color: verde, rotulo: "medio bit", discontinua: true }
+    estimar:
+      objetivo: "e_b"
+      unidad: "%"
+      min: 0
+      max: 5
+      paso: 0.1
+      inicio: 0.5
+      tol: 0.1
+      rotulo: "Error de velocidad"
+    exito: "+2,1 %: agota por sí solo el margen práctico. Con 57 600 o 38 400 baudios, −0,8 % y +0,2 %, es más seguro."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 2.3 }, texto: "Demasiado: es 117 647/115 200 − 1." }
+      - { texto: "Corto: 117 647/115 200 − 1, en tanto por ciento." }
+    escalera:
+      - "Divida la velocidad real entre la nominal y reste uno."
+    solucion: "117 647/115 200 − 1 = +2,1 %."
+    comprobar:
+      - { e_b: 2.12, tol: 0.01 }
+
+  - id: memoria
+    tipo: pregunta
+    titulo: "Una hora sin el ordenador"
+    texto: "Durante un corte, el microcontrolador guarda 8 canales a 100 Hz y 16 bits. ¿Cuánta memoria ocupa una hora?"
+    libro: [244]
+    fijar: { n_c: 8, f_m: 100, m_b: 16 }
+    widget:
+      tipo: grafica
+      x: { id: nu, min: 10, max: 20000, unidad: Hz, rotulo: "f_{s}", escala: log }
+      y: { min: 1000, max: 10000000, unidad: "bit/s", rotulo: "caudal", escala: log }
+      curvas:
+        - { expr: "n_c*nu*m_b", color: naranja, rotulo: "datos sin sobrecarga" }
+    opciones:
+      - texto: "5,8 MB: hace falta memoria externa"
+        bien: true
+        porque: "12 800 bit/s son 1 600 bytes por segundo; por 3 600 segundos, 5,8 MB."
+      - texto: "46 MB"
+        porque: "Eso es contar los bits como si fueran bytes: hay que dividir entre 8."
+      - texto: "1 600 bytes: cabe en la RAM"
+        porque: "Eso es un segundo; una hora son 3 600 veces más."
+    escalera:
+      - "Bits por segundo, entre 8, por 3 600."
+    solucion: "8 · 100 · 16 / 8 · 3 600 = 5,8 MB, que exige memoria externa."
+    comprobar:
+      - { S_h: 5760000, S_b: 46080000, R_s: 12800, B_s: 1600, t_h: 3600, tol: 0.01 }
+
+  - id: plazo
+    tipo: pregunta
+    titulo: "Un plazo de 5 ms"
+    texto: "Una tarea tiene un plazo de 5 ms. Según los criterios de reparto, ¿dónde va?"
+    libro: [226, 247]
+    widget:
+      tipo: figura
+      figura: fig-19.10
+      zonas:
+        - { id: criterios, rotulo: "Tabla de la derecha", rect: [272, 3, 170, 140] }
+    opciones:
+      - texto: "Al microcontrolador"
+        bien: true
+        porque: "Plazo menor de 10 ms: va al microcontrolador."
+      - texto: "Al ordenador de placa"
+        porque: "Al ordenador van los plazos de más de 100 ms."
+      - texto: "A cualquiera de los dos"
+        porque: "Con menos de 10 ms de plazo no hay duda: microcontrolador."
+    escalera:
+      - "¿Cuál es el límite del microcontrolador en la tabla?"
+    solucion: "Al microcontrolador: plazo menor de 10 ms."
+
+  - id: porque-saturar
+    tipo: porque
+    titulo: "Saturar el enlace"
+    texto: "Antes de tener el sistema completo, se satura el enlace con datos de prueba durante horas. ¿Por qué?"
+    libro: [249, 250]
+    widget:
+      tipo: figura
+      figura: fig-19.10
+      zonas:
+        - { id: prueba, rotulo: "Recuadro naranja de abajo a la derecha", rect: [274, 147, 165, 74] }
+    opciones:
+      - texto: "Descubrir que el enlace está al límite sale más barato así"
+        bien: true
+        porque: "Con datos de prueba, bajar el caudal o subir la velocidad es fácil; con el sistema instalado, no."
+      - texto: "Para calentar los componentes"
+        porque: "No es una prueba térmica: busca errores o pérdidas en el enlace."
+      - texto: "Porque el cálculo del caudal no sirve"
+        porque: "El cálculo sirve para dimensionar; la prueba confirma que el enlace aguanta en la realidad."
+    escalera:
+      - "¿Cuándo es más barato descubrir un enlace al límite?"
+    solucion: "Si aparecen errores o pérdidas, el enlace está al límite, y descubrirlo así es mucho más barato."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [229, 232, 240, 244]
+    ideas:
+      - { titulo: "El caudal.", texto: "Canales por muestreo por bits por un factor: 25,6 kbit/s caben; 2,6 Mbit/s no." }
+      - { titulo: "El reloj de la UART.", texto: "9,5·Δ < 0,5: un 5,26 % en teoría, menos del 2 % en la práctica." }
+      - { titulo: "El UNO.", texto: "117 647 baudios en lugar de 115 200: +2,1 %." }
+      - { titulo: "El corte.", texto: "Una hora a 8 canales son 5,8 MB: memoria externa." }

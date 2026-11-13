@@ -1,0 +1,265 @@
+# Lección 1.2 de la sección 19.11 «Cuarzos, Resonadores y la Base de Tiempo» (cap20; sec-20.N = impresas 19.(N − 1)).
+# - La tabla del bloque 293 como gráfica (como la figura 19.18, fig-20.19): deriva en 24 h = error · 86 400 s.
+#   1 % son 14,4 min («15 min»), 5 000 ppm 7,2 min, 50 ppm 4,3 s, 2 ppm 0,17 s, 0,01 ppm 0,86 ms («≈ 1 ms»).
+# - 16 MHz con 50 ppm: 800 Hz (bloque 294).
+# - La capacidad de carga (bloques 303 y 304): C_L = C₁·C₂/(C₁ + C₂) + C_parásita; 18 pF con 4 pF de parásita piden
+#   C₁ = C₂ = 2·(18 − 4) = 28 pF.
+# Paso práctico: «simular» los condensadores para un cristal de 18 pF (28 pF; errores típicos: olvidar la parásita,
+# 36 pF, u olvidar que dos iguales en serie dan la mitad, 14 pF).
+leccion: cap20/sec-20.12
+
+libro:
+  291: "la exactitud de ese reloj determina cosas que a primera vista no parecen relacionadas"
+  292: "La magnitud que lo describe es el error relativo, en partes por millón."
+  293: "Patrones de laboratorio"
+  294: "Un cristal de 16 MHz con 50 ppm se desvía 800 Hz de su frecuencia nominal"
+  295: "El USB a velocidad completa exige ±0,25 % (2 500 ppm), y eso ya deja fuera al resonador"
+  299: "un Q extraordinariamente alto, de decenas de miles a más de un millón"
+  301: "es la capacidad que el circuito debe presentarle para que oscile a su frecuencia nominal"
+  303: 'C_("L") = (C_(1) dot.op C_(2))/(C_(1) + C_(2)) + C_("parásita")'
+  304: "Para un cristal de 18 pF con 4 pF de parásita, C1 y C2 deben ser de unos 28 pF cada uno."
+  305: "con condensadores demasiado pequeños el oscilador va rápido"
+  307: "Un cristal que no arranca produce un sistema que parece muerto."
+  308: "o el cristal oscilando en un armónico (overtone) en lugar de en su fundamental"
+  309: "con el envejecimiento (unas pocas ppm por año, más el primer año)"
+  311: "comparar dos relojes durante horas y medir la deriva acumulada"
+  312: "Exactitud de las distintas bases de tiempo y su deriva acumulada en un día."
+
+modelo:
+  valores:
+    e_p: { sim: "error", nombre: "error relativo de la base de tiempo", unidad: "ppm", valor: 50 }
+    d_s: { sim: "día", nombre: "segundos de un día", unidad: s, valor: 86400 }
+    f_x: { sim: "f", nombre: "frecuencia nominal del cristal", unidad: Hz, valor: 16000000 }
+    C_x: { sim: "C₁ = C₂", nombre: "cada uno de los dos condensadores", unidad: F, valor: 22e-12 }
+    C_p: { sim: "C_{parásita}", nombre: "capacidad parásita", unidad: F, valor: 4e-12 }
+    C_n: { sim: "C_{L}", nombre: "capacidad de carga del cristal", unidad: F, valor: 18e-12 }
+  calculos:
+    D_d: { expr: "e_p/1000000*d_s", sim: "deriva", nombre: "deriva en 24 h", unidad: s }
+    D_f: { expr: "e_p/1000000*f_x", sim: "Δf", nombre: "desviación de frecuencia", unidad: Hz }
+    C_L: { expr: "C_x*C_x/(C_x + C_x) + C_p", sim: "C_{L}", nombre: "capacidad de carga que ve el cristal", unidad: F }
+    C_r: { expr: "2*(C_n - C_p)", sim: "C", nombre: "condensadores necesarios", unidad: F }
+    C_a: { expr: "2*C_n", sim: "C", nombre: "sin restar la parásita", unidad: F }
+    C_b: { expr: "C_n - C_p", sim: "C", nombre: "sin el factor de la serie", unidad: F }
+
+tarjetas:
+  - id: explore-deriva
+    tipo: explorar
+    titulo: "Partes por millón, en un día"
+    texto: "El error relativo de la base de tiempo, traducido a consecuencias: lo que se desvía un reloj en un día. Cambie la fuente."
+    libro: [291, 292, 293, 312]
+    widget:
+      tipo: grafica
+      x: { id: u, min: 0.001, max: 100000, unidad: "ppm", rotulo: "error", escala: log }
+      y: { min: 0.0001, max: 10000, unidad: s, rotulo: "deriva en 24 h", escala: log }
+      curvas:
+        - { expr: "u/1000000*d_s", color: naranja, rotulo: "deriva en un día" }
+      marcas:
+        - { x: "e_p", y: "D_d", rotulo: "{{D_d}}" }
+      lectura: { valor: D_d, rotulo: "Deriva en 24 h" }
+      mandos:
+        - { valor: e_p, lista: [10000, 5000, 50, 2, 0.01], nombres: [RC interno, resonador, cristal, TCXO, OCXO], rotulo: "Fuente" }
+    requiere: { mover: [e_p] }
+    comprobar:
+      - { con: { e_p: 5000 }, D_d: 432 }
+      - { con: { e_p: 2 }, D_d: 0.17, tol: 0.02 }
+
+  - id: estime-800
+    tipo: pregunta
+    titulo: "16 MHz y 50 ppm"
+    texto: "Un cristal de 16 MHz tiene un error de 50 ppm. ¿Cuántos hercios se desvía de su frecuencia nominal?"
+    libro: [294]
+    fijar: { e_p: 50, f_x: 16000000 }
+    widget:
+      tipo: grafica
+      x: { id: u, min: 0.001, max: 100000, unidad: "ppm", rotulo: "error", escala: log }
+      y: { min: 0.0001, max: 10000, unidad: s, rotulo: "deriva en 24 h", escala: log }
+      curvas:
+        - { expr: "u/1000000*d_s", color: naranja, rotulo: "deriva en un día" }
+    estimar:
+      objetivo: "D_f"
+      unidad: Hz
+      min: 0
+      max: 2000
+      paso: 10
+      inicio: 1500
+      tol: 0.05
+      rotulo: "Desviación de frecuencia"
+    exito: "800 Hz: irrelevante para el reloj del microcontrolador, pero 4,3 s al día en un reloj."
+    pistas:
+      - { cuando: { valor: estimacion, mayor: 840 }, texto: "Demasiado: 50 millonésimas de 16 millones." }
+      - { texto: "Corto: 16 · 10⁶ · 50 · 10⁻⁶." }
+    escalera:
+      - "Una parte por millón de 16 MHz son 16 Hz."
+    solucion: "16 MHz · 50 ppm = 800 Hz."
+    comprobar:
+      - { D_f: 800, D_d: 4.32, tol: 0.01 }
+
+  - id: usb
+    tipo: pregunta
+    titulo: "Con USB"
+    texto: "El USB a velocidad completa exige ±0,25 %. ¿Sirve un resonador cerámico de 0,5 %?"
+    libro: [295]
+    widget:
+      tipo: grafica
+      x: { id: u, min: 0.001, max: 100000, unidad: "ppm", rotulo: "error", escala: log }
+      y: { min: 0.0001, max: 10000, unidad: s, rotulo: "deriva en 24 h", escala: log }
+      curvas:
+        - { expr: "u/1000000*d_s", color: naranja, rotulo: "deriva en un día" }
+    opciones:
+      - texto: "No: con USB, cristal"
+        bien: true
+        porque: "0,5 % es el doble de lo que permite; salvo micros que corrigen su RC con las tramas del bus."
+      - texto: "Sí, con holgura"
+        porque: "Con holgura sirve para una UART; el USB exige ±0,25 %, menos que su 0,5 %."
+      - texto: "Sí, si se calienta"
+        porque: "La temperatura no lo arregla: su exactitud es 0,5 %, el doble del límite."
+    escalera:
+      - "Compare 0,5 % con 0,25 %."
+    solucion: "No: el resonador queda fuera; con USB, cristal."
+
+  - id: formula-carga
+    tipo: formula
+    titulo: "La capacidad de carga"
+    texto: "Los dos condensadores del cristal no están «para que funcione»: dan su capacidad de carga. Con los dos iguales, muévalos."
+    libro: [301, 303]
+    ec: 303
+    sustitucion: "{{C_x}} · {{C_x}} / ({{C_x}} + {{C_x}}) + {{C_p}} = {{C_L}}"
+    widget:
+      tipo: grafica
+      x: { id: c, min: 10e-12, max: 50e-12, unidad: F, rotulo: "C₁ = C₂" }
+      y: { min: 0, max: 30e-12, unidad: F, rotulo: "C_{L}" }
+      curvas:
+        - { expr: "c/2 + C_p", color: naranja, rotulo: "C_{L}" }
+        - { expr: "C_n", color: azul, rotulo: "la del cristal", discontinua: true }
+      marcas:
+        - { x: "C_x", y: "C_L", rotulo: "{{C_L}}" }
+      lectura: { valor: C_L, rotulo: "Capacidad de carga" }
+      mandos:
+        - { valor: C_x, lista: [22e-12, 27e-12, 33e-12], rotulo: "C₁ = C₂" }
+    comprobar:
+      - { con: { C_x: 22e-12 }, C_L: 15e-12 }
+
+  - id: simule-condensadores
+    tipo: simular
+    titulo: "Para un cristal de 18 pF"
+    texto: "El cristal pide 18 pF de capacidad de carga y la parásita ronda 4 pF. ¿Cuánto debe valer cada uno de los dos condensadores iguales?"
+    libro: [303, 304]
+    fijar: { C_n: 18e-12, C_p: 4e-12 }
+    simular:
+      objetivo: C_r
+      unidad: F
+      tol: 0.03
+      rotulo: "C₁ = C₂"
+      errores:
+        - { expr: "C_a", texto: "Ha olvidado restar la parásita: las pistas y los pines ya aportan unos 4 pF." }
+        - { expr: "C_b", texto: "Dos condensadores iguales en serie dan la mitad: cada uno debe ser el doble." }
+    exito: "Unos 28 pF cada uno: dos de 28 en serie dan 14, más los 4 de la parásita, 18 pF."
+    escalera:
+      - "Reste la parásita y recuerde que C₁ y C₂ quedan en serie."
+    solucion: "2 · (18 − 4) = 28 pF cada uno."
+    comprobar:
+      - { C_r: 28e-12, C_a: 36e-12, C_b: 14e-12 }
+
+  - id: prediga-pequenos
+    tipo: predecir
+    titulo: "Los del ejemplo"
+    texto: "En lugar de 28 pF se montan los 22 pF «que venían en el ejemplo». ¿Qué le pasa al oscilador?"
+    libro: [305]
+    fijar: { C_x: 22e-12, C_p: 4e-12, C_n: 18e-12 }
+    widget:
+      tipo: grafica
+      x: { id: c, min: 10e-12, max: 50e-12, unidad: F, rotulo: "C₁ = C₂" }
+      y: { min: 0, max: 30e-12, unidad: F, rotulo: "C_{L}" }
+      curvas:
+        - { expr: "c/2 + C_p", color: naranja, rotulo: "C_{L}" }
+        - { expr: "C_n", color: azul, rotulo: "la del cristal", discontinua: true }
+      marcas:
+        - { x: "C_x", y: "C_L", rotulo: "{{C_L}}" }
+    opciones:
+      - texto: "Va rápido, unas decenas de ppm"
+        bien: true
+        porque: "Con condensadores pequeños va rápido; irrelevante para el procesador, segundos al día en un reloj."
+      - texto: "Va lento"
+        porque: "Lento va con condensadores demasiado grandes, o no arranca."
+      - texto: "Nada: la frecuencia la fija el cuarzo"
+        porque: "El cuarzo oscila a su nominal solo con su capacidad de carga."
+    escalera:
+      - "¿La capacidad de carga queda por encima o por debajo de los 18 pF del cristal?"
+    solucion: "Va rápido: unas +50 ppm con 22 pF."
+    comprobar:
+      - { C_L: 15e-12 }
+
+  - id: porque-q
+    tipo: porque
+    titulo: "Qué fija la exactitud"
+    texto: "¿Por qué un oscilador de cristal es tanto más exacto que uno LC?"
+    libro: [299]
+    widget:
+      tipo: figura
+      figura: fig-20.19
+      zonas:
+        - { id: todo, rotulo: "Exactitud de las bases de tiempo", rect: [0, 0, 399, 189] }
+    opciones:
+      - texto: "Por su Q: de decenas de miles a más de un millón"
+        bien: true
+        porque: "Frente a los cien o doscientos de un LC: el margen donde puede oscilar es estrechísimo."
+      - texto: "Porque el cuarzo no cambia con la temperatura"
+        porque: "Sí cambia (deriva); lo que lo hace exacto es su Q enorme."
+      - texto: "Porque funciona a más frecuencia"
+        porque: "La frecuencia no es la razón: es el Q."
+    escalera:
+      - "¿Qué cifra del resonador estrecha el margen donde puede oscilar?"
+    solucion: "Un Q extraordinariamente alto."
+
+  - id: empareje-fallos
+    tipo: pregunta
+    titulo: "Los tres modos de fallo"
+    texto: "Empareje cada modo de fallo de un cristal con una de sus causas."
+    libro: [307, 308, 309]
+    widget:
+      tipo: figura
+      figura: fig-20.19
+      zonas:
+        - { id: todo, rotulo: "Exactitud de las bases de tiempo", rect: [0, 0, 399, 189] }
+    emparejar:
+      - ["No arranca", "Resistencia serie mayor de lo que el oscilador excita"]
+      - ["Arranca a la frecuencia equivocada", "Oscila en un armónico"]
+      - ["Deriva", "Envejecimiento: unas pocas ppm por año"]
+    exito: "Un cristal que no arranca produce un sistema que parece muerto."
+    pistas:
+      - { texto: "Un armónico es una frecuencia distinta de la fundamental." }
+    escalera:
+      - "Empiece por la deriva: es lo que cambia poco a poco."
+    solucion: "No arranca, ESR; frecuencia equivocada, armónico; deriva, envejecimiento."
+
+  - id: verificar
+    tipo: pregunta
+    titulo: "Verificar la frecuencia"
+    texto: "El cristal oscila. ¿Cómo se comprueba con qué exactitud, sin instrumental de laboratorio?"
+    libro: [311]
+    widget:
+      tipo: figura
+      figura: fig-20.19
+      zonas:
+        - { id: todo, rotulo: "Exactitud de las bases de tiempo", rect: [0, 0, 399, 189] }
+    opciones:
+      - texto: "Comparando dos relojes durante horas y midiendo la deriva acumulada"
+        bien: true
+        porque: "Es el método que cualquiera puede aplicar."
+      - texto: "Con el osciloscopio"
+        porque: "Su base de tiempos tiene su propia tolerancia: no vale para esto."
+      - texto: "Con la sonda ×10"
+        porque: "La sonda dice si oscila, y además la desplaza unas decenas de ppm."
+    escalera:
+      - "¿Qué acumula el error hasta hacerlo visible?"
+    solucion: "Comparar dos relojes durante horas y medir la deriva acumulada (o un frecuencímetro con mejor referencia)."
+
+  - id: resumen
+    tipo: resumen
+    titulo: "Lección completada"
+    libro: [294, 295, 303, 305]
+    ideas:
+      - { titulo: "En ppm.", texto: "50 ppm: 800 Hz a 16 MHz y 4,3 s al día." }
+      - { titulo: "Los límites.", texto: "La UART tolera un resonador; el USB, ±0,25 %, pide cristal." }
+      - { titulo: "La carga.", texto: "C₁·C₂/(C₁ + C₂) + parásita: 28 pF para 18 pF con 4 pF." }
+      - { titulo: "Mal calculados.", texto: "Pequeños, va rápido; grandes, lento o no arranca." }
