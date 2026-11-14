@@ -3736,6 +3736,13 @@ V<sub>sal</sub> aumenta, disminuye o se queda igual?», «Calcula … si …»).
   value, usual supplies (3,3…48 V) for voltages ≥ 3 V that are not a device's own (Zener, Early, threshold, logic
   levels, references…), round 1-1,5-2-2,2-3-3,3-4-4,7-5-6-6,8-8 series for A, W, Hz, s, J, C, S…; the rest keeps the
   book value. At least 8 valid variants (finite, same sign as the book's result, inside the result's range).
+  Id `<parte>-num-<formula id>`, or `<parte>-num-<exercise label>` for a linked exercise (its formula then gives no
+  item of its own). 1.2: three exercises new in book 4.0/4.1 (`ej-22.7`, `prob-8.C`, `ej-25.8`) took over the
+  formula items published in 1.0 and 1.1 (same section, same result): `AJUSTES[<label>].id` keeps the published id
+  (`cap22-num-ne555-t-alto`, `cap08-num-error-ron-mux`, `cap25-num-condensador-conmutado`), the key of the reader's
+  progress; `revision11a-unidad` B1 checks that no 1.0 id disappears. Also 1.2: `ej-56.7` keeps its nominal 50 Hz
+  and varies the new frequency below it (the statement's 8 V/Hz) and `ej-31.22` (Euler's largest step) is not linked to
+  Ziegler-Nichols' `T_i = T_u/2` (`tests/ejercicios10-r10e.spec.ts`).
 - `prediccion` and `deslizador`: simulable schematics of figures without AC/pulse sources (`figuras-vivas/esquema/
   netlist.ts`, operating point) and book netlists with an `op` analysis, not XSPICE, ≤ 3 s (reduced to `.op` +
   `.options savecurrents` by `circuito.ts netlistLibroOp`). Changes: designated resistors and sources ×2 and ×½;
@@ -4227,7 +4234,11 @@ quantity that is not its own value) are matched the same way; crop = C ± max(22
 object (not touching C, not a label) that crosses the crop, and any annotation text touching it, pushes the edge on its
 side back to just before it (the side removing least area, never into K). `ocultar` = texts the crop still cuts, the
 `lecturas`, and annotation texts: any colour but the neutrals `#1a3a5c`/`#000` (grey `#5d6d7e` is the book's notes)
-unless a part label or inside a part's box (a meter's «V»). retos10 and averias10 store `fuente.recorte` from it (and
+unless a part label or inside a part's box (a meter's «V»). 1.2: book 4.0/4.1 recolours its figures, so `#1b1f27` (its
+ink) is neutral too and a part's label may be in the 4.x text shade of its 3.0.2 data colour (`coloresDeRotulo`:
+`#2e6ea6`→`#2150c5`, `#a93226`→`#a5231c`, `#1e8449`→`#186840`, `#b7950b`→`#964713`, `#6c3483`→`#6642b8`,
+`#5d6d7e`→`#5b6472`; from the book's `figuras/roles40.py` and `herramientas/recolorear.csv`); without it 212 part
+names and values were painted over. retos10 and averias10 store `fuente.recorte` from it (and
 `fuente.ocultar` when not empty); `recorteDe` still decides the naming scope. The app paints `ocultar` with
 `fill: var(--placa)` (`practica/Tapas.svelte`: an overlay layer under the new-value labels in `Reto.svelte`, rects inside
 the figure SVG under the probe marks in `Averia.svelte`). Test: `tests/brilliant10-encuadre.spec.ts` (every reto/avería:

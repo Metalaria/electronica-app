@@ -310,7 +310,8 @@ test.describe('inicio como camino del libro (0.9)', () => {
     await expect(c1).toHaveAttribute('data-estado', 'hecho');
     await expect(camino.locator('a.nodo[data-parte="cap02"]')).toHaveAttribute('data-leidas', '0');
     await expect(camino.locator('a.nodo[data-estado="hecho"]')).toHaveCount(1);
-    await expect(camino).toContainText('1 de 8 partes leídas');
+    // (8 parts in tome I up to 1.1; book 4.1: 7)
+    await expect(camino).toContainText(`1 de ${tomoI.partes.filter((p) => indice.partes[p]).length} partes leídas`);
 
     // the other volumes are rows that open in place
     const tomoII = camino.locator('button.tomo-fila[data-tomo="II"]');

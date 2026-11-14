@@ -331,7 +331,8 @@ test('el resto del libro: una lección de un apéndice y de una sección de un c
   ] as const;
   for (const [parte, label] of casos) {
     expect(label).toBeTruthy();
-    await page.goto(`#/leccion/${parte}/${label}`);
+    // (1.2: every chapter section has a hand-made lesson, so the 1.0 one of cap53 is at …/clasica; the appendix has none)
+    await page.goto(`#/leccion/${parte}/${label}${parte === 'cap53' ? '/clasica' : ''}`);
     const total = pasosDe(parte, label!).length;
     await expect(page.locator(`[data-leccion="${parte}/${label}"] h1`)).toBeVisible();
     await expect(page.locator('.cab-pasos .cuenta')).toHaveText(new RegExp(`^1/(${total}|\\d+)$`));

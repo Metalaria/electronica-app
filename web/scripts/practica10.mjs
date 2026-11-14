@@ -371,7 +371,7 @@ function itemNumerico(f, { objetivo, libro, ejercicio, r, idEj, ajuste }) {
   const intro = introFormula(f.parte, sec, top);
   const vo = f.vars.find((v) => v.id === objetivo);
   const it = {
-    id: `${f.parte}-num-${idEj ?? f.id}`,
+    id: `${f.parte}-num-${ajuste?.id ?? idEj ?? f.id}`,
     tipo: 'numerico',
     parte: f.parte,
     seccion: sec.label,
@@ -410,7 +410,14 @@ function itemNumerico(f, { objetivo, libro, ejercicio, r, idEj, ajuste }) {
 //   intercambiar: two inputs the link swapped (a symmetric formula); excluir: a link to the wrong formula;
 //   normalizado + pide (final QA 1.0): the statement asks for a standard value — graded as the series value nearest to
 //   the result (variantes.ts pedidoDe), with the field's own text.
+//   id (1.2): the id the item keeps (`<parte>-num-<id>`), see below.
 const AJUSTES = {
+  // 1.2 (book 4.0/4.1): a new exercise of the book linked to a formula whose own item was published in 1.0 and 1.1
+  // (same section, same result asked) takes that item's place; it keeps its id, the key of what the reader answered
+  // (store «practica», XP «pr:», mastery, spaced review). Without it the ids became `-num-<exercise>` (revision11a B1)
+  'ej-22.7': { id: 'ne555-t-alto' },
+  'prob-8.C': { id: 'error-ron-mux' },
+  'ej-25.8': { id: 'condensador-conmutado' },
   // «a 50 Hz (onda completa, frecuencia de rizado …)»: the ripple of full-wave rectified 50 Hz mains is 100 Hz
   'ej-5.6': { fijas: ['f_r'] },
   // a blue LED (V_F 3,2 V) at usual currents, from a supply above it; «Elige valores comerciales»: the variant asks
@@ -443,6 +450,12 @@ const AJUSTES = {
   // LM317: R₁ carries its minimum load current (1,25 V / R₁); the book's 240 Ω is the largest that keeps it (review 10g)
   'ej-8.4': { condiciones: ['240.5 - R_1'] },
   'ej-33.1': { condiciones: ['V_in - V_out - 1'] },
+  // 1.2 (suite run, exercises new in book 4.0/4.1):
+  // «un variador V/f de 8 V/Hz» with 400 V at 50 Hz: the nominal frequency stays (else V/f is no longer 8 V/Hz) and
+  // the new one below it (above the base frequency the drive gives no more than 400 V)
+  'ej-56.7': { fijas: ['f_1'], valores: { f_2: [5, 10, 15, 20, 25, 30, 35, 40, 45] }, condiciones: ['f_1 - f_2'] },
+  // Euler's largest step (h < 2τ) was linked to Ziegler-Nichols' T_i = T_u/2 (the same factor, another formula)
+  'ej-31.22': { excluir: true },
 };
 
 /** Applies an exercise's adjustments to its link (before the item is built). */

@@ -186,11 +186,16 @@ test('sec 1.4 entera: puertas, fallos y aciertos explicados, reto, carga, estima
   await expect(aviso(page)).toContainText('P = I²·R');
   await boton(page).click();
 
+  // 12 · 1.2 (Fundamentos at the 1.2 standard): the bench card, optional — «Continuar» is open from the start
+  await tarjeta(page, 'banco-divisor');
+  await expect(boton(page)).toBeEnabled();
+  await boton(page).click();
+
   // 1.2 · the cards missed at the first check (2, 4, 7 and 10) come back once, fresh, before the summary
   // (lib/leccion12/ritmo.ts): their own segments in the bar, «Repaso» as the step, the prediction hidden again
   await tarjeta(page, 'prediga-salida');
   await expect(page.locator('[data-leccion11]')).toHaveAttribute('data-vuelta', '');
-  await expect(page.locator('.etiqueta')).toHaveText('12 de 16 · Repaso');
+  await expect(page.locator('.etiqueta')).toHaveText('13 de 17 · Repaso');
   await expect(page.locator('[data-seg="vuelta"]')).toHaveCount(4);
   await expect(page.locator('[data-lectura="V_out"]')).toHaveText('¿? V');
   await page.locator('[data-opcion="0"]').click();
@@ -220,15 +225,15 @@ test('sec 1.4 entera: puertas, fallos y aciertos explicados, reto, carga, estima
   await expect(aviso(page)).toContainText('Ese es el orden');
   await boton(page).click();
 
-  // 12 · summary: completed with the same key as 1.0, XP once per card, mastery and the review
+  // 13 · summary: completed with the same key as 1.0, XP once per card, mastery and the review
   await expect(page.locator('[data-resumen]')).toBeVisible();
   await expect(page.locator('[data-intentos]')).toHaveText('Con 6 intentos fallidos: lo repasará antes. 4 tarjetas volvieron al final para repasarlas.');
   await expect(page.locator('[data-repaso]')).toContainText(/Repaso programado|Para repasar/);
   await expect(page.locator('[data-repaso]')).toContainText('Siguiente: 1.5');
-  await expect.poll(async () => (await leer<Record<string, { n: number; u: number }>>(page, 'lecciones'))?.['cap01/sec-1.4']).toMatchObject({ n: 12, u: 12 });
+  await expect.poll(async () => (await leer<Record<string, { n: number; u: number }>>(page, 'lecciones'))?.['cap01/sec-1.4']).toMatchObject({ n: 13, u: 13 });
   const lec = await leer<Record<string, { c: number; n: number; h: number[]; u: number }>>(page, 'lecciones');
   expect(lec['cap01/sec-1.4']!.c).toBeGreaterThan(0);
-  expect(lec['cap01/sec-1.4']!.h).toEqual([...Array(12).keys()]);
+  expect(lec['cap01/sec-1.4']!.h).toEqual([...Array(13).keys()]);
   // (the challenge and the load estimate were right only at the third attempt: their round closed at the second failure,
   // as the 1.0 practice — no XP then; 1.2: they came back at the end and were right at once, a new round: XP once now)
   await expect.poll(async () => Object.keys((await leer<{ xp: Record<string, unknown> }>(page, 'progreso-xp'))?.xp ?? {}).filter((k) => k.includes('l11') || k === 'l:cap01/sec-1.4').sort()).toEqual(
@@ -320,6 +325,23 @@ test('sec 0.3 solo con el teclado: mandos, asas de la gráfica, opciones con tec
   await expect(aviso(page)).toContainText('¡Conseguido!');
   await page.keyboard.press('Enter');
 
+  // 1.2 (Fundamentos at the 1.2 standard): draw the leading sine, 325·cos(2π·50·t), point by point — each point's
+  // value field, then «▶» (as tests/lecciones11-recorrido.spec.ts; its keyboard use is in lecciones12-navegador)
+  await tarjeta(page, 'dibuje-fase');
+  for (let k = 0; k < 41; k++) {
+    const y = 325 * Math.cos(2 * Math.PI * 50 * ((0.04 * k) / 40));
+    await page.locator('[data-valor-punto]').evaluate((el, v) => {
+      const i = el as HTMLInputElement;
+      i.value = String(v);
+      i.dispatchEvent(new Event('input', { bubbles: true }));
+    }, y);
+    if (k < 40) await page.locator('[data-punto-siguiente]').click();
+  }
+  await tabHasta(page, '[data-continuar]');
+  await page.keyboard.press('Enter');
+  await expect(aviso(page)).toHaveAttribute('data-veredicto', 'bien');
+  await page.keyboard.press('Enter');
+
   await tarjeta(page, 'seno-coseno');
   await tabHasta(page, '[data-mando11="phi"] [role="slider"]');
   await page.keyboard.press('ArrowRight');
@@ -390,7 +412,8 @@ test('con el ratón: arrastrar las asas de la gráfica, las fichas a su hueco y 
   await expect(page.locator('[data-mando11="V_p"] [role="slider"]')).toHaveAttribute('aria-valuenow', String(vp));
 
   // (half done: the leave guard asks first)
-  await page.goto('#/leccion/cap00/sec-0.3/8');
+  // (1.2: the drawing card is the 6th, so the matching is the 9th)
+  await page.goto('#/leccion/cap00/sec-0.3/9');
   await expect(page.getByRole('alertdialog')).toContainText('¿Salir de la lección?');
   await page.getByRole('alertdialog').getByRole('button', { name: 'Salir' }).click();
   await tarjeta(page, 'simbolos');
@@ -449,12 +472,15 @@ test('tres temas: axe (contraste incluido) en las tarjetas de las dos lecciones,
         await boton(p).click();
         await expect(aviso(p)).toBeVisible();
       }],
+      // (1.2: the bench card is the 12th and the summary the 13th; in 0.3 the drawing card is the 6th)
       ['#/leccion/cap01/sec-1.4/12', async () => undefined],
+      ['#/leccion/cap01/sec-1.4/13', async () => undefined],
       ['#/leccion/cap00/sec-0.3', async () => undefined],
       ['#/leccion/cap00/sec-0.3/5', async (p) => {
         await slider(p, '[data-mando11="phi"] [role="slider"]', veces('ArrowRight', 6));
       }],
-      ['#/leccion/cap00/sec-0.3/8', async (p) => {
+      ['#/leccion/cap00/sec-0.3/6', async () => undefined],
+      ['#/leccion/cap00/sec-0.3/9', async (p) => {
         await p.locator('[data-ficha="0"]').click();
       }],
     ];
@@ -526,10 +552,11 @@ test('1.0 → 1.1: una sección completada sigue completada (misma clave), el li
   await page.locator('[data-por-pasos]').first().click();
   await expect(page.locator('[data-leccion11="cap01/sec-1.4"]')).toBeVisible();
   // visiting a card keeps the completion (same key, now with the new number of cards)
-  await expect.poll(async () => (await leer<Record<string, { c: number; n: number }>>(page, 'lecciones'))?.['cap01/sec-1.4']).toMatchObject({ c: T0, n: 12 });
+  await expect.poll(async () => (await leer<Record<string, { c: number; n: number }>>(page, 'lecciones'))?.['cap01/sec-1.4']).toMatchObject({ c: T0, n: 13 });
   await expect(page.locator('[data-nodo]')).toHaveCount(0);
   // the 1.0 lesson, from the summary's link: its own screens under …/clasica
-  await page.goto('#/leccion/cap01/sec-1.4/12');
+  // (1.2: 13 cards, the summary is the 13th)
+  await page.goto('#/leccion/cap01/sec-1.4/13');
   await page.locator('[data-clasica]').click();
   await expect(page.locator('[data-leccion="cap01/sec-1.4"]')).toBeVisible();
   await expect(page).toHaveURL(/\/clasica$/);
@@ -544,9 +571,10 @@ test('1.0 → 1.1: una sección completada sigue completada (misma clave), el li
   await page.goto('#/leccion/cap01/sec-1.4/practica-1');
   await expect(page.locator('[data-leccion="cap01/sec-1.4"]')).toBeVisible();
   await expect(page).toHaveURL(/\/clasica\/practica-1$/);
-  // (chapter 7: outside the «Fundamentos» chapters 0–6 that get a new lesson; 1.5 has one now)
-  await page.goto('#/leccion/cap07/sec-7.1');
-  await expect(page.locator('[data-leccion="cap07/sec-7.1"]')).toBeVisible();
+  // (chapter 7 in 1.1, outside the «Fundamentos» chapters 0–6 that got a new lesson; 1.2: every chapter section has
+  // one, so an appendix)
+  await page.goto('#/leccion/apB/sec-B.1');
+  await expect(page.locator('[data-leccion="apB/sec-B.1"]')).toBeVisible();
   await expect(page.locator('[data-leccion11]')).toHaveCount(0);
   // the 1.0 progress of 0.3 (6 steps, at the third): the course's «Continuar» (…/3, a 1.0 step) does not drop the
   // reader on a wrong card — the new lesson starts at its first card — and the new one writes the same key
@@ -554,7 +582,7 @@ test('1.0 → 1.1: una sección completada sigue completada (misma clave), el li
   await page.goto('#/leccion/cap00/sec-0.3/3');
   await tarjeta(page, 'explore-senoide');
   await expect(page).toHaveURL(/#\/leccion\/cap00\/sec-0\.3$/);
-  await expect.poll(async () => (await leer<Record<string, { c: number; n: number; u: number }>>(page, 'lecciones'))['cap00/sec-0.3']).toMatchObject({ c: 0, n: 9, u: 0 });
+  await expect.poll(async () => (await leer<Record<string, { c: number; n: number; u: number }>>(page, 'lecciones'))['cap00/sec-0.3']).toMatchObject({ c: 0, n: 10, u: 0 });
 });
 
 test('salir a medias pide confirmación (diálogo propio); sin empezar o terminada, no', async ({ page }) => {
@@ -578,8 +606,8 @@ test('salir a medias pide confirmación (diálogo propio); sin empezar o termina
   await expect(page.getByRole('alertdialog')).toContainText('¿Salir de la lección?');
   await page.getByRole('alertdialog').getByRole('button', { name: 'Salir' }).click();
   await expect(page.locator('[data-leccion11]')).toHaveCount(0);
-  // finished: no question
-  await page.goto('#/leccion/cap01/sec-1.4/12');
+  // finished: no question (1.2: the summary is the 13th card)
+  await page.goto('#/leccion/cap01/sec-1.4/13');
   await expect(page.locator('[data-resumen]')).toBeVisible();
   await page.locator('[data-volver-libro]').click();
   await expect(page.locator('[data-leccion11]')).toHaveCount(0);

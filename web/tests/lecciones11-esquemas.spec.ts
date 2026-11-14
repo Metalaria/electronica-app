@@ -98,11 +98,15 @@ test.describe('cada esquema frente a ngspice (la lección de catálogo)', () => 
     const r = generar();
     expect(r.errores).toEqual([]);
     const l = r.leccion!;
+    const src = (parse(fuente()) as Fuente).tarjetas;
     for (const t of l.tarjetas) {
       if (t.widget?.tipo !== 'circuito') continue;
       const propias = r.spice.filter((c) => c.donde.includes(`tarjeta ${t.id} `));
       const estados = new Set(propias.map((c) => /estado (\d+)/.exec(c.donde)![1]));
-      expect(estados.size, t.id).toBe(1 + 2 * t.widget.mandos.length);
+      // (and one more per «comprobar» entry with «con», as generar.ts adds them: the induction motor's slips)
+      const comprobar = (src.find((x) => x.id === t.id)?.comprobar ?? []) as { con?: unknown }[];
+      const conEstado = comprobar.filter((x) => !!x && typeof x.con === 'object' && x.con !== null).length;
+      expect(estados.size, t.id).toBe(1 + 2 * t.widget.mandos.length + conEstado);
       // the analyses its readings and curves need
       const analisis = new Set(propias.map((c) => c.analisis));
       if (t.widget.grafica?.curvas.some((c) => c.mide)) expect(analisis.has(t.widget.grafica.x.unidad === 'Hz' ? 'ac' : 'tran'), t.id).toBe(true);

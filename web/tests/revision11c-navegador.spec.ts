@@ -33,7 +33,8 @@ test('lección: «Seguir en la lección» tras la X deja la dirección en la tar
   await leccion14HastaTarjeta4(page);
   await page.locator('[data-cerrar]').click();
   const d = page.getByRole('alertdialog');
-  await expect(d).toContainText('Va por la tarjeta 4 de 12');
+  // (1.2: sec 1.4 has 13 cards, with the bench card)
+  await expect(d).toContainText('Va por la tarjeta 4 de 13');
   await d.getByRole('button', { name: 'Seguir en la lección' }).click();
   expect(await tarjetaN(page)).toBe('3');
   // reviewed: the address had gone back to #/leccion/cap01/sec-1.4 (card 1) while card 4 was on screen

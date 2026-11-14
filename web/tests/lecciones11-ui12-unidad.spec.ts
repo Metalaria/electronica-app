@@ -221,6 +221,9 @@ test.describe('circuito vivo: el punto de trabajo en continua', () => {
             if (!o || o.analisis !== 'op') continue;
             const m = /^(-?)([vi])\(([a-z0-9_]+)\)$/i.exec(o.medida.trim());
             if (!m) continue;
+            // (a «BMED…» meter node — a reading worked out as v·i — is left out of resolverCC on purpose; the generator
+            // checks it with ngspice)
+            if (lineas.some((x) => new RegExp(`^bmed\\S*\\s+${m[3]}\\s`, 'i').test(x.trim()))) continue;
             const x = (m[2]!.toLowerCase() === 'v' ? s!.nodos[m[3]!.toLowerCase()] : s!.corrientes[m[3]!.toLowerCase()])! * (m[1] ? -1 : 1);
             const y = v[calc]!;
             expect(Math.abs(x - y), `${parte}/${f}#${t.id} ${obs} = ${o.medida}: ${x} frente a ${calc} = ${y}`).toBeLessThanOrEqual(1e-3 * Math.abs(y) + 1e-9);

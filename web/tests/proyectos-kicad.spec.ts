@@ -171,7 +171,8 @@ test('las comprobaciones cruzan la placa con el libro impreso', async ({ page })
   await expect(page.locator('.comp li.aviso, .comp li.error')).toHaveCount(0);
   await expect(page.getByText('Posibles erratas para la próxima edición')).toHaveCount(0);
   await page.goto('#/proyectos/estacion_iot/comprobaciones');
-  await expect(page.locator('.comp')).toContainText('El pie de la figura 48.23 («el ESP32-DevKitC a la derecha») coincide con la placa');
+  // (printed 48.23 up to book 3.0.2; 50.23 in 4.1)
+  await expect(page.locator('.comp')).toContainText('El pie de la figura 50.23 («el ESP32-DevKitC a la derecha») coincide con la placa');
 });
 
 test('el libro ofrece «Ver la placa» junto a las figuras de los proyectos', async ({ page }) => {
